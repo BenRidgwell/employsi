@@ -76,7 +76,7 @@ function Footer() {
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-3 px-6 py-6 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-4 lg:px-10">
           <span>© 2026 Employsi AB</span>
           <span>Exploring the world of work</span>
-        </section>
+        </div>
       </div>
     </footer>
   );
