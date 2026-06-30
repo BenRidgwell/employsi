@@ -29,7 +29,7 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 
 function Nav() {
   return (
-    <header className="sticky top-0 z-30 border-b border-hairline bg-background/80 backdrop-blur">
+    <header className="sticky top-[42px] z-30 border-b border-hairline bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-6 lg:px-10">
         <EmploysiLockup size={26} />
         <nav className="hidden items-center gap-8 md:flex">
