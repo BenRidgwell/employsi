@@ -393,6 +393,7 @@ function Footer() {
 function Landing() {
   return (
     <div className="min-h-screen bg-background text-ink">
+      <Ticker />
       <Nav />
       <main>
         <Hero />
