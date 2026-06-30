@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { EmploysiLockup, EmploysiMark } from "@/components/EmploysiLogo";
+import { Ticker } from "@/components/Ticker";
 import { ArrowUpRight, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/")({
