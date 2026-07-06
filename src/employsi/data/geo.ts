@@ -18,8 +18,10 @@ export const CITY_STATE: Record<string, string> = {
   perth: 'WA', darwin: 'NT', adelaide: 'SA', melbourne: 'VIC', sydney: 'NSW', brisbane: 'QLD',
 };
 
+// Pixel coords in the 250x230 AustraliaMap viewBox, projected from each city's
+// real lng/lat with the same Web-Mercator fit used for AU_STATE_PATHS.
 export const CITY_XY: Record<string, [number, number]> = {
-  perth: [27, 147], darwin: [115, 19], adelaide: [148, 144], melbourne: [196, 186], sydney: [228, 178], brisbane: [230, 116],
+  perth: [29.4, 140.5], darwin: [111.6, 24.3], adelaide: [154.2, 160], melbourne: [189.1, 179.7], sydney: [223.3, 153], brisbane: [233.3, 112.2],
 };
 
 export const CITY_LABEL: Record<string, string> = {

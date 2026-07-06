@@ -845,7 +845,7 @@ body {
   overflow: visible;
   transform: scale(1);
   opacity: 1;
-  transform-origin: 10.8% 63.9%;
+  transform-origin: 11.8% 61.1%;
   transition:
     transform 0.68s cubic-bezier(0.55, 0, 0.85, 0.35),
     opacity 0.5s ease 0.22s;
@@ -978,7 +978,7 @@ body {
   stroke-width: 0.8;
   opacity: 0.5;
   animation: auringpulse 2.2s ease-out infinite;
-  transform-origin: 27px 147px;
+  transform-origin: 29.4px 140.5px;
 }
 @keyframes auringpulse {
   0% {

@@ -2,10 +2,21 @@ import { AU_STATE_PATHS, AU_LINE_PATHS } from '../../data/geoPaths';
 import { CITY_XY, CITY_LABEL } from '../../data/geo';
 import type { HeatDisc } from '../../lib/color';
 
+// Decorative FIFO flight arcs out of Perth (29.4,140.5) to the eastern cities.
 const PLANE_ROUTES = [
-  { dur: '17s', begin: '0s', path: 'M27,147 Q50,68 115,19' },
-  { dur: '21s', begin: '4s', path: 'M27,147 Q90,86 148,144' },
-  { dur: '25s', begin: '9s', path: 'M27,147 Q140,96 228,178' },
+  { dur: '17s', begin: '0s', path: 'M29,140 Q58,58 112,24' }, // → Darwin
+  { dur: '21s', begin: '4s', path: 'M29,140 Q120,92 223,153' }, // → Sydney
+  { dur: '25s', begin: '9s', path: 'M29,140 Q110,150 189,180' }, // → Melbourne
+];
+
+// Non-hub cities rendered from the shared CITY_XY source, with a small label
+// offset/anchor so the name clears the marker and the map edge.
+const CITY_MARKERS: { id: string; dx: number; dy: number; anchor: 'start' | 'middle' | 'end' }[] = [
+  { id: 'darwin', dx: 0, dy: -7, anchor: 'middle' },
+  { id: 'brisbane', dx: -7, dy: 1, anchor: 'end' },
+  { id: 'sydney', dx: -7, dy: 1, anchor: 'end' },
+  { id: 'melbourne', dx: 0, dy: 13, anchor: 'middle' },
+  { id: 'adelaide', dx: 0, dy: 13, anchor: 'middle' },
 ];
 
 function Plane({ dur, begin, path }: { dur: string; begin: string; path: string }) {
@@ -63,37 +74,25 @@ export function AustraliaMap({ cityHeat, heatDim, onZoomIn }: { cityHeat: Record
         <path key={id} className="auline" id={id} d={d} />
       ))}
 
-      <CityHeat cx={115} cy={19} heat={cityHeat.darwin} dim={heatDim} />
-      <CityHeat cx={230} cy={116} heat={cityHeat.brisbane} dim={heatDim} />
-      <CityHeat cx={228} cy={178} heat={cityHeat.sydney} dim={heatDim} />
-      <CityHeat cx={196} cy={186} heat={cityHeat.melbourne} dim={heatDim} />
-      <CityHeat cx={148} cy={144} heat={cityHeat.adelaide} dim={heatDim} />
-      <CityHeat cx={27} cy={147} heat={cityHeat.perth} dim={heatDim} />
+      {CITY_MARKERS.map(({ id }) => (
+        <CityHeat key={`heat-${id}`} cx={CITY_XY[id][0]} cy={CITY_XY[id][1]} heat={cityHeat[id]} dim={heatDim} />
+      ))}
+      <CityHeat cx={CITY_XY.perth[0]} cy={CITY_XY.perth[1]} heat={cityHeat.perth} dim={heatDim} />
 
-      <g className="aucity">
-        <circle className="audot" cx={CITY_XY.darwin[0]} cy={CITY_XY.darwin[1]} r="3.2" />
-        <text className="aumute" x="115" y="15" textAnchor="middle">{CITY_LABEL.darwin}</text>
-      </g>
-      <g className="aucity">
-        <circle className="audot" cx={CITY_XY.brisbane[0]} cy={CITY_XY.brisbane[1]} r="3.2" />
-        <text className="aumute" x="215" y="112" textAnchor="end">{CITY_LABEL.brisbane}</text>
-      </g>
-      <g className="aucity">
-        <circle className="audot" cx={CITY_XY.sydney[0]} cy={CITY_XY.sydney[1]} r="3.2" />
-        <text className="aumute" x="221" y="183" textAnchor="end">{CITY_LABEL.sydney}</text>
-      </g>
-      <g className="aucity">
-        <circle className="audot" cx={CITY_XY.melbourne[0]} cy={CITY_XY.melbourne[1]} r="3.2" />
-        <text className="aumute" x="196" y="199" textAnchor="middle">{CITY_LABEL.melbourne}</text>
-      </g>
-      <g className="aucity">
-        <circle className="audot" cx={CITY_XY.adelaide[0]} cy={CITY_XY.adelaide[1]} r="3.2" />
-        <text className="aumute" x="148" y="157" textAnchor="middle">{CITY_LABEL.adelaide}</text>
-      </g>
+      {CITY_MARKERS.map(({ id, dx, dy, anchor }) => (
+        <g className="aucity" key={id}>
+          <circle className="audot" cx={CITY_XY[id][0]} cy={CITY_XY[id][1]} r="3.2" />
+          <text className="aumute" x={CITY_XY[id][0] + dx} y={CITY_XY[id][1] + dy} textAnchor={anchor}>
+            {CITY_LABEL[id]}
+          </text>
+        </g>
+      ))}
       <g className="aucity hub" onClick={onZoomIn}>
-        <circle className="auring" cx={27} cy={147} r="8" />
-        <circle className="audot audothub" cx={27} cy={147} r="4.4" />
-        <text className="aulabel" x="27" y="140" textAnchor="middle">Perth</text>
+        <circle className="auring" cx={CITY_XY.perth[0]} cy={CITY_XY.perth[1]} r="8" />
+        <circle className="audot audothub" cx={CITY_XY.perth[0]} cy={CITY_XY.perth[1]} r="4.4" />
+        <text className="aulabel" x={CITY_XY.perth[0]} y={CITY_XY.perth[1] - 7} textAnchor="middle">
+          Perth
+        </text>
       </g>
 
       {PLANE_ROUTES.map((r, i) => (
