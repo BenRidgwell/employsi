@@ -1487,3 +1487,224 @@ body {
 .tanker3d {
   filter: drop-shadow(0 1px 1.2px rgba(15, 27, 61, 0.3));
 }
+
+/* ------------------------------------------------------------------ */
+/* Mobile layout (phones / small tablets in portrait)                  */
+/* Pure reflow of the desktop overlays — no markup changes.            */
+/* ------------------------------------------------------------------ */
+@media (max-width: 680px) {
+  /* --- Top bar: tighter, controls compacted to icon pills --- */
+  .topbar {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .logo {
+    font-size: 18px;
+  }
+  .brand {
+    gap: 9px;
+  }
+  .controls {
+    gap: 7px;
+  }
+  .seglbl {
+    display: none;
+  }
+  .cgroup {
+    gap: 0;
+  }
+  /* Search / Filter become icon-only pills; keep the active dot */
+  .searchbtn {
+    position: relative;
+    gap: 0;
+    padding: 10px 11px;
+  }
+  .searchbtn > span:not(.sdot) {
+    display: none;
+  }
+  .searchbtn .sdot {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+  }
+  .seg {
+    padding: 3px;
+  }
+  .seg button {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  /* Search / Filter flyouts become full-width bottom sheets */
+  .searchflyout {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    max-width: none;
+    max-height: 74vh;
+    border-radius: 20px 20px 0 0;
+    padding: 16px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+    transform: translateY(100%);
+    box-shadow: 0 -18px 50px -18px rgba(15, 27, 61, 0.5);
+  }
+  .searchflyout.open {
+    transform: translateY(0);
+  }
+  .sfscrim {
+    background: rgba(13, 15, 20, 0.34);
+    backdrop-filter: blur(2px);
+    z-index: 41;
+  }
+
+  /* Sheets and their backdrops must sit above the zoom slider (z 40) */
+  .searchflyout {
+    z-index: 42;
+  }
+  .pbackdrop {
+    z-index: 41;
+  }
+  .panel,
+  .cxpanel {
+    z-index: 42;
+  }
+
+  /* Ticker: a touch more compact */
+  .tickerlbl {
+    padding: 0 11px;
+    font-size: 9.5px;
+    letter-spacing: 1px;
+  }
+
+  /* Zoom slider: stays left, drop hover labels (no hover on touch) */
+  .zoomslider {
+    left: 12px;
+  }
+  .zoomslider .zlabel {
+    display: none;
+  }
+
+  /* Bottom cluster: keep left, shrink, avoid overlap */
+  .heatkey {
+    left: 12px;
+    bottom: 62px;
+    width: auto;
+    min-width: 168px;
+    max-width: calc(100vw - 24px);
+    padding: 10px 13px;
+  }
+  .legend {
+    left: 12px;
+    right: 12px;
+    bottom: 14px;
+    justify-content: center;
+    padding: 8px 12px;
+    font-size: 11px;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+  }
+  .hintpulse {
+    bottom: 120px;
+    font-size: 11.5px;
+    padding: 7px 13px;
+    max-width: calc(100vw - 24px);
+    text-align: center;
+  }
+
+  /* Australia / Global views: enlarge the maps, stack the hint bar */
+  .aumap {
+    width: min(88vw, 560px);
+  }
+  .globemap {
+    width: min(94vw, 640px);
+  }
+  .auview {
+    gap: 16px;
+  }
+  .auhintbar {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+    padding: 0 16px;
+  }
+  .auhint {
+    font-size: 12px;
+  }
+
+  /* Company & Compare panels become full-width bottom sheets */
+  .panel,
+  .cxpanel {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 92vh;
+    border-radius: 20px 20px 0 0;
+    transform: translateY(100%);
+  }
+  .panel.open,
+  .cxpanel.open {
+    transform: translateY(0);
+  }
+  .pscroll,
+  .cxscroll {
+    padding: 20px 16px calc(26px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Company panel internals */
+  .pname {
+    font-size: 20px;
+  }
+  .pbadge {
+    width: 46px;
+    height: 46px;
+    font-size: 14px;
+  }
+  .bigs {
+    gap: 8px;
+  }
+  .bigc {
+    padding: 11px 10px;
+  }
+  .bigv {
+    font-size: 21px;
+  }
+  /* "Where they're hiring" rows: let the bar wrap under the label */
+  .role {
+    flex-wrap: wrap;
+    gap: 4px 10px;
+  }
+  .rolet {
+    width: auto;
+    flex: 1 1 auto;
+  }
+  .rolec {
+    order: 2;
+  }
+  .rolebar {
+    order: 3;
+    flex: 1 1 100%;
+  }
+
+  /* Compare panel: stack selectors, responsive radar */
+  .cxselectors {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .cxvs {
+    text-align: center;
+  }
+  .cxradarstack,
+  .cxradar {
+    width: min(300px, 78vw);
+  }
+  .cxlegend {
+    flex-wrap: wrap;
+    gap: 10px 18px;
+  }
+}
