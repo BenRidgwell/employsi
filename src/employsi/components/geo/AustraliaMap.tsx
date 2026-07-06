@@ -21,7 +21,7 @@ const CITY_MARKERS: { id: string; dx: number; dy: number; anchor: 'start' | 'mid
 
 function Plane({ dur, begin, path }: { dur: string; begin: string; path: string }) {
   return (
-    <g className="plane3d">
+    <g className="plane3d" opacity={0}>
       <animateMotion dur={dur} begin={begin} repeatCount="indefinite" rotate="auto" path={path} />
       <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.08;0.9;1" dur={dur} begin={begin} repeatCount="indefinite" />
       <ellipse className="planeshadow" cx="-0.6" cy="1.9" rx="2.4" ry="0.8" />

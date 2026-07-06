@@ -2,24 +2,26 @@ import { GLOBAL_LAND_PATHS } from '../../data/geoPaths';
 import { GLOBAL_HUB_XY, GLOBAL_HUB_LABEL } from '../../data/geo';
 import type { HeatDisc } from '../../lib/color';
 
+// Decorative shipping arcs between hubs (endpoints follow GLOBAL_HUB_XY).
 const TANKER_ROUTES = [
-  { dur: '26s', begin: '0s', path: 'M411,210 Q452,172 393,138' },
-  { dur: '31s', begin: '6s', path: 'M411,210 Q355,252 289,199' },
-  { dur: '34s', begin: '13s', path: 'M118,99 Q180,32 250,60' },
+  { dur: '26s', begin: '0s', path: 'M435,223 Q430,188 414,162' }, // Perth → Singapore
+  { dur: '31s', begin: '6s', path: 'M435,223 Q360,248 282,212' }, // Perth → Johannesburg
+  { dur: '34s', begin: '13s', path: 'M66,110 Q150,135 232,59' }, // Houston → London (over the Atlantic)
 ];
 
+// Country labels placed at real country centroids projected with the same fit.
 const COUNTRY_LABELS: { label: string; x: number; y: number }[] = [
-  { label: 'CHILE', x: 153, y: 240 },
-  { label: 'CANADA', x: 95, y: 38 },
-  { label: 'SOUTH AFRICA', x: 286, y: 204 },
-  { label: 'UNITED KINGDOM', x: 246, y: 46 },
-  { label: 'UNITED STATES', x: 121, y: 77 },
-  { label: 'AUSTRALIA', x: 451, y: 204 },
+  { label: 'CHILE', x: 92, y: 250 },
+  { label: 'CANADA', x: 40.2, y: 45.4 },
+  { label: 'SOUTH AFRICA', x: 274, y: 230 },
+  { label: 'UNITED KINGDOM', x: 224, y: 44 },
+  { label: 'UNITED STATES', x: 105, y: 92 },
+  { label: 'AUSTRALIA', x: 474, y: 190 },
 ];
 
 function Tanker({ dur, begin, path }: { dur: string; begin: string; path: string }) {
   return (
-    <g className="tanker3d">
+    <g className="tanker3d" opacity={0}>
       <animateMotion dur={dur} begin={begin} repeatCount="indefinite" rotate="auto" path={path} />
       <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.06;0.92;1" dur={dur} begin={begin} repeatCount="indefinite" />
       <path className="tankerwake" d="M-4.4,0.5 Q-8,1.1 -12,0.6" />
@@ -39,13 +41,14 @@ function HubHeat({ cx, cy, heat, dim }: { cx: number; cy: number; heat: HeatDisc
   );
 }
 
-const CITY_LABEL_POS: Record<string, { x: number; y: number; anchor: 'start' | 'middle' | 'end' }> = {
-  santiago: { x: 152, y: 225, anchor: 'middle' },
-  toronto: { x: 140, y: 67, anchor: 'middle' },
-  johannesburg: { x: 289, y: 212, anchor: 'middle' },
-  london: { x: 250, y: 53, anchor: 'middle' },
-  houston: { x: 118, y: 92, anchor: 'middle' },
-  singapore: { x: 393, y: 131, anchor: 'middle' },
+// Label offsets from each hub dot (dot positions come from GLOBAL_HUB_XY).
+const CITY_LABEL_OFFSET: Record<string, { dx: number; dy: number; anchor: 'start' | 'middle' | 'end' }> = {
+  santiago: { dx: 0, dy: -9, anchor: 'middle' },
+  toronto: { dx: 0, dy: -9, anchor: 'middle' },
+  johannesburg: { dx: 0, dy: -9, anchor: 'middle' },
+  london: { dx: 0, dy: 14, anchor: 'middle' },
+  houston: { dx: -8, dy: 3, anchor: 'end' },
+  singapore: { dx: 8, dy: 3, anchor: 'start' },
 };
 
 export function GlobeMap({ hubHeat, heatDim, onZoomIn }: { hubHeat: Record<string, HeatDisc>; heatDim: string; onZoomIn: () => void }) {
@@ -87,11 +90,11 @@ export function GlobeMap({ hubHeat, heatDim, onZoomIn }: { hubHeat: Record<strin
 
       {nonPerthHubs.map((id) => {
         const [cx, cy] = GLOBAL_HUB_XY[id];
-        const lp = CITY_LABEL_POS[id];
+        const off = CITY_LABEL_OFFSET[id];
         return (
           <g className="aucity" key={id}>
             <circle className="audot" cx={cx} cy={cy} r="3.2" />
-            <text className="aumute" x={lp.x} y={lp.y} textAnchor={lp.anchor}>{GLOBAL_HUB_LABEL[id]}</text>
+            <text className="aumute" x={cx + off.dx} y={cy + off.dy} textAnchor={off.anchor}>{GLOBAL_HUB_LABEL[id]}</text>
           </g>
         );
       })}

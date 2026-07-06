@@ -29,7 +29,13 @@ export const CITY_LABEL: Record<string, string> = {
 };
 
 export const GLOBAL_HUB_XY: Record<string, [number, number]> = {
-  perth: [411, 210], santiago: [152, 212], toronto: [140, 74], johannesburg: [289, 199], london: [250, 60], houston: [118, 99], singapore: [393, 138],
+  perth: [435.1, 223.1],
+  santiago: [109, 226.2],
+  toronto: [93.7, 79.1],
+  johannesburg: [281.6, 211.6],
+  london: [232.3, 58.7],
+  houston: [65.8, 109.5],
+  singapore: [414, 161.7],
 };
 
 export const GLOBAL_HUB_LABEL: Record<string, string> = {
