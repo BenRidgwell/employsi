@@ -22,13 +22,18 @@ body {
   --pos: #48484a;
   --coral: #9a9aa0;
 }
-.mount {
+/* `.app` scope beats mapbox-gl's own `.mapboxgl-map { position: relative }`,
+   which mapbox adds to this same element and which would otherwise collapse
+   the container to zero height (leaving the map only ~300px tall). */
+.app .mount {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   touch-action: none;
   cursor: grab;
 }
-.mount:active {
+.app .mount:active {
   cursor: grabbing;
 }
 .layer {

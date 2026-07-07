@@ -87,7 +87,7 @@ export function PerthMapbox() {
     (['dragstart', 'zoomstart', 'rotatestart', 'pitchstart', 'wheel'] as const).forEach((evt) => map.on(evt, stopAutoRotate));
 
     map.on('style.load', () => {
-      map.setConfigProperty('basemap', 'lightPreset', 'dusk');
+      map.setConfigProperty('basemap', 'lightPreset', 'day');
 
       const st = useAppStore.getState();
       map.addSource(SOURCE_ID, { type: 'geojson', data: buildGeoJSON(st.heat, st.selectedId, filterState) });
