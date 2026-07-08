@@ -1259,6 +1259,8 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 10px;
+  /* Preserve the vertical space the removed "candidate" note used to occupy. */
+  margin-top: 46px;
 }
 .bigc {
   background: #fff;
