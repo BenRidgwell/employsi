@@ -933,7 +933,7 @@ body {
   pointer-events: auto;
 }
 .globemap {
-  width: min(66vw, 820px);
+  width: min(88vw, 1200px);
   height: auto;
   overflow: visible;
 }
@@ -1463,15 +1463,22 @@ body {
   font-weight: 400;
 }
 .planebody {
-  fill: #3b3b40;
+  fill: #ffffff;
+  stroke: #b7bcc6;
+  stroke-width: 0.16;
+  stroke-linejoin: round;
 }
-.planewing {
-  fill: #8e8e93;
+.planewing,
+.planetail {
+  fill: #eef0f3;
+  stroke: #b7bcc6;
+  stroke-width: 0.16;
+  stroke-linejoin: round;
 }
 .planeshadow {
   fill: #1c1c1e;
-  opacity: 0.16;
-  filter: blur(0.6px);
+  opacity: 0.15;
+  filter: blur(0.7px);
 }
 .plane3d {
   filter: drop-shadow(0 1.6px 1.4px rgba(15, 27, 61, 0.35));
