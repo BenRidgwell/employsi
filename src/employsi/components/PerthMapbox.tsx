@@ -74,7 +74,12 @@ export function PerthMapbox() {
       pitch: PERTH_DEFAULT_PITCH,
       bearing: PERTH_DEFAULT_BEARING,
       antialias: true,
+      // Replace the default expanded attribution with a compact "ⓘ" control.
+      // The credit stays (required by Mapbox ToS + OpenStreetMap's ODbL), just
+      // collapsed out of the way.
+      attributionControl: false,
     });
+    map.addControl(new mapboxgl.AttributionControl({ compact: true }));
     mapRef.current = map;
 
     const stopAutoRotate = () => {
