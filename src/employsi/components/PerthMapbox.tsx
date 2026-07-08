@@ -148,7 +148,7 @@ export function PerthMapbox() {
       const R_FULL = 250; // metres from centre: within this -> fully shown
       const R_GONE = 450; // metres from centre: beyond this -> hidden
       const Z_MIN = 14.2; // below this zoom -> pills hidden (zoomed-out overview)
-      const Z_FULL = 15.2; // at/above this zoom -> pills at full strength
+      const Z_FULL = 15.0; // at/above this zoom -> pills at full strength
       const distMetres = (aLng: number, aLat: number, bLng: number, bLat: number) => {
         const R = 6371000;
         const toR = Math.PI / 180;
