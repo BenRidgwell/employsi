@@ -139,20 +139,24 @@ export function PerthMapbox() {
         markersRef.current[c.id] = marker;
       });
 
-      // Focus reveal: only show the pills near the centre of the current view.
-      // Each pill fades out as it approaches the edge of the map and disappears
-      // once off-screen, so panning to a company's location fades its pill in.
-      const FADE_BAND = 120; // px inside each edge over which a pill fades
+      // Focus reveal: only show the pills whose location falls within the
+      // central third of the view. A pill is fully shown while inside that
+      // central band and fades out beyond it, so panning a company toward the
+      // middle of the screen fades its pill in.
+      const FULL = 1 / 3; // <= this fraction from centre -> fully shown
+      const GONE = 0.58; // >= this fraction from centre -> hidden
+      const axisFactor = (n: number) => (n <= FULL ? 1 : n >= GONE ? 0 : (GONE - n) / (GONE - FULL));
       const updateFocus = () => {
         const canvas = map.getCanvas();
-        const w = canvas.clientWidth;
-        const h = canvas.clientHeight;
+        const cx = canvas.clientWidth / 2;
+        const cy = canvas.clientHeight / 2;
         COMPANIES.forEach((c) => {
           const marker = markersRef.current[c.id];
           if (!marker) return;
           const p = map.project(COMPANY_COORDS[c.id]);
-          const edge = Math.min(p.x, w - p.x, p.y, h - p.y); // px to nearest edge
-          const f = edge <= 0 ? 0 : edge >= FADE_BAND ? 1 : edge / FADE_BAND;
+          const nx = Math.abs(p.x - cx) / cx; // 0 at centre, 1 at left/right edge
+          const ny = Math.abs(p.y - cy) / cy; // 0 at centre, 1 at top/bottom edge
+          const f = Math.min(axisFactor(nx), axisFactor(ny));
           const el = marker.getElement();
           const base = el.classList.contains('dim') ? 0.28 : 1;
           el.style.opacity = String(base * f);
