@@ -51,6 +51,7 @@ export function PerthMapbox() {
   const crossedRef = useRef(false);
   const interactedLocalRef = useRef(false);
   const autoRotateRaf = useRef<number | undefined>(undefined);
+  const pulseRaf = useRef<number | undefined>(undefined);
   const focusUpdaterRef = useRef<(() => void) | null>(null);
 
   const selectedId = useAppStore((s) => s.selectedId);
@@ -215,7 +216,14 @@ export function PerthMapbox() {
         if (!interactedLocalRef.current) {
           map.setBearing(map.getBearing() + 0.025);
         }
-        // Expanding, fading pulse ring on each heat dot.
+        autoRotateRaf.current = requestAnimationFrame(loop);
+      };
+      loop();
+
+      // Dedicated pulse loop — independent of the auto-rotate loop, which gets
+      // cancelled on the first map interaction. This keeps the heat-dot rings
+      // pulsing even after you click a dot / pan / zoom.
+      const pulseLoop = () => {
         if (map.getLayer(PULSE_LAYER)) {
           const t = (performance.now() % PULSE_MS) / PULSE_MS; // 0 -> 1
           map.setPaintProperty(PULSE_LAYER, 'circle-radius', [
@@ -229,9 +237,9 @@ export function PerthMapbox() {
             1 - t,
           ]);
         }
-        autoRotateRaf.current = requestAnimationFrame(loop);
+        pulseRaf.current = requestAnimationFrame(pulseLoop);
       };
-      loop();
+      pulseLoop();
     });
 
     map.on('zoom', () => {
@@ -259,6 +267,7 @@ export function PerthMapbox() {
     return () => {
       window.removeEventListener('perth-zoom-reset', onZoomReset);
       if (autoRotateRaf.current) cancelAnimationFrame(autoRotateRaf.current);
+      if (pulseRaf.current) cancelAnimationFrame(pulseRaf.current);
       Object.values(markersRef.current).forEach((m) => m.remove());
       markersRef.current = {};
       map.remove();
