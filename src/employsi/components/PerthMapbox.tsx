@@ -140,24 +140,36 @@ export function PerthMapbox() {
         markersRef.current[c.id] = marker;
       });
 
-      // Focus reveal: only show the pills whose location falls within the
-      // central third of the view. A pill is fully shown while inside that
-      // central band and fades out beyond it, so panning a company toward the
-      // middle of the screen fades its pill in.
-      const FULL = 1 / 3; // <= this fraction from centre -> fully shown
-      const GONE = 0.58; // >= this fraction from centre -> hidden
-      const axisFactor = (n: number) => (n <= FULL ? 1 : n >= GONE ? 0 : (GONE - n) / (GONE - FULL));
+      // Focus reveal: a pill only shows when you've actually panned onto its
+      // building and zoomed in on it. Reveal is driven by the ground distance
+      // from the map centre to the building (in metres) plus a zoom gate — not
+      // by where the pill lands on screen — so a distant company never shows up
+      // near the horizon just because of the map's pitch.
+      const R_FULL = 550; // metres from centre: within this -> fully shown
+      const R_GONE = 1000; // metres from centre: beyond this -> hidden
+      const Z_MIN = 13; // below this zoom -> pills hidden (zoomed-out overview)
+      const Z_FULL = 14; // at/above this zoom -> pills at full strength
+      const distMetres = (aLng: number, aLat: number, bLng: number, bLat: number) => {
+        const R = 6371000;
+        const toR = Math.PI / 180;
+        const dLat = (bLat - aLat) * toR;
+        const dLng = (bLng - aLng) * toR;
+        const h =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos(aLat * toR) * Math.cos(bLat * toR) * Math.sin(dLng / 2) ** 2;
+        return 2 * R * Math.asin(Math.sqrt(h));
+      };
       const updateFocus = () => {
-        const canvas = map.getCanvas();
-        const cx = canvas.clientWidth / 2;
-        const cy = canvas.clientHeight / 2;
-        COMPANIES.forEach((c) => {
-          const marker = markersRef.current[c.id];
+        const c = map.getCenter();
+        const z = map.getZoom();
+        const zf = z <= Z_MIN ? 0 : z >= Z_FULL ? 1 : (z - Z_MIN) / (Z_FULL - Z_MIN);
+        COMPANIES.forEach((company) => {
+          const marker = markersRef.current[company.id];
           if (!marker) return;
-          const p = map.project(COMPANY_COORDS[c.id]);
-          const nx = Math.abs(p.x - cx) / cx; // 0 at centre, 1 at left/right edge
-          const ny = Math.abs(p.y - cy) / cy; // 0 at centre, 1 at top/bottom edge
-          const f = Math.min(axisFactor(nx), axisFactor(ny));
+          const [lng, lat] = COMPANY_COORDS[company.id];
+          const d = distMetres(c.lng, c.lat, lng, lat);
+          const df = d <= R_FULL ? 1 : d >= R_GONE ? 0 : (R_GONE - d) / (R_GONE - R_FULL);
+          const f = df * zf;
           const el = marker.getElement();
           const base = el.classList.contains('dim') ? 0.28 : 1;
           el.style.opacity = String(base * f);
