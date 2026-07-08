@@ -93,6 +93,12 @@ export function PerthMapbox() {
 
     map.on('style.load', () => {
       map.setConfigProperty('basemap', 'lightPreset', 'day');
+      // Muted "faded" basemap theme, and strip POI/landmark clutter so the
+      // company pins are the only points of interest on the map.
+      map.setConfigProperty('basemap', 'theme', 'faded');
+      map.setConfigProperty('basemap', 'showPointOfInterestLabels', false);
+      map.setConfigProperty('basemap', 'showTransitLabels', false);
+      map.setConfigProperty('basemap', 'showLandmarkIcons', false);
 
       const st = useAppStore.getState();
       map.addSource(SOURCE_ID, { type: 'geojson', data: buildGeoJSON(st.heat, st.selectedId, filterState) });
