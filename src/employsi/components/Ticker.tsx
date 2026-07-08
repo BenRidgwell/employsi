@@ -40,7 +40,7 @@ export function Ticker({ hidden }: { hidden: boolean }) {
     <div className={`ticker ${hidden ? 'zoomhide' : ''}`}>
       <div className="tickerlbl">
         <i />
-        Live market
+        Live trends
       </div>
       <div className="tickerwrap">
         <div className="tickertrack">
