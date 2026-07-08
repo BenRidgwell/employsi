@@ -145,10 +145,10 @@ export function PerthMapbox() {
       // from the map centre to the building (in metres) plus a zoom gate — not
       // by where the pill lands on screen — so a distant company never shows up
       // near the horizon just because of the map's pitch.
-      const R_FULL = 550; // metres from centre: within this -> fully shown
-      const R_GONE = 1000; // metres from centre: beyond this -> hidden
-      const Z_MIN = 13; // below this zoom -> pills hidden (zoomed-out overview)
-      const Z_FULL = 14; // at/above this zoom -> pills at full strength
+      const R_FULL = 250; // metres from centre: within this -> fully shown
+      const R_GONE = 450; // metres from centre: beyond this -> hidden
+      const Z_MIN = 14.2; // below this zoom -> pills hidden (zoomed-out overview)
+      const Z_FULL = 15.2; // at/above this zoom -> pills at full strength
       const distMetres = (aLng: number, aLat: number, bLng: number, bLat: number) => {
         const R = 6371000;
         const toR = Math.PI / 180;
