@@ -3,8 +3,8 @@
 // camera is framed to fit the whole spread — most sit along St Georges
 // Terrace, but Fortescue (East Perth) and Sandfire (West Perth) are ~1.5km
 // either side of the CBD cluster.
-export const PERTH_CENTER: [number, number] = [115.8558, -31.9548];
-export const PERTH_DEFAULT_ZOOM = 14.4;
+export const PERTH_CENTER: [number, number] = [115.8552, -31.9542];
+export const PERTH_DEFAULT_ZOOM = 15.3;
 export const PERTH_DEFAULT_PITCH = 60;
 export const PERTH_DEFAULT_BEARING = -17.6;
 

@@ -49,6 +49,7 @@ export function PerthMapbox() {
   const crossedRef = useRef(false);
   const interactedLocalRef = useRef(false);
   const autoRotateRaf = useRef<number | undefined>(undefined);
+  const focusUpdaterRef = useRef<(() => void) | null>(null);
 
   const selectedId = useAppStore((s) => s.selectedId);
   const heat = useAppStore((s) => s.heat);
@@ -138,6 +139,30 @@ export function PerthMapbox() {
         markersRef.current[c.id] = marker;
       });
 
+      // Focus reveal: only show the pills near the centre of the current view.
+      // Each pill fades out as it approaches the edge of the map and disappears
+      // once off-screen, so panning to a company's location fades its pill in.
+      const FADE_BAND = 120; // px inside each edge over which a pill fades
+      const updateFocus = () => {
+        const canvas = map.getCanvas();
+        const w = canvas.clientWidth;
+        const h = canvas.clientHeight;
+        COMPANIES.forEach((c) => {
+          const marker = markersRef.current[c.id];
+          if (!marker) return;
+          const p = map.project(COMPANY_COORDS[c.id]);
+          const edge = Math.min(p.x, w - p.x, p.y, h - p.y); // px to nearest edge
+          const f = edge <= 0 ? 0 : edge >= FADE_BAND ? 1 : edge / FADE_BAND;
+          const el = marker.getElement();
+          const base = el.classList.contains('dim') ? 0.28 : 1;
+          el.style.opacity = String(base * f);
+          el.style.pointerEvents = f > 0.05 ? 'auto' : 'none';
+        });
+      };
+      map.on('move', updateFocus);
+      focusUpdaterRef.current = updateFocus;
+      updateFocus();
+
       const loop = () => {
         if (!interactedLocalRef.current) {
           map.setBearing(map.getBearing() + 0.025);
@@ -196,6 +221,9 @@ export function PerthMapbox() {
         const sub = el.querySelector('.chipsub');
         if (sub) sub.textContent = chipMetric(c, heat);
       });
+      // Re-apply the focus fade so a newly dimmed/undimmed pill keeps the
+      // correct opacity without waiting for the next pan.
+      focusUpdaterRef.current?.();
     };
     if (map.isStyleLoaded()) apply();
     else map.once('style.load', apply);
