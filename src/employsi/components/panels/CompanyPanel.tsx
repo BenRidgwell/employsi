@@ -26,10 +26,6 @@ export function CompanyPanel() {
                 <button className="pcompare" onClick={() => openCompare(panel.companyId)}>Compare</button>
                 <button className="pclose" onClick={closePanel}>✕</button>
               </div>
-              <div className="pnote">
-                <i />
-                {panel.note}
-              </div>
               <div className="bigs">
                 {panel.bigStats.map((s, i) => (
                   <div className="bigc" key={i}>
