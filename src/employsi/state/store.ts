@@ -55,6 +55,16 @@ export interface AppState {
 
 let zoomTimer: ReturnType<typeof setTimeout> | undefined;
 
+// Barrier between the three map layers: once a layer change happens, ignore
+// further wheel-driven changes for this long so a single scroll gesture can't
+// skip a layer (e.g. Perth straight to Global).
+const LAYER_COOLDOWN = 700;
+let lastLayerChange = 0;
+const markLayerChange = () => {
+  lastLayerChange = Date.now();
+};
+const layerLocked = () => Date.now() - lastLayerChange < LAYER_COOLDOWN;
+
 export const useAppStore = create<AppState>((set, get) => ({
   selectedId: null,
   lastId: null,
@@ -100,7 +110,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       return on ? { searchQuery: '' } : { searchQuery: skill, zoomedOut: true, searchOpen: false, interacted: true };
     }),
 
-  setZoomedOut: (v) => set({ zoomedOut: v }),
+  setZoomedOut: (v) => {
+    if (v) markLayerChange();
+    set({ zoomedOut: v });
+  },
   setZoomingIn: (v) => set({ zoomingIn: v }),
   setGlobalOut: (v) => set({ globalOut: v }),
   setZoomLevel: (n) => {
@@ -114,6 +127,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   zoomIn: () => {
     const s = get();
     if (s.zoomingIn) return;
+    markLayerChange();
     set({ zoomingIn: true });
     clearTimeout(zoomTimer);
     zoomTimer = setTimeout(() => {
@@ -128,12 +142,23 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   onAuWheel: (deltaY) => {
     const s = get();
+    // Hold at the current layer until the cooldown passes, so momentum from
+    // the gesture that got us here can't immediately jump another layer.
+    if (layerLocked()) return;
+    if (Math.abs(deltaY) < 10) return; // require a firmer scroll to cross
     if (s.globalOut) {
-      if (deltaY < -8) set({ globalOut: false });
+      if (deltaY < 0) {
+        markLayerChange();
+        set({ globalOut: false });
+      }
       return;
     }
-    if (deltaY > 8) set({ globalOut: true });
-    else if (deltaY < -8) get().zoomIn();
+    if (deltaY > 0) {
+      markLayerChange();
+      set({ globalOut: true });
+    } else {
+      get().zoomIn();
+    }
   },
 
   openCompare: (id) => {
