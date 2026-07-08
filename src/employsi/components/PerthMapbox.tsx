@@ -12,6 +12,8 @@ mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 const SOURCE_ID = 'companies';
 const HALO_LAYER = 'company-halo';
 const CORE_LAYER = 'company-core';
+const PULSE_LAYER = 'company-pulse';
+const PULSE_MS = 2200;
 const ZOOM_OUT_THRESHOLD = 11;
 
 function metricKeyFor(heat: HeatMetric) {
@@ -128,6 +130,35 @@ export function PerthMapbox() {
           'circle-opacity': ['case', ['get', 'dim'], 0.25, 0.95],
         },
       });
+      // Animated pulse ring emanating from each heat dot (radius + opacity
+      // driven each frame in the rAF loop below).
+      map.addLayer({
+        id: PULSE_LAYER,
+        type: 'circle',
+        source: SOURCE_ID,
+        paint: {
+          'circle-radius': ['case', ['get', 'selected'], 12, 9],
+          'circle-color': 'rgba(0,0,0,0)',
+          'circle-stroke-color': ['get', 'color'],
+          'circle-stroke-width': 2,
+          'circle-stroke-opacity': 0.5,
+        },
+      });
+
+      // Clicking a heat dot opens the same company panel as its pill.
+      const onDotClick = (e: mapboxgl.MapLayerMouseEvent) => {
+        const f = e.features && e.features[0];
+        if (f?.properties) useAppStore.getState().select(f.properties.id as string);
+      };
+      [CORE_LAYER, HALO_LAYER].forEach((layer) => {
+        map.on('click', layer, onDotClick);
+        map.on('mouseenter', layer, () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', layer, () => {
+          map.getCanvas().style.cursor = '';
+        });
+      });
 
       COMPANIES.forEach((c) => {
         const el = document.createElement('button');
@@ -183,6 +214,20 @@ export function PerthMapbox() {
       const loop = () => {
         if (!interactedLocalRef.current) {
           map.setBearing(map.getBearing() + 0.025);
+        }
+        // Expanding, fading pulse ring on each heat dot.
+        if (map.getLayer(PULSE_LAYER)) {
+          const t = (performance.now() % PULSE_MS) / PULSE_MS; // 0 -> 1
+          map.setPaintProperty(PULSE_LAYER, 'circle-radius', [
+            '+',
+            ['case', ['get', 'selected'], 12, 9],
+            26 * t,
+          ]);
+          map.setPaintProperty(PULSE_LAYER, 'circle-stroke-opacity', [
+            '*',
+            ['case', ['get', 'dim'], 0.12, 0.55],
+            1 - t,
+          ]);
         }
         autoRotateRaf.current = requestAnimationFrame(loop);
       };
