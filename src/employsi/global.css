@@ -806,6 +806,132 @@ body {
   background: #1c1c1e;
   color: #fff;
 }
+/* Right-side expandable tools dock (Employer / Employee) */
+.toolsdock {
+  position: fixed;
+  top: 96px;
+  right: 20px;
+  z-index: 38;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: flex-end;
+}
+.tdcluster {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.tdfab {
+  flex: 0 0 auto;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(150deg, #2c2c31, #1c1c1e);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 26px -12px rgba(15, 27, 61, 0.55);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.tdfab:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 30px -12px rgba(15, 27, 61, 0.6);
+}
+.tdfab.on {
+  background: #1c1c1e;
+}
+.tdfabic {
+  display: flex;
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.tdfab.on .tdfabic {
+  transform: rotate(90deg);
+}
+.tdfab svg {
+  width: 22px;
+  height: 22px;
+}
+/* cluster name label (hover, when collapsed) */
+.tdname {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--line);
+  padding: 5px 9px;
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  box-shadow: 0 6px 16px -10px rgba(15, 27, 61, 0.5);
+}
+.tdcluster:hover .tdname {
+  opacity: 1;
+  transform: translateX(0);
+}
+.tdcluster.open .tdname {
+  opacity: 0;
+  pointer-events: none;
+}
+/* expanding action buttons */
+.tdactions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tdaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 8px 14px;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 10px 24px -14px rgba(15, 27, 61, 0.5);
+  opacity: 0;
+  transform: translateX(16px) scale(0.9);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.tdcluster.open .tdaction {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  pointer-events: auto;
+}
+.tdaction:hover {
+  border-color: #cfd2da;
+  background: #fff;
+}
+.tdactionlbl {
+  line-height: 1;
+}
+.tdactionic {
+  display: flex;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  background: rgba(28, 28, 30, 0.06);
+  color: var(--ink);
+}
+.tdactionic svg {
+  width: 17px;
+  height: 17px;
+}
 /* Daily Brief side pane (Apple News style) */
 .briefpane {
   position: fixed;
@@ -2259,6 +2385,16 @@ body {
     max-width: none;
     top: 64px;
     bottom: 12px;
+  }
+  .toolsdock {
+    top: auto;
+    bottom: 78px;
+    right: 12px;
+    gap: 12px;
+  }
+  .tdfab {
+    width: 46px;
+    height: 46px;
   }
 
   /* Bottom cluster: keep left, shrink, avoid overlap */
