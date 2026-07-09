@@ -989,6 +989,58 @@ body {
     opacity: 0;
   }
 }
+/* Perth "click here" affordance: a poking cursor that emits a ripple. */
+.perthtap {
+  pointer-events: none;
+}
+.perthtapripple {
+  fill: none;
+  stroke: #1c1c1e;
+  stroke-width: 1;
+  opacity: 0;
+  animation: perthripple 2.4s ease-out infinite;
+}
+@keyframes perthripple {
+  0%,
+  55% {
+    r: 3;
+    opacity: 0;
+  }
+  60% {
+    r: 3;
+    opacity: 0.55;
+  }
+  100% {
+    r: 16;
+    opacity: 0;
+  }
+}
+.perthtappointer {
+  fill: #1c1c1e;
+  stroke: #fff;
+  stroke-width: 0.8;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
+}
+.perthtaphand {
+  animation: perthtapclick 2.4s ease-in-out infinite;
+}
+@keyframes perthtapclick {
+  0%,
+  50%,
+  100% {
+    transform: translate(0, 0);
+  }
+  58% {
+    transform: translate(-1.4px, -1.4px);
+  }
+  70% {
+    transform: translate(0.5px, 0.5px);
+  }
+  80% {
+    transform: translate(0, 0);
+  }
+}
 .aumute {
   font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
   font-weight: 600;

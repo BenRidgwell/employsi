@@ -15,17 +15,17 @@ export const STATE_STATS: Record<string, CityStat> = {
 };
 
 export const CITY_STATE: Record<string, string> = {
-  perth: 'WA', darwin: 'NT', adelaide: 'SA', melbourne: 'VIC', sydney: 'NSW', brisbane: 'QLD',
+  perth: 'WA', darwin: 'NT', adelaide: 'SA', melbourne: 'VIC', sydney: 'NSW', brisbane: 'QLD', hobart: 'TAS',
 };
 
 // Pixel coords in the 250x230 AustraliaMap viewBox, projected from each city's
 // real lng/lat with the same Web-Mercator fit used for AU_STATE_PATHS.
 export const CITY_XY: Record<string, [number, number]> = {
-  perth: [29.4, 140.5], darwin: [111.6, 24.3], adelaide: [154.2, 160], melbourne: [189.1, 179.7], sydney: [223.3, 153], brisbane: [233.3, 112.2],
+  perth: [29.4, 140.5], darwin: [111.6, 24.3], adelaide: [154.2, 160], melbourne: [189.1, 179.7], sydney: [223.3, 153], brisbane: [233.3, 112.2], hobart: [202, 216.4],
 };
 
 export const CITY_LABEL: Record<string, string> = {
-  perth: 'Perth', darwin: 'Darwin', adelaide: 'Adelaide', melbourne: 'Melbourne', sydney: 'Sydney', brisbane: 'Brisbane',
+  perth: 'Perth', darwin: 'Darwin', adelaide: 'Adelaide', melbourne: 'Melbourne', sydney: 'Sydney', brisbane: 'Brisbane', hobart: 'Hobart',
 };
 
 export const GLOBAL_HUB_XY: Record<string, [number, number]> = {
@@ -53,14 +53,14 @@ export const GLOBAL_STATS: Record<string, CityStat> = {
 };
 
 export const SKILL_DEMAND: Record<string, Record<string, number>> = {
-  HSE: { perth: 100, darwin: 58, brisbane: 64, adelaide: 46, sydney: 30, melbourne: 26 },
-  Maintenance: { perth: 100, brisbane: 70, darwin: 52, adelaide: 44, sydney: 28, melbourne: 24 },
-  Metallurgy: { perth: 100, adelaide: 74, brisbane: 56, darwin: 22, sydney: 18, melbourne: 16 },
-  Sustainability: { perth: 82, sydney: 78, melbourne: 74, brisbane: 52, adelaide: 40, darwin: 24 },
-  Automation: { perth: 100, brisbane: 44, sydney: 34, adelaide: 30, melbourne: 30, darwin: 26 },
-  'Autonomous Haulage': { perth: 100, brisbane: 38, darwin: 24, adelaide: 20, sydney: 14, melbourne: 12 },
-  'Battery Metals': { perth: 100, adelaide: 58, sydney: 42, melbourne: 38, brisbane: 36, darwin: 34 },
-  'Carbon Capture': { perth: 100, darwin: 64, brisbane: 48, sydney: 44, melbourne: 40, adelaide: 30 },
+  HSE: { perth: 100, darwin: 58, brisbane: 64, adelaide: 46, sydney: 30, melbourne: 26, hobart: 20 },
+  Maintenance: { perth: 100, brisbane: 70, darwin: 52, adelaide: 44, sydney: 28, melbourne: 24, hobart: 18 },
+  Metallurgy: { perth: 100, adelaide: 74, brisbane: 56, darwin: 22, sydney: 18, melbourne: 16, hobart: 14 },
+  Sustainability: { perth: 82, sydney: 78, melbourne: 74, brisbane: 52, adelaide: 40, darwin: 24, hobart: 48 },
+  Automation: { perth: 100, brisbane: 44, sydney: 34, adelaide: 30, melbourne: 30, darwin: 26, hobart: 16 },
+  'Autonomous Haulage': { perth: 100, brisbane: 38, darwin: 24, adelaide: 20, sydney: 14, melbourne: 12, hobart: 10 },
+  'Battery Metals': { perth: 100, adelaide: 58, sydney: 42, melbourne: 38, brisbane: 36, darwin: 34, hobart: 28 },
+  'Carbon Capture': { perth: 100, darwin: 64, brisbane: 48, sydney: 44, melbourne: 40, adelaide: 30, hobart: 26 },
 };
 
 export const GLOBAL_SKILL_DEMAND: Record<string, Record<string, number>> = {

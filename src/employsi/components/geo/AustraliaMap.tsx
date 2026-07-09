@@ -19,6 +19,7 @@ const CITY_MARKERS: { id: string; dx: number; dy: number; anchor: 'start' | 'mid
   { id: 'sydney', dx: -7, dy: 1, anchor: 'end' },
   { id: 'melbourne', dx: 0, dy: 13, anchor: 'middle' },
   { id: 'adelaide', dx: 0, dy: 13, anchor: 'middle' },
+  { id: 'hobart', dx: 7, dy: 3, anchor: 'start' },
 ];
 
 function Plane({ dur, begin, path }: { dur: string; begin: string; path: string }) {
@@ -122,6 +123,20 @@ export function AustraliaMap({
         <text className="aulabel" x={CITY_XY.perth[0]} y={CITY_XY.perth[1] - 7} textAnchor="middle">
           Perth
         </text>
+      </g>
+
+      {/* "Click here" affordance guiding the user to zoom into Perth. */}
+      <g className="perthtap">
+        <circle className="perthtapripple" cx={CITY_XY.perth[0]} cy={CITY_XY.perth[1]} r="3" />
+        <g transform={`translate(${CITY_XY.perth[0] + 2.4}, ${CITY_XY.perth[1] + 2.4})`}>
+          <g className="perthtaphand">
+            <path
+              className="perthtappointer"
+              transform="scale(0.8)"
+              d="M0,0 L0,13 L3.3,9.7 L5.7,15 L7.4,14.2 L5.1,9 L9,8.7 Z"
+            />
+          </g>
+        </g>
       </g>
 
       {PLANE_ROUTES.map((r, i) => (
