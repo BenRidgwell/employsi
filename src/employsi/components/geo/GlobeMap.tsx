@@ -57,9 +57,14 @@ const CITY_LABEL_OFFSET: Record<string, { dx: number; dy: number; anchor: 'start
   singapore: { dx: 8, dy: 3, anchor: 'start' },
   denver: { dx: 0, dy: -9, anchor: 'middle' },
   ganzhou: { dx: 8, dy: 3, anchor: 'start' },
-  norilsk: { dx: 0, dy: 12, anchor: 'middle' },
   lubumbashi: { dx: 8, dy: 3, anchor: 'start' },
   brisbane: { dx: -8, dy: 3, anchor: 'end' },
+};
+
+// Continent labels that navigate to a regional domestic view when clicked.
+const CONTINENT_CLICK: Record<string, string> = {
+  AUSTRALIA: 'australia',
+  ASIA: 'asia',
 };
 
 // Australian cities rendered as clickable hubs (like Perth) — each opens its
@@ -74,14 +79,14 @@ export function GlobeMap({
   hubHeat,
   heatDim,
   onZoomInCity,
-  onAustralia,
+  onContinent,
   ambientSpikes,
   hubSpikes,
 }: {
   hubHeat: Record<string, HeatDisc>;
   heatDim: string;
   onZoomInCity: (city: string) => void;
-  onAustralia: () => void;
+  onContinent: (region: string) => void;
   ambientSpikes: SpikePoint[];
   hubSpikes: SpikePoint[];
 }) {
@@ -140,15 +145,18 @@ export function GlobeMap({
             </g>
           );
         })}
-        {CONTINENT_LABELS.map((c) =>
-          c.label === 'AUSTRALIA' ? (
-            <text key={c.label} className="aucountry aucountryclick" x={c.x} y={c.y} textAnchor="middle" onClick={onAustralia}>
-              {c.label}
-            </text>
-          ) : (
-            <text key={c.label} className="aucountry" x={c.x} y={c.y} textAnchor="middle">{c.label}</text>
-          ),
-        )}
+        {CONTINENT_LABELS.map((c) => {
+          const region = CONTINENT_CLICK[c.label];
+          if (region) {
+            return (
+              <g key={c.label} className="aucountryclick" onClick={() => onContinent(region)}>
+                <rect x={c.x - 54} y={c.y - 11} width={108} height={16} fill="transparent" pointerEvents="all" />
+                <text className="aucountry" x={c.x} y={c.y} textAnchor="middle">{c.label}</text>
+              </g>
+            );
+          }
+          return <text key={c.label} className="aucountry" x={c.x} y={c.y} textAnchor="middle">{c.label}</text>;
+        })}
 
         {CITY_HUBS.map(({ id, dx, dy, anchor }) => {
           const [cx, cy] = GLOBAL_HUB_XY[id];

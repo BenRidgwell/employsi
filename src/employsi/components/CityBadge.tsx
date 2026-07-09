@@ -1,6 +1,6 @@
 import { useAppStore } from '../state/store';
 
-const NAMES: Record<string, string> = { perth: 'Perth', brisbane: 'Brisbane', adelaide: 'Adelaide' };
+const NAMES: Record<string, string> = { perth: 'Perth', brisbane: 'Brisbane', adelaide: 'Adelaide', singapore: 'Singapore', ganzhou: 'Ganzhou' };
 
 // Small indicator of which local city map you're currently viewing. Only shows
 // on the local layer (hidden on the Australia / global views).

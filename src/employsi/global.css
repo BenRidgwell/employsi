@@ -810,7 +810,7 @@ body {
 /* Right-side expandable tools dock (Employer / Employee) */
 .toolsdock {
   position: fixed;
-  top: 250px;
+  top: 288px;
   right: 26px;
   z-index: 38;
   display: flex;
@@ -1776,6 +1776,11 @@ body {
 }
 .globemap {
   width: min(82vw, 1100px);
+  height: auto;
+  overflow: visible;
+}
+.asiamap {
+  width: min(78vw, 1040px);
   height: auto;
   overflow: visible;
 }

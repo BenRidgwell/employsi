@@ -20,6 +20,8 @@ export const CITY_VIEWS: Record<string, CityView> = {
   perth: { center: PERTH_CENTER, zoom: PERTH_DEFAULT_ZOOM, pitch: PERTH_DEFAULT_PITCH, bearing: PERTH_DEFAULT_BEARING },
   brisbane: { center: [153.026, -27.4705], zoom: 15.2, pitch: 60, bearing: -18 },
   adelaide: { center: [138.6007, -34.9285], zoom: 15.2, pitch: 60, bearing: -16 },
+  singapore: { center: [103.8519, 1.29], zoom: 15.1, pitch: 60, bearing: -12 },
+  ganzhou: { center: [114.9333, 25.83], zoom: 14.8, pitch: 60, bearing: -14 },
 };
 
 export const COMPANY_COORDS: Record<string, [number, number]> = {

@@ -38,7 +38,6 @@ export const GLOBAL_HUB_XY: Record<string, [number, number]> = {
   singapore: [414, 161.7],
   denver: [49, 88.8],
   ganzhou: [433.4, 117.4],
-  norilsk: [386.7, 10],
   lubumbashi: [280.6, 184.7],
   brisbane: [499, 214.1],
   adelaide: [474.8, 229.3],
@@ -46,7 +45,7 @@ export const GLOBAL_HUB_XY: Record<string, [number, number]> = {
 
 export const GLOBAL_HUB_LABEL: Record<string, string> = {
   perth: 'Perth', santiago: 'Santiago', toronto: 'Toronto', johannesburg: 'Johannesburg', london: 'London', houston: 'Houston', singapore: 'Singapore',
-  denver: 'Denver', ganzhou: 'Ganzhou', norilsk: 'Norilsk', lubumbashi: 'Lubumbashi', brisbane: 'Brisbane', adelaide: 'Adelaide',
+  denver: 'Denver', ganzhou: 'Ganzhou', lubumbashi: 'Lubumbashi', brisbane: 'Brisbane', adelaide: 'Adelaide',
 };
 
 export const GLOBAL_STATS: Record<string, CityStat> = {
@@ -59,7 +58,6 @@ export const GLOBAL_STATS: Record<string, CityStat> = {
   singapore: { salary: 110, growth: 3.8, turnover: 9.6 },
   denver: { salary: 120, growth: 3.4, turnover: 9.8 },
   ganzhou: { salary: 68, growth: 5.0, turnover: 13.8 },
-  norilsk: { salary: 82, growth: 1.8, turnover: 15.2 },
   lubumbashi: { salary: 54, growth: 6.2, turnover: 16.5 },
   brisbane: { salary: 124, growth: 4.5, turnover: 10.8 },
   adelaide: { salary: 118, growth: 3.1, turnover: 10.2 },
@@ -77,14 +75,14 @@ export const SKILL_DEMAND: Record<string, Record<string, number>> = {
 };
 
 export const GLOBAL_SKILL_DEMAND: Record<string, Record<string, number>> = {
-  HSE: { perth: 100, santiago: 62, toronto: 58, johannesburg: 70, london: 40, houston: 66, singapore: 48, denver: 60, ganzhou: 66, norilsk: 74, lubumbashi: 70, brisbane: 64, adelaide: 46 },
-  Maintenance: { perth: 100, santiago: 58, toronto: 62, johannesburg: 64, london: 36, houston: 60, singapore: 44, denver: 54, ganzhou: 70, norilsk: 80, lubumbashi: 66, brisbane: 60, adelaide: 44 },
-  Metallurgy: { perth: 100, santiago: 74, toronto: 56, johannesburg: 68, london: 30, houston: 38, singapore: 34, denver: 58, ganzhou: 84, norilsk: 88, lubumbashi: 72, brisbane: 40, adelaide: 74 },
-  Sustainability: { perth: 78, santiago: 44, toronto: 56, johannesburg: 40, london: 82, houston: 52, singapore: 64, denver: 66, ganzhou: 42, norilsk: 30, lubumbashi: 38, brisbane: 58, adelaide: 40 },
-  Automation: { perth: 100, santiago: 42, toronto: 50, johannesburg: 38, london: 46, houston: 62, singapore: 58, denver: 70, ganzhou: 60, norilsk: 44, lubumbashi: 34, brisbane: 50, adelaide: 30 },
-  'Autonomous Haulage': { perth: 100, santiago: 48, toronto: 30, johannesburg: 44, london: 20, houston: 36, singapore: 26, denver: 40, ganzhou: 30, norilsk: 46, lubumbashi: 40, brisbane: 44, adelaide: 20 },
-  'Battery Metals': { perth: 100, santiago: 82, toronto: 48, johannesburg: 40, london: 38, houston: 34, singapore: 56, denver: 62, ganzhou: 78, norilsk: 64, lubumbashi: 90, brisbane: 46, adelaide: 58 },
-  'Carbon Capture': { perth: 100, santiago: 38, toronto: 56, johannesburg: 34, london: 64, houston: 78, singapore: 46, denver: 58, ganzhou: 36, norilsk: 28, lubumbashi: 30, brisbane: 62, adelaide: 30 },
+  HSE: { perth: 100, santiago: 62, toronto: 58, johannesburg: 70, london: 40, houston: 66, singapore: 48, denver: 60, ganzhou: 66, lubumbashi: 70, brisbane: 64, adelaide: 46 },
+  Maintenance: { perth: 100, santiago: 58, toronto: 62, johannesburg: 64, london: 36, houston: 60, singapore: 44, denver: 54, ganzhou: 70, lubumbashi: 66, brisbane: 60, adelaide: 44 },
+  Metallurgy: { perth: 100, santiago: 74, toronto: 56, johannesburg: 68, london: 30, houston: 38, singapore: 34, denver: 58, ganzhou: 84, lubumbashi: 72, brisbane: 40, adelaide: 74 },
+  Sustainability: { perth: 78, santiago: 44, toronto: 56, johannesburg: 40, london: 82, houston: 52, singapore: 64, denver: 66, ganzhou: 42, lubumbashi: 38, brisbane: 58, adelaide: 40 },
+  Automation: { perth: 100, santiago: 42, toronto: 50, johannesburg: 38, london: 46, houston: 62, singapore: 58, denver: 70, ganzhou: 60, lubumbashi: 34, brisbane: 50, adelaide: 30 },
+  'Autonomous Haulage': { perth: 100, santiago: 48, toronto: 30, johannesburg: 44, london: 20, houston: 36, singapore: 26, denver: 40, ganzhou: 30, lubumbashi: 40, brisbane: 44, adelaide: 20 },
+  'Battery Metals': { perth: 100, santiago: 82, toronto: 48, johannesburg: 40, london: 38, houston: 34, singapore: 56, denver: 62, ganzhou: 78, lubumbashi: 90, brisbane: 46, adelaide: 58 },
+  'Carbon Capture': { perth: 100, santiago: 38, toronto: 56, johannesburg: 34, london: 64, houston: 78, singapore: 46, denver: 58, ganzhou: 36, lubumbashi: 30, brisbane: 62, adelaide: 30 },
 };
 
 export function activeSkillKey(query: string | null | undefined): string | null {

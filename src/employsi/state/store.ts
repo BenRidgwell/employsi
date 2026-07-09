@@ -19,6 +19,7 @@ export interface AppState {
   zoomingIn: boolean;
   globalOut: boolean;
   localCity: string;
+  domesticRegion: string;
   compareOpen: boolean;
   compareA: string | null;
   compareB: string | null;
@@ -48,6 +49,7 @@ export interface AppState {
   setZoomLevel: (n: 0 | 1 | 2) => void;
   zoomIn: () => void;
   zoomInCity: (city: string) => void;
+  goDomestic: (region: string) => void;
   globalBack: () => void;
   onAuWheel: (deltaY: number) => void;
 
@@ -91,6 +93,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   zoomingIn: false,
   globalOut: false,
   localCity: 'perth',
+  domesticRegion: 'australia',
   compareOpen: false,
   compareA: null,
   compareB: null,
@@ -133,7 +136,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const cur = s.globalOut ? 2 : s.zoomedOut ? 1 : 0;
     if (n === cur) return;
     if (n === 0) { get().zoomIn(); return; }
-    if (n === 1) { set({ zoomedOut: true, globalOut: false, interacted: true }); return; }
+    if (n === 1) { set({ zoomedOut: true, globalOut: false, domesticRegion: 'australia', interacted: true }); return; }
     set({ zoomedOut: true, globalOut: true, interacted: true });
   },
   zoomIn: () => get().zoomInCity('perth'),
@@ -147,6 +150,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ zoomedOut: false, zoomingIn: false, globalOut: false });
       window.dispatchEvent(new CustomEvent('perth-zoom-reset'));
     }, 680);
+  },
+  goDomestic: (region) => {
+    markLayerChange();
+    set({ globalOut: false, zoomedOut: true, domesticRegion: region, interacted: true });
   },
   globalBack: () => {
     const s = get();
@@ -162,7 +169,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (s.globalOut) {
       if (deltaY < 0) {
         markLayerChange();
-        set({ globalOut: false, interacted: true });
+        set({ globalOut: false, domesticRegion: 'australia', interacted: true });
       }
       return;
     }

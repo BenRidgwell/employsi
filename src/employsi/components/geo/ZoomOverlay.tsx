@@ -3,6 +3,7 @@ import { activeSkillKey, CITY_XY } from '../../data/geo';
 import { AU_SCATTER, GLOBAL_SCATTER } from '../../data/scatter';
 import { computeCityHeat, computeGlobalHeat, computeSkillSpikes, computeAmbientSpikes, computeGlobalSpikes, computeGlobalAmbientSpikes } from '../../lib/heat';
 import { AustraliaMap } from './AustraliaMap';
+import { AsiaMap } from './AsiaMap';
 import { GlobeMap } from './GlobeMap';
 
 export function ZoomOverlay() {
@@ -13,8 +14,9 @@ export function ZoomOverlay() {
   const searchQuery = useAppStore((s) => s.searchQuery);
   const zoomInCity = useAppStore((s) => s.zoomInCity);
   const onAuWheel = useAppStore((s) => s.onAuWheel);
-  const setGlobalOut = useAppStore((s) => s.setGlobalOut);
+  const goDomestic = useAppStore((s) => s.goDomestic);
   const localCity = useAppStore((s) => s.localCity);
+  const domesticRegion = useAppStore((s) => s.domesticRegion);
 
   // Zoom the Australia map toward the city being entered (not always Perth).
   const oc = CITY_XY[localCity] || CITY_XY.perth;
@@ -35,10 +37,14 @@ export function ZoomOverlay() {
   return (
     <div className={`auview ${auCls}`} onWheel={(e) => onAuWheel(e.deltaY)}>
       <div className={`auscene ${globalOut ? 'scenehide' : ''}`}>
-        <AustraliaMap cityHeat={cityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} zoomOrigin={auOrigin} ambientSpikes={ambientSpikes} hubSpikes={skillSpikes} />
+        {domesticRegion === 'asia' ? (
+          <AsiaMap hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} />
+        ) : (
+          <AustraliaMap cityHeat={cityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} zoomOrigin={auOrigin} ambientSpikes={ambientSpikes} hubSpikes={skillSpikes} />
+        )}
       </div>
       <div className={`globescene ${globalOut ? 'sceneshow' : ''}`}>
-        <GlobeMap hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} onAustralia={() => setGlobalOut(false)} ambientSpikes={globalAmbientSpikes} hubSpikes={globalSpikes} />
+        <GlobeMap hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} onContinent={goDomestic} ambientSpikes={globalAmbientSpikes} hubSpikes={globalSpikes} />
       </div>
     </div>
   );
