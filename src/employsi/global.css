@@ -1305,6 +1305,115 @@ body {
   display: flex;
   align-items: center;
 }
+/* Layer-guide icon idle animations */
+.zi-globe {
+  animation: ziglobe 18s linear infinite;
+}
+@keyframes ziglobe {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.zi-pin {
+  animation: zipin 3s ease-in-out infinite;
+}
+@keyframes zipin {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.6px);
+  }
+}
+.zi-chart rect {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: zibar 1.9s ease-in-out infinite;
+}
+.zi-chart rect:nth-of-type(2) {
+  animation-delay: 0.24s;
+}
+.zi-chart rect:nth-of-type(3) {
+  animation-delay: 0.48s;
+}
+@keyframes zibar {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.58);
+  }
+}
+/* Tools-dock FAB icon idle animations */
+.tdfab.td-employer .tdfabic svg {
+  animation: tdbuild 3.4s ease-in-out infinite;
+}
+@keyframes tdbuild {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.6px);
+  }
+}
+.tdfab.td-employee .tdfabic svg {
+  animation: tdperson 3.6s ease-in-out infinite;
+}
+@keyframes tdperson {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.09);
+  }
+}
+.tdfab.on .tdfabic svg {
+  animation: none;
+}
+/* Tools-dock action-pill icon animations (visible while expanded) */
+.ic-health svg {
+  animation: ichealth 1.9s ease-in-out infinite;
+}
+@keyframes ichealth {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  14% {
+    transform: scale(1.2);
+  }
+  28% {
+    transform: scale(1);
+  }
+}
+.ic-talent svg {
+  animation: ictalent 3s ease-in-out infinite;
+}
+@keyframes ictalent {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.6px);
+  }
+}
+.ic-career svg {
+  animation: iccareer 3.4s ease-in-out infinite;
+}
+@keyframes iccareer {
+  0%,
+  100% {
+    transform: rotate(-13deg);
+  }
+  50% {
+    transform: rotate(13deg);
+  }
+}
 .zoomslider .zlabel {
   position: absolute;
   left: calc(100% + 10px);

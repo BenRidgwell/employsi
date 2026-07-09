@@ -62,7 +62,7 @@ function Cluster({
             style={{ transitionDelay: open ? `${0.03 + i * 0.05}s` : '0s' }}
           >
             <span className="tdactionlbl">{a.label}</span>
-            <span className="tdactionic">{a.icon}</span>
+            <span className={`tdactionic ic-${a.id}`}>{a.icon}</span>
           </button>
         ))}
       </div>
