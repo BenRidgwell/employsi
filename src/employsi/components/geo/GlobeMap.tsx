@@ -55,6 +55,10 @@ const CITY_LABEL_OFFSET: Record<string, { dx: number; dy: number; anchor: 'start
   london: { dx: 0, dy: 14, anchor: 'middle' },
   houston: { dx: -8, dy: 3, anchor: 'end' },
   singapore: { dx: 8, dy: 3, anchor: 'start' },
+  denver: { dx: 0, dy: -9, anchor: 'middle' },
+  ganzhou: { dx: 8, dy: 3, anchor: 'start' },
+  norilsk: { dx: 0, dy: 12, anchor: 'middle' },
+  lubumbashi: { dx: 8, dy: 3, anchor: 'start' },
 };
 
 export function GlobeMap({
@@ -81,7 +85,7 @@ export function GlobeMap({
           <animateTransform attributeName="patternTransform" type="translate" from="0 0" to="-18 4" dur="7s" repeatCount="indefinite" />
         </pattern>
         <filter id="globeEdgeFeather" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="7.5" />
+          <feGaussianBlur stdDeviation="9" />
         </filter>
         <mask id="globeOceanMask">
           <rect x="10" y="7" width="480" height="246" rx="10" fill="#fff" filter="url(#globeEdgeFeather)" />

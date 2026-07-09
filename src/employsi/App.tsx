@@ -10,6 +10,7 @@ import { HeatKey } from './components/HeatKey';
 import { ZoomOverlay } from './components/geo/ZoomOverlay';
 import { CompanyPanel } from './components/panels/CompanyPanel';
 import { ComparePanel } from './components/panels/ComparePanel';
+import { DailyBriefPane } from './components/panels/DailyBriefPane';
 import { useAppStore } from './state/store';
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
       <HeatKey />
       <CompanyPanel />
       <ComparePanel />
+      <DailyBriefPane />
     </div>
   );
 }

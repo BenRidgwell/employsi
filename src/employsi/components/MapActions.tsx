@@ -4,6 +4,8 @@ import { useAppStore } from '../state/store';
 // layer guide, on the domestic and global (zoomed-out) map views.
 export function MapActions() {
   const zoomedOut = useAppStore((s) => s.zoomedOut);
+  const toggleBrief = useAppStore((s) => s.toggleBrief);
+  const briefOpen = useAppStore((s) => s.briefOpen);
   if (!zoomedOut) return null;
 
   return (
@@ -21,7 +23,7 @@ export function MapActions() {
       </div>
 
       <div className="marow">
-        <button className="mabtn" type="button" aria-label="Daily brief">
+        <button className={`mabtn ${briefOpen ? 'on' : ''}`} type="button" aria-label="Daily brief" onClick={toggleBrief}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
             {/* newspaper */}
             <path d="M4 5.6A1.1 1.1 0 0 1 5.1 4.5h7.3a1.1 1.1 0 0 1 1.1 1.1V15H5.1A1.1 1.1 0 0 1 4 13.9V5.6Z" />

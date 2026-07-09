@@ -21,6 +21,7 @@ export interface AppState {
   compareOpen: boolean;
   compareA: string | null;
   compareB: string | null;
+  briefOpen: boolean;
 
   select: (id: string) => void;
   closePanel: () => void;
@@ -51,6 +52,9 @@ export interface AppState {
   closeCompare: () => void;
   setCompareA: (id: string) => void;
   setCompareB: (id: string) => void;
+
+  toggleBrief: () => void;
+  closeBrief: () => void;
 }
 
 let zoomTimer: ReturnType<typeof setTimeout> | undefined;
@@ -84,8 +88,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   compareOpen: false,
   compareA: null,
   compareB: null,
+  briefOpen: false,
 
-  select: (id) => set({ selectedId: id, lastId: id, interacted: true, searchOpen: false, filterOpen: false }),
+  select: (id) => set({ selectedId: id, lastId: id, interacted: true, searchOpen: false, filterOpen: false, briefOpen: false }),
   closePanel: () => set({ selectedId: null }),
   setHeat: (h) => set({ heat: h }),
   setInteracted: () => set((s) => (s.interacted ? s : { interacted: true })),
@@ -168,6 +173,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   closeCompare: () => set({ compareOpen: false }),
   setCompareA: (id) => set({ compareA: id }),
   setCompareB: (id) => set({ compareB: id }),
+
+  toggleBrief: () => set((s) => ({ briefOpen: !s.briefOpen })),
+  closeBrief: () => set({ briefOpen: false }),
 }));
 
 export interface FilterState {
