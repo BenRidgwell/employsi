@@ -59,6 +59,7 @@ const CITY_LABEL_OFFSET: Record<string, { dx: number; dy: number; anchor: 'start
   ganzhou: { dx: 8, dy: 3, anchor: 'start' },
   norilsk: { dx: 0, dy: 12, anchor: 'middle' },
   lubumbashi: { dx: 8, dy: 3, anchor: 'start' },
+  brisbane: { dx: -8, dy: 3, anchor: 'end' },
 };
 
 export function GlobeMap({
