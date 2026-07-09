@@ -672,9 +672,16 @@ body {
   background: var(--line);
   margin: 1px 0;
 }
+.zoomslider .zrow {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
 .zoomslider .zlabel {
   position: absolute;
-  left: 48px;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
   font-size: 10.5px;
   font-weight: 700;
   color: var(--ink);
@@ -685,9 +692,9 @@ body {
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  transition: 0.12s;
+  transition: opacity 0.12s;
 }
-.zoomslider .zstep:hover + .zlabel {
+.zoomslider .zrow:hover .zlabel {
   opacity: 1;
 }
 .searchbtn .sdot {
