@@ -933,7 +933,7 @@ body {
   pointer-events: auto;
 }
 .globemap {
-  width: min(88vw, 1200px);
+  width: min(82vw, 1100px);
   height: auto;
   overflow: visible;
 }

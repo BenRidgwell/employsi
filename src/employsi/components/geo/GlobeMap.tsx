@@ -76,14 +76,11 @@ export function GlobeMap({
           <path d="M0,10 Q4.5,7 9,10 T18,10" fill="none" stroke="#d3d7dc" strokeWidth="0.8" />
           <animateTransform attributeName="patternTransform" type="translate" from="0 0" to="-18 4" dur="7s" repeatCount="indefinite" />
         </pattern>
-        <radialGradient id="globeOceanFade" cx="50%" cy="50%" r="58%">
-          <stop offset="0%" stopColor="#fff" stopOpacity="1" />
-          <stop offset="55%" stopColor="#fff" stopOpacity="1" />
-          <stop offset="82%" stopColor="#fff" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#fff" stopOpacity="0" />
-        </radialGradient>
+        <filter id="globeEdgeFeather" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="9" />
+        </filter>
         <mask id="globeOceanMask">
-          <rect x="0" y="0" width="500" height="260" fill="url(#globeOceanFade)" />
+          <rect x="14" y="9" width="472" height="242" rx="10" fill="#fff" filter="url(#globeEdgeFeather)" />
         </mask>
         <filter id="globeblur" x="-120%" y="-120%" width="340%" height="340%">
           <feGaussianBlur stdDeviation="4" />
