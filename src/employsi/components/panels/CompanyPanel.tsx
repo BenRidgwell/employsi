@@ -1,5 +1,20 @@
+import { useState } from 'react';
 import { useAppStore } from '../../state/store';
 import { buildPanel } from '../../lib/panel';
+import { TrendChart } from './TrendChart';
+
+function CompanyLogo({ domain, ticker }: { domain: string; ticker: string }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <div className="pbadge">
+      {failed ? (
+        <span className="pbadgetxt">{ticker}</span>
+      ) : (
+        <img className="pbadgeimg" src={`https://logo.clearbit.com/${domain}?size=104`} alt={ticker} onError={() => setFailed(true)} />
+      )}
+    </div>
+  );
+}
 
 export function CompanyPanel() {
   const selectedId = useAppStore((s) => s.selectedId);
@@ -18,7 +33,7 @@ export function CompanyPanel() {
           {panel && (
             <>
               <div className="phead">
-                <div className="pbadge">{panel.ticker}</div>
+                <CompanyLogo domain={panel.domain} ticker={panel.ticker} />
                 <div>
                   <div className="pname">{panel.name}</div>
                   <div className="psector">{panel.sector}</div>
@@ -36,16 +51,7 @@ export function CompanyPanel() {
                 ))}
               </div>
               <div className="sect">
-                <div className="secth">
-                  Workforce trend
-                  <span>{panel.trendLabel}</span>
-                </div>
-                <div className="trendbox">
-                  <svg className="trendsvg" viewBox="0 0 188 52" preserveAspectRatio="none">
-                    <path d={panel.trendArea} fill="rgba(28,28,30,.12)" />
-                    <path d={panel.trendLine} fill="none" stroke="#1c1c1e" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
+                <TrendChart trend={panel.trend} headcount={panel.headcount} />
                 <div className="subs">
                   {panel.subStats.map((s, i) => (
                     <div className="subc" key={i}>
