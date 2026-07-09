@@ -14,6 +14,7 @@ export function ZoomOverlay() {
   const zoomIn = useAppStore((s) => s.zoomIn);
   const globalBack = useAppStore((s) => s.globalBack);
   const onAuWheel = useAppStore((s) => s.onAuWheel);
+  const setGlobalOut = useAppStore((s) => s.setGlobalOut);
 
   const skill = activeSkillKey(searchQuery);
   const heatDim = skill ? 'auheat-off' : '';
@@ -42,7 +43,7 @@ export function ZoomOverlay() {
         <AustraliaMap cityHeat={cityHeat} heatDim={heatDim} onZoomIn={zoomIn} ambientSpikes={ambientSpikes} hubSpikes={skillSpikes} />
       </div>
       <div className={`globescene ${globalOut ? 'sceneshow' : ''}`}>
-        <GlobeMap hubHeat={globalCityHeat} heatDim={heatDim} onZoomIn={zoomIn} ambientSpikes={globalAmbientSpikes} hubSpikes={globalSpikes} />
+        <GlobeMap hubHeat={globalCityHeat} heatDim={heatDim} onZoomIn={zoomIn} onAustralia={() => setGlobalOut(false)} ambientSpikes={globalAmbientSpikes} hubSpikes={globalSpikes} />
       </div>
       {globalOut && (
         <div className="auhintbar">

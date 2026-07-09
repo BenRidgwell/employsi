@@ -15,11 +15,16 @@ const PLANE_ROUTES = [
 // offset/anchor so the name clears the marker and the map edge.
 const CITY_MARKERS: { id: string; dx: number; dy: number; anchor: 'start' | 'middle' | 'end' }[] = [
   { id: 'darwin', dx: 0, dy: -7, anchor: 'middle' },
-  { id: 'brisbane', dx: -7, dy: 1, anchor: 'end' },
   { id: 'sydney', dx: -7, dy: 1, anchor: 'end' },
   { id: 'melbourne', dx: 0, dy: 13, anchor: 'middle' },
-  { id: 'adelaide', dx: 0, dy: 13, anchor: 'middle' },
   { id: 'hobart', dx: 7, dy: 3, anchor: 'start' },
+];
+
+// Hub-styled cities (like Perth) — clickable to zoom into the local layer, but
+// without the cursor tap-guide animation that Perth carries.
+const HUB_CITIES: { id: string; labelDy: number }[] = [
+  { id: 'adelaide', labelDy: -7 },
+  { id: 'brisbane', labelDy: -7 },
 ];
 
 function Plane({ dur, begin, path }: { dur: string; begin: string; path: string }) {
@@ -108,11 +113,24 @@ export function AustraliaMap({
         <CityHeat key={`heat-${id}`} cx={CITY_XY[id][0]} cy={CITY_XY[id][1]} heat={cityHeat[id]} dim={heatDim} />
       ))}
       <CityHeat cx={CITY_XY.perth[0]} cy={CITY_XY.perth[1]} heat={cityHeat.perth} dim={heatDim} />
+      {HUB_CITIES.map(({ id }) => (
+        <CityHeat key={`heat-${id}`} cx={CITY_XY[id][0]} cy={CITY_XY[id][1]} heat={cityHeat[id]} dim={heatDim} />
+      ))}
 
       {CITY_MARKERS.map(({ id, dx, dy, anchor }) => (
         <g className="aucity" key={id}>
           <circle className="audot" cx={CITY_XY[id][0]} cy={CITY_XY[id][1]} r="3.2" />
           <text className="aumute" x={CITY_XY[id][0] + dx} y={CITY_XY[id][1] + dy} textAnchor={anchor}>
+            {CITY_LABEL[id]}
+          </text>
+        </g>
+      ))}
+
+      {HUB_CITIES.map(({ id, labelDy }) => (
+        <g className="aucity hub" key={id} onClick={onZoomIn}>
+          <circle className="auring" cx={CITY_XY[id][0]} cy={CITY_XY[id][1]} r="8" />
+          <circle className="audot audothub" cx={CITY_XY[id][0]} cy={CITY_XY[id][1]} r="4.4" />
+          <text className="aulabel" x={CITY_XY[id][0]} y={CITY_XY[id][1] + labelDy} textAnchor="middle">
             {CITY_LABEL[id]}
           </text>
         </g>

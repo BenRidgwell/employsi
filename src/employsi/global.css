@@ -816,6 +816,12 @@ body {
   flex-direction: column;
   gap: 12px;
   align-items: flex-end;
+  transition: opacity 0.18s ease;
+}
+.toolsdock.behind {
+  z-index: 4;
+  opacity: 0.35;
+  pointer-events: none;
 }
 .tdcluster {
   display: flex;
@@ -1140,6 +1146,97 @@ body {
   color: var(--slate);
   text-align: center;
   padding: 12px 0 2px;
+}
+/* "Most viewed" snapshot at the top of the trending pane */
+.trendsnap {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f7f9fe, #fff);
+  padding: 12px 12px 6px;
+  margin-top: 8px;
+  margin-bottom: 6px;
+}
+.trendsnaphd {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.trendsnaptitle {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--ink);
+}
+.trendsnapcap {
+  font-size: 10.5px;
+  color: var(--slate);
+}
+.trendsnaprow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 6px;
+  border: none;
+  background: transparent;
+  border-radius: 9px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.14s;
+}
+.trendsnaprow:hover {
+  background: rgba(15, 27, 61, 0.05);
+}
+.trendsnapic {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(150deg, #2c2c31, #1c1c1e);
+  color: #fff;
+}
+.trendsnapic svg {
+  width: 16px;
+  height: 16px;
+}
+.trendsnapinfo {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+.trendsnaplabel {
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--ink);
+  letter-spacing: -0.1px;
+}
+.trendsnapsub {
+  font-size: 10.5px;
+  color: var(--slate);
+  margin-top: 1px;
+}
+.trendsnapshare {
+  flex: 0 0 auto;
+  text-align: right;
+  line-height: 1.1;
+}
+.trendsnapshare b {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--ink);
+}
+.trendsnapshare span {
+  display: block;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--slate);
 }
 /* What's Trending pane (reuses .briefpane shell) */
 .briefmark .trendmark {
@@ -1820,7 +1917,21 @@ body {
 .aucity.hub {
   cursor: pointer;
 }
+.mapboxgl-ctrl-logo {
+  display: none !important;
+}
+.aucountryclick {
+  cursor: pointer;
+  transition: fill 0.15s ease;
+}
+.aucountryclick:hover {
+  fill: #1c1c1e;
+}
 .auhintbar {
+  position: absolute;
+  left: 50%;
+  bottom: 42px;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 16px;
@@ -2212,6 +2323,76 @@ body {
 .wtsw.acc {
   background: #159d67;
 }
+.wthint {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--slate);
+  opacity: 0.75;
+}
+.wtbox {
+  cursor: crosshair;
+  user-select: none;
+}
+.wtband {
+  fill: rgba(28, 28, 30, 0.07);
+}
+.wtrange {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 13px;
+  background: linear-gradient(180deg, #f7f9fe, #fff);
+}
+.wtrangehd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+.wtrangeperiod {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--ink);
+}
+.wtrangex {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--slate);
+  cursor: pointer;
+}
+.wtrangex:hover {
+  color: var(--ink);
+}
+.wtrangerow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 2px 0;
+}
+.wtrlbl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--slate);
+  font-weight: 700;
+}
+.wtrval {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.wtrval.up {
+  color: #0e7a50;
+}
+.wtrval.down {
+  color: #c1443c;
+}
 .wtguide {
   stroke: rgba(28, 28, 30, 0.28);
   stroke-width: 1;
@@ -2369,24 +2550,253 @@ body {
   width: 30px;
   text-align: right;
 }
-.cta {
-  margin-top: 24px;
-  width: 100%;
-  border: 0;
-  border-radius: 13px;
-  padding: 15px;
-  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
-  font-weight: 700;
-  font-size: 14.5px;
-  color: #fff;
-  background: #1c1c1e;
-  cursor: pointer;
-  box-shadow: 0 14px 28px -12px rgba(28, 28, 30, 0.7);
-  transition: 0.16s;
+/* Role search */
+.rolesearch {
+  position: relative;
+  margin: 4px 0 16px;
 }
-.cta:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 18px 34px -12px rgba(28, 28, 30, 0.8);
+.prole {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #f7f7f8;
+  color: var(--slate);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.prole:hover {
+  border-color: var(--slate);
+}
+.prole.on {
+  color: var(--ink);
+  background: #fff;
+  border-color: #1c1c1e;
+}
+.prolelbl {
+  flex: 1 1 auto;
+  text-align: left;
+}
+.proleclear {
+  font-size: 11px;
+  color: var(--slate);
+  padding: 2px 4px;
+  border-radius: 5px;
+}
+.proleclear:hover {
+  color: var(--ink);
+  background: rgba(15, 27, 61, 0.06);
+}
+.roledrop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 20px 44px -18px rgba(15, 27, 61, 0.5);
+  padding: 12px;
+}
+.roleinput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+  outline: none;
+  background: #f7f7f8;
+}
+.roleinput:focus {
+  border-color: var(--slate);
+}
+.rolechips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.rolechip {
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--slate);
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.14s;
+}
+.rolechip:hover {
+  color: var(--ink);
+  border-color: var(--slate);
+}
+.rolechip.on {
+  background: #1c1c1e;
+  color: #fff;
+  border-color: #1c1c1e;
+}
+.rolenone {
+  font-size: 11.5px;
+  color: var(--slate);
+  padding: 4px 2px;
+}
+/* substat delta line (Glassdoor benchmark) */
+.subd {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #0e7a50;
+  margin-top: 4px;
+}
+.subd.neg {
+  color: #c1443c;
+}
+/* Gender & pay gap */
+.genderbar {
+  display: flex;
+  height: 30px;
+  border-radius: 9px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  font-size: 11px;
+  font-weight: 700;
+}
+.genderf {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  background: #1c1c1e;
+  color: #fff;
+  white-space: nowrap;
+}
+.genderm {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  color: var(--slate);
+  background: rgba(28, 28, 30, 0.06);
+}
+.paygap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+.paygapv {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--ink);
+}
+.paygapl {
+  font-size: 11px;
+  color: var(--slate);
+  margin-left: 8px;
+}
+.paygapbench {
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.paygapbench.good {
+  color: #0e7a50;
+}
+.paygapbench.bad {
+  color: #c1443c;
+}
+/* Progress track (women in leadership / indigenous) */
+.progtrack {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(28, 28, 30, 0.08);
+  overflow: visible;
+}
+.progfill {
+  height: 100%;
+  border-radius: 999px;
+  background: #1c1c1e;
+}
+.progtarget {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: #e0524a;
+  transform: translateX(-50%);
+}
+.progrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 9px;
+  font-size: 11.5px;
+  color: var(--slate);
+}
+.progrow b {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--ink);
+  margin-right: 3px;
+}
+.progtl.good {
+  color: #0e7a50;
+  font-weight: 700;
+}
+.dbar {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(28, 28, 30, 0.08);
+  overflow: hidden;
+}
+.dbarfill {
+  height: 100%;
+  border-radius: 999px;
+  background: #1c1c1e;
+}
+/* Recent layoffs */
+.layoff {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, #fdf7f7, #fff);
+}
+.layoffhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.layoffhead b {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--ink);
+}
+.layoffpct {
+  font-size: 12px;
+  font-weight: 700;
+  color: #c1443c;
+}
+.layoffnote {
+  font-size: 11.5px;
+  color: var(--slate);
+  margin-top: 5px;
+}
+.layoffnone {
+  font-size: 12px;
+  color: var(--slate);
+  padding: 10px 0;
 }
 .foot {
   font-size: 11px;

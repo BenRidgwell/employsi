@@ -66,12 +66,14 @@ export function GlobeMap({
   hubHeat,
   heatDim,
   onZoomIn,
+  onAustralia,
   ambientSpikes,
   hubSpikes,
 }: {
   hubHeat: Record<string, HeatDisc>;
   heatDim: string;
   onZoomIn: () => void;
+  onAustralia: () => void;
   ambientSpikes: SpikePoint[];
   hubSpikes: SpikePoint[];
 }) {
@@ -129,9 +131,15 @@ export function GlobeMap({
             </g>
           );
         })}
-        {CONTINENT_LABELS.map((c) => (
-          <text key={c.label} className="aucountry" x={c.x} y={c.y} textAnchor="middle">{c.label}</text>
-        ))}
+        {CONTINENT_LABELS.map((c) =>
+          c.label === 'AUSTRALIA' ? (
+            <text key={c.label} className="aucountry aucountryclick" x={c.x} y={c.y} textAnchor="middle" onClick={onAustralia}>
+              {c.label}
+            </text>
+          ) : (
+            <text key={c.label} className="aucountry" x={c.x} y={c.y} textAnchor="middle">{c.label}</text>
+          ),
+        )}
 
         <g className="aucity hub" onClick={onZoomIn}>
           <circle className="auring" cx={GLOBAL_HUB_XY.perth[0]} cy={GLOBAL_HUB_XY.perth[1]} r="8" />

@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 // Dual-line workforce chart. Headcount is always plotted (fixed); the user
 // selects a second line — revenue or EBITDA per employee — shown on its own
-// scale against headcount. Hovering scrubs a callout reading both series.
+// scale against headcount. Hovering scrubs a callout reading both series;
+// dragging across the chart selects a period and auto-calculates the change.
 
 type MetricId = 'revenue' | 'ebitda';
 
@@ -56,7 +57,6 @@ function financialSeries(metric: MetricId, p: Props): number[] {
   });
 }
 
-// Catmull-Rom → cubic Bézier for a smooth curve through the points.
 function smoothPath(pts: [number, number][]): string {
   if (pts.length < 2) return '';
   let d = `M ${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)}`;
@@ -91,6 +91,11 @@ function scaler(vals: number[]) {
   return (v: number) => PADT + PLOTH * (1 - (v - yMin) / (yMax - yMin));
 }
 
+const money = (v: number) => '$' + v.toFixed(2) + 'M';
+const people = (v: number) => Math.round(v).toLocaleString('en-US');
+const signed = (v: number, fmt: (n: number) => string) => (v >= 0 ? '+' : '−') + fmt(Math.abs(v));
+const pctStr = (v: number) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1) + '%';
+
 export function TrendChart(props: Props) {
   const [metric, setMetric] = useState<MetricId>('revenue');
   const labels = useMemo(() => quarterLabels(props.trend.length), [props.trend.length]);
@@ -98,6 +103,8 @@ export function TrendChart(props: Props) {
   const fin = useMemo(() => financialSeries(metric, props), [metric, props]);
   const n = head.length;
   const [sel, setSel] = useState<number | null>(null);
+  const [range, setRange] = useState<[number, number] | null>(null);
+  const dragStart = useRef<number | null>(null);
 
   const x = (i: number) => PADX + (i * PLOTW) / (n - 1);
   const yH = scaler(head);
@@ -106,19 +113,51 @@ export function TrendChart(props: Props) {
   const finLine = smoothPath(fin.map((v, i) => [x(i), yF(v)]));
   const headArea = headLine + ` L ${x(n - 1).toFixed(2)} ${(PADT + PLOTH).toFixed(2)} L ${x(0).toFixed(2)} ${(PADT + PLOTH).toFixed(2)} Z`;
 
-  const active = sel == null ? n - 1 : sel;
-  const leftPct = (x(active) / W) * 100;
-  const headTopPct = (yH(head[active]) / H) * 100;
-  const finTopPct = (yF(fin[active]) / H) * 100;
-  const tipTopPct = (Math.min(yH(head[active]), yF(fin[active])) / H) * 100;
   const metricShort = METRICS.find((m) => m.id === metric)!.short;
-
-  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
+  const idxAt = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const rel = ((e.clientX - rect.left) / rect.width) * W;
-    const i = Math.max(0, Math.min(n - 1, Math.round((rel - PADX) / (PLOTW / (n - 1)))));
-    setSel(i);
+    return Math.max(0, Math.min(n - 1, Math.round((rel - PADX) / (PLOTW / (n - 1)))));
   };
+  const onDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const i = idxAt(e);
+    dragStart.current = i;
+    setRange([i, i]);
+    setSel(null);
+  };
+  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const i = idxAt(e);
+    if (dragStart.current != null) setRange([dragStart.current, i]);
+    else if (!range) setSel(i);
+  };
+  const finishDrag = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (dragStart.current == null) return;
+    const s = dragStart.current;
+    const i = idxAt(e);
+    dragStart.current = null;
+    if (i === s) {
+      setRange(null);
+      setSel(i);
+    } else {
+      setRange([Math.min(s, i), Math.max(s, i)]);
+    }
+  };
+  const onLeave = () => {
+    dragStart.current = null;
+    setSel(null);
+  };
+
+  const hasRange = !!range && range[0] !== range[1];
+  const a = range ? range[0] : 0;
+  const b = range ? range[1] : 0;
+
+  const active = sel == null ? n - 1 : sel;
+  const scrubLeft = (x(active) / W) * 100;
+
+  const headDelta = head[b] - head[a];
+  const finDelta = fin[b] - fin[a];
+  const headPct = head[a] ? (headDelta / head[a]) * 100 : 0;
+  const finPct = fin[a] ? (finDelta / fin[a]) * 100 : 0;
 
   return (
     <>
@@ -141,33 +180,54 @@ export function TrendChart(props: Props) {
           <i className="wtsw acc" />
           {metricShort}
         </span>
+        <span className="wthint">Drag across to compare a period</span>
       </div>
 
-      <div className="wtbox" onMouseMove={onMove} onMouseLeave={() => setSel(null)}>
+      <div className="wtbox" onMouseDown={onDown} onMouseMove={onMove} onMouseUp={finishDrag} onMouseLeave={onLeave}>
         <svg className="wtsvg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
           {[0.25, 0.5, 0.75].map((f) => (
             <line key={f} className="wtgrid" x1={PADX} x2={W - PADX} y1={PADT + PLOTH * f} y2={PADT + PLOTH * f} />
           ))}
+          {hasRange && <rect className="wtband" x={x(a)} y={PADT} width={x(b) - x(a)} height={PLOTH} />}
           <path className="wtarea" d={headArea} />
           <path className="wtline2" d={finLine} vectorEffect="non-scaling-stroke" />
           <path className="wtline" d={headLine} vectorEffect="non-scaling-stroke" />
-          <line className="wtguide" x1={x(active)} x2={x(active)} y1={PADT} y2={PADT + PLOTH} vectorEffect="non-scaling-stroke" />
+          {hasRange ? (
+            <>
+              <line className="wtguide" x1={x(a)} x2={x(a)} y1={PADT} y2={PADT + PLOTH} vectorEffect="non-scaling-stroke" />
+              <line className="wtguide" x1={x(b)} x2={x(b)} y1={PADT} y2={PADT + PLOTH} vectorEffect="non-scaling-stroke" />
+            </>
+          ) : (
+            <line className="wtguide" x1={x(active)} x2={x(active)} y1={PADT} y2={PADT + PLOTH} vectorEffect="non-scaling-stroke" />
+          )}
         </svg>
-        <div className="wtdot acc" style={{ left: `${leftPct}%`, top: `${finTopPct}%` }} />
-        <div className="wtdot ink" style={{ left: `${leftPct}%`, top: `${headTopPct}%` }} />
-        <div className="wttip" style={{ left: `${leftPct}%`, top: `${tipTopPct}%` }}>
-          <div className="wttiplabel">{labels[active]}</div>
-          <div className="wttiprow">
-            <i className="wtsw ink" />
-            <b>{Math.round(head[active]).toLocaleString('en-US')}</b>
-            <span>Headcount</span>
-          </div>
-          <div className="wttiprow">
-            <i className="wtsw acc" />
-            <b>${fin[active].toFixed(2)}M</b>
-            <span>{metricShort}</span>
-          </div>
-        </div>
+
+        {hasRange ? (
+          <>
+            <div className="wtdot acc" style={{ left: `${(x(a) / W) * 100}%`, top: `${(yF(fin[a]) / H) * 100}%` }} />
+            <div className="wtdot acc" style={{ left: `${(x(b) / W) * 100}%`, top: `${(yF(fin[b]) / H) * 100}%` }} />
+            <div className="wtdot ink" style={{ left: `${(x(a) / W) * 100}%`, top: `${(yH(head[a]) / H) * 100}%` }} />
+            <div className="wtdot ink" style={{ left: `${(x(b) / W) * 100}%`, top: `${(yH(head[b]) / H) * 100}%` }} />
+          </>
+        ) : (
+          <>
+            <div className="wtdot acc" style={{ left: `${scrubLeft}%`, top: `${(yF(fin[active]) / H) * 100}%` }} />
+            <div className="wtdot ink" style={{ left: `${scrubLeft}%`, top: `${(yH(head[active]) / H) * 100}%` }} />
+            <div className="wttip" style={{ left: `${scrubLeft}%`, top: `${(Math.min(yH(head[active]), yF(fin[active])) / H) * 100}%` }}>
+              <div className="wttiplabel">{labels[active]}</div>
+              <div className="wttiprow">
+                <i className="wtsw ink" />
+                <b>{people(head[active])}</b>
+                <span>Headcount</span>
+              </div>
+              <div className="wttiprow">
+                <i className="wtsw acc" />
+                <b>{money(fin[active])}</b>
+                <span>{metricShort}</span>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="wtaxis">
@@ -177,6 +237,23 @@ export function TrendChart(props: Props) {
           </span>
         ))}
       </div>
+
+      {hasRange && (
+        <div className="wtrange">
+          <div className="wtrangehd">
+            <span className="wtrangeperiod">{labels[a]} → {labels[b]}</span>
+            <button className="wtrangex" onClick={() => setRange(null)}>Clear</button>
+          </div>
+          <div className="wtrangerow">
+            <span className="wtrlbl"><i className="wtsw ink" />Headcount</span>
+            <span className={`wtrval ${headDelta >= 0 ? 'up' : 'down'}`}>{signed(headDelta, people)} ({pctStr(headPct)})</span>
+          </div>
+          <div className="wtrangerow">
+            <span className="wtrlbl"><i className="wtsw acc" />{metricShort}</span>
+            <span className={`wtrval ${finDelta >= 0 ? 'up' : 'down'}`}>{signed(finDelta, money)} ({pctStr(finPct)})</span>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -17,4 +17,9 @@ export const COMPANY_COORDS: Record<string, [number, number]> = {
   sto: [115.85076, -31.95193], // Santos — 250 St Georges Tce
   sfr: [115.84138, -31.95249], // Sandfire — 10 Kings Park Rd, West Perth
   igo: [115.85633, -31.9542], // IGO — 140 St Georges Tce
+  min: [115.82786, -31.9019], // Mineral Resources — 20 Walters Dr, Osborne Park
+  pls: [115.84361, -31.9464], // Pilbara Minerals — 130 Stirling Hwy area / West Perth
+  ltr: [115.8398, -31.9512], // Liontown Resources — West Perth
+  ilu: [115.8599, -31.957], // Iluka Resources — 140 St Georges Tce precinct
+  nst: [115.8256, -31.9481], // Northern Star — Subiaco
 };

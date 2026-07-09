@@ -20,6 +20,22 @@ export interface TrendSection {
   items: TrendItem[];
 }
 
+// "Most viewed" snapshot — what platform users are exploring most right now.
+export interface ViewedItem {
+  kind: 'company' | 'continent' | 'skill';
+  label: string;
+  sub: string;
+  share: string;
+  ticker?: string;
+  skill?: string;
+}
+
+export const MOST_VIEWED: ViewedItem[] = [
+  { kind: 'company', label: 'BHP', sub: 'Diversified Mining', share: '18%', ticker: 'BHP' },
+  { kind: 'continent', label: 'Australia', sub: 'Domestic hubs', share: '23%' },
+  { kind: 'skill', label: 'Autonomous Haulage', sub: 'Occupation', share: '12%', skill: 'Autonomous Haulage' },
+];
+
 export const TREND_SECTIONS: TrendSection[] = [
   {
     id: 'movers',

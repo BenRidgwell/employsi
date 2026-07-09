@@ -1,8 +1,15 @@
 import { useAppStore } from '../../state/store';
 import { COMPANIES } from '../../data/companies';
-import { TREND_SECTIONS, type TrendIcon, type TrendItem } from '../../data/trending';
+import { TREND_SECTIONS, MOST_VIEWED, type TrendIcon, type TrendItem, type ViewedItem } from '../../data/trending';
 
 const TICKER_TO_ID: Record<string, string> = Object.fromEntries(COMPANIES.map((c) => [c.ticker, c.id]));
+
+function ViewedIcon({ kind }: { kind: ViewedItem['kind'] }) {
+  const c = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  if (kind === 'company') return <svg viewBox="0 0 24 24"><path {...c} d="M5 21V6.5l6-2.5v17M11 9l6 2v10M4 21h16M8 8v.01M8 11v.01M8 14v.01" /></svg>;
+  if (kind === 'continent') return <svg viewBox="0 0 24 24"><circle {...c} cx="12" cy="12" r="8.5" /><path {...c} d="M3.5 12h17M12 3.5a13 13 0 0 1 0 17M12 3.5a13 13 0 0 0 0 17" /></svg>;
+  return <svg viewBox="0 0 24 24"><path {...c} d="M13 3 5 13h5l-1 8 8-11h-5l1-7Z" /></svg>;
+}
 
 function SectionIcon({ icon }: { icon: TrendIcon }) {
   const common = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
@@ -25,8 +32,20 @@ export function WhatsTrendingPane() {
   const closeTrending = useAppStore((s) => s.closeTrending);
   const select = useAppStore((s) => s.select);
   const toggleSkillQuery = useAppStore((s) => s.toggleSkillQuery);
+  const setGlobalOut = useAppStore((s) => s.setGlobalOut);
 
   const open = trendingOpen && zoomedOut;
+
+  const activateViewed = (v: ViewedItem) => {
+    if (v.kind === 'company' && v.ticker && TICKER_TO_ID[v.ticker]) select(TICKER_TO_ID[v.ticker]);
+    else if (v.kind === 'skill' && v.skill) {
+      toggleSkillQuery(v.skill);
+      closeTrending();
+    } else if (v.kind === 'continent') {
+      setGlobalOut(v.label !== 'Australia');
+      closeTrending();
+    }
+  };
 
   const activate = (it: TrendItem) => {
     if (it.ticker && TICKER_TO_ID[it.ticker]) {
@@ -56,6 +75,28 @@ export function WhatsTrendingPane() {
       </div>
 
       <div className="briefscroll">
+        <div className="trendsnap">
+          <div className="trendsnaphd">
+            <span className="trendsnaptitle">Most viewed</span>
+            <span className="trendsnapcap">What people are exploring now</span>
+          </div>
+          {MOST_VIEWED.map((v) => (
+            <button className="trendsnaprow" key={v.kind} onClick={() => activateViewed(v)}>
+              <span className={`trendsnapic tv-${v.kind}`}>
+                <ViewedIcon kind={v.kind} />
+              </span>
+              <span className="trendsnapinfo">
+                <span className="trendsnaplabel">{v.label}</span>
+                <span className="trendsnapsub">{v.sub}</span>
+              </span>
+              <span className="trendsnapshare">
+                <b>{v.share}</b>
+                <span>of views</span>
+              </span>
+            </button>
+          ))}
+        </div>
+
         {TREND_SECTIONS.map((s) => (
           <section className="trendcard" key={s.id}>
             <div className="trendcardhead">
