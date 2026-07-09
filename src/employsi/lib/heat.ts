@@ -92,6 +92,8 @@ export interface SpikePoint {
   heightPx: number;
   widthPx: number;
   gradient: string;
+  /** Raw "r,g,b" channels for building rgba() heat-blob gradients. */
+  color: string;
   tooltip?: string;
 }
 
@@ -116,6 +118,7 @@ export function computeSkillSpikes(skill: string): SpikePoint[] {
       heightPx,
       widthPx,
       gradient: spikeGradient(rgb),
+      color: rgb.join(','),
       tooltip: `${CITY_LABEL[id]}: ${Math.round(v)} relative demand`,
     };
   });
@@ -154,6 +157,7 @@ export function computeAmbientSpikes(skill: string, scatter: [number, number][])
       heightPx,
       widthPx,
       gradient: spikeGradient(rgb),
+      color: rgb.join(','),
     };
   });
 }
@@ -179,6 +183,7 @@ export function computeGlobalSpikes(skill: string): SpikePoint[] {
       heightPx,
       widthPx,
       gradient: spikeGradient(rgb),
+      color: rgb.join(','),
       tooltip: `${GLOBAL_HUB_LABEL[id]}: ${Math.round(v)} relative demand`,
     };
   });
@@ -215,6 +220,7 @@ export function computeGlobalAmbientSpikes(skill: string, scatter: [number, numb
       heightPx: Math.round(2 + t * 30),
       widthPx: 3 + t * 2,
       gradient: spikeGradient(rgb),
+      color: rgb.join(','),
     };
   });
 }

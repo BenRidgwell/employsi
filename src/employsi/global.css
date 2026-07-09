@@ -945,31 +945,33 @@ body {
 .auspikes {
   position: absolute;
   inset: 0;
-  transform-style: preserve-3d;
   pointer-events: none;
+  mix-blend-mode: multiply;
 }
-.auspike3d {
+.heatblob {
   position: absolute;
-  width: 0;
-  height: 0;
-  transform-style: preserve-3d;
-  transform: rotateX(-26deg);
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform, opacity;
+  transform: translate(-50%, -50%) scale(1);
+  animation-name: heatpulse;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  filter: blur(4px);
 }
-.auspikecone {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  transform: translateX(-50%);
-  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
-  transform-origin: bottom center;
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.18);
-  transition:
-    height 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
-    width 0.3s ease;
+.heatblobhub {
+  filter: blur(3px);
 }
-.auspikeamb .auspikecone {
-  box-shadow: none;
-  opacity: 0.78;
+@keyframes heatpulse {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(0.9);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.12);
+    opacity: 1;
+  }
 }
 .audothub {
   fill: #1c1c1e;

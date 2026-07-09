@@ -62,13 +62,14 @@ export function GlobeMap({ hubHeat, heatDim, onZoomIn }: { hubHeat: Record<strin
           <path d="M0,10 Q4.5,7 9,10 T18,10" fill="none" stroke="#d3d7dc" strokeWidth="0.8" />
           <animateTransform attributeName="patternTransform" type="translate" from="0 0" to="-18 4" dur="7s" repeatCount="indefinite" />
         </pattern>
-        <radialGradient id="globeOceanFade" cx="50%" cy="50%" r="50%">
+        <radialGradient id="globeOceanFade" cx="50%" cy="50%" r="58%">
           <stop offset="0%" stopColor="#fff" stopOpacity="1" />
-          <stop offset="70%" stopColor="#fff" stopOpacity="1" />
+          <stop offset="55%" stopColor="#fff" stopOpacity="1" />
+          <stop offset="82%" stopColor="#fff" stopOpacity="0.55" />
           <stop offset="100%" stopColor="#fff" stopOpacity="0" />
         </radialGradient>
         <mask id="globeOceanMask">
-          <rect x="-80" y="-60" width="660" height="380" fill="url(#globeOceanFade)" />
+          <rect x="0" y="0" width="500" height="260" fill="url(#globeOceanFade)" />
         </mask>
         <filter id="globeblur" x="-120%" y="-120%" width="340%" height="340%">
           <feGaussianBlur stdDeviation="4" />
@@ -77,10 +78,12 @@ export function GlobeMap({ hubHeat, heatDim, onZoomIn }: { hubHeat: Record<strin
           <feGaussianBlur stdDeviation="1.1" />
         </filter>
       </defs>
-      <rect x="-80" y="-60" width="660" height="380" fill="url(#globeOceanWave)" mask="url(#globeOceanMask)" />
-      {GLOBAL_LAND_PATHS.map((d, i) => (
-        <path key={i} className="globeland" d={d} />
-      ))}
+      <g mask="url(#globeOceanMask)">
+        <rect x="-80" y="-60" width="660" height="380" fill="url(#globeOceanWave)" />
+        {GLOBAL_LAND_PATHS.map((d, i) => (
+          <path key={i} className="globeland" d={d} />
+        ))}
+      </g>
 
       {nonPerthHubs.map((id) => {
         const [cx, cy] = GLOBAL_HUB_XY[id];
