@@ -88,7 +88,7 @@ export function GlobeMap({
           <feGaussianBlur stdDeviation="14 9" />
         </filter>
         <mask id="globeOceanMask">
-          <rect x="22" y="7" width="456" height="246" rx="10" fill="#fff" filter="url(#globeEdgeFeather)" />
+          <rect x="32" y="7" width="436" height="246" rx="10" fill="#fff" filter="url(#globeEdgeFeather)" />
         </mask>
         <filter id="globeblur" x="-120%" y="-120%" width="340%" height="340%">
           <feGaussianBlur stdDeviation="4" />
