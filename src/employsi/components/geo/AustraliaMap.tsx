@@ -62,17 +62,19 @@ export function AustraliaMap({
   cityHeat,
   heatDim,
   onZoomInCity,
+  zoomOrigin,
   ambientSpikes,
   hubSpikes,
 }: {
   cityHeat: Record<string, HeatDisc>;
   heatDim: string;
   onZoomInCity: (city: string) => void;
+  zoomOrigin: string;
   ambientSpikes: SpikePoint[];
   hubSpikes: SpikePoint[];
 }) {
   return (
-    <svg className="aumap" viewBox="0 0 250 230">
+    <svg className="aumap" viewBox="0 0 250 230" style={{ transformOrigin: zoomOrigin }}>
       <defs>
         <filter id="cityblur" x="-120%" y="-120%" width="340%" height="340%">
           <feGaussianBlur stdDeviation="4" />

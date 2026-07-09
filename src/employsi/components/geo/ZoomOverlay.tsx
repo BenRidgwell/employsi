@@ -1,5 +1,5 @@
 import { useAppStore } from '../../state/store';
-import { activeSkillKey } from '../../data/geo';
+import { activeSkillKey, CITY_XY } from '../../data/geo';
 import { AU_SCATTER, GLOBAL_SCATTER } from '../../data/scatter';
 import { computeCityHeat, computeGlobalHeat, computeSkillSpikes, computeAmbientSpikes, computeGlobalSpikes, computeGlobalAmbientSpikes } from '../../lib/heat';
 import { AustraliaMap } from './AustraliaMap';
@@ -14,6 +14,11 @@ export function ZoomOverlay() {
   const zoomInCity = useAppStore((s) => s.zoomInCity);
   const onAuWheel = useAppStore((s) => s.onAuWheel);
   const setGlobalOut = useAppStore((s) => s.setGlobalOut);
+  const localCity = useAppStore((s) => s.localCity);
+
+  // Zoom the Australia map toward the city being entered (not always Perth).
+  const oc = CITY_XY[localCity] || CITY_XY.perth;
+  const auOrigin = `${((oc[0] / 250) * 100).toFixed(1)}% ${((oc[1] / 230) * 100).toFixed(1)}%`;
 
   const skill = activeSkillKey(searchQuery);
   const heatDim = skill ? 'auheat-off' : '';
@@ -30,7 +35,7 @@ export function ZoomOverlay() {
   return (
     <div className={`auview ${auCls}`} onWheel={(e) => onAuWheel(e.deltaY)}>
       <div className={`auscene ${globalOut ? 'scenehide' : ''}`}>
-        <AustraliaMap cityHeat={cityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} ambientSpikes={ambientSpikes} hubSpikes={skillSpikes} />
+        <AustraliaMap cityHeat={cityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} zoomOrigin={auOrigin} ambientSpikes={ambientSpikes} hubSpikes={skillSpikes} />
       </div>
       <div className={`globescene ${globalOut ? 'sceneshow' : ''}`}>
         <GlobeMap hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} onAustralia={() => setGlobalOut(false)} ambientSpikes={globalAmbientSpikes} hubSpikes={globalSpikes} />
