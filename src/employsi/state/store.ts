@@ -137,7 +137,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const s = get();
     if (s.zoomingIn) return;
     markLayerChange();
-    set({ zoomingIn: true });
+    set({ zoomingIn: true, interacted: true });
     clearTimeout(zoomTimer);
     zoomTimer = setTimeout(() => {
       set({ zoomedOut: false, zoomingIn: false, globalOut: false });
@@ -158,13 +158,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (s.globalOut) {
       if (deltaY < 0) {
         markLayerChange();
-        set({ globalOut: false });
+        set({ globalOut: false, interacted: true });
       }
       return;
     }
     if (deltaY > 0) {
       markLayerChange();
-      set({ globalOut: true });
+      set({ globalOut: true, interacted: true });
     } else {
       get().zoomIn();
     }
