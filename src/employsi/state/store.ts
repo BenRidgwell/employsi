@@ -18,6 +18,7 @@ export interface AppState {
   zoomedOut: boolean;
   zoomingIn: boolean;
   globalOut: boolean;
+  localCity: string;
   compareOpen: boolean;
   compareA: string | null;
   compareB: string | null;
@@ -46,6 +47,7 @@ export interface AppState {
   setGlobalOut: (v: boolean) => void;
   setZoomLevel: (n: 0 | 1 | 2) => void;
   zoomIn: () => void;
+  zoomInCity: (city: string) => void;
   globalBack: () => void;
   onAuWheel: (deltaY: number) => void;
 
@@ -88,6 +90,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   zoomedOut: false,
   zoomingIn: false,
   globalOut: false,
+  localCity: 'perth',
   compareOpen: false,
   compareA: null,
   compareB: null,
@@ -133,11 +136,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (n === 1) { set({ zoomedOut: true, globalOut: false, interacted: true }); return; }
     set({ zoomedOut: true, globalOut: true, interacted: true });
   },
-  zoomIn: () => {
+  zoomIn: () => get().zoomInCity('perth'),
+  zoomInCity: (city) => {
     const s = get();
     if (s.zoomingIn) return;
     markLayerChange();
-    set({ zoomingIn: true, interacted: true });
+    set({ zoomingIn: true, interacted: true, localCity: city });
     clearTimeout(zoomTimer);
     zoomTimer = setTimeout(() => {
       set({ zoomedOut: false, zoomingIn: false, globalOut: false });

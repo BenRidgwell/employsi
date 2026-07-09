@@ -11,8 +11,7 @@ export function ZoomOverlay() {
   const globalOut = useAppStore((s) => s.globalOut);
   const heat = useAppStore((s) => s.heat);
   const searchQuery = useAppStore((s) => s.searchQuery);
-  const zoomIn = useAppStore((s) => s.zoomIn);
-  const globalBack = useAppStore((s) => s.globalBack);
+  const zoomInCity = useAppStore((s) => s.zoomInCity);
   const onAuWheel = useAppStore((s) => s.onAuWheel);
   const setGlobalOut = useAppStore((s) => s.setGlobalOut);
 
@@ -26,31 +25,16 @@ export function ZoomOverlay() {
   const globalSpikes = skill && globalOut ? computeGlobalSpikes(skill) : [];
   const globalAmbientSpikes = skill && globalOut ? computeGlobalAmbientSpikes(skill, GLOBAL_SCATTER) : [];
 
-  const auHintText = globalOut
-    ? skill
-      ? `${skill} demand worldwide`
-      : 'Global mining and energy hubs'
-    : skill
-      ? `${skill} demand across Australia`
-      : 'Western Australia — workforce overview';
-  const auBackLabel = globalOut ? 'Back to Australia' : 'Zoom into Perth';
-
   const auCls = [zoomedOut ? 'open' : '', zoomingIn ? 'zoomingin' : ''].join(' ').trim();
 
   return (
     <div className={`auview ${auCls}`} onWheel={(e) => onAuWheel(e.deltaY)}>
       <div className={`auscene ${globalOut ? 'scenehide' : ''}`}>
-        <AustraliaMap cityHeat={cityHeat} heatDim={heatDim} onZoomIn={zoomIn} ambientSpikes={ambientSpikes} hubSpikes={skillSpikes} />
+        <AustraliaMap cityHeat={cityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} ambientSpikes={ambientSpikes} hubSpikes={skillSpikes} />
       </div>
       <div className={`globescene ${globalOut ? 'sceneshow' : ''}`}>
-        <GlobeMap hubHeat={globalCityHeat} heatDim={heatDim} onZoomIn={zoomIn} onAustralia={() => setGlobalOut(false)} ambientSpikes={globalAmbientSpikes} hubSpikes={globalSpikes} />
+        <GlobeMap hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} onAustralia={() => setGlobalOut(false)} ambientSpikes={globalAmbientSpikes} hubSpikes={globalSpikes} />
       </div>
-      {globalOut && (
-        <div className="auhintbar">
-          <span className="auhint">{auHintText}</span>
-          <button className="auback" onClick={globalBack}>{auBackLabel}</button>
-        </div>
-      )}
     </div>
   );
 }

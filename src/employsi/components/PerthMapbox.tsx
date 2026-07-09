@@ -3,7 +3,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useMemo, useRef } from 'react';
 import { useAppStore, companyMatches, type FilterState } from '../state/store';
 import { COMPANIES } from '../data/companies';
-import { COMPANY_COORDS, PERTH_CENTER, PERTH_DEFAULT_ZOOM, PERTH_DEFAULT_PITCH, PERTH_DEFAULT_BEARING } from '../data/mapboxGeo';
+import { COMPANY_COORDS, CITY_VIEWS, PERTH_CENTER, PERTH_DEFAULT_ZOOM, PERTH_DEFAULT_PITCH, PERTH_DEFAULT_BEARING } from '../data/mapboxGeo';
 import { chipMetric, type HeatMetric } from '../lib/heat';
 import { heatColor, rgbCss } from '../lib/color';
 
@@ -253,14 +253,22 @@ export function PerthMapbox() {
       if (z >= ZOOM_OUT_THRESHOLD) crossedRef.current = false;
     });
 
-    const onZoomReset = () => {
-      map.flyTo({
-        center: PERTH_CENTER,
-        zoom: PERTH_DEFAULT_ZOOM,
-        pitch: PERTH_DEFAULT_PITCH,
-        bearing: PERTH_DEFAULT_BEARING,
-        duration: 800,
+    // Show/hide the company heat layers + pills (only Perth has companies).
+    const setCompaniesVisible = (show: boolean) => {
+      [HALO_LAYER, CORE_LAYER, PULSE_LAYER].forEach((id) => {
+        if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', show ? 'visible' : 'none');
       });
+      Object.values(markersRef.current).forEach((m) => {
+        (m.getElement() as HTMLElement).style.display = show ? '' : 'none';
+      });
+    };
+    const onZoomReset = () => {
+      const city = useAppStore.getState().localCity;
+      const v = CITY_VIEWS[city] || CITY_VIEWS.perth;
+      setCompaniesVisible(city === 'perth');
+      // Jump (hidden behind the overlay fade) so we don't fly across the
+      // continent, then the reveal shows the correct city.
+      map.jumpTo({ center: v.center, zoom: v.zoom, pitch: v.pitch, bearing: v.bearing });
     };
     window.addEventListener('perth-zoom-reset', onZoomReset);
 

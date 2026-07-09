@@ -20,11 +20,11 @@ const CITY_MARKERS: { id: string; dx: number; dy: number; anchor: 'start' | 'mid
   { id: 'hobart', dx: 7, dy: 3, anchor: 'start' },
 ];
 
-// Hub-styled cities (like Perth) — clickable to zoom into the local layer, but
-// without the cursor tap-guide animation that Perth carries.
-const HUB_CITIES: { id: string; labelDy: number }[] = [
-  { id: 'adelaide', labelDy: -7 },
-  { id: 'brisbane', labelDy: -7 },
+// Hub-styled cities (like Perth) — clickable to zoom into their own local
+// layer, but without the cursor tap-guide animation that Perth carries.
+const HUB_CITIES: { id: string; labelDy: number; local: string }[] = [
+  { id: 'adelaide', labelDy: -7, local: 'adelaide' },
+  { id: 'brisbane', labelDy: -7, local: 'brisbane' },
 ];
 
 function Plane({ dur, begin, path }: { dur: string; begin: string; path: string }) {
@@ -61,13 +61,13 @@ function CityHeat({ cx, cy, heat, dim }: { cx: number; cy: number; heat: HeatDis
 export function AustraliaMap({
   cityHeat,
   heatDim,
-  onZoomIn,
+  onZoomInCity,
   ambientSpikes,
   hubSpikes,
 }: {
   cityHeat: Record<string, HeatDisc>;
   heatDim: string;
-  onZoomIn: () => void;
+  onZoomInCity: (city: string) => void;
   ambientSpikes: SpikePoint[];
   hubSpikes: SpikePoint[];
 }) {
@@ -126,8 +126,8 @@ export function AustraliaMap({
         </g>
       ))}
 
-      {HUB_CITIES.map(({ id, labelDy }) => (
-        <g className="aucity hub" key={id} onClick={onZoomIn}>
+      {HUB_CITIES.map(({ id, labelDy, local }) => (
+        <g className="aucity hub" key={id} onClick={() => onZoomInCity(local)}>
           <circle className="auring" cx={CITY_XY[id][0]} cy={CITY_XY[id][1]} r="8" />
           <circle className="audot audothub" cx={CITY_XY[id][0]} cy={CITY_XY[id][1]} r="4.4" />
           <text className="aulabel" x={CITY_XY[id][0]} y={CITY_XY[id][1] + labelDy} textAnchor="middle">
@@ -135,7 +135,7 @@ export function AustraliaMap({
           </text>
         </g>
       ))}
-      <g className="aucity hub" onClick={onZoomIn}>
+      <g className="aucity hub" onClick={() => onZoomInCity('perth')}>
         <circle className="auring" cx={CITY_XY.perth[0]} cy={CITY_XY.perth[1]} r="8" />
         <circle className="audot audothub" cx={CITY_XY.perth[0]} cy={CITY_XY.perth[1]} r="4.4" />
         <text className="aulabel" x={CITY_XY.perth[0]} y={CITY_XY.perth[1] - 7} textAnchor="middle">

@@ -62,22 +62,31 @@ const CITY_LABEL_OFFSET: Record<string, { dx: number; dy: number; anchor: 'start
   brisbane: { dx: -8, dy: 3, anchor: 'end' },
 };
 
+// Australian cities rendered as clickable hubs (like Perth) — each opens its
+// local city layer.
+const CITY_HUBS: { id: string; dx: number; dy: number; anchor: 'start' | 'middle' | 'end' }[] = [
+  { id: 'perth', dx: 0, dy: -7, anchor: 'middle' },
+  { id: 'brisbane', dx: -6, dy: -7, anchor: 'end' },
+  { id: 'adelaide', dx: 0, dy: 12, anchor: 'middle' },
+];
+
 export function GlobeMap({
   hubHeat,
   heatDim,
-  onZoomIn,
+  onZoomInCity,
   onAustralia,
   ambientSpikes,
   hubSpikes,
 }: {
   hubHeat: Record<string, HeatDisc>;
   heatDim: string;
-  onZoomIn: () => void;
+  onZoomInCity: (city: string) => void;
   onAustralia: () => void;
   ambientSpikes: SpikePoint[];
   hubSpikes: SpikePoint[];
 }) {
   const nonPerthHubs = Object.keys(GLOBAL_HUB_XY).filter((id) => id !== 'perth');
+  const plainHubs = nonPerthHubs.filter((id) => !CITY_HUBS.some((h) => h.id === id));
   return (
     <svg className="globemap" viewBox="0 0 500 260">
       <defs>
@@ -121,7 +130,7 @@ export function GlobeMap({
         })}
         <HubHeat cx={GLOBAL_HUB_XY.perth[0]} cy={GLOBAL_HUB_XY.perth[1]} heat={hubHeat.perth} dim={heatDim} />
 
-        {nonPerthHubs.map((id) => {
+        {plainHubs.map((id) => {
           const [cx, cy] = GLOBAL_HUB_XY[id];
           const off = CITY_LABEL_OFFSET[id];
           return (
@@ -141,11 +150,16 @@ export function GlobeMap({
           ),
         )}
 
-        <g className="aucity hub" onClick={onZoomIn}>
-          <circle className="auring" cx={GLOBAL_HUB_XY.perth[0]} cy={GLOBAL_HUB_XY.perth[1]} r="8" />
-          <circle className="audot audothub" cx={GLOBAL_HUB_XY.perth[0]} cy={GLOBAL_HUB_XY.perth[1]} r="4.4" />
-          <text className="aulabel" x={GLOBAL_HUB_XY.perth[0]} y={GLOBAL_HUB_XY.perth[1] - 7} textAnchor="middle">Perth</text>
-        </g>
+        {CITY_HUBS.map(({ id, dx, dy, anchor }) => {
+          const [cx, cy] = GLOBAL_HUB_XY[id];
+          return (
+            <g className="aucity hub" key={id} onClick={() => onZoomInCity(id)}>
+              <circle className="auring" cx={cx} cy={cy} r="8" />
+              <circle className="audot audothub" cx={cx} cy={cy} r="4.4" />
+              <text className="aulabel" x={cx + dx} y={cy + dy} textAnchor={anchor}>{GLOBAL_HUB_LABEL[id]}</text>
+            </g>
+          );
+        })}
 
         {TANKER_ROUTES.map((r, i) => (
           <Tanker key={i} {...r} />

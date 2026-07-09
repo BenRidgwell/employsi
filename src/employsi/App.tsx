@@ -6,6 +6,7 @@ import { HintPulse } from './components/HintPulse';
 import { ZoomSlider } from './components/ZoomSlider';
 import { MapActions } from './components/MapActions';
 import { ToolsDock } from './components/ToolsDock';
+import { HelpDock } from './components/HelpDock';
 import { Legend } from './components/Legend';
 import { HeatKey } from './components/HeatKey';
 import { ZoomOverlay } from './components/geo/ZoomOverlay';
@@ -34,6 +35,7 @@ function App() {
       <DailyBriefPane />
       <WhatsTrendingPane />
       <ToolsDock />
+      <HelpDock />
     </div>
   );
 }

@@ -8,6 +8,20 @@ export const PERTH_DEFAULT_ZOOM = 15.3;
 export const PERTH_DEFAULT_PITCH = 60;
 export const PERTH_DEFAULT_BEARING = -17.6;
 
+// Local city views. Only Perth has companies mapped for now; the others open
+// the same 3D city look with no company pins yet.
+export interface CityView {
+  center: [number, number];
+  zoom: number;
+  pitch: number;
+  bearing: number;
+}
+export const CITY_VIEWS: Record<string, CityView> = {
+  perth: { center: PERTH_CENTER, zoom: PERTH_DEFAULT_ZOOM, pitch: PERTH_DEFAULT_PITCH, bearing: PERTH_DEFAULT_BEARING },
+  brisbane: { center: [153.026, -27.4705], zoom: 15.2, pitch: 60, bearing: -18 },
+  adelaide: { center: [138.6007, -34.9285], zoom: 15.2, pitch: 60, bearing: -16 },
+};
+
 export const COMPANY_COORDS: Record<string, [number, number]> = {
   rio: [115.85582, -31.95409], // Rio Tinto — Central Park, 152 St Georges Tce
   bhp: [115.85455, -31.95471], // BHP — Brookfield Place, 125 St Georges Tce
