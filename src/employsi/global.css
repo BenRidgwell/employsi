@@ -942,34 +942,26 @@ body {
   stroke: #c7cad1;
   stroke-width: 1.2;
 }
-.auspikes {
-  position: absolute;
-  inset: 0;
+.heatblobs {
   pointer-events: none;
   mix-blend-mode: multiply;
 }
 .heatblob {
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
+  transform-box: fill-box;
+  transform-origin: center;
   will-change: transform, opacity;
-  transform: translate(-50%, -50%) scale(1);
   animation-name: heatpulse;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
-  filter: blur(4px);
-}
-.heatblobhub {
-  filter: blur(3px);
 }
 @keyframes heatpulse {
   0%,
   100% {
-    transform: translate(-50%, -50%) scale(0.9);
-    opacity: 0.85;
+    transform: scale(0.9);
+    opacity: 0.82;
   }
   50% {
-    transform: translate(-50%, -50%) scale(1.12);
+    transform: scale(1.12);
     opacity: 1;
   }
 }

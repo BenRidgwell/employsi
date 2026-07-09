@@ -1,37 +1,43 @@
 import type { CSSProperties } from 'react';
 import type { SpikePoint } from '../../lib/heat';
 
-// Soft, breathing radial "heat" blobs — sized by demand magnitude (heightPx)
-// and coloured by the red→amber→green ramp. Hubs read as bright cores, the
-// ambient scatter fills the space between them so the field looks like a
-// continuous density heat map rather than discrete markers.
-function blobStyle(sp: SpikePoint, size: number, i: number, peak: number): CSSProperties {
-  const c = sp.color;
+// Soft, breathing radial "heat" blobs rendered inside the host map's SVG so
+// they sit under the location dots, labels and hub markers. The whole field is
+// blurred as one group, so overlapping blobs melt into a continuous density
+// heat map. Ambient scatter fills the space between the brighter hub cores.
+function pulse(i: number): CSSProperties {
   return {
-    left: `${sp.leftPct}%`,
-    top: `${sp.topPct}%`,
-    width: `${size}px`,
-    height: `${size}px`,
-    background: `radial-gradient(circle at center, rgba(${c},${peak}) 0%, rgba(${c},${(peak * 0.55).toFixed(2)}) 40%, rgba(${c},0) 72%)`,
     animationDuration: `${(2.8 + (i % 5) * 0.45).toFixed(2)}s`,
     animationDelay: `${((i % 7) * 0.31).toFixed(2)}s`,
   };
 }
 
-export function SpikeField({ ambient, hubs }: { ambient: SpikePoint[]; hubs: SpikePoint[] }) {
+export function SpikeField({ ambient, hubs, blurId }: { ambient: SpikePoint[]; hubs: SpikePoint[]; blurId: string }) {
+  if (!ambient.length && !hubs.length) return null;
   return (
-    <div className="auspikes">
+    <g className="heatblobs" filter={`url(#${blurId})`}>
       {ambient.map((ap, i) => (
-        <div key={`amb-${i}`} className="heatblob" style={blobStyle(ap, 18 + ap.heightPx * 1.8, i, 0.4)} />
-      ))}
-      {hubs.map((sp, i) => (
-        <div
-          key={sp.id}
-          className="heatblob heatblobhub"
-          style={blobStyle(sp, 36 + sp.heightPx * 1.05, i, 0.62)}
-          title={sp.tooltip}
+        <circle
+          key={`amb-${i}`}
+          className="heatblob"
+          cx={ap.cx}
+          cy={ap.cy}
+          r={ap.r}
+          style={{ fill: `rgba(${ap.color},0.45)`, ...pulse(i) }}
         />
       ))}
-    </div>
+      {hubs.map((sp, i) => (
+        <circle
+          key={sp.id}
+          className="heatblob heatblobhub"
+          cx={sp.cx}
+          cy={sp.cy}
+          r={sp.r}
+          style={{ fill: `rgba(${sp.color},0.66)`, ...pulse(i) }}
+        >
+          {sp.tooltip && <title>{sp.tooltip}</title>}
+        </circle>
+      ))}
+    </g>
   );
 }

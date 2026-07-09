@@ -1,6 +1,8 @@
 import { AU_STATE_PATHS, AU_LINE_PATHS } from '../../data/geoPaths';
 import { CITY_XY, CITY_LABEL } from '../../data/geo';
 import type { HeatDisc } from '../../lib/color';
+import type { SpikePoint } from '../../lib/heat';
+import { SpikeField } from './SpikeField';
 
 // Decorative FIFO flight arcs out of Perth (29.4,140.5) to the eastern cities.
 const PLANE_ROUTES = [
@@ -50,12 +52,27 @@ function CityHeat({ cx, cy, heat, dim }: { cx: number; cy: number; heat: HeatDis
   );
 }
 
-export function AustraliaMap({ cityHeat, heatDim, onZoomIn }: { cityHeat: Record<string, HeatDisc>; heatDim: string; onZoomIn: () => void }) {
+export function AustraliaMap({
+  cityHeat,
+  heatDim,
+  onZoomIn,
+  ambientSpikes,
+  hubSpikes,
+}: {
+  cityHeat: Record<string, HeatDisc>;
+  heatDim: string;
+  onZoomIn: () => void;
+  ambientSpikes: SpikePoint[];
+  hubSpikes: SpikePoint[];
+}) {
   return (
     <svg className="aumap" viewBox="0 0 250 230">
       <defs>
         <filter id="cityblur" x="-120%" y="-120%" width="340%" height="340%">
           <feGaussianBlur stdDeviation="4" />
+        </filter>
+        <filter id="auheatblur" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="3.2" />
         </filter>
         <filter id="citycore" x="-120%" y="-120%" width="340%" height="340%">
           <feGaussianBlur stdDeviation="1.1" />
@@ -83,6 +100,8 @@ export function AustraliaMap({ cityHeat, heatDim, onZoomIn }: { cityHeat: Record
       {Object.entries(AU_LINE_PATHS).map(([id, d]) => (
         <path key={id} className="auline" id={id} d={d} />
       ))}
+
+      <SpikeField ambient={ambientSpikes} hubs={hubSpikes} blurId="auheatblur" />
 
       {CITY_MARKERS.map(({ id }) => (
         <CityHeat key={`heat-${id}`} cx={CITY_XY[id][0]} cy={CITY_XY[id][1]} heat={cityHeat[id]} dim={heatDim} />

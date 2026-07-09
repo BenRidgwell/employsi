@@ -1,6 +1,6 @@
 import { STATE_STATS, CITY_STATE, CITY_XY, CITY_LABEL, GLOBAL_STATS, GLOBAL_HUB_XY, GLOBAL_HUB_LABEL, SKILL_DEMAND, GLOBAL_SKILL_DEMAND } from '../data/geo';
 import { COMPANIES } from '../data/companies';
-import { heatDisc, skillColorAt, spikeGradient, type HeatDisc } from './color';
+import { heatDisc, skillColorAt, type HeatDisc } from './color';
 
 export type HeatMetric = 'salary' | 'growth' | 'turnover';
 
@@ -87,12 +87,11 @@ export function skillLegend(skill: string): HeatLegend {
 export interface SpikePoint {
   id?: string;
   label?: string;
-  leftPct: string;
-  topPct: string;
-  heightPx: number;
-  widthPx: number;
-  gradient: string;
-  /** Raw "r,g,b" channels for building rgba() heat-blob gradients. */
+  /** Position + radius in the host map's SVG viewBox units. */
+  cx: number;
+  cy: number;
+  r: number;
+  /** Raw "r,g,b" channels for building rgba() heat-blob fills. */
   color: string;
   tooltip?: string;
 }
@@ -108,16 +107,12 @@ export function computeSkillSpikes(skill: string): SpikePoint[] {
     const v = D[id];
     const t = (v - mn) / ((mx - mn) || 1);
     const rgb = skillColorAt(t);
-    const heightPx = Math.round(16 + t * 100);
-    const widthPx = 8 + Math.round(t * 3);
     return {
       id,
       label: CITY_LABEL[id],
-      leftPct: ((cx / 250) * 100).toFixed(2),
-      topPct: ((cy / 230) * 100).toFixed(2),
-      heightPx,
-      widthPx,
-      gradient: spikeGradient(rgb),
+      cx,
+      cy,
+      r: 7 + t * 16,
       color: rgb.join(','),
       tooltip: `${CITY_LABEL[id]}: ${Math.round(v)} relative demand`,
     };
@@ -149,14 +144,10 @@ export function computeAmbientSpikes(skill: string, scatter: [number, number][])
     const t0 = (v - mn) / ((mx - mn) || 1);
     const t = Math.max(0, Math.min(1, Math.pow(Math.max(0, t0), 1.8) * (0.7 + rnd() * 0.5)));
     const rgb = skillColorAt(Math.min(1, t0));
-    const heightPx = Math.round(2 + t * 30);
-    const widthPx = 3 + t * 2;
     return {
-      leftPct: ((x / 250) * 100).toFixed(2),
-      topPct: ((y / 230) * 100).toFixed(2),
-      heightPx,
-      widthPx,
-      gradient: spikeGradient(rgb),
+      cx: x,
+      cy: y,
+      r: 3 + t * 9,
       color: rgb.join(','),
     };
   });
@@ -173,16 +164,12 @@ export function computeGlobalSpikes(skill: string): SpikePoint[] {
     const v = D[id];
     const t = (v - mn) / ((mx - mn) || 1);
     const rgb = skillColorAt(t);
-    const heightPx = Math.round(16 + t * 100);
-    const widthPx = 8 + Math.round(t * 3);
     return {
       id,
       label: GLOBAL_HUB_LABEL[id],
-      leftPct: ((cx / 500) * 100).toFixed(2),
-      topPct: ((cy / 260) * 100).toFixed(2),
-      heightPx,
-      widthPx,
-      gradient: spikeGradient(rgb),
+      cx,
+      cy,
+      r: 9 + t * 20,
       color: rgb.join(','),
       tooltip: `${GLOBAL_HUB_LABEL[id]}: ${Math.round(v)} relative demand`,
     };
@@ -215,11 +202,9 @@ export function computeGlobalAmbientSpikes(skill: string, scatter: [number, numb
     const t = Math.max(0, Math.min(1, Math.pow(Math.max(0, t0), 1.8) * (0.7 + rnd() * 0.5)));
     const rgb = skillColorAt(Math.min(1, t0));
     return {
-      leftPct: ((x / 500) * 100).toFixed(2),
-      topPct: ((y / 260) * 100).toFixed(2),
-      heightPx: Math.round(2 + t * 30),
-      widthPx: 3 + t * 2,
-      gradient: spikeGradient(rgb),
+      cx: x,
+      cy: y,
+      r: 4 + t * 12,
       color: rgb.join(','),
     };
   });

@@ -1,6 +1,8 @@
 import { GLOBAL_LAND_PATHS } from '../../data/geoPaths';
 import { GLOBAL_HUB_XY, GLOBAL_HUB_LABEL } from '../../data/geo';
 import type { HeatDisc } from '../../lib/color';
+import type { SpikePoint } from '../../lib/heat';
+import { SpikeField } from './SpikeField';
 
 // Decorative shipping arcs between hubs (endpoints follow GLOBAL_HUB_XY).
 const TANKER_ROUTES = [
@@ -51,7 +53,19 @@ const CITY_LABEL_OFFSET: Record<string, { dx: number; dy: number; anchor: 'start
   singapore: { dx: 8, dy: 3, anchor: 'start' },
 };
 
-export function GlobeMap({ hubHeat, heatDim, onZoomIn }: { hubHeat: Record<string, HeatDisc>; heatDim: string; onZoomIn: () => void }) {
+export function GlobeMap({
+  hubHeat,
+  heatDim,
+  onZoomIn,
+  ambientSpikes,
+  hubSpikes,
+}: {
+  hubHeat: Record<string, HeatDisc>;
+  heatDim: string;
+  onZoomIn: () => void;
+  ambientSpikes: SpikePoint[];
+  hubSpikes: SpikePoint[];
+}) {
   const nonPerthHubs = Object.keys(GLOBAL_HUB_XY).filter((id) => id !== 'perth');
   return (
     <svg className="globemap" viewBox="0 0 500 260">
@@ -77,6 +91,9 @@ export function GlobeMap({ hubHeat, heatDim, onZoomIn }: { hubHeat: Record<strin
         <filter id="globecore" x="-120%" y="-120%" width="340%" height="340%">
           <feGaussianBlur stdDeviation="1.1" />
         </filter>
+        <filter id="globeheatblur" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="4.5" />
+        </filter>
       </defs>
       <g mask="url(#globeOceanMask)">
         <rect x="-80" y="-60" width="660" height="380" fill="url(#globeOceanWave)" />
@@ -84,6 +101,8 @@ export function GlobeMap({ hubHeat, heatDim, onZoomIn }: { hubHeat: Record<strin
           <path key={i} className="globeland" d={d} />
         ))}
       </g>
+
+      <SpikeField ambient={ambientSpikes} hubs={hubSpikes} blurId="globeheatblur" />
 
       {nonPerthHubs.map((id) => {
         const [cx, cy] = GLOBAL_HUB_XY[id];

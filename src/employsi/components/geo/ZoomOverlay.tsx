@@ -4,7 +4,6 @@ import { AU_SCATTER, GLOBAL_SCATTER } from '../../data/scatter';
 import { computeCityHeat, computeGlobalHeat, computeSkillSpikes, computeAmbientSpikes, computeGlobalSpikes, computeGlobalAmbientSpikes } from '../../lib/heat';
 import { AustraliaMap } from './AustraliaMap';
 import { GlobeMap } from './GlobeMap';
-import { SpikeField } from './SpikeField';
 
 export function ZoomOverlay() {
   const zoomedOut = useAppStore((s) => s.zoomedOut);
@@ -40,12 +39,10 @@ export function ZoomOverlay() {
   return (
     <div className={`auview ${auCls}`} onWheel={(e) => onAuWheel(e.deltaY)}>
       <div className={`auscene ${globalOut ? 'scenehide' : ''}`}>
-        <AustraliaMap cityHeat={cityHeat} heatDim={heatDim} onZoomIn={zoomIn} />
-        <SpikeField ambient={ambientSpikes} hubs={skillSpikes} />
+        <AustraliaMap cityHeat={cityHeat} heatDim={heatDim} onZoomIn={zoomIn} ambientSpikes={ambientSpikes} hubSpikes={skillSpikes} />
       </div>
       <div className={`globescene ${globalOut ? 'sceneshow' : ''}`}>
-        <GlobeMap hubHeat={globalCityHeat} heatDim={heatDim} onZoomIn={zoomIn} />
-        <SpikeField ambient={globalAmbientSpikes} hubs={globalSpikes} />
+        <GlobeMap hubHeat={globalCityHeat} heatDim={heatDim} onZoomIn={zoomIn} ambientSpikes={globalAmbientSpikes} hubSpikes={globalSpikes} />
       </div>
       <div className="auhintbar">
         <span className="auhint">{auHintText}</span>
