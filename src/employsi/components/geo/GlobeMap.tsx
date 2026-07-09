@@ -77,10 +77,10 @@ export function GlobeMap({
           <animateTransform attributeName="patternTransform" type="translate" from="0 0" to="-18 4" dur="7s" repeatCount="indefinite" />
         </pattern>
         <filter id="globeEdgeFeather" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="5" />
+          <feGaussianBlur stdDeviation="2.6" />
         </filter>
         <mask id="globeOceanMask">
-          <rect x="7" y="4" width="486" height="252" rx="8" fill="#fff" filter="url(#globeEdgeFeather)" />
+          <rect x="3" y="2" width="494" height="256" rx="5" fill="#fff" filter="url(#globeEdgeFeather)" />
         </mask>
         <filter id="globeblur" x="-120%" y="-120%" width="340%" height="340%">
           <feGaussianBlur stdDeviation="4" />
