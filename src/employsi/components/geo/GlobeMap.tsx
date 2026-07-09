@@ -4,6 +4,10 @@ import type { HeatDisc } from '../../lib/color';
 import type { SpikePoint } from '../../lib/heat';
 import { SpikeField } from './SpikeField';
 
+// Shrink the geography + markers slightly within the feathered frame so the
+// map isn't tight to the soft edges (ocean still fills to the border).
+const GEO_SCALE = 'translate(250 130) scale(0.93) translate(-250 -130)';
+
 // Decorative shipping arcs between hubs (endpoints follow GLOBAL_HUB_XY).
 const TANKER_ROUTES = [
   { dur: '26s', begin: '0s', path: 'M435,223 Q430,188 414,162' }, // Perth → Singapore
@@ -94,42 +98,46 @@ export function GlobeMap({
       </defs>
       <g mask="url(#globeOceanMask)">
         <rect x="-80" y="-60" width="660" height="380" fill="url(#globeOceanWave)" />
-        {GLOBAL_LAND_PATHS.map((d, i) => (
-          <path key={i} className="globeland" d={d} />
+        <g transform={GEO_SCALE}>
+          {GLOBAL_LAND_PATHS.map((d, i) => (
+            <path key={i} className="globeland" d={d} />
+          ))}
+        </g>
+      </g>
+
+      <g transform={GEO_SCALE}>
+        <SpikeField ambient={ambientSpikes} hubs={hubSpikes} blurId="globeheatblur" />
+
+        {nonPerthHubs.map((id) => {
+          const [cx, cy] = GLOBAL_HUB_XY[id];
+          return <HubHeat key={id} cx={cx} cy={cy} heat={hubHeat[id]} dim={heatDim} />;
+        })}
+        <HubHeat cx={GLOBAL_HUB_XY.perth[0]} cy={GLOBAL_HUB_XY.perth[1]} heat={hubHeat.perth} dim={heatDim} />
+
+        {nonPerthHubs.map((id) => {
+          const [cx, cy] = GLOBAL_HUB_XY[id];
+          const off = CITY_LABEL_OFFSET[id];
+          return (
+            <g className="aucity" key={id}>
+              <circle className="audot" cx={cx} cy={cy} r="3.2" />
+              <text className="aumute" x={cx + off.dx} y={cy + off.dy} textAnchor={off.anchor}>{GLOBAL_HUB_LABEL[id]}</text>
+            </g>
+          );
+        })}
+        {CONTINENT_LABELS.map((c) => (
+          <text key={c.label} className="aucountry" x={c.x} y={c.y} textAnchor="middle">{c.label}</text>
+        ))}
+
+        <g className="aucity hub" onClick={onZoomIn}>
+          <circle className="auring" cx={GLOBAL_HUB_XY.perth[0]} cy={GLOBAL_HUB_XY.perth[1]} r="8" />
+          <circle className="audot audothub" cx={GLOBAL_HUB_XY.perth[0]} cy={GLOBAL_HUB_XY.perth[1]} r="4.4" />
+          <text className="aulabel" x={GLOBAL_HUB_XY.perth[0]} y={GLOBAL_HUB_XY.perth[1] - 7} textAnchor="middle">Perth</text>
+        </g>
+
+        {TANKER_ROUTES.map((r, i) => (
+          <Tanker key={i} {...r} />
         ))}
       </g>
-
-      <SpikeField ambient={ambientSpikes} hubs={hubSpikes} blurId="globeheatblur" />
-
-      {nonPerthHubs.map((id) => {
-        const [cx, cy] = GLOBAL_HUB_XY[id];
-        return <HubHeat key={id} cx={cx} cy={cy} heat={hubHeat[id]} dim={heatDim} />;
-      })}
-      <HubHeat cx={GLOBAL_HUB_XY.perth[0]} cy={GLOBAL_HUB_XY.perth[1]} heat={hubHeat.perth} dim={heatDim} />
-
-      {nonPerthHubs.map((id) => {
-        const [cx, cy] = GLOBAL_HUB_XY[id];
-        const off = CITY_LABEL_OFFSET[id];
-        return (
-          <g className="aucity" key={id}>
-            <circle className="audot" cx={cx} cy={cy} r="3.2" />
-            <text className="aumute" x={cx + off.dx} y={cy + off.dy} textAnchor={off.anchor}>{GLOBAL_HUB_LABEL[id]}</text>
-          </g>
-        );
-      })}
-      {CONTINENT_LABELS.map((c) => (
-        <text key={c.label} className="aucountry" x={c.x} y={c.y} textAnchor="middle">{c.label}</text>
-      ))}
-
-      <g className="aucity hub" onClick={onZoomIn}>
-        <circle className="auring" cx={GLOBAL_HUB_XY.perth[0]} cy={GLOBAL_HUB_XY.perth[1]} r="8" />
-        <circle className="audot audothub" cx={GLOBAL_HUB_XY.perth[0]} cy={GLOBAL_HUB_XY.perth[1]} r="4.4" />
-        <text className="aulabel" x={GLOBAL_HUB_XY.perth[0]} y={GLOBAL_HUB_XY.perth[1] - 7} textAnchor="middle">Perth</text>
-      </g>
-
-      {TANKER_ROUTES.map((r, i) => (
-        <Tanker key={i} {...r} />
-      ))}
     </svg>
   );
 }

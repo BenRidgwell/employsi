@@ -722,8 +722,8 @@ body {
   color: var(--ink);
 }
 .mapactions .mabtn svg {
-  width: 19px;
-  height: 19px;
+  width: 23px;
+  height: 23px;
   overflow: visible;
 }
 .mapactions .malabel {
