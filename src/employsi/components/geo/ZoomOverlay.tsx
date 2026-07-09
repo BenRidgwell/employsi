@@ -44,10 +44,12 @@ export function ZoomOverlay() {
       <div className={`globescene ${globalOut ? 'sceneshow' : ''}`}>
         <GlobeMap hubHeat={globalCityHeat} heatDim={heatDim} onZoomIn={zoomIn} ambientSpikes={globalAmbientSpikes} hubSpikes={globalSpikes} />
       </div>
-      <div className="auhintbar">
-        <span className="auhint">{auHintText}</span>
-        <button className="auback" onClick={globalBack}>{auBackLabel}</button>
-      </div>
+      {globalOut && (
+        <div className="auhintbar">
+          <span className="auhint">{auHintText}</span>
+          <button className="auback" onClick={globalBack}>{auBackLabel}</button>
+        </div>
+      )}
     </div>
   );
 }
