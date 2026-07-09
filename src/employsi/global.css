@@ -1043,15 +1043,59 @@ body {
 .trendcardicon svg {
   width: 17px;
   height: 17px;
+  transform-box: fill-box;
+  transform-origin: center;
 }
-.trendcardicon.ic-movers {
-  background: linear-gradient(145deg, #2b6cb0, #234e86);
-}
-.trendcardicon.ic-salary {
-  background: linear-gradient(145deg, #159d67, #0e7a50);
-}
+.trendcardicon.ic-movers,
+.trendcardicon.ic-salary,
 .trendcardicon.ic-hot {
-  background: linear-gradient(145deg, #e0673a, #c14e28);
+  background: linear-gradient(150deg, #2c2c31, #1c1c1e);
+}
+/* Big movers: trend line ticks up */
+.ic-movers svg {
+  animation: icmovers 2.6s ease-in-out infinite;
+}
+@keyframes icmovers {
+  0%,
+  100% {
+    transform: translate(-0.4px, 0.7px);
+  }
+  50% {
+    transform: translate(0.4px, -0.9px);
+  }
+}
+/* Salary spenders: dollar mark gently pulses */
+.ic-salary svg {
+  animation: icsalary 2.8s ease-in-out infinite;
+}
+@keyframes icsalary {
+  0%,
+  100% {
+    transform: scale(0.94);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+/* Hot companies: flame flicker */
+.ic-hot svg {
+  transform-origin: center bottom;
+  animation: ichot 1.5s ease-in-out infinite;
+}
+@keyframes ichot {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  25% {
+    transform: scale(1.08, 0.94);
+  }
+  50% {
+    transform: scale(0.94, 1.07);
+  }
+  75% {
+    transform: scale(1.05, 0.98);
+  }
 }
 .trendcardtitle {
   font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
