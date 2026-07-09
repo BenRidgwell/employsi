@@ -417,6 +417,7 @@ body {
 }
 .pcompare {
   flex: 0 0 auto;
+  margin-left: auto;
   padding: 8px 14px;
   border-radius: 9px;
   border: 1px solid var(--ink);
