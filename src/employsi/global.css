@@ -809,7 +809,7 @@ body {
 /* Right-side expandable tools dock (Employer / Employee) */
 .toolsdock {
   position: fixed;
-  top: 340px;
+  top: 250px;
   right: 26px;
   z-index: 38;
   display: flex;
@@ -1919,6 +1919,54 @@ body {
 }
 .mapboxgl-ctrl-logo {
   display: none !important;
+}
+/* Current local-city indicator */
+.citybadge {
+  position: fixed;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 22px -14px rgba(15, 27, 61, 0.4);
+  pointer-events: none;
+  animation: citybadgein 0.32s ease both;
+}
+.citybadgedot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1c1c1e;
+}
+.citybadgename {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--ink);
+}
+.citybadgesub {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--slate);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+@keyframes citybadgein {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 /* "Need help?" contextual tour dock (bottom-right, above the mapbox ⓘ) */
 .helpdock {
