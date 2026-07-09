@@ -809,12 +809,12 @@ body {
 /* Right-side expandable tools dock (Employer / Employee) */
 .toolsdock {
   position: fixed;
-  top: 250px;
+  top: 340px;
   right: 26px;
   z-index: 38;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   align-items: flex-end;
 }
 .tdcluster {
@@ -825,8 +825,8 @@ body {
 }
 .tdfab {
   flex: 0 0 auto;
-  width: 50px;
-  height: 50px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.82);
@@ -858,8 +858,8 @@ body {
   transform: rotate(90deg);
 }
 .tdfab svg {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 /* cluster name label (hover, when collapsed) */
 .tdname {
