@@ -6,12 +6,14 @@ export function MapActions() {
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const toggleBrief = useAppStore((s) => s.toggleBrief);
   const briefOpen = useAppStore((s) => s.briefOpen);
+  const toggleTrending = useAppStore((s) => s.toggleTrending);
+  const trendingOpen = useAppStore((s) => s.trendingOpen);
   if (!zoomedOut) return null;
 
   return (
     <div className="mapactions">
       <div className="marow">
-        <button className="mabtn" type="button" aria-label="What's trending">
+        <button className={`mabtn ${trendingOpen ? 'on' : ''}`} type="button" aria-label="What's trending" onClick={toggleTrending}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
             <g className="flameicon">
               <path d="M12 3c1.6 3 4.2 4.6 4.2 8.2a4.2 4.2 0 0 1-8.4 0c0-1.8.8-3 1.9-4.1C10.6 8.1 11.5 6.2 12 3Z" />

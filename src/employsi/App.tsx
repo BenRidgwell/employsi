@@ -11,6 +11,7 @@ import { ZoomOverlay } from './components/geo/ZoomOverlay';
 import { CompanyPanel } from './components/panels/CompanyPanel';
 import { ComparePanel } from './components/panels/ComparePanel';
 import { DailyBriefPane } from './components/panels/DailyBriefPane';
+import { WhatsTrendingPane } from './components/panels/WhatsTrendingPane';
 import { useAppStore } from './state/store';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
       <CompanyPanel />
       <ComparePanel />
       <DailyBriefPane />
+      <WhatsTrendingPane />
     </div>
   );
 }

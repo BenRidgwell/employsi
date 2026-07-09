@@ -1011,6 +1011,121 @@ body {
   text-align: center;
   padding: 12px 0 2px;
 }
+/* What's Trending pane (reuses .briefpane shell) */
+.briefmark .trendmark {
+  width: 22px;
+  height: 22px;
+  color: #e0673a;
+}
+.trendcard {
+  padding: 14px 0 2px;
+  border-bottom: 1px solid var(--line);
+}
+.trendcard:last-of-type {
+  border-bottom: none;
+}
+.trendcardhead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.trendcardicon {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+.trendcardicon svg {
+  width: 17px;
+  height: 17px;
+}
+.trendcardicon.ic-movers {
+  background: linear-gradient(145deg, #2b6cb0, #234e86);
+}
+.trendcardicon.ic-salary {
+  background: linear-gradient(145deg, #159d67, #0e7a50);
+}
+.trendcardicon.ic-hot {
+  background: linear-gradient(145deg, #e0673a, #c14e28);
+}
+.trendcardtitle {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 14.5px;
+  letter-spacing: -0.2px;
+  color: var(--ink);
+}
+.trendcardcap {
+  font-size: 10.5px;
+  color: var(--slate);
+  margin-top: 1px;
+}
+.trendrows {
+  display: flex;
+  flex-direction: column;
+}
+.trendrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 4px;
+  border-radius: 8px;
+  text-align: left;
+}
+.trendrow.link {
+  cursor: pointer;
+  transition: background 0.14s;
+}
+.trendrow.link:hover {
+  background: rgba(15, 27, 61, 0.05);
+}
+.trendrank {
+  flex: 0 0 auto;
+  width: 16px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--slate);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.trendinfo {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+.trendlabel {
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--ink);
+  letter-spacing: -0.1px;
+}
+.trendsub {
+  font-size: 10.5px;
+  color: var(--slate);
+  margin-top: 1px;
+}
+.trenddelta {
+  flex: 0 0 auto;
+  font-weight: 700;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 7px;
+  border-radius: 7px;
+}
+.trenddelta.up {
+  color: #0e7a50;
+  background: rgba(21, 157, 103, 0.12);
+}
+.trenddelta.down {
+  color: #c1443c;
+  background: rgba(224, 82, 74, 0.12);
+}
 .zoomslider .zrow {
   position: relative;
   display: flex;
