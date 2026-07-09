@@ -11,14 +11,14 @@ const TANKER_ROUTES = [
   { dur: '34s', begin: '13s', path: 'M66,110 Q150,135 232,59' }, // Houston → London (over the Atlantic)
 ];
 
-// Country labels placed at real country centroids projected with the same fit.
-const COUNTRY_LABELS: { label: string; x: number; y: number }[] = [
-  { label: 'CHILE', x: 92, y: 250 },
-  { label: 'CANADA', x: 40.2, y: 45.4 },
-  { label: 'SOUTH AFRICA', x: 274, y: 230 },
-  { label: 'UNITED KINGDOM', x: 224, y: 44 },
-  { label: 'UNITED STATES', x: 105, y: 92 },
-  { label: 'AUSTRALIA', x: 474, y: 190 },
+// Continent labels placed roughly over each landmass (same projected fit).
+const CONTINENT_LABELS: { label: string; x: number; y: number }[] = [
+  { label: 'NORTH AMERICA', x: 72, y: 56 },
+  { label: 'SOUTH AMERICA', x: 132, y: 205 },
+  { label: 'EUROPE', x: 250, y: 42 },
+  { label: 'AFRICA', x: 262, y: 150 },
+  { label: 'ASIA', x: 432, y: 92 },
+  { label: 'AUSTRALIA', x: 474, y: 188 },
 ];
 
 function Tanker({ dur, begin, path }: { dur: string; begin: string; path: string }) {
@@ -117,7 +117,7 @@ export function GlobeMap({
           </g>
         );
       })}
-      {COUNTRY_LABELS.map((c) => (
+      {CONTINENT_LABELS.map((c) => (
         <text key={c.label} className="aucountry" x={c.x} y={c.y} textAnchor="middle">{c.label}</text>
       ))}
 
