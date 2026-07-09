@@ -1,15 +1,14 @@
 import { useMemo, useState } from 'react';
 
-// Smooth workforce-trend chart. Plots headcount movement, or a financial
-// productivity metric the user selects (revenue / EBITDA per employee), across
-// the last eight financial quarters. Hovering scrubs a callout across points.
+// Dual-line workforce chart. Headcount is always plotted (fixed); the user
+// selects a second line — revenue or EBITDA per employee — shown on its own
+// scale against headcount. Hovering scrubs a callout reading both series.
 
-type MetricId = 'headcount' | 'revenue' | 'ebitda';
+type MetricId = 'revenue' | 'ebitda';
 
-const METRICS: { id: MetricId; label: string }[] = [
-  { id: 'headcount', label: 'Headcount' },
-  { id: 'revenue', label: 'Revenue / emp' },
-  { id: 'ebitda', label: 'EBITDA / emp' },
+const METRICS: { id: MetricId; label: string; short: string }[] = [
+  { id: 'revenue', label: 'Revenue / emp', short: 'Revenue/emp' },
+  { id: 'ebitda', label: 'EBITDA / emp', short: 'EBITDA/emp' },
 ];
 
 function quarterLabels(n: number): string[] {
@@ -40,9 +39,12 @@ interface Props {
   ebitdaPerEmp: number;
 }
 
-function buildSeries(metric: MetricId, p: Props): number[] {
+function headSeries(p: Props): number[] {
+  return p.trend.map((t) => Math.round((p.headcount * t) / 100));
+}
+
+function financialSeries(metric: MetricId, p: Props): number[] {
   const n = p.trend.length;
-  if (metric === 'headcount') return p.trend.map((t) => Math.round((p.headcount * t) / 100));
   const base = metric === 'revenue' ? p.revPerEmp : p.ebitdaPerEmp;
   const start = metric === 'revenue' ? 0.84 : 0.74;
   const amp = metric === 'revenue' ? 0.03 : 0.05;
@@ -52,11 +54,6 @@ function buildSeries(metric: MetricId, p: Props): number[] {
     const w = i === n - 1 ? 0 : amp * Math.sin((i + 1) * seed + p.headcount);
     return base * (lin + w);
   });
-}
-
-function fmtValue(metric: MetricId, v: number): string {
-  if (metric === 'headcount') return Math.round(v).toLocaleString('en-US');
-  return '$' + v.toFixed(2) + 'M';
 }
 
 // Catmull-Rom → cubic Bézier for a smooth curve through the points.
@@ -80,33 +77,41 @@ function smoothPath(pts: [number, number][]): string {
 const W = 340;
 const H = 156;
 const PADX = 10;
-const PADT = 16;
+const PADT = 18;
 const PADB = 12;
 const PLOTW = W - PADX * 2;
 const PLOTH = H - PADT - PADB;
 
-export function TrendChart(props: Props) {
-  const [metric, setMetric] = useState<MetricId>('headcount');
-  const labels = useMemo(() => quarterLabels(props.trend.length), [props.trend.length]);
-  const values = useMemo(() => buildSeries(metric, props), [metric, props]);
-  const n = values.length;
-  const [sel, setSel] = useState<number | null>(null);
-
-  const lo = Math.min(...values);
-  const hi = Math.max(...values);
-  const span = hi - lo || 1;
-  const pad = span * 0.18;
+function scaler(vals: number[]) {
+  const lo = Math.min(...vals);
+  const hi = Math.max(...vals);
+  const pad = (hi - lo || 1) * 0.2;
   const yMin = lo - pad;
   const yMax = hi + pad;
+  return (v: number) => PADT + PLOTH * (1 - (v - yMin) / (yMax - yMin));
+}
+
+export function TrendChart(props: Props) {
+  const [metric, setMetric] = useState<MetricId>('revenue');
+  const labels = useMemo(() => quarterLabels(props.trend.length), [props.trend.length]);
+  const head = useMemo(() => headSeries(props), [props]);
+  const fin = useMemo(() => financialSeries(metric, props), [metric, props]);
+  const n = head.length;
+  const [sel, setSel] = useState<number | null>(null);
+
   const x = (i: number) => PADX + (i * PLOTW) / (n - 1);
-  const y = (v: number) => PADT + PLOTH * (1 - (v - yMin) / (yMax - yMin));
-  const pts: [number, number][] = values.map((v, i) => [x(i), y(v)]);
-  const line = smoothPath(pts);
-  const area = line + ` L ${x(n - 1).toFixed(2)} ${(PADT + PLOTH).toFixed(2)} L ${x(0).toFixed(2)} ${(PADT + PLOTH).toFixed(2)} Z`;
+  const yH = scaler(head);
+  const yF = scaler(fin);
+  const headLine = smoothPath(head.map((v, i) => [x(i), yH(v)]));
+  const finLine = smoothPath(fin.map((v, i) => [x(i), yF(v)]));
+  const headArea = headLine + ` L ${x(n - 1).toFixed(2)} ${(PADT + PLOTH).toFixed(2)} L ${x(0).toFixed(2)} ${(PADT + PLOTH).toFixed(2)} Z`;
 
   const active = sel == null ? n - 1 : sel;
   const leftPct = (x(active) / W) * 100;
-  const topPct = (y(values[active]) / H) * 100;
+  const headTopPct = (yH(head[active]) / H) * 100;
+  const finTopPct = (yF(fin[active]) / H) * 100;
+  const tipTopPct = (Math.min(yH(head[active]), yF(fin[active])) / H) * 100;
+  const metricShort = METRICS.find((m) => m.id === metric)!.short;
 
   const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -128,19 +133,40 @@ export function TrendChart(props: Props) {
         </div>
       </div>
 
+      <div className="wtlegend">
+        <span className="wtlgi">
+          <i className="wtsw ink" />Headcount
+        </span>
+        <span className="wtlgi">
+          <i className="wtsw acc" />
+          {metricShort}
+        </span>
+      </div>
+
       <div className="wtbox" onMouseMove={onMove} onMouseLeave={() => setSel(null)}>
         <svg className="wtsvg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
           {[0.25, 0.5, 0.75].map((f) => (
             <line key={f} className="wtgrid" x1={PADX} x2={W - PADX} y1={PADT + PLOTH * f} y2={PADT + PLOTH * f} />
           ))}
-          <path className="wtarea" d={area} />
-          <path className="wtline" d={line} vectorEffect="non-scaling-stroke" />
+          <path className="wtarea" d={headArea} />
+          <path className="wtline2" d={finLine} vectorEffect="non-scaling-stroke" />
+          <path className="wtline" d={headLine} vectorEffect="non-scaling-stroke" />
           <line className="wtguide" x1={x(active)} x2={x(active)} y1={PADT} y2={PADT + PLOTH} vectorEffect="non-scaling-stroke" />
         </svg>
-        <div className="wtdot" style={{ left: `${leftPct}%`, top: `${topPct}%` }} />
-        <div className="wttip" style={{ left: `${leftPct}%`, top: `${topPct}%` }}>
+        <div className="wtdot acc" style={{ left: `${leftPct}%`, top: `${finTopPct}%` }} />
+        <div className="wtdot ink" style={{ left: `${leftPct}%`, top: `${headTopPct}%` }} />
+        <div className="wttip" style={{ left: `${leftPct}%`, top: `${tipTopPct}%` }}>
           <div className="wttiplabel">{labels[active]}</div>
-          <div className="wttipval">{fmtValue(metric, values[active])}</div>
+          <div className="wttiprow">
+            <i className="wtsw ink" />
+            <b>{Math.round(head[active]).toLocaleString('en-US')}</b>
+            <span>Headcount</span>
+          </div>
+          <div className="wttiprow">
+            <i className="wtsw acc" />
+            <b>${fin[active].toFixed(2)}M</b>
+            <span>{metricShort}</span>
+          </div>
         </div>
       </div>
 

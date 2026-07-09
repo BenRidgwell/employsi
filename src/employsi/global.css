@@ -882,8 +882,7 @@ body {
   transform: translateX(0);
 }
 .tdcluster.open .tdname {
-  opacity: 0;
-  pointer-events: none;
+  display: none;
 }
 /* expanding action buttons */
 .tdactions {
@@ -2073,6 +2072,37 @@ body {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+.wtline2 {
+  fill: none;
+  stroke: #159d67;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.wtlegend {
+  display: flex;
+  gap: 16px;
+  margin: 8px 0 2px;
+}
+.wtlgi {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--slate);
+}
+.wtsw {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+.wtsw.ink {
+  background: #1c1c1e;
+}
+.wtsw.acc {
+  background: #159d67;
+}
 .wtguide {
   stroke: rgba(28, 28, 30, 0.28);
   stroke-width: 1;
@@ -2080,15 +2110,20 @@ body {
 }
 .wtdot {
   position: absolute;
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
-  background: #1c1c1e;
   border: 2.5px solid #fff;
   box-shadow: 0 0 0 1px rgba(15, 27, 61, 0.18), 0 4px 10px -3px rgba(15, 27, 61, 0.5);
   transform: translate(-50%, -50%);
   pointer-events: none;
   transition: left 0.12s ease, top 0.12s ease;
+}
+.wtdot.ink {
+  background: #1c1c1e;
+}
+.wtdot.acc {
+  background: #159d67;
 }
 .wttip {
   position: absolute;
@@ -2105,16 +2140,32 @@ body {
 }
 .wttiplabel {
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--slate);
+  text-align: center;
+  margin-bottom: 4px;
 }
-.wttipval {
+.wttiprow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.wttiprow + .wttiprow {
+  margin-top: 3px;
+}
+.wttiprow b {
   font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
-  font-size: 14px;
   font-weight: 800;
   color: var(--ink);
   letter-spacing: -0.2px;
-  margin-top: 1px;
+  font-variant-numeric: tabular-nums;
+}
+.wttiprow span {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--slate);
+  margin-left: auto;
 }
 .wtaxis {
   position: relative;
