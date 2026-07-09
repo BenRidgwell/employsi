@@ -4,6 +4,7 @@ import { TopBar } from './components/TopBar';
 import { Ticker } from './components/Ticker';
 import { HintPulse } from './components/HintPulse';
 import { ZoomSlider } from './components/ZoomSlider';
+import { MapActions } from './components/MapActions';
 import { Legend } from './components/Legend';
 import { HeatKey } from './components/HeatKey';
 import { ZoomOverlay } from './components/geo/ZoomOverlay';
@@ -17,6 +18,7 @@ function App() {
   return (
     <div className="app">
       <ZoomSlider />
+      <MapActions />
       <PerthMapbox />
       <HintPulse />
       <Ticker hidden={zoomedOut} />

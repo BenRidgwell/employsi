@@ -672,6 +672,136 @@ body {
   background: var(--line);
   margin: 1px 0;
 }
+/* Left-rail quick actions, stacked just above the layer guide. */
+.mapactions {
+  position: fixed;
+  left: 18px;
+  bottom: calc(50% + 90px);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 8px 7px;
+  box-shadow: 0 8px 22px -12px rgba(15, 27, 61, 0.4);
+  animation: maReveal 0.4s ease both;
+}
+@keyframes maReveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.mapactions .marow {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.mapactions .mabtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--slate);
+  transition: 0.15s;
+}
+.mapactions .mabtn:hover {
+  background: rgba(15, 27, 61, 0.06);
+  color: var(--ink);
+}
+.mapactions .mabtn svg {
+  width: 19px;
+  height: 19px;
+  overflow: visible;
+}
+.mapactions .malabel {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 4px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.mapactions .marow:hover .malabel {
+  opacity: 1;
+}
+/* Flame flicker */
+.flameicon {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: flameflicker 1.5s ease-in-out infinite;
+}
+@keyframes flameflicker {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  25% {
+    transform: scale(1.07, 0.95) translateY(-0.2px);
+  }
+  50% {
+    transform: scale(0.94, 1.06);
+  }
+  75% {
+    transform: scale(1.04, 0.98) translateX(0.3px);
+  }
+}
+.flameember {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: emberpulse 1.5s ease-in-out infinite;
+}
+@keyframes emberpulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+/* Coffee steam rising */
+.briefsteam path {
+  transform-box: fill-box;
+  animation: steamrise 2.4s ease-in-out infinite;
+}
+.briefsteam path:nth-child(2) {
+  animation-delay: 0.8s;
+}
+@keyframes steamrise {
+  0% {
+    opacity: 0;
+    transform: translateY(1.5px);
+  }
+  35% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-2.5px);
+  }
+}
 .zoomslider .zrow {
   position: relative;
   display: flex;
@@ -1746,6 +1876,12 @@ body {
     left: 12px;
   }
   .zoomslider .zlabel {
+    display: none;
+  }
+  .mapactions {
+    left: 12px;
+  }
+  .mapactions .malabel {
     display: none;
   }
 
