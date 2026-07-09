@@ -24,7 +24,7 @@ export const TREND_SECTIONS: TrendSection[] = [
   {
     id: 'movers',
     title: 'Big movers',
-    caption: 'Skills & occupations by vacancy shift',
+    caption: 'Changes in skills and occupations by job vacancy activity',
     icon: 'movers',
     items: [
       { label: 'Autonomous Haulage', sub: 'New vacancies · WA iron ore', delta: 34.0, skill: 'Autonomous Haulage' },
@@ -37,7 +37,7 @@ export const TREND_SECTIONS: TrendSection[] = [
   {
     id: 'salary',
     title: 'Salary spenders',
-    caption: 'Human-capital spend & pay, QoQ',
+    caption: 'Changes in median salary',
     icon: 'salary',
     items: [
       { label: 'Subsea Engineer', sub: 'Median salary · +$18k', delta: 11.0 },
@@ -50,7 +50,7 @@ export const TREND_SECTIONS: TrendSection[] = [
   {
     id: 'hot',
     title: 'Hot companies',
-    caption: 'Headcount change since last quarter',
+    caption: 'Changes in employee headcount',
     icon: 'hot',
     items: [
       { label: 'Fortescue', sub: 'Renewables & project delivery', delta: 9.2, ticker: 'FMG' },
