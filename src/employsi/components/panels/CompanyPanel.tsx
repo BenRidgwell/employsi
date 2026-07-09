@@ -51,7 +51,7 @@ export function CompanyPanel() {
                 ))}
               </div>
               <div className="sect">
-                <TrendChart trend={panel.trend} headcount={panel.headcount} />
+                <TrendChart trend={panel.trend} headcount={panel.headcount} revPerEmp={panel.revPerEmp} ebitdaPerEmp={panel.ebitdaPerEmp} />
                 <div className="subs">
                   {panel.subStats.map((s, i) => (
                     <div className="subc" key={i}>

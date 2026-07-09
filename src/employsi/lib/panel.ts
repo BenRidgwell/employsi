@@ -17,6 +17,8 @@ export interface PanelData {
   subStats: { value: string; label: string }[];
   trend: number[];
   headcount: number;
+  revPerEmp: number;
+  ebitdaPerEmp: number;
   skillsLabel: string;
   skills: string[];
   roles: { title: string; count: number; pct: string }[];
@@ -50,6 +52,8 @@ export function buildPanel(id: string | null): PanelData | null {
     subStats,
     trend: c.trend,
     headcount: c.headcount,
+    revPerEmp: c.revPerEmp,
+    ebitdaPerEmp: c.ebitdaPerEmp,
     skillsLabel: 'Skills in demand',
     skills: c.skills,
     roles: c.roles.map((r) => ({ title: r.title, count: r.count, pct: Math.round((r.count / mx) * 100) + '%' })),
