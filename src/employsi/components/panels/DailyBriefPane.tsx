@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { useAppStore } from '../../state/store';
 import { COMPANIES } from '../../data/companies';
-import { BRIEF_ARTICLES, type BriefIcon } from '../../data/brief';
+import { BRIEF_ARTICLES, BRIEF_PHOTO, type BriefArticle, type BriefIcon } from '../../data/brief';
 
 const TICKER_TO_ID: Record<string, string> = Object.fromEntries(COMPANIES.map((c) => [c.ticker, c.id]));
 
@@ -24,6 +25,25 @@ function ThumbIcon({ icon }: { icon: BriefIcon }) {
   }
 }
 
+function BriefThumb({ a }: { a: BriefArticle }) {
+  const [err, setErr] = useState(false);
+  const ph = BRIEF_PHOTO[a.id];
+  if (err || !ph) {
+    return (
+      <div className="briefthumb" style={{ background: `linear-gradient(145deg, ${a.tone}, ${a.tone}b0)` }}>
+        <svg viewBox="0 0 24 24">
+          <ThumbIcon icon={a.icon} />
+        </svg>
+      </div>
+    );
+  }
+  return (
+    <div className="briefthumb briefthumbimg">
+      <img src={`https://loremflickr.com/240/240/${ph.q}?lock=${ph.lock}`} alt="" loading="lazy" onError={() => setErr(true)} />
+    </div>
+  );
+}
+
 export function DailyBriefPane() {
   const briefOpen = useAppStore((s) => s.briefOpen);
   const zoomedOut = useAppStore((s) => s.zoomedOut);
@@ -36,7 +56,13 @@ export function DailyBriefPane() {
   return (
     <aside className={`briefpane ${open ? 'open' : ''}`} aria-hidden={!open}>
       <div className="briefhead">
-        <div className="briefmark" />
+        <div className="briefmark">
+          <svg className="briefmarksvg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 5.6A1.2 1.2 0 0 1 5.2 4.4h9.1a1.2 1.2 0 0 1 1.2 1.2V18a1.5 1.5 0 0 1-1.5 1.5H6.2A2.2 2.2 0 0 1 4 17.3V5.6Z" />
+            <path d="M15.5 8.5h2.3a1 1 0 0 1 1 1v7.3a1.7 1.7 0 0 1-1.7 1.7" />
+            <path className="briefmarklines" d="M6.4 7.3h6.6M6.4 9.9h6.6M6.4 12.5h4.2" />
+          </svg>
+        </div>
         <div className="briefheadtxt">
           <div className="brieftitle">Daily Brief</div>
           <div className="briefdate">{today}</div>
@@ -47,11 +73,7 @@ export function DailyBriefPane() {
       <div className="briefscroll">
         {BRIEF_ARTICLES.map((a) => (
           <article className="briefcard" key={a.id}>
-            <div className="briefthumb" style={{ background: `linear-gradient(145deg, ${a.tone}, ${a.tone}b0)` }}>
-              <svg viewBox="0 0 24 24">
-                <ThumbIcon icon={a.icon} />
-              </svg>
-            </div>
+            <BriefThumb a={a} />
             <div className="briefbody">
               <div className="briefmeta">
                 <span className="briefcat">{a.category}</span>

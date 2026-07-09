@@ -14,6 +14,18 @@ export interface BriefArticle {
   icon: BriefIcon;
 }
 
+// Placeholder photography per story (topical mine / oil-and-gas keywords),
+// served from a placeholder image service; `lock` keeps each card stable.
+export const BRIEF_PHOTO: Record<string, { q: string; lock: number }> = {
+  b1: { q: 'mine,mining', lock: 21 },
+  b2: { q: 'mining,truck', lock: 32 },
+  b3: { q: 'gas,plant', lock: 45 },
+  b4: { q: 'mine,mineral', lock: 58 },
+  b5: { q: 'quarry,mine', lock: 63 },
+  b6: { q: 'refinery,gas', lock: 77 },
+  b7: { q: 'copper,mine', lock: 88 },
+};
+
 export const BRIEF_ARTICLES: BriefArticle[] = [
   {
     id: 'b1',
