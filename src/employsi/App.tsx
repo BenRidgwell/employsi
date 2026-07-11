@@ -1,6 +1,7 @@
 import './global.css';
 import { PerthMapbox } from './components/PerthMapbox';
 import { TopBar } from './components/TopBar';
+import { GlobalSearch } from './components/GlobalSearch';
 import { Ticker } from './components/Ticker';
 import { HintPulse } from './components/HintPulse';
 import { ZoomSlider } from './components/ZoomSlider';
@@ -29,6 +30,7 @@ function App() {
       <Ticker hidden={zoomedOut} />
       <ZoomOverlay />
       <TopBar />
+      <GlobalSearch />
       <Legend />
       <HeatKey />
       <CompanyPanel />

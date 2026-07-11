@@ -1932,6 +1932,121 @@ body {
 .mapboxgl-ctrl-logo {
   display: none !important;
 }
+/* Global-view centered search bar */
+.gsearch {
+  position: fixed;
+  top: 78px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 35;
+  width: min(620px, 62vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.gsearchhd {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.2px;
+  color: var(--slate);
+  margin-bottom: 12px;
+  text-align: center;
+}
+.gsearchbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  box-shadow: 0 14px 34px -18px rgba(15, 27, 61, 0.45);
+  color: var(--slate);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.gsearchbar.on {
+  border-color: #cfd2da;
+  box-shadow: 0 18px 40px -18px rgba(15, 27, 61, 0.55);
+}
+.gsearchbar svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+}
+.gsearchinput {
+  flex: 1 1 auto;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.gsearchinput::placeholder {
+  color: var(--slate);
+  font-weight: 500;
+}
+.gsearchclear {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--slate);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.gsearchclear:hover {
+  color: var(--ink);
+}
+.gsearchchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 18px 44px -20px rgba(15, 27, 61, 0.45);
+}
+.gsearchlbl {
+  width: 100%;
+  text-align: center;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--slate);
+  margin-bottom: 2px;
+}
+.gschip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--slate);
+  cursor: pointer;
+  transition: 0.14s;
+}
+.gschip:hover {
+  color: var(--ink);
+  border-color: var(--slate);
+}
+.gschip.on {
+  background: #1c1c1e;
+  color: #fff;
+  border-color: #1c1c1e;
+}
 /* Current local-city indicator */
 .citybadge {
   position: fixed;

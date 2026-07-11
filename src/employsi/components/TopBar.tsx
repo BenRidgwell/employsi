@@ -54,6 +54,7 @@ export function TopBar() {
   const clearFilters = useAppStore((s) => s.clearFilters);
   const heat = useAppStore((s) => s.heat);
   const setHeat = useAppStore((s) => s.setHeat);
+  const globalOut = useAppStore((s) => s.globalOut);
 
   const filterState: FilterState = { searchQuery, activeSectors, minSalary, minHeadcount, minGrowth, maxAttrition };
   const filterActive = isFilterActive(filterState);
@@ -69,6 +70,7 @@ export function TopBar() {
         </div>
       </div>
       <div className="controls">
+        {!globalOut && (
         <div className="cgroup searchwrap">
           <span className="seglbl">Search</span>
           <button className={`searchbtn ${searchOpen ? 'on' : ''} ${searchActive ? 'active' : ''}`} onClick={toggleSearch}>
@@ -102,6 +104,7 @@ export function TopBar() {
             )}
           </div>
         </div>
+        )}
         <div className="cgroup searchwrap">
           <span className="seglbl">Filter</span>
           <button className={`searchbtn ${filterOpen ? 'on' : ''} ${filterActive ? 'active' : ''}`} onClick={toggleFilter}>
