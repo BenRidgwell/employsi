@@ -149,28 +149,71 @@ export function PerthMapbox() {
         },
       });
 
-      // Company labels as a native symbol layer, so each label is glued to its
-      // own point (ticker above, metric below), with a white halo for legibility.
+      // Rounded white pill background (stretched around the label text via
+      // icon-text-fit), so the native labels read like the old chip pills.
+      const pr = 2;
+      const PW = 30;
+      const PH = 24;
+      const rad = 11;
+      const cv = document.createElement('canvas');
+      cv.width = PW * pr;
+      cv.height = PH * pr;
+      const ctx = cv.getContext('2d');
+      if (ctx) {
+        ctx.scale(pr, pr);
+        const x = 1;
+        const y = 1;
+        const w = PW - 2;
+        const h = PH - 2;
+        const r = rad - 1;
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(255,255,255,0.96)';
+        ctx.fill();
+        ctx.lineWidth = 1.4;
+        ctx.strokeStyle = 'rgba(28,28,30,0.18)';
+        ctx.stroke();
+        const px = ctx.getImageData(0, 0, cv.width, cv.height);
+        if (!map.hasImage('pillbg')) {
+          map.addImage('pillbg', { width: cv.width, height: cv.height, data: new Uint8Array(px.data) }, {
+            pixelRatio: pr,
+            stretchX: [[rad * pr, (PW - rad) * pr]],
+            stretchY: [[rad * pr, (PH - rad) * pr]],
+            content: [rad * pr, rad * pr, (PW - rad) * pr, (PH - rad) * pr],
+          });
+        }
+      }
+
+      // Company labels as a native symbol layer, glued to each point, with a
+      // pill background.
+      const REVEAL = ['*', ['coalesce', ['feature-state', 'reveal'], 0], ['case', ['get', 'dim'], 0.32, 1]] as unknown as mapboxgl.Expression;
       map.addLayer({
         id: LABEL_LAYER,
         type: 'symbol',
         source: SOURCE_ID,
         layout: {
-          'text-field': ['format', ['get', 'label'], { 'font-scale': 1.05 }, '\n', {}, ['get', 'sub'], { 'font-scale': 0.72 }],
+          'icon-image': 'pillbg',
+          'icon-text-fit': 'both',
+          'icon-text-fit-padding': [5, 10, 5, 11],
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+          'text-field': ['format', ['get', 'label'], { 'font-scale': 1.0 }, '   ', {}, ['get', 'sub'], { 'font-scale': 0.74 }],
           'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
           'text-size': 13,
           'text-anchor': 'bottom',
-          'text-offset': [0, -1.1],
-          'text-line-height': 1.3,
+          'text-offset': [0, -0.9],
           'text-allow-overlap': true,
           'text-ignore-placement': true,
         },
         paint: {
           'text-color': '#1c1c1e',
-          'text-halo-color': '#ffffff',
-          'text-halo-width': 1.8,
-          'text-halo-blur': 0.3,
-          'text-opacity': ['*', ['coalesce', ['feature-state', 'reveal'], 0], ['case', ['get', 'dim'], 0.32, 1]],
+          'icon-opacity': REVEAL,
+          'text-opacity': REVEAL,
         },
       });
 
@@ -192,10 +235,10 @@ export function PerthMapbox() {
       // Focus reveal: a label only shows once you've panned onto its building
       // and zoomed in (ground distance from centre + zoom gate). Driven per
       // feature through feature-state so the native symbol fades in/out.
-      const R_FULL = 250; // metres from centre: within this -> fully shown
-      const R_GONE = 450; // metres from centre: beyond this -> hidden
-      const Z_MIN = 14.2; // below this zoom -> labels hidden
-      const Z_FULL = 15.0; // at/above this zoom -> labels at full strength
+      const R_FULL = 700; // metres from centre: within this -> fully shown
+      const R_GONE = 1900; // metres from centre: beyond this -> hidden
+      const Z_MIN = 13.4; // below this zoom -> labels hidden
+      const Z_FULL = 14.4; // at/above this zoom -> labels at full strength
       const distMetres = (aLng: number, aLat: number, bLng: number, bLat: number) => {
         const R = 6371000;
         const toR = Math.PI / 180;
