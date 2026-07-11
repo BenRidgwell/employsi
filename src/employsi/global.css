@@ -1779,10 +1779,16 @@ body {
   height: auto;
   overflow: visible;
 }
-.asiamap {
+.regionmap {
   width: min(78vw, 1040px);
   height: auto;
   overflow: visible;
+}
+.regionland {
+  fill: #e2e4e8;
+  stroke: #c7cad1;
+  stroke-width: 2.2;
+  stroke-linejoin: round;
 }
 .globeland {
   fill: #e2e4e8;

@@ -65,6 +65,7 @@ const CITY_LABEL_OFFSET: Record<string, { dx: number; dy: number; anchor: 'start
 const CONTINENT_CLICK: Record<string, string> = {
   AUSTRALIA: 'australia',
   ASIA: 'asia',
+  'NORTH AMERICA': 'northamerica',
 };
 
 // Australian cities rendered as clickable hubs (like Perth) — each opens its
@@ -148,9 +149,10 @@ export function GlobeMap({
         {CONTINENT_LABELS.map((c) => {
           const region = CONTINENT_CLICK[c.label];
           if (region) {
+            const hw = c.label.length * 4 + 16;
             return (
               <g key={c.label} className="aucountryclick" onClick={() => onContinent(region)}>
-                <rect x={c.x - 54} y={c.y - 11} width={108} height={16} fill="transparent" pointerEvents="all" />
+                <rect x={c.x - hw} y={c.y - 11} width={hw * 2} height={16} fill="transparent" pointerEvents="all" />
                 <text className="aucountry" x={c.x} y={c.y} textAnchor="middle">{c.label}</text>
               </g>
             );

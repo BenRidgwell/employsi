@@ -166,7 +166,9 @@ export function PerthMapbox() {
         el.className = 'mbchip';
         el.innerHTML = `<span class="chipdot"></span><span class="chiptk">${c.ticker}</span><span class="chipsub"></span>`;
         el.onclick = () => useAppStore.getState().select(c.id);
-        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+        // Anchor the pill's bottom just above the heat dot, so each pill sits
+        // directly above its own glowing icon.
+        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom', offset: [0, -14] })
           .setLngLat(COMPANY_COORDS[c.id])
           .addTo(map);
         markersRef.current[c.id] = marker;

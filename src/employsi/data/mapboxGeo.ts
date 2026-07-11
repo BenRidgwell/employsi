@@ -22,6 +22,9 @@ export const CITY_VIEWS: Record<string, CityView> = {
   adelaide: { center: [138.6007, -34.9285], zoom: 15.2, pitch: 60, bearing: -16 },
   singapore: { center: [103.8519, 1.29], zoom: 15.1, pitch: 60, bearing: -12 },
   ganzhou: { center: [114.9333, 25.83], zoom: 14.8, pitch: 60, bearing: -14 },
+  toronto: { center: [-79.3832, 43.6532], zoom: 15.1, pitch: 60, bearing: -18 },
+  houston: { center: [-95.3698, 29.7604], zoom: 15.0, pitch: 60, bearing: -14 },
+  denver: { center: [-104.9903, 39.7392], zoom: 15.0, pitch: 60, bearing: -16 },
 };
 
 export const COMPANY_COORDS: Record<string, [number, number]> = {

@@ -3,7 +3,7 @@ import { activeSkillKey, CITY_XY } from '../../data/geo';
 import { AU_SCATTER, GLOBAL_SCATTER } from '../../data/scatter';
 import { computeCityHeat, computeGlobalHeat, computeSkillSpikes, computeAmbientSpikes, computeGlobalSpikes, computeGlobalAmbientSpikes } from '../../lib/heat';
 import { AustraliaMap } from './AustraliaMap';
-import { AsiaMap } from './AsiaMap';
+import { RegionMap } from './RegionMap';
 import { GlobeMap } from './GlobeMap';
 
 export function ZoomOverlay() {
@@ -37,10 +37,10 @@ export function ZoomOverlay() {
   return (
     <div className={`auview ${auCls}`} onWheel={(e) => onAuWheel(e.deltaY)}>
       <div className={`auscene ${globalOut ? 'scenehide' : ''}`}>
-        {domesticRegion === 'asia' ? (
-          <AsiaMap hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} />
-        ) : (
+        {domesticRegion === 'australia' ? (
           <AustraliaMap cityHeat={cityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} zoomOrigin={auOrigin} ambientSpikes={ambientSpikes} hubSpikes={skillSpikes} />
+        ) : (
+          <RegionMap region={domesticRegion} hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} />
         )}
       </div>
       <div className={`globescene ${globalOut ? 'sceneshow' : ''}`}>
