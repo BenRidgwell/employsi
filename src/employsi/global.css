@@ -884,7 +884,7 @@ body {
   transition: opacity 0.14s ease, transform 0.14s ease;
   box-shadow: 0 6px 16px -10px rgba(15, 27, 61, 0.5);
 }
-.tdcluster:hover .tdname {
+.tdcluster:has(.tdfab:hover) .tdname {
   opacity: 1;
   transform: translateX(0);
 }
@@ -2108,6 +2108,78 @@ body {
   background: #1c1c1e;
   color: #fff;
   font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Feedback panel */
+.fbpanel {
+  width: 280px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px -24px rgba(15, 27, 61, 0.5);
+  padding: 14px 16px;
+  animation: helppanelin 0.2s ease both;
+}
+.fbtext {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 84px;
+  resize: vertical;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+  outline: none;
+  background: #f7f7f8;
+}
+.fbtext:focus {
+  border-color: var(--slate);
+}
+.fbsend {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  border: 0;
+  border-radius: 10px;
+  background: #1c1c1e;
+  color: #fff;
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.fbsend:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.fbsend:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+.fbthanks {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--ink);
+  padding: 6px 2px;
+}
+.fbcheck {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #159d67;
+  color: #fff;
+  font-size: 12px;
   font-weight: 800;
   display: flex;
   align-items: center;

@@ -56,6 +56,9 @@ export function HelpDock() {
 
   const [open, setOpen] = useState(false);
   const [peek, setPeek] = useState(false);
+  const [fbOpen, setFbOpen] = useState(false);
+  const [fbText, setFbText] = useState('');
+  const [fbSent, setFbSent] = useState(false);
 
   // Pop the pill out briefly whenever the user lands on a new layer/city.
   useEffect(() => {
@@ -64,6 +67,16 @@ export function HelpDock() {
     const t = setTimeout(() => setPeek(false), 4200);
     return () => clearTimeout(t);
   }, [layerKey]);
+
+  const sendFeedback = () => {
+    if (!fbText.trim()) return;
+    setFbSent(true);
+    setTimeout(() => {
+      setFbOpen(false);
+      setFbSent(false);
+      setFbText('');
+    }, 1900);
+  };
 
   const tour = tourFor(layer, localCity);
 
@@ -88,7 +101,55 @@ export function HelpDock() {
           </ol>
         </div>
       )}
-      <button className={`helpbtn ${peek || open ? 'wide' : ''} ${peek ? 'peek' : ''}`} onClick={() => setOpen((o) => !o)} aria-label="Need help?">
+      {fbOpen && (
+        <div className="fbpanel">
+          {fbSent ? (
+            <div className="fbthanks">
+              <span className="fbcheck">✓</span>
+              Thanks for your feedback!
+            </div>
+          ) : (
+            <>
+              <div className="helphd">
+                <div className="helptitle">Share feedback</div>
+                <button className="helpx" onClick={() => setFbOpen(false)} aria-label="Close">✕</button>
+              </div>
+              <textarea
+                className="fbtext"
+                placeholder="What's working, what's missing, ideas…"
+                value={fbText}
+                onChange={(e) => setFbText(e.target.value)}
+                autoFocus
+              />
+              <button className="fbsend" disabled={!fbText.trim()} onClick={sendFeedback}>Send feedback</button>
+            </>
+          )}
+        </div>
+      )}
+
+      <button
+        className="helpbtn"
+        onClick={() => {
+          setFbOpen((o) => !o);
+          setOpen(false);
+        }}
+        aria-label="Submit feedback"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 5.5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9l-4 3.2V16.5H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1Z" />
+          <path d="M8 9.5h8M8 12.5h5" />
+        </svg>
+        <span className="helplbl">Feedback</span>
+      </button>
+
+      <button
+        className={`helpbtn ${peek || open ? 'wide' : ''} ${peek ? 'peek' : ''}`}
+        onClick={() => {
+          setOpen((o) => !o);
+          setFbOpen(false);
+        }}
+        aria-label="Need help?"
+      >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="9" />
           <path d="M9.2 9.3a2.8 2.8 0 0 1 5.4 1c0 1.9-2.6 2.2-2.6 3.9" />
