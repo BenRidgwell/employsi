@@ -20,6 +20,7 @@ export const CITY_VIEWS: Record<string, CityView> = {
   perth: { center: PERTH_CENTER, zoom: PERTH_DEFAULT_ZOOM, pitch: PERTH_DEFAULT_PITCH, bearing: PERTH_DEFAULT_BEARING },
   brisbane: { center: [153.026, -27.4705], zoom: 15.2, pitch: 60, bearing: -18 },
   adelaide: { center: [138.6007, -34.9285], zoom: 15.2, pitch: 60, bearing: -16 },
+  sydney: { center: [151.2093, -33.8688], zoom: 15.2, pitch: 60, bearing: -18 },
   singapore: { center: [103.8519, 1.29], zoom: 15.1, pitch: 60, bearing: -12 },
   ganzhou: { center: [114.9333, 25.83], zoom: 14.8, pitch: 60, bearing: -14 },
   toronto: { center: [-79.3832, 43.6532], zoom: 15.1, pitch: 60, bearing: -18 },
@@ -46,7 +47,7 @@ export const CITY_COMPANIES: Record<string, CityCompany[]> = {
     { id: 'rio', coords: [115.85582, -31.95409] }, // Central Park, 152 St Georges Tce
     { id: 'bhp', coords: [115.85455, -31.95471] }, // Brookfield Place, 125 St Georges Tce
     { id: 's32', coords: [115.85715, -31.95453] }, // 108 St Georges Tce
-    { id: 'fmg', coords: [115.87415, -31.96062] }, // 87 Adelaide Tce, East Perth
+    { id: 'fmg', coords: [115.85015, -31.95170] }, // Fortescue — 256 St Georges Tce
     { id: 'wds', coords: [115.84986, -31.95382] }, // Mia Yellagonga, 11 Mount St
     { id: 'sto', coords: [115.85076, -31.95193] }, // 250 St Georges Tce
     { id: 'chevron', coords: [115.85790, -31.95560] }, // The Quarter, 1 The Esplanade
@@ -55,7 +56,7 @@ export const CITY_COMPANIES: Record<string, CityCompany[]> = {
     { id: 'min', coords: [115.82786, -31.9019] }, // 20 Walters Dr, Osborne Park
     { id: 'pls', coords: [115.84361, -31.9464] }, // West Perth
     { id: 'ltr', coords: [115.8398, -31.9512] }, // West Perth
-    { id: 'ilu', coords: [115.8599, -31.957] }, // 140 St Georges Tce precinct
+    { id: 'ilu', coords: [115.85140, -31.95230] }, // Iluka — 240 St Georges Tce
     { id: 'nst', coords: [115.8256, -31.9481] }, // Subiaco
   ],
   adelaide: [

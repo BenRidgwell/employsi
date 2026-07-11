@@ -314,6 +314,9 @@ export function PerthMapbox() {
       const s = useAppStore.getState();
       if (z < ZOOM_OUT_THRESHOLD && !s.zoomedOut && !crossedRef.current) {
         crossedRef.current = true;
+        // Cross out to the domestic overlay — never strand globalOut=true over
+        // the local map (which would float the global search bar above it).
+        s.setGlobalOut(false);
         s.setZoomedOut(true);
         s.setInteracted();
       }
@@ -369,10 +372,26 @@ export function PerthMapbox() {
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !selectedId) return;
+    if (!map) return;
+    if (!selectedId) {
+      // Panel closed — release the reserved right padding so the map re-centres.
+      const pad = typeof map.getPadding === 'function' ? map.getPadding() : null;
+      if (pad && (pad.right || 0) > 0) {
+        map.easeTo({ padding: { top: 0, right: 0, bottom: 0, left: 0 }, duration: 420 });
+      }
+      return;
+    }
     const placed = placedRef.current.find((p) => p.company.id === selectedId);
     if (!placed) return;
-    map.easeTo({ center: placed.coords, zoom: Math.max(map.getZoom(), 16.6), duration: 600 });
+    // Reserve the right of the screen for the company + news cards, so the
+    // selected building frames up on the left half.
+    const rightPad = Math.min(760, Math.round(window.innerWidth * 0.6));
+    map.easeTo({
+      center: placed.coords,
+      zoom: Math.max(map.getZoom(), 17),
+      padding: { top: 0, bottom: 0, left: 0, right: rightPad },
+      duration: 640,
+    });
   }, [selectedId]);
 
   return <div className="mount" ref={containerRef} />;

@@ -25,8 +25,10 @@ export interface AppState {
   compareB: string | null;
   briefOpen: boolean;
   trendingOpen: boolean;
+  followedIds: string[];
 
   select: (id: string) => void;
+  toggleFollow: (id: string) => void;
   closePanel: () => void;
   setHeat: (h: HeatMetric) => void;
   setInteracted: () => void;
@@ -99,8 +101,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   compareB: null,
   briefOpen: false,
   trendingOpen: false,
+  followedIds: [],
 
   select: (id) => set({ selectedId: id, lastId: id, interacted: true, searchOpen: false, filterOpen: false, briefOpen: false, trendingOpen: false }),
+  toggleFollow: (id) =>
+    set((s) => ({
+      followedIds: s.followedIds.includes(id) ? s.followedIds.filter((x) => x !== id) : [...s.followedIds, id],
+    })),
   closePanel: () => set({ selectedId: null }),
   setHeat: (h) => set({ heat: h }),
   setInteracted: () => set((s) => (s.interacted ? s : { interacted: true })),
@@ -139,7 +146,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (n === 1) { set({ zoomedOut: true, globalOut: false, domesticRegion: 'australia', interacted: true }); return; }
     set({ zoomedOut: true, globalOut: true, interacted: true });
   },
-  zoomIn: () => get().zoomInCity('perth'),
+  // Re-enter whichever city we last viewed (defaults to Perth), so the Local
+  // zoom button / back gesture doesn't snap away from e.g. Toronto to Perth.
+  zoomIn: () => get().zoomInCity(get().localCity || 'perth'),
   zoomInCity: (city) => {
     const s = get();
     if (s.zoomingIn) return;
@@ -160,7 +169,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (s.globalOut) set({ globalOut: false });
     else get().zoomIn();
   },
-  onAuWheel: (deltaY, region) => {
+  onAuWheel: (deltaY, target) => {
     const s = get();
     // Hold at the current layer until the cooldown passes, so momentum from
     // the gesture that got us here can't immediately jump another layer.
@@ -170,7 +179,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (deltaY < 0) {
         markLayerChange();
         // Scroll into the continent under the cursor, defaulting to Australia.
-        set({ globalOut: false, domesticRegion: region || 'australia', interacted: true });
+        set({ globalOut: false, domesticRegion: target || 'australia', interacted: true });
       }
       return;
     }
@@ -178,7 +187,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       markLayerChange();
       set({ globalOut: true, interacted: true });
     } else {
-      get().zoomIn();
+      // Scroll into the city hub nearest the cursor, defaulting to Perth.
+      get().zoomInCity(target || 'perth');
     }
   },
 
@@ -213,7 +223,9 @@ export function companyMatches(c: Company, s: FilterState): boolean {
     c.ticker.toLowerCase().includes(q) ||
     c.skills.some((sk) => sk.toLowerCase().includes(q)) ||
     c.roles.some((r) => r.title.toLowerCase().includes(q));
-  const cats = s.activeSectors;
+  // Financial Services tags cities, not these resource companies, so it doesn't
+  // narrow the company list — only the mining / oil sectors do.
+  const cats = s.activeSectors.filter((x) => x !== 'Financial Services');
   const sOk = !cats.length || cats.includes(categorize(c.sector));
   const salaryOk = c.salaryNum >= s.minSalary * 1000;
   const headcountOk = c.headcount >= s.minHeadcount;

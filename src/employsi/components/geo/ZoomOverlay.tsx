@@ -40,6 +40,28 @@ function continentFromMouse(e: React.WheelEvent<HTMLDivElement>): string {
   return best;
 }
 
+// Work out which city hub the cursor is nearest on the active domestic view, so
+// scrolling in from a regional map drops into that city's local layer rather
+// than always defaulting to Perth. Uses the rendered hub dots' screen positions
+// so it works regardless of the map's zoom transform.
+function cityFromMouse(e: React.WheelEvent<HTMLDivElement>): string | null {
+  const hubs = document.querySelectorAll<SVGGElement>('.auscene .aucity.hub[data-city]');
+  let best: string | null = null;
+  let bd = Infinity;
+  hubs.forEach((h) => {
+    const r = h.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const d = (e.clientX - cx) ** 2 + (e.clientY - cy) ** 2;
+    if (d < bd) {
+      bd = d;
+      best = h.getAttribute('data-city');
+    }
+  });
+  return best;
+}
+
 export function ZoomOverlay() {
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const zoomingIn = useAppStore((s) => s.zoomingIn);
@@ -51,6 +73,7 @@ export function ZoomOverlay() {
   const goDomestic = useAppStore((s) => s.goDomestic);
   const localCity = useAppStore((s) => s.localCity);
   const domesticRegion = useAppStore((s) => s.domesticRegion);
+  const activeSectors = useAppStore((s) => s.activeSectors);
 
   // Zoom the Australia map toward the city being entered (not always Perth).
   const oc = CITY_XY[localCity] || CITY_XY.perth;
@@ -75,7 +98,17 @@ export function ZoomOverlay() {
   const auCls = [zoomedOut ? 'open' : '', zoomingIn ? 'zoomingin' : ''].join(' ').trim();
 
   return (
-    <div className={`auview ${auCls}`} onWheel={(e) => onAuWheel(e.deltaY, globalOut && e.deltaY < 0 ? continentFromMouse(e) : undefined)}>
+    <div
+      className={`auview ${auCls}`}
+      onWheel={(e) => {
+        // Scrolling in picks a target under the cursor: a continent when coming
+        // from the global map, or the nearest city when coming from a domestic
+        // regional map. Scrolling out passes nothing.
+        let target: string | undefined;
+        if (e.deltaY < 0) target = globalOut ? continentFromMouse(e) : cityFromMouse(e) || undefined;
+        onAuWheel(e.deltaY, target);
+      }}
+    >
       <div className={`auscene ${globalOut ? 'scenehide' : ''}`}>
         {domesticRegion === 'australia' ? (
           <AustraliaMap cityHeat={cityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} zoomOrigin={auOrigin} ambientSpikes={ambientSpikes} hubSpikes={skillSpikes} />
@@ -84,7 +117,7 @@ export function ZoomOverlay() {
         )}
       </div>
       <div className={`globescene ${globalOut ? 'sceneshow' : ''}`}>
-        <GlobeMap hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} onContinent={goDomestic} ambientSpikes={globalAmbientSpikes} hubSpikes={globalSpikes} />
+        <GlobeMap hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} onContinent={goDomestic} ambientSpikes={globalAmbientSpikes} hubSpikes={globalSpikes} activeSectors={activeSectors} />
       </div>
     </div>
   );

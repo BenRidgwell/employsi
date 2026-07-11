@@ -1,5 +1,5 @@
 import { GLOBAL_LAND_PATHS } from '../../data/geoPaths';
-import { GLOBAL_HUB_XY, GLOBAL_HUB_LABEL } from '../../data/geo';
+import { GLOBAL_HUB_XY, GLOBAL_HUB_LABEL, cityMatchesSectors } from '../../data/geo';
 import type { HeatDisc } from '../../lib/color';
 import type { SpikePoint } from '../../lib/heat';
 import { SpikeField } from './SpikeField';
@@ -48,7 +48,12 @@ function HubHeat({ cx, cy, heat, dim }: { cx: number; cy: number; heat: HeatDisc
 }
 
 // Label offsets from each hub dot (dot positions come from GLOBAL_HUB_XY).
+// Every hub is a clickable city that opens its own local layer.
 const CITY_LABEL_OFFSET: Record<string, { dx: number; dy: number; anchor: 'start' | 'middle' | 'end' }> = {
+  perth: { dx: 0, dy: -8, anchor: 'middle' },
+  adelaide: { dx: 0, dy: 12, anchor: 'middle' },
+  brisbane: { dx: -6, dy: -8, anchor: 'end' },
+  sydney: { dx: 6, dy: 11, anchor: 'start' },
   santiago: { dx: 0, dy: -9, anchor: 'middle' },
   toronto: { dx: 0, dy: -9, anchor: 'middle' },
   johannesburg: { dx: 0, dy: -9, anchor: 'middle' },
@@ -58,7 +63,6 @@ const CITY_LABEL_OFFSET: Record<string, { dx: number; dy: number; anchor: 'start
   denver: { dx: 0, dy: -9, anchor: 'middle' },
   ganzhou: { dx: 8, dy: 3, anchor: 'start' },
   lubumbashi: { dx: 8, dy: 3, anchor: 'start' },
-  brisbane: { dx: -8, dy: 3, anchor: 'end' },
 };
 
 // Continent labels that navigate to a regional domestic view when clicked.
@@ -71,14 +75,6 @@ const CONTINENT_CLICK: Record<string, string> = {
   AFRICA: 'africa',
 };
 
-// Australian cities rendered as clickable hubs (like Perth) — each opens its
-// local city layer.
-const CITY_HUBS: { id: string; dx: number; dy: number; anchor: 'start' | 'middle' | 'end' }[] = [
-  { id: 'perth', dx: 0, dy: -7, anchor: 'middle' },
-  { id: 'brisbane', dx: -6, dy: -7, anchor: 'end' },
-  { id: 'adelaide', dx: 0, dy: 12, anchor: 'middle' },
-];
-
 export function GlobeMap({
   hubHeat,
   heatDim,
@@ -86,6 +82,7 @@ export function GlobeMap({
   onContinent,
   ambientSpikes,
   hubSpikes,
+  activeSectors,
 }: {
   hubHeat: Record<string, HeatDisc>;
   heatDim: string;
@@ -93,9 +90,12 @@ export function GlobeMap({
   onContinent: (region: string) => void;
   ambientSpikes: SpikePoint[];
   hubSpikes: SpikePoint[];
+  activeSectors: string[];
 }) {
-  const nonPerthHubs = Object.keys(GLOBAL_HUB_XY).filter((id) => id !== 'perth');
-  const plainHubs = nonPerthHubs.filter((id) => !CITY_HUBS.some((h) => h.id === id));
+  // Only show hubs carrying a selected sector (all of them when no filter).
+  const allHubs = Object.keys(GLOBAL_HUB_XY).filter((id) => cityMatchesSectors(id, activeSectors));
+  const nonPerthHubs = allHubs.filter((id) => id !== 'perth');
+  const showPerth = allHubs.includes('perth');
   return (
     <svg className="globemap" viewBox="0 0 500 260">
       <defs>
@@ -111,6 +111,13 @@ export function GlobeMap({
         <mask id="globeOceanMask">
           <rect x="32" y="7" width="450" height="246" rx="10" fill="#fff" filter="url(#globeEdgeFeather)" />
         </mask>
+        {/* Land is feathered in tighter on the left/right than the ocean so the
+            dateline-cut boundary segments (Alaska's west edge, eastern Russia,
+            the New Zealand sliver past Tasmania) dissolve into the water instead
+            of rendering as hard vertical lines. */}
+        <mask id="globeLandMask">
+          <rect x="46" y="4" width="424" height="252" rx="12" fill="#fff" filter="url(#globeEdgeFeather)" />
+        </mask>
         <filter id="globeblur" x="-120%" y="-120%" width="340%" height="340%">
           <feGaussianBlur stdDeviation="4" />
         </filter>
@@ -123,6 +130,8 @@ export function GlobeMap({
       </defs>
       <g mask="url(#globeOceanMask)">
         <rect x="-80" y="-60" width="660" height="380" fill="url(#globeOceanWave)" />
+      </g>
+      <g mask="url(#globeLandMask)">
         <g transform={GEO_SCALE}>
           {GLOBAL_LAND_PATHS.map((d, i) => (
             <path key={i} className="globeland" d={d} />
@@ -137,18 +146,8 @@ export function GlobeMap({
           const [cx, cy] = GLOBAL_HUB_XY[id];
           return <HubHeat key={id} cx={cx} cy={cy} heat={hubHeat[id]} dim={heatDim} />;
         })}
-        <HubHeat cx={GLOBAL_HUB_XY.perth[0]} cy={GLOBAL_HUB_XY.perth[1]} heat={hubHeat.perth} dim={heatDim} />
+        {showPerth && <HubHeat cx={GLOBAL_HUB_XY.perth[0]} cy={GLOBAL_HUB_XY.perth[1]} heat={hubHeat.perth} dim={heatDim} />}
 
-        {plainHubs.map((id) => {
-          const [cx, cy] = GLOBAL_HUB_XY[id];
-          const off = CITY_LABEL_OFFSET[id];
-          return (
-            <g className="aucity" key={id}>
-              <circle className="audot" cx={cx} cy={cy} r="3.2" />
-              <text className="aumute" x={cx + off.dx} y={cy + off.dy} textAnchor={off.anchor}>{GLOBAL_HUB_LABEL[id]}</text>
-            </g>
-          );
-        })}
         {CONTINENT_LABELS.map((c) => {
           const region = CONTINENT_CLICK[c.label];
           if (region) {
@@ -163,13 +162,14 @@ export function GlobeMap({
           return <text key={c.label} className="aucountry" x={c.x} y={c.y} textAnchor="middle">{c.label}</text>;
         })}
 
-        {CITY_HUBS.map(({ id, dx, dy, anchor }) => {
+        {allHubs.map((id) => {
           const [cx, cy] = GLOBAL_HUB_XY[id];
+          const off = CITY_LABEL_OFFSET[id] || { dx: 0, dy: -9, anchor: 'middle' as const };
           return (
-            <g className="aucity hub" key={id} onClick={() => onZoomInCity(id)}>
+            <g className="aucity hub" key={id} data-city={id} onClick={() => onZoomInCity(id)}>
               <circle className="auring" cx={cx} cy={cy} r="8" />
               <circle className="audot audothub" cx={cx} cy={cy} r="4.4" />
-              <text className="aulabel" x={cx + dx} y={cy + dy} textAnchor={anchor}>{GLOBAL_HUB_LABEL[id]}</text>
+              <text className="aulabel" x={cx + off.dx} y={cy + off.dy} textAnchor={off.anchor}>{GLOBAL_HUB_LABEL[id]}</text>
             </g>
           );
         })}

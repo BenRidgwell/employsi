@@ -3,7 +3,7 @@ import { BrandMark } from './BrandMark';
 import { useAppStore, isFilterActive, isSearchActive, type FilterState } from '../state/store';
 import { COMPANIES } from '../data/companies';
 
-const SECTORS = ['Mining & Metals', 'Oil & Gas', 'Battery Metals'];
+const SECTORS = ['Mining & Metals', 'Oil & Gas', 'Financial Services'];
 
 function topSkills(): string[] {
   const counts: Record<string, number> = {};
@@ -55,6 +55,10 @@ export function TopBar() {
   const heat = useAppStore((s) => s.heat);
   const setHeat = useAppStore((s) => s.setHeat);
   const globalOut = useAppStore((s) => s.globalOut);
+  const zoomedOut = useAppStore((s) => s.zoomedOut);
+  // The centred global search bar only replaces the top-right search on the
+  // actual global overlay; local/domestic (and any stranded state) keep it.
+  const showGlobalSearch = globalOut && zoomedOut;
 
   const filterState: FilterState = { searchQuery, activeSectors, minSalary, minHeadcount, minGrowth, maxAttrition };
   const filterActive = isFilterActive(filterState);
@@ -70,7 +74,7 @@ export function TopBar() {
         </div>
       </div>
       <div className="controls">
-        {!globalOut && (
+        {!showGlobalSearch && (
         <div className="cgroup searchwrap">
           <span className="seglbl">Search</span>
           <button className={`searchbtn ${searchOpen ? 'on' : ''} ${searchActive ? 'active' : ''}`} onClick={toggleSearch}>

@@ -149,7 +149,7 @@ export function RegionMap({
         const [cx, cy] = proj(...GLOBAL_HUB_XY[id]);
         const off = cfg.offsets[id];
         return (
-          <g className="aucity hub" key={id} onClick={() => onZoomInCity(id)}>
+          <g className="aucity hub" key={id} data-city={id} onClick={() => onZoomInCity(id)}>
             <circle className="auring" cx={cx} cy={cy} r="8" />
             <circle className="audot audothub" cx={cx} cy={cy} r="4.4" />
             <text className="aulabel" x={cx + off.dx} y={cy + off.dy} textAnchor={off.anchor}>

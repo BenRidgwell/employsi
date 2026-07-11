@@ -104,6 +104,7 @@ export function TrendChart(props: Props) {
   const n = head.length;
   const [sel, setSel] = useState<number | null>(null);
   const [range, setRange] = useState<[number, number] | null>(null);
+  const [hover, setHover] = useState(false);
   const dragStart = useRef<number | null>(null);
 
   const x = (i: number) => PADX + (i * PLOTW) / (n - 1);
@@ -127,6 +128,7 @@ export function TrendChart(props: Props) {
   };
   const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const i = idxAt(e);
+    setHover(true);
     if (dragStart.current != null) setRange([dragStart.current, i]);
     else if (!range) setSel(i);
   };
@@ -145,6 +147,7 @@ export function TrendChart(props: Props) {
   const onLeave = () => {
     dragStart.current = null;
     setSel(null);
+    setHover(false);
   };
 
   const hasRange = !!range && range[0] !== range[1];
@@ -201,9 +204,9 @@ export function TrendChart(props: Props) {
               <line className="wtguide" x1={x(a)} x2={x(a)} y1={PADT} y2={PADT + PLOTH} vectorEffect="non-scaling-stroke" />
               <line className="wtguide" x1={x(b)} x2={x(b)} y1={PADT} y2={PADT + PLOTH} vectorEffect="non-scaling-stroke" />
             </>
-          ) : (
+          ) : hover ? (
             <line className="wtguide" x1={x(active)} x2={x(active)} y1={PADT} y2={PADT + PLOTH} vectorEffect="non-scaling-stroke" />
-          )}
+          ) : null}
         </svg>
 
         {hasRange ? (
@@ -213,7 +216,7 @@ export function TrendChart(props: Props) {
             <div className="wtdot ink" style={{ left: `${(x(a) / W) * 100}%`, top: `${(yH(head[a]) / H) * 100}%` }} />
             <div className="wtdot ink" style={{ left: `${(x(b) / W) * 100}%`, top: `${(yH(head[b]) / H) * 100}%` }} />
           </>
-        ) : (
+        ) : hover ? (
           <>
             <div className="wtdot acc" style={{ left: `${scrubLeft}%`, top: `${(yF(fin[active]) / H) * 100}%` }} />
             <div className="wtdot ink" style={{ left: `${scrubLeft}%`, top: `${(yH(head[active]) / H) * 100}%` }} />
@@ -231,7 +234,7 @@ export function TrendChart(props: Props) {
               </div>
             </div>
           </>
-        )}
+        ) : null}
       </div>
 
       <div className="wtaxis">

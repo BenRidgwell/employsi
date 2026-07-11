@@ -129,7 +129,7 @@ export function AustraliaMap({
       ))}
 
       {HUB_CITIES.map(({ id, labelDy, local }) => (
-        <g className="aucity hub" key={id} onClick={() => onZoomInCity(local)}>
+        <g className="aucity hub" key={id} data-city={local} onClick={() => onZoomInCity(local)}>
           <circle className="auring" cx={CITY_XY[id][0]} cy={CITY_XY[id][1]} r="8" />
           <circle className="audot audothub" cx={CITY_XY[id][0]} cy={CITY_XY[id][1]} r="4.4" />
           <text className="aulabel" x={CITY_XY[id][0]} y={CITY_XY[id][1] + labelDy} textAnchor="middle">
@@ -137,7 +137,7 @@ export function AustraliaMap({
           </text>
         </g>
       ))}
-      <g className="aucity hub" onClick={() => onZoomInCity('perth')}>
+      <g className="aucity hub" data-city="perth" onClick={() => onZoomInCity('perth')}>
         <circle className="auring" cx={CITY_XY.perth[0]} cy={CITY_XY.perth[1]} r="8" />
         <circle className="audot audothub" cx={CITY_XY.perth[0]} cy={CITY_XY.perth[1]} r="4.4" />
         <text className="aulabel" x={CITY_XY.perth[0]} y={CITY_XY.perth[1] - 7} textAnchor="middle">

@@ -2,6 +2,28 @@ import { useEffect, useState } from 'react';
 import { useAppStore } from '../../state/store';
 import { buildPanel } from '../../lib/panel';
 import { TrendChart } from './TrendChart';
+import { NewsPanel } from './NewsPanel';
+
+const CompareIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 4H4v13M4 4l4 4M16 20h4V7M20 20l-4-4" />
+  </svg>
+);
+const FollowIcon = ({ on }: { on: boolean }) =>
+  on ? (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12.5l4.2 4.2L19 7" />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+const CloseIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round">
+    <path d="M6 6l12 12M18 6L6 18" />
+  </svg>
+);
 
 function CompanyLogo({ domain, ticker }: { domain: string; ticker: string }) {
   const [failed, setFailed] = useState(false);
@@ -79,6 +101,8 @@ export function CompanyPanel() {
   const lastId = useAppStore((s) => s.lastId);
   const closePanel = useAppStore((s) => s.closePanel);
   const openCompare = useAppStore((s) => s.openCompare);
+  const followedIds = useAppStore((s) => s.followedIds);
+  const toggleFollow = useAppStore((s) => s.toggleFollow);
   const [roleFilter, setRoleFilter] = useState<string | null>(null);
 
   // Reset the role focus whenever a different company is opened.
@@ -86,22 +110,40 @@ export function CompanyPanel() {
 
   const panel = buildPanel(lastId, roleFilter);
   const open = !!selectedId;
+  const following = panel ? followedIds.includes(panel.companyId) : false;
 
   return (
-    <>
-      <div className={`pbackdrop ${open ? 'open' : ''}`} onClick={closePanel} />
+    <div className={`cardstage ${open ? 'open' : ''}`}>
       <aside className={`panel ${open ? 'open' : ''}`}>
         <div className="pscroll">
           {panel && (
             <>
               <div className="phead">
                 <CompanyLogo domain={panel.domain} ticker={panel.ticker} />
-                <div>
+                <div className="pheadmain">
                   <div className="pname">{panel.name}</div>
                   <div className="psector">{panel.sector}</div>
                 </div>
-                <button className="pcompare" onClick={() => openCompare(panel.companyId)}>Compare</button>
-                <button className="pclose" onClick={closePanel}>✕</button>
+                <div className="pactions">
+                  <div className="pfabwrap">
+                    <span className="pfablbl">Compare</span>
+                    <button className="pfab" onClick={() => openCompare(panel.companyId)} aria-label="Compare">
+                      <span className="pfabic"><CompareIcon /></span>
+                    </button>
+                  </div>
+                  <div className="pfabwrap">
+                    <span className="pfablbl">{following ? 'Following' : 'Follow'}</span>
+                    <button className={`pfab ${following ? 'on' : ''}`} onClick={() => toggleFollow(panel.companyId)} aria-label="Follow">
+                      <span className="pfabic"><FollowIcon on={following} /></span>
+                    </button>
+                  </div>
+                  <div className="pfabwrap">
+                    <span className="pfablbl">Close</span>
+                    <button className="pfab" onClick={closePanel} aria-label="Close">
+                      <span className="pfabic"><CloseIcon /></span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <RoleSearch options={panel.roleOptions} value={roleFilter} onChange={setRoleFilter} />
@@ -228,6 +270,7 @@ export function CompanyPanel() {
           )}
         </div>
       </aside>
-    </>
+      {panel && <NewsPanel name={panel.name} sector={panel.sector} />}
+    </div>
   );
 }

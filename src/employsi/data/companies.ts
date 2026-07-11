@@ -55,7 +55,7 @@ export const COMPANIES: Company[] = [
 ];
 
 export function categorize(sector: string): string {
-  if (/Battery/.test(sector)) return 'Battery Metals';
+  // Two company sectors only — battery metals fold into Mining & Metals.
   if (/Oil|Gas|LNG/.test(sector)) return 'Oil & Gas';
   return 'Mining & Metals';
 }

@@ -8,12 +8,14 @@ const SKILLS = Object.keys(SKILL_DEMAND);
 // button there). Typing / picking a skill drives the demand heatmap.
 export function GlobalSearch() {
   const globalOut = useAppStore((s) => s.globalOut);
+  const zoomedOut = useAppStore((s) => s.zoomedOut);
   const searchQuery = useAppStore((s) => s.searchQuery);
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
   const toggleSkillQuery = useAppStore((s) => s.toggleSkillQuery);
   const [focused, setFocused] = useState(false);
 
-  if (!globalOut) return null;
+  // Only show over the global overlay — never stranded above a local city map.
+  if (!globalOut || !zoomedOut) return null;
   const q = searchQuery.trim().toLowerCase();
 
   return (
