@@ -13,6 +13,7 @@ const SOURCE_ID = 'companies';
 const HALO_LAYER = 'company-halo';
 const CORE_LAYER = 'company-core';
 const PULSE_LAYER = 'company-pulse';
+const LABEL_LAYER = 'company-label';
 const PULSE_MS = 2200;
 const ZOOM_OUT_THRESHOLD = 11;
 
@@ -27,14 +28,17 @@ function buildGeoJSON(heat: HeatMetric, selectedId: string | null, filterState: 
   const mx = Math.max(...vals);
   return {
     type: 'FeatureCollection',
-    features: COMPANIES.map((c) => {
+    features: COMPANIES.map((c, i) => {
       const t = ((c[key] as number) - mn) / ((mx - mn) || 1);
       const color = rgbCss(heatColor(t));
       return {
         type: 'Feature',
+        id: i,
         properties: {
           id: c.id,
           color,
+          label: c.ticker,
+          sub: chipMetric(c, heat),
           selected: c.id === selectedId,
           dim: !companyMatches(c, filterState),
         },
@@ -47,7 +51,6 @@ function buildGeoJSON(heat: HeatMetric, selectedId: string | null, filterState: 
 export function PerthMapbox() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
   const crossedRef = useRef(false);
   const interactedLocalRef = useRef(false);
   const autoRotateRaf = useRef<number | undefined>(undefined);
@@ -146,12 +149,37 @@ export function PerthMapbox() {
         },
       });
 
-      // Clicking a heat dot opens the same company panel as its pill.
+      // Company labels as a native symbol layer, so each label is glued to its
+      // own point (ticker above, metric below), with a white halo for legibility.
+      map.addLayer({
+        id: LABEL_LAYER,
+        type: 'symbol',
+        source: SOURCE_ID,
+        layout: {
+          'text-field': ['format', ['get', 'label'], { 'font-scale': 1.05 }, '\n', {}, ['get', 'sub'], { 'font-scale': 0.72 }],
+          'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
+          'text-size': 13,
+          'text-anchor': 'bottom',
+          'text-offset': [0, -1.1],
+          'text-line-height': 1.3,
+          'text-allow-overlap': true,
+          'text-ignore-placement': true,
+        },
+        paint: {
+          'text-color': '#1c1c1e',
+          'text-halo-color': '#ffffff',
+          'text-halo-width': 1.8,
+          'text-halo-blur': 0.3,
+          'text-opacity': ['*', ['coalesce', ['feature-state', 'reveal'], 0], ['case', ['get', 'dim'], 0.32, 1]],
+        },
+      });
+
+      // Clicking a heat dot or its label opens the company panel.
       const onDotClick = (e: mapboxgl.MapLayerMouseEvent) => {
         const f = e.features && e.features[0];
         if (f?.properties) useAppStore.getState().select(f.properties.id as string);
       };
-      [CORE_LAYER, HALO_LAYER].forEach((layer) => {
+      [CORE_LAYER, HALO_LAYER, LABEL_LAYER].forEach((layer) => {
         map.on('click', layer, onDotClick);
         map.on('mouseenter', layer, () => {
           map.getCanvas().style.cursor = 'pointer';
@@ -161,28 +189,13 @@ export function PerthMapbox() {
         });
       });
 
-      COMPANIES.forEach((c) => {
-        const el = document.createElement('button');
-        el.className = 'mbchip';
-        el.innerHTML = `<span class="chipdot"></span><span class="chiptk">${c.ticker}</span><span class="chipsub"></span>`;
-        el.onclick = () => useAppStore.getState().select(c.id);
-        // Pin the pill's bottom right at the heat dot so it sits directly
-        // above its own glowing icon.
-        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom', offset: [0, -4] })
-          .setLngLat(COMPANY_COORDS[c.id])
-          .addTo(map);
-        markersRef.current[c.id] = marker;
-      });
-
-      // Focus reveal: a pill only shows when you've actually panned onto its
-      // building and zoomed in on it. Reveal is driven by the ground distance
-      // from the map centre to the building (in metres) plus a zoom gate — not
-      // by where the pill lands on screen — so a distant company never shows up
-      // near the horizon just because of the map's pitch.
+      // Focus reveal: a label only shows once you've panned onto its building
+      // and zoomed in (ground distance from centre + zoom gate). Driven per
+      // feature through feature-state so the native symbol fades in/out.
       const R_FULL = 250; // metres from centre: within this -> fully shown
       const R_GONE = 450; // metres from centre: beyond this -> hidden
-      const Z_MIN = 14.2; // below this zoom -> pills hidden (zoomed-out overview)
-      const Z_FULL = 15.0; // at/above this zoom -> pills at full strength
+      const Z_MIN = 14.2; // below this zoom -> labels hidden
+      const Z_FULL = 15.0; // at/above this zoom -> labels at full strength
       const distMetres = (aLng: number, aLat: number, bLng: number, bLat: number) => {
         const R = 6371000;
         const toR = Math.PI / 180;
@@ -197,17 +210,11 @@ export function PerthMapbox() {
         const c = map.getCenter();
         const z = map.getZoom();
         const zf = z <= Z_MIN ? 0 : z >= Z_FULL ? 1 : (z - Z_MIN) / (Z_FULL - Z_MIN);
-        COMPANIES.forEach((company) => {
-          const marker = markersRef.current[company.id];
-          if (!marker) return;
+        COMPANIES.forEach((company, i) => {
           const [lng, lat] = COMPANY_COORDS[company.id];
           const d = distMetres(c.lng, c.lat, lng, lat);
           const df = d <= R_FULL ? 1 : d >= R_GONE ? 0 : (R_GONE - d) / (R_GONE - R_FULL);
-          const f = df * zf;
-          const el = marker.getElement();
-          const base = el.classList.contains('dim') ? 0.28 : 1;
-          el.style.opacity = String(base * f);
-          el.style.pointerEvents = f > 0.05 ? 'auto' : 'none';
+          map.setFeatureState({ source: SOURCE_ID, id: i }, { reveal: df * zf });
         });
       };
       map.on('move', updateFocus);
@@ -255,13 +262,10 @@ export function PerthMapbox() {
       if (z >= ZOOM_OUT_THRESHOLD) crossedRef.current = false;
     });
 
-    // Show/hide the company heat layers + pills (only Perth has companies).
+    // Show/hide the company heat layers + labels (only Perth has companies).
     const setCompaniesVisible = (show: boolean) => {
-      [HALO_LAYER, CORE_LAYER, PULSE_LAYER].forEach((id) => {
+      [HALO_LAYER, CORE_LAYER, PULSE_LAYER, LABEL_LAYER].forEach((id) => {
         if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', show ? 'visible' : 'none');
-      });
-      Object.values(markersRef.current).forEach((m) => {
-        (m.getElement() as HTMLElement).style.display = show ? '' : 'none';
       });
     };
     const onZoomReset = () => {
@@ -278,8 +282,6 @@ export function PerthMapbox() {
       window.removeEventListener('perth-zoom-reset', onZoomReset);
       if (autoRotateRaf.current) cancelAnimationFrame(autoRotateRaf.current);
       if (pulseRaf.current) cancelAnimationFrame(pulseRaf.current);
-      Object.values(markersRef.current).forEach((m) => m.remove());
-      markersRef.current = {};
       map.remove();
       mapRef.current = null;
     };
@@ -293,16 +295,7 @@ export function PerthMapbox() {
       const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
       if (!source) return;
       source.setData(buildGeoJSON(heat, selectedId, filterState));
-      COMPANIES.forEach((c) => {
-        const marker = markersRef.current[c.id];
-        if (!marker) return;
-        const el = marker.getElement();
-        const matches = companyMatches(c, filterState);
-        el.className = ['mbchip', selectedId === c.id ? 'on' : '', matches ? '' : 'dim'].join(' ').trim();
-        const sub = el.querySelector('.chipsub');
-        if (sub) sub.textContent = chipMetric(c, heat);
-      });
-      // Re-apply the focus fade so a newly dimmed/undimmed pill keeps the
+      // Re-apply the focus fade so a newly dimmed/undimmed label keeps the
       // correct opacity without waiting for the next pan.
       focusUpdaterRef.current?.();
     };
