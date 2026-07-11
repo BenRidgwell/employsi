@@ -185,6 +185,13 @@ export function TrendChart(props: Props) {
 
       <div className="wtbox" onMouseDown={onDown} onMouseMove={onMove} onMouseUp={finishDrag} onMouseLeave={onLeave}>
         <svg className="wtsvg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="wtAreaFade" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="rgba(28,28,30,0.16)" />
+              <stop offset="65%" stopColor="rgba(28,28,30,0.05)" />
+              <stop offset="100%" stopColor="rgba(28,28,30,0)" />
+            </linearGradient>
+          </defs>
           {[0.25, 0.5, 0.75].map((f) => (
             <line key={f} className="wtgrid" x1={PADX} x2={W - PADX} y1={PADT + PLOTH * f} y2={PADT + PLOTH * f} />
           ))}
