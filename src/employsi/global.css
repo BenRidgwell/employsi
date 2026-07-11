@@ -76,11 +76,11 @@ body {
     0 14px 30px -10px rgba(28, 28, 30, 0.55);
 }
 .chipdot {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
-  background: var(--brand);
-  box-shadow: 0 0 0 4px rgba(28, 28, 30, 0.16);
+  background: #1c1c1e;
+  box-shadow: 0 0 0 4px rgba(28, 28, 30, 0.1);
   flex: 0 0 auto;
 }
 .chip.on .chipdot {

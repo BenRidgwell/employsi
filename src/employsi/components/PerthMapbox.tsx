@@ -13,7 +13,6 @@ const SOURCE_ID = 'companies';
 const HALO_LAYER = 'company-halo';
 const CORE_LAYER = 'company-core';
 const PULSE_LAYER = 'company-pulse';
-const LABEL_LAYER = 'company-label';
 const PULSE_MS = 2200;
 const ZOOM_OUT_THRESHOLD = 11;
 
@@ -51,6 +50,7 @@ function buildGeoJSON(heat: HeatMetric, selectedId: string | null, filterState: 
 export function PerthMapbox() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
   const crossedRef = useRef(false);
   const interactedLocalRef = useRef(false);
   const autoRotateRaf = useRef<number | undefined>(undefined);
@@ -150,79 +150,12 @@ export function PerthMapbox() {
       });
 
       // Rounded white pill background (stretched around the label text via
-      // icon-text-fit), so the native labels read like the old chip pills.
-      const pr = 2;
-      const PW = 30;
-      const PH = 24;
-      const rad = 11;
-      const cv = document.createElement('canvas');
-      cv.width = PW * pr;
-      cv.height = PH * pr;
-      const ctx = cv.getContext('2d');
-      if (ctx) {
-        ctx.scale(pr, pr);
-        const x = 1;
-        const y = 1;
-        const w = PW - 2;
-        const h = PH - 2;
-        const r = rad - 1;
-        ctx.beginPath();
-        ctx.moveTo(x + r, y);
-        ctx.arcTo(x + w, y, x + w, y + h, r);
-        ctx.arcTo(x + w, y + h, x, y + h, r);
-        ctx.arcTo(x, y + h, x, y, r);
-        ctx.arcTo(x, y, x + w, y, r);
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(255,255,255,0.96)';
-        ctx.fill();
-        ctx.lineWidth = 1.4;
-        ctx.strokeStyle = 'rgba(28,28,30,0.18)';
-        ctx.stroke();
-        const px = ctx.getImageData(0, 0, cv.width, cv.height);
-        if (!map.hasImage('pillbg')) {
-          map.addImage('pillbg', { width: cv.width, height: cv.height, data: new Uint8Array(px.data) }, {
-            pixelRatio: pr,
-            stretchX: [[rad * pr, (PW - rad) * pr]],
-            stretchY: [[rad * pr, (PH - rad) * pr]],
-            content: [rad * pr, rad * pr, (PW - rad) * pr, (PH - rad) * pr],
-          });
-        }
-      }
-
-      // Company labels as a native symbol layer, glued to each point, with a
-      // pill background.
-      const REVEAL = ['*', ['coalesce', ['feature-state', 'reveal'], 0], ['case', ['get', 'dim'], 0.32, 1]] as unknown as mapboxgl.Expression;
-      map.addLayer({
-        id: LABEL_LAYER,
-        type: 'symbol',
-        source: SOURCE_ID,
-        layout: {
-          'icon-image': 'pillbg',
-          'icon-text-fit': 'both',
-          'icon-text-fit-padding': [5, 10, 5, 11],
-          'icon-allow-overlap': true,
-          'icon-ignore-placement': true,
-          'text-field': ['format', ['get', 'label'], { 'font-scale': 1.0 }, '   ', {}, ['get', 'sub'], { 'font-scale': 0.74 }],
-          'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
-          'text-size': 13,
-          'text-anchor': 'bottom',
-          'text-offset': [0, -0.9],
-          'text-allow-overlap': true,
-          'text-ignore-placement': true,
-        },
-        paint: {
-          'text-color': '#1c1c1e',
-          'icon-opacity': REVEAL,
-          'text-opacity': REVEAL,
-        },
-      });
-
-      // Clicking a heat dot or its label opens the company panel.
+      // Clicking a heat dot opens the same company panel as its pill.
       const onDotClick = (e: mapboxgl.MapLayerMouseEvent) => {
         const f = e.features && e.features[0];
         if (f?.properties) useAppStore.getState().select(f.properties.id as string);
       };
-      [CORE_LAYER, HALO_LAYER, LABEL_LAYER].forEach((layer) => {
+      [CORE_LAYER, HALO_LAYER].forEach((layer) => {
         map.on('click', layer, onDotClick);
         map.on('mouseenter', layer, () => {
           map.getCanvas().style.cursor = 'pointer';
@@ -232,9 +165,21 @@ export function PerthMapbox() {
         });
       });
 
-      // Focus reveal: a label only shows once you've panned onto its building
-      // and zoomed in (ground distance from centre + zoom gate). Driven per
-      // feature through feature-state so the native symbol fades in/out.
+      // HTML pill markers (dot · ticker · median), anchored just above each dot.
+      COMPANIES.forEach((c) => {
+        const el = document.createElement('button');
+        el.className = 'mbchip';
+        el.innerHTML = `<span class="chipdot"></span><span class="chiptk">${c.ticker}</span><span class="chipsub"></span>`;
+        el.onclick = () => useAppStore.getState().select(c.id);
+        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom', offset: [0, -6] })
+          .setLngLat(COMPANY_COORDS[c.id])
+          .addTo(map);
+        markersRef.current[c.id] = marker;
+      });
+
+      // Focus reveal: labels fade in by ground distance from centre + zoom, and
+      // a greedy collision pass hides any pill that would overlap a
+      // higher-priority (more revealed) one, so text never overlaps.
       const R_FULL = 700; // metres from centre: within this -> fully shown
       const R_GONE = 1900; // metres from centre: beyond this -> hidden
       const Z_MIN = 13.4; // below this zoom -> labels hidden
@@ -253,11 +198,41 @@ export function PerthMapbox() {
         const c = map.getCenter();
         const z = map.getZoom();
         const zf = z <= Z_MIN ? 0 : z >= Z_FULL ? 1 : (z - Z_MIN) / (Z_FULL - Z_MIN);
-        COMPANIES.forEach((company, i) => {
+        type Cand = { el: HTMLElement; op: number; x: number; y: number; w: number };
+        const cands: Cand[] = [];
+        COMPANIES.forEach((company) => {
+          const marker = markersRef.current[company.id];
+          if (!marker) return;
+          const el = marker.getElement();
           const [lng, lat] = COMPANY_COORDS[company.id];
           const d = distMetres(c.lng, c.lat, lng, lat);
           const df = d <= R_FULL ? 1 : d >= R_GONE ? 0 : (R_GONE - d) / (R_GONE - R_FULL);
-          map.setFeatureState({ source: SOURCE_ID, id: i }, { reveal: df * zf });
+          const f = df * zf;
+          const base = el.classList.contains('dim') ? 0.28 : 1;
+          if (f <= 0.02) {
+            el.style.opacity = '0';
+            el.style.pointerEvents = 'none';
+            return;
+          }
+          const p = map.project([lng, lat]);
+          cands.push({ el, op: base * f, x: p.x, y: p.y, w: el.offsetWidth || 120 });
+        });
+        // Show the most-revealed first; hide any that collide with a shown one.
+        cands.sort((a, b) => b.op - a.op);
+        const shown: { x0: number; x1: number; y0: number; y1: number }[] = [];
+        const MH = 40;
+        cands.forEach((cd) => {
+          const half = (cd.w || 120) / 2 + 4;
+          const box = { x0: cd.x - half, x1: cd.x + half, y0: cd.y - MH - 6, y1: cd.y - 6 };
+          const hit = shown.some((s) => box.x0 < s.x1 && box.x1 > s.x0 && box.y0 < s.y1 && box.y1 > s.y0);
+          if (hit) {
+            cd.el.style.opacity = '0';
+            cd.el.style.pointerEvents = 'none';
+          } else {
+            shown.push(box);
+            cd.el.style.opacity = String(cd.op);
+            cd.el.style.pointerEvents = cd.op > 0.05 ? 'auto' : 'none';
+          }
         });
       };
       map.on('move', updateFocus);
@@ -305,10 +280,13 @@ export function PerthMapbox() {
       if (z >= ZOOM_OUT_THRESHOLD) crossedRef.current = false;
     });
 
-    // Show/hide the company heat layers + labels (only Perth has companies).
+    // Show/hide the company heat layers + pills (only Perth has companies).
     const setCompaniesVisible = (show: boolean) => {
-      [HALO_LAYER, CORE_LAYER, PULSE_LAYER, LABEL_LAYER].forEach((id) => {
+      [HALO_LAYER, CORE_LAYER, PULSE_LAYER].forEach((id) => {
         if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', show ? 'visible' : 'none');
+      });
+      Object.values(markersRef.current).forEach((m) => {
+        (m.getElement() as HTMLElement).style.display = show ? '' : 'none';
       });
     };
     const onZoomReset = () => {
@@ -325,6 +303,8 @@ export function PerthMapbox() {
       window.removeEventListener('perth-zoom-reset', onZoomReset);
       if (autoRotateRaf.current) cancelAnimationFrame(autoRotateRaf.current);
       if (pulseRaf.current) cancelAnimationFrame(pulseRaf.current);
+      Object.values(markersRef.current).forEach((m) => m.remove());
+      markersRef.current = {};
       map.remove();
       mapRef.current = null;
     };
@@ -338,7 +318,16 @@ export function PerthMapbox() {
       const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
       if (!source) return;
       source.setData(buildGeoJSON(heat, selectedId, filterState));
-      // Re-apply the focus fade so a newly dimmed/undimmed label keeps the
+      COMPANIES.forEach((c) => {
+        const marker = markersRef.current[c.id];
+        if (!marker) return;
+        const el = marker.getElement();
+        const matches = companyMatches(c, filterState);
+        el.className = ['mbchip', selectedId === c.id ? 'on' : '', matches ? '' : 'dim'].join(' ').trim();
+        const sub = el.querySelector('.chipsub');
+        if (sub) sub.textContent = chipMetric(c, heat);
+      });
+      // Re-apply the focus fade so a newly dimmed/undimmed pill keeps the
       // correct opacity without waiting for the next pan.
       focusUpdaterRef.current?.();
     };
