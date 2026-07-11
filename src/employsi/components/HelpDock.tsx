@@ -51,7 +51,8 @@ export function HelpDock() {
   const globalOut = useAppStore((s) => s.globalOut);
   const localCity = useAppStore((s) => s.localCity);
 
-  const layer: Layer = globalOut ? 'global' : zoomedOut ? 'domestic' : 'local';
+  // zoomedOut takes precedence, same reasoning as ZoomSlider.
+  const layer: Layer = !zoomedOut ? 'local' : globalOut ? 'global' : 'domestic';
   const layerKey = layer === 'local' ? `local-${localCity}` : layer;
 
   const [open, setOpen] = useState(false);

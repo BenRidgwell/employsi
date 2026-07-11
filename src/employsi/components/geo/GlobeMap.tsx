@@ -75,6 +75,17 @@ const CONTINENT_CLICK: Record<string, string> = {
   AFRICA: 'africa',
 };
 
+// Percentage position of a hub on the root <svg>, accounting for the inner
+// GEO_SCALE transform applied to the land/hub group — used as the CSS
+// transform-origin so the "zoom into this city" animation scales from the
+// hub's actual on-screen spot.
+export function globeHubOrigin(hubId: string): string {
+  const [x, y] = GLOBAL_HUB_XY[hubId] || [250, 130];
+  const gx = 250 + (x - 250) * 0.93;
+  const gy = 130 + (y - 130) * 0.93;
+  return `${((gx / 500) * 100).toFixed(1)}% ${((gy / 260) * 100).toFixed(1)}%`;
+}
+
 export function GlobeMap({
   hubHeat,
   heatDim,
@@ -83,6 +94,7 @@ export function GlobeMap({
   ambientSpikes,
   hubSpikes,
   activeSectors,
+  zoomOrigin,
 }: {
   hubHeat: Record<string, HeatDisc>;
   heatDim: string;
@@ -91,13 +103,14 @@ export function GlobeMap({
   ambientSpikes: SpikePoint[];
   hubSpikes: SpikePoint[];
   activeSectors: string[];
+  zoomOrigin: string;
 }) {
   // Only show hubs carrying a selected sector (all of them when no filter).
   const allHubs = Object.keys(GLOBAL_HUB_XY).filter((id) => cityMatchesSectors(id, activeSectors));
   const nonPerthHubs = allHubs.filter((id) => id !== 'perth');
   const showPerth = allHubs.includes('perth');
   return (
-    <svg className="globemap" viewBox="0 0 500 260">
+    <svg className="globemap" viewBox="0 0 500 260" style={{ transformOrigin: zoomOrigin }}>
       <defs>
         <pattern id="globeOceanWave" width="18" height="11" patternUnits="userSpaceOnUse">
           <rect width="18" height="11" fill="#e2e5e9" />

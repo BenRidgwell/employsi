@@ -5,7 +5,9 @@ export function ZoomSlider() {
   const globalOut = useAppStore((s) => s.globalOut);
   const setZoomLevel = useAppStore((s) => s.setZoomLevel);
 
-  const level = globalOut ? 2 : zoomedOut ? 1 : 0;
+  // zoomedOut takes precedence: a stray globalOut=true left over from a prior
+  // navigation must never make the Local layer read as Global.
+  const level = !zoomedOut ? 0 : globalOut ? 2 : 1;
 
   return (
     <div className="zoomslider">

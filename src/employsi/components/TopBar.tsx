@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type CSSProperties } from 'react';
 import { BrandMark } from './BrandMark';
 import { useAppStore, isFilterActive, isSearchActive, type FilterState } from '../state/store';
 import { COMPANIES } from '../data/companies';
@@ -20,6 +20,13 @@ function SearchIcon() {
       <line x1="21" y1="21" x2="16.6" y2="16.6" />
     </svg>
   );
+}
+
+// Position of the thumb along [min,max] as a CSS custom property, so the
+// slider's purple fill always stops exactly at the thumb.
+function fillStyle(value: number, min: number, max: number): CSSProperties {
+  const pct = ((value - min) / (max - min)) * 100;
+  return { '--fill': `${pct}%` } as CSSProperties;
 }
 
 function FilterIcon() {
@@ -130,22 +137,22 @@ export function TopBar() {
               <span>Salary</span>
               <b>${minSalary}K+</b>
             </div>
-            <input type="range" className="sfrange" min={130} max={160} step={1} value={minSalary} onChange={(e) => setMinSalary(Number(e.target.value))} />
+            <input type="range" className="sfrange" style={fillStyle(minSalary, 130, 160)} min={130} max={160} step={1} value={minSalary} onChange={(e) => setMinSalary(Number(e.target.value))} />
             <div className="sfrangerow">
               <span>Headcount</span>
               <b>{minHeadcount > 0 ? minHeadcount.toLocaleString('en-US') + '+' : 'Any'}</b>
             </div>
-            <input type="range" className="sfrange" min={0} max={12000} step={250} value={minHeadcount} onChange={(e) => setMinHeadcount(Number(e.target.value))} />
+            <input type="range" className="sfrange" style={fillStyle(minHeadcount, 0, 12000)} min={0} max={12000} step={250} value={minHeadcount} onChange={(e) => setMinHeadcount(Number(e.target.value))} />
             <div className="sfrangerow">
               <span>New starters</span>
               <b>{minGrowth > 0 ? '+' + minGrowth.toFixed(1) + '%+' : 'Any'}</b>
             </div>
-            <input type="range" className="sfrange" min={0} max={15} step={0.5} value={minGrowth} onChange={(e) => setMinGrowth(Number(e.target.value))} />
+            <input type="range" className="sfrange" style={fillStyle(minGrowth, 0, 15)} min={0} max={15} step={0.5} value={minGrowth} onChange={(e) => setMinGrowth(Number(e.target.value))} />
             <div className="sfrangerow">
               <span>Attrition</span>
               <b>{maxAttrition < 16 ? '≤' + maxAttrition.toFixed(1) + '%' : 'Any'}</b>
             </div>
-            <input type="range" className="sfrange" min={8} max={16} step={0.5} value={maxAttrition} onChange={(e) => setMaxAttrition(Number(e.target.value))} />
+            <input type="range" className="sfrange" style={fillStyle(maxAttrition, 8, 16)} min={8} max={16} step={0.5} value={maxAttrition} onChange={(e) => setMaxAttrition(Number(e.target.value))} />
             <button className="sfclear" onClick={clearFilters}>Clear filters</button>
           </div>
         </div>

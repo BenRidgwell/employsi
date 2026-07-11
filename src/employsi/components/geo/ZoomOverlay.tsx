@@ -3,8 +3,8 @@ import { activeSkillKey, CITY_XY } from '../../data/geo';
 import { AU_SCATTER, GLOBAL_SCATTER } from '../../data/scatter';
 import { computeCityHeat, computeGlobalHeat, computeSkillSpikes, computeAmbientSpikes, computeGlobalSpikes, computeGlobalAmbientSpikes } from '../../lib/heat';
 import { AustraliaMap } from './AustraliaMap';
-import { RegionMap } from './RegionMap';
-import { GlobeMap } from './GlobeMap';
+import { RegionMap, regionHubOrigin } from './RegionMap';
+import { GlobeMap, globeHubOrigin } from './GlobeMap';
 
 // Approximate centre (global-map content coords) of each clickable continent.
 const REGION_CENTERS: [string, number, number][] = [
@@ -75,9 +75,13 @@ export function ZoomOverlay() {
   const domesticRegion = useAppStore((s) => s.domesticRegion);
   const activeSectors = useAppStore((s) => s.activeSectors);
 
-  // Zoom the Australia map toward the city being entered (not always Perth).
+  // Zoom each scene toward the city being entered (not always Perth), so the
+  // "zoom into this city" animation scales from the actual clicked hub on
+  // every layer — Australia, the other continents, and the global map.
   const oc = CITY_XY[localCity] || CITY_XY.perth;
   const auOrigin = `${((oc[0] / 250) * 100).toFixed(1)}% ${((oc[1] / 230) * 100).toFixed(1)}%`;
+  const regionOrigin = regionHubOrigin(domesticRegion, localCity);
+  const globalOrigin = globeHubOrigin(localCity);
 
   const skill = activeSkillKey(searchQuery);
   const heatDim = skill ? 'auheat-off' : '';
@@ -91,11 +95,16 @@ export function ZoomOverlay() {
   const ambientSpikes = skill && inAustralia ? computeAmbientSpikes(skill, AU_SCATTER) : [];
   // Global-coordinate skill spikes drive both the global map and the regional
   // views (the RegionMap projects them into its own zoomed space).
-  const showGlobalSpikes = skill && (globalOut || inRegion);
+  const showGlobalSpikes = skill && ((globalOut && zoomedOut) || inRegion);
   const globalSpikes = showGlobalSpikes ? computeGlobalSpikes(skill) : [];
   const globalAmbientSpikes = showGlobalSpikes ? computeGlobalAmbientSpikes(skill, GLOBAL_SCATTER) : [];
 
   const auCls = [zoomedOut ? 'open' : '', zoomingIn ? 'zoomingin' : ''].join(' ').trim();
+  // zoomedOut takes precedence over globalOut for which scene is live and
+  // interactive — a stray globalOut=true left over from a prior navigation
+  // must never make the global scene clickable while actually zoomed into a
+  // local city (whose map sits visually on top but wouldn't own the click).
+  const showingGlobal = globalOut && zoomedOut;
 
   return (
     <div
@@ -105,19 +114,19 @@ export function ZoomOverlay() {
         // from the global map, or the nearest city when coming from a domestic
         // regional map. Scrolling out passes nothing.
         let target: string | undefined;
-        if (e.deltaY < 0) target = globalOut ? continentFromMouse(e) : cityFromMouse(e) || undefined;
+        if (e.deltaY < 0) target = showingGlobal ? continentFromMouse(e) : cityFromMouse(e) || undefined;
         onAuWheel(e.deltaY, target);
       }}
     >
-      <div className={`auscene ${globalOut ? 'scenehide' : ''}`}>
+      <div className={`auscene ${showingGlobal ? 'scenehide' : ''}`}>
         {domesticRegion === 'australia' ? (
           <AustraliaMap cityHeat={cityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} zoomOrigin={auOrigin} ambientSpikes={ambientSpikes} hubSpikes={skillSpikes} activeSectors={activeSectors} />
         ) : (
-          <RegionMap region={domesticRegion} hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} hubSpikes={globalSpikes} ambientSpikes={globalAmbientSpikes} activeSectors={activeSectors} />
+          <RegionMap region={domesticRegion} hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} hubSpikes={globalSpikes} ambientSpikes={globalAmbientSpikes} activeSectors={activeSectors} zoomOrigin={regionOrigin} />
         )}
       </div>
-      <div className={`globescene ${globalOut ? 'sceneshow' : ''}`}>
-        <GlobeMap hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} onContinent={goDomestic} ambientSpikes={globalAmbientSpikes} hubSpikes={globalSpikes} activeSectors={activeSectors} />
+      <div className={`globescene ${showingGlobal ? 'sceneshow' : ''}`}>
+        <GlobeMap hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} onContinent={goDomestic} ambientSpikes={globalAmbientSpikes} hubSpikes={globalSpikes} activeSectors={activeSectors} zoomOrigin={globalOrigin} />
       </div>
     </div>
   );

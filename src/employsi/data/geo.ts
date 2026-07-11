@@ -54,7 +54,9 @@ export const GLOBAL_HUB_LABEL: Record<string, string> = {
 // so filtering to that sector shows only them on the global map.
 const RESOURCES: string[] = ['Mining & Metals', 'Oil & Gas'];
 export const CITY_SECTORS: Record<string, string[]> = {
-  sydney: [...RESOURCES, 'Financial Services'],
+  // Sydney is a pure finance hub in this data set — no resources presence, so
+  // it must drop out under a Mining & Metals / Oil & Gas filter.
+  sydney: ['Financial Services'],
   singapore: [...RESOURCES, 'Financial Services'],
   london: [...RESOURCES, 'Financial Services'],
 };

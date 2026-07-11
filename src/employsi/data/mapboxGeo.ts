@@ -4,7 +4,9 @@
 // Terrace, but Fortescue (East Perth) and Sandfire (West Perth) are ~1.5km
 // either side of the CBD cluster.
 export const PERTH_CENTER: [number, number] = [115.8552, -31.9542];
-export const PERTH_DEFAULT_ZOOM = 15.3;
+// Bumped from 15.3 so 3D extruded buildings are clearly visible on arrival,
+// not just at street level once you zoom in further yourself.
+export const PERTH_DEFAULT_ZOOM = 16.6;
 export const PERTH_DEFAULT_PITCH = 60;
 export const PERTH_DEFAULT_BEARING = -17.6;
 
@@ -18,18 +20,18 @@ export interface CityView {
 }
 export const CITY_VIEWS: Record<string, CityView> = {
   perth: { center: PERTH_CENTER, zoom: PERTH_DEFAULT_ZOOM, pitch: PERTH_DEFAULT_PITCH, bearing: PERTH_DEFAULT_BEARING },
-  brisbane: { center: [153.026, -27.4705], zoom: 15.2, pitch: 60, bearing: -18 },
-  adelaide: { center: [138.6007, -34.9285], zoom: 15.2, pitch: 60, bearing: -16 },
-  sydney: { center: [151.2093, -33.8688], zoom: 15.2, pitch: 60, bearing: -18 },
-  singapore: { center: [103.8519, 1.29], zoom: 15.1, pitch: 60, bearing: -12 },
-  ganzhou: { center: [114.9333, 25.83], zoom: 14.8, pitch: 60, bearing: -14 },
-  toronto: { center: [-79.3832, 43.6532], zoom: 15.1, pitch: 60, bearing: -18 },
-  houston: { center: [-95.3698, 29.7604], zoom: 15.0, pitch: 60, bearing: -14 },
-  denver: { center: [-104.9903, 39.7392], zoom: 15.0, pitch: 60, bearing: -16 },
-  johannesburg: { center: [28.0473, -26.2041], zoom: 15.0, pitch: 60, bearing: -15 },
-  lubumbashi: { center: [27.4794, -11.66], zoom: 14.9, pitch: 60, bearing: -12 },
-  london: { center: [-0.1276, 51.5072], zoom: 15.1, pitch: 60, bearing: -20 },
-  santiago: { center: [-70.6693, -33.4489], zoom: 15.0, pitch: 60, bearing: -16 },
+  brisbane: { center: [153.026, -27.4705], zoom: 16.5, pitch: 60, bearing: -18 },
+  adelaide: { center: [138.6007, -34.9285], zoom: 16.5, pitch: 60, bearing: -16 },
+  sydney: { center: [151.2093, -33.8688], zoom: 16.5, pitch: 60, bearing: -18 },
+  singapore: { center: [103.8519, 1.29], zoom: 16.4, pitch: 60, bearing: -12 },
+  ganzhou: { center: [114.9333, 25.83], zoom: 16.1, pitch: 60, bearing: -14 },
+  toronto: { center: [-79.3832, 43.6532], zoom: 16.4, pitch: 60, bearing: -18 },
+  houston: { center: [-95.3698, 29.7604], zoom: 16.3, pitch: 60, bearing: -14 },
+  denver: { center: [-104.9903, 39.7392], zoom: 16.3, pitch: 60, bearing: -16 },
+  johannesburg: { center: [28.0473, -26.2041], zoom: 16.3, pitch: 60, bearing: -15 },
+  lubumbashi: { center: [27.4794, -11.66], zoom: 16.2, pitch: 60, bearing: -12 },
+  london: { center: [-0.1276, 51.5072], zoom: 16.4, pitch: 60, bearing: -20 },
+  santiago: { center: [-70.6693, -33.4489], zoom: 16.3, pitch: 60, bearing: -16 },
 };
 
 // A company placed on a city map: its id plus that city's head-office coords.

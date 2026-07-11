@@ -21,6 +21,7 @@ body {
   --teal: #8e8e93;
   --pos: #48484a;
   --coral: #9a9aa0;
+  --purple: #7c5cec;
 }
 /* `.app` scope beats mapbox-gl's own `.mapboxgl-map { position: relative }`,
    which mapbox adds to this same element and which would otherwise collapse
@@ -1584,10 +1585,58 @@ body {
   font-weight: 700;
   color: var(--ink);
 }
+/* Custom slider: purple filled track up to a white, purple-ringed thumb.
+   `--fill` is set inline per-input from its current value/min/max. */
 .sfrange {
+  -webkit-appearance: none;
+  appearance: none;
   width: 100%;
-  margin-top: 7px;
-  accent-color: #1c1c1e;
+  height: 6px;
+  margin-top: 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  background: linear-gradient(
+    to right,
+    var(--purple) 0%,
+    var(--purple) var(--fill, 0%),
+    #e4e6ea var(--fill, 0%),
+    #e4e6ea 100%
+  );
+}
+.sfrange::-webkit-slider-runnable-track {
+  -webkit-appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: transparent;
+}
+.sfrange::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--purple);
+  box-shadow: 0 3px 8px -2px rgba(15, 27, 61, 0.4);
+  cursor: pointer;
+}
+.sfrange::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #e4e6ea;
+}
+.sfrange::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--purple);
+}
+.sfrange::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--purple);
+  box-shadow: 0 3px 8px -2px rgba(15, 27, 61, 0.4);
   cursor: pointer;
 }
 .searchflyout.open {
@@ -1778,11 +1827,28 @@ body {
   width: min(82vw, 1100px);
   height: auto;
   overflow: visible;
+  transform: scale(1);
+  opacity: 1;
+  transition:
+    transform 0.68s cubic-bezier(0.55, 0, 0.85, 0.35),
+    opacity 0.5s ease 0.22s;
 }
 .regionmap {
   width: min(78vw, 1040px);
   height: auto;
   overflow: visible;
+  transform: scale(1);
+  opacity: 1;
+  transition:
+    transform 0.68s cubic-bezier(0.55, 0, 0.85, 0.35),
+    opacity 0.5s ease 0.22s;
+}
+/* Same "zoom into this city" scale-and-fade the Australia view uses,
+   applied to the global map and the other continents' regional views. */
+.auview.zoomingin .globemap,
+.auview.zoomingin .regionmap {
+  transform: scale(13);
+  opacity: 0;
 }
 .regionland {
   fill: #e2e4e8;
@@ -2212,20 +2278,27 @@ body {
   color: var(--slate);
   margin-top: 1px;
 }
+/* Round close button matching the company card's .pfab design. */
 .helpx {
   border: 1px solid var(--line);
   background: #fff;
   color: var(--slate);
-  width: 24px;
-  height: 24px;
-  border-radius: 7px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
+  box-shadow: 0 8px 20px -12px rgba(15, 27, 61, 0.4);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.15s ease, color 0.15s ease;
 }
 .helpx:hover {
+  transform: translateY(-1px);
   color: var(--ink);
-  background: rgba(15, 27, 61, 0.05);
+  box-shadow: 0 14px 26px -12px rgba(15, 27, 61, 0.5);
 }
 .helpsteps {
   list-style: none;
@@ -2677,19 +2750,23 @@ body {
     linear-gradient(135deg, #3a4757 0%, #566677 55%, #7d8b9c 100%);
   box-shadow: inset 0 -40px 40px -30px rgba(15, 27, 61, 0.55);
 }
+.newsheroimgtag {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 .newsheroimg::after {
-  /* faint skyline silhouette */
+  /* darken the lower third so the "Trending" badge + title stay legible over
+     any photo */
   content: "";
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 46%;
-  background:
-    linear-gradient(to top, rgba(20, 28, 40, 0.5), rgba(20, 28, 40, 0)),
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0 8px, rgba(255, 255, 255, 0) 8px 22px);
-  -webkit-mask: linear-gradient(to top, #000 40%, transparent);
-  mask: linear-gradient(to top, #000 40%, transparent);
+  height: 55%;
+  background: linear-gradient(to top, rgba(15, 20, 28, 0.55), rgba(15, 20, 28, 0));
 }
 .newsbadge {
   position: absolute;
@@ -2759,12 +2836,9 @@ body {
   width: 52px;
   height: 52px;
   border-radius: 11px;
-  background: linear-gradient(135deg, #d7dde4, #aeb8c5);
+  object-fit: cover;
+  background: #e4e6ea;
 }
-.newsrowthumb.thumb-0 { background: linear-gradient(135deg, #cdd7e0, #9fb0c2); }
-.newsrowthumb.thumb-1 { background: linear-gradient(135deg, #d9d5cf, #b6a99a); }
-.newsrowthumb.thumb-2 { background: linear-gradient(135deg, #cfd9d3, #9fb7ab); }
-.newsrowthumb.thumb-3 { background: linear-gradient(135deg, #d6d2dd, #ada6bd); }
 .pnote {
   font-size: 12px;
   font-weight: 600;
@@ -3099,6 +3173,15 @@ body {
   font-weight: 700;
   font-size: 17px;
   color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.subv svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  color: var(--slate);
 }
 .subl {
   font-size: 10.5px;
@@ -3376,6 +3459,73 @@ body {
   height: 100%;
   border-radius: 999px;
   background: #1c1c1e;
+}
+/* Financial trends delta badge, next to the section heading. Scoped under
+   .secth so it outranks the pre-existing ".secth span" rule (which would
+   otherwise win on specificity and flatten this to font-weight 600). */
+.secth .shdelta {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.shdelta.up {
+  color: #0e7a50;
+}
+.shdelta.down {
+  color: #c1443c;
+}
+/* Social sentiment stacked bar + legend */
+.sentimentbar {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 14px;
+}
+.sentpos {
+  background: #159d67;
+}
+.sentneu {
+  background: #d7dae0;
+}
+.sentneg {
+  background: #e0524a;
+}
+.sentlegend {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--slate);
+}
+.sentlegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.sentdot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.sentdot.pos {
+  background: #159d67;
+}
+.sentdot.neu {
+  background: #d7dae0;
+}
+.sentdot.neg {
+  background: #e0524a;
+}
+.sentnote {
+  margin-top: 9px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--slate);
 }
 /* Recent layoffs */
 .layoff {

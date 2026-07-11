@@ -28,6 +28,13 @@ function Meta({ item }: { item: NewsItem }) {
   );
 }
 
+// Deterministic stock-photo placeholder per company/article, so the same
+// company always shows the same set of images. Swap for a real news API's
+// image URLs later.
+function thumbUrl(seed: string, w: number, h: number): string {
+  return `https://picsum.photos/seed/${encodeURIComponent(seed)}/${w}/${h}`;
+}
+
 export function NewsPanel({ name, sector }: { name: string; sector: string }) {
   const news = useMemo(() => companyNews(name, sector), [name, sector]);
   return (
@@ -38,6 +45,7 @@ export function NewsPanel({ name, sector }: { name: string; sector: string }) {
       <div className="newsscroll">
         <article className="newshero">
           <div className="newsheroimg">
+            <img className="newsheroimgtag" src={thumbUrl(name + '-hero', 640, 360)} alt="" loading="lazy" />
             <span className="newsbadge">Trending</span>
           </div>
           <div className="newsherotitle">{news.hero.title}</div>
@@ -51,7 +59,7 @@ export function NewsPanel({ name, sector }: { name: string; sector: string }) {
               <div className="newsrowtitle">{a.title}</div>
               <Meta item={a} />
             </div>
-            <div className={`newsrowthumb thumb-${i % 4}`} />
+            <img className="newsrowthumb" src={thumbUrl(name + '-' + i, 160, 160)} alt="" loading="lazy" />
           </article>
         ))}
       </div>

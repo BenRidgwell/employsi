@@ -1,8 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../state/store';
 import { buildPanel } from '../../lib/panel';
+import { shareTrend } from '../../data/finance';
+import { companySocial } from '../../data/social';
 import { TrendChart } from './TrendChart';
+import { ShareChart } from './ShareChart';
 import { NewsPanel } from './NewsPanel';
+
+const RedditIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="14" r="6.5" />
+    <circle cx="8.6" cy="14.2" r="1" fill="currentColor" stroke="none" />
+    <circle cx="15.4" cy="14.2" r="1" fill="currentColor" stroke="none" />
+    <path d="M9 17c.9.6 1.9.9 3 .9s2.1-.3 3-.9" />
+    <path d="M12 7.5V4.5M12 4.5l2.4 1M17 9.2a1.6 1.6 0 1 0 0-3.2" />
+  </svg>
+);
+const XIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+    <path d="M4 4l7 8.4L4.3 20h2.1l5.8-6.6 4.4 6.6H21l-7.3-9L20 4h-2.1l-5.3 6-4-6H4Z" />
+  </svg>
+);
 
 const CompareIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
@@ -25,6 +43,10 @@ const CloseIcon = () => (
   </svg>
 );
 
+// Clearbit's public logo API has been discontinued (hotlinked requests now
+// fail outright), so this fetches each company's real brand icon via
+// Google's favicon service instead, which is still live. Falls back to the
+// ticker text only if even that request errors.
 function CompanyLogo({ domain, ticker }: { domain: string; ticker: string }) {
   const [failed, setFailed] = useState(false);
   return (
@@ -32,7 +54,12 @@ function CompanyLogo({ domain, ticker }: { domain: string; ticker: string }) {
       {failed ? (
         <span className="pbadgetxt">{ticker}</span>
       ) : (
-        <img className="pbadgeimg" src={`https://logo.clearbit.com/${domain}?size=104`} alt={ticker} onError={() => setFailed(true)} />
+        <img
+          className="pbadgeimg"
+          src={`https://www.google.com/s2/favicons?domain=${domain}&sz=128`}
+          alt={ticker}
+          onError={() => setFailed(true)}
+        />
       )}
     </div>
   );
@@ -104,18 +131,32 @@ export function CompanyPanel() {
   const followedIds = useAppStore((s) => s.followedIds);
   const toggleFollow = useAppStore((s) => s.toggleFollow);
   const [roleFilter, setRoleFilter] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Reset the role focus whenever a different company is opened.
-  useEffect(() => setRoleFilter(null), [lastId]);
+  // Reset the role focus and scroll position whenever the panel opens on a
+  // company — keyed on selectedId (not lastId) so reopening the *same*
+  // company after closing still resets: lastId keeps its old value across a
+  // close, so it wouldn't otherwise change on that null -> id transition.
+  useEffect(() => {
+    if (!selectedId) return;
+    setRoleFilter(null);
+    scrollRef.current?.scrollTo(0, 0);
+  }, [selectedId]);
 
   const panel = buildPanel(lastId, roleFilter);
   const open = !!selectedId;
   const following = panel ? followedIds.includes(panel.companyId) : false;
 
+  const prices = useMemo(() => (panel ? shareTrend(panel.ticker, panel.trend) : []), [panel?.ticker, panel?.trend]);
+  const social = useMemo(
+    () => (panel ? companySocial(panel.companyId, panel.trend[panel.trend.length - 1] - panel.trend[0]) : null),
+    [panel?.companyId, panel?.trend],
+  );
+
   return (
     <div className={`cardstage ${open ? 'open' : ''}`}>
       <aside className={`panel ${open ? 'open' : ''}`}>
-        <div className="pscroll">
+        <div className="pscroll" ref={scrollRef}>
           {panel && (
             <>
               <div className="phead">
@@ -170,6 +211,48 @@ export function CompanyPanel() {
                   ))}
                 </div>
               </div>
+
+              {prices.length > 0 && (
+                <div className="sect">
+                  <ShareChart ticker={panel.ticker} prices={prices} />
+                </div>
+              )}
+
+              {social && (
+                <div className="sect">
+                  <div className="secth">
+                    Social sentiment
+                    <span>Reddit &amp; X mentions</span>
+                  </div>
+                  <div className="subs">
+                    <div className="subc">
+                      <div className="subv"><RedditIcon /> {social.redditMentions.toLocaleString('en-US')}</div>
+                      <div className="subl">Reddit mentions / wk</div>
+                      <div className={`subd ${social.redditDelta >= 0 ? '' : 'neg'}`}>
+                        {social.redditDelta >= 0 ? '+' : '−'}{Math.abs(social.redditDelta).toFixed(1)}% vs last week
+                      </div>
+                    </div>
+                    <div className="subc">
+                      <div className="subv"><XIcon /> {social.xMentions.toLocaleString('en-US')}</div>
+                      <div className="subl">X mentions / wk</div>
+                      <div className={`subd ${social.xDelta >= 0 ? '' : 'neg'}`}>
+                        {social.xDelta >= 0 ? '+' : '−'}{Math.abs(social.xDelta).toFixed(1)}% vs last week
+                      </div>
+                    </div>
+                  </div>
+                  <div className="sentimentbar">
+                    <span className="sentpos" style={{ width: `${social.positive}%` }} />
+                    <span className="sentneu" style={{ width: `${social.neutral}%` }} />
+                    <span className="sentneg" style={{ width: `${social.negative}%` }} />
+                  </div>
+                  <div className="sentlegend">
+                    <span><i className="sentdot pos" />{social.positive}% positive</span>
+                    <span><i className="sentdot neu" />{social.neutral}% neutral</span>
+                    <span><i className="sentdot neg" />{social.negative}% negative</span>
+                  </div>
+                  <div className="sentnote">{social.summary}</div>
+                </div>
+              )}
 
               <div className="sect">
                 <div className="secth">{panel.skillsLabel}</div>

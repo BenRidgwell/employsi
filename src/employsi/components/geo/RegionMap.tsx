@@ -21,7 +21,7 @@ interface RegionCfg {
   offsets: Record<string, { dx: number; dy: number; anchor: Anchor }>;
 }
 
-const REGIONS: Record<string, RegionCfg> = {
+export const REGIONS: Record<string, RegionCfg> = {
   asia: {
     hubs: ['ganzhou', 'singapore'],
     x0: 340,
@@ -88,6 +88,18 @@ const REGIONS: Record<string, RegionCfg> = {
   },
 };
 
+// Percentage position (within the shared 500x260 viewBox) of a hub once
+// projected into its region's zoomed frame — used as the CSS transform-origin
+// so the "zoom into this city" animation scales from the right spot.
+export function regionHubOrigin(region: string, hubId: string): string {
+  const cfg = REGIONS[region] || REGIONS.asia;
+  const s = 500 / cfg.w;
+  const [gx, gy] = GLOBAL_HUB_XY[hubId] || [cfg.x0, cfg.y0];
+  const px = (gx - cfg.x0) * s;
+  const py = (gy - cfg.y0) * s;
+  return `${((px / 500) * 100).toFixed(1)}% ${((py / 260) * 100).toFixed(1)}%`;
+}
+
 function HubHeat({ cx, cy, heat, dim }: { cx: number; cy: number; heat: HeatDisc; dim: string }) {
   return (
     <>
@@ -105,6 +117,7 @@ export function RegionMap({
   hubSpikes,
   ambientSpikes,
   activeSectors,
+  zoomOrigin,
 }: {
   region: string;
   hubHeat: Record<string, HeatDisc>;
@@ -113,6 +126,7 @@ export function RegionMap({
   hubSpikes: SpikePoint[];
   ambientSpikes: SpikePoint[];
   activeSectors: string[];
+  zoomOrigin: string;
 }) {
   const cfgRaw = REGIONS[region] || REGIONS.asia;
   // Only show hubs carrying a selected sector (all of them when no filter).
@@ -124,7 +138,7 @@ export function RegionMap({
   const projSpike = (sp: SpikePoint): SpikePoint => ({ ...sp, cx: (sp.cx - cfg.x0) * s, cy: (sp.cy - cfg.y0) * s });
 
   return (
-    <svg className="regionmap" viewBox="0 0 500 260">
+    <svg className="regionmap" viewBox="0 0 500 260" style={{ transformOrigin: zoomOrigin }}>
       <defs>
         <pattern id="regionOceanWave" width="18" height="11" patternUnits="userSpaceOnUse">
           <rect width="18" height="11" fill="#e2e5e9" />
