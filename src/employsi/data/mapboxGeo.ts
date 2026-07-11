@@ -25,6 +25,10 @@ export const CITY_VIEWS: Record<string, CityView> = {
   toronto: { center: [-79.3832, 43.6532], zoom: 15.1, pitch: 60, bearing: -18 },
   houston: { center: [-95.3698, 29.7604], zoom: 15.0, pitch: 60, bearing: -14 },
   denver: { center: [-104.9903, 39.7392], zoom: 15.0, pitch: 60, bearing: -16 },
+  johannesburg: { center: [28.0473, -26.2041], zoom: 15.0, pitch: 60, bearing: -15 },
+  lubumbashi: { center: [27.4794, -11.66], zoom: 14.9, pitch: 60, bearing: -12 },
+  london: { center: [-0.1276, 51.5072], zoom: 15.1, pitch: 60, bearing: -20 },
+  santiago: { center: [-70.6693, -33.4489], zoom: 15.0, pitch: 60, bearing: -16 },
 };
 
 export const COMPANY_COORDS: Record<string, [number, number]> = {

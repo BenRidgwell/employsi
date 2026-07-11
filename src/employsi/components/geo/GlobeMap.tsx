@@ -66,6 +66,9 @@ const CONTINENT_CLICK: Record<string, string> = {
   AUSTRALIA: 'australia',
   ASIA: 'asia',
   'NORTH AMERICA': 'northamerica',
+  'SOUTH AMERICA': 'southamerica',
+  EUROPE: 'europe',
+  AFRICA: 'africa',
 };
 
 // Australian cities rendered as clickable hubs (like Perth) — each opens its

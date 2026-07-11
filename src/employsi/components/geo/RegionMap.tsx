@@ -47,6 +47,43 @@ const REGIONS: Record<string, RegionCfg> = {
       houston: { dx: -8, dy: 4, anchor: 'end' },
     },
   },
+  africa: {
+    hubs: ['lubumbashi', 'johannesburg'],
+    x0: 220,
+    y0: 150,
+    w: 130,
+    label: 'AFRICA',
+    labelX: 250,
+    labelY: 38,
+    offsets: {
+      lubumbashi: { dx: 0, dy: -11, anchor: 'middle' },
+      johannesburg: { dx: 0, dy: -11, anchor: 'middle' },
+    },
+  },
+  europe: {
+    hubs: ['london'],
+    x0: 190,
+    y0: 35,
+    w: 100,
+    label: 'EUROPE',
+    labelX: 250,
+    labelY: 36,
+    offsets: {
+      london: { dx: 0, dy: -12, anchor: 'middle' },
+    },
+  },
+  southamerica: {
+    hubs: ['santiago'],
+    x0: 55,
+    y0: 165,
+    w: 140,
+    label: 'SOUTH AMERICA',
+    labelX: 250,
+    labelY: 34,
+    offsets: {
+      santiago: { dx: 0, dy: -12, anchor: 'middle' },
+    },
+  },
 };
 
 function HubHeat({ cx, cy, heat, dim }: { cx: number; cy: number; heat: HeatDisc; dim: string }) {
