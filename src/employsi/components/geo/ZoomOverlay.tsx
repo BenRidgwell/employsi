@@ -27,10 +27,16 @@ export function ZoomOverlay() {
   const cityHeat = computeCityHeat(heat);
   const globalCityHeat = computeGlobalHeat(heat);
 
-  const skillSpikes = skill && zoomedOut ? computeSkillSpikes(skill) : [];
-  const ambientSpikes = skill && zoomedOut ? computeAmbientSpikes(skill, AU_SCATTER) : [];
-  const globalSpikes = skill && globalOut ? computeGlobalSpikes(skill) : [];
-  const globalAmbientSpikes = skill && globalOut ? computeGlobalAmbientSpikes(skill, GLOBAL_SCATTER) : [];
+  const inRegion = zoomedOut && !globalOut && domesticRegion !== 'australia';
+  const inAustralia = zoomedOut && !globalOut && domesticRegion === 'australia';
+
+  const skillSpikes = skill && inAustralia ? computeSkillSpikes(skill) : [];
+  const ambientSpikes = skill && inAustralia ? computeAmbientSpikes(skill, AU_SCATTER) : [];
+  // Global-coordinate skill spikes drive both the global map and the regional
+  // views (the RegionMap projects them into its own zoomed space).
+  const showGlobalSpikes = skill && (globalOut || inRegion);
+  const globalSpikes = showGlobalSpikes ? computeGlobalSpikes(skill) : [];
+  const globalAmbientSpikes = showGlobalSpikes ? computeGlobalAmbientSpikes(skill, GLOBAL_SCATTER) : [];
 
   const auCls = [zoomedOut ? 'open' : '', zoomingIn ? 'zoomingin' : ''].join(' ').trim();
 
@@ -40,7 +46,7 @@ export function ZoomOverlay() {
         {domesticRegion === 'australia' ? (
           <AustraliaMap cityHeat={cityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} zoomOrigin={auOrigin} ambientSpikes={ambientSpikes} hubSpikes={skillSpikes} />
         ) : (
-          <RegionMap region={domesticRegion} hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} />
+          <RegionMap region={domesticRegion} hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} hubSpikes={globalSpikes} ambientSpikes={globalAmbientSpikes} />
         )}
       </div>
       <div className={`globescene ${globalOut ? 'sceneshow' : ''}`}>

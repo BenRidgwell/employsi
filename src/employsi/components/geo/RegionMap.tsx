@@ -1,6 +1,8 @@
 import { GLOBAL_LAND_PATHS } from '../../data/geoPaths';
 import { GLOBAL_HUB_XY, GLOBAL_HUB_LABEL } from '../../data/geo';
 import type { HeatDisc } from '../../lib/color';
+import type { SpikePoint } from '../../lib/heat';
+import { SpikeField } from './SpikeField';
 
 // Generic regional domestic view: the world land paths zoomed into a region so
 // its hubs are comfortably visible, mapped into the same 500x260 space as the
@@ -100,16 +102,22 @@ export function RegionMap({
   hubHeat,
   heatDim,
   onZoomInCity,
+  hubSpikes,
+  ambientSpikes,
 }: {
   region: string;
   hubHeat: Record<string, HeatDisc>;
   heatDim: string;
   onZoomInCity: (city: string) => void;
+  hubSpikes: SpikePoint[];
+  ambientSpikes: SpikePoint[];
 }) {
   const cfg = REGIONS[region] || REGIONS.asia;
   const s = 500 / cfg.w;
   const proj = (x: number, y: number): [number, number] => [(x - cfg.x0) * s, (y - cfg.y0) * s];
   const landT = `scale(${s.toFixed(4)}) translate(${-cfg.x0} ${-cfg.y0})`;
+  // Project the global-coordinate skill spikes into this region's view.
+  const projSpike = (sp: SpikePoint): SpikePoint => ({ ...sp, cx: (sp.cx - cfg.x0) * s, cy: (sp.cy - cfg.y0) * s });
 
   return (
     <svg className="regionmap" viewBox="0 0 500 260">
@@ -128,6 +136,8 @@ export function RegionMap({
           <path key={i} className="regionland" d={d} vectorEffect="non-scaling-stroke" />
         ))}
       </g>
+
+      <SpikeField ambient={ambientSpikes.map(projSpike)} hubs={hubSpikes.map(projSpike)} blurId="globeheatblur" />
 
       <text className="aucountry" x={cfg.labelX} y={cfg.labelY} textAnchor="middle">{cfg.label}</text>
 
