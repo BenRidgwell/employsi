@@ -810,7 +810,7 @@ body {
 /* Right-side expandable tools dock (Employer / Employee) */
 .toolsdock {
   position: fixed;
-  top: 288px;
+  top: 316px;
   right: 26px;
   z-index: 38;
   display: flex;

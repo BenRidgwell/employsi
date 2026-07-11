@@ -7,7 +7,10 @@ const NAMES: Record<string, string> = { perth: 'Perth', brisbane: 'Brisbane', ad
 export function CityBadge() {
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const localCity = useAppStore((s) => s.localCity);
-  if (zoomedOut) return null;
+  const selectedId = useAppStore((s) => s.selectedId);
+  const compareOpen = useAppStore((s) => s.compareOpen);
+  // Hide on the overview layers, and when a panel is covering the map.
+  if (zoomedOut || selectedId || compareOpen) return null;
   const name = NAMES[localCity] || 'Perth';
   return (
     <div className="citybadge" key={localCity}>
