@@ -6,6 +6,40 @@ import { AustraliaMap } from './AustraliaMap';
 import { RegionMap } from './RegionMap';
 import { GlobeMap } from './GlobeMap';
 
+// Approximate centre (global-map content coords) of each clickable continent.
+const REGION_CENTERS: [string, number, number][] = [
+  ['northamerica', 75, 95],
+  ['southamerica', 125, 201],
+  ['europe', 240, 61],
+  ['africa', 285, 184],
+  ['asia', 415, 140],
+  ['australia', 462, 214],
+];
+
+// Work out which continent the cursor is over on the global map, so scrolling
+// in from global drops into that continent's domestic view.
+function continentFromMouse(e: React.WheelEvent<HTMLDivElement>): string {
+  const svg = document.querySelector('.globescene .globemap') as SVGElement | null;
+  if (!svg) return 'australia';
+  const r = svg.getBoundingClientRect();
+  if (!r.width || !r.height) return 'australia';
+  const vbX = ((e.clientX - r.left) / r.width) * 500;
+  const vbY = ((e.clientY - r.top) / r.height) * 260;
+  // Undo the GEO_SCALE (0.93 about the 250,130 centre) applied to the content.
+  const cx = 250 + (vbX - 250) / 0.93;
+  const cy = 130 + (vbY - 130) / 0.93;
+  let best = 'australia';
+  let bd = Infinity;
+  for (const [id, rx, ry] of REGION_CENTERS) {
+    const d = (cx - rx) ** 2 + (cy - ry) ** 2;
+    if (d < bd) {
+      bd = d;
+      best = id;
+    }
+  }
+  return best;
+}
+
 export function ZoomOverlay() {
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const zoomingIn = useAppStore((s) => s.zoomingIn);
@@ -41,7 +75,7 @@ export function ZoomOverlay() {
   const auCls = [zoomedOut ? 'open' : '', zoomingIn ? 'zoomingin' : ''].join(' ').trim();
 
   return (
-    <div className={`auview ${auCls}`} onWheel={(e) => onAuWheel(e.deltaY)}>
+    <div className={`auview ${auCls}`} onWheel={(e) => onAuWheel(e.deltaY, globalOut && e.deltaY < 0 ? continentFromMouse(e) : undefined)}>
       <div className={`auscene ${globalOut ? 'scenehide' : ''}`}>
         {domesticRegion === 'australia' ? (
           <AustraliaMap cityHeat={cityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} zoomOrigin={auOrigin} ambientSpikes={ambientSpikes} hubSpikes={skillSpikes} />

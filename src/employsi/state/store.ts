@@ -51,7 +51,7 @@ export interface AppState {
   zoomInCity: (city: string) => void;
   goDomestic: (region: string) => void;
   globalBack: () => void;
-  onAuWheel: (deltaY: number) => void;
+  onAuWheel: (deltaY: number, region?: string) => void;
 
   openCompare: (id: string) => void;
   closeCompare: () => void;
@@ -160,7 +160,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (s.globalOut) set({ globalOut: false });
     else get().zoomIn();
   },
-  onAuWheel: (deltaY) => {
+  onAuWheel: (deltaY, region) => {
     const s = get();
     // Hold at the current layer until the cooldown passes, so momentum from
     // the gesture that got us here can't immediately jump another layer.
@@ -169,7 +169,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (s.globalOut) {
       if (deltaY < 0) {
         markLayerChange();
-        set({ globalOut: false, domesticRegion: 'australia', interacted: true });
+        // Scroll into the continent under the cursor, defaulting to Australia.
+        set({ globalOut: false, domesticRegion: region || 'australia', interacted: true });
       }
       return;
     }
