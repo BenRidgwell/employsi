@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { COMPANIES, categorize, type Company } from '../data/companies';
+import { CITY_CONTINENT } from '../data/geo';
 import type { HeatMetric } from '../lib/heat';
 
 export interface AppState {
@@ -46,6 +47,7 @@ export interface AppState {
   toggleSkillQuery: (skill: string) => void;
 
   setZoomedOut: (v: boolean) => void;
+  zoomOutToDomestic: () => void;
   setZoomingIn: (v: boolean) => void;
   setGlobalOut: (v: boolean) => void;
   setZoomLevel: (n: 0 | 1 | 2) => void;
@@ -136,6 +138,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (v) markLayerChange();
     set({ zoomedOut: v });
   },
+  // Scrolling/zooming out of a local city's map: land on that city's own
+  // continent's domestic view, not whatever domesticRegion was last left at.
+  zoomOutToDomestic: () => {
+    const s = get();
+    markLayerChange();
+    set({ zoomedOut: true, globalOut: false, domesticRegion: CITY_CONTINENT[s.localCity] || 'australia', interacted: true });
+  },
   setZoomingIn: (v) => set({ zoomingIn: v }),
   setGlobalOut: (v) => set({ globalOut: v }),
   setZoomLevel: (n) => {
@@ -143,7 +152,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     const cur = s.globalOut ? 2 : s.zoomedOut ? 1 : 0;
     if (n === cur) return;
     if (n === 0) { get().zoomIn(); return; }
-    if (n === 1) { set({ zoomedOut: true, globalOut: false, domesticRegion: 'australia', interacted: true }); return; }
+    if (n === 1) {
+      // Leaving local for domestic: land on the current city's own continent.
+      // Coming from global there's no "current" city context, so fall back
+      // to Australia.
+      const region = cur === 0 ? CITY_CONTINENT[s.localCity] || 'australia' : 'australia';
+      set({ zoomedOut: true, globalOut: false, domesticRegion: region, interacted: true });
+      return;
+    }
     set({ zoomedOut: true, globalOut: true, interacted: true });
   },
   // Re-enter whichever city we last viewed (defaults to Perth), so the Local

@@ -111,9 +111,9 @@ export function ZoomOverlay() {
     >
       <div className={`auscene ${globalOut ? 'scenehide' : ''}`}>
         {domesticRegion === 'australia' ? (
-          <AustraliaMap cityHeat={cityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} zoomOrigin={auOrigin} ambientSpikes={ambientSpikes} hubSpikes={skillSpikes} />
+          <AustraliaMap cityHeat={cityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} zoomOrigin={auOrigin} ambientSpikes={ambientSpikes} hubSpikes={skillSpikes} activeSectors={activeSectors} />
         ) : (
-          <RegionMap region={domesticRegion} hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} hubSpikes={globalSpikes} ambientSpikes={globalAmbientSpikes} />
+          <RegionMap region={domesticRegion} hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} hubSpikes={globalSpikes} ambientSpikes={globalAmbientSpikes} activeSectors={activeSectors} />
         )}
       </div>
       <div className={`globescene ${globalOut ? 'sceneshow' : ''}`}>

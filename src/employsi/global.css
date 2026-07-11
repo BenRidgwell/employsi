@@ -1842,6 +1842,21 @@ body {
     opacity: 0;
   }
 }
+/* Slightly smaller pulse on the global view only, to match its smaller hub
+   dots — domestic/local rings keep the larger auringpulse size. */
+.globemap .auring {
+  animation-name: auringpulsesm;
+}
+@keyframes auringpulsesm {
+  0% {
+    r: 3;
+    opacity: 0.6;
+  }
+  100% {
+    r: 8.5;
+    opacity: 0;
+  }
+}
 /* Perth "click here" affordance: a poking cursor that emits a ripple. */
 .perthtap {
   pointer-events: none;
@@ -1934,8 +1949,10 @@ body {
 }
 /* Global-view centered search bar */
 .gsearch {
+  /* Top matches .topbar's box (top 38px + 18px padding), so the title's line
+     box lines up with the brand row instead of floating independently. */
   position: fixed;
-  top: 52px;
+  top: 56px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 35;
@@ -1950,7 +1967,11 @@ body {
   font-size: 17px;
   letter-spacing: -0.2px;
   color: var(--ink);
-  margin-bottom: 12px;
+  /* Matches the 40px height of the brand mark, so the two rows' vertical
+     centres align exactly. */
+  height: 40px;
+  line-height: 40px;
+  margin-bottom: 8px;
   text-align: center;
 }
 .gsearchbar {

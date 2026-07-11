@@ -72,6 +72,7 @@ export function PerthMapbox() {
   const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
   const placedRef = useRef<Placed[]>([]);
   const renderCityRef = useRef<((city: string) => void) | null>(null);
+  const setCompaniesVisibleRef = useRef<((show: boolean) => void) | null>(null);
   const crossedRef = useRef(false);
   const interactedLocalRef = useRef(false);
   const autoRotateRaf = useRef<number | undefined>(undefined);
@@ -79,6 +80,7 @@ export function PerthMapbox() {
   const focusUpdaterRef = useRef<(() => void) | null>(null);
 
   const selectedId = useAppStore((s) => s.selectedId);
+  const zoomedOut = useAppStore((s) => s.zoomedOut);
   const heat = useAppStore((s) => s.heat);
   const searchQuery = useAppStore((s) => s.searchQuery);
   const activeSectors = useAppStore((s) => s.activeSectors);
@@ -206,6 +208,22 @@ export function PerthMapbox() {
       };
       renderMarkers(placedRef.current);
 
+      // Explicit show/hide for the native heat layers + HTML markers. The
+      // domestic/global SVG overlay visually covers the map when zoomed out,
+      // but the WebGL layers and markers keep rendering underneath unless we
+      // hide them too — belt-and-braces so nothing can bleed through during
+      // the crossfade or on browsers where canvas compositing ignores normal
+      // DOM stacking.
+      const setCompaniesVisible = (show: boolean) => {
+        [HALO_LAYER, CORE_LAYER, PULSE_LAYER].forEach((id) => {
+          if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', show ? 'visible' : 'none');
+        });
+        Object.values(markersRef.current).forEach((m) => {
+          (m.getElement() as HTMLElement).style.display = show ? '' : 'none';
+        });
+      };
+      setCompaniesVisibleRef.current = setCompaniesVisible;
+
       // Swap the whole company set to a different city: refresh placements, the
       // heat source and the pill markers, then re-run the focus fade.
       renderCityRef.current = (city: string) => {
@@ -214,8 +232,13 @@ export function PerthMapbox() {
         const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
         source?.setData(buildGeoJSON(placedRef.current, s.heat, s.selectedId, filterState));
         renderMarkers(placedRef.current);
+        setCompaniesVisible(true);
         focusUpdaterRef.current?.();
       };
+
+      // Cold load starts zoomed out (global/domestic) — hide immediately
+      // rather than waiting for a zoom crossing that will never happen.
+      if (useAppStore.getState().zoomedOut) setCompaniesVisible(false);
 
       // Focus reveal: labels fade in by ground distance from centre + zoom, and
       // a greedy collision pass hides any pill that would overlap a
@@ -314,11 +337,13 @@ export function PerthMapbox() {
       const s = useAppStore.getState();
       if (z < ZOOM_OUT_THRESHOLD && !s.zoomedOut && !crossedRef.current) {
         crossedRef.current = true;
-        // Cross out to the domestic overlay — never strand globalOut=true over
-        // the local map (which would float the global search bar above it).
-        s.setGlobalOut(false);
-        s.setZoomedOut(true);
-        s.setInteracted();
+        // Cross out to the domestic overlay for this city's own continent —
+        // never strand globalOut=true over the local map (which would float
+        // the global search bar above it), and never default to Australia.
+        s.zoomOutToDomestic();
+        // Hide the heat layers + pill markers so they can't be visible under
+        // the domestic overlay while it's zoomed out.
+        setCompaniesVisibleRef.current?.(false);
       }
       if (z >= ZOOM_OUT_THRESHOLD) crossedRef.current = false;
     });
@@ -369,6 +394,15 @@ export function PerthMapbox() {
     if (map.isStyleLoaded()) apply();
     else map.once('style.load', apply);
   }, [heat, selectedId, filterState]);
+
+  useEffect(() => {
+    // Hide companies the instant we're zoomed out, regardless of what
+    // triggered it (wheel crossing, the ZoomSlider's Domestic button, or a
+    // skill search jumping straight to zoomedOut) — the native zoom-crossing
+    // handler alone misses triggers that don't move the map's own camera.
+    // Showing them again is handled by renderCityRef when zooming back in.
+    if (zoomedOut) setCompaniesVisibleRef.current?.(false);
+  }, [zoomedOut]);
 
   useEffect(() => {
     const map = mapRef.current;

@@ -1,5 +1,5 @@
 import { AU_STATE_PATHS, AU_LINE_PATHS } from '../../data/geoPaths';
-import { CITY_XY, CITY_LABEL } from '../../data/geo';
+import { CITY_XY, CITY_LABEL, cityMatchesSectors } from '../../data/geo';
 import type { HeatDisc } from '../../lib/color';
 import type { SpikePoint } from '../../lib/heat';
 import { SpikeField } from './SpikeField';
@@ -65,6 +65,7 @@ export function AustraliaMap({
   zoomOrigin,
   ambientSpikes,
   hubSpikes,
+  activeSectors,
 }: {
   cityHeat: Record<string, HeatDisc>;
   heatDim: string;
@@ -72,7 +73,12 @@ export function AustraliaMap({
   zoomOrigin: string;
   ambientSpikes: SpikePoint[];
   hubSpikes: SpikePoint[];
+  activeSectors: string[];
 }) {
+  // Only show cities carrying a selected sector (all of them when no filter).
+  const cityMarkers = CITY_MARKERS.filter((c) => cityMatchesSectors(c.id, activeSectors));
+  const hubCities = HUB_CITIES.filter((c) => cityMatchesSectors(c.id, activeSectors));
+  const showPerth = cityMatchesSectors('perth', activeSectors);
   return (
     <svg className="aumap" viewBox="0 0 250 230" style={{ transformOrigin: zoomOrigin }}>
       <defs>
@@ -111,15 +117,15 @@ export function AustraliaMap({
 
       <SpikeField ambient={ambientSpikes} hubs={hubSpikes} blurId="auheatblur" />
 
-      {CITY_MARKERS.map(({ id }) => (
+      {cityMarkers.map(({ id }) => (
         <CityHeat key={`heat-${id}`} cx={CITY_XY[id][0]} cy={CITY_XY[id][1]} heat={cityHeat[id]} dim={heatDim} />
       ))}
-      <CityHeat cx={CITY_XY.perth[0]} cy={CITY_XY.perth[1]} heat={cityHeat.perth} dim={heatDim} />
-      {HUB_CITIES.map(({ id }) => (
+      {showPerth && <CityHeat cx={CITY_XY.perth[0]} cy={CITY_XY.perth[1]} heat={cityHeat.perth} dim={heatDim} />}
+      {hubCities.map(({ id }) => (
         <CityHeat key={`heat-${id}`} cx={CITY_XY[id][0]} cy={CITY_XY[id][1]} heat={cityHeat[id]} dim={heatDim} />
       ))}
 
-      {CITY_MARKERS.map(({ id, dx, dy, anchor }) => (
+      {cityMarkers.map(({ id, dx, dy, anchor }) => (
         <g className="aucity" key={id}>
           <circle className="audot" cx={CITY_XY[id][0]} cy={CITY_XY[id][1]} r="3.2" />
           <text className="aumute" x={CITY_XY[id][0] + dx} y={CITY_XY[id][1] + dy} textAnchor={anchor}>
@@ -128,7 +134,7 @@ export function AustraliaMap({
         </g>
       ))}
 
-      {HUB_CITIES.map(({ id, labelDy, local }) => (
+      {hubCities.map(({ id, labelDy, local }) => (
         <g className="aucity hub" key={id} data-city={local} onClick={() => onZoomInCity(local)}>
           <circle className="auring" cx={CITY_XY[id][0]} cy={CITY_XY[id][1]} r="8" />
           <circle className="audot audothub" cx={CITY_XY[id][0]} cy={CITY_XY[id][1]} r="4.4" />
@@ -137,27 +143,31 @@ export function AustraliaMap({
           </text>
         </g>
       ))}
-      <g className="aucity hub" data-city="perth" onClick={() => onZoomInCity('perth')}>
-        <circle className="auring" cx={CITY_XY.perth[0]} cy={CITY_XY.perth[1]} r="8" />
-        <circle className="audot audothub" cx={CITY_XY.perth[0]} cy={CITY_XY.perth[1]} r="4.4" />
-        <text className="aulabel" x={CITY_XY.perth[0]} y={CITY_XY.perth[1] - 7} textAnchor="middle">
-          Perth
-        </text>
-      </g>
+      {showPerth && (
+        <g className="aucity hub" data-city="perth" onClick={() => onZoomInCity('perth')}>
+          <circle className="auring" cx={CITY_XY.perth[0]} cy={CITY_XY.perth[1]} r="8" />
+          <circle className="audot audothub" cx={CITY_XY.perth[0]} cy={CITY_XY.perth[1]} r="4.4" />
+          <text className="aulabel" x={CITY_XY.perth[0]} y={CITY_XY.perth[1] - 7} textAnchor="middle">
+            Perth
+          </text>
+        </g>
+      )}
 
       {/* "Click here" affordance guiding the user to zoom into Perth. */}
-      <g className="perthtap">
-        <circle className="perthtapripple" cx={CITY_XY.perth[0]} cy={CITY_XY.perth[1]} r="3" />
-        <g transform={`translate(${CITY_XY.perth[0] + 2.4}, ${CITY_XY.perth[1] + 2.4})`}>
-          <g className="perthtaphand">
-            <path
-              className="perthtappointer"
-              transform="scale(0.8)"
-              d="M0,0 L0,13 L3.3,9.7 L5.7,15 L7.4,14.2 L5.1,9 L9,8.7 Z"
-            />
+      {showPerth && (
+        <g className="perthtap">
+          <circle className="perthtapripple" cx={CITY_XY.perth[0]} cy={CITY_XY.perth[1]} r="3" />
+          <g transform={`translate(${CITY_XY.perth[0] + 2.4}, ${CITY_XY.perth[1] + 2.4})`}>
+            <g className="perthtaphand">
+              <path
+                className="perthtappointer"
+                transform="scale(0.8)"
+                d="M0,0 L0,13 L3.3,9.7 L5.7,15 L7.4,14.2 L5.1,9 L9,8.7 Z"
+              />
+            </g>
           </g>
         </g>
-      </g>
+      )}
 
       {PLANE_ROUTES.map((r, i) => (
         <Plane key={i} {...r} />

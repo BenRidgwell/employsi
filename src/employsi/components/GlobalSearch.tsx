@@ -20,7 +20,7 @@ export function GlobalSearch() {
 
   return (
     <div className="gsearch">
-      <div className="gsearchhd">Explore what's popular with businesses today</div>
+      <div className="gsearchhd">Explore the world of work today</div>
       <div className={`gsearchbar ${focused ? 'on' : ''}`}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
           <circle cx="11" cy="11" r="7" />

@@ -1,5 +1,5 @@
 import { GLOBAL_LAND_PATHS } from '../../data/geoPaths';
-import { GLOBAL_HUB_XY, GLOBAL_HUB_LABEL } from '../../data/geo';
+import { GLOBAL_HUB_XY, GLOBAL_HUB_LABEL, cityMatchesSectors } from '../../data/geo';
 import type { HeatDisc } from '../../lib/color';
 import type { SpikePoint } from '../../lib/heat';
 import { SpikeField } from './SpikeField';
@@ -104,6 +104,7 @@ export function RegionMap({
   onZoomInCity,
   hubSpikes,
   ambientSpikes,
+  activeSectors,
 }: {
   region: string;
   hubHeat: Record<string, HeatDisc>;
@@ -111,8 +112,11 @@ export function RegionMap({
   onZoomInCity: (city: string) => void;
   hubSpikes: SpikePoint[];
   ambientSpikes: SpikePoint[];
+  activeSectors: string[];
 }) {
-  const cfg = REGIONS[region] || REGIONS.asia;
+  const cfgRaw = REGIONS[region] || REGIONS.asia;
+  // Only show hubs carrying a selected sector (all of them when no filter).
+  const cfg = { ...cfgRaw, hubs: cfgRaw.hubs.filter((id) => cityMatchesSectors(id, activeSectors)) };
   const s = 500 / cfg.w;
   const proj = (x: number, y: number): [number, number] => [(x - cfg.x0) * s, (y - cfg.y0) * s];
   const landT = `scale(${s.toFixed(4)}) translate(${-cfg.x0} ${-cfg.y0})`;

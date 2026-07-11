@@ -67,6 +67,25 @@ export function cityMatchesSectors(city: string, activeSectors: string[]): boole
   return activeSectors.some((sec) => tags.includes(sec));
 }
 
+// Which domestic/regional view each local city belongs to, so scrolling out of
+// a city's local layer drops back into its own continent rather than always
+// defaulting to Australia.
+export const CITY_CONTINENT: Record<string, string> = {
+  perth: 'australia',
+  adelaide: 'australia',
+  brisbane: 'australia',
+  sydney: 'australia',
+  singapore: 'asia',
+  ganzhou: 'asia',
+  toronto: 'northamerica',
+  houston: 'northamerica',
+  denver: 'northamerica',
+  johannesburg: 'africa',
+  lubumbashi: 'africa',
+  london: 'europe',
+  santiago: 'southamerica',
+};
+
 export const GLOBAL_STATS: Record<string, CityStat> = {
   perth: { salary: 146, growth: 5.6, turnover: 11.3 },
   santiago: { salary: 98, growth: 4.2, turnover: 13.0 },

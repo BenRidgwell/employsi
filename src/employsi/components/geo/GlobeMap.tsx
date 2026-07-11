@@ -167,8 +167,12 @@ export function GlobeMap({
           const off = CITY_LABEL_OFFSET[id] || { dx: 0, dy: -9, anchor: 'middle' as const };
           return (
             <g className="aucity hub" key={id} data-city={id} onClick={() => onZoomInCity(id)}>
-              <circle className="auring" cx={cx} cy={cy} r="8" />
-              <circle className="audot audothub" cx={cx} cy={cy} r="4.4" />
+              {/* Generous invisible hit target — the visible dot is small, so this
+                  keeps every hub (Ganzhou especially, sitting close to the ASIA
+                  label) reliably clickable regardless of dot size. */}
+              <circle className="hubhit" cx={cx} cy={cy} r="12" fill="transparent" pointerEvents="all" />
+              <circle className="auring" cx={cx} cy={cy} r="6.2" />
+              <circle className="audot audothub" cx={cx} cy={cy} r="3.6" />
               <text className="aulabel" x={cx + off.dx} y={cy + off.dy} textAnchor={off.anchor}>{GLOBAL_HUB_LABEL[id]}</text>
             </g>
           );
