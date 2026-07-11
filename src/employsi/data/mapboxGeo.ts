@@ -31,18 +31,58 @@ export const CITY_VIEWS: Record<string, CityView> = {
   santiago: { center: [-70.6693, -33.4489], zoom: 15.0, pitch: 60, bearing: -16 },
 };
 
-export const COMPANY_COORDS: Record<string, [number, number]> = {
-  rio: [115.85582, -31.95409], // Rio Tinto — Central Park, 152 St Georges Tce
-  bhp: [115.85455, -31.95471], // BHP — Brookfield Place, 125 St Georges Tce
-  s32: [115.85715, -31.95453], // South32 — 108 St Georges Tce
-  fmg: [115.87415, -31.96062], // Fortescue — 87 Adelaide Tce, East Perth
-  wds: [115.84986, -31.95382], // Woodside — Mia Yellagonga, 11 Mount St
-  sto: [115.85076, -31.95193], // Santos — 250 St Georges Tce
-  sfr: [115.84138, -31.95249], // Sandfire — 10 Kings Park Rd, West Perth
-  igo: [115.85633, -31.9542], // IGO — 140 St Georges Tce
-  min: [115.82786, -31.9019], // Mineral Resources — 20 Walters Dr, Osborne Park
-  pls: [115.84361, -31.9464], // Pilbara Minerals — 130 Stirling Hwy area / West Perth
-  ltr: [115.8398, -31.9512], // Liontown Resources — West Perth
-  ilu: [115.8599, -31.957], // Iluka Resources — 140 St Georges Tce precinct
-  nst: [115.8256, -31.9481], // Northern Star — Subiaco
+// A company placed on a city map: its id plus that city's head-office coords.
+// The same company can appear in several cities (e.g. BHP in Perth, Adelaide
+// and Brisbane) with different coordinates in each.
+export interface CityCompany {
+  id: string;
+  coords: [number, number];
+}
+
+// Companies pinned per local city. Perth, Adelaide and Brisbane each have their
+// own head-office spread; the remaining cities open the 3D view with no pins.
+export const CITY_COMPANIES: Record<string, CityCompany[]> = {
+  perth: [
+    { id: 'rio', coords: [115.85582, -31.95409] }, // Central Park, 152 St Georges Tce
+    { id: 'bhp', coords: [115.85455, -31.95471] }, // Brookfield Place, 125 St Georges Tce
+    { id: 's32', coords: [115.85715, -31.95453] }, // 108 St Georges Tce
+    { id: 'fmg', coords: [115.87415, -31.96062] }, // 87 Adelaide Tce, East Perth
+    { id: 'wds', coords: [115.84986, -31.95382] }, // Mia Yellagonga, 11 Mount St
+    { id: 'sto', coords: [115.85076, -31.95193] }, // 250 St Georges Tce
+    { id: 'chevron', coords: [115.85790, -31.95560] }, // The Quarter, 1 The Esplanade
+    { id: 'sfr', coords: [115.84138, -31.95249] }, // 10 Kings Park Rd, West Perth
+    { id: 'igo', coords: [115.85633, -31.9542] }, // 140 St Georges Tce
+    { id: 'min', coords: [115.82786, -31.9019] }, // 20 Walters Dr, Osborne Park
+    { id: 'pls', coords: [115.84361, -31.9464] }, // West Perth
+    { id: 'ltr', coords: [115.8398, -31.9512] }, // West Perth
+    { id: 'ilu', coords: [115.8599, -31.957] }, // 140 St Georges Tce precinct
+    { id: 'nst', coords: [115.8256, -31.9481] }, // Subiaco
+  ],
+  adelaide: [
+    { id: 'bhp', coords: [138.60190, -34.92450] }, // 55 Grenfell St
+    { id: 'sto', coords: [138.60420, -34.92655] }, // Santos — 60 Flinders St
+    { id: 'beach', coords: [138.61780, -34.93540] }, // Beach Energy — 25 Conyngham St, Glenside
+    { id: 'mgt', coords: [138.59870, -34.92150] }, // Magnetite Mines
+    { id: 'hgo', coords: [138.60010, -34.93010] }, // Hillgrove Resources
+  ],
+  brisbane: [
+    { id: 'bhp', coords: [153.02950, -27.46700] }, // 480 Queen St
+    { id: 'rio', coords: [153.02700, -27.46850] }, // Central Plaza, 345 Queen St
+    { id: 'smr', coords: [153.02900, -27.46830] }, // Stanmore — 12 Creek St
+    { id: 'nhc', coords: [153.02470, -27.47200] }, // New Hope Group
+    { id: 'shell', coords: [153.02230, -27.46950] }, // Shell / QGC — 275 George St
+    { id: 'aow', coords: [153.03160, -27.46950] }, // Arrow Energy — 1 Eagle St
+    { id: 'mmi', coords: [153.03300, -27.45700] }, // Metro Mining — Fortitude Valley
+    { id: 'jellinbah', coords: [153.02380, -27.46620] }, // Jellinbah Group
+  ],
 };
+
+// Flat lookup of every company's coords across all cities. Where a company sits
+// in multiple cities the last-listed city wins; only used as a fallback (the
+// map tracks the active city's coords directly).
+export const COMPANY_COORDS: Record<string, [number, number]> = Object.values(
+  CITY_COMPANIES,
+).reduce<Record<string, [number, number]>>((acc, list) => {
+  list.forEach((c) => { acc[c.id] = c.coords; });
+  return acc;
+}, {});

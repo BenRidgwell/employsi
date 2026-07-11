@@ -2,8 +2,8 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useMemo, useRef } from 'react';
 import { useAppStore, companyMatches, type FilterState } from '../state/store';
-import { COMPANIES } from '../data/companies';
-import { COMPANY_COORDS, CITY_VIEWS, PERTH_CENTER, PERTH_DEFAULT_ZOOM, PERTH_DEFAULT_PITCH, PERTH_DEFAULT_BEARING } from '../data/mapboxGeo';
+import { COMPANIES, type Company } from '../data/companies';
+import { CITY_COMPANIES, CITY_VIEWS, PERTH_CENTER, PERTH_DEFAULT_ZOOM, PERTH_DEFAULT_PITCH, PERTH_DEFAULT_BEARING } from '../data/mapboxGeo';
 import { chipMetric, type HeatMetric } from '../lib/heat';
 import { heatColor, rgbCss } from '../lib/color';
 
@@ -16,18 +16,37 @@ const PULSE_LAYER = 'company-pulse';
 const PULSE_MS = 2200;
 const ZOOM_OUT_THRESHOLD = 11;
 
+const COMPANY_BY_ID: Record<string, Company> = Object.fromEntries(COMPANIES.map((c) => [c.id, c]));
+
+// A company placed on the current city map: its record plus that city's coords.
+interface Placed {
+  company: Company;
+  coords: [number, number];
+}
+
+// Resolve the companies pinned for a given city into full records + coords.
+function cityPlacements(city: string): Placed[] {
+  const list = CITY_COMPANIES[city] || [];
+  return list
+    .map((c) => ({ company: COMPANY_BY_ID[c.id], coords: c.coords }))
+    .filter((p): p is Placed => !!p.company);
+}
+
 function metricKeyFor(heat: HeatMetric) {
   return heat === 'salary' ? 'salaryNum' : heat === 'growth' ? 'growth' : 'turnover';
 }
 
-function buildGeoJSON(heat: HeatMetric, selectedId: string | null, filterState: FilterState): GeoJSON.FeatureCollection {
+// Heat is normalised within the city's own company spread so every city gets a
+// full-range colour scale rather than being crushed against the global min/max.
+function buildGeoJSON(placements: Placed[], heat: HeatMetric, selectedId: string | null, filterState: FilterState): GeoJSON.FeatureCollection {
   const key = metricKeyFor(heat);
-  const vals = COMPANIES.map((c) => c[key] as number);
-  const mn = Math.min(...vals);
-  const mx = Math.max(...vals);
+  const vals = placements.map((p) => p.company[key] as number);
+  const mn = vals.length ? Math.min(...vals) : 0;
+  const mx = vals.length ? Math.max(...vals) : 1;
   return {
     type: 'FeatureCollection',
-    features: COMPANIES.map((c, i) => {
+    features: placements.map((p, i) => {
+      const c = p.company;
       const t = ((c[key] as number) - mn) / ((mx - mn) || 1);
       const color = rgbCss(heatColor(t));
       return {
@@ -41,7 +60,7 @@ function buildGeoJSON(heat: HeatMetric, selectedId: string | null, filterState: 
           selected: c.id === selectedId,
           dim: !companyMatches(c, filterState),
         },
-        geometry: { type: 'Point', coordinates: COMPANY_COORDS[c.id] },
+        geometry: { type: 'Point', coordinates: p.coords },
       };
     }),
   };
@@ -51,6 +70,8 @@ export function PerthMapbox() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
+  const placedRef = useRef<Placed[]>([]);
+  const renderCityRef = useRef<((city: string) => void) | null>(null);
   const crossedRef = useRef(false);
   const interactedLocalRef = useRef(false);
   const autoRotateRaf = useRef<number | undefined>(undefined);
@@ -109,7 +130,8 @@ export function PerthMapbox() {
       map.setConfigProperty('basemap', 'showLandmarkIcons', false);
 
       const st = useAppStore.getState();
-      map.addSource(SOURCE_ID, { type: 'geojson', data: buildGeoJSON(st.heat, st.selectedId, filterState) });
+      placedRef.current = cityPlacements(st.localCity);
+      map.addSource(SOURCE_ID, { type: 'geojson', data: buildGeoJSON(placedRef.current, st.heat, st.selectedId, filterState) });
 
       map.addLayer({
         id: HALO_LAYER,
@@ -166,16 +188,34 @@ export function PerthMapbox() {
       });
 
       // HTML pill markers (dot · ticker · median), anchored just above each dot.
-      COMPANIES.forEach((c) => {
-        const el = document.createElement('button');
-        el.className = 'mbchip';
-        el.innerHTML = `<span class="chipdot"></span><span class="chiptk">${c.ticker}</span><span class="chipsub"></span>`;
-        el.onclick = () => useAppStore.getState().select(c.id);
-        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom', offset: [0, -6] })
-          .setLngLat(COMPANY_COORDS[c.id])
-          .addTo(map);
-        markersRef.current[c.id] = marker;
-      });
+      // Rebuilt whenever the active city changes so each city shows its own set.
+      const renderMarkers = (placements: Placed[]) => {
+        Object.values(markersRef.current).forEach((m) => m.remove());
+        markersRef.current = {};
+        placements.forEach((p) => {
+          const c = p.company;
+          const el = document.createElement('button');
+          el.className = 'mbchip';
+          el.innerHTML = `<span class="chipdot"></span><span class="chiptk">${c.ticker}</span><span class="chipsub"></span>`;
+          el.onclick = () => useAppStore.getState().select(c.id);
+          const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom', offset: [0, -6] })
+            .setLngLat(p.coords)
+            .addTo(map);
+          markersRef.current[c.id] = marker;
+        });
+      };
+      renderMarkers(placedRef.current);
+
+      // Swap the whole company set to a different city: refresh placements, the
+      // heat source and the pill markers, then re-run the focus fade.
+      renderCityRef.current = (city: string) => {
+        placedRef.current = cityPlacements(city);
+        const s = useAppStore.getState();
+        const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
+        source?.setData(buildGeoJSON(placedRef.current, s.heat, s.selectedId, filterState));
+        renderMarkers(placedRef.current);
+        focusUpdaterRef.current?.();
+      };
 
       // Focus reveal: labels fade in by ground distance from centre + zoom, and
       // a greedy collision pass hides any pill that would overlap a
@@ -200,11 +240,11 @@ export function PerthMapbox() {
         const zf = z <= Z_MIN ? 0 : z >= Z_FULL ? 1 : (z - Z_MIN) / (Z_FULL - Z_MIN);
         type Cand = { el: HTMLElement; op: number; x: number; y: number; w: number };
         const cands: Cand[] = [];
-        COMPANIES.forEach((company) => {
-          const marker = markersRef.current[company.id];
+        placedRef.current.forEach((placed) => {
+          const marker = markersRef.current[placed.company.id];
           if (!marker) return;
           const el = marker.getElement();
-          const [lng, lat] = COMPANY_COORDS[company.id];
+          const [lng, lat] = placed.coords;
           const d = distMetres(c.lng, c.lat, lng, lat);
           const df = d <= R_FULL ? 1 : d >= R_GONE ? 0 : (R_GONE - d) / (R_GONE - R_FULL);
           const f = df * zf;
@@ -280,22 +320,13 @@ export function PerthMapbox() {
       if (z >= ZOOM_OUT_THRESHOLD) crossedRef.current = false;
     });
 
-    // Show/hide the company heat layers + pills (only Perth has companies).
-    const setCompaniesVisible = (show: boolean) => {
-      [HALO_LAYER, CORE_LAYER, PULSE_LAYER].forEach((id) => {
-        if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', show ? 'visible' : 'none');
-      });
-      Object.values(markersRef.current).forEach((m) => {
-        (m.getElement() as HTMLElement).style.display = show ? '' : 'none';
-      });
-    };
     const onZoomReset = () => {
       const city = useAppStore.getState().localCity;
       const v = CITY_VIEWS[city] || CITY_VIEWS.perth;
-      setCompaniesVisible(city === 'perth');
       // Jump (hidden behind the overlay fade) so we don't fly across the
-      // continent, then the reveal shows the correct city.
+      // continent, then swap in the city's companies + reveal.
       map.jumpTo({ center: v.center, zoom: v.zoom, pitch: v.pitch, bearing: v.bearing });
+      renderCityRef.current?.(city);
     };
     window.addEventListener('perth-zoom-reset', onZoomReset);
 
@@ -317,8 +348,9 @@ export function PerthMapbox() {
     const apply = () => {
       const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
       if (!source) return;
-      source.setData(buildGeoJSON(heat, selectedId, filterState));
-      COMPANIES.forEach((c) => {
+      source.setData(buildGeoJSON(placedRef.current, heat, selectedId, filterState));
+      placedRef.current.forEach((p) => {
+        const c = p.company;
         const marker = markersRef.current[c.id];
         if (!marker) return;
         const el = marker.getElement();
@@ -338,9 +370,9 @@ export function PerthMapbox() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !selectedId) return;
-    const coords = COMPANY_COORDS[selectedId];
-    if (!coords) return;
-    map.easeTo({ center: coords, zoom: Math.max(map.getZoom(), 16.6), duration: 600 });
+    const placed = placedRef.current.find((p) => p.company.id === selectedId);
+    if (!placed) return;
+    map.easeTo({ center: placed.coords, zoom: Math.max(map.getZoom(), 16.6), duration: 600 });
   }, [selectedId]);
 
   return <div className="mount" ref={containerRef} />;

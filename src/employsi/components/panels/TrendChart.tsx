@@ -192,9 +192,6 @@ export function TrendChart(props: Props) {
               <stop offset="100%" stopColor="rgba(28,28,30,0)" />
             </linearGradient>
           </defs>
-          {[0.25, 0.5, 0.75].map((f) => (
-            <line key={f} className="wtgrid" x1={PADX} x2={W - PADX} y1={PADT + PLOTH * f} y2={PADT + PLOTH * f} />
-          ))}
           {hasRange && <rect className="wtband" x={x(a)} y={PADT} width={x(b) - x(a)} height={PLOTH} />}
           <path className="wtarea" d={headArea} />
           <path className="wtline2" d={finLine} vectorEffect="non-scaling-stroke" />

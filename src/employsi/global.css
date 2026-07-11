@@ -1935,7 +1935,7 @@ body {
 /* Global-view centered search bar */
 .gsearch {
   position: fixed;
-  top: 78px;
+  top: 52px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 35;
