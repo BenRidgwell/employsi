@@ -5,9 +5,10 @@
 // dropped in behind the same interface later.
 
 import { COMPANIES } from './companies';
-import { COMPANY_CULTURE, INDUSTRY_BENCH } from './culture';
+import { COMPANY_CULTURE, INDUSTRY_BENCH, type Layoff } from './culture';
 import { shareTrend, commodityBaskets, type CommodityBasket } from './finance';
 import { companySocial, type SocialSummary } from './social';
+import { companyNews, type CompanyNews } from './news';
 
 export interface BhpDiversity {
   femalePct: number;
@@ -39,6 +40,11 @@ export interface BhpFeed {
   // engagement + diversity
   social: SocialSummary;
   diversity: BhpDiversity;
+  // demand-ranked skills, open roles by area, restructuring + news engagement
+  skills: string[];
+  roles: { title: string; count: number }[];
+  layoffs: Layoff;
+  news: CompanyNews;
 }
 
 // Smooth −1..1 oscillator; different periods/phases decorrelate the fields.
@@ -84,6 +90,39 @@ export function buildBhpFeed(now: number = Date.now()): BhpFeed {
     xDelta: +(baseSocial.xDelta + d1 * 1.3).toFixed(1),
   };
 
+  // Skills reordered by a live "demand score": the base ranking (first = most
+  // in demand) nudged by a per-skill oscillator so adjacent skills can trade
+  // places poll-to-poll.
+  const skills = c.skills
+    .map((sk, i) => ({ sk, score: c.skills.length - i + wob(now, 4000 + i * 900, i * 1.1) * 1.4 }))
+    .sort((a, b) => b.score - a.score)
+    .map((x) => x.sk);
+
+  // Open roles by area — each area's live count drifts around its base.
+  const roles = c.roles.map((r, i) => ({
+    title: r.title,
+    count: Math.max(0, Math.round(r.count + wob(now, 3800 + i * 700, i * 0.9) * 6)),
+  }));
+
+  // Live restructuring figure (BHP has no static layoffs record). Roles drift
+  // slowly; pct is derived from the live headcount so the two stay consistent.
+  const layoffRoles = Math.max(0, Math.round(140 + d3 * 12));
+  const layoffs: Layoff = {
+    period: 'Rolling 12 months',
+    roles: layoffRoles,
+    pct: +((layoffRoles / headcount) * 100).toFixed(1),
+    note: 'Targeted restructuring in corporate and support functions; most affected roles redeployed within the group.',
+  };
+
+  // News engagement: keep the (deterministic) headlines stable but let the
+  // comment counts tick as a live signal.
+  const baseNews = companyNews(c.name, c.sector);
+  const bumpC = (v: number, i: number) => Math.max(0, Math.round(v + wob(now, 4200 + i * 600, i * 0.6) * 5));
+  const news: CompanyNews = {
+    hero: { ...baseNews.hero, comments: bumpC(baseNews.hero.comments, 0) },
+    items: baseNews.items.map((it, i) => ({ ...it, comments: bumpC(it.comments, i + 1) })),
+  };
+
   const diversity: BhpDiversity = {
     femalePct: +Math.max(0, cul.femalePct + d4 * 0.4).toFixed(1),
     payGap: +Math.max(0, cul.payGap + d2 * 0.3).toFixed(1),
@@ -110,5 +149,9 @@ export function buildBhpFeed(now: number = Date.now()): BhpFeed {
     commodities,
     social,
     diversity,
+    skills,
+    roles,
+    layoffs,
+    news,
   };
 }

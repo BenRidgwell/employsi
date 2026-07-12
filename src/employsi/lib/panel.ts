@@ -1,5 +1,6 @@
 import { COMPANIES } from '../data/companies';
 import { COMPANY_CULTURE, INDUSTRY_BENCH, type Layoff } from '../data/culture';
+import type { CompanyNews } from '../data/news';
 import type { BhpFeed } from '../data/bhpFeed';
 
 export interface BigStat {
@@ -45,6 +46,7 @@ export interface PanelData {
   roleFocus: string | null;
   diversity: Diversity;
   layoffs: Layoff | null;
+  news: CompanyNews | null;
   companyId: string;
 }
 
@@ -63,6 +65,11 @@ export function buildPanel(id: string | null, roleTitle?: string | null, live?: 
   const c = COMPANIES.find((x) => x.id === id);
   if (!c) return null;
   const culture = COMPANY_CULTURE[c.id];
+
+  // Live feed (BHP) overrides the illustrative role breakdown / skills where
+  // present, so counts, bars and the "biggest hiring area" all move.
+  const roleList = live ? live.roles : c.roles;
+  const topRole = roleList.reduce((a, b) => (b.count > a.count ? b : a)).title;
 
   let bigStats: BigStat[];
   let subStats: SubStat[];
@@ -99,10 +106,10 @@ export function buildPanel(id: string | null, roleTitle?: string | null, live?: 
       { value: salary, label: 'Median salary', sub: metroDelta, subCls: '' },
       { value: gStr, label: 'Headcount YoY', sub: gPos ? 'growing' : 'shrinking', subCls: gPos ? '' : 'neg' },
     ];
-    subStats = [glassSub2, { value: c.roles[0].title, label: 'Biggest hiring area' }];
+    subStats = [glassSub2, { value: topRole, label: 'Biggest hiring area' }];
   }
 
-  const mx = Math.max(...c.roles.map((r) => r.count));
+  const mx = Math.max(...roleList.map((r) => r.count));
   return {
     ticker: c.ticker,
     name: c.name,
@@ -116,8 +123,8 @@ export function buildPanel(id: string | null, roleTitle?: string | null, live?: 
     revPerEmp: live ? live.revPerEmp : c.revPerEmp,
     ebitdaPerEmp: live ? live.ebitdaPerEmp : c.ebitdaPerEmp,
     skillsLabel: 'Skills in demand',
-    skills: c.skills,
-    roles: c.roles.map((r) => ({ title: r.title, count: r.count, pct: Math.round((r.count / mx) * 100) + '%' })),
+    skills: live ? live.skills : c.skills,
+    roles: roleList.map((r) => ({ title: r.title, count: r.count, pct: Math.round((r.count / mx) * 100) + '%' })),
     roleOptions: culture ? culture.roleOptions : [],
     roleFocus: roleTitle || null,
     diversity: live
@@ -131,7 +138,8 @@ export function buildPanel(id: string | null, roleTitle?: string | null, live?: 
           indigenousPct: culture ? culture.indigenousPct : INDUSTRY_BENCH.indigenous,
           indigenousBench: INDUSTRY_BENCH.indigenous,
         },
-    layoffs: culture ? culture.layoffs : null,
+    layoffs: live ? live.layoffs : culture ? culture.layoffs : null,
+    news: live ? live.news : null,
     companyId: c.id,
   };
 }

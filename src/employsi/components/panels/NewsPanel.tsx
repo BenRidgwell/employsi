@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { companyNews, type NewsItem } from '../../data/news';
+import { companyNews, type CompanyNews, type NewsItem } from '../../data/news';
 
 // Narrow "[company] in the news" card that sits to the right of the company
 // card. Mirrors a mobile news feed: a trending hero with a masthead image, then
@@ -35,8 +35,11 @@ function thumbUrl(seed: string, w: number, h: number): string {
   return `https://picsum.photos/seed/${encodeURIComponent(seed)}/${w}/${h}`;
 }
 
-export function NewsPanel({ name, sector }: { name: string; sector: string }) {
-  const news = useMemo(() => companyNews(name, sector), [name, sector]);
+// `live` (BHP) overrides the deterministic feed so comment counts tick with the
+// poll; every other company falls back to the illustrative generated feed.
+export function NewsPanel({ name, sector, live }: { name: string; sector: string; live?: CompanyNews | null }) {
+  const computed = useMemo(() => companyNews(name, sector), [name, sector]);
+  const news = live ?? computed;
   return (
     <aside className="newspanel">
       <div className="newshd">

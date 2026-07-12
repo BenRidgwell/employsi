@@ -378,7 +378,7 @@ export function CompanyPanel() {
           )}
         </div>
       </aside>
-      {panel && <NewsPanel name={panel.name} sector={panel.sector} />}
+      {panel && <NewsPanel name={panel.name} sector={panel.sector} live={panel.news} />}
     </div>
   );
 }
