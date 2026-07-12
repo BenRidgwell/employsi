@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../state/store';
 import { buildPanel } from '../../lib/panel';
-import { shareTrend } from '../../data/finance';
+import { shareTrend, commodityIndex } from '../../data/finance';
 import { companySocial } from '../../data/social';
 import { TrendChart } from './TrendChart';
 import { ShareChart } from './ShareChart';
@@ -148,6 +148,7 @@ export function CompanyPanel() {
   const following = panel ? followedIds.includes(panel.companyId) : false;
 
   const prices = useMemo(() => (panel ? shareTrend(panel.ticker, panel.trend) : []), [panel?.ticker, panel?.trend]);
+  const commodity = useMemo(() => (panel ? commodityIndex(panel.trend.length) : []), [panel?.trend.length]);
   const social = useMemo(
     () => (panel ? companySocial(panel.companyId, panel.trend[panel.trend.length - 1] - panel.trend[0]) : null),
     [panel?.companyId, panel?.trend],
@@ -201,6 +202,15 @@ export function CompanyPanel() {
 
               <div className="sect">
                 <TrendChart trend={panel.trend} headcount={panel.headcount} revPerEmp={panel.revPerEmp} ebitdaPerEmp={panel.ebitdaPerEmp} />
+              </div>
+
+              {prices.length > 0 && (
+                <div className="sect">
+                  <ShareChart ticker={panel.ticker} prices={prices} commodity={commodity} />
+                </div>
+              )}
+
+              <div className="sect">
                 <div className="subs">
                   {panel.subStats.map((s, i) => (
                     <div className="subc" key={i}>
@@ -211,12 +221,6 @@ export function CompanyPanel() {
                   ))}
                 </div>
               </div>
-
-              {prices.length > 0 && (
-                <div className="sect">
-                  <ShareChart ticker={panel.ticker} prices={prices} />
-                </div>
-              )}
 
               {social && (
                 <div className="sect">

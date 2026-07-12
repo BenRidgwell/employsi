@@ -819,6 +819,11 @@ body {
   gap: 12px;
   align-items: flex-end;
   transition: opacity 0.18s ease;
+  /* The collapsed action buttons still occupy layout width (they only fade),
+     so let clicks pass through the dock's transparent area — otherwise it
+     covers the right-side continent labels (ASIA / AUSTRALIA) and swallows
+     their clicks. Only the real controls below opt back into pointer events. */
+  pointer-events: none;
 }
 .toolsdock.behind {
   z-index: 4;
@@ -830,6 +835,10 @@ body {
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
+}
+.tdfab,
+.tdname {
+  pointer-events: auto;
 }
 .tdfab {
   flex: 0 0 auto;
@@ -1822,6 +1831,19 @@ body {
 .globescene.sceneshow {
   opacity: 1;
   pointer-events: auto;
+}
+/* A hidden scene must be fully inert. Some hit targets (hub hit circles,
+   continent-label rects) carry an explicit pointer-events="all" attribute so
+   they stay clickable within their own scene; that attribute otherwise wins
+   over the container's pointer-events:none and lets the hidden scene (which
+   sits on top in DOM order) intercept clicks meant for the visible one
+   underneath — e.g. the global map's invisible targets blocking domestic hubs.
+   This CSS beats the presentation attribute and shuts the whole subtree off. */
+.auscene.scenehide,
+.auscene.scenehide *,
+.globescene:not(.sceneshow),
+.globescene:not(.sceneshow) * {
+  pointer-events: none !important;
 }
 .globemap {
   width: min(82vw, 1100px);

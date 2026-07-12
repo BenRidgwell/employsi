@@ -1,10 +1,5 @@
 import { useAppStore } from '../state/store';
-
-const NAMES: Record<string, string> = {
-  perth: 'Perth', brisbane: 'Brisbane', adelaide: 'Adelaide', singapore: 'Singapore', ganzhou: 'Ganzhou',
-  toronto: 'Toronto', houston: 'Houston', denver: 'Denver', johannesburg: 'Johannesburg', lubumbashi: 'Lubumbashi',
-  london: 'London', santiago: 'Santiago',
-};
+import { GLOBAL_HUB_LABEL } from '../data/geo';
 
 // Small indicator of which local city map you're currently viewing. Only shows
 // on the local layer (hidden on the Australia / global views).
@@ -15,7 +10,9 @@ export function CityBadge() {
   const compareOpen = useAppStore((s) => s.compareOpen);
   // Hide on the overview layers, and when a panel is covering the map.
   if (zoomedOut || selectedId || compareOpen) return null;
-  const name = NAMES[localCity] || 'Perth';
+  // Use the shared hub-label map so every city (incl. the finance hubs) shows
+  // its real name instead of silently falling back to "Perth".
+  const name = GLOBAL_HUB_LABEL[localCity] || localCity.charAt(0).toUpperCase() + localCity.slice(1);
   return (
     <div className="citybadge" key={localCity}>
       <span className="citybadgedot" />

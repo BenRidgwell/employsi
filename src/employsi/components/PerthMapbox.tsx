@@ -189,6 +189,16 @@ export function PerthMapbox() {
         });
       });
 
+      // Clicking empty map (not a company dot) dismisses the open card but keeps
+      // us in this local city, so another company can be picked. Pill markers
+      // are HTML overlays whose clicks don't reach the canvas, so selecting via
+      // a pill never triggers this.
+      map.on('click', (e) => {
+        if (!useAppStore.getState().selectedId) return;
+        const hits = map.queryRenderedFeatures(e.point, { layers: [CORE_LAYER, HALO_LAYER] });
+        if (!hits.length) useAppStore.getState().closePanel();
+      });
+
       // HTML pill markers (dot · ticker · median), anchored just above each dot.
       // Rebuilt whenever the active city changes so each city shows its own set.
       const renderMarkers = (placements: Placed[]) => {

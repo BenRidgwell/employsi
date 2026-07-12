@@ -23,16 +23,19 @@ interface RegionCfg {
 
 export const REGIONS: Record<string, RegionCfg> = {
   asia: {
-    hubs: ['ganzhou', 'singapore'],
-    x0: 340,
-    y0: 101,
-    w: 150,
+    // Box widened + raised so Tokyo (north-east of the resources hubs) is
+    // comfortably in frame alongside Ganzhou and Singapore.
+    hubs: ['ganzhou', 'singapore', 'tokyo'],
+    x0: 350,
+    y0: 77,
+    w: 180,
     label: 'ASIA',
     labelX: 70,
     labelY: 40,
     offsets: {
       singapore: { dx: 0, dy: 16, anchor: 'middle' },
-      ganzhou: { dx: 0, dy: -11, anchor: 'middle' },
+      ganzhou: { dx: -8, dy: 3, anchor: 'end' },
+      tokyo: { dx: 8, dy: 3, anchor: 'start' },
     },
   },
   northamerica: {
@@ -165,9 +168,11 @@ export function RegionMap({
       })}
       {cfg.hubs.map((id) => {
         const [cx, cy] = proj(...GLOBAL_HUB_XY[id]);
-        const off = cfg.offsets[id];
+        const off = cfg.offsets[id] || { dx: 0, dy: -11, anchor: 'middle' as const };
         return (
           <g className="aucity hub" key={id} data-city={id} onClick={() => onZoomInCity(id)}>
+            {/* Generous invisible hit target, matching the global map's hubs. */}
+            <circle className="hubhit" cx={cx} cy={cy} r="14" fill="transparent" pointerEvents="all" />
             <circle className="auring" cx={cx} cy={cy} r="8" />
             <circle className="audot audothub" cx={cx} cy={cy} r="4.4" />
             <text className="aulabel" x={cx + off.dx} y={cy + off.dy} textAnchor={off.anchor}>

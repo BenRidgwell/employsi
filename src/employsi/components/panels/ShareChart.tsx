@@ -1,91 +1,161 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { quarterLabels, smoothPath, scaler, signed, pctStr } from '../../lib/chart';
 
-// Share-price chart for the "Financial trends" section — same visual language
-// as the workforce TrendChart (smooth line, area fill, scrub tooltip) but a
-// single series, since share price has no second metric to compare against.
+// Dual-line "Financial trends" chart. Share price is always plotted; the second
+// line is the aggregated commodity index (base + precious metals, oil & LNG) so
+// the price can be read against its sector benchmark. Mirrors the workforce
+// TrendChart: hover scrubs a callout reading both series; dragging across the
+// chart selects a period and auto-calculates the change.
 
 interface Props {
   ticker: string;
   prices: number[];
+  commodity: number[];
 }
 
 const W = 340;
-const H = 130;
+const H = 156;
 const PADX = 10;
-const PADT = 14;
+const PADT = 18;
 const PADB = 12;
 const PLOTW = W - PADX * 2;
 const PLOTH = H - PADT - PADB;
 
 const money = (v: number) => '$' + v.toFixed(2);
+const idx = (v: number) => v.toFixed(1);
 
-export function ShareChart({ ticker, prices }: Props) {
+export function ShareChart({ ticker, prices, commodity }: Props) {
   const labels = useMemo(() => quarterLabels(prices.length), [prices.length]);
   const n = prices.length;
-  const [hoverI, setHoverI] = useState<number | null>(null);
+  const [sel, setSel] = useState<number | null>(null);
+  const [range, setRange] = useState<[number, number] | null>(null);
+  const [hover, setHover] = useState(false);
+  const dragStart = useRef<number | null>(null);
 
   const x = (i: number) => PADX + (i * PLOTW) / (n - 1);
-  const y = scaler(prices, PADT, PLOTH);
-  const line = smoothPath(prices.map((v, i) => [x(i), y(v)]));
-  const area = line + ` L ${x(n - 1).toFixed(2)} ${(PADT + PLOTH).toFixed(2)} L ${x(0).toFixed(2)} ${(PADT + PLOTH).toFixed(2)} Z`;
+  const yP = scaler(prices, PADT, PLOTH);
+  const yC = scaler(commodity, PADT, PLOTH);
+  const priceLine = smoothPath(prices.map((v, i) => [x(i), yP(v)]));
+  const commLine = smoothPath(commodity.map((v, i) => [x(i), yC(v)]));
+  const priceArea = priceLine + ` L ${x(n - 1).toFixed(2)} ${(PADT + PLOTH).toFixed(2)} L ${x(0).toFixed(2)} ${(PADT + PLOTH).toFixed(2)} Z`;
 
   const idxAt = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const rel = ((e.clientX - rect.left) / rect.width) * W;
     return Math.max(0, Math.min(n - 1, Math.round((rel - PADX) / (PLOTW / (n - 1)))));
   };
+  const onDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const i = idxAt(e);
+    dragStart.current = i;
+    setRange([i, i]);
+    setSel(null);
+  };
+  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const i = idxAt(e);
+    setHover(true);
+    if (dragStart.current != null) setRange([dragStart.current, i]);
+    else if (!range) setSel(i);
+  };
+  const finishDrag = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (dragStart.current == null) return;
+    const s = dragStart.current;
+    const i = idxAt(e);
+    dragStart.current = null;
+    if (i === s) {
+      setRange(null);
+      setSel(i);
+    } else {
+      setRange([Math.min(s, i), Math.max(s, i)]);
+    }
+  };
+  const onLeave = () => {
+    dragStart.current = null;
+    setSel(null);
+    setHover(false);
+  };
 
-  const active = hoverI == null ? n - 1 : hoverI;
-  const first = prices[0];
-  const last = prices[n - 1];
-  const delta = last - first;
-  const pct = first ? (delta / first) * 100 : 0;
-  const up = delta >= 0;
+  const hasRange = !!range && range[0] !== range[1];
+  const a = range ? range[0] : 0;
+  const b = range ? range[1] : 0;
+  const active = sel == null ? n - 1 : sel;
+  const scrubLeft = (x(active) / W) * 100;
+
+  const priceDelta = prices[b] - prices[a];
+  const commDelta = commodity[b] - commodity[a];
+  const pricePct = prices[a] ? (priceDelta / prices[a]) * 100 : 0;
+  const commPct = commodity[a] ? (commDelta / commodity[a]) * 100 : 0;
+
+  // Header badge shows the full-window share-price change.
+  const winDelta = prices[n - 1] - prices[0];
+  const winPct = prices[0] ? (winDelta / prices[0]) * 100 : 0;
 
   return (
     <>
       <div className="secth">
         Financial trends
-        <span className={`shdelta ${up ? 'up' : 'down'}`}>
-          {signed(delta, money)} ({pctStr(pct)})
+        <span className={`shdelta ${winDelta >= 0 ? 'up' : 'down'}`}>
+          {signed(winDelta, money)} ({pctStr(winPct)})
         </span>
       </div>
+
       <div className="wtlegend">
         <span className="wtlgi">
           <i className="wtsw ink" />
           {ticker} share price
         </span>
-        <span className="wthint">Illustrative price · hover to scrub</span>
+        <span className="wtlgi">
+          <i className="wtsw acc" />
+          Commodities
+        </span>
+        <span className="wthint">Drag across to compare a period</span>
       </div>
-      <div
-        className="wtbox"
-        onMouseMove={(e) => setHoverI(idxAt(e))}
-        onMouseLeave={() => setHoverI(null)}
-      >
+
+      <div className="wtbox" onMouseDown={onDown} onMouseMove={onMove} onMouseUp={finishDrag} onMouseLeave={onLeave}>
         <svg className="wtsvg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
           {/* Reuses the #wtAreaFade gradient defined by the workforce TrendChart
-              rendered alongside it in the same panel. */}
-          <path className="wtarea" d={area} />
-          <path className="wtline" d={line} vectorEffect="non-scaling-stroke" />
-          {hoverI != null && (
+              rendered above it in the same panel. */}
+          {hasRange && <rect className="wtband" x={x(a)} y={PADT} width={x(b) - x(a)} height={PLOTH} />}
+          <path className="wtarea" d={priceArea} />
+          <path className="wtline2" d={commLine} vectorEffect="non-scaling-stroke" />
+          <path className="wtline" d={priceLine} vectorEffect="non-scaling-stroke" />
+          {hasRange ? (
+            <>
+              <line className="wtguide" x1={x(a)} x2={x(a)} y1={PADT} y2={PADT + PLOTH} vectorEffect="non-scaling-stroke" />
+              <line className="wtguide" x1={x(b)} x2={x(b)} y1={PADT} y2={PADT + PLOTH} vectorEffect="non-scaling-stroke" />
+            </>
+          ) : hover ? (
             <line className="wtguide" x1={x(active)} x2={x(active)} y1={PADT} y2={PADT + PLOTH} vectorEffect="non-scaling-stroke" />
-          )}
+          ) : null}
         </svg>
-        {hoverI != null && (
+
+        {hasRange ? (
           <>
-            <div className="wtdot ink" style={{ left: `${(x(active) / W) * 100}%`, top: `${(y(prices[active]) / H) * 100}%` }} />
-            <div className="wttip" style={{ left: `${(x(active) / W) * 100}%`, top: `${(y(prices[active]) / H) * 100}%` }}>
+            <div className="wtdot acc" style={{ left: `${(x(a) / W) * 100}%`, top: `${(yC(commodity[a]) / H) * 100}%` }} />
+            <div className="wtdot acc" style={{ left: `${(x(b) / W) * 100}%`, top: `${(yC(commodity[b]) / H) * 100}%` }} />
+            <div className="wtdot ink" style={{ left: `${(x(a) / W) * 100}%`, top: `${(yP(prices[a]) / H) * 100}%` }} />
+            <div className="wtdot ink" style={{ left: `${(x(b) / W) * 100}%`, top: `${(yP(prices[b]) / H) * 100}%` }} />
+          </>
+        ) : hover ? (
+          <>
+            <div className="wtdot acc" style={{ left: `${scrubLeft}%`, top: `${(yC(commodity[active]) / H) * 100}%` }} />
+            <div className="wtdot ink" style={{ left: `${scrubLeft}%`, top: `${(yP(prices[active]) / H) * 100}%` }} />
+            <div className="wttip" style={{ left: `${scrubLeft}%`, top: `${(Math.min(yP(prices[active]), yC(commodity[active])) / H) * 100}%` }}>
               <div className="wttiplabel">{labels[active]}</div>
               <div className="wttiprow">
                 <i className="wtsw ink" />
                 <b>{money(prices[active])}</b>
                 <span>{ticker}</span>
               </div>
+              <div className="wttiprow">
+                <i className="wtsw acc" />
+                <b>{idx(commodity[active])}</b>
+                <span>Commodities</span>
+              </div>
             </div>
           </>
-        )}
+        ) : null}
       </div>
+
       <div className="wtaxis">
         {labels.map((l, i) => (
           <span key={l} className="wtaxislbl" style={{ left: `${(x(i) / W) * 100}%` }}>
@@ -93,6 +163,23 @@ export function ShareChart({ ticker, prices }: Props) {
           </span>
         ))}
       </div>
+
+      {hasRange && (
+        <div className="wtrange">
+          <div className="wtrangehd">
+            <span className="wtrangeperiod">{labels[a]} → {labels[b]}</span>
+            <button className="wtrangex" onClick={() => setRange(null)}>Clear</button>
+          </div>
+          <div className="wtrangerow">
+            <span className="wtrlbl"><i className="wtsw ink" />{ticker} share price</span>
+            <span className={`wtrval ${priceDelta >= 0 ? 'up' : 'down'}`}>{signed(priceDelta, money)} ({pctStr(pricePct)})</span>
+          </div>
+          <div className="wtrangerow">
+            <span className="wtrlbl"><i className="wtsw acc" />Commodities</span>
+            <span className={`wtrval ${commDelta >= 0 ? 'up' : 'down'}`}>{signed(commDelta, idx)} ({pctStr(commPct)})</span>
+          </div>
+        </div>
+      )}
     </>
   );
 }
