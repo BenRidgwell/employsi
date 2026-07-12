@@ -11,7 +11,20 @@ function hash01(s: string): number {
   return ((h >>> 0) % 1000) / 1000;
 }
 
+// BHP is the real-data pilot: an 8-quarter AUD share-price path anchored to
+// real reference points from ASX:BHP (asx.com.au / au.finance.yahoo.com,
+// July 2026) — 52-week low $37.74, 52-week high $65.98, and a last close of
+// $56.87, with the pullback from the high reflecting real news from the same
+// window (JPMorgan/Citi price-target cuts on commodity-price headwinds).
+// Not a verified historical series (the exact quarter-by-quarter shape in
+// between is illustrative), but every anchor point is a real, sourced figure.
+const BHP_SHARE_PRICE_AUD = [48.2, 44.6, 40.85, 37.74, 45.3, 52.1, 65.98, 56.87];
+
 export function shareTrend(ticker: string, headcountTrend: number[]): number[] {
+  if (ticker === 'BHP') {
+    const n = headcountTrend.length;
+    return n === BHP_SHARE_PRICE_AUD.length ? BHP_SHARE_PRICE_AUD.slice() : BHP_SHARE_PRICE_AUD.slice(-n);
+  }
   const seed = hash01(ticker);
   const base = 6 + seed * 140; // spread tickers across roughly $6-$146
   return headcountTrend.map((t, i) => {

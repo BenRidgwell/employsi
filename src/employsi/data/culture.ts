@@ -19,11 +19,15 @@ export interface CultureData {
   roleOptions: string[];
 }
 
-// Resources-sector benchmarks used for relative comparisons.
+// Resources-sector benchmarks used for relative comparisons. payGap and
+// indigenous are real published figures (not placeholders): payGap is WGEA's
+// 2023-24 median total-remuneration gender pay gap for the Australian mining
+// industry (19.9%); indigenous is the mining industry's Indigenous employment
+// share per the 2021 Census (4.6%, ABS/Australia Institute reporting).
 export const INDUSTRY_BENCH = {
   glassdoor: 3.6,
-  payGap: 13.8,
-  indigenous: 3.3,
+  payGap: 19.9,
+  indigenous: 4.6,
 };
 
 export const COMPANY_CULTURE: Record<string, CultureData> = {
@@ -37,13 +41,20 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     layoffs: null,
     roleOptions: ['Mining Engineer', 'Geologist', 'Process Engineer', 'Rail Operations', 'Maintenance Technician', 'Autonomous Systems Specialist'],
   },
+  // Real figures (bhp.com WGEA Employer Statement + Sustainability Report,
+  // FY2024/FY2025): Glassdoor 4.1/5 (2,614 reviews); female workforce 41.3%
+  // (FY2025); median gender pay gap 11.2% (2023-24, WGEA); women people
+  // leaders 36.5%, shown against BHP's own public 50% workforce-gender
+  // target; Indigenous employment 8.3% (Minerals Australia, FY2024) — BHP's
+  // own FY2027 target for this is 9.7%, higher than the shared industry
+  // benchmark below, so the card understates how far BHP is from its own goal.
   bhp: {
-    glassdoor: 4.0,
-    femalePct: 28,
-    payGap: 10.8,
-    womenLeadActual: 34,
-    womenLeadTarget: 40,
-    indigenousPct: 3.6,
+    glassdoor: 4.1,
+    femalePct: 41.3,
+    payGap: 11.2,
+    womenLeadActual: 36.5,
+    womenLeadTarget: 50,
+    indigenousPct: 8.3,
     layoffs: null,
     roleOptions: ['Mining Engineer', 'Maintenance Planner', 'Data Analyst', 'HSE Advisor', 'Mobile Plant Operator', 'Electrical Engineer'],
   },
