@@ -2669,6 +2669,33 @@ body {
   font-size: 20px;
   letter-spacing: -0.4px;
   line-height: 1.12;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.plive {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: #0e7a50;
+  background: rgba(21, 157, 103, 0.12);
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+.plive i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #159d67;
+  animation: plivepulse 1.4s ease-in-out infinite;
+}
+@keyframes plivepulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
 }
 .psector {
   display: inline-flex;

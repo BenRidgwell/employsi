@@ -3,6 +3,7 @@ import { useAppStore } from '../../state/store';
 import { buildPanel } from '../../lib/panel';
 import { shareTrend, commodityBaskets } from '../../data/finance';
 import { companySocial } from '../../data/social';
+import { useBhpFeed } from '../../hooks/useBhpFeed';
 import { TrendChart } from './TrendChart';
 import { ShareChart } from './ShareChart';
 import { NewsPanel } from './NewsPanel';
@@ -143,18 +144,32 @@ export function CompanyPanel() {
     scrollRef.current?.scrollTo(0, 0);
   }, [selectedId]);
 
-  const panel = buildPanel(lastId, roleFilter);
   const open = !!selectedId;
-  const following = panel ? followedIds.includes(panel.companyId) : false;
+  // BHP is the pilot for real-time data: poll its live feed while the card is
+  // open and overlay it onto the panel; every other company stays illustrative.
+  const isBhp = lastId === 'bhp';
+  const feed = useBhpFeed(isBhp && open);
 
-  const prices = useMemo(() => (panel ? shareTrend(panel.ticker, panel.trend) : []), [panel?.ticker, panel?.trend]);
+  const panel = buildPanel(lastId, roleFilter, isBhp ? feed : undefined);
+  const following = panel ? followedIds.includes(panel.companyId) : false;
+  const live = isBhp && !!feed;
+
+  const prices = useMemo(
+    () => (feed && isBhp ? feed.sharePrice : panel ? shareTrend(panel.ticker, panel.trend) : []),
+    [feed, isBhp, panel?.ticker, panel?.trend],
+  );
   const commodities = useMemo(
-    () => commodityBaskets(panel ? panel.trend.length : 0),
-    [panel?.trend.length],
+    () => (feed && isBhp ? feed.commodities : commodityBaskets(panel ? panel.trend.length : 0)),
+    [feed, isBhp, panel?.trend.length],
   );
   const social = useMemo(
-    () => (panel ? companySocial(panel.companyId, panel.trend[panel.trend.length - 1] - panel.trend[0]) : null),
-    [panel?.companyId, panel?.trend],
+    () =>
+      feed && isBhp
+        ? feed.social
+        : panel
+          ? companySocial(panel.companyId, panel.trend[panel.trend.length - 1] - panel.trend[0])
+          : null,
+    [feed, isBhp, panel?.companyId, panel?.trend],
   );
 
   return (
@@ -166,7 +181,10 @@ export function CompanyPanel() {
               <div className="phead">
                 <CompanyLogo domain={panel.domain} ticker={panel.ticker} />
                 <div className="pheadmain">
-                  <div className="pname">{panel.name}</div>
+                  <div className="pname">
+                    {panel.name}
+                    {live && <span className="plive"><i />LIVE</span>}
+                  </div>
                   <div className="psector">{panel.sector}</div>
                 </div>
                 <div className="pactions">
