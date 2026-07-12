@@ -135,7 +135,6 @@ export function TrendChart(props: Props) {
           <i className="wtsw acc" />
           {metricShort}
         </span>
-        <span className="wthint">Drag across to compare a period</span>
       </div>
 
       <div className="wtbox" onMouseDown={onDown} onMouseMove={onMove} onMouseUp={finishDrag} onMouseLeave={onLeave}>

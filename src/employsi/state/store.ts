@@ -351,8 +351,8 @@ export interface FilterState {
 }
 
 // Does a company belong to (one of) the selected sectors? Used to HIDE
-// non-matching companies on the local map. A company categorises to
-// Mining & Metals or Oil & Gas, so selecting Financial Services (which none of
+// non-matching companies on the local map. Every company categorises to
+// Energy & Natural Resources, so selecting Financial Services (which none of
 // them are) hides every company — exactly the intended behaviour.
 export function matchesSector(c: Company, activeSectors: string[]): boolean {
   return !activeSectors.length || activeSectors.includes(categorize(c.sector));

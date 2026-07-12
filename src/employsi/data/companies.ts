@@ -54,10 +54,12 @@ export const COMPANIES: Company[] = [
   { id: 'jellinbah', ticker: 'JEL', name: 'Jellinbah Group', domain: 'jellinbah.com.au', sector: 'Coal', headcount: 800, growth: 4.2, openRoles: 48, salary: '$143,000', salaryShort: '$143K', salaryNum: 143000, turnover: 11.8, salaryDelta: '+7%', metroDelta: '+7% vs metro', trend: [90, 91, 93, 94, 96, 97, 99, 100], revPerEmp: 1.7, ebitdaPerEmp: 0.9, timeToFill: '44 days', competition: 'Medium', skills: ['Coal Mining', 'Maintenance', 'Processing', 'Rail & Logistics', 'HSE'], roles: [{ title: 'Operations', count: 20 }, { title: 'Maintenance', count: 16 }, { title: 'Logistics', count: 12 }] },
 ];
 
-export function categorize(sector: string): string {
-  // Two company sectors only — battery metals fold into Mining & Metals.
-  if (/Oil|Gas|LNG/.test(sector)) return 'Oil & Gas';
-  return 'Mining & Metals';
+// Resources sit in one combined bucket now — mining, metals, oil, gas and LNG
+// all fold into "Energy & Natural Resources". Finance hubs are tagged
+// separately (see geo.ts CITY_SECTORS); companies here are all resources.
+export const RESOURCES_SECTOR = 'Energy & Natural Resources';
+export function categorize(_sector: string): string {
+  return RESOURCES_SECTOR;
 }
 
 export interface TickerItem {

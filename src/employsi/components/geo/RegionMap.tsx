@@ -3,6 +3,30 @@ import { GLOBAL_HUB_XY, GLOBAL_HUB_LABEL, cityMatchesSectors } from '../../data/
 import type { HeatDisc } from '../../lib/color';
 import type { SpikePoint } from '../../lib/heat';
 import { SpikeField } from './SpikeField';
+import { Plane } from './Plane';
+
+const PLANE_DURS = ['19s', '23s', '27s', '21s'];
+const PLANE_BEGINS = ['0s', '5s', '9s', '3s'];
+
+// Decorative flight arcs linking a region's hubs, mirroring Australia's FIFO
+// routes. Built from the already-projected hub positions so they sit on the
+// map, arcing up between consecutive hubs (capped so busy regions don't clutter).
+function planeRoutes(pts: [number, number][]): { dur: string; begin: string; path: string }[] {
+  const routes: { dur: string; begin: string; path: string }[] = [];
+  for (let i = 0; i + 1 < pts.length && i < 4; i++) {
+    const [ax, ay] = pts[i];
+    const [bx, by] = pts[i + 1];
+    const mx = (ax + bx) / 2;
+    const my = (ay + by) / 2;
+    const lift = Math.min(70, Math.hypot(bx - ax, by - ay) * 0.3) + 10;
+    routes.push({
+      dur: PLANE_DURS[i % PLANE_DURS.length],
+      begin: PLANE_BEGINS[i % PLANE_BEGINS.length],
+      path: `M${ax.toFixed(0)},${ay.toFixed(0)} Q${mx.toFixed(0)},${(my - lift).toFixed(0)} ${bx.toFixed(0)},${by.toFixed(0)}`,
+    });
+  }
+  return routes;
+}
 
 // Generic regional domestic view: the world land paths zoomed into a region so
 // its hubs are comfortably visible, mapped into the same 500x260 space as the
@@ -144,6 +168,7 @@ export function RegionMap({
   const s = 500 / cfg.w;
   const proj = (x: number, y: number): [number, number] => [(x - cfg.x0) * s, (y - cfg.y0) * s];
   const landT = `scale(${s.toFixed(4)}) translate(${-cfg.x0} ${-cfg.y0})`;
+  const routes = planeRoutes(cfg.hubs.map((id) => proj(...GLOBAL_HUB_XY[id])));
   // Project the global-coordinate skill spikes into this region's view.
   const projSpike = (sp: SpikePoint): SpikePoint => ({ ...sp, cx: (sp.cx - cfg.x0) * s, cy: (sp.cy - cfg.y0) * s });
 
@@ -166,6 +191,10 @@ export function RegionMap({
       </g>
 
       <SpikeField ambient={ambientSpikes.map(projSpike)} hubs={hubSpikes.map(projSpike)} blurId="globeheatblur" />
+
+      {routes.map((r, i) => (
+        <Plane key={i} {...r} scale={1.8} />
+      ))}
 
       <text className="aucountry" x={cfg.labelX} y={cfg.labelY} textAnchor="middle">{cfg.label}</text>
 

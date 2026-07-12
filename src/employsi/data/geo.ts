@@ -60,13 +60,13 @@ export const GLOBAL_HUB_LABEL: Record<string, string> = {
   newyork: 'New York', sanfrancisco: 'San Francisco', chicago: 'Chicago', tokyo: 'Tokyo', zurich: 'Zurich', geneva: 'Geneva', dubai: 'Dubai', hongkong: 'Hong Kong',
 };
 
-// Sector tags per city hub. Every hub is a resources hub (Mining & Metals +
-// Oil & Gas); the three finance centres additionally carry Financial Services,
-// so filtering to that sector shows only them on the global map.
-const RESOURCES: string[] = ['Mining & Metals', 'Oil & Gas'];
+// Sector tags per city hub. Every hub is a resources hub (Energy & Natural
+// Resources); the finance centres additionally carry Financial Services, so
+// filtering to that sector shows only them on the global map.
+const RESOURCES: string[] = ['Energy & Natural Resources'];
 export const CITY_SECTORS: Record<string, string[]> = {
-  // Pure finance hubs — no resources presence, so they drop out under a
-  // Mining & Metals / Oil & Gas filter and only appear under Financial Services.
+  // Pure finance hubs — no resources presence, so they drop out under an
+  // Energy & Natural Resources filter and only appear under Financial Services.
   sydney: ['Financial Services'],
   newyork: ['Financial Services'],
   sanfrancisco: ['Financial Services'],

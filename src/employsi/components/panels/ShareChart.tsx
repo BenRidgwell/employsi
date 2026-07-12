@@ -124,7 +124,6 @@ export function ShareChart({ ticker, prices, commodities }: Props) {
           <i className="wtsw acc" />
           {basketShort}
         </span>
-        <span className="wthint">Drag across to compare a period</span>
       </div>
 
       <div className="wtbox" onMouseDown={onDown} onMouseMove={onMove} onMouseUp={finishDrag} onMouseLeave={onLeave}>

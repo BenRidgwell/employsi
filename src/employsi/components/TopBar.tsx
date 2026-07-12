@@ -4,7 +4,7 @@ import { AccountButton } from './AccountButton';
 import { useAppStore, isFilterActive, isSearchActive, type FilterState } from '../state/store';
 import { COMPANIES } from '../data/companies';
 
-const SECTORS = ['Mining & Metals', 'Oil & Gas', 'Financial Services'];
+const SECTORS = ['Energy & Natural Resources', 'Financial Services'];
 
 function topSkills(): string[] {
   const counts: Record<string, number> = {};

@@ -376,8 +376,6 @@ export function CompanyPanel() {
                   <div className="layoffnone">No major layoffs reported in the last 12 months.</div>
                 )}
               </div>
-
-              <div className="foot">Illustrative data · Perth metro · {panel.name}</div>
             </>
           )}
         </div>
