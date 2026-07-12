@@ -128,7 +128,7 @@ export function GlobeMap({
           <animateTransform attributeName="patternTransform" type="translate" from="0 0" to="-18 4" dur="7s" repeatCount="indefinite" />
         </pattern>
         <filter id="globeEdgeFeather" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="14 9" />
+          <feGaussianBlur stdDeviation="9 6" />
         </filter>
         <mask id="globeOceanMask">
           <rect x="32" y="7" width="450" height="246" rx="10" fill="#fff" filter="url(#globeEdgeFeather)" />

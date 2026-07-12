@@ -2464,7 +2464,12 @@ body {
   position: absolute;
   left: 26px;
   bottom: 24px;
-  pointer-events: none;
+  /* Informational only — take pointer events so a plain arrow cursor shows
+     (rather than the map's grab cursor bleeding through, which made it look
+     draggable/selectable), but never let the text be selected. */
+  pointer-events: auto;
+  cursor: default;
+  user-select: none;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -2482,7 +2487,9 @@ body {
   position: absolute;
   left: 26px;
   bottom: 78px;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: default;
+  user-select: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2571,6 +2578,14 @@ body {
 .cardstage.open {
   opacity: 1;
   transform: translateX(0);
+}
+/* When closed the cards are invisible but still laid out over the right half of
+   the screen; their children are pointer-events:auto, so without this they'd
+   keep intercepting clicks meant for the top-bar Search / Filter / Heat-map
+   controls (which sit at a lower stacking level). Shut the whole subtree off. */
+.cardstage:not(.open),
+.cardstage:not(.open) * {
+  pointer-events: none;
 }
 .panel {
   width: 380px;
@@ -3019,6 +3034,15 @@ body {
   font-size: 10.5px;
   font-weight: 700;
   color: var(--slate);
+}
+.wtlgd {
+  font-weight: 800;
+}
+.wtlgd.up {
+  color: #0e7a50;
+}
+.wtlgd.down {
+  color: #c1443c;
 }
 .wtsw {
   width: 9px;

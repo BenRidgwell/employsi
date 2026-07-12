@@ -1,16 +1,24 @@
 import { useMemo, useRef, useState } from 'react';
 import { quarterLabels, smoothPath, scaler, signed, pctStr } from '../../lib/chart';
+import type { CommodityBasket } from '../../data/finance';
 
-// Dual-line "Financial trends" chart. Share price is always plotted; the second
-// line is the aggregated commodity index (base + precious metals, oil & LNG) so
-// the price can be read against its sector benchmark. Mirrors the workforce
-// TrendChart: hover scrubs a callout reading both series; dragging across the
-// chart selects a period and auto-calculates the change.
+// Dual-line "Financial trends" chart. The share price is always plotted (fixed);
+// the second line is a commodity basket the user chooses — base metals,
+// precious metals, or oil & LNG — so the price can be read against a sector
+// benchmark. Mirrors the workforce TrendChart: hover scrubs a callout reading
+// both series; dragging across the chart selects a period and calculates the
+// change.
+
+const BASKETS: { id: CommodityBasket; label: string; short: string }[] = [
+  { id: 'base', label: 'Base metals', short: 'Base metals' },
+  { id: 'precious', label: 'Precious metals', short: 'Precious metals' },
+  { id: 'oilLng', label: 'Oil & LNG', short: 'Oil & LNG' },
+];
 
 interface Props {
   ticker: string;
   prices: number[];
-  commodity: number[];
+  commodities: Record<CommodityBasket, number[]>;
 }
 
 const W = 340;
@@ -24,13 +32,17 @@ const PLOTH = H - PADT - PADB;
 const money = (v: number) => '$' + v.toFixed(2);
 const idx = (v: number) => v.toFixed(1);
 
-export function ShareChart({ ticker, prices, commodity }: Props) {
+export function ShareChart({ ticker, prices, commodities }: Props) {
   const labels = useMemo(() => quarterLabels(prices.length), [prices.length]);
   const n = prices.length;
+  const [basket, setBasket] = useState<CommodityBasket>('base');
   const [sel, setSel] = useState<number | null>(null);
   const [range, setRange] = useState<[number, number] | null>(null);
   const [hover, setHover] = useState(false);
   const dragStart = useRef<number | null>(null);
+
+  const commodity = commodities[basket];
+  const basketShort = BASKETS.find((x) => x.id === basket)!.short;
 
   const x = (i: number) => PADX + (i * PLOTW) / (n - 1);
   const yP = scaler(prices, PADT, PLOTH);
@@ -93,19 +105,24 @@ export function ShareChart({ ticker, prices, commodity }: Props) {
     <>
       <div className="secth">
         Financial trends
-        <span className={`shdelta ${winDelta >= 0 ? 'up' : 'down'}`}>
-          {signed(winDelta, money)} ({pctStr(winPct)})
-        </span>
+        <div className="wtseg">
+          {BASKETS.map((m) => (
+            <button key={m.id} className={`wtsegbtn ${basket === m.id ? 'on' : ''}`} onClick={() => setBasket(m.id)}>
+              {m.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="wtlegend">
         <span className="wtlgi">
           <i className="wtsw ink" />
           {ticker} share price
+          <b className={`wtlgd ${winDelta >= 0 ? 'up' : 'down'}`}>{pctStr(winPct)}</b>
         </span>
         <span className="wtlgi">
           <i className="wtsw acc" />
-          Commodities
+          {basketShort}
         </span>
         <span className="wthint">Drag across to compare a period</span>
       </div>
@@ -149,7 +166,7 @@ export function ShareChart({ ticker, prices, commodity }: Props) {
               <div className="wttiprow">
                 <i className="wtsw acc" />
                 <b>{idx(commodity[active])}</b>
-                <span>Commodities</span>
+                <span>{basketShort}</span>
               </div>
             </div>
           </>
@@ -175,7 +192,7 @@ export function ShareChart({ ticker, prices, commodity }: Props) {
             <span className={`wtrval ${priceDelta >= 0 ? 'up' : 'down'}`}>{signed(priceDelta, money)} ({pctStr(pricePct)})</span>
           </div>
           <div className="wtrangerow">
-            <span className="wtrlbl"><i className="wtsw acc" />Commodities</span>
+            <span className="wtrlbl"><i className="wtsw acc" />{basketShort}</span>
             <span className={`wtrval ${commDelta >= 0 ? 'up' : 'down'}`}>{signed(commDelta, idx)} ({pctStr(commPct)})</span>
           </div>
         </div>

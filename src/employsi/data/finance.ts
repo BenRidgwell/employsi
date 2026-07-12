@@ -21,20 +21,22 @@ export function shareTrend(ticker: string, headcountTrend: number[]): number[] {
   });
 }
 
-// Aggregated commodity price index (rebased to 100 at the start of the window):
-// the blended movement of base metals, precious metals and oil & LNG. This is a
-// macro series, identical for every company — resources prices are set by the
-// market, not the firm — so it gives the share-price line a sector benchmark to
-// read against.
-export function commodityIndex(n: number): number[] {
-  const out: number[] = [];
+// Commodity price indices (each rebased to 100 at the start of the window):
+// base metals, precious metals and oil & LNG as separate baskets so the chart
+// can show one at a time against the share price. These are macro series,
+// identical for every company — resources prices are set by the market, not the
+// firm — so they give the share-price line a sector benchmark to read against.
+export type CommodityBasket = 'base' | 'precious' | 'oilLng';
+
+export function commodityBaskets(n: number): Record<CommodityBasket, number[]> {
+  const base: number[] = [];
+  const precious: number[] = [];
+  const oilLng: number[] = [];
   for (let i = 0; i < n; i++) {
     const f = i / Math.max(1, n - 1);
-    // Three sub-baskets with different cycles, then averaged.
-    const baseMetals = 100 * (1 + 0.14 * Math.sin(f * 5.2 + 0.4) + 0.06 * f);
-    const preciousMetals = 100 * (1 + 0.10 * Math.sin(f * 3.1 + 1.8) + 0.12 * f);
-    const oilLng = 100 * (1 + 0.18 * Math.sin(f * 6.4 + 3.0) + 0.02 * f);
-    out.push(+((baseMetals + preciousMetals + oilLng) / 3).toFixed(1));
+    base.push(+(100 * (1 + 0.14 * Math.sin(f * 5.2 + 0.4) + 0.06 * f)).toFixed(1));
+    precious.push(+(100 * (1 + 0.10 * Math.sin(f * 3.1 + 1.8) + 0.12 * f)).toFixed(1));
+    oilLng.push(+(100 * (1 + 0.18 * Math.sin(f * 6.4 + 3.0) + 0.02 * f)).toFixed(1));
   }
-  return out;
+  return { base, precious, oilLng };
 }
