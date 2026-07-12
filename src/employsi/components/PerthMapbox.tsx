@@ -173,14 +173,7 @@ export function PerthMapbox() {
         },
       });
 
-      // Rounded white pill background (stretched around the label text via
-      // Clicking a heat dot opens the same company panel as its pill.
-      const onDotClick = (e: mapboxgl.MapLayerMouseEvent) => {
-        const f = e.features && e.features[0];
-        if (f?.properties) useAppStore.getState().select(f.properties.id as string);
-      };
       [CORE_LAYER, HALO_LAYER].forEach((layer) => {
-        map.on('click', layer, onDotClick);
         map.on('mouseenter', layer, () => {
           map.getCanvas().style.cursor = 'pointer';
         });
@@ -189,14 +182,32 @@ export function PerthMapbox() {
         });
       });
 
-      // Clicking empty map (not a company dot) dismisses the open card but keeps
-      // us in this local city, so another company can be picked. Pill markers
-      // are HTML overlays whose clicks don't reach the canvas, so selecting via
-      // a pill never triggers this.
+      // A single click handler for the whole map: select the nearest company
+      // within a generous radius (so tightly-clustered CBD companies whose pills
+      // are collision-hidden and whose dots overlap — e.g. IGO / S32 / Chevron —
+      // are still reliably reachable), otherwise dismiss any open card while
+      // staying in this local city. queryRenderedFeatures alone missed the
+      // occluded dots, and the old empty-click close then fired instead, which
+      // is why those cards never opened. Pill markers are HTML overlays whose
+      // clicks don't reach the canvas, so selecting via a visible pill is
+      // unaffected.
+      const PICK_RADIUS = 30; // px
       map.on('click', (e) => {
-        if (!useAppStore.getState().selectedId) return;
-        const hits = map.queryRenderedFeatures(e.point, { layers: [CORE_LAYER, HALO_LAYER] });
-        if (!hits.length) useAppStore.getState().closePanel();
+        let best: Placed | null = null;
+        let bestD = Infinity;
+        placedRef.current.forEach((p) => {
+          const pt = map.project(p.coords);
+          const d = (pt.x - e.point.x) ** 2 + (pt.y - e.point.y) ** 2;
+          if (d < bestD) {
+            bestD = d;
+            best = p;
+          }
+        });
+        if (best && bestD <= PICK_RADIUS * PICK_RADIUS) {
+          useAppStore.getState().select((best as Placed).company.id);
+        } else if (useAppStore.getState().selectedId) {
+          useAppStore.getState().closePanel();
+        }
       });
 
       // HTML pill markers (dot · ticker · median), anchored just above each dot.

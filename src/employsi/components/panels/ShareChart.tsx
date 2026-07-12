@@ -10,8 +10,8 @@ import type { CommodityBasket } from '../../data/finance';
 // change.
 
 const BASKETS: { id: CommodityBasket; label: string; short: string }[] = [
-  { id: 'base', label: 'Base metals', short: 'Base metals' },
-  { id: 'precious', label: 'Precious metals', short: 'Precious metals' },
+  { id: 'base', label: 'Base', short: 'Base metals' },
+  { id: 'precious', label: 'Precious', short: 'Precious metals' },
   { id: 'oilLng', label: 'Oil & LNG', short: 'Oil & LNG' },
 ];
 
