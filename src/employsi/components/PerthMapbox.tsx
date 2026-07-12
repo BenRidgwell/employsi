@@ -199,6 +199,7 @@ export function PerthMapbox() {
       // clicks don't reach the canvas, so selecting via a visible pill is
       // unaffected.
       const PICK_RADIUS = 30; // px
+      let lastSelectAt = 0;
       map.on('click', (e) => {
         let best: Placed | null = null;
         let bestD = Infinity;
@@ -212,9 +213,25 @@ export function PerthMapbox() {
         });
         if (best && bestD <= PICK_RADIUS * PICK_RADIUS) {
           useAppStore.getState().select((best as Placed).company.id);
-        } else if (useAppStore.getState().selectedId) {
-          useAppStore.getState().closePanel();
+          lastSelectAt = Date.now();
+          return;
         }
+        const selectedId = useAppStore.getState().selectedId;
+        if (!selectedId) return;
+        // Guard against a card opening then instantly closing. The select above
+        // eases the camera to reserve space for the card, so the selected dot
+        // slides under the panel. A second, quick click (a double-click, or an
+        // impatient re-tap) then lands well away from that shifted dot and would
+        // otherwise fall through to closePanel. Ignore the close if we only just
+        // selected, or if the click is still near the selected company.
+        if (Date.now() - lastSelectAt < 500) return;
+        const sel = placedRef.current.find((p) => p.company.id === selectedId);
+        if (sel) {
+          const pt = map.project(sel.coords);
+          const d = (pt.x - e.point.x) ** 2 + (pt.y - e.point.y) ** 2;
+          if (d <= (PICK_RADIUS * 2) ** 2) return;
+        }
+        useAppStore.getState().closePanel();
       });
 
       // HTML pill markers (dot · ticker · median), anchored just above each dot.

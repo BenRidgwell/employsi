@@ -46,10 +46,25 @@ function tourFor(layer: Layer, city: string) {
   };
 }
 
+function Switch({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <button className={`ngswitch ${on ? 'on' : ''}`} role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)}>
+      <span className="ngswitchknob" />
+    </button>
+  );
+}
+
 export function HelpDock() {
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const globalOut = useAppStore((s) => s.globalOut);
   const localCity = useAppStore((s) => s.localCity);
+  const settingsOpen = useAppStore((s) => s.settingsOpen);
+  const toggleSettings = useAppStore((s) => s.toggleSettings);
+  const closeSettings = useAppStore((s) => s.closeSettings);
+  const showSummary = useAppStore((s) => s.showSummary);
+  const setShowSummary = useAppStore((s) => s.setShowSummary);
+  const reduceMotion = useAppStore((s) => s.reduceMotion);
+  const setReduceMotion = useAppStore((s) => s.setReduceMotion);
 
   // zoomedOut takes precedence, same reasoning as ZoomSlider.
   const layer: Layer = !zoomedOut ? 'local' : globalOut ? 'global' : 'domestic';
@@ -102,6 +117,28 @@ export function HelpDock() {
           </ol>
         </div>
       )}
+      {settingsOpen && (
+        <div className="setpanel">
+          <div className="helphd">
+            <div className="helptitle">Settings</div>
+            <button className="helpx" onClick={closeSettings} aria-label="Close">✕</button>
+          </div>
+          <div className="setrow">
+            <div>
+              <div className="setlbl">Summary bar</div>
+              <div className="setsub">Show the employer / roles totals along the bottom.</div>
+            </div>
+            <Switch on={showSummary} onChange={setShowSummary} label="Toggle summary bar" />
+          </div>
+          <div className="setrow">
+            <div>
+              <div className="setlbl">Reduce motion</div>
+              <div className="setsub">Minimise map and interface animations.</div>
+            </div>
+            <Switch on={reduceMotion} onChange={setReduceMotion} label="Toggle reduce motion" />
+          </div>
+        </div>
+      )}
       {fbOpen && (
         <div className="fbpanel">
           {fbSent ? (
@@ -133,6 +170,7 @@ export function HelpDock() {
         onClick={() => {
           setFbOpen((o) => !o);
           setOpen(false);
+          closeSettings();
         }}
         aria-label="Submit feedback"
       >
@@ -148,6 +186,7 @@ export function HelpDock() {
         onClick={() => {
           setOpen((o) => !o);
           setFbOpen(false);
+          closeSettings();
         }}
         aria-label="Need help?"
       >
@@ -157,6 +196,22 @@ export function HelpDock() {
           <circle cx="12" cy="17.4" r="0.6" fill="currentColor" stroke="none" />
         </svg>
         <span className="helplbl">Need help?</span>
+      </button>
+
+      <button
+        className={`helpbtn helpsettings ${settingsOpen ? 'on' : ''}`}
+        onClick={() => {
+          toggleSettings();
+          setOpen(false);
+          setFbOpen(false);
+        }}
+        aria-label="Settings"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3.2" />
+          <path d="M12 3.5v2.2M12 18.3v2.2M20.5 12h-2.2M5.7 12H3.5M18 6l-1.6 1.6M7.6 16.4 6 18M18 18l-1.6-1.6M7.6 7.6 6 6" />
+        </svg>
+        <span className="helplbl">Settings</span>
       </button>
     </div>
   );

@@ -12,6 +12,9 @@ export interface AppState {
   account: Account | null;
   authOpen: boolean;
   pendingFollowId: string | null;
+  settingsOpen: boolean;
+  showSummary: boolean;
+  reduceMotion: boolean;
   selectedId: string | null;
   lastId: string | null;
   interacted: boolean;
@@ -44,6 +47,10 @@ export interface AppState {
   signUp: (name: string, email: string) => void;
   signIn: (email: string) => void;
   signOut: () => void;
+  toggleSettings: () => void;
+  closeSettings: () => void;
+  setShowSummary: (v: boolean) => void;
+  setReduceMotion: (v: boolean) => void;
   closePanel: () => void;
   setHeat: (h: HeatMetric) => void;
   setInteracted: () => void;
@@ -89,27 +96,41 @@ const LS_KEY = 'employsi.auth';
 interface Persisted {
   account: Account | null;
   followedIds: string[];
+  showSummary: boolean;
+  reduceMotion: boolean;
 }
+const PERSIST_DEFAULTS: Persisted = { account: null, followedIds: [], showSummary: true, reduceMotion: false };
 function loadPersisted(): Persisted {
-  if (typeof localStorage === 'undefined') return { account: null, followedIds: [] };
+  if (typeof localStorage === 'undefined') return PERSIST_DEFAULTS;
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return { account: null, followedIds: [] };
+    if (!raw) return PERSIST_DEFAULTS;
     const p = JSON.parse(raw) as Partial<Persisted>;
-    return { account: p.account ?? null, followedIds: Array.isArray(p.followedIds) ? p.followedIds : [] };
+    return {
+      account: p.account ?? null,
+      followedIds: Array.isArray(p.followedIds) ? p.followedIds : [],
+      showSummary: p.showSummary ?? true,
+      reduceMotion: p.reduceMotion ?? false,
+    };
   } catch {
-    return { account: null, followedIds: [] };
+    return PERSIST_DEFAULTS;
   }
 }
-function savePersisted(account: Account | null, followedIds: string[]): void {
+function savePersisted(p: Persisted): void {
   if (typeof localStorage === 'undefined') return;
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify({ account, followedIds }));
+    localStorage.setItem(LS_KEY, JSON.stringify(p));
   } catch {
     /* private-mode / quota — non-fatal, the session just won't persist */
   }
 }
 const persisted = loadPersisted();
+
+// Reflect the reduce-motion preference on the root element as early as possible
+// so animations are suppressed before first paint when it's on.
+if (typeof document !== 'undefined') {
+  document.documentElement.classList.toggle('reduce-motion', persisted.reduceMotion);
+}
 
 let zoomTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -127,6 +148,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   account: persisted.account,
   authOpen: false,
   pendingFollowId: null,
+  settingsOpen: false,
+  showSummary: persisted.showSummary,
+  reduceMotion: persisted.reduceMotion,
   selectedId: null,
   lastId: null,
   interacted: false,
@@ -185,6 +209,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       return { account: { name, email: email.trim() }, authOpen: false, pendingFollowId: null, followedIds };
     }),
   signOut: () => set({ account: null, authOpen: false, pendingFollowId: null }),
+  toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),
+  closeSettings: () => set({ settingsOpen: false }),
+  setShowSummary: (v) => set({ showSummary: v }),
+  setReduceMotion: (v) => {
+    if (typeof document !== 'undefined') document.documentElement.classList.toggle('reduce-motion', v);
+    set({ reduceMotion: v });
+  },
   closePanel: () => set({ selectedId: null }),
   setHeat: (h) => set({ heat: h }),
   setInteracted: () => set((s) => (s.interacted ? s : { interacted: true })),
@@ -297,10 +328,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   closeTrending: () => set({ trendingOpen: false }),
 }));
 
-// Mirror account + saved companies to localStorage whenever either changes.
+// Mirror account + saved companies + settings to localStorage whenever any of
+// them change.
 useAppStore.subscribe((s, prev) => {
-  if (s.account !== prev.account || s.followedIds !== prev.followedIds) {
-    savePersisted(s.account, s.followedIds);
+  if (
+    s.account !== prev.account ||
+    s.followedIds !== prev.followedIds ||
+    s.showSummary !== prev.showSummary ||
+    s.reduceMotion !== prev.reduceMotion
+  ) {
+    savePersisted({ account: s.account, followedIds: s.followedIds, showSummary: s.showSummary, reduceMotion: s.reduceMotion });
   }
 });
 

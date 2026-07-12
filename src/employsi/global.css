@@ -2268,6 +2268,11 @@ body {
   stroke-width: 3px;
   stroke-linejoin: round;
 }
+/* Global (world) view city labels a touch smaller than the domestic ones. */
+.globemap .aulabel {
+  font-size: 6.3px;
+  stroke-width: 2.6px;
+}
 .aucity.hub {
   cursor: pointer;
 }
@@ -2598,6 +2603,78 @@ body {
   box-shadow: 0 24px 60px -24px rgba(15, 27, 61, 0.5);
   padding: 14px 16px;
   animation: helppanelin 0.2s ease both;
+}
+/* Settings panel + toggle switches */
+.setpanel {
+  width: 280px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px -24px rgba(15, 27, 61, 0.5);
+  padding: 14px 16px;
+  animation: helppanelin 0.2s ease both;
+}
+.setrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.setrow:first-of-type {
+  border-top: 0;
+}
+.setlbl {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.setsub {
+  font-size: 11px;
+  color: var(--slate);
+  margin-top: 2px;
+  line-height: 1.35;
+}
+.ngswitch {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 23px;
+  border-radius: 999px;
+  border: 0;
+  background: #d5d7dd;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  transition: background 0.18s ease;
+}
+.ngswitch.on {
+  background: #1c1c1e;
+}
+.ngswitchknob {
+  position: absolute;
+  top: 2.5px;
+  left: 2.5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 5px -1px rgba(15, 27, 61, 0.4);
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ngswitch.on .ngswitchknob {
+  transform: translateX(17px);
+}
+.helpsettings.on {
+  background: #1c1c1e;
+  border-color: #1c1c1e;
+  color: #fff;
+}
+/* Reduce-motion preference: suppress transitions + animations app-wide. */
+.reduce-motion * {
+  transition: none !important;
+  animation: none !important;
+  scroll-behavior: auto !important;
 }
 .fbtext {
   width: 100%;
