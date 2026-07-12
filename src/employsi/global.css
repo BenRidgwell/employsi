@@ -21,7 +21,6 @@ body {
   --teal: #8e8e93;
   --pos: #48484a;
   --coral: #9a9aa0;
-  --purple: #7c5cec;
 }
 /* `.app` scope beats mapbox-gl's own `.mapboxgl-map { position: relative }`,
    which mapbox adds to this same element and which would otherwise collapse
@@ -1594,8 +1593,8 @@ body {
   font-weight: 700;
   color: var(--ink);
 }
-/* Custom slider: purple filled track up to a white, purple-ringed thumb.
-   `--fill` is set inline per-input from its current value/min/max. */
+/* Custom slider: black (design-system ink) filled track up to a white,
+   ink-ringed thumb. `--fill` is set inline per-input from its value/min/max. */
 .sfrange {
   -webkit-appearance: none;
   appearance: none;
@@ -1606,8 +1605,8 @@ body {
   cursor: pointer;
   background: linear-gradient(
     to right,
-    var(--purple) 0%,
-    var(--purple) var(--fill, 0%),
+    var(--ink) 0%,
+    var(--ink) var(--fill, 0%),
     #e4e6ea var(--fill, 0%),
     #e4e6ea 100%
   );
@@ -1625,7 +1624,7 @@ body {
   margin-top: -8px;
   border-radius: 50%;
   background: #fff;
-  border: 3px solid var(--purple);
+  border: 3px solid var(--ink);
   box-shadow: 0 3px 8px -2px rgba(15, 27, 61, 0.4);
   cursor: pointer;
 }
@@ -1637,14 +1636,14 @@ body {
 .sfrange::-moz-range-progress {
   height: 6px;
   border-radius: 999px;
-  background: var(--purple);
+  background: var(--ink);
 }
 .sfrange::-moz-range-thumb {
   width: 22px;
   height: 22px;
   border-radius: 50%;
   background: #fff;
-  border: 3px solid var(--purple);
+  border: 3px solid var(--ink);
   box-shadow: 0 3px 8px -2px rgba(15, 27, 61, 0.4);
   cursor: pointer;
 }
