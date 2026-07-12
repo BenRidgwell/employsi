@@ -130,7 +130,8 @@ export function CompanyPanel() {
   const closePanel = useAppStore((s) => s.closePanel);
   const openCompare = useAppStore((s) => s.openCompare);
   const followedIds = useAppStore((s) => s.followedIds);
-  const toggleFollow = useAppStore((s) => s.toggleFollow);
+  const account = useAppStore((s) => s.account);
+  const requestFollow = useAppStore((s) => s.requestFollow);
   const [roleFilter, setRoleFilter] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -151,7 +152,10 @@ export function CompanyPanel() {
   const feed = useBhpFeed(isBhp && open);
 
   const panel = buildPanel(lastId, roleFilter, isBhp ? feed : undefined);
-  const following = panel ? followedIds.includes(panel.companyId) : false;
+  // Following is an account-scoped action: only reflect the saved state when
+  // signed in, so the button reads "Follow" (→ prompts sign-up) when there's no
+  // account to save it to.
+  const following = !!account && !!panel && followedIds.includes(panel.companyId);
   const live = isBhp && !!feed;
 
   const prices = useMemo(
@@ -196,7 +200,7 @@ export function CompanyPanel() {
                   </div>
                   <div className="pfabwrap">
                     <span className="pfablbl">{following ? 'Following' : 'Follow'}</span>
-                    <button className={`pfab ${following ? 'on' : ''}`} onClick={() => toggleFollow(panel.companyId)} aria-label="Follow">
+                    <button className={`pfab ${following ? 'on' : ''}`} onClick={() => requestFollow(panel.companyId)} aria-label="Follow">
                       <span className="pfabic"><FollowIcon on={following} /></span>
                     </button>
                   </div>

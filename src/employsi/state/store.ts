@@ -3,7 +3,15 @@ import { COMPANIES, categorize, type Company } from '../data/companies';
 import { CITY_CONTINENT } from '../data/geo';
 import type { HeatMetric } from '../lib/heat';
 
+export interface Account {
+  name: string;
+  email: string;
+}
+
 export interface AppState {
+  account: Account | null;
+  authOpen: boolean;
+  pendingFollowId: string | null;
   selectedId: string | null;
   lastId: string | null;
   interacted: boolean;
@@ -30,6 +38,12 @@ export interface AppState {
 
   select: (id: string) => void;
   toggleFollow: (id: string) => void;
+  requestFollow: (id: string) => void;
+  openAuth: () => void;
+  closeAuth: () => void;
+  signUp: (name: string, email: string) => void;
+  signIn: (email: string) => void;
+  signOut: () => void;
   closePanel: () => void;
   setHeat: (h: HeatMetric) => void;
   setInteracted: () => void;
@@ -68,6 +82,35 @@ export interface AppState {
   closeTrending: () => void;
 }
 
+// Persist the account + saved-companies across reloads. There's no backend
+// auth here — sign-up/sign-in are simulated and the "session" lives entirely in
+// localStorage, so a returning visitor keeps their account and favourites.
+const LS_KEY = 'employsi.auth';
+interface Persisted {
+  account: Account | null;
+  followedIds: string[];
+}
+function loadPersisted(): Persisted {
+  if (typeof localStorage === 'undefined') return { account: null, followedIds: [] };
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return { account: null, followedIds: [] };
+    const p = JSON.parse(raw) as Partial<Persisted>;
+    return { account: p.account ?? null, followedIds: Array.isArray(p.followedIds) ? p.followedIds : [] };
+  } catch {
+    return { account: null, followedIds: [] };
+  }
+}
+function savePersisted(account: Account | null, followedIds: string[]): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({ account, followedIds }));
+  } catch {
+    /* private-mode / quota — non-fatal, the session just won't persist */
+  }
+}
+const persisted = loadPersisted();
+
 let zoomTimer: ReturnType<typeof setTimeout> | undefined;
 
 // Barrier between the three map layers: once a layer change happens, ignore
@@ -81,6 +124,9 @@ const markLayerChange = () => {
 const layerLocked = () => Date.now() - lastLayerChange < LAYER_COOLDOWN;
 
 export const useAppStore = create<AppState>((set, get) => ({
+  account: persisted.account,
+  authOpen: false,
+  pendingFollowId: null,
   selectedId: null,
   lastId: null,
   interacted: false,
@@ -103,13 +149,42 @@ export const useAppStore = create<AppState>((set, get) => ({
   compareB: null,
   briefOpen: false,
   trendingOpen: false,
-  followedIds: [],
+  followedIds: persisted.followedIds,
 
   select: (id) => set({ selectedId: id, lastId: id, interacted: true, searchOpen: false, filterOpen: false, briefOpen: false, trendingOpen: false }),
   toggleFollow: (id) =>
     set((s) => ({
       followedIds: s.followedIds.includes(id) ? s.followedIds.filter((x) => x !== id) : [...s.followedIds, id],
     })),
+  // Following is the account feature: signed-out visitors are prompted to
+  // create an account first, and the company they tapped is saved for them the
+  // moment they do (see signUp/signIn).
+  requestFollow: (id) => {
+    const s = get();
+    if (!s.account) {
+      set({ authOpen: true, pendingFollowId: id, searchOpen: false, filterOpen: false });
+      return;
+    }
+    set({ followedIds: s.followedIds.includes(id) ? s.followedIds.filter((x) => x !== id) : [...s.followedIds, id] });
+  },
+  openAuth: () => set({ authOpen: true, searchOpen: false, filterOpen: false }),
+  closeAuth: () => set({ authOpen: false, pendingFollowId: null }),
+  signUp: (name, email) =>
+    set((s) => {
+      const followedIds =
+        s.pendingFollowId && !s.followedIds.includes(s.pendingFollowId) ? [...s.followedIds, s.pendingFollowId] : s.followedIds;
+      return { account: { name: name.trim(), email: email.trim() }, authOpen: false, pendingFollowId: null, followedIds };
+    }),
+  signIn: (email) =>
+    set((s) => {
+      // Derive a display name from the email local-part (no real user record).
+      const local = email.split('@')[0].replace(/[._-]+/g, ' ').trim();
+      const name = local ? local.replace(/\b\w/g, (ch) => ch.toUpperCase()) : 'You';
+      const followedIds =
+        s.pendingFollowId && !s.followedIds.includes(s.pendingFollowId) ? [...s.followedIds, s.pendingFollowId] : s.followedIds;
+      return { account: { name, email: email.trim() }, authOpen: false, pendingFollowId: null, followedIds };
+    }),
+  signOut: () => set({ account: null, authOpen: false, pendingFollowId: null }),
   closePanel: () => set({ selectedId: null }),
   setHeat: (h) => set({ heat: h }),
   setInteracted: () => set((s) => (s.interacted ? s : { interacted: true })),
@@ -221,6 +296,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleTrending: () => set((s) => ({ trendingOpen: !s.trendingOpen, briefOpen: false })),
   closeTrending: () => set({ trendingOpen: false }),
 }));
+
+// Mirror account + saved companies to localStorage whenever either changes.
+useAppStore.subscribe((s, prev) => {
+  if (s.account !== prev.account || s.followedIds !== prev.followedIds) {
+    savePersisted(s.account, s.followedIds);
+  }
+});
 
 export interface FilterState {
   searchQuery: string;

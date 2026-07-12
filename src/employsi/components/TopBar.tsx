@@ -1,5 +1,6 @@
 import { useMemo, type CSSProperties } from 'react';
 import { BrandMark } from './BrandMark';
+import { AccountButton } from './AccountButton';
 import { useAppStore, isFilterActive, isSearchActive, type FilterState } from '../state/store';
 import { COMPANIES } from '../data/companies';
 
@@ -81,6 +82,7 @@ export function TopBar() {
         </div>
       </div>
       <div className="controls">
+        <AccountButton />
         {!showGlobalSearch && (
         <div className="cgroup searchwrap">
           <span className="seglbl">Search</span>
