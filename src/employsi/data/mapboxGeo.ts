@@ -32,6 +32,14 @@ export const CITY_VIEWS: Record<string, CityView> = {
   lubumbashi: { center: [27.4794, -11.66], zoom: 16.2, pitch: 60, bearing: -12 },
   london: { center: [-0.1276, 51.5072], zoom: 16.4, pitch: 60, bearing: -20 },
   santiago: { center: [-70.6693, -33.4489], zoom: 16.3, pitch: 60, bearing: -16 },
+  newyork: { center: [-74.006, 40.7128], zoom: 16.4, pitch: 60, bearing: -20 },
+  sanfrancisco: { center: [-122.4194, 37.7749], zoom: 16.4, pitch: 60, bearing: -18 },
+  chicago: { center: [-87.6298, 41.8781], zoom: 16.4, pitch: 60, bearing: -18 },
+  tokyo: { center: [139.6917, 35.6895], zoom: 16.4, pitch: 60, bearing: -14 },
+  zurich: { center: [8.5417, 47.3769], zoom: 16.3, pitch: 60, bearing: -16 },
+  geneva: { center: [6.1432, 46.2044], zoom: 16.3, pitch: 60, bearing: -16 },
+  dubai: { center: [55.2708, 25.2048], zoom: 16.3, pitch: 60, bearing: -12 },
+  hongkong: { center: [114.1694, 22.3193], zoom: 16.4, pitch: 60, bearing: -16 },
 };
 
 // A company placed on a city map: its id plus that city's head-office coords.

@@ -63,6 +63,15 @@ const CITY_LABEL_OFFSET: Record<string, { dx: number; dy: number; anchor: 'start
   denver: { dx: 0, dy: -9, anchor: 'middle' },
   ganzhou: { dx: 8, dy: 3, anchor: 'start' },
   lubumbashi: { dx: 8, dy: 3, anchor: 'start' },
+  // Finance-only hubs — offsets chosen to clear the nearby resources hubs.
+  newyork: { dx: 7, dy: 11, anchor: 'start' },
+  sanfrancisco: { dx: 0, dy: 13, anchor: 'middle' },
+  chicago: { dx: 0, dy: -9, anchor: 'middle' },
+  tokyo: { dx: -8, dy: 3, anchor: 'end' },
+  zurich: { dx: 8, dy: 1, anchor: 'start' },
+  geneva: { dx: -8, dy: 6, anchor: 'end' },
+  dubai: { dx: 0, dy: 13, anchor: 'middle' },
+  hongkong: { dx: 8, dy: 6, anchor: 'start' },
 };
 
 // Continent labels that navigate to a regional domestic view when clicked.
