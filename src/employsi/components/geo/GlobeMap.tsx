@@ -141,8 +141,16 @@ export function GlobeMap({
         <filter id="globeEdgeFeather" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation="6 4" />
         </filter>
+        {/* Sharper, bottom-only pass — unioned over the general feather below so
+            the bottom border is noticeably crisper than the other three edges
+            without touching them (its own top edge sits well inside the already-
+            opaque middle of the map, so it introduces no new seam there). */}
+        <filter id="globeEdgeFeatherBottom" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="6 1.2" />
+        </filter>
         <mask id="globeOceanMask">
           <rect x="32" y="7" width="450" height="246" rx="10" fill="#fff" filter="url(#globeEdgeFeather)" />
+          <rect x="32" y="150" width="450" height="108" rx="10" fill="#fff" filter="url(#globeEdgeFeatherBottom)" />
         </mask>
         {/* Land is feathered in tighter on the left/right than the ocean so the
             dateline-cut boundary segments (Alaska's west edge, eastern Russia,
@@ -150,6 +158,7 @@ export function GlobeMap({
             of rendering as hard vertical lines. */}
         <mask id="globeLandMask">
           <rect x="30" y="4" width="456" height="252" rx="12" fill="#fff" filter="url(#globeEdgeFeather)" />
+          <rect x="30" y="150" width="456" height="109" rx="12" fill="#fff" filter="url(#globeEdgeFeatherBottom)" />
         </mask>
         <filter id="globeblur" x="-120%" y="-120%" width="340%" height="340%">
           <feGaussianBlur stdDeviation="4" />

@@ -86,7 +86,7 @@ export function GlobalSearch() {
         <input
           ref={inputRef}
           className="gsearchinput"
-          placeholder="Search a company or city…"
+          placeholder="Search a company, skill or city"
           value={searchQuery}
           onChange={(e) => {
             setSearchQuery(e.target.value);

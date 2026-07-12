@@ -3185,6 +3185,29 @@ body {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+/* Portalled to document.body (FabWrap) so it always renders above the card's
+   own rounded, overflow:hidden container — position:fixed + left/top are
+   viewport-relative px set from JS, and visibility is mount/unmount driven
+   by React hover state rather than the :hover rule above (which can't reach
+   a portalled element, since it's no longer a DOM descendant of .pfabwrap). */
+.pfablblfixed {
+  position: fixed;
+  bottom: auto;
+  opacity: 1;
+  z-index: 70;
+  transform: translate(-50%, calc(-100% - 6px));
+  animation: fabtipin 0.12s ease both;
+}
+@keyframes fabtipin {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 2px));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, calc(-100% - 6px));
+  }
+}
 
 /* "[company] in the news" card — sits to the right of the company card. */
 .newspanel {

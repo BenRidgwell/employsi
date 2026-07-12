@@ -61,7 +61,9 @@ function buildGeoJSON(placements: Placed[], heat: HeatMetric, selectedId: string
           label: c.ticker,
           sub: chipMetric(c, heat),
           selected: c.id === selectedId,
-          dim: !companyMatches(c, filterState),
+          // Fade every other company's heat dot while a card is open, matching
+          // the HTML pill treatment, so the selected company stays the focus.
+          dim: !companyMatches(c, filterState) || (!!selectedId && c.id !== selectedId),
         },
         geometry: { type: 'Point', coordinates: p.coords },
       };

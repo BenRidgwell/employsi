@@ -7,6 +7,7 @@ import { useBhpFeed } from '../../hooks/useBhpFeed';
 import { TrendChart } from './TrendChart';
 import { ShareChart } from './ShareChart';
 import { NewsPanel } from './NewsPanel';
+import { FabWrap } from './FabTooltip';
 
 const RedditIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -192,24 +193,21 @@ export function CompanyPanel() {
                   <div className="psector">{panel.sector}</div>
                 </div>
                 <div className="pactions">
-                  <div className="pfabwrap">
-                    <span className="pfablbl">Compare</span>
+                  <FabWrap label="Compare">
                     <button className="pfab" onClick={() => openCompare(panel.companyId)} aria-label="Compare">
                       <span className="pfabic"><CompareIcon /></span>
                     </button>
-                  </div>
-                  <div className="pfabwrap">
-                    <span className="pfablbl">{following ? 'Following' : 'Follow'}</span>
+                  </FabWrap>
+                  <FabWrap label={following ? 'Following' : 'Follow'}>
                     <button className={`pfab ${following ? 'on' : ''}`} onClick={() => requestFollow(panel.companyId)} aria-label="Follow">
                       <span className="pfabic"><FollowIcon on={following} /></span>
                     </button>
-                  </div>
-                  <div className="pfabwrap">
-                    <span className="pfablbl">Close</span>
+                  </FabWrap>
+                  <FabWrap label="Close">
                     <button className="pfab" onClick={closePanel} aria-label="Close">
                       <span className="pfabic"><CloseIcon /></span>
                     </button>
-                  </div>
+                  </FabWrap>
                 </div>
               </div>
 
