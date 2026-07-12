@@ -178,7 +178,13 @@ body {
   border-bottom: 1px solid var(--line);
   overflow: hidden;
   z-index: 4;
-  pointer-events: none;
+  /* Informational only — take pointer events so a plain arrow cursor shows
+     (rather than the map's grab cursor bleeding through underneath, which
+     made the strip look draggable/selectable), but never let the scrolling
+     text actually be selected or clicked. Same pattern as .legend/.heatkey. */
+  pointer-events: auto;
+  cursor: default;
+  user-select: none;
 }
 .tickerlbl {
   flex: 0 0 auto;
@@ -810,11 +816,12 @@ body {
 /* Right-side expandable tools dock (Employer / Employee) */
 .toolsdock {
   position: fixed;
-  /* Sit directly above the Feedback / Need-help stack (helpdock: bottom 46px,
-     two 38px pills + 10px gap ≈ 86px tall), sharing its right edge so all four
-     controls line up as one seamless column. */
+  /* Sit directly above the Feedback / Need-help / Settings stack (helpdock:
+     bottom 46px, three 38px pills + 2×10px gaps = 134px tall), sharing its
+     right edge so all five controls line up as one seamless column. Keep
+     this in sync with helpdock's bottom + total height below. */
   right: 14px;
-  bottom: 142px;
+  bottom: 190px;
   z-index: 41;
   display: flex;
   flex-direction: column;
@@ -1462,8 +1469,12 @@ body {
     transform: scaleY(0.58);
   }
 }
-/* Tools-dock FAB icon idle animations */
-.tdfab.td-employer .tdfabic svg {
+/* Bottom-right dock icon idle animations — every control (Employer/Employee
+   tools, Feedback, Need help, Settings) gets the same "always gently alive"
+   treatment as the What's Trending flame, so the whole stack reads as one
+   animated family. Each targets the icon's own transform-box so the wobble
+   pivots around the glyph, not the button. */
+.tdtoggle.td-employer svg {
   animation: tdbuild 3.4s ease-in-out infinite;
 }
 @keyframes tdbuild {
@@ -1475,7 +1486,7 @@ body {
     transform: translateY(-1.6px);
   }
 }
-.tdfab.td-employee .tdfabic svg {
+.tdtoggle.td-employee svg {
   animation: tdperson 3.6s ease-in-out infinite;
 }
 @keyframes tdperson {
@@ -1487,8 +1498,51 @@ body {
     transform: scale(1.09);
   }
 }
-.tdfab.on .tdfabic svg {
+.tdtoggle.on svg {
   animation: none;
+}
+.fbicon {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: fbnudge 2.6s ease-in-out infinite;
+}
+@keyframes fbnudge {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-1.3px) rotate(-3deg);
+  }
+}
+.helpdotpulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: helpdotpulse 1.7s ease-in-out infinite;
+}
+@keyframes helpdotpulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.4);
+  }
+}
+.geargroup {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gearspin 7s linear infinite;
+}
+@keyframes gearspin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.helpsettings.on .geargroup {
+  animation-play-state: paused;
 }
 /* Tools-dock action-pill icon animations (visible while expanded) */
 .ic-health svg {
@@ -4162,7 +4216,7 @@ body {
   }
   .toolsdock {
     top: auto;
-    bottom: 142px;
+    bottom: 190px;
     right: 12px;
     gap: 10px;
   }
