@@ -70,9 +70,11 @@ function Cluster({
           </button>
         ))}
       </div>
-      <span className="tdname">{label}</span>
-      <button className={`tdfab td-${kind} ${open ? 'on' : ''}`} onClick={onToggle} aria-label={label} aria-expanded={open}>
-        <span className="tdfabic">{open ? <CloseIcon /> : icon}</span>
+      {/* Same pill shell as the Feedback / Need-help buttons below, so the four
+          controls read as one seamless bottom-right stack. */}
+      <button className={`helpbtn tdtoggle td-${kind} ${open ? 'wide on' : ''}`} onClick={onToggle} aria-label={label} aria-expanded={open}>
+        {open ? <CloseIcon /> : icon}
+        <span className="helplbl">{label}</span>
       </button>
     </div>
   );

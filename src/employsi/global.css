@@ -810,12 +810,15 @@ body {
 /* Right-side expandable tools dock (Employer / Employee) */
 .toolsdock {
   position: fixed;
-  top: 316px;
-  right: 26px;
-  z-index: 38;
+  /* Sit directly above the Feedback / Need-help stack (helpdock: bottom 46px,
+     two 38px pills + 10px gap ≈ 86px tall), sharing its right edge so all four
+     controls line up as one seamless column. */
+  right: 14px;
+  bottom: 142px;
+  z-index: 41;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   align-items: flex-end;
   transition: opacity 0.18s ease;
   /* The collapsed action buttons still occupy layout width (they only fade),
@@ -829,15 +832,21 @@ body {
   opacity: 0.35;
   pointer-events: none;
 }
+/* The tool toggles reuse the .helpbtn pill shell; only pointer-events + the
+   open (active) colour differ from a plain help button. */
+.tdtoggle {
+  pointer-events: auto;
+}
+.tdtoggle.on {
+  background: #1c1c1e;
+  border-color: #1c1c1e;
+  color: #fff;
+}
 .tdcluster {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-}
-.tdfab,
-.tdname {
-  pointer-events: auto;
 }
 .tdfab {
   flex: 0 0 auto;
@@ -1721,6 +1730,11 @@ body {
    position:relative comes from .searchwrap; this just lifts the whole layer. */
 .acctwrap {
   z-index: 46;
+}
+/* When a company/compare card is open, the account control drops beneath the
+   card + news panel (cardstage z-index 6) so it never overlaps them. */
+.acctwrap.behindcard {
+  z-index: 3;
 }
 .acctbtn {
   gap: 8px;
@@ -3672,6 +3686,9 @@ body {
   background: #1c1c1e;
   color: #fff;
   white-space: nowrap;
+  /* Width (femalePct%) is set inline; don't let flex shrink it. */
+  flex: 0 0 auto;
+  min-width: 0;
 }
 .genderm {
   display: flex;
@@ -3679,6 +3696,9 @@ body {
   padding: 0 10px;
   color: var(--slate);
   background: rgba(28, 28, 30, 0.06);
+  /* Fill the rest of the bar so the two segments always total 100%. */
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .paygap {
   display: flex;
@@ -4048,13 +4068,9 @@ body {
   }
   .toolsdock {
     top: auto;
-    bottom: 78px;
+    bottom: 142px;
     right: 12px;
-    gap: 12px;
-  }
-  .tdfab {
-    width: 46px;
-    height: 46px;
+    gap: 10px;
   }
 
   /* Bottom cluster: keep left, shrink, avoid overlap */

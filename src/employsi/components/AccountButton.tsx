@@ -1,6 +1,16 @@
 import { useState, type FormEvent } from 'react';
 import { useAppStore } from '../state/store';
 import { COMPANIES } from '../data/companies';
+import { CITY_COMPANIES } from '../data/mapboxGeo';
+
+// The local city whose map actually plots this company. Prefer the city we're
+// already viewing (so we don't jump unnecessarily), otherwise the first city
+// that lists it, defaulting to Perth.
+function cityForCompany(id: string, currentCity: string): string {
+  if (CITY_COMPANIES[currentCity]?.some((c) => c.id === id)) return currentCity;
+  const hit = Object.entries(CITY_COMPANIES).find(([, list]) => list.some((c) => c.id === id));
+  return hit ? hit[0] : 'perth';
+}
 
 const PersonIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
@@ -35,15 +45,19 @@ export function AccountButton() {
   const followedIds = useAppStore((s) => s.followedIds);
   const requestFollow = useAppStore((s) => s.requestFollow);
   const select = useAppStore((s) => s.select);
+  const selectedId = useAppStore((s) => s.selectedId);
+  const compareOpen = useAppStore((s) => s.compareOpen);
   const zoomedOut = useAppStore((s) => s.zoomedOut);
+  const localCity = useAppStore((s) => s.localCity);
   const zoomInCity = useAppStore((s) => s.zoomInCity);
 
-  // Opening a saved company should land the user on it in context. Every
-  // company sits on the Perth local map, so if we're zoomed out (domestic or
-  // global — where the world/global-search overlay would otherwise cover the
-  // card) fly down to Perth local before showing the card.
+  // Opening a saved company should land the user on the local city that plots
+  // it. Fly there whenever we're zoomed out OR currently in a different city
+  // (e.g. a company-less finance hub) — otherwise the card would open while the
+  // map is stranded on the wrong city.
   const openCompany = (id: string) => {
-    if (zoomedOut) zoomInCity('perth');
+    const target = cityForCompany(id, localCity);
+    if (zoomedOut || target !== localCity) zoomInCity(target);
     select(id);
     closeAuth();
   };
@@ -72,7 +86,7 @@ export function AccountButton() {
   };
 
   return (
-    <div className="cgroup searchwrap acctwrap">
+    <div className={`cgroup searchwrap acctwrap ${selectedId || compareOpen ? 'behindcard' : ''}`}>
       <span className="seglbl">Account</span>
       <button className={`searchbtn acctbtn ${authOpen ? 'on' : ''}`} onClick={() => (authOpen ? closeAuth() : openAuth())}>
         {account ? (
