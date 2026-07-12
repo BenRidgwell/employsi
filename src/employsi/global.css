@@ -1557,6 +1557,12 @@ body {
   background: var(--coral);
   box-shadow: 0 0 0 3px rgba(154, 154, 160, 0.25);
 }
+/* "Filter applied" indicator: same green status dot as the local-view badge,
+   so an active filter is obvious at a glance. */
+.searchbtn .sdot.green {
+  background: #35c26b;
+  box-shadow: 0 0 0 3px rgba(53, 194, 107, 0.28);
+}
 .sfscrim {
   position: fixed;
   inset: 0;

@@ -244,7 +244,21 @@ export function PerthMapbox() {
           const el = document.createElement('button');
           el.className = 'mbchip';
           el.innerHTML = `<span class="chipdot"></span><span class="chiptk">${c.ticker}</span><span class="chipsub"></span>`;
-          el.onclick = () => useAppStore.getState().select(c.id);
+          // Keep the pointer press off the map so it can't start a drag-pan: a
+          // tiny move during the press would otherwise suppress the button's
+          // native click and the pill would silently pan instead of selecting
+          // (the canvas dots don't have this problem — Mapbox owns their click
+          // detection, which tolerates small movement). Selecting here mirrors
+          // the canvas handler, including the just-selected guard timestamp.
+          const swallow = (ev: Event) => ev.stopPropagation();
+          el.addEventListener('mousedown', swallow);
+          el.addEventListener('touchstart', swallow, { passive: true });
+          el.addEventListener('pointerdown', swallow);
+          el.onclick = (ev) => {
+            ev.stopPropagation();
+            useAppStore.getState().select(c.id);
+            lastSelectAt = Date.now();
+          };
           const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom', offset: [0, -6] })
             .setLngLat(p.coords)
             .addTo(map);

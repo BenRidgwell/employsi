@@ -123,7 +123,7 @@ export function TopBar() {
           <button className={`searchbtn ${filterOpen ? 'on' : ''} ${filterActive ? 'active' : ''}`} onClick={toggleFilter}>
             <FilterIcon />
             <span>Filter</span>
-            {filterActive && <span className="sdot" />}
+            {filterActive && <span className="sdot green" />}
           </button>
           {filterOpen && <div className="sfscrim" onClick={toggleFilter} />}
           <div className={`searchflyout ${filterOpen ? 'open' : ''}`}>

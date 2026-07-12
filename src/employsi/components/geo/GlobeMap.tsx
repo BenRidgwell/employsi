@@ -138,7 +138,7 @@ export function GlobeMap({
             the New Zealand sliver past Tasmania) dissolve into the water instead
             of rendering as hard vertical lines. */}
         <mask id="globeLandMask">
-          <rect x="46" y="4" width="424" height="252" rx="12" fill="#fff" filter="url(#globeEdgeFeather)" />
+          <rect x="30" y="4" width="456" height="252" rx="12" fill="#fff" filter="url(#globeEdgeFeather)" />
         </mask>
         <filter id="globeblur" x="-120%" y="-120%" width="340%" height="340%">
           <feGaussianBlur stdDeviation="4" />
