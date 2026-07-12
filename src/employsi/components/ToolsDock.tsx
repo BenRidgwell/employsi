@@ -24,6 +24,9 @@ const HealthIcon = () => (
 const MarketIcon = () => (
   <svg {...svgProps}><path d="M4 9l1.3-4.2h13.4L20 9M4.5 9v10.5h15V9M4 9a2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0" /></svg>
 );
+const ReportIcon = () => (
+  <svg {...svgProps}><path d="M6.5 3h7l4 4v14H6.5zM13 3v5h4.5M9 12.5h6M9 15.5h6M9 18h4" /></svg>
+);
 const AdvisorIcon = () => (
   <svg {...svgProps}><circle cx="12" cy="12" r="8.5" /><path d="M14.8 9.2l-1.9 4.9-4.9 1.9 1.9-4.9 4.9-1.9Z" /></svg>
 );
@@ -31,6 +34,7 @@ const AdvisorIcon = () => (
 const EMPLOYER: ToolAction[] = [
   { id: 'health', label: 'Company health check', icon: <HealthIcon /> },
   { id: 'talent', label: 'Talent marketplace', icon: <MarketIcon /> },
+  { id: 'report', label: 'Report builder', icon: <ReportIcon /> },
 ];
 const EMPLOYEE: ToolAction[] = [{ id: 'career', label: 'Career advisor', icon: <AdvisorIcon /> }];
 

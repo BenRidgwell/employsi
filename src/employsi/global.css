@@ -1831,6 +1831,18 @@ body {
   opacity: 1;
   pointer-events: auto;
 }
+/* Pan + zoom wrapper for the global map (transform set inline from state). */
+.globepan {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center center;
+  cursor: grab;
+  touch-action: none;
+}
+.globepan.panned:active {
+  cursor: grabbing;
+}
 /* A hidden scene must be fully inert. Some hit targets (hub hit circles,
    continent-label rects) carry an explicit pointer-events="all" attribute so
    they stay clickable within their own scene; that attribute otherwise wins

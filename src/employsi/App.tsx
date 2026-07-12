@@ -20,6 +20,7 @@ import { useAppStore } from './state/store';
 
 function App() {
   const zoomedOut = useAppStore((s) => s.zoomedOut);
+  const globalOut = useAppStore((s) => s.globalOut);
 
   return (
     <div className="app">
@@ -27,7 +28,7 @@ function App() {
       <MapActions />
       <PerthMapbox />
       <HintPulse />
-      <Ticker hidden={zoomedOut} />
+      <Ticker hidden={!(globalOut && zoomedOut)} />
       <ZoomOverlay />
       <TopBar />
       <GlobalSearch />

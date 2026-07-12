@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../../state/store';
 import { activeSkillKey, CITY_XY } from '../../data/geo';
 import { AU_SCATTER, GLOBAL_SCATTER } from '../../data/scatter';
@@ -106,6 +107,77 @@ export function ZoomOverlay() {
   // local city (whose map sits visually on top but wouldn't own the click).
   const showingGlobal = globalOut && zoomedOut;
 
+  // Pan + slight zoom of the global map so overlapping city hubs can be teased
+  // apart and selected. Applied to a wrapper around the SVG so the "zoom into
+  // a city" animation (which scales the SVG itself) stays independent.
+  const [gv, setGv] = useState({ s: 1, x: 0, y: 0 });
+  const dragRef = useRef<{ x: number; y: number; ox: number; oy: number; moved: boolean } | null>(null);
+  const suppressClickRef = useRef(false);
+  const panRef = useRef<HTMLDivElement | null>(null);
+
+  // Reset the view whenever we leave the global layer or start a zoom-into-city
+  // animation, so that animation always scales from a clean, centred frame.
+  useEffect(() => {
+    if (!showingGlobal || zoomingIn) setGv({ s: 1, x: 0, y: 0 });
+  }, [showingGlobal, zoomingIn]);
+
+  const MAX_S = 2.6;
+  const clampGv = (v: { s: number; x: number; y: number }) => {
+    const el = panRef.current;
+    const w = el ? el.clientWidth : 1000;
+    const h = el ? el.clientHeight : 520;
+    const mx = ((v.s - 1) * w) / 2;
+    const my = ((v.s - 1) * h) / 2;
+    return { s: v.s, x: Math.max(-mx, Math.min(mx, v.x)), y: Math.max(-my, Math.min(my, v.y)) };
+  };
+
+  const onGlobeWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    // Take the wheel here (instead of letting it bubble to the layer-nav
+    // handler) and use it to zoom the global map in place.
+    e.stopPropagation();
+    const el = panRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const cx = e.clientX - (r.left + r.width / 2);
+    const cy = e.clientY - (r.top + r.height / 2);
+    setGv((g) => {
+      const ns = Math.max(1, Math.min(MAX_S, g.s * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+      const k = ns / g.s;
+      return clampGv({ s: ns, x: cx - (cx - g.x) * k, y: cy - (cy - g.y) * k });
+    });
+  };
+  const onGlobePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!showingGlobal) return;
+    // Do NOT capture the pointer yet — capturing on down would redirect the
+    // click to this wrapper and stop hub / continent-label clicks from firing.
+    dragRef.current = { x: e.clientX, y: e.clientY, ox: gv.x, oy: gv.y, moved: false };
+  };
+  const onGlobePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    if (!d.moved && Math.abs(dx) + Math.abs(dy) > 4) {
+      // A real drag has started — capture now so panning continues even if the
+      // pointer leaves the wrapper. (A plain click never reaches this branch,
+      // so its click still lands on the hub underneath.)
+      d.moved = true;
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    }
+    if (d.moved) setGv((g) => clampGv({ ...g, x: d.ox + dx, y: d.oy + dy }));
+  };
+  const onGlobePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current;
+    dragRef.current = null;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* not captured */ }
+    // If this was a drag (not a tap), swallow the click so it doesn't select a
+    // hub the pointer happened to finish over.
+    if (d?.moved) {
+      suppressClickRef.current = true;
+      setTimeout(() => { suppressClickRef.current = false; }, 0);
+    }
+  };
+
   return (
     <div
       className={`auview ${auCls}`}
@@ -126,7 +198,23 @@ export function ZoomOverlay() {
         )}
       </div>
       <div className={`globescene ${showingGlobal ? 'sceneshow' : ''}`}>
-        <GlobeMap hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} onContinent={goDomestic} ambientSpikes={globalAmbientSpikes} hubSpikes={globalSpikes} activeSectors={activeSectors} zoomOrigin={globalOrigin} />
+        <div
+          ref={panRef}
+          className={`globepan ${gv.s > 1 ? 'panned' : ''}`}
+          style={{ transform: `translate(${gv.x}px, ${gv.y}px) scale(${gv.s})` }}
+          onWheel={onGlobeWheel}
+          onPointerDown={onGlobePointerDown}
+          onPointerMove={onGlobePointerMove}
+          onPointerUp={onGlobePointerUp}
+          onClickCapture={(e) => {
+            if (suppressClickRef.current) {
+              e.stopPropagation();
+              e.preventDefault();
+            }
+          }}
+        >
+          <GlobeMap hubHeat={globalCityHeat} heatDim={heatDim} onZoomInCity={zoomInCity} onContinent={goDomestic} ambientSpikes={globalAmbientSpikes} hubSpikes={globalSpikes} activeSectors={activeSectors} zoomOrigin={globalOrigin} />
+        </div>
       </div>
     </div>
   );

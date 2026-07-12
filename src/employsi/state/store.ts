@@ -231,6 +231,17 @@ export interface FilterState {
   maxAttrition: number;
 }
 
+// Does a company belong to (one of) the selected sectors? Used to HIDE
+// non-matching companies on the local map. A company categorises to
+// Mining & Metals or Oil & Gas, so selecting Financial Services (which none of
+// them are) hides every company — exactly the intended behaviour.
+export function matchesSector(c: Company, activeSectors: string[]): boolean {
+  return !activeSectors.length || activeSectors.includes(categorize(c.sector));
+}
+
+// The remaining filters (search text + numeric sliders) that DIM a company that
+// is still shown. Sector is handled separately by matchesSector (hide), so it's
+// deliberately not repeated here.
 export function companyMatches(c: Company, s: FilterState): boolean {
   const q = s.searchQuery.trim().toLowerCase();
   const qOk =
@@ -239,15 +250,11 @@ export function companyMatches(c: Company, s: FilterState): boolean {
     c.ticker.toLowerCase().includes(q) ||
     c.skills.some((sk) => sk.toLowerCase().includes(q)) ||
     c.roles.some((r) => r.title.toLowerCase().includes(q));
-  // Financial Services tags cities, not these resource companies, so it doesn't
-  // narrow the company list — only the mining / oil sectors do.
-  const cats = s.activeSectors.filter((x) => x !== 'Financial Services');
-  const sOk = !cats.length || cats.includes(categorize(c.sector));
   const salaryOk = c.salaryNum >= s.minSalary * 1000;
   const headcountOk = c.headcount >= s.minHeadcount;
   const growthOk = c.growth >= s.minGrowth;
   const attritionOk = c.turnover <= s.maxAttrition;
-  return qOk && sOk && salaryOk && headcountOk && growthOk && attritionOk;
+  return qOk && salaryOk && headcountOk && growthOk && attritionOk;
 }
 
 export function isSearchActive(s: Pick<FilterState, 'searchQuery'>): boolean {

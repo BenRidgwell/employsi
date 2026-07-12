@@ -23,23 +23,25 @@ interface RegionCfg {
 
 export const REGIONS: Record<string, RegionCfg> = {
   asia: {
-    // Box widened + raised so Tokyo (north-east of the resources hubs) is
-    // comfortably in frame alongside Ganzhou and Singapore.
-    hubs: ['ganzhou', 'singapore', 'tokyo'],
-    x0: 350,
+    // Box widened + shifted west so every Asian global hub is in frame:
+    // Dubai (far west) through Tokyo (far north-east), plus Hong Kong.
+    hubs: ['dubai', 'ganzhou', 'hongkong', 'singapore', 'tokyo'],
+    x0: 300,
     y0: 77,
-    w: 180,
+    w: 210,
     label: 'ASIA',
     labelX: 70,
     labelY: 40,
     offsets: {
+      dubai: { dx: 0, dy: 14, anchor: 'middle' },
       singapore: { dx: 0, dy: 16, anchor: 'middle' },
-      ganzhou: { dx: -8, dy: 3, anchor: 'end' },
-      tokyo: { dx: 8, dy: 3, anchor: 'start' },
+      ganzhou: { dx: 8, dy: 2, anchor: 'start' },
+      hongkong: { dx: 8, dy: 2, anchor: 'start' },
+      tokyo: { dx: 0, dy: -11, anchor: 'middle' },
     },
   },
   northamerica: {
-    hubs: ['denver', 'toronto', 'houston'],
+    hubs: ['denver', 'toronto', 'houston', 'newyork', 'sanfrancisco', 'chicago'],
     x0: 20,
     y0: 66,
     w: 110,
@@ -50,6 +52,9 @@ export const REGIONS: Record<string, RegionCfg> = {
       denver: { dx: 0, dy: 16, anchor: 'middle' },
       toronto: { dx: 0, dy: -11, anchor: 'middle' },
       houston: { dx: -8, dy: 4, anchor: 'end' },
+      newyork: { dx: 8, dy: 4, anchor: 'start' },
+      sanfrancisco: { dx: 8, dy: 4, anchor: 'start' },
+      chicago: { dx: -8, dy: 4, anchor: 'end' },
     },
   },
   africa: {
@@ -66,7 +71,7 @@ export const REGIONS: Record<string, RegionCfg> = {
     },
   },
   europe: {
-    hubs: ['london'],
+    hubs: ['london', 'zurich', 'geneva'],
     x0: 190,
     y0: 35,
     w: 100,
@@ -74,7 +79,9 @@ export const REGIONS: Record<string, RegionCfg> = {
     labelX: 250,
     labelY: 36,
     offsets: {
-      london: { dx: 0, dy: -12, anchor: 'middle' },
+      london: { dx: -9, dy: 0, anchor: 'end' },
+      zurich: { dx: 9, dy: -2, anchor: 'start' },
+      geneva: { dx: 0, dy: 14, anchor: 'middle' },
     },
   },
   southamerica: {

@@ -1,7 +1,7 @@
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useMemo, useRef } from 'react';
-import { useAppStore, companyMatches, type FilterState } from '../state/store';
+import { useAppStore, companyMatches, matchesSector, type FilterState } from '../state/store';
 import { COMPANIES, type Company } from '../data/companies';
 import { CITY_COMPANIES, CITY_VIEWS, PERTH_CENTER, PERTH_DEFAULT_ZOOM, PERTH_DEFAULT_PITCH, PERTH_DEFAULT_BEARING } from '../data/mapboxGeo';
 import { chipMetric, type HeatMetric } from '../lib/heat';
@@ -38,14 +38,17 @@ function metricKeyFor(heat: HeatMetric) {
 
 // Heat is normalised within the city's own company spread so every city gets a
 // full-range colour scale rather than being crushed against the global min/max.
+// Companies outside the selected sector(s) are dropped entirely (hidden), so a
+// Financial Services filter clears the resource companies from the city map.
 function buildGeoJSON(placements: Placed[], heat: HeatMetric, selectedId: string | null, filterState: FilterState): GeoJSON.FeatureCollection {
+  const shown = placements.filter((p) => matchesSector(p.company, filterState.activeSectors));
   const key = metricKeyFor(heat);
-  const vals = placements.map((p) => p.company[key] as number);
+  const vals = shown.map((p) => p.company[key] as number);
   const mn = vals.length ? Math.min(...vals) : 0;
   const mx = vals.length ? Math.max(...vals) : 1;
   return {
     type: 'FeatureCollection',
-    features: placements.map((p, i) => {
+    features: shown.map((p, i) => {
       const c = p.company;
       const t = ((c[key] as number) - mn) / ((mx - mn) || 1);
       const color = rgbCss(heatColor(t));
@@ -130,6 +133,10 @@ export function PerthMapbox() {
       map.setConfigProperty('basemap', 'showTransitLabels', false);
       map.setConfigProperty('basemap', 'showRoadLabels', false);
       map.setConfigProperty('basemap', 'showLandmarkIcons', false);
+      // Also hide place labels — the map always initialises centred on Perth,
+      // so the "Perth" city label could flash on-screen when entering another
+      // city's local view before the camera jump lands.
+      map.setConfigProperty('basemap', 'showPlaceLabels', false);
 
       const st = useAppStore.getState();
       placedRef.current = cityPlacements(st.localCity);
@@ -246,14 +253,31 @@ export function PerthMapbox() {
       setCompaniesVisibleRef.current = setCompaniesVisible;
 
       // Swap the whole company set to a different city: refresh placements, the
-      // heat source and the pill markers, then re-run the focus fade.
+      // heat source and the pill markers, then apply the current filter (sector
+      // hide + dim) and re-run the focus fade. Reads the live filter from the
+      // store so entering a city already reflects any active filter.
       renderCityRef.current = (city: string) => {
         placedRef.current = cityPlacements(city);
         const s = useAppStore.getState();
+        const fs: FilterState = {
+          searchQuery: s.searchQuery,
+          activeSectors: s.activeSectors,
+          minSalary: s.minSalary,
+          minHeadcount: s.minHeadcount,
+          minGrowth: s.minGrowth,
+          maxAttrition: s.maxAttrition,
+        };
         const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
-        source?.setData(buildGeoJSON(placedRef.current, s.heat, s.selectedId, filterState));
+        source?.setData(buildGeoJSON(placedRef.current, s.heat, s.selectedId, fs));
         renderMarkers(placedRef.current);
         setCompaniesVisible(true);
+        placedRef.current.forEach((p) => {
+          const el = markersRef.current[p.company.id]?.getElement();
+          if (!el) return;
+          el.style.display = matchesSector(p.company, fs.activeSectors) ? '' : 'none';
+          const matches = companyMatches(p.company, fs);
+          el.className = ['mbchip', s.selectedId === p.company.id ? 'on' : '', matches ? '' : 'dim'].join(' ').trim();
+        });
         focusUpdaterRef.current?.();
       };
 
@@ -288,6 +312,9 @@ export function PerthMapbox() {
           const marker = markersRef.current[placed.company.id];
           if (!marker) return;
           const el = marker.getElement();
+          // Skip sector-hidden markers (display:none) so they neither show nor
+          // block a visible pill in the collision pass.
+          if (el.style.display === 'none') return;
           const [lng, lat] = placed.coords;
           const d = distMetres(c.lng, c.lat, lng, lat);
           const df = d <= R_FULL ? 1 : d >= R_GONE ? 0 : (R_GONE - d) / (R_GONE - R_FULL);
@@ -403,6 +430,9 @@ export function PerthMapbox() {
         const marker = markersRef.current[c.id];
         if (!marker) return;
         const el = marker.getElement();
+        // Sector filter hides the marker entirely; the remaining filters dim it.
+        const inSector = matchesSector(c, filterState.activeSectors);
+        el.style.display = inSector ? '' : 'none';
         const matches = companyMatches(c, filterState);
         el.className = ['mbchip', selectedId === c.id ? 'on' : '', matches ? '' : 'dim'].join(' ').trim();
         const sub = el.querySelector('.chipsub');

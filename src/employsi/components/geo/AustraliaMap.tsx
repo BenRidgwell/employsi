@@ -15,16 +15,17 @@ const PLANE_ROUTES = [
 // offset/anchor so the name clears the marker and the map edge.
 const CITY_MARKERS: { id: string; dx: number; dy: number; anchor: 'start' | 'middle' | 'end' }[] = [
   { id: 'darwin', dx: 0, dy: -7, anchor: 'middle' },
-  { id: 'sydney', dx: -7, dy: 1, anchor: 'end' },
   { id: 'melbourne', dx: 0, dy: 13, anchor: 'middle' },
   { id: 'hobart', dx: 7, dy: 3, anchor: 'start' },
 ];
 
 // Hub-styled cities (like Perth) — clickable to zoom into their own local
 // layer, but without the cursor tap-guide animation that Perth carries.
+// Sydney is a hub too (it's a global finance hub with its own local view).
 const HUB_CITIES: { id: string; labelDy: number; local: string }[] = [
   { id: 'adelaide', labelDy: -7, local: 'adelaide' },
   { id: 'brisbane', labelDy: -7, local: 'brisbane' },
+  { id: 'sydney', labelDy: -7, local: 'sydney' },
 ];
 
 function Plane({ dur, begin, path }: { dur: string; begin: string; path: string }) {
