@@ -1,16 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useAppStore } from '../state/store';
 import { COMPANIES } from '../data/companies';
-import { CITY_COMPANIES } from '../data/mapboxGeo';
-
-// The local city whose map actually plots this company. Prefer the city we're
-// already viewing (so we don't jump unnecessarily), otherwise the first city
-// that lists it, defaulting to Perth.
-function cityForCompany(id: string, currentCity: string): string {
-  if (CITY_COMPANIES[currentCity]?.some((c) => c.id === id)) return currentCity;
-  const hit = Object.entries(CITY_COMPANIES).find(([, list]) => list.some((c) => c.id === id));
-  return hit ? hit[0] : 'perth';
-}
+import { cityForCompany } from '../data/mapboxGeo';
 
 const PersonIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">

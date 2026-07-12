@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { quarterLabels, smoothPath, scaler, signed, pctStr } from '../../lib/chart';
+import { ChartTooltip } from './ChartTooltip';
 
 // Dual-line workforce chart. Headcount is always plotted (fixed); the user
 // selects a second line — revenue or EBITDA per employee — shown on its own
@@ -58,6 +59,7 @@ export function TrendChart(props: Props) {
   const [range, setRange] = useState<[number, number] | null>(null);
   const [hover, setHover] = useState(false);
   const dragStart = useRef<number | null>(null);
+  const boxRef = useRef<HTMLDivElement | null>(null);
 
   const x = (i: number) => PADX + (i * PLOTW) / (n - 1);
   const yH = scaler(head, PADT, PLOTH);
@@ -137,7 +139,7 @@ export function TrendChart(props: Props) {
         </span>
       </div>
 
-      <div className="wtbox" onMouseDown={onDown} onMouseMove={onMove} onMouseUp={finishDrag} onMouseLeave={onLeave}>
+      <div className="wtbox" ref={boxRef} onMouseDown={onDown} onMouseMove={onMove} onMouseUp={finishDrag} onMouseLeave={onLeave}>
         <svg className="wtsvg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
           <defs>
             <linearGradient id="wtAreaFade" x1="0" y1="0" x2="0" y2="1">
@@ -171,7 +173,7 @@ export function TrendChart(props: Props) {
           <>
             <div className="wtdot acc" style={{ left: `${scrubLeft}%`, top: `${(yF(fin[active]) / H) * 100}%` }} />
             <div className="wtdot ink" style={{ left: `${scrubLeft}%`, top: `${(yH(head[active]) / H) * 100}%` }} />
-            <div className="wttip" style={{ left: `${scrubLeft}%`, top: `${(Math.min(yH(head[active]), yF(fin[active])) / H) * 100}%` }}>
+            <ChartTooltip boxRef={boxRef} leftPct={scrubLeft} topPct={(Math.min(yH(head[active]), yF(fin[active])) / H) * 100}>
               <div className="wttiplabel">{labels[active]}</div>
               <div className="wttiprow">
                 <i className="wtsw ink" />
@@ -183,7 +185,7 @@ export function TrendChart(props: Props) {
                 <b>{money(fin[active])}</b>
                 <span>{metricShort}</span>
               </div>
-            </div>
+            </ChartTooltip>
           </>
         ) : null}
       </div>

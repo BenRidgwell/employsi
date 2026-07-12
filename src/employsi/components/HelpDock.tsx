@@ -61,10 +61,10 @@ export function HelpDock() {
   const settingsOpen = useAppStore((s) => s.settingsOpen);
   const toggleSettings = useAppStore((s) => s.toggleSettings);
   const closeSettings = useAppStore((s) => s.closeSettings);
-  const showSummary = useAppStore((s) => s.showSummary);
-  const setShowSummary = useAppStore((s) => s.setShowSummary);
   const reduceMotion = useAppStore((s) => s.reduceMotion);
   const setReduceMotion = useAppStore((s) => s.setReduceMotion);
+  const nightMode = useAppStore((s) => s.nightMode);
+  const setNightMode = useAppStore((s) => s.setNightMode);
 
   // zoomedOut takes precedence, same reasoning as ZoomSlider.
   const layer: Layer = !zoomedOut ? 'local' : globalOut ? 'global' : 'domestic';
@@ -125,10 +125,10 @@ export function HelpDock() {
           </div>
           <div className="setrow">
             <div>
-              <div className="setlbl">Summary bar</div>
-              <div className="setsub">Show the employer / roles totals along the bottom.</div>
+              <div className="setlbl">Night mode</div>
+              <div className="setsub">A dark colour theme for the map. Coming soon.</div>
             </div>
-            <Switch on={showSummary} onChange={setShowSummary} label="Toggle summary bar" />
+            <Switch on={nightMode} onChange={setNightMode} label="Toggle night mode" />
           </div>
           <div className="setrow">
             <div>

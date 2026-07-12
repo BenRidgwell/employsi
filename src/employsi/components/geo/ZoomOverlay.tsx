@@ -132,8 +132,17 @@ export function ZoomOverlay() {
   };
 
   const onGlobeWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    // Take the wheel here (instead of letting it bubble to the layer-nav
-    // handler) and use it to zoom the global map in place.
+    // Take the wheel here and use it to zoom the global map in place — but
+    // only while there's actual room to do that. Once already at max zoom,
+    // let a further inward scroll bubble up to the layer-nav handler so it
+    // can cross into the continent under the cursor (otherwise scrolling in
+    // past the pan/zoom cap would do nothing, which is what regressed the
+    // contextual continent/city zoom-in after pan/zoom was added). Scrolling
+    // out at the resting scale is let through too, though it's a no-op at
+    // this layer either way.
+    const atMaxZoomIn = e.deltaY < 0 && gv.s >= MAX_S;
+    const atMinZoomOut = e.deltaY > 0 && gv.s <= 1;
+    if (atMaxZoomIn || atMinZoomOut) return;
     e.stopPropagation();
     const el = panRef.current;
     if (!el) return;

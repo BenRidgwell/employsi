@@ -97,3 +97,12 @@ export const COMPANY_COORDS: Record<string, [number, number]> = Object.values(
   list.forEach((c) => { acc[c.id] = c.coords; });
   return acc;
 }, {});
+
+// The local city whose map actually plots this company. Prefers the city
+// already being viewed (so navigating there doesn't jump unnecessarily),
+// otherwise the first city that lists it, defaulting to Perth.
+export function cityForCompany(id: string, currentCity?: string): string {
+  if (currentCity && CITY_COMPANIES[currentCity]?.some((c) => c.id === id)) return currentCity;
+  const hit = Object.entries(CITY_COMPANIES).find(([, list]) => list.some((c) => c.id === id));
+  return hit ? hit[0] : 'perth';
+}

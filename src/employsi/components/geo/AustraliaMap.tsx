@@ -75,7 +75,15 @@ export function AustraliaMap({
           <rect width="18" height="11" fill="#e2e5e9" />
           <path d="M0,6 Q4.5,2 9,6 T18,6" fill="none" stroke="#d3d7dc" strokeWidth="1.1" />
           <path d="M0,10 Q4.5,7 9,10 T18,10" fill="none" stroke="#d3d7dc" strokeWidth="0.8" />
+          <path d="M0,3 Q4.5,1 9,3 T18,3" fill="none" stroke="#dde0e5" strokeWidth="0.55" />
           <animateTransform attributeName="patternTransform" type="translate" from="0 0" to="-18 4" dur="7s" repeatCount="indefinite" />
+        </pattern>
+        {/* Larger, slower swell layered over the fine ripple for a two-frequency,
+            more textured sea surface instead of one flat repeating tile. */}
+        <pattern id="oceanSwell" width="52" height="31" patternUnits="userSpaceOnUse" patternTransform="translate(0,0)">
+          <path d="M0,16 Q13,6 26,16 T52,16" fill="none" stroke="#cfd3d9" strokeWidth="1.3" />
+          <path d="M0,26 Q13,19 26,26 T52,26" fill="none" stroke="#d6d9de" strokeWidth="0.9" />
+          <animateTransform attributeName="patternTransform" type="translate" from="0 0" to="52 -9" dur="16s" repeatCount="indefinite" />
         </pattern>
         <radialGradient id="oceanFade" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#fff" stopOpacity="1" />
@@ -85,8 +93,21 @@ export function AustraliaMap({
         <mask id="oceanMask">
           <rect x="-60" y="-60" width="370" height="350" fill="url(#oceanFade)" />
         </mask>
+        <filter id="coastGlow" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="1.3" />
+        </filter>
       </defs>
       <rect className="auocean" x="-60" y="-60" width="370" height="350" fill="url(#oceanWave)" mask="url(#oceanMask)" />
+      <rect className="auoceanswell" x="-60" y="-60" width="370" height="350" fill="url(#oceanSwell)" mask="url(#oceanMask)" />
+
+      {/* Soft shallow-water halo hugging the coastline — drawn under the crisp
+          land fill so only the seaward half of the blur peeks out, tracing the
+          shape of the continent instead of leaving a flat, edgeless coast. */}
+      <g className="coastglow" filter="url(#coastGlow)">
+        {Object.entries(AU_STATE_PATHS).map(([id, d]) => (
+          <path key={`glow-${id}`} d={d} />
+        ))}
+      </g>
 
       {Object.entries(AU_STATE_PATHS).map(([id, d]) => (
         <path key={id} className="auland" id={id} d={d} />
@@ -130,22 +151,6 @@ export function AustraliaMap({
           <text className="aulabel" x={CITY_XY.perth[0]} y={CITY_XY.perth[1] - 7} textAnchor="middle">
             Perth
           </text>
-        </g>
-      )}
-
-      {/* "Click here" affordance guiding the user to zoom into Perth. */}
-      {showPerth && (
-        <g className="perthtap">
-          <circle className="perthtapripple" cx={CITY_XY.perth[0]} cy={CITY_XY.perth[1]} r="3" />
-          <g transform={`translate(${CITY_XY.perth[0] + 2.4}, ${CITY_XY.perth[1] + 2.4})`}>
-            <g className="perthtaphand">
-              <path
-                className="perthtappointer"
-                transform="scale(0.8)"
-                d="M0,0 L0,13 L3.3,9.7 L5.7,15 L7.4,14.2 L5.1,9 L9,8.7 Z"
-              />
-            </g>
-          </g>
         </g>
       )}
 

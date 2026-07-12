@@ -2057,6 +2057,18 @@ body {
   stroke-linejoin: round;
   transition: fill 0.35s ease;
 }
+/* Second, larger-scale swell layered over the fine ripple pattern. */
+.auoceanswell {
+  opacity: 0.55;
+  mix-blend-mode: multiply;
+}
+/* Soft light ring along the coastline, peeking out from under the land fill. */
+.coastglow path {
+  fill: none;
+  stroke: #eef4f7;
+  stroke-width: 2.6;
+  opacity: 0.85;
+}
 .auline {
   fill: none;
   stroke: #c7cad1;
@@ -2255,58 +2267,6 @@ body {
     opacity: 0;
   }
 }
-/* Perth "click here" affordance: a poking cursor that emits a ripple. */
-.perthtap {
-  pointer-events: none;
-}
-.perthtapripple {
-  fill: none;
-  stroke: #1c1c1e;
-  stroke-width: 1;
-  opacity: 0;
-  animation: perthripple 2.4s ease-out infinite;
-}
-@keyframes perthripple {
-  0%,
-  55% {
-    r: 3;
-    opacity: 0;
-  }
-  60% {
-    r: 3;
-    opacity: 0.55;
-  }
-  100% {
-    r: 16;
-    opacity: 0;
-  }
-}
-.perthtappointer {
-  fill: #1c1c1e;
-  stroke: #fff;
-  stroke-width: 0.8;
-  stroke-linejoin: round;
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
-}
-.perthtaphand {
-  animation: perthtapclick 2.4s ease-in-out infinite;
-}
-@keyframes perthtapclick {
-  0%,
-  50%,
-  100% {
-    transform: translate(0, 0);
-  }
-  58% {
-    transform: translate(-1.4px, -1.4px);
-  }
-  70% {
-    transform: translate(0.5px, 0.5px);
-  }
-  80% {
-    transform: translate(0, 0);
-  }
-}
 .aumute {
   font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
   font-weight: 600;
@@ -2366,7 +2326,8 @@ body {
 }
 .gsearchhd {
   font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
-  font-weight: 800;
+  /* Match the employsi wordmark's weight (.logo) instead of a heavier one. */
+  font-weight: 600;
   font-size: 17px;
   letter-spacing: -0.2px;
   color: var(--ink);
@@ -2449,6 +2410,71 @@ body {
   text-transform: uppercase;
   color: var(--slate);
   margin-bottom: 2px;
+}
+.gsearchresults {
+  width: 100%;
+  margin-top: 10px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 6px;
+  box-shadow: 0 18px 44px -20px rgba(15, 27, 61, 0.45);
+  max-height: 340px;
+  overflow-y: auto;
+}
+.gsresult {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.gsresult.on {
+  background: #f2f3f5;
+}
+.gsrkind {
+  flex: 0 0 auto;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(28, 28, 30, 0.08);
+  color: var(--slate);
+}
+.gsrkind.company {
+  background: rgba(28, 28, 30, 0.92);
+  color: #fff;
+}
+.gsrlabel {
+  flex: 1 1 auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gsrsub {
+  flex: 0 0 auto;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--slate);
+}
+.gsrempty {
+  padding: 14px 10px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--slate);
 }
 .gschip {
   padding: 6px 12px;
@@ -2684,6 +2710,11 @@ body {
   box-shadow: 0 24px 60px -24px rgba(15, 27, 61, 0.5);
   padding: 14px 16px;
   animation: helppanelin 0.2s ease both;
+}
+/* Extra breathing room below the close button before the first toggle row —
+   without it the row's divider line sits right under the button. */
+.setpanel .helphd {
+  margin-bottom: 8px;
 }
 .setrow {
   display: flex;
@@ -3573,6 +3604,13 @@ body {
   pointer-events: none;
   box-shadow: 0 10px 24px -10px rgba(15, 27, 61, 0.4);
   transition: left 0.12s ease, top 0.12s ease;
+}
+/* Portalled to document.body (ChartTooltip) so it always renders above the
+   card's own content — position:fixed + left/top are viewport-relative px
+   set from JS, not the chart-relative percentages .wttip normally uses. */
+.wttipfixed {
+  position: fixed;
+  z-index: 70;
 }
 .wttiplabel {
   font-size: 10px;

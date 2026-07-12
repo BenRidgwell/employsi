@@ -9,7 +9,6 @@ import { GLOBAL_HUB_LABEL } from '../data/geo';
 export function Legend() {
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const localCity = useAppStore((s) => s.localCity);
-  const showSummary = useAppStore((s) => s.showSummary);
 
   const byId = new Map(COMPANIES.map((c) => [c.id, c] as const));
   const companies = (CITY_COMPANIES[localCity] || [])
@@ -21,7 +20,7 @@ export function Legend() {
   const cityName = GLOBAL_HUB_LABEL[localCity] || localCity.charAt(0).toUpperCase() + localCity.slice(1);
 
   return (
-    <div className={`legend ${zoomedOut || !showSummary ? 'zoomhide' : ''}`}>
+    <div className={`legend ${zoomedOut ? 'zoomhide' : ''}`}>
       <span>
         <b>{companies.length}</b> employers
       </span>

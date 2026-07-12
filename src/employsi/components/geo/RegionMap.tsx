@@ -179,11 +179,28 @@ export function RegionMap({
           <rect width="18" height="11" fill="#e2e5e9" />
           <path d="M0,6 Q4.5,2 9,6 T18,6" fill="none" stroke="#d3d7dc" strokeWidth="1.1" />
           <path d="M0,10 Q4.5,7 9,10 T18,10" fill="none" stroke="#d3d7dc" strokeWidth="0.8" />
+          <path d="M0,3 Q4.5,1 9,3 T18,3" fill="none" stroke="#dde0e5" strokeWidth="0.55" />
           <animateTransform attributeName="patternTransform" type="translate" from="0 0" to="-18 4" dur="7s" repeatCount="indefinite" />
         </pattern>
+        <pattern id="regionOceanSwell" width="52" height="31" patternUnits="userSpaceOnUse">
+          <path d="M0,16 Q13,6 26,16 T52,16" fill="none" stroke="#cfd3d9" strokeWidth="1.3" />
+          <path d="M0,26 Q13,19 26,26 T52,26" fill="none" stroke="#d6d9de" strokeWidth="0.9" />
+          <animateTransform attributeName="patternTransform" type="translate" from="0 0" to="52 -9" dur="16s" repeatCount="indefinite" />
+        </pattern>
+        <filter id="regionCoastGlow" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="1.3" />
+        </filter>
       </defs>
       {/* Oversized ocean so the water animation fills the whole screen. */}
       <rect x="-1000" y="-800" width="2500" height="1860" fill="url(#regionOceanWave)" />
+      <rect className="auoceanswell" x="-1000" y="-800" width="2500" height="1860" fill="url(#regionOceanSwell)" />
+      {/* Soft shallow-water halo hugging the coastline, matching the domestic
+          Australia view's treatment. */}
+      <g className="coastglow" filter="url(#regionCoastGlow)" transform={landT}>
+        {GLOBAL_LAND_PATHS.map((d, i) => (
+          <path key={i} d={d} vectorEffect="non-scaling-stroke" />
+        ))}
+      </g>
       <g transform={landT}>
         {GLOBAL_LAND_PATHS.map((d, i) => (
           <path key={i} className="regionland" d={d} vectorEffect="non-scaling-stroke" />

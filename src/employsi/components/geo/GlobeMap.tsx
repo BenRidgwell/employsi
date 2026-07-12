@@ -125,8 +125,19 @@ export function GlobeMap({
           <rect width="18" height="11" fill="#e2e5e9" />
           <path d="M0,6 Q4.5,2 9,6 T18,6" fill="none" stroke="#d3d7dc" strokeWidth="1.1" />
           <path d="M0,10 Q4.5,7 9,10 T18,10" fill="none" stroke="#d3d7dc" strokeWidth="0.8" />
+          <path d="M0,3 Q4.5,1 9,3 T18,3" fill="none" stroke="#dde0e5" strokeWidth="0.55" />
           <animateTransform attributeName="patternTransform" type="translate" from="0 0" to="-18 4" dur="7s" repeatCount="indefinite" />
         </pattern>
+        {/* Larger, slower swell layered over the fine ripple for a two-frequency,
+            more textured sea surface instead of one flat repeating tile. */}
+        <pattern id="globeOceanSwell" width="52" height="31" patternUnits="userSpaceOnUse">
+          <path d="M0,16 Q13,6 26,16 T52,16" fill="none" stroke="#cfd3d9" strokeWidth="1.3" />
+          <path d="M0,26 Q13,19 26,26 T52,26" fill="none" stroke="#d6d9de" strokeWidth="0.9" />
+          <animateTransform attributeName="patternTransform" type="translate" from="0 0" to="52 -9" dur="16s" repeatCount="indefinite" />
+        </pattern>
+        <filter id="globeCoastGlow" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="1.3" />
+        </filter>
         <filter id="globeEdgeFeather" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation="6 4" />
         </filter>
@@ -152,9 +163,17 @@ export function GlobeMap({
       </defs>
       <g mask="url(#globeOceanMask)">
         <rect x="-80" y="-60" width="660" height="380" fill="url(#globeOceanWave)" />
+        <rect className="auoceanswell" x="-80" y="-60" width="660" height="380" fill="url(#globeOceanSwell)" />
       </g>
       <g mask="url(#globeLandMask)">
         <g transform={GEO_SCALE}>
+          {/* Soft shallow-water halo hugging the coastline, matching the
+              domestic views' treatment. */}
+          <g className="coastglow" filter="url(#globeCoastGlow)">
+            {GLOBAL_LAND_PATHS.map((d, i) => (
+              <path key={`glow-${i}`} d={d} />
+            ))}
+          </g>
           {GLOBAL_LAND_PATHS.map((d, i) => (
             <path key={i} className="globeland" d={d} />
           ))}

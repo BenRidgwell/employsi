@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { quarterLabels, smoothPath, scaler, signed, pctStr } from '../../lib/chart';
 import type { CommodityBasket } from '../../data/finance';
+import { ChartTooltip } from './ChartTooltip';
 
 // Dual-line "Financial trends" chart. The share price is always plotted (fixed);
 // the second line is a commodity basket the user chooses — base metals,
@@ -40,6 +41,7 @@ export function ShareChart({ ticker, prices, commodities }: Props) {
   const [range, setRange] = useState<[number, number] | null>(null);
   const [hover, setHover] = useState(false);
   const dragStart = useRef<number | null>(null);
+  const boxRef = useRef<HTMLDivElement | null>(null);
 
   const commodity = commodities[basket];
   const basketShort = BASKETS.find((x) => x.id === basket)!.short;
@@ -126,7 +128,7 @@ export function ShareChart({ ticker, prices, commodities }: Props) {
         </span>
       </div>
 
-      <div className="wtbox" onMouseDown={onDown} onMouseMove={onMove} onMouseUp={finishDrag} onMouseLeave={onLeave}>
+      <div className="wtbox" ref={boxRef} onMouseDown={onDown} onMouseMove={onMove} onMouseUp={finishDrag} onMouseLeave={onLeave}>
         <svg className="wtsvg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
           {/* Reuses the #wtAreaFade gradient defined by the workforce TrendChart
               rendered above it in the same panel. */}
@@ -155,7 +157,7 @@ export function ShareChart({ ticker, prices, commodities }: Props) {
           <>
             <div className="wtdot acc" style={{ left: `${scrubLeft}%`, top: `${(yC(commodity[active]) / H) * 100}%` }} />
             <div className="wtdot ink" style={{ left: `${scrubLeft}%`, top: `${(yP(prices[active]) / H) * 100}%` }} />
-            <div className="wttip" style={{ left: `${scrubLeft}%`, top: `${(Math.min(yP(prices[active]), yC(commodity[active])) / H) * 100}%` }}>
+            <ChartTooltip boxRef={boxRef} leftPct={scrubLeft} topPct={(Math.min(yP(prices[active]), yC(commodity[active])) / H) * 100}>
               <div className="wttiplabel">{labels[active]}</div>
               <div className="wttiprow">
                 <i className="wtsw ink" />
@@ -167,7 +169,7 @@ export function ShareChart({ ticker, prices, commodities }: Props) {
                 <b>{idx(commodity[active])}</b>
                 <span>{basketShort}</span>
               </div>
-            </div>
+            </ChartTooltip>
           </>
         ) : null}
       </div>

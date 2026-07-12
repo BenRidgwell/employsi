@@ -13,8 +13,9 @@ export interface AppState {
   authOpen: boolean;
   pendingFollowId: string | null;
   settingsOpen: boolean;
-  showSummary: boolean;
   reduceMotion: boolean;
+  // UI stub only — not wired to any visual behaviour yet.
+  nightMode: boolean;
   selectedId: string | null;
   lastId: string | null;
   interacted: boolean;
@@ -49,8 +50,8 @@ export interface AppState {
   signOut: () => void;
   toggleSettings: () => void;
   closeSettings: () => void;
-  setShowSummary: (v: boolean) => void;
   setReduceMotion: (v: boolean) => void;
+  setNightMode: (v: boolean) => void;
   closePanel: () => void;
   setHeat: (h: HeatMetric) => void;
   setInteracted: () => void;
@@ -96,10 +97,10 @@ const LS_KEY = 'employsi.auth';
 interface Persisted {
   account: Account | null;
   followedIds: string[];
-  showSummary: boolean;
   reduceMotion: boolean;
+  nightMode: boolean;
 }
-const PERSIST_DEFAULTS: Persisted = { account: null, followedIds: [], showSummary: true, reduceMotion: false };
+const PERSIST_DEFAULTS: Persisted = { account: null, followedIds: [], reduceMotion: false, nightMode: false };
 function loadPersisted(): Persisted {
   if (typeof localStorage === 'undefined') return PERSIST_DEFAULTS;
   try {
@@ -109,8 +110,8 @@ function loadPersisted(): Persisted {
     return {
       account: p.account ?? null,
       followedIds: Array.isArray(p.followedIds) ? p.followedIds : [],
-      showSummary: p.showSummary ?? true,
       reduceMotion: p.reduceMotion ?? false,
+      nightMode: p.nightMode ?? false,
     };
   } catch {
     return PERSIST_DEFAULTS;
@@ -149,8 +150,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   authOpen: false,
   pendingFollowId: null,
   settingsOpen: false,
-  showSummary: persisted.showSummary,
   reduceMotion: persisted.reduceMotion,
+  nightMode: persisted.nightMode,
   selectedId: null,
   lastId: null,
   interacted: false,
@@ -211,11 +212,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   signOut: () => set({ account: null, authOpen: false, pendingFollowId: null }),
   toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),
   closeSettings: () => set({ settingsOpen: false }),
-  setShowSummary: (v) => set({ showSummary: v }),
   setReduceMotion: (v) => {
     if (typeof document !== 'undefined') document.documentElement.classList.toggle('reduce-motion', v);
     set({ reduceMotion: v });
   },
+  // Stub only — persisted for continuity but not wired to any theme yet.
+  setNightMode: (v) => set({ nightMode: v }),
   closePanel: () => set({ selectedId: null }),
   setHeat: (h) => set({ heat: h }),
   setInteracted: () => set((s) => (s.interacted ? s : { interacted: true })),
@@ -334,10 +336,10 @@ useAppStore.subscribe((s, prev) => {
   if (
     s.account !== prev.account ||
     s.followedIds !== prev.followedIds ||
-    s.showSummary !== prev.showSummary ||
-    s.reduceMotion !== prev.reduceMotion
+    s.reduceMotion !== prev.reduceMotion ||
+    s.nightMode !== prev.nightMode
   ) {
-    savePersisted({ account: s.account, followedIds: s.followedIds, showSummary: s.showSummary, reduceMotion: s.reduceMotion });
+    savePersisted({ account: s.account, followedIds: s.followedIds, reduceMotion: s.reduceMotion, nightMode: s.nightMode });
   }
 });
 

@@ -307,7 +307,10 @@ export function PerthMapbox() {
           if (!el) return;
           el.style.display = matchesSector(p.company, fs.activeSectors) ? '' : 'none';
           const matches = companyMatches(p.company, fs);
-          el.className = ['mbchip', s.selectedId === p.company.id ? 'on' : '', matches ? '' : 'dim'].join(' ').trim();
+          // Fade every other pill while a card is open, so the selected company
+          // stays the visual focus; clears the instant selectedId is null again.
+          const notSelected = !!s.selectedId && s.selectedId !== p.company.id;
+          el.className = ['mbchip', s.selectedId === p.company.id ? 'on' : '', matches && !notSelected ? '' : 'dim'].join(' ').trim();
         });
         focusUpdaterRef.current?.();
       };
@@ -465,7 +468,10 @@ export function PerthMapbox() {
         const inSector = matchesSector(c, filterState.activeSectors);
         el.style.display = inSector ? '' : 'none';
         const matches = companyMatches(c, filterState);
-        el.className = ['mbchip', selectedId === c.id ? 'on' : '', matches ? '' : 'dim'].join(' ').trim();
+        // Fade every other pill while a card is open, so the selected company
+        // stays the visual focus; clears the instant selectedId is null again.
+        const notSelected = !!selectedId && selectedId !== c.id;
+        el.className = ['mbchip', selectedId === c.id ? 'on' : '', matches && !notSelected ? '' : 'dim'].join(' ').trim();
         const sub = el.querySelector('.chipsub');
         if (sub) sub.textContent = chipMetric(c, heat);
       });
