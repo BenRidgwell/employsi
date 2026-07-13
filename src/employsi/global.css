@@ -4174,6 +4174,29 @@ body {
     padding: 10px 12px;
     gap: 8px;
   }
+  /* Global search: on desktop it's horizontally centred, clear of the
+     left-aligned brand and right-aligned controls because there's enough
+     width either side. At mobile widths the centred title/bar is wide
+     enough to overlap both — drop it below the top bar's own row (which can
+     be tall here since Account/Filter stack vertically) instead of trying
+     to coexist with it side by side. */
+  .gsearch {
+    top: 204px;
+    /* Right-anchored (not centred) and narrowed so it clears the What's
+       Trending / Daily Brief rail (.mapactions, left:12px, ~50px wide) that
+       also shows on the global layer — centring it full-width would put
+       them back in the same horizontal band. */
+    left: auto;
+    right: 12px;
+    transform: none;
+    width: calc(100vw - 90px);
+  }
+  .gsearchhd {
+    font-size: 14px;
+    height: auto;
+    line-height: 1.35;
+    margin-bottom: 8px;
+  }
   .logo {
     font-size: 18px;
   }
@@ -4263,6 +4286,11 @@ body {
   }
   .mapactions {
     left: 12px;
+    /* Desktop's "+90px above centre" leaves only ~12px before the
+       vertically-centred zoom slider starts — comfortably clear on a tall
+       desktop window, but the two read as one touching cluster on a phone.
+       Push it up further for real breathing room. */
+    bottom: calc(50% + 120px);
   }
   .mapactions .malabel {
     display: none;
@@ -4327,6 +4355,14 @@ body {
   }
   .auhint {
     font-size: 12px;
+  }
+
+  /* The "in the news" side panel has nowhere to go next to a full-width
+     bottom sheet — .cardstage is a flex row with no wrap, so it was staying
+     at its desktop side-by-side width and pushing the actual company card
+     off-screen. Drop it on mobile; the card itself becomes the full sheet. */
+  .newspanel {
+    display: none;
   }
 
   /* Company & Compare panels become full-width bottom sheets */
