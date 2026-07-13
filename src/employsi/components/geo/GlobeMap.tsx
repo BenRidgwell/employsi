@@ -8,6 +8,22 @@ import { SpikeField } from './SpikeField';
 // map isn't tight to the soft edges (ocean still fills to the border).
 const GEO_SCALE = 'translate(250 130) scale(0.93) translate(-250 -130)';
 
+// The land data (GLOBAL_LAND_PATHS, hub coordinates) is authored in a plain
+// 500x260 box. The viewBox itself carries extra ocean padding above and
+// below that — 130 units each side, wholly outside where any land, hub, or
+// label ever sits — so that a full-bleed mobile crop (see .globemap's mobile
+// CSS, which forces the box to 100vw x 100vh with preserveAspectRatio=slice)
+// has real seascape to cover the screen with instead of forcing an extreme
+// zoom just to reach full height. 500x260 is landscape (1.92:1) against a
+// phone's tall portrait box; padding the box closer to square lets a much
+// gentler zoom fill the same height, so noticeably more of the world's
+// width stays in frame by default. The same padding is harmless on desktop
+// (a wide box): it only ever gets cropped back out of the pure-ocean margin,
+// never into real content — see the mask/ocean rects below, sized with a
+// safety margin past this box on every side.
+const VB_Y0 = -130;
+const VB_H = 520;
+
 // Decorative shipping arcs between hubs (endpoints follow GLOBAL_HUB_XY).
 const TANKER_ROUTES = [
   { dur: '26s', begin: '0s', path: 'M435,223 Q430,188 414,162' }, // Perth → Singapore
@@ -92,7 +108,11 @@ export function globeHubOrigin(hubId: string): string {
   const [x, y] = GLOBAL_HUB_XY[hubId] || [250, 130];
   const gx = 250 + (x - 250) * 0.93;
   const gy = 130 + (y - 130) * 0.93;
-  return `${((gx / 500) * 100).toFixed(1)}% ${((gy / 260) * 100).toFixed(1)}%`;
+  // Percentages are of the <svg>'s own box, i.e. relative to the viewBox's
+  // min-x/min-y and width/height — not just gx/gy over the raw 500x260 the
+  // land data is authored in, since the viewBox now carries extra vertical
+  // ocean padding (see VB_Y0/VB_H below) beyond that.
+  return `${((gx / 500) * 100).toFixed(1)}% ${(((gy - VB_Y0) / VB_H) * 100).toFixed(1)}%`;
 }
 
 export function GlobeMap({
@@ -121,7 +141,7 @@ export function GlobeMap({
   return (
     <svg
       className="globemap"
-      viewBox="0 0 500 260"
+      viewBox={`0 ${VB_Y0} 500 ${VB_H}`}
       // "slice" only crops when the box's own aspect ratio (set via CSS) is
       // forced away from the viewBox's — true on mobile, where the box fills
       // the full (portrait) screen; a no-op on desktop, where the box's
@@ -160,17 +180,21 @@ export function GlobeMap({
         <filter id="globeEdgeFeatherBottom" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation="6 1.2" />
         </filter>
+        {/* Both masks' rects extend into the viewBox's padded (VB_Y0..VB_Y0+VB_H)
+            range, not just the original 0..260 content band, so the ocean
+            keeps rendering (rather than cutting to empty) across the padding
+            a full-bleed mobile crop can reach into. */}
         <mask id="globeOceanMask">
-          <rect x="32" y="7" width="450" height="246" rx="10" fill="#fff" filter="url(#globeEdgeFeather)" />
-          <rect x="32" y="150" width="450" height="108" rx="10" fill="#fff" filter="url(#globeEdgeFeatherBottom)" />
+          <rect x="32" y={VB_Y0 + 10} width="450" height={VB_H - 20} rx="10" fill="#fff" filter="url(#globeEdgeFeather)" />
+          <rect x="32" y={175} width="450" height={VB_Y0 + VB_H - 3 - 175} rx="10" fill="#fff" filter="url(#globeEdgeFeatherBottom)" />
         </mask>
         {/* Land is feathered in tighter on the left/right than the ocean so the
             dateline-cut boundary segments (Alaska's west edge, eastern Russia,
             the New Zealand sliver past Tasmania) dissolve into the water instead
             of rendering as hard vertical lines. */}
         <mask id="globeLandMask">
-          <rect x="30" y="4" width="456" height="252" rx="12" fill="#fff" filter="url(#globeEdgeFeather)" />
-          <rect x="30" y="150" width="456" height="109" rx="12" fill="#fff" filter="url(#globeEdgeFeatherBottom)" />
+          <rect x="30" y={VB_Y0 + 6} width="456" height={VB_H - 12} rx="12" fill="#fff" filter="url(#globeEdgeFeather)" />
+          <rect x="30" y={174} width="456" height={VB_Y0 + VB_H - 2 - 174} rx="12" fill="#fff" filter="url(#globeEdgeFeatherBottom)" />
         </mask>
         <filter id="globeblur" x="-120%" y="-120%" width="340%" height="340%">
           <feGaussianBlur stdDeviation="4" />
@@ -183,8 +207,8 @@ export function GlobeMap({
         </filter>
       </defs>
       <g mask="url(#globeOceanMask)">
-        <rect x="-80" y="-60" width="660" height="380" fill="url(#globeOceanWave)" />
-        <rect className="auoceanswell" x="-80" y="-60" width="660" height="380" fill="url(#globeOceanSwell)" />
+        <rect x="-80" y={VB_Y0 - 20} width="660" height={VB_H + 40} fill="url(#globeOceanWave)" />
+        <rect className="auoceanswell" x="-80" y={VB_Y0 - 20} width="660" height={VB_H + 40} fill="url(#globeOceanSwell)" />
       </g>
       <g mask="url(#globeLandMask)">
         <g transform={GEO_SCALE}>
