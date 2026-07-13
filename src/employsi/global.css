@@ -4337,12 +4337,33 @@ body {
     text-align: center;
   }
 
-  /* Australia / Global views: enlarge the maps, stack the hint bar */
-  .aumap {
-    width: min(88vw, 560px);
-  }
+  /* Australia / Global / regional views: fill the screen edge-to-edge like a
+     real map app instead of floating in a small letterboxed box. The world
+     map is wide (500:260) against a narrow tall phone screen, so there's no
+     way to show the whole thing without either leaving empty space around it
+     (the old behaviour) or cropping some of it off-screen — cropping is the
+     one that actually reads as "the map fills the screen". That's safe for
+     .globemap because the global view already supports drag-to-pan (see
+     GlobeMap.tsx's preserveAspectRatio, which crops toward Perth by default
+     rather than the geometric middle of the map). The two domestic views
+     below (.aumap, .regionmap) don't have drag-to-pan, so anything cropped
+     off there would be permanently unreachable on a touch screen — enlarge
+     those as much as possible without ever cropping instead. */
   .globemap {
-    width: min(94vw, 640px);
+    width: 100vw;
+    height: 100vh;
+  }
+  /* Capped well short of full-width: the vertically-centred zoom/action rail
+     lives at the left edge (left:12px, ~55px wide) and doesn't move with the
+     map, so a wider box risks putting a west-coast city (Perth, on the AU
+     map) directly underneath it, hidden and unclickable. This width keeps
+     Perth's marker clear while still being much larger than the old
+     56vw/78vw base rules. */
+  .aumap {
+    width: min(70vw, 460px);
+  }
+  .regionmap {
+    width: min(70vw, 460px);
   }
   .auview {
     gap: 16px;

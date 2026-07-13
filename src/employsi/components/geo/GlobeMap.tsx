@@ -119,7 +119,19 @@ export function GlobeMap({
   const nonPerthHubs = allHubs.filter((id) => id !== 'perth');
   const showPerth = allHubs.includes('perth');
   return (
-    <svg className="globemap" viewBox="0 0 500 260" style={{ transformOrigin: zoomOrigin }}>
+    <svg
+      className="globemap"
+      viewBox="0 0 500 260"
+      // "slice" only crops when the box's own aspect ratio (set via CSS) is
+      // forced away from the viewBox's — true on mobile, where the box fills
+      // the full (portrait) screen; a no-op on desktop, where the box's
+      // height:auto always keeps it equal to the viewBox ratio. xMax biases
+      // the crop toward Perth/Asia-Pacific (the right edge of the viewBox)
+      // instead of the geometric middle of the map, since the global view is
+      // the app's default screen and Perth is the whole point of it.
+      preserveAspectRatio="xMaxYMid slice"
+      style={{ transformOrigin: zoomOrigin }}
+    >
       <defs>
         <pattern id="globeOceanWave" width="18" height="11" patternUnits="userSpaceOnUse">
           <rect width="18" height="11" fill="#e2e5e9" />
