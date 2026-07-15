@@ -8,6 +8,9 @@ import {
   STATE_STATS,
   CITY_STATE,
   cityMatchesSectors,
+  activeSkillKey,
+  SKILL_DEMAND,
+  GLOBAL_SKILL_DEMAND,
 } from '../data/geo';
 import {
   HUB_LNGLAT,
@@ -24,6 +27,13 @@ mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 const SOURCE_ID = 'world-hubs';
 const HALO_LAYER = 'hub-halo';
 const CORE_LAYER = 'hub-core';
+const SKILL_SOURCE = 'skill-heat';
+const SKILL_LAYER = 'skill-heat';
+
+// Neutral dot colour used while a skill search is active — the coloured metric
+// heat is replaced by the skill-demand blobs, so the city dots go dark (as they
+// do on the SVG layers), keeping the blobs the only colour on the map.
+const NEUTRAL_DOT = 'rgb(42,42,46)';
 
 // Layer-crossing zoom thresholds (Mapbox zoom levels). Chosen to leave each
 // view's own default framing comfortably inside its band so a programmatic
@@ -50,59 +60,98 @@ function metricLabel(id: string, heat: HeatMetric, hub: boolean): string {
   return stat.turnover.toFixed(1) + '%';
 }
 
-// Which markers to show for the current view, coloured by the active metric and
+// Which markers to show for the current view. Normally coloured by the active
+// metric; while a skill search is active the dots go neutral (the skill-demand
+// blobs carry the colour instead) and the metric sub-label is dropped. Always
 // filtered by the active sectors.
 function computeMarkers(
   mode: 'global' | 'domestic',
   region: string,
   heat: HeatMetric,
   activeSectors: string[],
+  skill: string | null,
 ): Marker[] {
   const globalHeat = computeGlobalHeat(heat);
   const cityHeat = computeCityHeat(heat);
   const out: Marker[] = [];
+  const push = (id: string, coords: [number, number], metricColor: string, hub: boolean) => {
+    if (!cityMatchesSectors(id, activeSectors)) return;
+    out.push({
+      id,
+      coords,
+      color: skill ? NEUTRAL_DOT : metricColor,
+      label: cityLabel(id),
+      sub: skill ? '' : metricLabel(id, heat, hub),
+      clickable: CLICKABLE_CITIES.has(id),
+    });
+  };
 
   if (mode === 'global') {
-    Object.keys(HUB_LNGLAT).forEach((id) => {
-      if (!cityMatchesSectors(id, activeSectors)) return;
-      out.push({
-        id,
-        coords: HUB_LNGLAT[id],
-        color: globalHeat[id]?.color || 'rgb(150,150,150)',
-        label: cityLabel(id),
-        sub: metricLabel(id, heat, true),
-        clickable: CLICKABLE_CITIES.has(id),
-      });
-    });
+    Object.keys(HUB_LNGLAT).forEach((id) =>
+      push(id, HUB_LNGLAT[id], globalHeat[id]?.color || 'rgb(150,150,150)', true),
+    );
     return out;
   }
 
   // Domestic: the region's own hubs, plus (Australia only) its non-hub cities.
-  (REGION_HUBS[region] || []).forEach((id) => {
-    if (!cityMatchesSectors(id, activeSectors)) return;
-    out.push({
-      id,
-      coords: HUB_LNGLAT[id],
-      color: globalHeat[id]?.color || 'rgb(150,150,150)',
-      label: cityLabel(id),
-      sub: metricLabel(id, heat, true),
-      clickable: CLICKABLE_CITIES.has(id),
-    });
-  });
+  (REGION_HUBS[region] || []).forEach((id) =>
+    push(id, HUB_LNGLAT[id], globalHeat[id]?.color || 'rgb(150,150,150)', true),
+  );
   if (region === 'australia') {
-    ['darwin', 'melbourne', 'hobart'].forEach((id) => {
-      if (!cityMatchesSectors(id, activeSectors)) return;
-      out.push({
-        id,
-        coords: AU_CITY_LNGLAT[id],
-        color: cityHeat[id]?.color || 'rgb(150,150,150)',
-        label: cityLabel(id),
-        sub: metricLabel(id, heat, false),
-        clickable: CLICKABLE_CITIES.has(id), // false for these three
-      });
-    });
+    ['darwin', 'melbourne', 'hobart'].forEach((id) =>
+      push(id, AU_CITY_LNGLAT[id], cityHeat[id]?.color || 'rgb(150,150,150)', false),
+    );
   }
   return out;
+}
+
+const EMPTY_FC: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
+
+// Demand-weighted point cloud for the skill heatmap: a small deterministic
+// cluster of points around each city, weighted by that city's relative demand
+// for the searched skill (normalised across the visible set). Mapbox's heatmap
+// layer turns this into the soft green→amber→red blobs, mirroring the SVG
+// layers' skill "spikes".
+function buildSkillHeat(mode: 'global' | 'domestic', region: string, skill: string | null): GeoJSON.FeatureCollection {
+  if (!skill) return EMPTY_FC;
+  let table: Record<string, [number, number]>;
+  let demand: Record<string, number> | undefined;
+  if (mode === 'global') {
+    table = HUB_LNGLAT;
+    demand = GLOBAL_SKILL_DEMAND[skill];
+  } else if (region === 'australia') {
+    table = AU_CITY_LNGLAT;
+    demand = SKILL_DEMAND[skill];
+  } else {
+    demand = GLOBAL_SKILL_DEMAND[skill];
+    table = {};
+    (REGION_HUBS[region] || []).forEach((id) => { if (HUB_LNGLAT[id]) table[id] = HUB_LNGLAT[id]; });
+  }
+  if (!demand) return EMPTY_FC;
+  const ids = Object.keys(table).filter((id) => demand![id] != null);
+  if (!ids.length) return EMPTY_FC;
+  const vals = ids.map((id) => demand![id]);
+  const mn = Math.min(...vals);
+  const mx = Math.max(...vals);
+
+  let seed = 99;
+  const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+  const features: GeoJSON.Feature[] = [];
+  ids.forEach((id) => {
+    const t = (demand![id] - mn) / ((mx - mn) || 1);
+    const w = 0.2 + 0.8 * t; // keep a green floor so low-demand hubs still show
+    const [lng, lat] = table[id];
+    for (let i = 0; i < 6; i++) {
+      const jx = i === 0 ? 0 : (rnd() - 0.5) * 5.4;
+      const jy = i === 0 ? 0 : (rnd() - 0.5) * 5.4;
+      features.push({
+        type: 'Feature',
+        properties: { w },
+        geometry: { type: 'Point', coordinates: [lng + jx, lat + jy] },
+      });
+    }
+  });
+  return { type: 'FeatureCollection', features };
 }
 
 function markersGeoJSON(markers: Marker[], selectedId: string | null): GeoJSON.FeatureCollection {
@@ -159,6 +208,7 @@ export function WorldMapbox() {
   const heat = useAppStore((s) => s.heat);
   const selectedId = useAppStore((s) => s.selectedId);
   const activeSectors = useAppStore((s) => s.activeSectors);
+  const searchQuery = useAppStore((s) => s.searchQuery);
 
   // Mount once: create the map, add the hub source/layers, and wire clicks +
   // scroll-zoom layer crossing. All reads of live state happen through the
@@ -215,16 +265,28 @@ export function WorldMapbox() {
       });
     };
 
-    // Update just the heat dots + labels for the current view (no camera move).
+    // Update the heat dots + labels + skill blobs for the current view (no
+    // camera move).
     const rebuildMarkers = () => {
       if (!styleReadyRef.current) return;
       const s = useAppStore.getState();
       if (!s.zoomedOut || s.zoomingIn) return; // overview not showing
-      const markers = computeMarkers(viewModeOf(s.globalOut), s.domesticRegion, s.heat, s.activeSectors);
+      const mode = viewModeOf(s.globalOut);
+      const skill = activeSkillKey(s.searchQuery);
+      const markers = computeMarkers(mode, s.domesticRegion, s.heat, s.activeSectors, skill);
       markersRef.current = markers;
       const src = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
       src?.setData(markersGeoJSON(markers, s.selectedId));
       renderLabels(markers);
+
+      // Skill search active -> show the demand blobs and hide the metric halo
+      // (the dots are already neutralised in computeMarkers); otherwise clear
+      // the blobs and restore the metric halo.
+      const skillSrc = map.getSource(SKILL_SOURCE) as mapboxgl.GeoJSONSource | undefined;
+      skillSrc?.setData(buildSkillHeat(mode, s.domesticRegion, skill));
+      if (map.getLayer(HALO_LAYER)) {
+        map.setLayoutProperty(HALO_LAYER, 'visibility', skill ? 'none' : 'visible');
+      }
     };
     rebuildMarkersRef.current = rebuildMarkers;
 
@@ -261,6 +323,31 @@ export function WorldMapbox() {
       map.setConfigProperty('basemap', 'showRoadLabels', false);
       map.setConfigProperty('basemap', 'showLandmarkIcons', false);
       map.setConfigProperty('basemap', 'showPlaceLabels', false);
+
+      // Skill-demand heatmap, added first so it sits beneath the hub dots.
+      map.addSource(SKILL_SOURCE, { type: 'geojson', data: EMPTY_FC });
+      map.addLayer({
+        id: SKILL_LAYER,
+        type: 'heatmap',
+        source: SKILL_SOURCE,
+        paint: {
+          'heatmap-weight': ['get', 'w'],
+          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 1, 0.9, 4, 1.1, 6, 1.25],
+          // Blobs grow with zoom so they stay continent-/region-scaled.
+          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 1, 30, 3, 64, 5, 120, 7, 200],
+          // Fade out as we approach the local-city hand-off zoom.
+          'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 1, 0.78, 5, 0.72, 6.5, 0],
+          // Green (low demand) -> amber -> red (high), matching the app ramp.
+          'heatmap-color': [
+            'interpolate', ['linear'], ['heatmap-density'],
+            0, 'rgba(21,157,103,0)',
+            0.18, 'rgba(21,157,103,0.35)',
+            0.45, 'rgba(245,166,35,0.45)',
+            0.72, 'rgba(224,82,74,0.55)',
+            1, 'rgba(224,82,74,0.62)',
+          ],
+        },
+      });
 
       map.addSource(SOURCE_ID, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({
@@ -368,7 +455,7 @@ export function WorldMapbox() {
   useEffect(() => {
     rebuildMarkersRef.current?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heat, selectedId, activeSectors]);
+  }, [heat, selectedId, activeSectors, searchQuery]);
 
   // Hide the whole overview once fully in a local city (PerthMapbox owns it).
   const hidden = !zoomedOut && !zoomingIn;
