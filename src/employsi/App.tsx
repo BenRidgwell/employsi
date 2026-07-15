@@ -11,7 +11,7 @@ import { HelpDock } from './components/HelpDock';
 import { CityBadge } from './components/CityBadge';
 import { Legend } from './components/Legend';
 import { HeatKey } from './components/HeatKey';
-import { ZoomOverlay } from './components/geo/ZoomOverlay';
+import { WorldMapbox } from './components/WorldMapbox';
 import { CompanyPanel } from './components/panels/CompanyPanel';
 import { ComparePanel } from './components/panels/ComparePanel';
 import { DailyBriefPane } from './components/panels/DailyBriefPane';
@@ -29,7 +29,9 @@ function App() {
       <PerthMapbox />
       <HintPulse />
       <Ticker hidden={!(globalOut && zoomedOut)} />
-      <ZoomOverlay />
+      {/* Mapbox trial: real Mapbox globe/domestic layers replace the SVG
+          ZoomOverlay. The local (Perth) 3D layer above is unchanged. */}
+      <WorldMapbox />
       <TopBar />
       <GlobalSearch />
       <Legend />

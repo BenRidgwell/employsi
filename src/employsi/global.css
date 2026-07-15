@@ -36,6 +36,18 @@ body {
 .app .mount:active {
   cursor: grabbing;
 }
+/* Mapbox trial: the global/domestic Mapbox overview sits on top of the local
+   3D map. When fully zoomed into a local city it fades out and stops taking
+   pointer events, so the PerthMapbox layer beneath owns interaction — mirrors
+   how the old SVG overlay (.auview) ceded control at the local layer. */
+.worldmount {
+  z-index: 2;
+  transition: opacity 0.45s ease;
+}
+.worldmount-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
 .layer {
   position: absolute;
   inset: 0;
