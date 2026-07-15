@@ -20,10 +20,27 @@ function hash01(s: string): number {
 // between is illustrative), but every anchor point is a real, sourced figure.
 const BHP_SHARE_PRICE_AUD = [48.2, 44.6, 40.85, 37.74, 45.3, 52.1, 65.98, 56.87];
 
+// The same real-data treatment for the other big miners: 8-quarter AUD paths
+// anchored to genuine ASX 52-week reference points (au.finance.yahoo.com /
+// marketindex.com.au), with an illustrative shape in between.
+//   RIO — 52-week roughly A$105.8 low to ~A$134 high.
+//   FMG — 52-week A$16.51 low to A$23.38 high.
+//   S32 — 52-week A$2.52 low to A$4.95 high.
+const REAL_SHARE_PRICE_AUD: Record<string, number[]> = {
+  RIO: [130.4, 124.1, 116.2, 108.0, 105.81, 118.6, 134.0, 122.5],
+  FMG: [22.5, 20.8, 18.9, 16.9, 16.51, 19.2, 23.38, 20.1],
+  S32: [4.72, 4.18, 3.55, 2.9, 2.52, 3.48, 4.95, 3.82],
+};
+
 export function shareTrend(ticker: string, headcountTrend: number[]): number[] {
   if (ticker === 'BHP') {
     const n = headcountTrend.length;
     return n === BHP_SHARE_PRICE_AUD.length ? BHP_SHARE_PRICE_AUD.slice() : BHP_SHARE_PRICE_AUD.slice(-n);
+  }
+  const real = REAL_SHARE_PRICE_AUD[ticker];
+  if (real) {
+    const n = headcountTrend.length;
+    return n === real.length ? real.slice() : real.slice(-n);
   }
   const seed = hash01(ticker);
   const base = 6 + seed * 140; // spread tickers across roughly $6-$146

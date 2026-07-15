@@ -35,6 +35,43 @@ const SKILL_LAYER = 'skill-heat';
 // do on the SVG layers), keeping the blobs the only colour on the map.
 const NEUTRAL_DOT = 'rgb(42,42,46)';
 
+// Decorative traffic on the globe: aircraft between city pairs and container
+// ships between port hubs, each drifting back and forth along its route.
+type TravelMode = 'plane' | 'ship';
+interface TravelRoute { from: string; to: string; mode: TravelMode; dur: number; offset: number; }
+const TRAVEL_ROUTES: TravelRoute[] = [
+  { from: 'perth', to: 'singapore', mode: 'plane', dur: 24000, offset: 0.0 },
+  { from: 'london', to: 'newyork', mode: 'plane', dur: 30000, offset: 0.35 },
+  { from: 'tokyo', to: 'sydney', mode: 'plane', dur: 34000, offset: 0.2 },
+  { from: 'dubai', to: 'johannesburg', mode: 'plane', dur: 27000, offset: 0.6 },
+  { from: 'sanfrancisco', to: 'tokyo', mode: 'plane', dur: 36000, offset: 0.15 },
+  { from: 'santiago', to: 'houston', mode: 'plane', dur: 32000, offset: 0.5 },
+  { from: 'singapore', to: 'ganzhou', mode: 'ship', dur: 44000, offset: 0.3 },
+  { from: 'perth', to: 'johannesburg', mode: 'ship', dur: 60000, offset: 0.5 },
+  { from: 'houston', to: 'london', mode: 'ship', dur: 56000, offset: 0.15 },
+  { from: 'hongkong', to: 'singapore', mode: 'ship', dur: 40000, offset: 0.7 },
+];
+
+// Small monochrome icons, pointing "north" (up) so a bearing rotation aims them
+// along their heading.
+const PLANE_SVG =
+  '<svg viewBox="0 0 24 24" width="16" height="16" fill="#2f2f34"><path d="M12 2c.5 0 .9.6.9 1.6v5.2l8.1 4.6v1.8l-8.1-2.4v4.3l2.2 1.6v1.4l-3.1-.9-3.1.9v-1.4l2.2-1.6v-4.3l-8.1 2.4v-1.8l8.1-4.6V3.6C11.1 2.6 11.5 2 12 2z"/></svg>';
+const SHIP_SVG =
+  '<svg viewBox="0 0 24 24" width="15" height="15" fill="#3a3a40"><path d="M11 3h2v4h4l1 4H6l1-4h4V3z"/><path d="M4 13h16l-1.6 6.2a1 1 0 0 1-1 .8H6.6a1 1 0 0 1-1-.8L4 13z"/></svg>';
+
+// Antimeridian-aware linear interpolation between two lng/lat points (takes the
+// shorter way around, so e.g. a San Francisco -> Tokyo route crosses the
+// Pacific rather than wrapping the long way round the globe).
+function lerpLngLat(a: [number, number], b: [number, number], t: number): [number, number] {
+  let dLng = b[0] - a[0];
+  if (dLng > 180) dLng -= 360;
+  else if (dLng < -180) dLng += 360;
+  let lng = a[0] + dLng * t;
+  if (lng > 180) lng -= 360;
+  else if (lng < -180) lng += 360;
+  return [lng, a[1] + (b[1] - a[1]) * t];
+}
+
 // Layer-crossing zoom thresholds (Mapbox zoom levels). Chosen to leave each
 // view's own default framing comfortably inside its band so a programmatic
 // flyTo never lands right on a boundary.
@@ -101,7 +138,8 @@ function computeMarkers(
     push(id, HUB_LNGLAT[id], globalHeat[id]?.color || 'rgb(150,150,150)', true),
   );
   if (region === 'australia') {
-    ['darwin', 'melbourne', 'hobart'].forEach((id) =>
+    // Melbourne only — Darwin and Hobart are intentionally omitted.
+    ['melbourne'].forEach((id) =>
       push(id, AU_CITY_LNGLAT[id], cityHeat[id]?.color || 'rgb(150,150,150)', false),
     );
   }
@@ -199,6 +237,8 @@ export function WorldMapbox() {
   const rebuildMarkersRef = useRef<(() => void) | null>(null);
   const applyViewRef = useRef<(() => void) | null>(null);
   const sampleHeaderBgRef = useRef<(() => void) | null>(null);
+  const travelersRef = useRef<{ marker: mapboxgl.Marker; inner: HTMLElement; route: TravelRoute }[]>([]);
+  const travelRaf = useRef<number | undefined>(undefined);
   const programmaticRef = useRef(false);
   const programmaticTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastCrossRef = useRef(0);
@@ -448,6 +488,49 @@ export function WorldMapbox() {
         }
       });
 
+      // Build the animated air/sea traffic and start its loop.
+      TRAVEL_ROUTES.forEach((route) => {
+        const a = HUB_LNGLAT[route.from];
+        const b = HUB_LNGLAT[route.to];
+        if (!a || !b) return;
+        const outer = document.createElement('div');
+        outer.className = 'traveler';
+        const inner = document.createElement('span');
+        inner.className = `travelericon traveler-${route.mode}`;
+        inner.innerHTML = route.mode === 'plane' ? PLANE_SVG : SHIP_SVG;
+        outer.appendChild(inner);
+        const marker = new mapboxgl.Marker({ element: outer, anchor: 'center' }).setLngLat(a).addTo(map);
+        travelersRef.current.push({ marker, inner, route });
+      });
+
+      const animateTravelers = () => {
+        const now = performance.now();
+        const s = useAppStore.getState();
+        const show = s.globalOut && s.zoomedOut && !s.zoomingIn;
+        travelersRef.current.forEach(({ marker, inner, route }) => {
+          const el = marker.getElement();
+          if (!show) { el.style.display = 'none'; return; }
+          el.style.display = '';
+          const a = HUB_LNGLAT[route.from];
+          const b = HUB_LNGLAT[route.to];
+          // Ping-pong 0->1->0 so each craft makes a round trip rather than
+          // snapping back to the start.
+          const phase = ((now / route.dur) + route.offset) % 2;
+          const t = phase < 1 ? phase : 2 - phase;
+          const eased = t; // linear is fine at this scale
+          const pos = lerpLngLat(a, b, eased);
+          marker.setLngLat(pos);
+          // Point the icon along its current heading (bearing on screen).
+          const ahead = lerpLngLat(a, b, Math.min(1, Math.max(0, eased + (phase < 1 ? 0.01 : -0.01))));
+          const dx = ahead[0] - pos[0];
+          const dy = ahead[1] - pos[1];
+          const bearing = (Math.atan2(dx * Math.cos((pos[1] * Math.PI) / 180), dy) * 180) / Math.PI;
+          inner.style.transform = `rotate(${bearing}deg)`;
+        });
+        travelRaf.current = requestAnimationFrame(animateTravelers);
+      };
+      animateTravelers();
+
       styleReadyRef.current = true;
       applyView();
     });
@@ -497,6 +580,9 @@ export function WorldMapbox() {
 
     return () => {
       clearTimeout(programmaticTimer.current);
+      if (travelRaf.current) cancelAnimationFrame(travelRaf.current);
+      travelersRef.current.forEach(({ marker }) => marker.remove());
+      travelersRef.current = [];
       Object.values(labelsRef.current).forEach((m) => m.remove());
       labelsRef.current = {};
       map.remove();

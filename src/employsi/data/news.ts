@@ -60,8 +60,65 @@ function bhpRealNews(): CompanyNews {
   };
 }
 
+// Rio Tinto, Fortescue and South32 also get real, dated headlines drawn from
+// their newsrooms and wire coverage (riotinto.com, fortescue.com, south32.net,
+// MINING.COM — 2025/2026), in place of the generated placeholder copy.
+function rioRealNews(): CompanyNews {
+  return {
+    hero: {
+      cat: 'Trending',
+      title: 'Rio Tinto ships first ore from the Simandou iron ore mega-project in Guinea',
+      time: '4d ago',
+      comments: 41,
+    },
+    items: [
+      { cat: 'Markets', title: 'Rio Tinto completes $6.7B acquisition of Arcadium Lithium', time: '1w ago', comments: 33 },
+      { cat: 'People', title: 'Simon Trott takes over as chief executive', time: '2w ago', comments: 22 },
+      { cat: 'Company', title: 'Lithium arm targets 200,000 tonnes LCE a year by 2028', time: '2w ago', comments: 14 },
+      { cat: 'Sustainability', title: 'Women now 25% of Rio Tinto’s workforce as pay gap narrows', time: '3w ago', comments: 11 },
+    ],
+  };
+}
+
+function fmgRealNews(): CompanyNews {
+  return {
+    hero: {
+      cat: 'Trending',
+      title: 'Fortescue ships 200 million tonnes of iron ore in a year for the first time',
+      time: '3d ago',
+      comments: 28,
+    },
+    items: [
+      { cat: 'Markets', title: 'Record first-half shipments of 100.2Mt, up 3% year-on-year', time: '6d ago', comments: 17 },
+      { cat: 'People', title: 'Fortescue cuts ~700 roles as it slows green-hydrogen plans', time: '1w ago', comments: 52 },
+      { cat: 'Company', title: 'Andrew Forrest defends energy strategy amid restructure', time: '1w ago', comments: 24 },
+      { cat: 'Sustainability', title: 'Real-Zero 2030 emissions goal under fresh scrutiny', time: '2w ago', comments: 19 },
+    ],
+  };
+}
+
+function s32RealNews(): CompanyNews {
+  return {
+    hero: {
+      cat: 'Trending',
+      title: 'South32’s Hermosa becomes the first mine added to the US federal permitting dashboard in a decade',
+      time: '5d ago',
+      comments: 16,
+    },
+    items: [
+      { cat: 'Markets', title: 'Hermosa wins $166M US Department of Energy battery-materials grant', time: '1w ago', comments: 12 },
+      { cat: 'Company', title: 'Taylor zinc-manganese deposit on track for first production in FY2027', time: '2w ago', comments: 8 },
+      { cat: 'Markets', title: 'FY24 revenue US$5.6B, underlying EBITDA US$1.8B on softer prices', time: '3w ago', comments: 10 },
+      { cat: 'Sustainability', title: 'Manganese positioned as a US battery-supply-chain opportunity', time: '3w ago', comments: 6 },
+    ],
+  };
+}
+
 export function companyNews(name: string, sector: string): CompanyNews {
   if (name === 'BHP') return bhpRealNews();
+  if (name === 'Rio Tinto') return rioRealNews();
+  if (name === 'Fortescue') return fmgRealNews();
+  if (name === 'South32') return s32RealNews();
   const seed = seedOf(name + sector);
   const pick = <T,>(arr: T[], k: number) => arr[(seed + k) % arr.length];
   const hero: NewsItem = {

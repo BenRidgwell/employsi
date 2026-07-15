@@ -342,7 +342,7 @@ export function PerthMapbox() {
         const c = map.getCenter();
         const z = map.getZoom();
         const zf = z <= Z_MIN ? 0 : z >= Z_FULL ? 1 : (z - Z_MIN) / (Z_FULL - Z_MIN);
-        type Cand = { el: HTMLElement; op: number; x: number; y: number; w: number };
+        type Cand = { el: HTMLElement; op: number; x: number; y: number; w: number; force: boolean };
         const cands: Cand[] = [];
         placedRef.current.forEach((placed) => {
           const marker = markersRef.current[placed.company.id];
@@ -352,6 +352,15 @@ export function PerthMapbox() {
           // block a visible pill in the collision pass.
           if (el.style.display === 'none') return;
           const [lng, lat] = placed.coords;
+          const p = map.project([lng, lat]);
+          // The selected company's pill is always shown at its true position,
+          // regardless of distance/zoom fade or collision — so opening a company
+          // that sits far from the city centre (e.g. Mineral Resources up in
+          // Osborne Park) still pins its pill to its own building.
+          if (el.classList.contains('on')) {
+            cands.push({ el, op: 1, x: p.x, y: p.y, w: el.offsetWidth || 120, force: true });
+            return;
+          }
           const d = distMetres(c.lng, c.lat, lng, lat);
           const df = d <= R_FULL ? 1 : d >= R_GONE ? 0 : (R_GONE - d) / (R_GONE - R_FULL);
           const f = df * zf;
@@ -361,17 +370,17 @@ export function PerthMapbox() {
             el.style.pointerEvents = 'none';
             return;
           }
-          const p = map.project([lng, lat]);
-          cands.push({ el, op: base * f, x: p.x, y: p.y, w: el.offsetWidth || 120 });
+          cands.push({ el, op: base * f, x: p.x, y: p.y, w: el.offsetWidth || 120, force: false });
         });
-        // Show the most-revealed first; hide any that collide with a shown one.
+        // Show the most-revealed first; hide any that collide with a shown one
+        // (forced pills — the selected company — are never hidden).
         cands.sort((a, b) => b.op - a.op);
         const shown: { x0: number; x1: number; y0: number; y1: number }[] = [];
         const MH = 40;
         cands.forEach((cd) => {
           const half = (cd.w || 120) / 2 + 4;
           const box = { x0: cd.x - half, x1: cd.x + half, y0: cd.y - MH - 6, y1: cd.y - 6 };
-          const hit = shown.some((s) => box.x0 < s.x1 && box.x1 > s.x0 && box.y0 < s.y1 && box.y1 > s.y0);
+          const hit = !cd.force && shown.some((s) => box.x0 < s.x1 && box.x1 > s.x0 && box.y0 < s.y1 && box.y1 > s.y0);
           if (hit) {
             cd.el.style.opacity = '0';
             cd.el.style.pointerEvents = 'none';
@@ -433,12 +442,23 @@ export function PerthMapbox() {
     });
 
     const onZoomReset = () => {
-      const city = useAppStore.getState().localCity;
+      const st = useAppStore.getState();
+      const city = st.localCity;
       const v = CITY_VIEWS[city] || CITY_VIEWS.perth;
       // Jump (hidden behind the overlay fade) so we don't fly across the
       // continent, then swap in the city's companies + reveal.
       map.jumpTo({ center: v.center, zoom: v.zoom, pitch: v.pitch, bearing: v.bearing });
       renderCityRef.current?.(city);
+      // If we arrived with a company already selected (from search or the saved
+      // list), frame that company — it may sit well outside the city's default
+      // camera (e.g. Mineral Resources in Osborne Park), so the jumpTo above
+      // would otherwise leave its pill off-screen. The [selectedId] effect can
+      // miss this because the placements aren't ready when it first runs.
+      const sel = st.selectedId ? cityPlacements(city).find((p) => p.company.id === st.selectedId) : null;
+      if (sel) {
+        const rightPad = Math.min(760, Math.round(window.innerWidth * 0.6));
+        map.easeTo({ center: sel.coords, zoom: Math.max(v.zoom, 16.5), padding: { top: 0, bottom: 0, left: 0, right: rightPad }, duration: 700 });
+      }
     };
     window.addEventListener('perth-zoom-reset', onZoomReset);
 

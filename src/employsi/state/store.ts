@@ -12,6 +12,8 @@ export interface AppState {
   account: Account | null;
   authOpen: boolean;
   pendingFollowId: string | null;
+  // Transient notification text (e.g. "sign in to follow"); null when hidden.
+  toast: string | null;
   settingsOpen: boolean;
   reduceMotion: boolean;
   // UI stub only — not wired to any visual behaviour yet.
@@ -43,6 +45,7 @@ export interface AppState {
   select: (id: string) => void;
   toggleFollow: (id: string) => void;
   requestFollow: (id: string) => void;
+  dismissToast: () => void;
   openAuth: () => void;
   closeAuth: () => void;
   signUp: (name: string, email: string) => void;
@@ -149,6 +152,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   account: persisted.account,
   authOpen: false,
   pendingFollowId: null,
+  toast: null,
   settingsOpen: false,
   reduceMotion: persisted.reduceMotion,
   nightMode: persisted.nightMode,
@@ -187,11 +191,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   requestFollow: (id) => {
     const s = get();
     if (!s.account) {
-      set({ authOpen: true, pendingFollowId: id, searchOpen: false, filterOpen: false });
+      // Not signed in — notify with a toast and open the account panel (with the
+      // tapped company remembered so it's saved the moment they sign up).
+      set({
+        authOpen: true,
+        pendingFollowId: id,
+        searchOpen: false,
+        filterOpen: false,
+        toast: 'Create a free account or sign in to follow companies',
+      });
       return;
     }
     set({ followedIds: s.followedIds.includes(id) ? s.followedIds.filter((x) => x !== id) : [...s.followedIds, id] });
   },
+  dismissToast: () => set({ toast: null }),
   openAuth: () => set({ authOpen: true, searchOpen: false, filterOpen: false }),
   closeAuth: () => set({ authOpen: false, pendingFollowId: null }),
   signUp: (name, email) =>

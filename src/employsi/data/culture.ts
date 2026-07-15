@@ -31,13 +31,19 @@ export const INDUSTRY_BENCH = {
 };
 
 export const COMPANY_CULTURE: Record<string, CultureData> = {
+  // Real figures (riotinto.com diversity/pay-equity disclosures + WGEA 2024):
+  // women 25.2% of the workforce (2024, up from 24.3%); women senior leaders
+  // 32.0%; WGEA total-remuneration gender pay gap 7.7% in favour of men (vs the
+  // ~19.8% mining-industry average) — much of it from men's over-representation
+  // in allowance-heavy operational roles. Indigenous share left as an estimate
+  // (Rio reports Australian-operations detail, not a single group figure).
   rio: {
     glassdoor: 3.9,
-    femalePct: 22,
-    payGap: 12.4,
-    womenLeadActual: 31,
+    femalePct: 25.2,
+    payGap: 7.7,
+    womenLeadActual: 32.0,
     womenLeadTarget: 40,
-    indigenousPct: 3.1,
+    indigenousPct: 4.5,
     layoffs: null,
     roleOptions: ['Mining Engineer', 'Geologist', 'Process Engineer', 'Rail Operations', 'Maintenance Technician', 'Autonomous Systems Specialist'],
   },
@@ -68,6 +74,9 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     layoffs: { period: 'Q4 2025', roles: 180, pct: -2.4, note: 'Manganese cost-reduction program' },
     roleOptions: ['Metallurgist', 'Maintenance Technician', 'Supply Chain Analyst', 'Process Operator', 'Finance Analyst', 'Sustainability Lead'],
   },
+  // Layoffs are real: in July 2024 Fortescue cut ~700 roles (~4.5% of its
+  // global workforce) as it slowed its green-hydrogen ambitions (mining.com /
+  // The Nightly). Diversity figures remain estimates.
   fmg: {
     glassdoor: 3.8,
     femalePct: 26,
@@ -75,7 +84,7 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     womenLeadActual: 30,
     womenLeadTarget: 40,
     indigenousPct: 11.5,
-    layoffs: { period: 'Q3 2025', roles: 700, pct: -3.1, note: 'Energy division restructure' },
+    layoffs: { period: 'Jul 2024', roles: 700, pct: -4.5, note: 'Green-hydrogen scale-back restructure' },
     roleOptions: ['Electrical Engineer', 'Project Engineer', 'Renewables Specialist', 'Automation Engineer', 'HSE Advisor', 'Heavy Diesel Mechanic'],
   },
   wds: {

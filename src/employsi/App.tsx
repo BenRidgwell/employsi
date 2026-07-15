@@ -9,6 +9,7 @@ import { MapActions } from './components/MapActions';
 import { ToolsDock } from './components/ToolsDock';
 import { HelpDock } from './components/HelpDock';
 import { CityBadge } from './components/CityBadge';
+import { Toast } from './components/Toast';
 import { Legend } from './components/Legend';
 import { HeatKey } from './components/HeatKey';
 import { WorldMapbox } from './components/WorldMapbox';
@@ -48,6 +49,7 @@ function App() {
       <ToolsDock />
       <HelpDock />
       <CityBadge />
+      <Toast />
     </div>
   );
 }

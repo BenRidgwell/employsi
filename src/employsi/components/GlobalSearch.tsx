@@ -43,8 +43,10 @@ export function GlobalSearch() {
     return [...companies, ...cities];
   }, [q]);
 
-  // Only show over the global overlay — never stranded above a local city map.
-  if (!globalOut || !zoomedOut) return null;
+  // Show over the global AND domestic overviews (both are zoomedOut) — never
+  // stranded above a local city map, where the top-right search takes over.
+  if (!zoomedOut) return null;
+  void globalOut;
 
   const goToResult = (r: Result) => {
     if (r.kind === 'company') {

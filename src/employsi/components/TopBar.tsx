@@ -64,9 +64,11 @@ export function TopBar() {
   const setHeat = useAppStore((s) => s.setHeat);
   const globalOut = useAppStore((s) => s.globalOut);
   const zoomedOut = useAppStore((s) => s.zoomedOut);
-  // The centred global search bar only replaces the top-right search on the
-  // actual global overlay; local/domestic (and any stranded state) keep it.
-  const showGlobalSearch = globalOut && zoomedOut;
+  // The centred search header replaces the top-right search on BOTH the global
+  // and domestic overviews (both are zoomedOut); only the local city view keeps
+  // the top-right search button.
+  const showGlobalSearch = zoomedOut;
+  void globalOut;
 
   const filterState: FilterState = { searchQuery, activeSectors, minSalary, minHeadcount, minGrowth, maxAttrition };
   const filterActive = isFilterActive(filterState);
