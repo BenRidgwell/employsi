@@ -149,8 +149,13 @@ body {
   background: var(--coral);
   box-shadow: 0 0 0 4px rgba(154, 154, 160, 0.2);
 }
+/* Selecting a company greys out every other pill (desaturated + faded), so
+   the open card's company stays the focus; cleared the instant the card is
+   closed. The opacity here is a fallback — the focus updater usually drives it
+   inline — but the grayscale is what makes it read as a true "grey out". */
 .mbchip.dim {
-  opacity: 0.28;
+  opacity: 0.4;
+  filter: grayscale(1);
 }
 .mapboxgl-marker {
   z-index: 3;
@@ -370,12 +375,15 @@ body {
 }
 /* The search header floats over the globe itself, which is light in the middle
    (land/ocean) and dark at the edges (space) — a single fixed colour can't
-   stay legible as the globe is panned/spun under it. Blend it against whatever
-   is behind: white text through mix-blend-mode:difference renders black over
-   the light globe and white over the dark space, flipping continuously. */
+   stay legible as the globe is panned/spun under it. WorldMapbox samples the
+   actual pixel behind the header each frame and toggles .gshd-onlight on .app
+   when that pixel is light, so the header flips to dark text over the globe
+   and back to white over the dark space. */
 .app.ondark .gsearchhd {
   color: #fff;
-  mix-blend-mode: difference;
+}
+.app.ondark.gshd-onlight .gsearchhd {
+  color: #1c1c1e;
 }
 .app.ondark .seglbl,
 .app.ondark .tag {

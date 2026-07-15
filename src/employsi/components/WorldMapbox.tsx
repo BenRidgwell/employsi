@@ -198,6 +198,7 @@ export function WorldMapbox() {
   const markersRef = useRef<Marker[]>([]);
   const rebuildMarkersRef = useRef<(() => void) | null>(null);
   const applyViewRef = useRef<(() => void) | null>(null);
+  const sampleHeaderBgRef = useRef<(() => void) | null>(null);
   const programmaticRef = useRef(false);
   const programmaticTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastCrossRef = useRef(0);
@@ -227,9 +228,50 @@ export function WorldMapbox() {
       zoom: GLOBAL_VIEW.zoom,
       pitch: 0,
       attributionControl: false,
+      // Needed so we can read a pixel back from the canvas to decide the search
+      // header's colour (see sampleHeaderBg) — without it the WebGL drawing
+      // buffer is cleared after compositing and readPixels returns zeros.
+      preserveDrawingBuffer: true,
     });
     map.addControl(new mapboxgl.AttributionControl({ compact: true }));
     mapRef.current = map;
+
+    // Keep the "Explore the world of work today" header legible over the globe:
+    // sample the map pixel directly behind it and flip .app.gshd-onlight when
+    // that pixel is light, so the header reads dark over the light globe and
+    // white over the dark space around it. (mix-blend-mode can't do this here —
+    // the header sits in its own stacking context, so it never blends against
+    // the map canvas.)
+    let lastSample = 0;
+    const sampleHeaderBg = () => {
+      const s = useAppStore.getState();
+      const appEl = containerRef.current?.closest('.app') as HTMLElement | null;
+      if (!appEl) return;
+      if (!(s.globalOut && s.zoomedOut) || s.zoomingIn) return;
+      const hd = document.querySelector('.gsearchhd') as HTMLElement | null;
+      if (!hd) return;
+      const canvas = map.getCanvas();
+      const gl = (canvas.getContext('webgl2') || canvas.getContext('webgl')) as WebGLRenderingContext | null;
+      if (!gl) return;
+      const cRect = canvas.getBoundingClientRect();
+      const hRect = hd.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const x = Math.round((hRect.left + hRect.width / 2 - cRect.left) * dpr);
+      const yTop = Math.round((hRect.top + hRect.height / 2 - cRect.top) * dpr);
+      const y = gl.drawingBufferHeight - yTop; // WebGL y-origin is bottom-left
+      if (x < 0 || y < 0 || x >= gl.drawingBufferWidth || y >= gl.drawingBufferHeight) return;
+      const px = new Uint8Array(4);
+      gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      const lum = 0.299 * px[0] + 0.587 * px[1] + 0.114 * px[2];
+      appEl.classList.toggle('gshd-onlight', lum > 140);
+    };
+    sampleHeaderBgRef.current = sampleHeaderBg;
+    map.on('render', () => {
+      const now = performance.now();
+      if (now - lastSample < 120) return; // throttle — 1px read, but cheap-guard
+      lastSample = now;
+      sampleHeaderBg();
+    });
 
     // A programmatic camera move that suppresses the scroll-crossing handler
     // until it settles. Cleared on moveend, with a timeout fallback so a no-op
@@ -467,6 +509,14 @@ export function WorldMapbox() {
   // is what moves the camera between global / domestic / local).
   useEffect(() => {
     applyViewRef.current?.();
+    const onGlobal = globalOut && zoomedOut && !zoomingIn;
+    if (onGlobal) {
+      sampleHeaderBgRef.current?.();
+    } else {
+      // Leaving the global view — clear the header-contrast flag so it doesn't
+      // linger into a view where the header isn't shown.
+      containerRef.current?.closest('.app')?.classList.remove('gshd-onlight');
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoomedOut, zoomingIn, globalOut, domesticRegion, localCity]);
 

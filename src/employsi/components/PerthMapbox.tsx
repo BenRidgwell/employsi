@@ -355,7 +355,7 @@ export function PerthMapbox() {
           const d = distMetres(c.lng, c.lat, lng, lat);
           const df = d <= R_FULL ? 1 : d >= R_GONE ? 0 : (R_GONE - d) / (R_GONE - R_FULL);
           const f = df * zf;
-          const base = el.classList.contains('dim') ? 0.28 : 1;
+          const base = el.classList.contains('dim') ? 0.4 : 1;
           if (f <= 0.02) {
             el.style.opacity = '0';
             el.style.pointerEvents = 'none';
