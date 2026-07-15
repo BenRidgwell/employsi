@@ -37,11 +37,14 @@ body {
   cursor: grabbing;
 }
 /* Mapbox trial: the global/domestic Mapbox overview sits on top of the local
-   3D map. When fully zoomed into a local city it fades out and stops taking
-   pointer events, so the PerthMapbox layer beneath owns interaction — mirrors
-   how the old SVG overlay (.auview) ceded control at the local layer. */
+   3D map (it comes after PerthMapbox in the DOM, so it stacks above it without
+   needing a z-index — and crucially must NOT have one, or it would paint over
+   the top bar / legend / heat key, which sit at the default z-index and come
+   after it in the DOM). When fully zoomed into a local city it fades out and
+   stops taking pointer events, so the PerthMapbox layer beneath owns
+   interaction — mirrors how the old SVG overlay (.auview) ceded control at the
+   local layer. */
 .worldmount {
-  z-index: 2;
   transition: opacity 0.45s ease;
 }
 .worldmount-hidden {
