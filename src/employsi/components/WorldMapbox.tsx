@@ -52,12 +52,42 @@ const TRAVEL_ROUTES: TravelRoute[] = [
   { from: 'hongkong', to: 'singapore', mode: 'ship', dur: 40000, offset: 0.7 },
 ];
 
-// Small monochrome icons, pointing "north" (up) so a bearing rotation aims them
-// along their heading.
+// Detailed top-down icons (as a ship-tracking / flight-radar map would show
+// them), pointing "north" (up) so a bearing rotation aims them along their
+// heading — a metallic airliner and a container ship with a laden deck.
 const PLANE_SVG =
-  '<svg viewBox="0 0 24 24" width="16" height="16" fill="#2f2f34"><path d="M12 2c.5 0 .9.6.9 1.6v5.2l8.1 4.6v1.8l-8.1-2.4v4.3l2.2 1.6v1.4l-3.1-.9-3.1.9v-1.4l2.2-1.6v-4.3l-8.1 2.4v-1.8l8.1-4.6V3.6C11.1 2.6 11.5 2 12 2z"/></svg>';
+  '<svg viewBox="0 0 28 28" width="21" height="21">' +
+  '<defs><linearGradient id="plg" x1="0" y1="0" x2="1" y2="0">' +
+  '<stop offset="0" stop-color="#c7ccd3"/><stop offset="0.5" stop-color="#f6f8fa"/><stop offset="1" stop-color="#aeb3bb"/>' +
+  '</linearGradient></defs>' +
+  '<path fill="url(#plg)" stroke="#5c616b" stroke-width="0.5" stroke-linejoin="round" ' +
+  'd="M14 2c1.1 0 1.7 1.3 1.7 3.2v5.9l9 5.2v2.4l-9-2.9v4.6l2.5 1.8v2l-4.2-1.2-4.2 1.2v-2l2.5-1.8v-4.6l-9 2.9v-2.4l9-5.2V5.2C12.3 3.3 12.9 2 14 2z"/>' +
+  '<line x1="14" y1="6" x2="14" y2="21" stroke="#8b909a" stroke-width="0.5"/>' +
+  '</svg>';
 const SHIP_SVG =
-  '<svg viewBox="0 0 24 24" width="15" height="15" fill="#3a3a40"><path d="M11 3h2v4h4l1 4H6l1-4h4V3z"/><path d="M4 13h16l-1.6 6.2a1 1 0 0 1-1 .8H6.6a1 1 0 0 1-1-.8L4 13z"/></svg>';
+  '<svg viewBox="0 0 18 44" width="12" height="30">' +
+  '<defs><linearGradient id="shg" x1="0" y1="0" x2="1" y2="0">' +
+  '<stop offset="0" stop-color="#565b64"/><stop offset="0.5" stop-color="#727782"/><stop offset="1" stop-color="#3f434b"/>' +
+  '</linearGradient></defs>' +
+  // hull (pointed bow up, rounded stern)
+  '<path d="M9 1 L14 9 L14 39 Q14 43 10.5 43 L7.5 43 Q4 43 4 39 L4 9 Z" fill="url(#shg)" stroke="#2b2e34" stroke-width="0.6"/>' +
+  // hatch outline / deck edge
+  '<path d="M6 11 L12 11 L12 34 L6 34 Z" fill="#33363d"/>' +
+  // stacked containers (two columns, varied colours)
+  '<g stroke="#26282d" stroke-width="0.25">' +
+  '<rect x="6.2" y="11.4" width="2.6" height="2.4" fill="#c0562e"/><rect x="9.2" y="11.4" width="2.6" height="2.4" fill="#2e6fc0"/>' +
+  '<rect x="6.2" y="14.2" width="2.6" height="2.4" fill="#2fa36a"/><rect x="9.2" y="14.2" width="2.6" height="2.4" fill="#c9a13a"/>' +
+  '<rect x="6.2" y="17" width="2.6" height="2.4" fill="#2e6fc0"/><rect x="9.2" y="17" width="2.6" height="2.4" fill="#b23b3b"/>' +
+  '<rect x="6.2" y="19.8" width="2.6" height="2.4" fill="#c9a13a"/><rect x="9.2" y="19.8" width="2.6" height="2.4" fill="#2fa36a"/>' +
+  '<rect x="6.2" y="22.6" width="2.6" height="2.4" fill="#b23b3b"/><rect x="9.2" y="22.6" width="2.6" height="2.4" fill="#c0562e"/>' +
+  '<rect x="6.2" y="25.4" width="2.6" height="2.4" fill="#2fa36a"/><rect x="9.2" y="25.4" width="2.6" height="2.4" fill="#2e6fc0"/>' +
+  '<rect x="6.2" y="28.2" width="2.6" height="2.4" fill="#c9a13a"/><rect x="9.2" y="28.2" width="2.6" height="2.4" fill="#b23b3b"/>' +
+  '<rect x="6.2" y="31" width="2.6" height="2.4" fill="#2e6fc0"/><rect x="9.2" y="31" width="2.6" height="2.4" fill="#2fa36a"/>' +
+  '</g>' +
+  // superstructure / bridge near the stern
+  '<rect x="5.6" y="35.4" width="6.8" height="4" rx="0.6" fill="#e7e9ec" stroke="#9aa0a8" stroke-width="0.4"/>' +
+  '<rect x="7" y="36.3" width="4" height="1.2" fill="#aeb4bd"/>' +
+  '</svg>';
 
 // Antimeridian-aware linear interpolation between two lng/lat points (takes the
 // shorter way around, so e.g. a San Francisco -> Tokyo route crosses the
@@ -506,7 +536,9 @@ export function WorldMapbox() {
       const animateTravelers = () => {
         const now = performance.now();
         const s = useAppStore.getState();
-        const show = s.globalOut && s.zoomedOut && !s.zoomingIn;
+        // Shown on both overviews (global + domestic); hidden only at the local
+        // city layer, where WorldMapbox itself is hidden.
+        const show = s.zoomedOut && !s.zoomingIn;
         travelersRef.current.forEach(({ marker, inner, route }) => {
           const el = marker.getElement();
           if (!show) { el.style.display = 'none'; return; }

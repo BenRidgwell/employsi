@@ -157,7 +157,11 @@ export function CompanyPanel() {
   // signed in, so the button reads "Follow" (→ prompts sign-up) when there's no
   // account to save it to.
   const following = !!account && !!panel && followedIds.includes(panel.companyId);
-  const live = isBhp && !!feed;
+  // Companies wired with real data show the LIVE badge. BHP additionally polls
+  // a real-time feed (so it waits for the first poll); Rio Tinto, Fortescue and
+  // South32 carry real static figures/news, so they're live as soon as open.
+  const REAL_DATA_IDS = ['bhp', 'rio', 'fmg', 's32'];
+  const live = isBhp ? !!feed : REAL_DATA_IDS.includes(lastId ?? '');
 
   const prices = useMemo(
     () => (feed && isBhp ? feed.sharePrice : panel ? shareTrend(panel.ticker, panel.trend) : []),
