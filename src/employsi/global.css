@@ -354,6 +354,37 @@ body {
   color: var(--slate);
   margin-top: 3px;
 }
+/* Smoothly fade the transparent-background top-bar text/marks between the
+   light-basemap default (dark) and the global dark-backdrop variant (light). */
+.logo,
+.tag,
+.seglbl,
+.gsearchhd,
+.bmark svg rect {
+  transition: color 0.4s ease, fill 0.4s ease;
+}
+/* Mapbox trial: on the dark global globe backdrop, flip the labels/wordmark
+   that sit directly on the map (no pill background) to light so they stay
+   legible. The buttons themselves sit on white pills, so they're unaffected. */
+.app.ondark .logo,
+.app.ondark .gsearchhd {
+  color: #fff;
+}
+.app.ondark .seglbl,
+.app.ondark .tag {
+  color: rgba(255, 255, 255, 0.78);
+}
+/* Brand mark: keep the layered look but in light tones so it reads on dark. */
+.app.ondark .bmark svg rect:nth-child(1),
+.app.ondark .bmark svg rect:nth-child(4) {
+  fill: #ffffff;
+}
+.app.ondark .bmark svg rect:nth-child(2) {
+  fill: rgba(255, 255, 255, 0.65);
+}
+.app.ondark .bmark svg rect:nth-child(3) {
+  fill: rgba(255, 255, 255, 0.85);
+}
 .controls {
   pointer-events: auto;
   display: flex;

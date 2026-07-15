@@ -22,8 +22,13 @@ function App() {
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const globalOut = useAppStore((s) => s.globalOut);
 
+  // The global Mapbox view has a dark globe/space backdrop, so the
+  // transparent-background top-bar labels + wordmark must flip to light; the
+  // domestic and local layers have a light basemap and keep the dark defaults.
+  const onDark = globalOut && zoomedOut;
+
   return (
-    <div className="app">
+    <div className={`app${onDark ? ' ondark' : ''}`}>
       <ZoomSlider />
       <MapActions />
       <PerthMapbox />
