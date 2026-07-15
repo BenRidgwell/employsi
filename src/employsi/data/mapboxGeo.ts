@@ -53,21 +53,28 @@ export interface CityCompany {
 // Companies pinned per local city. Perth, Adelaide and Brisbane each have their
 // own head-office spread; the remaining cities open the 3D view with no pins.
 export const CITY_COMPANIES: Record<string, CityCompany[]> = {
+  // Real HQ coordinates, geocoded (via OpenStreetMap Nominatim) from each
+  // company's current registered head-office address — building-level where
+  // OSM has the building. Note several sit well outside the CBD: IGO is across
+  // the river in South Perth, Mineral Resources is in Osborne Park (~5km NW),
+  // Northern Star in Subiaco, and the lithium juniors along Colin/Ord St in
+  // West Perth — so they fall outside the default CBD camera frame and are
+  // reached by panning or by opening the company from search.
   perth: [
     { id: 'rio', coords: [115.85582, -31.95409] }, // Central Park, 152 St Georges Tce
     { id: 'bhp', coords: [115.85455, -31.95471] }, // Brookfield Place, 125 St Georges Tce
-    { id: 's32', coords: [115.85715, -31.95453] }, // 108 St Georges Tce
-    { id: 'fmg', coords: [115.85015, -31.95170] }, // Fortescue — 256 St Georges Tce
-    { id: 'wds', coords: [115.84986, -31.95382] }, // Mia Yellagonga, 11 Mount St
-    { id: 'sto', coords: [115.85076, -31.95193] }, // 250 St Georges Tce
-    { id: 'chevron', coords: [115.85790, -31.95560] }, // The Quarter, 1 The Esplanade
-    { id: 'sfr', coords: [115.84138, -31.95249] }, // 10 Kings Park Rd, West Perth
-    { id: 'igo', coords: [115.85633, -31.9542] }, // 140 St Georges Tce
-    { id: 'min', coords: [115.82786, -31.9019] }, // 20 Walters Dr, Osborne Park
-    { id: 'pls', coords: [115.84361, -31.9464] }, // West Perth
-    { id: 'ltr', coords: [115.8398, -31.9512] }, // West Perth
-    { id: 'ilu', coords: [115.85140, -31.95230] }, // Iluka — 240 St Georges Tce
-    { id: 'nst', coords: [115.8256, -31.9481] }, // Subiaco
+    { id: 's32', coords: [115.856832, -31.954441] }, // South32 — 108 St Georges Tce
+    { id: 'fmg', coords: [115.850038, -31.952205] }, // Fortescue — 256 St Georges Tce
+    { id: 'wds', coords: [115.849832, -31.953822] }, // Woodside — Mia Yellagonga, 11 Mount St
+    { id: 'sto', coords: [115.850857, -31.952325] }, // Santos — QV1, 250 St Georges Tce
+    { id: 'chevron', coords: [115.858352, -31.957165] }, // Chevron HQ — 1 The Esplanade, Elizabeth Quay
+    { id: 'sfr', coords: [115.841389, -31.952468] }, // Sandfire — 10 Kings Park Rd, West Perth
+    { id: 'igo', coords: [115.853211, -31.972235] }, // IGO — 85 South Perth Esplanade, South Perth
+    { id: 'min', coords: [115.808277, -31.909375] }, // Mineral Resources — 20 Walters Dr, Osborne Park
+    { id: 'pls', coords: [115.842641, -31.947562] }, // Pilbara Minerals — 146 Colin St, West Perth
+    { id: 'ltr', coords: [115.840467, -31.950194] }, // Liontown — 32 Ord St, West Perth
+    { id: 'ilu', coords: [115.851839, -31.952745] }, // Iluka — 240 St Georges Tce
+    { id: 'nst', coords: [115.822660, -31.946683] }, // Northern Star — 500 Hay St, Subiaco
   ],
   adelaide: [
     { id: 'bhp', coords: [138.60190, -34.92450] }, // 55 Grenfell St
