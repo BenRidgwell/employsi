@@ -201,6 +201,7 @@ export function WorldMapbox() {
   const programmaticRef = useRef(false);
   const programmaticTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastCrossRef = useRef(0);
+  const prevZoomRef = useRef(GLOBAL_VIEW.zoom);
   const styleReadyRef = useRef(false);
 
   const zoomedOut = useAppStore((s) => s.zoomedOut);
@@ -235,6 +236,10 @@ export function WorldMapbox() {
     // flyTo (which may not emit moveend) can't leave the guard stuck on.
     const flyGuarded = (opts: Parameters<mapboxgl.Map['flyTo']>[0] & { duration: number }) => {
       programmaticRef.current = true;
+      // Also arm the cross cooldown: if the user's own scroll interrupts this
+      // flyTo, moveend can fire early and clear programmaticRef while the map
+      // is still mid-transition at a zoom that would otherwise trip a crossing.
+      lastCrossRef.current = Date.now();
       clearTimeout(programmaticTimer.current);
       programmaticTimer.current = setTimeout(() => { programmaticRef.current = false; }, opts.duration + 250);
       map.flyTo({ ...opts, essential: true });
@@ -407,15 +412,24 @@ export function WorldMapbox() {
 
     // Scroll-zoom layer crossing: zooming in/out past a threshold moves between
     // global, domestic and local, contextually to what's under the camera.
+    // Crossings are DIRECTION-AWARE — a layer change only fires in the
+    // direction the user is actually zooming (in -> deeper layer, out ->
+    // shallower). Merely sitting above/below a threshold isn't enough. This is
+    // what stops a zoom-OUT from local->domestic bouncing straight back into
+    // local: when the domestic view first appears the map can still be at a
+    // high zoom (mid fly-out to the region frame), which is >= the local
+    // threshold, but since the user is zooming OUT (dz < 0) it won't re-cross.
     map.on('zoom', () => {
+      const z = map.getZoom();
+      const dz = z - prevZoomRef.current;
+      prevZoomRef.current = z; // track direction even while guarded
       if (programmaticRef.current) return;
       if (Date.now() - lastCrossRef.current < 700) return;
       const s = useAppStore.getState();
       if (!s.zoomedOut || s.zoomingIn) return;
-      const z = map.getZoom();
       const c = map.getCenter();
       if (s.globalOut) {
-        if (z >= CROSS_GLOBAL_TO_DOMESTIC) {
+        if (dz > 0 && z >= CROSS_GLOBAL_TO_DOMESTIC) {
           const region =
             nearest(c.lng, c.lat, Object.fromEntries(Object.entries(REGION_FRAMES).map(([r, f]) => [r, f.center]))) ||
             'australia';
@@ -424,11 +438,11 @@ export function WorldMapbox() {
         }
         return;
       }
-      if (z <= CROSS_DOMESTIC_TO_GLOBAL) {
+      if (dz < 0 && z <= CROSS_DOMESTIC_TO_GLOBAL) {
         lastCrossRef.current = Date.now();
         s.setGlobalOut(true);
         applyViewRef.current?.();
-      } else if (z >= CROSS_DOMESTIC_TO_LOCAL) {
+      } else if (dz > 0 && z >= CROSS_DOMESTIC_TO_LOCAL) {
         const table: Record<string, [number, number]> = {};
         markersRef.current.forEach((m) => { if (m.clickable) table[m.id] = m.coords; });
         const city = nearest(c.lng, c.lat, table);
