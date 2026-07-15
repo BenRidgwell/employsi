@@ -190,7 +190,6 @@ body {
   align-items: stretch;
   background: rgba(255, 255, 255, 0.86);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--line);
   overflow: hidden;
   z-index: 4;
   /* Informational only — take pointer events so a plain arrow cursor shows

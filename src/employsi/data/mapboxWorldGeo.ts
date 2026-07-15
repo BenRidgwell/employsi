@@ -58,9 +58,10 @@ export function cityLabel(id: string): string {
   return GLOBAL_HUB_LABEL[id] || CITY_LABEL[id] || id;
 }
 
-// The default global-view camera: framed on Perth / the Asia-Pacific, matching
-// the SVG global layer's Perth-biased default (this app's focus), on a globe.
+// The default global-view camera: fully zoomed out so the whole globe is in
+// view, framed on Perth / the Asia-Pacific (this app's focus) — the rest of
+// the world is a drag/spin away.
 export const GLOBAL_VIEW = {
   center: [100, -10] as [number, number],
-  zoom: 1.35,
+  zoom: 0.3,
 };
