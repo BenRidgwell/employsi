@@ -8,20 +8,29 @@ import { SpikeField } from './SpikeField';
 // map isn't tight to the soft edges (ocean still fills to the border).
 const GEO_SCALE = 'translate(250 130) scale(0.93) translate(-250 -130)';
 
-// The land data (GLOBAL_LAND_PATHS, hub coordinates) is authored in a plain
-// 500x260 box. The viewBox itself carries extra ocean padding above and
-// below that — 130 units each side, wholly outside where any land, hub, or
-// label ever sits — purely so the map's own aspect ratio (500:260, 1.92:1)
-// isn't quite so extreme against a phone's tall portrait screen: .globemap
-// is sized full-bleed by filling whichever of width/height the screen needs
-// (see its CSS) and letting the other overflow, panned via .globepan rather
-// than cropped (ZoomOverlay.tsx) — a less extreme aspect ratio means less of
-// that overflow is needed to fill the screen, so more of the world stays in
-// the default frame before a user ever has to drag. The padding is harmless
-// at any aspect ratio some screen might have: it only ever gets pushed off
-// the fillable edge, never into real content — see the mask/ocean rects
-// below, sized with a safety margin past this box on every side.
-const VB_Y0 = -130;
+// The land data (GLOBAL_LAND_PATHS, hub coordinates) is nominally authored
+// in a 500x260 box, but a few landmasses (Greenland, northern Russia) poke
+// above y=0 — real content actually spans roughly y=-32.5 to y=276.2. The
+// viewBox itself carries extra ocean padding beyond that on top of it —
+// wholly outside where any land, hub, or label ever sits — purely so the
+// map's own aspect ratio isn't quite so extreme against a phone's tall
+// portrait screen: .globemap is sized full-bleed by filling whichever of
+// width/height the screen needs (see its CSS) and letting the other
+// overflow, panned via .globepan rather than cropped (ZoomOverlay.tsx) — a
+// less extreme aspect ratio means less of that overflow is needed to fill
+// the screen, so more of the world stays in the default frame before a user
+// ever has to drag.
+// VB_Y0 is centred on the real content's own vertical centre (-32.5+276.2)/2
+// ≈ 121.85, not the nominal box's 130 — on a wide desktop window .globemap
+// fills by width, so its vertical "window" (how much of the tall axis is
+// visible) is a fixed size set by the screen's own aspect ratio, no larger
+// no matter how much padding is added; centring wrong was cropping Greenland
+// off the top even though there was technically enough total slack to fit
+// it. The padding itself is still harmless at any aspect ratio some screen
+// might have: it only ever gets pushed off the fillable edge, never into
+// real content — see the mask/ocean rects below, sized with a safety margin
+// past this box on every side.
+const VB_Y0 = -138;
 const VB_H = 520;
 
 // .globemap's effective aspect ratio (width:height) — used by both its CSS

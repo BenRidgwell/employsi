@@ -118,6 +118,14 @@ export function ZoomOverlay() {
   const suppressClickRef = useRef(false);
   const panRef = useRef<HTMLDivElement | null>(null);
 
+  // .globemap's CSS fills whichever of width/height the screen needs exactly
+  // (zero overflow on that axis) and lets the other overflow to cover the
+  // rest — e.g. a wide desktop window fills by width, so there's normally
+  // nothing to pan horizontally there at all. MIN_PAN guarantees a drag is
+  // always possible on both axes regardless: the "already exactly covered"
+  // side gets this much room added past its natural (zero) overflow.
+  const MIN_PAN = 150;
+
   // How far (on each axis, at a given zoom level) .globemap can be panned
   // before its edge would reach the screen's and reveal a gap — mirrors its
   // CSS sizing (fill whichever of width/height the screen needs, GLOBE_ASPECT
@@ -129,8 +137,8 @@ export function ZoomOverlay() {
     const w = typeof window !== 'undefined' ? window.innerWidth : 1000;
     const h = typeof window !== 'undefined' ? window.innerHeight : 520;
     const wide = w / h >= GLOBE_ASPECT;
-    const mapW = (wide ? w : h * GLOBE_ASPECT) * s;
-    const mapH = (wide ? w / GLOBE_ASPECT : h) * s;
+    const mapW = (wide ? w : h * GLOBE_ASPECT) * s + (wide ? MIN_PAN * 2 : 0);
+    const mapH = (wide ? w / GLOBE_ASPECT : h) * s + (wide ? 0 : MIN_PAN * 2);
     return { mx: Math.max(0, (mapW - w) / 2), my: Math.max(0, (mapH - h) / 2) };
   };
 

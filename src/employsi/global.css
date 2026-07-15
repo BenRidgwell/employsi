@@ -2131,7 +2131,10 @@ body {
   opacity: 1;
   pointer-events: auto;
 }
-/* Pan + zoom wrapper for the global map (transform set inline from state). */
+/* Pan + zoom wrapper for the global map (transform set inline from state).
+   user-select:none stops a drag from also triggering the browser's native
+   text-selection highlight on the continent/city <text> labels it passes
+   over — SVG text is otherwise just as selectable as any other page text. */
 .globepan {
   display: flex;
   align-items: center;
@@ -2139,6 +2142,8 @@ body {
   transform-origin: center center;
   cursor: grab;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .globepan.panned:active {
   cursor: grabbing;
