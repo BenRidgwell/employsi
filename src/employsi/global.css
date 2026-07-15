@@ -2156,17 +2156,18 @@ body {
 .globescene:not(.sceneshow) * {
   pointer-events: none !important;
 }
-/* Full-bleed on every breakpoint: the box always exactly fills the screen,
-   and the <svg>'s own preserveAspectRatio="xMaxYMid slice" (set in
-   GlobeMap.tsx) crops to cover instead of letterboxing inside it — so the
-   world map reads as one continuous surface behind the floating chrome,
-   the way a real map app does, rather than a framed graphic with visible
-   edges. How much gets cropped is just a function of how far the screen's
-   own aspect ratio departs from the map's; wide desktop windows lose very
-   little, narrow phone screens more (see the viewBox padding comment in
-   GlobeMap.tsx for how that's kept from ever cropping into real content). */
+/* Full-bleed at every screen shape: exactly one of width/height is pinned to
+   fill the screen and the other is auto (derived from the map's own ~1.92:1
+   padded aspect ratio, GLOBE_ASPECT in GlobeMap.tsx) so it overflows instead
+   of ever leaving a gap — which one needs to be pinned flips depending on
+   whether the screen is narrower or wider than the map itself. The overflow
+   is clipped by .app's overflow:hidden and made explorable by ZoomOverlay's
+   pan (dragging the .globepan wrapper, clamped to exactly that overflow), so
+   nothing it hides is ever unreachable, just a drag away.
+   Default: portrait / narrower than the map (phones) — fill height, let
+   width overflow sideways. */
 .globemap {
-  width: 100vw;
+  width: auto;
   height: 100vh;
   overflow: visible;
   transform: scale(1);
@@ -2174,6 +2175,15 @@ body {
   transition:
     transform 0.68s cubic-bezier(0.55, 0, 0.85, 0.35),
     opacity 0.5s ease 0.22s;
+}
+/* Landscape and wider than the map itself (desktop, most tablets): flip
+   which dimension is pinned — fill width, let height overflow vertically —
+   so the map still reaches every edge instead of leaving side margins. */
+@media (min-aspect-ratio: 500/520) {
+  .globemap {
+    width: 100vw;
+    height: auto;
+  }
 }
 .regionmap {
   width: min(78vw, 1040px);

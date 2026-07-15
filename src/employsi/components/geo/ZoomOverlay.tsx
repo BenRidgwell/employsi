@@ -5,7 +5,7 @@ import { AU_SCATTER, GLOBAL_SCATTER } from '../../data/scatter';
 import { computeCityHeat, computeGlobalHeat, computeSkillSpikes, computeAmbientSpikes, computeGlobalSpikes, computeGlobalAmbientSpikes } from '../../lib/heat';
 import { AustraliaMap } from './AustraliaMap';
 import { RegionMap, regionHubOrigin } from './RegionMap';
-import { GlobeMap, globeHubOrigin } from './GlobeMap';
+import { GlobeMap, globeHubOrigin, GLOBE_ASPECT } from './GlobeMap';
 
 // Approximate centre (global-map content coords) of each clickable continent.
 const REGION_CENTERS: [string, number, number][] = [
@@ -108,26 +108,52 @@ export function ZoomOverlay() {
   const showingGlobal = globalOut && zoomedOut;
 
   // Pan + slight zoom of the global map so overlapping city hubs can be teased
-  // apart and selected. Applied to a wrapper around the SVG so the "zoom into
-  // a city" animation (which scales the SVG itself) stays independent.
+  // apart and selected, and — since .globemap always fills the screen on one
+  // axis and overflows on the other (see its CSS) — so the overflow itself
+  // is explorable rather than just permanently cropped off. Applied to a
+  // wrapper around the SVG so the "zoom into a city" animation (which scales
+  // the SVG itself) stays independent.
   const [gv, setGv] = useState({ s: 1, x: 0, y: 0 });
   const dragRef = useRef<{ x: number; y: number; ox: number; oy: number; moved: boolean } | null>(null);
   const suppressClickRef = useRef(false);
   const panRef = useRef<HTMLDivElement | null>(null);
 
-  // Reset the view whenever we leave the global layer or start a zoom-into-city
-  // animation, so that animation always scales from a clean, centred frame.
+  // How far (on each axis, at a given zoom level) .globemap can be panned
+  // before its edge would reach the screen's and reveal a gap — mirrors its
+  // CSS sizing (fill whichever of width/height the screen needs, GLOBE_ASPECT
+  // for the other) so the two never disagree. Measured against the actual
+  // viewport, not panRef's own element — .globepan is a flex container with
+  // no explicit size of its own, so it shrink-wraps to its content (the map)
+  // and reading its clientWidth back would just be circular.
+  const overflow = (s: number) => {
+    const w = typeof window !== 'undefined' ? window.innerWidth : 1000;
+    const h = typeof window !== 'undefined' ? window.innerHeight : 520;
+    const wide = w / h >= GLOBE_ASPECT;
+    const mapW = (wide ? w : h * GLOBE_ASPECT) * s;
+    const mapH = (wide ? w / GLOBE_ASPECT : h) * s;
+    return { mx: Math.max(0, (mapW - w) / 2), my: Math.max(0, (mapH - h) / 2) };
+  };
+
+  // Reset the view on mount and whenever we leave the global layer or start a
+  // zoom-into-city animation, so that animation always scales from a clean
+  // frame (only actually skipped while zoomingIn itself, so the scale(13)
+  // animation isn't disrupted mid-flight). The default isn't centred — it's
+  // panned as far right as the overflow allows, toward Perth/Asia-Pacific
+  // (the map's right edge), since that's this app's actual focus and the
+  // global view is the default screen every session opens on — including on
+  // first load, which is why this can't be conditioned on showingGlobal
+  // (already true from the very first render, so a change-triggered effect
+  // would never fire for it). The rest of the world is a drag away rather
+  // than hidden entirely. (Vertically, centred is already the best default:
+  // the padded viewBox's overflow only ever eats into empty ocean, so 0
+  // already shows all the real content — see GlobeMap.tsx.)
   useEffect(() => {
-    if (!showingGlobal || zoomingIn) setGv({ s: 1, x: 0, y: 0 });
+    if (!zoomingIn) setGv({ s: 1, x: -overflow(1).mx, y: 0 });
   }, [showingGlobal, zoomingIn]);
 
   const MAX_S = 2.6;
   const clampGv = (v: { s: number; x: number; y: number }) => {
-    const el = panRef.current;
-    const w = el ? el.clientWidth : 1000;
-    const h = el ? el.clientHeight : 520;
-    const mx = ((v.s - 1) * w) / 2;
-    const my = ((v.s - 1) * h) / 2;
+    const { mx, my } = overflow(v.s);
     return { s: v.s, x: Math.max(-mx, Math.min(mx, v.x)), y: Math.max(-my, Math.min(my, v.y)) };
   };
 

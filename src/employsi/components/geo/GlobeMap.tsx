@@ -11,18 +11,24 @@ const GEO_SCALE = 'translate(250 130) scale(0.93) translate(-250 -130)';
 // The land data (GLOBAL_LAND_PATHS, hub coordinates) is authored in a plain
 // 500x260 box. The viewBox itself carries extra ocean padding above and
 // below that — 130 units each side, wholly outside where any land, hub, or
-// label ever sits — so that a full-bleed mobile crop (see .globemap's mobile
-// CSS, which forces the box to 100vw x 100vh with preserveAspectRatio=slice)
-// has real seascape to cover the screen with instead of forcing an extreme
-// zoom just to reach full height. 500x260 is landscape (1.92:1) against a
-// phone's tall portrait box; padding the box closer to square lets a much
-// gentler zoom fill the same height, so noticeably more of the world's
-// width stays in frame by default. The same padding is harmless on desktop
-// (a wide box): it only ever gets cropped back out of the pure-ocean margin,
-// never into real content — see the mask/ocean rects below, sized with a
-// safety margin past this box on every side.
+// label ever sits — purely so the map's own aspect ratio (500:260, 1.92:1)
+// isn't quite so extreme against a phone's tall portrait screen: .globemap
+// is sized full-bleed by filling whichever of width/height the screen needs
+// (see its CSS) and letting the other overflow, panned via .globepan rather
+// than cropped (ZoomOverlay.tsx) — a less extreme aspect ratio means less of
+// that overflow is needed to fill the screen, so more of the world stays in
+// the default frame before a user ever has to drag. The padding is harmless
+// at any aspect ratio some screen might have: it only ever gets pushed off
+// the fillable edge, never into real content — see the mask/ocean rects
+// below, sized with a safety margin past this box on every side.
 const VB_Y0 = -130;
 const VB_H = 520;
+
+// .globemap's effective aspect ratio (width:height) — used by both its CSS
+// sizing (global.css) and ZoomOverlay's pan clamp, which need to agree on
+// exactly the same number to know how far the map can be dragged before its
+// edge reaches the screen's.
+export const GLOBE_ASPECT = 500 / VB_H;
 
 // Decorative shipping arcs between hubs (endpoints follow GLOBAL_HUB_XY).
 const TANKER_ROUTES = [
@@ -108,10 +114,6 @@ export function globeHubOrigin(hubId: string): string {
   const [x, y] = GLOBAL_HUB_XY[hubId] || [250, 130];
   const gx = 250 + (x - 250) * 0.93;
   const gy = 130 + (y - 130) * 0.93;
-  // Percentages are of the <svg>'s own box, i.e. relative to the viewBox's
-  // min-x/min-y and width/height — not just gx/gy over the raw 500x260 the
-  // land data is authored in, since the viewBox now carries extra vertical
-  // ocean padding (see VB_Y0/VB_H below) beyond that.
   return `${((gx / 500) * 100).toFixed(1)}% ${(((gy - VB_Y0) / VB_H) * 100).toFixed(1)}%`;
 }
 
@@ -139,19 +141,7 @@ export function GlobeMap({
   const nonPerthHubs = allHubs.filter((id) => id !== 'perth');
   const showPerth = allHubs.includes('perth');
   return (
-    <svg
-      className="globemap"
-      viewBox={`0 ${VB_Y0} 500 ${VB_H}`}
-      // "slice" only crops when the box's own aspect ratio (set via CSS) is
-      // forced away from the viewBox's — true on mobile, where the box fills
-      // the full (portrait) screen; a no-op on desktop, where the box's
-      // height:auto always keeps it equal to the viewBox ratio. xMax biases
-      // the crop toward Perth/Asia-Pacific (the right edge of the viewBox)
-      // instead of the geometric middle of the map, since the global view is
-      // the app's default screen and Perth is the whole point of it.
-      preserveAspectRatio="xMaxYMid slice"
-      style={{ transformOrigin: zoomOrigin }}
-    >
+    <svg className="globemap" viewBox={`0 ${VB_Y0} 500 ${VB_H}`} style={{ transformOrigin: zoomOrigin }}>
       <defs>
         <pattern id="globeOceanWave" width="18" height="11" patternUnits="userSpaceOnUse">
           <rect width="18" height="11" fill="#e2e5e9" />
@@ -183,7 +173,7 @@ export function GlobeMap({
         {/* Both masks' rects extend into the viewBox's padded (VB_Y0..VB_Y0+VB_H)
             range, not just the original 0..260 content band, so the ocean
             keeps rendering (rather than cutting to empty) across the padding
-            a full-bleed mobile crop can reach into. */}
+            a full-bleed crop can reach into. */}
         <mask id="globeOceanMask">
           <rect x="32" y={VB_Y0 + 10} width="450" height={VB_H - 20} rx="10" fill="#fff" filter="url(#globeEdgeFeather)" />
           <rect x="32" y={175} width="450" height={VB_Y0 + VB_H - 3 - 175} rx="10" fill="#fff" filter="url(#globeEdgeFeatherBottom)" />
