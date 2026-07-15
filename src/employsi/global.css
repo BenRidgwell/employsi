@@ -365,9 +365,17 @@ body {
 /* Mapbox trial: on the dark global globe backdrop, flip the labels/wordmark
    that sit directly on the map (no pill background) to light so they stay
    legible. The buttons themselves sit on white pills, so they're unaffected. */
-.app.ondark .logo,
+.app.ondark .logo {
+  color: #fff;
+}
+/* The search header floats over the globe itself, which is light in the middle
+   (land/ocean) and dark at the edges (space) — a single fixed colour can't
+   stay legible as the globe is panned/spun under it. Blend it against whatever
+   is behind: white text through mix-blend-mode:difference renders black over
+   the light globe and white over the dark space, flipping continuously. */
 .app.ondark .gsearchhd {
   color: #fff;
+  mix-blend-mode: difference;
 }
 .app.ondark .seglbl,
 .app.ondark .tag {
