@@ -33,11 +33,24 @@ const GEO_SCALE = 'translate(250 130) scale(0.93) translate(-250 -130)';
 const VB_Y0 = -138;
 const VB_H = 520;
 
+// Horizontal padding works differently from the vertical padding above: on
+// a wide (desktop-shaped) window .globemap fills by width, so widening the
+// viewBox here directly zooms the whole map out (the same 500-wide real
+// content now occupies a smaller fraction of the wider box) — unlike VB_H,
+// which a wide window's zoom level ignores entirely (fixed by the window's
+// own aspect ratio once width is the filled dimension). Conversely VB_W
+// doesn't affect a narrow (mobile-shaped) window's zoom at all, by the same
+// symmetry: there, height is what's filled, so its zoom is fixed by VB_H
+// alone. 60 units each side is a modest amount — mainly breathing room, not
+// a dramatic zoom-out.
+const VB_X0 = -60;
+const VB_W = 620;
+
 // .globemap's effective aspect ratio (width:height) — used by both its CSS
 // sizing (global.css) and ZoomOverlay's pan clamp, which need to agree on
 // exactly the same number to know how far the map can be dragged before its
 // edge reaches the screen's.
-export const GLOBE_ASPECT = 500 / VB_H;
+export const GLOBE_ASPECT = VB_W / VB_H;
 
 // Decorative shipping arcs between hubs (endpoints follow GLOBAL_HUB_XY).
 const TANKER_ROUTES = [
@@ -123,7 +136,7 @@ export function globeHubOrigin(hubId: string): string {
   const [x, y] = GLOBAL_HUB_XY[hubId] || [250, 130];
   const gx = 250 + (x - 250) * 0.93;
   const gy = 130 + (y - 130) * 0.93;
-  return `${((gx / 500) * 100).toFixed(1)}% ${(((gy - VB_Y0) / VB_H) * 100).toFixed(1)}%`;
+  return `${(((gx - VB_X0) / VB_W) * 100).toFixed(1)}% ${(((gy - VB_Y0) / VB_H) * 100).toFixed(1)}%`;
 }
 
 export function GlobeMap({
@@ -150,7 +163,7 @@ export function GlobeMap({
   const nonPerthHubs = allHubs.filter((id) => id !== 'perth');
   const showPerth = allHubs.includes('perth');
   return (
-    <svg className="globemap" viewBox={`0 ${VB_Y0} 500 ${VB_H}`} style={{ transformOrigin: zoomOrigin }}>
+    <svg className="globemap" viewBox={`${VB_X0} ${VB_Y0} ${VB_W} ${VB_H}`} style={{ transformOrigin: zoomOrigin }}>
       <defs>
         <pattern id="globeOceanWave" width="18" height="11" patternUnits="userSpaceOnUse">
           <rect width="18" height="11" fill="#e2e5e9" />
@@ -179,13 +192,15 @@ export function GlobeMap({
         <filter id="globeEdgeFeatherBottom" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation="6 1.2" />
         </filter>
-        {/* Both masks' rects extend into the viewBox's padded (VB_Y0..VB_Y0+VB_H)
-            range, not just the original 0..260 content band, so the ocean
-            keeps rendering (rather than cutting to empty) across the padding
-            a full-bleed crop can reach into. */}
+        {/* Ocean fills to every edge with no vignette — unlike the land mask
+            below, whose feathering serves a real cartographic purpose
+            (softening dateline cuts), this one exists purely to keep the
+            ocean rendering across the viewBox's padding rather than cutting
+            to empty. Extends far beyond any pannable range on every side
+            (see ZoomOverlay.tsx's clamp) so the feather filter's blur radius
+            never actually falls inside the visible viewport, on any edge. */}
         <mask id="globeOceanMask">
-          <rect x="32" y={VB_Y0 + 10} width="450" height={VB_H - 20} rx="10" fill="#fff" filter="url(#globeEdgeFeather)" />
-          <rect x="32" y={175} width="450" height={VB_Y0 + VB_H - 3 - 175} rx="10" fill="#fff" filter="url(#globeEdgeFeatherBottom)" />
+          <rect x={VB_X0 - 100} y={VB_Y0 - 100} width={VB_W + 200} height={VB_H + 200} fill="#fff" filter="url(#globeEdgeFeatherBottom)" />
         </mask>
         {/* Land is feathered in tighter on the left/right than the ocean so the
             dateline-cut boundary segments (Alaska's west edge, eastern Russia,
@@ -206,8 +221,8 @@ export function GlobeMap({
         </filter>
       </defs>
       <g mask="url(#globeOceanMask)">
-        <rect x="-80" y={VB_Y0 - 20} width="660" height={VB_H + 40} fill="url(#globeOceanWave)" />
-        <rect className="auoceanswell" x="-80" y={VB_Y0 - 20} width="660" height={VB_H + 40} fill="url(#globeOceanSwell)" />
+        <rect x={VB_X0 - 140} y={VB_Y0 - 120} width={VB_W + 280} height={VB_H + 240} fill="url(#globeOceanWave)" />
+        <rect className="auoceanswell" x={VB_X0 - 140} y={VB_Y0 - 120} width={VB_W + 280} height={VB_H + 240} fill="url(#globeOceanSwell)" />
       </g>
       <g mask="url(#globeLandMask)">
         <g transform={GEO_SCALE}>
