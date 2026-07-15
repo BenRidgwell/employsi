@@ -40,7 +40,10 @@ const NEUTRAL_DOT = 'rgb(42,42,46)';
 // flyTo never lands right on a boundary.
 const CROSS_GLOBAL_TO_DOMESTIC = 2.9; // zoom in past this on the globe -> region
 const CROSS_DOMESTIC_TO_GLOBAL = 1.9; // zoom out past this in a region -> globe
-const CROSS_DOMESTIC_TO_LOCAL = 5.4; // zoom in past this in a region -> city
+// Zoom in past this in a region -> drill into the nearest city's local view.
+// Kept fairly close-in (city noticeably fills the frame) so the hand-off
+// doesn't trigger while still surveying the whole region.
+const CROSS_DOMESTIC_TO_LOCAL = 7.2;
 
 interface Marker {
   id: string;
@@ -299,7 +302,10 @@ export function WorldMapbox() {
       // underneath; don't touch the overview markers.
       if (s.zoomingIn) {
         const coords = HUB_LNGLAT[s.localCity] || AU_CITY_LNGLAT[s.localCity];
-        if (coords) flyGuarded({ center: coords, zoom: 7.5, duration: 620 });
+        // Fly further in than the scroll-crossing threshold so a scroll-driven
+        // drill-in still reads as continued forward motion toward the city
+        // before PerthMapbox's local view takes over.
+        if (coords) flyGuarded({ center: coords, zoom: 9.5, duration: 620 });
         return;
       }
       // Fully in the local view: overview is hidden, nothing to do.
