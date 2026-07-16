@@ -15,11 +15,19 @@ export interface ShareSeries {
 
 const EMPTY: ShareSeries = { series: [], low: 0, high: 0, last: 0, currency: '' };
 
-// Most names here are ASX-listed (suffix .AX); the two foreign majors trade on
-// their home exchange under their bare symbol.
-function yahooSymbol(ticker: string): string {
-  if (ticker === 'CVX' || ticker === 'SHEL') return ticker;
-  return `${ticker}.AX`;
+// Map a ticker + exchange to the Yahoo Finance symbol (per-exchange suffix).
+// US exchanges use the bare symbol; other markets need Yahoo's suffix, and HK
+// codes are zero-padded to 4 digits.
+const YAHOO_SUFFIX: Record<string, string> = {
+  ASX: '.AX', LSE: '.L', JPX: '.T', SGX: '.SI', SIX: '.SW', JSE: '.JO',
+  EPA: '.PA', KRX: '.KS', TSX: '.TO', DFM: '.AE', SSE: '.SS', SZSE: '.SZ',
+};
+function yahooSymbol(ticker: string, exchange?: string): string {
+  const ex = exchange || 'ASX';
+  if (ex === 'NYSE' || ex === 'NASDAQ') return ticker;
+  if (ex === 'HKEX') return `${ticker.replace(/\D/g, '').padStart(4, '0')}.HK`;
+  const suf = YAHOO_SUFFIX[ex];
+  return suf ? `${ticker}${suf}` : ticker;
 }
 
 // Cache per ticker for an hour — a quarterly chart doesn't need sub-hourly
@@ -28,14 +36,15 @@ const cache = new Map<string, { at: number; data: ShareSeries }>();
 const TTL = 60 * 60 * 1000;
 
 export const getShareSeries = createServerFn({ method: 'GET' })
-  .validator((data: { ticker: string }) => data)
+  .validator((data: { ticker: string; exchange?: string }) => data)
   .handler(async ({ data }): Promise<ShareSeries> => {
     const ticker = (data.ticker || '').trim().toUpperCase();
     if (!ticker) return EMPTY;
-    const hit = cache.get(ticker);
+    const key = `${ticker}::${data.exchange || ''}`;
+    const hit = cache.get(key);
     if (hit && Date.now() - hit.at < TTL) return hit.data;
     try {
-      const sym = yahooSymbol(ticker);
+      const sym = yahooSymbol(ticker, data.exchange);
       const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=2y&interval=3mo`;
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 6000);
@@ -60,15 +69,15 @@ export const getShareSeries = createServerFn({ method: 'GET' })
         .slice(-8)
         .map((v) => +v.toFixed(v >= 10 ? 2 : 3));
       if (series.length < 2) return EMPTY;
-      const data: ShareSeries = {
+      const result: ShareSeries = {
         series,
         low: +(meta.fiftyTwoWeekLow ?? Math.min(...series)).toFixed(3),
         high: +(meta.fiftyTwoWeekHigh ?? Math.max(...series)).toFixed(3),
         last: +(meta.regularMarketPrice ?? series[series.length - 1]).toFixed(3),
         currency: meta.currency ?? '',
       };
-      cache.set(ticker, { at: Date.now(), data });
-      return data;
+      cache.set(key, { at: Date.now(), data: result });
+      return result;
     } catch {
       return EMPTY;
     }

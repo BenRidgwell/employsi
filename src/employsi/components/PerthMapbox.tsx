@@ -1,7 +1,7 @@
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useMemo, useRef } from 'react';
-import { useAppStore, companyMatches, matchesSector, type FilterState } from '../state/store';
+import { useAppStore, companyMatches, matchesSector, matchesExchange, type FilterState } from '../state/store';
 import { COMPANIES, type Company } from '../data/companies';
 import { CITY_COMPANIES, CITY_VIEWS, PERTH_CENTER, PERTH_DEFAULT_ZOOM, PERTH_DEFAULT_PITCH, PERTH_DEFAULT_BEARING } from '../data/mapboxGeo';
 import { chipMetric, type HeatMetric } from '../lib/heat';
@@ -98,7 +98,9 @@ function metricKeyFor(heat: HeatMetric) {
 // Companies outside the selected sector(s) are dropped entirely (hidden), so a
 // Financial Services filter clears the resource companies from the city map.
 function buildGeoJSON(placements: Placed[], heat: HeatMetric, selectedId: string | null, filterState: FilterState): GeoJSON.FeatureCollection {
-  const shown = placements.filter((p) => matchesSector(p.company, filterState.activeSectors));
+  const shown = placements.filter(
+    (p) => matchesSector(p.company, filterState.activeSectors) && matchesExchange(p.company, filterState.activeExchanges),
+  );
   const key = metricKeyFor(heat);
   const vals = shown.map((p) => p.company[key] as number);
   const mn = vals.length ? Math.min(...vals) : 0;
@@ -149,14 +151,15 @@ export function PerthMapbox() {
   const heat = useAppStore((s) => s.heat);
   const searchQuery = useAppStore((s) => s.searchQuery);
   const activeSectors = useAppStore((s) => s.activeSectors);
+  const activeExchanges = useAppStore((s) => s.activeExchanges);
   const minSalary = useAppStore((s) => s.minSalary);
   const minHeadcount = useAppStore((s) => s.minHeadcount);
   const minGrowth = useAppStore((s) => s.minGrowth);
   const maxAttrition = useAppStore((s) => s.maxAttrition);
 
   const filterState: FilterState = useMemo(
-    () => ({ searchQuery, activeSectors, minSalary, minHeadcount, minGrowth, maxAttrition }),
-    [searchQuery, activeSectors, minSalary, minHeadcount, minGrowth, maxAttrition],
+    () => ({ searchQuery, activeSectors, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition }),
+    [searchQuery, activeSectors, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition],
   );
 
   useEffect(() => {
@@ -355,6 +358,7 @@ export function PerthMapbox() {
         const fs: FilterState = {
           searchQuery: s.searchQuery,
           activeSectors: s.activeSectors,
+          activeExchanges: s.activeExchanges,
           minSalary: s.minSalary,
           minHeadcount: s.minHeadcount,
           minGrowth: s.minGrowth,

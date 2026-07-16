@@ -29,6 +29,7 @@ export interface Diversity {
 
 export interface PanelData {
   ticker: string;
+  exchange?: string;
   name: string;
   domain: string;
   sector: string;
@@ -112,6 +113,7 @@ export function buildPanel(id: string | null, roleTitle?: string | null, live?: 
   const mx = Math.max(...roleList.map((r) => r.count));
   return {
     ticker: c.ticker,
+    exchange: c.exchange,
     name: c.name,
     domain: c.domain,
     sector: c.sector,

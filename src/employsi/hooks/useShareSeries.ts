@@ -6,10 +6,10 @@ import type { ShareSeries } from '../lib/shareSeriesFn';
 // the Worker. Returns undefined until it resolves or if the ticker doesn't
 // resolve on the market data source, so callers fall back to the illustrative
 // series.
-export function useShareSeries(ticker: string | null, enabled: boolean): ShareSeries | undefined {
+export function useShareSeries(ticker: string | null, exchange: string | undefined, enabled: boolean): ShareSeries | undefined {
   const { data } = useQuery({
-    queryKey: ['shareSeries', ticker],
-    queryFn: () => getShareSeries({ data: { ticker: ticker as string } }),
+    queryKey: ['shareSeries', ticker, exchange],
+    queryFn: () => getShareSeries({ data: { ticker: ticker as string, exchange } }),
     enabled: enabled && !!ticker,
     staleTime: 60 * 60 * 1000,
     gcTime: 2 * 60 * 60 * 1000,

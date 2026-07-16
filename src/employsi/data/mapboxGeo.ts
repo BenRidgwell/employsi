@@ -3,6 +3,9 @@
 // camera is framed to fit the whole spread — most sit along St Georges
 // Terrace, but Fortescue (East Perth) and Sandfire (West Perth) are ~1.5km
 // either side of the CBD cluster.
+import { CITY_ROSTERS } from './cityRosters';
+import { spreadCoords, rosterId } from './rosters';
+
 export const PERTH_CENTER: [number, number] = [115.8552, -31.9542];
 // Bumped from 15.3 so 3D extruded buildings are clearly visible on arrival,
 // not just at street level once you zoom in further yourself.
@@ -29,16 +32,18 @@ export const CITY_VIEWS: Record<string, CityView> = {
   toronto: { center: [-79.3832, 43.6532], zoom: 16.4, pitch: 60, bearing: -18 },
   houston: { center: [-95.3698, 29.7604], zoom: 16.3, pitch: 60, bearing: -14 },
   denver: { center: [-104.9903, 39.7392], zoom: 16.3, pitch: 60, bearing: -16 },
+  seattle: { center: [-122.3321, 47.6062], zoom: 16.3, pitch: 60, bearing: -16 },
   johannesburg: { center: [28.0473, -26.2041], zoom: 16.3, pitch: 60, bearing: -15 },
-  lubumbashi: { center: [27.4794, -11.66], zoom: 16.2, pitch: 60, bearing: -12 },
   london: { center: [-0.1276, 51.5072], zoom: 16.4, pitch: 60, bearing: -20 },
+  paris: { center: [2.3522, 48.8566], zoom: 16.3, pitch: 60, bearing: -18 },
   santiago: { center: [-70.6693, -33.4489], zoom: 16.3, pitch: 60, bearing: -16 },
   newyork: { center: [-74.006, 40.7128], zoom: 16.4, pitch: 60, bearing: -20 },
   sanfrancisco: { center: [-122.4194, 37.7749], zoom: 16.4, pitch: 60, bearing: -18 },
   chicago: { center: [-87.6298, 41.8781], zoom: 16.4, pitch: 60, bearing: -18 },
   tokyo: { center: [139.6917, 35.6895], zoom: 16.4, pitch: 60, bearing: -14 },
+  seoul: { center: [126.978, 37.5665], zoom: 16.4, pitch: 60, bearing: -16 },
+  beijing: { center: [116.4074, 39.9042], zoom: 16.2, pitch: 60, bearing: -14 },
   zurich: { center: [8.5417, 47.3769], zoom: 16.3, pitch: 60, bearing: -16 },
-  geneva: { center: [6.1432, 46.2044], zoom: 16.3, pitch: 60, bearing: -16 },
   dubai: { center: [55.2708, 25.2048], zoom: 16.3, pitch: 60, bearing: -12 },
   hongkong: { center: [114.1694, 22.3193], zoom: 16.4, pitch: 60, bearing: -16 },
 };
@@ -115,8 +120,6 @@ export const CITY_COMPANIES: Record<string, CityCompany[]> = {
     { id: 'bhp', coords: [144.96700, -37.81560] }, // BHP global HQ — 171 Collins St
     { id: 'rio', coords: [144.96180, -37.81680] }, // Rio Tinto — 360 Collins St
     { id: 's32', coords: [144.97250, -37.81450] }, // South32 — Collins St (corporate office)
-    { id: 'wds', coords: [144.94900, -37.81800] }, // Woodside — Docklands (corporate office)
-    { id: 'ilu', coords: [144.96900, -37.81150] }, // Iluka — Exhibition St (corporate office)
   ],
   adelaide: [
     { id: 'bhp', coords: [138.60190, -34.92450] }, // 55 Grenfell St
@@ -136,6 +139,20 @@ export const CITY_COMPANIES: Record<string, CityCompany[]> = {
     { id: 'jellinbah', coords: [153.02380, -27.46620] }, // Jellinbah Group
   ],
 };
+
+// Merge in the compact global rosters: each roster company gets a generated
+// head-office coordinate fanned out around its city centre (spreadCoords),
+// offset past any hand-placed companies already in that city.
+for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
+  const view = CITY_VIEWS[city];
+  if (!view) continue;
+  const existing = (CITY_COMPANIES[city] ||= []);
+  const offset = existing.length;
+  const pts = spreadCoords(view.center, offset + roster.companies.length);
+  roster.companies.forEach((entry, i) => {
+    existing.push({ id: rosterId(city, entry[0]), coords: pts[offset + i] });
+  });
+}
 
 // Flat lookup of every company's coords across all cities. Where a company sits
 // in multiple cities the last-listed city wins; only used as a fallback (the

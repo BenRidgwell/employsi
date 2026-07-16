@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { COMPANIES, companyGroup, type Company } from '../data/companies';
+import { COMPANIES, companyGroup, companyExchange, type Company } from '../data/companies';
 import { CITY_CONTINENT } from '../data/geo';
 import type { HeatMetric } from '../lib/heat';
 
@@ -27,6 +27,7 @@ export interface AppState {
   heatOpen: boolean;
   searchQuery: string;
   activeSectors: string[];
+  activeExchanges: string[];
   minSalary: number;
   minHeadcount: number;
   minGrowth: number;
@@ -66,6 +67,7 @@ export interface AppState {
   setSearchQuery: (q: string) => void;
   clearSearch: () => void;
   toggleSector: (cat: string) => void;
+  toggleExchange: (ex: string) => void;
   setMinSalary: (v: number) => void;
   setMinHeadcount: (v: number) => void;
   setMinGrowth: (v: number) => void;
@@ -167,6 +169,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   heatOpen: false,
   searchQuery: '',
   activeSectors: [],
+  activeExchanges: [],
   minSalary: 130,
   minHeadcount: 0,
   minGrowth: 0,
@@ -248,11 +251,16 @@ export const useAppStore = create<AppState>((set, get) => ({
       const has = s.activeSectors.includes(cat);
       return { activeSectors: has ? s.activeSectors.filter((x) => x !== cat) : [...s.activeSectors, cat] };
     }),
+  toggleExchange: (ex) =>
+    set((s) => {
+      const has = s.activeExchanges.includes(ex);
+      return { activeExchanges: has ? s.activeExchanges.filter((x) => x !== ex) : [...s.activeExchanges, ex] };
+    }),
   setMinSalary: (v) => set({ minSalary: v }),
   setMinHeadcount: (v) => set({ minHeadcount: v }),
   setMinGrowth: (v) => set({ minGrowth: v }),
   setMaxAttrition: (v) => set({ maxAttrition: v }),
-  clearFilters: () => set({ activeSectors: [], minSalary: 130, minHeadcount: 0, minGrowth: 0, maxAttrition: 16 }),
+  clearFilters: () => set({ activeSectors: [], activeExchanges: [], minSalary: 130, minHeadcount: 0, minGrowth: 0, maxAttrition: 16 }),
   toggleSkillQuery: (skill) =>
     set((s) => {
       const on = s.searchQuery.trim().toLowerCase() === skill.toLowerCase();
@@ -365,6 +373,7 @@ useAppStore.subscribe((s, prev) => {
 export interface FilterState {
   searchQuery: string;
   activeSectors: string[];
+  activeExchanges: string[];
   minSalary: number;
   minHeadcount: number;
   minGrowth: number;
@@ -377,6 +386,12 @@ export interface FilterState {
 // them are) hides every company — exactly the intended behaviour.
 export function matchesSector(c: Company, activeSectors: string[]): boolean {
   return !activeSectors.length || activeSectors.includes(companyGroup(c));
+}
+
+// Exchange filter — HIDES a company that isn't on any selected exchange, just
+// like the sector filter. Both are applied to the local company layer.
+export function matchesExchange(c: Company, activeExchanges: string[]): boolean {
+  return !activeExchanges.length || activeExchanges.includes(companyExchange(c));
 }
 
 // The remaining filters (search text + numeric sliders) that DIM a company that
@@ -402,5 +417,5 @@ export function isSearchActive(s: Pick<FilterState, 'searchQuery'>): boolean {
 }
 
 export function isFilterActive(s: FilterState): boolean {
-  return s.activeSectors.length > 0 || s.minSalary > 130 || s.minHeadcount > 0 || s.minGrowth > 0 || s.maxAttrition < 16;
+  return s.activeSectors.length > 0 || s.activeExchanges.length > 0 || s.minSalary > 130 || s.minHeadcount > 0 || s.minGrowth > 0 || s.maxAttrition < 16;
 }

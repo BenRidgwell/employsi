@@ -181,7 +181,7 @@ export function CompanyPanel() {
   // Live market data (real quarterly closes + 52-week range) fetched on the
   // Worker from Yahoo Finance for whatever ticker resolves. When it's present
   // the share chart plots the real series and the card counts as live.
-  const liveShare = useShareSeries(panel?.ticker ?? null, open && !isBhp);
+  const liveShare = useShareSeries(panel?.ticker ?? null, panel?.exchange, open && !isBhp);
   const live = isBhp ? !!feed : REAL_DATA_IDS.includes(lastId ?? '') || !!liveShare;
 
   const prices = useMemo(

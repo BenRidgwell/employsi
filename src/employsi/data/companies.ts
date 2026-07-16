@@ -12,6 +12,9 @@ export interface Company {
   /** Top-level sector group used by the sector filter. Defaults to Energy &
    *  Natural Resources when omitted (every current company is a resources name). */
   group?: string;
+  /** Stock exchange the company lists on (ASX, NYSE, NASDAQ, LSE, JPX, SSE,
+   *  HKEX, …). Used by the exchange filter. Defaults to ASX. */
+  exchange?: string;
   headcount: number;
   growth: number;
   openRoles: number;
@@ -113,6 +116,14 @@ export const SECTOR_GROUPS: string[] = [
 export function companyGroup(c: Company): string {
   return c.group ?? RESOURCES_SECTOR;
 }
+
+// Stock exchanges offered by the exchange filter, in display order.
+export const EXCHANGES: string[] = ['ASX', 'NYSE', 'NASDAQ', 'SSE', 'JPX', 'LSE', 'HKEX'];
+
+// A company's listing exchange (its own `exchange`, or ASX by default).
+export function companyExchange(c: Company): string {
+  return c.exchange ?? 'ASX';
+}
 export function categorize(_sector: string): string {
   return RESOURCES_SECTOR;
 }
@@ -141,3 +152,15 @@ export const TICKER_BASE: TickerItem[] = [
   { name: 'Rail Systems', tag: 'Demand', v: -4.6 },
   { name: 'Diesel Mechanics', tag: 'Demand', v: -7.9 },
 ];
+
+// Global company rosters: compact per-city listings expanded into full records
+// (see rosters.ts / cityRosters.ts). Appended to COMPANIES so every downstream
+// consumer (search, filters, cards, live data) treats them like any other
+// company. Their coordinates are added in mapboxGeo.ts.
+import { CITY_ROSTERS } from './cityRosters';
+import { buildRosterCompany } from './rosters';
+
+export const ROSTER_COMPANIES: Company[] = Object.entries(CITY_ROSTERS).flatMap(([city, r]) =>
+  r.companies.map((e) => buildRosterCompany(city, r.exchange, e)),
+);
+COMPANIES.push(...ROSTER_COMPANIES);

@@ -2,10 +2,21 @@ import { useMemo, type CSSProperties } from 'react';
 import { BrandMark } from './BrandMark';
 import { AccountButton } from './AccountButton';
 import { useAppStore, isFilterActive, isSearchActive, type FilterState } from '../state/store';
-import { COMPANIES, SECTOR_GROUPS } from '../data/companies';
+import { COMPANIES, SECTOR_GROUPS, EXCHANGES } from '../data/companies';
 import { CITY_COMPANIES } from '../data/mapboxGeo';
 
 const SECTORS = SECTOR_GROUPS;
+// Short chip labels so the sector selection reads as a compact mosaic rather
+// than a stack of full-width rows.
+const SECTOR_SHORT: Record<string, string> = {
+  'Energy & Natural Resources': 'Natural Resources',
+  'Financial Services': 'Financial',
+  'Technology, Media and Telecommunications': 'Tech & Media',
+  'Consumer and Retail': 'Consumer & Retail',
+  'Industrial Manufacturing': 'Industrial',
+  'Healthcare and Life Sciences': 'Healthcare',
+  'Infrastructure and Government': 'Infra & Gov',
+};
 
 function topSkills(): string[] {
   const counts: Record<string, number> = {};
@@ -68,6 +79,8 @@ export function TopBar() {
   const clearSearch = useAppStore((s) => s.clearSearch);
   const activeSectors = useAppStore((s) => s.activeSectors);
   const toggleSector = useAppStore((s) => s.toggleSector);
+  const activeExchanges = useAppStore((s) => s.activeExchanges);
+  const toggleExchange = useAppStore((s) => s.toggleExchange);
   const toggleSkillQuery = useAppStore((s) => s.toggleSkillQuery);
   const minSalary = useAppStore((s) => s.minSalary);
   const minHeadcount = useAppStore((s) => s.minHeadcount);
@@ -88,7 +101,7 @@ export function TopBar() {
   const showGlobalSearch = zoomedOut;
   void globalOut;
 
-  const filterState: FilterState = { searchQuery, activeSectors, minSalary, minHeadcount, minGrowth, maxAttrition };
+  const filterState: FilterState = { searchQuery, activeSectors, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition };
   const filterActive = isFilterActive(filterState);
   const searchActive = isSearchActive(filterState);
   const skills = useMemo(() => topSkills(), []);
@@ -182,10 +195,18 @@ export function TopBar() {
           {filterOpen && <div className="sfscrim" onClick={toggleFilter} />}
           <div className={`searchflyout ${filterOpen ? 'open' : ''}`}>
             <div className="sflabel">Sector</div>
-            <div className="sfchips">
+            <div className="sfchips sfmosaic">
               {SECTORS.map((cat) => (
-                <button key={cat} className={`sfchip ${activeSectors.includes(cat) ? 'on' : ''}`} onClick={() => toggleSector(cat)}>
-                  {cat}
+                <button key={cat} className={`sfchip sfchipsm ${activeSectors.includes(cat) ? 'on' : ''}`} onClick={() => toggleSector(cat)}>
+                  {SECTOR_SHORT[cat] || cat}
+                </button>
+              ))}
+            </div>
+            <div className="sflabel">Stock exchange</div>
+            <div className="sfchips sfmosaic">
+              {EXCHANGES.map((ex) => (
+                <button key={ex} className={`sfchip sfchipsm ${activeExchanges.includes(ex) ? 'on' : ''}`} onClick={() => toggleExchange(ex)}>
+                  {ex}
                 </button>
               ))}
             </div>

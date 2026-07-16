@@ -1,3 +1,5 @@
+import { CITY_ROSTER_GROUPS } from './cityRosters';
+
 export interface CityStat {
   salary: number;
   growth: number;
@@ -38,7 +40,10 @@ export const GLOBAL_HUB_XY: Record<string, [number, number]> = {
   singapore: [414, 161.7],
   denver: [49, 88.8],
   ganzhou: [433.4, 117.4],
-  lubumbashi: [280.6, 184.7],
+  seattle: [40, 70],
+  paris: [235, 66],
+  seoul: [452, 104],
+  beijing: [440, 100],
   brisbane: [499, 214.1],
   adelaide: [474.8, 229.3],
   melbourne: [486, 238],
@@ -57,8 +62,9 @@ export const GLOBAL_HUB_XY: Record<string, [number, number]> = {
 
 export const GLOBAL_HUB_LABEL: Record<string, string> = {
   perth: 'Perth', santiago: 'Santiago', toronto: 'Toronto', johannesburg: 'Johannesburg', london: 'London', houston: 'Houston', singapore: 'Singapore',
-  denver: 'Denver', ganzhou: 'Ganzhou', lubumbashi: 'Lubumbashi', brisbane: 'Brisbane', adelaide: 'Adelaide', melbourne: 'Melbourne', sydney: 'Sydney',
-  newyork: 'New York', sanfrancisco: 'San Francisco', chicago: 'Chicago', tokyo: 'Tokyo', zurich: 'Zurich', geneva: 'Geneva', dubai: 'Dubai', hongkong: 'Hong Kong',
+  denver: 'Denver', ganzhou: 'Ganzhou', brisbane: 'Brisbane', adelaide: 'Adelaide', melbourne: 'Melbourne', sydney: 'Sydney',
+  newyork: 'New York', sanfrancisco: 'San Francisco', chicago: 'Chicago', tokyo: 'Tokyo', zurich: 'Zurich', dubai: 'Dubai', hongkong: 'Hong Kong',
+  seattle: 'Seattle', paris: 'Paris', seoul: 'Seoul', beijing: 'Beijing',
 };
 
 // Sector tags per city hub. Every hub is a resources hub (Energy & Natural
@@ -97,11 +103,13 @@ export const CITY_SECTORS: Record<string, string[]> = {
 };
 
 // A city hub is visible under the active sector filter if it carries any of the
-// selected sectors (defaulting to the resources tags when untagged).
+// selected sectors — from its static tags AND the sector groups of the
+// companies rostered there — defaulting to the resources tags when untagged.
 export function cityMatchesSectors(city: string, activeSectors: string[]): boolean {
   if (!activeSectors.length) return true;
-  const tags = CITY_SECTORS[city] || RESOURCES;
-  return activeSectors.some((sec) => tags.includes(sec));
+  const tags = [...(CITY_SECTORS[city] || []), ...(CITY_ROSTER_GROUPS[city] || [])];
+  const eff = tags.length ? tags : RESOURCES;
+  return activeSectors.some((sec) => eff.includes(sec));
 }
 
 // Which domestic/regional view each local city belongs to, so scrolling out of
@@ -124,11 +132,13 @@ export const CITY_CONTINENT: Record<string, string> = {
   newyork: 'northamerica',
   sanfrancisco: 'northamerica',
   chicago: 'northamerica',
+  seattle: 'northamerica',
   johannesburg: 'africa',
-  lubumbashi: 'africa',
   london: 'europe',
   zurich: 'europe',
-  geneva: 'europe',
+  paris: 'europe',
+  seoul: 'asia',
+  beijing: 'asia',
   santiago: 'southamerica',
 };
 
@@ -142,7 +152,10 @@ export const GLOBAL_STATS: Record<string, CityStat> = {
   singapore: { salary: 110, growth: 3.8, turnover: 9.6 },
   denver: { salary: 120, growth: 3.4, turnover: 9.8 },
   ganzhou: { salary: 68, growth: 5.0, turnover: 13.8 },
-  lubumbashi: { salary: 54, growth: 6.2, turnover: 16.5 },
+  seattle: { salary: 168, growth: 4.4, turnover: 11.5 },
+  paris: { salary: 122, growth: 2.4, turnover: 8.6 },
+  seoul: { salary: 118, growth: 3.0, turnover: 9.2 },
+  beijing: { salary: 92, growth: 5.2, turnover: 12.5 },
   brisbane: { salary: 124, growth: 4.5, turnover: 10.8 },
   adelaide: { salary: 118, growth: 3.1, turnover: 10.2 },
   melbourne: { salary: 132, growth: 3.0, turnover: 8.9 },
@@ -152,7 +165,6 @@ export const GLOBAL_STATS: Record<string, CityStat> = {
   chicago: { salary: 140, growth: 2.6, turnover: 10.0 },
   tokyo: { salary: 120, growth: 2.0, turnover: 7.5 },
   zurich: { salary: 175, growth: 2.2, turnover: 8.0 },
-  geneva: { salary: 170, growth: 2.0, turnover: 8.2 },
   dubai: { salary: 145, growth: 5.5, turnover: 13.0 },
   hongkong: { salary: 150, growth: 2.8, turnover: 10.5 },
 };
