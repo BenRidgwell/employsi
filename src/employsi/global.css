@@ -4960,4 +4960,30 @@ body {
     flex-wrap: wrap;
     gap: 10px 18px;
   }
+
+  /* --- Mobile declutter --- The desktop layout scatters a dozen floating
+     controls around the edges; on a phone that reads as clutter and several
+     items are cropped. Pare the map chrome back to what's actually tappable:
+     drop the decorative live-trends ticker (its items are cut off at this
+     width anyway) and collapse every Feedback / Help / Settings pill down to
+     the same icon circle the other docks already use, so the whole
+     bottom-right column is a tidy stack of equal buttons rather than one wide
+     pill jutting across the map. */
+  .ticker {
+    display: none;
+  }
+  .helpbtn .helplbl {
+    display: none;
+  }
+  .helpbtn,
+  .helpbtn.wide {
+    width: 38px;
+    padding: 0;
+    justify-content: center;
+  }
+  .helpdock {
+    gap: 10px;
+    right: 12px;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  }
 }
