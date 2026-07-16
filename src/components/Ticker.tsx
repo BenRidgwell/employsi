@@ -39,7 +39,7 @@ function Cell({ item }: { item: Item }) {
       <span className="text-ink-4">{item.value}</span>
       <span
         className={`inline-flex items-center gap-0.5 ${
-          up ? "text-ink" : "text-ink-2"
+          up ? "text-emerald-500" : "text-red-500"
         }`}
       >
         {up ? <ArrowUp size={11} strokeWidth={2.5} /> : <ArrowDown size={11} strokeWidth={2.5} />}
@@ -58,7 +58,7 @@ export function Ticker() {
         <div className="hidden shrink-0 items-center gap-2 border-r border-hairline px-4 py-2.5 sm:flex">
           <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-ink" />
           <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
-            Live signal
+            Live trends
           </span>
         </div>
         <div className="relative flex-1 overflow-hidden">
