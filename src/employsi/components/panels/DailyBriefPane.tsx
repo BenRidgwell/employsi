@@ -54,7 +54,9 @@ export function DailyBriefPane() {
   const { query, label } = useMemo(() => buildQuery(activeSectors), [activeSectors]);
   // Only fetch while the brief is actually open.
   const items = useLiveNews(open ? query : null, 12);
-  const meta = useArticleImages(items.map((a) => a.url));
+  // Live GDELT items already carry a real article image; only scrape the ones
+  // that don't (Google-News fallback links).
+  const meta = useArticleImages(items.filter((a) => !a.image).map((a) => a.url));
 
   return (
     <>
@@ -80,7 +82,7 @@ export function DailyBriefPane() {
             <div className="briefloading">Loading live headlines…</div>
           ) : (
             items.map((a, i) => {
-              const img = meta[a.url]?.image || thumbUrl(a.url || String(i));
+              const img = a.image || meta[a.url]?.image || thumbUrl(a.url || String(i));
               return (
                 <a className="briefcard briefcardlink" key={a.url + i} href={a.url} target="_blank" rel="noreferrer">
                   <div className="briefthumb briefthumbimg">

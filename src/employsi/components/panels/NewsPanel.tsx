@@ -82,11 +82,12 @@ export function NewsPanel({ name, sector, ticker, live }: { name: string; sector
 
   const news = live ?? (curated ? generated : liveFeed ?? generated);
 
-  // Resolve real og:image/date/publisher for any item with a genuine article
-  // link (curated articles, and — best effort — live links).
-  const meta = useArticleImages([news.hero.url, ...news.items.map((a) => a.url)]);
+  // Only scrape og:image for items that don't already carry a real image (live
+  // GDELT items bring their own socialimage; curated items need scraping).
+  const scrapeUrls = [news.hero, ...news.items].filter((a) => a.url && !a.image).map((a) => a.url);
+  const meta = useArticleImages(scrapeUrls);
   const heroMeta = news.hero.url ? meta[news.hero.url] : undefined;
-  const heroImg = heroMeta?.image || news.hero.image || thumbUrl(name + '-hero', 640, 360);
+  const heroImg = news.hero.image || heroMeta?.image || thumbUrl(name + '-hero', 640, 360);
 
   // Cap the feed to recent coverage once a real publish date is known.
   const RECENT_MS = 300 * 24 * 3600 * 1000;
@@ -121,7 +122,7 @@ export function NewsPanel({ name, sector, ticker, live }: { name: string; sector
                 <div className="newsrowtitle">{a.title}</div>
                 <Meta item={a} meta={m} />
               </div>
-              <img className="newsrowthumb" src={m?.image || a.image || thumbUrl(name + '-' + i, 160, 160)} alt="" loading="lazy" />
+              <img className="newsrowthumb" src={a.image || m?.image || thumbUrl(name + '-' + i, 160, 160)} alt="" loading="lazy" />
             </a>
           );
         })}

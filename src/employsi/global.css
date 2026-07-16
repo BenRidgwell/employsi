@@ -1039,6 +1039,9 @@ body {
   inset: 0;
   background: transparent;
   z-index: 1;
+  /* The tools dock sets pointer-events:none on itself; the scrim must opt back
+     in or it can't catch the outside click that collapses an open cluster. */
+  pointer-events: auto;
 }
 .helpdock .helpbtn,
 .helpdock .helppanel,

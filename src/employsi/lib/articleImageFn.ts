@@ -34,7 +34,10 @@ function absolutise(src: string, base: string): string | null {
 // fallback. Both are the images publishers curate for link previews, so they're
 // the genuine "thumbnail sourced from the article".
 function extractImage(html: string, base: string): string | null {
-  const head = html.slice(0, 200_000); // meta tags live in <head>; cap the scan
+  // Most sites put og:image in the <head>, but some (notably Google News, which
+  // is where our live-feed links point) emit it near the very END of a large
+  // document. So scan the head first and, if nothing's found, the tail too.
+  const head = html.length > 260_000 ? html.slice(0, 200_000) + '\n' + html.slice(-260_000) : html;
   const patterns = [
     /<meta[^>]+property=["']og:image:secure_url["'][^>]+content=["']([^"']+)["']/i,
     /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image:secure_url["']/i,

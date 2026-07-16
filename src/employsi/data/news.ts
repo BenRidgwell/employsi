@@ -321,7 +321,7 @@ export const CURATED_NEWS_COMPANIES = new Set([
 // the next few are the list. Publisher + publish date ride along with each item
 // so the card shows them directly (no scraping needed).
 export function liveToCompanyNews(
-  items: { title: string; url: string; publisher: string; published: string }[],
+  items: { title: string; url: string; publisher: string; published: string; image?: string }[],
 ): CompanyNews | null {
   if (!items.length) return null;
   const toItem = (a: (typeof items)[number], cat: string): NewsItem => ({
@@ -330,6 +330,7 @@ export function liveToCompanyNews(
     time: '',
     comments: 0,
     url: a.url,
+    image: a.image,
     publisher: a.publisher,
     publishedIso: a.published,
   });
