@@ -4,12 +4,14 @@ import { FeedbackBoard } from './FeedbackBoard';
 
 type Layer = 'local' | 'domestic' | 'global';
 
-const CITY_NAME: Record<string, string> = { perth: 'Perth', brisbane: 'Brisbane', adelaide: 'Adelaide' };
+const CITY_NAME: Record<string, string> = { perth: 'Perth', melbourne: 'Melbourne', brisbane: 'Brisbane', adelaide: 'Adelaide' };
+// Cities whose local map actually has company pins.
+const CITIES_WITH_COMPANIES = new Set(['perth', 'melbourne', 'brisbane', 'adelaide']);
 
 function tourFor(layer: Layer, city: string) {
   if (layer === 'local') {
     const name = CITY_NAME[city] || 'this city';
-    const hasCompanies = city === 'perth';
+    const hasCompanies = CITIES_WITH_COMPANIES.has(city);
     return {
       title: `${name} — city view`,
       sub: 'The local employer map',

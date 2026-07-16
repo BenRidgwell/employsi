@@ -96,6 +96,7 @@ export const CITY_CONTINENT: Record<string, string> = {
   perth: 'australia',
   adelaide: 'australia',
   brisbane: 'australia',
+  melbourne: 'australia',
   sydney: 'australia',
   singapore: 'asia',
   ganzhou: 'asia',

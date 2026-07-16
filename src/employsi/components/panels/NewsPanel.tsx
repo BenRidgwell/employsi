@@ -76,6 +76,18 @@ export function NewsPanel({ name, sector, live }: { name: string; sector: string
   const meta = useArticleImages([news.hero.url, ...news.items.map((a) => a.url)]);
   const heroMeta = news.hero.url ? meta[news.hero.url] : undefined;
   const heroImg = heroMeta?.image || news.hero.image || thumbUrl(name + '-hero', 640, 360);
+
+  // Cap the feed to recent coverage: once an item's real publish date resolves,
+  // drop it if it's older than the window. Items whose date hasn't resolved yet
+  // are kept (optimistic), and we never fall below a few rows so the card stays
+  // populated even if several stories turn out to be old.
+  const RECENT_MS = 300 * 24 * 3600 * 1000; // ~10 months
+  const isStale = (a: NewsItem) => {
+    const p = a.url ? meta[a.url]?.published : undefined;
+    return p ? Date.now() - Date.parse(p) > RECENT_MS : false;
+  };
+  const fresh = news.items.filter((a) => !isStale(a));
+  const items = fresh.length >= 3 ? fresh : news.items.slice(0, 3);
   return (
     <aside className="newspanel">
       <div className="newshd">
@@ -91,7 +103,7 @@ export function NewsPanel({ name, sector, live }: { name: string; sector: string
           <Meta item={news.hero} meta={heroMeta} />
         </a>
 
-        {news.items.map((a, i) => {
+        {items.map((a, i) => {
           const m = a.url ? meta[a.url] : undefined;
           return (
             <a className="newsrow" key={i} href={articleUrl(a, name)} target="_blank" rel="noreferrer">

@@ -3050,12 +3050,44 @@ body {
 .fbboard {
   width: 340px;
   max-width: calc(100vw - 32px);
+  /* Cap the height so the board (which grows upward from the dock) can never
+     reach the top bar / account button, even on short viewports; the request
+     list scrolls internally instead. Because the dock is anchored at the
+     bottom, subtracting a fixed amount keeps the board's TOP at a roughly
+     constant ~130px offset regardless of viewport height, clearing the
+     ~114px-tall top bar. */
+  max-height: calc(100vh - 330px);
+  display: flex;
+  flex-direction: column;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 14px;
   box-shadow: 0 24px 60px -24px rgba(15, 27, 61, 0.5);
   padding: 14px 16px;
   animation: helppanelin 0.2s ease both;
+}
+.fbboard .helphd,
+.fbcompose,
+.fbsignin {
+  flex: 0 0 auto;
+}
+.fbsignin {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 11px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: #f7f7f8;
+  color: var(--ink);
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.fbsignin:hover {
+  border-color: var(--slate);
+  background: #f0f0f2;
 }
 .fbcompose {
   margin-bottom: 12px;

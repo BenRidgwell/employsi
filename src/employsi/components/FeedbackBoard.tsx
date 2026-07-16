@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useFeedbackStore, scoreOf, type FeedbackItem, type FbStatus } from '../state/feedbackStore';
+import { useAppStore } from '../state/store';
 
 // The feedback board: a votable list of feature requests (seeded + the
 // visitor's own submissions), plus a box to add a new one. Requests sort by
@@ -40,7 +41,6 @@ function Row({ item }: { item: FeedbackItem }) {
         <div className="fbrowtitle">{item.title}</div>
         <div className="fbrowmeta">
           <span className={`fbtag fbtag-${item.status}`}>{STATUS_LABEL[item.status]}</span>
-          <span className="fbrowauthor">{item.mine ? 'You' : item.author}</span>
         </div>
       </div>
     </div>
@@ -51,6 +51,8 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
   const items = useFeedbackStore((s) => s.items);
   const votes = useFeedbackStore((s) => s.votes);
   const submit = useFeedbackStore((s) => s.submit);
+  const account = useAppStore((s) => s.account);
+  const openAuth = useAppStore((s) => s.openAuth);
   const [draft, setDraft] = useState('');
   const [justSent, setJustSent] = useState(false);
 
@@ -60,7 +62,7 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
   );
 
   const send = () => {
-    if (!draft.trim()) return;
+    if (!account || !draft.trim()) return;
     submit(draft);
     setDraft('');
     setJustSent(true);
@@ -77,22 +79,29 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
         <button className="helpx" onClick={onClose} aria-label="Close">✕</button>
       </div>
 
-      <div className="fbcompose">
-        <textarea
-          className="fbtext"
-          placeholder="Suggest a feature or improvement…"
-          value={draft}
-          maxLength={140}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send();
-          }}
-        />
-        <div className="fbcomposerow">
-          <span className={`fbsent ${justSent ? 'show' : ''}`}>✓ Added — thanks!</span>
-          <button className="fbsend" disabled={!draft.trim()} onClick={send}>Post request</button>
+      {account ? (
+        <div className="fbcompose">
+          <textarea
+            className="fbtext"
+            placeholder="Suggest a feature or improvement…"
+            value={draft}
+            maxLength={140}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send();
+            }}
+          />
+          <div className="fbcomposerow">
+            <span className={`fbsent ${justSent ? 'show' : ''}`}>✓ Added — thanks!</span>
+            <button className="fbsend" disabled={!draft.trim()} onClick={send}>Post request</button>
+          </div>
         </div>
-      </div>
+      ) : (
+        // Submitting a request requires an account; voting stays open to all.
+        <button className="fbsignin" onClick={() => { onClose(); openAuth(); }}>
+          Sign in to post a request
+        </button>
+      )}
 
       <div className="fblist">
         {ranked.map((item) => (

@@ -20,6 +20,7 @@ export interface CityView {
 }
 export const CITY_VIEWS: Record<string, CityView> = {
   perth: { center: PERTH_CENTER, zoom: PERTH_DEFAULT_ZOOM, pitch: PERTH_DEFAULT_PITCH, bearing: PERTH_DEFAULT_BEARING },
+  melbourne: { center: [144.9640, -37.8155], zoom: 16.4, pitch: 60, bearing: -18 },
   brisbane: { center: [153.026, -27.4705], zoom: 16.5, pitch: 60, bearing: -18 },
   adelaide: { center: [138.6007, -34.9285], zoom: 16.5, pitch: 60, bearing: -16 },
   sydney: { center: [151.2093, -33.8688], zoom: 16.5, pitch: 60, bearing: -18 },
@@ -75,6 +76,17 @@ export const CITY_COMPANIES: Record<string, CityCompany[]> = {
     { id: 'ltr', coords: [115.840467, -31.950194] }, // Liontown — 32 Ord St, West Perth
     { id: 'ilu', coords: [115.851839, -31.952745] }, // Iluka — 240 St Georges Tce
     { id: 'nst', coords: [115.822660, -31.946683] }, // Northern Star — 500 Hay St, Subiaco
+  ],
+  // Melbourne is the miners' corporate-HQ city: BHP's global head office and
+  // Rio Tinto's principal Australian office are both on Collins Street. The
+  // other three are illustrative corporate/registered offices placed along the
+  // Collins/Bourke St spine, in keeping with how Adelaide and Brisbane are set.
+  melbourne: [
+    { id: 'bhp', coords: [144.96700, -37.81560] }, // BHP global HQ — 171 Collins St
+    { id: 'rio', coords: [144.96180, -37.81680] }, // Rio Tinto — 360 Collins St
+    { id: 's32', coords: [144.97250, -37.81450] }, // South32 — Collins St (corporate office)
+    { id: 'wds', coords: [144.94900, -37.81800] }, // Woodside — Docklands (corporate office)
+    { id: 'ilu', coords: [144.96900, -37.81150] }, // Iluka — Exhibition St (corporate office)
   ],
   adelaide: [
     { id: 'bhp', coords: [138.60190, -34.92450] }, // 55 Grenfell St

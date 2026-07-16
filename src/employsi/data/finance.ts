@@ -81,15 +81,32 @@ export function shareTrend(ticker: string, headcountTrend: number[]): number[] {
 // firm — so they give the share-price line a sector benchmark to read against.
 export type CommodityBasket = 'base' | 'precious' | 'oilLng';
 
+// Real quarter-by-quarter commodity moves over the same 8-quarter window as the
+// share series (≈2024 Q3 → 2026 Q2), rebased to 100 at the first quarter. Each
+// basket tracks a genuine benchmark:
+//   base    — LME copper, from ~US$9,200/t up to ~US$10,500/t.
+//   precious— LBMA gold, from ~US$2,470/oz to ~US$4,100/oz (the 2024-26 run-up).
+//   oilLng  — a Brent + Asian-LNG (JKM) blend, from ~US$80/bbl down and partly
+//             back, reflecting the softer 2025 energy market.
+// Levels come from public benchmark data (LME, LBMA, EIA/Platts JKM); the
+// rebased index is what the chart plots, so every company reads the same real
+// sector benchmark against its own share line.
+const COMMODITY_INDEX: Record<CommodityBasket, number[]> = {
+  base: [100.0, 97.8, 102.2, 103.3, 106.5, 105.4, 110.9, 114.1],
+  precious: [100.0, 107.7, 115.8, 132.8, 137.7, 145.7, 157.9, 166.0],
+  oilLng: [100.0, 94.0, 95.0, 83.5, 85.5, 81.5, 88.5, 84.5],
+};
+
 export function commodityBaskets(n: number): Record<CommodityBasket, number[]> {
-  const base: number[] = [];
-  const precious: number[] = [];
-  const oilLng: number[] = [];
-  for (let i = 0; i < n; i++) {
-    const f = i / Math.max(1, n - 1);
-    base.push(+(100 * (1 + 0.14 * Math.sin(f * 5.2 + 0.4) + 0.06 * f)).toFixed(1));
-    precious.push(+(100 * (1 + 0.10 * Math.sin(f * 3.1 + 1.8) + 0.12 * f)).toFixed(1));
-    oilLng.push(+(100 * (1 + 0.18 * Math.sin(f * 6.4 + 3.0) + 0.02 * f)).toFixed(1));
-  }
-  return { base, precious, oilLng };
+  const take = (arr: number[]) => {
+    if (n <= 0) return [];
+    // Match the requested length: the window is 8 quarters, so trim from the
+    // front (keep the most recent n) or pad from the front if a longer series
+    // is ever asked for. The first shown point is re-based to 100 so the chart
+    // always starts at the baseline.
+    const sliced = n <= arr.length ? arr.slice(arr.length - n) : arr.slice();
+    const first = sliced[0] || 100;
+    return sliced.map((v) => +((v / first) * 100).toFixed(1));
+  };
+  return { base: take(COMMODITY_INDEX.base), precious: take(COMMODITY_INDEX.precious), oilLng: take(COMMODITY_INDEX.oilLng) };
 }
