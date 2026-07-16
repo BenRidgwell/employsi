@@ -6,10 +6,20 @@ import { createServerFn } from '@tanstack/react-start';
 // which is what lets it make the cross-origin fetch a browser's CORS/CSP rules
 // would otherwise block.
 
+// What we scrape from an article's <head>: the share image, the publish date
+// (ISO string) and the publisher's name. Any field can be '' when the page
+// doesn't expose it.
+export interface ArticleMeta {
+  image: string;
+  published: string;
+  publisher: string;
+}
+
 // Per-isolate memo so repeated opens of the same card don't refetch the same
-// article. Values include `null` (looked up, no image found) so we don't retry
-// known-empty pages.
-const cache = new Map<string, string | null>();
+// article. Values include an all-empty result so we don't retry known-empty
+// pages.
+const cache = new Map<string, ArticleMeta>();
+const EMPTY: ArticleMeta = { image: '', published: '', publisher: '' };
 
 function absolutise(src: string, base: string): string | null {
   try {
@@ -43,15 +53,60 @@ function extractImage(html: string, base: string): string | null {
   return null;
 }
 
-// Resolves a single article URL to its og:image on the Worker. Returns '' when
-// there's no image (or the fetch fails) so the client can fall back to its
-// deterministic stock photo without treating it as an error.
+// Grab the first content match for any of the given meta patterns.
+function metaContent(head: string, res: RegExp[]): string | null {
+  for (const re of res) {
+    const m = head.match(re);
+    if (m && m[1]) return m[1].replace(/&amp;/g, '&').trim();
+  }
+  return null;
+}
+
+// The article's publish date as an ISO string, from the standard article /
+// Open Graph / schema.org timestamps (or a <time datetime>). Returns '' when
+// nothing parseable is present.
+function extractPublished(head: string): string {
+  const raw = metaContent(head, [
+    /<meta[^>]+property=["']article:published_time["'][^>]+content=["']([^"']+)["']/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']article:published_time["']/i,
+    /<meta[^>]+property=["']og:article:published_time["'][^>]+content=["']([^"']+)["']/i,
+    /<meta[^>]+name=["'](?:pubdate|publishdate|date|dc\.date\.issued|article:published_time)["'][^>]+content=["']([^"']+)["']/i,
+    /<meta[^>]+itemprop=["']datePublished["'][^>]+content=["']([^"']+)["']/i,
+    /<time[^>]+datetime=["']([^"']+)["']/i,
+    /"datePublished"\s*:\s*"([^"]+)"/i,
+  ]);
+  if (!raw) return '';
+  const t = Date.parse(raw);
+  return Number.isNaN(t) ? '' : new Date(t).toISOString();
+}
+
+// The publisher's display name: og:site_name / schema publisher when present,
+// otherwise a cleaned-up hostname (e.g. "www.mining.com" -> "MINING.COM").
+function extractPublisher(head: string, base: string): string {
+  const named = metaContent(head, [
+    /<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:site_name["']/i,
+    /<meta[^>]+name=["']application-name["'][^>]+content=["']([^"']+)["']/i,
+  ]);
+  if (named) return named.slice(0, 40);
+  try {
+    const host = new URL(base).hostname.replace(/^www\./, '');
+    return host === 'mining.com' ? 'MINING.COM' : host;
+  } catch {
+    return '';
+  }
+}
+
+// Resolves a single article URL on the Worker to its share image, publish date
+// and publisher. Returns empty fields when there's no data (or the fetch fails)
+// so the client can fall back without treating it as an error.
 export const getArticleImage = createServerFn({ method: 'GET' })
   .validator((data: { url: string }) => data)
-  .handler(async ({ data }): Promise<{ image: string }> => {
+  .handler(async ({ data }): Promise<ArticleMeta> => {
     const url = data.url;
-    if (!/^https?:\/\//i.test(url)) return { image: '' };
-    if (cache.has(url)) return { image: cache.get(url) ?? '' };
+    if (!/^https?:\/\//i.test(url)) return EMPTY;
+    const cached = cache.get(url);
+    if (cached) return cached;
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 6000);
@@ -68,15 +123,21 @@ export const getArticleImage = createServerFn({ method: 'GET' })
       });
       clearTimeout(timer);
       if (!res.ok) {
-        cache.set(url, null);
-        return { image: '' };
+        cache.set(url, EMPTY);
+        return EMPTY;
       }
       const html = await res.text();
-      const image = extractImage(html, res.url || url);
-      cache.set(url, image);
-      return { image: image ?? '' };
+      const head = html.slice(0, 200_000); // meta tags live in <head>; cap the scan
+      const finalUrl = res.url || url;
+      const meta: ArticleMeta = {
+        image: extractImage(html, finalUrl) ?? '',
+        published: extractPublished(head),
+        publisher: extractPublisher(head, finalUrl),
+      };
+      cache.set(url, meta);
+      return meta;
     } catch {
-      cache.set(url, null);
-      return { image: '' };
+      cache.set(url, EMPTY);
+      return EMPTY;
     }
   });

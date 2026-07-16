@@ -41,10 +41,14 @@ function FilterIcon() {
 }
 
 function HeatIcon() {
+  // A four-cell heat grid at graded intensity — reads as a choropleth / heat map
+  // far more directly than the old flame did.
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.1} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3c1.8 3.2 4.5 4.6 4.5 8.4A4.5 4.5 0 0 1 12 16a4.5 4.5 0 0 1-4.5-4.6C7.5 7.6 10.2 6.2 12 3z" />
-      <path d="M12 21c3 0 5-1.7 5-4H7c0 2.3 2 4 5 4z" />
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <rect x="3" y="3" width="7.6" height="7.6" rx="1.6" opacity="0.34" />
+      <rect x="13.4" y="3" width="7.6" height="7.6" rx="1.6" opacity="0.95" />
+      <rect x="3" y="13.4" width="7.6" height="7.6" rx="1.6" opacity="0.7" />
+      <rect x="13.4" y="13.4" width="7.6" height="7.6" rx="1.6" opacity="0.48" />
     </svg>
   );
 }

@@ -3045,6 +3045,143 @@ body {
   align-items: center;
   justify-content: center;
 }
+/* Feedback board — a votable request list plus a compose box. Wider than the
+   old single-textarea popup so the list is readable. */
+.fbboard {
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px -24px rgba(15, 27, 61, 0.5);
+  padding: 14px 16px;
+  animation: helppanelin 0.2s ease both;
+}
+.fbcompose {
+  margin-bottom: 12px;
+}
+.fbboard .fbtext {
+  min-height: 58px;
+  margin-top: 4px;
+}
+.fbcomposerow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+.fbboard .fbsend {
+  width: auto;
+  margin-top: 0;
+  padding: 8px 16px;
+}
+.fbsent {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0e7a50;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.fbsent.show {
+  opacity: 1;
+}
+.fblist {
+  max-height: 46vh;
+  overflow-y: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+.fbrow {
+  display: flex;
+  gap: 12px;
+  padding: 11px 0;
+  border-top: 1px solid var(--line);
+}
+.fbrow:first-child {
+  border-top: 0;
+}
+.fbvote {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 30px;
+}
+.fbarrow {
+  border: 0;
+  background: none;
+  padding: 2px;
+  color: var(--slate);
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  transition: color 0.12s, background 0.12s, transform 0.12s;
+}
+.fbarrow:hover {
+  background: #f0f0f2;
+  color: var(--ink);
+}
+.fbarrow:active {
+  transform: scale(0.86);
+}
+.fbvote.up .fbarrow:first-child {
+  color: #159d67;
+}
+.fbvote.down .fbarrow:last-child {
+  color: #c2483a;
+}
+.fbscore {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+  padding: 1px 0;
+}
+.fbrowbody {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.fbrowtitle {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--ink);
+}
+.fbrowmeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+}
+.fbtag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #f0f0f2;
+  color: var(--slate);
+}
+.fbtag-planned {
+  background: rgba(53, 126, 221, 0.14);
+  color: #2b62b8;
+}
+.fbtag-under-review {
+  background: rgba(214, 158, 46, 0.16);
+  color: #9a6a12;
+}
+.fbtag-shipped {
+  background: rgba(21, 157, 103, 0.14);
+  color: #0e7a50;
+}
+.fbrowauthor {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--slate);
+}
 .aucountryclick {
   cursor: pointer;
   transition: fill 0.15s ease;
@@ -3518,10 +3655,19 @@ body {
 .newsmetadot {
   opacity: 0.6;
 }
+.newsmetapub {
+  color: var(--ink);
+  font-weight: 700;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .newsmetat {
   display: inline-flex;
   align-items: center;
   gap: 3px;
+  white-space: nowrap;
 }
 .newsrow {
   display: flex;

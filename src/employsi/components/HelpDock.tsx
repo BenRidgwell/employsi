@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from '../state/store';
+import { FeedbackBoard } from './FeedbackBoard';
 
 type Layer = 'local' | 'domestic' | 'global';
 
@@ -73,8 +74,6 @@ export function HelpDock() {
   const [open, setOpen] = useState(false);
   const [peek, setPeek] = useState(false);
   const [fbOpen, setFbOpen] = useState(false);
-  const [fbText, setFbText] = useState('');
-  const [fbSent, setFbSent] = useState(false);
 
   // Pop the pill out briefly whenever the user lands on a new layer/city.
   useEffect(() => {
@@ -83,16 +82,6 @@ export function HelpDock() {
     const t = setTimeout(() => setPeek(false), 4200);
     return () => clearTimeout(t);
   }, [layerKey]);
-
-  const sendFeedback = () => {
-    if (!fbText.trim()) return;
-    setFbSent(true);
-    setTimeout(() => {
-      setFbOpen(false);
-      setFbSent(false);
-      setFbText('');
-    }, 1900);
-  };
 
   const tour = tourFor(layer, localCity);
 
@@ -139,31 +128,7 @@ export function HelpDock() {
           </div>
         </div>
       )}
-      {fbOpen && (
-        <div className="fbpanel">
-          {fbSent ? (
-            <div className="fbthanks">
-              <span className="fbcheck">✓</span>
-              Thanks for your feedback!
-            </div>
-          ) : (
-            <>
-              <div className="helphd">
-                <div className="helptitle">Share feedback</div>
-                <button className="helpx" onClick={() => setFbOpen(false)} aria-label="Close">✕</button>
-              </div>
-              <textarea
-                className="fbtext"
-                placeholder="What's working, what's missing, ideas…"
-                value={fbText}
-                onChange={(e) => setFbText(e.target.value)}
-                autoFocus
-              />
-              <button className="fbsend" disabled={!fbText.trim()} onClick={sendFeedback}>Send feedback</button>
-            </>
-          )}
-        </div>
-      )}
+      {fbOpen && <FeedbackBoard onClose={() => setFbOpen(false)} />}
 
       <button
         className="helpbtn"
