@@ -32,7 +32,7 @@ function Nav() {
           href="#"
           className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-ink-2"
         >
-          Join the waitlist <ArrowUpRight size={14} />
+          About <ArrowUpRight size={14} />
         </a>
       </div>
     </header>
