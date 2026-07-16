@@ -22,7 +22,7 @@ const YAHOO_SUFFIX: Record<string, string> = {
   ASX: '.AX', LSE: '.L', JPX: '.T', SGX: '.SI', SIX: '.SW', JSE: '.JO',
   EPA: '.PA', KRX: '.KS', TSX: '.TO', DFM: '.AE', SSE: '.SS', SZSE: '.SZ',
 };
-function yahooSymbol(ticker: string, exchange?: string): string {
+export function yahooSymbol(ticker: string, exchange?: string): string {
   const ex = exchange || 'ASX';
   if (ex === 'NYSE' || ex === 'NASDAQ') return ticker;
   if (ex === 'HKEX') return `${ticker.replace(/\D/g, '').padStart(4, '0')}.HK`;

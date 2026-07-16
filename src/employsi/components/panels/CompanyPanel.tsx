@@ -5,6 +5,7 @@ import { shareTrend, commodityBaskets } from '../../data/finance';
 import { companySocial } from '../../data/social';
 import { useBhpFeed } from '../../hooks/useBhpFeed';
 import { useShareSeries } from '../../hooks/useShareSeries';
+import { useCompanyStats } from '../../hooks/useCompanyStats';
 import { TrendChart } from './TrendChart';
 import { ShareChart } from './ShareChart';
 import { NewsPanel } from './NewsPanel';
@@ -182,7 +183,15 @@ export function CompanyPanel() {
   // Worker from Yahoo Finance for whatever ticker resolves. When it's present
   // the share chart plots the real series and the card counts as live.
   const liveShare = useShareSeries(panel?.ticker ?? null, panel?.exchange, open && !isBhp);
-  const live = isBhp ? !!feed : REAL_DATA_IDS.includes(lastId ?? '') || !!liveShare;
+  // Live fundamentals (real headcount, revenue/EBITDA per employee) fetched on
+  // the Worker from Yahoo Finance. When present they overlay the illustrative
+  // figures in the workforce chart and mark the card as live.
+  const liveStats = useCompanyStats(panel?.ticker ?? null, panel?.exchange, open && !isBhp);
+  const live = isBhp ? !!feed : REAL_DATA_IDS.includes(lastId ?? '') || !!liveShare || !!liveStats;
+
+  const headcount = liveStats?.headcount || panel?.headcount || 0;
+  const revPerEmp = liveStats?.revPerEmp || panel?.revPerEmp || 0;
+  const ebitdaPerEmp = liveStats?.ebitdaPerEmp || panel?.ebitdaPerEmp || 0;
 
   const prices = useMemo(
     () =>
@@ -256,7 +265,7 @@ export function CompanyPanel() {
               </div>
 
               <div className="sect">
-                <TrendChart trend={panel.trend} headcount={panel.headcount} revPerEmp={panel.revPerEmp} ebitdaPerEmp={panel.ebitdaPerEmp} />
+                <TrendChart trend={panel.trend} headcount={headcount} revPerEmp={revPerEmp} ebitdaPerEmp={ebitdaPerEmp} />
               </div>
 
               {prices.length > 0 && (
