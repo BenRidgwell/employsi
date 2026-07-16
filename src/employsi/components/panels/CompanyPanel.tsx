@@ -133,8 +133,19 @@ export function CompanyPanel() {
   const followedIds = useAppStore((s) => s.followedIds);
   const account = useAppStore((s) => s.account);
   const requestFollow = useAppStore((s) => s.requestFollow);
+  const zoomedOut = useAppStore((s) => s.zoomedOut);
+  const zoomingIn = useAppStore((s) => s.zoomingIn);
   const [roleFilter, setRoleFilter] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Leaving the local city layer (zooming/scrolling out to the domestic or
+  // global overview) fades the open company card away — clearing selectedId
+  // lets the panel run its normal close transition. Guarded by !zoomingIn so
+  // opening a company via search (which is mid-zoom-in, still zoomedOut) never
+  // instantly closes the card it just opened.
+  useEffect(() => {
+    if (zoomedOut && !zoomingIn && useAppStore.getState().selectedId) closePanel();
+  }, [zoomedOut, zoomingIn, closePanel]);
 
   // Reset the role focus and scroll position whenever the panel opens on a
   // company — keyed on selectedId (not lastId) so reopening the *same*

@@ -65,7 +65,7 @@ const PLANE_SVG =
   '<line x1="14" y1="6" x2="14" y2="21" stroke="#8b909a" stroke-width="0.5"/>' +
   '</svg>';
 const SHIP_SVG =
-  '<svg viewBox="0 0 18 44" width="12" height="30">' +
+  '<svg viewBox="0 0 18 44" width="8" height="20">' +
   '<defs><linearGradient id="shg" x1="0" y1="0" x2="1" y2="0">' +
   '<stop offset="0" stop-color="#565b64"/><stop offset="0.5" stop-color="#727782"/><stop offset="1" stop-color="#3f434b"/>' +
   '</linearGradient></defs>' +
@@ -106,7 +106,7 @@ function lerpLngLat(a: [number, number], b: [number, number], t: number): [numbe
 // view's own default framing comfortably inside its band so a programmatic
 // flyTo never lands right on a boundary.
 const CROSS_GLOBAL_TO_DOMESTIC = 2.9; // zoom in past this on the globe -> region
-const CROSS_DOMESTIC_TO_GLOBAL = 1.9; // zoom out past this in a region -> globe
+const CROSS_DOMESTIC_TO_GLOBAL = 2.15; // zoom out past this in a region -> globe (sooner)
 // Zoom in past this in a region -> drill into the nearest city's local view.
 // Kept fairly close-in (city noticeably fills the frame) so the hand-off
 // doesn't trigger while still surveying the whole region.
@@ -191,7 +191,11 @@ function buildSkillHeat(mode: 'global' | 'domestic', region: string, skill: stri
     table = HUB_LNGLAT;
     demand = GLOBAL_SKILL_DEMAND[skill];
   } else if (region === 'australia') {
-    table = AU_CITY_LNGLAT;
+    // Darwin and Hobart are omitted from the AU markers, so drop their skill
+    // heat too — no stray blobs over their old spots.
+    table = Object.fromEntries(
+      Object.entries(AU_CITY_LNGLAT).filter(([id]) => id !== 'darwin' && id !== 'hobart'),
+    );
     demand = SKILL_DEMAND[skill];
   } else {
     demand = GLOBAL_SKILL_DEMAND[skill];

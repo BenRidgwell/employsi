@@ -24,6 +24,7 @@ export interface AppState {
   heat: HeatMetric;
   searchOpen: boolean;
   filterOpen: boolean;
+  heatOpen: boolean;
   searchQuery: string;
   activeSectors: string[];
   minSalary: number;
@@ -61,6 +62,7 @@ export interface AppState {
 
   toggleSearch: () => void;
   toggleFilter: () => void;
+  toggleHeatPanel: () => void;
   setSearchQuery: (q: string) => void;
   clearSearch: () => void;
   toggleSector: (cat: string) => void;
@@ -162,6 +164,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   heat: 'salary',
   searchOpen: false,
   filterOpen: false,
+  heatOpen: false,
   searchQuery: '',
   activeSectors: [],
   minSalary: 130,
@@ -180,7 +183,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   trendingOpen: false,
   followedIds: persisted.followedIds,
 
-  select: (id) => set({ selectedId: id, lastId: id, interacted: true, searchOpen: false, filterOpen: false, briefOpen: false, trendingOpen: false }),
+  select: (id) => set({ selectedId: id, lastId: id, interacted: true, searchOpen: false, filterOpen: false, heatOpen: false, briefOpen: false, trendingOpen: false }),
   toggleFollow: (id) =>
     set((s) => ({
       followedIds: s.followedIds.includes(id) ? s.followedIds.filter((x) => x !== id) : [...s.followedIds, id],
@@ -235,8 +238,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   setHeat: (h) => set({ heat: h }),
   setInteracted: () => set((s) => (s.interacted ? s : { interacted: true })),
 
-  toggleSearch: () => set((s) => ({ searchOpen: !s.searchOpen, filterOpen: false })),
-  toggleFilter: () => set((s) => ({ filterOpen: !s.filterOpen, searchOpen: false })),
+  toggleSearch: () => set((s) => ({ searchOpen: !s.searchOpen, filterOpen: false, heatOpen: false })),
+  toggleFilter: () => set((s) => ({ filterOpen: !s.filterOpen, searchOpen: false, heatOpen: false })),
+  toggleHeatPanel: () => set((s) => ({ heatOpen: !s.heatOpen, searchOpen: false, filterOpen: false })),
   setSearchQuery: (q) => set({ searchQuery: q }),
   clearSearch: () => set({ searchQuery: '' }),
   toggleSector: (cat) =>
@@ -333,7 +337,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     const other = COMPANIES.find((c) => c.id !== id);
     set({ compareOpen: true, compareA: id, compareB: other ? other.id : null, selectedId: null });
   },
-  closeCompare: () => set({ compareOpen: false }),
+  // Leaving compare returns to the company card the user opened it from
+  // (lastId is that company — select() set it before compare replaced the card).
+  closeCompare: () => set((s) => ({ compareOpen: false, selectedId: s.lastId })),
   setCompareA: (id) => set({ compareA: id }),
   setCompareB: (id) => set({ compareB: id }),
 

@@ -17,20 +17,19 @@ function Meta({ item }: { item: NewsItem }) {
         </svg>
         {item.time}
       </span>
-      <span className="newsmetadot">·</span>
-      <span className="newsmetat">
-        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth={2}>
-          <path d="M4 5h16v11H9l-4 3v-3H4z" strokeLinejoin="round" />
-        </svg>
-        {item.comments}
-      </span>
     </div>
   );
 }
 
-// Deterministic stock-photo placeholder per company/article, so the same
-// company always shows the same set of images. Swap for a real news API's
-// image URLs later.
+// Each headline is clickable — an article's own URL when we have it, otherwise
+// a Google News search for that exact headline, which resolves to the real
+// coverage. Opens in a new tab.
+function articleUrl(item: NewsItem, name: string): string {
+  return item.url || 'https://news.google.com/search?q=' + encodeURIComponent(`${item.title} ${name}`);
+}
+
+// Article image: the real image URL when the item carries one, otherwise a
+// deterministic stock photo so the same story always shows the same picture.
 function thumbUrl(seed: string, w: number, h: number): string {
   return `https://picsum.photos/seed/${encodeURIComponent(seed)}/${w}/${h}`;
 }
@@ -46,24 +45,24 @@ export function NewsPanel({ name, sector, live }: { name: string; sector: string
         <span className="newshdname">{name}</span> in the news
       </div>
       <div className="newsscroll">
-        <article className="newshero">
+        <a className="newshero" href={articleUrl(news.hero, name)} target="_blank" rel="noreferrer">
           <div className="newsheroimg">
-            <img className="newsheroimgtag" src={thumbUrl(name + '-hero', 640, 360)} alt="" loading="lazy" />
+            <img className="newsheroimgtag" src={news.hero.image || thumbUrl(name + '-hero', 640, 360)} alt="" loading="lazy" />
             <span className="newsbadge">Trending</span>
           </div>
           <div className="newsherotitle">{news.hero.title}</div>
           <Meta item={news.hero} />
-        </article>
+        </a>
 
         {news.items.map((a, i) => (
-          <article className="newsrow" key={i}>
+          <a className="newsrow" key={i} href={articleUrl(a, name)} target="_blank" rel="noreferrer">
             <div className="newsrowbody">
               <div className="newsrowcat">{a.cat}</div>
               <div className="newsrowtitle">{a.title}</div>
               <Meta item={a} />
             </div>
-            <img className="newsrowthumb" src={thumbUrl(name + '-' + i, 160, 160)} alt="" loading="lazy" />
-          </article>
+            <img className="newsrowthumb" src={a.image || thumbUrl(name + '-' + i, 160, 160)} alt="" loading="lazy" />
+          </a>
         ))}
       </div>
     </aside>

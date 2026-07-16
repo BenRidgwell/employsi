@@ -18,6 +18,63 @@ const ZOOM_OUT_THRESHOLD = 11;
 
 const COMPANY_BY_ID: Record<string, Company> = Object.fromEntries(COMPANIES.map((c) => [c.id, c]));
 
+// --- Street traffic: cars that drive along the actual road geometry of the
+// rendered basemap, so they follow the real streets under the 3D city. ---
+const CAR_COLORS = ['#b23a2e', '#2b3f6b', '#e6e7ea', '#2f7d4f', '#c69a34', '#6d2f63', '#4a4e57', '#a8442e'];
+const NUM_CARS = 14;
+
+function carSvg(color: string): string {
+  return (
+    '<svg viewBox="0 0 16 30" width="12" height="22">' +
+    '<defs><linearGradient id="carsh" x1="0" y1="0" x2="1" y2="0">' +
+    '<stop offset="0" stop-color="rgba(0,0,0,0.3)"/><stop offset="0.45" stop-color="rgba(255,255,255,0.28)"/><stop offset="1" stop-color="rgba(0,0,0,0.3)"/>' +
+    '</linearGradient></defs>' +
+    '<rect x="2.4" y="2" width="11.2" height="26" rx="4.2" fill="' + color + '" stroke="rgba(0,0,0,0.4)" stroke-width="0.6"/>' +
+    '<rect x="2.4" y="2" width="11.2" height="26" rx="4.2" fill="url(#carsh)"/>' +
+    '<path d="M4.3 7 Q8 5.3 11.7 7 L11 10.4 L5 10.4 Z" fill="#1d2732" opacity="0.85"/>' +
+    '<rect x="4.7" y="11.4" width="6.6" height="7" rx="1.2" fill="rgba(255,255,255,0.12)"/>' +
+    '<path d="M5 19.4 L11 19.4 L11.7 23 Q8 24.7 4.3 23 Z" fill="#1d2732" opacity="0.85"/>' +
+    '</svg>'
+  );
+}
+
+function metresBetween(a: [number, number], b: [number, number]): number {
+  const R = 6371000, toR = Math.PI / 180;
+  const dLat = (b[1] - a[1]) * toR, dLng = (b[0] - a[0]) * toR;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * toR) * Math.cos(b[1] * toR) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function bearingBetween(a: [number, number], b: [number, number]): number {
+  const toR = Math.PI / 180, toD = 180 / Math.PI;
+  const dLng = (b[0] - a[0]) * toR;
+  const la1 = a[1] * toR, la2 = b[1] * toR;
+  const y = Math.sin(dLng) * Math.cos(la2);
+  const x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dLng);
+  return (Math.atan2(y, x) * toD + 360) % 360;
+}
+
+interface RoadPath { pts: [number, number][]; cum: number[]; total: number; }
+function roadPath(pts: [number, number][]): RoadPath {
+  const cum = [0];
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) {
+    total += metresBetween(pts[i - 1], pts[i]);
+    cum.push(total);
+  }
+  return { pts, cum, total };
+}
+// Position + heading a given distance (metres) along a road path.
+function alongPath(rp: RoadPath, dist: number): { pos: [number, number]; bearing: number } {
+  const d = ((dist % rp.total) + rp.total) % rp.total;
+  let i = 1;
+  while (i < rp.cum.length && rp.cum[i] < d) i++;
+  const a = rp.pts[i - 1], b = rp.pts[i] || rp.pts[i - 1];
+  const seg = rp.cum[i] - rp.cum[i - 1] || 1;
+  const t = (d - rp.cum[i - 1]) / seg;
+  return { pos: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t], bearing: bearingBetween(a, b) };
+}
+
 // A company placed on the current city map: its record plus that city's coords.
 interface Placed {
   company: Company;
@@ -82,6 +139,9 @@ export function PerthMapbox() {
   const interactedLocalRef = useRef(false);
   const autoRotateRaf = useRef<number | undefined>(undefined);
   const pulseRaf = useRef<number | undefined>(undefined);
+  const carsRef = useRef<{ marker: mapboxgl.Marker; path: RoadPath | null; dist: number; speed: number }[]>([]);
+  const carRaf = useRef<number | undefined>(undefined);
+  const roadsRef = useRef<RoadPath[]>([]);
   const focusUpdaterRef = useRef<(() => void) | null>(null);
 
   const selectedId = useAppStore((s) => s.selectedId);
@@ -423,6 +483,84 @@ export function PerthMapbox() {
         pulseRaf.current = requestAnimationFrame(pulseLoop);
       };
       pulseLoop();
+
+      // --- Street traffic ---
+      // Create the car markers up front; they get assigned to a real road once
+      // roads are queried.
+      for (let i = 0; i < NUM_CARS; i++) {
+        const el = document.createElement('div');
+        el.className = 'carmarker';
+        el.innerHTML = carSvg(CAR_COLORS[i % CAR_COLORS.length]);
+        const marker = new mapboxgl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'map' })
+          .setLngLat(PERTH_CENTER)
+          .addTo(map);
+        el.style.display = 'none';
+        carsRef.current.push({ marker, path: null, dist: 0, speed: 8 + Math.random() * 9 });
+      }
+
+      // Query the rendered basemap for road centre-lines within the viewport and
+      // turn them into drive-able paths (geometry comes back as lng/lat).
+      const refreshRoads = () => {
+        let feats: mapboxgl.MapboxGeoJSONFeature[] = [];
+        try { feats = map.queryRenderedFeatures(); } catch { return; }
+        const paths: RoadPath[] = [];
+        for (const f of feats) {
+          const g = f.geometry;
+          const sl = (f.sourceLayer || '') + ' ' + ((f.layer && f.layer.id) || '');
+          if (!/road|street|transport/i.test(sl)) continue;
+          if (g.type === 'LineString' && g.coordinates.length >= 2) {
+            paths.push(roadPath(g.coordinates as [number, number][]));
+          } else if (g.type === 'MultiLineString') {
+            for (const line of g.coordinates) if (line.length >= 2) paths.push(roadPath(line as [number, number][]));
+          }
+          if (paths.length >= 60) break;
+        }
+        // Keep only reasonably long segments so cars have room to move.
+        roadsRef.current = paths.filter((p) => p.total > 40);
+      };
+
+      const inView = (lngLat: [number, number]): boolean => {
+        const p = map.project(lngLat);
+        const c = map.getContainer();
+        return p.x >= -20 && p.y >= -20 && p.x <= c.clientWidth + 20 && p.y <= c.clientHeight + 20;
+      };
+      const assignRoads = () => {
+        const roads = roadsRef.current;
+        if (!roads.length) return;
+        carsRef.current.forEach((car) => {
+          // (Re)assign a car if it has no road yet or has driven out of view.
+          const cur = car.path ? alongPath(car.path, car.dist).pos : null;
+          if (car.path && cur && inView(cur)) return;
+          const road = roads[Math.floor(Math.random() * roads.length)];
+          car.path = road;
+          car.dist = Math.random() * road.total;
+        });
+      };
+
+      let lastCar = performance.now();
+      const carLoop = () => {
+        const now = performance.now();
+        const dt = Math.min(0.05, (now - lastCar) / 1000);
+        lastCar = now;
+        const s = useAppStore.getState();
+        const show = !s.zoomedOut && !s.zoomingIn;
+        carsRef.current.forEach((car) => {
+          const el = car.marker.getElement();
+          if (!show || !car.path) { el.style.display = 'none'; return; }
+          el.style.display = '';
+          car.dist += car.speed * dt;
+          const { pos, bearing } = alongPath(car.path, car.dist);
+          car.marker.setLngLat(pos);
+          car.marker.setRotation(bearing);
+        });
+        carRaf.current = requestAnimationFrame(carLoop);
+      };
+      carLoop();
+
+      // Refresh roads + reassign whenever the camera settles, and once now.
+      map.on('idle', () => { refreshRoads(); assignRoads(); });
+      refreshRoads();
+      assignRoads();
     });
 
     map.on('zoom', () => {
@@ -466,6 +604,9 @@ export function PerthMapbox() {
       window.removeEventListener('perth-zoom-reset', onZoomReset);
       if (autoRotateRaf.current) cancelAnimationFrame(autoRotateRaf.current);
       if (pulseRaf.current) cancelAnimationFrame(pulseRaf.current);
+      if (carRaf.current) cancelAnimationFrame(carRaf.current);
+      carsRef.current.forEach((c) => c.marker.remove());
+      carsRef.current = [];
       Object.values(markersRef.current).forEach((m) => m.remove());
       markersRef.current = {};
       map.remove();

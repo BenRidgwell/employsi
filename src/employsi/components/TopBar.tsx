@@ -40,11 +40,24 @@ function FilterIcon() {
   );
 }
 
+function HeatIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.1} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3c1.8 3.2 4.5 4.6 4.5 8.4A4.5 4.5 0 0 1 12 16a4.5 4.5 0 0 1-4.5-4.6C7.5 7.6 10.2 6.2 12 3z" />
+      <path d="M12 21c3 0 5-1.7 5-4H7c0 2.3 2 4 5 4z" />
+    </svg>
+  );
+}
+
+const HEAT_LABEL: Record<string, string> = { salary: 'Salary', growth: 'Growth', turnover: 'Turnover' };
+
 export function TopBar() {
   const searchOpen = useAppStore((s) => s.searchOpen);
   const toggleSearch = useAppStore((s) => s.toggleSearch);
   const filterOpen = useAppStore((s) => s.filterOpen);
   const toggleFilter = useAppStore((s) => s.toggleFilter);
+  const heatOpen = useAppStore((s) => s.heatOpen);
+  const toggleHeatPanel = useAppStore((s) => s.toggleHeatPanel);
   const searchQuery = useAppStore((s) => s.searchQuery);
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
   const clearSearch = useAppStore((s) => s.clearSearch);
@@ -74,6 +87,7 @@ export function TopBar() {
   const filterActive = isFilterActive(filterState);
   const searchActive = isSearchActive(filterState);
   const skills = useMemo(() => topSkills(), []);
+  const activeSkill = skills.find((sk) => sk.toLowerCase() === searchQuery.trim().toLowerCase());
 
   return (
     <div className="topbar">
@@ -91,7 +105,7 @@ export function TopBar() {
           <button className={`searchbtn ${searchOpen ? 'on' : ''} ${searchActive ? 'active' : ''}`} onClick={toggleSearch}>
             <SearchIcon />
             <span>Search</span>
-            {searchActive && <span className="sdot" />}
+            {searchActive && <span className="sdot green" />}
           </button>
           {searchOpen && <div className="sfscrim" onClick={toggleSearch} />}
           <div className={`searchflyout ${searchOpen ? 'open' : ''}`}>
@@ -156,16 +170,44 @@ export function TopBar() {
               <span>Attrition</span>
               <b>{maxAttrition < 16 ? '≤' + maxAttrition.toFixed(1) + '%' : 'Any'}</b>
             </div>
-            <input type="range" className="sfrange" style={fillStyle(maxAttrition, 8, 16)} min={8} max={16} step={0.5} value={maxAttrition} onChange={(e) => setMaxAttrition(Number(e.target.value))} />
+            {/* Reversed so, like the other sliders, "Any" (no cap) sits at the
+                far left and dragging right tightens the attrition cap. The
+                stored value still runs 8..16; only the slider axis is flipped
+                via value = 24 - maxAttrition. */}
+            <input type="range" className="sfrange" style={fillStyle(24 - maxAttrition, 8, 16)} min={8} max={16} step={0.5} value={24 - maxAttrition} onChange={(e) => setMaxAttrition(24 - Number(e.target.value))} />
             <button className="sfclear" onClick={clearFilters}>Clear filters</button>
           </div>
         </div>
-        <div className="cgroup">
+        <div className="cgroup searchwrap">
           <span className="seglbl">Heat map</span>
-          <div className="seg style">
-            <button className={`hbtn ${heat === 'salary' ? 'hon' : ''}`} onClick={() => setHeat('salary')}>Salary</button>
-            <button className={`hbtn ${heat === 'growth' ? 'hon' : ''}`} onClick={() => setHeat('growth')}>Growth</button>
-            <button className={`hbtn ${heat === 'turnover' ? 'hon' : ''}`} onClick={() => setHeat('turnover')}>Turnover</button>
+          <button className={`searchbtn ${heatOpen ? 'on' : ''} ${activeSkill ? 'active' : ''}`} onClick={toggleHeatPanel}>
+            <HeatIcon />
+            <span>{HEAT_LABEL[heat]}</span>
+            {activeSkill && <span className="sdot green" />}
+          </button>
+          {heatOpen && <div className="sfscrim" onClick={toggleHeatPanel} />}
+          <div className={`searchflyout ${heatOpen ? 'open' : ''}`}>
+            <div className="sflabel">Colour the map by</div>
+            <div className="seg style hmseg">
+              <button className={`hbtn ${heat === 'salary' ? 'hon' : ''}`} onClick={() => setHeat('salary')}>Salary</button>
+              <button className={`hbtn ${heat === 'growth' ? 'hon' : ''}`} onClick={() => setHeat('growth')}>Growth</button>
+              <button className={`hbtn ${heat === 'turnover' ? 'hon' : ''}`} onClick={() => setHeat('turnover')}>Turnover</button>
+            </div>
+            <div className="sflabel">Skill demand</div>
+            <div className="sfchips">
+              {skills.map((sk) => (
+                <button
+                  key={sk}
+                  className={`sfchip ${searchQuery.trim().toLowerCase() === sk.toLowerCase() ? 'on' : ''}`}
+                  onClick={() => toggleSkillQuery(sk)}
+                >
+                  {sk}
+                </button>
+              ))}
+            </div>
+            {activeSkill && (
+              <button className="sfclear" onClick={clearSearch}>Clear skill</button>
+            )}
           </div>
         </div>
       </div>

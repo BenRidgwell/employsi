@@ -160,6 +160,13 @@ body {
 .mapboxgl-marker {
   z-index: 3;
 }
+/* Cars driving the local city's streets — flat on the ground plane (marker
+   pitchAlignment:map), non-interactive, softly shadowed. */
+.carmarker {
+  pointer-events: none;
+  line-height: 0;
+  filter: drop-shadow(0 1px 1px rgba(15, 27, 61, 0.4));
+}
 /* Decorative air/sea traffic on the globe — non-interactive, faintly shadowed
    so it reads above the map without competing with the hub markers. */
 .traveler {
@@ -515,6 +522,16 @@ body {
 .hbtn.hon {
   color: #fff;
   background: #1c1c1e;
+}
+/* Heat-map segmented control when it sits inside the Heat-map flyout: fill the
+   flyout width and split the three options evenly. */
+.hmseg {
+  width: 100%;
+  margin-bottom: 10px;
+}
+.hmseg .hbtn {
+  flex: 1;
+  justify-content: center;
 }
 .seglbl {
   font-size: 9.5px;
@@ -3432,6 +3449,14 @@ body {
 }
 .newshero {
   margin-bottom: 14px;
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+.newshero:hover .newsherotitle,
+.newsrow:hover .newsrowtitle {
+  text-decoration: underline;
 }
 .newsheroimg {
   position: relative;
@@ -3504,6 +3529,9 @@ body {
   gap: 12px;
   padding: 13px 0;
   border-top: 1px solid var(--line);
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
 }
 .newsrowbody {
   flex: 1 1 auto;

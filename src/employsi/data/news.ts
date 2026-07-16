@@ -7,6 +7,10 @@ export interface NewsItem {
   title: string;
   time: string;
   comments: number;
+  // Optional real article link + image; when absent the news card falls back to
+  // a Google-News search for the headline and a deterministic stock photo.
+  url?: string;
+  image?: string;
 }
 
 export interface CompanyNews {
