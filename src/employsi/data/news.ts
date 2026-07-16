@@ -118,11 +118,195 @@ function s32RealNews(): CompanyNews {
   };
 }
 
+// The remaining listed Perth resources names also get real, dated headlines
+// drawn from their newsrooms and wire coverage (company sites, MINING.COM,
+// Australian Mining, Mining Weekly, natural-gas & LNG trade press — 2025/2026),
+// in place of the generated placeholder copy.
+function wdsRealNews(): CompanyNews {
+  return {
+    hero: {
+      cat: 'Trending',
+      title: 'Woodside’s Scarborough passes 96% complete, on track for first LNG cargo in Q4 2026',
+      time: '3d ago',
+      comments: 27,
+    },
+    items: [
+      { cat: 'Company', title: 'Louisiana LNG reaches 24% complete as Woodside runs its sell-down process', time: '5d ago', comments: 18 },
+      { cat: 'Markets', title: 'Trion oil development offshore Mexico passes 56% completion', time: '1w ago', comments: 12 },
+      { cat: 'Sector', title: 'Bechtel sources Louisiana LNG structural steel from the UAE to protect schedule', time: '2w ago', comments: 9 },
+      { cat: 'People', title: 'Woodside flags tighter market for LNG commissioning and subsea talent', time: '2w ago', comments: 14 },
+    ],
+  };
+}
+
+function stoRealNews(): CompanyNews {
+  return {
+    hero: {
+      cat: 'Trending',
+      title: 'Santos exports first Barossa gas to Darwin LNG as flagship project starts up',
+      time: '4d ago',
+      comments: 31,
+    },
+    items: [
+      { cat: 'Markets', title: 'ADNOC-led XRG consortium walks away from $36B Santos takeover', time: '1w ago', comments: 58 },
+      { cat: 'Company', title: 'Pikka oil project on Alaska’s North Slope moves into production', time: '2w ago', comments: 16 },
+      { cat: 'Markets', title: 'Shares trade near the top of a A$5.90–A$8.24 range as projects come online', time: '2w ago', comments: 11 },
+      { cat: 'Sector', title: 'Barossa FPSO ramp-up to underpin Darwin LNG feed gas', time: '3w ago', comments: 8 },
+    ],
+  };
+}
+
+function chevronRealNews(): CompanyNews {
+  return {
+    hero: {
+      cat: 'Trending',
+      title: 'Chevron says Gorgon and Wheatstone now supply ~40% of WA’s domestic gas',
+      time: '5d ago',
+      comments: 19,
+    },
+    items: [
+      { cat: 'Sustainability', title: 'Gorgon CCS on Barrow Island passes 10.5Mt of CO₂ stored since 2019', time: '1w ago', comments: 22 },
+      { cat: 'Markets', title: 'Chevron to keep supplying gas to WA utility Alinta under new deal', time: '1w ago', comments: 10 },
+      { cat: 'Company', title: 'Chevron takes Woodside’s 13% Wheatstone stake in operatorship swap', time: '3w ago', comments: 13 },
+      { cat: 'Sustainability', title: 'JV to explore new carbon storage near Barrow Island', time: '3w ago', comments: 7 },
+    ],
+  };
+}
+
+function sfrRealNews(): CompanyNews {
+  return {
+    hero: {
+      cat: 'Trending',
+      title: 'Sandfire completes MATSA buyout, taking 100% of the Tier-1 Spanish copper complex',
+      time: '4d ago',
+      comments: 15,
+    },
+    items: [
+      { cat: 'Markets', title: 'Sandfire holds FY26 guidance as MATSA strength offsets Motheo hurdles', time: '1w ago', comments: 12 },
+      { cat: 'Company', title: 'Group copper-equivalent output of 72,100t in H1 FY26, second-half weighted', time: '2w ago', comments: 8 },
+      { cat: 'Sustainability', title: '21MW solar plant signed for the Motheo copper mine in Botswana', time: '2w ago', comments: 6 },
+      { cat: 'Sector', title: 'A4 open pit ramps up as Motheo expansion advances', time: '3w ago', comments: 5 },
+    ],
+  };
+}
+
+function igoRealNews(): CompanyNews {
+  return {
+    hero: {
+      cat: 'Trending',
+      title: 'IGO trims Greenbushes FY26 lithium guidance to 1,375–1,425kt of spodumene',
+      time: '3d ago',
+      comments: 21,
+    },
+    items: [
+      { cat: 'Markets', title: 'Q3 revenue jumps 45% to A$119.7M even as nickel and lithium prices stay weak', time: '6d ago', comments: 14 },
+      { cat: 'Company', title: 'Nova nickel nears end of mine life, with closure plan due to DMIRS by mid-2026', time: '1w ago', comments: 19 },
+      { cat: 'Sector', title: 'Greenbushes stake keeps IGO tied to the world’s lowest-cost hard-rock lithium', time: '2w ago', comments: 9 },
+      { cat: 'Markets', title: 'Shares stay near the low end of a A$4.10–A$10.05 range on battery-metals pressure', time: '2w ago', comments: 7 },
+    ],
+  };
+}
+
+function minRealNews(): CompanyNews {
+  return {
+    hero: {
+      cat: 'Trending',
+      title: 'Mineral Resources back in the black as Onslow Iron hits 35Mtpa nameplate',
+      time: '2d ago',
+      comments: 44,
+    },
+    items: [
+      { cat: 'Markets', title: 'Record H1: revenue $3.1B and net profit $573M as net debt falls to $4.9B', time: '5d ago', comments: 26 },
+      { cat: 'Company', title: 'Wodgina lithium output up 65% to 173,000t; MinRes turns bullish on lithium', time: '1w ago', comments: 18 },
+      { cat: 'People', title: 'Governance review into founder Chris Ellison escalates to the ATO', time: '1w ago', comments: 63 },
+      { cat: 'Markets', title: 'Shares rally toward a A$74.94 high after a A$23.46 low', time: '2w ago', comments: 15 },
+    ],
+  };
+}
+
+function plsRealNews(): CompanyNews {
+  return {
+    hero: {
+      cat: 'Trending',
+      title: 'Pilbara Minerals advances P2000 expansion with a A$1.2B new flotation plant',
+      time: '3d ago',
+      comments: 24,
+    },
+    items: [
+      { cat: 'Company', title: 'Ngungaju 200ktpa plant readied for restart within four months, pending board approval', time: '6d ago', comments: 15 },
+      { cat: 'Markets', title: 'Pilgangoora ships 208,000t of spodumene as recoveries hold at 76%', time: '1w ago', comments: 12 },
+      { cat: 'Sector', title: 'P2000 study flags $2.6B incremental NPV and a 55% IRR', time: '2w ago', comments: 10 },
+      { cat: 'Markets', title: 'Cash balance of $954M underpins the growth pipeline as lithium thaws', time: '2w ago', comments: 8 },
+    ],
+  };
+}
+
+function ltrRealNews(): CompanyNews {
+  return {
+    hero: {
+      cat: 'Trending',
+      title: 'Liontown completes Kathleen Valley’s move to underground — Australia’s first underground lithium mine',
+      time: '4d ago',
+      comments: 20,
+    },
+    items: [
+      { cat: 'Company', title: 'Kathleen Valley hits a 1.5Mtpa run rate, targeting 2.8Mtpa steady state by FY27', time: '1w ago', comments: 14 },
+      { cat: 'Markets', title: 'Liontown commits A$12M to long-lead gear for a 4.0Mtpa expansion', time: '2w ago', comments: 11 },
+      { cat: 'Sector', title: 'FID on the 4.0Mtpa expansion flagged for around Q1 FY27', time: '2w ago', comments: 9 },
+      { cat: 'Markets', title: 'Shares recover toward A$2.65 after a A$0.55 low as lithium sentiment turns', time: '3w ago', comments: 13 },
+    ],
+  };
+}
+
+function iluRealNews(): CompanyNews {
+  return {
+    hero: {
+      cat: 'Trending',
+      title: 'Iluka’s Eneabba rare-earths refinery passes 50% built, commissioning set for 2027',
+      time: '3d ago',
+      comments: 17,
+    },
+    items: [
+      { cat: 'Company', title: 'First rare-earths offtake: multi-year NdPr, Dy and Tb supply to a global automaker from 2028', time: '1w ago', comments: 13 },
+      { cat: 'Sector', title: 'Eneabba to be Australia’s first fully integrated rare-earths refinery outside China', time: '2w ago', comments: 15 },
+      { cat: 'Markets', title: 'A$1.65B non-recourse government loan backs the Eneabba build', time: '2w ago', comments: 9 },
+      { cat: 'Company', title: 'Wimmera earmarked as future zircon and rare-earths feedstock', time: '3w ago', comments: 6 },
+    ],
+  };
+}
+
+function nstRealNews(): CompanyNews {
+  return {
+    hero: {
+      cat: 'Trending',
+      title: 'Northern Star folds De Grey’s Hemi into group reserves, lifting them 27%',
+      time: '2d ago',
+      comments: 29,
+    },
+    items: [
+      { cat: 'Markets', title: 'March quarter: ~381,000oz sold at an AISC of A$2,709/oz', time: '6d ago', comments: 17 },
+      { cat: 'Company', title: 'Kalgoorlie resources climb 3.3Moz to 42.2Moz, led by KCGM', time: '1w ago', comments: 12 },
+      { cat: 'Markets', title: 'Shares hammered on another FY26 production downgrade', time: '1w ago', comments: 34 },
+      { cat: 'Company', title: 'A$140–150M earmarked to develop Hemi in the Pilbara', time: '2w ago', comments: 10 },
+    ],
+  };
+}
+
 export function companyNews(name: string, sector: string): CompanyNews {
   if (name === 'BHP') return bhpRealNews();
   if (name === 'Rio Tinto') return rioRealNews();
   if (name === 'Fortescue') return fmgRealNews();
   if (name === 'South32') return s32RealNews();
+  if (name === 'Woodside Energy') return wdsRealNews();
+  if (name === 'Santos') return stoRealNews();
+  if (name === 'Chevron') return chevronRealNews();
+  if (name === 'Sandfire Resources') return sfrRealNews();
+  if (name === 'IGO') return igoRealNews();
+  if (name === 'Mineral Resources') return minRealNews();
+  if (name === 'Pilbara Minerals') return plsRealNews();
+  if (name === 'Liontown Resources') return ltrRealNews();
+  if (name === 'Iluka Resources') return iluRealNews();
+  if (name === 'Northern Star Resources') return nstRealNews();
   const seed = seedOf(name + sector);
   const pick = <T,>(arr: T[], k: number) => arr[(seed + k) % arr.length];
   const hero: NewsItem = {

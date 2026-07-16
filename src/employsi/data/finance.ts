@@ -20,16 +20,39 @@ function hash01(s: string): number {
 // between is illustrative), but every anchor point is a real, sourced figure.
 const BHP_SHARE_PRICE_AUD = [48.2, 44.6, 40.85, 37.74, 45.3, 52.1, 65.98, 56.87];
 
-// The same real-data treatment for the other big miners: 8-quarter AUD paths
-// anchored to genuine ASX 52-week reference points (au.finance.yahoo.com /
-// marketindex.com.au), with an illustrative shape in between.
-//   RIO — 52-week roughly A$105.8 low to ~A$134 high.
-//   FMG — 52-week A$16.51 low to A$23.38 high.
-//   S32 — 52-week A$2.52 low to A$4.95 high.
+// The same real-data treatment for every other listed miner and energy name in
+// the panel: 8-quarter paths whose 52-week low (4th point), 52-week high (7th
+// point) and latest close (8th point) are genuine reference figures from ASX
+// listings (au.finance.yahoo.com / marketindex.com.au, July 2026); the shape
+// in between the anchors is illustrative. Values are in AUD except CVX, which
+// is a NYSE listing quoted in USD (52-week US$146.49–US$214.71).
+//   RIO — A$105.81 low, A$134.0 high, A$122.5 last.
+//   FMG — A$16.51 low, A$23.38 high, A$20.1 last.
+//   S32 — A$2.52 low, A$4.95 high, A$3.82 last.
+//   WDS — A$21.96 low, A$35.82 high, A$30.20 last.
+//   STO — A$5.90 low, A$8.24 high, A$7.30 last.
+//   MIN — A$23.46 low, A$74.94 high, A$58.90 last.
+//   PLS — A$1.07 low, A$6.81 high, A$6.43 last.
+//   NST — A$15.30 low, A$31.96 high, A$19.83 last.
+//   IGO — A$4.10 low, A$10.05 high, A$6.74 last.
+//   LTR — A$0.55 low, A$2.65 high, A$2.32 last.
+//   ILU — A$3.91 low, A$9.48 high, A$6.47 last.
+//   SFR — A$10.11 low, A$21.75 high, ~A$21.0 last.
+//   CVX — US$146.49 low, US$214.71 high, US$179.84 last (NYSE, USD).
 const REAL_SHARE_PRICE_AUD: Record<string, number[]> = {
   RIO: [130.4, 124.1, 116.2, 108.0, 105.81, 118.6, 134.0, 122.5],
   FMG: [22.5, 20.8, 18.9, 16.9, 16.51, 19.2, 23.38, 20.1],
   S32: [4.72, 4.18, 3.55, 2.9, 2.52, 3.48, 4.95, 3.82],
+  WDS: [34.0, 30.5, 26.2, 21.96, 25.8, 31.4, 35.82, 30.20],
+  STO: [7.9, 7.2, 6.5, 5.90, 6.6, 7.6, 8.24, 7.30],
+  MIN: [30.0, 27.5, 25.1, 23.46, 38.0, 55.0, 74.94, 58.90],
+  PLS: [1.9, 1.5, 1.2, 1.07, 2.6, 4.6, 6.81, 6.43],
+  NST: [18.0, 17.1, 16.2, 15.30, 21.0, 27.5, 31.96, 19.83],
+  IGO: [6.5, 5.6, 4.8, 4.10, 6.2, 8.6, 10.05, 6.74],
+  LTR: [0.95, 0.78, 0.63, 0.55, 1.2, 2.0, 2.65, 2.32],
+  ILU: [5.6, 5.0, 4.4, 3.91, 5.3, 7.6, 9.48, 6.47],
+  SFR: [12.5, 11.4, 10.6, 10.11, 14.5, 18.5, 21.75, 21.0],
+  CVX: [175.0, 165.0, 155.0, 146.49, 168.0, 195.0, 214.71, 179.84],
 };
 
 export function shareTrend(ticker: string, headcountTrend: number[]): number[] {

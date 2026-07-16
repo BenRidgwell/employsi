@@ -169,9 +169,14 @@ export function CompanyPanel() {
   // account to save it to.
   const following = !!account && !!panel && followedIds.includes(panel.companyId);
   // Companies wired with real data show the LIVE badge. BHP additionally polls
-  // a real-time feed (so it waits for the first poll); Rio Tinto, Fortescue and
-  // South32 carry real static figures/news, so they're live as soon as open.
-  const REAL_DATA_IDS = ['bhp', 'rio', 'fmg', 's32'];
+  // a real-time feed (so it waits for the first poll); the rest carry real
+  // static figures (financial ratios, 52-week share ranges) and dated news, so
+  // they're live as soon as the card opens. This now covers every listed Perth
+  // resources name in the map.
+  const REAL_DATA_IDS = [
+    'bhp', 'rio', 'fmg', 's32', 'wds', 'sto', 'chevron', 'sfr',
+    'igo', 'min', 'pls', 'ltr', 'ilu', 'nst',
+  ];
   const live = isBhp ? !!feed : REAL_DATA_IDS.includes(lastId ?? '');
 
   const prices = useMemo(
