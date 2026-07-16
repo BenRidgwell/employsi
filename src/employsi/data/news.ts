@@ -7,8 +7,10 @@ export interface NewsItem {
   title: string;
   time: string;
   comments: number;
-  // Optional real article link + image; when absent the news card falls back to
-  // a Google-News search for the headline and a deterministic stock photo.
+  // Optional real article link + image. When `url` is a genuine publisher
+  // article, the news panel scrapes that page's og:image on the Worker for a
+  // real thumbnail (see lib/articleImageFn.ts); when absent the card links to a
+  // Google-News search for the headline and shows a deterministic stock photo.
   url?: string;
   image?: string;
 }
@@ -54,6 +56,7 @@ function bhpRealNews(): CompanyNews {
       title: 'Brandon Craig becomes BHP chief executive as leadership transition completes',
       time: '2d ago',
       comments: 34,
+      url: 'https://www.bhp.com/news/media-centre/releases/2026/03/brandon-craig-to-succeed-mike-henry-as-bhp-ceo',
     },
     items: [
       { cat: 'Markets', title: 'BHP wins approval for $1.3B early works on Escondida copper expansion', time: '5h ago', comments: 21 },
@@ -74,6 +77,7 @@ function rioRealNews(): CompanyNews {
       title: 'Rio Tinto ships first ore from the Simandou iron ore mega-project in Guinea',
       time: '4d ago',
       comments: 41,
+      url: 'https://www.riotinto.com/en/news/releases/2025/simandou-partners-celebrate-start-of-operations',
     },
     items: [
       { cat: 'Markets', title: 'Rio Tinto completes $6.7B acquisition of Arcadium Lithium', time: '1w ago', comments: 33 },
@@ -91,10 +95,11 @@ function fmgRealNews(): CompanyNews {
       title: 'Fortescue ships 200 million tonnes of iron ore in a year for the first time',
       time: '3d ago',
       comments: 28,
+      url: 'https://www.australianmining.com.au/fortescues-200-million-tonne-iron-ore-milestone/',
     },
     items: [
       { cat: 'Markets', title: 'Record first-half shipments of 100.2Mt, up 3% year-on-year', time: '6d ago', comments: 17 },
-      { cat: 'People', title: 'Fortescue cuts ~700 roles as it slows green-hydrogen plans', time: '1w ago', comments: 52 },
+      { cat: 'People', title: 'Fortescue cuts ~700 roles as it slows green-hydrogen plans', time: '1w ago', comments: 52, url: 'https://www.miningweekly.com/article/fortescue-scales-back-hydrogen-ambitions-iron-ore-shipments-at-record-2025-07-24' },
       { cat: 'Company', title: 'Andrew Forrest defends energy strategy amid restructure', time: '1w ago', comments: 24 },
       { cat: 'Sustainability', title: 'Real-Zero 2030 emissions goal under fresh scrutiny', time: '2w ago', comments: 19 },
     ],
@@ -108,6 +113,7 @@ function s32RealNews(): CompanyNews {
       title: 'South32’s Hermosa becomes the first mine added to the US federal permitting dashboard in a decade',
       time: '5d ago',
       comments: 16,
+      url: 'https://www.mining.com/south32s-hermosa-project-advances-in-federal-permitting/',
     },
     items: [
       { cat: 'Markets', title: 'Hermosa wins $166M US Department of Energy battery-materials grant', time: '1w ago', comments: 12 },
@@ -129,6 +135,7 @@ function wdsRealNews(): CompanyNews {
       title: 'Woodside’s Scarborough passes 96% complete, on track for first LNG cargo in Q4 2026',
       time: '3d ago',
       comments: 27,
+      url: 'https://www.offshore-energy.biz/woodside-firing-on-all-cylinders-to-advance-australian-gas-project-mexican-oil-development-and-us-lng-terminal/',
     },
     items: [
       { cat: 'Company', title: 'Louisiana LNG reaches 24% complete as Woodside runs its sell-down process', time: '5d ago', comments: 18 },
@@ -146,6 +153,7 @@ function stoRealNews(): CompanyNews {
       title: 'Santos exports first Barossa gas to Darwin LNG as flagship project starts up',
       time: '4d ago',
       comments: 31,
+      url: 'https://lngprime.com/australia-and-oceania/santos-says-barossa-fpso-receives-first-gas/163898/',
     },
     items: [
       { cat: 'Markets', title: 'ADNOC-led XRG consortium walks away from $36B Santos takeover', time: '1w ago', comments: 58 },
@@ -163,10 +171,11 @@ function chevronRealNews(): CompanyNews {
       title: 'Chevron says Gorgon and Wheatstone now supply ~40% of WA’s domestic gas',
       time: '5d ago',
       comments: 19,
+      url: 'https://lngprime.com/australia-and-oceania/chevron-pens-western-australian-gas-supply-deal-with-alinta/191667/',
     },
     items: [
       { cat: 'Sustainability', title: 'Gorgon CCS on Barrow Island passes 10.5Mt of CO₂ stored since 2019', time: '1w ago', comments: 22 },
-      { cat: 'Markets', title: 'Chevron to keep supplying gas to WA utility Alinta under new deal', time: '1w ago', comments: 10 },
+      { cat: 'Markets', title: 'Chevron to keep supplying gas to WA utility Alinta under new deal', time: '1w ago', comments: 10, url: 'https://www.offshore-technology.com/news/chevron-supply-deal-alinta-energy/' },
       { cat: 'Company', title: 'Chevron takes Woodside’s 13% Wheatstone stake in operatorship swap', time: '3w ago', comments: 13 },
       { cat: 'Sustainability', title: 'JV to explore new carbon storage near Barrow Island', time: '3w ago', comments: 7 },
     ],
@@ -180,6 +189,7 @@ function sfrRealNews(): CompanyNews {
       title: 'Sandfire completes MATSA buyout, taking 100% of the Tier-1 Spanish copper complex',
       time: '4d ago',
       comments: 15,
+      url: 'https://www.miningweekly.com/article/sandfire-retains-fy26-guidance-2026-01-22',
     },
     items: [
       { cat: 'Markets', title: 'Sandfire holds FY26 guidance as MATSA strength offsets Motheo hurdles', time: '1w ago', comments: 12 },
@@ -197,9 +207,10 @@ function igoRealNews(): CompanyNews {
       title: 'IGO trims Greenbushes FY26 lithium guidance to 1,375–1,425kt of spodumene',
       time: '3d ago',
       comments: 21,
+      url: 'https://www.miningweekly.com/article/worlds-biggest-lithium-mine-gets-downgrade-on-systemic-issues-2026-04-24',
     },
     items: [
-      { cat: 'Markets', title: 'Q3 revenue jumps 45% to A$119.7M even as nickel and lithium prices stay weak', time: '6d ago', comments: 14 },
+      { cat: 'Markets', title: 'Q3 revenue jumps 45% to A$119.7M even as nickel and lithium prices stay weak', time: '6d ago', comments: 14, url: 'https://www.mining.com/web/australias-igo-posts-45-sequential-increase-in-q3-revenue/' },
       { cat: 'Company', title: 'Nova nickel nears end of mine life, with closure plan due to DMIRS by mid-2026', time: '1w ago', comments: 19 },
       { cat: 'Sector', title: 'Greenbushes stake keeps IGO tied to the world’s lowest-cost hard-rock lithium', time: '2w ago', comments: 9 },
       { cat: 'Markets', title: 'Shares stay near the low end of a A$4.10–A$10.05 range on battery-metals pressure', time: '2w ago', comments: 7 },
@@ -214,6 +225,7 @@ function minRealNews(): CompanyNews {
       title: 'Mineral Resources back in the black as Onslow Iron hits 35Mtpa nameplate',
       time: '2d ago',
       comments: 44,
+      url: 'https://www.miningweekly.com/article/mineral-resources-hits-35mtpa-at-onslow-iron-2025-10-30',
     },
     items: [
       { cat: 'Markets', title: 'Record H1: revenue $3.1B and net profit $573M as net debt falls to $4.9B', time: '5d ago', comments: 26 },
@@ -231,9 +243,10 @@ function plsRealNews(): CompanyNews {
       title: 'Pilbara Minerals advances P2000 expansion with a A$1.2B new flotation plant',
       time: '3d ago',
       comments: 24,
+      url: 'https://mining.com.au/pilbara-minerals-outlines-2-million-tonne-expansion-at-pilgangoora/',
     },
     items: [
-      { cat: 'Company', title: 'Ngungaju 200ktpa plant readied for restart within four months, pending board approval', time: '6d ago', comments: 15 },
+      { cat: 'Company', title: 'Ngungaju 200ktpa plant readied for restart within four months, pending board approval', time: '6d ago', comments: 15, url: 'https://www.australianmining.com.au/pilbara-minerals-ignites-ngungaju-plant-comeback-as-lithium-rebounds/' },
       { cat: 'Markets', title: 'Pilgangoora ships 208,000t of spodumene as recoveries hold at 76%', time: '1w ago', comments: 12 },
       { cat: 'Sector', title: 'P2000 study flags $2.6B incremental NPV and a 55% IRR', time: '2w ago', comments: 10 },
       { cat: 'Markets', title: 'Cash balance of $954M underpins the growth pipeline as lithium thaws', time: '2w ago', comments: 8 },
@@ -248,6 +261,7 @@ function ltrRealNews(): CompanyNews {
       title: 'Liontown completes Kathleen Valley’s move to underground — Australia’s first underground lithium mine',
       time: '4d ago',
       comments: 20,
+      url: 'https://www.mining.com/liontown-kicks-off-production-at-australias-first-underground-lithium-mine/',
     },
     items: [
       { cat: 'Company', title: 'Kathleen Valley hits a 1.5Mtpa run rate, targeting 2.8Mtpa steady state by FY27', time: '1w ago', comments: 14 },
@@ -265,6 +279,7 @@ function iluRealNews(): CompanyNews {
       title: 'Iluka’s Eneabba rare-earths refinery passes 50% built, commissioning set for 2027',
       time: '3d ago',
       comments: 17,
+      url: 'https://www.miningweekly.com/article/eneabba-rare-earths-refinery-australia-update-2026-06-26',
     },
     items: [
       { cat: 'Company', title: 'First rare-earths offtake: multi-year NdPr, Dy and Tb supply to a global automaker from 2028', time: '1w ago', comments: 13 },
@@ -282,11 +297,12 @@ function nstRealNews(): CompanyNews {
       title: 'Northern Star folds De Grey’s Hemi into group reserves, lifting them 27%',
       time: '2d ago',
       comments: 29,
+      url: 'https://www.australianmining.com.au/northern-star-lifts-gold-inventory-as-hemi-drives-major-growth',
     },
     items: [
       { cat: 'Markets', title: 'March quarter: ~381,000oz sold at an AISC of A$2,709/oz', time: '6d ago', comments: 17 },
       { cat: 'Company', title: 'Kalgoorlie resources climb 3.3Moz to 42.2Moz, led by KCGM', time: '1w ago', comments: 12 },
-      { cat: 'Markets', title: 'Shares hammered on another FY26 production downgrade', time: '1w ago', comments: 34 },
+      { cat: 'Markets', title: 'Shares hammered on another FY26 production downgrade', time: '1w ago', comments: 34, url: 'https://www.miningweekly.com/article/northern-star-shares-hammered-on-another-production-downgrade-2026-03-13' },
       { cat: 'Company', title: 'A$140–150M earmarked to develop Hemi in the Pilbara', time: '2w ago', comments: 10 },
     ],
   };

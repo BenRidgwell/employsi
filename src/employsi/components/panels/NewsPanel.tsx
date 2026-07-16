@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { companyNews, type CompanyNews, type NewsItem } from '../../data/news';
+import { useArticleImages } from '../../hooks/useArticleImages';
 
 // Narrow "[company] in the news" card that sits to the right of the company
 // card. Mirrors a mobile news feed: a trending hero with a masthead image, then
@@ -39,6 +40,11 @@ function thumbUrl(seed: string, w: number, h: number): string {
 export function NewsPanel({ name, sector, live }: { name: string; sector: string; live?: CompanyNews | null }) {
   const computed = useMemo(() => companyNews(name, sector), [name, sector]);
   const news = live ?? computed;
+  // Resolve the real og:image for every story that carries a genuine article
+  // link, on the Worker. Until they arrive (or for stories with no real link)
+  // the cards keep their curated/stock image, so nothing pops in empty.
+  const articleImages = useArticleImages([news.hero.url, ...news.items.map((a) => a.url)]);
+  const heroImg = (news.hero.url && articleImages[news.hero.url]) || news.hero.image || thumbUrl(name + '-hero', 640, 360);
   return (
     <aside className="newspanel">
       <div className="newshd">
@@ -47,7 +53,7 @@ export function NewsPanel({ name, sector, live }: { name: string; sector: string
       <div className="newsscroll">
         <a className="newshero" href={articleUrl(news.hero, name)} target="_blank" rel="noreferrer">
           <div className="newsheroimg">
-            <img className="newsheroimgtag" src={news.hero.image || thumbUrl(name + '-hero', 640, 360)} alt="" loading="lazy" />
+            <img className="newsheroimgtag" src={heroImg} alt="" loading="lazy" />
             <span className="newsbadge">Trending</span>
           </div>
           <div className="newsherotitle">{news.hero.title}</div>
@@ -61,7 +67,7 @@ export function NewsPanel({ name, sector, live }: { name: string; sector: string
               <div className="newsrowtitle">{a.title}</div>
               <Meta item={a} />
             </div>
-            <img className="newsrowthumb" src={a.image || thumbUrl(name + '-' + i, 160, 160)} alt="" loading="lazy" />
+            <img className="newsrowthumb" src={(a.url && articleImages[a.url]) || a.image || thumbUrl(name + '-' + i, 160, 160)} alt="" loading="lazy" />
           </a>
         ))}
       </div>
