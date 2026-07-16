@@ -95,7 +95,7 @@ function fmgRealNews(): CompanyNews {
       title: 'Fortescue ships 200 million tonnes of iron ore in a year for the first time',
       time: '3d ago',
       comments: 28,
-      url: 'https://www.australianmining.com.au/fortescues-200-million-tonne-iron-ore-milestone/',
+      url: 'https://www.mining.com/web/fortescue-forecasts-higher-annual-iron-ore-shipments/',
     },
     items: [
       { cat: 'Markets', title: 'Record first-half shipments of 100.2Mt, up 3% year-on-year', time: '6d ago', comments: 17 },
@@ -135,7 +135,7 @@ function wdsRealNews(): CompanyNews {
       title: 'Woodside’s Scarborough passes 96% complete, on track for first LNG cargo in Q4 2026',
       time: '3d ago',
       comments: 27,
-      url: 'https://www.offshore-energy.biz/woodside-firing-on-all-cylinders-to-advance-australian-gas-project-mexican-oil-development-and-us-lng-terminal/',
+      url: 'https://lngprime.com/australia-and-oceania/woodside-expects-first-scarborough-lng-cargo-in-h2-2026/144621/',
     },
     items: [
       { cat: 'Company', title: 'Louisiana LNG reaches 24% complete as Woodside runs its sell-down process', time: '5d ago', comments: 18 },
