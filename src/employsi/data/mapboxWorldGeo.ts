@@ -63,5 +63,7 @@ export function cityLabel(id: string): string {
 // the world is a drag/spin away.
 export const GLOBAL_VIEW = {
   center: [100, -10] as [number, number],
-  zoom: 0.3,
+  // Slightly tighter than a full pull-back so the Asia-Pacific fills more of
+  // the frame on arrival.
+  zoom: 0.6,
 };

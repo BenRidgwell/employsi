@@ -41,6 +41,7 @@ export const GLOBAL_HUB_XY: Record<string, [number, number]> = {
   lubumbashi: [280.6, 184.7],
   brisbane: [499, 214.1],
   adelaide: [474.8, 229.3],
+  melbourne: [486, 238],
   sydney: [491.5, 232.6],
   // Finance-only hubs (tagged Financial Services), positioned with the same
   // lng/lat → viewBox fit as the resources hubs above.
@@ -56,7 +57,7 @@ export const GLOBAL_HUB_XY: Record<string, [number, number]> = {
 
 export const GLOBAL_HUB_LABEL: Record<string, string> = {
   perth: 'Perth', santiago: 'Santiago', toronto: 'Toronto', johannesburg: 'Johannesburg', london: 'London', houston: 'Houston', singapore: 'Singapore',
-  denver: 'Denver', ganzhou: 'Ganzhou', lubumbashi: 'Lubumbashi', brisbane: 'Brisbane', adelaide: 'Adelaide', sydney: 'Sydney',
+  denver: 'Denver', ganzhou: 'Ganzhou', lubumbashi: 'Lubumbashi', brisbane: 'Brisbane', adelaide: 'Adelaide', melbourne: 'Melbourne', sydney: 'Sydney',
   newyork: 'New York', sanfrancisco: 'San Francisco', chicago: 'Chicago', tokyo: 'Tokyo', zurich: 'Zurich', geneva: 'Geneva', dubai: 'Dubai', hongkong: 'Hong Kong',
 };
 
@@ -65,6 +66,17 @@ export const GLOBAL_HUB_LABEL: Record<string, string> = {
 // filtering to that sector shows only them on the global map.
 const RESOURCES: string[] = ['Energy & Natural Resources'];
 export const CITY_SECTORS: Record<string, string[]> = {
+  // Perth hosts resources plus, now, consumer/retail (Wesfarmers, Cash
+  // Converters), media/telco (Seven West, Swift), industrial (Austal,
+  // Monadelphous) and services/infrastructure (NRW, Macmahon) names, so it
+  // matches all of those sector filters.
+  perth: [
+    'Energy & Natural Resources',
+    'Consumer and Retail',
+    'Technology, Media and Telecommunications',
+    'Industrial Manufacturing',
+    'Infrastructure and Government',
+  ],
   // Pure finance hubs — no resources presence, so they drop out under an
   // Energy & Natural Resources filter and only appear under Financial Services.
   sydney: ['Financial Services'],
@@ -79,6 +91,9 @@ export const CITY_SECTORS: Record<string, string[]> = {
   // Also finance centres, but with a real resources presence too.
   singapore: [...RESOURCES, 'Financial Services'],
   london: [...RESOURCES, 'Financial Services'],
+  // Melbourne is both a mining-corporate-HQ city (BHP, Rio) and a major
+  // financial centre, so it appears under either sector filter.
+  melbourne: [...RESOURCES, 'Financial Services'],
 };
 
 // A city hub is visible under the active sector filter if it carries any of the
@@ -130,6 +145,7 @@ export const GLOBAL_STATS: Record<string, CityStat> = {
   lubumbashi: { salary: 54, growth: 6.2, turnover: 16.5 },
   brisbane: { salary: 124, growth: 4.5, turnover: 10.8 },
   adelaide: { salary: 118, growth: 3.1, turnover: 10.2 },
+  melbourne: { salary: 132, growth: 3.0, turnover: 8.9 },
   sydney: { salary: 128, growth: 3.5, turnover: 9.5 },
   newyork: { salary: 165, growth: 3.2, turnover: 11.0 },
   sanfrancisco: { salary: 185, growth: 4.0, turnover: 12.5 },

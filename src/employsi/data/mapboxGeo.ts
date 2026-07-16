@@ -76,6 +76,36 @@ export const CITY_COMPANIES: Record<string, CityCompany[]> = {
     { id: 'ltr', coords: [115.840467, -31.950194] }, // Liontown — 32 Ord St, West Perth
     { id: 'ilu', coords: [115.851839, -31.952745] }, // Iluka — 240 St Georges Tce
     { id: 'nst', coords: [115.822660, -31.946683] }, // Northern Star — 500 Hay St, Subiaco
+    // Additional Perth-listed names. Coordinates place each at its real
+    // head-office suburb (West Perth / Subiaco cluster, CBD, or further out for
+    // Austal at Henderson and the services firms east of the river).
+    { id: 'pdn', coords: [115.84050, -31.94900] }, // Paladin Energy — West Perth
+    { id: 'wgx', coords: [115.84200, -31.94750] }, // Westgold — West Perth
+    { id: 'stx', coords: [115.83950, -31.95050] }, // Strike Energy — West Perth
+    { id: 'alk', coords: [115.84380, -31.94980] }, // Alkane Resources — West Perth
+    { id: 'rrl', coords: [115.83000, -31.94700] }, // Regis Resources — Subiaco
+    { id: 'pru', coords: [115.83850, -31.94820] }, // Perseus Mining — West Perth
+    { id: 'rms', coords: [115.84120, -31.95120] }, // Ramelius — West Perth
+    { id: 'deg', coords: [115.85600, -31.95250] }, // De Grey Mining — Perth CBD
+    { id: 'gmd', coords: [115.84280, -31.94680] }, // Genesis Minerals — West Perth
+    { id: 'gor', coords: [115.83780, -31.94950] }, // Gold Road — West Perth
+    { id: 'cmm', coords: [115.84420, -31.95080] }, // Capricorn Metals — West Perth
+    { id: 'dyl', coords: [115.83600, -31.94780] }, // Deep Yellow — Subiaco/West Perth
+    { id: 'bmn', coords: [115.84020, -31.95180] }, // Bannerman Energy — West Perth
+    { id: 'boe', coords: [115.83220, -31.94880] }, // Boss Energy — Subiaco
+    { id: 'cvn', coords: [115.83900, -31.94600] }, // Carnarvon Energy — West Perth
+    { id: 'cxo', coords: [115.84550, -31.94850] }, // Core Lithium — West Perth
+    { id: 'jms', coords: [115.85480, -31.95350] }, // Jupiter Mines — Perth CBD
+    { id: 'sgq', coords: [115.83680, -31.95020] }, // St George Mining — West Perth
+    { id: 'del', coords: [115.83400, -31.94550] }, // Delorean — West Perth
+    { id: 'asb', coords: [115.76490, -32.15800] }, // Austal — Henderson shipyard
+    { id: 'mnd', coords: [115.89650, -31.97550] }, // Monadelphous — Victoria Park
+    { id: 'nwh', coords: [115.93300, -31.94300] }, // NRW Holdings — Belmont
+    { id: 'mah', coords: [115.94200, -31.99050] }, // Macmahon — Welshpool
+    { id: 'wes', coords: [115.85850, -31.95850] }, // Wesfarmers — 40 The Esplanade, CBD
+    { id: 'ccv', coords: [115.86200, -31.95050] }, // Cash Converters — Perth CBD
+    { id: 'swm', coords: [115.81450, -31.90100] }, // Seven West Media — Osborne Park
+    { id: 'sw1', coords: [115.82300, -31.87700] }, // Swift Networks — Balcatta
   ],
   // Melbourne is the miners' corporate-HQ city: BHP's global head office and
   // Rio Tinto's principal Australian office are both on Collins Street. The

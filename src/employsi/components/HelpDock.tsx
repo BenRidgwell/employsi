@@ -68,6 +68,9 @@ export function HelpDock() {
   const setReduceMotion = useAppStore((s) => s.setReduceMotion);
   const nightMode = useAppStore((s) => s.nightMode);
   const setNightMode = useAppStore((s) => s.setNightMode);
+  const searchOpen = useAppStore((s) => s.searchOpen);
+  const filterOpen = useAppStore((s) => s.filterOpen);
+  const heatOpen = useAppStore((s) => s.heatOpen);
 
   // zoomedOut takes precedence, same reasoning as ZoomSlider.
   const layer: Layer = !zoomedOut ? 'local' : globalOut ? 'global' : 'domestic';
@@ -86,9 +89,24 @@ export function HelpDock() {
   }, [layerKey]);
 
   const tour = tourFor(layer, localCity);
+  // When a top-bar flyout (search / filter / heat) is open, drop this dock
+  // behind so those flyouts sit above the Feedback / Help / Settings buttons.
+  const behind = searchOpen || filterOpen || heatOpen;
+  const anyPanelOpen = open || fbOpen || settingsOpen;
 
   return (
-    <div className="helpdock">
+    <div className={`helpdock ${behind ? 'behind' : ''}`}>
+      {/* Click-away scrim: tapping outside an open panel closes it. */}
+      {anyPanelOpen && (
+        <div
+          className="dockscrim"
+          onClick={() => {
+            setOpen(false);
+            setFbOpen(false);
+            closeSettings();
+          }}
+        />
+      )}
       {open && (
         <div className="helppanel">
           <div className="helphd">

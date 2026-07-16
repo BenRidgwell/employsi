@@ -865,7 +865,9 @@ body {
   position: fixed;
   left: 18px;
   bottom: calc(50% + 90px);
-  z-index: 40;
+  /* Above the side panes (z-index 45) so the What's-trending / Daily-brief
+     hover tooltips render in front of an open card/pane rather than behind. */
+  z-index: 48;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1019,6 +1021,42 @@ body {
   z-index: 4;
   opacity: 0.35;
   pointer-events: none;
+}
+/* Feedback / Need-help / Settings dock drops behind the same way when a
+   top-bar flyout (search / filter / heat) is open, so those flyouts sit over
+   it — mirroring how the tools dock already behaves. */
+.helpdock.behind {
+  z-index: 4;
+  opacity: 0.35;
+  pointer-events: none;
+}
+/* Click-away scrim for the bottom-corner docks. It lives inside the dock's own
+   stacking context (z-index 41), so it's given a low local z-index and the
+   dock's real controls are lifted above it. Transparent — it only catches the
+   outside click that closes an open panel/cluster. */
+.dockscrim {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 1;
+}
+.helpdock .helpbtn,
+.helpdock .helppanel,
+.helpdock .setpanel,
+.helpdock .fbboard,
+.toolsdock .tdcluster,
+.toolsdock .helpbtn {
+  position: relative;
+  z-index: 2;
+}
+/* Click-away scrim for the full-screen side panes (Daily brief / What's
+   trending). These render at the app root, so the scrim sits just below the
+   pane (z-index 45) and above the map to catch outside clicks. */
+.panescrim {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 44;
 }
 /* The tool toggles reuse the .helpbtn pill shell; only pointer-events + the
    open (active) colour differ from a plain help button. */
@@ -1901,6 +1939,53 @@ body {
   opacity: 1;
   transform: translateY(0) scale(1);
   pointer-events: auto;
+}
+/* Local-view company search results (in the top-right Search flyout). */
+.sfresults {
+  margin: 10px 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.sfresult {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+.sfresult:hover {
+  background: #f0f0f2;
+}
+.sfresultname {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sfresultticker {
+  flex: 0 0 auto;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--slate);
+}
+.sfresultempty {
+  margin: 10px 0 4px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--slate);
 }
 .sfinput {
   width: 100%;

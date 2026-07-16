@@ -85,14 +85,19 @@ export function ToolsDock() {
   const compareOpen = useAppStore((s) => s.compareOpen);
   const searchOpen = useAppStore((s) => s.searchOpen);
   const filterOpen = useAppStore((s) => s.filterOpen);
+  const heatOpen = useAppStore((s) => s.heatOpen);
   const [open, setOpen] = useState<'employer' | 'employee' | null>(null);
 
   if (selectedId || compareOpen) return null;
   const toggle = (k: 'employer' | 'employee') => setOpen((o) => (o === k ? null : k));
-  const behind = searchOpen || filterOpen;
+  // Drop behind when a top-bar flyout (search / filter / heat) is open, so those
+  // flyouts sit above this dock.
+  const behind = searchOpen || filterOpen || heatOpen;
 
   return (
     <div className={`toolsdock ${behind ? 'behind' : ''}`}>
+      {/* Click-away scrim: tapping anywhere outside an open cluster closes it. */}
+      {open && <div className="dockscrim" onClick={() => setOpen(null)} />}
       <Cluster
         kind="employer"
         label="Employer tools"

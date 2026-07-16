@@ -2,7 +2,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef } from 'react';
 import { useAppStore } from '../state/store';
-import { computeGlobalHeat, computeCityHeat, type HeatMetric } from '../lib/heat';
+import { computeGlobalHeat, type HeatMetric } from '../lib/heat';
 import {
   GLOBAL_STATS,
   STATE_STATS,
@@ -142,9 +142,12 @@ function computeMarkers(
   skill: string | null,
 ): Marker[] {
   const globalHeat = computeGlobalHeat(heat);
-  const cityHeat = computeCityHeat(heat);
   const out: Marker[] = [];
-  const push = (id: string, coords: [number, number], metricColor: string, hub: boolean) => {
+  const push = (id: string, coords: [number, number] | undefined, metricColor: string, hub: boolean) => {
+    // Guard against ids that lack coordinates (e.g. a hub without a HUB_LNGLAT
+    // entry): a marker with undefined coords would throw in setLngLat and crash
+    // the whole view. Skip it instead.
+    if (!coords) return;
     if (!cityMatchesSectors(id, activeSectors)) return;
     out.push({
       id,
@@ -163,16 +166,12 @@ function computeMarkers(
     return out;
   }
 
-  // Domestic: the region's own hubs, plus (Australia only) its non-hub cities.
+  // Domestic: the region's own hubs (Melbourne is now a hub too, so it comes
+  // through here on the AU view and on the global view; Darwin and Hobart stay
+  // omitted).
   (REGION_HUBS[region] || []).forEach((id) =>
     push(id, HUB_LNGLAT[id], globalHeat[id]?.color || 'rgb(150,150,150)', true),
   );
-  if (region === 'australia') {
-    // Melbourne only — Darwin and Hobart are intentionally omitted.
-    ['melbourne'].forEach((id) =>
-      push(id, AU_CITY_LNGLAT[id], cityHeat[id]?.color || 'rgb(150,150,150)', false),
-    );
-  }
   return out;
 }
 

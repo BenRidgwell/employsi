@@ -2,9 +2,10 @@ import { useMemo, type CSSProperties } from 'react';
 import { BrandMark } from './BrandMark';
 import { AccountButton } from './AccountButton';
 import { useAppStore, isFilterActive, isSearchActive, type FilterState } from '../state/store';
-import { COMPANIES } from '../data/companies';
+import { COMPANIES, SECTOR_GROUPS } from '../data/companies';
+import { CITY_COMPANIES } from '../data/mapboxGeo';
 
-const SECTORS = ['Energy & Natural Resources', 'Financial Services'];
+const SECTORS = SECTOR_GROUPS;
 
 function topSkills(): string[] {
   const counts: Record<string, number> = {};
@@ -93,6 +94,25 @@ export function TopBar() {
   const skills = useMemo(() => topSkills(), []);
   const activeSkill = skills.find((sk) => sk.toLowerCase() === searchQuery.trim().toLowerCase());
 
+  // Local search: every company mapped on the current city's map is searchable
+  // by name, ticker, skill or role. Selecting one opens its card and the map
+  // pans to it (the [selectedId] effect in PerthMapbox frames the building).
+  const localCity = useAppStore((s) => s.localCity);
+  const select = useAppStore((s) => s.select);
+  const localCompanyResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    const ids = new Set((CITY_COMPANIES[localCity] || []).map((c) => c.id));
+    return COMPANIES.filter(
+      (c) =>
+        ids.has(c.id) &&
+        (c.name.toLowerCase().includes(q) ||
+          c.ticker.toLowerCase().includes(q) ||
+          c.skills.some((sk) => sk.toLowerCase().includes(q)) ||
+          c.roles.some((r) => r.title.toLowerCase().includes(q))),
+    ).slice(0, 8);
+  }, [searchQuery, localCity]);
+
   return (
     <div className="topbar">
       <div className="brand">
@@ -120,6 +140,20 @@ export function TopBar() {
               onChange={(e) => setSearchQuery(e.target.value)}
               autoFocus={searchOpen}
             />
+            {searchQuery.trim() && (
+              <div className="sfresults">
+                {localCompanyResults.length > 0 ? (
+                  localCompanyResults.map((c) => (
+                    <button key={c.id} className="sfresult" onClick={() => select(c.id)}>
+                      <span className="sfresultname">{c.name}</span>
+                      <span className="sfresultticker">{c.ticker}</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="sfresultempty">No companies here match “{searchQuery.trim()}”</div>
+                )}
+              </div>
+            )}
             <div className="sflabel">Popular skills</div>
             <div className="sfchips">
               {skills.map((sk) => (

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { COMPANIES, categorize, type Company } from '../data/companies';
+import { COMPANIES, companyGroup, type Company } from '../data/companies';
 import { CITY_CONTINENT } from '../data/geo';
 import type { HeatMetric } from '../lib/heat';
 
@@ -376,7 +376,7 @@ export interface FilterState {
 // Energy & Natural Resources, so selecting Financial Services (which none of
 // them are) hides every company — exactly the intended behaviour.
 export function matchesSector(c: Company, activeSectors: string[]): boolean {
-  return !activeSectors.length || activeSectors.includes(categorize(c.sector));
+  return !activeSectors.length || activeSectors.includes(companyGroup(c));
 }
 
 // The remaining filters (search text + numeric sliders) that DIM a company that

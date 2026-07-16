@@ -57,6 +57,8 @@ export function WhatsTrendingPane() {
   };
 
   return (
+    <>
+      {open && <div className="panescrim" onClick={closeTrending} />}
     <aside className={`briefpane trendpane ${open ? 'open' : ''}`} aria-hidden={!open}>
       <div className="briefhead">
         <div className="briefmark">
@@ -136,5 +138,6 @@ export function WhatsTrendingPane() {
         <div className="brieffoot">Illustrative movers · quarter on quarter</div>
       </div>
     </aside>
+    </>
   );
 }

@@ -54,6 +54,8 @@ export function DailyBriefPane() {
   const today = new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
+    <>
+      {open && <div className="panescrim" onClick={closeBrief} />}
     <aside className={`briefpane ${open ? 'open' : ''}`} aria-hidden={!open}>
       <div className="briefhead">
         <div className="briefmark">
@@ -99,5 +101,6 @@ export function DailyBriefPane() {
         <div className="brieffoot">Illustrative headlines · resources sector</div>
       </div>
     </aside>
+    </>
   );
 }
