@@ -1,14 +1,14 @@
 import { useMemo } from 'react';
-import { companyNews, type CompanyNews, type NewsItem } from '../../data/news';
+import { companyNews, liveToCompanyNews, CURATED_NEWS_COMPANIES, type CompanyNews, type NewsItem } from '../../data/news';
 import { useArticleImages } from '../../hooks/useArticleImages';
+import { useLiveNews } from '../../hooks/useLiveNews';
 import type { ArticleMeta } from '../../lib/articleImageFn';
 
 // Narrow "[company] in the news" card that sits to the right of the company
-// card. Mirrors a mobile news feed: a trending hero with a masthead image, then
-// a list of compact stories — no following tabs or notification bell.
+// card. The 14 pilot companies use a hand-curated real feed; everyone else
+// pulls a live Google-News feed on the Worker (real, recent, with publisher +
+// link), falling back to generated copy only if the live feed is empty.
 
-// A real publish date rendered as a compact relative age ("3d ago"). Falls back
-// to the item's baked-in label until the live date resolves (or if it can't).
 function relTime(iso: string): string {
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return '';
@@ -27,9 +27,19 @@ function relTime(iso: string): string {
   return `${Math.round(days / 365)}y ago`;
 }
 
+// Publisher / date come from the live feed when the item carries them, else
+// from the Worker's og:image scrape of a curated article.
+function pubOf(item: NewsItem, meta?: ArticleMeta): string | undefined {
+  return item.publisher || meta?.publisher || undefined;
+}
+function publishedOf(item: NewsItem, meta?: ArticleMeta): string {
+  return item.publishedIso || meta?.published || '';
+}
+
 function Meta({ item, meta }: { item: NewsItem; meta?: ArticleMeta }) {
-  const time = (meta?.published && relTime(meta.published)) || item.time;
-  const publisher = meta?.publisher;
+  const iso = publishedOf(item, meta);
+  const time = (iso && relTime(iso)) || item.time;
+  const publisher = pubOf(item, meta);
   return (
     <div className="newsmeta">
       <span>{item.cat}</span>
@@ -39,55 +49,54 @@ function Meta({ item, meta }: { item: NewsItem; meta?: ArticleMeta }) {
           <span className="newsmetapub">{publisher}</span>
         </>
       )}
-      <span className="newsmetadot">·</span>
-      <span className="newsmetat">
-        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth={2}>
-          <circle cx="12" cy="12" r="9" />
-          <path d="M12 7v5l3 2" strokeLinecap="round" />
-        </svg>
-        {time}
-      </span>
+      {time && <span className="newsmetadot">·</span>}
+      {time && (
+        <span className="newsmetat">
+          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth={2}>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 2" strokeLinecap="round" />
+          </svg>
+          {time}
+        </span>
+      )}
     </div>
   );
 }
 
-// Each headline is clickable. Every story now carries its own real article URL;
-// the Google-News search is only a last-resort fallback if one is ever missing.
-// Opens in a new tab.
 function articleUrl(item: NewsItem, name: string): string {
   return item.url || 'https://news.google.com/search?q=' + encodeURIComponent(`${item.title} ${name}`);
 }
 
-// Article image: the real image URL when the item carries one, otherwise a
-// deterministic stock photo so the same story always shows the same picture.
 function thumbUrl(seed: string, w: number, h: number): string {
   return `https://picsum.photos/seed/${encodeURIComponent(seed)}/${w}/${h}`;
 }
 
-// `live` (BHP) overrides the deterministic feed so comment counts tick with the
-// poll; every other company falls back to the illustrative generated feed.
-export function NewsPanel({ name, sector, live }: { name: string; sector: string; live?: CompanyNews | null }) {
-  const computed = useMemo(() => companyNews(name, sector), [name, sector]);
-  const news = live ?? computed;
-  // Resolve real og:image, publish date and publisher for every story that
-  // carries a genuine article link, on the Worker. Until they arrive (or for
-  // stories with no real link) the cards keep their curated/stock image and
-  // baked-in label, so nothing pops in empty.
+export function NewsPanel({ name, sector, ticker, live }: { name: string; sector: string; ticker?: string; live?: CompanyNews | null }) {
+  const generated = useMemo(() => companyNews(name, sector), [name, sector]);
+  const curated = CURATED_NEWS_COMPANIES.has(name);
+  // Non-curated companies fetch a live Google-News feed keyed on their name +
+  // ticker. Curated companies (and BHP's live feed) skip it.
+  const liveQuery = !curated && !live ? `"${name}"${ticker ? ` ${ticker}` : ''} ASX` : null;
+  const liveItems = useLiveNews(liveQuery, 6);
+  const liveFeed = useMemo(() => liveToCompanyNews(liveItems), [liveItems]);
+
+  const news = live ?? (curated ? generated : liveFeed ?? generated);
+
+  // Resolve real og:image/date/publisher for any item with a genuine article
+  // link (curated articles, and — best effort — live links).
   const meta = useArticleImages([news.hero.url, ...news.items.map((a) => a.url)]);
   const heroMeta = news.hero.url ? meta[news.hero.url] : undefined;
   const heroImg = heroMeta?.image || news.hero.image || thumbUrl(name + '-hero', 640, 360);
 
-  // Cap the feed to recent coverage: once an item's real publish date resolves,
-  // drop it if it's older than the window. Items whose date hasn't resolved yet
-  // are kept (optimistic), and we never fall below a few rows so the card stays
-  // populated even if several stories turn out to be old.
-  const RECENT_MS = 300 * 24 * 3600 * 1000; // ~10 months
+  // Cap the feed to recent coverage once a real publish date is known.
+  const RECENT_MS = 300 * 24 * 3600 * 1000;
   const isStale = (a: NewsItem) => {
-    const p = a.url ? meta[a.url]?.published : undefined;
+    const p = publishedOf(a, a.url ? meta[a.url] : undefined);
     return p ? Date.now() - Date.parse(p) > RECENT_MS : false;
   };
   const fresh = news.items.filter((a) => !isStale(a));
   const items = fresh.length >= 3 ? fresh : news.items.slice(0, 3);
+
   return (
     <aside className="newspanel">
       <div className="newshd">

@@ -4,6 +4,7 @@ import { buildPanel } from '../../lib/panel';
 import { shareTrend, commodityBaskets } from '../../data/finance';
 import { companySocial } from '../../data/social';
 import { useBhpFeed } from '../../hooks/useBhpFeed';
+import { useShareSeries } from '../../hooks/useShareSeries';
 import { TrendChart } from './TrendChart';
 import { ShareChart } from './ShareChart';
 import { NewsPanel } from './NewsPanel';
@@ -177,11 +178,22 @@ export function CompanyPanel() {
     'bhp', 'rio', 'fmg', 's32', 'wds', 'sto', 'chevron', 'sfr',
     'igo', 'min', 'pls', 'ltr', 'ilu', 'nst',
   ];
-  const live = isBhp ? !!feed : REAL_DATA_IDS.includes(lastId ?? '');
+  // Live market data (real quarterly closes + 52-week range) fetched on the
+  // Worker from Yahoo Finance for whatever ticker resolves. When it's present
+  // the share chart plots the real series and the card counts as live.
+  const liveShare = useShareSeries(panel?.ticker ?? null, open && !isBhp);
+  const live = isBhp ? !!feed : REAL_DATA_IDS.includes(lastId ?? '') || !!liveShare;
 
   const prices = useMemo(
-    () => (feed && isBhp ? feed.sharePrice : panel ? shareTrend(panel.ticker, panel.trend) : []),
-    [feed, isBhp, panel?.ticker, panel?.trend],
+    () =>
+      feed && isBhp
+        ? feed.sharePrice
+        : liveShare
+          ? liveShare.series
+          : panel
+            ? shareTrend(panel.ticker, panel.trend)
+            : [],
+    [feed, isBhp, liveShare, panel?.ticker, panel?.trend],
   );
   const commodities = useMemo(
     () => (feed && isBhp ? feed.commodities : commodityBaskets(panel ? panel.trend.length : 0)),
@@ -398,7 +410,7 @@ export function CompanyPanel() {
           )}
         </div>
       </aside>
-      {panel && <NewsPanel name={panel.name} sector={panel.sector} live={panel.news} />}
+      {panel && <NewsPanel name={panel.name} sector={panel.sector} ticker={panel.ticker} live={panel.news} />}
     </div>
   );
 }

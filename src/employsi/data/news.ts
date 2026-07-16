@@ -13,6 +13,10 @@ export interface NewsItem {
   // Google-News search for the headline and shows a deterministic stock photo.
   url?: string;
   image?: string;
+  // Set when the item comes from the live Google-News feed: the publisher name
+  // and publish timestamp arrive with the feed, so they don't need scraping.
+  publisher?: string;
+  publishedIso?: string;
 }
 
 export interface CompanyNews {
@@ -302,6 +306,36 @@ function nstRealNews(): CompanyNews {
       { cat: 'Company', title: 'Kalgoorlie shines as Northern Star ramps up expansion', time: '1w ago', comments: 12, url: 'https://www.australianmining.com.au/kalgoorlie-shines-as-northern-star-ramps-up-expansion/' },
       { cat: 'Sector', title: 'What the Northern Star–De Grey deal means for Aussie gold', time: '2w ago', comments: 10, url: 'https://www.australianmining.com.au/what-the-northern-star-de-grey-deal-means-for-aussie-gold/' },
     ],
+  };
+}
+
+// Companies with a hand-curated real feed above. Everyone else falls back to
+// the live Google-News feed (see NewsPanel), then to generated copy.
+export const CURATED_NEWS_COMPANIES = new Set([
+  'BHP', 'Rio Tinto', 'Fortescue', 'South32', 'Woodside Energy', 'Santos',
+  'Chevron', 'Sandfire Resources', 'IGO', 'Mineral Resources',
+  'Pilbara Minerals', 'Liontown Resources', 'Iluka Resources', 'Northern Star Resources',
+]);
+
+// Build a CompanyNews card from live Google-News items: the first is the hero,
+// the next few are the list. Publisher + publish date ride along with each item
+// so the card shows them directly (no scraping needed).
+export function liveToCompanyNews(
+  items: { title: string; url: string; publisher: string; published: string }[],
+): CompanyNews | null {
+  if (!items.length) return null;
+  const toItem = (a: (typeof items)[number], cat: string): NewsItem => ({
+    cat,
+    title: a.title,
+    time: '',
+    comments: 0,
+    url: a.url,
+    publisher: a.publisher,
+    publishedIso: a.published,
+  });
+  return {
+    hero: toItem(items[0], 'Trending'),
+    items: items.slice(1, 5).map((a) => toItem(a, 'News')),
   };
 }
 
