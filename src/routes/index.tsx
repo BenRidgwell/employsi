@@ -88,6 +88,7 @@ function Landing() {
     <div className="min-h-screen bg-background text-ink">
       <Ticker />
       <Nav />
+      <Showcase />
       <Footer />
     </div>
   );
