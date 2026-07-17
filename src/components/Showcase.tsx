@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Mail } from "lucide-react";
+import slideGlobe from "@/assets/slide-globe.png.asset.json";
+import slideCity from "@/assets/slide-city.png.asset.json";
+import slideCompany from "@/assets/slide-company.png.asset.json";
 
 function SkylineSVG() {
   return (
