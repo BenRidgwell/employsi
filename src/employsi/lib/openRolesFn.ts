@@ -16,8 +16,51 @@ export interface OpenRoles {
   source: string; // e.g. "Adzuna", "Workday"
 }
 
+// A single stored data point: [YYYY-MM-DD, open-role count].
+export type RolePoint = { d: string; c: number };
+
 const cache = new Map<string, { at: number; data: OpenRoles | null }>();
 const TTL = 60 * 60 * 1000;
+
+// ── Persistent history (Cloudflare KV) ────────────────────────────────────
+// Each fetch records that day's count so we can chart vacancies over time.
+// Adzuna only exposes the *current* count, so history builds forward from the
+// first time each company is queried — it can't be backfilled. Stored compactly
+// as [date, count] tuples under `roles:{id}`, capped to one year.
+async function getKV(): Promise<any | null> {
+  try {
+    const m: any = await import('cloudflare:workers');
+    return m?.env?.OPEN_ROLES_HISTORY ?? null;
+  } catch {
+    return null; // not running on the Worker (e.g. local SSR) → no history
+  }
+}
+
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function recordSnapshot(id: string, count: number): Promise<void> {
+  const kv = await getKV();
+  if (!kv || !id) return;
+  const key = `roles:${id}`;
+  try {
+    const raw = await kv.get(key);
+    let arr: [string, number][] = [];
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) arr = parsed;
+    }
+    const d = today();
+    const last = arr[arr.length - 1];
+    if (last && last[0] === d) last[1] = count; // refresh today's point
+    else arr.push([d, count]);
+    if (arr.length > 365) arr = arr.slice(arr.length - 365);
+    await kv.put(key, JSON.stringify(arr));
+  } catch {
+    // history is best-effort; never let a KV hiccup break the live count
+  }
+}
 
 function adzunaCreds(): { id: string; key: string } | null {
   const id = process.env.ADZUNA_APP_ID;
@@ -134,6 +177,29 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
     // 2. Otherwise the Adzuna aggregator.
     if (!out) out = await fromAdzuna(company);
 
+    // Record today's count so the card can chart vacancies over time.
+    if (out && data.id) await recordSnapshot(data.id, out.count);
+
     cache.set(key, { at: Date.now(), data: out });
     return out;
+  });
+
+// Stored open-roles history for a company, oldest → newest. Empty until the
+// company has been queried at least once (history builds forward from now).
+export const getRolesHistory = createServerFn({ method: 'GET' })
+  .validator((data: { id: string }) => data)
+  .handler(async ({ data }): Promise<RolePoint[]> => {
+    const kv = await getKV();
+    if (!kv || !data.id) return [];
+    try {
+      const raw = await kv.get(`roles:${data.id}`);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .filter((p: any) => Array.isArray(p) && p.length === 2)
+        .map((p: [string, number]) => ({ d: p[0], c: Number(p[1]) }));
+    } catch {
+      return [];
+    }
   });

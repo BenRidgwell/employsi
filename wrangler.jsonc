@@ -1,0 +1,10 @@
+{
+  // Nitro's cloudflare preset deep-merges this file into the generated
+  // .output/server/wrangler.json on every build, so bindings declared here
+  // survive rebuilds. The Worker name is overridden per-deploy with --name
+  // (prod vs mobile); both share the same KV namespace for open-roles history.
+  "name": "benridgwell-globe-gazer-hr",
+  "kv_namespaces": [
+    { "binding": "OPEN_ROLES_HISTORY", "id": "6f8be3a8968d4e24a05ae82b235a6a97" }
+  ]
+}

@@ -4189,6 +4189,70 @@ body {
   color: var(--slate);
   white-space: nowrap;
 }
+/* Open-roles-over-time sparkline */
+.rhbox {
+  position: relative;
+  margin-top: 8px;
+}
+.rhsvg {
+  width: 100%;
+  height: 96px;
+  display: block;
+  overflow: visible;
+}
+.rharea {
+  fill: url(#rhFade);
+}
+.rhline {
+  fill: none;
+  stroke: #2563eb;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rhdot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.rhaxis {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--slate);
+}
+.rhtrend {
+  font-size: 11px;
+  font-weight: 700;
+}
+.rhtrend.up {
+  color: #159d67;
+}
+.rhtrend.down {
+  color: #d1483f;
+}
+.rhempty {
+  margin-top: 8px;
+  padding: 12px 13px;
+  background: linear-gradient(180deg, #f7f9fe, #fff);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--slate);
+}
+.rhempty b {
+  color: #1c1c1e;
+}
+
 .subs {
   display: grid;
   grid-template-columns: 1fr 1fr;

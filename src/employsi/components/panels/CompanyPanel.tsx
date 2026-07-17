@@ -6,9 +6,11 @@ import { useBhpFeed } from '../../hooks/useBhpFeed';
 import { useShareSeries } from '../../hooks/useShareSeries';
 import { useCompanyStats } from '../../hooks/useCompanyStats';
 import { useOpenRoles } from '../../hooks/useOpenRoles';
+import { useRolesHistory } from '../../hooks/useRolesHistory';
 import { CITY_COMPANIES } from '../../data/mapboxGeo';
 import { TrendChart } from './TrendChart';
 import { ShareChart } from './ShareChart';
+import { RolesHistoryChart } from './RolesHistoryChart';
 import { NewsPanel } from './NewsPanel';
 import { FabWrap } from './FabTooltip';
 
@@ -175,6 +177,8 @@ export function CompanyPanel() {
   // narrowing the card to a single role.
   const isAU = !!lastId && AU_COMPANY_IDS.has(lastId);
   const liveRoles = useOpenRoles(panel?.name ?? null, panel?.companyId, open && isAU && !roleFilter);
+  // Stored daily history of the live vacancy count, charted below the stats.
+  const rolesHistory = useRolesHistory(panel?.companyId, open && isAU && !roleFilter);
   const live = isBhp ? !!feed : REAL_DATA_IDS.includes(lastId ?? '') || !!liveShare || !!liveStats || !!liveRoles;
 
   const headcount = liveStats?.headcount || panel?.headcount || 0;
@@ -257,6 +261,12 @@ export function CompanyPanel() {
                   </div>
                 ))}
               </div>
+
+              {isAU && !roleFilter && liveRoles && (
+                <div className="sect">
+                  <RolesHistoryChart points={rolesHistory} />
+                </div>
+              )}
 
               <div className="sect">
                 <TrendChart trend={panel.trend} headcount={headcount} revPerEmp={revPerEmp} ebitdaPerEmp={ebitdaPerEmp} />
