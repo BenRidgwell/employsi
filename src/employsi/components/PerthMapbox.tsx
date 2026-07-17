@@ -1,7 +1,7 @@
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useMemo, useRef } from 'react';
-import { useAppStore, companyMatches, matchesSector, matchesExchange, type FilterState } from '../state/store';
+import { useAppStore, matchesFilters, searchMatches, isSearchActive, type FilterState } from '../state/store';
 import { COMPANIES, type Company } from '../data/companies';
 import { CITY_COMPANIES, CITY_VIEWS, PERTH_CENTER, PERTH_DEFAULT_ZOOM, PERTH_DEFAULT_PITCH, PERTH_DEFAULT_BEARING } from '../data/mapboxGeo';
 import { chipMetric, type HeatMetric } from '../lib/heat';
@@ -98,9 +98,8 @@ function metricKeyFor(heat: HeatMetric) {
 // Companies outside the selected sector(s) are dropped entirely (hidden), so a
 // Financial Services filter clears the resource companies from the city map.
 function buildGeoJSON(placements: Placed[], heat: HeatMetric, selectedId: string | null, filterState: FilterState): GeoJSON.FeatureCollection {
-  const shown = placements.filter(
-    (p) => matchesSector(p.company, filterState.activeSectors) && matchesExchange(p.company, filterState.activeExchanges),
-  );
+  // Hide any company that fails the sector / exchange / slider filters entirely.
+  const shown = placements.filter((p) => matchesFilters(p.company, filterState));
   const key = metricKeyFor(heat);
   const vals = shown.map((p) => p.company[key] as number);
   const mn = vals.length ? Math.min(...vals) : 0;
@@ -120,13 +119,32 @@ function buildGeoJSON(placements: Placed[], heat: HeatMetric, selectedId: string
           label: c.pill || c.ticker,
           sub: chipMetric(c, heat),
           selected: c.id === selectedId,
-          // Fade every other company's heat dot while a card is open, matching
-          // the HTML pill treatment, so the selected company stays the focus.
-          dim: !companyMatches(c, filterState) || (!!selectedId && c.id !== selectedId),
+          // Only a search miss (or another company being selected) dims a dot
+          // now — the hard filters remove non-matching companies above.
+          dim:
+            (isSearchActive(filterState) && !searchMatches(c, filterState.searchQuery)) ||
+            (!!selectedId && c.id !== selectedId),
         },
         geometry: { type: 'Point', coordinates: p.coords },
       };
     }),
+  };
+}
+
+// Pull the filter fields out of the live store state (used by the once-wired
+// map callbacks that read via getState()).
+function filterStateOf(s: {
+  searchQuery: string; activeSectors: string[]; activeExchanges: string[];
+  minSalary: number; minHeadcount: number; minGrowth: number; maxAttrition: number;
+}): FilterState {
+  return {
+    searchQuery: s.searchQuery,
+    activeSectors: s.activeSectors,
+    activeExchanges: s.activeExchanges,
+    minSalary: s.minSalary,
+    minHeadcount: s.minHeadcount,
+    minGrowth: s.minGrowth,
+    maxAttrition: s.maxAttrition,
   };
 }
 
@@ -266,9 +284,13 @@ export function PerthMapbox() {
       const PICK_RADIUS = 30; // px
       let lastSelectAt = 0;
       map.on('click', (e) => {
+        // Only companies passing the active filters are pickable — hidden dots
+        // must not be selectable via the nearest-dot fallback.
+        const fs = filterStateOf(useAppStore.getState());
         let best: Placed | null = null;
         let bestD = Infinity;
         placedRef.current.forEach((p) => {
+          if (!matchesFilters(p.company, fs)) return;
           const pt = map.project(p.coords);
           const d = (pt.x - e.point.x) ** 2 + (pt.y - e.point.y) ** 2;
           if (d < bestD) {
@@ -355,15 +377,7 @@ export function PerthMapbox() {
       renderCityRef.current = (city: string) => {
         placedRef.current = cityPlacements(city);
         const s = useAppStore.getState();
-        const fs: FilterState = {
-          searchQuery: s.searchQuery,
-          activeSectors: s.activeSectors,
-          activeExchanges: s.activeExchanges,
-          minSalary: s.minSalary,
-          minHeadcount: s.minHeadcount,
-          minGrowth: s.minGrowth,
-          maxAttrition: s.maxAttrition,
-        };
+        const fs = filterStateOf(s);
         const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
         source?.setData(buildGeoJSON(placedRef.current, s.heat, s.selectedId, fs));
         renderMarkers(placedRef.current);
@@ -371,12 +385,12 @@ export function PerthMapbox() {
         placedRef.current.forEach((p) => {
           const el = markersRef.current[p.company.id]?.getElement();
           if (!el) return;
-          el.style.display = matchesSector(p.company, fs.activeSectors) ? '' : 'none';
-          const matches = companyMatches(p.company, fs);
-          // Fade every other pill while a card is open, so the selected company
-          // stays the visual focus; clears the instant selectedId is null again.
+          // Hard filters (sector / exchange / sliders) hide the pill entirely;
+          // a search miss only dims it.
+          el.style.display = matchesFilters(p.company, fs) ? '' : 'none';
+          const searchOk = !isSearchActive(fs) || searchMatches(p.company, fs.searchQuery);
           const notSelected = !!s.selectedId && s.selectedId !== p.company.id;
-          el.className = ['mbchip', s.selectedId === p.company.id ? 'on' : '', matches && !notSelected ? '' : 'dim'].join(' ').trim();
+          el.className = ['mbchip', s.selectedId === p.company.id ? 'on' : '', searchOk && !notSelected ? '' : 'dim'].join(' ').trim();
         });
         focusUpdaterRef.current?.();
       };
@@ -631,14 +645,14 @@ export function PerthMapbox() {
         const marker = markersRef.current[c.id];
         if (!marker) return;
         const el = marker.getElement();
-        // Sector filter hides the marker entirely; the remaining filters dim it.
-        const inSector = matchesSector(c, filterState.activeSectors);
-        el.style.display = inSector ? '' : 'none';
-        const matches = companyMatches(c, filterState);
+        // Sector / exchange / slider filters hide the marker entirely; a search
+        // miss only dims it.
+        el.style.display = matchesFilters(c, filterState) ? '' : 'none';
+        const searchOk = !isSearchActive(filterState) || searchMatches(c, filterState.searchQuery);
         // Fade every other pill while a card is open, so the selected company
         // stays the visual focus; clears the instant selectedId is null again.
         const notSelected = !!selectedId && selectedId !== c.id;
-        el.className = ['mbchip', selectedId === c.id ? 'on' : '', matches && !notSelected ? '' : 'dim'].join(' ').trim();
+        el.className = ['mbchip', selectedId === c.id ? 'on' : '', searchOk && !notSelected ? '' : 'dim'].join(' ').trim();
         const sub = el.querySelector('.chipsub');
         if (sub) sub.textContent = chipMetric(c, heat);
       });

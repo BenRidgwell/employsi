@@ -1,13 +1,12 @@
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef } from 'react';
-import { useAppStore } from '../state/store';
+import { useAppStore, cityMatchesFilters, type FilterState } from '../state/store';
 import { computeGlobalHeat, type HeatMetric } from '../lib/heat';
 import {
   GLOBAL_STATS,
   STATE_STATS,
   CITY_STATE,
-  cityMatchesSectors,
   activeSkillKey,
   SKILL_DEMAND,
   GLOBAL_SKILL_DEMAND,
@@ -138,7 +137,7 @@ function computeMarkers(
   mode: 'global' | 'domestic',
   region: string,
   heat: HeatMetric,
-  activeSectors: string[],
+  filterState: FilterState,
   skill: string | null,
 ): Marker[] {
   const globalHeat = computeGlobalHeat(heat);
@@ -148,7 +147,9 @@ function computeMarkers(
     // entry): a marker with undefined coords would throw in setLngLat and crash
     // the whole view. Skip it instead.
     if (!coords) return;
-    if (!cityMatchesSectors(id, activeSectors)) return;
+    // Hide a city that has no company matching the active sector / exchange /
+    // slider filters (shows every city when no filter is active).
+    if (!cityMatchesFilters(id, filterState)) return;
     out.push({
       id,
       coords,
@@ -286,6 +287,11 @@ export function WorldMapbox() {
   const heat = useAppStore((s) => s.heat);
   const selectedId = useAppStore((s) => s.selectedId);
   const activeSectors = useAppStore((s) => s.activeSectors);
+  const activeExchanges = useAppStore((s) => s.activeExchanges);
+  const minSalary = useAppStore((s) => s.minSalary);
+  const minHeadcount = useAppStore((s) => s.minHeadcount);
+  const minGrowth = useAppStore((s) => s.minGrowth);
+  const maxAttrition = useAppStore((s) => s.maxAttrition);
   const searchQuery = useAppStore((s) => s.searchQuery);
 
   // Mount once: create the map, add the hub source/layers, and wire clicks +
@@ -396,7 +402,16 @@ export function WorldMapbox() {
       if (!s.zoomedOut || s.zoomingIn) return; // overview not showing
       const mode = viewModeOf(s.globalOut);
       const skill = activeSkillKey(s.searchQuery);
-      const markers = computeMarkers(mode, s.domesticRegion, s.heat, s.activeSectors, skill);
+      const fs: FilterState = {
+        searchQuery: s.searchQuery,
+        activeSectors: s.activeSectors,
+        activeExchanges: s.activeExchanges,
+        minSalary: s.minSalary,
+        minHeadcount: s.minHeadcount,
+        minGrowth: s.minGrowth,
+        maxAttrition: s.maxAttrition,
+      };
+      const markers = computeMarkers(mode, s.domesticRegion, s.heat, fs, skill);
       markersRef.current = markers;
       const src = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
       src?.setData(markersGeoJSON(markers, s.selectedId));
@@ -646,7 +661,7 @@ export function WorldMapbox() {
   useEffect(() => {
     rebuildMarkersRef.current?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heat, selectedId, activeSectors, searchQuery]);
+  }, [heat, selectedId, activeSectors, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition, searchQuery]);
 
   // Hide the whole overview once fully in a local city (PerthMapbox owns it).
   const hidden = !zoomedOut && !zoomingIn;

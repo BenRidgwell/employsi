@@ -25,6 +25,82 @@ const DROP_WORDS = new Set([
 ]);
 const STOP_WORDS = new Set(['and', 'of', 'the', '&']);
 
+// Real primary domains for companies whose website doesn't follow the
+// "significant words joined + .com" heuristic below (banks/telecoms with
+// acronym brands, or where the obvious guess is wrong). Everything not listed
+// falls back to the heuristic, which is correct for most single-brand names
+// (xiaomi.com, tencent.com, alibaba.com, chinamobile.com, …).
+const KNOWN_DOMAINS: Record<string, string> = {
+  'industrial and commercial bank of china': 'icbc.com.cn',
+  'agricultural bank of china': 'abchina.com',
+  'bank of china': 'boc.cn',
+  'china construction bank': 'ccb.com',
+  'china life insurance company': 'e.chinalife.com.cn',
+  "people's insurance company of china": 'picc.com',
+  'postal savings bank of china': 'psbc.com',
+  'china state construction engineering': 'cscec.com',
+  'china yangtze power': 'cypc.com.cn',
+  'huaneng power international': 'hpi.com.cn',
+  'china shenhua energy': 'csenergy.com.cn',
+  'china telecom': 'chinatelecom-h.com',
+  'china unicom': 'chinaunicom.com',
+  'petrochina': 'petrochina.com.cn',
+  'sinotrans limited': 'sinotrans.com',
+  'beijing shougang': 'shougang.com.cn',
+  'boe technology': 'boe.com',
+  'jd.com': 'jd.com',
+  'pop mart': 'popmart.com',
+  'netease': 'neteasegames.com',
+  'boc hong kong': 'bochk.com',
+  'aia group': 'aia.com',
+  'ck hutchison holdings': 'ckh.com.hk',
+  'ck infrastructure holdings': 'cki.com.hk',
+  'hong kong exchanges and clearing': 'hkex.com.hk',
+  'sun hung kai properties': 'shkp.com',
+  'hang seng bank': 'hangseng.com',
+  'hsbc holdings': 'hsbc.com',
+  'mtr corporation': 'mtr.com.hk',
+  'techtronic industries': 'ttigroup.com',
+  'link reit': 'linkreit.com',
+  'wh group': 'wh-group.com',
+  'softbank group': 'group.softbank',
+  'mitsui & co.': 'mitsui.com',
+  'itochu corporation': 'itochu.co.jp',
+  'recruit holdings': 'recruit-holdings.com',
+  'sk hynix': 'skhynix.com',
+  'sk inc.': 'sk.com',
+  'sk telecom': 'sktelecom.com',
+  'lg energy solution': 'lgensol.com',
+  'lg chem': 'lgchem.com',
+  'lg electronics': 'lge.com',
+  'kb financial group': 'kbfg.com',
+  'shinhan financial group': 'shinhangroup.com',
+  'woori financial group': 'woorifg.com',
+  'samsung electronics': 'samsung.com',
+  'samsung life insurance': 'samsunglife.com',
+  'samsung c&t': 'samsungcnt.com',
+  'hyundai motor company': 'hyundai.com',
+  'kia corporation': 'kia.com',
+  'korea zinc': 'koreazinc.co.kr',
+  'korean air': 'koreanair.com',
+  'industrial bank of korea': 'ibk.co.kr',
+};
+
+// Best-effort primary domain for a company, so the card logo (Google favicon
+// service, keyed on domain) shows the real brand mark. Uses KNOWN_DOMAINS where
+// the site doesn't match the heuristic, else joins the significant name words.
+export function deriveDomain(name: string): string {
+  const key = name.toLowerCase().replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
+  if (KNOWN_DOMAINS[key]) return KNOWN_DOMAINS[key];
+  const cleaned = name.replace(/\([^)]*\)/g, ' ').toLowerCase();
+  const words = cleaned
+    .split(/[\s.,/&'-]+/)
+    .filter(Boolean)
+    .filter((w) => !STOP_WORDS.has(w) && !DROP_WORDS.has(w));
+  const joined = (words.join('') || cleaned.replace(/[^a-z0-9]/g, '')).replace(/[^a-z0-9]/g, '');
+  return `${joined || 'example'}.com`;
+}
+
 // Build a short pill label from a company name: initials for multi-word names
 // (INDUSTRIAL COMMERCIAL BANK CHINA -> ICBC), the brand word itself for
 // single-word names (Tencent Holdings -> Tencent).
@@ -111,7 +187,7 @@ export function buildRosterCompany(city: string, cityExchange: string, entry: Ro
     ticker,
     name,
     pill,
-    domain: '',
+    domain: deriveDomain(name),
     sector: prof.sector,
     group,
     exchange,

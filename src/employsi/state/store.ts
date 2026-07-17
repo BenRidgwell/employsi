@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { COMPANIES, companyGroup, companyExchange, type Company } from '../data/companies';
 import { CITY_CONTINENT } from '../data/geo';
+import { CITY_COMPANIES } from '../data/mapboxGeo';
 import type { HeatMetric } from '../lib/heat';
 
 export interface Account {
@@ -417,22 +418,60 @@ export function matchesExchange(c: Company, activeExchanges: string[]): boolean 
   return !activeExchanges.length || activeExchanges.includes(companyExchange(c));
 }
 
-// The remaining filters (search text + numeric sliders) that DIM a company that
-// is still shown. Sector is handled separately by matchesSector (hide), so it's
-// deliberately not repeated here.
-export function companyMatches(c: Company, s: FilterState): boolean {
-  const q = s.searchQuery.trim().toLowerCase();
-  const qOk =
-    !q ||
+// The full "should this company be shown?" predicate: sector + exchange + the
+// four numeric sliders, all HIDE (not dim). Each slider only constrains once
+// moved off its default (its slider min/max), so the default state shows every
+// company. Applied on the local map to hide non-matching companies, and via
+// cityMatchesFilters to hide cities with no matching company.
+export function matchesFilters(c: Company, s: FilterState): boolean {
+  return (
+    matchesSector(c, s.activeSectors) &&
+    matchesExchange(c, s.activeExchanges) &&
+    (s.minSalary <= 130 || c.salaryNum >= s.minSalary * 1000) &&
+    (s.minHeadcount <= 0 || c.headcount >= s.minHeadcount) &&
+    (s.minGrowth <= 0 || c.growth >= s.minGrowth) &&
+    (s.maxAttrition >= 16 || c.turnover <= s.maxAttrition)
+  );
+}
+
+// Does a company match the free-text search? Used only to DIM (not hide) — a
+// company that fails the search still shows, just faded, so the map keeps its
+// context. The sliders/sector/exchange filters do the hiding.
+export function searchMatches(c: Company, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return (
     c.name.toLowerCase().includes(q) ||
     c.ticker.toLowerCase().includes(q) ||
+    (c.pill ? c.pill.toLowerCase().includes(q) : false) ||
     c.skills.some((sk) => sk.toLowerCase().includes(q)) ||
-    c.roles.some((r) => r.title.toLowerCase().includes(q));
-  const salaryOk = c.salaryNum >= s.minSalary * 1000;
-  const headcountOk = c.headcount >= s.minHeadcount;
-  const growthOk = c.growth >= s.minGrowth;
-  const attritionOk = c.turnover <= s.maxAttrition;
-  return qOk && salaryOk && headcountOk && growthOk && attritionOk;
+    c.roles.some((r) => r.title.toLowerCase().includes(q))
+  );
+}
+
+// Backwards-compatible combined predicate (search + filters) — still used where
+// a single "fully passes everything" check is convenient.
+export function companyMatches(c: Company, s: FilterState): boolean {
+  return searchMatches(c, s.searchQuery) && matchesFilters(c, s);
+}
+
+// A city is shown on the domestic/global layers only if it has at least one
+// company that passes every active filter. With no filter active every city
+// shows (unchanged default). A city with no companies at all is hidden the
+// moment any filter is active.
+let cityIndex: Map<string, Company> | null = null;
+function companyById(id: string): Company | undefined {
+  if (!cityIndex) cityIndex = new Map(COMPANIES.map((c) => [c.id, c]));
+  return cityIndex.get(id);
+}
+export function cityMatchesFilters(city: string, s: FilterState): boolean {
+  if (!isFilterActive(s)) return true;
+  const list = CITY_COMPANIES[city];
+  if (!list || !list.length) return false;
+  return list.some((cc) => {
+    const c = companyById(cc.id);
+    return !!c && matchesFilters(c, s);
+  });
 }
 
 export function isSearchActive(s: Pick<FilterState, 'searchQuery'>): boolean {
