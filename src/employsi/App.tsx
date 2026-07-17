@@ -8,6 +8,8 @@ import { ZoomSlider } from './components/ZoomSlider';
 import { MapActions } from './components/MapActions';
 import { ToolsDock } from './components/ToolsDock';
 import { HelpDock } from './components/HelpDock';
+import { MobileTabBar } from './components/MobileTabBar';
+import { MobileMenu } from './components/MobileMenu';
 import { CityBadge } from './components/CityBadge';
 import { Toast } from './components/Toast';
 import { Legend } from './components/Legend';
@@ -48,6 +50,8 @@ function App() {
       <WhatsTrendingPane />
       <ToolsDock />
       <HelpDock />
+      <MobileTabBar />
+      <MobileMenu />
       <CityBadge />
       <Toast />
     </div>

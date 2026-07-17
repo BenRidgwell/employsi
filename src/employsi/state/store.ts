@@ -42,6 +42,12 @@ export interface AppState {
   compareB: string | null;
   briefOpen: boolean;
   trendingOpen: boolean;
+  // Feedback board + help-tour open state. Lifted here (Settings already is) so
+  // the mobile "More" sheet can open them alongside the desktop dock buttons.
+  feedbackOpen: boolean;
+  helpTourOpen: boolean;
+  // The mobile bottom-bar "More" sheet.
+  mobileMenuOpen: boolean;
   followedIds: string[];
 
   select: (id: string) => void;
@@ -95,6 +101,13 @@ export interface AppState {
   closeBrief: () => void;
   toggleTrending: () => void;
   closeTrending: () => void;
+
+  toggleFeedback: () => void;
+  closeFeedback: () => void;
+  toggleHelpTour: () => void;
+  closeHelpTour: () => void;
+  toggleMobileMenu: () => void;
+  closeMobileMenu: () => void;
 }
 
 // Persist the account + saved-companies across reloads. There's no backend
@@ -184,9 +197,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   compareB: null,
   briefOpen: false,
   trendingOpen: false,
+  feedbackOpen: false,
+  helpTourOpen: false,
+  mobileMenuOpen: false,
   followedIds: persisted.followedIds,
 
-  select: (id) => set({ selectedId: id, lastId: id, interacted: true, searchOpen: false, filterOpen: false, heatOpen: false, briefOpen: false, trendingOpen: false }),
+  select: (id) => set({ selectedId: id, lastId: id, interacted: true, searchOpen: false, filterOpen: false, heatOpen: false, briefOpen: false, trendingOpen: false, feedbackOpen: false, helpTourOpen: false, mobileMenuOpen: false }),
   toggleFollow: (id) =>
     set((s) => ({
       followedIds: s.followedIds.includes(id) ? s.followedIds.filter((x) => x !== id) : [...s.followedIds, id],
@@ -211,7 +227,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ followedIds: s.followedIds.includes(id) ? s.followedIds.filter((x) => x !== id) : [...s.followedIds, id] });
   },
   dismissToast: () => set({ toast: null }),
-  openAuth: () => set({ authOpen: true, searchOpen: false, filterOpen: false }),
+  openAuth: () => set({ authOpen: true, searchOpen: false, filterOpen: false, mobileMenuOpen: false }),
   closeAuth: () => set({ authOpen: false, pendingFollowId: null }),
   signUp: (name, email) =>
     set((s) => {
@@ -229,7 +245,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       return { account: { name, email: email.trim() }, authOpen: false, pendingFollowId: null, followedIds };
     }),
   signOut: () => set({ account: null, authOpen: false, pendingFollowId: null }),
-  toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),
+  toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen, feedbackOpen: false, helpTourOpen: false })),
   closeSettings: () => set({ settingsOpen: false }),
   setReduceMotion: (v) => {
     if (typeof document !== 'undefined') document.documentElement.classList.toggle('reduce-motion', v);
@@ -351,10 +367,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   setCompareA: (id) => set({ compareA: id }),
   setCompareB: (id) => set({ compareB: id }),
 
-  toggleBrief: () => set((s) => ({ briefOpen: !s.briefOpen, trendingOpen: false })),
+  toggleBrief: () => set((s) => ({ briefOpen: !s.briefOpen, trendingOpen: false, mobileMenuOpen: false })),
   closeBrief: () => set({ briefOpen: false }),
-  toggleTrending: () => set((s) => ({ trendingOpen: !s.trendingOpen, briefOpen: false })),
+  toggleTrending: () => set((s) => ({ trendingOpen: !s.trendingOpen, briefOpen: false, mobileMenuOpen: false })),
   closeTrending: () => set({ trendingOpen: false }),
+
+  toggleFeedback: () => set((s) => ({ feedbackOpen: !s.feedbackOpen, helpTourOpen: false, settingsOpen: false, mobileMenuOpen: false })),
+  closeFeedback: () => set({ feedbackOpen: false }),
+  toggleHelpTour: () => set((s) => ({ helpTourOpen: !s.helpTourOpen, feedbackOpen: false, settingsOpen: false, mobileMenuOpen: false })),
+  closeHelpTour: () => set({ helpTourOpen: false }),
+  toggleMobileMenu: () => set((s) => ({ mobileMenuOpen: !s.mobileMenuOpen, searchOpen: false, filterOpen: false, heatOpen: false })),
+  closeMobileMenu: () => set({ mobileMenuOpen: false }),
 }));
 
 // Mirror account + saved companies + settings to localStorage whenever any of

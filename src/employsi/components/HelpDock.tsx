@@ -71,22 +71,28 @@ export function HelpDock() {
   const searchOpen = useAppStore((s) => s.searchOpen);
   const filterOpen = useAppStore((s) => s.filterOpen);
   const heatOpen = useAppStore((s) => s.heatOpen);
+  // Help-tour + feedback open state now lives in the store, so the mobile
+  // "More" sheet can drive the same panels as these dock buttons.
+  const open = useAppStore((s) => s.helpTourOpen);
+  const toggleHelpTour = useAppStore((s) => s.toggleHelpTour);
+  const closeHelpTour = useAppStore((s) => s.closeHelpTour);
+  const fbOpen = useAppStore((s) => s.feedbackOpen);
+  const toggleFeedback = useAppStore((s) => s.toggleFeedback);
+  const closeFeedback = useAppStore((s) => s.closeFeedback);
 
   // zoomedOut takes precedence, same reasoning as ZoomSlider.
   const layer: Layer = !zoomedOut ? 'local' : globalOut ? 'global' : 'domestic';
   const layerKey = layer === 'local' ? `local-${localCity}` : layer;
 
-  const [open, setOpen] = useState(false);
   const [peek, setPeek] = useState(false);
-  const [fbOpen, setFbOpen] = useState(false);
 
   // Pop the pill out briefly whenever the user lands on a new layer/city.
   useEffect(() => {
     setPeek(true);
-    setOpen(false);
+    closeHelpTour();
     const t = setTimeout(() => setPeek(false), 4200);
     return () => clearTimeout(t);
-  }, [layerKey]);
+  }, [layerKey, closeHelpTour]);
 
   const tour = tourFor(layer, localCity);
   // When a top-bar flyout (search / filter / heat) is open, drop this dock
@@ -101,8 +107,8 @@ export function HelpDock() {
         <div
           className="dockscrim"
           onClick={() => {
-            setOpen(false);
-            setFbOpen(false);
+            closeHelpTour();
+            closeFeedback();
             closeSettings();
           }}
         />
@@ -114,7 +120,7 @@ export function HelpDock() {
               <div className="helptitle">{tour.title}</div>
               <div className="helpsub">{tour.sub}</div>
             </div>
-            <button className="helpx" onClick={() => setOpen(false)} aria-label="Close">✕</button>
+            <button className="helpx" onClick={closeHelpTour} aria-label="Close">✕</button>
           </div>
           <ol className="helpsteps">
             {tour.steps.map((s, i) => (
@@ -148,15 +154,11 @@ export function HelpDock() {
           </div>
         </div>
       )}
-      {fbOpen && <FeedbackBoard onClose={() => setFbOpen(false)} />}
+      {fbOpen && <FeedbackBoard onClose={closeFeedback} />}
 
       <button
         className="helpbtn"
-        onClick={() => {
-          setFbOpen((o) => !o);
-          setOpen(false);
-          closeSettings();
-        }}
+        onClick={toggleFeedback}
         aria-label="Submit feedback"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
@@ -170,11 +172,7 @@ export function HelpDock() {
 
       <button
         className={`helpbtn ${peek || open ? 'wide' : ''} ${peek ? 'peek' : ''}`}
-        onClick={() => {
-          setOpen((o) => !o);
-          setFbOpen(false);
-          closeSettings();
-        }}
+        onClick={toggleHelpTour}
         aria-label="Need help?"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
@@ -187,11 +185,7 @@ export function HelpDock() {
 
       <button
         className={`helpbtn helpsettings ${settingsOpen ? 'on' : ''}`}
-        onClick={() => {
-          toggleSettings();
-          setOpen(false);
-          setFbOpen(false);
-        }}
+        onClick={toggleSettings}
         aria-label="Settings"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">

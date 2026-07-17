@@ -4961,29 +4961,254 @@ body {
     gap: 10px 18px;
   }
 
-  /* --- Mobile declutter --- The desktop layout scatters a dozen floating
-     controls around the edges; on a phone that reads as clutter and several
-     items are cropped. Pare the map chrome back to what's actually tappable:
-     drop the decorative live-trends ticker (its items are cut off at this
-     width anyway) and collapse every Feedback / Help / Settings pill down to
-     the same icon circle the other docks already use, so the whole
-     bottom-right column is a tidy stack of equal buttons rather than one wide
-     pill jutting across the map. */
-  .ticker {
+  /* --- Mobile: single bottom tab bar --- On phones the dozen floating
+     controls are replaced by one fixed bottom bar (Search / Filter / Heat /
+     Trending / More). Hide the scattered desktop chrome; the bar and its
+     "More" sheet drive the same store flags those controls used. */
+  .ticker,
+  .toolsdock,
+  .mapactions,
+  .legend,
+  .gsearch,
+  .controls .searchbtn,
+  .controls .seglbl {
     display: none;
   }
-  .helpbtn .helplbl {
+  /* Keep the help dock mounted (its Help / Settings / Feedback panels render
+     inside it) but drop its buttons — the More sheet opens those panels now. */
+  .helpdock .helpbtn {
     display: none;
   }
-  .helpbtn,
-  .helpbtn.wide {
-    width: 38px;
-    padding: 0;
+  /* The salary heat key sits just above the bar rather than under it. */
+  .heatkey {
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+  }
+  /* Zoom / layer slider lifts clear of the bar too. */
+  .zoomslider {
+    bottom: calc(50% + 30px);
+  }
+
+  /* Help / Settings / Feedback panels become bottom sheets on mobile so they
+     don't try to pop out of the (now button-less) dock's bottom-right corner. */
+  .helpdock .helppanel,
+  .helpdock .setpanel,
+  .helpdock .fbboard {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-width: none;
+    max-height: 82vh;
+    overflow-y: auto;
+    border-radius: 20px 20px 0 0;
+    z-index: 47;
+    padding: 18px 16px calc(22px + env(safe-area-inset-bottom, 0px));
+  }
+  .helpdock .dockscrim {
+    position: fixed;
+    inset: 0;
+    background: rgba(13, 15, 20, 0.34);
+    backdrop-filter: blur(2px);
+    z-index: 46;
+  }
+
+  /* The bar itself */
+  .mtabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 43;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    align-items: stretch;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -10px 30px -18px rgba(15, 27, 61, 0.4);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .mtab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 9px 0 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted, #64708a);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mtab.on {
+    color: var(--accent, #4b3bd6);
+  }
+  .mtabic {
+    position: relative;
+    width: 23px;
+    height: 23px;
+    display: flex;
+    align-items: center;
     justify-content: center;
   }
-  .helpdock {
-    gap: 10px;
-    right: 12px;
-    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  .mtabic svg {
+    width: 22px;
+    height: 22px;
+  }
+  .mtabdot {
+    position: absolute;
+    top: -2px;
+    right: -3px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #21c17a;
+    border: 1.5px solid #fff;
+  }
+  .mtablbl {
+    font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.1px;
+  }
+
+  /* The "More" sheet */
+  .mmscrim {
+    position: fixed;
+    inset: 0;
+    background: rgba(13, 15, 20, 0.34);
+    backdrop-filter: blur(2px);
+    z-index: 45;
+  }
+  .mobilemenu {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 46;
+    max-height: 82vh;
+    overflow-y: auto;
+    background: #fff;
+    border-radius: 22px 22px 0 0;
+    padding: 10px 14px calc(20px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -18px 50px -18px rgba(15, 27, 61, 0.5);
+    transform: translateY(100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .mobilemenu.open {
+    transform: translateY(0);
+  }
+  .mmgrip {
+    width: 38px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line, #e2e6ef);
+    margin: 4px auto 8px;
+  }
+  .mmhd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+    font-weight: 800;
+    font-size: 17px;
+    color: var(--ink);
+    padding: 2px 4px 8px;
+  }
+  .mmx {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .mmsec {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--muted, #8a93a6);
+    padding: 12px 6px 5px;
+  }
+  .mmrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 11px 8px;
+    background: none;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    text-align: left;
+    color: var(--ink);
+  }
+  .mmrow:active {
+    background: rgba(75, 59, 214, 0.07);
+  }
+  .mmrowic {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: rgba(75, 59, 214, 0.09);
+    color: var(--accent, #4b3bd6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mmrowic svg {
+    width: 19px;
+    height: 19px;
+  }
+  .mmrowtext {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .mmrowlbl {
+    font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+    font-weight: 600;
+    font-size: 14.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mmrowsub {
+    font-size: 12px;
+    color: var(--muted, #8a93a6);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mmrowchev {
+    flex: 0 0 auto;
+    color: var(--muted, #b7becc);
+  }
+}
+
+/* Hide the top-right search button on the desktop zoomed-out views, where the
+   centred GlobalSearch header is the search instead. (The flyout itself stays
+   in the DOM so the mobile bottom bar can still open it.) */
+.gshidden .searchbtn,
+.gshidden .seglbl {
+  display: none;
+}
+
+/* The mobile bottom bar + its "More" sheet only exist on phones; keep them out
+   of the desktop layout entirely. Scoped to desktop widths so it never fights
+   the max-width:680px rules that lay the bar out on mobile. */
+@media (min-width: 681px) {
+  .mtabbar,
+  .mobilemenu,
+  .mmscrim {
+    display: none;
   }
 }

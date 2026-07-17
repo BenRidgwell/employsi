@@ -136,8 +136,11 @@ export function TopBar() {
       </div>
       <div className="controls">
         <AccountButton />
-        {!showGlobalSearch && (
-        <div className="cgroup searchwrap">
+        {/* The search group is always in the DOM so the mobile bottom bar can
+            open its flyout on every layer. On desktop zoomed-out views the
+            centred GlobalSearch is used instead, so the top-right button is
+            hidden there via the `gshidden` class (CSS, desktop only). */}
+        <div className={`cgroup searchwrap ${showGlobalSearch ? 'gshidden' : ''}`}>
           <span className="seglbl">Search</span>
           <button className={`searchbtn ${searchOpen ? 'on' : ''} ${searchActive ? 'active' : ''}`} onClick={toggleSearch}>
             <SearchIcon />
@@ -184,7 +187,6 @@ export function TopBar() {
             )}
           </div>
         </div>
-        )}
         <div className="cgroup searchwrap">
           <span className="seglbl">Filter</span>
           <button className={`searchbtn ${filterOpen ? 'on' : ''} ${filterActive ? 'active' : ''}`} onClick={toggleFilter}>
