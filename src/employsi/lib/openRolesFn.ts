@@ -111,7 +111,11 @@ async function fromAdzuna(company: string): Promise<OpenRoles | null> {
   });
   const j = await fetchJson(`https://api.adzuna.com/v1/api/jobs/au/search/1?${params.toString()}`, 6000);
   const count = Number(j?.count);
-  return Number.isFinite(count) ? { count, source: 'Adzuna' } : null;
+  // Only treat a positive count as live data. A 0 (or a missing/errored
+  // response) almost always means Adzuna doesn't index this employer under
+  // that name rather than a true zero, so we fall through and let the card
+  // keep its illustrative figure instead of showing a misleading "0 · live".
+  return Number.isFinite(count) && count > 0 ? { count, source: 'Adzuna' } : null;
 }
 
 export const getOpenRoles = createServerFn({ method: 'GET' })

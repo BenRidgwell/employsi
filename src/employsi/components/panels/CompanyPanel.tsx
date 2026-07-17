@@ -188,7 +188,7 @@ export function CompanyPanel() {
     if (!liveRoles) return panel.bigStats;
     return panel.bigStats.map((s) =>
       s.label === 'Open roles'
-        ? { ...s, value: liveRoles.count.toLocaleString('en-US'), sub: `live · ${liveRoles.source}` }
+        ? { ...s, value: liveRoles.count.toLocaleString('en-US'), sub: 'live · hiring now' }
         : s,
     );
   }, [panel, liveRoles]);
