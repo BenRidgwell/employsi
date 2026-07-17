@@ -647,9 +647,13 @@ export function PerthMapbox() {
     const map = mapRef.current;
     if (!map) return;
     const apply = () => {
+      // Update the heat-dot source when it exists — but never gate the pill
+      // (DOM) filtering on it. The Mapbox 'standard' style keeps
+      // isStyleLoaded() false well after load, so the old
+      // `once('style.load')` deferral dropped filter changes entirely (the
+      // event never re-fires); applying directly avoids that.
       const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
-      if (!source) return;
-      source.setData(buildGeoJSON(placedRef.current, heat, selectedId, filterState));
+      if (source) source.setData(buildGeoJSON(placedRef.current, heat, selectedId, filterState));
       placedRef.current.forEach((p) => {
         const c = p.company;
         const marker = markersRef.current[c.id];
@@ -670,8 +674,7 @@ export function PerthMapbox() {
       // correct opacity without waiting for the next pan.
       focusUpdaterRef.current?.();
     };
-    if (map.isStyleLoaded()) apply();
-    else map.once('style.load', apply);
+    apply();
   }, [heat, selectedId, filterState]);
 
   useEffect(() => {
