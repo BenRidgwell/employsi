@@ -1,4 +1,3 @@
-import { CITY_ROSTER_GROUPS } from './cityRosters';
 
 export interface CityStat {
   salary: number;
@@ -22,42 +21,8 @@ export const CITY_STATE: Record<string, string> = {
 
 // Pixel coords in the 250x230 AustraliaMap viewBox, projected from each city's
 // real lng/lat with the same Web-Mercator fit used for AU_STATE_PATHS.
-export const CITY_XY: Record<string, [number, number]> = {
-  perth: [29.4, 140.5], darwin: [111.6, 24.3], adelaide: [154.2, 160], melbourne: [189.1, 179.7], sydney: [223.3, 153], brisbane: [233.3, 112.2], hobart: [202, 216.4],
-};
-
 export const CITY_LABEL: Record<string, string> = {
   perth: 'Perth', darwin: 'Darwin', adelaide: 'Adelaide', melbourne: 'Melbourne', sydney: 'Sydney', brisbane: 'Brisbane', hobart: 'Hobart',
-};
-
-export const GLOBAL_HUB_XY: Record<string, [number, number]> = {
-  perth: [435.1, 223.1],
-  santiago: [109, 226.2],
-  toronto: [93.7, 79.1],
-  johannesburg: [281.6, 211.6],
-  london: [232.3, 58.7],
-  houston: [65.8, 109.5],
-  singapore: [414, 161.7],
-  denver: [49, 88.8],
-  ganzhou: [433.4, 117.4],
-  seattle: [40, 70],
-  paris: [235, 66],
-  seoul: [452, 104],
-  beijing: [440, 100],
-  brisbane: [499, 214.1],
-  adelaide: [474.8, 229.3],
-  melbourne: [486, 238],
-  sydney: [491.5, 232.6],
-  // Finance-only hubs (tagged Financial Services), positioned with the same
-  // lng/lat → viewBox fit as the resources hubs above.
-  newyork: [104, 90],
-  sanfrancisco: [28, 92],
-  chicago: [79, 86],
-  tokyo: [477, 95],
-  zurich: [249, 68],
-  geneva: [240, 76],
-  dubai: [331, 122],
-  hongkong: [432, 129],
 };
 
 export const GLOBAL_HUB_LABEL: Record<string, string> = {
@@ -66,51 +31,6 @@ export const GLOBAL_HUB_LABEL: Record<string, string> = {
   newyork: 'New York', sanfrancisco: 'San Francisco', chicago: 'Chicago', tokyo: 'Tokyo', zurich: 'Zurich', dubai: 'Dubai', hongkong: 'Hong Kong',
   seattle: 'Seattle', paris: 'Paris', seoul: 'Seoul', beijing: 'Beijing',
 };
-
-// Sector tags per city hub. Every hub is a resources hub (Energy & Natural
-// Resources); the finance centres additionally carry Financial Services, so
-// filtering to that sector shows only them on the global map.
-const RESOURCES: string[] = ['Energy & Natural Resources'];
-export const CITY_SECTORS: Record<string, string[]> = {
-  // Perth hosts resources plus, now, consumer/retail (Wesfarmers, Cash
-  // Converters), media/telco (Seven West, Swift), industrial (Austal,
-  // Monadelphous) and services/infrastructure (NRW, Macmahon) names, so it
-  // matches all of those sector filters.
-  perth: [
-    'Energy & Natural Resources',
-    'Consumer and Retail',
-    'Technology, Media and Telecommunications',
-    'Industrial Manufacturing',
-    'Infrastructure and Government',
-  ],
-  // Pure finance hubs — no resources presence, so they drop out under an
-  // Energy & Natural Resources filter and only appear under Financial Services.
-  sydney: ['Financial Services'],
-  newyork: ['Financial Services'],
-  sanfrancisco: ['Financial Services'],
-  chicago: ['Financial Services'],
-  tokyo: ['Financial Services'],
-  zurich: ['Financial Services'],
-  geneva: ['Financial Services'],
-  dubai: ['Financial Services'],
-  hongkong: ['Financial Services'],
-  // Also finance centres, but with a real resources presence too.
-  singapore: [...RESOURCES, 'Financial Services'],
-  london: [...RESOURCES, 'Financial Services'],
-  // Melbourne is both a mining-corporate-HQ city (BHP, Rio) and a major
-  // financial centre, so it appears under either sector filter.
-  melbourne: [...RESOURCES, 'Financial Services'],
-};
-
-// A city hub is visible under the active sector filter if it carries any of the
-// selected sectors — from its static tags AND the sector groups of the
-// companies rostered there — defaulting to the resources tags when untagged.
-export function cityMatchesSectors(city: string, activeSectors: string[]): boolean {
-  if (!activeSectors.length) return true;
-  const tags = [...(CITY_SECTORS[city] || []), ...(CITY_ROSTER_GROUPS[city] || [])];
-  const eff = tags.length ? tags : RESOURCES;
-  return activeSectors.some((sec) => eff.includes(sec));
-}
 
 // Which domestic/regional view each local city belongs to, so scrolling out of
 // a city's local layer drops back into its own continent rather than always

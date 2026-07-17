@@ -1,4 +1,4 @@
-import { COMPANIES } from '../data/companies';
+import { COMPANIES, companyGroup } from '../data/companies';
 import { COMPANY_CULTURE, INDUSTRY_BENCH, type Layoff } from '../data/culture';
 import type { CompanyNews } from '../data/news';
 import type { BhpFeed } from '../data/bhpFeed';
@@ -21,10 +21,6 @@ export interface Diversity {
   femalePct: number;
   payGap: number;
   payGapBench: number;
-  womenLeadActual: number;
-  womenLeadTarget: number;
-  indigenousPct: number;
-  indigenousBench: number;
 }
 
 export interface PanelData {
@@ -33,6 +29,7 @@ export interface PanelData {
   name: string;
   domain: string;
   sector: string;
+  group: string;
   note: string;
   bigStats: BigStat[];
   subStats: SubStat[];
@@ -117,6 +114,7 @@ export function buildPanel(id: string | null, roleTitle?: string | null, live?: 
     name: c.name,
     domain: c.domain,
     sector: c.sector,
+    group: companyGroup(c),
     note: 'What you’d find here as a candidate',
     bigStats,
     subStats,
@@ -135,10 +133,6 @@ export function buildPanel(id: string | null, roleTitle?: string | null, live?: 
           femalePct: culture ? culture.femalePct : 25,
           payGap: culture ? culture.payGap : INDUSTRY_BENCH.payGap,
           payGapBench: INDUSTRY_BENCH.payGap,
-          womenLeadActual: culture ? culture.womenLeadActual : 28,
-          womenLeadTarget: culture ? culture.womenLeadTarget : 40,
-          indigenousPct: culture ? culture.indigenousPct : INDUSTRY_BENCH.indigenous,
-          indigenousBench: INDUSTRY_BENCH.indigenous,
         },
     layoffs: live ? live.layoffs : culture ? culture.layoffs : null,
     news: live ? live.news : null,

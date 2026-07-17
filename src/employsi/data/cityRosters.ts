@@ -517,9 +517,3 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
     ],
   },
 };
-
-// Sector groups present in each city's roster, so the domestic/global city
-// markers match the sector filter for the industries they actually host.
-export const CITY_ROSTER_GROUPS: Record<string, string[]> = Object.fromEntries(
-  Object.entries(CITY_ROSTERS).map(([city, r]) => [city, [...new Set(r.companies.map((c) => c[2]))]]),
-);

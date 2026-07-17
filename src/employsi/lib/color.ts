@@ -23,28 +23,6 @@ export function rgbCss(rgb: RGB): string {
   return `rgb(${rgb.join(',')})`;
 }
 
-/** Same red->amber->green ramp used for skill-demand spikes (skillColorAt in the prototype). */
-export function skillColorAt(t: number): RGB {
-  // Flip so higher demand reads red (hot) and lower reads green.
-  const u = 1 - t;
-  const stops: RGB[] = [RED, AMBER, GREEN];
-  const seg = Math.min(1, Math.floor(u * 2));
-  const lt = u * 2 - seg;
-  const a = stops[seg];
-  const b = stops[seg + 1];
-  return [
-    Math.round(a[0] + (b[0] - a[0]) * lt),
-    Math.round(a[1] + (b[1] - a[1]) * lt),
-    Math.round(a[2] + (b[2] - a[2]) * lt),
-  ];
-}
-
-export function spikeGradient(rgb: RGB): string {
-  const top = rgbCss(rgb.map((c) => Math.min(255, Math.round(c + (255 - c) * 0.35))) as RGB);
-  const bot = rgbCss(rgb.map((c) => Math.round(c * 0.75)) as RGB);
-  return `linear-gradient(to bottom,${top},${bot})`;
-}
-
 export interface HeatDisc {
   color: string;
   r: string;

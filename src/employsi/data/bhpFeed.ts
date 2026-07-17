@@ -7,17 +7,12 @@
 import { COMPANIES } from './companies';
 import { COMPANY_CULTURE, INDUSTRY_BENCH, type Layoff } from './culture';
 import { shareTrend, commodityBaskets, type CommodityBasket } from './finance';
-import { companySocial, type SocialSummary } from './social';
 import { companyNews, type CompanyNews } from './news';
 
 export interface BhpDiversity {
   femalePct: number;
   payGap: number;
   payGapBench: number;
-  womenLeadActual: number;
-  womenLeadTarget: number;
-  indigenousPct: number;
-  indigenousBench: number;
 }
 
 export interface BhpFeed {
@@ -37,8 +32,7 @@ export interface BhpFeed {
   // financial trends
   sharePrice: number[];
   commodities: Record<CommodityBasket, number[]>;
-  // engagement + diversity
-  social: SocialSummary;
+  // diversity
   diversity: BhpDiversity;
   // demand-ranked skills, open roles by area, restructuring + news engagement
   skills: string[];
@@ -81,15 +75,6 @@ export function buildBhpFeed(now: number = Date.now()): BhpFeed {
   commodities.precious[n - 1] = +(commodities.precious[n - 1] * (1 + d3 * 0.012)).toFixed(1);
   commodities.oilLng[n - 1] = +(commodities.oilLng[n - 1] * (1 + d4 * 0.02)).toFixed(1);
 
-  const baseSocial = companySocial('bhp', c.trend[n - 1] - c.trend[0]);
-  const social: SocialSummary = {
-    ...baseSocial,
-    redditMentions: Math.max(0, Math.round(baseSocial.redditMentions + d1 * 9)),
-    xMentions: Math.max(0, Math.round(baseSocial.xMentions + d2 * 45)),
-    redditDelta: +(baseSocial.redditDelta + d3 * 1.6).toFixed(1),
-    xDelta: +(baseSocial.xDelta + d1 * 1.3).toFixed(1),
-  };
-
   // Skills reordered by a live "demand score": the base ranking (first = most
   // in demand) nudged by a per-skill oscillator so adjacent skills can trade
   // places poll-to-poll.
@@ -127,10 +112,6 @@ export function buildBhpFeed(now: number = Date.now()): BhpFeed {
     femalePct: +Math.max(0, cul.femalePct + d4 * 0.4).toFixed(1),
     payGap: +Math.max(0, cul.payGap + d2 * 0.3).toFixed(1),
     payGapBench: INDUSTRY_BENCH.payGap,
-    womenLeadActual: +Math.max(0, cul.womenLeadActual + d1 * 0.5).toFixed(1),
-    womenLeadTarget: cul.womenLeadTarget,
-    indigenousPct: +Math.max(0, cul.indigenousPct + d3 * 0.1).toFixed(1),
-    indigenousBench: INDUSTRY_BENCH.indigenous,
   };
 
   return {
@@ -147,7 +128,6 @@ export function buildBhpFeed(now: number = Date.now()): BhpFeed {
     ebitdaPerEmp,
     sharePrice,
     commodities,
-    social,
     diversity,
     skills,
     roles,

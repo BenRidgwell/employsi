@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../state/store';
 import { buildPanel } from '../../lib/panel';
 import { shareTrend, commodityBaskets } from '../../data/finance';
-import { companySocial } from '../../data/social';
 import { useBhpFeed } from '../../hooks/useBhpFeed';
 import { useShareSeries } from '../../hooks/useShareSeries';
 import { useCompanyStats } from '../../hooks/useCompanyStats';
@@ -10,21 +9,6 @@ import { TrendChart } from './TrendChart';
 import { ShareChart } from './ShareChart';
 import { NewsPanel } from './NewsPanel';
 import { FabWrap } from './FabTooltip';
-
-const RedditIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="14" r="6.5" />
-    <circle cx="8.6" cy="14.2" r="1" fill="currentColor" stroke="none" />
-    <circle cx="15.4" cy="14.2" r="1" fill="currentColor" stroke="none" />
-    <path d="M9 17c.9.6 1.9.9 3 .9s2.1-.3 3-.9" />
-    <path d="M12 7.5V4.5M12 4.5l2.4 1M17 9.2a1.6 1.6 0 1 0 0-3.2" />
-  </svg>
-);
-const XIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
-    <path d="M4 4l7 8.4L4.3 20h2.1l5.8-6.6 4.4 6.6H21l-7.3-9L20 4h-2.1l-5.3 6-4-6H4Z" />
-  </svg>
-);
 
 const CompareIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
@@ -119,14 +103,6 @@ function RoleSearch({ options, value, onChange }: { options: string[]; value: st
   );
 }
 
-function Bar({ pct, max = 100 }: { pct: number; max?: number }) {
-  return (
-    <div className="dbar">
-      <div className="dbarfill" style={{ width: `${Math.min(100, (pct / max) * 100)}%` }} />
-    </div>
-  );
-}
-
 export function CompanyPanel() {
   const selectedId = useAppStore((s) => s.selectedId);
   const lastId = useAppStore((s) => s.lastId);
@@ -208,15 +184,9 @@ export function CompanyPanel() {
     () => (feed && isBhp ? feed.commodities : commodityBaskets(panel ? panel.trend.length : 0)),
     [feed, isBhp, panel?.trend.length],
   );
-  const social = useMemo(
-    () =>
-      feed && isBhp
-        ? feed.social
-        : panel
-          ? companySocial(panel.companyId, panel.trend[panel.trend.length - 1] - panel.trend[0])
-          : null,
-    [feed, isBhp, panel?.companyId, panel?.trend],
-  );
+  // The Financial-trends chart (share price + commodity baskets) is only
+  // meaningful for resources companies, so it's limited to that sector group.
+  const isResources = panel?.group === 'Energy & Natural Resources';
 
   return (
     <div className={`cardstage ${open ? 'open' : ''}`}>
@@ -268,7 +238,7 @@ export function CompanyPanel() {
                 <TrendChart trend={panel.trend} headcount={headcount} revPerEmp={revPerEmp} ebitdaPerEmp={ebitdaPerEmp} />
               </div>
 
-              {prices.length > 0 && (
+              {isResources && prices.length > 0 && (
                 <div className="sect">
                   <ShareChart ticker={panel.ticker} prices={prices} commodities={commodities} />
                 </div>
@@ -285,42 +255,6 @@ export function CompanyPanel() {
                   ))}
                 </div>
               </div>
-
-              {social && (
-                <div className="sect">
-                  <div className="secth">
-                    Social sentiment
-                    <span>Reddit &amp; X mentions</span>
-                  </div>
-                  <div className="subs">
-                    <div className="subc">
-                      <div className="subv"><RedditIcon /> {social.redditMentions.toLocaleString('en-US')}</div>
-                      <div className="subl">Reddit mentions / wk</div>
-                      <div className={`subd ${social.redditDelta >= 0 ? '' : 'neg'}`}>
-                        {social.redditDelta >= 0 ? '+' : '−'}{Math.abs(social.redditDelta).toFixed(1)}% vs last week
-                      </div>
-                    </div>
-                    <div className="subc">
-                      <div className="subv"><XIcon /> {social.xMentions.toLocaleString('en-US')}</div>
-                      <div className="subl">X mentions / wk</div>
-                      <div className={`subd ${social.xDelta >= 0 ? '' : 'neg'}`}>
-                        {social.xDelta >= 0 ? '+' : '−'}{Math.abs(social.xDelta).toFixed(1)}% vs last week
-                      </div>
-                    </div>
-                  </div>
-                  <div className="sentimentbar">
-                    <span className="sentpos" style={{ width: `${social.positive}%` }} />
-                    <span className="sentneu" style={{ width: `${social.neutral}%` }} />
-                    <span className="sentneg" style={{ width: `${social.negative}%` }} />
-                  </div>
-                  <div className="sentlegend">
-                    <span><i className="sentdot pos" />{social.positive}% positive</span>
-                    <span><i className="sentdot neu" />{social.neutral}% neutral</span>
-                    <span><i className="sentdot neg" />{social.negative}% negative</span>
-                  </div>
-                  <div className="sentnote">{social.summary}</div>
-                </div>
-              )}
 
               <div className="sect">
                 <div className="secth">{panel.skillsLabel}</div>
@@ -365,35 +299,6 @@ export function CompanyPanel() {
                   </div>
                   <span className={`paygapbench ${panel.diversity.payGap <= panel.diversity.payGapBench ? 'good' : 'bad'}`}>
                     {panel.diversity.payGap <= panel.diversity.payGapBench ? '▼' : '▲'} vs {panel.diversity.payGapBench.toFixed(1)}% industry
-                  </span>
-                </div>
-              </div>
-
-              <div className="sect">
-                <div className="secth">
-                  Women in leadership
-                  <span>target vs actual</span>
-                </div>
-                <div className="progtrack">
-                  <div className="progfill" style={{ width: `${panel.diversity.womenLeadActual}%` }} />
-                  <div className="progtarget" style={{ left: `${panel.diversity.womenLeadTarget}%` }} />
-                </div>
-                <div className="progrow">
-                  <span><b>{panel.diversity.womenLeadActual}%</b> actual</span>
-                  <span className="progtl">target {panel.diversity.womenLeadTarget}%</span>
-                </div>
-              </div>
-
-              <div className="sect">
-                <div className="secth">
-                  Indigenous employment
-                  <span>vs {panel.diversity.indigenousBench.toFixed(1)}% parity</span>
-                </div>
-                <Bar pct={panel.diversity.indigenousPct} max={12} />
-                <div className="progrow">
-                  <span><b>{panel.diversity.indigenousPct.toFixed(1)}%</b> of workforce</span>
-                  <span className={`progtl ${panel.diversity.indigenousPct >= panel.diversity.indigenousBench ? 'good' : ''}`}>
-                    parity {panel.diversity.indigenousBench.toFixed(1)}%
                   </span>
                 </div>
               </div>
