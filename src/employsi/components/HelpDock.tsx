@@ -71,6 +71,8 @@ export function HelpDock() {
   const searchOpen = useAppStore((s) => s.searchOpen);
   const filterOpen = useAppStore((s) => s.filterOpen);
   const heatOpen = useAppStore((s) => s.heatOpen);
+  const selectedId = useAppStore((s) => s.selectedId);
+  const compareOpen = useAppStore((s) => s.compareOpen);
   // Help-tour + feedback open state now lives in the store, so the mobile
   // "More" sheet can drive the same panels as these dock buttons.
   const open = useAppStore((s) => s.helpTourOpen);
@@ -95,9 +97,10 @@ export function HelpDock() {
   }, [layerKey, closeHelpTour]);
 
   const tour = tourFor(layer, localCity);
-  // When a top-bar flyout (search / filter / heat) is open, drop this dock
-  // behind so those flyouts sit above the Feedback / Help / Settings buttons.
-  const behind = searchOpen || filterOpen || heatOpen;
+  // Drop this dock behind when a top-bar flyout (search / filter / heat) is
+  // open — and also when a company card / compare panel is open, so the
+  // "in the news" panel sits above the Feedback / Help / Settings buttons.
+  const behind = searchOpen || filterOpen || heatOpen || !!selectedId || compareOpen;
   const anyPanelOpen = open || fbOpen || settingsOpen;
 
   return (

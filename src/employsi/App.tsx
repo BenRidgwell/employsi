@@ -6,7 +6,6 @@ import { Ticker } from './components/Ticker';
 import { HintPulse } from './components/HintPulse';
 import { ZoomSlider } from './components/ZoomSlider';
 import { MapActions } from './components/MapActions';
-import { ToolsDock } from './components/ToolsDock';
 import { HelpDock } from './components/HelpDock';
 import { MobileTabBar } from './components/MobileTabBar';
 import { MobileMenu } from './components/MobileMenu';
@@ -48,7 +47,6 @@ function App() {
       <ComparePanel />
       <DailyBriefPane />
       <WhatsTrendingPane />
-      <ToolsDock />
       <HelpDock />
       <MobileTabBar />
       <MobileMenu />

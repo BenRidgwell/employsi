@@ -249,29 +249,10 @@ export function TopBar() {
           {heatOpen && <div className="sfscrim" onClick={toggleHeatPanel} />}
           <div className={`searchflyout ${heatOpen ? 'open' : ''}`}>
             <div className="sflabel">Colour the map by</div>
-            {/* Metric and skill are mutually exclusive: picking a metric clears
-                any active skill, and a metric reads as unselected while a skill
-                is chosen (the map is showing skill demand, not the metric). */}
             <div className="seg style hmseg">
               <button className={`hbtn ${heat === 'salary' && !activeSkill ? 'hon' : ''}`} onClick={() => { setHeat('salary'); clearSearch(); }}>Salary</button>
               <button className={`hbtn ${heat === 'growth' && !activeSkill ? 'hon' : ''}`} onClick={() => { setHeat('growth'); clearSearch(); }}>Growth</button>
-              <button className={`hbtn ${heat === 'turnover' && !activeSkill ? 'hon' : ''}`} onClick={() => { setHeat('turnover'); clearSearch(); }}>Turnover</button>
             </div>
-            <div className="sflabel">Skill demand</div>
-            <div className="sfchips">
-              {skills.map((sk) => (
-                <button
-                  key={sk}
-                  className={`sfchip ${searchQuery.trim().toLowerCase() === sk.toLowerCase() ? 'on' : ''}`}
-                  onClick={() => toggleSkillQuery(sk)}
-                >
-                  {sk}
-                </button>
-              ))}
-            </div>
-            {activeSkill && (
-              <button className="sfclear" onClick={clearSearch}>Clear skill</button>
-            )}
           </div>
         </div>
       </div>
