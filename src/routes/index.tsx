@@ -2,7 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { EmploysiLockup } from "@/components/EmploysiLogo";
 import { Ticker } from "@/components/Ticker";
 import { Showcase } from "@/components/Showcase";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/")({
   head: () => ({
