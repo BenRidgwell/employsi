@@ -5,10 +5,17 @@ import { shareTrend, commodityBaskets } from '../../data/finance';
 import { useBhpFeed } from '../../hooks/useBhpFeed';
 import { useShareSeries } from '../../hooks/useShareSeries';
 import { useCompanyStats } from '../../hooks/useCompanyStats';
+import { useOpenRoles } from '../../hooks/useOpenRoles';
+import { CITY_COMPANIES } from '../../data/mapboxGeo';
 import { TrendChart } from './TrendChart';
 import { ShareChart } from './ShareChart';
 import { NewsPanel } from './NewsPanel';
 import { FabWrap } from './FabTooltip';
+
+// Companies plotted in an Australian city — the live "open roles" feed
+// (ATS/Adzuna) is Australia-scoped, so it's only fetched for these.
+const AU_CITIES = ['perth', 'adelaide', 'brisbane', 'melbourne', 'sydney'];
+const AU_COMPANY_IDS = new Set(AU_CITIES.flatMap((c) => (CITY_COMPANIES[c] || []).map((x) => x.id)));
 
 const CompareIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
@@ -163,11 +170,28 @@ export function CompanyPanel() {
   // the Worker from Yahoo Finance. When present they overlay the illustrative
   // figures in the workforce chart and mark the card as live.
   const liveStats = useCompanyStats(panel?.ticker ?? null, panel?.exchange, open && !isBhp);
-  const live = isBhp ? !!feed : REAL_DATA_IDS.includes(lastId ?? '') || !!liveShare || !!liveStats;
+  // Live "open roles" count for Australian companies (employer ATS feed →
+  // Adzuna on the Worker). Company-wide, so only fetched when no role filter is
+  // narrowing the card to a single role.
+  const isAU = !!lastId && AU_COMPANY_IDS.has(lastId);
+  const liveRoles = useOpenRoles(panel?.name ?? null, panel?.companyId, open && isAU && !roleFilter);
+  const live = isBhp ? !!feed : REAL_DATA_IDS.includes(lastId ?? '') || !!liveShare || !!liveStats || !!liveRoles;
 
   const headcount = liveStats?.headcount || panel?.headcount || 0;
   const revPerEmp = liveStats?.revPerEmp || panel?.revPerEmp || 0;
   const ebitdaPerEmp = liveStats?.ebitdaPerEmp || panel?.ebitdaPerEmp || 0;
+
+  // Overlay the real Australian open-roles count onto the headline stat when
+  // the live feed resolves; otherwise the card keeps its illustrative figure.
+  const bigStats = useMemo(() => {
+    if (!panel) return [];
+    if (!liveRoles) return panel.bigStats;
+    return panel.bigStats.map((s) =>
+      s.label === 'Open roles'
+        ? { ...s, value: liveRoles.count.toLocaleString('en-US'), sub: `live · ${liveRoles.source}` }
+        : s,
+    );
+  }, [panel, liveRoles]);
 
   const prices = useMemo(
     () =>
@@ -225,7 +249,7 @@ export function CompanyPanel() {
               <RoleSearch options={panel.roleOptions} value={roleFilter} onChange={setRoleFilter} />
 
               <div className="bigs">
-                {panel.bigStats.map((s, i) => (
+                {bigStats.map((s, i) => (
                   <div className="bigc" key={i}>
                     <div className="bigv">{s.value}</div>
                     <div className="bigl">{s.label}</div>
