@@ -364,8 +364,18 @@ export function PerthMapbox() {
         [HALO_LAYER, CORE_LAYER, PULSE_LAYER].forEach((id) => {
           if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', show ? 'visible' : 'none');
         });
-        Object.values(markersRef.current).forEach((m) => {
-          (m.getElement() as HTMLElement).style.display = show ? '' : 'none';
+        // When revealing companies, respect the active sector / exchange /
+        // slider filters — a filtered-out company must never be shown, no matter
+        // which code path reveals the set. Hiding is unconditional.
+        const fs = show ? filterStateOf(useAppStore.getState()) : null;
+        Object.entries(markersRef.current).forEach(([id, m]) => {
+          const el = m.getElement() as HTMLElement;
+          if (!show) {
+            el.style.display = 'none';
+            return;
+          }
+          const c = COMPANY_BY_ID[id];
+          el.style.display = c && fs && matchesFilters(c, fs) ? '' : 'none';
         });
       };
       setCompaniesVisibleRef.current = setCompaniesVisible;

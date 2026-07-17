@@ -74,12 +74,11 @@ function thumbUrl(seed: string, w: number, h: number): string {
 export function NewsPanel({ name, sector, ticker, live }: { name: string; sector: string; ticker?: string; live?: CompanyNews | null }) {
   const generated = useMemo(() => companyNews(name, sector), [name, sector]);
   const curated = CURATED_NEWS_COMPANIES.has(name);
-  // Non-curated companies fetch a live news feed (GDELT) keyed on their name.
-  // An alphabetic ticker is appended to disambiguate; numeric listing codes
-  // (Asian exchanges) are dropped as they only add noise. Curated companies
-  // (and BHP's live feed) skip this.
-  const tk = ticker && /^[A-Za-z][A-Za-z.]*$/.test(ticker) ? ` ${ticker}` : '';
-  const liveQuery = !curated && !live ? `"${name}"${tk}` : null;
+  // Non-curated companies fetch a live news feed (GDELT → Google News) keyed on
+  // the company name alone — the most reliable query (tickers/market suffixes
+  // only narrow results). Curated companies (and BHP's live feed) skip this.
+  void ticker;
+  const liveQuery = !curated && !live ? `"${name}"` : null;
   const liveItems = useLiveNews(liveQuery, 6);
   const liveFeed = useMemo(() => liveToCompanyNews(liveItems), [liveItems]);
 

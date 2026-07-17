@@ -140,6 +140,17 @@ export const getLiveNews = createServerFn({ method: 'GET' })
           items = [];
         }
       }
+      // Last resort: if an exact-phrase query ("Company Name") found nothing,
+      // retry Google unquoted — broader, so a real company almost always yields
+      // recent coverage (with its publisher) rather than falling back to the
+      // sourceless generated copy.
+      if (items.length === 0 && /^".*"$/.test(query)) {
+        try {
+          items = await fromGoogle(query.replace(/^"|"$/g, ''), limit, controller.signal);
+        } catch {
+          items = [];
+        }
+      }
       clearTimeout(timer);
       if (items.length) cache.set(key, { at: Date.now(), items });
       return { items };
