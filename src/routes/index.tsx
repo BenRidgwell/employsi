@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { EmploysiLockup } from "@/components/EmploysiLogo";
 import { Ticker } from "@/components/Ticker";
 import { Showcase } from "@/components/Showcase";
-import { ArrowUpRight, X } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import {
   Dialog,
   DialogContent,
