@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Mail } from "lucide-react";
+import slideGlobe from "@/assets/slide-globe.png.asset.json";
+import slideCity from "@/assets/slide-city.png.asset.json";
+import slideCompany from "@/assets/slide-company.png.asset.json";
 
 function SkylineSVG() {
   return (
@@ -13,7 +16,22 @@ function SkylineSVG() {
   );
 }
 
-function PrototypeSlide({ label, tone }: { label: string; tone: "map" | "heat" | "city" | "company" }) {
+function PrototypeSlide({
+  label,
+  tone,
+  image,
+}: {
+  label: string;
+  tone: "map" | "heat" | "city" | "company";
+  image?: string;
+}) {
+  if (image) {
+    return (
+      <div className="relative aspect-[2940/1490] w-full flex-none select-none overflow-hidden bg-ink">
+        <img src={image} alt={label} className="h-full w-full object-cover" draggable={false} />
+      </div>
+    );
+  }
   const grid = Array.from({ length: 12 * 6 }, (_, i) => i);
   const palette: Record<string, string[]> = {
     map: ["#0a0a0c", "#1c1c1e", "#3a3a3d", "#8e8e93"],
@@ -50,31 +68,55 @@ function PrototypeSlide({ label, tone }: { label: string; tone: "map" | "heat" |
 
 function Carousel() {
   const slides = [
-    { label: "Global live market map", tone: "map" as const },
+    { label: "Global live market map", tone: "map" as const, image: slideGlobe.url },
     { label: "Australia — automation demand heat map", tone: "heat" as const },
-    { label: "Perth — local 3D city view", tone: "city" as const },
-    { label: "BHP — company analysis", tone: "company" as const },
+    { label: "Perth — local 3D city view", tone: "city" as const, image: slideCity.url },
+    { label: "BHP — company analysis", tone: "company" as const, image: slideCompany.url },
   ];
   const [index, setIndex] = useState(0);
   const go = (i: number) => setIndex((i + slides.length) % slides.length);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [tilt, setTilt] = useState(26);
 
   useEffect(() => {
     const id = setInterval(() => setIndex((i) => (i + 1) % slides.length), 6000);
     return () => clearInterval(id);
   }, [slides.length]);
 
+  useEffect(() => {
+    const onScroll = () => {
+      const el = wrapRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      // start tilted (26deg) when carousel enters from bottom, flat (0) once its center passes ~60% up the viewport
+      const start = vh * 0.9;
+      const end = vh * 0.35;
+      const center = rect.top + rect.height / 2;
+      const p = Math.min(1, Math.max(0, (start - center) / (start - end)));
+      setTilt(26 * (1 - p));
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
+
   return (
-    <div className="relative mx-auto mt-6 w-full max-w-[1040px] [perspective:1700px]">
+    <div ref={wrapRef} className="relative mx-auto mt-6 w-full max-w-[1040px] [perspective:1700px]">
       <div
-        className="relative overflow-hidden rounded-2xl shadow-[0_44px_90px_-34px_rgba(20,20,25,0.4)]"
-        style={{ transform: "rotateX(26deg)", transformOrigin: "center bottom" }}
+        className="relative overflow-hidden rounded-2xl shadow-[0_44px_90px_-34px_rgba(20,20,25,0.4)] transition-transform duration-200 ease-out"
+        style={{ transform: `rotateX(${tilt}deg)`, transformOrigin: "center bottom" }}
       >
         <div
           className="flex transition-transform duration-[550ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
           style={{ transform: `translateX(-${index * 100}%)` }}
         >
           {slides.map((s) => (
-            <PrototypeSlide key={s.label} label={s.label} tone={s.tone} />
+            <PrototypeSlide key={s.label} label={s.label} tone={s.tone} image={s.image} />
           ))}
         </div>
         <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2">
