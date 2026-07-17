@@ -117,7 +117,7 @@ function buildGeoJSON(placements: Placed[], heat: HeatMetric, selectedId: string
         properties: {
           id: c.id,
           color,
-          label: c.ticker,
+          label: c.pill || c.ticker,
           sub: chipMetric(c, heat),
           selected: c.id === selectedId,
           // Fade every other company's heat dot while a card is open, matching
@@ -308,7 +308,7 @@ export function PerthMapbox() {
           const c = p.company;
           const el = document.createElement('button');
           el.className = 'mbchip';
-          el.innerHTML = `<span class="chipdot"></span><span class="chiptk">${c.ticker}</span><span class="chipsub"></span>`;
+          el.innerHTML = `<span class="chipdot"></span><span class="chiptk">${c.pill || c.ticker}</span><span class="chipsub"></span>`;
           // Keep the pointer press off the map so it can't start a drag-pan: a
           // tiny move during the press would otherwise suppress the button's
           // native click and the pill would silently pan instead of selecting

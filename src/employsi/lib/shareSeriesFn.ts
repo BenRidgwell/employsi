@@ -25,7 +25,9 @@ const YAHOO_SUFFIX: Record<string, string> = {
 export function yahooSymbol(ticker: string, exchange?: string): string {
   const ex = exchange || 'ASX';
   if (ex === 'NYSE' || ex === 'NASDAQ') return ticker;
-  if (ex === 'HKEX') return `${ticker.replace(/\D/g, '').padStart(4, '0')}.HK`;
+  // Hong Kong: strip non-digits and any leading zeros, then pad back to Yahoo's
+  // canonical 4-digit code (e.g. "00700" -> "0700.HK", "09988" -> "9988.HK").
+  if (ex === 'HKEX') return `${(ticker.replace(/\D/g, '').replace(/^0+/, '') || '0').padStart(4, '0')}.HK`;
   const suf = YAHOO_SUFFIX[ex];
   return suf ? `${ticker}${suf}` : ticker;
 }

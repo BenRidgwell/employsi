@@ -7,9 +7,37 @@ import type { Company, RoleBreakdown } from './companies';
 // (GDELT) fill the real figures at runtime by ticker. This keeps hundreds of
 // listings maintainable without hand-writing every field.
 
-// [ticker, name, group, exchange?] — exchange overrides the city default
-// (e.g. NASDAQ names in a NYSE-default US city).
-export type RosterEntry = [ticker: string, name: string, group: string, exchange?: string];
+// [ticker, name, group, exchange?, pill?] — exchange overrides the city
+// default (e.g. NASDAQ names in a NYSE-default US city); pill overrides the map
+// label (e.g. a name acronym for markets with numeric tickers).
+export type RosterEntry = [ticker: string, name: string, group: string, exchange?: string, pill?: string];
+
+// Cities whose exchanges use numeric tickers (HK/Shanghai/Shenzhen/Tokyo/
+// Korea): a bare ticker like "00700" is a meaningless pill, so map labels there
+// show a short acronym of the company name instead. The ticker still drives
+// search, so the company remains findable by its listing code.
+const ACRONYM_CITIES = new Set(['hongkong', 'tokyo', 'seoul', 'ganzhou', 'beijing']);
+
+// Corporate-form words that don't belong in an acronym / brand label.
+const DROP_WORDS = new Set([
+  'holdings', 'holding', 'corporation', 'corp', 'group', 'limited', 'ltd',
+  'company', 'co', 'international', 'inc', 'incorporated', 'plc', 'the',
+]);
+const STOP_WORDS = new Set(['and', 'of', 'the', '&']);
+
+// Build a short pill label from a company name: initials for multi-word names
+// (INDUSTRIAL COMMERCIAL BANK CHINA -> ICBC), the brand word itself for
+// single-word names (Tencent Holdings -> Tencent).
+export function nameAcronym(name: string): string {
+  const cleaned = name.replace(/\([^)]*\)/g, ' ');
+  const words = cleaned.split(/[\s.,/-]+/).filter(Boolean);
+  const sig = words.filter((w) => !STOP_WORDS.has(w.toLowerCase()));
+  const core = sig.filter((w) => !DROP_WORDS.has(w.toLowerCase()));
+  const use = core.length ? core : sig;
+  if (use.length >= 2) return use.map((w) => w[0].toUpperCase()).join('').slice(0, 5);
+  const w = use[0] || name;
+  return w.length <= 8 ? w : w.slice(0, 8);
+}
 
 export interface CityRoster {
   exchange: string; // default listing exchange for this city
@@ -61,8 +89,9 @@ const DEFAULT_PROFILE = GROUP_PROFILE['Energy & Natural Resources'];
 
 // Build a full illustrative Company record from a compact roster entry.
 export function buildRosterCompany(city: string, cityExchange: string, entry: RosterEntry): Company {
-  const [ticker, name, group, exOverride] = entry;
+  const [ticker, name, group, exOverride, pillOverride] = entry;
   const exchange = exOverride || cityExchange;
+  const pill = pillOverride || (ACRONYM_CITIES.has(city) ? nameAcronym(name) : undefined);
   const prof = GROUP_PROFILE[group] || DEFAULT_PROFILE;
   const h = hash01(ticker + name);
   const h2 = hash01(name + '::b');
@@ -81,6 +110,7 @@ export function buildRosterCompany(city: string, cityExchange: string, entry: Ro
     id: rosterId(city, ticker),
     ticker,
     name,
+    pill,
     domain: '',
     sector: prof.sector,
     group,

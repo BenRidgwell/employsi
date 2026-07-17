@@ -32,6 +32,10 @@ export interface Company {
   competition: string;
   skills: string[];
   roles: RoleBreakdown[];
+  /** Optional short label shown on the map pill instead of the ticker (e.g. a
+   *  name acronym for markets whose tickers are numeric). The ticker is still
+   *  used for search, so a user can find the company either way. */
+  pill?: string;
 }
 
 export const COMPANIES: Company[] = [

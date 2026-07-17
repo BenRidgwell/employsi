@@ -483,6 +483,39 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['010130', 'Korea Zinc', ENR],
     ],
   },
+  // Beijing — mainland majors listed in Shanghai (SSE), Shenzhen (SZSE),
+  // Hong Kong (HKEX) or on NASDAQ. Pills use the company's common acronym /
+  // brand; the numeric listing code stays the searchable ticker.
+  beijing: {
+    exchange: 'SSE',
+    companies: [
+      ['IQ', 'iQIYI', TMT, 'NASDAQ', 'iQIYI'],
+      ['JD', 'JD.com', CON, 'NASDAQ', 'JD'],
+      ['03690', 'Meituan', TMT, 'HKEX', 'Meituan'],
+      ['NTES', 'NetEase', TMT, 'NASDAQ', 'NetEase'],
+      ['601319', "People's Insurance Company of China", FIN, 'SSE', 'PICC'],
+      ['601857', 'PetroChina', ENR, 'SSE', 'PetroChina'],
+      ['09992', 'Pop Mart', CON, 'HKEX', 'PopMart'],
+      ['601658', 'Postal Savings Bank of China', FIN, 'SSE', 'PSBC'],
+      ['601598', 'Sinotrans Limited', IND, 'SSE', 'Sinotrans'],
+      ['01810', 'Xiaomi', TMT, 'HKEX', 'Xiaomi'],
+      ['601988', 'Bank of China', FIN, 'SSE', 'BOC'],
+      ['000959', 'Beijing Shougang', IND, 'SZSE', 'Shougang'],
+      ['000725', 'BOE Technology', TMT, 'SZSE', 'BOE'],
+      ['601939', 'China Construction Bank', FIN, 'SSE', 'CCB'],
+      ['601628', 'China Life Insurance Company', FIN, 'SSE', 'ChinaLife'],
+      ['600941', 'China Mobile', TMT, 'SSE', 'CM'],
+      ['601088', 'China Shenhua Energy', ENR, 'SSE', 'Shenhua'],
+      ['601668', 'China State Construction Engineering', INF, 'SSE', 'CSCEC'],
+      ['601728', 'China Telecom', TMT, 'SSE', 'CT'],
+      ['600050', 'China Unicom', TMT, 'SSE', 'CU'],
+      ['600900', 'China Yangtze Power', INF, 'SSE', 'CYPC'],
+      ['600011', 'Huaneng Power International', INF, 'SSE', 'Huaneng'],
+      ['601398', 'Industrial and Commercial Bank of China', FIN, 'SSE', 'ICBC'],
+      ['601288', 'Agricultural Bank of China', FIN, 'SSE', 'ABC'],
+      ['09888', 'Baidu', TMT, 'HKEX', 'Baidu'],
+    ],
+  },
 };
 
 // Sector groups present in each city's roster, so the domestic/global city

@@ -4789,9 +4789,21 @@ body {
     letter-spacing: 1px;
   }
 
-  /* Zoom slider: stays left, drop hover labels (no hover on touch) */
+  /* Layer selection sits in the top-right corner on mobile, laid out as a
+     compact horizontal row (labels dropped — no hover on touch). */
   .zoomslider {
-    left: 12px;
+    left: auto;
+    right: 12px;
+    top: 64px;
+    bottom: auto;
+    transform: none;
+    flex-direction: row;
+    padding: 6px 8px;
+  }
+  .zoomslider .ztrack {
+    width: 2px;
+    height: 16px;
+    margin: 0 2px;
   }
   .zoomslider .zlabel {
     display: none;
@@ -4983,10 +4995,6 @@ body {
   .heatkey {
     bottom: calc(74px + env(safe-area-inset-bottom, 0px));
   }
-  /* Zoom / layer slider lifts clear of the bar too. */
-  .zoomslider {
-    bottom: calc(50% + 30px);
-  }
 
   /* Help / Settings / Feedback panels become bottom sheets on mobile so they
      don't try to pop out of the (now button-less) dock's bottom-right corner. */
@@ -5014,6 +5022,7 @@ body {
   }
 
   /* The bar itself */
+  /* Brand-black bar with white icons. */
   .mtabbar {
     position: fixed;
     left: 0;
@@ -5023,10 +5032,9 @@ body {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     align-items: stretch;
-    background: rgba(255, 255, 255, 0.96);
-    backdrop-filter: blur(12px);
-    border-top: 1px solid var(--line);
-    box-shadow: 0 -10px 30px -18px rgba(15, 27, 61, 0.4);
+    background: #1c1c1e;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 -10px 30px -18px rgba(0, 0, 0, 0.6);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .mtab {
@@ -5039,11 +5047,15 @@ body {
     background: none;
     border: none;
     cursor: pointer;
-    color: var(--muted, #64708a);
+    color: rgba(255, 255, 255, 0.88);
     -webkit-tap-highlight-color: transparent;
   }
-  .mtab.on {
-    color: var(--accent, #4b3bd6);
+  .mtab .mtablbl {
+    color: rgba(255, 255, 255, 0.72);
+  }
+  .mtab.on,
+  .mtab.on .mtablbl {
+    color: #fff;
   }
   .mtabic {
     position: relative;
