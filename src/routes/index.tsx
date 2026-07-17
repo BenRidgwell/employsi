@@ -41,38 +41,8 @@ function Nav() {
 }
 
 function Footer() {
-  const cols = [
-    ["Platform", ["Signals", "Compensation", "Movement", "Skills shift"]],
-    ["Research", ["Work Index", "Reports", "Methodology", "Changelog"]],
-    ["Company", ["About", "Careers", "Press", "Contact"]],
-    ["Legal", ["Privacy", "Terms", "Security", "DPA"]],
-  ] as const;
   return (
     <footer>
-      <div className="mx-auto grid max-w-[1200px] gap-12 px-6 py-16 lg:grid-cols-12 lg:px-10">
-        <div className="lg:col-span-4">
-          <EmploysiLockup size={26} />
-          <p className="mt-5 max-w-xs text-sm text-ink-3">
-            HR intelligence for the next decade of work. Built in Stockholm.
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-8 lg:col-span-8 lg:grid-cols-4">
-          {cols.map(([h, items]) => (
-            <div key={h}>
-              <div className="eyebrow">{h}</div>
-              <ul className="mt-4 space-y-2">
-                {items.map((i) => (
-                  <li key={i}>
-                    <a href="#" className="text-sm text-ink-2 hover:text-ink">
-                      {i}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </div>
       <div className="border-t border-hairline">
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-3 px-6 py-6 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-4 lg:px-10">
           <span>© 2026 Employsi AB</span>
