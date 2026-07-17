@@ -2,32 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Mail } from "lucide-react";
 
 function SkylineSVG() {
-  const bars = Array.from({ length: 48 }, (_, i) => {
-    const h = 40 + ((i * 53) % 180) + (i % 5 === 0 ? 60 : 0);
-    return { x: i * 22, h };
-  });
   return (
-    <svg viewBox="0 0 1100 300" className="h-full w-full" preserveAspectRatio="xMidYMax meet" aria-hidden>
-      <defs>
-        <linearGradient id="sky" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#1c1c1e" />
-          <stop offset="100%" stopColor="#8e8e93" />
-        </linearGradient>
-      </defs>
-      {bars.map((b, i) => (
-        <rect
-          key={i}
-          x={b.x}
-          y={300 - b.h}
-          width={16}
-          height={b.h}
-          rx={2}
-          fill="url(#sky)"
-          opacity={0.35 + (i % 7) * 0.09}
-        />
-      ))}
-      <line x1="0" y1="299.5" x2="1100" y2="299.5" stroke="#1c1c1e" strokeWidth="1" />
-    </svg>
+    <iframe
+      src="/skyline-v4.html"
+      title="Skyline"
+      className="h-full w-full border-0"
+      style={{ background: "transparent" }}
+      loading="lazy"
+    />
   );
 }
 
