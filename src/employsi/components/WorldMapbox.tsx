@@ -36,7 +36,6 @@ const TRAVEL_ROUTES: TravelRoute[] = [
   { from: 'tokyo', to: 'sydney', mode: 'plane', dur: 34000, offset: 0.2 },
   { from: 'dubai', to: 'johannesburg', mode: 'plane', dur: 27000, offset: 0.6 },
   { from: 'sanfrancisco', to: 'tokyo', mode: 'plane', dur: 36000, offset: 0.15 },
-  { from: 'santiago', to: 'houston', mode: 'plane', dur: 32000, offset: 0.5 },
   { from: 'singapore', to: 'ganzhou', mode: 'ship', dur: 44000, offset: 0.3 },
   { from: 'perth', to: 'johannesburg', mode: 'ship', dur: 60000, offset: 0.5 },
   { from: 'houston', to: 'london', mode: 'ship', dur: 56000, offset: 0.15 },

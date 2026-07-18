@@ -26,7 +26,7 @@ export const CITY_LABEL: Record<string, string> = {
 };
 
 export const GLOBAL_HUB_LABEL: Record<string, string> = {
-  perth: 'Perth', santiago: 'Santiago', toronto: 'Toronto', johannesburg: 'Johannesburg', london: 'London', houston: 'Houston', singapore: 'Singapore',
+  perth: 'Perth', toronto: 'Toronto', johannesburg: 'Johannesburg', london: 'London', houston: 'Houston', singapore: 'Singapore',
   denver: 'Denver', ganzhou: 'Ganzhou', brisbane: 'Brisbane', adelaide: 'Adelaide', melbourne: 'Melbourne', sydney: 'Sydney',
   newyork: 'New York', sanfrancisco: 'San Francisco', chicago: 'Chicago', tokyo: 'Tokyo', zurich: 'Zurich', dubai: 'Dubai', hongkong: 'Hong Kong',
   seattle: 'Seattle', paris: 'Paris', seoul: 'Seoul', beijing: 'Beijing',
@@ -59,12 +59,10 @@ export const CITY_CONTINENT: Record<string, string> = {
   paris: 'europe',
   seoul: 'asia',
   beijing: 'asia',
-  santiago: 'southamerica',
 };
 
 export const GLOBAL_STATS: Record<string, CityStat> = {
   perth: { salary: 146, growth: 5.6, turnover: 11.3 },
-  santiago: { salary: 98, growth: 4.2, turnover: 13.0 },
   toronto: { salary: 132, growth: 3.0, turnover: 9.0 },
   johannesburg: { salary: 74, growth: 2.6, turnover: 14.5 },
   london: { salary: 118, growth: 2.2, turnover: 8.5 },

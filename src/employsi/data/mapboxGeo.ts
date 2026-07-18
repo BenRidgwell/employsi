@@ -36,7 +36,6 @@ export const CITY_VIEWS: Record<string, CityView> = {
   johannesburg: { center: [28.0473, -26.2041], zoom: 16.3, pitch: 60, bearing: -15 },
   london: { center: [-0.1276, 51.5072], zoom: 16.4, pitch: 60, bearing: -20 },
   paris: { center: [2.3522, 48.8566], zoom: 16.3, pitch: 60, bearing: -18 },
-  santiago: { center: [-70.6693, -33.4489], zoom: 16.3, pitch: 60, bearing: -16 },
   newyork: { center: [-74.006, 40.7128], zoom: 16.4, pitch: 60, bearing: -20 },
   sanfrancisco: { center: [-122.4194, 37.7749], zoom: 16.4, pitch: 60, bearing: -18 },
   chicago: { center: [-87.6298, 41.8781], zoom: 16.4, pitch: 60, bearing: -18 },

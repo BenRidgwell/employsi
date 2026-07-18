@@ -1,8 +1,8 @@
 // Global hubs the jobs pipeline samples for skill demand, mapped to the Adzuna
 // country API that covers them. Adzuna only operates in these countries, so the
-// hubs it can't reach (Santiago, Ganzhou, Tokyo, Zurich, Dubai, Hong Kong,
-// Seoul, Beijing) are intentionally omitted — they stay dark on the skill
-// heatmap rather than showing invented numbers.
+// hubs it can't reach (Ganzhou, Tokyo, Zurich, Dubai, Hong Kong, Seoul,
+// Beijing) are intentionally omitted — they stay dark on the skill heatmap
+// rather than showing invented numbers.
 //
 // Unlike the AU companies (queried by company name), each hub is a whole-market
 // city sample: the current advertised roles in that city, mapped to skills, so

@@ -39,7 +39,6 @@ export const REGION_FRAMES: Record<string, RegionFrame> = {
   australia: { center: [134, -27], zoom: 3.2 },
   asia: { center: [104, 24], zoom: 2.3 },
   northamerica: { center: [-96, 41], zoom: 2.6 },
-  southamerica: { center: [-64, -22], zoom: 2.7 },
   europe: { center: [7, 48], zoom: 3.6 },
   africa: { center: [26, -14], zoom: 3.0 },
 };
