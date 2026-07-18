@@ -2,9 +2,9 @@ import { useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../state/store';
 import { GLOBAL_HUB_LABEL } from '../data/geo';
 import { ALL_SKILLS } from '../data/skillsTaxonomy';
+import { popularSkills as popularSkillsForLayer } from '../lib/skillHeat';
 import { COMPANIES } from '../data/companies';
 import { cityForCompany } from '../data/mapboxGeo';
-import { REGION_HUBS } from '../data/mapboxWorldGeo';
 
 type Result =
   | { kind: 'company'; id: string; label: string; sub: string }
@@ -24,30 +24,16 @@ export function GlobalSearch() {
   const toggleSkillQuery = useAppStore((s) => s.toggleSkillQuery);
   const skillIndex = useAppStore((s) => s.skillIndex);
   const domesticRegion = useAppStore((s) => s.domesticRegion);
+  const localCity = useAppStore((s) => s.localCity);
   const zoomInCity = useAppStore((s) => s.zoomInCity);
 
-  // Popular skills are an aggregate of the real demand sourced from live job
-  // postings, scoped to the current view:
-  //   • Global  → summed across every city worldwide.
-  //   • Domestic → summed across just the cities in the current region
-  //     (Australia by default), so the chips reflect that market.
-  // Falls back to the taxonomy order only before the first cron run.
-  const popularSkills = useMemo(() => {
-    if (!skillIndex) return ALL_SKILLS.slice(0, 10);
-    const cities = globalOut ? null : new Set(REGION_HUBS[domesticRegion] || []);
-    const ranked = Object.entries(skillIndex.skills)
-      .map(([name, agg]) => {
-        const demand = cities
-          ? Object.entries(agg.byCity).reduce((sum, [c, n]) => sum + (cities.has(c) ? n : 0), 0)
-          : agg.total;
-        return [name, demand] as const;
-      })
-      .filter(([, d]) => d > 0)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([name]) => name);
-    return ranked.length ? ranked : ALL_SKILLS.slice(0, 10);
-  }, [skillIndex, globalOut, domesticRegion]);
+  // Popular skills, ranked by real live demand and scoped to the current layer
+  // (global = worldwide, domestic = this region's cities). Shared helper so the
+  // top-bar (local) search stays in sync.
+  const popularSkills = useMemo(
+    () => popularSkillsForLayer(skillIndex, { zoomedOut, globalOut, domesticRegion, localCity }),
+    [skillIndex, zoomedOut, globalOut, domesticRegion, localCity],
+  );
   const select = useAppStore((s) => s.select);
   const [focused, setFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);

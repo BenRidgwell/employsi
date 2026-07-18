@@ -4,6 +4,7 @@ import { AccountButton } from './AccountButton';
 import { useAppStore, isFilterActive, isSearchActive, type FilterState } from '../state/store';
 import { COMPANIES, SECTOR_GROUPS, EXCHANGES } from '../data/companies';
 import { CITY_COMPANIES } from '../data/mapboxGeo';
+import { popularSkills as popularSkillsForLayer } from '../lib/skillHeat';
 
 const SECTORS = SECTOR_GROUPS;
 // Short chip labels so the sector selection reads as a compact mosaic rather
@@ -18,13 +19,6 @@ const SECTOR_SHORT: Record<string, string> = {
   'Infrastructure and Government': 'Infra & Gov',
 };
 
-function topSkills(): string[] {
-  const counts: Record<string, number> = {};
-  COMPANIES.forEach((c) => c.skills.forEach((sk) => { counts[sk] = (counts[sk] || 0) + 1; }));
-  return Object.keys(counts)
-    .sort((a, b) => counts[b] - counts[a] || a.localeCompare(b))
-    .slice(0, 8);
-}
 
 function SearchIcon() {
   return (
@@ -86,13 +80,22 @@ export function TopBar() {
   const filterState: FilterState = { searchQuery, activeSectors, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition };
   const filterActive = isFilterActive(filterState);
   const searchActive = isSearchActive(filterState);
-  const skills = useMemo(() => topSkills(), []);
 
   // Local search: every company mapped on the current city's map is searchable
   // by name, ticker, skill or role. Selecting one opens its card and the map
   // pans to it (the [selectedId] effect in PerthMapbox frames the building).
   const localCity = useAppStore((s) => s.localCity);
+  const domesticRegion = useAppStore((s) => s.domesticRegion);
+  const skillIndex = useAppStore((s) => s.skillIndex);
   const select = useAppStore((s) => s.select);
+
+  // Popular-skill chips, ranked by real demand for the current layer — on the
+  // local view that's the companies in this city (shared helper keeps the
+  // global/domestic centred search in sync).
+  const skills = useMemo(
+    () => popularSkillsForLayer(skillIndex, { zoomedOut, globalOut, domesticRegion, localCity }, 8),
+    [skillIndex, zoomedOut, globalOut, domesticRegion, localCity],
+  );
   const localCompanyResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return [];
