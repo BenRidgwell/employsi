@@ -252,6 +252,12 @@ export function PerthMapbox() {
       pitch: PERTH_DEFAULT_PITCH,
       bearing: PERTH_DEFAULT_BEARING,
       antialias: true,
+      // Pin the local view to a flat mercator projection. Under the default
+      // globe projection, HTML pill markers (positioned via map.project) and the
+      // native circle dot layers can resolve to different screen points at this
+      // pitch, so a pill drifts away from its own dot. Mercator keeps both on the
+      // same projection — dot and pill stay locked together.
+      projection: 'mercator',
       // Replace the default expanded attribution with a compact "ⓘ" control.
       // The credit stays (required by Mapbox ToS + OpenStreetMap's ODbL), just
       // collapsed out of the way.
