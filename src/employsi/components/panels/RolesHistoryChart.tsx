@@ -2,15 +2,16 @@ import { useMemo } from 'react';
 import { smoothPath, scaler } from '../../lib/chart';
 import type { RolePoint } from '../../lib/openRolesFn';
 
-// Compact "open roles over time" sparkline. Plots the real daily vacancy
-// snapshots recorded from the live feed. History builds forward from the first
-// time a company is queried, so with only a point or two it shows a "tracking
-// started" note instead of a misleadingly flat line.
+// Compact "live vacancies" sparkline. Plots the real daily vacancy snapshots
+// recorded from the live feed. History builds forward from the first time a
+// company is queried, so with only a point or two it shows a "tracking started"
+// note instead of a misleadingly flat line. Today's point carries a flashing
+// marker labelled with the current vacancy count.
 
 const W = 340;
 const H = 96;
 const PADX = 10;
-const PADT = 14;
+const PADT = 16;
 const PADB = 10;
 const PLOTW = W - PADX * 2;
 const PLOTH = H - PADT - PADB;
@@ -21,10 +22,12 @@ const fmtDate = (d: string) => {
 };
 const num = (v: number) => Math.round(v).toLocaleString('en-US');
 
-export function RolesHistoryChart({ points }: { points: RolePoint[] }) {
+export function RolesHistoryChart({ points, current }: { points: RolePoint[]; current?: number }) {
   const pts = useMemo(() => points.slice().sort((a, b) => a.d.localeCompare(b.d)), [points]);
   const counts = pts.map((p) => p.c);
   const n = counts.length;
+  // The number shown on the flashing "today" marker: prefer the live count.
+  const latest = current ?? counts[n - 1] ?? 0;
 
   const geom = useMemo(() => {
     if (n < 2) return null;
@@ -37,17 +40,13 @@ export function RolesHistoryChart({ points }: { points: RolePoint[] }) {
     return { line, area, lastX, lastY };
   }, [counts, n]);
 
-  const latest = counts[n - 1] ?? 0;
   const first = counts[0] ?? 0;
-  const delta = latest - first;
+  const delta = (counts[n - 1] ?? 0) - first;
   const pct = first ? (delta / first) * 100 : 0;
 
   return (
     <>
-      <div className="secth">
-        Open roles over time
-        <span>live vacancies, recorded daily</span>
-      </div>
+      <div className="secth">Live vacancies</div>
 
       {geom ? (
         <>
@@ -55,15 +54,19 @@ export function RolesHistoryChart({ points }: { points: RolePoint[] }) {
             <svg className="rhsvg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
               <defs>
                 <linearGradient id="rhFade" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="rgba(37,99,235,0.20)" />
-                  <stop offset="70%" stopColor="rgba(37,99,235,0.05)" />
-                  <stop offset="100%" stopColor="rgba(37,99,235,0)" />
+                  <stop offset="0%" stopColor="rgba(28,28,30,0.16)" />
+                  <stop offset="65%" stopColor="rgba(28,28,30,0.05)" />
+                  <stop offset="100%" stopColor="rgba(28,28,30,0)" />
                 </linearGradient>
               </defs>
               <path className="rharea" d={geom.area} />
               <path className="rhline" d={geom.line} vectorEffect="non-scaling-stroke" />
             </svg>
-            <div className="rhdot" style={{ left: `${geom.lastX}%`, top: `${geom.lastY}%` }} />
+            {/* Flashing marker on today's point, labelled with the current count. */}
+            <div className="rhnow" style={{ left: `${geom.lastX}%`, top: `${geom.lastY}%` }}>
+              <span className="rhpulse" />
+              <span className="rhnowval">{num(latest)}</span>
+            </div>
           </div>
           <div className="rhaxis">
             <span>{fmtDate(pts[0].d)}</span>
@@ -76,7 +79,7 @@ export function RolesHistoryChart({ points }: { points: RolePoint[] }) {
       ) : (
         <div className="rhempty">
           {n === 1 ? (
-            <>Tracking started at <b>{num(latest)}</b> open roles — the trend line fills in as daily snapshots are recorded.</>
+            <>Tracking started at <b>{num(latest)}</b> vacancies — the trend line fills in as daily snapshots are recorded.</>
           ) : (
             <>Vacancy tracking begins the first time this company's live feed loads, then builds a daily history here.</>
           )}

@@ -204,7 +204,7 @@ export function CompanyPanel() {
     if (!liveRoles) return panel.bigStats;
     return panel.bigStats.map((s) =>
       s.label === 'Open roles'
-        ? { ...s, value: liveRoles.count.toLocaleString('en-US'), sub: 'live · hiring now' }
+        ? { ...s, value: liveRoles.count.toLocaleString('en-US'), sub: '' }
         : s,
     );
   }, [panel, liveRoles]);
@@ -276,7 +276,7 @@ export function CompanyPanel() {
 
               {isAU && !roleFilter && liveRoles && (
                 <div className="sect">
-                  <RolesHistoryChart points={rolesHistory} />
+                  <RolesHistoryChart points={rolesHistory} current={liveRoles.count} />
                 </div>
               )}
 

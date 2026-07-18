@@ -59,9 +59,11 @@ export function MobileTabBar() {
 
   // Only show on the bare map: any open overlay (a sheet, the company card, the
   // account/settings/feedback/help panels) takes over the screen instead.
+  // Trending is the exception — its pane sits above the bar, so the bar stays
+  // put and its tab keeps highlighting while trending is open.
   const overlayOpen =
     selectedId || compareOpen || authOpen || settingsOpen || feedbackOpen || helpTourOpen ||
-    briefOpen || searchOpen || filterOpen || trendingOpen || mobileMenuOpen;
+    briefOpen || searchOpen || filterOpen || mobileMenuOpen;
   if (overlayOpen) return null;
 
   const tabs = [

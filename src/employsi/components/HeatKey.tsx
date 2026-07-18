@@ -1,23 +1,14 @@
 import { useAppStore } from '../state/store';
 import { activeSkill } from '../lib/skillHeat';
-import { heatLegend, auHeatLegend, globalHeatLegend, skillLegend } from '../lib/heat';
+import { skillLegend } from '../lib/heat';
 
+// The map is neutral until a skill is searched, so the legend only appears then
+// — showing the demand scale for the active skill.
 export function HeatKey() {
-  const heat = useAppStore((s) => s.heat);
-  const zoomedOut = useAppStore((s) => s.zoomedOut);
-  const globalOut = useAppStore((s) => s.globalOut);
   const searchQuery = useAppStore((s) => s.searchQuery);
   const skill = activeSkill(searchQuery);
-
-  const key = globalOut
-    ? skill
-      ? skillLegend(skill)
-      : globalHeatLegend(heat)
-    : skill && zoomedOut
-      ? skillLegend(skill)
-      : zoomedOut
-        ? auHeatLegend(heat)
-        : heatLegend(heat);
+  if (!skill) return null;
+  const key = skillLegend(skill);
 
   return (
     <div className="heatkey">

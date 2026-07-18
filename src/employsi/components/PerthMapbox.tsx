@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useAppStore, matchesFilters, searchMatches, isSearchActive, type FilterState } from '../state/store';
 import { COMPANIES, type Company } from '../data/companies';
 import { CITY_COMPANIES, CITY_VIEWS, PERTH_CENTER, PERTH_DEFAULT_ZOOM, PERTH_DEFAULT_PITCH, PERTH_DEFAULT_BEARING } from '../data/mapboxGeo';
-import { chipMetric, type HeatMetric } from '../lib/heat';
 import { heatColor, rgbCss } from '../lib/color';
 import { activeSkill, demandByCompany } from '../lib/skillHeat';
 import type { SkillIndex } from '../lib/skillsFn';
@@ -24,6 +23,25 @@ const COMPANY_BY_ID: Record<string, Company> = Object.fromEntries(COMPANIES.map(
 // rendered basemap, so they follow the real streets under the 3D city. ---
 const CAR_COLORS = ['#b23a2e', '#2b3f6b', '#e6e7ea', '#2f7d4f', '#c69a34', '#6d2f63', '#4a4e57', '#a8442e'];
 const NUM_CARS = 14;
+
+// Neutral marker colour — every layer sits neutral until a skill is searched
+// (then the demand gradient takes over).
+const NEUTRAL = 'rgb(42,42,46)';
+
+// Pill label: the company's name, word-shortened to keep the pill roughly its
+// old (ticker-width) size. Long single words fall back to a clipped form.
+function pillLabel(name: string, ticker: string): string {
+  const words = name.split(/\s+/);
+  let out = '';
+  for (const w of words) {
+    const next = out ? out + ' ' + w : w;
+    if (out && next.length > 14) break;
+    out = next;
+  }
+  if (!out) out = name;
+  if (out.length > 16) out = out.slice(0, 15).trimEnd() + '…';
+  return out || ticker;
+}
 
 // On a phone the city fills a much smaller viewport, so the default local zoom
 // reads as uncomfortably close. Pull the default view back a notch on mobile
@@ -120,46 +138,34 @@ function cityPlacements(city: string): Placed[] {
     .filter((p): p is Placed => !!p.company);
 }
 
-function metricKeyFor(heat: HeatMetric) {
-  return heat === 'salary' ? 'salaryNum' : heat === 'growth' ? 'growth' : 'turnover';
-}
-
-// Heat is normalised within the city's own company spread so every city gets a
-// full-range colour scale rather than being crushed against the global min/max.
-// Companies outside the selected sector(s) are dropped entirely (hidden), so a
-// Financial Services filter clears the resource companies from the city map.
+// Companies sit neutral until a skill is searched; then every dot is coloured by
+// that skill's real demand, normalised within the city's own spread so each city
+// gets a full-range scale. Companies outside the selected sector(s) are dropped
+// entirely (hidden), so a Financial Services filter clears the resource
+// companies from the city map.
 function buildGeoJSON(
   placements: Placed[],
-  heat: HeatMetric,
   selectedId: string | null,
   filterState: FilterState,
   skillDemand: Record<string, number> | null,
 ): GeoJSON.FeatureCollection {
   // Hide any company that fails the sector / exchange / slider filters entirely.
   const shown = placements.filter((p) => matchesFilters(p.company, filterState));
-  // When a skill is the active search, colour by real demand for that skill
-  // instead of the salary/growth metric.
   const skillMode = !!skillDemand;
-  const key = metricKeyFor(heat);
   const demandMax = skillMode ? Math.max(1, ...shown.map((p) => skillDemand![p.company.id] || 0)) : 1;
-  const vals = shown.map((p) => p.company[key] as number);
-  const mn = vals.length ? Math.min(...vals) : 0;
-  const mx = vals.length ? Math.max(...vals) : 1;
   return {
     type: 'FeatureCollection',
     features: shown.map((p, i) => {
       const c = p.company;
       const demand = skillMode ? skillDemand![c.id] || 0 : 0;
-      const t = skillMode ? demand / demandMax : ((c[key] as number) - mn) / ((mx - mn) || 1);
-      const color = rgbCss(heatColor(t));
+      const color = skillMode ? rgbCss(heatColor(demand / demandMax)) : NEUTRAL;
       return {
         type: 'Feature',
         id: i,
         properties: {
           id: c.id,
           color,
-          label: c.pill || c.ticker,
-          sub: skillMode ? `${demand} live role${demand === 1 ? '' : 's'}` : chipMetric(c, heat),
+          label: pillLabel(c.name, c.ticker),
           selected: c.id === selectedId,
           // In skill mode, dim companies with no live demand for the skill so
           // the map highlights exactly where it's being hired. Otherwise a
@@ -217,7 +223,6 @@ export function PerthMapbox() {
 
   const selectedId = useAppStore((s) => s.selectedId);
   const zoomedOut = useAppStore((s) => s.zoomedOut);
-  const heat = useAppStore((s) => s.heat);
   const searchQuery = useAppStore((s) => s.searchQuery);
   const skillIndex = useAppStore((s) => s.skillIndex);
   const activeSectors = useAppStore((s) => s.activeSectors);
@@ -280,7 +285,7 @@ export function PerthMapbox() {
 
       const st = useAppStore.getState();
       placedRef.current = cityPlacements(st.localCity);
-      map.addSource(SOURCE_ID, { type: 'geojson', data: buildGeoJSON(placedRef.current, st.heat, st.selectedId, filterState, skillDemandOf(st)) });
+      map.addSource(SOURCE_ID, { type: 'geojson', data: buildGeoJSON(placedRef.current, st.selectedId, filterState, skillDemandOf(st)) });
 
       map.addLayer({
         id: HALO_LAYER,
@@ -387,7 +392,8 @@ export function PerthMapbox() {
           const c = p.company;
           const el = document.createElement('button');
           el.className = 'mbchip';
-          el.innerHTML = `<span class="chipdot"></span><span class="chiptk">${c.pill || c.ticker}</span><span class="chipsub"></span>`;
+          el.innerHTML = `<span class="chiptk"></span>`;
+          (el.querySelector('.chiptk') as HTMLElement).textContent = pillLabel(c.name, c.ticker);
           // Keep the pointer press off the map so it can't start a drag-pan: a
           // tiny move during the press would otherwise suppress the button's
           // native click and the pill would silently pan instead of selecting
@@ -403,7 +409,8 @@ export function PerthMapbox() {
             useAppStore.getState().select(c.id);
             lastSelectAt = Date.now();
           };
-          const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom', offset: [0, -6] })
+          // Centre the pill exactly on the company's dot (not floating above it).
+          const marker = new mapboxgl.Marker({ element: el, anchor: 'center', offset: [0, 0] })
             .setLngLat(p.coords)
             .addTo(map);
           markersRef.current[c.id] = marker;
@@ -446,7 +453,7 @@ export function PerthMapbox() {
         const s = useAppStore.getState();
         const fs = filterStateOf(s);
         const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
-        source?.setData(buildGeoJSON(placedRef.current, s.heat, s.selectedId, fs, skillDemandOf(s)));
+        source?.setData(buildGeoJSON(placedRef.current, s.selectedId, fs, skillDemandOf(s)));
         renderMarkers(placedRef.current);
         setCompaniesVisible(true);
         placedRef.current.forEach((p) => {
@@ -710,7 +717,7 @@ export function PerthMapbox() {
       // `once('style.load')` deferral dropped filter changes entirely (the
       // event never re-fires); applying directly avoids that.
       const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
-      if (source) source.setData(buildGeoJSON(placedRef.current, heat, selectedId, filterState, skillDemand));
+      if (source) source.setData(buildGeoJSON(placedRef.current, selectedId, filterState, skillDemand));
       placedRef.current.forEach((p) => {
         const c = p.company;
         const marker = markersRef.current[c.id];
@@ -729,15 +736,13 @@ export function PerthMapbox() {
         // stays the visual focus; clears the instant selectedId is null again.
         const notSelected = !!selectedId && selectedId !== c.id;
         el.className = ['mbchip', selectedId === c.id ? 'on' : '', searchOk && !notSelected ? '' : 'dim'].join(' ').trim();
-        const sub = el.querySelector('.chipsub');
-        if (sub) sub.textContent = skillDemand ? `${demand} live role${demand === 1 ? '' : 's'}` : chipMetric(c, heat);
       });
       // Re-apply the focus fade so a newly dimmed/undimmed pill keeps the
       // correct opacity without waiting for the next pan.
       focusUpdaterRef.current?.();
     };
     apply();
-  }, [heat, selectedId, filterState, skillDemand]);
+  }, [selectedId, filterState, skillDemand]);
 
   useEffect(() => {
     // Hide companies the instant we're zoomed out, regardless of what

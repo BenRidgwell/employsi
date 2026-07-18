@@ -28,13 +28,14 @@ function fmtDelta(d: number): string {
 
 export function WhatsTrendingPane() {
   const trendingOpen = useAppStore((s) => s.trendingOpen);
-  const zoomedOut = useAppStore((s) => s.zoomedOut);
   const closeTrending = useAppStore((s) => s.closeTrending);
   const select = useAppStore((s) => s.select);
   const toggleSkillQuery = useAppStore((s) => s.toggleSkillQuery);
   const setGlobalOut = useAppStore((s) => s.setGlobalOut);
 
-  const open = trendingOpen && zoomedOut;
+  // Open whenever toggled, on any layer — the mobile tab bar can trigger it from
+  // the local view too, where the old `zoomedOut` gate left it silently closed.
+  const open = trendingOpen;
 
   const activateViewed = (v: ViewedItem) => {
     if (v.kind === 'company' && v.ticker && TICKER_TO_ID[v.ticker]) select(TICKER_TO_ID[v.ticker]);

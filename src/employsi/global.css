@@ -119,8 +119,8 @@ body {
   pointer-events: auto;
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 7px 12px 7px 9px;
+  gap: 0;
+  padding: 5px 11px;
   background: rgba(255, 255, 255, 0.94);
   border: 1.5px solid rgba(28, 28, 30, 0.16);
   border-radius: 999px;
@@ -1708,6 +1708,26 @@ body {
   }
   50% {
     transform: scaleY(0.58);
+  }
+}
+/* Company building: office windows flicker like lights coming on. The windows
+   are the first <path>; the door is the second and stays lit. */
+.zi-co path:nth-of-type(1) {
+  animation: zicowin 2.6s steps(1, end) infinite;
+}
+@keyframes zicowin {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  25% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  75% {
+    opacity: 0.45;
   }
 }
 /* Bottom-right dock icon idle animations — every control (Employer/Employee
@@ -4205,20 +4225,49 @@ body {
 }
 .rhline {
   fill: none;
-  stroke: #2563eb;
+  stroke: #1c1c1e;
   stroke-width: 2.4;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.rhdot {
+/* Flashing marker on today's point, labelled with the current vacancy count. */
+.rhnow {
   position: absolute;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
   transform: translate(-50%, -50%);
   pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.rhpulse {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #1c1c1e;
+  box-shadow: 0 0 0 0 rgba(28, 28, 30, 0.5);
+  animation: rhflash 1.6s ease-out infinite;
+  flex: 0 0 auto;
+}
+@keyframes rhflash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(28, 28, 30, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(28, 28, 30, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(28, 28, 30, 0);
+  }
+}
+.rhnowval {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1c1c1e;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 1px 5px;
+  white-space: nowrap;
 }
 .rhaxis {
   display: flex;
@@ -4915,23 +4964,13 @@ body {
   }
 
   /* Company pills: markedly more compact on a phone so they don't blanket the
-     map. Smaller dot, tighter padding, smaller type. */
+     map. Tighter padding, smaller type. */
   .mbchip {
-    gap: 5px;
-    padding: 3px 8px 3px 6px;
+    padding: 3px 8px;
     border-width: 1px;
-  }
-  .chipdot {
-    width: 7px;
-    height: 7px;
-    box-shadow: 0 0 0 3px rgba(28, 28, 30, 0.1);
   }
   .chiptk {
     font-size: 10.5px;
-  }
-  .chipsub {
-    font-size: 8.5px;
-    padding-left: 6px;
   }
   .zoomslider .ztrack {
     width: 2px;
@@ -4959,6 +4998,10 @@ body {
     max-width: none;
     top: 64px;
     bottom: 12px;
+  }
+  /* Trending keeps the bottom tab bar visible, so its pane stops above it. */
+  .trendpane {
+    bottom: calc(66px + env(safe-area-inset-bottom, 0px));
   }
   .toolsdock {
     top: auto;
@@ -5163,7 +5206,7 @@ body {
     bottom: 0;
     z-index: 43;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     align-items: stretch;
     background: #1c1c1e;
     border-top: 1px solid rgba(255, 255, 255, 0.08);

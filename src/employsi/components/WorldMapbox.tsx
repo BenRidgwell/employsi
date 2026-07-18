@@ -2,8 +2,6 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef } from 'react';
 import { useAppStore, cityMatchesFilters, type FilterState } from '../state/store';
-import { computeGlobalHeat, type HeatMetric } from '../lib/heat';
-import { GLOBAL_STATS, STATE_STATS, CITY_STATE } from '../data/geo';
 import { activeSkill, demandByCity } from '../lib/skillHeat';
 import {
   HUB_LNGLAT,
@@ -114,29 +112,20 @@ interface Marker {
   clickable: boolean;
 }
 
-// Short "active metric" string shown under each city name in its pill.
-function metricLabel(id: string, heat: HeatMetric, hub: boolean): string {
-  const stat = hub ? GLOBAL_STATS[id] : STATE_STATS[CITY_STATE[id]];
-  if (!stat) return '';
-  if (heat === 'salary') return '$' + stat.salary + 'K';
-  if (heat === 'growth') return (stat.growth >= 0 ? '+' : '') + stat.growth.toFixed(1) + '%';
-  return stat.turnover.toFixed(1) + '%';
-}
-
-// Which markers to show for the current view. Normally coloured by the active
-// metric; while a skill search is active the dots go neutral (the skill-demand
-// blobs carry the colour instead) and the metric sub-label is dropped. Always
+// Which markers to show for the current view. City dots stay neutral until a
+// skill is searched (then the skill-demand blobs carry all the colour). Always
 // filtered by the active sectors.
 function computeMarkers(
   mode: 'global' | 'domestic',
   region: string,
-  heat: HeatMetric,
   filterState: FilterState,
-  skill: string | null,
 ): Marker[] {
-  const globalHeat = computeGlobalHeat(heat);
+  // Neutral dot tuned to each backdrop: the global view sits on the dark globe
+  // (needs a light dot), the domestic view on the light basemap (needs a dark
+  // dot). Colour only ever comes from the skill-demand blobs.
+  const dotColor = mode === 'global' ? 'rgb(198,203,214)' : NEUTRAL_DOT;
   const out: Marker[] = [];
-  const push = (id: string, coords: [number, number] | undefined, metricColor: string, hub: boolean) => {
+  const push = (id: string, coords: [number, number] | undefined) => {
     // Guard against ids that lack coordinates (e.g. a hub without a HUB_LNGLAT
     // entry): a marker with undefined coords would throw in setLngLat and crash
     // the whole view. Skip it instead.
@@ -147,26 +136,22 @@ function computeMarkers(
     out.push({
       id,
       coords,
-      color: skill ? NEUTRAL_DOT : metricColor,
+      color: dotColor,
       label: cityLabel(id),
-      sub: skill ? '' : metricLabel(id, heat, hub),
+      sub: '',
       clickable: CLICKABLE_CITIES.has(id),
     });
   };
 
   if (mode === 'global') {
-    Object.keys(HUB_LNGLAT).forEach((id) =>
-      push(id, HUB_LNGLAT[id], globalHeat[id]?.color || 'rgb(150,150,150)', true),
-    );
+    Object.keys(HUB_LNGLAT).forEach((id) => push(id, HUB_LNGLAT[id]));
     return out;
   }
 
   // Domestic: the region's own hubs (Melbourne is now a hub too, so it comes
   // through here on the AU view and on the global view; Darwin and Hobart stay
   // omitted).
-  (REGION_HUBS[region] || []).forEach((id) =>
-    push(id, HUB_LNGLAT[id], globalHeat[id]?.color || 'rgb(150,150,150)', true),
-  );
+  (REGION_HUBS[region] || []).forEach((id) => push(id, HUB_LNGLAT[id]));
   return out;
 }
 
@@ -282,7 +267,6 @@ export function WorldMapbox() {
   const globalOut = useAppStore((s) => s.globalOut);
   const domesticRegion = useAppStore((s) => s.domesticRegion);
   const localCity = useAppStore((s) => s.localCity);
-  const heat = useAppStore((s) => s.heat);
   const selectedId = useAppStore((s) => s.selectedId);
   const activeSectors = useAppStore((s) => s.activeSectors);
   const activeExchanges = useAppStore((s) => s.activeExchanges);
@@ -411,7 +395,7 @@ export function WorldMapbox() {
         minGrowth: s.minGrowth,
         maxAttrition: s.maxAttrition,
       };
-      const markers = computeMarkers(mode, s.domesticRegion, s.heat, fs, skill);
+      const markers = computeMarkers(mode, s.domesticRegion, fs);
       markersRef.current = markers;
       const src = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
       src?.setData(markersGeoJSON(markers, s.selectedId));
@@ -661,7 +645,7 @@ export function WorldMapbox() {
   useEffect(() => {
     rebuildMarkersRef.current?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heat, selectedId, activeSectors, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition, searchQuery, skillIndex]);
+  }, [selectedId, activeSectors, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition, searchQuery, skillIndex]);
 
   // Hide the whole overview once fully in a local city (PerthMapbox owns it).
   const hidden = !zoomedOut && !zoomingIn;
