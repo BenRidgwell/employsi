@@ -409,8 +409,10 @@ export function PerthMapbox() {
             useAppStore.getState().select(c.id);
             lastSelectAt = Date.now();
           };
-          // Centre the pill exactly on the company's dot (not floating above it).
-          const marker = new mapboxgl.Marker({ element: el, anchor: 'center', offset: [0, 0] })
+          // Anchor the pill's left edge just past the dot, so the crisp coloured
+          // dot marks the exact location and the name label attaches directly to
+          // its right — one marker, never floating off on its own.
+          const marker = new mapboxgl.Marker({ element: el, anchor: 'left', offset: [9, 0] })
             .setLngLat(p.coords)
             .addTo(map);
           markersRef.current[c.id] = marker;
@@ -528,10 +530,10 @@ export function PerthMapbox() {
         // (forced pills — the selected company — are never hidden).
         cands.sort((a, b) => b.op - a.op);
         const shown: { x0: number; x1: number; y0: number; y1: number }[] = [];
-        const MH = 40;
+        const MH = 26;
         cands.forEach((cd) => {
-          const half = (cd.w || 120) / 2 + 4;
-          const box = { x0: cd.x - half, x1: cd.x + half, y0: cd.y - MH - 6, y1: cd.y - 6 };
+          // The pill sits to the right of the dot, vertically centred on it.
+          const box = { x0: cd.x - 6, x1: cd.x + (cd.w || 120) + 12, y0: cd.y - MH / 2, y1: cd.y + MH / 2 };
           const hit = !cd.force && shown.some((s) => box.x0 < s.x1 && box.x1 > s.x0 && box.y0 < s.y1 && box.y1 > s.y0);
           if (hit) {
             cd.el.style.opacity = '0';
