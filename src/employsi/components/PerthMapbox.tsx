@@ -14,6 +14,7 @@ const SOURCE_ID = 'companies';
 const HALO_LAYER = 'company-halo';
 const CORE_LAYER = 'company-core';
 const PULSE_LAYER = 'company-pulse';
+const LABEL_LAYER = 'company-label';
 const PULSE_MS = 2200;
 const ZOOM_OUT_THRESHOLD = 11;
 
@@ -337,6 +338,33 @@ export function PerthMapbox() {
           'circle-stroke-opacity': 0.5,
         },
       });
+      // Company name labels rendered natively from the SAME source as the dots,
+      // so a label can never drift away from its dot (the HTML-marker approach
+      // diverged from the GL dots at this pitch). Mapbox's own symbol collision
+      // declutters overlaps; the selected company sorts first so it always wins.
+      map.addLayer({
+        id: LABEL_LAYER,
+        type: 'symbol',
+        source: SOURCE_ID,
+        slot: 'top',
+        layout: {
+          'text-field': ['get', 'label'],
+          'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
+          'text-size': 12,
+          'text-anchor': 'left',
+          'text-offset': [0.9, 0],
+          'text-optional': true,
+          'text-allow-overlap': false,
+          'symbol-sort-key': ['case', ['get', 'selected'], 0, 1],
+        },
+        paint: {
+          'text-color': '#1c1c1e',
+          'text-halo-color': '#ffffff',
+          'text-halo-width': 1.8,
+          'text-halo-blur': 0.4,
+          'text-opacity': ['case', ['get', 'dim'], 0.4, 1],
+        },
+      });
 
       [CORE_LAYER, HALO_LAYER].forEach((layer) => {
         map.on('mouseenter', layer, () => {
@@ -396,41 +424,10 @@ export function PerthMapbox() {
         useAppStore.getState().closePanel();
       });
 
-      // HTML pill markers (dot · ticker · median), anchored just above each dot.
-      // Rebuilt whenever the active city changes so each city shows its own set.
-      const renderMarkers = (placements: Placed[]) => {
-        Object.values(markersRef.current).forEach((m) => m.remove());
-        markersRef.current = {};
-        placements.forEach((p) => {
-          const c = p.company;
-          const el = document.createElement('button');
-          el.className = 'mbchip';
-          el.innerHTML = `<span class="chiptk"></span>`;
-          (el.querySelector('.chiptk') as HTMLElement).textContent = pillLabel(c.name, c.ticker);
-          // Keep the pointer press off the map so it can't start a drag-pan: a
-          // tiny move during the press would otherwise suppress the button's
-          // native click and the pill would silently pan instead of selecting
-          // (the canvas dots don't have this problem — Mapbox owns their click
-          // detection, which tolerates small movement). Selecting here mirrors
-          // the canvas handler, including the just-selected guard timestamp.
-          const swallow = (ev: Event) => ev.stopPropagation();
-          el.addEventListener('mousedown', swallow);
-          el.addEventListener('touchstart', swallow, { passive: true });
-          el.addEventListener('pointerdown', swallow);
-          el.onclick = (ev) => {
-            ev.stopPropagation();
-            useAppStore.getState().select(c.id);
-            lastSelectAt = Date.now();
-          };
-          // Anchor the pill's left edge just past the dot, so the crisp coloured
-          // dot marks the exact location and the name label attaches directly to
-          // its right — one marker, never floating off on its own.
-          const marker = new mapboxgl.Marker({ element: el, anchor: 'left', offset: [9, 0] })
-            .setLngLat(p.coords)
-            .addTo(map);
-          markersRef.current[c.id] = marker;
-        });
-      };
+      // Labels are now the native LABEL_LAYER (see above), fed by the same
+      // GeoJSON source as the dots — nothing HTML to keep in sync, so this is a
+      // no-op kept only so the existing call sites read cleanly.
+      const renderMarkers = (_placements: Placed[]) => {};
       renderMarkers(placedRef.current);
 
       // Explicit show/hide for the native heat layers + HTML markers. The
@@ -440,7 +437,7 @@ export function PerthMapbox() {
       // the crossfade or on browsers where canvas compositing ignores normal
       // DOM stacking.
       const setCompaniesVisible = (show: boolean) => {
-        [HALO_LAYER, CORE_LAYER, PULSE_LAYER].forEach((id) => {
+        [HALO_LAYER, CORE_LAYER, PULSE_LAYER, LABEL_LAYER].forEach((id) => {
           if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', show ? 'visible' : 'none');
         });
         // When revealing companies, respect the active sector / exchange /
