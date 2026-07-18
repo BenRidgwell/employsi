@@ -17,14 +17,6 @@ const FilterIcon = () => (
     <line x1="4" y1="7" x2="20" y2="7" /><line x1="7" y1="12" x2="17" y2="12" /><line x1="10" y1="17" x2="14" y2="17" />
   </svg>
 );
-const HeatIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
-    <rect x="3" y="3" width="7.6" height="7.6" rx="1.6" opacity="0.34" />
-    <rect x="13.4" y="3" width="7.6" height="7.6" rx="1.6" opacity="0.95" />
-    <rect x="3" y="13.4" width="7.6" height="7.6" rx="1.6" opacity="0.7" />
-    <rect x="13.4" y="13.4" width="7.6" height="7.6" rx="1.6" opacity="0.48" />
-  </svg>
-);
 const TrendingIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 15l4.5-5 3.5 3.5L20 6" /><path d="M15 6h5v5" />
@@ -47,13 +39,11 @@ export function MobileTabBar() {
 
   const searchOpen = useAppStore((s) => s.searchOpen);
   const filterOpen = useAppStore((s) => s.filterOpen);
-  const heatOpen = useAppStore((s) => s.heatOpen);
   const trendingOpen = useAppStore((s) => s.trendingOpen);
   const mobileMenuOpen = useAppStore((s) => s.mobileMenuOpen);
 
   const toggleSearch = useAppStore((s) => s.toggleSearch);
   const toggleFilter = useAppStore((s) => s.toggleFilter);
-  const toggleHeatPanel = useAppStore((s) => s.toggleHeatPanel);
   const toggleTrending = useAppStore((s) => s.toggleTrending);
   const toggleMobileMenu = useAppStore((s) => s.toggleMobileMenu);
 
@@ -71,13 +61,12 @@ export function MobileTabBar() {
   // account/settings/feedback/help panels) takes over the screen instead.
   const overlayOpen =
     selectedId || compareOpen || authOpen || settingsOpen || feedbackOpen || helpTourOpen ||
-    briefOpen || searchOpen || filterOpen || heatOpen || trendingOpen || mobileMenuOpen;
+    briefOpen || searchOpen || filterOpen || trendingOpen || mobileMenuOpen;
   if (overlayOpen) return null;
 
   const tabs = [
     { id: 'search', label: 'Search', icon: <SearchIcon />, on: searchOpen, dot: false, onClick: toggleSearch },
     { id: 'filter', label: 'Filter', icon: <FilterIcon />, on: filterOpen, dot: filterActive, onClick: toggleFilter },
-    { id: 'heat', label: 'Heat map', icon: <HeatIcon />, on: heatOpen, dot: false, onClick: toggleHeatPanel },
     { id: 'trending', label: 'Trending', icon: <TrendingIcon />, on: trendingOpen, dot: false, onClick: toggleTrending },
     { id: 'more', label: 'More', icon: <MoreIcon />, on: mobileMenuOpen, dot: false, onClick: toggleMobileMenu },
   ];

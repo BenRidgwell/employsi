@@ -52,28 +52,12 @@ function FilterIcon() {
   );
 }
 
-function HeatIcon() {
-  // A four-cell heat grid at graded intensity — reads as a choropleth / heat map
-  // far more directly than the old flame did.
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-      <rect x="3" y="3" width="7.6" height="7.6" rx="1.6" opacity="0.34" />
-      <rect x="13.4" y="3" width="7.6" height="7.6" rx="1.6" opacity="0.95" />
-      <rect x="3" y="13.4" width="7.6" height="7.6" rx="1.6" opacity="0.7" />
-      <rect x="13.4" y="13.4" width="7.6" height="7.6" rx="1.6" opacity="0.48" />
-    </svg>
-  );
-}
-
-const HEAT_LABEL: Record<string, string> = { salary: 'Salary', growth: 'Growth', turnover: 'Turnover' };
 
 export function TopBar() {
   const searchOpen = useAppStore((s) => s.searchOpen);
   const toggleSearch = useAppStore((s) => s.toggleSearch);
   const filterOpen = useAppStore((s) => s.filterOpen);
   const toggleFilter = useAppStore((s) => s.toggleFilter);
-  const heatOpen = useAppStore((s) => s.heatOpen);
-  const toggleHeatPanel = useAppStore((s) => s.toggleHeatPanel);
   const searchQuery = useAppStore((s) => s.searchQuery);
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
   const clearSearch = useAppStore((s) => s.clearSearch);
@@ -91,8 +75,6 @@ export function TopBar() {
   const setMinGrowth = useAppStore((s) => s.setMinGrowth);
   const setMaxAttrition = useAppStore((s) => s.setMaxAttrition);
   const clearFilters = useAppStore((s) => s.clearFilters);
-  const heat = useAppStore((s) => s.heat);
-  const setHeat = useAppStore((s) => s.setHeat);
   const globalOut = useAppStore((s) => s.globalOut);
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   // The centred search header replaces the top-right search on BOTH the global
@@ -105,7 +87,6 @@ export function TopBar() {
   const filterActive = isFilterActive(filterState);
   const searchActive = isSearchActive(filterState);
   const skills = useMemo(() => topSkills(), []);
-  const activeSkill = skills.find((sk) => sk.toLowerCase() === searchQuery.trim().toLowerCase());
 
   // Local search: every company mapped on the current city's map is searchable
   // by name, ticker, skill or role. Selecting one opens its card and the map
@@ -237,22 +218,6 @@ export function TopBar() {
                 via value = 24 - maxAttrition. */}
             <input type="range" className="sfrange" style={fillStyle(24 - maxAttrition, 8, 16)} min={8} max={16} step={0.5} value={24 - maxAttrition} onChange={(e) => setMaxAttrition(24 - Number(e.target.value))} />
             <button className="sfclear" onClick={clearFilters}>Clear filters</button>
-          </div>
-        </div>
-        <div className="cgroup searchwrap">
-          <span className="seglbl">Heat map</span>
-          <button className={`searchbtn ${heatOpen ? 'on' : ''} ${activeSkill ? 'active' : ''}`} onClick={toggleHeatPanel}>
-            <HeatIcon />
-            <span>{HEAT_LABEL[heat]}</span>
-            {activeSkill && <span className="sdot green" />}
-          </button>
-          {heatOpen && <div className="sfscrim" onClick={toggleHeatPanel} />}
-          <div className={`searchflyout ${heatOpen ? 'open' : ''}`}>
-            <div className="sflabel">Colour the map by</div>
-            <div className="seg style hmseg">
-              <button className={`hbtn ${heat === 'salary' && !activeSkill ? 'hon' : ''}`} onClick={() => { setHeat('salary'); clearSearch(); }}>Salary</button>
-              <button className={`hbtn ${heat === 'growth' && !activeSkill ? 'hon' : ''}`} onClick={() => { setHeat('growth'); clearSearch(); }}>Growth</button>
-            </div>
           </div>
         </div>
       </div>
