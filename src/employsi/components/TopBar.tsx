@@ -66,8 +66,6 @@ export function TopBar() {
   const maxAttrition = useAppStore((s) => s.maxAttrition);
   const setMinSalary = useAppStore((s) => s.setMinSalary);
   const setMinHeadcount = useAppStore((s) => s.setMinHeadcount);
-  const setMinGrowth = useAppStore((s) => s.setMinGrowth);
-  const setMaxAttrition = useAppStore((s) => s.setMaxAttrition);
   const clearFilters = useAppStore((s) => s.clearFilters);
   const globalOut = useAppStore((s) => s.globalOut);
   const zoomedOut = useAppStore((s) => s.zoomedOut);
@@ -206,20 +204,6 @@ export function TopBar() {
               <b>{minHeadcount > 0 ? minHeadcount.toLocaleString('en-US') + '+' : 'Any'}</b>
             </div>
             <input type="range" className="sfrange" style={fillStyle(minHeadcount, 0, 12000)} min={0} max={12000} step={250} value={minHeadcount} onChange={(e) => setMinHeadcount(Number(e.target.value))} />
-            <div className="sfrangerow">
-              <span>New starters</span>
-              <b>{minGrowth > 0 ? '+' + minGrowth.toFixed(1) + '%+' : 'Any'}</b>
-            </div>
-            <input type="range" className="sfrange" style={fillStyle(minGrowth, 0, 15)} min={0} max={15} step={0.5} value={minGrowth} onChange={(e) => setMinGrowth(Number(e.target.value))} />
-            <div className="sfrangerow">
-              <span>Attrition</span>
-              <b>{maxAttrition < 16 ? '≤' + maxAttrition.toFixed(1) + '%' : 'Any'}</b>
-            </div>
-            {/* Reversed so, like the other sliders, "Any" (no cap) sits at the
-                far left and dragging right tightens the attrition cap. The
-                stored value still runs 8..16; only the slider axis is flipped
-                via value = 24 - maxAttrition. */}
-            <input type="range" className="sfrange" style={fillStyle(24 - maxAttrition, 8, 16)} min={8} max={16} step={0.5} value={24 - maxAttrition} onChange={(e) => setMaxAttrition(24 - Number(e.target.value))} />
             <button className="sfclear" onClick={clearFilters}>Clear filters</button>
           </div>
         </div>
