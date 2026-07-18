@@ -1,0 +1,17 @@
+{
+  // Dedicated jobs pipeline worker. Runs on a schedule, shares the app's KV
+  // namespace, and holds its own Adzuna + trigger-token secrets (set via
+  // `wrangler secret put`, not stored here).
+  "name": "employsi-jobs-cron",
+  "main": "index.ts",
+  "compatibility_date": "2026-07-17",
+  "compatibility_flags": ["nodejs_compat"],
+  "kv_namespaces": [
+    { "binding": "OPEN_ROLES_HISTORY", "id": "6f8be3a8968d4e24a05ae82b235a6a97" }
+  ],
+  "triggers": {
+    // Every 6 hours → the 50-company roster is refreshed about once a day, in
+    // shards of 13 so each run stays well under the subrequest + Adzuna limits.
+    "crons": ["0 */6 * * *"]
+  }
+}
