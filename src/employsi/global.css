@@ -4909,6 +4909,29 @@ body {
     transform: none;
     flex-direction: row;
     padding: 6px 8px;
+    /* Sit beneath an open company / compare sheet (which cover the top-right
+       corner), so the card is never obscured by the layer picker. */
+    z-index: 5;
+  }
+
+  /* Company pills: markedly more compact on a phone so they don't blanket the
+     map. Smaller dot, tighter padding, smaller type. */
+  .mbchip {
+    gap: 5px;
+    padding: 3px 8px 3px 6px;
+    border-width: 1px;
+  }
+  .chipdot {
+    width: 7px;
+    height: 7px;
+    box-shadow: 0 0 0 3px rgba(28, 28, 30, 0.1);
+  }
+  .chiptk {
+    font-size: 10.5px;
+  }
+  .chipsub {
+    font-size: 8.5px;
+    padding-left: 6px;
   }
   .zoomslider .ztrack {
     width: 2px;
@@ -5255,7 +5278,8 @@ body {
     font-weight: 700;
     letter-spacing: 0.6px;
     text-transform: uppercase;
-    color: var(--muted, #8a93a6);
+    /* Was too light to read; darken the section labels. */
+    color: #4a5262;
     padding: 12px 6px 5px;
   }
   .mmrow {
@@ -5279,8 +5303,9 @@ body {
     width: 34px;
     height: 34px;
     border-radius: 10px;
-    background: rgba(75, 59, 214, 0.09);
-    color: var(--accent, #4b3bd6);
+    /* Black tile with a white icon, per brand guidelines. */
+    background: #1c1c1e;
+    color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -5305,7 +5330,8 @@ body {
   }
   .mmrowsub {
     font-size: 12px;
-    color: var(--muted, #8a93a6);
+    /* Was too light to read; use a darker slate. */
+    color: #5b6472;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
