@@ -25,17 +25,46 @@ const COMPANY_BY_ID: Record<string, Company> = Object.fromEntries(COMPANIES.map(
 const CAR_COLORS = ['#b23a2e', '#2b3f6b', '#e6e7ea', '#2f7d4f', '#c69a34', '#6d2f63', '#4a4e57', '#a8442e'];
 const NUM_CARS = 14;
 
+// On a phone the city fills a much smaller viewport, so the default local zoom
+// reads as uncomfortably close. Pull the default view back a notch on mobile
+// (kept high enough to still show the 3D buildings). Company-framing zooms are
+// left untouched.
+function localDefaultZoom(z: number): number {
+  const mobile = typeof window !== 'undefined' && window.innerWidth <= 680;
+  return mobile ? Math.max(14.4, z - 1.5) : z;
+}
+
+// A small, shaded top-down car. It rides pitch-aligned on the 3D streetscape
+// (see the marker's pitch/rotation alignment), so at the local view's tilt it
+// foreshortens onto the road and reads as a little 3D vehicle. Forward is up
+// (−Y): headlights + windshield sit at the top, tail-lights + rear glass at the
+// bottom, and a soft ground shadow grounds it. No <defs> gradients — duplicate
+// ids across many marker SVGs resolve unpredictably — just layered fills.
 function carSvg(color: string): string {
   return (
-    '<svg viewBox="0 0 16 30" width="12" height="22">' +
-    '<defs><linearGradient id="carsh" x1="0" y1="0" x2="1" y2="0">' +
-    '<stop offset="0" stop-color="rgba(0,0,0,0.3)"/><stop offset="0.45" stop-color="rgba(255,255,255,0.28)"/><stop offset="1" stop-color="rgba(0,0,0,0.3)"/>' +
-    '</linearGradient></defs>' +
-    '<rect x="2.4" y="2" width="11.2" height="26" rx="4.2" fill="' + color + '" stroke="rgba(0,0,0,0.4)" stroke-width="0.6"/>' +
-    '<rect x="2.4" y="2" width="11.2" height="26" rx="4.2" fill="url(#carsh)"/>' +
-    '<path d="M4.3 7 Q8 5.3 11.7 7 L11 10.4 L5 10.4 Z" fill="#1d2732" opacity="0.85"/>' +
-    '<rect x="4.7" y="11.4" width="6.6" height="7" rx="1.2" fill="rgba(255,255,255,0.12)"/>' +
-    '<path d="M5 19.4 L11 19.4 L11.7 23 Q8 24.7 4.3 23 Z" fill="#1d2732" opacity="0.85"/>' +
+    '<svg viewBox="0 0 22 40" width="10" height="18">' +
+    // soft ground shadow
+    '<ellipse cx="11" cy="21.5" rx="8.2" ry="17.5" fill="rgba(0,0,0,0.2)"/>' +
+    // body
+    '<rect x="3.5" y="3" width="15" height="34" rx="6" fill="' + color + '" stroke="rgba(0,0,0,0.4)" stroke-width="0.7"/>' +
+    // left/right body sheen
+    '<rect x="4.3" y="4.5" width="2.1" height="31" rx="1" fill="rgba(255,255,255,0.20)"/>' +
+    '<rect x="15.6" y="4.5" width="2.1" height="31" rx="1" fill="rgba(0,0,0,0.14)"/>' +
+    // front windshield
+    '<path d="M6.2 10 Q11 8.2 15.8 10 L14.4 15 Q11 13.8 7.6 15 Z" fill="#0e1620" opacity="0.9"/>' +
+    // roof
+    '<rect x="6.6" y="15.6" width="8.8" height="9" rx="2.2" fill="rgba(255,255,255,0.09)"/>' +
+    // rear window
+    '<path d="M7.6 25 Q11 26.2 14.4 25 L15.8 30 Q11 31.8 6.2 30 Z" fill="#0e1620" opacity="0.9"/>' +
+    // headlights
+    '<rect x="6" y="3.7" width="3" height="1.7" rx="0.8" fill="#fff4d2"/>' +
+    '<rect x="13" y="3.7" width="3" height="1.7" rx="0.8" fill="#fff4d2"/>' +
+    // tail-lights
+    '<rect x="6" y="34.6" width="3" height="1.7" rx="0.8" fill="#e0463a"/>' +
+    '<rect x="13" y="34.6" width="3" height="1.7" rx="0.8" fill="#e0463a"/>' +
+    // wing mirrors
+    '<rect x="1.9" y="13.6" width="2.3" height="2.1" rx="1" fill="' + color + '"/>' +
+    '<rect x="17.8" y="13.6" width="2.3" height="2.1" rx="1" fill="' + color + '"/>' +
     '</svg>'
   );
 }
@@ -214,7 +243,7 @@ export function PerthMapbox() {
       container: containerRef.current,
       style: 'mapbox://styles/mapbox/standard',
       center: PERTH_CENTER,
-      zoom: PERTH_DEFAULT_ZOOM,
+      zoom: localDefaultZoom(PERTH_DEFAULT_ZOOM),
       pitch: PERTH_DEFAULT_PITCH,
       bearing: PERTH_DEFAULT_BEARING,
       antialias: true,
@@ -641,7 +670,7 @@ export function PerthMapbox() {
       const v = CITY_VIEWS[city] || CITY_VIEWS.perth;
       // Jump (hidden behind the overlay fade) so we don't fly across the
       // continent, then swap in the city's companies + reveal.
-      map.jumpTo({ center: v.center, zoom: v.zoom, pitch: v.pitch, bearing: v.bearing });
+      map.jumpTo({ center: v.center, zoom: localDefaultZoom(v.zoom), pitch: v.pitch, bearing: v.bearing });
       renderCityRef.current?.(city);
       // If we arrived with a company already selected (from search or the saved
       // list), frame that company — it may sit well outside the city's default
