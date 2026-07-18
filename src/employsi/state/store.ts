@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { COMPANIES, companyGroup, companyExchange, type Company } from '../data/companies';
 import { CITY_CONTINENT } from '../data/geo';
-import { CITY_COMPANIES } from '../data/mapboxGeo';
+import { CITY_COMPANIES, cityForCompany } from '../data/mapboxGeo';
 import type { HeatMetric } from '../lib/heat';
 import type { SkillIndex } from '../lib/skillsFn';
 
@@ -92,6 +92,9 @@ export interface AppState {
   setZoomingIn: (v: boolean) => void;
   setGlobalOut: (v: boolean) => void;
   setZoomLevel: (n: 0 | 1 | 2) => void;
+  // Enter the "company" layer — the deepest level — by opening a company card
+  // (the last-viewed one, or a sensible default for the current city).
+  openCompanyLayer: () => void;
   zoomIn: () => void;
   zoomInCity: (city: string) => void;
   goDomestic: (region: string) => void;
@@ -318,6 +321,16 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
     set({ zoomedOut: true, globalOut: true, interacted: true });
+  },
+  openCompanyLayer: () => {
+    const s = get();
+    if (s.selectedId) return; // already on the company layer
+    const id = s.lastId || CITY_COMPANIES[s.localCity]?.[0]?.id || 'bhp';
+    // Make sure we're in the company's city (zoom into local if we're pulled
+    // back), then open its card — mirrors selecting a company from search.
+    const city = cityForCompany(id, s.localCity);
+    if (s.zoomedOut || s.localCity !== city) get().zoomInCity(city);
+    get().select(id);
   },
   // Re-enter whichever city we last viewed (defaults to Perth), so the Local
   // zoom button / back gesture doesn't snap away from e.g. Toronto to Perth.
