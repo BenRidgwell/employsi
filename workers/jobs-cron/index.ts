@@ -14,20 +14,25 @@
 
 import { AU_JOBS_TARGETS, type JobsTarget } from '../../src/employsi/data/auJobsTargets';
 import { GLOBAL_HUB_TARGETS, type HubTarget } from '../../src/employsi/data/globalHubTargets';
+import { JOOBLE_HUB_TARGETS, type JoobleHubTarget } from '../../src/employsi/data/joobleHubTargets';
 import { skillsForText } from '../../src/employsi/data/skillsTaxonomy';
 
 interface Env {
   OPEN_ROLES_HISTORY: KVNamespace;
   ADZUNA_APP_ID: string;
   ADZUNA_APP_KEY: string;
+  // Jooble REST API key — covers the hubs Adzuna can't (Tokyo, Seoul, Hong
+  // Kong, Dubai, Zurich, Beijing, Ganzhou). Optional: when unset those hubs are
+  // simply skipped and stay dark, exactly as before.
+  JOOBLE_KEY?: string;
   CRON_TOKEN: string;
 }
 
-// Companies processed per invocation. 4 runs/day × 13 ≈ the full 50-company
-// roster once daily, with each run issuing only ~13 Adzuna calls.
-// AU companies (50) + global hubs (11) = 61 targets; 16 per run over 4 six-hour
-// runs covers the whole set about once a day.
-const SHARD = 16;
+// Targets processed per invocation. AU companies (50) + Adzuna global hubs (11)
+// + Jooble global hubs (7) = 68 targets; 17 per run over 4 six-hour runs covers
+// the whole set about once a day, with each run issuing only ~17 API calls —
+// well under Cloudflare's subrequest limit and each provider's daily quota.
+const SHARD = 17;
 const JOBS_PER_COMPANY = 60;
 const JOBS_PER_HUB = 50;
 const CITIES = ['perth', 'adelaide', 'brisbane', 'melbourne', 'sydney'];
@@ -168,6 +173,52 @@ async function pullHub(env: Env, target: HubTarget): Promise<StoredJob[]> {
   }
 }
 
+// Same whole-market city sample as pullHub, but via Jooble's REST API for the
+// hubs Adzuna doesn't operate in. Jooble has one endpoint keyed on the API key;
+// the market is chosen by the free-text `location`. Empty keywords requests the
+// broad market feed for that city. Returns [] (hub stays dark) when the key is
+// unset or the call fails, so it degrades exactly like the Adzuna feed.
+async function pullJoobleHub(env: Env, target: JoobleHubTarget): Promise<StoredJob[]> {
+  if (!env.JOOBLE_KEY) return [];
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(`https://jooble.org/api/${env.JOOBLE_KEY}`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'User-Agent': 'employsi-jobs/1.0' },
+      body: JSON.stringify({ keywords: '', location: target.location, ResultOnPage: JOBS_PER_HUB, page: 1 }),
+    });
+    if (!res.ok) return [];
+    const j: any = await res.json();
+    const results: any[] = Array.isArray(j?.jobs) ? j.jobs : [];
+    const seen = new Set<string>();
+    const jobs: StoredJob[] = [];
+    for (const x of results) {
+      const title = stripHtml(x?.title || '');
+      if (!title) continue;
+      const loc = stripHtml(x?.location || '');
+      const dedupe = (title + '|' + loc).toLowerCase();
+      if (seen.has(dedupe)) continue;
+      seen.add(dedupe);
+      jobs.push({
+        t: title,
+        loc,
+        cat: stripHtml(x?.type || ''), // Jooble's `type` (e.g. Full-time) — no category taxonomy
+        url: x?.link || '',
+        created: (x?.updated || '').slice(0, 10),
+        city: target.hub,
+        skills: skillsForText(title),
+      });
+    }
+    return jobs;
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 interface SkillAgg {
   total: number;
   byCompany: Record<string, number>;
@@ -214,9 +265,11 @@ async function recomputeIndex(env: Env): Promise<SkillIndex> {
 
   // Global hubs: whole-market city samples contribute to byCity only (they are
   // not company- or sector-attributed), so the global heatmap lights up real
-  // demand outside Australia.
-  for (const h of GLOBAL_HUB_TARGETS) {
-    const raw = await env.OPEN_ROLES_HISTORY.get(`hubjobs:${h.hub}`);
+  // demand outside Australia. Adzuna hubs and Jooble hubs share the hubjobs:*
+  // key namespace, so the two feeds aggregate identically.
+  const hubIds = [...GLOBAL_HUB_TARGETS.map((h) => h.hub), ...JOOBLE_HUB_TARGETS.map((h) => h.hub)];
+  for (const hub of hubIds) {
+    const raw = await env.OPEN_ROLES_HISTORY.get(`hubjobs:${hub}`);
     if (!raw) continue;
     let data: any;
     try {
@@ -230,19 +283,24 @@ async function recomputeIndex(env: Env): Promise<SkillIndex> {
       for (const sk of job.skills || []) {
         const a = agg(sk);
         a.total++;
-        a.byCity[h.hub] = (a.byCity[h.hub] || 0) + 1;
+        a.byCity[hub] = (a.byCity[hub] || 0) + 1;
       }
     }
   }
   return { updated: today(), totalJobs, skills };
 }
 
-// The full rotation: AU companies (queried by name) then global hubs (queried
-// as city-market samples). The cursor walks this combined list shard by shard.
-type AnyTarget = { kind: 'company'; t: JobsTarget } | { kind: 'hub'; t: HubTarget };
+// The full rotation: AU companies (queried by name), Adzuna global hubs and
+// Jooble global hubs (both queried as city-market samples). The cursor walks
+// this combined list shard by shard.
+type AnyTarget =
+  | { kind: 'company'; t: JobsTarget }
+  | { kind: 'hub'; t: HubTarget }
+  | { kind: 'jhub'; t: JoobleHubTarget };
 const ALL_TARGETS: AnyTarget[] = [
   ...AU_JOBS_TARGETS.map((t) => ({ kind: 'company' as const, t })),
   ...GLOBAL_HUB_TARGETS.map((t) => ({ kind: 'hub' as const, t })),
+  ...JOOBLE_HUB_TARGETS.map((t) => ({ kind: 'jhub' as const, t })),
 ];
 
 async function processShard(env: Env): Promise<{ processed: string[]; totalJobs: number }> {
@@ -260,12 +318,22 @@ async function processShard(env: Env): Promise<{ processed: string[]; totalJobs:
         `jobs:${item.t.id}`,
         JSON.stringify({ updated: today(), count, jobs }),
       );
-    } else {
+    } else if (item.kind === 'hub') {
       const jobs = await pullHub(env, item.t);
       await env.OPEN_ROLES_HISTORY.put(
         `hubjobs:${item.t.hub}`,
         JSON.stringify({ updated: today(), jobs }),
       );
+    } else {
+      const jobs = await pullJoobleHub(env, item.t);
+      // Only overwrite when we actually got a sample, so a transient Jooble
+      // failure (or a not-yet-set key) doesn't wipe a good prior sample.
+      if (jobs.length) {
+        await env.OPEN_ROLES_HISTORY.put(
+          `hubjobs:${item.t.hub}`,
+          JSON.stringify({ updated: today(), jobs }),
+        );
+      }
     }
   }
 
