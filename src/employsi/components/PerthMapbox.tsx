@@ -287,10 +287,15 @@ export function PerthMapbox() {
       placedRef.current = cityPlacements(st.localCity);
       map.addSource(SOURCE_ID, { type: 'geojson', data: buildGeoJSON(placedRef.current, st.selectedId, filterState, skillDemandOf(st)) });
 
+      // slot:'top' keeps every dot layer above the Standard style's 3D
+      // buildings — without it, circle layers render *under* the extrusions, so
+      // a dot behind a near-field tower is occluded while its HTML pill (a DOM
+      // overlay, always on top) still shows, leaving the pill "with no dot".
       map.addLayer({
         id: HALO_LAYER,
         type: 'circle',
         source: SOURCE_ID,
+        slot: 'top',
         paint: {
           'circle-radius': ['case', ['get', 'selected'], 34, 26],
           'circle-color': ['get', 'color'],
@@ -302,6 +307,7 @@ export function PerthMapbox() {
         id: CORE_LAYER,
         type: 'circle',
         source: SOURCE_ID,
+        slot: 'top',
         paint: {
           'circle-radius': ['case', ['get', 'selected'], 9, 6],
           'circle-color': ['get', 'color'],
@@ -316,6 +322,7 @@ export function PerthMapbox() {
         id: PULSE_LAYER,
         type: 'circle',
         source: SOURCE_ID,
+        slot: 'top',
         paint: {
           'circle-radius': ['case', ['get', 'selected'], 12, 9],
           'circle-color': 'rgba(0,0,0,0)',
