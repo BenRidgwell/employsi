@@ -13,6 +13,7 @@
 // internally consistent regardless of which shard just refreshed.
 
 import { AU_JOBS_TARGETS, type JobsTarget } from '../../src/employsi/data/auJobsTargets';
+import { GLOBAL_HUB_TARGETS, type HubTarget } from '../../src/employsi/data/globalHubTargets';
 import { skillsForText } from '../../src/employsi/data/skillsTaxonomy';
 
 interface Env {
@@ -24,8 +25,11 @@ interface Env {
 
 // Companies processed per invocation. 4 runs/day × 13 ≈ the full 50-company
 // roster once daily, with each run issuing only ~13 Adzuna calls.
-const SHARD = 13;
+// AU companies (50) + global hubs (11) = 61 targets; 16 per run over 4 six-hour
+// runs covers the whole set about once a day.
+const SHARD = 16;
 const JOBS_PER_COMPANY = 60;
+const JOBS_PER_HUB = 50;
 const CITIES = ['perth', 'adelaide', 'brisbane', 'melbourne', 'sydney'];
 
 interface StoredJob {
@@ -116,6 +120,54 @@ async function appendCount(env: Env, id: string, count: number): Promise<void> {
   }
 }
 
+// Whole-market city sample for a global hub: the current advertised roles in
+// that city, mapped to skills. Used to show where skills are in demand
+// worldwide (the AU cities get their demand from company data instead).
+async function pullHub(env: Env, target: HubTarget): Promise<StoredJob[]> {
+  const params = new URLSearchParams({
+    app_id: env.ADZUNA_APP_ID,
+    app_key: env.ADZUNA_APP_KEY,
+    where: target.where,
+    results_per_page: String(JOBS_PER_HUB),
+    'content-type': 'application/json',
+  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(
+      `https://api.adzuna.com/v1/api/jobs/${target.country}/search/1?${params.toString()}`,
+      { signal: controller.signal, headers: { Accept: 'application/json', 'User-Agent': 'employsi-jobs/1.0' } },
+    );
+    if (!res.ok) return [];
+    const j: any = await res.json();
+    const results: any[] = Array.isArray(j?.results) ? j.results : [];
+    const seen = new Set<string>();
+    const jobs: StoredJob[] = [];
+    for (const x of results) {
+      const title = stripHtml(x?.title || '');
+      if (!title) continue;
+      const loc = x?.location?.display_name || '';
+      const dedupe = (title + '|' + loc).toLowerCase();
+      if (seen.has(dedupe)) continue;
+      seen.add(dedupe);
+      jobs.push({
+        t: title,
+        loc,
+        cat: x?.category?.label || '',
+        url: x?.redirect_url || '',
+        created: (x?.created || '').slice(0, 10),
+        city: target.hub,
+        skills: skillsForText(title),
+      });
+    }
+    return jobs;
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 interface SkillAgg {
   total: number;
   byCompany: Record<string, number>;
@@ -159,29 +211,68 @@ async function recomputeIndex(env: Env): Promise<SkillIndex> {
       }
     }
   }
+
+  // Global hubs: whole-market city samples contribute to byCity only (they are
+  // not company- or sector-attributed), so the global heatmap lights up real
+  // demand outside Australia.
+  for (const h of GLOBAL_HUB_TARGETS) {
+    const raw = await env.OPEN_ROLES_HISTORY.get(`hubjobs:${h.hub}`);
+    if (!raw) continue;
+    let data: any;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      continue;
+    }
+    const jobs: StoredJob[] = Array.isArray(data?.jobs) ? data.jobs : [];
+    for (const job of jobs) {
+      totalJobs++;
+      for (const sk of job.skills || []) {
+        const a = agg(sk);
+        a.total++;
+        a.byCity[h.hub] = (a.byCity[h.hub] || 0) + 1;
+      }
+    }
+  }
   return { updated: today(), totalJobs, skills };
 }
+
+// The full rotation: AU companies (queried by name) then global hubs (queried
+// as city-market samples). The cursor walks this combined list shard by shard.
+type AnyTarget = { kind: 'company'; t: JobsTarget } | { kind: 'hub'; t: HubTarget };
+const ALL_TARGETS: AnyTarget[] = [
+  ...AU_JOBS_TARGETS.map((t) => ({ kind: 'company' as const, t })),
+  ...GLOBAL_HUB_TARGETS.map((t) => ({ kind: 'hub' as const, t })),
+];
 
 async function processShard(env: Env): Promise<{ processed: string[]; totalJobs: number }> {
   const cursorRaw = await env.OPEN_ROLES_HISTORY.get('cron:cursor');
   const cursor = Number(cursorRaw) || 0;
-  const n = AU_JOBS_TARGETS.length;
-  const slice: JobsTarget[] = [];
-  for (let i = 0; i < SHARD && i < n; i++) slice.push(AU_JOBS_TARGETS[(cursor + i) % n]);
+  const n = ALL_TARGETS.length;
+  const slice: AnyTarget[] = [];
+  for (let i = 0; i < SHARD && i < n; i++) slice.push(ALL_TARGETS[(cursor + i) % n]);
 
-  for (const t of slice) {
-    const { count, jobs } = await pullCompany(env, t);
-    if (count > 0) await appendCount(env, t.id, count);
-    await env.OPEN_ROLES_HISTORY.put(
-      `jobs:${t.id}`,
-      JSON.stringify({ updated: today(), count, jobs }),
-    );
+  for (const item of slice) {
+    if (item.kind === 'company') {
+      const { count, jobs } = await pullCompany(env, item.t);
+      if (count > 0) await appendCount(env, item.t.id, count);
+      await env.OPEN_ROLES_HISTORY.put(
+        `jobs:${item.t.id}`,
+        JSON.stringify({ updated: today(), count, jobs }),
+      );
+    } else {
+      const jobs = await pullHub(env, item.t);
+      await env.OPEN_ROLES_HISTORY.put(
+        `hubjobs:${item.t.hub}`,
+        JSON.stringify({ updated: today(), jobs }),
+      );
+    }
   }
 
   const idx = await recomputeIndex(env);
   await env.OPEN_ROLES_HISTORY.put('skillidx', JSON.stringify(idx));
   await env.OPEN_ROLES_HISTORY.put('cron:cursor', String((cursor + SHARD) % n));
-  return { processed: slice.map((s) => s.id), totalJobs: idx.totalJobs };
+  return { processed: slice.map((s) => (s.kind === 'company' ? s.t.id : s.t.hub)), totalJobs: idx.totalJobs };
 }
 
 export default {
