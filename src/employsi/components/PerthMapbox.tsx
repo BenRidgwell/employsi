@@ -352,7 +352,9 @@ export function PerthMapbox() {
           'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
           'text-size': 12,
           'text-anchor': 'left',
-          'text-offset': [0.9, 0],
+          // Push the label clear of the dot (radius ~9px selected). Offset is in
+          // ems of text-size (12px), so 1.5em ≈ 18px past the point.
+          'text-offset': [1.5, 0],
           'text-optional': true,
           'text-allow-overlap': false,
           'symbol-sort-key': ['case', ['get', 'selected'], 0, 1],
