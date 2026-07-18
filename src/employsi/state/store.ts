@@ -3,6 +3,7 @@ import { COMPANIES, companyGroup, companyExchange, type Company } from '../data/
 import { CITY_CONTINENT } from '../data/geo';
 import { CITY_COMPANIES } from '../data/mapboxGeo';
 import type { HeatMetric } from '../lib/heat';
+import type { SkillIndex } from '../lib/skillsFn';
 
 export interface Account {
   name: string;
@@ -27,6 +28,9 @@ export interface AppState {
   filterOpen: boolean;
   heatOpen: boolean;
   searchQuery: string;
+  // Live skill-demand index from the jobs pipeline (loaded from KV). Drives the
+  // real skill-demand heat map when a skill is the active search.
+  skillIndex: SkillIndex | null;
   activeSectors: string[];
   activeExchanges: string[];
   minSalary: number;
@@ -73,6 +77,7 @@ export interface AppState {
   toggleHeatPanel: () => void;
   setSearchQuery: (q: string) => void;
   clearSearch: () => void;
+  setSkillIndex: (idx: SkillIndex | null) => void;
   toggleSector: (cat: string) => void;
   toggleExchange: (ex: string) => void;
   setMinSalary: (v: number) => void;
@@ -182,6 +187,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   filterOpen: false,
   heatOpen: false,
   searchQuery: '',
+  skillIndex: null,
   activeSectors: [],
   activeExchanges: [],
   minSalary: 130,
@@ -263,6 +269,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleHeatPanel: () => set((s) => ({ heatOpen: !s.heatOpen, searchOpen: false, filterOpen: false })),
   setSearchQuery: (q) => set({ searchQuery: q }),
   clearSearch: () => set({ searchQuery: '' }),
+  setSkillIndex: (idx) => set({ skillIndex: idx }),
   toggleSector: (cat) =>
     set((s) => {
       const has = s.activeSectors.includes(cat);

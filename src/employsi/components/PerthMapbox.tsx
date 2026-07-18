@@ -6,6 +6,8 @@ import { COMPANIES, type Company } from '../data/companies';
 import { CITY_COMPANIES, CITY_VIEWS, PERTH_CENTER, PERTH_DEFAULT_ZOOM, PERTH_DEFAULT_PITCH, PERTH_DEFAULT_BEARING } from '../data/mapboxGeo';
 import { chipMetric, type HeatMetric } from '../lib/heat';
 import { heatColor, rgbCss } from '../lib/color';
+import { activeSkill, demandByCompany } from '../lib/skillHeat';
+import type { SkillIndex } from '../lib/skillsFn';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -97,10 +99,20 @@ function metricKeyFor(heat: HeatMetric) {
 // full-range colour scale rather than being crushed against the global min/max.
 // Companies outside the selected sector(s) are dropped entirely (hidden), so a
 // Financial Services filter clears the resource companies from the city map.
-function buildGeoJSON(placements: Placed[], heat: HeatMetric, selectedId: string | null, filterState: FilterState): GeoJSON.FeatureCollection {
+function buildGeoJSON(
+  placements: Placed[],
+  heat: HeatMetric,
+  selectedId: string | null,
+  filterState: FilterState,
+  skillDemand: Record<string, number> | null,
+): GeoJSON.FeatureCollection {
   // Hide any company that fails the sector / exchange / slider filters entirely.
   const shown = placements.filter((p) => matchesFilters(p.company, filterState));
+  // When a skill is the active search, colour by real demand for that skill
+  // instead of the salary/growth metric.
+  const skillMode = !!skillDemand;
   const key = metricKeyFor(heat);
+  const demandMax = skillMode ? Math.max(1, ...shown.map((p) => skillDemand![p.company.id] || 0)) : 1;
   const vals = shown.map((p) => p.company[key] as number);
   const mn = vals.length ? Math.min(...vals) : 0;
   const mx = vals.length ? Math.max(...vals) : 1;
@@ -108,7 +120,8 @@ function buildGeoJSON(placements: Placed[], heat: HeatMetric, selectedId: string
     type: 'FeatureCollection',
     features: shown.map((p, i) => {
       const c = p.company;
-      const t = ((c[key] as number) - mn) / ((mx - mn) || 1);
+      const demand = skillMode ? skillDemand![c.id] || 0 : 0;
+      const t = skillMode ? demand / demandMax : ((c[key] as number) - mn) / ((mx - mn) || 1);
       const color = rgbCss(heatColor(t));
       return {
         type: 'Feature',
@@ -117,13 +130,15 @@ function buildGeoJSON(placements: Placed[], heat: HeatMetric, selectedId: string
           id: c.id,
           color,
           label: c.pill || c.ticker,
-          sub: chipMetric(c, heat),
+          sub: skillMode ? `${demand} live role${demand === 1 ? '' : 's'}` : chipMetric(c, heat),
           selected: c.id === selectedId,
-          // Only a search miss (or another company being selected) dims a dot
-          // now — the hard filters remove non-matching companies above.
-          dim:
-            (isSearchActive(filterState) && !searchMatches(c, filterState.searchQuery)) ||
-            (!!selectedId && c.id !== selectedId),
+          // In skill mode, dim companies with no live demand for the skill so
+          // the map highlights exactly where it's being hired. Otherwise a
+          // search miss (or another company being selected) dims a dot.
+          dim: skillMode
+            ? demand === 0 || (!!selectedId && c.id !== selectedId)
+            : (isSearchActive(filterState) && !searchMatches(c, filterState.searchQuery)) ||
+              (!!selectedId && c.id !== selectedId),
         },
         geometry: { type: 'Point', coordinates: p.coords },
       };
@@ -148,6 +163,13 @@ function filterStateOf(s: {
   };
 }
 
+// The live per-company demand lookup when a skill is the active search, else
+// null (maps fall back to the salary/growth metric).
+function skillDemandOf(s: { searchQuery: string; skillIndex: SkillIndex | null }): Record<string, number> | null {
+  const sk = activeSkill(s.searchQuery);
+  return sk ? demandByCompany(s.skillIndex, sk) : null;
+}
+
 export function PerthMapbox() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -168,6 +190,7 @@ export function PerthMapbox() {
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const heat = useAppStore((s) => s.heat);
   const searchQuery = useAppStore((s) => s.searchQuery);
+  const skillIndex = useAppStore((s) => s.skillIndex);
   const activeSectors = useAppStore((s) => s.activeSectors);
   const activeExchanges = useAppStore((s) => s.activeExchanges);
   const minSalary = useAppStore((s) => s.minSalary);
@@ -179,6 +202,11 @@ export function PerthMapbox() {
     () => ({ searchQuery, activeSectors, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition }),
     [searchQuery, activeSectors, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition],
   );
+
+  const skillDemand = useMemo(() => {
+    const sk = activeSkill(searchQuery);
+    return sk ? demandByCompany(skillIndex, sk) : null;
+  }, [searchQuery, skillIndex]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -223,7 +251,7 @@ export function PerthMapbox() {
 
       const st = useAppStore.getState();
       placedRef.current = cityPlacements(st.localCity);
-      map.addSource(SOURCE_ID, { type: 'geojson', data: buildGeoJSON(placedRef.current, st.heat, st.selectedId, filterState) });
+      map.addSource(SOURCE_ID, { type: 'geojson', data: buildGeoJSON(placedRef.current, st.heat, st.selectedId, filterState, skillDemandOf(st)) });
 
       map.addLayer({
         id: HALO_LAYER,
@@ -389,7 +417,7 @@ export function PerthMapbox() {
         const s = useAppStore.getState();
         const fs = filterStateOf(s);
         const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
-        source?.setData(buildGeoJSON(placedRef.current, s.heat, s.selectedId, fs));
+        source?.setData(buildGeoJSON(placedRef.current, s.heat, s.selectedId, fs, skillDemandOf(s)));
         renderMarkers(placedRef.current);
         setCompaniesVisible(true);
         placedRef.current.forEach((p) => {
@@ -653,7 +681,7 @@ export function PerthMapbox() {
       // `once('style.load')` deferral dropped filter changes entirely (the
       // event never re-fires); applying directly avoids that.
       const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
-      if (source) source.setData(buildGeoJSON(placedRef.current, heat, selectedId, filterState));
+      if (source) source.setData(buildGeoJSON(placedRef.current, heat, selectedId, filterState, skillDemand));
       placedRef.current.forEach((p) => {
         const c = p.company;
         const marker = markersRef.current[c.id];
@@ -662,20 +690,25 @@ export function PerthMapbox() {
         // Sector / exchange / slider filters hide the marker entirely; a search
         // miss only dims it.
         el.style.display = matchesFilters(c, filterState) ? '' : 'none';
-        const searchOk = !isSearchActive(filterState) || searchMatches(c, filterState.searchQuery);
+        // In skill mode a pill is "lit" when the company has live demand for the
+        // searched skill; otherwise fall back to the free-text search match.
+        const demand = skillDemand ? skillDemand[c.id] || 0 : 0;
+        const searchOk = skillDemand
+          ? demand > 0
+          : !isSearchActive(filterState) || searchMatches(c, filterState.searchQuery);
         // Fade every other pill while a card is open, so the selected company
         // stays the visual focus; clears the instant selectedId is null again.
         const notSelected = !!selectedId && selectedId !== c.id;
         el.className = ['mbchip', selectedId === c.id ? 'on' : '', searchOk && !notSelected ? '' : 'dim'].join(' ').trim();
         const sub = el.querySelector('.chipsub');
-        if (sub) sub.textContent = chipMetric(c, heat);
+        if (sub) sub.textContent = skillDemand ? `${demand} live role${demand === 1 ? '' : 's'}` : chipMetric(c, heat);
       });
       // Re-apply the focus fade so a newly dimmed/undimmed pill keeps the
       // correct opacity without waiting for the next pan.
       focusUpdaterRef.current?.();
     };
     apply();
-  }, [heat, selectedId, filterState]);
+  }, [heat, selectedId, filterState, skillDemand]);
 
   useEffect(() => {
     // Hide companies the instant we're zoomed out, regardless of what

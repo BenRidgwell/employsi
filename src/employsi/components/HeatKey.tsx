@@ -1,5 +1,5 @@
 import { useAppStore } from '../state/store';
-import { activeSkillKey } from '../data/geo';
+import { activeSkill } from '../lib/skillHeat';
 import { heatLegend, auHeatLegend, globalHeatLegend, skillLegend } from '../lib/heat';
 
 export function HeatKey() {
@@ -7,7 +7,7 @@ export function HeatKey() {
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const globalOut = useAppStore((s) => s.globalOut);
   const searchQuery = useAppStore((s) => s.searchQuery);
-  const skill = activeSkillKey(searchQuery);
+  const skill = activeSkill(searchQuery);
 
   const key = globalOut
     ? skill

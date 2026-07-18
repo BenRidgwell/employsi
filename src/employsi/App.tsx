@@ -19,10 +19,20 @@ import { ComparePanel } from './components/panels/ComparePanel';
 import { DailyBriefPane } from './components/panels/DailyBriefPane';
 import { WhatsTrendingPane } from './components/panels/WhatsTrendingPane';
 import { useAppStore } from './state/store';
+import { useSkillIndex } from './hooks/useSkillData';
+import { useEffect } from 'react';
 
 function App() {
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const globalOut = useAppStore((s) => s.globalOut);
+
+  // Load the live skill-demand index once and hand it to the store so the maps
+  // can colour by real demand when a skill is searched.
+  const skillIndex = useSkillIndex();
+  const setSkillIndex = useAppStore((s) => s.setSkillIndex);
+  useEffect(() => {
+    if (skillIndex) setSkillIndex(skillIndex);
+  }, [skillIndex, setSkillIndex]);
 
   // The global Mapbox view has a dark globe/space backdrop, so the
   // transparent-background top-bar labels + wordmark must flip to light; the

@@ -3,14 +3,8 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef } from 'react';
 import { useAppStore, cityMatchesFilters, type FilterState } from '../state/store';
 import { computeGlobalHeat, type HeatMetric } from '../lib/heat';
-import {
-  GLOBAL_STATS,
-  STATE_STATS,
-  CITY_STATE,
-  activeSkillKey,
-  SKILL_DEMAND,
-  GLOBAL_SKILL_DEMAND,
-} from '../data/geo';
+import { GLOBAL_STATS, STATE_STATS, CITY_STATE } from '../data/geo';
+import { activeSkill, demandByCity } from '../lib/skillHeat';
 import {
   HUB_LNGLAT,
   AU_CITY_LNGLAT,
@@ -183,29 +177,33 @@ const EMPTY_FC: GeoJSON.FeatureCollection = { type: 'FeatureCollection', feature
 // for the searched skill (normalised across the visible set). Mapbox's heatmap
 // layer turns this into the soft green→amber→red blobs, mirroring the SVG
 // layers' skill "spikes".
-function buildSkillHeat(mode: 'global' | 'domestic', region: string, skill: string | null): GeoJSON.FeatureCollection {
+function buildSkillHeat(
+  mode: 'global' | 'domestic',
+  region: string,
+  skill: string | null,
+  demand: Record<string, number>,
+): GeoJSON.FeatureCollection {
   if (!skill) return EMPTY_FC;
+  // Coordinate table for the current view; the demand values are the REAL
+  // per-city counts from the jobs pipeline (Adzuna is AU-only, so outside
+  // Australia only AU hubs carry demand and light up — an honest reflection of
+  // the data we actually have).
   let table: Record<string, [number, number]>;
-  let demand: Record<string, number> | undefined;
   if (mode === 'global') {
     table = HUB_LNGLAT;
-    demand = GLOBAL_SKILL_DEMAND[skill];
   } else if (region === 'australia') {
     // Darwin and Hobart are omitted from the AU markers, so drop their skill
     // heat too — no stray blobs over their old spots.
     table = Object.fromEntries(
       Object.entries(AU_CITY_LNGLAT).filter(([id]) => id !== 'darwin' && id !== 'hobart'),
     );
-    demand = SKILL_DEMAND[skill];
   } else {
-    demand = GLOBAL_SKILL_DEMAND[skill];
     table = {};
     (REGION_HUBS[region] || []).forEach((id) => { if (HUB_LNGLAT[id]) table[id] = HUB_LNGLAT[id]; });
   }
-  if (!demand) return EMPTY_FC;
-  const ids = Object.keys(table).filter((id) => demand![id] != null);
+  const ids = Object.keys(table).filter((id) => (demand[id] || 0) > 0);
   if (!ids.length) return EMPTY_FC;
-  const vals = ids.map((id) => demand![id]);
+  const vals = ids.map((id) => demand[id]);
   const mn = Math.min(...vals);
   const mx = Math.max(...vals);
 
@@ -213,7 +211,7 @@ function buildSkillHeat(mode: 'global' | 'domestic', region: string, skill: stri
   const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
   const features: GeoJSON.Feature[] = [];
   ids.forEach((id) => {
-    const t = (demand![id] - mn) / ((mx - mn) || 1);
+    const t = (demand[id] - mn) / ((mx - mn) || 1);
     const w = 0.2 + 0.8 * t; // keep a green floor so low-demand hubs still show
     const [lng, lat] = table[id];
     for (let i = 0; i < 6; i++) {
@@ -293,6 +291,7 @@ export function WorldMapbox() {
   const minGrowth = useAppStore((s) => s.minGrowth);
   const maxAttrition = useAppStore((s) => s.maxAttrition);
   const searchQuery = useAppStore((s) => s.searchQuery);
+  const skillIndex = useAppStore((s) => s.skillIndex);
 
   // Mount once: create the map, add the hub source/layers, and wire clicks +
   // scroll-zoom layer crossing. All reads of live state happen through the
@@ -401,7 +400,8 @@ export function WorldMapbox() {
       const s = useAppStore.getState();
       if (!s.zoomedOut || s.zoomingIn) return; // overview not showing
       const mode = viewModeOf(s.globalOut);
-      const skill = activeSkillKey(s.searchQuery);
+      const skill = activeSkill(s.searchQuery);
+      const cityDemand = demandByCity(s.skillIndex, skill);
       const fs: FilterState = {
         searchQuery: s.searchQuery,
         activeSectors: s.activeSectors,
@@ -421,7 +421,7 @@ export function WorldMapbox() {
       // (the dots are already neutralised in computeMarkers); otherwise clear
       // the blobs and restore the metric halo.
       const skillSrc = map.getSource(SKILL_SOURCE) as mapboxgl.GeoJSONSource | undefined;
-      skillSrc?.setData(buildSkillHeat(mode, s.domesticRegion, skill));
+      skillSrc?.setData(buildSkillHeat(mode, s.domesticRegion, skill, cityDemand));
       if (map.getLayer(HALO_LAYER)) {
         map.setLayoutProperty(HALO_LAYER, 'visibility', skill ? 'none' : 'visible');
       }
@@ -661,7 +661,7 @@ export function WorldMapbox() {
   useEffect(() => {
     rebuildMarkersRef.current?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heat, selectedId, activeSectors, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition, searchQuery]);
+  }, [heat, selectedId, activeSectors, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition, searchQuery, skillIndex]);
 
   // Hide the whole overview once fully in a local city (PerthMapbox owns it).
   const hidden = !zoomedOut && !zoomingIn;

@@ -1,14 +1,14 @@
 import { useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../state/store';
-import { SKILL_DEMAND, GLOBAL_HUB_LABEL } from '../data/geo';
+import { GLOBAL_HUB_LABEL } from '../data/geo';
+import { ALL_SKILLS } from '../data/skillsTaxonomy';
 import { COMPANIES } from '../data/companies';
 import { cityForCompany } from '../data/mapboxGeo';
 
-const SKILLS = Object.keys(SKILL_DEMAND);
-
 type Result =
   | { kind: 'company'; id: string; label: string; sub: string }
-  | { kind: 'city'; id: string; label: string };
+  | { kind: 'city'; id: string; label: string }
+  | { kind: 'skill'; id: string; label: string; sub: string };
 
 // Centered search bar shown on the global view (replaces the top-right search
 // button there). Typing a company or city and selecting it (click, or Enter
@@ -21,7 +21,18 @@ export function GlobalSearch() {
   const searchQuery = useAppStore((s) => s.searchQuery);
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
   const toggleSkillQuery = useAppStore((s) => s.toggleSkillQuery);
+  const skillIndex = useAppStore((s) => s.skillIndex);
   const zoomInCity = useAppStore((s) => s.zoomInCity);
+
+  // Popular skills = those with the most live demand right now (falls back to
+  // the taxonomy order before the first cron run).
+  const popularSkills = useMemo(() => {
+    if (!skillIndex) return ALL_SKILLS.slice(0, 10);
+    return Object.entries(skillIndex.skills)
+      .sort((a, b) => b[1].total - a[1].total)
+      .slice(0, 10)
+      .map(([name]) => name);
+  }, [skillIndex]);
   const select = useAppStore((s) => s.select);
   const [focused, setFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -40,8 +51,14 @@ export function GlobalSearch() {
       .filter(([, label]) => label.toLowerCase().includes(q))
       .slice(0, 6)
       .map(([id, label]) => ({ kind: 'city' as const, id, label }));
-    return [...companies, ...cities];
-  }, [q]);
+    const skills: Result[] = ALL_SKILLS.filter((sk) => sk.toLowerCase().includes(q))
+      .slice(0, 6)
+      .map((sk) => {
+        const total = skillIndex?.skills[sk]?.total ?? 0;
+        return { kind: 'skill' as const, id: sk, label: sk, sub: total ? `${total} live roles` : 'skill' };
+      });
+    return [...skills, ...companies, ...cities];
+  }, [q, skillIndex]);
 
   // Show over the global AND domestic overviews (both are zoomedOut) — never
   // stranded above a local city map, where the top-right search takes over.
@@ -49,6 +66,13 @@ export function GlobalSearch() {
   void globalOut;
 
   const goToResult = (r: Result) => {
+    if (r.kind === 'skill') {
+      // Colour the map by real demand for this skill instead of navigating.
+      toggleSkillQuery(r.id);
+      setActiveIndex(0);
+      inputRef.current?.blur();
+      return;
+    }
     if (r.kind === 'company') {
       zoomInCity(cityForCompany(r.id));
       select(r.id);
@@ -113,20 +137,20 @@ export function GlobalSearch() {
                 onMouseEnter={() => setActiveIndex(i)}
                 onClick={() => goToResult(r)}
               >
-                <span className={`gsrkind ${r.kind}`}>{r.kind === 'company' ? 'Co.' : 'City'}</span>
+                <span className={`gsrkind ${r.kind}`}>{r.kind === 'company' ? 'Co.' : r.kind === 'skill' ? 'Skill' : 'City'}</span>
                 <span className="gsrlabel">{r.label}</span>
-                {r.kind === 'company' && <span className="gsrsub">{r.sub}</span>}
+                {(r.kind === 'company' || r.kind === 'skill') && <span className="gsrsub">{r.sub}</span>}
               </button>
             ))
           ) : (
-            <div className="gsrempty">No companies or cities match “{searchQuery.trim()}”</div>
+            <div className="gsrempty">No skills, companies or cities match “{searchQuery.trim()}”</div>
           )}
         </div>
       )}
       {focused && !q && (
         <div className="gsearchchips">
           <span className="gsearchlbl">Popular skills</span>
-          {SKILLS.map((sk) => (
+          {popularSkills.map((sk) => (
             <button
               key={sk}
               className={`gschip ${q === sk.toLowerCase() ? 'on' : ''}`}

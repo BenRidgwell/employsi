@@ -88,31 +88,3 @@ export const GLOBAL_STATS: Record<string, CityStat> = {
   dubai: { salary: 145, growth: 5.5, turnover: 13.0 },
   hongkong: { salary: 150, growth: 2.8, turnover: 10.5 },
 };
-
-export const SKILL_DEMAND: Record<string, Record<string, number>> = {
-  HSE: { perth: 100, darwin: 58, brisbane: 64, adelaide: 46, sydney: 30, melbourne: 26, hobart: 20 },
-  Maintenance: { perth: 100, brisbane: 70, darwin: 52, adelaide: 44, sydney: 28, melbourne: 24, hobart: 18 },
-  Metallurgy: { perth: 100, adelaide: 74, brisbane: 56, darwin: 22, sydney: 18, melbourne: 16, hobart: 14 },
-  Sustainability: { perth: 82, sydney: 78, melbourne: 74, brisbane: 52, adelaide: 40, darwin: 24, hobart: 48 },
-  Automation: { perth: 100, brisbane: 44, sydney: 34, adelaide: 30, melbourne: 30, darwin: 26, hobart: 16 },
-  'Autonomous Haulage': { perth: 100, brisbane: 38, darwin: 24, adelaide: 20, sydney: 14, melbourne: 12, hobart: 10 },
-  'Battery Metals': { perth: 100, adelaide: 58, sydney: 42, melbourne: 38, brisbane: 36, darwin: 34, hobart: 28 },
-  'Carbon Capture': { perth: 100, darwin: 64, brisbane: 48, sydney: 44, melbourne: 40, adelaide: 30, hobart: 26 },
-};
-
-export const GLOBAL_SKILL_DEMAND: Record<string, Record<string, number>> = {
-  HSE: { perth: 100, santiago: 62, toronto: 58, johannesburg: 70, london: 40, houston: 66, singapore: 48, denver: 60, ganzhou: 66, lubumbashi: 70, brisbane: 64, adelaide: 46, sydney: 34, newyork: 22, sanfrancisco: 20, chicago: 24, tokyo: 18, zurich: 16, geneva: 15, dubai: 34, hongkong: 24 },
-  Maintenance: { perth: 100, santiago: 58, toronto: 62, johannesburg: 64, london: 36, houston: 60, singapore: 44, denver: 54, ganzhou: 70, lubumbashi: 66, brisbane: 60, adelaide: 44, sydney: 30, newyork: 20, sanfrancisco: 18, chicago: 22, tokyo: 20, zurich: 16, geneva: 14, dubai: 30, hongkong: 22 },
-  Metallurgy: { perth: 100, santiago: 74, toronto: 56, johannesburg: 68, london: 30, houston: 38, singapore: 34, denver: 58, ganzhou: 84, lubumbashi: 72, brisbane: 40, adelaide: 74, sydney: 20, newyork: 12, sanfrancisco: 10, chicago: 14, tokyo: 16, zurich: 12, geneva: 10, dubai: 18, hongkong: 16 },
-  Sustainability: { perth: 78, santiago: 44, toronto: 56, johannesburg: 40, london: 82, houston: 52, singapore: 64, denver: 66, ganzhou: 42, lubumbashi: 38, brisbane: 58, adelaide: 40, sydney: 76, newyork: 72, sanfrancisco: 80, chicago: 60, tokyo: 64, zurich: 82, geneva: 84, dubai: 56, hongkong: 66 },
-  Automation: { perth: 100, santiago: 42, toronto: 50, johannesburg: 38, london: 46, houston: 62, singapore: 58, denver: 70, ganzhou: 60, lubumbashi: 34, brisbane: 50, adelaide: 30, sydney: 40, newyork: 58, sanfrancisco: 78, chicago: 50, tokyo: 70, zurich: 60, geneva: 52, dubai: 54, hongkong: 62 },
-  'Autonomous Haulage': { perth: 100, santiago: 48, toronto: 30, johannesburg: 44, london: 20, houston: 36, singapore: 26, denver: 40, ganzhou: 30, lubumbashi: 40, brisbane: 44, adelaide: 20, sydney: 14, newyork: 12, sanfrancisco: 14, chicago: 14, tokyo: 16, zurich: 10, geneva: 10, dubai: 18, hongkong: 14 },
-  'Battery Metals': { perth: 100, santiago: 82, toronto: 48, johannesburg: 40, london: 38, houston: 34, singapore: 56, denver: 62, ganzhou: 78, lubumbashi: 90, brisbane: 46, adelaide: 58, sydney: 42, newyork: 42, sanfrancisco: 56, chicago: 38, tokyo: 48, zurich: 40, geneva: 38, dubai: 44, hongkong: 46 },
-  'Carbon Capture': { perth: 100, santiago: 38, toronto: 56, johannesburg: 34, london: 64, houston: 78, singapore: 46, denver: 58, ganzhou: 36, lubumbashi: 30, brisbane: 62, adelaide: 30, sydney: 48, newyork: 56, sanfrancisco: 66, chicago: 48, tokyo: 58, zurich: 64, geneva: 64, dubai: 50, hongkong: 52 },
-};
-
-export function activeSkillKey(query: string | null | undefined): string | null {
-  const q = (query || '').trim().toLowerCase();
-  if (!q) return null;
-  return Object.keys(SKILL_DEMAND).find((k) => k.toLowerCase() === q) || null;
-}

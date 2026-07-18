@@ -7,6 +7,7 @@ import { useShareSeries } from '../../hooks/useShareSeries';
 import { useCompanyStats } from '../../hooks/useCompanyStats';
 import { useOpenRoles } from '../../hooks/useOpenRoles';
 import { useRolesHistory } from '../../hooks/useRolesHistory';
+import { useCompanyJobs } from '../../hooks/useSkillData';
 import { CITY_COMPANIES } from '../../data/mapboxGeo';
 import { TrendChart } from './TrendChart';
 import { ShareChart } from './ShareChart';
@@ -179,6 +180,17 @@ export function CompanyPanel() {
   const liveRoles = useOpenRoles(panel?.name ?? null, panel?.companyId, open && isAU && !roleFilter);
   // Stored daily history of the live vacancy count, charted below the stats.
   const rolesHistory = useRolesHistory(panel?.companyId, open && isAU && !roleFilter);
+  // Real advertised roles + their mapped skills, from the jobs pipeline.
+  const companyJobs = useCompanyJobs(panel?.companyId, open && isAU && !roleFilter);
+  // Rank the company's real in-demand skills by how many live roles mention
+  // them; falls back to the illustrative skill chips when no jobs are stored.
+  const liveSkills = useMemo(() => {
+    if (!companyJobs?.jobs?.length) return null;
+    const counts = new Map<string, number>();
+    for (const j of companyJobs.jobs) for (const sk of j.skills) counts.set(sk, (counts.get(sk) || 0) + 1);
+    if (!counts.size) return null;
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([sk]) => sk);
+  }, [companyJobs]);
   const live = isBhp ? !!feed : REAL_DATA_IDS.includes(lastId ?? '') || !!liveShare || !!liveStats || !!liveRoles;
 
   const headcount = liveStats?.headcount || panel?.headcount || 0;
@@ -291,13 +303,44 @@ export function CompanyPanel() {
               </div>
 
               <div className="sect">
-                <div className="secth">{panel.skillsLabel}</div>
+                <div className="secth">
+                  {liveSkills ? 'Skills in demand' : panel.skillsLabel}
+                  {liveSkills && <span>from live job ads</span>}
+                </div>
                 <div className="skills">
-                  {panel.skills.map((sk) => (
+                  {(liveSkills ?? panel.skills).map((sk) => (
                     <span className="skill" key={sk}>{sk}</span>
                   ))}
                 </div>
               </div>
+
+              {companyJobs && companyJobs.jobs.length > 0 && (
+                <div className="sect">
+                  <div className="secth">
+                    Advertised roles
+                    <span>{companyJobs.count.toLocaleString('en-US')} live · sampled</span>
+                  </div>
+                  <div className="jobslist">
+                    {companyJobs.jobs.slice(0, 12).map((j, i) => (
+                      <a
+                        className="jobrow"
+                        key={`${j.t}-${i}`}
+                        href={j.url || undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <span className="jobt">{j.t}</span>
+                        <span className="jobmeta">
+                          {j.loc && <span className="jobloc">{j.loc}</span>}
+                          {j.skills.slice(0, 3).map((sk) => (
+                            <span className="jobskill" key={sk}>{sk}</span>
+                          ))}
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="sect">
                 <div className="secth">
