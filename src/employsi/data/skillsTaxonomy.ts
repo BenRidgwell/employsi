@@ -36,12 +36,14 @@ export const SKILLS: SkillDef[] = [
   { skill: 'Instrumentation & Control', cat: 'Engineering', terms: ['instrumentation', 'control systems', 'e&i', 'plc', 'scada'] },
 
   // ── Trades & operations ────────────────────────────────────────────────
-  { skill: 'Heavy Diesel Mechanic', cat: 'Trades', terms: ['diesel mechanic', 'heavy diesel', 'hd fitter', 'plant mechanic'] },
-  { skill: 'Boilermaker / Welder', cat: 'Trades', terms: ['boilermaker', 'welder', 'welding', 'fabricator'] },
-  { skill: 'Electrician', cat: 'Trades', terms: ['electrician', 'electrical trade', 'a grade electric'] },
-  { skill: 'Fitter', cat: 'Trades', terms: ['mechanical fitter', 'fitter and turner', 'maintenance fitter'] },
-  { skill: 'Heavy Equipment Operator', cat: 'Trades', terms: ['operator', 'haul truck', 'dump truck', 'excavator', 'dozer', 'loader'] },
-  { skill: 'Trades Assistant', cat: 'Trades', terms: ['trades assistant', 'ta '] },
+  // Named as skills/capabilities, not occupations: the match terms still key off
+  // the job titles that appear in postings (e.g. "Diesel Mechanic"), but the
+  // canonical skill they map to is the underlying capability.
+  { skill: 'Heavy Diesel Maintenance', cat: 'Trades', terms: ['diesel mechanic', 'heavy diesel', 'hd fitter', 'plant mechanic'] },
+  { skill: 'Welding & Fabrication', cat: 'Trades', terms: ['boilermaker', 'welder', 'welding', 'fabricator'] },
+  { skill: 'Electrical Trade', cat: 'Trades', terms: ['electrician', 'electrical trade', 'a grade electric'] },
+  { skill: 'Mechanical Fitting', cat: 'Trades', terms: ['mechanical fitter', 'fitter and turner', 'maintenance fitter'] },
+  { skill: 'Plant & Equipment Operation', cat: 'Trades', terms: ['operator', 'haul truck', 'dump truck', 'excavator', 'dozer', 'loader'] },
   { skill: 'Rigging & Scaffolding', cat: 'Trades', terms: ['rigger', 'scaffolder', 'scaffolding', 'dogman'] },
 
   // ── HSE & quality ──────────────────────────────────────────────────────
