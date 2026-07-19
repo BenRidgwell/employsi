@@ -99,10 +99,6 @@ export function ShareChart({ ticker, prices, commodities }: Props) {
   const pricePct = prices[a] ? (priceDelta / prices[a]) * 100 : 0;
   const commPct = commodity[a] ? (commDelta / commodity[a]) * 100 : 0;
 
-  // Header badge shows the full-window share-price change.
-  const winDelta = prices[n - 1] - prices[0];
-  const winPct = prices[0] ? (winDelta / prices[0]) * 100 : 0;
-
   return (
     <>
       <div className="secth">
@@ -120,7 +116,6 @@ export function ShareChart({ ticker, prices, commodities }: Props) {
         <span className="wtlgi">
           <i className="wtsw ink" />
           {ticker} share price
-          <b className={`wtlgd ${winDelta >= 0 ? 'up' : 'down'}`}>{pctStr(winPct)}</b>
         </span>
         <span className="wtlgi">
           <i className="wtsw acc" />
@@ -172,6 +167,18 @@ export function ShareChart({ ticker, prices, commodities }: Props) {
             </ChartTooltip>
           </>
         ) : null}
+
+        {/* Idle state: latest price callout on the left + flashing dot on the
+            line's endpoint (hidden while scrubbing/selecting). */}
+        {!hover && !hasRange && (
+          <>
+            <div className="gcallout">
+              <b>{money(prices[n - 1])}</b>
+              <span>latest</span>
+            </div>
+            <div className="wtdot ink flash" style={{ left: `${(x(n - 1) / W) * 100}%`, top: `${(yP(prices[n - 1]) / H) * 100}%` }} />
+          </>
+        )}
       </div>
 
       <div className="wtaxis">

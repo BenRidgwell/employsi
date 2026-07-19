@@ -193,7 +193,11 @@ export function CompanyPanel() {
   }, [companyJobs]);
   const live = isBhp ? !!feed : REAL_DATA_IDS.includes(lastId ?? '') || !!liveShare || !!liveStats || !!liveRoles;
 
-  const headcount = liveStats?.headcount || panel?.headcount || 0;
+  // Headcount is deliberately NOT taken from the live market feed — there's no
+  // live HRIS/LinkedIn API, so we use a static figure sourced from the company's
+  // latest annual report (and the prior year, for the YoY growth %). Revenue /
+  // EBITDA per employee still overlay from the live feed when present.
+  const headcount = panel?.headcount || 0;
   const revPerEmp = liveStats?.revPerEmp || panel?.revPerEmp || 0;
   const ebitdaPerEmp = liveStats?.ebitdaPerEmp || panel?.ebitdaPerEmp || 0;
 
@@ -314,34 +318,6 @@ export function CompanyPanel() {
                 </div>
               </div>
 
-              {companyJobs && companyJobs.jobs.length > 0 && (
-                <div className="sect">
-                  <div className="secth">
-                    Advertised roles
-                    <span>{companyJobs.count.toLocaleString('en-US')} live · sampled</span>
-                  </div>
-                  <div className="jobslist">
-                    {companyJobs.jobs.slice(0, 12).map((j, i) => (
-                      <a
-                        className="jobrow"
-                        key={`${j.t}-${i}`}
-                        href={j.url || undefined}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <span className="jobt">{j.t}</span>
-                        <span className="jobmeta">
-                          {j.loc && <span className="jobloc">{j.loc}</span>}
-                          {j.skills.slice(0, 3).map((sk) => (
-                            <span className="jobskill" key={sk}>{sk}</span>
-                          ))}
-                        </span>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <div className="sect">
                 <div className="secth">
                   Where they're hiring
@@ -401,7 +377,7 @@ export function CompanyPanel() {
           )}
         </div>
       </aside>
-      {panel && <NewsPanel name={panel.name} sector={panel.sector} ticker={panel.ticker} live={panel.news} />}
+      {panel && <NewsPanel key={panel.companyId} name={panel.name} sector={panel.sector} ticker={panel.ticker} live={panel.news} />}
     </div>
   );
 }

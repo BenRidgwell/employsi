@@ -34,10 +34,11 @@ function App() {
     if (skillIndex) setSkillIndex(skillIndex);
   }, [skillIndex, setSkillIndex]);
 
-  // The global Mapbox view has a dark globe/space backdrop, so the
-  // transparent-background top-bar labels + wordmark must flip to light; the
-  // domestic and local layers have a light basemap and keep the dark defaults.
-  const onDark = globalOut && zoomedOut;
+  // Both the global globe/space backdrop AND the domestic overview keep a dark
+  // backdrop behind the top-bar, so the transparent-background wordmark + labels
+  // must stay light on both. Only the local city view (a light 3D basemap)
+  // flips back to the dark defaults.
+  const onDark = zoomedOut;
 
   return (
     <div className={`app${onDark ? ' ondark' : ''}`}>

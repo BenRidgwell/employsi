@@ -67,10 +67,6 @@ function articleUrl(item: NewsItem, name: string): string {
   return item.url || 'https://news.google.com/search?q=' + encodeURIComponent(`${item.title} ${name}`);
 }
 
-function thumbUrl(seed: string, w: number, h: number): string {
-  return `https://picsum.photos/seed/${encodeURIComponent(seed)}/${w}/${h}`;
-}
-
 export function NewsPanel({ name, sector, ticker, live }: { name: string; sector: string; ticker?: string; live?: CompanyNews | null }) {
   const generated = useMemo(() => companyNews(name, sector), [name, sector]);
   const curated = CURATED_NEWS_COMPANIES.has(name);
@@ -86,10 +82,11 @@ export function NewsPanel({ name, sector, ticker, live }: { name: string; sector
 
   // Only scrape og:image for items that don't already carry a real image (live
   // GDELT items bring their own socialimage; curated items need scraping).
-  const scrapeUrls = [news.hero, ...news.items].filter((a) => a.url && !a.image).map((a) => a.url);
+  // Thumbnails are gone, but we still scrape article pages for the real
+  // publisher + publish date shown in the meta line.
+  const scrapeUrls = [news.hero, ...news.items].filter((a) => a.url).map((a) => a.url);
   const meta = useArticleImages(scrapeUrls);
   const heroMeta = news.hero.url ? meta[news.hero.url] : undefined;
-  const heroImg = news.hero.image || heroMeta?.image || thumbUrl(name + '-hero', 640, 360);
 
   // Cap the feed to recent coverage once a real publish date is known.
   const RECENT_MS = 300 * 24 * 3600 * 1000;
@@ -101,16 +98,14 @@ export function NewsPanel({ name, sector, ticker, live }: { name: string; sector
   const items = fresh.length >= 3 ? fresh : news.items.slice(0, 3);
 
   return (
-    <aside className="newspanel">
+    <aside className="newspanel newspaper">
       <div className="newshd">
         <span className="newshdname">{name}</span> in the news
       </div>
+      <div className="newsrule" />
       <div className="newsscroll">
-        <a className="newshero" href={articleUrl(news.hero, name)} target="_blank" rel="noreferrer">
-          <div className="newsheroimg">
-            <img className="newsheroimgtag" src={heroImg} alt="" loading="lazy" />
-            <span className="newsbadge">Trending</span>
-          </div>
+        <a className="newshero newsprint" style={{ animationDelay: '0.02s' }} href={articleUrl(news.hero, name)} target="_blank" rel="noreferrer">
+          <span className="newsbadge">Trending</span>
           <div className="newsherotitle">{news.hero.title}</div>
           <Meta item={news.hero} meta={heroMeta} />
         </a>
@@ -118,13 +113,12 @@ export function NewsPanel({ name, sector, ticker, live }: { name: string; sector
         {items.map((a, i) => {
           const m = a.url ? meta[a.url] : undefined;
           return (
-            <a className="newsrow" key={i} href={articleUrl(a, name)} target="_blank" rel="noreferrer">
+            <a className="newsrow newsprint" style={{ animationDelay: `${0.08 + i * 0.06}s` }} key={i} href={articleUrl(a, name)} target="_blank" rel="noreferrer">
               <div className="newsrowbody">
                 <div className="newsrowcat">{a.cat}</div>
                 <div className="newsrowtitle">{a.title}</div>
                 <Meta item={a} meta={m} />
               </div>
-              <img className="newsrowthumb" src={a.image || m?.image || thumbUrl(name + '-' + i, 160, 160)} alt="" loading="lazy" />
             </a>
           );
         })}

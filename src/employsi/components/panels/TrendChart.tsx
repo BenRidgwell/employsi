@@ -188,6 +188,18 @@ export function TrendChart(props: Props) {
             </ChartTooltip>
           </>
         ) : null}
+
+        {/* Idle state: latest headcount callout on the left + flashing dot on
+            the line's endpoint (hidden while scrubbing/selecting). */}
+        {!hover && !hasRange && (
+          <>
+            <div className="gcallout">
+              <b>{people(head[n - 1])}</b>
+              <span>headcount</span>
+            </div>
+            <div className="wtdot ink flash" style={{ left: `${(x(n - 1) / W) * 100}%`, top: `${(yH(head[n - 1]) / H) * 100}%` }} />
+          </>
+        )}
       </div>
 
       <div className="wtaxis">

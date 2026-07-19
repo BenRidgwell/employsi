@@ -62,11 +62,13 @@ export function RolesHistoryChart({ points, current }: { points: RolePoint[]; cu
               <path className="rharea" d={geom.area} />
               <path className="rhline" d={geom.line} vectorEffect="non-scaling-stroke" />
             </svg>
-            {/* Flashing marker on today's point, labelled with the current count. */}
-            <div className="rhnow" style={{ left: `${geom.lastX}%`, top: `${geom.lastY}%` }}>
-              <span className="rhpulse" />
-              <span className="rhnowval">{num(latest)}</span>
+            {/* Current count callout, pinned to the left; flashing dot sits on
+                the line's endpoint. */}
+            <div className="gcallout">
+              <b>{num(latest)}</b>
+              <span>live now</span>
             </div>
+            <span className="rhpulse" style={{ left: `${geom.lastX}%`, top: `${geom.lastY}%` }} />
           </div>
           <div className="rhaxis">
             <span>{fmtDate(pts[0].d)}</span>

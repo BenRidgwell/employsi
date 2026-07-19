@@ -11,6 +11,29 @@ function fmtMonth(ym: string): string {
   return mi >= 0 && mi < 12 ? `${MON[mi]} ${y}` : ym;
 }
 
+// Key global / economic events, to give the vacancy history broader context as
+// the user scrubs the slider. Each has the YYYY-MM it began; the label shown is
+// the most recent event on or before the selected month (the "era" you're in).
+const EVENTS: { ym: string; label: string }[] = [
+  { ym: '2007-08', label: 'Global Financial Crisis' },
+  { ym: '2009-01', label: 'Bitcoin launched' },
+  { ym: '2011-09', label: 'Mining investment boom' },
+  { ym: '2014-11', label: 'Oil price crash' },
+  { ym: '2016-06', label: 'Brexit referendum' },
+  { ym: '2020-03', label: 'COVID-19 pandemic' },
+  { ym: '2021-06', label: 'Post-COVID hiring boom' },
+  { ym: '2022-02', label: 'War in Ukraine · inflation surge' },
+  { ym: '2022-11', label: 'Generative-AI boom (ChatGPT)' },
+];
+function eventFor(ym: string): string | null {
+  let cur: string | null = null;
+  for (const e of EVENTS) {
+    if (e.ym <= ym) cur = e.label;
+    else break;
+  }
+  return cur;
+}
+
 // The map is neutral until a skill is searched, so the legend only appears then
 // — showing the demand scale for the active skill. On the Australian domestic
 // view it also carries a time slider that scrubs the real Jobs & Skills
@@ -69,6 +92,12 @@ export function HeatKey() {
             <span>{fmtMonth(IVI_MONTHS[0])}</span>
             <span>{fmtMonth(IVI_MONTHS[lastIdx])}</span>
           </div>
+          {eventFor(IVI_MONTHS[idx]) && (
+            <div className="hktimeevent">
+              <span className="hktimedot" />
+              {eventFor(IVI_MONTHS[idx])}
+            </div>
+          )}
         </div>
       )}
     </div>
