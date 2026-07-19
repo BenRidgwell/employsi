@@ -4,13 +4,12 @@ import { Ticker } from "@/components/Ticker";
 import { Showcase } from "@/components/Showcase";
 import { ArrowUpRight } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import { useState } from "react";
+import ridgwellPhoto from "@/assets/ridgwell_photo.jpeg.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
