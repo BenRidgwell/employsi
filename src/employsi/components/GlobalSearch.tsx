@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../state/store';
 import { GLOBAL_HUB_LABEL } from '../data/geo';
 import { ALL_SKILLS } from '../data/skillsTaxonomy';
+import { IVI_SKILL_NATIONAL } from '../data/iviSkillDemand';
 import { popularSkills as popularSkillsForLayer } from '../lib/skillHeat';
 import { COMPANIES } from '../data/companies';
 import { cityForCompany } from '../data/mapboxGeo';
@@ -56,7 +57,11 @@ export function GlobalSearch() {
       .slice(0, 6)
       .map((sk) => {
         const total = skillIndex?.skills[sk]?.total ?? 0;
-        return { kind: 'skill' as const, id: sk, label: sk, sub: total ? `${total} live roles` : 'skill' };
+        // Fall back to the real AU IVI national vacancy count for skills the
+        // live company feed doesn't cover (health, education, trades, …).
+        const ivi = IVI_SKILL_NATIONAL[sk] ?? 0;
+        const sub = total ? `${total} live roles` : ivi ? `${ivi.toLocaleString('en-US')} AU vacancies` : 'skill';
+        return { kind: 'skill' as const, id: sk, label: sk, sub };
       });
     return [...skills, ...companies, ...cities];
   }, [q, skillIndex]);

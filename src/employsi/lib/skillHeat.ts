@@ -1,7 +1,17 @@
 import { ALL_SKILLS } from '../data/skillsTaxonomy';
 import { CITY_COMPANIES } from '../data/mapboxGeo';
 import { REGION_HUBS } from '../data/mapboxWorldGeo';
+import { IVI_SKILL_BY_CITY, IVI_SKILLS } from '../data/iviSkillDemand';
 import type { SkillIndex } from './skillsFn';
+
+// Real Jobs & Skills Australia IVI internet-vacancy demand for a skill across the
+// AU capital-city hubs (WA→Perth, SA→Adelaide, QLD→Brisbane, VIC→Melbourne,
+// NSW→Sydney). Empty when the skill has no IVI demand. Used to colour the AU
+// domestic heat map with whole-of-market government data.
+export function iviCityDemand(skill: string | null): Record<string, number> {
+  if (!skill) return {};
+  return IVI_SKILL_BY_CITY[skill] || {};
+}
 
 // The canonical skill a search query resolves to (exact, case-insensitive), or
 // null if the query isn't a tracked skill. When non-null the maps switch from
@@ -35,6 +45,12 @@ export interface LayerCtx {
   localCity: string;
 }
 export function popularSkills(idx: SkillIndex | null, ctx: LayerCtx, n = 10): string[] {
+  // AU domestic view: rank by real Jobs & Skills Australia IVI demand — the
+  // whole Australian labour market, not just the mapped companies. IVI_SKILLS is
+  // pre-sorted by national vacancy count, so the head is the most in-demand.
+  if (ctx.zoomedOut && !ctx.globalOut && ctx.domesticRegion === 'australia' && IVI_SKILLS.length) {
+    return IVI_SKILLS.slice(0, n);
+  }
   if (!idx) return ALL_SKILLS.slice(0, n);
   let demandOf: (agg: SkillIndex['skills'][string]) => number;
   if (!ctx.zoomedOut) {

@@ -2,7 +2,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef } from 'react';
 import { useAppStore, cityMatchesFilters, type FilterState } from '../state/store';
-import { activeSkill, demandByCity } from '../lib/skillHeat';
+import { activeSkill, demandByCity, iviCityDemand } from '../lib/skillHeat';
 import {
   HUB_LNGLAT,
   AU_CITY_LNGLAT,
@@ -384,7 +384,16 @@ export function WorldMapbox() {
       if (!s.zoomedOut || s.zoomingIn) return; // overview not showing
       const mode = viewModeOf(s.globalOut);
       const skill = activeSkill(s.searchQuery);
-      const cityDemand = demandByCity(s.skillIndex, skill);
+      let cityDemand = demandByCity(s.skillIndex, skill);
+      // On the AU domestic view, overlay the real Jobs & Skills Australia IVI
+      // vacancy demand (whole labour market) on top of the company/Adzuna
+      // counts, so the Australian hubs light up with government data even for
+      // skills no mapped company advertises.
+      if (mode === 'domestic' && s.domesticRegion === 'australia' && skill) {
+        const ivi = iviCityDemand(skill);
+        cityDemand = { ...cityDemand };
+        for (const [c, v] of Object.entries(ivi)) cityDemand[c] = (cityDemand[c] || 0) + v;
+      }
       const fs: FilterState = {
         searchQuery: s.searchQuery,
         activeSectors: s.activeSectors,
