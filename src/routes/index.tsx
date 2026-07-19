@@ -82,7 +82,7 @@ function Nav() {
     <header className="sticky top-[42px] z-30 border-b border-hairline bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-6 lg:px-10">
         <EmploysiLockup size={26} />
-        <AboutModal />
+        <AboutPopover />
       </div>
     </header>
   );
