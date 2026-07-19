@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import { useAppStore } from '../state/store';
 import { activeSkill } from '../lib/skillHeat';
 import { skillLegend } from '../lib/heat';
-import { IVI_MONTHS, IVI_SOURCE } from '../data/iviSkillDemand';
+import { IVI_MONTHS } from '../data/iviSkillDemand';
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 function fmtMonth(ym: string): string {
@@ -67,7 +67,6 @@ export function HeatKey() {
           />
           <div className="hktimeends">
             <span>{fmtMonth(IVI_MONTHS[0])}</span>
-            <span className="hktimesrc">{IVI_SOURCE.split('—')[0].trim()}</span>
             <span>{fmtMonth(IVI_MONTHS[lastIdx])}</span>
           </div>
         </div>

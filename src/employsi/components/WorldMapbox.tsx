@@ -125,6 +125,16 @@ function heatColor(t: number): string {
   return `rgb(${c(0)},${c(1)},${c(2)})`;
 }
 
+// Shared 0..1 position of a city's demand within the visible set. The sqrt
+// curve spreads the low end so near-bottom cities (e.g. Perth vs Adelaide)
+// separate visibly instead of both flattening to pure green. BOTH the city dot
+// colour and the heat-blob weight use this same value, so a dot and its blob
+// always tell the same story.
+function heatT(v: number, mn: number, mx: number): number {
+  const r = (v - mn) / ((mx - mn) || 1);
+  return Math.sqrt(Math.max(0, Math.min(1, r)));
+}
+
 // Which markers to show for the current view. City dots stay neutral until a
 // skill is searched (then the skill-demand blobs carry all the colour). Always
 // filtered by the active sectors.
@@ -177,7 +187,7 @@ function computeMarkers(
       const mx = Math.max(...vals);
       out.forEach((m) => {
         const v = demand[m.id] || 0;
-        if (v > 0) m.color = heatColor((v - mn) / ((mx - mn) || 1));
+        if (v > 0) m.color = heatColor(heatT(v, mn, mx));
       });
     }
   }
@@ -225,8 +235,10 @@ function buildSkillHeat(
   const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
   const features: GeoJSON.Feature[] = [];
   ids.forEach((id) => {
-    const t = (demand[id] - mn) / ((mx - mn) || 1);
-    const w = 0.45 + 0.55 * t; // strong floor so low-demand hubs still read
+    // Same curve as the city dot (heatT) so a hub's dot colour and its blob
+    // strength always agree. Small floor so the lowest hub is a faint green
+    // wash, not a strong blob.
+    const w = 0.1 + 0.9 * heatT(demand[id], mn, mx);
     const [lng, lat] = table[id];
     for (let i = 0; i < 6; i++) {
       const jx = i === 0 ? 0 : (rnd() - 0.5) * 5.4;
@@ -497,21 +509,25 @@ export function WorldMapbox() {
         source: SKILL_SOURCE,
         paint: {
           'heatmap-weight': ['get', 'w'],
-          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 1, 1.25, 4, 1.6, 6, 1.9],
+          // Lower intensity so the (now wider) demand range spreads across the
+          // whole colour ramp instead of clipping to red — this is what makes
+          // the difference between hubs read clearly.
+          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 1, 0.95, 4, 1.1, 6, 1.25],
           // Blobs grow with zoom so they stay continent-/region-scaled.
           'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 1, 34, 3, 72, 5, 130, 7, 210],
-          // Fade out as we approach the local-city hand-off zoom.
-          'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 1, 0.95, 5, 0.9, 6.5, 0],
-          // Green (low demand) -> amber -> red (high), matching the app ramp.
-          // Punchier alphas so the blobs read clearly against both backdrops.
+          // Fade out as we approach the local-city hand-off zoom. Eased back off
+          // full opacity so the basemap still reads through the blobs.
+          'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 1, 0.8, 5, 0.76, 6.5, 0],
+          // Green (low) -> lime -> amber -> red (high), matching the city-dot
+          // ramp so a hub's dot and its blob agree.
           'heatmap-color': [
             'interpolate', ['linear'], ['heatmap-density'],
             0, 'rgba(21,157,103,0)',
-            0.15, 'rgba(21,157,103,0.55)',
-            0.4, 'rgba(120,190,60,0.68)',
-            0.6, 'rgba(245,166,35,0.8)',
-            0.8, 'rgba(224,82,74,0.9)',
-            1, 'rgba(214,54,46,0.98)',
+            0.12, 'rgba(21,157,103,0.42)',
+            0.35, 'rgba(120,190,60,0.55)',
+            0.55, 'rgba(245,166,35,0.68)',
+            0.78, 'rgba(224,82,74,0.8)',
+            1, 'rgba(214,54,46,0.88)',
           ],
         },
       });
