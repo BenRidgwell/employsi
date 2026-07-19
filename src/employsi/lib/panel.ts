@@ -1,5 +1,6 @@
 import { COMPANIES, companyGroup } from '../data/companies';
 import { COMPANY_CULTURE, INDUSTRY_BENCH, type Layoff } from '../data/culture';
+import { COMPANY_HEADCOUNT } from '../data/companyHeadcount';
 import type { CompanyNews } from '../data/news';
 import type { BhpFeed } from '../data/bhpFeed';
 
@@ -68,6 +69,8 @@ export function buildPanel(id: string | null, roleTitle?: string | null, live?: 
   // present, so counts, bars and the "biggest hiring area" all move.
   const roleList = live ? live.roles : c.roles;
   const topRole = roleList.reduce((a, b) => (b.count > a.count ? b : a)).title;
+  // Real annual-report headcount (static), where we have it.
+  const hc = COMPANY_HEADCOUNT[c.id];
 
   let bigStats: BigStat[];
   let subStats: SubStat[];
@@ -96,13 +99,20 @@ export function buildPanel(id: string | null, roleTitle?: string | null, live?: 
     const openRoles = live ? live.openRoles : c.openRoles;
     const salary = live ? live.salary : c.salary;
     const metroDelta = live ? live.metroDelta : c.metroDelta;
-    const growth = live ? live.growth : c.growth;
+    // Headcount growth: real YoY from the company's annual report where we have
+    // it (static, not a live feed), else the illustrative figure.
+    const growth = hc ? hc.yoy : live ? live.growth : c.growth;
     const gPos = growth >= 0;
     const gStr = (gPos ? '+' : '') + growth.toFixed(1) + '%';
     bigStats = [
       { value: openRoles, label: 'Open roles', sub: 'hiring now', subCls: '' },
       { value: salary, label: 'Median salary', sub: metroDelta, subCls: '' },
-      { value: gStr, label: 'Headcount YoY', sub: gPos ? 'growing' : 'shrinking', subCls: gPos ? '' : 'neg' },
+      {
+        value: gStr,
+        label: 'Headcount YoY',
+        sub: hc ? `${hc.now.toLocaleString('en-US')} · ${hc.asof}` : gPos ? 'growing' : 'shrinking',
+        subCls: gPos ? '' : 'neg',
+      },
     ];
     subStats = [glassSub2, { value: topRole, label: 'Biggest hiring area' }];
   }
@@ -119,7 +129,7 @@ export function buildPanel(id: string | null, roleTitle?: string | null, live?: 
     bigStats,
     subStats,
     trend: live ? live.trend : c.trend,
-    headcount: live ? live.headcount : c.headcount,
+    headcount: hc ? hc.now : live ? live.headcount : c.headcount,
     revPerEmp: live ? live.revPerEmp : c.revPerEmp,
     ebitdaPerEmp: live ? live.ebitdaPerEmp : c.ebitdaPerEmp,
     skillsLabel: 'Skills in demand',
