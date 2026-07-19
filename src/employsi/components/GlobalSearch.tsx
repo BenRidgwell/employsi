@@ -3,6 +3,7 @@ import { useAppStore } from '../state/store';
 import { GLOBAL_HUB_LABEL } from '../data/geo';
 import { ALL_SKILLS } from '../data/skillsTaxonomy';
 import { popularSkills as popularSkillsForLayer, demandLevel, type DemandTone } from '../lib/skillHeat';
+import { describeSkills } from '../lib/describeSkills';
 import { COMPANIES } from '../data/companies';
 import { cityForCompany } from '../data/mapboxGeo';
 
@@ -52,16 +53,18 @@ export function GlobalSearch() {
       .filter(([, label]) => label.toLowerCase().includes(q))
       .slice(0, 6)
       .map(([id, label]) => ({ kind: 'city' as const, id, label }));
-    const skills: Result[] = ALL_SKILLS.filter((sk) => sk.toLowerCase().includes(q))
-      .slice(0, 6)
-      .map((sk) => {
-        // Demand level (Low / Moderate / High), contextual to the layer the
-        // search was made on: domestic → AU IVI, global → live company index.
-        const badge = demandLevel(sk, globalOut, skillIndex);
-        return { kind: 'skill' as const, id: sk, label: sk, sub: badge.label, tone: badge.tone };
-      });
+    // Direct name matches first, then skills inferred from the description via
+    // the O*NET ontology ("workforce planning" → Human Resources), deduped.
+    const direct = ALL_SKILLS.filter((sk) => sk.toLowerCase().includes(q));
+    const described = describeSkills(searchQuery).filter((sk) => !direct.includes(sk));
+    const skills: Result[] = [...direct, ...described].slice(0, 7).map((sk) => {
+      // Demand level (Low / Moderate / High), contextual to the layer the
+      // search was made on: domestic → AU IVI, global → live company index.
+      const badge = demandLevel(sk, globalOut, skillIndex);
+      return { kind: 'skill' as const, id: sk, label: sk, sub: badge.label, tone: badge.tone };
+    });
     return [...skills, ...companies, ...cities];
-  }, [q, skillIndex, globalOut]);
+  }, [q, searchQuery, skillIndex, globalOut]);
 
   // Show over the global AND domestic overviews (both are zoomedOut) — never
   // stranded above a local city map, where the top-right search takes over.
