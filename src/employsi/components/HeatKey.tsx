@@ -1,14 +1,39 @@
+import type { CSSProperties } from 'react';
 import { useAppStore } from '../state/store';
 import { activeSkill } from '../lib/skillHeat';
 import { skillLegend } from '../lib/heat';
+import { IVI_MONTHS, IVI_SOURCE } from '../data/iviSkillDemand';
+
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function fmtMonth(ym: string): string {
+  const [y, m] = (ym || '').split('-');
+  const mi = Number(m) - 1;
+  return mi >= 0 && mi < 12 ? `${MON[mi]} ${y}` : ym;
+}
 
 // The map is neutral until a skill is searched, so the legend only appears then
-// — showing the demand scale for the active skill.
+// — showing the demand scale for the active skill. On the Australian domestic
+// view it also carries a time slider that scrubs the real Jobs & Skills
+// Australia IVI history (2006 → latest) so the heat map animates as demand
+// shifts over time.
 export function HeatKey() {
   const searchQuery = useAppStore((s) => s.searchQuery);
+  const zoomedOut = useAppStore((s) => s.zoomedOut);
+  const globalOut = useAppStore((s) => s.globalOut);
+  const domesticRegion = useAppStore((s) => s.domesticRegion);
+  const heatMonth = useAppStore((s) => s.heatMonth);
+  const setHeatMonth = useAppStore((s) => s.setHeatMonth);
   const skill = activeSkill(searchQuery);
   if (!skill) return null;
   const key = skillLegend(skill);
+
+  // Time slider only on the AU domestic view, where the IVI history drives it.
+  const showTime = zoomedOut && !globalOut && domesticRegion === 'australia' && IVI_MONTHS.length > 1;
+  const lastIdx = IVI_MONTHS.length - 1;
+  const idx = Math.max(0, Math.min(lastIdx, heatMonth));
+  const isLatest = idx === lastIdx;
+  const pct = (idx / lastIdx) * 100;
+  const fill: CSSProperties = { '--fill': `${pct}%` } as CSSProperties;
 
   return (
     <div className="heatkey">
@@ -21,6 +46,30 @@ export function HeatKey() {
         <span className="hkmute">Low → High</span>
         <span className="hkv">{key.hi}</span>
       </div>
+      {showTime && (
+        <div className="hktime">
+          <div className="hktimehd">
+            <span className="hktimemonth">{fmtMonth(IVI_MONTHS[idx])}</span>
+            <span className="hktimenow">{isLatest ? 'Now · last 3 months' : 'Historic'}</span>
+          </div>
+          <input
+            type="range"
+            className="hkslider"
+            style={fill}
+            min={0}
+            max={lastIdx}
+            step={1}
+            value={idx}
+            onChange={(e) => setHeatMonth(Number(e.target.value))}
+            aria-label="Vacancy month"
+          />
+          <div className="hktimeends">
+            <span>{fmtMonth(IVI_MONTHS[0])}</span>
+            <span className="hktimesrc">{IVI_SOURCE.split('—')[0].trim()}</span>
+            <span>{fmtMonth(IVI_MONTHS[lastIdx])}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

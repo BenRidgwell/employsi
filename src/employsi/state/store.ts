@@ -4,6 +4,7 @@ import { CITY_CONTINENT } from '../data/geo';
 import { CITY_COMPANIES, cityForCompany } from '../data/mapboxGeo';
 import type { HeatMetric } from '../lib/heat';
 import type { SkillIndex } from '../lib/skillsFn';
+import { IVI_MONTHS } from '../data/iviSkillDemand';
 
 export interface Account {
   name: string;
@@ -31,6 +32,9 @@ export interface AppState {
   // Live skill-demand index from the jobs pipeline (loaded from KV). Drives the
   // real skill-demand heat map when a skill is the active search.
   skillIndex: SkillIndex | null;
+  // Index into IVI_MONTHS for the AU-domestic time slider (defaults to the
+  // latest month). Lets the user scrub the skill heat map back to 2006.
+  heatMonth: number;
   activeSectors: string[];
   activeExchanges: string[];
   minSalary: number;
@@ -78,6 +82,7 @@ export interface AppState {
   setSearchQuery: (q: string) => void;
   clearSearch: () => void;
   setSkillIndex: (idx: SkillIndex | null) => void;
+  setHeatMonth: (i: number) => void;
   toggleSector: (cat: string) => void;
   toggleExchange: (ex: string) => void;
   setMinSalary: (v: number) => void;
@@ -191,6 +196,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   heatOpen: false,
   searchQuery: '',
   skillIndex: null,
+  heatMonth: Math.max(0, IVI_MONTHS.length - 1),
   activeSectors: [],
   activeExchanges: [],
   minSalary: 130,
@@ -273,6 +279,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSearchQuery: (q) => set({ searchQuery: q }),
   clearSearch: () => set({ searchQuery: '' }),
   setSkillIndex: (idx) => set({ skillIndex: idx }),
+  setHeatMonth: (i) => set({ heatMonth: Math.max(0, Math.min(IVI_MONTHS.length - 1, Math.round(i))) }),
   toggleSector: (cat) =>
     set((s) => {
       const has = s.activeSectors.includes(cat);

@@ -73,6 +73,10 @@ def main(path):
     last = len(header) - 1
     month = header[last]
     month_str = month.strftime('%B %Y') if hasattr(month, 'strftime') else str(month)
+    months = [(header[ci].strftime('%Y-%m') if hasattr(header[ci], 'strftime') else str(header[ci])[:7])
+              for ci in range(3, last + 1)]
+    nmonths = len(months)
+    ACC_STATES = list(STATE2CITY.keys()) + ['AUST']
 
     def num(v):
         try:
@@ -80,33 +84,43 @@ def main(path):
         except Exception:
             return 0
 
-    occ = {}
+    # series[skill][state] = monthly [int] of length nmonths, summed across the
+    # occupations that map to that skill. AUST is kept for the national series.
+    series = {}
+
+    def acc(skill, state, vals):
+        arr = series.setdefault(skill, {}).get(state)
+        if arr is None:
+            arr = [0] * nmonths
+            series[skill][state] = arr
+        for i, v in enumerate(vals):
+            arr[i] += v
+
+    code_skills = {}
+    tot_latest = mapped_latest = 0
     for r in it:
         code = str(r[0]).strip() if r[0] is not None else ''
         title = (r[1] or '').strip()
         st = (r[2] or '').strip()
-        if not code or not title:
+        if not code or not title or code in ('.', '0') or 'Total' in title:
             continue
-        occ.setdefault(code, {'title': title, 'states': {}})['states'][st] = num(r[last])
+        if code not in code_skills:
+            code_skills[code] = OVERRIDE.get(code) or skills_for(title)
+        sk = code_skills[code]
+        vals = [num(r[ci]) for ci in range(3, last + 1)]
+        if st == 'AUST':
+            tot_latest += vals[-1]
+            if sk:
+                mapped_latest += vals[-1]
+        if sk and st in ACC_STATES:
+            for s in sk:
+                acc(s, st, vals)
 
-    by_city, nat, mapped, tot = {}, {}, 0, 0
-    for code, e in occ.items():
-        if code in ('.', '0') or 'Total' in e['title']:
-            continue
-        a = e['states'].get('AUST', 0)
-        tot += a
-        sk = OVERRIDE.get(code) or skills_for(e['title'])
-        if not sk:
-            continue
-        mapped += a
-        for s in sk:
-            nat[s] = nat.get(s, 0) + a
-            d = by_city.setdefault(s, {})
-            for st, city in STATE2CITY.items():
-                d[city] = d.get(city, 0) + e['states'].get(st, 0)
-
-    order = sorted(nat, key=lambda s: -nat[s])
+    order = sorted(series, key=lambda s: -series[s].get('AUST', [0])[-1])
+    nat = {s: series[s].get('AUST', [0] * nmonths)[-1] for s in order}
+    by_city = {s: {city: series[s].get(st, [0] * nmonths)[-1] for st, city in STATE2CITY.items()} for s in order}
     obj = lambda d: '{ ' + ', '.join(f'{c}: {d.get(c, 0)}' for c in CITIES) + ' }'
+
     L = []
     L.append('// GENERATED — do not edit by hand. Run scripts/gen-ivi-skill-demand.py.')
     L.append('// Source: Jobs and Skills Australia Internet Vacancy Index (IVI), ANZSCO4')
@@ -115,31 +129,47 @@ def main(path):
     L.append('// skillsTaxonomy terms, then summed per skill. State totals are attributed to')
     L.append('// that state\'s capital-city hub (WA->Perth, SA->Adelaide, QLD->Brisbane,')
     L.append('// VIC->Melbourne, NSW->Sydney); the national figure is the true AUST total.')
+    L.append('// IVI_SERIES holds the full monthly history (2006-> latest) for the time')
+    L.append('// slider; the latest month equals the last element of each array.')
     L.append('')
     L.append(f"export const IVI_MONTH = '{month_str}';")
     L.append('export const IVI_SOURCE =')
     L.append("  'Jobs and Skills Australia — Internet Vacancy Index (ANZSCO4, 3-month average)';")
     L.append('')
-    L.append('// Skill → AU capital-city hub → internet-vacancy count.')
+    L.append('// Monthly labels (YYYY-MM) indexing the IVI_SERIES arrays, oldest first.')
+    L.append('export const IVI_MONTHS: string[] = ' + json.dumps(months) + ';')
+    L.append('')
+    L.append('// Skill → AU capital-city hub → monthly internet-vacancy history.')
+    L.append('export const IVI_SERIES: Record<string, Record<string, number[]>> = {')
+    for s in order:
+        L.append(f'  {json.dumps(s)}: {{')
+        for st, city in STATE2CITY.items():
+            arr = series[s].get(st, [0] * nmonths)
+            L.append(f'    {city}: [{",".join(map(str, arr))}],')
+        L.append('  },')
+    L.append('};')
+    L.append('')
+    L.append('// Skill → latest-month AU capital-city vacancy count (current heat map).')
     L.append('export const IVI_SKILL_BY_CITY: Record<string, Record<string, number>> = {')
     for s in order:
         L.append(f'  {json.dumps(s)}: {obj(by_city[s])},')
     L.append('};')
     L.append('')
-    L.append('// Skill → national internet-vacancy count (drives the AU popular-skills rank).')
+    L.append('// Skill → latest-month national vacancy count (drives the AU popular-skills rank).')
     L.append('export const IVI_SKILL_NATIONAL: Record<string, number> = {')
     for s in order:
         L.append(f'  {json.dumps(s)}: {nat[s]},')
     L.append('};')
     L.append('')
-    L.append('// Skills that carry real IVI demand, most in-demand first.')
+    L.append('// Skills that carry real IVI demand, most in-demand first (latest month).')
     L.append('export const IVI_SKILLS: string[] = [')
     for s in order:
         L.append(f'  {json.dumps(s)},')
     L.append('];')
     L.append('')
     open(OUT, 'w').write('\n'.join(L))
-    print(f'{month_str}: mapped {mapped}/{tot} vac ({100*mapped/tot:.1f}%), {len(order)} skills -> {OUT}')
+    print(f'{month_str}: mapped {mapped_latest}/{tot_latest} vac ({100*mapped_latest/tot_latest:.1f}%), '
+          f'{len(order)} skills, {nmonths} months -> {OUT}')
 
 
 if __name__ == '__main__':

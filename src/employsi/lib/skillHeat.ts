@@ -1,7 +1,7 @@
 import { ALL_SKILLS } from '../data/skillsTaxonomy';
 import { CITY_COMPANIES } from '../data/mapboxGeo';
 import { REGION_HUBS } from '../data/mapboxWorldGeo';
-import { IVI_SKILL_BY_CITY, IVI_SKILLS } from '../data/iviSkillDemand';
+import { IVI_SKILL_BY_CITY, IVI_SKILLS, IVI_SERIES, IVI_MONTHS } from '../data/iviSkillDemand';
 import type { SkillIndex } from './skillsFn';
 
 // Real Jobs & Skills Australia IVI internet-vacancy demand for a skill across the
@@ -11,6 +11,20 @@ import type { SkillIndex } from './skillsFn';
 export function iviCityDemand(skill: string | null): Record<string, number> {
   if (!skill) return {};
   return IVI_SKILL_BY_CITY[skill] || {};
+}
+
+// Same, but at a specific month in the IVI history (index into IVI_MONTHS), so
+// the time slider can scrub the heat map back to 2006. Falls back to the latest
+// month when the index is out of range.
+export function iviCityDemandAt(skill: string | null, monthIndex: number): Record<string, number> {
+  if (!skill) return {};
+  const series = IVI_SERIES[skill];
+  if (!series) return {};
+  const last = IVI_MONTHS.length - 1;
+  const i = monthIndex < 0 || monthIndex > last ? last : monthIndex;
+  const out: Record<string, number> = {};
+  for (const city of Object.keys(series)) out[city] = series[city][i] ?? 0;
+  return out;
 }
 
 // The canonical skill a search query resolves to (exact, case-insensitive), or

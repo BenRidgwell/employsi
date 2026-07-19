@@ -2,7 +2,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef } from 'react';
 import { useAppStore, cityMatchesFilters, type FilterState } from '../state/store';
-import { activeSkill, demandByCity, iviCityDemand } from '../lib/skillHeat';
+import { activeSkill, demandByCity, iviCityDemandAt } from '../lib/skillHeat';
 import {
   HUB_LNGLAT,
   AU_CITY_LNGLAT,
@@ -275,6 +275,7 @@ export function WorldMapbox() {
   const maxAttrition = useAppStore((s) => s.maxAttrition);
   const searchQuery = useAppStore((s) => s.searchQuery);
   const skillIndex = useAppStore((s) => s.skillIndex);
+  const heatMonth = useAppStore((s) => s.heatMonth);
 
   // Mount once: create the map, add the hub source/layers, and wire clicks +
   // scroll-zoom layer crossing. All reads of live state happen through the
@@ -390,7 +391,7 @@ export function WorldMapbox() {
       // counts, so the Australian hubs light up with government data even for
       // skills no mapped company advertises.
       if (mode === 'domestic' && s.domesticRegion === 'australia' && skill) {
-        const ivi = iviCityDemand(skill);
+        const ivi = iviCityDemandAt(skill, s.heatMonth);
         cityDemand = { ...cityDemand };
         for (const [c, v] of Object.entries(ivi)) cityDemand[c] = (cityDemand[c] || 0) + v;
       }
@@ -653,7 +654,7 @@ export function WorldMapbox() {
   useEffect(() => {
     rebuildMarkersRef.current?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, activeSectors, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition, searchQuery, skillIndex]);
+  }, [selectedId, activeSectors, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition, searchQuery, skillIndex, heatMonth]);
 
   // Hide the whole overview once fully in a local city (PerthMapbox owns it).
   const hidden = !zoomedOut && !zoomingIn;

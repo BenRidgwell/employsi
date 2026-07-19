@@ -3462,6 +3462,101 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+/* IVI time slider under the gradient key (AU domestic view only). */
+.hktime {
+  margin-top: 2px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+}
+.hktimehd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.hktimemonth {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.hktimenow {
+  font-size: 8.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--slate);
+}
+.hkslider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 5px;
+  margin: 9px 0 6px;
+  border-radius: 999px;
+  cursor: pointer;
+  background: linear-gradient(
+    to right,
+    var(--ink) 0%,
+    var(--ink) var(--fill, 100%),
+    #e4e6ea var(--fill, 100%),
+    #e4e6ea 100%
+  );
+}
+.hkslider::-webkit-slider-runnable-track {
+  -webkit-appearance: none;
+  height: 5px;
+  border-radius: 999px;
+  background: transparent;
+}
+.hkslider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -5.5px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--ink);
+  box-shadow: 0 3px 8px -2px rgba(15, 27, 61, 0.4);
+  cursor: pointer;
+}
+.hkslider::-moz-range-track {
+  height: 5px;
+  border-radius: 999px;
+  background: #e4e6ea;
+}
+.hkslider::-moz-range-progress {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--ink);
+}
+.hkslider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--ink);
+  box-shadow: 0 3px 8px -2px rgba(15, 27, 61, 0.4);
+  cursor: pointer;
+}
+.hktimeends {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 8.5px;
+  font-weight: 600;
+  color: var(--slate);
+}
+.hktimesrc {
+  font-size: 8px;
+  opacity: 0.75;
+  text-align: center;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .legend b {
   color: var(--ink);
   font-weight: 700;
