@@ -51,21 +51,21 @@ function AboutPopover() {
         align="end"
         side="bottom"
         sideOffset={8}
-        className="z-50 w-80 rounded-3xl border-hairline bg-surface p-0 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.28)]"
+        className="z-50 w-72 rounded-3xl border-hairline bg-surface p-0 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.28)]"
       >
-        <div className="flex flex-col items-center px-6 pt-8 pb-7 text-center">
-          <div className="mb-5 h-24 w-24 overflow-hidden rounded-full border-2 border-hairline bg-surface-2 shadow-sm">
+        <div className="flex flex-col items-center px-5 pt-7 pb-6 text-center">
+          <div className="mb-4 h-20 w-20 overflow-hidden rounded-full border-2 border-hairline bg-surface-2 shadow-sm">
             <img
               src={ridgwellPhoto.url}
               alt="Ben Ridgwell"
               className="h-full w-full object-cover"
             />
           </div>
-          <div className="space-y-2.5 text-center">
-            <h2 className="text-xl font-bold tracking-tight text-ink">
+          <div className="space-y-2 text-center">
+            <h2 className="text-lg font-bold tracking-tight text-ink">
               Hi, I'm Ben
             </h2>
-            <p className="text-[14px] leading-relaxed text-ink-2">
+            <p className="text-[13px] leading-relaxed text-ink-2">
               I'm a Director at a Big 4 consulting firm. I built Employsi to break down the
               barriers of HR data visibility — creating transparency for both employees and
               employers, akin to the way financial data is shared.
