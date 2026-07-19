@@ -1,8 +1,51 @@
 import { ALL_SKILLS } from '../data/skillsTaxonomy';
 import { CITY_COMPANIES } from '../data/mapboxGeo';
 import { REGION_HUBS } from '../data/mapboxWorldGeo';
-import { IVI_SKILL_BY_CITY, IVI_SKILLS, IVI_SERIES, IVI_MONTHS } from '../data/iviSkillDemand';
+import { IVI_SKILL_BY_CITY, IVI_SKILLS, IVI_SERIES, IVI_MONTHS, IVI_SKILL_NATIONAL } from '../data/iviSkillDemand';
 import type { SkillIndex } from './skillsFn';
+
+// Demand level for a skill, bucketed Low / Moderate / High and coloured
+// green / amber / red — contextual to the layer the search was made on:
+//   • domestic → the AU IVI national vacancy count (whole labour market)
+//   • global   → the live company/hub demand index
+// Bucketing is relative to the distribution of all skills at that layer, so the
+// label answers "how in-demand is this skill, here" rather than a raw count.
+export type DemandTone = 'lo' | 'mid' | 'hi';
+export interface DemandBadge {
+  label: string;
+  tone: DemandTone;
+}
+const qtile = (arr: number[], p: number): number =>
+  arr.length ? arr[Math.min(arr.length - 1, Math.floor(p * arr.length))] : 0;
+const IVI_SORTED = Object.values(IVI_SKILL_NATIONAL)
+  .filter((v) => v > 0)
+  .sort((a, b) => a - b);
+const IVI_LO = qtile(IVI_SORTED, 0.34);
+const IVI_HI = qtile(IVI_SORTED, 0.67);
+
+export function demandLevel(skill: string, global: boolean, idx: SkillIndex | null): DemandBadge {
+  let v: number;
+  let lo: number;
+  let hi: number;
+  if (global) {
+    const totals = idx
+      ? Object.values(idx.skills)
+          .map((s) => s.total)
+          .filter((x) => x > 0)
+          .sort((a, b) => a - b)
+      : [];
+    v = idx?.skills[skill]?.total ?? 0;
+    lo = qtile(totals, 0.34);
+    hi = qtile(totals, 0.67);
+  } else {
+    v = IVI_SKILL_NATIONAL[skill] ?? 0;
+    lo = IVI_LO;
+    hi = IVI_HI;
+  }
+  if (v >= hi && hi > 0) return { label: 'High demand', tone: 'hi' };
+  if (v >= lo && lo > 0) return { label: 'Moderate demand', tone: 'mid' };
+  return { label: 'Low demand', tone: 'lo' };
+}
 
 // Real Jobs & Skills Australia IVI internet-vacancy demand for a skill across the
 // AU capital-city hubs (WA→Perth, SA→Adelaide, QLD→Brisbane, VIC→Melbourne,

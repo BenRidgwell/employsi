@@ -2,15 +2,14 @@ import { useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../state/store';
 import { GLOBAL_HUB_LABEL } from '../data/geo';
 import { ALL_SKILLS } from '../data/skillsTaxonomy';
-import { IVI_SKILL_NATIONAL } from '../data/iviSkillDemand';
-import { popularSkills as popularSkillsForLayer } from '../lib/skillHeat';
+import { popularSkills as popularSkillsForLayer, demandLevel, type DemandTone } from '../lib/skillHeat';
 import { COMPANIES } from '../data/companies';
 import { cityForCompany } from '../data/mapboxGeo';
 
 type Result =
   | { kind: 'company'; id: string; label: string; sub: string }
   | { kind: 'city'; id: string; label: string }
-  | { kind: 'skill'; id: string; label: string; sub: string };
+  | { kind: 'skill'; id: string; label: string; sub: string; tone: DemandTone };
 
 // Centered search bar shown on the global view (replaces the top-right search
 // button there). Typing a company or city and selecting it (click, or Enter
@@ -56,15 +55,13 @@ export function GlobalSearch() {
     const skills: Result[] = ALL_SKILLS.filter((sk) => sk.toLowerCase().includes(q))
       .slice(0, 6)
       .map((sk) => {
-        const total = skillIndex?.skills[sk]?.total ?? 0;
-        // Fall back to the real AU IVI national vacancy count for skills the
-        // live company feed doesn't cover (health, education, trades, …).
-        const ivi = IVI_SKILL_NATIONAL[sk] ?? 0;
-        const sub = total ? `${total} live roles` : ivi ? `${ivi.toLocaleString('en-US')} AU vacancies` : 'skill';
-        return { kind: 'skill' as const, id: sk, label: sk, sub };
+        // Demand level (Low / Moderate / High), contextual to the layer the
+        // search was made on: domestic → AU IVI, global → live company index.
+        const badge = demandLevel(sk, globalOut, skillIndex);
+        return { kind: 'skill' as const, id: sk, label: sk, sub: badge.label, tone: badge.tone };
       });
     return [...skills, ...companies, ...cities];
-  }, [q, skillIndex]);
+  }, [q, skillIndex, globalOut]);
 
   // Show over the global AND domestic overviews (both are zoomedOut) — never
   // stranded above a local city map, where the top-right search takes over.
@@ -145,7 +142,8 @@ export function GlobalSearch() {
               >
                 <span className={`gsrkind ${r.kind}`}>{r.kind === 'company' ? 'Co.' : r.kind === 'skill' ? 'Skill' : 'City'}</span>
                 <span className="gsrlabel">{r.label}</span>
-                {(r.kind === 'company' || r.kind === 'skill') && <span className="gsrsub">{r.sub}</span>}
+                {r.kind === 'company' && <span className="gsrsub">{r.sub}</span>}
+                {r.kind === 'skill' && <span className={`gsrsub dmd-${r.tone}`}>{r.sub}</span>}
               </button>
             ))
           ) : (

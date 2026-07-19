@@ -111,6 +111,20 @@ interface Marker {
   clickable: boolean;
 }
 
+// Green (low) → amber → red (high), matching the heat key ramp. Used to colour
+// each city dot by its demand for the searched skill.
+const HEAT_RGB: [number, number, number][] = [
+  [21, 157, 103],
+  [245, 166, 35],
+  [224, 82, 74],
+];
+function heatColor(t: number): string {
+  const x = Math.max(0, Math.min(1, t));
+  const [a, b, f] = x <= 0.5 ? [0, 1, x / 0.5] : [1, 2, (x - 0.5) / 0.5];
+  const c = (i: number) => Math.round(HEAT_RGB[a][i] + (HEAT_RGB[b][i] - HEAT_RGB[a][i]) * f);
+  return `rgb(${c(0)},${c(1)},${c(2)})`;
+}
+
 // Which markers to show for the current view. City dots stay neutral until a
 // skill is searched (then the skill-demand blobs carry all the colour). Always
 // filtered by the active sectors.
@@ -118,10 +132,12 @@ function computeMarkers(
   mode: 'global' | 'domestic',
   region: string,
   filterState: FilterState,
+  demand: Record<string, number>,
+  skillActive: boolean,
 ): Marker[] {
   // Neutral dot tuned to each backdrop: the global view sits on the dark globe
   // (needs a light dot), the domestic view on the light basemap (needs a dark
-  // dot). Colour only ever comes from the skill-demand blobs.
+  // dot). When a skill is searched the dot is recoloured to its demand below.
   const dotColor = mode === 'global' ? 'rgb(198,203,214)' : NEUTRAL_DOT;
   const out: Marker[] = [];
   const push = (id: string, coords: [number, number] | undefined) => {
@@ -144,13 +160,27 @@ function computeMarkers(
 
   if (mode === 'global') {
     Object.keys(HUB_LNGLAT).forEach((id) => push(id, HUB_LNGLAT[id]));
-    return out;
+  } else {
+    // Domestic: the region's own hubs (Melbourne is now a hub too, so it comes
+    // through here on the AU view and on the global view; Darwin and Hobart stay
+    // omitted).
+    (REGION_HUBS[region] || []).forEach((id) => push(id, HUB_LNGLAT[id]));
   }
 
-  // Domestic: the region's own hubs (Melbourne is now a hub too, so it comes
-  // through here on the AU view and on the global view; Darwin and Hobart stay
-  // omitted).
-  (REGION_HUBS[region] || []).forEach((id) => push(id, HUB_LNGLAT[id]));
+  // Colour each city dot by its demand for the searched skill, matching the heat
+  // key (green low → amber → red high), normalised across the visible cities
+  // that carry demand. Cities with no demand for the skill stay neutral.
+  if (skillActive) {
+    const vals = out.map((m) => demand[m.id] || 0).filter((v) => v > 0);
+    if (vals.length) {
+      const mn = Math.min(...vals);
+      const mx = Math.max(...vals);
+      out.forEach((m) => {
+        const v = demand[m.id] || 0;
+        if (v > 0) m.color = heatColor((v - mn) / ((mx - mn) || 1));
+      });
+    }
+  }
   return out;
 }
 
@@ -196,7 +226,7 @@ function buildSkillHeat(
   const features: GeoJSON.Feature[] = [];
   ids.forEach((id) => {
     const t = (demand[id] - mn) / ((mx - mn) || 1);
-    const w = 0.2 + 0.8 * t; // keep a green floor so low-demand hubs still show
+    const w = 0.45 + 0.55 * t; // strong floor so low-demand hubs still read
     const [lng, lat] = table[id];
     for (let i = 0; i < 6; i++) {
       const jx = i === 0 ? 0 : (rnd() - 0.5) * 5.4;
@@ -355,10 +385,10 @@ export function WorldMapbox() {
       markers.forEach((m) => {
         const el = document.createElement('button');
         el.className = 'mbchip';
-        el.innerHTML = `<span class="chipdot"></span><span class="chiptk"></span><span class="chipsub"></span>`;
+        // Just the city name in the pill — the demand-coloured dot sits below it
+        // (the GL circle at the geo point), so no duplicate dot inside the pill.
+        el.innerHTML = `<span class="chiptk"></span>`;
         (el.querySelector('.chiptk') as HTMLElement).textContent = m.label;
-        (el.querySelector('.chipsub') as HTMLElement).textContent = m.sub;
-        (el.querySelector('.chipdot') as HTMLElement).style.background = m.color;
         if (m.clickable) {
           const swallow = (ev: Event) => ev.stopPropagation();
           el.addEventListener('mousedown', swallow);
@@ -386,11 +416,12 @@ export function WorldMapbox() {
       const mode = viewModeOf(s.globalOut);
       const skill = activeSkill(s.searchQuery);
       let cityDemand = demandByCity(s.skillIndex, skill);
-      // On the AU domestic view, overlay the real Jobs & Skills Australia IVI
-      // vacancy demand (whole labour market) on top of the company/Adzuna
-      // counts, so the Australian hubs light up with government data even for
-      // skills no mapped company advertises.
-      if (mode === 'domestic' && s.domesticRegion === 'australia' && skill) {
+      // Overlay the real Jobs & Skills Australia IVI vacancy demand (whole
+      // labour market, with monthly history) on top of the company/Adzuna
+      // counts. Applied on the AU domestic view and on the global view (where
+      // the Australian hubs are the ones with an IVI time series); other
+      // countries light up automatically once their equivalent series is added.
+      if (skill && (mode === 'global' || s.domesticRegion === 'australia')) {
         const ivi = iviCityDemandAt(skill, s.heatMonth);
         cityDemand = { ...cityDemand };
         for (const [c, v] of Object.entries(ivi)) cityDemand[c] = (cityDemand[c] || 0) + v;
@@ -404,7 +435,7 @@ export function WorldMapbox() {
         minGrowth: s.minGrowth,
         maxAttrition: s.maxAttrition,
       };
-      const markers = computeMarkers(mode, s.domesticRegion, fs);
+      const markers = computeMarkers(mode, s.domesticRegion, fs, cityDemand, !!skill);
       markersRef.current = markers;
       const src = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
       src?.setData(markersGeoJSON(markers, s.selectedId));
@@ -466,19 +497,21 @@ export function WorldMapbox() {
         source: SKILL_SOURCE,
         paint: {
           'heatmap-weight': ['get', 'w'],
-          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 1, 0.9, 4, 1.1, 6, 1.25],
+          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 1, 1.25, 4, 1.6, 6, 1.9],
           // Blobs grow with zoom so they stay continent-/region-scaled.
-          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 1, 30, 3, 64, 5, 120, 7, 200],
+          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 1, 34, 3, 72, 5, 130, 7, 210],
           // Fade out as we approach the local-city hand-off zoom.
-          'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 1, 0.78, 5, 0.72, 6.5, 0],
+          'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 1, 0.95, 5, 0.9, 6.5, 0],
           // Green (low demand) -> amber -> red (high), matching the app ramp.
+          // Punchier alphas so the blobs read clearly against both backdrops.
           'heatmap-color': [
             'interpolate', ['linear'], ['heatmap-density'],
             0, 'rgba(21,157,103,0)',
-            0.18, 'rgba(21,157,103,0.35)',
-            0.45, 'rgba(245,166,35,0.45)',
-            0.72, 'rgba(224,82,74,0.55)',
-            1, 'rgba(224,82,74,0.62)',
+            0.15, 'rgba(21,157,103,0.55)',
+            0.4, 'rgba(120,190,60,0.68)',
+            0.6, 'rgba(245,166,35,0.8)',
+            0.8, 'rgba(224,82,74,0.9)',
+            1, 'rgba(214,54,46,0.98)',
           ],
         },
       });
