@@ -16,7 +16,7 @@ export interface LiveNewsItem {
   url: string;
   publisher: string;
   published: string; // ISO
-  image?: string; // real article image when the provider supplies one (GDELT)
+  image?: string; // article image when the provider supplies one (Bing / GDELT / outlet feeds)
 }
 
 const cache = new Map<string, { at: number; items: LiveNewsItem[] }>();
@@ -117,15 +117,65 @@ async function fromBing(query: string, limit: number, signal: AbortSignal): Prom
     const srcM = block.match(/<News:Source[^>]*>([\s\S]*?)<\/News:Source>/i);
     let publisher = srcM ? decodeEntities(srcM[1]).trim() : '';
     publisher = publisher.replace(/\s+on\s+MSN$/i, '').trim();
+    const imgM = block.match(/<News:Image[^>]*>([\s\S]*?)<\/News:Image>/i);
+    const image = imgM ? decodeEntities(imgM[1]).trim() : undefined;
     if (!link || !title) continue;
     const real = bingRealUrl(link);
     if (/bing\.com\/news\/search/i.test(real) || seen.has(real)) continue; // skip the self-referential feed link
     seen.add(real);
     const t = pub ? Date.parse(pub) : NaN;
-    items.push({ title, url: real, publisher: cleanDomain(publisher), published: Number.isNaN(t) ? '' : new Date(t).toISOString() });
+    items.push({ title, url: real, publisher: cleanDomain(publisher), published: Number.isNaN(t) ? '' : new Date(t).toISOString(), image });
   }
   items.sort((a, b) => (Date.parse(b.published) || 0) - (Date.parse(a.published) || 0));
   return items.slice(0, limit);
+}
+
+// Direct AU / mining / business outlet feeds. Fetched once and shared across all
+// companies (a rolling pool of recent coverage), then filtered by company name —
+// so a company currently in the news gets straight-to-source articles from these
+// named outlets on top of the Bing results. (AFR has no public RSS but Bing
+// surfaces its articles; Bloomberg's markets feed stands in for it.)
+const OUTLET_FEEDS: { url: string; publisher: string }[] = [
+  { url: 'https://www.mining.com/feed/', publisher: 'MINING.COM' },
+  { url: 'https://www.businessnews.com.au/rssfeed/latest.rss', publisher: 'Business News WA' },
+  { url: 'https://feeds.bloomberg.com/markets/news.rss', publisher: 'Bloomberg' },
+];
+let outletCache: { at: number; items: LiveNewsItem[] } | null = null;
+const OUTLET_TTL = 15 * 60 * 1000;
+
+function itemImage(block: string): string | undefined {
+  const m =
+    block.match(/<media:(?:content|thumbnail)[^>]*url="([^"]+)"/i) ||
+    block.match(/<enclosure[^>]*url="([^"]+)"[^>]*type="image/i) ||
+    block.match(/<img[^>]+src="([^"]+)"/i);
+  return m ? decodeEntities(m[1]) : undefined;
+}
+
+async function outletPool(signal: AbortSignal): Promise<LiveNewsItem[]> {
+  if (outletCache && Date.now() - outletCache.at < OUTLET_TTL) return outletCache.items;
+  const all: LiveNewsItem[] = [];
+  await Promise.all(
+    OUTLET_FEEDS.map(async (feed) => {
+      try {
+        const res = await fetch(feed.url, { signal, headers: { 'User-Agent': 'employsi/1.0', Accept: 'application/rss+xml,application/xml,text/xml;q=0.9,*/*;q=0.8' } });
+        if (!res.ok) return;
+        const xml = await res.text();
+        for (const raw of xml.split(/<item>/i).slice(1, 40)) {
+          const block = raw.split(/<\/item>/i)[0];
+          const title = tag(block, 'title');
+          const link = tag(block, 'link');
+          const pub = tag(block, 'pubDate');
+          if (!title || !link) continue;
+          const t = pub ? Date.parse(pub) : NaN;
+          all.push({ title, url: link, publisher: feed.publisher, published: Number.isNaN(t) ? '' : new Date(t).toISOString(), image: itemImage(block) });
+        }
+      } catch {
+        /* skip a failed feed */
+      }
+    }),
+  );
+  outletCache = { at: Date.now(), items: all };
+  return all;
 }
 
 export const getLiveNews = createServerFn({ method: 'GET' })
@@ -168,6 +218,24 @@ export const getLiveNews = createServerFn({ method: 'GET' })
         } catch {
           items = [];
         }
+      }
+      // Straight-to-source top-up: pull the shared pool of recent articles from
+      // the named outlets (mining.com / Business News WA / Bloomberg) and keep
+      // any whose headline mentions the company. These carry real images and go
+      // directly to the publisher, so they lift the feed above Bing's proxies.
+      try {
+        const name = query.replace(/^"|"$/g, '').trim().toLowerCase();
+        if (name) {
+          const pool = await outletPool(controller.signal);
+          const have = new Set(items.map((i) => i.url));
+          const matches = pool.filter((p) => p.title.toLowerCase().includes(name) && !have.has(p.url));
+          for (const m of matches) items.push(m);
+          // Sort the whole feed newest-first so outlet articles interleave.
+          items.sort((a, b) => (Date.parse(b.published) || 0) - (Date.parse(a.published) || 0));
+          items = items.slice(0, limit);
+        }
+      } catch {
+        /* outlet pool is best-effort */
       }
       clearTimeout(timer);
       if (items.length) cache.set(key, { at: Date.now(), items });

@@ -3857,10 +3857,13 @@ body {
   }
 }
 
-/* "[company] in the news" card — sits to the right of the company card. */
+/* "[company] in the news" card — sits to the right of the company card.
+   Styled as a modern news feed ("FlashFeed"): a large hero card with the
+   article photo behind an overlaid pill / headline / meta, then a two-column
+   grid of smaller image cards below. */
 .newspanel {
-  width: 300px;
-  max-width: 32vw;
+  width: 340px;
+  max-width: 34vw;
   max-height: 86vh;
   background: rgba(255, 255, 255, 0.98);
   border: 1px solid var(--line);
@@ -3874,183 +3877,197 @@ body {
   overflow: hidden;
   font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
 }
-.newshd {
+.ffhd {
   flex: 0 0 auto;
-  padding: 18px 20px 12px;
-  font-weight: 700;
-  font-size: 16px;
-  letter-spacing: -0.3px;
-  color: var(--ink);
+  padding: 18px 20px 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 19px;
+  letter-spacing: -0.4px;
   border-bottom: 1px solid var(--line);
 }
-.newshdname {
+.ffhdname {
+  font-weight: 800;
   color: var(--brandink);
 }
-.newsscroll {
+.ffhdlabel {
+  font-weight: 600;
+  color: var(--slate);
+}
+.ffscroll {
   overflow-y: auto;
-  padding: 16px 18px 20px;
+  padding: 16px 16px 18px;
 }
-.newshero {
-  margin-bottom: 14px;
-  display: block;
-  text-decoration: none;
-  color: inherit;
-  cursor: pointer;
-}
-.newshero:hover .newsherotitle,
-.newsrow:hover .newsrowtitle {
-  text-decoration: underline;
-}
-.newsheroimg {
-  position: relative;
-  height: 130px;
-  border-radius: 14px;
-  overflow: hidden;
-  background:
-    radial-gradient(120% 80% at 20% 0%, #cfd6df 0%, rgba(207, 214, 223, 0) 60%),
-    linear-gradient(135deg, #3a4757 0%, #566677 55%, #7d8b9c 100%);
-  box-shadow: inset 0 -40px 40px -30px rgba(15, 27, 61, 0.55);
-}
-.newsheroimgtag {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.newsheroimg::after {
-  /* darken the lower third so the "Trending" badge + title stay legible over
-     any photo */
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 55%;
-  background: linear-gradient(to top, rgba(15, 20, 28, 0.55), rgba(15, 20, 28, 0));
-}
-.newsbadge {
-  display: inline-block;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.7px;
-  text-transform: uppercase;
-  color: #fff;
-  background: #1c1c1e;
-  padding: 3px 8px;
-  border-radius: 4px;
-  margin-bottom: 9px;
-}
-/* Newspaper treatment for the "in the news" panel: a faint newsprint tint, a
-   masthead double-rule, and a staggered "print" reveal so each story unfurls
-   onto the page like fresh ink. */
-.newspaper {
-  /* Match the main company card's white exactly (no newsprint tint). */
-  background: rgba(255, 255, 255, 0.98);
-}
-.newspaper .newshd {
-  text-align: center;
-  letter-spacing: 0.2px;
-  border-bottom: none;
-  padding-bottom: 8px;
-}
-.newsrule {
-  flex: 0 0 auto;
-  height: 3px;
-  margin: 0 18px 4px;
-  border-top: 1px solid var(--ink);
-  border-bottom: 1px solid var(--ink);
-}
-@keyframes newsprint {
+
+/* Staggered fade-up reveal for each card. */
+@keyframes ffup {
   from {
     opacity: 0;
-    transform: translateY(9px);
-    filter: blur(2.5px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
-    filter: blur(0);
   }
 }
-.newsprint {
-  animation: newsprint 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+.ffhero,
+.ffcard {
+  animation: ffup 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 @media (prefers-reduced-motion: reduce) {
-  .newsprint {
+  .ffhero,
+  .ffcard {
     animation: none;
   }
 }
-.newsherotitle {
-  margin-top: 10px;
-  font-weight: 800;
-  font-size: 16px;
-  line-height: 1.24;
-  letter-spacing: -0.3px;
-  color: var(--ink);
-}
-.newsmeta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 7px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--slate);
-}
-.newsmetadot {
-  opacity: 0.6;
-}
-.newsmetapub {
-  color: var(--ink);
-  font-weight: 700;
-  max-width: 120px;
+
+/* Hero card — full-bleed photo with an overlaid dark gradient. */
+.ffhero {
+  position: relative;
+  display: block;
+  height: 232px;
+  border-radius: 18px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-decoration: none;
+  color: #fff;
+  margin-bottom: 16px;
+  box-shadow:
+    0 18px 34px -18px rgba(15, 27, 61, 0.5),
+    0 0 0 1px rgba(15, 27, 61, 0.05);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
-.newsmetat {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  white-space: nowrap;
+.ffhero:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 26px 44px -18px rgba(15, 27, 61, 0.55),
+    0 0 0 1px rgba(15, 27, 61, 0.05);
 }
-.newsrow {
+.ffhero-img,
+.ffcard-img {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.ffhero-img {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.4s ease;
+}
+.ffhero:hover .ffhero-img {
+  transform: scale(1.05);
+}
+.ffhero-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(12, 16, 24, 0.9) 0%,
+    rgba(12, 16, 24, 0.55) 34%,
+    rgba(12, 16, 24, 0.08) 62%,
+    rgba(12, 16, 24, 0.14) 100%
+  );
+}
+.ffhero-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 16px 16px 15px;
+}
+.ffhero-title {
+  margin-top: 9px;
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1.24;
+  letter-spacing: -0.4px;
+  color: #fff;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ffhero-meta {
+  margin-top: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.82);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Category pill. */
+.ffpill {
+  display: inline-block;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--teal, #0f766e);
+}
+.ffpill-hero {
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+/* Two-column grid of smaller cards. */
+.ffgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+}
+.ffcard {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 13px 0;
-  border-top: 1px solid var(--line);
+  flex-direction: column;
+  border-radius: 15px;
+  overflow: hidden;
   text-decoration: none;
   color: inherit;
-  cursor: pointer;
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 22px -16px rgba(15, 27, 61, 0.42);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
 }
-.newsrowbody {
-  flex: 1 1 auto;
-  min-width: 0;
+.ffcard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 30px -16px rgba(15, 27, 61, 0.5);
 }
-.newsrowcat {
-  font-size: 10px;
+.ffcard-img {
+  height: 96px;
+  width: 100%;
+}
+.ffcard-body {
+  padding: 10px 11px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.ffcard-title {
   font-weight: 700;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-  color: var(--slate);
-  margin-bottom: 3px;
-}
-.newsrowtitle {
-  font-weight: 700;
-  font-size: 13px;
+  font-size: 12.5px;
   line-height: 1.28;
   letter-spacing: -0.2px;
   color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-.newsrowthumb {
-  flex: 0 0 auto;
-  width: 52px;
-  height: 52px;
-  border-radius: 11px;
-  object-fit: cover;
-  background: #e4e6ea;
+.ffcard:hover .ffcard-title {
+  text-decoration: underline;
+}
+.ffcard-meta {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--slate);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .pnote {
   font-size: 12px;
