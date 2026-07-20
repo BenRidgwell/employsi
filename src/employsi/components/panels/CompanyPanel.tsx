@@ -259,17 +259,27 @@ export function CompanyPanel() {
   // live vacancies — never an illustrative figure. The illustrative number is
   // only shown briefly while the check is still in flight, or while a role
   // filter narrows the card to a single role.
+  // The live-vacancy check is still in flight (card just opened). While it is,
+  // the Open roles / "where they're hiring" / "skills in demand" areas must not
+  // fall back to the illustrative figures — the user should see the live
+  // vacancies view first, not the old view flashing before it refreshes.
+  const rolesChecking = liveEnabled && !rolesSettled && !liveRoles;
   const bigStats = useMemo(() => {
     if (!panel) return [];
     if (roleFilter) return panel.bigStats;
-    if (!rolesSettled && !liveRoles) return panel.bigStats; // still checking
+    if (rolesChecking) {
+      // Show a loading placeholder for Open roles rather than the stale figure.
+      return panel.bigStats.map((s) =>
+        s.label === 'Open roles' ? { ...s, value: '···', sub: 'checking live ads…', subCls: '' } : s,
+      );
+    }
     const count = liveRoles ? liveRoles.count : 0;
     return panel.bigStats.map((s) =>
       s.label === 'Open roles'
         ? { ...s, value: count.toLocaleString('en-US'), sub: count > 0 && liveRoles ? liveRoles.source : 'no live vacancies' }
         : s,
     );
-  }, [panel, roleFilter, rolesSettled, liveRoles]);
+  }, [panel, roleFilter, rolesChecking, liveRoles]);
 
   const prices = useMemo(
     () =>
@@ -287,8 +297,12 @@ export function CompanyPanel() {
     [feed, isBhp, panel?.trend.length],
   );
   // The Financial-trends chart (share price + commodity baskets) is only
-  // meaningful for resources companies, so it's limited to that sector group.
+  // meaningful for mining / resources companies, so it's limited to that sector
+  // group — every other company (public or government) never shows it.
   const isResources = panel?.group === 'Energy & Natural Resources';
+  // WA government agencies (private, scraped WA-gov feed). Their card drops the
+  // vacancy-history section so it mirrors the ordinary public-company layout.
+  const isGov = !!panel && panel.companyId.startsWith('perth-gov-');
 
   return (
     <div className={`cardstage ${open ? 'open' : ''}`}>
@@ -333,7 +347,7 @@ export function CompanyPanel() {
                 ))}
               </div>
 
-              {!roleFilter && liveRoles && liveRoles.count > 0 && rolesHistory.length > 0 && (
+              {!isGov && !roleFilter && liveRoles && liveRoles.count > 0 && rolesHistory.length > 0 && (
                 <div className="sect">
                   <RolesHistoryChart points={rolesHistory} current={liveRoles.count} />
                 </div>
@@ -363,17 +377,42 @@ export function CompanyPanel() {
 
               <div className="sect">
                 <div className="secth">
-                  {liveSkills ? 'Skills in demand' : panel.skillsLabel}
-                  {liveSkills && <span>from live job ads</span>}
+                  {liveSkills ? 'Skills in demand' : rolesChecking ? 'Skills in demand' : panel.skillsLabel}
+                  {liveSkills ? <span>from live job ads</span> : rolesChecking && <span>checking live ads…</span>}
                 </div>
-                <div className="skills">
-                  {(liveSkills ?? panel.skills).map((sk) => (
-                    <span className="skill" key={sk}>{sk}</span>
-                  ))}
-                </div>
+                {rolesChecking && !liveSkills ? (
+                  <div className="skills skills-loading">
+                    <span className="skill skelchip" />
+                    <span className="skill skelchip" />
+                    <span className="skill skelchip" />
+                    <span className="skill skelchip" />
+                  </div>
+                ) : (
+                  <div className="skills">
+                    {(liveSkills ?? panel.skills).map((sk) => (
+                      <span className="skill" key={sk}>{sk}</span>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {(liveHiring ?? panel.roles).length > 0 && (
+              {rolesChecking && !liveHiring ? (
+                <div className="sect">
+                  <div className="secth">
+                    Where they're hiring
+                    <span>checking live ads…</span>
+                  </div>
+                  <div className="roles">
+                    {[0, 1, 2, 3].map((i) => (
+                      <div className="role" key={i}>
+                        <span className="rolet skelline" />
+                        <span className="rolebar"><span className="rolefill" style={{ width: '0%' }} /></span>
+                        <span className="rolec">·</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (liveHiring ?? panel.roles).length > 0 && (
                 <div className="sect">
                   <div className="secth">
                     Where they're hiring
@@ -403,7 +442,7 @@ export function CompanyPanel() {
                 </div>
               )}
 
-              {roleHistory && roleHistory.items.length > 0 && (
+              {!isGov && roleHistory && roleHistory.items.length > 0 && (
                 <div className="sect">
                   <div className="secth">
                     Vacancy history

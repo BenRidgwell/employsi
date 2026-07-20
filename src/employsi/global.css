@@ -4685,6 +4685,34 @@ body {
 .skill b {
   color: var(--brandink);
 }
+/* Loading skeletons shown while the live-vacancy check is in flight, so the
+   card never flashes the illustrative view before the live data resolves. */
+@keyframes skelshimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skelchip,
+.skelline {
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.11), rgba(0, 0, 0, 0.05));
+  background-size: 200% 100%;
+  animation: skelshimmer 1.25s ease-in-out infinite;
+  border-color: transparent !important;
+  color: transparent !important;
+}
+.skill.skelchip {
+  width: 70px;
+  height: 30px;
+  padding: 0;
+}
+.skill.skelchip:nth-child(2) { width: 94px; }
+.skill.skelchip:nth-child(3) { width: 56px; }
+.skill.skelchip:nth-child(4) { width: 80px; }
+.rolet.skelline {
+  display: inline-block;
+  height: 12px;
+  width: 120px;
+  border-radius: 6px;
+}
 /* Advertised roles list (real live job ads) */
 .jobslist {
   display: flex;
