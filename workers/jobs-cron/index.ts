@@ -407,19 +407,6 @@ async function recomputeIndex(env: Env): Promise<SkillIndex> {
   return { updated: today(), totalJobs, skills };
 }
 
-// The full rotation: AU companies (queried by name), Adzuna global hubs and
-// Jooble global hubs (both queried as city-market samples). The cursor walks
-// this combined list shard by shard.
-type AnyTarget =
-  | { kind: 'company'; t: JobsTarget }
-  | { kind: 'hub'; t: HubTarget }
-  | { kind: 'jhub'; t: JoobleHubTarget };
-const ALL_TARGETS: AnyTarget[] = [
-  ...AU_JOBS_TARGETS.map((t) => ({ kind: 'company' as const, t })),
-  ...GLOBAL_HUB_TARGETS.map((t) => ({ kind: 'hub' as const, t })),
-  ...JOOBLE_HUB_TARGETS.map((t) => ({ kind: 'jhub' as const, t })),
-];
-
 // Map a pulled batch of StoredJobs to archive rows, carrying the company id
 // (company-scoped pulls) or hub (whole-market samples) through.
 function toArchiveRows(jobs: StoredJob[], ctx: { companyId?: string; hub?: string }): ArchiveRow[] {
@@ -438,48 +425,55 @@ function toArchiveRows(jobs: StoredJob[], ctx: { companyId?: string; hub?: strin
   }));
 }
 
+// The global-hub samples (Adzuna hubs + Jooble hubs) are only 18 targets but
+// they drive the worldwide skill heatmap and the historical archive for every
+// non-AU city. They're refreshed on EVERY run — not sharded in with the 205 AU
+// companies, which would push the tail (Jooble) to a ~3-day cadence — so all 18
+// hubs, Jooble included, stay current and keep flowing into KV + D1 each tick.
+async function processHubs(env: Env, day: string): Promise<void> {
+  for (const t of GLOBAL_HUB_TARGETS) {
+    const jobs = await pullHub(env, t);
+    if (jobs.length) {
+      await env.OPEN_ROLES_HISTORY.put(`hubjobs:${t.hub}`, JSON.stringify({ updated: day, jobs }));
+      await archiveJobs(env.JOBS_ARCHIVE, toArchiveRows(jobs, { hub: t.hub }), day);
+    }
+  }
+  for (const t of JOOBLE_HUB_TARGETS) {
+    const jobs = await pullJoobleHub(env, t);
+    // Only overwrite when we actually got a sample, so a transient Jooble
+    // failure (or a not-yet-set key) doesn't wipe a good prior sample.
+    if (jobs.length) {
+      await env.OPEN_ROLES_HISTORY.put(`hubjobs:${t.hub}`, JSON.stringify({ updated: day, jobs }));
+      await archiveJobs(env.JOBS_ARCHIVE, toArchiveRows(jobs, { hub: t.hub }), day);
+    }
+  }
+}
+
 async function processShard(env: Env): Promise<{ processed: string[]; totalJobs: number }> {
   const cursorRaw = await env.OPEN_ROLES_HISTORY.get('cron:cursor');
   const cursor = Number(cursorRaw) || 0;
-  const n = ALL_TARGETS.length;
-  const slice: AnyTarget[] = [];
-  for (let i = 0; i < SHARD && i < n; i++) slice.push(ALL_TARGETS[(cursor + i) % n]);
-
+  const companies = AU_JOBS_TARGETS;
+  const n = companies.length;
   const day = today();
-  for (const item of slice) {
-    if (item.kind === 'company') {
-      const { count, jobs } = await pullCompany(env, item.t);
-      if (count > 0) await appendCount(env, item.t.id, count);
-      await env.OPEN_ROLES_HISTORY.put(
-        `jobs:${item.t.id}`,
-        JSON.stringify({ updated: day, count, jobs }),
-      );
-      await archiveJobs(env.JOBS_ARCHIVE, toArchiveRows(jobs, { companyId: item.t.id }), day);
-    } else if (item.kind === 'hub') {
-      const jobs = await pullHub(env, item.t);
-      await env.OPEN_ROLES_HISTORY.put(
-        `hubjobs:${item.t.hub}`,
-        JSON.stringify({ updated: day, jobs }),
-      );
-      await archiveJobs(env.JOBS_ARCHIVE, toArchiveRows(jobs, { hub: item.t.hub }), day);
-    } else {
-      const jobs = await pullJoobleHub(env, item.t);
-      // Only overwrite when we actually got a sample, so a transient Jooble
-      // failure (or a not-yet-set key) doesn't wipe a good prior sample.
-      if (jobs.length) {
-        await env.OPEN_ROLES_HISTORY.put(
-          `hubjobs:${item.t.hub}`,
-          JSON.stringify({ updated: day, jobs }),
-        );
-        await archiveJobs(env.JOBS_ARCHIVE, toArchiveRows(jobs, { hub: item.t.hub }), day);
-      }
-    }
+
+  // A shard of AU companies (queried by name).
+  const processed: string[] = [];
+  for (let i = 0; i < SHARD && i < n; i++) {
+    const t = companies[(cursor + i) % n];
+    const { count, jobs } = await pullCompany(env, t);
+    if (count > 0) await appendCount(env, t.id, count);
+    await env.OPEN_ROLES_HISTORY.put(`jobs:${t.id}`, JSON.stringify({ updated: day, count, jobs }));
+    await archiveJobs(env.JOBS_ARCHIVE, toArchiveRows(jobs, { companyId: t.id }), day);
+    processed.push(t.id);
   }
+
+  // All global hubs (Adzuna + Jooble) every run, so none go stale at the tail.
+  await processHubs(env, day);
 
   const idx = await recomputeIndex(env);
   await env.OPEN_ROLES_HISTORY.put('skillidx', JSON.stringify(idx));
   await env.OPEN_ROLES_HISTORY.put('cron:cursor', String((cursor + SHARD) % n));
-  return { processed: slice.map((s) => (s.kind === 'company' ? s.t.id : s.t.hub)), totalJobs: idx.totalJobs };
+  return { processed, totalJobs: idx.totalJobs };
 }
 
 // ── WA Government jobs feed ────────────────────────────────────────────────
