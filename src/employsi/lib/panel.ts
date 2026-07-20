@@ -1,6 +1,7 @@
 import { COMPANIES, companyGroup } from '../data/companies';
 import { COMPANY_CULTURE, INDUSTRY_BENCH, type Layoff } from '../data/culture';
 import { COMPANY_HEADCOUNT } from '../data/companyHeadcount';
+import { GOV_HEADCOUNT } from '../data/perthGovWorkforce';
 import type { CompanyNews } from '../data/news';
 import type { BhpFeed } from '../data/bhpFeed';
 
@@ -69,8 +70,9 @@ export function buildPanel(id: string | null, roleTitle?: string | null, live?: 
   // present, so counts, bars and the "biggest hiring area" all move.
   const roleList = live ? live.roles : c.roles;
   const topRole = roleList.reduce((a, b) => (b.count > a.count ? b : a)).title;
-  // Real annual-report headcount (static), where we have it.
-  const hc = COMPANY_HEADCOUNT[c.id];
+  // Real reported headcount (static), where we have it: listed companies from
+  // their annual reports, WA government agencies from the PSC workforce bulletins.
+  const hc = COMPANY_HEADCOUNT[c.id] ?? GOV_HEADCOUNT[c.id];
 
   let bigStats: BigStat[];
   let subStats: SubStat[];

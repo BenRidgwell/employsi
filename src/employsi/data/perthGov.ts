@@ -1,5 +1,6 @@
 import type { Company, RoleBreakdown } from './companies';
 import { deriveDomain } from './rosters';
+import { GOV_WORKFORCE, GOV_HEADCOUNT } from './perthGovWorkforce';
 
 // Western Australian government agencies plotted in Perth. These are PRIVATE
 // (not exchange-listed) public-sector bodies, mapped to the "Infrastructure and
@@ -108,13 +109,18 @@ const GOV_ROLES = ['Corporate & Policy', 'Frontline Services', 'Operations'];
 function buildGovAgency(name: string): Company {
   const h = h01(name);
   const h2 = h01(name + '::b');
-  const headcount = Math.round(150 + h * 9850); // 150 .. 10,000
-  const growth = +(-1 + h2 * 6).toFixed(1); // -1 .. +5
+  const id = govAgencyId(name);
+  // Real workforce figures from the PSC Statistical Bulletins where the agency
+  // is reported; otherwise headcount is unknown (0) and the trend is empty, so
+  // the card shows no fabricated workforce numbers for it.
+  const hcRec = GOV_HEADCOUNT[id];
+  const wf = GOV_WORKFORCE[id];
+  const headcount = hcRec ? hcRec.now : 0;
+  const growth = hcRec ? hcRec.yoy : 0;
+  const trend = wf ? wf.trend : [];
   const salaryNum = Math.round((98 + (h - 0.5) * 40) * 1000); // ~78k .. 118k
   const salaryK = Math.round(salaryNum / 1000);
   const turnover = +(6 + h2 * 8).toFixed(1);
-  const startT = Math.round(62 + h * 26);
-  const trend = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => Math.round(startT + ((100 - startT) * i) / 7));
   const roleCounts = [3, 2, 1].map((w, i) => 8 + Math.round(h * 40 * w) + i);
   const roles: RoleBreakdown[] = GOV_ROLES.map((title, i) => ({ title, count: roleCounts[i] }));
   const delta = Math.round((h - 0.5) * 16);

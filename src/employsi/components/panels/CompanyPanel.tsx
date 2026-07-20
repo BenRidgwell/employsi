@@ -11,6 +11,7 @@ import { useCompanyJobs } from '../../hooks/useSkillData';
 import { useRoleHistory } from '../../hooks/useRoleHistory';
 import { cityForCompany } from '../../data/mapboxGeo';
 import { marketForCity } from '../../data/cityMarket';
+import { GOV_WORKFORCE } from '../../data/perthGovWorkforce';
 import { TrendChart } from './TrendChart';
 import { ShareChart } from './ShareChart';
 import { RolesHistoryChart } from './RolesHistoryChart';
@@ -264,6 +265,17 @@ export function CompanyPanel() {
   // fall back to the illustrative figures — the user should see the live
   // vacancies view first, not the old view flashing before it refreshes.
   const rolesChecking = liveEnabled && !rolesSettled && !liveRoles;
+  // WA government agencies (private, scraped WA-gov feed). Their card drops the
+  // vacancy-history section so it mirrors the ordinary public-company layout.
+  const isGov = !!panel && panel.companyId.startsWith('perth-gov-');
+  // Real PSC workforce record for a gov agency (present only for agencies the
+  // PSC reports). When absent, the agency's headcount is genuinely unknown and
+  // the workforce chart / headcount stat are suppressed rather than faked.
+  const govWf = panel && isGov ? GOV_WORKFORCE[panel.companyId] : undefined;
+  const govNoWorkforce = isGov && !govWf;
+  // Show the workforce-trend chart when there's a real multi-point series
+  // (every listed company; gov agencies only when the PSC reports them).
+  const showWorkforce = !!panel && panel.trend.length >= 2;
   const bigStats = useMemo(() => {
     if (!panel) return [];
     if (roleFilter) return panel.bigStats;
@@ -274,12 +286,17 @@ export function CompanyPanel() {
       );
     }
     const count = liveRoles ? liveRoles.count : 0;
-    return panel.bigStats.map((s) =>
-      s.label === 'Open roles'
-        ? { ...s, value: count.toLocaleString('en-US'), sub: count > 0 && liveRoles ? liveRoles.source : 'no live vacancies' }
-        : s,
-    );
-  }, [panel, roleFilter, rolesChecking, liveRoles]);
+    return panel.bigStats.map((s) => {
+      if (s.label === 'Open roles') {
+        return { ...s, value: count.toLocaleString('en-US'), sub: count > 0 && liveRoles ? liveRoles.source : 'no live vacancies' };
+      }
+      // Government agencies the PSC doesn't report: don't fabricate a headcount.
+      if (govNoWorkforce && s.label === 'Headcount YoY') {
+        return { ...s, value: '—', sub: 'not publicly reported', subCls: '' };
+      }
+      return s;
+    });
+  }, [panel, roleFilter, rolesChecking, liveRoles, govNoWorkforce]);
 
   const prices = useMemo(
     () =>
@@ -300,9 +317,6 @@ export function CompanyPanel() {
   // meaningful for mining / resources companies, so it's limited to that sector
   // group — every other company (public or government) never shows it.
   const isResources = panel?.group === 'Energy & Natural Resources';
-  // WA government agencies (private, scraped WA-gov feed). Their card drops the
-  // vacancy-history section so it mirrors the ordinary public-company layout.
-  const isGov = !!panel && panel.companyId.startsWith('perth-gov-');
 
   return (
     <div className={`cardstage ${open ? 'open' : ''}`}>
@@ -353,9 +367,17 @@ export function CompanyPanel() {
                 </div>
               )}
 
-              <div className="sect">
-                <TrendChart trend={panel.trend} headcount={headcount} revPerEmp={revPerEmp} ebitdaPerEmp={ebitdaPerEmp} />
-              </div>
+              {showWorkforce && (
+                <div className="sect">
+                  <TrendChart
+                    trend={panel.trend}
+                    headcount={headcount}
+                    revPerEmp={revPerEmp}
+                    ebitdaPerEmp={ebitdaPerEmp}
+                    labels={govWf?.years}
+                  />
+                </div>
+              )}
 
               {isResources && prices.length > 0 && (
                 <div className="sect">

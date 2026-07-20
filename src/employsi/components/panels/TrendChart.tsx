@@ -19,6 +19,8 @@ interface Props {
   headcount: number;
   revPerEmp: number;
   ebitdaPerEmp: number;
+  // Optional real x-axis labels (e.g. reporting years). Defaults to quarters.
+  labels?: string[];
 }
 
 function headSeries(p: Props): number[] {
@@ -51,7 +53,13 @@ const people = (v: number) => Math.round(v).toLocaleString('en-US');
 
 export function TrendChart(props: Props) {
   const [metric, setMetric] = useState<MetricId>('revenue');
-  const labels = useMemo(() => quarterLabels(props.trend.length), [props.trend.length]);
+  // Headcount-only mode: agencies (and any company) without per-employee
+  // financials show a single real workforce line — no revenue/EBITDA overlay.
+  const metricOn = props.revPerEmp > 0 || props.ebitdaPerEmp > 0;
+  const labels = useMemo(
+    () => props.labels ?? quarterLabels(props.trend.length),
+    [props.labels, props.trend.length],
+  );
   const head = useMemo(() => headSeries(props), [props]);
   const fin = useMemo(() => financialSeries(metric, props), [metric, props]);
   const n = head.length;
@@ -120,23 +128,27 @@ export function TrendChart(props: Props) {
     <>
       <div className="secth">
         Workforce trend
-        <div className="wtseg">
-          {METRICS.map((m) => (
-            <button key={m.id} className={`wtsegbtn ${metric === m.id ? 'on' : ''}`} onClick={() => setMetric(m.id)}>
-              {m.label}
-            </button>
-          ))}
-        </div>
+        {metricOn && (
+          <div className="wtseg">
+            {METRICS.map((m) => (
+              <button key={m.id} className={`wtsegbtn ${metric === m.id ? 'on' : ''}`} onClick={() => setMetric(m.id)}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="wtlegend">
         <span className="wtlgi">
           <i className="wtsw ink" />Headcount
         </span>
-        <span className="wtlgi">
-          <i className="wtsw acc" />
-          {metricShort}
-        </span>
+        {metricOn && (
+          <span className="wtlgi">
+            <i className="wtsw acc" />
+            {metricShort}
+          </span>
+        )}
       </div>
 
       <div className="wtbox" ref={boxRef} onMouseDown={onDown} onMouseMove={onMove} onMouseUp={finishDrag} onMouseLeave={onLeave}>
@@ -150,7 +162,7 @@ export function TrendChart(props: Props) {
           </defs>
           {hasRange && <rect className="wtband" x={x(a)} y={PADT} width={x(b) - x(a)} height={PLOTH} />}
           <path className="wtarea" d={headArea} />
-          <path className="wtline2" d={finLine} vectorEffect="non-scaling-stroke" />
+          {metricOn && <path className="wtline2" d={finLine} vectorEffect="non-scaling-stroke" />}
           <path className="wtline" d={headLine} vectorEffect="non-scaling-stroke" />
           {hasRange ? (
             <>
@@ -164,27 +176,29 @@ export function TrendChart(props: Props) {
 
         {hasRange ? (
           <>
-            <div className="wtdot acc" style={{ left: `${(x(a) / W) * 100}%`, top: `${(yF(fin[a]) / H) * 100}%` }} />
-            <div className="wtdot acc" style={{ left: `${(x(b) / W) * 100}%`, top: `${(yF(fin[b]) / H) * 100}%` }} />
+            {metricOn && <div className="wtdot acc" style={{ left: `${(x(a) / W) * 100}%`, top: `${(yF(fin[a]) / H) * 100}%` }} />}
+            {metricOn && <div className="wtdot acc" style={{ left: `${(x(b) / W) * 100}%`, top: `${(yF(fin[b]) / H) * 100}%` }} />}
             <div className="wtdot ink" style={{ left: `${(x(a) / W) * 100}%`, top: `${(yH(head[a]) / H) * 100}%` }} />
             <div className="wtdot ink" style={{ left: `${(x(b) / W) * 100}%`, top: `${(yH(head[b]) / H) * 100}%` }} />
           </>
         ) : hover ? (
           <>
-            <div className="wtdot acc" style={{ left: `${scrubLeft}%`, top: `${(yF(fin[active]) / H) * 100}%` }} />
+            {metricOn && <div className="wtdot acc" style={{ left: `${scrubLeft}%`, top: `${(yF(fin[active]) / H) * 100}%` }} />}
             <div className="wtdot ink" style={{ left: `${scrubLeft}%`, top: `${(yH(head[active]) / H) * 100}%` }} />
-            <ChartTooltip boxRef={boxRef} leftPct={scrubLeft} topPct={(Math.min(yH(head[active]), yF(fin[active])) / H) * 100}>
+            <ChartTooltip boxRef={boxRef} leftPct={scrubLeft} topPct={((metricOn ? Math.min(yH(head[active]), yF(fin[active])) : yH(head[active])) / H) * 100}>
               <div className="wttiplabel">{labels[active]}</div>
               <div className="wttiprow">
                 <i className="wtsw ink" />
                 <b>{people(head[active])}</b>
                 <span>Headcount</span>
               </div>
-              <div className="wttiprow">
-                <i className="wtsw acc" />
-                <b>{money(fin[active])}</b>
-                <span>{metricShort}</span>
-              </div>
+              {metricOn && (
+                <div className="wttiprow">
+                  <i className="wtsw acc" />
+                  <b>{money(fin[active])}</b>
+                  <span>{metricShort}</span>
+                </div>
+              )}
             </ChartTooltip>
           </>
         ) : null}
@@ -220,10 +234,12 @@ export function TrendChart(props: Props) {
             <span className="wtrlbl"><i className="wtsw ink" />Headcount</span>
             <span className={`wtrval ${headDelta >= 0 ? 'up' : 'down'}`}>{signed(headDelta, people)} ({pctStr(headPct)})</span>
           </div>
-          <div className="wtrangerow">
-            <span className="wtrlbl"><i className="wtsw acc" />{metricShort}</span>
-            <span className={`wtrval ${finDelta >= 0 ? 'up' : 'down'}`}>{signed(finDelta, money)} ({pctStr(finPct)})</span>
-          </div>
+          {metricOn && (
+            <div className="wtrangerow">
+              <span className="wtrlbl"><i className="wtsw acc" />{metricShort}</span>
+              <span className={`wtrval ${finDelta >= 0 ? 'up' : 'down'}`}>{signed(finDelta, money)} ({pctStr(finPct)})</span>
+            </div>
+          )}
         </div>
       )}
     </>
