@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../state/store';
 import { buildPanel } from '../../lib/panel';
-import { shareTrend, commodityBaskets } from '../../data/finance';
 import { useBhpFeed } from '../../hooks/useBhpFeed';
 import { useShareSeries } from '../../hooks/useShareSeries';
 import { useCompanyStats } from '../../hooks/useCompanyStats';
@@ -272,46 +271,67 @@ export function CompanyPanel() {
   // PSC reports). When absent, the agency's headcount is genuinely unknown and
   // the workforce chart / headcount stat are suppressed rather than faked.
   const govWf = panel && isGov ? GOV_WORKFORCE[panel.companyId] : undefined;
-  const govNoWorkforce = isGov && !govWf;
-  // Show the workforce-trend chart when there's a real multi-point series
-  // (every listed company; gov agencies only when the PSC reports them).
-  const showWorkforce = !!panel && panel.trend.length >= 2;
+  // Only BHP currently has a live culture feed (Glassdoor, diversity, layoffs);
+  // for every other company those are illustrative, so we show them as gaps
+  // (0 / not reported) rather than fabricated numbers.
+  const cultureReal = isBhp && !!feed;
+  // Median salary is real only when derived from live advertised salaries.
+  const salaryReal = !!medianPay;
+  // Real headcount (annual report / gov bulletin / live feed), not the
+  // illustrative per-company figure.
+  const headcountReal = !!panel && panel.headcountReal;
+  // Show the workforce-trend chart only when the headcount behind it is real.
+  const showWorkforce = headcountReal && !!panel && panel.trend.length >= 2;
   const bigStats = useMemo(() => {
     if (!panel) return [];
     if (roleFilter) return panel.bigStats;
-    if (rolesChecking) {
-      // Show a loading placeholder for Open roles rather than the stale figure.
-      return panel.bigStats.map((s) =>
-        s.label === 'Open roles' ? { ...s, value: '···', sub: 'checking live ads…', subCls: '' } : s,
-      );
-    }
-    const count = liveRoles ? liveRoles.count : 0;
     return panel.bigStats.map((s) => {
       if (s.label === 'Open roles') {
+        if (rolesChecking) return { ...s, value: '···', sub: 'checking live ads…', subCls: '' };
+        const count = liveRoles ? liveRoles.count : 0;
         return { ...s, value: count.toLocaleString('en-US'), sub: count > 0 && liveRoles ? liveRoles.source : 'no live vacancies' };
       }
-      // Government agencies the PSC doesn't report: don't fabricate a headcount.
-      if (govNoWorkforce && s.label === 'Headcount YoY') {
-        return { ...s, value: '—', sub: 'not publicly reported', subCls: '' };
+      if (s.label === 'Median salary') {
+        // Real median only from live advertised salaries; otherwise a 0 gap.
+        return medianPay
+          ? { ...s, value: medianPay.text, sub: `median · ${medianPay.n} live ads`, subCls: '' }
+          : { ...s, value: '$0', sub: 'no live salary data', subCls: '' };
+      }
+      if (s.label === 'Headcount YoY') {
+        // Real only from an annual report / gov bulletin; else show the gap.
+        return headcountReal ? s : { ...s, value: '—', sub: 'not reported', subCls: '' };
       }
       return s;
     });
-  }, [panel, roleFilter, rolesChecking, liveRoles, govNoWorkforce]);
+  }, [panel, roleFilter, rolesChecking, liveRoles, medianPay, headcountReal]);
 
+  // Sub-stats: Glassdoor is real only for the live-feed company; "Biggest
+  // hiring area" is real only from live job ads. Both fall back to a 0 / dash
+  // gap otherwise so the card never shows an illustrative figure.
+  const subStats = useMemo(() => {
+    if (!panel) return [];
+    return panel.subStats.map((s) => {
+      if (s.label === 'Glassdoor rating') {
+        return cultureReal ? s : { ...s, value: '0.0 ★', sub: 'no data', subCls: '' };
+      }
+      if (s.label === 'Biggest hiring area') {
+        const top = liveHiring && liveHiring.length ? liveHiring[0].title : null;
+        return { ...s, value: top ?? '—', sub: top ? 'from live job ads' : undefined };
+      }
+      return s;
+    });
+  }, [panel, cultureReal, liveHiring]);
+
+  // Share price is real only from the live feed (BHP) or the live Yahoo series;
+  // the illustrative shareTrend fallback is dropped so the chart only appears
+  // with real prices. Commodity baskets are real only for the live-feed company.
   const prices = useMemo(
-    () =>
-      feed && isBhp
-        ? feed.sharePrice
-        : liveShare
-          ? liveShare.series
-          : panel
-            ? shareTrend(panel.ticker, panel.trend)
-            : [],
-    [feed, isBhp, liveShare, panel?.ticker, panel?.trend],
+    () => (feed && isBhp ? feed.sharePrice : liveShare ? liveShare.series : []),
+    [feed, isBhp, liveShare],
   );
   const commodities = useMemo(
-    () => (feed && isBhp ? feed.commodities : commodityBaskets(panel ? panel.trend.length : 0)),
-    [feed, isBhp, panel?.trend.length],
+    () => (feed && isBhp ? feed.commodities : undefined),
+    [feed, isBhp],
   );
   // The Financial-trends chart (share price + commodity baskets) is only
   // meaningful for mining / resources companies, so it's limited to that sector
@@ -387,7 +407,7 @@ export function CompanyPanel() {
 
               <div className="sect">
                 <div className="subs">
-                  {panel.subStats.map((s, i) => (
+                  {subStats.map((s, i) => (
                     <div className="subc" key={i}>
                       <div className="subv">{s.value}</div>
                       <div className="subl">{s.label}</div>
@@ -399,8 +419,8 @@ export function CompanyPanel() {
 
               <div className="sect">
                 <div className="secth">
-                  {liveSkills ? 'Skills in demand' : rolesChecking ? 'Skills in demand' : panel.skillsLabel}
-                  {liveSkills ? <span>from live job ads</span> : rolesChecking && <span>checking live ads…</span>}
+                  Skills in demand
+                  <span>{rolesChecking && !liveSkills ? 'checking live ads…' : 'from live job ads'}</span>
                 </div>
                 {rolesChecking && !liveSkills ? (
                   <div className="skills skills-loading">
@@ -409,12 +429,14 @@ export function CompanyPanel() {
                     <span className="skill skelchip" />
                     <span className="skill skelchip" />
                   </div>
-                ) : (
+                ) : liveSkills ? (
                   <div className="skills">
-                    {(liveSkills ?? panel.skills).map((sk) => (
+                    {liveSkills.map((sk) => (
                       <span className="skill" key={sk}>{sk}</span>
                     ))}
                   </div>
+                ) : (
+                  <div className="dataempty">No live job ads</div>
                 )}
               </div>
 
@@ -434,33 +456,31 @@ export function CompanyPanel() {
                     ))}
                   </div>
                 </div>
-              ) : (liveHiring ?? panel.roles).length > 0 && (
+              ) : (
                 <div className="sect">
                   <div className="secth">
                     Where they're hiring
-                    <span>
-                      {liveHiring
-                        ? medianPay
-                          ? `median advertised ${medianPay.text}`
-                          : 'from live job ads'
-                        : 'open roles by area'}
-                    </span>
+                    <span>{liveHiring && medianPay ? `median advertised ${medianPay.text}` : 'from live job ads'}</span>
                   </div>
-                  <div className="roles">
-                    {(liveHiring ?? panel.roles).map((r) => {
-                      const pay = (r as { pay?: string | null }).pay;
-                      return (
-                        <div className="role" key={r.title}>
-                          <span className="rolet">{r.title}</span>
-                          <span className="rolebar">
-                            <span className="rolefill" style={{ width: r.pct }} />
-                          </span>
-                          {pay && <span className="rolepay">{pay}</span>}
-                          <span className="rolec">{r.count}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  {liveHiring && liveHiring.length > 0 ? (
+                    <div className="roles">
+                      {liveHiring.map((r) => {
+                        const pay = (r as { pay?: string | null }).pay;
+                        return (
+                          <div className="role" key={r.title}>
+                            <span className="rolet">{r.title}</span>
+                            <span className="rolebar">
+                              <span className="rolefill" style={{ width: r.pct }} />
+                            </span>
+                            {pay && <span className="rolepay">{pay}</span>}
+                            <span className="rolec">{r.count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="dataempty">No live job ads</div>
+                  )}
                 </div>
               )}
 
@@ -502,19 +522,25 @@ export function CompanyPanel() {
                   Gender &amp; pay gap
                   <span>workforce mix</span>
                 </div>
-                <div className="genderbar">
-                  <div className="genderf" style={{ width: `${panel.diversity.femalePct}%` }}>{panel.diversity.femalePct}% women</div>
-                  <div className="genderm">{100 - panel.diversity.femalePct}% men</div>
-                </div>
-                <div className="paygap">
-                  <div>
-                    <span className="paygapv">{panel.diversity.payGap.toFixed(1)}%</span>
-                    <span className="paygapl">median gender pay gap</span>
-                  </div>
-                  <span className={`paygapbench ${panel.diversity.payGap <= panel.diversity.payGapBench ? 'good' : 'bad'}`}>
-                    {panel.diversity.payGap <= panel.diversity.payGapBench ? '▼' : '▲'} vs {panel.diversity.payGapBench.toFixed(1)}% industry
-                  </span>
-                </div>
+                {cultureReal ? (
+                  <>
+                    <div className="genderbar">
+                      <div className="genderf" style={{ width: `${panel.diversity.femalePct}%` }}>{panel.diversity.femalePct}% women</div>
+                      <div className="genderm">{100 - panel.diversity.femalePct}% men</div>
+                    </div>
+                    <div className="paygap">
+                      <div>
+                        <span className="paygapv">{panel.diversity.payGap.toFixed(1)}%</span>
+                        <span className="paygapl">median gender pay gap</span>
+                      </div>
+                      <span className={`paygapbench ${panel.diversity.payGap <= panel.diversity.payGapBench ? 'good' : 'bad'}`}>
+                        {panel.diversity.payGap <= panel.diversity.payGapBench ? '▼' : '▲'} vs {panel.diversity.payGapBench.toFixed(1)}% industry
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="dataempty">Not reported</div>
+                )}
               </div>
 
               <div className="sect">
@@ -522,7 +548,9 @@ export function CompanyPanel() {
                   Recent layoffs
                   <span>last 12 months</span>
                 </div>
-                {panel.layoffs ? (
+                {!cultureReal ? (
+                  <div className="dataempty">Not reported</div>
+                ) : panel.layoffs ? (
                   <div className="layoff">
                     <div className="layoffhead">
                       <b>{panel.layoffs.period}</b>

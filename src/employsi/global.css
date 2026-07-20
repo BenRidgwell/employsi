@@ -4713,6 +4713,18 @@ body {
   width: 120px;
   border-radius: 6px;
 }
+/* Gap state: a section whose data isn't real yet (no live source) shows this
+   muted placeholder instead of an illustrative figure. */
+.dataempty {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted, #8a8a8f);
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px dashed var(--line);
+  border-radius: 9px;
+  padding: 10px 12px;
+  text-align: center;
+}
 /* Advertised roles list (real live job ads) */
 .jobslist {
   display: flex;

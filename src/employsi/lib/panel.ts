@@ -37,6 +37,7 @@ export interface PanelData {
   subStats: SubStat[];
   trend: number[];
   headcount: number;
+  headcountReal: boolean; // true only when headcount/trend come from a real source
   revPerEmp: number;
   ebitdaPerEmp: number;
   skillsLabel: string;
@@ -132,6 +133,9 @@ export function buildPanel(id: string | null, roleTitle?: string | null, live?: 
     subStats,
     trend: live ? live.trend : c.trend,
     headcount: hc ? hc.now : live ? live.headcount : c.headcount,
+    // Real only when it comes from an annual report (COMPANY_HEADCOUNT / gov
+    // bulletins) or the live feed — never the illustrative per-company figure.
+    headcountReal: !!hc || !!live,
     revPerEmp: live ? live.revPerEmp : c.revPerEmp,
     ebitdaPerEmp: live ? live.ebitdaPerEmp : c.ebitdaPerEmp,
     skillsLabel: 'Skills in demand',

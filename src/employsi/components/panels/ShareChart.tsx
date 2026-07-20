@@ -19,7 +19,9 @@ const BASKETS: { id: CommodityBasket; label: string; short: string }[] = [
 interface Props {
   ticker: string;
   prices: number[];
-  commodities: Record<CommodityBasket, number[]>;
+  // Commodity baskets are real only for the live-feed company; when absent the
+  // chart plots the (real) share price alone rather than an illustrative basket.
+  commodities?: Record<CommodityBasket, number[]>;
 }
 
 const W = 340;
@@ -43,14 +45,15 @@ export function ShareChart({ ticker, prices, commodities }: Props) {
   const dragStart = useRef<number | null>(null);
   const boxRef = useRef<HTMLDivElement | null>(null);
 
-  const commodity = commodities[basket];
+  const commodity = commodities?.[basket] ?? [];
+  const hasComm = commodity.length === n && n > 0;
   const basketShort = BASKETS.find((x) => x.id === basket)!.short;
 
   const x = (i: number) => PADX + (i * PLOTW) / (n - 1);
   const yP = scaler(prices, PADT, PLOTH);
-  const yC = scaler(commodity, PADT, PLOTH);
+  const yC = scaler(hasComm ? commodity : prices, PADT, PLOTH);
   const priceLine = smoothPath(prices.map((v, i) => [x(i), yP(v)]));
-  const commLine = smoothPath(commodity.map((v, i) => [x(i), yC(v)]));
+  const commLine = hasComm ? smoothPath(commodity.map((v, i) => [x(i), yC(v)])) : '';
   const priceArea = priceLine + ` L ${x(n - 1).toFixed(2)} ${(PADT + PLOTH).toFixed(2)} L ${x(0).toFixed(2)} ${(PADT + PLOTH).toFixed(2)} Z`;
 
   const idxAt = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -103,13 +106,15 @@ export function ShareChart({ ticker, prices, commodities }: Props) {
     <>
       <div className="secth">
         Financial trends
-        <div className="wtseg">
-          {BASKETS.map((m) => (
-            <button key={m.id} className={`wtsegbtn ${basket === m.id ? 'on' : ''}`} onClick={() => setBasket(m.id)}>
-              {m.label}
-            </button>
-          ))}
-        </div>
+        {hasComm && (
+          <div className="wtseg">
+            {BASKETS.map((m) => (
+              <button key={m.id} className={`wtsegbtn ${basket === m.id ? 'on' : ''}`} onClick={() => setBasket(m.id)}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="wtlegend">
@@ -117,10 +122,12 @@ export function ShareChart({ ticker, prices, commodities }: Props) {
           <i className="wtsw ink" />
           {ticker} share price
         </span>
-        <span className="wtlgi">
-          <i className="wtsw acc" />
-          {basketShort}
-        </span>
+        {hasComm && (
+          <span className="wtlgi">
+            <i className="wtsw acc" />
+            {basketShort}
+          </span>
+        )}
       </div>
 
       <div className="wtbox" ref={boxRef} onMouseDown={onDown} onMouseMove={onMove} onMouseUp={finishDrag} onMouseLeave={onLeave}>
@@ -129,7 +136,7 @@ export function ShareChart({ ticker, prices, commodities }: Props) {
               rendered above it in the same panel. */}
           {hasRange && <rect className="wtband" x={x(a)} y={PADT} width={x(b) - x(a)} height={PLOTH} />}
           <path className="wtarea" d={priceArea} />
-          <path className="wtline2" d={commLine} vectorEffect="non-scaling-stroke" />
+          {hasComm && <path className="wtline2" d={commLine} vectorEffect="non-scaling-stroke" />}
           <path className="wtline" d={priceLine} vectorEffect="non-scaling-stroke" />
           {hasRange ? (
             <>
@@ -143,27 +150,29 @@ export function ShareChart({ ticker, prices, commodities }: Props) {
 
         {hasRange ? (
           <>
-            <div className="wtdot acc" style={{ left: `${(x(a) / W) * 100}%`, top: `${(yC(commodity[a]) / H) * 100}%` }} />
-            <div className="wtdot acc" style={{ left: `${(x(b) / W) * 100}%`, top: `${(yC(commodity[b]) / H) * 100}%` }} />
+            {hasComm && <div className="wtdot acc" style={{ left: `${(x(a) / W) * 100}%`, top: `${(yC(commodity[a]) / H) * 100}%` }} />}
+            {hasComm && <div className="wtdot acc" style={{ left: `${(x(b) / W) * 100}%`, top: `${(yC(commodity[b]) / H) * 100}%` }} />}
             <div className="wtdot ink" style={{ left: `${(x(a) / W) * 100}%`, top: `${(yP(prices[a]) / H) * 100}%` }} />
             <div className="wtdot ink" style={{ left: `${(x(b) / W) * 100}%`, top: `${(yP(prices[b]) / H) * 100}%` }} />
           </>
         ) : hover ? (
           <>
-            <div className="wtdot acc" style={{ left: `${scrubLeft}%`, top: `${(yC(commodity[active]) / H) * 100}%` }} />
+            {hasComm && <div className="wtdot acc" style={{ left: `${scrubLeft}%`, top: `${(yC(commodity[active]) / H) * 100}%` }} />}
             <div className="wtdot ink" style={{ left: `${scrubLeft}%`, top: `${(yP(prices[active]) / H) * 100}%` }} />
-            <ChartTooltip boxRef={boxRef} leftPct={scrubLeft} topPct={(Math.min(yP(prices[active]), yC(commodity[active])) / H) * 100}>
+            <ChartTooltip boxRef={boxRef} leftPct={scrubLeft} topPct={((hasComm ? Math.min(yP(prices[active]), yC(commodity[active])) : yP(prices[active])) / H) * 100}>
               <div className="wttiplabel">{labels[active]}</div>
               <div className="wttiprow">
                 <i className="wtsw ink" />
                 <b>{money(prices[active])}</b>
                 <span>{ticker}</span>
               </div>
-              <div className="wttiprow">
-                <i className="wtsw acc" />
-                <b>{idx(commodity[active])}</b>
-                <span>{basketShort}</span>
-              </div>
+              {hasComm && (
+                <div className="wttiprow">
+                  <i className="wtsw acc" />
+                  <b>{idx(commodity[active])}</b>
+                  <span>{basketShort}</span>
+                </div>
+              )}
             </ChartTooltip>
           </>
         ) : null}
@@ -199,10 +208,12 @@ export function ShareChart({ ticker, prices, commodities }: Props) {
             <span className="wtrlbl"><i className="wtsw ink" />{ticker} share price</span>
             <span className={`wtrval ${priceDelta >= 0 ? 'up' : 'down'}`}>{signed(priceDelta, money)} ({pctStr(pricePct)})</span>
           </div>
-          <div className="wtrangerow">
-            <span className="wtrlbl"><i className="wtsw acc" />{basketShort}</span>
-            <span className={`wtrval ${commDelta >= 0 ? 'up' : 'down'}`}>{signed(commDelta, idx)} ({pctStr(commPct)})</span>
-          </div>
+          {hasComm && (
+            <div className="wtrangerow">
+              <span className="wtrlbl"><i className="wtsw acc" />{basketShort}</span>
+              <span className={`wtrval ${commDelta >= 0 ? 'up' : 'down'}`}>{signed(commDelta, idx)} ({pctStr(commPct)})</span>
+            </div>
+          )}
         </div>
       )}
     </>
