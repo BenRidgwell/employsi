@@ -1,0 +1,4 @@
+jobs.csv
+*.csv
+__pycache__/
+.venv/

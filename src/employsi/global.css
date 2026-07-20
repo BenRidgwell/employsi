@@ -450,10 +450,11 @@ body {
 .bmark svg rect {
   transition: color 0.4s ease, fill 0.4s ease;
 }
-/* Mapbox trial: on the dark global globe backdrop, flip the labels/wordmark
-   that sit directly on the map (no pill background) to light so they stay
-   legible. The buttons themselves sit on white pills, so they're unaffected. */
-.app.ondark .logo {
+/* On the dark global globe backdrop, flip the labels/wordmark that sit directly
+   on the map (no pill background) to light so they stay legible. Scoped to
+   `onglobe` (not `ondark`) so the domestic overview — a light country map —
+   keeps the dark wordmark. The buttons sit on white pills, so are unaffected. */
+.app.onglobe .logo {
   color: #fff;
 }
 /* The search header floats over the globe itself, which is light in the middle
@@ -468,19 +469,20 @@ body {
 .app.ondark.gshd-onlight .gsearchhd {
   color: #1c1c1e;
 }
-.app.ondark .seglbl,
-.app.ondark .tag {
+.app.onglobe .seglbl,
+.app.onglobe .tag {
   color: rgba(255, 255, 255, 0.78);
 }
-/* Brand mark: keep the layered look but in light tones so it reads on dark. */
-.app.ondark .bmark svg rect:nth-child(1),
-.app.ondark .bmark svg rect:nth-child(4) {
+/* Brand mark: keep the layered look but in light tones so it reads on the dark
+   globe. On the domestic (light) overview it keeps its default dark tones. */
+.app.onglobe .bmark svg rect:nth-child(1),
+.app.onglobe .bmark svg rect:nth-child(4) {
   fill: #ffffff;
 }
-.app.ondark .bmark svg rect:nth-child(2) {
+.app.onglobe .bmark svg rect:nth-child(2) {
   fill: rgba(255, 255, 255, 0.65);
 }
-.app.ondark .bmark svg rect:nth-child(3) {
+.app.onglobe .bmark svg rect:nth-child(3) {
   fill: rgba(255, 255, 255, 0.85);
 }
 .controls {

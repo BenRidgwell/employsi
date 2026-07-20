@@ -328,11 +328,32 @@ export const useAppStore = create<AppState>((set, get) => ({
   setMinGrowth: (v) => set({ minGrowth: v }),
   setMaxAttrition: (v) => set({ maxAttrition: v }),
   clearFilters: () => set({ activeSectors: [], activeExchanges: [], minSalary: 130, minHeadcount: 0, minGrowth: 0, maxAttrition: 16 }),
-  toggleSkillQuery: (skill) =>
-    set((s) => {
-      const on = s.searchQuery.trim().toLowerCase() === skill.toLowerCase();
-      return on ? { searchQuery: '' } : { searchQuery: skill, zoomedOut: true, searchOpen: false, interacted: true };
-    }),
+  toggleSkillQuery: (skill) => {
+    const s = get();
+    const on = s.searchQuery.trim().toLowerCase() === skill.toLowerCase();
+    const dispatch = (active: boolean) => {
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('perth-skill-zoom', { detail: { active } }));
+    };
+    if (on) {
+      // Toggling the active skill off: clear it, and if we're in the local city
+      // layer restore its default zoom.
+      set({ searchQuery: '' });
+      if (!s.zoomedOut) dispatch(false);
+      return;
+    }
+    if (!s.zoomedOut) {
+      // Selecting a skill while in the local city layer must NOT kick the user
+      // out to the domestic overview. Stay in the city, colour its companies by
+      // demand for the skill, and pull the camera back a little so more of the
+      // city (and which companies are hiring) comes into view — the user can
+      // then zoom back in and open a specific company.
+      set({ searchQuery: skill, searchOpen: false, interacted: true });
+      dispatch(true);
+      return;
+    }
+    // On the domestic / global overview: colour the whole-market skill heatmap.
+    set({ searchQuery: skill, zoomedOut: true, searchOpen: false, interacted: true });
+  },
 
   setZoomedOut: (v) => {
     if (v) markLayerChange();

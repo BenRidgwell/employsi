@@ -706,8 +706,22 @@ export function PerthMapbox() {
     };
     window.addEventListener('perth-zoom-reset', onZoomReset);
 
+    // Selecting a skill in the local layer pulls the camera back so more of the
+    // city (and which companies are hiring the skill) comes into view, then
+    // restores the default zoom when the skill is cleared. Kept well above
+    // ZOOM_OUT_THRESHOLD so it never crosses out to the domestic overview.
+    const onSkillZoom = (e: Event) => {
+      const st = useAppStore.getState();
+      if (st.zoomedOut) return; // only affects the local city layer
+      const active = !!(e as CustomEvent).detail?.active;
+      const v = CITY_VIEWS[st.localCity] || CITY_VIEWS.perth;
+      map.easeTo({ zoom: active ? 14.2 : localDefaultZoom(v.zoom), duration: 700 });
+    };
+    window.addEventListener('perth-skill-zoom', onSkillZoom);
+
     return () => {
       window.removeEventListener('perth-zoom-reset', onZoomReset);
+      window.removeEventListener('perth-skill-zoom', onSkillZoom);
       if (autoRotateRaf.current) cancelAnimationFrame(autoRotateRaf.current);
       if (pulseRaf.current) cancelAnimationFrame(pulseRaf.current);
       if (carRaf.current) cancelAnimationFrame(carRaf.current);

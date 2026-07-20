@@ -34,14 +34,16 @@ function App() {
     if (skillIndex) setSkillIndex(skillIndex);
   }, [skillIndex, setSkillIndex]);
 
-  // Both the global globe/space backdrop AND the domestic overview keep a dark
-  // backdrop behind the top-bar, so the transparent-background wordmark + labels
-  // must stay light on both. Only the local city view (a light 3D basemap)
-  // flips back to the dark defaults.
+  // `ondark` (zoomedOut) keeps the header's pixel-sampler wired on both
+  // overviews. The wordmark + top-bar labels, though, sit over a dark backdrop
+  // only on the GLOBAL globe (dark space); the domestic overview is a light
+  // country map (mapbox standard), so there they must read dark like the local
+  // city view. `onglobe` scopes the light-branding treatment to the globe only.
   const onDark = zoomedOut;
+  const onGlobe = zoomedOut && globalOut;
 
   return (
-    <div className={`app${onDark ? ' ondark' : ''}`}>
+    <div className={`app${onDark ? ' ondark' : ''}${onGlobe ? ' onglobe' : ''}`}>
       <ZoomSlider />
       <MapActions />
       <PerthMapbox />
