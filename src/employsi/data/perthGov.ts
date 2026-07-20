@@ -151,3 +151,7 @@ function buildGovAgency(name: string): Company {
 
 export const PERTH_GOV_COMPANIES: Company[] = NAMES.map(buildGovAgency);
 export const PERTH_GOV_IDS: string[] = PERTH_GOV_COMPANIES.map((c) => c.id);
+
+// The raw agency names, exported so the WA-Government jobs scraper (jobs-cron)
+// can map each advertised job's "Agency" back to the matching gov company id.
+export const PERTH_GOV_NAMES: string[] = NAMES;

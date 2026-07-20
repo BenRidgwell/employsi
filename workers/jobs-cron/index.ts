@@ -17,6 +17,8 @@ import { GLOBAL_HUB_TARGETS, type HubTarget } from '../../src/employsi/data/glob
 import { JOOBLE_HUB_TARGETS, type JoobleHubTarget } from '../../src/employsi/data/joobleHubTargets';
 import { skillsForText } from '../../src/employsi/data/skillsTaxonomy';
 import { archiveJobs, type ArchiveRow } from '../../src/employsi/lib/jobArchive';
+import { fetchWaGovPages, type StoredWaJob } from './waGov';
+import { PERTH_GOV_IDS } from '../../src/employsi/data/perthGov';
 
 interface Env {
   OPEN_ROLES_HISTORY: KVNamespace;
@@ -480,14 +482,120 @@ async function processShard(env: Env): Promise<{ processed: string[]; totalJobs:
   return { processed: slice.map((s) => (s.kind === 'company' ? s.t.id : s.t.hub)), totalJobs: idx.totalJobs };
 }
 
+// ── WA Government jobs feed ────────────────────────────────────────────────
+// A StoredWaJob → historical archive row (source "wa-gov").
+function waJobToArchive(j: StoredWaJob, agencyId: string): ArchiveRow {
+  return {
+    source: 'wa-gov',
+    title: j.t,
+    company: null,
+    companyId: agencyId,
+    hub: 'perth',
+    location: j.loc,
+    category: j.cat,
+    salary: j.salN ? `$${Math.round(j.salN / 1000)}k` : null,
+    url: j.url,
+    posted: j.created || null,
+    skills: j.skills,
+  };
+}
+
+// Scrape the WA public-sector jobs board and refresh the live-vacancies feed for
+// every one of the 62 gov agencies. For each agency we write:
+//   • wagov:{id}  — { updated, count, jobs } consumed by the company card
+//   • roles:{id}  — the daily [date, count] history (vacancy chart)
+//   • the D1 archive rows (source "wa-gov")
+// Agencies with no current vacancies get an explicit count 0 + empty list, so
+// the card shows a real "no live vacancies" rather than a stale figure.
+const WAGOV_WINDOW = 10; // pages fetched per run beyond page 1 (WAF-safe slice)
+const WAGOV_MAX_AGE_DAYS = 4; // drop a stored listing not re-seen on the board within this
+
+function daysBetween(a: string, b: string): number {
+  const ta = Date.parse(a + 'T00:00:00Z');
+  const tb = Date.parse(b + 'T00:00:00Z');
+  if (!Number.isFinite(ta) || !Number.isFinite(tb)) return 0;
+  return Math.round((tb - ta) / 86400000);
+}
+
+// Merge this run's freshly-scraped listings for one agency with what's already
+// stored: keyed by URL so a listing seen again just refreshes its `seen` date,
+// new listings are added, and any stored listing not seen on the board within
+// WAGOV_MAX_AGE_DAYS is aged out (it's been taken down). This is what lets a
+// WAF-limited slice per run accumulate into full attribute coverage over the day
+// without ever accumulating stale, removed ads.
+function mergeAgencyJobs(prev: StoredWaJob[], fresh: StoredWaJob[], day: string): StoredWaJob[] {
+  const byUrl = new Map<string, StoredWaJob>();
+  for (const j of prev) {
+    if (!j?.url) continue;
+    if (j.seen && daysBetween(j.seen, day) > WAGOV_MAX_AGE_DAYS) continue; // aged out
+    byUrl.set(j.url, j);
+  }
+  for (const j of fresh) {
+    if (!j?.url) continue;
+    byUrl.set(j.url, { ...j, seen: day }); // fresh wins, marks last-seen = today
+  }
+  return [...byUrl.values()].slice(0, 80);
+}
+
+async function processWaGov(env: Env): Promise<{ total: number; startPage: number; pagesOk: number; parsed: number; agencies: number; nextCursor: number }> {
+  const day = today();
+  const cursorRaw = await env.OPEN_ROLES_HISTORY.get('wagov:cursor');
+  const start = Math.max(2, Number(cursorRaw) || 2);
+  const res = await fetchWaGovPages(day, start, WAGOV_WINDOW);
+  if (!res) return { total: 0, startPage: start, pagesOk: 0, parsed: 0, agencies: 0, nextCursor: start };
+
+  let withRoles = 0;
+  for (const id of PERTH_GOV_IDS) {
+    const fresh = res.byAgency[id] || [];
+    // Authoritative live count from the board's own facet (always exact).
+    const count = res.counts[id] ?? fresh.length;
+    // Accumulate attributes across runs, ageing out taken-down listings.
+    let prevJobs: StoredWaJob[] = [];
+    try {
+      const prevRaw = await env.OPEN_ROLES_HISTORY.get(`wagov:${id}`);
+      const prev = prevRaw ? JSON.parse(prevRaw) : null;
+      if (Array.isArray(prev?.jobs)) prevJobs = prev.jobs;
+    } catch {
+      /* start fresh */
+    }
+    const jobs = mergeAgencyJobs(prevJobs, fresh, day);
+    await env.OPEN_ROLES_HISTORY.put(
+      `wagov:${id}`,
+      JSON.stringify({ updated: day, count, jobs }),
+    );
+    if (count > 0) {
+      await appendCount(env, id, count);
+      withRoles++;
+    }
+    if (fresh.length) {
+      await archiveJobs(env.JOBS_ARCHIVE, fresh.map((j) => waJobToArchive(j, id)), day);
+    }
+  }
+
+  // Advance the page cursor so the next run reads the next slice; wrap back to
+  // page 2 once the whole board has been walked.
+  let next = start + WAGOV_WINDOW;
+  if (next > res.lastPage) next = 2;
+  await env.OPEN_ROLES_HISTORY.put('wagov:cursor', String(next));
+
+  return { total: res.total, startPage: start, pagesOk: res.pagesOk, parsed: res.parsed, agencies: withRoles, nextCursor: next };
+}
+
 export default {
-  // Scheduled: process the next shard of companies.
-  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(processShard(env).then(() => undefined));
+  // Scheduled: the WA-gov scrape runs on its own cron minute (:30) so it gets a
+  // clean subrequest budget for ~40 page fetches; every other tick advances the
+  // Adzuna/Muse/Jooble shard rotation.
+  async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    if (event.cron && event.cron.startsWith('30 ')) {
+      ctx.waitUntil(processWaGov(env).then(() => undefined));
+    } else {
+      ctx.waitUntil(processShard(env).then(() => undefined));
+    }
   },
 
-  // Manual trigger for seeding / verification: /run?token=CRON_TOKEN
-  // Each call processes one shard, so call it a few times to cover the roster.
+  // Manual triggers for seeding / verification (token-gated):
+  //   /run?token=…        → one Adzuna/Muse/Jooble shard
+  //   /run-wagov?token=…  → a full WA-gov board scrape + feed refresh
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
     if (url.pathname === '/run') {
@@ -496,6 +604,20 @@ export default {
       }
       const out = await processShard(env);
       return Response.json({ ok: true, ...out });
+    }
+    if (url.pathname === '/run-wagov') {
+      if (url.searchParams.get('token') !== env.CRON_TOKEN) {
+        return new Response('forbidden', { status: 403 });
+      }
+      try {
+        const out = await processWaGov(env);
+        return Response.json({ ok: true, ...out });
+      } catch (e) {
+        return Response.json(
+          { ok: false, error: (e as Error)?.message || String(e), stack: (e as Error)?.stack || '' },
+          { status: 500 },
+        );
+      }
     }
     return new Response('employsi jobs-cron', { status: 200 });
   },

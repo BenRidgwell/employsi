@@ -1,3 +1,35 @@
+# WA Government vacancies feed (`waGov.ts`)
+
+The 62 Perth government agencies (ids `perth-gov-*`, see
+[`data/perthGov.ts`](../../src/employsi/data/perthGov.ts)) don't get their live
+vacancies from Adzuna/Muse — they're scraped from the official WA public-sector
+board **https://search.jobs.wa.gov.au/jobs/search** and mapped to each agency by
+its "Agency" (department) field. Every job's attributes are captured: title +
+canonical URL, employment type, salary, classification level, occupation,
+location and branch.
+
+Runs on its own cron minute (`30 */6 * * *`) so its page fetches get a clean
+subrequest budget. Each run:
+
+- reads **page 1** for the authoritative per-agency live counts (the board's own
+  `department` filter facet) and the grand total — always exact, one request;
+- walks a **cursor window** of ~10 further pages (the board sits behind an AWS
+  WAF that challenges bursts, so a run only reads a slice), advancing the cursor
+  each run so the whole board is covered across a day;
+- merges each agency's listings **by URL**, ageing out any not re-seen within 4
+  days, so attribute coverage accumulates without keeping taken-down ads;
+- writes `wagov:{id}` (`{ updated, count, jobs }`) consumed by the company card,
+  appends the daily `roles:{id}` count history, and archives to D1 (`source =
+  wa-gov`).
+
+The company card reads it transparently: `openRolesFn` intercepts `perth-gov-*`
+ids and serves `wagov:{id}`, so open-roles count, "where they're hiring", "skills
+in demand" and the vacancy-history chart all run off the real WA feed.
+
+Manual trigger (token-gated): `GET /run-wagov?token=CRON_TOKEN`.
+
+---
+
 # Historical job archive (Cloudflare D1)
 
 Every listing pulled from **Adzuna, The Muse and Jooble** — by both the daily

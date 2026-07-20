@@ -91,6 +91,30 @@ async function recordSnapshot(id: string, count: number): Promise<void> {
   }
 }
 
+// ── WA Government agencies ─────────────────────────────────────────────────
+// The 62 Perth gov agencies (ids `perth-gov-*`) don't come from Adzuna/Muse:
+// their live vacancies are scraped from the official WA public-sector board
+// (search.jobs.wa.gov.au) by the jobs-cron and stored per agency under
+// `wagov:{id}`. Reading that here means the whole company card — open-roles
+// count, "where they're hiring", "skills in demand", vacancy history — runs off
+// the real WA feed with no other changes. Returns 0 (a genuine "no live
+// vacancies") when the agency currently has none, and null only if the feed
+// hasn't been populated yet (KV miss), so the card can fall through gracefully.
+async function fromWaGov(id: string): Promise<OpenRoles | null> {
+  const kv = await getKV();
+  if (!kv) return null;
+  try {
+    const raw = await kv.get(`wagov:${id}`);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    const jobs: AdvertisedJob[] = Array.isArray(data?.jobs) ? data.jobs : [];
+    const count = Number.isFinite(Number(data?.count)) ? Number(data.count) : jobs.length;
+    return { count, source: 'WA Government', jobs: jobs.slice(0, 60) };
+  } catch {
+    return null;
+  }
+}
+
 function adzunaCreds(): { id: string; key: string } | null {
   const id = process.env.ADZUNA_APP_ID;
   const key = process.env.ADZUNA_APP_KEY;
@@ -303,6 +327,14 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
     if (hit && Date.now() - hit.at < TTL) return hit.data;
 
     let out: OpenRoles | null = null;
+    // 0. WA Government agencies serve from the scraped WA jobs board feed (KV),
+    //    not Adzuna/Muse — real public-sector vacancies mapped to each agency.
+    if (data.id && data.id.startsWith('perth-gov-')) {
+      out = await fromWaGov(data.id);
+      if (out && out.count > 0 && data.id) await recordSnapshot(data.id, out.count);
+      cache.set(key, { at: Date.now(), data: out });
+      return out;
+    }
     // 1. Direct employer ATS feed where we have a verified one.
     const ats = data.id ? AU_ATS[data.id] : undefined;
     if (ats) out = await fromAts(ats);

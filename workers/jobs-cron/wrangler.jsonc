@@ -14,8 +14,10 @@
     { "binding": "JOBS_ARCHIVE", "database_name": "employsi-jobs-archive", "database_id": "1c5f3ffb-b9d7-4233-b28b-0f1f8d193fe1" }
   ],
   "triggers": {
-    // Every 6 hours → the 50-company roster is refreshed about once a day, in
-    // shards of 13 so each run stays well under the subrequest + Adzuna limits.
-    "crons": ["0 */6 * * *"]
+    // ":00 every 6 hours" advances the Adzuna/Muse/Jooble shard rotation (the
+    // 50-company roster refreshes about once a day). ":30 every 6 hours" runs
+    // the WA Government board scrape in its own invocation, so its ~40 page
+    // fetches get a clean subrequest budget separate from the shard's API calls.
+    "crons": ["0 */6 * * *", "30 */6 * * *"]
   }
 }
