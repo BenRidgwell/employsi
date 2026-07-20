@@ -367,6 +367,12 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
   newyork: {
     exchange: 'NYSE',
     companies: [
+      ['MA', 'Mastercard', FIN],
+      ['MRK', 'Merck', HLT],
+      ['JNJ', 'Johnson & Johnson', HLT],
+      ['VZ', 'Verizon Communications', TMT],
+      ['IBM', 'IBM', TMT],
+      ['PEP', 'PepsiCo', CON, 'NASDAQ'],
       ['JPM', 'JPMorgan Chase', FIN],
       ['PFE', 'Pfizer', HLT],
       ['C', 'Citigroup', FIN],
@@ -500,6 +506,7 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
   houston: {
     exchange: 'NYSE',
     companies: [
+      ['CVX', 'Chevron', ENR],
       ['HPE', 'Hewlett Packard Enterprise', TMT],
       ['LYB', 'LyondellBasell', IND],
       ['PWR', 'Quanta Services', INF],
@@ -525,6 +532,9 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
   chicago: {
     exchange: 'NYSE',
     companies: [
+      ['MCD', "McDonald's", CON],
+      ['ABBV', 'AbbVie', HLT],
+      ['ABT', 'Abbott Laboratories', HLT],
       ['BA', 'Boeing', IND],
       ['CME', 'CME Group', FIN, 'NASDAQ'],
       ['UAL', 'United Airlines Holdings', CON, 'NASDAQ'],
@@ -535,6 +545,21 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['CNA', 'CNA Financial', FIN],
       ['VRNO', 'Verano Holdings', HLT],
       ['RREAF', 'RREAF Holdings', FIN],
+    ],
+  },
+  austin: {
+    exchange: 'NYSE',
+    companies: [
+      ['TSLA', 'Tesla', CON, 'NASDAQ'],
+      ['ORCL', 'Oracle', TMT],
+    ],
+  },
+  atlanta: {
+    exchange: 'NYSE',
+    companies: [
+      ['HD', 'The Home Depot', CON],
+      ['KO', 'The Coca-Cola Company', CON],
+      ['UPS', 'United Parcel Service', IND],
     ],
   },
   paris: {

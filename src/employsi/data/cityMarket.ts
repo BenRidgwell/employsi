@@ -38,6 +38,8 @@ export const CITY_MARKET: Record<string, CityMarket> = {
   newyork: { country: 'us', where: 'New York', region: /united states|\busa?\b|new york|\bny\b/i },
   sanfrancisco: { country: 'us', where: 'San Francisco', region: /united states|\busa?\b|san francisco|california|bay area/i },
   chicago: { country: 'us', where: 'Chicago', region: /united states|\busa?\b|chicago|illinois/i },
+  austin: { country: 'us', where: 'Austin', region: /united states|\busa?\b|austin|texas/i },
+  atlanta: { country: 'us', where: 'Atlanta', region: /united states|\busa?\b|atlanta|georgia/i },
   singapore: { country: 'sg', where: 'Singapore', region: /singapore/i },
   paris: { country: 'fr', where: 'Paris', region: /france|paris/i },
   johannesburg: { country: 'za', where: 'Johannesburg', region: /south africa|johannesburg|gauteng/i },

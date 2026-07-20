@@ -30,6 +30,7 @@ export const GLOBAL_HUB_LABEL: Record<string, string> = {
   denver: 'Denver', ganzhou: 'Ganzhou', brisbane: 'Brisbane', adelaide: 'Adelaide', melbourne: 'Melbourne', sydney: 'Sydney',
   newyork: 'New York', sanfrancisco: 'San Francisco', chicago: 'Chicago', tokyo: 'Tokyo', zurich: 'Zurich', dubai: 'Dubai', hongkong: 'Hong Kong',
   seattle: 'Seattle', paris: 'Paris', seoul: 'Seoul', beijing: 'Beijing',
+  austin: 'Austin', atlanta: 'Atlanta',
 };
 
 // Which domestic/regional view each local city belongs to, so scrolling out of
@@ -53,6 +54,8 @@ export const CITY_CONTINENT: Record<string, string> = {
   sanfrancisco: 'northamerica',
   chicago: 'northamerica',
   seattle: 'northamerica',
+  austin: 'northamerica',
+  atlanta: 'northamerica',
   johannesburg: 'africa',
   london: 'europe',
   zurich: 'europe',
@@ -67,6 +70,8 @@ export const GLOBAL_STATS: Record<string, CityStat> = {
   johannesburg: { salary: 74, growth: 2.6, turnover: 14.5 },
   london: { salary: 118, growth: 2.2, turnover: 8.5 },
   houston: { salary: 128, growth: 4.8, turnover: 10.2 },
+  austin: { salary: 148, growth: 5.6, turnover: 12.0 },
+  atlanta: { salary: 122, growth: 4.2, turnover: 11.0 },
   singapore: { salary: 110, growth: 3.8, turnover: 9.6 },
   denver: { salary: 120, growth: 3.4, turnover: 9.8 },
   ganzhou: { salary: 68, growth: 5.0, turnover: 13.8 },

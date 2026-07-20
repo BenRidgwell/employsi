@@ -32,6 +32,8 @@ export const CITY_VIEWS: Record<string, CityView> = {
   ganzhou: { center: [114.9333, 25.83], zoom: 16.1, pitch: 60, bearing: -14 },
   toronto: { center: [-79.3832, 43.6532], zoom: 16.4, pitch: 60, bearing: -18 },
   houston: { center: [-95.3698, 29.7604], zoom: 16.3, pitch: 60, bearing: -14 },
+  austin: { center: [-97.7431, 30.2672], zoom: 16.3, pitch: 60, bearing: -15 },
+  atlanta: { center: [-84.3880, 33.7490], zoom: 16.3, pitch: 60, bearing: -16 },
   denver: { center: [-104.9903, 39.7392], zoom: 16.3, pitch: 60, bearing: -16 },
   seattle: { center: [-122.3321, 47.6062], zoom: 16.3, pitch: 60, bearing: -16 },
   johannesburg: { center: [28.0473, -26.2041], zoom: 16.3, pitch: 60, bearing: -15 },
