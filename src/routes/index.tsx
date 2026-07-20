@@ -8,7 +8,8 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import ridgwellPhoto from "@/assets/ridgwell_photo.jpeg.asset.json";
 
 export const Route = createFileRoute("/")({
