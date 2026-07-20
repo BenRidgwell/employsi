@@ -562,6 +562,85 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['UPS', 'United Parcel Service', IND],
     ],
   },
+  bentonville: {
+    exchange: 'NYSE',
+    companies: [
+      ['WMT', 'Walmart', CON],
+      ['TSN', 'Tyson Foods', CON],
+    ],
+  },
+  omaha: {
+    exchange: 'NYSE',
+    companies: [
+      ['BRK.B', 'Berkshire Hathaway', FIN],
+      ['UNP', 'Union Pacific', IND],
+    ],
+  },
+  indianapolis: {
+    exchange: 'NYSE',
+    companies: [
+      ['LLY', 'Eli Lilly', HLT],
+      ['CTVA', 'Corteva', ENR],
+      ['SPG', 'Simon Property Group', FIN],
+    ],
+  },
+  sandiego: {
+    exchange: 'NASDAQ',
+    companies: [
+      ['QCOM', 'Qualcomm', TMT],
+      ['ILMN', 'Illumina', HLT],
+      ['SRE', 'Sempra', INF, 'NYSE'],
+    ],
+  },
+  losangeles: {
+    exchange: 'NYSE',
+    companies: [
+      ['DIS', 'The Walt Disney Company', TMT],
+      ['EIX', 'Edison International', INF],
+      ['ACM', 'AECOM', INF],
+      ['RS', 'Reliance', IND],
+    ],
+  },
+  charlotte: {
+    exchange: 'NYSE',
+    companies: [
+      ['BAC', 'Bank of America', FIN],
+      ['LOW', "Lowe's", CON],
+      ['HON', 'Honeywell', IND, 'NASDAQ'],
+      ['DUK', 'Duke Energy', INF],
+      ['TFC', 'Truist Financial', FIN],
+    ],
+  },
+  minneapolis: {
+    exchange: 'NYSE',
+    companies: [
+      ['UNH', 'UnitedHealth Group', HLT],
+      ['TGT', 'Target', CON],
+      ['MMM', '3M', IND],
+      ['USB', 'U.S. Bancorp', FIN],
+      ['GIS', 'General Mills', CON],
+      ['ECL', 'Ecolab', IND],
+    ],
+  },
+  cincinnati: {
+    exchange: 'NYSE',
+    companies: [
+      ['PG', 'Procter & Gamble', CON],
+      ['KR', 'Kroger', CON],
+      ['FITB', 'Fifth Third Bancorp', FIN, 'NASDAQ'],
+    ],
+  },
+  boston: {
+    exchange: 'NYSE',
+    companies: [
+      ['TMO', 'Thermo Fisher Scientific', HLT],
+      ['STT', 'State Street', FIN],
+      ['BSX', 'Boston Scientific', HLT],
+      ['ADI', 'Analog Devices', TMT, 'NASDAQ'],
+      ['BIIB', 'Biogen', HLT, 'NASDAQ'],
+      ['MRNA', 'Moderna', HLT, 'NASDAQ'],
+    ],
+  },
   paris: {
     exchange: 'EPA',
     companies: [
