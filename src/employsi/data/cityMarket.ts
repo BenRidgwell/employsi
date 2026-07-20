@@ -68,7 +68,7 @@ export const CITY_MARKET: Record<string, CityMarket> = {
   shanghai: { country: null, where: 'Shanghai', region: /china|shanghai/i },
   shenzhen: { country: null, where: 'Shenzhen', region: /china|shenzhen|guangdong/i },
   zurich: { country: null, where: 'Zurich', region: /switzerland|zurich|zürich/i },
-  dubai: { country: null, where: 'Dubai', region: /united arab emirates|\buae\b|dubai/i },
+  dubai: { country: null, where: 'Dubai', region: /united arab emirates|\buae\b|dubai|abu dhabi/i },
   hongkong: { country: null, where: 'Hong Kong', region: /hong kong/i },
 };
 

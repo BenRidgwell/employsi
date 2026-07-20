@@ -128,7 +128,7 @@ export function companyGroup(c: Company): string {
 // Stock exchanges offered by the exchange filter, in display order.
 export const EXCHANGES: string[] = [
   'ASX', 'NYSE', 'NASDAQ', 'TSX', 'LSE', 'EPA', 'SIX',
-  'JPX', 'HKEX', 'SSE', 'SZSE', 'SGX', 'KRX', 'DFM', 'JSE',
+  'JPX', 'HKEX', 'SSE', 'SZSE', 'SGX', 'KRX', 'DFM', 'ADX', 'JSE',
 ];
 
 // A company's listing exchange (its own `exchange`, or ASX by default).
