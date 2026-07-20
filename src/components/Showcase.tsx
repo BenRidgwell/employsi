@@ -239,8 +239,8 @@ export function Showcase() {
             Explore the world of work.
           </h1>
           <p className="mx-auto mb-8 max-w-[420px] text-[16px] leading-[1.6] text-[#555]">
-            Explore a live 3D world of the workforce economy, showing where talent is being hired,
-            retained, promoted, and lost.
+            A live 3D map of the skills economy — revealing where skills are emerging, evolving, and
+            driving the future of work.
           </p>
 
           {submitted ? (
