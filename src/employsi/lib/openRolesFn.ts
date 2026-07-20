@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { skillsForText } from '../data/skillsTaxonomy';
 import type { AdvertisedJob } from './skillsFn';
+import { archiveJobs, type ArchiveRow, type D1Like } from './jobArchive';
 
 // Live "open roles" for any company in the app, fetched on the Worker, scoped
 // to the company's own job market (see data/cityMarket.ts) so it works whether
@@ -50,6 +51,17 @@ async function getKV(): Promise<any | null> {
     return m?.env?.OPEN_ROLES_HISTORY ?? null;
   } catch {
     return null; // not running on the Worker (e.g. local SSR) → no history
+  }
+}
+
+// The D1 historical-archive binding, when present. Returns null off-Worker or
+// before the database is provisioned, so archiving is a no-op until it's wired.
+async function getArchiveDb(): Promise<D1Like | null> {
+  try {
+    const m: any = await import('cloudflare:workers');
+    return (m?.env?.JOBS_ARCHIVE as D1Like) ?? null;
+  } catch {
+    return null;
   }
 }
 
@@ -166,6 +178,23 @@ function normTitle(s: string): string {
 
 function toJob(t: string, loc: string, cat: string, url: string, created: string): AdvertisedJob {
   return { t, loc, cat, url, created: (created || '').slice(0, 10), city: null, skills: skillsForText(t) };
+}
+
+// An advertised job → a historical archive row, tagged with its source and the
+// company it was fetched for.
+function jobToArchive(j: AdvertisedJob, source: string, company: string, id: string | undefined, where: string): ArchiveRow {
+  return {
+    source,
+    title: j.t,
+    company,
+    companyId: id ?? null,
+    hub: where || null,
+    location: j.loc,
+    category: j.cat,
+    url: j.url,
+    posted: j.created,
+    skills: j.skills,
+  };
 }
 
 // Adzuna's count + advertised-role sample for a company in a given country
@@ -286,6 +315,14 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
         const count = base + museAdded;
         const source = az && museAdded > 0 ? 'Adzuna + The Muse' : az ? 'Adzuna' : 'The Muse';
         out = { count, source, jobs: jobs.slice(0, 60) };
+
+        // Archive every listing we just pulled to the historical D1 store,
+        // tagged by its source. Best-effort + no-op until the DB is bound.
+        const rows: ArchiveRow[] = [
+          ...(az ? az.jobs.map((j) => jobToArchive(j, 'adzuna', company, data.id, where)) : []),
+          ...museJobs.map((j) => jobToArchive(j, 'muse', company, data.id, where)),
+        ];
+        await archiveJobs(await getArchiveDb(), rows, today());
       }
     }
 

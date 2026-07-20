@@ -16,6 +16,7 @@ import { AU_JOBS_TARGETS, type JobsTarget } from '../../src/employsi/data/auJobs
 import { GLOBAL_HUB_TARGETS, type HubTarget } from '../../src/employsi/data/globalHubTargets';
 import { JOOBLE_HUB_TARGETS, type JoobleHubTarget } from '../../src/employsi/data/joobleHubTargets';
 import { skillsForText } from '../../src/employsi/data/skillsTaxonomy';
+import { archiveJobs, type ArchiveRow } from '../../src/employsi/lib/jobArchive';
 
 interface Env {
   OPEN_ROLES_HISTORY: KVNamespace;
@@ -29,6 +30,10 @@ interface Env {
   // cross-checked so a role advertised on both boards is only counted once.
   // Optional: when unset, companies just get their Adzuna-only feed.
   THEMUSE_KEY?: string;
+  // D1 database for the append-only historical job archive. Optional: when the
+  // binding isn't present the archive writes are simply skipped (the KV
+  // snapshots + skill index are unaffected).
+  JOBS_ARCHIVE?: D1Database;
   CRON_TOKEN: string;
 }
 
@@ -49,6 +54,9 @@ interface StoredJob {
   created: string; // YYYY-MM-DD
   city: string | null; // matched app city, if any
   skills: string[]; // canonical skills
+  src?: string; // provider: adzuna | muse | jooble
+  co?: string; // employer name from the ad (for the archive)
+  sal?: string; // salary text when the source states one (for the archive)
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -56,6 +64,17 @@ const stripHtml = (s: string) => (s || '').replace(/<[^>]*>/g, ' ').replace(/&[a
 // Normalise a title for cross-board dedupe (Adzuna ↔ The Muse): lowercase,
 // collapse non-alphanumerics to single spaces. Same-ad titles line up.
 const normTitle = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+// Adzuna salary band → a compact display string (for the archive), when present.
+function adzunaSalary(x: any): string | undefined {
+  const lo = Number(x?.salary_min);
+  const hi = Number(x?.salary_max);
+  const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
+  if (Number.isFinite(lo) && Number.isFinite(hi) && lo > 0) {
+    return lo === hi ? fmt(lo) : `${fmt(lo)}–${fmt(hi)}`;
+  }
+  return undefined;
+}
 
 function matchCity(text: string): string | null {
   const t = (text || '').toLowerCase();
@@ -104,6 +123,9 @@ async function pullCompany(env: Env, target: JobsTarget): Promise<{ count: numbe
           created: (x?.created || '').slice(0, 10),
           city: matchCity(loc + ' ' + area) || matchCity(title),
           skills: skillsForText(title),
+          src: 'adzuna',
+          co: x?.company?.display_name || target.name,
+          sal: adzunaSalary(x),
         });
         if (jobs.length >= JOBS_PER_COMPANY) break;
       }
@@ -169,6 +191,8 @@ async function pullMuse(env: Env, company: string): Promise<StoredJob[]> {
           created: String(r?.publication_date || '').slice(0, 10),
           city: matchCity(auLoc) || matchCity(title),
           skills: skillsForText(title),
+          src: 'muse',
+          co: (r?.company && r.company.name) || company,
         });
       }
       if (page + 1 >= Number(j?.page_count || 0)) break;
@@ -239,6 +263,9 @@ async function pullHub(env: Env, target: HubTarget): Promise<StoredJob[]> {
         created: (x?.created || '').slice(0, 10),
         city: target.hub,
         skills: skillsForText(title),
+        src: 'adzuna',
+        co: x?.company?.display_name || '',
+        sal: adzunaSalary(x),
       });
     }
     return jobs;
@@ -285,6 +312,9 @@ async function pullJoobleHub(env: Env, target: JoobleHubTarget): Promise<StoredJ
         created: (x?.updated || '').slice(0, 10),
         city: target.hub,
         skills: skillsForText(title),
+        src: 'jooble',
+        co: stripHtml(x?.company || ''),
+        sal: stripHtml(x?.salary || '') || undefined,
       });
     }
     return jobs;
@@ -379,6 +409,24 @@ const ALL_TARGETS: AnyTarget[] = [
   ...JOOBLE_HUB_TARGETS.map((t) => ({ kind: 'jhub' as const, t })),
 ];
 
+// Map a pulled batch of StoredJobs to archive rows, carrying the company id
+// (company-scoped pulls) or hub (whole-market samples) through.
+function toArchiveRows(jobs: StoredJob[], ctx: { companyId?: string; hub?: string }): ArchiveRow[] {
+  return jobs.map((j) => ({
+    source: j.src || 'adzuna',
+    title: j.t,
+    company: j.co || null,
+    companyId: ctx.companyId ?? null,
+    hub: ctx.hub ?? j.city ?? null,
+    location: j.loc,
+    category: j.cat,
+    salary: j.sal ?? null,
+    url: j.url,
+    posted: j.created,
+    skills: j.skills,
+  }));
+}
+
 async function processShard(env: Env): Promise<{ processed: string[]; totalJobs: number }> {
   const cursorRaw = await env.OPEN_ROLES_HISTORY.get('cron:cursor');
   const cursor = Number(cursorRaw) || 0;
@@ -386,20 +434,23 @@ async function processShard(env: Env): Promise<{ processed: string[]; totalJobs:
   const slice: AnyTarget[] = [];
   for (let i = 0; i < SHARD && i < n; i++) slice.push(ALL_TARGETS[(cursor + i) % n]);
 
+  const day = today();
   for (const item of slice) {
     if (item.kind === 'company') {
       const { count, jobs } = await pullCompany(env, item.t);
       if (count > 0) await appendCount(env, item.t.id, count);
       await env.OPEN_ROLES_HISTORY.put(
         `jobs:${item.t.id}`,
-        JSON.stringify({ updated: today(), count, jobs }),
+        JSON.stringify({ updated: day, count, jobs }),
       );
+      await archiveJobs(env.JOBS_ARCHIVE, toArchiveRows(jobs, { companyId: item.t.id }), day);
     } else if (item.kind === 'hub') {
       const jobs = await pullHub(env, item.t);
       await env.OPEN_ROLES_HISTORY.put(
         `hubjobs:${item.t.hub}`,
-        JSON.stringify({ updated: today(), jobs }),
+        JSON.stringify({ updated: day, jobs }),
       );
+      await archiveJobs(env.JOBS_ARCHIVE, toArchiveRows(jobs, { hub: item.t.hub }), day);
     } else {
       const jobs = await pullJoobleHub(env, item.t);
       // Only overwrite when we actually got a sample, so a transient Jooble
@@ -407,8 +458,9 @@ async function processShard(env: Env): Promise<{ processed: string[]; totalJobs:
       if (jobs.length) {
         await env.OPEN_ROLES_HISTORY.put(
           `hubjobs:${item.t.hub}`,
-          JSON.stringify({ updated: today(), jobs }),
+          JSON.stringify({ updated: day, jobs }),
         );
+        await archiveJobs(env.JOBS_ARCHIVE, toArchiveRows(jobs, { hub: item.t.hub }), day);
       }
     }
   }
