@@ -209,6 +209,7 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['ALK', 'Alaska Air Group', CON, 'NYSE'],
       ['JWN', 'Nordstrom', CON, 'NYSE'],
       ['Z', 'Zillow Group', TMT],
+      ['TMUS', 'T-Mobile US', TMT],
     ],
   },
   singapore: {
@@ -362,6 +363,10 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['EQIX', 'Equinix', FIN],
       ['CDNS', 'Cadence Design Systems', TMT],
       ['HPQ', 'HP Inc.', TMT, 'NYSE'],
+      ['GILD', 'Gilead Sciences', HLT],
+      ['ISRG', 'Intuitive Surgical', HLT],
+      ['LRCX', 'Lam Research', TMT],
+      ['PLD', 'Prologis', FIN, 'NYSE'],
     ],
   },
   newyork: {
@@ -385,6 +390,14 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['FOXA', 'Fox Corporation', TMT, 'NASDAQ'],
       ['EL', 'The Estée Lauder Companies', CON],
       ['VNO', 'Vornado Realty Trust', FIN],
+      ['MMC', 'Marsh McLennan', FIN],
+      ['MCO', "Moody's", FIN],
+      ['SPGI', 'S&P Global', FIN],
+      ['CL', 'Colgate-Palmolive', CON],
+      ['TRV', 'The Travelers Companies', FIN],
+      ['ED', 'Consolidated Edison', INF],
+      ['REGN', 'Regeneron Pharmaceuticals', HLT, 'NASDAQ'],
+      ['PM', 'Philip Morris International', CON],
     ],
   },
   toronto: {
@@ -527,6 +540,7 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['WM', 'Waste Management', INF],
       ['CNP', 'CenterPoint Energy', INF],
       ['XOM', 'ExxonMobil', ENR],
+      ['CCI', 'Crown Castle', FIN],
     ],
   },
   chicago: {
@@ -545,6 +559,12 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['CNA', 'CNA Financial', FIN],
       ['VRNO', 'Verano Holdings', HLT],
       ['RREAF', 'RREAF Holdings', FIN],
+      ['MDLZ', 'Mondelez International', CON, 'NASDAQ'],
+      ['ITW', 'Illinois Tool Works', IND],
+      ['MSI', 'Motorola Solutions', TMT],
+      ['GWW', 'W.W. Grainger', IND],
+      ['ADM', 'Archer-Daniels-Midland', CON],
+      ['AON', 'Aon', FIN],
     ],
   },
   austin: {
@@ -560,6 +580,10 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['HD', 'The Home Depot', CON],
       ['KO', 'The Coca-Cola Company', CON],
       ['UPS', 'United Parcel Service', IND],
+      ['SO', 'Southern Company', INF],
+      ['ICE', 'Intercontinental Exchange', FIN],
+      ['DAL', 'Delta Air Lines', CON],
+      ['NSC', 'Norfolk Southern', IND],
     ],
   },
   bentonville: {
@@ -582,6 +606,7 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['LLY', 'Eli Lilly', HLT],
       ['CTVA', 'Corteva', ENR],
       ['SPG', 'Simon Property Group', FIN],
+      ['ELV', 'Elevance Health', HLT],
     ],
   },
   sandiego: {
@@ -590,6 +615,7 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['QCOM', 'Qualcomm', TMT],
       ['ILMN', 'Illumina', HLT],
       ['SRE', 'Sempra', INF, 'NYSE'],
+      ['O', 'Realty Income', FIN, 'NYSE'],
     ],
   },
   losangeles: {
@@ -599,6 +625,8 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['EIX', 'Edison International', INF],
       ['ACM', 'AECOM', INF],
       ['RS', 'Reliance', IND],
+      ['AMGN', 'Amgen', HLT, 'NASDAQ'],
+      ['PSA', 'Public Storage', FIN],
     ],
   },
   charlotte: {
@@ -609,6 +637,7 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['HON', 'Honeywell', IND, 'NASDAQ'],
       ['DUK', 'Duke Energy', INF],
       ['TFC', 'Truist Financial', FIN],
+      ['NUE', 'Nucor', IND],
     ],
   },
   minneapolis: {
@@ -620,6 +649,7 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['USB', 'U.S. Bancorp', FIN],
       ['GIS', 'General Mills', CON],
       ['ECL', 'Ecolab', IND],
+      ['MDT', 'Medtronic', HLT],
     ],
   },
   cincinnati: {
@@ -628,6 +658,7 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['PG', 'Procter & Gamble', CON],
       ['KR', 'Kroger', CON],
       ['FITB', 'Fifth Third Bancorp', FIN, 'NASDAQ'],
+      ['CTAS', 'Cintas', IND, 'NASDAQ'],
     ],
   },
   boston: {
@@ -639,6 +670,49 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['ADI', 'Analog Devices', TMT, 'NASDAQ'],
       ['BIIB', 'Biogen', HLT, 'NASDAQ'],
       ['MRNA', 'Moderna', HLT, 'NASDAQ'],
+      ['VRTX', 'Vertex Pharmaceuticals', HLT, 'NASDAQ'],
+      ['AMT', 'American Tower', FIN],
+      ['TJX', 'The TJX Companies', CON],
+    ],
+  },
+  dallas: {
+    exchange: 'NYSE',
+    companies: [
+      ['TXN', 'Texas Instruments', TMT, 'NASDAQ'],
+      ['CAT', 'Caterpillar', IND],
+      ['T', 'AT&T', TMT],
+      ['MCK', 'McKesson', HLT],
+      ['KMB', 'Kimberly-Clark', CON],
+      ['SCHW', 'Charles Schwab', FIN],
+      ['DHI', 'D.R. Horton', CON],
+      ['LUV', 'Southwest Airlines', CON],
+      ['AAL', 'American Airlines Group', CON, 'NASDAQ'],
+    ],
+  },
+  washington: {
+    exchange: 'NYSE',
+    companies: [
+      ['LMT', 'Lockheed Martin', IND],
+      ['GD', 'General Dynamics', IND],
+      ['NOC', 'Northrop Grumman', IND],
+      ['RTX', 'RTX Corporation', IND],
+      ['DHR', 'Danaher', HLT],
+      ['COF', 'Capital One Financial', FIN],
+      ['MAR', 'Marriott International', CON, 'NASDAQ'],
+    ],
+  },
+  philadelphia: {
+    exchange: 'NYSE',
+    companies: [
+      ['CMCSA', 'Comcast', TMT, 'NASDAQ'],
+      ['COR', 'Cencora', HLT],
+      ['APD', 'Air Products and Chemicals', IND],
+    ],
+  },
+  portland: {
+    exchange: 'NYSE',
+    companies: [
+      ['NKE', 'Nike', CON],
     ],
   },
   paris: {
