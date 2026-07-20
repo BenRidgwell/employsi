@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { COMPANIES, companyGroup, companyExchange, type Company } from '../data/companies';
+import { COMPANIES, companyGroup, companyExchange, companyListing, type Company, type ListingType } from '../data/companies';
 import { CITY_CONTINENT } from '../data/geo';
 import { CITY_COMPANIES, cityForCompany } from '../data/mapboxGeo';
 import type { HeatMetric } from '../lib/heat';
@@ -37,6 +37,9 @@ export interface AppState {
   // latest month). Lets the user scrub the skill heat map back to 2006.
   heatMonth: number;
   activeSectors: string[];
+  // Master listing filter: null = any, else public / private. The exchange
+  // filter (activeExchanges) is a drill-down that only applies under 'public'.
+  listingType: ListingType | null;
   activeExchanges: string[];
   minSalary: number;
   minHeadcount: number;
@@ -88,6 +91,7 @@ export interface AppState {
   setSkillIndex: (idx: SkillIndex | null) => void;
   setHeatMonth: (i: number) => void;
   toggleSector: (cat: string) => void;
+  setListingType: (v: ListingType) => void;
   toggleExchange: (ex: string) => void;
   setMinSalary: (v: number) => void;
   setMinHeadcount: (v: number) => void;
@@ -205,6 +209,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   skillIndex: null,
   heatMonth: Math.max(0, IVI_MONTHS.length - 1),
   activeSectors: [],
+  listingType: null,
   activeExchanges: [],
   minSalary: 130,
   minHeadcount: 0,
@@ -318,6 +323,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       const has = s.activeSectors.includes(cat);
       return { activeSectors: has ? s.activeSectors.filter((x) => x !== cat) : [...s.activeSectors, cat] };
     }),
+  // Master listing filter. Re-selecting the active one clears it (back to Any).
+  // Anything other than 'public' drops the exchange drill-down, which only
+  // applies to listed companies.
+  setListingType: (v) =>
+    set((s) => {
+      const next = s.listingType === v ? null : v;
+      return { listingType: next, activeExchanges: next === 'public' ? s.activeExchanges : [] };
+    }),
   toggleExchange: (ex) =>
     set((s) => {
       const has = s.activeExchanges.includes(ex);
@@ -327,7 +340,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setMinHeadcount: (v) => set({ minHeadcount: v }),
   setMinGrowth: (v) => set({ minGrowth: v }),
   setMaxAttrition: (v) => set({ maxAttrition: v }),
-  clearFilters: () => set({ activeSectors: [], activeExchanges: [], minSalary: 130, minHeadcount: 0, minGrowth: 0, maxAttrition: 16 }),
+  clearFilters: () => set({ activeSectors: [], listingType: null, activeExchanges: [], minSalary: 130, minHeadcount: 0, minGrowth: 0, maxAttrition: 16 }),
   toggleSkillQuery: (skill) => {
     const s = get();
     const on = s.searchQuery.trim().toLowerCase() === skill.toLowerCase();
@@ -479,6 +492,7 @@ useAppStore.subscribe((s, prev) => {
 export interface FilterState {
   searchQuery: string;
   activeSectors: string[];
+  listingType?: ListingType | null;
   activeExchanges: string[];
   minSalary: number;
   minHeadcount: number;
@@ -500,15 +514,23 @@ export function matchesExchange(c: Company, activeExchanges: string[]): boolean 
   return !activeExchanges.length || activeExchanges.includes(companyExchange(c));
 }
 
-// The full "should this company be shown?" predicate: sector + exchange + the
-// four numeric sliders, all HIDE (not dim). Each slider only constrains once
-// moved off its default (its slider min/max), so the default state shows every
-// company. Applied on the local map to hide non-matching companies, and via
-// cityMatchesFilters to hide cities with no matching company.
+// Master listing filter — HIDES a company that isn't the selected listing type
+// (public / private). Null means "any".
+export function matchesListing(c: Company, listingType: ListingType | null | undefined): boolean {
+  return !listingType || companyListing(c) === listingType;
+}
+
+// The full "should this company be shown?" predicate: listing + sector +
+// exchange + the four numeric sliders, all HIDE (not dim). Each slider only
+// constrains once moved off its default (its slider min/max), so the default
+// state shows every company. The exchange drill-down only applies under the
+// 'public' listing type. Applied on the local map to hide non-matching
+// companies, and via cityMatchesFilters to hide cities with no matching company.
 export function matchesFilters(c: Company, s: FilterState): boolean {
   return (
+    matchesListing(c, s.listingType) &&
     matchesSector(c, s.activeSectors) &&
-    matchesExchange(c, s.activeExchanges) &&
+    (s.listingType === 'public' ? matchesExchange(c, s.activeExchanges) : true) &&
     (s.minSalary <= 130 || c.salaryNum >= s.minSalary * 1000) &&
     (s.minHeadcount <= 0 || c.headcount >= s.minHeadcount) &&
     (s.minGrowth <= 0 || c.growth >= s.minGrowth) &&
@@ -561,5 +583,5 @@ export function isSearchActive(s: Pick<FilterState, 'searchQuery'>): boolean {
 }
 
 export function isFilterActive(s: FilterState): boolean {
-  return s.activeSectors.length > 0 || s.activeExchanges.length > 0 || s.minSalary > 130 || s.minHeadcount > 0 || s.minGrowth > 0 || s.maxAttrition < 16;
+  return !!s.listingType || s.activeSectors.length > 0 || s.activeExchanges.length > 0 || s.minSalary > 130 || s.minHeadcount > 0 || s.minGrowth > 0 || s.maxAttrition < 16;
 }

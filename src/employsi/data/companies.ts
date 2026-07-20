@@ -15,6 +15,10 @@ export interface Company {
   /** Stock exchange the company lists on (ASX, NYSE, NASDAQ, LSE, JPX, SSE,
    *  HKEX, …). Used by the exchange filter. Defaults to ASX. */
   exchange?: string;
+  /** Privately-held (not listed on any exchange). Defaults to false — every
+   *  current company is publicly listed. Drives the Public/Private master
+   *  filter; the exchange filter only applies to public companies. */
+  private?: boolean;
   headcount: number;
   growth: number;
   openRoles: number;
@@ -130,6 +134,14 @@ export const EXCHANGES: string[] = [
 // A company's listing exchange (its own `exchange`, or ASX by default).
 export function companyExchange(c: Company): string {
   return c.exchange ?? 'ASX';
+}
+
+export type ListingType = 'public' | 'private';
+
+// Public (exchange-listed) vs private. Every current company is public unless
+// explicitly flagged `private`.
+export function companyListing(c: Company): ListingType {
+  return c.private ? 'private' : 'public';
 }
 export function categorize(_sector: string): string {
   return RESOURCES_SECTOR;

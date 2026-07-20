@@ -57,6 +57,8 @@ export function TopBar() {
   const clearSearch = useAppStore((s) => s.clearSearch);
   const activeSectors = useAppStore((s) => s.activeSectors);
   const toggleSector = useAppStore((s) => s.toggleSector);
+  const listingType = useAppStore((s) => s.listingType);
+  const setListingType = useAppStore((s) => s.setListingType);
   const activeExchanges = useAppStore((s) => s.activeExchanges);
   const toggleExchange = useAppStore((s) => s.toggleExchange);
   const toggleSkillQuery = useAppStore((s) => s.toggleSkillQuery);
@@ -75,7 +77,7 @@ export function TopBar() {
   const showGlobalSearch = zoomedOut;
   void globalOut;
 
-  const filterState: FilterState = { searchQuery, activeSectors, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition };
+  const filterState: FilterState = { searchQuery, activeSectors, listingType, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition };
   const filterActive = isFilterActive(filterState);
   const searchActive = isSearchActive(filterState);
 
@@ -186,14 +188,27 @@ export function TopBar() {
                 </button>
               ))}
             </div>
-            <div className="sflabel">Stock exchange</div>
-            <div className="sfchips sfmosaic">
-              {EXCHANGES.map((ex) => (
-                <button key={ex} className={`sfchip sfchipsm ${activeExchanges.includes(ex) ? 'on' : ''}`} onClick={() => toggleExchange(ex)}>
-                  {ex}
-                </button>
-              ))}
+            <div className="sflabel">Listing</div>
+            <div className="sfchips">
+              <button className={`sfchip sfchipsm ${listingType === 'public' ? 'on' : ''}`} onClick={() => setListingType('public')}>
+                Public
+              </button>
+              <button className={`sfchip sfchipsm ${listingType === 'private' ? 'on' : ''}`} onClick={() => setListingType('private')}>
+                Private
+              </button>
             </div>
+            {listingType === 'public' && (
+              <div className="sfsub">
+                <div className="sflabel sfsublabel">Stock exchange</div>
+                <div className="sfchips sfmosaic">
+                  {EXCHANGES.map((ex) => (
+                    <button key={ex} className={`sfchip sfchipsm ${activeExchanges.includes(ex) ? 'on' : ''}`} onClick={() => toggleExchange(ex)}>
+                      {ex}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="sfrangerow">
               <span>Salary</span>
               <b>${minSalary}K+</b>

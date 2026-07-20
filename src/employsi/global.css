@@ -2073,6 +2073,32 @@ body {
   font-size: 11px;
   border-radius: 8px;
 }
+/* Drill-down section (the exchange list under a selected "Public" listing):
+   indented with a nesting rule + a small reveal so the hierarchy reads. */
+.sfsub {
+  margin-left: 4px;
+  padding-left: 11px;
+  border-left: 2px solid var(--line);
+  animation: sfsubin 0.22s ease both;
+}
+@keyframes sfsubin {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sfsub {
+    animation: none;
+  }
+}
+.sfsublabel {
+  margin-top: 10px;
+}
 .sfchip {
   padding: 6px 11px;
   border-radius: 999px;

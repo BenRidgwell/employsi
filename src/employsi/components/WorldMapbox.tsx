@@ -310,6 +310,7 @@ export function WorldMapbox() {
   const localCity = useAppStore((s) => s.localCity);
   const selectedId = useAppStore((s) => s.selectedId);
   const activeSectors = useAppStore((s) => s.activeSectors);
+  const listingType = useAppStore((s) => s.listingType);
   const activeExchanges = useAppStore((s) => s.activeExchanges);
   const minSalary = useAppStore((s) => s.minSalary);
   const minHeadcount = useAppStore((s) => s.minHeadcount);
@@ -445,6 +446,7 @@ export function WorldMapbox() {
       const fs: FilterState = {
         searchQuery: s.searchQuery,
         activeSectors: s.activeSectors,
+        listingType: s.listingType,
         activeExchanges: s.activeExchanges,
         minSalary: s.minSalary,
         minHeadcount: s.minHeadcount,
@@ -707,7 +709,7 @@ export function WorldMapbox() {
   useEffect(() => {
     rebuildMarkersRef.current?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, activeSectors, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition, searchQuery, skillIndex, heatMonth]);
+  }, [selectedId, activeSectors, listingType, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition, searchQuery, skillIndex, heatMonth]);
 
   // Hide the whole overview once fully in a local city (PerthMapbox owns it).
   const hidden = !zoomedOut && !zoomingIn;

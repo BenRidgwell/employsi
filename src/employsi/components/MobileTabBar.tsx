@@ -48,13 +48,14 @@ export function MobileTabBar() {
   const toggleMobileMenu = useAppStore((s) => s.toggleMobileMenu);
 
   const activeSectors = useAppStore((s) => s.activeSectors);
+  const listingType = useAppStore((s) => s.listingType);
   const activeExchanges = useAppStore((s) => s.activeExchanges);
   const minSalary = useAppStore((s) => s.minSalary);
   const minHeadcount = useAppStore((s) => s.minHeadcount);
   const minGrowth = useAppStore((s) => s.minGrowth);
   const maxAttrition = useAppStore((s) => s.maxAttrition);
   const searchQuery = useAppStore((s) => s.searchQuery);
-  const filterState: FilterState = { searchQuery, activeSectors, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition };
+  const filterState: FilterState = { searchQuery, activeSectors, listingType, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition };
   const filterActive = isFilterActive(filterState);
 
   // Only show on the bare map: any open overlay (a sheet, the company card, the

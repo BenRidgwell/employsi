@@ -185,12 +185,13 @@ function buildGeoJSON(
 // Pull the filter fields out of the live store state (used by the once-wired
 // map callbacks that read via getState()).
 function filterStateOf(s: {
-  searchQuery: string; activeSectors: string[]; activeExchanges: string[];
+  searchQuery: string; activeSectors: string[]; listingType: FilterState['listingType']; activeExchanges: string[];
   minSalary: number; minHeadcount: number; minGrowth: number; maxAttrition: number;
 }): FilterState {
   return {
     searchQuery: s.searchQuery,
     activeSectors: s.activeSectors,
+    listingType: s.listingType,
     activeExchanges: s.activeExchanges,
     minSalary: s.minSalary,
     minHeadcount: s.minHeadcount,
@@ -227,6 +228,7 @@ export function PerthMapbox() {
   const searchQuery = useAppStore((s) => s.searchQuery);
   const skillIndex = useAppStore((s) => s.skillIndex);
   const activeSectors = useAppStore((s) => s.activeSectors);
+  const listingType = useAppStore((s) => s.listingType);
   const activeExchanges = useAppStore((s) => s.activeExchanges);
   const minSalary = useAppStore((s) => s.minSalary);
   const minHeadcount = useAppStore((s) => s.minHeadcount);
@@ -234,8 +236,8 @@ export function PerthMapbox() {
   const maxAttrition = useAppStore((s) => s.maxAttrition);
 
   const filterState: FilterState = useMemo(
-    () => ({ searchQuery, activeSectors, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition }),
-    [searchQuery, activeSectors, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition],
+    () => ({ searchQuery, activeSectors, listingType, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition }),
+    [searchQuery, activeSectors, listingType, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition],
   );
 
   const skillDemand = useMemo(() => {
