@@ -4,12 +4,12 @@ import { createServerFn } from '@tanstack/react-start';
 // under **/server/**. createServerFn runs this only on the Cloudflare Worker,
 // which is what lets it fetch news providers cross-origin.
 //
-// Two providers, tried in order:
-//  1. GDELT DOC API — returns DIRECT publisher article URLs plus each story's
-//     real `socialimage` (its og:image), so links go straight to the source and
-//     thumbnails are the genuine article images. Free, no key.
-//  2. Google News RSS — fallback when GDELT is unavailable/rate-limited. Its
-//     links are Google redirects and its images are generic, but it's reliable.
+// Two providers, tried in order — BOTH resolve to real publisher articles (no
+// aggregator redirect that dead-ends, unlike Google News which we no longer use):
+//  1. Bing News RSS — query-specific, links carry the real destination URL (we
+//     pull it out of Bing's click-wrapper) and the publisher name. Reliable.
+//  2. GDELT DOC API — direct publisher URLs too, but it rate-limits a shared
+//     Worker IP hard, so it's the secondary/top-up source.
 
 export interface LiveNewsItem {
   title: string;
@@ -78,30 +78,24 @@ async function fromGdelt(query: string, limit: number, signal: AbortSignal): Pro
   return items;
 }
 
-// Google News RSS — publisher from <source>, and its " - Publisher" title
-// suffix is stripped. Ordered newest-first.
-function parseRss(xml: string, limit: number): LiveNewsItem[] {
-  const items: LiveNewsItem[] = [];
-  const blocks = xml.split(/<item>/i).slice(1, 60);
-  for (const raw of blocks) {
-    const block = raw.split(/<\/item>/i)[0];
-    const link = tag(block, 'link');
-    let title = tag(block, 'title');
-    const pub = tag(block, 'pubDate');
-    const sourceMatch = block.match(/<source[^>]*>([\s\S]*?)<\/source>/i);
-    const publisher = sourceMatch ? decodeEntities(sourceMatch[1]).trim() : '';
-    if (!link || !title) continue;
-    if (publisher && title.endsWith(` - ${publisher}`)) title = title.slice(0, -(publisher.length + 3));
-    const t = pub ? Date.parse(pub) : NaN;
-    items.push({ title, url: link, publisher, published: Number.isNaN(t) ? '' : new Date(t).toISOString() });
+// Bing News RSS. Its <link> is a click-wrapper (bing.com/news/apiclick.aspx?...&
+// url=<REAL>) — we pull the real publisher URL out of the `url=` param so the
+// link goes straight to the article. Publisher from <News:Source>; "X on MSN"
+// is normalised to "X". Ordered newest-first.
+function bingRealUrl(link: string): string {
+  const m = link.match(/[?&]url=([^&]+)/i);
+  if (m) {
+    try {
+      return decodeURIComponent(m[1]);
+    } catch {
+      return link;
+    }
   }
-  items.sort((a, b) => (Date.parse(b.published) || 0) - (Date.parse(a.published) || 0));
-  return items.slice(0, limit);
+  return link;
 }
 
-async function fromGoogle(query: string, limit: number, signal: AbortSignal): Promise<LiveNewsItem[]> {
-  const url =
-    'https://news.google.com/rss/search?q=' + encodeURIComponent(query) + '&hl=en-AU&gl=AU&ceid=AU:en';
+async function fromBing(query: string, limit: number, signal: AbortSignal): Promise<LiveNewsItem[]> {
+  const url = 'https://www.bing.com/news/search?q=' + encodeURIComponent(query) + '&format=RSS&setmkt=en-AU';
   const res = await fetch(url, {
     signal,
     headers: {
@@ -111,7 +105,27 @@ async function fromGoogle(query: string, limit: number, signal: AbortSignal): Pr
     },
   });
   if (!res.ok) return [];
-  return parseRss(await res.text(), limit);
+  const xml = await res.text();
+  const items: LiveNewsItem[] = [];
+  const seen = new Set<string>();
+  const blocks = xml.split(/<item>/i).slice(1, 60);
+  for (const raw of blocks) {
+    const block = raw.split(/<\/item>/i)[0];
+    const link = tag(block, 'link');
+    const title = tag(block, 'title');
+    const pub = tag(block, 'pubDate');
+    const srcM = block.match(/<News:Source[^>]*>([\s\S]*?)<\/News:Source>/i);
+    let publisher = srcM ? decodeEntities(srcM[1]).trim() : '';
+    publisher = publisher.replace(/\s+on\s+MSN$/i, '').trim();
+    if (!link || !title) continue;
+    const real = bingRealUrl(link);
+    if (/bing\.com\/news\/search/i.test(real) || seen.has(real)) continue; // skip the self-referential feed link
+    seen.add(real);
+    const t = pub ? Date.parse(pub) : NaN;
+    items.push({ title, url: real, publisher: cleanDomain(publisher), published: Number.isNaN(t) ? '' : new Date(t).toISOString() });
+  }
+  items.sort((a, b) => (Date.parse(b.published) || 0) - (Date.parse(a.published) || 0));
+  return items.slice(0, limit);
 }
 
 export const getLiveNews = createServerFn({ method: 'GET' })
@@ -128,25 +142,29 @@ export const getLiveNews = createServerFn({ method: 'GET' })
     const timer = setTimeout(() => controller.abort(), 7000);
     try {
       let items: LiveNewsItem[] = [];
+      // Bing News first — reliable, direct publisher links.
       try {
-        items = await fromGdelt(query, limit, controller.signal);
+        items = await fromBing(query, limit, controller.signal);
       } catch {
         items = [];
       }
-      if (items.length === 0) {
+      // GDELT top-up (also direct links) when Bing is thin/empty.
+      if (items.length < 3) {
         try {
-          items = await fromGoogle(query, limit, controller.signal);
+          const g = await fromGdelt(query, limit, controller.signal);
+          const have = new Set(items.map((i) => i.url));
+          for (const it of g) if (!have.has(it.url)) items.push(it);
+          items = items.slice(0, limit);
         } catch {
-          items = [];
+          /* keep whatever Bing gave */
         }
       }
       // Last resort: if an exact-phrase query ("Company Name") found nothing,
-      // retry Google unquoted — broader, so a real company almost always yields
-      // recent coverage (with its publisher) rather than falling back to the
-      // sourceless generated copy.
+      // retry Bing unquoted — broader, so a real company almost always yields
+      // recent coverage rather than falling back to the sourceless copy.
       if (items.length === 0 && /^".*"$/.test(query)) {
         try {
-          items = await fromGoogle(query.replace(/^"|"$/g, ''), limit, controller.signal);
+          items = await fromBing(query.replace(/^"|"$/g, ''), limit, controller.signal);
         } catch {
           items = [];
         }

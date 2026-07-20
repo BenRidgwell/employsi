@@ -3945,9 +3945,8 @@ body {
    masthead double-rule, and a staggered "print" reveal so each story unfurls
    onto the page like fresh ink. */
 .newspaper {
-  background:
-    linear-gradient(rgba(250, 249, 246, 0.6), rgba(250, 249, 246, 0.6)),
-    rgba(255, 255, 255, 0.98);
+  /* Match the main company card's white exactly (no newsprint tint). */
+  background: rgba(255, 255, 255, 0.98);
 }
 .newspaper .newshd {
   text-align: center;
