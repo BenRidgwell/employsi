@@ -106,8 +106,7 @@ export function NewsPanel({ name, sector, ticker, live }: { name: string; sector
   return (
     <aside className="newspanel flashfeed">
       <div className="ffhd">
-        <span className="ffhdname">{name}</span>
-        <span className="ffhdlabel">in the news</span>
+        <span className="ffhdname">In the news</span>
       </div>
       <div className="ffscroll">
         <a className="ffhero" style={{ animationDelay: '0.02s' }} href={articleUrl(news.hero, name)} target="_blank" rel="noreferrer">

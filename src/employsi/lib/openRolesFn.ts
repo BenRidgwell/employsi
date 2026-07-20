@@ -3,17 +3,22 @@ import { createServerFn } from '@tanstack/react-start';
 // Live "open roles" count for Australian companies, fetched on the Worker.
 //
 // SEEK and Indeed can't be used: both hard-block server/datacenter IPs (403)
-// and their terms prohibit scraping. Instead we use two ToS-clean sources:
+// and their terms prohibit scraping. Instead we use ToS-clean sources:
 //   1. A per-company ATS feed override (Workday / Greenhouse / Lever /
 //      SmartRecruiters JSON) — real numbers straight from the employer, for the
 //      companies whose exact ATS slug has been verified (see AU_ATS below).
-//   2. Adzuna's official Australian jobs API as the broad fallback for everyone
-//      else. Needs ADZUNA_APP_ID + ADZUNA_APP_KEY as Worker secrets; without
-//      them this returns null and the card keeps its illustrative figure.
+//   2. Adzuna's official Australian jobs API as the broad source for everyone
+//      else. Needs ADZUNA_APP_ID + ADZUNA_APP_KEY as Worker secrets.
+//   3. The Muse's public jobs API on top of Adzuna, cross-checked so a role
+//      advertised on both boards is only counted once. Needs THEMUSE_KEY.
+//
+// The count is directly the live vacancy total: when Adzuna responds with no
+// matches the card shows 0 (real "no live vacancies"), not an illustrative
+// figure. Only a network/credentials failure returns null.
 
 export interface OpenRoles {
   count: number;
-  source: string; // e.g. "Adzuna", "Workday"
+  source: string; // e.g. "Adzuna", "Adzuna + The Muse", "Workday"
 }
 
 // A single stored data point: [YYYY-MM-DD, open-role count].
@@ -141,7 +146,18 @@ async function fromAts(entry: AtsEntry): Promise<OpenRoles | null> {
   }
 }
 
-async function fromAdzuna(company: string): Promise<OpenRoles | null> {
+// Normalise a title for cross-board dedupe: lowercase, collapse anything
+// non-alphanumeric to single spaces. Same-ad titles line up across providers.
+function normTitle(s: string): string {
+  return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+// Adzuna's Australian count for a company, plus a sample of its advertised
+// titles (used to cross-check against The Muse). Returns the real count —
+// including 0 when Adzuna genuinely reports no matches — and null only when the
+// request/credentials fail, so the caller can distinguish "no vacancies" from
+// "couldn't check".
+async function fromAdzuna(company: string): Promise<{ count: number; titles: string[] } | null> {
   const c = adzunaCreds();
   if (!c) return null;
   const params = new URLSearchParams({
@@ -149,16 +165,43 @@ async function fromAdzuna(company: string): Promise<OpenRoles | null> {
     app_key: c.key,
     what_phrase: company,
     where: 'Australia',
-    results_per_page: '1',
+    results_per_page: '50',
     'content-type': 'application/json',
   });
   const j = await fetchJson(`https://api.adzuna.com/v1/api/jobs/au/search/1?${params.toString()}`, 6000);
+  if (!j) return null;
   const count = Number(j?.count);
-  // Only treat a positive count as live data. A 0 (or a missing/errored
-  // response) almost always means Adzuna doesn't index this employer under
-  // that name rather than a true zero, so we fall through and let the card
-  // keep its illustrative figure instead of showing a misleading "0 · live".
-  return Number.isFinite(count) && count > 0 ? { count, source: 'Adzuna' } : null;
+  if (!Number.isFinite(count)) return null;
+  const results: any[] = Array.isArray(j?.results) ? j.results : [];
+  const titles = results.map((x) => normTitle(String(x?.title || ''))).filter(Boolean);
+  return { count, titles };
+}
+
+// The Muse's public jobs API for a company, restricted to Australian roles.
+// The Muse's `company` filter is exact-name, so most resources/finance names
+// return nothing — but where a company is registered (typically tech and
+// multinationals) it adds real, current openings. Returns the AU job titles so
+// the caller can drop any that Adzuna already listed (no double counting).
+async function fromMuse(company: string): Promise<string[]> {
+  const key = process.env.THEMUSE_KEY;
+  if (!key) return [];
+  const titles: string[] = [];
+  // Two pages is plenty for a single employer's AU footprint.
+  for (let page = 0; page < 2; page++) {
+    const params = new URLSearchParams({ api_key: key, company, page: String(page) });
+    const j = await fetchJson(`https://www.themuse.com/api/public/jobs?${params.toString()}`, 6000);
+    const results: any[] = Array.isArray(j?.results) ? j.results : [];
+    if (!results.length) break;
+    for (const r of results) {
+      const locs: string[] = Array.isArray(r?.locations) ? r.locations.map((l: any) => String(l?.name || '')) : [];
+      const isAU = locs.some((l) => /australia|sydney|melbourne|perth|brisbane|adelaide|canberra/i.test(l));
+      if (!isAU) continue;
+      const t = normTitle(String(r?.name || ''));
+      if (t) titles.push(t);
+    }
+    if (page + 1 >= Number(j?.page_count || 0)) break;
+  }
+  return titles;
 }
 
 export const getOpenRoles = createServerFn({ method: 'GET' })
@@ -174,11 +217,29 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
     // 1. Direct employer ATS feed where we have a verified one.
     const ats = data.id ? AU_ATS[data.id] : undefined;
     if (ats) out = await fromAts(ats);
-    // 2. Otherwise the Adzuna aggregator.
-    if (!out) out = await fromAdzuna(company);
+    // 2. Otherwise the Adzuna aggregator, augmented with The Muse. Adzuna's
+    //    count is the live vacancy total (0 shown as a real "no vacancies");
+    //    The Muse adds any of its Australian roles for this employer that
+    //    Adzuna didn't already list, cross-checked by normalised title so the
+    //    same ad on both boards is only counted once.
+    if (!out) {
+      const az = await fromAdzuna(company);
+      if (az) {
+        const seen = new Set(az.titles);
+        const museTitles = await fromMuse(company);
+        let museAdded = 0;
+        for (const t of museTitles) if (!seen.has(t)) (seen.add(t), museAdded++);
+        out = {
+          count: az.count + museAdded,
+          source: museAdded > 0 ? 'Adzuna + The Muse' : 'Adzuna',
+        };
+      }
+    }
 
-    // Record today's count so the card can chart vacancies over time.
-    if (out && data.id) await recordSnapshot(data.id, out.count);
+    // Record today's count so the card can chart vacancies over time. Only
+    // positive counts are stored, so a company Adzuna doesn't index by name
+    // (a false 0) never pollutes the history chart.
+    if (out && out.count > 0 && data.id) await recordSnapshot(data.id, out.count);
 
     cache.set(key, { at: Date.now(), data: out });
     return out;

@@ -177,7 +177,7 @@ export function CompanyPanel() {
   // Adzuna on the Worker). Company-wide, so only fetched when no role filter is
   // narrowing the card to a single role.
   const isAU = !!lastId && AU_COMPANY_IDS.has(lastId);
-  const liveRoles = useOpenRoles(panel?.name ?? null, panel?.companyId, open && isAU && !roleFilter);
+  const { roles: liveRoles, settled: rolesSettled } = useOpenRoles(panel?.name ?? null, panel?.companyId, open && isAU && !roleFilter);
   // Stored daily history of the live vacancy count, charted below the stats.
   const rolesHistory = useRolesHistory(panel?.companyId, open && isAU && !roleFilter);
   // Real advertised roles + their mapped skills, from the jobs pipeline.
@@ -191,6 +191,22 @@ export function CompanyPanel() {
     if (!counts.size) return null;
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([sk]) => sk);
   }, [companyJobs]);
+  // "Where they're hiring": the real advertised roles grouped by functional
+  // area (the job-board category, e.g. "Engineering", "IT", "Trade &
+  // Construction"), counted from the live Adzuna + The Muse job sample. Falls
+  // back to the illustrative breakdown only when no live jobs are stored.
+  const liveHiring = useMemo(() => {
+    if (!companyJobs?.jobs?.length) return null;
+    const counts = new Map<string, number>();
+    for (const j of companyJobs.jobs) {
+      const area = (j.cat || '').replace(/\s*jobs?$/i, '').trim() || 'Other';
+      counts.set(area, (counts.get(area) || 0) + 1);
+    }
+    if (!counts.size) return null;
+    const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const mx = Math.max(...ranked.map(([, c]) => c));
+    return ranked.map(([title, count]) => ({ title, count, pct: Math.round((count / mx) * 100) + '%' }));
+  }, [companyJobs]);
   const live = isBhp ? !!feed : REAL_DATA_IDS.includes(lastId ?? '') || !!liveShare || !!liveStats || !!liveRoles;
 
   // Headcount is deliberately NOT taken from the live market feed — there's no
@@ -201,17 +217,23 @@ export function CompanyPanel() {
   const revPerEmp = liveStats?.revPerEmp || panel?.revPerEmp || 0;
   const ebitdaPerEmp = liveStats?.ebitdaPerEmp || panel?.ebitdaPerEmp || 0;
 
-  // Overlay the real Australian open-roles count onto the headline stat when
-  // the live feed resolves; otherwise the card keeps its illustrative figure.
+  // Open roles is directly the live Australian vacancy count (Adzuna + The
+  // Muse). For AU companies the headline is driven entirely by that feed: once
+  // the check settles it shows the real count, or 0 when there are no live
+  // vacancies — never an illustrative figure. The illustrative number is only
+  // shown briefly while the check is still in flight, and for non-AU companies
+  // (outside the Adzuna coverage) which keep their existing figure.
   const bigStats = useMemo(() => {
     if (!panel) return [];
-    if (!liveRoles) return panel.bigStats;
+    if (!isAU || roleFilter) return panel.bigStats;
+    if (!rolesSettled && !liveRoles) return panel.bigStats; // still checking
+    const count = liveRoles ? liveRoles.count : 0;
     return panel.bigStats.map((s) =>
       s.label === 'Open roles'
-        ? { ...s, value: liveRoles.count.toLocaleString('en-US'), sub: '' }
+        ? { ...s, value: count.toLocaleString('en-US'), sub: count > 0 && liveRoles ? liveRoles.source : 'no live vacancies' }
         : s,
     );
-  }, [panel, liveRoles]);
+  }, [panel, isAU, roleFilter, rolesSettled, liveRoles]);
 
   const prices = useMemo(
     () =>
@@ -278,7 +300,7 @@ export function CompanyPanel() {
                 ))}
               </div>
 
-              {isAU && !roleFilter && liveRoles && (
+              {isAU && !roleFilter && liveRoles && liveRoles.count > 0 && (
                 <div className="sect">
                   <RolesHistoryChart points={rolesHistory} current={liveRoles.count} />
                 </div>
@@ -318,23 +340,25 @@ export function CompanyPanel() {
                 </div>
               </div>
 
-              <div className="sect">
-                <div className="secth">
-                  Where they're hiring
-                  <span>open roles by area</span>
+              {(liveHiring ?? panel.roles).length > 0 && (
+                <div className="sect">
+                  <div className="secth">
+                    Where they're hiring
+                    <span>{liveHiring ? 'from live job ads' : 'open roles by area'}</span>
+                  </div>
+                  <div className="roles">
+                    {(liveHiring ?? panel.roles).map((r) => (
+                      <div className="role" key={r.title}>
+                        <span className="rolet">{r.title}</span>
+                        <span className="rolebar">
+                          <span className="rolefill" style={{ width: r.pct }} />
+                        </span>
+                        <span className="rolec">{r.count}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="roles">
-                  {panel.roles.map((r) => (
-                    <div className="role" key={r.title}>
-                      <span className="rolet">{r.title}</span>
-                      <span className="rolebar">
-                        <span className="rolefill" style={{ width: r.pct }} />
-                      </span>
-                      <span className="rolec">{r.count}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              )}
 
               <div className="sect">
                 <div className="secth">

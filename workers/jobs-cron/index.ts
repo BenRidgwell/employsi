@@ -25,6 +25,10 @@ interface Env {
   // Kong, Dubai, Zurich, Beijing, Ganzhou). Optional: when unset those hubs are
   // simply skipped and stay dark, exactly as before.
   JOOBLE_KEY?: string;
+  // The Muse public jobs API key — layered on top of Adzuna per company and
+  // cross-checked so a role advertised on both boards is only counted once.
+  // Optional: when unset, companies just get their Adzuna-only feed.
+  THEMUSE_KEY?: string;
   CRON_TOKEN: string;
 }
 
@@ -49,6 +53,9 @@ interface StoredJob {
 
 const today = () => new Date().toISOString().slice(0, 10);
 const stripHtml = (s: string) => (s || '').replace(/<[^>]*>/g, ' ').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim();
+// Normalise a title for cross-board dedupe (Adzuna ↔ The Muse): lowercase,
+// collapse non-alphanumerics to single spaces. Same-ad titles line up.
+const normTitle = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
 function matchCity(text: string): string | null {
   const t = (text || '').toLowerCase();
@@ -67,42 +74,111 @@ async function pullCompany(env: Env, target: JobsTarget): Promise<{ count: numbe
   });
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
+  let count = 0;
+  const jobs: StoredJob[] = [];
+  const seenTitles = new Set<string>(); // normalised titles, for cross-board dedupe
   try {
     const res = await fetch(`https://api.adzuna.com/v1/api/jobs/au/search/1?${params.toString()}`, {
       signal: controller.signal,
       headers: { Accept: 'application/json', 'User-Agent': 'employsi-jobs/1.0' },
     });
-    if (!res.ok) return { count: 0, jobs: [] };
-    const j: any = await res.json();
-    const count = Number(j?.count) || 0;
-    const results: any[] = Array.isArray(j?.results) ? j.results : [];
-    const seen = new Set<string>();
-    const jobs: StoredJob[] = [];
-    for (const x of results) {
-      const title = stripHtml(x?.title || '');
-      if (!title) continue;
-      const loc = x?.location?.display_name || '';
-      const dedupe = (title + '|' + loc).toLowerCase();
-      if (seen.has(dedupe)) continue; // Adzuna reposts the same role repeatedly
-      seen.add(dedupe);
-      const area = Array.isArray(x?.location?.area) ? x.location.area.join(' ') : '';
-      jobs.push({
-        t: title,
-        loc,
-        cat: x?.category?.label || '',
-        url: x?.redirect_url || '',
-        created: (x?.created || '').slice(0, 10),
-        city: matchCity(loc + ' ' + area) || matchCity(title),
-        skills: skillsForText(title),
-      });
-      if (jobs.length >= JOBS_PER_COMPANY) break;
+    if (res.ok) {
+      const j: any = await res.json();
+      count = Number(j?.count) || 0;
+      const results: any[] = Array.isArray(j?.results) ? j.results : [];
+      const seen = new Set<string>();
+      for (const x of results) {
+        const title = stripHtml(x?.title || '');
+        if (!title) continue;
+        const loc = x?.location?.display_name || '';
+        const dedupe = (title + '|' + loc).toLowerCase();
+        if (seen.has(dedupe)) continue; // Adzuna reposts the same role repeatedly
+        seen.add(dedupe);
+        seenTitles.add(normTitle(title));
+        const area = Array.isArray(x?.location?.area) ? x.location.area.join(' ') : '';
+        jobs.push({
+          t: title,
+          loc,
+          cat: x?.category?.label || '',
+          url: x?.redirect_url || '',
+          created: (x?.created || '').slice(0, 10),
+          city: matchCity(loc + ' ' + area) || matchCity(title),
+          skills: skillsForText(title),
+        });
+        if (jobs.length >= JOBS_PER_COMPANY) break;
+      }
     }
-    return { count, jobs };
   } catch {
-    return { count: 0, jobs: [] };
+    /* Adzuna failed — fall through with whatever (possibly none) we have */
   } finally {
     clearTimeout(timer);
   }
+
+  // Layer The Muse on top: add any of its Australian roles for this employer
+  // that Adzuna didn't already list (cross-checked by normalised title), and
+  // grow the count by only those extras so the same ad on both boards is never
+  // double counted.
+  if (jobs.length < JOBS_PER_COMPANY) {
+    const muse = await pullMuse(env, target.name);
+    let added = 0;
+    for (const m of muse) {
+      if (seenTitles.has(normTitle(m.t))) continue;
+      seenTitles.add(normTitle(m.t));
+      jobs.push(m);
+      added++;
+      if (jobs.length >= JOBS_PER_COMPANY) break;
+    }
+    count += added;
+  }
+
+  return { count, jobs };
+}
+
+// The Muse public jobs API for one employer, restricted to Australian roles.
+// The `company` filter is exact-name, so most resources/finance names return
+// nothing — but registered employers (typically tech / multinationals) add real
+// current openings. Returns StoredJobs tagged from The Muse; skills are mapped
+// through the same taxonomy as Adzuna so they aggregate identically.
+async function pullMuse(env: Env, company: string): Promise<StoredJob[]> {
+  if (!env.THEMUSE_KEY) return [];
+  const out: StoredJob[] = [];
+  for (let page = 0; page < 2; page++) {
+    const params = new URLSearchParams({ api_key: env.THEMUSE_KEY, company, page: String(page) });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      const res = await fetch(`https://www.themuse.com/api/public/jobs?${params.toString()}`, {
+        signal: controller.signal,
+        headers: { Accept: 'application/json', 'User-Agent': 'employsi-jobs/1.0' },
+      });
+      if (!res.ok) break;
+      const j: any = await res.json();
+      const results: any[] = Array.isArray(j?.results) ? j.results : [];
+      if (!results.length) break;
+      for (const r of results) {
+        const title = stripHtml(r?.name || '');
+        if (!title) continue;
+        const locs: string[] = Array.isArray(r?.locations) ? r.locations.map((l: any) => String(l?.name || '')) : [];
+        const auLoc = locs.find((l) => /australia|sydney|melbourne|perth|brisbane|adelaide|canberra/i.test(l));
+        if (!auLoc) continue; // only genuine Australian roles count toward AU vacancies
+        out.push({
+          t: title,
+          loc: auLoc,
+          cat: (Array.isArray(r?.categories) && r.categories[0]?.name) || '',
+          url: (r?.refs && r.refs.landing_page) || '',
+          created: String(r?.publication_date || '').slice(0, 10),
+          city: matchCity(auLoc) || matchCity(title),
+          skills: skillsForText(title),
+        });
+      }
+      if (page + 1 >= Number(j?.page_count || 0)) break;
+    } catch {
+      break;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return out;
 }
 
 async function appendCount(env: Env, id: string, count: number): Promise<void> {
