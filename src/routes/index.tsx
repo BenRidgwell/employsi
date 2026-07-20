@@ -8,7 +8,8 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import ridgwellPhoto from "@/assets/ridgwell_photo.jpeg.asset.json";
 
 export const Route = createFileRoute("/")({
@@ -33,15 +34,23 @@ export const Route = createFileRoute("/")({
 
 function AboutPopover() {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      {open && (
-        <div
-          className="fixed inset-0 z-40 bg-black/10 backdrop-blur-sm"
-          aria-hidden="true"
-          onClick={() => setOpen(false)}
-        />
-      )}
+      {open && mounted &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-40 bg-black/10 backdrop-blur-sm"
+            aria-hidden="true"
+            onClick={() => setOpen(false)}
+          />,
+          document.body
+        )}
       <PopoverTrigger asChild>
         <button className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-ink-2 cursor-pointer">
           About <ArrowUpRight size={14} />
