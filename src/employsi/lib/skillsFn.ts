@@ -24,6 +24,7 @@ export interface AdvertisedJob {
   created: string;
   city: string | null;
   skills: string[];
+  salN?: number; // advertised salary midpoint (annualised), when the source states one
 }
 export interface CompanyJobs {
   updated: string;

@@ -57,6 +57,7 @@ interface StoredJob {
   src?: string; // provider: adzuna | muse | jooble
   co?: string; // employer name from the ad (for the archive)
   sal?: string; // salary text when the source states one (for the archive)
+  salN?: number; // advertised salary midpoint (annualised), for aggregation
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -74,6 +75,12 @@ function adzunaSalary(x: any): string | undefined {
     return lo === hi ? fmt(lo) : `${fmt(lo)}–${fmt(hi)}`;
   }
   return undefined;
+}
+
+// Adzuna salary band → an annualised midpoint number (for aggregation).
+function adzunaSalaryNum(x: any): number | undefined {
+  const vals = [Number(x?.salary_min), Number(x?.salary_max)].filter((n) => Number.isFinite(n) && n > 0);
+  return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : undefined;
 }
 
 function matchCity(text: string): string | null {
@@ -126,6 +133,7 @@ async function pullCompany(env: Env, target: JobsTarget): Promise<{ count: numbe
           src: 'adzuna',
           co: x?.company?.display_name || target.name,
           sal: adzunaSalary(x),
+          salN: adzunaSalaryNum(x),
         });
         if (jobs.length >= JOBS_PER_COMPANY) break;
       }
@@ -266,6 +274,7 @@ async function pullHub(env: Env, target: HubTarget): Promise<StoredJob[]> {
         src: 'adzuna',
         co: x?.company?.display_name || '',
         sal: adzunaSalary(x),
+        salN: adzunaSalaryNum(x),
       });
     }
     return jobs;

@@ -211,14 +211,38 @@ export function CompanyPanel() {
   const liveHiring = useMemo(() => {
     if (!jobSample?.length) return null;
     const counts = new Map<string, number>();
+    const salaries = new Map<string, number[]>(); // per-area advertised salary midpoints
     for (const j of jobSample) {
       const area = (j.cat || '').replace(/\s*jobs?$/i, '').trim() || 'Other';
       counts.set(area, (counts.get(area) || 0) + 1);
+      if (typeof j.salN === 'number' && j.salN > 0) {
+        const arr = salaries.get(area) || [];
+        arr.push(j.salN);
+        salaries.set(area, arr);
+      }
     }
     if (!counts.size) return null;
+    const median = (a: number[]) => {
+      const s = [...a].sort((x, y) => x - y);
+      const m = Math.floor(s.length / 2);
+      return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
+    };
+    const fmtK = (n: number) => (n >= 1000 ? `$${Math.round(n / 1000)}k` : `$${Math.round(n)}`);
     const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
     const mx = Math.max(...ranked.map(([, c]) => c));
-    return ranked.map(([title, count]) => ({ title, count, pct: Math.round((count / mx) * 100) + '%' }));
+    return ranked.map(([title, count]) => {
+      const sals = salaries.get(title);
+      return { title, count, pct: Math.round((count / mx) * 100) + '%', pay: sals && sals.length ? fmtK(median(sals)) : null };
+    });
+  }, [jobSample]);
+  // Company-wide median advertised salary across the live roles that state one.
+  const medianPay = useMemo(() => {
+    if (!jobSample?.length) return null;
+    const vals = jobSample.map((j) => j.salN).filter((n): n is number => typeof n === 'number' && n > 0).sort((a, b) => a - b);
+    if (!vals.length) return null;
+    const m = Math.floor(vals.length / 2);
+    const med = vals.length % 2 ? vals[m] : Math.round((vals[m - 1] + vals[m]) / 2);
+    return { text: med >= 1000 ? `$${Math.round(med / 1000)}k` : `$${Math.round(med)}`, n: vals.length };
   }, [jobSample]);
 
   // Headcount is deliberately NOT taken from the live market feed — there's no
@@ -353,18 +377,28 @@ export function CompanyPanel() {
                 <div className="sect">
                   <div className="secth">
                     Where they're hiring
-                    <span>{liveHiring ? 'from live job ads' : 'open roles by area'}</span>
+                    <span>
+                      {liveHiring
+                        ? medianPay
+                          ? `median advertised ${medianPay.text}`
+                          : 'from live job ads'
+                        : 'open roles by area'}
+                    </span>
                   </div>
                   <div className="roles">
-                    {(liveHiring ?? panel.roles).map((r) => (
-                      <div className="role" key={r.title}>
-                        <span className="rolet">{r.title}</span>
-                        <span className="rolebar">
-                          <span className="rolefill" style={{ width: r.pct }} />
-                        </span>
-                        <span className="rolec">{r.count}</span>
-                      </div>
-                    ))}
+                    {(liveHiring ?? panel.roles).map((r) => {
+                      const pay = (r as { pay?: string | null }).pay;
+                      return (
+                        <div className="role" key={r.title}>
+                          <span className="rolet">{r.title}</span>
+                          <span className="rolebar">
+                            <span className="rolefill" style={{ width: r.pct }} />
+                          </span>
+                          {pay && <span className="rolepay">{pay}</span>}
+                          <span className="rolec">{r.count}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

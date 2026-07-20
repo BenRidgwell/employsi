@@ -176,8 +176,23 @@ function normTitle(s: string): string {
   return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
-function toJob(t: string, loc: string, cat: string, url: string, created: string): AdvertisedJob {
-  return { t, loc, cat, url, created: (created || '').slice(0, 10), city: null, skills: skillsForText(t) };
+function toJob(t: string, loc: string, cat: string, url: string, created: string, salN?: number): AdvertisedJob {
+  return { t, loc, cat, url, created: (created || '').slice(0, 10), city: null, skills: skillsForText(t), salN };
+}
+
+// Adzuna's advertised salary band → an annualised midpoint number, when stated.
+function adzunaSalaryNum(x: any): number | undefined {
+  const lo = Number(x?.salary_min);
+  const hi = Number(x?.salary_max);
+  const vals = [lo, hi].filter((n) => Number.isFinite(n) && n > 0);
+  if (!vals.length) return undefined;
+  return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+}
+
+// A salary midpoint → a compact display string, e.g. 152000 → "$152k".
+export function fmtSalary(n: number | undefined | null): string | null {
+  if (!n || !Number.isFinite(n) || n <= 0) return null;
+  return n >= 1000 ? `$${Math.round(n / 1000)}k` : `$${Math.round(n)}`;
 }
 
 // An advertised job → a historical archive row, tagged with its source and the
@@ -191,6 +206,7 @@ function jobToArchive(j: AdvertisedJob, source: string, company: string, id: str
     hub: where || null,
     location: j.loc,
     category: j.cat,
+    salary: fmtSalary(j.salN),
     url: j.url,
     posted: j.created,
     skills: j.skills,
@@ -226,7 +242,7 @@ async function fromAdzuna(company: string, country: string, where: string): Prom
     const dk = (t + '|' + loc).toLowerCase();
     if (seen.has(dk)) continue; // Adzuna reposts the same role repeatedly
     seen.add(dk);
-    jobs.push(toJob(t, loc, String(x?.category?.label || ''), String(x?.redirect_url || ''), String(x?.created || '')));
+    jobs.push(toJob(t, loc, String(x?.category?.label || ''), String(x?.redirect_url || ''), String(x?.created || ''), adzunaSalaryNum(x)));
   }
   return { count, jobs };
 }

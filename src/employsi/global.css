@@ -4708,6 +4708,14 @@ body {
   border-radius: 6px;
   background: linear-gradient(90deg, #2b2b2e, #6c6c72);
 }
+.rolepay {
+  flex: 0 0 auto;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #12905e;
+  white-space: nowrap;
+}
 .rolec {
   font-family: "JetBrains Mono", monospace;
   font-size: 12px;
