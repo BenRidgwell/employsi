@@ -115,6 +115,28 @@ body {
   border-left: 1px solid var(--line);
   padding-left: 9px;
 }
+/* Scrub callout: a small demand-change % appended to a city pill while a skill
+   is selected and the time slider is being dragged. Green up / red down. */
+.mbchip-pct .chiptk {
+  padding-right: 8px;
+  border-right: 1px solid var(--line);
+}
+.chippct {
+  margin-left: 8px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+.chippct.up {
+  color: #12905e;
+}
+.chippct.down {
+  color: #d6362e;
+}
+.chippct.flat {
+  color: var(--slate);
+}
 .mbchip {
   pointer-events: auto;
   display: flex;
@@ -5424,7 +5446,8 @@ body {
   }
   /* Trending keeps the bottom tab bar visible, so its pane stops above it. */
   .trendpane {
-    bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+    /* Clear the floating tab bar (which now hovers ~14px off the bottom). */
+    bottom: calc(86px + env(safe-area-inset-bottom, 0px));
   }
   .toolsdock {
     top: auto;
@@ -5433,10 +5456,11 @@ body {
     gap: 10px;
   }
 
-  /* Bottom cluster: keep left, shrink, avoid overlap */
+  /* Bottom cluster: keep left, shrink, and stack clear of the floating tab bar
+     (legend just above the bar, skills key above the legend). */
   .heatkey {
     left: 12px;
-    bottom: 62px;
+    bottom: 150px;
     width: auto;
     min-width: 168px;
     max-width: calc(100vw - 24px);
@@ -5445,7 +5469,7 @@ body {
   .legend {
     left: 12px;
     right: 12px;
-    bottom: 14px;
+    bottom: calc(86px + env(safe-area-inset-bottom, 0px));
     justify-content: center;
     padding: 8px 12px;
     font-size: 11px;
@@ -5622,19 +5646,26 @@ body {
 
   /* The bar itself */
   /* Brand-black bar with white icons. */
+  /* Floating tab bar: a rounded, detached pill hovering above the map rather
+     than a full-width edge-to-edge bar. Keeps the dark palette + white icons. */
   .mtabbar {
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    left: 14px;
+    right: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
     z-index: 43;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     align-items: stretch;
-    background: #1c1c1e;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 -10px 30px -18px rgba(0, 0, 0, 0.6);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: rgba(28, 28, 30, 0.92);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 22px;
+    box-shadow:
+      0 18px 38px -12px rgba(0, 0, 0, 0.55),
+      0 2px 6px -2px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
   }
   .mtab {
     display: flex;
@@ -5642,7 +5673,7 @@ body {
     align-items: center;
     justify-content: center;
     gap: 3px;
-    padding: 9px 0 8px;
+    padding: 10px 0 9px;
     background: none;
     border: none;
     cursor: pointer;

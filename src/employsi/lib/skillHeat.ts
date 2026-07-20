@@ -70,6 +70,27 @@ export function iviCityDemandAt(skill: string | null, monthIndex: number): Recor
   return out;
 }
 
+// Per-city % change in demand for a skill AT the given month, measured over a
+// trailing window (default ~12 months = year-on-year momentum, or since the
+// series start when there's less history). Drives the scrub callouts: as the
+// time slider moves, each city shows how its demand for the skill is changing
+// at that point in time. Cities with no baseline demand return 0.
+export function iviCityChangeAt(skill: string | null, monthIndex: number, window = 12): Record<string, number> {
+  if (!skill) return {};
+  const series = IVI_SERIES[skill];
+  if (!series) return {};
+  const last = IVI_MONTHS.length - 1;
+  const i = monthIndex < 0 || monthIndex > last ? last : monthIndex;
+  const b = Math.max(0, i - window);
+  const out: Record<string, number> = {};
+  for (const city of Object.keys(series)) {
+    const base = series[city][b] ?? 0;
+    const cur = series[city][i] ?? 0;
+    out[city] = base > 0 ? ((cur - base) / base) * 100 : 0;
+  }
+  return out;
+}
+
 // The canonical skill a search query resolves to (exact, case-insensitive), or
 // null if the query isn't a tracked skill. When non-null the maps switch from
 // the salary/growth metric to real demand for that skill.

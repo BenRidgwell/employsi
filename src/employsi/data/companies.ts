@@ -183,3 +183,7 @@ export const ROSTER_COMPANIES: Company[] = Object.entries(CITY_ROSTERS).flatMap(
   r.companies.map((e) => buildRosterCompany(city, r.exchange, e)),
 );
 COMPANIES.push(...ROSTER_COMPANIES);
+
+// Perth WA government agencies (private / public-sector).
+import { PERTH_GOV_COMPANIES } from './perthGov';
+COMPANIES.push(...PERTH_GOV_COMPANIES);

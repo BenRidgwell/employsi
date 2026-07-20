@@ -2,7 +2,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef } from 'react';
 import { useAppStore, cityMatchesFilters, type FilterState } from '../state/store';
-import { activeSkill, demandByCity, iviCityDemandAt } from '../lib/skillHeat';
+import { activeSkill, demandByCity, iviCityDemandAt, iviCityChangeAt } from '../lib/skillHeat';
 import {
   HUB_LNGLAT,
   AU_CITY_LNGLAT,
@@ -109,6 +109,9 @@ interface Marker {
   label: string;
   sub: string;
   clickable: boolean;
+  // % change in the searched skill's demand at the current slider month (set
+  // only while a skill + the time slider are active), shown as a small callout.
+  pct?: number | null;
 }
 
 // Green (low) → amber → red (high), matching the heat key ramp. Used to colour
@@ -406,6 +409,18 @@ export function WorldMapbox() {
         // (the GL circle at the geo point), so no duplicate dot inside the pill.
         el.innerHTML = `<span class="chiptk"></span>`;
         (el.querySelector('.chiptk') as HTMLElement).textContent = m.label;
+        // Scrub callout: a small up/down % chip showing how the skill's demand
+        // is moving at the current slider month (only set while scrubbing a
+        // skill). |change| < 0.5% reads as flat.
+        if (typeof m.pct === 'number') {
+          const up = m.pct >= 0;
+          const flat = Math.abs(m.pct) < 0.5;
+          const pctEl = document.createElement('span');
+          pctEl.className = `chippct ${flat ? 'flat' : up ? 'up' : 'down'}`;
+          pctEl.textContent = `${flat ? '' : up ? '▲' : '▼'} ${up ? '+' : m.pct < 0 ? '−' : ''}${Math.abs(Math.round(m.pct))}%`;
+          el.appendChild(pctEl);
+          el.classList.add('mbchip-pct');
+        }
         if (m.clickable) {
           const swallow = (ev: Event) => ev.stopPropagation();
           el.addEventListener('mousedown', swallow);
@@ -454,6 +469,13 @@ export function WorldMapbox() {
         maxAttrition: s.maxAttrition,
       };
       const markers = computeMarkers(mode, s.domesticRegion, fs, cityDemand, !!skill);
+      // Scrub callouts: while a skill + the time slider are active, tag each
+      // city with its demand % change at the current month, so the label shows
+      // how demand for the skill is moving as the slider is dragged.
+      if (skill && (mode === 'global' || s.domesticRegion === 'australia')) {
+        const change = iviCityChangeAt(skill, s.heatMonth);
+        for (const m of markers) if (m.id in change) m.pct = change[m.id];
+      }
       markersRef.current = markers;
       const src = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
       src?.setData(markersGeoJSON(markers, s.selectedId));

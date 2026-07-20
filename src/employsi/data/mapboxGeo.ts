@@ -5,6 +5,7 @@
 // either side of the CBD cluster.
 import { CITY_ROSTERS } from './cityRosters';
 import { spreadCoords, rosterId } from './rosters';
+import { PERTH_GOV_IDS } from './perthGov';
 
 export const PERTH_CENTER: [number, number] = [115.8552, -31.9542];
 // Bumped from 15.3 so 3D extruded buildings are clearly visible on arrival,
@@ -151,6 +152,16 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   roster.companies.forEach((entry, i) => {
     existing.push({ id: rosterId(city, entry[0]), coords: pts[offset + i] });
   });
+}
+
+// Perth WA government agencies: fan their office pins around the Perth centre,
+// offset past everything already placed there.
+{
+  const view = CITY_VIEWS.perth;
+  const existing = (CITY_COMPANIES.perth ||= []);
+  const offset = existing.length;
+  const pts = spreadCoords(view.center, offset + PERTH_GOV_IDS.length);
+  PERTH_GOV_IDS.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
 }
 
 // Flat lookup of every company's coords across all cities. Where a company sits
