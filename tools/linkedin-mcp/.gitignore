@@ -1,0 +1,4 @@
+session.json
+*.session.json
+__pycache__/
+.venv/

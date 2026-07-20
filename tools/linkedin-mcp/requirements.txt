@@ -1,0 +1,4 @@
+# You already have linkedin_scraper installed; pinned here for completeness.
+linkedin-scraper>=3.0
+mcp>=1.2
+playwright>=1.40
