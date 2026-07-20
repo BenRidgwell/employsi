@@ -4716,6 +4716,112 @@ body {
   width: 30px;
   text-align: right;
 }
+/* Vacancy history (D1 archive): which roles a company has advertised over time
+   and how long each has stayed open. */
+.vhsummary {
+  display: flex;
+  gap: 10px;
+  margin: 2px 0 12px;
+  flex-wrap: wrap;
+}
+.vhstat {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--slate);
+  background: rgba(28, 28, 30, 0.05);
+  border-radius: 8px;
+  padding: 5px 10px;
+}
+.vhstat b {
+  color: var(--ink);
+  font-weight: 800;
+}
+.vhlist {
+  display: flex;
+  flex-direction: column;
+}
+.vhrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.vhrow:first-child {
+  border-top: none;
+}
+.vhmain {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.vhtitle {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vhmeta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--slate);
+  overflow: hidden;
+}
+.vhsrc {
+  flex: 0 0 auto;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 8.5px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: #fff;
+  background: #6c6c72;
+}
+.vhsrc-adzuna { background: #1f7a54; }
+.vhsrc-muse { background: #7a3ea6; }
+.vhsrc-jooble { background: #b5651d; }
+.vhloc,
+.vhsal {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vhsal {
+  color: var(--ink);
+  font-weight: 700;
+}
+.vhage {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.vhdays {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--slate);
+}
+.vhdays.on {
+  color: #12905e;
+}
+.vhseen {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--slate);
+  opacity: 0.8;
+}
+
 /* Role search */
 .rolesearch {
   position: relative;

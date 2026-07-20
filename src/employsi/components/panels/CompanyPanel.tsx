@@ -8,6 +8,7 @@ import { useCompanyStats } from '../../hooks/useCompanyStats';
 import { useOpenRoles } from '../../hooks/useOpenRoles';
 import { useRolesHistory } from '../../hooks/useRolesHistory';
 import { useCompanyJobs } from '../../hooks/useSkillData';
+import { useRoleHistory } from '../../hooks/useRoleHistory';
 import { cityForCompany } from '../../data/mapboxGeo';
 import { marketForCity } from '../../data/cityMarket';
 import { TrendChart } from './TrendChart';
@@ -15,6 +16,13 @@ import { ShareChart } from './ShareChart';
 import { RolesHistoryChart } from './RolesHistoryChart';
 import { NewsPanel } from './NewsPanel';
 import { FabWrap } from './FabTooltip';
+
+// "2026-07-20" → "20 Jul 2026" for the vacancy-history header.
+function fmtDay(iso: string): string {
+  const t = Date.parse((iso || '') + 'T00:00:00Z');
+  if (Number.isNaN(t)) return iso || '';
+  return new Date(t).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
 
 const CompareIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
@@ -179,6 +187,10 @@ export function CompanyPanel() {
   // fetch, falling back to the jobs-cron's stored sample (AU companies) when the
   // live fetch hasn't resolved yet.
   const companyJobs = useCompanyJobs(panel?.companyId, liveEnabled);
+  // Historical role archive (D1): which roles this company has advertised over
+  // time and how long each has been open. Builds forward from when archiving
+  // began, so it fills out over the following days/weeks.
+  const roleHistory = useRoleHistory(panel?.companyId, open && !roleFilter);
   const jobSample = useMemo(
     () => (liveRoles?.jobs?.length ? liveRoles.jobs : companyJobs?.jobs ?? null),
     [liveRoles, companyJobs],
@@ -351,6 +363,39 @@ export function CompanyPanel() {
                           <span className="rolefill" style={{ width: r.pct }} />
                         </span>
                         <span className="rolec">{r.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {roleHistory && roleHistory.items.length > 0 && (
+                <div className="sect">
+                  <div className="secth">
+                    Vacancy history
+                    <span>tracked since {fmtDay(roleHistory.since)}</span>
+                  </div>
+                  <div className="vhsummary">
+                    <span className="vhstat"><b>{roleHistory.total.toLocaleString('en-US')}</b> roles archived</span>
+                    {roleHistory.longestDays > 0 && (
+                      <span className="vhstat"><b>{roleHistory.longestDays}d</b> longest open</span>
+                    )}
+                  </div>
+                  <div className="vhlist">
+                    {roleHistory.items.slice(0, 8).map((it, i) => (
+                      <div className="vhrow" key={`${it.title}-${i}`}>
+                        <div className="vhmain">
+                          <span className="vhtitle">{it.title}</span>
+                          <span className="vhmeta">
+                            <span className={`vhsrc vhsrc-${it.source}`}>{it.source}</span>
+                            {it.location && <span className="vhloc">{it.location}</span>}
+                            {it.salary && <span className="vhsal">{it.salary}</span>}
+                          </span>
+                        </div>
+                        <div className="vhage">
+                          <span className={`vhdays ${it.active ? 'on' : ''}`}>{it.daysOpen > 0 ? `${it.daysOpen}d open` : 'new'}</span>
+                          <span className="vhseen">seen {it.seenCount}×</span>
+                        </div>
                       </div>
                     ))}
                   </div>
