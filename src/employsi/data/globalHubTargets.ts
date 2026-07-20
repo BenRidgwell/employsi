@@ -23,6 +23,5 @@ export const GLOBAL_HUB_TARGETS: HubTarget[] = [
   { hub: 'sanfrancisco', country: 'us', where: 'San Francisco' },
   { hub: 'chicago', country: 'us', where: 'Chicago' },
   { hub: 'seattle', country: 'us', where: 'Seattle' },
-  { hub: 'singapore', country: 'sg', where: 'Singapore' },
   { hub: 'paris', country: 'fr', where: 'Paris' },
 ];

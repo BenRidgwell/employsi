@@ -18,6 +18,7 @@ import { JOOBLE_HUB_TARGETS, type JoobleHubTarget } from '../../src/employsi/dat
 import { skillsForText } from '../../src/employsi/data/skillsTaxonomy';
 import { archiveJobs, type ArchiveRow } from '../../src/employsi/lib/jobArchive';
 import { fetchWaGovPages, type StoredWaJob } from './waGov';
+import { fetchMcfJobs } from './mycareersfuture';
 import { PERTH_GOV_IDS } from '../../src/employsi/data/perthGov';
 
 interface Env {
@@ -384,7 +385,9 @@ async function recomputeIndex(env: Env): Promise<SkillIndex> {
   // not company- or sector-attributed), so the global heatmap lights up real
   // demand outside Australia. Adzuna hubs and Jooble hubs share the hubjobs:*
   // key namespace, so the two feeds aggregate identically.
-  const hubIds = [...GLOBAL_HUB_TARGETS.map((h) => h.hub), ...JOOBLE_HUB_TARGETS.map((h) => h.hub)];
+  // Singapore's hub sample comes from MyCareersFuture (not the Adzuna hub list),
+  // so include it explicitly so the global heatmap still lights up Singapore.
+  const hubIds = [...GLOBAL_HUB_TARGETS.map((h) => h.hub), ...JOOBLE_HUB_TARGETS.map((h) => h.hub), 'singapore'];
   for (const hub of hubIds) {
     const raw = await env.OPEN_ROLES_HISTORY.get(`hubjobs:${hub}`);
     if (!raw) continue;
@@ -446,6 +449,14 @@ async function processHubs(env: Env, day: string): Promise<void> {
       await env.OPEN_ROLES_HISTORY.put(`hubjobs:${t.hub}`, JSON.stringify({ updated: day, jobs }));
       await archiveJobs(env.JOBS_ARCHIVE, toArchiveRows(jobs, { hub: t.hub }), day);
     }
+  }
+
+  // Singapore's national board (MyCareersFuture) — the authoritative SG feed,
+  // owning the singapore hub sample + archive (source "mycareersfuture").
+  const sg = await fetchMcfJobs(day);
+  if (sg.length) {
+    await env.OPEN_ROLES_HISTORY.put('hubjobs:singapore', JSON.stringify({ updated: day, jobs: sg }));
+    await archiveJobs(env.JOBS_ARCHIVE, toArchiveRows(sg as StoredJob[], { hub: 'singapore' }), day);
   }
 }
 
@@ -596,8 +607,12 @@ export default {
       if (url.searchParams.get('token') !== env.CRON_TOKEN) {
         return new Response('forbidden', { status: 403 });
       }
-      const out = await processShard(env);
-      return Response.json({ ok: true, ...out });
+      try {
+        const out = await processShard(env);
+        return Response.json({ ok: true, ...out });
+      } catch (e) {
+        return Response.json({ ok: false, error: (e as Error)?.message || String(e), stack: (e as Error)?.stack || '' }, { status: 500 });
+      }
     }
     if (url.pathname === '/run-wagov') {
       if (url.searchParams.get('token') !== env.CRON_TOKEN) {
