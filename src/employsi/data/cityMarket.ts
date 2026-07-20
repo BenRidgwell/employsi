@@ -32,6 +32,10 @@ export const CITY_MARKET: Record<string, CityMarket> = {
   // Adzuna-covered global hubs
   london: { country: 'gb', where: 'London', region: /united kingdom|england|london|\buk\b/i },
   toronto: { country: 'ca', where: 'Toronto', region: /canada|toronto|ontario/i },
+  calgary: { country: 'ca', where: 'Calgary', region: /canada|calgary|alberta/i },
+  montreal: { country: 'ca', where: 'Montreal', region: /canada|montr[eé]al|quebec|québec/i },
+  vancouver: { country: 'ca', where: 'Vancouver', region: /canada|vancouver|british columbia/i },
+  ottawa: { country: 'ca', where: 'Ottawa', region: /canada|ottawa|ontario/i },
   houston: { country: 'us', where: 'Houston', region: /united states|\busa?\b|houston|texas/i },
   denver: { country: 'us', where: 'Denver', region: /united states|\busa?\b|denver|colorado/i },
   seattle: { country: 'us', where: 'Seattle', region: /united states|\busa?\b|seattle|washington/i },
