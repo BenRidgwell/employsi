@@ -8,17 +8,13 @@ import { useCompanyStats } from '../../hooks/useCompanyStats';
 import { useOpenRoles } from '../../hooks/useOpenRoles';
 import { useRolesHistory } from '../../hooks/useRolesHistory';
 import { useCompanyJobs } from '../../hooks/useSkillData';
-import { CITY_COMPANIES } from '../../data/mapboxGeo';
+import { cityForCompany } from '../../data/mapboxGeo';
+import { marketForCity } from '../../data/cityMarket';
 import { TrendChart } from './TrendChart';
 import { ShareChart } from './ShareChart';
 import { RolesHistoryChart } from './RolesHistoryChart';
 import { NewsPanel } from './NewsPanel';
 import { FabWrap } from './FabTooltip';
-
-// Companies plotted in an Australian city — the live "open roles" feed
-// (ATS/Adzuna) is Australia-scoped, so it's only fetched for these.
-const AU_CITIES = ['perth', 'adelaide', 'brisbane', 'melbourne', 'sydney'];
-const AU_COMPANY_IDS = new Set(AU_CITIES.flatMap((c) => (CITY_COMPANIES[c] || []).map((x) => x.id)));
 
 const CompareIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
@@ -156,15 +152,6 @@ export function CompanyPanel() {
   // signed in, so the button reads "Follow" (→ prompts sign-up) when there's no
   // account to save it to.
   const following = !!account && !!panel && followedIds.includes(panel.companyId);
-  // Companies wired with real data show the LIVE badge. BHP additionally polls
-  // a real-time feed (so it waits for the first poll); the rest carry real
-  // static figures (financial ratios, 52-week share ranges) and dated news, so
-  // they're live as soon as the card opens. This now covers every listed Perth
-  // resources name in the map.
-  const REAL_DATA_IDS = [
-    'bhp', 'rio', 'fmg', 's32', 'wds', 'sto', 'chevron', 'sfr',
-    'igo', 'min', 'pls', 'ltr', 'ilu', 'nst',
-  ];
   // Live market data (real quarterly closes + 52-week range) fetched on the
   // Worker from Yahoo Finance for whatever ticker resolves. When it's present
   // the share chart plots the real series and the card counts as live.
@@ -173,32 +160,46 @@ export function CompanyPanel() {
   // the Worker from Yahoo Finance. When present they overlay the illustrative
   // figures in the workforce chart and mark the card as live.
   const liveStats = useCompanyStats(panel?.ticker ?? null, panel?.exchange, open && !isBhp);
-  // Live "open roles" count for Australian companies (employer ATS feed →
-  // Adzuna on the Worker). Company-wide, so only fetched when no role filter is
-  // narrowing the card to a single role.
-  const isAU = !!lastId && AU_COMPANY_IDS.has(lastId);
-  const { roles: liveRoles, settled: rolesSettled } = useOpenRoles(panel?.name ?? null, panel?.companyId, open && isAU && !roleFilter);
-  // Stored daily history of the live vacancy count, charted below the stats.
-  const rolesHistory = useRolesHistory(panel?.companyId, open && isAU && !roleFilter);
-  // Real advertised roles + their mapped skills, from the jobs pipeline.
-  const companyJobs = useCompanyJobs(panel?.companyId, open && isAU && !roleFilter);
+  // Live "open roles" for the company, scoped to its own job market (Adzuna for
+  // the company's country + The Muse), so it works for every company wherever
+  // it's plotted — Perth, London, Houston, Singapore, Tokyo, … Fetched when the
+  // card is open and no role filter is narrowing it to a single role.
+  const localCity = useAppStore((s) => s.localCity);
+  const market = useMemo(() => marketForCity(lastId ? cityForCompany(lastId, localCity) : localCity), [lastId, localCity]);
+  const marketArg = useMemo(
+    () => ({ country: market.country, where: market.where, region: market.region.source }),
+    [market],
+  );
+  const liveEnabled = open && !!panel && !roleFilter;
+  const { roles: liveRoles, settled: rolesSettled } = useOpenRoles(panel?.name ?? null, panel?.companyId, marketArg, liveEnabled);
+  // Stored daily history of the live vacancy count, charted below the stats
+  // (built forward by the jobs-cron; empty for a company not yet snapshotted).
+  const rolesHistory = useRolesHistory(panel?.companyId, liveEnabled);
+  // Advertised-role sample: the live Adzuna + The Muse jobs from the open-roles
+  // fetch, falling back to the jobs-cron's stored sample (AU companies) when the
+  // live fetch hasn't resolved yet.
+  const companyJobs = useCompanyJobs(panel?.companyId, liveEnabled);
+  const jobSample = useMemo(
+    () => (liveRoles?.jobs?.length ? liveRoles.jobs : companyJobs?.jobs ?? null),
+    [liveRoles, companyJobs],
+  );
   // Rank the company's real in-demand skills by how many live roles mention
   // them; falls back to the illustrative skill chips when no jobs are stored.
   const liveSkills = useMemo(() => {
-    if (!companyJobs?.jobs?.length) return null;
+    if (!jobSample?.length) return null;
     const counts = new Map<string, number>();
-    for (const j of companyJobs.jobs) for (const sk of j.skills) counts.set(sk, (counts.get(sk) || 0) + 1);
+    for (const j of jobSample) for (const sk of j.skills) counts.set(sk, (counts.get(sk) || 0) + 1);
     if (!counts.size) return null;
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([sk]) => sk);
-  }, [companyJobs]);
+  }, [jobSample]);
   // "Where they're hiring": the real advertised roles grouped by functional
   // area (the job-board category, e.g. "Engineering", "IT", "Trade &
   // Construction"), counted from the live Adzuna + The Muse job sample. Falls
   // back to the illustrative breakdown only when no live jobs are stored.
   const liveHiring = useMemo(() => {
-    if (!companyJobs?.jobs?.length) return null;
+    if (!jobSample?.length) return null;
     const counts = new Map<string, number>();
-    for (const j of companyJobs.jobs) {
+    for (const j of jobSample) {
       const area = (j.cat || '').replace(/\s*jobs?$/i, '').trim() || 'Other';
       counts.set(area, (counts.get(area) || 0) + 1);
     }
@@ -206,8 +207,7 @@ export function CompanyPanel() {
     const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
     const mx = Math.max(...ranked.map(([, c]) => c));
     return ranked.map(([title, count]) => ({ title, count, pct: Math.round((count / mx) * 100) + '%' }));
-  }, [companyJobs]);
-  const live = isBhp ? !!feed : REAL_DATA_IDS.includes(lastId ?? '') || !!liveShare || !!liveStats || !!liveRoles;
+  }, [jobSample]);
 
   // Headcount is deliberately NOT taken from the live market feed — there's no
   // live HRIS/LinkedIn API, so we use a static figure sourced from the company's
@@ -217,15 +217,15 @@ export function CompanyPanel() {
   const revPerEmp = liveStats?.revPerEmp || panel?.revPerEmp || 0;
   const ebitdaPerEmp = liveStats?.ebitdaPerEmp || panel?.ebitdaPerEmp || 0;
 
-  // Open roles is directly the live Australian vacancy count (Adzuna + The
-  // Muse). For AU companies the headline is driven entirely by that feed: once
-  // the check settles it shows the real count, or 0 when there are no live
-  // vacancies — never an illustrative figure. The illustrative number is only
-  // shown briefly while the check is still in flight, and for non-AU companies
-  // (outside the Adzuna coverage) which keep their existing figure.
+  // Open roles is directly the live vacancy count for the company's market
+  // (Adzuna for its country + The Muse). The headline is driven entirely by that
+  // feed: once the check settles it shows the real count, or 0 when there are no
+  // live vacancies — never an illustrative figure. The illustrative number is
+  // only shown briefly while the check is still in flight, or while a role
+  // filter narrows the card to a single role.
   const bigStats = useMemo(() => {
     if (!panel) return [];
-    if (!isAU || roleFilter) return panel.bigStats;
+    if (roleFilter) return panel.bigStats;
     if (!rolesSettled && !liveRoles) return panel.bigStats; // still checking
     const count = liveRoles ? liveRoles.count : 0;
     return panel.bigStats.map((s) =>
@@ -233,7 +233,7 @@ export function CompanyPanel() {
         ? { ...s, value: count.toLocaleString('en-US'), sub: count > 0 && liveRoles ? liveRoles.source : 'no live vacancies' }
         : s,
     );
-  }, [panel, isAU, roleFilter, rolesSettled, liveRoles]);
+  }, [panel, roleFilter, rolesSettled, liveRoles]);
 
   const prices = useMemo(
     () =>
@@ -263,10 +263,7 @@ export function CompanyPanel() {
               <div className="phead">
                 <CompanyLogo domain={panel.domain} ticker={panel.ticker} />
                 <div className="pheadmain">
-                  <div className="pname">
-                    {panel.name}
-                    {live && <span className="plive"><i />LIVE</span>}
-                  </div>
+                  <div className="pname">{panel.name}</div>
                   <div className="psector">{panel.sector}</div>
                 </div>
                 <div className="pactions">
@@ -300,7 +297,7 @@ export function CompanyPanel() {
                 ))}
               </div>
 
-              {isAU && !roleFilter && liveRoles && liveRoles.count > 0 && (
+              {!roleFilter && liveRoles && liveRoles.count > 0 && rolesHistory.length > 0 && (
                 <div className="sect">
                   <RolesHistoryChart points={rolesHistory} current={liveRoles.count} />
                 </div>

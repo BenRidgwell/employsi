@@ -15,6 +15,7 @@ export interface AppState {
   account: Account | null;
   authOpen: boolean;
   pendingFollowId: string | null;
+  pendingFollowSkill: string | null;
   // Transient notification text (e.g. "sign in to follow"); null when hidden.
   toast: string | null;
   settingsOpen: boolean;
@@ -58,10 +59,13 @@ export interface AppState {
   // The mobile bottom-bar "More" sheet.
   mobileMenuOpen: boolean;
   followedIds: string[];
+  followedSkills: string[];
 
   select: (id: string) => void;
   toggleFollow: (id: string) => void;
   requestFollow: (id: string) => void;
+  toggleFollowSkill: (skill: string) => void;
+  requestFollowSkill: (skill: string) => void;
   dismissToast: () => void;
   openAuth: () => void;
   closeAuth: () => void;
@@ -131,10 +135,11 @@ const LS_KEY = 'employsi.auth';
 interface Persisted {
   account: Account | null;
   followedIds: string[];
+  followedSkills: string[];
   reduceMotion: boolean;
   nightMode: boolean;
 }
-const PERSIST_DEFAULTS: Persisted = { account: null, followedIds: [], reduceMotion: false, nightMode: false };
+const PERSIST_DEFAULTS: Persisted = { account: null, followedIds: [], followedSkills: [], reduceMotion: false, nightMode: false };
 function loadPersisted(): Persisted {
   if (typeof localStorage === 'undefined') return PERSIST_DEFAULTS;
   try {
@@ -144,6 +149,7 @@ function loadPersisted(): Persisted {
     return {
       account: p.account ?? null,
       followedIds: Array.isArray(p.followedIds) ? p.followedIds : [],
+      followedSkills: Array.isArray(p.followedSkills) ? p.followedSkills : [],
       reduceMotion: p.reduceMotion ?? false,
       nightMode: p.nightMode ?? false,
     };
@@ -183,6 +189,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   account: persisted.account,
   authOpen: false,
   pendingFollowId: null,
+  pendingFollowSkill: null,
   toast: null,
   settingsOpen: false,
   reduceMotion: persisted.reduceMotion,
@@ -217,6 +224,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   helpTourOpen: false,
   mobileMenuOpen: false,
   followedIds: persisted.followedIds,
+  followedSkills: persisted.followedSkills,
 
   select: (id) => set({ selectedId: id, lastId: id, interacted: true, searchOpen: false, filterOpen: false, heatOpen: false, briefOpen: false, trendingOpen: false, feedbackOpen: false, helpTourOpen: false, mobileMenuOpen: false }),
   toggleFollow: (id) =>
@@ -242,14 +250,37 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     set({ followedIds: s.followedIds.includes(id) ? s.followedIds.filter((x) => x !== id) : [...s.followedIds, id] });
   },
+  toggleFollowSkill: (skill) =>
+    set((s) => ({
+      followedSkills: s.followedSkills.includes(skill) ? s.followedSkills.filter((x) => x !== skill) : [...s.followedSkills, skill],
+    })),
+  // Following a skill is gated exactly like following a company: signed-out
+  // visitors are prompted to create an account first, and the skill they tapped
+  // is saved for them the moment they do (see signUp/signIn).
+  requestFollowSkill: (skill) => {
+    const s = get();
+    if (!s.account) {
+      set({
+        authOpen: true,
+        pendingFollowSkill: skill,
+        searchOpen: false,
+        filterOpen: false,
+        toast: 'Create a free account or sign in to follow skills',
+      });
+      return;
+    }
+    set({ followedSkills: s.followedSkills.includes(skill) ? s.followedSkills.filter((x) => x !== skill) : [...s.followedSkills, skill] });
+  },
   dismissToast: () => set({ toast: null }),
   openAuth: () => set({ authOpen: true, searchOpen: false, filterOpen: false, mobileMenuOpen: false }),
-  closeAuth: () => set({ authOpen: false, pendingFollowId: null }),
+  closeAuth: () => set({ authOpen: false, pendingFollowId: null, pendingFollowSkill: null }),
   signUp: (name, email) =>
     set((s) => {
       const followedIds =
         s.pendingFollowId && !s.followedIds.includes(s.pendingFollowId) ? [...s.followedIds, s.pendingFollowId] : s.followedIds;
-      return { account: { name: name.trim(), email: email.trim() }, authOpen: false, pendingFollowId: null, followedIds };
+      const followedSkills =
+        s.pendingFollowSkill && !s.followedSkills.includes(s.pendingFollowSkill) ? [...s.followedSkills, s.pendingFollowSkill] : s.followedSkills;
+      return { account: { name: name.trim(), email: email.trim() }, authOpen: false, pendingFollowId: null, pendingFollowSkill: null, followedIds, followedSkills };
     }),
   signIn: (email) =>
     set((s) => {
@@ -258,9 +289,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       const name = local ? local.replace(/\b\w/g, (ch) => ch.toUpperCase()) : 'You';
       const followedIds =
         s.pendingFollowId && !s.followedIds.includes(s.pendingFollowId) ? [...s.followedIds, s.pendingFollowId] : s.followedIds;
-      return { account: { name, email: email.trim() }, authOpen: false, pendingFollowId: null, followedIds };
+      const followedSkills =
+        s.pendingFollowSkill && !s.followedSkills.includes(s.pendingFollowSkill) ? [...s.followedSkills, s.pendingFollowSkill] : s.followedSkills;
+      return { account: { name, email: email.trim() }, authOpen: false, pendingFollowId: null, pendingFollowSkill: null, followedIds, followedSkills };
     }),
-  signOut: () => set({ account: null, authOpen: false, pendingFollowId: null }),
+  signOut: () => set({ account: null, authOpen: false, pendingFollowId: null, pendingFollowSkill: null }),
   toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen, feedbackOpen: false, helpTourOpen: false })),
   closeSettings: () => set({ settingsOpen: false }),
   setReduceMotion: (v) => {
@@ -414,10 +447,11 @@ useAppStore.subscribe((s, prev) => {
   if (
     s.account !== prev.account ||
     s.followedIds !== prev.followedIds ||
+    s.followedSkills !== prev.followedSkills ||
     s.reduceMotion !== prev.reduceMotion ||
     s.nightMode !== prev.nightMode
   ) {
-    savePersisted({ account: s.account, followedIds: s.followedIds, reduceMotion: s.reduceMotion, nightMode: s.nightMode });
+    savePersisted({ account: s.account, followedIds: s.followedIds, followedSkills: s.followedSkills, reduceMotion: s.reduceMotion, nightMode: s.nightMode });
   }
 });
 

@@ -36,6 +36,8 @@ export function GlobalSearch() {
     [skillIndex, zoomedOut, globalOut, domesticRegion, localCity],
   );
   const select = useAppStore((s) => s.select);
+  const followedSkills = useAppStore((s) => s.followedSkills);
+  const requestFollowSkill = useAppStore((s) => s.requestFollowSkill);
   const [focused, setFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -135,20 +137,57 @@ export function GlobalSearch() {
       {focused && q && (
         <div className="gsearchresults">
           {results.length > 0 ? (
-            results.map((r, i) => (
-              <button
-                key={`${r.kind}-${r.id}`}
-                className={`gsresult ${i === activeIndex ? 'on' : ''}`}
-                onMouseDown={(e) => e.preventDefault()}
-                onMouseEnter={() => setActiveIndex(i)}
-                onClick={() => goToResult(r)}
-              >
-                <span className={`gsrkind ${r.kind}`}>{r.kind === 'company' ? 'Co.' : r.kind === 'skill' ? 'Skill' : 'City'}</span>
-                <span className="gsrlabel">{r.label}</span>
-                {r.kind === 'company' && <span className="gsrsub">{r.sub}</span>}
-                {r.kind === 'skill' && <span className={`gsrsub dmd-${r.tone}`}>{r.sub}</span>}
-              </button>
-            ))
+            results.map((r, i) => {
+              // Skill rows carry a follow control (like a company card's Follow
+              // button) alongside the main select action, so they can't be a
+              // single <button> — a nested button is invalid. Render a row with
+              // an inner select button + a follow button.
+              if (r.kind === 'skill') {
+                const followed = followedSkills.includes(r.id);
+                return (
+                  <div key={`skill-${r.id}`} className={`gsresult gsresult-skill ${i === activeIndex ? 'on' : ''}`} onMouseEnter={() => setActiveIndex(i)}>
+                    <button className="gsrmain" onMouseDown={(e) => e.preventDefault()} onClick={() => goToResult(r)}>
+                      <span className="gsrkind skill">Skill</span>
+                      <span className="gsrlabel">{r.label}</span>
+                      <span className={`gsrsub dmd-${r.tone}`}>{r.sub}</span>
+                    </button>
+                    <button
+                      className={`gsrfollow ${followed ? 'on' : ''}`}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        requestFollowSkill(r.id);
+                      }}
+                      aria-label={followed ? 'Following skill' : 'Follow skill'}
+                      title={followed ? 'Following' : 'Follow this skill'}
+                    >
+                      {followed ? (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12.5l4.2 4.2L19 7" />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 5v14M5 12h14" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                );
+              }
+              return (
+                <button
+                  key={`${r.kind}-${r.id}`}
+                  className={`gsresult ${i === activeIndex ? 'on' : ''}`}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onMouseEnter={() => setActiveIndex(i)}
+                  onClick={() => goToResult(r)}
+                >
+                  <span className={`gsrkind ${r.kind}`}>{r.kind === 'company' ? 'Co.' : 'City'}</span>
+                  <span className="gsrlabel">{r.label}</span>
+                  {r.kind === 'company' && <span className="gsrsub">{r.sub}</span>}
+                </button>
+              );
+            })
           ) : (
             <div className="gsrempty">No skills, companies or cities match “{searchQuery.trim()}”</div>
           )}

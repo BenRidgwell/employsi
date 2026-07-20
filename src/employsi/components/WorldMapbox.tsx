@@ -351,7 +351,11 @@ export function WorldMapbox() {
       const s = useAppStore.getState();
       const appEl = containerRef.current?.closest('.app') as HTMLElement | null;
       if (!appEl) return;
-      if (!(s.globalOut && s.zoomedOut) || s.zoomingIn) return;
+      // Runs on both overviews (global globe + domestic country map) — the
+      // header floats over the map on each, so its colour must adapt to the
+      // pixel behind it (light land → dark text, dark space/ocean → white).
+      // Only the local city layer (not zoomedOut) and mid-zoom are skipped.
+      if (!s.zoomedOut || s.zoomingIn) return;
       const hd = document.querySelector('.gsearchhd') as HTMLElement | null;
       if (!hd) return;
       const canvas = map.getCanvas();
