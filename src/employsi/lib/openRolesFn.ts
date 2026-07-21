@@ -299,6 +299,74 @@ async function fromMuse(company: string, region: RegExp): Promise<AdvertisedJob[
   return out;
 }
 
+// Sources other than the live Adzuna/Muse fetch that flow into the D1 archive
+// company-scoped (i.e. can be attributed to one company card). SEEK is the live
+// one today; the map turns a stored source key into a display label.
+const ARCHIVE_SOURCE_LABEL: Record<string, string> = {
+  seek: 'SEEK',
+  jooble: 'Jooble',
+  mycareersfuture: 'MyCareersFuture',
+};
+
+// The current (still-advertised) listings for a company held in the D1 archive
+// from sources OTHER than the live Adzuna/Muse fetch — chiefly SEEK, which is
+// scraped daily off-Worker (it 403-challenges Cloudflare Workers) and archived.
+// "Current" = re-seen on the board within the last few days (last_seen recent),
+// so taken-down ads age out. Each is cross-checked by normalised title against
+// what the live fetch already returned, so the same role advertised on more than
+// one board is only counted once — letting the card's open-roles figure be a
+// deduped union of every source's current vacancies as at today.
+async function currentFromArchive(
+  id: string,
+  liveJobs: AdvertisedJob[],
+): Promise<{ added: number; jobs: AdvertisedJob[]; sources: string[] }> {
+  const db = await getArchiveDb();
+  if (!db) return { added: 0, jobs: [], sources: [] };
+  try {
+    const res: any = await (db
+      .prepare(
+        `SELECT title, source, location, salary, url, posted, skills
+           FROM jobs
+          WHERE company_id = ?1
+            AND source NOT IN ('adzuna', 'muse')
+            AND last_seen >= date('now', '-3 days')`,
+      )
+      .bind(id) as any).all();
+    const rows: any[] = res?.results ?? [];
+    if (!rows.length) return { added: 0, jobs: [], sources: [] };
+    const seen = new Set(liveJobs.map((j) => normTitle(j.t)));
+    const jobs: AdvertisedJob[] = [];
+    const sources = new Set<string>();
+    for (const r of rows) {
+      const t = stripHtml(String(r.title || ''));
+      if (!t) continue;
+      const n = normTitle(t);
+      if (seen.has(n)) continue; // already counted via a live board
+      seen.add(n);
+      sources.add(String(r.source || ''));
+      let skills: string[];
+      try {
+        skills = r.skills ? JSON.parse(String(r.skills)) : skillsForText(t);
+      } catch {
+        skills = skillsForText(t);
+      }
+      jobs.push({
+        t,
+        loc: String(r.location || ''),
+        cat: '',
+        url: String(r.url || ''),
+        created: String(r.posted || '').slice(0, 10),
+        city: null,
+        skills,
+        salN: undefined,
+      });
+    }
+    return { added: jobs.length, jobs, sources: [...sources] };
+  } catch {
+    return { added: 0, jobs: [], sources: [] };
+  }
+}
+
 // Reconstruct the Muse location matcher from the regex source the client sends
 // (from data/cityMarket.ts). Guarded: capped length + try/catch so a bad
 // pattern can never throw or hang the handler; falls back to matching nothing.
@@ -371,6 +439,24 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
           ...museJobs.map((j) => jobToArchive(j, 'muse', company, data.id, where)),
         ];
         await archiveJobs(await getArchiveDb(), rows, today());
+      }
+    }
+
+    // Fold in every OTHER source's current listings from the D1 archive (chiefly
+    // SEEK, scraped daily off-Worker) so the open-roles figure is a deduped union
+    // of all current vacancies for this company as at today — not just the live
+    // Adzuna/Muse fetch. Deduped by normalised title against the live sample.
+    // (Gov agencies returned earlier — their board is their single source.)
+    if (out && data.id) {
+      const extra = await currentFromArchive(data.id, out.jobs);
+      if (extra.added > 0) {
+        const extraLabels = extra.sources.map((s) => ARCHIVE_SOURCE_LABEL[s] || s);
+        const label = [out.source, ...extraLabels].filter(Boolean).join(' + ');
+        out = {
+          count: out.count + extra.added,
+          source: label,
+          jobs: [...out.jobs, ...extra.jobs].slice(0, 60),
+        };
       }
     }
 
