@@ -2,21 +2,27 @@
 // body's authoritative head-office street address via OpenStreetMap
 // (Nominatim). Only entities whose exact address is verifiable are listed;
 // every other Perth pin falls back to the generated fan around the CBD.
-// Covers WA government agencies with well-documented head offices, plus a
-// few listed companies with a clearly-documented Perth HQ.
+// Covers WA government agencies with well-documented head offices, plus
+// listed companies whose Perth HQ address has been confirmed.
 
 export const PERTH_REAL_COORDS: Record<string, [number, number]> = {
+  "pdn": [115.852492, -31.953834],
+  "perth-bgl": [115.840785, -31.946146],
+  "perth-drr": [115.856367, -31.954163],
+  "perth-ggp": [115.821962, -31.946697],
   "perth-gov-chemcentre": [115.891604, -32.01065],
   "perth-gov-child-and-adolescent-health-service": [115.81648, -31.970402],
   "perth-gov-construction-training-fund": [115.811564, -31.912664],
   "perth-gov-corruption-and-crime-commission": [115.859236, -31.947979],
   "perth-gov-department-of-biodiversity-conservation-and-attractions": [115.883793, -31.995457],
+  "perth-gov-department-of-communities": [115.748687, -32.054203],
   "perth-gov-department-of-education": [115.877824, -31.953211],
   "perth-gov-department-of-fire-emergency-services": [115.856085, -32.127206],
   "perth-gov-department-of-health": [115.869986, -31.952529],
   "perth-gov-department-of-justice": [115.853925, -31.955126],
   "perth-gov-department-of-mines-petroleum-and-exploration": [115.875182, -31.960493],
   "perth-gov-department-of-planning-lands-and-heritage": [115.858204, -31.952091],
+  "perth-gov-department-of-primary-industries-and-regional-development": [115.858204, -31.952091],
   "perth-gov-department-of-the-premier-and-cabinet": [115.843745, -31.953201],
   "perth-gov-department-of-training-and-workforce-development": [115.815994, -31.916701],
   "perth-gov-department-of-water-and-environmental-regulation": [115.772695, -31.740633],
@@ -51,4 +57,7 @@ export const PERTH_REAL_COORDS: Record<string, [number, number]> = {
   "perth-gov-workcover-wa": [115.800265, -31.956397],
   "perth-imd": [115.816751, -31.862496],
   "perth-lyc": [115.876055, -31.96175],
+  "perth-prn": [115.859236, -31.947979],
+  "perth-rsg": [115.855801, -31.955243],
+  "wgx": [115.853199, -31.953072],
 };
