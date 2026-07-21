@@ -1,13 +1,28 @@
 // Real head-office coordinates for Perth-plotted entities, geocoded from each
-// body's authoritative head-office street address via OpenStreetMap
-// (Nominatim). Only entities whose exact address is verifiable are listed;
-// every other Perth pin falls back to the generated fan around the CBD.
-// Covers WA government agencies with well-documented head offices, plus
-// listed companies whose Perth HQ address has been confirmed.
+// body's head-office street address via OpenStreetMap (Nominatim). Government
+// agencies + several companies were confirmed by the user; the remaining
+// listed companies use their public registered-office address. Anything not
+// listed falls back to the generated fan around the CBD.
 
 export const PERTH_REAL_COORDS: Record<string, [number, number]> = {
+  "alk": [115.838246, -31.950011],
+  "asb": [115.769361, -32.150034],
+  "bmn": [115.835074, -31.950651],
+  "ccv": [115.859449, -31.955915],
+  "cmm": [115.836609, -31.951154],
+  "cvn": [115.842698, -31.951561],
+  "deg": [115.852492, -31.953834],
+  "dyl": [115.828121, -31.947299],
+  "emr": [115.840057, -31.952304],
+  "gmd": [115.84167, -31.951085],
+  "gor": [115.841405, -31.951004],
+  "jms": [115.864416, -31.956836],
+  "mah": [115.947665, -31.989832],
+  "mnd": [115.88933, -31.969307],
+  "nwh": [115.91914, -31.949484],
   "pdn": [115.852492, -31.953834],
   "perth-bgl": [115.840785, -31.946146],
+  "perth-bwp": [115.857246, -31.956138],
   "perth-drr": [115.856367, -31.954163],
   "perth-ggp": [115.821962, -31.946697],
   "perth-gov-chemcentre": [115.891604, -32.01065],
@@ -17,6 +32,7 @@ export const PERTH_REAL_COORDS: Record<string, [number, number]> = {
   "perth-gov-department-of-biodiversity-conservation-and-attractions": [115.883793, -31.995457],
   "perth-gov-department-of-communities": [115.748687, -32.054203],
   "perth-gov-department-of-education": [115.877824, -31.953211],
+  "perth-gov-department-of-energy-and-economic-diversification": [115.855499, -31.955571],
   "perth-gov-department-of-fire-emergency-services": [115.856085, -32.127206],
   "perth-gov-department-of-health": [115.869986, -31.952529],
   "perth-gov-department-of-justice": [115.853925, -31.955126],
@@ -28,7 +44,7 @@ export const PERTH_REAL_COORDS: Record<string, [number, number]> = {
   "perth-gov-department-of-water-and-environmental-regulation": [115.772695, -31.740633],
   "perth-gov-east-metropolitan-health-service": [115.865901, -31.953307],
   "perth-gov-economic-regulation-authority": [115.859021, -31.951828],
-  "perth-gov-forest-products-commission": [115.910884, -31.954052],
+  "perth-gov-forest-products-commission": [115.871839, -31.959852],
   "perth-gov-gesb": [115.84103, -31.952586],
   "perth-gov-health-support-services": [115.857735, -31.955513],
   "perth-gov-insurance-commission-of-western-australia": [115.852113, -31.953709],
@@ -51,6 +67,7 @@ export const PERTH_REAL_COORDS: Record<string, [number, number]> = {
   "perth-gov-rottnest-island-authority": [115.747757, -32.060381],
   "perth-gov-south-metropolitan-health-service": [115.847665, -32.069556],
   "perth-gov-south-metropolitan-tafe": [115.739831, -32.055637],
+  "perth-gov-south-regional-tafe": [115.845854, -32.074731],
   "perth-gov-tourism-western-australia": [115.852709, -31.954995],
   "perth-gov-venueswest": [115.777589, -31.955075],
   "perth-gov-wa-country-health-service": [115.869986, -31.952529],
@@ -63,5 +80,12 @@ export const PERTH_REAL_COORDS: Record<string, [number, number]> = {
   "perth-obm": [115.822894, -31.94385],
   "perth-prn": [115.859236, -31.947979],
   "perth-rsg": [115.855801, -31.955243],
+  "perth-vau": [115.841247, -31.949842],
+  "perth-waf": [115.822809, -31.945613],
+  "pru": [115.820986, -31.946209],
+  "rms": [115.874218, -31.952475],
+  "rrl": [115.840892, -31.941137],
+  "stx": [115.840785, -31.946146],
+  "swm": [115.812099, -31.91212],
   "wgx": [115.853199, -31.953072],
 };
