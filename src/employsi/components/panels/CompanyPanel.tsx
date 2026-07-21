@@ -7,7 +7,7 @@ import { useCompanyStats } from '../../hooks/useCompanyStats';
 import { useOpenRoles } from '../../hooks/useOpenRoles';
 import { useRolesHistory } from '../../hooks/useRolesHistory';
 import { useCompanyJobs } from '../../hooks/useSkillData';
-import { useRoleHistory, useVacancyTrend } from '../../hooks/useRoleHistory';
+import { useVacancyTrend, useSkillTrends } from '../../hooks/useRoleHistory';
 import { cityForCompany } from '../../data/mapboxGeo';
 import { marketForCity } from '../../data/cityMarket';
 import { GOV_WORKFORCE } from '../../data/perthGovWorkforce';
@@ -190,7 +190,9 @@ export function CompanyPanel() {
   // Historical role archive (D1): which roles this company has advertised over
   // time and how long each has been open. Builds forward from when archiving
   // began, so it fills out over the following days/weeks.
-  const roleHistory = useRoleHistory(panel?.companyId, open && !roleFilter);
+  // Top skill increases / decreases from historical vacancy analysis (D1) —
+  // shown in place of the old "where they're hiring" role list.
+  const skillTrends = useSkillTrends(panel?.companyId, open && !roleFilter);
   // Daily "live vacancies" movement series derived from the D1 archive. Used for
   // WA government agencies — their live count comes from the scraped board, not
   // Adzuna, so their vacancy chart is built from the stored history instead of
@@ -294,7 +296,9 @@ export function CompanyPanel() {
       if (s.label === 'Open roles') {
         if (rolesChecking) return { ...s, value: '···', sub: 'checking live ads…', subCls: '' };
         const count = liveRoles ? liveRoles.count : 0;
-        return { ...s, value: count.toLocaleString('en-US'), sub: count > 0 && liveRoles ? liveRoles.source : 'no live vacancies' };
+        // Neutral subheading — the count is a deduped union across every source,
+        // so we don't name individual boards (Adzuna / SEEK / …).
+        return { ...s, value: count.toLocaleString('en-US'), sub: count > 0 ? 'current vacancies' : 'no live vacancies' };
       }
       if (s.label === 'Median salary') {
         // Real median only from live advertised salaries; otherwise a 0 gap.
@@ -453,82 +457,31 @@ export function CompanyPanel() {
                 )}
               </div>
 
-              {rolesChecking && !liveHiring ? (
-                <div className="sect">
-                  <div className="secth">
-                    Where they're hiring
-                    <span>checking live ads…</span>
-                  </div>
-                  <div className="roles">
-                    {[0, 1, 2, 3].map((i) => (
-                      <div className="role" key={i}>
-                        <span className="rolet skelline" />
-                        <span className="rolebar"><span className="rolefill" style={{ width: '0%' }} /></span>
-                        <span className="rolec">·</span>
+              {/* Skill demand shifts — top increases / decreases across this
+                  company's skills, from historical analysis of the archived
+                  vacancies (replaces the old "where they're hiring" role list). */}
+              <div className="sect">
+                <div className="secth">
+                  Where they're hiring
+                  <span>skill demand shifts vs earlier ads</span>
+                </div>
+                {skillTrends.length > 0 ? (
+                  <div className="movers">
+                    {skillTrends.map((m) => (
+                      <div className="moverrow" key={m.skill}>
+                        <span className={`moverdir ${m.dir}`} aria-hidden="true">{m.dir === 'up' ? '▲' : '▼'}</span>
+                        <span className="movername">{m.skill}</span>
+                        <span className={`moverdelta ${m.dir}`}>
+                          {m.dir === 'up' ? '+' : '−'}{Math.abs(m.delta)}
+                          <span className="moverpct">{m.prev > 0 ? ` (${m.dir === 'up' ? '+' : '−'}${Math.abs(m.pct)}%)` : ' new'}</span>
+                        </span>
                       </div>
                     ))}
                   </div>
-                </div>
-              ) : (
-                <div className="sect">
-                  <div className="secth">
-                    Where they're hiring
-                    <span>{liveHiring && medianPay ? `median advertised ${medianPay.text}` : 'from live job ads'}</span>
-                  </div>
-                  {liveHiring && liveHiring.length > 0 ? (
-                    <div className="roles">
-                      {liveHiring.map((r) => {
-                        const pay = (r as { pay?: string | null }).pay;
-                        return (
-                          <div className="role" key={r.title}>
-                            <span className="rolet">{r.title}</span>
-                            <span className="rolebar">
-                              <span className="rolefill" style={{ width: r.pct }} />
-                            </span>
-                            {pay && <span className="rolepay">{pay}</span>}
-                            <span className="rolec">{r.count}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="dataempty">No live job ads</div>
-                  )}
-                </div>
-              )}
-
-              {!isGov && roleHistory && roleHistory.items.length > 0 && (
-                <div className="sect">
-                  <div className="secth">
-                    Vacancy history
-                    <span>tracked since {fmtDay(roleHistory.since)}</span>
-                  </div>
-                  <div className="vhsummary">
-                    <span className="vhstat"><b>{roleHistory.total.toLocaleString('en-US')}</b> roles archived</span>
-                    {roleHistory.longestDays > 0 && (
-                      <span className="vhstat"><b>{roleHistory.longestDays}d</b> longest open</span>
-                    )}
-                  </div>
-                  <div className="vhlist">
-                    {roleHistory.items.slice(0, 8).map((it, i) => (
-                      <div className="vhrow" key={`${it.title}-${i}`}>
-                        <div className="vhmain">
-                          <span className="vhtitle">{it.title}</span>
-                          <span className="vhmeta">
-                            <span className={`vhsrc vhsrc-${it.source}`}>{it.source}</span>
-                            {it.location && <span className="vhloc">{it.location}</span>}
-                            {it.salary && <span className="vhsal">{it.salary}</span>}
-                          </span>
-                        </div>
-                        <div className="vhage">
-                          <span className={`vhdays ${it.active ? 'on' : ''}`}>{it.daysOpen > 0 ? `${it.daysOpen}d open` : 'new'}</span>
-                          <span className="vhseen">seen {it.seenCount}×</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                ) : (
+                  <div className="dataempty">Not enough vacancy history yet</div>
+                )}
+              </div>
 
               <div className="sect">
                 <div className="secth">

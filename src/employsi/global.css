@@ -4740,6 +4740,56 @@ body {
   padding: 10px 12px;
   text-align: center;
 }
+/* Skill demand movers (top increases / decreases) in "Where they're hiring". */
+.movers {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.moverrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 2px;
+  border-bottom: 1px solid var(--line);
+}
+.moverrow:last-child {
+  border-bottom: none;
+}
+.moverdir {
+  flex: 0 0 auto;
+  font-size: 10px;
+  line-height: 1;
+  width: 12px;
+  text-align: center;
+}
+.moverdir.up,
+.moverdelta.up {
+  color: #159d67;
+}
+.moverdir.down,
+.moverdelta.down {
+  color: #e0524a;
+}
+.movername {
+  flex: 1 1 auto;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.moverdelta {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.moverpct {
+  font-weight: 600;
+  opacity: 0.7;
+}
 /* Advertised roles list (real live job ads) */
 .jobslist {
   display: flex;
@@ -5463,6 +5513,30 @@ body {
     z-index: 5;
   }
 
+  /* Perth / local-view label: smaller, and tucked directly under the four
+     layer buttons in the top-right (not floating across the middle top). */
+  .citybadge {
+    top: 104px;
+    left: auto;
+    right: 12px;
+    transform: none;
+    gap: 6px;
+    padding: 6px 11px;
+    animation: none;
+  }
+  .citybadgename {
+    font-size: 12px;
+  }
+  .citybadgesub {
+    font-size: 8.5px;
+    letter-spacing: 0.4px;
+  }
+  .citybadgedot {
+    width: 6px;
+    height: 6px;
+    box-shadow: 0 0 0 3px rgba(53, 194, 107, 0.28);
+  }
+
   /* Company pills: markedly more compact on a phone so they don't blanket the
      map. Tighter padding, smaller type. */
   .mbchip {
@@ -5585,7 +5659,9 @@ body {
     right: 0;
     width: 100%;
     max-width: 100%;
-    max-height: 92vh;
+    /* Shorter sheet so it fits the phone screen with the map still visible
+       above it, rather than filling almost the whole viewport. */
+    max-height: 82vh;
     border-radius: 20px 20px 0 0;
     transform: translateY(100%);
   }
@@ -5595,26 +5671,35 @@ body {
   }
   .pscroll,
   .cxscroll {
-    padding: 20px 16px calc(26px + env(safe-area-inset-bottom, 0px));
+    padding: 15px 14px calc(22px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* Company panel internals */
+  /* Company panel internals — tightened so more fits per screen. */
   .pname {
-    font-size: 20px;
+    font-size: 18px;
   }
   .pbadge {
-    width: 46px;
-    height: 46px;
-    font-size: 14px;
+    width: 40px;
+    height: 40px;
+    font-size: 13px;
   }
   .bigs {
-    gap: 8px;
+    gap: 7px;
   }
   .bigc {
-    padding: 11px 10px;
+    padding: 9px 9px;
   }
   .bigv {
-    font-size: 21px;
+    font-size: 19px;
+  }
+  /* Sections sit closer together on a phone. */
+  .sect {
+    margin-top: 14px;
+    padding-top: 12px;
+  }
+  .secth {
+    font-size: 12px;
+    margin-bottom: 9px;
   }
   /* "Where they're hiring" rows: let the bar wrap under the label */
   .role {

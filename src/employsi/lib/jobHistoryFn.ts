@@ -96,6 +96,82 @@ export const getRoleHistory = createServerFn({ method: 'GET' })
     }
   });
 
+// A skill demand mover: how a canonical skill's presence in this company's
+// vacancies has shifted between an earlier window and the most recent one.
+export interface SkillMover {
+  skill: string;
+  now: number; // listings mentioning it in the recent window
+  prev: number; // ...in the prior window
+  delta: number; // now − prev
+  pct: number; // % change (100 when newly appearing)
+  dir: 'up' | 'down';
+}
+
+// The top skill increases / decreases for a company, from historical vacancy
+// analysis of the D1 archive. Each archived listing carries its mapped skills +
+// the window it was live (first_seen…last_seen); we tally skill mentions in the
+// most-recent WINDOW days vs the WINDOW days before that and rank the biggest
+// movers. Powers the card's "where they're hiring" area (now demand shifts).
+// Sparse until the archive has more than one window of history — it fills in as
+// the daily pulls accumulate.
+export const getSkillTrends = createServerFn({ method: 'GET' })
+  .validator((data: { id: string }) => data)
+  .handler(async ({ data }): Promise<SkillMover[]> => {
+    const id = (data.id || '').trim();
+    if (!id) return [];
+    const db = await getArchiveDb();
+    if (!db) return [];
+    try {
+      const res: any = await (db
+        .prepare(`SELECT skills, first_seen, last_seen FROM jobs WHERE company_id = ?1 AND skills IS NOT NULL`)
+        .bind(id) as any).all();
+      const rows: any[] = res?.results ?? [];
+      if (!rows.length) return [];
+      const WINDOW = 30; // days per comparison window
+      const day = (offset: number) => {
+        const d = new Date();
+        d.setUTCDate(d.getUTCDate() - offset);
+        return d.toISOString().slice(0, 10);
+      };
+      const recentStart = day(WINDOW);
+      const priorStart = day(WINDOW * 2);
+      const priorEnd = recentStart;
+      const nowT: Record<string, number> = {};
+      const prevT: Record<string, number> = {};
+      for (const r of rows) {
+        let skills: string[] = [];
+        try {
+          skills = JSON.parse(String(r.skills || '[]'));
+        } catch {
+          skills = [];
+        }
+        if (!skills.length) continue;
+        const fs = String(r.first_seen || '');
+        const ls = String(r.last_seen || '');
+        if (!fs || !ls) continue;
+        // Active in the recent window (…first_seen ≤ today & last_seen ≥ start).
+        if (ls >= recentStart) for (const s of skills) nowT[s] = (nowT[s] || 0) + 1;
+        // Active in the prior window.
+        if (fs <= priorEnd && ls >= priorStart) for (const s of skills) prevT[s] = (prevT[s] || 0) + 1;
+      }
+      const skills = new Set([...Object.keys(nowT), ...Object.keys(prevT)]);
+      const movers: SkillMover[] = [];
+      for (const s of skills) {
+        const now = nowT[s] || 0;
+        const prev = prevT[s] || 0;
+        const delta = now - prev;
+        if (delta === 0) continue;
+        const pct = prev > 0 ? Math.round((delta / prev) * 100) : 100;
+        movers.push({ skill: s, now, prev, delta, pct, dir: delta > 0 ? 'up' : 'down' });
+      }
+      // Biggest absolute movers first, increases ahead of decreases on ties.
+      movers.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta) || b.delta - a.delta);
+      return movers.slice(0, 8);
+    } catch {
+      return [];
+    }
+  });
+
 // A daily "live vacancies" time-series derived from the D1 archive: for each of
 // the last N days, how many of the company's archived listings were live that
 // day (first_seen ≤ day ≤ last_seen). This powers the vacancy-movement chart

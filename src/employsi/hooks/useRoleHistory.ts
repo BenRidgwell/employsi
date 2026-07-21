@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { getRoleHistory, getVacancyTrend } from '../lib/jobHistoryFn';
-import type { RoleHistory } from '../lib/jobHistoryFn';
+import { getRoleHistory, getVacancyTrend, getSkillTrends } from '../lib/jobHistoryFn';
+import type { RoleHistory, SkillMover } from '../lib/jobHistoryFn';
 import type { RolePoint } from '../lib/openRolesFn';
 
 // A company's archived role history (D1). Null until the archive has at least
@@ -25,6 +25,19 @@ export function useVacancyTrend(id: string | undefined, enabled: boolean): RoleP
   const { data } = useQuery({
     queryKey: ['vacancyTrend', id],
     queryFn: () => getVacancyTrend({ data: { id: id as string } }),
+    enabled: enabled && !!id,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    retry: false,
+  });
+  return data ?? [];
+}
+
+// Top skill increases / decreases for a company (D1 historical analysis).
+export function useSkillTrends(id: string | undefined, enabled: boolean): SkillMover[] {
+  const { data } = useQuery({
+    queryKey: ['skillTrends', id],
+    queryFn: () => getSkillTrends({ data: { id: id as string } }),
     enabled: enabled && !!id,
     staleTime: 30 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
