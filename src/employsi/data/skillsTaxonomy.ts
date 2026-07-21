@@ -1,0 +1,169 @@
+// Canonical skill taxonomy for the live jobs pipeline AND the Jobs and Skills
+// Australia (JSA) Internet Vacancy Index. Each canonical skill has a set of
+// lowercase match terms; a job (or an ANZSCO occupation title) "demands" a skill
+// when any term appears in its title. Originally tuned to the resources / energy
+// / finance / industrial roster, now extended to cover the whole Australian
+// labour market (health, education, trades, hospitality, transport, community,
+// creative, agriculture, safety, personal and cleaning services) so the IVI's
+// ANZSCO occupations all map onto searchable skills. Kept dependency-free so the
+// Cloudflare cron worker, the IVI generator and the app can all import it.
+
+export interface SkillDef {
+  skill: string; // canonical display name
+  cat: string; // grouping for the legend
+  terms: string[]; // lowercase substrings matched against title (+ description)
+}
+
+export const SKILLS: SkillDef[] = [
+  // ── Mining & geoscience ────────────────────────────────────────────────
+  { skill: 'Mining Engineering', cat: 'Mining', terms: ['mining engineer', 'mine engineer', 'mining engineering'] },
+  { skill: 'Geology', cat: 'Mining', terms: ['geologist', 'geology', 'geoscience', 'exploration geo', 'geophysicist'] },
+  { skill: 'Metallurgy', cat: 'Mining', terms: ['metallurg', 'metallurgy', 'processing plant', 'mineral processing'] },
+  { skill: 'Drill & Blast', cat: 'Mining', terms: ['drill and blast', 'drill & blast', 'blasting', 'shotfirer', 'drillers, miners', 'shot firer'] },
+  { skill: 'Surveying', cat: 'Mining', terms: ['surveyor', 'mine survey', 'surveying', 'spatial scientist'] },
+  { skill: 'Geotechnical', cat: 'Mining', terms: ['geotechnical', 'geotech', 'ground control'] },
+  { skill: 'Underground Mining', cat: 'Mining', terms: ['underground mine', 'underground mining', 'jumbo operator'] },
+  { skill: 'Fixed Plant Maintenance', cat: 'Mining', terms: ['fixed plant', 'processing maintenance'] },
+
+  // ── Oil, gas & energy ──────────────────────────────────────────────────
+  { skill: 'Process Engineering', cat: 'Energy', terms: ['process engineer', 'process engineering'] },
+  { skill: 'Subsea Engineering', cat: 'Energy', terms: ['subsea', 'sub-sea'] },
+  { skill: 'Pipeline Engineering', cat: 'Energy', terms: ['pipeline'] },
+  { skill: 'LNG Operations', cat: 'Energy', terms: ['lng', 'liquefied natural gas', 'gas plant'] },
+  { skill: 'Drilling & Wells', cat: 'Energy', terms: ['drilling', 'well engineer', 'wells', 'petroleum engineer', 'reservoir'] },
+  { skill: 'Hydrogen & Renewables', cat: 'Energy', terms: ['hydrogen', 'renewable', 'solar', 'wind farm', 'electrolyser'] },
+  { skill: 'Decarbonisation', cat: 'Energy', terms: ['decarbon', 'net zero', 'emissions reduction', 'carbon capture'] },
+  { skill: 'Electrical Engineering', cat: 'Engineering', terms: ['electrical engineer', 'electrical engineering', 'high voltage', 'hv '] },
+  { skill: 'Mechanical Engineering', cat: 'Engineering', terms: ['mechanical engineer', 'mechanical engineering', 'rotating equipment', 'industrial, mechanical', 'production engineer'] },
+  { skill: 'Civil Engineering', cat: 'Engineering', terms: ['civil engineer', 'civil engineering', 'structural engineer'] },
+  { skill: 'Instrumentation & Control', cat: 'Engineering', terms: ['instrumentation', 'control systems', 'e&i', 'plc', 'scada'] },
+
+  // ── Trades & operations ────────────────────────────────────────────────
+  // Named as skills/capabilities, not occupations: the match terms still key off
+  // the job titles that appear in postings (e.g. "Diesel Mechanic"), but the
+  // canonical skill they map to is the underlying capability.
+  { skill: 'Heavy Diesel Maintenance', cat: 'Trades', terms: ['diesel mechanic', 'heavy diesel', 'hd fitter', 'plant mechanic'] },
+  { skill: 'Welding & Fabrication', cat: 'Trades', terms: ['boilermaker', 'welder', 'welding', 'fabricator', 'sheetmetal', 'structural steel and welding'] },
+  { skill: 'Electrical Trade', cat: 'Trades', terms: ['electrician', 'electrical trade', 'a grade electric', 'electrical distribution'] },
+  { skill: 'Mechanical Fitting', cat: 'Trades', terms: ['mechanical fitter', 'fitter and turner', 'maintenance fitter', 'metal fitter', 'machinist', 'precision metal', 'toolmaker', 'metal casting'] },
+  { skill: 'Plant & Equipment Operation', cat: 'Trades', terms: ['plant operator', 'haul truck', 'dump truck', 'excavator', 'dozer', 'loader', 'earthmoving', 'crane, hoist', 'mobile plant', 'stationary plant'] },
+  { skill: 'Rigging & Scaffolding', cat: 'Trades', terms: ['rigger', 'scaffolder', 'scaffolding', 'dogman'] },
+
+  // ── HSE & quality ──────────────────────────────────────────────────────
+  { skill: 'HSE / Safety', cat: 'Safety', terms: ['hse', 'health and safety', 'safety advisor', 'safety officer', 'whs', 'ohs', 'safety inspector', 'occupational and environmental health'] },
+  { skill: 'Environmental', cat: 'Safety', terms: ['environmental', 'environment advisor', 'rehabilitation', 'tailings'] },
+  { skill: 'Risk & Compliance', cat: 'Safety', terms: ['risk', 'compliance', 'assurance', 'governance', 'regulatory officer', 'inspectors and regulatory'] },
+  { skill: 'Quality Assurance', cat: 'Safety', terms: ['quality assurance', 'qa/qc', 'quality control', 'quality controller'] },
+  { skill: 'Radiation Safety', cat: 'Safety', terms: ['radiation', 'radiological'] },
+
+  // ── Data, digital & automation ─────────────────────────────────────────
+  { skill: 'Data Analytics', cat: 'Digital', terms: ['data analyst', 'data analytics', 'power bi', 'analytics', 'sql', 'systems analyst', 'business and systems'] },
+  { skill: 'Data Science & ML', cat: 'Digital', terms: ['data scien', 'machine learning', 'ml engineer', 'ai '] },
+  { skill: 'Software Engineering', cat: 'Digital', terms: ['software engineer', 'developer', 'full stack', 'python', 'java', 'react', 'programmer', 'multimedia'] },
+  { skill: 'Cloud & DevOps', cat: 'Digital', terms: ['cloud', 'aws', 'azure', 'devops', 'kubernetes'] },
+  { skill: 'Cybersecurity', cat: 'Digital', terms: ['cyber', 'security engineer', 'infosec', 'ict security'] },
+  { skill: 'Automation & Robotics', cat: 'Digital', terms: ['automation', 'autonomous', 'robotics', 'remote operations'] },
+  { skill: 'IT & Systems', cat: 'Digital', terms: ['it support', 'systems administrator', 'sap', 'erp', 'network engineer', 'ict support', 'ict manager', 'computer network', 'database and systems', 'ict support and test', 'telecommunications engineering'] },
+
+  // ── Corporate & commercial ─────────────────────────────────────────────
+  { skill: 'Project Management', cat: 'Corporate', terms: ['project manager', 'project management', 'project engineer', 'pmo', 'program and project', 'project administrat'] },
+  { skill: 'Finance & Accounting', cat: 'Corporate', terms: ['accountant', 'finance', 'financial analyst', 'cfo', 'tax', 'auditor', 'company secretar', 'treasurer', 'economist'] },
+  { skill: 'Procurement & Supply', cat: 'Corporate', terms: ['procurement', 'supply chain', 'contracts', 'logistics', 'supply, distribution'] },
+  { skill: 'Human Resources', cat: 'Corporate', terms: ['human resources', 'human resource', 'hr ', 'people and culture', 'recruit', 'talent', 'training and development'] },
+  { skill: 'Commercial & Legal', cat: 'Corporate', terms: ['commercial', 'legal', 'lawyer', 'counsel', 'contract administrat', 'solicitor', 'barrister', 'conveyancer', 'legal executive'] },
+  { skill: 'Marketing & Comms', cat: 'Corporate', terms: ['marketing', 'communications', 'brand', 'content', 'advertising', 'public relations'] },
+  { skill: 'Sales & Business Dev', cat: 'Corporate', terms: ['business development', 'account manager', 'account executive', 'sales representative', 'sales manager', 'technical sales'] },
+  { skill: 'General Management', cat: 'Corporate', terms: ['chief executive', 'managing director', 'general manager', 'corporate services manager', 'other specialist manager', 'production manager', 'engineering manager', 'policy and planning manager'] },
+  { skill: 'Community & Native Title', cat: 'Corporate', terms: ['community relations', 'stakeholder', 'native title', 'indigenous engagement', 'heritage'] },
+
+  // ── Administration & clerical ──────────────────────────────────────────
+  { skill: 'Administration & Office Support', cat: 'Admin', terms: ['clerk', 'administrator', 'receptionist', 'office manager', 'secretary', 'personal assistant', 'keyboard operator', 'information officer', 'call or contact centre', 'call centre', 'switchboard', 'mail sorter', 'filing', 'practice manager', 'survey interviewer'] },
+  { skill: 'Bookkeeping & Payroll', cat: 'Admin', terms: ['bookkeeper', 'payroll', 'accounting clerk', 'accounts clerk'] },
+
+  // ── Financial services ─────────────────────────────────────────────────
+  { skill: 'Banking & Lending', cat: 'Financial', terms: ['banking', 'bank worker', 'lending', 'credit', 'mortgage', 'loans', 'financial broker', 'financial dealer', 'financial investment', 'debt collector'] },
+  { skill: 'Insurance & Actuarial', cat: 'Financial', terms: ['insurance agent', 'insurance clerk', 'loss adjuster', 'actuar', 'insurance investigator', 'insurance, money market'] },
+  { skill: 'Real Estate & Property', cat: 'Property', terms: ['real estate', 'property manager', 'valuer', 'land economist', 'auctioneer', 'stock and station'] },
+
+  // ── Health & care ──────────────────────────────────────────────────────
+  { skill: 'Nursing', cat: 'Health', terms: ['registered nurse', 'enrolled nurse', 'nurse ', 'nursing', 'midwife', 'midwives', 'nurse manager', 'nurse educator'] },
+  { skill: 'Medical Practice', cat: 'Health', terms: ['general practitioner', 'medical practitioner', 'resident medical', 'physician', 'surgeon', 'anaesthetist', 'psychiatrist', 'medical officer'] },
+  { skill: 'Allied Health', cat: 'Health', terms: ['physiotherap', 'occupational therap', 'podiatr', 'speech pathol', 'audiolog', 'optometr', 'orthopt', 'chiropract', 'osteopath', 'dietit', 'nutrition', 'massage therap', 'diversional therap'] },
+  { skill: 'Dental', cat: 'Health', terms: ['dental', 'dentist', 'orthodont'] },
+  { skill: 'Pharmacy', cat: 'Health', terms: ['pharmacist', 'pharmacy'] },
+  { skill: 'Medical Imaging & Pathology', cat: 'Health', terms: ['medical imaging', 'radiograph', 'sonograph', 'medical laborator', 'medical technician', 'pathology'] },
+  { skill: 'Aged & Disability Care', cat: 'Care', terms: ['aged and disabled', 'aged care', 'disabled carer', 'disability', 'personal care', 'nursing support', 'mothercraft', 'care worker', 'welfare support', 'special care worker', 'indigenous health'] },
+  { skill: 'Mental Health & Counselling', cat: 'Care', terms: ['counsellor', 'psycholog', 'mental health'] },
+  { skill: 'Social & Community Services', cat: 'Community', terms: ['social work', 'welfare', 'community arts', 'youth work', 'minister of religion', 'social profession', 'recreation and community'] },
+
+  // ── Education ──────────────────────────────────────────────────────────
+  { skill: 'Teaching & Education', cat: 'Education', terms: ['teacher', 'lecturer', 'tutor', 'education aide', 'vocational education', 'education adviser', 'teachers of english'] },
+  { skill: 'Childcare & Early Learning', cat: 'Education', terms: ['child carer', 'child care', 'early childhood', 'kindergarten', 'nanny'] },
+
+  // ── Hospitality & food ─────────────────────────────────────────────────
+  { skill: 'Hospitality & Food Service', cat: 'Hospitality', terms: ['chef', 'cook', 'waiter', 'barista', 'bar attendant', 'cafe worker', 'cafe and restaurant', 'kitchenhand', 'hotel service', 'gaming worker', 'fast food', 'hotel and motel', 'hospitality', 'licensed club'] },
+  { skill: 'Food Trades', cat: 'Hospitality', terms: ['baker', 'pastrycook', 'butcher', 'smallgoods', 'meat, poultry', 'meat boner'] },
+
+  // ── Building & construction trades ─────────────────────────────────────
+  { skill: 'Construction Management', cat: 'Construction', terms: ['construction manager', 'site manager', 'superintendent', 'foreman', 'building and surveying'] },
+  { skill: 'Carpentry & Joinery', cat: 'Trades', terms: ['carpenter', 'joiner', 'cabinetmaker', 'wood machinist', 'wood trades'] },
+  { skill: 'Plumbing', cat: 'Trades', terms: ['plumber', 'plumbing', 'gasfitter'] },
+  { skill: 'Bricklaying & Concreting', cat: 'Construction', terms: ['bricklayer', 'stonemason', 'concreter', 'paving', 'structural steel construction', 'fencer', 'railway track'] },
+  { skill: 'Painting & Plastering', cat: 'Construction', terms: ['painting trades', 'painter', 'plasterer', 'glazier', 'tiler', 'floor finisher', 'roof tiler', 'wall and floor'] },
+  { skill: 'Construction Labouring', cat: 'Construction', terms: ['building and plumbing labour', 'construction and mining labour', 'insulation', 'concreters'] },
+  { skill: 'Architecture & Planning', cat: 'Built Environment', terms: ['architect', 'landscape architect', 'urban and regional plann', 'architectural'] },
+
+  // ── Automotive & other trades ──────────────────────────────────────────
+  { skill: 'Automotive Trade', cat: 'Trades', terms: ['motor mechanic', 'automotive', 'panelbeater', 'vehicle body', 'vehicle painter', 'motor vehicle parts'] },
+  { skill: 'HVAC & Refrigeration', cat: 'Trades', terms: ['airconditioning', 'refrigeration'] },
+  { skill: 'Electronics & Telecoms Trade', cat: 'Trades', terms: ['electronics trade', 'telecommunications trade', 'electronic engineering draft', 'telecommunications technical'] },
+
+  // ── Transport, logistics & warehousing ─────────────────────────────────
+  { skill: 'Driving & Transport', cat: 'Transport', terms: ['truck driver', 'delivery driver', 'bus and coach', 'train and tram', 'automobile driver', 'courier', 'chauffeur', 'postal deliver'] },
+  { skill: 'Warehousing & Logistics', cat: 'Transport', terms: ['storeperson', 'forklift', 'despatch', 'freight', 'purchasing and supply', 'transport and despatch', 'packer', 'shelf filler', 'warehouse'] },
+
+  // ── Manufacturing & production ─────────────────────────────────────────
+  { skill: 'Manufacturing & Production', cat: 'Manufacturing', terms: ['machine operator', 'production worker', 'product assembler', 'factory', 'process worker', 'engineering production', 'spraypainter', 'sewing machinist', 'plastics', 'textile'] },
+
+  // ── Sales & retail ─────────────────────────────────────────────────────
+  { skill: 'Retail Operations', cat: 'Sector', terms: ['retail manager', 'store manager', 'merchandis', 'retail supervisor'] },
+  { skill: 'Retail & Customer Service', cat: 'Sales', terms: ['sales assistant', 'checkout', 'service station', 'customer service', 'telemarketer', 'sales demonstrator', 'wool buyer', 'ticket salesperson', 'pharmacy sales', 'vehicle parts salesperson', 'street vendor', 'sales support'] },
+
+  // ── Creative, media & design ───────────────────────────────────────────
+  { skill: 'Creative & Performing Arts', cat: 'Creative', terms: ['actor', 'dancer', 'music profession', 'entertainer', 'artistic director', 'photographer', 'film, television', 'stage director', 'performing arts', 'visual arts'] },
+  { skill: 'Journalism & Media', cat: 'Creative', terms: ['journalist', 'author', 'book and script', 'writer', 'media producer', 'presenter'] },
+  { skill: 'Design', cat: 'Creative', terms: ['graphic', 'web design', 'interior design', 'fashion', 'industrial and jewellery', 'illustrator', 'signwriter'] },
+
+  // ── Science, agriculture & environment ─────────────────────────────────
+  { skill: 'Science & Laboratory', cat: 'Science', terms: ['scientist', 'chemist', 'biolog', 'physicist', 'laboratory', 'veterinar', 'life scien', 'food and wine', 'science technician'] },
+  { skill: 'Agriculture & Farming', cat: 'Agriculture', terms: ['farmer', 'agricultur', 'livestock', 'crop', 'horticultur', 'aquaculture', 'forestry', 'nurseryperson', 'shearer', 'animal attendant', 'greenkeeper', 'gardener', 'garden and nursery', 'primary products'] },
+
+  // ── Public safety & personal services ──────────────────────────────────
+  { skill: 'Emergency & Public Safety', cat: 'Safety', terms: ['police', 'fire and emergency', 'ambulance', 'paramedic', 'prison officer', 'security officer', 'guard'] },
+  { skill: 'Personal Services & Beauty', cat: 'Personal', terms: ['hairdress', 'beauty therap', 'funeral', 'driving instructor', 'travel adviser', 'travel attendant', 'tour guide', 'personal care consultant'] },
+  { skill: 'Sport & Recreation', cat: 'Personal', terms: ['sports coach', 'fitness instructor', 'sportsperson', 'outdoor adventure', 'amusement, fitness'] },
+  { skill: 'Cleaning & Facilities', cat: 'Cleaning', terms: ['cleaner', 'housekeeper', 'laundry', 'caretaker', 'handyperson', 'car detailer', 'rubbish', 'recycling', 'vending machine'] },
+
+  // ── Sector-specific ────────────────────────────────────────────────────
+  { skill: 'Telecommunications', cat: 'Sector', terms: ['telecommunications', 'telco', 'network operations', 'fibre'] },
+  { skill: 'Shipbuilding & Marine', cat: 'Sector', terms: ['shipbuild', 'marine', 'vessel', 'naval', 'boat builder', 'shipwright', 'deck and fishing', 'aircraft maintenance'] },
+];
+
+const norm = (s: string) => (s || '').toLowerCase();
+
+// Return the canonical skills a job (or ANZSCO occupation) demands. We match on
+// the TITLE only: titles are concise and role-defining ("Mining Engineer",
+// "Registered Nurses"), whereas descriptions are boilerplate-heavy ("excellent
+// communication skills") and badly inflate generic skills. The description arg
+// is accepted for API stability but intentionally not matched.
+export function skillsForText(title: string, _description?: string): string[] {
+  const hay = ' ' + norm(title) + ' ';
+  const out: string[] = [];
+  for (const def of SKILLS) {
+    if (def.terms.some((t) => hay.includes(t))) out.push(def.skill);
+  }
+  return out;
+}
+
+export const ALL_SKILLS: string[] = SKILLS.map((s) => s.skill);
+export const SKILL_CATEGORY: Record<string, string> = Object.fromEntries(SKILLS.map((s) => [s.skill, s.cat]));

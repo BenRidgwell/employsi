@@ -1,0 +1,23 @@
+{
+  // Dedicated jobs pipeline worker. Runs on a schedule, shares the app's KV
+  // namespace, and holds its own Adzuna + trigger-token secrets (set via
+  // `wrangler secret put`, not stored here).
+  "name": "employsi-jobs-cron",
+  "main": "index.ts",
+  "compatibility_date": "2026-07-17",
+  "compatibility_flags": ["nodejs_compat"],
+  "kv_namespaces": [
+    { "binding": "OPEN_ROLES_HISTORY", "id": "6f8be3a8968d4e24a05ae82b235a6a97" }
+  ],
+  // Historical job archive (append-only). Shared with the app + mobile workers.
+  "d1_databases": [
+    { "binding": "JOBS_ARCHIVE", "database_name": "employsi-jobs-archive", "database_id": "1c5f3ffb-b9d7-4233-b28b-0f1f8d193fe1" }
+  ],
+  "triggers": {
+    // ":00 every 6 hours" advances the Adzuna/Muse/Jooble shard rotation (the
+    // 50-company roster refreshes about once a day). ":30 every 6 hours" runs
+    // the WA Government board scrape in its own invocation, so its ~40 page
+    // fetches get a clean subrequest budget separate from the shard's API calls.
+    "crons": ["0 */6 * * *", "30 */6 * * *"]
+  }
+}

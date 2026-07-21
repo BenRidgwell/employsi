@@ -9,8 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as MobileFrameRouteImport } from './routes/mobile-frame'
 import { Route as IndexRouteImport } from './routes/index'
 
+const MobileFrameRoute = MobileFrameRouteImport.update({
+  id: '/mobile-frame',
+  path: '/mobile-frame',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +25,39 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/mobile-frame': typeof MobileFrameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/mobile-frame': typeof MobileFrameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/mobile-frame': typeof MobileFrameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/mobile-frame'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/mobile-frame'
+  id: '__root__' | '/' | '/mobile-frame'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  MobileFrameRoute: typeof MobileFrameRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/mobile-frame': {
+      id: '/mobile-frame'
+      path: '/mobile-frame'
+      fullPath: '/mobile-frame'
+      preLoaderRoute: typeof MobileFrameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,6 +70,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  MobileFrameRoute: MobileFrameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

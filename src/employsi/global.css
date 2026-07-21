@@ -1,0 +1,5999 @@
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+.app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  font-family: "Mona Sans Variable", "Mona Sans", system-ui, sans-serif;
+  color: #1c1c1e;
+  background: #f1f1f3;
+  --ink: #1c1c1e;
+  --slate: #6c6c72;
+  --line: #ededf0;
+  --brand: #1c1c1e;
+  --brandink: #000000;
+  --teal: #8e8e93;
+  --pos: #48484a;
+  --coral: #9a9aa0;
+}
+/* `.app` scope beats mapbox-gl's own `.mapboxgl-map { position: relative }`,
+   which mapbox adds to this same element and which would otherwise collapse
+   the container to zero height (leaving the map only ~300px tall). */
+.app .mount {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+.app .mount:active {
+  cursor: grabbing;
+}
+/* Mapbox trial: the global/domestic Mapbox overview sits on top of the local
+   3D map (it comes after PerthMapbox in the DOM, so it stacks above it without
+   needing a z-index — and crucially must NOT have one, or it would paint over
+   the top bar / legend / heat key, which sit at the default z-index and come
+   after it in the DOM). When fully zoomed into a local city it fades out and
+   stops taking pointer events, so the PerthMapbox layer beneath owns
+   interaction — mirrors how the old SVG overlay (.auview) ceded control at the
+   local layer. */
+.worldmount {
+  transition: opacity 0.45s ease;
+}
+.worldmount-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.chip {
+  pointer-events: auto;
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 12px 7px 9px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1.5px solid rgba(28, 28, 30, 0.16);
+  border-radius: 999px;
+  box-shadow: 0 8px 22px -10px rgba(15, 27, 61, 0.42);
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--ink);
+  transition:
+    box-shadow 0.16s ease,
+    border-color 0.16s ease;
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+}
+.chip:hover {
+  border-color: rgba(28, 28, 30, 0.5);
+  box-shadow: 0 14px 30px -10px rgba(15, 27, 61, 0.55);
+}
+.chip.on {
+  border-color: var(--brand);
+  box-shadow:
+    0 0 0 3px rgba(28, 28, 30, 0.18),
+    0 14px 30px -10px rgba(28, 28, 30, 0.55);
+}
+.chipdot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #1c1c1e;
+  box-shadow: 0 0 0 4px rgba(28, 28, 30, 0.1);
+  flex: 0 0 auto;
+}
+.chip.on .chipdot {
+  background: var(--coral);
+  box-shadow: 0 0 0 4px rgba(154, 154, 160, 0.2);
+}
+.chiptk {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+}
+.chipsub {
+  font-size: 11px;
+  color: var(--slate);
+  font-weight: 500;
+  border-left: 1px solid var(--line);
+  padding-left: 9px;
+}
+/* Scrub callout: a small demand-change % appended to a city pill while a skill
+   is selected and the time slider is being dragged. Green up / red down. */
+.mbchip-pct .chiptk {
+  padding-right: 8px;
+  border-right: 1px solid var(--line);
+}
+.chippct {
+  margin-left: 8px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+.chippct.up {
+  color: #12905e;
+}
+.chippct.down {
+  color: #d6362e;
+}
+.chippct.flat {
+  color: var(--slate);
+}
+.mbchip {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 5px 11px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1.5px solid rgba(28, 28, 30, 0.16);
+  border-radius: 999px;
+  box-shadow: 0 8px 22px -10px rgba(15, 27, 61, 0.42);
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--ink);
+  transition:
+    box-shadow 0.16s ease,
+    border-color 0.16s ease,
+    opacity 0.16s ease;
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+}
+.mbchip:hover {
+  border-color: rgba(28, 28, 30, 0.5);
+  box-shadow: 0 14px 30px -10px rgba(15, 27, 61, 0.55);
+}
+.mbchip.on {
+  border-color: var(--brand);
+  box-shadow:
+    0 0 0 3px rgba(28, 28, 30, 0.18),
+    0 14px 30px -10px rgba(28, 28, 30, 0.55);
+}
+.mbchip.on .chipdot {
+  background: var(--coral);
+  box-shadow: 0 0 0 4px rgba(154, 154, 160, 0.2);
+}
+/* Selecting a company greys out every other pill (desaturated + faded), so
+   the open card's company stays the focus; cleared the instant the card is
+   closed. The opacity here is a fallback — the focus updater usually drives it
+   inline — but the grayscale is what makes it read as a true "grey out". */
+.mbchip.dim {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+.mapboxgl-marker {
+  z-index: 3;
+}
+/* Cars driving the local city's streets — flat on the ground plane (marker
+   pitchAlignment:map), non-interactive, softly shadowed. */
+.carmarker {
+  pointer-events: none;
+  line-height: 0;
+  filter: drop-shadow(0 1px 1px rgba(15, 27, 61, 0.4));
+}
+/* Decorative air/sea traffic on the globe — non-interactive, faintly shadowed
+   so it reads above the map without competing with the hub markers. */
+.traveler {
+  pointer-events: none;
+}
+.travelericon {
+  display: block;
+  line-height: 0;
+  opacity: 0.82;
+  filter: drop-shadow(0 1px 1.5px rgba(15, 27, 61, 0.35));
+  transform-origin: 50% 50%;
+}
+.traveler-ship .travelericon svg,
+.traveler-ship svg {
+  opacity: 0.9;
+}
+/* Transient bottom-centre notification (e.g. "sign in to follow"). */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px 11px 18px;
+  background: #1c1c1e;
+  color: #fff;
+  border-radius: 999px;
+  box-shadow: 0 18px 44px -14px rgba(15, 27, 61, 0.6);
+  font-size: 13.5px;
+  font-weight: 600;
+  max-width: min(560px, calc(100vw - 32px));
+  animation: toastin 0.32s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+@keyframes toastin {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 14px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+.toastmsg {
+  line-height: 1.3;
+}
+.toastact {
+  flex: 0 0 auto;
+  background: #fff;
+  color: #1c1c1e;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.toastx {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.toastx:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+.place {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: rgba(91, 100, 120, 0.85);
+  text-shadow: 0 1px 6px rgba(234, 240, 251, 0.9);
+}
+.place i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(91, 100, 120, 0.55);
+  display: inline-block;
+}
+.place.hide {
+  display: none;
+}
+.ticker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 38px;
+  display: flex;
+  align-items: stretch;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+  z-index: 4;
+  /* Informational only — take pointer events so a plain arrow cursor shows
+     (rather than the map's grab cursor bleeding through underneath, which
+     made the strip look draggable/selectable), but never let the scrolling
+     text actually be selected or clicked. Same pattern as .legend/.heatkey. */
+  pointer-events: auto;
+  cursor: default;
+  user-select: none;
+}
+.tickerlbl {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  background: #1c1c1e;
+  color: #fff;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.tickerlbl i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  animation: tpulse 1.6s ease-in-out infinite;
+}
+@keyframes tpulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.55);
+  }
+  50% {
+    opacity: 0.45;
+    box-shadow: 0 0 0 5px rgba(255, 255, 255, 0);
+  }
+}
+.tickerwrap {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 3%,
+    #000 97%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 3%,
+    #000 97%,
+    transparent
+  );
+}
+.tickertrack {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  width: max-content;
+  animation: tscroll 58s linear infinite;
+}
+.titem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 18px;
+  height: 100%;
+  border-right: 1px solid var(--line);
+  white-space: nowrap;
+}
+.tname {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.ttag {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--slate);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.tdelta {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.tdelta .ar {
+  font-size: 9px;
+  line-height: 1;
+}
+.tdelta.up {
+  color: #0e9f6e;
+}
+.tdelta.down {
+  color: #e0524a;
+}
+@keyframes tscroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.topbar {
+  position: absolute;
+  top: 38px;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 26px;
+  pointer-events: none;
+  gap: 16px;
+}
+.brand {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.bmark {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bmark svg {
+  display: block;
+}
+.bwrap {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+.logo {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+}
+.tag {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: var(--slate);
+  margin-top: 3px;
+}
+/* Smoothly fade the transparent-background top-bar text/marks between the
+   light-basemap default (dark) and the global dark-backdrop variant (light). */
+.logo,
+.tag,
+.seglbl,
+.gsearchhd,
+.bmark svg rect {
+  transition: color 0.4s ease, fill 0.4s ease;
+}
+/* On the dark global globe backdrop, flip the labels/wordmark that sit directly
+   on the map (no pill background) to light so they stay legible. Scoped to
+   `onglobe` (not `ondark`) so the domestic overview — a light country map —
+   keeps the dark wordmark. The buttons sit on white pills, so are unaffected. */
+.app.onglobe .logo {
+  color: #fff;
+}
+/* The search header floats over the globe itself, which is light in the middle
+   (land/ocean) and dark at the edges (space) — a single fixed colour can't
+   stay legible as the globe is panned/spun under it. WorldMapbox samples the
+   actual pixel behind the header each frame and toggles .gshd-onlight on .app
+   when that pixel is light, so the header flips to dark text over the globe
+   and back to white over the dark space. */
+.app.ondark .gsearchhd {
+  color: #fff;
+}
+.app.ondark.gshd-onlight .gsearchhd {
+  color: #1c1c1e;
+}
+.app.onglobe .seglbl,
+.app.onglobe .tag {
+  color: rgba(255, 255, 255, 0.78);
+}
+/* Brand mark: keep the layered look but in light tones so it reads on the dark
+   globe. On the domestic (light) overview it keeps its default dark tones. */
+.app.onglobe .bmark svg rect:nth-child(1),
+.app.onglobe .bmark svg rect:nth-child(4) {
+  fill: #ffffff;
+}
+.app.onglobe .bmark svg rect:nth-child(2) {
+  fill: rgba(255, 255, 255, 0.65);
+}
+.app.onglobe .bmark svg rect:nth-child(3) {
+  fill: rgba(255, 255, 255, 0.85);
+}
+.controls {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+}
+.seg {
+  display: flex;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 4px;
+  gap: 3px;
+  box-shadow: 0 8px 22px -12px rgba(15, 27, 61, 0.4);
+}
+.seg button {
+  font-family: inherit;
+  border: 0;
+  background: transparent;
+  color: var(--slate);
+  font-weight: 600;
+  font-size: 12.5px;
+  padding: 7px 13px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.seg button.on {
+  background: #fff;
+  color: var(--brandink);
+  box-shadow: 0 3px 10px -4px rgba(15, 27, 61, 0.35);
+}
+.hbtn.hon {
+  color: #fff;
+  background: #1c1c1e;
+}
+/* Heat-map segmented control when it sits inside the Heat-map flyout: fill the
+   flyout width and split the three options evenly. */
+.hmseg {
+  width: 100%;
+  margin-bottom: 10px;
+}
+.hmseg .hbtn {
+  flex: 1;
+  justify-content: center;
+}
+.seglbl {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--slate);
+  margin: 0 4px;
+}
+.cgroup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+.searchwrap {
+  position: relative;
+}
+.searchbtn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 12.5px;
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: 0 8px 22px -12px rgba(15, 27, 61, 0.4);
+  transition: 0.15s;
+}
+.searchbtn:hover {
+  border-color: var(--slate);
+}
+.searchbtn.on {
+  background: #1c1c1e;
+  color: #fff;
+  border-color: #1c1c1e;
+}
+.pcompare {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 8px 14px;
+  border-radius: 9px;
+  border: 1px solid var(--ink);
+  background: #fff;
+  color: var(--ink);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.pcompare:hover {
+  background: var(--ink);
+  color: #fff;
+}
+.cxpanel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 640px;
+  max-width: 94vw;
+  max-height: 88vh;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--line);
+  box-shadow:
+    0 44px 110px -24px rgba(15, 27, 61, 0.55),
+    0 0 0 1px rgba(15, 27, 61, 0.04);
+  border-radius: 22px;
+  transform: translate(-50%, -46%) scale(0.94);
+  opacity: 0;
+  transition:
+    transform 0.36s cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 0.26s ease;
+  display: flex;
+  flex-direction: column;
+  z-index: 8;
+  pointer-events: none;
+  overflow: hidden;
+}
+.cxpanel.open {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+.cxscroll {
+  overflow-y: auto;
+  padding: 24px 26px 30px;
+}
+.cxhead {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.cxtitle {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.3px;
+}
+/* Round close FAB in the compare modal's far-right (top) corner — same
+   round white treatment as the Feedback / Need-help buttons. */
+.cxclose {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 24px -12px rgba(15, 27, 61, 0.45);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.cxclose:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px -12px rgba(15, 27, 61, 0.5);
+}
+.cxselectors {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.cxsel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 10px;
+  background: #f7f7f8;
+}
+.cxselect {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+  cursor: pointer;
+}
+.cxvs {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--slate);
+  text-transform: uppercase;
+}
+.cxswatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.cxswatch-a {
+  background: #1c1c1e;
+}
+.cxswatch-b {
+  background: #cc4b36;
+}
+.cxradarwrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 22px;
+}
+.cxradarstack {
+  position: relative;
+  width: 340px;
+}
+.cxradar {
+  width: 340px;
+  height: auto;
+  display: block;
+}
+.cxaxislabel {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--slate);
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.cxvallabel {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 9.5px;
+  font-weight: 700;
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.cxpoly-a {
+  fill: rgba(28, 28, 30, 0.16);
+  stroke: #1c1c1e;
+  stroke-width: 1.6;
+}
+.cxpoly-b {
+  fill: rgba(204, 75, 54, 0.14);
+  stroke: #cc4b36;
+  stroke-width: 1.6;
+}
+.cxdot-a {
+  fill: #1c1c1e;
+}
+.cxdot-b {
+  fill: #cc4b36;
+}
+.cxvallabel {
+  font-size: 8px;
+  font-weight: 700;
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+}
+.cxvallabel-a {
+  color: #1c1c1e;
+}
+.cxvallabel-b {
+  color: #cc4b36;
+}
+.cxlegend {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.cxlegitem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.cxrows {
+  border-top: 1px solid var(--line);
+}
+.cxrow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.cxrowa {
+  text-align: right;
+  font-weight: 700;
+  font-size: 13px;
+  color: #1c1c1e;
+}
+.cxrowb {
+  text-align: left;
+  font-weight: 700;
+  font-size: 13px;
+  color: #cc4b36;
+}
+.cxrowlabel {
+  text-align: center;
+  font-size: 11px;
+  color: var(--slate);
+  font-weight: 600;
+}
+.zoomslider {
+  position: fixed;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  z-index: 40;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 8px 7px;
+  box-shadow: 0 8px 22px -12px rgba(15, 27, 61, 0.4);
+}
+.zoomslider .zstep {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--slate);
+  transition: 0.15s;
+}
+.zoomslider .zstep:hover {
+  background: rgba(15, 27, 61, 0.06);
+  color: var(--ink);
+}
+.zoomslider .zstep.on {
+  background: #1c1c1e;
+  color: #fff;
+}
+.zoomslider .zstep svg {
+  width: 16px;
+  height: 16px;
+}
+.zoomslider .ztrack {
+  width: 2px;
+  height: 16px;
+  background: var(--line);
+  margin: 1px 0;
+}
+/* Left-rail quick actions, stacked just above the layer guide. */
+.mapactions {
+  position: fixed;
+  left: 18px;
+  /* Clear of the vertically-centred 4-step layer slider below (its top edge
+     sits ~105px above centre), so the Trending / Daily-brief buttons don't
+     overlap it. */
+  bottom: calc(50% + 128px);
+  /* Above the side panes (z-index 45) so the What's-trending / Daily-brief
+     hover tooltips render in front of an open card/pane rather than behind. */
+  z-index: 48;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 8px 7px;
+  box-shadow: 0 8px 22px -12px rgba(15, 27, 61, 0.4);
+  animation: maReveal 0.4s ease both;
+}
+@keyframes maReveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.mapactions .marow {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.mapactions .mabtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--slate);
+  transition: 0.15s;
+}
+.mapactions .mabtn:hover {
+  background: rgba(15, 27, 61, 0.06);
+  color: var(--ink);
+}
+.mapactions .mabtn svg {
+  width: 23px;
+  height: 23px;
+  overflow: visible;
+}
+.mapactions .malabel {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 4px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.mapactions .marow:hover .malabel {
+  opacity: 1;
+}
+/* Flame flicker */
+.flameicon {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: flameflicker 1.5s ease-in-out infinite;
+}
+@keyframes flameflicker {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  25% {
+    transform: scale(1.07, 0.95) translateY(-0.2px);
+  }
+  50% {
+    transform: scale(0.94, 1.06);
+  }
+  75% {
+    transform: scale(1.04, 0.98) translateX(0.3px);
+  }
+}
+.flameember {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: emberpulse 1.5s ease-in-out infinite;
+}
+@keyframes emberpulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+/* Coffee steam rising */
+.briefsteam path {
+  transform-box: fill-box;
+  animation: steamrise 2.4s ease-in-out infinite;
+}
+.briefsteam path:nth-child(2) {
+  animation-delay: 0.8s;
+}
+@keyframes steamrise {
+  0% {
+    opacity: 0;
+    transform: translateY(1.5px);
+  }
+  35% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-2.5px);
+  }
+}
+.mapactions .mabtn.on {
+  background: #1c1c1e;
+  color: #fff;
+}
+/* Right-side expandable tools dock (Employer / Employee) */
+.toolsdock {
+  position: fixed;
+  /* Sit directly above the Feedback / Need-help / Settings stack (helpdock:
+     bottom 46px, three 38px pills + 2×10px gaps = 134px tall), sharing its
+     right edge so all five controls line up as one seamless column. Keep
+     this in sync with helpdock's bottom + total height below. */
+  right: 14px;
+  bottom: 190px;
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+  transition: opacity 0.18s ease;
+  /* The collapsed action buttons still occupy layout width (they only fade),
+     so let clicks pass through the dock's transparent area — otherwise it
+     covers the right-side continent labels (ASIA / AUSTRALIA) and swallows
+     their clicks. Only the real controls below opt back into pointer events. */
+  pointer-events: none;
+}
+.toolsdock.behind {
+  z-index: 4;
+  opacity: 0.35;
+  pointer-events: none;
+}
+/* Feedback / Need-help / Settings dock drops behind the same way when a
+   top-bar flyout (search / filter / heat) is open, so those flyouts sit over
+   it — mirroring how the tools dock already behaves. */
+.helpdock.behind {
+  z-index: 4;
+  opacity: 0.35;
+  pointer-events: none;
+}
+/* Click-away scrim for the bottom-corner docks. It lives inside the dock's own
+   stacking context (z-index 41), so it's given a low local z-index and the
+   dock's real controls are lifted above it. Transparent — it only catches the
+   outside click that closes an open panel/cluster. */
+.dockscrim {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 1;
+  /* The tools dock sets pointer-events:none on itself; the scrim must opt back
+     in or it can't catch the outside click that collapses an open cluster. */
+  pointer-events: auto;
+}
+.helpdock .helpbtn,
+.helpdock .helppanel,
+.helpdock .setpanel,
+.helpdock .fbboard,
+.toolsdock .tdcluster,
+.toolsdock .helpbtn {
+  position: relative;
+  z-index: 2;
+}
+/* Click-away scrim for the full-screen side panes (Daily brief / What's
+   trending). These render at the app root, so the scrim sits just below the
+   pane (z-index 45) and above the map to catch outside clicks. */
+.panescrim {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 44;
+}
+/* The tool toggles reuse the .helpbtn pill shell; only pointer-events + the
+   open (active) colour differ from a plain help button. */
+.tdtoggle {
+  pointer-events: auto;
+}
+.tdtoggle.on {
+  background: #1c1c1e;
+  border-color: #1c1c1e;
+  color: #fff;
+}
+.tdcluster {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.tdfab {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(8px);
+  color: var(--slate);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 22px -12px rgba(15, 27, 61, 0.4);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.15s ease, color 0.15s ease;
+}
+.tdfab:hover {
+  transform: translateY(-1px);
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 16px 30px -12px rgba(15, 27, 61, 0.5);
+}
+.tdfab.on {
+  background: #1c1c1e;
+  color: #fff;
+  border-color: #1c1c1e;
+}
+.tdfabic {
+  display: flex;
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.tdfab.on .tdfabic {
+  transform: rotate(90deg);
+}
+.tdfab svg {
+  width: 20px;
+  height: 20px;
+}
+/* cluster name label (hover, when collapsed) */
+.tdname {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--line);
+  padding: 5px 9px;
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  box-shadow: 0 6px 16px -10px rgba(15, 27, 61, 0.5);
+}
+.tdcluster:has(.tdfab:hover) .tdname {
+  opacity: 1;
+  transform: translateX(0);
+}
+.tdcluster.open .tdname {
+  display: none;
+}
+/* expanding action buttons */
+.tdactions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tdaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 8px 14px;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 10px 24px -14px rgba(15, 27, 61, 0.5);
+  opacity: 0;
+  transform: translateX(16px) scale(0.9);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.tdcluster.open .tdaction {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  pointer-events: auto;
+}
+.tdaction:hover {
+  border-color: #cfd2da;
+  background: #fff;
+}
+.tdactionlbl {
+  line-height: 1;
+}
+.tdactionic {
+  display: flex;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  background: rgba(28, 28, 30, 0.06);
+  color: var(--ink);
+}
+.tdactionic svg {
+  width: 17px;
+  height: 17px;
+}
+/* Daily Brief side pane (Apple News style) */
+.briefpane {
+  position: fixed;
+  left: 74px;
+  top: 74px;
+  bottom: 74px;
+  width: 344px;
+  max-width: calc(100vw - 92px);
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 24px 60px -24px rgba(15, 27, 61, 0.5);
+  opacity: 0;
+  transform: translateX(-14px) scale(0.98);
+  transform-origin: left center;
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.briefpane.open {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  pointer-events: auto;
+}
+.briefhead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.briefmark {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: rgba(28, 28, 30, 0.06);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.briefmarksvg {
+  width: 22px;
+  height: 22px;
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: newsrock 3.2s ease-in-out infinite;
+}
+@keyframes newsrock {
+  0%,
+  100% {
+    transform: rotate(-4.5deg) translateY(0);
+  }
+  50% {
+    transform: rotate(4.5deg) translateY(-0.5px);
+  }
+}
+.briefmarklines {
+  animation: newslines 3.2s ease-in-out infinite;
+}
+@keyframes newslines {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.briefheadtxt {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.brieftitle {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.3px;
+  color: var(--ink);
+}
+.briefdate {
+  font-size: 11px;
+  color: var(--slate);
+  margin-top: 1px;
+}
+.briefclose {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--slate);
+  cursor: pointer;
+  font-size: 12px;
+  transition: 0.15s;
+}
+.briefclose:hover {
+  color: var(--ink);
+  background: rgba(15, 27, 61, 0.05);
+}
+.briefscroll {
+  overflow-y: auto;
+  padding: 4px 14px 14px;
+}
+.briefcard {
+  display: flex;
+  gap: 12px;
+  padding: 14px 2px;
+  border-bottom: 1px solid var(--line);
+}
+.briefcard:last-of-type {
+  border-bottom: none;
+}
+/* Live brief cards are clickable links out to the source article. */
+.briefcardlink {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.briefcardlink:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+.briefcardlink:hover .briefhl {
+  text-decoration: underline;
+}
+.briefloading {
+  padding: 28px 4px;
+  font-size: 12.5px;
+  color: var(--slate);
+  text-align: center;
+}
+.briefthumb {
+  flex: 0 0 auto;
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(15, 27, 61, 0.08);
+}
+.briefthumb svg {
+  width: 26px;
+  height: 26px;
+}
+.briefthumbimg {
+  background: #eceef2;
+}
+.briefthumbimg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.briefbody {
+  min-width: 0;
+}
+.briefmeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+}
+.briefcat {
+  color: var(--slate);
+  font-weight: 700;
+}
+.briefdot {
+  color: var(--coral);
+}
+.briefwhen {
+  color: var(--slate);
+}
+.briefhl {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 700;
+  font-size: 13.5px;
+  line-height: 1.28;
+  letter-spacing: -0.1px;
+  color: var(--ink);
+  margin: 4px 0 0;
+}
+.briefsum {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--slate);
+  margin: 5px 0 0;
+}
+.brieftags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+.brieftag {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--brandink);
+  background: rgba(28, 28, 30, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 7px;
+  cursor: pointer;
+  transition: 0.14s;
+}
+.brieftag:hover {
+  background: var(--coral);
+  color: #fff;
+  border-color: var(--coral);
+}
+.brieffoot {
+  font-size: 10px;
+  color: var(--slate);
+  text-align: center;
+  padding: 12px 0 2px;
+}
+/* "Most viewed" snapshot at the top of the trending pane */
+.trendsnap {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f7f9fe, #fff);
+  padding: 12px 12px 6px;
+  margin-top: 8px;
+  margin-bottom: 6px;
+}
+.trendsnaphd {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.trendsnaptitle {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--ink);
+}
+.trendsnapcap {
+  font-size: 10.5px;
+  color: var(--slate);
+}
+.trendsnaprow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 6px;
+  border: none;
+  background: transparent;
+  border-radius: 9px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.14s;
+}
+.trendsnaprow:hover {
+  background: rgba(15, 27, 61, 0.05);
+}
+.trendsnapic {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(150deg, #2c2c31, #1c1c1e);
+  color: #fff;
+}
+.trendsnapic svg {
+  width: 16px;
+  height: 16px;
+}
+.trendsnapinfo {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+.trendsnaplabel {
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--ink);
+  letter-spacing: -0.1px;
+}
+.trendsnapsub {
+  font-size: 10.5px;
+  color: var(--slate);
+  margin-top: 1px;
+}
+.trendsnapshare {
+  flex: 0 0 auto;
+  text-align: right;
+  line-height: 1.1;
+}
+.trendsnapshare b {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--ink);
+}
+.trendsnapshare span {
+  display: block;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--slate);
+}
+/* What's Trending pane (reuses .briefpane shell) */
+.briefmark .trendmark {
+  width: 26px;
+  height: 26px;
+  color: var(--ink);
+}
+.trendcard {
+  padding: 14px 0 2px;
+  border-bottom: 1px solid var(--line);
+}
+.trendcard:last-of-type {
+  border-bottom: none;
+}
+.trendcardhead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.trendcardicon {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+.trendcardicon svg {
+  width: 17px;
+  height: 17px;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.trendcardicon.ic-movers,
+.trendcardicon.ic-salary,
+.trendcardicon.ic-hot {
+  background: linear-gradient(150deg, #2c2c31, #1c1c1e);
+}
+/* Big movers: trend line ticks up */
+.ic-movers svg {
+  animation: icmovers 2.6s ease-in-out infinite;
+}
+@keyframes icmovers {
+  0%,
+  100% {
+    transform: translate(-0.4px, 0.7px);
+  }
+  50% {
+    transform: translate(0.4px, -0.9px);
+  }
+}
+/* Salary spenders: dollar mark gently pulses */
+.ic-salary svg {
+  animation: icsalary 2.8s ease-in-out infinite;
+}
+@keyframes icsalary {
+  0%,
+  100% {
+    transform: scale(0.94);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+/* Hot companies: flame flicker */
+.ic-hot svg {
+  transform-origin: center bottom;
+  animation: ichot 1.5s ease-in-out infinite;
+}
+@keyframes ichot {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  25% {
+    transform: scale(1.08, 0.94);
+  }
+  50% {
+    transform: scale(0.94, 1.07);
+  }
+  75% {
+    transform: scale(1.05, 0.98);
+  }
+}
+.trendcardtitle {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 14.5px;
+  letter-spacing: -0.2px;
+  color: var(--ink);
+}
+.trendcardcap {
+  font-size: 10.5px;
+  color: var(--slate);
+  margin-top: 1px;
+}
+.trendrows {
+  display: flex;
+  flex-direction: column;
+}
+.trendrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 4px;
+  border-radius: 8px;
+  text-align: left;
+}
+.trendrow.link {
+  cursor: pointer;
+  transition: background 0.14s;
+}
+.trendrow.link:hover {
+  background: rgba(15, 27, 61, 0.05);
+}
+.trendrank {
+  flex: 0 0 auto;
+  width: 16px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--slate);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.trendinfo {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+.trendlabel {
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--ink);
+  letter-spacing: -0.1px;
+}
+.trendsub {
+  font-size: 10.5px;
+  color: var(--slate);
+  margin-top: 1px;
+}
+.trenddelta {
+  flex: 0 0 auto;
+  font-weight: 700;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 7px;
+  border-radius: 7px;
+}
+.trenddelta.up {
+  color: #0e7a50;
+  background: rgba(21, 157, 103, 0.12);
+}
+.trenddelta.down {
+  color: #c1443c;
+  background: rgba(224, 82, 74, 0.12);
+}
+.zoomslider .zrow {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+/* Layer-guide icon idle animations */
+.zi-globe {
+  animation: ziglobe 18s linear infinite;
+}
+@keyframes ziglobe {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.zi-pin {
+  animation: zipin 3s ease-in-out infinite;
+}
+@keyframes zipin {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.6px);
+  }
+}
+.zi-chart rect {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: zibar 1.9s ease-in-out infinite;
+}
+.zi-chart rect:nth-of-type(2) {
+  animation-delay: 0.24s;
+}
+.zi-chart rect:nth-of-type(3) {
+  animation-delay: 0.48s;
+}
+@keyframes zibar {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.58);
+  }
+}
+/* Company building: office windows flicker like lights coming on. The windows
+   are the first <path>; the door is the second and stays lit. */
+.zi-co path:nth-of-type(1) {
+  animation: zicowin 2.6s steps(1, end) infinite;
+}
+@keyframes zicowin {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  25% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  75% {
+    opacity: 0.45;
+  }
+}
+/* Bottom-right dock icon idle animations — every control (Employer/Employee
+   tools, Feedback, Need help, Settings) gets the same "always gently alive"
+   treatment as the What's Trending flame, so the whole stack reads as one
+   animated family. Each targets the icon's own transform-box so the wobble
+   pivots around the glyph, not the button. */
+.tdtoggle.td-employer svg {
+  animation: tdbuild 3.4s ease-in-out infinite;
+}
+@keyframes tdbuild {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.6px);
+  }
+}
+.tdtoggle.td-employee svg {
+  animation: tdperson 3.6s ease-in-out infinite;
+}
+@keyframes tdperson {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.09);
+  }
+}
+.tdtoggle.on svg {
+  animation: none;
+}
+.fbicon {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: fbnudge 2.6s ease-in-out infinite;
+}
+@keyframes fbnudge {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-1.3px) rotate(-3deg);
+  }
+}
+.helpdotpulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: helpdotpulse 1.7s ease-in-out infinite;
+}
+@keyframes helpdotpulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.4);
+  }
+}
+.geargroup {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gearspin 7s linear infinite;
+}
+@keyframes gearspin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.helpsettings.on .geargroup {
+  animation-play-state: paused;
+}
+/* Tools-dock action-pill icon animations (visible while expanded) */
+.ic-health svg {
+  animation: ichealth 1.9s ease-in-out infinite;
+}
+@keyframes ichealth {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  14% {
+    transform: scale(1.2);
+  }
+  28% {
+    transform: scale(1);
+  }
+}
+.ic-talent svg {
+  animation: ictalent 3s ease-in-out infinite;
+}
+@keyframes ictalent {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.6px);
+  }
+}
+.ic-career svg {
+  animation: iccareer 3.4s ease-in-out infinite;
+}
+@keyframes iccareer {
+  0%,
+  100% {
+    transform: rotate(-13deg);
+  }
+  50% {
+    transform: rotate(13deg);
+  }
+}
+.zoomslider .zlabel {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 4px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.zoomslider .zrow:hover .zlabel {
+  opacity: 1;
+}
+.searchbtn .sdot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--coral);
+  box-shadow: 0 0 0 3px rgba(154, 154, 160, 0.25);
+}
+/* "Filter applied" indicator: same green status dot as the local-view badge,
+   so an active filter is obvious at a glance. */
+.searchbtn .sdot.green {
+  background: #35c26b;
+  box-shadow: 0 0 0 3px rgba(53, 194, 107, 0.28);
+}
+.sfscrim {
+  position: fixed;
+  inset: 0;
+  z-index: 7;
+  background: transparent;
+}
+.searchflyout {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 292px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 20px 50px -18px rgba(15, 27, 61, 0.5);
+  padding: 14px;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  pointer-events: none;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  z-index: 8;
+}
+.sfrangerow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 14px;
+}
+.sfrangerow span {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--slate);
+}
+.sfrangerow b {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+/* Custom slider: black (design-system ink) filled track up to a white,
+   ink-ringed thumb. `--fill` is set inline per-input from its value/min/max. */
+.sfrange {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  margin-top: 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  background: linear-gradient(
+    to right,
+    var(--ink) 0%,
+    var(--ink) var(--fill, 0%),
+    #e4e6ea var(--fill, 0%),
+    #e4e6ea 100%
+  );
+}
+.sfrange::-webkit-slider-runnable-track {
+  -webkit-appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: transparent;
+}
+.sfrange::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--ink);
+  box-shadow: 0 3px 8px -2px rgba(15, 27, 61, 0.4);
+  cursor: pointer;
+}
+.sfrange::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #e4e6ea;
+}
+.sfrange::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ink);
+}
+.sfrange::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--ink);
+  box-shadow: 0 3px 8px -2px rgba(15, 27, 61, 0.4);
+  cursor: pointer;
+}
+.searchflyout.open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+/* Local-view company search results (in the top-right Search flyout). */
+.sfresults {
+  margin: 10px 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.sfresult {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+.sfresult:hover {
+  background: #f0f0f2;
+}
+.sfresultname {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sfresultticker {
+  flex: 0 0 auto;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--slate);
+}
+.sfresultempty {
+  margin: 10px 0 4px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--slate);
+}
+.sfinput {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+  background: #f7f7f8;
+  box-sizing: border-box;
+}
+.sfinput:focus {
+  border-color: var(--slate);
+}
+.sflabel {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--slate);
+  margin: 14px 0 8px;
+}
+.sfchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+/* Compact mosaic for sector + exchange chips — tighter than the default so the
+   options tile together instead of stacking one per line. */
+.sfmosaic {
+  gap: 5px;
+  margin-bottom: 4px;
+}
+.sfchipsm {
+  padding: 5px 9px;
+  font-size: 11px;
+  border-radius: 8px;
+}
+/* Drill-down section (the exchange list under a selected "Public" listing):
+   indented with a nesting rule + a small reveal so the hierarchy reads. */
+.sfsub {
+  margin-left: 4px;
+  padding-left: 11px;
+  border-left: 2px solid var(--line);
+  animation: sfsubin 0.22s ease both;
+}
+@keyframes sfsubin {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sfsub {
+    animation: none;
+  }
+}
+.sfsublabel {
+  margin-top: 10px;
+}
+.sfchip {
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--slate);
+  cursor: pointer;
+  transition: 0.15s;
+  font-family: inherit;
+}
+.sfchip.on {
+  background: #1c1c1e;
+  color: #fff;
+  border-color: #1c1c1e;
+}
+.sfclear {
+  margin-top: 12px;
+  width: 100%;
+  padding: 8px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--slate);
+  cursor: pointer;
+}
+.sfclear:hover {
+  color: var(--ink);
+  border-color: var(--slate);
+}
+
+/* ── Account button + auth / saved-companies flyout ───────────────────────── */
+/* Keep the account control above an open company card (cardstage z-index 6) and
+   the compare panel, so signed-in users can always reach their saved companies.
+   position:relative comes from .searchwrap; this just lifts the whole layer. */
+.acctwrap {
+  z-index: 46;
+}
+/* When a company/compare card is open, the account control drops beneath the
+   card + news panel (cardstage z-index 6) so it never overlaps them. */
+.acctwrap.behindcard {
+  z-index: 3;
+}
+.acctbtn {
+  gap: 8px;
+}
+.acctav {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #1c1c1e;
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.acctbtn.on .acctav {
+  background: #fff;
+  color: #1c1c1e;
+}
+.acctflyout {
+  width: 300px;
+}
+/* Auth tabs */
+.accttabs {
+  display: flex;
+  gap: 4px;
+  background: #f2f3f5;
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 12px;
+}
+.accttab {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--slate);
+  padding: 7px 6px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.accttab.on {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 2px 8px -3px rgba(15, 27, 61, 0.3);
+}
+.acctnote {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--slate);
+  background: #f7f7f8;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 9px 11px;
+  margin-bottom: 11px;
+}
+.acctnote b {
+  color: var(--ink);
+}
+.acctinput {
+  margin-bottom: 9px;
+}
+.acctsubmit {
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 9px;
+  background: #1c1c1e;
+  color: #fff;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.acctsubmit:hover {
+  background: #000;
+}
+.acctsubmit:disabled {
+  background: #c7c9cf;
+  cursor: not-allowed;
+}
+.acctswitch {
+  margin-top: 11px;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--slate);
+}
+.acctswitch button {
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+/* Signed-in header */
+.accthead {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding-bottom: 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+}
+.acctavlg {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #1c1c1e;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.acctname {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.acctemail {
+  font-size: 11.5px;
+  color: var(--slate);
+  margin-top: 1px;
+}
+/* Saved-companies list */
+.acctsaved {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.acctrow {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+.acctrowmain {
+  flex: 1;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 9px;
+  padding: 8px 11px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.15s;
+}
+.acctrowmain:hover {
+  border-color: var(--slate);
+  background: #fafafb;
+}
+.acctrowname {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.acctrowsec {
+  display: block;
+  font-size: 10.5px;
+  color: var(--slate);
+  margin-top: 1px;
+}
+.acctunfollow {
+  flex: 0 0 auto;
+  width: 30px;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 9px;
+  color: var(--slate);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.15s;
+}
+.acctunfollow:hover {
+  color: #fff;
+  background: var(--coral, #e5484d);
+  border-color: var(--coral, #e5484d);
+}
+.acctempty {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--slate);
+  background: #f7f7f8;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  padding: 12px;
+}
+.acctempty b {
+  color: var(--ink);
+}
+.chip.dim {
+  opacity: 0.22;
+}
+.zoomhide {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.3s ease;
+}
+.auview {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  background: radial-gradient(circle at 32% 28%, #eef1f4, #dde1e7 72%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+.auview.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.auview.zoomingin {
+  pointer-events: none;
+  transition: opacity 0.6s ease 0.3s;
+}
+.aumap {
+  width: min(56vw, 700px);
+  height: auto;
+  overflow: visible;
+  transform: scale(1);
+  opacity: 1;
+  transform-origin: 11.8% 61.1%;
+  transition:
+    transform 0.68s cubic-bezier(0.55, 0, 0.85, 0.35),
+    opacity 0.5s ease 0.22s;
+}
+.auview.zoomingin .aumap {
+  transform: scale(13);
+  opacity: 0;
+}
+.auview.zoomingin .auhintbar {
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+.auland {
+  fill: #e2e4e8;
+  stroke: #c7cad1;
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+  transition: fill 0.35s ease;
+}
+/* Second, larger-scale swell layered over the fine ripple pattern. */
+.auoceanswell {
+  opacity: 0.55;
+  mix-blend-mode: multiply;
+}
+/* Soft light ring along the coastline, peeking out from under the land fill. */
+.coastglow path {
+  fill: none;
+  stroke: #eef4f7;
+  stroke-width: 2.6;
+  opacity: 0.85;
+}
+.auline {
+  fill: none;
+  stroke: #c7cad1;
+  stroke-width: 0.9;
+}
+.audot {
+  fill: #9a9aa0;
+  stroke: #f2f3f5;
+  stroke-width: 1;
+}
+.auhalo {
+  opacity: 0.4;
+  transition:
+    fill 0.35s ease,
+    r 0.35s ease;
+}
+.aucore {
+  opacity: 0.92;
+  transition:
+    fill 0.35s ease,
+    r 0.35s ease;
+}
+.auhalo.auheat-off,
+.aucore.auheat-off {
+  opacity: 0;
+}
+.auscene {
+  perspective: 1400px;
+}
+.auplane {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  transform-style: preserve-3d;
+  transform: rotateX(26deg);
+  transition: transform 0.5s ease;
+}
+.auview.zoomingin .auplane {
+  transition: none;
+}
+.auscene {
+  transition: opacity 0.35s ease;
+}
+.auscene.scenehide {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+}
+.globescene {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+.globescene.sceneshow {
+  opacity: 1;
+  pointer-events: auto;
+}
+/* Pan + zoom wrapper for the global map (transform set inline from state).
+   user-select:none stops a drag from also triggering the browser's native
+   text-selection highlight on the continent/city <text> labels it passes
+   over — SVG text is otherwise just as selectable as any other page text. */
+.globepan {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center center;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.globepan.panned:active {
+  cursor: grabbing;
+}
+/* A hidden scene must be fully inert. Some hit targets (hub hit circles,
+   continent-label rects) carry an explicit pointer-events="all" attribute so
+   they stay clickable within their own scene; that attribute otherwise wins
+   over the container's pointer-events:none and lets the hidden scene (which
+   sits on top in DOM order) intercept clicks meant for the visible one
+   underneath — e.g. the global map's invisible targets blocking domestic hubs.
+   This CSS beats the presentation attribute and shuts the whole subtree off. */
+.auscene.scenehide,
+.auscene.scenehide *,
+.globescene:not(.sceneshow),
+.globescene:not(.sceneshow) * {
+  pointer-events: none !important;
+}
+/* Full-bleed at every screen shape: exactly one of width/height is pinned to
+   fill the screen and the other is auto (derived from the map's own ~1.92:1
+   padded aspect ratio, GLOBE_ASPECT in GlobeMap.tsx) so it overflows instead
+   of ever leaving a gap — which one needs to be pinned flips depending on
+   whether the screen is narrower or wider than the map itself. The overflow
+   is clipped by .app's overflow:hidden and made explorable by ZoomOverlay's
+   pan (dragging the .globepan wrapper, clamped to exactly that overflow), so
+   nothing it hides is ever unreachable, just a drag away.
+   Default: portrait / narrower than the map (phones) — fill height, let
+   width overflow sideways. */
+.globemap {
+  width: auto;
+  height: 100vh;
+  overflow: visible;
+  transform: scale(1);
+  opacity: 1;
+  transition:
+    transform 0.68s cubic-bezier(0.55, 0, 0.85, 0.35),
+    opacity 0.5s ease 0.22s;
+}
+/* Landscape and wider than the map itself (desktop, most tablets): flip
+   which dimension is pinned — fill width, let height overflow vertically —
+   so the map still reaches every edge instead of leaving side margins. */
+@media (min-aspect-ratio: 500/520) {
+  .globemap {
+    width: 100vw;
+    height: auto;
+  }
+}
+.regionmap {
+  width: min(78vw, 1040px);
+  height: auto;
+  overflow: visible;
+  transform: scale(1);
+  opacity: 1;
+  transition:
+    transform 0.68s cubic-bezier(0.55, 0, 0.85, 0.35),
+    opacity 0.5s ease 0.22s;
+}
+/* Same "zoom into this city" scale-and-fade the Australia view uses,
+   applied to the global map and the other continents' regional views. */
+.auview.zoomingin .globemap,
+.auview.zoomingin .regionmap {
+  transform: scale(13);
+  opacity: 0;
+}
+/* Zooming OUT from a domestic view back to the global view: the domestic map
+   recedes as its scene fades, and the globe eases out of a slightly zoomed-in
+   frame into place — so the layer change reads as a smooth pull-back rather
+   than a hard cut. (Zoom-IN above keeps priority while the globe is showing.) */
+.auscene.scenehide .aumap,
+.auscene.scenehide .regionmap {
+  transform: scale(0.7);
+}
+.globescene:not(.sceneshow) .globemap {
+  transform: scale(1.3);
+}
+.regionland {
+  fill: #e2e4e8;
+  stroke: #c7cad1;
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+}
+.globeland {
+  fill: #e2e4e8;
+  stroke: #c7cad1;
+  stroke-width: 1.2;
+}
+.heatblobs {
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+.heatblob {
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: transform, opacity;
+  animation-name: heatpulse;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+@keyframes heatpulse {
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.82;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+}
+.audothub {
+  fill: #1c1c1e;
+  stroke: #fff;
+  stroke-width: 1.2;
+  cursor: pointer;
+}
+.auring {
+  fill: none;
+  stroke: #1c1c1e;
+  stroke-width: 0.8;
+  opacity: 0.5;
+  animation: auringpulse 2.2s ease-out infinite;
+  transform-origin: 29.4px 140.5px;
+}
+@keyframes auringpulse {
+  0% {
+    r: 4;
+    opacity: 0.6;
+  }
+  100% {
+    r: 11;
+    opacity: 0;
+  }
+}
+/* Slightly smaller pulse on the global view only, to match its smaller hub
+   dots — domestic/local rings keep the larger auringpulse size. */
+.globemap .auring {
+  animation-name: auringpulsesm;
+}
+@keyframes auringpulsesm {
+  0% {
+    r: 3;
+    opacity: 0.6;
+  }
+  100% {
+    r: 8.5;
+    opacity: 0;
+  }
+}
+.aumute {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 600;
+  font-size: 6.5px;
+  fill: #6c6c72;
+  paint-order: stroke;
+  stroke: #eef1f4;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.aucountry {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 700;
+  font-size: 9px;
+  letter-spacing: 1.4px;
+  fill: #b6b9c0;
+  paint-order: stroke;
+  stroke: #eef1f4;
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.aulabel {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 700;
+  font-size: 7.5px;
+  fill: #1c1c1e;
+  paint-order: stroke;
+  stroke: #eef1f4;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+/* Global (world) view city labels a touch smaller than the domestic ones. */
+.globemap .aulabel {
+  font-size: 6.3px;
+  stroke-width: 2.6px;
+}
+.aucity.hub {
+  cursor: pointer;
+}
+.mapboxgl-ctrl-logo {
+  display: none !important;
+}
+/* Global-view centered search bar */
+.gsearch {
+  /* Top matches .topbar's box (top 38px + 18px padding), so the title's line
+     box lines up with the brand row instead of floating independently. */
+  position: fixed;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 35;
+  width: min(620px, 62vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.gsearchhd {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  /* Match the employsi wordmark's weight (.logo) instead of a heavier one. */
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: -0.2px;
+  color: var(--ink);
+  /* Matches the 40px height of the brand mark, so the two rows' vertical
+     centres align exactly. */
+  height: 40px;
+  line-height: 40px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+.gsearchbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  box-shadow: 0 14px 34px -18px rgba(15, 27, 61, 0.45);
+  color: var(--slate);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.gsearchbar.on {
+  border-color: #cfd2da;
+  box-shadow: 0 18px 40px -18px rgba(15, 27, 61, 0.55);
+}
+.gsearchbar svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+}
+.gsearchinput {
+  flex: 1 1 auto;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.gsearchinput::placeholder {
+  color: var(--slate);
+  font-weight: 500;
+}
+.gsearchclear {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--slate);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.gsearchclear:hover {
+  color: var(--ink);
+}
+.gsearchchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 18px 44px -20px rgba(15, 27, 61, 0.45);
+}
+.gsearchlbl {
+  width: 100%;
+  text-align: center;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--slate);
+  margin-bottom: 2px;
+}
+.gsearchresults {
+  width: 100%;
+  margin-top: 10px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 6px;
+  box-shadow: 0 18px 44px -20px rgba(15, 27, 61, 0.45);
+  max-height: 340px;
+  overflow-y: auto;
+}
+.gsresult {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.gsresult.on {
+  background: #f2f3f5;
+}
+.gsrkind {
+  flex: 0 0 auto;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(28, 28, 30, 0.08);
+  color: var(--slate);
+}
+.gsrkind.company {
+  background: rgba(28, 28, 30, 0.92);
+  color: #fff;
+}
+.gsrlabel {
+  flex: 1 1 auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gsrsub {
+  flex: 0 0 auto;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--slate);
+}
+/* Contextual skill demand badge (Low / Moderate / High) coloured to match the
+   heat key: green → amber → red. */
+.gsrsub.dmd-lo,
+.gsrsub.dmd-mid,
+.gsrsub.dmd-hi {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 700;
+}
+.gsrsub.dmd-lo {
+  color: #12905e;
+}
+.gsrsub.dmd-mid {
+  color: #c67f00;
+}
+.gsrsub.dmd-hi {
+  color: #d6362e;
+}
+.gsrempty {
+  padding: 14px 10px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--slate);
+}
+/* Skill rows pair the select action with a round Follow control (mirrors a
+   company card's Follow button), so the row is a flex container rather than a
+   single button. */
+.gsresult-skill {
+  padding: 0;
+  gap: 4px;
+}
+.gsrmain {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.gsrfollow {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  margin-right: 6px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--slate);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.gsrfollow svg {
+  width: 15px;
+  height: 15px;
+}
+.gsrfollow:hover {
+  transform: scale(1.08);
+  border-color: var(--teal, #0f766e);
+  color: var(--teal, #0f766e);
+}
+.gsrfollow.on {
+  background: var(--teal, #0f766e);
+  border-color: var(--teal, #0f766e);
+  color: #fff;
+}
+.gschip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--slate);
+  cursor: pointer;
+  transition: 0.14s;
+}
+.gschip:hover {
+  color: var(--ink);
+  border-color: var(--slate);
+}
+.gschip.on {
+  background: #1c1c1e;
+  color: #fff;
+  border-color: #1c1c1e;
+}
+/* Current local-city indicator */
+.citybadge {
+  position: fixed;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 17px;
+  border-radius: 999px;
+  background: #1c1c1e;
+  border: 1px solid #1c1c1e;
+  box-shadow: 0 12px 30px -10px rgba(15, 27, 61, 0.55);
+  pointer-events: none;
+  animation: citybadgein 0.32s ease both;
+}
+.citybadgedot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #35c26b;
+  box-shadow: 0 0 0 4px rgba(53, 194, 107, 0.28);
+}
+.citybadgename {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  color: #fff;
+}
+.citybadgesub {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.62);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+@keyframes citybadgein {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+/* "Need help?" contextual tour dock (bottom-right, above the mapbox ⓘ) */
+.helpdock {
+  position: fixed;
+  right: 14px;
+  bottom: 46px;
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+.helpbtn {
+  display: flex;
+  align-items: center;
+  height: 38px;
+  border-radius: 19px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  color: var(--ink);
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 10px 24px -12px rgba(15, 27, 61, 0.45);
+}
+.helpbtn svg {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  padding: 9px;
+  box-sizing: border-box;
+}
+.helplbl {
+  max-width: 0;
+  opacity: 0;
+  white-space: nowrap;
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  transition: max-width 0.28s ease, opacity 0.2s ease, padding 0.28s ease;
+}
+.helpbtn.wide .helplbl,
+.helpbtn:hover .helplbl {
+  max-width: 120px;
+  opacity: 1;
+  padding-right: 15px;
+}
+.helpbtn.peek {
+  animation: helppop 0.5s ease;
+}
+@keyframes helppop {
+  0% {
+    transform: translateY(4px) scale(0.96);
+  }
+  55% {
+    transform: translateY(-2px) scale(1.03);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+.helppanel {
+  width: 280px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px -24px rgba(15, 27, 61, 0.5);
+  padding: 14px 16px;
+  animation: helppanelin 0.2s ease both;
+}
+@keyframes helppanelin {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.helphd {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.helptitle {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--ink);
+}
+.helpsub {
+  font-size: 11px;
+  color: var(--slate);
+  margin-top: 1px;
+}
+/* Round close button matching the company card's .pfab design. */
+.helpx {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--slate);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  box-shadow: 0 8px 20px -12px rgba(15, 27, 61, 0.4);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.15s ease, color 0.15s ease;
+}
+.helpx:hover {
+  transform: translateY(-1px);
+  color: var(--ink);
+  box-shadow: 0 14px 26px -12px rgba(15, 27, 61, 0.5);
+}
+.helpsteps {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.helpsteps li {
+  display: flex;
+  gap: 9px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ink);
+}
+.helpnum {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #1c1c1e;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Feedback panel */
+.fbpanel {
+  width: 280px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px -24px rgba(15, 27, 61, 0.5);
+  padding: 14px 16px;
+  animation: helppanelin 0.2s ease both;
+}
+/* Settings panel + toggle switches */
+.setpanel {
+  width: 280px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px -24px rgba(15, 27, 61, 0.5);
+  padding: 14px 16px;
+  animation: helppanelin 0.2s ease both;
+}
+/* Extra breathing room below the close button before the first toggle row —
+   without it the row's divider line sits right under the button. */
+.setpanel .helphd {
+  margin-bottom: 8px;
+}
+.setrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.setrow:first-of-type {
+  border-top: 0;
+}
+.setlbl {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.setsub {
+  font-size: 11px;
+  color: var(--slate);
+  margin-top: 2px;
+  line-height: 1.35;
+}
+.ngswitch {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 23px;
+  border-radius: 999px;
+  border: 0;
+  background: #d5d7dd;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  transition: background 0.18s ease;
+}
+.ngswitch.on {
+  background: #1c1c1e;
+}
+.ngswitchknob {
+  position: absolute;
+  top: 2.5px;
+  left: 2.5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 5px -1px rgba(15, 27, 61, 0.4);
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ngswitch.on .ngswitchknob {
+  transform: translateX(17px);
+}
+.helpsettings.on {
+  background: #1c1c1e;
+  border-color: #1c1c1e;
+  color: #fff;
+}
+/* Reduce-motion preference: suppress transitions + animations app-wide. */
+.reduce-motion * {
+  transition: none !important;
+  animation: none !important;
+  scroll-behavior: auto !important;
+}
+.fbtext {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 84px;
+  resize: vertical;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+  outline: none;
+  background: #f7f7f8;
+}
+.fbtext:focus {
+  border-color: var(--slate);
+}
+.fbsend {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  border: 0;
+  border-radius: 10px;
+  background: #1c1c1e;
+  color: #fff;
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.fbsend:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.fbsend:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+.fbthanks {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--ink);
+  padding: 6px 2px;
+}
+.fbcheck {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #159d67;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Feedback board — a votable request list plus a compose box. Wider than the
+   old single-textarea popup so the list is readable. */
+.fbboard {
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  /* Cap the height so the board (which grows upward from the dock) can never
+     reach the top bar / account button, even on short viewports; the request
+     list scrolls internally instead. Because the dock is anchored at the
+     bottom, subtracting a fixed amount keeps the board's TOP at a roughly
+     constant ~130px offset regardless of viewport height, clearing the
+     ~114px-tall top bar. */
+  max-height: calc(100vh - 330px);
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px -24px rgba(15, 27, 61, 0.5);
+  padding: 14px 16px;
+  animation: helppanelin 0.2s ease both;
+}
+.fbboard .helphd,
+.fbcompose,
+.fbsignin {
+  flex: 0 0 auto;
+}
+.fbsignin {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 11px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: #f7f7f8;
+  color: var(--ink);
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.fbsignin:hover {
+  border-color: var(--slate);
+  background: #f0f0f2;
+}
+.fbcompose {
+  margin-bottom: 12px;
+}
+.fbboard .fbtext {
+  min-height: 58px;
+  margin-top: 4px;
+}
+.fbcomposerow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+.fbboard .fbsend {
+  width: auto;
+  margin-top: 0;
+  padding: 8px 16px;
+}
+.fbsent {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0e7a50;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.fbsent.show {
+  opacity: 1;
+}
+.fblist {
+  max-height: 46vh;
+  overflow-y: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+.fbrow {
+  display: flex;
+  gap: 12px;
+  padding: 11px 0;
+  border-top: 1px solid var(--line);
+}
+.fbrow:first-child {
+  border-top: 0;
+}
+.fbvote {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 30px;
+}
+.fbarrow {
+  border: 0;
+  background: none;
+  padding: 2px;
+  color: var(--slate);
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  transition: color 0.12s, background 0.12s, transform 0.12s;
+}
+.fbarrow:hover {
+  background: #f0f0f2;
+  color: var(--ink);
+}
+.fbarrow:active {
+  transform: scale(0.86);
+}
+.fbvote.up .fbarrow:first-child {
+  color: #159d67;
+}
+.fbvote.down .fbarrow:last-child {
+  color: #c2483a;
+}
+.fbscore {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+  padding: 1px 0;
+}
+.fbrowbody {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.fbrowtitle {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--ink);
+}
+.fbrowmeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+}
+.fbtag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #f0f0f2;
+  color: var(--slate);
+}
+.fbtag-planned {
+  background: rgba(53, 126, 221, 0.14);
+  color: #2b62b8;
+}
+.fbtag-under-review {
+  background: rgba(214, 158, 46, 0.16);
+  color: #9a6a12;
+}
+.fbtag-shipped {
+  background: rgba(21, 157, 103, 0.14);
+  color: #0e7a50;
+}
+.fbrowauthor {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--slate);
+}
+.aucountryclick {
+  cursor: pointer;
+  transition: fill 0.15s ease;
+}
+.aucountryclick:hover {
+  fill: #1c1c1e;
+}
+.auhintbar {
+  position: absolute;
+  left: 50%;
+  bottom: 42px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.auhint {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--slate);
+}
+.auback {
+  padding: 11px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: 0 10px 26px -12px rgba(15, 27, 61, 0.45);
+  transition: 0.15s;
+}
+.auback:hover {
+  border-color: var(--slate);
+}
+.legend {
+  position: absolute;
+  /* Aligned under the skills key, past the vertically-centred layer dock. */
+  left: 80px;
+  bottom: 24px;
+  /* Informational only — take pointer events so a plain arrow cursor shows
+     (rather than the map's grab cursor bleeding through, which made it look
+     draggable/selectable), but never let the text be selected. */
+  pointer-events: auto;
+  cursor: default;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  font-size: 12px;
+  color: var(--slate);
+  font-weight: 500;
+  box-shadow: 0 8px 22px -14px rgba(15, 27, 61, 0.4);
+}
+.heatkey {
+  position: absolute;
+  /* Clear of the vertically-centred layer dock (.zoomslider, left rail ~68px
+     wide): on short windows the centred dock descends into this bottom-left
+     key, so sit it just past the rail. */
+  left: 80px;
+  bottom: 78px;
+  /* Above the animated planes/ships (mapbox markers in the map canvas) so the
+     key + time slider always sit in front of the traffic. */
+  z-index: 41;
+  pointer-events: auto;
+  cursor: default;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 11px 15px;
+  width: 190px;
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  box-shadow: 0 8px 22px -14px rgba(28, 28, 30, 0.4);
+}
+.hkrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.hktitle {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.hkbar {
+  height: 9px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, #159d67, #f5a623, #e0524a);
+}
+.hkv {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.hkmute {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--slate);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+/* IVI time slider under the gradient key (AU domestic view only). */
+.hktime {
+  margin-top: 2px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+}
+.hktimehd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.hktimemonth {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.hktimenow {
+  font-size: 8.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--slate);
+}
+.hkslider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 5px;
+  margin: 9px 0 6px;
+  border-radius: 999px;
+  cursor: pointer;
+  background: linear-gradient(
+    to right,
+    var(--ink) 0%,
+    var(--ink) var(--fill, 100%),
+    #e4e6ea var(--fill, 100%),
+    #e4e6ea 100%
+  );
+}
+.hkslider::-webkit-slider-runnable-track {
+  -webkit-appearance: none;
+  height: 5px;
+  border-radius: 999px;
+  background: transparent;
+}
+.hkslider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -5.5px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--ink);
+  box-shadow: 0 3px 8px -2px rgba(15, 27, 61, 0.4);
+  cursor: pointer;
+}
+.hkslider::-moz-range-track {
+  height: 5px;
+  border-radius: 999px;
+  background: #e4e6ea;
+}
+.hkslider::-moz-range-progress {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--ink);
+}
+.hkslider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--ink);
+  box-shadow: 0 3px 8px -2px rgba(15, 27, 61, 0.4);
+  cursor: pointer;
+}
+.hktimeends {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 8.5px;
+  font-weight: 600;
+  color: var(--slate);
+}
+.hktimesrc {
+  font-size: 8px;
+  opacity: 0.75;
+  text-align: center;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Key global/economic event for the selected month — broader context. */
+.hktimeevent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px;
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.hktimeicon {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent, #e0524a);
+}
+.hktimeicon svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+.hktimenote {
+  margin-top: 6px;
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--muted, #8a8f98);
+}
+.legend b {
+  color: var(--ink);
+  font-weight: 700;
+}
+.legend .sep {
+  width: 1px;
+  height: 14px;
+  background: var(--line);
+}
+.pbackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 15, 20, 0.46);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 5;
+}
+.pbackdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+/* Right-docked stage holding the company card + news card. The selected
+   building is framed on the left half of the map (via easeTo padding), and the
+   two cards hover over the right half. No dimming backdrop, so the map stays
+   visible and interactive. */
+.cardstage {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  padding: 0 22px;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(24px);
+  transition: opacity 0.3s ease, transform 0.36s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.cardstage.open {
+  opacity: 1;
+  transform: translateX(0);
+}
+/* When closed the cards are invisible but still laid out over the right half of
+   the screen; their children are pointer-events:auto, so without this they'd
+   keep intercepting clicks meant for the top-bar Search / Filter / Heat-map
+   controls (which sit at a lower stacking level). Shut the whole subtree off. */
+.cardstage:not(.open),
+.cardstage:not(.open) * {
+  pointer-events: none;
+}
+.panel {
+  width: 380px;
+  max-width: 42vw;
+  max-height: 86vh;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--line);
+  box-shadow:
+    0 44px 110px -24px rgba(15, 27, 61, 0.5),
+    0 0 0 1px rgba(15, 27, 61, 0.04);
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  overflow: hidden;
+}
+.pscroll {
+  overflow-y: auto;
+  padding: 20px 20px 24px;
+}
+.phead {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.pheadmain {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* Company card uses the Mona Sans design-system font throughout (overriding
+   the monospaced label treatment used elsewhere). */
+.panel,
+.panel .bigl,
+.panel .subl,
+.panel .secth,
+.panel .secth span {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+}
+.pbadge {
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.3px;
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 24px -10px rgba(15, 27, 61, 0.35), 0 2px 6px -2px rgba(15, 27, 61, 0.18);
+}
+.pbadgeimg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 8px;
+}
+.pbadgetxt {
+  font-size: 15px;
+}
+.pname {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.4px;
+  line-height: 1.12;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.plive {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: #0e7a50;
+  background: rgba(21, 157, 103, 0.12);
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+.plive i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #159d67;
+  animation: plivepulse 1.4s ease-in-out infinite;
+}
+@keyframes plivepulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+.psector {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--brandink);
+  background: rgba(28, 28, 30, 0.1);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+/* Round, animated header actions (Compare / Follow / Close) mirroring the
+   Employer-tools FABs. Each shows a hover label above the button. */
+.pactions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.pfabwrap {
+  position: relative;
+  display: flex;
+}
+.pfab {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--slate);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px -12px rgba(15, 27, 61, 0.4);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.15s ease, color 0.15s ease;
+}
+.pfab:hover {
+  transform: translateY(-1px);
+  color: var(--ink);
+  box-shadow: 0 14px 26px -12px rgba(15, 27, 61, 0.5);
+}
+.pfab.on {
+  background: #1c1c1e;
+  color: #fff;
+  border-color: #1c1c1e;
+}
+.pfabic {
+  display: flex;
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.pfab:hover .pfabic {
+  transform: scale(1.08);
+}
+.pfab svg {
+  width: 17px;
+  height: 17px;
+}
+.pfablbl {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--line);
+  padding: 3px 7px;
+  border-radius: 7px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  box-shadow: 0 6px 16px -10px rgba(15, 27, 61, 0.5);
+}
+.pfabwrap:hover .pfablbl {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+/* Portalled to document.body (FabWrap) so it always renders above the card's
+   own rounded, overflow:hidden container — position:fixed + left/top are
+   viewport-relative px set from JS, and visibility is mount/unmount driven
+   by React hover state rather than the :hover rule above (which can't reach
+   a portalled element, since it's no longer a DOM descendant of .pfabwrap). */
+.pfablblfixed {
+  position: fixed;
+  bottom: auto;
+  opacity: 1;
+  z-index: 70;
+  transform: translate(-50%, calc(-100% - 6px));
+  animation: fabtipin 0.12s ease both;
+}
+@keyframes fabtipin {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 2px));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, calc(-100% - 6px));
+  }
+}
+
+/* "[company] in the news" card — sits to the right of the company card.
+   Styled as a modern news feed ("FlashFeed"): a large hero card with the
+   article photo behind an overlaid pill / headline / meta, then a two-column
+   grid of smaller image cards below. */
+.newspanel {
+  width: 340px;
+  max-width: 34vw;
+  max-height: 86vh;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--line);
+  box-shadow:
+    0 44px 110px -24px rgba(15, 27, 61, 0.5),
+    0 0 0 1px rgba(15, 27, 61, 0.04);
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  overflow: hidden;
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+}
+.ffhd {
+  flex: 0 0 auto;
+  padding: 18px 20px 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 19px;
+  letter-spacing: -0.4px;
+  border-bottom: 1px solid var(--line);
+}
+.ffhdname {
+  font-weight: 800;
+  color: var(--brandink);
+}
+.ffhdlabel {
+  font-weight: 600;
+  color: var(--slate);
+}
+.ffscroll {
+  overflow-y: auto;
+  padding: 16px 16px 18px;
+}
+
+/* Staggered fade-up reveal for each card. */
+@keyframes ffup {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.ffhero,
+.ffcard {
+  animation: ffup 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ffhero,
+  .ffcard {
+    animation: none;
+  }
+}
+
+/* Hero card — full-bleed photo with an overlaid dark gradient. */
+.ffhero {
+  position: relative;
+  display: block;
+  height: 232px;
+  border-radius: 18px;
+  overflow: hidden;
+  text-decoration: none;
+  color: #fff;
+  margin-bottom: 16px;
+  box-shadow:
+    0 18px 34px -18px rgba(15, 27, 61, 0.5),
+    0 0 0 1px rgba(15, 27, 61, 0.05);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.ffhero:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 26px 44px -18px rgba(15, 27, 61, 0.55),
+    0 0 0 1px rgba(15, 27, 61, 0.05);
+}
+.ffhero-img,
+.ffcard-img {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.ffhero-img {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.4s ease;
+}
+.ffhero:hover .ffhero-img {
+  transform: scale(1.05);
+}
+.ffhero-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(12, 16, 24, 0.9) 0%,
+    rgba(12, 16, 24, 0.55) 34%,
+    rgba(12, 16, 24, 0.08) 62%,
+    rgba(12, 16, 24, 0.14) 100%
+  );
+}
+.ffhero-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 16px 16px 15px;
+}
+.ffhero-title {
+  margin-top: 9px;
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1.24;
+  letter-spacing: -0.4px;
+  color: #fff;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ffhero-meta {
+  margin-top: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.82);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Category pill. */
+.ffpill {
+  display: inline-block;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--teal, #0f766e);
+}
+.ffpill-hero {
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+/* Two-column grid of smaller cards. */
+.ffgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+}
+.ffcard {
+  display: flex;
+  flex-direction: column;
+  border-radius: 15px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 22px -16px rgba(15, 27, 61, 0.42);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+.ffcard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 30px -16px rgba(15, 27, 61, 0.5);
+}
+.ffcard-img {
+  height: 96px;
+  width: 100%;
+}
+.ffcard-body {
+  padding: 10px 11px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.ffcard-title {
+  font-weight: 700;
+  font-size: 12.5px;
+  line-height: 1.28;
+  letter-spacing: -0.2px;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ffcard:hover .ffcard-title {
+  text-decoration: underline;
+}
+.ffcard-meta {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--slate);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pnote {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--slate);
+  margin: 18px 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.pnote i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--teal);
+}
+.bigs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 16px;
+}
+.bigc {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 13px 13px 14px;
+}
+.bigv {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 700;
+  font-size: 25px;
+  letter-spacing: -0.6px;
+  color: var(--ink);
+  line-height: 1;
+}
+.bigl {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--slate);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 8px;
+  line-height: 1.25;
+}
+.bigsub {
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 5px;
+  color: var(--pos);
+}
+.bigsub.neg {
+  color: var(--coral);
+}
+.sect {
+  margin-top: 22px;
+}
+.secth {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--ink);
+  margin-bottom: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.secth span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--slate);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.trendbox {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.trendsvg {
+  width: 100%;
+  height: 52px;
+  display: block;
+}
+/* Workforce trend — smooth line chart with metric selector + hover callout */
+.wtseg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: rgba(28, 28, 30, 0.05);
+  border-radius: 9px;
+}
+.wtsegbtn {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--slate);
+  padding: 5px 9px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: 0.14s;
+}
+.wtsegbtn:hover {
+  color: var(--ink);
+}
+.wtsegbtn.on {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(15, 27, 61, 0.14);
+}
+.wtbox {
+  position: relative;
+  margin-top: 4px;
+}
+.wtsvg {
+  width: 100%;
+  height: 156px;
+  display: block;
+  overflow: visible;
+}
+.wtgrid {
+  stroke: var(--line);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.wtarea {
+  fill: url(#wtAreaFade);
+}
+.wtline {
+  fill: none;
+  stroke: #1c1c1e;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.wtline2 {
+  fill: none;
+  stroke: #159d67;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.wtlegend {
+  display: flex;
+  gap: 16px;
+  margin: 8px 0 2px;
+}
+.wtlgi {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--slate);
+}
+.wtlgd {
+  font-weight: 800;
+}
+.wtlgd.up {
+  color: #0e7a50;
+}
+.wtlgd.down {
+  color: #c1443c;
+}
+.wtsw {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+.wtsw.ink {
+  background: #1c1c1e;
+}
+.wtsw.acc {
+  background: #159d67;
+}
+.wthint {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--slate);
+  opacity: 0.75;
+}
+.wtbox {
+  cursor: crosshair;
+  user-select: none;
+}
+.wtband {
+  fill: rgba(28, 28, 30, 0.07);
+}
+.wtrange {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 13px;
+  background: linear-gradient(180deg, #f7f9fe, #fff);
+}
+.wtrangehd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+.wtrangeperiod {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--ink);
+}
+.wtrangex {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--slate);
+  cursor: pointer;
+}
+.wtrangex:hover {
+  color: var(--ink);
+}
+.wtrangerow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 2px 0;
+}
+.wtrlbl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--slate);
+  font-weight: 700;
+}
+.wtrval {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.wtrval.up {
+  color: #0e7a50;
+}
+.wtrval.down {
+  color: #c1443c;
+}
+.wtguide {
+  stroke: rgba(28, 28, 30, 0.28);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.wtdot {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2.5px solid #fff;
+  box-shadow: 0 0 0 1px rgba(15, 27, 61, 0.18), 0 4px 10px -3px rgba(15, 27, 61, 0.5);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: left 0.12s ease, top 0.12s ease;
+}
+.wtdot.ink {
+  background: #1c1c1e;
+}
+.wtdot.acc {
+  background: #159d67;
+}
+.wttip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 14px));
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 7px 12px;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 10px 24px -10px rgba(15, 27, 61, 0.4);
+  transition: left 0.12s ease, top 0.12s ease;
+}
+/* Portalled to document.body (ChartTooltip) so it always renders above the
+   card's own content — position:fixed + left/top are viewport-relative px
+   set from JS, not the chart-relative percentages .wttip normally uses. */
+.wttipfixed {
+  position: fixed;
+  z-index: 70;
+}
+.wttiplabel {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--slate);
+  text-align: center;
+  margin-bottom: 4px;
+}
+.wttiprow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.wttiprow + .wttiprow {
+  margin-top: 3px;
+}
+.wttiprow b {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.2px;
+  font-variant-numeric: tabular-nums;
+}
+.wttiprow span {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--slate);
+  margin-left: auto;
+}
+.wtaxis {
+  position: relative;
+  height: 16px;
+  margin-top: 6px;
+}
+.wtaxislbl {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--slate);
+  white-space: nowrap;
+}
+/* Open-roles-over-time sparkline */
+.rhbox {
+  position: relative;
+  margin-top: 8px;
+}
+.rhsvg {
+  width: 100%;
+  height: 96px;
+  display: block;
+  overflow: visible;
+}
+.rharea {
+  fill: url(#rhFade);
+}
+.rhline {
+  fill: none;
+  stroke: #1c1c1e;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* Flashing marker on today's point, labelled with the current vacancy count. */
+.rhnow {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.rhpulse {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #1c1c1e;
+  box-shadow: 0 0 0 0 rgba(28, 28, 30, 0.5);
+  animation: rhflash 1.6s ease-out infinite;
+  flex: 0 0 auto;
+}
+/* Current-value callout, pinned to the top-left of a chart plot (live
+   vacancies, workforce trend, financial trend). */
+.gcallout {
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 8px;
+  box-shadow: 0 6px 16px -10px rgba(15, 27, 61, 0.5);
+}
+.gcallout b {
+  font-size: 15px;
+  font-weight: 800;
+  color: #1c1c1e;
+}
+.gcallout span {
+  font-size: 8.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--slate);
+}
+/* Flashing endpoint dot on the workforce / financial charts (idle state). */
+.wtdot.flash {
+  animation: rhflash 1.6s ease-out infinite;
+}
+@keyframes rhflash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(28, 28, 30, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(28, 28, 30, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(28, 28, 30, 0);
+  }
+}
+.rhnowval {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1c1c1e;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 1px 5px;
+  white-space: nowrap;
+}
+.rhaxis {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--slate);
+}
+.rhtrend {
+  font-size: 11px;
+  font-weight: 700;
+}
+.rhtrend.up {
+  color: #159d67;
+}
+.rhtrend.down {
+  color: #d1483f;
+}
+.rhempty {
+  margin-top: 8px;
+  padding: 12px 13px;
+  background: linear-gradient(180deg, #f7f9fe, #fff);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--slate);
+}
+.rhempty b {
+  color: #1c1c1e;
+}
+
+.subs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+.subc {
+  background: linear-gradient(180deg, #f7f9fe, #fff);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 13px;
+}
+.subv {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.subv svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  color: var(--slate);
+}
+.subl {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--slate);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-top: 5px;
+}
+.skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.skill {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 7px 12px;
+  border-radius: 9px;
+}
+.skill b {
+  color: var(--brandink);
+}
+/* Loading skeletons shown while the live-vacancy check is in flight, so the
+   card never flashes the illustrative view before the live data resolves. */
+@keyframes skelshimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skelchip,
+.skelline {
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.11), rgba(0, 0, 0, 0.05));
+  background-size: 200% 100%;
+  animation: skelshimmer 1.25s ease-in-out infinite;
+  border-color: transparent !important;
+  color: transparent !important;
+}
+.skill.skelchip {
+  width: 70px;
+  height: 30px;
+  padding: 0;
+}
+.skill.skelchip:nth-child(2) { width: 94px; }
+.skill.skelchip:nth-child(3) { width: 56px; }
+.skill.skelchip:nth-child(4) { width: 80px; }
+.rolet.skelline {
+  display: inline-block;
+  height: 12px;
+  width: 120px;
+  border-radius: 6px;
+}
+/* Gap state: a section whose data isn't real yet (no live source) shows this
+   muted placeholder instead of an illustrative figure. */
+.dataempty {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted, #8a8a8f);
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px dashed var(--line);
+  border-radius: 9px;
+  padding: 10px 12px;
+  text-align: center;
+}
+/* Skill demand movers (top increases / decreases) in "Where they're hiring". */
+.movers {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.moverrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 2px;
+  border-bottom: 1px solid var(--line);
+}
+.moverrow:last-child {
+  border-bottom: none;
+}
+.moverdir {
+  flex: 0 0 auto;
+  font-size: 10px;
+  line-height: 1;
+  width: 12px;
+  text-align: center;
+}
+.moverdir.up,
+.moverdelta.up {
+  color: #159d67;
+}
+.moverdir.down,
+.moverdelta.down {
+  color: #e0524a;
+}
+.movername {
+  flex: 1 1 auto;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.moverdelta {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.moverpct {
+  font-weight: 600;
+  opacity: 0.7;
+}
+/* Advertised roles list (real live job ads) */
+.jobslist {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.jobrow {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.jobrow:hover {
+  border-color: #2563eb;
+  background: #f7f9ff;
+}
+.jobt {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--ink);
+  line-height: 1.3;
+}
+.jobmeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.jobloc {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--slate);
+}
+.jobskill {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.09);
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+.roles {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.role {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.rolet {
+  font-size: 13px;
+  font-weight: 600;
+  flex: 0 0 auto;
+  width: 148px;
+  color: var(--ink);
+}
+.rolebar {
+  flex: 1;
+  height: 8px;
+  border-radius: 6px;
+  background: var(--line);
+  overflow: hidden;
+}
+.rolefill {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #2b2b2e, #6c6c72);
+}
+.rolepay {
+  flex: 0 0 auto;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #12905e;
+  white-space: nowrap;
+}
+.rolec {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--slate);
+  width: 30px;
+  text-align: right;
+}
+/* Vacancy history (D1 archive): which roles a company has advertised over time
+   and how long each has stayed open. */
+.vhsummary {
+  display: flex;
+  gap: 10px;
+  margin: 2px 0 12px;
+  flex-wrap: wrap;
+}
+.vhstat {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--slate);
+  background: rgba(28, 28, 30, 0.05);
+  border-radius: 8px;
+  padding: 5px 10px;
+}
+.vhstat b {
+  color: var(--ink);
+  font-weight: 800;
+}
+.vhlist {
+  display: flex;
+  flex-direction: column;
+}
+.vhrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.vhrow:first-child {
+  border-top: none;
+}
+.vhmain {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.vhtitle {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vhmeta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--slate);
+  overflow: hidden;
+}
+.vhsrc {
+  flex: 0 0 auto;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 8.5px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: #fff;
+  background: #6c6c72;
+}
+.vhsrc-adzuna { background: #1f7a54; }
+.vhsrc-muse { background: #7a3ea6; }
+.vhsrc-jooble { background: #b5651d; }
+.vhloc,
+.vhsal {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vhsal {
+  color: var(--ink);
+  font-weight: 700;
+}
+.vhage {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.vhdays {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--slate);
+}
+.vhdays.on {
+  color: #12905e;
+}
+.vhseen {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--slate);
+  opacity: 0.8;
+}
+
+/* Role search */
+.rolesearch {
+  position: relative;
+  margin: 22px 0 18px;
+}
+.prole {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #f7f7f8;
+  color: var(--slate);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.prole:hover {
+  border-color: var(--slate);
+}
+.prole.on {
+  color: var(--ink);
+  background: #fff;
+  border-color: #1c1c1e;
+}
+.prolelbl {
+  flex: 1 1 auto;
+  text-align: left;
+}
+.proleclear {
+  font-size: 11px;
+  color: var(--slate);
+  padding: 2px 4px;
+  border-radius: 5px;
+}
+.proleclear:hover {
+  color: var(--ink);
+  background: rgba(15, 27, 61, 0.06);
+}
+.roledrop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 20px 44px -18px rgba(15, 27, 61, 0.5);
+  padding: 12px;
+}
+.roleinput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+  outline: none;
+  background: #f7f7f8;
+}
+.roleinput:focus {
+  border-color: var(--slate);
+}
+.rolechips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.rolechip {
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--slate);
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.14s;
+}
+.rolechip:hover {
+  color: var(--ink);
+  border-color: var(--slate);
+}
+.rolechip.on {
+  background: #1c1c1e;
+  color: #fff;
+  border-color: #1c1c1e;
+}
+.rolenone {
+  font-size: 11.5px;
+  color: var(--slate);
+  padding: 4px 2px;
+}
+/* substat delta line (Glassdoor benchmark) */
+.subd {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #0e7a50;
+  margin-top: 4px;
+}
+.subd.neg {
+  color: #c1443c;
+}
+/* Gender & pay gap */
+.genderbar {
+  display: flex;
+  height: 30px;
+  border-radius: 9px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  font-size: 11px;
+  font-weight: 700;
+}
+.genderf {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  background: #1c1c1e;
+  color: #fff;
+  white-space: nowrap;
+  /* Width (femalePct%) is set inline; don't let flex shrink it. */
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.genderm {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  color: var(--slate);
+  background: rgba(28, 28, 30, 0.06);
+  /* Fill the rest of the bar so the two segments always total 100%. */
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.paygap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+.paygapv {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--ink);
+}
+.paygapl {
+  font-size: 11px;
+  color: var(--slate);
+  margin-left: 8px;
+}
+.paygapbench {
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.paygapbench.good {
+  color: #0e7a50;
+}
+.paygapbench.bad {
+  color: #c1443c;
+}
+/* Progress track (women in leadership / indigenous) */
+.progtrack {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(28, 28, 30, 0.08);
+  overflow: visible;
+}
+.progfill {
+  height: 100%;
+  border-radius: 999px;
+  background: #1c1c1e;
+}
+.progtarget {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: #e0524a;
+  transform: translateX(-50%);
+}
+.progrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 9px;
+  font-size: 11.5px;
+  color: var(--slate);
+}
+.progrow b {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--ink);
+  margin-right: 3px;
+}
+.progtl.good {
+  color: #0e7a50;
+  font-weight: 700;
+}
+.dbar {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(28, 28, 30, 0.08);
+  overflow: hidden;
+}
+.dbarfill {
+  height: 100%;
+  border-radius: 999px;
+  background: #1c1c1e;
+}
+/* Financial trends delta badge, next to the section heading. Scoped under
+   .secth so it outranks the pre-existing ".secth span" rule (which would
+   otherwise win on specificity and flatten this to font-weight 600). */
+.secth .shdelta {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.shdelta.up {
+  color: #0e7a50;
+}
+.shdelta.down {
+  color: #c1443c;
+}
+/* Social sentiment stacked bar + legend */
+.sentimentbar {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 14px;
+}
+.sentpos {
+  background: #159d67;
+}
+.sentneu {
+  background: #d7dae0;
+}
+.sentneg {
+  background: #e0524a;
+}
+.sentlegend {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--slate);
+}
+.sentlegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.sentdot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.sentdot.pos {
+  background: #159d67;
+}
+.sentdot.neu {
+  background: #d7dae0;
+}
+.sentdot.neg {
+  background: #e0524a;
+}
+.sentnote {
+  margin-top: 9px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--slate);
+}
+/* Recent layoffs */
+.layoff {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, #fdf7f7, #fff);
+}
+.layoffhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.layoffhead b {
+  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--ink);
+}
+.layoffpct {
+  font-size: 12px;
+  font-weight: 700;
+  color: #c1443c;
+}
+.layoffnote {
+  font-size: 11.5px;
+  color: var(--slate);
+  margin-top: 5px;
+}
+.layoffnone {
+  font-size: 12px;
+  color: var(--slate);
+  padding: 10px 0;
+}
+.foot {
+  font-size: 11px;
+  color: var(--slate);
+  margin-top: 16px;
+  text-align: center;
+  font-weight: 500;
+}
+.hintpulse {
+  position: absolute;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--slate);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(6px);
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 22px -14px rgba(15, 27, 61, 0.4);
+  transition: opacity 0.4s;
+}
+.hintpulse.gone {
+  opacity: 0;
+}
+.bigl,
+.subl,
+.seglbl,
+.secth {
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 500;
+}
+.secth span {
+  font-weight: 400;
+}
+.planebody {
+  fill: #ffffff;
+  stroke: #b7bcc6;
+  stroke-width: 0.16;
+  stroke-linejoin: round;
+}
+.planewing,
+.planetail {
+  fill: #eef0f3;
+  stroke: #b7bcc6;
+  stroke-width: 0.16;
+  stroke-linejoin: round;
+}
+.planeshadow {
+  fill: #1c1c1e;
+  opacity: 0.15;
+  filter: blur(0.7px);
+}
+.plane3d {
+  filter: drop-shadow(0 1.6px 1.4px rgba(15, 27, 61, 0.35));
+}
+.tankerhull {
+  fill: #3b3b40;
+  stroke: #1c1c1e;
+  stroke-width: 0.25;
+}
+.tankerdeck {
+  fill: #c94f36;
+}
+.tankerwake {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 0.7;
+  opacity: 0.55;
+  stroke-linecap: round;
+}
+.tanker3d {
+  filter: drop-shadow(0 1px 1.2px rgba(15, 27, 61, 0.3));
+}
+
+/* ------------------------------------------------------------------ */
+/* Mobile layout (phones / small tablets in portrait)                  */
+/* Pure reflow of the desktop overlays — no markup changes.            */
+/* ------------------------------------------------------------------ */
+@media (max-width: 680px) {
+  /* --- Top bar: tighter, controls compacted to icon pills --- */
+  .topbar {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  /* Global search: on desktop it's horizontally centred, clear of the
+     left-aligned brand and right-aligned controls because there's enough
+     width either side. At mobile widths the centred title/bar is wide
+     enough to overlap both — drop it below the top bar's own row (which can
+     be tall here since Account/Filter stack vertically) instead of trying
+     to coexist with it side by side. */
+  .gsearch {
+    top: 204px;
+    /* Right-anchored (not centred) and narrowed so it clears the What's
+       Trending / Daily Brief rail (.mapactions, left:12px, ~50px wide) that
+       also shows on the global layer — centring it full-width would put
+       them back in the same horizontal band. */
+    left: auto;
+    right: 12px;
+    transform: none;
+    width: calc(100vw - 90px);
+  }
+  .gsearchhd {
+    font-size: 14px;
+    height: auto;
+    line-height: 1.35;
+    margin-bottom: 8px;
+  }
+  .logo {
+    font-size: 18px;
+  }
+  .brand {
+    gap: 9px;
+  }
+  .controls {
+    gap: 7px;
+  }
+  .seglbl {
+    display: none;
+  }
+  .cgroup {
+    gap: 0;
+  }
+  /* Search / Filter become icon-only pills; keep the active dot */
+  .searchbtn {
+    position: relative;
+    gap: 0;
+    padding: 10px 11px;
+  }
+  .searchbtn > span:not(.sdot) {
+    display: none;
+  }
+  .searchbtn .sdot {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+  }
+  .seg {
+    padding: 3px;
+  }
+  .seg button {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  /* Search / Filter flyouts become full-width bottom sheets */
+  .searchflyout {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    max-width: none;
+    max-height: 74vh;
+    border-radius: 20px 20px 0 0;
+    padding: 16px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+    transform: translateY(100%);
+    box-shadow: 0 -18px 50px -18px rgba(15, 27, 61, 0.5);
+  }
+  .searchflyout.open {
+    transform: translateY(0);
+  }
+  .sfscrim {
+    background: rgba(13, 15, 20, 0.34);
+    backdrop-filter: blur(2px);
+    z-index: 41;
+  }
+
+  /* Sheets and their backdrops must sit above the zoom slider (z 40) */
+  .searchflyout {
+    z-index: 42;
+  }
+  .pbackdrop {
+    z-index: 41;
+  }
+  .panel,
+  .cxpanel {
+    z-index: 42;
+  }
+
+  /* Ticker: a touch more compact */
+  .tickerlbl {
+    padding: 0 11px;
+    font-size: 9.5px;
+    letter-spacing: 1px;
+  }
+
+  /* Layer selection sits in the top-right corner on mobile, laid out as a
+     compact horizontal row (labels dropped — no hover on touch). */
+  .zoomslider {
+    left: auto;
+    right: 12px;
+    top: 64px;
+    bottom: auto;
+    transform: none;
+    flex-direction: row;
+    padding: 6px 8px;
+    /* Sit beneath an open company / compare sheet (which cover the top-right
+       corner), so the card is never obscured by the layer picker. */
+    z-index: 5;
+  }
+
+  /* Perth / local-view label: smaller, and tucked directly under the four
+     layer buttons in the top-right (not floating across the middle top). */
+  .citybadge {
+    top: 104px;
+    left: auto;
+    right: 12px;
+    transform: none;
+    gap: 6px;
+    padding: 6px 11px;
+    animation: none;
+  }
+  .citybadgename {
+    font-size: 12px;
+  }
+  .citybadgesub {
+    font-size: 8.5px;
+    letter-spacing: 0.4px;
+  }
+  .citybadgedot {
+    width: 6px;
+    height: 6px;
+    box-shadow: 0 0 0 3px rgba(53, 194, 107, 0.28);
+  }
+
+  /* Company pills: markedly more compact on a phone so they don't blanket the
+     map. Tighter padding, smaller type. */
+  .mbchip {
+    padding: 3px 8px;
+    border-width: 1px;
+  }
+  .chiptk {
+    font-size: 10.5px;
+  }
+  .zoomslider .ztrack {
+    width: 2px;
+    height: 16px;
+    margin: 0 2px;
+  }
+  .zoomslider .zlabel {
+    display: none;
+  }
+  .mapactions {
+    left: 12px;
+    /* Desktop's "+90px above centre" leaves only ~12px before the
+       vertically-centred zoom slider starts — comfortably clear on a tall
+       desktop window, but the two read as one touching cluster on a phone.
+       Push it up further for real breathing room. */
+    bottom: calc(50% + 120px);
+  }
+  .mapactions .malabel {
+    display: none;
+  }
+  .briefpane {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    top: 64px;
+    bottom: 12px;
+  }
+  /* Trending keeps the bottom tab bar visible, so its pane stops above it. */
+  .trendpane {
+    /* Clear the floating tab bar (which now hovers ~14px off the bottom). */
+    bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+  }
+  .toolsdock {
+    top: auto;
+    bottom: 190px;
+    right: 12px;
+    gap: 10px;
+  }
+
+  /* Bottom cluster: keep left, shrink, and stack clear of the floating tab bar
+     (legend just above the bar, skills key above the legend). */
+  .heatkey {
+    left: 12px;
+    bottom: 150px;
+    width: auto;
+    min-width: 168px;
+    max-width: calc(100vw - 24px);
+    padding: 10px 13px;
+  }
+  .legend {
+    left: 12px;
+    right: 12px;
+    bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+    justify-content: center;
+    padding: 8px 12px;
+    font-size: 11px;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+  }
+  .hintpulse {
+    bottom: 120px;
+    font-size: 11.5px;
+    padding: 7px 13px;
+    max-width: calc(100vw - 24px);
+    text-align: center;
+  }
+
+  /* Australia / regional domestic views: enlarge as much as possible, but
+     unlike .globemap (full-bleed at every breakpoint now — see its base
+     rule) these don't get the same cover-crop treatment, because they don't
+     have drag-to-pan — anything cropped off would be permanently
+     unreachable on a touch screen. Capped well short of full-width: the
+     vertically-centred zoom/action rail lives at the left edge (left:12px,
+     ~55px wide) and doesn't move with the map, so a wider box risks putting
+     a west-coast city (Perth, on the AU map) directly underneath it, hidden
+     and unclickable. This width keeps Perth's marker clear while still
+     being much larger than the old 56vw/78vw base rules. */
+  .aumap {
+    width: min(70vw, 460px);
+  }
+  .regionmap {
+    width: min(70vw, 460px);
+  }
+  .auview {
+    gap: 16px;
+  }
+  .auhintbar {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+    padding: 0 16px;
+  }
+  .auhint {
+    font-size: 12px;
+  }
+
+  /* The "in the news" side panel has nowhere to go next to a full-width
+     bottom sheet — .cardstage is a flex row with no wrap, so it was staying
+     at its desktop side-by-side width and pushing the actual company card
+     off-screen. Drop it on mobile; the card itself becomes the full sheet. */
+  .newspanel {
+    display: none;
+  }
+
+  /* Company & Compare panels become full-width bottom sheets */
+  .panel,
+  .cxpanel {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    /* Shorter sheet so it fits the phone screen with the map still visible
+       above it, rather than filling almost the whole viewport. */
+    max-height: 82vh;
+    border-radius: 20px 20px 0 0;
+    transform: translateY(100%);
+  }
+  .panel.open,
+  .cxpanel.open {
+    transform: translateY(0);
+  }
+  .pscroll,
+  .cxscroll {
+    padding: 15px 14px calc(22px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Company panel internals — tightened so more fits per screen. */
+  .pname {
+    font-size: 18px;
+  }
+  .pbadge {
+    width: 40px;
+    height: 40px;
+    font-size: 13px;
+  }
+  .bigs {
+    gap: 7px;
+  }
+  .bigc {
+    padding: 9px 9px;
+  }
+  .bigv {
+    font-size: 19px;
+  }
+  /* Sections sit closer together on a phone. */
+  .sect {
+    margin-top: 14px;
+    padding-top: 12px;
+  }
+  .secth {
+    font-size: 12px;
+    margin-bottom: 9px;
+  }
+  /* "Where they're hiring" rows: let the bar wrap under the label */
+  .role {
+    flex-wrap: wrap;
+    gap: 4px 10px;
+  }
+  .rolet {
+    width: auto;
+    flex: 1 1 auto;
+  }
+  .rolec {
+    order: 2;
+  }
+  .rolebar {
+    order: 3;
+    flex: 1 1 100%;
+  }
+
+  /* Compare panel: stack selectors, responsive radar */
+  .cxselectors {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .cxvs {
+    text-align: center;
+  }
+  .cxradarstack,
+  .cxradar {
+    width: min(300px, 78vw);
+  }
+  .cxlegend {
+    flex-wrap: wrap;
+    gap: 10px 18px;
+  }
+
+  /* --- Mobile: single bottom tab bar --- On phones the dozen floating
+     controls are replaced by one fixed bottom bar (Search / Filter / Heat /
+     Trending / More). Hide the scattered desktop chrome; the bar and its
+     "More" sheet drive the same store flags those controls used. */
+  .ticker,
+  .toolsdock,
+  .mapactions,
+  .legend,
+  .gsearch,
+  .controls .searchbtn,
+  .controls .seglbl {
+    display: none;
+  }
+  /* Keep the help dock mounted (its Help / Settings / Feedback panels render
+     inside it) but drop its buttons — the More sheet opens those panels now. */
+  .helpdock .helpbtn {
+    display: none;
+  }
+  /* The salary heat key sits just above the bar rather than under it. */
+  .heatkey {
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Help / Settings / Feedback panels become bottom sheets on mobile so they
+     don't try to pop out of the (now button-less) dock's bottom-right corner. */
+  .helpdock .helppanel,
+  .helpdock .setpanel,
+  .helpdock .fbboard {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-width: none;
+    max-height: 82vh;
+    overflow-y: auto;
+    border-radius: 20px 20px 0 0;
+    z-index: 47;
+    padding: 18px 16px calc(22px + env(safe-area-inset-bottom, 0px));
+  }
+  .helpdock .dockscrim {
+    position: fixed;
+    inset: 0;
+    background: rgba(13, 15, 20, 0.34);
+    backdrop-filter: blur(2px);
+    z-index: 46;
+  }
+
+  /* The bar itself */
+  /* Brand-black bar with white icons. */
+  /* Floating tab bar: a rounded, detached pill hovering above the map rather
+     than a full-width edge-to-edge bar. Keeps the dark palette + white icons. */
+  .mtabbar {
+    position: fixed;
+    left: 14px;
+    right: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    z-index: 43;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    align-items: stretch;
+    background: rgba(28, 28, 30, 0.92);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 22px;
+    box-shadow:
+      0 18px 38px -12px rgba(0, 0, 0, 0.55),
+      0 2px 6px -2px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+  }
+  .mtab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 10px 0 9px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.88);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mtab .mtablbl {
+    color: rgba(255, 255, 255, 0.72);
+  }
+  .mtab.on,
+  .mtab.on .mtablbl {
+    color: #fff;
+  }
+  .mtabic {
+    position: relative;
+    width: 23px;
+    height: 23px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mtabic svg {
+    width: 22px;
+    height: 22px;
+  }
+  .mtabdot {
+    position: absolute;
+    top: -2px;
+    right: -3px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #21c17a;
+    border: 1.5px solid #fff;
+  }
+  .mtablbl {
+    font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.1px;
+  }
+
+  /* The "More" sheet */
+  .mmscrim {
+    position: fixed;
+    inset: 0;
+    background: rgba(13, 15, 20, 0.34);
+    backdrop-filter: blur(2px);
+    z-index: 45;
+  }
+  .mobilemenu {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 46;
+    max-height: 82vh;
+    overflow-y: auto;
+    background: #fff;
+    border-radius: 22px 22px 0 0;
+    padding: 10px 14px calc(20px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -18px 50px -18px rgba(15, 27, 61, 0.5);
+    transform: translateY(100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .mobilemenu.open {
+    transform: translateY(0);
+  }
+  .mmgrip {
+    width: 38px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line, #e2e6ef);
+    margin: 4px auto 8px;
+  }
+  .mmhd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+    font-weight: 800;
+    font-size: 17px;
+    color: var(--ink);
+    padding: 2px 4px 8px;
+  }
+  .mmx {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .mmsec {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    /* Was too light to read; darken the section labels. */
+    color: #4a5262;
+    padding: 12px 6px 5px;
+  }
+  .mmrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 11px 8px;
+    background: none;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    text-align: left;
+    color: var(--ink);
+  }
+  .mmrow:active {
+    background: rgba(75, 59, 214, 0.07);
+  }
+  .mmrowic {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    /* Black tile with a white icon, per brand guidelines. */
+    background: #1c1c1e;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mmrowic svg {
+    width: 19px;
+    height: 19px;
+  }
+  .mmrowtext {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .mmrowlbl {
+    font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+    font-weight: 600;
+    font-size: 14.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mmrowsub {
+    font-size: 12px;
+    /* Was too light to read; use a darker slate. */
+    color: #5b6472;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mmrowchev {
+    flex: 0 0 auto;
+    color: var(--muted, #b7becc);
+  }
+}
+
+/* Hide the top-right search button on the desktop zoomed-out views, where the
+   centred GlobalSearch header is the search instead. (The flyout itself stays
+   in the DOM so the mobile bottom bar can still open it.) */
+.gshidden .searchbtn,
+.gshidden .seglbl {
+  display: none;
+}
+
+/* The mobile bottom bar + its "More" sheet only exist on phones; keep them out
+   of the desktop layout entirely. Scoped to desktop widths so it never fights
+   the max-width:680px rules that lay the bar out on mobile. */
+@media (min-width: 681px) {
+  .mtabbar,
+  .mobilemenu,
+  .mmscrim {
+    display: none;
+  }
+}
