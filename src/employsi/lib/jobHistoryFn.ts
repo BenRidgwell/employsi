@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import type { D1Like } from './jobArchive';
+import type { RolePoint } from './openRolesFn';
 
 // Reads the historical job archive (Cloudflare D1) written by the jobs-cron
 // worker + the app's live fetch (see jobArchive.ts). Powers the "Vacancy
@@ -92,5 +93,49 @@ export const getRoleHistory = createServerFn({ method: 'GET' })
       return { total, since, longestDays, items };
     } catch {
       return null;
+    }
+  });
+
+// A daily "live vacancies" time-series derived from the D1 archive: for each of
+// the last N days, how many of the company's archived listings were live that
+// day (first_seen ≤ day ≤ last_seen). This powers the vacancy-movement chart
+// from the *stored history* (all sources — Adzuna, Muse, Jooble, SEEK, WA-gov),
+// which is what lets the WA government agencies — whose live count comes from
+// the scraped board, not Adzuna — show the same current+historical graph the
+// private companies get. Builds forward as the archive accumulates, so a
+// freshly-seeded company shows a short series that lengthens over the days.
+export const getVacancyTrend = createServerFn({ method: 'GET' })
+  .validator((data: { id: string }) => data)
+  .handler(async ({ data }): Promise<RolePoint[]> => {
+    const id = (data.id || '').trim();
+    if (!id) return [];
+    const db = await getArchiveDb();
+    if (!db) return [];
+    try {
+      const res: any = await (db
+        .prepare(`SELECT first_seen, last_seen FROM jobs WHERE company_id = ?1`)
+        .bind(id) as any).all();
+      const rows: any[] = res?.results ?? [];
+      if (!rows.length) return [];
+      const spans = rows
+        .map((r) => [String(r.first_seen || ''), String(r.last_seen || '')])
+        .filter(([fs, ls]) => fs && ls);
+      const DAYS = 90;
+      const now = new Date();
+      const series: RolePoint[] = [];
+      for (let i = DAYS - 1; i >= 0; i--) {
+        const d = new Date(now);
+        d.setUTCDate(d.getUTCDate() - i);
+        const ds = d.toISOString().slice(0, 10);
+        let c = 0;
+        for (const [fs, ls] of spans) if (fs <= ds && ds <= ls) c++;
+        series.push({ d: ds, c });
+      }
+      // Drop the leading run of zeros before the archive had any data for this
+      // company, so the chart starts where its history actually begins.
+      const first = series.findIndex((p) => p.c > 0);
+      return first <= 0 ? series : series.slice(first);
+    } catch {
+      return [];
     }
   });

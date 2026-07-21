@@ -7,7 +7,7 @@ import { useCompanyStats } from '../../hooks/useCompanyStats';
 import { useOpenRoles } from '../../hooks/useOpenRoles';
 import { useRolesHistory } from '../../hooks/useRolesHistory';
 import { useCompanyJobs } from '../../hooks/useSkillData';
-import { useRoleHistory } from '../../hooks/useRoleHistory';
+import { useRoleHistory, useVacancyTrend } from '../../hooks/useRoleHistory';
 import { cityForCompany } from '../../data/mapboxGeo';
 import { marketForCity } from '../../data/cityMarket';
 import { GOV_WORKFORCE } from '../../data/perthGovWorkforce';
@@ -191,6 +191,11 @@ export function CompanyPanel() {
   // time and how long each has been open. Builds forward from when archiving
   // began, so it fills out over the following days/weeks.
   const roleHistory = useRoleHistory(panel?.companyId, open && !roleFilter);
+  // Daily "live vacancies" movement series derived from the D1 archive. Used for
+  // WA government agencies — their live count comes from the scraped board, not
+  // Adzuna, so their vacancy chart is built from the stored history instead of
+  // the forward-built KV snapshots the private companies use.
+  const vacancyTrend = useVacancyTrend(panel?.companyId, open && !roleFilter);
   const jobSample = useMemo(
     () => (liveRoles?.jobs?.length ? liveRoles.jobs : companyJobs?.jobs ?? null),
     [liveRoles, companyJobs],
@@ -381,9 +386,17 @@ export function CompanyPanel() {
                 ))}
               </div>
 
+              {/* Private companies: forward-built KV snapshots of the live count. */}
               {!isGov && !roleFilter && liveRoles && liveRoles.count > 0 && rolesHistory.length > 0 && (
                 <div className="sect">
                   <RolesHistoryChart points={rolesHistory} current={liveRoles.count} />
+                </div>
+              )}
+              {/* WA government agencies: the same current + historical vacancy
+                  chart, built from the D1 archive (the scraped board history). */}
+              {isGov && !roleFilter && vacancyTrend.length > 1 && (
+                <div className="sect">
+                  <RolesHistoryChart points={vacancyTrend} current={liveRoles?.count} />
                 </div>
               )}
 

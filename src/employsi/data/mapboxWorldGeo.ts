@@ -36,7 +36,7 @@ export interface RegionFrame {
   zoom: number;
 }
 export const REGION_FRAMES: Record<string, RegionFrame> = {
-  australia: { center: [134, -27], zoom: 3.2 },
+  australia: { center: [134, -27], zoom: 2.85 },
   asia: { center: [104, 24], zoom: 2.3 },
   northamerica: { center: [-96, 41], zoom: 2.6 },
   europe: { center: [7, 48], zoom: 3.6 },
@@ -64,5 +64,5 @@ export const GLOBAL_VIEW = {
   center: [100, -10] as [number, number],
   // Slightly tighter than a full pull-back so the Asia-Pacific fills more of
   // the frame on arrival.
-  zoom: 0.6,
+  zoom: 1.05,
 };

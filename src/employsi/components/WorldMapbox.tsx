@@ -300,6 +300,7 @@ export function WorldMapbox() {
   const sampleHeaderBgRef = useRef<(() => void) | null>(null);
   const travelersRef = useRef<{ marker: mapboxgl.Marker; inner: HTMLElement; route: TravelRoute }[]>([]);
   const travelRaf = useRef<number | undefined>(undefined);
+  const haloPulseRaf = useRef<number | undefined>(undefined);
   const programmaticRef = useRef(false);
   const programmaticTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastCrossRef = useRef(0);
@@ -418,6 +419,7 @@ export function WorldMapbox() {
           const pctEl = document.createElement('span');
           pctEl.className = `chippct ${flat ? 'flat' : up ? 'up' : 'down'}`;
           pctEl.textContent = `${flat ? '' : up ? '▲' : '▼'} ${up ? '+' : m.pct < 0 ? '−' : ''}${Math.abs(Math.round(m.pct))}%`;
+          pctEl.title = 'Change in this skill’s job-ad demand vs the previous month';
           el.appendChild(pctEl);
           el.classList.add('mbchip-pct');
         }
@@ -481,13 +483,14 @@ export function WorldMapbox() {
       src?.setData(markersGeoJSON(markers, s.selectedId));
       renderLabels(markers);
 
-      // Skill search active -> show the demand blobs and hide the metric halo
-      // (the dots are already neutralised in computeMarkers); otherwise clear
-      // the blobs and restore the metric halo.
+      // The dot halo now only appears WITH a skill search — a pulsing, demand-
+      // coloured ring that (alongside the gradient) draws the eye to the standout
+      // cities. With no skill searched the dots sit plain and static (no halo,
+      // no pulse). The demand blobs show only while a skill is active.
       const skillSrc = map.getSource(SKILL_SOURCE) as mapboxgl.GeoJSONSource | undefined;
       skillSrc?.setData(buildSkillHeat(mode, s.domesticRegion, skill, cityDemand));
       if (map.getLayer(HALO_LAYER)) {
-        map.setLayoutProperty(HALO_LAYER, 'visibility', skill ? 'none' : 'visible');
+        map.setLayoutProperty(HALO_LAYER, 'visibility', skill ? 'visible' : 'none');
       }
     };
     rebuildMarkersRef.current = rebuildMarkers;
@@ -651,6 +654,25 @@ export function WorldMapbox() {
       };
       animateTravelers();
 
+      // Halo pulse: while a skill search is active the demand-coloured rings
+      // breathe (radius + opacity oscillate) so the heat standouts pull the eye;
+      // when no skill is searched the halo layer is hidden and this is a no-op.
+      const animateHalo = () => {
+        if (map.getLayer(HALO_LAYER)) {
+          const s = useAppStore.getState();
+          const active = !!activeSkill(s.searchQuery) && s.zoomedOut && !s.zoomingIn;
+          if (active) {
+            const p = 0.5 - 0.5 * Math.cos(performance.now() / 620); // 0..1
+            map.setPaintProperty(HALO_LAYER, 'circle-radius', 17 + 13 * p);
+            map.setPaintProperty(HALO_LAYER, 'circle-opacity', [
+              'case', ['get', 'dim'], 0.06 + 0.06 * p, 0.28 + 0.28 * p,
+            ]);
+          }
+        }
+        haloPulseRaf.current = requestAnimationFrame(animateHalo);
+      };
+      animateHalo();
+
       styleReadyRef.current = true;
       applyView();
     });
@@ -701,6 +723,7 @@ export function WorldMapbox() {
     return () => {
       clearTimeout(programmaticTimer.current);
       if (travelRaf.current) cancelAnimationFrame(travelRaf.current);
+      if (haloPulseRaf.current) cancelAnimationFrame(haloPulseRaf.current);
       travelersRef.current.forEach(({ marker }) => marker.remove());
       travelersRef.current = [];
       Object.values(labelsRef.current).forEach((m) => m.remove());
