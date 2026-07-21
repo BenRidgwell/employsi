@@ -1,0 +1,50 @@
+# Daily SEEK → D1 archive.
+#
+# SEEK's Cloudflare front 403-challenges the app's Cloudflare Workers cron (see
+# workers/jobs-cron/ARCHIVE.md), so the SEEK feed runs here instead: GitHub's
+# runners are ordinary (non-Cloudflare) hosts SEEK serves normally. Each run
+# scrapes every mapped AU company's full SEEK board (all classifications) and
+# upserts it into the D1 jobs archive (source "seek"), deduped against the other
+# sources so a role advertised on more than one board is counted once.
+#
+# Required repo secret:
+#   CLOUDFLARE_API_TOKEN  — a token with D1 edit on the employsi account.
+# Optional repo variables (fall back to the values baked into the script):
+#   CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# The job fails (red X + GitHub's own notification) if SEEK starts blocking the
+# runner — the script exits non-zero when >50% of companies return zero jobs —
+# which is the degradation signal for this path.
+
+name: seek-archive
+
+on:
+  schedule:
+    - cron: '0 19 * * *' # 19:00 UTC daily (~05:00 AEST) — after the posting day
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+concurrency:
+  group: seek-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Scrape SEEK → D1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/seek-to-d1.py

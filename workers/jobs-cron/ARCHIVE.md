@@ -46,14 +46,30 @@ is **counted once** — the same no-double-counting mechanism The Muse already
 uses. Its results flow through the same KV write + D1 archive path (`source =
 seek`) and skill index as every other source.
 
-SEEK's Cloudflare front may challenge the Worker's datacenter IP (it answers
-from other hosts). When it does, `fetchSeekCompanyJobs` returns `[]`, so the
-company simply keeps its Adzuna/Muse feed — SEEK degrades silently like the
-Jooble hub feed, never breaking or wiping a pull.
+**SEEK does not run in the Worker.** Its Cloudflare front returns a 403
+`challenge` page to requests originating from Cloudflare Workers (a
+Cloudflare-to-Cloudflare fingerprint — confirmed via `/diag-seek?...&raw=1`),
+so the in-Worker pull is gated off (`SEEK_VIA_WORKER`, default off) and
+`fetchSeekCompanyJobs`/`seekAdvertisers` are kept only for that probe and a
+possible future residential-proxy path.
 
-Regenerate the id map from a host that can reach seek.com.au (not the Workers):
-`python scripts/gen-seek-advertisers.py`. Reachability probe (token-gated):
-`GET /diag-seek?token=CRON_TOKEN&id=bhp`.
+Instead the SEEK feed runs from a **non-Cloudflare host** — a daily GitHub
+Action ([`.github/workflows/seek-archive.yml`](../../.github/workflows/seek-archive.yml))
+running [`scripts/seek-to-d1.py`](../../scripts/seek-to-d1.py). GitHub's runners
+are ordinary IPs SEEK serves normally. The script scrapes each mapped company's
+board (Python/urllib — SEEK also challenges bun's fetch fingerprint, but not
+Python's), maps skills for parity via the worker's own taxonomy
+([`scripts/map-skills.ts`](../../scripts/map-skills.ts)), drops any role already
+archived for that company by another source, and upserts through the D1 HTTP API
+with the same key as `jobArchive.ts`. It exits non-zero if >50% of companies
+return zero (the block/degradation signal), so a blocked run shows red in
+Actions.
+
+Setup: add a repo secret `CLOUDFLARE_API_TOKEN` (D1 edit); optionally repo
+variables `CF_ACCOUNT_ID` / `D1_DATABASE_ID` (else the script's defaults apply).
+Regenerate the advertiser id map with `python scripts/gen-seek-advertisers.py`
+(also from a non-Workers host). Worker-IP reachability probe (token-gated):
+`GET /diag-seek?token=CRON_TOKEN&id=bhp` (add `&raw=1` for the upstream status).
 
 ---
 
