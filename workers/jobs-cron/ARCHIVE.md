@@ -30,14 +30,43 @@ Manual trigger (token-gated): `GET /run-wagov?token=CRON_TOKEN`.
 
 ---
 
+# SEEK company feed (`seek.ts`)
+
+SEEK (seek.com.au) is Australia's dominant board. For each AU company its search
+API is pulled by **advertiser id** — one employer, **all** classifications (not
+just IT, unlike the SeekSpider project this is derived from) — so a company's
+entire live board flows in. Advertiser ids are resolved **offline** by exact
+name match (`scripts/gen-seek-advertisers.py` → [`data/seekAdvertisers.ts`](../../src/employsi/data/seekAdvertisers.ts),
+113/205 companies as of writing), so the Worker pulls by id in one request per
+company with no live resolution.
+
+SEEK is layered on TOP of Adzuna + The Muse inside `pullCompany` and
+cross-checked by normalised title, so a role advertised on more than one board
+is **counted once** — the same no-double-counting mechanism The Muse already
+uses. Its results flow through the same KV write + D1 archive path (`source =
+seek`) and skill index as every other source.
+
+SEEK's Cloudflare front may challenge the Worker's datacenter IP (it answers
+from other hosts). When it does, `fetchSeekCompanyJobs` returns `[]`, so the
+company simply keeps its Adzuna/Muse feed — SEEK degrades silently like the
+Jooble hub feed, never breaking or wiping a pull.
+
+Regenerate the id map from a host that can reach seek.com.au (not the Workers):
+`python scripts/gen-seek-advertisers.py`. Reachability probe (token-gated):
+`GET /diag-seek?token=CRON_TOKEN&id=bhp`.
+
+---
+
 # Historical job archive (Cloudflare D1)
 
-Every listing pulled from **Adzuna, The Muse and Jooble** — by both the daily
-`jobs-cron` worker and the app's live per-company fetch (`openRolesFn`) — is
-appended to a D1 (SQLite) database, deduped by a stable
+Every listing pulled from **Adzuna, The Muse, Jooble and SEEK** — by both the
+daily `jobs-cron` worker and the app's live per-company fetch (`openRolesFn`) —
+is appended to a D1 (SQLite) database, deduped by a stable
 `source|title|company|location` key, with `first_seen` / `last_seen` /
 `seen_count` so listings accumulate into a queryable history rather than being
-overwritten each run (which is all the KV snapshots do).
+overwritten each run (which is all the KV snapshots do). Cross-**source** double
+counting (the same role on SEEK and Adzuna) is prevented upstream in
+`pullCompany` by the normalised-title check, before rows ever reach the archive.
 
 Schema: [`migrations/0001_jobs_archive.sql`](migrations/0001_jobs_archive.sql).
 Writer: [`src/employsi/lib/jobArchive.ts`](../../src/employsi/lib/jobArchive.ts).

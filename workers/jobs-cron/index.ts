@@ -1,7 +1,9 @@
 // Daily jobs pipeline — a dedicated Cloudflare Worker (separate from the app).
 //
 // On a schedule it pulls each Australian company's currently-advertised roles
-// from Adzuna, maps every job to canonical skills, and writes three things to
+// from Adzuna — layered with The Muse and the company's full SEEK board (all
+// classifications), cross-checked by title so a role on more than one board is
+// counted once — maps every job to canonical skills, and writes three things to
 // the shared KV namespace:
 //   • roles:{id}   — daily [date, count] snapshots (the vacancy history chart)
 //   • jobs:{id}    — the list of advertised jobs + their mapped skills
@@ -19,6 +21,8 @@ import { skillsForText } from '../../src/employsi/data/skillsTaxonomy';
 import { archiveJobs, type ArchiveRow } from '../../src/employsi/lib/jobArchive';
 import { fetchWaGovPages, type StoredWaJob } from './waGov';
 import { fetchMcfJobs } from './mycareersfuture';
+import { fetchSeekCompanyJobs } from './seek';
+import { SEEK_ADVERTISERS } from '../../src/employsi/data/seekAdvertisers';
 import { PERTH_GOV_IDS } from '../../src/employsi/data/perthGov';
 
 interface Env {
@@ -57,7 +61,7 @@ interface StoredJob {
   created: string; // YYYY-MM-DD
   city: string | null; // matched app city, if any
   skills: string[]; // canonical skills
-  src?: string; // provider: adzuna | muse | jooble
+  src?: string; // provider: adzuna | muse | jooble | seek
   co?: string; // employer name from the ad (for the archive)
   sal?: string; // salary text when the source states one (for the archive)
   salN?: number; // advertised salary midpoint (annualised), for aggregation
@@ -162,6 +166,28 @@ async function pullCompany(env: Env, target: JobsTarget): Promise<{ count: numbe
       if (jobs.length >= JOBS_PER_COMPANY) break;
     }
     count += added;
+  }
+
+  // Layer SEEK on top: a company's full SEEK board (every classification, not
+  // just IT), adding only roles Adzuna/Muse didn't already list — cross-checked
+  // by normalised title so a job advertised on more than one board is counted
+  // once. Keyed on the offline-resolved advertiser id; companies without one (no
+  // current SEEK ads) contribute nothing, exactly like an unmatched Muse name.
+  // SEEK returning [] (unreachable / challenged) simply adds nothing this run.
+  if (jobs.length < JOBS_PER_COMPANY) {
+    const adv = SEEK_ADVERTISERS[target.id];
+    if (adv) {
+      const seek = await fetchSeekCompanyJobs(adv.advertiserId, adv.name);
+      let added = 0;
+      for (const s of seek) {
+        if (seenTitles.has(normTitle(s.t))) continue;
+        seenTitles.add(normTitle(s.t));
+        jobs.push(s);
+        added++;
+        if (jobs.length >= JOBS_PER_COMPANY) break;
+      }
+      count += added;
+    }
   }
 
   return { count, jobs };
@@ -626,6 +652,31 @@ export default {
           { ok: false, error: (e as Error)?.message || String(e), stack: (e as Error)?.stack || '' },
           { status: 500 },
         );
+      }
+    }
+    // Reachability probe for the SEEK feed: confirms the search API answers from
+    // the Worker's IP (its Cloudflare front may challenge datacenter IPs even
+    // though it answers elsewhere) and shows the deduped sample for one company.
+    //   /diag-seek?token=…&id=bhp
+    if (url.pathname === '/diag-seek') {
+      if (url.searchParams.get('token') !== env.CRON_TOKEN) {
+        return new Response('forbidden', { status: 403 });
+      }
+      const id = url.searchParams.get('id') || 'bhp';
+      const adv = SEEK_ADVERTISERS[id];
+      if (!adv) return Response.json({ ok: false, id, error: 'no SEEK advertiser mapped for this id' }, { status: 404 });
+      try {
+        const jobs = await fetchSeekCompanyJobs(adv.advertiserId, adv.name);
+        return Response.json({
+          ok: true,
+          id,
+          advertiserId: adv.advertiserId,
+          reachable: true,
+          count: jobs.length,
+          sample: jobs.slice(0, 5).map((j) => ({ t: j.t, cat: j.cat, loc: j.loc, sal: j.sal || null })),
+        });
+      } catch (e) {
+        return Response.json({ ok: false, id, error: (e as Error)?.message || String(e) }, { status: 500 });
       }
     }
     return new Response('employsi jobs-cron', { status: 200 });
