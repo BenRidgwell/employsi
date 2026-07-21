@@ -572,24 +572,38 @@ export function PerthMapbox() {
       loop();
 
       // Dedicated pulse loop — independent of the auto-rotate loop, which gets
-      // cancelled on the first map interaction. This keeps the heat-dot rings
-      // pulsing even after you click a dot / pan / zoom.
+      // cancelled on the first map interaction. The rings only pulse WHILE a
+      // skill is searched (heat-map view), and only on the relevant companies
+      // (those with demand for that skill — the dimmed, no-demand dots stay
+      // still). With no skill filter every dot sits static, no pulse.
+      let pulseWasActive = false;
       const pulseLoop = () => {
         if (map.getLayer(PULSE_LAYER)) {
-          const t = (performance.now() % PULSE_MS) / PULSE_MS; // 0 -> 1
-          map.setPaintProperty(PULSE_LAYER, 'circle-radius', [
-            '+',
-            ['case', ['get', 'selected'], 12, 9],
-            26 * t,
-          ]);
-          map.setPaintProperty(PULSE_LAYER, 'circle-stroke-opacity', [
-            '*',
-            ['case', ['get', 'dim'], 0.12, 0.55],
-            1 - t,
-          ]);
+          const skillActive = !!activeSkill(useAppStore.getState().searchQuery);
+          if (skillActive) {
+            const t = (performance.now() % PULSE_MS) / PULSE_MS; // 0 -> 1
+            map.setPaintProperty(PULSE_LAYER, 'circle-radius', [
+              '+',
+              ['case', ['get', 'selected'], 12, 9],
+              26 * t,
+            ]);
+            // Only the relevant (non-dim) companies pulse; dimmed dots → 0.
+            map.setPaintProperty(PULSE_LAYER, 'circle-stroke-opacity', [
+              '*',
+              ['case', ['get', 'dim'], 0, 0.55],
+              1 - t,
+            ]);
+            pulseWasActive = true;
+          } else if (pulseWasActive) {
+            // Skill cleared → flatten the rings once and leave the dots static.
+            map.setPaintProperty(PULSE_LAYER, 'circle-stroke-opacity', 0);
+            pulseWasActive = false;
+          }
         }
         pulseRaf.current = requestAnimationFrame(pulseLoop);
       };
+      // Start flat: no skill searched on load → no pulse.
+      if (map.getLayer(PULSE_LAYER)) map.setPaintProperty(PULSE_LAYER, 'circle-stroke-opacity', 0);
       pulseLoop();
 
       // --- Street traffic ---
