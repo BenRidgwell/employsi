@@ -14,21 +14,23 @@ function fmtMonth(ym: string): string {
 // Key global / economic events, to give the vacancy history broader context as
 // the user scrubs the slider. Each has the YYYY-MM it began; the label shown is
 // the most recent event on or before the selected month (the "era" you're in).
-const EVENTS: { ym: string; label: string }[] = [
-  { ym: '2007-08', label: 'Global Financial Crisis' },
-  { ym: '2009-01', label: 'Bitcoin launched' },
-  { ym: '2011-09', label: 'Mining investment boom' },
-  { ym: '2014-11', label: 'Oil price crash' },
-  { ym: '2016-06', label: 'Brexit referendum' },
-  { ym: '2020-03', label: 'COVID-19 pandemic' },
-  { ym: '2021-06', label: 'Post-COVID hiring boom' },
-  { ym: '2022-02', label: 'War in Ukraine · inflation surge' },
-  { ym: '2022-11', label: 'Generative-AI boom (ChatGPT)' },
+// Each event carries a small relevant icon (shown next to the label instead of
+// a plain bullet) so the era you're scrubbing through reads at a glance.
+const EVENTS: { ym: string; label: string; icon: string }[] = [
+  { ym: '2007-08', label: 'Global Financial Crisis', icon: '📉' },
+  { ym: '2009-01', label: 'Bitcoin launched', icon: '₿' },
+  { ym: '2011-09', label: 'Mining investment boom', icon: '⛏️' },
+  { ym: '2014-11', label: 'Oil price crash', icon: '🛢️' },
+  { ym: '2016-06', label: 'Brexit referendum', icon: '🗳️' },
+  { ym: '2020-03', label: 'COVID-19 pandemic', icon: '🦠' },
+  { ym: '2021-06', label: 'Post-COVID hiring boom', icon: '📈' },
+  { ym: '2022-02', label: 'War in Ukraine · inflation surge', icon: '🔥' },
+  { ym: '2022-11', label: 'Generative-AI boom (ChatGPT)', icon: '🤖' },
 ];
-function eventFor(ym: string): string | null {
-  let cur: string | null = null;
+function eventFor(ym: string): { label: string; icon: string } | null {
+  let cur: { label: string; icon: string } | null = null;
   for (const e of EVENTS) {
-    if (e.ym <= ym) cur = e.label;
+    if (e.ym <= ym) cur = { label: e.label, icon: e.icon };
     else break;
   }
   return cur;
@@ -92,12 +94,15 @@ export function HeatKey() {
             <span>{fmtMonth(IVI_MONTHS[0])}</span>
             <span>{fmtMonth(IVI_MONTHS[lastIdx])}</span>
           </div>
-          {eventFor(IVI_MONTHS[idx]) && (
-            <div className="hktimeevent">
-              <span className="hktimedot" />
-              {eventFor(IVI_MONTHS[idx])}
-            </div>
-          )}
+          {(() => {
+            const ev = eventFor(IVI_MONTHS[idx]);
+            return ev ? (
+              <div className="hktimeevent">
+                <span className="hktimeicon" aria-hidden="true">{ev.icon}</span>
+                {ev.label}
+              </div>
+            ) : null;
+          })()}
         </div>
       )}
     </div>

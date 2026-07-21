@@ -3694,12 +3694,14 @@ body {
   font-weight: 700;
   color: var(--ink);
 }
-.hktimedot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--coral, #e0524a);
+.hktimeicon {
   flex: 0 0 auto;
+  font-size: 12px;
+  line-height: 1;
+  width: 14px;
+  text-align: center;
+  /* Keep the emoji crisp and vertically centred against the label */
+  filter: saturate(0.95);
 }
 .legend b {
   color: var(--ink);
