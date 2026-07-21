@@ -41,6 +41,13 @@ interface Env {
   // binding isn't present the archive writes are simply skipped (the KV
   // snapshots + skill index are unaffected).
   JOBS_ARCHIVE?: D1Database;
+  // SEEK's Cloudflare front 403-challenges requests originating from Cloudflare
+  // Workers (a Cloudflare-to-Cloudflare fingerprint), so the in-Worker SEEK pull
+  // returns nothing and is OFF by default. The SEEK feed instead runs from a
+  // non-Cloudflare host (scripts/seek-to-d1.py) straight into D1. Set this to
+  // '1' only if the Worker is ever routed through a residential proxy that SEEK
+  // will serve. Keeps seek.ts + seekAdvertisers wired for that day.
+  SEEK_VIA_WORKER?: string;
   CRON_TOKEN: string;
 }
 
@@ -174,7 +181,7 @@ async function pullCompany(env: Env, target: JobsTarget): Promise<{ count: numbe
   // once. Keyed on the offline-resolved advertiser id; companies without one (no
   // current SEEK ads) contribute nothing, exactly like an unmatched Muse name.
   // SEEK returning [] (unreachable / challenged) simply adds nothing this run.
-  if (jobs.length < JOBS_PER_COMPANY) {
+  if (env.SEEK_VIA_WORKER === '1' && jobs.length < JOBS_PER_COMPANY) {
     const adv = SEEK_ADVERTISERS[target.id];
     if (adv) {
       const seek = await fetchSeekCompanyJobs(adv.advertiserId, adv.name);
@@ -665,6 +672,38 @@ export default {
       const id = url.searchParams.get('id') || 'bhp';
       const adv = SEEK_ADVERTISERS[id];
       if (!adv) return Response.json({ ok: false, id, error: 'no SEEK advertiser mapped for this id' }, { status: 404 });
+      // raw=1 exposes exactly what SEEK returns to the Worker IP (status,
+      // content-type, body snippet) so a soft block (200 + challenge/empty) is
+      // distinguishable from a genuine no-vacancies result.
+      if (url.searchParams.get('raw') === '1') {
+        const params = new URLSearchParams({
+          siteKey: 'AU-Main', sourcesystem: 'houston', where: 'All Australia',
+          advertiserid: adv.advertiserId, page: '1', pageSize: '100', locale: 'en-AU',
+        });
+        try {
+          const r = await fetch(`https://www.seek.com.au/api/jobsearch/v5/search?${params.toString()}`, {
+            headers: {
+              Accept: 'application/json',
+              'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15',
+            },
+          });
+          const body = await r.text();
+          let totalCount: number | null = null;
+          try { totalCount = Number(JSON.parse(body)?.totalCount); } catch { /* not json */ }
+          return Response.json({
+            id, advertiserId: adv.advertiserId,
+            status: r.status,
+            contentType: r.headers.get('content-type'),
+            cfRay: r.headers.get('cf-ray'),
+            cfMitigated: r.headers.get('cf-mitigated'),
+            len: body.length,
+            totalCount,
+            snippet: body.slice(0, 300),
+          });
+        } catch (e) {
+          return Response.json({ id, rawError: (e as Error)?.message || String(e) }, { status: 502 });
+        }
+      }
       try {
         const jobs = await fetchSeekCompanyJobs(adv.advertiserId, adv.name);
         return Response.json({
