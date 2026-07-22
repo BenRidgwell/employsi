@@ -26,8 +26,11 @@ from urllib.parse import urlencode
 import urllib.request
 
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
-ACCOUNT = os.environ.get('CF_ACCOUNT_ID', '080a66721e2d85950d9d7dc939e08b76')
-DB = os.environ.get('D1_DATABASE_ID', '1c5f3ffb-b9d7-4233-b28b-0f1f8d193fe1')
+# `or default` (not the get() default) so an empty env var — e.g. a GitHub
+# Actions `${{ vars.CF_ACCOUNT_ID }}` that isn't set — falls back to the baked-in
+# id instead of clobbering it with an empty string.
+ACCOUNT = os.environ.get('CF_ACCOUNT_ID') or '080a66721e2d85950d9d7dc939e08b76'
+DB = os.environ.get('D1_DATABASE_ID') or '1c5f3ffb-b9d7-4233-b28b-0f1f8d193fe1'
 API = f'https://api.cloudflare.com/client/v4/accounts/{ACCOUNT}/d1/database/{DB}/query'
 
 SEEK_API = 'https://www.seek.com.au/api/jobsearch/v5/search'
