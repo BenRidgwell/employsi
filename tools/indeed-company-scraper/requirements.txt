@@ -1,0 +1,5 @@
+# A real (stealth) browser is required — Indeed renders results with JS and
+# fronts them with DataDome. Playwright drives Chromium; after installing, run
+# `playwright install chromium` once (unless a Chromium is already provisioned,
+# as in this repo's environment).
+playwright>=1.44
