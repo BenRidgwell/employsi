@@ -84,15 +84,83 @@ host). So, like the reference project and like
 The scraper is polite by default (realistic UA + locale/timezone, a stealth init
 script, ~1.5 s between pages). Keep it that way.
 
+## Store & dedupe into D1 — scheduled from your own PC
+
+Because Indeed only serves a residential IP, the "archive to D1" step runs from
+**your machine on a schedule** (not CI/Workers, which SEEK uses). The orchestrator
+[`scripts/indeed-to-d1.py`](../../scripts/indeed-to-d1.py) drives this scraper
+across your company roster in one warmed browser and upserts the results into the
+same D1 archive as every other source (`source = "indeed"`).
+
+**What it does per run:** scrape each company's board (all locations) → map skills
+for parity via the worker's taxonomy (`scripts/map-skills.ts`) → **drop any role
+already archived for that company by another source** (cross-checked by
+normalised title, so a job also on Adzuna/SEEK is counted once) → upsert with the
+same `source|title|company|location` key + first/last-seen bump as every other
+feed. Re-runs refresh `last_seen` instead of duplicating.
+
+### One-time setup
+
+```bash
+pip install playwright && playwright install chromium
+# Keep your D1 token out of the crontab — put it in repo/.env.indeed (gitignored):
+echo 'CLOUDFLARE_API_TOKEN=<a token with D1 edit>' > .env.indeed
+```
+
+### Run it
+
+```bash
+# Scope to the companies you care about (browser scraping is slow — don't do all
+# 205 nightly), across every location they're hiring in:
+python scripts/indeed-to-d1.py --only bhp,fmg,wes,woodside
+
+# Whole AU roster (long; more likely to trip DataDome — run less often):
+python scripts/indeed-to-d1.py
+
+# If a wall appears, run visible once to clear it, or use a residential proxy:
+python scripts/indeed-to-d1.py --only bhp --headful
+python scripts/indeed-to-d1.py --only bhp --proxy http://user:pass@residential:port
+```
+
+It stops itself after 3 consecutive DataDome blocks (the IP is being throttled)
+and exits non-zero if >50% of companies were blocked, so a scheduled run fails
+loudly rather than silently archiving nothing.
+
+### Schedule it
+
+Use the wrapper [`scripts/indeed-to-d1.sh`](../../scripts/indeed-to-d1.sh) (sets
+the working dir, loads `.env.indeed`, logs to `~/indeed-archive.log`).
+
+**macOS / Linux — cron** (`crontab -e`):
+```cron
+# 6am daily, your key companies
+0 6 * * * /path/to/repo/scripts/indeed-to-d1.sh --only bhp,fmg,wes,woodside
+```
+
+**macOS — launchd** (survives sleep better than cron on a laptop): create
+`~/Library/LaunchAgents/com.employsi.indeed.plist` with `ProgramArguments`
+pointing at `scripts/indeed-to-d1.sh` and a `StartCalendarInterval` of `Hour 6`,
+then `launchctl load` it.
+
+**Windows — Task Scheduler**: create a daily task whose action runs
+`wsl /path/to/repo/scripts/indeed-to-d1.sh --only …` (via WSL), or `python.exe
+scripts\indeed-to-d1.py --only …` with `CLOUDFLARE_API_TOKEN` set in the task's
+environment.
+
+Inspect what landed:
+```bash
+wrangler d1 execute employsi-jobs-archive --remote \
+  --command "SELECT source, COUNT(*) FROM jobs GROUP BY source"
+```
+
 ## Relation to the SEEK feed
 
-This mirrors [`tools/seek-company-scraper`](../seek-company-scraper) — a
-standalone, company-level board scraper. Unlike SEEK (whose search API answers
-Python/curl from ordinary hosts, so it also has a D1 archive pipeline in
-`scripts/seek-to-d1.py`), Indeed's DataDome blocks non-residential IPs outright,
-so a scheduled CI/Workers archive path is not reliable. If you want Indeed in the
-D1 archive, run this tool on a residential host and push its CSV up the same way
-`scripts/seek-to-d1.py` writes SEEK rows.
+This mirrors [`tools/seek-company-scraper`](../seek-company-scraper) +
+[`scripts/seek-to-d1.py`](../../scripts/seek-to-d1.py). The one difference is
+**where the archive step runs**: SEEK's API answers Python/curl from any host, so
+it archives from a GitHub Action; Indeed's DataDome blocks non-residential IPs, so
+its archive step (`scripts/indeed-to-d1.py`) runs from your own machine on a
+schedule instead. The D1 table, dedupe key and skill mapping are identical.
 
 ## Requirements
 

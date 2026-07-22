@@ -207,6 +207,79 @@ def write_csv(rows: list[dict], path: str) -> None:
             w.writerow({k: r.get(k, '') for k in FIELDS})
 
 
+LAUNCH_ARGS = ['--no-sandbox', '--disable-blink-features=AutomationControlled', '--disable-dev-shm-usage']
+
+
+def launch_browser(p, headful: bool = False, proxy: str | None = None):
+    """Launch Chromium (using a pre-provisioned binary when available)."""
+    kw = {'headless': not headful, 'args': LAUNCH_ARGS}
+    if proxy:
+        kw['proxy'] = {'server': proxy}
+    exe = chromium_executable()
+    if exe:
+        kw['executable_path'] = exe
+    return p.chromium.launch(**kw)
+
+
+def new_stealth_page(browser, locale: str = 'en-AU', tz: str = 'Australia/Perth'):
+    """A fresh page in a stealth-tuned context — reuse one across companies."""
+    ctx = browser.new_context(
+        user_agent=UA, locale=locale, viewport={'width': 1360, 'height': 940}, timezone_id=tz,
+    )
+    ctx.add_init_script(STEALTH_JS)
+    return ctx.new_page()
+
+
+def scrape_company(page, base: str, company: str, max_pages: int = 20,
+                   location: str = '', strict_company: bool = False, country: str = '',
+                   log=None) -> tuple[list[dict], bool]:
+    """
+    Every Indeed listing for one company across all locations, using an existing
+    page. Returns (jobs, blocked). Importable so both the CLI and the D1
+    orchestrator (scripts/indeed-to-d1.py) drive one warmed browser.
+    """
+    logw = (log or sys.stderr).write
+    want = norm(company)
+    jobs_out: list[dict] = []
+    seen: set[str] = set()
+    blocked = False
+    for i in range(max_pages):
+        url = search_url(base, company, location, i * 10)
+        try:
+            page.goto(url, timeout=60000, wait_until='domcontentloaded')
+        except Exception as e:
+            logw(f'    page {i+1}: navigation error: {repr(e)[:100]}\n')
+            break
+        page.wait_for_timeout(2800)
+        if is_blocked(page):
+            shot = f'indeed_blocked_{norm(company) or "x"}_p{i+1}.png'
+            try:
+                page.screenshot(path=shot)
+            except Exception:
+                pass
+            logw(f'    page {i+1}: BLOCKED (DataDome wall). Screenshot {shot}\n')
+            blocked = True
+            break
+        cards = parse_cards(page, base)
+        if not cards:
+            break
+        added = 0
+        for j in cards:
+            key = j['job_id'] or (norm(j['title']) + '|' + norm(j['location']))
+            if key in seen:
+                continue
+            if strict_company and j['company'] and norm(j['company']) != want and want not in norm(j['company']):
+                continue
+            seen.add(key)
+            j['country'] = country
+            jobs_out.append(j)
+            added += 1
+        if added == 0:
+            break
+        time.sleep(1.5)
+    return jobs_out, blocked
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description="Scrape every Indeed listing for a company across all its locations.",
@@ -229,73 +302,15 @@ def main() -> int:
     if not base:
         sys.exit(f'Unknown --country "{args.country}". Options: {", ".join(COUNTRIES)}')
 
-    want = norm(args.company)
     all_jobs: list[dict] = []
-    seen: set[str] = set()
-
-    launch_kw = {'headless': not args.headful, 'args': [
-        '--no-sandbox', '--disable-blink-features=AutomationControlled', '--disable-dev-shm-usage',
-    ]}
-    if args.proxy:
-        launch_kw['proxy'] = {'server': args.proxy}
-    exe = chromium_executable()
-    if exe:
-        launch_kw['executable_path'] = exe
-
+    blocked_once = False
     with sync_playwright() as p:
-        browser = p.chromium.launch(**launch_kw)
-        ctx = browser.new_context(
-            user_agent=UA, locale='en-AU', viewport={'width': 1360, 'height': 940},
-            timezone_id='Australia/Perth',
+        browser = launch_browser(p, headful=args.headful, proxy=args.proxy)
+        page = new_stealth_page(browser)
+        all_jobs, blocked_once = scrape_company(
+            page, base, args.company, max_pages=args.max_pages, location=args.location,
+            strict_company=args.strict_company, country=args.country,
         )
-        ctx.add_init_script(STEALTH_JS)
-        page = ctx.new_page()
-
-        blocked_once = False
-        for i in range(args.max_pages):
-            url = search_url(base, args.company, args.location, i * 10)
-            try:
-                page.goto(url, timeout=60000, wait_until='domcontentloaded')
-            except Exception as e:
-                sys.stderr.write(f'  page {i+1}: navigation error: {repr(e)[:120]}\n')
-                break
-            page.wait_for_timeout(2800)
-
-            if is_blocked(page):
-                shot = f'indeed_blocked_p{i+1}.png'
-                try:
-                    page.screenshot(path=shot)
-                except Exception:
-                    pass
-                sys.stderr.write(
-                    f'  page {i+1}: BLOCKED by Indeed (DataDome/verification wall). '
-                    f'Screenshot: {shot}\n'
-                    '  Run with --headful from a residential IP, or pass --proxy <residential>.\n'
-                )
-                blocked_once = True
-                break
-
-            jobs = parse_cards(page, base)
-            if not jobs:
-                sys.stderr.write(f'  page {i+1}: no result cards — end of results (or markup changed).\n')
-                break
-
-            added = 0
-            for j in jobs:
-                key = j['job_id'] or (norm(j['title']) + '|' + norm(j['location']))
-                if key in seen:
-                    continue
-                if args.strict_company and j['company'] and norm(j['company']) != want and want not in norm(j['company']):
-                    continue
-                seen.add(key)
-                j['country'] = args.country
-                all_jobs.append(j)
-                added += 1
-            sys.stderr.write(f'  page {i+1}: +{added} ({len(all_jobs)} total)\n')
-            if added == 0:
-                break
-            time.sleep(1.5)  # be polite between pages
-
         browser.close()
 
     if not all_jobs:
