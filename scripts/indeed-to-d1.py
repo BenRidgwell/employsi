@@ -124,7 +124,10 @@ def d1(sql: str, params: list):
 
 
 def existing_titles(company_id: str) -> set:
-    r = d1('SELECT DISTINCT title FROM jobs WHERE company_id = ?', [company_id])
+    # Only OTHER sources — so an Indeed job that duplicates an Adzuna/SEEK/etc.
+    # role is counted once, but Indeed's own previously-archived jobs re-upsert
+    # and refresh their last_seen (keeping still-live roles "current").
+    r = d1("SELECT DISTINCT title FROM jobs WHERE company_id = ? AND source != 'indeed'", [company_id])
     return {norm(str(x.get('title') or '')) for x in (r[0]['results'] if r else [])}
 
 

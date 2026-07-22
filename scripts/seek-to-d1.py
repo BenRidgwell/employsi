@@ -174,7 +174,11 @@ def d1(sql: str, params: list):
 
 
 def existing_titles(company_id: str) -> set:
-    r = d1('SELECT DISTINCT title FROM jobs WHERE company_id = ?', [company_id])
+    # Only OTHER sources — so a SEEK job that duplicates an Adzuna/Muse/etc. role
+    # is still counted once, but SEEK's own previously-archived jobs are NOT
+    # excluded, so re-seeing them re-upserts and refreshes their last_seen
+    # (keeping still-live roles "current" instead of ageing out).
+    r = d1("SELECT DISTINCT title FROM jobs WHERE company_id = ? AND source != 'seek'", [company_id])
     return {norm(str(x.get('title') or '')) for x in (r[0]['results'] if r else [])}
 
 
