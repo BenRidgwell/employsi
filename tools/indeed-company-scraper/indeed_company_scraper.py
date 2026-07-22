@@ -46,6 +46,7 @@ import csv
 import glob
 import json
 import os
+import random
 import re
 import sys
 import time
@@ -221,22 +222,51 @@ def launch_browser(p, headful: bool = False, proxy: str | None = None):
     return p.chromium.launch(**kw)
 
 
-def new_stealth_page(browser, locale: str = 'en-AU', tz: str = 'Australia/Perth'):
+CTX_KW = dict(user_agent=UA, locale='en-AU', viewport={'width': 1360, 'height': 940},
+              timezone_id='Australia/Perth')
+
+
+def new_stealth_page(browser):
     """A fresh page in a stealth-tuned context — reuse one across companies."""
-    ctx = browser.new_context(
-        user_agent=UA, locale=locale, viewport={'width': 1360, 'height': 940}, timezone_id=tz,
-    )
+    ctx = browser.new_context(**CTX_KW)
     ctx.add_init_script(STEALTH_JS)
     return ctx.new_page()
 
 
+def open_session(p, headful: bool = False, proxy: str | None = None, profile: str | None = None):
+    """
+    Open a browsing session. Returns (closeable, page); call closeable.close()
+    to tear it down. With `profile` set, uses a PERSISTENT context stored in that
+    directory — cookies (incl. a solved DataDome challenge) survive across runs,
+    so a session you clear once with --headful stays trusted on later scheduled
+    runs. Without it, a fresh ephemeral browser each time.
+    """
+    exe = chromium_executable()
+    if profile:
+        kw = dict(user_data_dir=profile, headless=not headful, args=LAUNCH_ARGS, **CTX_KW)
+        if proxy:
+            kw['proxy'] = {'server': proxy}
+        if exe:
+            kw['executable_path'] = exe
+        ctx = p.chromium.launch_persistent_context(**kw)
+        ctx.add_init_script(STEALTH_JS)
+        page = ctx.pages[0] if ctx.pages else ctx.new_page()
+        return ctx, page
+    browser = launch_browser(p, headful=headful, proxy=proxy)
+    return browser, new_stealth_page(browser)
+
+
 def scrape_company(page, base: str, company: str, max_pages: int = 20,
                    location: str = '', strict_company: bool = False, country: str = '',
-                   log=None) -> tuple[list[dict], bool]:
+                   page_delay: tuple = (2.0, 6.0), log=None) -> tuple[list[dict], bool]:
     """
     Every Indeed listing for one company across all locations, using an existing
     page. Returns (jobs, blocked). Importable so both the CLI and the D1
     orchestrator (scripts/indeed-to-d1.py) drive one warmed browser.
+
+    `page_delay` is a (min, max) seconds range; the wait between result pages is
+    randomised within it (plus a randomised settle after each load) so the
+    request pattern doesn't read as a fixed-interval bot.
     """
     logw = (log or sys.stderr).write
     want = norm(company)
@@ -250,7 +280,7 @@ def scrape_company(page, base: str, company: str, max_pages: int = 20,
         except Exception as e:
             logw(f'    page {i+1}: navigation error: {repr(e)[:100]}\n')
             break
-        page.wait_for_timeout(2800)
+        page.wait_for_timeout(int(random.uniform(2200, 4500)))  # randomised settle
         if is_blocked(page):
             shot = f'indeed_blocked_{norm(company) or "x"}_p{i+1}.png'
             try:
@@ -276,7 +306,7 @@ def scrape_company(page, base: str, company: str, max_pages: int = 20,
             added += 1
         if added == 0:
             break
-        time.sleep(1.5)
+        time.sleep(random.uniform(*page_delay))  # jittered gap between pages
     return jobs_out, blocked
 
 
@@ -292,6 +322,9 @@ def main() -> int:
     ap.add_argument('--max-pages', type=int, default=20, help='Max result pages (15 jobs each).')
     ap.add_argument('--headful', action='store_true', help='Show the browser (clear a wall by hand).')
     ap.add_argument('--proxy', default=None, help='Proxy server, e.g. http://user:pass@host:port (use a residential proxy if blocked).')
+    ap.add_argument('--profile', default=None, help='Persistent browser-profile dir; cookies (a solved wall) survive across runs.')
+    ap.add_argument('--page-min', type=float, default=2.0, help='Min seconds between result pages (jittered).')
+    ap.add_argument('--page-max', type=float, default=6.0, help='Max seconds between result pages (jittered).')
     ap.add_argument('--strict-company', action='store_true',
                     help='Keep only cards whose company name matches (drops recruiter noise).')
     ap.add_argument('--out', default=None, help='CSV output path.')
@@ -305,13 +338,13 @@ def main() -> int:
     all_jobs: list[dict] = []
     blocked_once = False
     with sync_playwright() as p:
-        browser = launch_browser(p, headful=args.headful, proxy=args.proxy)
-        page = new_stealth_page(browser)
+        session, page = open_session(p, headful=args.headful, proxy=args.proxy, profile=args.profile)
         all_jobs, blocked_once = scrape_company(
             page, base, args.company, max_pages=args.max_pages, location=args.location,
             strict_company=args.strict_company, country=args.country,
+            page_delay=(args.page_min, args.page_max),
         )
-        browser.close()
+        session.close()
 
     if not all_jobs:
         sys.stderr.write('\nNo listings collected.'
