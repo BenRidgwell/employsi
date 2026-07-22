@@ -73,10 +73,26 @@ Regenerate the advertiser id map with `python scripts/gen-seek-advertisers.py`
 
 ---
 
+# Indeed company feed (`tools/indeed-company-scraper` + `scripts/indeed-to-d1.py`)
+
+Indeed sits behind **DataDome**, which 403-blocks datacenter/CI/Workers IPs, so
+it can't run from the cron worker *or* a GitHub Action. Instead the Indeed feed
+runs from a **residential machine on a schedule** (cron/launchd/Task Scheduler):
+[`scripts/indeed-to-d1.py`](../../scripts/indeed-to-d1.py) drives the
+[`tools/indeed-company-scraper`](../../tools/indeed-company-scraper) browser
+across the company roster (each company's board, all locations), maps skills for
+parity, drops roles already archived for that company by another source, and
+upserts to D1 (`source = indeed`) with the same key + upsert as everything else.
+See that tool's README for setup + scheduling. It's the only feed whose archive
+step runs off-repo, because DataDome leaves no reliable server-side path.
+
+---
+
 # Historical job archive (Cloudflare D1)
 
-Every listing pulled from **Adzuna, The Muse, Jooble and SEEK** — by both the
-daily `jobs-cron` worker and the app's live per-company fetch (`openRolesFn`) —
+Every listing pulled from **Adzuna, The Muse, Jooble, SEEK and Indeed** — the
+first four by the daily `jobs-cron` worker / GitHub Action and the app's live
+per-company fetch (`openRolesFn`), Indeed from a scheduled residential run —
 is appended to a D1 (SQLite) database, deduped by a stable
 `source|title|company|location` key, with `first_seen` / `last_seen` /
 `seen_count` so listings accumulate into a queryable history rather than being
