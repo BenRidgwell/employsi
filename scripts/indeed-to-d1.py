@@ -20,7 +20,7 @@ First time on a fresh machine:
     pip install playwright && playwright install chromium
 """
 from __future__ import annotations
-import json, os, re, subprocess, sys, time, datetime
+import json, os, random, re, subprocess, sys, time, datetime
 
 # Make the Indeed scraper importable.
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -52,8 +52,14 @@ LIMIT = int(_opt('--limit', 10**9))
 MAX_PAGES = int(_opt('--max-pages', 20))
 HEADFUL = '--headful' in args
 PROXY = _opt('--proxy', None)
+PROFILE = _opt('--profile', None)          # persistent browser dir (cookies survive)
 STRICT = '--strict-company' in args
 NO_SKILLS = '--no-skills' in args
+# Jittered pacing so the traffic doesn't read as a fixed-interval bot.
+MIN_DELAY = float(_opt('--min-delay', 8))   # seconds between companies (min)
+MAX_DELAY = float(_opt('--max-delay', 25))  # seconds between companies (max)
+PAGE_MIN = float(_opt('--page-min', 2))     # seconds between result pages (min)
+PAGE_MAX = float(_opt('--page-max', 6))     # seconds between result pages (max)
 
 if not TOKEN:
     sys.exit('CLOUDFLARE_API_TOKEN is required (needs D1 edit).')
@@ -178,13 +184,17 @@ def main() -> int:
     total_fetch = total_new = blocked = done = 0
     consecutive_blocks = 0
     with sync_playwright() as p:
-        browser = ind.launch_browser(p, headful=HEADFUL, proxy=PROXY)
-        page = ind.new_stealth_page(browser)
+        session, page = ind.open_session(p, headful=HEADFUL, proxy=PROXY, profile=PROFILE)
+        first = True
         for cid, name in companies:
             if done >= LIMIT:
                 break
+            if not first:
+                time.sleep(random.uniform(MIN_DELAY, MAX_DELAY))  # jittered gap between companies
+            first = False
             jobs, was_blocked = ind.scrape_company(
-                page, base, name, max_pages=MAX_PAGES, strict_company=STRICT, country=COUNTRY)
+                page, base, name, max_pages=MAX_PAGES, strict_company=STRICT, country=COUNTRY,
+                page_delay=(PAGE_MIN, PAGE_MAX))
             if was_blocked:
                 blocked += 1
                 consecutive_blocks += 1
@@ -207,8 +217,7 @@ def main() -> int:
             sys.stderr.write(f'  {cid:16} {len(jobs):3} indeed · {written:3} new '
                              f'({len(jobs) - len(fresh)} already archived)\n')
             done += 1
-            time.sleep(2)  # be polite between companies
-        browser.close()
+        session.close()
 
     sys.stderr.write(f'\nDone. {total_fetch} Indeed listings fetched, {total_new} new rows '
                      f'archived, {blocked} companies blocked.\n')

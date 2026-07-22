@@ -126,26 +126,61 @@ It stops itself after 3 consecutive DataDome blocks (the IP is being throttled)
 and exits non-zero if >50% of companies were blocked, so a scheduled run fails
 loudly rather than silently archiving nothing.
 
+### Avoiding throttling (DataDome)
+
+Indeed blocks on IP reputation + fingerprint. Four levers, most effective first:
+
+1. **Residential / rotating proxy** — the biggest lever. `--proxy
+   http://user:pass@host:port` routes through a trusted home IP (rotating
+   providers give a fresh one per session). This is what keeps you unblocked at
+   real volume.
+2. **Persistent profile** — `--profile <dir>` stores cookies between runs, so a
+   DataDome challenge you clear **once** (run with `--headful --profile ~/.indeed-profile`
+   and solve it) stays trusted on later scheduled runs:
+   ```bash
+   python scripts/indeed-to-d1.py --only bhp --headful --profile ~/.indeed-profile   # solve once
+   python scripts/indeed-to-d1.py --profile ~/.indeed-profile                        # reuse thereafter
+   ```
+3. **Jittered pacing** (on by default) — randomised gaps: `--min-delay/--max-delay`
+   seconds between companies (default 8–25) and `--page-min/--page-max` between
+   result pages (default 2–6). Widen them to look more human:
+   `--min-delay 20 --max-delay 60`.
+4. **Batch across days** — spread the 205 so each night is light (see the crontab
+   set below).
+
 ### Schedule it
 
 Use the wrapper [`scripts/indeed-to-d1.sh`](../../scripts/indeed-to-d1.sh) (sets
-the working dir, loads `.env.indeed`, logs to `~/indeed-archive.log`).
+the working dir, loads `.env.indeed`, logs to `~/indeed-archive.log`). All flags
+pass straight through.
 
-**macOS / Linux — cron** (`crontab -e`):
+**macOS / Linux — cron** (`crontab -e`), a **day-split** set so each 6am run is
+~30–70 companies through a warmed persistent profile (swap `$HOME/globe-gazer-hr`
+for your clone path):
 ```cron
-# 6am daily, your key companies
-0 6 * * * /path/to/repo/scripts/indeed-to-d1.sh --only bhp,fmg,wes,woodside
+# Resources (50) — Mon
+0 6 * * 1 $HOME/globe-gazer-hr/scripts/indeed-to-d1.sh --profile $HOME/.indeed-profile --only alk,aow,asb,beach,bhp,bmn,boe,ccv,chevron,cmm,cvn,cxo,deg,del,dyl,fmg,gmd,gor,hgo,igo,ilu,jellinbah,jms,ltr,mah,mgt,min,mmi,mnd,nhc,nst,nwh,pdn,pls,pru,rio,rms,rrl,s32,sfr,sgq,shell,smr,sto,stx,sw1,swm,wds,wes,wgx
+# Sydney (69) — Tue
+0 6 * * 2 $HOME/globe-gazer-hr/scripts/indeed-to-d1.sh --profile $HOME/.indeed-profile --only sydney-cba,sydney-mqg,sydney-wbc,sydney-gmg,sydney-wow,sydney-scg,sydney-qan,sydney-bxb,sydney-shl,sydney-coh,sydney-asx,sydney-wtc,sydney-sgp,sydney-dxs,sydney-ald,sydney-agl,sydney-all,sydney-amp,sydney-apa,sydney-ask,sydney-aub,sydney-bga,sydney-brg,sydney-bsl,sydney-cgf,sydney-chc,sydney-cip,sydney-clw,sydney-cqr,sydney-dow,sydney-dro,sydney-edv,sydney-eos,sydney-evn,sydney-evt,sydney-gpt,sydney-hdn,sydney-hub,sydney-hvn,sydney-iag,sydney-llc,sydney-mff,sydney-mfg,sydney-mgr,sydney-mts,sydney-mxt,sydney-nhf,sydney-nic,sydney-org,sydney-pni,sydney-ppt,sydney-qbe,sydney-qub,sydney-rdx,sydney-rgn,sydney-rhc,sydney-rwc,sydney-sdf,sydney-sgh,sydney-sgm,sydney-sol,sydney-tpg,sydney-vnt,sydney-wam,sydney-whc,sydney-wle,sydney-wor,sydney-yal,sydney-zip
+# Melbourne (42) — Wed
+0 6 * * 3 $HOME/globe-gazer-hr/scripts/indeed-to-d1.sh --profile $HOME/.indeed-profile --only melbourne-csl,melbourne-nab,melbourne-anz,melbourne-tls,melbourne-col,melbourne-tcl,melbourne-rea,melbourne-cpu,melbourne-vcx,melbourne-sek,melbourne-car,melbourne-ori,melbourne-hsn,melbourne-4dx,melbourne-afi,melbourne-alx,melbourne-amc,melbourne-ann,melbourne-arb,melbourne-ben,melbourne-cwy,melbourne-dnl,melbourne-gdg,melbourne-ifl,melbourne-jbh,melbourne-l1g,melbourne-lov,melbourne-lsf,melbourne-mpl,melbourne-msb,melbourne-ora,melbourne-pme,melbourne-pmv,melbourne-pxa,melbourne-reg,melbourne-reh,melbourne-sig,melbourne-tah,melbourne-tlc,melbourne-tlx,melbourne-twe,melbourne-vea
+# Perth (14) + Brisbane (18) — Thu
+0 6 * * 4 $HOME/globe-gazer-hr/scripts/indeed-to-d1.sh --profile $HOME/.indeed-profile --only perth-bgl,perth-bwp,perth-cyl,perth-drr,perth-emr,perth-ggp,perth-imd,perth-lyc,perth-obm,perth-pdi,perth-prn,perth-rsg,perth-vau,perth-waf,brisbane-sun,brisbane-nsr,brisbane-boq,brisbane-ctd,brisbane-flt,brisbane-sul,brisbane-alq,brisbane-smr,brisbane-crn,brisbane-sya,brisbane-dtl,brisbane-aqz,brisbane-ape,brisbane-azj,brisbane-dbi,brisbane-nxt,brisbane-tne,brisbane-vgn
+# Adelaide (12) — Fri
+0 6 * * 5 $HOME/globe-gazer-hr/scripts/indeed-to-d1.sh --profile $HOME/.indeed-profile --only adelaide-eld,adelaide-arg,adelaide-abc,adelaide-coe,adelaide-c79,adelaide-tea,adelaide-pro,adelaide-axe,adelaide-ar3,adelaide-age,adelaide-bgd,adelaide-cda
 ```
+(Solve the wall once first: `python scripts/indeed-to-d1.py --only bhp --headful
+--profile $HOME/.indeed-profile`.)
 
 **macOS — launchd** (survives sleep better than cron on a laptop): create
 `~/Library/LaunchAgents/com.employsi.indeed.plist` with `ProgramArguments`
-pointing at `scripts/indeed-to-d1.sh` and a `StartCalendarInterval` of `Hour 6`,
+pointing at `scripts/indeed-to-d1.sh` (+ its flags) and a `StartCalendarInterval`,
 then `launchctl load` it.
 
-**Windows — Task Scheduler**: create a daily task whose action runs
-`wsl /path/to/repo/scripts/indeed-to-d1.sh --only …` (via WSL), or `python.exe
-scripts\indeed-to-d1.py --only …` with `CLOUDFLARE_API_TOKEN` set in the task's
-environment.
+**Windows — Task Scheduler**: create a task whose action runs
+`wsl /path/to/repo/scripts/indeed-to-d1.sh --profile … --only …` (via WSL), or
+`python.exe scripts\indeed-to-d1.py --only …` with `CLOUDFLARE_API_TOKEN` set in
+the task's environment.
 
 Inspect what landed:
 ```bash
