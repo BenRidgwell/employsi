@@ -101,15 +101,24 @@ async function recordSnapshot(id: string, count: number): Promise<void> {
 // vacancies") when the agency currently has none, and null only if the feed
 // hasn't been populated yet (KV miss), so the card can fall through gracefully.
 async function fromWaGov(id: string): Promise<OpenRoles | null> {
+  return fromGovKv('wagov', id, 'WA Government');
+}
+
+// VIC and QLD government boards are also server-rendered no-browser feeds
+// scraped by the jobs-cron (see workers/jobs-cron/vicGov.ts / qldGov.ts) and
+// stored per agency under `vicgov:{id}` / `qldgov:{id}`, exactly like WA under
+// `wagov:{id}`. Same read path → same card treatment (open-roles, vacancy
+// graph, "where they're hiring") off the real government board.
+async function fromGovKv(prefix: string, id: string, label: string): Promise<OpenRoles | null> {
   const kv = await getKV();
   if (!kv) return null;
   try {
-    const raw = await kv.get(`wagov:${id}`);
+    const raw = await kv.get(`${prefix}:${id}`);
     if (!raw) return null;
     const data = JSON.parse(raw);
     const jobs: AdvertisedJob[] = Array.isArray(data?.jobs) ? data.jobs : [];
     const count = Number.isFinite(Number(data?.count)) ? Number(data.count) : jobs.length;
-    return { count, source: 'WA Government', jobs: jobs.slice(0, 60) };
+    return { count, source: label, jobs: jobs.slice(0, 60) };
   } catch {
     return null;
   }
@@ -400,6 +409,15 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
     if (data.id && data.id.startsWith('perth-gov-')) {
       out = await fromWaGov(data.id);
       if (out && out.count > 0 && data.id) await recordSnapshot(data.id, out.count);
+      cache.set(key, { at: Date.now(), data: out });
+      return out;
+    }
+    // 0a. VIC / QLD Government agencies serve from their own scraped board feeds
+    //     (careers.vic.gov.au / smartjobs.qld.gov.au), stored in KV like WA.
+    if (data.id && (data.id.startsWith('vic-gov-') || data.id.startsWith('qld-gov-'))) {
+      const vic = data.id.startsWith('vic-gov-');
+      out = await fromGovKv(vic ? 'vicgov' : 'qldgov', data.id, vic ? 'VIC Government' : 'QLD Government');
+      if (out && out.count > 0) await recordSnapshot(data.id, out.count);
       cache.set(key, { at: Date.now(), data: out });
       return out;
     }

@@ -7,6 +7,8 @@ import { CITY_ROSTERS } from './cityRosters';
 import { spreadCoords, rosterId } from './rosters';
 import { PERTH_GOV_IDS } from './perthGov';
 import { ADELAIDE_GOV_IDS } from './adelaideGov';
+import { MELBOURNE_GOV_IDS } from './melbourneGov';
+import { BRISBANE_GOV_IDS } from './brisbaneGov';
 import { PERTH_REAL_COORDS } from './perthRealCoords';
 
 export const PERTH_CENTER: [number, number] = [115.8552, -31.9542];
@@ -196,6 +198,24 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   const offset = existing.length;
   const pts = spreadCoords(view.center, offset + ADELAIDE_GOV_IDS.length);
   ADELAIDE_GOV_IDS.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
+}
+
+// Melbourne VIC government agencies: fan pins around the Melbourne centre.
+{
+  const view = CITY_VIEWS.melbourne;
+  const existing = (CITY_COMPANIES.melbourne ||= []);
+  const offset = existing.length;
+  const pts = spreadCoords(view.center, offset + MELBOURNE_GOV_IDS.length);
+  MELBOURNE_GOV_IDS.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
+}
+
+// Brisbane QLD government agencies: fan pins around the Brisbane centre.
+{
+  const view = CITY_VIEWS.brisbane;
+  const existing = (CITY_COMPANIES.brisbane ||= []);
+  const offset = existing.length;
+  const pts = spreadCoords(view.center, offset + BRISBANE_GOV_IDS.length);
+  BRISBANE_GOV_IDS.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
 }
 
 // Flat lookup of every company's coords across all cities. Where a company sits

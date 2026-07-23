@@ -191,3 +191,11 @@ COMPANIES.push(...PERTH_GOV_COMPANIES);
 // Adelaide SA government agencies (private / public-sector).
 import { ADELAIDE_GOV_COMPANIES } from './adelaideGov';
 COMPANIES.push(...ADELAIDE_GOV_COMPANIES);
+
+// Melbourne VIC government agencies (private / public-sector).
+import { MELBOURNE_GOV_COMPANIES } from './melbourneGov';
+COMPANIES.push(...MELBOURNE_GOV_COMPANIES);
+
+// Brisbane QLD government agencies (private / public-sector).
+import { BRISBANE_GOV_COMPANIES } from './brisbaneGov';
+COMPANIES.push(...BRISBANE_GOV_COMPANIES);

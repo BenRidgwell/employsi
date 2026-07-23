@@ -15,9 +15,11 @@
   ],
   "triggers": {
     // ":00 every 6 hours" advances the Adzuna/Muse/Jooble shard rotation (the
-    // 50-company roster refreshes about once a day). ":30 every 6 hours" runs
-    // the WA Government board scrape in its own invocation, so its ~40 page
-    // fetches get a clean subrequest budget separate from the shard's API calls.
-    "crons": ["0 */6 * * *", "30 */6 * * *"]
+    // 50-company roster refreshes about once a day). The government board scrapes
+    // each run in their own invocation so their paged fetches get a clean
+    // subrequest budget separate from the shard's API calls and each other:
+    // ":15" VIC (careers.vic.gov.au), ":30" WA (search.jobs.wa.gov.au),
+    // ":45" QLD (smartjobs.qld.gov.au).
+    "crons": ["0 */6 * * *", "15 */6 * * *", "30 */6 * * *", "45 */6 * * *"]
   }
 }
