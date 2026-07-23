@@ -403,6 +403,18 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
       cache.set(key, { at: Date.now(), data: out });
       return out;
     }
+    // 0b. SA Government agencies (ids `sa-gov-*`) serve from the scraped SA
+    //     public-sector board (iworkfor.sa.gov.au), archived in D1 under source
+    //     'sa-gov' — not Adzuna/Muse. currentFromArchive already returns that
+    //     company's current (recently re-seen) non-Adzuna/Muse listings deduped
+    //     by title, which for these ids is exactly the sa-gov rows.
+    if (data.id && data.id.startsWith('sa-gov-')) {
+      const extra = await currentFromArchive(data.id, []);
+      out = { count: extra.added, source: 'SA Government', jobs: extra.jobs };
+      if (out.count > 0) await recordSnapshot(data.id, out.count);
+      cache.set(key, { at: Date.now(), data: out });
+      return out;
+    }
     // 1. Direct employer ATS feed where we have a verified one.
     const ats = data.id ? AU_ATS[data.id] : undefined;
     if (ats) out = await fromAts(ats);

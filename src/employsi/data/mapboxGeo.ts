@@ -6,6 +6,7 @@
 import { CITY_ROSTERS } from './cityRosters';
 import { spreadCoords, rosterId } from './rosters';
 import { PERTH_GOV_IDS } from './perthGov';
+import { ADELAIDE_GOV_IDS } from './adelaideGov';
 import { PERTH_REAL_COORDS } from './perthRealCoords';
 
 export const PERTH_CENTER: [number, number] = [115.8552, -31.9542];
@@ -185,6 +186,16 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   const offset = existing.length;
   const pts = spreadCoords(view.center, offset + PERTH_GOV_IDS.length);
   PERTH_GOV_IDS.forEach((id, i) => existing.push({ id, coords: PERTH_REAL_COORDS[id] ?? pts[offset + i] }));
+}
+
+// Adelaide SA government agencies: fan their office pins around the Adelaide
+// centre, offset past everything already placed there.
+{
+  const view = CITY_VIEWS.adelaide;
+  const existing = (CITY_COMPANIES.adelaide ||= []);
+  const offset = existing.length;
+  const pts = spreadCoords(view.center, offset + ADELAIDE_GOV_IDS.length);
+  ADELAIDE_GOV_IDS.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
 }
 
 // Flat lookup of every company's coords across all cities. Where a company sits

@@ -187,3 +187,7 @@ COMPANIES.push(...ROSTER_COMPANIES);
 // Perth WA government agencies (private / public-sector).
 import { PERTH_GOV_COMPANIES } from './perthGov';
 COMPANIES.push(...PERTH_GOV_COMPANIES);
+
+// Adelaide SA government agencies (private / public-sector).
+import { ADELAIDE_GOV_COMPANIES } from './adelaideGov';
+COMPANIES.push(...ADELAIDE_GOV_COMPANIES);
