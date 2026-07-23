@@ -271,9 +271,15 @@ export function CompanyPanel() {
   // fall back to the illustrative figures — the user should see the live
   // vacancies view first, not the old view flashing before it refreshes.
   const rolesChecking = liveEnabled && !rolesSettled && !liveRoles;
-  // WA government agencies (private, scraped WA-gov feed). Their card drops the
-  // vacancy-history section so it mirrors the ordinary public-company layout.
-  const isGov = !!panel && panel.companyId.startsWith('perth-gov-');
+  // Government agencies (private, scraped public-sector feeds — WA via the WA
+  // jobs board, SA via iworkfor.sa.gov.au). Their card shows the live vacancy
+  // graph off the archived board data instead of the private-sector layout.
+  const isGov =
+    !!panel &&
+    (panel.companyId.startsWith('perth-gov-') ||
+      panel.companyId.startsWith('sa-gov-') ||
+      panel.companyId.startsWith('vic-gov-') ||
+      panel.companyId.startsWith('qld-gov-'));
   // Real PSC workforce record for a gov agency (present only for agencies the
   // PSC reports). When absent, the agency's headcount is genuinely unknown and
   // the workforce chart / headcount stat are suppressed rather than faked.

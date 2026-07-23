@@ -20,10 +20,14 @@ import { JOOBLE_HUB_TARGETS, type JoobleHubTarget } from '../../src/employsi/dat
 import { skillsForText } from '../../src/employsi/data/skillsTaxonomy';
 import { archiveJobs, type ArchiveRow } from '../../src/employsi/lib/jobArchive';
 import { fetchWaGovPages, type StoredWaJob } from './waGov';
+import { fetchVicGovPages, type StoredVicJob } from './vicGov';
+import { fetchQldGovPages, type StoredQldJob } from './qldGov';
 import { fetchMcfJobs } from './mycareersfuture';
 import { fetchSeekCompanyJobs } from './seek';
 import { SEEK_ADVERTISERS } from '../../src/employsi/data/seekAdvertisers';
 import { PERTH_GOV_IDS } from '../../src/employsi/data/perthGov';
+import { MELBOURNE_GOV_IDS } from '../../src/employsi/data/melbourneGov';
+import { BRISBANE_GOV_IDS } from '../../src/employsi/data/brisbaneGov';
 
 interface Env {
   OPEN_ROLES_HISTORY: KVNamespace;
@@ -619,6 +623,123 @@ async function processWaGov(env: Env): Promise<{ total: number; startPage: numbe
   return { total: res.total, startPage: start, pagesOk: res.pagesOk, parsed: res.parsed, agencies: withRoles, nextCursor: next };
 }
 
+// ── VIC & QLD Government jobs feeds ────────────────────────────────────────
+// Both boards are server-rendered no-browser feeds (see vicGov.ts / qldGov.ts),
+// walked in a paged window per run that accumulates full per-agency coverage
+// across the day — the same shape as WA, minus WA's per-agency facet (neither
+// board exposes one), so a count is the merged live-listing total per agency.
+const VICGOV_WINDOW = 20; // pages fetched per run beyond page 1
+const QLDGOV_WINDOW = 20; // result pages fetched per run
+const GOV_MAX_AGE_DAYS = 4;
+
+function govJobToArchive(
+  j: { t: string; loc: string; cat: string; url: string; created: string; salN?: number },
+  source: string,
+  hub: string,
+  agencyId: string,
+  skills: string[],
+): ArchiveRow {
+  return {
+    source,
+    title: j.t,
+    company: null,
+    companyId: agencyId,
+    hub,
+    location: j.loc,
+    category: j.cat,
+    salary: j.salN ? `$${Math.round(j.salN / 1000)}k` : null,
+    url: j.url,
+    posted: j.created || null,
+    skills,
+  };
+}
+
+// Merge a run's freshly-scraped listings for one agency with what's stored:
+// keyed by URL (falling back to title when a board omits the URL), refreshing
+// last-seen, adding new, ageing out anything not re-seen within GOV_MAX_AGE_DAYS.
+function mergeGovJobs<T extends { url?: string; t?: string; seen?: string }>(prev: T[], fresh: T[], day: string): T[] {
+  const byKey = new Map<string, T>();
+  const keyOf = (j: T) => (j.url && j.url.length ? j.url : `t:${j.t || ''}`);
+  for (const j of prev) {
+    if (j.seen && daysBetween(j.seen, day) > GOV_MAX_AGE_DAYS) continue;
+    byKey.set(keyOf(j), j);
+  }
+  for (const j of fresh) byKey.set(keyOf(j), { ...j, seen: day });
+  return [...byKey.values()].slice(0, 80);
+}
+
+async function processVicGov(env: Env): Promise<{ total: number; startPage: number; pagesOk: number; parsed: number; agencies: number; nextCursor: number }> {
+  const day = today();
+  const cursorRaw = await env.OPEN_ROLES_HISTORY.get('vicgov:cursor');
+  const start = Math.max(2, Number(cursorRaw) || 2);
+  const res = await fetchVicGovPages(day, start, VICGOV_WINDOW);
+  if (!res) return { total: 0, startPage: start, pagesOk: 0, parsed: 0, agencies: 0, nextCursor: start };
+
+  let withRoles = 0;
+  for (const id of MELBOURNE_GOV_IDS) {
+    const fresh = res.byAgency[id] || [];
+    let prevJobs: StoredVicJob[] = [];
+    try {
+      const prevRaw = await env.OPEN_ROLES_HISTORY.get(`vicgov:${id}`);
+      const prev = prevRaw ? JSON.parse(prevRaw) : null;
+      if (Array.isArray(prev?.jobs)) prevJobs = prev.jobs;
+    } catch {
+      /* start fresh */
+    }
+    const jobs = mergeGovJobs(prevJobs, fresh, day);
+    const count = jobs.length;
+    await env.OPEN_ROLES_HISTORY.put(`vicgov:${id}`, JSON.stringify({ updated: day, count, jobs }));
+    if (count > 0) {
+      await appendCount(env, id, count);
+      withRoles++;
+    }
+    if (fresh.length) {
+      await archiveJobs(env.JOBS_ARCHIVE, fresh.map((j) => govJobToArchive(j, 'vic-gov', 'melbourne', id, j.skills)), day);
+    }
+  }
+
+  let next = start + VICGOV_WINDOW;
+  if (next > res.lastPage) next = 2;
+  await env.OPEN_ROLES_HISTORY.put('vicgov:cursor', String(next));
+  return { total: res.total, startPage: start, pagesOk: res.pagesOk, parsed: res.parsed, agencies: withRoles, nextCursor: next };
+}
+
+async function processQldGov(env: Env): Promise<{ startOffset: number; pagesOk: number; parsed: number; agencies: number; nextCursor: number }> {
+  const day = today();
+  const cursorRaw = await env.OPEN_ROLES_HISTORY.get('qldgov:cursor');
+  const start = Math.max(0, Number(cursorRaw) || 0);
+  const res = await fetchQldGovPages(day, start, QLDGOV_WINDOW);
+  if (!res) return { startOffset: start, pagesOk: 0, parsed: 0, agencies: 0, nextCursor: start };
+
+  let withRoles = 0;
+  for (const id of BRISBANE_GOV_IDS) {
+    const fresh = res.byAgency[id] || [];
+    let prevJobs: StoredQldJob[] = [];
+    try {
+      const prevRaw = await env.OPEN_ROLES_HISTORY.get(`qldgov:${id}`);
+      const prev = prevRaw ? JSON.parse(prevRaw) : null;
+      if (Array.isArray(prev?.jobs)) prevJobs = prev.jobs;
+    } catch {
+      /* start fresh */
+    }
+    const jobs = mergeGovJobs(prevJobs, fresh, day);
+    const count = jobs.length;
+    await env.OPEN_ROLES_HISTORY.put(`qldgov:${id}`, JSON.stringify({ updated: day, count, jobs }));
+    if (count > 0) {
+      await appendCount(env, id, count);
+      withRoles++;
+    }
+    if (fresh.length) {
+      await archiveJobs(env.JOBS_ARCHIVE, fresh.map((j) => govJobToArchive(j, 'qld-gov', 'brisbane', id, j.skills)), day);
+    }
+  }
+
+  // Advance the offset window; wrap to the start of the board once fully walked.
+  let next = res.reachedEnd ? 0 : start + QLDGOV_WINDOW * 20;
+  await env.OPEN_ROLES_HISTORY.put('qldgov:cursor', String(next));
+  return { startOffset: start, pagesOk: res.pagesOk, parsed: res.parsed, agencies: withRoles, nextCursor: next };
+}
+
 export default {
   // Scheduled: the WA-gov scrape runs on its own cron minute (:30) so it gets a
   // clean subrequest budget for ~40 page fetches; every other tick advances the
@@ -626,6 +747,10 @@ export default {
   async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     if (event.cron && event.cron.startsWith('30 ')) {
       ctx.waitUntil(processWaGov(env).then(() => undefined));
+    } else if (event.cron && event.cron.startsWith('15 ')) {
+      ctx.waitUntil(processVicGov(env).then(() => undefined));
+    } else if (event.cron && event.cron.startsWith('45 ')) {
+      ctx.waitUntil(processQldGov(env).then(() => undefined));
     } else {
       ctx.waitUntil(processShard(env).then(() => undefined));
     }
@@ -653,6 +778,34 @@ export default {
       }
       try {
         const out = await processWaGov(env);
+        return Response.json({ ok: true, ...out });
+      } catch (e) {
+        return Response.json(
+          { ok: false, error: (e as Error)?.message || String(e), stack: (e as Error)?.stack || '' },
+          { status: 500 },
+        );
+      }
+    }
+    if (url.pathname === '/run-vicgov') {
+      if (url.searchParams.get('token') !== env.CRON_TOKEN) {
+        return new Response('forbidden', { status: 403 });
+      }
+      try {
+        const out = await processVicGov(env);
+        return Response.json({ ok: true, ...out });
+      } catch (e) {
+        return Response.json(
+          { ok: false, error: (e as Error)?.message || String(e), stack: (e as Error)?.stack || '' },
+          { status: 500 },
+        );
+      }
+    }
+    if (url.pathname === '/run-qldgov') {
+      if (url.searchParams.get('token') !== env.CRON_TOKEN) {
+        return new Response('forbidden', { status: 403 });
+      }
+      try {
+        const out = await processQldGov(env);
         return Response.json({ ok: true, ...out });
       } catch (e) {
         return Response.json(
