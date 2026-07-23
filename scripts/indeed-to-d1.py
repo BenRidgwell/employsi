@@ -60,9 +60,15 @@ MIN_DELAY = float(_opt('--min-delay', 8))   # seconds between companies (min)
 MAX_DELAY = float(_opt('--max-delay', 25))  # seconds between companies (max)
 PAGE_MIN = float(_opt('--page-min', 2))     # seconds between result pages (min)
 PAGE_MAX = float(_opt('--page-max', 6))     # seconds between result pages (max)
+# --solve: clear the DataDome wall / check reachability only — no D1 write, so no
+# token needed. Pair with --headful to solve the human check by hand into a
+# --profile; run it again without --headful to confirm the cached profile gets
+# through (prints reachable/blocked per company).
+SOLVE = '--solve' in args
 
-if not TOKEN:
-    sys.exit('CLOUDFLARE_API_TOKEN is required (needs D1 edit).')
+if not SOLVE and not TOKEN:
+    sys.exit('CLOUDFLARE_API_TOKEN is required (needs D1 edit). '
+             '(Not needed with --solve, which skips the D1 write.)')
 
 
 # ── dedup key, identical to src/employsi/lib/jobArchive.ts ────────────────────
@@ -178,8 +184,13 @@ def main() -> int:
     if not base:
         sys.exit(f'Unknown --country "{COUNTRY}". Options: {", ".join(ind.COUNTRIES)}')
     companies = load_companies()
-    sys.stderr.write(f'Indeed -> D1: {len(companies)} companies on {COUNTRY}.indeed '
-                     f'({"HEADFUL" if HEADFUL else "headless"}).\n')
+    mode = 'SOLVE / reachability check — no D1 write' if SOLVE else 'Indeed -> D1'
+    sys.stderr.write(f'{mode}: {len(companies)} company(ies) on {COUNTRY}.indeed '
+                     f'({"HEADFUL" if HEADFUL else "headless"}'
+                     f'{", profile=" + PROFILE if PROFILE else ""}).\n')
+    if SOLVE and not HEADFUL:
+        sys.stderr.write('  (headless: verifying the cached profile gets through. '
+                         'Add --headful the first time to solve the wall by hand.)\n')
 
     total_fetch = total_new = blocked = done = 0
     consecutive_blocks = 0
@@ -205,11 +216,16 @@ def main() -> int:
                 done += 1
                 continue
             consecutive_blocks = 0
+            total_fetch += len(jobs)
+            if SOLVE:
+                # No D1 — just report we got through the wall.
+                sys.stderr.write(f'  {cid:16} {len(jobs):3} jobs · reachable ✓\n')
+                done += 1
+                continue
             if not jobs:
                 sys.stderr.write(f'  {cid:16} 0 jobs\n')
                 done += 1
                 continue
-            total_fetch += len(jobs)
             have = existing_titles(cid)
             fresh = [j for j in jobs if norm(j['title']) not in have]
             written = upsert(cid, fresh) if fresh else 0
@@ -218,6 +234,13 @@ def main() -> int:
                              f'({len(jobs) - len(fresh)} already archived)\n')
             done += 1
         session.close()
+
+    if SOLVE:
+        ok = done - blocked
+        sys.stderr.write(f'\n{"✓ Reachable" if ok and not blocked else ("Partially blocked" if ok else "✗ Blocked")}'
+                         f' — {ok} reachable, {blocked} blocked. '
+                         f'{"Cached to " + PROFILE if PROFILE else "Tip: add --profile <dir> to cache the solved session."}\n')
+        return 2 if (companies and blocked >= done) else 0
 
     sys.stderr.write(f'\nDone. {total_fetch} Indeed listings fetched, {total_new} new rows '
                      f'archived, {blocked} companies blocked.\n')

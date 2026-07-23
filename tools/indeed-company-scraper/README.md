@@ -135,11 +135,16 @@ Indeed blocks on IP reputation + fingerprint. Four levers, most effective first:
    providers give a fresh one per session). This is what keeps you unblocked at
    real volume.
 2. **Persistent profile** — `--profile <dir>` stores cookies between runs, so a
-   DataDome challenge you clear **once** (run with `--headful --profile ~/.indeed-profile`
-   and solve it) stays trusted on later scheduled runs:
+   DataDome challenge you clear **once** stays trusted on later scheduled runs.
+   Use `--solve` to clear/verify the wall **without a Cloudflare token** (it skips
+   the D1 write):
    ```bash
-   python scripts/indeed-to-d1.py --only bhp --headful --profile ~/.indeed-profile   # solve once
-   python scripts/indeed-to-d1.py --profile ~/.indeed-profile                        # reuse thereafter
+   # 1) solve the human check by hand, once, into a profile (visible browser, no token):
+   python scripts/indeed-to-d1.py --only bhp --solve --headful --profile ~/.indeed-profile
+   # 2) confirm the cached profile now gets through headless (still no token):
+   python scripts/indeed-to-d1.py --only bhp --solve --profile ~/.indeed-profile
+   # 3) real archive runs reuse that profile (these DO need the D1 token):
+   python scripts/indeed-to-d1.py --profile ~/.indeed-profile --only …
    ```
 3. **Jittered pacing** (on by default) — randomised gaps: `--min-delay/--max-delay`
    seconds between companies (default 8–25) and `--page-min/--page-max` between
