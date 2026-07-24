@@ -317,6 +317,7 @@ const ARCHIVE_SOURCE_LABEL: Record<string, string> = {
   mycareersfuture: 'MyCareersFuture',
   indeed: 'Indeed',
   zhaopin: 'Zhaopin',
+  'aps-gov': 'Australian Public Service',
 };
 
 // The current (still-advertised) listings for a company held in the D1 archive
@@ -431,6 +432,17 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
     if (data.id && data.id.startsWith('sa-gov-')) {
       const extra = await currentFromArchive(data.id, []);
       out = { count: extra.added, source: 'SA Government', jobs: extra.jobs };
+      if (out.count > 0) await recordSnapshot(data.id, out.count);
+      cache.set(key, { at: Date.now(), data: out });
+      return out;
+    }
+    // 0c. APS federal agencies (ids `aps-*`) serve from the scraped APS board
+    //     (apsjobs.gov.au), archived in D1 under source 'aps-gov'. Same archive
+    //     path as SA; the aps-* prefix keeps them disjoint from state gov ids so
+    //     a federal agency is never double-counted with a state one.
+    if (data.id && data.id.startsWith('aps-')) {
+      const extra = await currentFromArchive(data.id, []);
+      out = { count: extra.added, source: 'Australian Public Service', jobs: extra.jobs };
       if (out.count > 0) await recordSnapshot(data.id, out.count);
       cache.set(key, { at: Date.now(), data: out });
       return out;
