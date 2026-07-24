@@ -537,6 +537,10 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['600809', 'Shanxi Xinghuacun Fen Wine', CON, 'SSE', 'FenWine'],
       ['603288', 'Foshan Haitian Flavouring', CON, 'SSE', 'Haitian'],
       ['600585', 'Anhui Conch Cement', IND, 'SSE', 'Conch'],
+      // Major Shanghai private / tech employers (prime Zhaopin hirers).
+      ['600104', 'SAIC Motor', IND, 'SSE', 'SAIC'],
+      ['TCOM', 'Trip.com Group', TMT, 'NASDAQ', 'Trip.com'],
+      ['09626', 'Bilibili', TMT, 'HKEX', 'Bilibili'],
     ],
   },
   // Shenzhen — SZSE blue chips (brand pill + numeric SZSE listing code).
@@ -553,6 +557,11 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['000001', 'Ping An Bank', FIN, 'SZSE', 'PingAnBank'],
       ['002714', 'Muyuan Foods', CON, 'SZSE', 'Muyuan'],
       ['300059', 'East Money Information', FIN, 'SZSE', 'EastMoney'],
+      // Major Shenzhen private / tech employers (prime Zhaopin hirers).
+      ['HUAWEI', 'Huawei', TMT, 'Private', 'Huawei'],
+      ['00700', 'Tencent', TMT, 'HKEX', 'Tencent'],
+      ['DJI', 'DJI', TMT, 'Private', 'DJI'],
+      ['000063', 'ZTE', TMT, 'SZSE', 'ZTE'],
     ],
   },
   dubai: {
@@ -1011,6 +1020,11 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ['601398', 'Industrial and Commercial Bank of China', FIN, 'SSE', 'ICBC'],
       ['601288', 'Agricultural Bank of China', FIN, 'SSE', 'ABC'],
       ['09888', 'Baidu', TMT, 'HKEX', 'Baidu'],
+      // Major Beijing private / tech employers (prime Zhaopin hirers).
+      ['BYTEDANCE', 'ByteDance', TMT, 'Private', 'ByteDance'],
+      ['01024', 'Kuaishou', TMT, 'HKEX', 'Kuaishou'],
+      ['00992', 'Lenovo', TMT, 'HKEX', 'Lenovo'],
+      ['DIDI', 'DiDi', TMT, 'Private', 'DiDi'],
     ],
   },
 };
