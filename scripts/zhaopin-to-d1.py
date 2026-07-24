@@ -29,9 +29,14 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(ROOT, 'tools', 'zhaopin-company-scraper'))
 try:
     import zhaopin_company_scraper as zp  # noqa: E402
-    from playwright.sync_api import sync_playwright  # noqa: E402
 except ImportError as e:
-    sys.exit(f'Missing dependency ({e}). Run: pip3 install playwright && python3 -m playwright install chromium')
+    sys.exit(f'Missing dependency ({e}).')
+# Playwright only for the browser fallback; the Oxylabs path (OXYLABS_USERNAME)
+# runs without it.
+try:
+    from playwright.sync_api import sync_playwright  # noqa: E402
+except ImportError:
+    sync_playwright = None
 
 import urllib.request  # noqa: E402
 
@@ -183,6 +188,59 @@ def main() -> int:
     if not HEADFUL and not PROFILE:
         sys.stderr.write('  tip: first run with --headful --profile <dir> to clear Zhaopin\'s '
                          'security check by hand; the profile then reuses the solved session.\n')
+
+    # ── Oxylabs Web Scraper API path (no browser / no proxy) ──────────────────
+    # When OXYLABS_USERNAME is set we fetch Zhaopin's rendered search page through
+    # Oxylabs (China geo + JS render + anti-bot bypass) and parse the embedded
+    # __INITIAL_STATE__ job records — no Playwright, runs on any host.
+    if os.environ.get('OXYLABS_USERNAME'):
+        import oxylabs_client as oxy
+        from urllib.parse import quote
+        sys.stderr.write('  via Oxylabs Web Scraper API (geo=China) — no browser.\n')
+        total_fetch = total_new = empty = done = 0
+        for t in targets:
+            if done >= LIMIT:
+                break
+            jobs, seen = [], set()
+            for pg in range(1, MAX_PAGES + 1):
+                url = f"https://sou.zhaopin.com/?kw={quote(t['kw'])}&jl={t['cityId']}&p={pg}"
+                content, _ = oxy.fetch(url, geo='China', render=True)
+                if not content:
+                    break
+                new = 0
+                for j in zp.parse_search_html(content):
+                    k = (j['t'], j['loc'])
+                    if k in seen:
+                        continue
+                    seen.add(k)
+                    jobs.append(j)
+                    new += 1
+                if new == 0:
+                    break
+            total_fetch += len(jobs)
+            if SOLVE:
+                sys.stderr.write(f'  {t["id"]:22} {len(jobs):3} jobs · reachable ✓ ({t["kw"]})\n')
+            elif not jobs:
+                empty += 1
+                sys.stderr.write(f'  {t["id"]:22}   0 jobs ({t["kw"]})\n')
+            else:
+                have = existing_titles(t['id'])
+                fresh = [j for j in jobs if norm(j['t']) not in have]
+                written = upsert(t, fresh) if fresh else 0
+                total_new += written
+                sys.stderr.write(f'  {t["id"]:22} {len(jobs):3} zhaopin · {written:3} new '
+                                 f'({len(jobs) - len(fresh)} already archived)\n')
+            done += 1
+        if SOLVE:
+            sys.stderr.write(f'\n✓ {done} companies reachable via Oxylabs.\n')
+            return 0
+        sys.stderr.write(f'\nDone (Oxylabs). {total_fetch} listings fetched, {total_new} new rows '
+                         f'archived, {empty} companies with 0 jobs.\n')
+        return 0
+
+    if sync_playwright is None:
+        sys.exit('No browser: install Playwright, or set OXYLABS_USERNAME/OXYLABS_PASSWORD '
+                 'to use the Oxylabs Web Scraper API path.')
 
     # Optional proxy pool: pick an initial working proxy, rotate on repeated blocks.
     rotator = proxy = open_resilient = None

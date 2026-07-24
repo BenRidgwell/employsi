@@ -1,0 +1,46 @@
+# Daily Indeed → D1 archive (hosted, via the Oxylabs Web Scraper API).
+#
+# Indeed's DataDome blocks datacenter IPs, so instead of a browser this fetches
+# Indeed's rendered search HTML through the Oxylabs Web Scraper API (which
+# supplies the residential IP + DataDome bypass + JS rendering) and parses it —
+# no Playwright, so it runs on an ordinary GitHub runner. Verified end-to-end.
+#
+# Required repo secrets:
+#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
+#   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
+# Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# Exits non-zero (red X) if Indeed starts returning nothing. Use "Run workflow"
+# to verify before relying on the schedule.
+
+name: indeed-archive
+
+on:
+  schedule:
+    - cron: '0 20 * * *' # 20:00 UTC daily
+  workflow_dispatch: {}
+
+concurrency:
+  group: indeed-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Scrape Indeed → D1 (Oxylabs)
+        env:
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/indeed-to-d1.py --max-pages 3

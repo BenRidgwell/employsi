@@ -28,9 +28,14 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(ROOT, 'tools', 'indeed-company-scraper'))
 try:
     import indeed_company_scraper as ind  # noqa: E402
-    from playwright.sync_api import sync_playwright  # noqa: E402
 except ImportError as e:
-    sys.exit(f'Missing dependency ({e}). Run: pip install playwright && playwright install chromium')
+    sys.exit(f'Missing dependency ({e}).')
+# Playwright is only needed for the browser fallback; the Oxylabs path (env
+# OXYLABS_USERNAME) runs without it. Import lazily so this works either way.
+try:
+    from playwright.sync_api import sync_playwright  # noqa: E402
+except ImportError:
+    sync_playwright = None
 
 import urllib.request  # noqa: E402
 
@@ -195,6 +200,58 @@ def main() -> int:
     if SOLVE and not HEADFUL:
         sys.stderr.write('  (headless: verifying the cached profile gets through. '
                          'Add --headful the first time to solve the wall by hand.)\n')
+
+    # ── Oxylabs Web Scraper API path (no browser / no proxy) ──────────────────
+    # When OXYLABS_USERNAME is set we fetch Indeed's rendered search HTML through
+    # Oxylabs — which supplies the residential IP + DataDome bypass + JS render —
+    # and parse it, so there's no Playwright and this can run on any host.
+    if os.environ.get('OXYLABS_USERNAME'):
+        import oxylabs_client as oxy
+        geo = ind.GEO_FOR.get(COUNTRY)
+        sys.stderr.write(f'  via Oxylabs Web Scraper API (geo={geo}) — no browser.\n')
+        total_fetch = total_new = empty = done = 0
+        for cid, name in companies:
+            if done >= LIMIT:
+                break
+            jobs, seen = [], set()
+            for pg in range(MAX_PAGES):
+                content, _ = oxy.fetch(ind.search_url(base, name, '', pg * 10), geo=geo, render=True)
+                if not content:
+                    break
+                new = 0
+                for j in ind.parse_search_html(content, base):
+                    k = (norm(j['title']), norm(j.get('location', '')))
+                    if k in seen:
+                        continue
+                    seen.add(k)
+                    jobs.append(j)
+                    new += 1
+                if new == 0:  # page repeated / empty → end of results
+                    break
+            total_fetch += len(jobs)
+            if SOLVE:
+                sys.stderr.write(f'  {cid:16} {len(jobs):3} jobs · reachable ✓\n')
+            elif not jobs:
+                empty += 1
+                sys.stderr.write(f'  {cid:16} 0 jobs\n')
+            else:
+                have = existing_titles(cid)
+                fresh = [j for j in jobs if norm(j['title']) not in have]
+                written = upsert(cid, fresh) if fresh else 0
+                total_new += written
+                sys.stderr.write(f'  {cid:16} {len(jobs):3} indeed · {written:3} new '
+                                 f'({len(jobs) - len(fresh)} already archived)\n')
+            done += 1
+        if SOLVE:
+            sys.stderr.write(f'\n✓ {done} companies reachable via Oxylabs.\n')
+            return 0
+        sys.stderr.write(f'\nDone (Oxylabs). {total_fetch} listings fetched, {total_new} new rows '
+                         f'archived, {empty} companies with 0 jobs.\n')
+        return 0
+
+    if sync_playwright is None:
+        sys.exit('No browser: install Playwright, or set OXYLABS_USERNAME/OXYLABS_PASSWORD '
+                 'to use the Oxylabs Web Scraper API path.')
 
     # Optional proxy pool: pick an initial working proxy, rotate on repeated blocks.
     rotator = proxy = open_resilient = None

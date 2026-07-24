@@ -102,6 +102,47 @@ def parse_result(r: dict) -> dict | None:
     }
 
 
+def parse_search_html(html: str) -> list:
+    """Parse a rendered sou.zhaopin.com page (as returned by the Oxylabs Web
+    Scraper API) into job dicts — the no-browser counterpart of scrape_company.
+    The page embeds the fe-api results in window.__INITIAL_STATE__; we parse that
+    JSON and deep-scan for the job records (dicts carrying a positionURL)."""
+    m = re.search(r'__INITIAL_STATE__\s*=\s*(\{)', html)
+    if not m:
+        return []
+    try:
+        obj, _ = json.JSONDecoder().raw_decode(html[m.start(1):])
+    except Exception:
+        return []
+    records: list = []
+
+    def scan(n, depth=0):
+        if depth > 10:
+            return
+        if isinstance(n, dict):
+            if 'positionURL' in n or 'positionUrl' in n:
+                records.append(n)
+            else:
+                for v in n.values():
+                    scan(v, depth + 1)
+        elif isinstance(n, list):
+            for v in n:
+                scan(v, depth + 1)
+
+    scan(obj)
+    out, seen = [], set()
+    for r in records:
+        job = parse_result(r)
+        if not job:
+            continue
+        k = (job['t'], job['company'], job['loc'])
+        if k in seen:
+            continue
+        seen.add(k)
+        out.append(job)
+    return out
+
+
 def _results_from_payload(payload: dict) -> list:
     """Pull the results array out of a /c/i/sou JSON payload (shape drifts)."""
     data = payload.get('data') if isinstance(payload, dict) else None

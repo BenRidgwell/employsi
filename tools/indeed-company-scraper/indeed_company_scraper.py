@@ -55,7 +55,8 @@ from urllib.parse import quote
 try:
     from playwright.sync_api import sync_playwright
 except ImportError:
-    sys.exit("playwright is required: pip install -r requirements.txt")
+    sync_playwright = None  # only the browser path needs it; HTML parsing / the
+    # Oxylabs path (parse_search_html) works without Playwright installed.
 
 # Indeed country sites (from the reference project). The key is what you pass to
 # --country; the value is the site's base URL.
@@ -128,6 +129,45 @@ def search_url(base: str, company: str, location: str, start: int) -> str:
     if location:
         url += f'&l={quote(location)}'
     return url
+
+
+# Oxylabs geo_location string for each Indeed country domain.
+GEO_FOR = {
+    'au': 'Australia', 'us': 'United States', 'uk': 'United Kingdom',
+    'ca': 'Canada', 'nz': 'New Zealand', 'sg': 'Singapore', 'ie': 'Ireland',
+    'de': 'Germany', 'fr': 'France', 'za': 'South Africa', 'ae': 'United Arab Emirates',
+    'in': 'India', 'jp': 'Japan',
+}
+
+
+def _clean(x: str) -> str:
+    import html as _html
+    return _html.unescape(re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', x))).strip()
+
+
+def parse_search_html(page: str, base: str) -> list[dict]:
+    """Parse an Indeed search-results page (as returned by the Oxylabs Web
+    Scraper API) into job dicts — the no-browser counterpart of scrape_company.
+    Each job card carries a data-jk id, the title in id="jobTitle-<jk>", and
+    company/location/salary in adjacent data-testid spans."""
+    jobs = []
+    for m in re.finditer(r'data-jk="([a-f0-9]+)"[\s\S]{0,700}?id="jobTitle-[a-f0-9]+"[^>]*>([^<]+)</span>', page):
+        jk, title = m.group(1), _clean(m.group(2))
+        if not title:
+            continue
+        seg = page[m.end():m.end() + 1600]
+        comp = re.search(r'data-testid="company-name"[^>]*>([^<]+)', seg)
+        loc = re.search(r'data-testid="text-location"[^>]*>([^<]+)', seg)
+        sal = re.search(r'(?:salary-snippet[^>]*|attribute_snippet_testid"[^>]*)>([^<]*\$[^<]+)', seg)
+        jobs.append({
+            'title': title,
+            'company': _clean(comp.group(1)) if comp else '',
+            'location': _clean(loc.group(1)) if loc else '',
+            'salary': _clean(sal.group(1)) if sal else '',
+            'url': f'{base}/viewjob?jk={jk}',
+            'date': '',
+        })
+    return jobs
 
 
 def parse_cards(page, base: str) -> list[dict]:
