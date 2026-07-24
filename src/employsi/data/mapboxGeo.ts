@@ -4,7 +4,7 @@
 // Terrace, but Fortescue (East Perth) and Sandfire (West Perth) are ~1.5km
 // either side of the CBD cluster.
 import { CITY_ROSTERS } from './cityRosters';
-import { spreadCoords, rosterId } from './rosters';
+import { spreadCoords, spreadCoordsCity, CITY_PLACEMENT, rosterId } from './rosters';
 import { PERTH_GOV_IDS } from './perthGov';
 import { ADELAIDE_GOV_IDS } from './adelaideGov';
 import { MELBOURNE_GOV_IDS } from './melbourneGov';
@@ -173,7 +173,7 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   if (!view) continue;
   const existing = (CITY_COMPANIES[city] ||= []);
   const offset = existing.length;
-  const pts = spreadCoords(view.center, offset + roster.companies.length);
+  const pts = spreadCoordsCity(view.center, offset + roster.companies.length, CITY_PLACEMENT[city]);
   roster.companies.forEach((entry, i) => {
     const id = rosterId(city, entry[0]);
     existing.push({ id, coords: PERTH_REAL_COORDS[id] ?? pts[offset + i] });
@@ -196,7 +196,7 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   const view = CITY_VIEWS.adelaide;
   const existing = (CITY_COMPANIES.adelaide ||= []);
   const offset = existing.length;
-  const pts = spreadCoords(view.center, offset + ADELAIDE_GOV_IDS.length);
+  const pts = spreadCoordsCity(view.center, offset + ADELAIDE_GOV_IDS.length, CITY_PLACEMENT.adelaide);
   ADELAIDE_GOV_IDS.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
 }
 
@@ -205,7 +205,7 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   const view = CITY_VIEWS.melbourne;
   const existing = (CITY_COMPANIES.melbourne ||= []);
   const offset = existing.length;
-  const pts = spreadCoords(view.center, offset + MELBOURNE_GOV_IDS.length);
+  const pts = spreadCoordsCity(view.center, offset + MELBOURNE_GOV_IDS.length, CITY_PLACEMENT.melbourne);
   MELBOURNE_GOV_IDS.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
 }
 
@@ -214,7 +214,7 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   const view = CITY_VIEWS.brisbane;
   const existing = (CITY_COMPANIES.brisbane ||= []);
   const offset = existing.length;
-  const pts = spreadCoords(view.center, offset + BRISBANE_GOV_IDS.length);
+  const pts = spreadCoordsCity(view.center, offset + BRISBANE_GOV_IDS.length, CITY_PLACEMENT.brisbane);
   BRISBANE_GOV_IDS.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
 }
 
