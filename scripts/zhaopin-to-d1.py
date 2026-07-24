@@ -56,6 +56,8 @@ def _opt(name, default=None):
 ONLY = set(_opt('--only', '').split(',')) if '--only' in args else None
 LIMIT = int(_opt('--limit', 10**9))
 MAX_PAGES = int(_opt('--max-pages', 5))
+# Parallel Oxylabs requests — keep ≤ your Oxylabs plan's concurrency limit.
+CONCURRENCY = int(_opt('--concurrency', 8))
 HEADFUL = '--headful' in args
 PROFILE = _opt('--profile', None)
 PROXY = _opt('--proxy', None)
@@ -196,11 +198,15 @@ def main() -> int:
     if os.environ.get('OXYLABS_USERNAME'):
         import oxylabs_client as oxy
         from urllib.parse import quote
-        sys.stderr.write('  via Oxylabs Web Scraper API (geo=China) — no browser.\n')
-        total_fetch = total_new = empty = done = 0
-        for t in targets:
-            if done >= LIMIT:
-                break
+        from concurrent.futures import ThreadPoolExecutor
+        import threading
+        sel = targets[:LIMIT] if LIMIT < len(targets) else targets
+        sys.stderr.write(f'  via Oxylabs Web Scraper API (geo=China, concurrency={CONCURRENCY}) '
+                         f'— {len(sel)} companies, no browser.\n')
+        lock = threading.Lock()
+        st = {'fetch': 0, 'new': 0, 'empty': 0, 'done': 0}
+
+        def work(t):
             jobs, seen = [], set()
             for pg in range(1, MAX_PAGES + 1):
                 url = f"https://sou.zhaopin.com/?kw={quote(t['kw'])}&jl={t['cityId']}&p={pg}"
@@ -217,25 +223,31 @@ def main() -> int:
                     new += 1
                 if new == 0:
                     break
-            total_fetch += len(jobs)
             if SOLVE:
+                with lock:
+                    st['fetch'] += len(jobs); st['done'] += 1
                 sys.stderr.write(f'  {t["id"]:22} {len(jobs):3} jobs · reachable ✓ ({t["kw"]})\n')
-            elif not jobs:
-                empty += 1
+                return
+            if not jobs:
+                with lock:
+                    st['empty'] += 1; st['done'] += 1
                 sys.stderr.write(f'  {t["id"]:22}   0 jobs ({t["kw"]})\n')
-            else:
-                have = existing_titles(t['id'])
-                fresh = [j for j in jobs if norm(j['t']) not in have]
-                written = upsert(t, fresh) if fresh else 0
-                total_new += written
-                sys.stderr.write(f'  {t["id"]:22} {len(jobs):3} zhaopin · {written:3} new '
-                                 f'({len(jobs) - len(fresh)} already archived)\n')
-            done += 1
+                return
+            have = existing_titles(t['id'])
+            fresh = [j for j in jobs if norm(j['t']) not in have]
+            written = upsert(t, fresh) if fresh else 0
+            with lock:
+                st['fetch'] += len(jobs); st['new'] += written; st['done'] += 1
+            sys.stderr.write(f'  {t["id"]:22} {len(jobs):3} zhaopin · {written:3} new '
+                             f'({len(jobs) - len(fresh)} already archived)\n')
+
+        with ThreadPoolExecutor(max_workers=max(1, CONCURRENCY)) as ex:
+            list(ex.map(work, sel))
         if SOLVE:
-            sys.stderr.write(f'\n✓ {done} companies reachable via Oxylabs.\n')
+            sys.stderr.write(f'\n✓ {st["done"]} companies reachable via Oxylabs.\n')
             return 0
-        sys.stderr.write(f'\nDone (Oxylabs). {total_fetch} listings fetched, {total_new} new rows '
-                         f'archived, {empty} companies with 0 jobs.\n')
+        sys.stderr.write(f'\nDone (Oxylabs). {st["fetch"]} listings fetched, {st["new"]} new rows '
+                         f'archived, {st["empty"]} companies with 0 jobs.\n')
         return 0
 
     if sync_playwright is None:
