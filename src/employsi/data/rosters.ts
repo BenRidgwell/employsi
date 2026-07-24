@@ -151,6 +151,69 @@ export function spreadCoords(center: [number, number], n: number): [number, numb
   return out;
 }
 
+// Land-aware placement override for a city. The plain spreadCoords fans company
+// pins in a full 360° golden-angle spiral around the camera centre, which for
+// waterfront CBDs drops pins into the harbour/bay and, for cities with many
+// companies, sprawls ~2km out. `anchor` moves the spread to the real business
+// district; `arc` (bearings clockwise from north, [from,to], wrapping when
+// to<from) restricts the fan to the land-facing sector; `maxKm` caps the radius.
+export interface CityPlacement {
+  anchor?: [number, number];
+  arc?: [number, number];
+  maxKm?: number;
+}
+
+// Only cities that need it are listed; everything else keeps a full-circle fan
+// with a capped radius (so big inland CBDs no longer sprawl). Waterfront cities
+// get a land arc pointing away from the water.
+export const CITY_PLACEMENT: Record<string, CityPlacement> = {
+  // Australia
+  sydney: { arc: [150, 330] }, // avoid Sydney Harbour (N/NE)
+  melbourne: { arc: [330, 140] }, // avoid Yarra (S) + Docklands (W)
+  brisbane: { arc: [285, 75] }, // inside the river U-bend → land is N/NE
+  // North America
+  toronto: { arc: [285, 75] }, // avoid Lake Ontario (S)
+  chicago: { arc: [175, 355] }, // avoid Lake Michigan (E)
+  boston: { arc: [150, 360] }, // avoid the harbour (E)
+  newyork: { anchor: [-73.9945, 40.7205], arc: [300, 60], maxKm: 1.4 }, // narrow Manhattan, run N-S
+  sanfrancisco: { arc: [150, 340] }, // avoid the bay (E/NE)
+  seattle: { arc: [20, 200] }, // avoid Elliott Bay (W)
+  vancouver: { arc: [90, 200] }, // avoid Burrard Inlet (N) + English Bay (W)
+  // Asia / other
+  hongkong: { anchor: [114.1585, 22.282], arc: [70, 290] }, // Central; avoid Victoria Harbour (N)
+  singapore: { anchor: [103.8505, 1.281], arc: [190, 350] }, // Raffles Place; avoid Marina (E)
+  shanghai: { anchor: [121.475, 31.231] }, // People's Sq (inland Puxi); off the Huangpu
+};
+
+// Golden-ratio low-discrepancy sequence — even coverage without clumping.
+const GR = 0.6180339887498949;
+
+// Land-aware version of spreadCoords: compact (radius capped, scaling gently
+// with n), optionally anchored at a real CBD point and restricted to a bearing
+// arc so pins stay on land. Falls back to a full-circle capped fan when the city
+// has no placement override.
+export function spreadCoordsCity(center: [number, number], n: number, place?: CityPlacement): [number, number][] {
+  const c = place?.anchor ?? center;
+  const kmToLat = 1 / 111.32;
+  const kmToLng = 1 / (111.32 * Math.max(0.2, Math.cos((c[1] * Math.PI) / 180)));
+  const maxKm = place?.maxKm ?? Math.min(1.15, 0.4 + 0.055 * Math.sqrt(Math.max(1, n)));
+  const arc = place?.arc;
+  let span = arc ? arc[1] - arc[0] : 360;
+  if (span <= 0) span += 360; // wrap (e.g. [285,75] → 150° through north)
+  const out: [number, number][] = [];
+  for (let i = 0; i < n; i++) {
+    const r = Math.sqrt((i + 0.5) / n) * maxKm; // km from anchor, sqrt = even areal density
+    const deg = arc ? arc[0] + ((i * GR) % 1) * span : (i * 137.50776405) % 360;
+    const rad = (deg * Math.PI) / 180;
+    // bearing 0=N, 90=E: east = sin, north = cos
+    out.push([
+      +(c[0] + Math.sin(rad) * r * kmToLng).toFixed(6),
+      +(c[1] + Math.cos(rad) * r * kmToLat).toFixed(6),
+    ]);
+  }
+  return out;
+}
+
 // Per-group skill + role templates for the generated cards.
 const GROUP_PROFILE: Record<string, { skills: string[]; roles: string[]; sector: string; salary: number }> = {
   'Financial Services': { skills: ['Risk & Compliance', 'Quantitative Analysis', 'Corporate Finance', 'Data Analytics', 'Wealth Management'], roles: ['Markets & Trading', 'Risk & Compliance', 'Technology'], sector: 'Financial Services', salary: 155 },
