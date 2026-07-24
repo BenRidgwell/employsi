@@ -54,6 +54,9 @@ MAX_PAGES = int(_opt('--max-pages', 5))
 HEADFUL = '--headful' in args
 PROFILE = _opt('--profile', None)
 PROXY = _opt('--proxy', None)
+# --proxy-list <file-or-url>: rotate through a proxy pool, moving to the next
+# working proxy when the current IP gets blocked (see scripts/proxy_pool.py).
+PROXY_LIST = _opt('--proxy-list', None)
 NO_SKILLS = '--no-skills' in args
 SOLVE = '--solve' in args
 MIN_DELAY = float(_opt('--min-delay', 6))
@@ -181,10 +184,28 @@ def main() -> int:
         sys.stderr.write('  tip: first run with --headful --profile <dir> to clear Zhaopin\'s '
                          'security check by hand; the profile then reuses the solved session.\n')
 
+    # Optional proxy pool: pick an initial working proxy, rotate on repeated blocks.
+    rotator = proxy = open_resilient = None
+    if PROXY_LIST:
+        try:
+            from proxy_pool import rotator_from, open_resilient
+            rotator = rotator_from(PROXY_LIST, 'https://www.zhaopin.com/', timeout=8.0)
+            proxy = rotator.next_working()
+            sys.stderr.write(f'  starting with proxy {proxy}\n' if proxy
+                             else '  no working proxy in the pool — running direct.\n')
+        except Exception as e:
+            sys.stderr.write(f'  proxy pool error ({e}) — running direct.\n')
+    else:
+        proxy = PROXY
+
     total_fetch = total_new = blocked = done = 0
     consecutive_blocks = 0
     with sync_playwright() as p:
-        ctx, page = zp.open_session(p, headful=HEADFUL, proxy=PROXY, profile=PROFILE)
+        open_fn = lambda pr: zp.open_session(p, headful=HEADFUL, proxy=pr, profile=PROFILE)
+        if open_resilient:
+            proxy, ctx, page = open_resilient(open_fn, rotator, proxy)
+        else:
+            ctx, page = open_fn(proxy)
         first = True
         for t in targets:
             if done >= LIMIT:
@@ -198,8 +219,18 @@ def main() -> int:
                 consecutive_blocks += 1
                 sys.stderr.write(f'  {t["id"]:22} BLOCKED (security check)\n')
                 if consecutive_blocks >= 3:
-                    sys.stderr.write('  3 consecutive blocks — stopping (solve the check with '
-                                     '--headful --profile).\n')
+                    nxt = rotator.next_working() if rotator else None
+                    if nxt:
+                        sys.stderr.write(f'  rotating proxy → {nxt}\n')
+                        try:
+                            ctx.close()
+                        except Exception:
+                            pass
+                        proxy = nxt
+                        ctx, page = zp.open_session(p, headful=HEADFUL, proxy=proxy, profile=PROFILE)
+                        consecutive_blocks = 0
+                        continue
+                    sys.stderr.write('  3 consecutive blocks and no more proxies — stopping.\n')
                     break
                 done += 1
                 continue

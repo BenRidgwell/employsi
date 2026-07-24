@@ -52,6 +52,10 @@ LIMIT = int(_opt('--limit', 10**9))
 MAX_PAGES = int(_opt('--max-pages', 20))
 HEADFUL = '--headful' in args
 PROXY = _opt('--proxy', None)
+# --proxy-list <file-or-url>: rotate through a proxy pool, moving to the next
+# working proxy whenever the current IP gets blocked (see scripts/proxy_pool.py).
+# Overrides --proxy. Works with the iplocate free list or a paid residential one.
+PROXY_LIST = _opt('--proxy-list', None)
 PROFILE = _opt('--profile', None)          # persistent browser dir (cookies survive)
 STRICT = '--strict-company' in args
 NO_SKILLS = '--no-skills' in args
@@ -192,10 +196,28 @@ def main() -> int:
         sys.stderr.write('  (headless: verifying the cached profile gets through. '
                          'Add --headful the first time to solve the wall by hand.)\n')
 
+    # Optional proxy pool: pick an initial working proxy, rotate on repeated blocks.
+    rotator = proxy = open_resilient = None
+    if PROXY_LIST:
+        try:
+            from proxy_pool import rotator_from, open_resilient
+            rotator = rotator_from(PROXY_LIST, base.rstrip('/') + '/', timeout=8.0)
+            proxy = rotator.next_working()
+            sys.stderr.write(f'  starting with proxy {proxy}\n' if proxy
+                             else '  no working proxy in the pool — running direct.\n')
+        except Exception as e:
+            sys.stderr.write(f'  proxy pool error ({e}) — running direct.\n')
+    else:
+        proxy = PROXY
+
     total_fetch = total_new = blocked = done = 0
     consecutive_blocks = 0
     with sync_playwright() as p:
-        session, page = ind.open_session(p, headful=HEADFUL, proxy=PROXY, profile=PROFILE)
+        open_fn = lambda pr: ind.open_session(p, headful=HEADFUL, proxy=pr, profile=PROFILE)
+        if open_resilient:
+            proxy, session, page = open_resilient(open_fn, rotator, proxy)
+        else:
+            session, page = open_fn(proxy)
         first = True
         for cid, name in companies:
             if done >= LIMIT:
@@ -211,7 +233,18 @@ def main() -> int:
                 consecutive_blocks += 1
                 sys.stderr.write(f'  {cid:16} BLOCKED\n')
                 if consecutive_blocks >= 3:
-                    sys.stderr.write('  3 consecutive blocks — stopping (DataDome is throttling this IP).\n')
+                    # Rotate to the next working proxy and relaunch, if we have a pool.
+                    nxt = rotator.next_working() if rotator else None
+                    if nxt:
+                        sys.stderr.write(f'  rotating proxy → {nxt}\n')
+                        try:
+                            session.close()
+                        except Exception:
+                            pass
+                        proxy, session, page = open_resilient(open_fn, rotator, nxt)
+                        consecutive_blocks = 0
+                        continue  # retry this company on the new proxy
+                    sys.stderr.write('  3 consecutive blocks and no more proxies — stopping.\n')
                     break
                 done += 1
                 continue
