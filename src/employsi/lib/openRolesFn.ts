@@ -315,6 +315,8 @@ const ARCHIVE_SOURCE_LABEL: Record<string, string> = {
   seek: 'SEEK',
   jooble: 'Jooble',
   mycareersfuture: 'MyCareersFuture',
+  indeed: 'Indeed',
+  zhaopin: 'Zhaopin',
 };
 
 // The current (still-advertised) listings for a company held in the D1 archive
@@ -477,16 +479,28 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
     // of all current vacancies for this company as at today — not just the live
     // Adzuna/Muse fetch. Deduped by normalised title against the live sample.
     // (Gov agencies returned earlier — their board is their single source.)
-    if (out && data.id) {
-      const extra = await currentFromArchive(data.id, out.jobs);
+    // Runs even when Adzuna/Muse returned nothing (out === null), so a company
+    // covered ONLY by an archive source — e.g. the Chinese roster companies whose
+    // vacancies come from Zhaopin, or any employer Adzuna/Muse don't index —
+    // still surfaces its listings instead of showing a false zero.
+    if (data.id) {
+      const extra = await currentFromArchive(data.id, out ? out.jobs : []);
       if (extra.added > 0) {
         const extraLabels = extra.sources.map((s) => ARCHIVE_SOURCE_LABEL[s] || s);
-        const label = [out.source, ...extraLabels].filter(Boolean).join(' + ');
-        out = {
-          count: out.count + extra.added,
-          source: label,
-          jobs: [...out.jobs, ...extra.jobs].slice(0, 60),
-        };
+        if (out) {
+          const label = [out.source, ...extraLabels].filter(Boolean).join(' + ');
+          out = {
+            count: out.count + extra.added,
+            source: label,
+            jobs: [...out.jobs, ...extra.jobs].slice(0, 60),
+          };
+        } else {
+          out = {
+            count: extra.added,
+            source: extraLabels.filter(Boolean).join(' + ') || 'Archive',
+            jobs: extra.jobs.slice(0, 60),
+          };
+        }
       }
     }
 
