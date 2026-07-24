@@ -21,6 +21,7 @@ export const AU_CITY_LNGLAT: Record<string, [number, number]> = {
   adelaide: CITY_VIEWS.adelaide.center,
   brisbane: CITY_VIEWS.brisbane.center,
   sydney: CITY_VIEWS.sydney.center,
+  canberra: CITY_VIEWS.canberra.center,
   darwin: [130.8456, -12.4634],
   melbourne: [144.9631, -37.8136],
   hobart: [147.3272, -42.8821],

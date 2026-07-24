@@ -9,6 +9,7 @@ import { PERTH_GOV_IDS } from './perthGov';
 import { ADELAIDE_GOV_IDS } from './adelaideGov';
 import { MELBOURNE_GOV_IDS } from './melbourneGov';
 import { BRISBANE_GOV_IDS } from './brisbaneGov';
+import { APS_GOV_IDS, APS_GOV_HUB } from './canberraGov';
 import { PERTH_REAL_COORDS } from './perthRealCoords';
 
 export const PERTH_CENTER: [number, number] = [115.8552, -31.9542];
@@ -31,6 +32,7 @@ export const CITY_VIEWS: Record<string, CityView> = {
   melbourne: { center: [144.9640, -37.8155], zoom: 16.4, pitch: 60, bearing: -18 },
   brisbane: { center: [153.026, -27.4705], zoom: 16.5, pitch: 60, bearing: -18 },
   adelaide: { center: [138.6007, -34.9285], zoom: 16.5, pitch: 60, bearing: -16 },
+  canberra: { center: [149.1289, -35.282], zoom: 16.1, pitch: 60, bearing: -15 },
   sydney: { center: [151.2093, -33.8688], zoom: 16.5, pitch: 60, bearing: -18 },
   singapore: { center: [103.8519, 1.29], zoom: 16.4, pitch: 60, bearing: -12 },
   ganzhou: { center: [114.9333, 25.83], zoom: 16.1, pitch: 60, bearing: -14 },
@@ -216,6 +218,21 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   const offset = existing.length;
   const pts = spreadCoordsCity(view.center, offset + BRISBANE_GOV_IDS.length, CITY_PLACEMENT.brisbane);
   BRISBANE_GOV_IDS.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
+}
+
+// APS federal agencies: grouped by their HQ city (Canberra for most, a few in
+// Sydney/Melbourne/Adelaide) and fanned around that city's centre.
+{
+  const byHub: Record<string, string[]> = {};
+  for (const id of APS_GOV_IDS) (byHub[APS_GOV_HUB[id] || 'canberra'] ||= []).push(id);
+  for (const [hub, ids] of Object.entries(byHub)) {
+    const view = CITY_VIEWS[hub];
+    if (!view) continue;
+    const existing = (CITY_COMPANIES[hub] ||= []);
+    const offset = existing.length;
+    const pts = spreadCoordsCity(view.center, offset + ids.length, CITY_PLACEMENT[hub]);
+    ids.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
+  }
 }
 
 // Flat lookup of every company's coords across all cities. Where a company sits

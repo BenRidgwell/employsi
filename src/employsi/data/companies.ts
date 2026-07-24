@@ -199,3 +199,7 @@ COMPANIES.push(...MELBOURNE_GOV_COMPANIES);
 // Brisbane QLD government agencies (private / public-sector).
 import { BRISBANE_GOV_COMPANIES } from './brisbaneGov';
 COMPANIES.push(...BRISBANE_GOV_COMPANIES);
+
+// APS federal (Commonwealth) agencies (private / public-sector), mostly Canberra.
+import { APS_GOV_COMPANIES } from './canberraGov';
+COMPANIES.push(...APS_GOV_COMPANIES);
