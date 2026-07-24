@@ -28,9 +28,14 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(ROOT, 'tools', 'indeed-company-scraper'))
 try:
     import indeed_company_scraper as ind  # noqa: E402
-    from playwright.sync_api import sync_playwright  # noqa: E402
 except ImportError as e:
-    sys.exit(f'Missing dependency ({e}). Run: pip install playwright && playwright install chromium')
+    sys.exit(f'Missing dependency ({e}).')
+# Playwright is only needed for the browser fallback; the Oxylabs path (env
+# OXYLABS_USERNAME) runs without it. Import lazily so this works either way.
+try:
+    from playwright.sync_api import sync_playwright  # noqa: E402
+except ImportError:
+    sync_playwright = None
 
 import urllib.request  # noqa: E402
 
@@ -52,6 +57,10 @@ LIMIT = int(_opt('--limit', 10**9))
 MAX_PAGES = int(_opt('--max-pages', 20))
 HEADFUL = '--headful' in args
 PROXY = _opt('--proxy', None)
+# --proxy-list <file-or-url>: rotate through a proxy pool, moving to the next
+# working proxy whenever the current IP gets blocked (see scripts/proxy_pool.py).
+# Overrides --proxy. Works with the iplocate free list or a paid residential one.
+PROXY_LIST = _opt('--proxy-list', None)
 PROFILE = _opt('--profile', None)          # persistent browser dir (cookies survive)
 STRICT = '--strict-company' in args
 NO_SKILLS = '--no-skills' in args
@@ -192,10 +201,80 @@ def main() -> int:
         sys.stderr.write('  (headless: verifying the cached profile gets through. '
                          'Add --headful the first time to solve the wall by hand.)\n')
 
+    # ── Oxylabs Web Scraper API path (no browser / no proxy) ──────────────────
+    # When OXYLABS_USERNAME is set we fetch Indeed's rendered search HTML through
+    # Oxylabs — which supplies the residential IP + DataDome bypass + JS render —
+    # and parse it, so there's no Playwright and this can run on any host.
+    if os.environ.get('OXYLABS_USERNAME'):
+        import oxylabs_client as oxy
+        geo = ind.GEO_FOR.get(COUNTRY)
+        sys.stderr.write(f'  via Oxylabs Web Scraper API (geo={geo}) — no browser.\n')
+        total_fetch = total_new = empty = done = 0
+        for cid, name in companies:
+            if done >= LIMIT:
+                break
+            jobs, seen = [], set()
+            for pg in range(MAX_PAGES):
+                content, _ = oxy.fetch(ind.search_url(base, name, '', pg * 10), geo=geo, render=True)
+                if not content:
+                    break
+                new = 0
+                for j in ind.parse_search_html(content, base):
+                    k = (norm(j['title']), norm(j.get('location', '')))
+                    if k in seen:
+                        continue
+                    seen.add(k)
+                    jobs.append(j)
+                    new += 1
+                if new == 0:  # page repeated / empty → end of results
+                    break
+            total_fetch += len(jobs)
+            if SOLVE:
+                sys.stderr.write(f'  {cid:16} {len(jobs):3} jobs · reachable ✓\n')
+            elif not jobs:
+                empty += 1
+                sys.stderr.write(f'  {cid:16} 0 jobs\n')
+            else:
+                have = existing_titles(cid)
+                fresh = [j for j in jobs if norm(j['title']) not in have]
+                written = upsert(cid, fresh) if fresh else 0
+                total_new += written
+                sys.stderr.write(f'  {cid:16} {len(jobs):3} indeed · {written:3} new '
+                                 f'({len(jobs) - len(fresh)} already archived)\n')
+            done += 1
+        if SOLVE:
+            sys.stderr.write(f'\n✓ {done} companies reachable via Oxylabs.\n')
+            return 0
+        sys.stderr.write(f'\nDone (Oxylabs). {total_fetch} listings fetched, {total_new} new rows '
+                         f'archived, {empty} companies with 0 jobs.\n')
+        return 0
+
+    if sync_playwright is None:
+        sys.exit('No browser: install Playwright, or set OXYLABS_USERNAME/OXYLABS_PASSWORD '
+                 'to use the Oxylabs Web Scraper API path.')
+
+    # Optional proxy pool: pick an initial working proxy, rotate on repeated blocks.
+    rotator = proxy = open_resilient = None
+    if PROXY_LIST:
+        try:
+            from proxy_pool import rotator_from, open_resilient
+            rotator = rotator_from(PROXY_LIST, base.rstrip('/') + '/', timeout=8.0)
+            proxy = rotator.next_working()
+            sys.stderr.write(f'  starting with proxy {proxy}\n' if proxy
+                             else '  no working proxy in the pool — running direct.\n')
+        except Exception as e:
+            sys.stderr.write(f'  proxy pool error ({e}) — running direct.\n')
+    else:
+        proxy = PROXY
+
     total_fetch = total_new = blocked = done = 0
     consecutive_blocks = 0
     with sync_playwright() as p:
-        session, page = ind.open_session(p, headful=HEADFUL, proxy=PROXY, profile=PROFILE)
+        open_fn = lambda pr: ind.open_session(p, headful=HEADFUL, proxy=pr, profile=PROFILE)
+        if open_resilient:
+            proxy, session, page = open_resilient(open_fn, rotator, proxy)
+        else:
+            session, page = open_fn(proxy)
         first = True
         for cid, name in companies:
             if done >= LIMIT:
@@ -211,7 +290,18 @@ def main() -> int:
                 consecutive_blocks += 1
                 sys.stderr.write(f'  {cid:16} BLOCKED\n')
                 if consecutive_blocks >= 3:
-                    sys.stderr.write('  3 consecutive blocks — stopping (DataDome is throttling this IP).\n')
+                    # Rotate to the next working proxy and relaunch, if we have a pool.
+                    nxt = rotator.next_working() if rotator else None
+                    if nxt:
+                        sys.stderr.write(f'  rotating proxy → {nxt}\n')
+                        try:
+                            session.close()
+                        except Exception:
+                            pass
+                        proxy, session, page = open_resilient(open_fn, rotator, nxt)
+                        consecutive_blocks = 0
+                        continue  # retry this company on the new proxy
+                    sys.stderr.write('  3 consecutive blocks and no more proxies — stopping.\n')
                     break
                 done += 1
                 continue
