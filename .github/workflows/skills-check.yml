@@ -1,0 +1,30 @@
+# Skills-taxonomy integrity check — fails the build if the skill list ever
+# regains a duplicate skill (or a same-named def with a conflicting category).
+# This is the automated control that keeps the "no duplicate skills" fix from
+# silently regressing (see scripts/check-skills.ts + skillsTaxonomy.ts).
+
+name: skills-check
+
+on:
+  push:
+    paths:
+      - 'src/employsi/data/skillsTaxonomy.ts'
+      - 'scripts/check-skills.ts'
+      - '.github/workflows/skills-check.yml'
+  pull_request:
+    paths:
+      - 'src/employsi/data/skillsTaxonomy.ts'
+      - 'scripts/check-skills.ts'
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Assert no duplicate skills
+        run: bun run scripts/check-skills.ts
