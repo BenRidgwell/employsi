@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import type { D1Like } from './jobArchive';
 import type { RolePoint } from './openRolesFn';
+import { SKILL_CATEGORY } from '../data/skillsTaxonomy';
 
 // Reads the historical job archive (Cloudflare D1) written by the jobs-cron
 // worker + the app's live fetch (see jobArchive.ts). Powers the "Vacancy
@@ -167,6 +168,100 @@ export const getSkillTrends = createServerFn({ method: 'GET' })
       // Biggest absolute movers first, increases ahead of decreases on ties.
       movers.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta) || b.delta - a.delta);
       return movers.slice(0, 8);
+    } catch {
+      return [];
+    }
+  });
+
+// One "Live trends" ticker row: a canonical skill and how its vacancy demand has
+// moved, market-wide, over the most recent window versus the one before it.
+export interface LiveSkillTrend {
+  name: string; // canonical skill
+  tag: string; // 'Demand'
+  v: number; // % change (positive = rising demand); newly-surging capped at +24
+}
+
+// Market-wide daily skill-demand trends for the app's "Live trends" ticker.
+// Reads every recently-active listing in the D1 archive (all sources — Adzuna,
+// Muse, Jooble, SEEK, Indeed, Zhaopin, and the WA/SA/VIC/QLD/APS government
+// boards), tallies how many vacancies demand each canonical skill in the recent
+// WINDOW days versus the WINDOW days before that, and ranks the biggest movers.
+// This replaces the old hand-seeded random-walk ticker with real demand signal
+// that shifts a little each day as the archive accumulates. Returns [] until the
+// archive holds enough history to compute movers; the client falls back to a
+// static seed in that case so the ticker is never empty.
+export const getLiveSkillTrends = createServerFn({ method: 'GET' })
+  .handler(async (): Promise<LiveSkillTrend[]> => {
+    const db = await getArchiveDb();
+    if (!db) return [];
+    const WINDOW = 7; // days per comparison window (daily-refreshing weekly momentum)
+    const day = (offset: number) => {
+      const d = new Date();
+      d.setUTCDate(d.getUTCDate() - offset);
+      return d.toISOString().slice(0, 10);
+    };
+    const recentStart = day(WINDOW);
+    const priorStart = day(WINDOW * 2);
+    const priorEnd = recentStart;
+    try {
+      // Only rows active within the two windows — bounds the scan.
+      const res: any = await (db
+        .prepare(
+          `SELECT skills, first_seen, last_seen FROM jobs
+             WHERE skills IS NOT NULL AND last_seen >= ?1`,
+        )
+        .bind(priorStart) as any).all();
+      const rows: any[] = res?.results ?? [];
+      if (!rows.length) return [];
+      const nowT: Record<string, number> = {};
+      const prevT: Record<string, number> = {};
+      for (const r of rows) {
+        let skills: string[] = [];
+        try {
+          skills = JSON.parse(String(r.skills || '[]'));
+        } catch {
+          skills = [];
+        }
+        if (!skills.length) continue;
+        const fs = String(r.first_seen || '');
+        const ls = String(r.last_seen || '');
+        if (!fs || !ls) continue;
+        if (ls >= recentStart) for (const s of skills) nowT[s] = (nowT[s] || 0) + 1;
+        if (fs <= priorEnd && ls >= priorStart) for (const s of skills) prevT[s] = (prevT[s] || 0) + 1;
+      }
+      const skills = new Set([...Object.keys(nowT), ...Object.keys(prevT)]);
+      type Row = { name: string; v: number; sig: number };
+      const movers: Row[] = [];
+      for (const s of skills) {
+        if (!(s in SKILL_CATEGORY)) continue; // only canonical skills on the ticker
+        const now = nowT[s] || 0;
+        const prev = prevT[s] || 0;
+        // Require a little volume so single-listing noise doesn't dominate.
+        if (now + prev < 3) continue;
+        const delta = now - prev;
+        if (delta === 0) continue;
+        let pct = prev > 0 ? (delta / prev) * 100 : 100;
+        pct = Math.max(-16, Math.min(24, pct)); // match the ticker's visual band
+        movers.push({ name: s, v: Math.round(pct * 10) / 10, sig: Math.abs(delta) });
+      }
+      // Biggest absolute movers first; interleave so the ticker mixes up + down.
+      movers.sort((a, b) => b.sig - a.sig || Math.abs(b.v) - Math.abs(a.v));
+      let picked = movers.slice(0, 16);
+      // Fallback: if the archive is too young for real movers, show the highest-
+      // demand skills right now as a mild positive so the ticker still reads live.
+      if (picked.length < 6) {
+        const top = Object.entries(nowT)
+          .filter(([s]) => s in SKILL_CATEGORY)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 16);
+        const seen = new Set(picked.map((p) => p.name));
+        for (const [name, cnt] of top) {
+          if (seen.has(name)) continue;
+          picked.push({ name, v: Math.min(18, 2 + Math.round(cnt / 3)), sig: cnt });
+          if (picked.length >= 12) break;
+        }
+      }
+      return picked.map((p) => ({ name: p.name, tag: 'Demand', v: p.v }));
     } catch {
       return [];
     }

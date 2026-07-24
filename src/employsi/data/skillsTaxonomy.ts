@@ -14,7 +14,7 @@ export interface SkillDef {
   terms: string[]; // lowercase substrings matched against title (+ description)
 }
 
-export const SKILLS: SkillDef[] = [
+const RAW_SKILLS: SkillDef[] = [
   // ── Mining & geoscience ────────────────────────────────────────────────
   { skill: 'Mining Engineering', cat: 'Mining', terms: ['mining engineer', 'mine engineer', 'mining engineering'] },
   { skill: 'Geology', cat: 'Mining', terms: ['geologist', 'geology', 'geoscience', 'exploration geo', 'geophysicist'] },
@@ -186,6 +186,43 @@ export const SKILLS: SkillDef[] = [
   { skill: 'Medical Practice', cat: 'Health', terms: ['医生', '医师', '临床'] },
   { skill: 'Teaching & Education', cat: 'Education', terms: ['教师', '老师', '讲师', '教研'] },
 ];
+
+// Merge defs that share a canonical skill name into ONE def. Some skills are
+// declared twice — an English-terms def plus a Chinese-terms def for the Zhaopin
+// source (e.g. 'Human Resources', 'Software Engineering'). Left un-merged they
+// surfaced as duplicate entries in the app's skill list (ALL_SKILLS /
+// SKILL_CATEGORY). Concatenating their terms under the first-seen def+category
+// gives a single canonical skill that still matches both languages.
+//
+// This merge is the CONTROL that keeps duplicate skills from ever reaching the
+// app: no matter how many defs above share a name, exactly one survives here, so
+// ALL_SKILLS / SKILL_CATEGORY are duplicate-free by construction. Two safety
+// nets back it up: `SKILL_NAME_CONFLICTS` records any same-named defs that
+// disagree on category (a merge would silently drop one category — worth
+// flagging), and scripts/check-skills.ts asserts the invariant in CI
+// (.github/workflows/skills-check.yml) so a regression fails the build.
+export const SKILL_NAME_CONFLICTS: string[] = [];
+export const SKILLS: SkillDef[] = (() => {
+  const byName = new Map<string, SkillDef>();
+  for (const d of RAW_SKILLS) {
+    const ex = byName.get(d.skill);
+    if (ex) {
+      if (ex.cat !== d.cat && !SKILL_NAME_CONFLICTS.includes(d.skill)) {
+        SKILL_NAME_CONFLICTS.push(d.skill);
+      }
+      for (const t of d.terms) if (!ex.terms.includes(t)) ex.terms.push(t);
+    } else {
+      byName.set(d.skill, { ...d, terms: [...d.terms] });
+    }
+  }
+  return [...byName.values()];
+})();
+
+// Surface category conflicts loudly in dev (never in the built worker, where a
+// console.warn would just be noise) so a bad duplicate is caught at authoring.
+if (SKILL_NAME_CONFLICTS.length && typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') {
+  console.warn(`[skillsTaxonomy] duplicate skill names with mismatched categories: ${SKILL_NAME_CONFLICTS.join(', ')}`);
+}
 
 // Normalise for matching: lowercase, expand "&" to "and" (so "People & Culture"
 // hits the "people and culture" term, "Learning & Development" hits its term,

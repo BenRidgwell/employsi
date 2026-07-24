@@ -317,6 +317,7 @@ const ARCHIVE_SOURCE_LABEL: Record<string, string> = {
   mycareersfuture: 'MyCareersFuture',
   indeed: 'Indeed',
   zhaopin: 'Zhaopin',
+  linkedin: 'LinkedIn',
   'aps-gov': 'Australian Public Service',
 };
 
