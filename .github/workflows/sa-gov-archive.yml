@@ -1,0 +1,55 @@
+# Daily SA Government → D1 archive (hosted, off your PC).
+#
+# iworkfor.sa.gov.au (BigRedSky) renders its results only in a real browser, so
+# this runs a headless Chromium on GitHub's runner via Playwright — a hosted
+# alternative to running scripts/sa-gov-to-d1.py on your own machine. The SA
+# board is a government site with no datacenter-IP blocking (it only blocks
+# no-browser HTTP clients), so a CI browser reaches it fine.
+#
+# Required repo secret:
+#   CLOUDFLARE_API_TOKEN  — a token with D1 edit on the employsi account
+#                           (the same one the SEEK workflow uses).
+# Optional repo variables (fall back to the values baked into the script):
+#   CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# The job exits non-zero (red X + GitHub notification) if the board renders no
+# rows — the degradation signal for this path. Use "Run workflow" (workflow_
+# dispatch) to verify it on the runner before relying on the schedule.
+
+name: sa-gov-archive
+
+on:
+  schedule:
+    - cron: '0 18 * * *' # 18:00 UTC daily (~04:30 ACST) — before the SEEK run
+  workflow_dispatch: {}
+
+concurrency:
+  group: sa-gov-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Playwright + Chromium
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Scrape SA gov → D1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/sa-gov-to-d1.py --max-pages 40

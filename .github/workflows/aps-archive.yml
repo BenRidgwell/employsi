@@ -1,0 +1,56 @@
+# Daily APS (federal) Government → D1 archive (hosted, off your PC).
+#
+# apsjobs.gov.au is a Salesforce Experience Cloud (Aura) site: results come from
+# a session-gated ApexAction and render only in a real browser. This runs a
+# headless Chromium on GitHub's runner via Playwright — a hosted alternative to
+# running scripts/aps-to-d1.py on your own machine. It's a government Salesforce
+# site with no datacenter-IP blocking (guest sessions work from any host), so a
+# CI browser reaches it fine.
+#
+# Required repo secret:
+#   CLOUDFLARE_API_TOKEN  — a token with D1 edit on the employsi account
+#                           (the same one the SEEK workflow uses).
+# Optional repo variables (fall back to the values baked into the script):
+#   CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# The job exits non-zero (red X + GitHub notification) if the Aura JSON yields no
+# jobs — the degradation signal. Use "Run workflow" (workflow_dispatch) to verify
+# it on the runner before relying on the schedule.
+
+name: aps-archive
+
+on:
+  schedule:
+    - cron: '30 18 * * *' # 18:30 UTC daily — staggered after the SA run
+  workflow_dispatch: {}
+
+concurrency:
+  group: aps-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Playwright + Chromium
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Scrape APS → D1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/aps-to-d1.py --max-pages 40
