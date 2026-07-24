@@ -55,6 +55,10 @@ COUNTRY = _opt('--country', 'au')
 ONLY = set(_opt('--only', '').split(',')) if '--only' in args else None
 LIMIT = int(_opt('--limit', 10**9))
 MAX_PAGES = int(_opt('--max-pages', 20))
+# Parallel Oxylabs requests (its realtime render is ~40s/page, so the whole
+# 205-company roster is only daily-feasible with concurrency). Keep ≤ your
+# Oxylabs plan's concurrency limit.
+CONCURRENCY = int(_opt('--concurrency', 8))
 HEADFUL = '--headful' in args
 PROXY = _opt('--proxy', None)
 # --proxy-list <file-or-url>: rotate through a proxy pool, moving to the next
@@ -207,12 +211,16 @@ def main() -> int:
     # and parse it, so there's no Playwright and this can run on any host.
     if os.environ.get('OXYLABS_USERNAME'):
         import oxylabs_client as oxy
+        from concurrent.futures import ThreadPoolExecutor
+        import threading
         geo = ind.GEO_FOR.get(COUNTRY)
-        sys.stderr.write(f'  via Oxylabs Web Scraper API (geo={geo}) — no browser.\n')
-        total_fetch = total_new = empty = done = 0
-        for cid, name in companies:
-            if done >= LIMIT:
-                break
+        sel = companies[:LIMIT] if LIMIT < len(companies) else companies
+        sys.stderr.write(f'  via Oxylabs Web Scraper API (geo={geo}, concurrency={CONCURRENCY}) '
+                         f'— {len(sel)} companies, no browser.\n')
+        lock = threading.Lock()
+        st = {'fetch': 0, 'new': 0, 'empty': 0, 'done': 0}
+
+        def work(cid, name):
             jobs, seen = [], set()
             for pg in range(MAX_PAGES):
                 content, _ = oxy.fetch(ind.search_url(base, name, '', pg * 10), geo=geo, render=True)
@@ -228,25 +236,31 @@ def main() -> int:
                     new += 1
                 if new == 0:  # page repeated / empty → end of results
                     break
-            total_fetch += len(jobs)
             if SOLVE:
+                with lock:
+                    st['fetch'] += len(jobs); st['done'] += 1
                 sys.stderr.write(f'  {cid:16} {len(jobs):3} jobs · reachable ✓\n')
-            elif not jobs:
-                empty += 1
+                return
+            if not jobs:
+                with lock:
+                    st['empty'] += 1; st['done'] += 1
                 sys.stderr.write(f'  {cid:16} 0 jobs\n')
-            else:
-                have = existing_titles(cid)
-                fresh = [j for j in jobs if norm(j['title']) not in have]
-                written = upsert(cid, fresh) if fresh else 0
-                total_new += written
-                sys.stderr.write(f'  {cid:16} {len(jobs):3} indeed · {written:3} new '
-                                 f'({len(jobs) - len(fresh)} already archived)\n')
-            done += 1
+                return
+            have = existing_titles(cid)
+            fresh = [j for j in jobs if norm(j['title']) not in have]
+            written = upsert(cid, fresh) if fresh else 0
+            with lock:
+                st['fetch'] += len(jobs); st['new'] += written; st['done'] += 1
+            sys.stderr.write(f'  {cid:16} {len(jobs):3} indeed · {written:3} new '
+                             f'({len(jobs) - len(fresh)} already archived)\n')
+
+        with ThreadPoolExecutor(max_workers=max(1, CONCURRENCY)) as ex:
+            list(ex.map(lambda cn: work(*cn), sel))
         if SOLVE:
-            sys.stderr.write(f'\n✓ {done} companies reachable via Oxylabs.\n')
+            sys.stderr.write(f'\n✓ {st["done"]} companies reachable via Oxylabs.\n')
             return 0
-        sys.stderr.write(f'\nDone (Oxylabs). {total_fetch} listings fetched, {total_new} new rows '
-                         f'archived, {empty} companies with 0 jobs.\n')
+        sys.stderr.write(f'\nDone (Oxylabs). {st["fetch"]} listings fetched, {st["new"]} new rows '
+                         f'archived, {st["empty"]} companies with 0 jobs.\n')
         return 0
 
     if sync_playwright is None:
