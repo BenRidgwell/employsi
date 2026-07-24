@@ -814,6 +814,55 @@ export default {
         );
       }
     }
+    // Skill-gap report: the sustainable "add new skills where there's no match"
+    // mechanism. Every source writes skills into D1 (NULL when a title mapped to
+    // no canonical skill), so the unmapped titles already sit in the archive.
+    // This groups them by a normalised title-head and returns the most common
+    // gaps, so the ontology (skillsTaxonomy.ts) can be grown from real demand.
+    // Re-archiving backfills skills (the upsert COALESCEs a NULL to the new map),
+    // so a gap closed in the taxonomy heals on the next scrape.
+    if (url.pathname === '/skill-gaps') {
+      if (url.searchParams.get('token') !== env.CRON_TOKEN) {
+        return new Response('forbidden', { status: 403 });
+      }
+      try {
+        const limit = Math.min(2000, Math.max(50, Number(url.searchParams.get('scan')) || 1000));
+        const res: any = await env.JOBS_ARCHIVE.prepare(
+          `SELECT title, source FROM jobs
+             WHERE skills IS NULL AND last_seen >= date('now', '-45 days')
+             ORDER BY last_seen DESC LIMIT ?1`,
+        )
+          .bind(limit)
+          .all();
+        const rows: Array<{ title: string; source: string }> = res?.results ?? [];
+        const heads: Record<string, { n: number; sources: Record<string, number> }> = {};
+        for (const r of rows) {
+          // "Senior Policy Officer, Reform" → "senior policy officer"
+          const head = String(r.title || '')
+            .replace(/&amp;/g, '&')
+            .split(/[,\-–(|/]/)[0]
+            .toLowerCase()
+            .replace(/\b(senior|principal|lead|junior|assistant|graduate|trainee)\b/g, '')
+            .replace(/[^a-z0-9 ]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          if (!head) continue;
+          const e = (heads[head] ||= { n: 0, sources: {} });
+          e.n++;
+          e.sources[r.source] = (e.sources[r.source] || 0) + 1;
+        }
+        const top = Object.entries(heads)
+          .sort((a, b) => b[1].n - a[1].n)
+          .slice(0, 60)
+          .map(([head, v]) => ({ head, count: v.n, sources: v.sources }));
+        return Response.json({ ok: true, scanned: rows.length, unmappedHeads: top });
+      } catch (e) {
+        return Response.json(
+          { ok: false, error: (e as Error)?.message || String(e) },
+          { status: 500 },
+        );
+      }
+    }
     // Reachability probe for the SEEK feed: confirms the search API answers from
     // the Worker's IP (its Cloudflare front may challenge datacenter IPs even
     // though it answers elsewhere) and shows the deduped sample for one company.

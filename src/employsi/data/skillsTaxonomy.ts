@@ -36,7 +36,7 @@ export const SKILLS: SkillDef[] = [
   { skill: 'Electrical Engineering', cat: 'Engineering', terms: ['electrical engineer', 'electrical engineering', 'high voltage', 'hv '] },
   { skill: 'Mechanical Engineering', cat: 'Engineering', terms: ['mechanical engineer', 'mechanical engineering', 'rotating equipment', 'industrial, mechanical', 'production engineer'] },
   { skill: 'Civil Engineering', cat: 'Engineering', terms: ['civil engineer', 'civil engineering', 'structural engineer'] },
-  { skill: 'Instrumentation & Control', cat: 'Engineering', terms: ['instrumentation', 'control systems', 'e&i', 'plc', 'scada'] },
+  { skill: 'Instrumentation & Control', cat: 'Engineering', terms: ['instrumentation', 'control systems', 'e and i', 'plc', 'scada'] },
 
   // ── Trades & operations ────────────────────────────────────────────────
   // Named as skills/capabilities, not occupations: the match terms still key off
@@ -69,16 +69,19 @@ export const SKILLS: SkillDef[] = [
   { skill: 'Project Management', cat: 'Corporate', terms: ['project manager', 'project management', 'project engineer', 'pmo', 'program and project', 'project administrat'] },
   { skill: 'Finance & Accounting', cat: 'Corporate', terms: ['accountant', 'finance', 'financial analyst', 'cfo', 'tax', 'auditor', 'company secretar', 'treasurer', 'economist'] },
   { skill: 'Procurement & Supply', cat: 'Corporate', terms: ['procurement', 'supply chain', 'contracts', 'logistics', 'supply, distribution'] },
-  { skill: 'Human Resources', cat: 'Corporate', terms: ['human resources', 'human resource', 'hr ', 'people and culture', 'recruit', 'talent', 'training and development'] },
+  { skill: 'Human Resources', cat: 'Corporate', terms: ['human resources', 'human resource', 'hr ', 'people and culture', 'recruit', 'talent', 'training and development', 'learning and development', 'workforce', 'employee relations', 'industrial relations'] },
   { skill: 'Commercial & Legal', cat: 'Corporate', terms: ['commercial', 'legal', 'lawyer', 'counsel', 'contract administrat', 'solicitor', 'barrister', 'conveyancer', 'legal executive'] },
   { skill: 'Marketing & Comms', cat: 'Corporate', terms: ['marketing', 'communications', 'brand', 'content', 'advertising', 'public relations'] },
   { skill: 'Sales & Business Dev', cat: 'Corporate', terms: ['business development', 'account manager', 'account executive', 'sales representative', 'sales manager', 'technical sales'] },
   { skill: 'General Management', cat: 'Corporate', terms: ['chief executive', 'managing director', 'general manager', 'corporate services manager', 'other specialist manager', 'production manager', 'engineering manager', 'policy and planning manager'] },
+  { skill: 'Leadership & Coordination', cat: 'Corporate', terms: ['team leader', 'coordinator', 'co-ordinator', 'director of', 'deputy director', 'executive director', 'head of', 'operations manager', 'service manager', 'branch manager'] },
+  { skill: 'Policy & Programs', cat: 'Public Sector', terms: ['policy officer', 'policy adviser', 'policy advisor', 'policy analyst', 'senior policy', 'program officer', 'program adviser', 'program advisor', 'program coordinator', 'program manager', 'ministerial', 'cabinet', 'governance officer', 'planning officer', 'principal adviser', 'senior program'] },
   { skill: 'Community & Native Title', cat: 'Corporate', terms: ['community relations', 'stakeholder', 'native title', 'indigenous engagement', 'heritage'] },
 
   // ── Administration & clerical ──────────────────────────────────────────
-  { skill: 'Administration & Office Support', cat: 'Admin', terms: ['clerk', 'administrator', 'receptionist', 'office manager', 'secretary', 'personal assistant', 'keyboard operator', 'information officer', 'call or contact centre', 'call centre', 'switchboard', 'mail sorter', 'filing', 'practice manager', 'survey interviewer'] },
+  { skill: 'Administration & Office Support', cat: 'Admin', terms: ['clerk', 'administrator', 'administration officer', 'administrative officer', 'administration assistant', 'business support officer', 'operational services', 'receptionist', 'office manager', 'secretary', 'personal assistant', 'executive assistant', 'keyboard operator', 'information officer', 'call or contact centre', 'call centre', 'switchboard', 'mail sorter', 'filing', 'practice manager', 'survey interviewer'] },
   { skill: 'Bookkeeping & Payroll', cat: 'Admin', terms: ['bookkeeper', 'payroll', 'accounting clerk', 'accounts clerk'] },
+  { skill: 'Library & Information', cat: 'Admin', terms: ['librarian', 'library', 'archivist', 'records officer', 'records management', 'information management'] },
 
   // ── Financial services ─────────────────────────────────────────────────
   { skill: 'Banking & Lending', cat: 'Financial', terms: ['banking', 'bank worker', 'lending', 'credit', 'mortgage', 'loans', 'financial broker', 'financial dealer', 'financial investment', 'debt collector'] },
@@ -88,17 +91,19 @@ export const SKILLS: SkillDef[] = [
   // ── Health & care ──────────────────────────────────────────────────────
   { skill: 'Nursing', cat: 'Health', terms: ['registered nurse', 'enrolled nurse', 'nurse ', 'nursing', 'midwife', 'midwives', 'nurse manager', 'nurse educator'] },
   { skill: 'Medical Practice', cat: 'Health', terms: ['general practitioner', 'medical practitioner', 'resident medical', 'physician', 'surgeon', 'anaesthetist', 'psychiatrist', 'medical officer'] },
-  { skill: 'Allied Health', cat: 'Health', terms: ['physiotherap', 'occupational therap', 'podiatr', 'speech pathol', 'audiolog', 'optometr', 'orthopt', 'chiropract', 'osteopath', 'dietit', 'nutrition', 'massage therap', 'diversional therap'] },
+  { skill: 'Allied Health', cat: 'Health', terms: ['physiotherap', 'occupational therap', 'podiatr', 'speech pathol', 'audiolog', 'optometr', 'orthopt', 'chiropract', 'osteopath', 'dietit', 'nutrition', 'massage therap', 'diversional therap', 'allied health', 'health practitioner', 'exercise physiolog', 'sonographer'] },
   { skill: 'Dental', cat: 'Health', terms: ['dental', 'dentist', 'orthodont'] },
   { skill: 'Pharmacy', cat: 'Health', terms: ['pharmacist', 'pharmacy'] },
   { skill: 'Medical Imaging & Pathology', cat: 'Health', terms: ['medical imaging', 'radiograph', 'sonograph', 'medical laborator', 'medical technician', 'pathology'] },
   { skill: 'Aged & Disability Care', cat: 'Care', terms: ['aged and disabled', 'aged care', 'disabled carer', 'disability', 'personal care', 'nursing support', 'mothercraft', 'care worker', 'welfare support', 'special care worker', 'indigenous health'] },
   { skill: 'Mental Health & Counselling', cat: 'Care', terms: ['counsellor', 'psycholog', 'mental health'] },
-  { skill: 'Social & Community Services', cat: 'Community', terms: ['social work', 'welfare', 'community arts', 'youth work', 'minister of religion', 'social profession', 'recreation and community'] },
+  { skill: 'Social & Community Services', cat: 'Community', terms: ['social work', 'welfare', 'community arts', 'youth work', 'minister of religion', 'social profession', 'recreation and community', 'caseworker', 'case worker', 'case manager', 'child protection', 'family services', 'housing officer'] },
 
   // ── Education ──────────────────────────────────────────────────────────
-  { skill: 'Teaching & Education', cat: 'Education', terms: ['teacher', 'lecturer', 'tutor', 'education aide', 'vocational education', 'education adviser', 'teachers of english'] },
+  { skill: 'Teaching & Education', cat: 'Education', terms: ['teacher', 'lecturer', 'tutor', 'education aide', 'vocational education', 'education adviser', 'teachers of english', 'teaching', 'educator', 'learning specialist', 'curriculum'] },
+  { skill: 'Education Leadership', cat: 'Education', terms: ['principal', 'assistant principal', 'school leader', 'leading teacher', 'head of school', 'head teacher', 'dean of', 'education leader'] },
   { skill: 'Childcare & Early Learning', cat: 'Education', terms: ['child carer', 'child care', 'early childhood', 'kindergarten', 'nanny'] },
+  { skill: 'Education Support', cat: 'Education', terms: ['integration aide', 'inclusion support', 'education support', 'teacher aide', "teacher's aide", 'learning support', 'student support', 'school support'] },
 
   // ── Hospitality & food ─────────────────────────────────────────────────
   { skill: 'Hospitality & Food Service', cat: 'Hospitality', terms: ['chef', 'cook', 'waiter', 'barista', 'bar attendant', 'cafe worker', 'cafe and restaurant', 'kitchenhand', 'hotel service', 'gaming worker', 'fast food', 'hotel and motel', 'hospitality', 'licensed club'] },
@@ -139,7 +144,8 @@ export const SKILLS: SkillDef[] = [
   { skill: 'Agriculture & Farming', cat: 'Agriculture', terms: ['farmer', 'agricultur', 'livestock', 'crop', 'horticultur', 'aquaculture', 'forestry', 'nurseryperson', 'shearer', 'animal attendant', 'greenkeeper', 'gardener', 'garden and nursery', 'primary products'] },
 
   // ── Public safety & personal services ──────────────────────────────────
-  { skill: 'Emergency & Public Safety', cat: 'Safety', terms: ['police', 'fire and emergency', 'ambulance', 'paramedic', 'prison officer', 'security officer', 'guard'] },
+  { skill: 'Emergency & Public Safety', cat: 'Safety', terms: ['police', 'fire and emergency', 'ambulance', 'paramedic', 'prison officer', 'security officer', 'guard', 'emergency service'] },
+  { skill: 'Corrections & Justice', cat: 'Safety', terms: ['correction', 'custodial', 'youth justice', 'justice officer', 'court services', 'probation', 'parole', 'community corrections', 'detention'] },
   { skill: 'Personal Services & Beauty', cat: 'Personal', terms: ['hairdress', 'beauty therap', 'funeral', 'driving instructor', 'travel adviser', 'travel attendant', 'tour guide', 'personal care consultant'] },
   { skill: 'Sport & Recreation', cat: 'Personal', terms: ['sports coach', 'fitness instructor', 'sportsperson', 'outdoor adventure', 'amusement, fitness'] },
   { skill: 'Cleaning & Facilities', cat: 'Cleaning', terms: ['cleaner', 'housekeeper', 'laundry', 'caretaker', 'handyperson', 'car detailer', 'rubbish', 'recycling', 'vending machine'] },
@@ -149,7 +155,15 @@ export const SKILLS: SkillDef[] = [
   { skill: 'Shipbuilding & Marine', cat: 'Sector', terms: ['shipbuild', 'marine', 'vessel', 'naval', 'boat builder', 'shipwright', 'deck and fishing', 'aircraft maintenance'] },
 ];
 
-const norm = (s: string) => (s || '').toLowerCase();
+// Normalise for matching: lowercase, expand "&" to "and" (so "People & Culture"
+// hits the "people and culture" term, "Learning & Development" hits its term,
+// etc.), and collapse whitespace. Terms are plain substrings (some are stems
+// like "geolog"), so we keep substring semantics — only "&"/whitespace change.
+const norm = (s: string) =>
+  (s || '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/\s+/g, ' ');
 
 // Return the canonical skills a job (or ANZSCO occupation) demands. We match on
 // the TITLE only: titles are concise and role-defining ("Mining Engineer",
