@@ -1569,7 +1569,8 @@ body {
 }
 .trendcardicon.ic-movers,
 .trendcardicon.ic-salary,
-.trendcardicon.ic-hot {
+.trendcardicon.ic-hot,
+.trendcardicon.ic-fallers {
   background: linear-gradient(150deg, #2c2c31, #1c1c1e);
 }
 /* Big movers: trend line ticks up */
@@ -1583,6 +1584,20 @@ body {
   }
   50% {
     transform: translate(0.4px, -0.9px);
+  }
+}
+/* Biggest fallers: same trend-line icon, mirrored to tick DOWN, animated to
+   drift down-and-away (the inverse of the risers bob). */
+.ic-fallers svg {
+  animation: icfallers 2.6s ease-in-out infinite;
+}
+@keyframes icfallers {
+  0%,
+  100% {
+    transform: translate(-0.4px, -0.7px);
+  }
+  50% {
+    transform: translate(0.4px, 0.9px);
   }
 }
 /* Salary spenders: dollar mark gently pulses */
@@ -5520,11 +5535,38 @@ body {
     z-index: 42;
   }
 
-  /* Ticker: a touch more compact */
+  /* Company-card action tooltips (Compare / Follow / Close) are hover-only
+     affordances with no purpose on touch — and a tap can leave the portalled
+     label ("Close") stranded on screen after the card closes. Suppress them. */
+  .pfablbl,
+  .pfablblfixed {
+    display: none !important;
+  }
+
+  /* Ticker: a touch more compact. Smaller "Live trends" header + smaller
+     scrolling items, but the strip stays in the same top position. */
   .tickerlbl {
-    padding: 0 11px;
-    font-size: 9.5px;
-    letter-spacing: 1px;
+    padding: 0 10px;
+    font-size: 8px;
+    letter-spacing: 0.8px;
+  }
+  .tickerlbl i {
+    width: 6px;
+    height: 6px;
+  }
+  .titem {
+    gap: 7px;
+    padding: 0 13px;
+  }
+  .tname {
+    font-size: 10.5px;
+  }
+  .ttag {
+    font-size: 7.5px;
+    letter-spacing: 0.4px;
+  }
+  .tdelta {
+    font-size: 10px;
   }
 
   /* Layer selection sits in the top-right corner on mobile, laid out as a
