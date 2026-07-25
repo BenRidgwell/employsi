@@ -49,11 +49,19 @@ body {
 .poipin {
   /* NB: do not set `position` here — Mapbox's own .mapboxgl-marker class makes
      the marker position:absolute so it stays pinned to its lng/lat; overriding
-     that (this stylesheet loads after mapbox-gl.css) unpins the markers. The
-     absolutely-positioned children anchor to the marker's own box. */
+     that (this stylesheet loads after mapbox-gl.css) unpins the markers. Also do
+     NOT set opacity here — Mapbox rewrites the root marker's opacity every frame
+     (occlusion fade), so the search fade lives on .poipininner instead. */
   width: 28px;
   height: 28px;
   cursor: pointer;
+}
+/* Inner wrapper holding everything visual. Mapbox never touches this element, so
+   the skill-search fade (its inline opacity, set by setMarkerFade) sticks. */
+.poipininner {
+  position: relative;
+  width: 28px;
+  height: 28px;
   transition: opacity 0.18s ease;
 }
 /* White circular badge behind the logo. */
@@ -126,15 +134,6 @@ body {
 }
 .poipin.on .poipinname {
   font-weight: 800;
-}
-.poipin.dim {
-  opacity: 0.4;
-}
-/* Skill search on the local map: companies with no active/recent vacancy for the
-   searched skill fade right back (and carry no glow), so the ones that ARE hiring
-   it stand out. */
-.poipin.miss {
-  opacity: 0.1;
 }
 /* Mapbox trial: the global/domestic Mapbox overview sits on top of the local
    3D map (it comes after PerthMapbox in the DOM, so it stacks above it without
