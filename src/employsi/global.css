@@ -66,28 +66,40 @@ body {
   width: 30px;
   height: 40px;
 }
+/* The logo sits in the white circle drawn inside the grey pin head. */
 .poipinlogo {
   position: absolute;
-  top: 5px;
-  left: 6px;
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
+  top: 7px;
+  left: 8px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
   object-fit: contain;
-  background: #fff;
 }
 .poipintk {
   position: absolute;
-  top: 5px;
-  left: 3px;
-  width: 24px;
-  height: 18px;
+  top: 6px;
+  left: 4px;
+  width: 22px;
+  height: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font: 800 8.5px "Source Sans Pro", "Mona Sans", sans-serif;
+  font: 800 8px "Source Sans Pro", "Mona Sans", sans-serif;
   color: #1c1c1e;
   letter-spacing: 0.2px;
+}
+/* Small heat dot, top-right of the pin head, coloured by live skill demand. */
+.poipindot {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+  border: 1.5px solid #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.4);
 }
 .poipinname {
   position: absolute;

@@ -60,6 +60,14 @@ const NUM_CARS = 14;
 // Neutral marker colour — every layer sits neutral until a skill is searched
 // (then the demand gradient takes over).
 const NEUTRAL = 'rgb(42,42,46)';
+// The little heat dot on each pin: neutral slate when no skill is searched,
+// otherwise the green→amber→red heat colour for that company's live demand.
+const HEAT_DOT_NEUTRAL = '#94a3b8';
+function paintHeatDot(el: HTMLElement, demand: number, max: number, skillMode: boolean): void {
+  const dot = el.querySelector('.poipindot') as HTMLElement | null;
+  if (!dot) return;
+  dot.style.background = skillMode ? rgbCss(heatColor(demand / max)) : HEAT_DOT_NEUTRAL;
+}
 
 // Pill label: the company's name, word-shortened to keep the pill roughly its
 // old (ticker-width) size. Long single words fall back to a clipped form.
@@ -413,8 +421,12 @@ export function PerthMapbox() {
           el.className = 'poipin';
           const mark = document.createElement('span');
           mark.className = 'poipinmark';
+          // Grey pin body, black outline, with a white circle inside for the logo.
           mark.innerHTML =
-            '<svg viewBox="0 0 30 40" aria-hidden="true"><path d="M15 1.4C7.9 1.4 2.2 7 2.2 13.9c0 8.6 10.9 22.6 12.1 24.1a.9.9 0 0 0 1.4 0c1.2-1.5 12.1-15.5 12.1-24.1C27.8 7 22.1 1.4 15 1.4Z" fill="#ffffff" stroke="#111111" stroke-width="1.6"/></svg>';
+            '<svg viewBox="0 0 30 40" aria-hidden="true">' +
+            '<path d="M15 1.4C7.9 1.4 2.2 7 2.2 13.9c0 8.6 10.9 22.6 12.1 24.1a.9.9 0 0 0 1.4 0c1.2-1.5 12.1-15.5 12.1-24.1C27.8 7 22.1 1.4 15 1.4Z" fill="#8b95a7" stroke="#111111" stroke-width="1.6"/>' +
+            '<circle cx="15" cy="13.7" r="8.6" fill="#ffffff"/>' +
+            '</svg>';
           const img = document.createElement('img');
           img.className = 'poipinlogo';
           img.alt = '';
@@ -427,6 +439,11 @@ export function PerthMapbox() {
             mark.appendChild(tk);
           });
           mark.appendChild(img);
+          // Small heat dot (top-right of the head) — coloured by skill demand when
+          // a skill is searched, neutral otherwise. Kept in sync by the effects.
+          const dot = document.createElement('span');
+          dot.className = 'poipindot';
+          mark.appendChild(dot);
           const name = document.createElement('span');
           name.className = 'poipinname';
           name.textContent = pillLabel(c.name, c.ticker);
@@ -480,6 +497,8 @@ export function PerthMapbox() {
         source?.setData(buildGeoJSON(placedRef.current, s.selectedId, fs, skillDemandOf(s)));
         renderMarkers(placedRef.current);
         setCompaniesVisible(true);
+        const dmC = skillDemandOf(s);
+        const maxC = dmC ? Math.max(1, ...placedRef.current.map((p) => dmC[p.company.id] || 0)) : 1;
         placedRef.current.forEach((p) => {
           const el = markersRef.current[p.company.id]?.getElement();
           if (!el) return;
@@ -489,6 +508,7 @@ export function PerthMapbox() {
           const searchOk = !isSearchActive(fs) || searchMatches(p.company, fs.searchQuery);
           const notSelected = !!s.selectedId && s.selectedId !== p.company.id;
           el.className = ['poipin', s.selectedId === p.company.id ? 'on' : '', searchOk && !notSelected ? '' : 'dim'].join(' ').trim();
+          paintHeatDot(el, dmC ? dmC[p.company.id] || 0 : 0, maxC, !!dmC);
         });
         focusUpdaterRef.current?.();
       };
@@ -497,77 +517,19 @@ export function PerthMapbox() {
       // rather than waiting for a zoom crossing that will never happen.
       if (useAppStore.getState().zoomedOut) setCompaniesVisible(false);
 
-      // Focus reveal: labels fade in by ground distance from centre + zoom, and
-      // a greedy collision pass hides any pill that would overlap a
-      // higher-priority (more revealed) one, so text never overlaps.
-      const R_FULL = 700; // metres from centre: within this -> fully shown
-      const R_GONE = 1900; // metres from centre: beyond this -> hidden
-      const Z_MIN = 13.4; // below this zoom -> labels hidden
-      const Z_FULL = 14.4; // at/above this zoom -> labels at full strength
-      const distMetres = (aLng: number, aLat: number, bLng: number, bLat: number) => {
-        const R = 6371000;
-        const toR = Math.PI / 180;
-        const dLat = (bLat - aLat) * toR;
-        const dLng = (bLng - aLng) * toR;
-        const h =
-          Math.sin(dLat / 2) ** 2 +
-          Math.cos(aLat * toR) * Math.cos(bLat * toR) * Math.sin(dLng / 2) ** 2;
-        return 2 * R * Math.asin(Math.sqrt(h));
-      };
+      // Collision / distance-fade declutter removed by request: every company
+      // pin stays shown at its EXACT geographic location, even when crowded.
+      // Only the state classes matter now — .dim (filter/search miss) fades via
+      // CSS, .on (selected) lifts it — so this just clears any stale inline
+      // opacity a previous pass may have set and lets CSS drive the rest.
       const updateFocus = () => {
-        const c = map.getCenter();
-        const z = map.getZoom();
-        const zf = z <= Z_MIN ? 0 : z >= Z_FULL ? 1 : (z - Z_MIN) / (Z_FULL - Z_MIN);
-        type Cand = { el: HTMLElement; op: number; x: number; y: number; w: number; force: boolean };
-        const cands: Cand[] = [];
         placedRef.current.forEach((placed) => {
-          const marker = markersRef.current[placed.company.id];
-          if (!marker) return;
-          const el = marker.getElement();
-          // Skip sector-hidden markers (display:none) so they neither show nor
-          // block a visible pill in the collision pass.
-          if (el.style.display === 'none') return;
-          const [lng, lat] = placed.coords;
-          const p = map.project([lng, lat]);
-          // The selected company's pill is always shown at its true position,
-          // regardless of distance/zoom fade or collision — so opening a company
-          // that sits far from the city centre (e.g. Mineral Resources up in
-          // Osborne Park) still pins its pill to its own building.
-          if (el.classList.contains('on')) {
-            cands.push({ el, op: 1, x: p.x, y: p.y, w: el.offsetWidth || 120, force: true });
-            return;
-          }
-          const d = distMetres(c.lng, c.lat, lng, lat);
-          const df = d <= R_FULL ? 1 : d >= R_GONE ? 0 : (R_GONE - d) / (R_GONE - R_FULL);
-          const f = df * zf;
-          const base = el.classList.contains('dim') ? 0.4 : 1;
-          if (f <= 0.02) {
-            el.style.opacity = '0';
-            el.style.pointerEvents = 'none';
-            return;
-          }
-          cands.push({ el, op: base * f, x: p.x, y: p.y, w: el.offsetWidth || 120, force: false });
-        });
-        // Show the most-revealed first; hide any that collide with a shown one
-        // (forced pills — the selected company — are never hidden).
-        cands.sort((a, b) => b.op - a.op);
-        const shown: { x0: number; x1: number; y0: number; y1: number }[] = [];
-        const MH = 26;
-        cands.forEach((cd) => {
-          // The pill sits to the right of the dot, vertically centred on it.
-          const box = { x0: cd.x - 6, x1: cd.x + (cd.w || 120) + 12, y0: cd.y - MH / 2, y1: cd.y + MH / 2 };
-          const hit = !cd.force && shown.some((s) => box.x0 < s.x1 && box.x1 > s.x0 && box.y0 < s.y1 && box.y1 > s.y0);
-          if (hit) {
-            cd.el.style.opacity = '0';
-            cd.el.style.pointerEvents = 'none';
-          } else {
-            shown.push(box);
-            cd.el.style.opacity = String(cd.op);
-            cd.el.style.pointerEvents = cd.op > 0.05 ? 'auto' : 'none';
-          }
+          const el = markersRef.current[placed.company.id]?.getElement();
+          if (!el) return;
+          el.style.opacity = '';
+          el.style.pointerEvents = '';
         });
       };
-      map.on('move', updateFocus);
       focusUpdaterRef.current = updateFocus;
       updateFocus();
 
@@ -770,6 +732,7 @@ export function PerthMapbox() {
       // event never re-fires); applying directly avoids that.
       const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
       if (source) source.setData(buildGeoJSON(placedRef.current, selectedId, filterState, skillDemand));
+      const maxD = skillDemand ? Math.max(1, ...placedRef.current.map((p) => skillDemand[p.company.id] || 0)) : 1;
       placedRef.current.forEach((p) => {
         const c = p.company;
         const marker = markersRef.current[c.id];
@@ -788,6 +751,7 @@ export function PerthMapbox() {
         // stays the visual focus; clears the instant selectedId is null again.
         const notSelected = !!selectedId && selectedId !== c.id;
         el.className = ['poipin', selectedId === c.id ? 'on' : '', searchOk && !notSelected ? '' : 'dim'].join(' ').trim();
+        paintHeatDot(el, demand, maxD, !!skillDemand);
       });
       // Re-apply the focus fade so a newly dimmed/undimmed pill keeps the
       // correct opacity without waiting for the next pan.
