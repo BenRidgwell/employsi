@@ -211,3 +211,7 @@ COMPANIES.push(...DARWIN_GOV_COMPANIES);
 // Tasmanian government agencies (private / public-sector), all Hobart.
 import { HOBART_GOV_COMPANIES } from './hobartGov';
 COMPANIES.push(...HOBART_GOV_COMPANIES);
+
+// AFR/IBISWorld Top 150 private companies, plotted on their home-state capital.
+import { TOP_PRIVATE_COMPANIES } from './topPrivateCompanies';
+COMPANIES.push(...TOP_PRIVATE_COMPANIES);

@@ -12,6 +12,7 @@ import { BRISBANE_GOV_IDS } from './brisbaneGov';
 import { APS_GOV_IDS, APS_GOV_HUB } from './canberraGov';
 import { DARWIN_GOV_IDS } from './darwinGov';
 import { HOBART_GOV_IDS } from './hobartGov';
+import { TOP_PRIVATE_BY_CITY } from './topPrivateCompanies';
 import { PERTH_REAL_COORDS } from './perthRealCoords';
 
 export const PERTH_CENTER: [number, number] = [115.8552, -31.9542];
@@ -257,6 +258,17 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   const offset = existing.length;
   const pts = spreadCoordsCity(view.center, offset + HOBART_GOV_IDS.length, CITY_PLACEMENT.hobart);
   HOBART_GOV_IDS.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
+}
+
+// Top-150 private companies: fan each city's set around its centre (they have no
+// verified street address, so they're spread like the government rosters).
+for (const [city, ids] of Object.entries(TOP_PRIVATE_BY_CITY)) {
+  const view = CITY_VIEWS[city];
+  if (!view) continue;
+  const existing = (CITY_COMPANIES[city] ||= []);
+  const offset = existing.length;
+  const pts = spreadCoordsCity(view.center, offset + ids.length, CITY_PLACEMENT[city]);
+  ids.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
 }
 
 // Flat lookup of every company's coords across all cities. Where a company sits
