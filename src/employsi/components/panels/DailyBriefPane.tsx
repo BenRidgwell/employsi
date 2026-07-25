@@ -44,11 +44,14 @@ function buildQuery(activeSectors: string[]): { query: string; label: string } {
 
 export function DailyBriefPane() {
   const briefOpen = useAppStore((s) => s.briefOpen);
-  const zoomedOut = useAppStore((s) => s.zoomedOut);
   const closeBrief = useAppStore((s) => s.closeBrief);
   const activeSectors = useAppStore((s) => s.activeSectors);
 
-  const open = briefOpen && zoomedOut;
+  // Open whenever toggled, on any layer. The old `&& zoomedOut` gate meant that
+  // opening the brief from the mobile "More" menu on the local (city) view left
+  // it silently closed — the tab bar hid (briefOpen is true) but the card never
+  // rendered. Same fix as the What's Trending pane.
+  const open = briefOpen;
   const today = new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const { query, label } = useMemo(() => buildQuery(activeSectors), [activeSectors]);

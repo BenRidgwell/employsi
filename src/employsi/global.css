@@ -4757,11 +4757,9 @@ body {
   border-bottom: none;
 }
 .moverdir {
-  flex: 0 0 auto;
-  font-size: 10px;
+  font-size: 9px;
   line-height: 1;
-  width: 12px;
-  text-align: center;
+  margin-right: 2px;
 }
 .moverdir.up,
 .moverdelta.up {
@@ -4772,7 +4770,8 @@ body {
   color: #e0524a;
 }
 .movername {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  max-width: 46%;
   font-size: 12.5px;
   font-weight: 600;
   color: var(--ink);
@@ -4780,11 +4779,41 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Per-skill 3-month movement sparkline, filling the middle of the row. */
+.moverspark {
+  flex: 1 1 auto;
+  min-width: 40px;
+  height: 20px;
+  display: block;
+}
+.moverspark path {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+.moversparkline {
+  stroke-width: 1.4px;
+}
+.moverspark.up .moversparkline {
+  stroke: #159d67;
+}
+.moverspark.down .moversparkline {
+  stroke: #e0524a;
+}
+.moversparkarea {
+  stroke: none;
+}
+.moverspark.up .moversparkarea {
+  fill: rgba(21, 157, 103, 0.12);
+}
+.moverspark.down .moversparkarea {
+  fill: rgba(224, 82, 74, 0.12);
+}
 .moverdelta {
   flex: 0 0 auto;
   font-size: 12px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .moverpct {
   font-weight: 600;
@@ -5513,12 +5542,13 @@ body {
     z-index: 5;
   }
 
-  /* Perth / local-view label: smaller, and tucked directly under the four
-     layer buttons in the top-right (not floating across the middle top). */
+  /* Perth / local-view label: smaller, and moved to the LEFT edge, sitting
+     below the Employsi wordmark (not under the four layer buttons top-right,
+     which it used to overlap). Keeps clear vertical spacing from the logo. */
   .citybadge {
-    top: 104px;
-    left: auto;
-    right: 12px;
+    top: 84px;
+    left: 12px;
+    right: auto;
     transform: none;
     gap: 6px;
     padding: 6px 11px;
@@ -5740,7 +5770,6 @@ body {
      controls are replaced by one fixed bottom bar (Search / Filter / Heat /
      Trending / More). Hide the scattered desktop chrome; the bar and its
      "More" sheet drive the same store flags those controls used. */
-  .ticker,
   .toolsdock,
   .mapactions,
   .legend,
@@ -5749,6 +5778,8 @@ body {
   .controls .seglbl {
     display: none;
   }
+  /* Keep the live-trends ticker on mobile too (global layer only, same as
+     desktop): it occupies the top 38px strip the top bar already sits below. */
   /* Keep the help dock mounted (its Help / Settings / Feedback panels render
      inside it) but drop its buttons — the More sheet opens those panels now. */
   .helpdock .helpbtn {

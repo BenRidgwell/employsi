@@ -1,6 +1,8 @@
+import { useQuery } from '@tanstack/react-query';
 import { useAppStore } from '../../state/store';
 import { COMPANIES } from '../../data/companies';
 import { TREND_SECTIONS, MOST_VIEWED, type TrendIcon, type TrendItem, type ViewedItem } from '../../data/trending';
+import { getMarketSkillMovers, type MarketSkillMover } from '../../lib/jobHistoryFn';
 
 const TICKER_TO_ID: Record<string, string> = Object.fromEntries(COMPANIES.map((c) => [c.ticker, c.id]));
 
@@ -26,6 +28,52 @@ function fmtDelta(d: number): string {
   return (d >= 0 ? '+' : '−') + Math.abs(d).toFixed(1) + '%';
 }
 
+// Render a real skill risers/fallers card. Each row links to the skill heat map.
+function renderMoversCard(
+  title: string,
+  caption: string,
+  icon: TrendIcon,
+  rows: MarketSkillMover[],
+  onSkill: (skill: string) => void,
+) {
+  return (
+    <section className="trendcard">
+      <div className="trendcardhead">
+        <span className={`trendcardicon ic-${icon}`}>
+          <SectionIcon icon={icon} />
+        </span>
+        <div className="trendcardmeta">
+          <div className="trendcardtitle">{title}</div>
+          <div className="trendcardcap">{caption}</div>
+        </div>
+      </div>
+      <div className="trendrows">
+        {rows.length ? (
+          rows.map((m, i) => (
+            <div
+              className="trendrow link"
+              key={m.skill}
+              onClick={() => onSkill(m.skill)}
+              role="button"
+            >
+              <span className="trendrank">{i + 1}</span>
+              <span className="trendinfo">
+                <span className="trendlabel">{m.skill}</span>
+                <span className="trendsub">{m.cat} · {m.now} live vacanc{m.now === 1 ? 'y' : 'ies'}</span>
+              </span>
+              <span className={`trenddelta ${m.dir}`}>
+                {m.dir === 'up' ? '▲' : '▼'} {m.prev > 0 ? `${m.dir === 'up' ? '+' : '−'}${Math.abs(m.pct)}%` : 'new'}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="dataempty">No {title.toLowerCase()} yet</div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export function WhatsTrendingPane() {
   const trendingOpen = useAppStore((s) => s.trendingOpen);
   const closeTrending = useAppStore((s) => s.closeTrending);
@@ -36,6 +84,23 @@ export function WhatsTrendingPane() {
   // Open whenever toggled, on any layer — the mobile tab bar can trigger it from
   // the local view too, where the old `zoomedOut` gate left it silently closed.
   const open = trendingOpen;
+
+  // Real, market-wide skill risers/fallers from the D1 archive (all feeds).
+  // Only fetched once the pane is opened; refreshed a few times a day.
+  const { data: movers } = useQuery({
+    queryKey: ['marketSkillMovers'],
+    queryFn: () => getMarketSkillMovers(),
+    enabled: open,
+    staleTime: 6 * 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    retry: false,
+  });
+  const hasReal = !!movers && (movers.risers.length > 0 || movers.fallers.length > 0);
+
+  const activateSkill = (skill: string) => {
+    toggleSkillQuery(skill);
+    closeTrending();
+  };
 
   const activateViewed = (v: ViewedItem) => {
     if (v.kind === 'company' && v.ticker && TICKER_TO_ID[v.ticker]) select(TICKER_TO_ID[v.ticker]);
@@ -72,7 +137,7 @@ export function WhatsTrendingPane() {
         </div>
         <div className="briefheadtxt">
           <div className="brieftitle">What's Trending</div>
-          <div className="briefdate">Movers this quarter</div>
+          <div className="briefdate">{hasReal ? 'Skill demand · month on month' : 'Movers this quarter'}</div>
         </div>
         <button className="briefclose" onClick={closeTrending} aria-label="Close">✕</button>
       </div>
@@ -100,43 +165,53 @@ export function WhatsTrendingPane() {
           ))}
         </div>
 
-        {TREND_SECTIONS.map((s) => (
-          <section className="trendcard" key={s.id}>
-            <div className="trendcardhead">
-              <span className={`trendcardicon ic-${s.icon}`}>
-                <SectionIcon icon={s.icon} />
-              </span>
-              <div className="trendcardmeta">
-                <div className="trendcardtitle">{s.title}</div>
-                <div className="trendcardcap">{s.caption}</div>
-              </div>
-            </div>
-            <div className="trendrows">
-              {s.items.map((it, i) => {
-                const up = it.delta >= 0;
-                const link = !!(it.ticker || it.skill);
-                return (
-                  <div
-                    className={`trendrow ${link ? 'link' : ''}`}
-                    key={it.label + i}
-                    onClick={link ? () => activate(it) : undefined}
-                    role={link ? 'button' : undefined}
-                  >
-                    <span className="trendrank">{i + 1}</span>
-                    <span className="trendinfo">
-                      <span className="trendlabel">{it.label}</span>
-                      <span className="trendsub">{it.sub}</span>
-                    </span>
-                    <span className={`trenddelta ${up ? 'up' : 'down'}`}>
-                      {up ? '▲' : '▼'} {fmtDelta(it.delta)}
-                    </span>
+        {hasReal ? (
+          <>
+            {renderMoversCard('Biggest risers', 'Skills with the fastest-growing vacancy demand', 'movers', movers!.risers, activateSkill)}
+            {renderMoversCard('Biggest fallers', 'Skills with the sharpest drop in vacancy demand', 'salary', movers!.fallers, activateSkill)}
+            <div className="brieffoot">Skill demand · last 30 days vs prior 30 · across all live job feeds</div>
+          </>
+        ) : (
+          <>
+            {TREND_SECTIONS.map((s) => (
+              <section className="trendcard" key={s.id}>
+                <div className="trendcardhead">
+                  <span className={`trendcardicon ic-${s.icon}`}>
+                    <SectionIcon icon={s.icon} />
+                  </span>
+                  <div className="trendcardmeta">
+                    <div className="trendcardtitle">{s.title}</div>
+                    <div className="trendcardcap">{s.caption}</div>
                   </div>
-                );
-              })}
-            </div>
-          </section>
-        ))}
-        <div className="brieffoot">Illustrative movers · quarter on quarter</div>
+                </div>
+                <div className="trendrows">
+                  {s.items.map((it, i) => {
+                    const up = it.delta >= 0;
+                    const link = !!(it.ticker || it.skill);
+                    return (
+                      <div
+                        className={`trendrow ${link ? 'link' : ''}`}
+                        key={it.label + i}
+                        onClick={link ? () => activate(it) : undefined}
+                        role={link ? 'button' : undefined}
+                      >
+                        <span className="trendrank">{i + 1}</span>
+                        <span className="trendinfo">
+                          <span className="trendlabel">{it.label}</span>
+                          <span className="trendsub">{it.sub}</span>
+                        </span>
+                        <span className={`trenddelta ${up ? 'up' : 'down'}`}>
+                          {up ? '▲' : '▼'} {fmtDelta(it.delta)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+            <div className="brieffoot">Building live movers from job-feed history — illustrative for now</div>
+          </>
+        )}
       </div>
     </aside>
     </>
