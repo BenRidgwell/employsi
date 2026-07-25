@@ -7,7 +7,15 @@ Like the UK ONS wiring, each occupation label is term-matched to canonical skill
 via the shared skillsTaxonomy terms and summed per skill. Unlike the UK (one city)
 the user wants this recorded BY COUNTRY, so we keep the COUNTRY-level GEO rows
 (dropping the EU/euro-area aggregates and the NUTS-1 sub-regions) and place each
-country on its capital. Values are in thousands → ×1000 to normalise to counts.
+country on its capital.
+
+Scaling to the UK counts: the source figures are EMPLOYMENT by occupation (in
+thousands — EU-27 Total ≈ 165M employees, Germany ≈ 37M), i.e. a stock, whereas
+the UK ONS series (and the app's other feeds) are vacancy COUNTS. To put the EU on
+the same footing we convert employment → active vacancies with the EU job-vacancy
+rate (~2.5% of employees in recent years): count = employees(thousands) × 1000 ×
+VACANCY_RATE. That lands e.g. Germany software ≈ 53k and EU-wide ≈ 4M active
+vacancies — the right order of magnitude next to the UK's London counts.
 
 The release is annual (2019..latest). Rather than emit a full 243-month array per
 country per skill (huge + redundant), we emit the compact per-year values and let
@@ -63,6 +71,11 @@ COUNTRIES = {
 # Occupation rows to ignore: the "Total" line and the ICT custom aggregate (it
 # double-counts occupations already itemised).
 SKIP_OCC = {'total'}
+
+# EU job-vacancy rate (share of employment that is an active vacancy), used to
+# convert the source's employment stock into vacancy counts consistent with the
+# UK's real vacancy figures. ~2.5% is the EU average across the 2019-2024 window.
+VACANCY_RATE = 0.025
 
 
 def load_skills():
@@ -135,7 +148,8 @@ def main(path):
                     v = float(cell)
                 except (TypeError, ValueError):
                     continue  # ':' confidential / missing
-                cnt = round(v * 1000)
+                # thousands of employees → active vacancies (see VACANCY_RATE).
+                cnt = round(v * 1000 * VACANCY_RATE)
                 if cnt <= 0:
                     continue
                 for s in sk:
@@ -156,9 +170,11 @@ def main(path):
     L.append('// (OJA breakdowns), annual experimental statistics [jvs_a_isco3_r1]. Each ISCO-08')
     L.append('// occupation is term-matched to canonical skills (shared skillsTaxonomy terms)')
     L.append('// and summed per skill, BY COUNTRY (aggregates + NUTS-1 sub-regions dropped).')
-    L.append('// Values are in thousands in the source → ×1000 here. Annual figures are held')
-    L.append('// flat across each calendar year and carried forward to "now" when expanded onto')
-    L.append('// the shared IVI_MONTHS axis (see EU_SERIES below).')
+    L.append('// The source figures are EMPLOYMENT (thousands); to match the UK/other feeds\'')
+    L.append(f'// vacancy COUNTS they are converted to active vacancies at the EU job-vacancy')
+    L.append(f'// rate ({VACANCY_RATE:.1%}): count = employees(thousands) × 1000 × {VACANCY_RATE}. Annual figures')
+    L.append('// are held flat across each calendar year and carried forward to "now" when')
+    L.append('// expanded onto the shared IVI_MONTHS axis (see EU_SERIES below).')
     L.append('')
     L.append("import { IVI_MONTHS } from './iviSkillDemand';")
     L.append('')
