@@ -27,6 +27,7 @@ export const AU_CITY_LNGLAT: Record<string, [number, number]> = {
   hobart: [147.3272, -42.8821],
   // New Zealand sits in the Australasia domestic view (see REGION_FRAMES).
   auckland: [174.7645, -36.8485],
+  wellington: [174.7759, -41.2865],
 };
 
 // Cities that open a local 3D view when clicked (they have a CITY_VIEWS entry).

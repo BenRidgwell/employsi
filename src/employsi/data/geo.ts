@@ -17,18 +17,18 @@ export const STATE_STATS: Record<string, CityStat> = {
 };
 
 export const CITY_STATE: Record<string, string> = {
-  perth: 'WA', darwin: 'NT', adelaide: 'SA', melbourne: 'VIC', sydney: 'NSW', brisbane: 'QLD', hobart: 'TAS', canberra: 'ACT', auckland: 'NZ',
+  perth: 'WA', darwin: 'NT', adelaide: 'SA', melbourne: 'VIC', sydney: 'NSW', brisbane: 'QLD', hobart: 'TAS', canberra: 'ACT', auckland: 'NZ', wellington: 'NZ',
 };
 
 // Pixel coords in the 250x230 AustraliaMap viewBox, projected from each city's
 // real lng/lat with the same Web-Mercator fit used for AU_STATE_PATHS.
 export const CITY_LABEL: Record<string, string> = {
-  perth: 'Perth', darwin: 'Darwin', adelaide: 'Adelaide', melbourne: 'Melbourne', sydney: 'Sydney', brisbane: 'Brisbane', hobart: 'Hobart', canberra: 'Canberra', auckland: 'Auckland',
+  perth: 'Perth', darwin: 'Darwin', adelaide: 'Adelaide', melbourne: 'Melbourne', sydney: 'Sydney', brisbane: 'Brisbane', hobart: 'Hobart', canberra: 'Canberra', auckland: 'Auckland', wellington: 'Wellington',
 };
 
 export const GLOBAL_HUB_LABEL: Record<string, string> = {
   perth: 'Perth', toronto: 'Toronto', johannesburg: 'Johannesburg', london: 'London', houston: 'Houston', singapore: 'Singapore',
-  denver: 'Denver', ganzhou: 'Ganzhou', brisbane: 'Brisbane', adelaide: 'Adelaide', melbourne: 'Melbourne', sydney: 'Sydney', canberra: 'Canberra', darwin: 'Darwin', hobart: 'Hobart', auckland: 'Auckland',
+  denver: 'Denver', ganzhou: 'Ganzhou', brisbane: 'Brisbane', adelaide: 'Adelaide', melbourne: 'Melbourne', sydney: 'Sydney', canberra: 'Canberra', darwin: 'Darwin', hobart: 'Hobart', auckland: 'Auckland', wellington: 'Wellington',
   newyork: 'New York', sanfrancisco: 'San Francisco', chicago: 'Chicago', tokyo: 'Tokyo', zurich: 'Zurich', dubai: 'Dubai', hongkong: 'Hong Kong',
   seattle: 'Seattle', paris: 'Paris', seoul: 'Seoul', beijing: 'Beijing',
   austin: 'Austin', atlanta: 'Atlanta',
@@ -52,6 +52,7 @@ export const CITY_CONTINENT: Record<string, string> = {
   darwin: 'australia',
   hobart: 'australia',
   auckland: 'australia',
+  wellington: 'australia',
   singapore: 'asia',
   ganzhou: 'asia',
   tokyo: 'asia',
@@ -133,6 +134,7 @@ export const GLOBAL_STATS: Record<string, CityStat> = {
   darwin: { salary: 138, growth: 4.2, turnover: 13.5 },
   hobart: { salary: 98, growth: 2.2, turnover: 9.0 },
   auckland: { salary: 92, growth: 3.0, turnover: 10.0 },
+  wellington: { salary: 95, growth: 2.6, turnover: 9.6 },
   melbourne: { salary: 132, growth: 3.0, turnover: 8.9 },
   sydney: { salary: 128, growth: 3.5, turnover: 9.5 },
   newyork: { salary: 165, growth: 3.2, turnover: 11.0 },

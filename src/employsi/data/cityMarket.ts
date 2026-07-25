@@ -33,6 +33,7 @@ export const CITY_MARKET: Record<string, CityMarket> = {
   darwin: AU,
   hobart: AU,
   auckland: { country: 'nz', where: 'Auckland', region: /new zealand|auckland|\bnz\b/i },
+  wellington: { country: 'nz', where: 'Wellington', region: /new zealand|wellington|\bnz\b/i },
   // Adzuna-covered global hubs
   london: { country: 'gb', where: 'London', region: /united kingdom|england|london|\buk\b/i },
   toronto: { country: 'ca', where: 'Toronto', region: /canada|toronto|ontario/i },

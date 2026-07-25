@@ -219,3 +219,7 @@ COMPANIES.push(...SYDNEY_GOV_COMPANIES);
 // AFR/IBISWorld Top 150 private companies, plotted on their home-state capital.
 import { TOP_PRIVATE_COMPANIES } from './topPrivateCompanies';
 COMPANIES.push(...TOP_PRIVATE_COMPANIES);
+
+// New Zealand companies, plotted on the Auckland + Wellington local views.
+import { NZ_COMPANIES } from './nzCompanies';
+COMPANIES.push(...NZ_COMPANIES);
