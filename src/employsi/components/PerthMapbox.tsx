@@ -279,9 +279,9 @@ export function PerthMapbox() {
 
     map.on('style.load', () => {
       map.setConfigProperty('basemap', 'lightPreset', 'day');
-      // Monochrome basemap theme, and strip label/POI clutter so the company
+      // Faded basemap theme, and strip label/POI clutter so the company
       // pins are the only points of interest on the map.
-      map.setConfigProperty('basemap', 'theme', 'monochrome');
+      map.setConfigProperty('basemap', 'theme', 'faded');
       map.setConfigProperty('basemap', 'showPointOfInterestLabels', false);
       map.setConfigProperty('basemap', 'showTransitLabels', false);
       map.setConfigProperty('basemap', 'showRoadLabels', false);
@@ -350,7 +350,7 @@ export function PerthMapbox() {
         slot: 'top',
         layout: {
           'text-field': ['get', 'label'],
-          'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
+          'text-font': ['Source Sans Pro Semibold', 'Arial Unicode MS Regular'],
           'text-size': 12,
           'text-anchor': 'left',
           // Push the label clear of the dot (radius ~9px selected). Offset is in
