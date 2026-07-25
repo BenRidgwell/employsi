@@ -1,0 +1,52 @@
+# Daily NSW Government → D1 archive (hosted, off your PC).
+#
+# iworkfor.nsw.gov.au sits behind Cloudflare's "Just a moment" interstitial, so a
+# plain HTTP client can't reach it. A real headless Chromium on GitHub's runner
+# (Playwright) executes the challenge and reads the server-rendered results —
+# the same hosted-browser pattern as the SA board.
+#
+# Required repo secret:
+#   CLOUDFLARE_API_TOKEN  — a token with D1 edit on the employsi account.
+# Optional repo variables (fall back to values baked into the script):
+#   CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# The job exits non-zero (red X + notification) if the board renders no rows.
+# Use "Run workflow" (workflow_dispatch) to verify it on the runner first.
+
+name: nsw-gov-archive
+
+on:
+  schedule:
+    - cron: '30 17 * * *' # 17:30 UTC daily (~04:30 AEST) — before the SEEK run
+  workflow_dispatch: {}
+
+concurrency:
+  group: nsw-gov-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Playwright + Chromium
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Scrape NSW gov → D1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/nsw-gov-to-d1.py --max-pages 60
