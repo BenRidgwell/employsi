@@ -219,10 +219,11 @@ function buildSkillHeat(
   if (mode === 'global') {
     table = HUB_LNGLAT;
   } else if (region === 'australia') {
-    // Darwin and Hobart are omitted from the AU markers, so drop their skill
-    // heat too — no stray blobs over their old spots.
+    // Hobart is omitted from the AU markers, so drop its skill heat too — no
+    // stray blob over its old spot. Darwin is now a full city (NT gov), so it
+    // keeps its marker + heat.
     table = Object.fromEntries(
-      Object.entries(AU_CITY_LNGLAT).filter(([id]) => id !== 'darwin' && id !== 'hobart'),
+      Object.entries(AU_CITY_LNGLAT).filter(([id]) => id !== 'hobart'),
     );
   } else {
     table = {};

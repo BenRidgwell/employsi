@@ -18,8 +18,8 @@
     // 50-company roster refreshes about once a day). The government board scrapes
     // each run in their own invocation so their paged fetches get a clean
     // subrequest budget separate from the shard's API calls and each other:
-    // ":15" VIC (careers.vic.gov.au), ":30" WA (search.jobs.wa.gov.au),
-    // ":45" QLD (smartjobs.qld.gov.au).
-    "crons": ["0 */6 * * *", "15 */6 * * *", "30 */6 * * *", "45 */6 * * *"]
+    // ":05" NT (jobs.nt.gov.au), ":15" VIC (careers.vic.gov.au),
+    // ":30" WA (search.jobs.wa.gov.au), ":45" QLD (smartjobs.qld.gov.au).
+    "crons": ["0 */6 * * *", "5 */6 * * *", "15 */6 * * *", "30 */6 * * *", "45 */6 * * *"]
   }
 }

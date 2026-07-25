@@ -203,3 +203,7 @@ COMPANIES.push(...BRISBANE_GOV_COMPANIES);
 // APS federal (Commonwealth) agencies (private / public-sector), mostly Canberra.
 import { APS_GOV_COMPANIES } from './canberraGov';
 COMPANIES.push(...APS_GOV_COMPANIES);
+
+// Northern Territory government agencies (private / public-sector), all Darwin.
+import { DARWIN_GOV_COMPANIES } from './darwinGov';
+COMPANIES.push(...DARWIN_GOV_COMPANIES);
