@@ -78,7 +78,10 @@ export function HeatKey() {
   // either. Hidden on regions with no time series yet.
   const showTime =
     zoomedOut &&
-    (globalOut || domesticRegion === 'australia' || domesticRegion === 'northamerica') &&
+    (globalOut ||
+      domesticRegion === 'australia' ||
+      domesticRegion === 'northamerica' ||
+      domesticRegion === 'asia') &&
     IVI_MONTHS.length > 1;
   const lastIdx = IVI_MONTHS.length - 1;
   const idx = Math.max(0, Math.min(lastIdx, heatMonth));

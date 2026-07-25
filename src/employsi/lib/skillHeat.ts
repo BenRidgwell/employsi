@@ -3,17 +3,21 @@ import { CITY_COMPANIES } from '../data/mapboxGeo';
 import { REGION_HUBS } from '../data/mapboxWorldGeo';
 import { IVI_SKILL_BY_CITY, IVI_SKILLS, IVI_SERIES, IVI_MONTHS, IVI_SKILL_NATIONAL } from '../data/iviSkillDemand';
 import { CA_SERIES, CA_SKILL_BY_CITY } from '../data/caVacancyDemand';
+import { SG_SERIES, SG_SKILL_BY_CITY } from '../data/sgVacancyDemand';
 import type { SkillIndex } from './skillsFn';
 
-// The AU (JSA/IVI) and Canada (StatCan) vacancy series share one month axis
-// (IVI_MONTHS), so a skill's per-city history is just the two countries' city
-// maps merged. Keeping them combined here means the heat map + time slider treat
-// Canada exactly like Australia everywhere the IVI is used.
+// The AU (JSA/IVI), Canada (StatCan) and Singapore (MRSD) vacancy series all
+// share one month axis (IVI_MONTHS), so a skill's per-city history is just the
+// countries' city maps merged. Keeping them combined here means the heat map +
+// time slider treat Canada and Singapore exactly like Australia.
 function seriesFor(skill: string): Record<string, number[]> | null {
-  const au = IVI_SERIES[skill];
-  const ca = CA_SERIES[skill];
-  if (au && ca) return { ...au, ...ca };
-  return au || ca || null;
+  const parts = [IVI_SERIES[skill], CA_SERIES[skill], SG_SERIES[skill]].filter(Boolean) as Record<string, number[]>[];
+  if (!parts.length) return null;
+  return Object.assign({}, ...parts);
+}
+// Latest-month per-city demand, merged across all three countries.
+function latestFor(skill: string): Record<string, number> {
+  return { ...(IVI_SKILL_BY_CITY[skill] || {}), ...(CA_SKILL_BY_CITY[skill] || {}), ...(SG_SKILL_BY_CITY[skill] || {}) };
 }
 
 // Demand level for a skill, bucketed Low / Moderate / High and coloured
@@ -65,7 +69,7 @@ export function demandLevel(skill: string, global: boolean, idx: SkillIndex | nu
 // whole-of-market government data.
 export function iviCityDemand(skill: string | null): Record<string, number> {
   if (!skill) return {};
-  return { ...(IVI_SKILL_BY_CITY[skill] || {}), ...(CA_SKILL_BY_CITY[skill] || {}) };
+  return latestFor(skill);
 }
 
 // Same, but at a specific month in the shared IVI/StatCan history (index into
@@ -128,7 +132,8 @@ export function demandByCity(idx: SkillIndex | null, skill: string | null): Reco
 // Darwin / Hobart / Canberra that carry no mapped-company signal, so their local
 // popular-skills are still real and city-specific.
 function skillsByCityDemand(city: string, n: number): string[] {
-  const score = (s: string) => (IVI_SKILL_BY_CITY[s]?.[city] || 0) + (CA_SKILL_BY_CITY[s]?.[city] || 0);
+  const score = (s: string) =>
+    (IVI_SKILL_BY_CITY[s]?.[city] || 0) + (CA_SKILL_BY_CITY[s]?.[city] || 0) + (SG_SKILL_BY_CITY[s]?.[city] || 0);
   return ALL_SKILLS.map((s) => [s, score(s)] as const)
     .filter(([, v]) => v > 0)
     .sort((a, b) => b[1] - a[1])
@@ -136,13 +141,17 @@ function skillsByCityDemand(city: string, n: number): string[] {
     .map(([s]) => s);
 }
 
-// Canada national demand per skill (summed across the Canadian hubs), pre-sorted
-// — drives the North America domestic view's popular skills.
-const CA_SKILLS: string[] = Object.entries(CA_SKILL_BY_CITY)
-  .map(([s, byCity]) => [s, Object.values(byCity).reduce((a, b) => a + b, 0)] as const)
-  .filter(([, v]) => v > 0)
-  .sort((a, b) => b[1] - a[1])
-  .map(([s]) => s);
+const rankByCity = (byCitySkill: Record<string, Record<string, number>>): string[] =>
+  Object.entries(byCitySkill)
+    .map(([s, byCity]) => [s, Object.values(byCity).reduce((a, b) => a + b, 0)] as const)
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([s]) => s);
+
+// Canada national demand per skill — drives the North America domestic view's
+// popular skills; Singapore national — drives the Asia domestic view's.
+const CA_SKILLS: string[] = rankByCity(CA_SKILL_BY_CITY);
+const SG_SKILLS: string[] = rankByCity(SG_SKILL_BY_CITY);
 
 // Popular skills for the current map layer, ranked by real demand and always
 // contextual to the layer the user is on:
@@ -162,6 +171,7 @@ export function popularSkills(idx: SkillIndex | null, ctx: LayerCtx, n = 10): st
   if (ctx.zoomedOut && !ctx.globalOut) {
     if (ctx.domesticRegion === 'australia' && IVI_SKILLS.length) return IVI_SKILLS.slice(0, n);
     if (ctx.domesticRegion === 'northamerica' && CA_SKILLS.length) return CA_SKILLS.slice(0, n);
+    if (ctx.domesticRegion === 'asia' && SG_SKILLS.length) return SG_SKILLS.slice(0, n);
   }
   // Local city: prefer that city's whole-market demand (works for Darwin & co.),
   // then fall back to the mapped-company signal, then the taxonomy order.

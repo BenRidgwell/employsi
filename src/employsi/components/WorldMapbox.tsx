@@ -452,7 +452,7 @@ export function WorldMapbox() {
       // counts. Applied on the AU domestic view and on the global view (where
       // the Australian hubs are the ones with an IVI time series); other
       // countries light up automatically once their equivalent series is added.
-      if (skill && (mode === 'global' || s.domesticRegion === 'australia' || s.domesticRegion === 'northamerica')) {
+      if (skill && (mode === 'global' || s.domesticRegion === 'australia' || s.domesticRegion === 'northamerica' || s.domesticRegion === 'asia')) {
         const ivi = iviCityDemandAt(skill, s.heatMonth);
         cityDemand = { ...cityDemand };
         for (const [c, v] of Object.entries(ivi)) cityDemand[c] = (cityDemand[c] || 0) + v;
@@ -471,7 +471,7 @@ export function WorldMapbox() {
       // Scrub callouts: while a skill + the time slider are active, tag each
       // city with its demand % change at the current month, so the label shows
       // how demand for the skill is moving as the slider is dragged.
-      if (skill && (mode === 'global' || s.domesticRegion === 'australia' || s.domesticRegion === 'northamerica')) {
+      if (skill && (mode === 'global' || s.domesticRegion === 'australia' || s.domesticRegion === 'northamerica' || s.domesticRegion === 'asia')) {
         const change = iviCityChangeAt(skill, s.heatMonth);
         for (const m of markers) if (m.id in change) m.pct = change[m.id];
       }
