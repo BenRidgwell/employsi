@@ -81,7 +81,8 @@ export function HeatKey() {
     (globalOut ||
       domesticRegion === 'australia' ||
       domesticRegion === 'northamerica' ||
-      domesticRegion === 'asia') &&
+      domesticRegion === 'asia' ||
+      domesticRegion === 'europe') &&
     IVI_MONTHS.length > 1;
   const lastIdx = IVI_MONTHS.length - 1;
   const idx = Math.max(0, Math.min(lastIdx, heatMonth));
