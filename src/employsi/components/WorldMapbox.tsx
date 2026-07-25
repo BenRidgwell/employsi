@@ -525,7 +525,7 @@ export function WorldMapbox() {
 
     map.on('style.load', () => {
       map.setConfigProperty('basemap', 'lightPreset', 'day');
-      map.setConfigProperty('basemap', 'theme', 'monochrome');
+      map.setConfigProperty('basemap', 'theme', 'faded');
       map.setConfigProperty('basemap', 'showPointOfInterestLabels', false);
       map.setConfigProperty('basemap', 'showTransitLabels', false);
       map.setConfigProperty('basemap', 'showRoadLabels', false);
