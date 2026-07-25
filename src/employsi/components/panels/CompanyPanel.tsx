@@ -8,6 +8,7 @@ import { useOpenRoles } from '../../hooks/useOpenRoles';
 import { useRolesHistory } from '../../hooks/useRolesHistory';
 import { useCompanyJobs } from '../../hooks/useSkillData';
 import { useVacancyTrend, useSkillTrends } from '../../hooks/useRoleHistory';
+import { spark } from '../../lib/sparkline';
 import { cityForCompany } from '../../data/mapboxGeo';
 import { marketForCity } from '../../data/cityMarket';
 import { GOV_WORKFORCE } from '../../data/perthGovWorkforce';
@@ -474,16 +475,27 @@ export function CompanyPanel() {
                 </div>
                 {skillTrends.length > 0 ? (
                   <div className="movers">
-                    {skillTrends.map((m) => (
-                      <div className="moverrow" key={m.skill}>
-                        <span className={`moverdir ${m.dir}`} aria-hidden="true">{m.dir === 'up' ? '▲' : '▼'}</span>
-                        <span className="movername">{m.skill}</span>
-                        <span className={`moverdelta ${m.dir}`}>
-                          {m.dir === 'up' ? '+' : '−'}{Math.abs(m.delta)}
-                          <span className="moverpct">{m.prev > 0 ? ` (${m.dir === 'up' ? '+' : '−'}${Math.abs(m.pct)}%)` : ' new'}</span>
-                        </span>
-                      </div>
-                    ))}
+                    {skillTrends.map((m) => {
+                      const sp = m.series && m.series.length > 1 ? spark(m.series) : null;
+                      return (
+                        <div className="moverrow" key={m.skill}>
+                          <span className="movername">{m.skill}</span>
+                          {sp ? (
+                            <svg className={`moverspark ${m.dir}`} viewBox="0 0 188 52" preserveAspectRatio="none" aria-hidden="true">
+                              <path className="moversparkarea" d={sp.area} />
+                              <path className="moversparkline" d={sp.line} />
+                            </svg>
+                          ) : (
+                            <span className="moverspark" aria-hidden="true" />
+                          )}
+                          <span className={`moverdelta ${m.dir}`}>
+                            <span className="moverdir" aria-hidden="true">{m.dir === 'up' ? '▲' : '▼'}</span>
+                            {m.dir === 'up' ? '+' : '−'}{Math.abs(m.delta)}
+                            <span className="moverpct">{m.prev > 0 ? ` ${m.dir === 'up' ? '+' : '−'}${Math.abs(m.pct)}%` : ' new'}</span>
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="dataempty">Not enough vacancy history yet</div>

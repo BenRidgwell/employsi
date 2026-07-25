@@ -106,7 +106,10 @@ export interface SkillMover {
   delta: number; // now − prev
   pct: number; // % change (100 when newly appearing)
   dir: 'up' | 'down';
+  series: number[]; // weekly live-vacancy count over the last ~3 months (13 wks)
 }
+
+const TREND_WEEKS = 13; // ~3 months of weekly buckets for the per-skill sparkline
 
 // The top skill increases / decreases for a company, from historical vacancy
 // analysis of the D1 archive. Each archived listing carries its mapped skills +
@@ -137,8 +140,16 @@ export const getSkillTrends = createServerFn({ method: 'GET' })
       const recentStart = day(WINDOW);
       const priorStart = day(WINDOW * 2);
       const priorEnd = recentStart;
+      // Weekly bucket boundaries (oldest→newest) for the 3-month sparkline.
+      const wkStart: string[] = [];
+      const wkEnd: string[] = [];
+      for (let i = TREND_WEEKS - 1; i >= 0; i--) {
+        wkStart.push(day((i + 1) * 7 - 1));
+        wkEnd.push(day(i * 7));
+      }
       const nowT: Record<string, number> = {};
       const prevT: Record<string, number> = {};
+      const seriesT: Record<string, number[]> = {};
       for (const r of rows) {
         let skills: string[] = [];
         try {
@@ -154,6 +165,11 @@ export const getSkillTrends = createServerFn({ method: 'GET' })
         if (ls >= recentStart) for (const s of skills) nowT[s] = (nowT[s] || 0) + 1;
         // Active in the prior window.
         if (fs <= priorEnd && ls >= priorStart) for (const s of skills) prevT[s] = (prevT[s] || 0) + 1;
+        // Per-week live-vacancy count for the sparkline (live = fs ≤ wkEnd & ls ≥ wkStart).
+        for (const s of skills) {
+          const arr = (seriesT[s] ||= new Array(TREND_WEEKS).fill(0));
+          for (let w = 0; w < TREND_WEEKS; w++) if (fs <= wkEnd[w] && ls >= wkStart[w]) arr[w]++;
+        }
       }
       const skills = new Set([...Object.keys(nowT), ...Object.keys(prevT)]);
       const movers: SkillMover[] = [];
@@ -163,7 +179,7 @@ export const getSkillTrends = createServerFn({ method: 'GET' })
         const delta = now - prev;
         if (delta === 0) continue;
         const pct = prev > 0 ? Math.round((delta / prev) * 100) : 100;
-        movers.push({ skill: s, now, prev, delta, pct, dir: delta > 0 ? 'up' : 'down' });
+        movers.push({ skill: s, now, prev, delta, pct, dir: delta > 0 ? 'up' : 'down', series: seriesT[s] || [] });
       }
       // Biggest absolute movers first, increases ahead of decreases on ties.
       movers.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta) || b.delta - a.delta);
@@ -264,6 +280,100 @@ export const getLiveSkillTrends = createServerFn({ method: 'GET' })
       return picked.map((p) => ({ name: p.name, tag: 'Demand', v: p.v }));
     } catch {
       return [];
+    }
+  });
+
+// One market-wide skill mover for the "What's Trending" pane.
+export interface MarketSkillMover {
+  skill: string;
+  cat: string; // skill category (for the legend chip)
+  now: number; // vacancies demanding it in the recent 30 days
+  prev: number; // ...in the prior 30 days
+  pct: number; // % change (capped display; 100 = newly appearing)
+  dir: 'up' | 'down';
+}
+
+export interface MarketSkillMovers {
+  risers: MarketSkillMover[];
+  fallers: MarketSkillMover[];
+}
+
+// Market-wide skill risers and fallers for the "What's Trending" pane. Same
+// archive + method as the ticker, but a 30-day-vs-prior-30-day window (a
+// month-on-month read rather than the ticker's weekly momentum) and split into
+// the biggest gainers and biggest decliners at the skill level, across every
+// data feed. Returns empty lists until the archive has two windows of history;
+// the pane falls back to its illustrative sections in that case.
+export const getMarketSkillMovers = createServerFn({ method: 'GET' })
+  .handler(async (): Promise<MarketSkillMovers> => {
+    const db = await getArchiveDb();
+    if (!db) return { risers: [], fallers: [] };
+    const day = (offset: number) => {
+      const d = new Date();
+      d.setUTCDate(d.getUTCDate() - offset);
+      return d.toISOString().slice(0, 10);
+    };
+    // Adaptive window: a month-on-month read once there's ≥60 days of history,
+    // but narrowed to split whatever history exists so both risers AND fallers
+    // surface while the archive is still young (it widens to 30 as data accrues).
+    let WINDOW = 30;
+    try {
+      const span: any = await ((db
+        .prepare(`SELECT MIN(first_seen) AS mn, MAX(last_seen) AS mx FROM jobs WHERE skills IS NOT NULL`) as any).first());
+      const spanDays = span?.mn && span?.mx ? daysBetween(String(span.mn), String(span.mx)) : 0;
+      if (spanDays > 0) WINDOW = Math.max(2, Math.min(30, Math.floor(spanDays / 2)));
+    } catch {
+      /* keep default */
+    }
+    const recentStart = day(WINDOW);
+    const priorStart = day(WINDOW * 2);
+    const priorEnd = recentStart;
+    try {
+      const res: any = await (db
+        .prepare(
+          `SELECT skills, first_seen, last_seen FROM jobs
+             WHERE skills IS NOT NULL AND last_seen >= ?1`,
+        )
+        .bind(priorStart) as any).all();
+      const rows: any[] = res?.results ?? [];
+      if (!rows.length) return { risers: [], fallers: [] };
+      const nowT: Record<string, number> = {};
+      const prevT: Record<string, number> = {};
+      for (const r of rows) {
+        let skills: string[] = [];
+        try {
+          skills = JSON.parse(String(r.skills || '[]'));
+        } catch {
+          skills = [];
+        }
+        if (!skills.length) continue;
+        const fs = String(r.first_seen || '');
+        const ls = String(r.last_seen || '');
+        if (!fs || !ls) continue;
+        if (ls >= recentStart) for (const s of skills) nowT[s] = (nowT[s] || 0) + 1;
+        if (fs <= priorEnd && ls >= priorStart) for (const s of skills) prevT[s] = (prevT[s] || 0) + 1;
+      }
+      const all = new Set([...Object.keys(nowT), ...Object.keys(prevT)]);
+      const movers: MarketSkillMover[] = [];
+      for (const s of all) {
+        if (!(s in SKILL_CATEGORY)) continue;
+        const now = nowT[s] || 0;
+        const prev = prevT[s] || 0;
+        if (now + prev < 3) continue; // volume floor against single-listing noise
+        const delta = now - prev;
+        if (delta === 0) continue;
+        const pctRaw = prev > 0 ? (delta / prev) * 100 : 100;
+        const pct = Math.max(-100, Math.min(300, Math.round(pctRaw)));
+        movers.push({ skill: s, cat: SKILL_CATEGORY[s], now, prev, pct, dir: delta > 0 ? 'up' : 'down' });
+      }
+      // Rank each side by magnitude (bigger swing first), tie-break on volume.
+      const risers = movers.filter((m) => m.dir === 'up')
+        .sort((a, b) => b.pct - a.pct || b.now - a.now).slice(0, 6);
+      const fallers = movers.filter((m) => m.dir === 'down')
+        .sort((a, b) => a.pct - b.pct || b.prev - a.prev).slice(0, 6);
+      return { risers, fallers };
+    } catch {
+      return { risers: [], fallers: [] };
     }
   });
 
