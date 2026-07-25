@@ -1,4 +1,5 @@
 import type { Company, RoleBreakdown } from './companies';
+import { RESOLVED_DOMAINS } from './resolvedDomains';
 
 // ── Compact global company rosters ────────────────────────────────────────
 // Adding a company to a city is just one line: [ticker, name, group]. Full
@@ -92,6 +93,9 @@ const KNOWN_DOMAINS: Record<string, string> = {
 export function deriveDomain(name: string): string {
   const key = name.toLowerCase().replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
   if (KNOWN_DOMAINS[key]) return KNOWN_DOMAINS[key];
+  // Domains resolved automatically (scripts/resolve-logos.py) for the gov
+  // agencies + private companies, so their favicon logos populate too.
+  if (RESOLVED_DOMAINS[key]) return RESOLVED_DOMAINS[key];
   const cleaned = name.replace(/\([^)]*\)/g, ' ').toLowerCase();
   const words = cleaned
     .split(/[\s.,/&'-]+/)
