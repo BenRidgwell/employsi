@@ -58,14 +58,18 @@ export function MobileTabBar() {
   const filterState: FilterState = { searchQuery, activeSectors, listingType, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition };
   const filterActive = isFilterActive(filterState);
 
-  // Only show on the bare map: any open overlay (a sheet, the company card, the
-  // account/settings/feedback/help panels) takes over the screen instead.
-  // Trending is the exception — its pane sits above the bar, so the bar stays
-  // put and its tab keeps highlighting while trending is open.
-  const overlayOpen =
-    selectedId || compareOpen || authOpen || settingsOpen || feedbackOpen || helpTourOpen ||
-    briefOpen || searchOpen || filterOpen || mobileMenuOpen;
-  if (overlayOpen) return null;
+  // The bar stays put whenever one of ITS OWN pop-outs is open (Search / Filter
+  // / Trending / More, plus the Daily Brief the More sheet launches): those
+  // sheets now float ABOVE the bar so the user can switch straight to another
+  // tab or keep using the open one. Only a true full-screen takeover — a company
+  // card, the compare view, or the account/settings/feedback/help panels — hides
+  // the bar.
+  void briefOpen;
+  void searchOpen;
+  void filterOpen;
+  void mobileMenuOpen;
+  const fullTakeover = selectedId || compareOpen || authOpen || settingsOpen || feedbackOpen || helpTourOpen;
+  if (fullTakeover) return null;
 
   const tabs = [
     { id: 'search', label: 'Search', icon: <SearchIcon />, on: searchOpen, dot: false, onClick: toggleSearch },

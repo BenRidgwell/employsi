@@ -28,7 +28,7 @@ export const CITY_LABEL: Record<string, string> = {
 
 export const GLOBAL_HUB_LABEL: Record<string, string> = {
   perth: 'Perth', toronto: 'Toronto', johannesburg: 'Johannesburg', london: 'London', houston: 'Houston', singapore: 'Singapore',
-  denver: 'Denver', ganzhou: 'Ganzhou', brisbane: 'Brisbane', adelaide: 'Adelaide', melbourne: 'Melbourne', sydney: 'Sydney',
+  denver: 'Denver', ganzhou: 'Ganzhou', brisbane: 'Brisbane', adelaide: 'Adelaide', melbourne: 'Melbourne', sydney: 'Sydney', canberra: 'Canberra',
   newyork: 'New York', sanfrancisco: 'San Francisco', chicago: 'Chicago', tokyo: 'Tokyo', zurich: 'Zurich', dubai: 'Dubai', hongkong: 'Hong Kong',
   seattle: 'Seattle', paris: 'Paris', seoul: 'Seoul', beijing: 'Beijing',
   austin: 'Austin', atlanta: 'Atlanta',
