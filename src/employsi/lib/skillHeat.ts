@@ -2,7 +2,19 @@ import { ALL_SKILLS } from '../data/skillsTaxonomy';
 import { CITY_COMPANIES } from '../data/mapboxGeo';
 import { REGION_HUBS } from '../data/mapboxWorldGeo';
 import { IVI_SKILL_BY_CITY, IVI_SKILLS, IVI_SERIES, IVI_MONTHS, IVI_SKILL_NATIONAL } from '../data/iviSkillDemand';
+import { CA_SERIES, CA_SKILL_BY_CITY } from '../data/caVacancyDemand';
 import type { SkillIndex } from './skillsFn';
+
+// The AU (JSA/IVI) and Canada (StatCan) vacancy series share one month axis
+// (IVI_MONTHS), so a skill's per-city history is just the two countries' city
+// maps merged. Keeping them combined here means the heat map + time slider treat
+// Canada exactly like Australia everywhere the IVI is used.
+function seriesFor(skill: string): Record<string, number[]> | null {
+  const au = IVI_SERIES[skill];
+  const ca = CA_SERIES[skill];
+  if (au && ca) return { ...au, ...ca };
+  return au || ca || null;
+}
 
 // Demand level for a skill, bucketed Low / Moderate / High and coloured
 // green / amber / red — contextual to the layer the search was made on:
@@ -47,21 +59,21 @@ export function demandLevel(skill: string, global: boolean, idx: SkillIndex | nu
   return { label: 'Low demand', tone: 'lo' };
 }
 
-// Real Jobs & Skills Australia IVI internet-vacancy demand for a skill across the
-// AU capital-city hubs (WA→Perth, SA→Adelaide, QLD→Brisbane, VIC→Melbourne,
-// NSW→Sydney). Empty when the skill has no IVI demand. Used to colour the AU
-// domestic heat map with whole-of-market government data.
+// Real government vacancy demand for a skill across the mapped hub cities — the
+// AU capital hubs (JSA/IVI) plus the Canadian hubs (StatCan). Empty when the
+// skill has no such demand. Used to colour the domestic heat map with
+// whole-of-market government data.
 export function iviCityDemand(skill: string | null): Record<string, number> {
   if (!skill) return {};
-  return IVI_SKILL_BY_CITY[skill] || {};
+  return { ...(IVI_SKILL_BY_CITY[skill] || {}), ...(CA_SKILL_BY_CITY[skill] || {}) };
 }
 
-// Same, but at a specific month in the IVI history (index into IVI_MONTHS), so
-// the time slider can scrub the heat map back to 2006. Falls back to the latest
-// month when the index is out of range.
+// Same, but at a specific month in the shared IVI/StatCan history (index into
+// IVI_MONTHS), so the time slider can scrub the heat map back through the series.
+// Falls back to the latest month when the index is out of range.
 export function iviCityDemandAt(skill: string | null, monthIndex: number): Record<string, number> {
   if (!skill) return {};
-  const series = IVI_SERIES[skill];
+  const series = seriesFor(skill);
   if (!series) return {};
   const last = IVI_MONTHS.length - 1;
   const i = monthIndex < 0 || monthIndex > last ? last : monthIndex;
@@ -77,7 +89,7 @@ export function iviCityDemandAt(skill: string | null, monthIndex: number): Recor
 // at that point in time. Cities with no baseline demand return 0.
 export function iviCityChangeAt(skill: string | null, monthIndex: number, window = 12): Record<string, number> {
   if (!skill) return {};
-  const series = IVI_SERIES[skill];
+  const series = seriesFor(skill);
   if (!series) return {};
   const last = IVI_MONTHS.length - 1;
   const i = monthIndex < 0 || monthIndex > last ? last : monthIndex;

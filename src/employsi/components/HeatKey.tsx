@@ -72,10 +72,14 @@ export function HeatKey() {
   if (!skill) return null;
   const key = skillLegend(skill);
 
-  // Time slider on the global view and the AU domestic view — the layers whose
-  // heat is (partly) driven by the IVI monthly history. Hidden on non-AU
-  // domestic regions, which have no time series yet.
-  const showTime = zoomedOut && (globalOut || domesticRegion === 'australia') && IVI_MONTHS.length > 1;
+  // Time slider on the global view and the domestic views whose heat is driven
+  // by a government vacancy time series — Australia (JSA/IVI) and North America
+  // (Statistics Canada). Both share the IVI_MONTHS axis, so one slider scrubs
+  // either. Hidden on regions with no time series yet.
+  const showTime =
+    zoomedOut &&
+    (globalOut || domesticRegion === 'australia' || domesticRegion === 'northamerica') &&
+    IVI_MONTHS.length > 1;
   const lastIdx = IVI_MONTHS.length - 1;
   const idx = Math.max(0, Math.min(lastIdx, heatMonth));
   const isLatest = idx === lastIdx;
