@@ -1,5 +1,6 @@
 import { ALL_SKILLS } from '../data/skillsTaxonomy';
 import { CITY_COMPANIES } from '../data/mapboxGeo';
+import { CITY_CONTINENT } from '../data/geo';
 import { REGION_HUBS } from '../data/mapboxWorldGeo';
 import { IVI_SKILL_BY_CITY, IVI_SKILLS, IVI_SERIES, IVI_MONTHS, IVI_SKILL_NATIONAL } from '../data/iviSkillDemand';
 import { CA_SERIES, CA_SKILL_BY_CITY } from '../data/caVacancyDemand';
@@ -138,23 +139,38 @@ export function demandByCity(idx: SkillIndex | null, skill: string | null): Reco
   return idx.skills[skill]?.byCity ?? {};
 }
 
-// Skills ranked by a single city's whole-market vacancy demand — AU capitals
-// (JSA/IVI) plus the Canadian hubs (StatCan). This covers gov-heavy cities like
-// Darwin / Hobart / Canberra that carry no mapped-company signal, so their local
-// popular-skills are still real and city-specific.
-function skillsByCityDemand(city: string, n: number): string[] {
-  const score = (s: string) =>
-    (IVI_SKILL_BY_CITY[s]?.[city] || 0) +
-    (CA_SKILL_BY_CITY[s]?.[city] || 0) +
-    (SG_SKILL_BY_CITY[s]?.[city] || 0) +
-    (NZ_SKILL_BY_CITY[s]?.[city] || 0) +
-    (UK_SKILL_BY_CITY[s]?.[city] || 0) +
-    (EU_SKILL_BY_CITY[s]?.[city] || 0);
-  return ALL_SKILLS.map((s) => [s, score(s)] as const)
-    .filter(([, v]) => v > 0)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, n)
-    .map(([s]) => s);
+// A city's whole-market vacancy demand per skill — AU capitals (JSA/IVI) plus the
+// Canadian / Singapore / NZ / UK / EU hubs. Covers gov-heavy cities like Darwin /
+// Hobart / Canberra that carry no mapped-company signal. Values are real job-ad /
+// vacancy counts, so they can be summed directly with the company signal below.
+function cityMarketDemand(city: string): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const s of ALL_SKILLS) {
+    const v =
+      (IVI_SKILL_BY_CITY[s]?.[city] || 0) +
+      (CA_SKILL_BY_CITY[s]?.[city] || 0) +
+      (SG_SKILL_BY_CITY[s]?.[city] || 0) +
+      (NZ_SKILL_BY_CITY[s]?.[city] || 0) +
+      (UK_SKILL_BY_CITY[s]?.[city] || 0) +
+      (EU_SKILL_BY_CITY[s]?.[city] || 0);
+    if (v > 0) out[s] = v;
+  }
+  return out;
+}
+
+// The job-ad demand per skill from the companies actually located in a city (the
+// live jobs pipeline). Same unit (ad counts) as cityMarketDemand, so the two add.
+function cityCompanyDemand(idx: SkillIndex | null, city: string): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!idx) return out;
+  const ids = new Set((CITY_COMPANIES[city] || []).map((c) => c.id));
+  if (!ids.size) return out;
+  for (const [name, agg] of Object.entries(idx.skills)) {
+    let d = 0;
+    for (const [id, v] of Object.entries(agg.byCompany)) if (ids.has(id)) d += v;
+    if (d > 0) out[name] = d;
+  }
+  return out;
 }
 
 const rankByCity = (byCitySkill: Record<string, Record<string, number>>): string[] =>
@@ -189,8 +205,9 @@ const EUROPE_SKILLS: string[] = rankByCity(mergeByCity(UK_SKILL_BY_CITY, EU_SKIL
 
 // Popular skills for the current map layer, ranked by real demand and always
 // contextual to the layer the user is on:
-//   • local    → that city's whole-market vacancy demand (IVI/StatCan), else its
-//                mapped companies, else the taxonomy order
+//   • local    → an aggregate of that city's whole-market vacancy demand
+//                (IVI/StatCan/etc.) AND its mapped companies' live job ads,
+//                padded from region- then world-demand when the city is data-poor
 //   • domestic → Australia: IVI national; North America: Canada national; other
 //                regions: summed across the region's hub companies
 //   • global   → summed across every company worldwide
@@ -208,22 +225,38 @@ export function popularSkills(idx: SkillIndex | null, ctx: LayerCtx, n = 10): st
     if (ctx.domesticRegion === 'asia' && SG_SKILLS.length) return SG_SKILLS.slice(0, n);
     if (ctx.domesticRegion === 'europe' && EUROPE_SKILLS.length) return EUROPE_SKILLS.slice(0, n);
   }
-  // Local city: prefer that city's whole-market demand (works for Darwin & co.),
-  // then fall back to the mapped-company signal, then the taxonomy order.
+  // Local city: an AGGREGATED view of what's in high demand in that city —
+  // the whole-market vacancy demand (IVI/StatCan/etc.) PLUS the mapped companies'
+  // live job ads, in the same ad-count unit, summed into one ranking. When a city
+  // has little or no local signal (most global hubs carry no whole-market series
+  // and no scraped ads), we pad from its region's demand ranking and then global
+  // demand — never the raw taxonomy order, whose head is mining-heavy and would
+  // otherwise show the same wrong list on every data-poor city.
   if (!ctx.zoomedOut) {
-    const byCity = skillsByCityDemand(ctx.localCity, n);
-    if (byCity.length) return byCity;
-    if (idx) {
-      const ids = new Set((CITY_COMPANIES[ctx.localCity] || []).map((c) => c.id));
-      const ranked = Object.entries(idx.skills)
-        .map(([name, agg]) => [name, Object.entries(agg.byCompany).reduce((s, [id, v]) => s + (ids.has(id) ? v : 0), 0)] as const)
-        .filter(([, d]) => d > 0)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, n)
-        .map(([name]) => name);
-      if (ranked.length) return ranked;
+    const score: Record<string, number> = {};
+    const add = (m: Record<string, number>) => {
+      for (const [s, v] of Object.entries(m)) score[s] = (score[s] || 0) + v;
+    };
+    add(cityMarketDemand(ctx.localCity));
+    add(cityCompanyDemand(idx, ctx.localCity));
+    const out = Object.entries(score)
+      .sort((a, b) => b[1] - a[1])
+      .map(([s]) => s);
+    if (out.length < n) {
+      const region = CITY_CONTINENT[ctx.localCity] || ctx.domesticRegion;
+      const pad = (list: string[]) => {
+        for (const s of list) {
+          if (out.length >= n) break;
+          if (!out.includes(s)) out.push(s);
+        }
+      };
+      // Region-level demand (domestic), then worldwide demand (global) — both
+      // are demand-ranked from real data, so a data-poor city still gets a
+      // sensible, region-appropriate list rather than the mining taxonomy head.
+      pad(popularSkills(idx, { zoomedOut: true, globalOut: false, domesticRegion: region, localCity: ctx.localCity }, n));
+      if (out.length < n) pad(popularSkills(idx, { zoomedOut: true, globalOut: true, domesticRegion: region, localCity: ctx.localCity }, n));
     }
-    return ALL_SKILLS.slice(0, n);
+    return out.slice(0, n);
   }
   // Other domestic regions / global: rank from the company index.
   if (!idx) return ALL_SKILLS.slice(0, n);
