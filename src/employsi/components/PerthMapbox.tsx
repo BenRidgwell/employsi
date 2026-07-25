@@ -15,6 +15,38 @@ const HALO_LAYER = 'company-halo';
 const CORE_LAYER = 'company-core';
 const PULSE_LAYER = 'company-pulse';
 const LABEL_LAYER = 'company-label';
+const POI_LAYER = 'company-poi';
+const POI_IMAGE = 'company-poi-pin';
+
+// Build a classic "map pin" teardrop as an SDF image so a symbol layer can tint
+// it per company (icon-color). Drawn at 2× for retina; icon-anchor 'bottom' puts
+// the pin's tip on the geo point. Returns null off-DOM (SSR guard).
+function makePinImage(): { width: number; height: number; data: Uint8Array } | null {
+  if (typeof document === 'undefined') return null;
+  const w = 52;
+  const h = 68;
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d');
+  if (!ctx) return null;
+  ctx.fillStyle = '#fff';
+  const cx = 26;
+  const headCy = 24;
+  const r = 20;
+  // Head circle + triangular tail down to the tip; the overlap fuses them into
+  // a pin. (SDF uses the alpha coverage, so a solid white fill is all we need.)
+  ctx.beginPath();
+  ctx.arc(cx, headCy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx, 66);
+  ctx.lineTo(9, 38);
+  ctx.lineTo(43, 38);
+  ctx.closePath();
+  ctx.fill();
+  return { width: w, height: h, data: new Uint8Array(ctx.getImageData(0, 0, w, h).data.buffer) };
+}
 const PULSE_MS = 2200;
 const ZOOM_OUT_THRESHOLD = 11;
 
@@ -299,44 +331,55 @@ export function PerthMapbox() {
       // buildings — without it, circle layers render *under* the extrusions, so
       // a dot behind a near-field tower is occluded while its HTML pill (a DOM
       // overlay, always on top) still shows, leaving the pill "with no dot".
+      // ── POI-pin marker style (design test) ──────────────────────────────
+      // A soft ground shadow under each pin's tip.
       map.addLayer({
         id: HALO_LAYER,
         type: 'circle',
         source: SOURCE_ID,
         slot: 'top',
         paint: {
-          'circle-radius': ['case', ['get', 'selected'], 34, 26],
-          'circle-color': ['get', 'color'],
+          'circle-radius': ['case', ['get', 'selected'], 7, 5],
+          'circle-color': 'rgba(15,23,42,0.9)',
           'circle-blur': 1,
-          'circle-opacity': ['case', ['get', 'dim'], 0.1, 0.55],
+          'circle-opacity': ['case', ['get', 'dim'], 0.08, 0.22],
+          'circle-translate': [0, 1],
         },
       });
+      // The teardrop pin, tinted to the company's heat colour (SDF icon).
+      const pin = makePinImage();
+      if (pin && !map.hasImage(POI_IMAGE)) map.addImage(POI_IMAGE, pin, { sdf: true, pixelRatio: 2 });
+      map.addLayer({
+        id: POI_LAYER,
+        type: 'symbol',
+        source: SOURCE_ID,
+        slot: 'top',
+        layout: {
+          'icon-image': POI_IMAGE,
+          'icon-anchor': 'bottom',
+          'icon-size': ['case', ['get', 'selected'], 1.15, 0.9],
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
+        paint: {
+          'icon-color': ['get', 'color'],
+          'icon-opacity': ['case', ['get', 'dim'], 0.3, 1],
+        },
+      });
+      // A white dot in the pin's head (translated up from the tip) so the marker
+      // reads as a POI pin with a hole rather than a solid teardrop.
       map.addLayer({
         id: CORE_LAYER,
         type: 'circle',
         source: SOURCE_ID,
         slot: 'top',
         paint: {
-          'circle-radius': ['case', ['get', 'selected'], 9, 6],
-          'circle-color': ['get', 'color'],
-          'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': 1.5,
-          'circle-opacity': ['case', ['get', 'dim'], 0.25, 0.95],
-        },
-      });
-      // Animated pulse ring emanating from each heat dot (radius + opacity
-      // driven each frame in the rAF loop below).
-      map.addLayer({
-        id: PULSE_LAYER,
-        type: 'circle',
-        source: SOURCE_ID,
-        slot: 'top',
-        paint: {
-          'circle-radius': ['case', ['get', 'selected'], 12, 9],
-          'circle-color': 'rgba(0,0,0,0)',
-          'circle-stroke-color': ['get', 'color'],
-          'circle-stroke-width': 2,
-          'circle-stroke-opacity': 0.5,
+          'circle-radius': ['case', ['get', 'selected'], 4.5, 3.4],
+          'circle-color': '#ffffff',
+          'circle-opacity': ['case', ['get', 'dim'], 0.3, 1],
+          // Head centre sits ~20px above the tip (pin ~26px tall selected / ~20
+          // normal); nudge the dot up into it.
+          'circle-translate': ['case', ['get', 'selected'], ['literal', [0, -23]], ['literal', [0, -18]]],
         },
       });
       // Company name labels rendered natively from the SAME source as the dots,
@@ -353,9 +396,9 @@ export function PerthMapbox() {
           'text-font': ['Source Sans Pro Semibold', 'Arial Unicode MS Regular'],
           'text-size': 12,
           'text-anchor': 'left',
-          // Push the label clear of the dot (radius ~9px selected). Offset is in
-          // ems of text-size (12px), so 1.5em ≈ 18px past the point.
-          'text-offset': [1.5, 0],
+          // Sit the label beside the pin's HEAD (up + right of the tip). Offset
+          // is in ems of text-size (12px): 1.3em ≈ 16px right, −1.4em ≈ 17px up.
+          'text-offset': [1.3, -1.4],
           'text-optional': true,
           'text-allow-overlap': false,
           'symbol-sort-key': ['case', ['get', 'selected'], 0, 1],
@@ -369,7 +412,7 @@ export function PerthMapbox() {
         },
       });
 
-      [CORE_LAYER, HALO_LAYER].forEach((layer) => {
+      [CORE_LAYER, HALO_LAYER, POI_LAYER].forEach((layer) => {
         map.on('mouseenter', layer, () => {
           map.getCanvas().style.cursor = 'pointer';
         });
@@ -440,7 +483,7 @@ export function PerthMapbox() {
       // the crossfade or on browsers where canvas compositing ignores normal
       // DOM stacking.
       const setCompaniesVisible = (show: boolean) => {
-        [HALO_LAYER, CORE_LAYER, PULSE_LAYER, LABEL_LAYER].forEach((id) => {
+        [HALO_LAYER, POI_LAYER, CORE_LAYER, PULSE_LAYER, LABEL_LAYER].forEach((id) => {
           if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', show ? 'visible' : 'none');
         });
         // When revealing companies, respect the active sector / exchange /

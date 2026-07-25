@@ -36,6 +36,11 @@ body {
 .app .mount:active {
   cursor: grabbing;
 }
+/* Gently fade the basemap colours a touch further than the Mapbox "faded"
+   theme already does — a mild desaturate + lift, on the map canvas only. */
+.app .mount .mapboxgl-canvas {
+  filter: saturate(0.8) brightness(1.03);
+}
 /* Mapbox trial: the global/domestic Mapbox overview sits on top of the local
    3D map (it comes after PerthMapbox in the DOM, so it stacks above it without
    needing a z-index — and crucially must NOT have one, or it would paint over
