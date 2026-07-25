@@ -41,6 +41,77 @@ body {
 .app .mount .mapboxgl-canvas {
   filter: saturate(0.8) brightness(1.03);
 }
+
+/* POI-pin company markers (local layer): white teardrop + black outline with the
+   company logo inside, name beside it. anchor:'bottom' pins the tip to the point,
+   so the element box stays 30×40 (name is absolutely positioned, out of flow). */
+.poipin {
+  position: relative;
+  width: 30px;
+  height: 40px;
+  cursor: pointer;
+  transition: opacity 0.18s ease;
+}
+.poipinmark {
+  position: relative;
+  display: block;
+  width: 30px;
+  height: 40px;
+  filter: drop-shadow(0 2px 3px rgba(15, 23, 42, 0.35));
+  transform-origin: 50% 100%;
+  transition: transform 0.15s ease;
+}
+.poipinmark svg {
+  display: block;
+  width: 30px;
+  height: 40px;
+}
+.poipinlogo {
+  position: absolute;
+  top: 5px;
+  left: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: contain;
+  background: #fff;
+}
+.poipintk {
+  position: absolute;
+  top: 5px;
+  left: 3px;
+  width: 24px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 800 8.5px "Source Sans Pro", "Mona Sans", sans-serif;
+  color: #1c1c1e;
+  letter-spacing: 0.2px;
+}
+.poipinname {
+  position: absolute;
+  left: 34px;
+  top: 3px;
+  white-space: nowrap;
+  font: 700 12.5px "Source Sans Pro", "Mona Sans", sans-serif;
+  color: #1c1c1e;
+  text-shadow: 0 1px 2px #fff, 0 0 3px #fff, 0 0 4px #fff;
+  pointer-events: none;
+}
+.poipin.on {
+  z-index: 6;
+}
+.poipin.on .poipinmark {
+  transform: scale(1.14);
+  filter: drop-shadow(0 3px 5px rgba(15, 23, 42, 0.45));
+}
+.poipin.on .poipinname {
+  font-weight: 800;
+}
+.poipin.dim {
+  opacity: 0.4;
+}
 /* Mapbox trial: the global/domestic Mapbox overview sits on top of the local
    3D map (it comes after PerthMapbox in the DOM, so it stacks above it without
    needing a z-index — and crucially must NOT have one, or it would paint over

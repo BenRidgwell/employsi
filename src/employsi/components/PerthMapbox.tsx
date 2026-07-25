@@ -327,99 +327,19 @@ export function PerthMapbox() {
       placedRef.current = cityPlacements(st.localCity);
       map.addSource(SOURCE_ID, { type: 'geojson', data: buildGeoJSON(placedRef.current, st.selectedId, filterState, skillDemandOf(st)) });
 
-      // slot:'top' keeps every dot layer above the Standard style's 3D
-      // buildings — without it, circle layers render *under* the extrusions, so
-      // a dot behind a near-field tower is occluded while its HTML pill (a DOM
-      // overlay, always on top) still shows, leaving the pill "with no dot".
       // ── POI-pin marker style (design test) ──────────────────────────────
-      // A soft ground shadow under each pin's tip.
-      map.addLayer({
-        id: HALO_LAYER,
-        type: 'circle',
-        source: SOURCE_ID,
-        slot: 'top',
-        paint: {
-          'circle-radius': ['case', ['get', 'selected'], 7, 5],
-          'circle-color': 'rgba(15,23,42,0.9)',
-          'circle-blur': 1,
-          'circle-opacity': ['case', ['get', 'dim'], 0.08, 0.22],
-          'circle-translate': [0, 1],
-        },
-      });
-      // The teardrop pin, tinted to the company's heat colour (SDF icon).
-      const pin = makePinImage();
-      if (pin && !map.hasImage(POI_IMAGE)) map.addImage(POI_IMAGE, pin, { sdf: true, pixelRatio: 2 });
-      map.addLayer({
-        id: POI_LAYER,
-        type: 'symbol',
-        source: SOURCE_ID,
-        slot: 'top',
-        layout: {
-          'icon-image': POI_IMAGE,
-          'icon-anchor': 'bottom',
-          'icon-size': ['case', ['get', 'selected'], 1.15, 0.9],
-          'icon-allow-overlap': true,
-          'icon-ignore-placement': true,
-        },
-        paint: {
-          'icon-color': ['get', 'color'],
-          'icon-opacity': ['case', ['get', 'dim'], 0.3, 1],
-        },
-      });
-      // A white dot in the pin's head (translated up from the tip) so the marker
-      // reads as a POI pin with a hole rather than a solid teardrop.
-      map.addLayer({
-        id: CORE_LAYER,
-        type: 'circle',
-        source: SOURCE_ID,
-        slot: 'top',
-        paint: {
-          'circle-radius': ['case', ['get', 'selected'], 4.5, 3.4],
-          'circle-color': '#ffffff',
-          'circle-opacity': ['case', ['get', 'dim'], 0.3, 1],
-          // Head centre sits ~20px above the tip (pin ~26px tall selected / ~20
-          // normal); nudge the dot up into it.
-          'circle-translate': ['case', ['get', 'selected'], ['literal', [0, -23]], ['literal', [0, -18]]],
-        },
-      });
-      // Company name labels rendered natively from the SAME source as the dots,
-      // so a label can never drift away from its dot (the HTML-marker approach
-      // diverged from the GL dots at this pitch). Mapbox's own symbol collision
-      // declutters overlaps; the selected company sorts first so it always wins.
-      map.addLayer({
-        id: LABEL_LAYER,
-        type: 'symbol',
-        source: SOURCE_ID,
-        slot: 'top',
-        layout: {
-          'text-field': ['get', 'label'],
-          'text-font': ['Source Sans Pro Semibold', 'Arial Unicode MS Regular'],
-          'text-size': 12,
-          'text-anchor': 'left',
-          // Sit the label beside the pin's HEAD (up + right of the tip). Offset
-          // is in ems of text-size (12px): 1.3em ≈ 16px right, −1.4em ≈ 17px up.
-          'text-offset': [1.3, -1.4],
-          'text-optional': true,
-          'text-allow-overlap': false,
-          'symbol-sort-key': ['case', ['get', 'selected'], 0, 1],
-        },
-        paint: {
-          'text-color': '#1c1c1e',
-          'text-halo-color': '#ffffff',
-          'text-halo-width': 1.8,
-          'text-halo-blur': 0.4,
-          'text-opacity': ['case', ['get', 'dim'], 0.4, 1],
-        },
-      });
-
-      [CORE_LAYER, HALO_LAYER, POI_LAYER].forEach((layer) => {
-        map.on('mouseenter', layer, () => {
-          map.getCanvas().style.cursor = 'pointer';
-        });
-        map.on('mouseleave', layer, () => {
-          map.getCanvas().style.cursor = '';
-        });
-      });
+      // Company markers are HTML POI pins (renderMarkers below): a white teardrop
+      // with a black outline and the company's logo inside, the name beside it.
+      // The GL source is kept only so skill-heat / filter data stays in one place;
+      // no GL circle/label layers render the companies now — the HTML pins do,
+      // and the focus/collision pass (updateFocus) declutters them.
+      void SOURCE_ID;
+      void HALO_LAYER;
+      void CORE_LAYER;
+      void LABEL_LAYER;
+      void POI_LAYER;
+      void POI_IMAGE;
+      void makePinImage;
 
       // A single click handler for the whole map: select the nearest company
       // within a generous radius (so tightly-clustered CBD companies whose pills
@@ -473,7 +393,53 @@ export function PerthMapbox() {
       // Labels are now the native LABEL_LAYER (see above), fed by the same
       // GeoJSON source as the dots — nothing HTML to keep in sync, so this is a
       // no-op kept only so the existing call sites read cleanly.
-      const renderMarkers = (_placements: Placed[]) => {};
+      // POI-pin HTML markers: a white teardrop with a black outline and the
+      // company's logo (Google favicon service, ticker fallback) inside, the name
+      // beside it. Reused across pans (create once per company, then the
+      // updateFocus pass drives opacity/collision + the apply effect sets state
+      // classes). anchor:'bottom' puts the pin's tip on the geo point.
+      const renderMarkers = (placements: Placed[]) => {
+        const keep = new Set(placements.map((p) => p.company.id));
+        Object.keys(markersRef.current).forEach((id) => {
+          if (!keep.has(id)) {
+            markersRef.current[id].remove();
+            delete markersRef.current[id];
+          }
+        });
+        placements.forEach((p) => {
+          if (markersRef.current[p.company.id]) return;
+          const c = p.company;
+          const el = document.createElement('div');
+          el.className = 'poipin';
+          const mark = document.createElement('span');
+          mark.className = 'poipinmark';
+          mark.innerHTML =
+            '<svg viewBox="0 0 30 40" aria-hidden="true"><path d="M15 1.4C7.9 1.4 2.2 7 2.2 13.9c0 8.6 10.9 22.6 12.1 24.1a.9.9 0 0 0 1.4 0c1.2-1.5 12.1-15.5 12.1-24.1C27.8 7 22.1 1.4 15 1.4Z" fill="#ffffff" stroke="#111111" stroke-width="1.6"/></svg>';
+          const img = document.createElement('img');
+          img.className = 'poipinlogo';
+          img.alt = '';
+          img.src = `https://www.google.com/s2/favicons?domain=${c.domain}&sz=128`;
+          img.addEventListener('error', () => {
+            img.remove();
+            const tk = document.createElement('span');
+            tk.className = 'poipintk';
+            tk.textContent = c.ticker;
+            mark.appendChild(tk);
+          });
+          mark.appendChild(img);
+          const name = document.createElement('span');
+          name.className = 'poipinname';
+          name.textContent = pillLabel(c.name, c.ticker);
+          el.appendChild(mark);
+          el.appendChild(name);
+          el.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            useAppStore.getState().select(c.id);
+          });
+          const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' }).setLngLat(p.coords).addTo(map);
+          markersRef.current[c.id] = marker;
+        });
+      };
       renderMarkers(placedRef.current);
 
       // Explicit show/hide for the native heat layers + HTML markers. The
@@ -522,7 +488,7 @@ export function PerthMapbox() {
           el.style.display = matchesFilters(p.company, fs) ? '' : 'none';
           const searchOk = !isSearchActive(fs) || searchMatches(p.company, fs.searchQuery);
           const notSelected = !!s.selectedId && s.selectedId !== p.company.id;
-          el.className = ['mbchip', s.selectedId === p.company.id ? 'on' : '', searchOk && !notSelected ? '' : 'dim'].join(' ').trim();
+          el.className = ['poipin', s.selectedId === p.company.id ? 'on' : '', searchOk && !notSelected ? '' : 'dim'].join(' ').trim();
         });
         focusUpdaterRef.current?.();
       };
@@ -821,7 +787,7 @@ export function PerthMapbox() {
         // Fade every other pill while a card is open, so the selected company
         // stays the visual focus; clears the instant selectedId is null again.
         const notSelected = !!selectedId && selectedId !== c.id;
-        el.className = ['mbchip', selectedId === c.id ? 'on' : '', searchOk && !notSelected ? '' : 'dim'].join(' ').trim();
+        el.className = ['poipin', selectedId === c.id ? 'on' : '', searchOk && !notSelected ? '' : 'dim'].join(' ').trim();
       });
       // Re-apply the focus fade so a newly dimmed/undimmed pill keeps the
       // correct opacity without waiting for the next pan.
