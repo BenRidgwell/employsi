@@ -58,7 +58,7 @@ const RAW_SKILLS: SkillDef[] = [
 
   // ── Data, digital & automation ─────────────────────────────────────────
   { skill: 'Data Analytics', cat: 'Digital', terms: ['data analyst', 'data analytics', 'power bi', 'analytics', 'sql', 'systems analyst', 'business and systems'] },
-  { skill: 'Data Science & ML', cat: 'Digital', terms: ['data scien', 'machine learning', 'ml engineer', 'ai '] },
+  { skill: 'Data Science & Machine Learning', cat: 'Digital', terms: ['data scien', 'machine learning', 'ml engineer', 'ai '] },
   { skill: 'Software Engineering', cat: 'Digital', terms: ['software engineer', 'developer', 'full stack', 'python', 'java', 'react', 'programmer', 'multimedia'] },
   { skill: 'Cloud & DevOps', cat: 'Digital', terms: ['cloud', 'aws', 'azure', 'devops', 'kubernetes'] },
   { skill: 'Cybersecurity', cat: 'Digital', terms: ['cyber', 'security engineer', 'infosec', 'ict security'] },
@@ -159,7 +159,7 @@ const RAW_SKILLS: SkillDef[] = [
   // heatmap skills; skillsForText dedupes when both an English and a Chinese
   // def match. Two China-heavy families (Product, Operations) are added new.
   { skill: 'Software Engineering', cat: 'Digital', terms: ['软件工程', '开发工程', '研发工程', '程序员', '前端', '后端', '全栈', '算法工程', 'java开发', '测试工程'] },
-  { skill: 'Data Science & ML', cat: 'Digital', terms: ['算法', '机器学习', '人工智能', '深度学习', '大模型'] },
+  { skill: 'Data Science & Machine Learning', cat: 'Digital', terms: ['算法', '机器学习', '人工智能', '深度学习', '大模型'] },
   { skill: 'Data Analytics', cat: 'Digital', terms: ['数据分析', '数据挖掘', '商业分析', 'bi工程'] },
   { skill: 'Cloud & DevOps', cat: 'Digital', terms: ['运维', '云计算', '云平台'] },
   { skill: 'Cybersecurity', cat: 'Digital', terms: ['网络安全', '安全工程', '信息安全'] },

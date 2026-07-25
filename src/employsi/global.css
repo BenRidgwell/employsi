@@ -140,6 +140,11 @@ body {
 .poipin.miss .poipinname {
   font-weight: 400;
 }
+/* …and it's not selectable while faded, so it can't be opened and confuse the
+   user (clicks fall through). Restored when the skill is cleared. */
+.poipin.miss {
+  pointer-events: none;
+}
 /* Mapbox trial: the global/domestic Mapbox overview sits on top of the local
    3D map (it comes after PerthMapbox in the DOM, so it stacks above it without
    needing a z-index — and crucially must NOT have one, or it would paint over
@@ -3070,15 +3075,22 @@ body {
 .gsrsub.dmd-hi {
   font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
   font-weight: 700;
+  /* Filled pill in the heat colour: green / amber / red. */
+  padding: 2px 8px;
+  border-radius: 999px;
+  line-height: 1.3;
 }
 .gsrsub.dmd-lo {
-  color: #12905e;
+  background: #159d67;
+  color: #ffffff;
 }
 .gsrsub.dmd-mid {
-  color: #c67f00;
+  background: #f5a623;
+  color: #1c1c1e;
 }
 .gsrsub.dmd-hi {
-  color: #d6362e;
+  background: #d6362e;
+  color: #ffffff;
 }
 .gsrempty {
   padding: 14px 10px;

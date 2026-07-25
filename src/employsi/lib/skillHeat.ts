@@ -123,11 +123,34 @@ export function demandByCity(idx: SkillIndex | null, skill: string | null): Reco
   return idx.skills[skill]?.byCity ?? {};
 }
 
-// Popular skills for the current map layer, ranked by real live demand:
-//   • local    → summed across the companies in the current city
-//   • domestic → summed across the cities in the current region
-//   • global   → summed across every city worldwide
-// Falls back to the taxonomy order before the first cron run has any data.
+// Skills ranked by a single city's whole-market vacancy demand — AU capitals
+// (JSA/IVI) plus the Canadian hubs (StatCan). This covers gov-heavy cities like
+// Darwin / Hobart / Canberra that carry no mapped-company signal, so their local
+// popular-skills are still real and city-specific.
+function skillsByCityDemand(city: string, n: number): string[] {
+  const score = (s: string) => (IVI_SKILL_BY_CITY[s]?.[city] || 0) + (CA_SKILL_BY_CITY[s]?.[city] || 0);
+  return ALL_SKILLS.map((s) => [s, score(s)] as const)
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([s]) => s);
+}
+
+// Canada national demand per skill (summed across the Canadian hubs), pre-sorted
+// — drives the North America domestic view's popular skills.
+const CA_SKILLS: string[] = Object.entries(CA_SKILL_BY_CITY)
+  .map(([s, byCity]) => [s, Object.values(byCity).reduce((a, b) => a + b, 0)] as const)
+  .filter(([, v]) => v > 0)
+  .sort((a, b) => b[1] - a[1])
+  .map(([s]) => s);
+
+// Popular skills for the current map layer, ranked by real demand and always
+// contextual to the layer the user is on:
+//   • local    → that city's whole-market vacancy demand (IVI/StatCan), else its
+//                mapped companies, else the taxonomy order
+//   • domestic → Australia: IVI national; North America: Canada national; other
+//                regions: summed across the region's hub companies
+//   • global   → summed across every company worldwide
 export interface LayerCtx {
   zoomedOut: boolean;
   globalOut: boolean;
@@ -135,18 +158,32 @@ export interface LayerCtx {
   localCity: string;
 }
 export function popularSkills(idx: SkillIndex | null, ctx: LayerCtx, n = 10): string[] {
-  // AU domestic view: rank by real Jobs & Skills Australia IVI demand — the
-  // whole Australian labour market, not just the mapped companies. IVI_SKILLS is
-  // pre-sorted by national vacancy count, so the head is the most in-demand.
-  if (ctx.zoomedOut && !ctx.globalOut && ctx.domesticRegion === 'australia' && IVI_SKILLS.length) {
-    return IVI_SKILLS.slice(0, n);
+  // Domestic views with a whole-of-market government vacancy series.
+  if (ctx.zoomedOut && !ctx.globalOut) {
+    if (ctx.domesticRegion === 'australia' && IVI_SKILLS.length) return IVI_SKILLS.slice(0, n);
+    if (ctx.domesticRegion === 'northamerica' && CA_SKILLS.length) return CA_SKILLS.slice(0, n);
   }
+  // Local city: prefer that city's whole-market demand (works for Darwin & co.),
+  // then fall back to the mapped-company signal, then the taxonomy order.
+  if (!ctx.zoomedOut) {
+    const byCity = skillsByCityDemand(ctx.localCity, n);
+    if (byCity.length) return byCity;
+    if (idx) {
+      const ids = new Set((CITY_COMPANIES[ctx.localCity] || []).map((c) => c.id));
+      const ranked = Object.entries(idx.skills)
+        .map(([name, agg]) => [name, Object.entries(agg.byCompany).reduce((s, [id, v]) => s + (ids.has(id) ? v : 0), 0)] as const)
+        .filter(([, d]) => d > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, n)
+        .map(([name]) => name);
+      if (ranked.length) return ranked;
+    }
+    return ALL_SKILLS.slice(0, n);
+  }
+  // Other domestic regions / global: rank from the company index.
   if (!idx) return ALL_SKILLS.slice(0, n);
   let demandOf: (agg: SkillIndex['skills'][string]) => number;
-  if (!ctx.zoomedOut) {
-    const ids = new Set((CITY_COMPANIES[ctx.localCity] || []).map((c) => c.id));
-    demandOf = (agg) => Object.entries(agg.byCompany).reduce((s, [id, v]) => s + (ids.has(id) ? v : 0), 0);
-  } else if (ctx.globalOut) {
+  if (ctx.globalOut) {
     demandOf = (agg) => agg.total;
   } else {
     const cities = new Set(REGION_HUBS[ctx.domesticRegion] || []);
