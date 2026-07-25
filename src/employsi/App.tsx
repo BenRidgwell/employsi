@@ -20,6 +20,7 @@ import { DailyBriefPane } from './components/panels/DailyBriefPane';
 import { WhatsTrendingPane } from './components/panels/WhatsTrendingPane';
 import { useAppStore } from './state/store';
 import { useSkillIndex } from './hooks/useSkillData';
+import { useViewTracking } from './hooks/useViewTracking';
 import { useEffect } from 'react';
 
 function App() {
@@ -33,6 +34,10 @@ function App() {
   useEffect(() => {
     if (skillIndex) setSkillIndex(skillIndex);
   }, [skillIndex, setSkillIndex]);
+
+  // Record real "most viewed" usage (companies / cities / regions / skills) for
+  // the What's Trending pane.
+  useViewTracking();
 
   // `ondark` (zoomedOut) keeps the header's pixel-sampler wired on both
   // overviews. The wordmark + top-bar labels, though, sit over a dark backdrop
