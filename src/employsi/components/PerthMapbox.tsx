@@ -424,7 +424,7 @@ export function PerthMapbox() {
           // Grey pin body, black outline, with a white circle inside for the logo.
           mark.innerHTML =
             '<svg viewBox="0 0 30 40" aria-hidden="true">' +
-            '<path d="M15 1.4C7.9 1.4 2.2 7 2.2 13.9c0 8.6 10.9 22.6 12.1 24.1a.9.9 0 0 0 1.4 0c1.2-1.5 12.1-15.5 12.1-24.1C27.8 7 22.1 1.4 15 1.4Z" fill="#8b95a7" stroke="#111111" stroke-width="1.6"/>' +
+            '<path d="M15 1.4C7.9 1.4 2.2 7 2.2 13.9c0 8.6 10.9 22.6 12.1 24.1a.9.9 0 0 0 1.4 0c1.2-1.5 12.1-15.5 12.1-24.1C27.8 7 22.1 1.4 15 1.4Z" fill="#c3cad6" stroke="#111111" stroke-width="1.6"/>' +
             '<circle cx="15" cy="13.7" r="8.6" fill="#ffffff"/>' +
             '</svg>';
           const img = document.createElement('img');
@@ -507,7 +507,11 @@ export function PerthMapbox() {
           el.style.display = matchesFilters(p.company, fs) ? '' : 'none';
           const searchOk = !isSearchActive(fs) || searchMatches(p.company, fs.searchQuery);
           const notSelected = !!s.selectedId && s.selectedId !== p.company.id;
-          el.className = ['poipin', s.selectedId === p.company.id ? 'on' : '', searchOk && !notSelected ? '' : 'dim'].join(' ').trim();
+          // Toggle state classes only — never reset className, or the
+          // `mapboxgl-marker` class Mapbox adds (which makes the marker
+          // position:absolute so it stays pinned) gets clobbered.
+          el.classList.toggle('on', s.selectedId === p.company.id);
+          el.classList.toggle('dim', !(searchOk && !notSelected));
           paintHeatDot(el, dmC ? dmC[p.company.id] || 0 : 0, maxC, !!dmC);
         });
         focusUpdaterRef.current?.();
@@ -750,7 +754,9 @@ export function PerthMapbox() {
         // Fade every other pill while a card is open, so the selected company
         // stays the visual focus; clears the instant selectedId is null again.
         const notSelected = !!selectedId && selectedId !== c.id;
-        el.className = ['poipin', selectedId === c.id ? 'on' : '', searchOk && !notSelected ? '' : 'dim'].join(' ').trim();
+        // Toggle state classes only (preserve mapboxgl-marker + poipin base).
+        el.classList.toggle('on', selectedId === c.id);
+        el.classList.toggle('dim', !(searchOk && !notSelected));
         paintHeatDot(el, demand, maxD, !!skillDemand);
       });
       // Re-apply the focus fade so a newly dimmed/undimmed pill keeps the

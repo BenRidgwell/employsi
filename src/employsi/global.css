@@ -46,7 +46,10 @@ body {
    company logo inside, name beside it. anchor:'bottom' pins the tip to the point,
    so the element box stays 30×40 (name is absolutely positioned, out of flow). */
 .poipin {
-  position: relative;
+  /* NB: do not set `position` here — Mapbox's own .mapboxgl-marker class makes
+     the marker position:absolute so it stays pinned to its lng/lat; overriding
+     that (this stylesheet loads after mapbox-gl.css) unpins the markers. The
+     absolutely-positioned children anchor to the marker's own box. */
   width: 30px;
   height: 40px;
   cursor: pointer;
@@ -92,10 +95,10 @@ body {
 /* Small heat dot, top-right of the pin head, coloured by live skill demand. */
 .poipindot {
   position: absolute;
-  top: 1px;
-  right: 2px;
-  width: 8px;
-  height: 8px;
+  top: 0;
+  right: 0;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   background: #94a3b8;
   border: 1.5px solid #fff;
