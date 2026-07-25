@@ -219,12 +219,9 @@ function buildSkillHeat(
   if (mode === 'global') {
     table = HUB_LNGLAT;
   } else if (region === 'australia') {
-    // Hobart is omitted from the AU markers, so drop its skill heat too — no
-    // stray blob over its old spot. Darwin is now a full city (NT gov), so it
-    // keeps its marker + heat.
-    table = Object.fromEntries(
-      Object.entries(AU_CITY_LNGLAT).filter(([id]) => id !== 'hobart'),
-    );
+    // All AU capitals are now full cities (Hobart added with TAS gov, Darwin with
+    // NT gov), so every one keeps its marker + skill heat.
+    table = AU_CITY_LNGLAT;
   } else {
     table = {};
     (REGION_HUBS[region] || []).forEach((id) => { if (HUB_LNGLAT[id]) table[id] = HUB_LNGLAT[id]; });

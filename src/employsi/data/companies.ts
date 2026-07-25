@@ -207,3 +207,7 @@ COMPANIES.push(...APS_GOV_COMPANIES);
 // Northern Territory government agencies (private / public-sector), all Darwin.
 import { DARWIN_GOV_COMPANIES } from './darwinGov';
 COMPANIES.push(...DARWIN_GOV_COMPANIES);
+
+// Tasmanian government agencies (private / public-sector), all Hobart.
+import { HOBART_GOV_COMPANIES } from './hobartGov';
+COMPANIES.push(...HOBART_GOV_COMPANIES);

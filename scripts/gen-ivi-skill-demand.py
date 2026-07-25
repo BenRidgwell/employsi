@@ -24,8 +24,8 @@ SHEET = '4 digit 3 month average'
 # NT→Darwin and ACT→Canberra are included so those two capital hubs get real IVI
 # demand + history like the other five (JSA publishes all states/territories).
 STATE2CITY = {'NSW': 'sydney', 'VIC': 'melbourne', 'QLD': 'brisbane', 'SA': 'adelaide',
-              'WA': 'perth', 'NT': 'darwin', 'ACT': 'canberra'}
-CITIES = ['perth', 'adelaide', 'brisbane', 'melbourne', 'sydney', 'darwin', 'canberra']
+              'WA': 'perth', 'NT': 'darwin', 'ACT': 'canberra', 'TAS': 'hobart'}
+CITIES = ['perth', 'adelaide', 'brisbane', 'melbourne', 'sydney', 'darwin', 'canberra', 'hobart']
 
 # Curated overrides for ANZSCO codes the title term-matcher misses. Pure "Other
 # Miscellaneous Labourers/Technicians" catch-alls are intentionally left
@@ -51,7 +51,8 @@ OVERRIDE = {
 
 
 def load_skills():
-    body = open(TAX).read().split('export const SKILLS', 1)[1].split('];', 1)[0]
+    # RAW_SKILLS is the source array (SKILLS is now a computed dedup of it).
+    body = open(TAX).read().split('RAW_SKILLS', 1)[1].split('];', 1)[0]
     out = []
     for m in re.finditer(r"\{\s*skill:\s*'([^']+)',\s*cat:\s*'([^']+)',\s*terms:\s*\[([^\]]*)\]\s*\}", body):
         out.append((m.group(1), re.findall(r"'([^']*)'", m.group(3))))

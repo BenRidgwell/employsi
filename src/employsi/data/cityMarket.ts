@@ -31,6 +31,7 @@ export const CITY_MARKET: Record<string, CityMarket> = {
   adelaide: AU,
   canberra: AU,
   darwin: AU,
+  hobart: AU,
   // Adzuna-covered global hubs
   london: { country: 'gb', where: 'London', region: /united kingdom|england|london|\buk\b/i },
   toronto: { country: 'ca', where: 'Toronto', region: /canada|toronto|ontario/i },

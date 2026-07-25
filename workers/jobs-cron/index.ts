@@ -23,6 +23,7 @@ import { fetchWaGovPages, type StoredWaJob } from './waGov';
 import { fetchVicGovPages, type StoredVicJob } from './vicGov';
 import { fetchQldGovPages, type StoredQldJob } from './qldGov';
 import { fetchNtGov, type StoredNtJob } from './ntGov';
+import { fetchTasGov, type StoredTasJob } from './tasGov';
 import { fetchMcfJobs } from './mycareersfuture';
 import { fetchSeekCompanyJobs } from './seek';
 import { SEEK_ADVERTISERS } from '../../src/employsi/data/seekAdvertisers';
@@ -30,6 +31,7 @@ import { PERTH_GOV_IDS } from '../../src/employsi/data/perthGov';
 import { MELBOURNE_GOV_IDS } from '../../src/employsi/data/melbourneGov';
 import { BRISBANE_GOV_IDS } from '../../src/employsi/data/brisbaneGov';
 import { DARWIN_GOV_IDS } from '../../src/employsi/data/darwinGov';
+import { HOBART_GOV_IDS } from '../../src/employsi/data/hobartGov';
 
 interface Env {
   OPEN_ROLES_HISTORY: KVNamespace;
@@ -777,6 +779,39 @@ async function processNtGov(env: Env): Promise<{ total: number; parsed: number; 
   return { total: res.total, parsed: res.parsed, agencies: withRoles };
 }
 
+async function processTasGov(env: Env): Promise<{ parsed: number; agencies: number }> {
+  const day = today();
+  const res = await fetchTasGov(day);
+  if (!res) return { parsed: 0, agencies: 0 };
+
+  let withRoles = 0;
+  for (const id of HOBART_GOV_IDS) {
+    const fresh = res.byAgency[id] || [];
+    let prevJobs: StoredTasJob[] = [];
+    try {
+      const prevRaw = await env.OPEN_ROLES_HISTORY.get(`tasgov:${id}`);
+      const prev = prevRaw ? JSON.parse(prevRaw) : null;
+      if (Array.isArray(prev?.jobs)) prevJobs = prev.jobs;
+    } catch {
+      /* start fresh */
+    }
+    // fetchTasGov only returns non-null when the board was reachable, so an
+    // agency with no fresh jobs today genuinely has none live — age its stored
+    // list out (mergeGovJobs drops entries not re-seen recently).
+    const jobs = mergeGovJobs(prevJobs, fresh, day);
+    const count = jobs.length;
+    await env.OPEN_ROLES_HISTORY.put(`tasgov:${id}`, JSON.stringify({ updated: day, count, jobs }));
+    if (count > 0) {
+      await appendCount(env, id, count);
+      withRoles++;
+    }
+    if (fresh.length) {
+      await archiveJobs(env.JOBS_ARCHIVE, fresh.map((j) => govJobToArchive(j, 'tas-gov', 'hobart', id, j.skills)), day);
+    }
+  }
+  return { parsed: res.parsed, agencies: withRoles };
+}
+
 export default {
   // Scheduled: the WA-gov scrape runs on its own cron minute (:30) so it gets a
   // clean subrequest budget for ~40 page fetches; every other tick advances the
@@ -790,6 +825,8 @@ export default {
       ctx.waitUntil(processQldGov(env).then(() => undefined));
     } else if (event.cron && event.cron.startsWith('5 ')) {
       ctx.waitUntil(processNtGov(env).then(() => undefined));
+    } else if (event.cron && event.cron.startsWith('50 ')) {
+      ctx.waitUntil(processTasGov(env).then(() => undefined));
     } else {
       ctx.waitUntil(processShard(env).then(() => undefined));
     }
@@ -866,6 +903,20 @@ export default {
       }
       try {
         const out = await processNtGov(env);
+        return Response.json({ ok: true, ...out });
+      } catch (e) {
+        return Response.json(
+          { ok: false, error: (e as Error)?.message || String(e), stack: (e as Error)?.stack || '' },
+          { status: 500 },
+        );
+      }
+    }
+    if (url.pathname === '/run-tasgov') {
+      if (url.searchParams.get('token') !== env.CRON_TOKEN) {
+        return new Response('forbidden', { status: 403 });
+      }
+      try {
+        const out = await processTasGov(env);
         return Response.json({ ok: true, ...out });
       } catch (e) {
         return Response.json(

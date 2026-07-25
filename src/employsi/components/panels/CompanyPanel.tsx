@@ -282,7 +282,8 @@ export function CompanyPanel() {
       panel.companyId.startsWith('vic-gov-') ||
       panel.companyId.startsWith('qld-gov-') ||
       panel.companyId.startsWith('aps-') ||
-      panel.companyId.startsWith('nt-gov-'));
+      panel.companyId.startsWith('nt-gov-') ||
+      panel.companyId.startsWith('tas-gov-'));
   // Real PSC workforce record for a gov agency (present only for agencies the
   // PSC reports). When absent, the agency's headcount is genuinely unknown and
   // the workforce chart / headcount stat are suppressed rather than faked.

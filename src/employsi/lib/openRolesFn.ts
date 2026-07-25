@@ -320,6 +320,7 @@ const ARCHIVE_SOURCE_LABEL: Record<string, string> = {
   linkedin: 'LinkedIn',
   'aps-gov': 'Australian Public Service',
   'nt-gov': 'NT Government',
+  'tas-gov': 'TAS Government',
 };
 
 // The current (still-advertised) listings for a company held in the D1 archive
@@ -456,6 +457,17 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
     if (data.id && data.id.startsWith('nt-gov-')) {
       const extra = await currentFromArchive(data.id, []);
       out = { count: extra.added, source: 'NT Government', jobs: extra.jobs };
+      if (out.count > 0) await recordSnapshot(data.id, out.count);
+      cache.set(key, { at: Date.now(), data: out });
+      return out;
+    }
+    // 0e. TAS government agencies (ids `tas-gov-*`) serve from the scraped TAS
+    //     jobs board (careers.jobs.tas.gov.au), archived in D1 under source
+    //     'tas-gov'. Same archive path as SA/APS/NT; the tas-gov- prefix keeps
+    //     them disjoint from the other jurisdictions' gov ids.
+    if (data.id && data.id.startsWith('tas-gov-')) {
+      const extra = await currentFromArchive(data.id, []);
+      out = { count: extra.added, source: 'TAS Government', jobs: extra.jobs };
       if (out.count > 0) await recordSnapshot(data.id, out.count);
       cache.set(key, { at: Date.now(), data: out });
       return out;
