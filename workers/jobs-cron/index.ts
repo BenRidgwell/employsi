@@ -22,12 +22,14 @@ import { archiveJobs, type ArchiveRow } from '../../src/employsi/lib/jobArchive'
 import { fetchWaGovPages, type StoredWaJob } from './waGov';
 import { fetchVicGovPages, type StoredVicJob } from './vicGov';
 import { fetchQldGovPages, type StoredQldJob } from './qldGov';
+import { fetchNtGov, type StoredNtJob } from './ntGov';
 import { fetchMcfJobs } from './mycareersfuture';
 import { fetchSeekCompanyJobs } from './seek';
 import { SEEK_ADVERTISERS } from '../../src/employsi/data/seekAdvertisers';
 import { PERTH_GOV_IDS } from '../../src/employsi/data/perthGov';
 import { MELBOURNE_GOV_IDS } from '../../src/employsi/data/melbourneGov';
 import { BRISBANE_GOV_IDS } from '../../src/employsi/data/brisbaneGov';
+import { DARWIN_GOV_IDS } from '../../src/employsi/data/darwinGov';
 
 interface Env {
   OPEN_ROLES_HISTORY: KVNamespace;
@@ -740,6 +742,41 @@ async function processQldGov(env: Env): Promise<{ startOffset: number; pagesOk: 
   return { startOffset: start, pagesOk: res.pagesOk, parsed: res.parsed, agencies: withRoles, nextCursor: next };
 }
 
+// NT gov: the whole board comes back in one POST, so unlike WA/VIC/QLD there's no
+// paging window — every NT agency is refreshed on every run.
+async function processNtGov(env: Env): Promise<{ total: number; parsed: number; agencies: number }> {
+  const day = today();
+  const res = await fetchNtGov(day);
+  if (!res) return { total: 0, parsed: 0, agencies: 0 };
+
+  let withRoles = 0;
+  for (const id of DARWIN_GOV_IDS) {
+    const fresh = res.byAgency[id] || [];
+    let prevJobs: StoredNtJob[] = [];
+    try {
+      const prevRaw = await env.OPEN_ROLES_HISTORY.get(`ntgov:${id}`);
+      const prev = prevRaw ? JSON.parse(prevRaw) : null;
+      if (Array.isArray(prev?.jobs)) prevJobs = prev.jobs;
+    } catch {
+      /* start fresh */
+    }
+    // A single fetch sees the whole board, so an agency with no fresh jobs today
+    // genuinely has none live — age its stored list out rather than keep stale
+    // roles around (mergeGovJobs drops entries not seen recently).
+    const jobs = mergeGovJobs(prevJobs, fresh, day);
+    const count = jobs.length;
+    await env.OPEN_ROLES_HISTORY.put(`ntgov:${id}`, JSON.stringify({ updated: day, count, jobs }));
+    if (count > 0) {
+      await appendCount(env, id, count);
+      withRoles++;
+    }
+    if (fresh.length) {
+      await archiveJobs(env.JOBS_ARCHIVE, fresh.map((j) => govJobToArchive(j, 'nt-gov', 'darwin', id, j.skills)), day);
+    }
+  }
+  return { total: res.total, parsed: res.parsed, agencies: withRoles };
+}
+
 export default {
   // Scheduled: the WA-gov scrape runs on its own cron minute (:30) so it gets a
   // clean subrequest budget for ~40 page fetches; every other tick advances the
@@ -751,6 +788,8 @@ export default {
       ctx.waitUntil(processVicGov(env).then(() => undefined));
     } else if (event.cron && event.cron.startsWith('45 ')) {
       ctx.waitUntil(processQldGov(env).then(() => undefined));
+    } else if (event.cron && event.cron.startsWith('5 ')) {
+      ctx.waitUntil(processNtGov(env).then(() => undefined));
     } else {
       ctx.waitUntil(processShard(env).then(() => undefined));
     }
@@ -821,6 +860,20 @@ export default {
     // gaps, so the ontology (skillsTaxonomy.ts) can be grown from real demand.
     // Re-archiving backfills skills (the upsert COALESCEs a NULL to the new map),
     // so a gap closed in the taxonomy heals on the next scrape.
+    if (url.pathname === '/run-ntgov') {
+      if (url.searchParams.get('token') !== env.CRON_TOKEN) {
+        return new Response('forbidden', { status: 403 });
+      }
+      try {
+        const out = await processNtGov(env);
+        return Response.json({ ok: true, ...out });
+      } catch (e) {
+        return Response.json(
+          { ok: false, error: (e as Error)?.message || String(e), stack: (e as Error)?.stack || '' },
+          { status: 500 },
+        );
+      }
+    }
     if (url.pathname === '/skill-gaps') {
       if (url.searchParams.get('token') !== env.CRON_TOKEN) {
         return new Response('forbidden', { status: 403 });
