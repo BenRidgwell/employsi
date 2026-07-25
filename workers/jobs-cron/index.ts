@@ -398,6 +398,14 @@ async function recomputeIndex(env: Env): Promise<SkillIndex> {
   const agg = (skill: string): SkillAgg => (skills[skill] ||= { total: 0, byCompany: {}, bySector: {}, byCity: {} });
   const byId: Record<string, JobsTarget> = Object.fromEntries(AU_JOBS_TARGETS.map((t) => [t.id, t]));
 
+  // "Recently hired" = advertised in the last month. The heat map should reflect
+  // who is hiring a skill NOW, not who ever did — a vacancy posted long ago no
+  // longer counts as demand. Jobs with no posting date are kept (defensive, so a
+  // source that omits dates doesn't silently vanish from the index).
+  const RECENT_DAYS = 31;
+  const cutoff = new Date(Date.now() - RECENT_DAYS * 86400000).toISOString().slice(0, 10);
+  const isRecent = (job: StoredJob): boolean => !job.created || job.created >= cutoff;
+
   for (const t of AU_JOBS_TARGETS) {
     const raw = await env.OPEN_ROLES_HISTORY.get(`jobs:${t.id}`);
     if (!raw) continue;
@@ -410,6 +418,7 @@ async function recomputeIndex(env: Env): Promise<SkillIndex> {
     const jobs: StoredJob[] = Array.isArray(data?.jobs) ? data.jobs : [];
     const meta = byId[t.id];
     for (const job of jobs) {
+      if (!isRecent(job)) continue; // only the last month counts as live demand
       totalJobs++;
       const city = job.city || meta.cities[0];
       for (const sk of job.skills || []) {
@@ -440,6 +449,7 @@ async function recomputeIndex(env: Env): Promise<SkillIndex> {
     }
     const jobs: StoredJob[] = Array.isArray(data?.jobs) ? data.jobs : [];
     for (const job of jobs) {
+      if (!isRecent(job)) continue; // last month only
       totalJobs++;
       for (const sk of job.skills || []) {
         const a = agg(sk);

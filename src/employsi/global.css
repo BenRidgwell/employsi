@@ -89,17 +89,22 @@ body {
   color: #1c1c1e;
   letter-spacing: 0.2px;
 }
-/* Heat dot, top-right of the badge, coloured by live skill demand. */
-.poipindot {
+/* Skill-demand glow, sitting BEHIND the badge (first child, so it paints under).
+   Painted by paintGlow: coloured + sized by the company's live demand for the
+   searched skill, invisible when there's no demand. */
+.poiglow {
   position: absolute;
-  top: -3px;
-  right: -3px;
-  width: 15px;
-  height: 15px;
+  top: 50%;
+  left: 50%;
+  width: 42px;
+  height: 42px;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
   background: #94a3b8;
-  border: 1.5px solid #fff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.4);
+  filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 .poipinname {
   position: absolute;
@@ -126,9 +131,10 @@ body {
   opacity: 0.4;
 }
 /* Skill search on the local map: companies with no active/recent vacancy for the
-   searched skill fade right back, so the ones that ARE hiring it stand out. */
+   searched skill fade right back (and carry no glow), so the ones that ARE hiring
+   it stand out. */
 .poipin.miss {
-  opacity: 0.12;
+  opacity: 0.1;
 }
 /* Mapbox trial: the global/domestic Mapbox overview sits on top of the local
    3D map (it comes after PerthMapbox in the DOM, so it stacks above it without

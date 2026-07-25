@@ -60,13 +60,22 @@ const NUM_CARS = 14;
 // Neutral marker colour — every layer sits neutral until a skill is searched
 // (then the demand gradient takes over).
 const NEUTRAL = 'rgb(42,42,46)';
-// The little heat dot on each pin: neutral slate when no skill is searched,
-// otherwise the green→amber→red heat colour for that company's live demand.
-const HEAT_DOT_NEUTRAL = '#94a3b8';
-function paintHeatDot(el: HTMLElement, demand: number, max: number, skillMode: boolean): void {
-  const dot = el.querySelector('.poipindot') as HTMLElement | null;
-  if (!dot) return;
-  dot.style.background = skillMode ? rgbCss(heatColor(demand / max)) : HEAT_DOT_NEUTRAL;
+// Skill-demand "glow" behind the company badge (replaces the old heat dot). Only
+// companies with real demand for the searched skill glow — coloured and sized by
+// how much — so a company that isn't hiring the skill has no glow at all, and
+// the ones that are hiring visibly stand out. Neutral browsing (no skill) shows
+// no glow: the glow means "hiring this skill".
+function paintGlow(el: HTMLElement, demand: number, max: number, skillMode: boolean): void {
+  const glow = el.querySelector('.poiglow') as HTMLElement | null;
+  if (!glow) return;
+  if (skillMode && demand > 0) {
+    const t = Math.max(0.18, Math.min(1, demand / max));
+    glow.style.background = rgbCss(heatColor(demand / max));
+    glow.style.opacity = String(0.45 + 0.45 * t);
+    glow.style.transform = `translate(-50%, -50%) scale(${0.9 + 0.7 * t})`;
+  } else {
+    glow.style.opacity = '0';
+  }
 }
 
 // Pill label: the company's name, word-shortened to keep the pill roughly its
@@ -419,8 +428,11 @@ export function PerthMapbox() {
           const c = p.company;
           const el = document.createElement('div');
           el.className = 'poipin';
-          // The teardrop pin body is gone by request: the marker is now just the
-          // company logo sitting in a white circular badge, with the heat dot.
+          // The teardrop pin body is gone: the marker is just the company logo in
+          // a white circular badge. A skill-demand glow sits BEHIND the badge
+          // (added first so it paints underneath) — see paintGlow.
+          const glow = document.createElement('span');
+          glow.className = 'poiglow';
           const mark = document.createElement('span');
           mark.className = 'poipinmark';
           const img = document.createElement('img');
@@ -435,14 +447,10 @@ export function PerthMapbox() {
             mark.appendChild(tk);
           });
           mark.appendChild(img);
-          // Heat dot (top-right of the badge) — coloured by skill demand when a
-          // skill is searched, neutral otherwise. Kept in sync by the effects.
-          const dot = document.createElement('span');
-          dot.className = 'poipindot';
-          mark.appendChild(dot);
           const name = document.createElement('span');
           name.className = 'poipinname';
           name.textContent = pillLabel(c.name, c.ticker);
+          el.appendChild(glow);
           el.appendChild(mark);
           el.appendChild(name);
           el.addEventListener('click', (ev) => {
@@ -516,7 +524,7 @@ export function PerthMapbox() {
           el.classList.toggle('on', isSelected);
           el.classList.toggle('miss', skillMiss);
           el.classList.toggle('dim', !skillMiss && !(searchOk && !notSelected));
-          paintHeatDot(el, demand, maxC, !!dmC);
+          paintGlow(el, demand, maxC, !!dmC);
         });
         focusUpdaterRef.current?.();
       };
@@ -767,7 +775,7 @@ export function PerthMapbox() {
         el.classList.toggle('on', isSelected);
         el.classList.toggle('miss', skillMiss);
         el.classList.toggle('dim', !skillMiss && !(searchOk && !notSelected));
-        paintHeatDot(el, demand, maxD, !!skillDemand);
+        paintGlow(el, demand, maxD, !!skillDemand);
       });
       // Re-apply the focus fade so a newly dimmed/undimmed pill keeps the
       // correct opacity without waiting for the next pan.
