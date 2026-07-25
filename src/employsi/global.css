@@ -42,63 +42,60 @@ body {
   filter: saturate(0.8) brightness(1.03);
 }
 
-/* POI-pin company markers (local layer): white teardrop + black outline with the
-   company logo inside, name beside it. anchor:'bottom' pins the tip to the point,
-   so the element box stays 30×40 (name is absolutely positioned, out of flow). */
+/* Company markers (local layer): the teardrop pin body is gone — the marker is
+   just the company logo in a white circular badge, with the heat dot, name
+   beside it. anchor:'center' centres the badge on the geo point (the name is
+   absolutely positioned, out of flow, so the element box stays the badge size). */
 .poipin {
   /* NB: do not set `position` here — Mapbox's own .mapboxgl-marker class makes
      the marker position:absolute so it stays pinned to its lng/lat; overriding
      that (this stylesheet loads after mapbox-gl.css) unpins the markers. The
      absolutely-positioned children anchor to the marker's own box. */
-  width: 30px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   cursor: pointer;
   transition: opacity 0.18s ease;
 }
+/* White circular badge behind the logo. */
 .poipinmark {
   position: relative;
   display: block;
-  width: 30px;
-  height: 40px;
-  filter: drop-shadow(0 2px 3px rgba(15, 23, 42, 0.35));
-  transform-origin: 50% 100%;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid #d5dbe6;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.3);
+  transform-origin: 50% 50%;
   transition: transform 0.15s ease;
 }
-.poipinmark svg {
-  display: block;
-  width: 30px;
-  height: 40px;
-}
-/* The logo sits in the white circle drawn inside the grey pin head. */
+/* The logo sits centred inside the white circle. */
 .poipinlogo {
   position: absolute;
-  top: 7px;
-  left: 8px;
-  width: 14px;
-  height: 14px;
+  top: 5px;
+  left: 5px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   object-fit: contain;
 }
 .poipintk {
   position: absolute;
-  top: 6px;
-  left: 4px;
-  width: 22px;
-  height: 16px;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font: 800 8px "Source Sans Pro", "Mona Sans", sans-serif;
+  font: 800 8.5px "Source Sans Pro", "Mona Sans", sans-serif;
   color: #1c1c1e;
   letter-spacing: 0.2px;
 }
-/* Small heat dot, top-right of the pin head, coloured by live skill demand. */
+/* Heat dot, top-right of the badge, coloured by live skill demand. */
 .poipindot {
   position: absolute;
-  top: -1px;
-  right: -1px;
-  width: 13px;
-  height: 13px;
+  top: -3px;
+  right: -3px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
   background: #94a3b8;
   border: 1.5px solid #fff;
@@ -106,8 +103,9 @@ body {
 }
 .poipinname {
   position: absolute;
-  left: 34px;
-  top: 3px;
+  left: 33px;
+  top: 50%;
+  transform: translateY(-50%);
   white-space: nowrap;
   font: 700 12.5px "Source Sans Pro", "Mona Sans", sans-serif;
   color: #1c1c1e;
@@ -118,14 +116,19 @@ body {
   z-index: 6;
 }
 .poipin.on .poipinmark {
-  transform: scale(1.14);
-  filter: drop-shadow(0 3px 5px rgba(15, 23, 42, 0.45));
+  transform: scale(1.16);
+  box-shadow: 0 3px 6px rgba(15, 23, 42, 0.4);
 }
 .poipin.on .poipinname {
   font-weight: 800;
 }
 .poipin.dim {
   opacity: 0.4;
+}
+/* Skill search on the local map: companies with no active/recent vacancy for the
+   searched skill fade right back, so the ones that ARE hiring it stand out. */
+.poipin.miss {
+  opacity: 0.12;
 }
 /* Mapbox trial: the global/domestic Mapbox overview sits on top of the local
    3D map (it comes after PerthMapbox in the DOM, so it stacks above it without

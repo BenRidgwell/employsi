@@ -419,14 +419,10 @@ export function PerthMapbox() {
           const c = p.company;
           const el = document.createElement('div');
           el.className = 'poipin';
+          // The teardrop pin body is gone by request: the marker is now just the
+          // company logo sitting in a white circular badge, with the heat dot.
           const mark = document.createElement('span');
           mark.className = 'poipinmark';
-          // Grey pin body, black outline, with a white circle inside for the logo.
-          mark.innerHTML =
-            '<svg viewBox="0 0 30 40" aria-hidden="true">' +
-            '<path d="M15 1.4C7.9 1.4 2.2 7 2.2 13.9c0 8.6 10.9 22.6 12.1 24.1a.9.9 0 0 0 1.4 0c1.2-1.5 12.1-15.5 12.1-24.1C27.8 7 22.1 1.4 15 1.4Z" fill="#e5e9f0" stroke="#c3cad6" stroke-width="1.6"/>' +
-            '<circle cx="15" cy="13.7" r="8.6" fill="#ffffff"/>' +
-            '</svg>';
           const img = document.createElement('img');
           img.className = 'poipinlogo';
           img.alt = '';
@@ -439,8 +435,8 @@ export function PerthMapbox() {
             mark.appendChild(tk);
           });
           mark.appendChild(img);
-          // Small heat dot (top-right of the head) — coloured by skill demand when
-          // a skill is searched, neutral otherwise. Kept in sync by the effects.
+          // Heat dot (top-right of the badge) — coloured by skill demand when a
+          // skill is searched, neutral otherwise. Kept in sync by the effects.
           const dot = document.createElement('span');
           dot.className = 'poipindot';
           mark.appendChild(dot);
@@ -453,7 +449,9 @@ export function PerthMapbox() {
             ev.stopPropagation();
             useAppStore.getState().select(c.id);
           });
-          const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' }).setLngLat(p.coords).addTo(map);
+          // anchor:'center' — the circular badge sits centred on the geo point
+          // (there's no longer a teardrop tip to pin to the bottom).
+          const marker = new mapboxgl.Marker({ element: el, anchor: 'center' }).setLngLat(p.coords).addTo(map);
           markersRef.current[c.id] = marker;
         });
       };
@@ -505,14 +503,20 @@ export function PerthMapbox() {
           // Hard filters (sector / exchange / sliders) hide the pill entirely;
           // a search miss only dims it.
           el.style.display = matchesFilters(p.company, fs) ? '' : 'none';
-          const searchOk = !isSearchActive(fs) || searchMatches(p.company, fs.searchQuery);
-          const notSelected = !!s.selectedId && s.selectedId !== p.company.id;
+          const demand = dmC ? dmC[p.company.id] || 0 : 0;
+          const searchOk = dmC
+            ? demand > 0
+            : !isSearchActive(fs) || searchMatches(p.company, fs.searchQuery);
+          const isSelected = s.selectedId === p.company.id;
+          const notSelected = !!s.selectedId && !isSelected;
+          const skillMiss = !!dmC && demand === 0 && !isSelected;
           // Toggle state classes only — never reset className, or the
           // `mapboxgl-marker` class Mapbox adds (which makes the marker
           // position:absolute so it stays pinned) gets clobbered.
-          el.classList.toggle('on', s.selectedId === p.company.id);
-          el.classList.toggle('dim', !(searchOk && !notSelected));
-          paintHeatDot(el, dmC ? dmC[p.company.id] || 0 : 0, maxC, !!dmC);
+          el.classList.toggle('on', isSelected);
+          el.classList.toggle('miss', skillMiss);
+          el.classList.toggle('dim', !skillMiss && !(searchOk && !notSelected));
+          paintHeatDot(el, demand, maxC, !!dmC);
         });
         focusUpdaterRef.current?.();
       };
@@ -753,10 +757,16 @@ export function PerthMapbox() {
           : !isSearchActive(filterState) || searchMatches(c, filterState.searchQuery);
         // Fade every other pill while a card is open, so the selected company
         // stays the visual focus; clears the instant selectedId is null again.
-        const notSelected = !!selectedId && selectedId !== c.id;
+        const isSelected = selectedId === c.id;
+        const notSelected = !!selectedId && !isSelected;
+        // Skill search: a company with no active/recent vacancy for the skill
+        // fades right back (.miss) so the ones hiring it stand out; the selected
+        // company is never faded. Everything else uses the normal .dim.
+        const skillMiss = !!skillDemand && demand === 0 && !isSelected;
         // Toggle state classes only (preserve mapboxgl-marker + poipin base).
-        el.classList.toggle('on', selectedId === c.id);
-        el.classList.toggle('dim', !(searchOk && !notSelected));
+        el.classList.toggle('on', isSelected);
+        el.classList.toggle('miss', skillMiss);
+        el.classList.toggle('dim', !skillMiss && !(searchOk && !notSelected));
         paintHeatDot(el, demand, maxD, !!skillDemand);
       });
       // Re-apply the focus fade so a newly dimmed/undimmed pill keeps the
