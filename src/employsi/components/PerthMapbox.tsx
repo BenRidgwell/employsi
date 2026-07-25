@@ -78,6 +78,15 @@ function paintGlow(el: HTMLElement, demand: number, max: number, skillMode: bool
   }
 }
 
+// The whole marker's opacity (badge + logo + name label, since they're all
+// children). Selected stays solid; a skill-search non-hirer fades right back so
+// the hiring companies stand out; a card-open / free-text miss dims a little.
+function markerOpacity(isSelected: boolean, skillMiss: boolean, lit: boolean): string {
+  if (isSelected) return '1';
+  if (skillMiss) return '0.1';
+  return lit ? '1' : '0.4';
+}
+
 // Pill label: the company's name, word-shortened to keep the pill roughly its
 // old (ticker-width) size. Long single words fall back to a clipped form.
 function pillLabel(name: string, ticker: string): string {
@@ -524,6 +533,7 @@ export function PerthMapbox() {
           el.classList.toggle('on', isSelected);
           el.classList.toggle('miss', skillMiss);
           el.classList.toggle('dim', !skillMiss && !(searchOk && !notSelected));
+          el.style.opacity = markerOpacity(isSelected, skillMiss, searchOk && !notSelected);
           paintGlow(el, demand, maxC, !!dmC);
         });
         focusUpdaterRef.current?.();
@@ -535,14 +545,13 @@ export function PerthMapbox() {
 
       // Collision / distance-fade declutter removed by request: every company
       // pin stays shown at its EXACT geographic location, even when crowded.
-      // Only the state classes matter now — .dim (filter/search miss) fades via
-      // CSS, .on (selected) lifts it — so this just clears any stale inline
-      // opacity a previous pass may have set and lets CSS drive the rest.
+      // Marker opacity is owned by the apply / renderCity passes (inline, via
+      // markerOpacity), so this focus pass must NOT touch it — it only clears any
+      // stale inline pointer-events a previous pass may have set.
       const updateFocus = () => {
         placedRef.current.forEach((placed) => {
           const el = markersRef.current[placed.company.id]?.getElement();
           if (!el) return;
-          el.style.opacity = '';
           el.style.pointerEvents = '';
         });
       };
@@ -771,10 +780,15 @@ export function PerthMapbox() {
         // fades right back (.miss) so the ones hiring it stand out; the selected
         // company is never faded. Everything else uses the normal .dim.
         const skillMiss = !!skillDemand && demand === 0 && !isSelected;
-        // Toggle state classes only (preserve mapboxgl-marker + poipin base).
+        // Toggle state classes (preserve mapboxgl-marker + poipin base). `.on`
+        // scales the selected marker up; the fade is driven by inline opacity
+        // below so it can't be defeated by CSS timing / the focus pass — this is
+        // what makes a no-demand company's whole marker (badge + logo + label)
+        // fade back on a skill search.
         el.classList.toggle('on', isSelected);
         el.classList.toggle('miss', skillMiss);
         el.classList.toggle('dim', !skillMiss && !(searchOk && !notSelected));
+        el.style.opacity = markerOpacity(isSelected, skillMiss, searchOk && !notSelected);
         paintGlow(el, demand, maxD, !!skillDemand);
       });
       // Re-apply the focus fade so a newly dimmed/undimmed pill keeps the
