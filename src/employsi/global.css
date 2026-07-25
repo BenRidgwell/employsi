@@ -2050,7 +2050,32 @@ body {
 .sfresult:hover {
   background: #f0f0f2;
 }
+.sfresultkind {
+  flex: 0 0 auto;
+  font-size: 8.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #ececef;
+  color: var(--slate);
+  align-self: center;
+}
+.sfresultkind.skill {
+  background: #eae7fb;
+  color: #5b45c9;
+}
+.sfresultkind.company {
+  background: #e3edfb;
+  color: #2f6fd0;
+}
+.sfresultkind.city {
+  background: #e6f5ec;
+  color: #159d67;
+}
 .sfresultname {
+  flex: 1 1 auto;
   font-size: 13px;
   font-weight: 600;
   color: var(--ink);
@@ -5499,20 +5524,22 @@ body {
     font-size: 11px;
   }
 
-  /* Search / Filter flyouts become full-width bottom sheets */
+  /* Search / Filter flyouts: floating cards that sit ABOVE the bottom tab bar
+     (which stays put), so the user can switch straight to another tab or keep
+     using the open one. */
   .searchflyout {
     position: fixed;
     top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    right: 12px;
     width: auto;
     max-width: none;
-    max-height: 74vh;
-    border-radius: 20px 20px 0 0;
-    padding: 16px 16px calc(18px + env(safe-area-inset-bottom, 0px));
-    transform: translateY(100%);
-    box-shadow: 0 -18px 50px -18px rgba(15, 27, 61, 0.5);
+    max-height: 60vh;
+    border-radius: 18px;
+    padding: 16px;
+    transform: translateY(calc(100% + 100px));
+    box-shadow: 0 22px 55px -20px rgba(15, 27, 61, 0.55);
   }
   .searchflyout.open {
     transform: translateY(0);
@@ -5637,17 +5664,14 @@ body {
   .mapactions .malabel {
     display: none;
   }
+  /* Daily Brief + What's Trending float above the bottom tab bar (which stays
+     put), so the user can switch straight to another tab. */
   .briefpane {
     left: 12px;
     right: 12px;
     width: auto;
     max-width: none;
     top: 64px;
-    bottom: 12px;
-  }
-  /* Trending keeps the bottom tab bar visible, so its pane stops above it. */
-  .trendpane {
-    /* Clear the floating tab bar (which now hovers ~14px off the bottom). */
     bottom: calc(86px + env(safe-area-inset-bottom, 0px));
   }
   .toolsdock {
@@ -5866,7 +5890,10 @@ body {
     left: 14px;
     right: 14px;
     bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-    z-index: 43;
+    /* Above every pop-out it launches (search/filter z42, More z44, brief/trend
+       panes z44-45) so the bar stays visible AND tappable — the user can switch
+       straight to another tab while a pop-out floats above it. */
+    z-index: 47;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     align-items: stretch;
@@ -5912,6 +5939,27 @@ body {
     width: 22px;
     height: 22px;
   }
+  /* Selected tab: its icon pulses to show which pop-out is currently open (the
+     pop-out floats above the bar, so this is the cue tying the two together). */
+  .mtab.on .mtabic {
+    animation: mtabpulse 1.35s ease-in-out infinite;
+  }
+  .mtab.on .mtabic::before {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.16);
+    animation: mtabhalo 1.35s ease-in-out infinite;
+  }
+  @keyframes mtabpulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.18); }
+  }
+  @keyframes mtabhalo {
+    0%, 100% { opacity: 0; transform: scale(0.7); }
+    50% { opacity: 1; transform: scale(1); }
+  }
   .mtabdot {
     position: absolute;
     top: -2px;
@@ -5929,28 +5977,30 @@ body {
     letter-spacing: 0.1px;
   }
 
-  /* The "More" sheet */
+  /* The "More" sheet — floats above the bottom tab bar (which stays put and
+     tappable). Its scrim sits BELOW the bar (z 42 < bar 43) so the user can tap
+     straight through to another tab. */
   .mmscrim {
     position: fixed;
     inset: 0;
     background: rgba(13, 15, 20, 0.34);
     backdrop-filter: blur(2px);
-    z-index: 45;
+    z-index: 42;
   }
   .mobilemenu {
     display: block;
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 46;
-    max-height: 82vh;
+    left: 12px;
+    right: 12px;
+    bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+    z-index: 44;
+    max-height: 66vh;
     overflow-y: auto;
     background: #fff;
-    border-radius: 22px 22px 0 0;
-    padding: 10px 14px calc(20px + env(safe-area-inset-bottom, 0px));
-    box-shadow: 0 -18px 50px -18px rgba(15, 27, 61, 0.5);
-    transform: translateY(100%);
+    border-radius: 22px;
+    padding: 14px 14px 16px;
+    box-shadow: 0 22px 55px -20px rgba(15, 27, 61, 0.55);
+    transform: translateY(calc(100% + 100px));
     transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   }
   .mobilemenu.open {

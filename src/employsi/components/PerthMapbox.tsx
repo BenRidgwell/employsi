@@ -266,7 +266,6 @@ export function PerthMapbox() {
       // collapsed out of the way.
       attributionControl: false,
     });
-    map.addControl(new mapboxgl.AttributionControl({ compact: true }));
     mapRef.current = map;
 
     const stopAutoRotate = () => {

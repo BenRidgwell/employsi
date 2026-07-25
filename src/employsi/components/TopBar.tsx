@@ -3,8 +3,11 @@ import { BrandMark } from './BrandMark';
 import { AccountButton } from './AccountButton';
 import { useAppStore, isFilterActive, isSearchActive, type FilterState } from '../state/store';
 import { COMPANIES, SECTOR_GROUPS, EXCHANGES } from '../data/companies';
-import { CITY_COMPANIES } from '../data/mapboxGeo';
+import { cityForCompany } from '../data/mapboxGeo';
 import { popularSkills as popularSkillsForLayer } from '../lib/skillHeat';
+import { GLOBAL_HUB_LABEL } from '../data/geo';
+import { ALL_SKILLS } from '../data/skillsTaxonomy';
+import { describeSkills } from '../lib/describeSkills';
 
 const SECTORS = SECTOR_GROUPS;
 // Short chip labels so the sector selection reads as a compact mosaic rather
@@ -88,6 +91,7 @@ export function TopBar() {
   const domesticRegion = useAppStore((s) => s.domesticRegion);
   const skillIndex = useAppStore((s) => s.skillIndex);
   const select = useAppStore((s) => s.select);
+  const zoomInCity = useAppStore((s) => s.zoomInCity);
 
   // Popular-skill chips, ranked by real demand for the current layer — on the
   // local view that's the companies in this city (shared helper keeps the
@@ -96,19 +100,48 @@ export function TopBar() {
     () => popularSkillsForLayer(skillIndex, { zoomedOut, globalOut, domesticRegion, localCity }, 8),
     [skillIndex, zoomedOut, globalOut, domesticRegion, localCity],
   );
-  const localCompanyResults = useMemo(() => {
+
+  // Full search — the same skills + companies + cities the desktop GlobalSearch
+  // offers, so the mobile bottom-bar search (which uses this flyout on every
+  // layer) has parity with dev instead of only finding local-city companies.
+  type SResult =
+    | { kind: 'company'; id: string; label: string; sub: string }
+    | { kind: 'city'; id: string; label: string; sub: string }
+    | { kind: 'skill'; id: string; label: string; sub: string };
+  const searchResults = useMemo<SResult[]>(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return [];
-    const ids = new Set((CITY_COMPANIES[localCity] || []).map((c) => c.id));
-    return COMPANIES.filter(
-      (c) =>
-        ids.has(c.id) &&
-        (c.name.toLowerCase().includes(q) ||
-          c.ticker.toLowerCase().includes(q) ||
-          c.skills.some((sk) => sk.toLowerCase().includes(q)) ||
-          c.roles.some((r) => r.title.toLowerCase().includes(q))),
-    ).slice(0, 8);
-  }, [searchQuery, localCity]);
+    const companies: SResult[] = COMPANIES.filter(
+      (c) => c.name.toLowerCase().includes(q) || c.ticker.toLowerCase().includes(q),
+    )
+      .slice(0, 6)
+      .map((c) => ({ kind: 'company', id: c.id, label: c.name, sub: c.ticker }));
+    const cities: SResult[] = Object.entries(GLOBAL_HUB_LABEL)
+      .filter(([, label]) => label.toLowerCase().includes(q))
+      .slice(0, 6)
+      .map(([id, label]) => ({ kind: 'city', id, label, sub: 'City' }));
+    const direct = ALL_SKILLS.filter((sk) => sk.toLowerCase().includes(q));
+    const described = describeSkills(searchQuery).filter((sk) => !direct.includes(sk));
+    const skillRes: SResult[] = [...direct, ...described]
+      .slice(0, 7)
+      .map((sk) => ({ kind: 'skill', id: sk, label: sk, sub: 'Skill' }));
+    return [...skillRes, ...companies, ...cities];
+  }, [searchQuery]);
+
+  const goSearchResult = (r: SResult) => {
+    if (r.kind === 'skill') {
+      toggleSkillQuery(r.id);
+      return; // keep the flyout for further picks; the map recolours behind it
+    }
+    if (r.kind === 'company') {
+      zoomInCity(cityForCompany(r.id));
+      select(r.id);
+    } else {
+      zoomInCity(r.id);
+    }
+    setSearchQuery('');
+    if (searchOpen) toggleSearch();
+  };
 
   return (
     <div className="topbar">
@@ -142,15 +175,18 @@ export function TopBar() {
             />
             {searchQuery.trim() && (
               <div className="sfresults">
-                {localCompanyResults.length > 0 ? (
-                  localCompanyResults.map((c) => (
-                    <button key={c.id} className="sfresult" onClick={() => select(c.id)}>
-                      <span className="sfresultname">{c.name}</span>
-                      <span className="sfresultticker">{c.ticker}</span>
+                {searchResults.length > 0 ? (
+                  searchResults.map((r) => (
+                    <button key={`${r.kind}-${r.id}`} className="sfresult" onClick={() => goSearchResult(r)}>
+                      <span className={`sfresultkind ${r.kind}`}>
+                        {r.kind === 'company' ? 'Co.' : r.kind === 'city' ? 'City' : 'Skill'}
+                      </span>
+                      <span className="sfresultname">{r.label}</span>
+                      {r.sub && <span className="sfresultticker">{r.sub}</span>}
                     </button>
                   ))
                 ) : (
-                  <div className="sfresultempty">No companies here match “{searchQuery.trim()}”</div>
+                  <div className="sfresultempty">No skills, companies or cities match “{searchQuery.trim()}”</div>
                 )}
               </div>
             )}

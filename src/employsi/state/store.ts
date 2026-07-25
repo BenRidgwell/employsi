@@ -311,8 +311,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   setHeat: (h) => set({ heat: h }),
   setInteracted: () => set((s) => (s.interacted ? s : { interacted: true })),
 
-  toggleSearch: () => set((s) => ({ searchOpen: !s.searchOpen, filterOpen: false, heatOpen: false })),
-  toggleFilter: () => set((s) => ({ filterOpen: !s.filterOpen, searchOpen: false, heatOpen: false })),
+  // The four mobile bottom-bar pop-outs (Search / Filter / Trending / More, plus
+  // the Daily Brief the More sheet launches) are mutually exclusive, so tapping
+  // one bar button while another's pop-out is open switches cleanly to it.
+  toggleSearch: () => set((s) => ({ searchOpen: !s.searchOpen, filterOpen: false, heatOpen: false, trendingOpen: false, mobileMenuOpen: false, briefOpen: false })),
+  toggleFilter: () => set((s) => ({ filterOpen: !s.filterOpen, searchOpen: false, heatOpen: false, trendingOpen: false, mobileMenuOpen: false, briefOpen: false })),
   toggleHeatPanel: () => set((s) => ({ heatOpen: !s.heatOpen, searchOpen: false, filterOpen: false })),
   setSearchQuery: (q) => set({ searchQuery: q }),
   clearSearch: () => set({ searchQuery: '' }),
@@ -464,14 +467,14 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleBrief: () => set((s) => ({ briefOpen: !s.briefOpen, trendingOpen: false, mobileMenuOpen: false })),
   closeBrief: () => set({ briefOpen: false }),
-  toggleTrending: () => set((s) => ({ trendingOpen: !s.trendingOpen, briefOpen: false, mobileMenuOpen: false })),
+  toggleTrending: () => set((s) => ({ trendingOpen: !s.trendingOpen, briefOpen: false, mobileMenuOpen: false, searchOpen: false, filterOpen: false, heatOpen: false })),
   closeTrending: () => set({ trendingOpen: false }),
 
   toggleFeedback: () => set((s) => ({ feedbackOpen: !s.feedbackOpen, helpTourOpen: false, settingsOpen: false, mobileMenuOpen: false })),
   closeFeedback: () => set({ feedbackOpen: false }),
   toggleHelpTour: () => set((s) => ({ helpTourOpen: !s.helpTourOpen, feedbackOpen: false, settingsOpen: false, mobileMenuOpen: false })),
   closeHelpTour: () => set({ helpTourOpen: false }),
-  toggleMobileMenu: () => set((s) => ({ mobileMenuOpen: !s.mobileMenuOpen, searchOpen: false, filterOpen: false, heatOpen: false })),
+  toggleMobileMenu: () => set((s) => ({ mobileMenuOpen: !s.mobileMenuOpen, searchOpen: false, filterOpen: false, heatOpen: false, trendingOpen: false, briefOpen: false })),
   closeMobileMenu: () => set({ mobileMenuOpen: false }),
 }));
 

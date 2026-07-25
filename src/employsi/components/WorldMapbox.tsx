@@ -342,7 +342,6 @@ export function WorldMapbox() {
       // buffer is cleared after compositing and readPixels returns zeros.
       preserveDrawingBuffer: true,
     });
-    map.addControl(new mapboxgl.AttributionControl({ compact: true }));
     mapRef.current = map;
 
     // Keep the "Explore the world of work today" header legible over the globe:
