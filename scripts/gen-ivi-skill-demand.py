@@ -21,8 +21,11 @@ ROOT = __file__.rsplit('/scripts/', 1)[0]
 TAX = f'{ROOT}/src/employsi/data/skillsTaxonomy.ts'
 OUT = f'{ROOT}/src/employsi/data/iviSkillDemand.ts'
 SHEET = '4 digit 3 month average'
-STATE2CITY = {'NSW': 'sydney', 'VIC': 'melbourne', 'QLD': 'brisbane', 'SA': 'adelaide', 'WA': 'perth'}
-CITIES = ['perth', 'adelaide', 'brisbane', 'melbourne', 'sydney']
+# NT→Darwin and ACT→Canberra are included so those two capital hubs get real IVI
+# demand + history like the other five (JSA publishes all states/territories).
+STATE2CITY = {'NSW': 'sydney', 'VIC': 'melbourne', 'QLD': 'brisbane', 'SA': 'adelaide',
+              'WA': 'perth', 'NT': 'darwin', 'ACT': 'canberra'}
+CITIES = ['perth', 'adelaide', 'brisbane', 'melbourne', 'sydney', 'darwin', 'canberra']
 
 # Curated overrides for ANZSCO codes the title term-matcher misses. Pure "Other
 # Miscellaneous Labourers/Technicians" catch-alls are intentionally left

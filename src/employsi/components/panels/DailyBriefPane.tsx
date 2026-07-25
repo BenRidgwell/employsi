@@ -1,13 +1,16 @@
 import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAppStore } from '../../state/store';
 import { COMPANIES, companyGroup } from '../../data/companies';
 import { useLiveNews } from '../../hooks/useLiveNews';
 import { useArticleImages } from '../../hooks/useArticleImages';
+import { getMarketSkillMovers, type MarketSkillMover } from '../../lib/jobHistoryFn';
 
-// "Daily Brief": a live Google-News feed, refreshed on the Worker, showing
-// recent coverage with the real publisher + a click-through to the article. It
-// re-queries when the sector filter changes, so selecting e.g. Financial
-// Services or Consumer & Retail shows news about the companies in that sector.
+// "Daily Brief": reads the day's trending analysis (the biggest skill risers and
+// fallers, from the D1 job archive) and scans the web for recent news that gives
+// context for WHY those skills are moving — a live-news feed built around the
+// trend, not a static one. Falls back to sector-company news until the archive
+// has movers to explain.
 
 function relTime(iso: string): string {
   const t = Date.parse(iso);
@@ -27,9 +30,8 @@ function thumbUrl(seed: string): string {
   return `https://picsum.photos/seed/${encodeURIComponent(seed)}/200/200`;
 }
 
-// Turn the active sector filter into a Google-News query built from the biggest
-// companies in that sector, so the brief is genuinely about those firms.
-function buildQuery(activeSectors: string[]): { query: string; label: string } {
+// Fallback: sector-company news, used only until the archive has skill movers.
+function sectorQuery(activeSectors: string[]): { query: string; label: string } {
   const inScope = activeSectors.length
     ? COMPANIES.filter((c) => activeSectors.includes(companyGroup(c)))
     : COMPANIES.filter((c) => companyGroup(c) === 'Energy & Natural Resources');
@@ -40,6 +42,15 @@ function buildQuery(activeSectors: string[]): { query: string; label: string } {
   const label = activeSectors.length ? activeSectors.join(' · ') : 'Energy & Natural Resources';
   const query = names.length ? `${names.join(' OR ')} ASX` : 'ASX resources Australia';
   return { query, label };
+}
+
+// Build a news query FROM the trending movers: search recent coverage that could
+// explain why these skills are rising/falling in demand (hiring booms, layoffs,
+// skills shortages, new investment, automation, policy).
+function moverQuery(risers: MarketSkillMover[], fallers: MarketSkillMover[]): string {
+  const skills = [...risers.slice(0, 3), ...fallers.slice(0, 2)].map((m) => `"${m.skill}"`);
+  const terms = '(jobs OR hiring OR "skills shortage" OR workforce OR demand OR layoffs OR redundancies OR automation)';
+  return `(${skills.join(' OR ')}) ${terms} Australia`;
 }
 
 export function DailyBriefPane() {
@@ -54,7 +65,24 @@ export function DailyBriefPane() {
   const open = briefOpen;
   const today = new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' });
 
-  const { query, label } = useMemo(() => buildQuery(activeSectors), [activeSectors]);
+  // Read the day's trending analysis (skill risers/fallers from the archive).
+  const { data: movers } = useQuery({
+    queryKey: ['marketSkillMovers'],
+    queryFn: () => getMarketSkillMovers(),
+    enabled: open,
+    staleTime: 6 * 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    retry: false,
+  });
+  const risers = movers?.risers ?? [];
+  const fallers = movers?.fallers ?? [];
+  const hasMovers = risers.length > 0 || fallers.length > 0;
+
+  // Query the web for context on the movers when we have them; else sector news.
+  const { query, label } = useMemo(() => {
+    if (hasMovers) return { query: moverQuery(risers, fallers), label: 'Why skills are trending' };
+    return sectorQuery(activeSectors);
+  }, [hasMovers, risers, fallers, activeSectors]);
   // Only fetch while the brief is actually open.
   const items = useLiveNews(open ? query : null, 12);
   // Live GDELT items already carry a real article image; only scrape the ones
@@ -81,8 +109,25 @@ export function DailyBriefPane() {
         </div>
 
         <div className="briefscroll">
+          {hasMovers && (
+            <div className="briefmovers">
+              <div className="briefmovershd">Skills on the move — the news below explains why</div>
+              <div className="briefmoverrows">
+                {[...risers.slice(0, 3).map((m) => ({ m, dir: 'up' as const })),
+                  ...fallers.slice(0, 2).map((m) => ({ m, dir: 'down' as const }))].map(({ m, dir }) => (
+                  <div className={`briefmover ${dir}`} key={`${dir}-${m.skill}`}>
+                    <span className="briefmoverarrow">{dir === 'up' ? '▲' : '▼'}</span>
+                    <span className="briefmovername">{m.skill}</span>
+                    <span className="briefmoverpct">
+                      {m.prev > 0 ? `${dir === 'up' ? '+' : '−'}${Math.abs(m.pct)}%` : 'new'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {items.length === 0 ? (
-            <div className="briefloading">Loading live headlines…</div>
+            <div className="briefloading">Scanning the web for context on today's movers…</div>
           ) : (
             items.map((a, i) => {
               const img = a.image || meta[a.url]?.image || thumbUrl(a.url || String(i));

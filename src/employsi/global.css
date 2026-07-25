@@ -95,10 +95,10 @@ body {
 /* Small heat dot, top-right of the pin head, coloured by live skill demand. */
 .poipindot {
   position: absolute;
-  top: 0;
-  right: 0;
-  width: 11px;
-  height: 11px;
+  top: -1px;
+  right: -1px;
+  width: 13px;
+  height: 13px;
   border-radius: 50%;
   background: #94a3b8;
   border: 1.5px solid #fff;
@@ -1444,6 +1444,59 @@ body {
   font-size: 12.5px;
   color: var(--slate);
   text-align: center;
+}
+/* Trending skill movers strip at the top of the Daily Brief — the news below
+   is queried to explain these. */
+.briefmovers {
+  margin: 0 0 12px;
+  padding: 11px 12px 12px;
+  border-radius: 12px;
+  background: #f6f7f9;
+  border: 1px solid var(--line);
+}
+.briefmovershd {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--slate);
+  margin-bottom: 8px;
+}
+.briefmoverrows {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.briefmover {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.briefmoverarrow {
+  flex: 0 0 auto;
+  font-size: 9px;
+}
+.briefmover.up .briefmoverarrow,
+.briefmover.up .briefmoverpct {
+  color: #159d67;
+}
+.briefmover.down .briefmoverarrow,
+.briefmover.down .briefmoverpct {
+  color: #e0524a;
+}
+.briefmovername {
+  flex: 1 1 auto;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.briefmoverpct {
+  flex: 0 0 auto;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 .briefthumb {
   flex: 0 0 auto;
