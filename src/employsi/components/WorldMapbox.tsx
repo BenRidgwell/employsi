@@ -528,6 +528,9 @@ export function WorldMapbox() {
       map.setConfigProperty('basemap', 'showRoadLabels', false);
       map.setConfigProperty('basemap', 'showLandmarkIcons', false);
       map.setConfigProperty('basemap', 'showPlaceLabels', false);
+      // State/province + country borders in charcoal grey so the domestic/global
+      // views read as a clear political map rather than the faded default lines.
+      map.setConfigProperty('basemap', 'colorAdminBoundaries', '#3d434c');
 
       // Skill-demand heatmap, added first so it sits beneath the hub dots.
       map.addSource(SKILL_SOURCE, { type: 'geojson', data: EMPTY_FC });

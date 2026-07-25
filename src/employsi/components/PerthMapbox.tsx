@@ -537,8 +537,10 @@ export function PerthMapbox() {
           const skillMiss = !!dmC && demand === 0 && !isSelected;
           // Never reset className, or the `mapboxgl-marker` class Mapbox adds
           // (which makes the marker position:absolute so it stays pinned) gets
-          // clobbered. The fade goes on the inner wrapper (setMarkerFade).
+          // clobbered. The fade goes on the inner wrapper (setMarkerFade); `.miss`
+          // drops the label to regular weight.
           el.classList.toggle('on', isSelected);
+          el.classList.toggle('miss', skillMiss);
           setMarkerFade(el, isSelected, skillMiss, searchOk && !notSelected);
           paintGlow(el, demand, maxC, !!dmC);
         });
@@ -724,15 +726,15 @@ export function PerthMapbox() {
     window.addEventListener('perth-zoom-reset', onZoomReset);
 
     // Selecting a skill in the local layer pulls the camera back so more of the
-    // city (and which companies are hiring the skill) comes into view, then
-    // restores the default zoom when the skill is cleared. Kept well above
-    // ZOOM_OUT_THRESHOLD so it never crosses out to the domestic overview.
+    // city (and which companies are hiring the skill) comes into view. Kept well
+    // above ZOOM_OUT_THRESHOLD so it never crosses out to the domestic overview.
+    // Deselecting no longer changes the zoom — the user stays wherever they are.
     const onSkillZoom = (e: Event) => {
       const st = useAppStore.getState();
       if (st.zoomedOut) return; // only affects the local city layer
       const active = !!(e as CustomEvent).detail?.active;
-      const v = CITY_VIEWS[st.localCity] || CITY_VIEWS.perth;
-      map.easeTo({ zoom: active ? 14.2 : localDefaultZoom(v.zoom), duration: 700 });
+      if (!active) return; // clearing a skill keeps the current zoom
+      map.easeTo({ zoom: 14.2, duration: 700 });
     };
     window.addEventListener('perth-skill-zoom', onSkillZoom);
 
@@ -791,11 +793,13 @@ export function PerthMapbox() {
         // fades right back (.miss) so the ones hiring it stand out; the selected
         // company is never faded. Everything else uses the normal .dim.
         const skillMiss = !!skillDemand && demand === 0 && !isSelected;
-        // `.on` scales the selected marker up; the fade is applied to the inner
+        // `.on` scales the selected marker up; `.miss` drops the label from bold
+        // to regular for a no-demand company; the fade is applied to the inner
         // wrapper (setMarkerFade) so Mapbox's per-frame opacity reset on the root
-        // can't defeat it — this is what makes a no-demand company's whole marker
-        // (badge + logo + label) fade back on a skill search.
+        // can't defeat it — together they fade a no-demand company's whole marker
+        // (badge + logo + label) on a skill search, restoring on deselect.
         el.classList.toggle('on', isSelected);
+        el.classList.toggle('miss', skillMiss);
         setMarkerFade(el, isSelected, skillMiss, searchOk && !notSelected);
         paintGlow(el, demand, maxD, !!skillDemand);
       });

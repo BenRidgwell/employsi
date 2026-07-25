@@ -135,6 +135,11 @@ body {
 .poipin.on .poipinname {
   font-weight: 800;
 }
+/* A no-demand company on a skill search: label drops from bold to regular
+   (alongside the marker fade), and returns to normal when the skill is cleared. */
+.poipin.miss .poipinname {
+  font-weight: 400;
+}
 /* Mapbox trial: the global/domestic Mapbox overview sits on top of the local
    3D map (it comes after PerthMapbox in the DOM, so it stacks above it without
    needing a z-index — and crucially must NOT have one, or it would paint over
