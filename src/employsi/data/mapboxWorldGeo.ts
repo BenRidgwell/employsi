@@ -25,6 +25,8 @@ export const AU_CITY_LNGLAT: Record<string, [number, number]> = {
   darwin: [130.8456, -12.4634],
   melbourne: [144.9631, -37.8136],
   hobart: [147.3272, -42.8821],
+  // New Zealand sits in the Australasia domestic view (see REGION_FRAMES).
+  auckland: [174.7645, -36.8485],
 };
 
 // Cities that open a local 3D view when clicked (they have a CITY_VIEWS entry).
@@ -37,7 +39,9 @@ export interface RegionFrame {
   zoom: number;
 }
 export const REGION_FRAMES: Record<string, RegionFrame> = {
-  australia: { center: [134, -27], zoom: 2.85 },
+  // Widened east + pulled back a touch so New Zealand (Auckland) sits in frame
+  // alongside the Australian capitals — an Australasia view.
+  australia: { center: [146, -31], zoom: 2.55 },
   asia: { center: [104, 24], zoom: 2.3 },
   northamerica: { center: [-96, 41], zoom: 2.6 },
   europe: { center: [7, 48], zoom: 3.6 },

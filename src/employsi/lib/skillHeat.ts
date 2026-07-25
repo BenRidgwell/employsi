@@ -4,20 +4,26 @@ import { REGION_HUBS } from '../data/mapboxWorldGeo';
 import { IVI_SKILL_BY_CITY, IVI_SKILLS, IVI_SERIES, IVI_MONTHS, IVI_SKILL_NATIONAL } from '../data/iviSkillDemand';
 import { CA_SERIES, CA_SKILL_BY_CITY } from '../data/caVacancyDemand';
 import { SG_SERIES, SG_SKILL_BY_CITY } from '../data/sgVacancyDemand';
+import { NZ_SERIES, NZ_SKILL_BY_CITY } from '../data/nzVacancyDemand';
 import type { SkillIndex } from './skillsFn';
 
-// The AU (JSA/IVI), Canada (StatCan) and Singapore (MRSD) vacancy series all
-// share one month axis (IVI_MONTHS), so a skill's per-city history is just the
-// countries' city maps merged. Keeping them combined here means the heat map +
-// time slider treat Canada and Singapore exactly like Australia.
+// The AU (JSA/IVI), Canada (StatCan), Singapore (MRSD) and New Zealand (MBIE)
+// vacancy series all share one month axis (IVI_MONTHS), so a skill's per-city
+// history is just the countries' city maps merged. Keeping them combined here
+// means the heat map + time slider treat every country exactly like Australia.
 function seriesFor(skill: string): Record<string, number[]> | null {
-  const parts = [IVI_SERIES[skill], CA_SERIES[skill], SG_SERIES[skill]].filter(Boolean) as Record<string, number[]>[];
+  const parts = [IVI_SERIES[skill], CA_SERIES[skill], SG_SERIES[skill], NZ_SERIES[skill]].filter(Boolean) as Record<string, number[]>[];
   if (!parts.length) return null;
   return Object.assign({}, ...parts);
 }
-// Latest-month per-city demand, merged across all three countries.
+// Latest-month per-city demand, merged across all countries.
 function latestFor(skill: string): Record<string, number> {
-  return { ...(IVI_SKILL_BY_CITY[skill] || {}), ...(CA_SKILL_BY_CITY[skill] || {}), ...(SG_SKILL_BY_CITY[skill] || {}) };
+  return {
+    ...(IVI_SKILL_BY_CITY[skill] || {}),
+    ...(CA_SKILL_BY_CITY[skill] || {}),
+    ...(SG_SKILL_BY_CITY[skill] || {}),
+    ...(NZ_SKILL_BY_CITY[skill] || {}),
+  };
 }
 
 // Demand level for a skill, bucketed Low / Moderate / High and coloured
@@ -133,7 +139,10 @@ export function demandByCity(idx: SkillIndex | null, skill: string | null): Reco
 // popular-skills are still real and city-specific.
 function skillsByCityDemand(city: string, n: number): string[] {
   const score = (s: string) =>
-    (IVI_SKILL_BY_CITY[s]?.[city] || 0) + (CA_SKILL_BY_CITY[s]?.[city] || 0) + (SG_SKILL_BY_CITY[s]?.[city] || 0);
+    (IVI_SKILL_BY_CITY[s]?.[city] || 0) +
+    (CA_SKILL_BY_CITY[s]?.[city] || 0) +
+    (SG_SKILL_BY_CITY[s]?.[city] || 0) +
+    (NZ_SKILL_BY_CITY[s]?.[city] || 0);
   return ALL_SKILLS.map((s) => [s, score(s)] as const)
     .filter(([, v]) => v > 0)
     .sort((a, b) => b[1] - a[1])

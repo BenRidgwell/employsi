@@ -38,6 +38,7 @@ export const CITY_VIEWS: Record<string, CityView> = {
   canberra: { center: [149.1289, -35.282], zoom: 16.1, pitch: 60, bearing: -15 },
   darwin: { center: [130.8418, -12.4611], zoom: 16.2, pitch: 60, bearing: -20 },
   hobart: { center: [147.3257, -42.8826], zoom: 16.3, pitch: 60, bearing: -16 },
+  auckland: { center: [174.7645, -36.8485], zoom: 16.2, pitch: 60, bearing: -18 },
   sydney: { center: [151.2093, -33.8688], zoom: 16.5, pitch: 60, bearing: -18 },
   singapore: { center: [103.8519, 1.29], zoom: 16.4, pitch: 60, bearing: -12 },
   ganzhou: { center: [114.9333, 25.83], zoom: 16.1, pitch: 60, bearing: -14 },

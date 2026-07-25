@@ -173,6 +173,7 @@ export const CITY_PLACEMENT: Record<string, CityPlacement> = {
   brisbane: { arc: [285, 75] }, // inside the river U-bend → land is N/NE
   darwin: { arc: [60, 210] }, // CBD peninsula → land is E/SE, harbour wraps N/W/SW
   hobart: { arc: [180, 30] }, // CBD on W shore of Derwent → water is E, land wraps W
+  auckland: { arc: [120, 300] }, // CBD on the isthmus → harbour N, land arcs S
   // North America
   toronto: { arc: [285, 75] }, // avoid Lake Ontario (S)
   chicago: { arc: [175, 355] }, // avoid Lake Michigan (E)
