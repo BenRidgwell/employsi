@@ -12,6 +12,18 @@ import {
   GLOBAL_VIEW,
   cityLabel,
 } from '../data/mapboxWorldGeo';
+import { EU_CITY_LNGLAT } from '../data/euVacancyDemand';
+
+// Europe domestic heat points: the mapped hubs (London/Zurich/Paris) plus every
+// EU country that carries Eurostat by-country vacancy data, each on its capital.
+// The EU countries render as skill-demand heat only (no labelled dot) so the
+// per-country signal shows without crowding the small frame with 26 labels.
+const EUROPE_HEAT_LNGLAT: Record<string, [number, number]> = (() => {
+  const t: Record<string, [number, number]> = {};
+  (REGION_HUBS.europe || []).forEach((id) => { if (HUB_LNGLAT[id]) t[id] = HUB_LNGLAT[id]; });
+  for (const [id, ll] of Object.entries(EU_CITY_LNGLAT)) t[id] = ll;
+  return t;
+})();
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -222,6 +234,9 @@ function buildSkillHeat(
     // All AU capitals are now full cities (Hobart added with TAS gov, Darwin with
     // NT gov), so every one keeps its marker + skill heat.
     table = AU_CITY_LNGLAT;
+  } else if (region === 'europe') {
+    // Hubs + every EU country with Eurostat by-country data (each on its capital).
+    table = EUROPE_HEAT_LNGLAT;
   } else {
     table = {};
     (REGION_HUBS[region] || []).forEach((id) => { if (HUB_LNGLAT[id]) table[id] = HUB_LNGLAT[id]; });

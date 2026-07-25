@@ -2,31 +2,35 @@
 """
 Scrape the NSW public-sector jobs board (iworkfor.nsw.gov.au) and archive it to
 the D1 jobs table, deduped — the NSW-Government counterpart of scripts/
-sa-gov-to-d1.py. One pass scrapes every current vacancy across all agencies,
-maps each to its nsw-gov-<slug> company id (from data/sydneyGov.ts), maps skills
-via the worker taxonomy, and upserts through the D1 HTTP API using the same
+sa-gov-to-d1.py.
+
+Why Oxylabs (not a plain browser): iworkfor.nsw.gov.au sits behind Cloudflare's
+"Just a moment" interstitial, which persistently challenges datacenter IPs — a
+headless Chromium on a GitHub runner never clears it (the first attempt rendered
+0 rows for exactly this reason). Oxylabs' Web Scraper API fetches through a
+residential IP with the Cloudflare challenge + JS render solved server-side and
+returns the finished HTML, the same path the Indeed/LinkedIn scrapers use. So
+this is a plain HTTP flow (no local browser) that runs fine on GitHub Actions.
+
+One pass scrapes every current vacancy across all agencies, maps each to its
+nsw-gov-<slug> company id (from data/sydneyGov.ts), maps skills via the worker
+taxonomy, and upserts through the D1 HTTP API using the same
 source|title|company|location key as src/employsi/lib/jobArchive.ts.
 
-Why a browser: iworkfor.nsw.gov.au sits behind Cloudflare's "Just a moment"
-JS/anti-bot interstitial, which a plain HTTP client can't pass. A real headless
-Chromium (Playwright) executes the challenge and reaches the server-rendered
-results, so this runs on GitHub Actions (hosted, off your PC) like the SA board.
-
-Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID.
-Run:  python3 scripts/nsw-gov-to-d1.py [--max-pages N] [--headful] [--solve]
-                                       [--limit N] [--url URL]
-First time on a fresh machine:
-    pip3 install playwright && python3 -m playwright install chromium
+Env: OXYLABS_USERNAME, OXYLABS_PASSWORD (Web Scraper API), CLOUDFLARE_API_TOKEN
+     (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID.
+Run:  python3 scripts/nsw-gov-to-d1.py [--max-pages N] [--solve] [--limit N]
 """
 from __future__ import annotations
+import html as htmllib
 import json, os, re, subprocess, sys, time, datetime
 
-try:
-    from playwright.sync_api import sync_playwright
-except ImportError as e:
-    sys.exit(f'Missing dependency ({e}). Run: pip3 install playwright && python3 -m playwright install chromium')
-
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import urllib.request  # noqa: E402
+try:
+    import oxylabs_client as oxy
+except Exception as e:  # noqa: BLE001
+    sys.exit(f'Missing oxylabs_client ({e}).')
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -37,10 +41,9 @@ DB = os.environ.get('D1_DATABASE_ID') or '1c5f3ffb-b9d7-4233-b28b-0f1f8d193fe1'
 API = f'https://api.cloudflare.com/client/v4/accounts/{ACCOUNT}/d1/database/{DB}/query'
 TODAY = datetime.date.today().isoformat()
 
-# The public "browse all jobs" search on the NSW board.
-DEFAULT_URL = ('https://iworkfor.nsw.gov.au/jobs/all-keywords/all-agencies/'
-               'all-organisations-entities/all-categories/all-locations/all-worktypes')
 SITE = 'https://iworkfor.nsw.gov.au'
+BASE = (SITE + '/jobs/all-keywords/all-agencies/all-organisations-entities/'
+        'all-categories/all-locations/all-worktypes')
 
 args = sys.argv[1:]
 
@@ -49,12 +52,10 @@ def _opt(name, default=None):
     return args[args.index(name) + 1] if name in args else default
 
 
-MAX_PAGES = int(_opt('--max-pages', 60))
-HEADFUL = '--headful' in args
+MAX_PAGES = int(_opt('--max-pages', 40))
 NO_SKILLS = '--no-skills' in args
 SOLVE = '--solve' in args
 LIMIT = int(_opt('--limit', 10**9))
-START_URL = _opt('--url', DEFAULT_URL)
 
 if not SOLVE and not TOKEN:
     sys.exit('CLOUDFLARE_API_TOKEN is required (needs D1 edit). (Not needed with --solve.)')
@@ -64,31 +65,30 @@ def norm(s: str) -> str:
     return re.sub(r'[^a-z0-9]+', ' ', (s or '').lower()).strip()[:120]
 
 
-def job_key(source: str, title: str, company: str, location: str) -> str:
+def job_key(source, title, company, location):
     return '|'.join([source, norm(title), norm(company), norm(location)])[:400]
 
 
 CITIES = ['sydney', 'perth', 'adelaide', 'brisbane', 'melbourne']
 
 
-def match_city(text: str):
+def match_city(text):
     t = (text or '').lower()
     for c in CITIES:
         if c in t:
             return c
-    # NSW roles that aren't obviously another capital sit under Sydney.
     return 'sydney'
 
 
-def slug(name: str) -> str:
+def slug(name):
     return re.sub(r'^-|-$', '', re.sub(r'[^a-z0-9]+', '-', name.lower()))
 
 
-def nsw_gov_id(name: str) -> str:
+def nsw_gov_id(name):
     return 'nsw-gov-' + slug(name)
 
 
-def load_agency_names() -> list[str]:
+def load_agency_names():
     txt = open(os.path.join(ROOT, 'src/employsi/data/sydneyGov.ts')).read()
     block = re.search(r'const NAMES:\s*string\[\]\s*=\s*\[(.*?)\];', txt, re.S)
     if not block:
@@ -105,8 +105,7 @@ AGENCY_BY_NORM = {norm(n): nsw_gov_id(n) for n in AGENCY_NAMES}
 AGENCY_SORTED = sorted(AGENCY_NAMES, key=lambda n: len(n), reverse=True)
 
 
-def agency_to_id(agency: str) -> tuple[str, str]:
-    """(company_id, display_company) for a job's organisation text."""
+def agency_to_id(agency):
     n = norm(agency)
     if not n:
         return 'nsw-gov', 'NSW Government'
@@ -119,7 +118,7 @@ def agency_to_id(agency: str) -> tuple[str, str]:
     return 'nsw-gov', agency.strip() or 'NSW Government'
 
 
-def map_skills(titles: list) -> list:
+def map_skills(titles):
     if NO_SKILLS or not titles:
         return [[] for _ in titles]
     try:
@@ -133,7 +132,7 @@ def map_skills(titles: list) -> list:
     return [[] for _ in titles]
 
 
-def d1(sql: str, params: list):
+def d1(sql, params):
     body = json.dumps({'sql': sql, 'params': params}).encode()
     req = urllib.request.Request(API, data=body, headers={
         'Authorization': f'Bearer {TOKEN}', 'Content-Type': 'application/json'})
@@ -154,15 +153,15 @@ def d1(sql: str, params: list):
             time.sleep(attempt + 1)
 
 
-def existing_titles_by_company() -> dict:
-    out: dict = {}
+def existing_titles_by_company():
+    out = {}
     r = d1("SELECT DISTINCT company_id, title FROM jobs WHERE source != 'nsw-gov'", [])
     for x in (r[0]['results'] if r else []):
         out.setdefault(str(x.get('company_id') or ''), set()).add(norm(str(x.get('title') or '')))
     return out
 
 
-def upsert(rows: list) -> int:
+def upsert(rows):
     written = 0
     for i in range(0, len(rows), 7):
         chunk = rows[i:i + 7]
@@ -184,190 +183,129 @@ def upsert(rows: list) -> int:
     return written
 
 
-def chromium_executable():
-    base = os.environ.get('PLAYWRIGHT_BROWSERS_PATH')
-    if base and os.path.isdir(base):
-        for root, _dirs, files in os.walk(base):
-            for f in files:
-                if f in ('chrome', 'chrome.exe', 'headless_shell'):
-                    return os.path.join(root, f)
-    return None
+TAG = re.compile(r'<[^>]+>')
+WS = re.compile(r'\s+')
 
 
-# Extract every result card: title + its /job/<id> url, plus the organisation and
-# location text sitting alongside it. Driven tolerantly (the NSW board wraps each
-# job in a card, but class names change) — anchor on the /job/ link, then read
-# the surrounding card's labelled fields, falling back to positional text.
-EXTRACT_JS = r"""
-() => {
-  const norm = s => (s || '').replace(/\s+/g, ' ').trim();
-  const anchors = Array.from(document.querySelectorAll('a[href*="/job/"]'));
-  const seen = new Set();
-  const rows = [];
-  for (const a of anchors) {
-    const href = a.href;
-    const title = norm(a.textContent);
-    if (!title || title.length < 3) continue;
-    // one card per job url
-    const idm = href.match(/\/job\/(\d+)/);
-    const key = idm ? idm[1] : href;
-    if (seen.has(key)) continue;
-    // climb to the nearest card-ish container
-    let card = a;
-    for (let i = 0; i < 6 && card.parentElement; i++) {
-      card = card.parentElement;
-      const cls = (card.className || '').toString().toLowerCase();
-      if (cls.includes('card') || cls.includes('result') || cls.includes('job') || card.tagName === 'ARTICLE' || card.tagName === 'LI') break;
-    }
-    const txt = norm(card.innerText || card.textContent);
-    const grab = (labels) => {
-      for (const lb of labels) {
-        const re = new RegExp(lb + '\\s*[:\\-]?\\s*([^\\n|]+)', 'i');
-        const m = txt.match(re);
-        if (m) return norm(m[1]).slice(0, 80);
-      }
-      return '';
-    };
-    let org = grab(['organisation', 'organization', 'agency', 'department', 'employer', 'cluster']);
-    let loc = grab(['location', 'region']);
-    // fallback: an element whose class hints at org/location
-    if (!org) {
-      const el = card.querySelector('[class*="organisation" i],[class*="agency" i],[class*="department" i],[class*="employer" i]');
-      if (el) org = norm(el.textContent).slice(0, 80);
-    }
-    if (!loc) {
-      const el = card.querySelector('[class*="location" i],[class*="region" i]');
-      if (el) loc = norm(el.textContent).slice(0, 80);
-    }
-    seen.add(key);
-    rows.push({ title, url: href, agency: org, location: loc || 'New South Wales' });
-  }
-  return { count: anchors.length, rows };
-}
-"""
-
-NEXT_JS = r"""
-() => {
-  const enabled = e => !e.hasAttribute('disabled') && e.getAttribute('aria-disabled') !== 'true'
-      && !(e.className || '').toLowerCase().includes('disabl');
-  const isNext = e => {
-    const t = (e.getAttribute('aria-label') || e.textContent || '').replace(/\s+/g,' ').trim().toLowerCase();
-    return t === 'next' || t === '>' || t === '»' || t === 'next page' || t.startsWith('next ') || t === 'go to next page';
-  };
-  const el = Array.from(document.querySelectorAll('a, button')).find(e => isNext(e) && enabled(e));
-  if (el) { el.scrollIntoView(); el.click(); return true; }
-  return false;
-}
-"""
+def text_of(fragment):
+    return WS.sub(' ', htmllib.unescape(TAG.sub(' ', fragment))).strip()
 
 
-def clear_cloudflare(page):
-    """Wait for Cloudflare's 'Just a moment' interstitial to resolve."""
-    for _ in range(8):
-        title = (page.title() or '').lower()
-        if 'just a moment' not in title and 'attention required' not in title:
-            return True
-        page.wait_for_timeout(3000)
-    return 'just a moment' not in (page.title() or '').lower()
+def parse_page(html: str):
+    """Extract {title, url, agency, location} for every job card on the page.
 
-
-def scrape(page) -> list:
-    all_rows, seen = [], set()
-    clear_cloudflare(page)
-    try:
-        page.wait_for_selector('a[href*="/job/"]', timeout=30000)
-    except Exception:
-        pass
-    for pageno in range(1, MAX_PAGES + 1):
-        page.wait_for_timeout(1200)
-        try:
-            data = page.evaluate(EXTRACT_JS)
-        except Exception as e:
-            sys.stderr.write(f'  extract error p{pageno}: {e}\n')
-            break
-        rows = data.get('rows') if isinstance(data, dict) else []
-        new = 0
-        for r in rows or []:
-            k = (norm(r.get('title')), norm(r.get('agency')), norm(r.get('location')))
-            if k in seen:
-                continue
-            seen.add(k)
-            all_rows.append(r)
-            new += 1
-        sys.stderr.write(f'  page {pageno}: {len(rows or [])} rows ({new} new)\n')
-        if new == 0 and pageno > 1:
-            break
-        try:
-            advanced = page.evaluate(NEXT_JS)
-        except Exception:
-            advanced = False
-        if not advanced:
-            break
-    return all_rows
-
-
-def build_rows(scraped: list, have: dict):
-    out, seen = [], set()
-    titles = [r['title'] for r in scraped]
-    skills = map_skills(titles)
-    for r, sk in zip(scraped, skills):
-        cid, company = agency_to_id(r.get('agency') or '')
-        title = r['title']
-        if norm(title) in have.get(cid, set()):
+    Tolerant: anchor on each /job/<id> link, then read the surrounding block's
+    text (title = anchor text; organisation/location grabbed by label or by a
+    class hint). Works on the server-rendered HTML Oxylabs returns."""
+    rows = []
+    seen = set()
+    for m in re.finditer(r'<a\b[^>]*href="([^"]*?/job/(\d+)[^"]*)"[^>]*>(.*?)</a>', html, re.S | re.I):
+        href, jid, inner = m.group(1), m.group(2), m.group(3)
+        if jid in seen:
             continue
-        location = r.get('location') or ''
-        key = job_key('nsw-gov', title, company or cid, location)
-        if key in seen:
+        title = text_of(inner)
+        if not title or len(title) < 3:
             continue
-        seen.add(key)
-        out.append((key, 'nsw-gov', title, company or None, cid,
-                    match_city(location), location, 'Government',
-                    None, r.get('url') or '', '', json.dumps(sk) if sk else None))
-    return out
+        seen.add(jid)
+        # window of HTML around the link → org/location
+        s = max(0, m.start() - 1400)
+        e = min(len(html), m.end() + 1400)
+        block = text_of(html[s:e])
+        def grab(labels):
+            for lb in labels:
+                g = re.search(lb + r'\s*[:\-]?\s*([^|\n]{2,70})', block, re.I)
+                if g:
+                    return g.group(1).strip()
+            return ''
+        agency = grab([r'organisation', r'organization', r'agency', r'department', r'cluster', r'employer'])
+        loc = grab([r'location', r'region'])
+        url = href if href.startswith('http') else SITE + href
+        rows.append({'title': title, 'url': url, 'agency': agency, 'location': loc or 'New South Wales'})
+    return rows
+
+
+def diagnose(html: str, where: str):
+    title = ''
+    tm = re.search(r'<title[^>]*>(.*?)</title>', html or '', re.S | re.I)
+    if tm:
+        title = text_of(tm.group(1))[:80]
+    n_job = len(re.findall(r'/job/\d+', html or ''))
+    n_card = len(re.findall(r'class="[^"]*(?:card|result|job)[^"]*"', html or '', re.I))
+    sys.stderr.write(f'  [diag {where}] len={len(html or "")} title={title!r} '
+                     f'/job/={n_job} cardish={n_card}\n')
+    # dump a snippet around the first "job" mention to reveal the structure
+    idx = (html or '').lower().find('/job/')
+    if idx < 0:
+        idx = (html or '').lower().find('job')
+    if idx >= 0:
+        sys.stderr.write('  [diag snippet] ' + WS.sub(' ', (html[idx - 200:idx + 500] or ''))[:600] + '\n')
+
+
+def page_url(pg: int) -> str:
+    return BASE if pg <= 1 else f'{BASE}?page={pg}'
 
 
 def main() -> int:
     if not AGENCY_NAMES:
         sys.exit('Could not parse agency names from src/employsi/data/sydneyGov.ts')
-    sys.stderr.write(f'NSW gov -> D1: {len(AGENCY_NAMES)} agencies in roster; '
-                     f'{"SOLVE (no D1 write)" if SOLVE else "archiving"} '
-                     f'({"HEADFUL" if HEADFUL else "headless"}).\n')
-    exe = chromium_executable()
-    with sync_playwright() as p:
-        launch = {'headless': not HEADFUL, 'args': ['--disable-blink-features=AutomationControlled']}
-        if exe:
-            launch['executable_path'] = exe
-        browser = p.chromium.launch(**launch)
-        ctx = browser.new_context(
-            user_agent=('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-                        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36'),
-            viewport={'width': 1440, 'height': 1000}, locale='en-AU')
-        page = ctx.new_page()
-        sys.stderr.write(f'  loading {START_URL}\n')
-        page.goto(START_URL, wait_until='domcontentloaded', timeout=60000)
-        scraped = scrape(page)
-        browser.close()
+    if not (os.environ.get('OXYLABS_USERNAME') and os.environ.get('OXYLABS_PASSWORD')):
+        sys.exit('OXYLABS_USERNAME / OXYLABS_PASSWORD required (Web Scraper API).')
+    sys.stderr.write(f'NSW gov -> D1 via Oxylabs: {len(AGENCY_NAMES)} agencies in roster.\n')
+
+    scraped, seen = [], set()
+    for pg in range(1, MAX_PAGES + 1):
+        url = page_url(pg)
+        content, status = oxy.fetch(url, geo='Australia', render=True)
+        if not content:
+            sys.stderr.write(f'  page {pg}: no content (status={status})\n')
+            if pg == 1:
+                return 2
+            break
+        rows = parse_page(content)
+        if not rows and pg == 1:
+            diagnose(content, 'page1')
+        new = 0
+        for r in rows:
+            k = (norm(r['title']), norm(r['agency']), norm(r['location']))
+            if k in seen:
+                continue
+            seen.add(k)
+            scraped.append(r)
+            new += 1
+        sys.stderr.write(f'  page {pg}: {len(rows)} rows ({new} new)\n')
+        if new == 0:
+            break
 
     sys.stderr.write(f'  rendered {len(scraped)} vacancies\n')
     if SOLVE:
         for r in scraped[:6]:
-            sys.stderr.write(f'    · {r.get("title","")[:46]:46} | {r.get("agency","")[:30]}\n')
-        ok = len(scraped) > 0
-        sys.stderr.write(f'\n{"OK — board rendered" if ok else "No rows (site changed / still challenged)"}.\n')
-        return 0 if ok else 2
-
+            sys.stderr.write(f'    · {r["title"][:46]:46} | {r["agency"][:30]}\n')
+        return 0 if scraped else 2
     if not scraped:
-        sys.stderr.write('No rows rendered — nothing to archive. (Try --headful --solve.)\n')
         return 2
     if LIMIT < len(scraped):
         scraped = scraped[:LIMIT]
+
     have = existing_titles_by_company()
-    rows = build_rows(scraped, have)
-    written = upsert(rows) if rows else 0
-    matched = sum(1 for r in rows if r[4] != 'nsw-gov')
-    sys.stderr.write(f'\nDone. {len(scraped)} vacancies rendered, {written} new rows archived '
-                     f'({matched} attributed to a specific agency, {written - matched} to the '
-                     f'NSW-gov bucket).\n')
+    titles = [r['title'] for r in scraped]
+    skills = map_skills(titles)
+    out, keyset = [], set()
+    for r, sk in zip(scraped, skills):
+        cid, company = agency_to_id(r.get('agency') or '')
+        if norm(r['title']) in have.get(cid, set()):
+            continue
+        loc = r.get('location') or ''
+        key = job_key('nsw-gov', r['title'], company or cid, loc)
+        if key in keyset:
+            continue
+        keyset.add(key)
+        out.append((key, 'nsw-gov', r['title'], company or None, cid,
+                    match_city(loc), loc, 'Government', None, r.get('url') or '', '',
+                    json.dumps(sk) if sk else None))
+    written = upsert(out) if out else 0
+    matched = sum(1 for r in out if r[4] != 'nsw-gov')
+    sys.stderr.write(f'\nDone. {len(scraped)} vacancies, {written} new rows archived '
+                     f'({matched} to a specific agency, {written - matched} to the NSW-gov bucket).\n')
     return 0
 
 
