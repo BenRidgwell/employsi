@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useAppStore } from "../state/store";
 
 // The mobile bottom-bar "More" sheet: a single place for the secondary actions
-// that live in scattered docks on desktop (daily brief, account, employer /
+// that live in scattered docks on desktop (account, employer /
 // employee tools, feedback, help, settings). Each row drives the same store
 // flag its desktop control does, so the panels themselves are reused.
 
@@ -15,13 +15,6 @@ const svg = {
   strokeLinejoin: "round" as const,
 };
 
-const Brief = () => (
-  <svg {...svg}>
-    <path d="M4 5.6A1.1 1.1 0 0 1 5.1 4.5h7.3a1.1 1.1 0 0 1 1.1 1.1V15H5.1A1.1 1.1 0 0 1 4 13.9V5.6Z" />
-    <path d="M6.4 7.6h4.8M6.4 10h4.8M6.4 12.4h3" />
-    <path d="M13.6 15.4h4.6v1.6a2 2 0 0 1-2 2h-.6a2 2 0 0 1-2-2v-1.6Z" />
-  </svg>
-);
 const Person = () => (
   <svg {...svg}>
     <circle cx="12" cy="8" r="3.4" />
@@ -89,7 +82,6 @@ export function MobileMenu() {
   const close = useAppStore((s) => s.closeMobileMenu);
   const account = useAppStore((s) => s.account);
   const openAuth = useAppStore((s) => s.openAuth);
-  const toggleBrief = useAppStore((s) => s.toggleBrief);
   const toggleFeedback = useAppStore((s) => s.toggleFeedback);
   const toggleHelpTour = useAppStore((s) => s.toggleHelpTour);
   const toggleSettings = useAppStore((s) => s.toggleSettings);
@@ -110,14 +102,6 @@ export function MobileMenu() {
             ✕
           </button>
         </div>
-
-        <div className="mmsec">Discover</div>
-        <Row
-          icon={<Brief />}
-          label="Daily brief"
-          sub="Today's live market news"
-          onClick={toggleBrief}
-        />
 
         <div className="mmsec">Account</div>
         <Row

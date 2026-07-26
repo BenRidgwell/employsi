@@ -1,7 +1,7 @@
 import { useAppStore, isFilterActive, type FilterState } from "../state/store";
 
 // The single mobile navigation bar. On phones the scattered desktop docks
-// (top-bar controls, the trending/brief rail, the tools + help docks) are
+// (top-bar controls, the action rail, the help dock) are
 // hidden; this fixed bottom bar becomes the one launcher for them, driving the
 // same store flags those controls use. It only shows on the bare map — opening
 // any sheet or a company card hides it, so a full-height sheet never has to
@@ -69,7 +69,6 @@ export function MobileTabBar() {
   const settingsOpen = useAppStore((s) => s.settingsOpen);
   const feedbackOpen = useAppStore((s) => s.feedbackOpen);
   const helpTourOpen = useAppStore((s) => s.helpTourOpen);
-  const briefOpen = useAppStore((s) => s.briefOpen);
 
   const searchOpen = useAppStore((s) => s.searchOpen);
   const filterOpen = useAppStore((s) => s.filterOpen);
@@ -102,12 +101,11 @@ export function MobileTabBar() {
   const filterActive = isFilterActive(filterState);
 
   // The bar stays put whenever one of ITS OWN pop-outs is open (Search / Filter
-  // / Trending / More, plus the Daily Brief the More sheet launches): those
+  // / Trending / More): those
   // sheets now float ABOVE the bar so the user can switch straight to another
   // tab or keep using the open one. Only a true full-screen takeover — a company
   // card, the compare view, or the account/settings/feedback/help panels — hides
   // the bar.
-  void briefOpen;
   void searchOpen;
   void filterOpen;
   void mobileMenuOpen;

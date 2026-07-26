@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../state/store";
 import { GLOBAL_HUB_LABEL } from "../data/geo";
 import { ALL_SKILLS } from "../data/skillsTaxonomy";
@@ -8,19 +9,50 @@ import {
   type DemandTone,
 } from "../lib/skillHeat";
 import { describeSkills } from "../lib/describeSkills";
+import { buildSkillCard } from "../lib/skillCard";
+import { getSkillPay, formatPay } from "../lib/analystFn";
 import { COMPANIES } from "../data/companies";
 import { cityForCompany } from "../data/mapboxGeo";
+import { SearchAuth } from "./SearchAuth";
+
+/**
+ * The centred skill search, built from `Employsi Skill Search.html`.
+ *
+ * The design puts five things in one pill — search icon, input, clear, a Search
+ * submit, and the account control — then hangs three states off it: live
+ * suggestions with a follow control, a result card for the chosen skill, and
+ * popular chips when the field is empty.
+ *
+ * The account control moving INTO the pill is the design's call, and it is
+ * followed: TopBar now renders its account button only on the local layer,
+ * where this pill isn't shown, so there is exactly one sign-in entry point at
+ * any time rather than two.
+ *
+ * The result card is the part with real data behind it — see skillCard.ts for
+ * what each figure is and which of the design's cells had no honest source.
+ */
 
 type Result =
   | { kind: "company"; id: string; label: string; sub: string }
   | { kind: "city"; id: string; label: string }
   | { kind: "skill"; id: string; label: string; sub: string; tone: DemandTone };
 
-// Centered search bar shown on the global view (replaces the top-right search
-// button there). Typing a company or city and selecting it (click, or Enter
-// for the top match) navigates to the local layer — opening the company's
-// card, or simply arriving at the chosen city. With an empty query it falls
-// back to the popular-skills chips, which drive the demand heatmap as before.
+function FollowGlyph({ on: _on }: { on: boolean }) {
+  // Both glyphs are stacked and cross-faded by CSS off the button's own `.on`
+  // class, per the design, so the control doesn't resize as it flips.
+  return (
+    <span className="gsfollowicon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="gsfplus" aria-hidden>
+        <line x1="12" y1="5" x2="12" y2="19" />
+        <line x1="5" y1="12" x2="19" y2="12" />
+      </svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="gsfcheck" aria-hidden>
+        <polyline points="5 12.8 10 17.5 19 6.8" />
+      </svg>
+    </span>
+  );
+}
+
 export function GlobalSearch() {
   const globalOut = useAppStore((s) => s.globalOut);
   const zoomedOut = useAppStore((s) => s.zoomedOut);
@@ -31,19 +63,21 @@ export function GlobalSearch() {
   const domesticRegion = useAppStore((s) => s.domesticRegion);
   const localCity = useAppStore((s) => s.localCity);
   const zoomInCity = useAppStore((s) => s.zoomInCity);
+  const select = useAppStore((s) => s.select);
+  const followedSkills = useAppStore((s) => s.followedSkills);
+  const requestFollowSkill = useAppStore((s) => s.requestFollowSkill);
 
-  // Popular skills, ranked by real live demand and scoped to the current layer
-  // (global = worldwide, domestic = this region's cities). Shared helper so the
-  // top-bar (local) search stays in sync.
   const popularSkills = useMemo(
     () => popularSkillsForLayer(skillIndex, { zoomedOut, globalOut, domesticRegion, localCity }),
     [skillIndex, zoomedOut, globalOut, domesticRegion, localCity],
   );
-  const select = useAppStore((s) => s.select);
-  const followedSkills = useAppStore((s) => s.followedSkills);
-  const requestFollowSkill = useAppStore((s) => s.requestFollowSkill);
+
   const [focused, setFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  // The skill whose card is showing. Set by submitting or picking a suggestion;
+  // cleared by editing the query, exactly as the design's `picked`/`searched`.
+  const [carded, setCarded] = useState<string | null>(null);
+  const [searched, setSearched] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const q = searchQuery.trim().toLowerCase();
@@ -64,23 +98,45 @@ export function GlobalSearch() {
     const direct = ALL_SKILLS.filter((sk) => sk.toLowerCase().includes(q));
     const described = describeSkills(searchQuery).filter((sk) => !direct.includes(sk));
     const skills: Result[] = [...direct, ...described].slice(0, 7).map((sk) => {
-      // Demand level (Low / Moderate / High), contextual to the layer the
-      // search was made on: domestic → AU IVI, global → live company index.
       const badge = demandLevel(sk, globalOut, skillIndex);
       return { kind: "skill" as const, id: sk, label: sk, sub: badge.label, tone: badge.tone };
     });
     return [...skills, ...companies, ...cities];
   }, [q, searchQuery, skillIndex, globalOut]);
 
-  // Show over the global AND domestic overviews (both are zoomedOut) — never
-  // stranded above a local city map, where the top-right search takes over.
+  const topSkill = results.find((r) => r.kind === "skill") as
+    Extract<Result, { kind: "skill" }> | undefined;
+  const cardSkill = carded ?? (searched ? (topSkill?.id ?? null) : null);
+
+  const card = useMemo(
+    () => (cardSkill ? buildSkillCard(cardSkill, searchQuery, globalOut, skillIndex) : null),
+    [cardSkill, searchQuery, globalOut, skillIndex],
+  );
+
+  // Advertised pay for the carded skill, from the live archive. Its own query so
+  // the card renders immediately and the salary cell fills in when it lands.
+  const { data: pay } = useQuery({
+    queryKey: ["skillPay", cardSkill],
+    queryFn: () => getSkillPay({ data: { skill: cardSkill as string } }),
+    enabled: !!cardSkill,
+    staleTime: 6 * 60 * 60 * 1000,
+    retry: false,
+  });
+
+  // Editing the query invalidates any card that was showing.
+  useEffect(() => {
+    setCarded(null);
+    setSearched(false);
+  }, [searchQuery]);
+
   if (!zoomedOut) return null;
-  void globalOut;
 
   const goToResult = (r: Result) => {
     if (r.kind === "skill") {
-      // Colour the map by real demand for this skill instead of navigating.
+      // Colour the map by real demand AND open the card for it.
       toggleSkillQuery(r.id);
+      setCarded(r.id);
+      setSearched(true);
       setActiveIndex(0);
       inputRef.current?.blur();
       return;
@@ -96,8 +152,29 @@ export function GlobalSearch() {
     inputRef.current?.blur();
   };
 
+  const submit = () => {
+    if (topSkill) {
+      toggleSkillQuery(topSkill.id);
+      setCarded(topSkill.id);
+    }
+    setSearched(true);
+    setFocused(false);
+    inputRef.current?.blur();
+  };
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!results.length) return;
+    if (e.key === "Escape") {
+      setSearchQuery("");
+      inputRef.current?.blur();
+      return;
+    }
+    if (!results.length) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        submit();
+      }
+      return;
+    }
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setActiveIndex((i) => Math.min(i + 1, results.length - 1));
@@ -107,30 +184,35 @@ export function GlobalSearch() {
     } else if (e.key === "Enter") {
       e.preventDefault();
       goToResult(results[Math.min(activeIndex, results.length - 1)]);
-    } else if (e.key === "Escape") {
-      setSearchQuery("");
-      inputRef.current?.blur();
     }
   };
+
+  const showSuggest = focused && !!q && !cardSkill;
+  const showChips = focused && !q && !cardSkill;
+  const noMatch = searched && !cardSkill && !!q;
 
   return (
     <div className="gsearch">
       <div className="gsearchhd">Explore the world of work today</div>
+
       <div className={`gsearchbar ${focused ? "on" : ""}`}>
+        {/* The magnifier tightens and its handle shifts on focus, per the design. */}
         <svg
+          className="gsicon"
           viewBox="0 0 24 24"
+          width={19}
+          height={19}
           fill="none"
           stroke="currentColor"
-          strokeWidth={2.2}
-          strokeLinecap="round"
+          aria-hidden
         >
-          <circle cx="11" cy="11" r="7" />
-          <line x1="21" y1="21" x2="16.6" y2="16.6" />
+          <circle className="gsiconlens" cx="11" cy="11" r="6.4" />
+          <line className="gsiconhandle" x1="15.8" y1="15.8" x2="20" y2="20" />
         </svg>
         <input
           ref={inputRef}
           className="gsearchinput"
-          placeholder="Select or describe a skill"
+          placeholder="Search a skill by name, or describe it in your own words"
           value={searchQuery}
           onChange={(e) => {
             setSearchQuery(e.target.value);
@@ -141,19 +223,33 @@ export function GlobalSearch() {
           onKeyDown={onKeyDown}
         />
         {searchQuery && (
-          <button className="gsearchclear" onClick={() => setSearchQuery("")} aria-label="Clear">
-            ✕
+          <button
+            className="gsearchclear"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setSearchQuery("")}
+            aria-label="Clear search"
+          >
+            <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor">
+              <line x1="6" y1="6" x2="18" y2="18" />
+              <line x1="18" y1="6" x2="6" y2="18" />
+            </svg>
           </button>
         )}
+        <button
+          className="gsearchgo"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={submit}
+          disabled={!q}
+        >
+          Search
+        </button>
+        <SearchAuth />
       </div>
-      {focused && q && (
+
+      {showSuggest && (
         <div className="gsearchresults">
           {results.length > 0 ? (
             results.map((r, i) => {
-              // Skill rows carry a follow control (like a company card's Follow
-              // button) alongside the main select action, so they can't be a
-              // single <button> — a nested button is invalid. Render a row with
-              // an inner select button + a follow button.
               if (r.kind === "skill") {
                 const followed = followedSkills.includes(r.id);
                 return (
@@ -167,9 +263,10 @@ export function GlobalSearch() {
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => goToResult(r)}
                     >
-                      <span className="gsrkind skill">Skill</span>
                       <span className="gsrlabel">{r.label}</span>
-                      <span className={`gsrsub dmd-${r.tone}`}>{r.sub}</span>
+                      <span className={`gsrlevel dmd-${r.tone}`}>
+                        {r.sub.replace(" demand", "")}
+                      </span>
                     </button>
                     <button
                       className={`gsrfollow ${followed ? "on" : ""}`}
@@ -178,32 +275,9 @@ export function GlobalSearch() {
                         e.stopPropagation();
                         requestFollowSkill(r.id);
                       }}
-                      aria-label={followed ? "Following skill" : "Follow skill"}
-                      title={followed ? "Following" : "Follow this skill"}
                     >
-                      {followed ? (
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={2.2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M5 12.5l4.2 4.2L19 7" />
-                        </svg>
-                      ) : (
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={2.2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M12 5v14M5 12h14" />
-                        </svg>
-                      )}
+                      <FollowGlyph on={followed} />
+                      {followed ? "Following" : "Follow"}
                     </button>
                   </div>
                 );
@@ -231,15 +305,143 @@ export function GlobalSearch() {
           )}
         </div>
       )}
-      {focused && !q && (
+
+      {card && (
+        <div className="gscard">
+          <div className="gscardhd">
+            <div className="gscardname">
+              <span className="gscardnote">{card.matchNote}</span>
+              <span className="gscardtitle">{card.skill}</span>
+            </div>
+            <div className="gscardactions">
+              <span className={`gscardlevel dmd-${card.tone}`}>
+                <i />
+                {card.levelLabel}
+              </span>
+              <button
+                className={`gsrfollow gscardfollow ${followedSkills.includes(card.skill) ? "on" : ""}`}
+                onClick={() => requestFollowSkill(card.skill)}
+              >
+                <FollowGlyph on={followedSkills.includes(card.skill)} />
+                {followedSkills.includes(card.skill) ? "Following" : "Follow"}
+              </button>
+            </div>
+          </div>
+
+          {/* Demand scale. The marker sits at the skill's real percentile in the
+              same distribution the heat map buckets on. */}
+          <div className="gsscale">
+            <div className="gsscaletrack">
+              <span className="gszone lo" />
+              <span className="gszone mid" />
+              <span className="gszone hi" />
+              <span
+                className="gsmarker"
+                style={{ left: `${Math.max(3, Math.min(97, card.percentile))}%` }}
+              />
+            </div>
+            <div className="gsscalekeys">
+              <span className="gskey lo">Low</span>
+              <span className="gskey mid">Moderate</span>
+              <span className="gskey hi">High</span>
+            </div>
+          </div>
+
+          <div className="gsstats">
+            <div className="gsstat">
+              <span className="gsstatk">Open roles</span>
+              <span className="gsstatv">
+                {card.openRoles === null ? "—" : card.openRoles.toLocaleString("en-US")}
+              </span>
+            </div>
+            {/* The design's second cell is "Applicants / role". employsi holds
+                advertised vacancies, not application funnels, so this is the
+                skill's real year-on-year move instead. */}
+            <div className="gsstat">
+              <span className="gsstatk">Year on year</span>
+              <span className="gsstatv">
+                {card.yoy === null
+                  ? "—"
+                  : `${card.yoy >= 0 ? "+" : "−"}${Math.abs(card.yoy).toFixed(1)}%`}
+              </span>
+            </div>
+            <div className="gsstat">
+              <span className="gsstatk">Median advertised</span>
+              <span className="gsstatv">{pay ? formatPay(pay) : "—"}</span>
+            </div>
+          </div>
+
+          <div className="gscardtrend">
+            {card.spark && (
+              <svg
+                className={`gsspark dmd-${card.tone}`}
+                viewBox="0 0 200 44"
+                width={200}
+                height={44}
+                fill="none"
+                stroke="currentColor"
+                aria-hidden
+              >
+                <path d={card.spark} />
+              </svg>
+            )}
+            <p className="gscardsummary">{card.summary}</p>
+          </div>
+
+          {(card.sources.length > 0 || pay) && (
+            <div className="gscardsource">
+              {[
+                ...card.sources,
+                pay
+                  ? `Advertised pay: ${pay.n} of ${pay.live} live ads disclose a ${pay.currency} figure`
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </div>
+          )}
+
+          {card.related.length > 0 && (
+            <div className="gsrelated">
+              <span className="gsrelatedlbl">Related</span>
+              {card.related.map((r) => (
+                <button
+                  key={r}
+                  className="gsrelchip"
+                  onClick={() => {
+                    setSearchQuery(r);
+                    toggleSkillQuery(r);
+                    setCarded(r);
+                    setSearched(true);
+                  }}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {noMatch && !card && (
+        <div className="gsnomatch">
+          Nothing indexed for that yet. Try a nearby skill, or describe the work differently.
+        </div>
+      )}
+
+      {showChips && (
         <div className="gsearchchips">
-          <span className="gsearchlbl">Popular skills</span>
           {popularSkills.map((sk) => (
             <button
               key={sk}
-              className={`gschip ${q === sk.toLowerCase() ? "on" : ""}`}
+              className="gschip"
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => toggleSkillQuery(sk)}
+              onClick={() => {
+                setSearchQuery(sk);
+                toggleSkillQuery(sk);
+                setCarded(sk);
+                setSearched(true);
+              }}
             >
               {sk}
             </button>

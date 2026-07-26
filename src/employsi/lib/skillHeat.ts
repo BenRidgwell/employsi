@@ -94,6 +94,29 @@ export function demandLevel(skill: string, global: boolean, idx: SkillIndex | nu
   return { label: "Low demand", tone: "lo" };
 }
 
+/**
+ * Where a skill sits in the demand distribution, 0–100.
+ *
+ * demandLevel() above buckets the same value into Low / Moderate / High; this
+ * returns the underlying position so the search card can put a marker on the
+ * scale rather than only naming the band. It is a real percentile — the share
+ * of skills with less demand than this one — not a score out of 100, so a skill
+ * at 90 genuinely has more demand than 90% of the taxonomy.
+ */
+export function demandPercentile(skill: string, global: boolean, idx: SkillIndex | null): number {
+  const values = global
+    ? idx
+      ? Object.values(idx.skills)
+          .map((s) => s.total)
+          .filter((x) => x > 0)
+      : []
+    : Object.values(IVI_SKILL_NATIONAL).filter((v) => v > 0);
+  const v = global ? (idx?.skills[skill]?.total ?? 0) : (IVI_SKILL_NATIONAL[skill] ?? 0);
+  if (!values.length || v <= 0) return 0;
+  const below = values.filter((x) => x < v).length;
+  return Math.round((below / values.length) * 100);
+}
+
 // Real government vacancy demand for a skill across the mapped hub cities — the
 // AU capital hubs (JSA/IVI) plus the Canadian hubs (StatCan). Empty when the
 // skill has no such demand. Used to colour the domestic heat map with

@@ -133,7 +133,11 @@ export function TopBar() {
             action-banner design. In the control row rather than free-floating
             so they cannot overlap the account control beside them. */}
         <HelpDock />
-        <AccountButton />
+        {/* The account control lives INSIDE the centred search pill on the
+            overview layers, per the skill-search design. It only reappears here
+            on the local city view, where that pill isn't shown — so there is
+            exactly one sign-in entry point at any moment, never two. */}
+        {!zoomedOut && <AccountButton />}
         {/* The search group is always in the DOM so the mobile bottom bar can
             open its flyout on every layer. On desktop zoomed-out views the
             centred GlobalSearch is used instead, so the top-right button is

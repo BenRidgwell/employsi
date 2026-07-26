@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import type { D1Like } from "./jobArchive";
 import { SKILL_CATEGORY } from "../data/skillsTaxonomy";
 import { detectIntent } from "./analystIntent";
+import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
 
 /**
  * "Ask an analyst" — the question-answering layer behind `ask an analyst.dc.html`.
@@ -487,3 +488,77 @@ export const askAnalyst = createServerFn({ method: "GET" })
       source: archiveNote,
     };
   });
+
+// ── Advertised pay for one skill ────────────────────────────────────────────
+// Powers the "Median salary" figure on the skill search card. Same parser and
+// same discipline as the analyst's pay intent: only ads that state a figure in
+// a comparable form count, only the dominant currency is reported, and a thin
+// sample is suppressed entirely rather than shown with a caveat.
+
+export interface SkillPay {
+  median: number;
+  currency: string;
+  /** Ads that stated a parseable figure in that currency. */
+  n: number;
+  /** Live ads demanding the skill at all, so the card can show coverage. */
+  live: number;
+}
+
+const PAY_MIN_SAMPLE = 20;
+
+export const getSkillPay = createServerFn({ method: "GET" })
+  .validator((data: { skill: string }) => data)
+  .handler(async ({ data }): Promise<SkillPay | null> => {
+    const skill = (data.skill || "").trim();
+    if (!skill) return null;
+    const db = await getArchiveDb();
+    if (!db) return null;
+    try {
+      const latestRow = await db.prepare(`SELECT MAX(last_seen) AS mx FROM jobs`).first();
+      const latest = String(latestRow?.mx || "");
+      if (!latest) return null;
+      // The skills column is a JSON array of canonical names, so matching the
+      // QUOTED name is an exact containment test — "SQL" can't match "MySQL",
+      // and "Nursing" can't match "Nursing Assistant".
+      const quoted = `%${JSON.stringify(skill)}%`;
+      const rows = await db
+        .prepare(
+          `SELECT salary, hub FROM jobs
+             WHERE last_seen = ?1 AND skills LIKE ?2 AND salary IS NOT NULL AND salary <> ''`,
+        )
+        .bind(latest, quoted)
+        .all();
+      const liveRow = await db
+        .prepare(`SELECT COUNT(*) AS n FROM jobs WHERE last_seen = ?1 AND skills LIKE ?2`)
+        .bind(latest, quoted)
+        .first();
+      const live = Number(liveRow?.n) || 0;
+      const byCurrency: Record<string, number[]> = {};
+      for (const r of rows?.results ?? []) {
+        // The card is market-wide, so there is no single country to fall back
+        // on — but every row carries its own hub, and the hub gives the country
+        // and therefore the currency. That matters: the most common format in
+        // the archive is a bare "$100k", which is meaningless until you know
+        // whether the ad is Australian or American. Rows whose hub doesn't map
+        // to a known country are dropped rather than assumed to be dollars.
+        const hub = String(r.hub || "").toLowerCase();
+        const fallback = COUNTRY_CURRENCY[CITY_COUNTRY[hub] ?? ""] ?? "";
+        const p = parsePay(String(r.salary || ""), fallback);
+        if (!p || !p.currency) continue;
+        (byCurrency[p.currency] ||= []).push(p.annual);
+      }
+      const ranked = Object.entries(byCurrency).sort((a, b) => b[1].length - a[1].length);
+      const [currency, vals] = ranked[0] ?? ["", []];
+      if (!currency || vals.length < PAY_MIN_SAMPLE) return null;
+      const sorted = [...vals].sort((a, b) => a - b);
+      return { median: quantile(sorted, 0.5), currency, n: vals.length, live };
+    } catch {
+      return null;
+    }
+  });
+
+/** Formats a pay figure for display; exported so the card renders it the same
+ *  way the analyst's answers do. */
+export function formatPay(p: SkillPay): string {
+  return money(p.median, p.currency);
+}

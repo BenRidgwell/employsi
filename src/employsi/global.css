@@ -4116,19 +4116,31 @@ body {
   border-color: var(--border-strong);
   box-shadow: var(--raised-shadow), var(--focus-ring);
 }
-/* The magnifier tightens a touch on focus, as in the design. */
-.gsearchbar.on svg {
-  color: var(--text-primary);
-  transform: scale(0.94);
-}
-.gsearchbar svg {
-  transition: transform 220ms cubic-bezier(0.32, 0.72, 0, 1),
-    color var(--duration-base);
-}
-.gsearchbar svg {
-  width: 17px;
-  height: 17px;
+/* The magnifier: on focus the lens tightens and the handle pushes out along its
+   own diagonal, which is the design's gesture rather than a whole-icon scale. */
+.gsicon {
+  display: block;
   flex: 0 0 auto;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: var(--text-tertiary);
+  transition: color var(--duration-base);
+}
+.gsearchbar.on .gsicon {
+  color: var(--text-primary);
+}
+.gsiconlens,
+.gsiconhandle {
+  transition: transform 220ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.gsearchbar.on .gsiconlens {
+  transform-box: view-box;
+  transform-origin: 11px 11px;
+  transform: scale(0.92);
+}
+.gsearchbar.on .gsiconhandle {
+  transform: translate(1px, 1px);
 }
 .gsearchinput {
   flex: 1 1 auto;
@@ -4138,7 +4150,8 @@ body {
   background: transparent;
   outline: none;
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 13px;
+  letter-spacing: -0.006em;
   /* The design sets the query in regular weight, not semibold — the pill is
      already doing the emphasising. */
   font-weight: var(--weight-regular);
@@ -4146,10 +4159,6 @@ body {
 }
 .gsearchinput::placeholder {
   color: var(--text-tertiary);
-}
-.gsearchinput::placeholder {
-  color: var(--slate);
-  font-weight: 500;
 }
 .gsearchclear {
   display: flex;
@@ -4171,33 +4180,335 @@ body {
   background: var(--surface-hover);
   color: var(--text-primary);
 }
-.gsearchclear:hover {
-  color: var(--ink);
+.gsearchclear svg {
+  stroke-width: 2;
+  stroke-linecap: round;
 }
+/* Submit. The design gives the pill an explicit Search action rather than
+   relying on Enter alone. */
+.gsearchgo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: 34px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--action-primary);
+  color: var(--action-primary-text);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: var(--weight-medium);
+  letter-spacing: -0.006em;
+  cursor: pointer;
+  transition:
+    background 160ms,
+    opacity 160ms,
+    transform 110ms;
+}
+.gsearchgo:hover:not(:disabled) {
+  background: var(--action-primary-hover);
+}
+.gsearchgo:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.gsearchgo:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ── Account control, inside the pill ────────────────────────────────────── */
+.gsauth {
+  position: relative;
+  flex: 0 0 auto;
+}
+.gsauthbtn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--surface-active);
+  color: var(--neutral-700);
+  cursor: pointer;
+  --m: 0;
+  box-shadow: var(--shadow-xs);
+  transition:
+    background 180ms,
+    color 180ms,
+    border-color 180ms,
+    transform 110ms;
+}
+.gsauthbtn:hover {
+  --m: 1;
+  border-color: var(--border-strong);
+}
+.gsauthbtn:active {
+  transform: scale(0.95);
+}
+.gsauthbtn.on,
+.gsauthbtn.signedin {
+  border-color: var(--action-primary);
+  background: var(--action-primary);
+  color: var(--action-primary-text);
+}
+.gsauthbtn svg {
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.gsauthinitials {
+  font-size: 11.5px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.02em;
+}
+.gsauthtip {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%) translateY(-4px);
+  transition:
+    opacity 140ms,
+    transform 140ms;
+}
+.gsauthbtn:hover:not(.on) .gsauthtip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+/* Transparent catcher so a click anywhere else dismisses the panel. */
+.gsauthscrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+}
+.gsauthpanel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 12px);
+  z-index: 2;
+  box-sizing: border-box;
+  width: 288px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  background: var(--surface-card);
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 28px 56px -24px rgba(28, 28, 30, 0.55);
+  animation: emppop 200ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  text-align: left;
+}
+.gsauthtabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 13px;
+  background: var(--surface-sunken);
+}
+.gsauthtab {
+  flex: 1 1 0;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.008em;
+  cursor: pointer;
+  transition:
+    background 180ms,
+    color 180ms,
+    box-shadow 180ms;
+}
+.gsauthtab.on {
+  background: var(--surface-card);
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px rgba(28, 28, 30, 0.1);
+}
+.gsauthfields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+.gsauthinput {
+  height: 40px;
+  padding: 0 13px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 11px;
+  background: var(--surface-subtle);
+  outline: none;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--text-primary);
+}
+.gsauthinput:focus {
+  border-color: var(--border-strong);
+}
+.gsauthcta {
+  width: 100%;
+  height: 40px;
+  margin-top: 10px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--action-primary);
+  color: var(--action-primary-text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.008em;
+  cursor: pointer;
+  transition:
+    background 160ms,
+    opacity 160ms,
+    transform 110ms;
+}
+.gsauthcta:hover:not(:disabled) {
+  background: var(--action-primary-hover);
+}
+.gsauthcta:active:not(:disabled) {
+  transform: scale(0.99);
+}
+.gsauthcta:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.gsauthout {
+  background: var(--surface-subtle);
+  color: var(--neutral-700);
+  border: 1px solid var(--border-subtle);
+}
+.gsauthout:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.gsauthswitch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 11px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.gsauthswitch button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+  cursor: pointer;
+}
+/* Signed-in state. The design's mock has none — it is always logged out — so
+   this is the same card carrying what an account actually has in it. */
+.gsauthwho {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.gsauthname {
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.012em;
+}
+.gsauthemail {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.gsauthsaved {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+}
+.gsauthsavedlbl {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 4px;
+}
+.gsauthsavedrow {
+  padding: 7px 8px;
+  margin: 0 -8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms;
+}
+.gsauthsavedrow:hover {
+  background: var(--surface-hover);
+}
+.gsauthhint {
+  margin: 12px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+/* Popular skills, when the field is empty: the design shows them as free-
+   standing pills centred under the bar, not boxed in a panel. */
 .gsearchchips {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
+  gap: 8px;
   align-items: center;
   justify-content: center;
-  margin-top: 12px;
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 12px 14px;
-  box-shadow: 0 18px 44px -20px rgba(15, 27, 61, 0.45);
+  margin-top: 14px;
 }
-.gsearchlbl {
-  width: 100%;
-  text-align: center;
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--slate);
-  margin-bottom: 2px;
+.gschip {
+  height: 32px;
+  padding: 0 13px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--surface-card);
+  color: var(--neutral-700);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 8px 18px -12px rgba(28, 28, 30, 0.4);
+  transition:
+    background 140ms,
+    color 140ms,
+    transform 110ms;
 }
+.gschip:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.gschip:active {
+  transform: scale(0.97);
+}
+
 /* Suggestion list — the design's panel: 14px below the pill, 6px padding,
    16px radius, flat white (it hangs over the map now, not over the header, so
    it keeps a solid surface but drops the blur the old floating bar needed). */
@@ -4298,9 +4609,11 @@ body {
 /* Skill rows pair the select action with a round Follow control (mirrors a
    company card's Follow button), so the row is a flex container rather than a
    single button. */
+/* Skill rows pair the select action with the design's labelled Follow pill, so
+   the row is a flex container rather than a single button. */
 .gsresult-skill {
-  padding: 0;
-  gap: 4px;
+  padding: 6px 6px 6px 12px;
+  gap: 10px;
 }
 .gsrmain {
   flex: 1 1 auto;
@@ -4308,63 +4621,377 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 10px;
+  padding: 0;
   border: 0;
-  border-radius: 9px;
   background: transparent;
   font-family: inherit;
   text-align: left;
   cursor: pointer;
 }
+.gsresult-skill .gsrlabel {
+  font-size: 14px;
+  font-weight: var(--weight-medium);
+}
+/* Demand level as the design's small solid pill. */
+.gsrlevel {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 9px;
+  border-radius: 999px;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.gsrlevel.dmd-lo {
+  background: var(--green-500);
+}
+.gsrlevel.dmd-mid {
+  background: var(--amber-500);
+}
+.gsrlevel.dmd-hi {
+  background: var(--red-500);
+}
 .gsrfollow {
   flex: 0 0 auto;
-  width: 30px;
-  height: 30px;
-  margin-right: 6px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  background: #fff;
-  color: var(--slate);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 11px 0 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--surface-card);
+  color: var(--neutral-700);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
-}
-.gsrfollow svg {
-  width: 15px;
-  height: 15px;
-}
-.gsrfollow:hover {
-  transform: scale(1.08);
-  border-color: var(--teal, #0f766e);
-  color: var(--teal, #0f766e);
+  transition:
+    background 180ms,
+    color 180ms,
+    border-color 180ms,
+    transform 110ms;
 }
 .gsrfollow.on {
-  background: var(--teal, #0f766e);
-  border-color: var(--teal, #0f766e);
-  color: #fff;
+  border-color: var(--action-primary);
+  background: var(--action-primary);
+  color: var(--action-primary-text);
 }
-.gschip {
-  padding: 6px 12px;
+.gsrfollow:active {
+  transform: scale(0.96);
+}
+/* Plus and tick are stacked and cross-faded so the control doesn't resize as
+   it flips, which is what the design's paired SVGs do. */
+.gsfollowicon {
+  position: relative;
+  display: block;
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+}
+.gsfollowicon svg {
+  position: absolute;
+  inset: 0;
+  width: 13px;
+  height: 13px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: opacity 180ms;
+}
+.gsfplus {
+  stroke-width: 2.2;
+  opacity: 1;
+}
+.gsfcheck {
+  stroke-width: 2.5;
+  opacity: 0;
+}
+.gsrfollow.on .gsfplus {
+  opacity: 0;
+}
+.gsrfollow.on .gsfcheck {
+  opacity: 1;
+}
+
+/* ── Skill result card ───────────────────────────────────────────────────────
+   The design's card, hanging below the pill: name + demand pill + follow, the
+   Low → High scale with a marker, three figures, the trend line and summary,
+   the source line, and related chips. Every figure is measured — see
+   skillCard.ts for which dataset each comes from. */
+.gscard {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 14px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 24px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  background: var(--surface-card);
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 16px 32px -22px rgba(28, 28, 30, 0.35);
+  animation: anrise 260ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  text-align: left;
+  max-height: calc(100vh - var(--head-height) - 60px);
+  overflow-y: auto;
+}
+.gscardhd {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.gscardname {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.gscardnote {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.gscardtitle {
+  font-size: 22px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.022em;
+}
+.gscardactions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.gscardlevel {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 13px;
   border-radius: 999px;
-  border: 1px solid var(--line);
-  background: #fff;
-  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--slate);
-  cursor: pointer;
-  transition: 0.14s;
-}
-.gschip:hover {
-  color: var(--ink);
-  border-color: var(--slate);
-}
-.gschip.on {
-  background: #1c1c1e;
+  white-space: nowrap;
   color: #fff;
-  border-color: #1c1c1e;
+  font-size: 13px;
+  font-weight: var(--weight-medium);
 }
+.gscardlevel i {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+}
+.gscardlevel.dmd-lo {
+  background: var(--green-500);
+}
+.gscardlevel.dmd-mid {
+  background: var(--amber-500);
+}
+.gscardlevel.dmd-hi {
+  background: var(--red-500);
+}
+.gscardfollow {
+  height: 30px;
+  padding: 0 13px 0 11px;
+  font-size: 13px;
+}
+/* Demand scale. The marker's position is the skill's real percentile in the
+   same distribution the heat map buckets Low / Moderate / High on, so the card
+   and the map can never disagree. */
+.gsscale {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.gsscaletrack {
+  position: relative;
+  display: flex;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-sunken);
+}
+.gszone {
+  flex: 1;
+}
+.gszone.lo {
+  background: var(--green-50);
+}
+.gszone.mid {
+  background: var(--amber-50);
+}
+.gszone.hi {
+  background: var(--red-50);
+}
+.gsmarker {
+  position: absolute;
+  top: -3px;
+  width: 4px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--action-primary);
+  transform: translateX(-2px);
+  transition: left 420ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.gsscalekeys {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.gskey {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.gskey.lo {
+  background: var(--green-500);
+}
+.gskey.mid {
+  background: var(--amber-500);
+}
+.gskey.hi {
+  background: var(--red-500);
+}
+.gsstats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.gsstat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  background: var(--surface-card);
+}
+.gsstatk {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.gsstatv {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+.gscardtrend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.gsspark {
+  display: block;
+  flex: 0 0 auto;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.gsspark.dmd-lo {
+  color: var(--green-700);
+}
+.gsspark.dmd-mid {
+  color: var(--amber-700);
+}
+.gsspark.dmd-hi {
+  color: var(--red-700);
+}
+.gscardsummary {
+  margin: 0;
+  flex: 1 1 220px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+/* Which agencies the figures came from — the card's equivalent of the analyst
+   pane's source line. */
+.gscardsource {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-tertiary);
+}
+.gsrelated {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-subtle);
+}
+.gsrelatedlbl {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-right: 2px;
+}
+.gsrelchip {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--surface-card);
+  color: var(--neutral-700);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition:
+    background 140ms,
+    color 140ms,
+    border-color 140ms,
+    transform 110ms;
+}
+.gsrelchip:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+.gsrelchip:active {
+  transform: scale(0.97);
+}
+.gsnomatch {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 14px;
+  padding: 18px 20px;
+  border: 1px dashed var(--border-default);
+  border-radius: 16px;
+  background: var(--surface-card);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 /* Current local-city indicator */
 .citybadge {
   position: fixed;

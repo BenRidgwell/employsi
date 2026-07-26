@@ -60,7 +60,6 @@ export interface AppState {
   compareOpen: boolean;
   compareA: string | null;
   compareB: string | null;
-  briefOpen: boolean;
   trendingOpen: boolean;
   // "Ask an analyst": a scoped Q&A over the live vacancy archive.
   analystOpen: boolean;
@@ -128,8 +127,6 @@ export interface AppState {
   setCompareA: (id: string) => void;
   setCompareB: (id: string) => void;
 
-  toggleBrief: () => void;
-  closeBrief: () => void;
   toggleTrending: () => void;
   closeTrending: () => void;
   toggleAnalyst: () => void;
@@ -240,7 +237,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   compareOpen: false,
   compareA: null,
   compareB: null,
-  briefOpen: false,
   trendingOpen: false,
   analystOpen: false,
   feedbackOpen: false,
@@ -257,7 +253,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       searchOpen: false,
       filterOpen: false,
       heatOpen: false,
-      briefOpen: false,
       trendingOpen: false,
       analystOpen: false,
       feedbackOpen: false,
@@ -394,7 +389,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       heatOpen: false,
       trendingOpen: false,
       mobileMenuOpen: false,
-      briefOpen: false,
     })),
   toggleFilter: () =>
     set((s) => ({
@@ -403,7 +397,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       heatOpen: false,
       trendingOpen: false,
       mobileMenuOpen: false,
-      briefOpen: false,
     })),
   toggleHeatPanel: () =>
     set((s) => ({ heatOpen: !s.heatOpen, searchOpen: false, filterOpen: false })),
@@ -574,13 +567,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   setCompareA: (id) => set({ compareA: id }),
   setCompareB: (id) => set({ compareB: id }),
 
-  toggleBrief: () =>
-    set((s) => ({ briefOpen: !s.briefOpen, trendingOpen: false, mobileMenuOpen: false })),
-  closeBrief: () => set({ briefOpen: false }),
   toggleTrending: () =>
     set((s) => ({
       trendingOpen: !s.trendingOpen,
-      briefOpen: false,
       mobileMenuOpen: false,
       searchOpen: false,
       filterOpen: false,
@@ -591,7 +580,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((s) => ({
       analystOpen: !s.analystOpen,
       trendingOpen: false,
-      briefOpen: false,
       mobileMenuOpen: false,
       searchOpen: false,
       filterOpen: false,
@@ -622,7 +610,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       filterOpen: false,
       heatOpen: false,
       trendingOpen: false,
-      briefOpen: false,
     })),
   closeMobileMenu: () => set({ mobileMenuOpen: false }),
 }));

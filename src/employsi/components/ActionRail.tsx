@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { useAppStore } from "../state/store";
 import {
   IconAnalyst,
-  IconBrief,
   IconCompany,
   IconDomestic,
   IconFilter,
@@ -24,10 +23,9 @@ import {
  *     control the earlier design had no home for.
  *  3. Every icon animates on hover and while selected — see ActionIcons.
  *
- * The design's first group is "What's trending" and "Ask an analyst"; Daily
- * brief is kept alongside them because it is real and already wired. The
- * analyst is now built (AnalystPane) and answers from the vacancy archive and
- * the national vacancy series rather than a language model.
+ * The design's first group is "What's trending" and "Ask an analyst". The
+ * analyst answers from the vacancy archive and the national vacancy series
+ * rather than a language model — see AnalystPane.
  */
 
 function RailButton({
@@ -69,8 +67,6 @@ export function ActionRail() {
 
   const toggleTrending = useAppStore((s) => s.toggleTrending);
   const trendingOpen = useAppStore((s) => s.trendingOpen);
-  const toggleBrief = useAppStore((s) => s.toggleBrief);
-  const briefOpen = useAppStore((s) => s.briefOpen);
   const toggleAnalyst = useAppStore((s) => s.toggleAnalyst);
   const analystOpen = useAppStore((s) => s.analystOpen);
 
@@ -107,7 +103,6 @@ export function ActionRail() {
         on={analystOpen}
         onClick={toggleAnalyst}
       />
-      <RailButton icon={<IconBrief />} label="Daily brief" on={briefOpen} onClick={toggleBrief} />
 
       <span className="raildiv" />
 

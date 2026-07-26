@@ -28,20 +28,6 @@ export function IconTrending() {
   );
 }
 
-/** Daily brief. Not in the design's rail — see ActionRail for why it stays —
- *  so it keeps its own document glyph, given the set's staggered-line gesture
- *  so it reads as one family with Filter rather than as a leftover. */
-export function IconBrief() {
-  return (
-    <svg {...BOX} width={20} height={20} aria-hidden>
-      <path d="M4.5 5.5A1.5 1.5 0 0 1 6 4h12a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 18 20H6a1.5 1.5 0 0 1-1.5-1.5z" />
-      <line className="ai-slide-r" x1="8" y1="9" x2="16" y2="9" />
-      <line className="ai-slide-r ai-d1" x1="8" y1="12.5" x2="14" y2="12.5" />
-      <line className="ai-slide-r ai-d2" x1="8" y1="16" x2="12" y2="16" />
-    </svg>
-  );
-}
-
 export function IconGlobal() {
   return (
     <svg {...BOX} width={20} height={20} aria-hidden>

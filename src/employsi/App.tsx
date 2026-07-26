@@ -15,7 +15,6 @@ import { HeatKey } from "./components/HeatKey";
 import { WorldMapbox } from "./components/WorldMapbox";
 import { CompanyPanel } from "./components/panels/CompanyPanel";
 import { ComparePanel } from "./components/panels/ComparePanel";
-import { DailyBriefPane } from "./components/panels/DailyBriefPane";
 import { WhatsTrendingPane } from "./components/panels/WhatsTrendingPane";
 import { AnalystPane } from "./components/panels/AnalystPane";
 import { useAppStore } from "./state/store";
@@ -84,7 +83,6 @@ function App() {
       <HeatKey />
       <CompanyPanel />
       <ComparePanel />
-      <DailyBriefPane />
       <WhatsTrendingPane />
       <AnalystPane />
       <MobileTabBar />
