@@ -1060,6 +1060,10 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  /* Never wider than the stage plus its caption — otherwise a long company name
+     would widen the element and, with anchor:'top' centring it, drag the pin
+     off its own coordinate. */
+  width: max-content;
   font-family: "Mona Sans Variable", "Mona Sans", system-ui, sans-serif;
   transition: opacity 0.18s ease;
 }
@@ -1084,8 +1088,8 @@ body {
   height: 54px;
 }
 .mk-company .mkstage {
-  width: 56px;
-  height: 58px;
+  width: 48px;
+  height: 46px;
 }
 
 /* Attention ring — a slow outward ping while hovered (while selected, for a
@@ -1119,9 +1123,9 @@ body {
   height: 36px;
 }
 .mk-company .mkring {
-  top: 22px;
-  width: 48px;
-  height: 48px;
+  top: 15px;
+  width: 34px;
+  height: 34px;
   opacity: var(--sel, 0);
 }
 
@@ -1145,8 +1149,8 @@ body {
   transform: translateX(-50%) scale(calc(1 - max(var(--m, 0), var(--sel, 0)) * 0.28));
 }
 .mk-company .mkshadow {
-  width: 16px;
-  height: 4px;
+  width: 13px;
+  height: 3px;
   transform: translateX(-50%) scale(calc(1 - var(--sel, 0) * 0.28));
 }
 
@@ -1156,9 +1160,9 @@ body {
 .mkglow {
   position: absolute;
   left: 50%;
-  top: 23px;
-  width: 58px;
-  height: 58px;
+  top: 16px;
+  width: 42px;
+  height: 42px;
   transform: translate(-50%, -50%);
   border-radius: 50%;
   background: #94a3b8;
@@ -1220,9 +1224,9 @@ body {
    readable — so selection reads as an inner ink ring instead of a fill. */
 .mk-company .mkbody {
   top: 0;
-  width: 46px;
-  height: 46px;
-  margin-left: -23px;
+  width: 32px;
+  height: 32px;
+  margin-left: -16px;
   border-radius: 999px;
   background: #ffffff;
   color: #1c1c1e;
@@ -1249,14 +1253,19 @@ body {
   font-size: 11px;
 }
 .mk-company .mkcode {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
+  letter-spacing: 0;
 }
+/* Cropped to a circle: the favicon service returns a square, and a square logo
+   sitting inside a round white disc reads as a mistake. `cover` fills the
+   circle edge to edge rather than letterboxing it. */
 .mklogo {
   display: block;
-  width: 32px;
-  height: 32px;
-  object-fit: contain;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 /* City and company markers stand on a stalk; the country teardrop has its own
@@ -1279,8 +1288,8 @@ body {
   transform: scaleY(calc(1 - max(var(--m, 0), var(--sel, 0)) * 0.22));
 }
 .mk-company .mkstalk {
-  top: 46px;
-  height: 12px;
+  top: 32px;
+  height: 10px;
   transform: scaleY(calc(1 - var(--sel, 0) * 0.22));
 }
 
@@ -1296,6 +1305,17 @@ body {
    the company next door. The disc stays the target. */
 .mk-company .mkcaption {
   pointer-events: none;
+  /* A local city plots far more markers in far less space than the overview
+     layers do, so the company caption runs a size down from the country/city
+     one — enough to read, small enough not to tile the CBD. */
+  gap: 4px;
+}
+.mk-company .mkname {
+  font-size: 11.5px;
+  max-width: 96px;
+}
+.mk-company .mkdelta {
+  height: 19px;
 }
 .mkname {
   font-size: 13px;
@@ -5303,11 +5323,13 @@ body {
 /* Current local-city indicator */
 .citybadge {
   position: fixed;
-  /* Below the header row now, so it reads as a label ON the map rather than
-     colliding with the wordmark/search band. */
+  /* Below the header row, so it reads as a label ON the map rather than
+     colliding with the wordmark/search band — and in the left gutter, because
+     the centre column under the header is where the shared search pill drops
+     its suggestion chips (on the local layer too, now). Same left edge as the
+     stats bar and the side panes. */
   top: calc(var(--head-height) + 18px);
-  left: 50%;
-  transform: translateX(-50%);
+  left: calc(var(--rail-left) + 66px);
   z-index: 30;
   display: flex;
   align-items: center;
@@ -5343,11 +5365,11 @@ body {
 @keyframes citybadgein {
   from {
     opacity: 0;
-    transform: translate(-50%, -6px);
+    transform: translateY(-6px);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: translateY(0);
   }
 }
 /* Feedback / Need help? / Settings, as the design's top-right cluster. It used
@@ -8388,12 +8410,25 @@ body {
   }
 }
 
-/* Hide the top-right search button on the desktop zoomed-out views, where the
-   centred GlobalSearch header is the search instead. (The flyout itself stays
-   in the DOM so the mobile bottom bar can still open it.) */
+/* Hide the top-right search button on desktop, where the centred GlobalSearch
+   header is the search on every layer — the local city view included, so its
+   chrome sits exactly where the overview layers' does. (The flyout itself stays
+   in the DOM so the mobile bottom bar can still open it.)
+
+   Same for the header's account button: on desktop the account control lives
+   inside the search pill (SearchAuth). It stays mounted for phones, where the
+   centred pill is hidden and the "More" sheet opens this one's panel. */
 .gshidden .searchbtn,
 .gshidden .seglbl {
   display: none;
+}
+@media (min-width: 681px) {
+  /* The whole group, not just its button: it also carries the auth panel, and
+     with SearchAuth now mounted on every layer, leaving this one's panel in
+     play would open two of them on the same `authOpen` flag. */
+  .controls .acctwrap {
+    display: none;
+  }
 }
 
 /* The mobile bottom bar + its "More" sheet only exist on phones; keep them out

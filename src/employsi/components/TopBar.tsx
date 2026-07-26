@@ -43,10 +43,6 @@ export function TopBar() {
   const maxAttrition = useAppStore((s) => s.maxAttrition);
   const globalOut = useAppStore((s) => s.globalOut);
   const zoomedOut = useAppStore((s) => s.zoomedOut);
-  // The centred search header replaces the top-right search on BOTH the global
-  // and domestic overviews (both are zoomedOut); only the local city view keeps
-  // the top-right search button.
-  const showGlobalSearch = zoomedOut;
   void globalOut;
 
   const filterState: FilterState = {
@@ -133,16 +129,17 @@ export function TopBar() {
             action-banner design. In the control row rather than free-floating
             so they cannot overlap the account control beside them. */}
         <HelpDock />
-        {/* The account control lives INSIDE the centred search pill on the
-            overview layers, per the skill-search design. It only reappears here
-            on the local city view, where that pill isn't shown — so there is
-            exactly one sign-in entry point at any moment, never two. */}
-        {!zoomedOut && <AccountButton />}
+        {/* On desktop the account control lives INSIDE the centred search pill
+            (SearchAuth), on every layer — so this one is hidden there by CSS.
+            It stays mounted because the phone layout hides the centred pill
+            entirely, and this is what hosts the auth panel the mobile "More"
+            sheet opens. Exactly one visible sign-in entry point at any width. */}
+        <AccountButton />
         {/* The search group is always in the DOM so the mobile bottom bar can
-            open its flyout on every layer. On desktop zoomed-out views the
-            centred GlobalSearch is used instead, so the top-right button is
-            hidden there via the `gshidden` class (CSS, desktop only). */}
-        <div className={`cgroup searchwrap ${showGlobalSearch ? "gshidden" : ""}`}>
+            open its flyout. On desktop the centred GlobalSearch is the search
+            on every layer, so the top-right button is always hidden there via
+            the `gshidden` class (CSS, desktop only). */}
+        <div className="cgroup searchwrap gshidden">
           <span className="seglbl">Search</span>
           <button
             className={`searchbtn ${searchOpen ? "on" : ""} ${searchActive ? "active" : ""}`}

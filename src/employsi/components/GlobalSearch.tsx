@@ -34,10 +34,14 @@ import { IconClose } from "./ActionIcons";
  * suggestions with a follow control, a result card for the chosen skill, and
  * popular chips when the field is empty.
  *
+ * The pill shows on every layer, the local city view included, so the chrome
+ * does not rearrange itself as you zoom in — the only things that change at the
+ * local layer are the ticker (gone) and the city stats bar (added).
+ *
  * The account control moving INTO the pill is the design's call, and it is
- * followed: TopBar now renders its account button only on the local layer,
- * where this pill isn't shown, so there is exactly one sign-in entry point at
- * any time rather than two.
+ * followed: TopBar's own account button is hidden on desktop, so there is
+ * exactly one sign-in entry point at any time rather than two. It stays mounted
+ * for phones, where this pill is hidden and the "More" sheet opens that one.
  *
  * The result card is the part with real data behind it — see skillCard.ts for
  * what each figure is and which of the design's cells had no honest source.
@@ -81,6 +85,8 @@ export function GlobalSearch() {
   const localCity = useAppStore((s) => s.localCity);
   const zoomInCity = useAppStore((s) => s.zoomInCity);
   const select = useAppStore((s) => s.select);
+  const selectedId = useAppStore((s) => s.selectedId);
+  const compareOpen = useAppStore((s) => s.compareOpen);
   const followedSkills = useAppStore((s) => s.followedSkills);
   const requestFollowSkill = useAppStore((s) => s.requestFollowSkill);
   // The card's timeline scrubs the SAME month index the heat map colours by, so
@@ -143,9 +149,15 @@ export function GlobalSearch() {
     Extract<Result, { kind: "skill" }> | undefined;
   const cardSkill = carded ?? (searched ? (topSkill?.id ?? null) : null);
 
+  // The card docks top-right, which on the local layer is where the company
+  // card slides in. Two cards fighting for the same corner reads as a bug, and
+  // the company you just clicked is the thing you asked to see — so the skill
+  // card stands down while a company card or the compare view is open, and
+  // comes back when they close.
+  const cardBlocked = !!selectedId || compareOpen;
   const card = useMemo(
-    () => (cardSkill ? buildSkillCard(cardSkill, heatMonth) : null),
-    [cardSkill, heatMonth],
+    () => (cardSkill && !cardBlocked ? buildSkillCard(cardSkill, heatMonth) : null),
+    [cardSkill, cardBlocked, heatMonth],
   );
   const event = useMemo(() => eventFor(heatMonth), [heatMonth]);
   const monthPct = (heatMonth / TIMELINE_SPAN) * 100;
@@ -176,8 +188,6 @@ export function GlobalSearch() {
     setCarded(null);
     setSearched(false);
   }, [searchQuery, carded]);
-
-  if (!zoomedOut) return null;
 
   const goToResult = (r: Result) => {
     if (r.kind === "skill") {

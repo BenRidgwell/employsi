@@ -78,7 +78,9 @@ function deltaPill(delta: number): HTMLElement {
 export const MARKER_FOOT: Record<MarkerShape, number> = {
   country: 48,
   city: 50,
-  company: 58,
+  // The company disc runs smaller than the design's — a local city plots far
+  // more of them, far closer together, than the overview layers ever do.
+  company: 42,
 };
 
 /**
