@@ -5,14 +5,14 @@ archive it to the D1 jobs table, deduped — the SA-Government counterpart of wh
 the jobs-cron worker does for the WA board, and of scripts/seek-to-d1.py /
 scripts/indeed-to-d1.py.
 
-Why a browser (not a no-browser HTTP flow like WA gov): iworkfor.sa.gov.au runs a
-BigRedSky ATS whose result table is rendered ENTIRELY client-side. Reverse-
-engineering established there is no server-rendered results page, no RSS/JSON
-feed, and a dead "JavaScript required" noscript fallback — the search POST only
-stores session state and 302-redirects to a page whose `#report` div is an empty
-placeholder that JavaScript fills in. So the only reliable way to read the
-listings is to let a real browser render them. This runs from YOUR OWN machine on
-a schedule (cron / launchd / Task Scheduler), like the Indeed scraper.
+Why Oxylabs: iworkfor.sa.gov.au runs a BigRedSky ATS whose result table is
+rendered ENTIRELY client-side — there is no server-rendered results page, no
+RSS/JSON feed, and a dead "JavaScript required" noscript fallback. A headless
+Chromium on a GitHub runner rendered 0 rows (the datacenter IP is bot-blocked).
+Oxylabs' Web Scraper API fetches through a residential IP and executes the page's
+JS server-side, returning the finished DOM, so this is now a plain HTTP flow with
+no browser — the same path Indeed/LinkedIn/NSW/APS use, and it runs unattended on
+GitHub Actions.
 
 One pass scrapes EVERY current vacancy across all agencies (the report carries an
 "Agency"/"Department" column), maps each job to its sa-gov-<slug> company id, maps
@@ -22,24 +22,23 @@ upsert as src/employsi/lib/jobArchive.ts. Jobs whose agency can't be matched to 
 roster agency are archived under company_id 'sa-gov' (the sector bucket) so the
 count still lands, just not attributed to one card.
 
-Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID.
-Run:  python3 scripts/sa-gov-to-d1.py [--max-pages N] [--headful] [--no-skills]
-                                      [--solve] [--limit N] [--url URL]
-
-First time on a fresh machine:
-    pip3 install playwright && python3 -m playwright install chromium
+Env: OXYLABS_USERNAME, OXYLABS_PASSWORD (Web Scraper API), CLOUDFLARE_API_TOKEN
+     (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID.
+Run:  python3 scripts/sa-gov-to-d1.py [--max-pages N] [--no-skills] [--solve]
+                                      [--limit N] [--url URL]
 """
 from __future__ import annotations
 import json, os, re, subprocess, sys, time, datetime
 
-try:
-    from playwright.sync_api import sync_playwright
-except ImportError as e:
-    sys.exit(f'Missing dependency ({e}). Run: pip3 install playwright && python3 -m playwright install chromium')
-
 import urllib.request  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+try:
+    import oxylabs_client as oxy  # noqa: E402
+    import jobs_extract as jx  # noqa: E402
+except ImportError as e:
+    sys.exit(f'Missing helper module ({e}).')
 ROOT = os.path.dirname(HERE)
 
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
@@ -52,6 +51,7 @@ TODAY = datetime.date.today().isoformat()
 
 # The public "browse all jobs" report on the SA board. Any /jb/page/<token> that
 # lands on the search+results view works; this is the one the app links to.
+SITE = 'https://www.iworkfor.sa.gov.au'
 DEFAULT_URL = ('https://www.iworkfor.sa.gov.au/jb/page/'
                'S1FBZG43TXBhNG84MENJV0tIQ0xqajlNdmNjVTM1dEdRS3M1emgrNzd1cz0=')
 
@@ -63,7 +63,6 @@ def _opt(name, default=None):
 
 
 MAX_PAGES = int(_opt('--max-pages', 40))
-HEADFUL = '--headful' in args
 NO_SKILLS = '--no-skills' in args
 SOLVE = '--solve' in args          # render + report row count only, no D1 write
 LIMIT = int(_opt('--limit', 10**9))
@@ -214,120 +213,81 @@ def upsert(rows: list) -> int:
     return written
 
 
-# ── browser render of the BigRedSky report ────────────────────────────────────
-def chromium_executable():
-    # Honour a pre-provisioned Chromium if present (matches indeed scraper).
-    base = os.environ.get('PLAYWRIGHT_BROWSERS_PATH')
-    if base and os.path.isdir(base):
-        for root, _dirs, files in os.walk(base):
-            for f in files:
-                if f in ('chrome', 'chrome.exe', 'headless_shell'):
-                    return os.path.join(root, f)
-    return None
+# ── Oxylabs render of the BigRedSky report ────────────────────────────────────
+# The report table is JS-rendered; Oxylabs executes the page server-side and
+# returns the finished DOM, which jobs_extract then mines (embedded JSON first,
+# DOM anchors as fallback). BigRedSky paginates by URL parameter, but the exact
+# parameter varies by deployment, so we try the known candidates and keep
+# whichever actually yields new rows. Page 1 always archives even if pagination
+# can't be resolved — a partial archive beats exiting empty.
+PAGE_PARAMS = ('pageNum', 'page', 'pg', 'start', 'offset')
 
 
-# Extract every rendered result row as {title, agency, location, salary, closing,
-# url}, driven by the report's own header cells so it survives column re-ordering.
-EXTRACT_JS = r"""
-() => {
-  const tbl = document.querySelector('#brs_report_table_16')
-           || document.querySelector('#brs_report_table_140')
-           || document.querySelector('#report table');
-  if (!tbl) return {ready:false, rows:[]};
-  const norm = s => (s||'').replace(/\s+/g,' ').trim();
-  // header labels -> column index
-  const headCells = Array.from(tbl.querySelectorAll('tr'))
-      .map(tr => Array.from(tr.querySelectorAll('td.reportheading, th')))
-      .find(a => a.length) || [];
-  const heads = headCells.map(c => norm(c.textContent).toLowerCase());
-  const find = (...keys) => {
-    for (let i=0;i<heads.length;i++) for (const k of keys) if (heads[i].includes(k)) return i;
-    return -1;
-  };
-  const iTitle = find('title','position','role','vacancy','job');
-  const iAgency = find('agency','department','organisation','organization','employer');
-  const iLoc = find('location','region','suburb');
-  const iSal = find('salary','remuneration','classification');
-  const iClose = find('closing','close date','closes');
-  const rows = [];
-  const trs = tbl.querySelectorAll('tr.oddrow, tr.evenrow, tbody > tr');
-  trs.forEach(tr => {
-    if (tr.querySelector('td.reportheading, th')) return; // header
-    const tds = Array.from(tr.querySelectorAll('td'));
-    if (!tds.length) return;
-    const cell = i => (i>=0 && i<tds.length) ? norm(tds[i].textContent) : '';
-    const a = tr.querySelector('a[href]');
-    const title = cell(iTitle) || (a ? norm(a.textContent) : '');
-    if (!title) return;
-    rows.push({
-      title,
-      agency: cell(iAgency),
-      location: cell(iLoc),
-      salary: cell(iSal),
-      closing: cell(iClose),
-      url: a ? a.href : '',
-    });
-  });
-  return {ready:true, rows, heads};
-}
-"""
-
-# Advance to the next page of results, if a pagination control exists. Returns
-# true if it clicked something (caller then re-extracts), false if last page.
-NEXT_JS = r"""
-() => {
-  const scope = document.querySelector('#report') || document;
-  const cands = Array.from(scope.querySelectorAll('a, button'));
-  const enabled = e => !e.hasAttribute('disabled')
-      && e.getAttribute('aria-disabled') !== 'true'
-      && !(e.className || '').toLowerCase().includes('disabl');
-  const isNext = e => {
-    const t = (e.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
-    return t === 'next' || t === '>' || t === '»' || t === 'next page' || t.startsWith('next ');
-  };
-  const el = cands.find(e => isNext(e) && enabled(e));
-  if (el) { el.click(); return true; }
-  return false;
-}
-"""
+def _fetch_rows(url: str, tag: str):
+    content, status = oxy.fetch(url, geo='Australia', render=True)
+    if not content:
+        sys.stderr.write(f'  {tag}: no content (status={status})\n')
+        return [], None
+    rows, how = jx.extract_jobs(content, r'/jb/job/\d+|jobId=\d+', SITE)
+    return [{
+        'title': r['t'],
+        'agency': r.get('agency') or '',
+        'location': r.get('loc') or '',
+        'salary': r.get('salary') or '',
+        'closing': r.get('close') or '',
+        'url': r.get('url') or '',
+    } for r in rows if r.get('t')], (content, how)
 
 
-def scrape(page) -> list:
-    """Render + paginate the report, returning a flat list of row dicts."""
+def scrape() -> list:
+    """Fetch + paginate the report through Oxylabs, returning flat row dicts."""
     all_rows, seen = [], set()
-    # wait for the JS-rendered report table to appear
-    for sel in ('#brs_report_table_16', '#brs_report_table_140', '#report table'):
-        try:
-            page.wait_for_selector(sel, timeout=25000)
-            break
-        except Exception:
-            continue
-    for pageno in range(1, MAX_PAGES + 1):
-        try:
-            page.wait_for_timeout(1200)
-            data = page.evaluate(EXTRACT_JS)
-        except Exception as e:
-            sys.stderr.write(f'  extract error p{pageno}: {e}\n')
-            break
-        rows = data.get('rows') if isinstance(data, dict) else []
+
+    def take(rows) -> int:
         new = 0
-        for r in rows or []:
+        for r in rows:
             k = (norm(r.get('title')), norm(r.get('agency')), norm(r.get('location')))
             if k in seen:
                 continue
             seen.add(k)
             all_rows.append(r)
             new += 1
-        sys.stderr.write(f'  page {pageno}: {len(rows or [])} rows ({new} new)\n')
-        if new == 0 and pageno > 1:
+        return new
+
+    sys.stderr.write(f'  loading {START_URL}\n')
+    rows, meta = _fetch_rows(START_URL, 'page 1')
+    if meta:
+        content, how = meta
+        if not rows:
+            jx.diagnose(content, 'sa-page1')
+        else:
+            sys.stderr.write(f'  page 1: {len(rows)} rows (via {how})\n')
+    take(rows)
+    if not all_rows:
+        return []
+
+    # Resolve pagination: try each candidate param once on page 2 and keep the
+    # first that returns rows we haven't already seen.
+    sep = '&' if '?' in START_URL else '?'
+    param = None
+    for cand in PAGE_PARAMS:
+        probe, _ = _fetch_rows(f'{START_URL}{sep}{cand}=2', f'probe {cand}=2')
+        if probe and take(probe) > 0:
+            param = cand
+            sys.stderr.write(f'  pagination parameter resolved: {cand}\n')
             break
-        try:
-            advanced = page.evaluate(NEXT_JS)
-        except Exception:
-            advanced = False
-        if not advanced:
+    if not param:
+        sys.stderr.write('  no pagination parameter resolved — archiving page 1 only\n')
+        return all_rows
+
+    for pageno in range(3, MAX_PAGES + 1):
+        rows, _ = _fetch_rows(f'{START_URL}{sep}{param}={pageno}', f'page {pageno}')
+        new = take(rows)
+        sys.stderr.write(f'  page {pageno}: {len(rows)} rows ({new} new)\n')
+        if new == 0:
             break
     return all_rows
+
 
 
 def build_rows(scraped: list, have: dict):
@@ -357,24 +317,11 @@ def build_rows(scraped: list, have: dict):
 def main() -> int:
     if not AGENCY_NAMES:
         sys.exit('Could not parse agency names from src/employsi/data/adelaideGov.ts')
-    sys.stderr.write(f'SA gov -> D1: {len(AGENCY_NAMES)} agencies in roster; '
-                     f'{"SOLVE (no D1 write)" if SOLVE else "archiving"} '
-                     f'({"HEADFUL" if HEADFUL else "headless"}).\n')
-    exe = chromium_executable()
-    with sync_playwright() as p:
-        launch = {'headless': not HEADFUL}
-        if exe:
-            launch['executable_path'] = exe
-        browser = p.chromium.launch(**launch)
-        ctx = browser.new_context(
-            user_agent=('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-                        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36'),
-            viewport={'width': 1400, 'height': 1000}, locale='en-AU')
-        page = ctx.new_page()
-        sys.stderr.write(f'  loading {START_URL}\n')
-        page.goto(START_URL, wait_until='domcontentloaded', timeout=45000)
-        scraped = scrape(page)
-        browser.close()
+    if not (os.environ.get('OXYLABS_USERNAME') and os.environ.get('OXYLABS_PASSWORD')):
+        sys.exit('OXYLABS_USERNAME / OXYLABS_PASSWORD required (Web Scraper API).')
+    sys.stderr.write(f'SA gov -> D1 via Oxylabs: {len(AGENCY_NAMES)} agencies in roster; '
+                     f'{"SOLVE (no D1 write)" if SOLVE else "archiving"}.\n')
+    scraped = scrape()
 
     sys.stderr.write(f'  rendered {len(scraped)} vacancies\n')
     if SOLVE:
@@ -387,7 +334,7 @@ def main() -> int:
 
     if not scraped:
         sys.stderr.write('No rows rendered — nothing to archive. '
-                         '(Try --headful --solve to see what the page shows.)\n')
+                         '(Run with --solve; check the [diag] line above.)\n')
         return 2
 
     if LIMIT < len(scraped):

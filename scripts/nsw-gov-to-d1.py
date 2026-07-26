@@ -29,8 +29,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import urllib.request  # noqa: E402
 try:
     import oxylabs_client as oxy
+    import jobs_extract as jx
 except Exception as e:  # noqa: BLE001
-    sys.exit(f'Missing oxylabs_client ({e}).')
+    sys.exit(f'Missing helper module ({e}).')
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -192,53 +193,22 @@ def text_of(fragment):
 
 
 def parse_page(html: str):
-    """Extract {title, url, agency, location} for every job card on the page.
+    """Extract {title, url, agency, location} for every vacancy on the page.
 
-    Tolerant: anchor on each /job/<id> link, then read the surrounding block's
-    text (title = anchor text; organisation/location grabbed by label or by a
-    class hint). Works on the server-rendered HTML Oxylabs returns."""
-    rows = []
-    seen = set()
-    for m in re.finditer(r'<a\b[^>]*href="([^"]*?/job/(\d+)[^"]*)"[^>]*>(.*?)</a>', html, re.S | re.I):
-        href, jid, inner = m.group(1), m.group(2), m.group(3)
-        if jid in seen:
-            continue
-        title = text_of(inner)
-        if not title or len(title) < 3:
-            continue
-        seen.add(jid)
-        # window of HTML around the link → org/location
-        s = max(0, m.start() - 1400)
-        e = min(len(html), m.end() + 1400)
-        block = text_of(html[s:e])
-        def grab(labels):
-            for lb in labels:
-                g = re.search(lb + r'\s*[:\-]?\s*([^|\n]{2,70})', block, re.I)
-                if g:
-                    return g.group(1).strip()
-            return ''
-        agency = grab([r'organisation', r'organization', r'agency', r'department', r'cluster', r'employer'])
-        loc = grab([r'location', r'region'])
-        url = href if href.startswith('http') else SITE + href
-        rows.append({'title': title, 'url': url, 'agency': agency, 'location': loc or 'New South Wales'})
-    return rows
-
-
-def diagnose(html: str, where: str):
-    title = ''
-    tm = re.search(r'<title[^>]*>(.*?)</title>', html or '', re.S | re.I)
-    if tm:
-        title = text_of(tm.group(1))[:80]
-    n_job = len(re.findall(r'/job/\d+', html or ''))
-    n_card = len(re.findall(r'class="[^"]*(?:card|result|job)[^"]*"', html or '', re.I))
-    sys.stderr.write(f'  [diag {where}] len={len(html or "")} title={title!r} '
-                     f'/job/={n_job} cardish={n_card}\n')
-    # dump a snippet around the first "job" mention to reveal the structure
-    idx = (html or '').lower().find('/job/')
-    if idx < 0:
-        idx = (html or '').lower().find('job')
-    if idx >= 0:
-        sys.stderr.write('  [diag snippet] ' + WS.sub(' ', (html[idx - 200:idx + 500] or ''))[:600] + '\n')
+    iworkfor.nsw.gov.au is a Next.js app: the vacancy list is shipped in the RSC
+    flight payload (self.__next_f.push), NOT as <a href="/job/..."> anchors — the
+    first Oxylabs run returned a 499KB page with zero anchors for exactly this
+    reason. jobs_extract reads the embedded JSON first and only falls back to
+    anchors, so a rendering change can't silently zero us out again."""
+    rows, how = jx.extract_jobs(html, r'/job/\d+', SITE)
+    if rows:
+        sys.stderr.write(f'    (extracted via {how})\n')
+    return [{
+        'title': r['t'],
+        'url': r.get('url') or '',
+        'agency': r.get('agency') or '',
+        'location': r.get('loc') or 'New South Wales',
+    } for r in rows if r.get('t')]
 
 
 def page_url(pg: int) -> str:
@@ -263,7 +233,7 @@ def main() -> int:
             break
         rows = parse_page(content)
         if not rows and pg == 1:
-            diagnose(content, 'page1')
+            jx.diagnose(content, 'page1')
         new = 0
         for r in rows:
             k = (norm(r['title']), norm(r['agency']), norm(r['location']))

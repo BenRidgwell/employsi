@@ -16,6 +16,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import random
 import sys
 import time
 import urllib.request
@@ -31,13 +32,65 @@ def _auth_header() -> str:
     return 'Basic ' + base64.b64encode(f'{u}:{p}'.encode()).decode()
 
 
+# ── polite-scraping controls ─────────────────────────────────────────────────
+# Every scraper in this repo funnels its page fetches through fetch() below, so
+# the throttle + backoff policy lives here once rather than being re-implemented
+# (inconsistently) per script.
+#
+#  • MIN_INTERVAL paces successive requests from this process, with jitter, so we
+#    never hammer a target at full loop speed even when responses are fast.
+#  • 429 / 503 are treated as explicit "slow down" signals: we honour Retry-After
+#    when the server sends it, else back off exponentially.
+#  • Backoff is exponential WITH jitter (not the old linear 3s/6s/9s), which is
+#    what avoids synchronised retry storms when several jobs run at once.
+# Tunable per-process via env so a heavy multi-company driver (Indeed/LinkedIn)
+# can pace itself differently from a single-board walk.
+MIN_INTERVAL = float(os.environ.get('OXY_MIN_INTERVAL', '1.0'))   # seconds between calls
+JITTER = float(os.environ.get('OXY_JITTER', '0.6'))               # extra random 0..JITTER
+MAX_BACKOFF = float(os.environ.get('OXY_MAX_BACKOFF', '60'))
+RETRY_STATUSES = {429, 500, 502, 503, 504, 522, 524}
+
+_last_call = 0.0
+
+
+def _throttle() -> None:
+    """Space out successive requests (min interval + jitter)."""
+    global _last_call
+    now = time.monotonic()
+    wait = (_last_call + MIN_INTERVAL) - now
+    if wait > 0:
+        time.sleep(wait)
+    if JITTER > 0:
+        time.sleep(random.uniform(0, JITTER))
+    _last_call = time.monotonic()
+
+
+def _backoff(attempt: int, retry_after: float | None = None) -> float:
+    """Exponential backoff with full jitter, honouring Retry-After when given."""
+    if retry_after is not None:
+        return min(retry_after, MAX_BACKOFF)
+    return min(MAX_BACKOFF, random.uniform(0, (2 ** attempt) * 3.0))
+
+
+def _retry_after_seconds(e) -> float | None:
+    try:
+        v = e.headers.get('Retry-After') if getattr(e, 'headers', None) else None
+        return float(v) if v and str(v).strip().isdigit() else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def fetch(url: str, geo: str | None = None, render: bool = True,
           source: str = 'universal', user_agent_type: str = 'desktop',
-          timeout: int = 240, retries: int = 3):
+          timeout: int = 240, retries: int = 4):
     """Fetch `url` through Oxylabs. Returns (content, status_code) or (None, None).
 
     `content` is the fully-rendered page (HTML) when render=True, or the raw body
-    otherwise. `geo` is an Oxylabs geo_location string (e.g. "Australia", "China")."""
+    otherwise. `geo` is an Oxylabs geo_location string (e.g. "Australia", "China").
+
+    Requests are throttled and retried politely — see the controls above. A
+    target-side 429/5xx (reported by Oxylabs in the result's status_code) is
+    retried with backoff rather than being surfaced as a hard failure."""
     payload: dict = {'source': source, 'url': url, 'user_agent_type': user_agent_type}
     if render:
         payload['render'] = 'html'
@@ -46,19 +99,34 @@ def fetch(url: str, geo: str | None = None, render: bool = True,
     body = json.dumps(payload).encode()
     last = None
     for attempt in range(retries):
+        _throttle()
         try:
             req = urllib.request.Request(ENDPOINT, data=body, headers={
                 'Authorization': _auth_header(), 'Content-Type': 'application/json'})
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 j = json.loads(r.read().decode('utf-8', 'replace'))
             res = (j.get('results') or [{}])[0]
-            return res.get('content'), res.get('status_code')
+            content, status = res.get('content'), res.get('status_code')
+            # The TARGET rate-limited us (Oxylabs relays its status): back off.
+            if status in RETRY_STATUSES and attempt < retries - 1:
+                delay = _backoff(attempt)
+                sys.stderr.write(f'  target returned {status}; backing off {delay:.1f}s\n')
+                time.sleep(delay)
+                last = f'target status {status}'
+                continue
+            return content, status
         except urllib.error.HTTPError as e:
             last = f'HTTP {e.code}: {e.read().decode("utf-8", "replace")[:160]}'
+            if e.code in RETRY_STATUSES and attempt < retries - 1:
+                time.sleep(_backoff(attempt, _retry_after_seconds(e)))
+                continue
+            if e.code in (401, 403):  # bad/expired credentials — retrying won't help
+                sys.stderr.write(f'  oxylabs auth failed ({e.code}) — check OXYLABS_USERNAME/PASSWORD\n')
+                return None, e.code
         except Exception as e:  # noqa: BLE001
             last = str(e)[:160]
         if attempt < retries - 1:
-            time.sleep(3 * (attempt + 1))
+            time.sleep(_backoff(attempt))
     sys.stderr.write(f'  oxylabs fetch failed for {url[:70]}: {last}\n')
     return None, None
 

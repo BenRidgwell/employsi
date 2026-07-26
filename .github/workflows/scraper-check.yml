@@ -1,0 +1,48 @@
+# Scraper-parser integrity check.
+#
+# The gov job boards (NSW = Next.js, APS = Salesforce Aura, SA = BigRedSky) all
+# render client-side, and each has already broken us once by shipping its data
+# somewhere the parser wasn't looking — the NSW rewrite returned 0 rows from a
+# 499KB page because the vacancies live in the RSC flight payload, not anchors.
+#
+# scripts/jobs_extract.py is the shared, defensive extractor those scrapers use.
+# These tests pin its behaviour against fixtures shaped like each board's real
+# rendering (plus negative cases: challenge pages and nav JSON must yield NO
+# jobs), so a regression fails here rather than silently archiving nothing at
+# 04:30 with a red X nobody reads.
+#
+# Also byte-compiles every scraper so a syntax error can't reach a scheduled run.
+
+name: scraper-check
+
+on:
+  push:
+    paths:
+      - 'scripts/jobs_extract.py'
+      - 'scripts/oxylabs_client.py'
+      - 'scripts/*-to-d1.py'
+      - 'scripts/test_jobs_extract.py'
+      - '.github/workflows/scraper-check.yml'
+  pull_request:
+    paths:
+      - 'scripts/jobs_extract.py'
+      - 'scripts/oxylabs_client.py'
+      - 'scripts/*-to-d1.py'
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Job-extraction parser tests
+        run: python scripts/test_jobs_extract.py
+
+      - name: Byte-compile the scrapers
+        run: python -m compileall -q scripts/*.py
