@@ -382,7 +382,6 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["DLB", "Dolby Laboratories", TMT, "NYSE"],
       ["WSM", "Williams-Sonoma", CON, "NYSE"],
       ["DOCU", "DocuSign", TMT],
-      ["TOST", "Toast", TMT, "NYSE"],
       ["CRM", "Salesforce", TMT, "NYSE"],
       ["WFC", "Wells Fargo", FIN, "NYSE"],
       ["UBER", "Uber Technologies", TMT, "NYSE"],
@@ -876,6 +875,8 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
   boston: {
     exchange: "NYSE",
     companies: [
+      // Toast was in the San Francisco roster; its HQ is 401 Park Drive, Boston.
+      ["TOST", "Toast", TMT, "NYSE"],
       ["TMO", "Thermo Fisher Scientific", HLT],
       ["STT", "State Street", FIN],
       ["BSX", "Boston Scientific", HLT],
