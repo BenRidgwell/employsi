@@ -609,6 +609,7 @@ body {
   right: var(--rail-left);
   bottom: 32px;
   height: 44px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   padding: 5px;
@@ -616,16 +617,21 @@ body {
   border-radius: 22px;
   background: var(--raised-surface);
   box-shadow: var(--raised-shadow);
-  overflow: hidden;
+  /* Visible, not hidden: the pause button's tooltip sits above the pill and
+     would otherwise be clipped. The marquee is clipped by .tickerwrap's own
+     overflow, so nothing else escapes. */
+  overflow: visible;
   z-index: 9;
-  /* Informational only — take pointer events so a plain arrow cursor shows
-     (rather than the map's grab cursor bleeding through underneath, which
-     made the strip look draggable/selectable), but never let the scrolling
-     text actually be selected or clicked. Same pattern as .legend/.heatkey. */
+  /* Take pointer events so a plain arrow cursor shows (rather than the map's
+     grab cursor bleeding through underneath, which made the strip look
+     draggable), and so the control cluster is clickable. The scrolling text
+     itself is never selectable. Same pattern as .legend/.heatkey. */
   pointer-events: auto;
   cursor: default;
   user-select: none;
 }
+
+/* --- Status chip: pulsing dot + "SKILLS IN DEMAND" + the active window ------ */
 .tickerlbl {
   flex: 0 0 auto;
   display: flex;
@@ -637,33 +643,44 @@ body {
   background: var(--surface-inverse);
   color: var(--text-inverse);
   font-family: var(--font-mono);
-  font-weight: 500;
   font-size: 11px;
   letter-spacing: var(--tracking-eyebrow);
   text-transform: uppercase;
+  white-space: nowrap;
 }
 .tickerlbl i {
   width: 7px;
   height: 7px;
-  border-radius: 50%;
+  border-radius: 999px;
   background: #fff;
-  animation: tpulse 1.6s ease-in-out infinite;
+  animation: tpulse 1.8s ease-in-out infinite;
+}
+/* The window the figures are measured over, as the chip's quieter second half. */
+.tlblwin {
+  letter-spacing: 0.08em;
+  color: var(--neutral-400);
+  white-space: nowrap;
 }
 @keyframes tpulse {
   0%,
   100% {
     opacity: 1;
-    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.55);
+    transform: scale(1);
   }
   50% {
-    opacity: 0.45;
-    box-shadow: 0 0 0 5px rgba(255, 255, 255, 0);
+    opacity: 0.35;
+    transform: scale(0.72);
   }
 }
+
+/* --- Marquee ---------------------------------------------------------------- */
 .tickerwrap {
-  flex: 1;
-  overflow: hidden;
   position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
   /* Fixed-width fade rather than a percentage, so the edges read identically at
      any window width (the design uses 40px in, 56px out). */
   -webkit-mask-image: linear-gradient(
@@ -681,17 +698,18 @@ body {
     transparent 100%
   );
 }
-/* Pause the marquee on hover so a row can actually be read — the design does
-   the same via style-hover on the track. */
-.tickerwrap:hover .tickertrack {
-  animation-play-state: paused;
-}
 .tickertrack {
   display: flex;
   align-items: center;
   height: 100%;
   width: max-content;
-  animation: tscroll 58s linear infinite;
+  animation: tscroll 46s linear infinite;
+}
+/* Pause the marquee on hover so a row can actually be read — the design does
+   the same via style-hover on the track — and on demand via the pause button. */
+.tickerwrap:hover .tickertrack,
+.tickertrack.paused {
+  animation-play-state: paused;
 }
 .titem {
   display: flex;
@@ -708,22 +726,10 @@ body {
   letter-spacing: -0.006em;
   color: var(--text-primary);
 }
-/* The design's row is name + sparkline + delta chip. There is no per-skill time
-   series behind this ticker — getLiveSkillTrends returns {name, tag, v} only —
-   so the sparkline is omitted rather than drawn from invented data. The tag
-   (Demand / Headcount) is real, so it stays as the design's secondary mono
-   label. */
-.ttag {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: var(--weight-medium);
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-label);
-}
-/* Sparkline: the design's 48x18 line between the name and the delta chip. It is
-   only rendered for rows with real measured history (see sparkPath), so its
-   absence on a row is meaningful rather than a rendering gap. */
+/* Sparkline: the design's 48x18 line between the name and the delta chip,
+   coloured to the row's direction. It is only rendered for rows with real
+   measured history (see sparkPath), so its absence on a row is meaningful
+   rather than a rendering gap. */
 .tspark {
   display: block;
   flex: 0 0 auto;
@@ -733,13 +739,17 @@ body {
   opacity: 0.85;
 }
 .tspark.up {
-  color: var(--status-success-dot);
+  color: var(--green-500);
 }
 .tspark.down {
-  color: var(--status-danger-dot);
+  color: var(--red-500);
 }
-/* Delta chip, per the design: 21px tall, 7px radius, tinted to its direction,
-   figures in tabular mono so the column doesn't jitter as values drift. */
+.tspark.flat {
+  color: var(--neutral-500);
+}
+/* Delta chip: 21px tall, 7px radius, coloured to its direction. Per the design
+   the fill is a FLASH, not a permanent tint — it appears when the value moves
+   and fades back to transparent, so the resting row is text on the pill. */
 .tdelta {
   display: inline-flex;
   align-items: center;
@@ -747,23 +757,47 @@ body {
   height: 21px;
   padding: 0 7px;
   border-radius: 7px;
+  background: rgba(244, 244, 245, 0);
+  transition: background 700ms ease-out;
+}
+.tpct {
   font-family: var(--font-mono);
   font-size: 12px;
-  font-weight: var(--weight-medium);
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
-.tdelta .ar {
-  font-size: 9px;
-  line-height: 1;
+/* The arrow is one glyph rotated to the direction — up, down, or level for a
+   flat row — so the change reads as motion rather than a swapped icon. */
+.tdelta svg {
+  display: block;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 260ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 .tdelta.up {
-  color: var(--status-success-fg);
-  background: var(--status-success-bg);
+  color: var(--green-500);
 }
 .tdelta.down {
-  color: var(--status-danger-fg);
-  background: var(--status-danger-bg);
+  color: var(--red-500);
+}
+.tdelta.down svg {
+  transform: rotate(180deg);
+}
+.tdelta.flat {
+  color: var(--neutral-500);
+}
+.tdelta.flat svg {
+  transform: rotate(90deg);
+}
+.tdelta.flash.up {
+  background: var(--green-50);
+}
+.tdelta.flash.down {
+  background: var(--red-50);
+}
+.tdelta.flash.flat {
+  background: var(--neutral-100);
 }
 @keyframes tscroll {
   from {
@@ -772,6 +806,105 @@ body {
   to {
     transform: translateX(-50%);
   }
+}
+
+/* --- Control cluster: window cycle + pause, behind a hairline divider ------- */
+.tickerctl {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  padding-left: 8px;
+  margin-left: 4px;
+  border-left: 1px solid var(--border-subtle);
+}
+.tickerwin,
+.tickerpause {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--neutral-700);
+  cursor: pointer;
+  transition:
+    background var(--duration-base) cubic-bezier(0.32, 0.72, 0, 1),
+    color var(--duration-base),
+    transform 110ms;
+}
+.tickerwin {
+  padding: 0 9px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.tickerpause {
+  width: 34px;
+  padding: 0;
+}
+.tickerwin:hover,
+.tickerpause:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.tickerwin:active {
+  transform: scale(0.96);
+}
+.tickerpause:active {
+  transform: scale(0.94);
+}
+/* Disabled only while there is no archived history to compare windows against. */
+.tickerwin:disabled {
+  color: var(--text-disabled);
+  cursor: default;
+}
+.tickerwin:disabled:hover {
+  background: transparent;
+  color: var(--text-disabled);
+}
+/* The two bars draw slightly together when paused, so the state is visible
+   without swapping in a play triangle. */
+.tickerpause svg line {
+  transition: transform 220ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.tickerpause svg {
+  stroke-width: 1.9;
+}
+.tickerpause svg.paused line:first-of-type {
+  transform: translateX(1.5px);
+}
+.tickerpause svg.paused line:last-of-type {
+  transform: translateX(-1.5px);
+}
+.tickertip {
+  position: absolute;
+  bottom: calc(100% + 14px);
+  left: 50%;
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%) translateY(4px);
+  transition:
+    opacity 140ms,
+    transform 140ms;
+}
+.tickerpause:hover .tickertip,
+.tickerpause:focus-visible .tickertip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 /* In the header row now, not floating over the map. `top: 38px` used to clear
    the ticker strip, which has moved to the bottom of the frame; the row's own
@@ -6057,8 +6190,10 @@ body {
     display: none !important;
   }
 
-  /* Ticker: a touch more compact. Smaller "Live trends" header + smaller
-     scrolling items, but the strip stays in the same top position. */
+  /* Ticker: a touch more compact. Smaller status chip + smaller scrolling
+     items. The window label and the control cluster are dropped — there is no
+     room for them in a 38px full-width strip, and both are hover/click affordances
+     that don't suit touch. */
   .tickerlbl {
     padding: 0 10px;
     font-size: 8px;
@@ -6068,6 +6203,10 @@ body {
     width: 6px;
     height: 6px;
   }
+  .tlblwin,
+  .tickerctl {
+    display: none;
+  }
   .titem {
     gap: 7px;
     padding: 0 13px;
@@ -6075,12 +6214,11 @@ body {
   .tname {
     font-size: 10.5px;
   }
-  .ttag {
-    font-size: 7.5px;
-    letter-spacing: 0.4px;
-  }
-  .tdelta {
+  .tpct {
     font-size: 10px;
+  }
+  .tspark {
+    display: none;
   }
 
   /* Layer selection sits in the top-right corner on mobile, laid out as a

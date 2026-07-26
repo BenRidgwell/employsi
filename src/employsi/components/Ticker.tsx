@@ -1,16 +1,43 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TICKER_BASE, type TickerItem } from "../data/companies";
-import { getLiveSkillTrends } from "../lib/jobHistoryFn";
+import { getLiveSkillTrends, TREND_WINDOWS } from "../lib/jobHistoryFn";
 
-function cloneBase(): TickerItem[] {
-  return TICKER_BASE.map((d) => ({ ...d }));
-}
+/**
+ * The skills trend ticker, built from `Skills Trend Ticker.dc.html` in the
+ * Employsi Design System project.
+ *
+ * The first pass at this restyled the existing strip to approximate the design.
+ * This one is a port of the design's own markup, element for element: the dark
+ * status chip with its window label, the masked marquee, the row as
+ * name → sparkline → delta chip with a rotating stroked arrow, and the control
+ * cluster (window cycle + pause) behind a hairline divider on the right.
+ *
+ * Two deliberate departures, both because the design's mock had no real data
+ * behind it:
+ *
+ *  1. The design cycles 24h/7d/30d by multiplying one delta by 1 / 2.1 / 3.4.
+ *     Here each window is measured independently against its own prior window
+ *     (see TREND_WINDOWS in jobHistoryFn), so switching re-reads the archive
+ *     rather than rescaling a single figure. When the archive has nothing for
+ *     ANY window the ticker falls back to the static seed and the window button
+ *     is disabled, because there is no second window to switch to.
+ *  2. The design's mock churns values every 2s and flashes the chip to mark the
+ *     change. Our figures are measured, and the previous implementation drifted
+ *     them by up to ±1.2pp to imitate that liveness — which meant the number on
+ *     screen was not the number measured. The drift is gone. The flash is kept
+ *     and fires when a value genuinely changes: a fresh archive read, or a
+ *     window switch.
+ *
+ * The pause button therefore stops the marquee rather than a value churn that
+ * no longer exists, and its tooltip says so ("Pause ticker", not the design's
+ * "Pause updates").
+ */
 
-// Sparkline geometry, matching the design's 48x18 box.
+// Sparkline geometry, matching the design's spark(): a 48x18 box with the line
+// inset to x 1..47, y 2..16 so the 1.6px stroke stays inside it.
 const SPARK_W = 48;
 const SPARK_H = 18;
-const SPARK_PAD = 2; // keeps the 1.6px stroke inside the viewBox at the extremes
 
 /**
  * Daily live-vacancy counts → an SVG path, scaled to the box.
@@ -25,22 +52,26 @@ function sparkPath(series: number[] | undefined): string | null {
   const lo = Math.min(...series);
   const hi = Math.max(...series);
   if (hi === lo) return null;
-  const dx = (SPARK_W - SPARK_PAD * 2) / (series.length - 1);
-  const span = SPARK_H - SPARK_PAD * 2;
   return series
     .map((v, i) => {
-      const x = SPARK_PAD + i * dx;
+      const x = 1 + (i / (series.length - 1)) * 46;
       // SVG y grows downward, so a higher count sits nearer the top.
-      const y = SPARK_PAD + (1 - (v - lo) / (hi - lo)) * span;
-      return `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
+      const y = 16 - ((v - lo) / (hi - lo)) * 14;
+      return `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
     })
     .join(" ");
 }
 
+// The design's three states: rising, falling, and flat — flat is grey with the
+// arrow turned on its side, and exists so a ~0% row doesn't read as a rise.
+type Dir = "up" | "down" | "flat";
+const dirOf = (v: number): Dir => (v >= 0.15 ? "up" : v <= -0.15 ? "down" : "flat");
+
 export function Ticker({ hidden }: { hidden: boolean }) {
-  // Real, market-wide skill-demand movers from the D1 job archive. Refreshes
-  // once a day (the archive only changes on the daily cron); falls back to the
-  // static seed while loading or before the archive has enough history.
+  // Real, market-wide skill-demand movers from the D1 job archive, for all three
+  // windows at once (one scan serves them all). Refreshes once a day — the
+  // archive only changes on the daily cron — and falls back to the static seed
+  // while loading or before the archive has enough history.
   const { data: live } = useQuery({
     queryKey: ["liveSkillTrends"],
     queryFn: () => getLiveSkillTrends(),
@@ -49,50 +80,47 @@ export function Ticker({ hidden }: { hidden: boolean }) {
     retry: false,
   });
 
-  const [items, setItems] = useState<TickerItem[]>(cloneBase);
-  const dataRef = useRef<TickerItem[]>(items);
-  // Anchor values = the real demand deltas; the gentle per-tick drift animates
-  // around them so the ticker feels live without inventing fake magnitudes.
-  const anchorRef = useRef<TickerItem[]>(cloneBase());
+  const [winIdx, setWinIdx] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const win = TREND_WINDOWS[winIdx];
 
-  // When the real data arrives, adopt it as the new anchor + baseline display.
+  const rows = live?.[win.key];
+  const items: TickerItem[] = rows && rows.length ? rows : TICKER_BASE;
+  // Cycling is only offered when there is real data to cycle THROUGH; on the
+  // seed every window would show the same fabricated figures.
+  const anyLive = !!live && TREND_WINDOWS.some((w) => (live[w.key]?.length ?? 0) > 0);
+
+  // Flash the delta chip on rows whose value actually moved. `items` is a stable
+  // reference (query data or the module-level seed), so this runs on a real data
+  // change or a window switch, not on every render.
+  const lastValues = useRef<Record<string, number>>({});
+  const [flashed, setFlashed] = useState<ReadonlySet<string>>(new Set());
   useEffect(() => {
-    if (live && live.length) {
-      const real = live.map((d) => ({ name: d.name, tag: d.tag, v: d.v }));
-      anchorRef.current = real.map((d) => ({ ...d }));
-      dataRef.current = real.map((d) => ({ ...d }));
-      setItems(dataRef.current);
+    const changed = new Set<string>();
+    for (const t of items) {
+      const before = lastValues.current[t.name];
+      if (before !== undefined && Math.abs(before - t.v) >= 0.05) changed.add(t.name);
+      lastValues.current[t.name] = t.v;
     }
-  }, [live]);
+    if (!changed.size) return;
+    setFlashed(changed);
+    const id = setTimeout(() => setFlashed(new Set()), 800);
+    return () => clearTimeout(id);
+  }, [items]);
 
-  useEffect(() => {
-    const id = setInterval(() => {
-      const anchors = anchorRef.current;
-      dataRef.current = dataRef.current.map((d, i) => {
-        const anchor = anchors[i]?.v ?? d.v;
-        // Drift by a small amount but stay within ±1.2 of the real anchor value.
-        let v = d.v + (Math.random() - 0.5) * 0.4;
-        if (v > anchor + 1.2) v = anchor + 1.2;
-        if (v < anchor - 1.2) v = anchor - 1.2;
-        if (v > 24) v = 24;
-        if (v < -16) v = -16;
-        return { ...d, v };
-      });
-      setItems(dataRef.current);
-    }, 2400);
-    return () => clearInterval(id);
-  }, []);
+  // The 30-day window draws the full month; the shorter windows draw the tail of
+  // the same daily series, as the design's fixed 14-point line does.
+  const sparkDays = win.days >= 30 ? 30 : 14;
 
   const renderItem = (t: TickerItem, key: string) => {
-    const up = t.v >= 0;
-    const path = sparkPath(t.spark);
+    const dir = dirOf(t.v);
+    const path = sparkPath(t.spark ? t.spark.slice(-sparkDays) : undefined);
     return (
       <div className="titem" key={key}>
         <span className="tname">{t.name}</span>
-        <span className="ttag">{t.tag}</span>
         {path && (
           <svg
-            className={`tspark ${up ? "up" : "down"}`}
+            className={`tspark ${dir}`}
             viewBox={`0 0 ${SPARK_W} ${SPARK_H}`}
             width={SPARK_W}
             height={SPARK_H}
@@ -103,9 +131,19 @@ export function Ticker({ hidden }: { hidden: boolean }) {
             <path d={path} />
           </svg>
         )}
-        <span className={`tdelta ${up ? "up" : "down"}`}>
-          <span className="ar">{up ? "▲" : "▼"}</span>
-          {(up ? "+" : "") + t.v.toFixed(1)}%
+        <span className={`tdelta ${dir}${flashed.has(t.name) ? " flash" : ""}`}>
+          <svg
+            viewBox="0 0 12 12"
+            width={11}
+            height={11}
+            fill="none"
+            stroke="currentColor"
+            aria-hidden
+          >
+            <line x1="6" y1="10" x2="6" y2="2" />
+            <polyline points="2.5 5.5 6 2 9.5 5.5" />
+          </svg>
+          <span className="tpct">{(t.v > 0 ? "+" : "") + t.v.toFixed(1)}%</span>
         </span>
       </div>
     );
@@ -115,13 +153,53 @@ export function Ticker({ hidden }: { hidden: boolean }) {
     <div className={`ticker ${hidden ? "zoomhide" : ""}`}>
       <div className="tickerlbl">
         <i />
-        Live trends
+        <span>Skills in demand</span>
+        <span className="tlblwin">{win.label}</span>
       </div>
+
       <div className="tickerwrap">
-        <div className="tickertrack">
+        <div className={`tickertrack${paused ? " paused" : ""}`}>
           {items.map((t, i) => renderItem(t, "a" + i))}
           {items.map((t, i) => renderItem(t, "b" + i))}
         </div>
+      </div>
+
+      <div className="tickerctl">
+        <button
+          type="button"
+          className="tickerwin"
+          onClick={() => setWinIdx((i) => (i + 1) % TREND_WINDOWS.length)}
+          disabled={!anyLive}
+          title={
+            anyLive
+              ? `Showing ${win.label.replace("· ", "").toLowerCase()} — click to change`
+              : "Comparison windows unlock once the job archive has history"
+          }
+          aria-label={`Trend window: ${win.short}`}
+        >
+          {win.short}
+        </button>
+        <button
+          type="button"
+          className="tickerpause"
+          onClick={() => setPaused((p) => !p)}
+          aria-label={paused ? "Resume ticker" : "Pause ticker"}
+          aria-pressed={paused}
+        >
+          <span className="tickertip">{paused ? "Resume ticker" : "Pause ticker"}</span>
+          <svg
+            className={paused ? "paused" : ""}
+            viewBox="0 0 24 24"
+            width={18}
+            height={18}
+            fill="none"
+            stroke="currentColor"
+            aria-hidden
+          >
+            <line x1="9.5" y1="5" x2="9.5" y2="19" />
+            <line x1="14.5" y1="5" x2="14.5" y2="19" />
+          </svg>
+        </button>
       </div>
     </div>
   );

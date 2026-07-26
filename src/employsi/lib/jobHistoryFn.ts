@@ -211,10 +211,24 @@ export interface LiveSkillTrend {
   v: number; // % change (positive = rising demand); newly-surging capped at +24
   // Daily count of live vacancies demanding this skill, oldest → newest, for
   // the ticker's sparkline. Omitted when the archive is too young to draw an
-  // honest line (see SPARK_DAYS below) — the ticker then shows the row without
-  // one rather than inventing a shape.
+  // honest line (see SPARK_MIN_POINTS below) — the ticker then shows the row
+  // without one rather than inventing a shape.
   spark?: number[];
 }
+
+// The three windows the ticker's window control cycles through, matching the
+// design. Each is computed independently from the archive against its OWN prior
+// window (24h vs the day before, 7d vs the week before, 30d vs the month
+// before), so switching window changes what is being measured rather than
+// rescaling one number — the design's mock multiplied a single delta by 2.1 and
+// 3.4, which would have been a fabricated figure here.
+export type TrendWindow = "24h" | "7d" | "30d";
+export const TREND_WINDOWS: { key: TrendWindow; days: number; label: string; short: string }[] = [
+  { key: "24h", days: 1, label: "· Last 24 hours", short: "24h" },
+  { key: "7d", days: 7, label: "· Last 7 days", short: "7d" },
+  { key: "30d", days: 30, label: "· Last 30 days", short: "30d" },
+];
+export type LiveSkillTrends = Record<TrendWindow, LiveSkillTrend[]>;
 
 // Market-wide daily skill-demand trends for the app's "Live trends" ticker.
 // Reads every recently-active listing in the D1 archive (all sources — Adzuna,
@@ -226,15 +240,16 @@ export interface LiveSkillTrend {
 // archive holds enough history to compute movers; the client falls back to a
 // static seed in that case so the ticker is never empty.
 export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
-  async (): Promise<LiveSkillTrend[]> => {
+  async (): Promise<LiveSkillTrends> => {
+    const empty: LiveSkillTrends = { "24h": [], "7d": [], "30d": [] };
     const db = await getArchiveDb();
-    if (!db) return [];
-    const WINDOW = 7; // days per comparison window (daily-refreshing weekly momentum)
+    if (!db) return empty;
     // Sparkline length. The archive stores first_seen/last_seen per listing, so
     // "how many live vacancies demanded skill X on day D" is recoverable for any
     // day the archive was actually running — no new storage needed, and the line
-    // gets richer on its own as the archive accumulates.
-    const SPARK_DAYS = 14;
+    // gets richer on its own as the archive accumulates. 30 days is the longest
+    // any window needs; the shorter windows draw the tail of the same series.
+    const SPARK_DAYS = 30;
     const SPARK_MIN_POINTS = 5; // below this the line says more about the
     // archive's age than about demand, so it is dropped entirely
     const day = (offset: number) => {
@@ -242,25 +257,32 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
       d.setUTCDate(d.getUTCDate() - offset);
       return d.toISOString().slice(0, 10);
     };
-    const recentStart = day(WINDOW);
-    const priorStart = day(WINDOW * 2);
-    const priorEnd = recentStart;
+    // The widest window pair (30 + 30) bounds the scan; the narrower windows are
+    // computed from the same rows, so all three cost one query.
+    const widest = Math.max(...TREND_WINDOWS.map((w) => w.days));
+    const scanFrom = day(widest * 2);
+    // Per-window comparison boundaries, resolved once.
+    const bounds = TREND_WINDOWS.map((w) => ({
+      key: w.key,
+      recentStart: day(w.days),
+      priorStart: day(w.days * 2),
+      priorEnd: day(w.days),
+      now: {} as Record<string, number>,
+      prev: {} as Record<string, number>,
+    }));
     // Oldest → newest, the days the sparkline covers.
     const sparkDays: string[] = [];
     for (let i = SPARK_DAYS - 1; i >= 0; i--) sparkDays.push(day(i));
     try {
-      // Only rows active within the two windows — bounds the scan.
       const res = await db
         .prepare(
           `SELECT skills, first_seen, last_seen FROM jobs
              WHERE skills IS NOT NULL AND last_seen >= ?1`,
         )
-        .bind(priorStart)
+        .bind(scanFrom)
         .all();
       const rows = res?.results ?? [];
-      if (!rows.length) return [];
-      const nowT: Record<string, number> = {};
-      const prevT: Record<string, number> = {};
+      if (!rows.length) return empty;
       // skill -> per-day live-vacancy count, indexed against sparkDays.
       const daily: Record<string, number[]> = {};
       // The earliest day the archive holds anything at all. Days before it are
@@ -279,9 +301,11 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
         const ls = String(r.last_seen || "");
         if (!fs || !ls) continue;
         if (fs < archiveStart) archiveStart = fs;
-        if (ls >= recentStart) for (const s of skills) nowT[s] = (nowT[s] || 0) + 1;
-        if (fs <= priorEnd && ls >= priorStart)
-          for (const s of skills) prevT[s] = (prevT[s] || 0) + 1;
+        for (const b of bounds) {
+          if (ls >= b.recentStart) for (const s of skills) b.now[s] = (b.now[s] || 0) + 1;
+          if (fs <= b.priorEnd && ls >= b.priorStart)
+            for (const s of skills) b.prev[s] = (b.prev[s] || 0) + 1;
+        }
         // A listing is live on day D when it was first seen on or before D and
         // last seen on or after it.
         for (let i = 0; i < sparkDays.length; i++) {
@@ -304,41 +328,52 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
         // A dead-flat line is noise, not signal — leave it off.
         return cut.some((v) => v !== cut[0]) ? cut : undefined;
       };
-      const skills = new Set([...Object.keys(nowT), ...Object.keys(prevT)]);
-      type Row = { name: string; v: number; sig: number };
-      const movers: Row[] = [];
-      for (const s of skills) {
-        if (!(s in SKILL_CATEGORY)) continue; // only canonical skills on the ticker
-        const now = nowT[s] || 0;
-        const prev = prevT[s] || 0;
-        // Require a little volume so single-listing noise doesn't dominate.
-        if (now + prev < 3) continue;
-        const delta = now - prev;
-        if (delta === 0) continue;
-        let pct = prev > 0 ? (delta / prev) * 100 : 100;
-        pct = Math.max(-16, Math.min(24, pct)); // match the ticker's visual band
-        movers.push({ name: s, v: Math.round(pct * 10) / 10, sig: Math.abs(delta) });
-      }
-      // Biggest absolute movers first; interleave so the ticker mixes up + down.
-      movers.sort((a, b) => b.sig - a.sig || Math.abs(b.v) - Math.abs(a.v));
-      const picked = movers.slice(0, 16);
-      // Fallback: if the archive is too young for real movers, show the highest-
-      // demand skills right now as a mild positive so the ticker still reads live.
-      if (picked.length < 6) {
-        const top = Object.entries(nowT)
-          .filter(([s]) => s in SKILL_CATEGORY)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 16);
-        const seen = new Set(picked.map((p) => p.name));
-        for (const [name, cnt] of top) {
-          if (seen.has(name)) continue;
-          picked.push({ name, v: Math.min(18, 2 + Math.round(cnt / 3)), sig: cnt });
-          if (picked.length >= 12) break;
+
+      const out = { ...empty };
+      for (const b of bounds) {
+        const skills = new Set([...Object.keys(b.now), ...Object.keys(b.prev)]);
+        type Row = { name: string; v: number; sig: number };
+        const movers: Row[] = [];
+        for (const s of skills) {
+          if (!(s in SKILL_CATEGORY)) continue; // only canonical skills on the ticker
+          const now = b.now[s] || 0;
+          const prev = b.prev[s] || 0;
+          // Require a little volume so single-listing noise doesn't dominate.
+          if (now + prev < 3) continue;
+          const delta = now - prev;
+          if (delta === 0) continue;
+          let pct = prev > 0 ? (delta / prev) * 100 : 100;
+          pct = Math.max(-16, Math.min(24, pct)); // match the ticker's visual band
+          movers.push({ name: s, v: Math.round(pct * 10) / 10, sig: Math.abs(delta) });
         }
+        // Biggest absolute movers first; interleave so the ticker mixes up + down.
+        movers.sort((a, b2) => b2.sig - a.sig || Math.abs(b2.v) - Math.abs(a.v));
+        const picked = movers.slice(0, 16);
+        // Fallback: if the archive is too young for real movers in this window,
+        // show the highest-demand skills right now as a mild positive so the
+        // ticker still reads live.
+        if (picked.length < 6) {
+          const top = Object.entries(b.now)
+            .filter(([s]) => s in SKILL_CATEGORY)
+            .sort((x, y) => y[1] - x[1])
+            .slice(0, 16);
+          const seen = new Set(picked.map((p) => p.name));
+          for (const [name, cnt] of top) {
+            if (seen.has(name)) continue;
+            picked.push({ name, v: Math.min(18, 2 + Math.round(cnt / 3)), sig: cnt });
+            if (picked.length >= 12) break;
+          }
+        }
+        out[b.key] = picked.map((p) => ({
+          name: p.name,
+          tag: "Demand",
+          v: p.v,
+          spark: sparkFor(p.name),
+        }));
       }
-      return picked.map((p) => ({ name: p.name, tag: "Demand", v: p.v, spark: sparkFor(p.name) }));
+      return out;
     } catch {
-      return [];
+      return empty;
     }
   },
 );
