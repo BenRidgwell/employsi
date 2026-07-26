@@ -88,6 +88,19 @@ export function IconCompany() {
   );
 }
 
+/** Ask an analyst: the design's figure-at-a-lectern, which straightens up. */
+export function IconAnalyst() {
+  return (
+    <svg {...BOX} width={20} height={20} aria-hidden>
+      <circle className="ai-lift-sm" cx="12" cy="5.6" r="2.9" />
+      <path className="ai-lift-half" d="M9.5 9 12 12.2 14.5 9" />
+      <path d="M9.5 9 6.4 10.3A4.4 4.4 0 0 0 3.8 14.4V20h6.1" />
+      <path d="M14.5 9l3.1 1.3a4.4 4.4 0 0 1 2.6 4.1V20h-6.1" />
+      <path className="ai-dot ai-lift-sm ai-d1b" d="M10.6 12.9h2.8l-.7 3.1.9 3.9h-3.2l.9-3.9Z" />
+    </svg>
+  );
+}
+
 export function IconFilter() {
   return (
     <svg {...BOX} width={20} height={20} aria-hidden>

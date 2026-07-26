@@ -62,6 +62,8 @@ export interface AppState {
   compareB: string | null;
   briefOpen: boolean;
   trendingOpen: boolean;
+  // "Ask an analyst": a scoped Q&A over the live vacancy archive.
+  analystOpen: boolean;
   // Feedback board + help-tour open state. Lifted here (Settings already is) so
   // the mobile "More" sheet can open them alongside the desktop dock buttons.
   feedbackOpen: boolean;
@@ -130,6 +132,8 @@ export interface AppState {
   closeBrief: () => void;
   toggleTrending: () => void;
   closeTrending: () => void;
+  toggleAnalyst: () => void;
+  closeAnalyst: () => void;
 
   toggleFeedback: () => void;
   closeFeedback: () => void;
@@ -238,6 +242,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   compareB: null,
   briefOpen: false,
   trendingOpen: false,
+  analystOpen: false,
   feedbackOpen: false,
   helpTourOpen: false,
   mobileMenuOpen: false,
@@ -254,6 +259,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       heatOpen: false,
       briefOpen: false,
       trendingOpen: false,
+      analystOpen: false,
       feedbackOpen: false,
       helpTourOpen: false,
       mobileMenuOpen: false,
@@ -581,6 +587,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       heatOpen: false,
     })),
   closeTrending: () => set({ trendingOpen: false }),
+  toggleAnalyst: () =>
+    set((s) => ({
+      analystOpen: !s.analystOpen,
+      trendingOpen: false,
+      briefOpen: false,
+      mobileMenuOpen: false,
+      searchOpen: false,
+      filterOpen: false,
+      heatOpen: false,
+    })),
+  closeAnalyst: () => set({ analystOpen: false }),
 
   toggleFeedback: () =>
     set((s) => ({

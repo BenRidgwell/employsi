@@ -17,6 +17,7 @@ import { CompanyPanel } from "./components/panels/CompanyPanel";
 import { ComparePanel } from "./components/panels/ComparePanel";
 import { DailyBriefPane } from "./components/panels/DailyBriefPane";
 import { WhatsTrendingPane } from "./components/panels/WhatsTrendingPane";
+import { AnalystPane } from "./components/panels/AnalystPane";
 import { useAppStore } from "./state/store";
 import { useSkillIndex } from "./hooks/useSkillData";
 import { useViewTracking } from "./hooks/useViewTracking";
@@ -85,6 +86,7 @@ function App() {
       <ComparePanel />
       <DailyBriefPane />
       <WhatsTrendingPane />
+      <AnalystPane />
       <MobileTabBar />
       <MobileMenu />
       <CityBadge />

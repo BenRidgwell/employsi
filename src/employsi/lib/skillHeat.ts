@@ -23,7 +23,7 @@ import type { SkillIndex } from "./skillsFn";
 // (IVI_MONTHS), so a skill's per-city history is just the countries' city maps
 // merged. Keeping them combined here means the heat map + time slider treat
 // every country like AU.
-function seriesFor(skill: string): Record<string, number[]> | null {
+export function seriesFor(skill: string): Record<string, number[]> | null {
   const parts = [
     IVI_SERIES[skill],
     CA_SERIES[skill],
@@ -36,8 +36,10 @@ function seriesFor(skill: string): Record<string, number[]> | null {
   if (!parts.length) return null;
   return Object.assign({}, ...parts);
 }
-// Latest-month per-city demand, merged across all countries.
-function latestFor(skill: string): Record<string, number> {
+// Latest-month per-city demand, merged across all countries. Exported (with
+// seriesFor above) so the analyst reads the SAME merge the heat map does — one
+// place decides which national series are in play.
+export function latestFor(skill: string): Record<string, number> {
   return {
     ...(IVI_SKILL_BY_CITY[skill] || {}),
     ...(CA_SKILL_BY_CITY[skill] || {}),

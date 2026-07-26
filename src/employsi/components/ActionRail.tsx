@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useAppStore } from "../state/store";
 import {
+  IconAnalyst,
   IconBrief,
   IconCompany,
   IconDomestic,
@@ -23,10 +24,10 @@ import {
  *     control the earlier design had no home for.
  *  3. Every icon animates on hover and while selected — see ActionIcons.
  *
- * The design's first group is "What's trending" and "Ask an analyst". There is
- * no analyst feature in this app (the design ships it as a separate pane with a
- * conversation UI and no data behind it), so that slot keeps Daily brief, which
- * is real and already wired. Nothing here invents a button that does nothing.
+ * The design's first group is "What's trending" and "Ask an analyst"; Daily
+ * brief is kept alongside them because it is real and already wired. The
+ * analyst is now built (AnalystPane) and answers from the vacancy archive and
+ * the national vacancy series rather than a language model.
  */
 
 function RailButton({
@@ -70,6 +71,8 @@ export function ActionRail() {
   const trendingOpen = useAppStore((s) => s.trendingOpen);
   const toggleBrief = useAppStore((s) => s.toggleBrief);
   const briefOpen = useAppStore((s) => s.briefOpen);
+  const toggleAnalyst = useAppStore((s) => s.toggleAnalyst);
+  const analystOpen = useAppStore((s) => s.analystOpen);
 
   const setZoomLevel = useAppStore((s) => s.setZoomLevel);
   const closePanel = useAppStore((s) => s.closePanel);
@@ -97,6 +100,12 @@ export function ActionRail() {
         label="What's trending"
         on={trendingOpen}
         onClick={toggleTrending}
+      />
+      <RailButton
+        icon={<IconAnalyst />}
+        label="Ask an analyst"
+        on={analystOpen}
+        onClick={toggleAnalyst}
       />
       <RailButton icon={<IconBrief />} label="Daily brief" on={briefOpen} onClick={toggleBrief} />
 
