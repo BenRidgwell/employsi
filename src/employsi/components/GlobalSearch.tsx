@@ -9,7 +9,17 @@ import {
   type DemandTone,
 } from "../lib/skillHeat";
 import { describeSkills } from "../lib/describeSkills";
-import { buildSkillCard } from "../lib/skillCard";
+import {
+  buildSkillCard,
+  eventFor,
+  eventIndex,
+  eventPosition,
+  monthLabel,
+  SKILL_ICONS,
+  TIMELINE_LABEL,
+  TIMELINE_SPAN,
+} from "../lib/skillCard";
+import { LABOUR_EVENTS } from "../data/labourEvents";
 import { getSkillPay, formatPay } from "../lib/analystFn";
 import { COMPANIES } from "../data/companies";
 import { cityForCompany } from "../data/mapboxGeo";
@@ -72,6 +82,10 @@ export function GlobalSearch() {
   const select = useAppStore((s) => s.select);
   const followedSkills = useAppStore((s) => s.followedSkills);
   const requestFollowSkill = useAppStore((s) => s.requestFollowSkill);
+  // The card's timeline scrubs the SAME month index the heat map colours by, so
+  // moving it recolours the map underneath rather than the two disagreeing.
+  const heatMonth = useAppStore((s) => s.heatMonth);
+  const setHeatMonth = useAppStore((s) => s.setHeatMonth);
 
   // The design shows a small handful of skills under the bar, not a ranked
   // list. So a wide pool is ranked by real demand as before, and CHIP_COUNT of
@@ -129,9 +143,17 @@ export function GlobalSearch() {
   const cardSkill = carded ?? (searched ? (topSkill?.id ?? null) : null);
 
   const card = useMemo(
-    () => (cardSkill ? buildSkillCard(cardSkill, searchQuery, globalOut, skillIndex) : null),
-    [cardSkill, searchQuery, globalOut, skillIndex],
+    () => (cardSkill ? buildSkillCard(cardSkill, heatMonth) : null),
+    [cardSkill, heatMonth],
   );
+  const event = useMemo(() => eventFor(heatMonth), [heatMonth]);
+  const monthPct = (heatMonth / TIMELINE_SPAN) * 100;
+  // The line, its fill and the percentage in the summary all take the trend's
+  // colour, so they read as one statement.
+  const trendClass =
+    card?.change == null || Math.abs(card.change) < 0.35 ? "flat" : card.change > 0 ? "up" : "down";
+  // Unique so two cards can never share a gradient definition.
+  const sparkGradId = `gsspark-${(cardSkill ?? "none").replace(/[^a-z0-9]/gi, "")}`;
 
   // Advertised pay for the carded skill, from the live archive. Its own query so
   // the card renders immediately and the salary cell fills in when it lands.
@@ -331,10 +353,22 @@ export function GlobalSearch() {
       {card && (
         <div className="gscard">
           <div className="gscardhd">
-            <div className="gscardname">
-              <span className="gscardnote">{card.matchNote}</span>
+            <span className="gscardname">
+              <svg
+                className="gscardicon"
+                viewBox="0 0 24 24"
+                width={22}
+                height={22}
+                fill="none"
+                stroke="currentColor"
+                aria-hidden
+              >
+                {(SKILL_ICONS[card.icon] ?? []).map((d) => (
+                  <path key={d} d={d} />
+                ))}
+              </svg>
               <span className="gscardtitle">{card.skill}</span>
-            </div>
+            </span>
             <div className="gscardactions">
               <span className={`gscardlevel dmd-${card.tone}`}>
                 <i />
@@ -350,8 +384,8 @@ export function GlobalSearch() {
             </div>
           </div>
 
-          {/* Demand scale. The marker sits at the skill's real percentile in the
-              same distribution the heat map buckets on. */}
+          {/* Demand scale. The marker sits at the skill's real percentile among
+              all skills IN THE SCRUBBED MONTH, not today's ranking. */}
           <div className="gsscale">
             <div className="gsscaletrack">
               <span className="gszone lo" />
@@ -376,47 +410,107 @@ export function GlobalSearch() {
                 {card.openRoles === null ? "—" : card.openRoles.toLocaleString("en-US")}
               </span>
             </div>
-            {/* The design's second cell is "Applicants / role". employsi holds
-                advertised vacancies, not application funnels, so this is the
-                skill's real year-on-year move instead. */}
             <div className="gsstat">
-              <span className="gsstatk">Year on year</span>
-              <span className="gsstatv">
-                {card.yoy === null
-                  ? "—"
-                  : `${card.yoy >= 0 ? "+" : "−"}${Math.abs(card.yoy).toFixed(1)}%`}
-              </span>
-            </div>
-            <div className="gsstat">
-              <span className="gsstatk">Median advertised</span>
-              <span className="gsstatv">{pay ? formatPay(pay) : "—"}</span>
+              <span className="gsstatk">Median salary</span>
+              {/* Advertised pay comes from the live ad archive, so it only has a
+                  value at the present end of the timeline. */}
+              <span className="gsstatv">{card.atPresent && pay ? formatPay(pay) : "—"}</span>
             </div>
           </div>
 
           <div className="gscardtrend">
             {card.spark && (
               <svg
-                className={`gsspark dmd-${card.tone}`}
-                viewBox="0 0 200 44"
-                width={200}
-                height={44}
+                className={`gsspark ${trendClass}`}
+                viewBox="0 0 240 64"
+                width={240}
+                height={64}
                 fill="none"
-                stroke="currentColor"
+                preserveAspectRatio="none"
                 aria-hidden
               >
-                <path d={card.spark} />
+                <defs>
+                  <linearGradient id={sparkGradId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stopColor="currentColor" stopOpacity="0.2" />
+                    <stop offset="0.55" stopColor="currentColor" stopOpacity="0.07" />
+                    <stop offset="1" stopColor="currentColor" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                {card.sparkArea && <path d={card.sparkArea} fill={`url(#${sparkGradId})`} />}
+                <path
+                  d={card.spark}
+                  stroke="currentColor"
+                  strokeWidth={1.4}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
               </svg>
             )}
-            <p className="gscardsummary">{card.summary}</p>
+            <p className="gscardsummary">
+              {card.summaryLead}
+              {card.summaryPct && (
+                <span className={`gscardpct ${trendClass}`}>{card.summaryPct}</span>
+              )}
+              {card.summaryTail}
+            </p>
           </div>
 
-          {(card.sources.length > 0 || pay) && (
+          {/* Timeline. Scrubs the same month index the heat map colours by, so
+              the card and the map are always showing the same month. */}
+          <div className="gstimeline">
+            <div className="gstimehd">
+              <span className="gstimelbl">{TIMELINE_LABEL}</span>
+              <span className="gstimemonth">{card.monthLabel}</span>
+            </div>
+            <div className="gstimetrackwrap">
+              <div className="gstimetrack">
+                <div className="gstimefill" style={{ width: `${monthPct}%` }} />
+                {LABOUR_EVENTS.map((e) => {
+                  const pos = eventPosition(e);
+                  if (pos === null) return null;
+                  return (
+                    <span
+                      key={e.title}
+                      className={`gstimetick${eventIndex(e) <= heatMonth ? " past" : ""}`}
+                      style={{ left: `${pos * 100}%` }}
+                      title={`${monthLabel(card.month)}`}
+                    />
+                  );
+                })}
+                <span className="gstimeknob" style={{ left: `${monthPct}%` }} />
+              </div>
+              <input
+                type="range"
+                className="gstimerange"
+                min={0}
+                max={TIMELINE_SPAN}
+                step={1}
+                value={heatMonth}
+                onChange={(e) => setHeatMonth(Number(e.target.value))}
+                aria-label="Timeline month"
+              />
+            </div>
+            {event && (
+              <div className="gsevent">
+                <span className="gseventdate">
+                  {monthLabel(`${event.year}-${String(event.month + 1).padStart(2, "0")}`)}
+                </span>
+                <div className="gseventbody">
+                  <span className="gseventtitle">{event.title}</span>
+                  <span className="gseventnote">{event.note}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {(card.sources.length > 0 || (card.atPresent && pay)) && (
             <div className="gscardsource">
               {[
                 ...card.sources,
-                pay
+                card.atPresent && pay
                   ? `Advertised pay: ${pay.n} of ${pay.live} live ads disclose a ${pay.currency} figure`
                   : "",
+                "Timeline notes are editorial context, not measured data",
               ]
                 .filter(Boolean)
                 .join(" · ")}

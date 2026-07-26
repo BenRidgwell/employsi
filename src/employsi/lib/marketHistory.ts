@@ -218,3 +218,80 @@ export function hasCoverage(keys: string[]): boolean {
 }
 
 export const HISTORY_SPAN = `${IVI_MONTHS[0]} to ${IVI_MONTHS[IVI_MONTHS.length - 1]}`;
+
+// ── Per-month demand distribution ───────────────────────────────────────────
+// The skill detail card scrubs across the whole 243-month axis, so it needs a
+// skill's level AND its position among all skills AT AN ARBITRARY MONTH, not
+// just the latest one. Recomputing that per scrub tick would mean re-merging
+// every country series on every pointer move, so the worldwide monthly total
+// for each skill is built once, lazily, and reused.
+
+let TOTALS: Record<string, number[]> | null = null;
+
+function totals(): Record<string, number[]> {
+  if (TOTALS) return TOTALS;
+  const out: Record<string, number[]> = {};
+  for (const skill of ALL_SKILLS) {
+    const byCity = seriesFor(skill);
+    if (!byCity) continue;
+    const sum = new Array(IVI_MONTHS.length).fill(0);
+    let any = false;
+    for (const arr of Object.values(byCity)) {
+      for (let i = 0; i < sum.length && i < arr.length; i++) {
+        const v = arr[i] || 0;
+        sum[i] += v;
+        if (v > 0) any = true;
+      }
+    }
+    if (any) out[skill] = sum;
+  }
+  TOTALS = out;
+  return out;
+}
+
+/** A skill's worldwide published vacancies in a given month, or null. */
+export function vacanciesAt(skill: string, monthIndex: number): number | null {
+  const arr = totals()[skill];
+  if (!arr) return null;
+  const i = Math.max(0, Math.min(arr.length - 1, monthIndex));
+  return arr[i];
+}
+
+export interface DemandAt {
+  vacancies: number;
+  /** Share of skills with fewer vacancies that month, 0–100. */
+  percentile: number;
+  /** Same three bands the heat map uses, cut at the 34th/67th percentiles. */
+  level: "lo" | "mid" | "hi";
+}
+
+/**
+ * Where a skill sat in the demand distribution in a given month.
+ *
+ * Bucketed on the same thirds the heat key uses, but measured against THAT
+ * month's distribution rather than today's — so scrubbing back to 2009 shows
+ * how the skill ranked in 2009, not how today's rank would have looked.
+ */
+export function demandAt(skill: string, monthIndex: number): DemandAt | null {
+  const all = totals();
+  const arr = all[skill];
+  if (!arr) return null;
+  const i = Math.max(0, Math.min(arr.length - 1, monthIndex));
+  const v = arr[i];
+  const values: number[] = [];
+  for (const s of Object.values(all)) {
+    const x = s[i] || 0;
+    if (x > 0) values.push(x);
+  }
+  if (!values.length || v <= 0) return { vacancies: v, percentile: 0, level: "lo" };
+  const below = values.filter((x) => x < v).length;
+  const percentile = Math.round((below / values.length) * 100);
+  return {
+    vacancies: v,
+    percentile,
+    level: percentile >= 67 ? "hi" : percentile >= 34 ? "mid" : "lo",
+  };
+}
+
+/** The months the axis covers, for the timeline's label and bounds. */
+export { IVI_MONTHS };
