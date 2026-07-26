@@ -47,78 +47,230 @@ const SKILL_LAYER = "skill-heat";
 // do on the SVG layers), keeping the blobs the only colour on the map.
 const NEUTRAL_DOT = "rgb(42,42,46)";
 
-// Decorative traffic on the globe: aircraft between city pairs and container
-// ships between port hubs, each drifting back and forth along its route.
+// Decorative traffic on the globe: aircraft between city pairs, and container
+// ships along real sea lanes.
 type TravelMode = "plane" | "ship";
 // Uniform slow-down applied to every traveler's duration (>1 = slower drift).
 const TRAVEL_SLOWDOWN = 1.6;
-interface TravelRoute {
+
+// Aircraft fly hub to hub in a straight line, which is fine — they cross land.
+interface PlaneRoute {
   from: string;
   to: string;
-  mode: TravelMode;
   dur: number;
   offset: number;
 }
-const TRAVEL_ROUTES: TravelRoute[] = [
-  { from: "perth", to: "singapore", mode: "plane", dur: 24000, offset: 0.0 },
-  { from: "london", to: "newyork", mode: "plane", dur: 30000, offset: 0.35 },
-  { from: "tokyo", to: "sydney", mode: "plane", dur: 34000, offset: 0.2 },
-  { from: "dubai", to: "johannesburg", mode: "plane", dur: 27000, offset: 0.6 },
-  { from: "sanfrancisco", to: "tokyo", mode: "plane", dur: 36000, offset: 0.15 },
-  { from: "singapore", to: "ganzhou", mode: "ship", dur: 44000, offset: 0.3 },
-  { from: "perth", to: "johannesburg", mode: "ship", dur: 60000, offset: 0.5 },
-  { from: "houston", to: "london", mode: "ship", dur: 56000, offset: 0.15 },
-  { from: "hongkong", to: "singapore", mode: "ship", dur: 40000, offset: 0.7 },
+const PLANE_ROUTES: PlaneRoute[] = [
+  { from: "perth", to: "singapore", dur: 24000, offset: 0.0 },
+  { from: "london", to: "newyork", dur: 30000, offset: 0.35 },
+  { from: "tokyo", to: "sydney", dur: 34000, offset: 0.2 },
+  { from: "dubai", to: "johannesburg", dur: 27000, offset: 0.6 },
+  { from: "sanfrancisco", to: "tokyo", dur: 36000, offset: 0.15 },
 ];
 
-// Detailed top-down icons (as a ship-tracking / flight-radar map would show
-// them), pointing "north" (up) so a bearing rotation aims them along their
-// heading — a metallic airliner and a container ship with a laden deck.
+/**
+ * Container-ship lanes, as waypoint paths through open water.
+ *
+ * Ships used to run hub-to-hub on the same straight line the aircraft use,
+ * which sailed them across continents — and three of the "ports" were not ports
+ * at all. Ganzhou is 400km inland in Jiangxi, Johannesburg is on the Highveld
+ * with no coast within 500km, and a straight Houston→London line crosses
+ * Florida. Sea routes cannot be interpolated between two city centres, so each
+ * lane is written out as the waypoints a ship would actually steer, through the
+ * straits that make the route possible: Malacca, Gibraltar, the Sicily Channel,
+ * the Dover Strait.
+ *
+ * Every waypoint is open water. None of the lanes cross the antimeridian, which
+ * is why the path walker below can stay in plain degrees.
+ */
+interface ShipLane {
+  name: string;
+  dur: number;
+  offset: number;
+  path: [number, number][];
+}
+const SHIP_LANES: ShipLane[] = [
+  {
+    name: "Rotterdam – New York (North Atlantic)",
+    dur: 78000,
+    offset: 0.15,
+    path: [
+      [3.95, 52.0],
+      [1.9, 51.2],
+      [-1.5, 49.9],
+      [-5.5, 48.8],
+      [-12.0, 47.5],
+      [-25.0, 45.0],
+      [-40.0, 42.5],
+      [-55.0, 41.0],
+      [-68.0, 40.3],
+      [-73.85, 40.45],
+    ],
+  },
+  {
+    name: "Port Said – Gibraltar (Mediterranean)",
+    dur: 62000,
+    offset: 0.7,
+    path: [
+      [32.35, 31.4],
+      [30.0, 32.3],
+      [25.0, 33.6],
+      [20.0, 34.4],
+      [15.5, 35.4],
+      [12.0, 37.4],
+      [6.0, 37.9],
+      [0.0, 36.6],
+      [-5.4, 35.95],
+    ],
+  },
+  {
+    name: "Cape Town – Fremantle (Southern Indian Ocean)",
+    dur: 92000,
+    offset: 0.55,
+    path: [
+      [17.6, -34.6],
+      [25.0, -37.0],
+      [40.0, -38.0],
+      [60.0, -37.0],
+      [80.0, -36.0],
+      [100.0, -35.0],
+      [112.0, -33.0],
+      [115.2, -32.3],
+    ],
+  },
+  {
+    name: "Hong Kong – Kota Kinabalu (South China Sea)",
+    dur: 48000,
+    offset: 0.3,
+    path: [
+      [114.3, 21.8],
+      [114.8, 18.0],
+      [115.3, 14.0],
+      [115.7, 10.0],
+      [116.0, 7.6],
+      [116.1, 6.2],
+    ],
+  },
+  {
+    // Longitudes run past 180 rather than wrapping to negative, so the path
+    // stays monotonic across the dateline; Mapbox wraps them on render.
+    name: "Yokohama – Los Angeles (North Pacific)",
+    dur: 104000,
+    offset: 0.85,
+    path: [
+      [140.2, 34.9],
+      [146.0, 35.5],
+      [156.0, 38.0],
+      [170.0, 41.0],
+      [185.0, 44.0],
+      [200.0, 46.0],
+      [215.0, 44.0],
+      [228.0, 38.0],
+      [237.0, 34.0],
+      [241.3, 33.6],
+    ],
+  },
+];
+
+// One traveler, resolved to a path so planes and ships animate identically.
+interface Traveler {
+  mode: TravelMode;
+  path: [number, number][];
+  dur: number;
+  offset: number;
+}
+
+// Top-down 2.5D sprites from `Employsi Map Sprites.html`: a white airliner and
+// a blue container ship with a laden, colour-coded deck. Both point north at
+// rest, so rotating by the heading aims them along their track.
+//
+// The design ships the plane as a <defs> silhouette referenced twice by <use>.
+// That is fine in a document with one copy, but these strings are injected into
+// five plane markers at once and duplicate ids would make every <use> resolve
+// against whichever copy the browser saw first. The path is inlined at both
+// call sites instead, and the ids are dropped, so no instance depends on any
+// other being present.
+const PLANE_PATH =
+  "M80 8c9 0 15 13 16 32v34l52 34c5 3 4 9-2 8l-50-10v34l24 16c4 3 3 8-2 7l-22-5v9c0 9-7 17-16 " +
+  "17s-16-8-16-17v-9l-22 5c-5 1-6-4-2-7l24-16v-34l-50 10c-6 1-7-5-2-8l52-34V40c1-19 7-32 16-32z";
 const PLANE_SVG =
-  '<svg viewBox="0 0 28 28" width="21" height="21">' +
-  '<defs><linearGradient id="plg" x1="0" y1="0" x2="1" y2="0">' +
-  '<stop offset="0" stop-color="#c7ccd3"/><stop offset="0.5" stop-color="#f6f8fa"/><stop offset="1" stop-color="#aeb3bb"/>' +
-  "</linearGradient></defs>" +
-  '<path fill="url(#plg)" stroke="#5c616b" stroke-width="0.5" stroke-linejoin="round" ' +
-  'd="M14 2c1.1 0 1.7 1.3 1.7 3.2v5.9l9 5.2v2.4l-9-2.9v4.6l2.5 1.8v2l-4.2-1.2-4.2 1.2v-2l2.5-1.8v-4.6l-9 2.9v-2.4l9-5.2V5.2C12.3 3.3 12.9 2 14 2z"/>' +
-  '<line x1="14" y1="6" x2="14" y2="21" stroke="#8b909a" stroke-width="0.5"/>' +
-  "</svg>";
+  '<svg viewBox="0 0 160 200" width="26" height="32" fill="none">' +
+  // Offset copy beneath the airframe, which is what gives the sprite its lift.
+  `<g transform="translate(3,5)" fill="#cfc6c2"><path d="${PLANE_PATH}"/></g>` +
+  '<g><rect x="41" y="84" width="15" height="30" rx="7.5" fill="#ffffff" stroke="#c2b8b4" stroke-width="3"/>' +
+  '<path d="M45 96h7" stroke="#6f5a56" stroke-width="4" stroke-linecap="round"/>' +
+  '<rect x="104" y="84" width="15" height="30" rx="7.5" fill="#ffffff" stroke="#c2b8b4" stroke-width="3"/>' +
+  '<path d="M108 96h7" stroke="#6f5a56" stroke-width="4" stroke-linecap="round"/></g>' +
+  `<g fill="#ffffff" stroke="#c2b8b4" stroke-width="3" stroke-linejoin="round"><path d="${PLANE_PATH}"/></g>` +
+  '<path d="M80 8c4.6 0 8.4 5 11 13.6-3.4 2-7 3-11 3s-7.6-1-11-3C71.6 13 75.4 8 80 8z" fill="#4a3b38"/>' +
+  '<path d="M80 30v122" stroke="#e6ded9" stroke-width="2.5" stroke-linecap="round"/>' +
+  '<g fill="#3c3a42">' +
+  '<rect x="70" y="38" width="3.4" height="6" rx="1.7"/><rect x="70" y="50" width="3.4" height="6" rx="1.7"/>' +
+  '<rect x="70" y="62" width="3.4" height="6" rx="1.7"/><rect x="70" y="74" width="3.4" height="6" rx="1.7"/>' +
+  '<rect x="70" y="112" width="3.4" height="6" rx="1.7"/><rect x="70" y="124" width="3.4" height="6" rx="1.7"/>' +
+  '<rect x="86.6" y="38" width="3.4" height="6" rx="1.7"/><rect x="86.6" y="50" width="3.4" height="6" rx="1.7"/>' +
+  '<rect x="86.6" y="62" width="3.4" height="6" rx="1.7"/><rect x="86.6" y="74" width="3.4" height="6" rx="1.7"/>' +
+  '<rect x="86.6" y="112" width="3.4" height="6" rx="1.7"/><rect x="86.6" y="124" width="3.4" height="6" rx="1.7"/>' +
+  "</g></svg>";
+
+const SHIP_HULL =
+  "M60 10c14 16 22 40 22 68v192c0 12-9 22-21 22h-2c-12 0-21-10-21-22V78c0-28 8-52 22-68z";
 const SHIP_SVG =
-  '<svg viewBox="0 0 18 44" width="8" height="20">' +
-  '<defs><linearGradient id="shg" x1="0" y1="0" x2="1" y2="0">' +
-  '<stop offset="0" stop-color="#565b64"/><stop offset="0.5" stop-color="#727782"/><stop offset="1" stop-color="#3f434b"/>' +
-  "</linearGradient></defs>" +
-  // hull (pointed bow up, rounded stern)
-  '<path d="M9 1 L14 9 L14 39 Q14 43 10.5 43 L7.5 43 Q4 43 4 39 L4 9 Z" fill="url(#shg)" stroke="#2b2e34" stroke-width="0.6"/>' +
-  // hatch outline / deck edge
-  '<path d="M6 11 L12 11 L12 34 L6 34 Z" fill="#33363d"/>' +
-  // stacked containers (two columns, varied colours)
-  '<g stroke="#26282d" stroke-width="0.25">' +
-  '<rect x="6.2" y="11.4" width="2.6" height="2.4" fill="#c0562e"/><rect x="9.2" y="11.4" width="2.6" height="2.4" fill="#2e6fc0"/>' +
-  '<rect x="6.2" y="14.2" width="2.6" height="2.4" fill="#2fa36a"/><rect x="9.2" y="14.2" width="2.6" height="2.4" fill="#c9a13a"/>' +
-  '<rect x="6.2" y="17" width="2.6" height="2.4" fill="#2e6fc0"/><rect x="9.2" y="17" width="2.6" height="2.4" fill="#b23b3b"/>' +
-  '<rect x="6.2" y="19.8" width="2.6" height="2.4" fill="#c9a13a"/><rect x="9.2" y="19.8" width="2.6" height="2.4" fill="#2fa36a"/>' +
-  '<rect x="6.2" y="22.6" width="2.6" height="2.4" fill="#b23b3b"/><rect x="9.2" y="22.6" width="2.6" height="2.4" fill="#c0562e"/>' +
-  '<rect x="6.2" y="25.4" width="2.6" height="2.4" fill="#2fa36a"/><rect x="9.2" y="25.4" width="2.6" height="2.4" fill="#2e6fc0"/>' +
-  '<rect x="6.2" y="28.2" width="2.6" height="2.4" fill="#c9a13a"/><rect x="9.2" y="28.2" width="2.6" height="2.4" fill="#b23b3b"/>' +
-  '<rect x="6.2" y="31" width="2.6" height="2.4" fill="#2e6fc0"/><rect x="9.2" y="31" width="2.6" height="2.4" fill="#2fa36a"/>' +
-  "</g>" +
-  // superstructure / bridge near the stern
-  '<rect x="5.6" y="35.4" width="6.8" height="4" rx="0.6" fill="#e7e9ec" stroke="#9aa0a8" stroke-width="0.4"/>' +
-  '<rect x="7" y="36.3" width="4" height="1.2" fill="#aeb4bd"/>' +
+  '<svg viewBox="0 0 120 320" width="15" height="40" fill="none">' +
+  `<g transform="translate(3.5,5.5)"><path d="${SHIP_HULL}" fill="#1d4f9c"/></g>` +
+  `<path d="${SHIP_HULL}" fill="#2b6bc4" stroke="#1d4f9c" stroke-width="3" stroke-linejoin="round"/>` +
+  '<path d="M52 62c3-14 5-22 8-26 3 4 5 12 8 26" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>' +
+  '<rect x="45" y="92" width="30" height="14" rx="1.5" fill="#2f74c0"/>' +
+  '<rect x="45" y="110" width="30" height="14" rx="1.5" fill="#c85a4d"/>' +
+  '<rect x="45" y="128" width="30" height="14" rx="1.5" fill="#d9a441"/>' +
+  '<rect x="45" y="146" width="30" height="14" rx="1.5" fill="#3f9f74"/>' +
+  '<rect x="45" y="164" width="30" height="14" rx="1.5" fill="#c9cdd2"/>' +
+  '<rect x="45" y="182" width="30" height="14" rx="1.5" fill="#2f74c0"/>' +
+  '<rect x="45" y="200" width="30" height="14" rx="1.5" fill="#d9a441"/>' +
+  '<rect x="45" y="218" width="30" height="14" rx="1.5" fill="#c85a4d"/>' +
+  '<path d="M60 92v148" stroke="#ffffff" stroke-width="2"/>' +
+  '<rect x="44" y="244" width="32" height="30" rx="4" fill="#ffffff"/>' +
+  '<rect x="50" y="250" width="20" height="6" rx="2" fill="#5c6672" opacity=".8"/>' +
+  '<rect x="55" y="262" width="10" height="9" rx="2" fill="#cf4a3d"/>' +
   "</svg>";
 
-// Antimeridian-aware linear interpolation between two lng/lat points (takes the
-// shorter way around, so e.g. a San Francisco -> Tokyo route crosses the
-// Pacific rather than wrapping the long way round the globe).
-function lerpLngLat(a: [number, number], b: [number, number], t: number): [number, number] {
-  let dLng = b[0] - a[0];
-  if (dLng > 180) dLng -= 360;
-  else if (dLng < -180) dLng += 360;
-  let lng = a[0] + dLng * t;
-  if (lng > 180) lng -= 360;
-  else if (lng < -180) lng += 360;
-  return [lng, a[1] + (b[1] - a[1]) * t];
+/**
+ * Position along a multi-point path at 0..1, plus the heading there.
+ *
+ * Segments are measured with longitude scaled by cos(lat), so a ship covers the
+ * same ground per second near the equator as it does at 46°N instead of racing
+ * through the high-latitude legs of a Pacific crossing.
+ *
+ * Longitudes are taken as continuous, not wrapped: the Pacific lane runs 140 →
+ * 241 rather than jumping 180 → −180, which keeps every segment short and the
+ * bearing honest across the dateline. Mapbox wraps the rendered position.
+ */
+function pointOnPath(
+  path: [number, number][],
+  t: number,
+): { pos: [number, number]; bearing: number } {
+  if (path.length < 2) return { pos: path[0] ?? [0, 0], bearing: 0 };
+  const seg: number[] = [];
+  let total = 0;
+  for (let i = 0; i < path.length - 1; i++) {
+    const [x1, y1] = path[i];
+    const [x2, y2] = path[i + 1];
+    const k = Math.cos((((y1 + y2) / 2) * Math.PI) / 180);
+    const d = Math.hypot((x2 - x1) * k, y2 - y1);
+    seg.push(d);
+    total += d;
+  }
+  const want = Math.max(0, Math.min(1, t)) * total;
+  let acc = 0;
+  let i = 0;
+  for (; i < seg.length - 1 && acc + seg[i] < want; i++) acc += seg[i];
+  const local = seg[i] > 0 ? (want - acc) / seg[i] : 0;
+  const [x1, y1] = path[i];
+  const [x2, y2] = path[i + 1];
+  const pos: [number, number] = [x1 + (x2 - x1) * local, y1 + (y2 - y1) * local];
+  const bearing =
+    (Math.atan2((x2 - x1) * Math.cos((pos[1] * Math.PI) / 180), y2 - y1) * 180) / Math.PI;
+  return { pos, bearing };
 }
 
 // Layer-crossing zoom thresholds (Mapbox zoom levels). Chosen to leave each
@@ -465,7 +617,7 @@ export function WorldMapbox() {
   const rebuildMarkersRef = useRef<(() => void) | null>(null);
   const applyViewRef = useRef<(() => void) | null>(null);
   const travelersRef = useRef<
-    { marker: mapboxgl.Marker; inner: HTMLElement; route: TravelRoute }[]
+    { marker: mapboxgl.Marker; inner: HTMLElement; traveler: Traveler }[]
   >([]);
   const travelRaf = useRef<number | undefined>(undefined);
   const haloPulseRaf = useRef<number | undefined>(undefined);
@@ -821,21 +973,34 @@ export function WorldMapbox() {
         }
       });
 
-      // Build the animated air/sea traffic and start its loop.
-      TRAVEL_ROUTES.forEach((route) => {
-        const a = HUB_LNGLAT[route.from];
-        const b = HUB_LNGLAT[route.to];
-        if (!a || !b) return;
+      // Build the animated air/sea traffic and start its loop. Flights are
+      // resolved to a two-point path between their hubs; ships already carry
+      // theirs, so from here both animate the same way.
+      const travelers: Traveler[] = [
+        ...PLANE_ROUTES.flatMap((r): Traveler[] => {
+          const a = HUB_LNGLAT[r.from];
+          const b = HUB_LNGLAT[r.to];
+          if (!a || !b) return [];
+          return [{ mode: "plane", path: [a, b], dur: r.dur, offset: r.offset }];
+        }),
+        ...SHIP_LANES.map((l): Traveler => ({
+          mode: "ship",
+          path: l.path,
+          dur: l.dur,
+          offset: l.offset,
+        })),
+      ];
+      travelers.forEach((traveler) => {
         const outer = document.createElement("div");
         outer.className = "traveler";
         const inner = document.createElement("span");
-        inner.className = `travelericon traveler-${route.mode}`;
-        inner.innerHTML = route.mode === "plane" ? PLANE_SVG : SHIP_SVG;
+        inner.className = `travelericon traveler-${traveler.mode}`;
+        inner.innerHTML = traveler.mode === "plane" ? PLANE_SVG : SHIP_SVG;
         outer.appendChild(inner);
         const marker = new mapboxgl.Marker({ element: outer, anchor: "center" })
-          .setLngLat(a)
+          .setLngLat(traveler.path[0])
           .addTo(map);
-        travelersRef.current.push({ marker, inner, route });
+        travelersRef.current.push({ marker, inner, traveler });
       });
 
       const animateTravelers = () => {
@@ -844,33 +1009,23 @@ export function WorldMapbox() {
         // Shown on both overviews (global + domestic); hidden only at the local
         // city layer, where WorldMapbox itself is hidden.
         const show = s.zoomedOut && !s.zoomingIn;
-        travelersRef.current.forEach(({ marker, inner, route }) => {
+        travelersRef.current.forEach(({ marker, inner, traveler }) => {
           const el = marker.getElement();
           if (!show) {
             el.style.display = "none";
             return;
           }
           el.style.display = "";
-          const a = HUB_LNGLAT[route.from];
-          const b = HUB_LNGLAT[route.to];
           // Ping-pong 0->1->0 so each craft makes a round trip rather than
           // snapping back to the start. TRAVEL_SLOWDOWN stretches every route's
           // duration uniformly so the planes/ships drift more slowly.
-          const phase = (now / (route.dur * TRAVEL_SLOWDOWN) + route.offset) % 2;
+          const phase = (now / (traveler.dur * TRAVEL_SLOWDOWN) + traveler.offset) % 2;
           const t = phase < 1 ? phase : 2 - phase;
-          const eased = t; // linear is fine at this scale
-          const pos = lerpLngLat(a, b, eased);
+          const { pos, bearing } = pointOnPath(traveler.path, t);
           marker.setLngLat(pos);
-          // Point the icon along its current heading (bearing on screen).
-          const ahead = lerpLngLat(
-            a,
-            b,
-            Math.min(1, Math.max(0, eased + (phase < 1 ? 0.01 : -0.01))),
-          );
-          const dx = ahead[0] - pos[0];
-          const dy = ahead[1] - pos[1];
-          const bearing = (Math.atan2(dx * Math.cos((pos[1] * Math.PI) / 180), dy) * 180) / Math.PI;
-          inner.style.transform = `rotate(${bearing}deg)`;
+          // On the return leg the craft is travelling back down the path, so
+          // the heading is the reverse of the segment's own direction.
+          inner.style.transform = `rotate(${phase < 1 ? bearing : bearing + 180}deg)`;
         });
         travelRaf.current = requestAnimationFrame(animateTravelers);
       };
