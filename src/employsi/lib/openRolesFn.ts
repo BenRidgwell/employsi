@@ -1,7 +1,9 @@
-import { createServerFn } from '@tanstack/react-start';
-import { skillsForText } from '../data/skillsTaxonomy';
-import type { AdvertisedJob } from './skillsFn';
-import { archiveJobs, type ArchiveRow, type D1Like } from './jobArchive';
+import { createServerFn } from "@tanstack/react-start";
+import { skillsForText } from "../data/skillsTaxonomy";
+import type { AdvertisedJob } from "./skillsFn";
+import { archiveJobs, type ArchiveRow, type D1Like } from "./jobArchive";
+import { asRecord, asRecords, str, type JsonRecord, type JsonValue } from "./json";
+import { kvBinding, type KVLike } from "./kv";
 
 // Live "open roles" for any company in the app, fetched on the Worker, scoped
 // to the company's own job market (see data/cityMarket.ts) so it works whether
@@ -32,7 +34,11 @@ export interface OpenRoles {
 }
 
 const stripHtml = (s: string) =>
-  (s || '').replace(/<[^>]*>/g, ' ').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim();
+  (s || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&[a-z]+;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
 // A single stored data point: [YYYY-MM-DD, open-role count].
 export type RolePoint = { d: string; c: number };
@@ -45,10 +51,10 @@ const TTL = 60 * 60 * 1000;
 // Adzuna only exposes the *current* count, so history builds forward from the
 // first time each company is queried — it can't be backfilled. Stored compactly
 // as [date, count] tuples under `roles:{id}`, capped to one year.
-async function getKV(): Promise<any | null> {
+async function getKV(): Promise<KVLike | null> {
   try {
-    const m: any = await import('cloudflare:workers');
-    return m?.env?.OPEN_ROLES_HISTORY ?? null;
+    const m = await import("cloudflare:workers");
+    return kvBinding(m?.env, "OPEN_ROLES_HISTORY");
   } catch {
     return null; // not running on the Worker (e.g. local SSR) → no history
   }
@@ -58,7 +64,7 @@ async function getKV(): Promise<any | null> {
 // before the database is provisioned, so archiving is a no-op until it's wired.
 async function getArchiveDb(): Promise<D1Like | null> {
   try {
-    const m: any = await import('cloudflare:workers');
+    const m = await import("cloudflare:workers");
     return (m?.env?.JOBS_ARCHIVE as D1Like) ?? null;
   } catch {
     return null;
@@ -82,7 +88,8 @@ async function recordSnapshot(id: string, count: number): Promise<void> {
     }
     const d = today();
     const last = arr[arr.length - 1];
-    if (last && last[0] === d) last[1] = count; // refresh today's point
+    if (last && last[0] === d)
+      last[1] = count; // refresh today's point
     else arr.push([d, count]);
     if (arr.length > 365) arr = arr.slice(arr.length - 365);
     await kv.put(key, JSON.stringify(arr));
@@ -101,7 +108,7 @@ async function recordSnapshot(id: string, count: number): Promise<void> {
 // vacancies") when the agency currently has none, and null only if the feed
 // hasn't been populated yet (KV miss), so the card can fall through gracefully.
 async function fromWaGov(id: string): Promise<OpenRoles | null> {
-  return fromGovKv('wagov', id, 'WA Government');
+  return fromGovKv("wagov", id, "WA Government");
 }
 
 // VIC and QLD government boards are also server-rendered no-browser feeds
@@ -130,13 +137,13 @@ function adzunaCreds(): { id: string; key: string } | null {
   return id && key ? { id, key } : null;
 }
 
-async function fetchJson(url: string, ms: number): Promise<any | null> {
+async function fetchJson(url: string, ms: number): Promise<JsonRecord | JsonValue[] | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
   try {
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { 'User-Agent': 'employsi/1.0', Accept: 'application/json' },
+      headers: { "User-Agent": "employsi/1.0", Accept: "application/json" },
     });
     if (!res.ok) return null;
     return await res.json();
@@ -152,10 +159,10 @@ async function fetchJson(url: string, ms: number): Promise<any | null> {
 // Each entry names an ATS and the exact slug/tenant needed to hit its public
 // JSON endpoint. Add entries only after confirming the endpoint returns jobs.
 type AtsEntry =
-  | { ats: 'greenhouse'; slug: string }
-  | { ats: 'lever'; slug: string }
-  | { ats: 'smartrecruiters'; slug: string }
-  | { ats: 'workday'; host: string; tenant: string; site: string };
+  | { ats: "greenhouse"; slug: string }
+  | { ats: "lever"; slug: string }
+  | { ats: "smartrecruiters"; slug: string }
+  | { ats: "workday"; host: string; tenant: string; site: string };
 
 const AU_ATS: Record<string, AtsEntry> = {
   // e.g. sydney company on Greenhouse:
@@ -164,22 +171,38 @@ const AU_ATS: Record<string, AtsEntry> = {
 };
 
 async function fromAts(entry: AtsEntry): Promise<OpenRoles | null> {
-  if (entry.ats === 'greenhouse') {
-    const j = await fetchJson(`https://boards-api.greenhouse.io/v1/boards/${entry.slug}/jobs`, 6000);
-    const jobs: any[] = Array.isArray(j?.jobs) ? j.jobs : [];
-    const au = jobs.filter((x) => /austral|sydney|melbourne|perth|brisbane|adelaide|canberra/i.test(x?.location?.name || ''));
-    return jobs.length ? { count: au.length || jobs.length, source: 'Greenhouse', jobs: [] } : null;
+  if (entry.ats === "greenhouse") {
+    const j = await fetchJson(
+      `https://boards-api.greenhouse.io/v1/boards/${entry.slug}/jobs`,
+      6000,
+    );
+    const jobs = asRecords(asRecord(j).jobs);
+    const au = jobs.filter((x) =>
+      /austral|sydney|melbourne|perth|brisbane|adelaide|canberra/i.test(
+        str(asRecord(x.location).name),
+      ),
+    );
+    return jobs.length ? { count: au.length || jobs.length, source: "Greenhouse", jobs: [] } : null;
   }
-  if (entry.ats === 'lever') {
+  if (entry.ats === "lever") {
     const j = await fetchJson(`https://api.lever.co/v0/postings/${entry.slug}?mode=json`, 6000);
-    const jobs: any[] = Array.isArray(j) ? j : [];
-    const au = jobs.filter((x) => /austral|sydney|melbourne|perth|brisbane|adelaide/i.test(x?.categories?.location || ''));
-    return jobs.length ? { count: au.length || jobs.length, source: 'Lever', jobs: [] } : null;
+    const jobs = asRecords(j);
+    const au = jobs.filter((x) =>
+      /austral|sydney|melbourne|perth|brisbane|adelaide/i.test(
+        str(asRecord(x.categories).location),
+      ),
+    );
+    return jobs.length ? { count: au.length || jobs.length, source: "Lever", jobs: [] } : null;
   }
-  if (entry.ats === 'smartrecruiters') {
-    const j = await fetchJson(`https://api.smartrecruiters.com/v1/companies/${entry.slug}/postings?limit=100&country=au`, 6000);
-    const total = Number(j?.totalFound);
-    return Number.isFinite(total) && total >= 0 ? { count: total, source: 'SmartRecruiters', jobs: [] } : null;
+  if (entry.ats === "smartrecruiters") {
+    const j = await fetchJson(
+      `https://api.smartrecruiters.com/v1/companies/${entry.slug}/postings?limit=100&country=au`,
+      6000,
+    );
+    const total = Number(asRecord(j).totalFound);
+    return Number.isFinite(total) && total >= 0
+      ? { count: total, source: "SmartRecruiters", jobs: [] }
+      : null;
   }
   // workday
   const url = `https://${entry.host}/wday/cxs/${entry.tenant}/${entry.site}/jobs`;
@@ -187,15 +210,19 @@ async function fromAts(entry: AtsEntry): Promise<OpenRoles | null> {
   const timer = setTimeout(() => controller.abort(), 6000);
   try {
     const res = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       signal: controller.signal,
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'User-Agent': 'employsi/1.0' },
-      body: JSON.stringify({ limit: 1, offset: 0, searchText: '', appliedFacets: {} }),
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "User-Agent": "employsi/1.0",
+      },
+      body: JSON.stringify({ limit: 1, offset: 0, searchText: "", appliedFacets: {} }),
     });
     if (!res.ok) return null;
-    const j = (await res.json()) as any;
+    const j = (await res.json()) as JsonRecord;
     const total = Number(j?.total);
-    return Number.isFinite(total) ? { count: total, source: 'Workday', jobs: [] } : null;
+    return Number.isFinite(total) ? { count: total, source: "Workday", jobs: [] } : null;
   } catch {
     return null;
   } finally {
@@ -206,17 +233,36 @@ async function fromAts(entry: AtsEntry): Promise<OpenRoles | null> {
 // Normalise a title for cross-board dedupe: lowercase, collapse anything
 // non-alphanumeric to single spaces. Same-ad titles line up across providers.
 function normTitle(s: string): string {
-  return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  return (s || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
-function toJob(t: string, loc: string, cat: string, url: string, created: string, salN?: number): AdvertisedJob {
-  return { t, loc, cat, url, created: (created || '').slice(0, 10), city: null, skills: skillsForText(t), salN };
+function toJob(
+  t: string,
+  loc: string,
+  cat: string,
+  url: string,
+  created: string,
+  salN?: number,
+): AdvertisedJob {
+  return {
+    t,
+    loc,
+    cat,
+    url,
+    created: (created || "").slice(0, 10),
+    city: null,
+    skills: skillsForText(t),
+    salN,
+  };
 }
 
 // Adzuna's advertised salary band → an annualised midpoint number, when stated.
-function adzunaSalaryNum(x: any): number | undefined {
-  const lo = Number(x?.salary_min);
-  const hi = Number(x?.salary_max);
+function adzunaSalaryNum(x: JsonValue | undefined): number | undefined {
+  const lo = Number(asRecord(x).salary_min);
+  const hi = Number(asRecord(x).salary_max);
   const vals = [lo, hi].filter((n) => Number.isFinite(n) && n > 0);
   if (!vals.length) return undefined;
   return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
@@ -230,7 +276,13 @@ export function fmtSalary(n: number | undefined | null): string | null {
 
 // An advertised job → a historical archive row, tagged with its source and the
 // company it was fetched for.
-function jobToArchive(j: AdvertisedJob, source: string, company: string, id: string | undefined, where: string): ArchiveRow {
+function jobToArchive(
+  j: AdvertisedJob,
+  source: string,
+  company: string,
+  id: string | undefined,
+  where: string,
+): ArchiveRow {
   return {
     source,
     title: j.t,
@@ -250,7 +302,11 @@ function jobToArchive(j: AdvertisedJob, source: string, company: string, id: str
 // market. Returns the real count — including 0 when Adzuna genuinely reports no
 // matches — and null only when the request/credentials fail, so the caller can
 // distinguish "no vacancies" from "couldn't check".
-async function fromAdzuna(company: string, country: string, where: string): Promise<{ count: number; jobs: AdvertisedJob[] } | null> {
+async function fromAdzuna(
+  company: string,
+  country: string,
+  where: string,
+): Promise<{ count: number; jobs: AdvertisedJob[] } | null> {
   const c = adzunaCreds();
   if (!c) return null;
   const params = new URLSearchParams({
@@ -258,24 +314,36 @@ async function fromAdzuna(company: string, country: string, where: string): Prom
     app_key: c.key,
     what_phrase: company,
     where,
-    results_per_page: '50',
-    'content-type': 'application/json',
+    results_per_page: "50",
+    "content-type": "application/json",
   });
-  const j = await fetchJson(`https://api.adzuna.com/v1/api/jobs/${country}/search/1?${params.toString()}`, 6000);
+  const j = await fetchJson(
+    `https://api.adzuna.com/v1/api/jobs/${country}/search/1?${params.toString()}`,
+    6000,
+  );
   if (!j) return null;
-  const count = Number(j?.count);
+  const count = Number(asRecord(j).count);
   if (!Number.isFinite(count)) return null;
-  const results: any[] = Array.isArray(j?.results) ? j.results : [];
+  const results = asRecords(asRecord(j).results);
   const jobs: AdvertisedJob[] = [];
   const seen = new Set<string>();
   for (const x of results) {
-    const t = stripHtml(String(x?.title || ''));
+    const t = stripHtml(String(x?.title || ""));
     if (!t) continue;
-    const loc = String(x?.location?.display_name || '');
-    const dk = (t + '|' + loc).toLowerCase();
+    const loc = str(asRecord(x.location).display_name);
+    const dk = (t + "|" + loc).toLowerCase();
     if (seen.has(dk)) continue; // Adzuna reposts the same role repeatedly
     seen.add(dk);
-    jobs.push(toJob(t, loc, String(x?.category?.label || ''), String(x?.redirect_url || ''), String(x?.created || ''), adzunaSalaryNum(x)));
+    jobs.push(
+      toJob(
+        t,
+        loc,
+        str(asRecord(x.category).label),
+        String(x?.redirect_url || ""),
+        String(x?.created || ""),
+        adzunaSalaryNum(x),
+      ),
+    );
   }
   return { count, jobs };
 }
@@ -293,17 +361,25 @@ async function fromMuse(company: string, region: RegExp): Promise<AdvertisedJob[
   for (let page = 0; page < 2; page++) {
     const params = new URLSearchParams({ api_key: key, company, page: String(page) });
     const j = await fetchJson(`https://www.themuse.com/api/public/jobs?${params.toString()}`, 6000);
-    const results: any[] = Array.isArray(j?.results) ? j.results : [];
+    const results = asRecords(asRecord(j).results);
     if (!results.length) break;
     for (const r of results) {
-      const locs: string[] = Array.isArray(r?.locations) ? r.locations.map((l: any) => String(l?.name || '')) : [];
+      const locs: string[] = asRecords(r.locations).map((l) => str(l.name));
       const loc = locs.find((l) => region.test(l));
       if (!loc) continue; // only roles genuinely in this company's country count
-      const t = stripHtml(String(r?.name || ''));
+      const t = stripHtml(String(r?.name || ""));
       if (!t) continue;
-      out.push(toJob(t, loc, (Array.isArray(r?.categories) && r.categories[0]?.name) || '', (r?.refs && r.refs.landing_page) || '', String(r?.publication_date || '')));
+      out.push(
+        toJob(
+          t,
+          loc,
+          str(asRecords(r.categories)[0]?.name),
+          str(asRecord(r.refs).landing_page),
+          String(r?.publication_date || ""),
+        ),
+      );
     }
-    if (page + 1 >= Number(j?.page_count || 0)) break;
+    if (page + 1 >= Number(asRecord(j).page_count || 0)) break;
   }
   return out;
 }
@@ -312,16 +388,16 @@ async function fromMuse(company: string, region: RegExp): Promise<AdvertisedJob[
 // company-scoped (i.e. can be attributed to one company card). SEEK is the live
 // one today; the map turns a stored source key into a display label.
 const ARCHIVE_SOURCE_LABEL: Record<string, string> = {
-  seek: 'SEEK',
-  jooble: 'Jooble',
-  mycareersfuture: 'MyCareersFuture',
-  indeed: 'Indeed',
-  zhaopin: 'Zhaopin',
-  linkedin: 'LinkedIn',
-  'aps-gov': 'Australian Public Service',
-  'nt-gov': 'NT Government',
-  'tas-gov': 'TAS Government',
-  'nsw-gov': 'NSW Government',
+  seek: "SEEK",
+  jooble: "Jooble",
+  mycareersfuture: "MyCareersFuture",
+  indeed: "Indeed",
+  zhaopin: "Zhaopin",
+  linkedin: "LinkedIn",
+  "aps-gov": "Australian Public Service",
+  "nt-gov": "NT Government",
+  "tas-gov": "TAS Government",
+  "nsw-gov": "NSW Government",
 };
 
 // The current (still-advertised) listings for a company held in the D1 archive
@@ -339,7 +415,7 @@ async function currentFromArchive(
   const db = await getArchiveDb();
   if (!db) return { added: 0, jobs: [], sources: [] };
   try {
-    const res: any = await (db
+    const res = await db
       .prepare(
         `SELECT title, source, location, salary, url, posted, skills
            FROM jobs
@@ -347,19 +423,20 @@ async function currentFromArchive(
             AND source NOT IN ('adzuna', 'muse')
             AND last_seen >= date('now', '-3 days')`,
       )
-      .bind(id) as any).all();
-    const rows: any[] = res?.results ?? [];
+      .bind(id)
+      .all();
+    const rows = res?.results ?? [];
     if (!rows.length) return { added: 0, jobs: [], sources: [] };
     const seen = new Set(liveJobs.map((j) => normTitle(j.t)));
     const jobs: AdvertisedJob[] = [];
     const sources = new Set<string>();
     for (const r of rows) {
-      const t = stripHtml(String(r.title || ''));
+      const t = stripHtml(String(r.title || ""));
       if (!t) continue;
       const n = normTitle(t);
       if (seen.has(n)) continue; // already counted via a live board
       seen.add(n);
-      sources.add(String(r.source || ''));
+      sources.add(String(r.source || ""));
       let skills: string[];
       try {
         skills = r.skills ? JSON.parse(String(r.skills)) : skillsForText(t);
@@ -368,10 +445,10 @@ async function currentFromArchive(
       }
       jobs.push({
         t,
-        loc: String(r.location || ''),
-        cat: '',
-        url: String(r.url || ''),
-        created: String(r.posted || '').slice(0, 10),
+        loc: String(r.location || ""),
+        cat: "",
+        url: String(r.url || ""),
+        created: String(r.posted || "").slice(0, 10),
         city: null,
         skills,
         salN: undefined,
@@ -389,31 +466,36 @@ async function currentFromArchive(
 function regionMatcher(src: string | undefined): RegExp {
   if (!src || src.length > 200) return /$^/;
   try {
-    return new RegExp(src, 'i');
+    return new RegExp(src, "i");
   } catch {
     return /$^/;
   }
 }
 
-export const getOpenRoles = createServerFn({ method: 'GET' })
-  .validator((data: { company: string; id?: string; country?: string; where?: string; region?: string }) => data)
+export const getOpenRoles = createServerFn({ method: "GET" })
+  .validator(
+    (data: { company: string; id?: string; country?: string; where?: string; region?: string }) =>
+      data,
+  )
   .handler(async ({ data }): Promise<OpenRoles | null> => {
-    const company = (data.company || '').trim();
+    const company = (data.company || "").trim();
     if (!company) return null;
     // Market: defaults to Australia for backwards compatibility, but the card
     // passes the company's own country/where/region (see data/cityMarket.ts).
     // An empty country means Adzuna doesn't cover this market → The Muse only.
-    const country = data.country === undefined ? 'au' : data.country;
-    const where = data.where || 'Australia';
-    const region = regionMatcher(data.region || 'australia|sydney|melbourne|perth|brisbane|adelaide|canberra');
-    const key = `${data.id || ''}::${country}::${company.toLowerCase()}`;
+    const country = data.country === undefined ? "au" : data.country;
+    const where = data.where || "Australia";
+    const region = regionMatcher(
+      data.region || "australia|sydney|melbourne|perth|brisbane|adelaide|canberra",
+    );
+    const key = `${data.id || ""}::${country}::${company.toLowerCase()}`;
     const hit = cache.get(key);
     if (hit && Date.now() - hit.at < TTL) return hit.data;
 
     let out: OpenRoles | null = null;
     // 0. WA Government agencies serve from the scraped WA jobs board feed (KV),
     //    not Adzuna/Muse — real public-sector vacancies mapped to each agency.
-    if (data.id && data.id.startsWith('perth-gov-')) {
+    if (data.id && data.id.startsWith("perth-gov-")) {
       out = await fromWaGov(data.id);
       if (out && out.count > 0 && data.id) await recordSnapshot(data.id, out.count);
       cache.set(key, { at: Date.now(), data: out });
@@ -421,9 +503,13 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
     }
     // 0a. VIC / QLD Government agencies serve from their own scraped board feeds
     //     (careers.vic.gov.au / smartjobs.qld.gov.au), stored in KV like WA.
-    if (data.id && (data.id.startsWith('vic-gov-') || data.id.startsWith('qld-gov-'))) {
-      const vic = data.id.startsWith('vic-gov-');
-      out = await fromGovKv(vic ? 'vicgov' : 'qldgov', data.id, vic ? 'VIC Government' : 'QLD Government');
+    if (data.id && (data.id.startsWith("vic-gov-") || data.id.startsWith("qld-gov-"))) {
+      const vic = data.id.startsWith("vic-gov-");
+      out = await fromGovKv(
+        vic ? "vicgov" : "qldgov",
+        data.id,
+        vic ? "VIC Government" : "QLD Government",
+      );
       if (out && out.count > 0) await recordSnapshot(data.id, out.count);
       cache.set(key, { at: Date.now(), data: out });
       return out;
@@ -433,9 +519,9 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
     //     'sa-gov' — not Adzuna/Muse. currentFromArchive already returns that
     //     company's current (recently re-seen) non-Adzuna/Muse listings deduped
     //     by title, which for these ids is exactly the sa-gov rows.
-    if (data.id && data.id.startsWith('sa-gov-')) {
+    if (data.id && data.id.startsWith("sa-gov-")) {
       const extra = await currentFromArchive(data.id, []);
-      out = { count: extra.added, source: 'SA Government', jobs: extra.jobs };
+      out = { count: extra.added, source: "SA Government", jobs: extra.jobs };
       if (out.count > 0) await recordSnapshot(data.id, out.count);
       cache.set(key, { at: Date.now(), data: out });
       return out;
@@ -444,9 +530,9 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
     //     (apsjobs.gov.au), archived in D1 under source 'aps-gov'. Same archive
     //     path as SA; the aps-* prefix keeps them disjoint from state gov ids so
     //     a federal agency is never double-counted with a state one.
-    if (data.id && data.id.startsWith('aps-')) {
+    if (data.id && data.id.startsWith("aps-")) {
       const extra = await currentFromArchive(data.id, []);
-      out = { count: extra.added, source: 'Australian Public Service', jobs: extra.jobs };
+      out = { count: extra.added, source: "Australian Public Service", jobs: extra.jobs };
       if (out.count > 0) await recordSnapshot(data.id, out.count);
       cache.set(key, { at: Date.now(), data: out });
       return out;
@@ -455,9 +541,9 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
     //     board (jobs.nt.gov.au), archived in D1 under source 'nt-gov'. Same
     //     archive path as SA/APS; the nt-gov- prefix keeps them disjoint from the
     //     other jurisdictions' gov ids.
-    if (data.id && data.id.startsWith('nt-gov-')) {
+    if (data.id && data.id.startsWith("nt-gov-")) {
       const extra = await currentFromArchive(data.id, []);
-      out = { count: extra.added, source: 'NT Government', jobs: extra.jobs };
+      out = { count: extra.added, source: "NT Government", jobs: extra.jobs };
       if (out.count > 0) await recordSnapshot(data.id, out.count);
       cache.set(key, { at: Date.now(), data: out });
       return out;
@@ -466,9 +552,9 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
     //     jobs board (careers.jobs.tas.gov.au), archived in D1 under source
     //     'tas-gov'. Same archive path as SA/APS/NT; the tas-gov- prefix keeps
     //     them disjoint from the other jurisdictions' gov ids.
-    if (data.id && data.id.startsWith('tas-gov-')) {
+    if (data.id && data.id.startsWith("tas-gov-")) {
       const extra = await currentFromArchive(data.id, []);
-      out = { count: extra.added, source: 'TAS Government', jobs: extra.jobs };
+      out = { count: extra.added, source: "TAS Government", jobs: extra.jobs };
       if (out.count > 0) await recordSnapshot(data.id, out.count);
       cache.set(key, { at: Date.now(), data: out });
       return out;
@@ -477,9 +563,9 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
     //     jobs board (iworkfor.nsw.gov.au), archived in D1 under source
     //     'nsw-gov'. Same archive path as SA/APS/NT/TAS; the nsw-gov- prefix
     //     keeps them disjoint from the other jurisdictions' gov ids.
-    if (data.id && data.id.startsWith('nsw-gov-')) {
+    if (data.id && data.id.startsWith("nsw-gov-")) {
       const extra = await currentFromArchive(data.id, []);
-      out = { count: extra.added, source: 'NSW Government', jobs: extra.jobs };
+      out = { count: extra.added, source: "NSW Government", jobs: extra.jobs };
       if (out.count > 0) await recordSnapshot(data.id, out.count);
       cache.set(key, { at: Date.now(), data: out });
       return out;
@@ -510,14 +596,14 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
         }
         const base = az ? az.count : 0;
         const count = base + museAdded;
-        const source = az && museAdded > 0 ? 'Adzuna + The Muse' : az ? 'Adzuna' : 'The Muse';
+        const source = az && museAdded > 0 ? "Adzuna + The Muse" : az ? "Adzuna" : "The Muse";
         out = { count, source, jobs: jobs.slice(0, 60) };
 
         // Archive every listing we just pulled to the historical D1 store,
         // tagged by its source. Best-effort + no-op until the DB is bound.
         const rows: ArchiveRow[] = [
-          ...(az ? az.jobs.map((j) => jobToArchive(j, 'adzuna', company, data.id, where)) : []),
-          ...museJobs.map((j) => jobToArchive(j, 'muse', company, data.id, where)),
+          ...(az ? az.jobs.map((j) => jobToArchive(j, "adzuna", company, data.id, where)) : []),
+          ...museJobs.map((j) => jobToArchive(j, "muse", company, data.id, where)),
         ];
         await archiveJobs(await getArchiveDb(), rows, today());
       }
@@ -537,7 +623,7 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
       if (extra.added > 0) {
         const extraLabels = extra.sources.map((s) => ARCHIVE_SOURCE_LABEL[s] || s);
         if (out) {
-          const label = [out.source, ...extraLabels].filter(Boolean).join(' + ');
+          const label = [out.source, ...extraLabels].filter(Boolean).join(" + ");
           out = {
             count: out.count + extra.added,
             source: label,
@@ -546,7 +632,7 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
         } else {
           out = {
             count: extra.added,
-            source: extraLabels.filter(Boolean).join(' + ') || 'Archive',
+            source: extraLabels.filter(Boolean).join(" + ") || "Archive",
             jobs: extra.jobs.slice(0, 60),
           };
         }
@@ -564,7 +650,7 @@ export const getOpenRoles = createServerFn({ method: 'GET' })
 
 // Stored open-roles history for a company, oldest → newest. Empty until the
 // company has been queried at least once (history builds forward from now).
-export const getRolesHistory = createServerFn({ method: 'GET' })
+export const getRolesHistory = createServerFn({ method: "GET" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<RolePoint[]> => {
     const kv = await getKV();
@@ -575,8 +661,8 @@ export const getRolesHistory = createServerFn({ method: 'GET' })
       const arr = JSON.parse(raw);
       if (!Array.isArray(arr)) return [];
       return arr
-        .filter((p: any) => Array.isArray(p) && p.length === 2)
-        .map((p: [string, number]) => ({ d: p[0], c: Number(p[1]) }));
+        .filter((p): p is [string, number] => Array.isArray(p) && p.length === 2)
+        .map((p) => ({ d: p[0], c: Number(p[1]) }));
     } catch {
       return [];
     }

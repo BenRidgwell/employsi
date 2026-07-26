@@ -1,5 +1,5 @@
-import { useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 // Wraps a circular header action button (Compare/Follow/Close) and shows its
 // hover label via a body-level portal instead of a CSS-only absolutely
@@ -13,11 +13,19 @@ export function FabWrap({ label, children }: { label: string; children: ReactNod
   const ref = useRef<HTMLDivElement | null>(null);
   const rect = hover ? ref.current?.getBoundingClientRect() : null;
   return (
-    <div className="pfabwrap" ref={ref} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+    <div
+      className="pfabwrap"
+      ref={ref}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
       {children}
       {rect &&
         createPortal(
-          <span className="pfablbl pfablblfixed" style={{ left: rect.left + rect.width / 2, top: rect.top }}>
+          <span
+            className="pfablbl pfablblfixed"
+            style={{ left: rect.left + rect.width / 2, top: rect.top }}
+          >
             {label}
           </span>,
           document.body,

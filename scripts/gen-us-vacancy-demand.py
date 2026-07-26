@@ -84,6 +84,9 @@ CITIES: dict[str, dict] = {
     'atlanta':      {'msa': ['12060'], 'state': '13'},  # GA
     'boston':       {'msa': ['14460', '71650'], 'state': '25'},  # MA
     'sanfrancisco': {'msa': ['41860'], 'state': '06'},  # CA
+    # San Jose is its own MSA, NOT part of San Francisco's — which is exactly why
+    # the Silicon Valley companies had to be moved off the San Francisco pin.
+    'sanjose':      {'msa': ['41940'], 'state': '06'},  # CA
     'seattle':      {'msa': ['42660'], 'state': '53'},  # WA
     'minneapolis':  {'msa': ['33460'], 'state': '27'},  # MN
     'sandiego':     {'msa': ['41740'], 'state': '06'},  # CA
@@ -437,7 +440,7 @@ def main() -> int:
             r = last_rate[cfg['state']] / 100
             v += round(e * r / (1 - r)) if 0 < r < 1 else 0
         top.append(f'{s} {v:,}')
-    print('latest-month vacancies (all 21 metros): ' + '; '.join(top))
+    print(f'latest-month vacancies (all {len(CITIES)} metros): ' + '; '.join(top))
     return 0
 
 

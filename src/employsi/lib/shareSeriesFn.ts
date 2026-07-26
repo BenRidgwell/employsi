@@ -1,4 +1,21 @@
-import { createServerFn } from '@tanstack/react-start';
+import { createServerFn } from "@tanstack/react-start";
+
+// The slice of Yahoo Finance's chart response this reads, declared rather than
+// parsed into `any` — the close series and the 52-week bounds drive the card's
+// financial-trends line, so a silent shape change should break the build.
+interface YahooChartMeta {
+  regularMarketPrice?: number;
+  currency?: string;
+  fiftyTwoWeekLow?: number;
+  fiftyTwoWeekHigh?: number;
+}
+interface YahooChartResult {
+  meta?: YahooChartMeta;
+  indicators?: { quote?: { close?: (number | null)[] }[] };
+}
+interface YahooChart {
+  chart?: { result?: YahooChartResult[] };
+}
 
 // Live share-price series, fetched on the Worker from Yahoo Finance's public
 // chart API (no key). Runs server-side via createServerFn so the cross-origin
@@ -13,23 +30,34 @@ export interface ShareSeries {
   currency: string;
 }
 
-const EMPTY: ShareSeries = { series: [], low: 0, high: 0, last: 0, currency: '' };
+const EMPTY: ShareSeries = { series: [], low: 0, high: 0, last: 0, currency: "" };
 const UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
 
 // Map a ticker + exchange to the Yahoo Finance symbol (per-exchange suffix).
 // US exchanges use the bare symbol; other markets need Yahoo's suffix, and HK
 // codes are zero-padded to 4 digits.
 const YAHOO_SUFFIX: Record<string, string> = {
-  ASX: '.AX', LSE: '.L', JPX: '.T', SGX: '.SI', SIX: '.SW', JSE: '.JO',
-  EPA: '.PA', KRX: '.KS', TSX: '.TO', DFM: '.AE', SSE: '.SS', SZSE: '.SZ',
+  ASX: ".AX",
+  LSE: ".L",
+  JPX: ".T",
+  SGX: ".SI",
+  SIX: ".SW",
+  JSE: ".JO",
+  EPA: ".PA",
+  KRX: ".KS",
+  TSX: ".TO",
+  DFM: ".AE",
+  SSE: ".SS",
+  SZSE: ".SZ",
 };
 export function yahooSymbol(ticker: string, exchange?: string): string {
-  const ex = exchange || 'ASX';
-  if (ex === 'NYSE' || ex === 'NASDAQ') return ticker;
+  const ex = exchange || "ASX";
+  if (ex === "NYSE" || ex === "NASDAQ") return ticker;
   // Hong Kong: strip non-digits and any leading zeros, then pad back to Yahoo's
   // canonical 4-digit code (e.g. "00700" -> "0700.HK", "09988" -> "9988.HK").
-  if (ex === 'HKEX') return `${(ticker.replace(/\D/g, '').replace(/^0+/, '') || '0').padStart(4, '0')}.HK`;
+  if (ex === "HKEX")
+    return `${(ticker.replace(/\D/g, "").replace(/^0+/, "") || "0").padStart(4, "0")}.HK`;
   const suf = YAHOO_SUFFIX[ex];
   return suf ? `${ticker}${suf}` : ticker;
 }
@@ -48,11 +76,11 @@ const TTL = 60 * 60 * 1000;
 const fxCache = new Map<string, { at: number; rate: number }>();
 
 async function toAudRate(cur: string): Promise<number> {
-  const c = (cur || '').toUpperCase();
-  if (!c || c === 'AUD') return 1;
+  const c = (cur || "").toUpperCase();
+  if (!c || c === "AUD") return 1;
   // London quotes pence (GBp/GBX), not pounds — convert via GBP then /100.
-  const base = c === 'GBX' || c === 'GBP.' ? 'GBP' : c;
-  const pence = c === 'GBX' || c === 'GBP.';
+  const base = c === "GBX" || c === "GBP." ? "GBP" : c;
+  const pence = c === "GBX" || c === "GBP.";
   const hit = fxCache.get(base);
   const now = Date.now();
   let rate = hit && now - hit.at < TTL ? hit.rate : 0;
@@ -63,11 +91,11 @@ async function toAudRate(cur: string): Promise<number> {
       const timer = setTimeout(() => controller.abort(), 6000);
       const res = await fetch(url, {
         signal: controller.signal,
-        headers: { 'User-Agent': UA, Accept: 'application/json,text/plain,*/*' },
+        headers: { "User-Agent": UA, Accept: "application/json,text/plain,*/*" },
       });
       clearTimeout(timer);
       if (!res.ok) return 0;
-      const j = (await res.json()) as any;
+      const j = (await res.json()) as YahooChart;
       const m = j?.chart?.result?.[0]?.meta;
       rate = Number(m?.regularMarketPrice) || 0;
       if (rate > 0) fxCache.set(base, { at: now, rate });
@@ -79,12 +107,12 @@ async function toAudRate(cur: string): Promise<number> {
   return pence ? rate / 100 : rate;
 }
 
-export const getShareSeries = createServerFn({ method: 'GET' })
+export const getShareSeries = createServerFn({ method: "GET" })
   .validator((data: { ticker: string; exchange?: string }) => data)
   .handler(async ({ data }): Promise<ShareSeries> => {
-    const ticker = (data.ticker || '').trim().toUpperCase();
+    const ticker = (data.ticker || "").trim().toUpperCase();
     if (!ticker) return EMPTY;
-    const key = `${ticker}::${data.exchange || ''}`;
+    const key = `${ticker}::${data.exchange || ""}`;
     const hit = cache.get(key);
     if (hit && Date.now() - hit.at < TTL) return hit.data;
     try {
@@ -95,25 +123,25 @@ export const getShareSeries = createServerFn({ method: 'GET' })
       const res = await fetch(url, {
         signal: controller.signal,
         headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
-          Accept: 'application/json,text/plain,*/*',
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+          Accept: "application/json,text/plain,*/*",
         },
       });
       clearTimeout(timer);
       if (!res.ok) return EMPTY;
-      const json = (await res.json()) as any;
+      const json = (await res.json()) as YahooChart;
       const r = json?.chart?.result?.[0];
       const meta = r?.meta;
       const closes: (number | null)[] = r?.indicators?.quote?.[0]?.close ?? [];
       if (!meta || !Array.isArray(closes)) return EMPTY;
       // Keep the last 8 quarters of real closes.
       const series = closes
-        .filter((v): v is number => typeof v === 'number' && isFinite(v))
+        .filter((v): v is number => typeof v === "number" && isFinite(v))
         .slice(-8)
         .map((v) => +v.toFixed(v >= 10 ? 2 : 3));
       if (series.length < 2) return EMPTY;
-      const native = String(meta.currency ?? '');
+      const native = String(meta.currency ?? "");
       // Normalise everything to AUD so lines from different exchanges are
       // directly comparable. If the FX lookup fails we return the native series
       // untouched (and say so via `currency`) rather than showing a wrong number.
@@ -122,16 +150,22 @@ export const getShareSeries = createServerFn({ method: 'GET' })
       const audOk = fx > 0 && fx !== 1;
       const result: ShareSeries = {
         series: audOk ? series.map(conv) : series,
-        low: +(audOk
-          ? conv(meta.fiftyTwoWeekLow ?? Math.min(...series))
-          : (meta.fiftyTwoWeekLow ?? Math.min(...series))).toFixed(3),
-        high: +(audOk
-          ? conv(meta.fiftyTwoWeekHigh ?? Math.max(...series))
-          : (meta.fiftyTwoWeekHigh ?? Math.max(...series))).toFixed(3),
-        last: +(audOk
-          ? conv(meta.regularMarketPrice ?? series[series.length - 1])
-          : (meta.regularMarketPrice ?? series[series.length - 1])).toFixed(3),
-        currency: fx > 0 ? 'AUD' : native,
+        low: +(
+          audOk
+            ? conv(meta.fiftyTwoWeekLow ?? Math.min(...series))
+            : (meta.fiftyTwoWeekLow ?? Math.min(...series))
+        ).toFixed(3),
+        high: +(
+          audOk
+            ? conv(meta.fiftyTwoWeekHigh ?? Math.max(...series))
+            : (meta.fiftyTwoWeekHigh ?? Math.max(...series))
+        ).toFixed(3),
+        last: +(
+          audOk
+            ? conv(meta.regularMarketPrice ?? series[series.length - 1])
+            : (meta.regularMarketPrice ?? series[series.length - 1])
+        ).toFixed(3),
+        currency: fx > 0 ? "AUD" : native,
       };
       cache.set(key, { at: Date.now(), data: result });
       return result;

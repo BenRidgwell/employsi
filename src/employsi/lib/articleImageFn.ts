@@ -1,4 +1,4 @@
-import { createServerFn } from '@tanstack/react-start';
+import { createServerFn } from "@tanstack/react-start";
 
 // NB: kept out of any `server/` directory — the bundler denies importing paths
 // under **/server/**. createServerFn provides the client→server RPC bridge, so
@@ -19,7 +19,7 @@ export interface ArticleMeta {
 // article. Values include an all-empty result so we don't retry known-empty
 // pages.
 const cache = new Map<string, ArticleMeta>();
-const EMPTY: ArticleMeta = { image: '', published: '', publisher: '' };
+const EMPTY: ArticleMeta = { image: "", published: "", publisher: "" };
 
 function absolutise(src: string, base: string): string | null {
   try {
@@ -37,7 +37,7 @@ function extractImage(html: string, base: string): string | null {
   // Most sites put og:image in the <head>, but some (notably Google News, which
   // is where our live-feed links point) emit it near the very END of a large
   // document. So scan the head first and, if nothing's found, the tail too.
-  const head = html.length > 260_000 ? html.slice(0, 200_000) + '\n' + html.slice(-260_000) : html;
+  const head = html.length > 260_000 ? html.slice(0, 200_000) + "\n" + html.slice(-260_000) : html;
   const patterns = [
     /<meta[^>]+property=["']og:image:secure_url["'][^>]+content=["']([^"']+)["']/i,
     /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image:secure_url["']/i,
@@ -49,7 +49,7 @@ function extractImage(html: string, base: string): string | null {
   for (const re of patterns) {
     const m = head.match(re);
     if (m && m[1]) {
-      const abs = absolutise(m[1].replace(/&amp;/g, '&'), base);
+      const abs = absolutise(m[1].replace(/&amp;/g, "&"), base);
       if (abs && /^https?:\/\//i.test(abs)) return abs;
     }
   }
@@ -60,7 +60,7 @@ function extractImage(html: string, base: string): string | null {
 function metaContent(head: string, res: RegExp[]): string | null {
   for (const re of res) {
     const m = head.match(re);
-    if (m && m[1]) return m[1].replace(/&amp;/g, '&').trim();
+    if (m && m[1]) return m[1].replace(/&amp;/g, "&").trim();
   }
   return null;
 }
@@ -78,9 +78,9 @@ function extractPublished(head: string): string {
     /<time[^>]+datetime=["']([^"']+)["']/i,
     /"datePublished"\s*:\s*"([^"]+)"/i,
   ]);
-  if (!raw) return '';
+  if (!raw) return "";
   const t = Date.parse(raw);
-  return Number.isNaN(t) ? '' : new Date(t).toISOString();
+  return Number.isNaN(t) ? "" : new Date(t).toISOString();
 }
 
 // The publisher's display name: og:site_name / schema publisher when present,
@@ -93,17 +93,17 @@ function extractPublisher(head: string, base: string): string {
   ]);
   if (named) return named.slice(0, 40);
   try {
-    const host = new URL(base).hostname.replace(/^www\./, '');
-    return host === 'mining.com' ? 'MINING.COM' : host;
+    const host = new URL(base).hostname.replace(/^www\./, "");
+    return host === "mining.com" ? "MINING.COM" : host;
   } catch {
-    return '';
+    return "";
   }
 }
 
 // Resolves a single article URL on the Worker to its share image, publish date
 // and publisher. Returns empty fields when there's no data (or the fetch fails)
 // so the client can fall back without treating it as an error.
-export const getArticleImage = createServerFn({ method: 'GET' })
+export const getArticleImage = createServerFn({ method: "GET" })
   .validator((data: { url: string }) => data)
   .handler(async ({ data }): Promise<ArticleMeta> => {
     const url = data.url;
@@ -114,14 +114,14 @@ export const getArticleImage = createServerFn({ method: 'GET' })
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 6000);
       const res = await fetch(url, {
-        redirect: 'follow',
+        redirect: "follow",
         signal: controller.signal,
         headers: {
           // A real browser UA + Accept so publishers serve the full HTML head
           // (some gate the social meta behind a non-bot request).
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
-          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         },
       });
       clearTimeout(timer);
@@ -133,7 +133,7 @@ export const getArticleImage = createServerFn({ method: 'GET' })
       const head = html.slice(0, 200_000); // meta tags live in <head>; cap the scan
       const finalUrl = res.url || url;
       const meta: ArticleMeta = {
-        image: extractImage(html, finalUrl) ?? '',
+        image: extractImage(html, finalUrl) ?? "",
         published: extractPublished(head),
         publisher: extractPublisher(head, finalUrl),
       };

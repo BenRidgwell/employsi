@@ -6,7 +6,30 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", ".output", ".vinxi"] },
+  {
+    ignores: [
+      "dist",
+      ".output",
+      ".vinxi",
+      // Machine-generated data modules (each carries a "GENERATED — do not edit
+      // by hand" header and is rewritten by a script in scripts/). Prettier would
+      // reformat their compact one-line-per-record arrays into hundreds of
+      // thousands of lines, and the very next generator run would undo it — so
+      // the repo would oscillate between "lint passes" and "lint fails" with
+      // every data refresh. Their shape is the generator's responsibility.
+      "src/employsi/data/caVacancyDemand.ts",
+      "src/employsi/data/companyHeadcount.ts",
+      "src/employsi/data/euVacancyDemand.ts",
+      "src/employsi/data/iviSkillDemand.ts",
+      "src/employsi/data/nzVacancyDemand.ts",
+      "src/employsi/data/privateCompanyFacts.ts",
+      "src/employsi/data/resolvedDomains.ts",
+      "src/employsi/data/sgVacancyDemand.ts",
+      "src/employsi/data/skillOntology.ts",
+      "src/employsi/data/ukVacancyDemand.ts",
+      "src/employsi/data/usVacancyDemand.ts",
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

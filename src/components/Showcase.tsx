@@ -46,7 +46,10 @@ function PrototypeSlide({
         {grid.map((i) => (
           <div
             key={i}
-            style={{ background: colors[(i * 7 + (i % 5)) % colors.length], opacity: 0.85 - ((i * 3) % 40) / 100 }}
+            style={{
+              background: colors[(i * 7 + (i % 5)) % colors.length],
+              opacity: 0.85 - ((i * 3) % 40) / 100,
+            }}
           />
         ))}
       </div>
@@ -288,14 +291,19 @@ export function Showcase() {
             One live map for the entire workforce economy.
           </h2>
           <p className="mb-9 max-w-[560px] text-[17px] leading-[1.6] text-white/75">
-            Track hiring, salaries, and talent movement across every major employer — updated in real
-            time, anywhere.
+            Track hiring, salaries, and talent movement across every major employer — updated in
+            real time, anywhere.
           </p>
 
           <div className="my-11 h-px bg-[rgba(120,120,130,0.35)]" />
 
           <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4 md:gap-6">
-            <LiveStat min={14} max={19} fmt={(v) => `${Math.round(v)}+`} label="Employers tracked live" />
+            <LiveStat
+              min={14}
+              max={19}
+              fmt={(v) => `${Math.round(v)}+`}
+              label="Employers tracked live"
+            />
             <LiveStat
               min={2338}
               max={2394}

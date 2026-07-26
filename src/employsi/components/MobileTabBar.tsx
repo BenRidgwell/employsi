@@ -1,4 +1,4 @@
-import { useAppStore, isFilterActive, type FilterState } from '../state/store';
+import { useAppStore, isFilterActive, type FilterState } from "../state/store";
 
 // The single mobile navigation bar. On phones the scattered desktop docks
 // (top-bar controls, the trending/brief rail, the tools + help docks) are
@@ -8,23 +8,57 @@ import { useAppStore, isFilterActive, type FilterState } from '../state/store';
 // fight the bar for the bottom edge.
 
 const SearchIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.6" y2="16.6" />
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="11" cy="11" r="7" />
+    <line x1="21" y1="21" x2="16.6" y2="16.6" />
   </svg>
 );
 const FilterIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <line x1="4" y1="7" x2="20" y2="7" /><line x1="7" y1="12" x2="17" y2="12" /><line x1="10" y1="17" x2="14" y2="17" />
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="4" y1="7" x2="20" y2="7" />
+    <line x1="7" y1="12" x2="17" y2="12" />
+    <line x1="10" y1="17" x2="14" y2="17" />
   </svg>
 );
 const TrendingIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 15l4.5-5 3.5 3.5L20 6" /><path d="M15 6h5v5" />
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M4 15l4.5-5 3.5 3.5L20 6" />
+    <path d="M15 6h5v5" />
   </svg>
 );
 const MoreIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" />
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="4" y1="7" x2="20" y2="7" />
+    <line x1="4" y1="12" x2="20" y2="12" />
+    <line x1="4" y1="17" x2="20" y2="17" />
   </svg>
 );
 
@@ -55,7 +89,16 @@ export function MobileTabBar() {
   const minGrowth = useAppStore((s) => s.minGrowth);
   const maxAttrition = useAppStore((s) => s.maxAttrition);
   const searchQuery = useAppStore((s) => s.searchQuery);
-  const filterState: FilterState = { searchQuery, activeSectors, listingType, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition };
+  const filterState: FilterState = {
+    searchQuery,
+    activeSectors,
+    listingType,
+    activeExchanges,
+    minSalary,
+    minHeadcount,
+    minGrowth,
+    maxAttrition,
+  };
   const filterActive = isFilterActive(filterState);
 
   // The bar stays put whenever one of ITS OWN pop-outs is open (Search / Filter
@@ -68,20 +111,54 @@ export function MobileTabBar() {
   void searchOpen;
   void filterOpen;
   void mobileMenuOpen;
-  const fullTakeover = selectedId || compareOpen || authOpen || settingsOpen || feedbackOpen || helpTourOpen;
+  const fullTakeover =
+    selectedId || compareOpen || authOpen || settingsOpen || feedbackOpen || helpTourOpen;
   if (fullTakeover) return null;
 
   const tabs = [
-    { id: 'search', label: 'Search', icon: <SearchIcon />, on: searchOpen, dot: false, onClick: toggleSearch },
-    { id: 'filter', label: 'Filter', icon: <FilterIcon />, on: filterOpen, dot: filterActive, onClick: toggleFilter },
-    { id: 'trending', label: 'Trending', icon: <TrendingIcon />, on: trendingOpen, dot: false, onClick: toggleTrending },
-    { id: 'more', label: 'More', icon: <MoreIcon />, on: mobileMenuOpen, dot: false, onClick: toggleMobileMenu },
+    {
+      id: "search",
+      label: "Search",
+      icon: <SearchIcon />,
+      on: searchOpen,
+      dot: false,
+      onClick: toggleSearch,
+    },
+    {
+      id: "filter",
+      label: "Filter",
+      icon: <FilterIcon />,
+      on: filterOpen,
+      dot: filterActive,
+      onClick: toggleFilter,
+    },
+    {
+      id: "trending",
+      label: "Trending",
+      icon: <TrendingIcon />,
+      on: trendingOpen,
+      dot: false,
+      onClick: toggleTrending,
+    },
+    {
+      id: "more",
+      label: "More",
+      icon: <MoreIcon />,
+      on: mobileMenuOpen,
+      dot: false,
+      onClick: toggleMobileMenu,
+    },
   ];
 
   return (
     <nav className="mtabbar" aria-label="Main">
       {tabs.map((t) => (
-        <button key={t.id} className={`mtab ${t.on ? 'on' : ''}`} onClick={t.onClick} aria-label={t.label}>
+        <button
+          key={t.id}
+          className={`mtab ${t.on ? "on" : ""}`}
+          onClick={t.onClick}
+          aria-label={t.label}
+        >
           <span className="mtabic">
             {t.icon}
             {t.dot && <span className="mtabdot" />}

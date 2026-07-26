@@ -25,9 +25,15 @@ import re
 
 # Either a single- or double-quoted TS string literal, backslash escapes allowed.
 _TERM = re.compile(r"""'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)\"""")
+# skill/cat accept either quote style for the same reason terms do: which one
+# RAW_SKILLS uses is Prettier's choice, not a meaningful property of the data —
+# a repo-wide reformat flipped every string in this file from single to double
+# quotes and silently emptied this parser (and with it every generated dataset).
+# Trailing commas inside the entry are equally Prettier's business.
+_STR = r"""(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")"""
 _ENTRY = re.compile(
-    r"\{\s*skill:\s*'((?:[^'\\]|\\.)*)',\s*cat:\s*'((?:[^'\\]|\\.)*)',"
-    r"\s*terms:\s*\[([^\]]*)\]\s*\}"
+    r"\{\s*skill:\s*" + _STR + r"\s*,\s*cat:\s*" + _STR +
+    r"\s*,\s*terms:\s*\[([^\]]*)\]\s*,?\s*\}"
 )
 # A usable term has at least one letter or digit. Latin, CJK and any other
 # script all qualify; a run of punctuation and spaces does not.
@@ -62,8 +68,8 @@ def load_skills(path: str) -> list[tuple[str, list[str]]]:
     merged: dict[str, list[str]] = {}
     bad: list[tuple[str, str]] = []
     for m in _ENTRY.finditer(body):
-        skill = _unescape(m.group(1))
-        terms = [_unescape(a or b) for a, b in _TERM.findall(m.group(3))]
+        skill = _unescape(m.group(1) or m.group(2))
+        terms = [_unescape(a or b) for a, b in _TERM.findall(m.group(5))]
         for t in terms:
             if not _MEANINGFUL.search(t):
                 bad.append((skill, t))
@@ -88,10 +94,8 @@ def load_categories(path: str) -> list[tuple[str, str]]:
     src = open(path).read()
     body = src.split('RAW_SKILLS', 1)[1].split('];', 1)[0]
     return [
-        (_unescape(m.group(1)), _unescape(m.group(2)))
-        for m in re.finditer(
-            r"\{\s*skill:\s*'((?:[^'\\]|\\.)*)',\s*cat:\s*'((?:[^'\\]|\\.)*)',", body
-        )
+        (_unescape(m.group(1) or m.group(2)), _unescape(m.group(3) or m.group(4)))
+        for m in re.finditer(r"\{\s*skill:\s*" + _STR + r"\s*,\s*cat:\s*" + _STR, body)
     ]
 
 

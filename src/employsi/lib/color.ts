@@ -20,7 +20,7 @@ export function heatColor(t: number): RGB {
 }
 
 export function rgbCss(rgb: RGB): string {
-  return `rgb(${rgb.join(',')})`;
+  return `rgb(${rgb.join(",")})`;
 }
 
 export interface HeatDisc {

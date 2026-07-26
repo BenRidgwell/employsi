@@ -14,30 +14,40 @@
 // skill index is recomputed from the stored jobs:* each run, so it is always
 // internally consistent regardless of which shard just refreshed.
 
-import { AU_JOBS_TARGETS as AU_LISTED, type JobsTarget } from '../../src/employsi/data/auJobsTargets';
-import { TOP_PRIVATE_TARGETS } from '../../src/employsi/data/topPrivateCompanies';
+import {
+  AU_JOBS_TARGETS as AU_LISTED,
+  type JobsTarget,
+} from "../../src/employsi/data/auJobsTargets";
+import { TOP_PRIVATE_TARGETS } from "../../src/employsi/data/topPrivateCompanies";
 
 // The listed (ASX) roster plus the Top-150 private companies — both driven by
 // the same daily Adzuna pull, so private-company cards get live vacancies and
 // contribute to the skill-demand heat index like any listed name.
 const AU_JOBS_TARGETS: JobsTarget[] = [...AU_LISTED, ...TOP_PRIVATE_TARGETS];
-import { GLOBAL_HUB_TARGETS, type HubTarget } from '../../src/employsi/data/globalHubTargets';
-import { JOOBLE_HUB_TARGETS, type JoobleHubTarget } from '../../src/employsi/data/joobleHubTargets';
-import { skillsForText } from '../../src/employsi/data/skillsTaxonomy';
-import { archiveJobs, type ArchiveRow } from '../../src/employsi/lib/jobArchive';
-import { fetchWaGovPages, type StoredWaJob } from './waGov';
-import { fetchVicGovPages, type StoredVicJob } from './vicGov';
-import { fetchQldGovPages, type StoredQldJob } from './qldGov';
-import { fetchNtGov, type StoredNtJob } from './ntGov';
-import { fetchTasGov, type StoredTasJob } from './tasGov';
-import { fetchMcfJobs } from './mycareersfuture';
-import { fetchSeekCompanyJobs } from './seek';
-import { SEEK_ADVERTISERS } from '../../src/employsi/data/seekAdvertisers';
-import { PERTH_GOV_IDS } from '../../src/employsi/data/perthGov';
-import { MELBOURNE_GOV_IDS } from '../../src/employsi/data/melbourneGov';
-import { BRISBANE_GOV_IDS } from '../../src/employsi/data/brisbaneGov';
-import { DARWIN_GOV_IDS } from '../../src/employsi/data/darwinGov';
-import { HOBART_GOV_IDS } from '../../src/employsi/data/hobartGov';
+import { GLOBAL_HUB_TARGETS, type HubTarget } from "../../src/employsi/data/globalHubTargets";
+import { JOOBLE_HUB_TARGETS, type JoobleHubTarget } from "../../src/employsi/data/joobleHubTargets";
+import { skillsForText } from "../../src/employsi/data/skillsTaxonomy";
+import { archiveJobs, type ArchiveRow } from "../../src/employsi/lib/jobArchive";
+import { fetchWaGovPages, type StoredWaJob } from "./waGov";
+import { fetchVicGovPages, type StoredVicJob } from "./vicGov";
+import { fetchQldGovPages, type StoredQldJob } from "./qldGov";
+import { fetchNtGov, type StoredNtJob } from "./ntGov";
+import { fetchTasGov, type StoredTasJob } from "./tasGov";
+import { fetchMcfJobs } from "./mycareersfuture";
+import { fetchSeekCompanyJobs } from "./seek";
+import { SEEK_ADVERTISERS } from "../../src/employsi/data/seekAdvertisers";
+import { PERTH_GOV_IDS } from "../../src/employsi/data/perthGov";
+import { MELBOURNE_GOV_IDS } from "../../src/employsi/data/melbourneGov";
+import { BRISBANE_GOV_IDS } from "../../src/employsi/data/brisbaneGov";
+import { DARWIN_GOV_IDS } from "../../src/employsi/data/darwinGov";
+import { HOBART_GOV_IDS } from "../../src/employsi/data/hobartGov";
+import {
+  asRecord,
+  asRecords,
+  str,
+  type JsonRecord,
+  type JsonValue,
+} from "../../src/employsi/lib/json";
 
 interface Env {
   OPEN_ROLES_HISTORY: KVNamespace;
@@ -72,7 +82,7 @@ interface Env {
 const SHARD = 17;
 const JOBS_PER_COMPANY = 60;
 const JOBS_PER_HUB = 50;
-const CITIES = ['perth', 'adelaide', 'brisbane', 'melbourne', 'sydney'];
+const CITIES = ["perth", "adelaide", "brisbane", "melbourne", "sydney"];
 
 interface StoredJob {
   t: string; // title
@@ -89,16 +99,25 @@ interface StoredJob {
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
-const stripHtml = (s: string) => (s || '').replace(/<[^>]*>/g, ' ').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim();
+const stripHtml = (s: string) =>
+  (s || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&[a-z]+;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 // Normalise a title for cross-board dedupe (Adzuna ↔ The Muse): lowercase,
 // collapse non-alphanumerics to single spaces. Same-ad titles line up.
-const normTitle = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const normTitle = (s: string) =>
+  (s || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 
 // Adzuna salary band → a compact display string (for the archive), when present.
-function adzunaSalary(x: any): string | undefined {
+function adzunaSalary(x: JsonRecord): string | undefined {
   const lo = Number(x?.salary_min);
   const hi = Number(x?.salary_max);
-  const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
+  const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
   if (Number.isFinite(lo) && Number.isFinite(hi) && lo > 0) {
     return lo === hi ? fmt(lo) : `${fmt(lo)}–${fmt(hi)}`;
   }
@@ -106,25 +125,30 @@ function adzunaSalary(x: any): string | undefined {
 }
 
 // Adzuna salary band → an annualised midpoint number (for aggregation).
-function adzunaSalaryNum(x: any): number | undefined {
-  const vals = [Number(x?.salary_min), Number(x?.salary_max)].filter((n) => Number.isFinite(n) && n > 0);
+function adzunaSalaryNum(x: JsonRecord): number | undefined {
+  const vals = [Number(x?.salary_min), Number(x?.salary_max)].filter(
+    (n) => Number.isFinite(n) && n > 0,
+  );
   return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : undefined;
 }
 
 function matchCity(text: string): string | null {
-  const t = (text || '').toLowerCase();
+  const t = (text || "").toLowerCase();
   for (const c of CITIES) if (t.includes(c)) return c;
   return null;
 }
 
-async function pullCompany(env: Env, target: JobsTarget): Promise<{ count: number; jobs: StoredJob[] }> {
+async function pullCompany(
+  env: Env,
+  target: JobsTarget,
+): Promise<{ count: number; jobs: StoredJob[] }> {
   const params = new URLSearchParams({
     app_id: env.ADZUNA_APP_ID,
     app_key: env.ADZUNA_APP_KEY,
     what_phrase: target.name,
-    where: 'Australia',
-    results_per_page: '50',
-    'content-type': 'application/json',
+    where: "Australia",
+    results_per_page: "50",
+    "content-type": "application/json",
   });
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
@@ -134,31 +158,31 @@ async function pullCompany(env: Env, target: JobsTarget): Promise<{ count: numbe
   try {
     const res = await fetch(`https://api.adzuna.com/v1/api/jobs/au/search/1?${params.toString()}`, {
       signal: controller.signal,
-      headers: { Accept: 'application/json', 'User-Agent': 'employsi-jobs/1.0' },
+      headers: { Accept: "application/json", "User-Agent": "employsi-jobs/1.0" },
     });
     if (res.ok) {
-      const j: any = await res.json();
+      const j = await res.json();
       count = Number(j?.count) || 0;
-      const results: any[] = Array.isArray(j?.results) ? j.results : [];
+      const results = asRecords(asRecord(j).results);
       const seen = new Set<string>();
       for (const x of results) {
-        const title = stripHtml(x?.title || '');
+        const title = stripHtml(x?.title || "");
         if (!title) continue;
-        const loc = x?.location?.display_name || '';
-        const dedupe = (title + '|' + loc).toLowerCase();
+        const loc = x?.location?.display_name || "";
+        const dedupe = (title + "|" + loc).toLowerCase();
         if (seen.has(dedupe)) continue; // Adzuna reposts the same role repeatedly
         seen.add(dedupe);
         seenTitles.add(normTitle(title));
-        const area = Array.isArray(x?.location?.area) ? x.location.area.join(' ') : '';
+        const area = Array.isArray(x?.location?.area) ? x.location.area.join(" ") : "";
         jobs.push({
           t: title,
           loc,
-          cat: x?.category?.label || '',
-          url: x?.redirect_url || '',
-          created: (x?.created || '').slice(0, 10),
-          city: matchCity(loc + ' ' + area) || matchCity(title),
+          cat: x?.category?.label || "",
+          url: x?.redirect_url || "",
+          created: (x?.created || "").slice(0, 10),
+          city: matchCity(loc + " " + area) || matchCity(title),
           skills: skillsForText(title),
-          src: 'adzuna',
+          src: "adzuna",
           co: x?.company?.display_name || target.name,
           sal: adzunaSalary(x),
           salN: adzunaSalaryNum(x),
@@ -195,7 +219,7 @@ async function pullCompany(env: Env, target: JobsTarget): Promise<{ count: numbe
   // once. Keyed on the offline-resolved advertiser id; companies without one (no
   // current SEEK ads) contribute nothing, exactly like an unmatched Muse name.
   // SEEK returning [] (unreachable / challenged) simply adds nothing this run.
-  if (env.SEEK_VIA_WORKER === '1' && jobs.length < JOBS_PER_COMPANY) {
+  if (env.SEEK_VIA_WORKER === "1" && jobs.length < JOBS_PER_COMPANY) {
     const adv = SEEK_ADVERTISERS[target.id];
     if (adv) {
       const seek = await fetchSeekCompanyJobs(adv.advertiserId, adv.name);
@@ -229,27 +253,31 @@ async function pullMuse(env: Env, company: string): Promise<StoredJob[]> {
     try {
       const res = await fetch(`https://www.themuse.com/api/public/jobs?${params.toString()}`, {
         signal: controller.signal,
-        headers: { Accept: 'application/json', 'User-Agent': 'employsi-jobs/1.0' },
+        headers: { Accept: "application/json", "User-Agent": "employsi-jobs/1.0" },
       });
       if (!res.ok) break;
-      const j: any = await res.json();
-      const results: any[] = Array.isArray(j?.results) ? j.results : [];
+      const j = await res.json();
+      const results = asRecords(asRecord(j).results);
       if (!results.length) break;
       for (const r of results) {
-        const title = stripHtml(r?.name || '');
+        const title = stripHtml(r?.name || "");
         if (!title) continue;
-        const locs: string[] = Array.isArray(r?.locations) ? r.locations.map((l: any) => String(l?.name || '')) : [];
-        const auLoc = locs.find((l) => /australia|sydney|melbourne|perth|brisbane|adelaide|canberra/i.test(l));
+        const locs: string[] = Array.isArray(r?.locations)
+          ? asRecords(r.locations).map((l) => str(l.name))
+          : [];
+        const auLoc = locs.find((l) =>
+          /australia|sydney|melbourne|perth|brisbane|adelaide|canberra/i.test(l),
+        );
         if (!auLoc) continue; // only genuine Australian roles count toward AU vacancies
         out.push({
           t: title,
           loc: auLoc,
-          cat: (Array.isArray(r?.categories) && r.categories[0]?.name) || '',
-          url: (r?.refs && r.refs.landing_page) || '',
-          created: String(r?.publication_date || '').slice(0, 10),
+          cat: (Array.isArray(r?.categories) && r.categories[0]?.name) || "",
+          url: (r?.refs && r.refs.landing_page) || "",
+          created: String(r?.publication_date || "").slice(0, 10),
           city: matchCity(auLoc) || matchCity(title),
           skills: skillsForText(title),
-          src: 'muse',
+          src: "muse",
           co: (r?.company && r.company.name) || company,
         });
       }
@@ -292,37 +320,40 @@ async function pullHub(env: Env, target: HubTarget): Promise<StoredJob[]> {
     app_key: env.ADZUNA_APP_KEY,
     where: target.where,
     results_per_page: String(JOBS_PER_HUB),
-    'content-type': 'application/json',
+    "content-type": "application/json",
   });
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
   try {
     const res = await fetch(
       `https://api.adzuna.com/v1/api/jobs/${target.country}/search/1?${params.toString()}`,
-      { signal: controller.signal, headers: { Accept: 'application/json', 'User-Agent': 'employsi-jobs/1.0' } },
+      {
+        signal: controller.signal,
+        headers: { Accept: "application/json", "User-Agent": "employsi-jobs/1.0" },
+      },
     );
     if (!res.ok) return [];
-    const j: any = await res.json();
-    const results: any[] = Array.isArray(j?.results) ? j.results : [];
+    const j = await res.json();
+    const results = asRecords(asRecord(j).results);
     const seen = new Set<string>();
     const jobs: StoredJob[] = [];
     for (const x of results) {
-      const title = stripHtml(x?.title || '');
+      const title = stripHtml(x?.title || "");
       if (!title) continue;
-      const loc = x?.location?.display_name || '';
-      const dedupe = (title + '|' + loc).toLowerCase();
+      const loc = x?.location?.display_name || "";
+      const dedupe = (title + "|" + loc).toLowerCase();
       if (seen.has(dedupe)) continue;
       seen.add(dedupe);
       jobs.push({
         t: title,
         loc,
-        cat: x?.category?.label || '',
-        url: x?.redirect_url || '',
-        created: (x?.created || '').slice(0, 10),
+        cat: x?.category?.label || "",
+        url: x?.redirect_url || "",
+        created: (x?.created || "").slice(0, 10),
         city: target.hub,
         skills: skillsForText(title),
-        src: 'adzuna',
-        co: x?.company?.display_name || '',
+        src: "adzuna",
+        co: x?.company?.display_name || "",
         sal: adzunaSalary(x),
         salN: adzunaSalaryNum(x),
       });
@@ -346,34 +377,43 @@ async function pullJoobleHub(env: Env, target: JoobleHubTarget): Promise<StoredJ
   const timer = setTimeout(() => controller.abort(), 8000);
   try {
     const res = await fetch(`https://jooble.org/api/${env.JOOBLE_KEY}`, {
-      method: 'POST',
+      method: "POST",
       signal: controller.signal,
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'User-Agent': 'employsi-jobs/1.0' },
-      body: JSON.stringify({ keywords: '', location: target.location, ResultOnPage: JOBS_PER_HUB, page: 1 }),
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "User-Agent": "employsi-jobs/1.0",
+      },
+      body: JSON.stringify({
+        keywords: "",
+        location: target.location,
+        ResultOnPage: JOBS_PER_HUB,
+        page: 1,
+      }),
     });
     if (!res.ok) return [];
-    const j: any = await res.json();
-    const results: any[] = Array.isArray(j?.jobs) ? j.jobs : [];
+    const j = await res.json();
+    const results = asRecords(asRecord(j).jobs);
     const seen = new Set<string>();
     const jobs: StoredJob[] = [];
     for (const x of results) {
-      const title = stripHtml(x?.title || '');
+      const title = stripHtml(x?.title || "");
       if (!title) continue;
-      const loc = stripHtml(x?.location || '');
-      const dedupe = (title + '|' + loc).toLowerCase();
+      const loc = stripHtml(x?.location || "");
+      const dedupe = (title + "|" + loc).toLowerCase();
       if (seen.has(dedupe)) continue;
       seen.add(dedupe);
       jobs.push({
         t: title,
         loc,
-        cat: stripHtml(x?.type || ''), // Jooble's `type` (e.g. Full-time) — no category taxonomy
-        url: x?.link || '',
-        created: (x?.updated || '').slice(0, 10),
+        cat: stripHtml(x?.type || ""), // Jooble's `type` (e.g. Full-time) — no category taxonomy
+        url: x?.link || "",
+        created: (x?.updated || "").slice(0, 10),
         city: target.hub,
         skills: skillsForText(title),
-        src: 'jooble',
-        co: stripHtml(x?.company || ''),
-        sal: stripHtml(x?.salary || '') || undefined,
+        src: "jooble",
+        co: stripHtml(x?.company || ""),
+        sal: stripHtml(x?.salary || "") || undefined,
       });
     }
     return jobs;
@@ -401,8 +441,11 @@ interface SkillIndex {
 async function recomputeIndex(env: Env): Promise<SkillIndex> {
   const skills: Record<string, SkillAgg> = {};
   let totalJobs = 0;
-  const agg = (skill: string): SkillAgg => (skills[skill] ||= { total: 0, byCompany: {}, bySector: {}, byCity: {} });
-  const byId: Record<string, JobsTarget> = Object.fromEntries(AU_JOBS_TARGETS.map((t) => [t.id, t]));
+  const agg = (skill: string): SkillAgg =>
+    (skills[skill] ||= { total: 0, byCompany: {}, bySector: {}, byCity: {} });
+  const byId: Record<string, JobsTarget> = Object.fromEntries(
+    AU_JOBS_TARGETS.map((t) => [t.id, t]),
+  );
 
   // The heat map is "who is hiring this skill NOW, by volume". The stored
   // jobs:{id} list is ALREADY the company's currently-advertised ads (pullCompany
@@ -414,7 +457,7 @@ async function recomputeIndex(env: Env): Promise<SkillIndex> {
   for (const t of AU_JOBS_TARGETS) {
     const raw = await env.OPEN_ROLES_HISTORY.get(`jobs:${t.id}`);
     if (!raw) continue;
-    let data: any;
+    let data: unknown;
     try {
       data = JSON.parse(raw);
     } catch {
@@ -441,11 +484,15 @@ async function recomputeIndex(env: Env): Promise<SkillIndex> {
   // key namespace, so the two feeds aggregate identically.
   // Singapore's hub sample comes from MyCareersFuture (not the Adzuna hub list),
   // so include it explicitly so the global heatmap still lights up Singapore.
-  const hubIds = [...GLOBAL_HUB_TARGETS.map((h) => h.hub), ...JOOBLE_HUB_TARGETS.map((h) => h.hub), 'singapore'];
+  const hubIds = [
+    ...GLOBAL_HUB_TARGETS.map((h) => h.hub),
+    ...JOOBLE_HUB_TARGETS.map((h) => h.hub),
+    "singapore",
+  ];
   for (const hub of hubIds) {
     const raw = await env.OPEN_ROLES_HISTORY.get(`hubjobs:${hub}`);
     if (!raw) continue;
-    let data: any;
+    let data: unknown;
     try {
       data = JSON.parse(raw);
     } catch {
@@ -468,7 +515,7 @@ async function recomputeIndex(env: Env): Promise<SkillIndex> {
 // (company-scoped pulls) or hub (whole-market samples) through.
 function toArchiveRows(jobs: StoredJob[], ctx: { companyId?: string; hub?: string }): ArchiveRow[] {
   return jobs.map((j) => ({
-    source: j.src || 'adzuna',
+    source: j.src || "adzuna",
     title: j.t,
     company: j.co || null,
     companyId: ctx.companyId ?? null,
@@ -509,13 +556,20 @@ async function processHubs(env: Env, day: string): Promise<void> {
   // owning the singapore hub sample + archive (source "mycareersfuture").
   const sg = await fetchMcfJobs(day);
   if (sg.length) {
-    await env.OPEN_ROLES_HISTORY.put('hubjobs:singapore', JSON.stringify({ updated: day, jobs: sg }));
-    await archiveJobs(env.JOBS_ARCHIVE, toArchiveRows(sg as StoredJob[], { hub: 'singapore' }), day);
+    await env.OPEN_ROLES_HISTORY.put(
+      "hubjobs:singapore",
+      JSON.stringify({ updated: day, jobs: sg }),
+    );
+    await archiveJobs(
+      env.JOBS_ARCHIVE,
+      toArchiveRows(sg as StoredJob[], { hub: "singapore" }),
+      day,
+    );
   }
 }
 
 async function processShard(env: Env): Promise<{ processed: string[]; totalJobs: number }> {
-  const cursorRaw = await env.OPEN_ROLES_HISTORY.get('cron:cursor');
+  const cursorRaw = await env.OPEN_ROLES_HISTORY.get("cron:cursor");
   const cursor = Number(cursorRaw) || 0;
   const companies = AU_JOBS_TARGETS;
   const n = companies.length;
@@ -536,8 +590,8 @@ async function processShard(env: Env): Promise<{ processed: string[]; totalJobs:
   await processHubs(env, day);
 
   const idx = await recomputeIndex(env);
-  await env.OPEN_ROLES_HISTORY.put('skillidx', JSON.stringify(idx));
-  await env.OPEN_ROLES_HISTORY.put('cron:cursor', String((cursor + SHARD) % n));
+  await env.OPEN_ROLES_HISTORY.put("skillidx", JSON.stringify(idx));
+  await env.OPEN_ROLES_HISTORY.put("cron:cursor", String((cursor + SHARD) % n));
   return { processed, totalJobs: idx.totalJobs };
 }
 
@@ -545,11 +599,11 @@ async function processShard(env: Env): Promise<{ processed: string[]; totalJobs:
 // A StoredWaJob → historical archive row (source "wa-gov").
 function waJobToArchive(j: StoredWaJob, agencyId: string): ArchiveRow {
   return {
-    source: 'wa-gov',
+    source: "wa-gov",
     title: j.t,
     company: null,
     companyId: agencyId,
-    hub: 'perth',
+    hub: "perth",
     location: j.loc,
     category: j.cat,
     salary: j.salN ? `$${Math.round(j.salN / 1000)}k` : null,
@@ -570,8 +624,8 @@ const WAGOV_WINDOW = 10; // pages fetched per run beyond page 1 (WAF-safe slice)
 const WAGOV_MAX_AGE_DAYS = 4; // drop a stored listing not re-seen on the board within this
 
 function daysBetween(a: string, b: string): number {
-  const ta = Date.parse(a + 'T00:00:00Z');
-  const tb = Date.parse(b + 'T00:00:00Z');
+  const ta = Date.parse(a + "T00:00:00Z");
+  const tb = Date.parse(b + "T00:00:00Z");
   if (!Number.isFinite(ta) || !Number.isFinite(tb)) return 0;
   return Math.round((tb - ta) / 86400000);
 }
@@ -596,12 +650,20 @@ function mergeAgencyJobs(prev: StoredWaJob[], fresh: StoredWaJob[], day: string)
   return [...byUrl.values()].slice(0, 80);
 }
 
-async function processWaGov(env: Env): Promise<{ total: number; startPage: number; pagesOk: number; parsed: number; agencies: number; nextCursor: number }> {
+async function processWaGov(env: Env): Promise<{
+  total: number;
+  startPage: number;
+  pagesOk: number;
+  parsed: number;
+  agencies: number;
+  nextCursor: number;
+}> {
   const day = today();
-  const cursorRaw = await env.OPEN_ROLES_HISTORY.get('wagov:cursor');
+  const cursorRaw = await env.OPEN_ROLES_HISTORY.get("wagov:cursor");
   const start = Math.max(2, Number(cursorRaw) || 2);
   const res = await fetchWaGovPages(day, start, WAGOV_WINDOW);
-  if (!res) return { total: 0, startPage: start, pagesOk: 0, parsed: 0, agencies: 0, nextCursor: start };
+  if (!res)
+    return { total: 0, startPage: start, pagesOk: 0, parsed: 0, agencies: 0, nextCursor: start };
 
   let withRoles = 0;
   for (const id of PERTH_GOV_IDS) {
@@ -618,16 +680,17 @@ async function processWaGov(env: Env): Promise<{ total: number; startPage: numbe
       /* start fresh */
     }
     const jobs = mergeAgencyJobs(prevJobs, fresh, day);
-    await env.OPEN_ROLES_HISTORY.put(
-      `wagov:${id}`,
-      JSON.stringify({ updated: day, count, jobs }),
-    );
+    await env.OPEN_ROLES_HISTORY.put(`wagov:${id}`, JSON.stringify({ updated: day, count, jobs }));
     if (count > 0) {
       await appendCount(env, id, count);
       withRoles++;
     }
     if (fresh.length) {
-      await archiveJobs(env.JOBS_ARCHIVE, fresh.map((j) => waJobToArchive(j, id)), day);
+      await archiveJobs(
+        env.JOBS_ARCHIVE,
+        fresh.map((j) => waJobToArchive(j, id)),
+        day,
+      );
     }
   }
 
@@ -635,9 +698,16 @@ async function processWaGov(env: Env): Promise<{ total: number; startPage: numbe
   // page 2 once the whole board has been walked.
   let next = start + WAGOV_WINDOW;
   if (next > res.lastPage) next = 2;
-  await env.OPEN_ROLES_HISTORY.put('wagov:cursor', String(next));
+  await env.OPEN_ROLES_HISTORY.put("wagov:cursor", String(next));
 
-  return { total: res.total, startPage: start, pagesOk: res.pagesOk, parsed: res.parsed, agencies: withRoles, nextCursor: next };
+  return {
+    total: res.total,
+    startPage: start,
+    pagesOk: res.pagesOk,
+    parsed: res.parsed,
+    agencies: withRoles,
+    nextCursor: next,
+  };
 }
 
 // ── VIC & QLD Government jobs feeds ────────────────────────────────────────
@@ -674,9 +744,13 @@ function govJobToArchive(
 // Merge a run's freshly-scraped listings for one agency with what's stored:
 // keyed by URL (falling back to title when a board omits the URL), refreshing
 // last-seen, adding new, ageing out anything not re-seen within GOV_MAX_AGE_DAYS.
-function mergeGovJobs<T extends { url?: string; t?: string; seen?: string }>(prev: T[], fresh: T[], day: string): T[] {
+function mergeGovJobs<T extends { url?: string; t?: string; seen?: string }>(
+  prev: T[],
+  fresh: T[],
+  day: string,
+): T[] {
   const byKey = new Map<string, T>();
-  const keyOf = (j: T) => (j.url && j.url.length ? j.url : `t:${j.t || ''}`);
+  const keyOf = (j: T) => (j.url && j.url.length ? j.url : `t:${j.t || ""}`);
   for (const j of prev) {
     if (j.seen && daysBetween(j.seen, day) > GOV_MAX_AGE_DAYS) continue;
     byKey.set(keyOf(j), j);
@@ -685,12 +759,20 @@ function mergeGovJobs<T extends { url?: string; t?: string; seen?: string }>(pre
   return [...byKey.values()].slice(0, 80);
 }
 
-async function processVicGov(env: Env): Promise<{ total: number; startPage: number; pagesOk: number; parsed: number; agencies: number; nextCursor: number }> {
+async function processVicGov(env: Env): Promise<{
+  total: number;
+  startPage: number;
+  pagesOk: number;
+  parsed: number;
+  agencies: number;
+  nextCursor: number;
+}> {
   const day = today();
-  const cursorRaw = await env.OPEN_ROLES_HISTORY.get('vicgov:cursor');
+  const cursorRaw = await env.OPEN_ROLES_HISTORY.get("vicgov:cursor");
   const start = Math.max(2, Number(cursorRaw) || 2);
   const res = await fetchVicGovPages(day, start, VICGOV_WINDOW);
-  if (!res) return { total: 0, startPage: start, pagesOk: 0, parsed: 0, agencies: 0, nextCursor: start };
+  if (!res)
+    return { total: 0, startPage: start, pagesOk: 0, parsed: 0, agencies: 0, nextCursor: start };
 
   let withRoles = 0;
   for (const id of MELBOURNE_GOV_IDS) {
@@ -711,19 +793,36 @@ async function processVicGov(env: Env): Promise<{ total: number; startPage: numb
       withRoles++;
     }
     if (fresh.length) {
-      await archiveJobs(env.JOBS_ARCHIVE, fresh.map((j) => govJobToArchive(j, 'vic-gov', 'melbourne', id, j.skills)), day);
+      await archiveJobs(
+        env.JOBS_ARCHIVE,
+        fresh.map((j) => govJobToArchive(j, "vic-gov", "melbourne", id, j.skills)),
+        day,
+      );
     }
   }
 
   let next = start + VICGOV_WINDOW;
   if (next > res.lastPage) next = 2;
-  await env.OPEN_ROLES_HISTORY.put('vicgov:cursor', String(next));
-  return { total: res.total, startPage: start, pagesOk: res.pagesOk, parsed: res.parsed, agencies: withRoles, nextCursor: next };
+  await env.OPEN_ROLES_HISTORY.put("vicgov:cursor", String(next));
+  return {
+    total: res.total,
+    startPage: start,
+    pagesOk: res.pagesOk,
+    parsed: res.parsed,
+    agencies: withRoles,
+    nextCursor: next,
+  };
 }
 
-async function processQldGov(env: Env): Promise<{ startOffset: number; pagesOk: number; parsed: number; agencies: number; nextCursor: number }> {
+async function processQldGov(env: Env): Promise<{
+  startOffset: number;
+  pagesOk: number;
+  parsed: number;
+  agencies: number;
+  nextCursor: number;
+}> {
   const day = today();
-  const cursorRaw = await env.OPEN_ROLES_HISTORY.get('qldgov:cursor');
+  const cursorRaw = await env.OPEN_ROLES_HISTORY.get("qldgov:cursor");
   const start = Math.max(0, Number(cursorRaw) || 0);
   const res = await fetchQldGovPages(day, start, QLDGOV_WINDOW);
   if (!res) return { startOffset: start, pagesOk: 0, parsed: 0, agencies: 0, nextCursor: start };
@@ -747,19 +846,31 @@ async function processQldGov(env: Env): Promise<{ startOffset: number; pagesOk: 
       withRoles++;
     }
     if (fresh.length) {
-      await archiveJobs(env.JOBS_ARCHIVE, fresh.map((j) => govJobToArchive(j, 'qld-gov', 'brisbane', id, j.skills)), day);
+      await archiveJobs(
+        env.JOBS_ARCHIVE,
+        fresh.map((j) => govJobToArchive(j, "qld-gov", "brisbane", id, j.skills)),
+        day,
+      );
     }
   }
 
   // Advance the offset window; wrap to the start of the board once fully walked.
-  let next = res.reachedEnd ? 0 : start + QLDGOV_WINDOW * 20;
-  await env.OPEN_ROLES_HISTORY.put('qldgov:cursor', String(next));
-  return { startOffset: start, pagesOk: res.pagesOk, parsed: res.parsed, agencies: withRoles, nextCursor: next };
+  const next = res.reachedEnd ? 0 : start + QLDGOV_WINDOW * 20;
+  await env.OPEN_ROLES_HISTORY.put("qldgov:cursor", String(next));
+  return {
+    startOffset: start,
+    pagesOk: res.pagesOk,
+    parsed: res.parsed,
+    agencies: withRoles,
+    nextCursor: next,
+  };
 }
 
 // NT gov: the whole board comes back in one POST, so unlike WA/VIC/QLD there's no
 // paging window — every NT agency is refreshed on every run.
-async function processNtGov(env: Env): Promise<{ total: number; parsed: number; agencies: number }> {
+async function processNtGov(
+  env: Env,
+): Promise<{ total: number; parsed: number; agencies: number }> {
   const day = today();
   const res = await fetchNtGov(day);
   if (!res) return { total: 0, parsed: 0, agencies: 0 };
@@ -786,7 +897,11 @@ async function processNtGov(env: Env): Promise<{ total: number; parsed: number; 
       withRoles++;
     }
     if (fresh.length) {
-      await archiveJobs(env.JOBS_ARCHIVE, fresh.map((j) => govJobToArchive(j, 'nt-gov', 'darwin', id, j.skills)), day);
+      await archiveJobs(
+        env.JOBS_ARCHIVE,
+        fresh.map((j) => govJobToArchive(j, "nt-gov", "darwin", id, j.skills)),
+        day,
+      );
     }
   }
   return { total: res.total, parsed: res.parsed, agencies: withRoles };
@@ -819,7 +934,11 @@ async function processTasGov(env: Env): Promise<{ parsed: number; agencies: numb
       withRoles++;
     }
     if (fresh.length) {
-      await archiveJobs(env.JOBS_ARCHIVE, fresh.map((j) => govJobToArchive(j, 'tas-gov', 'hobart', id, j.skills)), day);
+      await archiveJobs(
+        env.JOBS_ARCHIVE,
+        fresh.map((j) => govJobToArchive(j, "tas-gov", "hobart", id, j.skills)),
+        day,
+      );
     }
   }
   return { parsed: res.parsed, agencies: withRoles };
@@ -830,15 +949,15 @@ export default {
   // clean subrequest budget for ~40 page fetches; every other tick advances the
   // Adzuna/Muse/Jooble shard rotation.
   async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    if (event.cron && event.cron.startsWith('30 ')) {
+    if (event.cron && event.cron.startsWith("30 ")) {
       ctx.waitUntil(processWaGov(env).then(() => undefined));
-    } else if (event.cron && event.cron.startsWith('15 ')) {
+    } else if (event.cron && event.cron.startsWith("15 ")) {
       ctx.waitUntil(processVicGov(env).then(() => undefined));
-    } else if (event.cron && event.cron.startsWith('45 ')) {
+    } else if (event.cron && event.cron.startsWith("45 ")) {
       ctx.waitUntil(processQldGov(env).then(() => undefined));
-    } else if (event.cron && event.cron.startsWith('5 ')) {
+    } else if (event.cron && event.cron.startsWith("5 ")) {
       ctx.waitUntil(processNtGov(env).then(() => undefined));
-    } else if (event.cron && event.cron.startsWith('50 ')) {
+    } else if (event.cron && event.cron.startsWith("50 ")) {
       ctx.waitUntil(processTasGov(env).then(() => undefined));
     } else {
       ctx.waitUntil(processShard(env).then(() => undefined));
@@ -850,55 +969,74 @@ export default {
   //   /run-wagov?token=…  → a full WA-gov board scrape + feed refresh
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
-    if (url.pathname === '/run') {
-      if (url.searchParams.get('token') !== env.CRON_TOKEN) {
-        return new Response('forbidden', { status: 403 });
+    if (url.pathname === "/run") {
+      if (url.searchParams.get("token") !== env.CRON_TOKEN) {
+        return new Response("forbidden", { status: 403 });
       }
       try {
         const out = await processShard(env);
         return Response.json({ ok: true, ...out });
       } catch (e) {
-        return Response.json({ ok: false, error: (e as Error)?.message || String(e), stack: (e as Error)?.stack || '' }, { status: 500 });
+        return Response.json(
+          {
+            ok: false,
+            error: (e as Error)?.message || String(e),
+            stack: (e as Error)?.stack || "",
+          },
+          { status: 500 },
+        );
       }
     }
-    if (url.pathname === '/run-wagov') {
-      if (url.searchParams.get('token') !== env.CRON_TOKEN) {
-        return new Response('forbidden', { status: 403 });
+    if (url.pathname === "/run-wagov") {
+      if (url.searchParams.get("token") !== env.CRON_TOKEN) {
+        return new Response("forbidden", { status: 403 });
       }
       try {
         const out = await processWaGov(env);
         return Response.json({ ok: true, ...out });
       } catch (e) {
         return Response.json(
-          { ok: false, error: (e as Error)?.message || String(e), stack: (e as Error)?.stack || '' },
+          {
+            ok: false,
+            error: (e as Error)?.message || String(e),
+            stack: (e as Error)?.stack || "",
+          },
           { status: 500 },
         );
       }
     }
-    if (url.pathname === '/run-vicgov') {
-      if (url.searchParams.get('token') !== env.CRON_TOKEN) {
-        return new Response('forbidden', { status: 403 });
+    if (url.pathname === "/run-vicgov") {
+      if (url.searchParams.get("token") !== env.CRON_TOKEN) {
+        return new Response("forbidden", { status: 403 });
       }
       try {
         const out = await processVicGov(env);
         return Response.json({ ok: true, ...out });
       } catch (e) {
         return Response.json(
-          { ok: false, error: (e as Error)?.message || String(e), stack: (e as Error)?.stack || '' },
+          {
+            ok: false,
+            error: (e as Error)?.message || String(e),
+            stack: (e as Error)?.stack || "",
+          },
           { status: 500 },
         );
       }
     }
-    if (url.pathname === '/run-qldgov') {
-      if (url.searchParams.get('token') !== env.CRON_TOKEN) {
-        return new Response('forbidden', { status: 403 });
+    if (url.pathname === "/run-qldgov") {
+      if (url.searchParams.get("token") !== env.CRON_TOKEN) {
+        return new Response("forbidden", { status: 403 });
       }
       try {
         const out = await processQldGov(env);
         return Response.json({ ok: true, ...out });
       } catch (e) {
         return Response.json(
-          { ok: false, error: (e as Error)?.message || String(e), stack: (e as Error)?.stack || '' },
+          {
+            ok: false,
+            error: (e as Error)?.message || String(e),
+            stack: (e as Error)?.stack || "",
+          },
           { status: 500 },
         );
       }
@@ -910,41 +1048,49 @@ export default {
     // gaps, so the ontology (skillsTaxonomy.ts) can be grown from real demand.
     // Re-archiving backfills skills (the upsert COALESCEs a NULL to the new map),
     // so a gap closed in the taxonomy heals on the next scrape.
-    if (url.pathname === '/run-ntgov') {
-      if (url.searchParams.get('token') !== env.CRON_TOKEN) {
-        return new Response('forbidden', { status: 403 });
+    if (url.pathname === "/run-ntgov") {
+      if (url.searchParams.get("token") !== env.CRON_TOKEN) {
+        return new Response("forbidden", { status: 403 });
       }
       try {
         const out = await processNtGov(env);
         return Response.json({ ok: true, ...out });
       } catch (e) {
         return Response.json(
-          { ok: false, error: (e as Error)?.message || String(e), stack: (e as Error)?.stack || '' },
+          {
+            ok: false,
+            error: (e as Error)?.message || String(e),
+            stack: (e as Error)?.stack || "",
+          },
           { status: 500 },
         );
       }
     }
-    if (url.pathname === '/run-tasgov') {
-      if (url.searchParams.get('token') !== env.CRON_TOKEN) {
-        return new Response('forbidden', { status: 403 });
+    if (url.pathname === "/run-tasgov") {
+      if (url.searchParams.get("token") !== env.CRON_TOKEN) {
+        return new Response("forbidden", { status: 403 });
       }
       try {
         const out = await processTasGov(env);
         return Response.json({ ok: true, ...out });
       } catch (e) {
         return Response.json(
-          { ok: false, error: (e as Error)?.message || String(e), stack: (e as Error)?.stack || '' },
+          {
+            ok: false,
+            error: (e as Error)?.message || String(e),
+            stack: (e as Error)?.stack || "",
+          },
           { status: 500 },
         );
       }
     }
-    if (url.pathname === '/skill-gaps') {
-      if (url.searchParams.get('token') !== env.CRON_TOKEN) {
-        return new Response('forbidden', { status: 403 });
+    if (url.pathname === "/skill-gaps") {
+      if (url.searchParams.get("token") !== env.CRON_TOKEN) {
+        return new Response("forbidden", { status: 403 });
       }
       try {
-        const limit = Math.min(2000, Math.max(50, Number(url.searchParams.get('scan')) || 1000));
-        const res: any = await env.JOBS_ARCHIVE.prepare(
+        const limit = Math.min(2000, Math.max(50, Number(url.searchParams.get("scan")) || 1000));
+        const res = await env.JOBS_ARCHIVE.prepare(
           `SELECT title, source FROM jobs
              WHERE skills IS NULL AND last_seen >= date('now', '-45 days')
              ORDER BY last_seen DESC LIMIT ?1`,
@@ -955,13 +1101,13 @@ export default {
         const heads: Record<string, { n: number; sources: Record<string, number> }> = {};
         for (const r of rows) {
           // "Senior Policy Officer, Reform" → "senior policy officer"
-          const head = String(r.title || '')
-            .replace(/&amp;/g, '&')
+          const head = String(r.title || "")
+            .replace(/&amp;/g, "&")
             .split(/[,\-–(|/]/)[0]
             .toLowerCase()
-            .replace(/\b(senior|principal|lead|junior|assistant|graduate|trainee)\b/g, '')
-            .replace(/[^a-z0-9 ]+/g, ' ')
-            .replace(/\s+/g, ' ')
+            .replace(/\b(senior|principal|lead|junior|assistant|graduate|trainee)\b/g, "")
+            .replace(/[^a-z0-9 ]+/g, " ")
+            .replace(/\s+/g, " ")
             .trim();
           if (!head) continue;
           const e = (heads[head] ||= { n: 0, sources: {} });
@@ -984,43 +1130,64 @@ export default {
     // the Worker's IP (its Cloudflare front may challenge datacenter IPs even
     // though it answers elsewhere) and shows the deduped sample for one company.
     //   /diag-seek?token=…&id=bhp
-    if (url.pathname === '/diag-seek') {
-      if (url.searchParams.get('token') !== env.CRON_TOKEN) {
-        return new Response('forbidden', { status: 403 });
+    if (url.pathname === "/diag-seek") {
+      if (url.searchParams.get("token") !== env.CRON_TOKEN) {
+        return new Response("forbidden", { status: 403 });
       }
-      const id = url.searchParams.get('id') || 'bhp';
+      const id = url.searchParams.get("id") || "bhp";
       const adv = SEEK_ADVERTISERS[id];
-      if (!adv) return Response.json({ ok: false, id, error: 'no SEEK advertiser mapped for this id' }, { status: 404 });
+      if (!adv)
+        return Response.json(
+          { ok: false, id, error: "no SEEK advertiser mapped for this id" },
+          { status: 404 },
+        );
       // raw=1 exposes exactly what SEEK returns to the Worker IP (status,
       // content-type, body snippet) so a soft block (200 + challenge/empty) is
       // distinguishable from a genuine no-vacancies result.
-      if (url.searchParams.get('raw') === '1') {
+      if (url.searchParams.get("raw") === "1") {
         const params = new URLSearchParams({
-          siteKey: 'AU-Main', sourcesystem: 'houston', where: 'All Australia',
-          advertiserid: adv.advertiserId, page: '1', pageSize: '100', locale: 'en-AU',
+          siteKey: "AU-Main",
+          sourcesystem: "houston",
+          where: "All Australia",
+          advertiserid: adv.advertiserId,
+          page: "1",
+          pageSize: "100",
+          locale: "en-AU",
         });
         try {
-          const r = await fetch(`https://www.seek.com.au/api/jobsearch/v5/search?${params.toString()}`, {
-            headers: {
-              Accept: 'application/json',
-              'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15',
+          const r = await fetch(
+            `https://www.seek.com.au/api/jobsearch/v5/search?${params.toString()}`,
+            {
+              headers: {
+                Accept: "application/json",
+                "User-Agent":
+                  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15",
+              },
             },
-          });
+          );
           const body = await r.text();
           let totalCount: number | null = null;
-          try { totalCount = Number(JSON.parse(body)?.totalCount); } catch { /* not json */ }
+          try {
+            totalCount = Number(JSON.parse(body)?.totalCount);
+          } catch {
+            /* not json */
+          }
           return Response.json({
-            id, advertiserId: adv.advertiserId,
+            id,
+            advertiserId: adv.advertiserId,
             status: r.status,
-            contentType: r.headers.get('content-type'),
-            cfRay: r.headers.get('cf-ray'),
-            cfMitigated: r.headers.get('cf-mitigated'),
+            contentType: r.headers.get("content-type"),
+            cfRay: r.headers.get("cf-ray"),
+            cfMitigated: r.headers.get("cf-mitigated"),
             len: body.length,
             totalCount,
             snippet: body.slice(0, 300),
           });
         } catch (e) {
-          return Response.json({ id, rawError: (e as Error)?.message || String(e) }, { status: 502 });
+          return Response.json(
+            { id, rawError: (e as Error)?.message || String(e) },
+            { status: 502 },
+          );
         }
       }
       try {
@@ -1031,12 +1198,17 @@ export default {
           advertiserId: adv.advertiserId,
           reachable: true,
           count: jobs.length,
-          sample: jobs.slice(0, 5).map((j) => ({ t: j.t, cat: j.cat, loc: j.loc, sal: j.sal || null })),
+          sample: jobs
+            .slice(0, 5)
+            .map((j) => ({ t: j.t, cat: j.cat, loc: j.loc, sal: j.sal || null })),
         });
       } catch (e) {
-        return Response.json({ ok: false, id, error: (e as Error)?.message || String(e) }, { status: 500 });
+        return Response.json(
+          { ok: false, id, error: (e as Error)?.message || String(e) },
+          { status: 500 },
+        );
       }
     }
-    return new Response('employsi jobs-cron', { status: 200 });
+    return new Response("employsi jobs-cron", { status: 200 });
   },
 };

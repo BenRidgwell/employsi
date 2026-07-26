@@ -34,7 +34,15 @@ export function MobileFramePreview() {
         padding: "24px 0",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          flexWrap: "wrap",
+          justifyContent: "center",
+        }}
+      >
         {PHONE_PRESETS.map((p) => (
           <button
             key={p.label}

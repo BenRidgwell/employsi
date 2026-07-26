@@ -14,7 +14,13 @@ export function EmploysiMark({ size = 28, reversed = false, className }: Props) 
   );
 }
 
-export function EmploysiLockup({ reversed = false, size = 28 }: { reversed?: boolean; size?: number }) {
+export function EmploysiLockup({
+  reversed = false,
+  size = 28,
+}: {
+  reversed?: boolean;
+  size?: number;
+}) {
   return (
     <span className="inline-flex items-center gap-2.5">
       <EmploysiMark size={size} reversed={reversed} />

@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { getOpenRoles } from '../lib/openRolesFn';
-import type { OpenRoles } from '../lib/openRolesFn';
+import { useQuery } from "@tanstack/react-query";
+import { getOpenRoles } from "../lib/openRolesFn";
+import type { OpenRoles } from "../lib/openRolesFn";
 
 // Live open roles for a company in a given job market (ATS feed → Adzuna + The
 // Muse on the Worker), scoped by country/where/region so it works for every
@@ -17,10 +17,16 @@ export function useOpenRoles(
 ): { roles: OpenRoles | undefined; settled: boolean } {
   const active = enabled && !!company;
   const { data, isFetched } = useQuery({
-    queryKey: ['openRoles', id, company, market.country, market.where],
+    queryKey: ["openRoles", id, company, market.country, market.where],
     queryFn: () =>
       getOpenRoles({
-        data: { company: company as string, id, country: market.country ?? '', where: market.where, region: market.region },
+        data: {
+          company: company as string,
+          id,
+          country: market.country ?? "",
+          where: market.where,
+          region: market.region,
+        },
       }),
     enabled: active,
     staleTime: 60 * 60 * 1000,

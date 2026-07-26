@@ -9,7 +9,11 @@
  *   1. ALL_SKILLS / SKILL_CATEGORY contain a duplicate canonical name, or
  *   2. two source defs share a name but disagree on category (a lossy merge).
  */
-import { ALL_SKILLS, SKILL_CATEGORY, SKILL_NAME_CONFLICTS } from '../src/employsi/data/skillsTaxonomy';
+import {
+  ALL_SKILLS,
+  SKILL_CATEGORY,
+  SKILL_NAME_CONFLICTS,
+} from "../src/employsi/data/skillsTaxonomy";
 
 let failed = false;
 
@@ -19,7 +23,7 @@ for (const s of ALL_SKILLS) counts.set(s, (counts.get(s) ?? 0) + 1);
 const dups = [...counts.entries()].filter(([, n]) => n > 1).map(([s]) => s);
 if (dups.length) {
   failed = true;
-  console.error(`✗ Duplicate skill names in ALL_SKILLS: ${dups.join(', ')}`);
+  console.error(`✗ Duplicate skill names in ALL_SKILLS: ${dups.join(", ")}`);
 } else {
   console.log(`✓ ${ALL_SKILLS.length} skills, all unique.`);
 }
@@ -27,20 +31,24 @@ if (dups.length) {
 // SKILL_CATEGORY is keyed by name, so its size must equal the unique-name count.
 if (Object.keys(SKILL_CATEGORY).length !== counts.size) {
   failed = true;
-  console.error('✗ SKILL_CATEGORY key count does not match the unique skill count.');
+  console.error("✗ SKILL_CATEGORY key count does not match the unique skill count.");
 }
 
 // 2. No same-named defs with conflicting categories (silently dropped on merge).
 if (SKILL_NAME_CONFLICTS.length) {
   failed = true;
-  console.error(`✗ Duplicate skill names with mismatched categories: ${SKILL_NAME_CONFLICTS.join(', ')}`);
+  console.error(
+    `✗ Duplicate skill names with mismatched categories: ${SKILL_NAME_CONFLICTS.join(", ")}`,
+  );
 } else {
-  console.log('✓ No category conflicts among merged defs.');
+  console.log("✓ No category conflicts among merged defs.");
 }
 
 if (failed) {
-  console.error('\nFix: add new match terms to the EXISTING def for that skill, '
-    + 'do not add a second def with the same name (and keep its category consistent).');
+  console.error(
+    "\nFix: add new match terms to the EXISTING def for that skill, " +
+      "do not add a second def with the same name (and keep its category consistent).",
+  );
   process.exit(1);
 }
-console.log('\nSkills taxonomy OK.');
+console.log("\nSkills taxonomy OK.");

@@ -17,11 +17,11 @@ export interface JoobleHubTarget {
 }
 
 export const JOOBLE_HUB_TARGETS: JoobleHubTarget[] = [
-  { hub: 'tokyo', location: 'Tokyo, Japan' },
-  { hub: 'seoul', location: 'Seoul, South Korea' },
-  { hub: 'hongkong', location: 'Hong Kong' },
-  { hub: 'dubai', location: 'Dubai, United Arab Emirates' },
-  { hub: 'zurich', location: 'Zurich, Switzerland' },
-  { hub: 'beijing', location: 'Beijing, China' },
-  { hub: 'ganzhou', location: 'Ganzhou, China' },
+  { hub: "tokyo", location: "Tokyo, Japan" },
+  { hub: "seoul", location: "Seoul, South Korea" },
+  { hub: "hongkong", location: "Hong Kong" },
+  { hub: "dubai", location: "Dubai, United Arab Emirates" },
+  { hub: "zurich", location: "Zurich, Switzerland" },
+  { hub: "beijing", location: "Beijing, China" },
+  { hub: "ganzhou", location: "Ganzhou, China" },
 ];

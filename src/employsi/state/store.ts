@@ -1,10 +1,17 @@
-import { create } from 'zustand';
-import { COMPANIES, companyGroup, companyExchange, companyListing, type Company, type ListingType } from '../data/companies';
-import { CITY_CONTINENT } from '../data/geo';
-import { CITY_COMPANIES, cityForCompany } from '../data/mapboxGeo';
-import type { HeatMetric } from '../lib/heat';
-import type { SkillIndex } from '../lib/skillsFn';
-import { IVI_MONTHS } from '../data/iviSkillDemand';
+import { create } from "zustand";
+import {
+  COMPANIES,
+  companyGroup,
+  companyExchange,
+  companyListing,
+  type Company,
+  type ListingType,
+} from "../data/companies";
+import { CITY_CONTINENT } from "../data/geo";
+import { CITY_COMPANIES, cityForCompany } from "../data/mapboxGeo";
+import type { HeatMetric } from "../lib/heat";
+import type { SkillIndex } from "../lib/skillsFn";
+import { IVI_MONTHS } from "../data/iviSkillDemand";
 
 export interface Account {
   name: string;
@@ -135,7 +142,7 @@ export interface AppState {
 // Persist the account + saved-companies across reloads. There's no backend
 // auth here — sign-up/sign-in are simulated and the "session" lives entirely in
 // localStorage, so a returning visitor keeps their account and favourites.
-const LS_KEY = 'employsi.auth';
+const LS_KEY = "employsi.auth";
 interface Persisted {
   account: Account | null;
   followedIds: string[];
@@ -143,9 +150,15 @@ interface Persisted {
   reduceMotion: boolean;
   nightMode: boolean;
 }
-const PERSIST_DEFAULTS: Persisted = { account: null, followedIds: [], followedSkills: [], reduceMotion: false, nightMode: false };
+const PERSIST_DEFAULTS: Persisted = {
+  account: null,
+  followedIds: [],
+  followedSkills: [],
+  reduceMotion: false,
+  nightMode: false,
+};
 function loadPersisted(): Persisted {
-  if (typeof localStorage === 'undefined') return PERSIST_DEFAULTS;
+  if (typeof localStorage === "undefined") return PERSIST_DEFAULTS;
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return PERSIST_DEFAULTS;
@@ -162,7 +175,7 @@ function loadPersisted(): Persisted {
   }
 }
 function savePersisted(p: Persisted): void {
-  if (typeof localStorage === 'undefined') return;
+  if (typeof localStorage === "undefined") return;
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(p));
   } catch {
@@ -173,8 +186,8 @@ const persisted = loadPersisted();
 
 // Reflect the reduce-motion preference on the root element as early as possible
 // so animations are suppressed before first paint when it's on.
-if (typeof document !== 'undefined') {
-  document.documentElement.classList.toggle('reduce-motion', persisted.reduceMotion);
+if (typeof document !== "undefined") {
+  document.documentElement.classList.toggle("reduce-motion", persisted.reduceMotion);
 }
 
 let zoomTimer: ReturnType<typeof setTimeout> | undefined;
@@ -201,11 +214,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedId: null,
   lastId: null,
   interacted: false,
-  heat: 'salary',
+  heat: "salary",
   searchOpen: false,
   filterOpen: false,
   heatOpen: false,
-  searchQuery: '',
+  searchQuery: "",
   skillIndex: null,
   heatMonth: Math.max(0, IVI_MONTHS.length - 1),
   activeSectors: [],
@@ -218,8 +231,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   zoomedOut: true,
   zoomingIn: false,
   globalOut: true,
-  localCity: 'perth',
-  domesticRegion: 'australia',
+  localCity: "perth",
+  domesticRegion: "australia",
   compareOpen: false,
   compareA: null,
   compareB: null,
@@ -231,10 +244,25 @@ export const useAppStore = create<AppState>((set, get) => ({
   followedIds: persisted.followedIds,
   followedSkills: persisted.followedSkills,
 
-  select: (id) => set({ selectedId: id, lastId: id, interacted: true, searchOpen: false, filterOpen: false, heatOpen: false, briefOpen: false, trendingOpen: false, feedbackOpen: false, helpTourOpen: false, mobileMenuOpen: false }),
+  select: (id) =>
+    set({
+      selectedId: id,
+      lastId: id,
+      interacted: true,
+      searchOpen: false,
+      filterOpen: false,
+      heatOpen: false,
+      briefOpen: false,
+      trendingOpen: false,
+      feedbackOpen: false,
+      helpTourOpen: false,
+      mobileMenuOpen: false,
+    }),
   toggleFollow: (id) =>
     set((s) => ({
-      followedIds: s.followedIds.includes(id) ? s.followedIds.filter((x) => x !== id) : [...s.followedIds, id],
+      followedIds: s.followedIds.includes(id)
+        ? s.followedIds.filter((x) => x !== id)
+        : [...s.followedIds, id],
     })),
   // Following is the account feature: signed-out visitors are prompted to
   // create an account first, and the company they tapped is saved for them the
@@ -249,15 +277,21 @@ export const useAppStore = create<AppState>((set, get) => ({
         pendingFollowId: id,
         searchOpen: false,
         filterOpen: false,
-        toast: 'Create a free account or sign in to follow companies',
+        toast: "Create a free account or sign in to follow companies",
       });
       return;
     }
-    set({ followedIds: s.followedIds.includes(id) ? s.followedIds.filter((x) => x !== id) : [...s.followedIds, id] });
+    set({
+      followedIds: s.followedIds.includes(id)
+        ? s.followedIds.filter((x) => x !== id)
+        : [...s.followedIds, id],
+    });
   },
   toggleFollowSkill: (skill) =>
     set((s) => ({
-      followedSkills: s.followedSkills.includes(skill) ? s.followedSkills.filter((x) => x !== skill) : [...s.followedSkills, skill],
+      followedSkills: s.followedSkills.includes(skill)
+        ? s.followedSkills.filter((x) => x !== skill)
+        : [...s.followedSkills, skill],
     })),
   // Following a skill is gated exactly like following a company: signed-out
   // visitors are prompted to create an account first, and the skill they tapped
@@ -270,39 +304,72 @@ export const useAppStore = create<AppState>((set, get) => ({
         pendingFollowSkill: skill,
         searchOpen: false,
         filterOpen: false,
-        toast: 'Create a free account or sign in to follow skills',
+        toast: "Create a free account or sign in to follow skills",
       });
       return;
     }
-    set({ followedSkills: s.followedSkills.includes(skill) ? s.followedSkills.filter((x) => x !== skill) : [...s.followedSkills, skill] });
+    set({
+      followedSkills: s.followedSkills.includes(skill)
+        ? s.followedSkills.filter((x) => x !== skill)
+        : [...s.followedSkills, skill],
+    });
   },
   dismissToast: () => set({ toast: null }),
-  openAuth: () => set({ authOpen: true, searchOpen: false, filterOpen: false, mobileMenuOpen: false }),
+  openAuth: () =>
+    set({ authOpen: true, searchOpen: false, filterOpen: false, mobileMenuOpen: false }),
   closeAuth: () => set({ authOpen: false, pendingFollowId: null, pendingFollowSkill: null }),
   signUp: (name, email) =>
     set((s) => {
       const followedIds =
-        s.pendingFollowId && !s.followedIds.includes(s.pendingFollowId) ? [...s.followedIds, s.pendingFollowId] : s.followedIds;
+        s.pendingFollowId && !s.followedIds.includes(s.pendingFollowId)
+          ? [...s.followedIds, s.pendingFollowId]
+          : s.followedIds;
       const followedSkills =
-        s.pendingFollowSkill && !s.followedSkills.includes(s.pendingFollowSkill) ? [...s.followedSkills, s.pendingFollowSkill] : s.followedSkills;
-      return { account: { name: name.trim(), email: email.trim() }, authOpen: false, pendingFollowId: null, pendingFollowSkill: null, followedIds, followedSkills };
+        s.pendingFollowSkill && !s.followedSkills.includes(s.pendingFollowSkill)
+          ? [...s.followedSkills, s.pendingFollowSkill]
+          : s.followedSkills;
+      return {
+        account: { name: name.trim(), email: email.trim() },
+        authOpen: false,
+        pendingFollowId: null,
+        pendingFollowSkill: null,
+        followedIds,
+        followedSkills,
+      };
     }),
   signIn: (email) =>
     set((s) => {
       // Derive a display name from the email local-part (no real user record).
-      const local = email.split('@')[0].replace(/[._-]+/g, ' ').trim();
-      const name = local ? local.replace(/\b\w/g, (ch) => ch.toUpperCase()) : 'You';
+      const local = email
+        .split("@")[0]
+        .replace(/[._-]+/g, " ")
+        .trim();
+      const name = local ? local.replace(/\b\w/g, (ch) => ch.toUpperCase()) : "You";
       const followedIds =
-        s.pendingFollowId && !s.followedIds.includes(s.pendingFollowId) ? [...s.followedIds, s.pendingFollowId] : s.followedIds;
+        s.pendingFollowId && !s.followedIds.includes(s.pendingFollowId)
+          ? [...s.followedIds, s.pendingFollowId]
+          : s.followedIds;
       const followedSkills =
-        s.pendingFollowSkill && !s.followedSkills.includes(s.pendingFollowSkill) ? [...s.followedSkills, s.pendingFollowSkill] : s.followedSkills;
-      return { account: { name, email: email.trim() }, authOpen: false, pendingFollowId: null, pendingFollowSkill: null, followedIds, followedSkills };
+        s.pendingFollowSkill && !s.followedSkills.includes(s.pendingFollowSkill)
+          ? [...s.followedSkills, s.pendingFollowSkill]
+          : s.followedSkills;
+      return {
+        account: { name, email: email.trim() },
+        authOpen: false,
+        pendingFollowId: null,
+        pendingFollowSkill: null,
+        followedIds,
+        followedSkills,
+      };
     }),
-  signOut: () => set({ account: null, authOpen: false, pendingFollowId: null, pendingFollowSkill: null }),
-  toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen, feedbackOpen: false, helpTourOpen: false })),
+  signOut: () =>
+    set({ account: null, authOpen: false, pendingFollowId: null, pendingFollowSkill: null }),
+  toggleSettings: () =>
+    set((s) => ({ settingsOpen: !s.settingsOpen, feedbackOpen: false, helpTourOpen: false })),
   closeSettings: () => set({ settingsOpen: false }),
   setReduceMotion: (v) => {
-    if (typeof document !== 'undefined') document.documentElement.classList.toggle('reduce-motion', v);
+    if (typeof document !== "undefined")
+      document.documentElement.classList.toggle("reduce-motion", v);
     set({ reduceMotion: v });
   },
   // Stub only — persisted for continuity but not wired to any theme yet.
@@ -314,17 +381,37 @@ export const useAppStore = create<AppState>((set, get) => ({
   // The four mobile bottom-bar pop-outs (Search / Filter / Trending / More, plus
   // the Daily Brief the More sheet launches) are mutually exclusive, so tapping
   // one bar button while another's pop-out is open switches cleanly to it.
-  toggleSearch: () => set((s) => ({ searchOpen: !s.searchOpen, filterOpen: false, heatOpen: false, trendingOpen: false, mobileMenuOpen: false, briefOpen: false })),
-  toggleFilter: () => set((s) => ({ filterOpen: !s.filterOpen, searchOpen: false, heatOpen: false, trendingOpen: false, mobileMenuOpen: false, briefOpen: false })),
-  toggleHeatPanel: () => set((s) => ({ heatOpen: !s.heatOpen, searchOpen: false, filterOpen: false })),
+  toggleSearch: () =>
+    set((s) => ({
+      searchOpen: !s.searchOpen,
+      filterOpen: false,
+      heatOpen: false,
+      trendingOpen: false,
+      mobileMenuOpen: false,
+      briefOpen: false,
+    })),
+  toggleFilter: () =>
+    set((s) => ({
+      filterOpen: !s.filterOpen,
+      searchOpen: false,
+      heatOpen: false,
+      trendingOpen: false,
+      mobileMenuOpen: false,
+      briefOpen: false,
+    })),
+  toggleHeatPanel: () =>
+    set((s) => ({ heatOpen: !s.heatOpen, searchOpen: false, filterOpen: false })),
   setSearchQuery: (q) => set({ searchQuery: q }),
-  clearSearch: () => set({ searchQuery: '' }),
+  clearSearch: () => set({ searchQuery: "" }),
   setSkillIndex: (idx) => set({ skillIndex: idx }),
-  setHeatMonth: (i) => set({ heatMonth: Math.max(0, Math.min(IVI_MONTHS.length - 1, Math.round(i))) }),
+  setHeatMonth: (i) =>
+    set({ heatMonth: Math.max(0, Math.min(IVI_MONTHS.length - 1, Math.round(i))) }),
   toggleSector: (cat) =>
     set((s) => {
       const has = s.activeSectors.includes(cat);
-      return { activeSectors: has ? s.activeSectors.filter((x) => x !== cat) : [...s.activeSectors, cat] };
+      return {
+        activeSectors: has ? s.activeSectors.filter((x) => x !== cat) : [...s.activeSectors, cat],
+      };
     }),
   // Master listing filter. Re-selecting the active one clears it (back to Any).
   // Anything other than 'public' drops the exchange drill-down, which only
@@ -332,28 +419,42 @@ export const useAppStore = create<AppState>((set, get) => ({
   setListingType: (v) =>
     set((s) => {
       const next = s.listingType === v ? null : v;
-      return { listingType: next, activeExchanges: next === 'public' ? s.activeExchanges : [] };
+      return { listingType: next, activeExchanges: next === "public" ? s.activeExchanges : [] };
     }),
   toggleExchange: (ex) =>
     set((s) => {
       const has = s.activeExchanges.includes(ex);
-      return { activeExchanges: has ? s.activeExchanges.filter((x) => x !== ex) : [...s.activeExchanges, ex] };
+      return {
+        activeExchanges: has
+          ? s.activeExchanges.filter((x) => x !== ex)
+          : [...s.activeExchanges, ex],
+      };
     }),
   setMinSalary: (v) => set({ minSalary: v }),
   setMinHeadcount: (v) => set({ minHeadcount: v }),
   setMinGrowth: (v) => set({ minGrowth: v }),
   setMaxAttrition: (v) => set({ maxAttrition: v }),
-  clearFilters: () => set({ activeSectors: [], listingType: null, activeExchanges: [], minSalary: 130, minHeadcount: 0, minGrowth: 0, maxAttrition: 16 }),
+  clearFilters: () =>
+    set({
+      activeSectors: [],
+      listingType: null,
+      activeExchanges: [],
+      minSalary: 130,
+      minHeadcount: 0,
+      minGrowth: 0,
+      maxAttrition: 16,
+    }),
   toggleSkillQuery: (skill) => {
     const s = get();
     const on = s.searchQuery.trim().toLowerCase() === skill.toLowerCase();
     const dispatch = (active: boolean) => {
-      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('perth-skill-zoom', { detail: { active } }));
+      if (typeof window !== "undefined")
+        window.dispatchEvent(new CustomEvent("perth-skill-zoom", { detail: { active } }));
     };
     if (on) {
       // Toggling the active skill off: clear it, and if we're in the local city
       // layer restore its default zoom.
-      set({ searchQuery: '' });
+      set({ searchQuery: "" });
       if (!s.zoomedOut) dispatch(false);
       return;
     }
@@ -380,7 +481,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   zoomOutToDomestic: () => {
     const s = get();
     markLayerChange();
-    set({ zoomedOut: true, globalOut: false, domesticRegion: CITY_CONTINENT[s.localCity] || 'australia', interacted: true });
+    set({
+      zoomedOut: true,
+      globalOut: false,
+      domesticRegion: CITY_CONTINENT[s.localCity] || "australia",
+      interacted: true,
+    });
   },
   setZoomingIn: (v) => set({ zoomingIn: v }),
   setGlobalOut: (v) => set({ globalOut: v }),
@@ -388,12 +494,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     const s = get();
     const cur = s.globalOut ? 2 : s.zoomedOut ? 1 : 0;
     if (n === cur) return;
-    if (n === 0) { get().zoomIn(); return; }
+    if (n === 0) {
+      get().zoomIn();
+      return;
+    }
     if (n === 1) {
       // Leaving local for domestic: land on the current city's own continent.
       // Coming from global there's no "current" city context, so fall back
       // to Australia.
-      const region = cur === 0 ? CITY_CONTINENT[s.localCity] || 'australia' : 'australia';
+      const region = cur === 0 ? CITY_CONTINENT[s.localCity] || "australia" : "australia";
       set({ zoomedOut: true, globalOut: false, domesticRegion: region, interacted: true });
       return;
     }
@@ -402,7 +511,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   openCompanyLayer: () => {
     const s = get();
     if (s.selectedId) return; // already on the company layer
-    const id = s.lastId || CITY_COMPANIES[s.localCity]?.[0]?.id || 'bhp';
+    const id = s.lastId || CITY_COMPANIES[s.localCity]?.[0]?.id || "bhp";
     // Make sure we're in the company's city (zoom into local if we're pulled
     // back), then open its card — mirrors selecting a company from search.
     const city = cityForCompany(id, s.localCity);
@@ -411,7 +520,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   // Re-enter whichever city we last viewed (defaults to Perth), so the Local
   // zoom button / back gesture doesn't snap away from e.g. Toronto to Perth.
-  zoomIn: () => get().zoomInCity(get().localCity || 'perth'),
+  zoomIn: () => get().zoomInCity(get().localCity || "perth"),
   zoomInCity: (city) => {
     const s = get();
     if (s.zoomingIn) return;
@@ -420,7 +529,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     clearTimeout(zoomTimer);
     zoomTimer = setTimeout(() => {
       set({ zoomedOut: false, zoomingIn: false, globalOut: false });
-      window.dispatchEvent(new CustomEvent('perth-zoom-reset'));
+      window.dispatchEvent(new CustomEvent("perth-zoom-reset"));
     }, 680);
   },
   goDomestic: (region) => {
@@ -442,7 +551,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (deltaY < 0) {
         markLayerChange();
         // Scroll into the continent under the cursor, defaulting to Australia.
-        set({ globalOut: false, domesticRegion: target || 'australia', interacted: true });
+        set({ globalOut: false, domesticRegion: target || "australia", interacted: true });
       }
       return;
     }
@@ -451,7 +560,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ globalOut: true, interacted: true });
     } else {
       // Scroll into the city hub nearest the cursor, defaulting to Perth.
-      get().zoomInCity(target || 'perth');
+      get().zoomInCity(target || "perth");
     }
   },
 
@@ -465,16 +574,45 @@ export const useAppStore = create<AppState>((set, get) => ({
   setCompareA: (id) => set({ compareA: id }),
   setCompareB: (id) => set({ compareB: id }),
 
-  toggleBrief: () => set((s) => ({ briefOpen: !s.briefOpen, trendingOpen: false, mobileMenuOpen: false })),
+  toggleBrief: () =>
+    set((s) => ({ briefOpen: !s.briefOpen, trendingOpen: false, mobileMenuOpen: false })),
   closeBrief: () => set({ briefOpen: false }),
-  toggleTrending: () => set((s) => ({ trendingOpen: !s.trendingOpen, briefOpen: false, mobileMenuOpen: false, searchOpen: false, filterOpen: false, heatOpen: false })),
+  toggleTrending: () =>
+    set((s) => ({
+      trendingOpen: !s.trendingOpen,
+      briefOpen: false,
+      mobileMenuOpen: false,
+      searchOpen: false,
+      filterOpen: false,
+      heatOpen: false,
+    })),
   closeTrending: () => set({ trendingOpen: false }),
 
-  toggleFeedback: () => set((s) => ({ feedbackOpen: !s.feedbackOpen, helpTourOpen: false, settingsOpen: false, mobileMenuOpen: false })),
+  toggleFeedback: () =>
+    set((s) => ({
+      feedbackOpen: !s.feedbackOpen,
+      helpTourOpen: false,
+      settingsOpen: false,
+      mobileMenuOpen: false,
+    })),
   closeFeedback: () => set({ feedbackOpen: false }),
-  toggleHelpTour: () => set((s) => ({ helpTourOpen: !s.helpTourOpen, feedbackOpen: false, settingsOpen: false, mobileMenuOpen: false })),
+  toggleHelpTour: () =>
+    set((s) => ({
+      helpTourOpen: !s.helpTourOpen,
+      feedbackOpen: false,
+      settingsOpen: false,
+      mobileMenuOpen: false,
+    })),
   closeHelpTour: () => set({ helpTourOpen: false }),
-  toggleMobileMenu: () => set((s) => ({ mobileMenuOpen: !s.mobileMenuOpen, searchOpen: false, filterOpen: false, heatOpen: false, trendingOpen: false, briefOpen: false })),
+  toggleMobileMenu: () =>
+    set((s) => ({
+      mobileMenuOpen: !s.mobileMenuOpen,
+      searchOpen: false,
+      filterOpen: false,
+      heatOpen: false,
+      trendingOpen: false,
+      briefOpen: false,
+    })),
   closeMobileMenu: () => set({ mobileMenuOpen: false }),
 }));
 
@@ -488,7 +626,13 @@ useAppStore.subscribe((s, prev) => {
     s.reduceMotion !== prev.reduceMotion ||
     s.nightMode !== prev.nightMode
   ) {
-    savePersisted({ account: s.account, followedIds: s.followedIds, followedSkills: s.followedSkills, reduceMotion: s.reduceMotion, nightMode: s.nightMode });
+    savePersisted({
+      account: s.account,
+      followedIds: s.followedIds,
+      followedSkills: s.followedSkills,
+      reduceMotion: s.reduceMotion,
+      nightMode: s.nightMode,
+    });
   }
 });
 
@@ -533,7 +677,7 @@ export function matchesFilters(c: Company, s: FilterState): boolean {
   return (
     matchesListing(c, s.listingType) &&
     matchesSector(c, s.activeSectors) &&
-    (s.listingType === 'public' ? matchesExchange(c, s.activeExchanges) : true) &&
+    (s.listingType === "public" ? matchesExchange(c, s.activeExchanges) : true) &&
     (s.minSalary <= 130 || c.salaryNum >= s.minSalary * 1000) &&
     (s.minHeadcount <= 0 || c.headcount >= s.minHeadcount) &&
     (s.minGrowth <= 0 || c.growth >= s.minGrowth) &&
@@ -581,10 +725,18 @@ export function cityMatchesFilters(city: string, s: FilterState): boolean {
   });
 }
 
-export function isSearchActive(s: Pick<FilterState, 'searchQuery'>): boolean {
-  return s.searchQuery.trim() !== '';
+export function isSearchActive(s: Pick<FilterState, "searchQuery">): boolean {
+  return s.searchQuery.trim() !== "";
 }
 
 export function isFilterActive(s: FilterState): boolean {
-  return !!s.listingType || s.activeSectors.length > 0 || s.activeExchanges.length > 0 || s.minSalary > 130 || s.minHeadcount > 0 || s.minGrowth > 0 || s.maxAttrition < 16;
+  return (
+    !!s.listingType ||
+    s.activeSectors.length > 0 ||
+    s.activeExchanges.length > 0 ||
+    s.minSalary > 130 ||
+    s.minHeadcount > 0 ||
+    s.minGrowth > 0 ||
+    s.maxAttrition < 16
+  );
 }

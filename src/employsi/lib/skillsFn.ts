@@ -1,4 +1,5 @@
-import { createServerFn } from '@tanstack/react-start';
+import { createServerFn } from "@tanstack/react-start";
+import { kvBinding, type KVLike } from "./kv";
 
 // Reads the live skill-demand data the jobs-cron worker writes to KV:
 //   • skillidx  — aggregate demand per skill, by company / sector / city
@@ -32,29 +33,31 @@ export interface CompanyJobs {
   jobs: AdvertisedJob[];
 }
 
-async function getKV(): Promise<any | null> {
+async function getKV(): Promise<KVLike | null> {
   try {
-    const m: any = await import('cloudflare:workers');
-    return m?.env?.OPEN_ROLES_HISTORY ?? null;
+    const m = await import("cloudflare:workers");
+    return kvBinding(m?.env, "OPEN_ROLES_HISTORY");
   } catch {
     return null;
   }
 }
 
-export const getSkillIndex = createServerFn({ method: 'GET' }).handler(async (): Promise<SkillIndex | null> => {
-  const kv = await getKV();
-  if (!kv) return null;
-  try {
-    const raw = await kv.get('skillidx');
-    if (!raw) return null;
-    const idx = JSON.parse(raw);
-    return idx && idx.skills ? idx : null;
-  } catch {
-    return null;
-  }
-});
+export const getSkillIndex = createServerFn({ method: "GET" }).handler(
+  async (): Promise<SkillIndex | null> => {
+    const kv = await getKV();
+    if (!kv) return null;
+    try {
+      const raw = await kv.get("skillidx");
+      if (!raw) return null;
+      const idx = JSON.parse(raw);
+      return idx && idx.skills ? idx : null;
+    } catch {
+      return null;
+    }
+  },
+);
 
-export const getCompanyJobs = createServerFn({ method: 'GET' })
+export const getCompanyJobs = createServerFn({ method: "GET" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<CompanyJobs | null> => {
     const kv = await getKV();

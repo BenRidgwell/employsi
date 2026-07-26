@@ -1,10 +1,19 @@
-import { useState, type FormEvent } from 'react';
-import { useAppStore } from '../state/store';
-import { COMPANIES } from '../data/companies';
-import { cityForCompany } from '../data/mapboxGeo';
+import { useState, type FormEvent } from "react";
+import { useAppStore } from "../state/store";
+import { COMPANIES } from "../data/companies";
+import { cityForCompany } from "../data/mapboxGeo";
 
 const PersonIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2.2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <circle cx="12" cy="8" r="3.6" />
     <path d="M5 20a7 7 0 0 1 14 0" />
   </svg>
@@ -17,8 +26,8 @@ function initialsOf(name: string): string {
       .filter(Boolean)
       .map((w) => w[0])
       .slice(0, 2)
-      .join('')
-      .toUpperCase() || 'U'
+      .join("")
+      .toUpperCase() || "U"
   );
 }
 
@@ -53,37 +62,43 @@ export function AccountButton() {
     closeAuth();
   };
 
-  const [mode, setMode] = useState<'signup' | 'signin'>('signup');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [pw, setPw] = useState('');
+  const [mode, setMode] = useState<"signup" | "signin">("signup");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [pw, setPw] = useState("");
 
   const saved = COMPANIES.filter((c) => followedIds.includes(c.id));
   const pending = pendingFollowId ? COMPANIES.find((c) => c.id === pendingFollowId) : undefined;
 
-  const valid = mode === 'signup' ? name.trim().length >= 2 && emailOk(email) && pw.length >= 4 : emailOk(email) && pw.length >= 4;
+  const valid =
+    mode === "signup"
+      ? name.trim().length >= 2 && emailOk(email) && pw.length >= 4
+      : emailOk(email) && pw.length >= 4;
 
   const reset = () => {
-    setName('');
-    setEmail('');
-    setPw('');
+    setName("");
+    setEmail("");
+    setPw("");
   };
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!valid) return;
-    if (mode === 'signup') signUp(name, email);
+    if (mode === "signup") signUp(name, email);
     else signIn(email);
     reset();
   };
 
   return (
-    <div className={`cgroup searchwrap acctwrap ${selectedId || compareOpen ? 'behindcard' : ''}`}>
+    <div className={`cgroup searchwrap acctwrap ${selectedId || compareOpen ? "behindcard" : ""}`}>
       <span className="seglbl">Account</span>
-      <button className={`searchbtn acctbtn ${authOpen ? 'on' : ''}`} onClick={() => (authOpen ? closeAuth() : openAuth())}>
+      <button
+        className={`searchbtn acctbtn ${authOpen ? "on" : ""}`}
+        onClick={() => (authOpen ? closeAuth() : openAuth())}
+      >
         {account ? (
           <>
             <span className="acctav">{initialsOf(account.name)}</span>
-            <span>{account.name.split(' ')[0]}</span>
+            <span>{account.name.split(" ")[0]}</span>
           </>
         ) : (
           <>
@@ -93,7 +108,7 @@ export function AccountButton() {
         )}
       </button>
       {authOpen && <div className="sfscrim" onClick={closeAuth} />}
-      <div className={`searchflyout acctflyout ${authOpen ? 'open' : ''}`}>
+      <div className={`searchflyout acctflyout ${authOpen ? "open" : ""}`}>
         {account ? (
           <>
             <div className="accthead">
@@ -112,8 +127,20 @@ export function AccountButton() {
                       <span className="acctrowname">{c.name}</span>
                       <span className="acctrowsec">{c.sector}</span>
                     </button>
-                    <button className="acctunfollow" aria-label={`Unfollow ${c.name}`} onClick={() => requestFollow(c.id)}>
-                      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
+                    <button
+                      className="acctunfollow"
+                      aria-label={`Unfollow ${c.name}`}
+                      onClick={() => requestFollow(c.id)}
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="12"
+                        height="12"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2.2}
+                        strokeLinecap="round"
+                      >
                         <path d="M6 6l12 12M18 6L6 18" />
                       </svg>
                     </button>
@@ -122,7 +149,8 @@ export function AccountButton() {
               </div>
             ) : (
               <div className="acctempty">
-                No saved companies yet — tap <b>Follow</b> on any company card to keep track of it here.
+                No saved companies yet — tap <b>Follow</b> on any company card to keep track of it
+                here.
               </div>
             )}
             <button className="sfclear" onClick={signOut}>
@@ -132,10 +160,16 @@ export function AccountButton() {
         ) : (
           <>
             <div className="accttabs">
-              <button className={`accttab ${mode === 'signup' ? 'on' : ''}`} onClick={() => setMode('signup')}>
+              <button
+                className={`accttab ${mode === "signup" ? "on" : ""}`}
+                onClick={() => setMode("signup")}
+              >
                 Create account
               </button>
-              <button className={`accttab ${mode === 'signin' ? 'on' : ''}`} onClick={() => setMode('signin')}>
+              <button
+                className={`accttab ${mode === "signin" ? "on" : ""}`}
+                onClick={() => setMode("signin")}
+              >
                 Sign in
               </button>
             </div>
@@ -145,8 +179,14 @@ export function AccountButton() {
               </div>
             )}
             <form onSubmit={submit}>
-              {mode === 'signup' && (
-                <input className="sfinput acctinput" placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+              {mode === "signup" && (
+                <input
+                  className="sfinput acctinput"
+                  placeholder="Full name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  autoFocus
+                />
               )}
               <input
                 className="sfinput acctinput"
@@ -154,23 +194,28 @@ export function AccountButton() {
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                autoFocus={mode === 'signin'}
+                autoFocus={mode === "signin"}
               />
-              <input className="sfinput acctinput" type="password" placeholder="Password" value={pw} onChange={(e) => setPw(e.target.value)} />
+              <input
+                className="sfinput acctinput"
+                type="password"
+                placeholder="Password"
+                value={pw}
+                onChange={(e) => setPw(e.target.value)}
+              />
               <button className="acctsubmit" type="submit" disabled={!valid}>
-                {mode === 'signup' ? 'Create account' : 'Sign in'}
+                {mode === "signup" ? "Create account" : "Sign in"}
               </button>
             </form>
             <div className="acctswitch">
-              {mode === 'signup' ? (
+              {mode === "signup" ? (
                 <>
-                  Already have an account?{' '}
-                  <button onClick={() => setMode('signin')}>Sign in</button>
+                  Already have an account?{" "}
+                  <button onClick={() => setMode("signin")}>Sign in</button>
                 </>
               ) : (
                 <>
-                  New to Employsi?{' '}
-                  <button onClick={() => setMode('signup')}>Create one</button>
+                  New to Employsi? <button onClick={() => setMode("signup")}>Create one</button>
                 </>
               )}
             </div>

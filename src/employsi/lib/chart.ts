@@ -23,7 +23,7 @@ export function quarterLabels(n: number): string[] {
 }
 
 export function smoothPath(pts: [number, number][]): string {
-  if (pts.length < 2) return '';
+  if (pts.length < 2) return "";
   let d = `M ${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)}`;
   for (let i = 0; i < pts.length - 1; i++) {
     const p0 = pts[i - 1] || pts[i];
@@ -48,5 +48,6 @@ export function scaler(vals: number[], plotTop: number, plotH: number) {
   return (v: number) => plotTop + plotH * (1 - (v - yMin) / (yMax - yMin));
 }
 
-export const signed = (v: number, fmt: (n: number) => string) => (v >= 0 ? '+' : '−') + fmt(Math.abs(v));
-export const pctStr = (v: number) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1) + '%';
+export const signed = (v: number, fmt: (n: number) => string) =>
+  (v >= 0 ? "+" : "−") + fmt(Math.abs(v));
+export const pctStr = (v: number) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1) + "%";

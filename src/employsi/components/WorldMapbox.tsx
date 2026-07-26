@@ -1,8 +1,8 @@
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import { useEffect, useRef } from 'react';
-import { useAppStore, cityMatchesFilters, type FilterState } from '../state/store';
-import { activeSkill, demandByCity, iviCityDemandAt, iviCityChangeAt } from '../lib/skillHeat';
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import { useEffect, useRef } from "react";
+import { useAppStore, cityMatchesFilters, type FilterState } from "../state/store";
+import { activeSkill, demandByCity, iviCityDemandAt, iviCityChangeAt } from "../lib/skillHeat";
 import {
   HUB_LNGLAT,
   AU_CITY_LNGLAT,
@@ -14,49 +14,61 @@ import {
   CITY_COUNTRY,
   COUNTRIES,
   COUNTRY_MEMBERS,
-} from '../data/mapboxWorldGeo';
-import { EU_CITY_LNGLAT } from '../data/euVacancyDemand';
+} from "../data/mapboxWorldGeo";
+import { EU_CITY_LNGLAT } from "../data/euVacancyDemand";
 
-// Europe domestic heat points: the mapped hubs (London/Zurich/Paris) plus every
-// EU country that carries Eurostat by-country vacancy data, each on its capital.
-// The EU countries render as skill-demand heat only (no labelled dot) so the
-// per-country signal shows without crowding the small frame with 26 labels.
+// Europe domestic points: the mapped hubs (London/Zurich/Paris) plus every EU
+// country that carries Eurostat by-country vacancy data, each on its capital.
+// These drive BOTH the skill-demand heat and the labelled markers — the Europe
+// view is the only place the per-country Eurostat breakdown can be read, so the
+// countries have to be present and named there. (They were briefly heat-only,
+// which left them invisible once the global layer clustered Europe into one
+// chip: there was then no zoom at which an individual country could be seen.)
+// Crowding is handled by the shared label gate — names fade in on zoom-in.
 const EUROPE_HEAT_LNGLAT: Record<string, [number, number]> = (() => {
   const t: Record<string, [number, number]> = {};
-  (REGION_HUBS.europe || []).forEach((id) => { if (HUB_LNGLAT[id]) t[id] = HUB_LNGLAT[id]; });
+  (REGION_HUBS.europe || []).forEach((id) => {
+    if (HUB_LNGLAT[id]) t[id] = HUB_LNGLAT[id];
+  });
   for (const [id, ll] of Object.entries(EU_CITY_LNGLAT)) t[id] = ll;
   return t;
 })();
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
-const SOURCE_ID = 'world-hubs';
-const HALO_LAYER = 'hub-halo';
-const CORE_LAYER = 'hub-core';
-const SKILL_SOURCE = 'skill-heat';
-const SKILL_LAYER = 'skill-heat';
+const SOURCE_ID = "world-hubs";
+const HALO_LAYER = "hub-halo";
+const CORE_LAYER = "hub-core";
+const SKILL_SOURCE = "skill-heat";
+const SKILL_LAYER = "skill-heat";
 
 // Neutral dot colour used while a skill search is active — the coloured metric
 // heat is replaced by the skill-demand blobs, so the city dots go dark (as they
 // do on the SVG layers), keeping the blobs the only colour on the map.
-const NEUTRAL_DOT = 'rgb(42,42,46)';
+const NEUTRAL_DOT = "rgb(42,42,46)";
 
 // Decorative traffic on the globe: aircraft between city pairs and container
 // ships between port hubs, each drifting back and forth along its route.
-type TravelMode = 'plane' | 'ship';
+type TravelMode = "plane" | "ship";
 // Uniform slow-down applied to every traveler's duration (>1 = slower drift).
 const TRAVEL_SLOWDOWN = 1.6;
-interface TravelRoute { from: string; to: string; mode: TravelMode; dur: number; offset: number; }
+interface TravelRoute {
+  from: string;
+  to: string;
+  mode: TravelMode;
+  dur: number;
+  offset: number;
+}
 const TRAVEL_ROUTES: TravelRoute[] = [
-  { from: 'perth', to: 'singapore', mode: 'plane', dur: 24000, offset: 0.0 },
-  { from: 'london', to: 'newyork', mode: 'plane', dur: 30000, offset: 0.35 },
-  { from: 'tokyo', to: 'sydney', mode: 'plane', dur: 34000, offset: 0.2 },
-  { from: 'dubai', to: 'johannesburg', mode: 'plane', dur: 27000, offset: 0.6 },
-  { from: 'sanfrancisco', to: 'tokyo', mode: 'plane', dur: 36000, offset: 0.15 },
-  { from: 'singapore', to: 'ganzhou', mode: 'ship', dur: 44000, offset: 0.3 },
-  { from: 'perth', to: 'johannesburg', mode: 'ship', dur: 60000, offset: 0.5 },
-  { from: 'houston', to: 'london', mode: 'ship', dur: 56000, offset: 0.15 },
-  { from: 'hongkong', to: 'singapore', mode: 'ship', dur: 40000, offset: 0.7 },
+  { from: "perth", to: "singapore", mode: "plane", dur: 24000, offset: 0.0 },
+  { from: "london", to: "newyork", mode: "plane", dur: 30000, offset: 0.35 },
+  { from: "tokyo", to: "sydney", mode: "plane", dur: 34000, offset: 0.2 },
+  { from: "dubai", to: "johannesburg", mode: "plane", dur: 27000, offset: 0.6 },
+  { from: "sanfrancisco", to: "tokyo", mode: "plane", dur: 36000, offset: 0.15 },
+  { from: "singapore", to: "ganzhou", mode: "ship", dur: 44000, offset: 0.3 },
+  { from: "perth", to: "johannesburg", mode: "ship", dur: 60000, offset: 0.5 },
+  { from: "houston", to: "london", mode: "ship", dur: 56000, offset: 0.15 },
+  { from: "hongkong", to: "singapore", mode: "ship", dur: 40000, offset: 0.7 },
 ];
 
 // Detailed top-down icons (as a ship-tracking / flight-radar map would show
@@ -66,16 +78,16 @@ const PLANE_SVG =
   '<svg viewBox="0 0 28 28" width="21" height="21">' +
   '<defs><linearGradient id="plg" x1="0" y1="0" x2="1" y2="0">' +
   '<stop offset="0" stop-color="#c7ccd3"/><stop offset="0.5" stop-color="#f6f8fa"/><stop offset="1" stop-color="#aeb3bb"/>' +
-  '</linearGradient></defs>' +
+  "</linearGradient></defs>" +
   '<path fill="url(#plg)" stroke="#5c616b" stroke-width="0.5" stroke-linejoin="round" ' +
   'd="M14 2c1.1 0 1.7 1.3 1.7 3.2v5.9l9 5.2v2.4l-9-2.9v4.6l2.5 1.8v2l-4.2-1.2-4.2 1.2v-2l2.5-1.8v-4.6l-9 2.9v-2.4l9-5.2V5.2C12.3 3.3 12.9 2 14 2z"/>' +
   '<line x1="14" y1="6" x2="14" y2="21" stroke="#8b909a" stroke-width="0.5"/>' +
-  '</svg>';
+  "</svg>";
 const SHIP_SVG =
   '<svg viewBox="0 0 18 44" width="8" height="20">' +
   '<defs><linearGradient id="shg" x1="0" y1="0" x2="1" y2="0">' +
   '<stop offset="0" stop-color="#565b64"/><stop offset="0.5" stop-color="#727782"/><stop offset="1" stop-color="#3f434b"/>' +
-  '</linearGradient></defs>' +
+  "</linearGradient></defs>" +
   // hull (pointed bow up, rounded stern)
   '<path d="M9 1 L14 9 L14 39 Q14 43 10.5 43 L7.5 43 Q4 43 4 39 L4 9 Z" fill="url(#shg)" stroke="#2b2e34" stroke-width="0.6"/>' +
   // hatch outline / deck edge
@@ -90,11 +102,11 @@ const SHIP_SVG =
   '<rect x="6.2" y="25.4" width="2.6" height="2.4" fill="#2fa36a"/><rect x="9.2" y="25.4" width="2.6" height="2.4" fill="#2e6fc0"/>' +
   '<rect x="6.2" y="28.2" width="2.6" height="2.4" fill="#c9a13a"/><rect x="9.2" y="28.2" width="2.6" height="2.4" fill="#b23b3b"/>' +
   '<rect x="6.2" y="31" width="2.6" height="2.4" fill="#2e6fc0"/><rect x="9.2" y="31" width="2.6" height="2.4" fill="#2fa36a"/>' +
-  '</g>' +
+  "</g>" +
   // superstructure / bridge near the stern
   '<rect x="5.6" y="35.4" width="6.8" height="4" rx="0.6" fill="#e7e9ec" stroke="#9aa0a8" stroke-width="0.4"/>' +
   '<rect x="7" y="36.3" width="4" height="1.2" fill="#aeb4bd"/>' +
-  '</svg>';
+  "</svg>";
 
 // Antimeridian-aware linear interpolation between two lng/lat points (takes the
 // shorter way around, so e.g. a San Francisco -> Tokyo route crosses the
@@ -117,7 +129,7 @@ function lerpLngLat(a: [number, number], b: [number, number], t: number): [numbe
 // and their labels overlap into an unreadable pile when fully zoomed out. Past
 // it they expand to individual countries.
 const EUROPE_CLUSTER_ZOOM = 2.2;
-const EUROPE_CLUSTER_ID = 'eu-cluster';
+const EUROPE_CLUSTER_ID = "eu-cluster";
 const CROSS_GLOBAL_TO_DOMESTIC = 2.9; // zoom in past this on the globe -> region
 const CROSS_DOMESTIC_TO_GLOBAL = 2.15; // zoom out past this in a region -> globe (sooner)
 // Zoom in past this in a region -> drill into the nearest city's local view.
@@ -157,7 +169,7 @@ function heatColor(t: number): string {
 // colour and the heat-blob weight use this same value, so a dot and its blob
 // always tell the same story.
 function heatT(v: number, mn: number, mx: number): number {
-  const r = (v - mn) / ((mx - mn) || 1);
+  const r = (v - mn) / (mx - mn || 1);
   return Math.sqrt(Math.max(0, Math.min(1, r)));
 }
 
@@ -179,7 +191,7 @@ function countryDemand(cityDemand: Record<string, number>): Record<string, numbe
 // skill is searched (then the skill-demand blobs carry all the colour). Always
 // filtered by the active sectors.
 function computeMarkers(
-  mode: 'global' | 'domestic',
+  mode: "global" | "domestic",
   region: string,
   filterState: FilterState,
   demand: Record<string, number>,
@@ -189,7 +201,7 @@ function computeMarkers(
   // Neutral dot tuned to each backdrop: the global view sits on the dark globe
   // (needs a light dot), the domestic view on the light basemap (needs a dark
   // dot). When a skill is searched the dot is recoloured to its demand below.
-  const dotColor = mode === 'global' ? 'rgb(198,203,214)' : NEUTRAL_DOT;
+  const dotColor = mode === "global" ? "rgb(198,203,214)" : NEUTRAL_DOT;
   const out: Marker[] = [];
   const push = (id: string, coords: [number, number] | undefined) => {
     // Guard against ids that lack coordinates (e.g. a hub without a HUB_LNGLAT
@@ -204,12 +216,12 @@ function computeMarkers(
       coords,
       color: dotColor,
       label: cityLabel(id),
-      sub: '',
+      sub: "",
       clickable: CLICKABLE_CITIES.has(id),
     });
   };
 
-  if (mode === 'global') {
+  if (mode === "global") {
     // Country roll-up: one marker per country carrying its aggregated demand,
     // rather than 49 individual city dots. Clicking drops into that country's
     // domestic layer, where the per-city breakdown is shown as before.
@@ -220,7 +232,7 @@ function computeMarkers(
       const members = COUNTRY_MEMBERS[cc] || [];
       // Respect the filters: a country shows if ANY of its cities match.
       if (members.length && !members.some((m) => cityMatchesFilters(m, filterState))) continue;
-      if (clusterEurope && info.region === 'europe') {
+      if (clusterEurope && info.region === "europe") {
         euDemand += demand[cc] || 0;
         euAny = true;
         continue; // rolled into the single Europe chip below
@@ -230,7 +242,7 @@ function computeMarkers(
         coords: info.center,
         color: dotColor,
         label: info.label,
-        sub: '',
+        sub: "",
         clickable: true,
       });
     }
@@ -239,8 +251,8 @@ function computeMarkers(
         id: EUROPE_CLUSTER_ID,
         coords: [9.5, 50.0],
         color: dotColor,
-        label: 'Europe',
-        sub: '',
+        label: "Europe",
+        sub: "",
         clickable: true,
       });
       // The cluster carries the combined demand so it colours like a country.
@@ -251,6 +263,14 @@ function computeMarkers(
     // through here on the AU view and on the global view; Darwin and Hobart stay
     // omitted).
     (REGION_HUBS[region] || []).forEach((id) => push(id, HUB_LNGLAT[id]));
+    // Europe additionally shows every EU country carrying Eurostat data, on its
+    // capital. They are not in REGION_HUBS (they're countries, not hub cities)
+    // and have no local 3D view, so they arrive as labelled, non-clickable dots
+    // that carry the country's demand — the per-country breakdown the global
+    // layer's Europe cluster drills into.
+    if (region === "europe") {
+      for (const [id, ll] of Object.entries(EU_CITY_LNGLAT)) push(id, ll);
+    }
   }
 
   // Colour each city dot by its demand for the searched skill, matching the heat
@@ -270,7 +290,7 @@ function computeMarkers(
   return out;
 }
 
-const EMPTY_FC: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
+const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
 // Demand-weighted point cloud for the skill heatmap: a small deterministic
 // cluster of points around each city, weighted by that city's relative demand
@@ -278,7 +298,7 @@ const EMPTY_FC: GeoJSON.FeatureCollection = { type: 'FeatureCollection', feature
 // layer turns this into the soft green→amber→red blobs, mirroring the SVG
 // layers' skill "spikes".
 function buildSkillHeat(
-  mode: 'global' | 'domestic',
+  mode: "global" | "domestic",
   region: string,
   skill: string | null,
   demand: Record<string, number>,
@@ -289,7 +309,7 @@ function buildSkillHeat(
   // Australia only AU hubs carry demand and light up — an honest reflection of
   // the data we actually have).
   let table: Record<string, [number, number]>;
-  if (mode === 'global') {
+  if (mode === "global") {
     // Global heat is per COUNTRY: one blob per country at its anchor, weighted
     // by that country's aggregated demand.
     table = Object.fromEntries(
@@ -297,16 +317,18 @@ function buildSkillHeat(
     ) as Record<string, [number, number]>;
     // The Europe cluster (used when zoomed out) needs an anchor of its own.
     table[EUROPE_CLUSTER_ID] = [9.5, 50.0];
-  } else if (region === 'australia') {
+  } else if (region === "australia") {
     // All AU capitals are now full cities (Hobart added with TAS gov, Darwin with
     // NT gov), so every one keeps its marker + skill heat.
     table = AU_CITY_LNGLAT;
-  } else if (region === 'europe') {
+  } else if (region === "europe") {
     // Hubs + every EU country with Eurostat by-country data (each on its capital).
     table = EUROPE_HEAT_LNGLAT;
   } else {
     table = {};
-    (REGION_HUBS[region] || []).forEach((id) => { if (HUB_LNGLAT[id]) table[id] = HUB_LNGLAT[id]; });
+    (REGION_HUBS[region] || []).forEach((id) => {
+      if (HUB_LNGLAT[id]) table[id] = HUB_LNGLAT[id];
+    });
   }
   const ids = Object.keys(table).filter((id) => (demand[id] || 0) > 0);
   if (!ids.length) return EMPTY_FC;
@@ -315,7 +337,10 @@ function buildSkillHeat(
   const mx = Math.max(...vals);
 
   let seed = 99;
-  const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+  const rnd = () => {
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+  };
   const features: GeoJSON.Feature[] = [];
   ids.forEach((id) => {
     // Same curve as the city dot (heatT) so a hub's dot colour and its blob
@@ -327,27 +352,27 @@ function buildSkillHeat(
       const jx = i === 0 ? 0 : (rnd() - 0.5) * 5.4;
       const jy = i === 0 ? 0 : (rnd() - 0.5) * 5.4;
       features.push({
-        type: 'Feature',
+        type: "Feature",
         properties: { w },
-        geometry: { type: 'Point', coordinates: [lng + jx, lat + jy] },
+        geometry: { type: "Point", coordinates: [lng + jx, lat + jy] },
       });
     }
   });
-  return { type: 'FeatureCollection', features };
+  return { type: "FeatureCollection", features };
 }
 
 function markersGeoJSON(markers: Marker[], selectedId: string | null): GeoJSON.FeatureCollection {
   return {
-    type: 'FeatureCollection',
+    type: "FeatureCollection",
     features: markers.map((m, i) => ({
-      type: 'Feature',
+      type: "Feature",
       id: i,
       properties: {
         id: m.id,
         color: m.color,
         dim: !!selectedId && selectedId !== m.id,
       },
-      geometry: { type: 'Point', coordinates: m.coords },
+      geometry: { type: "Point", coordinates: m.coords },
     })),
   };
 }
@@ -368,7 +393,8 @@ function nearest(lng: number, lat: number, table: Record<string, [number, number
   return best;
 }
 
-const viewModeOf = (globalOut: boolean): 'global' | 'domestic' => (globalOut ? 'global' : 'domestic');
+const viewModeOf = (globalOut: boolean): "global" | "domestic" =>
+  globalOut ? "global" : "domestic";
 
 export function WorldMapbox() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -378,7 +404,9 @@ export function WorldMapbox() {
   const rebuildMarkersRef = useRef<(() => void) | null>(null);
   const applyViewRef = useRef<(() => void) | null>(null);
   const sampleHeaderBgRef = useRef<(() => void) | null>(null);
-  const travelersRef = useRef<{ marker: mapboxgl.Marker; inner: HTMLElement; route: TravelRoute }[]>([]);
+  const travelersRef = useRef<
+    { marker: mapboxgl.Marker; inner: HTMLElement; route: TravelRoute }[]
+  >([]);
   const travelRaf = useRef<number | undefined>(undefined);
   const haloPulseRaf = useRef<number | undefined>(undefined);
   const programmaticRef = useRef(false);
@@ -411,8 +439,8 @@ export function WorldMapbox() {
     if (!containerRef.current) return;
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: 'mapbox://styles/mapbox/standard',
-      projection: 'globe',
+      style: "mapbox://styles/mapbox/standard",
+      projection: "globe",
       center: GLOBAL_VIEW.center,
       zoom: GLOBAL_VIEW.zoom,
       pitch: 0,
@@ -433,17 +461,18 @@ export function WorldMapbox() {
     let lastSample = 0;
     const sampleHeaderBg = () => {
       const s = useAppStore.getState();
-      const appEl = containerRef.current?.closest('.app') as HTMLElement | null;
+      const appEl = containerRef.current?.closest(".app") as HTMLElement | null;
       if (!appEl) return;
       // Runs on both overviews (global globe + domestic country map) — the
       // header floats over the map on each, so its colour must adapt to the
       // pixel behind it (light land → dark text, dark space/ocean → white).
       // Only the local city layer (not zoomedOut) and mid-zoom are skipped.
       if (!s.zoomedOut || s.zoomingIn) return;
-      const hd = document.querySelector('.gsearchhd') as HTMLElement | null;
+      const hd = document.querySelector(".gsearchhd") as HTMLElement | null;
       if (!hd) return;
       const canvas = map.getCanvas();
-      const gl = (canvas.getContext('webgl2') || canvas.getContext('webgl')) as WebGLRenderingContext | null;
+      const gl = (canvas.getContext("webgl2") ||
+        canvas.getContext("webgl")) as WebGLRenderingContext | null;
       if (!gl) return;
       const cRect = canvas.getBoundingClientRect();
       const hRect = hd.getBoundingClientRect();
@@ -455,10 +484,10 @@ export function WorldMapbox() {
       const px = new Uint8Array(4);
       gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
       const lum = 0.299 * px[0] + 0.587 * px[1] + 0.114 * px[2];
-      appEl.classList.toggle('gshd-onlight', lum > 140);
+      appEl.classList.toggle("gshd-onlight", lum > 140);
     };
     sampleHeaderBgRef.current = sampleHeaderBg;
-    map.on('render', () => {
+    map.on("render", () => {
       const now = performance.now();
       if (now - lastSample < 120) return; // throttle — 1px read, but cheap-guard
       lastSample = now;
@@ -468,14 +497,16 @@ export function WorldMapbox() {
     // A programmatic camera move that suppresses the scroll-crossing handler
     // until it settles. Cleared on moveend, with a timeout fallback so a no-op
     // flyTo (which may not emit moveend) can't leave the guard stuck on.
-    const flyGuarded = (opts: Parameters<mapboxgl.Map['flyTo']>[0] & { duration: number }) => {
+    const flyGuarded = (opts: Parameters<mapboxgl.Map["flyTo"]>[0] & { duration: number }) => {
       programmaticRef.current = true;
       // Also arm the cross cooldown: if the user's own scroll interrupts this
       // flyTo, moveend can fire early and clear programmaticRef while the map
       // is still mid-transition at a zoom that would otherwise trip a crossing.
       lastCrossRef.current = Date.now();
       clearTimeout(programmaticTimer.current);
-      programmaticTimer.current = setTimeout(() => { programmaticRef.current = false; }, opts.duration + 250);
+      programmaticTimer.current = setTimeout(() => {
+        programmaticRef.current = false;
+      }, opts.duration + 250);
       map.flyTo({ ...opts, essential: true });
     };
 
@@ -484,7 +515,10 @@ export function WorldMapbox() {
     // on a domestic layer the markers are cities, so we fly into the city.
     const activateMarker = (id: string) => {
       const st = useAppStore.getState();
-      if (id === EUROPE_CLUSTER_ID) { st.goDomestic('europe'); return; }
+      if (id === EUROPE_CLUSTER_ID) {
+        st.goDomestic("europe");
+        return;
+      }
       const country = COUNTRIES[id];
       if (country) st.goDomestic(country.region);
       else st.zoomInCity(id);
@@ -494,37 +528,37 @@ export function WorldMapbox() {
       Object.values(labelsRef.current).forEach((m) => m.remove());
       labelsRef.current = {};
       markers.forEach((m) => {
-        const el = document.createElement('button');
-        el.className = 'mbchip';
+        const el = document.createElement("button");
+        el.className = "mbchip";
         // Just the city name in the pill — the demand-coloured dot sits below it
         // (the GL circle at the geo point), so no duplicate dot inside the pill.
         el.innerHTML = `<span class="chiptk"></span>`;
-        (el.querySelector('.chiptk') as HTMLElement).textContent = m.label;
+        (el.querySelector(".chiptk") as HTMLElement).textContent = m.label;
         // Scrub callout: a small up/down % chip showing how the skill's demand
         // is moving at the current slider month (only set while scrubbing a
         // skill). |change| < 0.5% reads as flat.
-        if (typeof m.pct === 'number') {
+        if (typeof m.pct === "number") {
           const up = m.pct >= 0;
           const flat = Math.abs(m.pct) < 0.5;
-          const pctEl = document.createElement('span');
-          pctEl.className = `chippct ${flat ? 'flat' : up ? 'up' : 'down'}`;
-          pctEl.textContent = `${flat ? '' : up ? '▲' : '▼'} ${up ? '+' : m.pct < 0 ? '−' : ''}${Math.abs(Math.round(m.pct))}%`;
-          pctEl.title = 'Change in this skill’s job-ad demand vs the previous month';
+          const pctEl = document.createElement("span");
+          pctEl.className = `chippct ${flat ? "flat" : up ? "up" : "down"}`;
+          pctEl.textContent = `${flat ? "" : up ? "▲" : "▼"} ${up ? "+" : m.pct < 0 ? "−" : ""}${Math.abs(Math.round(m.pct))}%`;
+          pctEl.title = "Change in this skill’s job-ad demand vs the previous month";
           el.appendChild(pctEl);
-          el.classList.add('mbchip-pct');
+          el.classList.add("mbchip-pct");
         }
         if (m.clickable) {
           const swallow = (ev: Event) => ev.stopPropagation();
-          el.addEventListener('mousedown', swallow);
-          el.addEventListener('pointerdown', swallow);
+          el.addEventListener("mousedown", swallow);
+          el.addEventListener("pointerdown", swallow);
           el.onclick = (ev) => {
             ev.stopPropagation();
             activateMarker(m.id);
           };
         } else {
-          el.style.cursor = 'default';
+          el.style.cursor = "default";
         }
-        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom', offset: [0, -8] })
+        const marker = new mapboxgl.Marker({ element: el, anchor: "bottom", offset: [0, -8] })
           .setLngLat(m.coords)
           .addTo(map);
         labelsRef.current[m.id] = marker;
@@ -545,7 +579,14 @@ export function WorldMapbox() {
       // counts. Applied on the AU domestic view and on the global view (where
       // the Australian hubs are the ones with an IVI time series); other
       // countries light up automatically once their equivalent series is added.
-      if (skill && (mode === 'global' || s.domesticRegion === 'australia' || s.domesticRegion === 'northamerica' || s.domesticRegion === 'asia' || s.domesticRegion === 'europe')) {
+      if (
+        skill &&
+        (mode === "global" ||
+          s.domesticRegion === "australia" ||
+          s.domesticRegion === "northamerica" ||
+          s.domesticRegion === "asia" ||
+          s.domesticRegion === "europe")
+      ) {
         const ivi = iviCityDemandAt(skill, s.heatMonth);
         cityDemand = { ...cityDemand };
         for (const [c, v] of Object.entries(ivi)) cityDemand[c] = (cityDemand[c] || 0) + v;
@@ -562,14 +603,28 @@ export function WorldMapbox() {
       };
       // At the global layer everything is expressed per COUNTRY, so roll the
       // per-city demand up before colouring markers or sizing the heat blobs.
-      const demandForView = mode === 'global' ? countryDemand(cityDemand) : cityDemand;
-      const markers = computeMarkers(mode, s.domesticRegion, fs, demandForView, !!skill, map.getZoom());
+      const demandForView = mode === "global" ? countryDemand(cityDemand) : cityDemand;
+      const markers = computeMarkers(
+        mode,
+        s.domesticRegion,
+        fs,
+        demandForView,
+        !!skill,
+        map.getZoom(),
+      );
       // Scrub callouts: while a skill + the time slider are active, tag each
       // city with its demand % change at the current month, so the label shows
       // how demand for the skill is moving as the slider is dragged.
-      if (skill && (mode === 'global' || s.domesticRegion === 'australia' || s.domesticRegion === 'northamerica' || s.domesticRegion === 'asia' || s.domesticRegion === 'europe')) {
+      if (
+        skill &&
+        (mode === "global" ||
+          s.domesticRegion === "australia" ||
+          s.domesticRegion === "northamerica" ||
+          s.domesticRegion === "asia" ||
+          s.domesticRegion === "europe")
+      ) {
         const change = iviCityChangeAt(skill, s.heatMonth);
-        if (mode === 'global') {
+        if (mode === "global") {
           // Country-level momentum: demand-weighted mean of its cities' changes,
           // so a country's ▲/▼ reflects where its volume actually sits.
           const num: Record<string, number> = {};
@@ -599,7 +654,7 @@ export function WorldMapbox() {
       const skillSrc = map.getSource(SKILL_SOURCE) as mapboxgl.GeoJSONSource | undefined;
       skillSrc?.setData(buildSkillHeat(mode, s.domesticRegion, skill, demandForView));
       if (map.getLayer(HALO_LAYER)) {
-        map.setLayoutProperty(HALO_LAYER, 'visibility', skill ? 'visible' : 'none');
+        map.setLayoutProperty(HALO_LAYER, "visibility", skill ? "visible" : "none");
       }
     };
     rebuildMarkersRef.current = rebuildMarkers;
@@ -632,89 +687,107 @@ export function WorldMapbox() {
     };
     applyViewRef.current = applyView;
 
-    map.on('style.load', () => {
-      map.setConfigProperty('basemap', 'lightPreset', 'day');
-      map.setConfigProperty('basemap', 'theme', 'faded');
-      map.setConfigProperty('basemap', 'showPointOfInterestLabels', false);
-      map.setConfigProperty('basemap', 'showTransitLabels', false);
-      map.setConfigProperty('basemap', 'showRoadLabels', false);
-      map.setConfigProperty('basemap', 'showLandmarkIcons', false);
-      map.setConfigProperty('basemap', 'showPlaceLabels', false);
+    map.on("style.load", () => {
+      map.setConfigProperty("basemap", "lightPreset", "day");
+      map.setConfigProperty("basemap", "theme", "faded");
+      map.setConfigProperty("basemap", "showPointOfInterestLabels", false);
+      map.setConfigProperty("basemap", "showTransitLabels", false);
+      map.setConfigProperty("basemap", "showRoadLabels", false);
+      map.setConfigProperty("basemap", "showLandmarkIcons", false);
+      map.setConfigProperty("basemap", "showPlaceLabels", false);
       // State/province + country borders in charcoal grey so the domestic/global
       // views read as a clear political map rather than the faded default lines.
-      map.setConfigProperty('basemap', 'colorAdminBoundaries', '#3d434c');
+      map.setConfigProperty("basemap", "colorAdminBoundaries", "#3d434c");
 
       // Skill-demand heatmap, added first so it sits beneath the hub dots.
-      map.addSource(SKILL_SOURCE, { type: 'geojson', data: EMPTY_FC });
+      map.addSource(SKILL_SOURCE, { type: "geojson", data: EMPTY_FC });
       map.addLayer({
         id: SKILL_LAYER,
-        type: 'heatmap',
+        type: "heatmap",
         source: SKILL_SOURCE,
         paint: {
-          'heatmap-weight': ['get', 'w'],
+          "heatmap-weight": ["get", "w"],
           // Lower intensity so the (now wider) demand range spreads across the
           // whole colour ramp instead of clipping to red — this is what makes
           // the difference between hubs read clearly.
-          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 1, 0.95, 4, 1.1, 6, 1.25],
+          "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 1, 0.95, 4, 1.1, 6, 1.25],
           // Blobs grow with zoom so they stay continent-/region-scaled.
-          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 1, 34, 3, 72, 5, 130, 7, 210],
+          "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 1, 34, 3, 72, 5, 130, 7, 210],
           // Fade out as we approach the local-city hand-off zoom. Eased back off
           // full opacity so the basemap still reads through the blobs.
-          'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 1, 0.8, 5, 0.76, 6.5, 0],
+          "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 1, 0.8, 5, 0.76, 6.5, 0],
           // Green (low) -> lime -> amber -> red (high), matching the city-dot
           // ramp so a hub's dot and its blob agree.
-          'heatmap-color': [
-            'interpolate', ['linear'], ['heatmap-density'],
-            0, 'rgba(21,157,103,0)',
-            0.12, 'rgba(21,157,103,0.42)',
-            0.35, 'rgba(120,190,60,0.55)',
-            0.55, 'rgba(245,166,35,0.68)',
-            0.78, 'rgba(224,82,74,0.8)',
-            1, 'rgba(214,54,46,0.88)',
+          "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0,
+            "rgba(21,157,103,0)",
+            0.12,
+            "rgba(21,157,103,0.42)",
+            0.35,
+            "rgba(120,190,60,0.55)",
+            0.55,
+            "rgba(245,166,35,0.68)",
+            0.78,
+            "rgba(224,82,74,0.8)",
+            1,
+            "rgba(214,54,46,0.88)",
           ],
         },
       });
 
-      map.addSource(SOURCE_ID, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addSource(SOURCE_ID, {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
       map.addLayer({
         id: HALO_LAYER,
-        type: 'circle',
+        type: "circle",
         source: SOURCE_ID,
         paint: {
-          'circle-radius': 22,
-          'circle-color': ['get', 'color'],
-          'circle-blur': 1,
-          'circle-opacity': ['case', ['get', 'dim'], 0.1, 0.5],
+          "circle-radius": 22,
+          "circle-color": ["get", "color"],
+          "circle-blur": 1,
+          "circle-opacity": ["case", ["get", "dim"], 0.1, 0.5],
         },
       });
       map.addLayer({
         id: CORE_LAYER,
-        type: 'circle',
+        type: "circle",
         source: SOURCE_ID,
         paint: {
-          'circle-radius': 5.5,
-          'circle-color': ['get', 'color'],
-          'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': 1.5,
-          'circle-opacity': ['case', ['get', 'dim'], 0.25, 0.95],
+          "circle-radius": 5.5,
+          "circle-color": ["get", "color"],
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 1.5,
+          "circle-opacity": ["case", ["get", "dim"], 0.25, 0.95],
         },
       });
 
       [CORE_LAYER, HALO_LAYER].forEach((layer) => {
-        map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = ''; });
+        map.on("mouseenter", layer, () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", layer, () => {
+          map.getCanvas().style.cursor = "";
+        });
       });
 
       // Click the nearest clickable marker within a generous radius -> drill in.
       const PICK_RADIUS = 34; // px
-      map.on('click', (e) => {
+      map.on("click", (e) => {
         let best: Marker | null = null;
         let bestD = Infinity;
         markersRef.current.forEach((m) => {
           if (!m.clickable) return;
           const pt = map.project(m.coords);
           const d = (pt.x - e.point.x) ** 2 + (pt.y - e.point.y) ** 2;
-          if (d < bestD) { bestD = d; best = m; }
+          if (d < bestD) {
+            bestD = d;
+            best = m;
+          }
         });
         if (best && bestD <= PICK_RADIUS * PICK_RADIUS) {
           activateMarker((best as Marker).id);
@@ -726,13 +799,15 @@ export function WorldMapbox() {
         const a = HUB_LNGLAT[route.from];
         const b = HUB_LNGLAT[route.to];
         if (!a || !b) return;
-        const outer = document.createElement('div');
-        outer.className = 'traveler';
-        const inner = document.createElement('span');
+        const outer = document.createElement("div");
+        outer.className = "traveler";
+        const inner = document.createElement("span");
         inner.className = `travelericon traveler-${route.mode}`;
-        inner.innerHTML = route.mode === 'plane' ? PLANE_SVG : SHIP_SVG;
+        inner.innerHTML = route.mode === "plane" ? PLANE_SVG : SHIP_SVG;
         outer.appendChild(inner);
-        const marker = new mapboxgl.Marker({ element: outer, anchor: 'center' }).setLngLat(a).addTo(map);
+        const marker = new mapboxgl.Marker({ element: outer, anchor: "center" })
+          .setLngLat(a)
+          .addTo(map);
         travelersRef.current.push({ marker, inner, route });
       });
 
@@ -744,20 +819,27 @@ export function WorldMapbox() {
         const show = s.zoomedOut && !s.zoomingIn;
         travelersRef.current.forEach(({ marker, inner, route }) => {
           const el = marker.getElement();
-          if (!show) { el.style.display = 'none'; return; }
-          el.style.display = '';
+          if (!show) {
+            el.style.display = "none";
+            return;
+          }
+          el.style.display = "";
           const a = HUB_LNGLAT[route.from];
           const b = HUB_LNGLAT[route.to];
           // Ping-pong 0->1->0 so each craft makes a round trip rather than
           // snapping back to the start. TRAVEL_SLOWDOWN stretches every route's
           // duration uniformly so the planes/ships drift more slowly.
-          const phase = ((now / (route.dur * TRAVEL_SLOWDOWN)) + route.offset) % 2;
+          const phase = (now / (route.dur * TRAVEL_SLOWDOWN) + route.offset) % 2;
           const t = phase < 1 ? phase : 2 - phase;
           const eased = t; // linear is fine at this scale
           const pos = lerpLngLat(a, b, eased);
           marker.setLngLat(pos);
           // Point the icon along its current heading (bearing on screen).
-          const ahead = lerpLngLat(a, b, Math.min(1, Math.max(0, eased + (phase < 1 ? 0.01 : -0.01))));
+          const ahead = lerpLngLat(
+            a,
+            b,
+            Math.min(1, Math.max(0, eased + (phase < 1 ? 0.01 : -0.01))),
+          );
           const dx = ahead[0] - pos[0];
           const dy = ahead[1] - pos[1];
           const bearing = (Math.atan2(dx * Math.cos((pos[1] * Math.PI) / 180), dy) * 180) / Math.PI;
@@ -776,9 +858,12 @@ export function WorldMapbox() {
           const active = !!activeSkill(s.searchQuery) && s.zoomedOut && !s.zoomingIn;
           if (active) {
             const p = 0.5 - 0.5 * Math.cos(performance.now() / 620); // 0..1
-            map.setPaintProperty(HALO_LAYER, 'circle-radius', 17 + 13 * p);
-            map.setPaintProperty(HALO_LAYER, 'circle-opacity', [
-              'case', ['get', 'dim'], 0.06 + 0.06 * p, 0.28 + 0.28 * p,
+            map.setPaintProperty(HALO_LAYER, "circle-radius", 17 + 13 * p);
+            map.setPaintProperty(HALO_LAYER, "circle-opacity", [
+              "case",
+              ["get", "dim"],
+              0.06 + 0.06 * p,
+              0.28 + 0.28 * p,
             ]);
           }
         }
@@ -799,7 +884,7 @@ export function WorldMapbox() {
     // local: when the domestic view first appears the map can still be at a
     // high zoom (mid fly-out to the region frame), which is >= the local
     // threshold, but since the user is zooming OUT (dz < 0) it won't re-cross.
-    map.on('zoom', () => {
+    map.on("zoom", () => {
       const z = map.getZoom();
       const dz = z - prevZoomRef.current;
       // Expand / collapse the Europe cluster as the globe zoom crosses the
@@ -820,11 +905,19 @@ export function WorldMapbox() {
           // The global layer shows COUNTRIES, so scrolling in should land on the
           // domestic layer of whichever country you zoomed toward. Fall back to
           // the nearest region frame if no country is close.
-          const cc = nearest(c.lng, c.lat,
-            Object.fromEntries(Object.entries(COUNTRIES).map(([k, v]) => [k, v.center])));
-          const region = (cc && COUNTRIES[cc]?.region)
-            || nearest(c.lng, c.lat, Object.fromEntries(Object.entries(REGION_FRAMES).map(([r, f]) => [r, f.center])))
-            || 'australia';
+          const cc = nearest(
+            c.lng,
+            c.lat,
+            Object.fromEntries(Object.entries(COUNTRIES).map(([k, v]) => [k, v.center])),
+          );
+          const region =
+            (cc && COUNTRIES[cc]?.region) ||
+            nearest(
+              c.lng,
+              c.lat,
+              Object.fromEntries(Object.entries(REGION_FRAMES).map(([r, f]) => [r, f.center])),
+            ) ||
+            "australia";
           lastCrossRef.current = Date.now();
           s.goDomestic(region);
         }
@@ -836,7 +929,9 @@ export function WorldMapbox() {
         applyViewRef.current?.();
       } else if (dz > 0 && z >= CROSS_DOMESTIC_TO_LOCAL) {
         const table: Record<string, [number, number]> = {};
-        markersRef.current.forEach((m) => { if (m.clickable) table[m.id] = m.coords; });
+        markersRef.current.forEach((m) => {
+          if (m.clickable) table[m.id] = m.coords;
+        });
         const city = nearest(c.lng, c.lat, table);
         if (city) {
           lastCrossRef.current = Date.now();
@@ -856,7 +951,6 @@ export function WorldMapbox() {
       map.remove();
       mapRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // React to any state change that alters which view/markers should show (this
@@ -869,19 +963,31 @@ export function WorldMapbox() {
     } else {
       // Leaving the global view — clear the header-contrast flag so it doesn't
       // linger into a view where the header isn't shown.
-      containerRef.current?.closest('.app')?.classList.remove('gshd-onlight');
+      containerRef.current?.closest(".app")?.classList.remove("gshd-onlight");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoomedOut, zoomingIn, globalOut, domesticRegion, localCity]);
 
   // Recolour / re-dim markers when the metric, selection or sector filter change
   // — markers only, no camera move (so toggling a metric doesn't snap the view).
   useEffect(() => {
     rebuildMarkersRef.current?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, activeSectors, listingType, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition, searchQuery, skillIndex, heatMonth]);
+  }, [
+    selectedId,
+    activeSectors,
+    listingType,
+    activeExchanges,
+    minSalary,
+    minHeadcount,
+    minGrowth,
+    maxAttrition,
+    searchQuery,
+    skillIndex,
+    heatMonth,
+  ]);
 
   // Hide the whole overview once fully in a local city (PerthMapbox owns it).
   const hidden = !zoomedOut && !zoomingIn;
-  return <div className={`mount worldmount${hidden ? ' worldmount-hidden' : ''}`} ref={containerRef} />;
+  return (
+    <div className={`mount worldmount${hidden ? " worldmount-hidden" : ""}`} ref={containerRef} />
+  );
 }

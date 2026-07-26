@@ -1,9 +1,9 @@
-import { useEffect, useRef } from 'react';
-import { useAppStore } from '../state/store';
-import { recordView } from '../lib/viewsFn';
-import { COMPANIES, companyGroup } from '../data/companies';
-import { GLOBAL_HUB_LABEL } from '../data/geo';
-import { SKILL_CATEGORY } from '../data/skillsTaxonomy';
+import { useEffect, useRef } from "react";
+import { useAppStore } from "../state/store";
+import { recordView } from "../lib/viewsFn";
+import { COMPANIES, companyGroup } from "../data/companies";
+import { GLOBAL_HUB_LABEL } from "../data/geo";
+import { SKILL_CATEGORY } from "../data/skillsTaxonomy";
 
 // Records real "most viewed" usage for the What's Trending pane: which
 // companies, cities, regions and skills users actually explore. Fire-and-forget
@@ -14,9 +14,9 @@ import { SKILL_CATEGORY } from '../data/skillsTaxonomy';
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const COMPANY_BY_ID = new Map(COMPANIES.map((c) => [c.id, c]));
 
-function fire(input: Parameters<typeof recordView>[0]['data']) {
+function fire(input: Parameters<typeof recordView>[0]["data"]) {
   // Only in the browser; ignore any failure.
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   recordView({ data: input }).catch(() => {});
 }
 
@@ -40,32 +40,41 @@ export function useViewTracking() {
     if (!selectedId) return;
     const c = COMPANY_BY_ID.get(selectedId);
     if (!c) return;
-    once('company', c.id, () => fire({ kind: 'company', ref: c.id, label: c.name, sub: companyGroup(c) }));
+    once("company", c.id, () =>
+      fire({ kind: "company", ref: c.id, label: c.name, sub: companyGroup(c) }),
+    );
   }, [selectedId]);
 
   // City entered (local layer).
   useEffect(() => {
     if (zoomedOut || !localCity) return;
-    once('city', localCity, () =>
-      fire({ kind: 'city', ref: localCity, label: GLOBAL_HUB_LABEL[localCity] || cap(localCity), sub: 'City' }),
+    once("city", localCity, () =>
+      fire({
+        kind: "city",
+        ref: localCity,
+        label: GLOBAL_HUB_LABEL[localCity] || cap(localCity),
+        sub: "City",
+      }),
     );
   }, [localCity, zoomedOut]);
 
   // Region / continent viewed (domestic overview).
   useEffect(() => {
     if (!zoomedOut || globalOut || !domesticRegion) return;
-    once('continent', domesticRegion, () =>
-      fire({ kind: 'continent', ref: domesticRegion, label: cap(domesticRegion), sub: 'Region' }),
+    once("continent", domesticRegion, () =>
+      fire({ kind: "continent", ref: domesticRegion, label: cap(domesticRegion), sub: "Region" }),
     );
   }, [domesticRegion, zoomedOut, globalOut]);
 
   // Skill searched (map coloured by demand). searchQuery doubles as the skill
   // filter; record it only when it exactly matches a canonical skill.
   useEffect(() => {
-    const q = (searchQuery || '').trim();
+    const q = (searchQuery || "").trim();
     if (!q) return;
     const match = Object.keys(SKILL_CATEGORY).find((s) => s.toLowerCase() === q.toLowerCase());
     if (!match) return;
-    once('skill', match, () => fire({ kind: 'skill', ref: match, label: match, sub: SKILL_CATEGORY[match] || 'Skill' }));
+    once("skill", match, () =>
+      fire({ kind: "skill", ref: match, label: match, sub: SKILL_CATEGORY[match] || "Skill" }),
+    );
   }, [searchQuery]);
 }

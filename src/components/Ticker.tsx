@@ -31,9 +31,7 @@ function Cell({ item }: { item: Item }) {
       <span className="text-ink">{item.label}</span>
       <span className="text-ink-4">Demand</span>
       <span
-        className={`inline-flex items-center gap-0.5 ${
-          up ? "text-emerald-500" : "text-red-500"
-        }`}
+        className={`inline-flex items-center gap-0.5 ${up ? "text-emerald-500" : "text-red-500"}`}
       >
         {up ? <ArrowUp size={11} strokeWidth={2.5} /> : <ArrowDown size={11} strokeWidth={2.5} />}
         {up ? "+" : ""}

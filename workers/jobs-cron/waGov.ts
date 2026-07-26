@@ -13,10 +13,10 @@
 // agency with its exact live vacancy count — used as the authoritative per-agency
 // total.
 
-import { skillsForText } from '../../src/employsi/data/skillsTaxonomy';
-import { govAgencyId, PERTH_GOV_NAMES } from '../../src/employsi/data/perthGov';
+import { skillsForText } from "../../src/employsi/data/skillsTaxonomy";
+import { govAgencyId, PERTH_GOV_NAMES } from "../../src/employsi/data/perthGov";
 
-const BASE = 'https://search.jobs.wa.gov.au/jobs/search';
+const BASE = "https://search.jobs.wa.gov.au/jobs/search";
 const PER_PAGE = 20;
 const MAX_PAGES = 45; // safety cap (board is ~39 pages / ~760 jobs)
 
@@ -39,15 +39,15 @@ export interface StoredWaJob {
 
 // ── HTML helpers ───────────────────────────────────────────────────────────
 function unescapeHtml(s: string): string {
-  return (s || '')
-    .replace(/&amp;/g, '&')
+  return (s || "")
+    .replace(/&amp;/g, "&")
     .replace(/&#39;/g, "'")
     .replace(/&#x27;/gi, "'")
     .replace(/&quot;/g, '"')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/\s+/g, ' ')
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -55,7 +55,10 @@ function unescapeHtml(s: string): string {
 // to single spaces. Both our names and the board's department text collapse to
 // the same key.
 function normName(s: string): string {
-  return unescapeHtml(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  return unescapeHtml(s)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 // name-key → gov agency id. Built from our 62 agencies, plus aliases for the few
@@ -64,7 +67,7 @@ function normName(s: string): string {
 const AGENCY_BY_KEY: Record<string, string> = (() => {
   const m: Record<string, string> = {};
   for (const name of PERTH_GOV_NAMES) m[normName(name)] = govAgencyId(name);
-  m[normName('Zoo')] = govAgencyId('Perth Zoo');
+  m[normName("Zoo")] = govAgencyId("Perth Zoo");
   return m;
 })();
 
@@ -75,7 +78,7 @@ export function matchAgencyId(deptText: string): string | null {
 // "From $80,000" / "$80,000 - $90,000" / "$105,000 pa" → an annual midpoint.
 function parseSalary(text: string): number | undefined {
   const nums = (unescapeHtml(text).match(/\$\s*([\d,]+)/g) || [])
-    .map((x) => Number(x.replace(/[^\d]/g, '')))
+    .map((x) => Number(x.replace(/[^\d]/g, "")))
     .filter((n) => Number.isFinite(n) && n > 0);
   if (!nums.length) return undefined;
   const mid = nums.reduce((a, b) => a + b, 0) / nums.length;
@@ -97,10 +100,14 @@ function cardComponents(card: string): Record<string, string> {
 
 // Parse one page of search results into { agencyId → jobs }. Jobs whose Agency
 // isn't one of our 62 (rare) are skipped.
-export function parseWaGovPage(html: string): { byAgency: Record<string, StoredWaJob[]>; parsed: number } {
+export function parseWaGovPage(html: string): {
+  byAgency: Record<string, StoredWaJob[]>;
+  parsed: number;
+} {
   const byAgency: Record<string, StoredWaJob[]> = {};
   let parsed = 0;
-  const cards = html.match(/<article class="col-12 job-search-results-card-col"[\s\S]*?<\/article>/g) || [];
+  const cards =
+    html.match(/<article class="col-12 job-search-results-card-col"[\s\S]*?<\/article>/g) || [];
   for (const card of cards) {
     const link = card.match(/<a id="link_job_title[^"]*" href="([^"]+)">([\s\S]*?)<\/a>/);
     if (!link) continue;
@@ -108,21 +115,21 @@ export function parseWaGovPage(html: string): { byAgency: Record<string, StoredW
     const title = unescapeHtml(link[2]);
     if (!title) continue;
     const comp = cardComponents(card);
-    const agencyId = matchAgencyId(comp['Department'] || '');
+    const agencyId = matchAgencyId(comp["Department"] || "");
     if (!agencyId) continue;
-    const occupation = comp['Occupation'] || '';
+    const occupation = comp["Occupation"] || "";
     const job: StoredWaJob = {
       t: title,
-      loc: comp['Location Description'] || 'Western Australia',
-      cat: occupation || 'Government',
+      loc: comp["Location Description"] || "Western Australia",
+      cat: occupation || "Government",
       url,
-      created: '',
-      city: 'perth',
+      created: "",
+      city: "perth",
       skills: skillsForText(`${title} ${occupation}`),
-      salN: parseSalary(comp['Salary range'] || ''),
-      emp: comp['Employment type'] || undefined,
-      level: comp['Levels'] || undefined,
-      branch: comp['Branch'] || undefined,
+      salN: parseSalary(comp["Salary range"] || ""),
+      emp: comp["Employment type"] || undefined,
+      level: comp["Levels"] || undefined,
+      branch: comp["Branch"] || undefined,
     };
     (byAgency[agencyId] ||= []).push(job);
     parsed++;
@@ -147,7 +154,7 @@ export function parseDeptCounts(html: string): Record<string, number> {
 // Total advertised jobs, from "Displaying 1 - 20 of <b>761</b> in total".
 export function parseTotal(html: string): number {
   const m = html.match(/of\s*<b>\s*([\d,]+)\s*<\/b>\s*in total/i);
-  return m ? Number(m[1].replace(/[^\d]/g, '')) : 0;
+  return m ? Number(m[1].replace(/[^\d]/g, "")) : 0;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -161,8 +168,8 @@ async function fetchPageOnce(page: number, signalMs = 15000): Promise<string | n
       signal: controller.signal,
       headers: {
         // A descriptive UA so the board's operators can identify the crawler.
-        'User-Agent': 'employsi-jobs/1.0 (+https://employsi.com; WA gov vacancies feed)',
-        Accept: 'text/html',
+        "User-Agent": "employsi-jobs/1.0 (+https://employsi.com; WA gov vacancies feed)",
+        Accept: "text/html",
       },
     });
     if (!res.ok) return null;
@@ -170,7 +177,7 @@ async function fetchPageOnce(page: number, signalMs = 15000): Promise<string | n
     // A response with no result cards is a failed/challenged page, not an empty
     // result set (the board always renders cards for an in-range page) — treat it
     // as a miss so the caller retries rather than storing nothing.
-    return html.includes('job-search-results-card-col') ? html : null;
+    return html.includes("job-search-results-card-col") ? html : null;
   } catch {
     return null;
   } finally {
@@ -208,7 +215,11 @@ export interface WaGovResult {
 // can only reliably read a slice of the ~39 pages. The caller advances the
 // window each run so full attribute coverage accumulates across the day, while
 // the per-agency counts (page 1) are always exact on every run.
-export async function fetchWaGovPages(today: string, startPage: number, windowPages: number): Promise<WaGovResult | null> {
+export async function fetchWaGovPages(
+  today: string,
+  startPage: number,
+  windowPages: number,
+): Promise<WaGovResult | null> {
   const first = await fetchPage(1);
   if (!first) return null;
 

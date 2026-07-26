@@ -19,12 +19,19 @@
 // it is deliberately low-volume (one page per company per run, polite UA) and
 // degrades silently rather than retrying aggressively.
 
-import { skillsForText } from '../../src/employsi/data/skillsTaxonomy';
+import { skillsForText } from "../../src/employsi/data/skillsTaxonomy";
+import {
+  asRecord,
+  asRecords,
+  str,
+  type JsonRecord,
+  type JsonValue,
+} from "../../src/employsi/lib/json";
 
-const API = 'https://www.seek.com.au/api/jobsearch/v5/search';
-const JOB_URL = 'https://www.seek.com.au/job/';
+const API = "https://www.seek.com.au/api/jobsearch/v5/search";
+const JOB_URL = "https://www.seek.com.au/job/";
 const UA =
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15';
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15";
 const PAGE_SIZE = 100; // SEEK caps the API page at 100
 const MAX_PAGES = 3; // ≤300 ads/company — more than any single employer advertises
 
@@ -44,57 +51,64 @@ export interface SeekJob {
 }
 
 const stripHtml = (s: string) =>
-  (s || '').replace(/<[^>]*>/g, ' ').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim();
+  (s || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&[a-z]+;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
-const CITIES = ['perth', 'adelaide', 'brisbane', 'melbourne', 'sydney'];
+const CITIES = ["perth", "adelaide", "brisbane", "melbourne", "sydney"];
 function matchCity(text: string): string | null {
-  const t = (text || '').toLowerCase();
+  const t = (text || "").toLowerCase();
   for (const c of CITIES) if (t.includes(c)) return c;
   return null;
 }
 
-function parseJob(j: any, employerName: string): SeekJob | null {
-  const title = stripHtml(String(j?.title || ''));
+function parseJob(j: JsonRecord, employerName: string): SeekJob | null {
+  const title = stripHtml(String(j?.title || ""));
   if (!title) return null;
-  const id = String(j?.id || '');
+  const id = String(j?.id || "");
   const cls = (Array.isArray(j?.classifications) && j.classifications[0]) || {};
-  const cat = stripHtml(String(cls?.classification?.description || ''));
+  const cat = stripHtml(String(cls?.classification?.description || ""));
   const locs = (Array.isArray(j?.locations) && j.locations[0]) || {};
-  const loc = stripHtml(String(locs?.label || ''));
+  const loc = stripHtml(String(locs?.label || ""));
   const co = stripHtml(String(j?.companyName || j?.advertiser?.description || employerName));
   return {
     t: title,
     loc,
     cat,
-    url: id ? JOB_URL + id : '',
-    created: String(j?.listingDate || '').slice(0, 10),
+    url: id ? JOB_URL + id : "",
+    created: String(j?.listingDate || "").slice(0, 10),
     city: matchCity(loc) || matchCity(title),
     skills: skillsForText(title),
-    src: 'seek',
+    src: "seek",
     co,
-    sal: stripHtml(String(j?.salaryLabel || '')) || undefined,
+    sal: stripHtml(String(j?.salaryLabel || "")) || undefined,
   };
 }
 
-async function fetchPage(advertiserId: string, page: number): Promise<{ jobs: any[]; total: number } | null> {
+async function fetchPage(
+  advertiserId: string,
+  page: number,
+): Promise<{ jobs: JsonRecord[]; total: number } | null> {
   const params = new URLSearchParams({
-    siteKey: 'AU-Main',
-    sourcesystem: 'houston',
-    where: 'All Australia',
+    siteKey: "AU-Main",
+    sourcesystem: "houston",
+    where: "All Australia",
     advertiserid: advertiserId,
     page: String(page),
     pageSize: String(PAGE_SIZE),
-    locale: 'en-AU',
+    locale: "en-AU",
   });
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 12000);
   try {
     const res = await fetch(`${API}?${params.toString()}`, {
       signal: controller.signal,
-      headers: { Accept: 'application/json', 'User-Agent': UA },
+      headers: { Accept: "application/json", "User-Agent": UA },
     });
     if (!res.ok) return null; // 403/429 = Cloudflare challenge → SEEK stays dark this run
-    const j: any = await res.json();
+    const j = await res.json();
     return { jobs: Array.isArray(j?.data) ? j.data : [], total: Number(j?.totalCount) || 0 };
   } catch {
     return null;
@@ -106,7 +120,10 @@ async function fetchPage(advertiserId: string, page: number): Promise<{ jobs: an
 // Every live SEEK listing for one advertiser id, across all classifications.
 // Returns [] on any failure (unreachable / challenged), so SEEK never breaks or
 // wipes a company's existing Adzuna/Muse feed — it only ever adds.
-export async function fetchSeekCompanyJobs(advertiserId: string, employerName = ''): Promise<SeekJob[]> {
+export async function fetchSeekCompanyJobs(
+  advertiserId: string,
+  employerName = "",
+): Promise<SeekJob[]> {
   if (!advertiserId) return [];
   const out: SeekJob[] = [];
   const seen = new Set<string>(); // SEEK job id, in case a listing repeats across pages
@@ -119,7 +136,7 @@ export async function fetchSeekCompanyJobs(advertiserId: string, employerName = 
     }
     if (!res.jobs.length) break;
     for (const raw of res.jobs) {
-      const id = String(raw?.id || '');
+      const id = String(raw?.id || "");
       if (id && seen.has(id)) continue;
       if (id) seen.add(id);
       const job = parseJob(raw, employerName);

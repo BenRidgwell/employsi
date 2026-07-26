@@ -1,5 +1,5 @@
-import type { Company, RoleBreakdown } from './companies';
-import { deriveDomain } from './rosters';
+import type { Company, RoleBreakdown } from "./companies";
+import { deriveDomain } from "./rosters";
 
 // Tasmanian Government agencies — the TAS counterpart of perthGov.ts /
 // darwinGov.ts, sourced from the official TAS jobs board
@@ -17,22 +17,22 @@ import { deriveDomain } from './rosters';
 // pull that agency's vacancies directly (the job cards don't name the agency).
 type AgencyEntry = [name: string, uid: string];
 const AGENCIES: AgencyEntry[] = [
-  ['Department of Health', '9b5c83e734333d5083d0e364b7eb365b'],
-  ['Department for Education, Children and Young People', 'f29cf7f0920a347cbc2a5318f5ad9705'],
-  ['Department of Justice', 'dcd2cfb8d287c6bf0d4803356a50dc21'],
-  ['Department of Natural Resources and Environment Tasmania', '8905cadb4c381441137263b48688da6b'],
-  ['Department of Police, Fire and Emergency Management', '33233760a1e15b5bd2410b05dcedec32'],
-  ['Department of Premier and Cabinet', '915dcc05e40c9da041d80382140e5505'],
-  ['Whole of Government Programs', '4d65325705e8035fc6a3caa107736e6f'],
-  ['Building Tasmania', 'b6c1ab6ddbfab736334b3b0fdf1ebf72'],
-  ['Homes Tasmania', '8f21a44c208a3586c58c805545dca62b'],
-  ['Macquarie Point Development Corporation', '338fea147c23bf7f11ebac7598114bf6'],
-  ['Port Arthur Historic Site Management Authority', '11feb6da0afcfe16dfa2d7b4d13c16f7'],
-  ['Public Trustee', '7be4cd92ed2181c4a6edf97a901b0ca5'],
-  ['Tourism Tasmania', 'd107644391af02536572fc2bb9465cc7'],
+  ["Department of Health", "9b5c83e734333d5083d0e364b7eb365b"],
+  ["Department for Education, Children and Young People", "f29cf7f0920a347cbc2a5318f5ad9705"],
+  ["Department of Justice", "dcd2cfb8d287c6bf0d4803356a50dc21"],
+  ["Department of Natural Resources and Environment Tasmania", "8905cadb4c381441137263b48688da6b"],
+  ["Department of Police, Fire and Emergency Management", "33233760a1e15b5bd2410b05dcedec32"],
+  ["Department of Premier and Cabinet", "915dcc05e40c9da041d80382140e5505"],
+  ["Whole of Government Programs", "4d65325705e8035fc6a3caa107736e6f"],
+  ["Building Tasmania", "b6c1ab6ddbfab736334b3b0fdf1ebf72"],
+  ["Homes Tasmania", "8f21a44c208a3586c58c805545dca62b"],
+  ["Macquarie Point Development Corporation", "338fea147c23bf7f11ebac7598114bf6"],
+  ["Port Arthur Historic Site Management Authority", "11feb6da0afcfe16dfa2d7b4d13c16f7"],
+  ["Public Trustee", "7be4cd92ed2181c4a6edf97a901b0ca5"],
+  ["Tourism Tasmania", "d107644391af02536572fc2bb9465cc7"],
 ];
 
-const STOP = new Set(['of', 'and', 'the', 'for', '&', 'a']);
+const STOP = new Set(["of", "and", "the", "for", "&", "a"]);
 
 function h01(s: string): number {
   let h = 2166136261;
@@ -44,24 +44,37 @@ function h01(s: string): number {
 }
 
 function slug(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 export function tasGovAgencyId(name: string): string {
-  return 'tas-gov-' + slug(name);
+  return "tas-gov-" + slug(name);
 }
 
 function govAcronym(name: string): string {
   const words = name.split(/[\s,]+/).filter((w) => w && !STOP.has(w.toLowerCase()));
-  if (words.length >= 2) return words.map((w) => w[0].toUpperCase()).join('').slice(0, 6);
+  if (words.length >= 2)
+    return words
+      .map((w) => w[0].toUpperCase())
+      .join("")
+      .slice(0, 6);
   return (words[0] || name).slice(0, 5).toUpperCase();
 }
 
-const GOV_SKILLS = ['Policy & Governance', 'Public Administration', 'Project Delivery', 'Data & Analytics', 'Community Services'];
-const GOV_ROLES = ['Corporate & Policy', 'Frontline Services', 'Operations'];
+const GOV_SKILLS = [
+  "Policy & Governance",
+  "Public Administration",
+  "Project Delivery",
+  "Data & Analytics",
+  "Community Services",
+];
+const GOV_ROLES = ["Corporate & Policy", "Frontline Services", "Operations"];
 
 function buildGovAgency(name: string): Company {
   const h = h01(name);
-  const h2 = h01(name + '::b');
+  const h2 = h01(name + "::b");
   const salaryNum = Math.round((94 + (h - 0.5) * 42) * 1000); // ~73k .. 115k
   const salaryK = Math.round(salaryNum / 1000);
   const turnover = +(6 + h2 * 8).toFixed(1);
@@ -75,23 +88,23 @@ function buildGovAgency(name: string): Company {
     name,
     pill: acr,
     domain: deriveDomain(name),
-    sector: 'Government',
-    group: 'Infrastructure and Government',
+    sector: "Government",
+    group: "Infrastructure and Government",
     private: true,
     headcount: 0,
     growth: 0,
     openRoles: Math.round(5 + h * 90),
-    salary: `$${salaryNum.toLocaleString('en-US')}`,
+    salary: `$${salaryNum.toLocaleString("en-US")}`,
     salaryShort: `$${salaryK}K`,
     salaryNum,
     turnover,
-    salaryDelta: `${delta >= 0 ? '+' : '−'}${Math.abs(delta)}%`,
-    metroDelta: `${delta >= 0 ? '+' : '−'}${Math.abs(delta)}% vs metro`,
+    salaryDelta: `${delta >= 0 ? "+" : "−"}${Math.abs(delta)}%`,
+    metroDelta: `${delta >= 0 ? "+" : "−"}${Math.abs(delta)}% vs metro`,
     trend: [],
     revPerEmp: 0,
     ebitdaPerEmp: 0,
     timeToFill: `${Math.round(34 + h * 24)} days`,
-    competition: h > 0.66 ? 'High' : h > 0.33 ? 'Medium' : 'Low',
+    competition: h > 0.66 ? "High" : h > 0.33 ? "Medium" : "Low",
     skills: GOV_SKILLS,
     roles,
   };

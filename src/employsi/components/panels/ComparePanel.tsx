@@ -1,6 +1,6 @@
-import { useAppStore } from '../../state/store';
-import { buildCompareRadar } from '../../lib/radar';
-import { COMPANIES } from '../../data/companies';
+import { useAppStore } from "../../state/store";
+import { buildCompareRadar } from "../../lib/radar";
+import { COMPANIES } from "../../data/companies";
 
 export function ComparePanel() {
   const compareOpen = useAppStore((s) => s.compareOpen);
@@ -14,10 +14,18 @@ export function ComparePanel() {
 
   return (
     <>
-      <div className={`pbackdrop ${compareOpen ? 'open' : ''}`} onClick={closeCompare} />
-      <aside className={`cxpanel ${compareOpen ? 'open' : ''}`}>
+      <div className={`pbackdrop ${compareOpen ? "open" : ""}`} onClick={closeCompare} />
+      <aside className={`cxpanel ${compareOpen ? "open" : ""}`}>
         <button className="cxclose" onClick={closeCompare} aria-label="Close">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
+          <svg
+            viewBox="0 0 24 24"
+            width="15"
+            height="15"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.2}
+            strokeLinecap="round"
+          >
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
         </button>
@@ -30,18 +38,30 @@ export function ComparePanel() {
               <div className="cxselectors">
                 <div className="cxsel">
                   <span className="cxswatch cxswatch-a" />
-                  <select className="cxselect" value={compareA ?? ''} onChange={(e) => setCompareA(e.target.value)}>
+                  <select
+                    className="cxselect"
+                    value={compareA ?? ""}
+                    onChange={(e) => setCompareA(e.target.value)}
+                  >
                     {COMPANIES.map((o) => (
-                      <option key={o.id} value={o.id}>{o.name}</option>
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
                     ))}
                   </select>
                 </div>
                 <span className="cxvs">vs</span>
                 <div className="cxsel">
                   <span className="cxswatch cxswatch-b" />
-                  <select className="cxselect" value={compareB ?? ''} onChange={(e) => setCompareB(e.target.value)}>
+                  <select
+                    className="cxselect"
+                    value={compareB ?? ""}
+                    onChange={(e) => setCompareB(e.target.value)}
+                  >
                     {COMPANIES.map((o) => (
-                      <option key={o.id} value={o.id}>{o.name}</option>
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -62,17 +82,29 @@ export function ComparePanel() {
                     ))}
                   </svg>
                   {data.axes.map((ax, i) => (
-                    <span key={i} className="cxaxislabel" style={{ left: `${ax.leftPct}%`, top: `${ax.topPct}%` }}>
+                    <span
+                      key={i}
+                      className="cxaxislabel"
+                      style={{ left: `${ax.leftPct}%`, top: `${ax.topPct}%` }}
+                    >
                       {ax.label}
                     </span>
                   ))}
                   {data.pointsA.map((p, i) => (
-                    <span key={i} className="cxvallabel cxvallabel-a" style={{ left: `${p.leftPct}%`, top: `${p.topPct}%` }}>
+                    <span
+                      key={i}
+                      className="cxvallabel cxvallabel-a"
+                      style={{ left: `${p.leftPct}%`, top: `${p.topPct}%` }}
+                    >
                       {p.val}
                     </span>
                   ))}
                   {data.pointsB.map((p, i) => (
-                    <span key={i} className="cxvallabel cxvallabel-b" style={{ left: `${p.leftPct}%`, top: `${p.topPct}%` }}>
+                    <span
+                      key={i}
+                      className="cxvallabel cxvallabel-b"
+                      style={{ left: `${p.leftPct}%`, top: `${p.topPct}%` }}
+                    >
                       {p.val}
                     </span>
                   ))}

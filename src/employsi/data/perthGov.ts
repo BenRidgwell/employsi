@@ -1,6 +1,6 @@
-import type { Company, RoleBreakdown } from './companies';
-import { deriveDomain } from './rosters';
-import { GOV_WORKFORCE, GOV_HEADCOUNT } from './perthGovWorkforce';
+import type { Company, RoleBreakdown } from "./companies";
+import { deriveDomain } from "./rosters";
+import { GOV_WORKFORCE, GOV_HEADCOUNT } from "./perthGovWorkforce";
 
 // Western Australian government agencies plotted in Perth. These are PRIVATE
 // (not exchange-listed) public-sector bodies, mapped to the "Infrastructure and
@@ -10,71 +10,71 @@ import { GOV_WORKFORCE, GOV_HEADCOUNT } from './perthGovWorkforce';
 // when a card is opened.
 
 const NAMES: string[] = [
-  'Arts and Culture Trust',
-  'Central Regional TAFE',
-  'ChemCentre',
-  'Child and Adolescent Health Service',
-  'Construction Training Fund',
-  'Corruption and Crime Commission',
-  'Department of Biodiversity, Conservation and Attractions',
-  'Department of Communities',
-  'Department of Creative Industries, Tourism and Sport',
-  'Department of Education',
-  'Department of Energy and Economic Diversification',
-  'Department of Fire & Emergency Services',
-  'Department of Health',
-  'Department of Housing and Works',
-  'Department of Justice',
-  'Department of Local Government, Industry Regulation and Safety',
-  'Department of Mines, Petroleum and Exploration',
-  'Department of Planning, Lands and Heritage',
-  'Department of Primary Industries and Regional Development',
-  'Department of the Premier and Cabinet',
-  'Department of Training and Workforce Development',
-  'Department of Transport and Major Infrastructure',
-  'Department of Treasury and Finance',
-  'Department of Water and Environmental Regulation',
-  'East Metropolitan Health Service',
-  'Economic Regulation Authority',
-  'Forest Products Commission',
-  'GESB',
-  'Health Support Services',
-  'Insurance Commission of Western Australia',
-  'Landgate',
-  'Legal Aid Western Australia',
-  'Legal Practice Board',
-  'Lotterywest',
-  'Main Roads WA',
-  'Mental Health Commission',
-  'Metropolitan Cemeteries Board',
-  'MyLeave',
-  'North Metropolitan Health Service',
-  'North Metropolitan TAFE',
-  'North Regional TAFE',
-  'Office of the Auditor General',
-  'Office of the Director of Public Prosecutions',
-  'Ombudsman Western Australian',
-  'Parliamentary Services Department',
-  'PathWest',
-  'Pilbara Ports Authority',
-  'Public Sector Commission',
-  'Public Transport Authority',
-  'Rottnest Island Authority',
-  'South Metropolitan Health Service',
-  'South Metropolitan TAFE',
-  'South Regional TAFE',
-  'State Solicitors Office',
-  'Tourism Western Australia',
-  'VenuesWest',
-  'WA Country Health Service',
-  'Western Australia Police Force',
-  'Western Australian Electoral Commission',
-  'Western Australian Museum',
-  'WorkCover WA',
-  'Perth Zoo',
+  "Arts and Culture Trust",
+  "Central Regional TAFE",
+  "ChemCentre",
+  "Child and Adolescent Health Service",
+  "Construction Training Fund",
+  "Corruption and Crime Commission",
+  "Department of Biodiversity, Conservation and Attractions",
+  "Department of Communities",
+  "Department of Creative Industries, Tourism and Sport",
+  "Department of Education",
+  "Department of Energy and Economic Diversification",
+  "Department of Fire & Emergency Services",
+  "Department of Health",
+  "Department of Housing and Works",
+  "Department of Justice",
+  "Department of Local Government, Industry Regulation and Safety",
+  "Department of Mines, Petroleum and Exploration",
+  "Department of Planning, Lands and Heritage",
+  "Department of Primary Industries and Regional Development",
+  "Department of the Premier and Cabinet",
+  "Department of Training and Workforce Development",
+  "Department of Transport and Major Infrastructure",
+  "Department of Treasury and Finance",
+  "Department of Water and Environmental Regulation",
+  "East Metropolitan Health Service",
+  "Economic Regulation Authority",
+  "Forest Products Commission",
+  "GESB",
+  "Health Support Services",
+  "Insurance Commission of Western Australia",
+  "Landgate",
+  "Legal Aid Western Australia",
+  "Legal Practice Board",
+  "Lotterywest",
+  "Main Roads WA",
+  "Mental Health Commission",
+  "Metropolitan Cemeteries Board",
+  "MyLeave",
+  "North Metropolitan Health Service",
+  "North Metropolitan TAFE",
+  "North Regional TAFE",
+  "Office of the Auditor General",
+  "Office of the Director of Public Prosecutions",
+  "Ombudsman Western Australian",
+  "Parliamentary Services Department",
+  "PathWest",
+  "Pilbara Ports Authority",
+  "Public Sector Commission",
+  "Public Transport Authority",
+  "Rottnest Island Authority",
+  "South Metropolitan Health Service",
+  "South Metropolitan TAFE",
+  "South Regional TAFE",
+  "State Solicitors Office",
+  "Tourism Western Australia",
+  "VenuesWest",
+  "WA Country Health Service",
+  "Western Australia Police Force",
+  "Western Australian Electoral Commission",
+  "Western Australian Museum",
+  "WorkCover WA",
+  "Perth Zoo",
 ];
 
-const STOP = new Set(['of', 'and', 'the', 'for', '&', 'a']);
+const STOP = new Set(["of", "and", "the", "for", "&", "a"]);
 
 // Deterministic 0..1 hash so each agency's figures are stable.
 function h01(s: string): number {
@@ -87,10 +87,13 @@ function h01(s: string): number {
 }
 
 function slug(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 export function govAgencyId(name: string): string {
-  return 'perth-gov-' + slug(name);
+  return "perth-gov-" + slug(name);
 }
 
 // Short acronym for the map pill / search ticker (e.g. "Department of Fire &
@@ -98,17 +101,26 @@ export function govAgencyId(name: string): string {
 function govAcronym(name: string): string {
   const words = name.split(/[\s,]+/).filter((w) => w && !STOP.has(w.toLowerCase()));
   if (words.length >= 2) {
-    return words.map((w) => w[0].toUpperCase()).join('').slice(0, 6);
+    return words
+      .map((w) => w[0].toUpperCase())
+      .join("")
+      .slice(0, 6);
   }
   return (words[0] || name).slice(0, 5).toUpperCase();
 }
 
-const GOV_SKILLS = ['Policy & Governance', 'Public Administration', 'Project Delivery', 'Data & Analytics', 'Community Services'];
-const GOV_ROLES = ['Corporate & Policy', 'Frontline Services', 'Operations'];
+const GOV_SKILLS = [
+  "Policy & Governance",
+  "Public Administration",
+  "Project Delivery",
+  "Data & Analytics",
+  "Community Services",
+];
+const GOV_ROLES = ["Corporate & Policy", "Frontline Services", "Operations"];
 
 function buildGovAgency(name: string): Company {
   const h = h01(name);
-  const h2 = h01(name + '::b');
+  const h2 = h01(name + "::b");
   const id = govAgencyId(name);
   // Real workforce figures from the PSC Statistical Bulletins where the agency
   // is reported; otherwise headcount is unknown (0) and the trend is empty, so
@@ -131,25 +143,25 @@ function buildGovAgency(name: string): Company {
     name,
     pill: acr,
     domain: deriveDomain(name),
-    sector: 'Government',
-    group: 'Infrastructure and Government',
+    sector: "Government",
+    group: "Infrastructure and Government",
     // No `exchange` — these are private (not listed). `private` drives the
     // Public/Private master filter.
     private: true,
     headcount,
     growth,
     openRoles: Math.round(10 + h * 240),
-    salary: `$${salaryNum.toLocaleString('en-US')}`,
+    salary: `$${salaryNum.toLocaleString("en-US")}`,
     salaryShort: `$${salaryK}K`,
     salaryNum,
     turnover,
-    salaryDelta: `${delta >= 0 ? '+' : '−'}${Math.abs(delta)}%`,
-    metroDelta: `${delta >= 0 ? '+' : '−'}${Math.abs(delta)}% vs metro`,
+    salaryDelta: `${delta >= 0 ? "+" : "−"}${Math.abs(delta)}%`,
+    metroDelta: `${delta >= 0 ? "+" : "−"}${Math.abs(delta)}% vs metro`,
     trend,
     revPerEmp: 0,
     ebitdaPerEmp: 0,
     timeToFill: `${Math.round(34 + h * 24)} days`,
-    competition: h > 0.66 ? 'High' : h > 0.33 ? 'Medium' : 'Low',
+    competition: h > 0.66 ? "High" : h > 0.33 ? "Medium" : "Low",
     skills: GOV_SKILLS,
     roles,
   };

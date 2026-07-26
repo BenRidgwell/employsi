@@ -14,14 +14,15 @@ export interface HubTarget {
 }
 
 export const GLOBAL_HUB_TARGETS: HubTarget[] = [
-  { hub: 'london', country: 'gb', where: 'London' },
-  { hub: 'toronto', country: 'ca', where: 'Toronto' },
-  { hub: 'johannesburg', country: 'za', where: 'Johannesburg' },
-  { hub: 'houston', country: 'us', where: 'Houston' },
-  { hub: 'denver', country: 'us', where: 'Denver' },
-  { hub: 'newyork', country: 'us', where: 'New York' },
-  { hub: 'sanfrancisco', country: 'us', where: 'San Francisco' },
-  { hub: 'chicago', country: 'us', where: 'Chicago' },
-  { hub: 'seattle', country: 'us', where: 'Seattle' },
-  { hub: 'paris', country: 'fr', where: 'Paris' },
+  { hub: "london", country: "gb", where: "London" },
+  { hub: "toronto", country: "ca", where: "Toronto" },
+  { hub: "johannesburg", country: "za", where: "Johannesburg" },
+  { hub: "houston", country: "us", where: "Houston" },
+  { hub: "denver", country: "us", where: "Denver" },
+  { hub: "newyork", country: "us", where: "New York" },
+  { hub: "sanfrancisco", country: "us", where: "San Francisco" },
+  { hub: "sanjose", country: "us", where: "San Jose" },
+  { hub: "chicago", country: "us", where: "Chicago" },
+  { hub: "seattle", country: "us", where: "Seattle" },
+  { hub: "paris", country: "fr", where: "Paris" },
 ];

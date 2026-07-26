@@ -1,36 +1,49 @@
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import { useEffect, useMemo, useRef } from 'react';
-import { useAppStore, matchesFilters, searchMatches, isSearchActive, type FilterState } from '../state/store';
-import { COMPANIES, type Company } from '../data/companies';
-import { CITY_COMPANIES, CITY_VIEWS, PERTH_CENTER, PERTH_DEFAULT_ZOOM, PERTH_DEFAULT_PITCH, PERTH_DEFAULT_BEARING } from '../data/mapboxGeo';
-import { heatColor, rgbCss } from '../lib/color';
-import { activeSkill, demandByCompany } from '../lib/skillHeat';
-import type { SkillIndex } from '../lib/skillsFn';
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import { useEffect, useMemo, useRef } from "react";
+import {
+  useAppStore,
+  matchesFilters,
+  searchMatches,
+  isSearchActive,
+  type FilterState,
+} from "../state/store";
+import { COMPANIES, type Company } from "../data/companies";
+import {
+  CITY_COMPANIES,
+  CITY_VIEWS,
+  PERTH_CENTER,
+  PERTH_DEFAULT_ZOOM,
+  PERTH_DEFAULT_PITCH,
+  PERTH_DEFAULT_BEARING,
+} from "../data/mapboxGeo";
+import { heatColor, rgbCss } from "../lib/color";
+import { activeSkill, demandByCompany } from "../lib/skillHeat";
+import type { SkillIndex } from "../lib/skillsFn";
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
-const SOURCE_ID = 'companies';
-const HALO_LAYER = 'company-halo';
-const CORE_LAYER = 'company-core';
-const PULSE_LAYER = 'company-pulse';
-const LABEL_LAYER = 'company-label';
-const POI_LAYER = 'company-poi';
-const POI_IMAGE = 'company-poi-pin';
+const SOURCE_ID = "companies";
+const HALO_LAYER = "company-halo";
+const CORE_LAYER = "company-core";
+const PULSE_LAYER = "company-pulse";
+const LABEL_LAYER = "company-label";
+const POI_LAYER = "company-poi";
+const POI_IMAGE = "company-poi-pin";
 
 // Build a classic "map pin" teardrop as an SDF image so a symbol layer can tint
 // it per company (icon-color). Drawn at 2× for retina; icon-anchor 'bottom' puts
 // the pin's tip on the geo point. Returns null off-DOM (SSR guard).
 function makePinImage(): { width: number; height: number; data: Uint8Array } | null {
-  if (typeof document === 'undefined') return null;
+  if (typeof document === "undefined") return null;
   const w = 52;
   const h = 68;
-  const c = document.createElement('canvas');
+  const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
-  const ctx = c.getContext('2d');
+  const ctx = c.getContext("2d");
   if (!ctx) return null;
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = "#fff";
   const cx = 26;
   const headCy = 24;
   const r = 20;
@@ -56,19 +69,28 @@ const COMPANY_BY_ID: Record<string, Company> = Object.fromEntries(COMPANIES.map(
 
 // --- Street traffic: cars that drive along the actual road geometry of the
 // rendered basemap, so they follow the real streets under the 3D city. ---
-const CAR_COLORS = ['#b23a2e', '#2b3f6b', '#e6e7ea', '#2f7d4f', '#c69a34', '#6d2f63', '#4a4e57', '#a8442e'];
+const CAR_COLORS = [
+  "#b23a2e",
+  "#2b3f6b",
+  "#e6e7ea",
+  "#2f7d4f",
+  "#c69a34",
+  "#6d2f63",
+  "#4a4e57",
+  "#a8442e",
+];
 const NUM_CARS = 14;
 
 // Neutral marker colour — every layer sits neutral until a skill is searched
 // (then the demand gradient takes over).
-const NEUTRAL = 'rgb(42,42,46)';
+const NEUTRAL = "rgb(42,42,46)";
 // Skill-demand "glow" behind the company badge (replaces the old heat dot). Only
 // companies with real demand for the searched skill glow — coloured and sized by
 // how much — so a company that isn't hiring the skill has no glow at all, and
 // the ones that are hiring visibly stand out. Neutral browsing (no skill) shows
 // no glow: the glow means "hiring this skill".
 function paintGlow(el: HTMLElement, demand: number, max: number, skillMode: boolean): void {
-  const glow = el.querySelector('.poiglow') as HTMLElement | null;
+  const glow = el.querySelector(".poiglow") as HTMLElement | null;
   if (!glow) return;
   if (skillMode && demand > 0) {
     const t = Math.max(0.18, Math.min(1, demand / max));
@@ -76,7 +98,7 @@ function paintGlow(el: HTMLElement, demand: number, max: number, skillMode: bool
     glow.style.opacity = String(0.45 + 0.45 * t);
     glow.style.transform = `translate(-50%, -50%) scale(${0.9 + 0.7 * t})`;
   } else {
-    glow.style.opacity = '0';
+    glow.style.opacity = "0";
   }
 }
 
@@ -84,24 +106,29 @@ function paintGlow(el: HTMLElement, demand: number, max: number, skillMode: bool
 // wrapper — NOT the marker root, whose opacity Mapbox overwrites every frame.
 // Selected stays solid; a skill-search non-hirer fades right back so the hiring
 // companies stand out; a card-open / free-text miss dims a little.
-function setMarkerFade(el: HTMLElement, isSelected: boolean, skillMiss: boolean, lit: boolean): void {
-  const inner = el.querySelector('.poipininner') as HTMLElement | null;
+function setMarkerFade(
+  el: HTMLElement,
+  isSelected: boolean,
+  skillMiss: boolean,
+  lit: boolean,
+): void {
+  const inner = el.querySelector(".poipininner") as HTMLElement | null;
   if (!inner) return;
-  inner.style.opacity = isSelected ? '1' : skillMiss ? '0.1' : lit ? '1' : '0.4';
+  inner.style.opacity = isSelected ? "1" : skillMiss ? "0.1" : lit ? "1" : "0.4";
 }
 
 // Pill label: the company's name, word-shortened to keep the pill roughly its
 // old (ticker-width) size. Long single words fall back to a clipped form.
 function pillLabel(name: string, ticker: string): string {
   const words = name.split(/\s+/);
-  let out = '';
+  let out = "";
   for (const w of words) {
-    const next = out ? out + ' ' + w : w;
+    const next = out ? out + " " + w : w;
     if (out && next.length > 14) break;
     out = next;
   }
   if (!out) out = name;
-  if (out.length > 16) out = out.slice(0, 15).trimEnd() + '…';
+  if (out.length > 16) out = out.slice(0, 15).trimEnd() + "…";
   return out || ticker;
 }
 
@@ -110,7 +137,7 @@ function pillLabel(name: string, ticker: string): string {
 // (kept high enough to still show the 3D buildings). Company-framing zooms are
 // left untouched.
 function localDefaultZoom(z: number): number {
-  const mobile = typeof window !== 'undefined' && window.innerWidth <= 680;
+  const mobile = typeof window !== "undefined" && window.innerWidth <= 680;
   return mobile ? Math.max(14.4, z - 1.5) : z;
 }
 
@@ -126,7 +153,9 @@ function carSvg(color: string): string {
     // soft ground shadow
     '<ellipse cx="11" cy="21.5" rx="8.2" ry="17.5" fill="rgba(0,0,0,0.2)"/>' +
     // body
-    '<rect x="3.5" y="3" width="15" height="34" rx="6" fill="' + color + '" stroke="rgba(0,0,0,0.4)" stroke-width="0.7"/>' +
+    '<rect x="3.5" y="3" width="15" height="34" rx="6" fill="' +
+    color +
+    '" stroke="rgba(0,0,0,0.4)" stroke-width="0.7"/>' +
     // left/right body sheen
     '<rect x="4.3" y="4.5" width="2.1" height="31" rx="1" fill="rgba(255,255,255,0.20)"/>' +
     '<rect x="15.6" y="4.5" width="2.1" height="31" rx="1" fill="rgba(0,0,0,0.14)"/>' +
@@ -143,29 +172,42 @@ function carSvg(color: string): string {
     '<rect x="6" y="34.6" width="3" height="1.7" rx="0.8" fill="#e0463a"/>' +
     '<rect x="13" y="34.6" width="3" height="1.7" rx="0.8" fill="#e0463a"/>' +
     // wing mirrors
-    '<rect x="1.9" y="13.6" width="2.3" height="2.1" rx="1" fill="' + color + '"/>' +
-    '<rect x="17.8" y="13.6" width="2.3" height="2.1" rx="1" fill="' + color + '"/>' +
-    '</svg>'
+    '<rect x="1.9" y="13.6" width="2.3" height="2.1" rx="1" fill="' +
+    color +
+    '"/>' +
+    '<rect x="17.8" y="13.6" width="2.3" height="2.1" rx="1" fill="' +
+    color +
+    '"/>' +
+    "</svg>"
   );
 }
 
 function metresBetween(a: [number, number], b: [number, number]): number {
-  const R = 6371000, toR = Math.PI / 180;
-  const dLat = (b[1] - a[1]) * toR, dLng = (b[0] - a[0]) * toR;
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * toR) * Math.cos(b[1] * toR) * Math.sin(dLng / 2) ** 2;
+  const R = 6371000,
+    toR = Math.PI / 180;
+  const dLat = (b[1] - a[1]) * toR,
+    dLng = (b[0] - a[0]) * toR;
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * toR) * Math.cos(b[1] * toR) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
 function bearingBetween(a: [number, number], b: [number, number]): number {
-  const toR = Math.PI / 180, toD = 180 / Math.PI;
+  const toR = Math.PI / 180,
+    toD = 180 / Math.PI;
   const dLng = (b[0] - a[0]) * toR;
-  const la1 = a[1] * toR, la2 = b[1] * toR;
+  const la1 = a[1] * toR,
+    la2 = b[1] * toR;
   const y = Math.sin(dLng) * Math.cos(la2);
   const x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dLng);
   return (Math.atan2(y, x) * toD + 360) % 360;
 }
 
-interface RoadPath { pts: [number, number][]; cum: number[]; total: number; }
+interface RoadPath {
+  pts: [number, number][];
+  cum: number[];
+  total: number;
+}
 function roadPath(pts: [number, number][]): RoadPath {
   const cum = [0];
   let total = 0;
@@ -180,10 +222,14 @@ function alongPath(rp: RoadPath, dist: number): { pos: [number, number]; bearing
   const d = ((dist % rp.total) + rp.total) % rp.total;
   let i = 1;
   while (i < rp.cum.length && rp.cum[i] < d) i++;
-  const a = rp.pts[i - 1], b = rp.pts[i] || rp.pts[i - 1];
+  const a = rp.pts[i - 1],
+    b = rp.pts[i] || rp.pts[i - 1];
   const seg = rp.cum[i] - rp.cum[i - 1] || 1;
   const t = (d - rp.cum[i - 1]) / seg;
-  return { pos: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t], bearing: bearingBetween(a, b) };
+  return {
+    pos: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t],
+    bearing: bearingBetween(a, b),
+  };
 }
 
 // A company placed on the current city map: its record plus that city's coords.
@@ -214,15 +260,17 @@ function buildGeoJSON(
   // Hide any company that fails the sector / exchange / slider filters entirely.
   const shown = placements.filter((p) => matchesFilters(p.company, filterState));
   const skillMode = !!skillDemand;
-  const demandMax = skillMode ? Math.max(1, ...shown.map((p) => skillDemand![p.company.id] || 0)) : 1;
+  const demandMax = skillMode
+    ? Math.max(1, ...shown.map((p) => skillDemand![p.company.id] || 0))
+    : 1;
   return {
-    type: 'FeatureCollection',
+    type: "FeatureCollection",
     features: shown.map((p, i) => {
       const c = p.company;
       const demand = skillMode ? skillDemand![c.id] || 0 : 0;
       const color = skillMode ? rgbCss(heatColor(demand / demandMax)) : NEUTRAL;
       return {
-        type: 'Feature',
+        type: "Feature",
         id: i,
         properties: {
           id: c.id,
@@ -237,7 +285,7 @@ function buildGeoJSON(
             : (isSearchActive(filterState) && !searchMatches(c, filterState.searchQuery)) ||
               (!!selectedId && c.id !== selectedId),
         },
-        geometry: { type: 'Point', coordinates: p.coords },
+        geometry: { type: "Point", coordinates: p.coords },
       };
     }),
   };
@@ -246,8 +294,14 @@ function buildGeoJSON(
 // Pull the filter fields out of the live store state (used by the once-wired
 // map callbacks that read via getState()).
 function filterStateOf(s: {
-  searchQuery: string; activeSectors: string[]; listingType: FilterState['listingType']; activeExchanges: string[];
-  minSalary: number; minHeadcount: number; minGrowth: number; maxAttrition: number;
+  searchQuery: string;
+  activeSectors: string[];
+  listingType: FilterState["listingType"];
+  activeExchanges: string[];
+  minSalary: number;
+  minHeadcount: number;
+  minGrowth: number;
+  maxAttrition: number;
 }): FilterState {
   return {
     searchQuery: s.searchQuery,
@@ -263,7 +317,10 @@ function filterStateOf(s: {
 
 // The live per-company demand lookup when a skill is the active search, else
 // null (maps fall back to the salary/growth metric).
-function skillDemandOf(s: { searchQuery: string; skillIndex: SkillIndex | null }): Record<string, number> | null {
+function skillDemandOf(s: {
+  searchQuery: string;
+  skillIndex: SkillIndex | null;
+}): Record<string, number> | null {
   const sk = activeSkill(s.searchQuery);
   return sk ? demandByCompany(s.skillIndex, sk) : null;
 }
@@ -279,7 +336,9 @@ export function PerthMapbox() {
   const interactedLocalRef = useRef(false);
   const autoRotateRaf = useRef<number | undefined>(undefined);
   const pulseRaf = useRef<number | undefined>(undefined);
-  const carsRef = useRef<{ marker: mapboxgl.Marker; path: RoadPath | null; dist: number; speed: number }[]>([]);
+  const carsRef = useRef<
+    { marker: mapboxgl.Marker; path: RoadPath | null; dist: number; speed: number }[]
+  >([]);
   const carRaf = useRef<number | undefined>(undefined);
   const roadsRef = useRef<RoadPath[]>([]);
   const focusUpdaterRef = useRef<(() => void) | null>(null);
@@ -297,8 +356,26 @@ export function PerthMapbox() {
   const maxAttrition = useAppStore((s) => s.maxAttrition);
 
   const filterState: FilterState = useMemo(
-    () => ({ searchQuery, activeSectors, listingType, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition }),
-    [searchQuery, activeSectors, listingType, activeExchanges, minSalary, minHeadcount, minGrowth, maxAttrition],
+    () => ({
+      searchQuery,
+      activeSectors,
+      listingType,
+      activeExchanges,
+      minSalary,
+      minHeadcount,
+      minGrowth,
+      maxAttrition,
+    }),
+    [
+      searchQuery,
+      activeSectors,
+      listingType,
+      activeExchanges,
+      minSalary,
+      minHeadcount,
+      minGrowth,
+      maxAttrition,
+    ],
   );
 
   const skillDemand = useMemo(() => {
@@ -310,7 +387,7 @@ export function PerthMapbox() {
     if (!containerRef.current) return;
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: 'mapbox://styles/mapbox/standard',
+      style: "mapbox://styles/mapbox/standard",
       center: PERTH_CENTER,
       zoom: localDefaultZoom(PERTH_DEFAULT_ZOOM),
       pitch: PERTH_DEFAULT_PITCH,
@@ -321,7 +398,7 @@ export function PerthMapbox() {
       // native circle dot layers can resolve to different screen points at this
       // pitch, so a pill drifts away from its own dot. Mercator keeps both on the
       // same projection — dot and pill stay locked together.
-      projection: 'mercator',
+      projection: "mercator",
       // Replace the default expanded attribution with a compact "ⓘ" control.
       // The credit stays (required by Mapbox ToS + OpenStreetMap's ODbL), just
       // collapsed out of the way.
@@ -336,25 +413,30 @@ export function PerthMapbox() {
         useAppStore.getState().setInteracted();
       }
     };
-    (['dragstart', 'zoomstart', 'rotatestart', 'pitchstart', 'wheel'] as const).forEach((evt) => map.on(evt, stopAutoRotate));
+    (["dragstart", "zoomstart", "rotatestart", "pitchstart", "wheel"] as const).forEach((evt) =>
+      map.on(evt, stopAutoRotate),
+    );
 
-    map.on('style.load', () => {
-      map.setConfigProperty('basemap', 'lightPreset', 'day');
+    map.on("style.load", () => {
+      map.setConfigProperty("basemap", "lightPreset", "day");
       // Faded basemap theme, and strip label/POI clutter so the company
       // pins are the only points of interest on the map.
-      map.setConfigProperty('basemap', 'theme', 'faded');
-      map.setConfigProperty('basemap', 'showPointOfInterestLabels', false);
-      map.setConfigProperty('basemap', 'showTransitLabels', false);
-      map.setConfigProperty('basemap', 'showRoadLabels', false);
-      map.setConfigProperty('basemap', 'showLandmarkIcons', false);
+      map.setConfigProperty("basemap", "theme", "faded");
+      map.setConfigProperty("basemap", "showPointOfInterestLabels", false);
+      map.setConfigProperty("basemap", "showTransitLabels", false);
+      map.setConfigProperty("basemap", "showRoadLabels", false);
+      map.setConfigProperty("basemap", "showLandmarkIcons", false);
       // Also hide place labels — the map always initialises centred on Perth,
       // so the "Perth" city label could flash on-screen when entering another
       // city's local view before the camera jump lands.
-      map.setConfigProperty('basemap', 'showPlaceLabels', false);
+      map.setConfigProperty("basemap", "showPlaceLabels", false);
 
       const st = useAppStore.getState();
       placedRef.current = cityPlacements(st.localCity);
-      map.addSource(SOURCE_ID, { type: 'geojson', data: buildGeoJSON(placedRef.current, st.selectedId, filterState, skillDemandOf(st)) });
+      map.addSource(SOURCE_ID, {
+        type: "geojson",
+        data: buildGeoJSON(placedRef.current, st.selectedId, filterState, skillDemandOf(st)),
+      });
 
       // ── POI-pin marker style (design test) ──────────────────────────────
       // Company markers are HTML POI pins (renderMarkers below): a white teardrop
@@ -381,7 +463,7 @@ export function PerthMapbox() {
       // unaffected.
       const PICK_RADIUS = 30; // px
       let lastSelectAt = 0;
-      map.on('click', (e) => {
+      map.on("click", (e) => {
         // Only companies passing the active filters are pickable — hidden dots
         // must not be selectable via the nearest-dot fallback.
         const fs = filterStateOf(useAppStore.getState());
@@ -438,47 +520,49 @@ export function PerthMapbox() {
         placements.forEach((p) => {
           if (markersRef.current[p.company.id]) return;
           const c = p.company;
-          const el = document.createElement('div');
-          el.className = 'poipin';
+          const el = document.createElement("div");
+          el.className = "poipin";
           // Mapbox rewrites the marker ROOT element's style.opacity every frame
           // (occlusion/globe fade), which clobbered our skill-search fade — the
           // reason no-demand markers wouldn't dim. So everything visual lives in
           // an inner wrapper Mapbox never touches, and the fade is applied there.
-          const inner = document.createElement('div');
-          inner.className = 'poipininner';
+          const inner = document.createElement("div");
+          inner.className = "poipininner";
           // The teardrop pin body is gone: the marker is just the company logo in
           // a white circular badge. A skill-demand glow sits BEHIND the badge
           // (added first so it paints underneath) — see paintGlow.
-          const glow = document.createElement('span');
-          glow.className = 'poiglow';
-          const mark = document.createElement('span');
-          mark.className = 'poipinmark';
-          const img = document.createElement('img');
-          img.className = 'poipinlogo';
-          img.alt = '';
+          const glow = document.createElement("span");
+          glow.className = "poiglow";
+          const mark = document.createElement("span");
+          mark.className = "poipinmark";
+          const img = document.createElement("img");
+          img.className = "poipinlogo";
+          img.alt = "";
           img.src = `https://www.google.com/s2/favicons?domain=${c.domain}&sz=128`;
-          img.addEventListener('error', () => {
+          img.addEventListener("error", () => {
             img.remove();
-            const tk = document.createElement('span');
-            tk.className = 'poipintk';
+            const tk = document.createElement("span");
+            tk.className = "poipintk";
             tk.textContent = c.ticker;
             mark.appendChild(tk);
           });
           mark.appendChild(img);
-          const name = document.createElement('span');
-          name.className = 'poipinname';
+          const name = document.createElement("span");
+          name.className = "poipinname";
           name.textContent = pillLabel(c.name, c.ticker);
           inner.appendChild(glow);
           inner.appendChild(mark);
           inner.appendChild(name);
           el.appendChild(inner);
-          el.addEventListener('click', (ev) => {
+          el.addEventListener("click", (ev) => {
             ev.stopPropagation();
             useAppStore.getState().select(c.id);
           });
           // anchor:'center' — the circular badge sits centred on the geo point
           // (there's no longer a teardrop tip to pin to the bottom).
-          const marker = new mapboxgl.Marker({ element: el, anchor: 'center' }).setLngLat(p.coords).addTo(map);
+          const marker = new mapboxgl.Marker({ element: el, anchor: "center" })
+            .setLngLat(p.coords)
+            .addTo(map);
           markersRef.current[c.id] = marker;
         });
       };
@@ -492,7 +576,7 @@ export function PerthMapbox() {
       // DOM stacking.
       const setCompaniesVisible = (show: boolean) => {
         [HALO_LAYER, POI_LAYER, CORE_LAYER, PULSE_LAYER, LABEL_LAYER].forEach((id) => {
-          if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', show ? 'visible' : 'none');
+          if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", show ? "visible" : "none");
         });
         // When revealing companies, respect the active sector / exchange /
         // slider filters — a filtered-out company must never be shown, no matter
@@ -501,11 +585,11 @@ export function PerthMapbox() {
         Object.entries(markersRef.current).forEach(([id, m]) => {
           const el = m.getElement() as HTMLElement;
           if (!show) {
-            el.style.display = 'none';
+            el.style.display = "none";
             return;
           }
           const c = COMPANY_BY_ID[id];
-          el.style.display = c && fs && matchesFilters(c, fs) ? '' : 'none';
+          el.style.display = c && fs && matchesFilters(c, fs) ? "" : "none";
         });
       };
       setCompaniesVisibleRef.current = setCompaniesVisible;
@@ -529,7 +613,7 @@ export function PerthMapbox() {
           if (!el) return;
           // Hard filters (sector / exchange / sliders) hide the pill entirely;
           // a search miss only dims it.
-          el.style.display = matchesFilters(p.company, fs) ? '' : 'none';
+          el.style.display = matchesFilters(p.company, fs) ? "" : "none";
           const demand = dmC ? dmC[p.company.id] || 0 : 0;
           const searchOk = dmC
             ? demand > 0
@@ -541,8 +625,8 @@ export function PerthMapbox() {
           // (which makes the marker position:absolute so it stays pinned) gets
           // clobbered. The fade goes on the inner wrapper (setMarkerFade); `.miss`
           // drops the label to regular weight.
-          el.classList.toggle('on', isSelected);
-          el.classList.toggle('miss', skillMiss);
+          el.classList.toggle("on", isSelected);
+          el.classList.toggle("miss", skillMiss);
           setMarkerFade(el, isSelected, skillMiss, searchOk && !notSelected);
           paintGlow(el, demand, maxC, !!dmC);
         });
@@ -562,7 +646,7 @@ export function PerthMapbox() {
         placedRef.current.forEach((placed) => {
           const el = markersRef.current[placed.company.id]?.getElement();
           if (!el) return;
-          el.style.pointerEvents = '';
+          el.style.pointerEvents = "";
         });
       };
       focusUpdaterRef.current = updateFocus;
@@ -587,41 +671,45 @@ export function PerthMapbox() {
           const skillActive = !!activeSkill(useAppStore.getState().searchQuery);
           if (skillActive) {
             const t = (performance.now() % PULSE_MS) / PULSE_MS; // 0 -> 1
-            map.setPaintProperty(PULSE_LAYER, 'circle-radius', [
-              '+',
-              ['case', ['get', 'selected'], 12, 9],
+            map.setPaintProperty(PULSE_LAYER, "circle-radius", [
+              "+",
+              ["case", ["get", "selected"], 12, 9],
               26 * t,
             ]);
             // Only the relevant (non-dim) companies pulse; dimmed dots → 0.
-            map.setPaintProperty(PULSE_LAYER, 'circle-stroke-opacity', [
-              '*',
-              ['case', ['get', 'dim'], 0, 0.55],
+            map.setPaintProperty(PULSE_LAYER, "circle-stroke-opacity", [
+              "*",
+              ["case", ["get", "dim"], 0, 0.55],
               1 - t,
             ]);
             pulseWasActive = true;
           } else if (pulseWasActive) {
             // Skill cleared → flatten the rings once and leave the dots static.
-            map.setPaintProperty(PULSE_LAYER, 'circle-stroke-opacity', 0);
+            map.setPaintProperty(PULSE_LAYER, "circle-stroke-opacity", 0);
             pulseWasActive = false;
           }
         }
         pulseRaf.current = requestAnimationFrame(pulseLoop);
       };
       // Start flat: no skill searched on load → no pulse.
-      if (map.getLayer(PULSE_LAYER)) map.setPaintProperty(PULSE_LAYER, 'circle-stroke-opacity', 0);
+      if (map.getLayer(PULSE_LAYER)) map.setPaintProperty(PULSE_LAYER, "circle-stroke-opacity", 0);
       pulseLoop();
 
       // --- Street traffic ---
       // Create the car markers up front; they get assigned to a real road once
       // roads are queried.
       for (let i = 0; i < NUM_CARS; i++) {
-        const el = document.createElement('div');
-        el.className = 'carmarker';
+        const el = document.createElement("div");
+        el.className = "carmarker";
         el.innerHTML = carSvg(CAR_COLORS[i % CAR_COLORS.length]);
-        const marker = new mapboxgl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'map' })
+        const marker = new mapboxgl.Marker({
+          element: el,
+          rotationAlignment: "map",
+          pitchAlignment: "map",
+        })
           .setLngLat(PERTH_CENTER)
           .addTo(map);
-        el.style.display = 'none';
+        el.style.display = "none";
         carsRef.current.push({ marker, path: null, dist: 0, speed: 8 + Math.random() * 9 });
       }
 
@@ -629,16 +717,21 @@ export function PerthMapbox() {
       // turn them into drive-able paths (geometry comes back as lng/lat).
       const refreshRoads = () => {
         let feats: mapboxgl.MapboxGeoJSONFeature[] = [];
-        try { feats = map.queryRenderedFeatures(); } catch { return; }
+        try {
+          feats = map.queryRenderedFeatures();
+        } catch {
+          return;
+        }
         const paths: RoadPath[] = [];
         for (const f of feats) {
           const g = f.geometry;
-          const sl = (f.sourceLayer || '') + ' ' + ((f.layer && f.layer.id) || '');
+          const sl = (f.sourceLayer || "") + " " + ((f.layer && f.layer.id) || "");
           if (!/road|street|transport/i.test(sl)) continue;
-          if (g.type === 'LineString' && g.coordinates.length >= 2) {
+          if (g.type === "LineString" && g.coordinates.length >= 2) {
             paths.push(roadPath(g.coordinates as [number, number][]));
-          } else if (g.type === 'MultiLineString') {
-            for (const line of g.coordinates) if (line.length >= 2) paths.push(roadPath(line as [number, number][]));
+          } else if (g.type === "MultiLineString") {
+            for (const line of g.coordinates)
+              if (line.length >= 2) paths.push(roadPath(line as [number, number][]));
           }
           if (paths.length >= 60) break;
         }
@@ -673,8 +766,11 @@ export function PerthMapbox() {
         const show = !s.zoomedOut && !s.zoomingIn;
         carsRef.current.forEach((car) => {
           const el = car.marker.getElement();
-          if (!show || !car.path) { el.style.display = 'none'; return; }
-          el.style.display = '';
+          if (!show || !car.path) {
+            el.style.display = "none";
+            return;
+          }
+          el.style.display = "";
           car.dist += car.speed * dt;
           const { pos, bearing } = alongPath(car.path, car.dist);
           car.marker.setLngLat(pos);
@@ -685,16 +781,19 @@ export function PerthMapbox() {
       carLoop();
 
       // Refresh roads + reassign whenever the camera settles, and once now.
-      map.on('idle', () => { refreshRoads(); assignRoads(); });
+      map.on("idle", () => {
+        refreshRoads();
+        assignRoads();
+      });
       refreshRoads();
       assignRoads();
     });
 
-    map.on('zoom', () => {
+    map.on("zoom", () => {
       const z = map.getZoom();
       // Company name labels only appear once you've zoomed past the arrival
       // view, so a dense city (Perth/Sydney) reads as circles + logos first.
-      containerRef.current?.classList.toggle('shownames', z >= LABEL_ZOOM);
+      containerRef.current?.classList.toggle("shownames", z >= LABEL_ZOOM);
       const s = useAppStore.getState();
       if (z < ZOOM_OUT_THRESHOLD && !s.zoomedOut && !crossedRef.current) {
         crossedRef.current = true;
@@ -715,20 +814,32 @@ export function PerthMapbox() {
       const v = CITY_VIEWS[city] || CITY_VIEWS.perth;
       // Jump (hidden behind the overlay fade) so we don't fly across the
       // continent, then swap in the city's companies + reveal.
-      map.jumpTo({ center: v.center, zoom: localDefaultZoom(v.zoom), pitch: v.pitch, bearing: v.bearing });
+      map.jumpTo({
+        center: v.center,
+        zoom: localDefaultZoom(v.zoom),
+        pitch: v.pitch,
+        bearing: v.bearing,
+      });
       renderCityRef.current?.(city);
       // If we arrived with a company already selected (from search or the saved
       // list), frame that company — it may sit well outside the city's default
       // camera (e.g. Mineral Resources in Osborne Park), so the jumpTo above
       // would otherwise leave its pill off-screen. The [selectedId] effect can
       // miss this because the placements aren't ready when it first runs.
-      const sel = st.selectedId ? cityPlacements(city).find((p) => p.company.id === st.selectedId) : null;
+      const sel = st.selectedId
+        ? cityPlacements(city).find((p) => p.company.id === st.selectedId)
+        : null;
       if (sel) {
         const rightPad = Math.min(760, Math.round(window.innerWidth * 0.6));
-        map.easeTo({ center: sel.coords, zoom: Math.max(v.zoom, 16.5), padding: { top: 0, bottom: 0, left: 0, right: rightPad }, duration: 700 });
+        map.easeTo({
+          center: sel.coords,
+          zoom: Math.max(v.zoom, 16.5),
+          padding: { top: 0, bottom: 0, left: 0, right: rightPad },
+          duration: 700,
+        });
       }
     };
-    window.addEventListener('perth-zoom-reset', onZoomReset);
+    window.addEventListener("perth-zoom-reset", onZoomReset);
 
     // Selecting a skill in the local layer pulls the camera back so more of the
     // city (and which companies are hiring the skill) comes into view. Kept well
@@ -741,11 +852,11 @@ export function PerthMapbox() {
       if (!active) return; // clearing a skill keeps the current zoom
       map.easeTo({ zoom: 14.2, duration: 700 });
     };
-    window.addEventListener('perth-skill-zoom', onSkillZoom);
+    window.addEventListener("perth-skill-zoom", onSkillZoom);
 
     return () => {
-      window.removeEventListener('perth-zoom-reset', onZoomReset);
-      window.removeEventListener('perth-skill-zoom', onSkillZoom);
+      window.removeEventListener("perth-zoom-reset", onZoomReset);
+      window.removeEventListener("perth-skill-zoom", onSkillZoom);
       if (autoRotateRaf.current) cancelAnimationFrame(autoRotateRaf.current);
       if (pulseRaf.current) cancelAnimationFrame(pulseRaf.current);
       if (carRaf.current) cancelAnimationFrame(carRaf.current);
@@ -769,8 +880,11 @@ export function PerthMapbox() {
       // `once('style.load')` deferral dropped filter changes entirely (the
       // event never re-fires); applying directly avoids that.
       const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
-      if (source) source.setData(buildGeoJSON(placedRef.current, selectedId, filterState, skillDemand));
-      const maxD = skillDemand ? Math.max(1, ...placedRef.current.map((p) => skillDemand[p.company.id] || 0)) : 1;
+      if (source)
+        source.setData(buildGeoJSON(placedRef.current, selectedId, filterState, skillDemand));
+      const maxD = skillDemand
+        ? Math.max(1, ...placedRef.current.map((p) => skillDemand[p.company.id] || 0))
+        : 1;
       // Company markers only belong to the local city layer — when zoomed out to
       // the domestic/global overview they must all be hidden, or they'd float
       // over the overview. (This pass runs on every search/filter change, so it
@@ -783,7 +897,7 @@ export function PerthMapbox() {
         const el = marker.getElement();
         // Sector / exchange / slider filters hide the marker entirely; a search
         // miss only dims it. Everything is hidden while zoomed out.
-        el.style.display = !zoomedOutNow && matchesFilters(c, filterState) ? '' : 'none';
+        el.style.display = !zoomedOutNow && matchesFilters(c, filterState) ? "" : "none";
         // In skill mode a pill is "lit" when the company has live demand for the
         // searched skill; otherwise fall back to the free-text search match.
         const demand = skillDemand ? skillDemand[c.id] || 0 : 0;
@@ -803,8 +917,8 @@ export function PerthMapbox() {
         // wrapper (setMarkerFade) so Mapbox's per-frame opacity reset on the root
         // can't defeat it — together they fade a no-demand company's whole marker
         // (badge + logo + label) on a skill search, restoring on deselect.
-        el.classList.toggle('on', isSelected);
-        el.classList.toggle('miss', skillMiss);
+        el.classList.toggle("on", isSelected);
+        el.classList.toggle("miss", skillMiss);
         setMarkerFade(el, isSelected, skillMiss, searchOk && !notSelected);
         paintGlow(el, demand, maxD, !!skillDemand);
       });
@@ -829,7 +943,7 @@ export function PerthMapbox() {
     if (!map) return;
     if (!selectedId) {
       // Panel closed — release the reserved right padding so the map re-centres.
-      const pad = typeof map.getPadding === 'function' ? map.getPadding() : null;
+      const pad = typeof map.getPadding === "function" ? map.getPadding() : null;
       if (pad && (pad.right || 0) > 0) {
         map.easeTo({ padding: { top: 0, right: 0, bottom: 0, left: 0 }, duration: 420 });
       }

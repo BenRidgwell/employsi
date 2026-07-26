@@ -1,10 +1,10 @@
-import { COMPANIES, companyGroup } from '../data/companies';
-import { COMPANY_CULTURE, INDUSTRY_BENCH, type Layoff } from '../data/culture';
-import { COMPANY_HEADCOUNT } from '../data/companyHeadcount';
-import { PRIVATE_COMPANY_FACTS } from '../data/privateCompanyFacts';
-import { GOV_HEADCOUNT } from '../data/perthGovWorkforce';
-import type { CompanyNews } from '../data/news';
-import type { BhpFeed } from '../data/bhpFeed';
+import { COMPANIES, companyGroup } from "../data/companies";
+import { COMPANY_CULTURE, INDUSTRY_BENCH, type Layoff } from "../data/culture";
+import { COMPANY_HEADCOUNT } from "../data/companyHeadcount";
+import { PRIVATE_COMPANY_FACTS } from "../data/privateCompanyFacts";
+import { GOV_HEADCOUNT } from "../data/perthGovWorkforce";
+import type { CompanyNews } from "../data/news";
+import type { BhpFeed } from "../data/bhpFeed";
 
 export interface BigStat {
   value: string | number;
@@ -62,7 +62,11 @@ function hash01(s: string): number {
   return ((h >>> 0) % 1000) / 1000;
 }
 
-export function buildPanel(id: string | null, roleTitle?: string | null, live?: BhpFeed): PanelData | null {
+export function buildPanel(
+  id: string | null,
+  roleTitle?: string | null,
+  live?: BhpFeed,
+): PanelData | null {
   if (!id) return null;
   const c = COMPANIES.find((x) => x.id === id);
   if (!c) return null;
@@ -83,30 +87,47 @@ export function buildPanel(id: string | null, roleTitle?: string | null, live?: 
   // fetched a real one) comes from PRIVATE_COMPANY_FACTS. Absent that, the
   // rating stays the industry benchmark and is flagged as not company-specific.
   const pvtFacts = PRIVATE_COMPANY_FACTS[c.id];
-  const glass = live ? live.glassdoor
-    : culture ? culture.glassdoor
-    : pvtFacts?.glassdoorRating ?? 3.6;
+  const glass = live
+    ? live.glassdoor
+    : culture
+      ? culture.glassdoor
+      : (pvtFacts?.glassdoorRating ?? 3.6);
   const glassReal = !!live || !!culture || pvtFacts?.glassdoorRating !== undefined;
   const glassDelta = +(glass - INDUSTRY_BENCH.glassdoor).toFixed(1);
-  const glassSub = (glassDelta >= 0 ? '+' : '−') + Math.abs(glassDelta).toFixed(1) + ' vs industry';
+  const glassSub = (glassDelta >= 0 ? "+" : "−") + Math.abs(glassDelta).toFixed(1) + " vs industry";
   const glassSub2: SubStat = glassReal
-    ? { value: glass.toFixed(1) + ' ★', label: 'Glassdoor rating', sub: glassSub, subCls: glassDelta >= 0 ? '' : 'neg' }
-    : { value: '—', label: 'Glassdoor rating', sub: 'not disclosed', subCls: '' };
+    ? {
+        value: glass.toFixed(1) + " ★",
+        label: "Glassdoor rating",
+        sub: glassSub,
+        subCls: glassDelta >= 0 ? "" : "neg",
+      }
+    : { value: "—", label: "Glassdoor rating", sub: "not disclosed", subCls: "" };
 
   if (roleTitle) {
     // Role-focused figures, derived deterministically from the role title.
     const h = hash01(roleTitle);
-    const h2 = hash01(roleTitle + '::g');
+    const h2 = hash01(roleTitle + "::g");
     const roleOpen = 6 + Math.round(h * 44);
     const roleSalary = Math.round((c.salaryNum * (0.9 + h * 0.24)) / 1000) * 1000;
     const roleGrowth = +(c.growth + (h2 - 0.5) * 6).toFixed(1);
     const rgPos = roleGrowth >= 0;
     bigStats = [
-      { value: roleOpen, label: 'Open roles', sub: roleTitle, subCls: '' },
-      { value: '$' + roleSalary.toLocaleString('en-US'), label: 'Median salary', sub: 'for this role', subCls: '' },
-      { value: (rgPos ? '+' : '') + roleGrowth.toFixed(1) + '%', label: 'Role demand YoY', sub: rgPos ? 'growing' : 'cooling', subCls: rgPos ? '' : 'neg' },
+      { value: roleOpen, label: "Open roles", sub: roleTitle, subCls: "" },
+      {
+        value: "$" + roleSalary.toLocaleString("en-US"),
+        label: "Median salary",
+        sub: "for this role",
+        subCls: "",
+      },
+      {
+        value: (rgPos ? "+" : "") + roleGrowth.toFixed(1) + "%",
+        label: "Role demand YoY",
+        sub: rgPos ? "growing" : "cooling",
+        subCls: rgPos ? "" : "neg",
+      },
     ];
-    subStats = [glassSub2, { value: roleTitle, label: 'Focused role' }];
+    subStats = [glassSub2, { value: roleTitle, label: "Focused role" }];
   } else {
     // Live feed (BHP) overrides the illustrative headline figures where present.
     const openRoles = live ? live.openRoles : c.openRoles;
@@ -116,18 +137,18 @@ export function buildPanel(id: string | null, roleTitle?: string | null, live?: 
     // it (static, not a live feed), else the illustrative figure.
     const growth = hc ? hc.yoy : live ? live.growth : c.growth;
     const gPos = growth >= 0;
-    const gStr = (gPos ? '+' : '') + growth.toFixed(1) + '%';
+    const gStr = (gPos ? "+" : "") + growth.toFixed(1) + "%";
     bigStats = [
-      { value: openRoles, label: 'Open roles', sub: 'hiring now', subCls: '' },
-      { value: salary, label: 'Median salary', sub: metroDelta, subCls: '' },
+      { value: openRoles, label: "Open roles", sub: "hiring now", subCls: "" },
+      { value: salary, label: "Median salary", sub: metroDelta, subCls: "" },
       {
         value: gStr,
-        label: 'Headcount YoY',
-        sub: hc ? `${hc.now.toLocaleString('en-US')} · ${hc.asof}` : gPos ? 'growing' : 'shrinking',
-        subCls: gPos ? '' : 'neg',
+        label: "Headcount YoY",
+        sub: hc ? `${hc.now.toLocaleString("en-US")} · ${hc.asof}` : gPos ? "growing" : "shrinking",
+        subCls: gPos ? "" : "neg",
       },
     ];
-    subStats = [glassSub2, { value: topRole, label: 'Biggest hiring area' }];
+    subStats = [glassSub2, { value: topRole, label: "Biggest hiring area" }];
   }
 
   const mx = Math.max(...roleList.map((r) => r.count));
@@ -138,7 +159,7 @@ export function buildPanel(id: string | null, roleTitle?: string | null, live?: 
     domain: c.domain,
     sector: c.sector,
     group: companyGroup(c),
-    note: 'What you’d find here as a candidate',
+    note: "What you’d find here as a candidate",
     bigStats,
     subStats,
     trend: live ? live.trend : c.trend,
@@ -148,9 +169,13 @@ export function buildPanel(id: string | null, roleTitle?: string | null, live?: 
     headcountReal: !!hc || !!live,
     revPerEmp: live ? live.revPerEmp : c.revPerEmp,
     ebitdaPerEmp: live ? live.ebitdaPerEmp : c.ebitdaPerEmp,
-    skillsLabel: 'Skills in demand',
+    skillsLabel: "Skills in demand",
     skills: live ? live.skills : c.skills,
-    roles: roleList.map((r) => ({ title: r.title, count: r.count, pct: Math.round((r.count / mx) * 100) + '%' })),
+    roles: roleList.map((r) => ({
+      title: r.title,
+      count: r.count,
+      pct: Math.round((r.count / mx) * 100) + "%",
+    })),
     roleOptions: culture ? culture.roleOptions : [],
     roleFocus: roleTitle || null,
     diversity: live

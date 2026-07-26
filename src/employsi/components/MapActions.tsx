@@ -1,4 +1,4 @@
-import { useAppStore } from '../state/store';
+import { useAppStore } from "../state/store";
 
 // Two animated quick-action buttons that sit on the left rail, just above the
 // layer guide, on the domestic and global (zoomed-out) map views.
@@ -13,11 +13,26 @@ export function MapActions() {
   return (
     <div className="mapactions">
       <div className="marow">
-        <button className={`mabtn ${trendingOpen ? 'on' : ''}`} type="button" aria-label="What's trending" onClick={toggleTrending}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+        <button
+          className={`mabtn ${trendingOpen ? "on" : ""}`}
+          type="button"
+          aria-label="What's trending"
+          onClick={toggleTrending}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <g className="flameicon">
               <path d="M12 3c1.6 3 4.2 4.6 4.2 8.2a4.2 4.2 0 0 1-8.4 0c0-1.8.8-3 1.9-4.1C10.6 8.1 11.5 6.2 12 3Z" />
-              <path className="flameember" d="M12 10.5c.8 1.3 1.6 2 1.6 3.1a1.6 1.6 0 0 1-3.2 0c0-1.1.8-1.8 1.6-3.1Z" />
+              <path
+                className="flameember"
+                d="M12 10.5c.8 1.3 1.6 2 1.6 3.1a1.6 1.6 0 0 1-3.2 0c0-1.1.8-1.8 1.6-3.1Z"
+              />
             </g>
           </svg>
         </button>
@@ -25,8 +40,20 @@ export function MapActions() {
       </div>
 
       <div className="marow">
-        <button className={`mabtn ${briefOpen ? 'on' : ''}`} type="button" aria-label="Daily brief" onClick={toggleBrief}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+        <button
+          className={`mabtn ${briefOpen ? "on" : ""}`}
+          type="button"
+          aria-label="Daily brief"
+          onClick={toggleBrief}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             {/* newspaper */}
             <path d="M4 5.6A1.1 1.1 0 0 1 5.1 4.5h7.3a1.1 1.1 0 0 1 1.1 1.1V15H5.1A1.1 1.1 0 0 1 4 13.9V5.6Z" />
             <path d="M6.4 7.6h4.8M6.4 10h4.8M6.4 12.4h3" />

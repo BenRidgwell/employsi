@@ -1,5 +1,5 @@
-import type { Company, RoleBreakdown } from './companies';
-import { deriveDomain } from './rosters';
+import type { Company, RoleBreakdown } from "./companies";
+import { deriveDomain } from "./rosters";
 
 // Northern Territory Government agencies — the NT counterpart of perthGov.ts /
 // adelaideGov.ts / canberraGov.ts, sourced from the official NT jobs board
@@ -16,32 +16,32 @@ import { deriveDomain } from './rosters';
 // Every NT agency is plotted in Darwin (the territory capital / seat of
 // government), mirroring how the WA agencies all sit in Perth.
 const AGENCIES: string[] = [
-  'Department of Health',
-  'Department of Education and Training',
-  'Department of Corporate and Digital Development',
-  'Department of Logistics and Infrastructure',
-  'Department of Corrections',
+  "Department of Health",
+  "Department of Education and Training",
+  "Department of Corporate and Digital Development",
+  "Department of Logistics and Infrastructure",
+  "Department of Corrections",
   "Attorney General's Department",
-  'Power and Water Corporation',
-  'Department of Children and Families',
-  'Department of Agriculture and Fisheries',
-  'NT Police Force',
-  'Department of Lands, Planning and Environment',
-  'Department of Tourism and Hospitality',
-  'Department of the Chief Minister and Cabinet',
-  'Department of Housing, Local Government and Community Development',
-  'Land Development Corporation',
-  'Department Mining and Energy',
-  'Department of People, Sport and Culture',
-  'NT Fire and Emergency Services',
-  'Territory Generation',
-  'Batchelor Institute of Indigenous Tertiary Education',
-  'Department of Trade, Business and Asian Relations',
-  'Department of Treasury and Finance',
-  'Department of Legislative Assembly',
+  "Power and Water Corporation",
+  "Department of Children and Families",
+  "Department of Agriculture and Fisheries",
+  "NT Police Force",
+  "Department of Lands, Planning and Environment",
+  "Department of Tourism and Hospitality",
+  "Department of the Chief Minister and Cabinet",
+  "Department of Housing, Local Government and Community Development",
+  "Land Development Corporation",
+  "Department Mining and Energy",
+  "Department of People, Sport and Culture",
+  "NT Fire and Emergency Services",
+  "Territory Generation",
+  "Batchelor Institute of Indigenous Tertiary Education",
+  "Department of Trade, Business and Asian Relations",
+  "Department of Treasury and Finance",
+  "Department of Legislative Assembly",
 ];
 
-const STOP = new Set(['of', 'and', 'the', 'for', '&', 'a']);
+const STOP = new Set(["of", "and", "the", "for", "&", "a"]);
 
 function h01(s: string): number {
   let h = 2166136261;
@@ -53,26 +53,38 @@ function h01(s: string): number {
 }
 
 function slug(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 export function ntGovAgencyId(name: string): string {
-  return 'nt-gov-' + slug(name);
+  return "nt-gov-" + slug(name);
 }
 
 function govAcronym(name: string): string {
   const words = name.split(/[\s,]+/).filter((w) => w && !STOP.has(w.toLowerCase()));
   if (words.length >= 2) {
-    return words.map((w) => w[0].toUpperCase()).join('').slice(0, 6);
+    return words
+      .map((w) => w[0].toUpperCase())
+      .join("")
+      .slice(0, 6);
   }
   return (words[0] || name).slice(0, 5).toUpperCase();
 }
 
-const GOV_SKILLS = ['Policy & Governance', 'Public Administration', 'Project Delivery', 'Data & Analytics', 'Community Services'];
-const GOV_ROLES = ['Corporate & Policy', 'Frontline Services', 'Operations'];
+const GOV_SKILLS = [
+  "Policy & Governance",
+  "Public Administration",
+  "Project Delivery",
+  "Data & Analytics",
+  "Community Services",
+];
+const GOV_ROLES = ["Corporate & Policy", "Frontline Services", "Operations"];
 
 function buildGovAgency(name: string): Company {
   const h = h01(name);
-  const h2 = h01(name + '::b');
+  const h2 = h01(name + "::b");
   const salaryNum = Math.round((96 + (h - 0.5) * 42) * 1000); // ~75k .. 117k
   const salaryK = Math.round(salaryNum / 1000);
   const turnover = +(6 + h2 * 8).toFixed(1);
@@ -86,23 +98,23 @@ function buildGovAgency(name: string): Company {
     name,
     pill: acr,
     domain: deriveDomain(name),
-    sector: 'Government',
-    group: 'Infrastructure and Government',
+    sector: "Government",
+    group: "Infrastructure and Government",
     private: true,
     headcount: 0,
     growth: 0,
     openRoles: Math.round(6 + h * 120),
-    salary: `$${salaryNum.toLocaleString('en-US')}`,
+    salary: `$${salaryNum.toLocaleString("en-US")}`,
     salaryShort: `$${salaryK}K`,
     salaryNum,
     turnover,
-    salaryDelta: `${delta >= 0 ? '+' : '−'}${Math.abs(delta)}%`,
-    metroDelta: `${delta >= 0 ? '+' : '−'}${Math.abs(delta)}% vs metro`,
+    salaryDelta: `${delta >= 0 ? "+" : "−"}${Math.abs(delta)}%`,
+    metroDelta: `${delta >= 0 ? "+" : "−"}${Math.abs(delta)}% vs metro`,
     trend: [],
     revPerEmp: 0,
     ebitdaPerEmp: 0,
     timeToFill: `${Math.round(34 + h * 24)} days`,
-    competition: h > 0.66 ? 'High' : h > 0.33 ? 'Medium' : 'Low',
+    competition: h > 0.66 ? "High" : h > 0.33 ? "Medium" : "Low",
     skills: GOV_SKILLS,
     roles,
   };

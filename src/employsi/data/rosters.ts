@@ -1,5 +1,5 @@
-import type { Company, RoleBreakdown } from './companies';
-import { RESOLVED_DOMAINS } from './resolvedDomains';
+import type { Company, RoleBreakdown } from "./companies";
+import { RESOLVED_DOMAINS } from "./resolvedDomains";
 
 // ── Compact global company rosters ────────────────────────────────────────
 // Adding a company to a city is just one line: [ticker, name, group]. Full
@@ -11,20 +11,38 @@ import { RESOLVED_DOMAINS } from './resolvedDomains';
 // [ticker, name, group, exchange?, pill?] — exchange overrides the city
 // default (e.g. NASDAQ names in a NYSE-default US city); pill overrides the map
 // label (e.g. a name acronym for markets with numeric tickers).
-export type RosterEntry = [ticker: string, name: string, group: string, exchange?: string, pill?: string];
+export type RosterEntry = [
+  ticker: string,
+  name: string,
+  group: string,
+  exchange?: string,
+  pill?: string,
+];
 
 // Cities whose exchanges use numeric tickers (HK/Shanghai/Shenzhen/Tokyo/
 // Korea): a bare ticker like "00700" is a meaningless pill, so map labels there
 // show a short acronym of the company name instead. The ticker still drives
 // search, so the company remains findable by its listing code.
-const ACRONYM_CITIES = new Set(['hongkong', 'tokyo', 'seoul', 'ganzhou', 'beijing']);
+const ACRONYM_CITIES = new Set(["hongkong", "tokyo", "seoul", "ganzhou", "beijing"]);
 
 // Corporate-form words that don't belong in an acronym / brand label.
 const DROP_WORDS = new Set([
-  'holdings', 'holding', 'corporation', 'corp', 'group', 'limited', 'ltd',
-  'company', 'co', 'international', 'inc', 'incorporated', 'plc', 'the',
+  "holdings",
+  "holding",
+  "corporation",
+  "corp",
+  "group",
+  "limited",
+  "ltd",
+  "company",
+  "co",
+  "international",
+  "inc",
+  "incorporated",
+  "plc",
+  "the",
 ]);
-const STOP_WORDS = new Set(['and', 'of', 'the', '&']);
+const STOP_WORDS = new Set(["and", "of", "the", "&"]);
 
 // Real primary domains for companies whose website doesn't follow the
 // "significant words joined + .com" heuristic below (banks/telecoms with
@@ -32,89 +50,97 @@ const STOP_WORDS = new Set(['and', 'of', 'the', '&']);
 // falls back to the heuristic, which is correct for most single-brand names
 // (xiaomi.com, tencent.com, alibaba.com, chinamobile.com, …).
 const KNOWN_DOMAINS: Record<string, string> = {
-  'industrial and commercial bank of china': 'icbc.com.cn',
-  'agricultural bank of china': 'abchina.com',
-  'bank of china': 'boc.cn',
-  'china construction bank': 'ccb.com',
-  'china life insurance company': 'e.chinalife.com.cn',
-  "people's insurance company of china": 'picc.com',
-  'postal savings bank of china': 'psbc.com',
-  'china state construction engineering': 'cscec.com',
-  'china yangtze power': 'cypc.com.cn',
-  'huaneng power international': 'hpi.com.cn',
-  'china shenhua energy': 'csenergy.com.cn',
-  'china telecom': 'chinatelecom-h.com',
-  'china unicom': 'chinaunicom.com',
-  'petrochina': 'petrochina.com.cn',
-  'sinotrans limited': 'sinotrans.com',
-  'beijing shougang': 'shougang.com.cn',
-  'boe technology': 'boe.com',
-  'jd.com': 'jd.com',
-  'pop mart': 'popmart.com',
-  'netease': 'neteasegames.com',
-  'boc hong kong': 'bochk.com',
-  'aia group': 'aia.com',
-  'ck hutchison holdings': 'ckh.com.hk',
-  'ck infrastructure holdings': 'cki.com.hk',
-  'hong kong exchanges and clearing': 'hkex.com.hk',
-  'sun hung kai properties': 'shkp.com',
-  'hang seng bank': 'hangseng.com',
-  'hsbc holdings': 'hsbc.com',
-  'mtr corporation': 'mtr.com.hk',
-  'techtronic industries': 'ttigroup.com',
-  'link reit': 'linkreit.com',
-  'wh group': 'wh-group.com',
-  'softbank group': 'group.softbank',
-  'mitsui & co.': 'mitsui.com',
-  'itochu corporation': 'itochu.co.jp',
-  'recruit holdings': 'recruit-holdings.com',
-  'sk hynix': 'skhynix.com',
-  'sk inc.': 'sk.com',
-  'sk telecom': 'sktelecom.com',
-  'lg energy solution': 'lgensol.com',
-  'lg chem': 'lgchem.com',
-  'lg electronics': 'lge.com',
-  'kb financial group': 'kbfg.com',
-  'shinhan financial group': 'shinhangroup.com',
-  'woori financial group': 'woorifg.com',
-  'samsung electronics': 'samsung.com',
-  'samsung life insurance': 'samsunglife.com',
-  'samsung c&t': 'samsungcnt.com',
-  'hyundai motor company': 'hyundai.com',
-  'kia corporation': 'kia.com',
-  'korea zinc': 'koreazinc.co.kr',
-  'korean air': 'koreanair.com',
-  'industrial bank of korea': 'ibk.co.kr',
+  "industrial and commercial bank of china": "icbc.com.cn",
+  "agricultural bank of china": "abchina.com",
+  "bank of china": "boc.cn",
+  "china construction bank": "ccb.com",
+  "china life insurance company": "e.chinalife.com.cn",
+  "people's insurance company of china": "picc.com",
+  "postal savings bank of china": "psbc.com",
+  "china state construction engineering": "cscec.com",
+  "china yangtze power": "cypc.com.cn",
+  "huaneng power international": "hpi.com.cn",
+  "china shenhua energy": "csenergy.com.cn",
+  "china telecom": "chinatelecom-h.com",
+  "china unicom": "chinaunicom.com",
+  petrochina: "petrochina.com.cn",
+  "sinotrans limited": "sinotrans.com",
+  "beijing shougang": "shougang.com.cn",
+  "boe technology": "boe.com",
+  "jd.com": "jd.com",
+  "pop mart": "popmart.com",
+  netease: "neteasegames.com",
+  "boc hong kong": "bochk.com",
+  "aia group": "aia.com",
+  "ck hutchison holdings": "ckh.com.hk",
+  "ck infrastructure holdings": "cki.com.hk",
+  "hong kong exchanges and clearing": "hkex.com.hk",
+  "sun hung kai properties": "shkp.com",
+  "hang seng bank": "hangseng.com",
+  "hsbc holdings": "hsbc.com",
+  "mtr corporation": "mtr.com.hk",
+  "techtronic industries": "ttigroup.com",
+  "link reit": "linkreit.com",
+  "wh group": "wh-group.com",
+  "softbank group": "group.softbank",
+  "mitsui & co.": "mitsui.com",
+  "itochu corporation": "itochu.co.jp",
+  "recruit holdings": "recruit-holdings.com",
+  "sk hynix": "skhynix.com",
+  "sk inc.": "sk.com",
+  "sk telecom": "sktelecom.com",
+  "lg energy solution": "lgensol.com",
+  "lg chem": "lgchem.com",
+  "lg electronics": "lge.com",
+  "kb financial group": "kbfg.com",
+  "shinhan financial group": "shinhangroup.com",
+  "woori financial group": "woorifg.com",
+  "samsung electronics": "samsung.com",
+  "samsung life insurance": "samsunglife.com",
+  "samsung c&t": "samsungcnt.com",
+  "hyundai motor company": "hyundai.com",
+  "kia corporation": "kia.com",
+  "korea zinc": "koreazinc.co.kr",
+  "korean air": "koreanair.com",
+  "industrial bank of korea": "ibk.co.kr",
 };
 
 // Best-effort primary domain for a company, so the card logo (Google favicon
 // service, keyed on domain) shows the real brand mark. Uses KNOWN_DOMAINS where
 // the site doesn't match the heuristic, else joins the significant name words.
 export function deriveDomain(name: string): string {
-  const key = name.toLowerCase().replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
+  const key = name
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
   if (KNOWN_DOMAINS[key]) return KNOWN_DOMAINS[key];
   // Domains resolved automatically (scripts/resolve-logos.py) for the gov
   // agencies + private companies, so their favicon logos populate too.
   if (RESOLVED_DOMAINS[key]) return RESOLVED_DOMAINS[key];
-  const cleaned = name.replace(/\([^)]*\)/g, ' ').toLowerCase();
+  const cleaned = name.replace(/\([^)]*\)/g, " ").toLowerCase();
   const words = cleaned
     .split(/[\s.,/&'-]+/)
     .filter(Boolean)
     .filter((w) => !STOP_WORDS.has(w) && !DROP_WORDS.has(w));
-  const joined = (words.join('') || cleaned.replace(/[^a-z0-9]/g, '')).replace(/[^a-z0-9]/g, '');
-  return `${joined || 'example'}.com`;
+  const joined = (words.join("") || cleaned.replace(/[^a-z0-9]/g, "")).replace(/[^a-z0-9]/g, "");
+  return `${joined || "example"}.com`;
 }
 
 // Build a short pill label from a company name: initials for multi-word names
 // (INDUSTRIAL COMMERCIAL BANK CHINA -> ICBC), the brand word itself for
 // single-word names (Tencent Holdings -> Tencent).
 export function nameAcronym(name: string): string {
-  const cleaned = name.replace(/\([^)]*\)/g, ' ');
+  const cleaned = name.replace(/\([^)]*\)/g, " ");
   const words = cleaned.split(/[\s.,/-]+/).filter(Boolean);
   const sig = words.filter((w) => !STOP_WORDS.has(w.toLowerCase()));
   const core = sig.filter((w) => !DROP_WORDS.has(w.toLowerCase()));
   const use = core.length ? core : sig;
-  if (use.length >= 2) return use.map((w) => w[0].toUpperCase()).join('').slice(0, 5);
+  if (use.length >= 2)
+    return use
+      .map((w) => w[0].toUpperCase())
+      .join("")
+      .slice(0, 5);
   const w = use[0] || name;
   return w.length <= 8 ? w : w.slice(0, 8);
 }
@@ -127,7 +153,7 @@ export interface CityRoster {
 // City-scoped id so the same ticker can appear in more than one city (e.g. VOD
 // in London and Johannesburg, ALK = Alaska Air in Seattle vs Alkane in Perth).
 export function rosterId(city: string, ticker: string): string {
-  return `${city}-${ticker}`.toLowerCase().replace(/[^a-z0-9-]/g, '');
+  return `${city}-${ticker}`.toLowerCase().replace(/[^a-z0-9-]/g, "");
 }
 
 // Deterministic 0..1 hash so a company's generated numbers are stable.
@@ -150,7 +176,10 @@ export function spreadCoords(center: [number, number], n: number): [number, numb
   for (let i = 0; i < n; i++) {
     const r = Math.sqrt(i + 0.6);
     const a = i * golden;
-    out.push([+(center[0] + Math.cos(a) * r * lngScale).toFixed(6), +(center[1] + Math.sin(a) * r * latScale).toFixed(6)]);
+    out.push([
+      +(center[0] + Math.cos(a) * r * lngScale).toFixed(6),
+      +(center[1] + Math.sin(a) * r * latScale).toFixed(6),
+    ]);
   }
   return out;
 }
@@ -184,6 +213,8 @@ export const CITY_PLACEMENT: Record<string, CityPlacement> = {
   boston: { arc: [150, 360] }, // avoid the harbour (E)
   newyork: { anchor: [-73.9945, 40.7205], arc: [300, 60], maxKm: 1.4 }, // narrow Manhattan, run N-S
   sanfrancisco: { arc: [150, 340] }, // avoid the bay (E/NE)
+  // San Jose sprawls up the valley rather than out from a CBD; the south bay is NE.
+  sanjose: { anchor: [-121.8863, 37.3382], arc: [200, 20] },
   seattle: { arc: [20, 200] }, // avoid Elliott Bay (W)
   vancouver: { arc: [90, 200] }, // avoid Burrard Inlet (N) + English Bay (W)
   // Asia / other
@@ -199,7 +230,11 @@ const GR = 0.6180339887498949;
 // with n), optionally anchored at a real CBD point and restricted to a bearing
 // arc so pins stay on land. Falls back to a full-circle capped fan when the city
 // has no placement override.
-export function spreadCoordsCity(center: [number, number], n: number, place?: CityPlacement): [number, number][] {
+export function spreadCoordsCity(
+  center: [number, number],
+  n: number,
+  place?: CityPlacement,
+): [number, number][] {
   const c = place?.anchor ?? center;
   const kmToLat = 1 / 111.32;
   const kmToLng = 1 / (111.32 * Math.max(0.2, Math.cos((c[1] * Math.PI) / 180)));
@@ -222,25 +257,103 @@ export function spreadCoordsCity(center: [number, number], n: number, place?: Ci
 }
 
 // Per-group skill + role templates for the generated cards.
-const GROUP_PROFILE: Record<string, { skills: string[]; roles: string[]; sector: string; salary: number }> = {
-  'Financial Services': { skills: ['Risk & Compliance', 'Quantitative Analysis', 'Corporate Finance', 'Data Analytics', 'Wealth Management'], roles: ['Markets & Trading', 'Risk & Compliance', 'Technology'], sector: 'Financial Services', salary: 155 },
-  'Technology, Media and Telecommunications': { skills: ['Software Engineering', 'Cloud & Data', 'Product Management', 'Machine Learning', 'Cybersecurity'], roles: ['Engineering', 'Product & Design', 'Go-to-market'], sector: 'Technology, Media & Telecom', salary: 165 },
-  'Consumer and Retail': { skills: ['Retail Operations', 'Supply Chain', 'Merchandising', 'Brand Marketing', 'Data Analytics'], roles: ['Store & Customer Ops', 'Supply Chain', 'Corporate'], sector: 'Consumer & Retail', salary: 120 },
-  'Energy & Natural Resources': { skills: ['Process Engineering', 'HSE', 'Maintenance', 'Metallurgy', 'Project Delivery'], roles: ['Operations', 'Engineering', 'Maintenance'], sector: 'Energy & Natural Resources', salary: 145 },
-  'Healthcare and Life Sciences': { skills: ['Clinical Research', 'Regulatory Affairs', 'Bioprocessing', 'Quality Assurance', 'Data Science'], roles: ['R&D', 'Manufacturing & Quality', 'Commercial'], sector: 'Healthcare & Life Sciences', salary: 150 },
-  'Industrial Manufacturing': { skills: ['Mechanical Engineering', 'Manufacturing', 'Supply Chain', 'Automation', 'Project Delivery'], roles: ['Engineering', 'Production & Trades', 'Operations'], sector: 'Industrial Manufacturing', salary: 135 },
-  'Infrastructure and Government': { skills: ['Civil Engineering', 'Asset Management', 'Operations', 'Project Delivery', 'Sustainability'], roles: ['Operations', 'Engineering & Projects', 'Corporate'], sector: 'Infrastructure & Government', salary: 138 },
+const GROUP_PROFILE: Record<
+  string,
+  { skills: string[]; roles: string[]; sector: string; salary: number }
+> = {
+  "Financial Services": {
+    skills: [
+      "Risk & Compliance",
+      "Quantitative Analysis",
+      "Corporate Finance",
+      "Data Analytics",
+      "Wealth Management",
+    ],
+    roles: ["Markets & Trading", "Risk & Compliance", "Technology"],
+    sector: "Financial Services",
+    salary: 155,
+  },
+  "Technology, Media and Telecommunications": {
+    skills: [
+      "Software Engineering",
+      "Cloud & Data",
+      "Product Management",
+      "Machine Learning",
+      "Cybersecurity",
+    ],
+    roles: ["Engineering", "Product & Design", "Go-to-market"],
+    sector: "Technology, Media & Telecom",
+    salary: 165,
+  },
+  "Consumer and Retail": {
+    skills: [
+      "Retail Operations",
+      "Supply Chain",
+      "Merchandising",
+      "Brand Marketing",
+      "Data Analytics",
+    ],
+    roles: ["Store & Customer Ops", "Supply Chain", "Corporate"],
+    sector: "Consumer & Retail",
+    salary: 120,
+  },
+  "Energy & Natural Resources": {
+    skills: ["Process Engineering", "HSE", "Maintenance", "Metallurgy", "Project Delivery"],
+    roles: ["Operations", "Engineering", "Maintenance"],
+    sector: "Energy & Natural Resources",
+    salary: 145,
+  },
+  "Healthcare and Life Sciences": {
+    skills: [
+      "Clinical Research",
+      "Regulatory Affairs",
+      "Bioprocessing",
+      "Quality Assurance",
+      "Data Science",
+    ],
+    roles: ["R&D", "Manufacturing & Quality", "Commercial"],
+    sector: "Healthcare & Life Sciences",
+    salary: 150,
+  },
+  "Industrial Manufacturing": {
+    skills: [
+      "Mechanical Engineering",
+      "Manufacturing",
+      "Supply Chain",
+      "Automation",
+      "Project Delivery",
+    ],
+    roles: ["Engineering", "Production & Trades", "Operations"],
+    sector: "Industrial Manufacturing",
+    salary: 135,
+  },
+  "Infrastructure and Government": {
+    skills: [
+      "Civil Engineering",
+      "Asset Management",
+      "Operations",
+      "Project Delivery",
+      "Sustainability",
+    ],
+    roles: ["Operations", "Engineering & Projects", "Corporate"],
+    sector: "Infrastructure & Government",
+    salary: 138,
+  },
 };
-const DEFAULT_PROFILE = GROUP_PROFILE['Energy & Natural Resources'];
+const DEFAULT_PROFILE = GROUP_PROFILE["Energy & Natural Resources"];
 
 // Build a full illustrative Company record from a compact roster entry.
-export function buildRosterCompany(city: string, cityExchange: string, entry: RosterEntry): Company {
+export function buildRosterCompany(
+  city: string,
+  cityExchange: string,
+  entry: RosterEntry,
+): Company {
   const [ticker, name, group, exOverride, pillOverride] = entry;
   const exchange = exOverride || cityExchange;
   const pill = pillOverride || (ACRONYM_CITIES.has(city) ? nameAcronym(name) : undefined);
   const prof = GROUP_PROFILE[group] || DEFAULT_PROFILE;
   const h = hash01(ticker + name);
-  const h2 = hash01(name + '::b');
+  const h2 = hash01(name + "::b");
   const headcount = Math.round(400 + h * 39600); // 400 .. 40,000
   const growth = +(-2 + h2 * 12).toFixed(1); // -2 .. +10
   const salaryNum = Math.round((prof.salary + (h - 0.5) * 30) * 1000);
@@ -251,7 +364,7 @@ export function buildRosterCompany(city: string, cityExchange: string, entry: Ro
   const roleCounts = [3, 2, 1].map((w, i) => 12 + Math.round(h * 60 * w) + i);
   const roles: RoleBreakdown[] = prof.roles.map((title, i) => ({ title, count: roleCounts[i] }));
   const delta = Math.round((h - 0.45) * 30);
-  const metro = `${delta >= 0 ? '+' : '−'}${Math.abs(delta)}% vs metro`;
+  const metro = `${delta >= 0 ? "+" : "−"}${Math.abs(delta)}% vs metro`;
   return {
     id: rosterId(city, ticker),
     ticker,
@@ -264,17 +377,17 @@ export function buildRosterCompany(city: string, cityExchange: string, entry: Ro
     headcount,
     growth,
     openRoles: Math.round(20 + h * 380),
-    salary: `$${salaryNum.toLocaleString('en-US')}`,
+    salary: `$${salaryNum.toLocaleString("en-US")}`,
     salaryShort: `$${salaryK}K`,
     salaryNum,
     turnover,
-    salaryDelta: `${delta >= 0 ? '+' : '−'}${Math.abs(delta)}%`,
+    salaryDelta: `${delta >= 0 ? "+" : "−"}${Math.abs(delta)}%`,
     metroDelta: metro,
     trend,
     revPerEmp: +(0.4 + h * 2.4).toFixed(2),
     ebitdaPerEmp: +(0.1 + h2 * 0.8).toFixed(2),
     timeToFill: `${Math.round(32 + h * 26)} days`,
-    competition: h > 0.66 ? 'Very high' : h > 0.33 ? 'High' : 'Medium',
+    competition: h > 0.66 ? "Very high" : h > 0.33 ? "High" : "Medium",
     skills: prof.skills,
     roles,
   };

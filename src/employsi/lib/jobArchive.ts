@@ -17,10 +17,24 @@
 
 // Minimal structural type for the D1 surface we use — avoids depending on
 // @cloudflare/workers-types in the app bundle.
+//
+// bind() returns the statement, and the statement carries all()/first()/run().
+// It previously returned `unknown`, which meant every caller had to cast to
+// `any` twice just to reach .all() — the reason nearly half this codebase's
+// explicit `any`s existed. Typing the chain properly removes the casts and
+// gives real column types at the call sites.
+export type SqlValue = string | number | boolean | null;
+export type SqlRow = Record<string, SqlValue>;
+
+export interface D1Statement {
+  bind(...values: unknown[]): D1Statement;
+  all<T = SqlRow>(): Promise<{ results?: T[] } | null>;
+  first<T = SqlRow>(): Promise<T | null>;
+  run(): Promise<unknown>;
+}
+
 export interface D1Like {
-  prepare(query: string): {
-    bind(...values: unknown[]): unknown;
-  };
+  prepare(query: string): D1Statement;
   batch(statements: unknown[]): Promise<unknown>;
 }
 
@@ -39,18 +53,33 @@ export interface ArchiveRow {
 }
 
 function norm(s: string): string {
-  return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 120);
+  return (s || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .slice(0, 120);
 }
 
 // A stable key so the same ad from the same source dedupes across runs.
 function jobKey(r: ArchiveRow): string {
-  return [r.source, norm(r.title), norm(r.company || r.companyId || ''), norm(r.location || r.hub || '')].join('|').slice(0, 400);
+  return [
+    r.source,
+    norm(r.title),
+    norm(r.company || r.companyId || ""),
+    norm(r.location || r.hub || ""),
+  ]
+    .join("|")
+    .slice(0, 400);
 }
 
 // Upsert a batch of listings. New listings insert with first_seen = last_seen =
 // today; re-seen listings bump last_seen + seen_count and backfill any field
 // that was previously empty. Best-effort: a D1 hiccup never breaks the pull.
-export async function archiveJobs(db: D1Like | null | undefined, rows: ArchiveRow[], today: string): Promise<void> {
+export async function archiveJobs(
+  db: D1Like | null | undefined,
+  rows: ArchiveRow[],
+  today: string,
+): Promise<void> {
   if (!db || !rows.length) return;
   const stmt = db.prepare(
     `INSERT INTO jobs
@@ -79,11 +108,11 @@ export async function archiveJobs(db: D1Like | null | undefined, rows: ArchiveRo
         r.company ?? null,
         r.companyId ?? null,
         r.hub ?? null,
-        r.location ?? '',
-        r.category ?? '',
+        r.location ?? "",
+        r.category ?? "",
         r.salary ?? null,
-        r.url ?? '',
-        r.posted ?? '',
+        r.url ?? "",
+        r.posted ?? "",
         r.skills && r.skills.length ? JSON.stringify(r.skills) : null,
         today,
       ),

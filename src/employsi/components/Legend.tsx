@@ -1,7 +1,7 @@
-import { useAppStore } from '../state/store';
-import { COMPANIES, type Company } from '../data/companies';
-import { CITY_COMPANIES } from '../data/mapboxGeo';
-import { GLOBAL_HUB_LABEL } from '../data/geo';
+import { useAppStore } from "../state/store";
+import { COMPANIES, type Company } from "../data/companies";
+import { CITY_COMPANIES } from "../data/mapboxGeo";
+import { GLOBAL_HUB_LABEL } from "../data/geo";
 
 // Bottom summary bar. Reflects the city currently open on the local map — the
 // employers actually plotted there, their combined open roles and workforce —
@@ -16,17 +16,18 @@ export function Legend() {
     .filter((c): c is Company => !!c);
 
   const totalRoles = companies.reduce((a, c) => a + c.openRoles, 0);
-  const totalHeads = Math.round(companies.reduce((a, c) => a + c.headcount, 0) / 1000) + 'K';
-  const cityName = GLOBAL_HUB_LABEL[localCity] || localCity.charAt(0).toUpperCase() + localCity.slice(1);
+  const totalHeads = Math.round(companies.reduce((a, c) => a + c.headcount, 0) / 1000) + "K";
+  const cityName =
+    GLOBAL_HUB_LABEL[localCity] || localCity.charAt(0).toUpperCase() + localCity.slice(1);
 
   return (
-    <div className={`legend ${zoomedOut ? 'zoomhide' : ''}`}>
+    <div className={`legend ${zoomedOut ? "zoomhide" : ""}`}>
       <span>
         <b>{companies.length}</b> employers
       </span>
       <span className="sep" />
       <span>
-        <b>{totalRoles.toLocaleString('en-US')}</b> open roles
+        <b>{totalRoles.toLocaleString("en-US")}</b> open roles
       </span>
       <span className="sep" />
       <span>

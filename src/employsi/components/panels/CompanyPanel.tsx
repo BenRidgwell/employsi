@@ -1,47 +1,79 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useAppStore } from '../../state/store';
-import { buildPanel } from '../../lib/panel';
-import { useBhpFeed } from '../../hooks/useBhpFeed';
-import { useShareSeries } from '../../hooks/useShareSeries';
-import { useCompanyStats } from '../../hooks/useCompanyStats';
-import { useOpenRoles } from '../../hooks/useOpenRoles';
-import { useRolesHistory } from '../../hooks/useRolesHistory';
-import { useCompanyJobs } from '../../hooks/useSkillData';
-import { useVacancyTrend, useSkillTrends } from '../../hooks/useRoleHistory';
-import { spark } from '../../lib/sparkline';
-import { cityForCompany } from '../../data/mapboxGeo';
-import { marketForCity } from '../../data/cityMarket';
-import { GOV_WORKFORCE } from '../../data/perthGovWorkforce';
-import { TrendChart } from './TrendChart';
-import { ShareChart } from './ShareChart';
-import { RolesHistoryChart } from './RolesHistoryChart';
-import { NewsPanel } from './NewsPanel';
-import { FabWrap } from './FabTooltip';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useAppStore } from "../../state/store";
+import { buildPanel } from "../../lib/panel";
+import { useBhpFeed } from "../../hooks/useBhpFeed";
+import { useShareSeries } from "../../hooks/useShareSeries";
+import { useCompanyStats } from "../../hooks/useCompanyStats";
+import { useOpenRoles } from "../../hooks/useOpenRoles";
+import { useRolesHistory } from "../../hooks/useRolesHistory";
+import { useCompanyJobs } from "../../hooks/useSkillData";
+import { useVacancyTrend, useSkillTrends } from "../../hooks/useRoleHistory";
+import { spark } from "../../lib/sparkline";
+import { cityForCompany } from "../../data/mapboxGeo";
+import { marketForCity } from "../../data/cityMarket";
+import { GOV_WORKFORCE } from "../../data/perthGovWorkforce";
+import { TrendChart } from "./TrendChart";
+import { ShareChart } from "./ShareChart";
+import { RolesHistoryChart } from "./RolesHistoryChart";
+import { NewsPanel } from "./NewsPanel";
+import { FabWrap } from "./FabTooltip";
 
 // "2026-07-20" → "20 Jul 2026" for the vacancy-history header.
 function fmtDay(iso: string): string {
-  const t = Date.parse((iso || '') + 'T00:00:00Z');
-  if (Number.isNaN(t)) return iso || '';
-  return new Date(t).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  const t = Date.parse((iso || "") + "T00:00:00Z");
+  if (Number.isNaN(t)) return iso || "";
+  return new Date(t).toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 const CompareIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.9}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M8 4H4v13M4 4l4 4M16 20h4V7M20 20l-4-4" />
   </svg>
 );
 const FollowIcon = ({ on }: { on: boolean }) =>
   on ? (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.9}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M5 12.5l4.2 4.2L19 7" />
     </svg>
   ) : (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.9}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M12 5v14M5 12h14" />
     </svg>
   );
 const CloseIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round">
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.9}
+    strokeLinecap="round"
+  >
     <path d="M6 6l12 12M18 6L6 18" />
   </svg>
 );
@@ -68,18 +100,34 @@ function CompanyLogo({ domain, ticker }: { domain: string; ticker: string }) {
   );
 }
 
-function RoleSearch({ options, value, onChange }: { options: string[]; value: string | null; onChange: (v: string | null) => void }) {
+function RoleSearch({
+  options,
+  value,
+  onChange,
+}: {
+  options: string[];
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
   const [open, setOpen] = useState(false);
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState("");
   const filtered = options.filter((o) => o.toLowerCase().includes(q.trim().toLowerCase()));
   return (
     <div className="rolesearch">
-      <button className={`prole ${value ? 'on' : ''}`} onClick={() => setOpen((o) => !o)}>
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round">
+      <button className={`prole ${value ? "on" : ""}`} onClick={() => setOpen((o) => !o)}>
+        <svg
+          viewBox="0 0 24 24"
+          width="13"
+          height="13"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.4}
+          strokeLinecap="round"
+        >
           <circle cx="11" cy="11" r="7" />
           <line x1="21" y1="21" x2="16.6" y2="16.6" />
         </svg>
-        <span className="prolelbl">{value || 'Search a role in this company'}</span>
+        <span className="prolelbl">{value || "Search a role in this company"}</span>
         {value && (
           <span
             className="proleclear"
@@ -95,16 +143,22 @@ function RoleSearch({ options, value, onChange }: { options: string[]; value: st
       </button>
       {open && (
         <div className="roledrop">
-          <input className="roleinput" placeholder="Search roles…" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+          <input
+            className="roleinput"
+            placeholder="Search roles…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            autoFocus
+          />
           <div className="rolechips">
             {filtered.map((o) => (
               <button
                 key={o}
-                className={`rolechip ${value === o ? 'on' : ''}`}
+                className={`rolechip ${value === o ? "on" : ""}`}
                 onClick={() => {
                   onChange(o);
                   setOpen(false);
-                  setQ('');
+                  setQ("");
                 }}
               >
                 {o}
@@ -153,7 +207,7 @@ export function CompanyPanel() {
   const open = !!selectedId;
   // BHP is the pilot for real-time data: poll its live feed while the card is
   // open and overlay it onto the panel; every other company stays illustrative.
-  const isBhp = lastId === 'bhp';
+  const isBhp = lastId === "bhp";
   const feed = useBhpFeed(isBhp && open);
 
   const panel = buildPanel(lastId, roleFilter, isBhp ? feed : undefined);
@@ -174,13 +228,21 @@ export function CompanyPanel() {
   // it's plotted — Perth, London, Houston, Singapore, Tokyo, … Fetched when the
   // card is open and no role filter is narrowing it to a single role.
   const localCity = useAppStore((s) => s.localCity);
-  const market = useMemo(() => marketForCity(lastId ? cityForCompany(lastId, localCity) : localCity), [lastId, localCity]);
+  const market = useMemo(
+    () => marketForCity(lastId ? cityForCompany(lastId, localCity) : localCity),
+    [lastId, localCity],
+  );
   const marketArg = useMemo(
     () => ({ country: market.country, where: market.where, region: market.region.source }),
     [market],
   );
   const liveEnabled = open && !!panel && !roleFilter;
-  const { roles: liveRoles, settled: rolesSettled } = useOpenRoles(panel?.name ?? null, panel?.companyId, marketArg, liveEnabled);
+  const { roles: liveRoles, settled: rolesSettled } = useOpenRoles(
+    panel?.name ?? null,
+    panel?.companyId,
+    marketArg,
+    liveEnabled,
+  );
   // Stored daily history of the live vacancy count, charted below the stats
   // (built forward by the jobs-cron; empty for a company not yet snapshotted).
   const rolesHistory = useRolesHistory(panel?.companyId, liveEnabled);
@@ -200,7 +262,7 @@ export function CompanyPanel() {
   // the forward-built KV snapshots the private companies use.
   const vacancyTrend = useVacancyTrend(panel?.companyId, open && !roleFilter);
   const jobSample = useMemo(
-    () => (liveRoles?.jobs?.length ? liveRoles.jobs : companyJobs?.jobs ?? null),
+    () => (liveRoles?.jobs?.length ? liveRoles.jobs : (companyJobs?.jobs ?? null)),
     [liveRoles, companyJobs],
   );
   // Rank the company's real in-demand skills by how many live roles mention
@@ -221,9 +283,9 @@ export function CompanyPanel() {
     const counts = new Map<string, number>();
     const salaries = new Map<string, number[]>(); // per-area advertised salary midpoints
     for (const j of jobSample) {
-      const area = (j.cat || '').replace(/\s*jobs?$/i, '').trim() || 'Other';
+      const area = (j.cat || "").replace(/\s*jobs?$/i, "").trim() || "Other";
       counts.set(area, (counts.get(area) || 0) + 1);
-      if (typeof j.salN === 'number' && j.salN > 0) {
+      if (typeof j.salN === "number" && j.salN > 0) {
         const arr = salaries.get(area) || [];
         arr.push(j.salN);
         salaries.set(area, arr);
@@ -240,17 +302,28 @@ export function CompanyPanel() {
     const mx = Math.max(...ranked.map(([, c]) => c));
     return ranked.map(([title, count]) => {
       const sals = salaries.get(title);
-      return { title, count, pct: Math.round((count / mx) * 100) + '%', pay: sals && sals.length ? fmtK(median(sals)) : null };
+      return {
+        title,
+        count,
+        pct: Math.round((count / mx) * 100) + "%",
+        pay: sals && sals.length ? fmtK(median(sals)) : null,
+      };
     });
   }, [jobSample]);
   // Company-wide median advertised salary across the live roles that state one.
   const medianPay = useMemo(() => {
     if (!jobSample?.length) return null;
-    const vals = jobSample.map((j) => j.salN).filter((n): n is number => typeof n === 'number' && n > 0).sort((a, b) => a - b);
+    const vals = jobSample
+      .map((j) => j.salN)
+      .filter((n): n is number => typeof n === "number" && n > 0)
+      .sort((a, b) => a - b);
     if (!vals.length) return null;
     const m = Math.floor(vals.length / 2);
     const med = vals.length % 2 ? vals[m] : Math.round((vals[m - 1] + vals[m]) / 2);
-    return { text: med >= 1000 ? `$${Math.round(med / 1000)}k` : `$${Math.round(med)}`, n: vals.length };
+    return {
+      text: med >= 1000 ? `$${Math.round(med / 1000)}k` : `$${Math.round(med)}`,
+      n: vals.length,
+    };
   }, [jobSample]);
 
   // Headcount is deliberately NOT taken from the live market feed — there's no
@@ -277,14 +350,14 @@ export function CompanyPanel() {
   // graph off the archived board data instead of the private-sector layout.
   const isGov =
     !!panel &&
-    (panel.companyId.startsWith('perth-gov-') ||
-      panel.companyId.startsWith('sa-gov-') ||
-      panel.companyId.startsWith('vic-gov-') ||
-      panel.companyId.startsWith('qld-gov-') ||
-      panel.companyId.startsWith('aps-') ||
-      panel.companyId.startsWith('nt-gov-') ||
-      panel.companyId.startsWith('tas-gov-') ||
-      panel.companyId.startsWith('nsw-gov-'));
+    (panel.companyId.startsWith("perth-gov-") ||
+      panel.companyId.startsWith("sa-gov-") ||
+      panel.companyId.startsWith("vic-gov-") ||
+      panel.companyId.startsWith("qld-gov-") ||
+      panel.companyId.startsWith("aps-") ||
+      panel.companyId.startsWith("nt-gov-") ||
+      panel.companyId.startsWith("tas-gov-") ||
+      panel.companyId.startsWith("nsw-gov-"));
   // Real PSC workforce record for a gov agency (present only for agencies the
   // PSC reports). When absent, the agency's headcount is genuinely unknown and
   // the workforce chart / headcount stat are suppressed rather than faked.
@@ -304,22 +377,26 @@ export function CompanyPanel() {
     if (!panel) return [];
     if (roleFilter) return panel.bigStats;
     return panel.bigStats.map((s) => {
-      if (s.label === 'Open roles') {
-        if (rolesChecking) return { ...s, value: '···', sub: 'checking live ads…', subCls: '' };
+      if (s.label === "Open roles") {
+        if (rolesChecking) return { ...s, value: "···", sub: "checking live ads…", subCls: "" };
         const count = liveRoles ? liveRoles.count : 0;
         // Neutral subheading — the count is a deduped union across every source,
         // so we don't name individual boards (Adzuna / SEEK / …).
-        return { ...s, value: count.toLocaleString('en-US'), sub: count > 0 ? 'current vacancies' : 'no live vacancies' };
+        return {
+          ...s,
+          value: count.toLocaleString("en-US"),
+          sub: count > 0 ? "current vacancies" : "no live vacancies",
+        };
       }
-      if (s.label === 'Median salary') {
+      if (s.label === "Median salary") {
         // Real median only from live advertised salaries; otherwise a 0 gap.
         return medianPay
-          ? { ...s, value: medianPay.text, sub: `median · ${medianPay.n} live ads`, subCls: '' }
-          : { ...s, value: '$0', sub: 'no live salary data', subCls: '' };
+          ? { ...s, value: medianPay.text, sub: `median · ${medianPay.n} live ads`, subCls: "" }
+          : { ...s, value: "$0", sub: "no live salary data", subCls: "" };
       }
-      if (s.label === 'Headcount YoY') {
+      if (s.label === "Headcount YoY") {
         // Real only from an annual report / gov bulletin; else show the gap.
-        return headcountReal ? s : { ...s, value: '—', sub: 'not reported', subCls: '' };
+        return headcountReal ? s : { ...s, value: "—", sub: "not reported", subCls: "" };
       }
       return s;
     });
@@ -331,12 +408,12 @@ export function CompanyPanel() {
   const subStats = useMemo(() => {
     if (!panel) return [];
     return panel.subStats.map((s) => {
-      if (s.label === 'Glassdoor rating') {
-        return cultureReal ? s : { ...s, value: '0.0 ★', sub: 'no data', subCls: '' };
+      if (s.label === "Glassdoor rating") {
+        return cultureReal ? s : { ...s, value: "0.0 ★", sub: "no data", subCls: "" };
       }
-      if (s.label === 'Biggest hiring area') {
+      if (s.label === "Biggest hiring area") {
         const top = liveHiring && liveHiring.length ? liveHiring[0].title : null;
-        return { ...s, value: top ?? '—', sub: top ? 'from live job ads' : undefined };
+        return { ...s, value: top ?? "—", sub: top ? "from live job ads" : undefined };
       }
       return s;
     });
@@ -349,18 +426,15 @@ export function CompanyPanel() {
     () => (feed && isBhp ? feed.sharePrice : liveShare ? liveShare.series : []),
     [feed, isBhp, liveShare],
   );
-  const commodities = useMemo(
-    () => (feed && isBhp ? feed.commodities : undefined),
-    [feed, isBhp],
-  );
+  const commodities = useMemo(() => (feed && isBhp ? feed.commodities : undefined), [feed, isBhp]);
   // The Financial-trends chart (share price + commodity baskets) is only
   // meaningful for mining / resources companies, so it's limited to that sector
   // group — every other company (public or government) never shows it.
-  const isResources = panel?.group === 'Energy & Natural Resources';
+  const isResources = panel?.group === "Energy & Natural Resources";
 
   return (
-    <div className={`cardstage ${open ? 'open' : ''}`}>
-      <aside className={`panel ${open ? 'open' : ''}`}>
+    <div className={`cardstage ${open ? "open" : ""}`}>
+      <aside className={`panel ${open ? "open" : ""}`}>
         <div className="pscroll" ref={scrollRef}>
           {panel && (
             <>
@@ -372,18 +446,32 @@ export function CompanyPanel() {
                 </div>
                 <div className="pactions">
                   <FabWrap label="Compare">
-                    <button className="pfab" onClick={() => openCompare(panel.companyId)} aria-label="Compare">
-                      <span className="pfabic"><CompareIcon /></span>
+                    <button
+                      className="pfab"
+                      onClick={() => openCompare(panel.companyId)}
+                      aria-label="Compare"
+                    >
+                      <span className="pfabic">
+                        <CompareIcon />
+                      </span>
                     </button>
                   </FabWrap>
-                  <FabWrap label={following ? 'Following' : 'Follow'}>
-                    <button className={`pfab ${following ? 'on' : ''}`} onClick={() => requestFollow(panel.companyId)} aria-label="Follow">
-                      <span className="pfabic"><FollowIcon on={following} /></span>
+                  <FabWrap label={following ? "Following" : "Follow"}>
+                    <button
+                      className={`pfab ${following ? "on" : ""}`}
+                      onClick={() => requestFollow(panel.companyId)}
+                      aria-label="Follow"
+                    >
+                      <span className="pfabic">
+                        <FollowIcon on={following} />
+                      </span>
                     </button>
                   </FabWrap>
                   <FabWrap label="Close">
                     <button className="pfab" onClick={closePanel} aria-label="Close">
-                      <span className="pfabic"><CloseIcon /></span>
+                      <span className="pfabic">
+                        <CloseIcon />
+                      </span>
                     </button>
                   </FabWrap>
                 </div>
@@ -402,11 +490,15 @@ export function CompanyPanel() {
               </div>
 
               {/* Private companies: forward-built KV snapshots of the live count. */}
-              {!isGov && !roleFilter && liveRoles && liveRoles.count > 0 && rolesHistory.length > 0 && (
-                <div className="sect">
-                  <RolesHistoryChart points={rolesHistory} current={liveRoles.count} />
-                </div>
-              )}
+              {!isGov &&
+                !roleFilter &&
+                liveRoles &&
+                liveRoles.count > 0 &&
+                rolesHistory.length > 0 && (
+                  <div className="sect">
+                    <RolesHistoryChart points={rolesHistory} current={liveRoles.count} />
+                  </div>
+                )}
               {/* WA government agencies: the same current + historical vacancy
                   chart, built from the D1 archive (the scraped board history). */}
               {isGov && !roleFilter && vacancyTrend.length > 1 && (
@@ -439,7 +531,7 @@ export function CompanyPanel() {
                     <div className="subc" key={i}>
                       <div className="subv">{s.value}</div>
                       <div className="subl">{s.label}</div>
-                      {s.sub && <div className={`subd ${s.subCls || ''}`}>{s.sub}</div>}
+                      {s.sub && <div className={`subd ${s.subCls || ""}`}>{s.sub}</div>}
                     </div>
                   ))}
                 </div>
@@ -448,7 +540,9 @@ export function CompanyPanel() {
               <div className="sect">
                 <div className="secth">
                   Skills in demand
-                  <span>{rolesChecking && !liveSkills ? 'checking live ads…' : 'from live job ads'}</span>
+                  <span>
+                    {rolesChecking && !liveSkills ? "checking live ads…" : "from live job ads"}
+                  </span>
                 </div>
                 {rolesChecking && !liveSkills ? (
                   <div className="skills skills-loading">
@@ -460,7 +554,9 @@ export function CompanyPanel() {
                 ) : liveSkills ? (
                   <div className="skills">
                     {liveSkills.map((sk) => (
-                      <span className="skill" key={sk}>{sk}</span>
+                      <span className="skill" key={sk}>
+                        {sk}
+                      </span>
                     ))}
                   </div>
                 ) : (
@@ -484,7 +580,12 @@ export function CompanyPanel() {
                         <div className="moverrow" key={m.skill}>
                           <span className="movername">{m.skill}</span>
                           {sp ? (
-                            <svg className={`moverspark ${m.dir}`} viewBox="0 0 188 52" preserveAspectRatio="none" aria-hidden="true">
+                            <svg
+                              className={`moverspark ${m.dir}`}
+                              viewBox="0 0 188 52"
+                              preserveAspectRatio="none"
+                              aria-hidden="true"
+                            >
                               <path className="moversparkarea" d={sp.area} />
                               <path className="moversparkline" d={sp.line} />
                             </svg>
@@ -492,9 +593,16 @@ export function CompanyPanel() {
                             <span className="moverspark" aria-hidden="true" />
                           )}
                           <span className={`moverdelta ${m.dir}`}>
-                            <span className="moverdir" aria-hidden="true">{m.dir === 'up' ? '▲' : '▼'}</span>
-                            {m.dir === 'up' ? '+' : '−'}{Math.abs(m.delta)}
-                            <span className="moverpct">{m.prev > 0 ? ` ${m.dir === 'up' ? '+' : '−'}${Math.abs(m.pct)}%` : ' new'}</span>
+                            <span className="moverdir" aria-hidden="true">
+                              {m.dir === "up" ? "▲" : "▼"}
+                            </span>
+                            {m.dir === "up" ? "+" : "−"}
+                            {Math.abs(m.delta)}
+                            <span className="moverpct">
+                              {m.prev > 0
+                                ? ` ${m.dir === "up" ? "+" : "−"}${Math.abs(m.pct)}%`
+                                : " new"}
+                            </span>
                           </span>
                         </div>
                       );
@@ -504,12 +612,19 @@ export function CompanyPanel() {
                   <div className="dataempty">Not enough vacancy history yet</div>
                 )}
               </div>
-
             </>
           )}
         </div>
       </aside>
-      {panel && <NewsPanel key={panel.companyId} name={panel.name} sector={panel.sector} ticker={panel.ticker} live={panel.news} />}
+      {panel && (
+        <NewsPanel
+          key={panel.companyId}
+          name={panel.name}
+          sector={panel.sector}
+          ticker={panel.ticker}
+          live={panel.news}
+        />
+      )}
     </div>
   );
 }

@@ -43,12 +43,12 @@ const REAL_SHARE_PRICE_AUD: Record<string, number[]> = {
   RIO: [130.4, 124.1, 116.2, 108.0, 105.81, 118.6, 134.0, 122.5],
   FMG: [22.5, 20.8, 18.9, 16.9, 16.51, 19.2, 23.38, 20.1],
   S32: [4.72, 4.18, 3.55, 2.9, 2.52, 3.48, 4.95, 3.82],
-  WDS: [34.0, 30.5, 26.2, 21.96, 25.8, 31.4, 35.82, 30.20],
-  STO: [7.9, 7.2, 6.5, 5.90, 6.6, 7.6, 8.24, 7.30],
-  MIN: [30.0, 27.5, 25.1, 23.46, 38.0, 55.0, 74.94, 58.90],
+  WDS: [34.0, 30.5, 26.2, 21.96, 25.8, 31.4, 35.82, 30.2],
+  STO: [7.9, 7.2, 6.5, 5.9, 6.6, 7.6, 8.24, 7.3],
+  MIN: [30.0, 27.5, 25.1, 23.46, 38.0, 55.0, 74.94, 58.9],
   PLS: [1.9, 1.5, 1.2, 1.07, 2.6, 4.6, 6.81, 6.43],
-  NST: [18.0, 17.1, 16.2, 15.30, 21.0, 27.5, 31.96, 19.83],
-  IGO: [6.5, 5.6, 4.8, 4.10, 6.2, 8.6, 10.05, 6.74],
+  NST: [18.0, 17.1, 16.2, 15.3, 21.0, 27.5, 31.96, 19.83],
+  IGO: [6.5, 5.6, 4.8, 4.1, 6.2, 8.6, 10.05, 6.74],
   LTR: [0.95, 0.78, 0.63, 0.55, 1.2, 2.0, 2.65, 2.32],
   ILU: [5.6, 5.0, 4.4, 3.91, 5.3, 7.6, 9.48, 6.47],
   SFR: [12.5, 11.4, 10.6, 10.11, 14.5, 18.5, 21.75, 21.0],
@@ -56,9 +56,11 @@ const REAL_SHARE_PRICE_AUD: Record<string, number[]> = {
 };
 
 export function shareTrend(ticker: string, headcountTrend: number[]): number[] {
-  if (ticker === 'BHP') {
+  if (ticker === "BHP") {
     const n = headcountTrend.length;
-    return n === BHP_SHARE_PRICE_AUD.length ? BHP_SHARE_PRICE_AUD.slice() : BHP_SHARE_PRICE_AUD.slice(-n);
+    return n === BHP_SHARE_PRICE_AUD.length
+      ? BHP_SHARE_PRICE_AUD.slice()
+      : BHP_SHARE_PRICE_AUD.slice(-n);
   }
   const real = REAL_SHARE_PRICE_AUD[ticker];
   if (real) {
@@ -79,7 +81,7 @@ export function shareTrend(ticker: string, headcountTrend: number[]): number[] {
 // can show one at a time against the share price. These are macro series,
 // identical for every company — resources prices are set by the market, not the
 // firm — so they give the share-price line a sector benchmark to read against.
-export type CommodityBasket = 'base' | 'precious' | 'oilLng';
+export type CommodityBasket = "base" | "precious" | "oilLng";
 
 // Real quarter-by-quarter commodity moves over the same 8-quarter window as the
 // share series (≈2024 Q3 → 2026 Q2), rebased to 100 at the first quarter. Each
@@ -108,5 +110,9 @@ export function commodityBaskets(n: number): Record<CommodityBasket, number[]> {
     const first = sliced[0] || 100;
     return sliced.map((v) => +((v / first) * 100).toFixed(1));
   };
-  return { base: take(COMMODITY_INDEX.base), precious: take(COMMODITY_INDEX.precious), oilLng: take(COMMODITY_INDEX.oilLng) };
+  return {
+    base: take(COMMODITY_INDEX.base),
+    precious: take(COMMODITY_INDEX.precious),
+    oilLng: take(COMMODITY_INDEX.oilLng),
+  };
 }

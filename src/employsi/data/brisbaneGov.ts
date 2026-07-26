@@ -1,5 +1,5 @@
-import type { Company, RoleBreakdown } from './companies';
-import { deriveDomain } from './rosters';
+import type { Company, RoleBreakdown } from "./companies";
+import { deriveDomain } from "./rosters";
 
 // Queensland government agencies plotted in Brisbane — the Queensland counterpart of
 // perthGov.ts / adelaideGov.ts. These are PRIVATE (not exchange-listed)
@@ -13,64 +13,64 @@ import { deriveDomain } from './rosters';
 // live open-roles resolve from the scraped board feed (jobs-cron, KV
 // qldgov:{id}) when a card is opened — see lib/openRolesFn.ts.
 const NAMES: string[] = [
-  'Art Gallery',
-  'Crime and Corruption Commission',
-  'Cross River Rail Delivery Authority',
-  'Department of Customer Services, Open Data and Small and Family Business',
-  'Department of Women, Aboriginal and Torres Strait Islander Partnerships and Multiculturalism',
-  'Economic Development Queensland',
-  'Education',
-  'Electoral Commission',
-  'Energy and Water Ombudsman Queensland',
-  'Environment, Tourism, Science and Innovation',
-  'Families, Seniors, Disability Services and Child Safety',
-  'Health and Wellbeing Queensland',
-  'Housing and Public Works',
-  'Information Commissioner',
-  'Inspector General Emergency Management',
-  'Justice',
-  'Legal Aid',
-  'Local Government, Water and Volunteers',
-  'National Injury Insurance Agency Queensland',
-  'Natural Resources and Mines, Manufacturing and Regional and Rural Development',
-  'Office of Industrial Relations',
-  'Office of the Health Ombudsman',
-  'Office of the Public Guardian',
-  'Office of the Queensland Integrity Commissioner',
-  'Office of the Queensland Ombudsman',
-  'Parliamentary Service',
-  'Primary Industries',
-  'Public Trust Office',
-  'QLeave',
-  'Queensland Academy of Sport',
-  'Queensland Ambulance Service',
-  'Queensland Audit Office',
-  'Queensland Building and Construction Commission',
-  'Queensland Corrective Services',
-  'Queensland Curriculum and Assessment Authority',
-  'Queensland Family and Child Commission',
-  'Queensland Fire Department',
-  'Queensland Health',
-  'Queensland Mental Health Commission',
-  'Queensland Pharmacy Business Ownership Council',
-  'Queensland Police Service',
-  'Queensland Racing Integrity Commission',
-  'Queensland Rural and Industry Development Authority',
-  'Queensland Treasury',
-  'Resources Safety and Health Queensland',
-  'Sport, Racing and Olympic and Paralympic Games',
-  'Stadiums Queensland',
-  'State Development, Infrastructure and Planning',
-  'State Library',
-  'TAFE Queensland',
-  'Teach Queensland',
-  'Trade and Investment Queensland',
-  'Trade, Employment and Training',
-  'Transport and Main Roads',
-  'Youth Justice and Victim Support',
+  "Art Gallery",
+  "Crime and Corruption Commission",
+  "Cross River Rail Delivery Authority",
+  "Department of Customer Services, Open Data and Small and Family Business",
+  "Department of Women, Aboriginal and Torres Strait Islander Partnerships and Multiculturalism",
+  "Economic Development Queensland",
+  "Education",
+  "Electoral Commission",
+  "Energy and Water Ombudsman Queensland",
+  "Environment, Tourism, Science and Innovation",
+  "Families, Seniors, Disability Services and Child Safety",
+  "Health and Wellbeing Queensland",
+  "Housing and Public Works",
+  "Information Commissioner",
+  "Inspector General Emergency Management",
+  "Justice",
+  "Legal Aid",
+  "Local Government, Water and Volunteers",
+  "National Injury Insurance Agency Queensland",
+  "Natural Resources and Mines, Manufacturing and Regional and Rural Development",
+  "Office of Industrial Relations",
+  "Office of the Health Ombudsman",
+  "Office of the Public Guardian",
+  "Office of the Queensland Integrity Commissioner",
+  "Office of the Queensland Ombudsman",
+  "Parliamentary Service",
+  "Primary Industries",
+  "Public Trust Office",
+  "QLeave",
+  "Queensland Academy of Sport",
+  "Queensland Ambulance Service",
+  "Queensland Audit Office",
+  "Queensland Building and Construction Commission",
+  "Queensland Corrective Services",
+  "Queensland Curriculum and Assessment Authority",
+  "Queensland Family and Child Commission",
+  "Queensland Fire Department",
+  "Queensland Health",
+  "Queensland Mental Health Commission",
+  "Queensland Pharmacy Business Ownership Council",
+  "Queensland Police Service",
+  "Queensland Racing Integrity Commission",
+  "Queensland Rural and Industry Development Authority",
+  "Queensland Treasury",
+  "Resources Safety and Health Queensland",
+  "Sport, Racing and Olympic and Paralympic Games",
+  "Stadiums Queensland",
+  "State Development, Infrastructure and Planning",
+  "State Library",
+  "TAFE Queensland",
+  "Teach Queensland",
+  "Trade and Investment Queensland",
+  "Trade, Employment and Training",
+  "Transport and Main Roads",
+  "Youth Justice and Victim Support",
 ];
 
-const STOP = new Set(['of', 'and', 'the', 'for', '&', 'a']);
+const STOP = new Set(["of", "and", "the", "for", "&", "a"]);
 
 // Deterministic 0..1 hash so each agency's figures are stable.
 function h01(s: string): number {
@@ -83,27 +83,39 @@ function h01(s: string): number {
 }
 
 function slug(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 export function qldGovAgencyId(name: string): string {
-  return 'qld-gov-' + slug(name);
+  return "qld-gov-" + slug(name);
 }
 
 // Short acronym for the map pill / search ticker.
 function govAcronym(name: string): string {
   const words = name.split(/[\s,|]+/).filter((w) => w && !STOP.has(w.toLowerCase()));
   if (words.length >= 2) {
-    return words.map((w) => w[0].toUpperCase()).join('').slice(0, 6);
+    return words
+      .map((w) => w[0].toUpperCase())
+      .join("")
+      .slice(0, 6);
   }
   return (words[0] || name).slice(0, 5).toUpperCase();
 }
 
-const GOV_SKILLS = ['Policy & Governance', 'Public Administration', 'Project Delivery', 'Data & Analytics', 'Community Services'];
-const GOV_ROLES = ['Corporate & Policy', 'Frontline Services', 'Operations'];
+const GOV_SKILLS = [
+  "Policy & Governance",
+  "Public Administration",
+  "Project Delivery",
+  "Data & Analytics",
+  "Community Services",
+];
+const GOV_ROLES = ["Corporate & Policy", "Frontline Services", "Operations"];
 
 function buildGovAgency(name: string): Company {
   const h = h01(name);
-  const h2 = h01(name + '::b');
+  const h2 = h01(name + "::b");
   // No PSC workforce series loaded, so headcount/trend stay empty and the card
   // shows no fabricated workforce numbers (best-effort per the roster).
   const headcount = 0;
@@ -122,23 +134,23 @@ function buildGovAgency(name: string): Company {
     name,
     pill: acr,
     domain: deriveDomain(name),
-    sector: 'Government',
-    group: 'Infrastructure and Government',
+    sector: "Government",
+    group: "Infrastructure and Government",
     private: true,
     headcount,
     growth,
     openRoles: Math.round(10 + h * 240),
-    salary: `$${salaryNum.toLocaleString('en-US')}`,
+    salary: `$${salaryNum.toLocaleString("en-US")}`,
     salaryShort: `$${salaryK}K`,
     salaryNum,
     turnover,
-    salaryDelta: `${delta >= 0 ? '+' : '\u2212'}${Math.abs(delta)}%`,
-    metroDelta: `${delta >= 0 ? '+' : '\u2212'}${Math.abs(delta)}% vs metro`,
+    salaryDelta: `${delta >= 0 ? "+" : "\u2212"}${Math.abs(delta)}%`,
+    metroDelta: `${delta >= 0 ? "+" : "\u2212"}${Math.abs(delta)}% vs metro`,
     trend,
     revPerEmp: 0,
     ebitdaPerEmp: 0,
     timeToFill: `${Math.round(34 + h * 24)} days`,
-    competition: h > 0.66 ? 'High' : h > 0.33 ? 'Medium' : 'Low',
+    competition: h > 0.66 ? "High" : h > 0.33 ? "Medium" : "Low",
     skills: GOV_SKILLS,
     roles,
   };

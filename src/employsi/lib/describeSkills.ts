@@ -1,4 +1,4 @@
-import { TASK_INDEX, ONTOLOGY_SKILLS } from '../data/skillOntology';
+import { TASK_INDEX, ONTOLOGY_SKILLS } from "../data/skillOntology";
 
 // Turn a free-text task / description into canonical skills, using the O*NET
 // skill ontology (task → occupation → skill). The tokenizer here MUST match the
@@ -20,9 +20,9 @@ required requires requiring order orders one two three`.split(/\s+/),
 );
 
 function stem(w: string): string {
-  if (w.length > 5 && w.endsWith('ing')) return w.slice(0, -3);
-  if (w.length > 4 && w.endsWith('ed')) return w.slice(0, -2);
-  if (w.length > 3 && w.endsWith('s') && !w.endsWith('ss')) return w.slice(0, -1);
+  if (w.length > 5 && w.endsWith("ing")) return w.slice(0, -3);
+  if (w.length > 4 && w.endsWith("ed")) return w.slice(0, -2);
+  if (w.length > 3 && w.endsWith("s") && !w.endsWith("ss")) return w.slice(0, -1);
   return w;
 }
 
@@ -38,14 +38,14 @@ function tokens(text: string): string[] {
     if (s !== w && s.length >= 4) out.push(s);
   }
   for (let i = 0; i < words.length - 1; i++) {
-    if (!STOP.has(words[i]) && !STOP.has(words[i + 1])) out.push(words[i] + ' ' + words[i + 1]);
+    if (!STOP.has(words[i]) && !STOP.has(words[i + 1])) out.push(words[i] + " " + words[i + 1]);
   }
   return out;
 }
 
 // Ranked canonical skill names most relevant to the described task/query.
 export function describeSkills(query: string, n = 6): string[] {
-  const q = (query || '').trim();
+  const q = (query || "").trim();
   if (q.length < 3) return [];
   const acc = new Map<number, number>();
   for (const t of new Set(tokens(q))) {

@@ -1,7 +1,7 @@
-import { createServerFn } from '@tanstack/react-start';
-import type { D1Like } from './jobArchive';
-import type { RolePoint } from './openRolesFn';
-import { SKILL_CATEGORY } from '../data/skillsTaxonomy';
+import { createServerFn } from "@tanstack/react-start";
+import type { D1Like } from "./jobArchive";
+import type { RolePoint } from "./openRolesFn";
+import { SKILL_CATEGORY } from "../data/skillsTaxonomy";
 
 // Reads the historical job archive (Cloudflare D1) written by the jobs-cron
 // worker + the app's live fetch (see jobArchive.ts). Powers the "Vacancy
@@ -31,7 +31,7 @@ export interface RoleHistory {
 
 async function getArchiveDb(): Promise<D1Like | null> {
   try {
-    const m: any = await import('cloudflare:workers');
+    const m = await import("cloudflare:workers");
     return (m?.env?.JOBS_ARCHIVE as D1Like) ?? null;
   } catch {
     return null;
@@ -39,23 +39,23 @@ async function getArchiveDb(): Promise<D1Like | null> {
 }
 
 function daysBetween(a: string, b: string): number {
-  const ta = Date.parse(a + 'T00:00:00Z');
-  const tb = Date.parse(b + 'T00:00:00Z');
+  const ta = Date.parse(a + "T00:00:00Z");
+  const tb = Date.parse(b + "T00:00:00Z");
   if (Number.isNaN(ta) || Number.isNaN(tb)) return 0;
   return Math.max(0, Math.round((tb - ta) / 86400000));
 }
 
-export const getRoleHistory = createServerFn({ method: 'GET' })
+export const getRoleHistory = createServerFn({ method: "GET" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<RoleHistory | null> => {
-    const id = (data.id || '').trim();
+    const id = (data.id || "").trim();
     if (!id) return null;
     const db = await getArchiveDb();
     if (!db) return null;
     const today = new Date().toISOString().slice(0, 10);
     try {
       // Longest-running first: order by the first-seen → last-seen span.
-      const rowsRes: any = await (db
+      const rowsRes = await db
         .prepare(
           `SELECT title, source, location, salary, first_seen, last_seen, seen_count
              FROM jobs
@@ -63,13 +63,15 @@ export const getRoleHistory = createServerFn({ method: 'GET' })
             ORDER BY (julianday(last_seen) - julianday(first_seen)) DESC, first_seen ASC
             LIMIT 40`,
         )
-        .bind(id) as any).all();
-      const rows: any[] = rowsRes?.results ?? [];
+        .bind(id)
+        .all();
+      const rows = rowsRes?.results ?? [];
       if (!rows.length) return null;
 
-      const aggRes: any = await (db
+      const aggRes = await db
         .prepare(`SELECT COUNT(*) AS n, MIN(first_seen) AS since FROM jobs WHERE company_id = ?1`)
-        .bind(id) as any).first();
+        .bind(id)
+        .first();
       const total = Number(aggRes?.n) || rows.length;
       const since = String(aggRes?.since || rows[0].first_seen);
 
@@ -80,9 +82,9 @@ export const getRoleHistory = createServerFn({ method: 'GET' })
         const daysOpen = daysBetween(firstSeen, lastSeen);
         if (daysOpen > longestDays) longestDays = daysOpen;
         return {
-          title: String(r.title || ''),
-          source: String(r.source || ''),
-          location: String(r.location || ''),
+          title: String(r.title || ""),
+          source: String(r.source || ""),
+          location: String(r.location || ""),
           salary: r.salary != null ? String(r.salary) : null,
           firstSeen,
           lastSeen,
@@ -105,7 +107,7 @@ export interface SkillMover {
   prev: number; // ...in the prior window
   delta: number; // now − prev
   pct: number; // % change (100 when newly appearing)
-  dir: 'up' | 'down';
+  dir: "up" | "down";
   series: number[]; // weekly live-vacancy count over the last ~3 months (13 wks)
 }
 
@@ -118,18 +120,21 @@ const TREND_WEEKS = 13; // ~3 months of weekly buckets for the per-skill sparkli
 // movers. Powers the card's "where they're hiring" area (now demand shifts).
 // Sparse until the archive has more than one window of history — it fills in as
 // the daily pulls accumulate.
-export const getSkillTrends = createServerFn({ method: 'GET' })
+export const getSkillTrends = createServerFn({ method: "GET" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<SkillMover[]> => {
-    const id = (data.id || '').trim();
+    const id = (data.id || "").trim();
     if (!id) return [];
     const db = await getArchiveDb();
     if (!db) return [];
     try {
-      const res: any = await (db
-        .prepare(`SELECT skills, first_seen, last_seen FROM jobs WHERE company_id = ?1 AND skills IS NOT NULL`)
-        .bind(id) as any).all();
-      const rows: any[] = res?.results ?? [];
+      const res = await db
+        .prepare(
+          `SELECT skills, first_seen, last_seen FROM jobs WHERE company_id = ?1 AND skills IS NOT NULL`,
+        )
+        .bind(id)
+        .all();
+      const rows = res?.results ?? [];
       if (!rows.length) return [];
       const WINDOW = 30; // days per comparison window
       const day = (offset: number) => {
@@ -153,18 +158,19 @@ export const getSkillTrends = createServerFn({ method: 'GET' })
       for (const r of rows) {
         let skills: string[] = [];
         try {
-          skills = JSON.parse(String(r.skills || '[]'));
+          skills = JSON.parse(String(r.skills || "[]"));
         } catch {
           skills = [];
         }
         if (!skills.length) continue;
-        const fs = String(r.first_seen || '');
-        const ls = String(r.last_seen || '');
+        const fs = String(r.first_seen || "");
+        const ls = String(r.last_seen || "");
         if (!fs || !ls) continue;
         // Active in the recent window (…first_seen ≤ today & last_seen ≥ start).
         if (ls >= recentStart) for (const s of skills) nowT[s] = (nowT[s] || 0) + 1;
         // Active in the prior window.
-        if (fs <= priorEnd && ls >= priorStart) for (const s of skills) prevT[s] = (prevT[s] || 0) + 1;
+        if (fs <= priorEnd && ls >= priorStart)
+          for (const s of skills) prevT[s] = (prevT[s] || 0) + 1;
         // Per-week live-vacancy count for the sparkline (live = fs ≤ wkEnd & ls ≥ wkStart).
         for (const s of skills) {
           const arr = (seriesT[s] ||= new Array(TREND_WEEKS).fill(0));
@@ -179,7 +185,15 @@ export const getSkillTrends = createServerFn({ method: 'GET' })
         const delta = now - prev;
         if (delta === 0) continue;
         const pct = prev > 0 ? Math.round((delta / prev) * 100) : 100;
-        movers.push({ skill: s, now, prev, delta, pct, dir: delta > 0 ? 'up' : 'down', series: seriesT[s] || [] });
+        movers.push({
+          skill: s,
+          now,
+          prev,
+          delta,
+          pct,
+          dir: delta > 0 ? "up" : "down",
+          series: seriesT[s] || [],
+        });
       }
       // Biggest absolute movers first, increases ahead of decreases on ties.
       movers.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta) || b.delta - a.delta);
@@ -206,8 +220,8 @@ export interface LiveSkillTrend {
 // that shifts a little each day as the archive accumulates. Returns [] until the
 // archive holds enough history to compute movers; the client falls back to a
 // static seed in that case so the ticker is never empty.
-export const getLiveSkillTrends = createServerFn({ method: 'GET' })
-  .handler(async (): Promise<LiveSkillTrend[]> => {
+export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
+  async (): Promise<LiveSkillTrend[]> => {
     const db = await getArchiveDb();
     if (!db) return [];
     const WINDOW = 7; // days per comparison window (daily-refreshing weekly momentum)
@@ -221,29 +235,31 @@ export const getLiveSkillTrends = createServerFn({ method: 'GET' })
     const priorEnd = recentStart;
     try {
       // Only rows active within the two windows — bounds the scan.
-      const res: any = await (db
+      const res = await db
         .prepare(
           `SELECT skills, first_seen, last_seen FROM jobs
              WHERE skills IS NOT NULL AND last_seen >= ?1`,
         )
-        .bind(priorStart) as any).all();
-      const rows: any[] = res?.results ?? [];
+        .bind(priorStart)
+        .all();
+      const rows = res?.results ?? [];
       if (!rows.length) return [];
       const nowT: Record<string, number> = {};
       const prevT: Record<string, number> = {};
       for (const r of rows) {
         let skills: string[] = [];
         try {
-          skills = JSON.parse(String(r.skills || '[]'));
+          skills = JSON.parse(String(r.skills || "[]"));
         } catch {
           skills = [];
         }
         if (!skills.length) continue;
-        const fs = String(r.first_seen || '');
-        const ls = String(r.last_seen || '');
+        const fs = String(r.first_seen || "");
+        const ls = String(r.last_seen || "");
         if (!fs || !ls) continue;
         if (ls >= recentStart) for (const s of skills) nowT[s] = (nowT[s] || 0) + 1;
-        if (fs <= priorEnd && ls >= priorStart) for (const s of skills) prevT[s] = (prevT[s] || 0) + 1;
+        if (fs <= priorEnd && ls >= priorStart)
+          for (const s of skills) prevT[s] = (prevT[s] || 0) + 1;
       }
       const skills = new Set([...Object.keys(nowT), ...Object.keys(prevT)]);
       type Row = { name: string; v: number; sig: number };
@@ -262,7 +278,7 @@ export const getLiveSkillTrends = createServerFn({ method: 'GET' })
       }
       // Biggest absolute movers first; interleave so the ticker mixes up + down.
       movers.sort((a, b) => b.sig - a.sig || Math.abs(b.v) - Math.abs(a.v));
-      let picked = movers.slice(0, 16);
+      const picked = movers.slice(0, 16);
       // Fallback: if the archive is too young for real movers, show the highest-
       // demand skills right now as a mild positive so the ticker still reads live.
       if (picked.length < 6) {
@@ -277,11 +293,12 @@ export const getLiveSkillTrends = createServerFn({ method: 'GET' })
           if (picked.length >= 12) break;
         }
       }
-      return picked.map((p) => ({ name: p.name, tag: 'Demand', v: p.v }));
+      return picked.map((p) => ({ name: p.name, tag: "Demand", v: p.v }));
     } catch {
       return [];
     }
-  });
+  },
+);
 
 // One market-wide skill mover for the "What's Trending" pane.
 export interface MarketSkillMover {
@@ -290,7 +307,7 @@ export interface MarketSkillMover {
   now: number; // vacancies demanding it in the recent 30 days
   prev: number; // ...in the prior 30 days
   pct: number; // % change (capped display; 100 = newly appearing)
-  dir: 'up' | 'down';
+  dir: "up" | "down";
 }
 
 export interface MarketSkillMovers {
@@ -304,8 +321,8 @@ export interface MarketSkillMovers {
 // the biggest gainers and biggest decliners at the skill level, across every
 // data feed. Returns empty lists until the archive has two windows of history;
 // the pane falls back to its illustrative sections in that case.
-export const getMarketSkillMovers = createServerFn({ method: 'GET' })
-  .handler(async (): Promise<MarketSkillMovers> => {
+export const getMarketSkillMovers = createServerFn({ method: "GET" }).handler(
+  async (): Promise<MarketSkillMovers> => {
     const db = await getArchiveDb();
     if (!db) return { risers: [], fallers: [] };
     const day = (offset: number) => {
@@ -318,8 +335,11 @@ export const getMarketSkillMovers = createServerFn({ method: 'GET' })
     // surface while the archive is still young (it widens to 30 as data accrues).
     let WINDOW = 30;
     try {
-      const span: any = await ((db
-        .prepare(`SELECT MIN(first_seen) AS mn, MAX(last_seen) AS mx FROM jobs WHERE skills IS NOT NULL`) as any).first());
+      const span = await db
+        .prepare(
+          `SELECT MIN(first_seen) AS mn, MAX(last_seen) AS mx FROM jobs WHERE skills IS NOT NULL`,
+        )
+        .first();
       const spanDays = span?.mn && span?.mx ? daysBetween(String(span.mn), String(span.mx)) : 0;
       if (spanDays > 0) WINDOW = Math.max(2, Math.min(30, Math.floor(spanDays / 2)));
     } catch {
@@ -329,29 +349,31 @@ export const getMarketSkillMovers = createServerFn({ method: 'GET' })
     const priorStart = day(WINDOW * 2);
     const priorEnd = recentStart;
     try {
-      const res: any = await (db
+      const res = await db
         .prepare(
           `SELECT skills, first_seen, last_seen FROM jobs
              WHERE skills IS NOT NULL AND last_seen >= ?1`,
         )
-        .bind(priorStart) as any).all();
-      const rows: any[] = res?.results ?? [];
+        .bind(priorStart)
+        .all();
+      const rows = res?.results ?? [];
       if (!rows.length) return { risers: [], fallers: [] };
       const nowT: Record<string, number> = {};
       const prevT: Record<string, number> = {};
       for (const r of rows) {
         let skills: string[] = [];
         try {
-          skills = JSON.parse(String(r.skills || '[]'));
+          skills = JSON.parse(String(r.skills || "[]"));
         } catch {
           skills = [];
         }
         if (!skills.length) continue;
-        const fs = String(r.first_seen || '');
-        const ls = String(r.last_seen || '');
+        const fs = String(r.first_seen || "");
+        const ls = String(r.last_seen || "");
         if (!fs || !ls) continue;
         if (ls >= recentStart) for (const s of skills) nowT[s] = (nowT[s] || 0) + 1;
-        if (fs <= priorEnd && ls >= priorStart) for (const s of skills) prevT[s] = (prevT[s] || 0) + 1;
+        if (fs <= priorEnd && ls >= priorStart)
+          for (const s of skills) prevT[s] = (prevT[s] || 0) + 1;
       }
       const all = new Set([...Object.keys(nowT), ...Object.keys(prevT)]);
       const movers: MarketSkillMover[] = [];
@@ -364,18 +386,30 @@ export const getMarketSkillMovers = createServerFn({ method: 'GET' })
         if (delta === 0) continue;
         const pctRaw = prev > 0 ? (delta / prev) * 100 : 100;
         const pct = Math.max(-100, Math.min(300, Math.round(pctRaw)));
-        movers.push({ skill: s, cat: SKILL_CATEGORY[s], now, prev, pct, dir: delta > 0 ? 'up' : 'down' });
+        movers.push({
+          skill: s,
+          cat: SKILL_CATEGORY[s],
+          now,
+          prev,
+          pct,
+          dir: delta > 0 ? "up" : "down",
+        });
       }
       // Rank each side by magnitude (bigger swing first), tie-break on volume.
-      const risers = movers.filter((m) => m.dir === 'up')
-        .sort((a, b) => b.pct - a.pct || b.now - a.now).slice(0, 6);
-      const fallers = movers.filter((m) => m.dir === 'down')
-        .sort((a, b) => a.pct - b.pct || b.prev - a.prev).slice(0, 6);
+      const risers = movers
+        .filter((m) => m.dir === "up")
+        .sort((a, b) => b.pct - a.pct || b.now - a.now)
+        .slice(0, 6);
+      const fallers = movers
+        .filter((m) => m.dir === "down")
+        .sort((a, b) => a.pct - b.pct || b.prev - a.prev)
+        .slice(0, 6);
       return { risers, fallers };
     } catch {
       return { risers: [], fallers: [] };
     }
-  });
+  },
+);
 
 // A daily "live vacancies" time-series derived from the D1 archive: for each of
 // the last N days, how many of the company's archived listings were live that
@@ -385,21 +419,22 @@ export const getMarketSkillMovers = createServerFn({ method: 'GET' })
 // the scraped board, not Adzuna — show the same current+historical graph the
 // private companies get. Builds forward as the archive accumulates, so a
 // freshly-seeded company shows a short series that lengthens over the days.
-export const getVacancyTrend = createServerFn({ method: 'GET' })
+export const getVacancyTrend = createServerFn({ method: "GET" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<RolePoint[]> => {
-    const id = (data.id || '').trim();
+    const id = (data.id || "").trim();
     if (!id) return [];
     const db = await getArchiveDb();
     if (!db) return [];
     try {
-      const res: any = await (db
+      const res = await db
         .prepare(`SELECT first_seen, last_seen FROM jobs WHERE company_id = ?1`)
-        .bind(id) as any).all();
-      const rows: any[] = res?.results ?? [];
+        .bind(id)
+        .all();
+      const rows = res?.results ?? [];
       if (!rows.length) return [];
       const spans = rows
-        .map((r) => [String(r.first_seen || ''), String(r.last_seen || '')])
+        .map((r) => [String(r.first_seen || ""), String(r.last_seen || "")])
         .filter(([fs, ls]) => fs && ls);
       const DAYS = 90;
       const now = new Date();

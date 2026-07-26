@@ -12,11 +12,18 @@
 // closingDate, remuneration range, vacancy type and an rtfId for the canonical
 // job URL. So unlike the WA/VIC/QLD feeds this one fetches everything at once.
 
-import { skillsForText } from '../../src/employsi/data/skillsTaxonomy';
-import { ntGovAgencyId, DARWIN_GOV_NAMES } from '../../src/employsi/data/darwinGov';
+import { skillsForText } from "../../src/employsi/data/skillsTaxonomy";
+import { ntGovAgencyId, DARWIN_GOV_NAMES } from "../../src/employsi/data/darwinGov";
+import {
+  asRecord,
+  asRecords,
+  str,
+  type JsonRecord,
+  type JsonValue,
+} from "../../src/employsi/lib/json";
 
-const ENDPOINT = 'https://jobs.nt.gov.au/Home/Search';
-const SITE = 'https://jobs.nt.gov.au';
+const ENDPOINT = "https://jobs.nt.gov.au/Home/Search";
+const SITE = "https://jobs.nt.gov.au";
 
 // A stored NT job — mirrors the app's AdvertisedJob shape so the company card
 // renders it like any other role, plus a few gov extras.
@@ -38,11 +45,11 @@ export interface StoredNtJob {
 // board label like "Department Mining and Energy" still matches our roster's
 // "Department of Mining and Energy"), collapse the rest to single spaces.
 function normName(s: string): string {
-  return (s || '')
+  return (s || "")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .replace(/\b(of|the)\b/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\b(of|the)\b/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -58,10 +65,10 @@ export function matchAgencyId(orgText: string): string | null {
 
 // "/Date(1782230419181)/" → "YYYY-MM-DD" (empty when unparseable).
 function msDate(v: unknown): string {
-  const m = typeof v === 'string' ? v.match(/\/Date\((\d+)/) : null;
-  if (!m) return '';
+  const m = typeof v === "string" ? v.match(/\/Date\((\d+)/) : null;
+  if (!m) return "";
   const d = new Date(Number(m[1]));
-  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+  return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
 }
 
 function midSalary(lo: unknown, hi: unknown): number | undefined {
@@ -73,28 +80,36 @@ function midSalary(lo: unknown, hi: unknown): number | undefined {
 }
 
 // Parse the /Home/Search JSON payload into { agencyId → jobs }.
-export function parseNtGov(payload: any, today: string): { byAgency: Record<string, StoredNtJob[]>; parsed: number; items: number } {
-  const data: any[] = Array.isArray(payload?.data) ? payload.data : [];
+export function parseNtGov(
+  payload: unknown,
+  today: string,
+): { byAgency: Record<string, StoredNtJob[]>; parsed: number; items: number } {
+  const data = asRecords(asRecord(payload).data);
   const byAgency: Record<string, StoredNtJob[]> = {};
   let parsed = 0;
   for (const r of data) {
-    const title = String(r?.jobTitle || '').replace(/\s+/g, ' ').trim();
-    const org = String(r?.agency || '').trim();
+    const title = String(r?.jobTitle || "")
+      .replace(/\s+/g, " ")
+      .trim();
+    const org = String(r?.agency || "").trim();
     if (!title || !org) continue;
     if (r?.isCanceled) continue;
     const agencyId = matchAgencyId(org);
     if (!agencyId) continue;
-    const section = String(r?.section || '').trim();
+    const section = String(r?.section || "").trim();
     const job: StoredNtJob = {
       t: title,
-      loc: String(r?.locations || '').replace(/\s+/g, ' ').trim() || 'Northern Territory',
-      cat: 'Government',
+      loc:
+        String(r?.locations || "")
+          .replace(/\s+/g, " ")
+          .trim() || "Northern Territory",
+      cat: "Government",
       url: r?.rtfId ? `${SITE}/Home/JobDetails?rtfId=${r.rtfId}` : SITE,
       created: msDate(r?.dateAdded),
-      city: 'darwin',
+      city: "darwin",
       skills: skillsForText(`${title} ${section}`),
       salN: midSalary(r?.lowestRemuneration, r?.highestRemuneration),
-      emp: String(r?.vacancyType || '').trim() || undefined,
+      emp: String(r?.vacancyType || "").trim() || undefined,
       seen: today,
     };
     (byAgency[agencyId] ||= []).push(job);
@@ -105,24 +120,25 @@ export function parseNtGov(payload: any, today: string): { byAgency: Record<stri
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function fetchOnce(signalMs = 20000): Promise<any | null> {
+async function fetchOnce(signalMs = 20000): Promise<unknown | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), signalMs);
   try {
     const res = await fetch(ENDPOINT, {
-      method: 'POST',
+      method: "POST",
       signal: controller.signal,
       headers: {
-        'User-Agent': 'employsi-jobs/1.0 (+https://employsi.com; NT gov vacancies feed)',
-        'Content-Type': 'application/json; charset=utf-8',
-        'X-Requested-With': 'XMLHttpRequest',
-        Accept: 'application/json',
+        "User-Agent": "employsi-jobs/1.0 (+https://employsi.com; NT gov vacancies feed)",
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Requested-With": "XMLHttpRequest",
+        Accept: "application/json",
       },
-      body: JSON.stringify({ Keyword: '' }),
+      body: JSON.stringify({ Keyword: "" }),
     });
     if (!res.ok) return null;
     const json = await res.json().catch(() => null);
-    return json && (json as any).success && Array.isArray((json as any).data) ? json : null;
+    const rec = asRecord(json);
+    return rec.success && Array.isArray(rec.data) ? json : null;
   } catch {
     return null;
   } finally {
@@ -139,7 +155,7 @@ export interface NtGovResult {
 
 // Fetch the whole NT board in one POST (retried a few times on transient error).
 export async function fetchNtGov(today: string): Promise<NtGovResult | null> {
-  let payload: any = null;
+  let payload: unknown = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) await sleep(700 * attempt);
     payload = await fetchOnce();

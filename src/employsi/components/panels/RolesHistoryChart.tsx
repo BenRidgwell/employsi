@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
-import { smoothPath, scaler } from '../../lib/chart';
-import type { RolePoint } from '../../lib/openRolesFn';
+import { useMemo } from "react";
+import { smoothPath, scaler } from "../../lib/chart";
+import type { RolePoint } from "../../lib/openRolesFn";
 
 // Compact "live vacancies" sparkline. Plots the real daily vacancy snapshots
 // recorded from the live feed. History builds forward from the first time a
@@ -17,10 +17,10 @@ const PLOTW = W - PADX * 2;
 const PLOTH = H - PADT - PADB;
 
 const fmtDate = (d: string) => {
-  const dt = new Date(d + 'T00:00:00');
-  return dt.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+  const dt = new Date(d + "T00:00:00");
+  return dt.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
 };
-const num = (v: number) => Math.round(v).toLocaleString('en-US');
+const num = (v: number) => Math.round(v).toLocaleString("en-US");
 
 export function RolesHistoryChart({ points, current }: { points: RolePoint[]; current?: number }) {
   const pts = useMemo(() => points.slice().sort((a, b) => a.d.localeCompare(b.d)), [points]);
@@ -34,7 +34,9 @@ export function RolesHistoryChart({ points, current }: { points: RolePoint[]; cu
     const x = (i: number) => PADX + (i * PLOTW) / (n - 1);
     const y = scaler(counts, PADT, PLOTH);
     const line = smoothPath(counts.map((v, i) => [x(i), y(v)]));
-    const area = line + ` L ${x(n - 1).toFixed(2)} ${(PADT + PLOTH).toFixed(2)} L ${x(0).toFixed(2)} ${(PADT + PLOTH).toFixed(2)} Z`;
+    const area =
+      line +
+      ` L ${x(n - 1).toFixed(2)} ${(PADT + PLOTH).toFixed(2)} L ${x(0).toFixed(2)} ${(PADT + PLOTH).toFixed(2)} Z`;
     const lastX = (x(n - 1) / W) * 100;
     const lastY = (y(counts[n - 1]) / H) * 100;
     return { line, area, lastX, lastY };
@@ -72,8 +74,10 @@ export function RolesHistoryChart({ points, current }: { points: RolePoint[]; cu
           </div>
           <div className="rhaxis">
             <span>{fmtDate(pts[0].d)}</span>
-            <span className={`rhtrend ${delta >= 0 ? 'up' : 'down'}`}>
-              {delta === 0 ? 'no change' : `${delta >= 0 ? '+' : '−'}${num(Math.abs(delta))} (${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(0)}%)`}
+            <span className={`rhtrend ${delta >= 0 ? "up" : "down"}`}>
+              {delta === 0
+                ? "no change"
+                : `${delta >= 0 ? "+" : "−"}${num(Math.abs(delta))} (${pct >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(0)}%)`}
             </span>
             <span>{fmtDate(pts[n - 1].d)}</span>
           </div>
@@ -81,9 +85,15 @@ export function RolesHistoryChart({ points, current }: { points: RolePoint[]; cu
       ) : (
         <div className="rhempty">
           {n === 1 ? (
-            <>Tracking started at <b>{num(latest)}</b> vacancies — the trend line fills in as daily snapshots are recorded.</>
+            <>
+              Tracking started at <b>{num(latest)}</b> vacancies — the trend line fills in as daily
+              snapshots are recorded.
+            </>
           ) : (
-            <>Vacancy tracking begins the first time this company's live feed loads, then builds a daily history here.</>
+            <>
+              Vacancy tracking begins the first time this company's live feed loads, then builds a
+              daily history here.
+            </>
           )}
         </div>
       )}

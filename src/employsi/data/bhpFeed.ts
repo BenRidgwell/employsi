@@ -4,11 +4,11 @@
 // social feeds). The shape is deliberately generic so a real provider can be
 // dropped in behind the same interface later.
 
-import { COMPANY_HEADCOUNT } from './companyHeadcount';
-import { COMPANIES } from './companies';
-import { COMPANY_CULTURE, INDUSTRY_BENCH, type Layoff } from './culture';
-import { shareTrend, commodityBaskets, type CommodityBasket } from './finance';
-import { companyNews, type CompanyNews } from './news';
+import { COMPANY_HEADCOUNT } from "./companyHeadcount";
+import { COMPANIES } from "./companies";
+import { COMPANY_CULTURE, INDUSTRY_BENCH, type Layoff } from "./culture";
+import { shareTrend, commodityBaskets, type CommodityBasket } from "./finance";
+import { companyNews, type CompanyNews } from "./news";
 
 export interface BhpDiversity {
   femalePct: number;
@@ -46,7 +46,7 @@ export interface BhpFeed {
 const wob = (now: number, periodMs: number, phase: number) => Math.sin(now / periodMs + phase);
 
 export function buildBhpFeed(now: number = Date.now()): BhpFeed {
-  const c = COMPANIES.find((x) => x.id === 'bhp')!;
+  const c = COMPANIES.find((x) => x.id === "bhp")!;
   const cul = COMPANY_CULTURE.bhp;
   const n = c.trend.length;
 
@@ -98,16 +98,17 @@ export function buildBhpFeed(now: number = Date.now()): BhpFeed {
   // slowly; pct is derived from the live headcount so the two stay consistent.
   const layoffRoles = Math.max(0, Math.round(140 + d3 * 12));
   const layoffs: Layoff = {
-    period: 'Rolling 12 months',
+    period: "Rolling 12 months",
     roles: layoffRoles,
     pct: +((layoffRoles / headcount) * 100).toFixed(1),
-    note: 'Targeted restructuring in corporate and support functions; most affected roles redeployed within the group.',
+    note: "Targeted restructuring in corporate and support functions; most affected roles redeployed within the group.",
   };
 
   // News engagement: keep the (deterministic) headlines stable but let the
   // comment counts tick as a live signal.
   const baseNews = companyNews(c.name, c.sector);
-  const bumpC = (v: number, i: number) => Math.max(0, Math.round(v + wob(now, 4200 + i * 600, i * 0.6) * 5));
+  const bumpC = (v: number, i: number) =>
+    Math.max(0, Math.round(v + wob(now, 4200 + i * 600, i * 0.6) * 5));
   const news: CompanyNews = {
     hero: { ...baseNews.hero, comments: bumpC(baseNews.hero.comments, 0) },
     items: baseNews.items.map((it, i) => ({ ...it, comments: bumpC(it.comments, i + 1) })),
@@ -122,7 +123,7 @@ export function buildBhpFeed(now: number = Date.now()): BhpFeed {
   return {
     updatedAt: now,
     openRoles,
-    salary: '$' + salaryNum.toLocaleString('en-US'),
+    salary: "$" + salaryNum.toLocaleString("en-US"),
     salaryNum,
     metroDelta: c.metroDelta,
     headcount,

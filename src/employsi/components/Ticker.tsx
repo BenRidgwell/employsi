@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { TICKER_BASE, type TickerItem } from '../data/companies';
-import { getLiveSkillTrends } from '../lib/jobHistoryFn';
+import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { TICKER_BASE, type TickerItem } from "../data/companies";
+import { getLiveSkillTrends } from "../lib/jobHistoryFn";
 
 function cloneBase(): TickerItem[] {
   return TICKER_BASE.map((d) => ({ ...d }));
@@ -12,7 +12,7 @@ export function Ticker({ hidden }: { hidden: boolean }) {
   // once a day (the archive only changes on the daily cron); falls back to the
   // static seed while loading or before the archive has enough history.
   const { data: live } = useQuery({
-    queryKey: ['liveSkillTrends'],
+    queryKey: ["liveSkillTrends"],
     queryFn: () => getLiveSkillTrends(),
     staleTime: 6 * 60 * 60 * 1000,
     gcTime: 24 * 60 * 60 * 1000,
@@ -59,24 +59,24 @@ export function Ticker({ hidden }: { hidden: boolean }) {
       <div className="titem" key={key}>
         <span className="tname">{t.name}</span>
         <span className="ttag">{t.tag}</span>
-        <span className={`tdelta ${up ? 'up' : 'down'}`}>
-          <span className="ar">{up ? '▲' : '▼'}</span>
-          {(up ? '+' : '') + t.v.toFixed(1)}%
+        <span className={`tdelta ${up ? "up" : "down"}`}>
+          <span className="ar">{up ? "▲" : "▼"}</span>
+          {(up ? "+" : "") + t.v.toFixed(1)}%
         </span>
       </div>
     );
   };
 
   return (
-    <div className={`ticker ${hidden ? 'zoomhide' : ''}`}>
+    <div className={`ticker ${hidden ? "zoomhide" : ""}`}>
       <div className="tickerlbl">
         <i />
         Live trends
       </div>
       <div className="tickerwrap">
         <div className="tickertrack">
-          {items.map((t, i) => renderItem(t, 'a' + i))}
-          {items.map((t, i) => renderItem(t, 'b' + i))}
+          {items.map((t, i) => renderItem(t, "a" + i))}
+          {items.map((t, i) => renderItem(t, "b" + i))}
         </div>
       </div>
     </div>

@@ -1,21 +1,35 @@
-import { useMemo, useState } from 'react';
-import { useFeedbackStore, scoreOf, type FeedbackItem, type FbStatus } from '../state/feedbackStore';
-import { useAppStore } from '../state/store';
+import { useMemo, useState } from "react";
+import {
+  useFeedbackStore,
+  scoreOf,
+  type FeedbackItem,
+  type FbStatus,
+} from "../state/feedbackStore";
+import { useAppStore } from "../state/store";
 
 // The feedback board: a votable list of feature requests (seeded + the
 // visitor's own submissions), plus a box to add a new one. Requests sort by
 // score, so the most-wanted rise to the top.
 
 const STATUS_LABEL: Record<FbStatus, string> = {
-  open: 'Open',
-  'under-review': 'Under review',
-  planned: 'Planned',
-  shipped: 'Shipped',
+  open: "Open",
+  "under-review": "Under review",
+  planned: "Planned",
+  shipped: "Shipped",
 };
 
 function Arrow({ up }: { up?: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       {up ? <path d="M12 5v14M6 11l6-6 6 6" /> : <path d="M12 19V5M6 13l6 6 6-6" />}
     </svg>
   );
@@ -28,12 +42,22 @@ function Row({ item }: { item: FeedbackItem }) {
   const score = scoreOf(item, votes);
   return (
     <div className="fbrow">
-      <div className={`fbvote ${mine === 1 ? 'up' : mine === -1 ? 'down' : ''}`}>
-        <button className="fbarrow" aria-label="Upvote" aria-pressed={mine === 1} onClick={() => vote(item.id, 1)}>
+      <div className={`fbvote ${mine === 1 ? "up" : mine === -1 ? "down" : ""}`}>
+        <button
+          className="fbarrow"
+          aria-label="Upvote"
+          aria-pressed={mine === 1}
+          onClick={() => vote(item.id, 1)}
+        >
           <Arrow up />
         </button>
         <span className="fbscore">{score}</span>
-        <button className="fbarrow" aria-label="Downvote" aria-pressed={mine === -1} onClick={() => vote(item.id, -1)}>
+        <button
+          className="fbarrow"
+          aria-label="Downvote"
+          aria-pressed={mine === -1}
+          onClick={() => vote(item.id, -1)}
+        >
           <Arrow />
         </button>
       </div>
@@ -53,7 +77,7 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
   const submit = useFeedbackStore((s) => s.submit);
   const account = useAppStore((s) => s.account);
   const openAuth = useAppStore((s) => s.openAuth);
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState("");
   const [justSent, setJustSent] = useState(false);
 
   const ranked = useMemo(
@@ -64,7 +88,7 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
   const send = () => {
     if (!account || !draft.trim()) return;
     submit(draft);
-    setDraft('');
+    setDraft("");
     setJustSent(true);
     setTimeout(() => setJustSent(false), 2200);
   };
@@ -76,7 +100,9 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
           <div className="helptitle">Feedback board</div>
           <div className="helpsub">Suggest an idea, or vote on what others want</div>
         </div>
-        <button className="helpx" onClick={onClose} aria-label="Close">✕</button>
+        <button className="helpx" onClick={onClose} aria-label="Close">
+          ✕
+        </button>
       </div>
 
       {account ? (
@@ -88,17 +114,25 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
             maxLength={140}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send();
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
             }}
           />
           <div className="fbcomposerow">
-            <span className={`fbsent ${justSent ? 'show' : ''}`}>✓ Added — thanks!</span>
-            <button className="fbsend" disabled={!draft.trim()} onClick={send}>Post request</button>
+            <span className={`fbsent ${justSent ? "show" : ""}`}>✓ Added — thanks!</span>
+            <button className="fbsend" disabled={!draft.trim()} onClick={send}>
+              Post request
+            </button>
           </div>
         </div>
       ) : (
         // Submitting a request requires an account; voting stays open to all.
-        <button className="fbsignin" onClick={() => { onClose(); openAuth(); }}>
+        <button
+          className="fbsignin"
+          onClick={() => {
+            onClose();
+            openAuth();
+          }}
+        >
           Sign in to post a request
         </button>
       )}

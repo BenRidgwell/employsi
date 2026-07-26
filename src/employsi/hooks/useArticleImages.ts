@@ -1,6 +1,6 @@
-import { useQueries } from '@tanstack/react-query';
-import { getArticleImage } from '../lib/articleImageFn';
-import type { ArticleMeta } from '../lib/articleImageFn';
+import { useQueries } from "@tanstack/react-query";
+import { getArticleImage } from "../lib/articleImageFn";
+import type { ArticleMeta } from "../lib/articleImageFn";
 
 // Given a list of real article URLs, resolves each one's og:image, publish date
 // and publisher on the Worker and returns a { url -> ArticleMeta } map. Only
@@ -11,7 +11,7 @@ export function useArticleImages(urls: (string | undefined)[]): Record<string, A
   const real = Array.from(new Set(urls.filter((u): u is string => !!u && /^https?:\/\//i.test(u))));
   const results = useQueries({
     queries: real.map((url) => ({
-      queryKey: ['articleMeta', url],
+      queryKey: ["articleMeta", url],
       queryFn: () => getArticleImage({ data: { url } }),
       staleTime: Infinity,
       gcTime: Infinity,

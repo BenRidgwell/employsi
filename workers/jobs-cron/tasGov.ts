@@ -12,10 +12,10 @@
 // one agency at a time using the board's own department-filter uid (carried on
 // each agency in hobartGov.ts) and page through until a short page ends it.
 
-import { skillsForText } from '../../src/employsi/data/skillsTaxonomy';
-import { HOBART_GOV_IDS, TAS_GOV_UID } from '../../src/employsi/data/hobartGov';
+import { skillsForText } from "../../src/employsi/data/skillsTaxonomy";
+import { HOBART_GOV_IDS, TAS_GOV_UID } from "../../src/employsi/data/hobartGov";
 
-const SEARCH = 'https://careers.jobs.tas.gov.au/jobs/search';
+const SEARCH = "https://careers.jobs.tas.gov.au/jobs/search";
 const PAGE_SIZE = 30;
 const MAX_PAGES = 12; // 360 vacancies/agency — well above the busiest (Health ~160)
 
@@ -35,24 +35,32 @@ export interface StoredTasJob {
 }
 
 const clean = (s: string): string =>
-  s.replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  s
+    .replace(/&amp;/g, "&")
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
 // Pull the inner text of a card's `<span id="<kind>_icon_text_...">…</span>`.
 function fieldText(card: string, kind: string): string {
   const m = card.match(new RegExp(`id="${kind}_icon_text_[^"]*">([\\s\\S]*?)</span>`));
-  return m ? clean(m[1]) : '';
+  return m ? clean(m[1]) : "";
 }
 
 // pay_scale renders as bare text inside its list item (no icon_text span).
 function payScaleText(card: string): string {
   const m = card.match(/job-component-list-pay_scale">([\s\S]*?)<\/div>/);
-  return m ? clean(m[1]) : '';
+  return m ? clean(m[1]) : "";
 }
 
 // Best-effort salary midpoint from a pay-scale string when it names dollar
 // figures (many TAS scales are award-band labels with no number → undefined).
 function salaryFrom(pay: string): number | undefined {
-  const nums = (pay.match(/\$\s?([\d,]{4,})/g) || []).map((x) => Number(x.replace(/[^\d]/g, ''))).filter((n) => n > 0);
+  const nums = (pay.match(/\$\s?([\d,]{4,})/g) || [])
+    .map((x) => Number(x.replace(/[^\d]/g, "")))
+    .filter((n) => n > 0);
   if (!nums.length) return undefined;
   return Math.round(nums.reduce((s, n) => s + n, 0) / nums.length);
 }
@@ -61,7 +69,9 @@ function salaryFrom(pay: string): number | undefined {
 // `link_job_title_…` anchor; we slice each card off the next anchor so per-card
 // field lookups can't bleed into the following card.
 export function parseTasGov(html: string, today: string): StoredTasJob[] {
-  const anchors = [...html.matchAll(/<a id="link_job_title[^"]*"\s+href="([^"]+)">([\s\S]*?)<\/a>/g)];
+  const anchors = [
+    ...html.matchAll(/<a id="link_job_title[^"]*"\s+href="([^"]+)">([\s\S]*?)<\/a>/g),
+  ];
   const out: StoredTasJob[] = [];
   for (let i = 0; i < anchors.length; i++) {
     const a = anchors[i];
@@ -71,18 +81,18 @@ export function parseTasGov(html: string, today: string): StoredTasJob[] {
     const title = clean(a[2]);
     const url = a[1].trim();
     if (!title || !url) continue;
-    const cat = fieldText(card, 'category');
+    const cat = fieldText(card, "category");
     const pay = payScaleText(card);
     out.push({
       t: title,
-      loc: fieldText(card, 'location') || 'Tasmania',
-      cat: cat || 'Government',
+      loc: fieldText(card, "location") || "Tasmania",
+      cat: cat || "Government",
       url,
-      created: '',
-      city: 'hobart',
+      created: "",
+      city: "hobart",
       skills: skillsForText(`${title} ${cat}`),
       salN: salaryFrom(pay),
-      emp: fieldText(card, 'employment_type') || undefined,
+      emp: fieldText(card, "employment_type") || undefined,
       seen: today,
     });
   }
@@ -94,7 +104,11 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // Fetch a page. Returns the HTML, or 'throttled' when the board rate-limited us
 // (HTTP 429/503) or the request errored — the caller distinguishes that from a
 // legitimately-empty agency so it can retry rather than record "no vacancies".
-async function fetchPage(uid: string, page: number, signalMs = 20000): Promise<string | 'throttled'> {
+async function fetchPage(
+  uid: string,
+  page: number,
+  signalMs = 20000,
+): Promise<string | "throttled"> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), signalMs);
   try {
@@ -102,15 +116,15 @@ async function fetchPage(uid: string, page: number, signalMs = 20000): Promise<s
     const res = await fetch(`${SEARCH}?${qs}`, {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'employsi-jobs/1.0 (+https://employsi.com; TAS gov vacancies feed)',
-        Accept: 'text/html,application/xhtml+xml',
+        "User-Agent": "employsi-jobs/1.0 (+https://employsi.com; TAS gov vacancies feed)",
+        Accept: "text/html,application/xhtml+xml",
       },
     });
     if (res.ok) return await res.text();
     // 429/503 with an optional Retry-After — treat anything non-OK as throttled.
-    return 'throttled';
+    return "throttled";
   } catch {
-    return 'throttled';
+    return "throttled";
   } finally {
     clearTimeout(timer);
   }
@@ -133,7 +147,7 @@ async function fetchAgency(uid: string, today: string): Promise<AgencyFetch> {
     for (let attempt = 0; attempt < 4; attempt++) {
       if (attempt > 0) await sleep(1200 * attempt); // 1.2s, 2.4s, 3.6s — let the bucket refill
       const r = await fetchPage(uid, page);
-      if (r !== 'throttled') {
+      if (r !== "throttled") {
         html = r;
         break;
       }

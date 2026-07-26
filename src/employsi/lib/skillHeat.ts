@@ -1,15 +1,21 @@
-import { ALL_SKILLS } from '../data/skillsTaxonomy';
-import { CITY_COMPANIES } from '../data/mapboxGeo';
-import { CITY_CONTINENT } from '../data/geo';
-import { REGION_HUBS } from '../data/mapboxWorldGeo';
-import { IVI_SKILL_BY_CITY, IVI_SKILLS, IVI_SERIES, IVI_MONTHS, IVI_SKILL_NATIONAL } from '../data/iviSkillDemand';
-import { CA_SERIES, CA_SKILL_BY_CITY } from '../data/caVacancyDemand';
-import { SG_SERIES, SG_SKILL_BY_CITY } from '../data/sgVacancyDemand';
-import { NZ_SERIES, NZ_SKILL_BY_CITY } from '../data/nzVacancyDemand';
-import { UK_SERIES, UK_SKILL_BY_CITY } from '../data/ukVacancyDemand';
-import { EU_SERIES, EU_SKILL_BY_CITY } from '../data/euVacancyDemand';
-import { US_SERIES, US_SKILL_BY_CITY } from '../data/usVacancyDemand';
-import type { SkillIndex } from './skillsFn';
+import { ALL_SKILLS } from "../data/skillsTaxonomy";
+import { CITY_COMPANIES } from "../data/mapboxGeo";
+import { CITY_CONTINENT } from "../data/geo";
+import { REGION_HUBS } from "../data/mapboxWorldGeo";
+import {
+  IVI_SKILL_BY_CITY,
+  IVI_SKILLS,
+  IVI_SERIES,
+  IVI_MONTHS,
+  IVI_SKILL_NATIONAL,
+} from "../data/iviSkillDemand";
+import { CA_SERIES, CA_SKILL_BY_CITY } from "../data/caVacancyDemand";
+import { SG_SERIES, SG_SKILL_BY_CITY } from "../data/sgVacancyDemand";
+import { NZ_SERIES, NZ_SKILL_BY_CITY } from "../data/nzVacancyDemand";
+import { UK_SERIES, UK_SKILL_BY_CITY } from "../data/ukVacancyDemand";
+import { EU_SERIES, EU_SKILL_BY_CITY } from "../data/euVacancyDemand";
+import { US_SERIES, US_SKILL_BY_CITY } from "../data/usVacancyDemand";
+import type { SkillIndex } from "./skillsFn";
 
 // The AU (JSA/IVI), Canada (StatCan), Singapore (MRSD), New Zealand (MBIE), UK
 // (ONS), EU (Eurostat, by country) and US (BLS OEWS × JOLTS, by metro) vacancy
@@ -18,7 +24,15 @@ import type { SkillIndex } from './skillsFn';
 // merged. Keeping them combined here means the heat map + time slider treat
 // every country like AU.
 function seriesFor(skill: string): Record<string, number[]> | null {
-  const parts = [IVI_SERIES[skill], CA_SERIES[skill], SG_SERIES[skill], NZ_SERIES[skill], UK_SERIES[skill], EU_SERIES[skill], US_SERIES[skill]].filter(Boolean) as Record<string, number[]>[];
+  const parts = [
+    IVI_SERIES[skill],
+    CA_SERIES[skill],
+    SG_SERIES[skill],
+    NZ_SERIES[skill],
+    UK_SERIES[skill],
+    EU_SERIES[skill],
+    US_SERIES[skill],
+  ].filter(Boolean) as Record<string, number[]>[];
   if (!parts.length) return null;
   return Object.assign({}, ...parts);
 }
@@ -41,7 +55,7 @@ function latestFor(skill: string): Record<string, number> {
 //   • global   → the live company/hub demand index
 // Bucketing is relative to the distribution of all skills at that layer, so the
 // label answers "how in-demand is this skill, here" rather than a raw count.
-export type DemandTone = 'lo' | 'mid' | 'hi';
+export type DemandTone = "lo" | "mid" | "hi";
 export interface DemandBadge {
   label: string;
   tone: DemandTone;
@@ -73,9 +87,9 @@ export function demandLevel(skill: string, global: boolean, idx: SkillIndex | nu
     lo = IVI_LO;
     hi = IVI_HI;
   }
-  if (v >= hi && hi > 0) return { label: 'High demand', tone: 'hi' };
-  if (v >= lo && lo > 0) return { label: 'Moderate demand', tone: 'mid' };
-  return { label: 'Low demand', tone: 'lo' };
+  if (v >= hi && hi > 0) return { label: "High demand", tone: "hi" };
+  if (v >= lo && lo > 0) return { label: "Moderate demand", tone: "mid" };
+  return { label: "Low demand", tone: "lo" };
 }
 
 // Real government vacancy demand for a skill across the mapped hub cities — the
@@ -106,7 +120,11 @@ export function iviCityDemandAt(skill: string | null, monthIndex: number): Recor
 // series start when there's less history). Drives the scrub callouts: as the
 // time slider moves, each city shows how its demand for the skill is changing
 // at that point in time. Cities with no baseline demand return 0.
-export function iviCityChangeAt(skill: string | null, monthIndex: number, window = 12): Record<string, number> {
+export function iviCityChangeAt(
+  skill: string | null,
+  monthIndex: number,
+  window = 12,
+): Record<string, number> {
   if (!skill) return {};
   const series = seriesFor(skill);
   if (!series) return {};
@@ -126,14 +144,17 @@ export function iviCityChangeAt(skill: string | null, monthIndex: number, window
 // null if the query isn't a tracked skill. When non-null the maps switch from
 // the salary/growth metric to real demand for that skill.
 export function activeSkill(query: string): string | null {
-  const q = (query || '').trim().toLowerCase();
+  const q = (query || "").trim().toLowerCase();
   if (!q) return null;
   return ALL_SKILLS.find((s) => s.toLowerCase() === q) || null;
 }
 
 // Real demand counts for a skill, keyed by company id / city. Empty object when
 // the index hasn't loaded or the skill has no demand yet.
-export function demandByCompany(idx: SkillIndex | null, skill: string | null): Record<string, number> {
+export function demandByCompany(
+  idx: SkillIndex | null,
+  skill: string | null,
+): Record<string, number> {
   if (!idx || !skill) return {};
   return idx.skills[skill]?.byCompany ?? {};
 }
@@ -226,10 +247,11 @@ export interface LayerCtx {
 export function popularSkills(idx: SkillIndex | null, ctx: LayerCtx, n = 10): string[] {
   // Domestic views with a whole-of-market government vacancy series.
   if (ctx.zoomedOut && !ctx.globalOut) {
-    if (ctx.domesticRegion === 'australia' && IVI_SKILLS.length) return IVI_SKILLS.slice(0, n);
-    if (ctx.domesticRegion === 'northamerica' && NORTHAMERICA_SKILLS.length) return NORTHAMERICA_SKILLS.slice(0, n);
-    if (ctx.domesticRegion === 'asia' && SG_SKILLS.length) return SG_SKILLS.slice(0, n);
-    if (ctx.domesticRegion === 'europe' && EUROPE_SKILLS.length) return EUROPE_SKILLS.slice(0, n);
+    if (ctx.domesticRegion === "australia" && IVI_SKILLS.length) return IVI_SKILLS.slice(0, n);
+    if (ctx.domesticRegion === "northamerica" && NORTHAMERICA_SKILLS.length)
+      return NORTHAMERICA_SKILLS.slice(0, n);
+    if (ctx.domesticRegion === "asia" && SG_SKILLS.length) return SG_SKILLS.slice(0, n);
+    if (ctx.domesticRegion === "europe" && EUROPE_SKILLS.length) return EUROPE_SKILLS.slice(0, n);
   }
   // Local city: an AGGREGATED view of what's in high demand in that city — the
   // whole-market vacancy demand (IVI/StatCan/etc.) blended with the mapped
@@ -272,19 +294,33 @@ export function popularSkills(idx: SkillIndex | null, ctx: LayerCtx, n = 10): st
       // Region-level demand (domestic), then worldwide demand (global) — both
       // are demand-ranked from real data, so a data-poor city still gets a
       // sensible, region-appropriate list rather than the mining taxonomy head.
-      pad(popularSkills(idx, { zoomedOut: true, globalOut: false, domesticRegion: region, localCity: ctx.localCity }, n));
-      if (out.length < n) pad(popularSkills(idx, { zoomedOut: true, globalOut: true, domesticRegion: region, localCity: ctx.localCity }, n));
+      pad(
+        popularSkills(
+          idx,
+          { zoomedOut: true, globalOut: false, domesticRegion: region, localCity: ctx.localCity },
+          n,
+        ),
+      );
+      if (out.length < n)
+        pad(
+          popularSkills(
+            idx,
+            { zoomedOut: true, globalOut: true, domesticRegion: region, localCity: ctx.localCity },
+            n,
+          ),
+        );
     }
     return out.slice(0, n);
   }
   // Other domestic regions / global: rank from the company index.
   if (!idx) return ALL_SKILLS.slice(0, n);
-  let demandOf: (agg: SkillIndex['skills'][string]) => number;
+  let demandOf: (agg: SkillIndex["skills"][string]) => number;
   if (ctx.globalOut) {
     demandOf = (agg) => agg.total;
   } else {
     const cities = new Set(REGION_HUBS[ctx.domesticRegion] || []);
-    demandOf = (agg) => Object.entries(agg.byCity).reduce((s, [c, v]) => s + (cities.has(c) ? v : 0), 0);
+    demandOf = (agg) =>
+      Object.entries(agg.byCity).reduce((s, [c, v]) => s + (cities.has(c) ? v : 0), 0);
   }
   const ranked = Object.entries(idx.skills)
     .map(([name, agg]) => [name, demandOf(agg)] as const)
