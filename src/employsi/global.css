@@ -4509,6 +4509,17 @@ body {
 .gschip:active {
   transform: scale(0.97);
 }
+/* The selected skill: ink fill, white text — same "this one is on" treatment
+   the filter and scope chips use. */
+.gschip.on {
+  border-color: var(--action-primary);
+  background: var(--action-primary);
+  color: var(--action-primary-text);
+}
+.gschip.on:hover {
+  background: var(--action-primary-hover);
+  color: var(--action-primary-text);
+}
 
 /* Suggestion list — the design's panel: 14px below the pill, 6px padding,
    16px radius, flat white (it hangs over the map now, not over the header, so

@@ -243,7 +243,11 @@ export function GlobalSearch() {
   };
 
   const showSuggest = focused && !!q && !cardSkill;
-  const showChips = focused && !q && !cardSkill;
+  // Chips show on an empty focused field, and stay up while a skill is
+  // selected so the chosen one can carry its selected state and the rest stay
+  // one click away.
+  const skillActive = !!cardSkill && q === cardSkill.toLowerCase();
+  const showChips = (focused && !q && !cardSkill) || skillActive;
   const noMatch = searched && !cardSkill && !!q;
 
   return (
@@ -530,7 +534,6 @@ export function GlobalSearch() {
                   key={r}
                   className="gsrelchip"
                   onClick={() => {
-                    setSearchQuery(r);
                     toggleSkillQuery(r);
                     setCarded(r);
                     setSearched(true);
@@ -555,10 +558,13 @@ export function GlobalSearch() {
           {popularSkills.map((sk) => (
             <button
               key={sk}
-              className="gschip"
+              className={`gschip${sk.toLowerCase() === q ? " on" : ""}`}
+              aria-pressed={sk.toLowerCase() === q}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
-                setSearchQuery(sk);
+                // No setSearchQuery here: toggleSkillQuery writes the name
+                // itself, and pre-setting it made the toggle read the skill as
+                // already active and switch it straight back off.
                 toggleSkillQuery(sk);
                 setCarded(sk);
                 setSearched(true);
