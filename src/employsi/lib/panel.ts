@@ -1,6 +1,7 @@
 import { COMPANIES, companyGroup } from '../data/companies';
 import { COMPANY_CULTURE, INDUSTRY_BENCH, type Layoff } from '../data/culture';
 import { COMPANY_HEADCOUNT } from '../data/companyHeadcount';
+import { PRIVATE_COMPANY_FACTS } from '../data/privateCompanyFacts';
 import { GOV_HEADCOUNT } from '../data/perthGovWorkforce';
 import type { CompanyNews } from '../data/news';
 import type { BhpFeed } from '../data/bhpFeed';
@@ -78,10 +79,19 @@ export function buildPanel(id: string | null, roleTitle?: string | null, live?: 
   let bigStats: BigStat[];
   let subStats: SubStat[];
 
-  const glass = live ? live.glassdoor : culture ? culture.glassdoor : 3.6;
+  // Private companies have no culture feed; their Glassdoor rating (when we've
+  // fetched a real one) comes from PRIVATE_COMPANY_FACTS. Absent that, the
+  // rating stays the industry benchmark and is flagged as not company-specific.
+  const pvtFacts = PRIVATE_COMPANY_FACTS[c.id];
+  const glass = live ? live.glassdoor
+    : culture ? culture.glassdoor
+    : pvtFacts?.glassdoorRating ?? 3.6;
+  const glassReal = !!live || !!culture || pvtFacts?.glassdoorRating !== undefined;
   const glassDelta = +(glass - INDUSTRY_BENCH.glassdoor).toFixed(1);
   const glassSub = (glassDelta >= 0 ? '+' : '−') + Math.abs(glassDelta).toFixed(1) + ' vs industry';
-  const glassSub2: SubStat = { value: glass.toFixed(1) + ' ★', label: 'Glassdoor rating', sub: glassSub, subCls: glassDelta >= 0 ? '' : 'neg' };
+  const glassSub2: SubStat = glassReal
+    ? { value: glass.toFixed(1) + ' ★', label: 'Glassdoor rating', sub: glassSub, subCls: glassDelta >= 0 ? '' : 'neg' }
+    : { value: '—', label: 'Glassdoor rating', sub: 'not disclosed', subCls: '' };
 
   if (roleTitle) {
     // Role-focused figures, derived deterministically from the role title.

@@ -1,0 +1,55 @@
+# Refresh the Top-150 private companies' public facts (Glassdoor rating + size
+# band) and commit the regenerated data file.
+#
+# These companies file no ASX accounts, so the stockanalysis.com feed behind
+# COMPANY_HEADCOUNT has nothing for them. Glassdoor 403s datacenter IPs, so the
+# fetch goes through the Oxylabs Web Scraper API (residential IP).
+#
+# Deliberately does NOT derive a headcount YoY: that needs two years of audited
+# figures from each company's annual report, which is not automatable for
+# proprietary companies. Those fields stay "not disclosed" on the card.
+#
+# Required repo secrets: OXYLABS_USERNAME, OXYLABS_PASSWORD
+# Run manually (workflow_dispatch); monthly on schedule since ratings move slowly.
+
+name: private-facts
+
+on:
+  schedule:
+    - cron: '0 19 1 * *' # 19:00 UTC on the 1st of each month
+  workflow_dispatch: {}
+
+concurrency:
+  group: private-facts
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Fetch private-company facts
+        env:
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+        run: python scripts/fetch-private-facts.py
+
+      - name: Commit refreshed facts
+        run: |
+          if git diff --quiet -- src/employsi/data/privateCompanyFacts.ts; then
+            echo "No change to privateCompanyFacts.ts"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/employsi/data/privateCompanyFacts.ts
+          git commit -m "Refresh Top-150 private company facts (Glassdoor)"
+          git push
