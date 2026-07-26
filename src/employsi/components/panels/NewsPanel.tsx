@@ -10,10 +10,15 @@ import { useArticleImages } from "../../hooks/useArticleImages";
 import { useLiveNews } from "../../hooks/useLiveNews";
 import type { ArticleMeta } from "../../lib/articleImageFn";
 
-// "[company] in the news" feed that sits to the right of the company card,
-// styled as a modern news app: a large hero card with the article photo behind
-// an overlaid category pill, meta line and headline, then a two-column grid of
-// smaller cards (image on top, pill + meta + headline below).
+// "[company] in the news", the second column of `Employsi Company Card
+// public.html` — a 196px hero with the article photo behind a gradient, a
+// "Trending" chip and the headline, then a stacked list of rows: a 64px square
+// on the left, headline and meta on the right.
+//
+// The design draws those squares as a flat tint with a three-letter kicker,
+// because its mock has no images. We DO have real article images (feed image,
+// else the Worker's og:image scrape), so a row shows the photo when there is
+// one and falls back to the design's tinted kicker when there isn't.
 //
 // The 14 pilot companies use a hand-curated real feed; everyone else pulls a
 // live feed on the Worker (Bing News → GDELT → named outlet RSS), falling back
@@ -59,6 +64,21 @@ function gradientFor(seed: string): string {
   const a = h;
   const b = (h + 40) % 360;
   return `linear-gradient(135deg, hsl(${a} 55% 32%), hsl(${b} 60% 20%))`;
+}
+
+// The row's fallback square: a tint and a short code, when an article has no
+// image. Both are derived from the publisher so the same outlet always looks
+// the same down the list — it is a label, not a measurement.
+const KICKER_TINTS = ["#f2f5fa", "#f6f3ee", "#f1f6f3", "#f7f2f2"];
+function kickerOf(item: NewsItem, meta?: ArticleMeta): { code: string; tint: string } {
+  const src = pubOf(item, meta) || item.cat || "News";
+  const letters = src.replace(/[^A-Za-z]/g, "");
+  let h = 0;
+  for (let i = 0; i < src.length; i++) h = (h * 31 + src.charCodeAt(i)) % 9973;
+  return {
+    code: (letters.slice(0, 3) || "NEW").toUpperCase(),
+    tint: KICKER_TINTS[h % KICKER_TINTS.length],
+  };
 }
 
 function articleUrl(item: NewsItem, name: string): string {
@@ -119,50 +139,60 @@ export function NewsPanel({
 
   const heroImg = imageOf(news.hero, heroMeta);
 
+  // "Updated Nh ago" from the freshest article we actually have a date for —
+  // the design hard-codes 18h; this is the real recency of the feed below it.
+  const updated = (() => {
+    const stamps = [news.hero, ...items]
+      .map((a) => publishedOf(a, a.url ? meta[a.url] : undefined))
+      .map((p) => (p ? Date.parse(p) : NaN))
+      .filter((t) => !Number.isNaN(t));
+    if (!stamps.length) return null;
+    return relTime(new Date(Math.max(...stamps)).toISOString());
+  })();
+
   return (
-    <aside className="newspanel flashfeed">
-      <div className="ffhd">
-        <span className="ffhdname">In the news</span>
+    <aside className="newspanel">
+      <div className="nwhd">
+        <span className="nwhdname">In the news</span>
+        {updated && <span className="cceyebrow">Updated {updated}</span>}
       </div>
-      <div className="ffscroll">
-        <a
-          className="ffhero"
-          style={{ animationDelay: "0.02s" }}
-          href={articleUrl(news.hero, name)}
-          target="_blank"
-          rel="noreferrer"
-        >
-          <Thumb img={heroImg} seed={news.hero.title} className="ffhero-img" />
-          <div className="ffhero-shade" />
-          <div className="ffhero-body">
-            <span className="ffpill ffpill-hero">{news.hero.cat}</span>
-            <div className="ffhero-title">{news.hero.title}</div>
-            <div className="ffhero-meta">{metaBits(news.hero, heroMeta)}</div>
-          </div>
+      <div className="nwscroll">
+        <a className="nwhero" href={articleUrl(news.hero, name)} target="_blank" rel="noreferrer">
+          <Thumb img={heroImg} seed={news.hero.title} className="nwheroimg" />
+          <span className="nwheroshade" />
+          <span className="nwherochip">{news.hero.cat}</span>
+          <span className="nwherobody">
+            <span className="nwherotitle">{news.hero.title}</span>
+            <span className="nwherometa">{metaBits(news.hero, heroMeta)}</span>
+          </span>
         </a>
 
-        <div className="ffgrid">
-          {items.map((a, i) => {
-            const m = a.url ? meta[a.url] : undefined;
-            return (
-              <a
-                className="ffcard"
-                style={{ animationDelay: `${0.08 + i * 0.06}s` }}
-                key={i}
-                href={articleUrl(a, name)}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <Thumb img={imageOf(a, m)} seed={a.title} className="ffcard-img" />
-                <div className="ffcard-body">
-                  <span className="ffpill">{a.cat}</span>
-                  <div className="ffcard-title">{a.title}</div>
-                  <div className="ffcard-meta">{metaBits(a, m)}</div>
-                </div>
-              </a>
-            );
-          })}
-        </div>
+        {items.map((a, i) => {
+          const m = a.url ? meta[a.url] : undefined;
+          const img = imageOf(a, m);
+          const k = kickerOf(a, m);
+          return (
+            <a
+              className="nwrow"
+              key={i}
+              href={articleUrl(a, name)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {img ? (
+                <Thumb img={img} seed={a.title} className="nwrowimg" />
+              ) : (
+                <span className="nwrowimg nwrowkicker" style={{ background: k.tint }}>
+                  {k.code}
+                </span>
+              )}
+              <span className="nwrowbody">
+                <span className="nwrowtitle">{a.title}</span>
+                <span className="nwrowmeta">{metaBits(a, m)}</span>
+              </span>
+            </a>
+          );
+        })}
       </div>
     </aside>
   );
