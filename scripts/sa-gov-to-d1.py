@@ -22,14 +22,17 @@ upsert as src/employsi/lib/jobArchive.ts. Jobs whose agency can't be matched to 
 roster agency are archived under company_id 'sa-gov' (the sector bucket) so the
 count still lands, just not attributed to one card.
 
-Env: OXYLABS_USERNAME, OXYLABS_PASSWORD (Web Scraper API), CLOUDFLARE_API_TOKEN
-     (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID.
+Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID.
 Run:  python3 scripts/sa-gov-to-d1.py [--max-pages N] [--no-skills] [--solve]
                                       [--limit N] [--url URL]
 """
 from __future__ import annotations
 import json, os, re, subprocess, sys, time, datetime
 
+import http.cookiejar  # noqa: E402
+import io  # noqa: E402
+import random  # noqa: E402
+import html as htmllib  # noqa: E402
 import urllib.request  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -213,79 +216,132 @@ def upsert(rows: list) -> int:
     return written
 
 
-# ── Oxylabs render of the BigRedSky report ────────────────────────────────────
-# The report table is JS-rendered; Oxylabs executes the page server-side and
-# returns the finished DOM, which jobs_extract then mines (embedded JSON first,
-# DOM anchors as fallback). BigRedSky paginates by URL parameter, but the exact
-# parameter varies by deployment, so we try the known candidates and keep
-# whichever actually yields new rows. Page 1 always archives even if pagination
-# can't be resolved — a partial archive beats exiting empty.
-PAGE_PARAMS = ('pageNum', 'page', 'pg', 'start', 'offset')
+# ── BigRedSky search flow (reverse-engineered from the live board) ────────────
+# The board is NOT IP-blocked and needs no browser — the earlier "0 rows" runs
+# happened because we were reading the SEARCH FORM page, which never contains
+# results. Verified live, the real flow is:
+#   1. GET the start URL   → session cookie (NRJobBoardID) + a `jobboard_token`
+#                            (note: the token is single-quoted in the markup).
+#   2. POST page.php?pageID=842&windowUID=0 as multipart/form-data with
+#      action=Search (capital S — the Search button sets exactly that) and
+#      Start=<offset>. THIS is what returns the populated report; the response
+#      grows ~231KB → ~304KB and gains the real brs_report_table_* tables.
+#   3. Read table `brs_report_table_16`, whose header row gives the columns:
+#      Job Title | Reference No | Posting Date | Expiry Date | Agency |
+#      Classification | Salary | Location.
+#   4. Paginate with Start += 20 (verified page size) until no new titles.
+REPORT_POST = 'https://www.iworkfor.sa.gov.au/jb/page.php?pageID=842&windowUID=0'
+PAGE_SIZE = 20
+UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/124 Safari/537.36')
+
+_TAG = re.compile(r'<[^>]+>')
+_WS = re.compile(r'\s+')
 
 
-def _fetch_rows(url: str, tag: str):
-    content, status = oxy.fetch(url, geo='Australia', render=True)
-    if not content:
-        sys.stderr.write(f'  {tag}: no content (status={status})\n')
-        return [], None
-    rows, how = jx.extract_jobs(content, r'/jb/job/\d+|jobId=\d+', SITE)
-    return [{
-        'title': r['t'],
-        'agency': r.get('agency') or '',
-        'location': r.get('loc') or '',
-        'salary': r.get('salary') or '',
-        'closing': r.get('close') or '',
-        'url': r.get('url') or '',
-    } for r in rows if r.get('t')], (content, how)
+def _cell_text(fragment: str) -> str:
+    return _WS.sub(' ', htmllib.unescape(_TAG.sub(' ', fragment or ''))).strip()
+
+
+def _report_rows(html: str) -> list:
+    """Parse brs_report_table_16 into dicts keyed by its own header labels."""
+    i = html.find('id="brs_report_table_16"')
+    if i < 0:
+        i = html.find('id="brs_report_table_140"')
+    if i < 0:
+        return []
+    table = html[i:html.find('</table>', i)]
+    heads: list = []
+    out = []
+    for tr in re.findall(r'<tr[^>]*>(.*?)</tr>', table, re.S | re.I):
+        if 'reportheading' in tr:
+            heads = [_cell_text(c) for c in
+                     re.findall(r'<td[^>]*>(.*?)</td>', tr, re.S | re.I)]
+            continue
+        tds = re.findall(r'<td[^>]*>(.*?)</td>', tr, re.S | re.I)
+        if len(tds) < 4:
+            continue
+        vals = [_cell_text(c) for c in tds]
+        rec = {heads[k].lower(): vals[k] for k in range(min(len(heads), len(vals)))}
+        title = rec.get('job title', '')
+        if not title:
+            continue
+        href = re.search(r'href="([^"]+)"', tr)
+        url = href.group(1) if href else ''
+        if url.startswith('/'):
+            url = SITE + url
+        out.append({
+            'title': title,
+            'agency': rec.get('agency', ''),
+            'location': rec.get('location', ''),
+            'salary': rec.get('salary', ''),
+            'closing': rec.get('expiry date', ''),
+            'url': url,
+        })
+    return out
 
 
 def scrape() -> list:
-    """Fetch + paginate the report through Oxylabs, returning flat row dicts."""
-    all_rows, seen = [], set()
+    """Run the search and page through the report. Plain HTTP, no browser."""
+    cj = http.cookiejar.CookieJar()
+    op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+    op.addheaders = [('User-Agent', UA)]
 
-    def take(rows) -> int:
+    sys.stderr.write(f'  loading {START_URL}\n')
+    try:
+        form = op.open(START_URL, timeout=45).read().decode('utf-8', 'replace')
+    except Exception as e:  # noqa: BLE001
+        sys.stderr.write(f'  could not load the search form: {e}\n')
+        return []
+    tm = re.search(r"""name=["']jobboard_token["']\s+value=["']([^"']*)["']""", form)
+    token = tm.group(1) if tm else ''
+    if not token:
+        sys.stderr.write('  WARNING: no jobboard_token found — the form may have changed\n')
+        jx.diagnose(form, 'sa-form')
+
+    def fetch(start: int):
+        fields = [('Advert[ID]', ''), ('saveTo[1]', 'Advert'), ('Advert[Data]', ''),
+                  ('action', 'Search'), ('jobboard_token', token), ('Start', str(start)),
+                  ('orderByCol', '0'), ('orderByAscDesc', ''), ('saveTo[2]', 'Advert')]
+        boundary = '----employsi' + '0' * 8
+        buf = io.BytesIO()
+        for k, v in fields:
+            buf.write(f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode())
+        buf.write(f'--{boundary}--\r\n'.encode())
+        req = urllib.request.Request(REPORT_POST, data=buf.getvalue(), headers={
+            'User-Agent': UA, 'Referer': START_URL,
+            'Content-Type': f'multipart/form-data; boundary={boundary}'})
+        for attempt in range(3):
+            try:
+                return op.open(req, timeout=60).read().decode('utf-8', 'replace')
+            except Exception as e:  # noqa: BLE001
+                if attempt == 2:
+                    sys.stderr.write(f'  search POST failed at Start={start}: {e}\n')
+                    return ''
+                time.sleep(min(30, random.uniform(0, (2 ** attempt) * 3)))
+        return ''
+
+    all_rows, seen = [], set()
+    for page in range(MAX_PAGES):
+        html = fetch(page * PAGE_SIZE)
+        if not html:
+            break
+        rows = _report_rows(html)
+        if not rows and page == 0:
+            jx.diagnose(html, 'sa-results')
         new = 0
         for r in rows:
-            k = (norm(r.get('title')), norm(r.get('agency')), norm(r.get('location')))
+            k = (norm(r['title']), norm(r['agency']), norm(r['location']))
             if k in seen:
                 continue
             seen.add(k)
             all_rows.append(r)
             new += 1
-        return new
-
-    sys.stderr.write(f'  loading {START_URL}\n')
-    rows, meta = _fetch_rows(START_URL, 'page 1')
-    if meta:
-        content, how = meta
-        if not rows:
-            jx.diagnose(content, 'sa-page1')
-        else:
-            sys.stderr.write(f'  page 1: {len(rows)} rows (via {how})\n')
-    take(rows)
-    if not all_rows:
-        return []
-
-    # Resolve pagination: try each candidate param once on page 2 and keep the
-    # first that returns rows we haven't already seen.
-    sep = '&' if '?' in START_URL else '?'
-    param = None
-    for cand in PAGE_PARAMS:
-        probe, _ = _fetch_rows(f'{START_URL}{sep}{cand}=2', f'probe {cand}=2')
-        if probe and take(probe) > 0:
-            param = cand
-            sys.stderr.write(f'  pagination parameter resolved: {cand}\n')
-            break
-    if not param:
-        sys.stderr.write('  no pagination parameter resolved — archiving page 1 only\n')
-        return all_rows
-
-    for pageno in range(3, MAX_PAGES + 1):
-        rows, _ = _fetch_rows(f'{START_URL}{sep}{param}={pageno}', f'page {pageno}')
-        new = take(rows)
-        sys.stderr.write(f'  page {pageno}: {len(rows)} rows ({new} new)\n')
+        sys.stderr.write(f'  page {page + 1} (Start={page * PAGE_SIZE}): {len(rows)} rows ({new} new)\n')
         if new == 0:
             break
+        # Be a polite guest: pace the walk with jitter.
+        time.sleep(random.uniform(1.0, 2.0))
     return all_rows
 
 
@@ -317,9 +373,7 @@ def build_rows(scraped: list, have: dict):
 def main() -> int:
     if not AGENCY_NAMES:
         sys.exit('Could not parse agency names from src/employsi/data/adelaideGov.ts')
-    if not (os.environ.get('OXYLABS_USERNAME') and os.environ.get('OXYLABS_PASSWORD')):
-        sys.exit('OXYLABS_USERNAME / OXYLABS_PASSWORD required (Web Scraper API).')
-    sys.stderr.write(f'SA gov -> D1 via Oxylabs: {len(AGENCY_NAMES)} agencies in roster; '
+    sys.stderr.write(f'SA gov -> D1: {len(AGENCY_NAMES)} agencies in roster; '
                      f'{"SOLVE (no D1 write)" if SOLVE else "archiving"}.\n')
     scraped = scrape()
 
