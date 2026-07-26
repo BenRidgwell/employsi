@@ -1,13 +1,14 @@
 # Daily SA Government → D1 archive (hosted, off your PC).
 #
-# iworkfor.sa.gov.au (BigRedSky) renders its result table entirely client-side.
-# A headless Chromium on GitHub's runner does NOT work — the datacenter IP is
-# bot-blocked and the run rendered 0 rows. So this fetches through the Oxylabs
-# Web Scraper API (residential IP + server-side JS render) and parses the
-# finished DOM — no browser, same path as the Indeed/LinkedIn/NSW/APS archives.
+# iworkfor.sa.gov.au runs a BigRedSky ATS. The board is NOT IP-blocked and needs
+# no browser: the earlier "0 rows" runs were reading the SEARCH FORM page, which
+# never contains results. The real flow (reverse-engineered against the live
+# board) is GET the start URL for a session cookie + jobboard_token, then POST
+# page.php?pageID=842 with action=Search and Start=<offset>; that response
+# carries the server-rendered report table. So this is plain urllib — no
+# Playwright, no Oxylabs.
 #
-# Required repo secrets:
-#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
+# Required repo secret:
 #   CLOUDFLARE_API_TOKEN  — a token with D1 edit on the employsi account
 #                           (the same one the SEEK workflow uses).
 # Optional repo variables (fall back to the values baked into the script):
@@ -44,10 +45,8 @@ jobs:
           bun-version: latest
 
 
-      - name: Scrape SA gov → D1 (Oxylabs)
+      - name: Scrape SA gov → D1
         env:
-          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
-          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
