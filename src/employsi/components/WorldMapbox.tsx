@@ -130,6 +130,32 @@ function lerpLngLat(a: [number, number], b: [number, number], t: number): [numbe
 // it they expand to individual countries.
 const EUROPE_CLUSTER_ZOOM = 2.2;
 const EUROPE_CLUSTER_ID = "eu-cluster";
+
+// The North America view has the same crowding problem Europe has, for the
+// opposite reason: 22 US metros (plus 5 Canadian) inside one frame, several of
+// them within a few degrees — Washington/Philadelphia/New York/Boston stack up
+// the eastern seaboard, and San Francisco/San Jose now sit on top of each
+// other. Rather than nudge two dozen cities away from their real positions, the
+// view opens on the largest metros only and reveals the rest as you zoom in —
+// the same progressive-disclosure idea as the Europe cluster, minus the single
+// stand-in chip (there is no "United States" to drill into from inside the US
+// view; that already happened at the global layer).
+const US_TIER2_ZOOM = 3.5;
+
+// Shown at every zoom: the largest US metros by employment, chosen so the
+// opening frame reads coast to coast without any two labels colliding. Everything
+// else in CITY_COUNTRY['us'] appears past US_TIER2_ZOOM.
+const US_PROMINENT = new Set([
+  "newyork",
+  "losangeles",
+  "chicago",
+  "dallas",
+  "houston",
+  "washington",
+  "atlanta",
+  "seattle",
+  "sanfrancisco",
+]);
 const CROSS_GLOBAL_TO_DOMESTIC = 2.9; // zoom in past this on the globe -> region
 const CROSS_DOMESTIC_TO_GLOBAL = 2.15; // zoom out past this in a region -> globe (sooner)
 // Zoom in past this in a region -> drill into the nearest city's local view.
@@ -144,6 +170,12 @@ interface Marker {
   label: string;
   sub: string;
   clickable: boolean;
+  // Set while a skill search is active and this place has NO demand for it —
+  // either the skill genuinely isn't sought there, or no labour-market series
+  // covers it yet. Faded markers are dimmed and inert, exactly as company pins
+  // behave at the local layer, so the places that DO answer the search are the
+  // only ones competing for attention.
+  faded?: boolean;
   // % change in the searched skill's demand at the current slider month (set
   // only while a skill + the time slider are active), shown as a small callout.
   pct?: number | null;
@@ -190,7 +222,11 @@ function countryDemand(cityDemand: Record<string, number>): Record<string, numbe
 // Which markers to show for the current view. City dots stay neutral until a
 // skill is searched (then the skill-demand blobs carry all the colour). Always
 // filtered by the active sectors.
-function computeMarkers(
+//
+// Exported because it is the one piece of this component with real decision
+// logic in it — which places appear at which zoom, and which fade out on a
+// skill search — and it is pure, so it can be checked without a map.
+export function computeMarkers(
   mode: "global" | "domestic",
   region: string,
   filterState: FilterState,
@@ -262,7 +298,20 @@ function computeMarkers(
     // Domestic: the region's own hubs (Melbourne is now a hub too, so it comes
     // through here on the AU view and on the global view; Darwin and Hobart stay
     // omitted).
-    (REGION_HUBS[region] || []).forEach((id) => push(id, HUB_LNGLAT[id]));
+    (REGION_HUBS[region] || []).forEach((id) => {
+      // North America opens on the largest US metros and fills in the rest as
+      // you zoom (see US_TIER2_ZOOM). Canada's five hubs are far enough apart
+      // to show throughout.
+      if (
+        region === "northamerica" &&
+        zoom < US_TIER2_ZOOM &&
+        CITY_COUNTRY[id] === "us" &&
+        !US_PROMINENT.has(id)
+      ) {
+        return;
+      }
+      push(id, HUB_LNGLAT[id]);
+    });
     // Europe additionally shows every EU country carrying Eurostat data, on its
     // capital. They are not in REGION_HUBS (they're countries, not hub cities)
     // and have no local 3D view, so they arrive as labelled, non-clickable dots
@@ -278,14 +327,22 @@ function computeMarkers(
   // that carry demand. Cities with no demand for the skill stay neutral.
   if (skillActive) {
     const vals = out.map((m) => demand[m.id] || 0).filter((v) => v > 0);
-    if (vals.length) {
-      const mn = Math.min(...vals);
-      const mx = Math.max(...vals);
-      out.forEach((m) => {
-        const v = demand[m.id] || 0;
-        if (v > 0) m.color = heatColor(heatT(v, mn, mx));
-      });
-    }
+    const mn = vals.length ? Math.min(...vals) : 0;
+    const mx = vals.length ? Math.max(...vals) : 0;
+    out.forEach((m) => {
+      const v = demand[m.id] || 0;
+      if (v > 0) {
+        if (vals.length) m.color = heatColor(heatT(v, mn, mx));
+        return;
+      }
+      // No demand for the searched skill here. Fade it back and make it inert
+      // rather than hiding it: the place staying on the map (greyed) is itself
+      // the answer — "we cover this city, the skill isn't wanted here" reads
+      // very differently from the city having vanished. Clicking through would
+      // only land on an empty view, so the marker stops being a target too.
+      m.faded = true;
+      m.clickable = false;
+    });
   }
   return out;
 }
@@ -370,7 +427,11 @@ function markersGeoJSON(markers: Marker[], selectedId: string | null): GeoJSON.F
       properties: {
         id: m.id,
         color: m.color,
-        dim: !!selectedId && selectedId !== m.id,
+        // `dim` = something else is selected; `faded` = no demand for the
+        // searched skill. Either one pulls the dot back, so the paint
+        // expressions below treat them the same.
+        dim: (!!selectedId && selectedId !== m.id) || !!m.faded,
+        faded: !!m.faded,
       },
       geometry: { type: "Point", coordinates: m.coords },
     })),
@@ -529,7 +590,7 @@ export function WorldMapbox() {
       labelsRef.current = {};
       markers.forEach((m) => {
         const el = document.createElement("button");
-        el.className = "mbchip";
+        el.className = m.faded ? "mbchip miss" : "mbchip";
         // Just the city name in the pill — the demand-coloured dot sits below it
         // (the GL circle at the geo point), so no duplicate dot inside the pill.
         el.innerHTML = `<span class="chiptk"></span>`;
@@ -695,9 +756,11 @@ export function WorldMapbox() {
       map.setConfigProperty("basemap", "showRoadLabels", false);
       map.setConfigProperty("basemap", "showLandmarkIcons", false);
       map.setConfigProperty("basemap", "showPlaceLabels", false);
-      // State/province + country borders in charcoal grey so the domestic/global
-      // views read as a clear political map rather than the faded default lines.
-      map.setConfigProperty("basemap", "colorAdminBoundaries", "#3d434c");
+      // State/province + country borders in a light grey: enough to read the
+      // political map, but well behind the city dots and demand blobs, which
+      // are what the view is actually about. Charcoal made the borders the
+      // loudest thing on screen.
+      map.setConfigProperty("basemap", "colorAdminBoundaries", "#b9bfc8");
 
       // Skill-demand heatmap, added first so it sits beneath the hub dots.
       map.addSource(SKILL_SOURCE, { type: "geojson", data: EMPTY_FC });
@@ -767,7 +830,10 @@ export function WorldMapbox() {
       });
 
       [CORE_LAYER, HALO_LAYER].forEach((layer) => {
-        map.on("mouseenter", layer, () => {
+        map.on("mouseenter", layer, (e) => {
+          // A no-demand marker is inert, so it must not advertise itself as
+          // clickable either.
+          if (e.features?.some((f) => f.properties?.faded)) return;
           map.getCanvas().style.cursor = "pointer";
         });
         map.on("mouseleave", layer, () => {
@@ -893,6 +959,15 @@ export function WorldMapbox() {
       const nowClustered = z < EUROPE_CLUSTER_ZOOM;
       if (wasClustered !== nowClustered && useAppStore.getState().globalOut) {
         rebuildMarkersRef.current?.();
+      }
+      // Same for the North America view's second tier of US metros.
+      const wasTier1 = prevZoomRef.current < US_TIER2_ZOOM;
+      const nowTier1 = z < US_TIER2_ZOOM;
+      if (wasTier1 !== nowTier1) {
+        const st = useAppStore.getState();
+        if (!st.globalOut && st.domesticRegion === "northamerica") {
+          rebuildMarkersRef.current?.();
+        }
       }
       prevZoomRef.current = z; // track direction even while guarded
       if (programmaticRef.current) return;

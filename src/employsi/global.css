@@ -283,6 +283,21 @@ body {
   border-color: rgba(28, 28, 30, 0.5);
   box-shadow: 0 14px 30px -10px rgba(15, 27, 61, 0.55);
 }
+/* A city / country with no demand for the searched skill (or with no labour-
+   market series covering it yet). Mirrors the local layer's `.miss` treatment
+   for company pins: faded well back and inert, so the places that DO answer the
+   search are the only ones competing for attention. It stays on the map rather
+   than disappearing — a greyed-out city reads as "covered, not hiring this",
+   which is a different and more useful answer than the city vanishing. */
+.mbchip.miss {
+  opacity: 0.26;
+  pointer-events: none;
+  box-shadow: none;
+  border-color: rgba(28, 28, 30, 0.1);
+}
+.mbchip.miss .chiptk {
+  font-weight: 400;
+}
 .mbchip.on {
   border-color: var(--brand);
   box-shadow:
