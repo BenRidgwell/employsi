@@ -15,6 +15,9 @@ Usage: python3 scripts/gen-uk-vacancy-demand.py path/to/labour_demand.xlsx
 import json, re, sys
 import openpyxl
 
+sys.path.insert(0, __file__.rsplit('/', 1)[0])
+from skills_taxonomy import load_skills, matcher  # noqa: E402
+
 ROOT = __file__.rsplit('/scripts/', 1)[0]
 TAX = f'{ROOT}/src/employsi/data/skillsTaxonomy.ts'
 IVI = f'{ROOT}/src/employsi/data/iviSkillDemand.ts'
@@ -25,15 +28,6 @@ CITY = 'london'
 
 MON = {'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
        'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'}
-
-
-def load_skills():
-    # (skill, [terms]) — same source list the live pipeline uses.
-    body = open(TAX).read().split('RAW_SKILLS', 1)[1].split('];', 1)[0]
-    out = []
-    for m in re.finditer(r"\{\s*skill:\s*'([^']+)',\s*cat:\s*'([^']+)',\s*terms:\s*\[([^\]]*)\]\s*\}", body):
-        out.append((m.group(1), re.findall(r"'([^']*)'", m.group(3))))
-    return out
 
 
 def load_ivi_months():
@@ -55,12 +49,8 @@ def hdr_month(v):
 
 
 def main(path):
-    skills = load_skills()
+    skills_for = matcher(TAX)
     months = load_ivi_months()
-
-    def skills_for(label):
-        hay = ' ' + label.lower() + ' '
-        return [n for (n, ts) in skills if any(t in hay for t in ts)]
 
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     ws = wb[SHEET]

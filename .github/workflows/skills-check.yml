@@ -2,6 +2,12 @@
 # regains a duplicate skill (or a same-named def with a conflicting category).
 # This is the automated control that keeps the "no duplicate skills" fix from
 # silently regressing (see scripts/check-skills.ts + skillsTaxonomy.ts).
+#
+# It also runs the Python-side tests for scripts/skills_taxonomy.py, the reader
+# the AU/UK/EU/US vacancy generators share. A bug there does not crash anything
+# — it quietly produces a plausible dataset with the wrong numbers in it, which
+# is exactly what happened when a double-quoted term ("teacher's aide") was
+# mis-tokenised into a bare ', ' that matched almost every occupation title.
 
 name: skills-check
 
@@ -10,11 +16,16 @@ on:
     paths:
       - 'src/employsi/data/skillsTaxonomy.ts'
       - 'scripts/check-skills.ts'
+      - 'scripts/skills_taxonomy.py'
+      - 'scripts/test_skills_taxonomy.py'
+      - 'scripts/gen-*-demand.py'
       - '.github/workflows/skills-check.yml'
   pull_request:
     paths:
       - 'src/employsi/data/skillsTaxonomy.ts'
       - 'scripts/check-skills.ts'
+      - 'scripts/skills_taxonomy.py'
+      - 'scripts/test_skills_taxonomy.py'
   workflow_dispatch: {}
 
 jobs:
@@ -28,3 +39,10 @@ jobs:
           bun-version: latest
       - name: Assert no duplicate skills
         run: bun run scripts/check-skills.ts
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Taxonomy reader tests (generators' term matcher)
+        run: python scripts/test_skills_taxonomy.py

@@ -135,8 +135,13 @@ const RAW_SKILLS: SkillDef[] = [
   { skill: 'Retail & Customer Service', cat: 'Sales', terms: ['sales assistant', 'checkout', 'service station', 'customer service', 'telemarketer', 'sales demonstrator', 'wool buyer', 'ticket salesperson', 'pharmacy sales', 'vehicle parts salesperson', 'street vendor', 'sales support'] },
 
   // ── Creative, media & design ───────────────────────────────────────────
-  { skill: 'Creative & Performing Arts', cat: 'Creative', terms: ['actor', 'dancer', 'music profession', 'entertainer', 'artistic director', 'photographer', 'film, television', 'stage director', 'performing arts', 'visual arts'] },
-  { skill: 'Journalism & Media', cat: 'Creative', terms: ['journalist', 'author', 'book and script', 'writer', 'media producer', 'presenter'] },
+  // ' actor' and 'authors' are deliberately not the bare stems: 'actor' is a
+  // substring of "tractor" (ANZSCO "Tractor Operators", SOC "Heavy and
+  // Tractor-Trailer Truck Drivers") and 'author' of "authorizer" (SOC "Credit
+  // Authorizers"), so the bare forms filed truck drivers and credit clerks
+  // under the arts. The leading space / plural keeps the real titles matching.
+  { skill: 'Creative & Performing Arts', cat: 'Creative', terms: [' actor', 'dancer', 'music profession', 'entertainer', 'artistic director', 'photographer', 'film, television', 'stage director', 'performing arts', 'visual arts'] },
+  { skill: 'Journalism & Media', cat: 'Creative', terms: ['journalist', 'authors', 'book and script', 'writer', 'media producer', 'presenter'] },
   { skill: 'Design', cat: 'Creative', terms: ['graphic', 'web design', 'interior design', 'fashion', 'industrial and jewellery', 'illustrator', 'signwriter'] },
 
   // ── Science, agriculture & environment ─────────────────────────────────
@@ -185,6 +190,32 @@ const RAW_SKILLS: SkillDef[] = [
   { skill: 'Nursing', cat: 'Health', terms: ['护士', '护理'] },
   { skill: 'Medical Practice', cat: 'Health', terms: ['医生', '医师', '临床'] },
   { skill: 'Teaching & Education', cat: 'Education', terms: ['教师', '老师', '讲师', '教研'] },
+
+  // ── US SOC vocabulary (BLS OEWS) ───────────────────────────────────────
+  // The English terms above are written against ANZSCO (AU) and SOC2010/ONS
+  // (UK) titles. The US Standard Occupational Classification names the same
+  // jobs differently often enough that, unextended, the matcher covered only
+  // 63% of employment in the 21 mapped US metros — "Retail Salespersons",
+  // "Cashiers", "Stockers and Order Fillers" and every "First-Line Supervisor
+  // of …" fell through. These are the US names for skills that already exist
+  // above, so they merge into the same canonical entries below and lift US
+  // coverage without inventing new skills. Deliberately conservative: only
+  // titles whose mapping is unambiguous are listed, so occupations like
+  // "Managers, All Other" and "Business Operations Specialists, All Other"
+  // stay unmatched rather than being forced into an approximate bucket.
+  { skill: 'Retail & Customer Service', cat: 'Sales', terms: ['retail salesperson', 'retail sales worker', 'cashier', 'customer service representative', 'counter and rental clerk'] },
+  { skill: 'Warehousing & Logistics', cat: 'Transport', terms: ['stocker', 'order filler', 'material mover', 'material moving', 'shipping, receiving', 'packers and packagers'] },
+  { skill: 'Leadership & Coordination', cat: 'Corporate', terms: ['first-line supervisor'] },
+  { skill: 'Administration & Office Support', cat: 'Admin', terms: ['secretaries', 'administrative assistant', 'general office clerk'] },
+  { skill: 'Hospitality & Food Service', cat: 'Hospitality', terms: ['bartender', 'food preparation', 'cafeteria attendant', 'waiters and waitresses', 'food servers', 'fast food'] },
+  { skill: 'IT & Systems', cat: 'Digital', terms: ['information systems manager', 'user support specialist', 'computer support', 'computer network support'] },
+  { skill: 'Cybersecurity', cat: 'Digital', terms: ['information security'] },
+  { skill: 'Finance & Accounting', cat: 'Corporate', terms: ['financial manager'] },
+  { skill: 'Banking & Lending', cat: 'Financial', terms: ['financial services sales', 'loan officer', 'tellers'] },
+  { skill: 'Allied Health', cat: 'Health', terms: ['medical assistant', 'home health', 'personal care aide'] },
+  { skill: 'Construction Labouring', cat: 'Construction', terms: ['construction laborer'] },
+  { skill: 'Cleaning & Facilities', cat: 'Cleaning', terms: ['maintenance and repair worker', 'landscaping and groundskeeping', 'building and grounds'] },
+  { skill: 'Driving & Transport', cat: 'Transport', terms: ['heavy and tractor-trailer', 'light truck driver', 'delivery drivers'] },
 ];
 
 // Merge defs that share a canonical skill name into ONE def. Some skills are

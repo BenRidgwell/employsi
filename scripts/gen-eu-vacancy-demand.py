@@ -30,6 +30,9 @@ import json, re, sys, warnings
 warnings.filterwarnings('ignore')
 import openpyxl
 
+sys.path.insert(0, __file__.rsplit('/', 1)[0])
+from skills_taxonomy import load_skills, matcher  # noqa: E402
+
 ROOT = __file__.rsplit('/scripts/', 1)[0]
 TAX = f'{ROOT}/src/employsi/data/skillsTaxonomy.ts'
 OUT = f'{ROOT}/src/employsi/data/euVacancyDemand.ts'
@@ -78,20 +81,8 @@ SKIP_OCC = {'total'}
 VACANCY_RATE = 0.025
 
 
-def load_skills():
-    body = open(TAX).read().split('RAW_SKILLS', 1)[1].split('];', 1)[0]
-    out = []
-    for m in re.finditer(r"\{\s*skill:\s*'([^']+)',\s*cat:\s*'([^']+)',\s*terms:\s*\[([^\]]*)\]\s*\}", body):
-        out.append((m.group(1), re.findall(r"'([^']*)'", m.group(3))))
-    return out
-
-
 def main(path):
-    skills = load_skills()
-
-    def skills_for(label):
-        hay = ' ' + label.lower() + ' '
-        return [n for (n, ts) in skills if any(t in hay for t in ts)]
+    skills_for = matcher(TAX)
 
     wb = openpyxl.load_workbook(path, data_only=True)
     ws = wb[SHEET]

@@ -17,6 +17,9 @@ figure is the true AUST total. Requires: pip install openpyxl
 import json, re, sys
 import openpyxl
 
+sys.path.insert(0, __file__.rsplit('/', 1)[0])
+from skills_taxonomy import load_skills, matcher  # noqa: E402
+
 ROOT = __file__.rsplit('/scripts/', 1)[0]
 TAX = f'{ROOT}/src/employsi/data/skillsTaxonomy.ts'
 OUT = f'{ROOT}/src/employsi/data/iviSkillDemand.ts'
@@ -50,25 +53,14 @@ OVERRIDE = {
 }
 
 
-def load_skills():
-    # RAW_SKILLS is the source array (SKILLS is now a computed dedup of it).
-    body = open(TAX).read().split('RAW_SKILLS', 1)[1].split('];', 1)[0]
-    out = []
-    for m in re.finditer(r"\{\s*skill:\s*'([^']+)',\s*cat:\s*'([^']+)',\s*terms:\s*\[([^\]]*)\]\s*\}", body):
-        out.append((m.group(1), re.findall(r"'([^']*)'", m.group(3))))
-    return out
-
-
 def main(path):
-    skills = load_skills()
+    skills = load_skills(TAX)
     names = {n for n, _ in skills}
     for c, sk in OVERRIDE.items():
         for s in sk:
             assert s in names, f'override references unknown skill: {s}'
 
-    def skills_for(title):
-        hay = ' ' + title.lower() + ' '
-        return [n for (n, ts) in skills if any(t in hay for t in ts)]
+    skills_for = matcher(TAX)
 
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     ws = wb[SHEET]

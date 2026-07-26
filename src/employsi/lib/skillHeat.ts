@@ -8,15 +8,17 @@ import { SG_SERIES, SG_SKILL_BY_CITY } from '../data/sgVacancyDemand';
 import { NZ_SERIES, NZ_SKILL_BY_CITY } from '../data/nzVacancyDemand';
 import { UK_SERIES, UK_SKILL_BY_CITY } from '../data/ukVacancyDemand';
 import { EU_SERIES, EU_SKILL_BY_CITY } from '../data/euVacancyDemand';
+import { US_SERIES, US_SKILL_BY_CITY } from '../data/usVacancyDemand';
 import type { SkillIndex } from './skillsFn';
 
 // The AU (JSA/IVI), Canada (StatCan), Singapore (MRSD), New Zealand (MBIE), UK
-// (ONS) and EU (Eurostat, by country) vacancy series all share one month axis
+// (ONS), EU (Eurostat, by country) and US (BLS OEWS × JOLTS, by metro) vacancy
+// series all share one month axis
 // (IVI_MONTHS), so a skill's per-city history is just the countries' city maps
 // merged. Keeping them combined here means the heat map + time slider treat
 // every country like AU.
 function seriesFor(skill: string): Record<string, number[]> | null {
-  const parts = [IVI_SERIES[skill], CA_SERIES[skill], SG_SERIES[skill], NZ_SERIES[skill], UK_SERIES[skill], EU_SERIES[skill]].filter(Boolean) as Record<string, number[]>[];
+  const parts = [IVI_SERIES[skill], CA_SERIES[skill], SG_SERIES[skill], NZ_SERIES[skill], UK_SERIES[skill], EU_SERIES[skill], US_SERIES[skill]].filter(Boolean) as Record<string, number[]>[];
   if (!parts.length) return null;
   return Object.assign({}, ...parts);
 }
@@ -29,6 +31,7 @@ function latestFor(skill: string): Record<string, number> {
     ...(NZ_SKILL_BY_CITY[skill] || {}),
     ...(UK_SKILL_BY_CITY[skill] || {}),
     ...(EU_SKILL_BY_CITY[skill] || {}),
+    ...(US_SKILL_BY_CITY[skill] || {}),
   };
 }
 
@@ -152,7 +155,8 @@ function cityMarketDemand(city: string): Record<string, number> {
       (SG_SKILL_BY_CITY[s]?.[city] || 0) +
       (NZ_SKILL_BY_CITY[s]?.[city] || 0) +
       (UK_SKILL_BY_CITY[s]?.[city] || 0) +
-      (EU_SKILL_BY_CITY[s]?.[city] || 0);
+      (EU_SKILL_BY_CITY[s]?.[city] || 0) +
+      (US_SKILL_BY_CITY[s]?.[city] || 0);
     if (v > 0) out[s] = v;
   }
   return out;
@@ -196,10 +200,11 @@ function mergeByCity(
   return out;
 }
 
-// Canada national demand per skill — drives the North America domestic view's
-// popular skills; Singapore national — drives the Asia domestic view's. Europe
-// combines the UK (London) and the EU-by-country series.
-const CA_SKILLS: string[] = rankByCity(CA_SKILL_BY_CITY);
+// Whole-of-market demand per skill for each domestic view that has a government
+// vacancy series behind it. North America combines Canada (StatCan) and the US
+// (BLS), and Europe the UK (ONS) and the EU countries (Eurostat), so a regional
+// ranking reflects the whole region rather than whichever country was wired first.
+const NORTHAMERICA_SKILLS: string[] = rankByCity(mergeByCity(CA_SKILL_BY_CITY, US_SKILL_BY_CITY));
 const SG_SKILLS: string[] = rankByCity(SG_SKILL_BY_CITY);
 const EUROPE_SKILLS: string[] = rankByCity(mergeByCity(UK_SKILL_BY_CITY, EU_SKILL_BY_CITY));
 
@@ -208,8 +213,9 @@ const EUROPE_SKILLS: string[] = rankByCity(mergeByCity(UK_SKILL_BY_CITY, EU_SKIL
 //   • local    → an aggregate of that city's whole-market vacancy demand
 //                (IVI/StatCan/etc.) AND its mapped companies' live job ads,
 //                padded from region- then world-demand when the city is data-poor
-//   • domestic → Australia: IVI national; North America: Canada national; other
-//                regions: summed across the region's hub companies
+//   • domestic → Australia: IVI national; North America: Canada + US; Europe:
+//                UK + EU; Asia: Singapore; other regions: summed across the
+//                region's hub companies
 //   • global   → summed across every company worldwide
 export interface LayerCtx {
   zoomedOut: boolean;
@@ -221,7 +227,7 @@ export function popularSkills(idx: SkillIndex | null, ctx: LayerCtx, n = 10): st
   // Domestic views with a whole-of-market government vacancy series.
   if (ctx.zoomedOut && !ctx.globalOut) {
     if (ctx.domesticRegion === 'australia' && IVI_SKILLS.length) return IVI_SKILLS.slice(0, n);
-    if (ctx.domesticRegion === 'northamerica' && CA_SKILLS.length) return CA_SKILLS.slice(0, n);
+    if (ctx.domesticRegion === 'northamerica' && NORTHAMERICA_SKILLS.length) return NORTHAMERICA_SKILLS.slice(0, n);
     if (ctx.domesticRegion === 'asia' && SG_SKILLS.length) return SG_SKILLS.slice(0, n);
     if (ctx.domesticRegion === 'europe' && EUROPE_SKILLS.length) return EUROPE_SKILLS.slice(0, n);
   }
