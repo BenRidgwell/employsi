@@ -542,6 +542,13 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
+  /* The employsi wordmark sits above everything on the map — the company
+     markers (z-index 3/6) and every chrome control (docks/keys up to ~48) —
+     so the brand is always the top-most element. position:relative gives the
+     z-index a footing (the parent .topbar has no z-index, so this competes in
+     the app's root stacking context). */
+  position: relative;
+  z-index: 60;
 }
 .bmark {
   width: 40px;
@@ -3723,6 +3730,10 @@ body {
   /* Aligned under the skills key, past the vertically-centred layer dock. */
   left: 80px;
   bottom: 24px;
+  /* Above the local company markers (mapbox markers, z-index 3; selected 6) so
+     the city stats bar always sits in front of them — matching the other local
+     chrome (heat key / docks). Still below the side panes (z-index 45). */
+  z-index: 30;
   /* Informational only — take pointer events so a plain arrow cursor shows
      (rather than the map's grab cursor bleeding through, which made it look
      draggable/selectable), but never let the text be selected. */

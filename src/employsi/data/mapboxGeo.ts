@@ -14,6 +14,7 @@ import { DARWIN_GOV_IDS } from './darwinGov';
 import { HOBART_GOV_IDS } from './hobartGov';
 import { SYDNEY_GOV_IDS } from './sydneyGov';
 import { TOP_PRIVATE_BY_CITY } from './topPrivateCompanies';
+import { NZ_BY_CITY } from './nzCompanies';
 import { PERTH_REAL_COORDS } from './perthRealCoords';
 
 export const PERTH_CENTER: [number, number] = [115.8552, -31.9542];
@@ -40,6 +41,7 @@ export const CITY_VIEWS: Record<string, CityView> = {
   darwin: { center: [130.8418, -12.4611], zoom: 16.2, pitch: 60, bearing: -20 },
   hobart: { center: [147.3257, -42.8826], zoom: 16.3, pitch: 60, bearing: -16 },
   auckland: { center: [174.7645, -36.8485], zoom: 16.2, pitch: 60, bearing: -18 },
+  wellington: { center: [174.7759, -41.2865], zoom: 16.2, pitch: 60, bearing: -20 },
   sydney: { center: [151.2093, -33.8688], zoom: 16.5, pitch: 60, bearing: -18 },
   singapore: { center: [103.8519, 1.29], zoom: 16.4, pitch: 60, bearing: -12 },
   ganzhou: { center: [114.9333, 25.83], zoom: 16.1, pitch: 60, bearing: -14 },
@@ -281,6 +283,14 @@ for (const [city, ids] of Object.entries(TOP_PRIVATE_BY_CITY)) {
   const offset = existing.length;
   const pts = spreadCoordsCity(view.center, offset + ids.length, CITY_PLACEMENT[city]);
   ids.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
+}
+
+// New Zealand companies: plotted at their real geocoded HQ coordinates on the
+// Auckland + Wellington local views (no fan — these are verified addresses).
+for (const [city, entries] of Object.entries(NZ_BY_CITY)) {
+  if (!CITY_VIEWS[city]) continue;
+  const existing = (CITY_COMPANIES[city] ||= []);
+  entries.forEach(({ id, coords }) => existing.push({ id, coords }));
 }
 
 // Flat lookup of every company's coords across all cities. Where a company sits

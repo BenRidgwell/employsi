@@ -1,12 +1,13 @@
 # Daily SA Government → D1 archive (hosted, off your PC).
 #
-# iworkfor.sa.gov.au (BigRedSky) renders its results only in a real browser, so
-# this runs a headless Chromium on GitHub's runner via Playwright — a hosted
-# alternative to running scripts/sa-gov-to-d1.py on your own machine. The SA
-# board is a government site with no datacenter-IP blocking (it only blocks
-# no-browser HTTP clients), so a CI browser reaches it fine.
+# iworkfor.sa.gov.au (BigRedSky) renders its result table entirely client-side.
+# A headless Chromium on GitHub's runner does NOT work — the datacenter IP is
+# bot-blocked and the run rendered 0 rows. So this fetches through the Oxylabs
+# Web Scraper API (residential IP + server-side JS render) and parses the
+# finished DOM — no browser, same path as the Indeed/LinkedIn/NSW/APS archives.
 #
-# Required repo secret:
+# Required repo secrets:
+#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
 #   CLOUDFLARE_API_TOKEN  — a token with D1 edit on the employsi account
 #                           (the same one the SEEK workflow uses).
 # Optional repo variables (fall back to the values baked into the script):
@@ -42,13 +43,11 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install Playwright + Chromium
-        run: |
-          pip install playwright
-          python -m playwright install --with-deps chromium
 
-      - name: Scrape SA gov → D1
+      - name: Scrape SA gov → D1 (Oxylabs)
         env:
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}

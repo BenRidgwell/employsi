@@ -41,6 +41,8 @@ const NEUTRAL_DOT = 'rgb(42,42,46)';
 // Decorative traffic on the globe: aircraft between city pairs and container
 // ships between port hubs, each drifting back and forth along its route.
 type TravelMode = 'plane' | 'ship';
+// Uniform slow-down applied to every traveler's duration (>1 = slower drift).
+const TRAVEL_SLOWDOWN = 1.6;
 interface TravelRoute { from: string; to: string; mode: TravelMode; dur: number; offset: number; }
 const TRAVEL_ROUTES: TravelRoute[] = [
   { from: 'perth', to: 'singapore', mode: 'plane', dur: 24000, offset: 0.0 },
@@ -652,8 +654,9 @@ export function WorldMapbox() {
           const a = HUB_LNGLAT[route.from];
           const b = HUB_LNGLAT[route.to];
           // Ping-pong 0->1->0 so each craft makes a round trip rather than
-          // snapping back to the start.
-          const phase = ((now / route.dur) + route.offset) % 2;
+          // snapping back to the start. TRAVEL_SLOWDOWN stretches every route's
+          // duration uniformly so the planes/ships drift more slowly.
+          const phase = ((now / (route.dur * TRAVEL_SLOWDOWN)) + route.offset) % 2;
           const t = phase < 1 ? phase : 2 - phase;
           const eased = t; // linear is fine at this scale
           const pos = lerpLngLat(a, b, eased);

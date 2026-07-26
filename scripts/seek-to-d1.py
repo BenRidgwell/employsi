@@ -23,6 +23,7 @@ Run:  python scripts/seek-to-d1.py [--limit N] [--only id1,id2] [--no-skills]
 from __future__ import annotations
 import json, os, re, subprocess, sys, time, datetime
 from urllib.parse import urlencode
+import random
 import urllib.request
 
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
@@ -83,13 +84,23 @@ def load_advertisers() -> dict:
 def seek_get(params: dict):
     url = f'{SEEK_API}?{urlencode(params)}'
     req = urllib.request.Request(url, headers={'User-Agent': UA, 'Accept': 'application/json'})
-    for attempt in range(3):
+    for attempt in range(4):
         try:
             with urllib.request.urlopen(req, timeout=30) as r:
                 if r.status == 200:
                     return json.loads(r.read().decode('utf-8'))
+        except urllib.error.HTTPError as e:
+            # Honour an explicit rate-limit signal; otherwise exponential backoff
+            # with jitter (linear retries synchronise and get us blocked faster).
+            if e.code in (429, 500, 502, 503, 504):
+                ra = e.headers.get('Retry-After') if e.headers else None
+                delay = float(ra) if ra and str(ra).strip().isdigit() else \
+                    min(45, random.uniform(0, (2 ** attempt) * 2.5))
+                time.sleep(delay)
+                continue
+            return None
         except Exception:
-            time.sleep(1.5 * (attempt + 1))
+            time.sleep(min(45, random.uniform(0, (2 ** attempt) * 2.5)))
     return None
 
 
@@ -130,7 +141,8 @@ def fetch_company(advertiser_id: str, name: str) -> list:
                 'co': co, 'sal': (j.get('salaryLabel') or '').strip() or None,
             })
         page += 1
-        time.sleep(1.2)
+        # Pace page walks with jitter so we never hit SEEK at a fixed cadence.
+        time.sleep(random.uniform(1.0, 2.0))
     return out
 
 

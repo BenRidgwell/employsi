@@ -225,20 +225,33 @@ export function popularSkills(idx: SkillIndex | null, ctx: LayerCtx, n = 10): st
     if (ctx.domesticRegion === 'asia' && SG_SKILLS.length) return SG_SKILLS.slice(0, n);
     if (ctx.domesticRegion === 'europe' && EUROPE_SKILLS.length) return EUROPE_SKILLS.slice(0, n);
   }
-  // Local city: an AGGREGATED view of what's in high demand in that city —
-  // the whole-market vacancy demand (IVI/StatCan/etc.) PLUS the mapped companies'
-  // live job ads, in the same ad-count unit, summed into one ranking. When a city
-  // has little or no local signal (most global hubs carry no whole-market series
-  // and no scraped ads), we pad from its region's demand ranking and then global
-  // demand — never the raw taxonomy order, whose head is mining-heavy and would
-  // otherwise show the same wrong list on every data-poor city.
+  // Local city: an AGGREGATED view of what's in high demand in that city — the
+  // whole-market vacancy demand (IVI/StatCan/etc.) blended with the mapped
+  // companies' live job ads. The two are on wildly different scales (the whole
+  // market is thousands of ads; a handful of mapped employers, tens), so a raw
+  // sum would bury the companies. Instead each source is normalised to its own
+  // top skill (0..1) and then blended, with the company signal weighted a little
+  // HIGHER so the city's signature employers punch through — e.g. Perth's mining
+  // skills rise to sit alongside the broad admin/education demand rather than
+  // being drowned by it. When a city has little or no local signal (most global
+  // hubs carry no whole-market series and no scraped ads) we pad from its
+  // region's demand ranking and then global demand — never the raw taxonomy
+  // order, whose head is mining-heavy and would show the same wrong list on
+  // every data-poor city.
   if (!ctx.zoomedOut) {
-    const score: Record<string, number> = {};
-    const add = (m: Record<string, number>) => {
-      for (const [s, v] of Object.entries(m)) score[s] = (score[s] || 0) + v;
+    const norm = (m: Record<string, number>): Record<string, number> => {
+      const mx = Math.max(0, ...Object.values(m));
+      if (mx <= 0) return {};
+      const o: Record<string, number> = {};
+      for (const [s, v] of Object.entries(m)) o[s] = v / mx;
+      return o;
     };
-    add(cityMarketDemand(ctx.localCity));
-    add(cityCompanyDemand(idx, ctx.localCity));
+    const market = norm(cityMarketDemand(ctx.localCity));
+    const company = norm(cityCompanyDemand(idx, ctx.localCity));
+    const COMPANY_WEIGHT = 1.25; // > 1 so mapped-employer character punches through
+    const score: Record<string, number> = {};
+    for (const [s, v] of Object.entries(market)) score[s] = (score[s] || 0) + v;
+    for (const [s, v] of Object.entries(company)) score[s] = (score[s] || 0) + v * COMPANY_WEIGHT;
     const out = Object.entries(score)
       .sort((a, b) => b[1] - a[1])
       .map(([s]) => s);
