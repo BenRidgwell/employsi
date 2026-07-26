@@ -3,6 +3,7 @@
 // SVG layers (GlobeMap / AustraliaMap / RegionMap) use illustrative viewBox
 // coordinates instead; this file is the real-geo equivalent for the trial.
 import { CITY_VIEWS } from './mapboxGeo';
+import { EU_CITY_LNGLAT } from './euVacancyDemand';
 import { CITY_CONTINENT, CITY_LABEL, GLOBAL_HUB_LABEL } from './geo';
 
 // Every global hub already has real head-office coordinates in CITY_VIEWS
@@ -72,3 +73,121 @@ export const GLOBAL_VIEW = {
   // the frame on arrival.
   zoom: 1.05,
 };
+
+// ── Country roll-up for the global layer ─────────────────────────────────────
+// At the global layer we don't want 49 city dots — we want one marker per
+// COUNTRY carrying that country's aggregated demand, labelled with the country
+// name. Clicking (or scrolling into) a country drops to its domestic layer,
+// where the per-city breakdown is presented exactly as it is today.
+//
+// Every hub city maps to its country; the EU-country entries (which are already
+// country-level, from the Eurostat wiring) map to themselves.
+export const CITY_COUNTRY: Record<string, string> = {
+  // Australia / New Zealand
+  perth: 'au', adelaide: 'au', brisbane: 'au', melbourne: 'au', sydney: 'au',
+  canberra: 'au', darwin: 'au', hobart: 'au',
+  auckland: 'nz', wellington: 'nz',
+  // Asia
+  singapore: 'sg', tokyo: 'jp', hongkong: 'hk', dubai: 'ae', seoul: 'kr',
+  ganzhou: 'cn', shanghai: 'cn', shenzhen: 'cn', beijing: 'cn',
+  // North America
+  toronto: 'ca', calgary: 'ca', montreal: 'ca', vancouver: 'ca', ottawa: 'ca',
+  houston: 'us', denver: 'us', newyork: 'us', sanfrancisco: 'us', chicago: 'us',
+  seattle: 'us', austin: 'us', atlanta: 'us', bentonville: 'us', omaha: 'us',
+  indianapolis: 'us', sandiego: 'us', losangeles: 'us', charlotte: 'us',
+  minneapolis: 'us', cincinnati: 'us', boston: 'us', dallas: 'us',
+  washington: 'us', philadelphia: 'us', portland: 'us',
+  // Europe
+  london: 'gb', zurich: 'ch', paris: 'fr',
+  // Africa
+  johannesburg: 'za',
+  // EU countries (already country-level ids from the Eurostat wiring). France
+  // shares 'fr' with Paris so the two sources combine into one country total.
+  belgium: 'be',
+  bulgaria: 'bg',
+  czechia: 'cz',
+  germany: 'de',
+  estonia: 'ee',
+  ireland: 'ie',
+  greece: 'gr',
+  spain: 'es',
+  france: 'fr',
+  croatia: 'hr',
+  italy: 'it',
+  cyprus: 'cy',
+  latvia: 'lv',
+  lithuania: 'lt',
+  luxembourg: 'lu',
+  hungary: 'hu',
+  malta: 'mt',
+  netherlands: 'nl',
+  austria: 'at',
+  poland: 'pl',
+  portugal: 'pt',
+  romania: 'ro',
+  slovenia: 'si',
+  slovakia: 'sk',
+  finland: 'fi',
+  sweden: 'se',
+};
+
+export interface CountryInfo {
+  label: string;
+  region: string;            // domestic layer entered on click / scroll-in
+  center: [number, number];  // where the country marker sits
+}
+
+// Countries that carry mapped hubs. The EU-only countries (Germany, Spain, …)
+// are added below from the Eurostat coordinate table so their demand also rolls
+// up at the global layer.
+export const COUNTRIES: Record<string, CountryInfo> = {
+  au: { label: 'Australia', region: 'australia', center: [134.0, -25.6] },
+  nz: { label: 'New Zealand', region: 'australia', center: [172.8, -41.2] },
+  sg: { label: 'Singapore', region: 'asia', center: [103.82, 1.35] },
+  jp: { label: 'Japan', region: 'asia', center: [138.2, 36.2] },
+  hk: { label: 'Hong Kong', region: 'asia', center: [114.17, 22.32] },
+  ae: { label: 'United Arab Emirates', region: 'asia', center: [54.0, 24.3] },
+  kr: { label: 'South Korea', region: 'asia', center: [127.8, 36.5] },
+  cn: { label: 'China', region: 'asia', center: [104.2, 35.0] },
+  ca: { label: 'Canada', region: 'northamerica', center: [-98.0, 56.0] },
+  us: { label: 'United States', region: 'northamerica', center: [-98.5, 39.0] },
+  gb: { label: 'United Kingdom', region: 'europe', center: [-1.9, 53.0] },
+  ch: { label: 'Switzerland', region: 'europe', center: [8.23, 46.8] },
+  fr: { label: 'France', region: 'europe', center: [2.45, 46.6] },
+  za: { label: 'South Africa', region: 'africa', center: [24.7, -29.0] },
+  // EU countries carrying Eurostat demand — their marker sits on the capital
+  // already geocoded for the Europe domestic view.
+  be: { label: 'Belgium', region: 'europe', center: EU_CITY_LNGLAT.belgium },
+  bg: { label: 'Bulgaria', region: 'europe', center: EU_CITY_LNGLAT.bulgaria },
+  cz: { label: 'Czechia', region: 'europe', center: EU_CITY_LNGLAT.czechia },
+  de: { label: 'Germany', region: 'europe', center: EU_CITY_LNGLAT.germany },
+  ee: { label: 'Estonia', region: 'europe', center: EU_CITY_LNGLAT.estonia },
+  ie: { label: 'Ireland', region: 'europe', center: EU_CITY_LNGLAT.ireland },
+  gr: { label: 'Greece', region: 'europe', center: EU_CITY_LNGLAT.greece },
+  es: { label: 'Spain', region: 'europe', center: EU_CITY_LNGLAT.spain },
+  hr: { label: 'Croatia', region: 'europe', center: EU_CITY_LNGLAT.croatia },
+  it: { label: 'Italy', region: 'europe', center: EU_CITY_LNGLAT.italy },
+  cy: { label: 'Cyprus', region: 'europe', center: EU_CITY_LNGLAT.cyprus },
+  lv: { label: 'Latvia', region: 'europe', center: EU_CITY_LNGLAT.latvia },
+  lt: { label: 'Lithuania', region: 'europe', center: EU_CITY_LNGLAT.lithuania },
+  lu: { label: 'Luxembourg', region: 'europe', center: EU_CITY_LNGLAT.luxembourg },
+  hu: { label: 'Hungary', region: 'europe', center: EU_CITY_LNGLAT.hungary },
+  mt: { label: 'Malta', region: 'europe', center: EU_CITY_LNGLAT.malta },
+  nl: { label: 'Netherlands', region: 'europe', center: EU_CITY_LNGLAT.netherlands },
+  at: { label: 'Austria', region: 'europe', center: EU_CITY_LNGLAT.austria },
+  pl: { label: 'Poland', region: 'europe', center: EU_CITY_LNGLAT.poland },
+  pt: { label: 'Portugal', region: 'europe', center: EU_CITY_LNGLAT.portugal },
+  ro: { label: 'Romania', region: 'europe', center: EU_CITY_LNGLAT.romania },
+  si: { label: 'Slovenia', region: 'europe', center: EU_CITY_LNGLAT.slovenia },
+  sk: { label: 'Slovakia', region: 'europe', center: EU_CITY_LNGLAT.slovakia },
+  fi: { label: 'Finland', region: 'europe', center: EU_CITY_LNGLAT.finland },
+  se: { label: 'Sweden', region: 'europe', center: EU_CITY_LNGLAT.sweden },
+};
+
+// Which cities/among-country ids roll up into each country.
+export const COUNTRY_MEMBERS: Record<string, string[]> = Object.entries(
+  CITY_COUNTRY,
+).reduce<Record<string, string[]>>((acc, [city, cc]) => {
+  (acc[cc] ||= []).push(city);
+  return acc;
+}, {});

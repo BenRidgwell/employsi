@@ -11,6 +11,9 @@ import {
   REGION_HUBS,
   GLOBAL_VIEW,
   cityLabel,
+  CITY_COUNTRY,
+  COUNTRIES,
+  COUNTRY_MEMBERS,
 } from '../data/mapboxWorldGeo';
 import { EU_CITY_LNGLAT } from '../data/euVacancyDemand';
 
@@ -152,6 +155,20 @@ function heatT(v: number, mn: number, mx: number): number {
   return Math.sqrt(Math.max(0, Math.min(1, r)));
 }
 
+// Roll per-city demand up to per-country totals for the global layer. EU-country
+// ids (germany, spain, …) are already country-level and map to themselves, so a
+// country's total is the sum of every mapped city/territory inside it.
+function countryDemand(cityDemand: Record<string, number>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [id, v] of Object.entries(cityDemand)) {
+    if (!v) continue;
+    const cc = CITY_COUNTRY[id];
+    if (cc) out[cc] = (out[cc] || 0) + v;
+    else if (COUNTRIES[id]) out[id] = (out[id] || 0) + v; // already a country
+  }
+  return out;
+}
+
 // Which markers to show for the current view. City dots stay neutral until a
 // skill is searched (then the skill-demand blobs carry all the colour). Always
 // filtered by the active sectors.
@@ -186,7 +203,22 @@ function computeMarkers(
   };
 
   if (mode === 'global') {
-    Object.keys(HUB_LNGLAT).forEach((id) => push(id, HUB_LNGLAT[id]));
+    // Country roll-up: one marker per country carrying its aggregated demand,
+    // rather than 49 individual city dots. Clicking drops into that country's
+    // domestic layer, where the per-city breakdown is shown as before.
+    for (const [cc, info] of Object.entries(COUNTRIES)) {
+      const members = COUNTRY_MEMBERS[cc] || [];
+      // Respect the filters: a country shows if ANY of its cities match.
+      if (members.length && !members.some((m) => cityMatchesFilters(m, filterState))) continue;
+      out.push({
+        id: cc,
+        coords: info.center,
+        color: dotColor,
+        label: info.label,
+        sub: '',
+        clickable: true,
+      });
+    }
   } else {
     // Domestic: the region's own hubs (Melbourne is now a hub too, so it comes
     // through here on the AU view and on the global view; Darwin and Hobart stay
@@ -231,7 +263,11 @@ function buildSkillHeat(
   // the data we actually have).
   let table: Record<string, [number, number]>;
   if (mode === 'global') {
-    table = HUB_LNGLAT;
+    // Global heat is per COUNTRY: one blob per country at its anchor, weighted
+    // by that country's aggregated demand.
+    table = Object.fromEntries(
+      Object.entries(COUNTRIES).map(([cc, info]) => [cc, info.center]),
+    ) as Record<string, [number, number]>;
   } else if (region === 'australia') {
     // All AU capitals are now full cities (Hobart added with TAS gov, Darwin with
     // NT gov), so every one keeps its marker + skill heat.
@@ -414,6 +450,16 @@ export function WorldMapbox() {
       map.flyTo({ ...opts, essential: true });
     };
 
+    // Activating a marker: at the global layer the markers are COUNTRIES, so we
+    // drop to that country's domestic layer (where the city breakdown lives);
+    // on a domestic layer the markers are cities, so we fly into the city.
+    const activateMarker = (id: string) => {
+      const st = useAppStore.getState();
+      const country = COUNTRIES[id];
+      if (country) st.goDomestic(country.region);
+      else st.zoomInCity(id);
+    };
+
     const renderLabels = (markers: Marker[]) => {
       Object.values(labelsRef.current).forEach((m) => m.remove());
       labelsRef.current = {};
@@ -443,7 +489,7 @@ export function WorldMapbox() {
           el.addEventListener('pointerdown', swallow);
           el.onclick = (ev) => {
             ev.stopPropagation();
-            useAppStore.getState().zoomInCity(m.id);
+            activateMarker(m.id);
           };
         } else {
           el.style.cursor = 'default';
@@ -484,13 +530,32 @@ export function WorldMapbox() {
         minGrowth: s.minGrowth,
         maxAttrition: s.maxAttrition,
       };
-      const markers = computeMarkers(mode, s.domesticRegion, fs, cityDemand, !!skill);
+      // At the global layer everything is expressed per COUNTRY, so roll the
+      // per-city demand up before colouring markers or sizing the heat blobs.
+      const demandForView = mode === 'global' ? countryDemand(cityDemand) : cityDemand;
+      const markers = computeMarkers(mode, s.domesticRegion, fs, demandForView, !!skill);
       // Scrub callouts: while a skill + the time slider are active, tag each
       // city with its demand % change at the current month, so the label shows
       // how demand for the skill is moving as the slider is dragged.
       if (skill && (mode === 'global' || s.domesticRegion === 'australia' || s.domesticRegion === 'northamerica' || s.domesticRegion === 'asia' || s.domesticRegion === 'europe')) {
         const change = iviCityChangeAt(skill, s.heatMonth);
-        for (const m of markers) if (m.id in change) m.pct = change[m.id];
+        if (mode === 'global') {
+          // Country-level momentum: demand-weighted mean of its cities' changes,
+          // so a country's ▲/▼ reflects where its volume actually sits.
+          const num: Record<string, number> = {};
+          const den: Record<string, number> = {};
+          for (const [city, pct] of Object.entries(change)) {
+            const cc = CITY_COUNTRY[city] || (COUNTRIES[city] ? city : null);
+            if (!cc) continue;
+            const w = cityDemand[city] || 0;
+            if (w <= 0) continue;
+            num[cc] = (num[cc] || 0) + pct * w;
+            den[cc] = (den[cc] || 0) + w;
+          }
+          for (const m of markers) if (den[m.id]) m.pct = num[m.id] / den[m.id];
+        } else {
+          for (const m of markers) if (m.id in change) m.pct = change[m.id];
+        }
       }
       markersRef.current = markers;
       const src = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
@@ -502,7 +567,7 @@ export function WorldMapbox() {
       // cities. With no skill searched the dots sit plain and static (no halo,
       // no pulse). The demand blobs show only while a skill is active.
       const skillSrc = map.getSource(SKILL_SOURCE) as mapboxgl.GeoJSONSource | undefined;
-      skillSrc?.setData(buildSkillHeat(mode, s.domesticRegion, skill, cityDemand));
+      skillSrc?.setData(buildSkillHeat(mode, s.domesticRegion, skill, demandForView));
       if (map.getLayer(HALO_LAYER)) {
         map.setLayoutProperty(HALO_LAYER, 'visibility', skill ? 'visible' : 'none');
       }
@@ -622,7 +687,7 @@ export function WorldMapbox() {
           if (d < bestD) { bestD = d; best = m; }
         });
         if (best && bestD <= PICK_RADIUS * PICK_RADIUS) {
-          useAppStore.getState().zoomInCity((best as Marker).id);
+          activateMarker((best as Marker).id);
         }
       });
 
@@ -715,9 +780,14 @@ export function WorldMapbox() {
       const c = map.getCenter();
       if (s.globalOut) {
         if (dz > 0 && z >= CROSS_GLOBAL_TO_DOMESTIC) {
-          const region =
-            nearest(c.lng, c.lat, Object.fromEntries(Object.entries(REGION_FRAMES).map(([r, f]) => [r, f.center]))) ||
-            'australia';
+          // The global layer shows COUNTRIES, so scrolling in should land on the
+          // domestic layer of whichever country you zoomed toward. Fall back to
+          // the nearest region frame if no country is close.
+          const cc = nearest(c.lng, c.lat,
+            Object.fromEntries(Object.entries(COUNTRIES).map(([k, v]) => [k, v.center])));
+          const region = (cc && COUNTRIES[cc]?.region)
+            || nearest(c.lng, c.lat, Object.fromEntries(Object.entries(REGION_FRAMES).map(([r, f]) => [r, f.center])))
+            || 'australia';
           lastCrossRef.current = Date.now();
           s.goDomestic(region);
         }
