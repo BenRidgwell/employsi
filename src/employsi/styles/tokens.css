@@ -1,0 +1,157 @@
+/* ==========================================================================
+   employsi · Design-system tokens
+   ==========================================================================
+   Copied verbatim from the Employsi Design System project
+   (_ds/employsi-design-system-f67ccf7f-.../tokens/{colors,typography,spacing,
+   effects}.css), which is the source of truth. Keep the values in sync with it
+   rather than editing them here.
+
+   The system's fonts.css is deliberately NOT copied: it redeclares @font-face
+   for Mona Sans Variable and JetBrains Mono against the same CDN URLs that
+   src/routes/__root.tsx already links, so importing it would download both
+   families twice. The --font-* variables below still name those families.
+
+   The brand is monochrome: there is no accent colour, and the primary action is
+   ink (--neutral-900). Semantic status colours are muted and reserved for real
+   status (demand level, alerts) — never decoration.
+   ========================================================================== */
+
+:root {
+  /* --- Neutral ramp (base) --- */
+  --neutral-0: #ffffff;
+  --neutral-50: #fafafa;
+  --neutral-100: #f4f4f5;
+  --neutral-150: #ededf0;
+  --neutral-200: #e5e5ea;
+  --neutral-300: #d1d1d6;
+  --neutral-400: #b4b4ba;
+  --neutral-500: #8e8e93;
+  --neutral-600: #6c6c72;
+  --neutral-700: #48484a;
+  --neutral-800: #2c2c2e;
+  --neutral-900: #1c1c1e;
+
+  /* --- Semantic status (muted) --- */
+  --green-50: #e8f3ec;
+  --green-500: #2f8f63;
+  --green-700: #1f6a48;
+  --amber-50: #f6efe0;
+  --amber-500: #b8842a;
+  --amber-700: #8a6218;
+  --red-50: #f7ebe9;
+  --red-500: #c4463b;
+  --red-700: #97332b;
+  --blue-50: #eaf0fb;
+  --blue-500: #3b6fd4;
+  --blue-700: #2b53a3;
+
+  /* --- Semantic aliases --- */
+  --text-primary: var(--neutral-900);
+  --text-secondary: var(--neutral-600);
+  --text-tertiary: var(--neutral-500);
+  --text-disabled: var(--neutral-400);
+  --text-inverse: var(--neutral-0);
+
+  --surface-page: var(--neutral-0);
+  --surface-subtle: var(--neutral-50);
+  --surface-sunken: var(--neutral-100);
+  --surface-card: var(--neutral-0);
+  --surface-inverse: var(--neutral-900);
+  --surface-hover: var(--neutral-100);
+  --surface-active: var(--neutral-150);
+
+  --border-subtle: var(--neutral-150);
+  --border-default: var(--neutral-200);
+  --border-strong: var(--neutral-300);
+  --border-focus: var(--neutral-900);
+
+  --action-primary: var(--neutral-900);
+  --action-primary-hover: var(--neutral-800);
+  --action-primary-active: #000000;
+  --action-primary-text: var(--neutral-0);
+
+  --status-success-fg: var(--green-700);
+  --status-success-bg: var(--green-50);
+  --status-success-dot: var(--green-500);
+  --status-warning-fg: var(--amber-700);
+  --status-warning-bg: var(--amber-50);
+  --status-warning-dot: var(--amber-500);
+  --status-danger-fg: var(--red-700);
+  --status-danger-bg: var(--red-50);
+  --status-danger-dot: var(--red-500);
+  --status-info-fg: var(--blue-700);
+  --status-info-bg: var(--blue-50);
+  --status-info-dot: var(--blue-500);
+
+  --focus-ring: 0 0 0 3px rgba(28, 28, 30, 0.14);
+
+  /* --- Typography --- */
+  --font-sans: "Mona Sans Variable", "Mona Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --text-h3: 20px;
+  --text-h4: 17px;
+  --text-body: 15px;
+  --text-body-sm: 13px;
+  --text-caption: 12px;
+  --text-eyebrow: 12px;
+
+  --tracking-display: -0.025em;
+  --tracking-heading: -0.015em;
+  --tracking-eyebrow: 0.14em;
+  --tracking-label: 0.04em;
+
+  /* --- Spacing (4px grid) --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* --- Radius --- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
+  --radius-pill: 999px;
+
+  /* --- Shadows --- */
+  --shadow-xs: 0 1px 2px rgba(28, 28, 30, 0.05);
+  --shadow-sm: 0 1px 2px rgba(28, 28, 30, 0.06), 0 1px 3px rgba(28, 28, 30, 0.05);
+  --shadow-md: 0 2px 4px rgba(28, 28, 30, 0.05), 0 4px 12px rgba(28, 28, 30, 0.07);
+  --shadow-lg: 0 4px 8px rgba(28, 28, 30, 0.05), 0 12px 32px rgba(28, 28, 30, 0.1);
+  --shadow-xl: 0 8px 16px rgba(28, 28, 30, 0.06), 0 24px 56px rgba(28, 28, 30, 0.14);
+
+  /* --- Motion --- */
+  --ease-standard: cubic-bezier(0.2, 0.6, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 280ms;
+
+  /* ── Map-shell additions ────────────────────────────────────────────────
+     Not in the token files: these come from `map border redesign.dc.html` and
+     the "mechanical" components it imports (action rail, ticker, search). The
+     raised surface is one recurring treatment — a near-white vertical gradient,
+     a hairline border and a four-part shadow — so it is named once here and
+     reused rather than repeated at every call site. */
+  --frame-radius: 28px;
+  --frame-gutter: 20px;
+  --frame-inset: 34px; /* rail / ticker offset inside the frame */
+  --head-height: 72px;
+
+  --raised-surface: linear-gradient(var(--neutral-0), #fbfbfc);
+  --raised-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(28, 28, 30, 0.04),
+    0 1px 2px rgba(28, 28, 30, 0.06), 0 12px 28px -12px rgba(28, 28, 30, 0.22);
+  --frame-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06), 0 24px 60px -32px rgba(15, 28, 49, 0.7);
+}

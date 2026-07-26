@@ -406,6 +406,14 @@ export function PerthMapbox() {
     });
     mapRef.current = map;
 
+    // The map is an inset card whose size changes with the window AND at the
+    // 680px breakpoint (where the frame's gutter is dropped for full-bleed).
+    // mapbox-gl observes its own container, so this is belt-and-braces — but it
+    // is cheap, and it also covers any future animated frame, where a CSS
+    // transition changes the box without a window resize.
+    const ro = new ResizeObserver(() => map.resize());
+    ro.observe(map.getContainer());
+
     const stopAutoRotate = () => {
       if (autoRotateRaf.current) cancelAnimationFrame(autoRotateRaf.current);
       if (!interactedLocalRef.current) {
@@ -830,7 +838,9 @@ export function PerthMapbox() {
         ? cityPlacements(city).find((p) => p.company.id === st.selectedId)
         : null;
       if (sel) {
-        const rightPad = Math.min(760, Math.round(window.innerWidth * 0.6));
+        // Measured off the map container, not the window: the map is now an
+        // inset card, so viewport width would over-reserve by the frame gutter.
+        const rightPad = Math.min(760, Math.round(map.getContainer().clientWidth * 0.6));
         map.easeTo({
           center: sel.coords,
           zoom: Math.max(v.zoom, 16.5),
@@ -850,6 +860,7 @@ export function PerthMapbox() {
       carsRef.current = [];
       Object.values(markersRef.current).forEach((m) => m.remove());
       markersRef.current = {};
+      ro.disconnect();
       map.remove();
       mapRef.current = null;
     };
@@ -939,7 +950,7 @@ export function PerthMapbox() {
     if (!placed) return;
     // Reserve the right of the screen for the company + news cards, so the
     // selected building frames up on the left half.
-    const rightPad = Math.min(760, Math.round(window.innerWidth * 0.6));
+    const rightPad = Math.min(760, Math.round(map.getContainer().clientWidth * 0.6));
     map.easeTo({
       center: placed.coords,
       zoom: Math.max(map.getZoom(), 17),

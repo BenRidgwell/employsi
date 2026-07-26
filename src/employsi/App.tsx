@@ -39,33 +39,53 @@ function App() {
   // the What's Trending pane.
   useViewTracking();
 
-  // `ondark` (zoomedOut) keeps the header's pixel-sampler wired on both
-  // overviews. The wordmark + top-bar labels, though, sit over a dark backdrop
-  // only on the GLOBAL globe (dark space); the domestic overview is a light
-  // country map (mapbox standard), so there they must read dark like the local
-  // city view. `onglobe` scopes the light-branding treatment to the globe only.
-  const onDark = zoomedOut;
-  const onGlobe = zoomedOut && globalOut;
-
   return (
-    <div className={`app${onDark ? " ondark" : ""}${onGlobe ? " onglobe" : ""}`}>
-      <ZoomSlider />
-      <MapActions />
-      <PerthMapbox />
+    <div className="app">
+      {/* ── Header row ──────────────────────────────────────────────────────
+          72px of white above the map, carrying the wordmark, the centred skill
+          search and the account control. Previously all three floated ON the
+          map, which is why the wordmark and search title had to be recoloured
+          per layer (and why WorldMapbox sampled the canvas pixel underneath the
+          header to decide light vs dark). On white they are simply ink, so that
+          whole mechanism is gone. */}
+      <div className="apphead">
+        <TopBar />
+        <GlobalSearch />
+      </div>
+
+      {/* ── Map frame ───────────────────────────────────────────────────────
+          The map is now an inset rounded card rather than a full-bleed canvas.
+          ONLY the two Mapbox mounts live inside it: `overflow: hidden` is what
+          rounds the map's corners, and anything else placed in here would be
+          clipped by them. The chrome below stays where it was — the design does
+          the same, positioning its ticker and rail as siblings of the frame
+          rather than children of it. */}
+      <div className="mapframe">
+        <div className="mapcard">
+          <PerthMapbox />
+          {/* Real Mapbox globe/domestic layers; the local (Perth) 3D layer
+              above is unchanged. */}
+          <WorldMapbox />
+        </div>
+      </div>
+
+      {/* One rail down the left, inside the frame. These three components keep
+          their own markup, handlers and flyouts — the rail only re-homes and
+          restyles them, so nothing about what the buttons DO changes. */}
+      <div className="actionrail">
+        <MapActions />
+        <ZoomSlider />
+        <HelpDock />
+      </div>
+
       <HintPulse />
-      <Ticker hidden={!(globalOut && zoomedOut)} />
-      {/* Mapbox trial: real Mapbox globe/domestic layers replace the SVG
-          ZoomOverlay. The local (Perth) 3D layer above is unchanged. */}
-      <WorldMapbox />
-      <TopBar />
-      <GlobalSearch />
+      <Ticker hidden={!zoomedOut} />
       <Legend />
       <HeatKey />
       <CompanyPanel />
       <ComparePanel />
       <DailyBriefPane />
       <WhatsTrendingPane />
-      <HelpDock />
       <MobileTabBar />
       <MobileMenu />
       <CityBadge />

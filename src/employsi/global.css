@@ -1,3 +1,5 @@
+@import "./styles/tokens.css";
+
 * {
   box-sizing: border-box;
 }
@@ -10,17 +12,146 @@ body {
   position: fixed;
   inset: 0;
   overflow: hidden;
-  font-family: "Mona Sans Variable", "Mona Sans", system-ui, sans-serif;
-  color: #1c1c1e;
-  background: #f1f1f3;
-  --ink: #1c1c1e;
-  --slate: #6c6c72;
-  --line: #ededf0;
-  --brand: #1c1c1e;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  /* White page: the map is now an inset card floating on it, not a full-bleed
+     canvas, so the surround is --surface-page rather than the old grey. */
+  background: var(--surface-page);
+  /* The app's local names now alias the design-system tokens, so the ~6000
+     lines below keep working unchanged while new work can use either. */
+  --ink: var(--neutral-900);
+  --slate: var(--neutral-600);
+  --line: var(--neutral-150);
+  --brand: var(--neutral-900);
   --brandink: #000000;
-  --teal: #8e8e93;
-  --pos: #48484a;
+  --teal: var(--neutral-500);
+  --pos: var(--neutral-700);
   --coral: #9a9aa0;
+  /* Distance from the WINDOW edge to chrome that sits inside the frame: the
+     frame's own gutter plus the design's 34px inset within it. */
+  --rail-left: calc(var(--frame-gutter) + var(--frame-inset));
+}
+
+/* ── Action rail ─────────────────────────────────────────────────────────────
+   The design collapses what were three separate floating docks into one
+   vertical rail at the left of the frame, and its three icon groups map exactly
+   onto what already existed: tools[2] = MapActions (What's trending, Daily
+   brief), layers[4] = ZoomSlider (Global/Domestic/Local/Company), helpers[3] =
+   HelpDock (feedback, help, settings).
+
+   Those three components are re-homed here rather than rewritten: each keeps
+   its own markup, click handlers and flyouts, and this only unsets the
+   positioning/surface each used to carry for itself. That way the rail is a
+   layout change, not a behavioural one. Their flyouts and panels stay
+   `position: fixed` and so are unaffected by the rail's box. */
+.actionrail {
+  position: fixed;
+  left: var(--rail-left);
+  top: calc(var(--head-height) / 2 + 50%);
+  transform: translateY(-50%);
+  z-index: 48;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 7px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 19px;
+  background: var(--raised-surface);
+  box-shadow: var(--raised-shadow);
+}
+/* Strip the per-dock positioning + surface; the rail owns both now. */
+.actionrail > .mapactions,
+.actionrail > .zoomslider,
+.actionrail > .helpdock {
+  position: static;
+  inset: auto;
+  transform: none;
+  z-index: auto;
+  width: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+/* The layer picker is a grouped cluster in the design — a sunken tray inside
+   the rail — which also reads as "these four are one control, pick one". */
+.actionrail > .zoomslider {
+  gap: 2px;
+  padding: 3px;
+  border-radius: 14px;
+  background: var(--surface-active);
+}
+/* The rail's own labels are replaced by the design's hover tooltips (which
+   .mabtn/.helpbtn already render); the always-on text labels would make the
+   rail several times wider than the 52px the design allows. */
+.actionrail .malabel,
+.actionrail .zlabel {
+  display: none;
+}
+/* Uniform 38x38 targets, per the design. */
+.actionrail .mabtn,
+.actionrail .helpbtn,
+.actionrail .zbtn,
+.actionrail .zrow > button {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 12px;
+}
+.actionrail .marow,
+.actionrail .zrow {
+  display: block;
+  margin: 0;
+}
+/* Demoting a dock (`.behind`) must not drop it out of the rail's flow. */
+.actionrail > .helpdock.behind,
+.actionrail > .toolsdock.behind {
+  z-index: auto;
+}
+
+/* ── Shell: header row + inset map card ──────────────────────────────────────
+   From `map border redesign.dc.html`. The page is a column: a 72px white header
+   over a map frame that insets the map by 20px (4px at the top, under the
+   header) and rounds it to 28px.
+
+   ONLY the two Mapbox mounts go inside `.mapcard` — its `overflow: hidden` is
+   what rounds the map, and it would equally clip anything else put in there.
+   All the other chrome stays exactly where it was in the stacking order and is
+   simply re-offset to sit inside the frame. The design does the same: its
+   ticker and action rail are siblings of the map frame, not children. */
+.apphead {
+  position: relative;
+  z-index: 12;
+  flex: 0 0 auto;
+  height: var(--head-height);
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: 0 28px;
+}
+.mapframe {
+  position: absolute;
+  top: var(--head-height);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 4px var(--frame-gutter) var(--frame-gutter);
+}
+.mapcard {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--frame-radius);
+  overflow: hidden;
+  background: var(--neutral-100);
+  box-shadow: var(--frame-shadow);
 }
 /* `.app` scope beats mapbox-gl's own `.mapboxgl-map { position: relative }`,
    which mapbox adds to this same element and which would otherwise collapse
@@ -346,7 +477,9 @@ body {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: 28px;
+  /* Clears the ticker pill, which now occupies 32..76px at the bottom of the
+     frame. The toast would otherwise land on top of it. */
+  bottom: 92px;
   transform: translateX(-50%);
   z-index: 60;
   display: flex;
@@ -427,18 +560,28 @@ body {
 .place.hide {
   display: none;
 }
+/* Pinned inside the bottom of the map frame as a raised pill, per the design
+   (`left/right: 34px; bottom: 32px` from the page edge, which is 14px/12px
+   inside the frame). It used to be a full-width 38px strip across the TOP —
+   which is why .topbar carried `top: 38px` and .gsearch `top: 56px`, both now
+   rebased onto the header row. z-index raised from 4 to 9 to match the design's
+   layering: the pill now shares the bottom band with the legend and heat key
+   rather than sitting under everything. */
 .ticker {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 38px;
+  left: var(--rail-left);
+  right: var(--rail-left);
+  bottom: 32px;
+  height: 44px;
   display: flex;
-  align-items: stretch;
-  background: rgba(255, 255, 255, 0.86);
-  backdrop-filter: blur(10px);
+  align-items: center;
+  padding: 5px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 22px;
+  background: var(--raised-surface);
+  box-shadow: var(--raised-shadow);
   overflow: hidden;
-  z-index: 4;
+  z-index: 9;
   /* Informational only — take pointer events so a plain arrow cursor shows
      (rather than the map's grab cursor bleeding through underneath, which
      made the strip look draggable/selectable), but never let the scrolling
@@ -452,13 +595,15 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 16px;
-  background: #1c1c1e;
-  color: #fff;
-  font-family: "JetBrains Mono", monospace;
-  font-weight: 600;
-  font-size: 10.5px;
-  letter-spacing: 1.5px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 15px;
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: var(--tracking-eyebrow);
   text-transform: uppercase;
 }
 .tickerlbl i {
@@ -553,17 +698,27 @@ body {
     transform: translateX(-50%);
   }
 }
+/* In the header row now, not floating over the map. `top: 38px` used to clear
+   the ticker strip, which has moved to the bottom of the frame; the row's own
+   72px height positions it instead. The brand sits at the left, the controls
+   (Search + Filter flyouts, account) at the right, with GlobalSearch between
+   them taking the free space. */
 .topbar {
-  position: absolute;
-  top: 38px;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 18px 26px;
+  display: contents;
   pointer-events: none;
-  gap: 16px;
+}
+/* `display: contents` promotes .brand and .controls to be flex children of
+   .apphead, but DOM order would then read brand → controls → search. Order
+   puts the search back in the middle cell where the design has it. */
+.apphead .brand {
+  order: 1;
+}
+.apphead .gsearch {
+  order: 2;
+}
+.apphead .controls {
+  order: 3;
+  pointer-events: auto;
 }
 .brand {
   pointer-events: auto;
@@ -612,45 +767,15 @@ body {
 .logo,
 .tag,
 .seglbl,
-.gsearchhd,
-.bmark svg rect {
-  transition: color 0.4s ease, fill 0.4s ease;
-}
-/* On the dark global globe backdrop, flip the labels/wordmark that sit directly
-   on the map (no pill background) to light so they stay legible. Scoped to
-   `onglobe` (not `ondark`) so the domestic overview — a light country map —
-   keeps the dark wordmark. The buttons sit on white pills, so are unaffected. */
-.app.onglobe .logo {
-  color: #fff;
-}
-/* The search header floats over the globe itself, which is light in the middle
-   (land/ocean) and dark at the edges (space) — a single fixed colour can't
-   stay legible as the globe is panned/spun under it. WorldMapbox samples the
-   actual pixel behind the header each frame and toggles .gshd-onlight on .app
-   when that pixel is light, so the header flips to dark text over the globe
-   and back to white over the dark space. */
-.app.ondark .gsearchhd {
-  color: #fff;
-}
-.app.ondark.gshd-onlight .gsearchhd {
-  color: #1c1c1e;
-}
-.app.onglobe .seglbl,
-.app.onglobe .tag {
-  color: rgba(255, 255, 255, 0.78);
-}
-/* Brand mark: keep the layered look but in light tones so it reads on the dark
-   globe. On the domestic (light) overview it keeps its default dark tones. */
-.app.onglobe .bmark svg rect:nth-child(1),
-.app.onglobe .bmark svg rect:nth-child(4) {
-  fill: #ffffff;
-}
-.app.onglobe .bmark svg rect:nth-child(2) {
-  fill: rgba(255, 255, 255, 0.65);
-}
-.app.onglobe .bmark svg rect:nth-child(3) {
-  fill: rgba(255, 255, 255, 0.85);
-}
+/* The wordmark, strapline and top-bar labels used to sit directly ON the map,
+   so they had to flip between light and dark per layer — and because the globe
+   is light in the middle and dark at its edges, a fixed colour could not stay
+   legible while it was panned. WorldMapbox therefore sampled the actual canvas
+   pixel behind the header every frame and toggled `.gshd-onlight`.
+
+   The header is now a white row above the map, so all of that is gone: the
+   sampler, the `.app.ondark` / `.app.onglobe` / `.gshd-onlight` variants, and
+   the per-rect brand-mark recolouring. Header type is simply ink. */
 .controls {
   pointer-events: auto;
   display: flex;
@@ -2943,51 +3068,57 @@ body {
 .mapboxgl-ctrl-logo {
   display: none !important;
 }
-/* Global-view centered search bar */
+/* Centred skill search, now a member of the header row rather than a fixed
+   overlay on the map. The design gives it the middle cell at max-width 560px. */
 .gsearch {
-  /* Top matches .topbar's box (top 38px + 18px padding), so the title's line
-     box lines up with the brand row instead of floating independently. */
-  position: fixed;
-  top: 56px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
   z-index: 35;
-  width: min(620px, 62vw);
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 560px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
+/* The strapline above the search box. It sat ON the map and had to be
+   recoloured per layer (see the deleted `gshd-onlight` sampler); on the white
+   header row it is simply ink. Hidden in the compact header so the 72px row
+   holds just the search pill, as the design has it. */
 .gsearchhd {
-  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
-  /* Match the employsi wordmark's weight (.logo) instead of a heavier one. */
-  font-weight: 600;
-  font-size: 17px;
-  letter-spacing: -0.2px;
-  color: var(--ink);
-  /* Matches the 40px height of the brand mark, so the two rows' vertical
-     centres align exactly. */
-  height: 40px;
-  line-height: 40px;
-  margin-bottom: 8px;
-  text-align: center;
+  display: none;
 }
+/* The design's search pill: the same raised "mechanical" surface as the ticker
+   and the action rail, so the three read as one family. The bar no longer sits
+   on the map (it's in the white header row), so the backdrop blur that kept it
+   legible over the globe is gone. */
 .gsearchbar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
   width: 100%;
-  padding: 12px 16px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--line);
-  box-shadow: 0 14px 34px -18px rgba(15, 27, 61, 0.45);
-  color: var(--slate);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  height: 44px;
+  padding: 5px 5px 5px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--raised-surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--raised-shadow);
+  color: var(--text-secondary);
+  transition: border-color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
 }
 .gsearchbar.on {
-  border-color: #cfd2da;
-  box-shadow: 0 18px 40px -18px rgba(15, 27, 61, 0.55);
+  border-color: var(--border-strong);
+  box-shadow: var(--raised-shadow), var(--focus-ring);
+}
+/* The magnifier tightens a touch on focus, as in the design. */
+.gsearchbar.on svg {
+  color: var(--text-primary);
+  transform: scale(0.94);
+}
+.gsearchbar svg {
+  transition: transform 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    color var(--duration-base);
 }
 .gsearchbar svg {
   width: 17px;
@@ -3044,15 +3175,23 @@ body {
   color: var(--slate);
   margin-bottom: 2px;
 }
+/* Suggestion list — the design's panel: 14px below the pill, 6px padding,
+   16px radius, flat white (it hangs over the map now, not over the header, so
+   it keeps a solid surface but drops the blur the old floating bar needed). */
 .gsearchresults {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
   width: 100%;
-  margin-top: 10px;
-  background: rgba(255, 255, 255, 0.98);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  margin-top: 14px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
   padding: 6px;
-  box-shadow: 0 18px 44px -20px rgba(15, 27, 61, 0.45);
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 12px 24px -16px rgba(28, 28, 30, 0.3);
   max-height: 340px;
   overflow-y: auto;
 }
@@ -3061,9 +3200,9 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 10px;
+  padding: 6px 6px 6px 12px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 11px;
   background: transparent;
   font-family: inherit;
   text-align: left;
@@ -3206,7 +3345,9 @@ body {
 /* Current local-city indicator */
 .citybadge {
   position: fixed;
-  top: 22px;
+  /* Below the header row now, so it reads as a label ON the map rather than
+     colliding with the wordmark/search band. */
+  top: calc(var(--head-height) + 18px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 30;
@@ -3755,9 +3896,11 @@ body {
 }
 .legend {
   position: absolute;
-  /* Aligned under the skills key, past the vertically-centred layer dock. */
-  left: 80px;
-  bottom: 24px;
+  /* Aligned under the skills key, past the vertically-centred action rail.
+     The rail is 52px wide at --rail-left, and the ticker pill now occupies the
+     bottom band from 32px to 76px, so the stats bar starts above it. */
+  left: calc(var(--rail-left) + 66px);
+  bottom: 88px;
   /* Above the local company markers (mapbox markers, z-index 3; selected 6) so
      the city stats bar always sits in front of them — matching the other local
      chrome (heat key / docks). Still below the side panes (z-index 45). */
@@ -3783,11 +3926,11 @@ body {
 }
 .heatkey {
   position: absolute;
-  /* Clear of the vertically-centred layer dock (.zoomslider, left rail ~68px
-     wide): on short windows the centred dock descends into this bottom-left
-     key, so sit it just past the rail. */
-  left: 80px;
-  bottom: 78px;
+  /* Clear of the vertically-centred action rail: on short windows the centred
+     rail descends into this bottom-left key, so sit it just past it — and
+     above the legend, which now starts at 88px. */
+  left: calc(var(--rail-left) + 66px);
+  bottom: 142px;
   /* Above the animated planes/ships (mapbox markers in the map canvas) so the
      key + time slider always sit in front of the traffic. */
   z-index: 41;
@@ -5667,6 +5810,49 @@ body {
 /* Pure reflow of the desktop overlays — no markup changes.            */
 /* ------------------------------------------------------------------ */
 @media (max-width: 680px) {
+  /* ── Shell: revert to full-bleed on phones ────────────────────────────────
+     The map-border design is a desktop layout (its preview is 1200x760). At
+     390px a 20px gutter plus a 28px radius costs a meaningful share of the
+     map, and the mobile chrome (tab bar, bottom sheets) already assumes an
+     edge-to-edge canvas — so below this breakpoint the frame is removed
+     entirely and the previous layout stands. */
+  .apphead {
+    height: auto;
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .mapframe {
+    top: 0;
+    padding: 0;
+  }
+  .mapcard {
+    border-radius: 0;
+    box-shadow: none;
+  }
+  /* The rail is desktop-only; MobileTabBar + MobileMenu own this chrome on
+     phones (they already hide .mapactions / .toolsdock below). */
+  .actionrail {
+    display: none;
+  }
+  /* Ticker returns to a full-width strip rather than an inset pill, and sits
+     above the bottom tab bar — the same band .legend and .briefpane use. */
+  .ticker {
+    left: 0;
+    right: 0;
+    bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+    height: 38px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: rgba(255, 255, 255, 0.86);
+    backdrop-filter: blur(10px);
+    box-shadow: none;
+  }
+  .tickerlbl {
+    height: 100%;
+    border-radius: 0;
+  }
+
   /* --- Top bar: tighter, controls compacted to icon pills --- */
   .topbar {
     padding: 10px 12px;
