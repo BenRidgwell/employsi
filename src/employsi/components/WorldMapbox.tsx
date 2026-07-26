@@ -16,6 +16,8 @@ import {
   COUNTRY_MEMBERS,
 } from "../data/mapboxWorldGeo";
 import { EU_CITY_LNGLAT } from "../data/euVacancyDemand";
+import { buildMarker, MARKER_FOOT, type MarkerShape } from "../lib/mapMarker";
+import { codeFor } from "../data/cityCodes";
 
 // Europe domestic points: the mapped hubs (London/Zurich/Paris) plus every EU
 // country that carries Eurostat by-country vacancy data, each on its capital.
@@ -194,7 +196,7 @@ const PLANE_PATH =
   "M80 8c9 0 15 13 16 32v34l52 34c5 3 4 9-2 8l-50-10v34l24 16c4 3 3 8-2 7l-22-5v9c0 9-7 17-16 " +
   "17s-16-8-16-17v-9l-22 5c-5 1-6-4-2-7l24-16v-34l-50 10c-6 1-7-5-2-8l52-34V40c1-19 7-32 16-32z";
 const PLANE_SVG =
-  '<svg viewBox="0 0 160 200" width="26" height="32" fill="none">' +
+  '<svg viewBox="0 0 160 200" width="13" height="16" fill="none">' +
   // Offset copy beneath the airframe, which is what gives the sprite its lift.
   `<g transform="translate(3,5)" fill="#cfc6c2"><path d="${PLANE_PATH}"/></g>` +
   '<g><rect x="41" y="84" width="15" height="30" rx="7.5" fill="#ffffff" stroke="#c2b8b4" stroke-width="3"/>' +
@@ -216,7 +218,7 @@ const PLANE_SVG =
 const SHIP_HULL =
   "M60 10c14 16 22 40 22 68v192c0 12-9 22-21 22h-2c-12 0-21-10-21-22V78c0-28 8-52 22-68z";
 const SHIP_SVG =
-  '<svg viewBox="0 0 120 320" width="15" height="40" fill="none">' +
+  '<svg viewBox="0 0 120 320" width="8" height="20" fill="none">' +
   `<g transform="translate(3.5,5.5)"><path d="${SHIP_HULL}" fill="#1d4f9c"/></g>` +
   `<path d="${SHIP_HULL}" fill="#2b6bc4" stroke="#1d4f9c" stroke-width="3" stroke-linejoin="round"/>` +
   '<path d="M52 62c3-14 5-22 8-26 3 4 5 12 8 26" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>' +
@@ -698,29 +700,36 @@ export function WorldMapbox() {
       else st.zoomInCity(id);
     };
 
-    const renderLabels = (markers: Marker[]) => {
+    const renderLabels = (
+      markers: Marker[],
+      selectedId: string | null,
+      demand: Record<string, number>,
+    ) => {
       Object.values(labelsRef.current).forEach((m) => m.remove());
       labelsRef.current = {};
+      // The global layer is countries, every domestic layer is cities — the two
+      // marker shapes the design draws for exactly those two scales.
+      const shape: MarkerShape =
+        viewModeOf(useAppStore.getState().globalOut) === "global" ? "country" : "city";
       markers.forEach((m) => {
-        const el = document.createElement("button");
-        el.className = m.faded ? "mbchip miss" : "mbchip";
-        // Just the city name in the pill — the demand-coloured dot sits below it
-        // (the GL circle at the geo point), so no duplicate dot inside the pill.
-        el.innerHTML = `<span class="chiptk"></span>`;
-        (el.querySelector(".chiptk") as HTMLElement).textContent = m.label;
-        // Scrub callout: a small up/down % chip showing how the skill's demand
-        // is moving at the current slider month (only set while scrubbing a
-        // skill). |change| < 0.5% reads as flat.
-        if (typeof m.pct === "number") {
-          const up = m.pct >= 0;
-          const flat = Math.abs(m.pct) < 0.5;
-          const pctEl = document.createElement("span");
-          pctEl.className = `chippct ${flat ? "flat" : up ? "up" : "down"}`;
-          pctEl.textContent = `${flat ? "" : up ? "▲" : "▼"} ${up ? "+" : m.pct < 0 ? "−" : ""}${Math.abs(Math.round(m.pct))}%`;
-          pctEl.title = "Change in this skill’s job-ad demand vs the previous month";
-          el.appendChild(pctEl);
-          el.classList.add("mbchip-pct");
-        }
+        const el = document.createElement("div");
+        el.className = "mkpin";
+        const body = buildMarker(shape, {
+          name: m.label,
+          // A country carries its ISO2 (the Europe cluster its own two letters);
+          // a city carries its IATA city code.
+          code: shape === "country" ? m.id.slice(0, 2).toUpperCase() : codeFor(m.id, m.label),
+          // Set only while a skill is searched: how that skill's demand here has
+          // moved over the trailing year at the slider's month.
+          delta: typeof m.pct === "number" ? m.pct : null,
+          // The vacancy count behind the colour — real job ads, so it is safe to
+          // show as a figure. Absent when no skill is searched (there is no
+          // single "demand" to count).
+          count: demand[m.id] > 0 ? `${Math.round(demand[m.id]).toLocaleString()} ads` : null,
+          selected: m.id === selectedId,
+          faded: m.faded,
+        });
+        el.appendChild(body);
         if (m.clickable) {
           const swallow = (ev: Event) => ev.stopPropagation();
           el.addEventListener("mousedown", swallow);
@@ -732,7 +741,13 @@ export function WorldMapbox() {
         } else {
           el.style.cursor = "default";
         }
-        const marker = new mapboxgl.Marker({ element: el, anchor: "bottom", offset: [0, -8] })
+        // anchor:'top' + the shape's foot offset puts the pin's point (or the
+        // bottom of its stalk) on the coordinate, leaving the caption below it.
+        const marker = new mapboxgl.Marker({
+          element: el,
+          anchor: "top",
+          offset: [0, -MARKER_FOOT[shape]],
+        })
           .setLngLat(m.coords)
           .addTo(map);
         labelsRef.current[m.id] = marker;
@@ -819,7 +834,7 @@ export function WorldMapbox() {
       markersRef.current = markers;
       const src = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
       src?.setData(markersGeoJSON(markers, s.selectedId));
-      renderLabels(markers);
+      renderLabels(markers, s.selectedId, demandForView);
 
       // The dot halo now only appears WITH a skill search — a pulsing, demand-
       // coloured ring that (alongside the gradient) draws the eye to the standout

@@ -1011,121 +1011,396 @@ body {
   filter: saturate(0.8) brightness(1.03);
 }
 
-/* Company markers (local layer): the teardrop pin body is gone — the marker is
-   just the company logo in a white circular badge, with the heat dot, name
-   beside it. anchor:'center' centres the badge on the geo point (the name is
-   absolutely positioned, out of flow, so the element box stays the badge size). */
-.poipin {
-  /* NB: do not set `position` here — Mapbox's own .mapboxgl-marker class makes
-     the marker position:absolute so it stays pinned to its lng/lat; overriding
-     that (this stylesheet loads after mapbox-gl.css) unpins the markers. Also do
-     NOT set opacity here — Mapbox rewrites the root marker's opacity every frame
-     (occlusion fade), so the search fade lives on .poipininner instead. */
-  width: 28px;
-  height: 28px;
-  cursor: pointer;
+/* ===========================================================================
+   Map markers — ported from `Employsi Map Markers.html`.
+
+   Three shapes on one grammar: a teardrop pin for a COUNTRY (global layer), a
+   circle on a stick for a CITY (domestic layer), a logo disc on a stick for a
+   COMPANY (local layer). Each sits over a small ground shadow, each lifts off
+   it on hover and while selected, and each is captioned the same way: name,
+   a delta pill coloured to the move, a count beneath.
+
+   Hover and selection are the `--m` / `--sel` pair used everywhere else in the
+   app, so a marker interpolates rather than snapping between states. The lift
+   shrinks the shadow at the same time, which is what sells it as height.
+
+   The DOM is built once, in lib/mapMarker.ts, so the three shapes cannot drift
+   apart across the two map components that draw them.
+   =========================================================================== */
+
+@keyframes mk-ping {
+  0% {
+    transform: translate(-50%, -50%) scale(0.7);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.22;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.45);
+    opacity: 0;
+  }
 }
-/* Inner wrapper holding everything visual. Mapbox never touches this element, so
-   the skill-search fade (its inline opacity, set by setMarkerFade) sticks. */
-.poipininner {
+
+/* The element Mapbox owns. Nothing visual lives here: Mapbox rewrites this
+   element's style.opacity every frame for its globe-occlusion fade, and it
+   sets `position` via .mapboxgl-marker — overriding either would unpin the
+   marker or clobber our own fades. */
+.mkpin {
+  cursor: pointer;
+  line-height: 0;
+}
+/* Everything visual. Mapbox never touches this element, so an inline opacity
+   set here (the local layer's skill-search fade) sticks. */
+.mk {
+  --m: 0;
+  --sel: 0;
   position: relative;
-  width: 28px;
-  height: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-family: "Mona Sans Variable", "Mona Sans", system-ui, sans-serif;
   transition: opacity 0.18s ease;
 }
-/* White circular badge behind the logo. */
-.poipinmark {
+.mkpin:hover .mk {
+  --m: 1;
+}
+.mk.on {
+  --sel: 1;
+}
+.mkpin:active .mk {
+  --m: 1;
+}
+
+/* --- the stage: ring, shadow, body, stalk -------------------------------- */
+.mkstage {
   position: relative;
   display: block;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #ffffff;
-  border: 1px solid #d5dbe6;
-  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.3);
-  transform-origin: 50% 50%;
-  transition: transform 0.15s ease;
 }
-/* The logo sits centred inside the white circle. */
-.poipinlogo {
-  position: absolute;
-  top: 5px;
-  left: 5px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  object-fit: contain;
+.mk-country .mkstage,
+.mk-city .mkstage {
+  width: 46px;
+  height: 54px;
 }
-.poipintk {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font: 800 8.5px "Source Sans Pro", "Mona Sans", sans-serif;
-  color: #1c1c1e;
-  letter-spacing: 0.2px;
+.mk-company .mkstage {
+  width: 56px;
+  height: 58px;
 }
-/* Skill-demand glow, sitting BEHIND the badge (first child, so it paints under).
-   Painted by paintGlow: coloured + sized by the company's live demand for the
-   searched skill, invisible when there's no demand. */
-.poiglow {
+
+/* Attention ring — a slow outward ping while hovered (while selected, for a
+   company, where hovering a dense CBD would set the whole map pinging). */
+.mkring {
   position: absolute;
-  top: 50%;
   left: 50%;
-  width: 42px;
-  height: 42px;
+  border-radius: 999px;
+  border: 1px solid rgba(28, 28, 30, 0.45);
+  opacity: var(--m, 0);
+  animation: mk-ping 3.2s cubic-bezier(0.25, 0.6, 0.3, 1) infinite;
+  /* Only the ring you can actually see is animating. A dense CBD carries ~150
+     company markers and the globe ~50 countries; leaving every one of them
+     running an infinite animation behind opacity:0 is compositor work for
+     nothing. */
+  animation-play-state: paused;
+  pointer-events: none;
+}
+.mkpin:hover .mkring,
+.mk.on .mkring {
+  animation-play-state: running;
+}
+.mk-country .mkring {
+  top: 22px;
+  width: 40px;
+  height: 40px;
+}
+.mk-city .mkring {
+  top: 20px;
+  width: 36px;
+  height: 36px;
+}
+.mk-company .mkring {
+  top: 22px;
+  width: 48px;
+  height: 48px;
+  opacity: var(--sel, 0);
+}
+
+/* Ground shadow, at the marker's foot. */
+.mkshadow {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  border-radius: 999px;
+  background: rgba(28, 28, 30, 0.16);
+  transition: transform 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.mk-country .mkshadow {
+  width: 16px;
+  height: 5px;
+  transform: translateX(-50%) scale(calc(1 - max(var(--m, 0), var(--sel, 0)) * 0.28));
+}
+.mk-city .mkshadow {
+  width: 14px;
+  height: 4px;
+  transform: translateX(-50%) scale(calc(1 - max(var(--m, 0), var(--sel, 0)) * 0.28));
+}
+.mk-company .mkshadow {
+  width: 16px;
+  height: 4px;
+  transform: translateX(-50%) scale(calc(1 - var(--sel, 0) * 0.28));
+}
+
+/* Skill-demand glow behind a company disc. Painted by paintGlow — coloured and
+   sized by that company's live demand for the searched skill, invisible when
+   there is none, so "glowing" means "hiring this". */
+.mkglow {
+  position: absolute;
+  left: 50%;
+  top: 23px;
+  width: 58px;
+  height: 58px;
   transform: translate(-50%, -50%);
   border-radius: 50%;
   background: #94a3b8;
-  filter: blur(6px);
+  filter: blur(7px);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
-/* Company name labels are hidden until you zoom in past LABEL_ZOOM (the map
-   toggles `.shownames` on the container). At the arrival zoom a dense city is
-   just circles + logos, which reads far more calmly; the names fade in as you
-   move closer. A selected company always shows its name (rule below). */
-.poipinname {
-  opacity: 0;
-  transition: opacity 0.18s ease;
+
+/* The pin body. Fill, text and border cross to ink as --sel goes to 1; the
+   drop shadow lengthens with the lift. */
+.mkbody {
   position: absolute;
-  left: 33px;
-  top: 50%;
-  transform: translateY(-50%);
-  white-space: nowrap;
-  font: 700 12.5px "Source Sans Pro", "Mona Sans", sans-serif;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in oklab, #1c1c1e calc(var(--sel, 0) * 100%), #e5e5ea);
+  background: color-mix(in oklab, #1c1c1e calc(var(--sel, 0) * 100%), #ffffff);
+  color: color-mix(in oklab, #ffffff calc(var(--sel, 0) * 100%), #1c1c1e);
+  transition:
+    transform 0.24s cubic-bezier(0.32, 0.72, 0, 1),
+    background 0.2s,
+    color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.24s;
+}
+.mk-country .mkbody {
+  top: 0;
+  width: 40px;
+  height: 40px;
+  margin-left: -20px;
+  /* Three round corners and one sharp: rotated -45°, the sharp one becomes the
+     point at the bottom, which is what sits on the coordinate. */
+  border-radius: 50% 50% 50% 4px;
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.08),
+    0 calc(6px + max(var(--m, 0), var(--sel, 0)) * 9px)
+      calc(14px + max(var(--m, 0), var(--sel, 0)) * 14px) -10px rgba(28, 28, 30, 0.5);
+  transform: rotate(-45deg)
+    translate(
+      calc(max(var(--m, 0), var(--sel, 0)) * 3px),
+      calc(max(var(--m, 0), var(--sel, 0)) * -3px)
+    );
+}
+.mk-city .mkbody {
+  top: 2px;
+  width: 36px;
+  height: 36px;
+  margin-left: -18px;
+  border-radius: 999px;
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.08),
+    0 calc(6px + max(var(--m, 0), var(--sel, 0)) * 9px)
+      calc(14px + max(var(--m, 0), var(--sel, 0)) * 14px) -10px rgba(28, 28, 30, 0.5);
+  transform: translateY(calc(max(var(--m, 0), var(--sel, 0)) * -4px));
+}
+/* A company disc stays white whatever its state — the logo has to stay
+   readable — so selection reads as an inner ink ring instead of a fill. */
+.mk-company .mkbody {
+  top: 0;
+  width: 46px;
+  height: 46px;
+  margin-left: -23px;
+  border-radius: 999px;
+  background: #ffffff;
   color: #1c1c1e;
-  text-shadow: 0 1px 2px #fff, 0 0 3px #fff, 0 0 4px #fff;
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.08),
+    0 calc(6px + var(--sel, 0) * 9px) calc(14px + var(--sel, 0) * 14px) -10px rgba(28, 28, 30, 0.5),
+    inset 0 0 0 calc(var(--sel, 0) * 2px) #1c1c1e;
+  transform: translateY(calc(var(--sel, 0) * -4px));
+}
+
+/* The code inside the pin (2 letters for a country, 3 for a city), or a
+   company's ticker when its logo won't load. */
+.mkcode {
+  display: block;
+  font-family: "JetBrains Mono", monospace;
+  letter-spacing: 0.02em;
+}
+.mk-country .mkcode {
+  font-size: 12px;
+  /* Counter-rotates the teardrop's -45°, so the code reads level. */
+  transform: rotate(45deg);
+}
+.mk-city .mkcode {
+  font-size: 11px;
+}
+.mk-company .mkcode {
+  font-size: 10px;
+  font-weight: 700;
+}
+.mklogo {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+/* City and company markers stand on a stalk; the country teardrop has its own
+   point. The stalk compresses slightly as the marker lifts off it. */
+.mkstalk {
+  position: absolute;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 999px;
+  background: color-mix(in oklab, #1c1c1e calc(var(--sel, 0) * 100%), #d1d1d6);
+  transform-origin: bottom;
+  transition:
+    transform 0.24s cubic-bezier(0.32, 0.72, 0, 1),
+    background 0.2s;
+}
+.mk-city .mkstalk {
+  top: 36px;
+  height: 14px;
+  transform: scaleY(calc(1 - max(var(--m, 0), var(--sel, 0)) * 0.22));
+}
+.mk-company .mkstalk {
+  top: 46px;
+  height: 12px;
+  transform: scaleY(calc(1 - var(--sel, 0) * 0.22));
+}
+
+/* --- the caption --------------------------------------------------------- */
+.mkcaption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+/* A company's caption is a label, not a target: at the local layer the captions
+   of neighbouring companies overlap, so a wide hit area would have you opening
+   the company next door. The disc stays the target. */
+.mk-company .mkcaption {
   pointer-events: none;
 }
-.mount.shownames .poipinname {
-  opacity: 1;
+.mkname {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.006em;
+  line-height: 1.25;
+  text-align: center;
+  /* The design lays each marker out in a 122px column and lets the name wrap
+     inside it — which it has to, for the likes of "United Arab Emirates". */
+  max-width: 118px;
+  color: color-mix(in oklab, #1c1c1e calc(max(var(--m, 0), var(--sel, 0)) * 100%), #48484a);
+  transition: color 0.18s;
+  /* Not in the design, which is drawn on a flat white board. On the map the
+     caption crosses coastlines, roads and park fill, so it carries a white
+     halo — the same one the old company labels used. */
+  text-shadow:
+    0 1px 2px #fff,
+    0 0 3px #fff,
+    0 0 4px #fff;
 }
-.poipin.on {
+/* Delta pill: the arrow rotates to the direction rather than swapping glyph,
+   and nudges up as the marker lifts. */
+.mkdelta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  transition: background 0.24s, color 0.24s;
+}
+.mkdelta svg {
+  display: block;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+  transform: rotate(var(--a, 0deg)) translateY(calc(max(var(--m, 0), var(--sel, 0)) * -1px));
+}
+.mkdelta span {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.mkdelta.up {
+  --a: 0deg;
+  color: #1f6a48;
+  background: #e8f3ec;
+}
+.mkdelta.down {
+  --a: 180deg;
+  color: #97332b;
+  background: #f7ebe9;
+}
+.mkdelta.flat {
+  --a: 90deg;
+  color: #6c6c72;
+  background: #f4f4f5;
+}
+.mkcount {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: #8e8e93;
+  text-shadow:
+    0 1px 2px #fff,
+    0 0 3px #fff;
+}
+
+/* --- states -------------------------------------------------------------- */
+/* A selected marker paints over its neighbours (the lift and the longer shadow
+   have to clear them). */
+.mkpin:has(.mk.on) {
   z-index: 6;
 }
-/* The selected company keeps its label at every zoom. */
-.poipin.on .poipinname {
-  opacity: 1;
+/* A place with no demand for the searched skill — either it genuinely isn't
+   sought there, or no series covers it yet. Faded well back and inert, so the
+   places that DO answer the search are the only ones competing for attention.
+   It stays on the map rather than vanishing: a greyed-out city reads as
+   "covered, not hiring this", which is a more useful answer than absence. */
+.mk.miss {
+  opacity: 0.3;
 }
-.poipin.on .poipinmark {
-  transform: scale(1.16);
-  box-shadow: 0 3px 6px rgba(15, 23, 42, 0.4);
+/* Inert too, so a faded marker can't be opened and confuse the reader. The
+   click handler lives on the root, so this has to disarm the root — disarming
+   the inner wrapper alone would just let the click land on its parent. */
+.mkpin:has(.mk.miss) {
+  pointer-events: none;
+  cursor: default;
 }
-.poipin.on .poipinname {
-  font-weight: 800;
-}
-/* A no-demand company on a skill search: label drops from bold to regular
-   (alongside the marker fade), and returns to normal when the skill is cleared. */
-.poipin.miss .poipinname {
+.mk.miss .mkname {
   font-weight: 400;
 }
-/* …and it's not selectable while faded, so it can't be opened and confuse the
-   user (clicks fall through). Restored when the skill is cleared. */
-.poipin.miss {
-  pointer-events: none;
+/* Company captions are hidden until you zoom past LABEL_ZOOM (the map toggles
+   `.shownames` on its container). At the arrival zoom a dense CBD is just
+   discs, which reads far more calmly; the names fade in as you move closer.
+   A selected company keeps its caption at every zoom. */
+.mk-company .mkcaption {
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+.mount.shownames .mk-company .mkcaption,
+.mk-company.on .mkcaption {
+  opacity: 1;
 }
 /* Mapbox trial: the global/domestic Mapbox overview sits on top of the local
    3D map (it comes after PerthMapbox in the DOM, so it stacks above it without
@@ -1141,149 +1416,6 @@ body {
 .worldmount-hidden {
   opacity: 0;
   pointer-events: none;
-}
-.layer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-.chip {
-  pointer-events: auto;
-  position: absolute;
-  top: 0;
-  left: 0;
-  transform: translate(-50%, -50%);
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 7px 12px 7px 9px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1.5px solid rgba(28, 28, 30, 0.16);
-  border-radius: 999px;
-  box-shadow: 0 8px 22px -10px rgba(15, 27, 61, 0.42);
-  cursor: pointer;
-  font-family: inherit;
-  color: var(--ink);
-  transition:
-    box-shadow 0.16s ease,
-    border-color 0.16s ease;
-  backdrop-filter: blur(6px);
-  white-space: nowrap;
-}
-.chip:hover {
-  border-color: rgba(28, 28, 30, 0.5);
-  box-shadow: 0 14px 30px -10px rgba(15, 27, 61, 0.55);
-}
-.chip.on {
-  border-color: var(--brand);
-  box-shadow:
-    0 0 0 3px rgba(28, 28, 30, 0.18),
-    0 14px 30px -10px rgba(28, 28, 30, 0.55);
-}
-.chipdot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: #1c1c1e;
-  box-shadow: 0 0 0 4px rgba(28, 28, 30, 0.1);
-  flex: 0 0 auto;
-}
-.chip.on .chipdot {
-  background: var(--coral);
-  box-shadow: 0 0 0 4px rgba(154, 154, 160, 0.2);
-}
-.chiptk {
-  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.2px;
-}
-.chipsub {
-  font-size: 11px;
-  color: var(--slate);
-  font-weight: 500;
-  border-left: 1px solid var(--line);
-  padding-left: 9px;
-}
-/* Scrub callout: a small demand-change % appended to a city pill while a skill
-   is selected and the time slider is being dragged. Green up / red down. */
-.mbchip-pct .chiptk {
-  padding-right: 8px;
-  border-right: 1px solid var(--line);
-}
-.chippct {
-  margin-left: 8px;
-  font-family: "JetBrains Mono", monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: -0.2px;
-}
-.chippct.up {
-  color: #12905e;
-}
-.chippct.down {
-  color: #d6362e;
-}
-.chippct.flat {
-  color: var(--slate);
-}
-.mbchip {
-  pointer-events: auto;
-  display: flex;
-  align-items: center;
-  gap: 0;
-  padding: 5px 11px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1.5px solid rgba(28, 28, 30, 0.16);
-  border-radius: 999px;
-  box-shadow: 0 8px 22px -10px rgba(15, 27, 61, 0.42);
-  cursor: pointer;
-  font-family: inherit;
-  color: var(--ink);
-  transition:
-    box-shadow 0.16s ease,
-    border-color 0.16s ease,
-    opacity 0.16s ease;
-  backdrop-filter: blur(6px);
-  white-space: nowrap;
-}
-.mbchip:hover {
-  border-color: rgba(28, 28, 30, 0.5);
-  box-shadow: 0 14px 30px -10px rgba(15, 27, 61, 0.55);
-}
-/* A city / country with no demand for the searched skill (or with no labour-
-   market series covering it yet). Mirrors the local layer's `.miss` treatment
-   for company pins: faded well back and inert, so the places that DO answer the
-   search are the only ones competing for attention. It stays on the map rather
-   than disappearing — a greyed-out city reads as "covered, not hiring this",
-   which is a different and more useful answer than the city vanishing. */
-.mbchip.miss {
-  opacity: 0.26;
-  pointer-events: none;
-  box-shadow: none;
-  border-color: rgba(28, 28, 30, 0.1);
-}
-.mbchip.miss .chiptk {
-  font-weight: 400;
-}
-.mbchip.on {
-  border-color: var(--brand);
-  box-shadow:
-    0 0 0 3px rgba(28, 28, 30, 0.18),
-    0 14px 30px -10px rgba(28, 28, 30, 0.55);
-}
-.mbchip.on .chipdot {
-  background: var(--coral);
-  box-shadow: 0 0 0 4px rgba(154, 154, 160, 0.2);
-}
-/* Selecting a company greys out every other pill (desaturated + faded), so
-   the open card's company stays the focus; cleared the instant the card is
-   closed. The opacity here is a fallback — the focus updater usually drives it
-   inline — but the grayscale is what makes it read as a true "grey out". */
-.mbchip.dim {
-  opacity: 0.4;
-  filter: grayscale(1);
 }
 .mapboxgl-marker {
   z-index: 3;
@@ -3738,9 +3870,6 @@ body {
 }
 .acctempty b {
   color: var(--ink);
-}
-.chip.dim {
-  opacity: 0.22;
 }
 .zoomhide {
   opacity: 0 !important;
@@ -7750,14 +7879,22 @@ body {
     box-shadow: 0 0 0 3px rgba(53, 194, 107, 0.28);
   }
 
-  /* Company pills: markedly more compact on a phone so they don't blanket the
-     map. Tighter padding, smaller type. */
-  .mbchip {
-    padding: 3px 8px;
-    border-width: 1px;
+  /* Marker captions: markedly more compact on a phone so they don't blanket the
+     map. The pin geometry is left alone — its height is what Mapbox's offset is
+     measured against, so shrinking it here would lift every marker off its
+     coordinate. Only the caption gives ground: smaller name, no count line. */
+  .mkcaption {
+    gap: 3px;
   }
-  .chiptk {
-    font-size: 10.5px;
+  .mkname {
+    font-size: 11px;
+  }
+  .mkdelta {
+    height: 18px;
+    padding: 0 6px;
+  }
+  .mkcount {
+    display: none;
   }
   .zoomslider .ztrack {
     width: 2px;
