@@ -4204,18 +4204,13 @@ body {
   cursor: pointer;
   transition:
     background 160ms,
-    opacity 160ms,
     transform 110ms;
 }
-.gsearchgo:hover:not(:disabled) {
+.gsearchgo:hover {
   background: var(--action-primary-hover);
 }
-.gsearchgo:active:not(:disabled) {
+.gsearchgo:active {
   transform: scale(0.97);
-}
-.gsearchgo:disabled {
-  opacity: 0.35;
-  cursor: default;
 }
 
 /* ── Account control, inside the pill ────────────────────────────────────── */
@@ -4472,15 +4467,21 @@ body {
   line-height: 1.45;
   color: var(--text-secondary);
 }
-/* Popular skills, when the field is empty: the design shows them as free-
-   standing pills centred under the bar, not boxed in a panel. */
+/* Popular skills, when the field is empty: free-standing pills centred UNDER
+   the bar, not boxed in a panel. Positioned like the suggestion list and the
+   result card — the header row is only 72px tall, so anything left in its flow
+   would be clipped instead of floating over the map. */
 .gsearchchips {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 14px;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
   justify-content: center;
-  margin-top: 14px;
 }
 .gschip {
   height: 32px;

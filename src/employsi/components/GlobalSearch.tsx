@@ -32,6 +32,12 @@ import { SearchAuth } from "./SearchAuth";
  * what each figure is and which of the design's cells had no honest source.
  */
 
+// How many popular-skill chips to show, and how deep to rank before drawing
+// them. A pool much wider than the handful shown is what makes the selection
+// vary without ever offering a skill nobody is hiring for.
+const CHIP_COUNT = 6;
+const CHIP_POOL = 24;
+
 type Result =
   | { kind: "company"; id: string; label: string; sub: string }
   | { kind: "city"; id: string; label: string }
@@ -67,10 +73,24 @@ export function GlobalSearch() {
   const followedSkills = useAppStore((s) => s.followedSkills);
   const requestFollowSkill = useAppStore((s) => s.requestFollowSkill);
 
-  const popularSkills = useMemo(
-    () => popularSkillsForLayer(skillIndex, { zoomedOut, globalOut, domesticRegion, localCity }),
-    [skillIndex, zoomedOut, globalOut, domesticRegion, localCity],
-  );
+  // The design shows a small handful of skills under the bar, not a ranked
+  // list. So a wide pool is ranked by real demand as before, and CHIP_COUNT of
+  // them are drawn at random — the suggestions stay genuinely in-demand, but
+  // two visits don't offer the same six. Re-drawn only when the pool itself
+  // changes (a new layer or a freshly loaded index), never mid-look.
+  const popularSkills = useMemo(() => {
+    const pool = popularSkillsForLayer(
+      skillIndex,
+      { zoomedOut, globalOut, domesticRegion, localCity },
+      CHIP_POOL,
+    );
+    const draw = [...pool];
+    for (let i = draw.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [draw[i], draw[j]] = [draw[j], draw[i]];
+    }
+    return draw.slice(0, CHIP_COUNT);
+  }, [skillIndex, zoomedOut, globalOut, domesticRegion, localCity]);
 
   const [focused, setFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -153,6 +173,13 @@ export function GlobalSearch() {
   };
 
   const submit = () => {
+    // Nothing typed yet: the design keeps this button ink rather than greying
+    // it out, so give it something to do — put the cursor in the field, which
+    // also opens the popular-skill chips.
+    if (!q) {
+      inputRef.current?.focus();
+      return;
+    }
     if (topSkill) {
       toggleSkillQuery(topSkill.id);
       setCarded(topSkill.id);
@@ -235,12 +262,7 @@ export function GlobalSearch() {
             </svg>
           </button>
         )}
-        <button
-          className="gsearchgo"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={submit}
-          disabled={!q}
-        >
+        <button className="gsearchgo" onMouseDown={(e) => e.preventDefault()} onClick={submit}>
           Search
         </button>
         <SearchAuth />
