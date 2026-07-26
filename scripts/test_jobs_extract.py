@@ -81,13 +81,54 @@ SA_HTML = '''<html><head><title>I Work for SA</title></head><body>
 </td></tr></table></body></html>'''
 rows, how = jx.extract_jobs(SA_HTML, r'/jb/job/\d+', 'https://www.iworkfor.sa.gov.au')
 check('SA: extracts via DOM anchors', len(rows) == 2, f'got {len(rows)} via {how}')
-check('SA: strategy is dom-anchors', how == 'dom-anchors', how)
+check('SA: resolved by a structural strategy', how in ('job-cards', 'dom-anchors'), how)
 if rows:
     r0 = rows[0]
     check('SA: title from anchor', r0['t'] == 'Clinical Nurse Consultant', r0['t'])
     check('SA: agency mined from block', 'SA Health' in r0['agency'], r0['agency'])
     check('SA: location mined from block', 'Adelaide' in r0['loc'], r0['loc'])
     check('SA: url absolutised', r0['url'].startswith('https://www.iworkfor.sa.gov.au/jb/job/'), r0['url'])
+
+
+# ── NSW: the REAL DOM (verbatim from the 2026-07-26 Actions diag snippet) ────
+# iworkfor.nsw.gov.au is Ant Design + React SSR. Each card renders SEVERAL
+# anchors to the same job, and the href is /job/<slug>-<id> — NOT /job/<digits>,
+# which is why the original `/job/\d+` regex matched zero on a 1.1MB page.
+# The anchor's own text is the ORGANISATION; the job title only appears in the
+# aria-label ("Organization: <org> for <title>"), so a naive anchor parse would
+# have archived the org as the job title.
+NSW_REAL = (
+    '<div class="ant-flex css-1ucs4t3 ant-flex-align-stretch ant-flex-vertical">'
+    '<a aria-label="Organization: Agriculture and Biosecurity for Administration '
+    'Coordinator (Wagga Wagga Agricultural Institute)" '
+    'href="/job/administration-coordinator-wagga-wagga-agricultural-institute-591328">'
+    '<span class="search-job-card__organization">Agriculture and Biosecurity</span></a>'
+    '<a aria-label="Location: Wagga Wagga for Administration Coordinator '
+    '(Wagga Wagga Agricultural Institute)" '
+    'href="/job/administration-coordinator-wagga-wagga-agricultural-institute-591328">'
+    '<span class="search-job-card__location">Wagga Wagga</span></a>'
+    '</div>'
+    '<div class="ant-flex css-1ucs4t3">'
+    '<a aria-label="Organization: NSW Health for Registered Nurse" '
+    'href="/job/registered-nurse-591400">'
+    '<span class="search-job-card__organization">NSW Health</span></a>'
+    '</div>'
+)
+rows, how = jx.extract_jobs(NSW_REAL, r'/job/[\w-]+', 'https://iworkfor.nsw.gov.au')
+check('NSW-real: two distinct jobs (anchors grouped by href)', len(rows) == 2, f'got {len(rows)} via {how}')
+if len(rows) == 2:
+    r0 = rows[0]
+    check('NSW-real: TITLE from aria-label (not the org anchor text)',
+          r0['t'] == 'Administration Coordinator (Wagga Wagga Agricultural Institute)', r0['t'])
+    check('NSW-real: organisation captured', r0['agency'] == 'Agriculture and Biosecurity', r0['agency'])
+    check('NSW-real: location captured', r0['loc'] == 'Wagga Wagga', r0['loc'])
+    check('NSW-real: numeric id from slug tail', r0['id'] == '591328', r0['id'])
+    check('NSW-real: url absolutised', r0['url'] == 'https://iworkfor.nsw.gov.au/job/administration-coordinator-wagga-wagga-agricultural-institute-591328', r0['url'])
+    check('NSW-real: second job parsed', rows[1]['t'] == 'Registered Nurse' and rows[1]['agency'] == 'NSW Health',
+          f"{rows[1]['t']} / {rows[1]['agency']}")
+# the old pattern must be shown to fail, so this regression stays pinned
+old_rows, _ = jx.extract_jobs(NSW_REAL, r'/job/\d+', 'https://iworkfor.nsw.gov.au')
+check('NSW-real: old /job/<digits> pattern finds nothing (the original bug)', len(old_rows) == 0, str(len(old_rows)))
 
 # ── negative: a page with no jobs must yield nothing (not garbage) ───────────
 EMPTY = '<html><head><title>Just a moment...</title></head><body>' \

@@ -195,12 +195,17 @@ def text_of(fragment):
 def parse_page(html: str):
     """Extract {title, url, agency, location} for every vacancy on the page.
 
-    iworkfor.nsw.gov.au is a Next.js app: the vacancy list is shipped in the RSC
-    flight payload (self.__next_f.push), NOT as <a href="/job/..."> anchors — the
-    first Oxylabs run returned a 499KB page with zero anchors for exactly this
-    reason. jobs_extract reads the embedded JSON first and only falls back to
-    anchors, so a rendering change can't silently zero us out again."""
-    rows, how = jx.extract_jobs(html, r'/job/\d+', SITE)
+    iworkfor.nsw.gov.au is Ant Design + React SSR. Two things broke the earlier
+    parsers, both confirmed from the live diag snippet:
+      • hrefs are /job/<slug>-<id> (…-591328), NOT /job/<digits> — the original
+        `/job/\\d+` regex matched ZERO on a 1.1MB page carrying ~197 job cards;
+      • each card renders SEVERAL anchors to the same job and the anchor's own
+        text is the ORGANISATION — the job title lives only in the aria-label
+        ("Organization: <org> for <title>"), so a naive anchor parse would have
+        archived the org as the job title.
+    jobs_extract groups anchors by href and reads the aria-labels, and still
+    tries embedded JSON first, so neither issue can recur silently."""
+    rows, how = jx.extract_jobs(html, r'/job/[a-z0-9][\w-]*', SITE)
     if rows:
         sys.stderr.write(f'    (extracted via {how})\n')
     return [{

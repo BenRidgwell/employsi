@@ -235,16 +235,110 @@ def jobs_from_anchors(html: str, href_re: str, site: str = '') -> list[dict]:
     return rows
 
 
+# ── 3. job cards grouped by their detail link ────────────────────────────────
+# Boards built on a component library (NSW iworkfor = Ant Design + React SSR)
+# render one card as SEVERAL sibling anchors that all point at the same job URL —
+# one for the title, one for the organisation, one for the location — each
+# labelled for screen readers as `aria-label="Organization: <org> for <title>"`.
+# Anchor-scraping such a card naively takes the ORG as the title (the <a> around
+# the org span has the org as its text), which is why grouping by href and
+# reading the aria-labels is the correct read.
+ARIA_FIELD = re.compile(r'^\s*([A-Za-z ]{3,20})\s*:\s*(.+?)\s+for\s+(.+?)\s*$', re.S)
+ARIA_TO_FIELD = {
+    'organization': 'agency', 'organisation': 'agency', 'agency': 'agency',
+    'department': 'agency', 'employer': 'agency', 'cluster': 'agency',
+    'location': 'loc', 'region': 'loc',
+    'salary': 'salary', 'remuneration': 'salary',
+    'closing date': 'close', 'closes': 'close', 'job type': '', 'work type': '',
+}
+
+
+def jobs_from_cards(html: str, href_re: str, site: str = '') -> list[dict]:
+    """Group every anchor by its job-detail href and merge them into one record."""
+    by_href: dict[str, dict] = {}
+    order: list[str] = []
+    pat = re.compile(r'<a\b([^>]*?)href="([^"]*' + href_re + r'[^"]*)"([^>]*)>(.*?)</a>', re.S | re.I)
+    for m in pat.finditer(html or ''):
+        attrs = (m.group(1) or '') + (m.group(3) or '')
+        href, inner = m.group(2), m.group(4)
+        rec = by_href.get(href)
+        if rec is None:
+            rec = {'t': '', 'agency': '', 'loc': '', 'salary': '', 'close': '',
+                   'url': href if href.startswith('http') else (site.rstrip('/') + href
+                                                                if href.startswith('/') else href),
+                   'id': ''}
+            by_href[href] = rec
+            order.append(href)
+            # the numeric id usually tails the slug: .../my-role-591328
+            tail = re.search(r'-(\d{3,})(?:[/?#]|$)', href)
+            if tail:
+                rec['id'] = tail.group(1)
+        al = re.search(r'aria-label="([^"]*)"', attrs)
+        text = text_of(inner)
+        if al:
+            lab = htmllib.unescape(al.group(1))
+            fm = ARIA_FIELD.match(lab)
+            if fm:
+                field = ARIA_TO_FIELD.get(fm.group(1).strip().lower(), None)
+                # "<Field>: <value> for <job title>" — carries the title too.
+                if not rec['t']:
+                    rec['t'] = fm.group(3).strip()
+                if field and not rec[field]:
+                    rec[field] = fm.group(2).strip()
+                continue
+            # a plain aria-label on the title anchor
+            if not rec['t'] and MIN_TITLE <= len(lab) <= MAX_TITLE and ':' not in lab:
+                rec['t'] = lab.strip()
+        if text and not rec['t'] and MIN_TITLE <= len(text) <= MAX_TITLE:
+            rec['t'] = text
+        # Remember where this card sits so we can mine its block below.
+        rec.setdefault('_span', (m.start(), m.end()))
+        rec['_span'] = (min(rec['_span'][0], m.start()), max(rec['_span'][1], m.end()))
+
+    # Boards that don't use aria-labels (SA/BigRedSky) put the organisation and
+    # location in sibling elements instead — mine the surrounding block for any
+    # field the anchors didn't supply, so grouping never loses context.
+    for rec in by_href.values():
+        span = rec.pop('_span', None)
+        if not span or all(rec[k] for k in ('agency', 'loc')):
+            continue
+        s, e = max(0, span[0] - 1200), min(len(html or ''), span[1] + 1200)
+        block = text_of((html or '')[s:e])
+
+        def grab(labels):
+            for lb in labels:
+                g = re.search(lb + r'\s*[:\-]?\s*([^|\n]{2,70})', block, re.I)
+                if g:
+                    return g.group(1).strip()
+            return ''
+        if not rec['agency']:
+            rec['agency'] = grab([r'organisation', r'organization', r'agency',
+                                  r'department', r'cluster', r'employer'])
+        if not rec['loc']:
+            rec['loc'] = grab([r'location', r'region'])
+        if not rec['salary']:
+            rec['salary'] = grab([r'salary', r'remuneration'])
+        if not rec['close']:
+            rec['close'] = grab([r'closing', r'closes'])
+    return [by_href[h] for h in order if MIN_TITLE <= len(by_href[h]['t']) <= MAX_TITLE]
+
+
 # ── combined ─────────────────────────────────────────────────────────────────
-def extract_jobs(html: str, href_re: str = r'/job/\d+', site: str = '') -> tuple[list[dict], str]:
-    """Best-effort job extraction. Returns (rows, strategy-used)."""
+def extract_jobs(html: str, href_re: str = r'/job/[\w-]+', site: str = '') -> tuple[list[dict], str]:
+    """Best-effort job extraction. Returns (rows, strategy-used).
+
+    Strategy order matters. Embedded JSON and grouped job-cards are both
+    structurally correct, so we take whichever finds more. Raw dom-anchors is a
+    LAST RESORT — on a card-based board it returns one row per anchor (three per
+    job on NSW) with the organisation as the title, so it would out-count and
+    corrupt a correct card parse if allowed to compete on volume alone."""
     via_json = jobs_from_embedded_json(html)
+    via_cards = jobs_from_cards(html, href_re, site)
+    if via_json or via_cards:
+        return ((via_json, 'embedded-json') if len(via_json) >= len(via_cards)
+                else (via_cards, 'job-cards'))
     via_dom = jobs_from_anchors(html, href_re, site)
-    if len(via_json) >= len(via_dom) and via_json:
-        return via_json, 'embedded-json'
-    if via_dom:
-        return via_dom, 'dom-anchors'
-    return [], 'none'
+    return (via_dom, 'dom-anchors') if via_dom else ([], 'none')
 
 
 def diagnose(html: str, where: str, out=sys.stderr) -> None:
@@ -270,3 +364,18 @@ def diagnose(html: str, where: str, out=sys.stderr) -> None:
         if i >= 0:
             out.write(f'  [diag ctx {probe}] ...{WS.sub(" ", html[max(0,i-120):i+260])}...\n')
             break
+    # The single most useful line when a parse returns 0: the actual hrefs. A
+    # pattern mismatch (e.g. expecting /job/<digits> when the board serves
+    # /job/<slug>-<id>) is obvious at a glance instead of costing a whole run.
+    hrefs = re.findall(r'href="([^"#?]{4,90})"', html)
+    if hrefs:
+        from collections import Counter
+        shapes = Counter(re.sub(r'\d+', 'N', h.rsplit('/', 1)[0] + '/') for h in hrefs)
+        out.write('  [diag href shapes] ' + ', '.join(f'{p}({n})' for p, n in shapes.most_common(8)) + '\n')
+        jobish = [h for h in hrefs if re.search(r'job|vacanc|career|position', h, re.I)][:5]
+        if jobish:
+            out.write('  [diag job hrefs] ' + ' | '.join(jobish) + '\n')
+    # And whether aria-labels carry the fields (the NSW pattern).
+    aria = re.findall(r'aria-label="([^"]{10,120})"', html)[:3]
+    if aria:
+        out.write('  [diag aria] ' + ' | '.join(aria) + '\n')
