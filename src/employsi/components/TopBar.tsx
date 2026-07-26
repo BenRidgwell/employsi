@@ -1,26 +1,14 @@
-import { useMemo, type CSSProperties } from "react";
+import { useMemo } from "react";
 import { BrandMark } from "./BrandMark";
 import { AccountButton } from "./AccountButton";
-import { useAppStore, isFilterActive, isSearchActive, type FilterState } from "../state/store";
-import { COMPANIES, SECTOR_GROUPS, EXCHANGES } from "../data/companies";
+import { HelpDock } from "./HelpDock";
+import { useAppStore, isSearchActive, type FilterState } from "../state/store";
+import { COMPANIES } from "../data/companies";
 import { cityForCompany } from "../data/mapboxGeo";
 import { popularSkills as popularSkillsForLayer } from "../lib/skillHeat";
 import { GLOBAL_HUB_LABEL } from "../data/geo";
 import { ALL_SKILLS } from "../data/skillsTaxonomy";
 import { describeSkills } from "../lib/describeSkills";
-
-const SECTORS = SECTOR_GROUPS;
-// Short chip labels so the sector selection reads as a compact mosaic rather
-// than a stack of full-width rows.
-const SECTOR_SHORT: Record<string, string> = {
-  "Energy & Natural Resources": "Natural Resources",
-  "Financial Services": "Financial",
-  "Technology, Media and Telecommunications": "Tech & Media",
-  "Consumer and Retail": "Consumer & Retail",
-  "Industrial Manufacturing": "Industrial",
-  "Healthcare and Life Sciences": "Healthcare",
-  "Infrastructure and Government": "Infra & Gov",
-};
 
 function SearchIcon() {
   return (
@@ -39,53 +27,20 @@ function SearchIcon() {
   );
 }
 
-// Position of the thumb along [min,max] as a CSS custom property, so the
-// slider's purple fill always stops exactly at the thumb.
-function fillStyle(value: number, min: number, max: number): CSSProperties {
-  const pct = ((value - min) / (max - min)) * 100;
-  return { "--fill": `${pct}%` } as CSSProperties;
-}
-
-function FilterIcon() {
-  return (
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.4}
-      strokeLinecap="round"
-    >
-      <line x1="4" y1="6" x2="20" y2="6" />
-      <line x1="7" y1="12" x2="17" y2="12" />
-      <line x1="10" y1="18" x2="14" y2="18" />
-    </svg>
-  );
-}
-
 export function TopBar() {
   const searchOpen = useAppStore((s) => s.searchOpen);
   const toggleSearch = useAppStore((s) => s.toggleSearch);
-  const filterOpen = useAppStore((s) => s.filterOpen);
-  const toggleFilter = useAppStore((s) => s.toggleFilter);
   const searchQuery = useAppStore((s) => s.searchQuery);
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
   const clearSearch = useAppStore((s) => s.clearSearch);
   const activeSectors = useAppStore((s) => s.activeSectors);
-  const toggleSector = useAppStore((s) => s.toggleSector);
   const listingType = useAppStore((s) => s.listingType);
-  const setListingType = useAppStore((s) => s.setListingType);
   const activeExchanges = useAppStore((s) => s.activeExchanges);
-  const toggleExchange = useAppStore((s) => s.toggleExchange);
   const toggleSkillQuery = useAppStore((s) => s.toggleSkillQuery);
   const minSalary = useAppStore((s) => s.minSalary);
   const minHeadcount = useAppStore((s) => s.minHeadcount);
   const minGrowth = useAppStore((s) => s.minGrowth);
   const maxAttrition = useAppStore((s) => s.maxAttrition);
-  const setMinSalary = useAppStore((s) => s.setMinSalary);
-  const setMinHeadcount = useAppStore((s) => s.setMinHeadcount);
-  const clearFilters = useAppStore((s) => s.clearFilters);
   const globalOut = useAppStore((s) => s.globalOut);
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   // The centred search header replaces the top-right search on BOTH the global
@@ -104,7 +59,6 @@ export function TopBar() {
     minGrowth,
     maxAttrition,
   };
-  const filterActive = isFilterActive(filterState);
   const searchActive = isSearchActive(filterState);
 
   // Local search: every company mapped on the current city's map is searchable
@@ -175,6 +129,10 @@ export function TopBar() {
         </div>
       </div>
       <div className="controls">
+        {/* Feedback / Help / Settings sit at the header's right edge, per the
+            action-banner design. In the control row rather than free-floating
+            so they cannot overlap the account control beside them. */}
+        <HelpDock />
         <AccountButton />
         {/* The search group is always in the DOM so the mobile bottom bar can
             open its flyout on every layer. On desktop zoomed-out views the
@@ -239,94 +197,6 @@ export function TopBar() {
                 Clear search
               </button>
             )}
-          </div>
-        </div>
-        <div className="cgroup searchwrap">
-          <span className="seglbl">Filter</span>
-          <button
-            className={`searchbtn ${filterOpen ? "on" : ""} ${filterActive ? "active" : ""}`}
-            onClick={toggleFilter}
-          >
-            <FilterIcon />
-            <span>Filter</span>
-            {filterActive && <span className="sdot green" />}
-          </button>
-          {filterOpen && <div className="sfscrim" onClick={toggleFilter} />}
-          <div className={`searchflyout ${filterOpen ? "open" : ""}`}>
-            <div className="sflabel">Sector</div>
-            <div className="sfchips sfmosaic">
-              {SECTORS.map((cat) => (
-                <button
-                  key={cat}
-                  className={`sfchip sfchipsm ${activeSectors.includes(cat) ? "on" : ""}`}
-                  onClick={() => toggleSector(cat)}
-                >
-                  {SECTOR_SHORT[cat] || cat}
-                </button>
-              ))}
-            </div>
-            <div className="sflabel">Listing</div>
-            <div className="sfchips">
-              <button
-                className={`sfchip sfchipsm ${listingType === "public" ? "on" : ""}`}
-                onClick={() => setListingType("public")}
-              >
-                Public
-              </button>
-              <button
-                className={`sfchip sfchipsm ${listingType === "private" ? "on" : ""}`}
-                onClick={() => setListingType("private")}
-              >
-                Private
-              </button>
-            </div>
-            {listingType === "public" && (
-              <div className="sfsub">
-                <div className="sflabel sfsublabel">Stock exchange</div>
-                <div className="sfchips sfmosaic">
-                  {EXCHANGES.map((ex) => (
-                    <button
-                      key={ex}
-                      className={`sfchip sfchipsm ${activeExchanges.includes(ex) ? "on" : ""}`}
-                      onClick={() => toggleExchange(ex)}
-                    >
-                      {ex}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="sfrangerow">
-              <span>Salary</span>
-              <b>${minSalary}K+</b>
-            </div>
-            <input
-              type="range"
-              className="sfrange"
-              style={fillStyle(minSalary, 130, 160)}
-              min={130}
-              max={160}
-              step={1}
-              value={minSalary}
-              onChange={(e) => setMinSalary(Number(e.target.value))}
-            />
-            <div className="sfrangerow">
-              <span>Headcount</span>
-              <b>{minHeadcount > 0 ? minHeadcount.toLocaleString("en-US") + "+" : "Any"}</b>
-            </div>
-            <input
-              type="range"
-              className="sfrange"
-              style={fillStyle(minHeadcount, 0, 12000)}
-              min={0}
-              max={12000}
-              step={250}
-              value={minHeadcount}
-              onChange={(e) => setMinHeadcount(Number(e.target.value))}
-            />
-            <button className="sfclear" onClick={clearFilters}>
-              Clear filters
-            </button>
           </div>
         </div>
       </div>

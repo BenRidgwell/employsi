@@ -53,72 +53,231 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
   padding: 7px;
   border: 1px solid var(--border-subtle);
   border-radius: 19px;
   background: var(--raised-surface);
   box-shadow: var(--raised-shadow);
 }
-.railgroup {
+/* Hairline between groups. The design separates groups with a rule rather than
+   a wider gap, which is what makes the rail read as one control with sections. */
+.raildiv {
+  width: 22px;
+  height: 1px;
+  margin: 3px 0;
+  background: var(--border-subtle);
+}
+/* The layer picker: one sunken tray, so the four read as "pick one" rather
+   than as four unrelated buttons. */
+.railtray {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
-}
-/* The layer picker: one grouped control, so the four read as "pick one" rather
-   than as four unrelated buttons. */
-.railgroup-tray {
   gap: 2px;
   padding: 3px;
   border-radius: 14px;
   background: var(--surface-active);
 }
-.railbtn {
+/* Anchor for the Filter panel, which opens beside the button. */
+.railfilter {
+  position: relative;
+}
+
+/* ── Action buttons (rail + header dock) ─────────────────────────────────────
+   Both share one interaction model, taken from the design: two custom
+   properties drive everything. `--m` is 1 while hovered, `--sel` is 1 while
+   selected, and `--a` is their max — the value every icon animation reads. The
+   design sets these inline per button; here they are set by :hover and .on, so
+   the markup stays free of style attributes.
+
+   `--btn-bg` tracks the button's own background so an icon part that needs to
+   punch a hole through what's behind it (the Filter knobs) stays a hole when
+   the button turns to ink, instead of becoming three white dots. */
+.railbtn,
+.dockbtn {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
   padding: 0;
   border: 0;
   border-radius: 12px;
   background: transparent;
   color: var(--neutral-700);
   cursor: pointer;
+  --m: 0;
+  --sel: 0;
+  --a: max(var(--m), var(--sel));
+  --dur: 180ms;
+  --ease-icon: cubic-bezier(0.32, 0.72, 0, 1);
+  --btn-bg: var(--neutral-0);
   transition:
-    background var(--duration-base) cubic-bezier(0.32, 0.72, 0, 1),
-    color var(--duration-base),
+    background var(--dur) var(--ease-icon),
+    color var(--dur),
     transform 110ms;
 }
-.railbtn svg {
+.railbtn-lg {
+  width: 38px;
+  height: 38px;
+}
+.railbtn-sm {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+}
+.dockbtn {
+  width: 40px;
+  height: 40px;
+}
+.railbtn svg,
+.dockbtn svg {
   display: block;
   stroke-width: 1.9;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.railbtn:hover {
+.railbtn:hover,
+.dockbtn:hover {
+  --m: 1;
   background: var(--surface-hover);
   color: var(--text-primary);
 }
-.railbtn:active {
-  transform: scale(0.94);
+/* Inside the tray the resting surface is already grey, so hover lifts to the
+   tray colour rather than to a lighter grey that would look like a hole. */
+.railtray .railbtn:hover {
+  background: var(--surface-active);
 }
-.railbtn.on {
+.railbtn.on,
+.dockbtn.on {
+  --sel: 1;
   background: var(--action-primary);
   color: var(--action-primary-text);
+  --btn-bg: var(--neutral-900);
+}
+.railbtn.on:hover,
+.dockbtn.on:hover,
+.railtray .railbtn.on:hover {
+  background: var(--action-primary);
+}
+.railbtn:active,
+.dockbtn:active {
+  transform: scale(0.94);
 }
 .railbtn:disabled {
   opacity: 0.4;
   cursor: default;
 }
-.railbtn:focus-visible {
+.railbtn:focus-visible,
+.dockbtn:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
 }
-/* Tooltip to the right. Absolutely positioned so it can never widen the rail,
-   and hidden from hit-testing so it can't swallow the next click. */
+
+/* ── Icon motion ─────────────────────────────────────────────────────────────
+   One rule per gesture, driven by --a. Class names describe the motion, not the
+   shape, because icons share gestures — see ActionIcons.tsx. */
+.ai-lift,
+.ai-lift-sm,
+.ai-lift-lg,
+.ai-drop,
+.ai-arrowtip,
+.ai-slide-r,
+.ai-slide-r5,
+.ai-slide-l5,
+.ai-flat,
+.ai-narrow,
+.ai-shrink,
+.ai-spin,
+.ai-shadow,
+.ai-quarter {
+  transition: transform var(--dur, 180ms) var(--ease-icon, cubic-bezier(0.32, 0.72, 0, 1));
+}
+.ai-lift {
+  transform: translate(0, calc(var(--a, 0) * -2px));
+}
+.ai-lift-sm {
+  transform: translate(0, calc(var(--a, 0) * -1px));
+}
+.ai-lift-lg {
+  transform: translate(0, calc(var(--a, 0) * -2.5px));
+}
+.ai-drop {
+  transform: translate(0, calc(var(--a, 0) * 1px));
+}
+.ai-arrowtip {
+  transform: translate(calc(var(--a, 0) * 1.5px), calc(var(--a, 0) * -1.5px));
+}
+.ai-slide-r {
+  transform: translate(calc(var(--a, 0) * 1.5px), 0);
+}
+.ai-slide-r5 {
+  transform: translate(calc(var(--a, 0) * 5px), 0);
+}
+.ai-slide-l5 {
+  transform: translate(calc(var(--a, 0) * -5px), 0);
+}
+.ai-flat {
+  transform-box: view-box;
+  transform-origin: 12px 12px;
+  transform: scaleX(calc(1 - var(--a, 0) * 0.82));
+}
+.ai-narrow {
+  transform-box: view-box;
+  transform-origin: 12px 12.5px;
+  transform: scaleX(calc(1 - var(--a, 0) * 0.22));
+}
+.ai-shrink {
+  transform-box: view-box;
+  transform-origin: 12px 12px;
+  transform: scale(calc(1 - var(--a, 0) * 0.2));
+}
+/* The gear turns a slower eighth-turn than the other gestures. */
+.ai-spin {
+  transform-box: view-box;
+  transform-origin: 12px 12px;
+  transform: rotate(calc(var(--a, 0) * 45deg));
+  transition-duration: calc(var(--dur, 180ms) * 1.5);
+}
+/* The map pin's shadow: shrinks and firms up as the pin lifts off it. */
+.ai-shadow {
+  transform-box: view-box;
+  transform-origin: 12px 20.5px;
+  transform: scale(calc(1 - var(--a, 0) * 0.35));
+  opacity: calc(0.3 + var(--a, 0) * 0.35);
+  transition:
+    transform var(--dur, 180ms) var(--ease-icon, cubic-bezier(0.32, 0.72, 0, 1)),
+    opacity var(--dur, 180ms);
+}
+.ai-knob {
+  fill: var(--btn-bg, #fff);
+}
+.ai-dot {
+  fill: currentColor;
+  stroke: none;
+}
+/* Panel close X: a quarter turn on hover of its button. */
+.ai-quarter {
+  transform-box: view-box;
+  transform-origin: 12px 12px;
+  transform: rotate(calc(var(--m, 0) * 90deg));
+  transition-duration: 220ms;
+}
+.ai-d1 {
+  transition-delay: 45ms;
+}
+.ai-d2 {
+  transition-delay: 90ms;
+}
+.ai-d1b {
+  transition-delay: 50ms;
+}
+.ai-d2b {
+  transition-delay: 100ms;
+}
+
+/* Tooltip to the right of the rail. Absolutely positioned so it can never
+   widen the column, and hidden from hit-testing so it can't swallow a click. */
 .railtip {
   position: absolute;
   left: calc(100% + 10px);
@@ -134,7 +293,9 @@ body {
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 140ms, transform 140ms;
+  transition:
+    opacity 140ms,
+    transform 140ms;
 }
 .railbtn:hover .railtip,
 .railbtn:focus-visible .railtip {
@@ -142,14 +303,208 @@ body {
   transform: translateY(-50%) translateX(0);
 }
 /* A selected button already says what it is, so it doesn't also need the tip. */
-.railbtn.on:hover .railtip {
+.railbtn.on:hover .railtip,
+.railbtn.on:focus-visible .railtip {
   opacity: 0;
 }
 
-/* HelpDock stays mounted for its panels (help tour, settings, feedback board);
-   the rail owns its buttons now. */
-.helpdock .helpbtn {
-  display: none;
+/* ── Filter panel ────────────────────────────────────────────────────────────
+   Opens beside the rail's Filter button, vertically centred on the map frame
+   like the rail itself. It replaces the header flyout; every control is wired
+   to the same store fields that flyout used. */
+/* Click-away for the filter panel. Transparent on desktop; the mobile rules
+   below turn it into the same dimmed backdrop the other sheets use. */
+.fpscrim {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 47;
+}
+.filterpane {
+  position: fixed;
+  left: calc(var(--rail-left) + 66px);
+  top: calc(var(--head-height) / 2 + 50%);
+  transform: translateY(-50%);
+  box-sizing: border-box;
+  width: 252px;
+  max-height: calc(100vh - 80px);
+  overflow: auto;
+  padding: 12px 13px 13px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  background: var(--surface-card);
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 28px 56px -24px rgba(28, 28, 30, 0.55);
+  animation: emppop 200ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  z-index: 49;
+}
+.fphd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+}
+.fptitle {
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.015em;
+}
+.fpx {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--surface-card);
+  color: var(--neutral-700);
+  cursor: pointer;
+  --m: 0;
+  transition:
+    background 160ms,
+    color 160ms,
+    transform 110ms;
+}
+.fpx:hover {
+  --m: 1;
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.fpx:active {
+  transform: scale(0.94);
+}
+.fplbl {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.fpchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 9px 0 16px;
+}
+.fpchip {
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--surface-card);
+  color: var(--neutral-700);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition:
+    background 170ms,
+    color 170ms,
+    border-color 170ms,
+    transform 110ms;
+}
+.fpchipwide {
+  padding: 0 14px;
+}
+.fpchip:hover {
+  border-color: var(--border-strong);
+}
+.fpchip.on {
+  border-color: var(--action-primary);
+  background: var(--action-primary);
+  color: var(--action-primary-text);
+}
+.fpchip:active {
+  transform: scale(0.97);
+}
+.fpslider {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.fpsliderhd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.fpvalue {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  letter-spacing: -0.01em;
+}
+/* The design draws its own track and thumb over a pointer-drag div. A real
+   range input is used instead so the control stays keyboard-operable; these
+   rules give it the design's 6px track, ink fill and 18px thumb. */
+.fprange {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  margin: 8px 0;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--action-primary) 0,
+    var(--action-primary) var(--fill, 0%),
+    var(--surface-sunken) var(--fill, 0%),
+    var(--surface-sunken) 100%
+  );
+  cursor: pointer;
+}
+.fprange::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--action-primary);
+  border-radius: 999px;
+  background: var(--surface-card);
+  box-shadow: 0 1px 3px rgba(28, 28, 30, 0.24);
+  cursor: pointer;
+}
+.fprange::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--action-primary);
+  border-radius: 999px;
+  background: var(--surface-card);
+  box-shadow: 0 1px 3px rgba(28, 28, 30, 0.24);
+  cursor: pointer;
+}
+.fprange:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.fpclear {
+  width: 100%;
+  height: 38px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-subtle);
+  color: var(--neutral-700);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition:
+    background 160ms,
+    color 160ms,
+    transform 110ms;
+}
+.fpclear:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.fpclear:active {
+  transform: scale(0.99);
 }
 
 /* ── Shell: header row + inset map card ──────────────────────────────────────
@@ -984,12 +1339,17 @@ body {
    The header is now a white row above the map, so all of that is gone: the
    sampler, the `.app.ondark` / `.app.onglobe` / `.gshd-onlight` variants, and
    the per-rect brand-mark recolouring. Header type is simply ink. */
+/* The header's right-hand controls, as one row: the Feedback / Help / Settings
+   cluster, the account control, then the local-layer search button. It was a
+   column when Search and Filter each carried a caption above them; Filter has
+   moved to the rail and the cluster is a row, so a row is what the header
+   needs to land everything on the same 40px baseline. */
 .controls {
   pointer-events: auto;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: flex-end;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
 }
 .seg {
   display: flex;
@@ -1503,12 +1863,11 @@ body {
 /* Right-side expandable tools dock (Employer / Employee) */
 .toolsdock {
   position: fixed;
-  /* Sit directly above the Feedback / Need-help / Settings stack (helpdock:
-     bottom 46px, three 38px pills + 2×10px gaps = 134px tall), sharing its
-     right edge so all five controls line up as one seamless column. Keep
-     this in sync with helpdock's bottom + total height below. */
+  /* Sat above the old bottom-right Feedback / Help / Settings stack, which the
+     action-banner design moved to the header; with the corner free the dock
+     drops to where that stack began. */
   right: 14px;
-  bottom: 190px;
+  bottom: 46px;
   z-index: 41;
   display: flex;
   flex-direction: column;
@@ -1526,14 +1885,6 @@ body {
   opacity: 0.35;
   pointer-events: none;
 }
-/* Feedback / Need-help / Settings dock drops behind the same way when a
-   top-bar flyout (search / filter / heat) is open, so those flyouts sit over
-   it — mirroring how the tools dock already behaves. */
-.helpdock.behind {
-  z-index: 4;
-  opacity: 0.35;
-  pointer-events: none;
-}
 /* Click-away scrim for the bottom-corner docks. It lives inside the dock's own
    stacking context (z-index 41), so it's given a low local z-index and the
    dock's real controls are lifted above it. Transparent — it only catches the
@@ -1547,10 +1898,7 @@ body {
      in or it can't catch the outside click that collapses an open cluster. */
   pointer-events: auto;
 }
-.helpdock .helpbtn,
-.helpdock .helppanel,
-.helpdock .setpanel,
-.helpdock .fbboard,
+.helpdock .dockslot,
 .toolsdock .tdcluster,
 .toolsdock .helpbtn {
   position: relative;
@@ -3618,74 +3966,149 @@ body {
     transform: translate(-50%, 0);
   }
 }
-/* "Need help?" contextual tour dock (bottom-right, above the mapbox ⓘ) */
+/* Feedback / Need help? / Settings, as the design's top-right cluster. It used
+   to be a stack of expanding pills in the bottom-right corner; the design makes
+   them three plain 40px buttons at the header's right edge, each opening its
+   panel directly beneath itself. They render inside the header control row so
+   they cannot collide with the account control beside them. */
 .helpdock {
-  position: fixed;
-  right: 14px;
-  bottom: 46px;
-  z-index: 41;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 10px;
-}
-.helpbtn {
   display: flex;
   align-items: center;
-  height: 38px;
-  border-radius: 19px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(8px);
-  color: var(--ink);
-  cursor: pointer;
-  overflow: hidden;
-  box-shadow: 0 10px 24px -12px rgba(15, 27, 61, 0.45);
+  gap: 4px;
+  pointer-events: auto;
 }
-.helpbtn svg {
-  flex: 0 0 auto;
-  width: 38px;
-  height: 38px;
-  padding: 9px;
-  box-sizing: border-box;
+.dockslot {
+  position: relative;
 }
-.helplbl {
-  max-width: 0;
-  opacity: 0;
+/* Tooltip below the button (the rail's sits to the right), per the design. */
+.docktip {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
   white-space: nowrap;
-  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
-  font-size: 12.5px;
-  font-weight: 700;
-  transition: max-width 0.28s ease, opacity 0.2s ease, padding 0.28s ease;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 140ms,
+    transform 140ms;
 }
-.helpbtn.wide .helplbl,
-.helpbtn:hover .helplbl {
-  max-width: 120px;
-  opacity: 1;
-  padding-right: 15px;
+/* Brief nudge when the user lands on a new layer, so the contextual tour
+   advertises itself. Deliberately not the selected state — an ink-filled button
+   would read as "this panel is open". */
+.dockbtn.peek {
+  animation: dockpeek 0.5s ease;
 }
-.helpbtn.peek {
-  animation: helppop 0.5s ease;
-}
-@keyframes helppop {
+@keyframes dockpeek {
   0% {
-    transform: translateY(4px) scale(0.96);
+    transform: translateY(2px) scale(0.96);
   }
   55% {
-    transform: translateY(-2px) scale(1.03);
+    transform: translateY(-2px) scale(1.05);
   }
   100% {
     transform: translateY(0) scale(1);
   }
 }
+.dockbtn:hover .docktip,
+.dockbtn:focus-visible .docktip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.dockbtn.on:hover .docktip,
+.dockbtn.on:focus-visible .docktip {
+  opacity: 0;
+}
+/* Shared shell for the three panels that drop from this cluster. */
+.dockpanel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  box-sizing: border-box;
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  background: var(--surface-card);
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 28px 56px -24px rgba(28, 28, 30, 0.55);
+  animation: emppop 200ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  z-index: 5;
+}
+@keyframes emppop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+/* Panel header: title (+ optional subtitle) and the rotating close X. */
+.dockhd {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+}
+.dockhdline {
+  align-items: center;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.dockhdtext {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.docktitle {
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+}
+.docksub {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.dockx {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--surface-card);
+  color: var(--neutral-700);
+  cursor: pointer;
+  --m: 0;
+  transition:
+    background 160ms,
+    color 160ms,
+    transform 110ms;
+}
+.dockx:hover {
+  --m: 1;
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.dockx:active {
+  transform: scale(0.94);
+}
 .helppanel {
-  width: 280px;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow: 0 24px 60px -24px rgba(15, 27, 61, 0.5);
-  padding: 14px 16px;
-  animation: helppanelin 0.2s ease both;
+  width: 252px;
+  padding: 12px 13px 13px;
 }
 @keyframes helppanelin {
   from {
@@ -3776,18 +4199,8 @@ body {
 }
 /* Settings panel + toggle switches */
 .setpanel {
-  width: 280px;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow: 0 24px 60px -24px rgba(15, 27, 61, 0.5);
-  padding: 14px 16px;
-  animation: helppanelin 0.2s ease both;
-}
-/* Extra breathing room below the close button before the first toggle row —
-   without it the row's divider line sits right under the button. */
-.setpanel .helphd {
-  margin-bottom: 8px;
+  width: 256px;
+  padding: 13px 14px 3px;
 }
 .setrow {
   display: flex;
@@ -3915,24 +4328,28 @@ body {
 }
 /* Feedback board — a votable request list plus a compose box. Wider than the
    old single-textarea popup so the list is readable. */
+/* The board hangs from the Feedback button in the header cluster, so it grows
+   DOWNWARD now; the cap keeps its bottom clear of the viewport edge and the
+   request list scrolls internally. */
 .fbboard {
-  width: 340px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  box-sizing: border-box;
+  width: 300px;
   max-width: calc(100vw - 32px);
-  /* Cap the height so the board (which grows upward from the dock) can never
-     reach the top bar / account button, even on short viewports; the request
-     list scrolls internally instead. Because the dock is anchored at the
-     bottom, subtracting a fixed amount keeps the board's TOP at a roughly
-     constant ~130px offset regardless of viewport height, clearing the
-     ~114px-tall top bar. */
-  max-height: calc(100vh - 330px);
+  max-height: calc(100vh - 140px);
   display: flex;
   flex-direction: column;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow: 0 24px 60px -24px rgba(15, 27, 61, 0.5);
-  padding: 14px 16px;
-  animation: helppanelin 0.2s ease both;
+  padding: 12px 13px 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  background: var(--surface-card);
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 28px 56px -24px rgba(28, 28, 30, 0.55);
+  animation: emppop 200ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  z-index: 5;
 }
 .fbboard .helphd,
 .fbcompose,
@@ -6473,7 +6890,7 @@ body {
      desktop): it occupies the top 38px strip the top bar already sits below. */
   /* Keep the help dock mounted (its Help / Settings / Feedback panels render
      inside it) but drop its buttons — the More sheet opens those panels now. */
-  .helpdock .helpbtn {
+  .helpdock .dockbtn {
     display: none;
   }
   /* The salary heat key sits just above the bar rather than under it. */
@@ -6501,6 +6918,26 @@ body {
   .helpdock .dockscrim {
     position: fixed;
     inset: 0;
+    background: rgba(13, 15, 20, 0.34);
+    backdrop-filter: blur(2px);
+    z-index: 46;
+  }
+  /* Filter opens from the tab bar here, not the (hidden) rail, so its panel
+     becomes a bottom sheet like Help / Settings / Feedback. */
+  .filterpane {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    transform: none;
+    width: auto;
+    max-width: none;
+    max-height: 82vh;
+    border-radius: 20px 20px 0 0;
+    padding: 18px 16px calc(22px + env(safe-area-inset-bottom, 0px));
+    z-index: 47;
+  }
+  .fpscrim {
     background: rgba(13, 15, 20, 0.34);
     backdrop-filter: blur(2px);
     z-index: 46;

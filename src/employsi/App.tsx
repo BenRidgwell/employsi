@@ -5,7 +5,7 @@ import { GlobalSearch } from "./components/GlobalSearch";
 import { Ticker } from "./components/Ticker";
 import { HintPulse } from "./components/HintPulse";
 import { ActionRail } from "./components/ActionRail";
-import { HelpDock } from "./components/HelpDock";
+import { FilterPane } from "./components/FilterPane";
 import { MobileTabBar } from "./components/MobileTabBar";
 import { MobileMenu } from "./components/MobileMenu";
 import { CityBadge } from "./components/CityBadge";
@@ -68,13 +68,15 @@ function App() {
         </div>
       </div>
 
-      {/* One rail down the left, inside the frame, built from the design's own
-          markup. It owns the BUTTONS; the panels they open still live in their
-          original components — HelpDock stays mounted below for the help tour,
-          settings and feedback board, with its own buttons hidden. */}
+      {/* One rail down the left, built from the design's own markup: trends,
+          the layer tray, and Filter with its panel. Feedback / Help / Settings
+          are NOT here — the design puts them at the header's right edge, and
+          HelpDock renders there (inside TopBar's control row). */}
       <ActionRail />
+      {/* Filter's panel, opened from the rail on desktop and from the mobile
+          tab bar on phones — so it lives at the root, not inside the rail. */}
+      <FilterPane />
 
-      <HelpDock />
       <HintPulse />
       <Ticker hidden={!zoomedOut} />
       <Legend />
