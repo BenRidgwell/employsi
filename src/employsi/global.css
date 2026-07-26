@@ -5992,7 +5992,9 @@ body {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s ease;
-  z-index: 5;
+  /* Under the compare sheet (66) but over everything else, including the brand
+     wordmark — a modal that leaves the logo lit reads as a rendering bug. */
+  z-index: 65;
 }
 .pbackdrop.open {
   opacity: 1;
@@ -6239,15 +6241,18 @@ body {
    article photo behind an overlaid pill / headline / meta, then a two-column
    grid of smaller image cards below. */
 .newspanel {
-  width: 340px;
+  /* The design's second column: 380px, the same 20px radius and shadow as the
+     company card beside it, so the two read as one pair rather than two
+     unrelated surfaces. */
+  width: 380px;
   max-width: 34vw;
-  max-height: 86vh;
-  background: rgba(255, 255, 255, 0.98);
-  border: 1px solid var(--line);
+  max-height: calc(100vh - var(--head-height) - 48px);
+  background: var(--neutral-0);
+  border: 1px solid var(--border-default);
   box-shadow:
-    0 44px 110px -24px rgba(15, 27, 61, 0.5),
-    0 0 0 1px rgba(15, 27, 61, 0.04);
-  border-radius: 22px;
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 24px 48px -28px rgba(28, 28, 30, 0.5);
+  border-radius: 20px;
   display: flex;
   flex-direction: column;
   pointer-events: auto;
@@ -8441,5 +8446,1071 @@ body {
   .mobilemenu,
   .mmscrim {
     display: none;
+  }
+}
+
+/* ===========================================================================
+   Company card — from `Employsi Company Card public.html` / `…private.html`.
+
+   One 440px card: a header with the logo, name and three round controls; the
+   role search; a three-way tab strip; then a scrolling body whose Overview
+   pane carries the stat row, the vacancy chart and the facts.
+
+   The two designs differ only in the ticker chip, the chart's second line and
+   the third fact — all three follow from whether the company files public
+   accounts, so there is one set of rules here and the model picks the variant.
+   =========================================================================== */
+
+.cc {
+  display: flex;
+  flex-direction: column;
+  width: 440px;
+  max-width: calc(100vw - 44px);
+  flex: 0 0 auto;
+  max-height: calc(100vh - var(--head-height) - 48px);
+  border: 1px solid var(--border-default);
+  border-radius: 20px;
+  background: var(--neutral-0);
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 24px 48px -28px rgba(28, 28, 30, 0.5);
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+/* ── header ─────────────────────────────────────────────────────────────── */
+.cchead {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 18px 14px;
+}
+.ccmark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: #fafafa;
+  overflow: hidden;
+}
+.ccmark img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.ccheadmain {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ccname {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.ccmeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.ccsector {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--surface-active);
+  color: var(--text-secondary);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ccticker {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.ccactions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.ccbtn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 11px;
+  background: var(--neutral-0);
+  color: var(--text-secondary);
+  cursor: pointer;
+  --m: 0;
+  transition:
+    background 160ms,
+    color 160ms,
+    border-color 160ms,
+    transform 110ms;
+}
+.ccbtn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+.ccbtn:hover {
+  --m: 1;
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.ccbtn:active {
+  transform: scale(0.94);
+}
+/* Following is the one state the card holds, so it is the one control that
+   fills — the others are actions, not states. */
+.ccbtn-follow.on {
+  background: var(--neutral-900);
+  border-color: var(--neutral-900);
+  color: var(--neutral-0);
+}
+.cctip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: var(--m, 0);
+  transform: translateX(-50%) translateY(calc((1 - var(--m, 0)) * -4px));
+  transition:
+    opacity 140ms,
+    transform 140ms;
+  z-index: 3;
+}
+
+/* ── tabs ───────────────────────────────────────────────────────────────── */
+.cctabs {
+  display: flex;
+  gap: 2px;
+  margin: 14px 18px 0;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--surface-active);
+}
+.cctab {
+  flex: 1 1 0;
+  height: 32px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  transition:
+    background 180ms,
+    color 180ms,
+    box-shadow 180ms;
+}
+.cctab.on {
+  background: var(--neutral-0);
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px rgba(28, 28, 30, 0.1);
+}
+
+.ccbody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 18px 20px;
+}
+@keyframes cc-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.ccpane {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: cc-rise 220ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* ── headline stats ─────────────────────────────────────────────────────── */
+.ccstats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--border-subtle);
+  overflow: hidden;
+}
+.ccstat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 13px 14px;
+  background: var(--neutral-0);
+  min-width: 0;
+}
+.ccstatv {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 22px;
+  letter-spacing: -0.03em;
+}
+.ccstatd {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+}
+.ccstatd.up {
+  color: #1f6a48;
+}
+.ccstatd.down {
+  color: #97332b;
+}
+.ccstatl,
+.cceyebrow {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.ccstatsub {
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── chart ──────────────────────────────────────────────────────────────── */
+.ccchart {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ccchartend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cclegend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cclegitem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+.cclegline {
+  width: 14px;
+  height: 2px;
+  border-radius: 999px;
+  background: #1f6a48;
+}
+.cclegline.down {
+  background: #97332b;
+}
+/* The second series is dashed and grey, matching how it is drawn — a legend
+   that doesn't look like its line is worse than no legend. */
+.cclegline.dash {
+  height: 0;
+  border-top: 2px dashed var(--text-tertiary);
+  background: none;
+}
+.ccplot {
+  position: relative;
+}
+.ccplot svg {
+  display: block;
+  width: 100%;
+  height: 150px;
+}
+.cccallout {
+  position: absolute;
+  top: 0;
+  display: inline-flex;
+  flex-direction: column;
+  padding: 5px 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--neutral-0);
+  box-shadow: 0 4px 12px -6px rgba(28, 28, 30, 0.4);
+}
+.cccallout.left {
+  left: 0;
+}
+.cccallout.right {
+  right: 0;
+  align-items: flex-end;
+}
+.cccalloutv {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+.cccalloutl {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.ccdelta {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.ccplot > .ccdelta {
+  position: absolute;
+  bottom: 28px;
+}
+.ccplot > .ccdelta.left {
+  left: 0;
+}
+.ccplot > .ccdelta.right {
+  right: 0;
+}
+.ccdelta.up {
+  background: #e8f3ec;
+  color: #1f6a48;
+}
+.ccdelta.down {
+  background: #f7ebe9;
+  color: #97332b;
+}
+.ccaxis {
+  display: flex;
+  justify-content: space-between;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+
+/* ── facts + rating ─────────────────────────────────────────────────────── */
+.ccfacts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--surface-active);
+}
+.ccfact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ccfactk {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.ccfactv {
+  font-size: 13px;
+  font-weight: 500;
+  text-align: right;
+}
+.ccrating {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: #fafafa;
+}
+.ccratingscore {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  flex: 0 0 auto;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 22px;
+  letter-spacing: -0.03em;
+}
+.ccratingof {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.ccratingmain {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ccstars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.ccstars svg {
+  display: block;
+}
+.ccratingmeta {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+
+/* ── section headers, skill chips, hiring bars ──────────────────────────── */
+.ccsecth {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ccsecthsub {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: right;
+}
+.ccchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ccchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 6px 0 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--neutral-0);
+  font-size: 13px;
+  font-weight: 500;
+}
+.ccchipn {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--surface-active);
+  color: var(--text-secondary);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+}
+.ccchipmore {
+  padding: 0 12px;
+  border-style: dashed;
+  border-color: var(--neutral-300, #d1d1d6);
+  background: transparent;
+  color: var(--text-secondary);
+}
+.cchiring {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cchirerow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cchirename {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+.cchirebar {
+  flex: 0 0 84px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-active);
+  overflow: hidden;
+}
+.cchirefill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--neutral-900);
+}
+.cchiren {
+  flex: 0 0 auto;
+  min-width: 26px;
+  text-align: right;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* ===========================================================================
+   Compare view — from `Employsi Compare View.html`.
+   A wide centred sheet: header, peer/benchmark pickers, skill lens, then a
+   two-column grid of metric bars and the indexed trend, the skill mix, and
+   the takeaways.
+   =========================================================================== */
+
+.cmp {
+  position: fixed;
+  left: 50%;
+  top: calc(var(--head-height) + 16px);
+  transform: translateX(-50%) translateY(8px);
+  width: min(1040px, calc(100vw - 48px));
+  max-height: calc(100vh - var(--head-height) - 40px);
+  /* Above the brand wordmark (60), which is otherwise the top-most element —
+     compare is a modal sheet and must not have the logo punching through it. */
+  z-index: 66;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-default);
+  border-radius: 20px;
+  background: var(--neutral-0);
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 24px 48px -28px rgba(28, 28, 30, 0.5);
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.24s ease,
+    transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.cmp.open {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+.cmpscroll {
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+.cmphead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px 16px;
+}
+.cmpheadmain {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cmptitle {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.cmpheadactions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cmpexport {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 13px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 11px;
+  background: var(--neutral-0);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 150ms,
+    color 150ms;
+}
+.cmpexport:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.cmpbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0 22px 16px;
+}
+.cmpsubject {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px 0 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: #fafafa;
+}
+.cmpsubjectmark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--neutral-900);
+  color: var(--neutral-0);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+}
+.cmpsubjectname {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.cmpvs {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #b4b4ba;
+}
+.cmpseg {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--surface-active);
+}
+.cmpsegbtn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 180ms,
+    color 180ms;
+}
+.cmpsegbtn.on {
+  background: var(--neutral-0);
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px rgba(28, 28, 30, 0.1);
+}
+.cmpsegdot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #d1d1d6;
+}
+.cmpsegbtn.on .cmpsegdot {
+  background: var(--text-tertiary);
+}
+.cmpspacer {
+  flex: 1 1 auto;
+}
+.cmpbench {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cmplensrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 22px 18px;
+}
+.cmplens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.cmplensbtn {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--neutral-0);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 180ms,
+    color 180ms,
+    border-color 180ms;
+}
+.cmplensbtn.on {
+  background: var(--neutral-900);
+  border-color: var(--neutral-900);
+  color: var(--neutral-0);
+}
+
+.cmpkey {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 22px;
+  border-top: 1px solid var(--surface-active);
+  border-bottom: 1px solid var(--surface-active);
+  background: #fcfcfd;
+}
+.cmpkeyitem {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.cmpkeyswatch {
+  width: 16px;
+  height: 8px;
+  border-radius: 3px;
+}
+.cmpkeyswatch.a {
+  background: var(--neutral-900);
+}
+.cmpkeyswatch.b {
+  background: #b4b4ba;
+}
+.cmpkeyswatch.bench {
+  height: 0;
+  border-top: 2px dashed var(--text-tertiary);
+}
+
+.cmpgrid {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 1px;
+  background: var(--surface-active);
+}
+.cmpcol {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 22px;
+  background: var(--neutral-0);
+  min-width: 0;
+}
+.cmpmetrics {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cmpmetric {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.cmpmetrichd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cmpmetricname {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.006em;
+}
+.cmpmetricvals {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+.cmpmetrica {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  letter-spacing: -0.02em;
+}
+.cmpmetricb {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.cmpgap {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+}
+.cmpgap.up {
+  background: #e8f3ec;
+  color: #1f6a48;
+}
+.cmpgap.down {
+  background: #f7ebe9;
+  color: #97332b;
+}
+.cmpgap.flat {
+  background: var(--surface-active);
+  color: var(--text-secondary);
+}
+.cmpbars {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 0;
+}
+.cmpbars.tight {
+  gap: 3px;
+}
+.cmptrack {
+  position: relative;
+  display: block;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--surface-active);
+  overflow: hidden;
+}
+.cmpbars.tight .cmptrack {
+  height: 7px;
+}
+.cmpfill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 420ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.cmpfill.a {
+  background: var(--neutral-900);
+}
+.cmpfill.b {
+  background: #b4b4ba;
+}
+/* A signed metric grows out of a zero line rather than from the left edge, so
+   a shrinking headcount reads as a bar going the other way, not a short one. */
+.cmpfill.signed {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  height: auto;
+  border-radius: 3px;
+  transition:
+    left 420ms cubic-bezier(0.32, 0.72, 0, 1),
+    width 420ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.cmpzero {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #d1d1d6;
+}
+.cmpbenchmark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 2px dashed var(--text-tertiary);
+  transition: left 420ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.cmptrend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cmptrendpills {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-end;
+}
+.cmppctl {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding-top: 16px;
+  border-top: 1px solid var(--surface-active);
+}
+.cmppctltrack {
+  position: relative;
+  height: 34px;
+}
+.cmppctlrail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 14px;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f4f4f5 0%, #e6e6ea 55%, #d8d8dc 100%);
+}
+.cmppctlb {
+  position: absolute;
+  top: 8px;
+  width: 3px;
+  height: 20px;
+  margin-left: -1.5px;
+  border-radius: 999px;
+  background: #b4b4ba;
+}
+.cmppctla {
+  position: absolute;
+  top: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  transform: translateX(-50%);
+}
+.cmppctltag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--neutral-900);
+  color: var(--neutral-0);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+.cmppctlstem {
+  width: 3px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--neutral-900);
+}
+.cmppctlnote {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.cmpmix {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 22px 24px;
+  border-top: 1px solid var(--surface-active);
+}
+.cmpmixgrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 28px;
+}
+.cmpmixrow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cmptake {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 18px 22px 22px;
+  border-top: 1px solid var(--surface-active);
+  background: #fcfcfd;
+}
+.cmptakerow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.cmptaketag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  margin-top: 1px;
+  padding: 0 7px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+}
+.cmptaketag.up {
+  background: #e8f3ec;
+  color: #1f6a48;
+}
+.cmptaketag.down {
+  background: #f7ebe9;
+  color: #97332b;
+}
+.cmptaketag.flat {
+  background: var(--surface-active);
+  color: var(--text-secondary);
+}
+.cmptaketext {
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+  .cmpgrid {
+    grid-template-columns: 1fr;
+  }
+  .cmpmixgrid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 680px) {
+  .cc {
+    width: 100%;
+    max-width: none;
+  }
+  .cmp {
+    top: 8px;
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
   }
 }

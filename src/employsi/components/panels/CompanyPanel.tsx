@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../../state/store";
 import { buildPanel } from "../../lib/panel";
+import { buildCompanyCard, TREND_UP, TREND_DOWN } from "../../lib/companyCard";
+import { COMPANIES } from "../../data/companies";
+import { COMPANY_HEADCOUNT } from "../../data/companyHeadcount";
+import { GOV_HEADCOUNT, GOV_WORKFORCE } from "../../data/perthGovWorkforce";
 import { useBhpFeed } from "../../hooks/useBhpFeed";
 import { useShareSeries } from "../../hooks/useShareSeries";
 import { useCompanyStats } from "../../hooks/useCompanyStats";
@@ -8,15 +12,11 @@ import { useOpenRoles } from "../../hooks/useOpenRoles";
 import { useRolesHistory } from "../../hooks/useRolesHistory";
 import { useCompanyJobs } from "../../hooks/useSkillData";
 import { useVacancyTrend, useSkillTrends } from "../../hooks/useRoleHistory";
-import { spark } from "../../lib/sparkline";
 import { cityForCompany } from "../../data/mapboxGeo";
 import { marketForCity } from "../../data/cityMarket";
-import { GOV_WORKFORCE } from "../../data/perthGovWorkforce";
-import { TrendChart } from "./TrendChart";
-import { ShareChart } from "./ShareChart";
-import { RolesHistoryChart } from "./RolesHistoryChart";
 import { NewsPanel } from "./NewsPanel";
-import { FabWrap } from "./FabTooltip";
+
+type CardTab = "Overview" | "Skills" | "Hiring";
 
 // "2026-07-20" → "20 Jul 2026" for the vacancy-history header.
 function fmtDay(iso: string): string {
@@ -432,189 +432,310 @@ export function CompanyPanel() {
   // group — every other company (public or government) never shows it.
   const isResources = panel?.group === "Energy & Natural Resources";
 
+  // The design's card is one scroll body behind three tabs, so the sections
+  // that used to stack down a single column are now grouped: headline stats,
+  // chart and facts on Overview; the skill chips on Skills; the role areas on
+  // Hiring. Reset to Overview whenever the card opens on a new company.
+  const [tab, setTab] = useState<CardTab>("Overview");
+  useEffect(() => {
+    if (selectedId) setTab("Overview");
+  }, [selectedId]);
+
+  // Skill → live-ad count, and role area → live-ad count, from the same job
+  // sample the old chips and bars were built from.
+  const skillCounts = useMemo(() => {
+    const out: Record<string, number> = {};
+    if (!jobSample?.length) return out;
+    for (const j of jobSample) for (const sk of j.skills) out[sk] = (out[sk] || 0) + 1;
+    return out;
+  }, [jobSample]);
+  const roleCounts = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const h of liveHiring ?? []) out[h.title] = h.count;
+    return out;
+  }, [liveHiring]);
+
+  // The vacancy series behind the chart: the D1 archive where the company has
+  // one, else the forward-built KV snapshots.
+  const vacancySeries = vacancyTrend.length >= 2 ? vacancyTrend : rolesHistory;
+
+  const company = useMemo(() => COMPANIES.find((c) => c.id === lastId) ?? null, [lastId]);
+  const card = useMemo(() => {
+    if (!company) return null;
+    const hcRec = COMPANY_HEADCOUNT[company.id] ?? GOV_HEADCOUNT[company.id];
+    return buildCompanyCard({
+      company,
+      openRoles: liveRoles ? liveRoles.count : null,
+      headcount: hcRec ? { now: hcRec.now, yoy: hcRec.yoy, asof: hcRec.asof } : null,
+      vacancies: vacancySeries,
+      share: liveShare ?? null,
+      revPerEmp,
+      // Only the live culture feed carries a rating this company actually has;
+      // everything else would be an industry average wearing its name.
+      glassdoor: cultureReal && feed ? { score: feed.glassdoor, reviews: null } : null,
+      skillCounts,
+      roleCounts,
+    });
+  }, [
+    company,
+    liveRoles,
+    vacancySeries,
+    liveShare,
+    revPerEmp,
+    cultureReal,
+    feed,
+    skillCounts,
+    roleCounts,
+  ]);
+
   return (
     <div className={`cardstage ${open ? "open" : ""}`}>
-      <aside className={`panel ${open ? "open" : ""}`}>
-        <div className="pscroll" ref={scrollRef}>
-          {panel && (
-            <>
-              <div className="phead">
+      <aside className={`cc ${open ? "open" : ""}`}>
+        {card && panel && (
+          <>
+            <div className="cchead">
+              <span className="ccmark">
                 <CompanyLogo domain={panel.domain} ticker={panel.ticker} />
-                <div className="pheadmain">
-                  <div className="pname">{panel.name}</div>
-                  <div className="psector">{panel.sector}</div>
-                </div>
-                <div className="pactions">
-                  <FabWrap label="Compare">
-                    <button
-                      className="pfab"
-                      onClick={() => openCompare(panel.companyId)}
-                      aria-label="Compare"
-                    >
-                      <span className="pfabic">
-                        <CompareIcon />
-                      </span>
-                    </button>
-                  </FabWrap>
-                  <FabWrap label={following ? "Following" : "Follow"}>
-                    <button
-                      className={`pfab ${following ? "on" : ""}`}
-                      onClick={() => requestFollow(panel.companyId)}
-                      aria-label="Follow"
-                    >
-                      <span className="pfabic">
-                        <FollowIcon on={following} />
-                      </span>
-                    </button>
-                  </FabWrap>
-                  <FabWrap label="Close">
-                    <button className="pfab" onClick={closePanel} aria-label="Close">
-                      <span className="pfabic">
-                        <CloseIcon />
-                      </span>
-                    </button>
-                  </FabWrap>
-                </div>
+              </span>
+              <div className="ccheadmain">
+                <span className="ccname">{card.name}</span>
+                <span className="ccmeta">
+                  <span className="ccsector">{card.sector}</span>
+                  <span className="ccticker">{card.ticker}</span>
+                </span>
               </div>
-
-              <RoleSearch options={panel.roleOptions} value={roleFilter} onChange={setRoleFilter} />
-
-              <div className="bigs">
-                {bigStats.map((s, i) => (
-                  <div className="bigc" key={i}>
-                    <div className="bigv">{s.value}</div>
-                    <div className="bigl">{s.label}</div>
-                    <div className={`bigsub ${s.subCls}`}>{s.sub}</div>
-                  </div>
-                ))}
+              <div className="ccactions">
+                <button
+                  className="ccbtn ccbtn-compare"
+                  onClick={() => openCompare(card.id)}
+                  aria-label="Compare"
+                >
+                  <span className="cctip">Compare</span>
+                  <CompareIcon />
+                </button>
+                <button
+                  className={`ccbtn ccbtn-follow ${following ? "on" : ""}`}
+                  onClick={() => requestFollow(card.id)}
+                  aria-label="Follow"
+                >
+                  <span className="cctip">{following ? "Following" : "Follow"}</span>
+                  <FollowIcon on={following} />
+                </button>
+                <button className="ccbtn ccbtn-close" onClick={closePanel} aria-label="Close">
+                  <span className="cctip">Close</span>
+                  <CloseIcon />
+                </button>
               </div>
+            </div>
 
-              {/* Private companies: forward-built KV snapshots of the live count. */}
-              {!isGov &&
-                !roleFilter &&
-                liveRoles &&
-                liveRoles.count > 0 &&
-                rolesHistory.length > 0 && (
-                  <div className="sect">
-                    <RolesHistoryChart points={rolesHistory} current={liveRoles.count} />
-                  </div>
-                )}
-              {/* WA government agencies: the same current + historical vacancy
-                  chart, built from the D1 archive (the scraped board history). */}
-              {isGov && !roleFilter && vacancyTrend.length > 1 && (
-                <div className="sect">
-                  <RolesHistoryChart points={vacancyTrend} current={liveRoles?.count} />
-                </div>
-              )}
+            <RoleSearch options={panel.roleOptions} value={roleFilter} onChange={setRoleFilter} />
 
-              {showWorkforce && (
-                <div className="sect">
-                  <TrendChart
-                    trend={panel.trend}
-                    headcount={headcount}
-                    revPerEmp={revPerEmp}
-                    ebitdaPerEmp={ebitdaPerEmp}
-                    labels={govWf?.years}
-                  />
-                </div>
-              )}
+            <div className="cctabs">
+              {(["Overview", "Skills", "Hiring"] as CardTab[]).map((t) => (
+                <button
+                  key={t}
+                  className={`cctab ${tab === t ? "on" : ""}`}
+                  onClick={() => setTab(t)}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
 
-              {isResources && prices.length > 0 && (
-                <div className="sect">
-                  <ShareChart ticker={panel.ticker} prices={prices} commodities={commodities} />
-                </div>
-              )}
-
-              <div className="sect">
-                <div className="subs">
-                  {subStats.map((s, i) => (
-                    <div className="subc" key={i}>
-                      <div className="subv">{s.value}</div>
-                      <div className="subl">{s.label}</div>
-                      {s.sub && <div className={`subd ${s.subCls || ""}`}>{s.sub}</div>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="sect">
-                <div className="secth">
-                  Skills in demand
-                  <span>
-                    {rolesChecking && !liveSkills ? "checking live ads…" : "from live job ads"}
-                  </span>
-                </div>
-                {rolesChecking && !liveSkills ? (
-                  <div className="skills skills-loading">
-                    <span className="skill skelchip" />
-                    <span className="skill skelchip" />
-                    <span className="skill skelchip" />
-                    <span className="skill skelchip" />
-                  </div>
-                ) : liveSkills ? (
-                  <div className="skills">
-                    {liveSkills.map((sk) => (
-                      <span className="skill" key={sk}>
-                        {sk}
-                      </span>
+            <div className="ccbody" ref={scrollRef}>
+              {tab === "Overview" && (
+                <div className="ccpane">
+                  <div className="ccstats">
+                    {card.stats.map((s) => (
+                      <div className="ccstat" key={s.label}>
+                        <span className="ccstatv">
+                          {s.value}
+                          {s.delta && (
+                            <span className={`ccstatd ${s.deltaUp ? "up" : "down"}`}>
+                              {s.delta}
+                            </span>
+                          )}
+                        </span>
+                        <span className="ccstatl">{s.label}</span>
+                        {s.sub && <span className="ccstatsub">{s.sub}</span>}
+                      </div>
                     ))}
                   </div>
-                ) : (
-                  <div className="dataempty">No live job ads</div>
-                )}
-              </div>
 
-              {/* Skill demand shifts — top increases / decreases across this
-                  company's skills, from historical analysis of the archived
-                  vacancies (replaces the old "where they're hiring" role list). */}
-              <div className="sect">
-                <div className="secth">
-                  Where they're hiring
-                  <span>skill demand shifts vs earlier ads</span>
-                </div>
-                {skillTrends.length > 0 ? (
-                  <div className="movers">
-                    {skillTrends.map((m) => {
-                      const sp = m.series && m.series.length > 1 ? spark(m.series) : null;
-                      return (
-                        <div className="moverrow" key={m.skill}>
-                          <span className="movername">{m.skill}</span>
-                          {sp ? (
-                            <svg
-                              className={`moverspark ${m.dir}`}
-                              viewBox="0 0 188 52"
-                              preserveAspectRatio="none"
-                              aria-hidden="true"
-                            >
-                              <path className="moversparkarea" d={sp.area} />
-                              <path className="moversparkline" d={sp.line} />
-                            </svg>
-                          ) : (
-                            <span className="moverspark" aria-hidden="true" />
-                          )}
-                          <span className={`moverdelta ${m.dir}`}>
-                            <span className="moverdir" aria-hidden="true">
-                              {m.dir === "up" ? "▲" : "▼"}
-                            </span>
-                            {m.dir === "up" ? "+" : "−"}
-                            {Math.abs(m.delta)}
-                            <span className="moverpct">
-                              {m.prev > 0
-                                ? ` ${m.dir === "up" ? "+" : "−"}${Math.abs(m.pct)}%`
-                                : " new"}
-                            </span>
+                  {card.chart ? (
+                    <div className="ccchart">
+                      <div className="ccchartend">
+                        <span className="cceyebrow">{card.chart.label}</span>
+                        <div className="cclegend">
+                          <span className="cclegitem">
+                            <span
+                              className={`cclegline ${card.chart.vacancies.up ? "up" : "down"}`}
+                            />
+                            Vacancies
                           </span>
+                          {card.chart.second && (
+                            <span className="cclegitem">
+                              <span className="cclegline dash" />
+                              {card.chart.second.label}
+                            </span>
+                          )}
                         </div>
-                      );
-                    })}
+                      </div>
+
+                      <div className="ccplot">
+                        <svg viewBox="0 0 400 150" preserveAspectRatio="none" fill="none">
+                          <defs>
+                            <linearGradient id="cc-fade" x1="0" y1="0" x2="0" y2="1">
+                              <stop
+                                offset="0"
+                                stopColor={card.chart.vacancies.up ? TREND_UP : TREND_DOWN}
+                                stopOpacity=".18"
+                              />
+                              <stop
+                                offset="1"
+                                stopColor={card.chart.vacancies.up ? TREND_UP : TREND_DOWN}
+                                stopOpacity="0"
+                              />
+                            </linearGradient>
+                          </defs>
+                          <path d={card.chart.area} fill="url(#cc-fade)" />
+                          <path
+                            d={card.chart.vacancies.path}
+                            stroke={card.chart.vacancies.up ? TREND_UP : TREND_DOWN}
+                            strokeWidth="2"
+                            strokeLinejoin="round"
+                            strokeLinecap="round"
+                          />
+                          {card.chart.second && (
+                            <path
+                              d={card.chart.second.path}
+                              stroke="#8e8e93"
+                              strokeWidth="1.8"
+                              strokeDasharray="5 4"
+                              strokeLinejoin="round"
+                              strokeLinecap="round"
+                            />
+                          )}
+                        </svg>
+                        <span className="cccallout left">
+                          <span className="cccalloutv">{card.chart.vacancies.latest}</span>
+                          <span className="cccalloutl">Vacancies</span>
+                        </span>
+                        {card.chart.second && (
+                          <span className="cccallout right">
+                            <span className="cccalloutv">{card.chart.second.latest}</span>
+                            <span className="cccalloutl">{card.chart.second.label}</span>
+                          </span>
+                        )}
+                        <span className={`ccdelta left ${card.chart.vacancies.up ? "up" : "down"}`}>
+                          {card.chart.vacancies.delta}
+                        </span>
+                        {card.chart.second && (
+                          <span className={`ccdelta right ${card.chart.second.up ? "up" : "down"}`}>
+                            {card.chart.second.delta}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="ccaxis">
+                        {card.chart.axis.map((t, i) => (
+                          <span key={i}>{t}</span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    card.chartNote && <div className="dataempty">{card.chartNote}</div>
+                  )}
+
+                  {card.facts.length > 0 && (
+                    <div className="ccfacts">
+                      {card.facts.map((f) => (
+                        <div className="ccfact" key={f.k}>
+                          <span className="ccfactk">{f.k}</span>
+                          <span className="ccfactv">{f.v}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {card.rating != null && (
+                    <div className="ccrating">
+                      <span className="ccratingscore">
+                        {card.rating.score}
+                        <span className="ccratingof">/ 5</span>
+                      </span>
+                      <span className="ccratingmain">
+                        <span className="ccstars">
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <svg key={i} viewBox="0 0 24 24" width="13" height="13">
+                              <path
+                                d="M12 3.6l2.6 5.6 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 10l6-.8z"
+                                fill={i <= (card.rating?.value ?? 0) ? "#1c1c1e" : "#d8d8dc"}
+                              />
+                            </svg>
+                          ))}
+                        </span>
+                        <span className="ccratingmeta">{card.rating.meta}</span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {tab === "Skills" && (
+                <div className="ccpane">
+                  <div className="ccsecth">
+                    <span className="cceyebrow">Skills in demand</span>
+                    <span className="ccsecthsub">
+                      {rolesChecking && !card.skills.length
+                        ? "checking live ads…"
+                        : `from ${card.stats[0].value} live ads`}
+                    </span>
                   </div>
-                ) : (
-                  <div className="dataempty">Not enough vacancy history yet</div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
+                  {card.skills.length ? (
+                    <div className="ccchips">
+                      {card.skills.map((s) => (
+                        <span className="ccchip" key={s.name}>
+                          {s.name}
+                          <span className="ccchipn">{s.n}</span>
+                        </span>
+                      ))}
+                      {card.moreSkills > 0 && (
+                        <span className="ccchip ccchipmore">+{card.moreSkills} more</span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="dataempty">No live job ads</div>
+                  )}
+                </div>
+              )}
+
+              {tab === "Hiring" && (
+                <div className="ccpane">
+                  <div className="ccsecth">
+                    <span className="cceyebrow">Where they&rsquo;re hiring</span>
+                    <span className="ccsecthsub">{card.hiringWindow ?? "share of live ads"}</span>
+                  </div>
+                  {card.hiring.length ? (
+                    <div className="cchiring">
+                      {card.hiring.map((h) => (
+                        <div className="cchirerow" key={h.name}>
+                          <span className="cchirename">{h.name}</span>
+                          <span className="cchirebar">
+                            <span className="cchirefill" style={{ width: h.pct }} />
+                          </span>
+                          <span className="cchiren">{h.n}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="dataempty">No live job ads</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </aside>
       {panel && (
         <NewsPanel
