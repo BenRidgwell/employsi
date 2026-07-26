@@ -176,6 +176,28 @@ export const CITY_COMPANIES: Record<string, CityCompany[]> = {
   ],
 };
 
+// Several Perth entities share a head-office building — Dumas House (140 William
+// St) alone houses five departments, and the West Perth juniors cluster in a few
+// serviced-office towers. Their geocoded coordinates are therefore IDENTICAL,
+// which would stack the markers exactly on top of each other and make all but
+// the top one unclickable. Nudge each subsequent occupant onto a small
+// deterministic ring (~20 m) around the true address: the pin stays at the right
+// building, but every tenant stays individually selectable.
+const _perthSeen = new Map<string, number>();
+function perthCoord(id: string): [number, number] | undefined {
+  const base = PERTH_REAL_COORDS[id];
+  if (!base) return undefined;
+  const key = `${base[0]},${base[1]}`;
+  const n = _perthSeen.get(key) ?? 0;
+  _perthSeen.set(key, n + 1);
+  if (n === 0) return base;
+  const R = 0.00022; // ~20 m
+  const a = (n * 2 * Math.PI) / 6 + (n > 6 ? 0.5 : 0);
+  const r = R * (1 + Math.floor((n - 1) / 6) * 0.8);
+  return [base[0] + r * Math.cos(a) / Math.cos((base[1] * Math.PI) / 180),
+          base[1] + r * Math.sin(a)];
+}
+
 // Merge in the compact global rosters: each roster company gets a generated
 // head-office coordinate fanned out around its city centre (spreadCoords),
 // offset past any hand-placed companies already in that city.
@@ -187,7 +209,7 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   const pts = spreadCoordsCity(view.center, offset + roster.companies.length, CITY_PLACEMENT[city]);
   roster.companies.forEach((entry, i) => {
     const id = rosterId(city, entry[0]);
-    existing.push({ id, coords: PERTH_REAL_COORDS[id] ?? pts[offset + i] });
+    existing.push({ id, coords: perthCoord(id) ?? pts[offset + i] });
   });
 }
 
@@ -198,7 +220,7 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   const existing = (CITY_COMPANIES.perth ||= []);
   const offset = existing.length;
   const pts = spreadCoords(view.center, offset + PERTH_GOV_IDS.length);
-  PERTH_GOV_IDS.forEach((id, i) => existing.push({ id, coords: PERTH_REAL_COORDS[id] ?? pts[offset + i] }));
+  PERTH_GOV_IDS.forEach((id, i) => existing.push({ id, coords: perthCoord(id) ?? pts[offset + i] }));
 }
 
 // Adelaide SA government agencies: fan their office pins around the Adelaide
@@ -274,15 +296,17 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   SYDNEY_GOV_IDS.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
 }
 
-// Top-150 private companies: fan each city's set around its centre (they have no
-// verified street address, so they're spread like the government rosters).
+// Top-150 private companies. The Perth set now has real geocoded head-office
+// coordinates (scripts/geocode-perth.py), so those are used directly; the other
+// cities' sets have no verified street address yet and stay fanned around the
+// centre like the government rosters.
 for (const [city, ids] of Object.entries(TOP_PRIVATE_BY_CITY)) {
   const view = CITY_VIEWS[city];
   if (!view) continue;
   const existing = (CITY_COMPANIES[city] ||= []);
   const offset = existing.length;
   const pts = spreadCoordsCity(view.center, offset + ids.length, CITY_PLACEMENT[city]);
-  ids.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
+  ids.forEach((id, i) => existing.push({ id, coords: perthCoord(id) ?? pts[offset + i] }));
 }
 
 // New Zealand companies: plotted at their real geocoded HQ coordinates on the
