@@ -146,20 +146,20 @@ export function ActionRail() {
 
   return (
     <div className="actionrail">
-      {/* Tools. Only meaningful on the overview layers — the panes they open are
-          market-wide, not city-local — so they drop out in the local view, as
-          MapActions did before. */}
-      {zoomedOut && (
-        <div className="railgroup">
-          <RailButton
-            paths={ICON.trending}
-            label="What's trending"
-            on={trendingOpen}
-            onClick={toggleTrending}
-          />
-          <RailButton paths={ICON.brief} label="Daily brief" on={briefOpen} onClick={toggleBrief} />
-        </div>
-      )}
+      {/* Tools. Present on every layer, as the design shows them. MapActions used
+          to hide these in the local view on the theory that the panes are
+          market-wide, but both panes already render on any layer (their own
+          `zoomedOut` gates were removed because they left the pane silently
+          closed), so hiding the buttons only made the rail jump between layers. */}
+      <div className="railgroup">
+        <RailButton
+          paths={ICON.trending}
+          label="What's trending"
+          on={trendingOpen}
+          onClick={toggleTrending}
+        />
+        <RailButton paths={ICON.brief} label="Daily brief" on={briefOpen} onClick={toggleBrief} />
+      </div>
 
       {/* Layers, as the design's sunken cluster — reads as "these four are one
           control, pick one". */}
