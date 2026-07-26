@@ -447,25 +447,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleSkillQuery: (skill) => {
     const s = get();
     const on = s.searchQuery.trim().toLowerCase() === skill.toLowerCase();
-    const dispatch = (active: boolean) => {
-      if (typeof window !== "undefined")
-        window.dispatchEvent(new CustomEvent("perth-skill-zoom", { detail: { active } }));
-    };
     if (on) {
-      // Toggling the active skill off: clear it, and if we're in the local city
-      // layer restore its default zoom.
       set({ searchQuery: "" });
-      if (!s.zoomedOut) dispatch(false);
       return;
     }
     if (!s.zoomedOut) {
       // Selecting a skill while in the local city layer must NOT kick the user
-      // out to the domestic overview. Stay in the city, colour its companies by
-      // demand for the skill, and pull the camera back a little so more of the
-      // city (and which companies are hiring) comes into view — the user can
-      // then zoom back in and open a specific company.
+      // out to the domestic overview. Stay in the city and colour its companies
+      // by demand for the skill — and leave the camera exactly where it is.
+      // Selecting a skill used to pull the zoom back to 14.2 "so more of the
+      // city comes into view", which meant the map moved under the user every
+      // time they tried a skill: whatever they had lined up was thrown away and
+      // had to be re-found. The framing is theirs to choose.
       set({ searchQuery: skill, searchOpen: false, interacted: true });
-      dispatch(true);
       return;
     }
     // On the domestic / global overview: colour the whole-market skill heatmap.
