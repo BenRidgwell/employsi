@@ -91,24 +91,96 @@ body {
 /* The rail's own labels are replaced by the design's hover tooltips (which
    .mabtn/.helpbtn already render); the always-on text labels would make the
    rail several times wider than the 52px the design allows. */
-.actionrail .malabel,
-.actionrail .zlabel {
-  display: none;
+/* Labels become hover tooltips to the right of the rail, as in the design —
+   always-on text would make the rail several times wider than 52px. */
+.actionrail > .mapactions .malabel,
+.actionrail > .zoomslider .zlabel {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 140ms;
 }
-/* Uniform 38x38 targets, per the design. */
-.actionrail .mabtn,
-.actionrail .helpbtn,
-.actionrail .zbtn,
-.actionrail .zrow > button {
+.actionrail > .mapactions .marow,
+.actionrail > .zoomslider .zrow {
+  position: relative;
+}
+.actionrail > .mapactions .marow:hover .malabel,
+.actionrail > .zoomslider .zrow:hover .zlabel {
+  opacity: 1;
+}
+/* Uniform 38x38 targets with the design's states: ghost by default, a light
+   sunken hover, ink fill when selected, and a small squeeze on press. */
+.actionrail > .mapactions .mabtn,
+.actionrail > .helpdock .helpbtn,
+.actionrail > .zoomslider .zstep {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 38px;
   height: 38px;
   padding: 0;
+  border: 0;
   border-radius: 12px;
+  background: transparent;
+  color: var(--neutral-700);
+  cursor: pointer;
+  box-shadow: none;
+  backdrop-filter: none;
+  overflow: visible;
+  transition: background var(--duration-base) cubic-bezier(0.32, 0.72, 0, 1),
+    color var(--duration-base), transform 110ms;
 }
-.actionrail .marow,
-.actionrail .zrow {
+.actionrail > .mapactions .mabtn:hover,
+.actionrail > .helpdock .helpbtn:hover,
+.actionrail > .zoomslider .zstep:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.actionrail > .mapactions .mabtn:active,
+.actionrail > .helpdock .helpbtn:active,
+.actionrail > .zoomslider .zstep:active {
+  transform: scale(0.94);
+}
+.actionrail > .mapactions .mabtn.on,
+.actionrail > .helpdock .helpbtn.on,
+.actionrail > .zoomslider .zstep.on {
+  background: var(--action-primary);
+  color: var(--action-primary-text);
+}
+.actionrail > .mapactions .mabtn svg,
+.actionrail > .helpdock .helpbtn svg,
+.actionrail > .zoomslider .zstep svg {
+  width: 20px;
+  height: 20px;
+}
+/* The Help button expands to reveal a "Need help?" label (.helpbtn.wide). In a
+   fixed-width rail that would either clip or push the rail wide, so the label
+   is suppressed here — the button keeps its square target and the copy lives in
+   the panel it opens. */
+.actionrail > .helpdock .helplbl {
+  display: none;
+}
+/* The tray's own connector ticks are redundant once the four layer buttons sit
+   in a grouped sunken cluster. */
+.actionrail > .zoomslider .ztrack {
+  display: none;
+}
+.actionrail > .mapactions .marow,
+.actionrail > .zoomslider .zrow {
   display: block;
   margin: 0;
+  position: relative;
 }
 /* Demoting a dock (`.behind`) must not drop it out of the rail's flow. */
 .actionrail > .helpdock.behind,
@@ -628,20 +700,27 @@ body {
   flex: 1;
   overflow: hidden;
   position: relative;
+  /* Fixed-width fade rather than a percentage, so the edges read identically at
+     any window width (the design uses 40px in, 56px out). */
   -webkit-mask-image: linear-gradient(
     90deg,
-    transparent,
-    #000 3%,
-    #000 97%,
-    transparent
+    transparent 0,
+    #000 40px,
+    #000 calc(100% - 56px),
+    transparent 100%
   );
   mask-image: linear-gradient(
     90deg,
-    transparent,
-    #000 3%,
-    #000 97%,
-    transparent
+    transparent 0,
+    #000 40px,
+    #000 calc(100% - 56px),
+    transparent 100%
   );
+}
+/* Pause the marquee on hover so a row can actually be read — the design does
+   the same via style-hover on the track. */
+.tickerwrap:hover .tickertrack {
+  animation-play-state: paused;
 }
 .tickertrack {
   display: flex;
@@ -653,42 +732,57 @@ body {
 .titem {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   padding: 0 18px;
   height: 100%;
-  border-right: 1px solid var(--line);
+  border-right: 1px solid #f0f0f2;
   white-space: nowrap;
 }
 .tname {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--ink);
+  font-size: var(--text-body-sm);
+  font-weight: var(--weight-medium);
+  letter-spacing: -0.006em;
+  color: var(--text-primary);
 }
+/* The design's row is name + sparkline + delta chip. There is no per-skill time
+   series behind this ticker — getLiveSkillTrends returns {name, tag, v} only —
+   so the sparkline is omitted rather than drawn from invented data. The tag
+   (Demand / Headcount) is real, so it stays as the design's secondary mono
+   label. */
 .ttag {
-  font-family: "JetBrains Mono", monospace;
-  font-size: 9px;
-  font-weight: 500;
-  color: var(--slate);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--weight-medium);
+  color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: var(--tracking-label);
 }
+/* Delta chip, per the design: 21px tall, 7px radius, tinted to its direction,
+   figures in tabular mono so the column doesn't jitter as values drift. */
 .tdelta {
-  font-family: "JetBrains Mono", monospace;
-  font-size: 12px;
-  font-weight: 600;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
+  height: 21px;
+  padding: 0 7px;
+  border-radius: 7px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: var(--weight-medium);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
 }
 .tdelta .ar {
   font-size: 9px;
   line-height: 1;
 }
 .tdelta.up {
-  color: #0e9f6e;
+  color: var(--status-success-fg);
+  background: var(--status-success-bg);
 }
 .tdelta.down {
-  color: #e0524a;
+  color: var(--status-danger-fg);
+  background: var(--status-danger-bg);
 }
 @keyframes tscroll {
   from {
@@ -3127,26 +3221,44 @@ body {
 }
 .gsearchinput {
   flex: 1 1 auto;
+  min-width: 0;
+  height: 34px;
   border: none;
   background: transparent;
   outline: none;
-  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
-  font-weight: 600;
-  color: var(--ink);
+  /* The design sets the query in regular weight, not semibold — the pill is
+     already doing the emphasising. */
+  font-weight: var(--weight-regular);
+  color: var(--text-primary);
+}
+.gsearchinput::placeholder {
+  color: var(--text-tertiary);
 }
 .gsearchinput::placeholder {
   color: var(--slate);
   font-weight: 500;
 }
 .gsearchclear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   border: none;
+  border-radius: 9px;
   background: transparent;
-  color: var(--slate);
+  color: var(--text-tertiary);
   font-size: 13px;
   cursor: pointer;
-  padding: 2px 4px;
+  transition: background var(--duration-base), color var(--duration-base);
+}
+.gsearchclear:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
 }
 .gsearchclear:hover {
   color: var(--ink);
