@@ -143,19 +143,32 @@
      raised surface is one recurring treatment — a near-white vertical gradient,
      a hairline border and a four-part shadow — so it is named once here and
      reused rather than repeated at every call site. */
-  /* Where every left-hand pane sits: clear of the rail horizontally (the rail
-     spans --rail-left to --rail-left + 54px), and anchored BELOW the header
-     rather than centred on the viewport. Centring a tall fixed panel pushes its
-     bottom edge off screen on shorter windows; anchoring from the top with an
-     explicit max-height makes that impossible at any height. */
-  --pane-left: calc(var(--rail-left) + 66px);
-  --pane-top: calc(var(--head-height) + 14px);
-  --pane-max-h: calc(100vh - var(--head-height) - 42px);
-
   --frame-radius: 28px;
   --frame-gutter: 20px;
   --frame-inset: 34px; /* rail / ticker offset inside the frame */
   --head-height: 72px;
+
+  /* Distance from the WINDOW edge to chrome that sits inside the frame: the
+     frame's own gutter plus the design's 34px inset within it. Declared HERE,
+     not on .app: a custom property's own var() references are resolved on the
+     element that declares it, so --pane-left below — declared at :root — could
+     not see a --rail-left that only existed on .app. It resolved to the
+     guaranteed-invalid value, every pane fell back to left:0, and all three
+     landed on top of the rail. */
+  --rail-left: calc(var(--frame-gutter) + var(--frame-inset));
+  /* The rail's own width: a 38px button plus 7px padding and a 1px border
+     either side. */
+  --rail-width: 56px;
+  --pane-gap: 14px;
+
+  /* Where every left-hand pane sits: clear of the rail horizontally, and
+     anchored BELOW the header rather than centred on the viewport. Centring a
+     tall fixed panel pushes its bottom edge off screen on shorter windows;
+     anchoring from the top with an explicit max-height makes that impossible at
+     any height. */
+  --pane-left: calc(var(--rail-left) + var(--rail-width) + var(--pane-gap));
+  --pane-top: calc(var(--head-height) + 14px);
+  --pane-max-h: calc(100vh - var(--head-height) - 42px);
 
   --raised-surface: linear-gradient(var(--neutral-0), #fbfbfc);
   --raised-shadow:

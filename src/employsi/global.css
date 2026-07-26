@@ -27,9 +27,6 @@ body {
   --teal: var(--neutral-500);
   --pos: var(--neutral-700);
   --coral: #9a9aa0;
-  /* Distance from the WINDOW edge to chrome that sits inside the frame: the
-     frame's own gutter plus the design's 34px inset within it. */
-  --rail-left: calc(var(--frame-gutter) + var(--frame-inset));
 }
 
 /* ── Action rail ─────────────────────────────────────────────────────────────
@@ -1376,14 +1373,19 @@ body {
   color: #6c6c72;
   background: #f4f4f5;
 }
+/* Ink, not the design's grey: the design draws this on a flat white board,
+   where grey reads fine. On a basemap it has to hold its own against roads,
+   parks and coastline. */
 .mkcount {
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
+  font-weight: 600;
   letter-spacing: 0.06em;
-  color: #8e8e93;
+  color: #1c1c1e;
   text-shadow:
     0 1px 2px #fff,
-    0 0 3px #fff;
+    0 0 3px #fff,
+    0 0 4px #fff;
 }
 
 /* --- states -------------------------------------------------------------- */
@@ -5329,7 +5331,7 @@ body {
      its suggestion chips (on the local layer too, now). Same left edge as the
      stats bar and the side panes. */
   top: calc(var(--head-height) + 18px);
-  left: calc(var(--rail-left) + 66px);
+  left: var(--pane-left);
   z-index: 30;
   display: flex;
   align-items: center;
@@ -5946,9 +5948,9 @@ body {
 .legend {
   position: absolute;
   /* Aligned under the skills key, past the vertically-centred action rail.
-     The rail is 52px wide at --rail-left, and the ticker pill now occupies the
-     bottom band from 32px to 76px, so the stats bar starts above it. */
-  left: calc(var(--rail-left) + 66px);
+     The ticker pill occupies the bottom band from 32px to 76px, so the stats
+     bar starts above it. */
+  left: var(--pane-left);
   bottom: 88px;
   /* Above the local company markers (mapbox markers, z-index 3; selected 6) so
      the city stats bar always sits in front of them — matching the other local

@@ -24,13 +24,30 @@ interface YahooChart {
 
 export interface ShareSeries {
   series: number[]; // recent quarterly closes, oldest→newest
+  /** Daily closes over the last month, oldest→newest. Empty if the daily fetch
+   *  failed. Separate from `series` because the two answer different questions:
+   *  the quarterly line is the multi-year shape, this one is what the company
+   *  card overlays on its live-vacancy chart, which is a daily series. Plotting
+   *  a quarterly line against a daily axis would put the two on different time
+   *  bases while looking like one chart. */
+  daily: number[];
+  /** ISO dates for `daily`, same length and order. */
+  dailyDates: string[];
   low: number; // 52-week low
   high: number; // 52-week high
   last: number; // latest price
   currency: string;
 }
 
-const EMPTY: ShareSeries = { series: [], low: 0, high: 0, last: 0, currency: "" };
+const EMPTY: ShareSeries = {
+  series: [],
+  daily: [],
+  dailyDates: [],
+  low: 0,
+  high: 0,
+  last: 0,
+  currency: "",
+};
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
 
@@ -107,6 +124,47 @@ async function toAudRate(cur: string): Promise<number> {
   return pence ? rate / 100 : rate;
 }
 
+// Daily closes over the last month, on the same calendar the D1 vacancy archive
+// records against — so the company card can draw the two as one chart without
+// silently splicing together different time bases. A failure here is not fatal:
+// the quarterly series is what the rest of the app uses, so we return empty and
+// the card simply draws one line.
+async function fetchDaily(sym: string): Promise<{ closes: number[]; dates: string[] }> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1mo&interval=1d`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": UA, Accept: "application/json,text/plain,*/*" },
+    });
+    clearTimeout(timer);
+    if (!res.ok) return { closes: [], dates: [] };
+    const j = (await res.json()) as YahooChart & {
+      chart?: { result?: { timestamp?: number[] }[] };
+    };
+    const r = j?.chart?.result?.[0];
+    const closes: (number | null)[] = r?.indicators?.quote?.[0]?.close ?? [];
+    const stamps: number[] = r?.timestamp ?? [];
+    if (!Array.isArray(closes) || !Array.isArray(stamps)) return { closes: [], dates: [] };
+    const outC: number[] = [];
+    const outD: string[] = [];
+    for (let i = 0; i < closes.length; i++) {
+      const v = closes[i];
+      const t = stamps[i];
+      // A market holiday comes back as a null close; drop the whole point
+      // rather than carrying the previous day forward, which would invent a
+      // trading day that didn't happen.
+      if (typeof v !== "number" || !isFinite(v) || typeof t !== "number") continue;
+      outC.push(+v.toFixed(v >= 10 ? 2 : 3));
+      outD.push(new Date(t * 1000).toISOString().slice(0, 10));
+    }
+    return { closes: outC, dates: outD };
+  } catch {
+    return { closes: [], dates: [] };
+  }
+}
+
 export const getShareSeries = createServerFn({ method: "GET" })
   .validator((data: { ticker: string; exchange?: string }) => data)
   .handler(async ({ data }): Promise<ShareSeries> => {
@@ -148,8 +206,11 @@ export const getShareSeries = createServerFn({ method: "GET" })
       const fx = await toAudRate(native);
       const conv = (v: number) => +(v * fx).toFixed(v * fx >= 10 ? 2 : 3);
       const audOk = fx > 0 && fx !== 1;
+      const dailyRaw = await fetchDaily(sym);
       const result: ShareSeries = {
         series: audOk ? series.map(conv) : series,
+        daily: audOk ? dailyRaw.closes.map(conv) : dailyRaw.closes,
+        dailyDates: dailyRaw.dates,
         low: +(
           audOk
             ? conv(meta.fiftyTwoWeekLow ?? Math.min(...series))
