@@ -11,7 +11,6 @@ import { MobileMenu } from "./components/MobileMenu";
 import { CityBadge } from "./components/CityBadge";
 import { Toast } from "./components/Toast";
 import { Legend } from "./components/Legend";
-import { HeatKey } from "./components/HeatKey";
 import { WorldMapbox } from "./components/WorldMapbox";
 import { CompanyPanel } from "./components/panels/CompanyPanel";
 import { ComparePanel } from "./components/panels/ComparePanel";
@@ -80,7 +79,6 @@ function App() {
       <HintPulse />
       <Ticker hidden={!zoomedOut} />
       <Legend />
-      <HeatKey />
       <CompanyPanel />
       <ComparePanel />
       <WhatsTrendingPane />

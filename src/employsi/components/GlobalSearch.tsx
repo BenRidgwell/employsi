@@ -24,6 +24,7 @@ import { getSkillPay, formatPay } from "../lib/analystFn";
 import { COMPANIES } from "../data/companies";
 import { cityForCompany } from "../data/mapboxGeo";
 import { SearchAuth } from "./SearchAuth";
+import { IconClose } from "./ActionIcons";
 
 /**
  * The centred skill search, built from `Employsi Skill Search.html`.
@@ -165,11 +166,16 @@ export function GlobalSearch() {
     retry: false,
   });
 
-  // Editing the query invalidates any card that was showing.
+  // Editing the query invalidates any card that was showing — but picking a
+  // skill ALSO changes the query, because toggleSkillQuery writes the skill's
+  // name into it. Without the first check that made the card close the instant
+  // it opened, from the suggestions and from Search alike; the card only clears
+  // when the query stops matching the skill it belongs to.
   useEffect(() => {
+    if (carded && searchQuery.trim().toLowerCase() === carded.toLowerCase()) return;
     setCarded(null);
     setSearched(false);
-  }, [searchQuery]);
+  }, [searchQuery, carded]);
 
   if (!zoomedOut) return null;
 
@@ -381,6 +387,19 @@ export function GlobalSearch() {
                 <FollowGlyph on={followedSkills.includes(card.skill)} />
                 {followedSkills.includes(card.skill) ? "Following" : "Follow"}
               </button>
+              {/* The design's card fills a page and never needs dismissing; in
+                  the corner it sits over the map, so it does. */}
+              <button
+                className="gscardx"
+                onClick={() => {
+                  setCarded(null);
+                  setSearched(false);
+                  setSearchQuery("");
+                }}
+                aria-label="Close skill detail"
+              >
+                <IconClose />
+              </button>
             </div>
           </div>
 
@@ -502,20 +521,6 @@ export function GlobalSearch() {
               </div>
             )}
           </div>
-
-          {(card.sources.length > 0 || (card.atPresent && pay)) && (
-            <div className="gscardsource">
-              {[
-                ...card.sources,
-                card.atPresent && pay
-                  ? `Advertised pay: ${pay.n} of ${pay.live} live ads disclose a ${pay.currency} figure`
-                  : "",
-                "Timeline notes are editorial context, not measured data",
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </div>
-          )}
 
           {card.related.length > 0 && (
             <div className="gsrelated">

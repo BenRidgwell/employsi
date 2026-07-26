@@ -1429,7 +1429,7 @@ body {
   /* Take pointer events so a plain arrow cursor shows (rather than the map's
      grab cursor bleeding through underneath, which made the strip look
      draggable), and so the control cluster is clickable. The scrolling text
-     itself is never selectable. Same pattern as .legend/.heatkey. */
+     itself is never selectable. Same pattern as .legend. */
   pointer-events: auto;
   cursor: default;
   user-select: none;
@@ -4725,16 +4725,19 @@ body {
    the source line, and related chips. Every figure is measured — see
    skillCard.ts for which dataset each comes from. */
 .gscard {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  margin-top: 14px;
+  position: fixed;
+  top: calc(var(--head-height) + 14px);
+  right: 28px;
+  z-index: 41;
   box-sizing: border-box;
+  width: 380px;
+  max-width: calc(100vw - 56px);
+  max-height: calc(100vh - var(--head-height) - 42px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding: 24px;
+  gap: 20px;
+  padding: 20px;
   border: 1px solid var(--border-subtle);
   border-radius: 18px;
   background: var(--surface-card);
@@ -4743,8 +4746,6 @@ body {
     0 16px 32px -22px rgba(28, 28, 30, 0.35);
   animation: anrise 260ms cubic-bezier(0.32, 0.72, 0, 1) both;
   text-align: left;
-  max-height: calc(100vh - var(--head-height) - 60px);
-  overflow-y: auto;
 }
 .gscardhd {
   display: flex;
@@ -4775,7 +4776,35 @@ body {
 .gscardactions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.gscardx {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--surface-card);
+  color: var(--neutral-700);
+  cursor: pointer;
+  --m: 0;
+  transition:
+    background 160ms,
+    color 160ms,
+    transform 110ms;
+}
+.gscardx:hover {
+  --m: 1;
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.gscardx:active {
+  transform: scale(0.94);
 }
 .gscardlevel {
   display: inline-flex;
@@ -4903,13 +4932,14 @@ body {
 }
 .gscardtrend {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
 }
 .gsspark {
   display: block;
-  flex: 0 0 auto;
+  width: 100%;
+  height: 64px;
 }
 .gsspark.up,
 .gscardpct.up {
@@ -4929,7 +4959,6 @@ body {
 }
 .gscardsummary {
   margin: 0;
-  flex: 1 1 220px;
   font-size: 14px;
   line-height: 1.5;
   color: var(--text-secondary);
@@ -5076,13 +5105,6 @@ body {
   color: var(--text-secondary);
 }
 
-/* Which agencies the figures came from — the card's equivalent of the analyst
-   pane's source line. */
-.gscardsource {
-  font-size: 11.5px;
-  line-height: 1.45;
-  color: var(--text-tertiary);
-}
 .gsrelated {
   display: flex;
   flex-wrap: wrap;
@@ -5790,189 +5812,6 @@ body {
   color: var(--slate);
   font-weight: 500;
   box-shadow: 0 8px 22px -14px rgba(15, 27, 61, 0.4);
-}
-.heatkey {
-  position: absolute;
-  /* Clear of the vertically-centred action rail: on short windows the centred
-     rail descends into this bottom-left key, so sit it just past it — and
-     above the legend, which now starts at 88px. */
-  left: calc(var(--rail-left) + 66px);
-  bottom: 142px;
-  /* Above the animated planes/ships (mapbox markers in the map canvas) so the
-     key + time slider always sit in front of the traffic. */
-  z-index: 41;
-  pointer-events: auto;
-  cursor: default;
-  user-select: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 11px 15px;
-  width: 190px;
-  background: rgba(255, 255, 255, 0.84);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  box-shadow: 0 8px 22px -14px rgba(28, 28, 30, 0.4);
-}
-.hkrow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.hktitle {
-  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: var(--ink);
-}
-.hkbar {
-  height: 9px;
-  border-radius: 5px;
-  background: linear-gradient(90deg, #159d67, #f5a623, #e0524a);
-}
-.hkv {
-  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ink);
-}
-.hkmute {
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--slate);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-/* IVI time slider under the gradient key (AU domestic view only). */
-.hktime {
-  margin-top: 2px;
-  padding-top: 9px;
-  border-top: 1px solid var(--line);
-  display: flex;
-  flex-direction: column;
-}
-.hktimehd {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-.hktimemonth {
-  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--ink);
-}
-.hktimenow {
-  font-size: 8.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--slate);
-}
-.hkslider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 5px;
-  margin: 9px 0 6px;
-  border-radius: 999px;
-  cursor: pointer;
-  background: linear-gradient(
-    to right,
-    var(--ink) 0%,
-    var(--ink) var(--fill, 100%),
-    #e4e6ea var(--fill, 100%),
-    #e4e6ea 100%
-  );
-}
-.hkslider::-webkit-slider-runnable-track {
-  -webkit-appearance: none;
-  height: 5px;
-  border-radius: 999px;
-  background: transparent;
-}
-.hkslider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
-  margin-top: -5.5px;
-  border-radius: 50%;
-  background: #fff;
-  border: 3px solid var(--ink);
-  box-shadow: 0 3px 8px -2px rgba(15, 27, 61, 0.4);
-  cursor: pointer;
-}
-.hkslider::-moz-range-track {
-  height: 5px;
-  border-radius: 999px;
-  background: #e4e6ea;
-}
-.hkslider::-moz-range-progress {
-  height: 5px;
-  border-radius: 999px;
-  background: var(--ink);
-}
-.hkslider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #fff;
-  border: 3px solid var(--ink);
-  box-shadow: 0 3px 8px -2px rgba(15, 27, 61, 0.4);
-  cursor: pointer;
-}
-.hktimeends {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 8.5px;
-  font-weight: 600;
-  color: var(--slate);
-}
-.hktimesrc {
-  font-size: 8px;
-  opacity: 0.75;
-  text-align: center;
-  max-width: 96px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-/* Key global/economic event for the selected month — broader context. */
-.hktimeevent {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 7px;
-  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--ink);
-}
-.hktimeicon {
-  flex: 0 0 auto;
-  width: 15px;
-  height: 15px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #1c1c1e;
-}
-.hktimeicon svg {
-  width: 15px;
-  height: 15px;
-  display: block;
-}
-.hktimenote {
-  margin-top: 6px;
-  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
-  font-size: 9.5px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: #1c1c1e;
 }
 .legend b {
   color: var(--ink);
@@ -7947,16 +7786,7 @@ body {
     gap: 10px;
   }
 
-  /* Bottom cluster: keep left, shrink, and stack clear of the floating tab bar
-     (legend just above the bar, skills key above the legend). */
-  .heatkey {
-    left: 12px;
-    bottom: 150px;
-    width: auto;
-    min-width: 168px;
-    max-width: calc(100vw - 24px);
-    padding: 10px 13px;
-  }
+  /* Bottom cluster: keep left, shrink, and stack clear of the floating tab bar. */
   .legend {
     left: 12px;
     right: 12px;
@@ -8117,11 +7947,6 @@ body {
   .helpdock .dockbtn {
     display: none;
   }
-  /* The salary heat key sits just above the bar rather than under it. */
-  .heatkey {
-    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
-  }
-
   /* Help / Settings / Feedback panels become bottom sheets on mobile so they
      don't try to pop out of the (now button-less) dock's bottom-right corner. */
   .helpdock .helppanel,
@@ -8165,6 +7990,19 @@ body {
     background: rgba(13, 15, 20, 0.34);
     backdrop-filter: blur(2px);
     z-index: 46;
+  }
+  /* The skill card becomes a sheet rather than a corner panel — there is no
+     corner to spare at this width. */
+  .gscard {
+    top: auto;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    width: auto;
+    max-width: none;
+    max-height: 82vh;
+    border-radius: 20px 20px 0 0;
+    z-index: 47;
   }
   /* The analyst becomes a near-full-height sheet; the thread needs the room. */
   .analystpane {
