@@ -4,8 +4,7 @@ import { TopBar } from "./components/TopBar";
 import { GlobalSearch } from "./components/GlobalSearch";
 import { Ticker } from "./components/Ticker";
 import { HintPulse } from "./components/HintPulse";
-import { ZoomSlider } from "./components/ZoomSlider";
-import { MapActions } from "./components/MapActions";
+import { ActionRail } from "./components/ActionRail";
 import { HelpDock } from "./components/HelpDock";
 import { MobileTabBar } from "./components/MobileTabBar";
 import { MobileMenu } from "./components/MobileMenu";
@@ -69,15 +68,13 @@ function App() {
         </div>
       </div>
 
-      {/* One rail down the left, inside the frame. These three components keep
-          their own markup, handlers and flyouts — the rail only re-homes and
-          restyles them, so nothing about what the buttons DO changes. */}
-      <div className="actionrail">
-        <MapActions />
-        <ZoomSlider />
-        <HelpDock />
-      </div>
+      {/* One rail down the left, inside the frame, built from the design's own
+          markup. It owns the BUTTONS; the panels they open still live in their
+          original components — HelpDock stays mounted below for the help tour,
+          settings and feedback board, with its own buttons hidden. */}
+      <ActionRail />
 
+      <HelpDock />
       <HintPulse />
       <Ticker hidden={!zoomedOut} />
       <Legend />

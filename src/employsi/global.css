@@ -33,97 +33,49 @@ body {
 }
 
 /* ── Action rail ─────────────────────────────────────────────────────────────
-   The design collapses what were three separate floating docks into one
-   vertical rail at the left of the frame, and its three icon groups map exactly
-   onto what already existed: tools[2] = MapActions (What's trending, Daily
-   brief), layers[4] = ZoomSlider (Global/Domestic/Local/Company), helpers[3] =
-   HelpDock (feedback, help, settings).
+   Built from `Action Banner - Mechanical.dc.html`. This is the design's own
+   structure — a raised column of 38px ghost buttons in three groups, with the
+   layer picker as a sunken tray and tooltips to the right.
 
-   Those three components are re-homed here rather than rewritten: each keeps
-   its own markup, click handlers and flyouts, and this only unsets the
-   positioning/surface each used to carry for itself. That way the rail is a
-   layout change, not a behavioural one. Their flyouts and panels stay
-   `position: fixed` and so are unaffected by the rail's box. */
+   An earlier pass tried to reach this by re-homing MapActions / ZoomSlider /
+   HelpDock inside a wrapper and overriding their CSS. It kept their handlers,
+   but three unrelated DOM shapes cannot be restyled into one purpose-built
+   control, and the result did not read as the design. ActionRail.tsx now owns
+   the markup and calls the same store actions those components did; HelpDock
+   stays mounted for its panels with its own buttons hidden. */
 .actionrail {
   position: fixed;
   left: var(--rail-left);
+  /* Centred on the map frame, i.e. the viewport minus the header row. */
   top: calc(var(--head-height) / 2 + 50%);
   transform: translateY(-50%);
   z-index: 48;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
   padding: 7px;
   border: 1px solid var(--border-subtle);
   border-radius: 19px;
   background: var(--raised-surface);
   box-shadow: var(--raised-shadow);
 }
-/* Strip the per-dock positioning + surface; the rail owns both now. */
-.actionrail > .mapactions,
-.actionrail > .zoomslider,
-.actionrail > .helpdock {
-  position: static;
-  inset: auto;
-  transform: none;
-  z-index: auto;
-  width: auto;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: none;
-  box-shadow: none;
-  backdrop-filter: none;
+.railgroup {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 5px;
 }
-/* The layer picker is a grouped cluster in the design — a sunken tray inside
-   the rail — which also reads as "these four are one control, pick one". */
-.actionrail > .zoomslider {
+/* The layer picker: one grouped control, so the four read as "pick one" rather
+   than as four unrelated buttons. */
+.railgroup-tray {
   gap: 2px;
   padding: 3px;
   border-radius: 14px;
   background: var(--surface-active);
 }
-/* The rail's own labels are replaced by the design's hover tooltips (which
-   .mabtn/.helpbtn already render); the always-on text labels would make the
-   rail several times wider than the 52px the design allows. */
-/* Labels become hover tooltips to the right of the rail, as in the design —
-   always-on text would make the rail several times wider than 52px. */
-.actionrail > .mapactions .malabel,
-.actionrail > .zoomslider .zlabel {
-  position: absolute;
-  left: calc(100% + 10px);
-  top: 50%;
-  transform: translateY(-50%);
-  padding: 6px 8px;
-  border-radius: 7px;
-  background: var(--surface-inverse);
-  color: var(--text-inverse);
-  font-size: 11px;
-  font-weight: var(--weight-medium);
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 140ms;
-}
-.actionrail > .mapactions .marow,
-.actionrail > .zoomslider .zrow {
+.railbtn {
   position: relative;
-}
-.actionrail > .mapactions .marow:hover .malabel,
-.actionrail > .zoomslider .zrow:hover .zlabel {
-  opacity: 1;
-}
-/* Uniform 38x38 targets with the design's states: ghost by default, a light
-   sunken hover, ink fill when selected, and a small squeeze on press. */
-.actionrail > .mapactions .mabtn,
-.actionrail > .helpdock .helpbtn,
-.actionrail > .zoomslider .zstep {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -135,57 +87,69 @@ body {
   background: transparent;
   color: var(--neutral-700);
   cursor: pointer;
-  box-shadow: none;
-  backdrop-filter: none;
-  overflow: visible;
-  transition: background var(--duration-base) cubic-bezier(0.32, 0.72, 0, 1),
-    color var(--duration-base), transform 110ms;
+  transition:
+    background var(--duration-base) cubic-bezier(0.32, 0.72, 0, 1),
+    color var(--duration-base),
+    transform 110ms;
 }
-.actionrail > .mapactions .mabtn:hover,
-.actionrail > .helpdock .helpbtn:hover,
-.actionrail > .zoomslider .zstep:hover {
+.railbtn svg {
+  display: block;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.railbtn:hover {
   background: var(--surface-hover);
   color: var(--text-primary);
 }
-.actionrail > .mapactions .mabtn:active,
-.actionrail > .helpdock .helpbtn:active,
-.actionrail > .zoomslider .zstep:active {
+.railbtn:active {
   transform: scale(0.94);
 }
-.actionrail > .mapactions .mabtn.on,
-.actionrail > .helpdock .helpbtn.on,
-.actionrail > .zoomslider .zstep.on {
+.railbtn.on {
   background: var(--action-primary);
   color: var(--action-primary-text);
 }
-.actionrail > .mapactions .mabtn svg,
-.actionrail > .helpdock .helpbtn svg,
-.actionrail > .zoomslider .zstep svg {
-  width: 20px;
-  height: 20px;
+.railbtn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
-/* The Help button expands to reveal a "Need help?" label (.helpbtn.wide). In a
-   fixed-width rail that would either clip or push the rail wide, so the label
-   is suppressed here — the button keeps its square target and the copy lives in
-   the panel it opens. */
-.actionrail > .helpdock .helplbl {
+.railbtn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+/* Tooltip to the right. Absolutely positioned so it can never widen the rail,
+   and hidden from hit-testing so it can't swallow the next click. */
+.railtip {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 140ms, transform 140ms;
+}
+.railbtn:hover .railtip,
+.railbtn:focus-visible .railtip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+/* A selected button already says what it is, so it doesn't also need the tip. */
+.railbtn.on:hover .railtip {
+  opacity: 0;
+}
+
+/* HelpDock stays mounted for its panels (help tour, settings, feedback board);
+   the rail owns its buttons now. */
+.helpdock .helpbtn {
   display: none;
-}
-/* The tray's own connector ticks are redundant once the four layer buttons sit
-   in a grouped sunken cluster. */
-.actionrail > .zoomslider .ztrack {
-  display: none;
-}
-.actionrail > .mapactions .marow,
-.actionrail > .zoomslider .zrow {
-  display: block;
-  margin: 0;
-  position: relative;
-}
-/* Demoting a dock (`.behind`) must not drop it out of the rail's flow. */
-.actionrail > .helpdock.behind,
-.actionrail > .toolsdock.behind {
-  z-index: auto;
 }
 
 /* ── Shell: header row + inset map card ──────────────────────────────────────
@@ -756,6 +720,23 @@ body {
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: var(--tracking-label);
+}
+/* Sparkline: the design's 48x18 line between the name and the delta chip. It is
+   only rendered for rows with real measured history (see sparkPath), so its
+   absence on a row is meaningful rather than a rendering gap. */
+.tspark {
+  display: block;
+  flex: 0 0 auto;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.85;
+}
+.tspark.up {
+  color: var(--status-success-dot);
+}
+.tspark.down {
+  color: var(--status-danger-dot);
 }
 /* Delta chip, per the design: 21px tall, 7px radius, tinted to its direction,
    figures in tabular mono so the column doesn't jitter as values drift. */

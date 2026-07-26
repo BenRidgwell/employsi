@@ -209,6 +209,11 @@ export interface LiveSkillTrend {
   name: string; // canonical skill
   tag: string; // 'Demand'
   v: number; // % change (positive = rising demand); newly-surging capped at +24
+  // Daily count of live vacancies demanding this skill, oldest → newest, for
+  // the ticker's sparkline. Omitted when the archive is too young to draw an
+  // honest line (see SPARK_DAYS below) — the ticker then shows the row without
+  // one rather than inventing a shape.
+  spark?: number[];
 }
 
 // Market-wide daily skill-demand trends for the app's "Live trends" ticker.
@@ -225,6 +230,13 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
     const db = await getArchiveDb();
     if (!db) return [];
     const WINDOW = 7; // days per comparison window (daily-refreshing weekly momentum)
+    // Sparkline length. The archive stores first_seen/last_seen per listing, so
+    // "how many live vacancies demanded skill X on day D" is recoverable for any
+    // day the archive was actually running — no new storage needed, and the line
+    // gets richer on its own as the archive accumulates.
+    const SPARK_DAYS = 14;
+    const SPARK_MIN_POINTS = 5; // below this the line says more about the
+    // archive's age than about demand, so it is dropped entirely
     const day = (offset: number) => {
       const d = new Date();
       d.setUTCDate(d.getUTCDate() - offset);
@@ -233,6 +245,9 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
     const recentStart = day(WINDOW);
     const priorStart = day(WINDOW * 2);
     const priorEnd = recentStart;
+    // Oldest → newest, the days the sparkline covers.
+    const sparkDays: string[] = [];
+    for (let i = SPARK_DAYS - 1; i >= 0; i--) sparkDays.push(day(i));
     try {
       // Only rows active within the two windows — bounds the scan.
       const res = await db
@@ -246,6 +261,12 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
       if (!rows.length) return [];
       const nowT: Record<string, number> = {};
       const prevT: Record<string, number> = {};
+      // skill -> per-day live-vacancy count, indexed against sparkDays.
+      const daily: Record<string, number[]> = {};
+      // The earliest day the archive holds anything at all. Days before it are
+      // not "zero demand", they are "we weren't collecting" — drawing them would
+      // render every skill as a hockey stick.
+      let archiveStart = "9999-99-99";
       for (const r of rows) {
         let skills: string[] = [];
         try {
@@ -257,10 +278,32 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
         const fs = String(r.first_seen || "");
         const ls = String(r.last_seen || "");
         if (!fs || !ls) continue;
+        if (fs < archiveStart) archiveStart = fs;
         if (ls >= recentStart) for (const s of skills) nowT[s] = (nowT[s] || 0) + 1;
         if (fs <= priorEnd && ls >= priorStart)
           for (const s of skills) prevT[s] = (prevT[s] || 0) + 1;
+        // A listing is live on day D when it was first seen on or before D and
+        // last seen on or after it.
+        for (let i = 0; i < sparkDays.length; i++) {
+          const d = sparkDays[i];
+          if (fs > d || ls < d) continue;
+          for (const sk of skills) {
+            const arr = (daily[sk] ||= new Array(sparkDays.length).fill(0));
+            arr[i] += 1;
+          }
+        }
       }
+      // Trim the series to days the archive actually covers.
+      const firstCovered = sparkDays.findIndex((d) => d >= archiveStart);
+      const sparkFrom = firstCovered < 0 ? sparkDays.length : firstCovered;
+      const sparkFor = (name: string): number[] | undefined => {
+        const arr = daily[name];
+        if (!arr) return undefined;
+        const cut = arr.slice(sparkFrom);
+        if (cut.length < SPARK_MIN_POINTS) return undefined;
+        // A dead-flat line is noise, not signal — leave it off.
+        return cut.some((v) => v !== cut[0]) ? cut : undefined;
+      };
       const skills = new Set([...Object.keys(nowT), ...Object.keys(prevT)]);
       type Row = { name: string; v: number; sig: number };
       const movers: Row[] = [];
@@ -293,7 +336,7 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
           if (picked.length >= 12) break;
         }
       }
-      return picked.map((p) => ({ name: p.name, tag: "Demand", v: p.v }));
+      return picked.map((p) => ({ name: p.name, tag: "Demand", v: p.v, spark: sparkFor(p.name) }));
     } catch {
       return [];
     }

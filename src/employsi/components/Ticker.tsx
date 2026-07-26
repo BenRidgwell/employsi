@@ -7,6 +7,36 @@ function cloneBase(): TickerItem[] {
   return TICKER_BASE.map((d) => ({ ...d }));
 }
 
+// Sparkline geometry, matching the design's 48x18 box.
+const SPARK_W = 48;
+const SPARK_H = 18;
+const SPARK_PAD = 2; // keeps the 1.6px stroke inside the viewBox at the extremes
+
+/**
+ * Daily live-vacancy counts → an SVG path, scaled to the box.
+ *
+ * Returns null when there is nothing honest to draw: no series (the static seed
+ * has none), fewer than two points, or a flat line. The row then renders without
+ * a sparkline rather than with a fabricated one — the shape is the whole point,
+ * so a placeholder would be actively misleading.
+ */
+function sparkPath(series: number[] | undefined): string | null {
+  if (!series || series.length < 2) return null;
+  const lo = Math.min(...series);
+  const hi = Math.max(...series);
+  if (hi === lo) return null;
+  const dx = (SPARK_W - SPARK_PAD * 2) / (series.length - 1);
+  const span = SPARK_H - SPARK_PAD * 2;
+  return series
+    .map((v, i) => {
+      const x = SPARK_PAD + i * dx;
+      // SVG y grows downward, so a higher count sits nearer the top.
+      const y = SPARK_PAD + (1 - (v - lo) / (hi - lo)) * span;
+      return `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(" ");
+}
+
 export function Ticker({ hidden }: { hidden: boolean }) {
   // Real, market-wide skill-demand movers from the D1 job archive. Refreshes
   // once a day (the archive only changes on the daily cron); falls back to the
@@ -55,10 +85,24 @@ export function Ticker({ hidden }: { hidden: boolean }) {
 
   const renderItem = (t: TickerItem, key: string) => {
     const up = t.v >= 0;
+    const path = sparkPath(t.spark);
     return (
       <div className="titem" key={key}>
         <span className="tname">{t.name}</span>
         <span className="ttag">{t.tag}</span>
+        {path && (
+          <svg
+            className={`tspark ${up ? "up" : "down"}`}
+            viewBox={`0 0 ${SPARK_W} ${SPARK_H}`}
+            width={SPARK_W}
+            height={SPARK_H}
+            fill="none"
+            stroke="currentColor"
+            aria-hidden
+          >
+            <path d={path} />
+          </svg>
+        )}
         <span className={`tdelta ${up ? "up" : "down"}`}>
           <span className="ar">{up ? "▲" : "▼"}</span>
           {(up ? "+" : "") + t.v.toFixed(1)}%

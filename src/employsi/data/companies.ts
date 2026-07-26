@@ -1545,6 +1545,10 @@ export interface TickerItem {
   name: string;
   tag: string;
   v: number;
+  // Daily live-vacancy counts (oldest → newest) behind this row, when the D1
+  // archive holds enough history to draw one. The static seed below has none —
+  // a sparkline is only shown for rows with real measured history.
+  spark?: number[];
 }
 
 export const TICKER_BASE: TickerItem[] = [
