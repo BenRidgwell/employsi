@@ -317,13 +317,12 @@ body {
    as a conversation card: header, scope chips, thread, prompts, composer. */
 .analystpane {
   position: fixed;
-  left: calc(var(--rail-left) + 66px);
-  top: calc(var(--head-height) / 2 + 50%);
-  transform: translateY(-50%);
+  left: var(--pane-left);
+  top: var(--pane-top);
   box-sizing: border-box;
   width: 470px;
-  max-width: calc(100vw - var(--rail-left) - 90px);
-  height: min(620px, calc(100vh - 110px));
+  max-width: calc(100vw - var(--pane-left) - 24px);
+  height: min(620px, var(--pane-max-h));
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border-default);
@@ -771,12 +770,11 @@ body {
 }
 .filterpane {
   position: fixed;
-  left: calc(var(--rail-left) + 66px);
-  top: calc(var(--head-height) / 2 + 50%);
-  transform: translateY(-50%);
+  left: var(--pane-left);
+  top: var(--pane-top);
   box-sizing: border-box;
   width: 252px;
-  max-height: calc(100vh - 80px);
+  max-height: var(--pane-max-h);
   overflow: auto;
   padding: 12px 13px 13px;
   border: 1px solid var(--border-subtle);
@@ -2494,11 +2492,11 @@ body {
 /* Daily Brief side pane (Apple News style) */
 .briefpane {
   position: fixed;
-  left: 74px;
-  top: 74px;
-  bottom: 74px;
+  left: var(--pane-left);
+  top: var(--pane-top);
+  bottom: 28px;
   width: 344px;
-  max-width: calc(100vw - 92px);
+  max-width: calc(100vw - var(--pane-left) - 24px);
   z-index: 45;
   display: flex;
   flex-direction: column;

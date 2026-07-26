@@ -143,6 +143,15 @@
      raised surface is one recurring treatment — a near-white vertical gradient,
      a hairline border and a four-part shadow — so it is named once here and
      reused rather than repeated at every call site. */
+  /* Where every left-hand pane sits: clear of the rail horizontally (the rail
+     spans --rail-left to --rail-left + 54px), and anchored BELOW the header
+     rather than centred on the viewport. Centring a tall fixed panel pushes its
+     bottom edge off screen on shorter windows; anchoring from the top with an
+     explicit max-height makes that impossible at any height. */
+  --pane-left: calc(var(--rail-left) + 66px);
+  --pane-top: calc(var(--head-height) + 14px);
+  --pane-max-h: calc(100vh - var(--head-height) - 42px);
+
   --frame-radius: 28px;
   --frame-gutter: 20px;
   --frame-inset: 34px; /* rail / ticker offset inside the frame */
