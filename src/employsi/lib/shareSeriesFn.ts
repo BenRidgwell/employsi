@@ -14,6 +14,8 @@ export interface ShareSeries {
 }
 
 const EMPTY: ShareSeries = { series: [], low: 0, high: 0, last: 0, currency: '' };
+const UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
 // Map a ticker + exchange to the Yahoo Finance symbol (per-exchange suffix).
 // US exchanges use the bare symbol; other markets need Yahoo's suffix, and HK
@@ -36,6 +38,46 @@ export function yahooSymbol(ticker: string, exchange?: string): string {
 // refreshes, and it keeps us well clear of any upstream rate limits.
 const cache = new Map<string, { at: number; data: ShareSeries }>();
 const TTL = 60 * 60 * 1000;
+
+// ── FX → AUD ────────────────────────────────────────────────────────────────
+// Companies on this map list across ASX, NYSE, LSE, JPX, HKEX… so their Yahoo
+// closes arrive in the listing currency (USD, GBp, JPY, HKD…). Comparing a US
+// major's USD line against an ASX miner's AUD line is meaningless, so every
+// series is converted to AUD here on the server before it reaches the chart.
+// Rates come from Yahoo's own FX pairs and are cached like the price series.
+const fxCache = new Map<string, { at: number; rate: number }>();
+
+async function toAudRate(cur: string): Promise<number> {
+  const c = (cur || '').toUpperCase();
+  if (!c || c === 'AUD') return 1;
+  // London quotes pence (GBp/GBX), not pounds — convert via GBP then /100.
+  const base = c === 'GBX' || c === 'GBP.' ? 'GBP' : c;
+  const pence = c === 'GBX' || c === 'GBP.';
+  const hit = fxCache.get(base);
+  const now = Date.now();
+  let rate = hit && now - hit.at < TTL ? hit.rate : 0;
+  if (!rate) {
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${base}AUD=X?range=5d&interval=1d`;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(url, {
+        signal: controller.signal,
+        headers: { 'User-Agent': UA, Accept: 'application/json,text/plain,*/*' },
+      });
+      clearTimeout(timer);
+      if (!res.ok) return 0;
+      const j = (await res.json()) as any;
+      const m = j?.chart?.result?.[0]?.meta;
+      rate = Number(m?.regularMarketPrice) || 0;
+      if (rate > 0) fxCache.set(base, { at: now, rate });
+    } catch {
+      return 0;
+    }
+  }
+  if (!rate) return 0;
+  return pence ? rate / 100 : rate;
+}
 
 export const getShareSeries = createServerFn({ method: 'GET' })
   .validator((data: { ticker: string; exchange?: string }) => data)
@@ -71,12 +113,25 @@ export const getShareSeries = createServerFn({ method: 'GET' })
         .slice(-8)
         .map((v) => +v.toFixed(v >= 10 ? 2 : 3));
       if (series.length < 2) return EMPTY;
+      const native = String(meta.currency ?? '');
+      // Normalise everything to AUD so lines from different exchanges are
+      // directly comparable. If the FX lookup fails we return the native series
+      // untouched (and say so via `currency`) rather than showing a wrong number.
+      const fx = await toAudRate(native);
+      const conv = (v: number) => +(v * fx).toFixed(v * fx >= 10 ? 2 : 3);
+      const audOk = fx > 0 && fx !== 1;
       const result: ShareSeries = {
-        series,
-        low: +(meta.fiftyTwoWeekLow ?? Math.min(...series)).toFixed(3),
-        high: +(meta.fiftyTwoWeekHigh ?? Math.max(...series)).toFixed(3),
-        last: +(meta.regularMarketPrice ?? series[series.length - 1]).toFixed(3),
-        currency: meta.currency ?? '',
+        series: audOk ? series.map(conv) : series,
+        low: +(audOk
+          ? conv(meta.fiftyTwoWeekLow ?? Math.min(...series))
+          : (meta.fiftyTwoWeekLow ?? Math.min(...series))).toFixed(3),
+        high: +(audOk
+          ? conv(meta.fiftyTwoWeekHigh ?? Math.max(...series))
+          : (meta.fiftyTwoWeekHigh ?? Math.max(...series))).toFixed(3),
+        last: +(audOk
+          ? conv(meta.regularMarketPrice ?? series[series.length - 1])
+          : (meta.regularMarketPrice ?? series[series.length - 1])).toFixed(3),
+        currency: fx > 0 ? 'AUD' : native,
       };
       cache.set(key, { at: Date.now(), data: result });
       return result;

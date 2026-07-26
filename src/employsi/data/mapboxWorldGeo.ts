@@ -144,10 +144,12 @@ export const COUNTRIES: Record<string, CountryInfo> = {
   au: { label: 'Australia', region: 'australia', center: [134.0, -25.6] },
   nz: { label: 'New Zealand', region: 'australia', center: [172.8, -41.2] },
   sg: { label: 'Singapore', region: 'asia', center: [103.82, 1.35] },
-  jp: { label: 'Japan', region: 'asia', center: [138.2, 36.2] },
+  jp: { label: 'Japan', region: 'asia', center: [139.6, 34.9] },
   hk: { label: 'Hong Kong', region: 'asia', center: [114.17, 22.32] },
   ae: { label: 'United Arab Emirates', region: 'asia', center: [54.0, 24.3] },
-  kr: { label: 'South Korea', region: 'asia', center: [127.8, 36.5] },
+  // Pulled north-west (and Japan south-east) so the two chips don't collide
+  // at global zoom — they sit only ~10° apart on the real map.
+  kr: { label: 'South Korea', region: 'asia', center: [126.6, 38.6] },
   cn: { label: 'China', region: 'asia', center: [104.2, 35.0] },
   ca: { label: 'Canada', region: 'northamerica', center: [-98.0, 56.0] },
   us: { label: 'United States', region: 'northamerica', center: [-98.5, 39.0] },

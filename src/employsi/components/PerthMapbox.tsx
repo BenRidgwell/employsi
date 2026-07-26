@@ -48,6 +48,8 @@ function makePinImage(): { width: number; height: number; data: Uint8Array } | n
   return { width: w, height: h, data: new Uint8Array(ctx.getImageData(0, 0, w, h).data.buffer) };
 }
 const PULSE_MS = 2200;
+// Zoom at which company name labels fade in (arrival zoom is ~16.6).
+const LABEL_ZOOM = 17.1;
 const ZOOM_OUT_THRESHOLD = 11;
 
 const COMPANY_BY_ID: Record<string, Company> = Object.fromEntries(COMPANIES.map((c) => [c.id, c]));
@@ -690,6 +692,9 @@ export function PerthMapbox() {
 
     map.on('zoom', () => {
       const z = map.getZoom();
+      // Company name labels only appear once you've zoomed past the arrival
+      // view, so a dense city (Perth/Sydney) reads as circles + logos first.
+      containerRef.current?.classList.toggle('shownames', z >= LABEL_ZOOM);
       const s = useAppStore.getState();
       if (z < ZOOM_OUT_THRESHOLD && !s.zoomedOut && !crossedRef.current) {
         crossedRef.current = true;

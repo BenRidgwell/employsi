@@ -20,7 +20,8 @@ MIN_YEAR = 2024
 # company id -> ASX ticker (Arrow Energy + Jellinbah are private; BHP's employee
 # vs total-workforce definition is ambiguous on the aggregator, so it's omitted).
 ASX = {
-    'alk': 'ALK', 'asb': 'ASB', 'beach': 'BPT', 'bmn': 'BMN', 'boe': 'BOE', 'ccv': 'CCV',
+    'alk': 'ALK', 'asb': 'ASB', 'beach': 'BPT', 'bhp': 'BHP', 'bmn': 'BMN', 'boe': 'BOE',
+    'ccv': 'CCV',
     'cmm': 'CMM', 'cvn': 'CVN', 'cxo': 'CXO', 'deg': 'DEG', 'del': 'DEL', 'dyl': 'DYL',
     'fmg': 'FMG', 'gmd': 'GMD', 'gor': 'GOR', 'hgo': 'HGO', 'igo': 'IGO', 'ilu': 'ILU',
     'jms': 'JMS', 'ltr': 'LTR', 'mah': 'MAH', 'mgt': 'MGT', 'min': 'MIN', 'mmi': 'MMI',
@@ -44,10 +45,35 @@ def fetch(url):
         return ''
 
 
+def parse_table(h):
+    """Fallback: read the page's own Date/Employees table.
+
+    Not every company page carries the "had N employees as of ..." summary
+    sentence (BHP's does not), but they all render the historical table. Reading
+    it directly keeps the generator working for those companies instead of
+    silently skipping them — which is what left BHP out of COMPANY_HEADCOUNT and
+    sent its card to the synthetic feed."""
+    rows = []
+    for tr in re.findall(r'<tr[^>]*>(.*?)</tr>', h, re.S):
+        cells = [re.sub(r'<[^>]+>', '', c).strip()
+                 for c in re.findall(r'<t[dh][^>]*>(.*?)</t[dh]>', tr, re.S)]
+        if len(cells) < 2:
+            continue
+        ym = re.search(r'(20\d\d)', cells[0])
+        num = re.fullmatch(r'[\d,]+', cells[1] or '')
+        if ym and num:
+            rows.append((int(ym.group(1)), cells[0], int(cells[1].replace(',', ''))))
+    if len(rows) < 2:
+        return None
+    rows.sort(key=lambda r: r[0], reverse=True)
+    (yr, asof, cur), (_, _, prev) = rows[0], rows[1]
+    return {'now': cur, 'prev': prev, 'asof': asof, 'yr': yr}
+
+
 def parse(h):
     m = SENT.search(h)
     if not m:
-        return None
+        return parse_table(h)
     cur = int(m.group(1).replace(',', ''))
     asof = m.group(2).strip()
     ym = re.search(r'20\d\d', asof)

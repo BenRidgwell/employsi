@@ -6,6 +6,7 @@
 export interface Headcount { now: number; prev: number; yoy: number; asof: string; }
 export const COMPANY_HEADCOUNT: Record<string, Headcount> = {
   'asb': { now: 4633, prev: 4479, yoy: 3.4, asof: 'Dec 2025' },
+  'bhp': { now: 40648, prev: 40094, yoy: 1.4, asof: 'Jun 2025' },
   'boe': { now: 125, prev: 139, yoy: -10.1, asof: 'Jun 2025' },
   'chevron': { now: 43039, prev: 45298, yoy: -5.0, asof: 'Dec 2025' },
   'fmg': { now: 15745, prev: 16000, yoy: -1.6, asof: 'Dec 2025' },

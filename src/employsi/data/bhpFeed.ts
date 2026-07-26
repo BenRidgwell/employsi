@@ -4,6 +4,7 @@
 // social feeds). The shape is deliberately generic so a real provider can be
 // dropped in behind the same interface later.
 
+import { COMPANY_HEADCOUNT } from './companyHeadcount';
 import { COMPANIES } from './companies';
 import { COMPANY_CULTURE, INDUSTRY_BENCH, type Layoff } from './culture';
 import { shareTrend, commodityBaskets, type CommodityBasket } from './finance';
@@ -56,7 +57,11 @@ export function buildBhpFeed(now: number = Date.now()): BhpFeed {
 
   const openRoles = Math.max(0, Math.round(c.openRoles + d1 * 7));
   const salaryNum = Math.round((c.salaryNum + d2 * 1600) / 100) * 100;
-  const headcount = Math.round(c.headcount + d3 * 45);
+  // Headcount is NOT simulated. It comes from BHP's annual report via
+  // COMPANY_HEADCOUNT (the same primary source every other company uses); the
+  // old `c.headcount + d3 * 45` made the figure visibly drift on every render,
+  // which read as a live feed but was pure noise.
+  const headcount = COMPANY_HEADCOUNT.bhp?.now ?? c.headcount;
   const growth = +(c.growth + d1 * 0.3).toFixed(1);
   const glassdoor = +Math.min(5, Math.max(0, cul.glassdoor + d2 * 0.05)).toFixed(1);
   const revPerEmp = +(c.revPerEmp * (1 + d4 * 0.01)).toFixed(2);

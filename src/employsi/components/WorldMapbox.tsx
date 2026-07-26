@@ -112,6 +112,12 @@ function lerpLngLat(a: [number, number], b: [number, number], t: number): [numbe
 // Layer-crossing zoom thresholds (Mapbox zoom levels). Chosen to leave each
 // view's own default framing comfortably inside its band so a programmatic
 // flyTo never lands right on a boundary.
+// Below this globe zoom the European countries are collapsed into a single
+// "Europe" chip: 26 EU countries plus the UK/CH/FR hubs sit inside a few degrees
+// and their labels overlap into an unreadable pile when fully zoomed out. Past
+// it they expand to individual countries.
+const EUROPE_CLUSTER_ZOOM = 2.2;
+const EUROPE_CLUSTER_ID = 'eu-cluster';
 const CROSS_GLOBAL_TO_DOMESTIC = 2.9; // zoom in past this on the globe -> region
 const CROSS_DOMESTIC_TO_GLOBAL = 2.15; // zoom out past this in a region -> globe (sooner)
 // Zoom in past this in a region -> drill into the nearest city's local view.
@@ -178,6 +184,7 @@ function computeMarkers(
   filterState: FilterState,
   demand: Record<string, number>,
   skillActive: boolean,
+  zoom = 99,
 ): Marker[] {
   // Neutral dot tuned to each backdrop: the global view sits on the dark globe
   // (needs a light dot), the domestic view on the light basemap (needs a dark
@@ -206,10 +213,18 @@ function computeMarkers(
     // Country roll-up: one marker per country carrying its aggregated demand,
     // rather than 49 individual city dots. Clicking drops into that country's
     // domestic layer, where the per-city breakdown is shown as before.
+    const clusterEurope = zoom < EUROPE_CLUSTER_ZOOM;
+    let euDemand = 0;
+    let euAny = false;
     for (const [cc, info] of Object.entries(COUNTRIES)) {
       const members = COUNTRY_MEMBERS[cc] || [];
       // Respect the filters: a country shows if ANY of its cities match.
       if (members.length && !members.some((m) => cityMatchesFilters(m, filterState))) continue;
+      if (clusterEurope && info.region === 'europe') {
+        euDemand += demand[cc] || 0;
+        euAny = true;
+        continue; // rolled into the single Europe chip below
+      }
       out.push({
         id: cc,
         coords: info.center,
@@ -218,6 +233,18 @@ function computeMarkers(
         sub: '',
         clickable: true,
       });
+    }
+    if (clusterEurope && euAny) {
+      out.push({
+        id: EUROPE_CLUSTER_ID,
+        coords: [9.5, 50.0],
+        color: dotColor,
+        label: 'Europe',
+        sub: '',
+        clickable: true,
+      });
+      // The cluster carries the combined demand so it colours like a country.
+      demand[EUROPE_CLUSTER_ID] = euDemand;
     }
   } else {
     // Domestic: the region's own hubs (Melbourne is now a hub too, so it comes
@@ -268,6 +295,8 @@ function buildSkillHeat(
     table = Object.fromEntries(
       Object.entries(COUNTRIES).map(([cc, info]) => [cc, info.center]),
     ) as Record<string, [number, number]>;
+    // The Europe cluster (used when zoomed out) needs an anchor of its own.
+    table[EUROPE_CLUSTER_ID] = [9.5, 50.0];
   } else if (region === 'australia') {
     // All AU capitals are now full cities (Hobart added with TAS gov, Darwin with
     // NT gov), so every one keeps its marker + skill heat.
@@ -455,6 +484,7 @@ export function WorldMapbox() {
     // on a domestic layer the markers are cities, so we fly into the city.
     const activateMarker = (id: string) => {
       const st = useAppStore.getState();
+      if (id === EUROPE_CLUSTER_ID) { st.goDomestic('europe'); return; }
       const country = COUNTRIES[id];
       if (country) st.goDomestic(country.region);
       else st.zoomInCity(id);
@@ -533,7 +563,7 @@ export function WorldMapbox() {
       // At the global layer everything is expressed per COUNTRY, so roll the
       // per-city demand up before colouring markers or sizing the heat blobs.
       const demandForView = mode === 'global' ? countryDemand(cityDemand) : cityDemand;
-      const markers = computeMarkers(mode, s.domesticRegion, fs, demandForView, !!skill);
+      const markers = computeMarkers(mode, s.domesticRegion, fs, demandForView, !!skill, map.getZoom());
       // Scrub callouts: while a skill + the time slider are active, tag each
       // city with its demand % change at the current month, so the label shows
       // how demand for the skill is moving as the slider is dragged.
@@ -772,6 +802,13 @@ export function WorldMapbox() {
     map.on('zoom', () => {
       const z = map.getZoom();
       const dz = z - prevZoomRef.current;
+      // Expand / collapse the Europe cluster as the globe zoom crosses the
+      // threshold (markers are otherwise only rebuilt on state changes).
+      const wasClustered = prevZoomRef.current < EUROPE_CLUSTER_ZOOM;
+      const nowClustered = z < EUROPE_CLUSTER_ZOOM;
+      if (wasClustered !== nowClustered && useAppStore.getState().globalOut) {
+        rebuildMarkersRef.current?.();
+      }
       prevZoomRef.current = z; // track direction even while guarded
       if (programmaticRef.current) return;
       if (Date.now() - lastCrossRef.current < 700) return;

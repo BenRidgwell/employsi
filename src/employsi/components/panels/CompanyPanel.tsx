@@ -505,51 +505,6 @@ export function CompanyPanel() {
                 )}
               </div>
 
-              <div className="sect">
-                <div className="secth">
-                  Gender &amp; pay gap
-                  <span>workforce mix</span>
-                </div>
-                {cultureReal ? (
-                  <>
-                    <div className="genderbar">
-                      <div className="genderf" style={{ width: `${panel.diversity.femalePct}%` }}>{panel.diversity.femalePct}% women</div>
-                      <div className="genderm">{100 - panel.diversity.femalePct}% men</div>
-                    </div>
-                    <div className="paygap">
-                      <div>
-                        <span className="paygapv">{panel.diversity.payGap.toFixed(1)}%</span>
-                        <span className="paygapl">median gender pay gap</span>
-                      </div>
-                      <span className={`paygapbench ${panel.diversity.payGap <= panel.diversity.payGapBench ? 'good' : 'bad'}`}>
-                        {panel.diversity.payGap <= panel.diversity.payGapBench ? '▼' : '▲'} vs {panel.diversity.payGapBench.toFixed(1)}% industry
-                      </span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="dataempty">Not reported</div>
-                )}
-              </div>
-
-              <div className="sect">
-                <div className="secth">
-                  Recent layoffs
-                  <span>last 12 months</span>
-                </div>
-                {!cultureReal ? (
-                  <div className="dataempty">Not reported</div>
-                ) : panel.layoffs ? (
-                  <div className="layoff">
-                    <div className="layoffhead">
-                      <b>{panel.layoffs.period}</b>
-                      <span className="layoffpct">{panel.layoffs.pct.toFixed(1)}% · {panel.layoffs.roles.toLocaleString('en-US')} roles</span>
-                    </div>
-                    <div className="layoffnote">{panel.layoffs.note}</div>
-                  </div>
-                ) : (
-                  <div className="layoffnone">No major layoffs reported in the last 12 months.</div>
-                )}
-              </div>
             </>
           )}
         </div>

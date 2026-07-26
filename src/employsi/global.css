@@ -114,7 +114,13 @@ body {
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
+/* Company name labels are hidden until you zoom in past LABEL_ZOOM (the map
+   toggles `.shownames` on the container). At the arrival zoom a dense city is
+   just circles + logos, which reads far more calmly; the names fade in as you
+   move closer. A selected company always shows its name (rule below). */
 .poipinname {
+  opacity: 0;
+  transition: opacity 0.18s ease;
   position: absolute;
   left: 33px;
   top: 50%;
@@ -125,8 +131,15 @@ body {
   text-shadow: 0 1px 2px #fff, 0 0 3px #fff, 0 0 4px #fff;
   pointer-events: none;
 }
+.mount.shownames .poipinname {
+  opacity: 1;
+}
 .poipin.on {
   z-index: 6;
+}
+/* The selected company keeps its label at every zoom. */
+.poipin.on .poipinname {
+  opacity: 1;
 }
 .poipin.on .poipinmark {
   transform: scale(1.16);
