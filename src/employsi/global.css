@@ -7238,47 +7238,90 @@ body {
 }
 
 /* Role search */
+/* Role search, inside the company card.
+
+   Same 18px inset as the tab strip and the card body below it — it used to be
+   a direct child of the card with no horizontal margin, so it ran the full
+   440px and overhung everything under it.
+
+   Styled as the header's skill-search pill rather than as its own control:
+   same height, radius, raised surface and magnifier gesture. The two are the
+   same gesture at two scopes (the whole market, then one employer), so they
+   should not look like two different widgets. */
 .rolesearch {
   position: relative;
-  margin: 22px 0 18px;
+  margin: 14px 18px 0;
 }
 .prole {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  background: #f7f7f8;
-  color: var(--slate);
-  font-family: inherit;
-  font-size: 12.5px;
-  font-weight: 600;
+  height: 44px;
+  padding: 5px 5px 5px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--raised-surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--raised-shadow);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: var(--weight-regular);
+  letter-spacing: -0.006em;
   cursor: pointer;
-  transition: 0.15s;
+  transition:
+    border-color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
 }
 .prole:hover {
-  border-color: var(--slate);
+  border-color: var(--border-strong);
 }
+/* Open — the same treatment the header pill gets on focus. */
 .prole.on {
-  color: var(--ink);
-  background: #fff;
-  border-color: #1c1c1e;
+  border-color: var(--border-strong);
+  box-shadow: var(--raised-shadow), var(--focus-ring);
+}
+/* A role IS selected: the label stops being placeholder text. */
+.prole.picked .prolelbl {
+  color: var(--text-primary);
+  font-weight: var(--weight-medium);
+}
+.prole .gsicon {
+  color: var(--text-tertiary);
+}
+.prole.on .gsicon {
+  color: var(--text-primary);
+}
+.prole.on .gsiconlens {
+  transform-box: view-box;
+  transform-origin: 11px 11px;
+  transform: scale(0.92);
+}
+.prole.on .gsiconhandle {
+  transform: translate(1px, 1px);
 }
 .prolelbl {
   flex: 1 1 auto;
   text-align: left;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .proleclear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
   font-size: 11px;
-  color: var(--slate);
-  padding: 2px 4px;
-  border-radius: 5px;
+  color: var(--text-tertiary);
 }
 .proleclear:hover {
-  color: var(--ink);
-  background: rgba(15, 27, 61, 0.06);
+  color: var(--text-primary);
+  background: var(--surface-hover);
 }
 .roledrop {
   position: absolute;

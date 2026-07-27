@@ -188,6 +188,10 @@ export interface CardInputs {
   share?: ShareSeries | null;
   /** Latest revenue per employee, $m — private companies' second figure. */
   revPerEmp?: number | null;
+  /** Median advertised salary across the live ads that state one. Null when
+   *  none do — the seed `Company.salary` is illustrative, so a card with no
+   *  live salary shows a gap rather than that number. */
+  medianPay?: { text: string; n: number } | null;
   /** Glassdoor, only when it is this company's own rating. */
   glassdoor?: { score: number; reviews?: number | null } | null;
   /** Skill → live-ad count for this company. */
@@ -208,9 +212,12 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
   // ── headline stats ──────────────────────────────────────────────────────
   const open = input.openRoles ?? c.openRoles;
   const hc = input.headcount;
+  const pay = input.medianPay;
   const stats: CardStat[] = [
     { value: open.toLocaleString("en-AU"), label: "Open roles" },
-    { value: c.salaryShort, label: "Median salary" },
+    pay
+      ? { value: pay.text, label: "Median salary", sub: `from ${pay.n} live ads` }
+      : { value: "—", label: "Median salary", sub: "no live salary data" },
   ];
   if (hc) {
     stats.push({

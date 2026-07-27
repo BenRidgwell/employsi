@@ -11,7 +11,7 @@ import { useCompanyStats } from "../../hooks/useCompanyStats";
 import { useOpenRoles } from "../../hooks/useOpenRoles";
 import { useRolesHistory } from "../../hooks/useRolesHistory";
 import { useCompanyJobs } from "../../hooks/useSkillData";
-import { useVacancyTrend, useSkillTrends } from "../../hooks/useRoleHistory";
+import { useVacancyTrend } from "../../hooks/useRoleHistory";
 import { cityForCompany } from "../../data/mapboxGeo";
 import { marketForCity } from "../../data/cityMarket";
 import { NewsPanel } from "./NewsPanel";
@@ -114,18 +114,24 @@ function RoleSearch({
   const filtered = options.filter((o) => o.toLowerCase().includes(q.trim().toLowerCase()));
   return (
     <div className="rolesearch">
-      <button className={`prole ${value ? "on" : ""}`} onClick={() => setOpen((o) => !o)}>
+      {/* Same pill as the header's skill search — same height, radius, raised
+          surface and magnifier gesture — so the card's search doesn't read as a
+          different control from the one above the map. */}
+      <button
+        className={`prole ${value ? "picked" : ""} ${open ? "on" : ""}`}
+        onClick={() => setOpen((o) => !o)}
+      >
         <svg
+          className="gsicon"
           viewBox="0 0 24 24"
-          width="13"
-          height="13"
+          width={19}
+          height={19}
           fill="none"
           stroke="currentColor"
-          strokeWidth={2.4}
-          strokeLinecap="round"
+          aria-hidden
         >
-          <circle cx="11" cy="11" r="7" />
-          <line x1="21" y1="21" x2="16.6" y2="16.6" />
+          <circle className="gsiconlens" cx="11" cy="11" r="6.4" />
+          <line className="gsiconhandle" x1="15.8" y1="15.8" x2="20" y2="20" />
         </svg>
         <span className="prolelbl">{value || "Search a role in this company"}</span>
         {value && (
@@ -215,14 +221,21 @@ export function CompanyPanel() {
   // signed in, so the button reads "Follow" (→ prompts sign-up) when there's no
   // account to save it to.
   const following = !!account && !!panel && followedIds.includes(panel.companyId);
-  // Live market data (real quarterly closes + 52-week range) fetched on the
-  // Worker from Yahoo Finance for whatever ticker resolves. When it's present
-  // the share chart plots the real series and the card counts as live.
-  const liveShare = useShareSeries(panel?.ticker ?? null, panel?.exchange, open && !isBhp);
+  // Live market data (daily + quarterly closes, 52-week range) fetched on the
+  // Worker from Yahoo Finance for whatever ticker resolves. This is what draws
+  // the card's share-price line.
+  //
+  // NB: fetched for EVERY public company, BHP included. These two calls used to
+  // be skipped for BHP because its own live feed carried a share series and the
+  // old chart read that instead — but that series is quarterly, and the card's
+  // chart overlays share price on a DAILY vacancy axis, so the feed cannot fill
+  // it. Leaving the guard in place is what left BHP with no line while Rio Tinto
+  // had one.
+  const liveShare = useShareSeries(panel?.ticker ?? null, panel?.exchange, open);
   // Live fundamentals (real headcount, revenue/EBITDA per employee) fetched on
-  // the Worker from Yahoo Finance. When present they overlay the illustrative
-  // figures in the workforce chart and mark the card as live.
-  const liveStats = useCompanyStats(panel?.ticker ?? null, panel?.exchange, open && !isBhp);
+  // the Worker from Yahoo Finance. Same reasoning: the card reads these
+  // directly, so BHP should not be the one company excluded from them.
+  const liveStats = useCompanyStats(panel?.ticker ?? null, panel?.exchange, open);
   // Live "open roles" for the company, scoped to its own job market (Adzuna for
   // the company's country + The Muse), so it works for every company wherever
   // it's plotted — Perth, London, Houston, Singapore, Tokyo, … Fetched when the
@@ -253,9 +266,6 @@ export function CompanyPanel() {
   // Historical role archive (D1): which roles this company has advertised over
   // time and how long each has been open. Builds forward from when archiving
   // began, so it fills out over the following days/weeks.
-  // Top skill increases / decreases from historical vacancy analysis (D1) —
-  // shown in place of the old "where they're hiring" role list.
-  const skillTrends = useSkillTrends(panel?.companyId, open && !roleFilter);
   // Daily "live vacancies" movement series derived from the D1 archive. Used for
   // WA government agencies — their live count comes from the scraped board, not
   // Adzuna, so their vacancy chart is built from the stored history instead of
@@ -470,6 +480,7 @@ export function CompanyPanel() {
       vacancies: vacancySeries,
       share: liveShare ?? null,
       revPerEmp,
+      medianPay,
       // Only the live culture feed carries a rating this company actually has;
       // everything else would be an industry average wearing its name.
       glassdoor: cultureReal && feed ? { score: feed.glassdoor, reviews: null } : null,
@@ -482,6 +493,7 @@ export function CompanyPanel() {
     vacancySeries,
     liveShare,
     revPerEmp,
+    medianPay,
     cultureReal,
     feed,
     skillCounts,
