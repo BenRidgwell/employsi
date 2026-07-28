@@ -1581,7 +1581,7 @@ body {
   /* Take pointer events so a plain arrow cursor shows (rather than the map's
      grab cursor bleeding through underneath, which made the strip look
      draggable), and so the control cluster is clickable. The scrolling text
-     itself is never selectable. Same pattern as .legend. */
+     itself is never selectable. Same pattern as the local banner. */
   pointer-events: auto;
   cursor: default;
   user-select: none;
@@ -5323,57 +5323,6 @@ body {
 }
 
 /* Current local-city indicator */
-.citybadge {
-  position: fixed;
-  /* Below the header row, so it reads as a label ON the map rather than
-     colliding with the wordmark/search band — and in the left gutter, because
-     the centre column under the header is where the shared search pill drops
-     its suggestion chips (on the local layer too, now). Same left edge as the
-     stats bar and the side panes. */
-  top: calc(var(--head-height) + 18px);
-  left: var(--pane-left);
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 9px 17px;
-  border-radius: 999px;
-  background: #1c1c1e;
-  border: 1px solid #1c1c1e;
-  box-shadow: 0 12px 30px -10px rgba(15, 27, 61, 0.55);
-  pointer-events: none;
-  animation: citybadgein 0.32s ease both;
-}
-.citybadgedot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #35c26b;
-  box-shadow: 0 0 0 4px rgba(53, 194, 107, 0.28);
-}
-.citybadgename {
-  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
-  font-weight: 800;
-  font-size: 15px;
-  color: #fff;
-}
-.citybadgesub {
-  font-size: 10px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.62);
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-}
-@keyframes citybadgein {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 /* Feedback / Need help? / Settings, as the design's top-right cluster. It used
    to be a stack of expanding pills in the bottom-right corner; the design makes
    them three plain 40px buttons at the header's right edge, each opening its
@@ -5945,44 +5894,114 @@ body {
 .auback:hover {
   border-color: var(--slate);
 }
-.legend {
-  position: absolute;
-  /* Aligned under the skills key, past the vertically-centred action rail.
-     The ticker pill occupies the bottom band from 32px to 76px, so the stats
-     bar starts above it. */
-  left: var(--pane-left);
-  bottom: 88px;
-  /* Above the local company markers (mapbox markers, z-index 3; selected 6) so
-     the city stats bar always sits in front of them — matching the other local
-     chrome (heat key / docks). Still below the side panes (z-index 45). */
+/* ── Local-view banner ──────────────────────────────────────────────────────
+   From `Employsi Local View Banner.html`. One pill in the bottom-left corner
+   carrying both things the local layer used to say in two places: which city
+   you are in, and the figures for it. An ink chip names the city, then the
+   stats, divided by hairlines.
+
+   Sits at the frame's own left inset (the rail's line) and its bottom inset —
+   the ticker, which owns that band on the overview layers, is hidden here, so
+   the corner is free. */
+.lvb {
+  position: fixed;
+  left: var(--rail-left);
+  bottom: var(--frame-inset);
+  /* Above the local company markers (mapbox markers, z-index 3; selected 6),
+     below the side panes (45). */
   z-index: 30;
-  /* Informational only — take pointer events so a plain arrow cursor shows
-     (rather than the map's grab cursor bleeding through, which made it look
-     draggable/selectable), but never let the text be selected. */
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 6px 6px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: var(--radius-pill);
+  background: var(--raised-surface);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 18px 40px -18px rgba(28, 28, 30, 0.34);
+  /* Informational only — takes pointer events so a plain arrow cursor shows
+     rather than the map's grab cursor bleeding through, but never selectable. */
   pointer-events: auto;
   cursor: default;
   user-select: none;
+  animation: cc-loadin 260ms ease both;
+}
+.lvbcity {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  font-size: 12px;
-  color: var(--slate);
+  gap: 10px;
+  height: 38px;
+  padding: 0 16px 0 13px;
+  border-radius: var(--radius-pill);
+  background: var(--neutral-900);
+  color: var(--neutral-0);
+}
+/* The live dot pulses a ring outward rather than blinking — the figures beside
+   it are live counts, and a blink would read as a warning. */
+@keyframes lvb-live {
+  0% {
+    box-shadow: 0 0 0 0 rgba(48, 209, 88, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(48, 209, 88, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(48, 209, 88, 0);
+  }
+}
+.lvbdot {
+  display: block;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #30d158;
+  animation: lvb-live 2.4s cubic-bezier(0.32, 0.72, 0, 1) infinite;
+}
+.lvbname {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  white-space: nowrap;
+}
+.lvbkicker {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10.5px;
   font-weight: 500;
-  box-shadow: 0 8px 22px -14px rgba(15, 27, 61, 0.4);
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+  white-space: nowrap;
 }
-.legend b {
-  color: var(--ink);
-  font-weight: 700;
+.lvbstats {
+  display: flex;
+  align-items: center;
 }
-.legend .sep {
-  width: 1px;
-  height: 14px;
-  background: var(--line);
+.lvbstat {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 16px;
+  border-left: 1px solid var(--border-subtle);
+}
+/* No rule before the first figure — it divides the stats from each other, not
+   the group from the city chip, which the gap already does. */
+.lvbstat:first-child {
+  border-left-color: transparent;
+}
+.lvbvalue {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.lvblabel {
+  font-size: 13.5px;
+  font-weight: 450;
+  letter-spacing: -0.008em;
+  color: var(--text-tertiary);
+  white-space: nowrap;
 }
 .pbackdrop {
   position: fixed;
@@ -7838,7 +7857,7 @@ body {
     display: none;
   }
   /* Ticker returns to a full-width strip rather than an inset pill, and sits
-     above the bottom tab bar — the same band .legend and .briefpane use. */
+     above the bottom tab bar — the same band .lvb and .briefpane use. */
   .ticker {
     left: 0;
     right: 0;
@@ -8016,26 +8035,50 @@ body {
   /* Perth / local-view label: smaller, and moved to the LEFT edge, sitting
      below the Employsi wordmark (not under the four layer buttons top-right,
      which it used to overlap). Keeps clear vertical spacing from the logo. */
-  .citybadge {
-    top: 84px;
+  /* The banner keeps both halves on a phone rather than dropping the figures —
+     they are the reason to be on the local layer. It sits above the tab bar,
+     tightens up, and scrolls sideways if the city name is long enough to push
+     the last figure off the edge. */
+  .lvb {
     left: 12px;
-    right: auto;
-    transform: none;
-    gap: 6px;
-    padding: 6px 11px;
-    animation: none;
+    right: 12px;
+    bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+    gap: 4px;
+    padding: 5px;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
-  .citybadgename {
-    font-size: 12px;
+  .lvb::-webkit-scrollbar {
+    display: none;
   }
-  .citybadgesub {
-    font-size: 8.5px;
-    letter-spacing: 0.4px;
+  .lvbcity {
+    height: 32px;
+    gap: 8px;
+    padding: 0 12px 0 10px;
+    flex: 0 0 auto;
   }
-  .citybadgedot {
-    width: 6px;
-    height: 6px;
-    box-shadow: 0 0 0 3px rgba(53, 194, 107, 0.28);
+  .lvbdot {
+    width: 8px;
+    height: 8px;
+  }
+  .lvbname {
+    font-size: 13px;
+  }
+  .lvbkicker {
+    font-size: 9px;
+  }
+  .lvbstats {
+    flex: 0 0 auto;
+  }
+  .lvbstat {
+    gap: 5px;
+    padding: 0 10px;
+  }
+  .lvbvalue {
+    font-size: 12.5px;
+  }
+  .lvblabel {
+    font-size: 11.5px;
   }
 
   /* Marker captions: markedly more compact on a phone so they don't blanket the
@@ -8091,17 +8134,6 @@ body {
     gap: 10px;
   }
 
-  /* Bottom cluster: keep left, shrink, and stack clear of the floating tab bar. */
-  .legend {
-    left: 12px;
-    right: 12px;
-    bottom: calc(86px + env(safe-area-inset-bottom, 0px));
-    justify-content: center;
-    padding: 8px 12px;
-    font-size: 11px;
-    flex-wrap: wrap;
-    gap: 8px 10px;
-  }
   .hintpulse {
     bottom: 120px;
     font-size: 11.5px;
@@ -8239,7 +8271,6 @@ body {
      "More" sheet drive the same store flags those controls used. */
   .toolsdock,
   .mapactions,
-  .legend,
   .gsearch,
   .controls .searchbtn,
   .controls .seglbl {

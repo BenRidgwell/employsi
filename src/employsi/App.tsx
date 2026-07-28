@@ -8,9 +8,8 @@ import { ActionRail } from "./components/ActionRail";
 import { FilterPane } from "./components/FilterPane";
 import { MobileTabBar } from "./components/MobileTabBar";
 import { MobileMenu } from "./components/MobileMenu";
-import { CityBadge } from "./components/CityBadge";
 import { Toast } from "./components/Toast";
-import { Legend } from "./components/Legend";
+import { LocalBanner } from "./components/LocalBanner";
 import { WorldMapbox } from "./components/WorldMapbox";
 import { CompanyPanel } from "./components/panels/CompanyPanel";
 import { ComparePanel } from "./components/panels/ComparePanel";
@@ -78,14 +77,16 @@ function App() {
 
       <HintPulse />
       <Ticker hidden={!zoomedOut} />
-      <Legend />
+      {/* The local layer's city + summary banner, bottom-left. Replaces the
+          old CityBadge pill and Legend stats bar, which said related things in
+          two different corners. */}
+      <LocalBanner />
       <CompanyPanel />
       <ComparePanel />
       <WhatsTrendingPane />
       <AnalystPane />
       <MobileTabBar />
       <MobileMenu />
-      <CityBadge />
       <Toast />
     </div>
   );
