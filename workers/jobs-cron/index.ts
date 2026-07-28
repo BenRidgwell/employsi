@@ -34,6 +34,7 @@ import { fetchQldGovPages, type StoredQldJob } from "./qldGov";
 import { fetchNtGov, type StoredNtJob } from "./ntGov";
 import { fetchTasGov, type StoredTasJob } from "./tasGov";
 import { processNews, NEWS_PARTS } from "./news";
+import { processPortals } from "./careerSites";
 import { fetchMcfJobs } from "./mycareersfuture";
 import { fetchSeekCompanyJobs } from "./seek";
 import { SEEK_ADVERTISERS } from "../../src/employsi/data/seekAdvertisers";
@@ -946,6 +947,9 @@ async function processTasGov(env: Env): Promise<{ parsed: number; agencies: numb
 }
 
 // The four nightly news ticks → which slice of the roster each one takes.
+// Employer career portals — their own daily tick (see careerSites.ts).
+const PORTAL_CRON = "20 4 * * *";
+
 const NEWS_TICKS: Record<string, number> = {
   "40 3 * * *": 0,
   "50 3 * * *": 1,
@@ -963,7 +967,13 @@ export default {
     // checked in the other order the 03:50 news slice would silently run the
     // TAS-gov scrape instead. An exact match is the more specific rule and has
     // to win.
-    if (event.cron && NEWS_TICKS[event.cron] !== undefined) {
+    if (event.cron === PORTAL_CRON) {
+      ctx.waitUntil(
+        processPortals(env, (rows, day) => archiveJobs(env.JOBS_ARCHIVE, rows, day)).then(
+          () => undefined,
+        ),
+      );
+    } else if (event.cron && NEWS_TICKS[event.cron] !== undefined) {
       // Every company every night, split over four ticks ten minutes apart so
       // no single invocation approaches the subrequest budget — see news.ts.
       ctx.waitUntil(
@@ -1008,6 +1018,24 @@ export default {
             error: (e as Error)?.message || String(e),
             stack: (e as Error)?.stack || "",
           },
+          { status: 500 },
+        );
+      }
+    }
+    // Seed / verify the career-portal pull on demand — same reason as the news
+    // trigger below: the nightly tick is otherwise the only writer.
+    if (url.pathname === "/run-portals") {
+      if (url.searchParams.get("token") !== env.CRON_TOKEN) {
+        return new Response("forbidden", { status: 403 });
+      }
+      try {
+        const out = await processPortals(env, (rows, day) =>
+          archiveJobs(env.JOBS_ARCHIVE, rows, day),
+        );
+        return Response.json({ ok: true, sites: out });
+      } catch (e) {
+        return Response.json(
+          { ok: false, error: (e as Error)?.message || String(e) },
           { status: 500 },
         );
       }

@@ -24,6 +24,7 @@
     // the 355-company roster each, so every company is refreshed every night
     // without any one invocation approaching the subrequest budget. Ten minutes
     // apart so the upstream sees a trickle rather than four bursts. See news.ts.
-    "crons": ["0 */6 * * *", "5 */6 * * *", "15 */6 * * *", "30 */6 * * *", "45 */6 * * *", "50 */6 * * *", "40 3 * * *", "50 3 * * *", "0 4 * * *", "10 4 * * *"]
+    // 04:20 UTC: the employer career-portal pull (see careerSites.ts).
+    "crons": ["0 */6 * * *", "5 */6 * * *", "15 */6 * * *", "30 */6 * * *", "45 */6 * * *", "50 */6 * * *", "40 3 * * *", "50 3 * * *", "0 4 * * *", "10 4 * * *", "20 4 * * *"]
   }
 }
