@@ -82,11 +82,17 @@ def _retry_after_seconds(e) -> float | None:
 
 def fetch(url: str, geo: str | None = None, render: bool = True,
           source: str = 'universal', user_agent_type: str = 'desktop',
-          timeout: int = 240, retries: int = 4):
+          timeout: int = 240, retries: int = 4, extra: dict | None = None):
     """Fetch `url` through Oxylabs. Returns (content, status_code) or (None, None).
 
     `content` is the fully-rendered page (HTML) when render=True, or the raw body
     otherwise. `geo` is an Oxylabs geo_location string (e.g. "Australia", "China").
+
+    `extra` is merged into the request payload for options only one caller needs
+    — chiefly `browser_instructions`, which is what gets past an interstitial
+    that resolves itself a second or two after load. NAB's careers site sits
+    behind an AWS WAF like that: rendering alone returns the challenge page,
+    rendering plus a wait returns the jobs.
 
     Requests are throttled and retried politely — see the controls above. A
     target-side 429/5xx (reported by Oxylabs in the result's status_code) is
@@ -96,6 +102,8 @@ def fetch(url: str, geo: str | None = None, render: bool = True,
         payload['render'] = 'html'
     if geo:
         payload['geo_location'] = geo
+    if extra:
+        payload.update(extra)
     body = json.dumps(payload).encode()
     last = None
     for attempt in range(retries):

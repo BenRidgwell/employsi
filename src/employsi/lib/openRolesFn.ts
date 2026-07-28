@@ -400,6 +400,15 @@ const ARCHIVE_SOURCE_LABEL: Record<string, string> = {
   "nsw-gov": "NSW Government",
 };
 
+// One issuer, two roster lines. HSBC Holdings plc is listed on both the LSE and
+// the HKEX, so the roster carries it twice, but it runs a single global careers
+// portal. The portal is archived once, against the primary (LSE) line; the Hong
+// Kong line reads those same rows rather than the scrape running twice and the
+// roles being counted twice in market-wide totals.
+const COMPANY_ID_ALIAS: Record<string, string> = {
+  "hongkong-00005": "london-hsba",
+};
+
 // The current (still-advertised) listings for a company held in the D1 archive
 // from sources OTHER than the live Adzuna/Muse fetch — chiefly SEEK, which is
 // scraped daily off-Worker (it 403-challenges Cloudflare Workers) and archived.
@@ -423,7 +432,7 @@ async function currentFromArchive(
             AND source NOT IN ('adzuna', 'muse')
             AND last_seen >= date('now', '-3 days')`,
       )
-      .bind(id)
+      .bind(COMPANY_ID_ALIAS[id] ?? id)
       .all();
     const rows = res?.results ?? [];
     if (!rows.length) return { added: 0, jobs: [], sources: [] };

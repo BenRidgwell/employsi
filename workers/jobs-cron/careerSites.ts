@@ -7,35 +7,57 @@
  * and hands the rows to the same archive/dedup/skills path everything else
  * uses, so a role advertised on both a portal and Adzuna is counted once.
  *
- * Two platforms are covered, because they are what these employers actually
- * run and each is one contract serving several of them:
+ * Ten platforms are covered. Each was reverse-engineered against the live
+ * site before being written here, and the contract is recorded next to its
+ * fetcher so a future breakage is traceable to a named assumption rather than
+ * showing up as a silent zero:
  *
- *   - **SAP SuccessFactors** (BHP, Woodside). A server-rendered search page,
- *     `/search/?q=&startrow=N`, 25 rows a page. It ships in TWO themes and
- *     these two employers use one each: BHP renders a table of
- *     `<tr class="data-row">` with `jobLocation` / `jobDate` cells, Woodside
- *     renders tiles (`<div class="job-tile-cell">`) whose fields are
+ *   - **SAP SuccessFactors** (BHP, Woodside, ANZ). Server-rendered
+ *     `/search/?q=&startrow=N`. Ships in TWO themes and we see both: BHP and
+ *     ANZ render `<tr class="data-row">`, Woodside renders tiles
+ *     (`<div class="job-tile-cell">`) whose fields are
  *     `id="job-<id>-desktop-section-<field>-value"` divs. Both carry the same
  *     `jobTitle-link` anchor, so the parser splits on whichever wrapper the
- *     page actually uses and reads the fields per theme.
- *   - **Workday** (CBA). A JSON API — POST `/wday/cxs/<tenant>/<site>/jobs`
- *     with `{appliedFacets,limit,offset,searchText}` — returning `jobPostings`
- *     with title, `locationsText`, `externalPath` and a relative `postedOn`.
+ *     page uses. Page size differs per tenant (BHP/Woodside 25, ANZ 100), so
+ *     it is read off the first page rather than assumed.
+ *   - **Workday** (CBA). POST `/wday/cxs/<tenant>/<site>/jobs` with
+ *     `{appliedFacets,limit,offset,searchText}` → `jobPostings`.
+ *   - **Eightfold AI** (HSBC). GET `/api/apply/v2/jobs?domain=<d>&start=N&num=`
+ *     → `{positions,count}`. `num` is accepted and ignored — the API hands back
+ *     10 a page whatever you ask for — so the page size is pinned at 10.
+ *   - **Symphony Talent / SmashFly** (Rio Tinto). jobs.riotinto.com is a
+ *     WordPress shell; the jobs come from `jobsapi-google.m-cloud.io/api/
+ *     job/search?companyName=companies/<uuid>`, the org id and host both read
+ *     out of the page's `cws_opts`. Returns `{totalHits,searchResults[].job}`.
+ *   - **Oracle Recruiting Cloud** (Westpac). GET
+ *     `/hcmRestApi/resources/latest/recruitingCEJobRequisitions` with the
+ *     `finder=findReqs;siteNumber=CX_1,limit=,offset=` finder syntax →
+ *     `items[0].requisitionList` plus a `TotalJobsCount`.
+ *   - **LiveHire** (Wesfarmers). Two steps: GET an anonymous bearer from
+ *     `/api/jobsapi/careers/auth/token/<segment>`, then POST
+ *     `/careers-api/search/<segment>/<page>/<size>`.
+ *   - **Greenhouse** (Goodman). The public board API,
+ *     `boards-api.greenhouse.io/v1/boards/<token>/jobs` — one call, no paging.
+ *   - **Avature** (Macquarie). Server-rendered
+ *     `/en_US/careers/SearchJobs/?jobOffset=N`. Page size is fixed at 9 by the
+ *     tenant — `jobRecordsPerPage` is accepted and ignored — so the offset
+ *     steps by 9.
+ *   - **Next.js data island** (Fortescue). careers.fortescue.com is a client
+ *     app, but its `__NEXT_DATA__` already carries the whole list under
+ *     `componentProps.<uuid>.fetchedJobs`, so no API hunt is needed.
+ *   - **CSL's own board** (CSL). jobs.csl.com is bespoke Tailwind markup, one
+ *     `<a class="block hover:bg-gray-50 group">` a role, 25 to a `?page=N`.
  *
- * Both were verified against the live sites before this was written; the
- * per-site contracts are recorded in SITES below so a future breakage is
- * traceable to a named assumption rather than a silent zero.
- *
- * NOT covered yet, and why — each needs its own reverse-engineering pass:
- *   - Rio Tinto (jobs.riotinto.com): not SuccessFactors; /search/ 404s.
- *   - Fortescue (careers.fortescue.com): a ~1MB client-rendered app, so the
- *     listings are not in the HTML and its API has to be found first.
- *   - Westpac, NAB, ANZ, Macquarie, Wesfarmers, Goodman: no portal URL was
- *     given and they are not on the obvious Workday tenant subdomains, so the
- *     right entry point has to be established before anything is written.
+ * NOT covered here, and why:
+ *   - NAB (careers.nab.com.au, Clinch). Its AWS WAF returns an empty shell to a
+ *     Cloudflare Worker — measured: zero roles while every other site in the
+ *     same tick returned hundreds. It needs a rendered fetch with a wait for
+ *     the challenge to settle, so it runs as a GitHub Action through Oxylabs
+ *     instead: scripts/nab-to-d1.py, writing the same `portal-cl` rows into the
+ *     same archive.
  *   - Jora: 403s a plain request; it needs the Oxylabs path the Indeed and
- *     Zhaopin scrapers already use, which runs as a GitHub Action rather than
- *     in the Worker (datacentre IPs are blocked).
+ *     JobsDB scrapers use, which runs as a GitHub Action rather than in the
+ *     Worker (datacentre IPs are blocked).
  */
 
 import { skillsForText } from "../../src/employsi/data/skillsTaxonomy";
@@ -51,7 +73,17 @@ export interface PortalJob {
   skills: string[];
 }
 
-type Platform = "successfactors" | "workday";
+type Platform =
+  | "successfactors"
+  | "workday"
+  | "eightfold"
+  | "symphony"
+  | "oracle"
+  | "livehire"
+  | "greenhouse"
+  | "avature"
+  | "nextdata"
+  | "csl";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -61,12 +93,14 @@ interface SiteDef {
    *  like "Principal" aren't read as their literal job title. */
   sector: string;
   platform: Platform;
-  /** SuccessFactors: the portal origin. Workday: the full CXS jobs endpoint. */
+  /** The platform's entry point. See each fetcher for what it expects. */
   endpoint: string;
   /** Origin used to absolutise a job's relative path. */
   origin: string;
   /** Default hub when a role's location text matches no known city. */
   homeHub: string | null;
+  /** Hard ceiling on pages, so a paging bug can't run away with the budget. */
+  maxPages?: number;
 }
 
 export const SITES: SiteDef[] = [
@@ -97,22 +131,127 @@ export const SITES: SiteDef[] = [
     origin: "https://cba.wd3.myworkdayjobs.com/en-US/CommBank_Careers",
     homeHub: "sydney",
   },
+  {
+    id: "melbourne-anz",
+    name: "ANZ Group Holdings",
+    sector: "Financial Services",
+    platform: "successfactors",
+    endpoint: "https://careers.anz.com",
+    origin: "https://careers.anz.com",
+    homeHub: "melbourne",
+  },
+  {
+    id: "rio",
+    name: "Rio Tinto",
+    sector: "Iron Ore & Metals",
+    // companyName is the org id out of the site's own cws_opts config.
+    endpoint:
+      "https://jobsapi-google.m-cloud.io/api/job/search?companyName=companies%2Fde826bcc-d0cf-4689-9fc1-c1d9b100d59c",
+    platform: "symphony",
+    origin: "https://jobs.riotinto.com",
+    homeHub: "perth",
+  },
+  {
+    id: "fmg",
+    name: "Fortescue",
+    sector: "Iron Ore & Green Energy",
+    platform: "nextdata",
+    endpoint: "https://careers.fortescue.com/en/jobs",
+    origin: "https://careers.fortescue.com",
+    homeHub: "perth",
+  },
+  {
+    id: "sydney-wbc",
+    name: "Westpac Banking Corporation",
+    sector: "Financial Services",
+    platform: "oracle",
+    endpoint: "https://ebuu.fa.ap1.oraclecloud.com",
+    origin: "https://ebuu.fa.ap1.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX",
+    homeHub: "sydney",
+  },
+  {
+    id: "wes",
+    name: "Wesfarmers",
+    sector: "Diversified Retail",
+    // The LiveHire segment code; both the token and the search hang off it.
+    platform: "livehire",
+    endpoint: "wesfarmerscorporate",
+    origin: "https://www.livehire.com",
+    homeHub: "perth",
+  },
+  {
+    id: "sydney-mqg",
+    name: "Macquarie Group",
+    sector: "Financial Services",
+    platform: "avature",
+    endpoint: "https://recruitment.macquarie.com/en_US/careers/SearchJobs",
+    origin: "https://recruitment.macquarie.com",
+    homeHub: "sydney",
+  },
+  {
+    id: "sydney-gmg",
+    name: "Goodman Group",
+    sector: "Financial Services",
+    platform: "greenhouse",
+    endpoint: "https://boards-api.greenhouse.io/v1/boards/goodman/jobs",
+    origin: "https://ce.goodman.com/about-goodman/careers/job-vacancies",
+    homeHub: "sydney",
+  },
+  {
+    id: "melbourne-csl",
+    name: "CSL Limited",
+    sector: "Healthcare and Life Sciences",
+    platform: "csl",
+    endpoint: "https://jobs.csl.com/en/jobs",
+    origin: "https://jobs.csl.com",
+    homeHub: "melbourne",
+  },
+  {
+    // HSBC's portal is global and the roster carries the issuer twice (LSE and
+    // HKEX). It is archived once, against the primary listing; the Hong Kong
+    // line reads the same rows through COMPANY_ID_ALIAS in openRolesFn, so the
+    // roles are shown on both cards without being counted twice.
+    id: "london-hsba",
+    name: "HSBC Holdings",
+    sector: "Financial Services",
+    platform: "eightfold",
+    endpoint: "https://portal.careers.hsbc.com/api/apply/v2/jobs?domain=hsbc.com",
+    origin: "https://portal.careers.hsbc.com",
+    homeHub: "london",
+  },
+];
+
+/**
+ * Which nightly tick fetches which sites.
+ *
+ * Sized by how deep each portal pages, not by how many there are. The binding
+ * constraint is wall time, not subrequests: several of these hand back 9-25
+ * roles a request over hundreds of roles (HSBC ~1,500 at 10 a page, Macquarie
+ * ~500 at 9, CSL ~1,300 at 25). Walked one page at a time in a single
+ * invocation that overruns the waitUntil budget and the remaining sites are
+ * cancelled with no error — which is exactly what a first run here did. Pages
+ * are now fetched in parallel windows (see pagedParallel) AND the sites split
+ * four ways, so no tick depends on the budget being generous.
+ */
+export const PORTAL_GROUPS: string[][] = [
+  ["bhp", "wds", "cba", "melbourne-anz"],
+  ["rio", "fmg", "sydney-wbc", "wes"],
+  ["sydney-mqg", "sydney-gmg"],
+  ["london-hsba", "melbourne-csl"],
 ];
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
 
-const SF_PAGE = 25;
-const SF_MAX_PAGES = 20; // 500 roles — comfortably above either portal's total
 const WD_PAGE = 20;
-const WD_MAX_PAGES = 25; // 500 roles
+const DEFAULT_MAX_PAGES = 40;
 
 function clean(s: string): string {
   return s
     .replace(/&amp;/g, "&")
     .replace(/&#39;/g, "'")
     .replace(/&quot;/g, '"')
-    .replace(/&nbsp;/g, " ")
+    .replace(/&nbsp;|\u00a0/g, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -120,35 +259,117 @@ function clean(s: string): string {
 
 const today = (): string => new Date().toISOString().slice(0, 10);
 
-/** City names we plot, longest first so "Port Hedland" beats "Perth". */
-const HUB_MATCH: [string, string][] = [
+/** ISO day from anything Date.parse understands, else today. */
+function isoDay(s: string): string {
+  const t = Date.parse(s);
+  return Number.isNaN(t) ? today() : new Date(t).toISOString().slice(0, 10);
+}
+
+/** ISO day from a unix timestamp in seconds (Eightfold's t_update). */
+function isoFromEpoch(sec: number): string {
+  return sec > 0 ? new Date(sec * 1000).toISOString().slice(0, 10) : today();
+}
+
+/**
+ * Free-text location → a hub the app actually plots. Specific before general,
+ * so "Port Hedland" beats "Perth" and "Western Australia" beats "Australia".
+ *
+ * This list has to cover the world now, not just Australia. The first three
+ * portals were AU-only, so anything unrecognised could safely fall back to the
+ * employer's home city. These are global employers — HSBC advertises in New
+ * York, CSL in Bremen, Goodman in Madrid — and that fallback would have plotted
+ * a German plasma-centre role on Melbourne. See hubFor.
+ */
+const HUB_MATCH: [string, string | null][] = [
+  // Australia — mine sites and states resolve to their capital.
   ["port hedland", "perth"],
   ["newman", "perth"],
   ["karratha", "perth"],
   ["kalgoorlie", "perth"],
+  ["tom price", "perth"],
+  ["paraburdoo", "perth"],
+  ["pilbara", "perth"],
   ["western australia", "perth"],
+  [" wa,", "perth"],
   ["perth", "perth"],
   ["brisbane", "brisbane"],
+  ["gladstone", "brisbane"],
+  ["townsville", "brisbane"],
+  ["weipa", "brisbane"],
   ["queensland", "brisbane"],
+  [" qld", "brisbane"],
   ["melbourne", "melbourne"],
-  ["victoria", "melbourne"],
+  ["broadmeadows", "melbourne"],
+  ["geelong", "melbourne"],
+  ["victoria, austral", "melbourne"],
+  [" vic,", "melbourne"],
   ["adelaide", "adelaide"],
+  ["south australia", "adelaide"],
   ["canberra", "canberra"],
   ["sydney", "sydney"],
   ["new south wales", "sydney"],
+  [" nsw", "sydney"],
+  // Asia-Pacific
   ["singapore", "singapore"],
-  ["houston", "houston"],
+  ["hong kong", "hongkong"],
+  ["hongkong", "hongkong"],
+  ["tokyo", "tokyo"],
+  ["seoul", "seoul"],
+  ["beijing", "beijing"],
+  ["shanghai", "shanghai"],
+  ["shenzhen", "shenzhen"],
+  ["ganzhou", "ganzhou"],
+  ["dubai", "dubai"],
+  // Europe / Africa
   ["london", "london"],
-  ["santiago", null as unknown as string],
+  ["paris", "paris"],
+  ["zurich", "zurich"],
+  ["zürich", "zurich"],
+  ["johannesburg", "johannesburg"],
+  // North America
+  ["new york", "newyork"],
+  ["san francisco", "sanfrancisco"],
+  ["san jose", "sanjose"],
+  ["san diego", "sandiego"],
+  ["los angeles", "losangeles"],
+  ["seattle", "seattle"],
+  ["denver", "denver"],
+  ["houston", "houston"],
+  ["chicago", "chicago"],
+  ["austin", "austin"],
+  ["atlanta", "atlanta"],
+  ["bentonville", "bentonville"],
+  ["omaha", "omaha"],
+  ["indianapolis", "indianapolis"],
+  ["charlotte", "charlotte"],
+  ["minneapolis", "minneapolis"],
+  ["cincinnati", "cincinnati"],
+  ["boston", "boston"],
+  ["dallas", "dallas"],
+  ["washington", "washington"],
+  ["philadelphia", "philadelphia"],
+  ["portland", "portland"],
+  ["toronto", "toronto"],
+  ["calgary", "calgary"],
+  ["montreal", "montreal"],
+  ["vancouver", "vancouver"],
+  ["ottawa", "ottawa"],
 ];
 
-/** Map a portal's free-text location onto a hub we plot, else the home hub. */
-function hubFor(loc: string, home: string | null): string | null {
+/**
+ * Map a role's location onto a hub we plot.
+ *
+ * The home-hub fallback only applies when the text names the employer's own
+ * country without a city ("Australia", "QLD, Australia") or is blank. A role
+ * in a country we don't plot returns null — unplaced — because putting a
+ * Vilvoorde role on Sydney because Goodman is Sydney-listed would be inventing
+ * a fact the source never carried.
+ */
+function hubFor(loc: string, home: string | null, homeCountry: RegExp): string | null {
   const l = (loc || "").toLowerCase();
   for (const [needle, hub] of HUB_MATCH) if (l.includes(needle)) return hub;
-  // "Australia" with no city is genuinely unplaceable to a single hub, so it
-  // falls to the employer's home rather than being dropped.
-  return home;
+  if (!l.trim() || homeCountry.test(l)) return home;
+  return null;
 }
 
 /** "Posted Yesterday" / "Posted 5 Days Ago" → an ISO date, best effort. */
@@ -168,32 +389,109 @@ function workdayPosted(s: string): string {
   return today();
 }
 
-/** "28 Jul 2026" → "2026-07-28". */
-function sfPosted(s: string): string {
-  const t = Date.parse(s);
-  return Number.isNaN(t) ? today() : new Date(t).toISOString().slice(0, 10);
+/** Country patterns for the home-hub fallback, keyed by the hub itself. */
+const HOME_COUNTRY: Record<string, RegExp> = {
+  perth: /australia/,
+  adelaide: /australia/,
+  melbourne: /australia/,
+  sydney: /australia/,
+  brisbane: /australia/,
+  canberra: /australia/,
+  london: /united kingdom|england|\buk\b/,
+  hongkong: /hong kong|china/,
+};
+
+/** One row built the same way whatever platform it came from. */
+function job(site: SiteDef, title: string, loc: string, url: string, created: string, cat: string) {
+  return {
+    t: title,
+    loc,
+    cat,
+    url,
+    created,
+    city: hubFor(loc, site.homeHub, HOME_COUNTRY[site.homeHub ?? ""] ?? /$^/),
+    skills: skillsForText(title, undefined, { sector: site.sector }),
+  };
 }
 
+async function getText(url: string, init?: RequestInit): Promise<string | null> {
+  try {
+    const res = await fetch(url, {
+      ...init,
+      headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml", ...init?.headers },
+    });
+    return res.ok ? await res.text() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Pages fetched at once from one portal. Enough to keep the walk inside a
+ *  cron invocation, small enough to stay a polite trickle to the employer. */
+const PAGE_CONCURRENCY = 6;
+
+/**
+ * Walk an offset-paged source, fetching pages in parallel windows instead of
+ * one at a time.
+ *
+ * `page(i)` returns the rows of zero-based page `i` (empty when past the end).
+ * The walk stops at the first page that comes back empty or short, which for a
+ * stable offset pager means every later page is empty too.
+ */
+async function pagedParallel<T>(
+  page: (i: number) => Promise<T[]>,
+  pageSize: number,
+  maxPages: number,
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let start = 0; start < maxPages; start += PAGE_CONCURRENCY) {
+    const idx: number[] = [];
+    for (let i = start; i < Math.min(start + PAGE_CONCURRENCY, maxPages); i++) idx.push(i);
+    const windows = await Promise.all(idx.map(page));
+    let done = false;
+    for (const rows of windows) {
+      out.push(...rows);
+      if (rows.length < pageSize) {
+        done = true;
+        break;
+      }
+    }
+    if (done) break;
+  }
+  return out;
+}
+
+async function getJson<T>(url: string, init?: RequestInit): Promise<T | null> {
+  try {
+    const res = await fetch(url, {
+      ...init,
+      headers: { "User-Agent": UA, Accept: "application/json", ...init?.headers },
+    });
+    return res.ok ? ((await res.json()) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+// ── SAP SuccessFactors ───────────────────────────────────────────────────────
 async function fetchSuccessFactors(site: SiteDef): Promise<PortalJob[]> {
   const out: PortalJob[] = [];
   const seen = new Set<string>();
-  for (let page = 0; page < SF_MAX_PAGES; page++) {
-    const url = `${site.endpoint}/search/?q=&startrow=${page * SF_PAGE}`;
-    let html = "";
-    try {
-      const res = await fetch(url, {
-        headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml" },
-      });
-      if (!res.ok) break;
-      html = await res.text();
-    } catch {
-      break;
-    }
+  // Page size is a tenant setting (BHP/Woodside 25, ANZ 100). It is read off
+  // the first page rather than assumed, because guessing low silently skips
+  // roles and guessing high ends the walk after one page.
+  let pageSize = 0;
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  for (let page = 0; page < max; page++) {
+    const startrow = pageSize ? page * pageSize : 0;
+    const html = await getText(`${site.endpoint}/search/?q=&startrow=${startrow}`);
+    if (!html) break;
     // Table theme first; tile theme when the page carries no table rows.
     const table = html.split(/<tr class="data-row">/i).slice(1);
     const tiles = table.length ? [] : html.split(/<div class="job-tile-cell">/i).slice(1);
     const rows = table.length ? table : tiles;
     if (!rows.length) break;
+    if (!pageSize) pageSize = rows.length;
     let added = 0;
     for (const raw of rows) {
       const row = table.length ? raw.split(/<\/tr>/i)[0] : raw;
@@ -212,23 +510,25 @@ async function fetchSuccessFactors(site: SiteDef): Promise<PortalJob[]> {
         row.match(/<span class="jobDate[^"]*">([\s\S]*?)<\/span>/i) ??
         row.match(/id="job-\d+-desktop-section-date-value"[^>]*>([\s\S]*?)<\/div>/i);
       const loc = locM ? clean(locM[1]) : "";
-      out.push({
-        t: title,
-        loc,
-        cat: "Career portal",
-        url: href.startsWith("http") ? href : site.origin + href,
-        created: dateM ? sfPosted(clean(dateM[1])) : today(),
-        city: hubFor(loc, site.homeHub),
-        skills: skillsForText(title, undefined, { sector: site.sector }),
-      });
+      out.push(
+        job(
+          site,
+          title,
+          loc,
+          href.startsWith("http") ? href : site.origin + href,
+          dateM ? isoDay(clean(dateM[1])) : today(),
+          "Career portal",
+        ),
+      );
       added++;
     }
     // A short page is the last page.
-    if (added === 0 || rows.length < SF_PAGE) break;
+    if (added === 0 || rows.length < pageSize) break;
   }
   return out;
 }
 
+// ── Workday ──────────────────────────────────────────────────────────────────
 interface WorkdayPosting {
   title?: string;
   locationsText?: string;
@@ -239,29 +539,19 @@ interface WorkdayPosting {
 async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
   const out: PortalJob[] = [];
   const seen = new Set<string>();
-  for (let page = 0; page < WD_MAX_PAGES; page++) {
-    let postings: WorkdayPosting[] = [];
-    try {
-      const res = await fetch(site.endpoint, {
-        method: "POST",
-        headers: {
-          "User-Agent": UA,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          appliedFacets: {},
-          limit: WD_PAGE,
-          offset: page * WD_PAGE,
-          searchText: "",
-        }),
-      });
-      if (!res.ok) break;
-      const json = (await res.json()) as { jobPostings?: WorkdayPosting[] };
-      postings = json.jobPostings ?? [];
-    } catch {
-      break;
-    }
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  for (let page = 0; page < max; page++) {
+    const json = await getJson<{ jobPostings?: WorkdayPosting[] }>(site.endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        appliedFacets: {},
+        limit: WD_PAGE,
+        offset: page * WD_PAGE,
+        searchText: "",
+      }),
+    });
+    const postings = json?.jobPostings ?? [];
     if (!postings.length) break;
     for (const p of postings) {
       const title = (p.title || "").trim();
@@ -269,29 +559,447 @@ async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
       if (!title || !path || seen.has(path)) continue;
       seen.add(path);
       const loc = (p.locationsText || "").trim();
-      out.push({
-        t: title,
-        loc,
-        cat: "Career portal",
-        url: site.origin + path,
-        created: workdayPosted(p.postedOn || ""),
-        city: hubFor(loc, site.homeHub),
-        skills: skillsForText(title, undefined, { sector: site.sector }),
-      });
+      out.push(
+        job(site, title, loc, site.origin + path, workdayPosted(p.postedOn || ""), "Career portal"),
+      );
     }
     if (postings.length < WD_PAGE) break;
   }
   return out;
 }
 
-export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
-  return site.platform === "successfactors" ? fetchSuccessFactors(site) : fetchWorkday(site);
+// ── Eightfold AI ─────────────────────────────────────────────────────────────
+interface EightfoldPos {
+  name?: string;
+  location?: string;
+  t_update?: number;
+  canonicalPositionUrl?: string;
+  department?: string;
+  id?: number | string;
 }
+
+// `num` is not honoured by this API — it returns 10 whatever you ask for — so
+// the page size is fixed here rather than requested.
+const EF_PAGE = 10;
+
+async function fetchEightfold(site: SiteDef): Promise<PortalJob[]> {
+  const max = site.maxPages ?? 200; // HSBC alone is ~1,500 roles at 10 a page
+  const positions = await pagedParallel<EightfoldPos>(
+    async (i) => {
+      const json = await getJson<{ positions?: EightfoldPos[] }>(
+        `${site.endpoint}&start=${i * EF_PAGE}&num=${EF_PAGE}`,
+      );
+      return json?.positions ?? [];
+    },
+    EF_PAGE,
+    max,
+  );
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const p of positions) {
+    const title = (p.name || "").trim();
+    const key = String(p.id ?? p.canonicalPositionUrl ?? title);
+    if (!title || seen.has(key)) continue;
+    seen.add(key);
+    out.push(
+      job(
+        site,
+        title,
+        (p.location || "").trim(),
+        p.canonicalPositionUrl || `${site.origin}/careers/job/${p.id ?? ""}`,
+        isoFromEpoch(Number(p.t_update) || 0),
+        (p.department || "").trim() || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── Symphony Talent / SmashFly ───────────────────────────────────────────────
+interface SymphonyJob {
+  title?: string;
+  url?: string;
+  open_date?: string;
+  primary_category?: string;
+  google_locations?: { city?: string; state?: string; country?: string; address?: string }[];
+  primary_city?: string;
+}
+
+// `limit` is accepted and ignored; the tenant returns 10 a page.
+const SY_PAGE = 10;
+
+async function fetchSymphony(site: SiteDef): Promise<PortalJob[]> {
+  const max = site.maxPages ?? 60;
+  const results = await pagedParallel<{ job?: SymphonyJob }>(
+    async (i) => {
+      const json = await getJson<{ searchResults?: { job?: SymphonyJob }[] }>(
+        `${site.endpoint}&limit=${SY_PAGE}&offset=${i * SY_PAGE}`,
+        { headers: { Referer: site.origin + "/" } },
+      );
+      return json?.searchResults ?? [];
+    },
+    SY_PAGE,
+    max,
+  );
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const r of results) {
+    const j = r.job;
+    const title = (j?.title || "").trim();
+    const url = (j?.url || "").trim();
+    if (!title || seen.has(url || title)) continue;
+    seen.add(url || title);
+    const g = j?.google_locations?.[0];
+    const loc =
+      [g?.city, g?.state, g?.country].filter(Boolean).join(", ") || (j?.primary_city ?? "");
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        url || site.origin,
+        isoDay(j?.open_date || ""),
+        (j?.primary_category || "").trim() || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── Oracle Recruiting Cloud ──────────────────────────────────────────────────
+interface OracleReq {
+  Title?: string;
+  PrimaryLocation?: string;
+  PostedDate?: string;
+  Id?: string | number;
+  JobFunction?: string;
+}
+
+const OR_PAGE = 25;
+
+async function fetchOracle(site: SiteDef): Promise<PortalJob[]> {
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  const list = await pagedParallel<OracleReq>(
+    async (i) => {
+      const finder = `findReqs;siteNumber=CX_1,limit=${OR_PAGE},offset=${i * OR_PAGE},sortBy=POSTING_DATES_DESC`;
+      const url =
+        `${site.endpoint}/hcmRestApi/resources/latest/recruitingCEJobRequisitions` +
+        `?onlyData=true&expand=requisitionList.secondaryLocations&finder=${encodeURIComponent(finder)}`;
+      const json = await getJson<{ items?: { requisitionList?: OracleReq[] }[] }>(url);
+      return json?.items?.[0]?.requisitionList ?? [];
+    },
+    OR_PAGE,
+    max,
+  );
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const r of list) {
+    const title = (r.Title || "").trim();
+    const id = String(r.Id ?? "");
+    if (!title || seen.has(id || title)) continue;
+    seen.add(id || title);
+    out.push(
+      job(
+        site,
+        title,
+        (r.PrimaryLocation || "").trim(),
+        `${site.origin}/job/${id}`,
+        isoDay(r.PostedDate || ""),
+        (r.JobFunction || "").trim() || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── LiveHire ─────────────────────────────────────────────────────────────────
+interface LiveHireJob {
+  roleName?: string;
+  physicalLocation?: string;
+  workLocationName?: string;
+  countryName?: string;
+  postedFrom?: string;
+  urlCode?: string;
+  seoSlug?: string;
+  workType?: string;
+}
+
+async function fetchLiveHire(site: SiteDef): Promise<PortalJob[]> {
+  const segment = site.endpoint; // the LiveHire segment code
+  const tok = await getJson<{ access_token?: string; token_type?: string }>(
+    `${site.origin}/api/jobsapi/careers/auth/token/${segment}`,
+  );
+  if (!tok?.access_token) return [];
+  const auth = `${tok.token_type || "Bearer"} ${tok.access_token}`;
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const size = 50;
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  for (let page = 1; page <= max; page++) {
+    const json = await getJson<{ jobs?: LiveHireJob[]; hasMoreResults?: boolean }>(
+      `${site.origin}/careers-api/search/${segment}/${page}/${size}`,
+      {
+        method: "POST",
+        headers: { Authorization: auth, "Content-Type": "application/json" },
+        body: JSON.stringify({ multiSegment: true }),
+      },
+    );
+    const jobs = json?.jobs ?? [];
+    if (!jobs.length) break;
+    for (const j of jobs) {
+      const title = (j.roleName || "").trim();
+      const code = (j.urlCode || j.seoSlug || "").trim();
+      if (!title || seen.has(code || title)) continue;
+      seen.add(code || title);
+      const loc = [j.physicalLocation, j.workLocationName, j.countryName]
+        .filter(Boolean)
+        .join(", ")
+        .trim();
+      out.push(
+        job(
+          site,
+          title,
+          loc,
+          code
+            ? `${site.origin}/widgets/job-listings/${segment}/job/${code}`
+            : `${site.origin}/widgets/job-listings/${segment}`,
+          isoDay(j.postedFrom || ""),
+          (j.workType || "").trim() || "Career portal",
+        ),
+      );
+    }
+    if (!json?.hasMoreResults) break;
+  }
+  return out;
+}
+
+// ── Greenhouse ───────────────────────────────────────────────────────────────
+interface GreenhouseJob {
+  title?: string;
+  location?: { name?: string };
+  absolute_url?: string;
+  updated_at?: string;
+  first_published?: string;
+  id?: number;
+}
+
+async function fetchGreenhouse(site: SiteDef): Promise<PortalJob[]> {
+  const json = await getJson<{ jobs?: GreenhouseJob[] }>(site.endpoint);
+  const jobs = json?.jobs ?? [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const j of jobs) {
+    const title = (j.title || "").trim();
+    const key = String(j.id ?? title);
+    if (!title || seen.has(key)) continue;
+    seen.add(key);
+    const loc = (j.location?.name || "").trim();
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        j.absolute_url || site.origin,
+        isoDay(j.first_published || j.updated_at || ""),
+        "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── Avature (Macquarie) ──────────────────────────────────────────────────────
+// The tenant fixes the page size at 9; jobRecordsPerPage is accepted and
+// ignored, so the offset steps by 9.
+const AV_PAGE = 9;
+
+async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const max = site.maxPages ?? 80;
+  const blocks = await pagedParallel<string>(
+    async (i) => {
+      const html = await getText(`${site.endpoint}/?listFilterMode=1&jobOffset=${i * AV_PAGE}`);
+      return html ? html.split(/article article--result/i).slice(1) : [];
+    },
+    AV_PAGE,
+    max,
+  );
+  for (const b of blocks) {
+    const a = b.match(/<a[^>]*href="([^"]*JobDetail[^"]*)"[^>]*>([\s\S]*?)<\/a>/i);
+    if (!a) continue;
+    const href = clean(a[1]);
+    const title = clean(a[2]);
+    if (!title || seen.has(href || title)) continue;
+    seen.add(href || title);
+    // Text cells in order: req id, location, posted date, category. The date is
+    // the only one with a fixed shape, so it anchors the other two. The node is
+    // matched before cleaning, so no length bound is applied — Avature indents
+    // its markup heavily and a "{2,60}" bound rejected every cell on the
+    // grounds of the surrounding whitespace.
+    const cells = [...b.matchAll(/>([^<>]+)</g)]
+      .map((m) => clean(m[1]))
+      .filter((s) => s.length > 1 && !/^(View details|Apply|ID)$/i.test(s));
+    const dateAt = cells.findIndex((c) => /^\d{1,2} [A-Za-z]{3} \d{4}$/.test(c));
+    out.push(
+      job(
+        site,
+        title,
+        dateAt > 0 ? cells[dateAt - 1] : "",
+        href.startsWith("http") ? href : site.origin + href,
+        dateAt >= 0 ? isoDay(cells[dateAt]) : today(),
+        dateAt >= 0 && cells[dateAt + 1] ? cells[dateAt + 1] : "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── Next.js data island (Fortescue) ──────────────────────────────────────────
+interface FortescueJob {
+  id?: string;
+  title?: string;
+  country?: string;
+  site?: string;
+  category?: string;
+  createdDateTime?: string;
+}
+
+/** ASP.NET's `/Date(1785118637000+0000)/` → an ISO day. */
+function dotNetDate(s: string): string {
+  const m = /\/Date\((\d+)/.exec(s || "");
+  return m ? new Date(Number(m[1])).toISOString().slice(0, 10) : today();
+}
+
+async function fetchNextData(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const m = html.match(/id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i);
+  if (!m) return [];
+  let data: unknown;
+  try {
+    data = JSON.parse(m[1]);
+  } catch {
+    return [];
+  }
+  // The component id is a generated uuid, so the list is found by shape rather
+  // than by path — any componentProps entry carrying a fetchedJobs array.
+  const props = (data as { props?: { pageProps?: { componentProps?: Record<string, unknown> } } })
+    ?.props?.pageProps?.componentProps;
+  let jobs: FortescueJob[] = [];
+  for (const v of Object.values(props ?? {})) {
+    const f = (v as { fetchedJobs?: FortescueJob[] })?.fetchedJobs;
+    if (Array.isArray(f) && f.length) {
+      jobs = f;
+      break;
+    }
+  }
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const j of jobs) {
+    const title = (j.title || "").trim();
+    const id = String(j.id ?? "");
+    if (!title || seen.has(id || title)) continue;
+    seen.add(id || title);
+    // `site` is "Australia - Perth"; `country` is the fallback when it is blank
+    // (the exploration roles carry a country only).
+    const loc = (j.site || "").trim() || (j.country || "").trim();
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        id ? `${site.endpoint}/${id}` : site.endpoint,
+        dotNetDate(j.createdDateTime || ""),
+        (j.category || "").trim() || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── CSL's own board ──────────────────────────────────────────────────────────
+const CSL_PAGE = 25;
+
+async function fetchCsl(site: SiteDef): Promise<PortalJob[]> {
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const max = site.maxPages ?? 60;
+  // `?page=` is 1-based here, unlike the offset pagers.
+  const rows = await pagedParallel<RegExpMatchArray>(
+    async (i) => {
+      const html = await getText(`${site.endpoint}?page=${i + 1}`);
+      if (!html) return [];
+      return [
+        ...html.matchAll(
+          /<a class="block hover:bg-gray-50 group" href="([^"]+)">([\s\S]*?)<\/a>/gi,
+        ),
+      ];
+    },
+    CSL_PAGE,
+    max,
+  );
+  for (const r of rows) {
+    const href = clean(r[1]);
+    // Text cells run: title, work type, department(s), business unit,
+    // location, requisition id, "Posted on", date. The requisition id is the
+    // one field with a fixed shape, so the location is read as the cell
+    // before it rather than by counting from the start.
+    const cells = [...r[2].matchAll(/>([^<>]{2,140})</g)].map((m) => clean(m[1])).filter(Boolean);
+    const title = cells[0] || "";
+    if (!title || seen.has(href || title)) continue;
+    seen.add(href || title);
+    const reqAt = cells.findIndex((c) => /^R-\d+$/.test(c));
+    const posted = cells[cells.length - 1] || "";
+    out.push(
+      job(
+        site,
+        title,
+        reqAt > 0 ? cells[reqAt - 1] : "",
+        href.startsWith("http") ? href : site.origin + href,
+        /\d{4}/.test(posted) ? isoDay(posted) : today(),
+        cells[1] || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
+  successfactors: fetchSuccessFactors,
+  workday: fetchWorkday,
+  eightfold: fetchEightfold,
+  symphony: fetchSymphony,
+  oracle: fetchOracle,
+  livehire: fetchLiveHire,
+  greenhouse: fetchGreenhouse,
+  avature: fetchAvature,
+  nextdata: fetchNextData,
+  csl: fetchCsl,
+};
+
+export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
+  return FETCHERS[site.platform](site);
+}
+
+/** Short source tag per platform, so an archive row says where it came from. */
+const SOURCE_TAG: Record<Platform, string> = {
+  successfactors: "sf",
+  workday: "wd",
+  eightfold: "ef",
+  symphony: "sy",
+  oracle: "or",
+  livehire: "lh",
+  greenhouse: "gh",
+  avature: "av",
+  nextdata: "nx",
+  csl: "csl",
+};
 
 /** Portal rows → archive rows, attributed to the employer they came from. */
 export function portalToArchive(jobs: PortalJob[], site: SiteDef): ArchiveRow[] {
   return jobs.map((j) => ({
-    source: `portal-${site.platform === "workday" ? "wd" : "sf"}`,
+    source: `portal-${SOURCE_TAG[site.platform]}`,
     title: j.t,
     company: site.name,
     companyId: site.id,
@@ -313,17 +1021,23 @@ interface PortalEnv {
 }
 
 /**
- * One pass over every configured portal. Each employer's roles are stored under
+ * One pass over the configured portals. Each employer's roles are stored under
  * `portal:<id>` for the card to read, and appended to the shared archive, which
  * is what dedups them against the same role pulled from a job board.
+ *
+ * `group` selects one slice of PORTAL_GROUPS; omit it to walk every site (what
+ * the /run-portals trigger does).
  */
 export async function processPortals(
   env: PortalEnv,
   archive: (rows: ArchiveRow[], day: string) => Promise<void>,
+  group?: number,
 ): Promise<{ site: string; count: number }[]> {
   const day = today();
   const out: { site: string; count: number }[] = [];
+  const only = group == null ? null : new Set(PORTAL_GROUPS[group] ?? []);
   for (const site of SITES) {
+    if (only && !only.has(site.id)) continue;
     const jobs = await fetchPortal(site);
     // An empty pull is never written: a portal that rate-limited or changed its
     // markup should leave yesterday's roles in place, not blank the card.

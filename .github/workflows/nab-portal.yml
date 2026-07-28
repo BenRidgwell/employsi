@@ -1,0 +1,56 @@
+# Daily NAB careers portal (careers.nab.com.au) → D1 archive, via Oxylabs.
+#
+# Every other employer portal on the roster is fetched by the jobs-cron Worker
+# (workers/jobs-cron/careerSites.ts). NAB is the exception: its AWS WAF returns
+# an empty shell to a Cloudflare Worker, and a challenge page to a plain request
+# from a datacentre IP. Only a rendered fetch that waits for the challenge to
+# settle gets the listing, which is what scripts/nab-to-d1.py does through the
+# Oxylabs Web Scraper API.
+#
+# The rows land as source `portal-cl` against company_id `melbourne-nab` — the
+# same archive, key and upsert as every other portal — so a NAB role already
+# held from Adzuna or SEEK refreshes rather than duplicating.
+#
+# The script exits non-zero when it parses nothing, so a WAF block fails the run
+# loudly instead of quietly leaving the card looking like NAB has no vacancies.
+#
+# Required repo secrets:
+#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
+#   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
+# Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# Use "Run workflow" to verify before relying on the schedule.
+
+name: nab-portal
+
+on:
+  schedule:
+    - cron: '40 4 * * *' # 04:40 UTC daily — between the Worker's portal ticks
+  workflow_dispatch: {}
+
+concurrency:
+  group: nab-portal
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # bun runs scripts/map-skills.ts, so a NAB role carries exactly the skills
+      # the same title would get from any other source.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Scrape NAB careers → D1 (Oxylabs)
+        env:
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/nab-to-d1.py

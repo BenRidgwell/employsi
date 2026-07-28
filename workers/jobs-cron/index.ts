@@ -947,8 +947,17 @@ async function processTasGov(env: Env): Promise<{ parsed: number; agencies: numb
 }
 
 // The four nightly news ticks → which slice of the roster each one takes.
-// Employer career portals — their own daily tick (see careerSites.ts).
-const PORTAL_CRON = "20 4 * * *";
+// Employer career portals — three nightly ticks, one per PORTAL_GROUPS slice
+// (see careerSites.ts). Split because some portals page shallowly (HSBC hands
+// back 10 roles a request over ~1,500; Macquarie 9 over ~500), so walking all
+// thirteen in one invocation would put a few hundred sequential fetches behind
+// a single cron.
+const PORTAL_TICKS: Record<string, number> = {
+  "20 4 * * *": 0,
+  "25 4 * * *": 1,
+  "35 4 * * *": 2,
+  "55 4 * * *": 3,
+};
 
 const NEWS_TICKS: Record<string, number> = {
   "40 3 * * *": 0,
@@ -962,16 +971,19 @@ export default {
   // clean subrequest budget for ~40 page fetches; every other tick advances the
   // Adzuna/Muse/Jooble shard rotation.
   async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    // The news ticks are matched FIRST, by exact expression. The gov branches
-    // below match on a minute PREFIX, and "50 3 * * *" starts with "50 " — so
-    // checked in the other order the 03:50 news slice would silently run the
-    // TAS-gov scrape instead. An exact match is the more specific rule and has
-    // to win.
-    if (event.cron === PORTAL_CRON) {
+    // The portal and news ticks are matched FIRST, by exact expression. The gov
+    // branches below match on a minute PREFIX, and "50 3 * * *" starts with
+    // "50 " — so checked in the other order the 03:50 news slice would silently
+    // run the TAS-gov scrape instead. An exact match is the more specific rule
+    // and has to win. (The portal minutes 20/25/35 were picked to miss every
+    // gov prefix — 5, 15, 30, 45, 50 — for the same reason.)
+    if (event.cron && PORTAL_TICKS[event.cron] !== undefined) {
       ctx.waitUntil(
-        processPortals(env, (rows, day) => archiveJobs(env.JOBS_ARCHIVE, rows, day)).then(
-          () => undefined,
-        ),
+        processPortals(
+          env,
+          (rows, day) => archiveJobs(env.JOBS_ARCHIVE, rows, day),
+          PORTAL_TICKS[event.cron],
+        ).then(() => undefined),
       );
     } else if (event.cron && NEWS_TICKS[event.cron] !== undefined) {
       // Every company every night, split over four ticks ten minutes apart so
@@ -1029,8 +1041,12 @@ export default {
         return new Response("forbidden", { status: 403 });
       }
       try {
-        const out = await processPortals(env, (rows, day) =>
-          archiveJobs(env.JOBS_ARCHIVE, rows, day),
+        // ?group=N runs one nightly slice; omitted, it walks every portal.
+        const g = url.searchParams.get("group");
+        const out = await processPortals(
+          env,
+          (rows, day) => archiveJobs(env.JOBS_ARCHIVE, rows, day),
+          g == null ? undefined : Number(g),
         );
         return Response.json({ ok: true, sites: out });
       } catch (e) {

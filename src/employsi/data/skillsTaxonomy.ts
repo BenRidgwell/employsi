@@ -1337,6 +1337,37 @@ const INDUSTRY_GATED: Record<string, RegExp> = {
     /educat|school|universit|tafe|college|academy|government|public sector|council|department|ministry/i,
 };
 
+/**
+ * A term has to START a word. It does not have to end one.
+ *
+ * Matching was a bare substring test, which let short terms land in the middle
+ * of unrelated words: "erp" inside "Ent&#101;rprise", "ai " inside "Tiw&#97;i Point",
+ * and — because `norm` rewrites "&" as " and " — the E&I trade term "e and i"
+ * inside "Hom&#101; and Investment Lending" and "Corporat&#101; and Institutional
+ * Banking", which tagged retail-banking roles as Instrumentation & Control.
+ *
+ * Only the left side is anchored, because the term list is deliberately made of
+ * STEMS: "electrician" has to match "Electricians", "decarbon" has to match
+ * "Decarbonisation", "recruit" has to match "Recruitment". Anchoring the right
+ * side as well would drop all of those.
+ *
+ * The assertion is only added when the term itself starts with an alphanumeric:
+ * ".net" must stay matchable inside "asp.net", and CJK terms have no ASCII word
+ * character to anchor against. The known cost is compounds that bury a term
+ * mid-word ("Polywelder" no longer reads as welding) — rare, and much cheaper
+ * than the systematic false positives above.
+ */
+const TERM_RE = new Map<string, RegExp>();
+function termMatches(hay: string, term: string): boolean {
+  let re = TERM_RE.get(term);
+  if (!re) {
+    const esc = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    re = new RegExp((/^[a-z0-9]/.test(term) ? "(?<![a-z0-9])" : "") + esc);
+    TERM_RE.set(term, re);
+  }
+  return re.test(hay);
+}
+
 export function skillsForText(title: string, _description?: string, ctx?: SkillContext): string[] {
   const hay = " " + norm(title) + " ";
   // No context means no gate: callers that genuinely don't know the employer
@@ -1345,7 +1376,7 @@ export function skillsForText(title: string, _description?: string, ctx?: SkillC
   const industry = ctx ? `${ctx.sector ?? ""} ${ctx.group ?? ""}` : null;
   const out: string[] = [];
   for (const def of SKILLS) {
-    const hits = def.terms.filter((t) => hay.includes(t));
+    const hits = def.terms.filter((t) => termMatches(hay, t));
     if (!hits.length) continue;
     if (industry !== null) {
       // Drop a skill whose ONLY evidence is a gated term this industry doesn't
