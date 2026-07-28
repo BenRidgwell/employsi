@@ -1,0 +1,53 @@
+# Daily New Zealand government jobs (jobs.govt.nz) → D1 archive, via Oxylabs.
+#
+# Scrapes the all-of-government board filtered to Auckland and Wellington — the
+# two New Zealand cities the app plots — and archives each role against its own
+# agency, through the same key + upsert as every other source.
+#
+# Only those two cities are scraped on purpose: the whole board is ~1,860 roles
+# nationwide, and archiving roles that no view can place would inflate
+# market-wide counts with rows nothing can show.
+#
+# The run reports roles collected against roles advertised per city, so a
+# partial walk is visible rather than silently looking like a quiet week. It
+# exits non-zero only when BOTH cities come back empty, which means the search
+# contract changed or we were blocked.
+#
+# Required repo secrets:
+#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
+#   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
+# Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# Use "Run workflow" to verify before relying on the schedule.
+
+name: nzgov-archive
+
+on:
+  schedule:
+    - cron: '30 19 * * *' # 19:30 UTC daily — ahead of the JobsDB/Jora runs
+  workflow_dispatch: {}
+
+concurrency:
+  group: nzgov-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Scrape jobs.govt.nz → D1 (Oxylabs)
+        env:
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/nzgov-to-d1.py
