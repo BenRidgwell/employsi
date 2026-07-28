@@ -77,11 +77,15 @@ def match_city(text: str):
 
 # ── company roster (id + name) parsed from AU_JOBS_TARGETS ────────────────────
 def load_companies() -> list[tuple[str, str]]:
-    txt = open(os.path.join(ROOT, 'src/employsi/data/auJobsTargets.ts')).read()
-    ids = re.findall(r'"id":\s*"([^"]+)"', txt)
-    names = re.findall(r'"name":\s*"([^"]+)"', txt)
-    pairs = list(zip(ids, names))
-    return [(cid, nm) for cid, nm in pairs if not ONLY or cid in ONLY]
+    """The FULL roster — listed plus the Top-150 private — via scripts/roster.py.
+
+    This used to regex auJobsTargets.ts, which meant it walked 205 companies and
+    silently skipped the 150 private ones: that roster is built at module load
+    (`RAW.map(buildPrivate)`), so its ids and names are not in the source text.
+    roster.py runs the TypeScript instead, and raises rather than falling back —
+    a short roster that looks like a successful run is the bug being fixed."""
+    from roster import load_roster
+    return [(c['id'], c['name']) for c in load_roster(only=ONLY)]
 
 
 # ── skills parity via the worker's own taxonomy (offline bun helper) ──────────

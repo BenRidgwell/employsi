@@ -96,28 +96,17 @@ def job_key(source: str, title: str, company: str, location: str) -> str:
     return '|'.join([source, norm(title), norm(company), norm(location)])[:400]
 
 
-# ── company roster (id + name) ────────────────────────────────────────────────
-def load_companies() -> list[tuple[str, str]]:
-    """The listed roster plus the top-150 private names — the same two files the
-    cron worker composes into AU_JOBS_TARGETS."""
-    out: list[tuple[str, str]] = []
-    seen = set()
-    for rel in ('src/employsi/data/auJobsTargets.ts', 'src/employsi/data/topPrivateCompanies.ts'):
-        path = os.path.join(ROOT, rel)
-        if not os.path.exists(path):
-            continue
-        txt = open(path, encoding='utf-8').read()
-        # Both files declare entries as `id: "x"` / `"id": "x"` followed by name.
-        for cid, nm in re.findall(r'["\']?id["\']?:\s*["\']([^"\']+)["\'],\s*\n?\s*["\']?name["\']?:\s*["\']([^"\']+)["\']', txt):
-            if cid in seen:
-                continue
-            seen.add(cid)
-            out.append((cid, nm))
-    return [(cid, nm) for cid, nm in out if not ONLY or cid in ONLY]
+# ── company roster ────────────────────────────────────────────────────────────
+def load_companies() -> list[dict]:
+    """The full roster — listed plus the Top-150 private — via scripts/roster.py,
+    which RUNS the TypeScript rather than regexing it. The private roster is
+    generated at module load, so a regex over the source sees none of it."""
+    from roster import load_roster
+    return load_roster(only=ONLY, limit=None if LIMIT >= 10**9 else LIMIT)
 
 
 # ── skills parity via the worker's own taxonomy ───────────────────────────────
-def map_skills(titles: list) -> list:
+def map_skills(titles: list, sector: str | None = None) -> list:
     # scripts/map-skills.ts takes a plain JSON array of titles and returns
     # index-aligned skill arrays, using the worker's own taxonomy — so a JobsDB
     # row carries exactly the skills the same title would get from any other
@@ -125,7 +114,7 @@ def map_skills(titles: list) -> list:
     if NO_SKILLS or not titles:
         return [[] for _ in titles]
     try:
-        payload = json.dumps(titles)
+        payload = json.dumps({'titles': titles, 'sector': sector} if sector else titles)
         p = subprocess.run(['bun', 'run', os.path.join(HERE, 'map-skills.ts')],
                            input=payload.encode(), capture_output=True, timeout=120)
         if p.returncode == 0:
@@ -302,10 +291,12 @@ def d1(sql: str, params: list):
             time.sleep(attempt + 1)
 
 
-def upsert(company_id: str, jobs: list) -> int:
+def upsert(company_id: str, jobs: list, sector: str | None = None) -> int:
     """Same key + upsert as src/employsi/lib/jobArchive.ts, so a role already
     archived from another source refreshes rather than duplicating."""
-    skills = map_skills([j['title'] for j in jobs])
+    # The sector goes through so the taxonomy reads seniority words correctly —
+    # a "Principal" at a miner is a grade, not a school principal.
+    skills = map_skills([j['title'] for j in jobs], sector)
     rows, seen = [], set()
     for j, sk in zip(jobs, skills):
         key = job_key(SOURCE, j['title'], j['company'] or company_id, j['location'])
@@ -338,7 +329,7 @@ def upsert(company_id: str, jobs: list) -> int:
 
 
 def main() -> int:
-    companies = load_companies()[:LIMIT]
+    companies = load_companies()
     if not companies:
         sys.exit('No companies matched — check --only.')
     sys.stderr.write(
@@ -348,25 +339,25 @@ def main() -> int:
     from concurrent.futures import ThreadPoolExecutor
     results: dict[str, tuple[list, int]] = {}
     with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
-        futures = {pool.submit(scrape_company, cid, nm): (cid, nm) for cid, nm in companies}
+        futures = {pool.submit(scrape_company, c['id'], c['name']): c for c in companies}
         for f in futures:
-            cid, nm = futures[f]
+            c = futures[f]
             try:
-                results[cid] = f.result()
+                results[c['id']] = f.result()
             except Exception as e:
-                sys.stderr.write(f'  {nm}: error {e}\n')
-                results[cid] = ([], 0)
+                sys.stderr.write(f'  {c["name"]}: error {e}\n')
+                results[c['id']] = ([], 0)
 
     total_jobs = total_written = with_jobs = 0
-    for cid, nm in companies:
-        jobs, scanned = results.get(cid, ([], 0))
+    for c in companies:
+        jobs, scanned = results.get(c['id'], ([], 0))
         if not jobs:
             continue
         with_jobs += 1
         total_jobs += len(jobs)
-        sys.stderr.write(f'  {nm}: {len(jobs)} of {scanned} scanned\n')
+        sys.stderr.write(f'  {c["name"]}: {len(jobs)} of {scanned} scanned\n')
         if not DRY:
-            total_written += upsert(cid, jobs)
+            total_written += upsert(c['id'], jobs, c.get('sector'))
 
     sys.stderr.write(
         f'Done: {with_jobs}/{len(companies)} companies had Hong Kong ads, '
