@@ -75,7 +75,12 @@ def match_city(text: str):
     return None
 
 
-# ── company roster (id + name) parsed from AU_JOBS_TARGETS ────────────────────
+# ── company roster (id + name) via scripts/roster.py ──────────────────────────
+# id → sector, so upsert() can tell the taxonomy which industry a title belongs
+# to. Filled by load_companies() from the UNFILTERED roster.
+SECTOR_BY_ID: dict[str, str] = {}
+
+
 def load_companies() -> list[tuple[str, str]]:
     """The FULL roster — listed plus the Top-150 private — via scripts/roster.py.
 
@@ -85,16 +90,23 @@ def load_companies() -> list[tuple[str, str]]:
     roster.py runs the TypeScript instead, and raises rather than falling back —
     a short roster that looks like a successful run is the bug being fixed."""
     from roster import load_roster
-    return [(c['id'], c['name']) for c in load_roster(only=ONLY)]
+    rows = load_roster()
+    # Sectors come off the UNFILTERED roster so the map is complete no matter
+    # what --only narrows the walk to.
+    SECTOR_BY_ID.update({c['id']: c.get('sector') or '' for c in rows})
+    return [(c['id'], c['name']) for c in rows if not ONLY or c['id'] in ONLY]
 
 
 # ── skills parity via the worker's own taxonomy (offline bun helper) ──────────
-def map_skills(titles: list) -> list:
+def map_skills(titles: list, sector: str | None = None) -> list:
     if NO_SKILLS or not titles:
         return [[] for _ in titles]
+    # The object form is only sent when a sector is known; map-skills.ts accepts
+    # a bare array too, so an unknown sector keeps the ungated behaviour.
+    payload = {'titles': titles, 'sector': sector} if sector else titles
     try:
         p = subprocess.run(['bun', 'run', os.path.join(HERE, 'map-skills.ts')],
-                           input=json.dumps(titles).encode(), capture_output=True, timeout=120)
+                           input=json.dumps(payload).encode(), capture_output=True, timeout=120)
         if p.returncode == 0:
             return json.loads(p.stdout.decode())
         sys.stderr.write(f'  map-skills failed: {p.stderr.decode()[:160]}\n')
@@ -136,7 +148,9 @@ def existing_titles(company_id: str) -> set:
 
 def upsert(company_id: str, jobs: list) -> int:
     titles = [j['title'] for j in jobs]
-    skills = map_skills(titles)
+    # The employer's industry rides along so seniority words in a title
+    # are read correctly (see INDUSTRY_GATED in skillsTaxonomy.ts).
+    skills = map_skills(titles, SECTOR_BY_ID.get(company_id))
     rows, seen = [], set()
     for j, sk in zip(jobs, skills):
         company = j.get('company') or company_id
