@@ -1,0 +1,59 @@
+# Daily JobsDB Hong Kong (hk.jobsdb.com) → D1 archive, via the Oxylabs Web
+# Scraper API.
+#
+# JobsDB runs SEEK's platform and exposes its JSON search API, so there is no
+# HTML to parse and no browser to drive. The requests go through Oxylabs for the
+# residential IP, throttling and backoff — walking the whole roster daily from a
+# datacentre IP is what gets rate-limited, not any single call.
+#
+# Every roster company is searched by legal name AND by a suffix-stripped brand
+# form ("ANZ Group Holdings" → "ANZ", which is how it advertises), then the
+# results are filtered to ads the company itself placed and archived through the
+# same key + upsert as every other source, so a role already held from Adzuna or
+# a career portal refreshes rather than duplicating.
+#
+# Most of the roster is Australian and has no Hong Kong presence, so a low
+# company count is the correct answer, not a failure. The script only exits
+# non-zero when NOTHING matches across the whole roster, which would mean the
+# search contract has changed rather than the market being quiet.
+#
+# Required repo secrets:
+#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
+#   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
+# Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# Use "Run workflow" to verify before relying on the schedule.
+
+name: jobsdb-archive
+
+on:
+  schedule:
+    - cron: '15 21 * * *' # 21:15 UTC daily — staggered after Zhaopin (20:30)
+  workflow_dispatch: {}
+
+concurrency:
+  group: jobsdb-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Scrape JobsDB HK → D1 (Oxylabs)
+        env:
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        # The whole roster; 3 pages a search term (early-stop on a short page).
+        # Two terms per company means ~2x the calls, so concurrency stays modest.
+        run: python scripts/jobsdb-to-d1.py --max-pages 3 --concurrency 6
