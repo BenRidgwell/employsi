@@ -6025,9 +6025,12 @@ body {
    visible and interactive. */
 .cardstage {
   position: fixed;
-  top: 0;
+  /* Centred on the MAP FRAME, not the window — the same rule the action rail
+     follows. Centring on the window pushed the pair up under the header, since
+     the header takes 72px off the top but nothing off the bottom. */
+  top: var(--head-height);
   right: 0;
-  height: 100vh;
+  height: calc(100vh - var(--head-height));
   display: flex;
   align-items: center;
   justify-content: flex-end;

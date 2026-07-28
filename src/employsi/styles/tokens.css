@@ -145,11 +145,16 @@
      reused rather than repeated at every call site. */
   --frame-radius: 28px;
   --frame-gutter: 20px;
-  --frame-inset: 34px; /* rail / ticker offset inside the frame */
+  /* Rail / ticker / local-banner offset inside the frame. The design's own
+     figure is 34px; pulled in to 22 so the left-hand chrome sits closer to the
+     frame edge and gives the map back the width. Everything on that line moves
+     together — rail, ticker, local banner — and the panes follow, since their
+     offset is measured from the rail rather than from the window. */
+  --frame-inset: 22px;
   --head-height: 72px;
 
   /* Distance from the WINDOW edge to chrome that sits inside the frame: the
-     frame's own gutter plus the design's 34px inset within it. Declared HERE,
+     frame's own gutter plus the inset within it. Declared HERE,
      not on .app: a custom property's own var() references are resolved on the
      element that declares it, so --pane-left below — declared at :root — could
      not see a --rail-left that only existed on .app. It resolved to the
