@@ -8,11 +8,28 @@
  * the card reads yesterday's refresh instantly and only goes to the network for
  * a company the roster doesn't cover.
  *
- * A shard per run, like the jobs pipeline: the roster is ~200 companies and one
- * invocation cannot politely fetch that many feeds. The cursor is persisted, so
- * successive nightly runs walk the whole roster and each company is refreshed
- * roughly every few days — with the on-demand path still there for anything
- * stale or missing, so nothing is ever BLOCKED on the cron.
+ * EVERY company, EVERY night — but spread over four ticks ten minutes apart
+ * rather than one invocation. The roster is 355 companies (205 listed + 150
+ * private), and one pass would be ~355 fetches plus ~355 KV writes plus a retry
+ * sweep: both count against a Worker's 1000-subrequest budget, so a single run
+ * would sit uncomfortably close to the ceiling with no headroom for the roster
+ * growing. Four slices of ~89 leave each invocation at roughly a quarter of it.
+ *
+ * The slice is taken by index modulo, not a cursor: tick 0 takes companies
+ * 0,4,8…, tick 1 takes 1,5,9… — so the four together are exactly the roster,
+ * every night, with no state to drift and no company able to be skipped because
+ * a cursor was written twice.
+ *
+ * Within a slice the constraint is the upstream, not Cloudflare: firing 89
+ * requests at once gets us throttled, which would silently leave companies on
+ * stale coverage. So each slice runs at a bounded concurrency, and anything that
+ * came back empty is retried once at the end — a transient 429 in the first
+ * sweep is by far the likeliest reason a company would otherwise miss its day.
+ *
+ * An empty result is still never written, so even a company that fails both
+ * passes keeps yesterday's articles rather than blanking its card, and the app's
+ * on-demand path is still there for anything stale or off-roster. Nothing is
+ * ever BLOCKED on the cron.
  */
 
 import { isBlockedArticle } from "../../src/employsi/data/newsBlocklist";
@@ -123,35 +140,86 @@ interface NewsEnv {
   };
 }
 
-/** How many companies one nightly run refreshes. */
-const NEWS_SHARD = 40;
+/** How many feeds are in flight at once. Low enough to stay under the
+ *  upstream's rate limit, high enough to finish the roster in a minute or two. */
+const CONCURRENCY = 6;
+/** Articles kept per company. */
 const PER_COMPANY = 8;
+/** Pause between a worker's requests, so the pass is a steady trickle rather
+ *  than six tight loops hammering the same host. */
+const THROTTLE_MS = 120;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Run `job` over every item with at most `limit` in flight. */
+async function pool<T>(items: T[], limit: number, job: (item: T) => Promise<void>): Promise<void> {
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    for (;;) {
+      const i = next++;
+      if (i >= items.length) return;
+      await job(items[i]);
+      await sleep(THROTTLE_MS);
+    }
+  });
+  await Promise.all(workers);
+}
+
+/** How many ticks the nightly refresh is spread over. */
+export const NEWS_PARTS = 4;
 
 export async function processNews(
   env: NewsEnv,
-  names: string[],
+  allNames: string[],
+  part = 0,
+  parts = 1,
 ): Promise<{ refreshed: string[]; empty: string[] }> {
+  // Deterministic slice — see the header. Every index lands in exactly one part.
+  const names = parts > 1 ? allNames.filter((_, i) => i % parts === part) : allNames;
   if (!names.length) return { refreshed: [], empty: [] };
-  const cursorRaw = await env.OPEN_ROLES_HISTORY.get("news:cursor");
-  const cursor = Number(cursorRaw) || 0;
   const refreshed: string[] = [];
-  const empty: string[] = [];
-  for (let i = 0; i < NEWS_SHARD && i < names.length; i++) {
-    const name = names[(cursor + i) % names.length];
-    const items = await fetchNews(name, PER_COMPANY);
-    // An empty result is NOT written: a company with no coverage today should
-    // keep yesterday's articles rather than have the card go blank because Bing
-    // rate-limited one request.
-    if (!items.length) {
-      empty.push(name);
-      continue;
-    }
-    await env.OPEN_ROLES_HISTORY.put(
-      newsKey(name),
-      JSON.stringify({ updated: new Date().toISOString(), items }),
-    );
-    refreshed.push(name);
+  let empty: string[] = [];
+
+  const sweep = async (list: string[]) => {
+    const missed: string[] = [];
+    await pool(list, CONCURRENCY, async (name) => {
+      const items = await fetchNews(name, PER_COMPANY);
+      // An empty result is NOT written: a company with no coverage today should
+      // keep yesterday's articles rather than have the card go blank because one
+      // request was rate-limited.
+      if (!items.length) {
+        missed.push(name);
+        return;
+      }
+      await env.OPEN_ROLES_HISTORY.put(
+        newsKey(name),
+        JSON.stringify({ updated: new Date().toISOString(), items }),
+      );
+      refreshed.push(name);
+    });
+    return missed;
+  };
+
+  empty = await sweep(names);
+  // One retry for the misses. Most of them are transient throttling rather than
+  // a company with genuinely no coverage, and the second pass is small and slow
+  // enough to get through.
+  if (empty.length) {
+    await sleep(2000);
+    empty = await sweep(empty);
   }
-  await env.OPEN_ROLES_HISTORY.put("news:cursor", String((cursor + NEWS_SHARD) % names.length));
+
+  await env.OPEN_ROLES_HISTORY.put(
+    `news:lastrun:${part}`,
+    JSON.stringify({
+      at: new Date().toISOString(),
+      part,
+      parts,
+      total: names.length,
+      refreshed: refreshed.length,
+      empty: empty.length,
+      emptyNames: empty.slice(0, 20),
+    }),
+  );
   return { refreshed, empty };
 }

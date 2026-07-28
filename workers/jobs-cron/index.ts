@@ -33,7 +33,7 @@ import { fetchVicGovPages, type StoredVicJob } from "./vicGov";
 import { fetchQldGovPages, type StoredQldJob } from "./qldGov";
 import { fetchNtGov, type StoredNtJob } from "./ntGov";
 import { fetchTasGov, type StoredTasJob } from "./tasGov";
-import { processNews } from "./news";
+import { processNews, NEWS_PARTS } from "./news";
 import { fetchMcfJobs } from "./mycareersfuture";
 import { fetchSeekCompanyJobs } from "./seek";
 import { SEEK_ADVERTISERS } from "../../src/employsi/data/seekAdvertisers";
@@ -945,12 +945,36 @@ async function processTasGov(env: Env): Promise<{ parsed: number; agencies: numb
   return { parsed: res.parsed, agencies: withRoles };
 }
 
+// The four nightly news ticks → which slice of the roster each one takes.
+const NEWS_TICKS: Record<string, number> = {
+  "40 3 * * *": 0,
+  "50 3 * * *": 1,
+  "0 4 * * *": 2,
+  "10 4 * * *": 3,
+};
+
 export default {
   // Scheduled: the WA-gov scrape runs on its own cron minute (:30) so it gets a
   // clean subrequest budget for ~40 page fetches; every other tick advances the
   // Adzuna/Muse/Jooble shard rotation.
   async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    if (event.cron && event.cron.startsWith("30 ")) {
+    // The news ticks are matched FIRST, by exact expression. The gov branches
+    // below match on a minute PREFIX, and "50 3 * * *" starts with "50 " — so
+    // checked in the other order the 03:50 news slice would silently run the
+    // TAS-gov scrape instead. An exact match is the more specific rule and has
+    // to win.
+    if (event.cron && NEWS_TICKS[event.cron] !== undefined) {
+      // Every company every night, split over four ticks ten minutes apart so
+      // no single invocation approaches the subrequest budget — see news.ts.
+      ctx.waitUntil(
+        processNews(
+          env,
+          AU_JOBS_TARGETS.map((t) => t.name),
+          NEWS_TICKS[event.cron],
+          NEWS_PARTS,
+        ).then(() => undefined),
+      );
+    } else if (event.cron && event.cron.startsWith("30 ")) {
       ctx.waitUntil(processWaGov(env).then(() => undefined));
     } else if (event.cron && event.cron.startsWith("15 ")) {
       ctx.waitUntil(processVicGov(env).then(() => undefined));
@@ -960,15 +984,6 @@ export default {
       ctx.waitUntil(processNtGov(env).then(() => undefined));
     } else if (event.cron && event.cron.startsWith("50 ")) {
       ctx.waitUntil(processTasGov(env).then(() => undefined));
-    } else if (event.cron && event.cron.startsWith("40 3 ")) {
-      // Nightly company-news refresh, on its own tick so its ~40 RSS fetches
-      // don't share a subrequest budget with the job pulls.
-      ctx.waitUntil(
-        processNews(
-          env,
-          AU_JOBS_TARGETS.map((t) => t.name),
-        ).then(() => undefined),
-      );
     } else {
       ctx.waitUntil(processShard(env).then(() => undefined));
     }
@@ -993,6 +1008,36 @@ export default {
             error: (e as Error)?.message || String(e),
             stack: (e as Error)?.stack || "",
           },
+          { status: 500 },
+        );
+      }
+    }
+    // Seed / verify the news store on demand — the nightly tick is otherwise
+    // the only thing that writes it, so there is no way to check it without
+    // waiting for 03:40 UTC.
+    if (url.pathname === "/run-news") {
+      if (url.searchParams.get("token") !== env.CRON_TOKEN) {
+        return new Response("forbidden", { status: 403 });
+      }
+      try {
+        // ?part=N&parts=M to run one slice; default runs the whole roster.
+        const part = Number(url.searchParams.get("part") || 0);
+        const parts = Number(url.searchParams.get("parts") || 1);
+        const out = await processNews(
+          env,
+          AU_JOBS_TARGETS.map((t) => t.name),
+          part,
+          parts,
+        );
+        return Response.json({
+          ok: true,
+          refreshed: out.refreshed.length,
+          empty: out.empty.length,
+          emptyNames: out.empty.slice(0, 20),
+        });
+      } catch (e) {
+        return Response.json(
+          { ok: false, error: (e as Error)?.message || String(e) },
           { status: 500 },
         );
       }
