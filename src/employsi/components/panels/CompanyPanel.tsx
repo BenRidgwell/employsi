@@ -15,6 +15,7 @@ import { useVacancyTrend } from "../../hooks/useRoleHistory";
 import { cityForCompany } from "../../data/mapboxGeo";
 import { marketForCity } from "../../data/cityMarket";
 import { NewsPanel } from "./NewsPanel";
+import { CardLoader } from "./CardLoader";
 
 type CardTab = "Overview" | "Skills" | "Hiring";
 
@@ -500,9 +501,17 @@ export function CompanyPanel() {
     roleCounts,
   ]);
 
+  // The card holds a loading frame until the fetches it actually renders have
+  // settled: the live vacancy count (the multi-second one), and the job sample
+  // the skills and hiring tabs are built from. The share series is deliberately
+  // NOT in here — it only decorates the chart's second line, so waiting on it
+  // would hold the whole card back for a detail, and it fades in on arrival.
+  const cardLoading = open && (!card || rolesChecking);
+
   return (
     <div className={`cardstage ${open ? "open" : ""}`}>
       <aside className={`cc ${open ? "open" : ""}`}>
+        {cardLoading && <CardLoader tone="light" />}
         {card && panel && (
           <>
             <div className="cchead">

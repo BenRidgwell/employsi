@@ -6240,24 +6240,146 @@ body {
    Styled as a modern news feed ("FlashFeed"): a large hero card with the
    article photo behind an overlaid pill / headline / meta, then a two-column
    grid of smaller image cards below. */
+/* The news column is INK, against the white company card beside it. The pair
+   reads as one object with two halves rather than two identical panels, and the
+   hero image — which is already a dark photo under a dark gradient — now sits
+   on a surface that agrees with it instead of fighting a white frame.
+
+   Everything inside therefore inverts: see the contrast block further down.
+   The `--nw-*` locals hold that scale in one place so a row, a caption and a
+   divider cannot drift apart. */
 .newspanel {
+  position: relative;
+  --nw-surface: #1c1c1e;
+  --nw-raised: #242426;
+  --nw-line: #2c2c2e;
+  --nw-text: #ffffff;
+  --nw-muted: #b4b4ba;
+  --nw-dim: #8e8e93;
   /* The design's second column: 380px, the same 20px radius and shadow as the
      company card beside it, so the two read as one pair rather than two
      unrelated surfaces. */
   width: 380px;
   max-width: 34vw;
   max-height: calc(100vh - var(--head-height) - 48px);
-  background: var(--neutral-0);
-  border: 1px solid var(--border-default);
+  background: var(--nw-surface);
+  border: 1px solid var(--nw-line);
   box-shadow:
-    0 1px 2px rgba(28, 28, 30, 0.06),
-    0 24px 48px -28px rgba(28, 28, 30, 0.5);
+    0 1px 2px rgba(28, 28, 30, 0.3),
+    0 24px 48px -28px rgba(28, 28, 30, 0.8);
   border-radius: 20px;
   display: flex;
   flex-direction: column;
   pointer-events: auto;
   overflow: hidden;
   font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
+}
+
+/* ── Loading frame ──────────────────────────────────────────────────────────
+   From `Employsi Loading Animation.html`. The mark's three bars sweep out in
+   sequence over a wash of whatever surface is beneath — light over the white
+   card, ink over the news column. Fades out when the data lands rather than
+   snapping, so the card doesn't flicker on a fast fetch. */
+@keyframes cc-bar {
+  0% {
+    transform: scaleX(0.22);
+    opacity: 0.28;
+  }
+  34% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  72%,
+  100% {
+    transform: scaleX(0.22);
+    opacity: 0.28;
+  }
+}
+@keyframes cc-stem {
+  0%,
+  100% {
+    opacity: 0.34;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+@keyframes cc-loadin {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.ccload {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  backdrop-filter: blur(2px);
+  animation: cc-loadin 180ms ease both;
+}
+.ccload-light {
+  background: rgba(255, 255, 255, 0.72);
+}
+.ccload-dark {
+  background: rgba(28, 28, 30, 0.72);
+}
+.ccloadmark {
+  display: block;
+}
+.ccloadstem {
+  animation: cc-stem 1.6s cubic-bezier(0.32, 0.72, 0, 1) infinite;
+}
+/* transform-box:fill-box so each bar scales from its own left edge, not the
+   SVG's origin — otherwise they slide instead of extending. */
+.ccloadbar {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: cc-bar 1.6s cubic-bezier(0.32, 0.72, 0, 1) infinite;
+}
+.ccloadbar.b2 {
+  animation-delay: 0.13s;
+}
+.ccloadbar.b3 {
+  animation-delay: 0.26s;
+}
+.ccload-light .ccloadstem,
+.ccload-light .ccloadbar.b3 {
+  fill: #1c1c1e;
+}
+.ccload-light .ccloadbar.b1 {
+  fill: #8e8e93;
+}
+.ccload-light .ccloadbar.b2 {
+  fill: #48484a;
+}
+.ccload-dark .ccloadstem,
+.ccload-dark .ccloadbar.b3 {
+  fill: #ffffff;
+}
+.ccload-dark .ccloadbar.b1 {
+  fill: rgba(255, 255, 255, 0.55);
+}
+.ccload-dark .ccloadbar.b2 {
+  fill: rgba(255, 255, 255, 0.78);
+}
+.ccloadstage {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.ccload-light .ccloadstage {
+  color: var(--text-tertiary);
+}
+.ccload-dark .ccloadstage {
+  color: #b4b4ba;
 }
 
 /* ── "In the news" — the design's second column ─────────────────────────────
@@ -6271,12 +6393,16 @@ body {
   justify-content: space-between;
   gap: 12px;
   padding: 18px 18px 12px;
-  border-bottom: 1px solid var(--surface-active);
+  border-bottom: 1px solid var(--nw-line);
+}
+.nwhd .cceyebrow {
+  color: var(--nw-dim);
 }
 .nwhdname {
   font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.015em;
+  color: var(--nw-text);
 }
 .nwscroll {
   flex: 1 1 auto;
@@ -6370,8 +6496,10 @@ body {
   color: inherit;
   transition: background 150ms;
 }
+/* On ink, hover lifts to the raised tone rather than dropping to a grey that
+   would read as a hole. */
 .nwrow:hover {
-  background: #f7f7f8;
+  background: var(--nw-raised);
 }
 .nwrowimg {
   display: flex;
@@ -6380,8 +6508,9 @@ body {
   width: 64px;
   height: 64px;
   flex: 0 0 auto;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--nw-line);
   border-radius: 11px;
+  background-color: var(--nw-raised);
   background-size: cover;
   background-position: center;
 }
@@ -6389,7 +6518,7 @@ body {
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
   letter-spacing: 0.08em;
-  color: var(--text-tertiary);
+  color: var(--nw-dim);
 }
 .nwrowbody {
   display: flex;
@@ -6402,10 +6531,11 @@ body {
   font-weight: 600;
   line-height: 1.35;
   letter-spacing: -0.008em;
+  color: var(--nw-text);
 }
 .nwrowmeta {
   font-size: 11.5px;
-  color: var(--text-tertiary);
+  color: var(--nw-muted);
 }
 
 .pnote {
@@ -8462,6 +8592,7 @@ body {
    =========================================================================== */
 
 .cc {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 440px;

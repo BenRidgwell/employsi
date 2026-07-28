@@ -10,6 +10,7 @@ import { useArticleImages } from "../../hooks/useArticleImages";
 import { useLiveNews } from "../../hooks/useLiveNews";
 import type { ArticleMeta } from "../../lib/articleImageFn";
 import { isBlockedArticle } from "../../data/newsBlocklist";
+import { CardLoader } from "./CardLoader";
 
 // "[company] in the news", the second column of `Employsi Company Card
 // public.html` — a 196px hero with the article photo behind a gradient, a
@@ -118,7 +119,7 @@ export function NewsPanel({
   // (the most reliable query). Curated companies (and BHP's live feed) skip this.
   void ticker;
   const liveQuery = !curated && !live ? `"${name}"` : null;
-  const liveItems = useLiveNews(liveQuery, 6);
+  const { items: liveItems, pending: newsPending } = useLiveNews(liveQuery, 6);
   const liveFeed = useMemo(() => liveToCompanyNews(liveItems), [liveItems]);
 
   const rawNews = live ?? (curated ? generated : (liveFeed ?? generated));
@@ -165,6 +166,9 @@ export function NewsPanel({
 
   return (
     <aside className="newspanel">
+      {/* Dark tone: this column is ink, so the light loader would punch a white
+          hole in it. Fades out on its own once the feed lands. */}
+      {newsPending && <CardLoader tone="dark" />}
       <div className="nwhd">
         <span className="nwhdname">In the news</span>
         {updated && <span className="cceyebrow">Updated {updated}</span>}
