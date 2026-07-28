@@ -5906,14 +5906,17 @@ body {
 .lvb {
   position: fixed;
   left: var(--rail-left);
-  bottom: var(--frame-inset);
+  /* A touch above the frame's own inset — sitting exactly on it read as
+     crowding the corner. */
+  bottom: calc(var(--frame-inset) + 8px);
   /* Above the local company markers (mapbox markers, z-index 3; selected 6),
-     below the side panes (45). */
+     below the side panes (45) — and below the company card, which now sits at
+     32 so it passes IN FRONT of this when the two overlap. */
   z-index: 30;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 6px 6px 7px;
+  gap: 5px;
+  padding: 5px 5px 5px 6px;
   border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: var(--radius-pill);
   background: var(--raised-surface);
@@ -5931,9 +5934,9 @@ body {
 .lvbcity {
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 38px;
-  padding: 0 16px 0 13px;
+  gap: 8px;
+  height: 32px;
+  padding: 0 13px 0 11px;
   border-radius: var(--radius-pill);
   background: var(--neutral-900);
   color: var(--neutral-0);
@@ -5953,22 +5956,22 @@ body {
 }
 .lvbdot {
   display: block;
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   flex: 0 0 auto;
   border-radius: 999px;
   background: #30d158;
   animation: lvb-live 2.4s cubic-bezier(0.32, 0.72, 0, 1) infinite;
 }
 .lvbname {
-  font-size: 15px;
+  font-size: 13.5px;
   font-weight: 600;
   letter-spacing: -0.018em;
   white-space: nowrap;
 }
 .lvbkicker {
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 10.5px;
+  font-size: 9.5px;
   font-weight: 500;
   letter-spacing: 0.1em;
   color: var(--text-tertiary);
@@ -5981,8 +5984,8 @@ body {
 .lvbstat {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 0 16px;
+  gap: 6px;
+  padding: 0 13px;
   border-left: 1px solid var(--border-subtle);
 }
 /* No rule before the first figure — it divides the stats from each other, not
@@ -5992,12 +5995,12 @@ body {
 }
 .lvbvalue {
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 14px;
+  font-size: 12.5px;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
 .lvblabel {
-  font-size: 13.5px;
+  font-size: 12px;
   font-weight: 450;
   letter-spacing: -0.008em;
   color: var(--text-tertiary);
@@ -6036,7 +6039,10 @@ body {
   justify-content: flex-end;
   gap: 14px;
   padding: 0 22px;
-  z-index: 6;
+  /* Over the local banner (30) and the map markers (3 / selected 6), under the
+     side panes (45). The card is what the user just asked for; the banner is
+     ambient, so the card passes in front where the two meet. */
+  z-index: 32;
   pointer-events: none;
   opacity: 0;
   transform: translateX(24px);
