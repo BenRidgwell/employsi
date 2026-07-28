@@ -57,6 +57,9 @@ interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
   id: string;
   name: string;
+  /** The employer's industry, passed to the skills matcher so seniority words
+   *  like "Principal" aren't read as their literal job title. */
+  sector: string;
   platform: Platform;
   /** SuccessFactors: the portal origin. Workday: the full CXS jobs endpoint. */
   endpoint: string;
@@ -70,6 +73,7 @@ export const SITES: SiteDef[] = [
   {
     id: "bhp",
     name: "BHP",
+    sector: "Iron Ore & Metals",
     platform: "successfactors",
     endpoint: "https://careers.bhp.com",
     origin: "https://careers.bhp.com",
@@ -78,6 +82,7 @@ export const SITES: SiteDef[] = [
   {
     id: "wds",
     name: "Woodside Energy",
+    sector: "Oil & Gas",
     platform: "successfactors",
     endpoint: "https://careers.woodside.com.au",
     origin: "https://careers.woodside.com.au",
@@ -86,6 +91,7 @@ export const SITES: SiteDef[] = [
   {
     id: "cba",
     name: "Commonwealth Bank",
+    sector: "Banking & Financial Services",
     platform: "workday",
     endpoint: "https://cba.wd3.myworkdayjobs.com/wday/cxs/cba/CommBank_Careers/jobs",
     origin: "https://cba.wd3.myworkdayjobs.com/en-US/CommBank_Careers",
@@ -213,7 +219,7 @@ async function fetchSuccessFactors(site: SiteDef): Promise<PortalJob[]> {
         url: href.startsWith("http") ? href : site.origin + href,
         created: dateM ? sfPosted(clean(dateM[1])) : today(),
         city: hubFor(loc, site.homeHub),
-        skills: skillsForText(title),
+        skills: skillsForText(title, undefined, { sector: site.sector }),
       });
       added++;
     }
@@ -270,7 +276,7 @@ async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
         url: site.origin + path,
         created: workdayPosted(p.postedOn || ""),
         city: hubFor(loc, site.homeHub),
-        skills: skillsForText(title),
+        skills: skillsForText(title, undefined, { sector: site.sector }),
       });
     }
     if (postings.length < WD_PAGE) break;

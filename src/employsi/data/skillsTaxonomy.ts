@@ -57,14 +57,27 @@ const RAW_SKILLS: SkillDef[] = [
   {
     skill: "Fixed Plant Maintenance",
     cat: "Mining",
-    terms: ["fixed plant", "processing maintenance"],
+    terms: [
+      "maintenance planner",
+      "reliability engineer",
+      "maintenance engineer",
+      "fixed plant",
+      "processing maintenance",
+    ],
   },
 
   // ── Oil, gas & energy ──────────────────────────────────────────────────
   {
     skill: "Process Engineering",
     cat: "Energy",
-    terms: ["process engineer", "process engineering"],
+    terms: [
+      "processing engineer",
+      "process engineer",
+      "metallurgist",
+      "metallurgy",
+      "process engineer",
+      "process engineering",
+    ],
   },
   { skill: "Subsea Engineering", cat: "Energy", terms: ["subsea", "sub-sea"] },
   { skill: "Pipeline Engineering", cat: "Energy", terms: ["pipeline"] },
@@ -283,6 +296,18 @@ const RAW_SKILLS: SkillDef[] = [
     skill: "Project Management",
     cat: "Corporate",
     terms: [
+      "cost management",
+      "cost control",
+      "cost controller",
+      "cost engineer",
+      "cost estimator",
+      "project controls",
+      "project delivery",
+      "planning and scheduling",
+      "planning & scheduling",
+      "scheduler",
+      "project planner",
+      "project engineer",
       "project manager",
       "project management",
       "project engineer",
@@ -642,8 +667,14 @@ const RAW_SKILLS: SkillDef[] = [
     skill: "Education Leadership",
     cat: "Education",
     terms: [
+      // "principal" alone is industry-gated (see INDUSTRY_GATED): outside
+      // education and the public sector it is a seniority grade. The qualified
+      // forms below are unambiguous and are never gated.
       "principal",
       "assistant principal",
+      "deputy principal",
+      "school principal",
+      "vice principal",
       "school leader",
       "leading teacher",
       "head of school",
@@ -1278,11 +1309,54 @@ const norm = (s: string) => (s || "").toLowerCase().replace(/&/g, " and ").repla
 // "Registered Nurses"), whereas descriptions are boilerplate-heavy ("excellent
 // communication skills") and badly inflate generic skills. The description arg
 // is accepted for API stability but intentionally not matched.
-export function skillsForText(title: string, _description?: string): string[] {
+/** What we know about the employer, for terms that only mean one thing inside
+ *  certain industries. */
+export interface SkillContext {
+  /** The employer's sector, e.g. "Iron Ore & Metals", "Education". */
+  sector?: string | null;
+  /** Its top-level group, e.g. "Energy & Natural Resources". */
+  group?: string | null;
+}
+
+/**
+ * Terms that are only literal inside certain industries.
+ *
+ * "Principal" is the clear case. In education and the public sector it names a
+ * school principal; everywhere else it is a SENIORITY grade — BHP advertises
+ * "Principal Cost Management", consultancies "Principal Consultant", banks
+ * "Principal Engineer". Matching it unconditionally filed those under Education
+ * Leadership, which both invented education demand in mining and banking and
+ * lost the skill the title actually describes.
+ *
+ * A gated term only counts when the employer's industry licenses it. When it
+ * doesn't, the term is ignored and the REST of the title still maps normally,
+ * so "Principal Cost Management" resolves on "cost management".
+ */
+const INDUSTRY_GATED: Record<string, RegExp> = {
+  principal:
+    /educat|school|universit|tafe|college|academy|government|public sector|council|department|ministry/i,
+};
+
+export function skillsForText(title: string, _description?: string, ctx?: SkillContext): string[] {
   const hay = " " + norm(title) + " ";
+  // No context means no gate: callers that genuinely don't know the employer
+  // (free-text search) keep the old behaviour rather than silently losing
+  // matches.
+  const industry = ctx ? `${ctx.sector ?? ""} ${ctx.group ?? ""}` : null;
   const out: string[] = [];
   for (const def of SKILLS) {
-    if (def.terms.some((t) => hay.includes(t))) out.push(def.skill);
+    const hits = def.terms.filter((t) => hay.includes(t));
+    if (!hits.length) continue;
+    if (industry !== null) {
+      // Drop a skill whose ONLY evidence is a gated term this industry doesn't
+      // license. A longer unambiguous term ("assistant principal") still counts.
+      const licensed = hits.filter((t) => {
+        const gate = INDUSTRY_GATED[t];
+        return !gate || gate.test(industry);
+      });
+      if (!licensed.length) continue;
+    }
+    out.push(def.skill);
   }
   // Dedupe: a canonical skill can be declared by more than one def (e.g. an
   // English def plus a Chinese-terms def for the Zhaopin source), so a title
