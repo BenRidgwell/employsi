@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { JsonRecord } from "./json";
 import { str } from "./json";
+import { isBlockedArticle } from "../data/newsBlocklist";
+import { kvBinding } from "./kv";
 
 // NB: kept out of any `server/` directory — the bundler denies importing paths
 // under **/server/**. createServerFn runs this only on the Cloudflare Worker,
@@ -209,6 +211,38 @@ async function outletPool(signal: AbortSignal): Promise<LiveNewsItem[]> {
   return all;
 }
 
+/** KV key for a company's stored feed. Must match the worker's `newsKey`. */
+function newsKey(name: string): string {
+  return `news:${name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")}`;
+}
+
+/** Stale after this long, at which point the on-demand fetch takes over. */
+const STORE_MAX_AGE = 3 * 24 * 60 * 60 * 1000;
+
+async function fromStore(query: string, limit: number): Promise<LiveNewsItem[] | null> {
+  try {
+    const mod = (await import("cloudflare:workers")) as { env?: Record<string, unknown> };
+    const kv = kvBinding(mod.env, "OPEN_ROLES_HISTORY");
+    if (!kv) return null;
+    // The app queries with the company name in quotes; the worker keys on the
+    // bare name, so strip them before hashing to the same key.
+    const raw = await kv.get(newsKey(query.replace(/^"|"$/g, "")));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { updated?: string; items?: LiveNewsItem[] };
+    const items = Array.isArray(parsed.items) ? parsed.items : [];
+    if (!items.length) return null;
+    const age = Date.now() - Date.parse(parsed.updated || "");
+    if (!Number.isNaN(age) && age > STORE_MAX_AGE) return null;
+    const clean = items.filter((i) => !isBlockedArticle(i.url, i.publisher));
+    return clean.length ? clean.slice(0, limit) : null;
+  } catch {
+    return null;
+  }
+}
+
 export const getLiveNews = createServerFn({ method: "GET" })
   .validator((data: { query: string; limit?: number }) => data)
   .handler(async ({ data }): Promise<{ items: LiveNewsItem[] }> => {
@@ -218,6 +252,21 @@ export const getLiveNews = createServerFn({ method: "GET" })
     const key = `${query}::${limit}`;
     const hit = cache.get(key);
     if (hit && Date.now() - hit.at < TTL) return { items: hit.items };
+
+    // The jobs-cron worker refreshes each rostered company's coverage nightly
+    // into KV (see workers/jobs-cron/news.ts). Read that first: it makes the
+    // card open instantly instead of racing an RSS fetch, and it means the feed
+    // is the same for everyone who looks at a company on a given day rather
+    // than whatever Bing happened to return for that request.
+    //
+    // Falls straight through to the live fetch when the store is cold, when the
+    // company isn't on the roster, or when the entry has aged past a couple of
+    // days — the cron is an accelerator, never a gate.
+    const stored = await fromStore(query, limit);
+    if (stored) {
+      cache.set(key, { at: Date.now(), items: stored });
+      return { items: stored };
+    }
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 7000);
@@ -271,6 +320,11 @@ export const getLiveNews = createServerFn({ method: "GET" })
         /* outlet pool is best-effort */
       }
       clearTimeout(timer);
+      // One gate for every provider. Bing, GDELT and the outlet pool all land
+      // here, so a blocked publisher cannot get in through whichever source
+      // happened to answer — and the drop happens before the cache, so a
+      // blocklist change can't be defeated by a warm entry.
+      items = items.filter((i) => !isBlockedArticle(i.url, i.publisher));
       if (items.length) cache.set(key, { at: Date.now(), items });
       return { items };
     } catch {

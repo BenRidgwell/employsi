@@ -33,6 +33,7 @@ import { fetchVicGovPages, type StoredVicJob } from "./vicGov";
 import { fetchQldGovPages, type StoredQldJob } from "./qldGov";
 import { fetchNtGov, type StoredNtJob } from "./ntGov";
 import { fetchTasGov, type StoredTasJob } from "./tasGov";
+import { processNews } from "./news";
 import { fetchMcfJobs } from "./mycareersfuture";
 import { fetchSeekCompanyJobs } from "./seek";
 import { SEEK_ADVERTISERS } from "../../src/employsi/data/seekAdvertisers";
@@ -959,6 +960,15 @@ export default {
       ctx.waitUntil(processNtGov(env).then(() => undefined));
     } else if (event.cron && event.cron.startsWith("50 ")) {
       ctx.waitUntil(processTasGov(env).then(() => undefined));
+    } else if (event.cron && event.cron.startsWith("40 3 ")) {
+      // Nightly company-news refresh, on its own tick so its ~40 RSS fetches
+      // don't share a subrequest budget with the job pulls.
+      ctx.waitUntil(
+        processNews(
+          env,
+          AU_JOBS_TARGETS.map((t) => t.name),
+        ).then(() => undefined),
+      );
     } else {
       ctx.waitUntil(processShard(env).then(() => undefined));
     }

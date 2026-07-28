@@ -9,6 +9,7 @@ import {
 import { useArticleImages } from "../../hooks/useArticleImages";
 import { useLiveNews } from "../../hooks/useLiveNews";
 import type { ArticleMeta } from "../../lib/articleImageFn";
+import { isBlockedArticle } from "../../data/newsBlocklist";
 
 // "[company] in the news", the second column of `Employsi Company Card
 // public.html` — a 196px hero with the article photo behind a gradient, a
@@ -120,7 +121,19 @@ export function NewsPanel({
   const liveItems = useLiveNews(liveQuery, 6);
   const liveFeed = useMemo(() => liveToCompanyNews(liveItems), [liveItems]);
 
-  const news = live ?? (curated ? generated : (liveFeed ?? generated));
+  const rawNews = live ?? (curated ? generated : (liveFeed ?? generated));
+  // Blocked publishers are dropped HERE as well as in the live fetch, because
+  // four different paths converge on this component — the curated sets, the
+  // generated fallback, the live feed, and BHP's own feed — and only this one
+  // is common to all of them. If the hero itself is blocked, the first
+  // surviving item is promoted rather than leaving the card headless.
+  const news = useMemo(() => {
+    const ok = (a: NewsItem) => !isBlockedArticle(a.url, a.publisher);
+    const items = rawNews.items.filter(ok);
+    if (ok(rawNews.hero)) return { ...rawNews, items };
+    if (!items.length) return { ...rawNews, items };
+    return { ...rawNews, hero: { ...items[0], cat: rawNews.hero.cat }, items: items.slice(1) };
+  }, [rawNews]);
 
   // Scrape article pages for the real image + publisher + publish date. Live
   // feed items may already carry an image; curated items are scraped.

@@ -20,6 +20,10 @@
     // subrequest budget separate from the shard's API calls and each other:
     // ":05" NT (jobs.nt.gov.au), ":15" VIC (careers.vic.gov.au),
     // ":30" WA (search.jobs.wa.gov.au), ":45" QLD (smartjobs.qld.gov.au).
-    "crons": ["0 */6 * * *", "5 */6 * * *", "15 */6 * * *", "30 */6 * * *", "45 */6 * * *", "50 */6 * * *"]
+    // ":40" past 03:00 UTC, once a day: the company-news refresh (see news.ts).
+    // Its own tick so ~40 RSS fetches don't share a subrequest budget with the
+    // job pulls, and daily rather than 6-hourly because news moves in days and
+    // the on-demand path already covers anything fresher.
+    "crons": ["0 */6 * * *", "5 */6 * * *", "15 */6 * * *", "30 */6 * * *", "45 */6 * * *", "50 */6 * * *", "40 3 * * *"]
   }
 }
