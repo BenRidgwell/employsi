@@ -190,6 +190,8 @@ export function CompanyPanel() {
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const zoomingIn = useAppStore((s) => s.zoomingIn);
   const [roleFilter, setRoleFilter] = useState<string | null>(null);
+  // Whether the skills section is showing everything past the first six.
+  const [skillsOpen, setSkillsOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // Leaving the local city layer (zooming/scrolling out to the domestic or
@@ -208,6 +210,7 @@ export function CompanyPanel() {
   useEffect(() => {
     if (!selectedId) return;
     setRoleFilter(null);
+    setSkillsOpen(false);
     scrollRef.current?.scrollTo(0, 0);
   }, [selectedId]);
 
@@ -721,8 +724,22 @@ export function CompanyPanel() {
                           <span className="ccchipn">{s.n}</span>
                         </span>
                       ))}
+                      {skillsOpen &&
+                        card.restSkills.map((s) => (
+                          <span className="ccchip" key={s.name}>
+                            {s.name}
+                            <span className="ccchipn">{s.n}</span>
+                          </span>
+                        ))}
                       {card.moreSkills > 0 && (
-                        <span className="ccchip ccchipmore">+{card.moreSkills} more</span>
+                        <button
+                          type="button"
+                          className="ccchip ccchipmore"
+                          aria-expanded={skillsOpen}
+                          onClick={() => setSkillsOpen((v) => !v)}
+                        >
+                          {skillsOpen ? "show fewer" : `+${card.moreSkills} more`}
+                        </button>
                       )}
                     </div>
                   ) : (

@@ -62,8 +62,11 @@ function makePinImage(): { width: number; height: number; data: Uint8Array } | n
   return { width: w, height: h, data: new Uint8Array(ctx.getImageData(0, 0, w, h).data.buffer) };
 }
 const PULSE_MS = 2200;
-// Zoom at which company name labels fade in (arrival zoom is ~16.6).
-const LABEL_ZOOM = 17.1;
+// Zoom at which company name labels fade in. This sits BELOW every city's
+// arrival zoom (CITY_VIEWS ranges 16.1–16.4) so the labels are already there
+// when a local view lands, rather than needing a further zoom-in to appear —
+// at the old 17.1 they were always a scroll away from being readable.
+const LABEL_ZOOM = 15.9;
 const ZOOM_OUT_THRESHOLD = 11;
 
 const COMPANY_BY_ID: Record<string, Company> = Object.fromEntries(COMPANIES.map((c) => [c.id, c]));

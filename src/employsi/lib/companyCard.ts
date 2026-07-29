@@ -104,6 +104,9 @@ export interface CompanyCard {
   facts: CardFact[];
   rating: CardRating | null;
   skills: CardSkill[];
+  /** Everything beyond the first SKILLS_SHOWN, so the card's "+N more" chip can
+   *  reveal them without another round trip. */
+  restSkills: CardSkill[];
   moreSkills: number;
   hiring: CardHiring[];
   hiringWindow: string | null;
@@ -334,6 +337,7 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
     .filter(([, n]) => n > 0)
     .sort((a, b) => b[1] - a[1]);
   const skills = skillEntries.slice(0, SKILLS_SHOWN).map(([name, n]) => ({ name, n }));
+  const restSkills = skillEntries.slice(SKILLS_SHOWN).map(([name, n]) => ({ name, n }));
 
   const hiringTop = roleEntries.slice(0, HIRING_SHOWN);
   const hiMax = hiringTop.length ? hiringTop[0][1] : 1;
@@ -358,7 +362,8 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
     facts,
     rating,
     skills,
-    moreSkills: Math.max(0, skillEntries.length - SKILLS_SHOWN),
+    restSkills,
+    moreSkills: restSkills.length,
     hiring,
     hiringWindow: vac.length >= MIN_TREND_DAYS ? `vs ${vac.length} days ago` : null,
   };

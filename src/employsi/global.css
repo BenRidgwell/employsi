@@ -9110,12 +9110,33 @@ body {
   font-family: "JetBrains Mono", monospace;
   font-size: 10.5px;
 }
+/* Now a <button> that expands the rest of the skills, so it needs to reset the
+   UA button styling and read as pressable rather than as another static chip. */
 .ccchipmore {
   padding: 0 12px;
   border-style: dashed;
   border-color: var(--neutral-300, #d1d1d6);
   background: transparent;
   color: var(--text-secondary);
+  font: inherit;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+  cursor: pointer;
+  transition:
+    border-color 0.14s ease,
+    color 0.14s ease,
+    background 0.14s ease;
+}
+.ccchipmore:hover {
+  border-color: var(--ink, #1c1c1e);
+  color: var(--ink, #1c1c1e);
+  background: var(--surface-active);
+}
+.ccchipmore:active {
+  transform: scale(0.96);
+}
+.ccchipmore[aria-expanded="true"] {
+  border-style: solid;
 }
 .cchiring {
   display: flex;

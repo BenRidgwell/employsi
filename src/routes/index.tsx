@@ -26,13 +26,13 @@ function useMobileFrameHost(): boolean {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Employsi — Perth Labour Map" },
+      { title: "employsi - explore the world of work" },
       {
         name: "description",
         content:
           "Employsi is the HR intelligence platform for understanding talent markets, compensation, and the shifting shape of work.",
       },
-      { property: "og:title", content: "Employsi — Perth Labour Map" },
+      { property: "og:title", content: "employsi - explore the world of work" },
       {
         property: "og:description",
         content:

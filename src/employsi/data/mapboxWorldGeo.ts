@@ -9,13 +9,27 @@ import { CITY_CONTINENT, CITY_LABEL, GLOBAL_HUB_LABEL } from "./geo";
 // Marker-position nudges, applied to the map DOT only — CITY_VIEWS keeps every
 // city's true centre, so flying into a local view still lands on the real CBD.
 // Same treatment (and same reason) as the South Korea / Japan country chips:
-// Sydney and Canberra sit ~2.4° apart, which at the Australasia frame's zoom
-// puts their chips on top of each other and leaves Canberra unreadable — and
-// unclickable — behind Sydney. Sydney is pulled north-east and Canberra
-// south-west so both stay legible.
+// cities that sit close together put their chips on top of each other at the
+// frame's zoom, leaving the one behind unreadable and unclickable.
+//
+// Sydney/Canberra sit ~2.4° apart. Sydney is pulled slightly north and Canberra
+// south-west. Sydney's nudge is deliberately small: it used to be 151.95, which
+// separated the chips but put the dot in the Tasman Sea — the coast at that
+// latitude is about 151.3°E, so anything east of it is water. 151.28/-33.72 is
+// over Ku-ring-gai, still land, and Canberra takes up the slack by moving
+// further into the Snowy Mountains.
+//
+// The South China cluster is the other collision: Hong Kong, Shenzhen and
+// Ganzhou all sit within about a degree of 114°E, and Shenzhen is only ~0.24°
+// from Hong Kong. Hong Kong keeps its true position (it is the most
+// recognisable of the three) while Shenzhen is pushed north-west toward
+// Dongguan and Ganzhou further north-west into inland Jiangxi — both still over
+// land, and all three now legible as separate dots.
 const MARKER_NUDGE: Record<string, [number, number]> = {
-  sydney: [151.95, -33.45],
-  canberra: [148.35, -35.85],
+  sydney: [151.28, -33.72],
+  canberra: [148.1, -36.0],
+  shenzhen: [113.75, 23.05],
+  ganzhou: [113.9, 26.6],
 };
 
 // Every global hub already has real head-office coordinates in CITY_VIEWS
