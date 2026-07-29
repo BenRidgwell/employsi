@@ -55,14 +55,97 @@ function payScaleText(card: string): string {
   return m ? clean(m[1]) : "";
 }
 
-// Best-effort salary midpoint from a pay-scale string when it names dollar
-// figures (many TAS scales are award-band labels with no number → undefined).
+// Best-effort salary midpoint from a string that names dollar figures.
+//
+// The SEARCH page never yields one: TAS prints the pay scale as an award-band
+// label ("Health and Human Services … General Stream, Level 1"), and a sample
+// of the live board had a dollar figure in 0 of 30 cards. The figure lives on
+// the JOB PAGE instead ("$121,540 per annum"), which is why enrichDetails below
+// exists — without it this source is permanently 0% salary, which is exactly
+// what the archive showed.
 function salaryFrom(pay: string): number | undefined {
   const nums = (pay.match(/\$\s?([\d,]{4,})/g) || [])
     .map((x) => Number(x.replace(/[^\d]/g, "")))
     .filter((n) => n > 0);
   if (!nums.length) return undefined;
   return Math.round(nums.reduce((s, n) => s + n, 0) / nums.length);
+}
+
+// How many job pages one run may open to look for a salary, and how many at a
+// time. This is deliberately BOUNDED rather than "every job": the board carries
+// a few hundred vacancies, and fetching them all would push the run past the
+// Worker's waitUntil budget — the failure that silently stopped the Queensland
+// board writing for three days. A capped slice per run fills the archive in
+// over a few days instead, and because the upsert only fills a NULL salary,
+// re-running never overwrites a figure already captured.
+const DETAIL_BUDGET = 60;
+const DETAIL_CONCURRENCY = 6;
+
+// The job page states the rate as "$121,540 per annum" (or a range). Anything
+// not qualified as annual is left alone — an hourly rate read as a salary would
+// be worse than no figure.
+function salaryFromDetail(html: string): number | undefined {
+  const m = html.match(
+    /\$\s?([\d,]{5,})(?:\s*(?:-|–|to)\s*\$?\s?([\d,]{5,}))?[^<\n]{0,40}?per annum/i,
+  );
+  if (!m) return undefined;
+  const lo = Number(m[1].replace(/[^\d]/g, ""));
+  const hi = m[2] ? Number(m[2].replace(/[^\d]/g, "")) : lo;
+  if (!lo || lo < 20000) return undefined;
+  return Math.round((lo + hi) / 2);
+}
+
+async function fetchDetail(url: string, signalMs = 15000): Promise<string | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), signalMs);
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "employsi-jobs/1.0 (+https://employsi.com; TAS gov vacancies feed)",
+        Accept: "text/html,application/xhtml+xml",
+      },
+    });
+    return res.ok ? await res.text() : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Fill in salaries from job pages, up to DETAIL_BUDGET of them.
+ *
+ * Only jobs with no salary from the list view are candidates, and they are
+ * taken in board order so the same head of the list is not re-fetched forever —
+ * jobs whose salary was captured on an earlier run drop out of the candidate
+ * set on the next one, so the window advances by itself.
+ */
+async function enrichDetails(jobs: StoredTasJob[]): Promise<number> {
+  const todo = jobs.filter((j) => !j.salN && j.url).slice(0, DETAIL_BUDGET);
+  let found = 0;
+  let fetched = 0;
+  for (let i = 0; i < todo.length; i += DETAIL_CONCURRENCY) {
+    const band = todo.slice(i, i + DETAIL_CONCURRENCY);
+    const pages = await Promise.all(band.map((j) => fetchDetail(j.url)));
+    band.forEach((j, k) => {
+      const html = pages[k];
+      if (!html) return;
+      fetched++;
+      const n = salaryFromDetail(html);
+      if (n) {
+        j.salN = n;
+        found++;
+      }
+    });
+  }
+  // One line an operator can act on: whether the job pages were reachable at
+  // all, and how many of them actually stated a salary.
+  console.log(
+    `tas-gov detail enrich: ${todo.length} candidates, ${fetched} fetched, ${found} priced`,
+  );
+  return found;
 }
 
 // Parse one search-results page into StoredTasJob[]. Cards are delimited by the
@@ -171,6 +254,7 @@ async function fetchAgency(uid: string, today: string): Promise<AgencyFetch> {
 export interface TasGovResult {
   updated: string;
   parsed: number; // total jobs matched across all agencies
+  enriched: number; // salaries recovered from job pages this run
   byAgency: Record<string, StoredTasJob[]>;
 }
 
@@ -210,5 +294,11 @@ export async function fetchTasGov(today: string): Promise<TasGovResult | null> {
   }
 
   if (!anyOk) return null; // board unreachable — don't age out stored jobs
-  return { updated: today, parsed, byAgency };
+
+  // Open a bounded slice of job pages for the salaries the list view withholds.
+  // Failure here is not failure of the run: the jobs are already parsed, so a
+  // detail fetch that times out just leaves that salary for another day.
+  const enriched = await enrichDetails(Object.values(byAgency).flat());
+
+  return { updated: today, parsed, enriched, byAgency };
 }

@@ -827,33 +827,55 @@ async function processQldGov(env: Env): Promise<{
   const cursorRaw = await env.OPEN_ROLES_HISTORY.get("qldgov:cursor");
   const start = Math.max(0, Number(cursorRaw) || 0);
   const res = await fetchQldGovPages(day, start, QLDGOV_WINDOW);
-  if (!res) return { startOffset: start, pagesOk: 0, parsed: 0, agencies: 0, nextCursor: start };
+  if (!res) {
+    // A whole window that fetched nothing normally means the board was
+    // unreachable, so the cursor is held and the same window retried. But if
+    // that keeps happening deep into the walk it is indistinguishable from a
+    // cursor stranded past the end of the board — which is exactly how this
+    // source went silent for three days. Rewinding to the start costs one
+    // wasted window and makes the stall self-healing.
+    const nextCursor = start > 0 ? 0 : start;
+    if (nextCursor !== start) await env.OPEN_ROLES_HISTORY.put("qldgov:cursor", "0");
+    return { startOffset: start, pagesOk: 0, parsed: 0, agencies: 0, nextCursor };
+  }
 
+  // 55 agencies, each needing a KV read, a KV write and possibly an archive
+  // write. Serially that is over 150 round trips and was the other half of why
+  // this run outgrew its waitUntil budget. Bounded parallelism keeps every
+  // agency processed while cutting the wall time to a fraction.
   let withRoles = 0;
-  for (const id of BRISBANE_GOV_IDS) {
-    const fresh = res.byAgency[id] || [];
-    let prevJobs: StoredQldJob[] = [];
-    try {
-      const prevRaw = await env.OPEN_ROLES_HISTORY.get(`qldgov:${id}`);
-      const prev = prevRaw ? JSON.parse(prevRaw) : null;
-      if (Array.isArray(prev?.jobs)) prevJobs = prev.jobs;
-    } catch {
-      /* start fresh */
-    }
-    const jobs = mergeGovJobs(prevJobs, fresh, day);
-    const count = jobs.length;
-    await env.OPEN_ROLES_HISTORY.put(`qldgov:${id}`, JSON.stringify({ updated: day, count, jobs }));
-    if (count > 0) {
-      await appendCount(env, id, count);
-      withRoles++;
-    }
-    if (fresh.length) {
-      await archiveJobs(
-        env.JOBS_ARCHIVE,
-        fresh.map((j) => govJobToArchive(j, "qld-gov", "brisbane", id, j.skills)),
-        day,
-      );
-    }
+  const AGENCY_CONCURRENCY = 8;
+  for (let i = 0; i < BRISBANE_GOV_IDS.length; i += AGENCY_CONCURRENCY) {
+    const slice = BRISBANE_GOV_IDS.slice(i, i + AGENCY_CONCURRENCY);
+    const counts = await Promise.all(
+      slice.map(async (id) => {
+        const fresh = res.byAgency[id] || [];
+        let prevJobs: StoredQldJob[] = [];
+        try {
+          const prevRaw = await env.OPEN_ROLES_HISTORY.get(`qldgov:${id}`);
+          const prev = prevRaw ? JSON.parse(prevRaw) : null;
+          if (Array.isArray(prev?.jobs)) prevJobs = prev.jobs;
+        } catch {
+          /* start fresh */
+        }
+        const jobs = mergeGovJobs(prevJobs, fresh, day);
+        const count = jobs.length;
+        await env.OPEN_ROLES_HISTORY.put(
+          `qldgov:${id}`,
+          JSON.stringify({ updated: day, count, jobs }),
+        );
+        if (count > 0) await appendCount(env, id, count);
+        if (fresh.length) {
+          await archiveJobs(
+            env.JOBS_ARCHIVE,
+            fresh.map((j) => govJobToArchive(j, "qld-gov", "brisbane", id, j.skills)),
+            day,
+          );
+        }
+        return count;
+      }),
+    );
+    withRoles += counts.filter((c) => c > 0).length;
   }
 
   // Advance the offset window; wrap to the start of the board once fully walked.

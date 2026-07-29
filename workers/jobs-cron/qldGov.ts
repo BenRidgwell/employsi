@@ -166,9 +166,20 @@ async function fetchPageOnce(offset: number, signalMs = 15000): Promise<string |
     });
     if (!res.ok) return null;
     const html = await res.text();
-    // A valid results page always contains the org-marker comment; a challenge /
-    // error page won't — treat that as a miss so the caller retries.
-    return html.includes("Summary Body org") ? html : null;
+    // Is this a genuine board page, or a challenge / error page?
+    //
+    // This used to test for the org-marker comment, which only appears when a
+    // page HAS results. Past the end of the board — offset 2400 against 2141
+    // jobs — Smart jobs returns a perfectly valid 200 with an empty results
+    // list and no org marker, which was therefore read as "blocked". The window
+    // then returned null, the caller kept its cursor, and the walk stalled at
+    // 2400 permanently: this board wrote nothing to the archive from 26 July
+    // while reporting no error at all.
+    //
+    // The results CONTAINER is present either way and absent from a challenge
+    // page, so it distinguishes "no results here" from "we were blocked" —
+    // which is the distinction that actually matters.
+    return html.includes('class="search-results') ? html : null;
   } catch {
     return null;
   } finally {
@@ -196,6 +207,15 @@ export interface QldGovResult {
 
 // Fetch a contiguous window of `windowPages` result pages starting at
 // `startOffset` (a multiple of 20). Stops early when a page returns no results.
+//
+// Pages are fetched in PARALLEL BANDS rather than one after another. Walked
+// sequentially — 20 pages, each up to three attempts, with a pause between —
+// the run overran the Worker's waitUntil budget and was cancelled silently,
+// which is why this board stopped writing to the archive after 26 July while
+// still reporting no error. A band of PAGE_CONCURRENCY at a time brings the
+// same 20 pages inside the budget.
+const PAGE_CONCURRENCY = 5;
+
 export async function fetchQldGovPages(
   today: string,
   startOffset: number,
@@ -207,27 +227,35 @@ export async function fetchQldGovPages(
   let reachedEnd = false;
   const start = Math.max(0, startOffset);
   let gotAny = false;
-  for (let k = 0; k < windowPages; k++) {
-    const offset = start + k * PER_PAGE;
-    if (offset > MAX_OFFSET) {
-      reachedEnd = true;
-      break;
+  for (let band = 0; band < windowPages && !reachedEnd; band += PAGE_CONCURRENCY) {
+    const offsets: number[] = [];
+    for (let k = band; k < Math.min(band + PAGE_CONCURRENCY, windowPages); k++) {
+      const offset = start + k * PER_PAGE;
+      if (offset > MAX_OFFSET) {
+        reachedEnd = true;
+        break;
+      }
+      offsets.push(offset);
     }
-    if (k > 0) await sleep(300);
-    const html = await fetchPage(offset);
-    if (!html) continue;
-    gotAny = true;
-    const res = parseQldGovPage(html);
-    if (res.items === 0) {
-      reachedEnd = true;
-      break;
+    if (!offsets.length) break;
+    const pages = await Promise.all(offsets.map((o) => fetchPage(o)));
+    // Ordered, so "a page came back empty" still means the board ended HERE and
+    // everything after it in this band is past the end.
+    for (const html of pages) {
+      if (!html) continue;
+      gotAny = true;
+      const res = parseQldGovPage(html);
+      if (res.items === 0) {
+        reachedEnd = true;
+        break;
+      }
+      for (const [id, jobs] of Object.entries(res.byAgency)) {
+        for (const j of jobs) j.seen = today;
+        (byAgency[id] ||= []).push(...jobs);
+      }
+      parsed += res.parsed;
+      pagesOk++;
     }
-    for (const [id, jobs] of Object.entries(res.byAgency)) {
-      for (const j of jobs) j.seen = today;
-      (byAgency[id] ||= []).push(...jobs);
-    }
-    parsed += res.parsed;
-    pagesOk++;
   }
   if (!gotAny) return null; // whole window failed to fetch → let caller keep cursor
   return { updated: today, startOffset: start, pagesOk, parsed, reachedEnd, byAgency };
