@@ -1621,3 +1621,8 @@ COMPANIES.push(...TOP_PRIVATE_COMPANIES);
 // New Zealand companies, plotted on the Auckland + Wellington local views.
 import { NZ_COMPANIES } from "./nzCompanies";
 COMPANIES.push(...NZ_COMPANIES);
+
+// New Zealand public-sector agencies advertising in Auckland or Wellington
+// (private / public-sector), harvested from jobs.govt.nz.
+import { NZ_GOV_COMPANIES } from "./nzGov";
+COMPANIES.push(...NZ_GOV_COMPANIES);

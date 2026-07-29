@@ -5,6 +5,7 @@ import { buildCompanyCard, TREND_UP, TREND_DOWN } from "../../lib/companyCard";
 import { COMPANIES } from "../../data/companies";
 import { COMPANY_HEADCOUNT } from "../../data/companyHeadcount";
 import { GOV_HEADCOUNT, GOV_WORKFORCE } from "../../data/perthGovWorkforce";
+import { NZ_GOV_IDS } from "../../data/nzGov";
 import { useBhpFeed } from "../../hooks/useBhpFeed";
 import { useShareSeries } from "../../hooks/useShareSeries";
 import { useCompanyStats } from "../../hooks/useCompanyStats";
@@ -19,6 +20,10 @@ import { CardLoader } from "./CardLoader";
 import { ChartTooltip } from "./ChartTooltip";
 
 type CardTab = "Overview" | "Skills" | "Hiring";
+
+// NZ public-sector agency ids. Matched as a set rather than by prefix because
+// the NZ private roster (data/nzCompanies.ts) shares the `nz-` prefix.
+const NZ_GOV_ID_SET = new Set(NZ_GOV_IDS);
 
 // "2026-07-20" → "20 Jul 2026" for the vacancy-history header.
 function fmtDay(iso: string): string {
@@ -376,7 +381,10 @@ export function CompanyPanel() {
       panel.companyId.startsWith("aps-") ||
       panel.companyId.startsWith("nt-gov-") ||
       panel.companyId.startsWith("tas-gov-") ||
-      panel.companyId.startsWith("nsw-gov-"));
+      panel.companyId.startsWith("nsw-gov-") ||
+      // NZ agencies share the `nz-` prefix with the NZ private roster, so they
+      // are matched by id rather than prefix.
+      NZ_GOV_ID_SET.has(panel.companyId));
   // Real PSC workforce record for a gov agency (present only for agencies the
   // PSC reports). When absent, the agency's headcount is genuinely unknown and
   // the workforce chart / headcount stat are suppressed rather than faked.

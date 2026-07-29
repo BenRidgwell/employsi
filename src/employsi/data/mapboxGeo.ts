@@ -15,6 +15,7 @@ import { HOBART_GOV_IDS } from "./hobartGov";
 import { SYDNEY_GOV_IDS } from "./sydneyGov";
 import { TOP_PRIVATE_BY_CITY } from "./topPrivateCompanies";
 import { NZ_BY_CITY } from "./nzCompanies";
+import { NZ_GOV_IDS, NZ_GOV_HUB } from "./nzGov";
 import { PERTH_REAL_COORDS } from "./perthRealCoords";
 import { SAN_JOSE_REAL_COORDS } from "./sanJoseRealCoords";
 
@@ -353,6 +354,23 @@ for (const [city, entries] of Object.entries(NZ_BY_CITY)) {
   if (!CITY_VIEWS[city]) continue;
   const existing = (CITY_COMPANIES[city] ||= []);
   entries.forEach(({ id, coords }) => existing.push({ id, coords }));
+}
+
+// New Zealand government agencies: grouped by the city each one actually
+// advertises in (Wellington for the central public service, Auckland for the
+// northern health districts) and fanned around that city's centre — no street
+// address is verified for these, unlike the NZ companies above.
+{
+  const byHub: Record<string, string[]> = {};
+  for (const id of NZ_GOV_IDS) (byHub[NZ_GOV_HUB[id] || "wellington"] ||= []).push(id);
+  for (const [hub, ids] of Object.entries(byHub)) {
+    const view = CITY_VIEWS[hub];
+    if (!view) continue;
+    const existing = (CITY_COMPANIES[hub] ||= []);
+    const offset = existing.length;
+    const pts = spreadCoordsCity(view.center, offset + ids.length, CITY_PLACEMENT[hub]);
+    ids.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
+  }
 }
 
 // Flat lookup of every company's coords across all cities. Where a company sits
