@@ -4,7 +4,7 @@ import { AccountButton } from "./AccountButton";
 import { HelpDock } from "./HelpDock";
 import { useAppStore, isSearchActive, type FilterState } from "../state/store";
 import { COMPANIES } from "../data/companies";
-import { cityForCompany } from "../data/mapboxGeo";
+import { searchCityFor } from "../data/mapboxGeo";
 import { popularSkills as popularSkillsForLayer } from "../lib/skillHeat";
 import { GLOBAL_HUB_LABEL } from "../data/geo";
 import { ALL_SKILLS } from "../data/skillsTaxonomy";
@@ -43,7 +43,6 @@ export function TopBar() {
   const maxAttrition = useAppStore((s) => s.maxAttrition);
   const globalOut = useAppStore((s) => s.globalOut);
   const zoomedOut = useAppStore((s) => s.zoomedOut);
-  void globalOut;
 
   const filterState: FilterState = {
     searchQuery,
@@ -107,7 +106,9 @@ export function TopBar() {
       return; // keep the flyout for further picks; the map recolours behind it
     }
     if (r.kind === "company") {
-      zoomInCity(cityForCompany(r.id));
+      // Head office from the globe; the nearest office in the region otherwise
+      // — same rule as the main search bar (see searchCityFor).
+      zoomInCity(searchCityFor(r.id, globalOut ? {} : { region: domesticRegion, near: localCity }));
       select(r.id);
     } else {
       zoomInCity(r.id);

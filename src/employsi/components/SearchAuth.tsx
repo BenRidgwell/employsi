@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useAppStore } from "../state/store";
 import { COMPANIES } from "../data/companies";
-import { cityForCompany } from "../data/mapboxGeo";
+import { searchCityFor } from "../data/mapboxGeo";
 
 /**
  * The account control inside the search pill, from `Employsi Skill Search.html`.
@@ -113,7 +113,7 @@ export function SearchAuth() {
                         key={c.id}
                         className="gsauthsavedrow"
                         onClick={() => {
-                          zoomInCity(cityForCompany(c.id));
+                          zoomInCity(searchCityFor(c.id));
                           select(c.id);
                           closeAuth();
                         }}

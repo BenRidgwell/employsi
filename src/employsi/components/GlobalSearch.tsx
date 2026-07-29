@@ -22,7 +22,7 @@ import {
 import { LABOUR_EVENTS } from "../data/labourEvents";
 import { getSkillPay, formatPay } from "../lib/analystFn";
 import { COMPANIES } from "../data/companies";
-import { cityForCompany } from "../data/mapboxGeo";
+import { searchCityFor } from "../data/mapboxGeo";
 import { SearchAuth } from "./SearchAuth";
 import { IconClose } from "./ActionIcons";
 
@@ -200,7 +200,10 @@ export function GlobalSearch() {
       return;
     }
     if (r.kind === "company") {
-      zoomInCity(cityForCompany(r.id));
+      // From the globe, go to the head office. From a domestic view, stay in
+      // the region the user chose and go to their nearest office in it — see
+      // searchCityFor.
+      zoomInCity(searchCityFor(r.id, globalOut ? {} : { region: domesticRegion, near: localCity }));
       select(r.id);
     } else {
       zoomInCity(r.id);

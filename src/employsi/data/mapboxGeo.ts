@@ -18,6 +18,8 @@ import { NZ_BY_CITY } from "./nzCompanies";
 import { NZ_GOV_IDS, NZ_GOV_HUB } from "./nzGov";
 import { PERTH_REAL_COORDS } from "./perthRealCoords";
 import { SAN_JOSE_REAL_COORDS } from "./sanJoseRealCoords";
+import { SECONDARY_OFFICES, HQ_OVERRIDE } from "./secondaryOffices";
+import { CITY_CONTINENT } from "./geo";
 
 export const PERTH_CENTER: [number, number] = [115.8552, -31.9542];
 // Bumped from 15.3 so 3D extruded buildings are clearly visible on arrival,
@@ -371,6 +373,94 @@ for (const [city, entries] of Object.entries(NZ_BY_CITY)) {
     const pts = spreadCoordsCity(view.center, offset + ids.length, CITY_PLACEMENT[hub]);
     ids.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
   }
+}
+
+// ── Head offices and secondary offices ──────────────────────────────────────
+// Snapshot BEFORE the secondary offices are added: whichever city already holds
+// a company is its head office, unless secondaryOffices.ts overrides it. Taking
+// it here rather than after is the whole point — once a company is plotted in
+// five cities there is no way to tell from CITY_COMPANIES which one is home.
+export const HQ_CITY: Record<string, string> = {};
+for (const [city, list] of Object.entries(CITY_COMPANIES)) {
+  for (const c of list) if (!(c.id in HQ_CITY)) HQ_CITY[c.id] = city;
+}
+for (const [id, city] of Object.entries(HQ_OVERRIDE)) {
+  if (CITY_VIEWS[city]) HQ_CITY[id] = city;
+}
+
+// Secondary offices: a real presence in a city, without a verified street
+// address, so each is fanned around the city centre rather than given a
+// building. Skipped where the company is already plotted in that city with a
+// geocoded pin — that pin is better than anything this could add.
+{
+  const byCity: Record<string, string[]> = {};
+  for (const [id, cities] of Object.entries(SECONDARY_OFFICES)) {
+    for (const city of cities) {
+      if (!CITY_VIEWS[city]) continue;
+      if (CITY_COMPANIES[city]?.some((c) => c.id === id)) continue;
+      (byCity[city] ||= []).push(id);
+    }
+  }
+  for (const [city, ids] of Object.entries(byCity)) {
+    const existing = (CITY_COMPANIES[city] ||= []);
+    const offset = existing.length;
+    const pts = spreadCoordsCity(
+      CITY_VIEWS[city].center,
+      offset + ids.length,
+      CITY_PLACEMENT[city],
+    );
+    ids.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
+  }
+}
+
+// Every city a company is plotted in, head office first.
+export function officeCitiesFor(id: string): string[] {
+  const hq = HQ_CITY[id];
+  const all = Object.entries(CITY_COMPANIES)
+    .filter(([, list]) => list.some((c) => c.id === id))
+    .map(([city]) => city);
+  return hq ? [hq, ...all.filter((c) => c !== hq)] : all;
+}
+
+const RAD = Math.PI / 180;
+/** Great-circle distance in km between two city centres. */
+function cityDistance(a: string, b: string): number {
+  const va = CITY_VIEWS[a];
+  const vb = CITY_VIEWS[b];
+  if (!va || !vb) return Number.POSITIVE_INFINITY;
+  const [lng1, lat1] = va.center;
+  const [lng2, lat2] = vb.center;
+  const dLat = (lat2 - lat1) * RAD;
+  const dLng = (lng2 - lng1) * RAD;
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * RAD) * Math.cos(lat2 * RAD) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/**
+ * Where selecting a company from search should take you.
+ *
+ * From the global layer there is no regional context, so it is the head office —
+ * searching "Westpac" from the globe should land on Westpac, not on whichever
+ * branch office happens to sort first.
+ *
+ * From a domestic layer the user has already chosen a region, and taking them
+ * out of it would throw away that choice. So it is the company's office within
+ * that region — the one nearest whatever city they were last looking at, when
+ * there are several — and only falls back to the head office when the company
+ * has no presence in the region at all.
+ */
+export function searchCityFor(id: string, opts: { region?: string; near?: string } = {}): string {
+  const cities = officeCitiesFor(id);
+  if (!cities.length) return "perth";
+  const hq = cities[0];
+  if (!opts.region) return hq;
+  const inRegion = cities.filter((c) => CITY_CONTINENT[c] === opts.region);
+  if (!inRegion.length) return hq;
+  if (inRegion.length === 1 || !opts.near) return inRegion[0];
+  return inRegion.reduce((best, c) =>
+    cityDistance(c, opts.near!) < cityDistance(best, opts.near!) ? c : best,
+  );
 }
 
 // Flat lookup of every company's coords across all cities. Where a company sits
