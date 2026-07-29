@@ -72,11 +72,31 @@ def match_city(text: str):
 
 
 # ── SEEK advertiser map (parsed from the generated TS) ────────────────────────
+# Quote-AGNOSTIC, and it has to be. The previous pattern assumed single-quoted
+# keys and values; Prettier later reformatted seekAdvertisers.ts to double
+# quotes and dropped the quotes from keys that don't need them, so the pattern
+# matched 0 of the entries. The scraper then walked zero companies, archived
+# nothing, and exited 0 — four days of "successful" runs with no data. So: the
+# quote character is captured and back-referenced, and the key may be bare.
+#
+# (The sturdier fix is scripts/roster.py's: run the TypeScript instead of
+# regexing it. Worth doing here too, but a tolerant pattern plus the
+# empty-roster guard below is what stops this failing silently again.)
+ADVERTISER_RE = re.compile(
+    r'["\']?([A-Za-z0-9_-]+)["\']?\s*:\s*\{\s*'
+    r'advertiserId:\s*(["\'])(.*?)\2\s*,\s*'
+    r'name:\s*(["\'])((?:[^\\]|\\.)*?)\4\s*\}'
+)
+
+
 def load_advertisers() -> dict:
     txt = open(os.path.join(ROOT, 'src/employsi/data/seekAdvertisers.ts')).read()
     out = {}
-    for m in re.finditer(r"'([^']+)':\s*\{\s*advertiserId:\s*'([^']+)',\s*name:\s*'((?:[^'\\]|\\.)*)'\s*\}", txt):
-        out[m.group(1)] = {'advertiserId': m.group(2), 'name': m.group(3).replace("\\'", "'")}
+    for m in ADVERTISER_RE.finditer(txt):
+        out[m.group(1)] = {
+            'advertiserId': m.group(3),
+            'name': m.group(5).replace("\\'", "'").replace('\\"', '"'),
+        }
     return out
 
 
@@ -231,6 +251,15 @@ def upsert(company_id: str, jobs: list) -> int:
 
 def main() -> int:
     advertisers = load_advertisers()
+    if not advertisers:
+        # An empty roster is never a real state of the world — it means the
+        # data file moved or its format changed under the parser. Reporting
+        # "Done. 0 archived." and exiting 0 is what hid this for four days.
+        sys.stderr.write(
+            'No SEEK advertisers parsed from src/employsi/data/seekAdvertisers.ts.\n'
+            'The file is present but nothing matched, so its format has changed — '
+            'treating as a failure rather than archiving nothing quietly.\n')
+        return 1
     ids = [cid for cid in advertisers if not ONLY or cid in ONLY]
     sys.stderr.write(f'SEEK -> D1: {len(ids)} mapped companies.\n')
     total_fetch = total_new = blocked = done = 0

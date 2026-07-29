@@ -22,12 +22,19 @@ on:
       - 'scripts/oxylabs_client.py'
       - 'scripts/*-to-d1.py'
       - 'scripts/test_jobs_extract.py'
+      - 'scripts/test_rosters.py'
+      # A reformat of these data files is what silently emptied the SEEK and
+      # Zhaopin rosters, so a change to either has to re-run the parsers.
+      - 'src/employsi/data/seekAdvertisers.ts'
+      - 'src/employsi/data/chinaJobsTargets.ts'
       - '.github/workflows/scraper-check.yml'
   pull_request:
     paths:
       - 'scripts/jobs_extract.py'
       - 'scripts/oxylabs_client.py'
       - 'scripts/*-to-d1.py'
+      - 'src/employsi/data/seekAdvertisers.ts'
+      - 'src/employsi/data/chinaJobsTargets.ts'
   workflow_dispatch: {}
 
 jobs:
@@ -43,6 +50,9 @@ jobs:
 
       - name: Job-extraction parser tests
         run: python scripts/test_jobs_extract.py
+
+      - name: Roster parsers still read their data files
+        run: python scripts/test_rosters.py
 
       - name: Byte-compile the scrapers
         run: python -m compileall -q scripts/*.py

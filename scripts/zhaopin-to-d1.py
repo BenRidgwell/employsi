@@ -84,18 +84,29 @@ def job_key(source: str, title: str, company: str, location: str) -> str:
 
 
 # ── target companies (parsed from the generated TS) ───────────────────────────
+# Quote-AGNOSTIC — see the same note in scripts/seek-to-d1.py. This pattern
+# assumed single quotes; Prettier reformatted chinaJobsTargets.ts to double
+# quotes and it went from 93 matches to 0, after which the scraper walked no
+# companies and exited 0 every night.
+TARGET_RE = re.compile(
+    r'\{\s*id:\s*(["\'])(.*?)\1\s*,\s*'
+    r'name:\s*(["\'])((?:[^\\]|\\.)*?)\3\s*,\s*'
+    r'kw:\s*(["\'])((?:[^\\]|\\.)*?)\5\s*,\s*'
+    r'cityId:\s*(\d+)\s*,\s*'
+    r'hub:\s*(["\'])([^"\']+)\8\s*\}'
+)
+
+
 def load_targets() -> list[dict]:
     txt = open(os.path.join(ROOT, 'src/employsi/data/chinaJobsTargets.ts')).read()
     out = []
-    for m in re.finditer(
-        r"\{\s*id:\s*'([^']+)',\s*name:\s*'((?:[^'\\]|\\.)*)',\s*kw:\s*'((?:[^'\\]|\\.)*)',"
-        r"\s*cityId:\s*(\d+),\s*hub:\s*'([^']+)'\s*\}", txt):
-        cid = m.group(1)
+    for m in TARGET_RE.finditer(txt):
+        cid = m.group(2)
         if ONLY and cid not in ONLY:
             continue
-        out.append({'id': cid, 'name': m.group(2).replace("\\'", "'"),
-                    'kw': m.group(3).replace("\\'", "'"),
-                    'cityId': int(m.group(4)), 'hub': m.group(5)})
+        unq = lambda s: s.replace("\\'", "'").replace('\\"', '"')  # noqa: E731
+        out.append({'id': cid, 'name': unq(m.group(4)), 'kw': unq(m.group(6)),
+                    'cityId': int(m.group(7)), 'hub': m.group(9)})
     return out
 
 
@@ -182,6 +193,13 @@ def upsert(t: dict, jobs: list) -> int:
 
 def main() -> int:
     targets = load_targets()
+    if not targets and not ONLY:
+        # Nothing parsed from a file that exists means its format changed, not
+        # that China has no employers. Fail rather than archive nothing quietly.
+        sys.stderr.write(
+            'No targets parsed from src/employsi/data/chinaJobsTargets.ts — the file is '
+            'present but nothing matched, so its format has changed. Treating as a failure.\n')
+        return 1
     mode = 'SOLVE / reachability check — no D1 write' if SOLVE else 'Zhaopin -> D1'
     sys.stderr.write(f'{mode}: {len(targets)} company(ies) across '
                      f'{len({t["hub"] for t in targets})} cities '
