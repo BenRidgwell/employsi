@@ -26,16 +26,24 @@ class RosterError(RuntimeError):
     pass
 
 
-def load_roster(only: set[str] | None = None, limit: int | None = None) -> list[dict]:
+def load_roster(only: set[str] | None = None, limit: int | None = None,
+                with_cities: bool = False) -> list[dict]:
     """Every company the scrapers walk: {id, name, sector, group, cities}.
 
     `only` filters to a set of ids; `limit` truncates (both after the full list
     is loaded, so a --limit run is a prefix of the real roster rather than a
     different roster).
+
+    `with_cities` adds the exchange-listed companies plotted on each global hub
+    (cityRosters.ts) — about 640 more names, including the Mumbai and Bengaluru
+    ones. It is OFF by default so the Australian drivers keep walking exactly
+    the 355 companies they always have; only scrapers that cover those markets
+    ask for them.
     """
     try:
         p = subprocess.run(
-            ["bun", "run", os.path.join(HERE, "roster.ts")],
+            ["bun", "run", os.path.join(HERE, "roster.ts")]
+            + (["--with-cities"] if with_cities else []),
             capture_output=True,
             timeout=120,
             cwd=ROOT,

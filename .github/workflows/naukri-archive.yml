@@ -1,0 +1,56 @@
+# Daily Naukri (naukri.com) → D1 archive, via the Oxylabs Web Scraper API.
+#
+# Covers the Mumbai and Bengaluru hubs for the companies plotted there. Naukri
+# blocks datacentre IPs, so every fetch goes through Oxylabs for the residential
+# IP, throttling and backoff — the same path Indeed, Zhaopin, JobsDB and Jora
+# use.
+#
+# The scraper walks the roster INCLUDING the city-listed companies, because the
+# Indian names (Reliance, TCS, HDFC Bank, Infosys, Wipro …) live in
+# cityRosters.ts rather than the Australian rosters. By default it narrows to
+# the companies actually plotted in those two cities; drop --india-only to sweep
+# the whole roster.
+#
+# Rows land through the same key + upsert as every other source, so a role also
+# carried by another board refreshes rather than duplicating. The run exits
+# non-zero only when NOTHING matches, which means the page contract changed or
+# we were blocked rather than the market being quiet.
+#
+# Required repo secrets:
+#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
+#   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
+# Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# Use "Run workflow" to verify before relying on the schedule.
+
+name: naukri-archive
+
+on:
+  schedule:
+    - cron: '0 20 * * *' # 20:00 UTC daily — ahead of the NZ/JobsDB/Jora runs
+  workflow_dispatch: {}
+
+concurrency:
+  group: naukri-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Scrape Naukri (Mumbai + Bengaluru) → D1 (Oxylabs)
+        env:
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/naukri-to-d1.py --india-only --max-pages 2 --concurrency 5

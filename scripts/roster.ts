@@ -15,8 +15,30 @@
 // Run: bun run scripts/roster.ts
 import { AU_JOBS_TARGETS } from "../src/employsi/data/auJobsTargets";
 import { TOP_PRIVATE_TARGETS } from "../src/employsi/data/topPrivateCompanies";
+import { CITY_ROSTERS } from "../src/employsi/data/cityRosters";
+import { rosterId } from "../src/employsi/data/rosters";
 
-const all = [...AU_JOBS_TARGETS, ...TOP_PRIVATE_TARGETS];
+// City-roster companies (the exchange-listed names plotted on each global hub).
+// Included so the international scrapers can walk them too — Naukri needs the
+// Mumbai and Bengaluru names, which exist only here and not in the AU rosters.
+const CITY_TARGETS = Object.entries(CITY_ROSTERS).flatMap(([city, r]) =>
+  r.companies.map(([ticker, name, group]) => ({
+    id: rosterId(city, ticker),
+    name,
+    sector: group,
+    group,
+    cities: [city],
+  })),
+);
+
+// The city rosters are OPT-IN (--with-cities). Folding them in by default would
+// silently take every existing driver — Indeed, LinkedIn, JobsDB, Jora — from
+// 355 companies to ~995 and change what those daily runs mean. Only the
+// scrapers that actually cover those markets ask for them.
+const withCities = process.argv.includes("--with-cities");
+const all = withCities
+  ? [...AU_JOBS_TARGETS, ...TOP_PRIVATE_TARGETS, ...CITY_TARGETS]
+  : [...AU_JOBS_TARGETS, ...TOP_PRIVATE_TARGETS];
 const seen = new Set<string>();
 const out = all.filter((t) => {
   if (!t.id || seen.has(t.id)) return false;
