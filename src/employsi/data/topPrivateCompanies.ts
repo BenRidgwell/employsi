@@ -55,7 +55,13 @@ const RAW: Raw[] = [
   ["Baiada Poultry", "sydney", 2001688, 1.5],
   ["Loan Market", "brisbane", 1950515, 6.77],
   ["Mater", "brisbane", 1714955, 7.86],
-  ["ABN", "perth", 1708000, 19.71],
+  // "ABN Group", not "ABN": the AFR list abbreviates it, but the bare
+  // three-letter form is the Australian Business Number every ad and
+  // article in the country quotes, so keyword searches keyed off it
+  // matched the whole market (the card read 1,172 open roles and the news
+  // panel filled with ABN registration stories). It is the WA/VIC
+  // residential builder.
+  ["ABN Group", "perth", 1708000, 19.71],
   ["SMRM Holdings", "brisbane", 1633128, 9.09],
   ["Midfield", "sydney", 1591748, 9.62],
   ["Bolton Clarke", "brisbane", 1584016, 34.15],
@@ -306,8 +312,19 @@ const AGRI = {
   ],
 };
 
+// Companies whose NAME carries no clue to their industry, so the keyword rules
+// below cannot place them and would silently drop them into the catch-all.
+// Keep this small and evidenced — it exists for genuine misses, not for tuning.
+const SECTOR_OVERRIDE: Record<string, () => Sec> = {
+  // WA/VIC residential builder. Nothing in "ABN Group" says construction, so it
+  // was landing in Consumer & Retail.
+  "abn group": () => CONSTRUCTION,
+};
+
 function classify(name: string): Sec {
   const n = name.toLowerCase();
+  const override = SECTOR_OVERRIDE[n];
+  if (override) return override();
   const has = (...k: string[]) => k.some((x) => n.includes(x));
   if (
     has(
