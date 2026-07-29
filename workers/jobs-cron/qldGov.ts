@@ -31,6 +31,7 @@ export interface StoredQldJob {
   city: string | null; // Brisbane-market (QLD) roles
   skills: string[];
   emp?: string; // work type
+  salN?: number; // advertised salary midpoint (annual), when the board states one
   seen?: string;
 }
 
@@ -110,11 +111,39 @@ export function parseQldGovPage(html: string): {
       city: "brisbane",
       skills: skillsForText(title),
       emp: typeM ? unescapeHtml(typeM[1]) : undefined,
+      salN: parseSalary(body),
     };
     (byAgency[agencyId] ||= []).push(job);
     parsed++;
   }
   return { byAgency, parsed, items: blocks.length };
+}
+
+/**
+ * Advertised salary out of a QLD result card.
+ *
+ * Smart jobs does not print the range as text — it emits it as inline script
+ * variables inside `<span class="salary">`:
+ *
+ *     sal1 = '76963'; sal2 = '123102'; sal3 = '2950.00'; sal4 = '4718.50';
+ *
+ * sal1/sal2 are the ANNUAL range and sal3/sal4 the fortnightly equivalent, so
+ * only the first pair is read. The board writes empty strings (and the page's
+ * own script then shows "N/A") when a role has no published range, which is why
+ * the values are filtered rather than assumed present.
+ *
+ * Returns the midpoint, matching what vicGov stores and what govJobToArchive
+ * renders as "$Nk".
+ */
+function parseSalary(card: string): number | undefined {
+  const span = card.match(/<span class="salary">([\s\S]*?)<\/span>/i);
+  if (!span) return undefined;
+  const nums = [1, 2]
+    .map((i) => span[1].match(new RegExp(`sal${i}\\s*=\\s*'([\\d.]*)'`)))
+    .map((m) => Number(m?.[1]))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  if (!nums.length) return undefined;
+  return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length);
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

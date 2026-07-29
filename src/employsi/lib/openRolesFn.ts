@@ -405,7 +405,7 @@ const ARCHIVE_SOURCE_LABEL: Record<string, string> = {
 // portal. The portal is archived once, against the primary (LSE) line; the Hong
 // Kong line reads those same rows rather than the scrape running twice and the
 // roles being counted twice in market-wide totals.
-const COMPANY_ID_ALIAS: Record<string, string> = {
+export const COMPANY_ID_ALIAS: Record<string, string> = {
   "hongkong-00005": "london-hsba",
 };
 

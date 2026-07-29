@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { D1Like } from "./jobArchive";
-import type { RolePoint } from "./openRolesFn";
+import { COMPANY_ID_ALIAS, type RolePoint } from "./openRolesFn";
 import { SKILL_CATEGORY } from "../data/skillsTaxonomy";
 
 // Reads the historical job archive (Cloudflare D1) written by the jobs-cron
@@ -506,14 +506,47 @@ export const getVacancyTrend = createServerFn({ method: "GET" })
     if (!db) return [];
     try {
       const res = await db
-        .prepare(`SELECT first_seen, last_seen FROM jobs WHERE company_id = ?1`)
-        .bind(id)
+        .prepare(
+          `SELECT title, first_seen, last_seen FROM jobs
+            WHERE company_id = ?1
+              AND source NOT IN ('adzuna', 'muse')`,
+        )
+        // Same alias the headline uses, so a dual-listed issuer's chart reads
+        // the rows its "Open roles" number was counted from (HSBC is on the
+        // roster twice but archived once).
+        .bind(COMPANY_ID_ALIAS[id] ?? id)
         .all();
       const rows = res?.results ?? [];
       if (!rows.length) return [];
-      const spans = rows
-        .map((r) => [String(r.first_seen || ""), String(r.last_seen || "")])
-        .filter(([fs, ls]) => fs && ls);
+      // Count DISTINCT ROLES open on a day, not archive rows.
+      //
+      // This has to match how the card's "Open roles" headline counts, or the
+      // chart's last point disagrees with the number printed beside it. That
+      // headline dedupes by normalised title and ignores adzuna/muse (those are
+      // counted from the live fetch instead), so this does both.
+      //
+      // Measured on the live archive: 5,873 rows were open across the roster on
+      // one day but only 4,006 distinct company+title pairs — the row count
+      // overstated by 47%. It is worst for employers that advertise one role in
+      // many locations: CSL had 1,089 rows for 438 real roles.
+      const norm = (s: string) =>
+        s
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, " ")
+          .trim();
+      // title -> the day-spans it was open for, so a role listed by three
+      // sources contributes one span set rather than three roles.
+      const byTitle = new Map<string, [string, string][]>();
+      for (const r of rows) {
+        const t = norm(String(r.title || ""));
+        const fs = String(r.first_seen || "");
+        const ls = String(r.last_seen || "");
+        if (!t || !fs || !ls) continue;
+        const list = byTitle.get(t);
+        if (list) list.push([fs, ls]);
+        else byTitle.set(t, [[fs, ls]]);
+      }
+      if (!byTitle.size) return [];
       const DAYS = 90;
       const now = new Date();
       const series: RolePoint[] = [];
@@ -522,7 +555,9 @@ export const getVacancyTrend = createServerFn({ method: "GET" })
         d.setUTCDate(d.getUTCDate() - i);
         const ds = d.toISOString().slice(0, 10);
         let c = 0;
-        for (const [fs, ls] of spans) if (fs <= ds && ds <= ls) c++;
+        for (const spans of byTitle.values()) {
+          if (spans.some(([fs, ls]) => fs <= ds && ds <= ls)) c++;
+        }
         series.push({ d: ds, c });
       }
       // Drop the leading run of zeros before the archive had any data for this
