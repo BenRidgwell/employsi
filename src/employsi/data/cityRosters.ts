@@ -241,6 +241,30 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["C07", "Jardine Cycle & Carriage", CON],
     ],
   },
+  // India's two largest corporate hubs. Tickers are NSE symbols, which is the
+  // form these names trade and are quoted under.
+  mumbai: {
+    exchange: "NSE",
+    companies: [
+      ["RELIANCE", "Reliance Industries Limited", ENR],
+      ["TCS", "Tata Consultancy Services", TMT],
+      ["HDFCBANK", "HDFC Bank", FIN],
+      ["ICICIBANK", "ICICI Bank", FIN],
+      ["SBIN", "State Bank of India", FIN],
+      ["LT", "Larsen & Toubro", IND],
+      ["HINDUNILVR", "Hindustan Unilever", CON],
+    ],
+  },
+  bengaluru: {
+    exchange: "NSE",
+    companies: [
+      ["INFY", "Infosys", TMT],
+      ["WIPRO", "Wipro", TMT],
+      ["HAL", "Hindustan Aeronautics Limited", IND],
+      ["BEL", "Bharat Electronics Limited", IND],
+      ["BIOCON", "Biocon", HLT],
+    ],
+  },
   hongkong: {
     exchange: "HKEX",
     companies: [

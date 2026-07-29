@@ -26,11 +26,15 @@ export const CITY_STATE: Record<string, string> = {
   canberra: "ACT",
   auckland: "NZ",
   wellington: "NZ",
+  mumbai: "IN",
+  bengaluru: "IN",
 };
 
 // Pixel coords in the 250x230 AustraliaMap viewBox, projected from each city's
 // real lng/lat with the same Web-Mercator fit used for AU_STATE_PATHS.
 export const CITY_LABEL: Record<string, string> = {
+  mumbai: "Mumbai",
+  bengaluru: "Bengaluru",
   perth: "Perth",
   darwin: "Darwin",
   adelaide: "Adelaide",
@@ -44,6 +48,8 @@ export const CITY_LABEL: Record<string, string> = {
 };
 
 export const GLOBAL_HUB_LABEL: Record<string, string> = {
+  mumbai: "Mumbai",
+  bengaluru: "Bengaluru",
   perth: "Perth",
   toronto: "Toronto",
   johannesburg: "Johannesburg",
@@ -111,6 +117,8 @@ export const CITY_CONTINENT: Record<string, string> = {
   auckland: "australia",
   wellington: "australia",
   singapore: "asia",
+  mumbai: "asia",
+  bengaluru: "asia",
   ganzhou: "asia",
   tokyo: "asia",
   hongkong: "asia",
@@ -180,6 +188,8 @@ export const GLOBAL_STATS: Record<string, CityStat> = {
   shanghai: { salary: 95, growth: 5.5, turnover: 12.0 },
   shenzhen: { salary: 98, growth: 6.0, turnover: 12.5 },
   singapore: { salary: 110, growth: 3.8, turnover: 9.6 },
+  mumbai: { salary: 32, growth: 7.2, turnover: 15.5 },
+  bengaluru: { salary: 38, growth: 8.4, turnover: 17.2 },
   denver: { salary: 120, growth: 3.4, turnover: 9.8 },
   ganzhou: { salary: 68, growth: 5.0, turnover: 13.8 },
   seattle: { salary: 168, growth: 4.4, turnover: 11.5 },

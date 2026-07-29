@@ -123,6 +123,12 @@ export const CITY_MARKET: Record<string, CityMarket> = {
   },
   portland: { country: "us", where: "Portland", region: /united states|\busa?\b|portland|oregon/i },
   singapore: { country: "sg", where: "Singapore", region: /singapore/i },
+  mumbai: { country: "in", where: "Mumbai", region: /india|mumbai|bombay|maharashtra/i },
+  bengaluru: {
+    country: "in",
+    where: "Bengaluru",
+    region: /india|bengaluru|bangalore|karnataka/i,
+  },
   paris: { country: "fr", where: "Paris", region: /france|paris/i },
   johannesburg: {
     country: "za",

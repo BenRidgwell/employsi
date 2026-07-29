@@ -74,7 +74,10 @@ export const REGION_FRAMES: Record<string, RegionFrame> = {
   // Widened east + pulled back a touch so New Zealand (Auckland) sits in frame
   // alongside the Australian capitals — an Australasia view.
   australia: { center: [146, -31], zoom: 2.55 },
-  asia: { center: [104, 24], zoom: 2.3 },
+  // Pulled west and back so India sits in frame alongside East Asia: the
+  // old centre/zoom cut off everything west of about 85E, which put Mumbai
+  // (72.8E) and Bengaluru (77.6E) outside the view entirely.
+  asia: { center: [95, 23], zoom: 2.05 },
   northamerica: { center: [-96, 41], zoom: 2.6 },
   europe: { center: [7, 48], zoom: 3.6 },
   africa: { center: [26, -14], zoom: 3.0 },
