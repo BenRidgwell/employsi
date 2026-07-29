@@ -1,0 +1,67 @@
+# Daily health check across every job-board scraper feeding the D1 archive.
+#
+# This is the control that catches the failures a scraper's own exit code
+# cannot. Two real ones prompted it, and neither raised an error anywhere:
+# the Queensland board stalled and wrote nothing for three days while every run
+# "succeeded", and Indeed re-nested its salary markup so 3,277 rows a day kept
+# arriving with the salary column empty.
+#
+# It runs AFTER the day's scrapers (they land between 18:00 and 22:00 UTC), so
+# it reads a settled archive rather than one mid-write.
+#
+# This is the DATA-level counterpart to scraper-check.yml, which is a CODE-level
+# check: that one pins the shared extractor against fixtures on push, this one
+# asks daily whether the archive is actually being fed. A parser can pass its
+# fixtures and still be feeding nothing, which is precisely what happened.
+#
+# The job FAILS when anything is critical — a stale source, a collapsed day's
+# volume, or a field that has stopped arriving — so it shows up as a red run
+# rather than a green one nobody opens. Warnings pass; they are in the summary
+# to be read, not acted on immediately.
+#
+# Required repo secrets: CLOUDFLARE_API_TOKEN (D1 read)
+# Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# Use "Run workflow" to check the archive's state at any time.
+
+name: scraper-health
+
+on:
+  schedule:
+    - cron: '30 23 * * *' # 23:30 UTC daily — after the last scraper lands
+  workflow_dispatch: {}
+
+concurrency:
+  group: scraper-health
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Check every source is writing, at volume, with its fields intact
+        id: health
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: |
+          set -o pipefail
+          python scripts/scraper-health.py | tee health.txt
+      - name: Publish the report to the run summary
+        # Runs even when the check failed — the report IS the diagnosis, so it
+        # has to be visible on exactly the runs that go red.
+        if: always()
+        run: |
+          {
+            echo '## employsi scraper health'
+            echo
+            echo '```'
+            cat health.txt || echo 'the check did not produce a report'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

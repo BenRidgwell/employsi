@@ -49,6 +49,10 @@ ONLY = set(_opt('--only', '').split(',')) if '--only' in args else None
 LIMIT = int(_opt('--limit', 10**9))
 MAX_PAGES = int(_opt('--max-pages', 10))     # guest API returns 25 cards/page
 CONCURRENCY = int(_opt('--concurrency', 8))  # keep ≤ your Oxylabs plan's limit
+# Job pages opened per company to read the advertised pay the search fragment
+# omits. One fetch per NEW listing, so a quiet day costs almost nothing; the cap
+# stops a company that suddenly posts 200 roles from blowing the run's budget.
+SALARY_BUDGET = int(_opt('--salary-budget', 40))
 NO_SKILLS = '--no-skills' in args
 # --solve: reachability check only (no D1 write, no token needed).
 SOLVE = '--solve' in args
@@ -138,6 +142,33 @@ def d1(sql: str, params: list):
             time.sleep(attempt + 1)
 
 
+def enrich_salaries(jobs: list, oxy, geo: str) -> int:
+    """Fill in each new job's advertised pay from its LinkedIn job page.
+
+    The guest search fragment carries no pay whatsoever (see
+    salary_from_detail), so without this the source is permanently 0% salary —
+    which is what the archive showed for all 777 rows.
+
+    Only jobs that are NEW to the archive are enriched, so the cost is one extra
+    Oxylabs fetch per genuinely-new listing rather than per listing seen, and
+    --salary-budget caps it regardless. Set --salary-budget 0 to skip entirely.
+    """
+    if SALARY_BUDGET <= 0 or not jobs:
+        return 0
+    todo = [j for j in jobs if j.get('url')][:SALARY_BUDGET]
+    priced = 0
+    for j in todo:
+        try:
+            body, _ = oxy.fetch(j['url'], geo=geo, render=False)
+        except Exception:  # noqa: BLE001 — one bad page must not fail the company
+            continue
+        sal = li.salary_from_detail(body or '')
+        if sal:
+            j['salary'] = sal
+            priced += 1
+    return priced
+
+
 def existing_titles(company_id: str) -> set:
     # Only OTHER sources — so a LinkedIn job that duplicates an Adzuna/SEEK/Indeed
     # role is counted once, but LinkedIn's own previously-archived jobs re-upsert
@@ -161,7 +192,7 @@ def upsert(company_id: str, jobs: list) -> int:
         seen.add(key)
         rows.append((key, 'linkedin', j['title'], company or None, company_id,
                      match_city(location), location, 'LinkedIn',
-                     None, j.get('url') or '', j.get('date') or '',
+                     j.get('salary') or None, j.get('url') or '', j.get('date') or '',
                      json.dumps(sk) if sk else None))
     written = 0
     for i in range(0, len(rows), 7):  # D1 caps ~100 bound params/query
@@ -199,7 +230,7 @@ def main() -> int:
     sys.stderr.write(f'{mode}: {len(sel)} company(ies) via Oxylabs '
                      f'(location="{LOCATION}", geo={geo}, concurrency={CONCURRENCY}) — no browser.\n')
     lock = threading.Lock()
-    st = {'fetch': 0, 'new': 0, 'empty': 0, 'done': 0}
+    st = {'fetch': 0, 'new': 0, 'empty': 0, 'done': 0, 'priced': 0}
 
     def work(cid, name):
         jobs, seen = [], set()
@@ -235,11 +266,13 @@ def main() -> int:
             return
         have = existing_titles(cid)
         fresh = [j for j in jobs if norm(j['title']) not in have]
+        priced = enrich_salaries(fresh, oxy, geo)
         written = upsert(cid, fresh) if fresh else 0
         with lock:
-            st['fetch'] += len(jobs); st['new'] += written; st['done'] += 1
+            st['fetch'] += len(jobs); st['new'] += written
+            st['priced'] += priced; st['done'] += 1
         sys.stderr.write(f'  {cid:16} {len(jobs):3} linkedin · {written:3} new '
-                         f'({len(jobs) - len(fresh)} already archived)\n')
+                         f'({len(jobs) - len(fresh)} already archived, {priced} priced)\n')
 
     with ThreadPoolExecutor(max_workers=max(1, CONCURRENCY)) as ex:
         list(ex.map(lambda cn: work(*cn), sel))

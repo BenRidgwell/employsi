@@ -52,6 +52,29 @@ def _field(card: str, pattern: str) -> str:
     return _clean(m.group(1)) if m else ''
 
 
+def salary_from_detail(html: str) -> str:
+    """The advertised pay range off a LinkedIn job page, or '' when absent.
+
+    The guest SEARCH fragment carries no pay at all — a live sample of ten
+    cards had zero salary elements and not one dollar sign — which is why this
+    source archived 0 salaries. The job page does carry it, in its own element:
+
+        <span class="main-job-card__salary-info …">
+          A$120,000.00 - A$135,000.00
+        </span>
+
+    Only that element is read. LinkedIn also renders an inferred "base pay
+    range" elsewhere on some pages, which is LinkedIn's estimate rather than
+    something the employer advertised — storing that as an advertised salary
+    would be inventing a figure the employer never published.
+    """
+    m = re.search(r'class="[^"]*main-job-card__salary-info[^"]*"[^>]*>([\s\S]{0,200}?)</span>', html)
+    if not m:
+        return ''
+    text = _clean(m.group(1))
+    return text if '$' in text else ''
+
+
 def parse_search_html(html: str) -> list:
     """Parse a guest-API results fragment (a run of <li> job cards, as returned
     by Oxylabs) into job dicts. Defensive to LinkedIn's periodic class renames:

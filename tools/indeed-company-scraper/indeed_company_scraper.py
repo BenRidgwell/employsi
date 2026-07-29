@@ -145,6 +145,36 @@ def _clean(x: str) -> str:
     return _html.unescape(re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', x))).strip()
 
 
+def salary_from_card(seg: str) -> str:
+    """The advertised pay out of one Indeed result card, or '' when it has none.
+
+    Indeed moved this. The salary used to sit in the text node immediately
+    after the snippet element, so a regex ending `>([^<]*\\$[^<]+)` read it. It
+    is now wrapped two divs deep:
+
+        <li class="salary-snippet-container …"
+            data-testid="attribute_snippet_testid salary-snippet-container">
+          <div …><div …><span …>$120,000 - $149,000 a year</span></div></div>
+        </li>
+
+    so that regex matched nothing and this source archived 0 salaries out of
+    3,277 rows while the board was publishing them. Matching the CONTAINER and
+    stripping its tags survives the markup being re-nested again, which on this
+    site is a matter of when rather than whether.
+
+    The same `attribute_snippet_testid` is used for job type ("Full-time") and
+    shift, so a candidate only counts when it actually states pay.
+    """
+    for m in re.finditer(
+        r'<li[^>]*(?:salary-snippet-container|attribute_snippet_testid)[^>]*>([\s\S]{0,600}?)</li>',
+        seg,
+    ):
+        text = _clean(m.group(1))
+        if '$' in text or re.search(r'\b(?:a year|an hour|per year|per hour|per annum)\b', text, re.I):
+            return text
+    return ''
+
+
 def parse_search_html(page: str, base: str) -> list[dict]:
     """Parse an Indeed search-results page (as returned by the Oxylabs Web
     Scraper API) into job dicts — the no-browser counterpart of scrape_company.
@@ -158,12 +188,12 @@ def parse_search_html(page: str, base: str) -> list[dict]:
         seg = page[m.end():m.end() + 1600]
         comp = re.search(r'data-testid="company-name"[^>]*>([^<]+)', seg)
         loc = re.search(r'data-testid="text-location"[^>]*>([^<]+)', seg)
-        sal = re.search(r'(?:salary-snippet[^>]*|attribute_snippet_testid"[^>]*)>([^<]*\$[^<]+)', seg)
+        sal = salary_from_card(seg)
         jobs.append({
             'title': title,
             'company': _clean(comp.group(1)) if comp else '',
             'location': _clean(loc.group(1)) if loc else '',
-            'salary': _clean(sal.group(1)) if sal else '',
+            'salary': sal,
             'url': f'{base}/viewjob?jk={jk}',
             'date': '',
         })
