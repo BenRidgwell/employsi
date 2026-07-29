@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../../state/store";
-import { COMPANIES } from "../../data/companies";
+import { COMPANIES, SECTOR_SHORT } from "../../data/companies";
 import { CITY_LABEL, GLOBAL_HUB_LABEL, CITY_CONTINENT } from "../../data/geo";
 import { CITY_COUNTRY, COUNTRIES, COUNTRY_MEMBERS, REGION_HUBS } from "../../data/mapboxWorldGeo";
 import { cityForCompany } from "../../data/mapboxGeo";
 import { answerQuestion } from "../../lib/analystAnswer";
 import type { AnalystAnswer, AnalystScope } from "../../lib/analystFn";
 import { SUGGESTED_PROMPTS } from "../../lib/analystIntent";
+import { ALL_SECTORS, companyIdsForSector, sectorsInScope } from "../../lib/analystSector";
 import { IconClose } from "../ActionIcons";
 
 /**
@@ -148,6 +149,23 @@ export function AnalystPane() {
   const [scopeIdx, setScopeIdx] = useState(0);
   const scope = scopes[Math.min(scopeIdx, scopes.length - 1)];
 
+  // Sector narrowing, within whatever scope is selected. Only sectors that
+  // actually have employers in this scope are offered — a chip that can only
+  // ever answer "nothing here" is worse than no chip. A company scope is
+  // already one employer, so the row is hidden there entirely.
+  const [sector, setSector] = useState<string>(ALL_SECTORS);
+  const sectorOptions = useMemo(
+    () => (scope.kind === "company" ? [] : sectorsInScope(scope.hubs)),
+    [scope],
+  );
+  // Keep the selection valid when the scope changes under it.
+  const activeSector = sectorOptions.includes(sector) ? sector : ALL_SECTORS;
+  const sectorIds = useMemo(
+    () =>
+      activeSector === ALL_SECTORS ? undefined : companyIdsForSector(activeSector, scope.hubs),
+    [activeSector, scope],
+  );
+
   const [thread, setThread] = useState<Msg[]>([{ id: 0, role: "analyst", text: OPENER }]);
   const [draft, setDraft] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -167,7 +185,14 @@ export function AnalystPane() {
     setDraft("");
     setThinking(true);
     try {
-      const answer = await answerQuestion(question, scope, scope.hubs, scope.country);
+      const answer = await answerQuestion(
+        question,
+        scope,
+        scope.hubs,
+        scope.country,
+        activeSector === ALL_SECTORS ? undefined : activeSector,
+        sectorIds,
+      );
       setThread((t) => [
         ...t,
         { id: nextId.current++, role: "analyst", text: answer.text, answer },
@@ -224,6 +249,23 @@ export function AnalystPane() {
             </button>
           ))}
         </div>
+
+        {sectorOptions.length > 0 && (
+          <div className="anscopes ansectors">
+            <span className="anscopelbl">Sector</span>
+            {[ALL_SECTORS, ...sectorOptions].map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={`anscope${s === activeSector ? " on" : ""}`}
+                aria-pressed={s === activeSector}
+                onClick={() => setSector(s)}
+              >
+                {SECTOR_SHORT[s] || s}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="anbody" ref={bodyRef}>
           {thread.map((m) =>

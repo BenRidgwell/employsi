@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { useAppStore } from "../state/store";
-import { SECTOR_GROUPS, EXCHANGES } from "../data/companies";
+import { SECTOR_GROUPS, SECTOR_SHORT, EXCHANGES } from "../data/companies";
 import { IconClose } from "./ActionIcons";
 
 /**
@@ -21,16 +21,6 @@ import { IconClose } from "./ActionIcons";
  */
 
 // Short chip labels, matching the design's seven sector chips one-for-one.
-const SECTOR_SHORT: Record<string, string> = {
-  "Energy & Natural Resources": "Natural resources",
-  "Financial Services": "Financial",
-  "Technology, Media and Telecommunications": "Tech & media",
-  "Consumer and Retail": "Consumer & retail",
-  "Industrial Manufacturing": "Industrial",
-  "Healthcare and Life Sciences": "Healthcare",
-  "Infrastructure and Government": "Infra & gov",
-};
-
 // Track fill stops exactly at the thumb.
 function fill(value: number, min: number, max: number): CSSProperties {
   return { "--fill": `${((value - min) / (max - min)) * 100}%` } as CSSProperties;

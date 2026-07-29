@@ -187,14 +187,30 @@ function quantile(sorted: number[], q: number): number {
 function scopeClause(
   scope: AnalystScope,
   hubs: string[],
+  companyIds?: string[],
 ): { where: string; binds: (string | number)[] } {
+  // A sector narrows to the employers in it. The ids are INLINED rather than
+  // bound: a worldwide sector spans several hundred companies and D1 caps bound
+  // parameters far below that. They are safe to inline because they are roster
+  // slugs re-validated here — anything that is not /^[a-z0-9-]+$/ is dropped,
+  // so nothing user-supplied can reach the statement.
+  const ids = (companyIds ?? []).filter((id) => /^[a-z0-9][a-z0-9-]{0,63}$/.test(id));
+  // An empty set after filtering means the sector has no employers here at all;
+  // `IN ()` is not valid SQL, so it becomes an explicit "matches nothing" and
+  // the caller's no-rows message explains it.
+  const sectorWhere = companyIds?.length
+    ? ids.length
+      ? ` AND company_id IN (${ids.map((id) => `'${id}'`).join(",")})`
+      : " AND 0=1"
+    : "";
+
   if (scope.kind === "company" && scope.id) {
     return { where: "company_id = ?", binds: [scope.id] };
   }
-  if (!hubs.length) return { where: "1=1", binds: [] };
+  if (!hubs.length) return { where: `1=1${sectorWhere}`, binds: [] };
   const keys = hubs.map((h) => h.toLowerCase());
   return {
-    where: `lower(hub) IN (${keys.map(() => "?").join(",")})`,
+    where: `lower(hub) IN (${keys.map(() => "?").join(",")})${sectorWhere}`,
     binds: keys,
   };
 }
@@ -223,12 +239,23 @@ export interface AnalystRequest {
   hubs: string[];
   /** ISO country code when the scope sits in exactly one country, for currency. */
   country?: string;
+  /** Sector group the answer is narrowed to, for the wording and the source line. */
+  sector?: string;
+  /**
+   * Roster company ids in that sector and scope, resolved on the client (the
+   * archive stores an employer, not a sector). Empty/absent = no narrowing.
+   */
+  companyIds?: string[];
 }
 
-export const askAnalyst = createServerFn({ method: "GET" })
+// POST rather than GET: a GET server fn serialises its payload into the URL,
+// and a worldwide sector filter carries several hundred company ids — enough to
+// overrun the request-line limit and fail as a 414 rather than an answer. The
+// call is a read either way; only the transport changed.
+export const askAnalyst = createServerFn({ method: "POST" })
   .validator((data: AnalystRequest) => data)
   .handler(async ({ data }): Promise<AnalystAnswer> => {
-    const { question, scope, hubs, country } = data;
+    const { question, scope, hubs, country, sector, companyIds } = data;
     const intent = detectIntent(question || "");
     const db = await getArchiveDb();
     if (!db) {
@@ -238,8 +265,14 @@ export const askAnalyst = createServerFn({ method: "GET" })
       };
     }
 
-    const { where, binds } = scopeClause(scope, hubs);
-    const label = scope.label;
+    // A company scope is already one employer, so a sector filter on top of it
+    // would either be a no-op or contradict it; it is ignored there.
+    const sectorOn = !!sector && scope.kind !== "company" && !!companyIds;
+    const { where, binds } = scopeClause(scope, hubs, sectorOn ? companyIds : undefined);
+    // Everything the answer says about WHERE it looked. With a sector on, that
+    // is not just a place — it is a place and a named set of employers, and the
+    // difference matters because unattributed board rows drop out.
+    const label = sectorOn ? `${sector} in ${scope.label}` : scope.label;
 
     // The archive's own span bounds every window below — it started collecting
     // recently, so a "month on month" read is not yet available and claiming one
@@ -259,7 +292,9 @@ export const askAnalyst = createServerFn({ method: "GET" })
     if (!since || !latest) {
       return {
         intent,
-        text: `The archive holds no vacancies for ${label} yet, so there's nothing I can tell you about it without making it up. Try a wider scope, or one of the cities with live coverage.`,
+        text: sectorOn
+          ? `The archive holds no vacancies for ${sector} employers in ${scope.label} yet. A sector filter only sees ads I can attribute to a named employer in that sector — board listings I haven't matched to a company are left out rather than guessed at — so this can read empty even where the wider market is busy. Try another sector, or set it back to all sectors.`
+          : `The archive holds no vacancies for ${label} yet, so there's nothing I can tell you about it without making it up. Try a wider scope, or one of the cities with live coverage.`,
         source: "employsi vacancy archive",
       };
     }
@@ -269,7 +304,11 @@ export const askAnalyst = createServerFn({ method: "GET" })
     const window = Math.max(1, Math.min(7, Math.floor(spanDays / 2)));
     const then = dayStr(window);
     const canCompare = spanDays >= 2;
-    const archiveNote = `employsi vacancy archive · ${label} · collected ${since} to ${latest}`;
+    const archiveNote =
+      `employsi vacancy archive · ${label} · collected ${since} to ${latest}` +
+      // Say how the sector was resolved, so the figure can be reproduced and so
+      // it is clear this counts employers, not every ad in the market.
+      (sectorOn ? ` · ${plural(companyIds?.length ?? 0, "employer")} matched` : "");
 
     // Live now = still appearing in the most recent pull.
     const liveRow = await db

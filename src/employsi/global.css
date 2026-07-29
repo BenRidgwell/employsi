@@ -453,6 +453,17 @@ body {
 .anscope:active {
   transform: scale(0.97);
 }
+/* The sector row sits under the scope row and narrows within it, so it reads as
+   the secondary control: same chip shape, one step down in weight and size. */
+.ansectors {
+  padding-top: 8px;
+  padding-bottom: 9px;
+}
+.ansectors .anscope {
+  height: 25px;
+  padding: 0 10px;
+  font-size: 12px;
+}
 .anbody {
   flex: 1 1 auto;
   min-height: 0;

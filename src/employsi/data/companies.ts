@@ -1500,6 +1500,19 @@ export const SECTOR_GROUPS: string[] = [
   "Infrastructure and Government",
 ];
 
+// Chip-length labels for the sector groups. The full names are what the data
+// carries and what an answer should say; these are only for controls narrow
+// enough that the full name would wrap or scroll off.
+export const SECTOR_SHORT: Record<string, string> = {
+  "Energy & Natural Resources": "Natural resources",
+  "Financial Services": "Financial",
+  "Technology, Media and Telecommunications": "Tech & media",
+  "Consumer and Retail": "Consumer & retail",
+  "Industrial Manufacturing": "Industrial",
+  "Healthcare and Life Sciences": "Healthcare",
+  "Infrastructure and Government": "Infra & gov",
+};
+
 // A company's filter group (its own `group`, or resources by default).
 export function companyGroup(c: Company): string {
   return c.group ?? RESOURCES_SECTOR;

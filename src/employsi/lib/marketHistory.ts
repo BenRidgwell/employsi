@@ -181,9 +181,12 @@ export interface ScopeSkillRow {
  * one's year-on-year move. This is the market-level answer for a question that
  * doesn't name a skill.
  */
-export function topSkillsInScope(keys: string[], n = 5): ScopeSkillRow[] {
+export function topSkillsInScope(keys: string[], n = 5, only?: Set<string>): ScopeSkillRow[] {
   const rows: ScopeSkillRow[] = [];
   for (const skill of ALL_SKILLS) {
+    // `only` is a sector's occupations. These series carry no employer, so
+    // narrowing to a sector can only ever mean narrowing to what it hires.
+    if (only && !only.has(skill)) continue;
     const h = skillHistory(skill, keys);
     if (!h || h.latest <= 0) continue;
     rows.push({ skill, latest: h.latest, yoy: h.yoy });
@@ -193,9 +196,10 @@ export function topSkillsInScope(keys: string[], n = 5): ScopeSkillRow[] {
 }
 
 /** Movers: the sharpest year-on-year changes among skills with real volume. */
-export function moversInScope(keys: string[], n = 5): ScopeSkillRow[] {
+export function moversInScope(keys: string[], n = 5, only?: Set<string>): ScopeSkillRow[] {
   const rows: ScopeSkillRow[] = [];
   for (const skill of ALL_SKILLS) {
+    if (only && !only.has(skill)) continue;
     const h = skillHistory(skill, keys);
     // A volume floor keeps a skill with 6 vacancies going to 12 out of the
     // "fastest growing" list, where it would be noise rather than signal.

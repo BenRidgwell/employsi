@@ -7,6 +7,7 @@ import {
   skillHistory,
   topSkillsInScope,
 } from "./marketHistory";
+import { skillsForSector } from "./analystSector";
 
 /**
  * Routes a question to whichever dataset can actually answer it.
@@ -104,10 +105,15 @@ function skillHistoryAnswer(skill: string, keys: string[], label: string): Analy
 }
 
 /** Market-level history when the question doesn't name a skill. */
-function marketHistoryAnswer(keys: string[], label: string): AnalystAnswer | null {
-  const top = topSkillsInScope(keys, 5);
+function marketHistoryAnswer(
+  keys: string[],
+  label: string,
+  sector?: string,
+  only?: Set<string>,
+): AnalystAnswer | null {
+  const top = topSkillsInScope(keys, 5, only);
   if (!top.length) return null;
-  const movers = moversInScope(keys, 4);
+  const movers = moversInScope(keys, 4, only);
 
   const max = top[0].latest || 1;
   const bars: AnalystBar[] = top.map((r) => ({
@@ -132,9 +138,17 @@ function marketHistoryAnswer(keys: string[], label: string): AnalystAnswer | nul
 
   const sources = skillHistory(top[0].skill, keys)?.sources ?? [];
 
+  // The distinction matters: these series are published per occupation, so a
+  // sector filter here selects the occupations that sector hires, not the
+  // employers in it. Saying so is the difference between a figure the user can
+  // rely on and one they will misread.
+  const lead = sector
+    ? `Across ${label}, among the occupations ${sector} hires, the largest published vacancy categories are`
+    : `Across ${label}, the largest published vacancy categories are`;
+
   return {
     intent: "history",
-    text: `Across ${label}, the largest published vacancy categories are ${top
+    text: `${lead} ${top
       .slice(0, 3)
       .map((r) => r.skill)
       .join(", ")}. ${moverText}`.trim(),
@@ -148,7 +162,9 @@ function marketHistoryAnswer(keys: string[], label: string): AnalystAnswer | nul
       { k: "Areas covered", v: String(keys.filter((k) => skillHistory(top[0].skill, [k])).length) },
     ],
     bars,
-    source: `${sources.join(" · ")} · monthly, ${HISTORY_SPAN}`,
+    source:
+      `${sources.join(" · ")} · monthly, ${HISTORY_SPAN}` +
+      (sector ? ` · narrowed to ${sector} occupations` : ""),
   };
 }
 
@@ -157,6 +173,8 @@ export async function answerQuestion(
   scope: AnalystScope,
   hubs: string[],
   country?: string,
+  sector?: string,
+  companyIds?: string[],
 ): Promise<AnalystAnswer> {
   const intent = detectIntent(question);
   const skill = detectSkill(question);
@@ -168,11 +186,24 @@ export async function answerQuestion(
   const wantsHistory =
     intent === "history" || (!!skill && (intent === "volume" || intent === "skills"));
 
+  // A sector narrows the national series to the occupations that sector hires
+  // (see lib/analystSector.ts). It does not apply when the question already
+  // names one skill — that IS the narrowing.
+  const sectorSkills = sector ? skillsForSector(sector) : undefined;
+
   if (wantsHistory && covered) {
     const answer = skill
       ? skillHistoryAnswer(skill, hubs, scope.label)
-      : marketHistoryAnswer(hubs, scope.label);
+      : marketHistoryAnswer(hubs, scope.label, sector, sectorSkills);
     if (answer) return answer;
+    if (!skill && sector) {
+      // The scope publishes series, but none for this sector's occupations.
+      return {
+        intent: "history",
+        text: `No statistical agency covering ${scope.label} publishes a vacancy series for the occupations ${sector} hires, so I can't give you its long-run history there. These series are per occupation rather than per employer, so a sector with no matching occupation series simply isn't in them. Ask me what's open right now instead, or set the sector back to all sectors.`,
+        source: `National vacancy series · ${HISTORY_SPAN}`,
+      };
+    }
     if (skill) {
       // The scope has series, but not for this skill — say which, rather than
       // silently answering a different question.
@@ -194,5 +225,5 @@ export async function answerQuestion(
 
   // Everything else is a question about the live market: what is open, who is
   // advertising, what the ads say. That is the archive's job.
-  return askAnalyst({ data: { question, scope, hubs, country } });
+  return askAnalyst({ data: { question, scope, hubs, country, sector, companyIds } });
 }
