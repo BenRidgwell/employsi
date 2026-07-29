@@ -1,0 +1,54 @@
+# Daily GulfTalent (gulftalent.com) → D1 archive, via the Oxylabs Web Scraper
+# API. Covers the Dubai hub.
+#
+# The board's JSON endpoint sits behind Akamai, which returns 403 to a
+# datacentre IP, so requests go through Oxylabs for the residential IP. No JS
+# rendering is needed.
+#
+# The endpoint's own city/country parameters are accepted and ignored — a
+# request pinned to Dubai still returns Riyadh and Doha roles — so the scraper
+# filters on each row's stated location instead. That makes the walk wider than
+# the kept set: expect roughly a third of each page to be Dubai.
+#
+# Rows are archived board-wide (company_id null) because these are market
+# listings rather than a tracked employer's, so they feed the Dubai hub view
+# without being attributed to a company we have not matched.
+#
+# Required repo secrets:
+#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
+#   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
+# Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# Use "Run workflow" to verify before relying on the schedule.
+
+name: gulftalent-archive
+
+on:
+  schedule:
+    - cron: '30 18 * * *' # 18:30 UTC daily
+  workflow_dispatch: {}
+
+concurrency:
+  group: gulftalent-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Scrape GulfTalent (Dubai) → D1 (Oxylabs)
+        env:
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/gulftalent-to-d1.py --max-pages 40
