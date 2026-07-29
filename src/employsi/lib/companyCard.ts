@@ -61,6 +61,17 @@ export interface CardChart {
   /** Null when there is no second series on the same daily calendar. */
   second: CardChartLine | null;
   axis: string[];
+  /**
+   * The plotted points, so the chart can be scrubbed. The paths above are
+   * already-projected SVG strings and a value cannot be read back out of them,
+   * which is why the chart had no hover readout at all.
+   *
+   * `days`, `vacValues` and `secondValues` are index-aligned; `secondValues` is
+   * null when there is no second series.
+   */
+  days: string[];
+  vacValues: number[];
+  secondValues: number[] | null;
 }
 
 export interface CardFact {
@@ -253,6 +264,7 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
     const chg = pctChange(vals);
     const days = vac.length;
     let second: CardChartLine | null = null;
+    let secondValues: number[] | null = null;
     // The second line is only drawn when it sits on the SAME days as the
     // vacancy series. A quarterly share series or a single revenue ratio would
     // both look like a second line on this axis while measuring another window.
@@ -275,6 +287,7 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
         aligned.push(carry || daily[0]);
       }
       if (matched >= 2) {
+        secondValues = aligned;
         const chg2 = pctChange(aligned);
         second = {
           label: "Share price",
@@ -297,6 +310,9 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
       area: areaOf(pts),
       second,
       axis: axisOf(vac.map((p) => p.d)),
+      days: vac.map((p) => p.d),
+      vacValues: vals,
+      secondValues,
     };
   } else {
     chartNote =

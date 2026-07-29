@@ -16,6 +16,7 @@ import { cityForCompany } from "../../data/mapboxGeo";
 import { marketForCity } from "../../data/cityMarket";
 import { NewsPanel } from "./NewsPanel";
 import { CardLoader } from "./CardLoader";
+import { ChartTooltip } from "./ChartTooltip";
 
 type CardTab = "Overview" | "Skills" | "Hiring";
 
@@ -192,6 +193,9 @@ export function CompanyPanel() {
   const [roleFilter, setRoleFilter] = useState<string | null>(null);
   // Whether the skills section is showing everything past the first six.
   const [skillsOpen, setSkillsOpen] = useState(false);
+  // Scrubbed point on the vacancies chart (null = not hovering).
+  const [chartIdx, setChartIdx] = useState<number | null>(null);
+  const plotRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // Leaving the local city layer (zooming/scrolling out to the domestic or
@@ -211,6 +215,7 @@ export function CompanyPanel() {
     if (!selectedId) return;
     setRoleFilter(null);
     setSkillsOpen(false);
+    setChartIdx(null);
     scrollRef.current?.scrollTo(0, 0);
   }, [selectedId]);
 
@@ -606,7 +611,18 @@ export function CompanyPanel() {
                         </div>
                       </div>
 
-                      <div className="ccplot">
+                      <div
+                        className="ccplot"
+                        ref={plotRef}
+                        onMouseMove={(e) => {
+                          const n = card.chart?.days.length ?? 0;
+                          if (n < 2) return;
+                          const r = e.currentTarget.getBoundingClientRect();
+                          const f = (e.clientX - r.left) / r.width;
+                          setChartIdx(Math.max(0, Math.min(n - 1, Math.round(f * (n - 1)))));
+                        }}
+                        onMouseLeave={() => setChartIdx(null)}
+                      >
                         <svg viewBox="0 0 400 150" preserveAspectRatio="none" fill="none">
                           <defs>
                             <linearGradient id="cc-fade" x1="0" y1="0" x2="0" y2="1">
@@ -641,6 +657,35 @@ export function CompanyPanel() {
                             />
                           )}
                         </svg>
+                        {chartIdx != null && card.chart.days[chartIdx] && (
+                          <>
+                            <span
+                              className="ccscrub"
+                              style={{
+                                left: `${(chartIdx / Math.max(1, card.chart.days.length - 1)) * 100}%`,
+                              }}
+                            />
+                            <ChartTooltip
+                              boxRef={plotRef}
+                              leftPct={(chartIdx / Math.max(1, card.chart.days.length - 1)) * 100}
+                              topPct={0}
+                            >
+                              <div className="wttiplabel">{fmtDay(card.chart.days[chartIdx])}</div>
+                              <div className="wttiprow">
+                                <i className="wtsw ink" />
+                                <b>{card.chart.vacValues[chartIdx]?.toLocaleString("en-AU")}</b>
+                                <span>Vacancies</span>
+                              </div>
+                              {card.chart.secondValues && card.chart.second && (
+                                <div className="wttiprow">
+                                  <i className="wtsw acc" />
+                                  <b>{card.chart.secondValues[chartIdx]?.toFixed(2)}</b>
+                                  <span>{card.chart.second.label}</span>
+                                </div>
+                              )}
+                            </ChartTooltip>
+                          </>
+                        )}
                         <span className="cccallout left">
                           <span className="cccalloutv">{card.chart.vacancies.latest}</span>
                           <span className="cccalloutl">Vacancies</span>
