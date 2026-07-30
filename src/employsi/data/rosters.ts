@@ -201,6 +201,14 @@ export interface CityPlacement {
 // get a land arc pointing away from the water.
 export const CITY_PLACEMENT: Record<string, CityPlacement> = {
   // Australia
+  // Perth was the one water-bounded city here with no arc, so its fan was a
+  // full circle and the southern half of it landed in the Swan River — the
+  // river wraps the CBD from Elizabeth Quay round to East Perth, so anything
+  // fanned south or south-east is in the water. Measured against the river's
+  // real geometry (OpenStreetMap), an unconstrained fan of 143 put 21 positions
+  // in the river; this arc puts none at any fan size. Land is West Perth and
+  // Northbridge (W/NW), the CBD spine (N) and East Perth (NE/ENE).
+  perth: { arc: [285, 75] },
   sydney: { arc: [150, 330] }, // avoid Sydney Harbour (N/NE)
   melbourne: { arc: [330, 140] }, // avoid Yarra (S) + Docklands (W)
   brisbane: { arc: [285, 75] }, // inside the river U-bend → land is N/NE
