@@ -315,6 +315,11 @@ const AGRI = {
 // Companies whose NAME carries no clue to their industry, so the keyword rules
 // below cannot place them and would silently drop them into the catch-all.
 // Keep this small and evidenced — it exists for genuine misses, not for tuning.
+// Hand corrections to the keyword read. NOTE these only apply to names the
+// workbook left Unclassified — SHEET_SECTOR is consulted first, so a company
+// the workbook classifies never reaches classify() at all. ABN Group is one:
+// the workbook files it under Industrial / Residential construction, which now
+// wins over the correction below.
 const SECTOR_OVERRIDE: Record<string, () => Sec> = {
   // WA/VIC residential builder. Nothing in "ABN Group" says construction, so it
   // was landing in Consumer & Retail.
@@ -430,12 +435,191 @@ function classify(name: string): Sec {
   return CONSUMER;
 }
 
+// ── Sector, as classified in the source workbook ─────────────────────────────
+// AU_Top150_MultiYear_v2_1.xlsx, "Top 150" sheet, columns C "Sector" and D
+// "Sub-industry".
+//
+// classify() below is a KEYWORD READ OF THE COMPANY NAME, which is all there
+// was to go on for private companies with no exchange classification. It gets a
+// lot right and some badly wrong — a name is a poor guide to what a business
+// does, and nothing in "Pallion" says precious-metals refining or "CBH Group"
+// says grain. The workbook classifies all 150 directly, so where it does, it
+// wins: this table is consulted first and classify() only runs for names the
+// workbook left Unclassified.
+//
+// Each row is [name, group bundle, sub-industry]. The bundle carries the filter
+// group AND its skills, so a company moved between groups gets a coherent skill
+// set rather than the old group's; the sub-industry replaces the bundle's
+// generic display label ("Resources" → "Iron ore mining"), which is both more
+// informative on the card and a better sector hint for the skills matcher.
+const SHEET_SECTOR: [name: string, sec: Sec, sub: string][] = [
+  ["Hancock Prospecting", RESOURCES, "Iron ore mining"],
+  ["Visy", INDUSTRIAL, "Packaging & paper manufacturing"],
+  ["Pallion", RESOURCES, "Precious metals refining"],
+  ["United Petroleum", CONSUMER, "Fuel & convenience retail"],
+  ["CBH Group", RESOURCES, "Grain handling co-operative"],
+  ["VGW Holdings", TECH, "Online social gaming"],
+  ["HCF", HEALTH, "Private health insurance"],
+  ["Linfox", INDUSTRIAL, "Logistics & transport"],
+  ["Peregrine", CONSUMER, "Fuel & convenience retail"],
+  ["Hutchies Builders", INDUSTRIAL, "Commercial construction"],
+  ["Chemist Warehouse", CONSUMER, "Pharmacy retail"],
+  ["St Vincent's Health Australia", HEALTH, "Hospitals & aged care"],
+  ["Teys Australia", RESOURCES, "Meat processing"],
+  ["Thomas Foods International", RESOURCES, "Meat processing"],
+  ["Spotlight", CONSUMER, "Specialty retail"],
+  ["Team Global Express", INDUSTRIAL, "Logistics & freight"],
+  ["GHD", CONSTRUCTION, "Engineering consultancy"],
+  ["Ateco", CONSUMER, "Automotive distribution"],
+  ["EY", FINANCE, "Professional services"],
+  ["RACQ", FINANCE, "Insurance & motoring club"],
+  ["Deloitte Touche Tohmatsu", FINANCE, "Professional services"],
+  ["Meriton", INDUSTRIAL, "Property development"],
+  ["PwC Australia", FINANCE, "Professional services"],
+  ["Manildra Group", RESOURCES, "Agri processing"],
+  ["Ausgrid", CONSTRUCTION, "Electricity distribution"],
+  ["Built", INDUSTRIAL, "Commercial construction"],
+  ["Competitive Foods", CONSUMER, "Quick service restaurants"],
+  ["BMD Group", CONSTRUCTION, "Civil construction"],
+  ["KPMG", FINANCE, "Professional services"],
+  ["Suttons Motors", CONSUMER, "Automotive retail"],
+  ["St John of God Health Care", HEALTH, "Hospitals"],
+  ["HBF", HEALTH, "Private health insurance"],
+  ["Australian Unity", FINANCE, "Diversified financial services"],
+  ["CMV Group", CONSUMER, "Automotive & truck retail"],
+  ["UnitingCare Queensland", HEALTH, "Health & community services"],
+  ["Calvary Health Care", HEALTH, "Hospitals & aged care"],
+  ["Baiada Poultry", RESOURCES, "Poultry production"],
+  ["Loan Market", FINANCE, "Mortgage broking"],
+  ["Mater", HEALTH, "Hospitals"],
+  // The workbook lists this as "ABN"; the roster name is "ABN Group" — the
+  // construction group, not the tax identifier that polluted its data before.
+  ["ABN Group", INDUSTRIAL, "Residential construction"],
+  ["Midfield", RESOURCES, "Meat processing"],
+  ["Bolton Clarke", HEALTH, "Aged & community care"],
+  ["Aurecon", CONSTRUCTION, "Engineering consultancy"],
+  ["Richard Crookes Constructions", INDUSTRIAL, "Commercial construction"],
+  ["RAC of WA", FINANCE, "Insurance & motoring club"],
+  ["Brisbane Catholic Education", CONSTRUCTION, "Education"],
+  ["Metricon Homes", INDUSTRIAL, "Residential construction"],
+  ["Consolidated Travel", CONSUMER, "Travel services"],
+  ["Fdc", INDUSTRIAL, "Commercial construction"],
+  ["J.J. Richards & Sons", CONSTRUCTION, "Waste management"],
+  ["Goodstart Early Learning", CONSTRUCTION, "Early childhood education"],
+  ["Queensland Sugar", RESOURCES, "Sugar marketing"],
+  ["Ritchies Supa IGA", CONSUMER, "Supermarkets"],
+  ["People First Bank", FINANCE, "Mutual banking"],
+  ["Drake Supermarkets", CONSUMER, "Supermarkets"],
+  ["Uniting", HEALTH, "Aged & community care"],
+  ["ADCO Constructions", INDUSTRIAL, "Commercial construction"],
+  ["Georgiou", CONSTRUCTION, "Civil construction"],
+  ["Opal Aged Care", HEALTH, "Aged care"],
+  ["Herbert Smith Freehills", FINANCE, "Legal services"],
+  ["Hansen Yuncken", INDUSTRIAL, "Commercial construction"],
+  ["QCoal", RESOURCES, "Coal mining"],
+  ["Salvation Army Australia", CONSTRUCTION, "Social services & charity"],
+  ["Melbourne Airport", CONSTRUCTION, "Airport operations"],
+  ["Refuelling Solutions", INDUSTRIAL, "Fuel distribution"],
+  ["Mecca Brands", CONSUMER, "Cosmetics retail"],
+  ["Winslow Constructors", CONSTRUCTION, "Civil construction"],
+  ["Talent International", INDUSTRIAL, "Recruitment & staffing"],
+  ["Epworth HealthCare", HEALTH, "Hospitals"],
+  ["WorkPac", INDUSTRIAL, "Labour hire"],
+  ["Australian Panels", INDUSTRIAL, "Timber panel manufacturing"],
+  ["AFL", TECH, "Sport & entertainment"],
+  ["Winning Appliances", CONSUMER, "Appliance retail"],
+  ["Canberra Airport", CONSTRUCTION, "Airport operations"],
+  ["SunPork Group", RESOURCES, "Pork production"],
+  ["ARA", INDUSTRIAL, "Property & facility services"],
+  ["BAC Holdings", CONSTRUCTION, "Airport operations"],
+  ["Kane Constructions", INDUSTRIAL, "Commercial construction"],
+  ["Teachers Health Fund", HEALTH, "Private health insurance"],
+  ["Firstmac", FINANCE, "Non-bank lending"],
+  ["BGC", INDUSTRIAL, "Construction & building products"],
+  ["Avant Mutual", FINANCE, "Professional indemnity insurance"],
+  ["Village Roadshow", TECH, "Entertainment & theme parks"],
+  ["Harris Farm", CONSUMER, "Grocery retail"],
+  ["ColCap", FINANCE, "Non-bank lending"],
+  ["CJD Equipment", INDUSTRIAL, "Heavy equipment distribution"],
+  ["Perfection Fresh", RESOURCES, "Fresh produce"],
+  ["Mort & Co", RESOURCES, "Cattle feedlots"],
+  ["Nepean Consolidated", INDUSTRIAL, "Industrial engineering"],
+  ["Turosi", RESOURCES, "Poultry & food processing"],
+  ["St Vincent de Paul", CONSTRUCTION, "Social services & charity"],
+  ["MPC Kinetic", RESOURCES, "Energy services"],
+  ["John Hughes Group", CONSUMER, "Automotive retail"],
+  ["RACV", FINANCE, "Insurance & motoring club"],
+  ["Patterson Cheney", CONSUMER, "Automotive retail"],
+  ["Sydney Tools", CONSUMER, "Tool & hardware retail"],
+  ["Apco Service Stations", CONSUMER, "Fuel & convenience retail"],
+  ["NRMA Motoring & Services", FINANCE, "Insurance & motoring club"],
+  ["Life Without Barriers", HEALTH, "Disability & social care"],
+  ["Northwestern Roads", CONSTRUCTION, "Road construction"],
+  ["Grand Motors", CONSUMER, "Automotive retail"],
+  ["MinterEllison", FINANCE, "Legal services"],
+  ["CCI", FINANCE, "Insurance"],
+  ["Great Southern Bank", FINANCE, "Mutual banking"],
+  ["CNW Electrical", INDUSTRIAL, "Electrical wholesale"],
+  ["McNab Constructions", INDUSTRIAL, "Commercial construction"],
+  ["Perron Group", FINANCE, "Property investment"],
+  ["Alto", CONSUMER, "Automotive retail"],
+  ["King & Wood Mallesons", FINANCE, "Legal services"],
+  ["AGnVET Management Services", RESOURCES, "Agribusiness services"],
+  ["ABC Tissue", INDUSTRIAL, "Paper & tissue manufacturing"],
+  ["Defence Health", HEALTH, "Private health insurance"],
+  ["Perth Airport", CONSTRUCTION, "Airport operations"],
+  ["Australian Rugby League Commission", TECH, "Sport & entertainment"],
+  ["Fitness and Lifestyle", CONSUMER, "Fitness & leisure"],
+  ["Leader Computers", TECH, "IT distribution"],
+  ["Kennards Hire", INDUSTRIAL, "Equipment hire"],
+  ["RAA", FINANCE, "Insurance & motoring club"],
+  ["Choices Flooring", CONSUMER, "Flooring retail"],
+  ["AKD", RESOURCES, "Timber & forestry"],
+  ["Craig Mostyn", RESOURCES, "Agri & protein production"],
+  ["Employers Mutual", FINANCE, "Workers compensation insurance"],
+  ["NHP Electrical Engineering Products", INDUSTRIAL, "Electrical equipment"],
+  ["Newcastle Greater Mutual Group", FINANCE, "Mutual banking"],
+  ["PharmaCare", HEALTH, "Consumer health products"],
+  ["Norco Co-op", RESOURCES, "Dairy co-operative"],
+  ["San Remo", CONSUMER, "Food manufacturing"],
+  ["Walker Corporation", INDUSTRIAL, "Property development"],
+  ["Merivale", CONSUMER, "Hospitality"],
+  ["GMHBA", HEALTH, "Private health insurance"],
+  ["Peter Kittle Motor Company", CONSUMER, "Automotive retail"],
+  ["Detmold Group", INDUSTRIAL, "Packaging manufacturing"],
+  ["Stowe Australia", INDUSTRIAL, "Electrical contracting"],
+  ["Creation Homes", INDUSTRIAL, "Residential construction"],
+  ["Anytime Fitness", CONSUMER, "Fitness & leisure"],
+  ["Tennis Australia", TECH, "Sport & entertainment"],
+  ["Sarah Group", INDUSTRIAL, "Construction & property"],
+  ["Australian Consolidated Milk", RESOURCES, "Dairy"],
+  ["Kennards Self Storage", INDUSTRIAL, "Self storage"],
+  ["BIG4 Holiday Parks", CONSUMER, "Holiday parks & tourism"],
+  ["Clayton Utz", FINANCE, "Legal services"],
+  ["Sunny Queen Farms", RESOURCES, "Egg production"],
+  ["Bing Lee Electrics", CONSUMER, "Appliance retail"],
+  ["Bowens Timber & Hardware", CONSUMER, "Timber & hardware retail"],
+  ["HammondCare", HEALTH, "Aged & dementia care"],
+];
+
+const SHEET_SECTOR_BY_NAME = new Map<string, { sec: Sec; sub: string }>(
+  SHEET_SECTOR.map(([name, sec, sub]) => [name.toLowerCase(), { sec, sub }]),
+);
+
+/** The workbook's classification for a company, when it has one. */
+function sheetSector(name: string): { sec: Sec; sub: string } | undefined {
+  return SHEET_SECTOR_BY_NAME.get(name.toLowerCase());
+}
+
 const ROLE_TITLES = ["Commercial & Corporate", "Operations & Delivery", "Frontline & Support"];
 
 function buildPrivate([name, city, revK, chg]: Raw): Company & { city: string } {
   const h = h01(name);
   const h2 = h01(name + "::b");
-  const sec = classify(name);
+  // The workbook's classification where it has one; the name-keyword guess only
+  // for the five companies it left Unclassified.
+  const sheet = sheetSector(name);
+  const sec = sheet ? sheet.sec : classify(name);
   // Headcount from revenue: ~$400k revenue/employee (private-sector blend).
   const headcount = Math.max(120, Math.round((revK * 1000) / 400000));
   const revPerEmp = +((revK * 1000) / headcount / 1e6).toFixed(3); // $M/emp
@@ -453,7 +637,7 @@ function buildPrivate([name, city, revK, chg]: Raw): Company & { city: string } 
     name,
     pill: acr,
     domain: deriveDomain(name),
-    sector: sec.sector,
+    sector: sheet?.sub || sec.sector,
     group: sec.group,
     private: true,
     headcount,

@@ -33,6 +33,7 @@
  */
 
 import { isBlockedArticle } from "../../src/employsi/data/newsBlocklist";
+import { officialFeedFor } from "../../src/employsi/data/officialNewsFeeds";
 
 export interface StoredNewsItem {
   title: string;
@@ -82,7 +83,58 @@ function realUrl(link: string): string {
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
 
+// An organisation's own newsroom feed, where it has one (see
+// data/officialNewsFeeds.ts). Read INSTEAD of the Bing search, so the nightly
+// KV entry matches what the app serves rather than overwriting it with search
+// results the next time the cron runs.
+async function fetchOfficial(
+  url: string,
+  publisher: string,
+  limit: number,
+): Promise<StoredNewsItem[]> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": UA, Accept: "application/rss+xml,application/xml,text/xml;q=0.9" },
+    });
+    if (!res.ok) return [];
+    const xml = await res.text();
+    const out: StoredNewsItem[] = [];
+    const seen = new Set<string>();
+    for (const raw of xml.split(/<item>/i).slice(1, 40)) {
+      const block = raw.split(/<\/item>/i)[0];
+      const title = tag(block, "title");
+      const link = tag(block, "link");
+      if (!title || !link || seen.has(link)) continue;
+      seen.add(link);
+      const pub = tag(block, "pubDate");
+      const t = pub ? Date.parse(pub) : NaN;
+      out.push({
+        title,
+        url: link,
+        publisher,
+        published: Number.isNaN(t) ? "" : new Date(t).toISOString(),
+      });
+    }
+    out.sort((a, b) => (Date.parse(b.published) || 0) - (Date.parse(a.published) || 0));
+    return out.slice(0, limit);
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function fetchNews(name: string, limit: number): Promise<StoredNewsItem[]> {
+  const official = officialFeedFor(name);
+  if (official) {
+    const own = await fetchOfficial(official.url, official.publisher, limit);
+    if (own.length) return own;
+    // An unreachable feed falls through to the search rather than storing an
+    // empty entry that would blank the card for a day.
+  }
   const url =
     "https://www.bing.com/news/search?q=" +
     encodeURIComponent(`"${name}"`) +

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { officialFeedFor, type OfficialFeed } from "../data/officialNewsFeeds";
 import type { JsonRecord } from "./json";
 import { str } from "./json";
 import { isBlockedArticle } from "../data/newsBlocklist";
@@ -102,6 +103,49 @@ function bingRealUrl(link: string): string {
     }
   }
   return link;
+}
+
+/**
+ * One organisation's own newsroom feed, used INSTEAD of the search providers.
+ *
+ * A plain RSS read — no Bing link-unwrapping, because these links already point
+ * at the publisher. Every item carries the configured publisher name, since a
+ * newsroom feed has only one source by definition.
+ */
+async function fromOfficialFeed(
+  feed: OfficialFeed,
+  limit: number,
+  signal: AbortSignal,
+): Promise<LiveNewsItem[]> {
+  const res = await fetch(feed.url, {
+    signal,
+    headers: {
+      "User-Agent": "employsi/1.0",
+      Accept: "application/rss+xml,application/xml,text/xml;q=0.9,*/*;q=0.8",
+    },
+  });
+  if (!res.ok) return [];
+  const xml = await res.text();
+  const items: LiveNewsItem[] = [];
+  const seen = new Set<string>();
+  for (const raw of xml.split(/<item>/i).slice(1, 60)) {
+    const block = raw.split(/<\/item>/i)[0];
+    const title = tag(block, "title");
+    const link = tag(block, "link");
+    const pub = tag(block, "pubDate");
+    if (!title || !link || seen.has(link)) continue;
+    seen.add(link);
+    const t = pub ? Date.parse(pub) : NaN;
+    items.push({
+      title,
+      url: link,
+      publisher: feed.publisher,
+      published: Number.isNaN(t) ? "" : new Date(t).toISOString(),
+      image: itemImage(block),
+    });
+  }
+  items.sort((a, b) => (Date.parse(b.published) || 0) - (Date.parse(a.published) || 0));
+  return items.slice(0, limit);
 }
 
 async function fromBing(
@@ -262,6 +306,28 @@ export const getLiveNews = createServerFn({ method: "GET" })
     // Falls straight through to the live fetch when the store is cold, when the
     // company isn't on the roster, or when the entry has aged past a couple of
     // days — the cron is an accelerator, never a gate.
+    // An organisation with its own newsroom feed is served from it, ahead of
+    // the KV store — the nightly cron fills that store from Bing, so reading it
+    // first would put search results back over the top of the official source.
+    const official = officialFeedFor(query);
+    if (official) {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 7000);
+      try {
+        const own = await fromOfficialFeed(official, limit, ctrl.signal);
+        if (own.length) {
+          cache.set(key, { at: Date.now(), items: own });
+          return { items: own };
+        }
+        // An empty or unreachable feed falls through to the normal path rather
+        // than showing an empty card.
+      } catch {
+        /* fall through */
+      } finally {
+        clearTimeout(t);
+      }
+    }
+
     const stored = await fromStore(query, limit);
     if (stored) {
       cache.set(key, { at: Date.now(), items: stored });
