@@ -22,14 +22,17 @@
  *    code today's fallback provider into the data, so their DOMAIN is recorded
  *    instead and the fallback does its job. Same image, one less thing to
  *    rewrite when the provider changes.
- *  * 2 logo files did not resolve when checked (CMV Group 403, Life Without
- *    Barriers 404). A badge that 404s is worse than a favicon, so they are
- *    omitted and fall back like the rest.
+ *  * 2 of the spreadsheet's own logo files did not resolve (CMV Group 403,
+ *    Life Without Barriers 404). Replacements were supplied separately and are
+ *    used instead — both 447x447 and live when added. They are Google image
+ *    thumbnail-cache links (encrypted-tbn0.gstatic.com) keyed on an opaque
+ *    token, so unlike a logo served off a company's own site they can stop
+ *    resolving when Google re-crawls; the badge falls back to initials if so.
  *  * 21 companies had no logo URL supplied; they keep the favicon path, now on
  *    a corrected domain where one was available.
  *
  * Every URL below returned a 200 with image content when it was added.
- * Verified 97 of 99 supplied logo files; the failures are named above.
+ * Verified 99 of 99 logo files in this map, the two replacements included.
  */
 
 // Roster id → the company's own logo file.
@@ -69,6 +72,8 @@ export const PRIVATE_LOGO_URL: Record<string, string> = {
     "https://www.choicesflooring.com.au/media/vzpg35ep/choices-flooring-logo-svg.svg",
   "priv-cjd-equipment": "https://www.cjd.com.au/design-images/Logo-CJD.svg",
   "priv-clayton-utz": "https://www.claytonutz.com/img/logo_white.svg",
+  "priv-cmv-group":
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQh-2YFxE_NohK2wTLOiQLM0ZmQmKdV773qkXOf2AhfrT5to38FoVuzw1A&s=10",
   "priv-cnw-electrical":
     "https://shop.cnw.com.au/_ui/responsive/common/images/logos/svg/cnw-desktop.svg",
   "priv-colcap":
@@ -119,6 +124,8 @@ export const PRIVATE_LOGO_URL: Record<string, string> = {
   "priv-kpmg":
     "https://kpmg.com/content/experience-fragments/kpmgpublic/au/en/site/header/master/_jcr_content/root/header_v2/logo.coreimg.svg/1749689970934/logo.svg",
   "priv-leader-computers": "https://leadersystems.com.au/wp-content/uploads/2021/03/UniFilogo.png",
+  "priv-life-without-barriers":
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS97IgZhNI9Q2bt1WW55_n3eQk7xIRiUs2srdxSLBG_zNPno_MqXyRdzfI&s=10",
   "priv-linfox": "https://www.linfox.com/wp-content/themes/linfox/dist/images/logo.svg",
   "priv-loan-market":
     "https://www.loanmarket.com.au/wp-content/uploads/2023/07/Placeholder-Images-6.jpg",
