@@ -1,4 +1,5 @@
 import { PRIVATE_LOGO_URL, PRIVATE_DOMAIN } from "../data/privateLogos";
+import { WA_GOV_LOGO_URL, WA_GOV_CREST, WA_GOV_CREST_ID_SET } from "../data/waGovLogos";
 
 /**
  * The badge image for a company, in one place.
@@ -10,20 +11,24 @@ import { PRIVATE_LOGO_URL, PRIVATE_DOMAIN } from "../data/privateLogos";
  *
  * The order is best-available:
  *
- *   1. the company's own logo file, where we have a verified one
- *      (data/privateLogos.ts). A real brand mark, not a 16px favicon upscaled.
- *   2. the favicon service keyed on the company's REAL domain, where the
+ *   1. the organisation's own logo file, where we have a verified one — the
+ *      private roster from data/privateLogos.ts, the WA government agencies
+ *      from data/waGovLogos.ts. A real brand mark, not a 16px favicon upscaled.
+ *   2. the shared Government of WA crest, for the agencies that present the
+ *      whole-of-government identity rather than a distinct logo of their own.
+ *   3. the favicon service keyed on the organisation's REAL domain, where the
  *      roster's name-derived guess is known to be wrong.
- *   3. the favicon service on the roster domain — the previous behaviour, and
- *      still correct for every company we have nothing better for.
+ *   4. the favicon service on the roster domain — the previous behaviour, and
+ *      still correct for everything we have nothing better for.
  *
  * Callers keep their own onError fallback to the ticker text: a logo file can
  * stop resolving long after it was verified, and a broken image is worse than
  * initials.
  */
 export function logoFor(id: string, domain: string, size = 128): string {
-  const direct = PRIVATE_LOGO_URL[id];
+  const direct = PRIVATE_LOGO_URL[id] || WA_GOV_LOGO_URL[id];
   if (direct) return direct;
+  if (WA_GOV_CREST_ID_SET.has(id)) return WA_GOV_CREST;
   const host = PRIVATE_DOMAIN[id] || domain;
   return `https://www.google.com/s2/favicons?domain=${host}&sz=${size}`;
 }
