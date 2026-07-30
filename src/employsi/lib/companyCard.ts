@@ -31,6 +31,7 @@
  */
 
 import type { Company } from "../data/companies";
+import { logoFor } from "./companyLogo";
 import type { RolePoint } from "./openRolesFn";
 import type { ShareSeries } from "./shareSeriesFn";
 
@@ -370,7 +371,7 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
     sector: c.sector,
     ticker: isPrivate ? "Private" : `${c.exchange || "ASX"}: ${c.ticker}`,
     isPrivate,
-    logo: `https://www.google.com/s2/favicons?domain=${c.domain}&sz=128`,
+    logo: logoFor(c.id, c.domain),
     mark: c.ticker,
     stats,
     chart,

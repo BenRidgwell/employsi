@@ -18,6 +18,7 @@ import {
   PERTH_DEFAULT_BEARING,
 } from "../data/mapboxGeo";
 import { heatColor, rgbCss } from "../lib/color";
+import { logoFor } from "../lib/companyLogo";
 import { activeSkill, demandByCompany } from "../lib/skillHeat";
 import { buildMarker, MARKER_FOOT } from "../lib/mapMarker";
 import type { SkillIndex } from "../lib/skillsFn";
@@ -568,7 +569,7 @@ export function PerthMapbox() {
           el.appendChild(
             buildMarker("company", {
               name: pillLabel(c.name, c.ticker),
-              logo: `https://www.google.com/s2/favicons?domain=${c.domain}&sz=128`,
+              logo: logoFor(c.id, c.domain),
               logoAlt: c.ticker,
             }),
           );

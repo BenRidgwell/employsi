@@ -85,23 +85,18 @@ const CloseIcon = () => (
   </svg>
 );
 
-// Clearbit's public logo API has been discontinued (hotlinked requests now
-// fail outright), so this fetches each company's real brand icon via
-// Google's favicon service instead, which is still live. Falls back to the
-// ticker text only if even that request errors.
-function CompanyLogo({ domain, ticker }: { domain: string; ticker: string }) {
+// The badge image. The URL is resolved once in lib/companyLogo.ts and carried
+// on the card, so this only has to render it and handle the failure — a logo
+// file verified months ago can stop resolving, and initials beat a broken
+// image.
+function CompanyLogo({ src, ticker }: { src: string; ticker: string }) {
   const [failed, setFailed] = useState(false);
   return (
     <div className="pbadge">
       {failed ? (
         <span className="pbadgetxt">{ticker}</span>
       ) : (
-        <img
-          className="pbadgeimg"
-          src={`https://www.google.com/s2/favicons?domain=${domain}&sz=128`}
-          alt={ticker}
-          onError={() => setFailed(true)}
-        />
+        <img className="pbadgeimg" src={src} alt={ticker} onError={() => setFailed(true)} />
       )}
     </div>
   );
@@ -532,7 +527,7 @@ export function CompanyPanel() {
           <>
             <div className="cchead">
               <span className="ccmark">
-                <CompanyLogo domain={panel.domain} ticker={panel.ticker} />
+                <CompanyLogo src={card.logo} ticker={panel.ticker} />
               </span>
               <div className="ccheadmain">
                 <span className="ccname">{card.name}</span>
