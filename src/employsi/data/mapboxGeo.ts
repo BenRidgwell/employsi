@@ -189,7 +189,11 @@ export const CITY_COMPANIES: Record<string, CityCompany[]> = {
     { id: "smr", coords: [153.029, -27.4683] }, // Stanmore — 12 Creek St
     { id: "nhc", coords: [153.0247, -27.472] }, // New Hope Group
     { id: "shell", coords: [153.0223, -27.4695] }, // Shell / QGC — 275 George St
-    { id: "aow", coords: [153.0316, -27.4695] }, // Arrow Energy — 1 Eagle St
+    // Arrow Energy — Waterfront Place, 1 Eagle St. The previous coordinate was
+    // ~130 m east of the building, which put the pin in the Brisbane River
+    // (tested against the river's OSM geometry); this is OSM's own point for
+    // Waterfront Place.
+    { id: "aow", coords: [153.030524, -27.470296] },
     { id: "mmi", coords: [153.033, -27.457] }, // Metro Mining — Fortitude Valley
     { id: "jellinbah", coords: [153.0238, -27.4662] }, // Jellinbah Group
   ],

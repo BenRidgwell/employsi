@@ -199,6 +199,24 @@ export interface CityPlacement {
 // Only cities that need it are listed; everything else keeps a full-circle fan
 // with a capped radius (so big inland CBDs no longer sprawl). Waterfront cities
 // get a land arc pointing away from the water.
+//
+// HOW THE ARCS BELOW WERE ARRIVED AT. Every one that carries a measurement note
+// was solved against the city's real water geometry, pulled from OpenStreetMap
+// (natural=water, waterway=riverbank, natural=bay, landuse=reservoir) for the
+// bounding box its pins occupy. For each bearing we walk outwards from the
+// centre until a point falls inside a water polygon; that gives the dry radius
+// on that bearing, and the arc is the contiguous run of bearings that maximises
+// the wedge's AREA — the quantity that decides how far apart pins end up —
+// subject to a floor of 340 m so a fan never collapses into a stack.
+//
+// The test is on the WHOLE WEDGE rather than on the pins one particular fan
+// produces, which matters because a city's pins come from several separate
+// spreadCoordsCity calls (the listed roster, then its government agencies, then
+// the private companies) each generating its own spiral. If the wedge is dry
+// then every fan inside it is dry, at any company count.
+//
+// Where the arcs alone left the fan reaching water, maxKm pulls the radius in
+// to the measured dry limit instead of narrowing the arc further.
 export const CITY_PLACEMENT: Record<string, CityPlacement> = {
   // Australia
   // Perth was the one water-bounded city here with no arc, so its fan was a
@@ -210,11 +228,23 @@ export const CITY_PLACEMENT: Record<string, CityPlacement> = {
   // Northbridge (W/NW), the CBD spine (N) and East Perth (NE/ENE).
   perth: { arc: [285, 75] },
   sydney: { arc: [150, 330] }, // avoid Sydney Harbour (N/NE)
-  melbourne: { arc: [330, 140] }, // avoid Yarra (S) + Docklands (W)
-  brisbane: { arc: [285, 75] }, // inside the river U-bend → land is N/NE
+  // Yarra to the south and Victoria Harbour/Docklands to the west. The old
+  // [330,140] arc pointed the fan at the river: measured, 6 of the 188 pins sat
+  // in water (including Treasury & Finance and the AFL). The dry wedge runs
+  // anticlockwise from SW round through north to ESE, and the radius has to
+  // come in from 1.15 km to 1.02 km or the far edge reaches the Yarra.
+  melbourne: { arc: [223, 69], maxKm: 1.02 },
+  // Inside the river's U-bend, so water is W, S and E. [285,75] included the
+  // WNW sector, which is North Quay — 17 of 127 pins were in the Brisbane
+  // River, the worst of any city. Rotated to the measured dry run.
+  brisbane: { arc: [291, 40] },
   darwin: { arc: [60, 210] }, // CBD peninsula → land is E/SE, harbour wraps N/W/SW
   hobart: { arc: [180, 30] }, // CBD on W shore of Derwent → water is E, land wraps W
   auckland: { arc: [120, 300] }, // CBD on the isthmus → harbour N, land arcs S
+  // Civic, with Lake Burley Griffin to the south — the only wet sector, and it
+  // caught one pin (the National Library). Everything else is dry, so this is
+  // an almost-full circle with the lake cut out.
+  canberra: { arc: [230, 138] },
   // North America
   toronto: { arc: [285, 75] }, // avoid Lake Ontario (S)
   chicago: { arc: [175, 355] }, // avoid Lake Michigan (E)
@@ -225,8 +255,22 @@ export const CITY_PLACEMENT: Record<string, CityPlacement> = {
   sanjose: { anchor: [-121.8863, 37.3382], arc: [200, 20] },
   seattle: { arc: [20, 200] }, // avoid Elliott Bay (W)
   vancouver: { arc: [90, 200] }, // avoid Burrard Inlet (N) + English Bay (W)
+  // Buffalo Bayou runs east–west just north of the CBD and caught EOG. The dry
+  // run is the southern sector, away from the bayou and its turning basin.
+  houston: { arc: [194, 268] },
+  // Europe
+  // The Thames. Unconstrained, 7 of 39 pins were in it (AstraZeneca, Unilever,
+  // Rio Tinto, Haleon, Anglo American, Sage, Experian). The dry run is the
+  // south-west-through-north-west sector, back from the north bank.
+  london: { arc: [228, 322] },
+  // The Seine and the Canal Saint-Martin: 4 pins were in the river. The dry run
+  // sweeps from due north round through east to south-east.
+  paris: { arc: [354, 132] },
   // Asia / other
-  hongkong: { anchor: [114.1585, 22.282], arc: [70, 290] }, // Central; avoid Victoria Harbour (N)
+  // Central, with Victoria Harbour to the north. [70,290] was measured at one
+  // pin in the harbour; the dry wedge is the southern half, and the radius
+  // needs capping at 700 m before the fan reaches the waterfront.
+  hongkong: { anchor: [114.1585, 22.282], arc: [208, 340], maxKm: 0.7 },
   singapore: { anchor: [103.8505, 1.281], arc: [190, 350] }, // Raffles Place; avoid Marina (E)
   shanghai: { anchor: [121.475, 31.231] }, // People's Sq (inland Puxi); off the Huangpu
 };
