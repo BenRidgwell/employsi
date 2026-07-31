@@ -48,7 +48,16 @@ def _auth_header() -> str:
 MIN_INTERVAL = float(os.environ.get('OXY_MIN_INTERVAL', '1.0'))   # seconds between calls
 JITTER = float(os.environ.get('OXY_JITTER', '0.6'))               # extra random 0..JITTER
 MAX_BACKOFF = float(os.environ.get('OXY_MAX_BACKOFF', '60'))
-RETRY_STATUSES = {429, 500, 502, 503, 504, 522, 524}
+# Statuses worth another attempt.
+#
+# 429 and the 5xx family are the target rate-limiting or wobbling. 612 and 613
+# are OXYLABS' OWN fault codes — 613 is "faulted", meaning its worker could not
+# complete the fetch — and they are just as transient, but they were missing
+# here. That gap took the NSW government scraper down for a whole day: one 613
+# on page 1 and the run exited 2 with the board perfectly healthy, which a
+# retry moments later confirmed (the same URL returned 200 with 1.1MB). Naukri
+# and GulfTalent hit the same code earlier for the same reason.
+RETRY_STATUSES = {429, 500, 502, 503, 504, 522, 524, 612, 613}
 
 _last_call = 0.0
 
