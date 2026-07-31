@@ -398,6 +398,8 @@ export interface MarketSkillMovers {
   to: string;
   /** Feeds that covered BOTH windows and were therefore counted. */
   sources: string[];
+  /** The area measured, for the pane's footnote (e.g. "Perth", "Worldwide"). */
+  scope: string;
 }
 
 const NO_MOVERS: MarketSkillMovers = {
@@ -407,6 +409,7 @@ const NO_MOVERS: MarketSkillMovers = {
   from: "",
   to: "",
   sources: [],
+  scope: "",
 };
 
 const SAFE_SOURCE = /^[a-z0-9][a-z0-9-]{0,31}$/;
@@ -453,21 +456,50 @@ const MOVER_MIN_COVERAGE = 0.5;
 /** Mean daily vacancies a skill needs in BOTH windows to be ranked. */
 const MOVER_MIN_LEVEL = 3;
 
-export const getMarketSkillMovers = createServerFn({ method: "GET" }).handler(
-  async (): Promise<MarketSkillMovers> => {
+/**
+ * SCOPE. The pane sits over a map that is already showing one city, one region
+ * or the whole world, so its numbers have to be about that same area — a Perth
+ * local view reporting worldwide movers is answering a question nobody asked.
+ * `hubs` is the set of archive hub keys the current layer covers, resolved on
+ * the client from the same geo tables the analyst scope chips use; an empty
+ * list means worldwide, which is genuinely everything rather than a fallback.
+ *
+ * Hub values are mostly lower-case city keys, but a few rows carry a
+ * capitalised or country-level hub ("Singapore", "Australia"), so the match is
+ * on lower(hub) — the same rule scopeClause uses in analystFn.
+ */
+export interface MoverScope {
+  hubs: string[];
+  /** Display label for the footnote. */
+  label: string;
+}
+
+export const getMarketSkillMovers = createServerFn({ method: "GET" })
+  .validator((data: MoverScope) => data)
+  .handler(async ({ data }): Promise<MarketSkillMovers> => {
     const db = await getArchiveDb();
     if (!db) return NO_MOVERS;
+    const hubs = (data?.hubs ?? []).map((h) => String(h).toLowerCase()).filter(Boolean);
+    const scopeLabel = data?.label || "Worldwide";
+    // Bound, not inlined: a region is a few dozen hubs, well inside D1's
+    // parameter cap, so there is no reason to build these into the string.
+    const hubWhere = hubs.length ? ` AND lower(hub) IN (${hubs.map(() => "?").join(",")})` : "";
     try {
       // Yesterday, not today: the scrapers run through the night, so today is
       // always a partial day and would read as a market-wide collapse.
       const asOf = shiftDay(new Date().toISOString().slice(0, 10), -1);
 
-      // When each feed started, and how much of the archive it is.
+      // When each feed started, and how much of the archive it is — measured
+      // WITHIN THE SCOPE, because coverage is not uniform across areas. The
+      // Chinese and Indian feeds carry no Australian rows, so counting them
+      // towards a Perth window would pick a window Perth's own feeds cannot
+      // support.
       const cov = await db
         .prepare(
           `SELECT source, MIN(first_seen) AS mn, COUNT(*) AS n
-             FROM jobs WHERE skills IS NOT NULL GROUP BY source`,
+             FROM jobs WHERE skills IS NOT NULL${hubWhere} GROUP BY source`,
         )
+        .bind(...hubs)
         .all();
       const feeds = (cov?.results ?? [])
         .map((r) => ({
@@ -506,10 +538,10 @@ export const getMarketSkillMovers = createServerFn({ method: "GET" }).handler(
           `SELECT skills, first_seen, last_seen FROM jobs
              WHERE skills IS NOT NULL
                AND source IN (${list})
-               AND last_seen >= ?1
-               AND first_seen <= ?2`,
+               AND last_seen >= ?
+               AND first_seen <= ?${hubWhere}`,
         )
-        .bind(priorStart, asOf)
+        .bind(priorStart, asOf, ...hubs)
         .all();
       const rows = res?.results ?? [];
       if (!rows.length) return NO_MOVERS;
@@ -577,12 +609,12 @@ export const getMarketSkillMovers = createServerFn({ method: "GET" }).handler(
         from: recentStart,
         to: asOf,
         sources: eligible.sort(),
+        scope: scopeLabel,
       };
     } catch {
       return NO_MOVERS;
     }
-  },
-);
+  });
 
 // A daily "live vacancies" time-series derived from the D1 archive: for each of
 // the last N days, how many of the company's archived listings were live that

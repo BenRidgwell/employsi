@@ -112,17 +112,9 @@ function RoleSearch({
   onChange: (v: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [q, setQ] = useState("");
-  const query = q.trim().toLowerCase();
-  // A blank box lists everything the company is currently advertising; typing
-  // narrows it. Enter on a blank box therefore has nothing to select and simply
-  // leaves the full list up, which is what makes "press enter to see them all"
-  // work; Enter with a query takes the first match.
-  const filtered = query ? options.filter((o) => o.toLowerCase().includes(query)) : options;
   const pick = (o: string) => {
     onChange(o);
     setOpen(false);
-    setQ("");
   };
   return (
     <div className="rolesearch">
@@ -160,39 +152,24 @@ function RoleSearch({
         )}
       </button>
       {open && (
+        // The whole live list, no second search box: the pill above IS the
+        // control, and typing to narrow a list you can already see in full was
+        // an extra step for nothing. Titles are one line each, clipped with an
+        // ellipsis rather than wrapped, so every card is the same height and
+        // the grid stays a grid; the full title is on the tooltip.
         <div className="roledrop">
-          <input
-            className="roleinput"
-            placeholder={options.length ? `Search ${options.length} live roles…` : "Search roles…"}
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                if (query && filtered.length) pick(filtered[0]);
-                // Blank: the list below is already every live role — leave it up.
-              } else if (e.key === "Escape") {
-                setOpen(false);
-                setQ("");
-              }
-            }}
-            autoFocus
-          />
           <div className="rolechips">
-            {filtered.map((o) => (
+            {options.map((o) => (
               <button
                 key={o}
                 className={`rolechip ${value === o ? "on" : ""}`}
                 onClick={() => pick(o)}
+                title={o}
               >
                 {o}
               </button>
             ))}
-            {filtered.length === 0 && (
-              <div className="rolenone">
-                {options.length ? "No roles match" : "No live vacancies"}
-              </div>
-            )}
+            {options.length === 0 && <div className="rolenone">No live vacancies</div>}
           </div>
         </div>
       )}

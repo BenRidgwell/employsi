@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../../state/store";
 import { COMPANIES } from "../../data/companies";
@@ -10,6 +11,8 @@ import {
 } from "../../data/trending";
 import { getMarketSkillMovers, type MarketSkillMover } from "../../lib/jobHistoryFn";
 import { getMostViewed, type ViewedRow } from "../../lib/viewsFn";
+import { REGION_HUBS } from "../../data/mapboxWorldGeo";
+import { CITY_LABEL, GLOBAL_HUB_LABEL, CITY_CONTINENT } from "../../data/geo";
 
 const TICKER_TO_ID: Record<string, string> = Object.fromEntries(
   COMPANIES.map((c) => [c.ticker, c.id]),
@@ -176,11 +179,50 @@ export function WhatsTrendingPane() {
   // the local view too, where the old `zoomedOut` gate left it silently closed.
   const open = trendingOpen;
 
-  // Real, market-wide skill risers/fallers from the D1 archive (all feeds).
-  // Only fetched once the pane is opened; refreshed a few times a day.
+  // WHICH AREA THE PANE IS ABOUT — the one the map is currently showing.
+  //
+  // The movers query used to take no scope at all, so the same worldwide
+  // numbers appeared whether you were standing in Perth, over Australia, or out
+  // at the globe. That is not a smaller version of the right answer, it is a
+  // different question: Perth's own market can be cooling while the worldwide
+  // total rises, and the pane would have shown the rise.
+  //
+  // The layer flags map straight onto scope — local city, domestic region, or
+  // worldwide — using the same hub sets the analyst's scope chips resolve.
+  const localCity = useAppStore((s) => s.localCity);
+  const domesticRegion = useAppStore((s) => s.domesticRegion);
+  const zoomedOut = useAppStore((s) => s.zoomedOut);
+  const globalOut = useAppStore((s) => s.globalOut);
+  const scope = useMemo(() => {
+    if (!zoomedOut && localCity) {
+      return {
+        hubs: [localCity],
+        label: GLOBAL_HUB_LABEL[localCity] || CITY_LABEL[localCity] || localCity,
+      };
+    }
+    if (!globalOut) {
+      const region = domesticRegion || CITY_CONTINENT[localCity] || "australia";
+      const hubs = REGION_HUBS[region];
+      if (hubs?.length) {
+        // The region's own name is carried as a hub on some rows rather than a
+        // city — 938 of the archive's rows sit on hub "australia" — so include
+        // it alongside the member cities, the same way the analyst's country
+        // scope does. Harmless for regions that have no such rows.
+        return {
+          hubs: [...hubs, region],
+          label: region.charAt(0).toUpperCase() + region.slice(1),
+        };
+      }
+    }
+    return { hubs: [], label: "Worldwide" };
+  }, [zoomedOut, globalOut, localCity, domesticRegion]);
+
+  // Real skill risers/fallers from the D1 archive, for THIS scope. Keyed on the
+  // scope so moving between layers refetches rather than showing the last one's
+  // answer. Only fetched once the pane is opened; refreshed a few times a day.
   const { data: movers } = useQuery({
-    queryKey: ["marketSkillMovers"],
-    queryFn: () => getMarketSkillMovers(),
+    queryKey: ["marketSkillMovers", scope.label, scope.hubs.join(",")],
+    queryFn: () => getMarketSkillMovers({ data: scope }),
     enabled: open,
     staleTime: 6 * 60 * 60 * 1000,
     gcTime: 24 * 60 * 60 * 1000,
@@ -338,8 +380,9 @@ export function WhatsTrendingPane() {
                   the archive actually holds rather than fixed — and because
                   both lists are two ends of this one comparison. */}
               <div className="brieffoot">
-                Mean daily live vacancies · {movers!.windowDays} days to {movers!.to} vs the{" "}
-                {movers!.windowDays} before · {movers!.sources.length} feeds covering both periods
+                {movers!.scope} · mean daily live vacancies · {movers!.windowDays} days to{" "}
+                {movers!.to} vs the {movers!.windowDays} before · {movers!.sources.length} feeds
+                covering both periods
               </div>
             </>
           ) : (
