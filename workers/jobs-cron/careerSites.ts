@@ -317,6 +317,13 @@ export const SITES: SiteDef[] = [
     homeHub: "sydney",
     pageSize: 6,
     avatureCells: { loc: 3, cat: 5 },
+    // Woolworths advertises "999+ results" — a capped display, not a total —
+    // so the extent had to be measured: jobOffset 1260 still returns six roles
+    // and 1300 returns none, putting the list a little under 1300. At the
+    // tenant's fixed six a page that is ~217 pages, so the cap is set at 240
+    // for headroom and the walk stops itself on two empty pages. The default
+    // 80 was collecting 480 of them.
+    maxPages: 240,
   },
   {
     id: "melbourne-col",
@@ -496,7 +503,7 @@ export const PORTAL_GROUPS: string[][] = [
   // gets a tick largely to itself, while the Workday sites (which serve 20 a
   // page and total a few hundred between them) share one.
   ["melbourne-tls", "sydney-all", "sydney-qbe"],
-  ["melbourne-tcl-au", "melbourne-tcl-us", "sydney-wow"],
+  ["melbourne-tcl-au", "melbourne-tcl-us"],
   ["melbourne-col"],
   // The thirteen added after those. SuccessFactors is the constraint here, not
   // role count: its walk is sequential (each page's size is read off the one
@@ -507,6 +514,10 @@ export const PORTAL_GROUPS: string[][] = [
   ["sydney-evn", "sydney-org"],
   ["nz-fisher-and-paykel-healthcare", "sto", "melbourne-rea", "sydney-scg"],
   ["sydney-bxb-office", "sydney-bxb-plant", "melbourne-cpu", "brisbane-sun", "sydney-iag"],
+  // Woolworths alone. It is the deepest walk we run — ~1,300 roles at a fixed
+  // six a page is 216 requests and about 50 seconds — and a scheduled Worker's
+  // waitUntil is the budget that actually binds here, so it does not share.
+  ["sydney-wow"],
 ];
 
 const UA =
@@ -1123,7 +1134,17 @@ async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
     // class names — Woolworths renders `article article--w--full
     // article--result` — so an exact "article article--result" split found
     // nothing there. Match the pair with anything allowed in between.
-    return html ? html.split(/class="article[^"]*article--result/i).slice(1) : [];
+    //
+    // Only blocks carrying a job link count. Past the end of its list
+    // Woolworths returns a page holding ONE result-shaped wrapper with no job
+    // in it, so counting raw blocks would read every page after the end as
+    // non-empty and the walk would never detect that it had finished.
+    return html
+      ? html
+          .split(/class="article[^"]*article--result/i)
+          .slice(1)
+          .filter((b) => /<a[^>]*href="[^"]*JobDetail[^"]*"/i.test(b))
+      : [];
   };
 
   // NOT pagedParallel, which ends the walk at the first short page. Woolworths
@@ -1133,9 +1154,10 @@ async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
   // page is only evidence of the end when the page after it is empty too.
   //
   // The tenant advertises its own total (`aria-label="502 results"`), which
-  // bounds the walk when it is exact. Woolworths caps the display at "999+",
-  // so there the bound is maxPages and the collected count is a documented
-  // ceiling rather than the whole portal.
+  // bounds the walk when it is exact. Woolworths caps the display at "999+" —
+  // the regex deliberately does not match that, because a capped figure is not
+  // a total — so there the walk runs until two consecutive pages come back
+  // with no jobs in them, bounded by maxPages.
   const first = await getText(
     `${site.endpoint}/?listFilterMode=1&jobRecordsPerPage=${size}&jobOffset=0`,
   );
@@ -1143,9 +1165,20 @@ async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
   const total = totalM ? Number(totalM[1].replace(/,/g, "")) : 0;
   const wanted = total > 0 ? Math.min(Math.ceil(total / size), max) : max;
 
-  const blocks: string[] = first ? first.split(/class="article[^"]*article--result/i).slice(1) : [];
+  const blocks: string[] = first
+    ? first
+        .split(/class="article[^"]*article--result/i)
+        .slice(1)
+        .filter((b) => /<a[^>]*href="[^"]*JobDetail[^"]*"/i.test(b))
+    : [];
+  // A whole window of consecutive empty pages, not two. Two was still being
+  // tripped early by throttling — the same portal returned 1072 roles on one
+  // run and 1294 on the next — because a throttled page and the end of the
+  // list are indistinguishable, and two in a row is common under load. Six in
+  // a row is not, and the walk is bounded by maxPages regardless, so the cost
+  // of being wrong here is one wasted window rather than a truncated portal.
   let emptyRun = 0;
-  for (let start = 1; start < wanted && emptyRun < 2; start += PAGE_CONCURRENCY) {
+  for (let start = 1; start < wanted && emptyRun < PAGE_CONCURRENCY; start += PAGE_CONCURRENCY) {
     const idx: number[] = [];
     for (let i = start; i < Math.min(start + PAGE_CONCURRENCY, wanted); i++) idx.push(i);
     const windows = await Promise.all(idx.map(page));
