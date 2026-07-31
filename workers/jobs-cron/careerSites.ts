@@ -143,6 +143,18 @@ interface SiteDef {
    * Omitted = Macquarie's layout, which the date anchors on its own.
    */
   avatureCells?: { loc: number; cat?: number };
+  /**
+   * Avature only: the page this feed STARTS at, so one portal can be walked
+   * across several ticks. Defaults to 0; `maxPages` then bounds how many pages
+   * this feed walks from there.
+   *
+   * Woolworths needs it. Its ~1,300 roles at a fixed six a page is a 50-second
+   * walk, and a scheduled Worker cancels a waitUntil that long — measured, the
+   * run logged "waitUntil() tasks did not complete within the allowed time".
+   * Split into three 80-page windows it is three ~20-second walks, which is the
+   * shape that was already completing before the cap was raised.
+   */
+  pageFrom?: number;
 }
 
 export const SITES: SiteDef[] = [
@@ -304,11 +316,19 @@ export const SITES: SiteDef[] = [
     origin: "https://qbe.wd3.myworkdayjobs.com/QBE-Careers",
     homeHub: "sydney",
   },
+  // Woolworths, walked in three windows. Avature, like Macquarie, but this
+  // tenant fixes the page at 6 and needs jobRecordsPerPage alongside jobOffset
+  // — without it the offset is ignored and every page returns the first six.
+  //
+  // It also caps its own result count at "999+", so the extent was measured
+  // rather than read: jobOffset 1260 still returns six roles and 1300 returns
+  // none, putting the list a little under 1,300 — ~217 pages. Walking that in
+  // one go takes 50 seconds and the Worker cancels the waitUntil, so it is
+  // split into three 80-page windows on three ticks. All three carry the same
+  // id, so every row lands on the one company.
   {
-    // Avature, like Macquarie, but this tenant fixes the page at 6 and needs
-    // jobRecordsPerPage alongside jobOffset — without it the offset is ignored
-    // and every page returns the first six.
     id: "sydney-wow",
+    key: "sydney-wow-a",
     name: "Woolworths Group",
     sector: "Consumer & Retail",
     platform: "avature",
@@ -317,13 +337,36 @@ export const SITES: SiteDef[] = [
     homeHub: "sydney",
     pageSize: 6,
     avatureCells: { loc: 3, cat: 5 },
-    // Woolworths advertises "999+ results" — a capped display, not a total —
-    // so the extent had to be measured: jobOffset 1260 still returns six roles
-    // and 1300 returns none, putting the list a little under 1300. At the
-    // tenant's fixed six a page that is ~217 pages, so the cap is set at 240
-    // for headroom and the walk stops itself on two empty pages. The default
-    // 80 was collecting 480 of them.
-    maxPages: 240,
+    pageFrom: 0,
+    maxPages: 80,
+  },
+  {
+    id: "sydney-wow",
+    key: "sydney-wow-b",
+    name: "Woolworths Group",
+    sector: "Consumer & Retail",
+    platform: "avature",
+    endpoint: "https://careers.woolworthsgroup.com.au/en_GB/apply/search-jobs",
+    origin: "https://careers.woolworthsgroup.com.au",
+    homeHub: "sydney",
+    pageSize: 6,
+    avatureCells: { loc: 3, cat: 5 },
+    pageFrom: 80,
+    maxPages: 80,
+  },
+  {
+    id: "sydney-wow",
+    key: "sydney-wow-c",
+    name: "Woolworths Group",
+    sector: "Consumer & Retail",
+    platform: "avature",
+    endpoint: "https://careers.woolworthsgroup.com.au/en_GB/apply/search-jobs",
+    origin: "https://careers.woolworthsgroup.com.au",
+    homeHub: "sydney",
+    pageSize: 6,
+    avatureCells: { loc: 3, cat: 5 },
+    pageFrom: 160,
+    maxPages: 80,
   },
   {
     id: "melbourne-col",
@@ -517,7 +560,9 @@ export const PORTAL_GROUPS: string[][] = [
   // Woolworths alone. It is the deepest walk we run — ~1,300 roles at a fixed
   // six a page is 216 requests and about 50 seconds — and a scheduled Worker's
   // waitUntil is the budget that actually binds here, so it does not share.
-  ["sydney-wow"],
+  ["sydney-wow-a"],
+  ["sydney-wow-b"],
+  ["sydney-wow-c"],
 ];
 
 const UA =
@@ -1156,14 +1201,19 @@ async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
   // The tenant advertises its own total (`aria-label="502 results"`), which
   // bounds the walk when it is exact. Woolworths caps the display at "999+" —
   // the regex deliberately does not match that, because a capped figure is not
-  // a total — so there the walk runs until two consecutive pages come back
-  // with no jobs in them, bounded by maxPages.
+  // a total — so there the walk runs until a window of pages comes back with
+  // no jobs in them, bounded by maxPages.
+  //
+  // `from` is where THIS feed starts. It is 0 for every tenant but Woolworths,
+  // which is walked as three windows on three ticks; `last` is the page after
+  // the end of this feed's window, not of the portal.
+  const from = site.pageFrom ?? 0;
   const first = await getText(
-    `${site.endpoint}/?listFilterMode=1&jobRecordsPerPage=${size}&jobOffset=0`,
+    `${site.endpoint}/?listFilterMode=1&jobRecordsPerPage=${size}&jobOffset=${from * size}`,
   );
   const totalM = first?.match(/aria-label="([\d,]+) results"/i);
   const total = totalM ? Number(totalM[1].replace(/,/g, "")) : 0;
-  const wanted = total > 0 ? Math.min(Math.ceil(total / size), max) : max;
+  const last = total > 0 ? Math.min(Math.ceil(total / size), from + max) : from + max;
 
   const blocks: string[] = first
     ? first
@@ -1178,9 +1228,13 @@ async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
   // a row is not, and the walk is bounded by maxPages regardless, so the cost
   // of being wrong here is one wasted window rather than a truncated portal.
   let emptyRun = 0;
-  for (let start = 1; start < wanted && emptyRun < PAGE_CONCURRENCY; start += PAGE_CONCURRENCY) {
+  for (
+    let start = from + 1;
+    start < last && emptyRun < PAGE_CONCURRENCY;
+    start += PAGE_CONCURRENCY
+  ) {
     const idx: number[] = [];
-    for (let i = start; i < Math.min(start + PAGE_CONCURRENCY, wanted); i++) idx.push(i);
+    for (let i = start; i < Math.min(start + PAGE_CONCURRENCY, last); i++) idx.push(i);
     const windows = await Promise.all(idx.map(page));
     for (const rows of windows) {
       if (rows.length) {

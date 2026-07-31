@@ -990,8 +990,10 @@ const PORTAL_TICKS: Record<string, number> = {
   "45 5 * * *": 8,
   "55 5 * * *": 9,
   "5 6 * * *": 10,
-  // Woolworths on its own — see PORTAL_GROUPS.
+  // Woolworths, three page windows on three ticks — see PORTAL_GROUPS.
   "15 6 * * *": 11,
+  "25 6 * * *": 12,
+  "35 6 * * *": 13,
 };
 
 const NEWS_TICKS: Record<string, number> = {
