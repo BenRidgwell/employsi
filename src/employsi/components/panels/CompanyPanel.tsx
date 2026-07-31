@@ -113,7 +113,17 @@ function RoleSearch({
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
-  const filtered = options.filter((o) => o.toLowerCase().includes(q.trim().toLowerCase()));
+  const query = q.trim().toLowerCase();
+  // A blank box lists everything the company is currently advertising; typing
+  // narrows it. Enter on a blank box therefore has nothing to select and simply
+  // leaves the full list up, which is what makes "press enter to see them all"
+  // work; Enter with a query takes the first match.
+  const filtered = query ? options.filter((o) => o.toLowerCase().includes(query)) : options;
+  const pick = (o: string) => {
+    onChange(o);
+    setOpen(false);
+    setQ("");
+  };
   return (
     <div className="rolesearch">
       {/* Same pill as the header's skill search — same height, radius, raised
@@ -153,9 +163,19 @@ function RoleSearch({
         <div className="roledrop">
           <input
             className="roleinput"
-            placeholder="Search roles…"
+            placeholder={options.length ? `Search ${options.length} live roles…` : "Search roles…"}
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (query && filtered.length) pick(filtered[0]);
+                // Blank: the list below is already every live role — leave it up.
+              } else if (e.key === "Escape") {
+                setOpen(false);
+                setQ("");
+              }
+            }}
             autoFocus
           />
           <div className="rolechips">
@@ -163,16 +183,16 @@ function RoleSearch({
               <button
                 key={o}
                 className={`rolechip ${value === o ? "on" : ""}`}
-                onClick={() => {
-                  onChange(o);
-                  setOpen(false);
-                  setQ("");
-                }}
+                onClick={() => pick(o)}
               >
                 {o}
               </button>
             ))}
-            {filtered.length === 0 && <div className="rolenone">No roles match</div>}
+            {filtered.length === 0 && (
+              <div className="rolenone">
+                {options.length ? "No roles match" : "No live vacancies"}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -284,6 +304,39 @@ export function CompanyPanel() {
     () => (liveRoles?.jobs?.length ? liveRoles.jobs : (companyJobs?.jobs ?? null)),
     [liveRoles, companyJobs],
   );
+  // The roles the company is ACTUALLY advertising right now, for the card's role
+  // search. culture.ts carries a hand-written roleOptions list per company, but
+  // it is illustrative, it is only present for the companies someone wrote one
+  // for (every other card offered an empty dropdown), and it has no relationship
+  // to what is open today. The live vacancy sample does, so it takes precedence
+  // and the hand-written list is only the fallback.
+  //
+  // Titles are deduped case-insensitively (the same ad appears on more than one
+  // board) and sorted, keeping the first spelling seen.
+  const liveRoleTitles = useMemo(() => {
+    if (!jobSample?.length) return null;
+    const byKey = new Map<string, string>();
+    for (const j of jobSample) {
+      const t = (j.t || "").trim();
+      if (!t) continue;
+      const k = t.toLowerCase().replace(/\s+/g, " ");
+      if (!byKey.has(k)) byKey.set(k, t);
+    }
+    const list = [...byKey.values()].sort((a, b) => a.localeCompare(b));
+    return list.length ? list : null;
+  }, [jobSample]);
+
+  // The live vacancies behind the selected role, so the role-focused figures can
+  // be counted rather than invented (see bigStats below).
+  const roleJobs = useMemo(() => {
+    if (!roleFilter || !jobSample?.length) return null;
+    const want = roleFilter.toLowerCase().replace(/\s+/g, " ");
+    const hits = jobSample.filter(
+      (j) => (j.t || "").trim().toLowerCase().replace(/\s+/g, " ") === want,
+    );
+    return hits.length ? hits : null;
+  }, [roleFilter, jobSample]);
+
   // Rank the company's real in-demand skills by how many live roles mention
   // them; falls back to the illustrative skill chips when no jobs are stored.
   const liveSkills = useMemo(() => {
@@ -397,7 +450,56 @@ export function CompanyPanel() {
   const showWorkforce = headcountReal && !!panel && panel.trend.length >= 2;
   const bigStats = useMemo(() => {
     if (!panel) return [];
-    if (roleFilter) return panel.bigStats;
+    if (roleFilter) {
+      // Role-focused figures, COUNTED from the live ads for that exact role.
+      //
+      // buildPanel derives these from a hash of the role title — a deterministic
+      // invention, which was tolerable while the role list was itself an
+      // illustrative hand-written one, but is not once the list is real live
+      // vacancies: picking a genuine open role and being shown a made-up count
+      // and salary for it is worse than showing nothing. Where the role came
+      // from live ads we count instead, and where a figure is not advertised we
+      // say so rather than filling the space.
+      if (!roleJobs) return panel.bigStats;
+      const sals = roleJobs
+        .map((j) => j.salN)
+        .filter((n): n is number => typeof n === "number" && n > 0)
+        .sort((a, b) => a - b);
+      const m = Math.floor(sals.length / 2);
+      const med = sals.length
+        ? sals.length % 2
+          ? sals[m]
+          : Math.round((sals[m - 1] + sals[m]) / 2)
+        : null;
+      const share = jobSample?.length
+        ? Math.round((roleJobs.length / jobSample.length) * 100)
+        : null;
+      return [
+        {
+          value: roleJobs.length.toLocaleString("en-US"),
+          label: "Open roles",
+          sub: roleFilter,
+          subCls: "",
+        },
+        {
+          value: med ? (med >= 1000 ? `$${Math.round(med / 1000)}k` : `$${Math.round(med)}`) : "—",
+          label: "Median salary",
+          sub: med
+            ? `median · ${sals.length} live ad${sals.length === 1 ? "" : "s"}`
+            : "not advertised",
+          subCls: "",
+        },
+        // Not "demand YoY": the archive does not go back a year, so a
+        // year-on-year figure for one role would have to be manufactured. This
+        // is the same ads, expressed as a share of everything they have open.
+        {
+          value: share === null ? "—" : `${share}%`,
+          label: "Share of vacancies",
+          sub: share === null ? "no live ads" : "of this employer's live ads",
+          subCls: "",
+        },
+      ];
+    }
     return panel.bigStats.map((s) => {
       if (s.label === "Open roles") {
         if (rolesChecking) return { ...s, value: "···", sub: "checking live ads…", subCls: "" };
@@ -422,7 +524,7 @@ export function CompanyPanel() {
       }
       return s;
     });
-  }, [panel, roleFilter, rolesChecking, liveRoles, medianPay, headcountReal]);
+  }, [panel, roleFilter, roleJobs, jobSample, rolesChecking, liveRoles, medianPay, headcountReal]);
 
   // Sub-stats: Glassdoor is real only for the live-feed company; "Biggest
   // hiring area" is real only from live job ads. Both fall back to a 0 / dash
@@ -560,7 +662,19 @@ export function CompanyPanel() {
               </div>
             </div>
 
-            <RoleSearch options={panel.roleOptions} value={roleFilter} onChange={setRoleFilter} />
+            {/* Keyed on the open company so the control REMOUNTS per card.
+                Its open/closed state and typed query live inside it, and the
+                component keeps its place in the tree when you switch cards, so
+                without this a search left open on one company was still open —
+                and still highlighted — on the next one you opened. The key also
+                changes to "" as the card closes, which is what returns the pill
+                to its static state rather than leaving it lit. */}
+            <RoleSearch
+              key={selectedId ?? ""}
+              options={liveRoleTitles ?? panel.roleOptions}
+              value={roleFilter}
+              onChange={setRoleFilter}
+            />
 
             <div className="cctabs">
               {(["Overview", "Skills", "Hiring"] as CardTab[]).map((t) => (
