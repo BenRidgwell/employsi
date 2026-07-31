@@ -80,6 +80,9 @@ export const REGION_FRAMES: Record<string, RegionFrame> = {
   asia: { center: [95, 23], zoom: 2.05 },
   northamerica: { center: [-96, 41], zoom: 2.6 },
   europe: { center: [7, 48], zoom: 3.6 },
+  // Fits Mumbai (72.8E) and Bengaluru (77.6E) with the subcontinent around
+  // them, rather than the whole of Asia.
+  india: { center: [77.5, 19.5], zoom: 3.9 },
   africa: { center: [26, -14], zoom: 3.0 },
 };
 
@@ -132,6 +135,8 @@ export const CITY_COUNTRY: Record<string, string> = {
   wellington: "nz",
   // Asia
   singapore: "sg",
+  mumbai: "in",
+  bengaluru: "in",
   tokyo: "jp",
   hongkong: "hk",
   dubai: "ae",
@@ -224,6 +229,10 @@ export const COUNTRIES: Record<string, CountryInfo> = {
   // at global zoom — they sit only ~10° apart on the real map.
   kr: { label: "South Korea", region: "asia", center: [126.6, 38.6] },
   cn: { label: "China", region: "asia", center: [104.2, 35.0] },
+  // Centred on the Deccan rather than the geographic centre: it keeps the
+  // chip clear of the China and UAE chips at global zoom, and sits between
+  // the two cities it leads to.
+  in: { label: "India", region: "india", center: [78.9, 21.5] },
   ca: { label: "Canada", region: "northamerica", center: [-98.0, 56.0] },
   us: { label: "United States", region: "northamerica", center: [-98.5, 39.0] },
   gb: { label: "United Kingdom", region: "europe", center: [-1.9, 53.0] },

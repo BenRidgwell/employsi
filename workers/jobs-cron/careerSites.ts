@@ -83,11 +83,20 @@ type Platform =
   | "greenhouse"
   | "avature"
   | "nextdata"
+  | "phenom"
   | "csl";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
   id: string;
+  /**
+   * Unique key for this FEED, where one employer runs more than one portal.
+   * Defaults to `id`. Transurban runs separate Workday sites for its Australian
+   * and North American roads: both belong to the one roster company, so they
+   * share an id, but they need distinct keys or the second one's KV snapshot
+   * overwrites the first and the card shows only half the group.
+   */
+  key?: string;
   name: string;
   /** The employer's industry, passed to the skills matcher so seniority words
    *  like "Principal" aren't read as their literal job title. */
@@ -101,6 +110,10 @@ interface SiteDef {
   homeHub: string | null;
   /** Hard ceiling on pages, so a paging bug can't run away with the budget. */
   maxPages?: number;
+  /** Rows a page, where the tenant fixes it at something other than the
+   *  platform default. Avature tenants differ: Macquarie serves 9, Woolworths 6, and
+   *  both ignore a larger jobRecordsPerPage — so it has to be per site. */
+  pageSize?: number;
 }
 
 export const SITES: SiteDef[] = [
@@ -207,6 +220,84 @@ export const SITES: SiteDef[] = [
     homeHub: "melbourne",
   },
   {
+    id: "melbourne-tls",
+    name: "Telstra Group",
+    sector: "Technology, Media & Telecom",
+    platform: "workday",
+    endpoint: "https://telstra.wd3.myworkdayjobs.com/wday/cxs/telstra/Telstra_Careers/jobs",
+    origin: "https://telstra.wd3.myworkdayjobs.com/Telstra_Careers",
+    homeHub: "melbourne",
+  },
+  {
+    id: "melbourne-tcl",
+    key: "melbourne-tcl-au",
+    name: "Transurban Group",
+    sector: "Infrastructure & Government",
+    platform: "workday",
+    endpoint: "https://transurban.wd3.myworkdayjobs.com/wday/cxs/transurban/TU_AU/jobs",
+    origin: "https://transurban.wd3.myworkdayjobs.com/TU_AU",
+    homeHub: "melbourne",
+  },
+  {
+    // Transurban runs a SECOND Workday site for its North American roads, on
+    // the same tenant. Both are archived against the one roster company — it is
+    // one employer — but the US site's roles carry US locations, so they land
+    // on the US hubs rather than Melbourne and the card shows the whole group.
+    id: "melbourne-tcl",
+    key: "melbourne-tcl-us",
+    name: "Transurban Group",
+    sector: "Infrastructure & Government",
+    platform: "workday",
+    endpoint: "https://transurban.wd3.myworkdayjobs.com/wday/cxs/transurban/TU_US/jobs",
+    origin: "https://transurban.wd3.myworkdayjobs.com/TU_US",
+    homeHub: "washington",
+  },
+  {
+    id: "sydney-all",
+    name: "Aristocrat Leisure",
+    sector: "Consumer & Retail",
+    platform: "workday",
+    endpoint:
+      "https://aristocrat.wd3.myworkdayjobs.com/wday/cxs/aristocrat/AristocratExternalCareersSite/jobs",
+    origin: "https://aristocrat.wd3.myworkdayjobs.com/AristocratExternalCareersSite",
+    homeHub: "sydney",
+  },
+  {
+    // QBE's site is live and correctly identified — every other site id 404s
+    // and the page's own shell names this one — but it returned 0 postings when
+    // this was wired. It is included so the moment they publish, the roles are
+    // collected; until then it legitimately writes nothing.
+    id: "sydney-qbe",
+    name: "QBE Insurance",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://qbe.wd3.myworkdayjobs.com/wday/cxs/qbe/QBE-Careers/jobs",
+    origin: "https://qbe.wd3.myworkdayjobs.com/QBE-Careers",
+    homeHub: "sydney",
+  },
+  {
+    // Avature, like Macquarie, but this tenant fixes the page at 6 and needs
+    // jobRecordsPerPage alongside jobOffset — without it the offset is ignored
+    // and every page returns the first six.
+    id: "sydney-wow",
+    name: "Woolworths Group",
+    sector: "Consumer & Retail",
+    platform: "avature",
+    endpoint: "https://careers.woolworthsgroup.com.au/en_GB/apply/search-jobs",
+    origin: "https://careers.woolworthsgroup.com.au",
+    homeHub: "sydney",
+    pageSize: 6,
+  },
+  {
+    id: "melbourne-col",
+    name: "Coles Group",
+    sector: "Consumer & Retail",
+    platform: "phenom",
+    endpoint: "https://colescareers.com.au/au/en/search-results",
+    origin: "https://colescareers.com.au",
+    homeHub: "melbourne",
+  },
+  {
     // HSBC's portal is global and the roster carries the issuer twice (LSE and
     // HKEX). It is archived once, against the primary listing; the Hong Kong
     // line reads the same rows through COMPANY_ID_ALIAS in openRolesFn, so the
@@ -238,6 +329,13 @@ export const PORTAL_GROUPS: string[][] = [
   ["rio", "fmg", "sydney-wbc", "wes"],
   ["sydney-mqg", "sydney-gmg"],
   ["london-hsba", "melbourne-csl"],
+  // The seven added later. Grouped by how deep each pages rather than evenly:
+  // Coles walks 531 roles at 10 a page and Woolworths at 6, so each of those
+  // gets a tick largely to itself, while the Workday sites (which serve 20 a
+  // page and total a few hundred between them) share one.
+  ["melbourne-tls", "sydney-all", "sydney-qbe"],
+  ["melbourne-tcl-au", "melbourne-tcl-us", "sydney-wow"],
+  ["melbourne-col"],
 ];
 
 const UA =
@@ -817,12 +915,24 @@ async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
   const out: PortalJob[] = [];
   const seen = new Set<string>();
   const max = site.maxPages ?? 80;
+  // Page size is per TENANT, not per platform: Macquarie serves 9 and
+  // Woolworths 6, and both accept-and-ignore a bigger jobRecordsPerPage
+  // (asking Woolworths for 50 still returns 6). Sending it anyway matters —
+  // without jobRecordsPerPage in the query, Woolworths ignores jobOffset
+  // entirely and every page comes back as the first six.
+  const size = site.pageSize ?? AV_PAGE;
   const blocks = await pagedParallel<string>(
     async (i) => {
-      const html = await getText(`${site.endpoint}/?listFilterMode=1&jobOffset=${i * AV_PAGE}`);
-      return html ? html.split(/article article--result/i).slice(1) : [];
+      const html = await getText(
+        `${site.endpoint}/?listFilterMode=1&jobRecordsPerPage=${size}&jobOffset=${i * size}`,
+      );
+      // The result wrapper carries tenant-specific modifiers between the two
+      // class names — Woolworths renders `article article--w--full
+      // article--result` — so an exact "article article--result" split found
+      // nothing there. Match the pair with anything allowed in between.
+      return html ? html.split(/class="article[^"]*article--result/i).slice(1) : [];
     },
-    AV_PAGE,
+    size,
     max,
   );
   for (const b of blocks) {
@@ -849,6 +959,107 @@ async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
         href.startsWith("http") ? href : site.origin + href,
         dateAt >= 0 ? isoDay(cells[dateAt]) : today(),
         dateAt >= 0 && cells[dateAt + 1] ? cells[dateAt + 1] : "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── Phenom People (Coles) ────────────────────────────────────────────────────
+// colescareers.com.au is a Phenom career site: the page is a client app, but
+// the FIRST page of results is already embedded in a `phApp.ddo = {…}` island
+// under `eagerLoadRefineSearch`, together with the total. Paging is a plain
+// `?from=N` on the same URL, stepping by the island's own `hits` (10 here) —
+// verified against the live site, where from=0/10/20 each returned a different
+// first role.
+//
+// Read from the island rather than Phenom's /widgets API because the API is
+// tenant-configured and 404s on this tenant, while the island is what the page
+// itself renders from.
+interface PhenomJob {
+  title?: string;
+  cityState?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  category?: string;
+  applyUrl?: string;
+  jobId?: string;
+  postedDate?: string;
+}
+
+/** Pull the `phApp.ddo = {…}` object out of a Phenom page. */
+function phenomIsland(html: string): Record<string, unknown> | null {
+  const at = html.indexOf("phApp.ddo =");
+  if (at < 0) return null;
+  const from = html.slice(at + "phApp.ddo =".length);
+  // Brace-match rather than regex: the object contains job descriptions with
+  // braces in them, so a lazy match to the first "}" truncates it.
+  let depth = 0;
+  for (let i = 0; i < from.length; i++) {
+    const ch = from[i];
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) {
+        try {
+          return JSON.parse(from.slice(0, i + 1)) as Record<string, unknown>;
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+async function fetchPhenom(site: SiteDef): Promise<PortalJob[]> {
+  const first = await getText(`${site.endpoint}?keywords=`);
+  const island = first ? phenomIsland(first) : null;
+  const eager = (island?.eagerLoadRefineSearch ?? {}) as {
+    hits?: number;
+    totalHits?: number;
+    data?: { jobs?: PhenomJob[] };
+  };
+  const size = eager.hits && eager.hits > 0 ? eager.hits : 10;
+  const total = Number(eager.totalHits) || 0;
+  if (!total) return [];
+  const pages = Math.min(Math.ceil(total / size), site.maxPages ?? DEFAULT_MAX_PAGES);
+
+  const rows: PhenomJob[] = [...(eager.data?.jobs ?? [])];
+  const rest = await pagedParallel<PhenomJob>(
+    async (i) => {
+      if (i === 0) return []; // page 0 is the island we already have
+      const html = await getText(`${site.endpoint}?keywords=&from=${i * size}&s=1`);
+      const isl = html ? phenomIsland(html) : null;
+      const e = (isl?.eagerLoadRefineSearch ?? {}) as { data?: { jobs?: PhenomJob[] } };
+      return e.data?.jobs ?? [];
+    },
+    size,
+    pages,
+  );
+  rows.push(...rest);
+
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const r of rows) {
+    const title = clean(String(r.title ?? ""));
+    if (!title) continue;
+    const key = String(r.jobId ?? "") || title;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const loc = clean(
+      String(r.cityState ?? [r.city, r.state].filter(Boolean).join(", ") ?? r.country ?? ""),
+    );
+    const url = String(r.applyUrl ?? "");
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        url.startsWith("http") ? url : site.origin + url,
+        isoDay(String(r.postedDate ?? "")) || today(),
+        clean(String(r.category ?? "")) || "Career portal",
       ),
     );
   }
@@ -974,6 +1185,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   livehire: fetchLiveHire,
   greenhouse: fetchGreenhouse,
   avature: fetchAvature,
+  phenom: fetchPhenom,
   nextdata: fetchNextData,
   csl: fetchCsl,
 };
@@ -993,6 +1205,7 @@ const SOURCE_TAG: Record<Platform, string> = {
   greenhouse: "gh",
   avature: "av",
   nextdata: "nx",
+  phenom: "ph",
   csl: "csl",
 };
 
@@ -1037,20 +1250,21 @@ export async function processPortals(
   const out: { site: string; count: number }[] = [];
   const only = group == null ? null : new Set(PORTAL_GROUPS[group] ?? []);
   for (const site of SITES) {
-    if (only && !only.has(site.id)) continue;
+    const siteKey = site.key ?? site.id;
+    if (only && !only.has(siteKey)) continue;
     const jobs = await fetchPortal(site);
     // An empty pull is never written: a portal that rate-limited or changed its
     // markup should leave yesterday's roles in place, not blank the card.
     if (!jobs.length) {
-      out.push({ site: site.id, count: 0 });
+      out.push({ site: siteKey, count: 0 });
       continue;
     }
     await env.OPEN_ROLES_HISTORY.put(
-      `portal:${site.id}`,
+      `portal:${siteKey}`,
       JSON.stringify({ updated: day, count: jobs.length, jobs }),
     );
     await archive(portalToArchive(jobs, site), day);
-    out.push({ site: site.id, count: jobs.length });
+    out.push({ site: siteKey, count: jobs.length });
   }
   return out;
 }

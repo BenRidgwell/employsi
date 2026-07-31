@@ -969,16 +969,21 @@ async function processTasGov(env: Env): Promise<{ parsed: number; agencies: numb
 }
 
 // The four nightly news ticks → which slice of the roster each one takes.
-// Employer career portals — three nightly ticks, one per PORTAL_GROUPS slice
+// Employer career portals — one nightly tick per PORTAL_GROUPS slice
 // (see careerSites.ts). Split because some portals page shallowly (HSBC hands
 // back 10 roles a request over ~1,500; Macquarie 9 over ~500), so walking all
 // thirteen in one invocation would put a few hundred sequential fetches behind
-// a single cron.
+// a single cron. Seven slices now, 04:20 through 05:25.
 const PORTAL_TICKS: Record<string, number> = {
   "20 4 * * *": 0,
   "25 4 * * *": 1,
   "35 4 * * *": 2,
   "55 4 * * *": 3,
+  // The seven portals added later — see the note on PORTAL_GROUPS for why
+  // Coles and Woolworths get ticks largely to themselves.
+  "5 5 * * *": 4,
+  "15 5 * * *": 5,
+  "25 5 * * *": 6,
 };
 
 const NEWS_TICKS: Record<string, number> = {

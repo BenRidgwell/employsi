@@ -64,6 +64,7 @@ function nameList(keys: string[], show = 3): string {
 const REGION_LABEL: Record<string, string> = {
   australia: "Australia & New Zealand",
   asia: "Asia",
+  india: "India",
   northamerica: "North America",
   europe: "Europe",
   africa: "Africa",

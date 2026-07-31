@@ -117,8 +117,13 @@ export const CITY_CONTINENT: Record<string, string> = {
   auckland: "australia",
   wellington: "australia",
   singapore: "asia",
-  mumbai: "asia",
-  bengaluru: "asia",
+  // India is its own domestic layer rather than part of the Asia one. Asia's
+  // frame has to span Dubai to Tokyo, at which zoom Mumbai and Bengaluru are
+  // two dots 5 degrees apart in the far west of the view — reachable, but not
+  // findable. Its own region gives the subcontinent a frame of its own and a
+  // marker on the globe that leads to it.
+  mumbai: "india",
+  bengaluru: "india",
   ganzhou: "asia",
   tokyo: "asia",
   hongkong: "asia",

@@ -78,10 +78,10 @@ export default {
           // fault into "unexpected token <". The message is safe to return —
           // it names the failure, never a secret.
           console.error("auth handler:", e);
-          return new Response(
-            JSON.stringify({ error: String((e as Error)?.message || e) }),
-            { status: 500, headers: { "content-type": "application/json" } },
-          );
+          return new Response(JSON.stringify({ error: String((e as Error)?.message || e) }), {
+            status: 500,
+            headers: { "content-type": "application/json" },
+          });
         }
       }
 
