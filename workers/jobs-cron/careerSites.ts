@@ -7,7 +7,7 @@
  * and hands the rows to the same archive/dedup/skills path everything else
  * uses, so a role advertised on both a portal and Adzuna is counted once.
  *
- * Ten platforms are covered. Each was reverse-engineered against the live
+ * Thirteen platforms are covered. Each was reverse-engineered against the live
  * site before being written here, and the contract is recorded next to its
  * fetcher so a future breakage is traceable to a named assumption rather than
  * showing up as a silent zero:
@@ -47,6 +47,13 @@
  *     `componentProps.<uuid>.fetchedJobs`, so no API hunt is needed.
  *   - **CSL's own board** (CSL). jobs.csl.com is bespoke Tailwind markup, one
  *     `<a class="block hover:bg-gray-50 group">` a role, 25 to a `?page=N`.
+ *   - **Phenom People** (Coles, IAG). A `phApp.ddo` island for the total, then
+ *     `POST /widgets` for 100 roles a page — see the note on the fetcher for
+ *     the two response-shape traps.
+ *   - **REA's own board** (REA Group). A server-rendered WordPress list, no
+ *     paging, fields labelled by `<span class="sr-only">`.
+ *   - **Scentre's own board** (Scentre Group). A bespoke Rails board; AWS WAF
+ *     guards the interactive JS but not the rendered cards.
  *
  * NOT covered here, and why:
  *   - NAB (careers.nab.com.au, Clinch). Its AWS WAF returns an empty shell to a
@@ -84,7 +91,9 @@ type Platform =
   | "avature"
   | "nextdata"
   | "phenom"
-  | "csl";
+  | "csl"
+  | "rea"
+  | "scentre";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -114,6 +123,26 @@ interface SiteDef {
    *  platform default. Avature tenants differ: Macquarie serves 9, Woolworths 6, and
    *  both ignore a larger jobRecordsPerPage — so it has to be per site. */
   pageSize?: number;
+  /** Oracle Recruiting Cloud only: the tenant's careers site number, as it
+   *  appears in the portal URL (`/sites/CX_2001/jobs`). Defaults to CX_1. */
+  siteNumber?: string;
+  /**
+   * Avature only: where the location and category sit in a result card's text
+   * cells, zero-based, when the tenant does not use Macquarie's ordering.
+   *
+   * There is no shape that identifies a location across tenants — "Brisbane",
+   * "Sydney Office" and "Australia, QLD, Chermside" have nothing in common
+   * that a category like "Retail Operations" lacks — and the three tenants we
+   * read order their cells three different ways:
+   *
+   *   Macquarie  [title, reqId, LOCATION, date, CATEGORY]
+   *   Woolworths [title, date, store, LOCATION, reqId, CATEGORY, brand, type]
+   *   Santos     [title, LOCATION, reqId, date]
+   *
+   * So the index is measured per tenant and recorded, rather than inferred.
+   * Omitted = Macquarie's layout, which the date anchors on its own.
+   */
+  avatureCells?: { loc: number; cat?: number };
 }
 
 export const SITES: SiteDef[] = [
@@ -287,6 +316,7 @@ export const SITES: SiteDef[] = [
     origin: "https://careers.woolworthsgroup.com.au",
     homeHub: "sydney",
     pageSize: 6,
+    avatureCells: { loc: 3, cat: 5 },
   },
   {
     id: "melbourne-col",
@@ -296,6 +326,138 @@ export const SITES: SiteDef[] = [
     endpoint: "https://colescareers.com.au/au/en/search-results",
     origin: "https://colescareers.com.au",
     homeHub: "melbourne",
+    // 531 roles. Six pages through the widget API, but 54 if this tenant ever
+    // closes it and the walk falls back to the ten-a-page island — so the cap
+    // is set for the fallback, not the fast path.
+    maxPages: 60,
+  },
+  {
+    id: "nst",
+    name: "Northern Star Resources",
+    sector: "Gold Mining",
+    platform: "successfactors",
+    endpoint: "https://careers.nsrltd.com",
+    origin: "https://careers.nsrltd.com",
+    homeHub: "perth",
+  },
+  {
+    id: "s32",
+    name: "South32",
+    sector: "Metals & Mining",
+    platform: "successfactors",
+    endpoint: "https://careers.south32.net",
+    origin: "https://careers.south32.net",
+    homeHub: "perth",
+  },
+  {
+    id: "sydney-evn",
+    name: "Evolution Mining",
+    sector: "Gold Mining",
+    platform: "successfactors",
+    endpoint: "https://careers.evolutionmining.com.au",
+    origin: "https://careers.evolutionmining.com.au",
+    homeHub: "sydney",
+  },
+  {
+    id: "sydney-org",
+    name: "Origin Energy",
+    sector: "Energy & Utilities",
+    platform: "successfactors",
+    endpoint: "https://careers.originenergy.com.au",
+    origin: "https://careers.originenergy.com.au",
+    homeHub: "sydney",
+  },
+  {
+    id: "nz-fisher-and-paykel-healthcare",
+    name: "Fisher & Paykel Healthcare",
+    sector: "Medical Devices",
+    platform: "successfactors",
+    endpoint: "https://careers.fphcare.com",
+    origin: "https://careers.fphcare.com",
+    homeHub: "auckland",
+  },
+  {
+    // Brambles runs two Workday sites on one tenant: the corporate/office
+    // roles, and CHEP's plant and depot roles. Same employer, so one id — but
+    // distinct keys, or the second overwrites the first's KV snapshot.
+    id: "sydney-bxb",
+    key: "sydney-bxb-office",
+    name: "Brambles",
+    sector: "Logistics & Supply Chain",
+    platform: "workday",
+    endpoint: "https://brambles.wd5.myworkdayjobs.com/wday/cxs/brambles/Brambles_Careers/jobs",
+    origin: "https://brambles.wd5.myworkdayjobs.com/Brambles_Careers",
+    homeHub: "sydney",
+  },
+  {
+    id: "sydney-bxb",
+    key: "sydney-bxb-plant",
+    name: "Brambles",
+    sector: "Logistics & Supply Chain",
+    platform: "workday",
+    endpoint: "https://brambles.wd5.myworkdayjobs.com/wday/cxs/brambles/CHEP_Plant_Careers/jobs",
+    origin: "https://brambles.wd5.myworkdayjobs.com/CHEP_Plant_Careers",
+    homeHub: "sydney",
+  },
+  {
+    // Santos runs the same Avature product as Macquarie and Woolworths, but
+    // does honour jobRecordsPerPage, so the platform default applies.
+    id: "sto",
+    name: "Santos",
+    sector: "Oil & Gas",
+    platform: "avature",
+    endpoint: "https://recruitment.santos.com/careers/SearchJobs",
+    origin: "https://recruitment.santos.com",
+    homeHub: "perth",
+    avatureCells: { loc: 1 },
+  },
+  {
+    id: "melbourne-cpu",
+    name: "Computershare",
+    sector: "Financial Services",
+    platform: "oracle",
+    endpoint: "https://fa-evdq-saasfaprod1.fa.ocs.oraclecloud.com",
+    origin:
+      "https://fa-evdq-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001",
+    homeHub: "melbourne",
+    siteNumber: "CX_2001",
+  },
+  {
+    id: "brisbane-sun",
+    name: "Suncorp Group",
+    sector: "Financial Services",
+    platform: "oracle",
+    endpoint: "https://fa-evew-saasfaprod1.fa.ocs.oraclecloud.com",
+    origin:
+      "https://fa-evew-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1",
+    homeHub: "brisbane",
+  },
+  {
+    id: "sydney-iag",
+    name: "Insurance Australia Group",
+    sector: "Insurance",
+    platform: "phenom",
+    endpoint: "https://careers.iag.com.au/global/en/search-results",
+    origin: "https://careers.iag.com.au",
+    homeHub: "sydney",
+  },
+  {
+    id: "melbourne-rea",
+    name: "REA Group",
+    sector: "Technology, Media & Telecom",
+    platform: "rea",
+    endpoint: "https://www.rea-group.com/careers/jobs/",
+    origin: "https://www.rea-group.com",
+    homeHub: "melbourne",
+  },
+  {
+    id: "sydney-scg",
+    name: "Scentre Group",
+    sector: "Real Estate",
+    platform: "scentre",
+    endpoint: "https://careers.scentregroup.com/jobs/search",
+    origin: "https://careers.scentregroup.com",
+    homeHub: "sydney",
   },
   {
     // HSBC's portal is global and the roster carries the issuer twice (LSE and
@@ -336,6 +498,15 @@ export const PORTAL_GROUPS: string[][] = [
   ["melbourne-tls", "sydney-all", "sydney-qbe"],
   ["melbourne-tcl-au", "melbourne-tcl-us", "sydney-wow"],
   ["melbourne-col"],
+  // The thirteen added after those. SuccessFactors is the constraint here, not
+  // role count: its walk is sequential (each page's size is read off the one
+  // before), so Northern Star's 128 roles at 7 a page cost 19 round trips
+  // where Brambles' 249 cost 13 parallel ones. The SF sites are therefore
+  // spread across three ticks and everything API-driven shares the fourth.
+  ["nst", "s32"],
+  ["sydney-evn", "sydney-org"],
+  ["nz-fisher-and-paykel-healthcare", "sto", "melbourne-rea", "sydney-scg"],
+  ["sydney-bxb-office", "sydney-bxb-plant", "melbourne-cpu", "brisbane-sun", "sydney-iag"],
 ];
 
 const UA =
@@ -345,14 +516,20 @@ const WD_PAGE = 20;
 const DEFAULT_MAX_PAGES = 40;
 
 function clean(s: string): string {
-  return s
-    .replace(/&amp;/g, "&")
-    .replace(/&#39;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/&nbsp;|\u00a0/g, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return (
+    s
+      .replace(/&amp;/g, "&")
+      // Numeric entities, so a decorative separator like "&#8226;" becomes a
+      // bullet a filter can recognise instead of surviving as literal text.
+      .replace(/&#(\d+);/g, (_, d: string) => String.fromCodePoint(Number(d)))
+      .replace(/&#x([0-9a-f]+);/gi, (_, d: string) => String.fromCodePoint(parseInt(d, 16)))
+      .replace(/&#39;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/&nbsp;|\u00a0/g, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
 }
 
 const today = (): string => new Date().toISOString().slice(0, 10);
@@ -512,16 +689,30 @@ function job(site: SiteDef, title: string, loc: string, url: string, created: st
   };
 }
 
+/**
+ * One retry on a transient failure, because `pagedParallel` cannot tell a
+ * failed page from the end of the list: both arrive as zero rows, and the walk
+ * stops at the first short page. On a portal paged six at a time that is 80
+ * requests deep — Woolworths — a single dropped page silently truncates
+ * everything after it (measured: 84 roles collected against 480 present).
+ *
+ * Only a thrown fetch or a 5xx/429 is retried. A 404 is an answer, not a
+ * failure, and retrying it would just spend the subrequest budget twice.
+ */
 async function getText(url: string, init?: RequestInit): Promise<string | null> {
-  try {
-    const res = await fetch(url, {
-      ...init,
-      headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml", ...init?.headers },
-    });
-    return res.ok ? await res.text() : null;
-  } catch {
-    return null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(url, {
+        ...init,
+        headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml", ...init?.headers },
+      });
+      if (res.ok) return await res.text();
+      if (res.status < 500 && res.status !== 429) return null;
+    } catch {
+      // fall through to the retry
+    }
   }
+  return null;
 }
 
 /** Pages fetched at once from one portal. Enough to keep the walk inside a
@@ -779,7 +970,10 @@ async function fetchOracle(site: SiteDef): Promise<PortalJob[]> {
   const max = site.maxPages ?? DEFAULT_MAX_PAGES;
   const list = await pagedParallel<OracleReq>(
     async (i) => {
-      const finder = `findReqs;siteNumber=CX_1,limit=${OR_PAGE},offset=${i * OR_PAGE},sortBy=POSTING_DATES_DESC`;
+      // The site number is per tenant, not a constant: Westpac and Suncorp
+      // both run CX_1, Computershare runs CX_2001. Sending the wrong one
+      // returns an empty requisitionList rather than an error.
+      const finder = `findReqs;siteNumber=${site.siteNumber ?? "CX_1"},limit=${OR_PAGE},offset=${i * OR_PAGE},sortBy=POSTING_DATES_DESC`;
       const url =
         `${site.endpoint}/hcmRestApi/resources/latest/recruitingCEJobRequisitions` +
         `?onlyData=true&expand=requisitionList.secondaryLocations&finder=${encodeURIComponent(finder)}`;
@@ -921,20 +1115,49 @@ async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
   // without jobRecordsPerPage in the query, Woolworths ignores jobOffset
   // entirely and every page comes back as the first six.
   const size = site.pageSize ?? AV_PAGE;
-  const blocks = await pagedParallel<string>(
-    async (i) => {
-      const html = await getText(
-        `${site.endpoint}/?listFilterMode=1&jobRecordsPerPage=${size}&jobOffset=${i * size}`,
-      );
-      // The result wrapper carries tenant-specific modifiers between the two
-      // class names — Woolworths renders `article article--w--full
-      // article--result` — so an exact "article article--result" split found
-      // nothing there. Match the pair with anything allowed in between.
-      return html ? html.split(/class="article[^"]*article--result/i).slice(1) : [];
-    },
-    size,
-    max,
+  const page = async (i: number): Promise<string[]> => {
+    const html = await getText(
+      `${site.endpoint}/?listFilterMode=1&jobRecordsPerPage=${size}&jobOffset=${i * size}`,
+    );
+    // The result wrapper carries tenant-specific modifiers between the two
+    // class names — Woolworths renders `article article--w--full
+    // article--result` — so an exact "article article--result" split found
+    // nothing there. Match the pair with anything allowed in between.
+    return html ? html.split(/class="article[^"]*article--result/i).slice(1) : [];
+  };
+
+  // NOT pagedParallel, which ends the walk at the first short page. Woolworths
+  // throttles a six-wide window and answers a throttled request with a short
+  // page, so that rule made the collected count a coin toss — three runs
+  // against an unchanged portal returned 30, 84 and 480 roles. Here a short
+  // page is only evidence of the end when the page after it is empty too.
+  //
+  // The tenant advertises its own total (`aria-label="502 results"`), which
+  // bounds the walk when it is exact. Woolworths caps the display at "999+",
+  // so there the bound is maxPages and the collected count is a documented
+  // ceiling rather than the whole portal.
+  const first = await getText(
+    `${site.endpoint}/?listFilterMode=1&jobRecordsPerPage=${size}&jobOffset=0`,
   );
+  const totalM = first?.match(/aria-label="([\d,]+) results"/i);
+  const total = totalM ? Number(totalM[1].replace(/,/g, "")) : 0;
+  const wanted = total > 0 ? Math.min(Math.ceil(total / size), max) : max;
+
+  const blocks: string[] = first ? first.split(/class="article[^"]*article--result/i).slice(1) : [];
+  let emptyRun = 0;
+  for (let start = 1; start < wanted && emptyRun < 2; start += PAGE_CONCURRENCY) {
+    const idx: number[] = [];
+    for (let i = start; i < Math.min(start + PAGE_CONCURRENCY, wanted); i++) idx.push(i);
+    const windows = await Promise.all(idx.map(page));
+    for (const rows of windows) {
+      if (rows.length) {
+        emptyRun = 0;
+        blocks.push(...rows);
+      } else {
+        emptyRun++;
+      }
+    }
+  }
   for (const b of blocks) {
     const a = b.match(/<a[^>]*href="([^"]*JobDetail[^"]*)"[^>]*>([\s\S]*?)<\/a>/i);
     if (!a) continue;
@@ -942,40 +1165,73 @@ async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
     const title = clean(a[2]);
     if (!title || seen.has(href || title)) continue;
     seen.add(href || title);
-    // Text cells in order: req id, location, posted date, category. The date is
-    // the only one with a fixed shape, so it anchors the other two. The node is
-    // matched before cleaning, so no length bound is applied — Avature indents
-    // its markup heavily and a "{2,60}" bound rejected every cell on the
-    // grounds of the surrounding whitespace.
+    // Text cells run roughly: req id, location, posted date, category. Only the
+    // date has a fixed shape, so it anchors the other two rather than any of
+    // them being read by position — the order is not the same on every tenant.
+    // The node is matched before cleaning, so no length bound is applied —
+    // Avature indents its markup heavily and a "{2,60}" bound rejected every
+    // cell on the grounds of the surrounding whitespace.
     const cells = [...b.matchAll(/>([^<>]+)</g)]
       .map((m) => clean(m[1]))
-      .filter((s) => s.length > 1 && !/^(View details|Apply|ID)$/i.test(s));
-    const dateAt = cells.findIndex((c) => /^\d{1,2} [A-Za-z]{3} \d{4}$/.test(c));
+      .filter(
+        (s) =>
+          s.length > 1 &&
+          !/^(View details|Apply|ID)$/i.test(s) &&
+          // Santos renders "•" separators between its cells, which would sit
+          // between the date and the location and be read as the location.
+          /[a-z0-9]/i.test(s),
+      );
+    // Three date formats across the tenants we read: Macquarie's "31 Jul 2026",
+    // Woolworths' "31-Jul-2026" and Santos' "Posted 22-Jul-2026". The old
+    // anchor only accepted the first, which is why Woolworths' rows carried
+    // neither a real posted date nor a location.
+    const DATE = /^(?:Posted\s+)?\d{1,2}[ -][A-Za-z]{3}[ -]\d{4}$/;
+    const dateAt = cells.findIndex((c) => DATE.test(c));
+    const at = site.avatureCells;
+    const loc = at ? (cells[at.loc] ?? "") : dateAt > 0 ? cells[dateAt - 1] : "";
+    const cat = at
+      ? at.cat != null && cells[at.cat]
+        ? cells[at.cat]
+        : "Career portal"
+      : dateAt >= 0 && cells[dateAt + 1]
+        ? cells[dateAt + 1]
+        : "Career portal";
     out.push(
       job(
         site,
         title,
-        dateAt > 0 ? cells[dateAt - 1] : "",
+        loc,
         href.startsWith("http") ? href : site.origin + href,
-        dateAt >= 0 ? isoDay(cells[dateAt]) : today(),
-        dateAt >= 0 && cells[dateAt + 1] ? cells[dateAt + 1] : "Career portal",
+        dateAt >= 0 ? isoDay(cells[dateAt].replace(/^Posted\s+/i, "").replace(/-/g, " ")) : today(),
+        cat,
       ),
     );
   }
   return out;
 }
 
-// ── Phenom People (Coles) ────────────────────────────────────────────────────
-// colescareers.com.au is a Phenom career site: the page is a client app, but
-// the FIRST page of results is already embedded in a `phApp.ddo = {…}` island
-// under `eagerLoadRefineSearch`, together with the total. Paging is a plain
-// `?from=N` on the same URL, stepping by the island's own `hits` (10 here) —
-// verified against the live site, where from=0/10/20 each returned a different
-// first role.
+// ── Phenom People (Coles, IAG) ───────────────────────────────────────────────
+// A Phenom career site is a client app, but the FIRST page of results is
+// embedded in a `phApp.ddo = {…}` island under `eagerLoadRefineSearch`,
+// together with the total. That island is the entry point: it is what the page
+// itself renders from, so it is always present.
 //
-// Read from the island rather than Phenom's /widgets API because the API is
-// tenant-configured and 404s on this tenant, while the island is what the page
-// itself renders from.
+// Paging goes through Phenom's own widget API rather than the island, because
+// the island serves TEN roles a page — walking Coles' 531 that way is 54
+// requests — while `POST /widgets` serves 100. Both were verified against the
+// live sites. Two things about that API are easy to get wrong and cost a
+// silent zero:
+//
+//   - the response nests under `refineSearch`, NOT `eagerLoadRefineSearch`
+//     like the island does. Reading the island's key off the API returns
+//     undefined and looks exactly like an empty portal.
+//   - `lang`/`country` in the body are decoration. Sending `en_us`/`us` to an
+//     Australian tenant returns the same 34 IAG roles as `en_au`/`au`, so no
+//     per-tenant locale has to be recorded.
+//
+// The island's own `?from=N` paging is kept as the fallback for a tenant whose
+// widget API is closed — it was measured working on Coles at from=0/10/…/200,
+// each returning a different role — so a closed API costs speed, not data.
 interface PhenomJob {
   title?: string;
   cityState?: string;
@@ -985,6 +1241,7 @@ interface PhenomJob {
   category?: string;
   applyUrl?: string;
   jobId?: string;
+  reqId?: string;
   postedDate?: string;
 }
 
@@ -1013,6 +1270,45 @@ function phenomIsland(html: string): Record<string, unknown> | null {
   return null;
 }
 
+/** One page of Phenom's widget API, or null when the tenant has it closed. */
+async function phenomWidget(
+  site: SiteDef,
+  from: number,
+  size: number,
+): Promise<PhenomJob[] | null> {
+  const res = await getJson<{ refineSearch?: { data?: { jobs?: PhenomJob[] } } }>(
+    `${site.origin}/widgets`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        lang: "en_us",
+        deviceType: "desktop",
+        country: "us",
+        pageName: "search-results",
+        ddoKey: "refineSearch",
+        sortBy: "",
+        subsearch: "",
+        from,
+        jobs: true,
+        counts: true,
+        all_fields: [],
+        size,
+        clearAll: false,
+        jdsource: "facets",
+        isSliderEnable: false,
+        pageId: "page11",
+        siteType: "external",
+        keywords: "",
+        global: true,
+      }),
+    },
+  );
+  return res?.refineSearch?.data?.jobs ?? null;
+}
+
+const PH_PAGE = 100;
+
 async function fetchPhenom(site: SiteDef): Promise<PortalJob[]> {
   const first = await getText(`${site.endpoint}?keywords=`);
   const island = first ? phenomIsland(first) : null;
@@ -1021,31 +1317,58 @@ async function fetchPhenom(site: SiteDef): Promise<PortalJob[]> {
     totalHits?: number;
     data?: { jobs?: PhenomJob[] };
   };
-  const size = eager.hits && eager.hits > 0 ? eager.hits : 10;
   const total = Number(eager.totalHits) || 0;
   if (!total) return [];
-  const pages = Math.min(Math.ceil(total / size), site.maxPages ?? DEFAULT_MAX_PAGES);
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
 
-  const rows: PhenomJob[] = [...(eager.data?.jobs ?? [])];
-  const rest = await pagedParallel<PhenomJob>(
-    async (i) => {
-      if (i === 0) return []; // page 0 is the island we already have
-      const html = await getText(`${site.endpoint}?keywords=&from=${i * size}&s=1`);
-      const isl = html ? phenomIsland(html) : null;
-      const e = (isl?.eagerLoadRefineSearch ?? {}) as { data?: { jobs?: PhenomJob[] } };
-      return e.data?.jobs ?? [];
-    },
-    size,
-    pages,
-  );
-  rows.push(...rest);
+  const rows: PhenomJob[] = [];
+  // Probe the widget API with the first page before committing to it, so a
+  // tenant that has it closed falls back rather than returning nothing.
+  const probe = await phenomWidget(site, 0, PH_PAGE);
+  if (probe?.length) {
+    rows.push(...probe);
+    const pages = Math.min(Math.ceil(total / PH_PAGE), max);
+    if (pages > 1) {
+      rows.push(
+        ...(await pagedParallel<PhenomJob>(
+          async (i) => (await phenomWidget(site, (i + 1) * PH_PAGE, PH_PAGE)) ?? [],
+          PH_PAGE,
+          pages - 1,
+        )),
+      );
+    }
+  } else {
+    // Island paging. `pagedParallel` reads a short page as end-of-list, so the
+    // walk must start at page 1 — handing it a page 0 that returns nothing
+    // (because the island already holds it) ends the walk on its first window,
+    // which is how this previously collected 10 of Coles' 531 roles.
+    const size = eager.hits && eager.hits > 0 ? eager.hits : 10;
+    rows.push(...(eager.data?.jobs ?? []));
+    const pages = Math.min(Math.ceil(total / size), max);
+    if (pages > 1) {
+      rows.push(
+        ...(await pagedParallel<PhenomJob>(
+          async (i) => {
+            const html = await getText(`${site.endpoint}?keywords=&from=${(i + 1) * size}&s=1`);
+            const isl = html ? phenomIsland(html) : null;
+            const e = (isl?.eagerLoadRefineSearch ?? {}) as { data?: { jobs?: PhenomJob[] } };
+            return e.data?.jobs ?? [];
+          },
+          size,
+          pages - 1,
+        )),
+      );
+    }
+  }
 
   const out: PortalJob[] = [];
   const seen = new Set<string>();
   for (const r of rows) {
     const title = clean(String(r.title ?? ""));
     if (!title) continue;
-    const key = String(r.jobId ?? "") || title;
+    // The island calls it jobId and the widget API calls it reqId; they carry
+    // the same requisition number, so either one dedupes across both paths.
+    const key = String(r.jobId ?? r.reqId ?? "") || title;
     if (seen.has(key)) continue;
     seen.add(key);
     const loc = clean(
@@ -1176,6 +1499,93 @@ async function fetchCsl(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── REA Group's own board ────────────────────────────────────────────────────
+// rea-group.com/careers/jobs/ is a WordPress page, but a server-rendered one:
+// the whole list ships in the HTML as `<li class="l-job-listing__item">`, with
+// no pagination at all (34 roles in one page when this was written, and no
+// `?page=` link anywhere in the markup). The requisition ids are Workday's
+// `R00…`, so REA runs Workday behind this, but the tenant is not public — the
+// rendered page is the only way in.
+//
+// Fields are labelled for screen readers rather than classed, which is what
+// makes this parseable: each cell is preceded by `<span class="sr-only">Team:
+// </span>` and friends, so the labels anchor the values instead of position.
+async function fetchRea(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const block of html.split(/<li class="l-job-listing__item"[^>]*>/i).slice(1)) {
+    const a = block.match(/<a class="c-job" href="([^"]+)"/i);
+    const t = block.match(/<span class="sr-only">Position:\s*<\/span>([\s\S]*?)<\/div>/i);
+    if (!a || !t) continue;
+    const href = clean(a[1]);
+    const title = clean(t[1]);
+    if (!title || seen.has(href || title)) continue;
+    seen.add(href || title);
+    const loc = block.match(/<span class="sr-only">Location:\s*<\/span>([\s\S]*?)<\/div>/i);
+    const team = block.match(/<span class="sr-only">Team:\s*<\/span>([\s\S]*?)<\/div>/i);
+    out.push(
+      job(
+        site,
+        title,
+        loc ? clean(loc[1]) : "",
+        href.startsWith("http") ? href : site.origin + href,
+        // The list carries no posted date — only the detail page does, and
+        // fetching 34 of those to learn it is not worth the budget. `today()`
+        // is what every other dateless source falls back to.
+        today(),
+        (team ? clean(team[1]) : "") || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── Scentre Group's own board ────────────────────────────────────────────────
+// careers.scentregroup.com is a bespoke Rails board behind AWS WAF, but the
+// challenge only guards the interactive JS — a plain GET returns the fully
+// rendered result cards. One card per `job-search-results-card-col`, paged
+// 1-based on `?page=N&query=`, and page 2 comes back with zero cards rather
+// than an error once the list is exhausted.
+const SCG_PAGE = 20;
+
+async function fetchScentre(site: SiteDef): Promise<PortalJob[]> {
+  const cards = await pagedParallel<string>(
+    async (i) => {
+      const html = await getText(`${site.endpoint}?page=${i + 1}&query=`);
+      return html ? html.split(/class="col-12 job-search-results-card-col"/i).slice(1) : [];
+    },
+    SCG_PAGE,
+    site.maxPages ?? 20,
+  );
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const c of cards) {
+    const a = c.match(/<a id="link_job_title[^"]*" href="([^"]+)">([\s\S]*?)<\/a>/i);
+    if (!a) continue;
+    const href = clean(a[1]);
+    const title = clean(a[2]);
+    if (!title || seen.has(href || title)) continue;
+    seen.add(href || title);
+    // Every detail cell is an `id="<field>_icon_text_<hash>"` span, so the
+    // field name in the id identifies it — no positional counting.
+    const loc = c.match(/id="location_icon_text_[^"]*"[^>]*>([\s\S]*?)<\/span>/i);
+    const cat = c.match(/id="category_icon_text_[^"]*"[^>]*>([\s\S]*?)<\/span>/i);
+    out.push(
+      job(
+        site,
+        title,
+        loc ? clean(loc[1]) : "",
+        href.startsWith("http") ? href : site.origin + href,
+        today(), // no posted date on the card
+        (cat ? clean(cat[1]) : "") || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   successfactors: fetchSuccessFactors,
   workday: fetchWorkday,
@@ -1188,6 +1598,8 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   phenom: fetchPhenom,
   nextdata: fetchNextData,
   csl: fetchCsl,
+  rea: fetchRea,
+  scentre: fetchScentre,
 };
 
 export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
@@ -1207,6 +1619,8 @@ const SOURCE_TAG: Record<Platform, string> = {
   nextdata: "nx",
   phenom: "ph",
   csl: "csl",
+  rea: "rea",
+  scentre: "scg",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */

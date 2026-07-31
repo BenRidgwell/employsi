@@ -984,6 +984,12 @@ const PORTAL_TICKS: Record<string, number> = {
   "5 5 * * *": 4,
   "15 5 * * *": 5,
   "25 5 * * *": 6,
+  // The thirteen after those — see PORTAL_GROUPS for why the SuccessFactors
+  // sites are spread rather than packed.
+  "35 5 * * *": 7,
+  "45 5 * * *": 8,
+  "55 5 * * *": 9,
+  "5 6 * * *": 10,
 };
 
 const NEWS_TICKS: Record<string, number> = {

@@ -690,7 +690,18 @@ export const getOpenRoles = createServerFn({ method: "GET" })
     if (data.id) {
       const extra = await currentFromArchive(data.id, out ? out.jobs : []);
       if (extra.added > 0) {
-        const extraLabels = extra.sources.map((s) => ARCHIVE_SOURCE_LABEL[s] || s);
+        // Every `portal-<platform>` source is the employer's own careers site;
+        // the platform suffix is an implementation detail of how we read it,
+        // not something a reader of the card should be shown. Collapsing them
+        // also stops a company on two portals (Brambles, Transurban) reading
+        // as two sources.
+        const extraLabels = [
+          ...new Set(
+            extra.sources.map((s) =>
+              s.startsWith("portal-") ? "Careers site" : ARCHIVE_SOURCE_LABEL[s] || s,
+            ),
+          ),
+        ];
         if (out) {
           const label = [out.source, ...extraLabels].filter(Boolean).join(" + ");
           out = {
