@@ -34,6 +34,7 @@
 
 import { isBlockedArticle } from "../../src/employsi/data/newsBlocklist";
 import { officialFeedFor } from "../../src/employsi/data/officialNewsFeeds";
+import { newsQueryFor } from "../../src/employsi/data/newsQueries";
 
 export interface StoredNewsItem {
   title: string;
@@ -135,9 +136,12 @@ async function fetchNews(name: string, limit: number): Promise<StoredNewsItem[]>
     // An unreachable feed falls through to the search rather than storing an
     // empty entry that would blank the card for a day.
   }
+  // Search for the company's fuller trading name where the roster name is too
+  // generic to search on (see data/newsQueries.ts). The KV key below still uses
+  // the roster name, so the app finds this entry exactly where it expects to.
   const url =
     "https://www.bing.com/news/search?q=" +
-    encodeURIComponent(`"${name}"`) +
+    encodeURIComponent(`"${newsQueryFor(name)}"`) +
     "&format=RSS&setmkt=en-AU";
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);

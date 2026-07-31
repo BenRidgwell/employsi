@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { officialFeedFor, type OfficialFeed } from "../data/officialNewsFeeds";
+import { newsQueryFor } from "../data/newsQueries";
 import type { JsonRecord } from "./json";
 import { str } from "./json";
 import { isBlockedArticle } from "../data/newsBlocklist";
@@ -293,6 +294,13 @@ export const getLiveNews = createServerFn({ method: "GET" })
     const query = (data.query || "").trim();
     const limit = Math.min(Math.max(data.limit ?? 8, 1), 20);
     if (!query) return { items: [] };
+    // What we SEARCH for can differ from what we are asked about: a roster name
+    // that is also a common surname or word pulls in unrelated coverage, so
+    // newsQueries.ts can supply a fuller trading name. Everything that
+    // identifies the company — the cache key, the KV key, the official-feed
+    // lookup — stays on the roster name, so only the provider query changes.
+    const phrase = newsQueryFor(query);
+    const search = phrase === query.replace(/^"|"$/g, "").trim() ? query : `"${phrase}"`;
     const key = `${query}::${limit}`;
     const hit = cache.get(key);
     if (hit && Date.now() - hit.at < TTL) return { items: hit.items };
@@ -340,14 +348,14 @@ export const getLiveNews = createServerFn({ method: "GET" })
       let items: LiveNewsItem[] = [];
       // Bing News first — reliable, direct publisher links.
       try {
-        items = await fromBing(query, limit, controller.signal);
+        items = await fromBing(search, limit, controller.signal);
       } catch {
         items = [];
       }
       // GDELT top-up (also direct links) when Bing is thin/empty.
       if (items.length < 3) {
         try {
-          const g = await fromGdelt(query, limit, controller.signal);
+          const g = await fromGdelt(search, limit, controller.signal);
           const have = new Set(items.map((i) => i.url));
           for (const it of g) if (!have.has(it.url)) items.push(it);
           items = items.slice(0, limit);
@@ -358,9 +366,9 @@ export const getLiveNews = createServerFn({ method: "GET" })
       // Last resort: if an exact-phrase query ("Company Name") found nothing,
       // retry Bing unquoted — broader, so a real company almost always yields
       // recent coverage rather than falling back to the sourceless copy.
-      if (items.length === 0 && /^".*"$/.test(query)) {
+      if (items.length === 0 && /^".*"$/.test(search)) {
         try {
-          items = await fromBing(query.replace(/^"|"$/g, ""), limit, controller.signal);
+          items = await fromBing(search.replace(/^"|"$/g, ""), limit, controller.signal);
         } catch {
           items = [];
         }
@@ -370,7 +378,7 @@ export const getLiveNews = createServerFn({ method: "GET" })
       // any whose headline mentions the company. These carry real images and go
       // directly to the publisher, so they lift the feed above Bing's proxies.
       try {
-        const name = query.replace(/^"|"$/g, "").trim().toLowerCase();
+        const name = search.replace(/^"|"$/g, "").trim().toLowerCase();
         if (name) {
           const pool = await outletPool(controller.signal);
           const have = new Set(items.map((i) => i.url));

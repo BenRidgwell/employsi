@@ -299,10 +299,25 @@ function jobToArchive(
   };
 }
 
-// Adzuna's count + advertised-role sample for a company in a given country
-// market. Returns the real count — including 0 when Adzuna genuinely reports no
-// matches — and null only when the request/credentials fail, so the caller can
-// distinguish "no vacancies" from "couldn't check".
+// How many 50-result pages of a company's Adzuna listings one lookup may walk.
+//
+// Page 1 only used to be enough because the headline was Adzuna's OWN reported
+// total and the listings were just a sample. Now the headline is counted from
+// the listings themselves (see getOpenRoles), so an employer with 300 ads would
+// have been cut to 50. Four pages covers the roster's employers while keeping a
+// card open to at most four upstream calls, and the walk stops as soon as
+// Adzuna's reported total is accounted for.
+const ADZUNA_MAX_PAGES = 4;
+const ADZUNA_PER_PAGE = 50;
+
+// Adzuna's count + advertised roles for a company in a given country market.
+// `count` is ADZUNA'S OWN reported total for the phrase — kept because it says
+// whether we saw everything, but not used as the card's figure: it counts every
+// listing matching the employer's name, including the same role reposted across
+// a dozen locations. `jobs` are the listings themselves, deduped on title +
+// location. Returns 0 when Adzuna genuinely reports no matches, and null only
+// when the request/credentials fail, so the caller can tell "no vacancies" from
+// "couldn't check".
 async function fromAdzuna(
   company: string,
   country: string,
@@ -310,43 +325,51 @@ async function fromAdzuna(
 ): Promise<{ count: number; jobs: AdvertisedJob[] } | null> {
   const c = adzunaCreds();
   if (!c) return null;
-  const params = new URLSearchParams({
-    app_id: c.id,
-    app_key: c.key,
-    what_phrase: company,
-    where,
-    results_per_page: "50",
-    "content-type": "application/json",
-  });
-  const j = await fetchJson(
-    `https://api.adzuna.com/v1/api/jobs/${country}/search/1?${params.toString()}`,
-    6000,
-  );
-  if (!j) return null;
-  const count = Number(asRecord(j).count);
-  if (!Number.isFinite(count)) return null;
-  const results = asRecords(asRecord(j).results);
+  let count: number | null = null;
   const jobs: AdvertisedJob[] = [];
   const seen = new Set<string>();
-  for (const x of results) {
-    const t = stripHtml(String(x?.title || ""));
-    if (!t) continue;
-    const loc = str(asRecord(x.location).display_name);
-    const dk = (t + "|" + loc).toLowerCase();
-    if (seen.has(dk)) continue; // Adzuna reposts the same role repeatedly
-    seen.add(dk);
-    jobs.push(
-      toJob(
-        t,
-        loc,
-        str(asRecord(x.category).label),
-        String(x?.redirect_url || ""),
-        String(x?.created || ""),
-        adzunaSalaryNum(x),
-      ),
+  for (let page = 1; page <= ADZUNA_MAX_PAGES; page++) {
+    const params = new URLSearchParams({
+      app_id: c.id,
+      app_key: c.key,
+      what_phrase: company,
+      where,
+      results_per_page: String(ADZUNA_PER_PAGE),
+      "content-type": "application/json",
+    });
+    const j = await fetchJson(
+      `https://api.adzuna.com/v1/api/jobs/${country}/search/${page}?${params.toString()}`,
+      6000,
     );
+    if (!j) return count === null ? null : { count, jobs }; // page 1 failed ⇒ couldn't check
+    if (count === null) {
+      const n = Number(asRecord(j).count);
+      if (!Number.isFinite(n)) return null;
+      count = n;
+    }
+    const results = asRecords(asRecord(j).results);
+    for (const x of results) {
+      const t = stripHtml(String(x?.title || ""));
+      if (!t) continue;
+      const loc = str(asRecord(x.location).display_name);
+      const dk = (t + "|" + loc).toLowerCase();
+      if (seen.has(dk)) continue; // Adzuna reposts the same role repeatedly
+      seen.add(dk);
+      jobs.push(
+        toJob(
+          t,
+          loc,
+          str(asRecord(x.category).label),
+          String(x?.redirect_url || ""),
+          String(x?.created || ""),
+          adzunaSalaryNum(x),
+        ),
+      );
+    }
+    // Short page, or we've now requested as many as Adzuna says exist.
+    if (results.length < ADZUNA_PER_PAGE || page * ADZUNA_PER_PAGE >= count) break;
   }
-  return { count, jobs };
+  return { count: count ?? 0, jobs };
 }
 
 // The Muse's public jobs API for a company, restricted to roles in the given
@@ -434,11 +457,19 @@ async function currentFromArchive(
   try {
     const res = await db
       .prepare(
+        // "Current" = seen on the board no earlier than yesterday. This is the
+        // SAME cut the vacancy chart's last point uses (it plots roles live on
+        // a day, and its last day is yesterday), so the headline and the chart
+        // read the same rows. The previous three-day grace period was there to
+        // absorb a missed nightly run, but it also meant the headline counted
+        // roles the chart had already dropped — which is most of why the two
+        // numbers disagreed. A feed that genuinely misses a night now shows the
+        // same dip in both places rather than only in one.
         `SELECT title, source, location, salary, url, posted, skills
            FROM jobs
           WHERE company_id = ?1
             AND source NOT IN ('adzuna', 'muse')
-            AND last_seen >= date('now', '-3 days')`,
+            AND last_seen >= date('now', '-1 day')`,
       )
       .bind(COMPANY_ID_ALIAS[id] ?? id)
       .all();
@@ -614,18 +645,27 @@ export const getOpenRoles = createServerFn({ method: "GET" })
       const az = country ? await fromAdzuna(company, country, where) : null;
       const museJobs = await fromMuse(company, region);
       if (az || museJobs.length) {
+        // DISTINCT ROLES, counted from the listings we actually hold — not
+        // Adzuna's reported total.
+        //
+        // The headline used to be `az.count + museAdded`, where az.count was
+        // Adzuna's own total for the employer phrase. That number and the card's
+        // vacancy chart could never agree: the chart counts distinct normalised
+        // titles from the archive, while Adzuna's total counts every listing,
+        // including one role reposted across a dozen locations (measured at 47%
+        // overstatement across the roster; CSL showed 1,089 listings for 438
+        // real roles). Counting the deduped union here makes the headline and
+        // the chart's last point the same figure by construction.
         const jobs: AdvertisedJob[] = az ? [...az.jobs] : [];
         const seen = new Set(jobs.map((j) => normTitle(j.t)));
-        let museAdded = 0;
         for (const mj of museJobs) {
           const n = normTitle(mj.t);
           if (seen.has(n)) continue;
           seen.add(n);
           jobs.push(mj);
-          museAdded++;
         }
-        const base = az ? az.count : 0;
-        const count = base + museAdded;
+        const count = seen.size;
+        const museAdded = jobs.length - (az ? az.jobs.length : 0);
         const source = az && museAdded > 0 ? "Adzuna + The Muse" : az ? "Adzuna" : "The Muse";
         out = { count, source, jobs: jobs.slice(0, 60) };
 

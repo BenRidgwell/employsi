@@ -146,12 +146,12 @@ function renderMoversCard(
               <span className="trendinfo">
                 <span className="trendlabel">{m.skill}</span>
                 <span className="trendsub">
-                  {m.cat} · {m.now} live vacanc{m.now === 1 ? "y" : "ies"}
+                  {m.cat} · {m.now} live vacanc{m.now === 1 ? "y" : "ies"} a day, from {m.prev}
                 </span>
               </span>
               <span className={`trenddelta ${m.dir}`}>
-                {m.dir === "up" ? "▲" : "▼"}{" "}
-                {m.prev > 0 ? `${m.dir === "up" ? "+" : "−"}${Math.abs(m.pct)}%` : "new"}
+                {m.dir === "up" ? "▲" : "▼"} {m.dir === "up" ? "+" : "−"}
+                {Math.abs(m.pct)}%
               </span>
             </div>
           ))
@@ -334,8 +334,12 @@ export function WhatsTrendingPane() {
                 movers!.fallers,
                 activateSkill,
               )}
+              {/* State the period, because it is chosen from how much history
+                  the archive actually holds rather than fixed — and because
+                  both lists are two ends of this one comparison. */}
               <div className="brieffoot">
-                Skill demand · last 30 days vs prior 30 · across all live job feeds
+                Mean daily live vacancies · {movers!.windowDays} days to {movers!.to} vs the{" "}
+                {movers!.windowDays} before · {movers!.sources.length} feeds covering both periods
               </div>
             </>
           ) : (

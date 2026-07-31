@@ -382,62 +382,146 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
 export interface MarketSkillMover {
   skill: string;
   cat: string; // skill category (for the legend chip)
-  now: number; // vacancies demanding it in the recent 30 days
-  prev: number; // ...in the prior 30 days
-  pct: number; // % change (capped display; 100 = newly appearing)
+  now: number; // mean daily live vacancies demanding it, recent window
+  prev: number; // ...prior window
+  pct: number; // % change between the two means
   dir: "up" | "down";
 }
 
 export interface MarketSkillMovers {
   risers: MarketSkillMover[];
   fallers: MarketSkillMover[];
+  /** Length of each comparison window, in days. 0 when nothing was measurable. */
+  windowDays: number;
+  /** The recent window, inclusive: YYYY-MM-DD. */
+  from: string;
+  to: string;
+  /** Feeds that covered BOTH windows and were therefore counted. */
+  sources: string[];
 }
 
-// Market-wide skill risers and fallers for the "What's Trending" pane. Same
-// archive + method as the ticker, but a 30-day-vs-prior-30-day window (a
-// month-on-month read rather than the ticker's weekly momentum) and split into
-// the biggest gainers and biggest decliners at the skill level, across every
-// data feed. Returns empty lists until the archive has two windows of history;
-// the pane falls back to its illustrative sections in that case.
+const NO_MOVERS: MarketSkillMovers = {
+  risers: [],
+  fallers: [],
+  windowDays: 0,
+  from: "",
+  to: "",
+  sources: [],
+};
+
+const SAFE_SOURCE = /^[a-z0-9][a-z0-9-]{0,31}$/;
+
+function shiftDay(iso: string, days: number): string {
+  const t = Date.parse(iso + "T00:00:00Z");
+  if (Number.isNaN(t)) return iso;
+  return new Date(t + days * 86400000).toISOString().slice(0, 10);
+}
+
+/**
+ * Market-wide skill risers and fallers for the "What's Trending" pane.
+ *
+ * WHAT IS MEASURED. For each skill, the MEAN NUMBER OF VACANCIES LIVE PER DAY
+ * that map to it, in a recent window, against the same figure for the window
+ * immediately before. A vacancy is live on a day when first_seen ≤ day ≤
+ * last_seen, which is the definition the company vacancy chart already uses —
+ * and it is only meaningful because listings age out: last_seen stops advancing
+ * the moment a job leaves the board, so a closed vacancy stops being counted.
+ * (Measured on the live archive: 93.7% of Adzuna rows and 87.7% of WA
+ * government rows carry a last_seen older than that feed's own latest run.)
+ *
+ * WHY IT IS A DAILY MEAN and not a count of rows in the window. A window count
+ * scales with how long the window is and with how much the archive happened to
+ * grow, so the two windows are not comparable. A daily mean is a level, so the
+ * percentage change between two windows is a real change in demand.
+ *
+ * WHY THE WINDOW IS CHOSEN, NOT FIXED. The previous version halved the archive's
+ * total span and compared window against window across every feed. That is what
+ * emptied the fallers list: feeds are added over time, so the recent window
+ * contained sources the prior window could not — 20 of the 33 feeds began on or
+ * after the recent window's start date — and almost every skill therefore rose.
+ * Here the window is the LONGEST one for which the feeds that covered BOTH
+ * windows still account for most of the archive, and only those feeds are
+ * counted. Nothing is compared against a period it did not exist in.
+ *
+ * Risers and fallers come from the same computation over the same window, so
+ * the two lists are directly comparable — they are two ends of one ranking.
+ */
+const MOVER_MIN_WINDOW = 3;
+const MOVER_MAX_WINDOW = 30;
+/** A window only counts if the feeds spanning both halves are this much of the archive. */
+const MOVER_MIN_COVERAGE = 0.5;
+/** Mean daily vacancies a skill needs in BOTH windows to be ranked. */
+const MOVER_MIN_LEVEL = 3;
+
 export const getMarketSkillMovers = createServerFn({ method: "GET" }).handler(
   async (): Promise<MarketSkillMovers> => {
     const db = await getArchiveDb();
-    if (!db) return { risers: [], fallers: [] };
-    const day = (offset: number) => {
-      const d = new Date();
-      d.setUTCDate(d.getUTCDate() - offset);
-      return d.toISOString().slice(0, 10);
-    };
-    // Adaptive window: a month-on-month read once there's ≥60 days of history,
-    // but narrowed to split whatever history exists so both risers AND fallers
-    // surface while the archive is still young (it widens to 30 as data accrues).
-    let WINDOW = 30;
+    if (!db) return NO_MOVERS;
     try {
-      const span = await db
+      // Yesterday, not today: the scrapers run through the night, so today is
+      // always a partial day and would read as a market-wide collapse.
+      const asOf = shiftDay(new Date().toISOString().slice(0, 10), -1);
+
+      // When each feed started, and how much of the archive it is.
+      const cov = await db
         .prepare(
-          `SELECT MIN(first_seen) AS mn, MAX(last_seen) AS mx FROM jobs WHERE skills IS NOT NULL`,
+          `SELECT source, MIN(first_seen) AS mn, COUNT(*) AS n
+             FROM jobs WHERE skills IS NOT NULL GROUP BY source`,
         )
-        .first();
-      const spanDays = span?.mn && span?.mx ? daysBetween(String(span.mn), String(span.mx)) : 0;
-      if (spanDays > 0) WINDOW = Math.max(2, Math.min(30, Math.floor(spanDays / 2)));
-    } catch {
-      /* keep default */
-    }
-    const recentStart = day(WINDOW);
-    const priorStart = day(WINDOW * 2);
-    const priorEnd = recentStart;
-    try {
+        .all();
+      const feeds = (cov?.results ?? [])
+        .map((r) => ({
+          source: String(r.source || ""),
+          mn: String(r.mn || ""),
+          n: Number(r.n) || 0,
+        }))
+        .filter((f) => SAFE_SOURCE.test(f.source) && f.mn);
+      if (!feeds.length) return NO_MOVERS;
+      const totalRows = feeds.reduce((a, f) => a + f.n, 0);
+
+      // Longest window whose both-halves feeds still carry most of the archive.
+      let windowDays = 0;
+      let eligible: string[] = [];
+      for (let w = MOVER_MAX_WINDOW; w >= MOVER_MIN_WINDOW; w--) {
+        const start = shiftDay(asOf, -(2 * w - 1));
+        const ok = feeds.filter((f) => f.mn <= start);
+        const share = ok.reduce((a, f) => a + f.n, 0) / Math.max(1, totalRows);
+        if (ok.length && share >= MOVER_MIN_COVERAGE) {
+          windowDays = w;
+          eligible = ok.map((f) => f.source);
+          break;
+        }
+      }
+      if (!windowDays) return NO_MOVERS;
+
+      const recentStart = shiftDay(asOf, -(windowDays - 1));
+      const priorStart = shiftDay(asOf, -(2 * windowDays - 1));
+      const priorEnd = shiftDay(recentStart, -1);
+
+      // Sources are inlined rather than bound: D1 caps bound parameters well
+      // below the feed count, and each one is checked against SAFE_SOURCE above.
+      const list = eligible.map((s) => `'${s}'`).join(",");
       const res = await db
         .prepare(
           `SELECT skills, first_seen, last_seen FROM jobs
-             WHERE skills IS NOT NULL AND last_seen >= ?1`,
+             WHERE skills IS NOT NULL
+               AND source IN (${list})
+               AND last_seen >= ?1
+               AND first_seen <= ?2`,
         )
-        .bind(priorStart)
+        .bind(priorStart, asOf)
         .all();
       const rows = res?.results ?? [];
-      if (!rows.length) return { risers: [], fallers: [] };
-      const nowT: Record<string, number> = {};
-      const prevT: Record<string, number> = {};
+      if (!rows.length) return NO_MOVERS;
+
+      // Vacancy-days per skill in each window ÷ window length = daily mean.
+      const nowD: Record<string, number> = {};
+      const prevD: Record<string, number> = {};
+      const overlap = (fs: string, ls: string, a: string, b: string): number => {
+        const lo = fs > a ? fs : a;
+        const hi = ls < b ? ls : b;
+        return hi < lo ? 0 : daysBetween(lo, hi) + 1;
+      };
       for (const r of rows) {
         let skills: string[] = [];
         try {
@@ -449,31 +533,35 @@ export const getMarketSkillMovers = createServerFn({ method: "GET" }).handler(
         const fs = String(r.first_seen || "");
         const ls = String(r.last_seen || "");
         if (!fs || !ls) continue;
-        if (ls >= recentStart) for (const s of skills) nowT[s] = (nowT[s] || 0) + 1;
-        if (fs <= priorEnd && ls >= priorStart)
-          for (const s of skills) prevT[s] = (prevT[s] || 0) + 1;
+        const dNow = overlap(fs, ls, recentStart, asOf);
+        const dPrev = overlap(fs, ls, priorStart, priorEnd);
+        if (!dNow && !dPrev) continue;
+        for (const s of skills) {
+          if (dNow) nowD[s] = (nowD[s] || 0) + dNow;
+          if (dPrev) prevD[s] = (prevD[s] || 0) + dPrev;
+        }
       }
-      const all = new Set([...Object.keys(nowT), ...Object.keys(prevT)]);
+
       const movers: MarketSkillMover[] = [];
-      for (const s of all) {
+      for (const s of new Set([...Object.keys(nowD), ...Object.keys(prevD)])) {
         if (!(s in SKILL_CATEGORY)) continue;
-        const now = nowT[s] || 0;
-        const prev = prevT[s] || 0;
-        if (now + prev < 3) continue; // volume floor against single-listing noise
-        const delta = now - prev;
-        if (delta === 0) continue;
-        const pctRaw = prev > 0 ? (delta / prev) * 100 : 100;
-        const pct = Math.max(-100, Math.min(300, Math.round(pctRaw)));
+        const now = (nowD[s] || 0) / windowDays;
+        const prev = (prevD[s] || 0) / windowDays;
+        // Both windows must clear the floor. A one-sided floor is what lets a
+        // skill that simply appeared read as the market's fastest riser, and it
+        // is also why "new" could never have a mirror on the fallers side.
+        if (now < MOVER_MIN_LEVEL || prev < MOVER_MIN_LEVEL) continue;
+        const pctRaw = ((now - prev) / prev) * 100;
+        if (Math.abs(pctRaw) < 0.5) continue; // flat
         movers.push({
           skill: s,
           cat: SKILL_CATEGORY[s],
-          now,
-          prev,
-          pct,
-          dir: delta > 0 ? "up" : "down",
+          now: Math.round(now),
+          prev: Math.round(prev),
+          pct: Math.round(pctRaw),
+          dir: pctRaw > 0 ? "up" : "down",
         });
       }
-      // Rank each side by magnitude (bigger swing first), tie-break on volume.
       const risers = movers
         .filter((m) => m.dir === "up")
         .sort((a, b) => b.pct - a.pct || b.now - a.now)
@@ -482,9 +570,16 @@ export const getMarketSkillMovers = createServerFn({ method: "GET" }).handler(
         .filter((m) => m.dir === "down")
         .sort((a, b) => a.pct - b.pct || b.prev - a.prev)
         .slice(0, 6);
-      return { risers, fallers };
+      return {
+        risers,
+        fallers,
+        windowDays,
+        from: recentStart,
+        to: asOf,
+        sources: eligible.sort(),
+      };
     } catch {
-      return { risers: [], fallers: [] };
+      return NO_MOVERS;
     }
   },
 );
@@ -508,8 +603,7 @@ export const getVacancyTrend = createServerFn({ method: "GET" })
       const res = await db
         .prepare(
           `SELECT title, first_seen, last_seen FROM jobs
-            WHERE company_id = ?1
-              AND source NOT IN ('adzuna', 'muse')`,
+            WHERE company_id = ?1`,
         )
         // Same alias the headline uses, so a dual-listed issuer's chart reads
         // the rows its "Open roles" number was counted from (HSBC is on the
@@ -520,10 +614,13 @@ export const getVacancyTrend = createServerFn({ method: "GET" })
       if (!rows.length) return [];
       // Count DISTINCT ROLES open on a day, not archive rows.
       //
-      // This has to match how the card's "Open roles" headline counts, or the
-      // chart's last point disagrees with the number printed beside it. That
-      // headline dedupes by normalised title and ignores adzuna/muse (those are
-      // counted from the live fetch instead), so this does both.
+      // This is the SAME construction the card's "Open roles" headline uses —
+      // the deduped union of every source's current listings — so the chart's
+      // last point and the number printed beside it are one figure measured two
+      // ways, not two different figures. It used to exclude adzuna/muse on the
+      // grounds that the headline counted those from the live fetch instead,
+      // which is exactly what made the two disagree; the headline is now
+      // row-backed (see openRolesFn) so every source belongs in both.
       //
       // Measured on the live archive: 5,873 rows were open across the roster on
       // one day but only 4,006 distinct company+title pairs — the row count
@@ -548,10 +645,18 @@ export const getVacancyTrend = createServerFn({ method: "GET" })
       }
       if (!byTitle.size) return [];
       const DAYS = 90;
-      const now = new Date();
+      // The series ENDS YESTERDAY. The scrapers run through the night, so on
+      // any given day some feeds have reported and some have not: a job whose
+      // last_seen is still yesterday is not closed, it just has not been looked
+      // at yet today. Charting today therefore drew every company's line
+      // falling to (or near) zero on its last point — an artefact of collection
+      // timing, not a real collapse in hiring. Yesterday is the last day every
+      // feed has had a full run to report in.
+      const end = new Date();
+      end.setUTCDate(end.getUTCDate() - 1);
       const series: RolePoint[] = [];
       for (let i = DAYS - 1; i >= 0; i--) {
-        const d = new Date(now);
+        const d = new Date(end);
         d.setUTCDate(d.getUTCDate() - i);
         const ds = d.toISOString().slice(0, 10);
         let c = 0;
