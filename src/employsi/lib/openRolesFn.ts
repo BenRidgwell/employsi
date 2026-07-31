@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { skillsForText } from "../data/skillsTaxonomy";
+import { skillsForText, parseStoredSkills } from "../data/skillsTaxonomy";
 import { NZ_GOV_IDS } from "../data/nzGov";
 import type { AdvertisedJob } from "./skillsFn";
 import { archiveJobs, type ArchiveRow, type D1Like } from "./jobArchive";
@@ -485,12 +485,11 @@ async function currentFromArchive(
       if (seen.has(n)) continue; // already counted via a live board
       seen.add(n);
       sources.add(String(r.source || ""));
-      let skills: string[];
-      try {
-        skills = r.skills ? JSON.parse(String(r.skills)) : skillsForText(t);
-      } catch {
-        skills = skillsForText(t);
-      }
+      // Stored skills first, mapped through SKILL_ALIAS so a renamed skill on
+      // an old row still resolves; falling back to matching the title when the
+      // row has none (or none that survive).
+      const stored = parseStoredSkills(r.skills);
+      const skills = stored.length ? stored : skillsForText(t);
       jobs.push({
         t,
         loc: String(r.location || ""),

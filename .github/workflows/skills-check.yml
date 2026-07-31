@@ -37,7 +37,14 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - name: Assert no duplicate skills
+      - name: Assert no duplicate skills, and no skill name stranded in the archive
+        # The D1 credentials are optional: without them the taxonomy checks
+        # still run and the archive check reports itself as skipped, so a fork
+        # or a secretless run is a pass rather than a false red.
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          JOBS_ARCHIVE_DB_ID: ${{ secrets.JOBS_ARCHIVE_DB_ID }}
         run: bun run scripts/check-skills.ts
 
       - uses: actions/setup-python@v6

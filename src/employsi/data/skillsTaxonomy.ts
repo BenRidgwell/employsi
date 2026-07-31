@@ -1399,3 +1399,47 @@ export const ALL_SKILLS: string[] = SKILLS.map((s) => s.skill);
 export const SKILL_CATEGORY: Record<string, string> = Object.fromEntries(
   SKILLS.map((s) => [s.skill, s.cat]),
 );
+
+// ── Legacy names in stored data ─────────────────────────────────────────────
+// The D1 archive freezes each listing's mapped skills as JSON at the moment it
+// is written, so a row keeps whatever the skill was CALLED that day. Rename a
+// canonical skill and every row written before the rename still carries the old
+// string — and because every reader drops names it does not recognise (they
+// have to: an unknown string has no category and no heat series), that demand
+// is silently lost rather than loudly wrong.
+//
+// Measured on the live archive: 245 rows carry "Data Science & ML", the name
+// this skill had before it became "Data Science & Machine Learning". Nothing in
+// the app displayed the old name — the movers pane skips unknown skills — but
+// those 245 rows' worth of demand was being dropped from every skill measure.
+//
+// So renames are recorded here rather than being a silent data cliff. The map
+// is applied by parseStoredSkills below, which every reader of an archived
+// `skills` column goes through. Keep an entry forever once added: old rows are
+// never rewritten in place beyond the one-off backfill.
+export const SKILL_ALIAS: Record<string, string> = {
+  "Data Science & ML": "Data Science & Machine Learning",
+};
+
+/**
+ * Read an archived `skills` JSON column into current canonical names.
+ *
+ * Applies SKILL_ALIAS, drops anything still unrecognised (an unknown skill has
+ * no category and cannot be charted), and de-duplicates — an alias can collide
+ * with the current name when a row carries both.
+ */
+export function parseStoredSkills(raw: unknown): string[] {
+  let arr: unknown;
+  try {
+    arr = JSON.parse(String(raw ?? "[]"));
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(arr)) return [];
+  const out: string[] = [];
+  for (const v of arr) {
+    const name = SKILL_ALIAS[String(v)] ?? String(v);
+    if (name in SKILL_CATEGORY && !out.includes(name)) out.push(name);
+  }
+  return out;
+}

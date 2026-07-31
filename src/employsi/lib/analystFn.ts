@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { D1Like } from "./jobArchive";
-import { SKILL_CATEGORY } from "../data/skillsTaxonomy";
+import { SKILL_CATEGORY, parseStoredSkills } from "../data/skillsTaxonomy";
 import { detectIntent } from "./analystIntent";
 import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
 
@@ -380,12 +380,10 @@ export const askAnalyst = createServerFn({ method: "POST" })
       const now: Record<string, number> = {};
       const before: Record<string, number> = {};
       for (const r of rows?.results ?? []) {
-        let skills: string[] = [];
-        try {
-          skills = JSON.parse(String(r.skills || "[]"));
-        } catch {
-          skills = [];
-        }
+        // Archived rows keep the skill names they were written with, so a
+        // renamed skill is mapped forward here (see SKILL_ALIAS) rather than
+        // being dropped as unrecognised.
+        const skills = parseStoredSkills(r.skills);
         const fs = String(r.first_seen || "");
         const ls = String(r.last_seen || "");
         for (const s of skills) {

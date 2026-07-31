@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { useAppStore } from "../state/store";
 import { FeedbackBoard } from "./FeedbackBoard";
 import { IconClose, IconFeedback, IconHelp, IconSettings } from "./ActionIcons";
+import { CITY_COMPANIES } from "../data/mapboxGeo";
+import { REGION_HUBS } from "../data/mapboxWorldGeo";
+import { CITY_LABEL, GLOBAL_HUB_LABEL } from "../data/geo";
 
 /**
  * Feedback / Help / Settings, built from `Employsi Action Banner.html`.
@@ -20,54 +23,121 @@ import { IconClose, IconFeedback, IconHelp, IconSettings } from "./ActionIcons";
 
 type Layer = "local" | "domestic" | "global";
 
-const CITY_NAME: Record<string, string> = {
-  perth: "Perth",
-  melbourne: "Melbourne",
-  brisbane: "Brisbane",
-  adelaide: "Adelaide",
-};
-// Cities whose local map actually has company pins.
-const CITIES_WITH_COMPANIES = new Set(["perth", "melbourne", "brisbane", "adelaide"]);
+/**
+ * The contextual tour, rewritten against what the app can actually do.
+ *
+ * The previous copy had gone stale as the app outgrew it: it named four cities
+ * with employers when there are now 52, described the domestic layer as
+ * Australia when there are five regions, called the global layer "worldwide
+ * mining & energy hubs" when the roster covers the whole labour market, and
+ * mentioned none of what has been built since — the left rail, Ask an analyst,
+ * What's trending, the daily brief, following, comparing, or the company card's
+ * live vacancy data.
+ *
+ * The city and region names are read from the data rather than listed here, so
+ * this cannot drift out of date the same way again: add a city to the roster and
+ * the help text picks it up.
+ */
 
-function tourFor(layer: Layer, city: string) {
+/** Cities on a region's domestic map that actually have employers plotted. */
+function citiesIn(region: string): string[] {
+  const hubs = REGION_HUBS[region] ?? [];
+  return hubs.filter((h) => (CITY_COMPANIES[h]?.length ?? 0) > 0);
+}
+
+function cityLabel(city: string): string {
+  return GLOBAL_HUB_LABEL[city] || CITY_LABEL[city] || city;
+}
+
+/** "Perth, Melbourne and 8 others" — a readable list that never runs long. */
+function nameList(keys: string[], show = 3): string {
+  const names = keys.map(cityLabel);
+  if (!names.length) return "";
+  if (names.length <= show + 1) {
+    return names.length === 1
+      ? names[0]
+      : `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}`;
+  }
+  return `${names.slice(0, show).join(", ")} or ${names.length - show} others`;
+}
+
+const REGION_LABEL: Record<string, string> = {
+  australia: "Australia & New Zealand",
+  asia: "Asia",
+  northamerica: "North America",
+  europe: "Europe",
+  africa: "Africa",
+};
+
+function tourFor(layer: Layer, city: string, region: string, hasCard: boolean) {
   if (layer === "local") {
-    const name = CITY_NAME[city] || "this city";
-    const hasCompanies = CITIES_WITH_COMPANIES.has(city);
+    const name = cityLabel(city);
+    const n = CITY_COMPANIES[city]?.length ?? 0;
+    if (!n) {
+      return {
+        title: `${name} — city view`,
+        sub: "No employers mapped here yet",
+        steps: [
+          `Nothing is plotted in ${name} yet — the 3D city is ready for employers to be added.`,
+          "Pan, zoom and right-drag to rotate the streetscape.",
+          "Scroll out to step back to the regional view.",
+        ],
+      };
+    }
+    // Once a card is open the useful advice is about the card, not the map.
+    if (hasCard) {
+      return {
+        title: `${name} — company profile`,
+        sub: "Reading an employer's card",
+        steps: [
+          "Open roles is every current vacancy we hold for this employer, deduped by title across all the job boards we read.",
+          "The vacancy chart is the same figure day by day, and stops at yesterday because the boards are scraped overnight.",
+          "Search a role to narrow the card to it — the list is what they are advertising right now.",
+          "Compare puts two employers side by side; Follow saves this one to your account.",
+          "Close the card, or scroll out, to go back to the map.",
+        ],
+      };
+    }
     return {
       title: `${name} — city view`,
-      sub: "The local employer map",
+      sub: `${n} employers on the local map`,
       steps: [
-        hasCompanies
-          ? "Glowing dots are employers, shaded by the active heat metric."
-          : `No companies are mapped in ${name} yet — the city layout is ready for them.`,
-        "Pan, zoom and rotate (right-drag) to explore the streetscape.",
-        hasCompanies
-          ? "Click a dot or its pill to open the company profile."
-          : "Switch the heat metric up top (Salary / Growth / Turnover).",
-        "Scroll out to step back to the Australia view.",
+        "Each dot is an employer's office, shaded by the heat metric you have selected.",
+        "Click a dot to open its card: live vacancies, pay, skills in demand and recent news.",
+        "Search a skill in the header to shade the map by who is hiring for it.",
+        "Use the left rail to filter by sector, or to ask the analyst about this city.",
+        "Scroll out to step back to the regional view.",
       ],
     };
   }
+
   if (layer === "domestic") {
+    const label = REGION_LABEL[region] || region;
+    const cities = citiesIn(region);
     return {
-      title: "Australia — domestic view",
-      sub: "National workforce overview",
+      title: `${label} — regional view`,
+      sub: `${cities.length} cities with employers mapped`,
       steps: [
-        "Each city glows by the selected metric (Salary, Growth, Turnover).",
-        "Click Perth, Adelaide or Brisbane to zoom into that city.",
-        "Search a skill up top to reveal demand hotspots.",
-        "Scroll out again for the global view.",
+        "Each city glows by the metric you have selected — salary, growth or turnover.",
+        cities.length
+          ? `Click ${nameList(cities)} to drop into that city's employer map.`
+          : "No cities in this region have employers mapped yet.",
+        "Search a skill to see where in the region it is being hired.",
+        "Ask an analyst answers questions about this region from the vacancy archive.",
+        "Scroll out again for the world view.",
       ],
     };
   }
+
   return {
-    title: "Global — world view",
-    sub: "Worldwide mining & energy hubs",
+    title: "World view",
+    sub: "Every market Employsi covers",
     steps: [
-      "Hubs glow by the selected metric across the continents.",
-      "Click the AUSTRALIA label, or a city hub, to dive in.",
-      "Use the left rail for trends and the daily brief.",
-      "Scroll in to return to the Australia view.",
+      "Each hub glows by the selected metric. Click one to drop into its region.",
+      "The ticker along the bottom is live skill demand across every job feed.",
+      "What's trending ranks the skills rising and falling fastest — in whatever area you are looking at.",
+      "The daily brief is that morning's employer news, by sector.",
+      "Search any company or skill in the header to jump straight to it.",
     ],
   };
 }
@@ -144,6 +214,11 @@ export function HelpDock() {
   const setNightMode = useAppStore((s) => s.setNightMode);
   // Help-tour + feedback open state lives in the store, so the mobile "More"
   // sheet can drive the same panels as these dock buttons.
+  // The tour also reacts to the region you are over and to whether a company
+  // card is open, so the local-layer steps talk about the card when there is
+  // one to read rather than about the map behind it.
+  const domesticRegion = useAppStore((s) => s.domesticRegion);
+  const selectedId = useAppStore((s) => s.selectedId);
   const open = useAppStore((s) => s.helpTourOpen);
   const toggleHelpTour = useAppStore((s) => s.toggleHelpTour);
   const closeHelpTour = useAppStore((s) => s.closeHelpTour);
@@ -153,7 +228,10 @@ export function HelpDock() {
 
   // zoomedOut takes precedence, same reasoning as the rail's layer indicator.
   const layer: Layer = !zoomedOut ? "local" : globalOut ? "global" : "domestic";
-  const layerKey = layer === "local" ? `local-${localCity}` : layer;
+  // What counts as "somewhere new" for the help nudge. The region is part of it
+  // now that the domestic layer is five regions rather than just Australia —
+  // moving from Asia to Europe changes which cities the steps name.
+  const layerKey = layer === "local" ? `local-${localCity}` : `${layer}-${domesticRegion}`;
 
   const [peek, setPeek] = useState(false);
 
@@ -165,7 +243,7 @@ export function HelpDock() {
     return () => clearTimeout(t);
   }, [layerKey, closeHelpTour]);
 
-  const tour = tourFor(layer, localCity);
+  const tour = tourFor(layer, localCity, domesticRegion, !!selectedId);
   const anyPanelOpen = open || fbOpen || settingsOpen;
 
   return (

@@ -11,6 +11,7 @@
  */
 import {
   ALL_SKILLS,
+  SKILL_ALIAS,
   SKILL_CATEGORY,
   SKILL_NAME_CONFLICTS,
 } from "../src/employsi/data/skillsTaxonomy";
@@ -42,6 +43,75 @@ if (SKILL_NAME_CONFLICTS.length) {
   );
 } else {
   console.log("✓ No category conflicts among merged defs.");
+}
+
+// 3. No skill name stranded in the archive.
+//
+// The D1 archive freezes each listing's skills as JSON when the row is written,
+// so renaming a canonical skill leaves every older row carrying the old string.
+// Readers drop names they don't recognise, which means the demand is lost
+// SILENTLY — nothing appears wrong, the skill is just quieter than it should be.
+// One rename had already done this before anyone noticed: 245 rows held
+// "Data Science & ML" after the skill became "Data Science & Machine Learning".
+//
+// So the archive is checked against the taxonomy. A stranded name is fixed by
+// adding it to SKILL_ALIAS (which maps it forward on read) and backfilling the
+// rows; this check then passes because the alias covers it.
+//
+// Skipped without D1 credentials, so the taxonomy checks above still run in a
+// plain checkout — but the workflow supplies them, so CI does run it.
+const ACCOUNT = process.env.CLOUDFLARE_ACCOUNT_ID;
+const DB = process.env.JOBS_ARCHIVE_DB_ID;
+const TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+if (ACCOUNT && DB && TOKEN) {
+  try {
+    const res = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/d1/database/${DB}/query`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ sql: "SELECT skills FROM jobs WHERE skills IS NOT NULL" }),
+      },
+    );
+    const json = (await res.json()) as {
+      success?: boolean;
+      result?: { results?: { skills?: string }[] }[];
+    };
+    if (!json.success) throw new Error("D1 query failed");
+    const seen = new Map<string, number>();
+    for (const row of json.result?.[0]?.results ?? []) {
+      let arr: unknown;
+      try {
+        arr = JSON.parse(row.skills ?? "[]");
+      } catch {
+        continue;
+      }
+      if (!Array.isArray(arr)) continue;
+      for (const v of arr) {
+        const name = String(v);
+        if (name in SKILL_CATEGORY || name in SKILL_ALIAS) continue;
+        seen.set(name, (seen.get(name) ?? 0) + 1);
+      }
+    }
+    if (seen.size) {
+      failed = true;
+      console.error("✗ Archived skill names not in the taxonomy and not aliased:");
+      for (const [name, n] of [...seen].sort((a, b) => b[1] - a[1])) {
+        console.error(`    ${String(n).padStart(6)}  ${JSON.stringify(name)}`);
+      }
+      console.error(
+        "  Fix: add each to SKILL_ALIAS pointing at its current name, then backfill the rows.",
+      );
+    } else {
+      console.log("✓ Every archived skill name resolves to a current skill.");
+    }
+  } catch (e) {
+    // A checking failure is not a taxonomy failure — say so and move on rather
+    // than turning a network blip into a red build.
+    console.log(`· Archive check skipped: ${(e as Error).message}`);
+  }
+} else {
+  console.log("· Archive check skipped (no D1 credentials in the environment).");
 }
 
 if (failed) {

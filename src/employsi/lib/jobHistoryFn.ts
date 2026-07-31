@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { D1Like } from "./jobArchive";
 import { COMPANY_ID_ALIAS, type RolePoint } from "./openRolesFn";
-import { SKILL_CATEGORY } from "../data/skillsTaxonomy";
+import { SKILL_CATEGORY, parseStoredSkills } from "../data/skillsTaxonomy";
 
 // Reads the historical job archive (Cloudflare D1) written by the jobs-cron
 // worker + the app's live fetch (see jobArchive.ts). Powers the "Vacancy
@@ -156,12 +156,10 @@ export const getSkillTrends = createServerFn({ method: "GET" })
       const prevT: Record<string, number> = {};
       const seriesT: Record<string, number[]> = {};
       for (const r of rows) {
-        let skills: string[] = [];
-        try {
-          skills = JSON.parse(String(r.skills || "[]"));
-        } catch {
-          skills = [];
-        }
+        // parseStoredSkills, not a bare JSON.parse: archived rows keep the
+        // skill names they were written with, so a renamed skill needs its old
+        // name mapped forward or that row's demand vanishes (see SKILL_ALIAS).
+        const skills = parseStoredSkills(r.skills);
         if (!skills.length) continue;
         const fs = String(r.first_seen || "");
         const ls = String(r.last_seen || "");
@@ -290,12 +288,10 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
       // render every skill as a hockey stick.
       let archiveStart = "9999-99-99";
       for (const r of rows) {
-        let skills: string[] = [];
-        try {
-          skills = JSON.parse(String(r.skills || "[]"));
-        } catch {
-          skills = [];
-        }
+        // parseStoredSkills, not a bare JSON.parse: archived rows keep the
+        // skill names they were written with, so a renamed skill needs its old
+        // name mapped forward or that row's demand vanishes (see SKILL_ALIAS).
+        const skills = parseStoredSkills(r.skills);
         if (!skills.length) continue;
         const fs = String(r.first_seen || "");
         const ls = String(r.last_seen || "");
@@ -555,12 +551,10 @@ export const getMarketSkillMovers = createServerFn({ method: "GET" })
         return hi < lo ? 0 : daysBetween(lo, hi) + 1;
       };
       for (const r of rows) {
-        let skills: string[] = [];
-        try {
-          skills = JSON.parse(String(r.skills || "[]"));
-        } catch {
-          skills = [];
-        }
+        // parseStoredSkills, not a bare JSON.parse: archived rows keep the
+        // skill names they were written with, so a renamed skill needs its old
+        // name mapped forward or that row's demand vanishes (see SKILL_ALIAS).
+        const skills = parseStoredSkills(r.skills);
         if (!skills.length) continue;
         const fs = String(r.first_seen || "");
         const ls = String(r.last_seen || "");
