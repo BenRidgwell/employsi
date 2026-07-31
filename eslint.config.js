@@ -11,6 +11,12 @@ export default tseslint.config(
       "dist",
       ".output",
       ".vinxi",
+      // Wrangler's build scratch. `wrangler dev` writes a bundled copy of the
+      // Worker under <config dir>/.wrangler/tmp, so running it against
+      // workers/jobs-cron/wrangler.jsonc drops a second one outside the root
+      // .wrangler. Git ignores both; ESLint was still linting the bundles and
+      // reporting a thousand prettier errors in generated output.
+      "**/.wrangler/**",
       // Machine-generated data modules (each carries a "GENERATED — do not edit
       // by hand" header and is rewritten by a script in scripts/). Prettier would
       // reformat their compact one-line-per-record arrays into hundreds of
