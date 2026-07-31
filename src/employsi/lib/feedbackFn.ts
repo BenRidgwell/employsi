@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import type { D1Like } from "./jobArchive";
+import { getAuth, type AuthEnv } from "./auth";
 
 /**
  * The feedback board, stored in D1.
@@ -14,22 +16,17 @@ import type { D1Like } from "./jobArchive";
  * durable, visible to everyone, and actually reaches us. The board starts EMPTY:
  * the first thing on it will be the first thing somebody asks for.
  *
- * ── On "permission", honestly ──────────────────────────────────────────────
- * The app has no real authentication. `signIn(email)` in the store sets a name
- * and email on the client with no password, no verification and no session —
- * so a signed-in visitor is simply one who has typed an email address. The UI
- * gate (must be signed in to post or vote) is therefore a UI gate: it shapes
- * the intended flow and gives each post an author, but it is NOT a security
- * boundary, and these handlers do not pretend otherwise. Anyone who can reach
- * the endpoint can post.
+ * ── Permission ─────────────────────────────────────────────────────────────
+ * This USED to be a UI gate only: the client sent whatever email it liked and
+ * the handlers took it, because the app's "sign in" was a name and an email
+ * typed into a box. It is now a real one. The author of a post and the owner of
+ * a vote come from the SESSION COOKIE (see lib/auth.ts) — the client cannot
+ * supply an identity, so it cannot post or vote as anyone else.
  *
- * What IS enforced here is the part that can be, without a user record:
+ * On top of that:
  *   • length and shape limits on everything stored;
- *   • one vote per account per request, keyed on the email, so the score cannot
- *     be run up by clicking repeatedly;
- *   • a cap on how many requests one account can post in a day.
- * Real accounts would replace `author_key` with a verified user id and these
- * limits would move behind a session. Until then, treat the board as public.
+ *   • one vote per user per request, enforced by the table's primary key;
+ *   • a cap of five posts per user per day.
  */
 
 export type FbStatus = "open" | "under-review" | "planned" | "shipped";
@@ -50,7 +47,7 @@ export interface FeedbackItem {
 
 const TITLE_MAX = 140;
 const NAME_MAX = 60;
-/** Requests one account may post in a day. */
+/** Requests one user may post in a day. */
 const DAILY_POST_CAP = 5;
 
 const STATUSES = new Set<FbStatus>(["open", "under-review", "planned", "shipped"]);
@@ -64,9 +61,33 @@ async function db(): Promise<D1Like | null> {
   }
 }
 
-/** Stable per-account key. Lower-cased email; empty when signed out. */
-function accountKey(email: string | undefined): string {
-  return (email || "").trim().toLowerCase().slice(0, 160);
+/**
+ * The signed-in user for this request, or null.
+ *
+ * `author_key` stays the lower-cased EMAIL rather than the user id, so posts
+ * made before accounts existed still belong to whoever signs in with that
+ * address — the board's history survives the migration instead of being
+ * orphaned. The value now comes from the verified session, never the payload.
+ */
+async function currentUser(): Promise<{ key: string; name: string } | null> {
+  try {
+    const m = await import("cloudflare:workers");
+    const e = (m?.env ?? null) as AuthEnv | null;
+    if (!e) return null;
+    const auth = getAuth(e);
+    if (!auth) return null;
+    const session = await auth.api.getSession({ headers: getRequest().headers });
+    const email = String(session?.user?.email || "")
+      .trim()
+      .toLowerCase();
+    if (!email) return null;
+    return {
+      key: email.slice(0, 160),
+      name: String(session?.user?.name || email.split("@")[0]),
+    };
+  } catch {
+    return null;
+  }
 }
 
 function clean(s: string, max: number): string {
@@ -87,12 +108,11 @@ const today = () => new Date().toISOString().slice(0, 10);
  * `email` identifies the caller only so their existing votes and posts can be
  * shown back to them — it is not a credential.
  */
-export const getFeedback = createServerFn({ method: "GET" })
-  .validator((data: { email?: string }) => data)
-  .handler(async ({ data }): Promise<FeedbackItem[]> => {
+export const getFeedback = createServerFn({ method: "GET" }).handler(
+  async (): Promise<FeedbackItem[]> => {
     const d = await db();
     if (!d) return [];
-    const key = accountKey(data?.email);
+    const key = (await currentUser())?.key ?? "";
     try {
       const res = await d
         .prepare(
@@ -124,7 +144,8 @@ export const getFeedback = createServerFn({ method: "GET" })
     } catch {
       return [];
     }
-  });
+  },
+);
 
 export interface PostResult {
   ok: boolean;
@@ -132,17 +153,18 @@ export interface PostResult {
   error?: string;
 }
 
-/** Post a request. Requires an email (the UI only offers this when signed in). */
+/** Post a request. The author is the signed-in user; the client sends only text. */
 export const postFeedback = createServerFn({ method: "POST" })
-  .validator((data: { title: string; name?: string; email?: string }) => data)
+  .validator((data: { title: string }) => data)
   .handler(async ({ data }): Promise<PostResult> => {
     const d = await db();
     if (!d) return { ok: false, error: "The board is unavailable right now." };
-    const key = accountKey(data?.email);
-    if (!key) return { ok: false, error: "Sign in to post a request." };
+    const me = await currentUser();
+    if (!me) return { ok: false, error: "Sign in to post a request." };
+    const key = me.key;
     const title = clean(data?.title || "", TITLE_MAX);
     if (title.length < 4) return { ok: false, error: "Say a little more than that." };
-    const author = clean(data?.name || "", NAME_MAX) || key.split("@")[0] || "Someone";
+    const author = clean(me.name, NAME_MAX) || key.split("@")[0] || "Someone";
     try {
       // One account cannot flood the board. Not a security control — see the
       // note at the top — but it stops an accidental double-post and the
@@ -190,11 +212,11 @@ export const postFeedback = createServerFn({ method: "POST" })
  * direction again clears it, which is what makes the arrows a toggle.
  */
 export const voteFeedback = createServerFn({ method: "POST" })
-  .validator((data: { id: string; dir: 1 | -1; email?: string }) => data)
+  .validator((data: { id: string; dir: 1 | -1 }) => data)
   .handler(async ({ data }): Promise<PostResult> => {
     const d = await db();
     if (!d) return { ok: false, error: "The board is unavailable right now." };
-    const key = accountKey(data?.email);
+    const key = (await currentUser())?.key;
     if (!key) return { ok: false, error: "Sign in to vote." };
     const id = clean(data?.id || "", 40);
     const dir = data?.dir === 1 ? 1 : data?.dir === -1 ? -1 : 0;

@@ -9851,3 +9851,57 @@ body {
     max-height: calc(100vh - 16px);
   }
 }
+
+/* ── Sign-in options ────────────────────────────────────────────────────────
+   Replaces the email/password form in both auth panels (the search pill's and
+   the account button's). Two provider buttons, sized to the panels' existing
+   288px width, so nothing else in either panel had to move.
+   The form's own rules (.accttabs, .gsauthtabs, .acctsubmit, …) are left in
+   place: they are inert now that nothing renders those classes, and removing
+   them is a separate tidy-up from making sign-in real. */
+.authoptions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.authprovider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fff;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.14s;
+}
+.authprovider:hover {
+  border-color: var(--slate);
+  background: #fafafa;
+}
+.authprovider:active {
+  transform: scale(0.985);
+}
+.authoptions.compact .authprovider {
+  padding: 9px 12px;
+  font-size: 12.5px;
+}
+/* What we ask the provider for, said before the click rather than after. */
+.authfine,
+.authnote {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--slate);
+}
+.authnote {
+  font-size: 12px;
+  padding: 4px 0 2px;
+}

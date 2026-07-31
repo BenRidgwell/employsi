@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from "react";
 import { useAppStore } from "../state/store";
 import { COMPANIES } from "../data/companies";
 import { searchCityFor } from "../data/mapboxGeo";
+import { SignInOptions } from "./SignInOptions";
+import { signOut as authSignOut } from "../lib/authClient";
 
 /**
  * The account control inside the search pill, from `Employsi Skill Search.html`.
@@ -11,7 +12,11 @@ import { searchCityFor } from "../data/mapboxGeo";
  * segmented control, the fields for whichever is chosen, one primary action and
  * a line to switch between them.
  *
- * It is wired to the store's existing auth, which is also what gates following:
+ * Sign-in is Google or LinkedIn (see SignInOptions) — the email/password form
+ * that used to sit here accepted any password and created no user, so it is
+ * gone rather than restyled.
+ *
+ * It is wired to the store's auth, which is also what gates following:
  * tapping Follow while signed out sets `authOpen` and remembers what was
  * tapped, so opening THIS panel is what completes that flow, and the followed
  * company or skill is saved the moment the account exists. Using the store's
@@ -21,8 +26,6 @@ import { searchCityFor } from "../data/mapboxGeo";
  * the button becomes the account's initials and the panel becomes what the user
  * then needs: what they follow, and a way out.
  */
-
-const emailOk = (v: string) => /.+@.+\..+/.test(v.trim());
 
 function initialsOf(name: string): string {
   return (
@@ -41,8 +44,6 @@ export function SearchAuth() {
   const authOpen = useAppStore((s) => s.authOpen);
   const openAuth = useAppStore((s) => s.openAuth);
   const closeAuth = useAppStore((s) => s.closeAuth);
-  const signUp = useAppStore((s) => s.signUp);
-  const signIn = useAppStore((s) => s.signIn);
   const signOut = useAppStore((s) => s.signOut);
   const followedIds = useAppStore((s) => s.followedIds);
   const followedSkills = useAppStore((s) => s.followedSkills);
@@ -50,26 +51,6 @@ export function SearchAuth() {
   const zoomInCity = useAppStore((s) => s.zoomInCity);
   const toggleSkillQuery = useAppStore((s) => s.toggleSkillQuery);
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
-
-  const [mode, setMode] = useState<"create" | "signin">("create");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [pw, setPw] = useState("");
-
-  const isCreate = mode === "create";
-  const valid = isCreate
-    ? name.trim().length >= 2 && emailOk(email) && pw.length >= 4
-    : emailOk(email) && pw.length >= 4;
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!valid) return;
-    if (isCreate) signUp(name, email);
-    else signIn(email);
-    setName("");
-    setEmail("");
-    setPw("");
-  };
 
   const saved = COMPANIES.filter((c) => followedIds.includes(c.id));
 
@@ -146,65 +127,20 @@ export function SearchAuth() {
                     Follow a skill or a company and it will be saved here.
                   </p>
                 )}
-                <button className="gsauthcta gsauthout" onClick={signOut}>
+                <button
+                  className="gsauthcta gsauthout"
+                  onClick={() => {
+                    // Revoke the session server-side FIRST; clearing the store
+                    // alone would leave a valid cookie behind, so the next load
+                    // would silently sign the person back in.
+                    void authSignOut().finally(() => signOut());
+                  }}
+                >
                   Sign out
                 </button>
               </>
             ) : (
-              <form onSubmit={submit}>
-                <div className="gsauthtabs">
-                  <button
-                    type="button"
-                    className={`gsauthtab${isCreate ? " on" : ""}`}
-                    onClick={() => setMode("create")}
-                  >
-                    Create account
-                  </button>
-                  <button
-                    type="button"
-                    className={`gsauthtab${!isCreate ? " on" : ""}`}
-                    onClick={() => setMode("signin")}
-                  >
-                    Sign in
-                  </button>
-                </div>
-                <div className="gsauthfields">
-                  {isCreate && (
-                    <input
-                      className="gsauthinput"
-                      placeholder="Full name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      autoComplete="name"
-                    />
-                  )}
-                  <input
-                    className="gsauthinput"
-                    type="email"
-                    placeholder="Email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    autoComplete="email"
-                  />
-                  <input
-                    className="gsauthinput"
-                    type="password"
-                    placeholder="Password"
-                    value={pw}
-                    onChange={(e) => setPw(e.target.value)}
-                    autoComplete={isCreate ? "new-password" : "current-password"}
-                  />
-                </div>
-                <button type="submit" className="gsauthcta" disabled={!valid}>
-                  {isCreate ? "Create account" : "Sign in"}
-                </button>
-                <div className="gsauthswitch">
-                  {isCreate ? "Already have an account?" : "New to employsi?"}
-                  <button type="button" onClick={() => setMode(isCreate ? "signin" : "create")}>
-                    {isCreate ? "Sign in" : "Create account"}
-                  </button>
-                </div>
-              </form>
+              <SignInOptions />
             )}
           </div>
         </>

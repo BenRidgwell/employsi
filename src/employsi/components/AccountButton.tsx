@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from "react";
 import { useAppStore } from "../state/store";
+import { SignInOptions } from "./SignInOptions";
+import { signOut as authSignOut } from "../lib/authClient";
 import { COMPANIES } from "../data/companies";
 import { cityForCompany } from "../data/mapboxGeo";
 
@@ -31,16 +32,12 @@ function initialsOf(name: string): string {
   );
 }
 
-const emailOk = (v: string) => /.+@.+\..+/.test(v.trim());
-
 export function AccountButton() {
   const account = useAppStore((s) => s.account);
   const authOpen = useAppStore((s) => s.authOpen);
   const pendingFollowId = useAppStore((s) => s.pendingFollowId);
   const openAuth = useAppStore((s) => s.openAuth);
   const closeAuth = useAppStore((s) => s.closeAuth);
-  const signUp = useAppStore((s) => s.signUp);
-  const signIn = useAppStore((s) => s.signIn);
   const signOut = useAppStore((s) => s.signOut);
   const followedIds = useAppStore((s) => s.followedIds);
   const requestFollow = useAppStore((s) => s.requestFollow);
@@ -62,31 +59,8 @@ export function AccountButton() {
     closeAuth();
   };
 
-  const [mode, setMode] = useState<"signup" | "signin">("signup");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [pw, setPw] = useState("");
-
   const saved = COMPANIES.filter((c) => followedIds.includes(c.id));
   const pending = pendingFollowId ? COMPANIES.find((c) => c.id === pendingFollowId) : undefined;
-
-  const valid =
-    mode === "signup"
-      ? name.trim().length >= 2 && emailOk(email) && pw.length >= 4
-      : emailOk(email) && pw.length >= 4;
-
-  const reset = () => {
-    setName("");
-    setEmail("");
-    setPw("");
-  };
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!valid) return;
-    if (mode === "signup") signUp(name, email);
-    else signIn(email);
-    reset();
-  };
 
   return (
     <div className={`cgroup searchwrap acctwrap ${selectedId || compareOpen ? "behindcard" : ""}`}>
@@ -153,72 +127,25 @@ export function AccountButton() {
                 here.
               </div>
             )}
-            <button className="sfclear" onClick={signOut}>
+            <button
+              className="sfclear"
+              onClick={() => {
+                // Revoke server-side before clearing locally, or the cookie
+                // survives and the next load signs the person straight back in.
+                void authSignOut().finally(() => signOut());
+              }}
+            >
               Sign out
             </button>
           </>
         ) : (
           <>
-            <div className="accttabs">
-              <button
-                className={`accttab ${mode === "signup" ? "on" : ""}`}
-                onClick={() => setMode("signup")}
-              >
-                Create account
-              </button>
-              <button
-                className={`accttab ${mode === "signin" ? "on" : ""}`}
-                onClick={() => setMode("signin")}
-              >
-                Sign in
-              </button>
-            </div>
             {pending && (
               <div className="acctnote">
-                Create an account to save <b>{pending.name}</b> to your favourites.
+                Sign in to save <b>{pending.name}</b> to your favourites.
               </div>
             )}
-            <form onSubmit={submit}>
-              {mode === "signup" && (
-                <input
-                  className="sfinput acctinput"
-                  placeholder="Full name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  autoFocus
-                />
-              )}
-              <input
-                className="sfinput acctinput"
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoFocus={mode === "signin"}
-              />
-              <input
-                className="sfinput acctinput"
-                type="password"
-                placeholder="Password"
-                value={pw}
-                onChange={(e) => setPw(e.target.value)}
-              />
-              <button className="acctsubmit" type="submit" disabled={!valid}>
-                {mode === "signup" ? "Create account" : "Sign in"}
-              </button>
-            </form>
-            <div className="acctswitch">
-              {mode === "signup" ? (
-                <>
-                  Already have an account?{" "}
-                  <button onClick={() => setMode("signin")}>Sign in</button>
-                </>
-              ) : (
-                <>
-                  New to Employsi? <button onClick={() => setMode("signup")}>Create one</button>
-                </>
-              )}
-            </div>
+            <SignInOptions />
           </>
         )}
       </div>

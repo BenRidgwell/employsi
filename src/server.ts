@@ -40,6 +40,30 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      // Authentication is handled BEFORE the app entry, not inside it.
+      //
+      // Better Auth needs the raw Request and returns a raw Response (OAuth
+      // redirects, Set-Cookie on the session, the callback exchange), none of
+      // which fits a server function's JSON-in/JSON-out shape. Mounting it here
+      // also means the auth routes never enter the router, so a signed-out
+      // visitor hitting a callback URL cannot end up rendering the app shell
+      // mid-redirect.
+      const url = new URL(request.url);
+      if (url.pathname.startsWith("/api/auth/")) {
+        const { getAuth } = await import("./employsi/lib/auth");
+        const auth = getAuth((env ?? {}) as never);
+        if (!auth) {
+          // Not configured. A clear 503 beats a stack trace: the sign-in panel
+          // already hides the buttons in this state, so reaching here means a
+          // stale tab or a direct hit.
+          return new Response(
+            JSON.stringify({ error: "Sign-in is not configured on this deployment." }),
+            { status: 503, headers: { "content-type": "application/json" } },
+          );
+        }
+        return await auth.handler(request);
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

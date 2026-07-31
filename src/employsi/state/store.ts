@@ -14,8 +14,11 @@ import type { SkillIndex } from "../lib/skillsFn";
 import { IVI_MONTHS } from "../data/iviSkillDemand";
 
 export interface Account {
+  /** Real user id from the auth provider. Absent only on a pre-auth leftover. */
+  id?: string;
   name: string;
   email: string;
+  image?: string;
 }
 
 export interface AppState {
@@ -80,8 +83,13 @@ export interface AppState {
   dismissToast: () => void;
   openAuth: () => void;
   closeAuth: () => void;
-  signUp: (name: string, email: string) => void;
-  signIn: (email: string) => void;
+  /** Adopt (or clear) the session the server reported. */
+  setSession: (a: Account | null) => void;
+  /** Sign-in buttons this deployment can offer; empty = not configured. */
+  authProviders: ("google" | "linkedin")[];
+  setAuthProviders: (p: ("google" | "linkedin")[]) => void;
+  /** Replace follows wholesale with the account's server-side set. */
+  setFollows: (ids: string[], skills: string[]) => void;
   signOut: () => void;
   toggleSettings: () => void;
   closeSettings: () => void;
@@ -140,19 +148,22 @@ export interface AppState {
   closeMobileMenu: () => void;
 }
 
-// Persist the account + saved-companies across reloads. There's no backend
-// auth here — sign-up/sign-in are simulated and the "session" lives entirely in
-// localStorage, so a returning visitor keeps their account and favourites.
+// Device settings, plus whatever follows this browser holds.
+//
+// The ACCOUNT is no longer persisted here: the session is a signed httpOnly
+// cookie the browser cannot read and JavaScript cannot forge, so who you are
+// comes from the server on every load (getSession) rather than from a
+// localStorage object anyone could edit. What stays is the follows — before
+// signing in they are the only place a follow can live, and after signing in
+// they are what the one-time claim hands over (see lib/followsFn.ts).
 const LS_KEY = "employsi.auth";
 interface Persisted {
-  account: Account | null;
   followedIds: string[];
   followedSkills: string[];
   reduceMotion: boolean;
   nightMode: boolean;
 }
 const PERSIST_DEFAULTS: Persisted = {
-  account: null,
   followedIds: [],
   followedSkills: [],
   reduceMotion: false,
@@ -165,7 +176,6 @@ function loadPersisted(): Persisted {
     if (!raw) return PERSIST_DEFAULTS;
     const p = JSON.parse(raw) as Partial<Persisted>;
     return {
-      account: p.account ?? null,
       followedIds: Array.isArray(p.followedIds) ? p.followedIds : [],
       followedSkills: Array.isArray(p.followedSkills) ? p.followedSkills : [],
       reduceMotion: p.reduceMotion ?? false,
@@ -191,6 +201,18 @@ if (typeof document !== "undefined") {
   document.documentElement.classList.toggle("reduce-motion", persisted.reduceMotion);
 }
 
+// Write a follow through to the signed-in account. Lazily imported: the store
+// is loaded by every component, and followsFn pulls in the auth stack, which
+// has no business in that graph until something actually follows.
+async function persistFollow(kind: "company" | "skill", ref: string, on: boolean): Promise<void> {
+  try {
+    const { setFollow } = await import("../lib/followsFn");
+    await setFollow({ data: { kind, ref, on } });
+  } catch {
+    // Best effort; getSession reconciles on the next load.
+  }
+}
+
 let zoomTimer: ReturnType<typeof setTimeout> | undefined;
 
 // Barrier between the three map layers: once a layer change happens, ignore
@@ -204,7 +226,8 @@ const markLayerChange = () => {
 const layerLocked = () => Date.now() - lastLayerChange < LAYER_COOLDOWN;
 
 export const useAppStore = create<AppState>((set, get) => ({
-  account: persisted.account,
+  account: null,
+  authProviders: [],
   authOpen: false,
   pendingFollowId: null,
   pendingFollowSkill: null,
@@ -259,12 +282,20 @@ export const useAppStore = create<AppState>((set, get) => ({
       helpTourOpen: false,
       mobileMenuOpen: false,
     }),
+  // Optimistic locally, then written to the account.
+  //
+  // The store stays the single source the UI renders from, so the toggle feels
+  // instant; the server write is fire-and-forget because a failed follow is not
+  // worth blocking on and the next getSession reconciles it. Signed out, the
+  // local list is all there is — which is exactly what the first sign-in claims.
   toggleFollow: (id) =>
-    set((s) => ({
-      followedIds: s.followedIds.includes(id)
-        ? s.followedIds.filter((x) => x !== id)
-        : [...s.followedIds, id],
-    })),
+    set((s) => {
+      const on = !s.followedIds.includes(id);
+      if (s.account) void persistFollow("company", id, on);
+      return {
+        followedIds: on ? [...s.followedIds, id] : s.followedIds.filter((x) => x !== id),
+      };
+    }),
   // Following is the account feature: signed-out visitors are prompted to
   // create an account first, and the company they tapped is saved for them the
   // moment they do (see signUp/signIn).
@@ -289,11 +320,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
   toggleFollowSkill: (skill) =>
-    set((s) => ({
-      followedSkills: s.followedSkills.includes(skill)
-        ? s.followedSkills.filter((x) => x !== skill)
-        : [...s.followedSkills, skill],
-    })),
+    set((s) => {
+      const on = !s.followedSkills.includes(skill);
+      if (s.account) void persistFollow("skill", skill, on);
+      return {
+        followedSkills: on
+          ? [...s.followedSkills, skill]
+          : s.followedSkills.filter((x) => x !== skill),
+      };
+    }),
   // Following a skill is gated exactly like following a company: signed-out
   // visitors are prompted to create an account first, and the skill they tapped
   // is saved for them the moment they do (see signUp/signIn).
@@ -319,8 +354,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   openAuth: () =>
     set({ authOpen: true, searchOpen: false, filterOpen: false, mobileMenuOpen: false }),
   closeAuth: () => set({ authOpen: false, pendingFollowId: null, pendingFollowSkill: null }),
-  signUp: (name, email) =>
+  // The session is whatever the server says it is. Signing in happens by OAuth
+  // redirect (see lib/authClient.ts), so there is no "submit these credentials"
+  // action here any more — the app simply learns who came back.
+  //
+  // A pending follow, saved when a signed-out visitor tapped Follow, is applied
+  // the moment a session appears, so the thing they were trying to do actually
+  // happens rather than being forgotten across the redirect.
+  setSession: (a) =>
     set((s) => {
+      if (!a) return { account: null, authOpen: false };
       const followedIds =
         s.pendingFollowId && !s.followedIds.includes(s.pendingFollowId)
           ? [...s.followedIds, s.pendingFollowId]
@@ -330,7 +373,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           ? [...s.followedSkills, s.pendingFollowSkill]
           : s.followedSkills;
       return {
-        account: { name: name.trim(), email: email.trim() },
+        account: a,
         authOpen: false,
         pendingFollowId: null,
         pendingFollowSkill: null,
@@ -338,33 +381,19 @@ export const useAppStore = create<AppState>((set, get) => ({
         followedSkills,
       };
     }),
-  signIn: (email) =>
-    set((s) => {
-      // Derive a display name from the email local-part (no real user record).
-      const local = email
-        .split("@")[0]
-        .replace(/[._-]+/g, " ")
-        .trim();
-      const name = local ? local.replace(/\b\w/g, (ch) => ch.toUpperCase()) : "You";
-      const followedIds =
-        s.pendingFollowId && !s.followedIds.includes(s.pendingFollowId)
-          ? [...s.followedIds, s.pendingFollowId]
-          : s.followedIds;
-      const followedSkills =
-        s.pendingFollowSkill && !s.followedSkills.includes(s.pendingFollowSkill)
-          ? [...s.followedSkills, s.pendingFollowSkill]
-          : s.followedSkills;
-      return {
-        account: { name, email: email.trim() },
-        authOpen: false,
-        pendingFollowId: null,
-        pendingFollowSkill: null,
-        followedIds,
-        followedSkills,
-      };
-    }),
+  setAuthProviders: (p) => set({ authProviders: p }),
+  setFollows: (ids, skills) => set({ followedIds: ids, followedSkills: skills }),
+  // Clears the local view of the session. The cookie is revoked separately by
+  // the auth client; this is what the UI reacts to.
   signOut: () =>
-    set({ account: null, authOpen: false, pendingFollowId: null, pendingFollowSkill: null }),
+    set({
+      account: null,
+      authOpen: false,
+      pendingFollowId: null,
+      pendingFollowSkill: null,
+      followedIds: [],
+      followedSkills: [],
+    }),
   toggleSettings: () =>
     set((s) => ({ settingsOpen: !s.settingsOpen, feedbackOpen: false, helpTourOpen: false })),
   closeSettings: () => set({ settingsOpen: false }),
@@ -618,14 +647,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 // them change.
 useAppStore.subscribe((s, prev) => {
   if (
-    s.account !== prev.account ||
     s.followedIds !== prev.followedIds ||
     s.followedSkills !== prev.followedSkills ||
     s.reduceMotion !== prev.reduceMotion ||
     s.nightMode !== prev.nightMode
   ) {
     savePersisted({
-      account: s.account,
       followedIds: s.followedIds,
       followedSkills: s.followedSkills,
       reduceMotion: s.reduceMotion,

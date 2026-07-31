@@ -15,10 +15,9 @@ import { useAppStore } from "../state/store";
 // localStorage-only store that meant a visitor's own post was visible to nobody
 // but themselves.
 //
-// Posting and voting both require an account. That gate is enforced in the UI
-// and the handlers refuse a request with no email, but the app has no real
-// authentication yet (see the note in lib/feedbackFn.ts) — so it shapes the
-// flow rather than securing it.
+// Posting and voting both require an account, and that is now a real gate: the
+// author of a post and the owner of a vote come from the session cookie, so the
+// client never supplies an identity and cannot act as anyone else.
 
 const STATUS_LABEL: Record<FbStatus, string> = {
   open: "Open",
@@ -100,20 +99,19 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
   const [justSent, setJustSent] = useState(false);
   const [error, setError] = useState("");
   const qc = useQueryClient();
-  const email = account?.email;
 
   // Keyed on the account, so signing in or out re-reads the board with (or
   // without) that account's own votes marked.
-  const key = ["feedback", email ?? ""];
+  const key = ["feedback", account?.id ?? ""];
   const { data: items, isPending } = useQuery({
     queryKey: key,
-    queryFn: () => getFeedback({ data: { email } }),
+    queryFn: () => getFeedback(),
     staleTime: 30 * 1000,
     retry: false,
   });
 
   const post = useMutation({
-    mutationFn: () => postFeedback({ data: { title: draft, name: account?.name, email } }),
+    mutationFn: () => postFeedback({ data: { title: draft } }),
     onSuccess: (r) => {
       if (!r.ok) {
         setError(r.error || "Couldn't post that.");
@@ -130,7 +128,7 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
 
   const cast = useMutation({
     mutationFn: (v: { id: string; dir: 1 | -1 }) =>
-      voteFeedback({ data: { id: v.id, dir: v.dir, email } }),
+      voteFeedback({ data: { id: v.id, dir: v.dir } }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: key }),
   });
 

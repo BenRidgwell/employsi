@@ -16,11 +16,16 @@ import { ComparePanel } from "./components/panels/ComparePanel";
 import { WhatsTrendingPane } from "./components/panels/WhatsTrendingPane";
 import { AnalystPane } from "./components/panels/AnalystPane";
 import { useAppStore } from "./state/store";
+import { useAuthSession } from "./hooks/useAuthSession";
 import { useSkillIndex } from "./hooks/useSkillData";
 import { useViewTracking } from "./hooks/useViewTracking";
 import { useEffect } from "react";
 
 function App() {
+  // Ask the server who is signed in, once per load. The session cookie is
+  // httpOnly, so this is the only way the client can know — and the only
+  // place that sets `account`.
+  useAuthSession();
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const globalOut = useAppStore((s) => s.globalOut);
 
