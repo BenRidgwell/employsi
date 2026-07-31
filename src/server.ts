@@ -50,8 +50,17 @@ export default {
       // mid-redirect.
       const url = new URL(request.url);
       if (url.pathname.startsWith("/api/auth/")) {
-        const { getAuth } = await import("./employsi/lib/auth");
-        const auth = getAuth((env ?? {}) as never);
+        let auth;
+        try {
+          const { getAuth } = await import("./employsi/lib/auth");
+          auth = getAuth((env ?? {}) as never);
+        } catch (e) {
+          console.error("auth init:", e);
+          return new Response(
+            JSON.stringify({ error: `auth init: ${String((e as Error)?.message || e)}` }),
+            { status: 500, headers: { "content-type": "application/json" } },
+          );
+        }
         if (!auth) {
           // Not configured. A clear 503 beats a stack trace: the sign-in panel
           // already hides the buttons in this state, so reaching here means a
@@ -61,7 +70,19 @@ export default {
             { status: 503, headers: { "content-type": "application/json" } },
           );
         }
-        return await auth.handler(request);
+        try {
+          return await auth.handler(request);
+        } catch (e) {
+          // An API route must fail as JSON, not as the app's HTML error page:
+          // the caller here is fetch(), and an HTML body turns a diagnosable
+          // fault into "unexpected token <". The message is safe to return —
+          // it names the failure, never a secret.
+          console.error("auth handler:", e);
+          return new Response(
+            JSON.stringify({ error: String((e as Error)?.message || e) }),
+            { status: 500, headers: { "content-type": "application/json" } },
+          );
+        }
       }
 
       const handler = await getServerEntry();
