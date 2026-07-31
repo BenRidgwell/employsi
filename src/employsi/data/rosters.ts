@@ -241,6 +241,11 @@ export const CITY_PLACEMENT: Record<string, CityPlacement> = {
   darwin: { arc: [60, 210] }, // CBD peninsula → land is E/SE, harbour wraps N/W/SW
   hobart: { arc: [180, 30] }, // CBD on W shore of Derwent → water is E, land wraps W
   auckland: { arc: [120, 300] }, // CBD on the isthmus → harbour N, land arcs S
+  // Lambton Quay sits on reclaimed land with Wellington Harbour immediately
+  // east and north-east; 7 of the 31 pins were in it, all of them public
+  // service agencies (Health NZ, NZTA, the Reserve Bank, Stats NZ, the EPA, Te
+  // Puni Kōkiri and DPMC). The dry run climbs inland to the south and west.
+  wellington: { arc: [152, 275] },
   // Civic, with Lake Burley Griffin to the south — the only wet sector, and it
   // caught one pin (the National Library). Everything else is dry, so this is
   // an almost-full circle with the lake cut out.
@@ -266,6 +271,14 @@ export const CITY_PLACEMENT: Record<string, CityPlacement> = {
   // The Seine and the Canal Saint-Martin: 4 pins were in the river. The dry run
   // sweeps from due north round through east to south-east.
   paris: { arc: [354, 132] },
+  // The city centre lands on the Bahnhofbrücke — literally on the Limmat, with
+  // the river on two sides and the lake beyond, which put 5 of 32 pins in
+  // water (incl. ABB, Nestlé and Swisscom). No arc from there does better than
+  // a 60° sliver, so this moves the anchor rather than narrowing the fan:
+  // Enge/Bleicherweg, a real Zurich office district a few hundred metres
+  // south-west of Paradeplatz, clears a 170° arc at full radius — measured at
+  // 23,370 m² per pin against 6,494 from the old centre.
+  zurich: { anchor: [8.534, 47.366], arc: [94, 264] },
   // Asia / other
   // Central, with Victoria Harbour to the north. [70,290] was measured at one
   // pin in the harbour; the dry wedge is the southern half, and the radius
