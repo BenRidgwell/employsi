@@ -227,7 +227,19 @@ export const CITY_PLACEMENT: Record<string, CityPlacement> = {
   // in the river; this arc puts none at any fan size. Land is West Perth and
   // Northbridge (W/NW), the CBD spine (N) and East Perth (NE/ENE).
   perth: { arc: [285, 75] },
-  sydney: { arc: [150, 330] }, // avoid Sydney Harbour (N/NE)
+  // The worst of the lot: 37 of 201 pins in water. Sydney has more companies
+  // than any other city and the narrowest CBD to put them in — Darling Harbour
+  // and Cockle Bay to the west, Sydney Harbour north, Woolloomooloo Bay
+  // north-east. The old [150,330] arc swept from SSE clockwise through due
+  // west, which points straight at Cockle Bay.
+  //
+  // No arc from the old centre survives at any useful radius: the widest is
+  // 200 degrees but only 570 m deep, which packs 201 pins at 2,800 m2 each
+  // against Perth's 10,246. Moving the anchor down the CBD spine to Elizabeth
+  // Street by Museum station opens a 132-degree wedge at the full 1.15 km,
+  // sweeping north-east through south over Hyde Park, Surry Hills and
+  // Haymarket — 7,579 m2 per pin, and every one of them on land.
+  sydney: { anchor: [151.211, -33.876], arc: [52, 184] },
   // Yarra to the south and Victoria Harbour/Docklands to the west. The old
   // [330,140] arc pointed the fan at the river: measured, 6 of the 188 pins sat
   // in water (including Treasury & Finance and the AFL). The dry wedge runs
