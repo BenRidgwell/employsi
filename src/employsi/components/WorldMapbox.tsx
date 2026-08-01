@@ -521,6 +521,29 @@ function countryDemand(cityDemand: Record<string, number>): Record<string, numbe
   return out;
 }
 
+/**
+ * The markets an end user sees live: the ones employsi actually collects
+ * vacancy data for, feed by feed.
+ *
+ * Country codes rather than city ids, so a city added to one of these later is
+ * covered automatically instead of needing a second list kept in step.
+ */
+const COVERED_COUNTRIES = new Set(["au", "nz", "sg", "ph", "hk", "my"]);
+
+/**
+ * Is this marker id inside a covered market?
+ *
+ * A marker is either a country roll-up (global layer, id IS the country code)
+ * or a city (domestic layer, resolved through CITY_COUNTRY). Anything that
+ * resolves to neither — a cluster, an EU country carrying only Eurostat
+ * aggregates — is not covered, which is the correct answer for all of them.
+ */
+function isCoveredPlace(id: string): boolean {
+  if (COVERED_COUNTRIES.has(id)) return true;
+  const cc = CITY_COUNTRY[id];
+  return !!cc && COVERED_COUNTRIES.has(cc);
+}
+
 // Which markers to show for the current view. City dots stay neutral until a
 // skill is searched (then the skill-demand blobs carry all the colour). Always
 // filtered by the active sectors.
@@ -535,6 +558,8 @@ export function computeMarkers(
   demand: Record<string, number>,
   skillActive: boolean,
   zoom = 99,
+  /** End users see only the covered markets live; admins see everything. */
+  entitled = true,
 ): Marker[] {
   // Neutral dot tuned to each backdrop: the global view sits on the dark globe
   // (needs a light dot), the domestic view on the light basemap (needs a dark
@@ -645,6 +670,31 @@ export function computeMarkers(
       m.faded = true;
       m.clickable = false;
     });
+  }
+
+  // ── Coverage entitlement ────────────────────────────────────────────────
+  // End users see the markets employsi actually collects for. Everywhere else
+  // is shown INACTIVE rather than removed, for the same reason a city with no
+  // demand for a searched skill stays on the map: a greyed marker says "we
+  // know this place exists and it is not part of your view", which is a
+  // different and more useful statement than a country silently missing from
+  // the globe.
+  //
+  // Applied LAST, and inside this function rather than at a call site, so it
+  // cannot be skipped by a caller that forgets it — and so it wins over the
+  // skill-demand colouring above, which would otherwise paint an
+  // out-of-coverage country as a live heat result.
+  //
+  // This is presentation. The underlying archive is unchanged and still
+  // reachable by a determined caller; if these markets ever need to be a real
+  // entitlement rather than a view, the filter has to move server-side into
+  // the functions that return the data.
+  if (!entitled) {
+    for (const m of out) {
+      if (isCoveredPlace(m.id)) continue;
+      m.faded = true;
+      m.clickable = false;
+    }
   }
   return out;
 }
@@ -794,6 +844,7 @@ export function WorldMapbox() {
   const searchQuery = useAppStore((s) => s.searchQuery);
   const skillIndex = useAppStore((s) => s.skillIndex);
   const heatMonth = useAppStore((s) => s.heatMonth);
+  const role = useAppStore((s) => s.role);
 
   // Mount once: create the map, add the hub source/layers, and wire clicks +
   // scroll-zoom layer crossing. All reads of live state happen through the
@@ -950,6 +1001,8 @@ export function WorldMapbox() {
         demandForView,
         !!skill,
         map.getZoom(),
+        // Admins see every market live; end users see the covered ones.
+        s.role === "admin",
       );
       // Scrub callouts: while a skill + the time slider are active, tag each
       // city with its demand % change at the current month, so the label shows
@@ -1466,6 +1519,10 @@ export function WorldMapbox() {
     searchQuery,
     skillIndex,
     heatMonth,
+    // The session resolves after first paint, so the initial markers are always
+    // built as an end user. Without this the coverage fade would either stick
+    // for an admin or never appear at all, depending on which won the race.
+    role,
   ]);
 
   // Hide the whole overview once fully in a local city (PerthMapbox owns it).

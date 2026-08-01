@@ -17,6 +17,7 @@ import {
   PERTH_DEFAULT_PITCH,
   PERTH_DEFAULT_BEARING,
 } from "../data/mapboxGeo";
+import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
 import { heatColor, rgbCss } from "../lib/color";
 import { logoFor } from "../lib/companyLogo";
 import { activeSkill, demandByCompany } from "../lib/skillHeat";
@@ -282,11 +283,31 @@ function cityPlacements(city: string): Placed[] {
 // gets a full-range scale. Companies outside the selected sector(s) are dropped
 // entirely (hidden), so a Financial Services filter clears the resource
 // companies from the city map.
+/**
+ * The markets an end user sees live. Mirrors COVERED_COUNTRIES in
+ * WorldMapbox — kept as its own copy rather than imported, because importing
+ * WorldMapbox here would pull the whole globe component into the local map's
+ * bundle for one Set. If a market is added, both lists move together.
+ */
+const COVERED_COUNTRIES = new Set(["au", "nz", "sg", "ph", "hk", "my"]);
+
+/** Is this local city inside a covered market? */
+function cityIsCovered(city: string): boolean {
+  const cc = CITY_COUNTRY[city];
+  return !!cc && COVERED_COUNTRIES.has(cc);
+}
+
 function buildGeoJSON(
   placements: Placed[],
   selectedId: string | null,
   filterState: FilterState,
   skillDemand: Record<string, number> | null,
+  /**
+   * False when this city sits outside the end user's covered markets. Every
+   * company in it then renders inactive — you can arrive here from a faded
+   * country marker, and the pins inside should not suddenly read as live.
+   */
+  cityEntitled = true,
 ): GeoJSON.FeatureCollection {
   // Hide any company that fails the sector / exchange / slider filters entirely.
   const shown = placements.filter((p) => matchesFilters(p.company, filterState));
@@ -311,10 +332,12 @@ function buildGeoJSON(
           // In skill mode, dim companies with no live demand for the skill so
           // the map highlights exactly where it's being hired. Otherwise a
           // search miss (or another company being selected) dims a dot.
-          dim: skillMode
-            ? demand === 0 || (!!selectedId && c.id !== selectedId)
-            : (isSearchActive(filterState) && !searchMatches(c, filterState.searchQuery)) ||
-              (!!selectedId && c.id !== selectedId),
+          dim:
+            !cityEntitled ||
+            (skillMode
+              ? demand === 0 || (!!selectedId && c.id !== selectedId)
+              : (isSearchActive(filterState) && !searchMatches(c, filterState.searchQuery)) ||
+                (!!selectedId && c.id !== selectedId)),
         },
         geometry: { type: "Point", coordinates: p.coords },
       };
@@ -375,6 +398,8 @@ export function PerthMapbox() {
   const focusUpdaterRef = useRef<(() => void) | null>(null);
 
   const selectedId = useAppStore((s) => s.selectedId);
+  const role = useAppStore((s) => s.role);
+  const localCity = useAppStore((s) => s.localCity);
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const searchQuery = useAppStore((s) => s.searchQuery);
   const skillIndex = useAppStore((s) => s.skillIndex);
@@ -474,7 +499,13 @@ export function PerthMapbox() {
       placedRef.current = cityPlacements(st.localCity);
       map.addSource(SOURCE_ID, {
         type: "geojson",
-        data: buildGeoJSON(placedRef.current, st.selectedId, filterState, skillDemandOf(st)),
+        data: buildGeoJSON(
+          placedRef.current,
+          st.selectedId,
+          filterState,
+          skillDemandOf(st),
+          st.role === "admin" || cityIsCovered(st.localCity),
+        ),
       });
 
       // ── POI-pin marker style (design test) ──────────────────────────────
@@ -626,7 +657,15 @@ export function PerthMapbox() {
         const s = useAppStore.getState();
         const fs = filterStateOf(s);
         const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
-        source?.setData(buildGeoJSON(placedRef.current, s.selectedId, fs, skillDemandOf(s)));
+        source?.setData(
+          buildGeoJSON(
+            placedRef.current,
+            s.selectedId,
+            fs,
+            skillDemandOf(s),
+            s.role === "admin" || cityIsCovered(s.localCity),
+          ),
+        );
         renderMarkers(placedRef.current);
         setCompaniesVisible(true);
         const dmC = skillDemandOf(s);
@@ -892,7 +931,15 @@ export function PerthMapbox() {
       // event never re-fires); applying directly avoids that.
       const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
       if (source)
-        source.setData(buildGeoJSON(placedRef.current, selectedId, filterState, skillDemand));
+        source.setData(
+          buildGeoJSON(
+            placedRef.current,
+            selectedId,
+            filterState,
+            skillDemand,
+            role === "admin" || cityIsCovered(localCity),
+          ),
+        );
       const maxD = skillDemand
         ? Math.max(1, ...placedRef.current.map((p) => skillDemand[p.company.id] || 0))
         : 1;
@@ -938,7 +985,9 @@ export function PerthMapbox() {
       focusUpdaterRef.current?.();
     };
     apply();
-  }, [selectedId, filterState, skillDemand]);
+    // role/localCity included: the session resolves after first paint, so the
+    // coverage fade would otherwise never apply on a cold load into a city.
+  }, [selectedId, filterState, skillDemand, role, localCity]);
 
   useEffect(() => {
     // Hide companies the instant we're zoomed out, regardless of what
