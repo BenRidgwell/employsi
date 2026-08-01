@@ -53,7 +53,18 @@ export default {
         let auth;
         try {
           const { getAuth } = await import("./employsi/lib/auth");
-          auth = getAuth((env ?? {}) as never);
+          // Bindings and secrets come from `cloudflare:workers`, NOT from this
+          // handler's `env` argument. Under nitro's cloudflare preset that
+          // argument arrives EMPTY — measured: Object.keys(env) is [] here
+          // while cloudflare:workers exposes JOBS_ARCHIVE, BETTER_AUTH_SECRET
+          // and the four OAuth secrets. Reading the argument made
+          // authAvailable() false on a fully configured deployment, so every
+          // sign-in returned "Sign-in is not configured" with all six secrets
+          // set. feedbackFn and followsFn already resolve env this way; this
+          // was the one place that did not.
+          const m = await import("cloudflare:workers");
+          const cfEnv = (m?.env ?? {}) as Record<string, unknown>;
+          auth = getAuth((Object.keys(cfEnv).length ? cfEnv : (env ?? {})) as never);
         } catch (e) {
           console.error("auth init:", e);
           return new Response(
