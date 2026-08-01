@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getDataQuality } from "../../lib/dataQualityFn";
 import { useAppStore } from "../../state/store";
@@ -16,6 +17,59 @@ import { useAppStore } from "../../state/store";
 
 /** A feed silent this long is a problem rather than a slow day. */
 const STALE_DAYS = 2;
+
+type SortKey = "source" | "live" | "total" | "lastSeen";
+
+/**
+ * Which way a column runs on its FIRST click.
+ *
+ * Not uniform, because the useful end differs by column. A count is being
+ * scanned for the feed that has almost stopped writing, so it opens smallest
+ * first; a date is being scanned for what ran most recently, so it opens
+ * newest first. Clicking again reverses either.
+ */
+const FIRST_DIR: Record<SortKey, "asc" | "desc"> = {
+  source: "asc",
+  live: "asc",
+  total: "asc",
+  lastSeen: "desc",
+};
+
+function SortHead({
+  col,
+  label,
+  numeric,
+  sort,
+  onSort,
+}: {
+  col: SortKey;
+  label: string;
+  numeric?: boolean;
+  sort: { key: SortKey; dir: "asc" | "desc" };
+  onSort: (k: SortKey) => void;
+}) {
+  const active = sort.key === col;
+  return (
+    <th
+      className={numeric ? "dqnum" : undefined}
+      // Announces the sort to a screen reader rather than leaving the arrow as
+      // the only signal, which is invisible to one.
+      aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+    >
+      <button
+        type="button"
+        className={`dqsort${active ? " on" : ""}`}
+        onClick={() => onSort(col)}
+        title={`Sort by ${label.toLowerCase()}`}
+      >
+        {label}
+        <span className="dqarrow" aria-hidden>
+          {active ? (sort.dir === "asc" ? "\u2191" : "\u2193") : "\u2195"}
+        </span>
+      </button>
+    </th>
+  );
+}
 
 function FeedRowView({
   source,
@@ -50,6 +104,20 @@ function FeedRowView({
 
 export function DataQualityPane({ onClose }: { onClose: () => void }) {
   const isAdmin = useAppStore((s) => s.role) === "admin";
+  // Source A-Z to start: the table is also a checklist of every feed, and a
+  // stable alphabetical order is what makes "is X still there" answerable at a
+  // glance. Stale rows are flagged in colour regardless of sort, so the
+  // actionable ones do not depend on ordering to be found.
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
+    key: "source",
+    dir: "asc",
+  });
+  const onSort = (k: SortKey) =>
+    setSort((cur) =>
+      cur.key === k
+        ? { key: k, dir: cur.dir === "asc" ? "desc" : "asc" }
+        : { key: k, dir: FIRST_DIR[k] },
+    );
 
   const { data, isPending } = useQuery({
     queryKey: ["dataQuality"],
@@ -60,6 +128,23 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
     retry: false,
     enabled: isAdmin,
   });
+
+  const feeds = useMemo(() => {
+    const rows = [...(data?.feeds ?? [])];
+    const mul = sort.dir === "asc" ? 1 : -1;
+    rows.sort((a, b) => {
+      if (sort.key === "source") return mul * a.source.localeCompare(b.source);
+      if (sort.key === "lastSeen") {
+        // ISO dates compare correctly as strings. A feed that has never
+        // written sorts as the oldest possible, which is what it is.
+        return mul * (a.lastSeen || "").localeCompare(b.lastSeen || "");
+      }
+      const d = a[sort.key] - b[sort.key];
+      // Ties keep a predictable order rather than shuffling between renders.
+      return d !== 0 ? mul * d : a.source.localeCompare(b.source);
+    });
+    return rows;
+  }, [data?.feeds, sort]);
 
   return (
     <>
@@ -95,14 +180,14 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
               <table className="dqtable">
                 <thead>
                   <tr>
-                    <th>Source</th>
-                    <th className="dqnum">Live</th>
-                    <th className="dqnum">Archived</th>
-                    <th>Last write</th>
+                    <SortHead col="source" label="Source" sort={sort} onSort={onSort} />
+                    <SortHead col="live" label="Live" numeric sort={sort} onSort={onSort} />
+                    <SortHead col="total" label="Archived" numeric sort={sort} onSort={onSort} />
+                    <SortHead col="lastSeen" label="Last write" sort={sort} onSort={onSort} />
                   </tr>
                 </thead>
                 <tbody>
-                  {data.feeds.map((f) => (
+                  {feeds.map((f) => (
                     <FeedRowView key={f.source} {...f} />
                   ))}
                 </tbody>

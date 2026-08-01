@@ -1522,14 +1522,48 @@ body {
 }
 .dqtable th {
   text-align: left;
+  padding: 0;
+  border-bottom: 1px solid var(--line, #ededf0);
+}
+/* The whole header cell is the control, so the hit area matches what looks
+   clickable. Styling lives on the button rather than the th because a th
+   cannot itself take focus. */
+.dqsort {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 5px 6px;
+  border: 0;
+  background: none;
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--slate, #8e8e93);
   font-weight: 500;
-  padding: 4px 6px;
-  border-bottom: 1px solid var(--line, #ededf0);
+  cursor: pointer;
+  border-radius: 6px;
+}
+.dqnum .dqsort {
+  justify-content: flex-end;
+}
+.dqsort:hover {
+  background: #f4f4f5;
+  color: var(--ink, #1c1c1e);
+}
+.dqsort.on {
+  color: var(--ink, #1c1c1e);
+}
+/* The idle glyph stays visible but faint: an arrow that appears only on hover
+   leaves the table looking unsortable until you happen to touch it. */
+.dqarrow {
+  opacity: 0.35;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+.dqsort.on .dqarrow {
+  opacity: 1;
 }
 .dqtable td {
   padding: 5px 6px;
