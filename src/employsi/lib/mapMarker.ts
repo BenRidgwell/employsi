@@ -163,12 +163,24 @@ export function buildMarker(shape: MarkerShape, label: MarkerLabel): HTMLElement
   name.className = "mkname";
   name.textContent = label.name;
   caption.appendChild(name);
-  if (typeof label.delta === "number") caption.appendChild(deltaPill(label.delta));
-  if (label.count) {
-    const count = document.createElement("span");
-    count.className = "mkcount";
-    count.textContent = label.count;
-    caption.appendChild(count);
+  if (label.faded) {
+    // An em dash, not a figure, and not a zero. The marker is faded because
+    // nothing in the archive answers this skill here, and "0" would assert
+    // that the skill is measured and unwanted — a different, stronger claim
+    // than the one we can make. The dash says "no reading", which is what the
+    // design shows for this state.
+    const none = document.createElement("span");
+    none.className = "mkcount mknone";
+    none.textContent = "—";
+    caption.appendChild(none);
+  } else {
+    if (typeof label.delta === "number") caption.appendChild(deltaPill(label.delta));
+    if (label.count) {
+      const count = document.createElement("span");
+      count.className = "mkcount";
+      count.textContent = label.count;
+      caption.appendChild(count);
+    }
   }
   root.appendChild(caption);
 

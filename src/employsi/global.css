@@ -1409,23 +1409,71 @@ body {
 .mkpin:has(.mk.on) {
   z-index: 6;
 }
-/* A place with no demand for the searched skill — either it genuinely isn't
-   sought there, or no series covers it yet. Faded well back and inert, so the
-   places that DO answer the search are the only ones competing for attention.
-   It stays on the map rather than vanishing: a greyed-out city reads as
-   "covered, not hiring this", which is a more useful answer than absence. */
+/* ── Inactive marker: no data for the searched skill ───────────────────────
+   Either the skill genuinely isn't sought here, or no series covers this place
+   yet. It stays on the map rather than vanishing — a greyed-out city reads as
+   "covered, not hiring this", which answers the search better than absence.
+
+   Styled to the design system's inactive marker rather than by dropping
+   opacity. A flat fade (this was 0.3) makes the marker look like it is on its
+   way somewhere, and at that weight the code inside is unreadable, so the
+   place stops being identifiable at exactly the moment the user is scanning
+   for which places DID answer.
+
+   The design's answer is to keep it legible but visibly unfilled: a DASHED
+   border and near-white body, which read as "outline, nothing in it" at a
+   glance, against the solid fill of a marker with data. Opacity lifts to 0.55
+   so the code is still readable. Values from the supplied Map Markers file. */
 .mk.miss {
-  opacity: 0.3;
+  opacity: 0.55;
+}
+.mk.miss .mkbody {
+  border: 1px dashed #d8d8dc;
+  background: #fafafa;
+  color: #aeaeb2;
+  /* No lift shadow: an inactive marker is flat on the map. Leaving the cast
+     shadow on made it read as raised, which is the emphasis this state is
+     trying to remove. */
+  box-shadow: none;
+}
+.mk.miss .mkshadow {
+  background: rgba(28, 28, 30, 0.07);
+}
+.mk.miss .mkstalk {
+  background: #e5e5ea;
+}
+.mk.miss .mkname {
+  font-weight: 500;
+  color: #aeaeb2;
+}
+/* A logo would otherwise be the one saturated thing left on a dead marker and
+   pull the eye straight to it. */
+.mk.miss .mklogo {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+/* The "no reading" chip. Deliberately the same size and position as the delta
+   pill it replaces, so a row of markers does not reflow between states. */
+.mk.miss .mkcount,
+.mkcount.mknone {
+  background: #f7f7f8;
+  color: #b4b4ba;
+  font-family: "JetBrains Mono", monospace;
+}
+/* No hover lift or ring either — nothing here responds, so nothing should
+   suggest it will. */
+.mk.miss .mkring {
+  opacity: 0;
 }
 /* Inert too, so a faded marker can't be opened and confuse the reader. The
    click handler lives on the root, so this has to disarm the root — disarming
    the inner wrapper alone would just let the click land on its parent. */
 .mkpin:has(.mk.miss) {
   pointer-events: none;
-  cursor: default;
-}
-.mk.miss .mkname {
-  font-weight: 400;
+  /* not-allowed rather than default: the design marks these explicitly
+     unavailable, and a plain cursor invites the click that does nothing. */
+  cursor: not-allowed;
+  user-select: none;
 }
 /* Company captions are hidden until you zoom past LABEL_ZOOM (the map toggles
    `.shownames` on its container). At the arrival zoom a dense CBD is just
