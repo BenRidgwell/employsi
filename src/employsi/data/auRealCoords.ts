@@ -17,6 +17,25 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "adelaide-abc": [138.607192, -34.924275], // 157 Grenfell Street, Adelaide SA 5000
   "adelaide-cda": [138.622999, -34.816113], // 2 Second Avenue, Mawson Lakes SA 5095
   aow: [153.030092, -27.467849], // 111 Eagle Street, Brisbane QLD 4000
+  "aps-attorney-general-s-department": [149.132558, -35.306534], // 3 National Circuit, Barton ACT 2600
+  "aps-australian-bureau-of-statistics": [149.068378, -35.240765], // 45 Benjamin Way, Belconnen ACT 2617
+  "aps-australian-communications-and-media-authority": [149.129781, -35.312185], // 38 Sydney Avenue, Forrest ACT 2603
+  "aps-australian-competition-and-consumer-commission": [149.124604, -35.284358], // 23 Marcus Clarke Street, Canberra ACT 2601
+  "aps-australian-electoral-commission": [149.12685, -35.277468], // 50 Marcus Clarke Street, Canberra ACT 2601
+  "aps-australian-federal-police": [149.135676, -35.30391], // 47 Kings Avenue, Barton ACT 2600
+  "aps-csiro": [149.145027, -35.278251], // Limestone Avenue, Campbell ACT 2612
+  "aps-department-of-defence": [149.14949, -35.296643], // Russell Drive, Russell ACT 2600
+  "aps-department-of-finance": [149.129822, -35.313454], // 1 Canberra Avenue, Forrest ACT 2603
+  "aps-department-of-foreign-affairs-and-trade": [149.131281, -35.310473], // John McEwen Crescent, Barton ACT 2600
+  "aps-department-of-health-disability-and-ageing": [149.084358, -35.343916], // 23 Furzer Street, Phillip ACT 2606
+  "aps-department-of-home-affairs": [149.066211, -35.240535], // 6 Chan Street, Belconnen ACT 2617
+  "aps-department-of-industry-science-and-resources": [149.133863, -35.281696], // 10 Binara Street, Canberra ACT 2601
+  "aps-department-of-social-services": [149.064532, -35.419562], // 71 Athllon Drive, Greenway ACT 2900
+  "aps-department-of-the-prime-minister-and-cabinet": [149.132393, -35.305645], // 1 National Circuit, Barton ACT 2600
+  "aps-department-of-the-treasury": [149.127505, -35.297559], // Langton Crescent, Parkes ACT 2600
+  "aps-department-of-veterans-affairs": [149.131989, -35.277151], // 21 Genge Street, Canberra ACT 2601
+  "aps-ip-australia": [149.085162, -35.341261], // 47 Bowes Street, Phillip ACT 2606
+  "aps-services-australia": [149.077441, -35.424048], // 27 Athllon Drive, Greenway ACT 2900
   beach: [138.603346, -34.926486], // 80 Flinders Street, Adelaide SA 5000
   "brisbane-dmp": [153.066911, -27.438992], // 485 Kingsford Smith Drive, Hamilton QLD 4007
   "brisbane-flt": [153.016841, -27.471843], // 275 Grey Street, South Brisbane QLD 4101

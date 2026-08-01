@@ -49,6 +49,7 @@ CITY_BOX = {
     'melbourne': (144.4, -38.3, 145.6, -37.4),
     'brisbane': (152.6, -28.0, 153.4, -27.0),
     'adelaide': (138.3, -35.3, 139.0, -34.6),
+    'canberra': (148.95, -35.55, 149.25, -35.15),
 }
 
 # id -> (city, registered head-office address)
@@ -115,6 +116,35 @@ ADDRESSES: dict[str, tuple[str, str]] = {
     'beach': ('adelaide', '80 Flinders Street, Adelaide SA 5000'),
     'adelaide-abc': ('adelaide', '157 Grenfell Street, Adelaide SA 5000'),
     'adelaide-cda': ('adelaide', '2 Second Avenue, Mawson Lakes SA 5095'),
+    # ── Canberra: Commonwealth agencies ───────────────────────────────────
+    # Federal head offices are publicly published, which makes this the most
+    # tractable part of the roster. The named buildings are the agencies' own
+    # national offices, not shopfronts.
+    #
+    # ASIO and the Australian Signals Directorate are deliberately absent. They
+    # are on the roster and they are in Canberra, but pinning an intelligence
+    # agency to a street address is not something to do from recall — if they
+    # are wanted, they should come from the agency's own published contact page.
+    'aps-attorney-general-s-department': ('canberra', '3 National Circuit, Barton ACT 2600'),
+    'aps-department-of-defence': ('canberra', 'Russell Drive, Russell ACT 2600'),
+    'aps-department-of-foreign-affairs-and-trade': ('canberra', 'John McEwen Crescent, Barton ACT 2600'),
+    'aps-department-of-the-treasury': ('canberra', 'Langton Crescent, Parkes ACT 2600'),
+    'aps-department-of-the-prime-minister-and-cabinet': ('canberra', '1 National Circuit, Barton ACT 2600'),
+    'aps-department-of-finance': ('canberra', '1 Canberra Avenue, Forrest ACT 2603'),
+    'aps-department-of-home-affairs': ('canberra', '6 Chan Street, Belconnen ACT 2617'),
+    'aps-department-of-health-disability-and-ageing': ('canberra', '23 Furzer Street, Phillip ACT 2606'),
+    'aps-department-of-social-services': ('canberra', '71 Athllon Drive, Greenway ACT 2900'),
+    'aps-services-australia': ('canberra', '27 Athllon Drive, Greenway ACT 2900'),
+    'aps-australian-bureau-of-statistics': ('canberra', '45 Benjamin Way, Belconnen ACT 2617'),
+    'aps-australian-competition-and-consumer-commission': ('canberra', '23 Marcus Clarke Street, Canberra ACT 2601'),
+    'aps-australian-electoral-commission': ('canberra', '50 Marcus Clarke Street, Canberra ACT 2601'),
+    'aps-geoscience-australia': ('canberra', '101 Jerrabomberra Avenue, Symonston ACT 2609'),
+    'aps-ip-australia': ('canberra', '47 Bowes Street, Phillip ACT 2606'),
+    'aps-csiro': ('canberra', 'Limestone Avenue, Campbell ACT 2612'),
+    'aps-australian-communications-and-media-authority': ('canberra', '38 Sydney Avenue, Forrest ACT 2603'),
+    'aps-department-of-veterans-affairs': ('canberra', '21 Genge Street, Canberra ACT 2601'),
+    'aps-department-of-industry-science-and-resources': ('canberra', '10 Binara Street, Canberra ACT 2601'),
+    'aps-australian-federal-police': ('canberra', '47 Kings Avenue, Barton ACT 2600'),
     # ── Brisbane ──────────────────────────────────────────────────────────
     'brisbane-sun': ('brisbane', '80 Ann Street, Brisbane QLD 4000'),
 }
