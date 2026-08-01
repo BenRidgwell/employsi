@@ -62,100 +62,106 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
   });
 
   return (
-    <div className="pane dqpane" role="dialog" aria-label="Data quality">
-      <div className="paneheadrow">
-        <div>
-          <div className="paneeyebrow">Admin</div>
-          <h2 className="panetitle">Data quality</h2>
+    <>
+      {/* Same shell as the analyst card: a transparent scrim that closes on
+          click, then a positioned card above it. Without the scrim + z-index
+          this rendered underneath the map and the rail. */}
+      <div className="panescrim" onClick={onClose} />
+      <div className="dqpane" role="dialog" aria-label="Data quality">
+        <div className="dqhd">
+          <div className="dqhdtext">
+            <span className="dqeyebrow">Admin</span>
+            <span className="dqhdtitle">Data quality</span>
+          </div>
+          <button className="dqx" onClick={onClose} aria-label="Close">
+            ×
+          </button>
         </div>
-        <button className="panex" onClick={onClose} aria-label="Close">
-          ×
-        </button>
+
+        {!isAdmin ? (
+          <p className="dqmsg">Not permitted.</p>
+        ) : isPending ? (
+          <p className="dqmsg">Reading the archive…</p>
+        ) : !data?.ok ? (
+          <p className="dqmsg">{data?.error || "Couldn't read the archive."}</p>
+        ) : (
+          <div className="dqbody">
+            <section className="dqsec">
+              <h3 className="dqh">Feed freshness</h3>
+              <p className="dqnote">
+                A feed that stops writing looks identical to a quiet market. Anything silent for{" "}
+                {STALE_DAYS} days or more is flagged.
+              </p>
+              <table className="dqtable">
+                <thead>
+                  <tr>
+                    <th>Source</th>
+                    <th className="dqnum">Live</th>
+                    <th className="dqnum">Archived</th>
+                    <th>Last write</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.feeds.map((f) => (
+                    <FeedRowView key={f.source} {...f} />
+                  ))}
+                </tbody>
+              </table>
+            </section>
+
+            <section className="dqsec">
+              <h3 className="dqh">Unmapped titles</h3>
+              <p className="dqnote">
+                {data.unmappedTotal.toLocaleString()} archived roles in the last 30 days matched no
+                skill at all. They are counted as vacancies but contribute to no demand figure, so
+                they are invisible exactly where they would matter. The recurring ones are the ones
+                worth a taxonomy term.
+              </p>
+              {data.unmapped.length ? (
+                <ul className="dqlist">
+                  {data.unmapped.map((u) => (
+                    <li key={u.title}>
+                      <span className="dqcount">{u.n}</span>
+                      <span className="dqtitle">{u.title}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="dqmsg">Every recent role mapped to at least one skill.</p>
+              )}
+            </section>
+
+            <section className="dqsec">
+              <h3 className="dqh">Attribution suspects</h3>
+              <p className="dqnote">
+                Rows whose advertiser does not look like the company they are filed under. Most
+                mismatches are legitimate brands — CHEP is Brambles — so only the two shapes that
+                indicate a real fault are listed: a roster name matching only inside a word, and an
+                advertiser that is a different roster company.
+              </p>
+              {data.attribution.length ? (
+                <ul className="dqlist">
+                  {data.attribution.map((a) => (
+                    <li key={`${a.source}|${a.companyId}|${a.advertiser}`}>
+                      <span className="dqcount">{a.n}</span>
+                      <span className="dqtitle">
+                        <strong>{a.advertiser}</strong> filed under {a.companyId}{" "}
+                        <span className="dqmuted">({a.rosterName})</span>
+                        <span className="dqwhy">{a.reason}</span>
+                      </span>
+                      <span className="dqsrctag">{a.source}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="dqmsg">No suspect attributions in the last 30 days.</p>
+              )}
+            </section>
+
+            <p className="dqfoot">Read from the live archive · {data.generated}</p>
+          </div>
+        )}
       </div>
-
-      {!isAdmin ? (
-        <p className="dqmsg">Not permitted.</p>
-      ) : isPending ? (
-        <p className="dqmsg">Reading the archive…</p>
-      ) : !data?.ok ? (
-        <p className="dqmsg">{data?.error || "Couldn't read the archive."}</p>
-      ) : (
-        <div className="dqbody">
-          <section className="dqsec">
-            <h3 className="dqh">Feed freshness</h3>
-            <p className="dqnote">
-              A feed that stops writing looks identical to a quiet market. Anything silent for{" "}
-              {STALE_DAYS} days or more is flagged.
-            </p>
-            <table className="dqtable">
-              <thead>
-                <tr>
-                  <th>Source</th>
-                  <th className="dqnum">Live</th>
-                  <th className="dqnum">Archived</th>
-                  <th>Last write</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.feeds.map((f) => (
-                  <FeedRowView key={f.source} {...f} />
-                ))}
-              </tbody>
-            </table>
-          </section>
-
-          <section className="dqsec">
-            <h3 className="dqh">Unmapped titles</h3>
-            <p className="dqnote">
-              {data.unmappedTotal.toLocaleString()} archived roles in the last 30 days matched no
-              skill at all. They are counted as vacancies but contribute to no demand figure, so
-              they are invisible exactly where they would matter. The recurring ones are the ones
-              worth a taxonomy term.
-            </p>
-            {data.unmapped.length ? (
-              <ul className="dqlist">
-                {data.unmapped.map((u) => (
-                  <li key={u.title}>
-                    <span className="dqcount">{u.n}</span>
-                    <span className="dqtitle">{u.title}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="dqmsg">Every recent role mapped to at least one skill.</p>
-            )}
-          </section>
-
-          <section className="dqsec">
-            <h3 className="dqh">Attribution suspects</h3>
-            <p className="dqnote">
-              Rows whose advertiser does not look like the company they are filed under. Most
-              mismatches are legitimate brands — CHEP is Brambles — so only the two shapes that
-              indicate a real fault are listed: a roster name matching only inside a word, and an
-              advertiser that is a different roster company.
-            </p>
-            {data.attribution.length ? (
-              <ul className="dqlist">
-                {data.attribution.map((a) => (
-                  <li key={`${a.source}|${a.companyId}|${a.advertiser}`}>
-                    <span className="dqcount">{a.n}</span>
-                    <span className="dqtitle">
-                      <strong>{a.advertiser}</strong> filed under {a.companyId}{" "}
-                      <span className="dqmuted">({a.rosterName})</span>
-                      <span className="dqwhy">{a.reason}</span>
-                    </span>
-                    <span className="dqsrctag">{a.source}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="dqmsg">No suspect attributions in the last 30 days.</p>
-            )}
-          </section>
-
-          <p className="dqfoot">Read from the live archive · {data.generated}</p>
-        </div>
-      )}
-    </div>
+    </>
   );
 }
