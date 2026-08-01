@@ -6130,68 +6130,6 @@ body {
   animation: none !important;
   scroll-behavior: auto !important;
 }
-.fbtext {
-  width: 100%;
-  box-sizing: border-box;
-  min-height: 84px;
-  resize: vertical;
-  margin-top: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  font-family: inherit;
-  font-size: 12.5px;
-  color: var(--ink);
-  outline: none;
-  background: #f7f7f8;
-}
-.fbtext:focus {
-  border-color: var(--slate);
-}
-.fbsend {
-  width: 100%;
-  margin-top: 10px;
-  padding: 10px;
-  border: 0;
-  border-radius: 10px;
-  background: #1c1c1e;
-  color: #fff;
-  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-  transition: 0.15s;
-}
-.fbsend:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-.fbsend:not(:disabled):hover {
-  transform: translateY(-1px);
-}
-.fbthanks {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
-  font-weight: 700;
-  font-size: 13.5px;
-  color: var(--ink);
-  padding: 6px 2px;
-}
-.fbcheck {
-  flex: 0 0 auto;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: #159d67;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 /* ── Feedback board ────────────────────────────────────────────────────────
    Laid out to the supplied Feedback Board Popout: a 412px card with a fixed
    header and tab row, a scrolling list, and a composer pinned to its bottom.
@@ -6608,22 +6546,31 @@ body {
   color: #97332b;
 }
 
-/* --- signed-out footer --- */
+/* --- signed-out footer ---
+   Stacked, not a row: the prompt sits above a full-width Log in button. Side
+   by side, "Have a say in what gets built" and a 32px button do not both fit
+   across 412px minus the padding, so the sentence wrapped to one word a line. */
 .fbsignedout {
   flex: 0 0 auto;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 13px 14px 13px 16px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 11px;
+  padding: 14px 16px;
   border-top: 1px solid var(--line, #ededf0);
   background: linear-gradient(#fbfbfc, #f4f4f5);
 }
 .fbsignedouttext {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
+}
+/* The composer's Post button is inline in a row and must stay hug-width; only
+   the signed-out one spans the footer. */
+.fbsignedout .fbsend {
+  width: 100%;
+  height: 36px;
 }
 .fbsignedouttitle {
   font-size: 13.5px;
