@@ -1,0 +1,58 @@
+# Daily JobStreet Malaysia → D1 archive.
+#
+# JobStreet is SEEK-owned and sits behind the same front, which 403s both the
+# app's Cloudflare Workers cron and this sandbox (see the note at the top of
+# scripts/jobstreet-to-d1.py). So it runs here, on an ordinary GitHub runner,
+# exactly as the SEEK feed does — and writes the same rows, through the same D1
+# HTTP API, deduped on the same key, with skills mapped by the worker's own
+# taxonomy so a Malaysian role is classified identically to an Australian one.
+#
+# This is what gives Kuala Lumpur vacancy coverage: the career-portal feeds only
+# see an employer's own site, and most of the roster does not run a Malaysian
+# careers site.
+#
+# Required repo secret:
+#   CLOUDFLARE_API_TOKEN  — a token with D1 edit on the employsi account.
+# Optional repo variables (fall back to the values baked into the script):
+#   CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# The job fails (red X + GitHub's own notification) if not one company on the
+# roster returns a Malaysian vacancy. That is never a real state of the world —
+# it means the site key or the API shape moved — and a wrong parameter here
+# returns totalCount 0 rather than an error, so silence has to be treated as
+# breakage rather than as an empty market.
+
+name: jobstreet-archive
+
+on:
+  schedule:
+    # 20:00 UTC daily (~04:00 MYT) — after the Malaysian posting day, and an
+    # hour clear of seek-archive so the two never share a D1 write window.
+    - cron: '0 20 * * *'
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+concurrency:
+  group: jobstreet-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Scrape JobStreet Malaysia → D1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/jobstreet-to-d1.py

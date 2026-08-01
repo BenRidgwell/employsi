@@ -413,6 +413,7 @@ async function fromMuse(company: string, region: RegExp): Promise<AdvertisedJob[
 // one today; the map turns a stored source key into a display label.
 const ARCHIVE_SOURCE_LABEL: Record<string, string> = {
   seek: "SEEK",
+  jobstreet: "JobStreet",
   jooble: "Jooble",
   mycareersfuture: "MyCareersFuture",
   indeed: "Indeed",
