@@ -79,6 +79,16 @@ export interface AppState {
   analystOpen: boolean;
   /** Admin-only archive health pane. */
   dataQualityOpen: boolean;
+  /**
+   * The unreleased place an end user just clicked, or null.
+   *
+   * Carries the composed display name ("Jakarta, Indonesia") rather than only
+   * the id, because the maps already hold the label they render and the modal
+   * would otherwise need its own id→name lookup that could drift from theirs.
+   * Never set for an admin — they can reach every market, so nothing is
+   * "coming soon" from their side of the gate.
+   */
+  comingSoon: { id: string; place: string } | null;
   // Feedback board + help-tour open state. Lifted here (Settings already is) so
   // the mobile "More" sheet can open them alongside the desktop dock buttons.
   feedbackOpen: boolean;
@@ -155,6 +165,8 @@ export interface AppState {
   closeAnalyst: () => void;
   toggleDataQuality: () => void;
   closeDataQuality: () => void;
+  openComingSoon: (id: string, place: string) => void;
+  closeComingSoon: () => void;
 
   toggleFeedback: () => void;
   closeFeedback: () => void;
@@ -280,6 +292,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   trendingOpen: false,
   analystOpen: false,
   dataQualityOpen: false,
+  comingSoon: null,
   feedbackOpen: false,
   helpTourOpen: false,
   mobileMenuOpen: false,
@@ -669,6 +682,20 @@ export const useAppStore = create<AppState>((set, get) => ({
       heatOpen: false,
     })),
   closeDataQuality: () => set({ dataQualityOpen: false }),
+
+  // Clicking an unreleased place. It closes the flyouts the way selecting a
+  // company does, because this modal covers the map and leaving a dropdown open
+  // behind it would only be reachable by dismissing the modal first.
+  openComingSoon: (id, place) =>
+    set({
+      comingSoon: { id, place },
+      interacted: true,
+      searchOpen: false,
+      filterOpen: false,
+      heatOpen: false,
+      mobileMenuOpen: false,
+    }),
+  closeComingSoon: () => set({ comingSoon: null }),
 
   toggleFeedback: () =>
     set((s) => ({

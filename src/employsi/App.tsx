@@ -16,6 +16,7 @@ import { ComparePanel } from "./components/panels/ComparePanel";
 import { WhatsTrendingPane } from "./components/panels/WhatsTrendingPane";
 import { DataQualityGate } from "./components/panels/DataQualityGate";
 import { AnalystPane } from "./components/panels/AnalystPane";
+import { ComingSoonPane } from "./components/panels/ComingSoonPane";
 import { useAppStore } from "./state/store";
 import { useAuthSession } from "./hooks/useAuthSession";
 import { useSkillIndex } from "./hooks/useSkillData";
@@ -92,6 +93,10 @@ function App() {
       <WhatsTrendingPane />
       <AnalystPane />
       <DataQualityGate />
+      {/* Clicking an unreleased market. Rendered at the root, outside the map
+          frame: it is a modal over the whole page, and inside `.mapcard` the
+          card's shadow would be clipped by the frame's rounded corners. */}
+      <ComingSoonPane />
       <MobileTabBar />
       <MobileMenu />
       <Toast />

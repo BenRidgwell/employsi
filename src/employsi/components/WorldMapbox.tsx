@@ -479,6 +479,11 @@ interface Marker {
   // behave at the local layer, so the places that DO answer the search are the
   // only ones competing for attention.
   faded?: boolean;
+  // Set for an end user on a market employsi has not released yet. Locked
+  // markers look identical to faded ones but stay CLICKABLE, and clicking one
+  // opens the "coming soon" card instead of drilling in — an inert dot answers
+  // "nothing here", which is the wrong answer for a market that is being built.
+  locked?: boolean;
   // % change in the searched skill's demand at the current slider month (set
   // only while a skill + the time slider are active), shown as a small callout.
   pct?: number | null;
@@ -677,7 +682,12 @@ export function computeMarkers(
       // neutral in every view; the heat map must not reach it at all.
       m.color = dotColor;
       m.faded = true;
-      m.clickable = false;
+      // Locked, not inert. `clickable` is forced back ON — it may have been
+      // cleared by the skill pass above, and an unreleased market answers a
+      // click whatever else is going on. The click opens the coming-soon card;
+      // activateMarker checks `locked` before it drills in.
+      m.locked = true;
+      m.clickable = true;
     }
   }
   return out;
@@ -776,10 +786,27 @@ function markersGeoJSON(markers: Marker[], selectedId: string | null): GeoJSON.F
         // expressions below treat them the same.
         dim: (!!selectedId && selectedId !== m.id) || !!m.faded,
         faded: !!m.faded,
+        locked: !!m.locked,
       },
       geometry: { type: "Point", coordinates: m.coords },
     })),
   };
+}
+
+/**
+ * How a place is named in the coming-soon card: "Jakarta, Indonesia".
+ *
+ * The marker's own label is the first half, so the card and the pin it came
+ * from always agree. A country marker is already the whole name and gets no
+ * suffix; a city gets its country appended, because "Jakarta" alone is a
+ * weaker answer than "Jakarta, Indonesia" when the person is looking at a
+ * globe. Cities with no country mapping (the Europe cluster) fall back to the
+ * bare label rather than inventing one.
+ */
+function placeName(m: Marker): string {
+  if (COUNTRIES[m.id]) return m.label;
+  const country = COUNTRIES[CITY_COUNTRY[m.id] ?? ""];
+  return country ? `${m.label}, ${country.label}` : m.label;
 }
 
 // Nearest key in a coord table to a given lng/lat (simple squared-degree
@@ -882,15 +909,24 @@ export function WorldMapbox() {
     // Activating a marker: at the global layer the markers are COUNTRIES, so we
     // drop to that country's domestic layer (where the city breakdown lives);
     // on a domestic layer the markers are cities, so we fly into the city.
-    const activateMarker = (id: string) => {
+    //
+    // Takes the marker rather than its id so it can see `locked`: an end user
+    // clicking a market employsi has not released yet gets the coming-soon card
+    // instead of a layer change, which is the only place that state is turned
+    // back into something the person can act on.
+    const activateMarker = (m: Marker) => {
       const st = useAppStore.getState();
-      if (id === EUROPE_CLUSTER_ID) {
+      if (m.locked) {
+        st.openComingSoon(m.id, placeName(m));
+        return;
+      }
+      if (m.id === EUROPE_CLUSTER_ID) {
         st.goDomestic("europe");
         return;
       }
-      const country = COUNTRIES[id];
+      const country = COUNTRIES[m.id];
       if (country) st.goDomestic(country.region);
-      else st.zoomInCity(id);
+      else st.zoomInCity(m.id);
     };
 
     const renderLabels = (
@@ -929,7 +965,7 @@ export function WorldMapbox() {
           el.addEventListener("pointerdown", swallow);
           el.onclick = (ev) => {
             ev.stopPropagation();
-            activateMarker(m.id);
+            activateMarker(m);
           };
         } else {
           el.style.cursor = "default";
@@ -1198,8 +1234,10 @@ export function WorldMapbox() {
       [CORE_LAYER, HALO_LAYER].forEach((layer) => {
         map.on("mouseenter", layer, (e) => {
           // A no-demand marker is inert, so it must not advertise itself as
-          // clickable either.
-          if (e.features?.some((f) => f.properties?.faded)) return;
+          // clickable either. A LOCKED one is dimmed the same way but does
+          // answer a click (with the coming-soon card), so it keeps the pointer.
+          const hit = e.features ?? [];
+          if (hit.length && hit.every((f) => f.properties?.faded && !f.properties?.locked)) return;
           map.getCanvas().style.cursor = "pointer";
         });
         map.on("mouseleave", layer, () => {
@@ -1222,7 +1260,7 @@ export function WorldMapbox() {
           }
         });
         if (best && bestD <= PICK_RADIUS * PICK_RADIUS) {
-          activateMarker((best as Marker).id);
+          activateMarker(best as Marker);
         }
       });
 

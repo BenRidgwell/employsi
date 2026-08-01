@@ -10600,3 +10600,570 @@ body {
   font-size: 12px;
   padding: 4px 0 2px;
 }
+
+/* ── Coming soon (unreleased market) ───────────────────────────────────────
+   Shown when an end user clicks a country or city employsi has not released
+   yet. Laid out to the supplied Coming Soon Region design: a 392px card over a
+   blurred scrim, carrying a construction-site illustration — a gantry crane
+   unloading blocks into the last, dashed bar of a chart.
+
+   Every animation below is one of the design's own keyframes, kept at its
+   original timing: the four crane deliveries are phased against the bar fill
+   (7.2s shared cycle), so the block lands before the bar grows past it. Change
+   one duration and the crane starts dropping into thin air.
+
+   `.reduce-motion *` (declared earlier) suppresses all of it, leaving the
+   illustration as a static drawing. */
+.csscrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(244, 244, 245, 0.14);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: cs-fade 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  z-index: 66;
+}
+.cscard {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  box-sizing: border-box;
+  width: 392px;
+  max-width: calc(100vw - 32px);
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 22px;
+  background: linear-gradient(#ffffff, #fbfbfc);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 30px 60px -22px rgba(28, 28, 30, 0.4);
+  animation: cs-pop 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  z-index: 67;
+}
+@keyframes cs-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* Centring is done with a transform, so both ends of the pop have to carry it
+   — a bare `transform: none` finish would snap the card to the viewport's
+   middle-right as it landed. */
+@keyframes cs-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* --- the illustration --- */
+.csart {
+  position: relative;
+  height: 172px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #1c1c1e;
+}
+.csgrid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.cssurvey {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85), transparent);
+  animation: cs-survey 4.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.csrail {
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  top: 26px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.16);
+}
+.cspost {
+  position: absolute;
+  left: 26px;
+  top: 20px;
+  width: 2px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.24);
+}
+.cstrolley {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  animation: cs-trolley 7.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+.cshead {
+  width: 14px;
+  height: 9px;
+  border-radius: 2px;
+  background: #ffffff;
+}
+.cscable {
+  position: absolute;
+  left: 6.5px;
+  top: 9px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.5);
+  animation: cs-cable 7.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+.cspayload {
+  position: absolute;
+  left: -2px;
+  top: 14px;
+  width: 18px;
+  height: 11px;
+  border-radius: 2px;
+  background: #ffffff;
+  animation: cs-payload 7.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+.csbars {
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  bottom: 26px;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  height: 104px;
+}
+.csbar {
+  width: 22px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.9);
+}
+.csbarslot {
+  position: relative;
+  box-sizing: border-box;
+  width: 22px;
+  height: 100%;
+  border: 1px dashed rgba(255, 255, 255, 0.32);
+  border-radius: 3px;
+}
+.csfill {
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  bottom: 1px;
+  height: 4%;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.9);
+  animation:
+    cs-fill 7.2s cubic-bezier(0.33, 1, 0.68, 1) infinite,
+    cs-fill-reset 7.2s linear infinite;
+}
+.csdust {
+  position: absolute;
+  left: -10px;
+  right: -10px;
+  bottom: 100%;
+  height: 26px;
+  border-radius: 999px;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.5), transparent 72%);
+  animation: cs-dust 1.8s ease-out 1.22s infinite;
+}
+.cshazard {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 16px;
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.14) 0 8px,
+    transparent 8px 18px
+  );
+  animation: cs-stripes 1.4s linear infinite;
+}
+.cshazardline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 16px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.14);
+}
+.cschip {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px 5px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.csdot {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #ffd60a;
+  animation: cs-blink 1.4s ease-in-out infinite;
+}
+.cschiptext {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: #ffffff;
+}
+
+/* one 7.2s cycle = four deliveries; each drop lands on the current fill top,
+   then the bar grows up past it. Depth shrinks as the bar gets taller. */
+@keyframes cs-trolley {
+  0% {
+    transform: translateX(0);
+  }
+  10% {
+    transform: translateX(108px);
+  }
+  21.25% {
+    transform: translateX(108px);
+  }
+  25% {
+    transform: translateX(0);
+  }
+  35% {
+    transform: translateX(108px);
+  }
+  46.25% {
+    transform: translateX(108px);
+  }
+  50% {
+    transform: translateX(0);
+  }
+  60% {
+    transform: translateX(108px);
+  }
+  71.25% {
+    transform: translateX(108px);
+  }
+  75% {
+    transform: translateX(0);
+  }
+  85% {
+    transform: translateX(108px);
+  }
+  96.25% {
+    transform: translateX(108px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+@keyframes cs-cable {
+  0%,
+  10% {
+    height: 6px;
+  }
+  15.5%,
+  17% {
+    height: 102px;
+  }
+  21.25%,
+  35% {
+    height: 6px;
+  }
+  40.5%,
+  42% {
+    height: 77px;
+  }
+  46.25%,
+  60% {
+    height: 6px;
+  }
+  65.5%,
+  67% {
+    height: 52px;
+  }
+  71.25%,
+  85% {
+    height: 6px;
+  }
+  90.5%,
+  92% {
+    height: 27px;
+  }
+  96.25%,
+  100% {
+    height: 6px;
+  }
+}
+@keyframes cs-payload {
+  0%,
+  10% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  15.5%,
+  17% {
+    transform: translateY(97px);
+    opacity: 1;
+  }
+  18.4% {
+    transform: translateY(97px);
+    opacity: 0;
+  }
+  19%,
+  23.9% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  24.5%,
+  35% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  40.5%,
+  42% {
+    transform: translateY(72px);
+    opacity: 1;
+  }
+  43.4% {
+    transform: translateY(72px);
+    opacity: 0;
+  }
+  44%,
+  48.9% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  49.5%,
+  60% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  65.5%,
+  67% {
+    transform: translateY(47px);
+    opacity: 1;
+  }
+  68.4% {
+    transform: translateY(47px);
+    opacity: 0;
+  }
+  69%,
+  73.9% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  74.5%,
+  85% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  90.5%,
+  92% {
+    transform: translateY(22px);
+    opacity: 1;
+  }
+  93.4% {
+    transform: translateY(22px);
+    opacity: 0;
+  }
+  94%,
+  98.9% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  99.5%,
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+/* fill rises smoothly the moment each block is released */
+@keyframes cs-fill {
+  0%,
+  17% {
+    height: 4%;
+  }
+  21.9%,
+  42% {
+    height: 28%;
+  }
+  46.9%,
+  67% {
+    height: 52%;
+  }
+  71.9%,
+  92% {
+    height: 76%;
+  }
+  96.9%,
+  100% {
+    height: 100%;
+  }
+}
+@keyframes cs-fill-reset {
+  0%,
+  98.4% {
+    opacity: 1;
+  }
+  99.4% {
+    opacity: 0;
+  }
+  99.6%,
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes cs-dust {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+  22% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+@keyframes cs-stripes {
+  to {
+    background-position: 36px 0;
+  }
+}
+@keyframes cs-survey {
+  0% {
+    transform: translateY(112px);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.5;
+  }
+  88% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+}
+@keyframes cs-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* --- the copy + actions --- */
+.csbody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 16px 8px;
+}
+.cscopy {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.cseyebrow {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: #8e8e93;
+}
+.cstitle {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  color: var(--ink, #1c1c1e);
+}
+.cssub {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 450;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+  color: #6c6c72;
+  text-wrap: pretty;
+}
+.cserr {
+  margin: 0;
+  font-size: 12.5px;
+  color: #97332b;
+}
+.csactions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 2px;
+}
+.csbtn {
+  flex: 1 1 auto;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.008em;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    opacity 120ms ease,
+    transform 110ms ease;
+}
+.csbtn:not(:disabled):active {
+  transform: scale(0.98);
+}
+.csbtn:disabled {
+  cursor: default;
+}
+.csbtnprimary {
+  background: #1c1c1e;
+  border-color: #1c1c1e;
+  color: #ffffff;
+}
+.csbtnprimary:not(:disabled):hover {
+  background: #2c2c2e;
+}
+.csbtnprimary:disabled {
+  opacity: 0.55;
+}
+.csbtnsecondary {
+  flex: 0 0 auto;
+  background: #ededf0;
+  border: 1px solid #e2e2e7;
+  color: #1c1c1e;
+}
+.csbtnsecondary:hover {
+  background: #e5e5ea;
+}
+
+@media (max-width: 680px) {
+  .cscard {
+    width: calc(100vw - 24px);
+  }
+}

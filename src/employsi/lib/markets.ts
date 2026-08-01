@@ -44,6 +44,27 @@ export const RELEASED_MARKETS: ReadonlySet<string> = new Set([
   "my", // Malaysia — JobStreet MY
 ]);
 
+/**
+ * When an unreleased market is expected to open, where that is actually known.
+ *
+ * Shown in the coming-soon card's eyebrow ("ROADMAP · Q4 2026"). DELIBERATELY
+ * EMPTY: the design ships a hard-coded date and there is no roadmap behind it,
+ * and a delivery date nobody committed to is the same kind of invention as a
+ * vacancy figure nobody counted. The card drops to plain "ROADMAP" for any
+ * place not listed here, so adding a real commitment is one line and inventing
+ * one takes a deliberate act.
+ *
+ * Keys are place ids — a country code ("id", "jp") or a city id ("jakarta").
+ * The city is checked first, so a market can carry a date for one city ahead of
+ * the rest of its country.
+ */
+export const MARKET_ETA: Record<string, string> = {};
+
+/** The published ETA for a place, or "" when none has been committed to. */
+export function etaFor(id: string): string {
+  return MARKET_ETA[id] || MARKET_ETA[CITY_COUNTRY[id] ?? ""] || "";
+}
+
 /** An administrator sees every market, released or not. */
 export function seesAllMarkets(role: Role): boolean {
   return role === "admin";
