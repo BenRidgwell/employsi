@@ -1,0 +1,119 @@
+# Daily triage of the previous night's workflow failures. REPORT ONLY.
+#
+# The scrapers already fail loudly when a feed breaks — that is deliberate, and
+# documented in each workflow. What was missing is somebody reading the red X.
+# This runs after the night's feeds have landed, reads the failures, works out
+# which are ours, and writes what it found into ONE tracking issue.
+#
+# IT DOES NOT PUSH. `contents` is read-only at the job level, so a fix cannot be
+# committed even if the model decides it should be. The intent is to see how it
+# categorises real failures — above all, whether it leaves a DELIBERATE red X
+# alone — before it is trusted with commit rights. Promoting it later is a
+# permissions change plus a change to section 4 of the prompt, nothing more.
+#
+# Required repo secret:
+#   ANTHROPIC_API_KEY
+#
+# Use "Run workflow" to triage on demand.
+
+name: actions-health
+
+on:
+  schedule:
+    # 01:00 UTC daily — ~90 minutes after scraper-health (23:30 UTC), which is
+    # the last job of the night, so every run has settled before this looks.
+    - cron: '0 1 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: actions-health
+  cancel-in-progress: false
+
+permissions:
+  # Read-only on the repo: this job reports, it does not fix.
+  contents: read
+  # The one thing it does write.
+  issues: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Reading another workflow's runs and logs needs this on top of the
+          # job-level permissions above.
+          additional_permissions: |
+            actions: read
+          claude_args: |
+            --max-turns 40
+          prompt: |
+            Triage the last 24 hours of GitHub Actions failures in this repository
+            (BenRidgwell/globe-gazer-hr — the Employsi labour-market map) and record what you
+            find. This run is REPORT ONLY: you have read-only access to the repository and
+            must not commit, push, or open a pull request.
+
+            ## 1. Find what failed
+
+            List workflow runs from the LAST 24 HOURS only. The nightly scrapers land between
+            17:30 and 23:30 UTC, so anything older is yesterday's news and not in scope.
+
+            Skip runs still in progress. For every run with conclusion `failure` or
+            `cancelled`, read the failing job's logs before forming a view.
+
+            ## 2. Categorise each failure
+
+            The whole value of this job is in telling these apart:
+
+            (a) A REAL CODE BUG in the repo — a parser that throws, a renamed function, a bad
+            import, a dependency that moved. Actionable by us.
+
+            (b) AN UPSTREAM SITE CHANGE — the board changed its API shape, field names, or
+            pagination. Actionable, but the new shape has to be VERIFIED against the live
+            endpoint before anyone writes a parser for it. If you can check it, say what you
+            observed. Never infer the new shape from the error message alone and present that
+            as fact.
+
+            (c) AN UPSTREAM BLOCK OR OUTAGE — 403, 429, a DataDome or Cloudflare challenge, a
+            timeout, a 5xx. Not actionable by us. Note it, and say if it has persisted across
+            several days.
+
+            (d) A DELIBERATE LOUD FAILURE. Read this carefully before writing anything.
+            Several workflows here are BUILT to exit non-zero when a feed goes quiet —
+            `jobstreet-archive`, `jobstreet-ph-archive` and `scraper-health` all do. Those
+            boards return `totalCount 0` rather than an error when a parameter goes stale, so
+            silence is indistinguishable from an empty market, and the red X IS the alarm
+            working as designed. Never recommend fixing one by loosening its threshold,
+            softening its exit code, or making a check tolerate zero rows. The question to
+            answer is WHY the feed went quiet. If you cannot tell, say so and call it a broken
+            feed.
+
+            Read CLAUDE.md at the repo root for the architecture, the two-Worker split, the
+            dedup key and the conventions before judging whether something is a bug.
+
+            ## 3. Write it into ONE issue
+
+            Search open issues for one titled exactly `Nightly Actions health` .
+
+            - If it exists, REPLACE its body with today's findings and add a dated comment
+              summarising what changed since the last run — newly broken, still broken, now
+              recovered.
+            - If it does not exist AND there is something to report, create it with that exact
+              title and the label `actions-health`.
+            - If NOTHING failed in the last 24 hours: add a single dated comment saying so if
+              the issue is open, and close it. Do not create an issue just to say all is well.
+
+            In the body, for each failure give: the workflow name, a link to the run, the
+            category from section 2, the specific evidence from the log you based that on, and
+            a concrete suggested fix. Where you are unsure, say so plainly rather than
+            guessing — a confident wrong diagnosis in this repo costs more than an open
+            question.
+
+            ## 4. Do not fix anything
+
+            No commits, no pushes, no pull requests, no edits to workflow files. If a fix is
+            obvious, describe it in the issue and stop there. Someone will read it.
