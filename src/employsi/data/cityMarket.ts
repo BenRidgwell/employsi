@@ -123,6 +123,20 @@ export const CITY_MARKET: Record<string, CityMarket> = {
   },
   portland: { country: "us", where: "Portland", region: /united states|\busa?\b|portland|oregon/i },
   singapore: { country: "sg", where: "Singapore", region: /singapore/i },
+  // Adzuna publishes neither Malaysia nor the Philippines, so these two fall
+  // through to The Muse and to the archive — which is where their vacancies
+  // actually come from anyway: BHP, HSBC and Macquarie all advertise KL and
+  // Manila roles on their own career portals, and those rows are already held.
+  kualalumpur: {
+    country: "my",
+    where: "Kuala Lumpur",
+    region: /malaysia|kuala lumpur|selangor|petaling/i,
+  },
+  manila: {
+    country: "ph",
+    where: "Manila",
+    region: /philippines|manila|makati|taguig|bgc/i,
+  },
   mumbai: { country: "in", where: "Mumbai", region: /india|mumbai|bombay|maharashtra/i },
   bengaluru: {
     country: "in",

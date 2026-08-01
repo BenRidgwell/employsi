@@ -22,6 +22,8 @@ export const CITY_CODE: Record<string, string> = {
   wellington: "WLG",
   // Asia / Middle East
   singapore: "SIN",
+  kualalumpur: "KUL",
+  manila: "MNL",
   tokyo: "TYO",
   hongkong: "HKG",
   dubai: "DXB",

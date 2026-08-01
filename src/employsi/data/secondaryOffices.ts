@@ -34,10 +34,20 @@ export const SECONDARY_OFFICES: Record<string, string[]> = {
   "melbourne-anz": ["sydney", "brisbane", "perth", "adelaide"],
   // Macquarie is the one Australian financial with genuine offshore corporate
   // centres rather than representative offices.
-  "sydney-mqg": ["melbourne", "brisbane", "perth", "london", "newyork", "singapore", "hongkong"],
+  "sydney-mqg": [
+    "melbourne",
+    "brisbane",
+    "perth",
+    "london",
+    "newyork",
+    "singapore",
+    "hongkong",
+    "kualalumpur",
+    "manila",
+  ],
 
   // ── Australian telecoms, retail and transport ─────────────────────────────
-  "melbourne-tls": ["sydney", "brisbane", "perth", "adelaide", "canberra"],
+  "melbourne-tls": ["sydney", "brisbane", "perth", "adelaide", "canberra", "manila"],
   "sydney-wow": ["melbourne", "brisbane"],
   "melbourne-col": ["sydney", "brisbane"],
   "sydney-qan": ["melbourne", "brisbane", "perth"],
@@ -66,6 +76,30 @@ export const SECONDARY_OFFICES: Record<string, string[]> = {
   // Both supermajors run their American businesses from Houston.
   "london-bp": ["houston"],
   "london-shel": ["houston"],
+
+  // ── Kuala Lumpur and Manila ───────────────────────────────────────────────
+  // Every entry below was taken from our OWN archive rather than from memory:
+  // these are companies whose career portals we already scrape and which are
+  // currently advertising roles located in those cities. The counts are the
+  // rows held at the time of writing.
+  //
+  //   Kuala Lumpur   HSBC 75 · BHP 4 · Macquarie 1
+  //   Manila         HSBC 57 · Macquarie 32 · BHP 21 · Telstra 1
+  //
+  // The titles say what kind of presence each is. BHP's read "Principal GBS
+  // Cost Engineering | Kuala Lumpur" and "Team Assistant GBS HR Ops & Payroll |
+  // Manila" — GBS is its global business-services network, so both are real
+  // corporate centres, not sales offices. Macquarie's own location field says
+  // "Kuala Lumpur Office" and "Manila Office" outright, and its Manila roles
+  // span trading operations, data and engineering.
+  //
+  // DELIBERATELY NOT HERE: Brambles. Its one Malaysian vacancy is in Klang,
+  // Selangor — a port town 30km from Kuala Lumpur, and a supply-chain site
+  // rather than a KL office. Mapping it to KL would put a pin in a city the
+  // company does not have a presence in, which is the exact thing this file
+  // exists to prevent.
+  bhp: ["kualalumpur", "manila"],
+  "london-hsba": ["kualalumpur", "manila"],
 };
 
 /**

@@ -297,6 +297,11 @@ export const CITY_PLACEMENT: Record<string, CityPlacement> = {
   // needs capping at 700 m before the fan reaches the waterfront.
   hongkong: { anchor: [114.1585, 22.282], arc: [208, 340], maxKm: 0.7 },
   singapore: { anchor: [103.8505, 1.281], arc: [190, 350] }, // Raffles Place; avoid Marina (E)
+  // KLCC. Kuala Lumpur is inland with no coast to avoid, so the fan is free.
+  kualalumpur: { anchor: [101.7115, 3.1578] },
+  // Makati CBD. Manila Bay lies to the WEST, so the fan is kept off that
+  // bearing and held close in — these are a handful of pins, not a roster.
+  manila: { anchor: [121.0244, 14.5547], arc: [340, 200], maxKm: 3 },
   shanghai: { anchor: [121.475, 31.231] }, // People's Sq (inland Puxi); off the Huangpu
 };
 

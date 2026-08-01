@@ -135,6 +135,8 @@ export const CITY_COUNTRY: Record<string, string> = {
   wellington: "nz",
   // Asia
   singapore: "sg",
+  kualalumpur: "my",
+  manila: "ph",
   mumbai: "in",
   bengaluru: "in",
   tokyo: "jp",
@@ -222,6 +224,8 @@ export const COUNTRIES: Record<string, CountryInfo> = {
   au: { label: "Australia", region: "australia", center: [134.0, -25.6] },
   nz: { label: "New Zealand", region: "australia", center: [172.8, -41.2] },
   sg: { label: "Singapore", region: "asia", center: [103.82, 1.35] },
+  my: { label: "Malaysia", region: "asia", center: [101.69, 3.14] },
+  ph: { label: "Philippines", region: "asia", center: [121.0, 14.6] },
   jp: { label: "Japan", region: "asia", center: [139.6, 34.9] },
   hk: { label: "Hong Kong", region: "asia", center: [114.17, 22.32] },
   ae: { label: "United Arab Emirates", region: "asia", center: [54.0, 24.3] },

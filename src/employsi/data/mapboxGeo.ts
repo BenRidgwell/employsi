@@ -53,6 +53,11 @@ export const CITY_VIEWS: Record<string, CityView> = {
   wellington: { center: [174.7759, -41.2865], zoom: 16.2, pitch: 60, bearing: -20 },
   sydney: { center: [151.2093, -33.8688], zoom: 16.5, pitch: 60, bearing: -18 },
   singapore: { center: [103.8519, 1.29], zoom: 16.4, pitch: 60, bearing: -12 },
+  // KLCC — the corporate core, around the Petronas Towers and Jalan Ampang.
+  kualalumpur: { center: [101.7115, 3.1578], zoom: 16.0, pitch: 60, bearing: -15 },
+  // Makati, not the City of Manila: the offices these companies run are in the
+  // Makati/BGC business districts, ~6km inland from Manila Bay.
+  manila: { center: [121.0244, 14.5547], zoom: 15.8, pitch: 60, bearing: -10 },
   ganzhou: { center: [114.9333, 25.83], zoom: 16.1, pitch: 60, bearing: -14 },
   toronto: { center: [-79.3832, 43.6532], zoom: 16.4, pitch: 60, bearing: -18 },
   houston: { center: [-95.3698, 29.7604], zoom: 16.3, pitch: 60, bearing: -14 },
