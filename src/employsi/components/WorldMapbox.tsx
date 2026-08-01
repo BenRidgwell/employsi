@@ -61,33 +61,92 @@ const RAIL_BED_LAYER = "au-rail-bed";
 const RAIL_SLEEPER_LAYER = "au-rail-sleepers";
 
 /**
- * Perth → Darwin, run up the Western Australian coast.
+ * The Australian interstate rail network, as it actually exists.
  *
- * This follows the coastline rather than the rail network. Australia has no
- * Perth–Darwin railway: the track that connects them goes inland via Kalgoorlie
- * and the Nullarbor to Tarcoola, then north through Alice Springs — a dogleg
- * into the middle of the continent. The coastal line was chosen instead because
- * it reads as the west-coast journey the map is illustrating; it is a drawn
- * route, not a survey of existing track.
+ * Five lines, each a real corridor with real towns on it — waypoints rather
+ * than interpolation, for the same reason the shipping lanes are drawn that
+ * way: a straight line between two capitals crosses whatever happens to be in
+ * between, and on this continent that is usually desert with no track on it.
  *
- * The waypoints are real coastal towns, so the line follows the actual shape of
- * the coast — Geraldton, Carnarvon, the North West Cape, the Pilbara ports,
- * Broome and the Kimberley — rather than being interpolated between the two
- * endpoints, which would cut straight across the Indian Ocean.
+ * The shape that surprises people is that Perth and Darwin are NOT connected up
+ * the west coast. The Trans-Australian runs due east from Perth across the
+ * Nullarbor to Tarcoola, and only there does the Adelaide–Darwin line branch
+ * north through Alice Springs. A freight consist making that trip therefore
+ * crosses to the middle of the continent before it turns for the Top End.
  */
-const AU_RAIL_PATH: [number, number][] = [
+const RAIL_PERTH_TARCOOLA: [number, number][] = [
   [115.857, -31.953], // Perth
-  [114.615, -28.777], // Geraldton
-  [113.661, -24.884], // Carnarvon
-  [114.128, -21.932], // Exmouth (North West Cape)
-  [116.846, -20.736], // Karratha
-  [118.601, -20.31], // Port Hedland
-  [122.236, -17.961], // Broome
-  [123.63, -17.3], // Derby
-  [128.738, -15.778], // Kununurra
+  [116.667, -31.653], // Northam
+  [118.279, -31.482], // Merredin
+  [121.466, -30.749], // Kalgoorlie
+  [125.327, -31.012], // Rawlinna
+  [128.9, -30.85], // Nullarbor
+  [130.402, -30.617], // Cook
+  [134.567, -30.702], // Tarcoola — the Darwin line branches here
+];
+const RAIL_TARCOOLA_DARWIN: [number, number][] = [
+  [134.567, -30.702], // Tarcoola
+  [134.755, -29.014], // Manguri (Coober Pedy)
+  [133.63, -27.3], // Marla
+  [133.3, -25.84], // Kulgera
+  [133.881, -23.699], // Alice Springs
+  [134.19, -19.652], // Tennant Creek
+  [133.54, -17.55], // Elliott
   [132.263, -14.465], // Katherine
+  [131.11, -13.24], // Adelaide River
   [130.845, -12.463], // Darwin
 ];
+const RAIL_TARCOOLA_ADELAIDE: [number, number][] = [
+  [134.567, -30.702], // Tarcoola
+  [135.3, -30.9], // Kingoonya
+  [136.8, -31.25], // Pimba
+  [137.766, -32.493], // Port Augusta
+  [138.017, -33.183], // Port Pirie
+  [138.21, -33.35], // Crystal Brook
+  [138.75, -34.6], // Gawler
+  [138.6, -34.928], // Adelaide
+];
+const RAIL_ADELAIDE_MELBOURNE: [number, number][] = [
+  [138.6, -34.928], // Adelaide
+  [139.27, -35.12], // Murray Bridge
+  [140.78, -36.31], // Bordertown
+  [141.65, -36.33], // Nhill
+  [142.2, -36.71], // Horsham
+  [142.93, -37.28], // Ararat
+  [143.85, -37.56], // Ballarat
+  [144.58, -37.68], // Melton
+  [144.963, -37.814], // Melbourne
+];
+const RAIL_MELBOURNE_SYDNEY: [number, number][] = [
+  [144.963, -37.814], // Melbourne
+  [145.13, -37.03], // Seymour
+  [145.98, -36.55], // Benalla
+  [146.32, -36.36], // Wangaratta
+  [146.92, -36.08], // Albury–Wodonga
+  [147.37, -35.11], // Wagga Wagga
+  [147.58, -34.87], // Junee
+  [148.03, -34.65], // Cootamundra
+  [148.91, -34.84], // Yass
+  [149.72, -34.75], // Goulburn
+  [150.37, -34.55], // Moss Vale
+  [151.209, -33.868], // Sydney
+];
+
+/** Every line, drawn as track. */
+const AU_RAIL_NETWORK: [number, number][][] = [
+  RAIL_PERTH_TARCOOLA,
+  RAIL_TARCOOLA_DARWIN,
+  RAIL_TARCOOLA_ADELAIDE,
+  RAIL_ADELAIDE_MELBOURNE,
+  RAIL_MELBOURNE_SYDNEY,
+];
+
+/**
+ * The freight consist's own run: Perth to Darwin, which is two of those lines
+ * joined at Tarcoola. The junction is dropped from the second so the train does
+ * not sit still for a frame on a duplicated coordinate.
+ */
+const AU_RAIL_PATH: [number, number][] = [...RAIL_PERTH_TARCOOLA, ...RAIL_TARCOOLA_DARWIN.slice(1)];
 
 /**
  * Satellites, parked out in space around the globe.
@@ -1003,9 +1062,12 @@ export function WorldMapbox() {
       map.addSource(RAIL_SOURCE, {
         type: "geojson",
         data: {
-          type: "Feature",
-          properties: {},
-          geometry: { type: "LineString", coordinates: AU_RAIL_PATH },
+          type: "FeatureCollection",
+          features: AU_RAIL_NETWORK.map((line) => ({
+            type: "Feature" as const,
+            properties: {},
+            geometry: { type: "LineString" as const, coordinates: line },
+          })),
         },
       });
       map.addLayer({
