@@ -287,6 +287,9 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
       // not "zero demand", they are "we weren't collecting" — drawing them would
       // render every skill as a hockey stick.
       let archiveStart = "9999-99-99";
+      // New listings per day, used below to find the day collection actually
+      // began rather than the day the first stray row landed.
+      const newPerDay: Record<string, number> = {};
       for (const r of rows) {
         // parseStoredSkills, not a bare JSON.parse: archived rows keep the
         // skill names they were written with, so a renamed skill needs its old
@@ -297,6 +300,7 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
         const ls = String(r.last_seen || "");
         if (!fs || !ls) continue;
         if (fs < archiveStart) archiveStart = fs;
+        newPerDay[fs] = (newPerDay[fs] || 0) + 1;
         for (const b of bounds) {
           if (ls >= b.recentStart) for (const s of skills) b.now[s] = (b.now[s] || 0) + 1;
           if (fs <= b.priorEnd && ls >= b.priorStart)
@@ -313,6 +317,26 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
           }
         }
       }
+      // WHEN DID COLLECTION ACTUALLY START?
+      //
+      // Not the same question as "what is the oldest row", and getting them
+      // confused is what broke this. The archive's first rows trickle in while
+      // a feed is being set up — measured here: 4 rows on the first day, 4 on
+      // the second, 1 on the third, then 1,994 on the fourth. Treating the
+      // first of those as the start makes the three days before the real ramp
+      // look like days of near-zero demand, and every skill then reads as
+      // exploding growth against them.
+      //
+      // So the start is the first day carrying at least a tenth of the median
+      // day's new listings. That cleanly separates a 1-row setup day from a
+      // 2,000-row collecting day without needing a hand-picked date.
+      const dayCounts = Object.values(newPerDay).sort((a, c) => a - c);
+      const medianNew = dayCounts.length ? dayCounts[Math.floor(dayCounts.length / 2)] : 0;
+      const collectingDays = Object.keys(newPerDay)
+        .filter((d) => newPerDay[d] >= medianNew * 0.1)
+        .sort();
+      const coverageStart = collectingDays[0] ?? archiveStart;
+
       // Trim the series to days the archive actually covers.
       const firstCovered = sparkDays.findIndex((d) => d >= archiveStart);
       const sparkFrom = firstCovered < 0 ? sparkDays.length : firstCovered;
@@ -327,6 +351,24 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
 
       const out = { ...empty };
       for (const b of bounds) {
+        // A CHANGE IS ONLY REPORTABLE WHEN BOTH HALVES WERE COLLECTED.
+        //
+        // Each window compares the last N days against the N before them. If
+        // the archive was not running for that earlier half, `prev` is 0 for
+        // every skill — not because demand was zero, but because nobody was
+        // looking. The old code turned that into `pct = 100`, clamped to the
+        // ticker's +24% band, so a 30-day window over a 12-day-old archive
+        // reported every single skill as up 24%. That is an invented number
+        // presented as measurement, and the 7-day window was distorted the
+        // same way by a prior half that was only partly collected.
+        //
+        // A window whose prior half predates collection is left EMPTY. The
+        // ticker says so rather than showing a figure nobody measured, and the
+        // window starts reporting on its own once the archive is old enough.
+        if (b.priorStart < coverageStart) {
+          out[b.key] = [];
+          continue;
+        }
         const skills = new Set([...Object.keys(b.now), ...Object.keys(b.prev)]);
         type Row = { name: string; v: number; sig: number };
         const movers: Row[] = [];
@@ -338,6 +380,8 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
           if (now + prev < 3) continue;
           const delta = now - prev;
           if (delta === 0) continue;
+          // prev === 0 here means genuinely new demand within a collected
+          // window, not a gap in the archive — that case is excluded above.
           let pct = prev > 0 ? (delta / prev) * 100 : 100;
           pct = Math.max(-16, Math.min(24, pct)); // match the ticker's visual band
           movers.push({ name: s, v: Math.round(pct * 10) / 10, sig: Math.abs(delta) });

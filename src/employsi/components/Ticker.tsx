@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TICKER_BASE, type TickerItem } from "../data/companies";
 import { getLiveSkillTrends, TREND_WINDOWS } from "../lib/jobHistoryFn";
@@ -67,6 +67,9 @@ function sparkPath(series: number[] | undefined): string | null {
 type Dir = "up" | "down" | "flat";
 const dirOf = (v: number): Dir => (v >= 0.15 ? "up" : v <= -0.15 ? "down" : "flat");
 
+// Stable reference, so the empty state does not churn `items` identity.
+const EMPTY_ITEMS: TickerItem[] = [];
+
 export function Ticker({ hidden }: { hidden: boolean }) {
   // Real, market-wide skill-demand movers from the D1 job archive, for all three
   // windows at once (one scan serves them all). Refreshes once a day — the
@@ -85,7 +88,24 @@ export function Ticker({ hidden }: { hidden: boolean }) {
   const win = TREND_WINDOWS[winIdx];
 
   const rows = live?.[win.key];
-  const items: TickerItem[] = rows && rows.length ? rows : TICKER_BASE;
+  // Three distinct states, and conflating the last two is what let invented
+  // figures onto the ticker:
+  //   loading      — the query has not returned; show the seed so the pill is
+  //                  not empty for a moment.
+  //   no history   — the archive is too young for THIS window's comparison, so
+  //                  the server returned nothing on purpose. Say that. Falling
+  //                  back to the seed here would present hand-written numbers
+  //                  as measured demand.
+  //   live         — real movers.
+  const loading = !live;
+  // Memoised because the empty branch is a fresh array literal: without this,
+  // `items` changes identity every render and the flash effect below — which
+  // depends on it — would re-run continuously.
+  const items: TickerItem[] = useMemo(
+    () => (rows && rows.length ? rows : loading ? TICKER_BASE : EMPTY_ITEMS),
+    [rows, loading],
+  );
+  const noHistory = !loading && items.length === 0;
   // Cycling is only offered when there is real data to cycle THROUGH; on the
   // seed every window would show the same fabricated figures.
   const anyLive = !!live && TREND_WINDOWS.some((w) => (live[w.key]?.length ?? 0) > 0);
@@ -158,10 +178,17 @@ export function Ticker({ hidden }: { hidden: boolean }) {
       </div>
 
       <div className="tickerwrap">
-        <div className={`tickertrack${paused ? " paused" : ""}`}>
-          {items.map((t, i) => renderItem(t, "a" + i))}
-          {items.map((t, i) => renderItem(t, "b" + i))}
-        </div>
+        {noHistory ? (
+          <div className="tickerempty">
+            Not enough archive history yet to measure change over{" "}
+            {win.label.replace("· Last ", "the last ").toLowerCase()}.
+          </div>
+        ) : (
+          <div className={`tickertrack${paused ? " paused" : ""}`}>
+            {items.map((t, i) => renderItem(t, "a" + i))}
+            {items.map((t, i) => renderItem(t, "b" + i))}
+          </div>
+        )}
       </div>
 
       <div className="tickerctl">

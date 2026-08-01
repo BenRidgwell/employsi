@@ -599,6 +599,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleTrending: () =>
     set((s) => ({
       trendingOpen: !s.trendingOpen,
+      // Mutually exclusive with the analyst card, which occupies the same
+      // space. toggleAnalyst has always closed trending; this side was missing,
+      // so opening trending from an open analyst card stacked the two.
+      analystOpen: false,
       mobileMenuOpen: false,
       searchOpen: false,
       filterOpen: false,
