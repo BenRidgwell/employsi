@@ -77,6 +77,8 @@ export interface AppState {
   trendingOpen: boolean;
   // "Ask an analyst": a scoped Q&A over the live vacancy archive.
   analystOpen: boolean;
+  /** Admin-only archive health pane. */
+  dataQualityOpen: boolean;
   // Feedback board + help-tour open state. Lifted here (Settings already is) so
   // the mobile "More" sheet can open them alongside the desktop dock buttons.
   feedbackOpen: boolean;
@@ -151,6 +153,8 @@ export interface AppState {
   closeTrending: () => void;
   toggleAnalyst: () => void;
   closeAnalyst: () => void;
+  toggleDataQuality: () => void;
+  closeDataQuality: () => void;
 
   toggleFeedback: () => void;
   closeFeedback: () => void;
@@ -275,6 +279,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   compareB: null,
   trendingOpen: false,
   analystOpen: false,
+  dataQualityOpen: false,
   feedbackOpen: false,
   helpTourOpen: false,
   mobileMenuOpen: false,
@@ -291,6 +296,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       heatOpen: false,
       trendingOpen: false,
       analystOpen: false,
+      dataQualityOpen: false,
       feedbackOpen: false,
       helpTourOpen: false,
       mobileMenuOpen: false,
@@ -438,6 +444,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       heatOpen: false,
       trendingOpen: false,
       analystOpen: false,
+      dataQualityOpen: false,
       mobileMenuOpen: false,
     })),
   toggleFilter: () =>
@@ -447,6 +454,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       heatOpen: false,
       trendingOpen: false,
       analystOpen: false,
+      dataQualityOpen: false,
       mobileMenuOpen: false,
     })),
   toggleHeatPanel: () =>
@@ -456,6 +464,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       filterOpen: false,
       trendingOpen: false,
       analystOpen: false,
+      dataQualityOpen: false,
       mobileMenuOpen: false,
     })),
   setSearchQuery: (q) => set({ searchQuery: q }),
@@ -632,6 +641,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       // space. toggleAnalyst has always closed trending; this side was missing,
       // so opening trending from an open analyst card stacked the two.
       analystOpen: false,
+      dataQualityOpen: false,
       mobileMenuOpen: false,
       searchOpen: false,
       filterOpen: false,
@@ -648,6 +658,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       heatOpen: false,
     })),
   closeAnalyst: () => set({ analystOpen: false }),
+  toggleDataQuality: () =>
+    set((s) => ({
+      dataQualityOpen: !s.dataQualityOpen,
+      analystOpen: false,
+      trendingOpen: false,
+      mobileMenuOpen: false,
+      searchOpen: false,
+      filterOpen: false,
+      heatOpen: false,
+    })),
+  closeDataQuality: () => set({ dataQualityOpen: false }),
 
   toggleFeedback: () =>
     set((s) => ({

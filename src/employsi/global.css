@@ -1409,6 +1409,135 @@ body {
 .mkpin:has(.mk.on) {
   z-index: 6;
 }
+/* ── Data quality (admin) ──────────────────────────────────────────────────
+   Reuses the pane shell the trending/analyst cards use. Dense on purpose: it
+   is an operational readout, not a marketing surface, and the whole value is
+   in scanning a lot of rows quickly. */
+.dqpane {
+  overflow-y: auto;
+}
+.dqbody {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.dqsec {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dqh {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+}
+.dqnote {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--slate, #6c6c72);
+  text-wrap: pretty;
+}
+.dqmsg {
+  font-size: 13px;
+  color: var(--slate, #6c6c72);
+}
+.dqtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.dqtable th {
+  text-align: left;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--slate, #8e8e93);
+  font-weight: 500;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--line, #ededf0);
+}
+.dqtable td {
+  padding: 5px 6px;
+  border-bottom: 1px solid #f4f4f5;
+}
+.dqsrc {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11.5px;
+}
+.dqnum {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.dqmuted {
+  color: var(--slate, #8e8e93);
+}
+.dqwhen {
+  white-space: nowrap;
+}
+/* A stale feed is the one thing here that needs to be found without reading,
+   so it gets the only colour on the panel. */
+.dqstale td {
+  background: #f7ebe9;
+}
+.dqflag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #97332b;
+  color: #fff;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+}
+.dqlist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+.dqlist li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 6px;
+  border-bottom: 1px solid #f4f4f5;
+  font-size: 12.5px;
+}
+.dqcount {
+  flex: 0 0 auto;
+  min-width: 34px;
+  text-align: right;
+  font-family: "JetBrains Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--slate, #6c6c72);
+}
+.dqtitle {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.dqwhy {
+  display: block;
+  font-size: 11.5px;
+  color: var(--slate, #8e8e93);
+}
+.dqsrctag {
+  flex: 0 0 auto;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+  color: var(--slate, #8e8e93);
+}
+.dqfoot {
+  margin: 0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--slate, #8e8e93);
+}
 /* ── Feedback moderation (admin only) ──────────────────────────────────────
    Deliberately quiet: it sits inside every row, so styled like the row's own
    metadata rather than as a toolbar. The remove button only takes on danger

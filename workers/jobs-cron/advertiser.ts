@@ -42,12 +42,9 @@
  * lists the candidates.
  */
 import type { JobsTarget } from "../../src/employsi/data/auJobsTargets";
-
-const norm = (s: string) =>
-  (s || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+// The token comparison lives in the app so the Adzuna filter and the
+// data-quality audit that reviews its output cannot drift apart.
+import { normName as norm, sameCompanyName } from "../../src/employsi/lib/advertiserMatch";
 
 /**
  * Board page furniture that reached the archive as an employer name.
@@ -99,22 +96,6 @@ function rosterIndex(targets: JobsTarget[]): Map<string, string> {
   return ROSTER;
 }
 
-/**
- * Is `advertiser` a shortened or extended form of `name`, on whole tokens?
- *
- * Deliberately generous — it exists to decide whether an advertiser is
- * ANOTHER roster company, so a near match should count. "Flight Centre"
- * against "Flight Centre Travel Group" has to resolve, or rule 3 misses the
- * case it was written for.
- */
-function sameCompany(advertiser: string, name: string): boolean {
-  const a = norm(advertiser).split(" ").filter(Boolean);
-  const n = norm(name).split(" ").filter(Boolean);
-  if (!a.length || !n.length) return false;
-  const [long, short] = a.length >= n.length ? [a, n] : [n, a];
-  return long.slice(0, short.length).join(" ") === short.join(" ");
-}
-
 export interface AdvertiserVerdict {
   keep: boolean;
   /** Why it was dropped, for the run log. Absent when kept. */
@@ -153,10 +134,10 @@ export function checkAdvertiser(
 
   // Rule 3. An advertiser that IS another roster company belongs to that
   // company, not this one. Checked last because it is the most expensive.
-  if (!sameCompany(adv, target.name)) {
+  if (!sameCompanyName(adv, target.name)) {
     for (const [rosterName, id] of rosterIndex(allTargets)) {
       if (id === target.id) continue;
-      if (sameCompany(adv, rosterName)) {
+      if (sameCompanyName(adv, rosterName)) {
         return { keep: false, reason: `${JSON.stringify(adv)} is roster company ${id}` };
       }
     }

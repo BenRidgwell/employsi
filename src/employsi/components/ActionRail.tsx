@@ -60,6 +60,17 @@ function RailButton({
   );
 }
 
+/** A gauge: the panel is about whether the instruments can be trusted. */
+function IconDataQuality() {
+  return (
+    <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" aria-hidden>
+      <path d="M4 18a8 8 0 1 1 16 0" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M12 18l4.2-4.6" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="12" cy="18" r="1.4" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function ActionRail() {
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const globalOut = useAppStore((s) => s.globalOut);
@@ -69,6 +80,9 @@ export function ActionRail() {
   const trendingOpen = useAppStore((s) => s.trendingOpen);
   const toggleAnalyst = useAppStore((s) => s.toggleAnalyst);
   const analystOpen = useAppStore((s) => s.analystOpen);
+  const toggleDataQuality = useAppStore((s) => s.toggleDataQuality);
+  const dataQualityOpen = useAppStore((s) => s.dataQualityOpen);
+  const isAdmin = useAppStore((s) => s.role) === "admin";
 
   const setZoomLevel = useAppStore((s) => s.setZoomLevel);
   const closePanel = useAppStore((s) => s.closePanel);
@@ -103,6 +117,18 @@ export function ActionRail() {
         on={analystOpen}
         onClick={toggleAnalyst}
       />
+
+      {/* Admin only. The pane refuses a non-admin server-side regardless, so
+          hiding the button is tidiness rather than the control — but an end
+          user should not be looking at a door they cannot open. */}
+      {isAdmin && (
+        <RailButton
+          icon={<IconDataQuality />}
+          label="Data quality"
+          on={dataQualityOpen}
+          onClick={toggleDataQuality}
+        />
+      )}
 
       <span className="raildiv" />
 

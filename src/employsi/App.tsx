@@ -14,6 +14,7 @@ import { WorldMapbox } from "./components/WorldMapbox";
 import { CompanyPanel } from "./components/panels/CompanyPanel";
 import { ComparePanel } from "./components/panels/ComparePanel";
 import { WhatsTrendingPane } from "./components/panels/WhatsTrendingPane";
+import { DataQualityGate } from "./components/panels/DataQualityGate";
 import { AnalystPane } from "./components/panels/AnalystPane";
 import { useAppStore } from "./state/store";
 import { useAuthSession } from "./hooks/useAuthSession";
@@ -90,6 +91,7 @@ function App() {
       <ComparePanel />
       <WhatsTrendingPane />
       <AnalystPane />
+      <DataQualityGate />
       <MobileTabBar />
       <MobileMenu />
       <Toast />
