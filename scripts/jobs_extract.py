@@ -34,6 +34,70 @@ def text_of(fragment: str) -> str:
     return WS.sub(' ', htmllib.unescape(TAG.sub(' ', fragment or ''))).strip()
 
 
+# ── date normalisation ───────────────────────────────────────────────────────
+# The `posted` column is documented as YYYY-MM-DD, and everything downstream
+# (the analyst's history charts, any "posted N days ago") reads it as a sortable
+# ISO day. Two feeds were writing something else into it — SA wrote Australian
+# d/m/Y, and the APS label-scraper wrote the literal string "Date 09 Aug 2026"
+# because its regex matched "Closing" and captured the rest of "Closing Date …".
+# Neither is parseable, and a column that is a date for 30 sources and free text
+# for two is worse than one that is empty for two.
+#
+# So every date reaching `posted` passes through here. Day-first is assumed on
+# ambiguous numeric dates because every board feeding this module is Australian;
+# an unparseable value returns '' rather than a guess, because a wrong date is
+# indistinguishable from a right one once stored.
+_MONTHS = {m: i + 1 for i, m in enumerate(
+    ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'])}
+
+
+def iso_date(raw) -> str:
+    """Normalise a board's date text to YYYY-MM-DD, or '' if it isn't one."""
+    s = WS.sub(' ', str(raw or '')).strip()
+    if not s:
+        return ''
+    # Strip a leading label the scraper may have captured with the value
+    # ("Closing Date 09 Aug 2026", "Posted: 3 March 2026").
+    s = re.sub(r'^\s*(closing|closes|posted|posting|published|advertised|expiry|expires|start)?'
+               r'\s*(date)?\s*[:\-]?\s*', '', s, flags=re.I).strip()
+    if not s:
+        return ''
+
+    # Already ISO, possibly with a time component.
+    m = re.match(r'^(\d{4})-(\d{2})-(\d{2})', s)
+    if m:
+        return _ymd(m.group(1), m.group(2), m.group(3))
+
+    # 09 Aug 2026 / 9 August 2026 / Aug 9, 2026
+    m = re.match(r'^(\d{1,2})\s+([A-Za-z]{3,})\.?,?\s+(\d{4})', s)
+    if m and m.group(2)[:3].lower() in _MONTHS:
+        return _ymd(m.group(3), _MONTHS[m.group(2)[:3].lower()], m.group(1))
+    m = re.match(r'^([A-Za-z]{3,})\.?\s+(\d{1,2}),?\s+(\d{4})', s)
+    if m and m.group(1)[:3].lower() in _MONTHS:
+        return _ymd(m.group(3), _MONTHS[m.group(1)[:3].lower()], m.group(2))
+
+    # 09/08/2026 or 9-8-26 — DAY FIRST (see above).
+    m = re.match(r'^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$', s)
+    if m:
+        y = m.group(3)
+        if len(y) == 2:
+            y = ('20' if int(y) < 70 else '19') + y
+        return _ymd(y, m.group(2), m.group(1))
+
+    return ''
+
+
+def _ymd(y, m, d) -> str:
+    """Assemble and range-check, so 31/13/2026 is rejected rather than stored."""
+    try:
+        y, m, d = int(y), int(m), int(d)
+    except (TypeError, ValueError):
+        return ''
+    if not (1990 <= y <= 2100 and 1 <= m <= 12 and 1 <= d <= 31):
+        return ''
+    return f'{y:04d}-{m:02d}-{d:02d}'
+
+
 # ── 1. embedded JSON ─────────────────────────────────────────────────────────
 # Keys that plausibly carry each field, most specific first. Matching is done on
 # a normalised key (lowercased, non-alphanumerics stripped) so jobTitle,
@@ -45,6 +109,12 @@ LOC_KEYS = ('location', 'joblocation', 'worklocation', 'region', 'suburb', 'city
 URL_KEYS = ('url', 'joburl', 'link', 'href', 'applyurl', 'detailurl')
 SALARY_KEYS = ('salary', 'salaryrange', 'remuneration', 'packagerange', 'salarydescription')
 CLOSE_KEYS = ('closingdate', 'closedate', 'closes', 'applicationclosingdate', 'expirydate')
+# The date the ad went UP, which is what the archive's `posted` column means.
+# Kept strictly separate from CLOSE_KEYS: a closing date is not a posting date,
+# and conflating them is exactly the bug this set exists to fix.
+POSTED_KEYS = ('posteddate', 'postingdate', 'dateposted', 'publisheddate',
+               'publicationdate', 'advertiseddate', 'opendate', 'startdate',
+               'createddate', 'posted', 'published')
 ID_KEYS = ('jobid', 'id', 'jobreference', 'referencenumber', 'requisitionid', 'vacancyid')
 
 # Titles this short/long are almost certainly not real job titles.
@@ -101,6 +171,7 @@ def job_from(d: dict) -> dict:
         'url': _pick(d, URL_KEYS),
         'salary': _pick(d, SALARY_KEYS),
         'close': _pick(d, CLOSE_KEYS),
+        'posted': iso_date(_pick(d, POSTED_KEYS)),
         'id': _pick(d, ID_KEYS),
     }
 
@@ -229,7 +300,10 @@ def jobs_from_anchors(html: str, href_re: str, site: str = '') -> list[dict]:
             'loc': grab([r'location', r'region']),
             'url': href if href.startswith('http') else (site.rstrip('/') + href if href.startswith('/') else href),
             'salary': grab([r'salary', r'remuneration']),
-            'close': grab([r'closing', r'closes']),
+            'close': grab([r'closing(?:\s+date)?', r'closes(?:\s+on)?']),
+            'posted': iso_date(grab([r'posted(?:\s+date)?', r'posting\s+date',
+                                     r'date\s+posted', r'published(?:\s+date)?',
+                                     r'advertised(?:\s+date)?'])),
             'id': '',
         })
     return rows
@@ -250,6 +324,8 @@ ARIA_TO_FIELD = {
     'location': 'loc', 'region': 'loc',
     'salary': 'salary', 'remuneration': 'salary',
     'closing date': 'close', 'closes': 'close', 'job type': '', 'work type': '',
+    'posted date': 'posted', 'posting date': 'posted', 'date posted': 'posted',
+    'published date': 'posted',
 }
 
 
@@ -263,7 +339,7 @@ def jobs_from_cards(html: str, href_re: str, site: str = '') -> list[dict]:
         href, inner = m.group(2), m.group(4)
         rec = by_href.get(href)
         if rec is None:
-            rec = {'t': '', 'agency': '', 'loc': '', 'salary': '', 'close': '',
+            rec = {'t': '', 'agency': '', 'loc': '', 'salary': '', 'close': '', 'posted': '',
                    'url': href if href.startswith('http') else (site.rstrip('/') + href
                                                                 if href.startswith('/') else href),
                    'id': ''}
@@ -319,7 +395,11 @@ def jobs_from_cards(html: str, href_re: str, site: str = '') -> list[dict]:
         if not rec['salary']:
             rec['salary'] = grab([r'salary', r'remuneration'])
         if not rec['close']:
-            rec['close'] = grab([r'closing', r'closes'])
+            rec['close'] = grab([r'closing(?:\s+date)?', r'closes(?:\s+on)?'])
+        if not rec['posted']:
+            rec['posted'] = iso_date(grab([r'posted(?:\s+date)?', r'posting\s+date',
+                                           r'date\s+posted', r'published(?:\s+date)?',
+                                           r'advertised(?:\s+date)?']))
     return [by_href[h] for h in order if MIN_TITLE <= len(by_href[h]['t']) <= MAX_TITLE]
 
 

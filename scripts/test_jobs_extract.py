@@ -160,6 +160,48 @@ for sample in (NSW_HTML, APS_HTML, SA_HTML, EMPTY, '', None):
 else:
     check('diagnose robust on all inputs (incl. empty/None)', True)
 
+
+# ── posted-date normalisation ───────────────────────────────────────────────
+# `posted` is documented as YYYY-MM-DD. SA was writing an Australian d/m/Y
+# CLOSING date into it and APS the literal "Date 09 Aug 2026", so these assert
+# both halves of the fix: real dates normalise, and anything else becomes ''
+# rather than a guess.
+DATE_CASES = [
+    ('2026-08-09', '2026-08-09'),          # already ISO
+    ('2026-08-09T14:22:00Z', '2026-08-09'),  # ISO with a time
+    ('09/08/2026', '2026-08-09'),          # SA: day-first, as every AU board writes
+    ('9-8-2026', '2026-08-09'),
+    ('9/8/26', '2026-08-09'),              # two-digit year
+    ('09 Aug 2026', '2026-08-09'),
+    ('9 August 2026', '2026-08-09'),
+    ('Aug 9, 2026', '2026-08-09'),
+    ('Date 09 Aug 2026', '2026-08-09'),    # APS: the label the regex swallowed
+    ('Closing Date: 09/08/2026', '2026-08-09'),
+    ('Posted: 3 March 2026', '2026-03-03'),
+    ('', ''),                              # nothing stated
+    (None, ''),
+    ('Ongoing', ''),                       # free text is NOT a date
+    ('Competitive', ''),
+    ('31/13/2026', ''),                    # impossible month is rejected
+    ('09/08/1200', ''),                    # out of range year
+]
+for raw, want in DATE_CASES:
+    got = jx.iso_date(raw)
+    check(f'iso_date({raw!r}) -> {want!r}', got == want, f'got {got!r}')
+
+# The whole point: a closing date must never end up in `posted`. The extractor
+# keeps them in separate fields, and only `posted` is normalised.
+CLOSE_ONLY = {'jobTitle': 'Senior Analyst', 'agency': 'Services Australia',
+              'closingDate': '09/08/2026'}
+j = jx.job_from(CLOSE_ONLY)
+check('close date does not leak into posted', j['posted'] == '' and j['close'] == '09/08/2026',
+      str(j))
+BOTH = {'jobTitle': 'Senior Analyst', 'agency': 'Services Australia',
+        'postingDate': '01/08/2026', 'closingDate': '09/08/2026'}
+j = jx.job_from(BOTH)
+check('posting date is taken and normalised', j['posted'] == '2026-08-01', str(j))
+
+
 print()
 if FAILS:
     print(f'{len(FAILS)} FAILED: {FAILS}')

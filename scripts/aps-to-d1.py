@@ -182,7 +182,12 @@ def build_rows(scraped: list, have: dict):
         seen.add(key)
         out.append((key, 'aps-gov', title, company or None, cid, hub, location or 'Australia',
                     'Government', r.get('salary') or None, r.get('url') or '',
-                    r.get('close') or '', json.dumps(sk) if sk else None))
+                    # `posted` is the day the ad went up. APS cards advertise a
+                    # CLOSING date and nothing else, so when the extractor finds
+                    # no posting date this stays EMPTY rather than falling back
+                    # to the close — which is what put "Date 09 Aug 2026" into
+                    # the column on 84 rows.
+                    r.get('posted') or '', json.dumps(sk) if sk else None))
         kept.append(cid)
     return out, kept
 

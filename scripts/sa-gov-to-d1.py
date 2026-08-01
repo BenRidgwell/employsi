@@ -275,6 +275,13 @@ def _report_rows(html: str) -> list:
             'agency': rec.get('agency', ''),
             'location': rec.get('location', ''),
             'salary': rec.get('salary', ''),
+            # The report carries BOTH dates. `posted` means the day the ad went
+            # up, so it takes Posting Date; the expiry is kept separate and is
+            # not stored, because there is no column for it and it was
+            # previously being written into `posted` — which is how 1,106 SA
+            # rows ended up holding a d/m/Y CLOSING date in a column every
+            # other feed fills with an ISO posting date.
+            'posted': jx.iso_date(rec.get('posting date', '')),
             'closing': rec.get('expiry date', ''),
             'url': url,
         })
@@ -364,7 +371,7 @@ def build_rows(scraped: list, have: dict):
         seen.add(key)
         out.append((key, 'sa-gov', title, company or None, cid,
                     match_city(location), location, 'Government',
-                    r.get('salary') or None, r.get('url') or '', r.get('closing') or '',
+                    r.get('salary') or None, r.get('url') or '', r.get('posted') or '',
                     json.dumps(sk) if sk else None))
         kept.append(cid)
     return out, kept
