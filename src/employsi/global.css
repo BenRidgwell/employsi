@@ -3757,8 +3757,9 @@ body {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #1c1c1e;
-  color: #fff;
+  /* Matches the global search bar's outline — see .gsauthbtn.signedin. */
+  background: var(--border-subtle);
+  color: var(--text-primary);
   font-size: 9.5px;
   font-weight: 800;
   letter-spacing: 0.3px;
@@ -3768,8 +3769,8 @@ body {
   flex: 0 0 auto;
 }
 .acctbtn.on .acctav {
-  background: #fff;
-  color: #1c1c1e;
+  background: #ffffff;
+  color: var(--text-primary);
 }
 .acctflyout {
   width: 300px;
@@ -3867,8 +3868,8 @@ body {
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: #1c1c1e;
-  color: #fff;
+  background: var(--border-subtle);
+  color: var(--text-primary);
   font-size: 14px;
   font-weight: 800;
   display: flex;
@@ -4462,10 +4463,14 @@ body {
   transform: scale(0.95);
 }
 .gsauthbtn.on,
+/* Signed in: the disc behind the photo takes the same grey as the search
+   bar's outline (--border-subtle) rather than solid ink, so the avatar reads
+   as a framed portrait instead of a dark blob in the rail. The initials
+   fallback goes to ink for contrast — white on this grey is unreadable. */
 .gsauthbtn.signedin {
-  border-color: var(--action-primary);
-  background: var(--action-primary);
-  color: var(--action-primary-text);
+  border-color: var(--border-subtle);
+  background: var(--border-subtle);
+  color: var(--text-primary);
 }
 .gsauthbtn svg {
   stroke-width: 1.9;

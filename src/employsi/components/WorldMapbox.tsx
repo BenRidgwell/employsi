@@ -61,47 +61,64 @@ const RAIL_BED_LAYER = "au-rail-bed";
 const RAIL_SLEEPER_LAYER = "au-rail-sleepers";
 
 /**
- * Perth → Darwin by rail, as the track actually runs.
+ * Perth → Darwin, run up the Western Australian coast.
  *
- * There is no direct Perth–Darwin railway. The two lines that connect them are
- * the Trans-Australian (Perth → Kalgoorlie → Nullarbor → Tarcoola) and the
- * Adelaide–Darwin line, which leaves the Trans-Australian at Tarcoola and runs
- * north through Alice Springs and Katherine. A freight consist making that trip
- * therefore turns north in the middle of South Australia rather than following
- * the west coast, and these waypoints are the towns it passes through.
+ * This follows the coastline rather than the rail network. Australia has no
+ * Perth–Darwin railway: the track that connects them goes inland via Kalgoorlie
+ * and the Nullarbor to Tarcoola, then north through Alice Springs — a dogleg
+ * into the middle of the continent. The coastal line was chosen instead because
+ * it reads as the west-coast journey the map is illustrating; it is a drawn
+ * route, not a survey of existing track.
  *
- * Drawn rather than assumed for the same reason the shipping lanes are: a
- * straight line between the two cities would cross 2,000km of trackless desert
- * and read as decoration invented by someone who had not looked.
+ * The waypoints are real coastal towns, so the line follows the actual shape of
+ * the coast — Geraldton, Carnarvon, the North West Cape, the Pilbara ports,
+ * Broome and the Kimberley — rather than being interpolated between the two
+ * endpoints, which would cut straight across the Indian Ocean.
  */
 const AU_RAIL_PATH: [number, number][] = [
   [115.857, -31.953], // Perth
-  [117.883, -31.63], // Northam
-  [121.466, -30.749], // Kalgoorlie
-  [125.327, -31.012], // Rawlinna
-  [128.9, -30.85], // Nullarbor crossing
-  [130.402, -30.617], // Cook
-  [134.567, -30.702], // Tarcoola — the Darwin line leaves the Trans-Australian
-  [134.755, -29.014], // Coober Pedy (Manguri)
-  [133.881, -23.699], // Alice Springs
-  [134.19, -19.652], // Tennant Creek
+  [114.615, -28.777], // Geraldton
+  [113.661, -24.884], // Carnarvon
+  [114.128, -21.932], // Exmouth (North West Cape)
+  [116.846, -20.736], // Karratha
+  [118.601, -20.31], // Port Hedland
+  [122.236, -17.961], // Broome
+  [123.63, -17.3], // Derby
+  [128.738, -15.778], // Kununurra
   [132.263, -14.465], // Katherine
   [130.845, -12.463], // Darwin
 ];
 
-/** Satellites orbiting outside the globe's limb (global layer only). */
-interface SatelliteOrbit {
-  /** Orbit radius as a multiple of the globe's projected radius. */
-  ring: number;
-  /** Seconds for one full revolution; negative runs retrograde. */
-  period: number;
-  /** Starting angle, degrees. */
-  phase: number;
+/**
+ * Satellites, parked out in space around the globe.
+ *
+ * They do NOT orbit the globe — they sit at fixed points in the black, drifting
+ * gently, the way a distant object does against a moving camera. Each is
+ * anchored as a fraction of the frame rather than at a pixel, so the
+ * arrangement survives a resize.
+ *
+ * Visibility falls out of the geometry instead of being flagged per layer: a
+ * satellite is drawn only while it is genuinely in space, i.e. further from the
+ * globe's centre than the globe's own radius. Zooming in grows that radius, so
+ * the globe swallows them one by one and they are gone by the time the frame is
+ * filled — and zooming back out into space brings them back, in place.
+ */
+interface SatelliteDrift {
+  /** Anchor, as a fraction of the frame. */
+  x: number;
+  y: number;
+  /** Drift amplitude in px, and its period in seconds, per axis. */
+  ax: number;
+  ay: number;
+  px: number;
+  py: number;
+  /** Seconds per revolution of its own slow tumble; sign sets the direction. */
+  spin: number;
 }
-const SATELLITES: SatelliteOrbit[] = [
-  { ring: 1.1, period: 48, phase: 20 },
-  { ring: 1.22, period: -62, phase: 155 },
-  { ring: 1.16, period: 54, phase: 265 },
+const SATELLITES: SatelliteDrift[] = [
+  { x: 0.13, y: 0.19, ax: 14, ay: 9, px: 17, py: 23, spin: 90 },
+  { x: 0.87, y: 0.28, ax: 11, ay: 13, px: 21, py: 15, spin: -120 },
+  { x: 0.79, y: 0.83, ax: 13, ay: 10, px: 19, py: 26, spin: 105 },
 ];
 
 // Aircraft fly hub to hub in a straight line, which is fine — they cross land.
@@ -997,9 +1014,9 @@ export function WorldMapbox() {
         source: RAIL_SOURCE,
         layout: { visibility: "none", "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": "#8a817d",
+          "line-color": "#b3aca6",
           "line-width": ["interpolate", ["linear"], ["zoom"], 2, 1.6, 5, 3.4],
-          "line-opacity": 0.75,
+          "line-opacity": 0.6,
         },
       });
       map.addLayer({
@@ -1008,13 +1025,13 @@ export function WorldMapbox() {
         source: RAIL_SOURCE,
         layout: { visibility: "none", "line-cap": "butt" },
         paint: {
-          "line-color": "#cfc6c2",
+          "line-color": "#ded7d1",
           "line-width": ["interpolate", ["linear"], ["zoom"], 2, 2.6, 5, 5.4],
           // Short ticks across the bed rather than a continuous rail — at these
           // zooms individual sleepers are far below a pixel, so this reads as
           // "railway" by convention instead of pretending to be to scale.
           "line-dasharray": [0.22, 1.1],
-          "line-opacity": 0.85,
+          "line-opacity": 0.7,
         },
       });
 
@@ -1153,21 +1170,21 @@ export function WorldMapbox() {
         const w = container.clientWidth;
         const h = container.clientHeight;
         const centre = map.project(map.getCenter());
-        const globeR = Math.min(
-          (512 * Math.pow(2, map.getZoom())) / (2 * Math.PI),
-          Math.min(w, h) * 0.46,
-        );
+        // The globe's true projected radius, deliberately NOT clamped to the
+        // frame: it is what decides whether a satellite is still in space, and
+        // clamping it would stop the globe ever growing past them.
+        const globeR = (512 * Math.pow(2, map.getZoom())) / (2 * Math.PI);
+        const t = now / 1000;
         SATELLITES.forEach((sat, i) => {
-          const angle = sat.phase + (now / 1000 / sat.period) * 360;
-          const rad = (angle * Math.PI) / 180;
-          const r = globeR * sat.ring;
-          const x = centre.x + Math.cos(rad) * r;
-          const y = centre.y + Math.sin(rad) * r;
-          // The sprite points north at rest, so aim it along the tangent —
-          // which is a quarter turn ahead of the radius, and behind it when the
-          // orbit runs retrograde.
-          const heading = angle + (sat.period > 0 ? 90 : -90);
-          satEls[i].style.transform = `translate(${x}px, ${y}px) rotate(${heading}deg)`;
+          const x = sat.x * w + Math.sin(t / sat.px) * sat.ax;
+          const y = sat.y * h + Math.cos(t / sat.py) * sat.ay;
+          // In space, or over the globe? A small margin keeps one from sitting
+          // exactly on the limb, where it reads as stuck to the horizon.
+          const inSpace = Math.hypot(x - centre.x, y - centre.y) > globeR * 1.04;
+          const el = satEls[i];
+          el.style.display = inSpace ? "" : "none";
+          if (!inSpace) return;
+          el.style.transform = `translate(${x}px, ${y}px) rotate(${(t / sat.spin) * 360}deg)`;
         });
       };
 
@@ -1204,10 +1221,10 @@ export function WorldMapbox() {
           // the heading is the reverse of the segment's own direction.
           inner.style.transform = `rotate(${phase < 1 ? bearing : bearing + 180}deg)`;
         });
-        // Satellites orbit the globe itself, so they belong to the global view
-        // only — on a domestic region the globe fills the frame and its limb is
-        // off-screen, leaving nothing for them to orbit.
-        animateSatellites(now, show && s.globalOut);
+        // No layer gate: whether a satellite is visible is decided by whether
+        // it is still out in space (see animateSatellites), which is what makes
+        // them fade out on the way in and return on the way back out.
+        animateSatellites(now, show);
         travelRaf.current = requestAnimationFrame(animateTravelers);
       };
       animateTravelers();
