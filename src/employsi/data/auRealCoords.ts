@@ -14,32 +14,58 @@
  * is approximate but honest. Extending this table is how they get fixed.
  */
 export const AU_REAL_COORDS: Record<string, [number, number]> = {
+  "adelaide-abc": [138.607192, -34.924275], // 157 Grenfell Street, Adelaide SA 5000
+  "adelaide-cda": [138.622999, -34.816113], // 2 Second Avenue, Mawson Lakes SA 5095
+  aow: [153.030092, -27.467849], // 111 Eagle Street, Brisbane QLD 4000
+  beach: [138.603346, -34.926486], // 80 Flinders Street, Adelaide SA 5000
+  "brisbane-dmp": [153.066911, -27.438992], // 485 Kingsford Smith Drive, Hamilton QLD 4007
+  "brisbane-flt": [153.016841, -27.471843], // 275 Grey Street, South Brisbane QLD 4101
+  "brisbane-nxt": [153.027873, -27.466648], // 100 Creek Street, Brisbane QLD 4000
   "brisbane-sun": [153.022374, -27.468629], // 80 Ann Street, Brisbane QLD 4000
+  "melbourne-alx": [144.969886, -37.815796], // 141 Flinders Lane, Melbourne VIC 3000
+  "melbourne-ann": [145.013918, -37.812328], // 678 Victoria Street, Richmond VIC 3121
   "melbourne-anz": [144.945616, -37.822092], // 833 Collins Street, Docklands VIC 3008
+  "melbourne-car": [144.989021, -37.823868], // 449 Punt Road, Richmond VIC 3121
   "melbourne-col": [145.047376, -37.84547], // 800 Toorak Road, Hawthorn East VIC 3123
   "melbourne-cpu": [145.002057, -37.800194], // 452 Johnston Street, Abbotsford VIC 3067
   "melbourne-csl": [144.957334, -37.800142], // 655 Elizabeth Street, Melbourne VIC 3000
+  "melbourne-cwy": [144.976864, -37.840436], // 441 St Kilda Road, Melbourne VIC 3004
+  "melbourne-jbh": [144.966092, -37.821209], // 60 City Road, Southbank VIC 3006
+  "melbourne-mpl": [144.949109, -37.817816], // 720 Bourke Street, Docklands VIC 3008
   "melbourne-nab": [144.962236, -37.8147], // 395 Bourke Street, Melbourne VIC 3000
   "melbourne-ori": [144.96638, -37.805755], // 62 Lygon Street, Carlton VIC 3053
   "melbourne-rea": [144.997636, -37.828893], // 511 Church Street, Richmond VIC 3121
+  "melbourne-tah": [144.949793, -37.821366], // 727 Collins Street, Docklands VIC 3008
   "melbourne-tcl": [144.949793, -37.821366], // 727 Collins Street, Docklands VIC 3008
   "melbourne-tls": [144.970098, -37.809409], // 242 Exhibition Street, Melbourne VIC 3000
   "sydney-agl": [151.207856, -33.862483], // 200 George Street, Sydney NSW 2000
+  "sydney-ald": [151.197357, -33.907458], // 29 Bourke Road, Alexandria NSW 2015
+  "sydney-all": [151.138145, -33.797204], // 85 Epping Road, North Ryde NSW 2113
+  "sydney-amp": [151.211608, -33.862108], // 33 Alfred Street, Sydney NSW 2000
   "sydney-apa": [151.207064, -33.875006], // 580 George Street, Sydney NSW 2000
   "sydney-asx": [151.208591, -33.863354], // 20 Bridge Street, Sydney NSW 2000
   "sydney-bxb": [151.208074, -33.866644], // 123 Pitt Street, Sydney NSW 2000
   "sydney-cba": [151.202325, -33.871882], // 201 Sussex Street, Sydney NSW 2000
+  "sydney-cgf": [151.208809, -33.868094], // 5 Martin Place, Sydney NSW 2000
+  "sydney-chc": [151.207681, -33.867804], // 1 Martin Place, Sydney NSW 2000
   "sydney-dow": [151.13879, -33.797079], // 39 Delhi Road, North Ryde NSW 2113
+  "sydney-dxs": [151.207812, -33.86493], // 264 George Street, Sydney NSW 2000
   "sydney-evn": [151.210667, -33.877151], // 175 Liverpool Street, Sydney NSW 2000
   "sydney-gmg": [151.210098, -33.868476], // 60 Castlereagh Street, Sydney NSW 2000
+  "sydney-gpt": [151.209287, -33.868683], // 25 Martin Place, Sydney NSW 2000
+  "sydney-hvn": [151.071568, -33.856328], // 1 Homebush Bay Drive, Homebush West NSW 2140
   "sydney-iag": [151.202325, -33.871882], // 201 Sussex Street, Sydney NSW 2000
   "sydney-llc": [151.202536, -33.865198], // 300 Barangaroo Avenue, Barangaroo NSW 2000
+  "sydney-mgr": [151.207856, -33.862483], // 200 George Street, Sydney NSW 2000
   "sydney-mqg": [151.210203, -33.867637], // 50 Martin Place, Sydney NSW 2000
   "sydney-org": [151.207812, -33.86493], // 264 George Street, Sydney NSW 2000
   "sydney-qan": [151.186617, -33.925199], // 10 Bourke Road, Mascot NSW 2020
   "sydney-qbe": [151.207378, -33.86841], // 388 George Street, Sydney NSW 2000
+  "sydney-rhc": [151.211903, -33.86313], // 126 Phillip Street, Sydney NSW 2000
   "sydney-scg": [151.209075, -33.870066], // 85 Castlereagh Street, Sydney NSW 2000
+  "sydney-sgp": [151.209056, -33.871594], // 133 Castlereagh Street, Sydney NSW 2000
   "sydney-shl": [151.123766, -33.784974], // 14 Giffnock Avenue, Macquarie Park NSW 2113
+  "sydney-tpg": [151.206234, -33.837086], // 177 Pacific Highway, North Sydney NSW 2060
   "sydney-wbc": [151.20406, -33.865921], // 275 Kent Street, Sydney NSW 2000
   "sydney-wor": [151.20932, -33.838321], // 141 Walker Street, North Sydney NSW 2060
   "sydney-wow": [150.949174, -33.736817], // 1 Woolworths Way, Bella Vista NSW 2153

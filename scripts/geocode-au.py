@@ -84,6 +84,37 @@ ADDRESSES: dict[str, tuple[str, str]] = {
     'melbourne-rea': ('melbourne', '511 Church Street, Richmond VIC 3121'),
     'melbourne-cpu': ('melbourne', '452 Johnston Street, Abbotsford VIC 3067'),
     'melbourne-tcl': ('melbourne', '727 Collins Street, Docklands VIC 3008'),
+    # ── Sydney, second tranche ────────────────────────────────────────────
+    'sydney-all': ('sydney', '85 Epping Road, North Ryde NSW 2113'),
+    'sydney-amp': ('sydney', '33 Alfred Street, Sydney NSW 2000'),
+    'sydney-cgf': ('sydney', '5 Martin Place, Sydney NSW 2000'),
+    'sydney-chc': ('sydney', '1 Martin Place, Sydney NSW 2000'),
+    'sydney-dxs': ('sydney', '264 George Street, Sydney NSW 2000'),
+    'sydney-gpt': ('sydney', '25 Martin Place, Sydney NSW 2000'),
+    'sydney-hvn': ('sydney', '1 Homebush Bay Drive, Homebush West NSW 2140'),
+    'sydney-mgr': ('sydney', '200 George Street, Sydney NSW 2000'),
+    'sydney-rhc': ('sydney', '126 Phillip Street, Sydney NSW 2000'),
+    'sydney-sgp': ('sydney', '133 Castlereagh Street, Sydney NSW 2000'),
+    'sydney-tpg': ('sydney', '177 Pacific Highway, North Sydney NSW 2060'),
+    'sydney-ald': ('sydney', '29 Bourke Road, Alexandria NSW 2015'),
+    # ── Melbourne, second tranche ─────────────────────────────────────────
+    'melbourne-mpl': ('melbourne', '720 Bourke Street, Docklands VIC 3008'),
+    'melbourne-jbh': ('melbourne', '60 City Road, Southbank VIC 3006'),
+    'melbourne-car': ('melbourne', '449 Punt Road, Richmond VIC 3121'),
+    'melbourne-ann': ('melbourne', '678 Victoria Street, Richmond VIC 3121'),
+    'melbourne-alx': ('melbourne', '141 Flinders Lane, Melbourne VIC 3000'),
+    'melbourne-tah': ('melbourne', '727 Collins Street, Docklands VIC 3008'),
+    'melbourne-vcx': ('melbourne', '1341 Dandenong Road, Chadstone VIC 3148'),
+    'melbourne-cwy': ('melbourne', '441 St Kilda Road, Melbourne VIC 3004'),
+    # ── Brisbane, second tranche ──────────────────────────────────────────
+    'brisbane-flt': ('brisbane', '275 Grey Street, South Brisbane QLD 4101'),
+    'brisbane-dmp': ('brisbane', '485 Kingsford Smith Drive, Hamilton QLD 4007'),
+    'brisbane-nxt': ('brisbane', '100 Creek Street, Brisbane QLD 4000'),
+    'aow': ('brisbane', '111 Eagle Street, Brisbane QLD 4000'),
+    # ── Adelaide ──────────────────────────────────────────────────────────
+    'beach': ('adelaide', '80 Flinders Street, Adelaide SA 5000'),
+    'adelaide-abc': ('adelaide', '157 Grenfell Street, Adelaide SA 5000'),
+    'adelaide-cda': ('adelaide', '2 Second Avenue, Mawson Lakes SA 5095'),
     # ── Brisbane ──────────────────────────────────────────────────────────
     'brisbane-sun': ('brisbane', '80 Ann Street, Brisbane QLD 4000'),
 }
