@@ -142,6 +142,7 @@ export function NewsPanel({
   live,
   collapsed,
   onToggleCollapse,
+  loading,
 }: {
   name: string;
   sector: string;
@@ -150,6 +151,8 @@ export function NewsPanel({
   live?: CompanyNews | null;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  /** True while the company card itself is still resolving. */
+  loading?: boolean;
 }) {
   const generated = useMemo(() => companyNews(name, sector), [name, sector]);
   const curated = CURATED_NEWS_COMPANIES.has(name);
@@ -251,8 +254,14 @@ export function NewsPanel({
         <span className="nwspinetext">In the news</span>
       </span>
       {/* Dark tone: this column is ink, so the light loader would punch a white
-          hole in it. Fades out on its own once the feed lands. */}
-      {newsPending && !collapsed && <CardLoader tone="dark" />}
+          hole in it.
+          Shown while the COMPANY CARD is resolving as well as while this
+          column's own feed is in flight. Previously only the latter, so a
+          curated company — or any company whose feed arrived first — opened
+          with a finished news column beside a still-loading card, which read
+          as the pair being broken rather than busy. The two now start and
+          finish together. */}
+      {(loading || newsPending) && !collapsed && <CardLoader tone="dark" />}
       <div className="nwhd">
         <span className="nwhdname">In the news</span>
         {onToggleCollapse && (

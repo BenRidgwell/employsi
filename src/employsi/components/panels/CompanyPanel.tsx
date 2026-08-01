@@ -932,6 +932,7 @@ export function CompanyPanel() {
           live={panel.news}
           collapsed={newsCollapsed}
           onToggleCollapse={() => setNewsCollapsed((v) => !v)}
+          loading={cardLoading}
         />
       )}
     </div>
