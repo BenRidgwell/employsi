@@ -6,6 +6,7 @@ import { NZ_SOURCE } from "../data/nzVacancyDemand";
 import { UK_SOURCE } from "../data/ukVacancyDemand";
 import { EU_SOURCE } from "../data/euVacancyDemand";
 import { US_SOURCE } from "../data/usVacancyDemand";
+import { HK_SOURCE } from "../data/hkVacancyDemand";
 import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
 import { CITY_LABEL, GLOBAL_HUB_LABEL } from "../data/geo";
 import { seriesFor, latestFor } from "./skillHeat";
@@ -80,6 +81,8 @@ export function sourceForKey(key: string): string | null {
       return UK_SOURCE;
     case "us":
       return US_SOURCE;
+    case "hk":
+      return HK_SOURCE;
     case "fr":
     case "ch":
       return EU_COUNTRIES.has(country) ? EU_SOURCE : null;

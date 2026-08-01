@@ -14,6 +14,7 @@ import { SG_SERIES, SG_SKILL_BY_CITY } from "../data/sgVacancyDemand";
 import { NZ_SERIES, NZ_SKILL_BY_CITY } from "../data/nzVacancyDemand";
 import { UK_SERIES, UK_SKILL_BY_CITY } from "../data/ukVacancyDemand";
 import { EU_SERIES, EU_SKILL_BY_CITY } from "../data/euVacancyDemand";
+import { HK_SERIES, HK_SKILL_BY_CITY } from "../data/hkVacancyDemand";
 import { US_SERIES, US_SKILL_BY_CITY } from "../data/usVacancyDemand";
 import type { SkillIndex } from "./skillsFn";
 
@@ -32,6 +33,7 @@ export function seriesFor(skill: string): Record<string, number[]> | null {
     UK_SERIES[skill],
     EU_SERIES[skill],
     US_SERIES[skill],
+    HK_SERIES[skill],
   ].filter(Boolean) as Record<string, number[]>[];
   if (!parts.length) return null;
   return Object.assign({}, ...parts);
@@ -48,6 +50,7 @@ export function latestFor(skill: string): Record<string, number> {
     ...(UK_SKILL_BY_CITY[skill] || {}),
     ...(EU_SKILL_BY_CITY[skill] || {}),
     ...(US_SKILL_BY_CITY[skill] || {}),
+    ...(HK_SKILL_BY_CITY[skill] || {}),
   };
 }
 
