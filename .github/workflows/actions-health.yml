@@ -38,6 +38,14 @@ permissions:
   contents: read
   # The one thing it does write.
   issues: write
+  # Required by the action itself, which mints an OIDC identity token and
+  # exchanges it for its GitHub credentials. Without it the step dies in 18
+  # seconds with "Could not fetch an OIDC token" before Claude ever starts.
+  #
+  # This is NOT repository write access. It grants the ability to prove this
+  # workflow's identity to an external service, nothing more — `contents: read`
+  # above is still what governs the repo, so the job remains unable to commit.
+  id-token: write
 
 jobs:
   triage:
