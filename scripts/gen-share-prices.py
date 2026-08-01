@@ -179,8 +179,12 @@ def read_existing() -> dict:
     m = re.search(r'export const SHARE_PRICES[^=]*=\s*(\{.*?\});', txt, re.S)
     if not m:
         return {}
+    # The emitted object ends every line with a comma, including the last, which
+    # is valid TypeScript and invalid JSON. Without stripping it this parse threw,
+    # read_existing returned {} and EVERY RUN SILENTLY DISCARDED the coverage
+    # before it — a scoped run replaced the file instead of adding to it.
     try:
-        return json.loads(m.group(1))
+        return json.loads(re.sub(r',(\s*})', r'\1', m.group(1)))
     except Exception:
         return {}
 
@@ -205,7 +209,7 @@ def write_ts(series: dict, months: list[str], meta: dict) -> None:
         '/** Month axis, oldest first, shared by every series below. */',
         'export const SHARE_MONTHS: string[] = ' + json.dumps(months) + ';',
         '',
-        '/** Currency each series is quoted in, by ticker. */',
+        '/** Currency each listing is quoted in, keyed "TICKER|EXCHANGE". */',
         'export const SHARE_CURRENCY: Record<string, string> = {',
     ]
     for t in sorted(meta):
@@ -237,21 +241,43 @@ def main() -> int:
     ap.add_argument('--years', type=int, default=5)
     ap.add_argument('--limit', type=int, default=0)
     ap.add_argument('--dry-run', action='store_true')
+    # Treat a blank exchange as ASX. companies.ts documents ASX as the roster
+    # default and the Australian core (BHP, RIO, FMG, S32, WDS…) all carry no
+    # exchange, so without this the listings the app most needs are the ones it
+    # never fetches. Opt-in rather than automatic, because the same blank also
+    # appears on private companies whose "ticker" is an abbreviation and which
+    # have no listing at all — those simply fail to resolve and are reported.
+    ap.add_argument('--assume-asx', action='store_true')
+    # Restrict to one roster group, e.g. the only group whose card draws a
+    # share chart.
+    ap.add_argument('--group', default='')
+    # Explicit symbols, e.g. --only BHP,RIO,S32. `group` is derived downstream
+    # (buildPanel), NOT stored on the roster row, so --group silently excluded
+    # every flagship Australian miner on the first attempt. This is the reliable
+    # way to name a set.
+    ap.add_argument('--only', default='')
     a = ap.parse_args()
 
     want = {x.strip().upper() for x in a.exchanges.split(',') if x.strip()}
+    only = {x.strip().upper() for x in a.only.split(',') if x.strip()}
     companies = load_companies()
 
     targets, skipped = [], {}
     for c in companies:
-        sym = yahoo_symbol(c['ticker'], c['exchange']) if c['exchange'] else None
+        ex = c['exchange'] or ('ASX' if a.assume_asx else '')
+        c['exchange'] = ex
+        sym = yahoo_symbol(c['ticker'], ex) if ex else None
         if not sym:
             skipped.setdefault(c['exchange'] or '(no exchange)', 0)
             skipped[c['exchange'] or '(no exchange)'] += 1
             continue
         if want and c['exchange'] not in want:
             continue
-        targets.append((c['ticker'], sym))
+        if a.group and (c.get('group') or '') != a.group:
+            continue
+        if only and c['ticker'].upper() not in only:
+            continue
+        targets.append((f"{c['ticker']}|{ex}", sym))
     if a.limit:
         targets = targets[:a.limit]
 
@@ -266,7 +292,7 @@ def main() -> int:
     fetched: dict[str, list[tuple[str, float]]] = {}
     currency: dict[str, str] = {}
     failed: list[str] = []
-    for i, (ticker, sym) in enumerate(targets, 1):
+    for i, (rowkey, sym) in enumerate(targets, 1):
         try:
             rows, cur = fetch_series(sym, a.years)
         except Exception as e:  # noqa: BLE001
@@ -279,9 +305,9 @@ def main() -> int:
             sys.stderr.write(f'  [{i}/{len(targets)}] {sym}: only {len(rows)} months — skipped\n')
             failed.append(sym)
             continue
-        fetched[ticker] = rows
+        fetched[rowkey] = rows
         if cur:
-            currency[ticker] = cur
+            currency[rowkey] = cur
         if i % 25 == 0 or i == len(targets):
             sys.stderr.write(f'  [{i}/{len(targets)}] ok={len(fetched)} failed={len(failed)}\n')
 

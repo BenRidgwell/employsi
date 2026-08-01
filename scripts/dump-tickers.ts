@@ -9,7 +9,7 @@
 import { COMPANIES } from "../src/employsi/data/companies";
 
 const seen = new Set<string>();
-const out: { id: string; ticker: string; exchange: string }[] = [];
+const out: { id: string; ticker: string; exchange: string; group: string }[] = [];
 for (const c of COMPANIES) {
   const ticker = (c.ticker || "").trim();
   if (!ticker) continue;
@@ -23,6 +23,6 @@ for (const c of COMPANIES) {
   const key = `${ticker}|${exchange}`;
   if (seen.has(key)) continue;
   seen.add(key);
-  out.push({ id: c.id, ticker, exchange });
+  out.push({ id: c.id, ticker, exchange, group: (c as { group?: string }).group || "" });
 }
 console.log(JSON.stringify(out));

@@ -72,8 +72,12 @@ export function buildBhpFeed(now: number = Date.now()): BhpFeed {
   const trend = c.trend.slice();
   trend[n - 1] = +Math.min(105, Math.max(90, trend[n - 1] + d1 * 0.6)).toFixed(1);
 
-  const sharePrice = shareTrend(c.ticker, c.trend);
-  sharePrice[n - 1] = +(sharePrice[n - 1] * (1 + d2 * 0.012)).toFixed(2);
+  // NOT nudged. Every other series here has its latest point wobbled so the
+  // feed reads as live, and that was fine while the share price was an
+  // illustrative curve. It is now a published monthly close from
+  // data/sharePrices.ts, and moving a real closing price by ±1.2% to look
+  // animated would be inventing a figure the market did not print.
+  const sharePrice = shareTrend(c.ticker, c.trend, c.exchange);
 
   const commodities = commodityBaskets(n);
   commodities.base[n - 1] = +(commodities.base[n - 1] * (1 + d1 * 0.015)).toFixed(1);
