@@ -35,6 +35,7 @@ import { fetchNtGov, type StoredNtJob } from "./ntGov";
 import { fetchTasGov, type StoredTasJob } from "./tasGov";
 import { processNews, NEWS_PARTS } from "./news";
 import { processPortals } from "./careerSites";
+import { checkAdvertiser } from "./advertiser";
 import { fetchMcfJobs } from "./mycareersfuture";
 import { fetchSeekCompanyJobs } from "./seek";
 import { SEEK_ADVERTISERS } from "../../src/employsi/data/seekAdvertisers";
@@ -175,6 +176,16 @@ async function pullCompany(
         if (seen.has(dedupe)) continue; // Adzuna reposts the same role repeatedly
         seen.add(dedupe);
         seenTitles.add(normTitle(title));
+        // Adzuna's keyword search returns anything matching the phrase, and the
+        // display name is the only evidence of who actually placed the ad. An
+        // unverifiable one is skipped rather than filed under this company —
+        // see ./advertiser.ts for why this rejects rather than allowlists.
+        const advertiser = x?.company?.display_name || "";
+        const verdict = checkAdvertiser(advertiser, target, AU_JOBS_TARGETS);
+        if (!verdict.keep) {
+          console.log(`adzuna ${target.id}: dropped — ${verdict.reason}`);
+          continue;
+        }
         const area = Array.isArray(x?.location?.area) ? x.location.area.join(" ") : "";
         jobs.push({
           t: title,
@@ -185,7 +196,7 @@ async function pullCompany(
           city: matchCity(loc + " " + area) || matchCity(title),
           skills: skillsForText(title),
           src: "adzuna",
-          co: x?.company?.display_name || target.name,
+          co: advertiser || target.name,
           sal: adzunaSalary(x),
           salN: adzunaSalaryNum(x),
         });
