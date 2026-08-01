@@ -1518,6 +1518,51 @@ body {
   filter: drop-shadow(0 1px 2px rgba(15, 27, 61, 0.4));
   transform-origin: 50% 50%;
 }
+/* Beacon ping. Same shape and timing as the design system's marker pulse
+   (`emp-ping` in the supplied HTML, carried into this file as mk-ping above) —
+   an expanding ring that fades as it grows, 0.7 → 1.45 over 3.2s.
+
+   Two departures from mk-ping, both forced by where it sits. The ring is light
+   rather than ink, because it is drawn on the black of space and not on the
+   white page. And it peaks at 0.5 rather than 0.22: the parent already carries
+   opacity 0.85, so the two multiply, and at the marker's 0.22 the ring landed
+   under 0.19 against a dark backdrop and was invisible on a real screen.
+
+   Centred on the sprite by hand: `.satellite` is offset by half the 17x14
+   sprite, so the ring's own centre has to be pushed back to (8.5, 7). */
+.satping {
+  position: absolute;
+  left: 8.5px;
+  top: 7px;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border: 1px solid rgba(226, 234, 246, 0.9);
+  border-radius: 999px;
+  pointer-events: none;
+  animation: satping 3.2s cubic-bezier(0.25, 0.6, 0.3, 1) infinite;
+}
+@keyframes satping {
+  0% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+/* Anyone who has asked the OS to stop moving things gets a static satellite
+   rather than a pulse that cannot be turned off. */
+@media (prefers-reduced-motion: reduce) {
+  .satping {
+    animation: none;
+    opacity: 0.28;
+  }
+}
 /* Transient bottom-centre notification (e.g. "sign in to follow"). */
 .toast {
   position: fixed;

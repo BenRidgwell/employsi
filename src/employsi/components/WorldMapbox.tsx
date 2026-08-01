@@ -17,7 +17,7 @@ import {
 } from "../data/mapboxWorldGeo";
 import { EU_CITY_LNGLAT } from "../data/euVacancyDemand";
 import { buildMarker, MARKER_FOOT, type MarkerShape } from "../lib/mapMarker";
-import { SATELLITE_SVG, LOCO_SVG, WAGON_SVG } from "./vehicleSprites";
+import { SATELLITE_SVG, LOCO_SVG } from "./vehicleSprites";
 import { codeFor } from "../data/cityCodes";
 
 // Europe domestic points: the mapped hubs (London/Zurich/Paris) plus every EU
@@ -328,19 +328,6 @@ interface Traveler {
   path: [number, number][];
   dur: number;
   offset: number;
-  /** Train only: this vehicle is the locomotive rather than a wagon. */
-  lead?: boolean;
-}
-
-/** Path length in the same cos(lat)-scaled degrees pointOnPath measures in. */
-function pathLengthDeg(path: [number, number][]): number {
-  let d = 0;
-  for (let i = 1; i < path.length; i++) {
-    const [ax, ay] = path[i - 1];
-    const [bx, by] = path[i];
-    d += Math.hypot((bx - ax) * Math.cos((((ay + by) / 2) * Math.PI) / 180), by - ay);
-  }
-  return d;
 }
 
 // Top-down 2.5D sprites from `Employsi Map Sprites.html`: a white airliner and
@@ -1208,28 +1195,25 @@ export function WorldMapbox() {
           dur: l.dur,
           offset: l.offset,
         })),
-        // Two freight consists, one per run: a locomotive with two loaded
-        // wagons behind it. Each vehicle is its own traveler on its run's path,
-        // spaced by a small offset in phase, which is what keeps the wagons
-        // coupled through the curves — a rigid pixel offset would have them cut
-        // the corners.
+        // ONE train per run, not a coupled consist.
         //
-        // That offset is a fraction of the WHOLE run, so it has to be derived
-        // rather than picked: the Perth–Darwin corridor is ~300px on screen at
-        // the domestic zoom, so the 0.006 used at first put the three vehicles
-        // 1.8px apart and they rendered as a single blob. 0.034 is about one
-        // vehicle length. The Adelaide–Brisbane run is longer, so its step is
-        // scaled by the ratio of the two lengths to keep the same on-screen gap.
-        ...TRAIN_RUNS.flatMap((path, run): Traveler[] => {
-          const step = 0.034 * (pathLengthDeg(TRAIN_RUNS[0]) / pathLengthDeg(path));
-          return [0, 1, 2].map((i) => ({
-            mode: "train" as const,
-            path,
-            dur: 52000,
-            offset: 0.12 + run * 0.5 - i * step,
-            lead: i === 0,
-          }));
-        }),
+        // This started as a locomotive plus two wagons, and there is no spacing
+        // that works for it at this scale. The vehicles are offset in PHASE
+        // along the path — which is what keeps them on the track through curves
+        // rather than cutting corners — but a phase step small enough to look
+        // coupled is a couple of pixels, and they render as one dark blob;
+        // a step large enough to separate them is ~100 km of real corridor, and
+        // they read as three separate trains crossing the country. The
+        // Perth–Darwin run is only ~300px wide on screen at the domestic zoom,
+        // so there is no room between those two failures. A single locomotive
+        // is what a train looks like at this size, and it matches how the plane
+        // and the ship are each one sprite.
+        ...TRAIN_RUNS.map((path, run): Traveler => ({
+          mode: "train" as const,
+          path,
+          dur: 52000,
+          offset: 0.12 + run * 0.5,
+        })),
       ];
       travelers.forEach((traveler) => {
         const outer = document.createElement("div");
@@ -1238,7 +1222,7 @@ export function WorldMapbox() {
         inner.className = `travelericon traveler-${traveler.mode}`;
         if (traveler.mode === "plane") inner.innerHTML = PLANE_SVG;
         else if (traveler.mode === "ship") inner.innerHTML = SHIP_SVG;
-        else inner.innerHTML = traveler.lead ? LOCO_SVG : WAGON_SVG;
+        else inner.innerHTML = LOCO_SVG;
         outer.appendChild(inner);
         const marker = new mapboxgl.Marker({ element: outer, anchor: "center" })
           .setLngLat(traveler.path[0])
@@ -1259,10 +1243,17 @@ export function WorldMapbox() {
       // throw the satellites kilometres off-screen.
       const satLayer = document.createElement("div");
       satLayer.className = "satorbit";
-      const satEls = SATELLITES.map(() => {
+      const satEls = SATELLITES.map((_sat, i) => {
         const el = document.createElement("span");
         el.className = "satellite";
-        el.innerHTML = SATELLITE_SVG;
+        // The beacon ring goes INSIDE the sprite's span rather than on it: the
+        // drift loop overwrites this element's own transform every frame, so a
+        // CSS animation on it would be wiped before it ever painted. Nesting
+        // gives the pulse its own transform to own. A circle is rotation-proof,
+        // so the parent's tumble does not disturb it.
+        el.innerHTML = `<span class="satping"></span>${SATELLITE_SVG}`;
+        // Stagger, so three satellites do not pulse in lockstep like a strobe.
+        (el.firstElementChild as HTMLElement).style.animationDelay = `${i * 1.1}s`;
         satLayer.appendChild(el);
         return el;
       });

@@ -14,78 +14,364 @@
  * is approximate but honest. Extending this table is how they get fixed.
  */
 export const AU_REAL_COORDS: Record<string, [number, number]> = {
-  "adelaide-abc": [138.607192, -34.924275], // 157 Grenfell Street, Adelaide SA 5000
-  "adelaide-cda": [138.622999, -34.816113], // 2 Second Avenue, Mawson Lakes SA 5095
-  aow: [153.030092, -27.467849], // 111 Eagle Street, Brisbane QLD 4000
-  "aps-attorney-general-s-department": [149.132558, -35.306534], // 3 National Circuit, Barton ACT 2600
-  "aps-australian-bureau-of-statistics": [149.068378, -35.240765], // 45 Benjamin Way, Belconnen ACT 2617
-  "aps-australian-communications-and-media-authority": [149.129781, -35.312185], // 38 Sydney Avenue, Forrest ACT 2603
-  "aps-australian-competition-and-consumer-commission": [149.124604, -35.284358], // 23 Marcus Clarke Street, Canberra ACT 2601
-  "aps-australian-electoral-commission": [149.12685, -35.277468], // 50 Marcus Clarke Street, Canberra ACT 2601
-  "aps-australian-federal-police": [149.135676, -35.30391], // 47 Kings Avenue, Barton ACT 2600
-  "aps-csiro": [149.145027, -35.278251], // Limestone Avenue, Campbell ACT 2612
-  "aps-department-of-defence": [149.14949, -35.296643], // Russell Drive, Russell ACT 2600
-  "aps-department-of-finance": [149.129822, -35.313454], // 1 Canberra Avenue, Forrest ACT 2603
-  "aps-department-of-foreign-affairs-and-trade": [149.131281, -35.310473], // John McEwen Crescent, Barton ACT 2600
-  "aps-department-of-health-disability-and-ageing": [149.084358, -35.343916], // 23 Furzer Street, Phillip ACT 2606
-  "aps-department-of-home-affairs": [149.066211, -35.240535], // 6 Chan Street, Belconnen ACT 2617
-  "aps-department-of-industry-science-and-resources": [149.133863, -35.281696], // 10 Binara Street, Canberra ACT 2601
-  "aps-department-of-social-services": [149.064532, -35.419562], // 71 Athllon Drive, Greenway ACT 2900
-  "aps-department-of-the-prime-minister-and-cabinet": [149.132393, -35.305645], // 1 National Circuit, Barton ACT 2600
-  "aps-department-of-the-treasury": [149.127505, -35.297559], // Langton Crescent, Parkes ACT 2600
-  "aps-department-of-veterans-affairs": [149.131989, -35.277151], // 21 Genge Street, Canberra ACT 2601
-  "aps-ip-australia": [149.085162, -35.341261], // 47 Bowes Street, Phillip ACT 2606
-  "aps-services-australia": [149.077441, -35.424048], // 27 Athllon Drive, Greenway ACT 2900
-  beach: [138.603346, -34.926486], // 80 Flinders Street, Adelaide SA 5000
-  "brisbane-dmp": [153.066911, -27.438992], // 485 Kingsford Smith Drive, Hamilton QLD 4007
-  "brisbane-flt": [153.016841, -27.471843], // 275 Grey Street, South Brisbane QLD 4101
-  "brisbane-nxt": [153.027873, -27.466648], // 100 Creek Street, Brisbane QLD 4000
-  "brisbane-sun": [153.022374, -27.468629], // 80 Ann Street, Brisbane QLD 4000
-  "melbourne-alx": [144.969886, -37.815796], // 141 Flinders Lane, Melbourne VIC 3000
-  "melbourne-ann": [145.013918, -37.812328], // 678 Victoria Street, Richmond VIC 3121
-  "melbourne-anz": [144.945616, -37.822092], // 833 Collins Street, Docklands VIC 3008
-  "melbourne-car": [144.989021, -37.823868], // 449 Punt Road, Richmond VIC 3121
-  "melbourne-col": [145.047376, -37.84547], // 800 Toorak Road, Hawthorn East VIC 3123
-  "melbourne-cpu": [145.002057, -37.800194], // 452 Johnston Street, Abbotsford VIC 3067
-  "melbourne-csl": [144.957334, -37.800142], // 655 Elizabeth Street, Melbourne VIC 3000
-  "melbourne-cwy": [144.976864, -37.840436], // 441 St Kilda Road, Melbourne VIC 3004
-  "melbourne-jbh": [144.966092, -37.821209], // 60 City Road, Southbank VIC 3006
-  "melbourne-mpl": [144.949109, -37.817816], // 720 Bourke Street, Docklands VIC 3008
-  "melbourne-nab": [144.962236, -37.8147], // 395 Bourke Street, Melbourne VIC 3000
-  "melbourne-ori": [144.96638, -37.805755], // 62 Lygon Street, Carlton VIC 3053
-  "melbourne-rea": [144.997636, -37.828893], // 511 Church Street, Richmond VIC 3121
-  "melbourne-tah": [144.949793, -37.821366], // 727 Collins Street, Docklands VIC 3008
-  "melbourne-tcl": [144.949793, -37.821366], // 727 Collins Street, Docklands VIC 3008
-  "melbourne-tls": [144.970098, -37.809409], // 242 Exhibition Street, Melbourne VIC 3000
-  "sydney-agl": [151.207856, -33.862483], // 200 George Street, Sydney NSW 2000
-  "sydney-ald": [151.197357, -33.907458], // 29 Bourke Road, Alexandria NSW 2015
-  "sydney-all": [151.138145, -33.797204], // 85 Epping Road, North Ryde NSW 2113
-  "sydney-amp": [151.211608, -33.862108], // 33 Alfred Street, Sydney NSW 2000
-  "sydney-apa": [151.207064, -33.875006], // 580 George Street, Sydney NSW 2000
-  "sydney-asx": [151.208591, -33.863354], // 20 Bridge Street, Sydney NSW 2000
-  "sydney-bxb": [151.208074, -33.866644], // 123 Pitt Street, Sydney NSW 2000
-  "sydney-cba": [151.202325, -33.871882], // 201 Sussex Street, Sydney NSW 2000
-  "sydney-cgf": [151.208809, -33.868094], // 5 Martin Place, Sydney NSW 2000
-  "sydney-chc": [151.207681, -33.867804], // 1 Martin Place, Sydney NSW 2000
-  "sydney-dow": [151.13879, -33.797079], // 39 Delhi Road, North Ryde NSW 2113
-  "sydney-dxs": [151.207812, -33.86493], // 264 George Street, Sydney NSW 2000
-  "sydney-evn": [151.210667, -33.877151], // 175 Liverpool Street, Sydney NSW 2000
-  "sydney-gmg": [151.210098, -33.868476], // 60 Castlereagh Street, Sydney NSW 2000
-  "sydney-gpt": [151.209287, -33.868683], // 25 Martin Place, Sydney NSW 2000
-  "sydney-hvn": [151.071568, -33.856328], // 1 Homebush Bay Drive, Homebush West NSW 2140
-  "sydney-iag": [151.202325, -33.871882], // 201 Sussex Street, Sydney NSW 2000
-  "sydney-llc": [151.202536, -33.865198], // 300 Barangaroo Avenue, Barangaroo NSW 2000
-  "sydney-mgr": [151.207856, -33.862483], // 200 George Street, Sydney NSW 2000
-  "sydney-mqg": [151.210203, -33.867637], // 50 Martin Place, Sydney NSW 2000
-  "sydney-org": [151.207812, -33.86493], // 264 George Street, Sydney NSW 2000
-  "sydney-qan": [151.186617, -33.925199], // 10 Bourke Road, Mascot NSW 2020
-  "sydney-qbe": [151.207378, -33.86841], // 388 George Street, Sydney NSW 2000
-  "sydney-rhc": [151.211903, -33.86313], // 126 Phillip Street, Sydney NSW 2000
-  "sydney-scg": [151.209075, -33.870066], // 85 Castlereagh Street, Sydney NSW 2000
-  "sydney-sgp": [151.209056, -33.871594], // 133 Castlereagh Street, Sydney NSW 2000
-  "sydney-shl": [151.123766, -33.784974], // 14 Giffnock Avenue, Macquarie Park NSW 2113
-  "sydney-tpg": [151.206234, -33.837086], // 177 Pacific Highway, North Sydney NSW 2060
-  "sydney-wbc": [151.20406, -33.865921], // 275 Kent Street, Sydney NSW 2000
-  "sydney-wor": [151.20932, -33.838321], // 141 Walker Street, North Sydney NSW 2060
-  "sydney-wow": [150.949174, -33.736817], // 1 Woolworths Way, Bella Vista NSW 2153
+  "adelaide-ar3": [138.601801, -34.925311], // 111 Gawler Place, Adelaide SA 5000
+  "adelaide-tea": [138.604766, -34.927994], // 108 Wakefield Street, Adelaide SA 5000
+  "aps-australian-criminal-intelligence-commission": [149.127907, -35.277942], // 80 Moore Street, Canberra ACT 2601
+  "aps-australian-financial-security-authority": [149.134047, -35.305829], // 2-4 National Circuit, Barton ACT 2600
+  "aps-australian-institute-of-health-and-welfare": [149.093495, -35.240686], // 1 Thynne Street, Bruce ACT 2617
+  "aps-australian-national-audit-office": [149.129781, -35.312185], // 38 Sydney Avenue, Forrest ACT 2603
+  "aps-australian-pesticides-and-veterinary-medicines-authority": [151.670841, -30.514488], // 91 Beardy Street, Armidale NSW 2350
+  "aps-australian-radiation-protection-and-nuclear-safety-agency": [145.079401, -37.734616], // 619 Lower Plenty Road, Yallambie VIC 3085
+  "aps-australian-signals-directorate": [149.150264, -35.297275], // Russell Offices, Russell Drive, Russell ACT 2600
+  "aps-australian-sports-commission": [149.100163, -35.24762], // Leverrier Street, Bruce ACT 2617
+  "aps-australian-taxation-office": [149.131989, -35.277151], // 21 Genge Street, Canberra ACT 2601
+  "aps-australian-transaction-reports-and-analysis-centre": [149.134046, -35.305917], // 4 National Circuit, Barton ACT 2600
+  "aps-australian-war-memorial": [149.149795, -35.279498], // Treloar Crescent, Campbell ACT 2612
+  "aps-bureau-of-meteorology": [144.950888, -37.819522], // 700 Collins Street, Docklands VIC 3008
+  "aps-clean-energy-regulator": [149.122942, -35.284743], // 2 Phillip Law Street, Canberra ACT 2601
+  "aps-comcare": [149.125659, -35.277858], // 121 Marcus Clarke Street, Canberra ACT 2601
+  "aps-department-of-agriculture-fisheries-and-forestry": [149.128885, -35.280763], // 70 Northbourne Avenue, Canberra ACT 2601
+  "aps-department-of-climate-change-energy-the-environment-and-water": [149.134306, -35.302071], // John Gorton Building, King Edward Terrace, Parkes ACT 2600
+  "aps-department-of-education": [149.12685, -35.277468], // 50 Marcus Clarke Street, Canberra ACT 2601
+  "aps-department-of-employment-and-workplace-relations": [149.133863, -35.281696], // 10 Binara Street, Canberra ACT 2601
+  "aps-department-of-infrastructure-transport-regional-development-communications-and-the-arts": [149.127452, -35.278185], // 111 Alinga Street, Canberra ACT 2601
+  "aps-digital-transformation-agency": [149.127858, -35.276769], // 11 Moore Street, Canberra ACT 2601
+  "aps-fair-work-commission": [144.876613, -37.805693], // 11 Exhibition Street, Melbourne VIC 3000
+  "aps-fair-work-ombudsman": [144.957113, -37.811238], // 414 La Trobe Street, Melbourne VIC 3000
+  "aps-national-archives-of-australia": [149.135435, -35.303783], // Kings Avenue, Parkes ACT 2600
+  "aps-national-library-of-australia": [149.135887, -35.300403], // Parkes Place, Parkes ACT 2600
+  "aps-reserve-bank-of-australia": [151.211671, -33.86818], // 65 Martin Place, Sydney NSW 2000
+  "aps-safe-work-australia": [149.122942, -35.284743], // 2 Phillip Law Street, Canberra ACT 2601
+  "bhp": [144.968287, -37.815649], // 171 Collins Street, Melbourne VIC 3000
+  "brisbane-ape": [153.042749, -27.444019], // 5 Edmund Street, Newstead QLD 4006
+  "brisbane-aqz": [153.133266, -27.392394], // 81 Pandanus Avenue, Brisbane Airport QLD 4008
+  "brisbane-azj": [153.038551, -27.454484], // 900 Ann Street, Fortitude Valley QLD 4006
+  "brisbane-dtl": [152.995711, -27.483162], // 555 Coronation Drive, Toowong QLD 4066
+  "brisbane-sul": [152.984644, -27.286832], // 751 Gympie Road, Lawnton QLD 4501
+  "brisbane-tne": [153.038124, -27.4525], // 540 Wickham Street, Fortitude Valley QLD 4006
+  "brisbane-vgn": [153.016263, -27.470922], // 275 Grey Street, South Brisbane QLD 4101
+  "hgo": [138.600668, -34.942171], // 5/7 King William Road, Unley SA 5061
+  "ltr": [115.840467, -31.950194], // 32 Ord Street, West Perth WA 6005
+  "melbourne-arb": [145.309169, -37.815621], // 42-44 Garden Street, Kilsyth VIC 3137
+  "melbourne-gdg": [151.210177, -33.865169], // 6 O'Connell Street, Sydney NSW 2000
+  "melbourne-hsn": [145.126765, -37.787858], // 2 Frederick Street, Doncaster VIC 3108
+  "melbourne-ora": [145.026912, -37.821256], // 109 Burwood Road, Hawthorn VIC 3122
+  "melbourne-pme": [145.006757, -37.826801], // 450 Swan Street, Richmond VIC 3121
+  "melbourne-reh": [145.10147, -37.850836], // 118 Burwood Highway, Burwood VIC 3125
+  "melbourne-sek": [144.990296, -37.827382], // 60 Cremorne Street, Cremorne VIC 3121
+  "melbourne-sig": [145.21723, -37.92868], // 3 Myer Place, Rowville VIC 3178
+  "melbourne-tlx": [144.954318, -37.799741], // 55 Flemington Road, North Melbourne VIC 3051
+  "melbourne-vea": [144.949109, -37.817816], // 720 Bourke Street, Docklands VIC 3008
+  "min": [115.808277, -31.909375], // 20 Walters Drive, Osborne Park WA 6017
+  "nsw-gov-australian-museum": [151.203691, -33.890078], // 1 William Street, Sydney NSW 2010
+  "nsw-gov-cancer-institute-nsw": [151.192443, -33.822965], // 1 Reserve Road, St Leonards NSW 2065
+  "nsw-gov-clinical-excellence-commission": [151.192443, -33.822965], // 1 Reserve Road, St Leonards NSW 2065
+  "nsw-gov-crown-solicitor-s-office": [151.208847, -33.880595], // 60-70 Elizabeth Street, Sydney NSW 2000
+  "nsw-gov-department-of-customer-service": [151.205458, -33.881128], // McKell Building, 2-24 Rawson Place, Haymarket NSW 2000
+  "nsw-gov-department-of-education": [151.008286, -33.813687], // 105 Phillip Street, Parramatta NSW 2150
+  "nsw-gov-department-of-primary-industries-and-regional-development": [149.105783, -33.286165], // 161 Kite Street, Orange NSW 2800
+  "nsw-gov-destination-nsw": [151.20761, -33.858255], // 88 Cumberland Street, The Rocks NSW 2000
+  "nsw-gov-ehealth-nsw": [151.192443, -33.822965], // 1 Reserve Road, St Leonards NSW 2065
+  "nsw-gov-essential-energy": [152.903472, -31.431744], // 8 Buller Street, Port Macquarie NSW 2444
+  "nsw-gov-fire-and-rescue-nsw": [151.065508, -33.900644], // 1 Amarina Avenue, Greenacre NSW 2190
+  "nsw-gov-forestry-corporation-of-nsw": [151.040497, -33.749457], // 121-131 Oratava Avenue, West Pennant Hills NSW 2125
+  "nsw-gov-health-infrastructure": [151.192443, -33.822965], // 1 Reserve Road, St Leonards NSW 2065
+  "nsw-gov-healthshare-nsw": [151.192443, -33.822965], // 1 Reserve Road, St Leonards NSW 2065
+  "nsw-gov-hunter-new-england-local-health-district": [151.691927, -32.930535], // Lookout Road, New Lambton Heights NSW 2305
+  "nsw-gov-hunter-water": [151.763693, -32.925199], // 36 Honeysuckle Drive, Newcastle NSW 2300
+  "nsw-gov-icare-nsw": [151.203889, -33.867661], // 321 Kent Street, Sydney NSW 2000
+  "nsw-gov-legal-aid-nsw": [151.208081, -33.879939], // 323 Castlereagh Street, Haymarket NSW 2000
+  "nsw-gov-local-land-services": [149.105783, -33.286165], // 161 Kite Street, Orange NSW 2800
+  "nsw-gov-museums-of-history-nsw": [151.212431, -33.868943], // The Mint, 10 Macquarie Street, Sydney NSW 2000
+  "nsw-gov-nepean-blue-mountains-local-health-district": [150.713228, -33.761109], // Nepean Hospital, Derby Street, Kingswood NSW 2747
+  "nsw-gov-northern-sydney-local-health-district": [151.19112, -33.821432], // Royal North Shore Hospital, Reserve Road, St Leonards NSW 2065
+  "nsw-gov-nsw-ambulance": [151.06957, -33.84724], // 10 Dawn Fraser Avenue, Sydney Olympic Park NSW 2127
+  "nsw-gov-nsw-education-standards-authority": [151.204842, -33.867095], // 117 Clarence Street, Sydney NSW 2000
+  "nsw-gov-nsw-health": [151.192443, -33.822965], // 1 Reserve Road, St Leonards NSW 2065
+  "nsw-gov-nsw-police-force": [151.008047, -33.817276], // 1 Charles Street, Parramatta NSW 2150
+  "nsw-gov-nsw-rural-fire-service": [151.074547, -33.844621], // 4 Murray Rose Avenue, Sydney Olympic Park NSW 2127
+  "nsw-gov-nsw-state-emergency-service": [150.890173, -34.42676], // 93 Burelli Street, Wollongong NSW 2500
+  "nsw-gov-nsw-trains": [151.206227, -33.880435], // 477 Pitt Street, Sydney NSW 2000
+  "nsw-gov-nsw-treasury": [151.211011, -33.867001], // 52 Martin Place, Sydney NSW 2000
+  "nsw-gov-nsw-trustee-and-guardian": [151.002104, -33.813662], // 160 Marsden Street, Parramatta NSW 2150
+  "nsw-gov-office-of-the-director-of-public-prosecutions": [151.210667, -33.877151], // 175 Liverpool Street, Sydney NSW 2000
+  "nsw-gov-premier-s-department": [151.211011, -33.867001], // 52 Martin Place, Sydney NSW 2000
+  "nsw-gov-revenue-nsw": [151.000829, -33.815806], // 132 Marsden Street, Parramatta NSW 2150
+  "nsw-gov-service-nsw": [151.205458, -33.881128], // McKell Building, 2-24 Rawson Place, Haymarket NSW 2000
+  "nsw-gov-state-library-of-new-south-wales": [151.213234, -33.866495], // 1 Shakespeare Place, Sydney NSW 2000
+  "nsw-gov-sydney-opera-house": [151.081852, -33.82743], // Bennelong Point, Sydney NSW 2000
+  "nsw-gov-sydney-trains": [151.206227, -33.880435], // 477 Pitt Street, Sydney NSW 2000
+  "nsw-gov-sydney-water": [151.005472, -33.816857], // 1 Smith Street, Parramatta NSW 2150
+  "nsw-gov-tafe-nsw": [151.195527, -33.882845], // 28 Smail Street, Ultimo NSW 2007
+  "nsw-gov-the-cabinet-office": [151.211011, -33.867001], // 52 Martin Place, Sydney NSW 2000
+  "nsw-gov-transport-for-nsw": [151.209317, -33.875025], // 231 Elizabeth Street, Sydney NSW 2000
+  "nsw-gov-waternsw": [151.005615, -33.816068], // 169 Macquarie Street, Parramatta NSW 2150
+  "nt-gov-attorney-general-s-department": [130.844978, -12.46361], // 4 Cavenagh Street, Darwin NT 0800
+  "nt-gov-batchelor-institute-of-indigenous-tertiary-education": [131.029827, -13.046969], // 10 Nurndina Street, Batchelor NT 0845
+  "nt-gov-department-of-children-and-families": [130.839891, -12.463809], // 55 Mitchell Street, Darwin NT 0800
+  "nt-gov-department-of-corrections": [130.839891, -12.463809], // Mitchell Centre, 55-59 Mitchell Street, Darwin NT 0800
+  "nt-gov-department-of-education-and-training": [130.839891, -12.463809], // Mitchell Centre, 55-59 Mitchell Street, Darwin NT 0800
+  "nt-gov-department-of-lands-planning-and-environment": [130.985823, -12.482864], // 25 Chung Wah Terrace, Palmerston NT 0830
+  "nt-gov-department-of-logistics-and-infrastructure": [130.840658, -12.438042], // 18 Goyder Road, Parap NT 0820
+  "nt-gov-department-of-people-sport-and-culture": [130.879151, -12.398727], // 40 Abala Road, Marrara NT 0812
+  "nt-gov-power-and-water-corporation": [130.839891, -12.463809], // Mitchell Centre, 55 Mitchell Street, Darwin NT 0800
+  "nt-gov-territory-generation": [130.909579, -12.428258], // 3/631 Stuart Highway, Berrimah NT 0828
+  "perth-cyl": [115.841673, -31.949762], // 3/50 Colin Street, West Perth WA 6005
+  "perth-emr": [115.846328, -31.949709], // 1110 Hay Street, West Perth WA 6005
+  "perth-pdi": [115.850448, -31.976711], // 4 Charles Street, South Perth WA 6151
+  "priv-abc-tissue": [150.916928, -33.8443], // 34-36 Redfern Street, Wetherill Park NSW 2164
+  "priv-abn-group": [115.840223, -31.936453], // 301 Vincent Street, Leederville WA 6007
+  "priv-agnvet-management-services": [146.047414, -34.288016], // 26-28 Banna Avenue, Griffith NSW 2680
+  "priv-akd": [143.606182, -38.336698], // 17 Forest Street, Colac VIC 3250
+  "priv-alto": [151.177825, -33.795657], // 734 Pacific Highway, Chatswood NSW 2067
+  "priv-anytime-fitness": [151.20224, -33.826341], // 110 Alexander Street, Crows Nest NSW 2065
+  "priv-apco-service-stations": [144.375565, -38.158769], // 57 Ormond Road, East Geelong VIC 3219
+  "priv-ara": [151.20224, -33.826341], // 83 Alexander Street, Crows Nest NSW 2065
+  "priv-aurecon": [144.944542, -37.820952], // 850 Collins Street, Docklands VIC 3008
+  "priv-ausgrid": [151.206646, -33.878913], // 24-28 Campbell Street, Haymarket NSW 2000
+  "priv-australian-consolidated-milk": [144.97063, -36.39273], // Girgarre VIC 3624
+  "priv-australian-panels": [151.293422, -33.421357], // 1 Wella Way, Somersby NSW 2250
+  "priv-australian-unity": [144.971496, -37.808583], // 271 Spring Street, Melbourne VIC 3000
+  "priv-bac-holdings": [153.080803, -27.41411], // 11 The Circuit, Brisbane Airport QLD 4008
+  "priv-baiada-poultry": [150.939913, -33.808437], // 642 Great Western Highway, Girraween NSW 2145
+  "priv-bing-lee-electrics": [151.001366, -33.91981], // 69 Allingham Street, Condell Park NSW 2200
+  "priv-bmd-group": [153.175318, -27.382385], // 1 Sandpiper Avenue, Port of Brisbane QLD 4178
+  "priv-bowens-timber-hardware": [145.191849, -37.830226], // 12 Redland Drive, Mitcham VIC 3132
+  "priv-brisbane-catholic-education": [153.022179, -27.494329], // 243 Gladstone Road, Dutton Park QLD 4102
+  "priv-chemist-warehouse": [145.023402, -37.751038], // 44 Raglan Street, Preston VIC 3072
+  "priv-choices-flooring": [144.996229, -37.830429], // 118-120 Balmain Street, Richmond VIC 3121
+  "priv-cjd-equipment": [115.966807, -31.909455], // 52 Great Eastern Highway, South Guildford WA 6055
+  "priv-cmv-group": [138.591808, -34.942113], // 48 Greenhill Road, Wayville SA 5034
+  "priv-cnw-electrical": [153.098669, -27.459144], // 16 Miller Street, Murarrie QLD 4172
+  "priv-cogi": [144.345295, -38.1125], // 14 Shepherd Court, North Geelong VIC 3215
+  "priv-craig-mostyn": [115.745154, -32.053357], // 1/6 Short Street, Fremantle WA 6160
+  "priv-creation-homes": [144.977182, -37.843183], // 484 St Kilda Road, Melbourne VIC 3004
+  "priv-defence-health": [144.970983, -37.832164], // 380 St Kilda Road, Melbourne VIC 3004
+  "priv-deloitte-touche-tohmatsu": [151.211508, -33.862996], // Quay Quarter Tower, 50 Bridge Street, Sydney NSW 2000
+  "priv-detmold-group": [138.577103, -34.900487], // 45 Chief Street, Brompton SA 5007
+  "priv-drake-supermarkets": [138.558047, -34.924356], // 159 Henley Beach Road, Torrensville SA 5031
+  "priv-epworth-healthcare": [144.993061, -37.816989], // 89 Bridge Road, Richmond VIC 3121
+  "priv-ey": [151.207856, -33.862483], // 200 George Street, Sydney NSW 2000
+  "priv-fdc": [151.181041, -33.880635], // 22 Ross Street, Glebe NSW 2037
+  "priv-fitness-and-lifestyle": [153.010108, -27.475466], // 176 Montague Road, South Brisbane QLD 4101
+  "priv-georgiou": [115.814535, -31.91546], // 68 Hasler Road, Osborne Park WA 6017
+  "priv-gmhba": [144.355855, -38.158045], // 60-68 Moorabool Street, Geelong VIC 3220
+  "priv-goodstart-early-learning": [153.098773, -27.450821], // 43 Metroplex Avenue, Murarrie QLD 4172
+  "priv-grand-motors": [153.411793, -27.991692], // 265 Ferry Road, Southport QLD 4215
+  "priv-great-southern-bank": [153.024663, -27.46782], // 145 Ann Street, Brisbane QLD 4000
+  "priv-hbf": [115.85459, -31.949542], // 570 Wellington Street, Perth WA 6000
+  "priv-hcf": [151.206801, -33.870166], // 403 George Street, Sydney NSW 2000
+  "priv-hutchies-builders": [152.985701, -27.478519], // 584 Milton Road, Toowong QLD 4066
+  "priv-john-hughes-group": [115.896061, -31.970981], // 49 Shepperton Road, Victoria Park WA 6100
+  "priv-kane-constructions": [144.995312, -37.832746], // 658 Church Street, Richmond VIC 3121
+  "priv-kennards-hire": [150.955698, -33.775772], // 22 Powers Road, Seven Hills NSW 2147
+  "priv-kennards-self-storage": [151.12457, -33.780396], // 7 Khartoum Road, Macquarie Park NSW 2113
+  "priv-leader-computers": [138.597621, -34.927219], // 165-187 Franklin Street, Adelaide SA 5000
+  "priv-life-without-barriers": [151.773881, -32.92687], // 352 Hunter Street, Newcastle NSW 2300
+  "priv-linfox": [145.008765, -37.827262], // 490 Swan Street, Richmond VIC 3121
+  "priv-manildra-group": [151.019219, -33.853203], // 29 Tavistock Street, Auburn NSW 2144
+  "priv-mater": [153.025982, -27.484143], // Raymond Terrace, South Brisbane QLD 4101
+  "priv-melbourne-airport": [144.855422, -37.674307], // Terminal Drive, Melbourne Airport VIC 3045
+  "priv-metricon-homes": [145.142891, -37.897744], // 501 Blackburn Road, Mount Waverley VIC 3149
+  "priv-midfield": [142.460969, -38.373825], // McMeekin Road, Warrnambool VIC 3280
+  "priv-minterellison": [151.211371, -33.864517], // Governor Macquarie Tower, 1 Farrer Place, Sydney NSW 2000
+  "priv-mort-co": [151.950036, -27.553035], // 91 Mort Street, Toowoomba QLD 4350
+  "priv-nepean-consolidated": [150.865076, -33.952275], // 2/38 Bernera Road, Prestons NSW 2170
+  "priv-newcastle-greater-mutual-group": [151.765849, -32.928252], // 307 King Street, Newcastle West NSW 2302
+  "priv-nhp-electrical-engineering-products": [145.013227, -37.81759], // 43-67 River Street, Richmond VIC 3121
+  "priv-norco-co-op": [153.261728, -28.80764], // 107 Wilson Street, South Lismore NSW 2480
+  "priv-northwestern-roads": [150.852757, -33.800577], // Wallgrove Road, Eastern Creek NSW 2766
+  "priv-nrma-motoring-services": [151.069769, -33.845912], // 9 Murray Rose Avenue, Sydney Olympic Park NSW 2127
+  "priv-pallion": [151.158016, -33.914713], // 8/10 Meeks Road, Marrickville NSW 2204
+  "priv-patterson-cheney": [145.186632, -37.994367], // 200 Cheltenham Road, Keysborough VIC 3173
+  "priv-people-first-bank": [138.602548, -34.926814], // 50 Flinders Street, Adelaide SA 5000
+  "priv-peregrine": [138.563261, -34.942531], // 121 Richmond Road, Marleston SA 5033
+  "priv-perron-group": [115.874076, -31.961905], // 4 Plain Street, East Perth WA 6004
+  "priv-perth-airport": [115.955259, -31.933594], // 2 George Wiencke Drive, Perth Airport WA 6105
+  "priv-peter-kittle-motor-company": [138.63973, -34.800015], // 1459 Main North Road, Para Hills West SA 5096
+  "priv-pharmacare": [151.286675, -33.678262], // 18 Jubilee Avenue, Warriewood NSW 2102
+  "priv-qcoal": [153.029861, -27.468284], // 40 Creek Street, Brisbane QLD 4000
+  "priv-raa": [138.577846, -34.941696], // 101 Richmond Road, Mile End SA 5031
+  "priv-rac-of-wa": [115.849112, -31.947835], // 832 Wellington Street, West Perth WA 6005
+  "priv-racq": [153.097988, -27.585365], // 2649 Logan Road, Eight Mile Plains QLD 4113
+  "priv-racv": [144.96733, -37.813018], // 485 Bourke Street, Melbourne VIC 3000
+  "priv-refuelling-solutions": [153.11669, -27.61464], // 2/2 Parramatta Road, Underwood QLD 4119
+  "priv-salvation-army-australia": [145.157594, -37.818147], // 95-99 Railway Road, Blackburn VIC 3130
+  "priv-san-remo": [138.649604, -34.866306], // 4 Boden Court, Windsor Gardens SA 5087
+  "priv-sarah-group": [138.619661, -34.942996], // 49 Glen Osmond Road, Eastwood SA 5063
+  "priv-smrm-holdings": [153.090529, -27.465604], // 99 Southgate Avenue, Cannon Hill QLD 4170
+  "priv-spotlight": [144.957391, -37.830766], // 111 Cecil Street, South Melbourne VIC 3205
+  "priv-st-john-of-god-health-care": [115.855711, -31.949955], // 556 Wellington Street, Perth WA 6000
+  "priv-st-vincent-de-paul": [145.115897, -37.818136], // 43 Prospect Street, Box Hill VIC 3128
+  "priv-stowe-australia": [151.032469, -33.811866], // 10-12 Clyde Street, Rydalmere NSW 2116
+  "priv-sunny-queen-farms": [152.934226, -27.621115], // 145 Mica Street, Carole Park QLD 4300
+  "priv-sunpork-group": [153.083615, -27.437872], // 1/6 Eagleview Place, Eagle Farm QLD 4009
+  "priv-sydney-tools": [151.061974, -33.935568], // 102 Bonds Road, Roselands NSW 2196
+  "priv-teachers-health-fund": [151.20899, -33.880047], // 260 Elizabeth Street, Surry Hills NSW 2010
+  "priv-tennis-australia": [144.976205, -37.823071], // Olympic Boulevard, Melbourne VIC 3001
+  "priv-thomas-foods-international": [139.264367, -35.10779], // Lagoon Road, Northern Heights (Murray Bridge) SA 5253
+  "priv-turosi": [144.998029, -37.691032], // 5 Lipton Drive, Thomastown VIC 3074
+  "priv-united-petroleum": [145.035412, -37.824503], // 600 Glenferrie Road, Hawthorn VIC 3122
+  "priv-uniting": [151.208181, -33.87194], // 222 Pitt Street, Sydney NSW 2000
+  "priv-village-roadshow": [144.996024, -37.838778], // 650 Chapel Street, South Yarra VIC 3141
+  "priv-winslow-constructors": [145.005019, -37.693893], // 50 Mahoneys Road, Thomastown VIC 3074
+  "qld-gov-art-gallery": [153.016462, -27.470632], // Stanley Place, South Brisbane QLD 4101
+  "qld-gov-department-of-customer-services-open-data-and-small-and-family-business": [153.025829, -27.475126], // 1 William Street, Brisbane QLD 4000
+  "qld-gov-department-of-women-aboriginal-and-torres-strait-islander-partnerships-and-multiculturalism": [153.025829, -27.475126], // 1 William Street, Brisbane QLD 4000
+  "qld-gov-economic-development-queensland": [153.025829, -27.475126], // 1 William Street, Brisbane QLD 4000
+  "qld-gov-education": [153.026222, -27.472514], // 30 Mary Street, Brisbane QLD 4000
+  "qld-gov-environment-tourism-science-and-innovation": [153.020849, -27.468614], // 400 George Street, Brisbane QLD 4000
+  "qld-gov-families-seniors-disability-services-and-child-safety": [153.025829, -27.475126], // 1 William Street, Brisbane QLD 4000
+  "qld-gov-health-and-wellbeing-queensland": [153.009842, -27.468856], // 139 Coronation Drive, Milton QLD 4064
+  "qld-gov-housing-and-public-works": [153.025829, -27.475126], // 1 William Street, Brisbane QLD 4000
+  "qld-gov-inspector-general-emergency-management": [153.025508, -27.472536], // 111 George Street, Brisbane QLD 4000
+  "qld-gov-justice": [153.025829, -27.475126], // 1 William Street, Brisbane QLD 4000
+  "qld-gov-legal-aid": [153.019039, -27.467394], // 44 Herschel Street, Brisbane QLD 4000
+  "qld-gov-local-government-water-and-volunteers": [153.025829, -27.475126], // 1 William Street, Brisbane QLD 4000
+  "qld-gov-natural-resources-and-mines-manufacturing-and-regional-and-rural-development": [153.025829, -27.475126], // 1 William Street, Brisbane QLD 4000
+  "qld-gov-office-of-industrial-relations": [153.025829, -27.475126], // 1 William Street, Brisbane QLD 4000
+  "qld-gov-office-of-the-health-ombudsman": [153.020849, -27.468614], // 400 George Street, Brisbane QLD 4000
+  "qld-gov-primary-industries": [153.02659, -27.473513], // 41 George Street, Brisbane QLD 4000
+  "qld-gov-public-trust-office": [153.03073, -27.464923], // 444 Queen Street, Brisbane QLD 4000
+  "qld-gov-queensland-building-and-construction-commission": [153.004895, -27.480073], // 299 Montague Road, West End QLD 4101
+  "qld-gov-queensland-corrective-services": [153.02276, -27.469247], // 69 Ann Street, Brisbane QLD 4000
+  "qld-gov-queensland-curriculum-and-assessment-authority": [153.015012, -27.476128], // 154 Melbourne Street, South Brisbane QLD 4101
+  "qld-gov-queensland-health": [153.025926, -27.472214], // 33 Charlotte Street, Brisbane QLD 4000
+  "qld-gov-queensland-pharmacy-business-ownership-council": [153.025926, -27.472214], // 33 Charlotte Street, Brisbane QLD 4000
+  "qld-gov-queensland-police-service": [153.017959, -27.466832], // 200 Roma Street, Brisbane QLD 4000
+  "qld-gov-queensland-racing-integrity-commission": [153.046513, -27.44096], // 60 Kingsford Smith Drive, Albion QLD 4010
+  "qld-gov-queensland-treasury": [153.025829, -27.475126], // 1 William Street, Brisbane QLD 4000
+  "qld-gov-resources-safety-and-health-queensland": [153.022949, -27.46965], // 275 George Street, Brisbane QLD 4000
+  "qld-gov-sport-racing-and-olympic-and-paralympic-games": [153.025508, -27.472536], // 111 George Street, Brisbane QLD 4000
+  "qld-gov-state-development-infrastructure-and-planning": [153.025829, -27.475126], // 1 William Street, Brisbane QLD 4000
+  "qld-gov-state-library": [153.016462, -27.470632], // Stanley Place, South Brisbane QLD 4101
+  "qld-gov-teach-queensland": [153.026222, -27.472514], // 30 Mary Street, Brisbane QLD 4000
+  "qld-gov-trade-employment-and-training": [153.025829, -27.475126], // 1 William Street, Brisbane QLD 4000
+  "qld-gov-transport-and-main-roads": [153.025829, -27.475126], // 1 William Street, Brisbane QLD 4000
+  "qld-gov-youth-justice-and-victim-support": [153.025829, -27.475126], // 1 William Street, Brisbane QLD 4000
+  "s32": [115.856832, -31.954441], // 108 St Georges Terrace, Perth WA 6000
+  "sa-gov-adelaide-festival-centre-trust": [138.599276, -34.920821], // King William Road, Adelaide SA 5000
+  "sa-gov-attorney-general-s-department": [138.601457, -34.926044], // 45 Pirie Street, Adelaide SA 5000
+  "sa-gov-carclew-youth-arts-centre": [138.592711, -34.912325], // 11 Jeffcott Street, North Adelaide SA 5006
+  "sa-gov-commissioner-for-children-and-young-people": [138.59373, -34.929606], // 251 Morphett Street, Adelaide SA 5000
+  "sa-gov-country-arts-sa": [138.618491, -34.885317], // 85 North East Road, Collinswood SA 5081
+  "sa-gov-courts-administration-authority": [138.591277, -34.930567], // 1 Gouger Street, Adelaide SA 5000
+  "sa-gov-dairysafe": [138.61877, -34.942465], // 136 Glen Osmond Road, Parkside SA 5063
+  "sa-gov-department-for-child-protection": [138.601684, -34.927381], // 31 Flinders Street, Adelaide SA 5000
+  "sa-gov-department-for-correctional-services": [138.600712, -34.933795], // 400 King William Street, Adelaide SA 5000
+  "sa-gov-department-for-education": [138.601684, -34.927381], // 31 Flinders Street, Adelaide SA 5000
+  "sa-gov-department-for-energy-and-mining": [138.598848, -34.926067], // 11 Waymouth Street, Adelaide SA 5000
+  "sa-gov-department-for-environment-and-water": [138.590271, -34.926249], // 81-95 Waymouth Street, Adelaide SA 5000
+  "sa-gov-department-for-infrastructure-and-transport": [138.602728, -34.924642], // 77 Grenfell Street, Adelaide SA 5000
+  "sa-gov-department-of-human-services": [138.595913, -34.92124], // Riverside Centre, North Terrace, Adelaide SA 5000
+  "sa-gov-department-of-state-development": [138.598848, -34.926067], // 11 Waymouth Street, Adelaide SA 5000
+  "sa-gov-department-of-the-premier-and-cabinet": [138.601019, -34.927667], // State Administration Centre, 200 Victoria Square, Adelaide SA 5000
+  "sa-gov-department-of-treasury-and-finance": [138.601019, -34.927667], // State Administration Centre, 200 Victoria Square, Adelaide SA 5000
+  "sa-gov-environment-protection-authority": [138.598832, -34.928295], // 211 Victoria Square, Adelaide SA 5000
+  "sa-gov-eyre-peninsula-landscape-board": [135.861412, -34.721386], // 86 Tasman Terrace, Port Lincoln SA 5606
+  "sa-gov-forestrysa": [138.713923, -35.203008], // 495 Brookman Road, Kuitpo SA 5201
+  "sa-gov-kangaroo-island-landscape-board": [137.635463, -35.658197], // 35 Dauncey Street, Kingscote SA 5223
+  "sa-gov-landscape-sa": [138.590271, -34.926249], // 81-95 Waymouth Street, Adelaide SA 5000
+  "sa-gov-legal-services-commission": [138.601918, -34.923627], // 159 Gawler Place, Adelaide SA 5000
+  "sa-gov-lifetime-support-authority-of-sa": [138.601906, -34.928227], // 30 Wakefield Street, Adelaide SA 5000
+  "sa-gov-limestone-coast-landscape-board": [140.774391, -37.828793], // 11 Helen Street, Mount Gambier SA 5290
+  "sa-gov-office-for-early-childhood-development": [138.601684, -34.927381], // 31 Flinders Street, Adelaide SA 5000
+  "sa-gov-office-for-recreation-sport-and-racing": [138.531099, -34.913639], // 27 Valetta Road, Kidman Park SA 5025
+  "sa-gov-parliament-of-sa": [138.598739, -34.921041], // Parliament House, North Terrace, Adelaide SA 5000
+  "sa-gov-sa-arid-lands-landscape-board": [137.770849, -32.488167], // 1 Jervois Street, Port Augusta SA 5700
+  "sa-gov-sa-health": [138.604892, -34.923327], // 11 Hindmarsh Square, Adelaide SA 5000
+  "sa-gov-sa-housing-trust": [138.595913, -34.92124], // Riverside Centre, North Terrace, Adelaide SA 5000
+  "sa-gov-sa-lotteries": [138.629147, -34.913793], // 18 Union Street, Stepney SA 5069
+  "sa-gov-sa-metropolitan-fire-service": [138.604742, -34.928743], // 99 Wakefield Street, Adelaide SA 5000
+  "sa-gov-sace-board-of-sa": [138.593713, -34.942015], // 60 Greenhill Road, Wayville SA 5034
+  "sa-gov-safework-sa": [138.571729, -34.942101], // 33 Richmond Road, Keswick SA 5035
+  "sa-gov-south-australia-police": [138.604652, -34.929506], // 100 Angas Street, Adelaide SA 5000
+  "sa-gov-state-opera-sa": [138.618491, -34.885317], // 85 North East Road, Collinswood SA 5081
+  "sa-gov-state-theatre-company-of-sa": [138.618491, -34.885317], // 85 North East Road, Collinswood SA 5081
+  "sa-gov-tafe-sa": [138.59479, -34.924242], // 120 Currie Street, Adelaide SA 5000
+  "sa-gov-west-beach-parks": [138.505268, -34.947335], // 1 Military Road, West Beach SA 5024
+  "shell": [115.855175, -31.949814], // 562 Wellington Street, Perth WA 6000
+  "sydney-bga": [149.823064, -36.666859], // 23-45 Ridge Street, Bega NSW 2550
+  "sydney-dro": [151.211903, -33.86313], // 126 Phillip Street, Sydney NSW 2000
+  "sydney-edv": [151.210557, -33.886178], // 26 Waterloo Street, Surry Hills NSW 2010
+  "sydney-mts": [151.129988, -33.787402], // 1 Thomas Holt Drive, Macquarie Park NSW 2113
+  "sydney-rdx": [150.833743, -34.027687], // 2 Swettenham Road, Minto NSW 2566
+  "sydney-rwc": [145.111103, -37.991844], // 25 Downard Street, Braeside VIC 3195
+  "sydney-wtc": [151.197215, -33.907935], // 33 Bourke Road, Alexandria NSW 2015
+  "tas-gov-building-tasmania": [147.329871, -42.885461], // 4 Salamanca Place, Hobart TAS 7000
+  "tas-gov-department-for-education-children-and-young-people": [147.329871, -42.885461], // 4 Salamanca Place, Hobart TAS 7000
+  "tas-gov-department-of-natural-resources-and-environment-tasmania": [147.328044, -42.884746], // Lands Building, 134 Macquarie Street, Hobart TAS 7000
+  "tas-gov-department-of-police-fire-and-emergency-management": [147.32333, -42.884806], // 47 Liverpool Street, Hobart TAS 7000
+  "tas-gov-macquarie-point-development-corporation": [147.336827, -42.881149], // 41 Evans Street, Hobart TAS 7000
+  "tas-gov-port-arthur-historic-site-management-authority": [147.849741, -43.128307], // Arthur Highway, Port Arthur TAS 7182
+  "tas-gov-public-trustee": [147.316388, -42.87712], // 116 Murray Street, Hobart TAS 7000
+  "vic-gov-albury-wodonga-health": [146.947332, -36.076029], // Borella Road, Albury NSW 2640
+  "vic-gov-alexandra-district-health": [145.716691, -37.195167], // 12 Cooper Street, Alexandra VIC 3714
+  "vic-gov-ambulance-victoria": [145.123369, -37.779713], // 375 Manningham Road, Doncaster VIC 3108
+  "vic-gov-austin-health": [145.058657, -37.756561], // 145 Studley Road, Heidelberg VIC 3084
+  "vic-gov-bairnsdale-regional-health-service": [147.60844, -37.831207], // 122 Day Street, Bairnsdale VIC 3875
+  "vic-gov-benalla-health": [145.994498, -36.554957], // 45-63 Coster Street, Benalla VIC 3672
+  "vic-gov-bendigo-health": [144.282245, -36.75067], // 100 Barnard Street, Bendigo VIC 3550
+  "vic-gov-central-gippsland-health": [147.080816, -38.107776], // 155 Guthridge Parade, Sale VIC 3850
+  "vic-gov-central-highlands-rural-health": [144.147062, -37.337932], // 17 Hospital Street, Daylesford VIC 3460
+  "vic-gov-children-s-court": [144.964995, -37.824633], // 65 Kavanagh Street, Southbank VIC 3006
+  "vic-gov-corryong-health": [147.902858, -36.197566], // 20 Kiell Street, Corryong VIC 3707
+  "vic-gov-country-fire-authority": [145.164064, -37.855703], // 8 Lakeside Drive, Burwood East VIC 3151
+  "vic-gov-county-court": [144.957658, -37.813022], // 250 William Street, Melbourne VIC 3000
+  "vic-gov-court-services-victoria": [144.957162, -37.813998], // 223 William Street, Melbourne VIC 3000
+  "vic-gov-department-of-education": [144.976305, -37.812701], // 2 Treasury Place, East Melbourne VIC 3002
+  "vic-gov-department-of-energy-environment-and-climate-action": [144.973631, -37.80847], // 8 Nicholson Street, East Melbourne VIC 3002
+  "vic-gov-department-of-families-fairness-and-housing": [144.970589, -37.809134], // 50 Lonsdale Street, Melbourne VIC 3000
+  "vic-gov-department-of-government-services": [144.970425, -37.812775], // 121 Exhibition Street, Melbourne VIC 3000
+  "vic-gov-department-of-health": [144.970589, -37.809134], // 50 Lonsdale Street, Melbourne VIC 3000
+  "vic-gov-department-of-jobs-skills-industry-and-regions": [144.970425, -37.812775], // 121 Exhibition Street, Melbourne VIC 3000
+  "vic-gov-department-of-justice-and-community-safety": [144.970425, -37.812775], // 121 Exhibition Street, Melbourne VIC 3000
+  "vic-gov-department-of-premier-and-cabinet": [144.974873, -37.813004], // 1 Treasury Place, East Melbourne VIC 3002
+  "vic-gov-department-of-transport-and-planning": [144.974182, -37.815129], // 1 Spring Street, Melbourne VIC 3000
+  "vic-gov-department-of-treasury-and-finance": [144.974873, -37.813004], // 1 Treasury Place, East Melbourne VIC 3002
+  "vic-gov-dhelkaya-health": [144.212344, -37.051912], // 142 Cornish Street, Castlemaine VIC 3450
+  "vic-gov-environment-protection-authority": [144.960683, -37.806004], // 200 Victoria Street, Carlton VIC 3053
+  "vic-gov-goulburn-valley-health": [145.413736, -36.36247], // Graham Street, Shepparton VIC 3630
+  "vic-gov-government-schools": [144.976305, -37.812701], // 2 Treasury Place, East Melbourne VIC 3002
+  "vic-gov-grampians-wimmera-mallee-water-corporation": [142.201797, -36.71329], // 11 McLachlan Street, Horsham VIC 3400
+  "vic-gov-heathcote-health": [144.709712, -36.925598], // 39 Hospital Street, Heathcote VIC 3523
+  "vic-gov-homes-victoria": [144.970589, -37.809134], // 50 Lonsdale Street, Melbourne VIC 3000
+  "vic-gov-inglewood-and-districts-health-service": [143.873081, -36.571896], // 3 Hospital Street, Inglewood VIC 3517
+  "vic-gov-latrobe-regional-health": [146.470948, -38.219841], // 10 Village Avenue, Traralgon VIC 3844
+  "vic-gov-magistrates-court": [144.956814, -37.813544], // 233 William Street, Melbourne VIC 3000
+  "vic-gov-moyne-health-services": [142.22786, -38.38152], // 30-36 Villiers Street, Port Fairy VIC 3284
+  "vic-gov-museums-victoria": [144.972349, -37.80323], // 11 Nicholson Street, Carlton VIC 3053
+  "vic-gov-ncn-health": [145.4429, -36.099731], // 2 Katamatite-Nathalia Road, Numurkah VIC 3636
+  "vic-gov-northeast-health-wangaratta": [146.313804, -36.354113], // 35-47 Green Street, Wangaratta VIC 3677
+  "vic-gov-office-of-public-prosecutions": [144.955158, -37.81438], // 565 Lonsdale Street, Melbourne VIC 3000
+  "vic-gov-office-of-the-victorian-information-commissioner": [144.970425, -37.812775], // 121 Exhibition Street, Melbourne VIC 3000
+  "vic-gov-orbost-regional-health": [148.464833, -37.701539], // 104 Boundary Road, Orbost VIC 3888
+  "vic-gov-parks-victoria": [144.957863, -37.816143], // 535 Bourke Street, Melbourne VIC 3000
+  "vic-gov-parliament-of-victoria": [144.973866, -37.8111], // Parliament House, Spring Street, East Melbourne VIC 3002
+  "vic-gov-peninsula-health": [145.128152, -38.15079], // Frankston Hospital, 2 Hastings Road, Frankston VIC 3199
+  "vic-gov-peter-maccallum-cancer-centre": [144.956215, -37.799927], // 305 Grattan Street, Melbourne VIC 3000
+  "vic-gov-royal-botanic-gardens-victoria": [144.979452, -37.833164], // Birdwood Avenue, Melbourne VIC 3004
+  "vic-gov-royal-children-s-hospital": [144.948979, -37.793935], // 50 Flemington Road, Parkville VIC 3052
+  "vic-gov-royal-melbourne-hospital": [144.955364, -37.798539], // 300 Grattan Street, Parkville VIC 3050
+  "vic-gov-safer-care-victoria": [144.970589, -37.809134], // 50 Lonsdale Street, Melbourne VIC 3000
+  "vic-gov-shrine-of-remembrance-trust": [145.069563, -37.725547], // Birdwood Avenue, Melbourne VIC 3001
+  "vic-gov-south-west-healthcare": [142.475298, -38.378416], // Ryot Street, Warrnambool VIC 3280
+  "vic-gov-state-library-of-victoria": [144.965535, -37.80977], // 328 Swanston Street, Melbourne VIC 3000
+  "vic-gov-state-revenue-office": [144.970425, -37.812775], // 121 Exhibition Street, Melbourne VIC 3000
+  "vic-gov-state-trustees-limited": [144.899853, -37.80352], // 1 McNab Avenue, Footscray VIC 3011
+  "vic-gov-supreme-court": [144.958225, -37.814058], // 210 William Street, Melbourne VIC 3000
+  "vic-gov-tallangatta-health-service": [147.183284, -36.213756], // 25 Barree Street, Tallangatta VIC 3700
+  "vic-gov-triple-zero-victoria": [145.168313, -37.856099], // 33 Lakeside Drive, Burwood East VIC 3151
+  "vic-gov-vicscreen": [144.96733, -37.813018], // 563 Bourke Street, Melbourne VIC 3000
+  "vic-gov-victoria-legal-aid": [144.956785, -37.815565], // 570 Bourke Street, Melbourne VIC 3000
+  "vic-gov-victoria-state-emergency-service": [144.966025, -37.825663], // 168 Sturt Street, Southbank VIC 3006
+  "vic-gov-victorian-civil-and-administrative-tribunal-vcat": [144.956599, -37.819202], // 55 King Street, Melbourne VIC 3000
+  "vic-gov-victorian-electoral-commission": [144.956867, -37.817793], // 530 Collins Street, Melbourne VIC 3000
+  "vic-gov-victorian-gambling-and-casino-control-commission": [144.993551, -37.810708], // 12 Shelley Street, Richmond VIC 3121
+  "vic-gov-victorian-health-promotion-foundation": [144.950559, -37.811886], // 355 Spencer Street, West Melbourne VIC 3003
+  "vic-gov-victorian-institute-of-forensic-medicine": [144.964995, -37.824633], // 65 Kavanagh Street, Southbank VIC 3006
+  "vic-gov-victorian-institute-of-teaching": [144.950289, -37.81868], // 717 Bourke Street, Docklands VIC 3008
+  "vic-gov-west-gippsland-healthcare-group": [145.927335, -38.172431], // 41 Landsborough Street, Warragul VIC 3820
+  "vic-gov-worksafe": [144.358819, -38.146047], // 1 Malop Street, Geelong VIC 3220
+  "wds": [115.849831, -31.953822], // Mia Yellagonga, 11 Mount Street, Perth WA 6000
 };

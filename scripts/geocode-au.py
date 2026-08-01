@@ -80,20 +80,46 @@ STREET_WORD = (r"(street|road|avenue|drive|circuit|crescent|parade|place|highway
                r"terrace|way|lane|esplanade|boulevard|close|court|quay|mall|walk|st|rd|ave)")
 
 
-def street_of(addr):
-    """The road name in an address, wherever in the string it sits.
+def street_segments(addr):
+    """The address from its first road-naming segment onward.
 
-    A third of the supplied addresses lead with a floor or a building —
-    "Level 34, Australia Square, 264-278 George Street, Sydney NSW 2000" — so
-    taking the first comma-segment yields "level 34" and every one of them
-    would be rejected. Scan the segments for the one that names a road.
+    A third of the supplied addresses lead with a floor, a unit or a building —
+    "Level 34, Australia Square, 264-278 George Street, Sydney NSW 2000",
+    "Nishi Building, 2 Phillip Law Street, Canberra ACT 2601" — and Nominatim
+    returns NO MATCH AT ALL for those, because it has no notion of a storey and
+    the building name is not in its index. Measured: sent whole, 265 of 625
+    addresses failed to resolve, and nearly all of them were of this shape.
+    Dropping the segments in front of the road turns them into queries it can
+    answer.
+
+    Returns '' when no segment names a road (a few addresses are just a
+    locality, e.g. "Girgarre VIC 3624"); the caller then sends the whole string.
     """
-    for seg in addr.split(','):
-        seg = seg.strip()
-        m = re.search(r"([A-Za-z][A-Za-z'\-\s]{2,30}?\s+" + STREET_WORD + r")\b", seg, re.I)
-        if m:
-            return m.group(1).strip().lower()
-    return ''
+    segs = [s.strip() for s in addr.split(',') if s.strip()]
+    for i, seg in enumerate(segs):
+        if re.search(r"\b" + STREET_WORD + r"\b", seg, re.I):
+            return segs[i:]
+    return []
+
+
+# Street numbers as they actually appear: "12", "2A", "264-278", "1/22", "10-12A".
+STREET_NUMBER = r"^\d+[A-Za-z]?(?:\s*[-/]\s*\d+[A-Za-z]?)*\s+"
+
+
+def street_of(addr):
+    """The road name an address claims, lower-cased, for the match check.
+
+    The leading number has to come off FIRST. "2A Venture Road" fed straight to
+    the name pattern matches from the "A", yielding "a venture road", which then
+    fails to appear in the geocoder's "Venture Road" and rejects a result that
+    was in fact correct.
+    """
+    segs = street_segments(addr)
+    if not segs:
+        return ''
+    seg = re.sub(STREET_NUMBER, '', segs[0]).strip()
+    m = re.search(r"([A-Za-z][A-Za-z'\-\s]{2,30}?\s+" + STREET_WORD + r")\b", seg, re.I)
+    return m.group(1).strip().lower() if m else ''
 
 
 def nominatim(query: str):
@@ -105,21 +131,51 @@ def nominatim(query: str):
         return json.load(r)
 
 
+def queries_for(addr):
+    """The lookups to try, in order, stopping at the first that returns a hit.
+
+    1. From the road onward — drops "Level 8", "Suite 4", "Nishi Building".
+    2. Road plus locality, postcode dropped. Some of these registered postcodes
+       are the company's PO box rather than the street's, and Nominatim scores
+       a conflicting postcode as a miss rather than ignoring it.
+    3. The address exactly as supplied, in case the road scan guessed wrong.
+
+    Every candidate still faces the same street-match gate, so a looser query
+    cannot smuggle in a wrong building — it can only fail to find one.
+    """
+    segs = street_segments(addr)
+    out = []
+    if segs:
+        out.append(', '.join(segs))
+        if len(segs) > 1:
+            loose = re.sub(r"\s*\b\d{4}\b\s*$", '', segs[-1]).strip()
+            cand = ', '.join(segs[:-1] + ([loose] if loose else []))
+            if cand not in out:
+                out.append(cand)
+    if addr not in out:
+        out.append(addr)
+    return out
+
+
 def main() -> int:
     ADDRESSES = load_addresses()
     out: dict[str, list] = {}
     rejected: list[str] = []
     far: list[str] = []
-    for i, (cid, (city, addr)) in enumerate(sorted(ADDRESSES.items()), 1):
-        try:
-            res = nominatim(addr)
-        except Exception as e:
-            rejected.append(f'{cid}: lookup failed ({e})')
+    for cid, (city, addr) in sorted(ADDRESSES.items()):
+        res, err = [], None
+        for q in queries_for(addr):
+            try:
+                res = nominatim(q)
+            except Exception as e:
+                err = e
+                res = []
             time.sleep(1.2)
-            continue
+            if res:
+                break
         if not res:
-            rejected.append(f'{cid}: no match for {addr!r}')
-            time.sleep(1.2)
+            rejected.append(f'{cid}: lookup failed ({err})' if err
+                            else f'{cid}: no match for {addr!r}')
             continue
         hit = res[0]
         lon, lat = float(hit['lon']), float(hit['lat'])
