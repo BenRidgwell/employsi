@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { callerRole } from "./sessionRole";
-import { marketVisible } from "./markets";
+import { marketVisible, isReleasedRow } from "./markets";
 import type { D1Like } from "./jobArchive";
 import { COMPANY_ID_ALIAS, type RolePoint } from "./openRolesFn";
 import { SKILL_CATEGORY, parseStoredSkills } from "../data/skillsTaxonomy";
@@ -254,6 +254,11 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
     const empty: LiveSkillTrends = { "24h": [], "7d": [], "30d": [] };
     const db = await getArchiveDb();
     if (!db) return empty;
+    // The ticker is a market-wide roll-up, so it has to be rolled up over the
+    // markets the reader can actually see — otherwise an end user reads a
+    // headline demand figure carrying vacancies from countries the product has
+    // not released to them.
+    const seesAll = (await callerRole()) === "admin";
     // Sparkline length. The archive stores first_seen/last_seen per listing, so
     // "how many live vacancies demanded skill X on day D" is recoverable for any
     // day the archive was actually running — no new storage needed, and the line
@@ -286,7 +291,7 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
     try {
       const res = await db
         .prepare(
-          `SELECT skills, first_seen, last_seen FROM jobs
+          `SELECT skills, first_seen, last_seen, hub, company_id FROM jobs
              WHERE skills IS NOT NULL AND last_seen >= ?1`,
         )
         .bind(scanFrom)
@@ -311,6 +316,8 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
         const fs = String(r.first_seen || "");
         const ls = String(r.last_seen || "");
         if (!fs || !ls) continue;
+        if (!seesAll && !isReleasedRow(r.hub as string | null, r.company_id as string | null))
+          continue;
         if (fs < archiveStart) archiveStart = fs;
         newPerDay[fs] = (newPerDay[fs] || 0) + 1;
         for (const b of bounds) {

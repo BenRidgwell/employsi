@@ -1,4 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
+import { callerRole } from "./sessionRole";
+import { isReleasedTicker } from "./markets";
 import { yahooSymbol } from "./shareSeriesFn";
 
 // Live company fundamentals, fetched on the Worker from Yahoo Finance's
@@ -116,6 +118,10 @@ export const getCompanyStats = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<CompanyStats> => {
     const ticker = (data.ticker || "").trim().toUpperCase();
     if (!ticker) return EMPTY;
+    // Public market data rather than our archive, but an end user should not be
+    // able to pull a profile for a company the product has not released to
+    // them — the card it feeds is the one they cannot open.
+    if ((await callerRole()) !== "admin" && !isReleasedTicker(ticker)) return EMPTY;
     const key = `${ticker}::${data.exchange || ""}`;
     const hit = cache.get(key);
     if (hit && Date.now() - hit.at < TTL) return hit.data;

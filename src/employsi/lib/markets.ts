@@ -1,5 +1,6 @@
 import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
 import { CITY_COMPANIES } from "../data/mapboxGeo";
+import { COMPANIES } from "../data/companies";
 import type { Role } from "./roles";
 
 /**
@@ -88,4 +89,42 @@ export function isReleasedCompany(companyId: string): boolean {
 export function marketVisible(role: Role, placeOrCompany: string, isCompany = false): boolean {
   if (seesAllMarkets(role)) return true;
   return isCompany ? isReleasedCompany(placeOrCompany) : isReleasedPlace(placeOrCompany);
+}
+
+/**
+ * Is any company trading under this ticker in a released market?
+ *
+ * A ticker is not unique across exchanges, so this accepts if ANY match is
+ * released — the same "any, not its" rule isReleasedCompany uses, for the same
+ * reason: refusing a symbol the product is willing to plot would be a gate
+ * disagreeing with the map.
+ */
+export function isReleasedTicker(ticker: string): boolean {
+  const t = (ticker || "").trim().toUpperCase();
+  if (!t) return false;
+  return COMPANIES.some((c) => (c.ticker || "").toUpperCase() === t && isReleasedCompany(c.id));
+}
+
+/**
+ * Is an archive ROW in a released market?
+ *
+ * Rows carry a hub (the city a vacancy was matched to) and a company_id, and
+ * neither alone covers the table: about a fifth have no hub — jora, indeed and
+ * the career portals do not set one — while every one of those does carry a
+ * company_id. Checking hub first and falling back to the company leaves no row
+ * unclassified, which was verified against the live archive rather than
+ * assumed.
+ *
+ * A row with neither is excluded, so an unattributable row is withheld rather
+ * than counted.
+ */
+export function isReleasedRow(
+  hub: string | null | undefined,
+  companyId: string | null | undefined,
+): boolean {
+  const h = (hub || "").trim();
+  // "Australia" appears as a hub value on ~1,100 rows alongside the city ids.
+  if (h && (isReleasedPlace(h) || h.toLowerCase() === "australia")) return true;
+  const c = (companyId || "").trim();
+  return !!c && isReleasedCompany(c);
 }
