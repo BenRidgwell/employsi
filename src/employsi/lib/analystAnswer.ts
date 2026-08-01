@@ -8,6 +8,7 @@ import {
   topSkillsInScope,
 } from "./marketHistory";
 import { skillsForSector } from "./analystSector";
+import { lineChart, multiplesChart, scatterChart } from "./analystCharts";
 
 /**
  * Routes a question to whichever dataset can actually answer it.
@@ -49,10 +50,31 @@ function monthName(iso: string): string {
   return `${names[Number(m) - 1] ?? m} ${y}`;
 }
 
-/** A skill's long-run history in this scope, as the design's answer shape. */
-function skillHistoryAnswer(skill: string, keys: string[], label: string): AnalystAnswer | null {
+/**
+ * A skill's long-run history in this scope, as the design's answer shape.
+ *
+ * `wantsAreas` asks for the per-area small multiples instead of the indexed
+ * pair — the same figures, split by where they sit rather than read against the
+ * market. A question naming a place ("how does X compare across cities") wants
+ * the second; everything else wants the first.
+ */
+function skillHistoryAnswer(
+  skill: string,
+  keys: string[],
+  label: string,
+  only?: Set<string>,
+  wantsAreas?: boolean,
+): AnalystAnswer | null {
   const h = skillHistory(skill, keys);
   if (!h) return null;
+
+  // Small multiples need at least two areas with their own series; when the
+  // scope is one city there is nothing to lay side by side, so it falls back to
+  // the indexed pair rather than drawing a single lonely panel.
+  const chart =
+    (wantsAreas ? multiplesChart(skill, h.covered) : null) ??
+    lineChart(skill, keys, only) ??
+    undefined;
 
   const stats = [
     { k: `Vacancies · ${h.latestMonth}`, v: fmtNum(h.latest) },
@@ -95,12 +117,21 @@ function skillHistoryAnswer(skill: string, keys: string[], label: string): Analy
     );
   }
 
+  // The reference line is every published category summed, and those categories
+  // overlap — one occupation maps to several skills. Saying so is the point:
+  // read as a shape it is the market, read as a headcount it is wrong.
+  const chartNote =
+    chart?.kind === "line"
+      ? " · market line is all categories in scope, indexed (categories overlap, so it is a shape not a count)"
+      : "";
+
   return {
     intent: "history",
     text: parts.join(" ").replace(/\s+—/g, " —"),
     stats,
     bars,
-    source: `${h.sources.join(" · ")} · monthly, ${HISTORY_SPAN}`,
+    chart,
+    source: `${h.sources.join(" · ")} · monthly, ${HISTORY_SPAN}${chartNote}`,
   };
 }
 
@@ -146,12 +177,19 @@ function marketHistoryAnswer(
     ? `Across ${label}, among the occupations ${sector} hires, the largest published vacancy categories are`
     : `Across ${label}, the largest published vacancy categories are`;
 
+  // The scatter needs both a year-on-year and a five-year reading per category,
+  // so a scope whose series are too young for one simply gets the bars.
+  const chart = scatterChart(keys, only) ?? undefined;
+  const chartText = chart
+    ? " Plotted below: each category by how it moved over one year against five, sized by how many vacancies are behind it."
+    : "";
+
   return {
     intent: "history",
     text: `${lead} ${top
       .slice(0, 3)
       .map((r) => r.skill)
-      .join(", ")}. ${moverText}`.trim(),
+      .join(", ")}. ${moverText}${chartText}`.trim(),
     stats: [
       { k: "Top category", v: fmtNum(top[0].latest) },
       {
@@ -162,9 +200,11 @@ function marketHistoryAnswer(
       { k: "Areas covered", v: String(keys.filter((k) => skillHistory(top[0].skill, [k])).length) },
     ],
     bars,
+    chart,
     source:
       `${sources.join(" · ")} · monthly, ${HISTORY_SPAN}` +
-      (sector ? ` · narrowed to ${sector} occupations` : ""),
+      (sector ? ` · narrowed to ${sector} occupations` : "") +
+      (chart ? " · categories with 200+ vacancies" : ""),
   };
 }
 
@@ -191,9 +231,16 @@ export async function answerQuestion(
   // names one skill — that IS the narrowing.
   const sectorSkills = sector ? skillsForSector(sector) : undefined;
 
+  // "…across cities", "…by region", "where is it strongest" — the same skill
+  // split by area rather than read against the market. Keyword-matched like
+  // every other route here, so what you get is predictable from what you typed.
+  const wantsAreas = /\b(across|compare|between|by (city|cities|region|state)|where)\b/i.test(
+    question,
+  );
+
   if (wantsHistory && covered) {
     const answer = skill
-      ? skillHistoryAnswer(skill, hubs, scope.label)
+      ? skillHistoryAnswer(skill, hubs, scope.label, sectorSkills, wantsAreas)
       : marketHistoryAnswer(hubs, scope.label, sector, sectorSkills);
     if (answer) return answer;
     if (!skill && sector) {

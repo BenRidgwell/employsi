@@ -9,6 +9,7 @@ import type { AnalystAnswer, AnalystScope } from "../../lib/analystFn";
 import { SUGGESTED_PROMPTS } from "../../lib/analystIntent";
 import { ALL_SECTORS, companyIdsForSector, sectorsInScope } from "../../lib/analystSector";
 import { IconClose } from "../ActionIcons";
+import { AnalystChartView } from "./AnalystChart";
 
 /**
  * "Ask an analyst", built from `ask an analyst.dc.html`.
@@ -278,6 +279,11 @@ export function AnalystPane() {
                 <div className="ananswer">
                   <span className="antail" />
                   <span className="antext">{m.text}</span>
+
+                  {/* The chart sits directly under the sentence that states the
+                      finding and above the figures, which is the design's own
+                      order: read the claim, see the shape, then the numbers. */}
+                  {m.answer?.chart && <AnalystChartView chart={m.answer.chart} />}
 
                   {!!m.answer?.stats?.length && (
                     <div className="anstats">

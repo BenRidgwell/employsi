@@ -11167,3 +11167,125 @@ body {
     width: calc(100vw - 24px);
   }
 }
+
+/* ── Analyst charts ────────────────────────────────────────────────────────
+   From `Analyst_Chart_Outputs`: an indexed dual line, a growth scatter and
+   per-area small multiples, drawn inside the answer bubble between the
+   sentence that states the finding and the figures that back it.
+
+   Sizes inside an SVG are in VIEW BOX units, and these boxes are wider than
+   the 470px pane, so everything is drawn at roughly 1.5x and scaled down by
+   `width: 100%`. That is why the axis type below reads as 14px and renders at
+   about 9 — the two charts have different view box widths and therefore need
+   different nominal sizes to land at the same optical one. */
+.anchart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.anchartsvg {
+  display: block;
+  overflow: visible;
+}
+.anchartaxis text {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  fill: var(--text-tertiary);
+}
+.anscatteraxis text {
+  font-size: 12px;
+}
+.anscatterlbl {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+}
+.anchartkey {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+.anchartkeyitem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--neutral-700);
+}
+.anchartkeyitem:last-child {
+  color: var(--text-tertiary);
+}
+.anchartswatch {
+  width: 16px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--neutral-900);
+}
+/* The reference series is dashed, so its key mark has to be too — the two are
+   only distinguishable on the chart by line style. */
+.anchartswatch.muted {
+  height: 0;
+  background: none;
+  border-top: 2px dashed #aeaeb2;
+}
+.anchartnote {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.anmultiples {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--border-subtle);
+  overflow: hidden;
+}
+.anmultiple {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 14px 15px 12px;
+  background: var(--surface-card);
+}
+.anmultihd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.anmultiname {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.008em;
+}
+.anmultidelta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--green-700);
+}
+.anmultidelta.down {
+  color: var(--red-700);
+}
+.anmultinote {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* Phone: a two-column grid of sparklines is unreadable at 390px. */
+@media (max-width: 680px) {
+  .anmultiples {
+    grid-template-columns: 1fr;
+  }
+}

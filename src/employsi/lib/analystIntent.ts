@@ -102,9 +102,26 @@ export function detectSkill(question: string): string | null {
 // The design's four suggested prompts, rewritten to match what this analyst can
 // actually answer — a suggestion that leads to "I can't tell you that" is worse
 // than no suggestion.
+//
+// The last three exist to reach the chart shapes added from
+// `Analyst_Chart_Outputs`, because a chart nobody can find is not a feature:
+//
+//   • "…against the wider market" and any named skill → the indexed pair (1a)
+//   • "…across cities" → the per-area small multiples (1d)
+//   • "Which categories are growing…" → the growth scatter (1c)
+//
+// They are worded as the router actually matches them (see RULES above and
+// `wantsAreas` in analystAnswer.ts) so clicking one is guaranteed to land on
+// the shape it advertises. The two that name a skill name SOFTWARE ENGINEERING
+// and NURSING specifically: detectSkill needs an exact taxonomy name, and those
+// two are published in all 56 covered areas, so neither prompt can land on a
+// scope that has no series for it.
 export const SUGGESTED_PROMPTS = [
   "How is hiring trending?",
   "What do these roles pay?",
   "Which skills are most in demand?",
   "How has demand changed since 2019?",
+  "Which categories are growing fastest over five years?",
+  "How does Nursing demand compare across cities?",
+  "Show Software Engineering demand against the wider market",
 ];

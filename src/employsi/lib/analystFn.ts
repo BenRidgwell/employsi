@@ -50,11 +50,68 @@ export interface AnalystBar {
   down?: boolean;
 }
 
+// ── Charts ──────────────────────────────────────────────────────────────────
+// The shapes an answer can draw, from `Analyst_Chart_Outputs`. The design's
+// second series is a share price; see lib/analystCharts.ts for why it is a
+// published vacancy series here instead, and why the correlogram is absent.
+// These types live beside the answer they hang off so the renderer and the
+// builder cannot drift.
+
+export interface ChartSeries {
+  label: string;
+  /** Index values, already rebased — the renderer scales, it does not compute. */
+  points: number[];
+  /** Solid ink = the subject; dashed grey = what it is being read against. */
+  tone: "ink" | "muted";
+}
+
+export interface AnalystChartLine {
+  kind: "line";
+  /** YYYY-MM, oldest first, index-aligned with every series' points. */
+  months: string[];
+  series: ChartSeries[];
+  note: string;
+}
+
+export interface ScatterPoint {
+  label: string;
+  /** Year-on-year %. */
+  x: number;
+  /** Five-year %. */
+  y: number;
+  /** Latest-month vacancies — the bubble's area. */
+  w: number;
+}
+
+export interface AnalystChartScatter {
+  kind: "scatter";
+  points: ScatterPoint[];
+  xLabel: string;
+  yLabel: string;
+}
+
+export interface MultiplePanel {
+  name: string;
+  points: number[];
+  note: string;
+  delta: string;
+  down?: boolean;
+}
+
+export interface AnalystChartMultiples {
+  kind: "multiples";
+  panels: MultiplePanel[];
+}
+
+export type AnalystChart = AnalystChartLine | AnalystChartScatter | AnalystChartMultiples;
+
 export interface AnalystAnswer {
   intent: string;
   text: string;
   stats?: AnalystStat[];
   bars?: AnalystBar[];
+  /** Drawn above the stats when the answer has a series worth seeing. */
+  chart?: AnalystChart;
   source?: string;
 }
 
