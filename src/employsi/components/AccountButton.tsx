@@ -1,6 +1,7 @@
 import { useAppStore } from "../state/store";
 import { SignInOptions } from "./SignInOptions";
 import { signOut as authSignOut } from "../lib/authClient";
+import { Avatar } from "./Avatar";
 import { COMPANIES } from "../data/companies";
 import { cityForCompany } from "../data/mapboxGeo";
 
@@ -19,18 +20,6 @@ const PersonIcon = () => (
     <path d="M5 20a7 7 0 0 1 14 0" />
   </svg>
 );
-
-function initialsOf(name: string): string {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((w) => w[0])
-      .slice(0, 2)
-      .join("")
-      .toUpperCase() || "U"
-  );
-}
 
 export function AccountButton() {
   const account = useAppStore((s) => s.account);
@@ -71,7 +60,7 @@ export function AccountButton() {
       >
         {account ? (
           <>
-            <span className="acctav">{initialsOf(account.name)}</span>
+            <Avatar name={account.name} image={account.image} className="acctav" />
             <span>{account.name.split(" ")[0]}</span>
           </>
         ) : (
@@ -86,7 +75,7 @@ export function AccountButton() {
         {account ? (
           <>
             <div className="accthead">
-              <span className="acctavlg">{initialsOf(account.name)}</span>
+              <Avatar name={account.name} image={account.image} className="acctavlg" />
               <div className="acctmeta">
                 <div className="acctname">{account.name}</div>
                 <div className="acctemail">{account.email}</div>

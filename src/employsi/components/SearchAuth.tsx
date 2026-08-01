@@ -1,4 +1,5 @@
 import { useAppStore } from "../state/store";
+import { Avatar } from "./Avatar";
 import { COMPANIES } from "../data/companies";
 import { searchCityFor } from "../data/mapboxGeo";
 import { SignInOptions } from "./SignInOptions";
@@ -27,18 +28,6 @@ import { signOut as authSignOut } from "../lib/authClient";
  * then needs: what they follow, and a way out.
  */
 
-function initialsOf(name: string): string {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((w) => w[0])
-      .slice(0, 2)
-      .join("")
-      .toUpperCase() || "U"
-  );
-}
-
 export function SearchAuth() {
   const account = useAppStore((s) => s.account);
   const authOpen = useAppStore((s) => s.authOpen);
@@ -65,7 +54,7 @@ export function SearchAuth() {
         aria-expanded={authOpen}
       >
         {account ? (
-          <span className="gsauthinitials">{initialsOf(account.name)}</span>
+          <Avatar name={account.name} image={account.image} className="gsauthinitials" />
         ) : (
           <svg viewBox="0 0 24 24" width={19} height={19} fill="none" stroke="currentColor">
             <circle cx="12" cy="8.6" r="3.6" />

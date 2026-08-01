@@ -4439,6 +4439,46 @@ body {
   font-weight: var(--weight-bold);
   letter-spacing: 0.02em;
 }
+
+/* ── Signed-in avatar ──────────────────────────────────────────────────────
+   The three account avatars (.acctav in the header button, .acctavlg in the
+   flyout, .gsauthinitials in the search rail) render initials on a dark disc
+   by default. When the person's provider photo loads, `.hasimg` is added and
+   the disc becomes the frame for it: the tinted background would otherwise
+   show through a photo with transparency, and the initials' font metrics
+   would offset the image inside the circle.
+
+   `object-fit: cover` matters — Google returns square avatars but LinkedIn
+   does not always, and `fill` would visibly stretch a face. */
+.acctav.hasimg,
+.acctavlg.hasimg,
+.gsauthinitials.hasimg {
+  background: none;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 50%;
+}
+.gsauthinitials.hasimg {
+  /* This one is a bare span inside a 34px round button rather than a sized
+     disc of its own, so it has to claim the button's box to be circular. */
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.acctav.hasimg img,
+.acctavlg.hasimg img,
+.gsauthinitials.hasimg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+/* The header button inverts its avatar when open; with a photo there is
+   nothing to invert, so leave the image alone. */
+.acctbtn.on .acctav.hasimg {
+  background: none;
+}
 .gsauthtip {
   position: absolute;
   top: calc(100% + 10px);
