@@ -1176,11 +1176,17 @@ export function WorldMapbox() {
         // Each vehicle is its own traveler on the same path, spaced by a small
         // offset in phase, which is what keeps the wagons coupled through the
         // curves — a rigid pixel offset would have them cut the corners.
+        //
+        // That offset is a fraction of the WHOLE run, so it has to be derived
+        // rather than picked: the corridor is ~300px on screen at the domestic
+        // zoom, so the 0.006 used at first put the three vehicles 1.8px apart
+        // and they rendered as a single blob. 0.034 is about one vehicle
+        // length, which reads as a coupled consist.
         ...[0, 1, 2].map((i): Traveler => ({
           mode: "train",
           path: AU_RAIL_PATH,
           dur: 52000,
-          offset: 0.12 - i * 0.006,
+          offset: 0.12 - i * 0.034,
         })),
       ];
       let trainIndex = 0;
