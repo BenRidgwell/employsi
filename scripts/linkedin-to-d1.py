@@ -32,6 +32,11 @@ except ImportError as e:
 
 import urllib.request  # noqa: E402
 
+# One advertiser test across every keyword-driven feed — see
+# scripts/advertiser_match.py for why the rule is shaped the way it is.
+sys.path.insert(0, HERE)
+from advertiser_match import advertiser_matches  # noqa: E402
+
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
 ACCOUNT = os.environ.get('CF_ACCOUNT_ID') or '080a66721e2d85950d9d7dc939e08b76'
 DB = os.environ.get('D1_DATABASE_ID') or '1c5f3ffb-b9d7-4233-b28b-0f1f8d193fe1'
@@ -243,8 +248,12 @@ def main() -> int:
             for j in li.parse_search_html(content):
                 # LinkedIn's keyword search is fuzzy; keep only cards whose
                 # company actually matches the target (drops recruiter noise).
-                if j.get('company') and norm(name) not in norm(j['company']) \
-                        and norm(j['company']) not in norm(name):
+                #
+                # This was substring containment in either direction, which
+                # matches INSIDE a word: it filed "Indigo Shire Council" under
+                # IGO, "ACCIONA" under CCI and "Wiley" under EY. The shared
+                # test compares whole tokens, so a partial word cannot match.
+                if j.get('company') and not advertiser_matches(j['company'], name):
                     continue
                 k = (norm(j['title']), norm(j.get('location', '')))
                 if k in seen:

@@ -1319,22 +1319,50 @@ export interface SkillContext {
 }
 
 /**
- * Terms that are only literal inside certain industries.
+ * Terms that need corroborating evidence before they are read literally.
  *
- * "Principal" is the clear case. In education and the public sector it names a
- * school principal; everywhere else it is a SENIORITY grade — BHP advertises
- * "Principal Cost Management", consultancies "Principal Consultant", banks
- * "Principal Engineer". Matching it unconditionally filed those under Education
- * Leadership, which both invented education demand in mining and banking and
- * lost the skill the title actually describes.
+ * "Principal" is the clear case, and it is a SENIORITY GRADE far more often
+ * than it is a job. BHP advertises "Principal Cost Management" and "Principal
+ * Geotechnical Engineer", consultancies "Principal Consultant", banks
+ * "Principal Engineer", governments "Principal Policy Officer". Only in a
+ * school does it name the person running the place.
  *
- * A gated term only counts when the employer's industry licenses it. When it
- * doesn't, the term is ignored and the REST of the title still maps normally,
- * so "Principal Cost Management" resolves on "cost management".
+ * Matching it unconditionally did two kinds of damage at once: it invented
+ * education demand in mining and banking — "Education Leadership" surfaced as
+ * an EMERGING SKILL AT BHP, which is what exposed this — and it buried the
+ * skill the title actually describes, because the word after "Principal" is
+ * the informative one and nothing was reading it.
+ *
+ * THE EVIDENCE HAS TO COME FROM THE TITLE, NOT THE CALLER.
+ * This was an industry gate keyed on the employer's sector, which only applied
+ * when a caller passed one. Exactly one caller did (careerSites.ts). Every
+ * other path — the archive readback in openRolesFn, every Worker fetcher, the
+ * offline mapper the Python scrapers use — called skillsForText(title) with no
+ * context, so the gate never fired and the mapping was wrong everywhere it
+ * mattered. A control that depends on being opted into is not a control.
+ *
+ * So the title itself must carry education evidence. The employer's industry
+ * is still accepted as a second source when a caller supplies one, but it is
+ * no longer required and no longer the only route.
+ *
+ * The industry list also used to include the whole public sector, which is why
+ * "Principal Policy Officer" at a department read as a school principal. A
+ * government is not a school; only education licenses the word.
+ *
+ * When the gate rejects a term the term is dropped and the REST of the title
+ * still maps normally, which is the point — "Principal Cost Management"
+ * resolves on "cost management", "Principal Geotechnical Engineer" on
+ * "geotechnical". The longer unambiguous forms ("assistant principal", "deputy
+ * principal", "school principal") are separate terms and are never gated.
  */
-const INDUSTRY_GATED: Record<string, RegExp> = {
+const GATED_TERMS: Record<string, RegExp> = {
   principal:
-    /educat|school|universit|tafe|college|academy|government|public sector|council|department|ministry/i,
+    /educat|school|colleg|campus|academy|kindergarten|preschool|primary|secondary|teach|curriculum|student|pupil|tafe|universit|childcare|early learning/i,
+};
+
+/** A gated term's second route: an employer whose industry genuinely licenses it. */
+const INDUSTRY_GATED: Record<string, RegExp> = {
+  principal: /educat|school|universit|tafe|college|academy/i,
 };
 
 /**
@@ -1378,15 +1406,17 @@ export function skillsForText(title: string, _description?: string, ctx?: SkillC
   for (const def of SKILLS) {
     const hits = def.terms.filter((t) => termMatches(hay, t));
     if (!hits.length) continue;
-    if (industry !== null) {
-      // Drop a skill whose ONLY evidence is a gated term this industry doesn't
-      // license. A longer unambiguous term ("assistant principal") still counts.
-      const licensed = hits.filter((t) => {
-        const gate = INDUSTRY_GATED[t];
-        return !gate || gate.test(industry);
-      });
-      if (!licensed.length) continue;
-    }
+    // Drop a skill whose ONLY evidence is a gated term nothing licenses. This
+    // runs whether or not a caller supplied context — the title is the primary
+    // source of evidence, so the check cannot be skipped by omitting ctx.
+    const licensed = hits.filter((t) => {
+      const titleGate = GATED_TERMS[t];
+      if (!titleGate) return true;
+      if (titleGate.test(hay)) return true;
+      const industryGate = INDUSTRY_GATED[t];
+      return industry !== null && industryGate ? industryGate.test(industry) : false;
+    });
+    if (!licensed.length) continue;
     out.push(def.skill);
   }
   // Dedupe: a canonical skill can be declared by more than one def (e.g. an

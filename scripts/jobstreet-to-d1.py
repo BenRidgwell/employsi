@@ -132,9 +132,14 @@ if not TOKEN and not DRY:
     sys.exit('CLOUDFLARE_API_TOKEN is required (needs D1 edit).')
 
 
-# ── dedup key, identical to src/employsi/lib/jobArchive.ts ────────────────────
-def norm(s: str) -> str:
-    return re.sub(r'[^a-z0-9]+', ' ', (s or '').lower()).strip()[:120]
+# The advertiser test and the archive's normalisation are shared with the other
+# keyword-driven feeds — see scripts/advertiser_match.py for why the rule is
+# shaped the way it is.
+sys.path.insert(0, HERE)
+from advertiser_match import (  # noqa: E402
+    ADVERTISER_ALIAS, CORPORATE_WORDS, advertiser_matches, near_miss, norm,
+)
+_ = (ADVERTISER_ALIAS, CORPORATE_WORDS)
 
 
 def job_key(source: str, title: str, company: str, location: str) -> str:
@@ -191,84 +196,6 @@ def js_get(params: dict):
         except Exception:
             time.sleep(min(45, random.uniform(0, (2 ** attempt) * 2.5)))
     return None
-
-
-# Words that may follow a company's name without making it a different company.
-# An advertiser is accepted when the ONLY thing it adds to the roster name is
-# words from this set — corporate form, region, and the shared-services wording
-# the Manila and KL back-office entities are registered under.
-CORPORATE_WORDS = {
-    'group', 'groups', 'holdings', 'holding', 'ltd', 'limited', 'plc', 'pty',
-    'inc', 'incorporated', 'corp', 'corporation', 'company', 'co', 'the',
-    'international', 'global', 'shared', 'services', 'service', 'solutions',
-    'operations', 'business', 'support', 'centre', 'center', 'and', 'of',
-    'bank', 'banking', 'insurance', 'philippines', 'philippine', 'malaysia',
-    'malaysian', 'australia', 'australian', 'asia', 'pacific', 'apac',
-    'sdn', 'bhd', 'berhad', 'nv', 'sa', 'ag', 'llc', 'llp',
-}
-
-
-# Advertiser names that ARE a roster company, where the extra words are a
-# trading name rather than a corporate qualifier. Each one has been checked
-# against the employer — these are not guesses, and the run's near-miss report
-# is how a new one gets found.
-ADVERTISER_ALIAS = {
-    # Austal's shipbuilding entity, and the name its Philippine yard at
-    # Balamban advertises under.
-    'austal ships': 'austal',
-}
-
-
-def advertiser_matches(advertiser: str, name: str) -> bool:
-    """Is this ad actually placed BY the company we searched for?
-
-    Keyword search returns anything mentioning the name, so the advertiser has
-    to agree. The board's wording is rarely the roster's exact wording — the
-    roster says "BHP" where an ad is placed by "BHP Group" — so some slack is
-    needed. But the slack has to be bounded, and the obvious version of it is
-    wrong in two ways that were both measured on the live board:
-
-      - Plain string containment matches ACROSS a word. "BHP" is a prefix of
-        "BHPX", so a substring test would accept an unrelated employer whose
-        name merely starts with the same letters. Comparing token lists means a
-        partial word can never match.
-      - Accepting ANY extra words turns a short name into a wildcard. Searching
-        the roster's "IGO" (a Western Australian lithium miner) returned 31
-        Philippine roles, every one of them advertised by "IGO Techonologies"
-        or "Igo Digital High Technology" — unrelated companies that would have
-        been archived under IGO's company id and shown on its card as Manila
-        vacancies. Requiring the extra words to be corporate qualifiers keeps
-        "BHP Group" and "ANZ Global Services and Operations" while rejecting
-        those two.
-    """
-    a, n = norm(advertiser).split(), norm(name).split()
-    if not a or not n:
-        return False
-    if a == n or ADVERTISER_ALIAS.get(' '.join(a)) == ' '.join(n):
-        return True
-    long_, short_ = (a, n) if len(a) >= len(n) else (n, a)
-    if long_[:len(short_)] != short_:
-        return False
-    return all(w in CORPORATE_WORDS for w in long_[len(short_):])
-
-
-def near_miss(advertiser: str, name: str) -> bool:
-    """Rejected, but shares the roster name's leading words.
-
-    These are the only rejections worth a human look. A local subsidiary can
-    trade under a name whose extra word is not a corporate qualifier — Austal
-    advertises its Philippine yard as "Austal Ships" — and that is
-    indistinguishable, lexically, from the "IGO Techonologies" case. So the
-    rule stays strict and the near misses get REPORTED at the end of a run
-    rather than guessed at. Confirm one against the employer, then add it to
-    ADVERTISER_ALIAS; until then it is left out, which is the honest direction
-    to fail in.
-    """
-    a, n = norm(advertiser).split(), norm(name).split()
-    if not a or not n or advertiser_matches(advertiser, name):
-        return False
-    long_, short_ = (a, n) if len(a) >= len(n) else (n, a)
-    return long_[:len(short_)] == short_
 
 
 def fetch_company(name: str, misses: set) -> list:

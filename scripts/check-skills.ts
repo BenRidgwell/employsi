@@ -14,6 +14,7 @@ import {
   SKILL_ALIAS,
   SKILL_CATEGORY,
   SKILL_NAME_CONFLICTS,
+  skillsForText,
 } from "../src/employsi/data/skillsTaxonomy";
 
 let failed = false;
@@ -45,7 +46,64 @@ if (SKILL_NAME_CONFLICTS.length) {
   console.log("✓ No category conflicts among merged defs.");
 }
 
-// 3. No skill name stranded in the archive.
+// 3. No seniority grade read as an education job.
+//
+// "Principal" names a school principal only in a school. Everywhere else it is
+// a SENIORITY GRADE — "Principal Cost Management", "Principal Geotechnical
+// Engineer", "Principal Policy Officer" — and reading it literally does two
+// kinds of damage: it invents education demand where there is none (Education
+// Leadership surfaced as an emerging skill AT BHP, which is how this was
+// found), and it hides the skill the title actually describes, because the
+// informative word is the one AFTER "Principal".
+//
+// The gate that prevents this used to depend on the caller passing the
+// employer's industry, and exactly one caller did, so in practice it never
+// ran. This check is here because that class of failure — a control that is
+// silently opted out of — does not announce itself.
+//
+// Each case asserts both halves: no education skill, AND the skill implied by
+// the rest of the title is still found. A fix that suppressed "Principal"
+// titles entirely would satisfy the first half and fail the second.
+const PRINCIPAL_CASES: { title: string; wants: string; forbids?: boolean }[] = [
+  { title: "Principal Cost Management", wants: "Project Management" },
+  { title: "Principal Geotechnical Engineer", wants: "Geotechnical" },
+  { title: "Principal Mining Engineer", wants: "Mining Engineering" },
+  { title: "Principal Data Scientist", wants: "Data Science & Machine Learning" },
+  { title: "Principal Project Manager", wants: "Project Management" },
+  { title: "Principal Policy Officer", wants: "Policy & Programs" },
+  // The genuine article still has to work, or the gate has overcorrected.
+  { title: "School Principal", wants: "Education Leadership", forbids: false },
+  { title: "Assistant Principal", wants: "Education Leadership", forbids: false },
+  { title: "Deputy Principal", wants: "Education Leadership", forbids: false },
+  { title: "Principal - Secondary College", wants: "Education Leadership", forbids: false },
+];
+const EDUCATION_SKILLS = new Set(
+  Object.entries(SKILL_CATEGORY)
+    .filter(([, cat]) => cat === "Education")
+    .map(([name]) => name),
+);
+const principalProblems: string[] = [];
+for (const c of PRINCIPAL_CASES) {
+  const got = skillsForText(c.title);
+  if (c.forbids !== false && got.some((s) => EDUCATION_SKILLS.has(s))) {
+    principalProblems.push(`${JSON.stringify(c.title)} → education skill ${JSON.stringify(got)}`);
+  }
+  if (!got.includes(c.wants)) {
+    principalProblems.push(
+      `${JSON.stringify(c.title)} lost ${JSON.stringify(c.wants)} — got ${JSON.stringify(got)}`,
+    );
+  }
+}
+if (principalProblems.length) {
+  failed = true;
+  console.error("✗ 'Principal' is being read as a school principal outside education:");
+  for (const p of principalProblems) console.error(`    ${p}`);
+  console.error("  See GATED_TERMS in src/employsi/data/skillsTaxonomy.ts.");
+} else {
+  console.log(`✓ ${PRINCIPAL_CASES.length} 'Principal' titles map by what follows the word.`);
+}
+
+// 4. No skill name stranded in the archive.
 //
 // The D1 archive freezes each listing's skills as JSON when the row is written,
 // so renaming a canonical skill leaves every older row carrying the old string.
@@ -112,6 +170,87 @@ if (ACCOUNT && DB && TOKEN) {
   }
 } else {
   console.log("· Archive check skipped (no D1 credentials in the environment).");
+}
+
+// 5. No archived "Principal ..." row carrying a stale education skill.
+//
+// A SEPARATE block from check 4 on purpose. Both need D1, but check 4 reads
+// every skills cell in the table and that response is large enough to drop the
+// connection; when it does, anything sharing its try{} is skipped in silence.
+// A control that stops running whenever an unrelated query is having a bad day
+// is exactly the failure mode this check exists to catch, so it gets its own.
+if (ACCOUNT && DB && TOKEN) {
+  try {
+    // The row-level half of check 3. The corpus above proves the TAXONOMY is
+    // right today; this proves the ARCHIVE is, which is a different question —
+    // rows are written with the skills frozen in at scrape time, so a title
+    // mapped wrongly last month still carries the wrong skill after the
+    // taxonomy is fixed, and a feed that stops passing titles correctly starts
+    // writing new bad rows tomorrow. Either way a company's card shows
+    // education demand it does not have.
+    // Its own query: pulling title and company for EVERY row makes the
+    // response large enough that D1 drops the connection, and this pass only
+    // cares about a few hundred of them.
+    const pRes = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/d1/database/${DB}/query`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sql:
+            "SELECT title, company, skills FROM jobs " +
+            // '%Principal%', not 'Principal%'. The word is not always first —
+            // BHP advertises "HSS Principal Integration", which an anchored
+            // filter walks straight past.
+            "WHERE skills IS NOT NULL AND title LIKE '%Principal%'",
+        }),
+      },
+    );
+    const pJson = (await pRes.json()) as {
+      success?: boolean;
+      result?: { results?: { title?: string; company?: string; skills?: string }[] }[];
+    };
+    if (!pJson.success) throw new Error("D1 principal query failed");
+    const stale: { title: string; company: string; skills: string[] }[] = [];
+    for (const row of pJson.result?.[0]?.results ?? []) {
+      const title = row.title ?? "";
+      if (!/\bprincipal\b/i.test(title)) continue;
+      let arr: unknown;
+      try {
+        arr = JSON.parse(row.skills ?? "[]");
+      } catch {
+        continue;
+      }
+      if (!Array.isArray(arr)) continue;
+      const stored = arr.map(String).filter((s) => EDUCATION_SKILLS.has(s));
+      if (!stored.length) continue;
+      // Only a disagreement with the CURRENT matcher is a fault. A genuine
+      // "Principal - Secondary College" row keeps its education skill and is
+      // not flagged.
+      const now = skillsForText(title);
+      if (stored.some((s) => !now.includes(s))) {
+        stale.push({ title, company: row.company ?? "", skills: stored });
+      }
+    }
+    if (stale.length) {
+      failed = true;
+      console.error(
+        `✗ ${stale.length} archived "Principal ..." rows carry an education skill the ` +
+          "current taxonomy does not give them:",
+      );
+      for (const s of stale.slice(0, 20)) {
+        console.error(`    ${s.company} — ${s.title} ${JSON.stringify(s.skills)}`);
+      }
+      if (stale.length > 20) console.error(`    … and ${stale.length - 20} more`);
+      console.error("  Fix: re-map those rows' skills (scripts/remap-skills.py).");
+    } else {
+      console.log("✓ No archived 'Principal' row carries a stale education skill.");
+    }
+  } catch (e) {
+    console.log(`· Principal archive check skipped: ${(e as Error).message}`);
+  }
+} else {
+  console.log("· Principal archive check skipped (no D1 credentials in the environment).");
 }
 
 if (failed) {
