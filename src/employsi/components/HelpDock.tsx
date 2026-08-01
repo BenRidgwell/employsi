@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAppStore } from "../state/store";
 import { FeedbackBoard } from "./FeedbackBoard";
+import { NotificationBell } from "./NotificationBell";
 import { IconClose, IconFeedback, IconHelp, IconSettings } from "./ActionIcons";
 import { CITY_COMPANIES } from "../data/mapboxGeo";
 import { REGION_HUBS } from "../data/mapboxWorldGeo";
@@ -260,6 +261,11 @@ export function HelpDock() {
           }}
         />
       )}
+
+      {/* Far left of the header cluster, next to Feedback, per the brief. It is
+          not a DockButton: it owns its own panel, badge and ring animation, and
+          it answers a click differently when signed out. */}
+      <NotificationBell />
 
       <DockButton icon={<IconFeedback />} label="Feedback" on={fbOpen} onClick={toggleFeedback}>
         {fbOpen && <FeedbackBoard onClose={closeFeedback} />}

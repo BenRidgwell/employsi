@@ -4,7 +4,5 @@
 import { COMPANIES } from "../src/employsi/data/companies";
 
 console.log(
-  JSON.stringify(
-    COMPANIES.map((c) => ({ id: c.id, name: c.name, domain: c.domain || "" })),
-  ),
+  JSON.stringify(COMPANIES.map((c) => ({ id: c.id, name: c.name, domain: c.domain || "" }))),
 );

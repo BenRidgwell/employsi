@@ -598,8 +598,16 @@ export function CompanyPanel() {
   // would hold the whole card back for a detail, and it fades in on arrival.
   const cardLoading = open && (!card || rolesChecking);
 
+  // The news column tucks behind the company card, which then slides right
+  // into the space it left. Reset per company: a card opened with the news
+  // hidden would look like a company with no coverage.
+  const [newsCollapsed, setNewsCollapsed] = useState(false);
+  useEffect(() => {
+    setNewsCollapsed(false);
+  }, [selectedId]);
+
   return (
-    <div className={`cardstage ${open ? "open" : ""}`}>
+    <div className={`cardstage ${open ? "open" : ""}${newsCollapsed ? " newstucked" : ""}`}>
       <aside className={`cc ${open ? "open" : ""}`}>
         {cardLoading && <CardLoader tone="light" />}
         {card && panel && (
@@ -922,6 +930,8 @@ export function CompanyPanel() {
           ticker={panel.ticker}
           companyId={panel.companyId}
           live={panel.news}
+          collapsed={newsCollapsed}
+          onToggleCollapse={() => setNewsCollapsed((v) => !v)}
         />
       )}
     </div>

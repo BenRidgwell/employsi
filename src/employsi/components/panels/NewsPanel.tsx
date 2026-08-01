@@ -122,18 +122,34 @@ function PostTag() {
   );
 }
 
+/** Push-right chevron: the panel slides under the company card, not away. */
+function CollapseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" aria-hidden>
+      <g strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="9 6 15 12 9 18" />
+        <line x1="19" y1="5" x2="19" y2="19" />
+      </g>
+    </svg>
+  );
+}
+
 export function NewsPanel({
   name,
   sector,
   ticker,
   companyId,
   live,
+  collapsed,
+  onToggleCollapse,
 }: {
   name: string;
   sector: string;
   ticker?: string;
   companyId?: string;
   live?: CompanyNews | null;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }) {
   const generated = useMemo(() => companyNews(name, sector), [name, sector]);
   const curated = CURATED_NEWS_COMPANIES.has(name);
@@ -218,14 +234,48 @@ export function NewsPanel({
     return relTime(new Date(Math.max(...stamps)).toISOString());
   })();
 
+  // `updated` is still computed — it is the feed's real recency and the
+  // collapsed tab shows it — but it no longer occupies the header, which is now
+  // the collapse control.
   return (
-    <aside className="newspanel">
+    <aside
+      className={`newspanel${collapsed ? " collapsed" : ""}`}
+      /* Collapsed, the whole panel is one big target: only a ~26px sliver of it
+         is on screen, and asking someone to hit a 15px button inside that
+         sliver would be a worse control than the one it replaced. */
+      onClick={collapsed ? onToggleCollapse : undefined}
+    >
+      {/* The spine that stays visible when the panel is tucked behind the card.
+          Rendered always so it does not pop in mid-transition. */}
+      <span className="nwspine" aria-hidden={!collapsed}>
+        <span className="nwspinetext">In the news</span>
+      </span>
       {/* Dark tone: this column is ink, so the light loader would punch a white
           hole in it. Fades out on its own once the feed lands. */}
-      {newsPending && <CardLoader tone="dark" />}
+      {newsPending && !collapsed && <CardLoader tone="dark" />}
       <div className="nwhd">
         <span className="nwhdname">In the news</span>
-        {updated && <span className="cceyebrow">Updated {updated}</span>}
+        {onToggleCollapse && (
+          <button
+            type="button"
+            className="nwcollapse"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleCollapse();
+            }}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? "Show the news panel" : "Tuck the news panel away"}
+            title={
+              collapsed
+                ? "Show the news panel"
+                : updated
+                  ? `Tuck away · updated ${updated}`
+                  : "Tuck the news panel away"
+            }
+          >
+            <CollapseIcon />
+          </button>
+        )}
       </div>
       <div className="nwscroll">
         <a className="nwhero" href={articleUrl(news.hero, name)} target="_blank" rel="noreferrer">
