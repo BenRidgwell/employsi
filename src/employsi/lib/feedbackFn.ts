@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import type { D1Like } from "./jobArchive";
 import { getAuth, type AuthEnv } from "./auth";
+import { roleForEmail, denyIfNotAdmin, type RoleEnv } from "./roles";
 
 /**
  * The feedback board, stored in D1.
@@ -108,6 +109,29 @@ const today = () => new Date().toISOString().slice(0, 10);
  * `email` identifies the caller only so their existing votes and posts can be
  * shown back to them — it is not a credential.
  */
+/**
+ * The caller's role, re-derived from the session on every privileged call.
+ *
+ * Deliberately NOT taken from anything the client sends. The browser is told
+ * its role so it can hide controls it cannot use, but that value is editable
+ * by whoever holds the browser — so the moderation handlers below ask the
+ * session again rather than trusting the caller. Hiding the button is
+ * presentation; this is the boundary.
+ */
+async function callerIsAdmin(): Promise<boolean> {
+  try {
+    const m = await import("cloudflare:workers");
+    const e = (m?.env ?? null) as (AuthEnv & RoleEnv) | null;
+    if (!e) return false;
+    const auth = getAuth(e);
+    if (!auth) return false;
+    const session = await auth.api.getSession({ headers: getRequest().headers });
+    return roleForEmail(e, session?.user?.email ? String(session.user.email) : null) === "admin";
+  } catch {
+    return false;
+  }
+}
+
 export const getFeedback = createServerFn({ method: "GET" }).handler(
   async (): Promise<FeedbackItem[]> => {
     const d = await db();
@@ -243,5 +267,52 @@ export const voteFeedback = createServerFn({ method: "POST" })
       return { ok: true };
     } catch {
       return { ok: false, error: "Couldn't record that — try again." };
+    }
+  });
+
+/**
+ * Move an item's status. Administrators only.
+ *
+ * Status is what the board presents as the project's own answer to a request
+ * ("planned", "shipped"), so it has to be the project speaking. An end user
+ * moving their own item to "shipped" would be putting words in our mouth.
+ */
+export const setFeedbackStatus = createServerFn({ method: "POST" })
+  .validator((data: { id: string; status: FbStatus }) => data)
+  .handler(async ({ data }): Promise<PostResult> => {
+    if (!(await callerIsAdmin())) return { ok: false, error: denyIfNotAdmin("user")! };
+    const d = await db();
+    if (!d) return { ok: false, error: "The board is unavailable right now." };
+    const id = clean(data?.id || "", 40);
+    const status = data?.status;
+    if (!id || !STATUSES.has(status)) return { ok: false, error: "" };
+    try {
+      await d.prepare(`UPDATE feedback SET status = ?2 WHERE id = ?1`).bind(id, status).run();
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Couldn't update that — try again." };
+    }
+  });
+
+/**
+ * Remove an item and its votes. Administrators only.
+ *
+ * The votes go with it: leaving them behind would orphan rows that still count
+ * toward nothing, and a later id collision would silently inherit them.
+ */
+export const deleteFeedback = createServerFn({ method: "POST" })
+  .validator((data: { id: string }) => data)
+  .handler(async ({ data }): Promise<PostResult> => {
+    if (!(await callerIsAdmin())) return { ok: false, error: denyIfNotAdmin("user")! };
+    const d = await db();
+    if (!d) return { ok: false, error: "The board is unavailable right now." };
+    const id = clean(data?.id || "", 40);
+    if (!id) return { ok: false, error: "" };
+    try {
+      await d.prepare(`DELETE FROM feedback_votes WHERE item_id = ?1`).bind(id).run();
+      await d.prepare(`DELETE FROM feedback WHERE id = ?1`).bind(id).run();
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Couldn't remove that — try again." };
     }
   });

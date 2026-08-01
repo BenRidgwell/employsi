@@ -1409,6 +1409,57 @@ body {
 .mkpin:has(.mk.on) {
   z-index: 6;
 }
+/* ── Feedback moderation (admin only) ──────────────────────────────────────
+   Deliberately quiet: it sits inside every row, so styled like the row's own
+   metadata rather than as a toolbar. The remove button only takes on danger
+   colouring at hover, since a red control repeated down the list would read as
+   the board being full of problems. */
+.fbmod {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line, #ededf0);
+}
+.fbmodlbl {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--slate, #8e8e93);
+}
+.fbmodsel {
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--line, #ededf0);
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.fbmoddel {
+  margin-left: auto;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--line, #ededf0);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--slate, #6c6c72);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background 0.15s;
+}
+.fbmoddel:hover {
+  color: #97332b;
+  border-color: #e8c9c5;
+  background: #f7ebe9;
+}
 /* ── Inactive marker: no data for the searched skill ───────────────────────
    Either the skill genuinely isn't sought here, or no series covers this place
    yet. It stays on the map rather than vanishing — a greyed-out city reads as

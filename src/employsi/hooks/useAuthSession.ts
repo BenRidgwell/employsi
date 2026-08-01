@@ -21,6 +21,7 @@ export function useAuthSession(): void {
   const setSession = useAppStore((s) => s.setSession);
   const setAuthProviders = useAppStore((s) => s.setAuthProviders);
   const setFollows = useAppStore((s) => s.setFollows);
+  const setRole = useAppStore((s) => s.setRole);
   const qc = useQueryClient();
   const claimed = useRef(false);
 
@@ -35,6 +36,8 @@ export function useAuthSession(): void {
     if (!data) return;
     setAuthProviders(data.providers);
     setSession(data.user);
+    // After setSession, which resets the role on sign-out.
+    setRole(data.role);
     if (!data.user) return;
 
     // Whatever this browser held before there was an account to hold it.
@@ -57,5 +60,5 @@ export function useAuthSession(): void {
     // No local leftovers (or they have been handed over): the account's own
     // set is now the truth.
     setFollows(data.followedIds, data.followedSkills);
-  }, [data, setSession, setAuthProviders, setFollows, qc]);
+  }, [data, setSession, setAuthProviders, setFollows, setRole, qc]);
 }

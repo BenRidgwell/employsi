@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { Role } from "../lib/roles";
 import {
   COMPANIES,
   companyGroup,
@@ -23,6 +24,16 @@ export interface Account {
 
 export interface AppState {
   account: Account | null;
+  /**
+   * What this session may see, as told by the server (lib/roles.ts).
+   *
+   * PRESENTATION ONLY. Anyone can set this to "admin" in their own browser, so
+   * it may hide controls but must never be the thing that protects data — every
+   * privileged server function re-derives the role from the session cookie.
+   * Defaults to "user", so a failed or slow session load shows the smaller
+   * surface rather than briefly flashing the admin one.
+   */
+  role: Role;
   authOpen: boolean;
   pendingFollowId: string | null;
   pendingFollowSkill: string | null;
@@ -85,6 +96,7 @@ export interface AppState {
   closeAuth: () => void;
   /** Adopt (or clear) the session the server reported. */
   setSession: (a: Account | null) => void;
+  setRole: (r: Role) => void;
   /** Sign-in buttons this deployment can offer; empty = not configured. */
   authProviders: ("google" | "linkedin")[];
   setAuthProviders: (p: ("google" | "linkedin")[]) => void;
@@ -227,6 +239,7 @@ const layerLocked = () => Date.now() - lastLayerChange < LAYER_COOLDOWN;
 
 export const useAppStore = create<AppState>((set, get) => ({
   account: null,
+  role: "user" as Role,
   authProviders: [],
   authOpen: false,
   pendingFollowId: null,
@@ -361,9 +374,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   // A pending follow, saved when a signed-out visitor tapped Follow, is applied
   // the moment a session appears, so the thing they were trying to do actually
   // happens rather than being forgotten across the redirect.
+  setRole: (r) => set({ role: r }),
   setSession: (a) =>
     set((s) => {
-      if (!a) return { account: null, authOpen: false };
+      // Signing out drops the role with the account: leaving it behind would
+      // keep the admin surface visible to the next person at this browser.
+      if (!a) return { account: null, role: "user" as Role, authOpen: false };
       const followedIds =
         s.pendingFollowId && !s.followedIds.includes(s.pendingFollowId)
           ? [...s.followedIds, s.pendingFollowId]

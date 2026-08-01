@@ -43,6 +43,8 @@ import { D1Dialect } from "kysely-d1";
 
 export interface AuthEnv {
   JOBS_ARCHIVE?: unknown;
+  /** Comma-separated administrator emails — see lib/roles.ts. Unset = none. */
+  ADMIN_EMAILS?: string;
   BETTER_AUTH_SECRET?: string;
   BETTER_AUTH_URL?: string;
   GOOGLE_CLIENT_ID?: string;

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { roleForEmail, type Role } from "./roles";
 import { getRequest } from "@tanstack/react-start/server";
 import type { D1Like } from "./jobArchive";
 import { getAuth, authProviders, type AuthEnv } from "./auth";
@@ -72,8 +73,16 @@ async function currentUser(
   }
 }
 
+export type { Role };
+
 export interface SessionInfo {
   user: { id: string; name: string; email: string; image?: string } | null;
+  /**
+   * What this session may see. Resolved on the server from the session's
+   * provider-verified email; the client is told so it can hide what it cannot
+   * use, but every privileged call re-checks server-side (see lib/roles.ts).
+   */
+  role: Role;
   /** Which sign-in buttons this deployment can actually offer. */
   providers: ("google" | "linkedin")[];
   followedIds: string[];
@@ -92,9 +101,10 @@ export const getSession = createServerFn({ method: "GET" }).handler(
     const e = await env();
     const providers = authProviders(e ?? undefined);
     const user = await currentUser(requestHeaders());
-    if (!user) return { user: null, providers, followedIds: [], followedSkills: [] };
+    if (!user) return { user: null, role: "user", providers, followedIds: [], followedSkills: [] };
+    const role = roleForEmail(e ?? undefined, user.email);
     const d = db(e);
-    if (!d) return { user, providers, followedIds: [], followedSkills: [] };
+    if (!d) return { user, role, providers, followedIds: [], followedSkills: [] };
     try {
       const res = await d
         .prepare(`SELECT kind, ref FROM user_follow WHERE user_id = ?1`)
@@ -107,9 +117,9 @@ export const getSession = createServerFn({ method: "GET" }).handler(
         if (String(r.kind) === "company") ids.push(ref);
         else skills.push(ref);
       }
-      return { user, providers, followedIds: ids, followedSkills: skills };
+      return { user, role, providers, followedIds: ids, followedSkills: skills };
     } catch {
-      return { user, providers, followedIds: [], followedSkills: [] };
+      return { user, role, providers, followedIds: [], followedSkills: [] };
     }
   },
 );

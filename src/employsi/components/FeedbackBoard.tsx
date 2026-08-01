@@ -4,6 +4,8 @@ import {
   getFeedback,
   postFeedback,
   voteFeedback,
+  setFeedbackStatus,
+  deleteFeedback,
   type FeedbackItem,
   type FbStatus,
 } from "../lib/feedbackFn";
@@ -47,10 +49,16 @@ function Row({
   item,
   canVote,
   onVote,
+  isAdmin,
+  onStatus,
+  onDelete,
 }: {
   item: FeedbackItem;
   canVote: boolean;
   onVote: (id: string, dir: 1 | -1) => void;
+  isAdmin: boolean;
+  onStatus: (id: string, status: FbStatus) => void;
+  onDelete: (id: string) => void;
 }) {
   const mine = item.mine;
   return (
@@ -87,6 +95,43 @@ function Row({
             {item.created ? ` · ${item.created}` : ""}
           </span>
         </div>
+        {/* Moderation. Hidden from end users, but hiding is only tidiness —
+            setFeedbackStatus and deleteFeedback both re-check the role against
+            the session cookie, so a crafted request gets refused regardless of
+            what the browser was showing. */}
+        {isAdmin && (
+          <div className="fbmod">
+            <label className="fbmodlbl" htmlFor={`fbst-${item.id}`}>
+              Status
+            </label>
+            <select
+              id={`fbst-${item.id}`}
+              className="fbmodsel"
+              value={item.status}
+              onChange={(e) => onStatus(item.id, e.target.value as FbStatus)}
+            >
+              {(Object.keys(STATUS_LABEL) as FbStatus[]).map((st) => (
+                <option key={st} value={st}>
+                  {STATUS_LABEL[st]}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="fbmoddel"
+              title="Remove this request and its votes"
+              onClick={() => {
+                // Deleting takes the votes with it and cannot be undone, so it
+                // asks first — the control sits inches from a status dropdown
+                // that is entirely reversible.
+                if (confirm(`Remove "${item.title}"? This also deletes its votes.`))
+                  onDelete(item.id);
+              }}
+            >
+              Remove
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -94,6 +139,7 @@ function Row({
 
 export function FeedbackBoard({ onClose }: { onClose: () => void }) {
   const account = useAppStore((s) => s.account);
+  const isAdmin = useAppStore((s) => s.role) === "admin";
   const openAuth = useAppStore((s) => s.openAuth);
   const [draft, setDraft] = useState("");
   const [justSent, setJustSent] = useState(false);
@@ -130,6 +176,27 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
     mutationFn: (v: { id: string; dir: 1 | -1 }) =>
       voteFeedback({ data: { id: v.id, dir: v.dir } }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: key }),
+  });
+
+  // Both refuse on the server for a non-admin; the UI only decides whether to
+  // offer them. onError surfaces that refusal rather than silently no-op-ing,
+  // so a stale browser that still thinks it is admin says so out loud.
+  const moderate = useMutation({
+    mutationFn: (v: { id: string; status: FbStatus }) =>
+      setFeedbackStatus({ data: { id: v.id, status: v.status } }),
+    onSuccess: (r) => {
+      if (r?.ok) void qc.invalidateQueries({ queryKey: key });
+      else setError(r?.error || "Couldn't update that.");
+    },
+    onError: () => setError("Couldn't update that."),
+  });
+  const remove = useMutation({
+    mutationFn: (v: { id: string }) => deleteFeedback({ data: { id: v.id } }),
+    onSuccess: (r) => {
+      if (r?.ok) void qc.invalidateQueries({ queryKey: key });
+      else setError(r?.error || "Couldn't remove that.");
+    },
+    onError: () => setError("Couldn't remove that."),
   });
 
   const list = items ?? [];
@@ -200,6 +267,9 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
               item={item}
               canVote={!!account && !cast.isPending}
               onVote={(id, dir) => cast.mutate({ id, dir })}
+              isAdmin={isAdmin}
+              onStatus={(id, status) => moderate.mutate({ id, status })}
+              onDelete={(id) => remove.mutate({ id })}
             />
           ))
         ) : (
