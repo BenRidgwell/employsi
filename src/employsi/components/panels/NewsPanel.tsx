@@ -8,6 +8,7 @@ import {
 } from "../../data/news";
 import { useArticleImages } from "../../hooks/useArticleImages";
 import { useLiveNews } from "../../hooks/useLiveNews";
+import { useCompanyPosts } from "../../hooks/useCompanyPosts";
 import type { ArticleMeta } from "../../lib/articleImageFn";
 import { isBlockedArticle } from "../../data/newsBlocklist";
 import { CardLoader } from "./CardLoader";
@@ -102,15 +103,36 @@ function Thumb({ img, seed, className }: { img?: string; seed: string; className
   return <div className={className} style={style} aria-hidden />;
 }
 
+/**
+ * The employer's own publications are tagged, always.
+ *
+ * A LinkedIn post is the company talking about itself; an article is somebody
+ * else reporting on it. They carry very different weight, and side by side in
+ * one list the layout alone implies they are the same kind of thing. The chip
+ * is what stops the card presenting an announcement as coverage.
+ */
+function PostTag() {
+  return (
+    <span className="nwposttag">
+      <svg viewBox="0 0 24 24" width={9} height={9} fill="currentColor" aria-hidden>
+        <path d="M4.98 3.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM3 9.75h4v10.75H3V9.75Zm6.5 0h3.83v1.47h.05a4.2 4.2 0 0 1 3.78-2.08c4.04 0 4.79 2.66 4.79 6.12v5.24h-4v-4.65c0-1.11-.02-2.54-1.55-2.54-1.55 0-1.79 1.21-1.79 2.46v4.73h-4V9.75Z" />
+      </svg>
+      Company post
+    </span>
+  );
+}
+
 export function NewsPanel({
   name,
   sector,
   ticker,
+  companyId,
   live,
 }: {
   name: string;
   sector: string;
   ticker?: string;
+  companyId?: string;
   live?: CompanyNews | null;
 }) {
   const generated = useMemo(() => companyNews(name, sector), [name, sector]);
@@ -122,7 +144,39 @@ export function NewsPanel({
   const { items: liveItems, pending: newsPending } = useLiveNews(liveQuery, 6);
   const liveFeed = useMemo(() => liveToCompanyNews(liveItems), [liveItems]);
 
-  const rawNews = live ?? (curated ? generated : (liveFeed ?? generated));
+  // The company's own LinkedIn posts, collected daily (see
+  // lib/companyPostsFn.ts). Merged into the SAME list as the articles rather
+  // than given their own section: the question the card answers is "what has
+  // happened here lately", and the answer includes what the employer itself
+  // said. What keeps that honest is the tag on every post, not a separate box.
+  const posts = useCompanyPosts(companyId ?? null, 4);
+  const postItems = useMemo<NewsItem[]>(
+    () =>
+      posts.map((p) => ({
+        cat: "Company post",
+        title: p.title,
+        time: "",
+        comments: 0,
+        url: p.url,
+        image: p.image,
+        publisher: p.author || "LinkedIn",
+        publishedIso: p.published,
+        kind: "post" as const,
+      })),
+    [posts],
+  );
+
+  const articleNews = live ?? (curated ? generated : (liveFeed ?? generated));
+  // Interleaved by date, so recency decides the order and neither source can
+  // permanently outrank the other. The HERO stays an article whenever one
+  // exists — leading the card with the employer's own post would give a
+  // marketing line the most editorial-looking slot on the card.
+  const rawNews = useMemo<CompanyNews>(() => {
+    if (!postItems.length) return articleNews;
+    const at = (a: NewsItem) => Date.parse(a.publishedIso || "") || 0;
+    const merged = [...articleNews.items, ...postItems].sort((a, b) => at(b) - at(a));
+    return { hero: articleNews.hero, items: merged };
+  }, [articleNews, postItems]);
   // Blocked publishers are dropped HERE as well as in the live fetch, because
   // four different paths converge on this component — the curated sets, the
   // generated fallback, the live feed, and BHP's own feed — and only this one
@@ -205,7 +259,10 @@ export function NewsPanel({
               )}
               <span className="nwrowbody">
                 <span className="nwrowtitle">{a.title}</span>
-                <span className="nwrowmeta">{metaBits(a, m)}</span>
+                <span className="nwrowmeta">
+                  {a.kind === "post" && <PostTag />}
+                  {metaBits(a, m)}
+                </span>
               </span>
             </a>
           );

@@ -17,6 +17,11 @@ export interface NewsItem {
   // and publish timestamp arrive with the feed, so they don't need scraping.
   publisher?: string;
   publishedIso?: string;
+  // Where the item came from. "post" is the employer's OWN LinkedIn publication
+  // rather than a publisher reporting on them, and the card tags it visibly —
+  // an announcement and a news report are different kinds of claim, and a
+  // reader who cannot tell them apart is being misled by the layout.
+  kind?: "news" | "post";
 }
 
 export interface CompanyNews {
@@ -671,11 +676,21 @@ export const CURATED_NEWS_COMPANIES = new Set([
 // the next few are the list. Publisher + publish date ride along with each item
 // so the card shows them directly (no scraping needed).
 export function liveToCompanyNews(
-  items: { title: string; url: string; publisher: string; published: string; image?: string }[],
+  items: {
+    title: string;
+    url: string;
+    publisher: string;
+    published: string;
+    image?: string;
+    kind?: "news" | "post";
+  }[],
 ): CompanyNews | null {
   if (!items.length) return null;
   const toItem = (a: (typeof items)[number], cat: string): NewsItem => ({
-    cat,
+    // A company post keeps its own category label rather than being called
+    // "News" or "Trending" — those words claim an editorial source it does not
+    // have.
+    cat: a.kind === "post" ? "Company post" : cat,
     title: a.title,
     time: "",
     comments: 0,
@@ -683,6 +698,7 @@ export function liveToCompanyNews(
     image: a.image,
     publisher: a.publisher,
     publishedIso: a.published,
+    kind: a.kind ?? "news",
   });
   return {
     hero: toItem(items[0], "Trending"),

@@ -920,6 +920,7 @@ export function CompanyPanel() {
           name={panel.name}
           sector={panel.sector}
           ticker={panel.ticker}
+          companyId={panel.companyId}
           live={panel.news}
         />
       )}
