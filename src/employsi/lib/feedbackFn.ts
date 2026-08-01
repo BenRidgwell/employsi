@@ -36,6 +36,12 @@ export type FbStatus = "open" | "under-review" | "planned" | "shipped";
 export interface FeedbackItem {
   id: string;
   title: string;
+  /**
+   * The one-or-two-line description. Empty for requests posted before the
+   * column existed — those render title-only rather than being backfilled with
+   * detail nobody wrote.
+   */
+  body: string;
   author: string;
   status: FbStatus;
   /** Net score: sum of every account's ±1. */
@@ -48,6 +54,7 @@ export interface FeedbackItem {
 }
 
 const TITLE_MAX = 140;
+const BODY_MAX = 400;
 const NAME_MAX = 60;
 /** Requests one user may post in a day. */
 const DAILY_POST_CAP = 5;
@@ -119,7 +126,7 @@ export const getFeedback = createServerFn({ method: "GET" }).handler(
     try {
       const res = await d
         .prepare(
-          `SELECT f.id, f.title, f.author, f.status, f.created, f.author_key,
+          `SELECT f.id, f.title, f.body, f.author, f.status, f.created, f.author_key,
                   COALESCE(SUM(v.dir), 0) AS score,
                   MAX(CASE WHEN v.voter = ?1 THEN v.dir END) AS mine
              FROM feedback f
@@ -136,6 +143,7 @@ export const getFeedback = createServerFn({ method: "GET" }).handler(
         return {
           id: String(r.id),
           title: String(r.title || ""),
+          body: String(r.body || ""),
           author: String(r.author || "Someone"),
           status: STATUSES.has(status) ? status : "open",
           score: Number(r.score) || 0,
@@ -158,7 +166,7 @@ export interface PostResult {
 
 /** Post a request. The author is the signed-in user; the client sends only text. */
 export const postFeedback = createServerFn({ method: "POST" })
-  .validator((data: { title: string }) => data)
+  .validator((data: { title: string; body?: string }) => data)
   .handler(async ({ data }): Promise<PostResult> => {
     const d = await db();
     if (!d) return { ok: false, error: "The board is unavailable right now." };
@@ -167,6 +175,9 @@ export const postFeedback = createServerFn({ method: "POST" })
     const key = me.key;
     const title = clean(data?.title || "", TITLE_MAX);
     if (title.length < 4) return { ok: false, error: "Say a little more than that." };
+    // Optional. The composer asks for it, but a title alone is still a valid
+    // request and refusing one would lose feedback to satisfy a form.
+    const body = clean(data?.body || "", BODY_MAX);
     const author = clean(me.name, NAME_MAX) || key.split("@")[0] || "Someone";
     try {
       // One account cannot flood the board. Not a security control — see the
@@ -190,10 +201,10 @@ export const postFeedback = createServerFn({ method: "POST" })
       const id = "f" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
       await d
         .prepare(
-          `INSERT INTO feedback (id, title, author, author_key, status, created)
-           VALUES (?1, ?2, ?3, ?4, 'open', ?5)`,
+          `INSERT INTO feedback (id, title, body, author, author_key, status, created)
+           VALUES (?1, ?2, ?3, ?4, ?5, 'open', ?6)`,
         )
-        .bind(id, title, author, key, today())
+        .bind(id, title, body || null, author, key, today())
         .run();
       // The author implicitly backs their own request, which is also what makes
       // a brand-new post sort above the un-voted ones.

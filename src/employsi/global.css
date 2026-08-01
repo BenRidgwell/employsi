@@ -6192,204 +6192,460 @@ body {
   align-items: center;
   justify-content: center;
 }
-/* Feedback board — a votable request list plus a compose box. Wider than the
-   old single-textarea popup so the list is readable. */
-/* The board hangs from the Feedback button in the header cluster, so it grows
-   DOWNWARD now; the cap keeps its bottom clear of the viewport edge and the
-   request list scrolls internally. */
+/* ── Feedback board ────────────────────────────────────────────────────────
+   Laid out to the supplied Feedback Board Popout: a 412px card pinned to the
+   bottom-right of the frame, with a fixed header and tab row, a scrolling
+   list, and a composer pinned to the bottom.
+
+   It hangs off the Feedback button rather than the viewport corner, so it
+   stays attached to the control that opened it — but it is anchored from the
+   BOTTOM, which is what lets the list grow upward into free space instead of
+   pushing the composer off-screen on a short window. */
 .fbboard {
   position: absolute;
   right: 0;
-  top: calc(100% + 10px);
+  bottom: calc(100% + 12px);
   box-sizing: border-box;
-  width: 300px;
+  width: 412px;
   max-width: calc(100vw - 32px);
-  max-height: calc(100vh - 140px);
+  max-height: min(672px, calc(100vh - 140px));
   display: flex;
   flex-direction: column;
-  padding: 12px 13px 4px;
-  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  border: 1px solid var(--line, #ededf0);
   border-radius: 18px;
-  background: var(--surface-card);
+  background: #ffffff;
   box-shadow:
     0 1px 2px rgba(28, 28, 30, 0.06),
-    0 28px 56px -24px rgba(28, 28, 30, 0.55);
-  animation: emppop 200ms cubic-bezier(0.32, 0.72, 0, 1) both;
-  z-index: 5;
+    0 40px 80px -28px rgba(28, 28, 30, 0.42);
+  animation: fb-pop 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  z-index: 50;
 }
-.fbboard .helphd,
-.fbcompose,
-.fbsignin {
+@keyframes fb-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fb-row {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* --- header --- */
+.fbhd {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 14px 18px;
+  border-bottom: 1px solid var(--line, #ededf0);
 }
-.fbsignin {
-  width: 100%;
-  margin-bottom: 12px;
-  padding: 11px;
-  border: 1px dashed var(--line);
-  border-radius: 10px;
-  background: #f7f7f8;
-  color: var(--ink);
-  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
-  font-weight: 700;
-  font-size: 12.5px;
+.fbhdleft {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+.fbhdtitle {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.fbhdx {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid var(--line, #ededf0);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--slate, #8e8e93);
   cursor: pointer;
-  transition: 0.15s;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
 }
-.fbsignin:hover {
-  border-color: var(--slate);
-  background: #f0f0f2;
+.fbhdx:hover {
+  background: #f4f4f5;
+  color: #1c1c1e;
 }
+
+/* --- tabs --- */
+.fbtabs {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line, #ededf0);
+  background: #fbfbfc;
+}
+.fbtab {
+  padding: 6px 11px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.008em;
+  color: var(--slate, #8e8e93);
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+.fbtab:hover {
+  background: #f4f4f5;
+  color: #1c1c1e;
+}
+.fbtab.on {
+  background: #ededf0;
+  color: #1c1c1e;
+  font-weight: 600;
+}
+
+/* --- list --- */
+.fblist {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.fbrow {
+  display: flex;
+  gap: 13px;
+  padding: 15px 16px;
+  border-bottom: 1px solid #f4f4f5;
+  background: #ffffff;
+  transition: background 120ms ease;
+  animation: fb-row 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.fbrow:hover {
+  background: #fbfbfc;
+}
+
+/* --- vote column --- */
+.fbvote {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  width: 36px;
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+.fbarrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #aeaeb2;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+.fbarrow:hover:not(:disabled) {
+  background: #f4f4f5;
+  color: #1c1c1e;
+}
+.fbarrow:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+/* Voted state. Up is ink, down is the danger red — a cast vote should read as
+   a position taken, not merely as a pressed button. */
+.fbarrow.up.on {
+  background: rgba(28, 28, 30, 0.08);
+  color: #1c1c1e;
+}
+.fbarrow.down.on {
+  background: rgba(192, 69, 63, 0.1);
+  color: #c0453f;
+}
+.fbscore {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--slate, #8e8e93);
+  font-variant-numeric: tabular-nums;
+}
+.fbscore.on {
+  color: #1c1c1e;
+}
+
+/* --- row body --- */
+.fbrowbody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+.fbrowtitle {
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.014em;
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+.fbrowdesc {
+  font-size: 13px;
+  font-weight: 450;
+  line-height: 1.45;
+  color: var(--slate, #6c6c72);
+  text-wrap: pretty;
+}
+.fbrowmeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 2px;
+}
+.fbrowby {
+  font-size: 12px;
+  font-weight: 450;
+  color: #aeaeb2;
+}
+.fbtag {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #f4f4f5;
+  color: var(--slate, #6c6c72);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.fbtag-planned {
+  background: rgba(59, 111, 212, 0.12);
+  color: #2b53a3;
+}
+.fbtag-under-review {
+  background: rgba(184, 132, 42, 0.14);
+  color: #8a6218;
+}
+.fbtag-shipped {
+  background: rgba(21, 157, 103, 0.14);
+  color: #0e7a50;
+}
+
+/* --- empty state --- */
+.fbempty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 52px 34px 46px;
+  text-align: center;
+  animation: fb-row 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.fbemptyicon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border: 1px solid var(--line, #ededf0);
+  border-radius: 14px;
+  background: #fbfbfc;
+  color: #aeaeb2;
+}
+.fbemptytitle {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.3;
+}
+.fbemptysub {
+  font-size: 13px;
+  font-weight: 450;
+  line-height: 1.5;
+  color: var(--slate, #8e8e93);
+  max-width: 264px;
+  text-wrap: pretty;
+}
+
+/* --- composer --- */
 .fbcompose {
-  margin-bottom: 12px;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 13px 14px;
+  border-top: 1px solid var(--line, #ededf0);
+  background: #fbfbfc;
 }
-.fbboard .fbtext {
-  min-height: 58px;
-  margin-top: 4px;
+.fbcomposetop {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.fbavatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #1c1c1e;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.fbtitleinput,
+.fbdetail {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #e2e2e7;
+  border-radius: 8px;
+  background: #ffffff;
+  font-family: inherit;
+  color: #1c1c1e;
+  outline: none;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+.fbtitleinput {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.008em;
+}
+.fbdetail {
+  min-height: 56px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 450;
+  line-height: 1.45;
+  letter-spacing: -0.006em;
+  resize: none;
+}
+.fbtitleinput:focus,
+.fbdetail:focus {
+  border-color: #1c1c1e;
+  box-shadow: 0 0 0 3px rgba(28, 28, 30, 0.14);
 }
 .fbcomposerow {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 8px;
 }
-.fbboard .fbsend {
-  width: auto;
-  margin-top: 0;
-  padding: 8px 16px;
+.fbsend {
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid #1c1c1e;
+  border-radius: 8px;
+  background: #1c1c1e;
+  color: #fff;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.008em;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    opacity 120ms ease,
+    transform 110ms ease;
+}
+.fbsend:not(:disabled):hover {
+  background: #2c2c2e;
+}
+.fbsend:not(:disabled):active {
+  transform: scale(0.98);
+}
+.fbsend:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 .fbsent {
+  margin-right: auto;
   font-size: 12px;
-  font-weight: 700;
   color: #0e7a50;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 160ms ease;
 }
 .fbsent.show {
   opacity: 1;
 }
-.fblist {
-  max-height: 46vh;
-  overflow-y: auto;
-  margin: 0 -4px;
-  padding: 0 4px;
+.fberr {
+  color: #97332b;
 }
-.fbrow {
-  display: flex;
-  gap: 12px;
-  padding: 11px 0;
-  border-top: 1px solid var(--line);
-}
-.fbrow:first-child {
-  border-top: 0;
-}
-.fbvote {
+
+/* --- signed-out footer --- */
+.fbsignedout {
   flex: 0 0 auto;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 1px;
-  min-width: 30px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 14px 13px 16px;
+  border-top: 1px solid var(--line, #ededf0);
+  background: linear-gradient(#fbfbfc, #f4f4f5);
 }
-.fbarrow {
-  border: 0;
-  background: none;
-  padding: 2px;
-  color: var(--slate);
-  cursor: pointer;
-  border-radius: 6px;
+.fbsignedouttext {
   display: flex;
-  transition:
-    color 0.12s,
-    background 0.12s,
-    transform 0.12s;
-}
-.fbarrow:hover {
-  background: #f0f0f2;
-  color: var(--ink);
-}
-.fbarrow:active {
-  transform: scale(0.86);
-}
-.fbvote.up .fbarrow:first-child {
-  color: #159d67;
-}
-.fbvote.down .fbarrow:last-child {
-  color: #c2483a;
-}
-.fbscore {
-  font-family: "JetBrains Mono", monospace;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--ink);
-  line-height: 1;
-  padding: 1px 0;
-}
-.fbrowbody {
-  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
 }
-.fbrowtitle {
-  font-size: 13px;
+.fbsignedouttitle {
+  font-size: 13.5px;
   font-weight: 600;
-  line-height: 1.35;
-  color: var(--ink);
+  letter-spacing: -0.012em;
+  line-height: 1.2;
 }
-.fbrowmeta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 5px;
-}
-/* Who asked, and when. Real now that the board stores real posts. */
-.fbrowby {
-  font-size: 10.5px;
-  color: var(--slate);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-/* The empty board, and the loading frame before it resolves. */
-.fbempty {
-  padding: 22px 4px;
-  text-align: center;
+.fbsignedoutsub {
   font-size: 12.5px;
-  color: var(--slate);
+  font-weight: 450;
+  color: var(--slate, #8e8e93);
+  line-height: 1.2;
 }
-.fberr {
-  color: #b4232a;
+
+/* Phone: the card fills the width it is given rather than keeping 412px and
+   overflowing the frame. */
+@media (max-width: 680px) {
+  .fbboard {
+    width: calc(100vw - 24px);
+    max-height: min(560px, calc(100vh - 120px));
+  }
 }
-.fbarrow:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-.fbtag {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.2px;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: #f0f0f2;
-  color: var(--slate);
-}
-.fbtag-planned {
-  background: rgba(53, 126, 221, 0.14);
-  color: #2b62b8;
-}
-.fbtag-under-review {
-  background: rgba(214, 158, 46, 0.16);
-  color: #9a6a12;
-}
-.fbtag-shipped {
-  background: rgba(21, 157, 103, 0.14);
-  color: #0e7a50;
-}
-.fbrowauthor {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--slate);
-}
+
 .aucountryclick {
   cursor: pointer;
   transition: fill 0.15s ease;
