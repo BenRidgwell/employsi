@@ -17,6 +17,7 @@ import {
 } from "../data/mapboxWorldGeo";
 import { EU_CITY_LNGLAT } from "../data/euVacancyDemand";
 import { buildMarker, MARKER_FOOT, type MarkerShape } from "../lib/mapMarker";
+import { SATELLITE_SVG, LOCO_SVG, WAGON_SVG } from "./vehicleSprites";
 import { codeFor } from "../data/cityCodes";
 
 // Europe domestic points: the mapped hubs (London/Zurich/Paris) plus every EU
@@ -51,9 +52,57 @@ const NEUTRAL_DOT = "rgb(42,42,46)";
 
 // Decorative traffic on the globe: aircraft between city pairs, and container
 // ships along real sea lanes.
-type TravelMode = "plane" | "ship";
+type TravelMode = "plane" | "ship" | "train";
 // Uniform slow-down applied to every traveler's duration (>1 = slower drift).
 const TRAVEL_SLOWDOWN = 1.6;
+
+const RAIL_SOURCE = "au-rail";
+const RAIL_BED_LAYER = "au-rail-bed";
+const RAIL_SLEEPER_LAYER = "au-rail-sleepers";
+
+/**
+ * Perth → Darwin by rail, as the track actually runs.
+ *
+ * There is no direct Perth–Darwin railway. The two lines that connect them are
+ * the Trans-Australian (Perth → Kalgoorlie → Nullarbor → Tarcoola) and the
+ * Adelaide–Darwin line, which leaves the Trans-Australian at Tarcoola and runs
+ * north through Alice Springs and Katherine. A freight consist making that trip
+ * therefore turns north in the middle of South Australia rather than following
+ * the west coast, and these waypoints are the towns it passes through.
+ *
+ * Drawn rather than assumed for the same reason the shipping lanes are: a
+ * straight line between the two cities would cross 2,000km of trackless desert
+ * and read as decoration invented by someone who had not looked.
+ */
+const AU_RAIL_PATH: [number, number][] = [
+  [115.857, -31.953], // Perth
+  [117.883, -31.63], // Northam
+  [121.466, -30.749], // Kalgoorlie
+  [125.327, -31.012], // Rawlinna
+  [128.9, -30.85], // Nullarbor crossing
+  [130.402, -30.617], // Cook
+  [134.567, -30.702], // Tarcoola — the Darwin line leaves the Trans-Australian
+  [134.755, -29.014], // Coober Pedy (Manguri)
+  [133.881, -23.699], // Alice Springs
+  [134.19, -19.652], // Tennant Creek
+  [132.263, -14.465], // Katherine
+  [130.845, -12.463], // Darwin
+];
+
+/** Satellites orbiting outside the globe's limb (global layer only). */
+interface SatelliteOrbit {
+  /** Orbit radius as a multiple of the globe's projected radius. */
+  ring: number;
+  /** Seconds for one full revolution; negative runs retrograde. */
+  period: number;
+  /** Starting angle, degrees. */
+  phase: number;
+}
+const SATELLITES: SatelliteOrbit[] = [
+  { ring: 1.1, period: 48, phase: 20 },
+  { ring: 1.22, period: -62, phase: 155 },
+  { ring: 1.16, period: 54, phase: 265 },
+];
 
 // Aircraft fly hub to hub in a straight line, which is fine — they cross land.
 interface PlaneRoute {
@@ -622,6 +671,7 @@ export function WorldMapbox() {
     { marker: mapboxgl.Marker; inner: HTMLElement; traveler: Traveler }[]
   >([]);
   const travelRaf = useRef<number | undefined>(undefined);
+  const satLayerRef = useRef<HTMLDivElement | null>(null);
   const haloPulseRaf = useRef<number | undefined>(undefined);
   const programmaticRef = useRef(false);
   const programmaticTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -651,8 +701,9 @@ export function WorldMapbox() {
   // store (getState) since these callbacks are registered a single time.
   useEffect(() => {
     if (!containerRef.current) return;
+    const container = containerRef.current;
     const map = new mapboxgl.Map({
-      container: containerRef.current,
+      container,
       style: "mapbox://styles/mapbox/standard",
       projection: "globe",
       center: GLOBAL_VIEW.center,
@@ -929,6 +980,44 @@ export function WorldMapbox() {
         },
       });
 
+      // The Australian rail corridor the freight consist runs on. Two layers:
+      // the ballast bed, and a dashed line over it for sleepers. Both are added
+      // before the hub dots so a city marker is never hidden behind track.
+      map.addSource(RAIL_SOURCE, {
+        type: "geojson",
+        data: {
+          type: "Feature",
+          properties: {},
+          geometry: { type: "LineString", coordinates: AU_RAIL_PATH },
+        },
+      });
+      map.addLayer({
+        id: RAIL_BED_LAYER,
+        type: "line",
+        source: RAIL_SOURCE,
+        layout: { visibility: "none", "line-cap": "round", "line-join": "round" },
+        paint: {
+          "line-color": "#8a817d",
+          "line-width": ["interpolate", ["linear"], ["zoom"], 2, 1.6, 5, 3.4],
+          "line-opacity": 0.75,
+        },
+      });
+      map.addLayer({
+        id: RAIL_SLEEPER_LAYER,
+        type: "line",
+        source: RAIL_SOURCE,
+        layout: { visibility: "none", "line-cap": "butt" },
+        paint: {
+          "line-color": "#cfc6c2",
+          "line-width": ["interpolate", ["linear"], ["zoom"], 2, 2.6, 5, 5.4],
+          // Short ticks across the bed rather than a continuous rail — at these
+          // zooms individual sleepers are far below a pixel, so this reads as
+          // "railway" by convention instead of pretending to be to scale.
+          "line-dasharray": [0.22, 1.1],
+          "line-opacity": 0.85,
+        },
+      });
+
       map.addSource(SOURCE_ID, {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
@@ -1004,13 +1093,27 @@ export function WorldMapbox() {
           dur: l.dur,
           offset: l.offset,
         })),
+        // The freight consist: a locomotive with two loaded wagons behind it.
+        // Each vehicle is its own traveler on the same path, spaced by a small
+        // offset in phase, which is what keeps the wagons coupled through the
+        // curves — a rigid pixel offset would have them cut the corners.
+        ...[0, 1, 2].map((i): Traveler => ({
+          mode: "train",
+          path: AU_RAIL_PATH,
+          dur: 52000,
+          offset: 0.12 - i * 0.006,
+        })),
       ];
+      let trainIndex = 0;
       travelers.forEach((traveler) => {
         const outer = document.createElement("div");
         outer.className = "traveler";
         const inner = document.createElement("span");
         inner.className = `travelericon traveler-${traveler.mode}`;
-        inner.innerHTML = traveler.mode === "plane" ? PLANE_SVG : SHIP_SVG;
+        if (traveler.mode === "plane") inner.innerHTML = PLANE_SVG;
+        else if (traveler.mode === "ship") inner.innerHTML = SHIP_SVG;
+        // First vehicle of the consist is the locomotive, the rest are wagons.
+        else inner.innerHTML = trainIndex++ === 0 ? LOCO_SVG : WAGON_SVG;
         outer.appendChild(inner);
         const marker = new mapboxgl.Marker({ element: outer, anchor: "center" })
           .setLngLat(traveler.path[0])
@@ -1018,15 +1121,74 @@ export function WorldMapbox() {
         travelersRef.current.push({ marker, inner, traveler });
       });
 
+      // ── Satellites ──────────────────────────────────────────────────────
+      // These are NOT map markers. A marker is pinned to a lat/lng on the
+      // globe's surface, and a satellite has to ride outside its limb — there
+      // is no coordinate for "above the horizon". So they live in a screen-
+      // space overlay above the canvas and orbit the globe's projected centre.
+      //
+      // The globe's radius on screen follows from the projection: its
+      // circumference is the world size, so radius = 512 * 2^zoom / 2π. That is
+      // clamped to the container as well, because at the domestic zooms the
+      // globe is far larger than the viewport and an unclamped orbit would
+      // throw the satellites kilometres off-screen.
+      const satLayer = document.createElement("div");
+      satLayer.className = "satorbit";
+      const satEls = SATELLITES.map(() => {
+        const el = document.createElement("span");
+        el.className = "satellite";
+        el.innerHTML = SATELLITE_SVG;
+        satLayer.appendChild(el);
+        return el;
+      });
+      container.appendChild(satLayer);
+      satLayerRef.current = satLayer;
+
+      const animateSatellites = (now: number, show: boolean) => {
+        if (!show) {
+          satLayer.style.display = "none";
+          return;
+        }
+        satLayer.style.display = "";
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        const centre = map.project(map.getCenter());
+        const globeR = Math.min(
+          (512 * Math.pow(2, map.getZoom())) / (2 * Math.PI),
+          Math.min(w, h) * 0.46,
+        );
+        SATELLITES.forEach((sat, i) => {
+          const angle = sat.phase + (now / 1000 / sat.period) * 360;
+          const rad = (angle * Math.PI) / 180;
+          const r = globeR * sat.ring;
+          const x = centre.x + Math.cos(rad) * r;
+          const y = centre.y + Math.sin(rad) * r;
+          // The sprite points north at rest, so aim it along the tangent —
+          // which is a quarter turn ahead of the radius, and behind it when the
+          // orbit runs retrograde.
+          const heading = angle + (sat.period > 0 ? 90 : -90);
+          satEls[i].style.transform = `translate(${x}px, ${y}px) rotate(${heading}deg)`;
+        });
+      };
+
       const animateTravelers = () => {
         const now = performance.now();
         const s = useAppStore.getState();
         // Shown on both overviews (global + domestic); hidden only at the local
         // city layer, where WorldMapbox itself is hidden.
         const show = s.zoomedOut && !s.zoomingIn;
+        // The freight consist belongs to one country's map, so it rides only on
+        // the Australian domestic view — on the globe the corridor would be a
+        // few pixels long, and on any other region it is off-screen anyway.
+        const showTrain = show && !s.globalOut && s.domesticRegion === "australia";
+        if (map.getLayer(RAIL_BED_LAYER)) {
+          const railVis = showTrain ? "visible" : "none";
+          map.setLayoutProperty(RAIL_BED_LAYER, "visibility", railVis);
+          map.setLayoutProperty(RAIL_SLEEPER_LAYER, "visibility", railVis);
+        }
         travelersRef.current.forEach(({ marker, inner, traveler }) => {
           const el = marker.getElement();
-          if (!show) {
+          if (!show || (traveler.mode === "train" && !showTrain)) {
             el.style.display = "none";
             return;
           }
@@ -1042,6 +1204,10 @@ export function WorldMapbox() {
           // the heading is the reverse of the segment's own direction.
           inner.style.transform = `rotate(${phase < 1 ? bearing : bearing + 180}deg)`;
         });
+        // Satellites orbit the globe itself, so they belong to the global view
+        // only — on a domestic region the globe fills the frame and its limb is
+        // off-screen, leaving nothing for them to orbit.
+        animateSatellites(now, show && s.globalOut);
         travelRaf.current = requestAnimationFrame(animateTravelers);
       };
       animateTravelers();
@@ -1152,6 +1318,8 @@ export function WorldMapbox() {
       if (haloPulseRaf.current) cancelAnimationFrame(haloPulseRaf.current);
       travelersRef.current.forEach(({ marker }) => marker.remove());
       travelersRef.current = [];
+      satLayerRef.current?.remove();
+      satLayerRef.current = null;
       Object.values(labelsRef.current).forEach((m) => m.remove());
       labelsRef.current = {};
       ro.disconnect();
