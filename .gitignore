@@ -35,3 +35,6 @@ dist-ssr
 
 __pycache__/
 *.pyc
+
+# Regenerated worklist, not source — see scripts/address-gaps.ts.
+address-gaps.csv
