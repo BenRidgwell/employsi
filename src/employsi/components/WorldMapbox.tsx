@@ -670,6 +670,12 @@ export function computeMarkers(
   if (!entitled) {
     for (const m of out) {
       if (isReleasedPlace(m.id)) continue;
+      // Reset the colour too, not just the fade. The skill pass above runs
+      // first and had already recoloured any place with demand, so an
+      // unreleased country kept its heat tint underneath the fade — reading as
+      // a live, hot result that happened to be dim. An unreleased marker is
+      // neutral in every view; the heat map must not reach it at all.
+      m.color = dotColor;
       m.faded = true;
       m.clickable = false;
     }

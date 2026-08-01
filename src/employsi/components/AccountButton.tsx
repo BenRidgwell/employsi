@@ -1,4 +1,5 @@
 import { useAppStore } from "../state/store";
+import { isReleasedCompany } from "../lib/markets";
 import { SignInOptions } from "./SignInOptions";
 import { signOut as authSignOut } from "../lib/authClient";
 import { Avatar } from "./Avatar";
@@ -29,6 +30,7 @@ export function AccountButton() {
   const closeAuth = useAppStore((s) => s.closeAuth);
   const signOut = useAppStore((s) => s.signOut);
   const followedIds = useAppStore((s) => s.followedIds);
+  const seesAllMarkets = useAppStore((s) => s.role) === "admin";
   const requestFollow = useAppStore((s) => s.requestFollow);
   const select = useAppStore((s) => s.select);
   const selectedId = useAppStore((s) => s.selectedId);
@@ -48,7 +50,13 @@ export function AccountButton() {
     closeAuth();
   };
 
-  const saved = COMPANIES.filter((c) => followedIds.includes(c.id));
+  // A follow made before a market was gated -- or before the gate existed --
+  // would otherwise keep offering a card the product refuses to fill. The
+  // follow itself is left in place rather than deleted: the market is expected
+  // to be released, and the follow should still be there when it is.
+  const saved = COMPANIES.filter(
+    (c) => followedIds.includes(c.id) && (seesAllMarkets || isReleasedCompany(c.id)),
+  );
   const pending = pendingFollowId ? COMPANIES.find((c) => c.id === pendingFollowId) : undefined;
 
   return (

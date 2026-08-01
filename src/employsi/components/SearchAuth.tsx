@@ -1,4 +1,5 @@
 import { useAppStore } from "../state/store";
+import { isReleasedCompany } from "../lib/markets";
 import { Avatar } from "./Avatar";
 import { COMPANIES } from "../data/companies";
 import { searchCityFor } from "../data/mapboxGeo";
@@ -35,13 +36,20 @@ export function SearchAuth() {
   const closeAuth = useAppStore((s) => s.closeAuth);
   const signOut = useAppStore((s) => s.signOut);
   const followedIds = useAppStore((s) => s.followedIds);
+  const seesAllMarkets = useAppStore((s) => s.role) === "admin";
   const followedSkills = useAppStore((s) => s.followedSkills);
   const select = useAppStore((s) => s.select);
   const zoomInCity = useAppStore((s) => s.zoomInCity);
   const toggleSkillQuery = useAppStore((s) => s.toggleSkillQuery);
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
 
-  const saved = COMPANIES.filter((c) => followedIds.includes(c.id));
+  // A follow made before a market was gated -- or before the gate existed --
+  // would otherwise keep offering a card the product refuses to fill. The
+  // follow itself is left in place rather than deleted: the market is expected
+  // to be released, and the follow should still be there when it is.
+  const saved = COMPANIES.filter(
+    (c) => followedIds.includes(c.id) && (seesAllMarkets || isReleasedCompany(c.id)),
+  );
 
   return (
     <div className="gsauth">
