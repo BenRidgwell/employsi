@@ -1,4 +1,5 @@
 import mapboxgl from "mapbox-gl";
+import { isReleasedPlace } from "../lib/markets";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef } from "react";
 import { useAppStore, cityMatchesFilters, type FilterState } from "../state/store";
@@ -521,29 +522,6 @@ function countryDemand(cityDemand: Record<string, number>): Record<string, numbe
   return out;
 }
 
-/**
- * The markets an end user sees live: the ones employsi actually collects
- * vacancy data for, feed by feed.
- *
- * Country codes rather than city ids, so a city added to one of these later is
- * covered automatically instead of needing a second list kept in step.
- */
-const COVERED_COUNTRIES = new Set(["au", "nz", "sg", "ph", "hk", "my"]);
-
-/**
- * Is this marker id inside a covered market?
- *
- * A marker is either a country roll-up (global layer, id IS the country code)
- * or a city (domestic layer, resolved through CITY_COUNTRY). Anything that
- * resolves to neither — a cluster, an EU country carrying only Eurostat
- * aggregates — is not covered, which is the correct answer for all of them.
- */
-function isCoveredPlace(id: string): boolean {
-  if (COVERED_COUNTRIES.has(id)) return true;
-  const cc = CITY_COUNTRY[id];
-  return !!cc && COVERED_COUNTRIES.has(cc);
-}
-
 // Which markers to show for the current view. City dots stay neutral until a
 // skill is searched (then the skill-demand blobs carry all the colour). Always
 // filtered by the active sectors.
@@ -691,7 +669,7 @@ export function computeMarkers(
   // the functions that return the data.
   if (!entitled) {
     for (const m of out) {
-      if (isCoveredPlace(m.id)) continue;
+      if (isReleasedPlace(m.id)) continue;
       m.faded = true;
       m.clickable = false;
     }

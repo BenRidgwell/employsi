@@ -1,4 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
+import { callerRole } from "./sessionRole";
+import { marketVisible } from "./markets";
 import { skillsForText, parseStoredSkills } from "../data/skillsTaxonomy";
 import { NZ_GOV_IDS } from "../data/nzGov";
 import type { AdvertisedJob } from "./skillsFn";
@@ -533,6 +535,10 @@ export const getOpenRoles = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<OpenRoles | null> => {
     const company = (data.company || "").trim();
     if (!company) return null;
+    // Unreleased market: withhold the data as well as the marker, or the fade
+    // is cosmetic. Only checked when an id is supplied — the company NAME
+    // alone cannot be resolved to a market, and this endpoint predates ids.
+    if (data.id && !marketVisible(await callerRole(), data.id, true)) return null;
     // Market: defaults to Australia for backwards compatibility, but the card
     // passes the company's own country/where/region (see data/cityMarket.ts).
     // An empty country means Adzuna doesn't cover this market → The Muse only.

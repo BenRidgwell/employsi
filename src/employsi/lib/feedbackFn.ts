@@ -1,8 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
+import { callerRole } from "./sessionRole";
 import { getRequest } from "@tanstack/react-start/server";
 import type { D1Like } from "./jobArchive";
 import { getAuth, type AuthEnv } from "./auth";
-import { roleForEmail, denyIfNotAdmin, type RoleEnv } from "./roles";
+import { denyIfNotAdmin } from "./roles";
 
 /**
  * The feedback board, stored in D1.
@@ -109,28 +110,6 @@ const today = () => new Date().toISOString().slice(0, 10);
  * `email` identifies the caller only so their existing votes and posts can be
  * shown back to them — it is not a credential.
  */
-/**
- * The caller's role, re-derived from the session on every privileged call.
- *
- * Deliberately NOT taken from anything the client sends. The browser is told
- * its role so it can hide controls it cannot use, but that value is editable
- * by whoever holds the browser — so the moderation handlers below ask the
- * session again rather than trusting the caller. Hiding the button is
- * presentation; this is the boundary.
- */
-async function callerIsAdmin(): Promise<boolean> {
-  try {
-    const m = await import("cloudflare:workers");
-    const e = (m?.env ?? null) as (AuthEnv & RoleEnv) | null;
-    if (!e) return false;
-    const auth = getAuth(e);
-    if (!auth) return false;
-    const session = await auth.api.getSession({ headers: getRequest().headers });
-    return roleForEmail(e, session?.user?.email ? String(session.user.email) : null) === "admin";
-  } catch {
-    return false;
-  }
-}
 
 export const getFeedback = createServerFn({ method: "GET" }).handler(
   async (): Promise<FeedbackItem[]> => {
@@ -280,7 +259,7 @@ export const voteFeedback = createServerFn({ method: "POST" })
 export const setFeedbackStatus = createServerFn({ method: "POST" })
   .validator((data: { id: string; status: FbStatus }) => data)
   .handler(async ({ data }): Promise<PostResult> => {
-    if (!(await callerIsAdmin())) return { ok: false, error: denyIfNotAdmin("user")! };
+    if ((await callerRole()) !== "admin") return { ok: false, error: denyIfNotAdmin("user")! };
     const d = await db();
     if (!d) return { ok: false, error: "The board is unavailable right now." };
     const id = clean(data?.id || "", 40);
@@ -303,7 +282,7 @@ export const setFeedbackStatus = createServerFn({ method: "POST" })
 export const deleteFeedback = createServerFn({ method: "POST" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<PostResult> => {
-    if (!(await callerIsAdmin())) return { ok: false, error: denyIfNotAdmin("user")! };
+    if ((await callerRole()) !== "admin") return { ok: false, error: denyIfNotAdmin("user")! };
     const d = await db();
     if (!d) return { ok: false, error: "The board is unavailable right now." };
     const id = clean(data?.id || "", 40);

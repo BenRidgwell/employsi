@@ -1,4 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
+import { callerRole } from "./sessionRole";
+import { marketVisible } from "./markets";
 import { kvBinding, type KVLike } from "./kv";
 
 // Reads the live skill-demand data the jobs-cron worker writes to KV:
@@ -62,6 +64,12 @@ export const getCompanyJobs = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<CompanyJobs | null> => {
     const kv = await getKV();
     if (!kv || !data.id) return null;
+    // Unreleased market: withhold the data as well as the marker. Without this
+    // the fade would be cosmetic — the id is guessable and the response would
+    // still answer. See lib/markets.ts for why these are hidden rather than
+    // unsupported.
+    if (!marketVisible(await callerRole(), data.id, true)) return null;
+
     try {
       const raw = await kv.get(`jobs:${data.id}`);
       if (!raw) return null;

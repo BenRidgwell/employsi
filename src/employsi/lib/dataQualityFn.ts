@@ -1,8 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
+import { callerRole } from "./sessionRole";
 import type { D1Like } from "./jobArchive";
-import { getAuth, type AuthEnv } from "./auth";
-import { roleForEmail, type RoleEnv } from "./roles";
 import { COMPANIES } from "../data/companies";
 import { normName, sameCompanyName, substringOnlyMatch } from "./advertiserMatch";
 
@@ -27,20 +25,6 @@ async function d1(): Promise<D1Like | null> {
     return (m?.env?.JOBS_ARCHIVE as D1Like) ?? null;
   } catch {
     return null;
-  }
-}
-
-async function callerIsAdmin(): Promise<boolean> {
-  try {
-    const m = await import("cloudflare:workers");
-    const e = (m?.env ?? null) as (AuthEnv & RoleEnv) | null;
-    if (!e) return false;
-    const auth = getAuth(e);
-    if (!auth) return false;
-    const session = await auth.api.getSession({ headers: getRequest().headers });
-    return roleForEmail(e, session?.user?.email ? String(session.user.email) : null) === "admin";
-  } catch {
-    return false;
   }
 }
 
@@ -99,7 +83,7 @@ function daysSince(day: string, today: string): number {
 
 export const getDataQuality = createServerFn({ method: "GET" }).handler(
   async (): Promise<DataQuality> => {
-    if (!(await callerIsAdmin())) return { ...EMPTY, error: "Not permitted." };
+    if ((await callerRole()) !== "admin") return { ...EMPTY, error: "Not permitted." };
     const db = await d1();
     if (!db) return { ...EMPTY, error: "The archive is unavailable right now." };
     const today = new Date().toISOString().slice(0, 10);

@@ -1,4 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
+import { callerRole } from "./sessionRole";
+import { marketVisible } from "./markets";
 import type { D1Like } from "./jobArchive";
 import { COMPANY_ID_ALIAS, type RolePoint } from "./openRolesFn";
 import { SKILL_CATEGORY, parseStoredSkills } from "../data/skillsTaxonomy";
@@ -50,6 +52,11 @@ export const getRoleHistory = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<RoleHistory | null> => {
     const id = (data.id || "").trim();
     if (!id) return null;
+    // Unreleased market: withhold the data as well as the marker. Without this
+    // the fade would be cosmetic — the id is guessable and the response would
+    // still answer. See lib/markets.ts for why these are hidden rather than
+    // unsupported.
+    if (!marketVisible(await callerRole(), id, true)) return null;
     const db = await getArchiveDb();
     if (!db) return null;
     const today = new Date().toISOString().slice(0, 10);
@@ -125,6 +132,11 @@ export const getSkillTrends = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<SkillMover[]> => {
     const id = (data.id || "").trim();
     if (!id) return [];
+    // Unreleased market: withhold the data as well as the marker. Without this
+    // the fade would be cosmetic — the id is guessable and the response would
+    // still answer. See lib/markets.ts for why these are hidden rather than
+    // unsupported.
+    if (!marketVisible(await callerRole(), id, true)) return [];
     const db = await getArchiveDb();
     if (!db) return [];
     try {

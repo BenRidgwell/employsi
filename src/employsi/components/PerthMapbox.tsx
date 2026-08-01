@@ -1,4 +1,5 @@
 import mapboxgl from "mapbox-gl";
+import { isReleasedPlace } from "../lib/markets";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useMemo, useRef } from "react";
 import {
@@ -17,7 +18,6 @@ import {
   PERTH_DEFAULT_PITCH,
   PERTH_DEFAULT_BEARING,
 } from "../data/mapboxGeo";
-import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
 import { heatColor, rgbCss } from "../lib/color";
 import { logoFor } from "../lib/companyLogo";
 import { activeSkill, demandByCompany } from "../lib/skillHeat";
@@ -283,20 +283,6 @@ function cityPlacements(city: string): Placed[] {
 // gets a full-range scale. Companies outside the selected sector(s) are dropped
 // entirely (hidden), so a Financial Services filter clears the resource
 // companies from the city map.
-/**
- * The markets an end user sees live. Mirrors COVERED_COUNTRIES in
- * WorldMapbox — kept as its own copy rather than imported, because importing
- * WorldMapbox here would pull the whole globe component into the local map's
- * bundle for one Set. If a market is added, both lists move together.
- */
-const COVERED_COUNTRIES = new Set(["au", "nz", "sg", "ph", "hk", "my"]);
-
-/** Is this local city inside a covered market? */
-function cityIsCovered(city: string): boolean {
-  const cc = CITY_COUNTRY[city];
-  return !!cc && COVERED_COUNTRIES.has(cc);
-}
-
 function buildGeoJSON(
   placements: Placed[],
   selectedId: string | null,
@@ -504,7 +490,7 @@ export function PerthMapbox() {
           st.selectedId,
           filterState,
           skillDemandOf(st),
-          st.role === "admin" || cityIsCovered(st.localCity),
+          st.role === "admin" || isReleasedPlace(st.localCity),
         ),
       });
 
@@ -663,7 +649,7 @@ export function PerthMapbox() {
             s.selectedId,
             fs,
             skillDemandOf(s),
-            s.role === "admin" || cityIsCovered(s.localCity),
+            s.role === "admin" || isReleasedPlace(s.localCity),
           ),
         );
         renderMarkers(placedRef.current);
@@ -937,7 +923,7 @@ export function PerthMapbox() {
             selectedId,
             filterState,
             skillDemand,
-            role === "admin" || cityIsCovered(localCity),
+            role === "admin" || isReleasedPlace(localCity),
           ),
         );
       const maxD = skillDemand
