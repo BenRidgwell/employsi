@@ -57,7 +57,7 @@ jobs:
             --max-turns 40
           prompt: |
             Triage the last 24 hours of GitHub Actions failures in this repository
-            (BenRidgwell/globe-gazer-hr — the Employsi labour-market map) and record what you
+            (BenRidgwell/employsi — the Employsi labour-market map) and record what you
             find. This run is REPORT ONLY: you have read-only access to the repository and
             must not commit, push, or open a pull request.
 
