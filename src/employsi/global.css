@@ -46,7 +46,15 @@ body {
   /* Centred on the map frame, i.e. the viewport minus the header row. */
   top: calc(var(--head-height) / 2 + 50%);
   transform: translateY(-50%);
-  z-index: 48;
+  /* ABOVE the panes these buttons open (44-49), not below them.
+     The rail is a stacking context, so its tooltips cannot escape it: at 48
+     the panes painted over them, and hovering a second rail button while one
+     pane was open showed a tooltip clipped behind that pane. Raising the rail
+     itself is what lifts the tips with it.
+     Safe against overlap by construction — --pane-left is
+     --rail-left + --rail-width + --pane-gap, so a pane always starts to the
+     RIGHT of the rail and the two never share pixels. */
+  z-index: 50;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2304,10 +2312,23 @@ body {
     opacity 140ms,
     transform 140ms;
 }
+/* Both controls in the cluster, not just pause — the window button carried no
+   styled tip at all until now. `.tickerwin` needs position:relative for the
+   absolutely-positioned tip to hang off it. */
+.tickerwin {
+  position: relative;
+}
 .tickerpause:hover .tickertip,
-.tickerpause:focus-visible .tickertip {
+.tickerpause:focus-visible .tickertip,
+.tickerwin:hover .tickertip,
+.tickerwin:focus-visible .tickertip {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+/* Disabled, the button still explains ITSELF — that is the one state where a
+   tooltip earns its place most, because the control does nothing when clicked. */
+.tickerwin:disabled {
+  pointer-events: auto;
 }
 /* In the header row now, not floating over the map. `top: 38px` used to clear
    the ticker strip, which has moved to the bottom of the frame; the row's own
@@ -11835,4 +11856,81 @@ body {
     max-width: none;
     border-radius: 20px 20px 0 0;
   }
+}
+
+/* ── Chart export ──────────────────────────────────────────────────────────
+   A small control under each analyst chart. Deliberately quiet — it is an
+   affordance on an answer, not a call to action — and it only appears once a
+   chart is there to export. */
+.anexport {
+  position: relative;
+  align-self: flex-start;
+}
+.anexportbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+.anexportbtn:hover,
+.anexportbtn.on {
+  background: var(--surface-hover);
+  color: var(--neutral-900);
+}
+/* Click-away for the little menu. Scoped to the pane rather than the viewport
+   so it cannot swallow a click on the map behind an open analyst card. */
+.anexportscrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+}
+.anexportmenu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 108px;
+  padding: 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-card);
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 12px 28px -12px rgba(28, 28, 30, 0.3);
+  animation: emppop 160ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.anexportitem {
+  height: 28px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--neutral-800);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.anexportitem:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.anexportitem:disabled {
+  opacity: 0.5;
+  cursor: default;
 }

@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { exportChart, type ExportFormat } from "../../lib/chartExport";
 import type {
   AnalystChart as Chart,
   AnalystChartLine,
@@ -242,7 +244,92 @@ function Multiples({ chart }: { chart: AnalystChartMultiples }) {
   );
 }
 
-export function AnalystChartView({ chart }: { chart: Chart }) {
+const FORMATS: { key: ExportFormat; label: string }[] = [
+  { key: "png", label: "PNG" },
+  { key: "jpeg", label: "JPEG" },
+  { key: "pdf", label: "PDF" },
+];
+
+function DownloadIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" aria-hidden>
+      <g strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 4v10" />
+        <polyline points="8 11 12 15 16 11" />
+        <path d="M5 18h14" />
+      </g>
+    </svg>
+  );
+}
+
+/**
+ * Export the chart as a standalone sheet.
+ *
+ * Not a screenshot: lib/chartExport.ts redraws from the chart DATA, so the
+ * export carries the employsi mark, the question it answers, the source line
+ * and the 2026 disclaimer at a fixed size regardless of the window it was
+ * taken from. A chart leaving the product without its provenance is the same
+ * fault as a figure without a source.
+ */
+function ExportMenu({ chart, title, source }: { chart: Chart; title: string; source?: string }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState<ExportFormat | null>(null);
+
+  const run = async (fmt: ExportFormat) => {
+    setBusy(fmt);
+    try {
+      await exportChart(chart, title, source, fmt);
+    } finally {
+      setBusy(null);
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div className="anexport">
+      <button
+        type="button"
+        className={`anexportbtn${open ? " on" : ""}`}
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label="Export this chart"
+      >
+        <DownloadIcon />
+        Export
+      </button>
+      {open && (
+        <>
+          <span className="anexportscrim" onClick={() => setOpen(false)} />
+          <div className="anexportmenu" role="menu">
+            {FORMATS.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                role="menuitem"
+                className="anexportitem"
+                disabled={!!busy}
+                onClick={() => void run(f.key)}
+              >
+                {busy === f.key ? "Saving…" : f.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export function AnalystChartView({
+  chart,
+  title,
+  source,
+}: {
+  chart: Chart;
+  /** The answer's own sentence — becomes the export's subtitle. */
+  title: string;
+  source?: string;
+}) {
   return (
     <div className="anchart">
       {chart.kind === "line" && (
@@ -261,6 +348,7 @@ export function AnalystChartView({ chart }: { chart: Chart }) {
       )}
       {chart.kind === "scatter" && <ScatterChart chart={chart} />}
       {chart.kind === "multiples" && <Multiples chart={chart} />}
+      <ExportMenu chart={chart} title={title} source={source} />
     </div>
   );
 }

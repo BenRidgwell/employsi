@@ -283,7 +283,13 @@ export function AnalystPane() {
                   {/* The chart sits directly under the sentence that states the
                       finding and above the figures, which is the design's own
                       order: read the claim, see the shape, then the numbers. */}
-                  {m.answer?.chart && <AnalystChartView chart={m.answer.chart} />}
+                  {m.answer?.chart && (
+                    <AnalystChartView
+                      chart={m.answer.chart}
+                      title={m.text}
+                      source={m.answer.source}
+                    />
+                  )}
 
                   {!!m.answer?.stats?.length && (
                     <div className="anstats">

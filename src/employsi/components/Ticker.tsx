@@ -197,13 +197,16 @@ export function Ticker({ hidden }: { hidden: boolean }) {
           className="tickerwin"
           onClick={() => setWinIdx((i) => (i + 1) % TREND_WINDOWS.length)}
           disabled={!anyLive}
-          title={
-            anyLive
-              ? `Showing ${win.label.replace("· ", "").toLowerCase()} — click to change`
-              : "Comparison windows unlock once the job archive has history"
-          }
           aria-label={`Trend window: ${win.short}`}
         >
+          {/* The pause button beside it has always had the design's dark tip;
+              this one was on the browser's native `title`, which looks like a
+              different product and waits a second before appearing. */}
+          <span className="tickertip">
+            {anyLive
+              ? `Showing ${win.label.replace("· ", "").toLowerCase()} — click to change`
+              : "Comparison windows unlock once the job archive has history"}
+          </span>
           {win.short}
         </button>
         <button
