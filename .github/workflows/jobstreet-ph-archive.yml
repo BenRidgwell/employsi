@@ -1,0 +1,64 @@
+# Daily JobStreet Philippines → D1 archive.
+#
+# The Philippine half of scripts/jobstreet-to-d1.py. Same board, same SEEK
+# codebase, same reason it cannot run in the Cloudflare Worker (SEEK's front
+# 403-challenges Worker-originated requests — see workers/jobs-cron/ARCHIVE.md).
+# It writes the same rows through the same D1 HTTP API, deduped on the same key,
+# with skills mapped by the worker's own taxonomy, so a Manila role is
+# classified identically to an Australian one.
+#
+# This is what gives Manila vacancy coverage. The career-portal feeds only see
+# an employer's own site, and the Philippine presence of most of the roster is a
+# shared-services or BPO entity that advertises on JobStreet rather than running
+# a careers site of its own.
+#
+# Archived under source `jobstreet-ph`, NOT `jobstreet`. The dedup key leads
+# with the source, so sharing one with Malaysia would let a Manila role and a
+# Kuala Lumpur role with the same title and employer collapse into a single row
+# and silently lose a market.
+#
+# Required repo secret:
+#   CLOUDFLARE_API_TOKEN  — a token with D1 edit on the employsi account.
+# Optional repo variables (fall back to the values baked into the script):
+#   CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# The job fails (red X + GitHub's own notification) if not one company on the
+# roster returns a Philippine vacancy. That is never a real state of the world —
+# it means the site key or the API shape moved — and a wrong parameter here
+# returns totalCount 0 rather than an error, so silence has to be treated as
+# breakage rather than as an empty market.
+
+name: jobstreet-ph-archive
+
+on:
+  schedule:
+    # 21:00 UTC daily (~05:00 PHT) — after the Philippine posting day, and an
+    # hour clear of jobstreet-archive so the two never share a D1 write window.
+    - cron: '0 21 * * *'
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+concurrency:
+  group: jobstreet-ph-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Scrape JobStreet Philippines → D1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/jobstreet-to-d1.py --country ph

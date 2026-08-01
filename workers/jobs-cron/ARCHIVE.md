@@ -88,6 +88,51 @@ step runs off-repo, because DataDome leaves no reliable server-side path.
 
 ---
 
+# JobStreet feeds — Malaysia and the Philippines (`scripts/jobstreet-to-d1.py`)
+
+JobStreet is the dominant board in both markets, and it is what gives **Kuala
+Lumpur** and **Manila** any vacancy coverage at all: the career-portal feeds
+only see an employer's own site, and most of the roster's presence in those
+countries is a shared-services or BPO entity that advertises on JobStreet
+instead of running a local careers site.
+
+**Why not in the Worker.** JobStreet is SEEK-owned and sits behind SEEK's front,
+which 403-challenges requests originating from Cloudflare Workers — the same
+block documented for the SEEK feed above. The JSON API is served normally to an
+ordinary client, so both feeds run from GitHub Actions
+([`jobstreet-archive.yml`](../../.github/workflows/jobstreet-archive.yml),
+[`jobstreet-ph-archive.yml`](../../.github/workflows/jobstreet-ph-archive.yml))
+and write through the D1 HTTP API.
+
+**One script, two countries.** Both sites are the same codebase behind different
+hostnames, so only the host, site key, locale, source name and hub map differ —
+all of it in `SITES`, selected with `--country my|ph`. Everything downstream is
+shared, so a Manila role is deduped and skill-mapped exactly as a KL one is.
+
+Two things are load-bearing and easy to get wrong:
+
+- **Separate sources per country** (`jobstreet` / `jobstreet-ph`). The dedup key
+  leads with the source, so sharing one would let a Manila role and a KL role
+  with the same title and employer collapse into a single row and lose a market.
+- **No `where` parameter.** Passing SEEK's `All Australia` returns
+  `totalCount 0` rather than an error, so a wrong value looks exactly like an
+  employer with no local vacancies. Both workflows therefore **fail loudly** when
+  not one company on the roster returns a vacancy — silence here means the API
+  shape moved, not that the country stopped hiring.
+
+**The advertiser filter is the honesty gate.** Keyword search returns anything
+mentioning the name, so an ad is kept only when its advertiser really is the
+company. The rule compares whole tokens and allows extra words only from a
+corporate-qualifier list, which is what keeps `BHP Group` and `ANZ Global
+Services and Operations` while rejecting `IGO Techonologies` — an unrelated
+Philippine firm that a plain prefix test archived as IGO Ltd, the Western
+Australian lithium miner, for 31 roles. A local subsidiary can legitimately
+trade under a name the rule rejects (`Austal Ships`), so rejections that lead
+with a roster name are **reported at the end of every run**; confirm one against
+the employer, then add it to `ADVERTISER_ALIAS`.
+
+---
+
 # Historical job archive (Cloudflare D1)
 
 Every listing pulled from **Adzuna, The Muse, Jooble, SEEK and Indeed** — the

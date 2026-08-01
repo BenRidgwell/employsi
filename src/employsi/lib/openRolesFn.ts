@@ -414,6 +414,11 @@ async function fromMuse(company: string, region: RegExp): Promise<AdvertisedJob[
 const ARCHIVE_SOURCE_LABEL: Record<string, string> = {
   seek: "SEEK",
   jobstreet: "JobStreet",
+  // Same board, separate archive source per country, so a Manila role and a
+  // Kuala Lumpur one with the same title and employer cannot collapse onto one
+  // dedup key. Both read as "JobStreet" on the card — the market is already
+  // carried by the role's own location.
+  "jobstreet-ph": "JobStreet",
   jooble: "Jooble",
   mycareersfuture: "MyCareersFuture",
   indeed: "Indeed",

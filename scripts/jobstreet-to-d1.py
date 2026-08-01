@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
-"""JobStreet Malaysia (my.jobstreet.com) -> the D1 job archive.
+"""JobStreet -> the D1 job archive. Malaysia and the Philippines.
 
 WHY THIS EXISTS
-The career-portal feeds cover an employer's own site. JobStreet is Malaysia's
-dominant board, so it carries the roles a company advertises there whether or
-not it runs a Malaysian careers site — which is how Kuala Lumpur gets vacancy
-coverage at all. It is the Malaysian counterpart to the SEEK feed, and it is
-built the same way for the same reason.
+The career-portal feeds cover an employer's own site. JobStreet is the dominant
+board in both markets, so it carries the roles a company advertises there
+whether or not it runs a local careers site — which is how Kuala Lumpur and
+Manila get vacancy coverage at all. It is the regional counterpart to the SEEK
+feed, and it is built the same way for the same reason.
+
+ONE SCRIPT, TWO COUNTRIES
+Both sites are the same SEEK codebase behind different hostnames, so the only
+country-specific things are in SITES below: the host, the site key, the locale,
+the archive source name and the hub map. Everything downstream — the advertiser
+filter, the dedup key, the skills mapping, the D1 upsert — is shared, so a
+Philippine role is classified and deduped exactly as a Malaysian one is. Select
+with --country; it defaults to Malaysia so existing callers are unaffected.
 
 WHY IT RUNS AS A GITHUB ACTION, NOT IN THE WORKER
-JobStreet is SEEK-owned and shares SEEK's front. my.jobstreet.com/jobs returns
+JobStreet is SEEK-owned and shares SEEK's front. jobstreet.com/jobs returns
 403 to this environment, and SEEK's Cloudflare front already 403-challenges
 requests originating from Cloudflare Workers (see workers/jobs-cron/ARCHIVE.md).
 The JSON API below is served to an ordinary client, so this runs from a GitHub
@@ -17,23 +25,24 @@ runner exactly as scripts/seek-to-d1.py does, and writes the same rows through
 the D1 HTTP API.
 
 THE API
-  GET https://my.jobstreet.com/api/jobsearch/v5/search
-      ?siteKey=MY-Main&locale=en-MY&sourcesystem=houston&keywords=<name>
+  GET https://<host>/api/jobsearch/v5/search
+      ?siteKey=<key>&locale=<locale>&sourcesystem=houston&keywords=<name>
       &page=N&pageSize=100
 Same v5 shape SEEK serves. Two things differ from the AU call and both matter:
-  - siteKey is MY-Main and the locale en-MY;
+  - the site key and locale are per country;
   - there is NO `where`. Passing SEEK's 'All Australia' returns totalCount 0
     rather than an error, so a wrong `where` looks exactly like an employer with
-    no Malaysian vacancies. Omitting it searches the whole country.
+    no local vacancies. Omitting it searches the whole country.
 
 MATCHING COMPANIES
-There are no Malaysian advertiser ids to search by, so this searches by company
+There are no local advertiser ids to search by, so this searches by company
 NAME and then keeps only rows whose advertiser matches that name. Keyword search
 alone is not enough: searching "BHP" also returns a Malayan Flour Mills listing
 that merely mentions it. The advertiser filter is what makes the result a claim
 about the employer rather than about the words in an ad.
 
-Usage:  python3 scripts/jobstreet-to-d1.py [--limit N] [--only id,id] [--dry-run]
+Usage:  python3 scripts/jobstreet-to-d1.py [--country my|ph]
+                                           [--limit N] [--only id,id] [--dry-run]
 """
 from __future__ import annotations
 import datetime
@@ -53,23 +62,67 @@ ACCOUNT = os.environ.get('CF_ACCOUNT_ID') or '080a66721e2d85950d9d7dc939e08b76'
 DB = os.environ.get('D1_DATABASE_ID') or '1c5f3ffb-b9d7-4233-b28b-0f1f8d193fe1'
 API = f'https://api.cloudflare.com/client/v4/accounts/{ACCOUNT}/d1/database/{DB}/query'
 
-JS_API = 'https://my.jobstreet.com/api/jobsearch/v5/search'
-JOB_URL = 'https://my.jobstreet.com/job/'
 UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 '
       '(KHTML, like Gecko) Version/17.4.1 Safari/605.1.15')
-SOURCE = 'jobstreet'
 PAGE_SIZE = 100
 MAX_PAGES = 3
 HERE = os.path.dirname(os.path.abspath(__file__))
 TODAY = datetime.date.today().isoformat()
 
-# Every Malaysian vacancy lands on Kuala Lumpur unless the ad names another
-# Malaysian city we plot. KL is the only Malaysian hub on the map today, so a
-# Penang role still belongs to the country's coverage — it is recorded with its
-# real location text and simply has no hub of its own.
-MY_HUBS = {'kuala lumpur': 'kualalumpur'}
+# Everything that differs between the two JobStreet markets.
+#
+# `hubs` maps a location string to a city on the map. A role outside those
+# cities is still archived, with its real location text and no hub — it belongs
+# to the country's coverage even though it has no pin of its own. That is why
+# Penang and Cebu are absent rather than forced onto the capital.
+SITES = {
+    'my': {
+        'label': 'Malaysia',
+        'host': 'my.jobstreet.com',
+        'siteKey': 'MY-Main',
+        'locale': 'en-MY',
+        'source': 'jobstreet',
+        'hubs': {'kuala lumpur': 'kualalumpur'},
+    },
+    'ph': {
+        'label': 'Philippines',
+        'host': 'ph.jobstreet.com',
+        'siteKey': 'PH-Main',
+        'locale': 'en-PH',
+        # A separate source from Malaysia's. The dedup key starts with the
+        # source, so sharing one would let a Manila role and a KL role with the
+        # same title and employer collapse into a single archive row and lose a
+        # market.
+        'source': 'jobstreet-ph',
+        # Measured against the live board, not assumed: sampled 8 searches and
+        # counted the location labels. EVERY National Capital Region label
+        # carries the ", Metro Manila" suffix — including the ones that name a
+        # district rather than a city, "Bonifacio Global City, Metro Manila",
+        # "Ortigas, Metro Manila", "Alabang, Metro Manila", "Cubao, Metro
+        # Manila", "Eastwood, Metro Manila". So one needle catches the whole of
+        # Metro Manila and there is no list of seventeen city names to keep in
+        # step. The bare 'manila' entry is for a label that names the city with
+        # no region after it.
+        #
+        # Everything outside the NCR — Cebu, Clark/Pampanga, Laguna, Davao,
+        # Iloilo — deliberately gets no hub. Manila is the only Philippine city
+        # on the map, and putting a Cebu role on it would be an invented
+        # location.
+        'hubs': {'metro manila': 'manila', 'manila': 'manila'},
+    },
+}
 
 args = sys.argv[1:]
+COUNTRY = args[args.index('--country') + 1].lower() if '--country' in args else 'my'
+if COUNTRY not in SITES:
+    sys.exit(f'--country must be one of {", ".join(SITES)}')
+SITE = SITES[COUNTRY]
+JS_API = f'https://{SITE["host"]}/api/jobsearch/v5/search'
+JOB_URL = f'https://{SITE["host"]}/job/'
+SOURCE = SITE['source']
+HUBS = SITE['hubs']
+LABEL = SITE['label']
+
 LIMIT = int(args[args.index('--limit') + 1]) if '--limit' in args else 10 ** 9
 ONLY = set(args[args.index('--only') + 1].split(',')) if '--only' in args else None
 DRY = '--dry-run' in args
@@ -90,7 +143,7 @@ def job_key(source: str, title: str, company: str, location: str) -> str:
 
 def match_hub(text: str):
     t = (text or '').lower()
-    for needle, hub in MY_HUBS.items():
+    for needle, hub in HUBS.items():
         if needle in t:
             return hub
     return None
@@ -140,28 +193,91 @@ def js_get(params: dict):
     return None
 
 
+# Words that may follow a company's name without making it a different company.
+# An advertiser is accepted when the ONLY thing it adds to the roster name is
+# words from this set — corporate form, region, and the shared-services wording
+# the Manila and KL back-office entities are registered under.
+CORPORATE_WORDS = {
+    'group', 'groups', 'holdings', 'holding', 'ltd', 'limited', 'plc', 'pty',
+    'inc', 'incorporated', 'corp', 'corporation', 'company', 'co', 'the',
+    'international', 'global', 'shared', 'services', 'service', 'solutions',
+    'operations', 'business', 'support', 'centre', 'center', 'and', 'of',
+    'bank', 'banking', 'insurance', 'philippines', 'philippine', 'malaysia',
+    'malaysian', 'australia', 'australian', 'asia', 'pacific', 'apac',
+    'sdn', 'bhd', 'berhad', 'nv', 'sa', 'ag', 'llc', 'llp',
+}
+
+
+# Advertiser names that ARE a roster company, where the extra words are a
+# trading name rather than a corporate qualifier. Each one has been checked
+# against the employer — these are not guesses, and the run's near-miss report
+# is how a new one gets found.
+ADVERTISER_ALIAS = {
+    # Austal's shipbuilding entity, and the name its Philippine yard at
+    # Balamban advertises under.
+    'austal ships': 'austal',
+}
+
+
 def advertiser_matches(advertiser: str, name: str) -> bool:
     """Is this ad actually placed BY the company we searched for?
 
     Keyword search returns anything mentioning the name, so the advertiser has
-    to agree. Matched on normalised containment in either direction, because a
-    board's advertiser string is rarely the roster's exact wording: the roster
-    says "Commonwealth Bank of Australia" where JobStreet says "CBA", and it
-    says "BHP" where an ad may be placed by "BHP Group". Containment in either
-    direction accepts both and still rejects an unrelated employer.
+    to agree. The board's wording is rarely the roster's exact wording — the
+    roster says "BHP" where an ad is placed by "BHP Group" — so some slack is
+    needed. But the slack has to be bounded, and the obvious version of it is
+    wrong in two ways that were both measured on the live board:
+
+      - Plain string containment matches ACROSS a word. "BHP" is a prefix of
+        "BHPX", so a substring test would accept an unrelated employer whose
+        name merely starts with the same letters. Comparing token lists means a
+        partial word can never match.
+      - Accepting ANY extra words turns a short name into a wildcard. Searching
+        the roster's "IGO" (a Western Australian lithium miner) returned 31
+        Philippine roles, every one of them advertised by "IGO Techonologies"
+        or "Igo Digital High Technology" — unrelated companies that would have
+        been archived under IGO's company id and shown on its card as Manila
+        vacancies. Requiring the extra words to be corporate qualifiers keeps
+        "BHP Group" and "ANZ Global Services and Operations" while rejecting
+        those two.
     """
-    a, n = norm(advertiser), norm(name)
+    a, n = norm(advertiser).split(), norm(name).split()
     if not a or not n:
         return False
-    return a == n or a.startswith(n) or n.startswith(a)
+    if a == n or ADVERTISER_ALIAS.get(' '.join(a)) == ' '.join(n):
+        return True
+    long_, short_ = (a, n) if len(a) >= len(n) else (n, a)
+    if long_[:len(short_)] != short_:
+        return False
+    return all(w in CORPORATE_WORDS for w in long_[len(short_):])
 
 
-def fetch_company(name: str) -> list:
+def near_miss(advertiser: str, name: str) -> bool:
+    """Rejected, but shares the roster name's leading words.
+
+    These are the only rejections worth a human look. A local subsidiary can
+    trade under a name whose extra word is not a corporate qualifier — Austal
+    advertises its Philippine yard as "Austal Ships" — and that is
+    indistinguishable, lexically, from the "IGO Techonologies" case. So the
+    rule stays strict and the near misses get REPORTED at the end of a run
+    rather than guessed at. Confirm one against the employer, then add it to
+    ADVERTISER_ALIAS; until then it is left out, which is the honest direction
+    to fail in.
+    """
+    a, n = norm(advertiser).split(), norm(name).split()
+    if not a or not n or advertiser_matches(advertiser, name):
+        return False
+    long_, short_ = (a, n) if len(a) >= len(n) else (n, a)
+    return long_[:len(short_)] == short_
+
+
+def fetch_company(name: str, misses: set) -> list:
     out, seen = [], set()
     total_pages, page = 1, 1
     while page <= total_pages and page <= MAX_PAGES:
         data = js_get({
-            'siteKey': 'MY-Main', 'locale': 'en-MY', 'sourcesystem': 'houston',
+            'siteKey': SITE['siteKey'], 'locale': SITE['locale'],
+            'sourcesystem': 'houston',
             'keywords': name, 'page': page, 'pageSize': PAGE_SIZE,
         })
         if not data:
@@ -176,6 +292,8 @@ def fetch_company(name: str) -> list:
             advertiser = (j.get('companyName')
                           or (j.get('advertiser') or {}).get('description') or '')
             if not advertiser_matches(advertiser, name):
+                if near_miss(advertiser, name):
+                    misses.add(f'{advertiser}  (searching {name})')
                 continue
             jid = str(j.get('id') or '')
             if jid in seen:
@@ -300,12 +418,13 @@ def main() -> int:
         by_name[k] = c['id']
         targets.append(c)
     targets = targets[:LIMIT]
-    sys.stderr.write(f'JobStreet MY -> D1: {len(targets)} roster companies.\n')
+    sys.stderr.write(f'JobStreet {COUNTRY.upper()} -> D1: {len(targets)} roster companies.\n')
 
     total_found = total_written = with_jobs = 0
+    misses: set = set()
     for n, c in enumerate(targets, 1):
         try:
-            jobs = fetch_company(c['name'])
+            jobs = fetch_company(c['name'], misses)
         except Exception as e:
             sys.stderr.write(f'  [{n}/{len(targets)}] {c["name"]}: fetch error {e}\n')
             continue
@@ -317,13 +436,21 @@ def main() -> int:
         total_written += w
         sys.stderr.write(f'  [{n}/{len(targets)}] {c["name"]}: {len(jobs)} roles -> {w}\n')
 
-    sys.stderr.write(f'Done. {with_jobs} companies with Malaysian vacancies, '
+    sys.stderr.write(f'Done. {with_jobs} companies with {LABEL} vacancies, '
                      f'{total_found} roles found, {total_written} archived.\n')
+    if misses:
+        sys.stderr.write(
+            f'\nAdvertisers rejected that lead with a roster name ({len(misses)}). '
+            'Each is either a local subsidiary we are missing or an unrelated '
+            'company we correctly refused; confirm before adding to '
+            'ADVERTISER_ALIAS:\n')
+        for m in sorted(misses):
+            sys.stderr.write(f'  {m}\n')
     # A run that finds nothing at all across the whole roster means the API
-    # shape or the site key changed, not that Malaysia stopped hiring — the
+    # shape or the site key changed, not that the country stopped hiring — the
     # `where` parameter alone was enough to return a silent zero. Fail loudly.
     if with_jobs == 0:
-        sys.stderr.write('No company returned a single Malaysian vacancy — '
+        sys.stderr.write(f'No company returned a single {LABEL} vacancy — '
                          'treating as a broken feed rather than an empty market.\n')
         return 1
     return 0
