@@ -38,3 +38,4 @@ __pycache__/
 
 # Regenerated worklist, not source — see scripts/address-gaps.ts.
 address-gaps.csv
+triage-status.txt

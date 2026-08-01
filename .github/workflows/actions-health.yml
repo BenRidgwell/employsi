@@ -54,6 +54,17 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # Tools are DENIED by default. Without an allowlist every command comes
+      # back "requires approval", and on a runner there is nobody to approve
+      # them — the first working run spent its whole budget being refused `gh
+      # run list`, `git ls-remote` and `WebFetch` in turn, then correctly
+      # declined to invent a report it could not gather. Reading runs and logs
+      # is the entire job, so those tools have to be granted up front.
+      #
+      # Bash is allowed broadly because the triage needs `gh` across runs, jobs,
+      # logs and issues, and enumerating those subcommands would silently break
+      # the moment one is missing. The blast radius is bounded elsewhere and
+      # better: `contents: read` means a push cannot succeed whatever is run.
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -63,12 +74,7 @@ jobs:
             actions: read
           claude_args: |
             --max-turns 40
-          # TEMPORARY, for diagnosis only — remove once the first run succeeds.
-          # The action hides Claude's output by default, which meant an
-          # authentication rejection surfaced only as `is_error:true` after
-          # 85ms with no message. Registered secrets are masked in logs, but
-          # this prints the model's output, so it should not stay on.
-          show_full_output: true
+            --allowedTools Bash,Read,Grep,Glob,WebFetch,Write
           prompt: |
             Triage the last 24 hours of GitHub Actions failures in this repository
             (BenRidgwell/employsi — the Employsi labour-market map) and record what you
@@ -135,3 +141,38 @@ jobs:
 
             No commits, no pushes, no pull requests, no edits to workflow files. If a fix is
             obvious, describe it in the issue and stop there. Someone will read it.
+
+            ## 5. Record what you did — REQUIRED, always, as the last thing you do
+
+            Write ONE line to the file `triage-status.txt` in the repository root. The job
+            reads it and fails if it is missing, so a run that quietly did nothing cannot
+            report success:
+
+              REPORTED <n>     you wrote <n> failures into the issue
+              CLEAN            no failures in the last 24 hours
+              BLOCKED <why>    you could not complete the triage — say what stopped you
+
+            Use BLOCKED if anything prevented you from reading the runs or writing the
+            issue, including a tool you were not permitted to use. Do not write REPORTED or
+            CLEAN unless you actually did that work. A blocked run SHOULD fail the job:
+            silence that looks like success is the exact failure this whole workflow exists
+            to catch.
+
+      - name: Fail if the triage did not actually run
+        if: always()
+        run: |
+          # A green run that did nothing is worse than a red one: it is a
+          # control that has quietly stopped working. The agent writes its own
+          # verdict; anything other than REPORTED/CLEAN — including no file at
+          # all, which is what a crashed or permission-blocked run leaves — is
+          # a failure.
+          if [ ! -f triage-status.txt ]; then
+            echo "::error::No triage-status.txt — the triage did not complete."
+            exit 1
+          fi
+          STATUS="$(head -1 triage-status.txt)"
+          echo "Triage status: $STATUS"
+          case "$STATUS" in
+            REPORTED*|CLEAN*) echo "Triage completed." ;;
+            *) echo "::error::Triage did not complete: $STATUS"; exit 1 ;;
+          esac
