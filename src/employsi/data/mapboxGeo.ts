@@ -17,6 +17,7 @@ import { TOP_PRIVATE_BY_CITY } from "./topPrivateCompanies";
 import { NZ_BY_CITY } from "./nzCompanies";
 import { NZ_GOV_IDS, NZ_GOV_HUB } from "./nzGov";
 import { PERTH_REAL_COORDS } from "./perthRealCoords";
+import { AU_REAL_COORDS } from "./auRealCoords";
 import { SAN_JOSE_REAL_COORDS } from "./sanJoseRealCoords";
 import { SECONDARY_OFFICES, HQ_OVERRIDE } from "./secondaryOffices";
 import { CITY_CONTINENT } from "./geo";
@@ -218,9 +219,12 @@ export const CITY_COMPANIES: Record<string, CityCompany[]> = {
 // building, but every tenant stays individually selectable.
 // Every hand-geocoded head office, keyed by company id. Perth's agencies and
 // juniors were the first set; the San Jose roster joined them when the Silicon
-// Valley companies were moved out of San Francisco to their real metro.
+// Valley companies were moved out of San Francisco to their real metro; the
+// non-Perth Australian majors followed (scripts/geocode-au.py), each geocoded
+// from a street address and checked to land on that street.
 const REAL_COORDS: Record<string, [number, number]> = {
   ...PERTH_REAL_COORDS,
+  ...AU_REAL_COORDS,
   ...SAN_JOSE_REAL_COORDS,
 };
 
