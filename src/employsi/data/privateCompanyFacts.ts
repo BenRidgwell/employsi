@@ -7,13 +7,11 @@
 // these companies file no public accounts, so an audited headcount/YoY is not
 // automatable for them. Anything absent stays "not disclosed" on the card
 // rather than being estimated.
-//
-// Empty until the fetch workflow has run (it needs the Oxylabs credentials,
-// which only exist as GitHub secrets — Glassdoor 403s datacenter IPs).
 
 export interface PrivateFacts {
   glassdoorRating?: number;
   employeeBand?: string;
 }
 
-export const PRIVATE_COMPANY_FACTS: Record<string, PrivateFacts> = {};
+export const PRIVATE_COMPANY_FACTS: Record<string, PrivateFacts> = {
+};
