@@ -19,9 +19,9 @@ import { etaFor } from "../../lib/markets";
  *
  * ── What is real here ──────────────────────────────────────────────────────
  * The date. The design ships a hard-coded "Q4 2026" and there is no roadmap
- * behind it, so nothing is shown unless the market has an entry in MARKET_ETA
- * (see lib/markets.ts) — the eyebrow degrades to plain "ROADMAP" rather than
- * printing a delivery date nobody committed to.
+ * behind it, so the eyebrow renders only for a market with an entry in
+ * MARKET_ETA (see lib/markets.ts) — and today none have one, so it renders
+ * nowhere. It is not printed dateless either: "ROADMAP" alone says nothing.
  *
  * "Notify me when it's live" writes a row to D1 against the signed-in account,
  * so the list is real and can actually be mailed when the market opens. Signed
@@ -111,7 +111,9 @@ export function ComingSoonPane() {
 
         <div className="csbody">
           <div className="cscopy">
-            <span className="cseyebrow">{eta ? `ROADMAP · ${eta}` : "ROADMAP"}</span>
+            {/* The eyebrow only earns its place when it carries a date. On its
+                own, "ROADMAP" is a label with no information in it. */}
+            {eta ? <span className="cseyebrow">ROADMAP · {eta}</span> : null}
             <h2 className="cstitle">Hang tight, {comingSoon.place} is being built right now.</h2>
             <p className="cssub">
               We&rsquo;re busy wiring up employer feeds, uncovering regional employment data, and
