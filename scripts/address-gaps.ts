@@ -2,10 +2,9 @@
 // real registered office — the worklist for scripts/geocode-au.py.
 //
 // Emits address-gaps.csv: city, type, company_id, company_name, sector, and an
-// empty registered_address column to fill in. Feed a filled address back into
-// the ADDRESSES table in geocode-au.py and re-run it; anything that does not
-// geocode to the named street, in the right city, is rejected rather than
-// written.
+// empty registered_address column to fill in. Filled rows go into
+// scripts/au-addresses.csv, which geocode-au.py reads; anything that does not
+// geocode to the street the address named is rejected rather than written.
 //
 // The CSV itself is NOT committed. It is a snapshot of a moving number — every
 // geocoding tranche shrinks it — so a checked-in copy would be wrong within a

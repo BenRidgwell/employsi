@@ -1,0 +1,637 @@
+city,type,company_id,company_name,sector,registered_address,address_confidence
+sydney,Listed company,sydney-coh,Cochlear,Healthcare & Life Sciences,"1 University Avenue, Macquarie University NSW 2109",high
+sydney,Listed company,sydney-wtc,WiseTech Global,"Technology, Media & Telecom","33 Bourke Road, Alexandria NSW 2015",medium
+sydney,Listed company,sydney-ask,Abacus Storage King,Financial Services,"Level 34, Australia Square, 264-278 George Street, Sydney NSW 2000",medium
+sydney,Listed company,sydney-aub,AUB Group,Financial Services,"Level 14, 141 Walker Street, North Sydney NSW 2060",medium
+sydney,Listed company,sydney-bga,Bega Cheese,Consumer & Retail,"23-45 Ridge Street, Bega NSW 2550",high
+sydney,Listed company,sydney-brg,Breville Group,Consumer & Retail,"Ground Floor, Suite 2, 170-180 Bourke Road, Alexandria NSW 2015",medium
+sydney,Listed company,sydney-bsl,BlueScope,Energy & Natural Resources,"Level 24, 181 William Street, Melbourne VIC 3000",medium
+sydney,Listed company,sydney-cip,Centuria Industrial REIT,Financial Services,"Level 41, Chifley Tower, 2 Chifley Square, Sydney NSW 2000",medium
+sydney,Listed company,sydney-clw,Charter Hall Long WALE REIT,Financial Services,"Level 20, No.1 Martin Place, Sydney NSW 2000",high
+sydney,Listed company,sydney-cqr,Charter Hall Retail REIT,Financial Services,"Level 20, No.1 Martin Place, Sydney NSW 2000",high
+sydney,Listed company,sydney-dro,Droneshield,Industrial Manufacturing,"126 Phillip Street, Sydney NSW 2000",google_maps
+sydney,Listed company,sydney-edv,Endeavour Group,Consumer & Retail,"26 Waterloo Street, Surry Hills NSW 2010",high
+sydney,Listed company,sydney-eos,Electro Optic Systems Holdings,Industrial Manufacturing,"18 Wormald Street, Symonston ACT 2609",medium
+sydney,Listed company,sydney-evt,EVT,"Technology, Media & Telecom","Level 20, 227 Elizabeth Street, Sydney NSW 2000",medium
+sydney,Listed company,sydney-hdn,HomeCo Daily Needs REIT,Financial Services,"Level 27, 20 Bond Street, Sydney NSW 2000",medium
+sydney,Listed company,sydney-hub,HUB24,Financial Services,"Level 2, 7 Macquarie Place, Sydney NSW 2000",medium
+sydney,Listed company,sydney-mff,MFF Capital Investments,Financial Services,"Level 36, 19 Martin Place, Sydney NSW 2000",medium
+sydney,Listed company,sydney-mfg,Magellan Financial Group,Financial Services,"Level 36, 19 Martin Place, Sydney NSW 2000",medium
+sydney,Listed company,sydney-mts,Metcash,Consumer & Retail,"1 Thomas Holt Drive, Macquarie Park NSW 2113",high
+sydney,Listed company,sydney-mxt,Metrics Master Income Trust,Financial Services,"Level 16, 1 Martin Place, Sydney NSW 2000",google_maps
+sydney,Listed company,sydney-nhf,Nib,Financial Services,"Level 1, 22 Honeysuckle Drive, Newcastle NSW 2300",high
+sydney,Listed company,sydney-nic,Nickel Industries,Energy & Natural Resources,"Level 2, 66 Hunter Street, Sydney NSW 2000",verified
+sydney,Listed company,sydney-pni,Pinnacle Investment Management,Financial Services,"Level 35, 60 Margaret Street, Sydney NSW 2000",medium
+sydney,Listed company,sydney-ppt,Perpetual,Financial Services,"Level 18, Angel Place, 123 Pitt Street, Sydney NSW 2000",high
+sydney,Listed company,sydney-qub,Qube Holdings,Industrial Manufacturing,"Level 27, 45 Clarence Street, Sydney NSW 2000",medium
+sydney,Listed company,sydney-rdx,Redox,Industrial Manufacturing,"2 Swettenham Road, Minto NSW 2566",high
+sydney,Listed company,sydney-rgn,Region Group,Financial Services,"Level 4, 50 Pitt Street, Sydney NSW 2000",medium
+sydney,Listed company,sydney-rwc,Reliance Worldwide Corporation,Industrial Manufacturing,"25 Downard Street, Braeside VIC 3195",google_maps
+sydney,Listed company,sydney-sdf,Steadfast Group,Financial Services,"Level 3, 99 Bathurst Street, Sydney NSW 2000",medium
+sydney,Listed company,sydney-sgh,SGH,Industrial Manufacturing,"Level 30, 175 Liverpool Street, Sydney NSW 2000",medium
+sydney,Listed company,sydney-sgm,Sims Metal,Energy & Natural Resources,"Level 9, 189 O'Riordan Street, Mascot NSW 2020",verified
+sydney,Listed company,sydney-sol,Soul Patts,Financial Services,"Level 14, 151 Clarence Street, Sydney NSW 2000",medium
+sydney,Listed company,sydney-vnt,Ventia Services Group,Industrial Manufacturing,"Level 8, 80 Pacific Highway, North Sydney NSW 2060",medium
+sydney,Listed company,sydney-wam,WAM Capital,Financial Services,"Level 26, Governor Phillip Tower, 1 Farrer Place, Sydney NSW 2000",medium
+sydney,Listed company,sydney-whc,Whitehaven Coal,Energy & Natural Resources,"Level 28, 259 George Street, Sydney NSW 2000",medium
+sydney,Listed company,sydney-wle,WAM Leaders,Financial Services,"Level 26, Governor Phillip Tower, 1 Farrer Place, Sydney NSW 2000",medium
+sydney,Listed company,sydney-yal,Yancoal Australia,Energy & Natural Resources,"Level 18, Darling Park Tower 2, 201 Sussex Street, Sydney NSW 2000",google_maps
+sydney,Listed company,sydney-zip,Zip,Financial Services,"Level 14, 10 Spring Street, Sydney NSW 2000",high
+sydney,Federal agency,aps-australian-securities-and-investments-commission,Australian Securities and Investments Commission,Government,"Level 5, 100 Market Street, Sydney NSW 2000",high
+sydney,Federal agency,aps-australian-prudential-regulation-authority,Australian Prudential Regulation Authority,Government,"Level 12, 1 Martin Place, Sydney NSW 2000",high
+sydney,Federal agency,aps-reserve-bank-of-australia,Reserve Bank of Australia,Government,"65 Martin Place, Sydney NSW 2000",high
+sydney,State agency,nsw-gov-premier-s-department,Premier's Department,Government,"52 Martin Place, Sydney NSW 2000",high
+sydney,State agency,nsw-gov-the-cabinet-office,The Cabinet Office,Government,"52 Martin Place, Sydney NSW 2000",high
+sydney,State agency,nsw-gov-department-of-communities-and-justice,Department of Communities and Justice,Government,"6 Parramatta Square, 10 Darcy Street, Parramatta NSW 2150",medium
+sydney,State agency,nsw-gov-department-of-customer-service,Department of Customer Service,Government,"McKell Building, 2-24 Rawson Place, Haymarket NSW 2000",high
+sydney,State agency,nsw-gov-department-of-education,Department of Education,Government,"105 Phillip Street, Parramatta NSW 2150",high
+sydney,State agency,nsw-gov-department-of-planning-housing-and-infrastructure,"Department of Planning, Housing and Infrastructure",Government,"4 Parramatta Square, 12 Darcy Street, Parramatta NSW 2150",high
+sydney,State agency,nsw-gov-department-of-primary-industries-and-regional-development,Department of Primary Industries and Regional Development,Government,"161 Kite Street, Orange NSW 2800",high
+sydney,State agency,nsw-gov-nsw-health,NSW Health,Government,"1 Reserve Road, St Leonards NSW 2065",high
+sydney,State agency,nsw-gov-transport-for-nsw,Transport for NSW,Government,"231 Elizabeth Street, Sydney NSW 2000",medium
+sydney,State agency,nsw-gov-nsw-treasury,NSW Treasury,Government,"52 Martin Place, Sydney NSW 2000",high
+sydney,State agency,nsw-gov-nsw-police-force,NSW Police Force,Government,"1 Charles Street, Parramatta NSW 2150",high
+sydney,State agency,nsw-gov-fire-and-rescue-nsw,Fire and Rescue NSW,Government,"1 Amarina Avenue, Greenacre NSW 2190",high
+sydney,State agency,nsw-gov-nsw-rural-fire-service,NSW Rural Fire Service,Government,"4 Murray Rose Avenue, Sydney Olympic Park NSW 2127",high
+sydney,State agency,nsw-gov-nsw-ambulance,NSW Ambulance,Government,"10 Dawn Fraser Avenue, Sydney Olympic Park NSW 2127",google_maps
+sydney,State agency,nsw-gov-nsw-state-emergency-service,NSW State Emergency Service,Government,"93 Burelli Street, Wollongong NSW 2500",high
+sydney,State agency,nsw-gov-corrective-services-nsw,Corrective Services NSW,Government,"Henry Deane Building, 20 Lee Street, Sydney NSW 2000",medium
+sydney,State agency,nsw-gov-youth-justice-nsw,Youth Justice NSW,Government,"6 Parramatta Square, 10 Darcy Street, Parramatta NSW 2150",verified
+sydney,State agency,nsw-gov-legal-aid-nsw,Legal Aid NSW,Government,"323 Castlereagh Street, Haymarket NSW 2000",high
+sydney,State agency,nsw-gov-office-of-the-director-of-public-prosecutions,Office of the Director of Public Prosecutions,Government,"175 Liverpool Street, Sydney NSW 2000",high
+sydney,State agency,nsw-gov-nsw-trustee-and-guardian,NSW Trustee and Guardian,Government,"160 Marsden Street, Parramatta NSW 2150",medium
+sydney,State agency,nsw-gov-crown-solicitor-s-office,Crown Solicitor's Office,Government,"60-70 Elizabeth Street, Sydney NSW 2000",high
+sydney,State agency,nsw-gov-service-nsw,Service NSW,Government,"McKell Building, 2-24 Rawson Place, Haymarket NSW 2000",high
+sydney,State agency,nsw-gov-revenue-nsw,Revenue NSW,Government,"132 Marsden Street, Parramatta NSW 2150",medium
+sydney,State agency,nsw-gov-tafe-nsw,TAFE NSW,Government,"28 Smail Street, Ultimo NSW 2007",user_provided
+sydney,State agency,nsw-gov-nsw-education-standards-authority,NSW Education Standards Authority,Government,"117 Clarence Street, Sydney NSW 2000",high
+sydney,State agency,nsw-gov-sydney-local-health-district,Sydney Local Health District,Government,"Level 11, King George V Building, 83 Missenden Road, Camperdown NSW 2050",medium
+sydney,State agency,nsw-gov-south-eastern-sydney-local-health-district,South Eastern Sydney Local Health District,Government,"Cnr The Kingsway and Kareena Road, Caringbah NSW 2229",google_maps
+sydney,State agency,nsw-gov-western-sydney-local-health-district,Western Sydney Local Health District,Government,"Westmead Hospital, Cnr Hawkesbury Road and Darcy Road, Westmead NSW 2145",medium
+sydney,State agency,nsw-gov-south-western-sydney-local-health-district,South Western Sydney Local Health District,Government,"Liverpool Hospital, Cnr Elizabeth and Goulburn Streets, Liverpool NSW 2170",medium
+sydney,State agency,nsw-gov-northern-sydney-local-health-district,Northern Sydney Local Health District,Government,"Royal North Shore Hospital, Reserve Road, St Leonards NSW 2065",medium
+sydney,State agency,nsw-gov-nepean-blue-mountains-local-health-district,Nepean Blue Mountains Local Health District,Government,"Nepean Hospital, Derby Street, Kingswood NSW 2747",medium
+sydney,State agency,nsw-gov-hunter-new-england-local-health-district,Hunter New England Local Health District,Government,"Lookout Road, New Lambton Heights NSW 2305",medium
+sydney,State agency,nsw-gov-ehealth-nsw,eHealth NSW,Government,"1 Reserve Road, St Leonards NSW 2065",high
+sydney,State agency,nsw-gov-healthshare-nsw,HealthShare NSW,Government,"1 Reserve Road, St Leonards NSW 2065",medium
+sydney,State agency,nsw-gov-nsw-health-pathology,NSW Health Pathology,Government,"Level 5, 1 Reserve Road, St Leonards NSW 2065",user_provided
+sydney,State agency,nsw-gov-health-infrastructure,Health Infrastructure,Government,"1 Reserve Road, St Leonards NSW 2065",medium
+sydney,State agency,nsw-gov-cancer-institute-nsw,Cancer Institute NSW,Government,"1 Reserve Road, St Leonards NSW 2065",medium
+sydney,State agency,nsw-gov-clinical-excellence-commission,Clinical Excellence Commission,Government,"1 Reserve Road, St Leonards NSW 2065",medium
+sydney,State agency,nsw-gov-sydney-trains,Sydney Trains,Government,"477 Pitt Street, Sydney NSW 2000",high
+sydney,State agency,nsw-gov-nsw-trains,NSW Trains,Government,"477 Pitt Street, Sydney NSW 2000",medium
+sydney,State agency,nsw-gov-nsw-environment-protection-authority,NSW Environment Protection Authority,Government,"6 Parramatta Square, 10 Darcy Street, Parramatta NSW 2150",medium
+sydney,State agency,nsw-gov-national-parks-and-wildlife-service,National Parks and Wildlife Service,Government,"4 Parramatta Square, 12 Darcy Street, Parramatta NSW 2150",verified
+sydney,State agency,nsw-gov-local-land-services,Local Land Services,Government,"161 Kite Street, Orange NSW 2800",medium
+sydney,State agency,nsw-gov-nsw-reconstruction-authority,NSW Reconstruction Authority,Government,"Level 11, 100 Mount Street, North Sydney NSW 2060",user_provided
+sydney,State agency,nsw-gov-landcom,Landcom,Government,"Level 14, 60 Station Street, Parramatta NSW 2150",medium
+sydney,State agency,nsw-gov-property-and-development-nsw,Property and Development NSW,Government,"Foreshore House, 66 Harrington Street, The Rocks NSW 2000",google_maps
+sydney,State agency,nsw-gov-sydney-water,Sydney Water,Government,"1 Smith Street, Parramatta NSW 2150",high
+sydney,State agency,nsw-gov-hunter-water,Hunter Water,Government,"36 Honeysuckle Drive, Newcastle NSW 2300",high
+sydney,State agency,nsw-gov-waternsw,WaterNSW,Government,"169 Macquarie Street, Parramatta NSW 2150",medium
+sydney,State agency,nsw-gov-essential-energy,Essential Energy,Government,"8 Buller Street, Port Macquarie NSW 2444",high
+sydney,State agency,nsw-gov-forestry-corporation-of-nsw,Forestry Corporation of NSW,Government,"121-131 Oratava Avenue, West Pennant Hills NSW 2125",high
+sydney,State agency,nsw-gov-icare-nsw,icare NSW,Government,"321 Kent Street, Sydney NSW 2000",high
+sydney,State agency,nsw-gov-state-insurance-regulatory-authority,State Insurance Regulatory Authority,Government,"Level 14-15, 231 Elizabeth Street, Sydney NSW 2000",google_maps
+sydney,State agency,nsw-gov-independent-pricing-and-regulatory-tribunal,Independent Pricing and Regulatory Tribunal,Government,"Level 16, McKell Building, 2-24 Rawson Place, Haymarket NSW 2000",medium
+sydney,State agency,nsw-gov-audit-office-of-new-south-wales,Audit Office of New South Wales,Government,"Level 19, Darling Park Tower 2, 201 Sussex Street, Sydney NSW 2000",high
+sydney,State agency,nsw-gov-independent-commission-against-corruption,Independent Commission Against Corruption,Government,"Level 7, 255 Elizabeth Street, Sydney NSW 2000",high
+sydney,State agency,nsw-gov-nsw-electoral-commission,NSW Electoral Commission,Government,"Level 25, 201 Kent Street, Sydney NSW 2000",high
+sydney,State agency,nsw-gov-destination-nsw,Destination NSW,Government,"88 Cumberland Street, The Rocks NSW 2000",google_maps
+sydney,State agency,nsw-gov-create-nsw,Create NSW,Government,"Level 5, 323 Castlereagh Street, Haymarket NSW 2000",google_maps
+sydney,State agency,nsw-gov-sydney-opera-house,Sydney Opera House,Government,"Bennelong Point, Sydney NSW 2000",high
+sydney,State agency,nsw-gov-art-gallery-of-new-south-wales,Art Gallery of New South Wales,Government,"Art Gallery Road, The Domain, Sydney NSW 2000",high
+sydney,State agency,nsw-gov-australian-museum,Australian Museum,Government,"1 William Street, Sydney NSW 2010",high
+sydney,State agency,nsw-gov-state-library-of-new-south-wales,State Library of New South Wales,Government,"1 Shakespeare Place, Sydney NSW 2000",high
+sydney,State agency,nsw-gov-museums-of-history-nsw,Museums of History NSW,Government,"The Mint, 10 Macquarie Street, Sydney NSW 2000",medium
+sydney,State agency,nsw-gov-aboriginal-affairs-nsw,Aboriginal Affairs NSW,Government,"Level 6, 201 Coward Street, Mascot NSW 2020",google_maps
+sydney,State agency,nsw-gov-multicultural-nsw,Multicultural NSW,Government,"Level 8, 56 Station Street East, Harris Park NSW 2150",google_maps
+sydney,Private company,priv-pallion,Pallion,Precious metals refining,"8/10 Meeks Road, Marrickville NSW 2204",google_maps
+sydney,Private company,priv-hcf,HCF,Private health insurance,"403 George Street, Sydney NSW 2000",high
+sydney,Private company,priv-st-vincent-s-health-australia,St Vincent's Health Australia,Hospitals & aged care,"Level 22, 100 Miller Street, North Sydney NSW 2060",user_provided
+sydney,Private company,priv-ngp-group,NGP Group,Consumer & Retail,"Level 2, 10 Neild Avenue, Rushcutters Bay NSW 2011",user_provided
+sydney,Private company,priv-ghd,GHD,Engineering consultancy,"Level 15, 133 Castlereagh Street, Sydney NSW 2000",high
+sydney,Private company,priv-ateco,Ateco,Automotive distribution,"2a Hill Road, Lidcombe NSW 2141",google_maps
+sydney,Private company,priv-ey,EY,Professional services,"200 George Street, Sydney NSW 2000",high
+sydney,Private company,priv-deloitte-touche-tohmatsu,Deloitte Touche Tohmatsu,Professional services,"Quay Quarter Tower, 50 Bridge Street, Sydney NSW 2000",high
+sydney,Private company,priv-meriton,Meriton,Property development,"Level 11, 528 Kent Street, Sydney NSW 2000",high
+sydney,Private company,priv-pwc-australia,PwC Australia,Professional services,"One International Towers, Watermans Quay, Barangaroo NSW 2000",high
+sydney,Private company,priv-manildra-group,Manildra Group,Agri processing,"29 Tavistock Street, Auburn NSW 2144",google_maps
+sydney,Private company,priv-ausgrid,Ausgrid,Electricity distribution,"24-28 Campbell Street, Haymarket NSW 2000",high
+sydney,Private company,priv-built,Built,Commercial construction,"Level 1, 30 The Bond, 30 Hickson Road, Millers Point NSW 2000",medium
+sydney,Private company,priv-competitive-foods,Competitive Foods,Quick service restaurants,"25 Bellarine Highway, East Geelong VIC 3219",google_maps
+sydney,Private company,priv-kpmg,KPMG,Professional services,"Tower Three, International Towers Sydney, 300 Barangaroo Avenue, Sydney NSW 2000",high
+sydney,Private company,priv-suttons-motors,Suttons Motors,Automotive retail,"Cnr Parramatta Road and Short Street, Homebush NSW 2140",medium
+sydney,Private company,priv-calvary-health-care,Calvary Health Care,Hospitals & aged care,"Level 12, 15 Moore Street, Canberra ACT 2601",medium
+sydney,Private company,priv-baiada-poultry,Baiada Poultry,Poultry production,"642 Great Western Highway, Girraween NSW 2145",google_maps
+sydney,Private company,priv-midfield,Midfield,Meat processing,"McMeekin Road, Warrnambool VIC 3280",google_maps
+sydney,Private company,priv-richard-crookes-constructions,Richard Crookes Constructions,Commercial construction,"Level 3, 4 Broadcast Way, Artarmon NSW 2064",medium
+sydney,Private company,priv-fdc,Fdc,Commercial construction,"22 Ross Street, Glebe NSW 2037",medium
+sydney,Private company,priv-uniting,Uniting,Aged & community care,"222 Pitt Street, Sydney NSW 2000",google_maps
+sydney,Private company,priv-adco-constructions,ADCO Constructions,Commercial construction,"Level 2, 7-9 West Street, North Sydney NSW 2060",medium
+sydney,Private company,priv-opal-aged-care,Opal Aged Care,Aged care,"Level 11, 420 George Street, Sydney NSW 2000",medium
+sydney,Private company,priv-herbert-smith-freehills,Herbert Smith Freehills,Legal services,"ANZ Tower, 161 Castlereagh Street, Sydney NSW 2000",high
+sydney,Private company,priv-refuelling-solutions,Refuelling Solutions,Fuel distribution,"2/2 Parramatta Road, Underwood QLD 4119",google_maps
+sydney,Private company,priv-australian-panels,Australian Panels,Timber panel manufacturing,"1 Wella Way, Somersby NSW 2250",medium
+sydney,Private company,priv-winning-appliances,Winning Appliances,Appliance retail,"20A Danks Street, Redfern NSW 2016",google_maps
+sydney,Private company,priv-ati-global,ATI Global,Consumer & Retail,"Level 8, 135 King Street, Sydney NSW 2000",user_provided
+sydney,Private company,priv-ara,ARA,Property & facility services,"83 Alexander Street, Crows Nest NSW 2065",google_maps
+sydney,Private company,priv-teachers-health-fund,Teachers Health Fund,Private health insurance,"260 Elizabeth Street, Surry Hills NSW 2010",high
+sydney,Private company,priv-avant-mutual,Avant Mutual,Professional indemnity insurance,"Level 6, Darling Park Tower 3, 201 Sussex Street, Sydney NSW 2000",medium
+sydney,Private company,priv-harris-farm,Harris Farm,Grocery retail,"Warehouse W, Sydney Markets, Parramatta Road, Homebush NSW 2140",google_maps
+sydney,Private company,priv-colcap,ColCap,Non-bank lending,"Level 12, 77 Castlereagh Street, Sydney NSW 2000",google_maps
+sydney,Private company,priv-nepean-consolidated,Nepean Consolidated,Industrial engineering,"2/38 Bernera Road, Prestons NSW 2170",google_maps
+sydney,Private company,priv-sydney-tools,Sydney Tools,Tool & hardware retail,"102 Bonds Road, Roselands NSW 2196",google_maps
+sydney,Private company,priv-nrma-motoring-services,NRMA Motoring & Services,Insurance & motoring club,"9 Murray Rose Avenue, Sydney Olympic Park NSW 2127",medium
+sydney,Private company,priv-life-without-barriers,Life Without Barriers,Disability & social care,"352 Hunter Street, Newcastle NSW 2300",high
+sydney,Private company,priv-northwestern-roads,Northwestern Roads,Road construction,"Wallgrove Road, Eastern Creek NSW 2766",user_provided
+sydney,Private company,priv-minterellison,MinterEllison,Legal services,"Governor Macquarie Tower, 1 Farrer Place, Sydney NSW 2000",high
+sydney,Private company,priv-alto,Alto,Automotive retail,"734 Pacific Highway, Chatswood NSW 2067",google_maps
+sydney,Private company,priv-agnvet-management-services,AGnVET Management Services,Agribusiness services,"26-28 Banna Avenue, Griffith NSW 2680",google_maps
+sydney,Private company,priv-abc-tissue,ABC Tissue,Paper & tissue manufacturing,"34-36 Redfern Street, Wetherill Park NSW 2164",google_maps
+sydney,Private company,priv-australian-rugby-league-commission,Australian Rugby League Commission,Sport & entertainment,"Rugby League Central, Driver Avenue, Moore Park NSW 2021",high
+sydney,Private company,priv-kennards-hire,Kennards Hire,Equipment hire,"22 Powers Road, Seven Hills NSW 2147",medium
+sydney,Private company,priv-choices-flooring,Choices Flooring,Flooring retail,"118-120 Balmain Street, Richmond VIC 3121",user_provided
+sydney,Private company,priv-employers-mutual,Employers Mutual,Workers compensation insurance,"Level 3, 345 George Street, Sydney NSW 2000",medium
+sydney,Private company,priv-newcastle-greater-mutual-group,Newcastle Greater Mutual Group,Mutual banking,"307 King Street, Newcastle West NSW 2302",medium
+sydney,Private company,priv-norco-co-op,Norco Co-op,Dairy co-operative,"107 Wilson Street, South Lismore NSW 2480",medium
+sydney,Private company,priv-walker-corporation,Walker Corporation,Property development,"Level 21, Governor Macquarie Tower, 1 Farrer Place, Sydney NSW 2000",medium
+sydney,Private company,priv-merivale,Merivale,Hospitality,"Level 2, 320-330 George Street, Sydney NSW 2000",google_maps
+sydney,Private company,priv-stowe-australia,Stowe Australia,Electrical contracting,"10-12 Clyde Street, Rydalmere NSW 2116",user_provided
+sydney,Private company,priv-anytime-fitness,Anytime Fitness,Fitness & leisure,"110 Alexander Street, Crows Nest NSW 2065",google_maps
+sydney,Private company,priv-kennards-self-storage,Kennards Self Storage,Self storage,"7 Khartoum Road, Macquarie Park NSW 2113",google_maps
+sydney,Private company,priv-big4-holiday-parks,BIG4 Holiday Parks,Holiday parks & tourism,"Level 2, 250 Camberwell Road, Camberwell VIC 3124",google_maps
+sydney,Private company,priv-clayton-utz,Clayton Utz,Legal services,"Level 15, 1 Bligh Street, Sydney NSW 2000",high
+sydney,Private company,priv-bing-lee-electrics,Bing Lee Electrics,Appliance retail,"69 Allingham Street, Condell Park NSW 2200",medium
+sydney,Private company,priv-hammondcare,HammondCare,Aged & dementia care,"Level 4, 207B Pacific Highway, St Leonards NSW 2065",google_maps
+sydney,Listed company,wes,Wesfarmers,Diversified Retail,"Level 14, Brookfield Place Tower 2, 123 St Georges Terrace, Perth WA 6000",high
+melbourne,Listed company,bhp,BHP,Diversified Mining,"171 Collins Street, Melbourne VIC 3000",high
+melbourne,Listed company,rio,Rio Tinto,Iron Ore & Metals,"Level 43, 120 Collins Street, Melbourne VIC 3000",high
+melbourne,Listed company,s32,South32,Metals & Mining,"108 St Georges Terrace, Perth WA 6000",high
+melbourne,Listed company,melbourne-vcx,Vicinity Centres,Financial Services,"Level 4, Chadstone Tower One, 1341 Dandenong Road, Chadstone VIC 3148",high
+melbourne,Listed company,melbourne-sek,SEEK Limited,"Technology, Media & Telecom","60 Cremorne Street, Cremorne VIC 3121",high
+melbourne,Listed company,melbourne-hsn,Hansen Technologies,"Technology, Media & Telecom","2 Frederick Street, Doncaster VIC 3108",high
+melbourne,Listed company,melbourne-4dx,4DMedical,Healthcare & Life Sciences,"Level 7, 700 Swanston Street, Carlton VIC 3053",medium
+melbourne,Listed company,melbourne-afi,Australian Foundation Investment Company,Financial Services,"Level 21, 101 Collins Street, Melbourne VIC 3000",high
+melbourne,Listed company,melbourne-amc,Amcor,Energy & Natural Resources,"Level 11, 60 City Road, Southbank VIC 3006",medium
+melbourne,Listed company,melbourne-arb,ARB Corporation,Consumer & Retail,"42-44 Garden Street, Kilsyth VIC 3137",high
+melbourne,Listed company,melbourne-ben,Bendigo & Adelaide Bank,Financial Services,"The Bendigo Centre, 22-44 Bath Lane, Bendigo VIC 3550",high
+melbourne,Listed company,melbourne-dnl,Dyno Nobel,Energy & Natural Resources,"Level 8, 28 Freshwater Place, Southbank VIC 3006",medium
+melbourne,Listed company,melbourne-gdg,Generation Development Group,Financial Services,"6 O'Connell Street, Sydney NSW 2000",google_maps
+melbourne,Listed company,melbourne-ifl,Insignia Financial,Financial Services,"Level 1, 800 Bourke Street, Docklands VIC 3008",high
+melbourne,Listed company,melbourne-l1g,L1 Group,Financial Services,"Level 28, 101 Collins Street, Melbourne VIC 3000",medium
+melbourne,Listed company,melbourne-lov,Lovisa,Consumer & Retail,"Level 1, 818 Glenferrie Road, Hawthorn VIC 3122",google_maps
+melbourne,Listed company,melbourne-lsf,L1 Long Short Fund,Financial Services,"Level 28, 101 Collins Street, Melbourne VIC 3000",medium
+melbourne,Listed company,melbourne-msb,Mesoblast,Healthcare & Life Sciences,"Level 38, 55 Collins Street, Melbourne VIC 3000",medium
+melbourne,Listed company,melbourne-ora,Orora,Energy & Natural Resources,"109 Burwood Road, Hawthorn VIC 3122",high
+melbourne,Listed company,melbourne-pme,Pro Medicus,Healthcare & Life Sciences,"450 Swan Street, Richmond VIC 3121",high
+melbourne,Listed company,melbourne-pmv,Premier Investments,Consumer & Retail,"Level 53, 101 Collins Street, Melbourne VIC 3000",high
+melbourne,Listed company,melbourne-pxa,Pexa Group,Financial Services,"Level 15, Tower 5, 727 Collins Street, Docklands VIC 3008",medium
+melbourne,Listed company,melbourne-reg,Regis Healthcare,Healthcare & Life Sciences,"Level 2, 615 Dandenong Road, Armadale VIC 3143",medium
+melbourne,Listed company,melbourne-reh,Reece Group,Industrial Manufacturing,"118 Burwood Highway, Burwood VIC 3125",high
+melbourne,Listed company,melbourne-sig,Sigma Healthcare,Healthcare & Life Sciences,"3 Myer Place, Rowville VIC 3178",high
+melbourne,Listed company,melbourne-tlc,The Lottery Corporation,Consumer & Retail,"Level 21, 180 Ann Street, Brisbane QLD 4000",medium
+melbourne,Listed company,melbourne-tlx,Telix Pharmaceuticals,Healthcare & Life Sciences,"55 Flemington Road, North Melbourne VIC 3051",high
+melbourne,Listed company,melbourne-twe,Treasury Wine Estates,Consumer & Retail,"Level 8, 161 Collins Street, Melbourne VIC 3000",high
+melbourne,Listed company,melbourne-vea,Viva Energy,Energy & Natural Resources,"720 Bourke Street, Docklands VIC 3008",high
+melbourne,State agency,vic-gov-albury-wodonga-health,Albury Wodonga Health,Government,"Borella Road, Albury NSW 2640",medium
+melbourne,State agency,vic-gov-alexandra-district-health,Alexandra District Health,Government,"12 Cooper Street, Alexandra VIC 3714",verified
+melbourne,State agency,vic-gov-ambulance-victoria,Ambulance Victoria,Government,"375 Manningham Road, Doncaster VIC 3108",high
+melbourne,State agency,vic-gov-austin-health,Austin Health,Government,"145 Studley Road, Heidelberg VIC 3084",high
+melbourne,State agency,vic-gov-bairnsdale-regional-health-service,Bairnsdale Regional Health Service,Government,"122 Day Street, Bairnsdale VIC 3875",medium
+melbourne,State agency,vic-gov-barwon-health,Barwon Health,Government,"University Hospital Geelong, 272-322 Ryrie Street, Geelong VIC 3220",medium
+melbourne,State agency,vic-gov-benalla-health,Benalla Health,Government,"45-63 Coster Street, Benalla VIC 3672",medium
+melbourne,State agency,vic-gov-bendigo-health,Bendigo Health,Government,"100 Barnard Street, Bendigo VIC 3550",high
+melbourne,State agency,vic-gov-building-and-plumbing-commission,Building and Plumbing Commission,Government,"Level 19, 242 Exhibition Street, Melbourne VIC 3000",google_maps
+melbourne,State agency,vic-gov-cenitex,Cenitex,Government,"Suite 9, 35 Collins Street, Melbourne VIC 3000",google_maps
+melbourne,State agency,vic-gov-central-gippsland-health,Central Gippsland Health,Government,"155 Guthridge Parade, Sale VIC 3850",medium
+melbourne,State agency,vic-gov-central-highlands-rural-health,Central Highlands Rural Health,Government,"17 Hospital Street, Daylesford VIC 3460",google_maps
+melbourne,State agency,vic-gov-children-s-court,Children's Court,Government,"65 Kavanagh Street, Southbank VIC 3006",medium
+melbourne,State agency,vic-gov-corryong-health,Corryong Health,Government,"20 Kiell Street, Corryong VIC 3707",verified
+melbourne,State agency,vic-gov-country-fire-authority,Country Fire Authority,Government,"8 Lakeside Drive, Burwood East VIC 3151",high
+melbourne,State agency,vic-gov-county-court,County Court,Government,"250 William Street, Melbourne VIC 3000",high
+melbourne,State agency,vic-gov-court-services-victoria,Court Services Victoria,Government,"223 William Street, Melbourne VIC 3000",verified
+melbourne,State agency,vic-gov-department-of-education,Department of Education,Government,"2 Treasury Place, East Melbourne VIC 3002",high
+melbourne,State agency,vic-gov-department-of-energy-environment-and-climate-action,"Department of Energy, Environment and Climate Action",Government,"8 Nicholson Street, East Melbourne VIC 3002",high
+melbourne,State agency,vic-gov-department-of-families-fairness-and-housing,"Department of Families, Fairness and Housing",Government,"50 Lonsdale Street, Melbourne VIC 3000",high
+melbourne,State agency,vic-gov-department-of-government-services,Department of Government Services,Government,"121 Exhibition Street, Melbourne VIC 3000",medium
+melbourne,State agency,vic-gov-department-of-health,Department of Health,Government,"50 Lonsdale Street, Melbourne VIC 3000",high
+melbourne,State agency,vic-gov-department-of-jobs-skills-industry-and-regions,"Department of Jobs, Skills, Industry and Regions",Government,"121 Exhibition Street, Melbourne VIC 3000",high
+melbourne,State agency,vic-gov-department-of-justice-and-community-safety,Department of Justice and Community Safety,Government,"121 Exhibition Street, Melbourne VIC 3000",high
+melbourne,State agency,vic-gov-department-of-premier-and-cabinet,Department of Premier and Cabinet,Government,"1 Treasury Place, East Melbourne VIC 3002",high
+melbourne,State agency,vic-gov-department-of-transport-and-planning,Department of Transport and Planning,Government,"1 Spring Street, Melbourne VIC 3000",high
+melbourne,State agency,vic-gov-department-of-treasury-and-finance,Department of Treasury and Finance,Government,"1 Treasury Place, East Melbourne VIC 3002",high
+melbourne,State agency,vic-gov-dhelkaya-health,Dhelkaya Health,Government,"142 Cornish Street, Castlemaine VIC 3450",google_maps
+melbourne,State agency,vic-gov-energy-safe-victoria,Energy Safe Victoria,Government,"Level 5, 4 Riverside Quay, Southbank VIC 3006",medium
+melbourne,State agency,vic-gov-environment-protection-authority,Environment Protection Authority,Government,"200 Victoria Street, Carlton VIC 3053",high
+melbourne,State agency,vic-gov-essential-services-commission,Essential Services Commission,Government,"Level 8, 570 Bourke Street, Melbourne VIC 3000",medium
+melbourne,State agency,vic-gov-game-management-authority,Game Management Authority,Government,"Level 16, 121 Exhibition Street, Melbourne VIC 3000",google_maps
+melbourne,State agency,vic-gov-goulburn-valley-health,Goulburn Valley Health,Government,"Graham Street, Shepparton VIC 3630",medium
+melbourne,State agency,vic-gov-government-schools,Government schools,Government,"2 Treasury Place, East Melbourne VIC 3002",user_provided
+melbourne,State agency,vic-gov-grampians-wimmera-mallee-water-corporation,Grampians Wimmera Mallee Water Corporation,Government,"11 McLachlan Street, Horsham VIC 3400",high
+melbourne,State agency,vic-gov-heathcote-health,Heathcote Health,Government,"39 Hospital Street, Heathcote VIC 3523",google_maps
+melbourne,State agency,vic-gov-homes-victoria,Homes Victoria,Government,"50 Lonsdale Street, Melbourne VIC 3000",medium
+melbourne,State agency,vic-gov-independent-broad-based-anti-corruption-commission,Independent Broad-based Anti-Corruption Commission,Government,"Level 1, 459 Collins Street, Melbourne VIC 3000",medium
+melbourne,State agency,vic-gov-inglewood-and-districts-health-service,Inglewood and Districts Health Service,Government,"3 Hospital Street, Inglewood VIC 3517",verified
+melbourne,State agency,vic-gov-latrobe-regional-health,Latrobe Regional Health,Government,"10 Village Avenue, Traralgon VIC 3844",verified
+melbourne,State agency,vic-gov-magistrates-court,Magistrates Court,Government,"233 William Street, Melbourne VIC 3000",high
+melbourne,State agency,vic-gov-moyne-health-services,Moyne Health Services,Government,"30-36 Villiers Street, Port Fairy VIC 3284",google_maps
+melbourne,State agency,vic-gov-museums-victoria,Museums Victoria,Government,"11 Nicholson Street, Carlton VIC 3053",high
+melbourne,State agency,vic-gov-ncn-health,NCN Health,Government,"2 Katamatite-Nathalia Road, Numurkah VIC 3636",google_maps
+melbourne,State agency,vic-gov-northeast-health-wangaratta,Northeast Health Wangaratta,Government,"35-47 Green Street, Wangaratta VIC 3677",medium
+melbourne,State agency,vic-gov-office-of-public-prosecutions,Office of Public Prosecutions,Government,"565 Lonsdale Street, Melbourne VIC 3000",high
+melbourne,State agency,vic-gov-office-of-the-victorian-information-commissioner,Office of the Victorian Information Commissioner,Government,"121 Exhibition Street, Melbourne VIC 3000",google_maps
+melbourne,State agency,vic-gov-orbost-regional-health,Orbost Regional Health,Government,"104 Boundary Road, Orbost VIC 3888",verified
+melbourne,State agency,vic-gov-parks-victoria,Parks Victoria,Government,"535 Bourke Street, Melbourne VIC 3000",medium
+melbourne,State agency,vic-gov-parliament-of-victoria,Parliament of Victoria,Government,"Parliament House, Spring Street, East Melbourne VIC 3002",high
+melbourne,State agency,vic-gov-peninsula-health,Peninsula Health,Government,"Frankston Hospital, 2 Hastings Road, Frankston VIC 3199",medium
+melbourne,State agency,vic-gov-peter-maccallum-cancer-centre,Peter MacCallum Cancer Centre,Government,"305 Grattan Street, Melbourne VIC 3000",high
+melbourne,State agency,vic-gov-portable-long-service-authority,Portable Long Service Authority,Government,"Level 1, 56-60 King Street, Bendigo VIC 3550",user_provided
+melbourne,State agency,vic-gov-royal-botanic-gardens-victoria,Royal Botanic Gardens Victoria,Government,"Birdwood Avenue, Melbourne VIC 3004",high
+melbourne,State agency,vic-gov-royal-children-s-hospital,Royal Children's Hospital,Government,"50 Flemington Road, Parkville VIC 3052",high
+melbourne,State agency,vic-gov-royal-melbourne-hospital,Royal Melbourne Hospital,Government,"300 Grattan Street, Parkville VIC 3050",high
+melbourne,State agency,vic-gov-safer-care-victoria,Safer Care Victoria,Government,"50 Lonsdale Street, Melbourne VIC 3000",medium
+melbourne,State agency,vic-gov-shrine-of-remembrance-trust,Shrine of Remembrance Trust,Government,"Birdwood Avenue, Melbourne VIC 3001",high
+melbourne,State agency,vic-gov-social-services-regulator,Social Services Regulator,Government,"Level 13, 50 Lonsdale Street, Melbourne VIC 3000",user_provided
+melbourne,State agency,vic-gov-south-west-healthcare,South West Healthcare,Government,"Ryot Street, Warrnambool VIC 3280",medium
+melbourne,State agency,vic-gov-state-library-of-victoria,State Library of Victoria,Government,"328 Swanston Street, Melbourne VIC 3000",high
+melbourne,State agency,vic-gov-state-revenue-office,State Revenue Office,Government,"121 Exhibition Street, Melbourne VIC 3000",medium
+melbourne,State agency,vic-gov-state-trustees-limited,State Trustees Limited,Government,"1 McNab Avenue, Footscray VIC 3011",high
+melbourne,State agency,vic-gov-supreme-court,Supreme Court,Government,"210 William Street, Melbourne VIC 3000",high
+melbourne,State agency,vic-gov-tallangatta-health-service,Tallangatta Health Service,Government,"25 Barree Street, Tallangatta VIC 3700",google_maps
+melbourne,State agency,vic-gov-triple-zero-victoria,Triple Zero Victoria,Government,"33 Lakeside Drive, Burwood East VIC 3151",medium
+melbourne,State agency,vic-gov-vicgrid,VicGrid,Government,"Level 25, 567 Collins Street, Melbourne VIC 3000",user_provided
+melbourne,State agency,vic-gov-vicscreen,VicScreen,Government,"563 Bourke Street, Melbourne VIC 3000",google_maps
+melbourne,State agency,vic-gov-victoria-legal-aid,Victoria Legal Aid,Government,"570 Bourke Street, Melbourne VIC 3000",high
+melbourne,State agency,vic-gov-victoria-police,Victoria Police,Government,"Victoria Police Centre, 311 Spencer Street, Docklands VIC 3008",high
+melbourne,State agency,vic-gov-victoria-state-emergency-service,Victoria State Emergency Service,Government,"168 Sturt Street, Southbank VIC 3006",verified
+melbourne,State agency,vic-gov-victorian-civil-and-administrative-tribunal-vcat,Victorian Civil and Administrative Tribunal (VCAT),Government,"55 King Street, Melbourne VIC 3000",high
+melbourne,State agency,vic-gov-victorian-electoral-commission,Victorian Electoral Commission,Government,"530 Collins Street, Melbourne VIC 3000",high
+melbourne,State agency,vic-gov-victorian-gambling-and-casino-control-commission,Victorian Gambling and Casino Control Commission,Government,"12 Shelley Street, Richmond VIC 3121",medium
+melbourne,State agency,vic-gov-victorian-government-solicitor-s-office,Victorian Government Solicitor's Office,Government,"Level 25, 121 Exhibition Street, Melbourne VIC 3000",medium
+melbourne,State agency,vic-gov-victorian-health-promotion-foundation,Victorian Health Promotion Foundation,Government,"355 Spencer Street, West Melbourne VIC 3003",medium
+melbourne,State agency,vic-gov-victorian-infrastructure-delivery-authority,Victorian Infrastructure Delivery Authority,Government,"Level 20, 180 Lonsdale Street, Melbourne VIC 3000",user_provided
+melbourne,State agency,vic-gov-victorian-infrastructure-delivery-authority-health,Victorian Infrastructure Delivery Authority | Health,Government,"Level 20, 180 Lonsdale Street, Melbourne VIC 3000",user_provided
+melbourne,State agency,vic-gov-victorian-infrastructure-delivery-authority-rail,Victorian Infrastructure Delivery Authority | Rail,Government,"Level 20, 180 Lonsdale Street, Melbourne VIC 3000",user_provided
+melbourne,State agency,vic-gov-victorian-infrastructure-delivery-authority-roads,Victorian Infrastructure Delivery Authority | Roads,Government,"Level 20, 180 Lonsdale Street, Melbourne VIC 3000",user_provided
+melbourne,State agency,vic-gov-victorian-institute-of-forensic-medicine,Victorian Institute of Forensic Medicine,Government,"65 Kavanagh Street, Southbank VIC 3006",high
+melbourne,State agency,vic-gov-victorian-institute-of-teaching,Victorian Institute of Teaching,Government,"717 Bourke Street, Docklands VIC 3008",google_maps
+melbourne,State agency,vic-gov-victorian-legal-services-board-and-commissioner,Victorian Legal Services Board and Commissioner,Government,"Level 27, 500 Bourke Street, Melbourne VIC 3000",google_maps
+melbourne,State agency,vic-gov-victorian-managed-insurance-authority,Victorian Managed Insurance Authority,Government,"Level 10, 161 Collins Street, Melbourne VIC 3000",medium
+melbourne,State agency,vic-gov-victorian-ombudsman,Victorian Ombudsman,Government,"Level 2, 570 Bourke Street, Melbourne VIC 3000",medium
+melbourne,State agency,vic-gov-victorian-school-building-authority,Victorian School Building Authority,Government,"Level 10, 33 St Andrews Place, East Melbourne VIC 3002",user_provided
+melbourne,State agency,vic-gov-west-gippsland-healthcare-group,West Gippsland Healthcare Group,Government,"41 Landsborough Street, Warragul VIC 3820",medium
+melbourne,State agency,vic-gov-western-health,Western Health,Government,"Footscray Hospital, 160 Gordon Street, Footscray VIC 3011",medium
+melbourne,State agency,vic-gov-workforce-inspectorate-victoria,Workforce Inspectorate Victoria,Government,"Level 27, 121 Exhibition Street, Melbourne VIC 3000",user_provided
+melbourne,State agency,vic-gov-workplace-injury-commission,Workplace Injury Commission,Government,"Level 1, 215 Spring Street, Melbourne VIC 3000",google_maps
+melbourne,State agency,vic-gov-worksafe,WorkSafe,Government,"1 Malop Street, Geelong VIC 3220",high
+melbourne,Federal agency,aps-bureau-of-meteorology,Bureau of Meteorology,Government,"700 Collins Street, Docklands VIC 3008",high
+melbourne,Federal agency,aps-australian-radiation-protection-and-nuclear-safety-agency,Australian Radiation Protection and Nuclear Safety Agency,Government,"619 Lower Plenty Road, Yallambie VIC 3085",high
+melbourne,Federal agency,aps-australian-institute-of-family-studies,Australian Institute of Family Studies,Government,"Level 4, 40 City Road, Southbank VIC 3006",medium
+melbourne,Private company,priv-visy,Visy,Packaging & paper manufacturing,"Level 11, 2 Southbank Boulevard, Southbank VIC 3006",medium
+melbourne,Private company,priv-united-petroleum,United Petroleum,Fuel & convenience retail,"600 Glenferrie Road, Hawthorn VIC 3122",google_maps
+melbourne,Private company,priv-linfox,Linfox,Logistics & transport,"490 Swan Street, Richmond VIC 3121",medium
+melbourne,Private company,priv-chemist-warehouse,Chemist Warehouse,Pharmacy retail,"44 Raglan Street, Preston VIC 3072",high
+melbourne,Private company,priv-spotlight,Spotlight,Specialty retail,"111 Cecil Street, South Melbourne VIC 3205",high
+melbourne,Private company,priv-team-global-express,Team Global Express,Logistics & freight,"Level 3, 417 St Kilda Road, Melbourne VIC 3004",google_maps
+melbourne,Private company,priv-cogi,COGI,Consumer & Retail,"14 Shepherd Court, North Geelong VIC 3215",google_maps
+melbourne,Private company,priv-australian-unity,Australian Unity,Diversified financial services,"271 Spring Street, Melbourne VIC 3000",high
+melbourne,Private company,priv-aurecon,Aurecon,Engineering consultancy,"850 Collins Street, Docklands VIC 3008",medium
+melbourne,Private company,priv-metricon-homes,Metricon Homes,Residential construction,"501 Blackburn Road, Mount Waverley VIC 3149",high
+melbourne,Private company,priv-consolidated-travel,Consolidated Travel,Travel services,"Level 7, 246 Bourke Street, Melbourne VIC 3000",google_maps
+melbourne,Private company,priv-ritchies-supa-iga,Ritchies Supa IGA,Supermarkets,"Shop 10, 1095 Frankston-Dandenong Road, Carrum Downs VIC 3201",verified
+melbourne,Private company,priv-hansen-yuncken,Hansen Yuncken,Commercial construction,"Level 10, 412 St Kilda Road, Melbourne VIC 3004",google_maps
+melbourne,Private company,priv-salvation-army-australia,Salvation Army Australia,Social services & charity,"95-99 Railway Road, Blackburn VIC 3130",high
+melbourne,Private company,priv-melbourne-airport,Melbourne Airport,Airport operations,"Terminal Drive, Melbourne Airport VIC 3045",medium
+melbourne,Private company,priv-mecca-brands,Mecca Brands,Cosmetics retail,"Level 3, 80 Dorcas Street, South Melbourne VIC 3205",medium
+melbourne,Private company,priv-winslow-constructors,Winslow Constructors,Civil construction,"50 Mahoneys Road, Thomastown VIC 3074",user_provided
+melbourne,Private company,priv-talent-international,Talent International,Recruitment & staffing,"Level 17, Rialto South Tower, 525 Collins Street, Melbourne VIC 3000",google_maps
+melbourne,Private company,priv-epworth-healthcare,Epworth HealthCare,Hospitals,"89 Bridge Road, Richmond VIC 3121",high
+melbourne,Private company,priv-afl,AFL,Sport & entertainment,"AFL House, 140 Harbour Esplanade, Docklands VIC 3008",high
+melbourne,Private company,priv-kane-constructions,Kane Constructions,Commercial construction,"658 Church Street, Richmond VIC 3121",medium
+melbourne,Private company,priv-village-roadshow,Village Roadshow,Entertainment & theme parks,"650 Chapel Street, South Yarra VIC 3141",google_maps
+melbourne,Private company,priv-turosi,Turosi,Poultry & food processing,"5 Lipton Drive, Thomastown VIC 3074",google_maps
+melbourne,Private company,priv-st-vincent-de-paul,St Vincent de Paul,Social services & charity,"43 Prospect Street, Box Hill VIC 3128",medium
+melbourne,Private company,priv-racv,RACV,Insurance & motoring club,"485 Bourke Street, Melbourne VIC 3000",high
+melbourne,Private company,priv-patterson-cheney,Patterson Cheney,Automotive retail,"200 Cheltenham Road, Keysborough VIC 3173",google_maps
+melbourne,Private company,priv-apco-service-stations,Apco Service Stations,Fuel & convenience retail,"57 Ormond Road, East Geelong VIC 3219",google_maps
+melbourne,Private company,priv-grand-motors,Grand Motors,Automotive retail,"265 Ferry Road, Southport QLD 4215",google_maps
+melbourne,Private company,priv-cci,CCI,Insurance,"Suite 7116, Level 7, 180 Flinders Street, Melbourne VIC 3000",google_maps
+melbourne,Private company,priv-king-wood-mallesons,King & Wood Mallesons,Legal services,"Level 27, Collins Arch, 447 Collins Street, Melbourne VIC 3000",high
+melbourne,Private company,priv-defence-health,Defence Health,Private health insurance,"380 St Kilda Road, Melbourne VIC 3004",medium
+melbourne,Private company,priv-akd,AKD,Timber & forestry,"17 Forest Street, Colac VIC 3250",google_maps
+melbourne,Private company,priv-nhp-electrical-engineering-products,NHP Electrical Engineering Products,Electrical equipment,"43-67 River Street, Richmond VIC 3121",high
+melbourne,Private company,priv-gmhba,GMHBA,Private health insurance,"60-68 Moorabool Street, Geelong VIC 3220",high
+melbourne,Private company,priv-creation-homes,Creation Homes,Residential construction,"484 St Kilda Road, Melbourne VIC 3004",google_maps
+melbourne,Private company,priv-tennis-australia,Tennis Australia,Sport & entertainment,"Olympic Boulevard, Melbourne VIC 3001",high
+melbourne,Private company,priv-australian-consolidated-milk,Australian Consolidated Milk,Dairy,Girgarre VIC 3624,google_maps
+melbourne,Private company,priv-bowens-timber-hardware,Bowens Timber & Hardware,Timber & hardware retail,"12 Redland Drive, Mitcham VIC 3132",user_provided
+melbourne,Listed company,wes,Wesfarmers,Diversified Retail,"Level 14, Brookfield Place Tower 2, 123 St Georges Terrace, Perth WA 6000",high
+brisbane,Listed company,bhp,BHP,Diversified Mining,"171 Collins Street, Melbourne VIC 3000",high
+brisbane,Listed company,rio,Rio Tinto,Iron Ore & Metals,"Level 43, 120 Collins Street, Melbourne VIC 3000",high
+brisbane,Listed company,smr,Stanmore Resources,Coal,"Level 32, 12 Creek Street, Brisbane QLD 4000",google_maps
+brisbane,Listed company,nhc,New Hope Group,Coal,"Level 3, 22 Magnolia Drive, Brookwater QLD 4300",medium
+brisbane,Listed company,shell,Shell,"Oil, Gas & LNG","562 Wellington Street, Perth WA 6000",google_maps
+brisbane,Listed company,mmi,Metro Mining,Bauxite,"Level 4, 135 Wickham Terrace, Brisbane QLD 4000",google_maps
+brisbane,Listed company,jellinbah,Jellinbah Group,Coal,"Level 20, 66 Eagle Street, Brisbane QLD 4000",google_maps
+brisbane,Listed company,brisbane-nsr,National Storage REIT,Financial Services,"Level 23, 71 Eagle Street, Brisbane QLD 4000",medium
+brisbane,Listed company,brisbane-boq,Bank of Queensland,Financial Services,"Level 6, 100 Skyring Terrace, Newstead QLD 4006",high
+brisbane,Listed company,brisbane-ctd,Corporate Travel Management,Consumer & Retail,"Level 24, 307 Queen Street, Brisbane QLD 4000",medium
+brisbane,Listed company,brisbane-sul,Super Retail Group,Consumer & Retail,"751 Gympie Road, Lawnton QLD 4501",high
+brisbane,Listed company,brisbane-alq,ALS Limited,Industrial Manufacturing,"Level 2, 299 Coronation Drive, Milton QLD 4064",medium
+brisbane,Listed company,brisbane-smr,Stanmore Resources,Energy & Natural Resources,"Level 32, 12 Creek Street, Brisbane QLD 4000",google_maps
+brisbane,Listed company,brisbane-crn,Coronado Global Resources,Energy & Natural Resources,"Level 33, Central Plaza One, 345 Queen Street, Brisbane QLD 4000",medium
+brisbane,Listed company,brisbane-sya,Sayona Mining,Energy & Natural Resources,"Level 28, 10 Eagle Street, Brisbane QLD 4000",google_maps
+brisbane,Listed company,brisbane-dtl,Data#3,"Technology, Media & Telecom","555 Coronation Drive, Toowong QLD 4066",high
+brisbane,Listed company,brisbane-aqz,Alliance Aviation Services,Consumer & Retail,"81 Pandanus Avenue, Brisbane Airport QLD 4008",medium
+brisbane,Listed company,brisbane-ape,Eagers Automotive,Consumer & Retail,"5 Edmund Street, Newstead QLD 4006",google_maps
+brisbane,Listed company,brisbane-azj,Aurizon,Industrial Manufacturing,"900 Ann Street, Fortitude Valley QLD 4006",high
+brisbane,Listed company,brisbane-dbi,Dalrymple Bay Infrastructure,Industrial Manufacturing,"Level 15, One Eagle, 1 Eagle Street, Brisbane QLD 4000",google_maps
+brisbane,Listed company,brisbane-tne,TechnologyOne,"Technology, Media & Telecom","540 Wickham Street, Fortitude Valley QLD 4006",medium
+brisbane,Listed company,brisbane-vgn,Virgin Australia Holdings,Industrial Manufacturing,"275 Grey Street, South Brisbane QLD 4101",high
+brisbane,State agency,qld-gov-art-gallery,Art Gallery,Government,"Stanley Place, South Brisbane QLD 4101",high
+brisbane,State agency,qld-gov-crime-and-corruption-commission,Crime and Corruption Commission,Government,"Level 2, North Tower Green Square, 515 St Pauls Terrace, Fortitude Valley QLD 4006",high
+brisbane,State agency,qld-gov-cross-river-rail-delivery-authority,Cross River Rail Delivery Authority,Government,"Level 14, 410 Ann Street, Brisbane QLD 4000",user_provided
+brisbane,State agency,qld-gov-department-of-customer-services-open-data-and-small-and-family-business,"Department of Customer Services, Open Data and Small and Family Business",Government,"1 William Street, Brisbane QLD 4000",user_provided
+brisbane,State agency,qld-gov-department-of-women-aboriginal-and-torres-strait-islander-partnerships-and-multiculturalism,"Department of Women, Aboriginal and Torres Strait Islander Partnerships and Multiculturalism",Government,"1 William Street, Brisbane QLD 4000",user_provided
+brisbane,State agency,qld-gov-economic-development-queensland,Economic Development Queensland,Government,"1 William Street, Brisbane QLD 4000",user_provided
+brisbane,State agency,qld-gov-education,Education,Government,"30 Mary Street, Brisbane QLD 4000",high
+brisbane,State agency,qld-gov-electoral-commission,Electoral Commission,Government,"Level 20, 1 Eagle Street, Brisbane QLD 4000",medium
+brisbane,State agency,qld-gov-energy-and-water-ombudsman-queensland,Energy and Water Ombudsman Queensland,Government,"Level 16, 53 Albert Street, Brisbane QLD 4000",google_maps
+brisbane,State agency,qld-gov-environment-tourism-science-and-innovation,"Environment, Tourism, Science and Innovation",Government,"400 George Street, Brisbane QLD 4000",medium
+brisbane,State agency,qld-gov-families-seniors-disability-services-and-child-safety,"Families, Seniors, Disability Services and Child Safety",Government,"1 William Street, Brisbane QLD 4000",medium
+brisbane,State agency,qld-gov-health-and-wellbeing-queensland,Health and Wellbeing Queensland,Government,"139 Coronation Drive, Milton QLD 4064",google_maps
+brisbane,State agency,qld-gov-housing-and-public-works,Housing and Public Works,Government,"1 William Street, Brisbane QLD 4000",medium
+brisbane,State agency,qld-gov-information-commissioner,Information Commissioner,Government,"Level 7, 133 Mary Street, Brisbane QLD 4000",medium
+brisbane,State agency,qld-gov-inspector-general-emergency-management,Inspector General Emergency Management,Government,"111 George Street, Brisbane QLD 4000",google_maps
+brisbane,State agency,qld-gov-justice,Justice,Government,"1 William Street, Brisbane QLD 4000",medium
+brisbane,State agency,qld-gov-legal-aid,Legal Aid,Government,"44 Herschel Street, Brisbane QLD 4000",high
+brisbane,State agency,qld-gov-local-government-water-and-volunteers,"Local Government, Water and Volunteers",Government,"1 William Street, Brisbane QLD 4000",user_provided
+brisbane,State agency,qld-gov-national-injury-insurance-agency-queensland,National Injury Insurance Agency Queensland,Government,"Level 18, 160 Ann Street, Brisbane QLD 4000",user_provided
+brisbane,State agency,qld-gov-natural-resources-and-mines-manufacturing-and-regional-and-rural-development,"Natural Resources and Mines, Manufacturing and Regional and Rural Development",Government,"1 William Street, Brisbane QLD 4000",medium
+brisbane,State agency,qld-gov-office-of-industrial-relations,Office of Industrial Relations,Government,"1 William Street, Brisbane QLD 4000",user_provided
+brisbane,State agency,qld-gov-office-of-the-health-ombudsman,Office of the Health Ombudsman,Government,"400 George Street, Brisbane QLD 4000",medium
+brisbane,State agency,qld-gov-office-of-the-public-guardian,Office of the Public Guardian,Government,"Level 16, 50 Ann Street, Brisbane QLD 4000",google_maps
+brisbane,State agency,qld-gov-office-of-the-queensland-integrity-commissioner,Office of the Queensland Integrity Commissioner,Government,"Level 13, 53 Albert Street, Brisbane QLD 4000",google_maps
+brisbane,State agency,qld-gov-office-of-the-queensland-ombudsman,Office of the Queensland Ombudsman,Government,"Level 18, 53 Albert Street, Brisbane QLD 4000",medium
+brisbane,State agency,qld-gov-parliamentary-service,Parliamentary Service,Government,"Parliament House, Cnr George and Alice Streets, Brisbane QLD 4000",high
+brisbane,State agency,qld-gov-primary-industries,Primary Industries,Government,"41 George Street, Brisbane QLD 4000",user_provided
+brisbane,State agency,qld-gov-public-trust-office,Public Trust Office,Government,"444 Queen Street, Brisbane QLD 4000",high
+brisbane,State agency,qld-gov-qleave,QLeave,Government,"Suite 3, Lot 1, 62 Crockford Street, Northgate QLD 4013",google_maps
+brisbane,State agency,qld-gov-queensland-academy-of-sport,Queensland Academy of Sport,Government,"Sleeman Sports Complex, Cnr Old Cleveland and Tilley Roads, Chandler QLD 4155",medium
+brisbane,State agency,qld-gov-queensland-ambulance-service,Queensland Ambulance Service,Government,"Emergency Services Complex, Cnr Park Road and Kedron Park Road, Kedron QLD 4031",high
+brisbane,State agency,qld-gov-queensland-audit-office,Queensland Audit Office,Government,"Level 13, 53 Albert Street, Brisbane QLD 4000",medium
+brisbane,State agency,qld-gov-queensland-building-and-construction-commission,Queensland Building and Construction Commission,Government,"299 Montague Road, West End QLD 4101",high
+brisbane,State agency,qld-gov-queensland-corrective-services,Queensland Corrective Services,Government,"69 Ann Street, Brisbane QLD 4000",google_maps
+brisbane,State agency,qld-gov-queensland-curriculum-and-assessment-authority,Queensland Curriculum and Assessment Authority,Government,"154 Melbourne Street, South Brisbane QLD 4101",high
+brisbane,State agency,qld-gov-queensland-family-and-child-commission,Queensland Family and Child Commission,Government,"Level 8, 63 George Street, Brisbane QLD 4000",google_maps
+brisbane,State agency,qld-gov-queensland-fire-department,Queensland Fire Department,Government,"Emergency Services Complex, Cnr Park Road and Kedron Park Road, Kedron QLD 4031",high
+brisbane,State agency,qld-gov-queensland-health,Queensland Health,Government,"33 Charlotte Street, Brisbane QLD 4000",high
+brisbane,State agency,qld-gov-queensland-mental-health-commission,Queensland Mental Health Commission,Government,"Level 11, 288 Edward Street, Brisbane QLD 4000",user_provided
+brisbane,State agency,qld-gov-queensland-pharmacy-business-ownership-council,Queensland Pharmacy Business Ownership Council,Government,"33 Charlotte Street, Brisbane QLD 4000",user_provided
+brisbane,State agency,qld-gov-queensland-police-service,Queensland Police Service,Government,"200 Roma Street, Brisbane QLD 4000",high
+brisbane,State agency,qld-gov-queensland-racing-integrity-commission,Queensland Racing Integrity Commission,Government,"60 Kingsford Smith Drive, Albion QLD 4010",google_maps
+brisbane,State agency,qld-gov-queensland-rural-and-industry-development-authority,Queensland Rural and Industry Development Authority,Government,"Level 26, 32 Turbot Street, Brisbane QLD 4000",google_maps
+brisbane,State agency,qld-gov-queensland-treasury,Queensland Treasury,Government,"1 William Street, Brisbane QLD 4000",high
+brisbane,State agency,qld-gov-resources-safety-and-health-queensland,Resources Safety and Health Queensland,Government,"275 George Street, Brisbane QLD 4000",google_maps
+brisbane,State agency,qld-gov-sport-racing-and-olympic-and-paralympic-games,"Sport, Racing and Olympic and Paralympic Games",Government,"111 George Street, Brisbane QLD 4000",user_provided
+brisbane,State agency,qld-gov-stadiums-queensland,Stadiums Queensland,Government,"Cnr Castlemaine and Chippendall Streets, Milton QLD 4064",google_maps
+brisbane,State agency,qld-gov-state-development-infrastructure-and-planning,"State Development, Infrastructure and Planning",Government,"1 William Street, Brisbane QLD 4000",high
+brisbane,State agency,qld-gov-state-library,State Library,Government,"Stanley Place, South Brisbane QLD 4101",high
+brisbane,State agency,qld-gov-tafe-queensland,TAFE Queensland,Government,"Level 4, 100 Campbell Street, Bowen Hills QLD 4006",user_provided
+brisbane,State agency,qld-gov-teach-queensland,Teach Queensland,Government,"30 Mary Street, Brisbane QLD 4000",user_provided
+brisbane,State agency,qld-gov-trade-and-investment-queensland,Trade and Investment Queensland,Government,"Level 23, 1 William Street, Brisbane QLD 4000",user_provided
+brisbane,State agency,qld-gov-trade-employment-and-training,"Trade, Employment and Training",Government,"1 William Street, Brisbane QLD 4000",user_provided
+brisbane,State agency,qld-gov-transport-and-main-roads,Transport and Main Roads,Government,"1 William Street, Brisbane QLD 4000",high
+brisbane,State agency,qld-gov-youth-justice-and-victim-support,Youth Justice and Victim Support,Government,"1 William Street, Brisbane QLD 4000",user_provided
+brisbane,Private company,priv-hutchies-builders,Hutchies Builders,Commercial construction,"584 Milton Road, Toowong QLD 4066",high
+brisbane,Private company,priv-teys-australia,Teys Australia,Meat processing,"Building 3, Freeway Office Park, 2728 Logan Road, Eight Mile Plains QLD 4113",google_maps
+brisbane,Private company,priv-racq,RACQ,Insurance & motoring club,"2649 Logan Road, Eight Mile Plains QLD 4113",high
+brisbane,Private company,priv-bmd-group,BMD Group,Civil construction,"1 Sandpiper Avenue, Port of Brisbane QLD 4178",google_maps
+brisbane,Private company,priv-unitingcare-queensland,UnitingCare Queensland,Health & community services,"Level 5, 192 Ann Street, Brisbane QLD 4000",medium
+brisbane,Private company,priv-loan-market,Loan Market,Mortgage broking,"Level 18, 111 Eagle Street, Brisbane QLD 4000",user_provided
+brisbane,Private company,priv-mater,Mater,Hospitals,"Raymond Terrace, South Brisbane QLD 4101",high
+brisbane,Private company,priv-smrm-holdings,SMRM Holdings,Consumer & Retail,"99 Southgate Avenue, Cannon Hill QLD 4170",google_maps
+brisbane,Private company,priv-bolton-clarke,Bolton Clarke,Aged & community care,"Shop 3, 44 Musk Avenue, Kelvin Grove QLD 4059",google_maps
+brisbane,Private company,priv-brisbane-catholic-education,Brisbane Catholic Education,Education,"243 Gladstone Road, Dutton Park QLD 4102",high
+brisbane,Private company,priv-j-j-richards-sons,J.J. Richards & Sons,Waste management,"3 Structural Road, Carole Park QLD 4300",user_provided
+brisbane,Private company,priv-goodstart-early-learning,Goodstart Early Learning,Early childhood education,"43 Metroplex Avenue, Murarrie QLD 4172",high
+brisbane,Private company,priv-queensland-sugar,Queensland Sugar,Sugar marketing,"Level 14, 348 Edward Street, Brisbane QLD 4000",medium
+brisbane,Private company,priv-qcoal,QCoal,Coal mining,"40 Creek Street, Brisbane QLD 4000",google_maps
+brisbane,Private company,priv-workpac,WorkPac,Labour hire,"Level 16, 31 Duncan Street, Fortitude Valley QLD 4006",google_maps
+brisbane,Private company,priv-sunpork-group,SunPork Group,Pork production,"1/6 Eagleview Place, Eagle Farm QLD 4009",google_maps
+brisbane,Private company,priv-bac-holdings,BAC Holdings,Airport operations,"11 The Circuit, Brisbane Airport QLD 4008",high
+brisbane,Private company,priv-firstmac,Firstmac,Non-bank lending,"Level 40, 111 Eagle Street, Brisbane QLD 4000",medium
+brisbane,Private company,priv-perfection-fresh,Perfection Fresh,Fresh produce,"Level 4, Building F, 1 Homebush Bay Drive, Rhodes NSW 2138",google_maps
+brisbane,Private company,priv-mort-co,Mort & Co,Cattle feedlots,"91 Mort Street, Toowoomba QLD 4350",google_maps
+brisbane,Private company,priv-mpc-kinetic,MPC Kinetic,Energy services,"Shop 4, 15 Marshall Street, Fortitude Valley QLD 4006",google_maps
+brisbane,Private company,priv-great-southern-bank,Great Southern Bank,Mutual banking,"145 Ann Street, Brisbane QLD 4000",medium
+brisbane,Private company,priv-cnw-electrical,CNW Electrical,Electrical wholesale,"16 Miller Street, Murarrie QLD 4172",google_maps
+brisbane,Private company,priv-mcnab-constructions,McNab Constructions,Commercial construction,"Level 2, SW1, 32 Cordelia Street, South Brisbane QLD 4101",google_maps
+brisbane,Private company,priv-fitness-and-lifestyle,Fitness and Lifestyle,Fitness & leisure,"176 Montague Road, South Brisbane QLD 4101",google_maps
+brisbane,Private company,priv-pharmacare,PharmaCare,Consumer health products,"18 Jubilee Avenue, Warriewood NSW 2102",medium
+brisbane,Private company,priv-sunny-queen-farms,Sunny Queen Farms,Egg production,"145 Mica Street, Carole Park QLD 4300",google_maps
+brisbane,Listed company,sydney-whc,Whitehaven Coal,Energy & Natural Resources,"Level 28, 259 George Street, Sydney NSW 2000",medium
+brisbane,Listed company,sto,Santos,Oil & Gas,"Ground Floor, Santos Centre, 60 Flinders Street, Adelaide SA 5000",high
+adelaide,Listed company,bhp,BHP,Diversified Mining,"171 Collins Street, Melbourne VIC 3000",high
+adelaide,Listed company,sto,Santos,Oil & Gas,"Ground Floor, Santos Centre, 60 Flinders Street, Adelaide SA 5000",high
+adelaide,Listed company,mgt,Magnetite Mines,Iron Ore,"Suite 3.03, 30 Currie Street, Adelaide SA 5000",google_maps
+adelaide,Listed company,hgo,Hillgrove Resources,Copper & Base Metals,"5/7 King William Road, Unley SA 5061",google_maps
+adelaide,Listed company,adelaide-eld,Elders,Consumer & Retail,"Level 10, 80 Grenfell Street, Adelaide SA 5000",high
+adelaide,Listed company,adelaide-arg,Argo Investments,Financial Services,"Level 25, 91 King William Street, Adelaide SA 5000",medium
+adelaide,Listed company,adelaide-coe,Cooper Energy,Energy & Natural Resources,"Level 8, 70 Franklin Street, Adelaide SA 5000",medium
+adelaide,Listed company,adelaide-c79,Chrysos Corporation,"Technology, Media & Telecom","2A Venture Road, Tonsley SA 5042",google_maps
+adelaide,Listed company,adelaide-tea,Tasmea,Industrial Manufacturing,"108 Wakefield Street, Adelaide SA 5000",google_maps
+adelaide,Listed company,adelaide-pro,Prophecy International Holdings,"Technology, Media & Telecom","Level 5, 60 Waymouth Street, Adelaide SA 5000",google_maps
+adelaide,Listed company,adelaide-axe,Archer Materials,"Technology, Media & Telecom","Lot Fourteen, North Terrace, Adelaide SA 5000",google_maps
+adelaide,Listed company,adelaide-ar3,Australian Rare Earths,Energy & Natural Resources,"111 Gawler Place, Adelaide SA 5000",google_maps
+adelaide,Listed company,adelaide-age,Alligator Energy,Energy & Natural Resources,"Unit 2, 128 Bowen Street, Spring Hill QLD 4000",google_maps
+adelaide,Listed company,adelaide-bgd,Barton Gold Holdings,Energy & Natural Resources,"Level 4, 12 Gilles Street, Adelaide SA 5000",google_maps
+adelaide,State agency,sa-gov-adelaide-cemeteries-authority,Adelaide Cemeteries Authority,Government,"Enfield Memorial Park, Browning Street, Clearview SA 5085",google_maps
+adelaide,State agency,sa-gov-adelaide-festival-centre-trust,Adelaide Festival Centre Trust,Government,"King William Road, Adelaide SA 5000",high
+adelaide,State agency,sa-gov-alinytjara-wilurara-landscape-board,Alinytjara Wilurara Landscape Board,Government,"Level 9, 81-95 Waymouth Street, Adelaide SA 5000",user_provided
+adelaide,State agency,sa-gov-attorney-general-s-department,Attorney-General's Department,Government,"45 Pirie Street, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-audit-office-of-south-australia,Audit Office of South Australia,Government,"Level 9, State Administration Centre, 200 Victoria Square, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-carclew-youth-arts-centre,Carclew Youth Arts Centre,Government,"11 Jeffcott Street, North Adelaide SA 5006",high
+adelaide,State agency,sa-gov-child-death-and-serious-injury-review-committee,Child Death and Serious Injury Review Committee,Government,"Level 7, 5 South Road, Hindmarsh SA 5007",user_provided
+adelaide,State agency,sa-gov-commissioner-for-children-and-young-people,Commissioner for Children and Young People,Government,"251 Morphett Street, Adelaide SA 5000",verified
+adelaide,State agency,sa-gov-country-arts-sa,Country Arts SA,Government,"85 North East Road, Collinswood SA 5081",google_maps
+adelaide,State agency,sa-gov-courts-administration-authority,Courts Administration Authority,Government,"1 Gouger Street, Adelaide SA 5000",google_maps
+adelaide,State agency,sa-gov-dairysafe,Dairysafe,Government,"136 Glen Osmond Road, Parkside SA 5063",google_maps
+adelaide,State agency,sa-gov-defence-sa,Defence SA,Government,"Level 4, 151 Pirie Street, Adelaide SA 5000",user_provided
+adelaide,State agency,sa-gov-department-for-child-protection,Department for Child Protection,Government,"31 Flinders Street, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-department-for-correctional-services,Department for Correctional Services,Government,"400 King William Street, Adelaide SA 5000",high
+adelaide,State agency,sa-gov-department-for-education,Department for Education,Government,"31 Flinders Street, Adelaide SA 5000",high
+adelaide,State agency,sa-gov-department-for-energy-and-mining,Department for Energy and Mining,Government,"11 Waymouth Street, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-department-for-environment-and-water,Department for Environment and Water,Government,"81-95 Waymouth Street, Adelaide SA 5000",high
+adelaide,State agency,sa-gov-department-for-housing-and-urban-development,Department for Housing and Urban Development,Government,"Level 16, 11 Waymouth Street, Adelaide SA 5000",google_maps
+adelaide,State agency,sa-gov-department-for-infrastructure-and-transport,Department for Infrastructure and Transport,Government,"77 Grenfell Street, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-department-of-human-services,Department of Human Services,Government,"Riverside Centre, North Terrace, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-department-of-primary-industries-and-regions,Department of Primary Industries and Regions,Government,"Level 14, 25 Grenfell Street, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-department-of-state-development,Department of State Development,Government,"11 Waymouth Street, Adelaide SA 5000",google_maps
+adelaide,State agency,sa-gov-department-of-treasury-and-finance,Department of Treasury and Finance,Government,"State Administration Centre, 200 Victoria Square, Adelaide SA 5000",high
+adelaide,State agency,sa-gov-department-of-the-premier-and-cabinet,Department of the Premier and Cabinet,Government,"State Administration Centre, 200 Victoria Square, Adelaide SA 5000",high
+adelaide,State agency,sa-gov-education-standards-board,Education Standards Board,Government,"Level 7, 33 Franklin Street, Adelaide SA 5000",user_provided
+adelaide,State agency,sa-gov-electoral-commission-of-sa,Electoral Commission of SA,Government,"Level 6, 60 Light Square, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-environment-protection-authority,Environment Protection Authority,Government,"211 Victoria Square, Adelaide SA 5000",high
+adelaide,State agency,sa-gov-essential-services-commission-of-sa,Essential Services Commission of SA,Government,"Level 1, 151 Pirie Street, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-eyre-peninsula-landscape-board,Eyre Peninsula Landscape Board,Government,"86 Tasman Terrace, Port Lincoln SA 5606",verified
+adelaide,State agency,sa-gov-forestrysa,ForestrySA,Government,"495 Brookman Road, Kuitpo SA 5201",google_maps
+adelaide,State agency,sa-gov-funds-sa,Funds SA,Government,"Level 20, 25 Grenfell Street, Adelaide SA 5000",google_maps
+adelaide,State agency,sa-gov-green-industries-sa,Green Industries SA,Government,"Level 4, 81-95 Waymouth Street, Adelaide SA 5000",google_maps
+adelaide,State agency,sa-gov-guardian-for-children-and-young-people,Guardian for Children and Young People,Government,"Level 3, 111 Gawler Place, Adelaide SA 5000",google_maps
+adelaide,State agency,sa-gov-health-and-community-services-complaints-commissioner,Health and Community Services Complaints Commissioner,Government,"Level 4, 50 Grenfell Street, Adelaide SA 5000",user_provided
+adelaide,State agency,sa-gov-hills-and-fleurieu-landscape-board,Hills and Fleurieu Landscape Board,Government,"Unit 8, 22 Mann Street, Mount Barker SA 5251",google_maps
+adelaide,State agency,sa-gov-history-trust-of-south-australia,History Trust of South Australia,Government,"Torrens Parade Ground, Victoria Drive, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-independent-commission-against-corruption,Independent Commission Against Corruption,Government,"Level 9, 55 Currie Street, Adelaide SA 5000",google_maps
+adelaide,State agency,sa-gov-infrastructure-sa,Infrastructure SA,Government,"Level 15, Wakefield House, 30 Wakefield Street, Adelaide SA 5000",google_maps
+adelaide,State agency,sa-gov-kangaroo-island-landscape-board,Kangaroo Island Landscape Board,Government,"35 Dauncey Street, Kingscote SA 5223",verified
+adelaide,State agency,sa-gov-landscape-sa,Landscape SA,Government,"81-95 Waymouth Street, Adelaide SA 5000",google_maps
+adelaide,State agency,sa-gov-legal-profession-conduct-commissioner,Legal Profession Conduct Commissioner,Government,"Level 10, 30 Currie Street, Adelaide SA 5000",google_maps
+adelaide,State agency,sa-gov-legal-services-commission,Legal Services Commission,Government,"159 Gawler Place, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-lifetime-support-authority-of-sa,Lifetime Support Authority of SA,Government,"30 Wakefield Street, Adelaide SA 5000",google_maps
+adelaide,State agency,sa-gov-limestone-coast-landscape-board,Limestone Coast Landscape Board,Government,"11 Helen Street, Mount Gambier SA 5290",verified
+adelaide,State agency,sa-gov-motor-accident-commission,Motor Accident Commission,Government,"Level 10, 80 King William Street, Adelaide SA 5000",user_provided
+adelaide,State agency,sa-gov-murraylands-and-riverland-landscape-board,Murraylands and Riverland Landscape Board,Government,"Units 5-6, Level 1, Sturt Centre, 2 Sturt Reserve Road, Murray Bridge SA 5253",google_maps
+adelaide,State agency,sa-gov-northern-and-yorke-landscape-board,Northern and Yorke Landscape Board,Government,"318 Main North Road, Clare SA 5453",google_maps
+adelaide,State agency,sa-gov-office-for-early-childhood-development,Office for Early Childhood Development,Government,"31 Flinders Street, Adelaide SA 5000",user_provided
+adelaide,State agency,sa-gov-office-for-recreation-sport-and-racing,Office for Recreation Sport and Racing,Government,"27 Valetta Road, Kidman Park SA 5025",medium
+adelaide,State agency,sa-gov-office-of-hydrogen-power-sa,Office of Hydrogen Power SA,Government,"Level 27, 91 King William Street, Adelaide SA 5000",google_maps
+adelaide,State agency,sa-gov-office-of-the-commissioner-for-public-sector-employment,Office of the Commissioner for Public Sector Employment,Government,"Level 5, 25 Grenfell Street, Adelaide SA 5000",user_provided
+adelaide,State agency,sa-gov-office-of-the-sa-productivity-commission,Office of the SA Productivity Commission,Government,"Level 15, Wakefield House, 30 Wakefield Street, Adelaide SA 5000",google_maps
+adelaide,State agency,sa-gov-parliament-of-sa,Parliament of SA,Government,"Parliament House, North Terrace, Adelaide SA 5000",high
+adelaide,State agency,sa-gov-preventive-health-sa,Preventive Health SA,Government,"Citi Centre Building, 11 Hindmarsh Square, Adelaide SA 5000",google_maps
+adelaide,State agency,sa-gov-renewal-sa,Renewal SA,Government,"Level 9, 83 Pirie Street, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-sa-fire-and-emergency-services-commission,SA Fire and Emergency Services Commission,Government,"Level 7, 60 Waymouth Street, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-sa-health,SA Health,Government,"11 Hindmarsh Square, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-sa-lotteries,SA Lotteries,Government,"18 Union Street, Stepney SA 5069",user_provided
+adelaide,State agency,sa-gov-sace-board-of-sa,SACE Board of SA,Government,"60 Greenhill Road, Wayville SA 5034",high
+adelaide,State agency,sa-gov-safework-sa,SafeWork SA,Government,"33 Richmond Road, Keswick SA 5035",high
+adelaide,State agency,sa-gov-south-australia-police,South Australia Police,Government,"100 Angas Street, Adelaide SA 5000",high
+adelaide,State agency,sa-gov-sa-arid-lands-landscape-board,SA Arid Lands Landscape Board,Government,"1 Jervois Street, Port Augusta SA 5700",verified
+adelaide,State agency,sa-gov-sa-country-fire-service,SA Country Fire Service,Government,"Level 7, 60 Waymouth Street, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-sa-employment-tribunal,SA Employment Tribunal,Government,"Level 6, Riverside Centre, North Terrace, Adelaide SA 5000",user_provided
+adelaide,State agency,sa-gov-sa-film-corporation,SA Film Corporation,Government,"Adelaide Studios, 1 Mulberry Road, Glenside SA 5065",high
+adelaide,State agency,sa-gov-sa-housing-trust,SA Housing Trust,Government,"Riverside Centre, North Terrace, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-sa-metropolitan-fire-service,SA Metropolitan Fire Service,Government,"99 Wakefield Street, Adelaide SA 5000",high
+adelaide,State agency,sa-gov-sa-motor-sport-board,SA Motor Sport Board,Government,"Level 5, 182 Victoria Square, Adelaide SA 5000",google_maps
+adelaide,State agency,sa-gov-sa-state-emergency-service,SA State Emergency Service,Government,"Level 7, 60 Waymouth Street, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-sa-tourism-commission,SA Tourism Commission,Government,"Level 9, 250 Victoria Square, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-state-opera-sa,State Opera SA,Government,"85 North East Road, Collinswood SA 5081",google_maps
+adelaide,State agency,sa-gov-state-theatre-company-of-sa,State Theatre Company of SA,Government,"85 North East Road, Collinswood SA 5081",google_maps
+adelaide,State agency,sa-gov-study-adelaide,Study Adelaide,Government,"Level 1, 26 Franklin Street, Adelaide SA 5000",google_maps
+adelaide,State agency,sa-gov-tafe-sa,TAFE SA,Government,"120 Currie Street, Adelaide SA 5000",medium
+adelaide,State agency,sa-gov-teachers-registration-board,Teachers Registration Board,Government,"Level 6, 70 Pirie Street, Adelaide SA 5000",google_maps
+adelaide,State agency,sa-gov-west-beach-parks,West Beach Parks,Government,"1 Military Road, West Beach SA 5024",medium
+adelaide,Federal agency,aps-australian-space-agency,Australian Space Agency,Government,"McEwin Building, Lot Fourteen, North Terrace, Adelaide SA 5000",high
+adelaide,Private company,priv-peregrine,Peregrine,Fuel & convenience retail,"121 Richmond Road, Marleston SA 5033",medium
+adelaide,Private company,priv-thomas-foods-international,Thomas Foods International,Meat processing,"Lagoon Road, Northern Heights (Murray Bridge) SA 5253",google_maps
+adelaide,Private company,priv-cmv-group,CMV Group,Automotive & truck retail,"48 Greenhill Road, Wayville SA 5034",google_maps
+adelaide,Private company,priv-people-first-bank,People First Bank,Mutual banking,"50 Flinders Street, Adelaide SA 5000",medium
+adelaide,Private company,priv-drake-supermarkets,Drake Supermarkets,Supermarkets,"159 Henley Beach Road, Torrensville SA 5031",user_provided
+adelaide,Private company,priv-leader-computers,Leader Computers,IT distribution,"165-187 Franklin Street, Adelaide SA 5000",google_maps
+adelaide,Private company,priv-raa,RAA,Insurance & motoring club,"101 Richmond Road, Mile End SA 5031",high
+adelaide,Private company,priv-san-remo,San Remo,Food manufacturing,"4 Boden Court, Windsor Gardens SA 5087",user_provided
+adelaide,Private company,priv-peter-kittle-motor-company,Peter Kittle Motor Company,Automotive retail,"1459 Main North Road, Para Hills West SA 5096",verified
+adelaide,Private company,priv-detmold-group,Detmold Group,Packaging manufacturing,"45 Chief Street, Brompton SA 5007",medium
+adelaide,Private company,priv-sarah-group,Sarah Group,Construction & property,"49 Glen Osmond Road, Eastwood SA 5063",google_maps
+perth,Listed company,rio,Rio Tinto,Iron Ore & Metals,"Level 43, 120 Collins Street, Melbourne VIC 3000",high
+perth,Listed company,bhp,BHP,Diversified Mining,"171 Collins Street, Melbourne VIC 3000",high
+perth,Listed company,s32,South32,Metals & Mining,"108 St Georges Terrace, Perth WA 6000",high
+perth,Listed company,fmg,Fortescue,Iron Ore & Green Energy,"Level 2, 87 Adelaide Terrace, East Perth WA 6004",high
+perth,Listed company,wds,Woodside Energy,"Oil, Gas & LNG","Mia Yellagonga, 11 Mount Street, Perth WA 6000",high
+perth,Listed company,sto,Santos,Oil & Gas,"Ground Floor, Santos Centre, 60 Flinders Street, Adelaide SA 5000",high
+perth,Listed company,chevron,Chevron,"Oil, Gas & LNG","QV1 Building, 250 St Georges Terrace, Perth WA 6000",high
+perth,Listed company,sfr,Sandfire Resources,Copper & Base Metals,"Level 2, 10 Kings Park Road, West Perth WA 6005",medium
+perth,Listed company,igo,IGO,Battery Metals — Nickel & Lithium,"Suite 4, 85 South Perth Esplanade, South Perth WA 6151",medium
+perth,Listed company,min,Mineral Resources,Mining Services & Lithium,"20 Walters Drive, Osborne Park WA 6017",high
+perth,Listed company,pls,Pilbara Minerals,Lithium,"Level 2, 146 Colin Street, West Perth WA 6005",verified
+perth,Listed company,ltr,Liontown Resources,Lithium,"32 Ord Street, West Perth WA 6005",google_maps
+perth,Listed company,ilu,Iluka Resources,Mineral Sands & Rare Earths,"Level 17, 240 St Georges Terrace, Perth WA 6000",medium
+perth,Listed company,nst,Northern Star Resources,Gold,"Level 4, 500 Hay Street, Subiaco WA 6008",medium
+perth,Listed company,wes,Wesfarmers,Diversified Retail,"Level 14, Brookfield Place Tower 2, 123 St Georges Terrace, Perth WA 6000",high
+perth,Listed company,perth-cyl,Catalyst Metals,Energy & Natural Resources,"3/50 Colin Street, West Perth WA 6005",google_maps
+perth,Listed company,perth-emr,Emerald Resources,Energy & Natural Resources,"1110 Hay Street, West Perth WA 6005",google_maps
+perth,Listed company,perth-pdi,Predictive Discovery,Energy & Natural Resources,"4 Charles Street, South Perth WA 6151",google_maps
+perth,Private company,priv-hancock-prospecting,Hancock Prospecting,Iron ore mining,"HPPL House, 28-42 Ventnor Avenue, West Perth WA 6005",high
+perth,Private company,priv-cbh-group,CBH Group,Grain handling co-operative,"Gayfer House, 30 Delhi Street, West Perth WA 6005",high
+perth,Private company,priv-vgw-holdings,VGW Holdings,Online social gaming,"Level 11, Australia Place, 15-17 William Street, Perth WA 6000",google_maps
+perth,Private company,priv-swift-holdings-investments,Swift Holdings Investments,Financial Services,"Level 2, 640 Murray Street, West Perth WA 6005",user_provided
+perth,Private company,priv-st-john-of-god-health-care,St John of God Health Care,Hospitals,"556 Wellington Street, Perth WA 6000",google_maps
+perth,Private company,priv-hbf,HBF,Private health insurance,"570 Wellington Street, Perth WA 6000",high
+perth,Private company,priv-abn-group,ABN Group,Residential construction,"301 Vincent Street, Leederville WA 6007",google_maps
+perth,Private company,priv-rac-of-wa,RAC of WA,Insurance & motoring club,"832 Wellington Street, West Perth WA 6005",high
+perth,Private company,priv-georgiou,Georgiou,Civil construction,"68 Hasler Road, Osborne Park WA 6017",medium
+perth,Private company,priv-bgc,BGC,Construction & building products,"Level 8, 67 Walters Drive, Osborne Park WA 6017",google_maps
+perth,Private company,priv-cjd-equipment,CJD Equipment,Heavy equipment distribution,"52 Great Eastern Highway, South Guildford WA 6055",google_maps
+perth,Private company,priv-john-hughes-group,John Hughes Group,Automotive retail,"49 Shepperton Road, Victoria Park WA 6100",medium
+perth,Private company,priv-perron-group,Perron Group,Property investment,"4 Plain Street, East Perth WA 6004",google_maps
+perth,Private company,priv-perth-airport,Perth Airport,Airport operations,"2 George Wiencke Drive, Perth Airport WA 6105",high
+perth,Private company,priv-craig-mostyn,Craig Mostyn,Agri & protein production,"1/6 Short Street, Fremantle WA 6160",google_maps
+canberra,Federal agency,aps-department-of-agriculture-fisheries-and-forestry,"Department of Agriculture, Fisheries and Forestry",Government,"70 Northbourne Avenue, Canberra ACT 2601",high
+canberra,Federal agency,aps-department-of-climate-change-energy-the-environment-and-water,"Department of Climate Change, Energy, the Environment and Water",Government,"John Gorton Building, King Edward Terrace, Parkes ACT 2600",high
+canberra,Federal agency,aps-department-of-education,Department of Education,Government,"50 Marcus Clarke Street, Canberra ACT 2601",high
+canberra,Federal agency,aps-department-of-employment-and-workplace-relations,Department of Employment and Workplace Relations,Government,"10 Binara Street, Canberra ACT 2601",medium
+canberra,Federal agency,aps-department-of-infrastructure-transport-regional-development-communications-and-the-arts,"Department of Infrastructure, Transport, Regional Development, Communications and the Arts",Government,"111 Alinga Street, Canberra ACT 2601",high
+canberra,Federal agency,aps-australian-taxation-office,Australian Taxation Office,Government,"21 Genge Street, Canberra ACT 2601",medium
+canberra,Federal agency,aps-national-disability-insurance-agency,National Disability Insurance Agency,Government,"Ground Floor, 13-19 Malop Street, Geelong VIC 3220",google_maps
+canberra,Federal agency,aps-geoscience-australia,Geoscience Australia,Government,"101 Jerrabomberra Avenue, Symonston ACT 2609",high
+canberra,Federal agency,aps-australian-signals-directorate,Australian Signals Directorate,Government,"Russell Offices, Russell Drive, Russell ACT 2600",medium
+canberra,Federal agency,aps-australian-security-intelligence-organisation,Australian Security Intelligence Organisation,Government,"Ben Chifley Building, 70 Constitution Avenue, Parkes ACT 2600",high
+canberra,Federal agency,aps-australian-digital-health-agency,Australian Digital Health Agency,Government,"Discovery House West, 47 Bowes Street, Phillip ACT 2606",google_maps
+canberra,Federal agency,aps-australian-criminal-intelligence-commission,Australian Criminal Intelligence Commission,Government,"80 Moore Street, Canberra ACT 2601",user_provided
+canberra,Federal agency,aps-australian-transaction-reports-and-analysis-centre,Australian Transaction Reports and Analysis Centre,Government,"4 National Circuit, Barton ACT 2600",google_maps
+canberra,Federal agency,aps-comcare,Comcare,Government,"121 Marcus Clarke Street, Canberra ACT 2601",verified
+canberra,Federal agency,aps-australian-institute-of-health-and-welfare,Australian Institute of Health and Welfare,Government,"1 Thynne Street, Bruce ACT 2617",high
+canberra,Federal agency,aps-australian-financial-security-authority,Australian Financial Security Authority,Government,"2-4 National Circuit, Barton ACT 2600",google_maps
+canberra,Federal agency,aps-australian-public-service-commission,Australian Public Service Commission,Government,"B Block, Treasury Building, Parkes Place West, Canberra ACT 2600",user_provided
+canberra,Federal agency,aps-australian-national-audit-office,Australian National Audit Office,Government,"38 Sydney Avenue, Forrest ACT 2603",high
+canberra,Federal agency,aps-fair-work-commission,Fair Work Commission,Government,"11 Exhibition Street, Melbourne VIC 3000",high
+canberra,Federal agency,aps-fair-work-ombudsman,Fair Work Ombudsman,Government,"414 La Trobe Street, Melbourne VIC 3000",verified
+canberra,Federal agency,aps-clean-energy-regulator,Clean Energy Regulator,Government,"2 Phillip Law Street, Canberra ACT 2601",medium
+canberra,Federal agency,aps-national-archives-of-australia,National Archives of Australia,Government,"Kings Avenue, Parkes ACT 2600",high
+canberra,Federal agency,aps-digital-transformation-agency,Digital Transformation Agency,Government,"11 Moore Street, Canberra ACT 2601",google_maps
+canberra,Federal agency,aps-safe-work-australia,Safe Work Australia,Government,"2 Phillip Law Street, Canberra ACT 2601",google_maps
+canberra,Federal agency,aps-australian-sports-commission,Australian Sports Commission,Government,"Leverrier Street, Bruce ACT 2617",high
+canberra,Federal agency,aps-national-indigenous-australians-agency,National Indigenous Australians Agency,Government,"Charles Perkins House, 16 Bowes Place, Phillip ACT 2606",medium
+canberra,Federal agency,aps-australian-war-memorial,Australian War Memorial,Government,"Treloar Crescent, Campbell ACT 2612",high
+canberra,Federal agency,aps-national-library-of-australia,National Library of Australia,Government,"Parkes Place, Parkes ACT 2600",high
+canberra,Federal agency,aps-australian-trade-and-investment-commission,Australian Trade and Investment Commission,Government,"Nishi Building, 2 Phillip Law Street, Canberra ACT 2601",medium
+canberra,Federal agency,aps-australian-pesticides-and-veterinary-medicines-authority,Australian Pesticides and Veterinary Medicines Authority,Government,"91 Beardy Street, Armidale NSW 2350",medium
+canberra,Private company,priv-canberra-airport,Canberra Airport,Airport operations,"2 Brindabella Circuit, Brindabella Business Park, Canberra Airport ACT 2609",medium
+darwin,State agency,nt-gov-department-of-health,Department of Health,Government,"Manunda Place, 38 Cavenagh Street, Darwin NT 0800",medium
+darwin,State agency,nt-gov-department-of-education-and-training,Department of Education and Training,Government,"Mitchell Centre, 55-59 Mitchell Street, Darwin NT 0800",verified
+darwin,State agency,nt-gov-department-of-corporate-and-digital-development,Department of Corporate and Digital Development,Government,"Charles Darwin Centre, 19 Smith Street, Darwin NT 0800",user_provided
+darwin,State agency,nt-gov-department-of-logistics-and-infrastructure,Department of Logistics and Infrastructure,Government,"18 Goyder Road, Parap NT 0820",google_maps
+darwin,State agency,nt-gov-department-of-corrections,Department of Corrections,Government,"Mitchell Centre, 55-59 Mitchell Street, Darwin NT 0800",user_provided
+darwin,State agency,nt-gov-attorney-general-s-department,Attorney General's Department,Government,"4 Cavenagh Street, Darwin NT 0800",google_maps
+darwin,State agency,nt-gov-power-and-water-corporation,Power and Water Corporation,Government,"Mitchell Centre, 55 Mitchell Street, Darwin NT 0800",medium
+darwin,State agency,nt-gov-department-of-children-and-families,Department of Children and Families,Government,"55 Mitchell Street, Darwin NT 0800",user_provided
+darwin,State agency,nt-gov-department-of-agriculture-and-fisheries,Department of Agriculture and Fisheries,Government,"Berrimah Farm, Makagon Road, Berrimah NT 0828",low
+darwin,State agency,nt-gov-nt-police-force,NT Police Force,Government,"Peter McAulay Centre, McMillans Road, Berrimah NT 0828",high
+darwin,State agency,nt-gov-department-of-lands-planning-and-environment,"Department of Lands, Planning and Environment",Government,"25 Chung Wah Terrace, Palmerston NT 0830",google_maps
+darwin,State agency,nt-gov-department-of-tourism-and-hospitality,Department of Tourism and Hospitality,Government,"Level 8, Charles Darwin Centre, 19 The Mall, Darwin NT 0800",google_maps
+darwin,State agency,nt-gov-department-of-the-chief-minister-and-cabinet,Department of the Chief Minister and Cabinet,Government,"NT House, 22 Mitchell Street, Darwin NT 0800",medium
+darwin,State agency,nt-gov-department-of-housing-local-government-and-community-development,"Department of Housing, Local Government and Community Development",Government,"RCG Centre, 47 Mitchell Street, Darwin NT 0800",user_provided
+darwin,State agency,nt-gov-land-development-corporation,Land Development Corporation,Government,"Level 10, 24 Mitchell Street, Darwin NT 0800",google_maps
+darwin,State agency,nt-gov-department-mining-and-energy,Department Mining and Energy,Government,"Charles Darwin Centre, 19 Smith Street, Darwin NT 0800",user_provided
+darwin,State agency,nt-gov-department-of-people-sport-and-culture,"Department of People, Sport and Culture",Government,"40 Abala Road, Marrara NT 0812",google_maps
+darwin,State agency,nt-gov-nt-fire-and-emergency-services,NT Fire and Emergency Services,Government,"Peter McAulay Centre, McMillans Road, Berrimah NT 0828",medium
+darwin,State agency,nt-gov-territory-generation,Territory Generation,Government,"3/631 Stuart Highway, Berrimah NT 0828",google_maps
+darwin,State agency,nt-gov-batchelor-institute-of-indigenous-tertiary-education,Batchelor Institute of Indigenous Tertiary Education,Government,"10 Nurndina Street, Batchelor NT 0845",medium
+darwin,State agency,nt-gov-department-of-trade-business-and-asian-relations,"Department of Trade, Business and Asian Relations",Government,"Development House, 76 The Esplanade, Darwin NT 0800",user_provided
+darwin,State agency,nt-gov-department-of-treasury-and-finance,Department of Treasury and Finance,Government,"Charles Darwin Centre, 19 The Mall, Darwin NT 0800",google_maps
+darwin,State agency,nt-gov-department-of-legislative-assembly,Department of Legislative Assembly,Government,"Parliament House, Mitchell Street, Darwin NT 0800",high
+hobart,State agency,tas-gov-department-of-health,Department of Health,Government,"Level 7, 110 Collins Street, Hobart TAS 7000",google_maps
+hobart,State agency,tas-gov-department-for-education-children-and-young-people,"Department for Education, Children and Young People",Government,"4 Salamanca Place, Hobart TAS 7000",google_maps
+hobart,State agency,tas-gov-department-of-justice,Department of Justice,Government,"Level 14, 110 Collins Street, Hobart TAS 7000",medium
+hobart,State agency,tas-gov-department-of-natural-resources-and-environment-tasmania,Department of Natural Resources and Environment Tasmania,Government,"Lands Building, 134 Macquarie Street, Hobart TAS 7000",medium
+hobart,State agency,tas-gov-department-of-police-fire-and-emergency-management,"Department of Police, Fire and Emergency Management",Government,"47 Liverpool Street, Hobart TAS 7000",high
+hobart,State agency,tas-gov-department-of-premier-and-cabinet,Department of Premier and Cabinet,Government,"Executive Building, 15 Murray Street, Hobart TAS 7000",high
+hobart,State agency,tas-gov-whole-of-government-programs,Whole of Government Programs,Government,"Executive Building, 15 Murray Street, Hobart TAS 7000",low
+hobart,State agency,tas-gov-building-tasmania,Building Tasmania,Government,"4 Salamanca Place, Hobart TAS 7000",user_provided
+hobart,State agency,tas-gov-homes-tasmania,Homes Tasmania,Government,"Level 7, 144 Macquarie Street, Hobart TAS 7000",user_provided
+hobart,State agency,tas-gov-macquarie-point-development-corporation,Macquarie Point Development Corporation,Government,"41 Evans Street, Hobart TAS 7000",verified
+hobart,State agency,tas-gov-port-arthur-historic-site-management-authority,Port Arthur Historic Site Management Authority,Government,"Arthur Highway, Port Arthur TAS 7182",high
+hobart,State agency,tas-gov-public-trustee,Public Trustee,Government,"116 Murray Street, Hobart TAS 7000",google_maps
+hobart,State agency,tas-gov-tourism-tasmania,Tourism Tasmania,Government,"Level 3, 15 Murray Street, Hobart TAS 7000",google_maps
