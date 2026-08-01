@@ -63,6 +63,12 @@ jobs:
             actions: read
           claude_args: |
             --max-turns 40
+          # TEMPORARY, for diagnosis only — remove once the first run succeeds.
+          # The action hides Claude's output by default, which meant an
+          # authentication rejection surfaced only as `is_error:true` after
+          # 85ms with no message. Registered secrets are masked in logs, but
+          # this prints the model's output, so it should not stay on.
+          show_full_output: true
           prompt: |
             Triage the last 24 hours of GitHub Actions failures in this repository
             (BenRidgwell/employsi — the Employsi labour-market map) and record what you
