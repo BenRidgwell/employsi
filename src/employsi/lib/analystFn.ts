@@ -237,6 +237,25 @@ function quantile(sorted: number[], q: number): number {
   return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
 }
 
+/** Whole-day median. Sorts a copy, so callers keep their insertion order. */
+function median(values: number[]): number {
+  if (!values.length) return 0;
+  return Math.round(
+    quantile(
+      [...values].sort((a, b) => a - b),
+      0.5,
+    ),
+  );
+}
+
+// How much evidence the duration answer needs before it will quote a figure.
+// The scope-wide floor stops a near-empty city reading as a market insight; the
+// per-skill floor stops one long-running ad from crowning a skill "hardest to
+// fill". Both are deliberately low-ish because the archive is young — raise
+// them as it deepens rather than lowering them to fill the card.
+const MIN_DURATION_ADS = 40;
+const MIN_DURATION_PER_SKILL = 8;
+
 // ── Scope → SQL ─────────────────────────────────────────────────────────────
 // Hub values in the archive are mostly lower-case city keys, but a few rows
 // carry a capitalised or country-level hub ("Singapore", "Australia"), so
@@ -479,6 +498,97 @@ export const askAnalyst = createServerFn({ method: "POST" })
         text: `The most demanded skill in ${label} right now is ${lead[0]}, named in ${plural(lead[1], "live ad")}.${changeNote}`,
         bars,
         source: `Skills extracted from live ad titles · ${archiveNote}`,
+      };
+    }
+
+    if (intent === "duration") {
+      // How long ads stay up, aggregated by skill — the archive's answer to
+      // "which skills are hard to hire for".
+      //
+      // THREE DELIBERATE CHOICES, EACH OF WHICH CHANGES THE NUMBER:
+      //
+      //  1. CLOSED ADS ONLY. A live ad's last_seen is today, so its span says
+      //     "still open", not how long it ran. Including live ads would drag
+      //     every figure toward zero and make the hardest-to-fill skills look
+      //     the fastest, which is exactly backwards.
+      //  2. MEASURED FROM THE AD'S OWN POSTED DATE, not from first_seen.
+      //     Collection began recently, so first_seen is capped by the archive's
+      //     depth: measured that way the whole market averages under two days,
+      //     which is an artefact of when we started watching. days_since_posted
+      //     is null where the source publishes no date, so this answers on the
+      //     subset that does and says how big that subset is.
+      //  3. MEDIAN, NOT MEAN. A few hundred rows carry evergreen postings a
+      //     year or more old; they are real ads but they are not what "how long
+      //     does this take to hire" means, and a mean would follow them.
+      //
+      // What it still is NOT: time to fill. The archive sees ads, never hires.
+      // An ad coming down may mean filled, expired, withdrawn or a parser
+      // breaking, and nothing here separates those. The wording below says so
+      // rather than letting the column name imply otherwise.
+      const rows = await db
+        .prepare(
+          `SELECT skills, days_since_posted AS d FROM jobs
+             WHERE ${where} AND last_seen < ? AND days_since_posted IS NOT NULL
+               AND skills IS NOT NULL
+             ORDER BY last_seen DESC LIMIT 8000`,
+        )
+        .bind(...binds, latest)
+        .all();
+      const bySkill: Record<string, number[]> = {};
+      const all: number[] = [];
+      for (const r of rows?.results ?? []) {
+        const d = Number(r.d);
+        if (!Number.isFinite(d) || d < 0) continue;
+        all.push(d);
+        for (const s of parseStoredSkills(r.skills)) {
+          if (!(s in SKILL_CATEGORY)) continue;
+          (bySkill[s] ||= []).push(d);
+        }
+      }
+      if (all.length < MIN_DURATION_ADS) {
+        return {
+          intent,
+          text: `I can't give you a duration read for ${label} yet. It needs ads that have come down (so the run is complete) AND that carried their own posted date, and only ${plural(all.length, "ad")} here meet both — under the ${MIN_DURATION_ADS} I'd want before quoting a figure. Indeed and the state government boards publish no posted date at all, so a scope leaning on those stays thin until the archive deepens.`,
+          source: archiveNote,
+        };
+      }
+      // Rank by median, longest first, over skills with enough closed ads to
+      // mean anything. The cut is per-skill, not global: a scope can hold
+      // plenty of ads overall and still have one skill resting on three.
+      const ranked = Object.entries(bySkill)
+        .filter(([, v]) => v.length >= MIN_DURATION_PER_SKILL)
+        .map(([name, v]) => ({ name, med: median(v), n: v.length }))
+        .sort((a, b) => b.med - a.med);
+      if (!ranked.length) {
+        return {
+          intent,
+          text: `${label} has ${plural(all.length, "closed ad")} I can time, but no single skill reaches ${MIN_DURATION_PER_SKILL} of them, so any ranking would rest on a handful of ads. Across all of them the median ad ran ${plural(median(all), "day")} from its posted date to the day it came down.`,
+          stats: [
+            { k: "Median days advertised", v: String(median(all)) },
+            { k: "Closed ads timed", v: all.length.toLocaleString("en-US") },
+          ],
+          source: `Ad duration, not time to fill · ${archiveNote}`,
+        };
+      }
+      const slowest = ranked.slice(0, 5);
+      const max = slowest[0].med || 1;
+      const bars: AnalystBar[] = slowest.map((s) => ({
+        name: s.name,
+        pct: Math.round((s.med / max) * 100),
+        v: `${s.med}d · ${s.n}`,
+      }));
+      const fastest = ranked[ranked.length - 1];
+      const overall = median(all);
+      return {
+        intent,
+        text: `In ${label}, ads naming ${slowest[0].name} stayed up longest — a median of ${plural(slowest[0].med, "day")} from posting to coming down, against ${plural(overall, "day")} across the market. The quickest of the skills with enough ads to rank is ${fastest.name} at ${plural(fastest.med, "day")}. Read that as how long a vacancy stays advertised, not as time to fill: employsi sees ads, not hires, so an ad disappearing might mean filled, expired or withdrawn, and I can't tell those apart. It's measured from each ad's own posted date over ${plural(all.length, "ad")} that have since come down.`,
+        bars,
+        stats: [
+          { k: "Median days advertised", v: String(overall) },
+          { k: "Slowest skill", v: `${slowest[0].name} · ${slowest[0].med}d` },
+          { k: "Closed ads timed", v: all.length.toLocaleString("en-US") },
+        ],
+        source: `Ad duration from the ad's own posted date, not time to fill · ${archiveNote}`,
       };
     }
 

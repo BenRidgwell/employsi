@@ -30,6 +30,7 @@ export default tseslint.config(
       "src/employsi/data/hkVacancyDemand.ts",
       "src/employsi/data/iviSkillDemand.ts",
       "src/employsi/data/nzVacancyDemand.ts",
+      "src/employsi/data/phVacancyDemand.ts",
       "src/employsi/data/privateCompanyFacts.ts",
       "src/employsi/data/resolvedDomains.ts",
       "src/employsi/data/sharePrices.ts",

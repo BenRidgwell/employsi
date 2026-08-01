@@ -15,11 +15,13 @@ import { NZ_SERIES, NZ_SKILL_BY_CITY } from "../data/nzVacancyDemand";
 import { UK_SERIES, UK_SKILL_BY_CITY } from "../data/ukVacancyDemand";
 import { EU_SERIES, EU_SKILL_BY_CITY } from "../data/euVacancyDemand";
 import { HK_SERIES, HK_SKILL_BY_CITY } from "../data/hkVacancyDemand";
+import { PH_SERIES, PH_SKILL_BY_CITY } from "../data/phVacancyDemand";
 import { US_SERIES, US_SKILL_BY_CITY } from "../data/usVacancyDemand";
 import type { SkillIndex } from "./skillsFn";
 
 // The AU (JSA/IVI), Canada (StatCan), Singapore (MRSD), New Zealand (MBIE), UK
-// (ONS), EU (Eurostat, by country) and US (BLS OEWS × JOLTS, by metro) vacancy
+// (ONS), EU (Eurostat, by country), US (BLS OEWS × JOLTS, by metro), Hong Kong
+// (C&SD, by industry) and Philippines (PSA ISLE, by occupation) vacancy
 // series all share one month axis
 // (IVI_MONTHS), so a skill's per-city history is just the countries' city maps
 // merged. Keeping them combined here means the heat map + time slider treat
@@ -34,6 +36,7 @@ export function seriesFor(skill: string): Record<string, number[]> | null {
     EU_SERIES[skill],
     US_SERIES[skill],
     HK_SERIES[skill],
+    PH_SERIES[skill],
   ].filter(Boolean) as Record<string, number[]>[];
   if (!parts.length) return null;
   return Object.assign({}, ...parts);
@@ -51,6 +54,7 @@ export function latestFor(skill: string): Record<string, number> {
     ...(EU_SKILL_BY_CITY[skill] || {}),
     ...(US_SKILL_BY_CITY[skill] || {}),
     ...(HK_SKILL_BY_CITY[skill] || {}),
+    ...(PH_SKILL_BY_CITY[skill] || {}),
   };
 }
 

@@ -7,6 +7,7 @@ import { UK_SOURCE } from "../data/ukVacancyDemand";
 import { EU_SOURCE } from "../data/euVacancyDemand";
 import { US_SOURCE } from "../data/usVacancyDemand";
 import { HK_SOURCE } from "../data/hkVacancyDemand";
+import { PH_SOURCE } from "../data/phVacancyDemand";
 import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
 import { CITY_LABEL, GLOBAL_HUB_LABEL } from "../data/geo";
 import { seriesFor, latestFor } from "./skillHeat";
@@ -18,8 +19,9 @@ import { seriesFor, latestFor } from "./skillHeat";
  * started, so it can say what is open today but not how a market has moved over
  * years. That history does exist in this app: the national vacancy series the
  * heat map's time slider already runs on — Jobs and Skills Australia's IVI,
- * StatCan, Singapore MRSD, NZ MBIE, UK ONS, Eurostat and BLS OEWS×JOLTS — all
- * aligned to one 243-month axis (2006-03 → 2026-05).
+ * StatCan, Singapore MRSD, NZ MBIE, UK ONS, Eurostat, BLS OEWS×JOLTS, Hong Kong
+ * C&SD and Philippine PSA — all aligned to one 243-month axis
+ * (2006-03 → 2026-05).
  *
  * This module reads exactly the same merged series the map colours by (via
  * seriesFor/latestFor in skillHeat), aggregates it over whatever hubs a scope
@@ -83,6 +85,8 @@ export function sourceForKey(key: string): string | null {
       return US_SOURCE;
     case "hk":
       return HK_SOURCE;
+    case "ph":
+      return PH_SOURCE;
     case "fr":
     case "ch":
       return EU_COUNTRIES.has(country) ? EU_SOURCE : null;

@@ -13,6 +13,7 @@ import { ALL_SKILLS } from "../data/skillsTaxonomy";
 export type AnalystIntent =
   | "history" // long-run official statistics
   | "pay"
+  | "duration" // how long ads stay up, by skill
   | "skills"
   | "competition"
   | "volume"
@@ -44,6 +45,32 @@ const RULES: { intent: AnalystIntent; match: string[] }[] = [
     ],
   },
   { intent: "pay", match: ["salary", "salaries", "pay", "paid", "compensation", "wage", "$"] },
+  // Before competition, which owns "how hard" and "fill rate": "time to fill"
+  // and "hardest to fill" are duration questions and would otherwise be
+  // swallowed by the funnel-data answer that has to decline them.
+  {
+    intent: "duration",
+    match: [
+      "time to fill",
+      "time-to-fill",
+      "hard to fill",
+      "hardest to fill",
+      "longest to fill",
+      "take longest",
+      "takes longest",
+      "slow to fill",
+      "quick to fill",
+      "how long",
+      "days to fill",
+      "stay open",
+      "stay up",
+      "linger",
+      "sit unfilled",
+      "unfilled",
+      "vacancy duration",
+      "advertis",
+    ],
+  },
   {
     intent: "competition",
     match: ["compet", "applicant", "how hard", "candidate", "contested", "crowded", "fill rate"],
@@ -120,6 +147,7 @@ export const SUGGESTED_PROMPTS = [
   "How is hiring trending?",
   "What do these roles pay?",
   "Which skills are most in demand?",
+  "Which skills take longest to fill?",
   "How has demand changed since 2019?",
   "Which categories are growing fastest over five years?",
   "How does Nursing demand compare across cities?",
