@@ -31,7 +31,7 @@ export const SECONDARY_OFFICES: Record<string, string[]> = {
   "sydney-cba": ["melbourne", "brisbane", "perth", "adelaide"],
   "sydney-wbc": ["melbourne", "brisbane", "perth", "adelaide"],
   "melbourne-nab": ["sydney", "brisbane", "perth", "adelaide"],
-  "melbourne-anz": ["sydney", "brisbane", "perth", "adelaide"],
+  "melbourne-anz": ["sydney", "brisbane", "perth", "adelaide", "manila"],
   // Macquarie is the one Australian financial with genuine offshore corporate
   // centres rather than representative offices.
   "sydney-mqg": [
@@ -100,6 +100,12 @@ export const SECONDARY_OFFICES: Record<string, string[]> = {
   // exists to prevent.
   bhp: ["kualalumpur", "manila"],
   "london-hsba": ["kualalumpur", "manila"],
+  // QBE and ANZ are here on the strength of their service centres being
+  // publicly known, NOT on archive evidence: QBE's Workday site currently
+  // returns no postings at all, and ANZ's Manila roles are not in what we
+  // scrape. Added deliberately ahead of a board scraper for both, which will
+  // supply the same evidence the other four have.
+  "sydney-qbe": ["manila"],
 };
 
 /**

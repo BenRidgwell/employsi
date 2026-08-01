@@ -52,7 +52,12 @@ export const CITY_VIEWS: Record<string, CityView> = {
   auckland: { center: [174.7645, -36.8485], zoom: 16.2, pitch: 60, bearing: -18 },
   wellington: { center: [174.7759, -41.2865], zoom: 16.2, pitch: 60, bearing: -20 },
   sydney: { center: [151.2093, -33.8688], zoom: 16.5, pitch: 60, bearing: -18 },
-  singapore: { center: [103.8519, 1.29], zoom: 16.4, pitch: 60, bearing: -12 },
+  // Centred on the COMPANIES, not on the city. The camera used to sit at
+  // 103.8519,1.29 — a kilometre north-east of where the 25 Singapore pins
+  // actually fall (median 103.8479,1.2811, all inside 103.8449..103.8503 /
+  // 1.2764..1.2865), which opened the local view on empty ground with the
+  // roster off to one side.
+  singapore: { center: [103.8479, 1.2811], zoom: 16.4, pitch: 60, bearing: -12 },
   // KLCC — the corporate core, around the Petronas Towers and Jalan Ampang.
   kualalumpur: { center: [101.7115, 3.1578], zoom: 16.0, pitch: 60, bearing: -15 },
   // Makati, not the City of Manila: the offices these companies run are in the

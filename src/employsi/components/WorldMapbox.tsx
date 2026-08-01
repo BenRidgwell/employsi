@@ -132,6 +132,21 @@ const RAIL_MELBOURNE_SYDNEY: [number, number][] = [
   [151.209, -33.868], // Sydney
 ];
 
+const RAIL_SYDNEY_BRISBANE: [number, number][] = [
+  [151.209, -33.868], // Sydney
+  [151.099, -33.703], // Hornsby
+  [151.341, -33.427], // Gosford
+  [151.735, -32.925], // Broadmeadow (Newcastle)
+  [151.557, -32.733], // Maitland
+  [152.455, -31.91], // Taree
+  [152.84, -31.079], // Kempsey
+  [153.113, -30.296], // Coffs Harbour
+  [152.933, -29.69], // Grafton
+  [153.048, -28.86], // Casino
+  [152.99, -28.62], // Kyogle
+  [153.026, -27.469], // Brisbane
+];
+
 /** Every line, drawn as track. */
 const AU_RAIL_NETWORK: [number, number][][] = [
   RAIL_PERTH_TARCOOLA,
@@ -139,14 +154,22 @@ const AU_RAIL_NETWORK: [number, number][][] = [
   RAIL_TARCOOLA_ADELAIDE,
   RAIL_ADELAIDE_MELBOURNE,
   RAIL_MELBOURNE_SYDNEY,
+  RAIL_SYDNEY_BRISBANE,
 ];
 
 /**
- * The freight consist's own run: Perth to Darwin, which is two of those lines
- * joined at Tarcoola. The junction is dropped from the second so the train does
- * not sit still for a frame on a duplicated coordinate.
+ * The two runs a consist actually makes, each stitched from the lines above.
+ * Junction coordinates are dropped from every line after the first so a train
+ * does not sit still for a frame on a duplicated point.
  */
-const AU_RAIL_PATH: [number, number][] = [...RAIL_PERTH_TARCOOLA, ...RAIL_TARCOOLA_DARWIN.slice(1)];
+const TRAIN_RUNS: [number, number][][] = [
+  // Perth → Darwin: east across the Nullarbor, then north from Tarcoola.
+  [...RAIL_PERTH_TARCOOLA, ...RAIL_TARCOOLA_DARWIN.slice(1)],
+  // Adelaide → Brisbane: the east-coast standard-gauge spine. There is no
+  // direct service between them on this network, so it goes the way the track
+  // does — through Melbourne and Sydney.
+  [...RAIL_ADELAIDE_MELBOURNE, ...RAIL_MELBOURNE_SYDNEY.slice(1), ...RAIL_SYDNEY_BRISBANE.slice(1)],
+];
 
 /**
  * Satellites, parked out in space around the globe.
@@ -305,6 +328,19 @@ interface Traveler {
   path: [number, number][];
   dur: number;
   offset: number;
+  /** Train only: this vehicle is the locomotive rather than a wagon. */
+  lead?: boolean;
+}
+
+/** Path length in the same cos(lat)-scaled degrees pointOnPath measures in. */
+function pathLengthDeg(path: [number, number][]): number {
+  let d = 0;
+  for (let i = 1; i < path.length; i++) {
+    const [ax, ay] = path[i - 1];
+    const [bx, by] = path[i];
+    d += Math.hypot((bx - ax) * Math.cos((((ay + by) / 2) * Math.PI) / 180), by - ay);
+  }
+  return d;
 }
 
 // Top-down 2.5D sprites from `Employsi Map Sprites.html`: a white airliner and
@@ -1172,24 +1208,29 @@ export function WorldMapbox() {
           dur: l.dur,
           offset: l.offset,
         })),
-        // The freight consist: a locomotive with two loaded wagons behind it.
-        // Each vehicle is its own traveler on the same path, spaced by a small
-        // offset in phase, which is what keeps the wagons coupled through the
-        // curves — a rigid pixel offset would have them cut the corners.
+        // Two freight consists, one per run: a locomotive with two loaded
+        // wagons behind it. Each vehicle is its own traveler on its run's path,
+        // spaced by a small offset in phase, which is what keeps the wagons
+        // coupled through the curves — a rigid pixel offset would have them cut
+        // the corners.
         //
         // That offset is a fraction of the WHOLE run, so it has to be derived
-        // rather than picked: the corridor is ~300px on screen at the domestic
-        // zoom, so the 0.006 used at first put the three vehicles 1.8px apart
-        // and they rendered as a single blob. 0.034 is about one vehicle
-        // length, which reads as a coupled consist.
-        ...[0, 1, 2].map((i): Traveler => ({
-          mode: "train",
-          path: AU_RAIL_PATH,
-          dur: 52000,
-          offset: 0.12 - i * 0.034,
-        })),
+        // rather than picked: the Perth–Darwin corridor is ~300px on screen at
+        // the domestic zoom, so the 0.006 used at first put the three vehicles
+        // 1.8px apart and they rendered as a single blob. 0.034 is about one
+        // vehicle length. The Adelaide–Brisbane run is longer, so its step is
+        // scaled by the ratio of the two lengths to keep the same on-screen gap.
+        ...TRAIN_RUNS.flatMap((path, run): Traveler[] => {
+          const step = 0.034 * (pathLengthDeg(TRAIN_RUNS[0]) / pathLengthDeg(path));
+          return [0, 1, 2].map((i) => ({
+            mode: "train" as const,
+            path,
+            dur: 52000,
+            offset: 0.12 + run * 0.5 - i * step,
+            lead: i === 0,
+          }));
+        }),
       ];
-      let trainIndex = 0;
       travelers.forEach((traveler) => {
         const outer = document.createElement("div");
         outer.className = "traveler";
@@ -1197,8 +1238,7 @@ export function WorldMapbox() {
         inner.className = `travelericon traveler-${traveler.mode}`;
         if (traveler.mode === "plane") inner.innerHTML = PLANE_SVG;
         else if (traveler.mode === "ship") inner.innerHTML = SHIP_SVG;
-        // First vehicle of the consist is the locomotive, the rest are wagons.
-        else inner.innerHTML = trainIndex++ === 0 ? LOCO_SVG : WAGON_SVG;
+        else inner.innerHTML = traveler.lead ? LOCO_SVG : WAGON_SVG;
         outer.appendChild(inner);
         const marker = new mapboxgl.Marker({ element: outer, anchor: "center" })
           .setLngLat(traveler.path[0])
