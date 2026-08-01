@@ -689,6 +689,8 @@ function buildSkillHeat(
   region: string,
   skill: string | null,
   demand: Record<string, number>,
+  /** False for an end user: unreleased markets get no heat blob either. */
+  entitled = true,
 ): GeoJSON.FeatureCollection {
   if (!skill) return EMPTY_FC;
   // Coordinate table for the current view; the demand values are the REAL
@@ -717,7 +719,13 @@ function buildSkillHeat(
       if (HUB_LNGLAT[id]) table[id] = HUB_LNGLAT[id];
     });
   }
-  const ids = Object.keys(table).filter((id) => (demand[id] || 0) > 0);
+  // The heat layer is a second, independent read of the same demand data, so
+  // gating the markers alone left it painting live blobs over countries that
+  // had just been faded — the search still lit up the United States. Same rule,
+  // applied here too.
+  const ids = Object.keys(table).filter(
+    (id) => (demand[id] || 0) > 0 && (entitled || isReleasedPlace(id)),
+  );
   if (!ids.length) return EMPTY_FC;
   const vals = ids.map((id) => demand[id]);
   const mn = Math.min(...vals);
@@ -1022,7 +1030,9 @@ export function WorldMapbox() {
       // cities. With no skill searched the dots sit plain and static (no halo,
       // no pulse). The demand blobs show only while a skill is active.
       const skillSrc = map.getSource(SKILL_SOURCE) as mapboxgl.GeoJSONSource | undefined;
-      skillSrc?.setData(buildSkillHeat(mode, s.domesticRegion, skill, demandForView));
+      skillSrc?.setData(
+        buildSkillHeat(mode, s.domesticRegion, skill, demandForView, s.role === "admin"),
+      );
       if (map.getLayer(HALO_LAYER)) {
         map.setLayoutProperty(HALO_LAYER, "visibility", skill ? "visible" : "none");
       }

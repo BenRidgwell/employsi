@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { isReleasedCompany, isReleasedPlace } from "../lib/markets";
 import { BrandMark } from "./BrandMark";
 import { AccountButton } from "./AccountButton";
 import { HelpDock } from "./HelpDock";
@@ -31,6 +32,7 @@ export function TopBar() {
   const searchOpen = useAppStore((s) => s.searchOpen);
   const toggleSearch = useAppStore((s) => s.toggleSearch);
   const searchQuery = useAppStore((s) => s.searchQuery);
+  const seesAllMarkets = useAppStore((s) => s.role) === "admin";
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
   const clearSearch = useAppStore((s) => s.clearSearch);
   const activeSectors = useAppStore((s) => s.activeSectors);
@@ -83,13 +85,19 @@ export function TopBar() {
   const searchResults = useMemo<SResult[]>(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return [];
+    // Same market filter as GlobalSearch — this is the second search surface,
+    // and gating one of two doors is not gating the door.
     const companies: SResult[] = COMPANIES.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.ticker.toLowerCase().includes(q),
+      (c) =>
+        (c.name.toLowerCase().includes(q) || c.ticker.toLowerCase().includes(q)) &&
+        (seesAllMarkets || isReleasedCompany(c.id)),
     )
       .slice(0, 6)
       .map((c) => ({ kind: "company", id: c.id, label: c.name, sub: c.ticker }));
     const cities: SResult[] = Object.entries(GLOBAL_HUB_LABEL)
-      .filter(([, label]) => label.toLowerCase().includes(q))
+      .filter(
+        ([id, label]) => label.toLowerCase().includes(q) && (seesAllMarkets || isReleasedPlace(id)),
+      )
       .slice(0, 6)
       .map(([id, label]) => ({ kind: "city", id, label, sub: "City" }));
     const direct = ALL_SKILLS.filter((sk) => sk.toLowerCase().includes(q));
@@ -98,7 +106,7 @@ export function TopBar() {
       .slice(0, 7)
       .map((sk) => ({ kind: "skill", id: sk, label: sk, sub: "Skill" }));
     return [...skillRes, ...companies, ...cities];
-  }, [searchQuery]);
+  }, [searchQuery, seesAllMarkets]);
 
   const goSearchResult = (r: SResult) => {
     if (r.kind === "skill") {

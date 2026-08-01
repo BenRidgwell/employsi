@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { isReleasedCompany, isReleasedPlace } from "../lib/markets";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../state/store";
 import { GLOBAL_HUB_LABEL } from "../data/geo";
@@ -121,17 +122,32 @@ export function GlobalSearch() {
   const [searched, setSearched] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
+  const seesAllMarkets = useAppStore((s) => s.role) === "admin";
+
   const q = searchQuery.trim().toLowerCase();
 
   const results = useMemo<Result[]>(() => {
     if (!q) return [];
+    // Search was the way around the faded map: typing a company or city in an
+    // unreleased market still offered it, and selecting it opened the card the
+    // marker refused to. Filtered at the source, so the result never appears
+    // rather than appearing and then failing to open — an offer the product
+    // will not honour is worse than no offer.
+    //
+    // Skills are NOT filtered. A skill is not a place; it is searchable
+    // everywhere and its demand figures are already computed over the released
+    // markets only, so the answer is correctly scoped without hiding the term.
     const companies: Result[] = COMPANIES.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.ticker.toLowerCase().includes(q),
+      (c) =>
+        (c.name.toLowerCase().includes(q) || c.ticker.toLowerCase().includes(q)) &&
+        (seesAllMarkets || isReleasedCompany(c.id)),
     )
       .slice(0, 6)
       .map((c) => ({ kind: "company" as const, id: c.id, label: c.name, sub: c.ticker }));
     const cities: Result[] = Object.entries(GLOBAL_HUB_LABEL)
-      .filter(([, label]) => label.toLowerCase().includes(q))
+      .filter(
+        ([id, label]) => label.toLowerCase().includes(q) && (seesAllMarkets || isReleasedPlace(id)),
+      )
       .slice(0, 6)
       .map(([id, label]) => ({ kind: "city" as const, id, label }));
     // Direct name matches first, then skills inferred from the description via
@@ -143,7 +159,7 @@ export function GlobalSearch() {
       return { kind: "skill" as const, id: sk, label: sk, sub: badge.label, tone: badge.tone };
     });
     return [...skills, ...companies, ...cities];
-  }, [q, searchQuery, skillIndex, globalOut]);
+  }, [q, searchQuery, skillIndex, globalOut, seesAllMarkets]);
 
   const topSkill = results.find((r) => r.kind === "skill") as
     Extract<Result, { kind: "skill" }> | undefined;
