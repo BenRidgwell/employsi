@@ -411,12 +411,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   // The four mobile bottom-bar pop-outs (Search / Filter / Trending / More, plus
   // the Daily Brief the More sheet launches) are mutually exclusive, so tapping
   // one bar button while another's pop-out is open switches cleanly to it.
+  // Every one of these opens something in the same region of the frame, so
+  // opening one closes the rest. The analyst card was added last and only
+  // toggleAnalyst knew about it, so any of these could leave it stacked
+  // underneath — the same asymmetry that showed up with trending.
   toggleSearch: () =>
     set((s) => ({
       searchOpen: !s.searchOpen,
       filterOpen: false,
       heatOpen: false,
       trendingOpen: false,
+      analystOpen: false,
       mobileMenuOpen: false,
     })),
   toggleFilter: () =>
@@ -425,10 +430,18 @@ export const useAppStore = create<AppState>((set, get) => ({
       searchOpen: false,
       heatOpen: false,
       trendingOpen: false,
+      analystOpen: false,
       mobileMenuOpen: false,
     })),
   toggleHeatPanel: () =>
-    set((s) => ({ heatOpen: !s.heatOpen, searchOpen: false, filterOpen: false })),
+    set((s) => ({
+      heatOpen: !s.heatOpen,
+      searchOpen: false,
+      filterOpen: false,
+      trendingOpen: false,
+      analystOpen: false,
+      mobileMenuOpen: false,
+    })),
   setSearchQuery: (q) => set({ searchQuery: q }),
   clearSearch: () => set({ searchQuery: "" }),
   setSkillIndex: (idx) => set({ skillIndex: idx }),

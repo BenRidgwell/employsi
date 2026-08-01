@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!--
+    The employsi mark, byte-for-byte the same four rects as EmploysiMark in
+    src/components/EmploysiLogo.tsx. No background rect: the tab keeps whatever
+    colour the browser uses, which is what "transparent" has to mean for a
+    favicon.
+
+    The ink tones flip under prefers-color-scheme. The brand mark is near-black
+    (#1c1c1e), which is invisible against a dark browser chrome, and a favicon
+    is one of the few places that cannot be fixed by the page's own CSS. SVG
+    favicons honour this media query in Chrome, Firefox and Edge; Safari falls
+    back to the light values, which is the safe direction to fail.
+  -->
+  <style>
+    .ink { fill: #1c1c1e }
+    .mid { fill: #48484a }
+    .lit { fill: #8e8e93 }
+    @media (prefers-color-scheme: dark) {
+      .ink { fill: #ffffff }
+      .mid { fill: rgba(255,255,255,0.78) }
+      .lit { fill: rgba(255,255,255,0.55) }
+    }
+  </style>
+  <rect class="ink" x="24" y="24" width="15" height="72" rx="7.5" />
+  <rect class="lit" x="24" y="24" width="40" height="15" rx="7.5" />
+  <rect class="mid" x="24" y="52.5" width="55" height="15" rx="7.5" />
+  <rect class="ink" x="24" y="81" width="72" height="15" rx="7.5" />
+</svg>
