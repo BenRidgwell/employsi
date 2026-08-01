@@ -89,6 +89,14 @@ jobs:
             Skip runs still in progress. For every run with conclusion `failure` or
             `cancelled`, read the failing job's logs before forming a view.
 
+            INCLUDING THIS WORKFLOW. `actions-health` is a control, and a control that
+            stops working is the most expensive thing here to miss — it fails silently by
+            definition, because the thing that would have reported it is the thing that
+            broke. You may judge that its failures were its own setup and are resolved, but
+            you must SAY you are excluding them and why. Never drop them without comment:
+            the first time this workflow breaks for a real reason, that comment is the only
+            thing standing between the breakage and nobody noticing.
+
             ## 2. Categorise each failure
 
             The whole value of this job is in telling these apart:
