@@ -300,6 +300,64 @@ const markLayerChange = () => {
 };
 const layerLocked = () => Date.now() - lastLayerChange < LAYER_COOLDOWN;
 
+/**
+ * Panels that occupy the same screen space, so opening one must close the rest.
+ *
+ * This used to be written out by hand inside each toggle, and every panel added
+ * after the first left the list a little more asymmetric: the new toggle knew
+ * to close the old panels, but none of the old toggles knew about the new one.
+ * By the time the admin console (dataQualityOpen) arrived there were four such
+ * gaps — most visibly it and the analyst card could be open on top of each
+ * other, because toggleAnalyst had never been told the console existed.
+ *
+ * Declaring the groups once and deriving the closes from them means adding a
+ * panel is a single edit in one place, and cannot be half-done.
+ */
+type PanelFlag =
+  | "searchOpen"
+  | "filterOpen"
+  | "heatOpen"
+  | "trendingOpen"
+  | "analystOpen"
+  | "dataQualityOpen"
+  | "mobileMenuOpen"
+  | "feedbackOpen"
+  | "helpTourOpen"
+  | "settingsOpen"
+  | "alertsOpen";
+
+const EXCLUSIVE_GROUPS: readonly (readonly PanelFlag[])[] = [
+  // The vertical action rail's panes. All anchored to the rail, over the map.
+  [
+    "searchOpen",
+    "filterOpen",
+    "heatOpen",
+    "trendingOpen",
+    "analystOpen",
+    "dataQualityOpen",
+    "mobileMenuOpen",
+  ],
+  // The header cluster, top right.
+  ["feedbackOpen", "helpTourOpen", "settingsOpen", "alertsOpen", "mobileMenuOpen"],
+];
+
+/**
+ * State patch that opens (or closes) one panel, closing whatever it collides
+ * with. Closing collides with nothing, so it only ever writes the one flag.
+ *
+ * mobileMenuOpen is deliberately in BOTH groups: it is a full-screen overlay,
+ * so it displaces everything, and everything displaces it.
+ */
+function solo(flag: PanelFlag, open: boolean): Partial<Record<PanelFlag, boolean>> {
+  const next: Partial<Record<PanelFlag, boolean>> = { [flag]: open };
+  if (!open) return next;
+  for (const group of EXCLUSIVE_GROUPS) {
+    if (!group.includes(flag)) continue;
+    for (const other of group) if (other !== flag) next[other] = false;
+  }
+  return next;
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   account: null,
   role: "user" as Role,
@@ -510,18 +568,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       window.location.reload();
     }
   },
-  toggleSettings: () =>
-    set((s) => ({
-      settingsOpen: !s.settingsOpen,
-      feedbackOpen: false,
-      helpTourOpen: false,
-      alertsOpen: false,
-    })),
+  toggleSettings: () => set((s) => solo("settingsOpen", !s.settingsOpen)),
   closeSettings: () => set({ settingsOpen: false }),
-  toggleAlerts: () =>
-    set((s) => ({ alertsOpen: !s.alertsOpen, settingsOpen: false, feedbackOpen: false })),
+  toggleAlerts: () => set((s) => solo("alertsOpen", !s.alertsOpen)),
   closeAlerts: () => set({ alertsOpen: false }),
-  openAlerts: () => set({ alertsOpen: true, settingsOpen: false, feedbackOpen: false }),
+  openAlerts: () => set(solo("alertsOpen", true)),
   setReduceMotion: (v) => {
     if (typeof document !== "undefined")
       document.documentElement.classList.toggle("reduce-motion", v);
@@ -572,40 +623,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   // The four mobile bottom-bar pop-outs (Search / Filter / Trending / More, plus
   // the Daily Brief the More sheet launches) are mutually exclusive, so tapping
   // one bar button while another's pop-out is open switches cleanly to it.
-  // Every one of these opens something in the same region of the frame, so
-  // opening one closes the rest. The analyst card was added last and only
-  // toggleAnalyst knew about it, so any of these could leave it stacked
-  // underneath — the same asymmetry that showed up with trending.
-  toggleSearch: () =>
-    set((s) => ({
-      searchOpen: !s.searchOpen,
-      filterOpen: false,
-      heatOpen: false,
-      trendingOpen: false,
-      analystOpen: false,
-      dataQualityOpen: false,
-      mobileMenuOpen: false,
-    })),
-  toggleFilter: () =>
-    set((s) => ({
-      filterOpen: !s.filterOpen,
-      searchOpen: false,
-      heatOpen: false,
-      trendingOpen: false,
-      analystOpen: false,
-      dataQualityOpen: false,
-      mobileMenuOpen: false,
-    })),
-  toggleHeatPanel: () =>
-    set((s) => ({
-      heatOpen: !s.heatOpen,
-      searchOpen: false,
-      filterOpen: false,
-      trendingOpen: false,
-      analystOpen: false,
-      dataQualityOpen: false,
-      mobileMenuOpen: false,
-    })),
+  // Which panels displace which lives in EXCLUSIVE_GROUPS, not here.
+  toggleSearch: () => set((s) => solo("searchOpen", !s.searchOpen)),
+  toggleFilter: () => set((s) => solo("filterOpen", !s.filterOpen)),
+  toggleHeatPanel: () => set((s) => solo("heatOpen", !s.heatOpen)),
   setSearchQuery: (q) => set({ searchQuery: q }),
   clearSearch: () => set({ searchQuery: "" }),
   setSkillIndex: (idx) => set({ skillIndex: idx }),
@@ -773,40 +794,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   setCompareA: (id) => set({ compareA: id }),
   setCompareB: (id) => set({ compareB: id }),
 
-  toggleTrending: () =>
-    set((s) => ({
-      trendingOpen: !s.trendingOpen,
-      // Mutually exclusive with the analyst card, which occupies the same
-      // space. toggleAnalyst has always closed trending; this side was missing,
-      // so opening trending from an open analyst card stacked the two.
-      analystOpen: false,
-      dataQualityOpen: false,
-      mobileMenuOpen: false,
-      searchOpen: false,
-      filterOpen: false,
-      heatOpen: false,
-    })),
+  toggleTrending: () => set((s) => solo("trendingOpen", !s.trendingOpen)),
   closeTrending: () => set({ trendingOpen: false }),
-  toggleAnalyst: () =>
-    set((s) => ({
-      analystOpen: !s.analystOpen,
-      trendingOpen: false,
-      mobileMenuOpen: false,
-      searchOpen: false,
-      filterOpen: false,
-      heatOpen: false,
-    })),
+  toggleAnalyst: () => set((s) => solo("analystOpen", !s.analystOpen)),
   closeAnalyst: () => set({ analystOpen: false }),
-  toggleDataQuality: () =>
-    set((s) => ({
-      dataQualityOpen: !s.dataQualityOpen,
-      analystOpen: false,
-      trendingOpen: false,
-      mobileMenuOpen: false,
-      searchOpen: false,
-      filterOpen: false,
-      heatOpen: false,
-    })),
+  toggleDataQuality: () => set((s) => solo("dataQualityOpen", !s.dataQualityOpen)),
   closeDataQuality: () => set({ dataQualityOpen: false }),
 
   // Clicking an unreleased place. It closes the flyouts the way selecting a
@@ -823,30 +815,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
   closeComingSoon: () => set({ comingSoon: null }),
 
-  toggleFeedback: () =>
-    set((s) => ({
-      feedbackOpen: !s.feedbackOpen,
-      helpTourOpen: false,
-      settingsOpen: false,
-      mobileMenuOpen: false,
-    })),
+  toggleFeedback: () => set((s) => solo("feedbackOpen", !s.feedbackOpen)),
   closeFeedback: () => set({ feedbackOpen: false }),
-  toggleHelpTour: () =>
-    set((s) => ({
-      helpTourOpen: !s.helpTourOpen,
-      feedbackOpen: false,
-      settingsOpen: false,
-      mobileMenuOpen: false,
-    })),
+  toggleHelpTour: () => set((s) => solo("helpTourOpen", !s.helpTourOpen)),
   closeHelpTour: () => set({ helpTourOpen: false }),
-  toggleMobileMenu: () =>
-    set((s) => ({
-      mobileMenuOpen: !s.mobileMenuOpen,
-      searchOpen: false,
-      filterOpen: false,
-      heatOpen: false,
-      trendingOpen: false,
-    })),
+  toggleMobileMenu: () => set((s) => solo("mobileMenuOpen", !s.mobileMenuOpen)),
   closeMobileMenu: () => set({ mobileMenuOpen: false }),
 }));
 
