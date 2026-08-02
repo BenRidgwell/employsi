@@ -65,7 +65,11 @@ def _opt(name, default=None):
     return args[args.index(name) + 1] if name in args else default
 
 
-MAX_PAGES = int(_opt('--max-pages', 40))
+# A runaway guard, not a target: the walk stops when a page yields no new
+# titles. 40 was below the board's real size (874 records = 44 pages at 20 a
+# page), so it silently truncated every run; 120 leaves ~2.7x headroom for SA
+# growth and still bounds a pathological loop.
+MAX_PAGES = int(_opt('--max-pages', 120))
 NO_SKILLS = '--no-skills' in args
 SOLVE = '--solve' in args          # render + report row count only, no D1 write
 LIMIT = int(_opt('--limit', 10**9))
@@ -281,6 +285,20 @@ def _open_retrying(op, target, timeout: int, attempts: int, label: str) -> str:
 _TAG = re.compile(r'<[^>]+>')
 _WS = re.compile(r'\s+')
 
+# "Viewing records: 1 to 20 of 874" — the board's own count of what the search
+# matched. Used to size the walk and to prove the walk actually finished.
+_TOTAL = re.compile(r'Viewing\s+records:\s*[\d,]+\s*to\s*[\d,]+\s*of\s*([\d,]+)', re.I)
+
+
+def _reported_total(html: str) -> int:
+    m = _TOTAL.search(_WS.sub(' ', _TAG.sub(' ', html)))
+    if not m:
+        return 0
+    try:
+        return int(m.group(1).replace(',', ''))
+    except ValueError:
+        return 0
+
 
 def _cell_text(fragment: str) -> str:
     return _WS.sub(' ', htmllib.unescape(_TAG.sub(' ', fragment or ''))).strip()
@@ -371,6 +389,7 @@ def scrape() -> tuple[list, str]:
 
     all_rows, seen = [], set()
     failure = ''
+    reported = 0
     for page in range(MAX_PAGES):
         html = fetch(page * PAGE_SIZE)
         if not html:
@@ -380,6 +399,22 @@ def scrape() -> tuple[list, str]:
                 failure = 'unreachable: the search POST never answered'
             break
         rows = _report_rows(html)
+        if page == 0:
+            # The board states its own size: "Viewing records: 1 to 20 of 874".
+            # Read it, because MAX_PAGES is a runaway guard, not a measurement —
+            # and until this was checked the default cap of 40 pages was quietly
+            # stopping the walk at 800 of 874 records, losing ~9% of SA's roles
+            # every day with no sign in the log that anything was missing.
+            reported = _reported_total(html)
+            if reported:
+                need = -(-reported // PAGE_SIZE)  # ceil
+                sys.stderr.write(f'  board reports {reported} records '
+                                 f'({need} pages of {PAGE_SIZE})\n')
+                if need > MAX_PAGES:
+                    sys.stderr.write(
+                        f'  WARNING: --max-pages {MAX_PAGES} caps this walk at '
+                        f'{MAX_PAGES * PAGE_SIZE} of {reported} — raise it or '
+                        f'{reported - MAX_PAGES * PAGE_SIZE} roles go uncollected.\n')
         if not rows and page == 0:
             # The board answered but we could not read it — that IS a parser or
             # site-shape problem, and the diagnostic dump is worth having.
@@ -398,6 +433,13 @@ def scrape() -> tuple[list, str]:
             break
         # Be a polite guest: pace the walk with jitter.
         time.sleep(random.uniform(1.0, 2.0))
+
+    # Short of what the board said it had, by more than rounding? Say so. The
+    # walk ending early is normal (duplicate titles collapse), but a large gap
+    # means pages were lost or the cap bound, and that should not pass silently.
+    if reported and len(all_rows) < reported * 0.95:
+        sys.stderr.write(f'  WARNING: collected {len(all_rows)} of {reported} '
+                         f'reported records\n')
     return all_rows, ('' if all_rows else failure)
 
 

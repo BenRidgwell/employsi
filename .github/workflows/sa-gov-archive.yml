@@ -50,4 +50,8 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
-        run: python scripts/sa-gov-to-d1.py --max-pages 40
+        # No --max-pages: the script's default (120) is a runaway guard well
+        # clear of the board's real size, and the walk stops on its own when a
+        # page returns no new titles. Pinning 40 here capped collection at 800
+        # of the 874 records the board reports.
+        run: python scripts/sa-gov-to-d1.py
