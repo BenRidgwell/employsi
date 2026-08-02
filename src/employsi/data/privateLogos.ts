@@ -78,8 +78,12 @@ export const PRIVATE_LOGO_URL: Record<string, string> = {
     "https://shop.cnw.com.au/_ui/responsive/common/images/logos/svg/cnw-desktop.svg",
   "priv-colcap":
     "https://www.colcap.com.au/wp-content/uploads/2025/10/ColCap-Financial_logo_new_blue-Financial.png",
-  "priv-craig-mostyn":
-    "https://www.craigmostyn.com.au/wp-content/plugins/revslider/public/assets/assets/dummy.png",
+  // Was pointing at revslider's `dummy.png` — a slider PLACEHOLDER that the
+  // harvester picked up because it is the first image in the page source. It
+  // resolved 200, so nothing looked broken; the badge was just a blank. This is
+  // the real brand mark (the coloured one, not the `_white` variant beside it,
+  // which would be invisible on the light badge).
+  "priv-craig-mostyn": "https://www.craigmostyn.com.au/wp-content/uploads/2023/04/CMG_Brand-1.svg",
   "priv-creation-homes": "https://creationhomes.com.au/wp-content/uploads/2025/05/ch-logo-t.svg",
   "priv-defence-health":
     "https://www.defencehealth.com.au/getmedia/3b42c8ee-043f-4351-8aad-1579fd1de2e8/defence-health-logo.svg?ext=.svg&v=2057",

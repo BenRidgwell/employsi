@@ -124,7 +124,7 @@ export function ActionRail() {
       {isAdmin && (
         <RailButton
           icon={<IconDataQuality />}
-          label="Data quality"
+          label="Admin console"
           on={dataQualityOpen}
           onClick={toggleDataQuality}
         />

@@ -39,7 +39,17 @@
 
 // Agency id → its own brand mark.
 export const WA_GOV_LOGO_URL: Record<string, string> = {
-  "perth-gov-chemcentre": "https://www.chemcentre.wa.gov.au/assets/images/logo-gov-wa-badge.png", // ChemCentre
+  // ChemCentre's own hexagon mark, not the generic "logo-gov-wa-badge.png" that
+  // was here — the badge is the whole-of-government identity every WA agency
+  // page carries in its header, so it made ChemCentre indistinguishable from
+  // its neighbours despite having a distinct logo of its own.
+  "perth-gov-chemcentre": "https://www.chemcentre.wa.gov.au/assets/images/logo-chemcentre.png",
+  // South Regional TAFE was on the exclusion list below because the only asset
+  // found at the time was a white/reverse SVG. The site also serves a DARK one
+  // at the same path without the `-white` suffix (#799900 green on #231f20),
+  // which is what the badge needs, so it is no longer an exclusion.
+  "perth-gov-south-regional-tafe":
+    "https://www.southregionaltafe.wa.edu.au/themes/custom/srtafe_theme/images/logos/site-logo.svg",
   "perth-gov-construction-training-fund": "https://ctf.wa.gov.au/images/ctf-logo.svg", // Construction Training Fund
   "perth-gov-corruption-and-crime-commission":
     "https://www.ccc.wa.gov.au/themes/custom/ccc_theme/images/logo.png", // Corruption and Crime Commission
@@ -92,6 +102,15 @@ export const WA_GOV_CREST = "https://www.wa.gov.au/themes/custom/wagov/images/lo
 
 export const WA_GOV_CREST_IDS: string[] = [
   "perth-gov-arts-and-culture-trust", // Arts and Culture Trust
+  // South Metropolitan Health Service. Asked for its crest-and-name logo; its
+  // site serves that lockup ONLY in white (logo.svg is literally id
+  // "badge-white-a", filled #FFF, and the other asset is
+  // "COA-with-text-GoWA-white.png"), and both would render as an empty circle
+  // on the light badge. No dark variant is published anywhere on the domain.
+  // The whole-of-government crest is the same identity minus the agency line,
+  // and it is legible — so it is used rather than the favicon it was falling
+  // back to. If a dark SMHS lockup is supplied, it belongs in WA_GOV_LOGO_URL.
+  "perth-gov-south-metropolitan-health-service",
   "perth-gov-department-of-communities", // Department of Communities
   "perth-gov-department-of-creative-industries-tourism-and-sport", // Department of Creative Industries, Tourism and Sport
   "perth-gov-department-of-energy-and-economic-diversification", // Department of Energy and Economic Diversification

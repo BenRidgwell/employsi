@@ -146,17 +146,28 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
     return rows;
   }, [data?.feeds, sort]);
 
+  // Silent feeds, counted off the SAME rows the table flags, so the chip and
+  // the flags can never disagree.
+  const silentCount = useMemo(
+    () => (data?.feeds ?? []).filter((f) => f.staleDays >= STALE_DAYS).length,
+    [data],
+  );
+
   return (
     <>
       {/* Same shell as the analyst card: a transparent scrim that closes on
           click, then a positioned card above it. Without the scrim + z-index
           this rendered underneath the map and the rail. */}
       <div className="panescrim" onClick={onClose} />
-      <div className="dqpane" role="dialog" aria-label="Data quality">
+      <div className="dqpane" role="dialog" aria-label="Admin console">
         <div className="dqhd">
           <div className="dqhdtext">
-            <span className="dqeyebrow">Admin</span>
-            <span className="dqhdtitle">Data quality</span>
+            {/* The design's eyebrow carries the read time, because every figure
+                below is a point-in-time read of the archive and a stale tab
+                showing yesterday's counts as today's is the obvious way to be
+                misled by this card. */}
+            <span className="dqeyebrow">Admin{data?.generated ? ` · ${data.generated}` : ""}</span>
+            <span className="dqhdtitle">Control room</span>
           </div>
           <button className="dqx" onClick={onClose} aria-label="Close">
             ×
@@ -172,7 +183,13 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
         ) : (
           <div className="dqbody">
             <section className="dqsec">
-              <h3 className="dqh">Feed freshness</h3>
+              <div className="dqhrow">
+                <h3 className="dqh">Feed freshness</h3>
+                {/* The count, not just the flags in the rows: a silent feed is
+                    the one thing on this card that is always worth acting on,
+                    and it should be readable without scanning 24 rows. */}
+                {silentCount > 0 && <span className="dqflagchip">{silentCount} silent</span>}
+              </div>
               <p className="dqnote">
                 A feed that stops writing looks identical to a quiet market. Anything silent for{" "}
                 {STALE_DAYS} days or more is flagged.
@@ -192,6 +209,9 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
                   ))}
                 </tbody>
               </table>
+              <p className="dqcount2">
+                Showing {feeds.length} of {data.feeds.length} sources.
+              </p>
             </section>
 
             <section className="dqsec">

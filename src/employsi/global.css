@@ -1426,6 +1426,34 @@ body {
    same anchor variables, same radius and shadow, same z-index above the
    .panescrim at 44 — so the two admin/tool cards occupy the frame identically
    rather than each inventing a position. */
+/* Admin console header affordances (Admin_Panel.html "Control room"). */
+.dqhrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dqflagchip {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #f7ebe9;
+  color: #97332b;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.dqcount2 {
+  margin: 8px 0 0;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: #aeaeb2;
+}
+
 .dqpane {
   position: fixed;
   left: var(--pane-left);

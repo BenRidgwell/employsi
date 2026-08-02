@@ -194,6 +194,67 @@ const RAIL_SINGAPORE_KL: [number, number][] = [
 ];
 
 /**
+ * China's high-speed spine, in three corridors.
+ *
+ * These follow the real lines rather than a straight hop, and the routing is
+ * the point in two places:
+ *
+ *  • Hong Kong to Ganzhou is NOT a coastal run through Guangzhou. The
+ *    Guangzhou–Shenzhen–Hong Kong link brings a train up to Shenzhen North,
+ *    and the Ganshen line then strikes inland and north-east through Huizhou,
+ *    Heyuan and Longchuan — away from the delta entirely.
+ *  • Ganzhou to Shanghai goes north through Ji'an and Nanchang before turning
+ *    east for Hangzhou. Ganzhou sits well inland in southern Jiangxi, so the
+ *    direct-looking line east to the coast is not how the track runs.
+ *
+ * Coordinates are the station cities along each corridor, which traces the
+ * route without claiming to be the permanent way — the same convention as the
+ * Australian and Malaysian lines above.
+ */
+const RAIL_HONGKONG_SHENZHEN: [number, number][] = [
+  [114.1667, 22.304], // Hong Kong West Kowloon
+  [114.0555, 22.535], // Shenzhen Futian
+  [114.0295, 22.61], // Shenzhen North
+];
+
+const RAIL_SHENZHEN_GANZHOU: [number, number][] = [
+  [114.0295, 22.61], // Shenzhen North
+  [114.4152, 23.1115], // Huizhou
+  [114.6978, 23.7462], // Heyuan East
+  [115.26, 24.1], // Longchuan West
+  [115.39, 25.14], // Anyuan
+  [114.93, 25.39], // Xinfeng
+  [114.935, 25.831], // Ganzhou West
+];
+
+const RAIL_GANZHOU_SHANGHAI: [number, number][] = [
+  [114.935, 25.831], // Ganzhou
+  [114.986, 27.113], // Ji'an
+  [115.8581, 28.682], // Nanchang
+  [117.943, 28.455], // Shangrao
+  [120.1551, 30.2741], // Hangzhou
+  [120.75, 30.75], // Jiaxing
+  [121.4737, 31.2304], // Shanghai
+];
+
+const RAIL_SHANGHAI_BEIJING: [number, number][] = [
+  [121.4737, 31.2304], // Shanghai
+  [120.5853, 31.2989], // Suzhou
+  [120.3119, 31.4912], // Wuxi
+  [119.974, 31.811], // Changzhou
+  [118.7969, 32.0603], // Nanjing
+  [117.363, 32.916], // Bengbu
+  [117.1848, 34.2618], // Xuzhou
+  [116.986, 35.581], // Qufu
+  [117.129, 36.199], // Tai'an
+  [117.1205, 36.6512], // Jinan
+  [116.307, 37.436], // Dezhou
+  [116.857, 38.304], // Cangzhou
+  [117.1901, 39.1256], // Tianjin
+  [116.4074, 39.9042], // Beijing
+];
+
+/**
  * Every line, drawn as track, tagged with the domestic view it belongs to.
  *
  * The tag is what lets one source and one pair of layers carry corridors on
@@ -211,6 +272,10 @@ const RAIL_NETWORK: { region: string; line: [number, number][] }[] = [
   { region: "australia", line: RAIL_SYDNEY_BRISBANE },
   { region: "australia", line: RAIL_AUCKLAND_WELLINGTON },
   { region: "asia", line: RAIL_SINGAPORE_KL },
+  { region: "asia", line: RAIL_HONGKONG_SHENZHEN },
+  { region: "asia", line: RAIL_SHENZHEN_GANZHOU },
+  { region: "asia", line: RAIL_GANZHOU_SHANGHAI },
+  { region: "asia", line: RAIL_SHANGHAI_BEIJING },
 ];
 
 /**
@@ -245,6 +310,22 @@ const TRAIN_RUNS: { region: string; dur: number; path: [number, number][] }[] = 
   // speed in the same range as the Australian runs at their domestic zooms.
   { region: "australia", dur: 20000, path: RAIL_AUCKLAND_WELLINGTON },
   { region: "asia", dur: 20000, path: RAIL_SINGAPORE_KL },
+  // Hong Kong → Ganzhou, stitched from the two lines that make it: the
+  // Guangzhou–Shenzhen–Hong Kong link, then the Ganshen line inland. The
+  // shared Shenzhen North point is dropped from the second so the train does
+  // not pause on a duplicated coordinate, exactly as the Australian runs do.
+  {
+    region: "asia",
+    dur: 30000,
+    path: [...RAIL_HONGKONG_SHENZHEN, ...RAIL_SHENZHEN_GANZHOU.slice(1)],
+  },
+  // Ganzhou → Shanghai and Shanghai → Beijing run as their own services rather
+  // than one Hong Kong–Beijing consist: at 2,300km the whole way, a single run
+  // would be a dot creeping across the continent for the better part of a
+  // minute. Two runs put a train on each corridor at once, which is what the
+  // domestic Asia view actually shows.
+  { region: "asia", dur: 34000, path: RAIL_GANZHOU_SHANGHAI },
+  { region: "asia", dur: 40000, path: RAIL_SHANGHAI_BEIJING },
 ];
 
 /**

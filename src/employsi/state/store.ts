@@ -463,17 +463,45 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
   setAuthProviders: (p) => set({ authProviders: p }),
   setFollows: (ids, skills) => set({ followedIds: ids, followedSkills: skills }),
-  // Clears the local view of the session. The cookie is revoked separately by
-  // the auth client; this is what the UI reacts to.
-  signOut: () =>
+  /**
+   * Clears the local view of the session, then reloads the page.
+   *
+   * The reload is the fix, and the state reset below is the belt to its braces.
+   *
+   * `role` was NOT being cleared here — only the account and the follows were —
+   * so an admin who signed out kept `role: "admin"` in a live store. Every
+   * admin-only surface is gated on exactly that value (the Admin console
+   * button, the unreleased markets on the map, the search's market filter), so
+   * they all stayed open to a signed-out browser until something happened to
+   * remount. Resetting the role closes that.
+   *
+   * But resetting one field only fixes the leak we found. A signed-in session
+   * seeds a lot of state — follows, the market gate, cached queries — and any
+   * of it can outlive a sign-out the same way. A full reload rebuilds every bit
+   * of it from a signed-out server, which is the only version of this that
+   * cannot be got subtly wrong again.
+   *
+   * Ordering matters: both call sites await the auth client's revocation first
+   * (`authSignOut().finally(() => signOut())`), so by the time this reloads the
+   * cookie is already gone and the fresh load comes back signed out. Reloading
+   * before revocation would sign the person straight back in.
+   */
+  signOut: () => {
     set({
       account: null,
+      role: "user" as Role,
       authOpen: false,
       pendingFollowId: null,
       pendingFollowSkill: null,
       followedIds: [],
       followedSkills: [],
-    }),
+    });
+    if (typeof window !== "undefined") {
+      // Same URL, so the person lands where they were rather than being sent
+      // to the default view for having signed out.
+      window.location.reload();
+    }
+  },
   toggleSettings: () =>
     set((s) => ({ settingsOpen: !s.settingsOpen, feedbackOpen: false, helpTourOpen: false })),
   closeSettings: () => set({ settingsOpen: false }),
