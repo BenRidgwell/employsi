@@ -259,6 +259,29 @@ const RAW_SKILLS: SkillDef[] = [
       "data warehouse",
       "etl developer",
       "analytics engineer",
+      // ── The statistical agencies' name for this work ────────────────────
+      // No official classification has an occupation called "data engineer";
+      // the job is counted under the database/systems administration unit
+      // group. Without these terms the skill matched job ADS only, so every
+      // whole-of-market series (JSA IVI, ONS, OEWS, Eurostat, PSA) showed it
+      // as no reading at all. Each term below is the literal published title
+      // of that group, so it matches the release and nothing else:
+      //
+      //   ANZSCO 2621  Database and Systems Administrators, and ICT Security
+      //                Specialists                         — AU (JSA), NZ
+      //   US SOC 15-1242 Database Administrators           — US (BLS OEWS)
+      //   US SOC 15-1243 Database Architects               — US (BLS OEWS)
+      //   ISCO-08  252 Database and network professionals  — EU, PH (PSOC)
+      //
+      // ANZSCO 2621 and ISCO 252 both carry systems administrators and
+      // network/security specialists alongside the database roles, so this
+      // skill keeps firing on the same title as IT & Systems and
+      // Cybersecurity. That is the existing convention (one occupation, every
+      // skill it genuinely covers), not double counting within a skill.
+      "database and systems administrator",
+      "database administrator",
+      "database architect",
+      "database and network",
     ],
   },
   {
@@ -275,6 +298,26 @@ const RAW_SKILLS: SkillDef[] = [
       "requirements analyst",
       "product owner",
       "business partner",
+      // ── The statistical agencies' name for this work ────────────────────
+      // Same problem as Data Engineering above: "business analyst" is what an
+      // ad says, not what a classification calls the occupation, so the
+      // official releases fell through and the skill had no whole-of-market
+      // reading anywhere. The published unit-group titles:
+      //
+      //   ANZSCO 2611  ICT Business and Systems Analysts   — AU (JSA), NZ
+      //   US SOC 15-1211 Computer Systems Analysts         — US (BLS OEWS)
+      //
+      // UK SOC 2020 2133 already matches on "business analyst" ("IT business
+      // analysts, architects and systems designers"), so it needs no term.
+      //
+      // Eurostat's occupation release is ISCO 3-digit, where analysts sit
+      // inside 251 "Software and applications developers and analysts"
+      // alongside every software developer. Mapping that whole group here
+      // would credit business analysis with the EU's entire software
+      // workforce, so it is deliberately left unmapped — the granularity
+      // Eurostat publishes cannot isolate the occupation.
+      "business and systems analyst",
+      "computer systems analyst",
     ],
   },
   {

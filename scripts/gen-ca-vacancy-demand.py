@@ -26,6 +26,9 @@ Usage: python3 scripts/gen-ca-vacancy-demand.py path/to/14100399.csv
 """
 import csv, json, re, sys
 
+sys.path.insert(0, __file__.rsplit('/', 1)[0])
+from skills_taxonomy import load_categories  # noqa: E402
+
 ROOT = __file__.rsplit('/scripts/', 1)[0]
 TAX = f'{ROOT}/src/employsi/data/skillsTaxonomy.ts'
 IVI = f'{ROOT}/src/employsi/data/iviSkillDemand.ts'
@@ -58,12 +61,16 @@ CAT_TO_NOC = {
 
 
 def load_skills():
-    # RAW_SKILLS is the source array (SKILLS is a computed dedup of it).
-    body = open(TAX).read().split('RAW_SKILLS', 1)[1].split('];', 1)[0]
-    out = []
-    for m in re.finditer(r"\{\s*skill:\s*'([^']+)',\s*cat:\s*'([^']+)',", body):
-        out.append((m.group(1), m.group(2)))
-    return out
+    """(skill, cat) pairs, from the one shared reader.
+
+    This used to be a local regex that only understood SINGLE-quoted TS strings.
+    A repo-wide Prettier run rewrote skillsTaxonomy.ts in double quotes and the
+    regex quietly matched nothing — the generator still ran, still wrote a file,
+    and mapped ZERO skills. The same failure had already been found and fixed in
+    scripts/skills_taxonomy.py; Canada, New Zealand and Singapore were simply
+    never moved onto it. They are now, so there is one parser to keep right.
+    """
+    return load_categories(TAX)
 
 
 def load_ivi_national():

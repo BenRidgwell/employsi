@@ -5,6 +5,11 @@ Australia Internet Vacancy Index (IVI) spreadsheet.
 Monthly refresh:
   1. Download the latest "IVI — ANZSCO4 Occupations by States and Territories"
      .xlsx from https://www.jobsandskills.gov.au/data/internet-vacancy-index
+     (the site sits behind Akamai and drops non-Australian requests without
+     replying — plain curl just times out. Fetch it through Oxylabs with
+     geo='Australia' and extra={'content_encoding': 'base64'}, which is how
+     scripts/oxylabs_client.py returns a binary body intact. MBIE's New Zealand
+     workbook is the same story behind Incapsula.)
   2. python3 scripts/gen-ivi-skill-demand.py path/to/ivi.xlsx
   3. Typecheck + build + deploy.
 
@@ -30,10 +35,22 @@ STATE2CITY = {'NSW': 'sydney', 'VIC': 'melbourne', 'QLD': 'brisbane', 'SA': 'ade
               'WA': 'perth', 'NT': 'darwin', 'ACT': 'canberra', 'TAS': 'hobart'}
 CITIES = ['perth', 'adelaide', 'brisbane', 'melbourne', 'sydney', 'darwin', 'canberra', 'hobart']
 
-# Curated overrides for ANZSCO codes the title term-matcher misses. Pure "Other
-# Miscellaneous Labourers/Technicians" catch-alls are intentionally left
-# unmapped (no single defensible skill).
+# Curated overrides for ANZSCO codes the title term-matcher misses, or reads
+# wrongly. Pure "Other Miscellaneous Labourers/Technicians" catch-alls are
+# intentionally left unmapped (no single defensible skill). An override REPLACES
+# term matching for that code, so it must list every skill the code should carry.
 OVERRIDE = {
+    # 3231 Aircraft Maintenance Engineers is a term-matcher false positive, not
+    # a miss: "maintenance engineer" belongs to Fixed Plant Maintenance, which
+    # is a MINING skill (fixed plant is the processing plant at a mine site).
+    # Left alone the whole occupation lands there, and the AU series then
+    # reports fixed-plant maintenance demand that is entirely aircraft
+    # engineers. The term itself stays as it is — it is right for job ads,
+    # where "Maintenance Engineer" at a mine is exactly this skill — so the
+    # correction is made here, against the one classification title that
+    # collides with it. Shipbuilding & Marine already claims "aircraft
+    # maintenance" deliberately, so that is where the occupation goes.
+    '3231': ['Shipbuilding & Marine'],
     '5212': ['Administration & Office Support'], '2247': ['General Management'],
     '2244': ['Data Analytics'], '1493': ['Marketing & Comms'], '1494': ['Warehousing & Logistics'],
     '1343': ['Teaching & Education'], '1325': ['General Management'], '1344': ['Teaching & Education'],

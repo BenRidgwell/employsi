@@ -163,6 +163,53 @@ class RealTaxonomy(unittest.TestCase):
         for title, skill in cases.items():
             self.assertIn(skill, self.match(title), title)
 
+    def test_entry_with_a_comment_above_skill_is_still_read(self):
+        """A comment between `{` and `skill:` used to hide the whole entry.
+
+        Both skills below were added to RAW_SKILLS that way, and the result was
+        not an error: every generator quietly produced datasets with no Data
+        Engineering and no Business Analysis in them at all, while the app —
+        which parses the same file as TypeScript — showed both. Nothing pointed
+        at the parser, because a short list looks exactly like a taxonomy that
+        never had those skills.
+        """
+        names = {n for n, _ in load_skills(REAL_TAX)}
+        for skill in ('Data Engineering', 'Business Analysis'):
+            self.assertIn(skill, names, f'{skill} lost to a comment before `skill:`')
+
+    def test_agency_occupation_titles_reach_the_right_skill(self):
+        """The published unit-group titles, which is all a release contains.
+
+        No classification says "data engineer" or "business analyst", so
+        matching only the ad-side vocabulary left both skills with no
+        whole-of-market reading in any country.
+        """
+        cases = [
+            # ANZSCO (JSA IVI, and NZ, which shares the classification)
+            ('ICT Business and Systems Analysts', 'Business Analysis'),
+            ('Database and Systems Administrators, and ICT Security Specialists',
+             'Data Engineering'),
+            # US SOC (BLS OEWS)
+            ('Computer Systems Analysts', 'Business Analysis'),
+            ('Database Administrators', 'Data Engineering'),
+            ('Database Architects', 'Data Engineering'),
+            # ISCO-08 (Eurostat, and PSOC which follows it)
+            ('Database and network professionals', 'Data Engineering'),
+            # UK SOC 2020 — matches on the ad-side term, no extra needed
+            ('IT business analysts, architects and systems designers', 'Business Analysis'),
+        ]
+        for title, skill in cases:
+            self.assertIn(skill, self.match(title), title)
+
+    def test_agency_terms_do_not_widen_beyond_their_occupation(self):
+        """The new terms are published titles, so they must not catch adjacent
+        occupations that belong to other skills."""
+        for title in ('Computer Network Professionals',
+                      'Software and Applications Programmers',
+                      'Management and Organisation Analysts'):
+            self.assertNotIn('Data Engineering', self.match(title), title)
+            self.assertNotIn('Business Analysis', self.match(title), title)
+
     def test_anzsco_and_ons_titles_still_map(self):
         """The US additions must not have disturbed the original sources."""
         cases = {
