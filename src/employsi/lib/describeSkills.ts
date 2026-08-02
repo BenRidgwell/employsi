@@ -1,4 +1,55 @@
-import { TASK_INDEX, ONTOLOGY_SKILLS } from "../data/skillOntology";
+import type {
+  TASK_INDEX as TaskIndex,
+  ONTOLOGY_SKILLS as OntologySkills,
+} from "../data/skillOntology";
+
+// The O*NET ontology is 720KB — by a wide margin the largest single thing the
+// app ships, and it is used by exactly one feature: turning a free-text query
+// into candidate skills. Statically importing it put all 720KB on the boot path
+// for every visitor, including the ones who never type in the search box.
+//
+// So it is loaded on demand. The public API stays SYNCHRONOUS, because both
+// call sites use it inside a useMemo and making it async would spread promises
+// through the search's render path for no user-visible gain. Instead:
+//
+//   • before the data arrives, describeSkills returns [] — search still works,
+//     it just falls back to direct name matches, which is what it does for
+//     short queries anyway;
+//   • the first call kicks off the fetch;
+//   • useOntologyReady() lets a component re-run its memo once it lands.
+//
+// The degraded window is one network round trip on the first keystroke, and
+// it degrades to "fewer suggestions", never to a wrong answer.
+type Ontology = { TASK_INDEX: typeof TaskIndex; ONTOLOGY_SKILLS: typeof OntologySkills };
+
+let onto: Ontology | null = null;
+let pending: Promise<Ontology> | null = null;
+const waiters = new Set<() => void>();
+
+export function loadOntology(): Promise<Ontology> {
+  if (onto) return Promise.resolve(onto);
+  if (!pending) {
+    pending = import("../data/skillOntology").then((m) => {
+      onto = { TASK_INDEX: m.TASK_INDEX, ONTOLOGY_SKILLS: m.ONTOLOGY_SKILLS };
+      for (const w of waiters) w();
+      waiters.clear();
+      return onto;
+    });
+  }
+  return pending;
+}
+
+/** True once the ontology is in memory; triggers the load on first use. */
+export function onOntologyReady(cb: () => void): () => void {
+  if (onto) return () => {};
+  waiters.add(cb);
+  void loadOntology();
+  return () => waiters.delete(cb);
+}
+
+export function ontologyLoaded(): boolean {
+  return !!onto;
+}
 
 // Turn a free-text task / description into canonical skills, using the O*NET
 // skill ontology (task → occupation → skill). The tokenizer here MUST match the
@@ -47,15 +98,21 @@ function tokens(text: string): string[] {
 export function describeSkills(query: string, n = 6): string[] {
   const q = (query || "").trim();
   if (q.length < 3) return [];
+  // Not loaded yet: start the fetch and return nothing this pass. Callers that
+  // want the result to appear when it lands subscribe via onOntologyReady.
+  if (!onto) {
+    void loadOntology();
+    return [];
+  }
   const acc = new Map<number, number>();
   for (const t of new Set(tokens(q))) {
-    const e = TASK_INDEX[t];
+    const e = onto.TASK_INDEX[t];
     if (!e) continue;
     for (const [si, share] of e.s) acc.set(si, (acc.get(si) || 0) + e.w * share);
   }
   return [...acc.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, n)
-    .map(([si]) => ONTOLOGY_SKILLS[si])
+    .map(([si]) => onto!.ONTOLOGY_SKILLS[si])
     .filter(Boolean);
 }

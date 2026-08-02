@@ -10,6 +10,7 @@ import { popularSkills as popularSkillsForLayer } from "../lib/skillHeat";
 import { GLOBAL_HUB_LABEL } from "../data/geo";
 import { ALL_SKILLS } from "../data/skillsTaxonomy";
 import { describeSkills } from "../lib/describeSkills";
+import { useOntologyReady } from "../hooks/useOntologyReady";
 
 function SearchIcon() {
   return (
@@ -82,6 +83,8 @@ export function TopBar() {
     | { kind: "company"; id: string; label: string; sub: string }
     | { kind: "city"; id: string; label: string; sub: string }
     | { kind: "skill"; id: string; label: string; sub: string };
+  const ontologyReady = useOntologyReady();
+
   const searchResults = useMemo<SResult[]>(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return [];
@@ -101,12 +104,17 @@ export function TopBar() {
       .slice(0, 6)
       .map(([id, label]) => ({ kind: "city", id, label, sub: "City" }));
     const direct = ALL_SKILLS.filter((sk) => sk.toLowerCase().includes(q));
-    const described = describeSkills(searchQuery).filter((sk) => !direct.includes(sk));
+    // Gated on the flag rather than relying on describeSkills' own empty
+    // return, so the memo genuinely depends on it — the dependency is a
+    // re-run trigger for when the ontology chunk lands, not decoration.
+    const described = ontologyReady
+      ? describeSkills(searchQuery).filter((sk) => !direct.includes(sk))
+      : [];
     const skillRes: SResult[] = [...direct, ...described]
       .slice(0, 7)
       .map((sk) => ({ kind: "skill", id: sk, label: sk, sub: "Skill" }));
     return [...skillRes, ...companies, ...cities];
-  }, [searchQuery, seesAllMarkets]);
+  }, [searchQuery, seesAllMarkets, ontologyReady]);
 
   const goSearchResult = (r: SResult) => {
     if (r.kind === "skill") {

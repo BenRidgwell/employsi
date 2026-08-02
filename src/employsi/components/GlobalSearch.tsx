@@ -10,6 +10,7 @@ import {
   type DemandTone,
 } from "../lib/skillHeat";
 import { describeSkills } from "../lib/describeSkills";
+import { useOntologyReady } from "../hooks/useOntologyReady";
 import {
   buildSkillCard,
   eventFor,
@@ -125,6 +126,10 @@ export function GlobalSearch() {
   const seesAllMarkets = useAppStore((s) => s.role) === "admin";
 
   const q = searchQuery.trim().toLowerCase();
+  // describeSkills returns [] until the ontology chunk lands; this flips when
+  // it does, so the first query's suggestions fill in rather than waiting for
+  // the next keystroke.
+  const ontologyReady = useOntologyReady();
 
   const results = useMemo<Result[]>(() => {
     if (!q) return [];
@@ -153,13 +158,18 @@ export function GlobalSearch() {
     // Direct name matches first, then skills inferred from the description via
     // the O*NET ontology ("workforce planning" → Human Resources), deduped.
     const direct = ALL_SKILLS.filter((sk) => sk.toLowerCase().includes(q));
-    const described = describeSkills(searchQuery).filter((sk) => !direct.includes(sk));
+    // Gated on the flag rather than relying on describeSkills' own empty
+    // return, so the memo genuinely depends on it — the dependency is a
+    // re-run trigger for when the ontology chunk lands, not decoration.
+    const described = ontologyReady
+      ? describeSkills(searchQuery).filter((sk) => !direct.includes(sk))
+      : [];
     const skills: Result[] = [...direct, ...described].slice(0, 7).map((sk) => {
       const badge = demandLevel(sk, globalOut, skillIndex);
       return { kind: "skill" as const, id: sk, label: sk, sub: badge.label, tone: badge.tone };
     });
     return [...skills, ...companies, ...cities];
-  }, [q, searchQuery, skillIndex, globalOut, seesAllMarkets]);
+  }, [q, searchQuery, skillIndex, globalOut, seesAllMarkets, ontologyReady]);
 
   const topSkill = results.find((r) => r.kind === "skill") as
     Extract<Result, { kind: "skill" }> | undefined;
