@@ -156,6 +156,35 @@ export function checkAdvertiser(
     }
   }
 
+  // Rule 4, and ONLY for a subsidiary search. Everywhere else this function is
+  // deliberately permissive — it rejects what it can prove wrong rather than
+  // allowlisting, because an employer's own name has endless legitimate
+  // variants. That is the right default when the phrase IS the company.
+  //
+  // It is the wrong default for an alias. Searching "Boral" on behalf of SGH
+  // returns every ad mentioning Boral, including aggregator reposts — measured,
+  // the first run filed "JobRadars - AU" and "ABCDEFG" under SGH. Those are not
+  // near-misses to be argued about; they are third parties, and crediting SGH
+  // with their ads is exactly the kind of quietly wrong number this codebase
+  // exists to avoid.
+  //
+  // So when we searched a specific subsidiary we require the advertiser to
+  // actually look like it. We know precisely who we are looking for here, which
+  // is what makes strictness safe: it costs nothing but the reposts.
+  if (searchedAs && norm(searchedAs) !== norm(target.name)) {
+    const looksRight =
+      sameCompanyName(adv, expected) ||
+      new RegExp(`(^| )${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}( |$)`).test(a) ||
+      // The parent's own name is equally valid on a subsidiary's ad.
+      sameCompanyName(adv, target.name);
+    if (!looksRight) {
+      return {
+        keep: false,
+        reason: `${JSON.stringify(adv)} does not look like ${JSON.stringify(searchedAs)} (subsidiary search for ${target.id})`,
+      };
+    }
+  }
+
   return { keep: true };
 }
 
