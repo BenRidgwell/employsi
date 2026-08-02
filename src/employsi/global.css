@@ -11934,3 +11934,224 @@ body {
   opacity: 0.5;
   cursor: default;
 }
+
+/* ── Intro loader ───────────────────────────────────────────────────────────
+   From `App_Intro_Animation.html`. The build-up keeps the design's timings to
+   the millisecond; the handoff and the veil are triggered by `.is-out` instead
+   of a delay, because the veil has to wait for the app rather than the clock
+   (see components/IntroLoader.tsx).
+
+   z-index 90 puts it above every panel and the toast (max 70) — while it is up
+   it owns the screen, which is the point of a splash.                         */
+@keyframes in-grid {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes in-stem {
+  0% { transform: scaleY(0); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: scaleY(1); opacity: 1; }
+}
+@keyframes in-arm {
+  0% { transform: scaleX(0.06); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: scaleX(1); opacity: 1; }
+}
+@keyframes in-lockup {
+  0% { transform: translateX(46px); }
+  100% { transform: translateX(0); }
+}
+@keyframes in-word {
+  0% { clip-path: inset(0 100% 0 0); opacity: 0; }
+  20% { opacity: 1; }
+  100% { clip-path: inset(0 0 0 0); opacity: 1; }
+}
+@keyframes in-rule {
+  0% { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
+}
+@keyframes in-caption {
+  0% { opacity: 0; transform: translateY(5px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes in-handoff {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-26px) scale(0.62); }
+}
+@keyframes in-veil {
+  0% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
+@keyframes in-globe {
+  to { transform: rotate(360deg); }
+}
+
+.introveil {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(18px) saturate(112%);
+  -webkit-backdrop-filter: blur(18px) saturate(112%);
+}
+.introveil.is-out {
+  animation: in-veil 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* The fade takes 460ms, so the overlay is still hit-testable while it plays.
+     Releasing pointer events at the same moment it starts leaving means a click
+     during the handoff reaches the map, not the veil. */
+  pointer-events: none;
+}
+.introgrid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(#ededf0 1px, transparent 1px),
+    linear-gradient(90deg, #ededf0 1px, transparent 1px);
+  background-size: 56px 56px;
+  opacity: 0.5;
+  animation: in-grid 620ms ease both;
+}
+.introglow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    58% 58% at 50% 46%,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(255, 255, 255, 0) 74%
+  );
+}
+.introhaze {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+.introstage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+.introstage.is-out {
+  animation: in-handoff 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.introlockup {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  animation: in-lockup 620ms cubic-bezier(0.16, 1, 0.3, 1) 960ms both;
+}
+.intromark {
+  display: block;
+}
+/* transform-box: fill-box makes each rect scale about its OWN edge rather than
+   the SVG viewport's origin, which is what lets the stem grow up from its base
+   and the arms extend from the stem. */
+.intromark .i-stem,
+.intromark .i-arm {
+  transform-box: fill-box;
+}
+.intromark .i-stem {
+  transform-origin: bottom center;
+  animation: in-stem 560ms cubic-bezier(0.32, 0.72, 0, 1) 100ms both;
+}
+.intromark .i-arm {
+  transform-origin: left center;
+}
+.intromark .i-arm1 {
+  animation: in-arm 520ms cubic-bezier(0.32, 0.72, 0, 1) 420ms both;
+}
+.intromark .i-arm2 {
+  animation: in-arm 520ms cubic-bezier(0.32, 0.72, 0, 1) 540ms both;
+}
+.intromark .i-arm3 {
+  animation: in-arm 520ms cubic-bezier(0.32, 0.72, 0, 1) 660ms both;
+}
+.introword {
+  display: block;
+  font-size: 52px;
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 0.86;
+  color: #1c1c1e;
+  animation: in-word 640ms cubic-bezier(0.16, 1, 0.3, 1) 1020ms both;
+}
+.introfoot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 280px;
+}
+.introrule {
+  display: block;
+  width: 100%;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1c1c1e, #d1d1d6);
+  transform-origin: left center;
+  animation: in-rule 900ms cubic-bezier(0.22, 0.61, 0.36, 1) 1320ms both;
+}
+.introcaption {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8e8e93;
+  animation: in-caption 420ms cubic-bezier(0.16, 1, 0.3, 1) 1480ms both;
+}
+.introglobe {
+  display: block;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: in-globe 3s linear infinite;
+}
+
+/* Small screens: the 52px wordmark plus a 62px mark overruns a 390px phone. */
+@media (max-width: 680px) {
+  .introword {
+    font-size: 38px;
+  }
+  .intromark {
+    width: 46px;
+    height: 46px;
+  }
+  .introfoot {
+    width: 220px;
+  }
+}
+
+/* The design is 2.7s of motion, which is precisely what this preference asks
+   us not to play. The veil still covers the boot — it just arrives and leaves
+   without the choreography. */
+@media (prefers-reduced-motion: reduce) {
+  .introgrid,
+  .introlockup,
+  .introword,
+  .introrule,
+  .introcaption,
+  .introglobe,
+  .intromark .i-stem,
+  .intromark .i-arm {
+    animation: none !important;
+  }
+  .introstage.is-out {
+    animation: none !important;
+    opacity: 0;
+  }
+  .introveil.is-out {
+    animation: in-veil 200ms linear both;
+  }
+}

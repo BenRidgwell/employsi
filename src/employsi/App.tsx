@@ -17,6 +17,7 @@ import { WhatsTrendingPane } from "./components/panels/WhatsTrendingPane";
 import { DataQualityGate } from "./components/panels/DataQualityGate";
 import { AnalystPane } from "./components/panels/AnalystPane";
 import { ComingSoonPane } from "./components/panels/ComingSoonPane";
+import { IntroLoader } from "./components/IntroLoader";
 import { useAppStore } from "./state/store";
 import { useAuthSession } from "./hooks/useAuthSession";
 import { useSkillIndex } from "./hooks/useSkillData";
@@ -43,8 +44,16 @@ function App() {
   // the What's Trending pane.
   useViewTracking();
 
+  // What the intro waits on. The skill index is the app's one real boot fetch —
+  // the maps render from bundled geometry, but the demand data every layer
+  // colours by comes over the wire — so "the index has landed" is the honest
+  // answer to "has this finished loading". IntroLoader caps the wait itself, so
+  // a slow or failed fetch delays the handoff rather than blocking it forever.
+  const introReady = !!skillIndex;
+
   return (
     <div className="app">
+      <IntroLoader ready={introReady} />
       {/* ── Header row ──────────────────────────────────────────────────────
           72px of white above the map, carrying the wordmark, the centred skill
           search and the account control. Previously all three floated ON the

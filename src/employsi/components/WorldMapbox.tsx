@@ -148,14 +148,69 @@ const RAIL_SYDNEY_BRISBANE: [number, number][] = [
   [153.026, -27.469], // Brisbane
 ];
 
-/** Every line, drawn as track. */
-const AU_RAIL_NETWORK: [number, number][][] = [
-  RAIL_PERTH_TARCOOLA,
-  RAIL_TARCOOLA_DARWIN,
-  RAIL_TARCOOLA_ADELAIDE,
-  RAIL_ADELAIDE_MELBOURNE,
-  RAIL_MELBOURNE_SYDNEY,
-  RAIL_SYDNEY_BRISBANE,
+// New Zealand's North Island Main Trunk, the line the Northern Explorer runs:
+// up out of Auckland through the Waikato, over the volcanic plateau, then down
+// the Manawatu and along the Kapiti coast into Wellington. It takes the real
+// westward jog at Taihape → Marton before turning back east for Palmerston
+// North, because that is what the track does.
+const RAIL_AUCKLAND_WELLINGTON: [number, number][] = [
+  [174.7645, -36.8485], // Auckland (Britomart)
+  [174.944, -37.065], // Papakura
+  [174.901, -37.202], // Pukekohe
+  [175.15, -37.4], // Te Kauwhata
+  [175.153, -37.561], // Huntly
+  [175.25, -37.787], // Hamilton (Frankton)
+  [175.326, -38.008], // Te Awamutu
+  [175.204, -38.186], // Otorohanga
+  [175.166, -38.335], // Te Kuiti
+  [175.267, -38.883], // Taumarunui
+  [175.4, -39.167], // National Park
+  [175.4, -39.418], // Ohakune
+  [175.799, -39.68], // Taihape
+  [175.378, -40.072], // Marton
+  [175.61, -40.355], // Palmerston North
+  [175.287, -40.622], // Levin
+  [175.153, -40.756], // Otaki
+  [175.013, -40.916], // Paraparaumu
+  [174.84, -41.134], // Porirua
+  [174.7759, -41.2865], // Wellington
+];
+
+// The KTM west-coast line between Singapore and Kuala Lumpur. Since Tanjong
+// Pagar closed in 2011 the Singapore end is the Woodlands crossing, so the run
+// leaves the island north-west rather than from the city centre.
+const RAIL_SINGAPORE_KL: [number, number][] = [
+  [103.8479, 1.2811], // Singapore
+  [103.7867, 1.438], // Woodlands (the causeway crossing)
+  [103.764, 1.464], // Johor Bahru Sentral
+  [103.603, 1.66], // Kulai
+  [103.322, 2.025], // Kluang
+  [102.816, 2.513], // Segamat
+  [102.612, 2.59], // Gemas
+  [102.23, 2.467], // Tampin
+  [101.943, 2.719], // Seremban
+  [101.79, 2.993], // Kajang
+  [101.7115, 3.1578], // Kuala Lumpur
+];
+
+/**
+ * Every line, drawn as track, tagged with the domestic view it belongs to.
+ *
+ * The tag is what lets one source and one pair of layers carry corridors on
+ * different continents: the layers filter on it, so Singapore–KL does not have
+ * to be drawn (invisibly, off-screen) while the camera is over Australia.
+ * New Zealand shares Australia's tag because CITY_CONTINENT puts Auckland and
+ * Wellington in the same "australia" region — that view is Oceania, not just AU.
+ */
+const RAIL_NETWORK: { region: string; line: [number, number][] }[] = [
+  { region: "australia", line: RAIL_PERTH_TARCOOLA },
+  { region: "australia", line: RAIL_TARCOOLA_DARWIN },
+  { region: "australia", line: RAIL_TARCOOLA_ADELAIDE },
+  { region: "australia", line: RAIL_ADELAIDE_MELBOURNE },
+  { region: "australia", line: RAIL_MELBOURNE_SYDNEY },
+  { region: "australia", line: RAIL_SYDNEY_BRISBANE },
+  { region: "australia", line: RAIL_AUCKLAND_WELLINGTON },
+  { region: "asia", line: RAIL_SINGAPORE_KL },
 ];
 
 /**
@@ -163,13 +218,33 @@ const AU_RAIL_NETWORK: [number, number][][] = [
  * Junction coordinates are dropped from every line after the first so a train
  * does not sit still for a frame on a duplicated point.
  */
-const TRAIN_RUNS: [number, number][][] = [
+const TRAIN_RUNS: { region: string; dur: number; path: [number, number][] }[] = [
   // Perth → Darwin: east across the Nullarbor, then north from Tarcoola.
-  [...RAIL_PERTH_TARCOOLA, ...RAIL_TARCOOLA_DARWIN.slice(1)],
+  {
+    region: "australia",
+    dur: 52000,
+    path: [...RAIL_PERTH_TARCOOLA, ...RAIL_TARCOOLA_DARWIN.slice(1)],
+  },
   // Adelaide → Brisbane: the east-coast standard-gauge spine. There is no
   // direct service between them on this network, so it goes the way the track
   // does — through Melbourne and Sydney.
-  [...RAIL_ADELAIDE_MELBOURNE, ...RAIL_MELBOURNE_SYDNEY.slice(1), ...RAIL_SYDNEY_BRISBANE.slice(1)],
+  {
+    region: "australia",
+    dur: 52000,
+    path: [
+      ...RAIL_ADELAIDE_MELBOURNE,
+      ...RAIL_MELBOURNE_SYDNEY.slice(1),
+      ...RAIL_SYDNEY_BRISBANE.slice(1),
+    ],
+  },
+  // Auckland → Wellington and Singapore → Kuala Lumpur are both roughly a sixth
+  // of the Perth–Darwin run, so they get a shorter duration. Holding 52s would
+  // hold the ON-SCREEN traversal time constant, which sounds right but is not:
+  // a corridor an eighth as long crawling for the same 52 seconds reads as a
+  // stalled train next to the transcontinental one. 20s keeps the apparent
+  // speed in the same range as the Australian runs at their domestic zooms.
+  { region: "australia", dur: 20000, path: RAIL_AUCKLAND_WELLINGTON },
+  { region: "asia", dur: 20000, path: RAIL_SINGAPORE_KL },
 ];
 
 /**
@@ -329,6 +404,8 @@ interface Traveler {
   path: [number, number][];
   dur: number;
   offset: number;
+  /** Trains only: the domestic view this run belongs to. */
+  region?: string;
 }
 
 // Top-down 2.5D sprites from `Employsi Map Sprites.html`: a white airliner and
@@ -1169,9 +1246,9 @@ export function WorldMapbox() {
         type: "geojson",
         data: {
           type: "FeatureCollection",
-          features: AU_RAIL_NETWORK.map((line) => ({
+          features: RAIL_NETWORK.map(({ region, line }) => ({
             type: "Feature" as const,
-            properties: {},
+            properties: { region },
             geometry: { type: "LineString" as const, coordinates: line },
           })),
         },
@@ -1293,10 +1370,11 @@ export function WorldMapbox() {
         // so there is no room between those two failures. A single locomotive
         // is what a train looks like at this size, and it matches how the plane
         // and the ship are each one sprite.
-        ...TRAIN_RUNS.map((path, run): Traveler => ({
+        ...TRAIN_RUNS.map(({ region, dur, path }, run): Traveler => ({
           mode: "train" as const,
+          region,
           path,
-          dur: 52000,
+          dur,
           offset: 0.12 + run * 0.5,
         })),
       ];
@@ -1378,18 +1456,25 @@ export function WorldMapbox() {
         // Shown on both overviews (global + domestic); hidden only at the local
         // city layer, where WorldMapbox itself is hidden.
         const show = s.zoomedOut && !s.zoomingIn;
-        // The freight consist belongs to one country's map, so it rides only on
-        // the Australian domestic view — on the globe the corridor would be a
-        // few pixels long, and on any other region it is off-screen anyway.
-        const showTrain = show && !s.globalOut && s.domesticRegion === "australia";
+        // A rail corridor belongs to one country's map, so track rides only on
+        // the domestic view it was tagged for — on the globe it would be a few
+        // pixels long, and on another region it is off-screen anyway. The tag
+        // is matched rather than hard-coded to Australia so Oceania's
+        // Auckland–Wellington line and Asia's Singapore–KL line each appear on
+        // their own view without the other being drawn off-screen.
+        const railRegion = show && !s.globalOut ? s.domesticRegion : "";
+        const showTrain = !!railRegion;
         if (map.getLayer(RAIL_BED_LAYER)) {
           const railVis = showTrain ? "visible" : "none";
           map.setLayoutProperty(RAIL_BED_LAYER, "visibility", railVis);
           map.setLayoutProperty(RAIL_SLEEPER_LAYER, "visibility", railVis);
+          const railFilter = ["==", ["get", "region"], railRegion] as unknown as never;
+          map.setFilter(RAIL_BED_LAYER, railFilter);
+          map.setFilter(RAIL_SLEEPER_LAYER, railFilter);
         }
         travelersRef.current.forEach(({ marker, inner, traveler }) => {
           const el = marker.getElement();
-          if (!show || (traveler.mode === "train" && !showTrain)) {
+          if (!show || (traveler.mode === "train" && traveler.region !== railRegion)) {
             el.style.display = "none";
             return;
           }
