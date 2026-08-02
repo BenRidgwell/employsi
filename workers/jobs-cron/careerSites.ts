@@ -498,6 +498,132 @@ export const SITES: SiteDef[] = [
     origin: "https://careers.pls.com",
     homeHub: "perth",
   },
+  // ── Added 2026-08, second batch ─────────────────────────────────────────
+  // All probed live; all reuse handlers that already exist. Counts at the time
+  // of adding are in the PORTAL_GROUPS comment below.
+  {
+    id: "melbourne-vcx",
+    name: "Vicinity Centres",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint:
+      "https://vicinity.wd3.myworkdayjobs.com/wday/cxs/vicinity/VicinityExternalCareers/jobs",
+    origin: "https://vicinity.wd3.myworkdayjobs.com/VicinityExternalCareers",
+    homeHub: "melbourne",
+  },
+  {
+    id: "sydney-chc",
+    name: "Charter Hall",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://charterhall.wd3.myworkdayjobs.com/wday/cxs/charterhall/Careers/jobs",
+    origin: "https://charterhall.wd3.myworkdayjobs.com/Careers",
+    homeHub: "sydney",
+  },
+  {
+    id: "brisbane-alq",
+    name: "ALS Limited",
+    sector: "Professional Services",
+    platform: "workday",
+    endpoint: "https://alsglobal.wd103.myworkdayjobs.com/wday/cxs/alsglobal/External/jobs",
+    origin: "https://alsglobal.wd103.myworkdayjobs.com/External",
+    homeHub: "brisbane", // global HQ, Bowen Hills
+  },
+  {
+    id: "sydney-asx",
+    name: "ASX Limited",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://asx.wd105.myworkdayjobs.com/wday/cxs/asx/ASX_Careers/jobs",
+    origin: "https://asx.wd105.myworkdayjobs.com/ASX_Careers",
+    homeHub: "sydney",
+  },
+  {
+    id: "melbourne-reh",
+    name: "Reece Group",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://reece.wd105.myworkdayjobs.com/wday/cxs/reece/ReeceCareers/jobs",
+    origin: "https://reece.wd105.myworkdayjobs.com/en-GB/ReeceCareers",
+    homeHub: "melbourne",
+  },
+  {
+    id: "sydney-rhc",
+    key: "sydney-rhc-uk",
+    name: "Ramsay Health Care",
+    sector: "Hospitals",
+    platform: "workday",
+    endpoint:
+      "https://ramsayhealthcare.wd3.myworkdayjobs.com/wday/cxs/ramsayhealthcare/Ramsay_Careers/jobs",
+    origin: "https://ramsayhealthcare.wd3.myworkdayjobs.com/en-GB/Ramsay_Careers",
+    homeHub: "london", // the UK arm; the AU board is a separate site (see below)
+  },
+  {
+    id: "sydney-jhx",
+    name: "James Hardie",
+    sector: "Industrial Manufacturing",
+    platform: "successfactors",
+    endpoint: "https://careers.jameshardie.com",
+    origin: "https://careers.jameshardie.com",
+    homeHub: "sydney",
+  },
+  {
+    id: "melbourne-ori",
+    name: "Orica",
+    sector: "Energy & Natural Resources",
+    platform: "successfactors",
+    endpoint: "https://careers.orica.com",
+    origin: "https://careers.orica.com",
+    homeHub: "melbourne",
+  },
+  {
+    id: "sydney-gpt",
+    name: "GPT Group",
+    sector: "Financial Services",
+    platform: "successfactors",
+    endpoint: "https://careers.gpt.com.au",
+    origin: "https://careers.gpt.com.au",
+    homeHub: "sydney",
+  },
+  {
+    id: "min",
+    name: "Mineral Resources",
+    sector: "Energy & Natural Resources",
+    // Same platform as Pilbara Minerals — server-rendered cards on
+    // careers.<company>/jobs/search.
+    platform: "plscareers",
+    endpoint: "https://careers.mineralresources.com.au/jobs/search",
+    origin: "https://careers.mineralresources.com.au",
+    homeHub: "perth",
+  },
+  {
+    id: "brisbane-nxt",
+    name: "NextDC",
+    sector: "Technology, Media and Telecommunications",
+    platform: "smartrecruiters",
+    endpoint: "NEXTDC",
+    origin: "https://www.nextdc.com/careers",
+    homeHub: "brisbane",
+  },
+  {
+    id: "melbourne-car",
+    name: "CAR Group",
+    sector: "Technology, Media and Telecommunications",
+    // The SmartRecruiters company is still "carsales", the pre-rename brand.
+    platform: "smartrecruiters",
+    endpoint: "carsales",
+    origin: "https://careers.carsales.com.au",
+    homeHub: "melbourne",
+  },
+  {
+    id: "denver-nem",
+    name: "Newmont",
+    sector: "Energy & Natural Resources",
+    platform: "phenom",
+    endpoint: "https://jobs.newmont.com/us/en/search-results",
+    origin: "https://jobs.newmont.com",
+    homeHub: "denver",
+  },
   {
     id: "melbourne-col",
     name: "Coles Group",
@@ -707,6 +833,17 @@ export const PORTAL_GROUPS: string[][] = [
   // (MartianLogic) and Pilbara Minerals. All four are small and API- or
   // single-page-driven, so they share one tick.
   ["sydney-bsl-au", "sydney-bsl-nz", "perth-lyc", "pls"],
+  // The twelve added in the second 2026-08 batch. Counts when probed: ALS 419,
+  // Reece 247, Ramsay UK 122, ASX 73, NextDC 36, carsales 30, MinRes 30,
+  // Vicinity 22, Charter Hall 7, plus Orica / GPT (SuccessFactors) and Newmont
+  // (Phenom), which page rather than report a total. ALS and Reece are the deep
+  // ones so they lead separate ticks; the SuccessFactors walk is sequential, so
+  // those two share with the small API-driven boards.
+  ["brisbane-alq", "sydney-chc", "melbourne-vcx"],
+  ["melbourne-reh", "sydney-rhc-uk", "sydney-asx"],
+  ["melbourne-ori", "sydney-gpt", "denver-nem"],
+  ["sydney-jhx"],
+  ["brisbane-nxt", "melbourne-car", "min"],
 ];
 
 const UA =

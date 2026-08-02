@@ -112,6 +112,9 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       // the ANZ workforce its careers board recruits into. The ASX line is a
       // CDI, which is why the ticker reads RMD on an ASX-default city.
       ["RMD", "ResMed", HLT],
+      // Irish-domiciled with ASX CDIs; its Australian manufacturing and head
+      // office are in Sydney, which is what this roster plots.
+      ["JHX", "James Hardie", IND],
       ["BXB", "Brambles", IND],
       ["SHL", "Sonic Healthcare", HLT],
       ["COH", "Cochlear", HLT],
