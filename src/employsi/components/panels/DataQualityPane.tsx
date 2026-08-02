@@ -97,17 +97,24 @@ function SortHead({
 function FeedRowView({
   source,
   lastSeen,
+  firstSeen,
   live,
   total,
   staleDays,
+  historical,
 }: {
   source: string;
   lastSeen: string;
+  firstSeen: string;
   live: number;
   total: number;
   staleDays: number;
+  historical: boolean;
 }) {
-  const stale = staleDays >= STALE_DAYS;
+  // A closed corpus cannot be stale — see HISTORICAL_SOURCES. Flagging one
+  // would put a red row on the panel permanently, and a warning that never
+  // clears trains you to ignore the ones that matter.
+  const stale = !historical && staleDays >= STALE_DAYS;
   return (
     <tr className={stale ? "dqstale" : undefined}>
       <td className="dqsrc">{source}</td>
@@ -118,6 +125,14 @@ function FeedRowView({
         {stale && (
           <span className="dqflag" title="No write in the last two days">
             {staleDays >= 999 ? "no data" : `${staleDays}d silent`}
+          </span>
+        )}
+        {historical && (
+          <span
+            className="dqhist"
+            title="A finished backfill, not a live feed — it is not expected to write again"
+          >
+            historical {firstSeen.slice(0, 4)}–{lastSeen.slice(0, 4)}
           </span>
         )}
       </td>
@@ -259,11 +274,14 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
   }, [data?.feeds, sort]);
 
   // Silent feeds, counted off the SAME rows the table flags, so the chip and
-  // the flags can never disagree.
+  // the flags can never disagree — including the historical exemption.
   const silentCount = useMemo(
-    () => (data?.feeds ?? []).filter((f) => f.staleDays >= STALE_DAYS).length,
+    () => (data?.feeds ?? []).filter((f) => !f.historical && f.staleDays >= STALE_DAYS).length,
     [data],
   );
+  // The denominator has to drop with the numerator: "1 / 41" when one of those
+  // 41 is a finished backfill overstates how many feeds are actually watched.
+  const liveFeeds = useMemo(() => (data?.feeds ?? []).filter((f) => !f.historical).length, [data]);
 
   const liveTotal = useMemo(() => (data?.feeds ?? []).reduce((a, f) => a + f.live, 0), [data]);
 
@@ -342,7 +360,7 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
                 />
                 <Kpi
                   label="Silent feeds"
-                  value={`${silentCount} / ${data.feeds.length}`}
+                  value={`${silentCount} / ${liveFeeds}`}
                   note={
                     silentCount
                       ? "A silent feed reads as a quiet market."

@@ -28,6 +28,19 @@ async function d1(): Promise<D1Like | null> {
   }
 }
 
+/**
+ * Sources that are CLOSED CORPORA, not feeds — they are not expected to write
+ * again, so the freshness check does not apply to them.
+ *
+ * `wayback` recovers advertisements from dead career sites through the Internet
+ * Archive (scripts/wayback-to-d1.py). Its newest row is from 2018 because the
+ * hostnames were retired in 2018, which is the correct answer, not a fault.
+ * Left in the staleness check it would sit permanently red at "3000d silent"
+ * and every real outage would then have to be found next to a false alarm that
+ * never clears — which is how a health panel stops being read at all.
+ */
+export const HISTORICAL_SOURCES = new Set(["wayback"]);
+
 export interface FeedRow {
   source: string;
   /** Most recent day this source wrote anything. */
@@ -37,6 +50,10 @@ export interface FeedRow {
   total: number;
   /** Whole days since it last wrote. */
   staleDays: number;
+  /** A closed historical corpus: it has finished, so it cannot be stale. */
+  historical: boolean;
+  /** Earliest day this source has a row for — the span a corpus covers. */
+  firstSeen: string;
 }
 
 export interface UnmappedRow {
@@ -96,6 +113,7 @@ export const getDataQuality = createServerFn({ method: "GET" }).handler(
         .prepare(
           `SELECT source,
                   MAX(last_seen) AS last_seen,
+                  MIN(first_seen) AS first_seen,
                   COUNT(*) AS total,
                   SUM(CASE WHEN last_seen >= date('now','-1 day') THEN 1 ELSE 0 END) AS live
              FROM jobs
@@ -105,12 +123,15 @@ export const getDataQuality = createServerFn({ method: "GET" }).handler(
         .all();
       const feeds: FeedRow[] = (feedRes?.results ?? []).map((r) => {
         const lastSeen = String(r.last_seen || "");
+        const source = String(r.source || "");
         return {
-          source: String(r.source || ""),
+          source,
           lastSeen,
+          firstSeen: String(r.first_seen || ""),
           live: Number(r.live) || 0,
           total: Number(r.total) || 0,
           staleDays: lastSeen ? daysSince(lastSeen, today) : 999,
+          historical: HISTORICAL_SOURCES.has(source),
         };
       });
 

@@ -2363,6 +2363,18 @@ body {
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
 }
+/* The historical-corpus tag. Deliberately neutral, not the red .dqflag: it
+   states a fact about the source rather than reporting a fault. */
+.dqhist {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #f4f4f5;
+  color: #6c6c72;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+}
 .dqlist {
   margin: 0;
   padding: 0;

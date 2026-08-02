@@ -133,6 +133,80 @@ the employer, then add it to `ADVERTISER_ALIAS`.
 
 ---
 
+# Wayback recovery of dead career sites (`scripts/wayback-to-d1.py`)
+
+A **one-off backfill, not a feed.** It reads the Internet Archive's captures of
+career sites that no longer exist and archives the advertisements that ran on
+them. Nothing schedules it and nothing should: the corpus is closed.
+
+First run recovered BHP's three retired hostnames:
+
+| host | captures indexed | listing captures | era |
+|---|---|---|---|
+| `jobs.bhpbilliton.com` | 89,110 | 23,001 | 2002–2018 |
+| `jobs.bhpbilliton.net` | 120 | 2 | 2004–2022 |
+| `careers.bmacoal.com` | 28,877 | 13,586 | 2003–2008 |
+
+**Why it reads listing pages and not job pages.** A `jobdetails.asp` capture
+costs one fetch and yields one advertisement; a `searchresults.asp` capture
+costs one fetch and yields twenty, with title, requisition reference, location
+and closing date already in a table. There are ~36,000 listing captures against
+~21,000 detail captures, so listings are both cheaper and richer. Detail pages
+carry two extra fields — the CSG (business unit) and, on the later platform, an
+explicit `Advertised:` date — which is the obvious next increment.
+
+**Three layouts, because the hosts changed platform twice.** Each parser names
+the capture it was verified against, in the script. The column order is *not*
+the same on both hosts — bhpbilliton.com publishes `[Position, Location,
+Applications Close]` and bmacoal publishes `[Position, Advertised, Applications
+close]` — so the header row is read and the labels decide. A positional parser
+files fourteen BMA ads at a place called "10 January 2006" and never errors.
+
+**`jobSearch.asp` is the search form, not results.** It returns zero rows every
+time on the `.com` host. Captures are ranked so the shapes that carry a results
+table are fetched first; the form is a last resort because on bmacoal the same
+filename *does* return results.
+
+**Dates.** `first_seen`/`last_seen` are the first and last capture the ad was
+seen in, so `days_advertised` measures how long it was actually up. `posted` is
+only ever the site's own opening date — bmacoal's "Advertised" column and the
+2015+ platform's `<time datetime>`. The legacy `.com` layout publishes a
+**closing** date and nothing else, and a closing date is not a posting date, so
+those rows keep `posted` empty rather than carrying a plausible wrong one.
+
+The upsert takes `MIN(first_seen)`/`MAX(last_seen)` rather than assigning, because
+captures are read in sampled order and a later run can discover an *earlier*
+sighting of the same ad. Every other source here walks forward in time and can
+simply assign `last_seen`; this one cannot.
+
+**Two things it cannot do.**
+1. Wayback cannot replay the POST that turns the page, so a capture normally
+   shows only the first 20 of a longer board. The pages state their own total
+   ("Displaying 1 to 20 of 63 jobs") and the run reports shown-vs-advertised
+   from it, so the sample never reads as the whole.
+2. `careers.bmacoal.com` has **no location column at all** — it advertises a
+   date where the other host advertises a place. Those rows are archived
+   unplaced rather than being assigned a location from the employer, so BMA
+   history does not appear on the map.
+
+**It is a closed corpus, so it is exempt from the freshness check.** `wayback`
+is listed in `HISTORICAL_SOURCES` (`src/employsi/lib/dataQualityFn.ts`) and the
+admin console tags it `historical 2002–2018` instead of flagging it red. Its
+newest row is from 2018 because the hostnames died in 2018; left in the check it
+would sit permanently silent and train the reader to ignore the panel.
+
+**web.archive.org is blocked by this sandbox's egress policy** (archive.org
+itself is not), so the fetches go through Oxylabs with `--via-oxylabs`. Nothing
+about the data needs a residential IP. From a GitHub Action, drop the flag.
+
+```bash
+OXYLABS_USERNAME=… OXYLABS_PASSWORD=… CLOUDFLARE_API_TOKEN=… \
+python3 scripts/wayback-to-d1.py --app-id bhp --max-fetches 600 --via-oxylabs \
+  --cache /tmp/wbcache        # cache makes a re-run free
+```
+
+---
+
 # Historical job archive (Cloudflare D1)
 
 Every listing pulled from **Adzuna, The Muse, Jooble, SEEK and Indeed** — the
