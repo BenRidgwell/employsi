@@ -8,11 +8,12 @@
 #   at all and fetches its results over DWR. It needs a real browser, and its
 #   paginator is click-only, so the script renders and clicks "Next".
 #
-#   Auckland Airport (careers.aucklandairport.co.nz) is READABLE but not
-#   REACHABLE. Its HTML carries every job tile with no JavaScript needed — but
-#   a plain datacentre request gets HTTP 403 and a challenge page. It only needs
-#   a residential exit, so the script fetches it UNRENDERED, which is cheaper
-#   and has one less thing to go wrong.
+#   Auckland Airport (careers.aucklandairport.co.nz) and TechnologyOne
+#   (technology1.com) are READABLE but not REACHABLE. Their HTML carries every
+#   role with no JavaScript needed — verified identical rendered and not — but a
+#   plain datacentre request gets HTTP 403 and a challenge page. They only need
+#   a residential exit, so both are fetched UNRENDERED, which is cheaper and has
+#   one less thing to go wrong.
 #
 # Rows land as `portal-sf`/`sydney-sgp` and `portal-wpjb`/
 # `nz-auckland-international-airport`, through the same key and upsert as every
@@ -81,3 +82,13 @@ jobs:
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         run: python scripts/aucklandairport-to-d1.py
+
+      - name: Scrape TechnologyOne careers → D1 (Oxylabs)
+        if: always()
+        env:
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/technologyone-to-d1.py

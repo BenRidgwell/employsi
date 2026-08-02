@@ -106,6 +106,16 @@ export function checkAdvertiser(
   advertiser: string,
   target: JobsTarget,
   allTargets: JobsTarget[],
+  /**
+   * The phrase the search actually used, when it was not the target's own name
+   * — a holding company is searched under its operating businesses too (see
+   * ./companyQueries.ts). The name rules below must judge the advertiser
+   * against WHAT WAS SEARCHED, not against the parent: an ad returned by a
+   * "Boral" search should look like Boral's, and comparing it to "SGH" would
+   * both fail to catch an unrelated advertiser and make the reject reason
+   * nonsense. Defaults to the target's name, which is the ordinary case.
+   */
+  searchedAs?: string,
 ): AdvertiserVerdict {
   const adv = (advertiser || "").trim();
   // No name at all is not evidence of anything; the caller already falls back
@@ -116,10 +126,13 @@ export function checkAdvertiser(
     return { keep: false, reason: `not an employer name: ${JSON.stringify(adv)}` };
   }
 
+  const expected = (searchedAs || target.name).trim();
   const a = norm(adv);
-  const n = norm(target.name);
+  const n = norm(expected);
   if (!a) return { keep: false, reason: `empty after normalisation: ${JSON.stringify(adv)}` };
 
+  // The deny list stays keyed on the target: it records advertisers wrongly
+  // attributed to THIS company, whichever phrase surfaced them.
   if ((DENY[target.id] ?? []).includes(a)) {
     return { keep: false, reason: `on the deny list for ${target.id}: ${JSON.stringify(adv)}` };
   }
@@ -134,7 +147,7 @@ export function checkAdvertiser(
 
   // Rule 3. An advertiser that IS another roster company belongs to that
   // company, not this one. Checked last because it is the most expensive.
-  if (!sameCompanyName(adv, target.name)) {
+  if (!sameCompanyName(adv, expected)) {
     for (const [rosterName, id] of rosterIndex(allTargets)) {
       if (id === target.id) continue;
       if (sameCompanyName(adv, rosterName)) {

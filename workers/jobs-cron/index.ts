@@ -36,6 +36,7 @@ import { fetchTasGov, type StoredTasJob } from "./tasGov";
 import { processNews, NEWS_PARTS } from "./news";
 import { processPortals, fetchPortal, portalToArchive, SITES } from "./careerSites";
 import { checkAdvertiser } from "./advertiser";
+import { queryPhrases } from "./companyQueries";
 import { fetchMcfJobs } from "./mycareersfuture";
 import { fetchSeekCompanyJobs } from "./seek";
 import { SEEK_ADVERTISERS } from "../../src/employsi/data/seekAdvertisers";
@@ -145,68 +146,87 @@ async function pullCompany(
   env: Env,
   target: JobsTarget,
 ): Promise<{ count: number; jobs: StoredJob[] }> {
-  const params = new URLSearchParams({
-    app_id: env.ADZUNA_APP_ID,
-    app_key: env.ADZUNA_APP_KEY,
-    what_phrase: target.name,
-    where: "Australia",
-    results_per_page: "50",
-    "content-type": "application/json",
-  });
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
   let count = 0;
   const jobs: StoredJob[] = [];
   const seenTitles = new Set<string>(); // normalised titles, for cross-board dedupe
-  try {
-    const res = await fetch(`https://api.adzuna.com/v1/api/jobs/au/search/1?${params.toString()}`, {
-      signal: controller.signal,
-      headers: { Accept: "application/json", "User-Agent": "employsi-jobs/1.0" },
+  const seen = new Set<string>(); // title|location, across ALL phrases
+
+  // Usually one phrase — the company's own name. A holding company also gets
+  // its operating businesses' names, because that is who its ads are placed
+  // under (see ./companyQueries.ts; SGH advertises as Boral, WesTrac, Coates).
+  // The dedupe sets are shared across phrases so a role that matches two of
+  // them is stored once, and `count` adds only what each phrase newly brings.
+  for (const phrase of queryPhrases(target.id, target.name)) {
+    if (jobs.length >= JOBS_PER_COMPANY) break;
+    const params = new URLSearchParams({
+      app_id: env.ADZUNA_APP_ID,
+      app_key: env.ADZUNA_APP_KEY,
+      what_phrase: phrase,
+      where: "Australia",
+      results_per_page: "50",
+      "content-type": "application/json",
     });
-    if (res.ok) {
-      const j = await res.json();
-      count = Number(j?.count) || 0;
-      const results = asRecords(asRecord(j).results);
-      const seen = new Set<string>();
-      for (const x of results) {
-        const title = stripHtml(x?.title || "");
-        if (!title) continue;
-        const loc = x?.location?.display_name || "";
-        const dedupe = (title + "|" + loc).toLowerCase();
-        if (seen.has(dedupe)) continue; // Adzuna reposts the same role repeatedly
-        seen.add(dedupe);
-        seenTitles.add(normTitle(title));
-        // Adzuna's keyword search returns anything matching the phrase, and the
-        // display name is the only evidence of who actually placed the ad. An
-        // unverifiable one is skipped rather than filed under this company —
-        // see ./advertiser.ts for why this rejects rather than allowlists.
-        const advertiser = x?.company?.display_name || "";
-        const verdict = checkAdvertiser(advertiser, target, AU_JOBS_TARGETS);
-        if (!verdict.keep) {
-          console.log(`adzuna ${target.id}: dropped — ${verdict.reason}`);
-          continue;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      const res = await fetch(
+        `https://api.adzuna.com/v1/api/jobs/au/search/1?${params.toString()}`,
+        {
+          signal: controller.signal,
+          headers: { Accept: "application/json", "User-Agent": "employsi-jobs/1.0" },
+        },
+      );
+      if (res.ok) {
+        const j = await res.json();
+        const results = asRecords(asRecord(j).results);
+        for (const x of results) {
+          const title = stripHtml(x?.title || "");
+          if (!title) continue;
+          const loc = x?.location?.display_name || "";
+          const dedupe = (title + "|" + loc).toLowerCase();
+          if (seen.has(dedupe)) continue; // Adzuna reposts the same role repeatedly
+          seen.add(dedupe);
+          seenTitles.add(normTitle(title));
+          // Adzuna's keyword search returns anything matching the phrase, and the
+          // display name is the only evidence of who actually placed the ad. An
+          // unverifiable one is skipped rather than filed under this company —
+          // see ./advertiser.ts for why this rejects rather than allowlists.
+          const advertiser = x?.company?.display_name || "";
+          const verdict = checkAdvertiser(advertiser, target, AU_JOBS_TARGETS, phrase);
+          if (!verdict.keep) {
+            console.log(`adzuna ${target.id}: dropped — ${verdict.reason}`);
+            continue;
+          }
+          const area = Array.isArray(x?.location?.area) ? x.location.area.join(" ") : "";
+          jobs.push({
+            t: title,
+            loc,
+            cat: x?.category?.label || "",
+            url: x?.redirect_url || "",
+            created: (x?.created || "").slice(0, 10),
+            city: matchCity(loc + " " + area) || matchCity(title),
+            skills: skillsForText(title),
+            src: "adzuna",
+            co: advertiser || phrase,
+            sal: adzunaSalary(x),
+            salN: adzunaSalaryNum(x),
+          });
+          if (jobs.length >= JOBS_PER_COMPANY) break;
         }
-        const area = Array.isArray(x?.location?.area) ? x.location.area.join(" ") : "";
-        jobs.push({
-          t: title,
-          loc,
-          cat: x?.category?.label || "",
-          url: x?.redirect_url || "",
-          created: (x?.created || "").slice(0, 10),
-          city: matchCity(loc + " " + area) || matchCity(title),
-          skills: skillsForText(title),
-          src: "adzuna",
-          co: advertiser || target.name,
-          sal: adzunaSalary(x),
-          salN: adzunaSalaryNum(x),
-        });
-        if (jobs.length >= JOBS_PER_COMPANY) break;
+        // Adzuna's `count` is how many ads match the phrase in total, not how
+        // many we kept — it always was an upper bound, and that is unchanged.
+        // Summing it across phrases is safe here because the phrases are
+        // DIFFERENT employers (Boral, WesTrac, Coates), so an ad matching two
+        // of them is vanishingly rare. It would not be safe for phrases that
+        // are variants of one name, which is why companyQueries.ts says to list
+        // operating businesses rather than spellings.
+        count += Number(j?.count) || 0;
       }
+    } catch {
+      /* Adzuna failed for this phrase — keep whatever the others returned */
+    } finally {
+      clearTimeout(timer);
     }
-  } catch {
-    /* Adzuna failed — fall through with whatever (possibly none) we have */
-  } finally {
-    clearTimeout(timer);
   }
 
   // Layer The Muse on top: add any of its Australian roles for this employer

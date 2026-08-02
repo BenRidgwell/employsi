@@ -647,6 +647,33 @@ export const SITES: SiteDef[] = [
     homeHub: "brisbane",
   },
   {
+    // Qantas was the one board on the roster nobody could read: careers.qantas
+    // .com sat behind Akamai fronting an Applyflow widget, and rendering it,
+    // its WP REST route, its job sitemap and its /jobs/feed/ all came back with
+    // no job links at all.
+    //
+    // It is readable now because Qantas MOVED. The group migrated onto
+    // SmartRecruiters, whose public postings API needs no key, no browser and
+    // no proxy — so the board we could not read by any means is now the same
+    // one-request feed as NextDC above. Worth remembering the next time a board
+    // looks impossible: the platform is the employer's choice, and it changes.
+    //
+    // The old Workday tenant (qantas.wd3.myworkdayjobs.com/Qantas_Careers) is
+    // still up and answers 200 with total: 0. It is deliberately NOT wired —
+    // an empty feed that never errors is exactly how a portal silently reads as
+    // "no vacancies".
+    //
+    // Qantas Group, not Qantas Airways: the feed covers Jetstar and QantasLink
+    // too, which is the right scope for an employer-level view.
+    id: "sydney-qan",
+    name: "Qantas Airways",
+    sector: "Airlines & Aviation",
+    platform: "smartrecruiters",
+    endpoint: "QantasGroup",
+    origin: "https://careers.qantas.com",
+    homeHub: "sydney",
+  },
+  {
     id: "melbourne-car",
     name: "CAR Group",
     sector: "Technology, Media and Telecommunications",
@@ -907,7 +934,7 @@ export const PORTAL_GROUPS: string[][] = [
   ["sydney-rhc-au", "sydney-ald"],
   // Sonic HealthPlus joins an existing tick rather than taking a new one: its
   // Taleo board is 18 roles served in a single POST, so it costs one request.
-  ["brisbane-nxt", "melbourne-car", "min", "sydney-shl-healthplus"],
+  ["brisbane-nxt", "melbourne-car", "min", "sydney-shl-healthplus", "sydney-qan"],
 ];
 
 const UA =
@@ -996,6 +1023,14 @@ const HUB_MATCH: [string, string | null][] = [
   ["wollongong", "sydney"],
   ["new south wales", "sydney"],
   [" nsw", "sydney"],
+  // New Zealand. These were missing entirely, which only showed up once a
+  // GLOBAL employer started advertising here: the NZ-based sites all set
+  // homeHub to auckland, so their own roles landed correctly by fallback and
+  // the gap stayed invisible. Qantas advertises in Auckland from a Sydney
+  // homeHub, and those roles resolved to no hub at all.
+  ["auckland", "auckland"],
+  ["wellington", "wellington"],
+  ["christchurch", "wellington"], // no Christchurch hub; Wellington is nearest
   // Asia-Pacific
   ["singapore", "singapore"],
   ["hong kong", "hongkong"],
