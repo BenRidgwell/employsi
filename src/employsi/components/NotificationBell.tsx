@@ -85,7 +85,11 @@ function weekLabel(iso: string): string {
 export function NotificationBell() {
   const account = useAppStore((s) => s.account);
   const openAuth = useAppStore((s) => s.openAuth);
-  const [open, setOpen] = useState(false);
+  // Panel visibility lives in the store: the account card's "Alerts" row opens
+  // this same panel, and two controls cannot each own one panel's state.
+  const open = useAppStore((s) => s.alertsOpen);
+  const toggleAlerts = useAppStore((s) => s.toggleAlerts);
+  const closeAlerts = useAppStore((s) => s.closeAlerts);
   const [tab, setTab] = useState<Tab>("all");
   const [read, setRead] = useState<Record<string, true>>({});
   const [muted, setMuted] = useState(false);
@@ -148,7 +152,7 @@ export function NotificationBell() {
       openAuth();
       return;
     }
-    setOpen((v) => !v);
+    toggleAlerts();
   };
 
   return (
@@ -173,7 +177,7 @@ export function NotificationBell() {
 
       {open && (
         <>
-          <div className="nbscrim" onClick={() => setOpen(false)} />
+          <div className="nbscrim" onClick={closeAlerts} />
           <div className="nbpanel" role="dialog" aria-label="Alerts">
             <div className="nbhd">
               <div className="nbhdtext">

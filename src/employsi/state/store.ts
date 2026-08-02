@@ -41,6 +41,10 @@ export interface AppState {
   // Transient notification text (e.g. "sign in to follow"); null when hidden.
   toast: string | null;
   settingsOpen: boolean;
+  /** The Alerts panel hanging off the bell. In the store rather than local to
+      NotificationBell because the account card's menu opens it too, and two
+      controls for one panel cannot each own its state. */
+  alertsOpen: boolean;
   reduceMotion: boolean;
   placeLabels: boolean;
   /** Geolocation is in flight (the browser is showing its permission prompt). */
@@ -122,6 +126,9 @@ export interface AppState {
   signOut: () => void;
   toggleSettings: () => void;
   closeSettings: () => void;
+  toggleAlerts: () => void;
+  closeAlerts: () => void;
+  openAlerts: () => void;
   setReduceMotion: (v: boolean) => void;
   setPlaceLabels: (v: boolean) => void;
   setUseMyLocation: (v: boolean) => void;
@@ -302,6 +309,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   pendingFollowSkill: null,
   toast: null,
   settingsOpen: false,
+  alertsOpen: false,
   reduceMotion: persisted.reduceMotion,
   placeLabels: persisted.placeLabels,
   // NOT persisted: a location permission belongs to the browser, and re-asking
@@ -503,8 +511,17 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   toggleSettings: () =>
-    set((s) => ({ settingsOpen: !s.settingsOpen, feedbackOpen: false, helpTourOpen: false })),
+    set((s) => ({
+      settingsOpen: !s.settingsOpen,
+      feedbackOpen: false,
+      helpTourOpen: false,
+      alertsOpen: false,
+    })),
   closeSettings: () => set({ settingsOpen: false }),
+  toggleAlerts: () =>
+    set((s) => ({ alertsOpen: !s.alertsOpen, settingsOpen: false, feedbackOpen: false })),
+  closeAlerts: () => set({ alertsOpen: false }),
+  openAlerts: () => set({ alertsOpen: true, settingsOpen: false, feedbackOpen: false }),
   setReduceMotion: (v) => {
     if (typeof document !== "undefined")
       document.documentElement.classList.toggle("reduce-motion", v);

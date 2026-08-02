@@ -99,7 +99,7 @@ function Row({
           aria-label="Upvote"
           aria-pressed={mine === 1}
           disabled={!canVote}
-          title={canVote ? "Upvote" : "Log in to vote"}
+          title={canVote ? "Upvote" : "Sign in to vote"}
           onClick={() => onVote(item.id, 1)}
         >
           <Chevron up />
@@ -111,7 +111,7 @@ function Row({
           aria-label="Downvote"
           aria-pressed={mine === -1}
           disabled={!canVote}
-          title={canVote ? "Downvote" : "Log in to vote"}
+          title={canVote ? "Downvote" : "Sign in to vote"}
           onClick={() => onVote(item.id, -1)}
         >
           <Chevron />
@@ -335,7 +335,7 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
                 ? "Requests move here once they are picked up."
                 : account
                   ? "Post the first one — every request here is read."
-                  : "Log in to post the first one."}
+                  : "Sign in to post the first one."}
             </span>
           </div>
         )}
@@ -386,7 +386,7 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
         <div className="fbsignedout">
           <div className="fbsignedouttext">
             <span className="fbsignedouttitle">Have a say in what gets built</span>
-            <span className="fbsignedoutsub">Log in to vote and post ideas.</span>
+            <span className="fbsignedoutsub">Sign in to vote and post ideas.</span>
           </div>
           <button
             className="fbsend"
@@ -395,7 +395,7 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
               openAuth();
             }}
           >
-            Log in
+            Sign in
           </button>
         </div>
       )}

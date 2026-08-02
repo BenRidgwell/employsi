@@ -784,87 +784,169 @@ body {
   background: transparent;
   z-index: 47;
 }
+/* ── Filter card (Filter_Popout.html) ──────────────────────────────────────
+   The design's card: 392px, 18px radius, 22px gutters, a header carrying the
+   active count / "Clear all" / a 32px round close, a scrolling body of
+   hairline-separated sections with mono eyebrows, and a #fbfbfc footer.
+
+   It keeps this app's anchor (the left rail's --pane-left/--pane-top) rather
+   than the mock's centred canvas, and caps against the viewport with the body
+   as the only scrolling part — sector chips plus the exchange drill-down can
+   run long. See components/FilterPane.tsx for the four places the content
+   deliberately differs from the mock. */
 .filterpane {
   position: fixed;
   left: var(--pane-left);
   top: var(--pane-top);
   box-sizing: border-box;
-  width: 252px;
+  width: 392px;
+  max-width: calc(100vw - 32px);
   max-height: var(--pane-max-h);
-  overflow: auto;
-  padding: 12px 13px 13px;
-  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
   border-radius: 18px;
-  background: var(--surface-card);
+  background: #ffffff;
   box-shadow:
-    0 1px 2px rgba(28, 28, 30, 0.06),
-    0 28px 56px -24px rgba(28, 28, 30, 0.55);
+    0 24px 60px -20px rgba(28, 28, 30, 0.32),
+    0 2px 6px rgba(28, 28, 30, 0.06);
+  overflow: hidden;
   animation: emppop 200ms cubic-bezier(0.32, 0.72, 0, 1) both;
   z-index: 49;
 }
 .fphd {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 14px;
+  gap: 16px;
+  padding: 20px 22px 14px;
 }
-.fptitle {
-  font-size: 14px;
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.015em;
-}
-.fpx {
+.fphdleft {
   display: flex;
   align-items: center;
+  gap: 10px;
+}
+.fphdright {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fptitle {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  color: #1c1c1e;
+}
+/* How many filters are on, in the header where it is visible with the body
+   scrolled. Ink pill, mono, matching the design. */
+.fpcount {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #1c1c1e;
+  color: #ffffff;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+}
+.fpghost {
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #6c6c72;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.fpghost:hover {
+  background: #f4f4f5;
+}
+.fpx {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
   padding: 0;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid #e5e5ea;
   border-radius: 999px;
-  background: var(--surface-card);
-  color: var(--neutral-700);
+  background: #ffffff;
+  color: #3a3a3c;
   cursor: pointer;
-  --m: 0;
   transition:
     background 160ms,
-    color 160ms,
     transform 110ms;
 }
 .fpx:hover {
-  --m: 1;
-  background: var(--surface-hover);
-  color: var(--text-primary);
+  background: #f4f4f5;
 }
 .fpx:active {
-  transform: scale(0.94);
+  transform: scale(0.96);
 }
-.fplbl {
-  display: block;
-  font-family: var(--font-mono);
+.fpbody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 22px;
+}
+.fpsec {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 14px 0;
+  border-top: 1px solid #ededf0;
+}
+/* A section whose control sits beside its eyebrow rather than under it. */
+.fpsecrow {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.fpsechd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.fpeyebrow {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 10px;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--text-tertiary);
+  color: #8e8e93;
+}
+.fpsummary {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  color: #aeaeb2;
 }
 .fpchips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin: 9px 0 16px;
+  gap: 7px;
 }
 .fpchip {
-  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
   padding: 0 11px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid #e5e5ea;
   border-radius: 999px;
-  background: var(--surface-card);
-  color: var(--neutral-700);
+  background: #ffffff;
+  color: #48484a;
   font-family: inherit;
   font-size: 12.5px;
-  font-weight: var(--weight-medium);
+  font-weight: 500;
   cursor: pointer;
   transition:
     background 170ms,
@@ -872,53 +954,91 @@ body {
     border-color 170ms,
     transform 110ms;
 }
-.fpchipwide {
-  padding: 0 14px;
-}
 .fpchip:hover {
-  border-color: var(--border-strong);
+  border-color: #d1d1d6;
+  background: #fafafa;
 }
 .fpchip.on {
-  border-color: var(--action-primary);
-  background: var(--action-primary);
-  color: var(--action-primary-text);
+  border-color: #1c1c1e;
+  background: #1c1c1e;
+  color: #ffffff;
 }
 .fpchip:active {
   transform: scale(0.97);
 }
-.fpslider {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 14px;
+/* The facet count riding inside each sector chip. */
+.fpchipn {
+  padding-left: 7px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  color: #aeaeb2;
 }
-.fpsliderhd {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+.fpchip.on .fpchipn {
+  color: rgba(255, 255, 255, 0.62);
+}
+.fpseg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 3px;
+  border: 1px solid #e5e5ea;
+  border-radius: 9px;
+  background: #f4f4f5;
+}
+.fpsegbtn {
+  height: 28px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #8e8e93;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.006em;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+.fpsegbtn.on {
+  background: #ffffff;
+  color: #1c1c1e;
+  box-shadow: 0 1px 2px rgba(28, 28, 30, 0.1);
 }
 .fpvalue {
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  letter-spacing: -0.01em;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 14px;
+  color: #aeaeb2;
+}
+.fpvalue.on {
+  color: #1c1c1e;
+}
+/* The design's end labels under each slider, so the range is readable without
+   dragging it. */
+.fpends {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  color: #c7c7cc;
 }
 /* The design draws its own track and thumb over a pointer-drag div. A real
    range input is used instead so the control stays keyboard-operable; these
-   rules give it the design's 6px track, ink fill and 18px thumb. */
+   rules give it the design's 5px track, ink fill and 18px thumb. */
 .fprange {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 6px;
-  margin: 8px 0;
+  height: 5px;
+  margin: 4px 0;
   border-radius: 999px;
   background: linear-gradient(
     to right,
-    var(--action-primary) 0,
-    var(--action-primary) var(--fill, 0%),
-    var(--surface-sunken) var(--fill, 0%),
-    var(--surface-sunken) 100%
+    #1c1c1e 0,
+    #1c1c1e var(--fill, 0%),
+    #ededf0 var(--fill, 0%),
+    #ededf0 100%
   );
   cursor: pointer;
 }
@@ -927,47 +1047,86 @@ body {
   appearance: none;
   width: 18px;
   height: 18px;
-  border: 1px solid var(--action-primary);
+  border: 2px solid #1c1c1e;
   border-radius: 999px;
-  background: var(--surface-card);
-  box-shadow: 0 1px 3px rgba(28, 28, 30, 0.24);
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(28, 28, 30, 0.22);
   cursor: pointer;
 }
 .fprange::-moz-range-thumb {
   width: 18px;
   height: 18px;
-  border: 1px solid var(--action-primary);
+  border: 2px solid #1c1c1e;
   border-radius: 999px;
-  background: var(--surface-card);
-  box-shadow: 0 1px 3px rgba(28, 28, 30, 0.24);
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(28, 28, 30, 0.22);
   cursor: pointer;
 }
 .fprange:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
 }
-.fpclear {
-  width: 100%;
+.fpswitchtext {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.fpswitchtitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #1c1c1e;
+}
+.fpswitchsub {
+  font-size: 12.5px;
+  color: #8e8e93;
+}
+.fpmuted .fpswitchtitle {
+  color: #8e8e93;
+}
+.fpmuted .fpswitchsub {
+  color: #aeaeb2;
+}
+.fpfoot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px 18px;
+  border-top: 1px solid #ededf0;
+  background: #fbfbfc;
+}
+.fpnote {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12.5px;
+  color: #8e8e93;
+}
+.fpapply {
+  flex: 0 0 auto;
   height: 38px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  background: var(--surface-subtle);
-  color: var(--neutral-700);
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #1c1c1e;
+  color: #ffffff;
   font-family: inherit;
-  font-size: 13px;
-  font-weight: var(--weight-medium);
+  font-size: 13.5px;
+  font-weight: 600;
   cursor: pointer;
   transition:
-    background 160ms,
-    color 160ms,
-    transform 110ms;
+    background 0.12s ease,
+    transform 0.12s ease;
 }
-.fpclear:hover {
-  background: var(--surface-hover);
-  color: var(--text-primary);
+.fpapply:hover {
+  background: #2c2c2e;
 }
-.fpclear:active {
-  transform: scale(0.99);
+.fpapply:active {
+  transform: scale(0.98);
 }
 
 /* ── Shell: header row + inset map card ──────────────────────────────────────
@@ -4215,49 +4374,343 @@ body {
   background: #ffffff;
   color: var(--text-primary);
 }
-.acctflyout {
-  width: 300px;
+
+/* ── Account card (Account_Popouts.html) ───────────────────────────────────
+   One 352px card carrying both states. The design's own numbers throughout:
+   18px radius, 22px gutters, a 42px ink avatar, 44px provider buttons, 40px
+   menu rows, and a #fbfbfc footer above a hairline.
+
+   Only two things are not the design's. The counters are disclosure buttons
+   (the design draws them as buttons but shows no list; the card they replace
+   had a working saved-companies list, so pressing a counter opens it — see
+   components/AccountButton.tsx). And the card is capped against the viewport
+   with the list scrolling, because a long follow list would otherwise run off
+   the bottom of a popout hanging from a header button. */
+.accard {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  box-sizing: border-box;
+  width: 352px;
+  max-width: calc(100vw - 32px);
+  max-height: min(640px, calc(100vh - 140px));
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow:
+    0 24px 60px -20px rgba(28, 28, 30, 0.32),
+    0 2px 6px rgba(28, 28, 30, 0.06);
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  pointer-events: none;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  z-index: 8;
+}
+.accard.open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.acchead {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 22px 16px;
+}
+.accheadout {
+  padding-bottom: 14px;
+}
+.accav {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #1c1c1e;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.accwho {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.accname,
+.accemail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.accname {
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: #1c1c1e;
+}
+.accemail {
+  font-size: 13px;
+  color: #8e8e93;
+}
+.acctitle {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  line-height: 1.2;
+  color: #1c1c1e;
+}
+.accsub {
+  margin-top: 5px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #8e8e93;
+  text-wrap: pretty;
+  white-space: normal;
+}
+.accstats {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  padding: 0 22px 4px;
+}
+.accstat {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid #ededf0;
+  border-radius: 12px;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+.accstat:hover {
+  background: #f4f4f5;
+  border-color: #e5e5ea;
+}
+.accstat.on {
+  background: #f4f4f5;
+  border-color: #d1d1d6;
+}
+.accstatv {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  color: #1c1c1e;
+}
+.accstatl {
+  font-size: 11.5px;
+  color: #8e8e93;
+}
+.accempty {
+  flex: 0 0 auto;
+  margin: 12px 22px 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f4f4f5;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #6c6c72;
+  text-wrap: pretty;
+}
+/* The disclosed follow list. The only scrolling part of the card. */
+.acclist {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 10px;
+  padding: 0 22px;
+}
+.accitem {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+.accitemmain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+  border: 1px solid #ededf0;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 8px 11px;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+.accitemmain:hover {
+  background: #f4f4f5;
+  border-color: #e5e5ea;
+}
+/* A followed skill has nowhere to open, so its row is a label, not a button. */
+.accitemflat {
+  cursor: default;
+  justify-content: center;
+}
+.accitemflat:hover {
+  background: #ffffff;
+  border-color: #ededf0;
+}
+.accitemname {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1c1c1e;
+}
+.accitemsub {
+  font-size: 10.5px;
+  color: #8e8e93;
+}
+.accitemx {
+  flex: 0 0 auto;
+  width: 30px;
+  border: 1px solid #ededf0;
+  background: #ffffff;
+  border-radius: 10px;
+  color: #8e8e93;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.12s;
+}
+.accitemx:hover {
+  color: #ffffff;
+  background: var(--coral, #e5484d);
+  border-color: var(--coral, #e5484d);
+}
+.accmenu {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 12px 6px;
+}
+.accmenurow {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  height: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: #8e8e93;
+  font-family: inherit;
+  transition: background 0.12s ease;
+}
+.accmenurow:hover {
+  background: #f4f4f5;
+}
+.accmenulbl {
+  flex: 1 1 auto;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.008em;
+  color: #1c1c1e;
+}
+.accfoot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 12px 22px 18px;
+  border-top: 1px solid #ededf0;
+  background: #fbfbfc;
+}
+.accsignout {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid #e5e5ea;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #1c1c1e;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    transform 0.12s ease;
+}
+.accsignout:hover {
+  background: #f4f4f5;
+}
+.accsignout:active {
+  transform: scale(0.98);
+}
+/* Why we are asking, when the sign-in was triggered by a follow. */
+.accpending {
+  margin: 0 22px 12px;
+  padding: 10px 12px;
+  border: 1px solid #ededf0;
+  border-radius: 10px;
+  background: #fafafa;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #6c6c72;
+}
+.accpending b {
+  color: #1c1c1e;
+}
+/* The provider buttons and fine print, at the design's dimensions, when they
+   are inside the account card. Elsewhere (the search rail) they keep theirs. */
+.accard .authoptions {
+  gap: 9px;
+  padding: 0 22px;
+}
+.accard .authprovider {
+  justify-content: flex-start;
+  gap: 11px;
+  height: 44px;
+  padding: 0 14px;
+  border-color: #e5e5ea;
+  border-radius: 11px;
+  font-size: 14.5px;
+  letter-spacing: -0.01em;
+}
+.accard .authprovider:hover {
+  background: #f4f4f5;
+  border-color: #d1d1d6;
+}
+.accard .authfine {
+  margin: 0;
+  padding: 18px 22px 20px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #aeaeb2;
+  text-wrap: pretty;
+}
+.accard .authnote {
+  padding: 0 22px 18px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #8e8e93;
 }
 /* Auth tabs */
-.accttabs {
-  display: flex;
-  gap: 4px;
-  background: #f2f3f5;
-  border-radius: 10px;
-  padding: 4px;
-  margin-bottom: 12px;
-}
-.accttab {
-  flex: 1;
-  border: 0;
-  background: transparent;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--slate);
-  padding: 7px 6px;
-  border-radius: 7px;
-  cursor: pointer;
-  transition: 0.15s;
-}
-.accttab.on {
-  background: #fff;
-  color: var(--ink);
-  box-shadow: 0 2px 8px -3px rgba(15, 27, 61, 0.3);
-}
-.acctnote {
-  font-size: 11.5px;
-  line-height: 1.45;
-  color: var(--slate);
-  background: #f7f7f8;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  padding: 9px 11px;
-  margin-bottom: 11px;
-}
-.acctnote b {
-  color: var(--ink);
-}
 .acctinput {
   margin-bottom: 9px;
 }
@@ -4299,107 +4752,7 @@ body {
   text-decoration: underline;
 }
 /* Signed-in header */
-.accthead {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding-bottom: 12px;
-  margin-bottom: 4px;
-  border-bottom: 1px solid var(--line);
-}
-.acctavlg {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: var(--border-subtle);
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-}
-.acctname {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--ink);
-}
-.acctemail {
-  font-size: 11.5px;
-  color: var(--slate);
-  margin-top: 1px;
-}
 /* Saved-companies list */
-.acctsaved {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  max-height: 260px;
-  overflow-y: auto;
-}
-.acctrow {
-  display: flex;
-  align-items: stretch;
-  gap: 6px;
-}
-.acctrowmain {
-  flex: 1;
-  text-align: left;
-  border: 1px solid var(--line);
-  background: #fff;
-  border-radius: 9px;
-  padding: 8px 11px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: 0.15s;
-}
-.acctrowmain:hover {
-  border-color: var(--slate);
-  background: #fafafb;
-}
-.acctrowname {
-  display: block;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--ink);
-}
-.acctrowsec {
-  display: block;
-  font-size: 10.5px;
-  color: var(--slate);
-  margin-top: 1px;
-}
-.acctunfollow {
-  flex: 0 0 auto;
-  width: 30px;
-  border: 1px solid var(--line);
-  background: #fff;
-  border-radius: 9px;
-  color: var(--slate);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: 0.15s;
-}
-.acctunfollow:hover {
-  color: #fff;
-  background: var(--coral, #e5484d);
-  border-color: var(--coral, #e5484d);
-}
-.acctempty {
-  font-size: 11.5px;
-  line-height: 1.5;
-  color: var(--slate);
-  background: #f7f7f8;
-  border: 1px dashed var(--line);
-  border-radius: 10px;
-  padding: 12px;
-}
-.acctempty b {
-  color: var(--ink);
-}
 .zoomhide {
   opacity: 0 !important;
   pointer-events: none !important;
@@ -4927,8 +5280,8 @@ body {
 }
 
 /* ── Signed-in avatar ──────────────────────────────────────────────────────
-   The three account avatars (.acctav in the header button, .acctavlg in the
-   flyout, .gsauthinitials in the search rail) render initials on a dark disc
+   The three account avatars (.acctav in the header button, .accav in the
+   account card, .gsauthinitials in the search rail) render initials on a dark disc
    by default. When the person's provider photo loads, `.hasimg` is added and
    the disc becomes the frame for it: the tinted background would otherwise
    show through a photo with transparency, and the initials' font metrics
@@ -4937,7 +5290,7 @@ body {
    `object-fit: cover` matters — Google returns square avatars but LinkedIn
    does not always, and `fill` would visibly stretch a face. */
 .acctav.hasimg,
-.acctavlg.hasimg,
+.accav.hasimg,
 .gsauthinitials.hasimg {
   background: none;
   padding: 0;
@@ -4952,7 +5305,7 @@ body {
   display: block;
 }
 .acctav.hasimg img,
-.acctavlg.hasimg img,
+.accav.hasimg img,
 .gsauthinitials.hasimg img {
   width: 100%;
   height: 100%;
@@ -6113,45 +6466,59 @@ body {
   animation: helppanelin 0.2s ease both;
 }
 /* ── Settings card (Settings_Popout.html) ─────────────────────────────────
-   Replaces the old two-row settings panel. Widths and spacing are the design's
-   own: 440px card, 26px gutters, 560px scroll body, mono eyebrows.
+   Structure is the design's: header, three eyebrowed groups, footer.
+   GEOMETRY IS NOT. The design is drawn as a standalone 860x760 canvas, so it
+   is sized like a page — 440px wide, 26px gutters, a 24px title and a 560px
+   body that never scrolls. Dropped into the app it became the largest thing on
+   screen and ran past the viewport, because it is a POPOUT hanging off a
+   38px header button, not a page.
+   So it is built to the same shell every other popout in this app uses —
+   .nbpanel (Alerts, 420px) and .fbboard (Feedback, 412px): one width, 18px
+   gutters, a 15px title, a 28px round close, and a max-height cap with the
+   BODY as the only scrolling part so the header and footer stay put. The
+   design's own decisions inside a row — mono eyebrows, the "Coming soon"
+   chips, switch dimensions — are kept exactly.
    The `.muted` rows are the ones the product cannot honestly back yet — see
    the note in components/SettingsPanel.tsx for which and why. */
 .setpanel {
-  width: 440px;
+  width: 420px;
   max-width: calc(100vw - 32px);
+  max-height: min(640px, calc(100vh - 140px));
+  display: flex;
+  flex-direction: column;
   padding: 0;
   border-radius: 18px;
   overflow: hidden;
 }
 .sthead {
+  flex: 0 0 auto;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 26px 26px 18px;
+  padding: 16px 16px 12px 18px;
 }
 .stheadtext {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 3px;
 }
 .sttitle {
-  font-size: 24px;
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.02em;
   line-height: 1.1;
 }
 .stsubtitle {
-  font-size: 13px;
+  font-size: 12px;
   color: #8e8e93;
 }
 .stclose {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 28px;
+  height: 28px;
   flex: 0 0 auto;
   border: 1px solid #e5e5ea;
   border-radius: 999px;
@@ -6169,9 +6536,10 @@ body {
   transform: scale(0.98);
 }
 .stbody {
-  max-height: 560px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
-  padding: 0 26px 8px;
+  padding: 0 18px 6px;
 }
 .stgroup {
   display: flex;
@@ -6179,13 +6547,13 @@ body {
 }
 .steyebrow {
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 10.5px;
+  font-size: 9.5px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #8e8e93;
-  padding: 18px 0 12px;
+  padding: 14px 0 9px;
   border-top: 1px solid #ededf0;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 .stgroup:first-child .steyebrow {
   margin-top: 0;
@@ -6194,8 +6562,8 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 20px;
-  padding: 14px 0;
+  gap: 16px;
+  padding: 11px 0;
   border-top: 1px solid #ededf0;
 }
 /* The row straight after an eyebrow already has the eyebrow's rule above it. */
@@ -6204,7 +6572,7 @@ body {
 }
 .stinline {
   align-items: center;
-  padding: 12px 0;
+  padding: 9px 0;
 }
 .strowtext {
   display: flex;
@@ -6216,13 +6584,13 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 15.5px;
+  font-size: 13.5px;
   font-weight: 600;
   letter-spacing: -0.012em;
 }
 .strowsub {
-  font-size: 13.5px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.4;
   color: #8e8e93;
   text-wrap: pretty;
 }
@@ -6309,9 +6677,9 @@ body {
   box-shadow: 0 1px 2px rgba(28, 28, 30, 0.08);
 }
 .stselect {
-  width: 180px;
-  height: 38px;
-  padding: 0 12px;
+  width: 150px;
+  height: 32px;
+  padding: 0 10px;
   border: 1px solid #e5e5ea;
   border-radius: 9px;
   background: #fff;
@@ -6324,7 +6692,8 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 26px 20px;
+  flex: 0 0 auto;
+  padding: 12px 18px 14px;
   border-top: 1px solid #ededf0;
   background: #fbfbfc;
 }
@@ -6341,10 +6710,10 @@ body {
 }
 .stghost,
 .stprimary {
-  height: 34px;
-  padding: 0 14px;
+  height: 32px;
+  padding: 0 13px;
   border-radius: 9px;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -6372,33 +6741,12 @@ body {
   transform: scale(0.98);
 }
 
-/* Settings panel + toggle switches */
-.setpanel {
-  width: 256px;
-  padding: 13px 14px 3px;
-}
-.setrow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 12px 0;
-  border-top: 1px solid var(--line);
-}
-.setrow:first-of-type {
-  border-top: 0;
-}
-.setlbl {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--ink);
-}
-.setsub {
-  font-size: 11px;
-  color: var(--slate);
-  margin-top: 2px;
-  line-height: 1.35;
-}
+/* The switch the Help dock still uses. The settings panel this block was
+   originally written for is gone — its `.setpanel { width: 256px }` rule
+   outlived it and, sitting AFTER the design card's own rule, silently won the
+   cascade: the 440px card was being painted at 256px while keeping the
+   design's 26px inner gutters, which is what made it read as oversized and
+   overflowing. Removed with the rest of the dead block. */
 .ngswitch {
   flex: 0 0 auto;
   width: 40px;
@@ -9593,8 +9941,13 @@ body {
     max-width: none;
     max-height: 82vh;
     border-radius: 20px 20px 0 0;
-    padding: 18px 16px calc(22px + env(safe-area-inset-bottom, 0px));
+    /* The card owns its own gutters now (header / body / footer each pad
+       themselves), so the sheet adds only the home-indicator inset. */
+    padding: 0;
     z-index: 47;
+  }
+  .filterpane .fpfoot {
+    padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
   }
   .fpscrim {
     background: rgba(13, 15, 20, 0.34);

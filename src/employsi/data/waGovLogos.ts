@@ -21,12 +21,13 @@
  *                      65 copies of one URL in a map.
  *
  * WHAT IS EXCLUDED
- *  * 7 roster agencies whose only asset is a WHITE/REVERSE variant — the
- *    workbook flags each as "invisible on light backgrounds, source a dark
- *    version". The badge renders on a light surface, so using them would show
- *    an empty circle, which is worse than the favicon fallback: Aqwest, Art
- *    Gallery of WA, Central/North/South Regional TAFE, North/South Metropolitan
- *    TAFE, Rottnest Island Authority, UWA, Western Power.
+ *  * roster agencies whose only asset is a WHITE/REVERSE variant — the workbook
+ *    flags each as "invisible on light backgrounds, source a dark version". The
+ *    badge renders on a light surface, so using them would show an empty
+ *    circle, which is worse than the favicon fallback: Aqwest, Art Gallery of
+ *    WA, Central/North Regional TAFE, North Metropolitan TAFE, UWA, Western
+ *    Power. (South Regional TAFE, South Metropolitan TAFE and Rottnest Island
+ *    Authority have since had dark marks found or supplied and are wired above.)
  *  * 2 that did not resolve when checked: Department of Water and Environmental
  *    Regulation (404) and Insurance Commission of WA (403).
  *  * 11 roster agencies the workbook has no row for at all — mostly the health
@@ -50,6 +51,20 @@ export const WA_GOV_LOGO_URL: Record<string, string> = {
   // which is what the badge needs, so it is no longer an exclusion.
   "perth-gov-south-regional-tafe":
     "https://www.southregionaltafe.wa.edu.au/themes/custom/srtafe_theme/images/logos/site-logo.svg",
+  // Four agencies that were falling back — two to the whole-of-government
+  // crest, two to the favicon — because the only assets their own domains
+  // published were white/reverse variants that vanish on the light badge. Dark
+  // lockups were supplied for each and checked (200, image content) before
+  // being wired here; they move out of WA_GOV_CREST_IDS and the exclusion list
+  // above accordingly.
+  "perth-gov-south-metropolitan-health-service":
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTAfm9b5gvSMSfHAW-osl8-9OULUy6DCHKmV-MwDSWUdiYvOdfBIydUM_w&s=10", // South Metropolitan Health Service
+  "perth-gov-department-of-communities":
+    "https://media.cdn.gradconnection.com/uploads/735c667b-e7f1-4438-aec5-10bfe89d8c68-new-logo.jpg", // Department of Communities
+  "perth-gov-rottnest-island-authority":
+    "https://www.dbca.wa.gov.au/sites/default/files/logos/2023-04/Logo-RIA_0.svg", // Rottnest Island Authority (served from DBCA, its parent department)
+  "perth-gov-south-metropolitan-tafe":
+    "https://images.prismic.io/erdi/178db128-c71c-4689-9cc1-cda5b6f2a4ed_South+Metropolitan+TAFE+.png?auto=compress,format", // South Metropolitan TAFE
   "perth-gov-construction-training-fund": "https://ctf.wa.gov.au/images/ctf-logo.svg", // Construction Training Fund
   "perth-gov-corruption-and-crime-commission":
     "https://www.ccc.wa.gov.au/themes/custom/ccc_theme/images/logo.png", // Corruption and Crime Commission
@@ -102,16 +117,10 @@ export const WA_GOV_CREST = "https://www.wa.gov.au/themes/custom/wagov/images/lo
 
 export const WA_GOV_CREST_IDS: string[] = [
   "perth-gov-arts-and-culture-trust", // Arts and Culture Trust
-  // South Metropolitan Health Service. Asked for its crest-and-name logo; its
-  // site serves that lockup ONLY in white (logo.svg is literally id
-  // "badge-white-a", filled #FFF, and the other asset is
-  // "COA-with-text-GoWA-white.png"), and both would render as an empty circle
-  // on the light badge. No dark variant is published anywhere on the domain.
-  // The whole-of-government crest is the same identity minus the agency line,
-  // and it is legible — so it is used rather than the favicon it was falling
-  // back to. If a dark SMHS lockup is supplied, it belongs in WA_GOV_LOGO_URL.
-  "perth-gov-south-metropolitan-health-service",
-  "perth-gov-department-of-communities", // Department of Communities
+  // South Metropolitan Health Service and Department of Communities used to sit
+  // here: their own sites publish only white/reverse lockups, so the crest was
+  // the closest legible identity. Dark marks have since been supplied for both
+  // and they now carry their own logo in WA_GOV_LOGO_URL above.
   "perth-gov-department-of-creative-industries-tourism-and-sport", // Department of Creative Industries, Tourism and Sport
   "perth-gov-department-of-energy-and-economic-diversification", // Department of Energy and Economic Diversification
   "perth-gov-department-of-housing-and-works", // Department of Housing and Works

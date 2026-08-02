@@ -4,10 +4,17 @@ import { IconClose } from "./ActionIcons";
 /**
  * The settings card, built from `Settings_Popout.html`.
  *
- * The design's structure is followed exactly: a 440px card, a header with a
- * round close control, three labelled groups (Appearance / Notifications /
- * Regional) separated by hairlines with mono eyebrows, and a footer carrying
- * the version beside "Reset to defaults" and "Done".
+ * The design's structure is followed exactly: a header with a round close
+ * control, three labelled groups (Appearance / Notifications / Regional)
+ * separated by hairlines with mono eyebrows, and a footer carrying the version
+ * beside "Reset to defaults" and "Done".
+ *
+ * Its GEOMETRY is not, and deliberately. The design is drawn as a standalone
+ * 860x760 canvas and sized accordingly — 440px wide, 26px gutters, a 24px
+ * title, a body that never scrolls. This is a popout hanging off a header
+ * button, so it is built to the same shell as Alerts and the Feedback board:
+ * one width, one gutter, a capped height with only the body scrolling. See the
+ * `.setpanel` block in global.css.
  *
  * WHAT IS AND ISN'T WIRED, AND WHY THAT IS VISIBLE
  * The design ships seven controls. Three of them we can honestly back today:
