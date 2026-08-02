@@ -205,6 +205,35 @@ export function GlobalSearch() {
     setSearched(false);
   }, [searchQuery, carded]);
 
+  // Ctrl+F / Cmd+F focuses THIS field instead of the browser's find bar.
+  //
+  // Taking over a browser shortcut is a real cost, so it is deliberately
+  // narrow: the default is only prevented when the key actually lands on the
+  // app chrome. If focus is already in a text field, a textarea or anything
+  // contentEditable — a feedback box, the analyst prompt — the browser keeps
+  // Ctrl+F, because there "find" plausibly means find, and silently swallowing
+  // it would feel broken.
+  //
+  // Escape already clears and blurs this input (see onKeyDown), so there is a
+  // way back to the page without reaching for the mouse.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "f" && e.key !== "F") return;
+      if (!e.ctrlKey && !e.metaKey) return;
+      if (e.altKey || e.shiftKey) return;
+      const el = document.activeElement as HTMLElement | null;
+      const tag = el?.tagName;
+      const typing =
+        el?.isContentEditable || tag === "TEXTAREA" || (tag === "INPUT" && el !== inputRef.current);
+      if (typing) return;
+      e.preventDefault();
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const goToResult = (r: Result) => {
     if (r.kind === "skill") {
       // Colour the map by real demand AND open the card for it.

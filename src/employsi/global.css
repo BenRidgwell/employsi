@@ -7056,12 +7056,25 @@ body {
    the card slides RIGHT into the slot the news panel just left, so the pair
    becomes one card in the news column's position.
 
-   The two offsets are derived from those widths and must move together:
-     card  -> +(380 + 14) = 394px, putting its right edge on the stage's right
-     news  -> -(440 - 26) = -414px, putting all but a 26px spine behind it
-   A 26px spine is what stays clickable. Transforms rather than width/flex
-   changes so nothing reflows and the news panel's own scroll position, feed
-   and in-flight fetches survive the trip.
+   The two offsets are derived from those widths and must move together. Work
+   in stage-content coordinates, where the card starts at 0:
+     card starts [0, 440], news starts [454, 834]
+     card -> +(380 + 14) = +394px, so it becomes [394, 834]: its right edge is
+             on the stage's right, sitting exactly in the news column's slot
+     news -> it has to finish 16px to the LEFT of the card's new left edge, so
+             its target left is 394 - 16 = 378, and it starts at 454:
+             378 - 454 = -76px
+   Generally that is (news width - card width - spine), i.e. 380 - 440 - 16.
+
+   The earlier -414px came from -(440 - 26), which measures the card's width
+   from the card's own left edge — but the news panel does not start there, it
+   starts a whole card plus the gap further right. That offset overshot by 328px
+   and left the news panel sitting BESIDE the card with 354 of its 380px still
+   showing, which is the "sticking out" this fixes.
+
+   The 16px spine is what stays visible; the whole tucked panel is the click
+   target. Transforms rather than width/flex changes so nothing reflows and the
+   news panel's own scroll position, feed and in-flight fetches survive the trip.
 
    Not applied under prefers-reduced-motion via .reduce-motion, which already
    kills every transition app-wide — the end states still hold, so the panel
@@ -7070,7 +7083,7 @@ body {
   transform: translateX(394px);
 }
 .cardstage.newstucked .newspanel {
-  transform: translateX(-414px);
+  transform: translateX(-76px);
   cursor: pointer;
 }
 .cc,
@@ -7409,7 +7422,10 @@ body {
   left: 0;
   top: 0;
   bottom: 0;
-  width: 26px;
+  /* Matches the tuck offset above, so the strip that shows is exactly the
+     spine — any wider and its right edge disappears under the card, taking
+     part of the label with it. */
+  width: 16px;
   display: none;
   align-items: center;
   justify-content: center;
@@ -11943,10 +11959,6 @@ body {
 
    z-index 90 puts it above every panel and the toast (max 70) — while it is up
    it owns the screen, which is the point of a splash.                         */
-@keyframes in-grid {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
 @keyframes in-stem {
   0% { transform: scaleY(0); opacity: 0; }
   30% { opacity: 1; }
@@ -12003,16 +12015,6 @@ body {
      Releasing pointer events at the same moment it starts leaving means a click
      during the handoff reaches the map, not the veil. */
   pointer-events: none;
-}
-.introgrid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(#ededf0 1px, transparent 1px),
-    linear-gradient(90deg, #ededf0 1px, transparent 1px);
-  background-size: 56px 56px;
-  opacity: 0.5;
-  animation: in-grid 620ms ease both;
 }
 .introglow {
   position: absolute;
@@ -12137,7 +12139,6 @@ body {
    us not to play. The veil still covers the boot — it just arrives and leaves
    without the choreography. */
 @media (prefers-reduced-motion: reduce) {
-  .introgrid,
   .introlockup,
   .introword,
   .introrule,

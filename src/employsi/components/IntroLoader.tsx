@@ -68,7 +68,6 @@ export function IntroLoader({ ready }: { ready: boolean }) {
 
   return (
     <div className={`introveil${out ? " is-out" : ""}`} aria-hidden="true">
-      <div className="introgrid" />
       <div className="introglow" />
       <div className="introhaze" />
 
