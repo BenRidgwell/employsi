@@ -77,18 +77,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Employsi — labour market intelligence" },
+      // The FALLBACK head. Both real routes set their own (index.tsx and
+      // mobile-frame.tsx), so what this actually covers is the not-found and
+      // error-boundary render, plus any route added later that forgets to.
+      // Worded to match index.tsx so the product never introduces a second name
+      // for itself on an error page.
+      { title: "employsi - explore the world of work" },
       {
         name: "description",
         content:
-          "A live map of hiring demand: which skills are in demand, where, and at which employers.",
+          "Employsi is the HR intelligence platform for understanding talent markets, compensation, and the shifting shape of work.",
       },
       { name: "author", content: "Employsi" },
-      { property: "og:title", content: "Employsi — labour market intelligence" },
+      { property: "og:title", content: "employsi - explore the world of work" },
       {
         property: "og:description",
         content:
-          "A live map of hiring demand: which skills are in demand, where, and at which employers.",
+          "HR intelligence for understanding talent markets, compensation, and the shifting shape of work.",
       },
       { property: "og:type", content: "website" },
       // twitter:card without twitter:site is valid — the card renders from the
