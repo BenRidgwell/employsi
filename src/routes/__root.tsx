@@ -77,14 +77,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Employsi — labour market intelligence" },
+      {
+        name: "description",
+        content:
+          "A live map of hiring demand: which skills are in demand, where, and at which employers.",
+      },
+      { name: "author", content: "Employsi" },
+      { property: "og:title", content: "Employsi — labour market intelligence" },
+      {
+        property: "og:description",
+        content:
+          "A live map of hiring demand: which skills are in demand, where, and at which employers.",
+      },
       { property: "og:type", content: "website" },
+      // twitter:card without twitter:site is valid — the card renders from the
+      // og: tags. The scaffold's "@Lovable" was the generator's handle, not
+      // ours, and there is no Employsi account to put in its place, so the tag
+      // is dropped rather than filled with a guess that would attribute the
+      // product to whoever happens to own that handle.
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       // Transparent SVG mark, tracking the browser's light/dark chrome. Listed
