@@ -6084,6 +6084,266 @@ body {
   padding: 14px 16px;
   animation: helppanelin 0.2s ease both;
 }
+/* ── Settings card (Settings_Popout.html) ─────────────────────────────────
+   Replaces the old two-row settings panel. Widths and spacing are the design's
+   own: 440px card, 26px gutters, 560px scroll body, mono eyebrows.
+   The `.muted` rows are the ones the product cannot honestly back yet — see
+   the note in components/SettingsPanel.tsx for which and why. */
+.setpanel {
+  width: 440px;
+  max-width: calc(100vw - 32px);
+  padding: 0;
+  border-radius: 18px;
+  overflow: hidden;
+}
+.sthead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 26px 26px 18px;
+}
+.stheadtext {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.sttitle {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+.stsubtitle {
+  font-size: 13px;
+  color: #8e8e93;
+}
+.stclose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border: 1px solid #e5e5ea;
+  border-radius: 999px;
+  background: #fff;
+  color: #3a3a3c;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    transform 0.12s ease;
+}
+.stclose:hover {
+  background: #f4f4f5;
+}
+.stclose:active {
+  transform: scale(0.98);
+}
+.stbody {
+  max-height: 560px;
+  overflow: auto;
+  padding: 0 26px 8px;
+}
+.stgroup {
+  display: flex;
+  flex-direction: column;
+}
+.steyebrow {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8e8e93;
+  padding: 18px 0 12px;
+  border-top: 1px solid #ededf0;
+  margin-top: 6px;
+}
+.stgroup:first-child .steyebrow {
+  margin-top: 0;
+}
+.strow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 0;
+  border-top: 1px solid #ededf0;
+}
+/* The row straight after an eyebrow already has the eyebrow's rule above it. */
+.steyebrow + .strow {
+  border-top: 0;
+}
+.stinline {
+  align-items: center;
+  padding: 12px 0;
+}
+.strowtext {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.strowtitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+}
+.strowsub {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #8e8e93;
+  text-wrap: pretty;
+}
+.strow.muted .strowtitle {
+  color: #8e8e93;
+}
+.strow.muted .strowsub {
+  color: #aeaeb2;
+}
+.strowctl {
+  flex: 0 0 auto;
+  padding-top: 2px;
+}
+.stsoon {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #f4f4f5;
+  color: #8e8e93;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.stswitch {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 999px;
+  background: #e5e5ea;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.16s ease;
+}
+.stswitch.on {
+  background: #1c1c1e;
+}
+.stswitch:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.stswitchknob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(28, 28, 30, 0.28);
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.stswitch.on .stswitchknob {
+  transform: translateX(16px);
+}
+.stseg {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid #e5e5ea;
+  border-radius: 9px;
+  background: #f4f4f5;
+  gap: 3px;
+}
+.stsegbtn {
+  height: 28px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.006em;
+  background: transparent;
+  color: #8e8e93;
+  cursor: not-allowed;
+}
+.stsegbtn.on {
+  background: #fff;
+  color: #1c1c1e;
+  box-shadow: 0 1px 2px rgba(28, 28, 30, 0.08);
+}
+.stselect {
+  width: 180px;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #e5e5ea;
+  border-radius: 9px;
+  background: #fff;
+  font-size: 13.5px;
+  color: #8e8e93;
+  cursor: not-allowed;
+}
+.stfoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 26px 20px;
+  border-top: 1px solid #ededf0;
+  background: #fbfbfc;
+}
+.stver {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  color: #aeaeb2;
+}
+.stfootbtns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stghost,
+.stprimary {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 9px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    transform 0.12s ease;
+}
+.stghost {
+  border: 0;
+  background: transparent;
+  color: #6c6c72;
+}
+.stghost:hover {
+  background: #f4f4f5;
+}
+.stprimary {
+  border: 0;
+  background: #1c1c1e;
+  color: #fff;
+}
+.stprimary:hover {
+  background: #2c2c2e;
+}
+.stghost:active,
+.stprimary:active {
+  transform: scale(0.98);
+}
+
 /* Settings panel + toggle switches */
 .setpanel {
   width: 256px;
@@ -9264,9 +9524,21 @@ body {
     z-index: 47;
   }
   .helpdock .helppanel,
+  /* The settings card now carries its own 26px gutters and a scrolling body,
+     so as a phone sheet it takes the sheet geometry and NO outer padding —
+     the old rule's 18/16 would sit on top of the card's own and double it.
+     The body's desktop max-height is dropped so the sheet, not the card,
+     decides how tall it is. */
   .helpdock .setpanel {
+    padding: 0;
+    border-radius: 16px 16px 0 0;
+  }
+  .helpdock .setpanel .stbody {
+    max-height: none;
     overflow-y: auto;
-    padding: 18px 16px calc(22px + env(safe-area-inset-bottom, 0px));
+  }
+  .helpdock .setpanel .stfoot {
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   }
   /* The feedback board carries its own header / list / composer padding and
      scrolls internally, so it takes the sheet geometry and none of the

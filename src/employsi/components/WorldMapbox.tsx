@@ -928,6 +928,7 @@ export function WorldMapbox() {
   const zoomingIn = useAppStore((s) => s.zoomingIn);
   const globalOut = useAppStore((s) => s.globalOut);
   const domesticRegion = useAppStore((s) => s.domesticRegion);
+  const placeLabels = useAppStore((s) => s.placeLabels);
   const localCity = useAppStore((s) => s.localCity);
   const selectedId = useAppStore((s) => s.selectedId);
   const activeSectors = useAppStore((s) => s.activeSectors);
@@ -1619,6 +1620,37 @@ export function WorldMapbox() {
   useEffect(() => {
     applyViewRef.current?.();
   }, [zoomedOut, zoomingIn, globalOut, domesticRegion, localCity]);
+
+  // Place labels (Settings → Appearance). Mapbox paints city and region names
+  // into the canvas, so there is no CSS way to hide them — the style's own
+  // symbol layers have to be toggled. Every label layer in the Mapbox standard
+  // styles ends in "-label", and only label layers do, so that suffix is the
+  // selector rather than a hand-listed set that would rot on a style update.
+  //
+  // Guarded on isStyleLoaded: setLayoutProperty throws if the style has not
+  // arrived, and this effect can run before the first `load`. The same code
+  // runs again on `styledata`, which is what applies the preference to a style
+  // that finishes loading after this effect first fired.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      if (!map.isStyleLoaded()) return;
+      for (const layer of map.getStyle()?.layers ?? []) {
+        if (layer.type !== "symbol" || !layer.id.endsWith("-label")) continue;
+        try {
+          map.setLayoutProperty(layer.id, "visibility", placeLabels ? "visible" : "none");
+        } catch {
+          /* a layer removed between listing and setting — nothing to do */
+        }
+      }
+    };
+    apply();
+    map.on("styledata", apply);
+    return () => {
+      map.off("styledata", apply);
+    };
+  }, [placeLabels]);
 
   // Recolour / re-dim markers when the metric, selection or sector filter change
   // — markers only, no camera move (so toggling a metric doesn't snap the view).

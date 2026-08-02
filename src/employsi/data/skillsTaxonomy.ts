@@ -245,6 +245,39 @@ const RAW_SKILLS: SkillDef[] = [
     terms: ["data scien", "machine learning", "ml engineer", "ai "],
   },
   {
+    // Distinct from Data Analytics (who reads the data) and Data Science (who
+    // models it): this is who builds the pipelines and warehouses. Kept as its
+    // own skill rather than folded into analytics because the hiring markets
+    // are genuinely different, and folding would make "analytics demand" a
+    // number covering three jobs.
+    skill: "Data Engineering",
+    cat: "Digital",
+    terms: [
+      "data engineer",
+      "data platform",
+      "data pipeline",
+      "data warehouse",
+      "etl developer",
+      "analytics engineer",
+    ],
+  },
+  {
+    // A business analyst elicits requirements and models process; the overlap
+    // with Data Analytics is real but partial, which is why "systems analyst"
+    // stays there and this is separate. Both can fire on one title, and that is
+    // correct — a "Business Systems Analyst" is both.
+    skill: "Business Analysis",
+    cat: "Corporate",
+    terms: [
+      "business analyst",
+      "business analysis",
+      "process analyst",
+      "requirements analyst",
+      "product owner",
+      "business partner",
+    ],
+  },
+  {
     skill: "Software Engineering",
     cat: "Digital",
     terms: [
@@ -413,6 +446,12 @@ const RAW_SKILLS: SkillDef[] = [
       "operations manager",
       "service manager",
       "branch manager",
+
+      // Generic supervisory titles: 110 unmapped rows.
+      "team manager",
+      "assistant manager",
+      "shift manager",
+      "supervisor",
     ],
   },
   {
@@ -510,6 +549,11 @@ const RAW_SKILLS: SkillDef[] = [
       "financial dealer",
       "financial investment",
       "debt collector",
+
+      // 47 unmapped "financial advisor" rows plus wealth variants.
+      "financial advis",
+      "financial plann",
+      "wealth",
     ],
   },
   {
@@ -522,6 +566,11 @@ const RAW_SKILLS: SkillDef[] = [
       "actuar",
       "insurance investigator",
       "insurance, money market",
+
+      // 96 unmapped rows across insurance planner / wealth protection.
+      "insurance planner",
+      "insurance consultant",
+      "wealth protection",
     ],
   },
   {
@@ -601,6 +650,9 @@ const RAW_SKILLS: SkillDef[] = [
       "medical laborator",
       "medical technician",
       "pathology",
+
+      // 66 unmapped rows, all Sonic/pathology collectors.
+      "phlebotom",
     ],
   },
   {
@@ -829,6 +881,13 @@ const RAW_SKILLS: SkillDef[] = [
       "courier",
       "chauffeur",
       "postal deliver",
+
+      // "driver" is safe as a bare term: termMatches anchors the START of a
+      // word, so it cannot match "screwdriver". 250+ unmapped rows.
+      "driver",
+      "locomotive",
+      "dasher",
+      "rideshare",
     ],
   },
   {
@@ -887,6 +946,13 @@ const RAW_SKILLS: SkillDef[] = [
       "vehicle parts salesperson",
       "street vendor",
       "sales support",
+
+      // Coles/Woolworths shop-floor titles: 405 unmapped rows between them.
+      "store team member",
+      "retail assistant",
+      "retail team member",
+      "nightfill",
+      "shop assistant",
     ],
   },
 
@@ -1036,6 +1102,9 @@ const RAW_SKILLS: SkillDef[] = [
       "rubbish",
       "recycling",
       "vending machine",
+
+      // Supermarket trolley crews: 281 unmapped rows.
+      "trolley collect",
     ],
   },
 

@@ -10,6 +10,7 @@ import {
 } from "../data/companies";
 import { CITY_CONTINENT } from "../data/geo";
 import { CITY_COMPANIES, cityForCompany } from "../data/mapboxGeo";
+import { HUB_LNGLAT } from "../data/mapboxWorldGeo";
 import type { HeatMetric } from "../lib/heat";
 import type { SkillIndex } from "../lib/skillsFn";
 import { IVI_MONTHS } from "../data/iviSkillDemand";
@@ -41,6 +42,10 @@ export interface AppState {
   toast: string | null;
   settingsOpen: boolean;
   reduceMotion: boolean;
+  placeLabels: boolean;
+  /** Geolocation is in flight (the browser is showing its permission prompt). */
+  locating: boolean;
+  useMyLocation: boolean;
   // UI stub only — not wired to any visual behaviour yet.
   nightMode: boolean;
   selectedId: string | null;
@@ -118,6 +123,8 @@ export interface AppState {
   toggleSettings: () => void;
   closeSettings: () => void;
   setReduceMotion: (v: boolean) => void;
+  setPlaceLabels: (v: boolean) => void;
+  setUseMyLocation: (v: boolean) => void;
   setNightMode: (v: boolean) => void;
   closePanel: () => void;
   setHeat: (h: HeatMetric) => void;
@@ -190,12 +197,16 @@ interface Persisted {
   followedSkills: string[];
   reduceMotion: boolean;
   nightMode: boolean;
+  /** Show Mapbox's own city/region labels. On by default — the map is harder
+   *  to read without them, so hiding is the deliberate choice, not the default. */
+  placeLabels: boolean;
 }
 const PERSIST_DEFAULTS: Persisted = {
   followedIds: [],
   followedSkills: [],
   reduceMotion: false,
   nightMode: false,
+  placeLabels: true,
 };
 function loadPersisted(): Persisted {
   if (typeof localStorage === "undefined") return PERSIST_DEFAULTS;
@@ -208,6 +219,7 @@ function loadPersisted(): Persisted {
       followedSkills: Array.isArray(p.followedSkills) ? p.followedSkills : [],
       reduceMotion: p.reduceMotion ?? false,
       nightMode: p.nightMode ?? false,
+      placeLabels: p.placeLabels ?? true,
     };
   } catch {
     return PERSIST_DEFAULTS;
@@ -222,6 +234,34 @@ function savePersisted(p: Persisted): void {
   }
 }
 const persisted = loadPersisted();
+
+/**
+ * The tracked hub closest to a coordinate, or null if none is near enough.
+ *
+ * Great-circle distance, because a flat lng/lat metric is badly wrong at the
+ * latitudes this app covers — it would rank Perth closer to London than to
+ * Singapore. The 2,500km cut-off is what stops "use my location" silently
+ * teleporting someone in, say, Nairobi to the nearest city we happen to hold:
+ * no hub near you is an honest answer, and the toast says so.
+ */
+const NEAREST_HUB_KM = 2500;
+function nearestHub(lng: number, lat: number): string | null {
+  const rad = (d: number) => (d * Math.PI) / 180;
+  let best: string | null = null;
+  let bestKm = Infinity;
+  for (const [hub, [hlng, hlat]] of Object.entries(HUB_LNGLAT)) {
+    const dLat = rad(hlat - lat);
+    const dLng = rad(hlng - lng);
+    const a =
+      Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat)) * Math.cos(rad(hlat)) * Math.sin(dLng / 2) ** 2;
+    const km = 6371 * 2 * Math.asin(Math.min(1, Math.sqrt(a)));
+    if (km < bestKm) {
+      bestKm = km;
+      best = hub;
+    }
+  }
+  return bestKm <= NEAREST_HUB_KM ? best : null;
+}
 
 // Reflect the reduce-motion preference on the root element as early as possible
 // so animations are suppressed before first paint when it's on.
@@ -263,6 +303,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   toast: null,
   settingsOpen: false,
   reduceMotion: persisted.reduceMotion,
+  placeLabels: persisted.placeLabels,
+  // NOT persisted: a location permission belongs to the browser, and re-asking
+  // on every load because a stored boolean said so would be rude.
+  locating: false,
+  useMyLocation: false,
   nightMode: persisted.nightMode,
   selectedId: null,
   lastId: null,
@@ -436,6 +481,42 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (typeof document !== "undefined")
       document.documentElement.classList.toggle("reduce-motion", v);
     set({ reduceMotion: v });
+  },
+  // The map components watch this and toggle Mapbox's own label layers; there
+  // is no CSS equivalent, because those labels are painted into the canvas.
+  setPlaceLabels: (v) => {
+    set({ placeLabels: v });
+  },
+  // Asks the browser once, then jumps to the nearest hub we actually track.
+  // Turning it OFF does not move the map — undoing a navigation the user asked
+  // for would be more surprising than leaving them where they landed.
+  setUseMyLocation: (v) => {
+    if (!v) {
+      set({ useMyLocation: false, locating: false });
+      return;
+    }
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      set({ toast: "This browser can't share a location." });
+      return;
+    }
+    set({ locating: true });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const hub = nearestHub(pos.coords.longitude, pos.coords.latitude);
+        set({
+          useMyLocation: true,
+          locating: false,
+          toast: hub ? null : "No market we track is near you yet.",
+        });
+        if (hub) get().zoomInCity(hub);
+      },
+      () => {
+        // Denied or unavailable. Say so rather than leaving a switch that
+        // flipped itself back with no explanation.
+        set({ useMyLocation: false, locating: false, toast: "Location permission was declined." });
+      },
+      { timeout: 10000, maximumAge: 300000 },
+    );
   },
   // Stub only — persisted for continuity but not wired to any theme yet.
   setNightMode: (v) => set({ nightMode: v }),
@@ -731,13 +812,15 @@ useAppStore.subscribe((s, prev) => {
     s.followedIds !== prev.followedIds ||
     s.followedSkills !== prev.followedSkills ||
     s.reduceMotion !== prev.reduceMotion ||
-    s.nightMode !== prev.nightMode
+    s.nightMode !== prev.nightMode ||
+    s.placeLabels !== prev.placeLabels
   ) {
     savePersisted({
       followedIds: s.followedIds,
       followedSkills: s.followedSkills,
       reduceMotion: s.reduceMotion,
       nightMode: s.nightMode,
+      placeLabels: s.placeLabels,
     });
   }
 });

@@ -3,6 +3,7 @@ import { useAppStore } from "../state/store";
 import { FeedbackBoard } from "./FeedbackBoard";
 import { NotificationBell } from "./NotificationBell";
 import { IconClose, IconFeedback, IconHelp, IconSettings } from "./ActionIcons";
+import { SettingsPanel } from "./SettingsPanel";
 import { CITY_COMPANIES } from "../data/mapboxGeo";
 import { REGION_HUBS } from "../data/mapboxWorldGeo";
 import { CITY_LABEL, GLOBAL_HUB_LABEL } from "../data/geo";
@@ -307,30 +308,7 @@ export function HelpDock() {
         on={settingsOpen}
         onClick={toggleSettings}
       >
-        {settingsOpen && (
-          <div className="dockpanel setpanel">
-            <div className="dockhd dockhdline">
-              <span className="docktitle">Settings</span>
-              <button className="dockx" onClick={closeSettings} aria-label="Close">
-                <IconClose />
-              </button>
-            </div>
-            <div className="setrow">
-              <div>
-                <div className="setlbl">Night mode</div>
-                <div className="setsub">A dark colour theme for the map. Coming soon.</div>
-              </div>
-              <Switch on={nightMode} onChange={setNightMode} label="Toggle night mode" />
-            </div>
-            <div className="setrow">
-              <div>
-                <div className="setlbl">Reduce motion</div>
-                <div className="setsub">Minimise map and interface animations.</div>
-              </div>
-              <Switch on={reduceMotion} onChange={setReduceMotion} label="Toggle reduce motion" />
-            </div>
-          </div>
-        )}
+        {settingsOpen && <SettingsPanel />}
       </DockButton>
     </div>
   );
