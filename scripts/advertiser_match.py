@@ -73,6 +73,24 @@ ADVERTISER_ALIAS = {
     # Norco Co-operative Limited is Norco Co-op; "co op" and "co operative"
     # differ only in how the hyphen normalises.
     'norco co operative limited': 'norco co op',
+    # Seven Group Holdings is a conglomerate whose operating businesses each
+    # advertise under their own brand, never under "SGH". Without these, a
+    # WesTrac or Coates ad is correctly REJECTED as not-SGH by the token rule
+    # and the roles simply never reach the group's card.
+    #
+    # NOTE these only decide ATTRIBUTION — whether an ad already in hand counts
+    # as SGH. They do not cause the ads to be found: the keyword feeds search
+    # the roster name, and searching "SGH" does not return Boral. Surfacing the
+    # subsidiaries needs their names added to the feed's query list as well.
+    'boral': 'sgh',
+    'boral limited': 'sgh',
+    'westrac': 'sgh',
+    'coates': 'sgh',
+    'coates hire': 'sgh',
+    'allight': 'sgh',
+    'allight sykes': 'sgh',
+    'sgh energy': 'sgh',
+    'seven group holdings': 'sgh',
 }
 
 

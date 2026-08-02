@@ -93,7 +93,11 @@ type Platform =
   | "phenom"
   | "csl"
   | "rea"
-  | "scentre";
+  | "scentre"
+  | "smartrecruiters"
+  | "careercentre"
+  | "martianlogic"
+  | "plscareers";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -455,6 +459,46 @@ export const SITES: SiteDef[] = [
     homeHub: "sydney", // North America; several trading names, one tenant
   },
   {
+    id: "sydney-bsl",
+    key: "sydney-bsl-au",
+    name: "BlueScope",
+    sector: "Energy & Natural Resources",
+    // SmartRecruiters company slug; the bluescope.com page is only a widget.
+    platform: "smartrecruiters",
+    endpoint: "BlueScope",
+    origin: "https://www.bluescope.com/careers",
+    homeHub: "sydney",
+  },
+  {
+    id: "sydney-bsl",
+    key: "sydney-bsl-nz",
+    name: "BlueScope",
+    sector: "Energy & Natural Resources",
+    platform: "careercentre",
+    endpoint: "https://nzsteel.careercentre.net.nz/Job",
+    origin: "https://nzsteel.careercentre.net.nz",
+    homeHub: "auckland", // New Zealand Steel, Glenbrook
+  },
+  {
+    id: "perth-lyc",
+    name: "Lynas Rare Earths",
+    sector: "Energy & Natural Resources",
+    // MartianLogic / MyRecruitment+ client code.
+    platform: "martianlogic",
+    endpoint: "lynasrareearths",
+    origin: "https://careers.lynasrareearths.com",
+    homeHub: "perth",
+  },
+  {
+    id: "pls",
+    name: "Pilbara Minerals",
+    sector: "Lithium",
+    platform: "plscareers",
+    endpoint: "https://careers.pls.com/jobs/search",
+    origin: "https://careers.pls.com",
+    homeHub: "perth",
+  },
+  {
     id: "melbourne-col",
     name: "Coles Group",
     sector: "Consumer & Retail",
@@ -658,6 +702,11 @@ export const PORTAL_GROUPS: string[][] = [
   ["sydney-rmd", "sydney-apa", "melbourne-tlc"],
   ["sydney-bsl-nac", "sydney-bsl-asean", "priv-st-john-of-god-health-care"],
   ["melbourne-mpl", "perth-gov-gold-corporation"],
+  // The four added once their platforms were reverse-engineered: BlueScope's
+  // Australian (SmartRecruiters) and NZ (CareerCentre) boards, Lynas
+  // (MartianLogic) and Pilbara Minerals. All four are small and API- or
+  // single-page-driven, so they share one tick.
+  ["sydney-bsl-au", "sydney-bsl-nz", "perth-lyc", "pls"],
 ];
 
 const UA =
@@ -1768,6 +1817,183 @@ async function fetchScentre(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── SmartRecruiters ─────────────────────────────────────────────────────────
+// BlueScope's Australian board is a SmartRecruiters widget embedded in an AEM
+// page, so the page itself carries no jobs — but SmartRecruiters publishes an
+// unauthenticated postings API, which is a better source than the widget: it
+// paginates cleanly and states its own total.
+interface SrPosting {
+  id?: string;
+  name?: string;
+  releasedDate?: string;
+  location?: { city?: string; region?: string; country?: string };
+  department?: { label?: string };
+  ref?: string;
+}
+
+const SR_PAGE = 100;
+
+async function fetchSmartRecruiters(site: SiteDef): Promise<PortalJob[]> {
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  for (let page = 0; page < max; page++) {
+    const url = `https://api.smartrecruiters.com/v1/companies/${site.endpoint}/postings?limit=${SR_PAGE}&offset=${page * SR_PAGE}`;
+    const data = await getJson<{ content?: SrPosting[]; totalFound?: number }>(url);
+    const rows = data?.content ?? [];
+    if (!rows.length) break;
+    for (const r of rows) {
+      const title = (r.name || "").trim();
+      const id = String(r.id ?? r.ref ?? title);
+      if (!title || seen.has(id)) continue;
+      seen.add(id);
+      const l = r.location ?? {};
+      const loc = [l.city, l.region, l.country].filter(Boolean).join(", ");
+      out.push(
+        job(
+          site,
+          title,
+          loc,
+          `https://jobs.smartrecruiters.com/${site.endpoint}/${r.id ?? ""}`,
+          (r.releasedDate || "").slice(0, 10),
+          (r.department?.label || "").trim() || "Career portal",
+        ),
+      );
+    }
+    if (rows.length < SR_PAGE) break;
+  }
+  return out;
+}
+
+// ── CareerCentre (NZ) ───────────────────────────────────────────────────────
+// BlueScope's New Zealand Steel board. Server-rendered, and the job URL carries
+// title, location and id as slug segments — /job/<title>/<location>/<id> — so
+// the listing page alone gives everything without opening each ad.
+async function fetchCareerCentre(site: SiteDef): Promise<PortalJob[]> {
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const max = site.maxPages ?? 20;
+  const title = (slug: string) =>
+    slug
+      .split("-")
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  for (let page = 1; page <= max; page++) {
+    const html = await getText(page === 1 ? site.endpoint : `${site.endpoint}?page=${page}`);
+    if (!html) break;
+    const links = [...html.matchAll(/href="(\/job\/([^/"]+)\/([^/"]+)\/(\d+))"/gi)];
+    if (!links.length) break;
+    let fresh = 0;
+    for (const m of links) {
+      const id = m[4];
+      if (seen.has(id)) continue;
+      seen.add(id);
+      fresh++;
+      out.push(
+        job(
+          site,
+          title(decodeURIComponent(m[2])),
+          title(decodeURIComponent(m[3])),
+          new URL(m[1], site.origin).toString(),
+          "",
+          "Career portal",
+        ),
+      );
+    }
+    // The pager keeps serving the last page rather than 404ing past the end,
+    // so the walk stops when a page adds nothing new.
+    if (!fresh) break;
+  }
+  return out;
+}
+
+// ── MartianLogic / MyRecruitment+ ───────────────────────────────────────────
+// Lynas. The careers site is a Next.js shell whose own /api/search/ route
+// proxies the ATS. The trailing slash matters — without it the route 308s, and
+// a redirect that changes nothing but the path is easy to mistake for a dead
+// endpoint.
+interface MlJob {
+  id?: number;
+  title?: string;
+  location?: string;
+  type?: string;
+  pay?: string;
+  postedDate?: string;
+  advertUrl?: string;
+}
+
+async function fetchMartianLogic(site: SiteDef): Promise<PortalJob[]> {
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const max = site.maxPages ?? 20;
+  for (let page = 1; page <= max; page++) {
+    const data = await getJson<{ total?: number; pageSize?: number; jobAds?: MlJob[] }>(
+      `${site.origin}/api/search/?clientCode=${site.endpoint}&page=${page}&filter=&systemFilter=`,
+    );
+    const rows = data?.jobAds ?? [];
+    if (!rows.length) break;
+    for (const r of rows) {
+      const t = (r.title || "").trim();
+      const id = String(r.id ?? t);
+      if (!t || seen.has(id)) continue;
+      seen.add(id);
+      out.push(
+        job(
+          site,
+          t,
+          // "Kalgoorlie | Western Australia" — the pipe is the site's own
+          // separator, not part of either field.
+          (r.location || "").split("|").map(clean).filter(Boolean).join(", "),
+          r.advertUrl || site.origin,
+          (r.postedDate || "").slice(0, 10),
+          (r.type || "").trim() || "Career portal",
+        ),
+      );
+    }
+    const size = data?.pageSize ?? rows.length;
+    if (rows.length < size) break;
+    if (data?.total && out.length >= data.total) break;
+  }
+  return out;
+}
+
+// ── PLS (Pilbara Minerals) ──────────────────────────────────────────────────
+// Server-rendered cards. The job links are ABSOLUTE urls, which is worth noting
+// because the obvious `href="/...` pattern finds only the page's asset links
+// and makes the board look like a JS app when it is not.
+async function fetchPlsCareers(site: SiteDef): Promise<PortalJob[]> {
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const max = site.maxPages ?? 20;
+  for (let page = 1; page <= max; page++) {
+    const html = await getText(`${site.endpoint}?page=${page}&query=`);
+    if (!html) break;
+    const cards = html.split(/class="card job-search-results-card"/i).slice(1);
+    if (!cards.length) break;
+    let fresh = 0;
+    for (const card of cards) {
+      const a = card.match(/<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
+      if (!a) continue;
+      const url = a[1];
+      const t = clean(a[2].replace(/<[^>]+>/g, " "));
+      if (!t || seen.has(url)) continue;
+      seen.add(url);
+      fresh++;
+      // The location text sits in a <span> AFTER an icon <i>, so the whole
+      // <li> runs ~250 characters — a tighter cap silently yields no location
+      // while still returning the job, which is the kind of half-empty row
+      // that is easy to ship and hard to notice.
+      const loc = card.match(/job-component-location[^>]*>([\s\S]{0,500}?)<\/li>/i);
+      out.push(
+        job(site, t, loc ? clean(loc[1].replace(/<[^>]+>/g, " ")) : "", url, "", "Career portal"),
+      );
+    }
+    if (!fresh) break;
+  }
+  return out;
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   successfactors: fetchSuccessFactors,
   workday: fetchWorkday,
@@ -1782,6 +2008,10 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   csl: fetchCsl,
   rea: fetchRea,
   scentre: fetchScentre,
+  smartrecruiters: fetchSmartRecruiters,
+  careercentre: fetchCareerCentre,
+  martianlogic: fetchMartianLogic,
+  plscareers: fetchPlsCareers,
 };
 
 export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
@@ -1803,6 +2033,10 @@ const SOURCE_TAG: Record<Platform, string> = {
   csl: "csl",
   rea: "rea",
   scentre: "scg",
+  smartrecruiters: "sr",
+  careercentre: "cc",
+  martianlogic: "ml",
+  plscareers: "pls",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */
