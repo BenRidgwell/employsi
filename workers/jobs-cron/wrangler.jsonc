@@ -27,6 +27,16 @@
     // 04:20 / 04:25 / 04:35 / 04:55 UTC: the employer career-portal pull, a
     // quarter of the portals per tick (PORTAL_GROUPS in careerSites.ts). Those
     // minutes collide with none of the gov minute-prefix branches above.
-    "crons": ["0 */6 * * *", "5 */6 * * *", "15 */6 * * *", "30 */6 * * *", "45 */6 * * *", "50 */6 * * *", "40 3 * * *", "50 3 * * *", "0 4 * * *", "10 4 * * *", "20 4 * * *", "25 4 * * *", "35 4 * * *", "55 4 * * *", "5 5 * * *", "15 5 * * *", "25 5 * * *", "35 5 * * *", "45 5 * * *", "55 5 * * *", "5 6 * * *", "15 6 * * *", "25 6 * * *", "35 6 * * *", "45 6 * * *", "55 6 * * *", "5 7 * * *", "15 7 * * *", "25 7 * * *", "35 7 * * *", "45 7 * * *", "55 7 * * *", "5 8 * * *", "15 8 * * *"]
+    // ":00", ":10", ":20", ":25", ":35" and ":40" every six hours: the AU
+    // company pull (processShard). All six fall through every branch above to
+    // the `else`, which is what runs the shard — none of 0/10/20/25/35/40 is a
+    // gov minute PREFIX (those are 5, 15, 30, 45, 50), and the portal/news
+    // crons are matched by EXACT expression, so "25 */6 * * *" never collides
+    // with "25 4 * * *".
+    // 6 ticks x 4 a day x SHARD 17 = 408 refreshes a day, covering the
+    // 355-company roster daily. Six small proven runs rather than one big one:
+    // 45 and 25 per run were both measured being cancelled by the waitUntil
+    // deadline, while 17 is the size already completing in production.
+    "crons": ["0 */6 * * *", "10 */6 * * *", "20 */6 * * *", "25 */6 * * *", "35 */6 * * *", "40 */6 * * *", "5 */6 * * *", "15 */6 * * *", "30 */6 * * *", "45 */6 * * *", "50 */6 * * *", "40 3 * * *", "50 3 * * *", "0 4 * * *", "10 4 * * *", "20 4 * * *", "25 4 * * *", "35 4 * * *", "55 4 * * *", "5 5 * * *", "15 5 * * *", "25 5 * * *", "35 5 * * *", "45 5 * * *", "55 5 * * *", "5 6 * * *", "15 6 * * *", "25 6 * * *", "35 6 * * *", "45 6 * * *", "55 6 * * *", "5 7 * * *", "15 7 * * *", "25 7 * * *", "35 7 * * *", "45 7 * * *", "55 7 * * *", "5 8 * * *", "15 8 * * *"]
   }
 }

@@ -79,10 +79,34 @@ interface Env {
   CRON_TOKEN: string;
 }
 
-// Targets processed per invocation. AU companies (50) + Adzuna global hubs (11)
-// + Jooble global hubs (7) = 68 targets; 17 per run over 4 six-hour runs covers
-// the whole set about once a day, with each run issuing only ~17 API calls —
-// well under Cloudflare's subrequest limit and each provider's daily quota.
+// Targets processed per invocation.
+//
+// This number and the number of ticks together set how often ANY given company
+// is refreshed, and the two drifted badly apart. The original comment read
+// "AU companies (50) … 17 per run over 4 six-hour runs covers the whole set
+// about once a day", and that was true of a 50-company roster. The roster is
+// now 355 (the ASX 200 plus the Top-150 private list), and only ONE of the six
+// six-hourly crons reaches processShard — the other five are claimed by the gov
+// branches that match on a minute prefix. So the real rotation had become
+// 4 x 17 = 68 companies a day, or 5.2 DAYS per full pass.
+//
+// Nothing failed; every company just went stale for days at a time, which is
+// how The Muse's feed came to look broken (its only matching employer,
+// Computershare, simply had not come round since its last turn).
+//
+// The fix is MORE TICKS, and the shard size is deliberately UNCHANGED.
+//
+// 45 per run was tried first and measured: cancelled mid-way with "waitUntil()
+// tasks did not complete within the allowed time", having written 36 of its 45.
+// 25 was tried next and was also cancelled. The binding constraint is
+// wall-clock inside waitUntil, not the subrequest count — the same limit that
+// forced Woolworths into three separate page windows — and 17 is the only size
+// with a production track record of completing.
+//
+// So 17 stays, and coverage comes from running it more often: 6 crons x 4 runs
+// a day x 17 = 408 refreshes a day against a 355-company roster, i.e. daily
+// again, restoring what the original comment claimed. See `crons` in
+// wrangler.jsonc for the six minutes and why none of them collides.
 const SHARD = 17;
 const JOBS_PER_COMPANY = 60;
 const JOBS_PER_HUB = 50;
@@ -608,6 +632,18 @@ async function processShard(env: Env): Promise<{ processed: string[]; totalJobs:
   const n = companies.length;
   const day = today();
 
+  // Advance the cursor FIRST, not after the walk.
+  //
+  // It used to be written at the very end, which meant a run cancelled by the
+  // waitUntil deadline never advanced it — so the next run re-walked the same
+  // slice, and the rotation stalled on a shard it could not finish rather than
+  // moving past it. A stalled rotation starves every company after it
+  // indefinitely, which is far worse than one slice being a day late.
+  //
+  // Advancing up front makes a cancelled run cost exactly what it should: the
+  // companies it did not reach simply wait for their next turn.
+  await env.OPEN_ROLES_HISTORY.put("cron:cursor", String((cursor + SHARD) % n));
+
   // A shard of AU companies (queried by name).
   const processed: string[] = [];
   for (let i = 0; i < SHARD && i < n; i++) {
@@ -624,7 +660,6 @@ async function processShard(env: Env): Promise<{ processed: string[]; totalJobs:
 
   const idx = await recomputeIndex(env);
   await env.OPEN_ROLES_HISTORY.put("skillidx", JSON.stringify(idx));
-  await env.OPEN_ROLES_HISTORY.put("cron:cursor", String((cursor + SHARD) % n));
   return { processed, totalJobs: idx.totalJobs };
 }
 
