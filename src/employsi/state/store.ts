@@ -824,7 +824,17 @@ function companyById(id: string): Company | undefined {
 export function cityMatchesFilters(city: string, s: FilterState): boolean {
   if (!isFilterActive(s)) return true;
   const list = CITY_COMPANIES[city];
-  if (!list || !list.length) return false;
+  // A marker with NO company roster at all is not a company marker — the EU
+  // country markers carry Eurostat vacancy rates, not employers. Treating
+  // "holds no companies" as "holds no matching company" made all 26 of them
+  // vanish the instant any slider moved, at every threshold equally, which is
+  // not the filter answering the question — it is the filter deleting a
+  // different dataset. A marker that makes no claim about company headcount or
+  // pay cannot be contradicted by a filter on headcount or pay, so it stays.
+  //
+  // Every real city hub has companies (all 54 do), so this only ever exempts
+  // the vacancy-only markers.
+  if (!list || !list.length) return true;
   return list.some((cc) => {
     const c = companyById(cc.id);
     return !!c && matchesFilters(c, s);
