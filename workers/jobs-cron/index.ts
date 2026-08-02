@@ -1287,7 +1287,9 @@ export default {
     // `site` is matched against the configured feed keys, never used to build a
     // URL, so this cannot be pointed at an arbitrary host.
     if (url.pathname === "/diag-portal") {
-      if (url.searchParams.get("token") !== (env as unknown as { DIAG_TOKEN?: string }).DIAG_TOKEN) {
+      if (
+        url.searchParams.get("token") !== (env as unknown as { DIAG_TOKEN?: string }).DIAG_TOKEN
+      ) {
         return new Response("forbidden", { status: 403 });
       }
       const key = url.searchParams.get("site") || "";
