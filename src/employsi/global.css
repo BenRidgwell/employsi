@@ -1907,6 +1907,21 @@ body {
   gap: 16px;
   background: #fbfbfc;
 }
+/* A scroller must never compress what it scrolls.
+   This is not belt-and-braces: .dqbody is a flex COLUMN of a fixed height, so
+   its children are flex items with the default `flex-shrink: 1`. Normally
+   `min-height: auto` stops a column flex item shrinking below its content —
+   but that automatic minimum only applies while `overflow` is `visible`, and
+   .dqcard sets `overflow: hidden` for its rounded corners. That one property
+   silently opts every card out of its own minimum height, so the flex
+   algorithm is free to squash them to fit.
+   Shrinkage is shared in proportion to size, so the TALLEST card absorbs
+   nearly all of it: feed freshness, one row per source, collapsed to about its
+   header and read as a table that had been deleted. It also got worse as the
+   archive gained sources, which is the wrong way for a health panel to fail. */
+.dqbody > * {
+  flex-shrink: 0;
+}
 /* ── KPI row ─────────────────────────────────────────────────────────────── */
 .dqkpis {
   display: grid;
