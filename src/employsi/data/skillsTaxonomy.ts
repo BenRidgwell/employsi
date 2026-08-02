@@ -12,6 +12,24 @@ export interface SkillDef {
   skill: string; // canonical display name
   cat: string; // grouping for the legend
   terms: string[]; // lowercase substrings matched against title (+ description)
+  /**
+   * Titles this skill must NOT claim, however well its terms match.
+   *
+   * The matcher is otherwise positive-only, which works until one skill's term
+   * is a strict prefix of another occupation's name. "administrator" is the
+   * case that forced this: it is right for 461 of the 525 administrator ads in
+   * the last 90 days (site, contract, sales, office) and wrong for the other
+   * 64, every one of which is a DATABASE or SYSTEMS administrator. Deleting the
+   * term to fix the 64 would have cost the 461; there was no positive term that
+   * separates them, because the distinguishing word comes BEFORE the match.
+   *
+   * An except phrase suppresses the whole skill for that title, not just the
+   * term, because a title containing "database administrator" is not partly an
+   * office-support role. Both this file's matcher and the Python reader the
+   * dataset generators use honour it, so the app and the whole-of-market series
+   * cannot drift apart on it.
+   */
+  except?: string[];
 }
 
 const RAW_SKILLS: SkillDef[] = [
@@ -557,6 +575,21 @@ const RAW_SKILLS: SkillDef[] = [
       "filing",
       "practice manager",
       "survey interviewer",
+    ],
+    // "administrator" is the office kind almost everywhere — measured on the
+    // live archive, 461 of 525 in 90 days. The exceptions are all one family:
+    // the ICT administrator. Without these, ANZSCO 2621 ("Database and Systems
+    // Administrators, and ICT Security Specialists") and UK SOC 2020's
+    // "Database administrators and web content technicians" both landed here,
+    // so office-support demand in every country carried the database
+    // administrators of that country.
+    except: [
+      "database administrator",
+      "database and systems administrator",
+      "systems administrator",
+      "system administrator",
+      "network administrator",
+      "server administrator",
     ],
   },
   {
@@ -1391,8 +1424,18 @@ export const SKILLS: SkillDef[] = (() => {
         SKILL_NAME_CONFLICTS.push(d.skill);
       }
       for (const t of d.terms) if (!ex.terms.includes(t)) ex.terms.push(t);
+      // Excepts union too: a skill declared in two vocabularies must not claim
+      // a title that either declaration disowns.
+      if (d.except?.length) {
+        ex.except = [...(ex.except ?? [])];
+        for (const t of d.except) if (!ex.except.includes(t)) ex.except.push(t);
+      }
     } else {
-      byName.set(d.skill, { ...d, terms: [...d.terms] });
+      byName.set(d.skill, {
+        ...d,
+        terms: [...d.terms],
+        except: d.except ? [...d.except] : undefined,
+      });
     }
   }
   return [...byName.values()];
@@ -1516,6 +1559,9 @@ export function skillsForText(title: string, _description?: string, ctx?: SkillC
   const industry = ctx ? `${ctx.sector ?? ""} ${ctx.group ?? ""}` : null;
   const out: string[] = [];
   for (const def of SKILLS) {
+    // Checked before the terms, not after: an except is a statement about the
+    // TITLE, so no amount of term evidence should override it.
+    if (def.except?.some((t) => hay.includes(t))) continue;
     const hits = def.terms.filter((t) => termMatches(hay, t));
     if (!hits.length) continue;
     // Drop a skill whose ONLY evidence is a gated term nothing licenses. This

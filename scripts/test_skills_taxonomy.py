@@ -17,7 +17,12 @@ import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from skills_taxonomy import TaxonomyError, load_skills, matcher  # noqa: E402
+from skills_taxonomy import (  # noqa: E402
+    TaxonomyError,
+    load_excepts,
+    load_skills,
+    matcher,
+)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REAL_TAX = f'{ROOT}/src/employsi/data/skillsTaxonomy.ts'
@@ -209,6 +214,38 @@ class RealTaxonomy(unittest.TestCase):
                       'Management and Organisation Analysts'):
             self.assertNotIn('Data Engineering', self.match(title), title)
             self.assertNotIn('Business Analysis', self.match(title), title)
+
+    def test_except_suppresses_the_ict_administrator(self):
+        """"administrator" is right for the office kind and wrong for the ICT one.
+
+        Measured on the live archive: 525 ads in 90 days contain "administrator"
+        and only 64 are database/systems administrators, so deleting the term to
+        fix those 64 would have cost the other 461. The `except` list on
+        Administration & Office Support separates them by the word BEFORE the
+        match, which no positive term can do.
+        """
+        for title in ('Database and Systems Administrators, and ICT Security Specialists',
+                      'Database administrators and web content technicians',
+                      'Senior Systems Administrator',
+                      'Database Administrator'):
+            self.assertNotIn('Administration & Office Support', self.match(title), title)
+        # …and the office kind is untouched.
+        for title in ('Site Administrator', 'Office Administrator', 'Sales administrators',
+                      'Data entry administrators', 'Contract, Program and Project Administrators'):
+            self.assertIn('Administration & Office Support', self.match(title), title)
+
+    def test_excepts_are_read_at_all(self):
+        """A negative rule the reader silently ignores is worse than none: the
+        app would apply it and the generated datasets would not."""
+        ex = load_excepts(REAL_TAX)
+        self.assertIn('Administration & Office Support', ex)
+        self.assertIn('database administrator', ex['Administration & Office Support'])
+
+    def test_an_entry_with_except_still_parses_completely(self):
+        """`except` sits after `terms`; a reader that cannot see it would drop
+        the whole entry, which is the failure this file exists to prevent."""
+        names = {n for n, _ in load_skills(REAL_TAX)}
+        self.assertIn('Administration & Office Support', names)
 
     def test_anzsco_and_ons_titles_still_map(self):
         """The US additions must not have disturbed the original sources."""

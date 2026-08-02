@@ -31,9 +31,14 @@ _TERM = re.compile(r"""'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)\"""")
 # quotes and silently emptied this parser (and with it every generated dataset).
 # Trailing commas inside the entry are equally Prettier's business.
 _STR = r"""(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")"""
+# `except` is optional and comes after `terms` — see SkillDef in the .ts. It is
+# captured here rather than skipped so the generators apply the SAME
+# suppressions the app does; a negative rule honoured on one side only is worse
+# than no negative rule at all, because the two then disagree silently.
 _ENTRY = re.compile(
     r"\{\s*skill:\s*" + _STR + r"\s*,\s*cat:\s*" + _STR +
-    r"\s*,\s*terms:\s*\[([^\]]*)\]\s*,?\s*\}"
+    r"\s*,\s*terms:\s*\[([^\]]*)\]\s*,?"
+    r"(?:\s*except:\s*\[([^\]]*)\]\s*,?)?\s*\}"
 )
 # A usable term has at least one letter or digit. Latin, CJK and any other
 # script all qualify; a run of punctuation and spaces does not.
@@ -118,6 +123,10 @@ def _check_complete(body: str, parsed: int) -> None:
 def load_skills(path: str) -> list[tuple[str, list[str]]]:
     """[(skill, terms)] from RAW_SKILLS, for term-matching occupation titles.
 
+    Terms only. `except` phrases are returned by load_excepts() and applied by
+    matcher(); a caller that wants raw terms (there is one: the override
+    validation in gen-ivi-skill-demand.py) has no use for them.
+
     Same-named defs are MERGED into one entry, exactly as the TypeScript SKILLS
     export does. RAW_SKILLS declares a skill more than once on purpose — an
     English def plus a Chinese one for Zhaopin, plus a US-SOC one for OEWS — and
@@ -182,16 +191,48 @@ def load_categories(path: str) -> list[tuple[str, str]]:
     return list(seen.items())
 
 
+def load_excepts(path: str) -> dict[str, list[str]]:
+    """{skill: [phrase, …]} — titles a skill must not claim, from its `except`.
+
+    Merged the same way terms are, because a skill declared in two vocabularies
+    must not claim a title that either declaration disowns.
+    """
+    src = open(path).read()
+    body = _strip_comments(src.split('RAW_SKILLS', 1)[1]).split('];', 1)[0]
+    out: dict[str, list[str]] = {}
+    for m in _ENTRY.finditer(body):
+        skill = _unescape(m.group(1) or m.group(2))
+        raw = m.group(6)
+        if not raw:
+            continue
+        got = out.setdefault(skill, [])
+        for a, b in _TERM.findall(raw):
+            t = _unescape(a or b)
+            if t and t not in got:
+                got.append(t)
+    return out
+
+
 def matcher(path: str):
     """Return match(label) -> [skill, …], memoised. Titles repeat heavily across
-    areas and years, so caching turns the inner loop into a dict lookup."""
+    areas and years, so caching turns the inner loop into a dict lookup.
+
+    An `except` phrase suppresses its skill for that label outright, before the
+    terms are consulted — it is a statement about the TITLE, so term evidence
+    cannot outvote it. Same rule and same order as skillsForText in the .ts.
+    """
     skills = load_skills(path)
+    excepts = load_excepts(path)
     memo: dict[str, list[str]] = {}
 
     def match(label: str) -> list[str]:
         if label not in memo:
             hay = ' ' + (label or '').lower() + ' '
-            memo[label] = [n for (n, ts) in skills if any(t in hay for t in ts)]
+            memo[label] = [
+                n for (n, ts) in skills
+                if not any(x in hay for x in excepts.get(n, ()))
+                and any(t in hay for t in ts)
+            ]
         return memo[label]
 
     return match

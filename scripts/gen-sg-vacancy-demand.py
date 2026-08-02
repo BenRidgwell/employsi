@@ -14,6 +14,15 @@ normalise with the AU/Canada counts. Aligned to the SAME month axis (IVI_MONTHS)
 so one time slider scrubs every country; only 2006-03 onward is kept so it lines
 up with the AU/Canada series.
 
+Quarterly refresh:
+  1. Download the latest "Job Vacancy" time-series workbook from
+     https://stats.mom.gov.sg/Pages/JobVacancyTimeSeries.aspx
+     (the file is named like mrsd_23_Qtly_and_annl_tsd_on_job_vac_by_ind_and_occ_grp.xlsx;
+     SHEET below names the sheet inside it. Recorded because the page this
+     generator was first written against has since moved and two plausible
+     guesses at the new address both 404 — this is the live one.)
+  2. python3 scripts/gen-sg-vacancy-demand.py path/to/that.xlsx
+
 Usage: python3 scripts/gen-sg-vacancy-demand.py path/to/mrsd_job_vac.xlsx
 """
 import json, re, sys
