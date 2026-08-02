@@ -288,7 +288,18 @@ def split_ref(title: str) -> tuple[str, str | None]:
     return body, ref
 
 
-ROW_RE = re.compile(r'<tr[^>]*class="searchResults(?:Odd|Even)"[^>]*>(.*?)</tr>', re.S | re.I)
+# Two generations of the same table, and the row class is the only thing that
+# distinguishes them:
+#   2003-2007  <table id="searchResults">      <tr class="searchResultsOdd|Even">
+#   2008-2014  <table id="searchResultsTable"> <tr class="oddRow|evenRow">
+# Matching only the first spelling cost SEVEN YEARS. Those captures parsed to
+# zero rows and the run reported them as "held no rows", which reads exactly
+# like a quiet board — and 2008-2014 duly came back empty from a corpus that has
+# 40-50 job links on every one of those pages. Nothing errored; a whole era just
+# was not there. Verified against 20120410 searchresults.asp (463 advertised).
+ROW_RE = re.compile(
+    r'<tr[^>]*class="(?:searchResults(?:Odd|Even)|(?:odd|even)Row)"[^>]*>(.*?)</tr>',
+    re.S | re.I)
 CELL_RE = re.compile(r'<td[^>]*>(.*?)(?=<td|</tr>|$)', re.S | re.I)
 ANYROW_RE = re.compile(r'<tr[^>]*>(.*?)(?=<tr[^>]*>|</table>|$)', re.S | re.I)
 HEADCELL_RE = re.compile(r'<t[hd][^>]*>(.*?)(?=<t[hd]|</tr>|</thead>|$)', re.S | re.I)
