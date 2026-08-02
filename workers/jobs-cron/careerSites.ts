@@ -97,7 +97,9 @@ type Platform =
   | "smartrecruiters"
   | "careercentre"
   | "martianlogic"
-  | "plscareers";
+  | "plscareers"
+  | "xmlfeed"
+  | "ampol";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -567,6 +569,38 @@ export const SITES: SiteDef[] = [
     origin: "https://careers.jameshardie.com",
     homeHub: "sydney",
   },
+  // These three were the boards that 403'd the build sandbox. Re-probed from
+  // the Worker (which egresses from Cloudflare, not from here) and all three
+  // answer it — so they need configuration, not scrapers.
+  {
+    id: "nz-xero",
+    name: "Xero",
+    sector: "Technology, Media and Telecommunications",
+    platform: "xmlfeed",
+    endpoint: "https://careers.xero.com/jobs/xml/?rss=true",
+    origin: "https://careers.xero.com",
+    homeHub: "auckland",
+  },
+  {
+    id: "sydney-rhc",
+    key: "sydney-rhc-au",
+    name: "Ramsay Health Care",
+    sector: "Hospitals",
+    // The AU board is a SmartRecruiters widget; the UK arm is Workday (above).
+    platform: "smartrecruiters",
+    endpoint: "RamsayHealthCare1",
+    origin: "https://www.ramsaycareers.com.au",
+    homeHub: "sydney",
+  },
+  {
+    id: "sydney-ald",
+    name: "Ampol",
+    sector: "Energy & Natural Resources",
+    platform: "ampol",
+    endpoint: "https://www.careers.ampol.com/jobs?page=1&size=200",
+    origin: "https://www.careers.ampol.com",
+    homeHub: "sydney",
+  },
   {
     id: "melbourne-ori",
     name: "Orica",
@@ -842,7 +876,8 @@ export const PORTAL_GROUPS: string[][] = [
   ["brisbane-alq", "sydney-chc", "melbourne-vcx"],
   ["melbourne-reh", "sydney-rhc-uk", "sydney-asx"],
   ["melbourne-ori", "sydney-gpt", "denver-nem"],
-  ["sydney-jhx"],
+  ["sydney-jhx", "nz-xero"],
+  ["sydney-rhc-au", "sydney-ald"],
   ["brisbane-nxt", "melbourne-car", "min"],
 ];
 
@@ -2131,6 +2166,92 @@ async function fetchPlsCareers(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── Plain XML job feed ──────────────────────────────────────────────────────
+// Xero. Its careers HTML challenges anything that is not a browser — from the
+// build sandbox AND from the Worker — but the board also publishes an indexing
+// feed of <job> elements carrying title, city, country, category, date and url
+// in CDATA, and that endpoint is not gated at all. A feed the employer
+// publishes for aggregators is the better source anyway: stable, complete in
+// one request, and it states its fields instead of implying them from markup.
+async function fetchXmlFeed(site: SiteDef): Promise<PortalJob[]> {
+  const xml = await getText(site.endpoint);
+  if (!xml) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const field = (block: string, name: string) => {
+    const m = block.match(
+      new RegExp(`<${name}>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?</${name}>`, "i"),
+    );
+    return m ? clean(m[1]) : "";
+  };
+  for (const m of xml.matchAll(/<job>([\s\S]*?)<\/job>/gi)) {
+    const b = m[1];
+    const title = field(b, "title");
+    const id = field(b, "requisitionid") || field(b, "referencenumber") || title;
+    if (!title || seen.has(id)) continue;
+    seen.add(id);
+    const loc = [field(b, "city"), field(b, "state"), field(b, "country")]
+      .filter(Boolean)
+      .join(", ");
+    // RFC-822 ("Fri, 31 Jul 2026 00:00:00 GMT") → YYYY-MM-DD.
+    const raw = field(b, "date");
+    const d = raw ? new Date(raw) : null;
+    const posted = d && !Number.isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : "";
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        field(b, "url") || site.origin,
+        posted,
+        field(b, "category") || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── Ampol ───────────────────────────────────────────────────────────────────
+// Server-rendered, with title, location and id all in the slug:
+//   /job/team-member-chinchilla-in-chinchilla-au-jid-1366
+// so the listing page alone is enough.
+//
+// This parser was written against what the WORKER receives, not the sandbox:
+// the same URL returns 49 job links to the build environment and 145 to a
+// Cloudflare egress. Reverse-engineering it locally would have produced a
+// parser fitted to a page the cron never sees.
+async function fetchAmpol(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const titleCase = (s: string) =>
+    s
+      .split("-")
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  for (const m of html.matchAll(/href="(\/job\/([a-z0-9-]+?)-in-([a-z0-9-]+?)-jid-(\d+))"/gi)) {
+    const id = m[4];
+    if (seen.has(id)) continue;
+    seen.add(id);
+    // The location tail carries a country code ("chinchilla-au"); drop it so
+    // the hub matcher sees a place name rather than a place plus "Au".
+    const place = m[3].replace(/-(au|nz|sg|us|gb)$/i, "");
+    out.push(
+      job(
+        site,
+        titleCase(m[2]),
+        titleCase(place),
+        new URL(m[1], site.origin).toString(),
+        "",
+        "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   successfactors: fetchSuccessFactors,
   workday: fetchWorkday,
@@ -2149,6 +2270,8 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   careercentre: fetchCareerCentre,
   martianlogic: fetchMartianLogic,
   plscareers: fetchPlsCareers,
+  xmlfeed: fetchXmlFeed,
+  ampol: fetchAmpol,
 };
 
 export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
@@ -2174,6 +2297,8 @@ const SOURCE_TAG: Record<Platform, string> = {
   careercentre: "cc",
   martianlogic: "ml",
   plscareers: "pls",
+  xmlfeed: "xml",
+  ampol: "ale",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */
