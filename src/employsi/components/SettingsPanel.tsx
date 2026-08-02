@@ -50,7 +50,9 @@ import { IconClose } from "./ActionIcons";
  * the foot of Appearance when it applies.
  */
 
-const VERSION = "v2.4.1";
+// The shipped version. "v2.4.1" was carried over from the design mock, which
+// invented a plausible number for a product that has not had a 1.0 yet.
+const VERSION = "1.0.0-beta.1";
 
 function Switch({
   on,

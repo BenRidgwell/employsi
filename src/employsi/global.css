@@ -2338,6 +2338,17 @@ body {
   font-family: "JetBrains Mono", monospace;
   font-size: 11.5px;
 }
+/* The source type. Set in the body face, not the mono one the source id uses:
+   it is prose about the feed, not an identifier, and the contrast is what stops
+   the two columns reading as one. Long portal labels carry the employer name,
+   so it ellipsises rather than forcing the table wider than the card. */
+.dqkind {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--slate, #6c6c72);
+}
 .dqnum {
   text-align: right;
   font-variant-numeric: tabular-nums;

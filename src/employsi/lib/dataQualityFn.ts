@@ -41,6 +41,71 @@ async function d1(): Promise<D1Like | null> {
  */
 export const HISTORICAL_SOURCES = new Set(["wayback"]);
 
+/**
+ * What KIND of thing each source is, because "seek" and "portal-sf" are not the
+ * same sort of feed and a row count from one does not mean what it means from
+ * the other.
+ *
+ * The distinction that actually matters when reading the table:
+ *   Government job board  one employer family, complete for it — a drop is real
+ *   Job board             a primary market, one country's employers post to it
+ *   Job board aggregator  republishes OTHER boards, so its rows overlap theirs
+ *                         and its totals must never be added to them
+ *   Company career portal the employer's own ATS, the source of record for that
+ *                         employer and the only one with no middleman
+ *
+ * Aggregators are called out separately from boards on purpose. Adzuna and Jora
+ * carry SEEK's and Indeed's listings, so "adzuna 19,434 + seek 2,989" is not
+ * 22,423 vacancies — the job_key dedupe is what keeps the archive honest about
+ * that, and labelling the feeds is what keeps the READER honest about it.
+ *
+ * `portal-*` is one row per ATS PLATFORM, not per employer (portal-sf is every
+ * tenant we read on SuccessFactors), so the employer is filled in from the data
+ * rather than from this table: one name when the platform carries one employer,
+ * a count when it carries several.
+ */
+const SOURCE_KIND: Record<string, string> = {
+  adzuna: "Job board aggregator",
+  indeed: "Job board aggregator",
+  jooble: "Job board aggregator",
+  jora: "Job board aggregator",
+  muse: "Job board aggregator",
+  seek: "Job board",
+  linkedin: "Job board",
+  jobstreet: "Job board",
+  "jobstreet-ph": "Job board",
+  "jobsdb-hk": "Job board",
+  naukri: "Job board",
+  gulftalent: "Job board",
+  zhaopin: "Job board",
+  // Run by Workforce Singapore, a statutory board — but it lists every
+  // employer, not government ones, so it is a national job board and not the
+  // "government job board" the -gov feeds are.
+  mycareersfuture: "Job board",
+  // Sells back-catalogue postings; not a board anyone applies through.
+  theirstack: "Job posting data vendor",
+  wayback: "Web archive",
+};
+
+/** Human label for a source, given how many employers its rows cover. */
+export function sourceKind(
+  source: string,
+  companies: number,
+  soleCompanyName: string | null,
+): string {
+  const known = SOURCE_KIND[source];
+  if (known) return known;
+  if (source.endsWith("-gov")) return "Government job board";
+  if (source.startsWith("portal-")) {
+    if (companies === 1 && soleCompanyName) return `Company career portal · ${soleCompanyName}`;
+    if (companies > 1) return `Company career portal · ${companies} companies`;
+    return "Company career portal";
+  }
+  // Never guessed at: an unclassified source says so, so adding a feed and
+  // forgetting this table is visible rather than silently mislabelled.
+  return "Unclassified";
+}
+
 export interface FeedRow {
   source: string;
   /** Most recent day this source wrote anything. */
@@ -54,6 +119,8 @@ export interface FeedRow {
   historical: boolean;
   /** Earliest day this source has a row for — the span a corpus covers. */
   firstSeen: string;
+  /** What sort of feed this is — see sourceKind(). */
+  kind: string;
 }
 
 export interface UnmappedRow {
@@ -115,15 +182,23 @@ export const getDataQuality = createServerFn({ method: "GET" }).handler(
                   MAX(last_seen) AS last_seen,
                   MIN(first_seen) AS first_seen,
                   COUNT(*) AS total,
+                  COUNT(DISTINCT company_id) AS companies,
+                  MAX(company_id) AS a_company,
                   SUM(CASE WHEN last_seen >= date('now','-1 day') THEN 1 ELSE 0 END) AS live
              FROM jobs
             GROUP BY source
             ORDER BY source`,
         )
         .all();
+      const rosterName = new Map(COMPANIES.map((c) => [c.id, c.name]));
       const feeds: FeedRow[] = (feedRes?.results ?? []).map((r) => {
         const lastSeen = String(r.last_seen || "");
         const source = String(r.source || "");
+        const companies = Number(r.companies) || 0;
+        // a_company is only meaningful when the source carries exactly one, and
+        // sourceKind is the only thing that reads it — MAX() over a single
+        // group value is just "that value".
+        const sole = companies === 1 ? (rosterName.get(String(r.a_company || "")) ?? null) : null;
         return {
           source,
           lastSeen,
@@ -132,6 +207,7 @@ export const getDataQuality = createServerFn({ method: "GET" }).handler(
           total: Number(r.total) || 0,
           staleDays: lastSeen ? daysSince(lastSeen, today) : 999,
           historical: HISTORICAL_SOURCES.has(source),
+          kind: sourceKind(source, companies, sole),
         };
       });
 

@@ -40,7 +40,7 @@ import { useAppStore } from "../../state/store";
 /** A feed silent this long is a problem rather than a slow day. */
 const STALE_DAYS = 2;
 
-type SortKey = "source" | "live" | "total" | "lastSeen";
+type SortKey = "source" | "kind" | "live" | "total" | "lastSeen";
 type Tab = "data" | "engagement";
 
 /**
@@ -53,6 +53,9 @@ type Tab = "data" | "engagement";
  */
 const FIRST_DIR: Record<SortKey, "asc" | "desc"> = {
   source: "asc",
+  // Sorting by type is how you read the table by family — every government
+  // board together, every career portal together — so it opens A-Z.
+  kind: "asc",
   live: "asc",
   total: "asc",
   lastSeen: "desc",
@@ -96,6 +99,7 @@ function SortHead({
 
 function FeedRowView({
   source,
+  kind,
   lastSeen,
   firstSeen,
   live,
@@ -104,6 +108,7 @@ function FeedRowView({
   historical,
 }: {
   source: string;
+  kind: string;
   lastSeen: string;
   firstSeen: string;
   live: number;
@@ -118,6 +123,9 @@ function FeedRowView({
   return (
     <tr className={stale ? "dqstale" : undefined}>
       <td className="dqsrc">{source}</td>
+      <td className="dqkind" title={kind}>
+        {kind}
+      </td>
       <td className="dqnum">{live.toLocaleString()}</td>
       <td className="dqnum dqmuted">{total.toLocaleString()}</td>
       <td className="dqwhen">
@@ -261,6 +269,13 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
     const mul = sort.dir === "asc" ? 1 : -1;
     rows.sort((a, b) => {
       if (sort.key === "source") return mul * a.source.localeCompare(b.source);
+      // Type is a string, and the numeric branch below would subtract two of
+      // them into NaN — which Array.sort treats as "equal" and silently leaves
+      // the order untouched, so the column would look sorted and not be.
+      // Ties fall back to source so the families read alphabetically inside.
+      if (sort.key === "kind") {
+        return mul * a.kind.localeCompare(b.kind) || a.source.localeCompare(b.source);
+      }
       if (sort.key === "lastSeen") {
         // ISO dates compare correctly as strings. A feed that has never
         // written sorts as the oldest possible, which is what it is.
@@ -395,6 +410,7 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
                   <thead>
                     <tr>
                       <SortHead col="source" label="Source" sort={sort} onSort={onSort} />
+                      <SortHead col="kind" label="Type" sort={sort} onSort={onSort} />
                       <SortHead col="live" label="Live" numeric sort={sort} onSort={onSort} />
                       <SortHead col="total" label="Archived" numeric sort={sort} onSort={onSort} />
                       <SortHead col="lastSeen" label="Last write" sort={sort} onSort={onSort} />
