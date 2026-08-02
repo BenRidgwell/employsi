@@ -99,7 +99,8 @@ type Platform =
   | "martianlogic"
   | "plscareers"
   | "xmlfeed"
-  | "ampol";
+  | "ampol"
+  | "taleo";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -132,6 +133,12 @@ interface SiteDef {
   /** Oracle Recruiting Cloud only: the tenant's careers site number, as it
    *  appears in the portal URL (`/sites/CX_2001/jobs`). Defaults to CX_1. */
   siteNumber?: string;
+  /**
+   * Taleo only: the career section's portal number, read off the careers page
+   * (`FacetedSearchSettings: { portalNo: '8115010150' }`). The REST job board
+   * rejects the call without it, so it is per tenant and measured, not derived.
+   */
+  portalNo?: string;
   /**
    * Avature only: where the location and category sit in a result card's text
    * cells, zero-based, when the tenant does not use Macquarie's ordering.
@@ -717,6 +724,26 @@ export const SITES: SiteDef[] = [
     homeHub: "auckland",
   },
   {
+    // Sonic Healthcare has no group-wide careers board — Australia is federated
+    // across eleven pathology brands (DHM, Melbourne Pathology, SNP, Clinpath …)
+    // that each publish a handful of roles on their own CMS. Sonic HealthPlus,
+    // the occupational-health arm, is the one Sonic business running a real ATS,
+    // and it recruits nationally: measured, its 18 live roles sit in Adelaide,
+    // Brisbane, Karratha, Kewdale and Melbourne, not at the Sydney head office.
+    // So homeHub is only the fallback; hubFor places each role from its own
+    // location cell.
+    id: "sydney-shl",
+    key: "sydney-shl-healthplus",
+    name: "Sonic Healthcare",
+    sector: "Healthcare & Medical",
+    platform: "taleo",
+    endpoint: "https://shp.taleo.net",
+    origin: "https://shp.taleo.net",
+    // Read off the careers page's FacetedSearchSettings on 2026-08-02.
+    portalNo: "8115010150",
+    homeHub: "sydney",
+  },
+  {
     // Brambles runs two Workday sites on one tenant: the corporate/office
     // roles, and CHEP's plant and depot roles. Same employer, so one id — but
     // distinct keys, or the second overwrites the first's KV snapshot.
@@ -878,7 +905,9 @@ export const PORTAL_GROUPS: string[][] = [
   ["melbourne-ori", "sydney-gpt", "denver-nem"],
   ["sydney-jhx", "nz-xero"],
   ["sydney-rhc-au", "sydney-ald"],
-  ["brisbane-nxt", "melbourne-car", "min"],
+  // Sonic HealthPlus joins an existing tick rather than taking a new one: its
+  // Taleo board is 18 roles served in a single POST, so it costs one request.
+  ["brisbane-nxt", "melbourne-car", "min", "sydney-shl-healthplus"],
 ];
 
 const UA =
@@ -936,6 +965,8 @@ const HUB_MATCH: [string, string | null][] = [
   ["tom price", "perth"],
   ["paraburdoo", "perth"],
   ["pilbara", "perth"],
+  ["pannawonica", "perth"],
+  ["kewdale", "perth"],
   ["western australia", "perth"],
   [" wa,", "perth"],
   ["perth", "perth"],
@@ -943,17 +974,26 @@ const HUB_MATCH: [string, string | null][] = [
   ["gladstone", "brisbane"],
   ["townsville", "brisbane"],
   ["weipa", "brisbane"],
+  ["oxley", "brisbane"],
   ["queensland", "brisbane"],
   [" qld", "brisbane"],
   ["melbourne", "melbourne"],
   ["broadmeadows", "melbourne"],
   ["geelong", "melbourne"],
+  ["dandenong", "melbourne"],
   ["victoria, austral", "melbourne"],
   [" vic,", "melbourne"],
   ["adelaide", "adelaide"],
   ["south australia", "adelaide"],
   ["canberra", "canberra"],
+  ["woden", "canberra"],
+  // Erskineville (Sydney) must be tested BEFORE Erskine (Mandurah, WA) —
+  // this is a substring match, so the shorter needle would otherwise swallow
+  // the longer name and put an inner-Sydney role in Perth.
+  ["erskineville", "sydney"],
+  ["erskine", "perth"],
   ["sydney", "sydney"],
+  ["wollongong", "sydney"],
   ["new south wales", "sydney"],
   [" nsw", "sydney"],
   // Asia-Pacific
@@ -2263,6 +2303,118 @@ async function fetchAmpol(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── Oracle Taleo (faceted career section) ────────────────────────────────────
+interface TaleoReq {
+  jobId?: string;
+  contestNo?: string;
+  /** Display cells, tenant-ordered; `locationsColumns` names which hold them. */
+  column?: string[];
+  linkedColumn?: number;
+  locationsColumns?: number[];
+}
+interface TaleoPage {
+  requisitionList?: TaleoReq[];
+  pagingData?: { currentPageNo?: number; pageSize?: number; totalCount?: number };
+}
+
+/**
+ * Taleo's career section renders nothing server-side, but the faceted search it
+ * runs in the browser is a plain JSON POST, so the Worker can call that directly
+ * rather than needing a headless browser:
+ *
+ *   POST /careersection/rest/jobboard/searchjobs?lang=en&portal=<portalNo>
+ *
+ * The `tz`/`tzname` headers are NOT optional. Without them the endpoint answers
+ * 500 "An Error Occurred in TEE" — measured against Sonic HealthPlus, where the
+ * identical body succeeds the moment the two headers are added. They are what
+ * SearchHandler.js sends, so we send them too.
+ *
+ * Columns are positional and tenant-ordered. `linkedColumn` is the index of the
+ * title and `locationsColumns[0]` the index of the locations cell (itself a
+ * JSON array of strings), so both are read from the response rather than
+ * assumed — a tenant that orders them differently still parses.
+ *
+ * Paging: `pageNo` in the body is honoured, but a request past the last page
+ * CLAMPS to the last page rather than returning empty. So the walk stops when a
+ * page adds no new requisition ids, not when it comes back short — otherwise a
+ * one-page board would loop to maxPages re-reading the same rows.
+ */
+async function fetchTaleo(site: SiteDef): Promise<PortalJob[]> {
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  let advertised = 0;
+  for (let page = 1; page <= max; page++) {
+    const json = await getJson<TaleoPage>(
+      `${site.endpoint}/careersection/rest/jobboard/searchjobs?lang=en&portal=${site.portalNo ?? ""}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          tz: "GMT+10:00",
+          tzname: "Australia/Sydney",
+        },
+        body: JSON.stringify({
+          multilineEnabled: false,
+          sortingSelection: { sortBySelectionParam: "3", ascendingSortingOrder: "false" },
+          fieldData: { fields: { KEYWORD: "", LOCATION: "" }, valid: true },
+          filterSelectionParam: { searchFilterSelections: [] },
+          advancedSearchFiltersSelectionParam: { searchFilterSelections: [] },
+          pageNo: page,
+        }),
+      },
+    );
+    const rows = json?.requisitionList;
+    if (!rows || !rows.length) break;
+    advertised = json?.pagingData?.totalCount ?? advertised;
+    let added = 0;
+    for (const r of rows) {
+      const id = r.jobId ?? r.contestNo ?? "";
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      const cells = r.column ?? [];
+      const title = clean(cells[r.linkedColumn ?? 0] ?? "");
+      if (!title) continue;
+      // The locations cell is a JSON array ("[\"AU-SA-Adelaide\"]"). Taleo
+      // prefixes each with country/state codes, which hubFor cannot read, so
+      // the trailing segment is what gets matched to a hub.
+      let loc = "";
+      const rawLoc = cells[r.locationsColumns?.[0] ?? -1];
+      if (rawLoc) {
+        try {
+          const parsed = JSON.parse(rawLoc) as string[];
+          loc = (parsed[0] ?? "").split("-").pop()?.trim() ?? "";
+        } catch {
+          loc = clean(rawLoc);
+        }
+      }
+      const posted = cells.find((c) => /^\d{2}-[A-Za-z]{3}-\d{4}$/.test(c ?? "")) ?? "";
+      out.push(
+        job(
+          site,
+          title,
+          loc,
+          `${site.origin}/careersection/jobdetail.ftl?job=${encodeURIComponent(id)}`,
+          posted ? isoDay(posted) : today(),
+          "Career portal",
+        ),
+      );
+      added++;
+    }
+    // Clamped page (every id already seen) = end of list.
+    if (added === 0) break;
+  }
+  // The board's own total routinely exceeds what it will serve anonymously
+  // (Sonic HealthPlus: 22 advertised, 18 returned, stable across pages and
+  // across multiline on/off). Collected is what we archive; the gap is logged
+  // rather than back-filled, because inventing the difference is exactly the
+  // failure mode this codebase is built to avoid.
+  if (advertised && out.length < advertised) {
+    console.log(`[taleo] ${site.name}: collected ${out.length} of ${advertised} advertised`);
+  }
+  return out;
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   successfactors: fetchSuccessFactors,
   workday: fetchWorkday,
@@ -2283,6 +2435,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   plscareers: fetchPlsCareers,
   xmlfeed: fetchXmlFeed,
   ampol: fetchAmpol,
+  taleo: fetchTaleo,
 };
 
 export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
@@ -2310,6 +2463,7 @@ const SOURCE_TAG: Record<Platform, string> = {
   plscareers: "pls",
   xmlfeed: "xml",
   ampol: "ale",
+  taleo: "tl",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */

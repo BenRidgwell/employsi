@@ -1,0 +1,83 @@
+# Daily Stockland + Auckland Airport careers boards → D1 archive, via Oxylabs.
+#
+# Both are employer portals the jobs-cron Worker cannot run, for two different
+# reasons — which is worth keeping straight, because the fix differs:
+#
+#   Stockland (career10.successfactors.com) is REACHABLE but not READABLE. It
+#   runs the old SuccessFactors RCM career portal, which server-renders no jobs
+#   at all and fetches its results over DWR. It needs a real browser, and its
+#   paginator is click-only, so the script renders and clicks "Next".
+#
+#   Auckland Airport (careers.aucklandairport.co.nz) is READABLE but not
+#   REACHABLE. Its HTML carries every job tile with no JavaScript needed — but
+#   a plain datacentre request gets HTTP 403 and a challenge page. It only needs
+#   a residential exit, so the script fetches it UNRENDERED, which is cheaper
+#   and has one less thing to go wrong.
+#
+# Rows land as `portal-sf`/`sydney-sgp` and `portal-wpjb`/
+# `nz-auckland-international-airport`, through the same key and upsert as every
+# other portal, so a role already held from Adzuna, SEEK or Jora refreshes
+# rather than duplicating.
+#
+# Each script exits non-zero when it parses nothing, so a block or a markup
+# change fails the run loudly rather than leaving a card reading zero. The two
+# steps are independent: Stockland failing must not stop Auckland Airport
+# writing, so the second step runs even if the first fails, and the job's own
+# status still reflects either failing.
+#
+# Required repo secrets:
+#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
+#   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
+# Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# Use "Run workflow" to verify before relying on the schedule.
+
+name: browser-portals
+
+on:
+  schedule:
+    # 04:45 UTC daily — in the gap between the Worker's portal ticks (which run
+    # from 04:20 through 08:15) and clear of the NAB portal run at 04:40.
+    - cron: '45 4 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: browser-portals
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # bun runs scripts/map-skills.ts, so these roles carry exactly the skills
+      # the same title would get from any other source.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Scrape Stockland careers → D1 (Oxylabs, rendered)
+        id: stockland
+        env:
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/stockland-to-d1.py
+
+      - name: Scrape Auckland Airport careers → D1 (Oxylabs)
+        # Runs even if Stockland failed — they are unrelated boards, and one
+        # being blocked is no reason to skip archiving the other.
+        if: always()
+        env:
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/aucklandairport-to-d1.py

@@ -1,0 +1,45 @@
+# Portal scheduling integrity check.
+#
+# A career portal stops running silently. There is no error and no log line
+# when a feed is missing from PORTAL_GROUPS, or a group is missing from
+# PORTAL_TICKS, or a tick's cron is not registered in wrangler.jsonc — the
+# scheduler just never calls it, and the only symptom is rows that never turn
+# up in D1.
+#
+# That is how roughly thirty boards added through 2026-08 (ResMed, ALS, Reece,
+# Ramsay, Orica, Newmont, Ampol, Xero, Sonic HealthPlus and the rest) sat in
+# groups 14-23 having never fetched once. It was caught by querying the archive
+# and noticing they had no rows at all — not by anything going red.
+#
+# So the four lists that must move together are asserted on every change to any
+# of them. See scripts/check-portal-ticks.ts.
+
+name: portal-ticks-check
+
+on:
+  push:
+    paths:
+      - 'workers/jobs-cron/careerSites.ts'
+      - 'workers/jobs-cron/index.ts'
+      - 'workers/jobs-cron/wrangler.jsonc'
+      - 'scripts/check-portal-ticks.ts'
+      - '.github/workflows/portal-ticks-check.yml'
+  pull_request:
+    paths:
+      - 'workers/jobs-cron/careerSites.ts'
+      - 'workers/jobs-cron/index.ts'
+      - 'workers/jobs-cron/wrangler.jsonc'
+      - 'scripts/check-portal-ticks.ts'
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Assert every portal feed is grouped, ticked and cronned
+        run: bun run scripts/check-portal-ticks.ts

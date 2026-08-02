@@ -1005,6 +1005,29 @@ const PORTAL_TICKS: Record<string, number> = {
   "15 6 * * *": 11,
   "25 6 * * *": 12,
   "35 6 * * *": 13,
+  // Groups 14-23. These are the boards added through 2026-08 — ResMed, APA,
+  // The Lottery Corporation, BlueScope's four feeds, St John of God, Medibank,
+  // Gold Corporation, Lynas, Pilbara Minerals, ALS, Charter Hall, Vicinity,
+  // Reece, Ramsay AU+UK, ASX, Orica, GPT, Newmont, James Hardie, Xero, Ampol,
+  // NextDC, carsales, MinRes and Sonic HealthPlus.
+  //
+  // They were added to SITES and PORTAL_GROUPS but NOT here and not to
+  // `crons`, so they had no tick to run on and never fetched once: D1 held
+  // zero portal- rows for any of them, against 14 groups' worth of rows
+  // written daily. This is the exact failure the PORTAL_GROUPS comment warns
+  // about — SITES, PORTAL_GROUPS, PORTAL_TICKS and `crons` must all move
+  // together, and a group with no tick fails silently because nothing errors:
+  // the scheduler simply never calls it.
+  "45 6 * * *": 14,
+  "55 6 * * *": 15,
+  "5 7 * * *": 16,
+  "15 7 * * *": 17,
+  "25 7 * * *": 18,
+  "35 7 * * *": 19,
+  "45 7 * * *": 20,
+  "55 7 * * *": 21,
+  "5 8 * * *": 22,
+  "15 8 * * *": 23,
 };
 
 const NEWS_TICKS: Record<string, number> = {
