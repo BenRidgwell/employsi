@@ -159,6 +159,10 @@ MAX_FETCHES = int(_opt('--max-fetches', 400))
 YEAR_FROM = _opt('--from')
 YEAR_TO = _opt('--to')
 CACHE = _opt('--cache')
+# Parallel fetches. The work is pure IO wait, and the underlying throttle in
+# oxylabs_client still caps the request rate however many threads ask.
+CONCURRENCY = max(1, int(_opt('--concurrency', 10)))
+CHUNK = 200          # futures in flight at once — see fetch_all()
 # Passed to the matcher only so INDUSTRY_GATED terms resolve the way they would
 # for this employer ("principal" is a school principal in education and a
 # seniority grade everywhere else). Give it the roster's own sector string.
@@ -201,6 +205,39 @@ def get(url: str, timeout: int = 180) -> str | None:
         os.makedirs(CACHE, exist_ok=True)
         open(key, 'w').write(body)
     return body
+
+
+def fetch_all(caps: list[tuple[str, str, str]]):
+    """Yield (capture, html) for every capture, IN ORDER, fetching in parallel.
+
+    One capture is one HTTP round trip of roughly six seconds, almost all of it
+    waiting. Serially that is ~1.7 captures a minute, which makes any budget
+    worth having take days; the work is entirely IO-bound, so threads are the
+    whole fix.
+
+    Order is preserved because the run's output — the progress line, the sample
+    rows, and above all first_seen/last_seen — should not depend on which
+    request happened to come back first. A run must be reproducible from the
+    same inputs.
+
+    Submitted in chunks rather than all at once so completed pages are consumed
+    and released as we go: handing 4,000 futures to the pool would hold every
+    fetched page in memory until the last one landed.
+
+    Concurrency is bounded twice over — by the pool and, underneath it, by the
+    shared throttle in oxylabs_client, which is what stops N threads becoming N
+    simultaneous requests at the Internet Archive.
+    """
+    if CONCURRENCY <= 1:
+        for c in caps:
+            yield c, get(f'{WB}/{c[0]}id_/{c[1]}')
+        return
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
+        for i in range(0, len(caps), CHUNK):
+            part = caps[i:i + CHUNK]
+            for c, h in zip(part, pool.map(lambda x: get(f'{WB}/{x[0]}id_/{x[1]}'), part)):
+                yield c, h
 
 
 def cdx_index(host: str) -> list[tuple[str, str]]:
@@ -663,8 +700,7 @@ def main() -> int:
     stats = collections.Counter()
     totals: list[tuple[str, int, int]] = []   # (day, shown, advertised)
 
-    for n, (ts, url, host) in enumerate(picked, 1):
-        h = get(f'{WB}/{ts}id_/{url}')
+    for n, ((ts, url, host), h) in enumerate(fetch_all(picked), 1):
         if not h:
             stats['fetch_failed'] += 1
             continue

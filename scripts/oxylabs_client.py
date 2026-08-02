@@ -18,6 +18,7 @@ import json
 import os
 import random
 import sys
+import threading
 import time
 import urllib.request
 
@@ -60,18 +61,27 @@ MAX_BACKOFF = float(os.environ.get('OXY_MAX_BACKOFF', '60'))
 RETRY_STATUSES = {429, 500, 502, 503, 504, 522, 524, 612, 613}
 
 _last_call = 0.0
+# Serialises the spacing calculation, because callers may now be threads (the
+# Wayback backfill fetches concurrently — one capture is one HTTP round trip and
+# 36,000 of them serially is days). Without the lock every thread reads the same
+# `_last_call`, every thread computes "no wait needed", and they all fire at
+# once — the exact opposite of a throttle. The sleep is held INSIDE the lock on
+# purpose: that is what makes MIN_INTERVAL a real ceiling on requests per second
+# regardless of how many threads are running.
+_throttle_lock = threading.Lock()
 
 
 def _throttle() -> None:
-    """Space out successive requests (min interval + jitter)."""
+    """Space out successive requests (min interval + jitter). Thread-safe."""
     global _last_call
-    now = time.monotonic()
-    wait = (_last_call + MIN_INTERVAL) - now
-    if wait > 0:
-        time.sleep(wait)
-    if JITTER > 0:
-        time.sleep(random.uniform(0, JITTER))
-    _last_call = time.monotonic()
+    with _throttle_lock:
+        now = time.monotonic()
+        wait = (_last_call + MIN_INTERVAL) - now
+        if wait > 0:
+            time.sleep(wait)
+        if JITTER > 0:
+            time.sleep(random.uniform(0, JITTER))
+        _last_call = time.monotonic()
 
 
 def _backoff(attempt: int, retry_after: float | None = None) -> float:
