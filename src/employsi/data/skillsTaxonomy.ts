@@ -298,6 +298,7 @@ const RAW_SKILLS: SkillDef[] = [
       // skill it genuinely covers), not double counting within a skill.
       "database and systems administrator",
       "database administrator",
+      "database designer",
       "database architect",
       "database and network",
     ],
@@ -336,6 +337,12 @@ const RAW_SKILLS: SkillDef[] = [
       // Eurostat publishes cannot isolate the occupation.
       "business and systems analyst",
       "computer systems analyst",
+      // ISCO-08 2511 "Systems analysts" is the group business analysts belong
+      // to, and the Philippines (PSOC) publishes at 4-digit, so there the
+      // occupation is isolatable — which is exactly what Eurostat's 3-digit
+      // release is not. Data Analytics keeps the title too: a systems analyst
+      // reads data and models process, and both readings are true.
+      "systems analyst",
     ],
   },
   {
@@ -586,6 +593,10 @@ const RAW_SKILLS: SkillDef[] = [
     except: [
       "database administrator",
       "database and systems administrator",
+      // PSOC/ISCO 2521 is "Database Designers and Administrators" — the same
+      // occupation, a phrasing none of the lines above reach. Found in the
+      // Philippine ISLE tables, where it was landing here and NOWHERE else.
+      "database designer",
       "systems administrator",
       "system administrator",
       "network administrator",

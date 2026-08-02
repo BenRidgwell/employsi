@@ -7,10 +7,23 @@ supplied as five spreadsheets plus one PDF newsletter:
 
   2011/2012  Jan 2011 - Jun 2012   LABSTAT Updates Vol.17 No.24, TABLE 3   20+
   2013/2014  Jan 2013 - Jun 2014   tab7 (TABLE 7)                          20+
-  2015/2016  Jan 2015 - Jun 2016   Table207_0 (TABLE 7)                    20+
+  2015/2016  Jan 2015 - Jun 2016   Table207_0 (TABLE 7)                    20+   ← not held
   2017/2018  Jul 2017 - Jun 2018   Table207_2 (TABLE 7)                    20+
   2021/2022  Sep 2021 - Aug 2022   Table_4_10 (TABLE 4)                    20+
   2023/2024  Sep 2023 - Aug 2024   Table_11_12 (TABLE 11)                  10+
+
+A DETAILED ROUND MAY BE ABSENT. Each of these is a separate PSA publication
+downloaded by hand, and psa.gov.ph refuses automated requests (403 direct, and
+Oxylabs faults on it), so a round that is not to hand cannot simply be fetched.
+2015/2016 is currently in that position. An absent detailed round is DROPPED —
+never inferred from its neighbours — and the gap is visible rather than
+implicit: the generator names it on stderr, and PH_THRESHOLD / PH_GRANULARITY /
+PH_ROUND_TOTALS in the emitted file carry only the rounds that were read, so a
+reader sees five rounds where six are documented. Supplying Table207_0.xlsx and
+re-running is all that is needed to close it.
+
+The two group-only rounds stay REQUIRED: they are the two ends of the axis, and
+losing either silently shortens the group panel rather than thinning it.
 
 ── WHAT STITCHING THESE HONESTLY MEANS ────────────────────────────────────────
 They are NOT one series. Four things break comparability and each is handled
@@ -290,11 +303,23 @@ def main() -> int:
         sys.exit(__doc__)
     d = sys.argv[1]
 
-    def find(frag: str) -> str:
+    def find(frag: str, required: bool = True) -> str | None:
+        """Locate a round's workbook. `required=False` for the detailed rounds.
+
+        The six rounds are six separate PSA publications, each downloaded by
+        hand, and one of them going missing must not take the other five with
+        it. A round that is absent is DROPPED — never inferred from its
+        neighbours — and named on stderr and in the emitted file, so a reader
+        can see the gap instead of finding a shorter series than they expected.
+        The 2011/12 and 2023/24 group rounds stay required: they are the two
+        ends of the axis, and without them the group panel silently shortens.
+        """
         for f in sorted(os.listdir(d)):
             if frag in f:
                 return os.path.join(d, f)
-        sys.exit(f'missing source file containing {frag!r}')
+        if required:
+            sys.exit(f'missing source file containing {frag!r}')
+        return None
 
     # 2011/12 comes from the transcribed PDF table; verify it before using it.
     got = sum(v for _, v in PDF_2011)
@@ -305,12 +330,26 @@ def main() -> int:
     # The four rounds published by detailed occupation title. Each is read
     # twice: the occupation rows (which map to skills) and the major-group
     # subtotal rows (which join the group panel).
-    raw = {
-        '2013/2014': (raw_rows_xls(find('tab7_1.xls')), 1, 2),
-        '2015/2016': (raw_rows_xlsx(find('Table207_0.xlsx'), 'table7'), 1, 2),
-        '2017/2018': (raw_rows_xlsx(find('Table207_2.xlsx'), 'TABLE 7'), 1, 2),
-        '2021/2022': (raw_rows_xlsx(find('Table_4_10.xlsx'), 'Table 4'), 1, 2),
-    }
+    DETAILED = [
+        ('2013/2014', 'tab7_1.xls', None),
+        ('2015/2016', 'Table207_0.xlsx', 'table7'),
+        ('2017/2018', 'Table207_2.xlsx', 'TABLE 7'),
+        ('2021/2022', 'Table_4_10.xlsx', 'Table 4'),
+    ]
+    raw = {}
+    absent = []
+    for rnd, frag, sheet in DETAILED:
+        path = find(frag, required=False)
+        if not path:
+            absent.append((rnd, frag))
+            continue
+        rows = raw_rows_xls(path) if sheet is None else raw_rows_xlsx(path, sheet)
+        raw[rnd] = (rows, 1, 2)
+    if not raw:
+        sys.exit('no detailed round supplied — PH_SERIES would be empty.')
+    for rnd, frag in absent:
+        sys.stderr.write(f'  {rnd}: {frag} not supplied — round dropped from the '
+                         f'skill panel and from PH_ROUND_TOTALS\n')
     detail: dict[str, list[tuple[str, float]]] = {}
     groups: dict[str, dict[str, float]] = {}
     for rnd, (rows, tc, vc) in raw.items():
@@ -351,6 +390,8 @@ def main() -> int:
             sys.exit(f'{rnd}: {len(groups[rnd])} major groups, expected {len(GROUPS)}')
 
     for rnd in sorted(ROUNDS, key=lambda k: ROUNDS[k][0]):
+        if rnd not in groups:
+            continue
         nd = len(detail.get(rnd, []))
         sys.stderr.write(f'  {rnd}: {len(groups[rnd])} major groups, '
                          f'{nd if nd else "—":>4} detailed occupations, '
@@ -371,11 +412,12 @@ def main() -> int:
         rather than "the survey has not reported since" (the same trap
         gen-hk-vacancy-demand.py's carry() exists to avoid).
         """
-        ri = order.index(rnd)
+        seq = [r for r in order if r in groups]
+        ri = seq.index(rnd)
         lo = idx.get(ROUNDS[rnd][0])
         if lo is None:
             return
-        stop = None if to_end else ROUNDS[order[ri + 1]][0]
+        stop = None if to_end else ROUNDS[seq[ri + 1]][0]
         hi = len(months) if stop is None else idx.get(stop, len(months))
         for k, v in acc.items():
             arr = into.setdefault(k, [0.0] * len(months))
@@ -415,12 +457,16 @@ def main() -> int:
     if not series:
         sys.exit('no skills mapped — has the taxonomy or the table layout moved?')
 
-    # ── the group panel: all six rounds ──────────────────────────────────────
+    # ── the group panel: every round that was supplied ───────────────────────
     gseries: dict[str, list[float]] = {}
-    for rnd in order:
-        hold(rnd, groups[rnd], gseries, to_end=(rnd == order[-1]))
+    present = [r for r in order if r in groups]
+    for rnd in present:
+        # A dropped round leaves its window to the PREVIOUS round, which is what
+        # "the latest published figure" means when the next survey is missing —
+        # the same hold rule, not a gap and not an interpolation.
+        hold(rnd, groups[rnd], gseries, to_end=(rnd == present[-1]))
 
-    round_totals = {r: sum(groups[r].values()) for r in order}
+    round_totals = {r: sum(groups[r].values()) for r in order if r in groups}
     last = len(months) - 1
     lines = [
         '// GENERATED — do not edit by hand. Run scripts/gen-ph-vacancy-demand.py.',
@@ -469,12 +515,14 @@ def main() -> int:
         'export const PH_THRESHOLD: Record<string, string> = {',
     ]
     for r in order:
-        lines.append(f'  {json.dumps(r)}: {json.dumps(ROUNDS[r][2])},')
+        if r in groups:
+            lines.append(f'  {json.dumps(r)}: {json.dumps(ROUNDS[r][2])},')
     lines += ['};', '',
               '/** Whether a round published detailed occupations or major groups only. */',
               'export const PH_GRANULARITY: Record<string, string> = {']
     for r in order:
-        lines.append(f'  {json.dumps(r)}: {json.dumps(ROUNDS[r][3])},')
+        if r in groups:
+            lines.append(f'  {json.dumps(r)}: {json.dumps(ROUNDS[r][3])},')
     lines += ['};', '',
               '/** Published total vacancies per round, as the survey reported them. */',
               'export const PH_ROUND_TOTALS: Record<string, number> = {']
@@ -529,7 +577,8 @@ def main() -> int:
     sys.stderr.write(
         f'\nwrote {OUT}\n'
         f'  skill panel:  {len(series)} skills, {len(detail_order)} detailed rounds\n'
-        f'  group panel:  {len(gseries)} major groups, {len(order)} rounds\n')
+        f'  group panel:  {len(gseries)} major groups, {len(present)} of '
+        f'{len(ROUNDS)} rounds\n')
     return 0
 
 

@@ -200,6 +200,13 @@ class RealTaxonomy(unittest.TestCase):
             ('Database Architects', 'Data Engineering'),
             # ISCO-08 (Eurostat, and PSOC which follows it)
             ('Database and network professionals', 'Data Engineering'),
+            # PSOC 4-digit, from the Philippine ISLE tables. Both of these were
+            # found mapping WRONG rather than merely missing: "Database
+            # Designers and Administrators" was landing in office support and
+            # nowhere else, and "Systems Analysts" — ISCO 2511, where business
+            # analysts live — carried no Business Analysis at all.
+            ('Database Designers and Administrators', 'Data Engineering'),
+            ('Systems Analysts', 'Business Analysis'),
             # UK SOC 2020 — matches on the ad-side term, no extra needed
             ('IT business analysts, architects and systems designers', 'Business Analysis'),
         ]
@@ -226,6 +233,7 @@ class RealTaxonomy(unittest.TestCase):
         """
         for title in ('Database and Systems Administrators, and ICT Security Specialists',
                       'Database administrators and web content technicians',
+                      'Database Designers and Administrators',
                       'Senior Systems Administrator',
                       'Database Administrator'):
             self.assertNotIn('Administration & Office Support', self.match(title), title)
