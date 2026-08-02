@@ -235,6 +235,49 @@ PAGE_SIZE = 20
 UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/124 Safari/537.36')
 
+# ── Retry budget ────────────────────────────────────────────────────────────
+# Sized against the WORKFLOW's budget, which is 30 minutes. The board is a state
+# government ATS that occasionally hangs for a few minutes at a time: on
+# 2026-08-01 the search POST timed out three times in a row and the whole daily
+# run failed, having spent only ~3 of its 30 available minutes before giving up.
+# The form and the report were both fine an hour later, and the parser was never
+# the problem — the script simply was not patient enough to outlast a bad patch.
+#
+# Worst case now: the form retries (~5 min) plus page 0 retries (~7.5 min) before
+# the run reports upstream failure. Later pages break the walk on first failure
+# and keep what they have, so a mid-walk hiccup costs the tail, not the run.
+FORM_ATTEMPTS = 4
+FORM_TIMEOUT = 60
+PAGE_ATTEMPTS = 5
+PAGE_TIMEOUT = 75
+
+
+def _backoff(attempt: int) -> float:
+    """Exponential base + jitter, capped.
+
+    The previous version slept `random.uniform(0, (2 ** attempt) * 3)`, whose
+    LOWER bound is zero — so a "backoff" could be no wait at all, and three
+    attempts could be fired at an already-struggling server in quick succession.
+    Jitter belongs ON TOP of a base delay, not instead of one.
+    """
+    return min(45.0, 4.0 * (2 ** attempt) + random.uniform(0, 3))
+
+
+def _open_retrying(op, target, timeout: int, attempts: int, label: str) -> str:
+    """GET/POST with real backoff. Returns '' once the budget is exhausted."""
+    for attempt in range(attempts):
+        try:
+            return op.open(target, timeout=timeout).read().decode('utf-8', 'replace')
+        except Exception as e:  # noqa: BLE001
+            if attempt == attempts - 1:
+                sys.stderr.write(f'  {label} failed after {attempts} attempts: {e}\n')
+                return ''
+            wait = _backoff(attempt)
+            sys.stderr.write(f'  {label} attempt {attempt + 1}/{attempts} failed '
+                             f'({e}); retrying in {wait:.0f}s\n')
+            time.sleep(wait)
+    return ''
+
 _TAG = re.compile(r'<[^>]+>')
 _WS = re.compile(r'\s+')
 
@@ -288,18 +331,23 @@ def _report_rows(html: str) -> list:
     return out
 
 
-def scrape() -> list:
-    """Run the search and page through the report. Plain HTTP, no browser."""
+def scrape() -> tuple[list, str]:
+    """Run the search and page through the report. Plain HTTP, no browser.
+
+    Returns (rows, failure) where `failure` is '' on success and otherwise names
+    WHY the walk came back empty. That distinction is the point: "the board did
+    not answer" and "the board answered with something we cannot parse" need
+    opposite responses — wait, versus go and fix the parser — and the old code
+    reported both as the same bare "No rows rendered".
+    """
     cj = http.cookiejar.CookieJar()
     op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
     op.addheaders = [('User-Agent', UA)]
 
     sys.stderr.write(f'  loading {START_URL}\n')
-    try:
-        form = op.open(START_URL, timeout=45).read().decode('utf-8', 'replace')
-    except Exception as e:  # noqa: BLE001
-        sys.stderr.write(f'  could not load the search form: {e}\n')
-        return []
+    form = _open_retrying(op, START_URL, FORM_TIMEOUT, FORM_ATTEMPTS, 'search form GET')
+    if not form:
+        return [], 'unreachable: the search form never loaded'
     tm = re.search(r"""name=["']jobboard_token["']\s+value=["']([^"']*)["']""", form)
     token = tm.group(1) if tm else ''
     if not token:
@@ -318,23 +366,24 @@ def scrape() -> list:
         req = urllib.request.Request(REPORT_POST, data=buf.getvalue(), headers={
             'User-Agent': UA, 'Referer': START_URL,
             'Content-Type': f'multipart/form-data; boundary={boundary}'})
-        for attempt in range(3):
-            try:
-                return op.open(req, timeout=60).read().decode('utf-8', 'replace')
-            except Exception as e:  # noqa: BLE001
-                if attempt == 2:
-                    sys.stderr.write(f'  search POST failed at Start={start}: {e}\n')
-                    return ''
-                time.sleep(min(30, random.uniform(0, (2 ** attempt) * 3)))
-        return ''
+        return _open_retrying(op, req, PAGE_TIMEOUT, PAGE_ATTEMPTS,
+                              f'search POST at Start={start}')
 
     all_rows, seen = [], set()
+    failure = ''
     for page in range(MAX_PAGES):
         html = fetch(page * PAGE_SIZE)
         if not html:
+            # Only page 0 losing the connection means the run has nothing. A
+            # later page failing has already banked everything before it.
+            if page == 0:
+                failure = 'unreachable: the search POST never answered'
             break
         rows = _report_rows(html)
         if not rows and page == 0:
+            # The board answered but we could not read it — that IS a parser or
+            # site-shape problem, and the diagnostic dump is worth having.
+            failure = 'unparseable: the board answered but rendered no rows'
             jx.diagnose(html, 'sa-results')
         new = 0
         for r in rows:
@@ -349,7 +398,7 @@ def scrape() -> list:
             break
         # Be a polite guest: pace the walk with jitter.
         time.sleep(random.uniform(1.0, 2.0))
-    return all_rows
+    return all_rows, ('' if all_rows else failure)
 
 
 
@@ -382,7 +431,7 @@ def main() -> int:
         sys.exit('Could not parse agency names from src/employsi/data/adelaideGov.ts')
     sys.stderr.write(f'SA gov -> D1: {len(AGENCY_NAMES)} agencies in roster; '
                      f'{"SOLVE (no D1 write)" if SOLVE else "archiving"}.\n')
-    scraped = scrape()
+    scraped, failure = scrape()
 
     sys.stderr.write(f'  rendered {len(scraped)} vacancies\n')
     if SOLVE:
@@ -390,12 +439,26 @@ def main() -> int:
         for r in sample:
             sys.stderr.write(f'    · {r.get("title","")[:48]:48} | {r.get("agency","")[:32]}\n')
         ok = len(scraped) > 0
-        sys.stderr.write(f'\n{"✓ Reachable — report rendered" if ok else "✗ No rows rendered (site changed or blocked)"}.\n')
-        return 0 if ok else 2
+        sys.stderr.write(f'\n{"✓ Reachable — report rendered" if ok else "✗ " + (failure or "no rows")}.\n')
+        return 0 if ok else (3 if failure.startswith('unreachable') else 2)
 
     if not scraped:
-        sys.stderr.write('No rows rendered — nothing to archive. '
-                         '(Run with --solve; check the [diag] line above.)\n')
+        # Exit 3 = the board never answered; exit 2 = it answered unreadably.
+        # Both fail the workflow, because a day with no SA rows is a real gap
+        # either way — but they call for different responses, and the old shared
+        # message pointed at a [diag] dump that only exists in the second case.
+        if failure.startswith('unreachable'):
+            sys.stderr.write(
+                f'Nothing archived — {failure}. The board did not respond within '
+                f'the retry budget ({FORM_ATTEMPTS} form attempts, {PAGE_ATTEMPTS} '
+                f'search attempts with backoff). This is an upstream outage, not a '
+                f'parser fault: no [diag] dump is produced because nothing came '
+                f'back to dump. If it recurs across several days, re-check the '
+                f'flow with --solve.\n')
+            return 3
+        sys.stderr.write('Nothing archived — the board answered but no rows parsed, '
+                         'so the report shape has probably changed. See the [diag] '
+                         'line above, and re-verify the flow with --solve.\n')
         return 2
 
     if LIMIT < len(scraped):
