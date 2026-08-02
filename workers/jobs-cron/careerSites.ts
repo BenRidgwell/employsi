@@ -597,7 +597,7 @@ export const SITES: SiteDef[] = [
     name: "Ampol",
     sector: "Energy & Natural Resources",
     platform: "ampol",
-    endpoint: "https://www.careers.ampol.com/jobs?page=1&size=200",
+    endpoint: "https://www.careers.ampol.com/jobs",
     origin: "https://www.careers.ampol.com",
     homeHub: "sydney",
   },
@@ -2220,34 +2220,45 @@ async function fetchXmlFeed(site: SiteDef): Promise<PortalJob[]> {
 // the same URL returns 49 job links to the build environment and 145 to a
 // Cloudflare egress. Reverse-engineering it locally would have produced a
 // parser fitted to a page the cron never sees.
+const AMPOL_PAGE = 48;
+
 async function fetchAmpol(site: SiteDef): Promise<PortalJob[]> {
-  const html = await getText(site.endpoint);
-  if (!html) return [];
   const out: PortalJob[] = [];
   const seen = new Set<string>();
+  const max = site.maxPages ?? 20;
   const titleCase = (s: string) =>
     s
       .split("-")
       .filter(Boolean)
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(" ");
-  for (const m of html.matchAll(/href="(\/job\/([a-z0-9-]+?)-in-([a-z0-9-]+?)-jid-(\d+))"/gi)) {
-    const id = m[4];
-    if (seen.has(id)) continue;
-    seen.add(id);
-    // The location tail carries a country code ("chinchilla-au"); drop it so
-    // the hub matcher sees a place name rather than a place plus "Au".
-    const place = m[3].replace(/-(au|nz|sg|us|gb)$/i, "");
-    out.push(
-      job(
-        site,
-        titleCase(m[2]),
-        titleCase(place),
-        new URL(m[1], site.origin).toString(),
-        "",
-        "Career portal",
-      ),
-    );
+  // The board caps a page at 48 whatever `size` asks for — requesting 200
+  // returns 48 and looks complete, which is how a walk silently keeps only the
+  // first third of the roles. So it pages until a page adds nothing new.
+  for (let page = 1; page <= max; page++) {
+    const html = await getText(`${site.endpoint}?page=${page}&size=${AMPOL_PAGE}`);
+    if (!html) break;
+    let fresh = 0;
+    for (const m of html.matchAll(/href="(\/job\/([a-z0-9-]+?)-in-([a-z0-9-]+?)-jid-(\d+))"/gi)) {
+      const id = m[4];
+      if (seen.has(id)) continue;
+      seen.add(id);
+      fresh++;
+      // The location tail carries a country code ("chinchilla-au"); drop it so
+      // the hub matcher sees a place name rather than a place plus "Au".
+      const place = m[3].replace(/-(au|nz|sg|us|gb)$/i, "");
+      out.push(
+        job(
+          site,
+          titleCase(m[2]),
+          titleCase(place),
+          new URL(m[1], site.origin).toString(),
+          "",
+          "Career portal",
+        ),
+      );
+    }
+    if (!fresh) break;
   }
   return out;
 }

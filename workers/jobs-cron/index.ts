@@ -34,7 +34,7 @@ import { fetchQldGovPages, type StoredQldJob } from "./qldGov";
 import { fetchNtGov, type StoredNtJob } from "./ntGov";
 import { fetchTasGov, type StoredTasJob } from "./tasGov";
 import { processNews, NEWS_PARTS } from "./news";
-import { processPortals } from "./careerSites";
+import { processPortals, fetchPortal, portalToArchive, SITES } from "./careerSites";
 import { checkAdvertiser } from "./advertiser";
 import { fetchMcfJobs } from "./mycareersfuture";
 import { fetchSeekCompanyJobs } from "./seek";
@@ -1277,6 +1277,44 @@ export default {
     // the Worker's IP (its Cloudflare front may challenge datacenter IPs even
     // though it answers elsewhere) and shows the deduped sample for one company.
     //   /diag-seek?token=…&id=bhp
+    // Run ONE portal's parser from the Worker and report what it got, without
+    // writing anything. Some boards serve the Worker a different page from the
+    // one a developer sees — Ampol returns 49 job links to a build sandbox and
+    // 145 to a Cloudflare egress — so a parser written locally can look correct
+    // and still be fitted to markup the cron never receives. This is how such a
+    // parser gets verified against the page that actually matters.
+    //
+    // `site` is matched against the configured feed keys, never used to build a
+    // URL, so this cannot be pointed at an arbitrary host.
+    if (url.pathname === "/diag-portal") {
+      if (url.searchParams.get("token") !== (env as unknown as { DIAG_TOKEN?: string }).DIAG_TOKEN) {
+        return new Response("forbidden", { status: 403 });
+      }
+      const key = url.searchParams.get("site") || "";
+      const site = SITES.find((s) => (s.key ?? s.id) === key);
+      if (!site) {
+        return Response.json(
+          { ok: false, error: "unknown site key", known: SITES.map((s) => s.key ?? s.id) },
+          { status: 404 },
+        );
+      }
+      try {
+        const jobs = await fetchPortal(site);
+        const rows = portalToArchive(jobs, site);
+        return Response.json({
+          ok: true,
+          site: key,
+          platform: site.platform,
+          rows: rows.length,
+          withTitle: rows.filter((r) => (r.title || "").trim()).length,
+          withLocation: rows.filter((r) => r.location).length,
+          sample: rows.slice(0, 3).map((r) => ({ t: r.title, loc: r.location, hub: r.hub })),
+        });
+      } catch (e) {
+        return Response.json({ ok: false, site: key, error: String(e).slice(0, 200) });
+      }
+    }
+
     if (url.pathname === "/diag-seek") {
       if (url.searchParams.get("token") !== env.CRON_TOKEN) {
         return new Response("forbidden", { status: 403 });
