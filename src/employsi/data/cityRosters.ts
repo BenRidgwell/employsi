@@ -106,6 +106,12 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["WOW", "Woolworths Group", CON],
       ["SCG", "Scentre Group", FIN],
       ["QAN", "Qantas Airways", CON],
+      // ResMed's global HQ is San Diego and its primary listing is NYSE; it
+      // sits in Sydney here because this roster places a company where it
+      // EMPLOYS, and its Australian head office (Bella Vista) is the base for
+      // the ANZ workforce its careers board recruits into. The ASX line is a
+      // CDI, which is why the ticker reads RMD on an ASX-default city.
+      ["RMD", "ResMed", HLT],
       ["BXB", "Brambles", IND],
       ["SHL", "Sonic Healthcare", HLT],
       ["COH", "Cochlear", HLT],

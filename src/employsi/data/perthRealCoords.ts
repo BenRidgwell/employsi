@@ -60,6 +60,7 @@ export const PERTH_REAL_COORDS: Record<string, [number, number]> = {
   "perth-gov-economic-regulation-authority": [115.859021, -31.951828],
   "perth-gov-forest-products-commission": [115.871839, -31.959852],
   "perth-gov-gesb": [115.84103, -31.952586],
+  "perth-gov-gold-corporation": [115.877841, -31.955624], // 310 Hay Street, East Perth WA 6004
   "perth-gov-health-support-services": [115.857735, -31.955513],
   "perth-gov-insurance-commission-of-western-australia": [115.852113, -31.953709],
   "perth-gov-landgate": [115.996158, -31.890674],

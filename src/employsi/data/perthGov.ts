@@ -38,6 +38,9 @@ const NAMES: string[] = [
   "Economic Regulation Authority",
   "Forest Products Commission",
   "GESB",
+  // Trades as The Perth Mint; the statutory authority is Gold Corporation, and
+  // that is the name its own job board and annual report use.
+  "Gold Corporation",
   "Health Support Services",
   "Insurance Commission of Western Australia",
   "Landgate",

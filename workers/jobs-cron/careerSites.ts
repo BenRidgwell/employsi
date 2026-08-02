@@ -368,6 +368,92 @@ export const SITES: SiteDef[] = [
     pageFrom: 160,
     maxPages: 80,
   },
+  // ── Added 2026-08 ────────────────────────────────────────────────────────
+  // Each endpoint below was probed live before being added, and each reuses a
+  // handler that already exists — no new platform code. Job counts at the time
+  // of adding are noted so a later run returning zero is visibly a regression
+  // rather than an unknown.
+  {
+    id: "sydney-rmd",
+    name: "ResMed",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://resmed.wd3.myworkdayjobs.com/wday/cxs/resmed/Resmed_External_Careers/jobs",
+    origin: "https://resmed.wd3.myworkdayjobs.com/en-US/Resmed_External_Careers",
+    homeHub: "sydney", // AU head office, Bella Vista; global HQ is San Diego
+  },
+  {
+    id: "perth-gov-gold-corporation",
+    name: "Gold Corporation",
+    sector: "Infrastructure and Government",
+    // The LiveHire segment code, same shape as Wesfarmers above.
+    platform: "livehire",
+    endpoint: "perthmint",
+    origin: "https://www.livehire.com",
+    homeHub: "perth",
+  },
+  {
+    id: "priv-st-john-of-god-health-care",
+    name: "St John of God Health Care",
+    sector: "Hospitals",
+    platform: "workday",
+    endpoint: "https://wd105.myworkdaysite.com/wday/cxs/sjog/SJGHC_External_Career_Site/jobs",
+    origin: "https://wd105.myworkdaysite.com/en-GB/recruiting/sjog/SJGHC_External_Career_Site",
+    homeHub: "perth",
+  },
+  {
+    id: "sydney-apa",
+    name: "APA Group",
+    sector: "Infrastructure and Government",
+    platform: "workday",
+    endpoint: "https://apa.wd105.myworkdayjobs.com/wday/cxs/apa/APA-Careers/jobs",
+    origin: "https://apa.wd105.myworkdayjobs.com/APA-Careers",
+    homeHub: "sydney",
+  },
+  {
+    id: "melbourne-mpl",
+    name: "Medibank",
+    sector: "Financial Services",
+    platform: "successfactors",
+    endpoint: "https://jobs.medibank.com.au",
+    origin: "https://jobs.medibank.com.au",
+    homeHub: "melbourne",
+  },
+  {
+    id: "melbourne-tlc",
+    name: "The Lottery Corporation",
+    sector: "Consumer and Retail",
+    platform: "oracle",
+    endpoint: "https://fa-exnj-saasfaprod1.fa.ocs.oraclecloud.com",
+    origin:
+      "https://fa-exnj-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/TLC-Careers",
+    homeHub: "melbourne",
+    siteNumber: "TLC-Careers",
+  },
+  // BlueScope runs a separate board per region and they do not share a tenant,
+  // so each is its own feed under the one company id — the same arrangement
+  // Transurban and Brambles already use. The Australian and NZ boards are on
+  // different platforms again and are NOT here yet; see the commit message.
+  {
+    id: "sydney-bsl",
+    key: "sydney-bsl-asean",
+    name: "BlueScope",
+    sector: "Energy & Natural Resources",
+    platform: "workday",
+    endpoint: "https://wd3.myworkdaysite.com/wday/cxs/bluescope/careers/jobs",
+    origin: "https://wd3.myworkdaysite.com/en-GB/recruiting/bluescope/careers",
+    homeHub: "sydney", // Malaysia / Indonesia / Thailand / Vietnam
+  },
+  {
+    id: "sydney-bsl",
+    key: "sydney-bsl-nac",
+    name: "BlueScope",
+    sector: "Energy & Natural Resources",
+    platform: "workday",
+    endpoint: "https://bluescopenac.wd5.myworkdayjobs.com/wday/cxs/bluescopenac/BNACareers/jobs",
+    origin: "https://bluescopenac.wd5.myworkdayjobs.com/BNACareers",
+    homeHub: "sydney", // North America; several trading names, one tenant
+  },
   {
     id: "melbourne-col",
     name: "Coles Group",
@@ -563,6 +649,15 @@ export const PORTAL_GROUPS: string[][] = [
   ["sydney-wow-a"],
   ["sydney-wow-b"],
   ["sydney-wow-c"],
+  // The eight added 2026-08. Counts probed live when added: ResMed 247,
+  // BlueScope NA 152, SJOG 95, BlueScope ASEAN 36, APA 22, TLC 10, plus
+  // Medibank (SuccessFactors) and Gold Corporation (LiveHire), which page
+  // rather than report a total. ResMed is the only deep one, so it takes a
+  // tick with the two smallest; the SuccessFactors walk is sequential, so
+  // Medibank shares with the API-driven rest.
+  ["sydney-rmd", "sydney-apa", "melbourne-tlc"],
+  ["sydney-bsl-nac", "sydney-bsl-asean", "priv-st-john-of-god-health-care"],
+  ["melbourne-mpl", "perth-gov-gold-corporation"],
 ];
 
 const UA =

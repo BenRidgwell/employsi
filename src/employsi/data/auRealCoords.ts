@@ -489,6 +489,10 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "sydney-qub": [151.204443, -33.864622], // Level 27, 45 Clarence Street, Sydney NSW 2000
   "sydney-rdx": [150.833743, -34.027687], // 2 Swettenham Road, Minto NSW 2566
   "sydney-rgn": [151.209257, -33.863332], // Level 4, 50 Pitt Street, Sydney NSW 2000
+  // ResMed's Australian head office. The global HQ is 9001 Spectrum Center
+  // Blvd, San Diego — this roster plots where a company employs, and the ANZ
+  // workforce its careers board recruits into is based here.
+  "sydney-rmd": [150.943516, -33.731555], // 1 Elizabeth Macarthur Drive, Bella Vista NSW 2153
   "sydney-rwc": [145.111103, -37.991844], // 25 Downard Street, Braeside VIC 3195
   "sydney-sdf": [151.205895, -33.874481], // Level 3, 99 Bathurst Street, Sydney NSW 2000
   "sydney-sgh": [151.210667, -33.877151], // Level 30, 175 Liverpool Street, Sydney NSW 2000
