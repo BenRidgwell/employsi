@@ -33,7 +33,8 @@
  */
 
 import { isBlockedArticle } from "../../src/employsi/data/newsBlocklist";
-import { officialFeedFor } from "../../src/employsi/data/officialNewsFeeds";
+import { officialFeedFor, type OfficialFeed } from "../../src/employsi/data/officialNewsFeeds";
+import { scrapeNewsroom } from "../../src/employsi/lib/newsroomScrape";
 import { newsQueryFor } from "../../src/employsi/data/newsQueries";
 
 export interface StoredNewsItem {
@@ -88,19 +89,35 @@ const UA =
 // data/officialNewsFeeds.ts). Read INSTEAD of the Bing search, so the nightly
 // KV entry matches what the app serves rather than overwriting it with search
 // results the next time the cron runs.
-async function fetchOfficial(
-  url: string,
-  publisher: string,
-  limit: number,
-): Promise<StoredNewsItem[]> {
+async function fetchOfficial(feed: OfficialFeed, limit: number): Promise<StoredNewsItem[]> {
+  const { url, publisher } = feed;
+  const isHtml = feed.kind === "html";
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
   try {
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { "User-Agent": UA, Accept: "application/rss+xml,application/xml,text/xml;q=0.9" },
+      headers: {
+        "User-Agent": UA,
+        Accept: isHtml
+          ? "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8"
+          : "application/rss+xml,application/xml,text/xml;q=0.9",
+      },
     });
     if (!res.ok) return [];
+    // Newsrooms with no feed are read from the listing page, through the same
+    // parser the app uses (src/employsi/lib/newsroomScrape.ts) so the cron and
+    // the on-demand path can never disagree about what a page says.
+    if (isHtml) {
+      const items = scrapeNewsroom(await res.text(), { ...(feed.scrape ?? {}), page: feed.page });
+      return items.slice(0, limit).map((i) => ({
+        title: i.title,
+        url: i.url,
+        publisher,
+        published: i.published,
+        image: i.image,
+      }));
+    }
     const xml = await res.text();
     const out: StoredNewsItem[] = [];
     const seen = new Set<string>();
@@ -131,7 +148,7 @@ async function fetchOfficial(
 async function fetchNews(name: string, limit: number): Promise<StoredNewsItem[]> {
   const official = officialFeedFor(name);
   if (official) {
-    const own = await fetchOfficial(official.url, official.publisher, limit);
+    const own = await fetchOfficial(official, limit);
     if (own.length) return own;
     // An unreachable feed falls through to the search rather than storing an
     // empty entry that would blank the card for a day.

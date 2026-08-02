@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { officialFeedFor, type OfficialFeed } from "../data/officialNewsFeeds";
+import { scrapeNewsroom } from "./newsroomScrape";
 import { newsQueryFor } from "../data/newsQueries";
 import type { JsonRecord } from "./json";
 import { str } from "./json";
@@ -118,14 +119,29 @@ async function fromOfficialFeed(
   limit: number,
   signal: AbortSignal,
 ): Promise<LiveNewsItem[]> {
+  const html = feed.kind === "html";
   const res = await fetch(feed.url, {
     signal,
     headers: {
       "User-Agent": "employsi/1.0",
-      Accept: "application/rss+xml,application/xml,text/xml;q=0.9,*/*;q=0.8",
+      Accept: html
+        ? "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8"
+        : "application/rss+xml,application/xml,text/xml;q=0.9,*/*;q=0.8",
     },
   });
   if (!res.ok) return [];
+  // An organisation with a newsroom and no feed is read from the page itself.
+  // Same contract either way: real items or none, never a guess.
+  if (html) {
+    const items = scrapeNewsroom(await res.text(), { ...(feed.scrape ?? {}), page: feed.page });
+    return items.slice(0, limit).map((i) => ({
+      title: i.title,
+      url: i.url,
+      publisher: feed.publisher,
+      published: i.published,
+      image: i.image,
+    }));
+  }
   const xml = await res.text();
   const items: LiveNewsItem[] = [];
   const seen = new Set<string>();

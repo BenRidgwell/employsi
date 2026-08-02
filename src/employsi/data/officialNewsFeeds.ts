@@ -17,18 +17,30 @@
  * every call site (the app's liveNewsFn and the nightly cron in
  * workers/jobs-cron/news.ts both start from the roster name).
  *
- * A feed added here must be a real RSS/Atom endpoint, not a page of links —
- * the parser reads <item> blocks. The PTA's media-statements page advertises
- * one via <link rel="alternate">, which is how the URL below was found from the
- * page address.
+ * TWO WAYS IN. `kind: "rss"` (the default) needs a real RSS/Atom endpoint,
+ * because that reader parses <item> blocks — the PTA's media-statements page
+ * advertises one via <link rel="alternate">, which is how its URL was found.
+ * `kind: "html"` reads the newsroom LISTING PAGE itself through
+ * lib/newsroomScrape.ts, for the many organisations that publish news properly
+ * and no feed at all. Prefer RSS when a site has one: it is stable, dated and
+ * cannot be broken by a redesign.
  */
+import type { ScrapeConfig } from "../lib/newsroomScrape";
+
 export interface OfficialFeed {
-  /** RSS/Atom endpoint. */
+  /** RSS/Atom endpoint, or — with kind: "html" — the listing page to read. */
   url: string;
   /** Shown as the article's source in the card. */
   publisher: string;
   /** The human-facing page the feed belongs to, for reference. */
   page: string;
+  /** How to read `url`. Omit for RSS. */
+  kind?: "rss" | "html";
+  /**
+   * HTML only. `page` is filled in from the entry's own `page` when the scraper
+   * runs, so an entry only states the matching rules.
+   */
+  scrape?: Omit<ScrapeConfig, "page">;
 }
 
 export const OFFICIAL_NEWS_FEEDS: Record<string, OfficialFeed> = {
@@ -54,24 +66,35 @@ export const OFFICIAL_NEWS_FEEDS: Record<string, OfficialFeed> = {
     publisher: "Craig Mostyn Group",
     page: "https://www.craigmostyn.com.au/news-media/",
   },
+  // ── Read from the newsroom page, because there is no feed to read ───────
+  // Both of these were previously listed as dead ends: ChemCentre publishes no
+  // RSS anywhere on its domain (/rss and /news-events/news/rss both 404, and
+  // the page advertises no <link rel="alternate">), and South Metropolitan
+  // Health Service's /News/rss answers 200 with zero <item> elements, which is
+  // worse than a 404 because it looks like a feed. Both now come through the
+  // HTML path instead.
+  "South Metropolitan Health Service": {
+    url: "https://smhs.health.wa.gov.au/News",
+    publisher: "South Metropolitan Health Service",
+    page: "https://smhs.health.wa.gov.au/News",
+    kind: "html",
+    // Articles are pathed by publication date — /News/2026/07/24/<slug> — so
+    // the pattern doubles as the date source and cannot match a nav link.
+    // Measured on the live page: 4 articles, each with its own photograph.
+    scrape: { match: "/News/20\\d{2}/\\d{2}/\\d{2}/" },
+  },
+  ChemCentre: {
+    url: "https://www.chemcentre.wa.gov.au/news-events/news",
+    publisher: "ChemCentre",
+    page: "https://www.chemcentre.wa.gov.au/news-events/news",
+    kind: "html",
+    // The page carries NO article anchors at all: it is Kentico, and the news
+    // ships as serialised CMS document objects inside the markup. See the
+    // "kentico-json" note in lib/newsroomScrape.ts. Measured: 78 articles,
+    // newest 2026-07-21.
+    scrape: { strategy: "kentico-json", base: "/news-events/news" },
+  },
 };
-
-/**
- * Asked for, but NOT listed above, because neither publishes a feed this reader
- * can consume — and the reader parses <item> blocks, so pointing it at a page
- * of links would return nothing and quietly blank the card:
- *
- *   ChemCentre   https://www.chemcentre.wa.gov.au/news-events/news
- *                No RSS anywhere on the domain; /rss and /news-events/news/rss
- *                both 404, and the page advertises no <link rel="alternate">.
- *   South Metro  https://smhs.health.wa.gov.au/News
- *   Health Svc   /News/rss answers 200 but carries zero <item> elements, which
- *                is worse than a 404 — it looks like a feed and is not one.
- *
- * Both keep the default Bing-on-company-name source until either publishes a
- * feed or this module grows an HTML-scraping path. Listing them here so the
- * next person does not re-derive the same two dead ends.
- */
 
 /** The official feed for a news query, if the company has one. */
 export function officialFeedFor(query: string): OfficialFeed | undefined {
