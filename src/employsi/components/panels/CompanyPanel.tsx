@@ -620,7 +620,10 @@ export function CompanyPanel() {
                 <span className="ccname">{card.name}</span>
                 <span className="ccmeta">
                   <span className="ccsector">{card.sector}</span>
-                  <span className="ccticker">{card.ticker}</span>
+                  {/* Private companies have no ticker, so the field is empty —
+                      rendering it anyway leaves a stray separator dot after the
+                      sector. */}
+                  {card.ticker ? <span className="ccticker">{card.ticker}</span> : null}
                 </span>
               </div>
               <div className="ccactions">

@@ -1639,3 +1639,35 @@ COMPANIES.push(...NZ_COMPANIES);
 // (private / public-sector), harvested from jobs.govt.nz.
 import { NZ_GOV_COMPANIES } from "./nzGov";
 COMPANIES.push(...NZ_GOV_COMPANIES);
+
+// ── Private companies do not have a ticker ──────────────────────────────────
+// Every private/public-sector roster derives a display code from the company
+// name (nameAcronym), which is fine as a map label and wrong as a ticker: the
+// initials of a private company's name land on real listing codes.
+//
+// BIG4 Holiday Parks derived "BHP". That is not a cosmetic clash — the share
+// price lookup is keyed by ticker, so the card for a caravan-park operator
+// resolved BHP Group's real price series and drew it as its own. 27 private
+// companies collide with a listed ticker; exactly one of those collisions had a
+// priced series behind it, and it was that one.
+//
+// So the ticker is CLEARED rather than corrected. A private company has no
+// ticker, and an empty field is the honest representation — anything derived
+// would be a code no exchange recognises, which is the same class of invention.
+// Ids are unaffected: private ids come from the name ("priv-…", "perth-gov-…"),
+// only the LISTED rosters key their id off the ticker.
+//
+// `pill` keeps the map marker labelled. It falls back to the first significant
+// word of the name, which reads as a brand rather than as a listing code.
+for (const c of COMPANIES) {
+  if (!c.private) continue;
+  if (!c.pill || c.pill === c.ticker) {
+    const word = c.name
+      .replace(/\([^)]*\)/g, " ")
+      .split(/[\s.,/-]+/)
+      .filter(Boolean)
+      .find((w) => w.length > 1);
+    c.pill = (word ?? c.name).slice(0, 10);
+  }
+  c.ticker = "";
+}

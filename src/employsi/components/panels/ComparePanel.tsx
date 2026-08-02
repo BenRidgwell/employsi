@@ -106,7 +106,8 @@ export function ComparePanel() {
 
             <div className="cmpbar">
               <div className="cmpsubject">
-                <span className="cmpsubjectmark">{card.a.ticker}</span>
+                {/* Empty for a private company — it has no ticker. */}
+                {card.a.ticker ? <span className="cmpsubjectmark">{card.a.ticker}</span> : null}
                 <span className="cmpsubjectname">{card.a.name}</span>
               </div>
               <span className="cmpvs">vs</span>
@@ -264,12 +265,14 @@ export function ComparePanel() {
                         <span className="cmptrendpills">
                           {card.trend.a && (
                             <span className={`ccdelta ${card.trend.a.up ? "up" : "down"}`}>
-                              {card.a.ticker} {card.trend.a.delta}
+                              {card.a.ticker ? `${card.a.ticker} ` : ""}
+                              {card.trend.a.delta}
                             </span>
                           )}
                           {card.trend.b && card.b && (
                             <span className={`ccdelta ${card.trend.b.up ? "up" : "down"}`}>
-                              {card.b.ticker} {card.trend.b.delta}
+                              {card.b.ticker ? `${card.b.ticker} ` : ""}
+                              {card.trend.b.delta}
                             </span>
                           )}
                         </span>
