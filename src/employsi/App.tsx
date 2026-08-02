@@ -22,6 +22,7 @@ import { useAppStore } from "./state/store";
 import { useAuthSession } from "./hooks/useAuthSession";
 import { useSkillIndex } from "./hooks/useSkillData";
 import { useViewTracking } from "./hooks/useViewTracking";
+import { startSession } from "./lib/analytics";
 import { useEffect } from "react";
 
 function App() {
@@ -41,8 +42,14 @@ function App() {
   }, [skillIndex, setSkillIndex]);
 
   // Record real "most viewed" usage (companies / cities / regions / skills) for
-  // the What's Trending pane.
+  // the What's Trending pane, and the product events behind the admin console's
+  // engagement tab.
   useViewTracking();
+
+  // One session per page load, closed out with its length on unload. This is
+  // the only source of "time in app" — see lib/analytics.ts for why the unload
+  // path has to be a beacon rather than an ordinary request.
+  useEffect(() => startSession(), []);
 
   // What the intro waits on. The skill index is the app's one real boot fetch —
   // the maps render from bundled geometry, but the demand data every layer

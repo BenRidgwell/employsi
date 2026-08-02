@@ -96,6 +96,17 @@ export default {
         }
       }
 
+      // Product events, posted by the browser with `keepalive` (and by
+      // sendBeacon on unload). Mounted here for the same reason auth is: the
+      // unload flush is the only way a session's LENGTH is ever recorded, and
+      // it needs a plain endpoint taking a raw Request — a server function's
+      // JSON-in/JSON-out client cannot set `keepalive` and cannot be reached by
+      // sendBeacon at all. See employsi/lib/events.ts.
+      if (url.pathname === "/api/events" && request.method === "POST") {
+        const { handleEventsRequest } = await import("./employsi/lib/events");
+        return await handleEventsRequest(request, env);
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
