@@ -104,6 +104,17 @@ export interface AppState {
   helpTourOpen: boolean;
   // The mobile bottom-bar "More" sheet.
   mobileMenuOpen: boolean;
+  /**
+   * Whether the "in the news" column on a company card is tucked away.
+   *
+   * A PREFERENCE, not per-card state: tucking it once applies to every company
+   * opened afterwards, and untucking likewise. It used to reset on every
+   * selection so a card could never open looking like a company with no
+   * coverage — but the collapsed panel still shows its spine, so the state is
+   * visible and one click away, and having to re-tuck it on every company was
+   * the bigger annoyance.
+   */
+  newsCollapsed: boolean;
   followedIds: string[];
   followedSkills: string[];
 
@@ -188,6 +199,7 @@ export interface AppState {
   closeHelpTour: () => void;
   toggleMobileMenu: () => void;
   closeMobileMenu: () => void;
+  toggleNewsCollapsed: () => void;
 }
 
 // Device settings, plus whatever follows this browser holds.
@@ -207,6 +219,8 @@ interface Persisted {
   /** Show Mapbox's own city/region labels. On by default — the map is harder
    *  to read without them, so hiding is the deliberate choice, not the default. */
   placeLabels: boolean;
+  /** The company card's news column, tucked or not. See AppState.newsCollapsed. */
+  newsCollapsed: boolean;
 }
 const PERSIST_DEFAULTS: Persisted = {
   followedIds: [],
@@ -214,6 +228,7 @@ const PERSIST_DEFAULTS: Persisted = {
   reduceMotion: false,
   nightMode: false,
   placeLabels: true,
+  newsCollapsed: false,
 };
 function loadPersisted(): Persisted {
   if (typeof localStorage === "undefined") return PERSIST_DEFAULTS;
@@ -227,6 +242,7 @@ function loadPersisted(): Persisted {
       reduceMotion: p.reduceMotion ?? false,
       nightMode: p.nightMode ?? false,
       placeLabels: p.placeLabels ?? true,
+      newsCollapsed: p.newsCollapsed ?? false,
     };
   } catch {
     return PERSIST_DEFAULTS;
@@ -407,6 +423,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   feedbackOpen: false,
   helpTourOpen: false,
   mobileMenuOpen: false,
+  newsCollapsed: persisted.newsCollapsed,
   followedIds: persisted.followedIds,
   followedSkills: persisted.followedSkills,
 
@@ -821,6 +838,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   closeHelpTour: () => set({ helpTourOpen: false }),
   toggleMobileMenu: () => set((s) => solo("mobileMenuOpen", !s.mobileMenuOpen)),
   closeMobileMenu: () => set({ mobileMenuOpen: false }),
+  toggleNewsCollapsed: () => set((s) => ({ newsCollapsed: !s.newsCollapsed })),
 }));
 
 // Mirror account + saved companies + settings to localStorage whenever any of
@@ -831,7 +849,8 @@ useAppStore.subscribe((s, prev) => {
     s.followedSkills !== prev.followedSkills ||
     s.reduceMotion !== prev.reduceMotion ||
     s.nightMode !== prev.nightMode ||
-    s.placeLabels !== prev.placeLabels
+    s.placeLabels !== prev.placeLabels ||
+    s.newsCollapsed !== prev.newsCollapsed
   ) {
     savePersisted({
       followedIds: s.followedIds,
@@ -839,6 +858,7 @@ useAppStore.subscribe((s, prev) => {
       reduceMotion: s.reduceMotion,
       nightMode: s.nightMode,
       placeLabels: s.placeLabels,
+      newsCollapsed: s.newsCollapsed,
     });
   }
 });

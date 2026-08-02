@@ -599,12 +599,14 @@ export function CompanyPanel() {
   const cardLoading = open && (!card || rolesChecking);
 
   // The news column tucks behind the company card, which then slides right
-  // into the space it left. Reset per company: a card opened with the news
-  // hidden would look like a company with no coverage.
-  const [newsCollapsed, setNewsCollapsed] = useState(false);
-  useEffect(() => {
-    setNewsCollapsed(false);
-  }, [selectedId]);
+  // into the space it left. The choice is a PREFERENCE and lives in the store,
+  // so it carries across every company opened afterwards and survives a reload.
+  // It used to be local state reset on each selection, on the reasoning that a
+  // card opening with the news hidden looks like a company with no coverage —
+  // but the tucked panel still shows its spine, so the state stays visible and
+  // one click away, and re-tucking it on every single company was worse.
+  const newsCollapsed = useAppStore((s) => s.newsCollapsed);
+  const toggleNewsCollapsed = useAppStore((s) => s.toggleNewsCollapsed);
 
   return (
     <div className={`cardstage ${open ? "open" : ""}${newsCollapsed ? " newstucked" : ""}`}>
@@ -934,7 +936,7 @@ export function CompanyPanel() {
           companyId={panel.companyId}
           live={panel.news}
           collapsed={newsCollapsed}
-          onToggleCollapse={() => setNewsCollapsed((v) => !v)}
+          onToggleCollapse={toggleNewsCollapsed}
           loading={cardLoading}
         />
       )}
