@@ -6,7 +6,7 @@ import { CITY_COUNTRY, COUNTRIES, COUNTRY_MEMBERS, REGION_HUBS } from "../../dat
 import { cityForCompany } from "../../data/mapboxGeo";
 import { answerQuestion } from "../../lib/analystAnswer";
 import type { AnalystAnswer, AnalystScope } from "../../lib/analystFn";
-import { SUGGESTED_PROMPTS } from "../../lib/analystIntent";
+import { PROMPT_TOPICS } from "../../lib/analystIntent";
 import { ALL_SECTORS, companyIdsForSector, sectorsInScope } from "../../lib/analystSector";
 import { IconClose } from "../ActionIcons";
 import { AnalystChartView } from "./AnalystChart";
@@ -33,6 +33,12 @@ import { AnalystChartView } from "./AnalystChart";
  *    what it cannot tell you.
  *  • Its 750ms "thinking" delay is a prop; here the pause is however long the
  *    query actually takes.
+ *
+ * The prompt row follows the design's later revision: four topics, each opening
+ * a menu of three questions above the row, with the thread blurred back while
+ * the menu is open. Every one of the twelve was put through detectIntent before
+ * being listed — all classify to a real intent, so no menu entry can lead to "I
+ * didn't understand that". See PROMPT_TOPICS in lib/analystIntent.ts.
  */
 
 interface Msg {
@@ -81,11 +87,19 @@ interface ScopeOption extends AnalystScope {
 function AnalystIcon() {
   return (
     <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" aria-hidden>
-      <circle cx="12" cy="5.6" r="2.9" />
+      {/* The design's 5.2s idle: a slow nod and a tie sway, with a halo ring on
+          the tile behind (see .anavatar::after). Long and small enough to read
+          as alive rather than as something demanding attention. */}
+      <circle className="anhead" cx="12" cy="5.6" r="2.9" />
       <path d="M9.5 9 12 12.2 14.5 9" />
       <path d="M9.5 9 6.4 10.3A4.4 4.4 0 0 0 3.8 14.4V20h6.1" />
       <path d="M14.5 9l3.1 1.3a4.4 4.4 0 0 1 2.6 4.1V20h-6.1" />
-      <path d="M10.6 12.9h2.8l-.7 3.1.9 3.9h-3.2l.9-3.9Z" fill="currentColor" stroke="none" />
+      <path
+        className="antie"
+        d="M10.6 12.9h2.8l-.7 3.1.9 3.9h-3.2l.9-3.9Z"
+        fill="currentColor"
+        stroke="none"
+      />
     </svg>
   );
 }
@@ -172,12 +186,38 @@ export function AnalystPane() {
   const [thinking, setThinking] = useState(false);
   const nextId = useRef(1);
   const bodyRef = useRef<HTMLDivElement | null>(null);
+  /** Which prompt topic's menu is open, if any. */
+  const [openTopic, setOpenTopic] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   // Keep the newest exchange in view as the thread grows.
   useEffect(() => {
     const el = bodyRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [thread, thinking]);
+
+  // Click away or press Escape to close the topic menu. Pointerdown rather than
+  // click so the menu is gone before whatever was pressed underneath reacts.
+  useEffect(() => {
+    if (!openTopic) return;
+    const away = (e: PointerEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setOpenTopic(null);
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenTopic(null);
+    };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [openTopic]);
+
+  // A closed pane must not reopen with a menu hanging over the thread.
+  useEffect(() => {
+    if (!open) setOpenTopic(null);
+  }, [open]);
 
   const ask = async (raw: string) => {
     const question = raw.trim();
@@ -268,7 +308,7 @@ export function AnalystPane() {
           </div>
         )}
 
-        <div className="anbody" ref={bodyRef}>
+        <div className={`anbody${openTopic ? " dimmed" : ""}`} ref={bodyRef}>
           {thread.map((m) =>
             m.role === "user" ? (
               <div key={m.id} className="anrow anrow-user">
@@ -353,10 +393,46 @@ export function AnalystPane() {
           )}
         </div>
 
-        <div className="anprompts">
-          {SUGGESTED_PROMPTS.map((p) => (
-            <button key={p} type="button" className="anprompt" onClick={() => ask(p)}>
-              {p}
+        <div className="anprompts" ref={menuRef}>
+          {openTopic && (
+            <div className="anmenu" role="menu">
+              <span className="anmenulbl">{openTopic}</span>
+              {(PROMPT_TOPICS.find((t) => t.label === openTopic)?.questions ?? []).map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  className="anmenuq"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpenTopic(null);
+                    ask(q);
+                  }}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+          {PROMPT_TOPICS.map((t) => (
+            <button
+              key={t.label}
+              type="button"
+              className={`anprompt${openTopic === t.label ? " on" : ""}`}
+              aria-expanded={openTopic === t.label}
+              aria-haspopup="menu"
+              onClick={() => setOpenTopic((v) => (v === t.label ? null : t.label))}
+            >
+              {t.label}
+              <svg
+                viewBox="0 0 24 24"
+                width={12}
+                height={12}
+                fill="none"
+                stroke="currentColor"
+                aria-hidden
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
             </button>
           ))}
         </div>

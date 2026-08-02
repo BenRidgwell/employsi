@@ -349,6 +349,7 @@ body {
   border-bottom: 1px solid var(--surface-sunken);
 }
 .anavatar {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -360,9 +361,67 @@ body {
   color: var(--text-primary);
 }
 .anavatar svg {
+  position: relative;
   stroke-width: 1.7;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+/* The design's 5.2s idle. Long, small and mostly still — the figure nods once,
+   the tie settles, a ring pulses on the tile. Anything faster would pull the
+   eye away from the answer, which is the thing on this card worth reading. */
+.anavatar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 11px;
+  border: 1px solid var(--border-strong);
+  animation: an-halo 5.2s ease-in-out infinite;
+}
+.anhead {
+  transform-origin: 12px 8px;
+  animation: an-nod 5.2s ease-in-out infinite;
+}
+.antie {
+  transform-origin: 12px 12.9px;
+  animation: an-tie 5.2s ease-in-out infinite;
+}
+@keyframes an-halo {
+  0%,
+  55%,
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  68% {
+    opacity: 0.5;
+    transform: scale(1.06);
+  }
+}
+@keyframes an-nod {
+  0%,
+  62%,
+  100% {
+    transform: translateY(0);
+  }
+  70% {
+    transform: translateY(-1.2px);
+  }
+  82% {
+    transform: translateY(0.5px);
+  }
+}
+@keyframes an-tie {
+  0%,
+  58%,
+  100% {
+    transform: rotate(0deg);
+  }
+  72% {
+    transform: rotate(4.5deg);
+  }
+  88% {
+    transform: rotate(-2deg);
+  }
 }
 .anhdtext {
   display: flex;
@@ -473,6 +532,7 @@ body {
   font-size: 12px;
 }
 .anbody {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
@@ -480,6 +540,19 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  /* The design sets the thread on a slightly sunken surface so the white answer
+     bubbles read as cards on it rather than as the panel itself. */
+  background: #f7f7f8;
+  border-top: 1px solid #f4f4f5;
+  transition:
+    filter 180ms ease,
+    opacity 180ms ease;
+}
+/* Pushed back while a prompt menu is open, so the menu is unambiguously the
+   thing being read. */
+.anbody.dimmed {
+  filter: blur(3px);
+  opacity: 0.55;
 }
 .anrow {
   display: flex;
@@ -673,13 +746,72 @@ body {
   }
 }
 .anprompts {
+  position: relative;
   flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
-  padding: 0 18px 6px;
+  padding: 12px 18px 6px;
+}
+/* The topic menu, opening upward over the thread. */
+.anmenu {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: calc(100% + 2px);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--surface-card);
+  box-shadow:
+    0 18px 40px -14px rgba(28, 28, 30, 0.28),
+    0 2px 6px rgba(28, 28, 30, 0.06);
+  animation: an-menu 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes an-menu {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.anmenulbl {
+  padding: 7px 10px 6px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-disabled);
+}
+.anmenuq {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+  letter-spacing: -0.006em;
+  text-align: left;
+  cursor: pointer;
+  transition: background 130ms;
+}
+.anmenuq:hover {
+  background: var(--surface-hover);
 }
 .anprompt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   height: 30px;
   padding: 0 12px;
   border: 1px solid var(--border-subtle);
@@ -702,6 +834,24 @@ body {
 }
 .anprompt:active {
   transform: scale(0.97);
+}
+.anprompt svg {
+  display: block;
+  opacity: 0.55;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 160ms;
+}
+/* The caret points at the menu it opened. */
+.anprompt.on {
+  border-color: var(--action-primary);
+  background: var(--action-primary);
+  color: var(--action-primary-text);
+}
+.anprompt.on svg {
+  opacity: 0.8;
+  transform: rotate(180deg);
 }
 .ancompose {
   display: flex;
@@ -2696,6 +2846,28 @@ body {
 /* Pause the marquee on hover so a row can actually be read — the design does
    the same via style-hover on the track — and on demand via the pause button. */
 .tickerwrap:hover .tickertrack,
+/* Loading: name-shaped placeholders, no numbers. The strip used to show a
+   hand-written seed here — see the note in components/Ticker.tsx for why that
+   was two problems, not one. */
+.tickertrack.skeleton {
+  animation-play-state: running;
+}
+.tskel {
+  display: block;
+  height: 11px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ededf0 0%, #f7f7f8 50%, #ededf0 100%);
+  background-size: 200% 100%;
+  animation: tskelshimmer 1400ms ease-in-out infinite;
+}
+@keyframes tskelshimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
 .tickertrack.paused {
   animation-play-state: paused;
 }
@@ -3734,6 +3906,12 @@ body {
   transition:
     opacity 0.22s ease,
     transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* The mark loader covers the whole pane on its first open in a session, so it
+   has to take the pane's own corners — .briefpane is rounded and does not clip
+   its children. */
+.trendpane .ccload {
+  border-radius: 18px;
 }
 .briefpane.open {
   opacity: 1;

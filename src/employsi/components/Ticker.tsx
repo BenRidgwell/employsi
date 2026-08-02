@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { TICKER_BASE, type TickerItem } from "../data/companies";
+import type { TickerItem } from "../data/companies";
 import { getLiveSkillTrends, TREND_WINDOWS } from "../lib/jobHistoryFn";
 
 /**
@@ -32,6 +32,24 @@ import { getLiveSkillTrends, TREND_WINDOWS } from "../lib/jobHistoryFn";
  * The pause button therefore stops the marquee rather than a value churn that
  * no longer exists, and its tooltip says so ("Pause ticker", not the design's
  * "Pause updates").
+ *
+ * WHY THERE IS NO LONGER A SEED
+ * While the archive read was in flight this showed TICKER_BASE, a hand-written
+ * list that existed so the pill would not be empty for a moment. Two things were
+ * wrong with it, and they compounded:
+ *
+ *   • Six of its sixteen rows were COMPANIES — Fortescue, BHP, Woodside, Rio
+ *     Tinto, Santos, South32 — tagged "Headcount". This strip says "Skills in
+ *     demand". A company is not a skill, and no live path can produce one: the
+ *     server drops any name not in SKILL_CATEGORY. They could only ever have
+ *     come from here.
+ *   • Every percentage in it was invented. "Fortescue +12.3%" is not a
+ *     measurement of anything, and it sat in a ticker whose whole claim is that
+ *     it is live.
+ *
+ * So the loading state is now a skeleton: name-shaped placeholders and no
+ * numbers. It says "reading" without asserting anything, which is what the
+ * empty and no-history states already do.
  */
 
 // Sparkline geometry, matching the design's spark(): a 48x18 box with the line
@@ -69,6 +87,8 @@ const dirOf = (v: number): Dir => (v >= 0.15 ? "up" : v <= -0.15 ? "down" : "fla
 
 // Stable reference, so the empty state does not churn `items` identity.
 const EMPTY_ITEMS: TickerItem[] = [];
+// Enough placeholder rows to fill the pill at any width.
+const SKELETON = [72, 108, 88, 124, 96, 80, 116, 92];
 
 export function Ticker({ hidden }: { hidden: boolean }) {
   // Real, market-wide skill-demand movers from the D1 job archive, for all three
@@ -88,23 +108,17 @@ export function Ticker({ hidden }: { hidden: boolean }) {
   const win = TREND_WINDOWS[winIdx];
 
   const rows = live?.[win.key];
-  // Three distinct states, and conflating the last two is what let invented
+  // Three distinct states, and conflating any two of them is what let invented
   // figures onto the ticker:
-  //   loading      — the query has not returned; show the seed so the pill is
-  //                  not empty for a moment.
+  //   loading      — the query has not returned. A skeleton, not numbers.
   //   no history   — the archive is too young for THIS window's comparison, so
-  //                  the server returned nothing on purpose. Say that. Falling
-  //                  back to the seed here would present hand-written numbers
-  //                  as measured demand.
+  //                  the server returned nothing on purpose. Say that.
   //   live         — real movers.
   const loading = !live;
   // Memoised because the empty branch is a fresh array literal: without this,
   // `items` changes identity every render and the flash effect below — which
   // depends on it — would re-run continuously.
-  const items: TickerItem[] = useMemo(
-    () => (rows && rows.length ? rows : loading ? TICKER_BASE : EMPTY_ITEMS),
-    [rows, loading],
-  );
+  const items: TickerItem[] = useMemo(() => (rows && rows.length ? rows : EMPTY_ITEMS), [rows]);
   const noHistory = !loading && items.length === 0;
   // Cycling is only offered when there is real data to cycle THROUGH; on the
   // seed every window would show the same fabricated figures.
@@ -178,7 +192,15 @@ export function Ticker({ hidden }: { hidden: boolean }) {
       </div>
 
       <div className="tickerwrap">
-        {noHistory ? (
+        {loading ? (
+          <div className="tickertrack skeleton" aria-hidden>
+            {[...SKELETON, ...SKELETON].map((w, i) => (
+              <div className="titem" key={i}>
+                <span className="tskel" style={{ width: w }} />
+              </div>
+            ))}
+          </div>
+        ) : noHistory ? (
           <div className="tickerempty">
             Not enough archive history yet to measure change over{" "}
             {win.label.replace("· Last ", "the last ").toLowerCase()}.

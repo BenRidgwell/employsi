@@ -11,6 +11,7 @@ import {
 } from "../../data/trending";
 import { getMarketSkillMovers, type MarketSkillMover } from "../../lib/jobHistoryFn";
 import { getMostViewed, type ViewedRow } from "../../lib/viewsFn";
+import { CardLoader } from "./CardLoader";
 import { REGION_HUBS } from "../../data/mapboxWorldGeo";
 import { CITY_LABEL, GLOBAL_HUB_LABEL, CITY_CONTINENT } from "../../data/geo";
 
@@ -220,7 +221,7 @@ export function WhatsTrendingPane() {
   // Real skill risers/fallers from the D1 archive, for THIS scope. Keyed on the
   // scope so moving between layers refetches rather than showing the last one's
   // answer. Only fetched once the pane is opened; refreshed a few times a day.
-  const { data: movers } = useQuery({
+  const { data: movers, isFetching: moversFetching } = useQuery({
     queryKey: ["marketSkillMovers", scope.label, scope.hubs.join(",")],
     queryFn: () => getMarketSkillMovers({ data: scope }),
     enabled: open,
@@ -233,7 +234,7 @@ export function WhatsTrendingPane() {
   // Real "Most viewed" — the companies / cities / regions / skills users
   // actually explore most (recorded via useViewTracking → D1). Falls back to
   // the static seed until any views have been recorded.
-  const { data: viewed } = useQuery({
+  const { data: viewed, isFetching: viewedFetching } = useQuery({
     queryKey: ["mostViewed"],
     queryFn: () => getMostViewed(),
     enabled: open,
@@ -242,6 +243,22 @@ export function WhatsTrendingPane() {
     retry: false,
   });
   const hasViews = !!viewed && viewed.length > 0;
+
+  /**
+   * The mark loader, over the pane, until BOTH reads have landed once.
+   *
+   * Only the FIRST open in a session shows it. React Query keeps both answers
+   * for hours, so re-opening the pane renders them immediately and `data` is
+   * already present — the condition below is false and nothing covers the card.
+   * `isFetching` rather than `isPending` so a background refresh of an already
+   * populated pane never throws the loader back up over readable content.
+   *
+   * Both queries are gated on `open`, so the first open is genuinely the first
+   * time either runs. Covering the pane while they do is the honest alternative
+   * to what this did before: render the static seeds instantly and swap them for
+   * measured figures a moment later, which looks like the data changing.
+   */
+  const firstLoad = open && ((!movers && moversFetching) || (!viewed && viewedFetching));
 
   const activateViewedRow = (v: ViewedRow) => {
     if (v.kind === "company") select(v.ref);
@@ -286,6 +303,7 @@ export function WhatsTrendingPane() {
     <>
       {open && <div className="panescrim" onClick={closeTrending} />}
       <aside className={`briefpane trendpane ${open ? "open" : ""}`} aria-hidden={!open}>
+        {firstLoad && <CardLoader />}
         <div className="briefhead">
           <div className="briefmark">
             <svg

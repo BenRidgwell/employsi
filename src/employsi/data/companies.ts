@@ -1564,24 +1564,18 @@ export interface TickerItem {
   spark?: number[];
 }
 
-export const TICKER_BASE: TickerItem[] = [
-  { name: "Fortescue", tag: "Headcount", v: 12.3 },
-  { name: "Hydrogen", tag: "Demand", v: 18.4 },
-  { name: "BHP", tag: "Headcount", v: 6.4 },
-  { name: "Autonomous Haulage", tag: "Demand", v: 14.1 },
-  { name: "Data Analytics", tag: "Demand", v: 11.7 },
-  { name: "Woodside", tag: "Headcount", v: 5.2 },
-  { name: "Subsea Engineering", tag: "Demand", v: 9.2 },
-  { name: "Rio Tinto", tag: "Headcount", v: 4.1 },
-  { name: "Decarbonisation", tag: "Demand", v: 7.8 },
-  { name: "Santos", tag: "Headcount", v: 3.3 },
-  { name: "Electrical Engineering", tag: "Demand", v: 6.5 },
-  { name: "South32", tag: "Headcount", v: 2.0 },
-  { name: "Reservoir Engineering", tag: "Demand", v: 3.1 },
-  { name: "Process Engineering", tag: "Demand", v: -2.4 },
-  { name: "Rail Systems", tag: "Demand", v: -4.6 },
-  { name: "Diesel Mechanics", tag: "Demand", v: -7.9 },
-];
+/**
+ * REMOVED. This was a hand-written list the ticker showed while its archive read
+ * was in flight, and it was wrong twice over: six of its sixteen rows were
+ * COMPANIES ("Fortescue", "BHP", "Woodside", "Rio Tinto", "Santos", "South32",
+ * tagged Headcount) on a strip that says "Skills in demand", and every one of
+ * its percentages was invented. The live path cannot produce either — it drops
+ * any name not in SKILL_CATEGORY — so the companies people saw on the ticker
+ * could only have come from here.
+ *
+ * components/Ticker.tsx now renders a skeleton while loading: name-shaped
+ * placeholders, no numbers, no claims.
+ */
 
 // Global company rosters: compact per-city listings expanded into full records
 // (see rosters.ts / cityRosters.ts). Appended to COMPANIES so every downstream

@@ -143,6 +143,54 @@ export function detectSkill(question: string): string | null {
 // and NURSING specifically: detectSkill needs an exact taxonomy name, and those
 // two are published in all 56 covered areas, so neither prompt can land on a
 // scope that has no series for it.
+/**
+ * The prompt row's four topics, each opening a menu of three questions.
+ *
+ * From the design, which groups the questions rather than laying eight of them
+ * flat. Every question here was run through detectIntent before being listed —
+ * all twelve classify to a real intent, none to "unknown", so no menu entry can
+ * lead to "I didn't understand that". Adding one means checking the same thing.
+ */
+export const PROMPT_TOPICS: { label: string; questions: string[] }[] = [
+  {
+    label: "Hiring trend",
+    questions: [
+      "How is hiring trending?",
+      "How has demand changed since 2019?",
+      "Which categories are growing fastest over five years?",
+    ],
+  },
+  {
+    label: "Pay",
+    questions: [
+      "What do these roles pay?",
+      "How does pay compare against the wider market?",
+      "Which roles pay the biggest premium?",
+    ],
+  },
+  {
+    label: "Top skills",
+    questions: [
+      "Which skills are rising fastest?",
+      "Which skills are most in demand?",
+      "Which skills take longest to fill?",
+    ],
+  },
+  {
+    label: "Competition",
+    questions: [
+      "How competitive is it for candidates?",
+      "How many applicants per role?",
+      "How does Nursing demand compare across cities?",
+    ],
+  },
+];
+
+/**
+ * The flat list PROMPT_TOPICS replaced. Retained only as the canonical set of
+ * questions this router is known to answer — it is what new topic entries are
+ * checked against, and it has no UI reading it.
+ */
 export const SUGGESTED_PROMPTS = [
   "How is hiring trending?",
   "What do these roles pay?",
