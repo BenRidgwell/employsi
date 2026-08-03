@@ -130,7 +130,8 @@ type Platform =
   | "attrax"
   | "wprest"
   | "wploop"
-  | "pageupclassic";
+  | "pageupclassic"
+  | "eightfoldpcs";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -1262,6 +1263,73 @@ export const SITES: SiteDef[] = [
     origin: "https://perseusmining.com",
     homeHub: "perth",
   },
+  {
+    id: "sydney-dow",
+    name: "Downer Group",
+    sector: "Industrial Manufacturing",
+    platform: "oracle",
+    // Oracle Recruiting Cloud on the EXFS pod. Measured 2026-08-03: 589
+    // requisitions on the CareersAtDowner site, spread over every state plus NZ.
+    endpoint: "https://fa-exfs-saasfaprod1.fa.ocs.oraclecloud.com",
+    origin:
+      "https://fa-exfs-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CareersAtDowner",
+    homeHub: "sydney",
+    siteNumber: "CareersAtDowner",
+  },
+  {
+    id: "sydney-amp",
+    name: "AMP",
+    sector: "Financial Services",
+    platform: "oracle",
+    // Oracle Recruiting Cloud on the ESOW pod, default CX_1 site. Measured
+    // 2026-08-03: 34 requisitions. A first probe returned 0 and a retest a
+    // minute later returned 34 — the pod rate-limits rather than erroring,
+    // which is exactly why an empty pull is never written (see processPortals).
+    endpoint: "https://fa-esow-saasfaprod1.fa.ocs.oraclecloud.com",
+    origin:
+      "https://fa-esow-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1",
+    homeHub: "sydney",
+  },
+  {
+    id: "melbourne-cwy",
+    name: "Cleanaway",
+    sector: "Industrial Manufacturing",
+    platform: "pageupclassic",
+    // PageUp's hosted classic listing, instance 621. Measured 2026-08-03: 119
+    // roles, 100% placed on a hub — this board's table is
+    // [Position, Location, Opened, Closes], which is why fetchPageUpClassic
+    // reads the location column out of <thead> rather than taking the last cell.
+    endpoint: "https://careers.pageuppeople.com/621/cw/en/listing/",
+    origin: "https://careers.pageuppeople.com",
+    homeHub: "melbourne",
+  },
+  {
+    id: "igo",
+    name: "IGO",
+    sector: "Battery Metals — Nickel & Lithium",
+    platform: "pageupclassic",
+    // Self-hosted PageUp classic (same `search-results-content` theme, no
+    // <article> cards). Measured 2026-08-03: zero roles — the board renders
+    // "No results found", not an error. That is a real zero and the card should
+    // show it, so this is wired like any other feed; it will simply write
+    // nothing until IGO advertises again.
+    endpoint: "https://careers.igo.com.au/jobs/search",
+    origin: "https://careers.igo.com.au",
+    homeHub: "perth",
+  },
+  {
+    id: "sydney-wor",
+    name: "Worley",
+    sector: "Energy & Natural Resources",
+    platform: "eightfoldpcs",
+    // Eightfold's newer PCSX search API, not the /api/apply/v2/jobs endpoint the
+    // other eightfold sites use — jobs.worley.com serves only the former.
+    // Measured 2026-08-03: 1,116 positions worldwide at 10 a page, so this is
+    // the deepest walk in the file after Woolworths and it leads its own tick.
+    endpoint: "https://jobs.worley.com/api/pcsx/search?domain=worley.com",
+    origin: "https://jobs.worley.com",
+    homeHub: "sydney",
+  },
 ];
 
 /**
@@ -1368,6 +1436,19 @@ export const PORTAL_GROUPS: string[][] = [
     "sydney-whc-sf",
     "sydney-sdf",
   ],
+  // Groups 30-31: the five boards added 2026-08-03. Measured that day:
+  // Worley 1,116, Downer 589, Cleanaway 119, AMP 34, IGO 0.
+  //
+  // Worley leads its own tick. Its PCSX API is fixed at ten positions a call,
+  // so 1,116 is ~112 requests — the deepest walk in the file after Woolworths,
+  // and the one most likely to be the thing a crowded tick truncates.
+  //
+  // The other four share: Downer's Oracle pod serves 25 a page (24 requests),
+  // Cleanaway spends the PageUp facet budget plus its listing, AMP is two
+  // calls and IGO one. IGO currently advertises nothing at all — that is a
+  // real zero, not a failure, and it costs the tick a single request either way.
+  ["sydney-wor"],
+  ["sydney-dow", "melbourne-cwy", "sydney-amp", "igo"],
 ];
 
 const UA =
@@ -1496,6 +1577,13 @@ const HUB_MATCH: [string, string | null][] = [
   // this is a substring match, so the shorter needle would otherwise swallow
   // the longer name and put an inner-Sydney role in Perth.
   ["erskineville", "sydney"],
+  // Erskine PARK is in western Sydney (Penrith) and is a national logistics
+  // hub, so employers advertise there constantly — Cleanaway's depot surfaced
+  // it. It has to precede the Erskine (Mandurah, WA) needle for the same reason
+  // Erskineville does. Measured against the archive before adding: 42 stored
+  // locations name Erskine Park, every one of them New South Wales, against a
+  // single "Erskine".
+  ["erskine park", "sydney"],
   ["erskine", "perth"],
   ["sydney", "sydney"],
   ["wollongong", "sydney"],
@@ -3732,6 +3820,19 @@ async function fetchPageUpClassic(site: SiteDef): Promise<PortalJob[]> {
   const rowsOf = (html: string, facet: string): number => {
     const body = html.split(/<tbody id="search-results-content">/i)[1];
     if (!body) return 0;
+    // THE COLUMN ORDER IS PER TENANT, so the header decides which cell is the
+    // location. Harvey Norman publishes [Position, Location]; Cleanaway
+    // publishes [Position, Location, Opened, Closes]. Taking the LAST cell —
+    // which is what a positional read does — gave Cleanaway an empty location
+    // on the rows whose closing date was blank and a DATE on the rest, and
+    // nothing errors when it happens. -1 means the header named no location, in
+    // which case the last cell is the best remaining guess.
+    const heads = (html.split(/<thead[^>]*>/i)[1] ?? "")
+      .split(/<\/thead>/i)[0]
+      .split(/<th[^>]*>/i)
+      .slice(1)
+      .map((h) => clean(h).toLowerCase());
+    const locCol = heads.findIndex((h) => h.startsWith("location"));
     let onPage = 0;
     for (const row of body.split(/<\/tr>/i)) {
       const a = row.match(/<a[^>]*class="job-link"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
@@ -3742,15 +3843,24 @@ async function fetchPageUpClassic(site: SiteDef): Promise<PortalJob[]> {
       onPage++;
       if (seen.has(href)) continue;
       seen.add(href);
-      // The row is <td>title + blurb</td><td>location</td>; the location is the
-      // LAST cell, and taking its text is what avoids picking up the blurb.
       const cells = row.split(/<td[^>]*>/i).slice(1);
-      const store = cells.length > 1 ? clean(cells[cells.length - 1]) : "";
+      const store =
+        locCol > 0 && locCol < cells.length
+          ? clean(cells[locCol])
+          : cells.length > 1
+            ? clean(cells[cells.length - 1])
+            : "";
       out.push(
         job(
           site,
           title,
-          [store, facet].filter(Boolean).join(", "),
+          // The facet is appended only when the cell does not already say where
+          // the role is. Harvey Norman's cell is a store name and NEEDS the
+          // state; Cleanaway's already reads "Melbourne VIC Australia", and
+          // appending there just duplicated it.
+          [store, store.toLowerCase().includes(facet.toLowerCase()) ? "" : facet]
+            .filter(Boolean)
+            .join(", "),
           href.startsWith("http") ? href : site.origin + href,
           "",
           "",
@@ -3804,6 +3914,91 @@ async function fetchPageUpClassic(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── Eightfold "PCS" career sites (Worley) ────────────────────────────────────
+interface PcsPosition {
+  id?: number | string;
+  name?: string;
+  locations?: string[];
+  department?: string;
+  postedTs?: number;
+  positionUrl?: string;
+}
+
+/**
+ * Eightfold's newer career-site product, and NOT the same API as the
+ * `eightfold` platform above.
+ *
+ * HSBC's site answers /api/apply/v2/jobs. Worley's returns
+ * `{"message": "Not authorized for PCSX"}` for that path however it is called —
+ * with the right domain, with a Referer, with the position id from the page's
+ * own URL. The page config names the product: `configPath: "PCS>"`. Its search
+ * lives at /api/pcsx/search and answers a plain request with
+ * `{data: {positions[], count}}`.
+ *
+ * `num` IS IGNORED — measured, the endpoint returns 10 rows whether asked for
+ * 10, 50 or 100 — which is the same quirk the older Eightfold API has, so the
+ * page size is fixed here rather than requested. Worley advertises 1,116 roles,
+ * so that is ~112 requests, run in windows.
+ *
+ * The walk is bounded by the advertised `data.count`, NOT by a short page.
+ * Measured: stopping at the first short page returned 1,070 and 1,084 on two
+ * consecutive runs against a board that reported 1,116 both times — the API
+ * hands back fewer than ten rows mid-list often enough that "short page" is
+ * not a reliable end marker, and a fetch failure is indistinguishable from one.
+ * Reading the total first means a dropped page costs its ten rows instead of
+ * every page after it.
+ *
+ * `endpoint` is the full search URL including the tenant's `domain` parameter,
+ * because the domain is not derivable from the host (jobs.worley.com serves
+ * domain=worley.com).
+ */
+const PCS_PAGE = 10;
+
+interface PcsSearch {
+  data?: { positions?: PcsPosition[]; count?: number };
+}
+
+async function fetchEightfoldPcs(site: SiteDef): Promise<PortalJob[]> {
+  const max = site.maxPages ?? 200;
+  const pageAt = (i: number) =>
+    getJson<PcsSearch>(`${site.endpoint}&start=${i * PCS_PAGE}&num=${PCS_PAGE}`);
+
+  const first = await pageAt(0);
+  const positions: PcsPosition[] = [...(first?.data?.positions ?? [])];
+  if (!positions.length) return [];
+  const total = first?.data?.count ?? 0;
+  const pages = Math.min(max, Math.ceil(total / PCS_PAGE) || 1);
+
+  for (let start = 1; start < pages; start += PAGE_CONCURRENCY) {
+    const idx: number[] = [];
+    for (let i = start; i < Math.min(start + PAGE_CONCURRENCY, pages); i++) idx.push(i);
+    const windows = await Promise.all(idx.map(pageAt));
+    for (const w of windows) positions.push(...(w?.data?.positions ?? []));
+  }
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const p of positions) {
+    const title = (p.name || "").trim();
+    const id = String(p.id ?? title);
+    if (!title || seen.has(id)) continue;
+    seen.add(id);
+    // postedTs is epoch SECONDS. Multiplying is what keeps a 2026 posting from
+    // being stored as 1970.
+    const posted = p.postedTs ? new Date(p.postedTs * 1000).toISOString().slice(0, 10) : "";
+    out.push(
+      job(
+        site,
+        title,
+        (p.locations ?? []).join(", "),
+        site.origin + (p.positionUrl || `/careers/job/${p.id ?? ""}`),
+        posted,
+        (p.department || "").trim() || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   successfactors: fetchSuccessFactors,
   workday: fetchWorkday,
@@ -3837,6 +4032,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   wprest: fetchWpRest,
   wploop: fetchWpLoop,
   pageupclassic: fetchPageUpClassic,
+  eightfoldpcs: fetchEightfoldPcs,
 };
 
 export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
@@ -3884,6 +4080,10 @@ const SOURCE_TAG: Record<Platform, string> = {
   // Same ATS as `pageupsites`, only the older theme — so the same source tag,
   // for the same reason sfrmkapi shares "sf".
   pageupclassic: "pu",
+  // Same vendor as `eightfold`, different product and different API — but an
+  // advertisement is an advertisement, so it dedupes against an ef row rather
+  // than sitting beside one.
+  eightfoldpcs: "ef",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */

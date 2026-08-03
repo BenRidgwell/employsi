@@ -282,6 +282,72 @@ still archives, it just appears in the wrong city.
 
 ---
 
+# Five more employer boards, 2026-08-03 (PORTAL_GROUPS groups 30-31)
+
+All five run in the Worker. Four are on platforms this file already read; one
+needed a new reader.
+
+| Employer | Feed key | Platform | Roles | Note |
+|---|---|---|---|---|
+| Worley | `sydney-wor` | **eightfoldpcs** (new) | 1,113 | global board; only ~10 roles are in Australia |
+| Downer Group | `sydney-dow` | oracle | 589 | EXFS pod, site `CareersAtDowner`; 90% placed |
+| Cleanaway | `melbourne-cwy` | pageupclassic | 119 | PageUp instance 621; 100% placed |
+| AMP | `sydney-amp` | oracle | 34 | ESOW pod, default `CX_1` |
+| IGO | `igo` | pageupclassic | 0 | self-hosted; genuinely advertising nothing |
+
+**Worley is not on the Eightfold API the `eightfold` platform reads.** HSBC's
+Eightfold site answers `/api/apply/v2/jobs`; jobs.worley.com returns
+`{"message": "Not authorized for PCSX"}` for that path however it is called —
+right domain, right Referer, a position id lifted from the page's own URL. The
+page config names the product it is actually running: `configPath: "PCS>"`, whose
+search lives at `/api/pcsx/search` and answers a plain unauthenticated request.
+`domain=worley.com` is part of the endpoint because it is not derivable from the
+host.
+
+**The walk is bounded by the advertised total, not by a short page**, and this is
+the one measurement in the batch that changed the code. Stopping at the first
+page shorter than ten — what `pagedParallel` does — returned **1,070 rows on one
+run and 1,084 on the next**, against a board reporting `count: 1116` both times.
+The endpoint hands back fewer than ten rows mid-list often enough that "short
+page" is not an end marker, and a dropped fetch is indistinguishable from one.
+Reading `count` off the first response and walking that many pages returns 1,113
+twice in a row (1,116 less three duplicate position ids). This is the same
+silent-truncation trap the `careerSites.ts` header warns about, caught here only
+because the board publishes a total to check against.
+
+**Worley's 911 unplaced rows are correct.** The board is genuinely global —
+Cameron LA, Abu Dhabi, Bogotá, Navi Mumbai, Calgary — and only about ten roles
+sit in Australia. Falling the rest back to the Sydney home hub because the
+employer is Australian would put Indian and Colombian jobs on the Sydney pin,
+which is the same mistake the Dyno Nobel Americas board avoids.
+
+**IGO is wired despite having nothing to fetch.** Its board renders "No results
+found", not an error, and the platform is the same self-hosted PageUp classic
+theme Cleanaway uses. A real zero is a real zero: the feed costs one request a
+night and will start writing the day IGO advertises again. Nothing is written in
+the meantime, so the card is not blanked either.
+
+**Cleanaway is why `fetchPageUpClassic` reads its `<thead>`.** Harvey Norman's
+table is `[Position, …, Location]` and the fetcher took the last cell; Cleanaway's
+is `[Position, Location, Opened, Closes]`, so the same code read "31 Aug 2026" as
+a location. The column is now found by its header. One Cleanaway ad lists three
+sites at once ("Erskine Park NSW, Northgate QLD, Melbourne VIC") and lands on
+whichever hub `hubFor` reaches first in its needle order rather than the first
+one written — one row in 119, and not worth reordering a matcher every feed
+shares.
+
+Scheduling: Worley leads group 30 (`35 9 * * *`) alone, because 1,116 roles at a
+fixed ten a page is ~112 requests. Downer, Cleanaway, AMP and IGO share group 31
+(`45 9 * * *`) — 24, ~7, 2 and 1 requests respectively.
+
+**AMP's first probe returned 0 and a retest a minute later returned 34.** The
+Oracle pod rate-limits by serving an empty `requisitionList`, not an error. Which
+is exactly the case `processPortals` is built for: an empty pull is never
+written, so a throttled night leaves yesterday's rows in place instead of
+emptying the card.
+
+---
+
 # NSW Government feed (`scripts/nsw-gov-to-d1.py`) — and the 303 rows that weren't jobs
 
 **What went wrong.** iworkfor.nsw.gov.au was rewritten as a client-rendered

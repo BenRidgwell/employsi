@@ -1130,6 +1130,11 @@ const PORTAL_TICKS: Record<string, number> = {
   // searches and a crowded tick would cost it rows without erroring.
   "15 9 * * *": 28,
   "25 9 * * *": 29,
+  // Groups 30-31 — the 2026-08-03 five. Worley alone on :35 because its PCSX
+  // API pages ten at a time over 1,116 positions; Downer, Cleanaway, AMP and
+  // IGO share :45.
+  "35 9 * * *": 30,
+  "45 9 * * *": 31,
 };
 
 const NEWS_TICKS: Record<string, number> = {
