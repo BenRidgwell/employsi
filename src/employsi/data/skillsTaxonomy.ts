@@ -380,6 +380,17 @@ const RAW_SKILLS: SkillDef[] = [
     terms: [
       "it support",
       "systems administrator",
+      // The singular, and the two other administrator roles that are IT and not
+      // office administration. Found by re-mapping the archive against this
+      // file: 62 rows lost "Administration & Office Support" — correctly, a
+      // database administrator is not an office administrator — but 30 of them
+      // then matched nothing at all, because only the PLURAL was listed here.
+      // "System Administrator", "Database Administrator" and "Network
+      // Administrator" all appear in the archive and all went unmapped.
+      "system administrator",
+      "database administrator",
+      "network administrator",
+      "sysadmin",
       "sap",
       "erp",
       "network engineer",
@@ -473,6 +484,11 @@ const RAW_SKILLS: SkillDef[] = [
     terms: [
       "commercial",
       "legal",
+      // "legal" cannot reach it: terms match only at the START of a word, so
+      // the stem is buried inside "paralegal" and 11 archived paralegal rows
+      // mapped to nothing. This is the compound cost termMatches warns about,
+      // paid off one measured term at a time.
+      "paralegal",
       "lawyer",
       "counsel",
       "contract administrat",
@@ -784,7 +800,10 @@ const RAW_SKILLS: SkillDef[] = [
   {
     skill: "Mental Health & Counselling",
     cat: "Care",
-    terms: ["counsellor", "psycholog", "mental health"],
+    // "neuropsycholog" for the same buried-stem reason as "paralegal": nine
+    // archived neuropsychologist rows matched nothing, because "psycholog"
+    // only matches at the start of a word.
+    terms: ["counsellor", "psycholog", "neuropsycholog", "mental health"],
   },
   {
     skill: "Social & Community Services",
@@ -1114,6 +1133,13 @@ const RAW_SKILLS: SkillDef[] = [
       "scientist",
       "chemist",
       "biolog",
+      // Buried stems again, all measured in the archive: "geoscientist" and
+      // "hydrochemist" bury "scientist" and "chemist", and "microbiology"
+      // buries "biolog".
+      "geoscientist",
+      "hydrochemist",
+      "geochemist",
+      "microbiolog",
       "physicist",
       "laboratory",
       "veterinar",
@@ -1546,6 +1572,27 @@ export interface SkillContext {
 const GATED_TERMS: Record<string, RegExp> = {
   principal:
     /educat|school|colleg|campus|academy|kindergarten|preschool|primary|secondary|teach|curriculum|student|pupil|tafe|universit|childcare|early learning/i,
+  // "AWS" is Amazon Web Services in a technology title and the ANNUAL WAGE
+  // SUPPLEMENT — Singapore's thirteenth-month payment — in a salary line, where
+  // it is as routine a benefit as a bonus. Measured on the archive: 93 titles
+  // contain it and 45 are the wage supplement, which was tagging cleaners,
+  // drivers, kitchen crew, baggage handlers and an FP&A accountant as
+  // Cloud & DevOps.
+  //
+  // Two conditions, and both are needed. The negative lookahead rejects AWS
+  // sitting in a benefits list — "$4K basic+AWS+PB", "up to $8000 base + AWS +
+  // PB" — which is the shape no product name ever takes and which a technology
+  // word alone does not rule out: "Presales Consultant - Network & Security (up
+  // to $8000 base + AWS + PB)" and "Production Supervisor (Technical Lead) …
+  // Up to $4,000 + AWS" both cleared a plain technology test. The rest then
+  // demands corroborating technology, so "AWS Legal" (an Amazon lawyer, not a
+  // cloud engineer) stays out.
+  //
+  // This only ever suppresses a skill whose ONLY evidence was "aws". A title
+  // that also says "cloud", "azure", "devops" or "kubernetes" is licensed by
+  // that term regardless, so a genuine "AWS Cloud Engineer ($8k + AWS)" is
+  // unaffected.
+  aws: /^(?!.*(?:\+\s*aws|aws\s*\+)).*(?:cloud|devops|dev ops|kubernetes|azure|gcp|terraform|linux|serverless|lambda|snowflake|redshift|postgres|kafka|python|java|node|scala|spark|engineer|architect|developer|programmer|sre|site reliability|infrastructur|platform|software|system|network|database|data cent|technical|technolog|migration|solutions|security|api|full stack|backend|back end)/i,
 };
 
 /** A gated term's second route: an employer whose industry genuinely licenses it. */
