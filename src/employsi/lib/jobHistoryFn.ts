@@ -303,7 +303,7 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
     try {
       const res = await db
         .prepare(
-          `SELECT skills, first_seen, last_seen, hub, company_id, salary FROM jobs
+          `SELECT skills, first_seen, last_seen, hub, company_id, salary, source FROM jobs
              WHERE skills IS NOT NULL AND last_seen >= ?1`,
         )
         .bind(scanFrom)
@@ -340,7 +340,11 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
         if (fs < archiveStart) archiveStart = fs;
         newPerDay[fs] = (newPerDay[fs] || 0) + 1;
         if (ls >= payFrom) {
-          const aud = annualAud(r.salary as string | null, r.hub as string | null);
+          const aud = annualAud({
+            salary: r.salary as string | null,
+            hub: r.hub as string | null,
+            source: r.source as string | null,
+          });
           if (aud !== null) for (const s of skills) (payAds[s] ||= []).push(aud);
         }
         for (const b of bounds) {

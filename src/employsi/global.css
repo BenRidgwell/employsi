@@ -2974,6 +2974,22 @@ body {
   background: rgba(244, 244, 245, 0);
   transition: background 700ms ease-out;
 }
+/* "DEMAND", superscripted at the top right of the percentage. Deliberately
+   tiny and tracked-out so it reads as a unit label rather than a second value —
+   it is there to stop the percentage being read as a change in the pay figure
+   now sitting next to it. `align-self: flex-start` is what lifts it to the top
+   of the chip rather than centring it against the number. */
+.tdunit {
+  align-self: flex-start;
+  margin-left: 1px;
+  font-family: var(--font-mono);
+  font-size: 7px;
+  line-height: 1.6;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.72;
+  white-space: nowrap;
+}
 .tpct {
   font-family: var(--font-mono);
   font-size: 12px;
