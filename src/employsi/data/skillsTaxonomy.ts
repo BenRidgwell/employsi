@@ -430,6 +430,19 @@ const RAW_SKILLS: SkillDef[] = [
       "company secretar",
       "treasurer",
       "economist",
+      // FP&A — corporate financial planning and analysis, which is this skill
+      // and not the retail wealth advice that "financial planner" names. These
+      // were landing on Banking & Lending instead, because its "financial
+      // plann" term catches "planning" as well as "planner": measured on the
+      // archive, 86 rows match one of these spellings and all but three are the
+      // corporate function ("FP&A Analyst", "Director, FP&A ANZ", "Manager,
+      // Financial Planning & Analysis"). See the note on Banking & Lending.
+      //
+      // norm() rewrites "&" as " and " BEFORE matching, so the term for "FP&A"
+      // has to be written the way the haystack will read: "fp and a".
+      "financial planning",
+      "fp and a",
+      "fpa",
     ],
   },
   {
@@ -639,7 +652,16 @@ const RAW_SKILLS: SkillDef[] = [
 
       // 47 unmapped "financial advisor" rows plus wealth variants.
       "financial advis",
-      "financial plann",
+      // "financial planNER", not "financial planN": the planner is the person
+      // giving retail advice, the planning is the corporate budgeting function,
+      // and the broader stem swept the second into this skill. It put
+      // "Senior Financial Planning and Analysis (FP&A) Analyst" at a copper
+      // miner under Banking & Lending, which is where this was noticed, and it
+      // did the same to every FP&A title in the archive. Measured: 86 rows
+      // match "financial plann" or an FP&A spelling and only three are wealth
+      // roles — two "Financial Planner" and one "Financial Planning & Wealth
+      // Management Consultant", the last of which still lands here on "wealth".
+      "financial planner",
       "wealth",
     ],
   },
