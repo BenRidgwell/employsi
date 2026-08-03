@@ -133,6 +133,72 @@ the employer, then add it to `ADVERTISER_ALIAS`.
 
 ---
 
+# NSW Government feed (`scripts/nsw-gov-to-d1.py`) — and the 303 rows that weren't jobs
+
+**What went wrong.** iworkfor.nsw.gov.au was rewritten as a client-rendered
+Next.js app. Its HTML now contains no vacancies and no `/job/` links at all: the
+results list is a client component that fetches after hydration, and the only
+job-shaped content left in the served payload is the filter sidebar.
+
+The scraper did not notice. It parsed the page, found *something*, and archived
+it. All 303 `nsw-gov` rows in the archive were site chrome — "NSW Government",
+"Accessibility", "Privacy and security", "How search works", "Job alerts", every
+region filter ("Sydney Region", "Regional NSW") and every job-category label
+("Aboriginal Health", "Accounting and Financial", "Ambulance Services"…). Zero of
+the 303 had a job URL. The nightly run went green every time.
+
+**Two independent defects, both now fixed:**
+
+1. `jobs_extract.looks_like_job` accepted `{id, name}` as a vacancy — `name` is a
+   title key and a bare `id` was accepted as corroboration, so *every enumerable
+   thing* in a JSON payload qualified. A generic title now needs real
+   corroboration (organisation, location, salary, closing date, or a
+   job-*specific* reference); a bare `id` is not corroboration, because
+   everything has one. Pinned by fixtures copied verbatim from the live payload.
+2. The scraper had no floor. It now exits non-zero, writing nothing, if the
+   board yields no vacancies or fewer than 80% of the total the board itself
+   advertises. **A source that has stopped working must go red, not quiet** —
+   this is the same rule as "an empty portal pull is never written".
+
+**How it reads the board now.** The JSON search API its own browser client calls:
+
+```
+POST https://api.ad-core04.com/api/search/jobs
+Authorization: Bearer <token from the site's JS bundle>
+{..., "PageNumber": 1, "PageSize": 500, "SortBy": "RelevanceDesc"}
+-> {"JobCount": 3699, "Jobs": {"$values": [{"Job": {...}}, ...]}}
+```
+
+Better than the HTML on every axis: it reports its own total (so a short walk is
+detectable rather than silent), needs no JS render, and eight calls cover the
+board in ~90s.
+
+- **The bearer is discovered, never stored.** It is a long-lived OAuth-client
+  token the site ships publicly to every browser, so it is not a secret of ours —
+  but it is not ours to hard-code either, and it can rotate. Each run reads it
+  back out of the live bundle by *shape* (an https base ending `/api/`, plus a
+  three-segment JWT, in the same chunk), because the minifier renames every
+  variable and rehashes every filename on each build.
+- **Oxylabs is used for that one step only.** iworkfor.nsw.gov.au 403s any
+  datacenter IP, static `/_next/` chunks included; `api.ad-core04.com` does not,
+  so the search calls themselves are plain HTTP.
+- **Salaries.** 3,001 of 3,699 ads state a range, and 2,918 (79% of the board)
+  survive the sanity check and parse to annual AUD — where the rendered cards
+  carried none at all. The check matters: 83 ads are typed `Annually` and carry
+  an hourly figure ("$37 - $43"). The board's own distribution proves it — 80
+  annual lows under $100, three between $1,152 and $1,439, then nothing until
+  $23,090, where real part-time annualised salaries start. Those 83 are stored as
+  **no salary**, not as a $37 annual wage.
+- **Agency mapping** uses the board's own hierarchy: `BusinessName` is the
+  employing entity ("Western NSW Local Health District"), `AgencyName` the
+  cluster above it ("Health"). Entity first (more specific, and the roster
+  carries 47 of them), cluster as fallback — 2,075 placed → 3,600 placed, leaving
+  99 (2.7%) in the generic bucket. The **display** name stays the entity either
+  way: rolling the map pin up to NSW Health is right, telling the user a Dubbo
+  nursing role is advertised by "Health" is not.
+
+---
+
 # Wayback recovery of dead career sites (`scripts/wayback-to-d1.py`)
 
 A **one-off backfill, not a feed.** It reads the Internet Archive's captures of

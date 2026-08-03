@@ -144,6 +144,45 @@ NAV = '<html><body><script type="application/json">' + json.dumps(
 rows, _ = jx.extract_jobs(NAV, r'/job/\d+')
 check('Nav items are not jobs', len(rows) == 0, str(rows))
 
+# ── negative: {id, name} is NOT a job — the bug that archived 303 nav links ──
+# Verbatim shapes from the live iworkfor.nsw.gov.au flight payload (2026-08-03).
+# Every one of these was archived as an NSW vacancy, because "name" is a title
+# key and "id" was accepted as corroboration, so every enumerable thing in the
+# payload qualified. Nothing here has an organisation, a location, a salary or a
+# job-specific reference — which is exactly what tells them apart from an ad.
+CHROME = '<html><body><script type="application/json">' + json.dumps({
+    "menu": [
+        {"id": 3, "name": "NSW Government", "href": "https://www.nsw.gov.au/"},
+        {"id": 4, "name": "Accessibility", "href": "accessibility"},
+        {"id": 5, "name": "Privacy and security", "href": "privacy"},
+        {"id": 8, "name": "Job alerts", "href": "/dashboard?tab=job-alerts"},
+    ],
+    "locationFacets": [
+        {"id": 5432, "name": "Sydney Region"},
+        {"id": 5431, "name": "Regional NSW"},
+    ],
+    "categoryFacets": [
+        {"id": 16251, "name": "Aboriginal Health"},
+        {"id": 10336, "name": "Accounting and Financial"},
+    ],
+}) + '</script></body></html>'
+rows, how = jx.extract_jobs(CHROME, r'/job/[a-z0-9][\w-]*', 'https://iworkfor.nsw.gov.au')
+check('Nav links and filter facets are not jobs', len(rows) == 0,
+      f'got {len(rows)} via {how}: {[r["t"] for r in rows][:6]}')
+
+# …and the tightening must not cost us a real job that only has a generic title.
+# One corroborating field is still enough, and a job-specific id counts where a
+# bare "id" does not.
+REAL = '<html><body><script type="application/json">' + json.dumps({"r": [
+    {"id": 585673, "name": "On-Call Firefighter - MS3", "location": "Sydney - South"},
+    {"id": 585674, "title": "Registered Nurse", "agency": "NSW Health"},
+    {"id": 585675, "title": "Project Officer", "jobReference": "REQ123456"},
+    {"id": 585676, "jobTitle": "Senior Policy Officer"},
+]}) + '</script></body></html>'
+rows, _ = jx.extract_jobs(REAL, r'/job/[a-z0-9][\w-]*')
+check('a generic title with ONE real corroborating field is still a job',
+      len(rows) == 4, f'got {len(rows)}: {[r["t"] for r in rows]}')
+
 # ── diagnose() must not raise on any input ──────────────────────────────────
 import io  # noqa: E402
 for sample in (NSW_HTML, APS_HTML, SA_HTML, EMPTY, '', None):

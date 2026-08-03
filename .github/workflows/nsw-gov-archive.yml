@@ -1,12 +1,11 @@
-# Daily NSW Government → D1 archive (hosted, via the Oxylabs Web Scraper API).
+# Daily NSW Government → D1 archive (hosted).
 #
-# iworkfor.nsw.gov.au sits behind Cloudflare's "Just a moment" interstitial, which
-# persistently challenges datacenter IPs — a headless Chromium on a GitHub runner
-# never clears it (the first attempt rendered 0 rows for exactly this reason). So
-# instead of a browser this fetches the board's rendered HTML through the Oxylabs
-# Web Scraper API (residential IP + Cloudflare challenge + JS render solved
-# server-side) and parses it — no Playwright, so it runs on an ordinary runner.
-# Same hosted pattern as the Indeed archive.
+# The board is a client-rendered Next.js app whose HTML contains no vacancies at
+# all, so the script reads the JSON search API its own browser client calls. That
+# API is plain HTTP and needs no proxy; Oxylabs is used for ONE step — reading
+# the bearer token out of the site's JS bundle — because iworkfor.nsw.gov.au sits
+# behind Cloudflare's "Just a moment" interstitial and 403s any datacenter IP,
+# static assets included. No browser, so this runs on an ordinary runner.
 #
 # Required repo secrets:
 #   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
@@ -14,7 +13,11 @@
 # Optional repo variables (fall back to values baked into the script):
 #   CF_ACCOUNT_ID, D1_DATABASE_ID
 #
-# The job exits non-zero (red X + notification) if the board renders no rows.
+# The job exits non-zero (red X + notification) if the API returns no vacancies,
+# or fewer than 80% of the total the board itself advertises. That guard is the
+# lesson from the previous version, which had none: when the board stopped
+# serving vacancies in its HTML the scraper archived 303 navigation links as NSW
+# jobs and exited 0 every night.
 # Use "Run workflow" (workflow_dispatch) to verify it on the runner first.
 
 name: nsw-gov-archive
@@ -43,11 +46,11 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Scrape NSW gov → D1 (Oxylabs)
+      - name: Scrape NSW gov → D1 (search API)
         env:
           OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
           OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
-        run: python scripts/nsw-gov-to-d1.py --max-pages 60
+        run: python scripts/nsw-gov-to-d1.py

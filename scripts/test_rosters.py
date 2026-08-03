@@ -65,6 +65,11 @@ print('Roster parsers\n')
 CASES = [
     ('scripts/seek-to-d1.py', 'load_advertisers', 80, 'seekAdvertisers.ts'),
     ('scripts/zhaopin-to-d1.py', 'load_targets', 30, 'chinaJobsTargets.ts'),
+    # NSW is the one roster whose loss is INVISIBLE in the run log: with no
+    # agency names every vacancy still archives, just into the generic
+    # "NSW Government" bucket instead of onto its agency's map pin. The scraper
+    # exits 0 and the row count looks right.
+    ('scripts/nsw-gov-to-d1.py', 'load_agency_names', 40, 'sydneyGov.ts'),
 ]
 
 for path, fn_name, floor, source_file in CASES:

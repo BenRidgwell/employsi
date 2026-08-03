@@ -117,6 +117,27 @@ POSTED_KEYS = ('posteddate', 'postingdate', 'dateposted', 'publisheddate',
                'createddate', 'posted', 'published')
 ID_KEYS = ('jobid', 'id', 'jobreference', 'referencenumber', 'requisitionid', 'vacancyid')
 
+# ── which of the above are strong enough to say "this dict is a vacancy" ─────
+# A JSON payload for a job board is mostly NOT jobs. iworkfor.nsw.gov.au ships a
+# Next.js flight payload whose every nav link and every filter facet is
+# {"id": 5432, "name": "Sydney Region"} — and under the original rule (any title
+# key + any id key) each of those was a job. 303 rows of site chrome went into
+# the archive as NSW vacancies: "Accessibility", "Privacy and security", "Job
+# alerts", every region filter and every job-category label. Not one of the 303
+# was a real ad, and they looked exactly like ads to everything downstream.
+#
+# The hole was that BOTH halves of the test were generic. `name` is a title key
+# and `id` is an id key, so {id, name} — the shape of every enumerable thing in
+# every payload — qualified. So:
+#
+#   • a JOB-SPECIFIC title key ("jobTitle", "positionTitle") is enough on its
+#     own: nothing calls a nav label a jobTitle;
+#   • a generic title ("title", "name") needs real corroboration — an
+#     organisation, a location, a salary, a closing date, or a JOB-specific id.
+#     A bare "id" is not corroboration, because everything has one.
+JOB_TITLE_KEYS = ('jobtitle', 'positiontitle', 'roletitle', 'advertisedtitle')
+STRONG_ID_KEYS = ('jobid', 'jobreference', 'requisitionid', 'vacancyid', 'referencenumber')
+
 # Titles this short/long are almost certainly not real job titles.
 MIN_TITLE, MAX_TITLE = 4, 160
 
@@ -156,10 +177,16 @@ def looks_like_job(d: dict) -> bool:
     title = _pick(d, TITLE_KEYS)
     if not (MIN_TITLE <= len(title) <= MAX_TITLE):
         return False
-    # Require a STRONG corroborating field. A url/href alone is not enough — nav
-    # entries and breadcrumbs are all {name, href} and would otherwise flood in.
+    # An unambiguous job-title field stands on its own.
+    if _pick(d, JOB_TITLE_KEYS):
+        return True
+    # Otherwise the title came from a generic "title"/"name", so require a STRONG
+    # corroborating field. A url/href alone is not enough — nav entries and
+    # breadcrumbs are all {name, href}. Neither is a bare "id": facets are all
+    # {id, name}, which is what put 303 filter labels in the archive (see
+    # STRONG_ID_KEYS above).
     strong = sum(bool(_pick(d, ks)) for ks in (ORG_KEYS, LOC_KEYS, SALARY_KEYS,
-                                               CLOSE_KEYS, ID_KEYS))
+                                               CLOSE_KEYS, STRONG_ID_KEYS))
     return strong >= 1
 
 
