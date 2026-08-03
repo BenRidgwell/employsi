@@ -355,6 +355,15 @@ of 368 nt-gov rows. That is the method losing the input, not the taxonomy
 changing its mind, so **both sources are excluded** from the re-map. If they ever
 need re-mapping, store the extra field first.
 
+**An excluded source still needs targeted fixes.** Excluding them from the
+wholesale re-map is not the same as leaving them wrong: the AWS wage-supplement
+false positive is concentrated in Singapore titles, which is exactly
+mycareersfuture, so 45 of its rows still read "Cloud & DevOps" on a kitchen
+crew. Those were corrected surgically — remove the one skill the fix is about,
+where the title carries the benefits-list shape and no other cloud evidence,
+and leave every other skill alone. A removal you can name is safe on a source
+whose input you cannot reproduce; a recompute is not.
+
 ## What the re-map actually changed
 
 74,165 rows considered, **6,573 updated**: 4,427 rewritten, 2,016 that had no
