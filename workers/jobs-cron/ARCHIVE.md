@@ -220,7 +220,7 @@ bundle for the API it calls, and only reach for a browser when neither works.*
 | Company | Platform | Measured 2026-08-03 |
 |---|---|---|
 | Qube Holdings | PageUp Sites | 106 of 106 advertised, 4 pages |
-| Bendigo & Adelaide Bank | SuccessFactors RMK search service | 81 of 81 |
+| Bendigo & Adelaide Bank | SuccessFactors RMK search service | 81 of 81 (80 rows — see below) |
 | Mirvac | Cornerstone OnDemand | 33 of 33 |
 | Mercury NZ | SnapHire | 9, single page |
 | BGC | JobAdder widget | 6, confirmed by the widget's own pager |
@@ -263,6 +263,13 @@ The fetcher repeats the walk until the count reaches the board's own
 `totalJobs` or a pass adds nothing; measured, pass 1 collected 61 and pass 2
 completed it. This is affordable only because it is JSON — the same fix through
 a browser would have been 20 renders.
+
+**81 fetched lands as 80 archived rows, and that is correct.** Requisitions 1680
+and 1682 are both "Engineering Manager" in the same two locations, so they share
+a `job_key` and collapse — the archive keys on
+`source|title|company|location` by design, and two openings for the same role in
+the same place are indistinguishable under it. Recorded here so a future reader
+counting 80 against the board's 81 does not go looking for a dropped row.
 
 ## Off-Worker, rendered (`.github/workflows/sandfire-portal.yml`)
 
