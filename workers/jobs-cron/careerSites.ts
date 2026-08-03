@@ -1157,6 +1157,28 @@ const HUB_MATCH: [string, string | null][] = [
   ["oxley", "brisbane"],
   ["queensland", "brisbane"],
   [" qld", "brisbane"],
+  // Northern Territory. Darwin IS a tracked hub — it has coordinates in
+  // HUB_LNGLAT, a state and a name in geo.ts, companies on the map and its own
+  // nt-gov feed — but it was missing from this table entirely, so every role a
+  // career portal advertised in the NT resolved to no hub, or fell back to the
+  // employer's homeHub and landed in the wrong city. Measured on the archive
+  // before this fix: 380 rows whose location names Darwin or the NT carried no
+  // hub, and 59 more were placed in Canberra, Brisbane or Sydney. The 320 that
+  // were right came from nt-gov, which sets the hub itself and never consulted
+  // this table — which is exactly why the gap stayed invisible.
+  //
+  // "palmerston" is deliberately NOT matched bare: there is a Palmerston in the
+  // ACT and a Palmerston North in New Zealand, and this is a substring test.
+  ["darwin", "darwin"],
+  ["northern territory", "darwin"],
+  [" nt,", "darwin"],
+  ["berrimah", "darwin"],
+  ["palmerston nt", "darwin"],
+  ["palmerston, nt", "darwin"],
+  ["alice springs", "darwin"],
+  ["katherine, nt", "darwin"],
+  ["nhulunbuy", "darwin"],
+  ["tennant creek", "darwin"],
   ["melbourne", "melbourne"],
   ["broadmeadows", "melbourne"],
   ["geelong", "melbourne"],
