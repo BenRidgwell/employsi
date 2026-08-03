@@ -45,6 +45,10 @@ on:
 
 jobs:
   check:
+    # Named so it is selectable as a REQUIRED STATUS CHECK in branch
+    # protection. Both workflows declared `jobs: check:` with no name, so both
+    # surfaced as "check" and could not be told apart in that list.
+    name: roster wiring
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
