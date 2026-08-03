@@ -678,6 +678,71 @@ export const SITES: SiteDef[] = [
     homeHub: "sydney",
   },
   {
+    id: "sydney-hub",
+    name: "HUB24",
+    sector: "Financial Services",
+    platform: "workday",
+    // Tenant hub24management on wd105. Verified: 37 postings.
+    endpoint:
+      "https://hub24management.wd105.myworkdayjobs.com/wday/cxs/hub24management/HUB24_Careers/jobs",
+    origin: "https://hub24management.wd105.myworkdayjobs.com/en-US/HUB24_Careers",
+    homeHub: "sydney",
+  },
+  {
+    id: "gmd",
+    name: "Genesis Minerals",
+    sector: "Gold",
+    platform: "workday",
+    // Tenant genesisminerals on wd103. Verified: 22 postings.
+    endpoint:
+      "https://genesisminerals.wd103.myworkdayjobs.com/wday/cxs/genesisminerals/genesiscareers/jobs",
+    origin: "https://genesisminerals.wd103.myworkdayjobs.com/en-US/genesiscareers",
+    homeHub: "perth",
+  },
+  {
+    id: "sydney-cgf",
+    name: "Challenger",
+    sector: "Financial Services",
+    platform: "workday",
+    // Tenant challenger on wd3. Verified: 5 postings — a small board, not a
+    // broken one, which is why the count is recorded here.
+    endpoint:
+      "https://challenger.wd3.myworkdayjobs.com/wday/cxs/challenger/Challenger_Careers/jobs",
+    origin: "https://challenger.wd3.myworkdayjobs.com/en-US/Challenger_Careers",
+    homeHub: "sydney",
+  },
+  {
+    id: "perth-ggp",
+    name: "Greatland Resources",
+    sector: "Energy & Natural Resources",
+    platform: "successfactors",
+    // Tile theme. Verified: 13 tiles on page 1 of /search/?q=&startrow=0.
+    endpoint: "https://careers.greatland.com.au",
+    origin: "https://careers.greatland.com.au",
+    homeHub: "perth",
+  },
+  {
+    id: "brisbane-ape",
+    name: "Eagers Automotive",
+    sector: "Consumer & Retail",
+    platform: "successfactors",
+    // Table theme. Verified: 5 rows on page 1 of /search/?q=&startrow=0.
+    endpoint: "https://careers.eagersautomotive.com.au",
+    origin: "https://careers.eagersautomotive.com.au",
+    homeHub: "brisbane",
+  },
+  {
+    id: "sydney-tpg",
+    name: "TPG Telecom",
+    sector: "Technology, Media & Telecom",
+    platform: "oracle",
+    // Oracle Recruiting Cloud. Verified: 25 requisitions on the CX_1 site via
+    // the recruitingCEJobRequisitions REST finder.
+    endpoint: "https://fa-ewlx-saasfaprod1.fa.ocs.oraclecloud.com",
+    origin: "https://fa-ewlx-saasfaprod1.fa.ocs.oraclecloud.com",
+    homeHub: "sydney",
+  },
+  {
     id: "sydney-lnw",
     name: "Light & Wonder",
     sector: "Technology, Media & Telecom",
