@@ -124,7 +124,13 @@ type Platform =
   | "cornerstone"
   | "snaphire"
   | "jobadder"
-  | "sfrmkapi";
+  | "sfrmkapi"
+  | "ashby"
+  | "elmo"
+  | "attrax"
+  | "wprest"
+  | "wploop"
+  | "pageupclassic";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -1119,6 +1125,143 @@ export const SITES: SiteDef[] = [
     origin: "https://portal.careers.hsbc.com",
     homeHub: "london",
   },
+  // ── The 2026-08-03 batch (second half). Counts are live measurements. ──────
+  {
+    id: "sydney-dxs",
+    name: "Dexus",
+    sector: "Property & REITs",
+    platform: "workday",
+    // Measured 2026-08-03: total 9.
+    endpoint: "https://dexus.wd3.myworkdayjobs.com/wday/cxs/dexus/DexusCareers/jobs",
+    origin: "https://dexus.wd3.myworkdayjobs.com/en-US/DexusCareers",
+    homeHub: "sydney",
+  },
+  {
+    id: "sydney-agl",
+    name: "AGL Energy",
+    sector: "Electricity & Renewables",
+    platform: "workday",
+    // Measured 2026-08-03: total 19. Locations are AGL's own site names
+    // ("Melbourne Corporate", "2 Locations"), so most fall back to the home hub.
+    endpoint: "https://agl.wd3.myworkdayjobs.com/wday/cxs/agl/AGL_Recruitment/jobs",
+    origin: "https://agl.wd3.myworkdayjobs.com/en-US/AGL_Recruitment",
+    homeHub: "sydney",
+  },
+  {
+    id: "nz-meridian-energy",
+    name: "Meridian Energy",
+    sector: "Electricity & Renewables",
+    platform: "smartrecruiters",
+    // The company code is not the employer's name: meridianenergy.co.nz embeds
+    // static.smartrecruiters.com/job-widget and hands it
+    // `widget({"company_code": "MeridianEnergy1"})`, which is the only place it
+    // appears. Measured 2026-08-03: 10 roles.
+    endpoint: "MeridianEnergy1",
+    origin: "https://www.meridianenergy.co.nz/careers",
+    homeHub: "wellington",
+  },
+  {
+    id: "rms",
+    name: "Ramelius Resources",
+    sector: "Gold",
+    platform: "jobadder",
+    // Widget key, read off rameliusresources.com.au/careers/current-opportunities
+    // the same way BGC's was. Measured 2026-08-03: 24 roles; several carry no
+    // location on the card, which is the widget's own omission, not a parse gap.
+    endpoint: "AU5_uf7oi7f5zhkevkmrualspwsjru",
+    origin: "https://www.rameliusresources.com.au/careers/current-opportunities/",
+    homeHub: "perth",
+  },
+  {
+    id: "sydney-whc",
+    // Whitehaven advertises across TWO boards and this is only one of them. The
+    // other is a Dayforce candidate portal whose search API is a POST that
+    // Cloudflare 403s from any datacentre IP, so it runs as a GitHub Action
+    // (.github/workflows/whitehaven-dayforce.yml) and writes the same company id.
+    key: "sydney-whc-sf",
+    name: "Whitehaven Coal",
+    sector: "Coal Mining",
+    platform: "successfactors",
+    // Measured 2026-08-03: 9 roles, all Queensland (Moranbah, Blackwater), so
+    // they place on the Brisbane hub rather than the company's Sydney home.
+    endpoint: "https://careers.whitehavencoal.com.au",
+    origin: "https://careers.whitehavencoal.com.au",
+    homeHub: "sydney",
+  },
+  {
+    id: "sydney-hvn",
+    name: "Harvey Norman",
+    sector: "Retail",
+    platform: "pageupclassic",
+    // Measured 2026-08-03: 191 roles, 160 of them (84%) placed on a hub. The
+    // rest keep their store name ("Mile End Complex") because the board rations
+    // the faceted searches that supply a state — see fetchPageUpClassic.
+    endpoint: "https://www.harveynormancareers.com.au/en/listing/",
+    origin: "https://www.harveynormancareers.com.au",
+    homeHub: "sydney",
+    maxPages: 12,
+  },
+  {
+    id: "melbourne-nwl",
+    name: "Netwealth Group",
+    sector: "Financial Services",
+    platform: "ashby",
+    // Board slug from jobs.ashbyhq.com/netwealth. Measured 2026-08-03: 23 roles,
+    // all "Melbourne Office".
+    endpoint: "netwealth",
+    origin: "https://jobs.ashbyhq.com/netwealth",
+    homeHub: "melbourne",
+  },
+  {
+    id: "sydney-sdf",
+    name: "Steadfast Group",
+    sector: "Insurance",
+    platform: "elmo",
+    // Measured 2026-08-03: 8 roles on one page, several of them Manila.
+    endpoint: "https://steadfast.elmotalent.com.au/careers/default/jobs",
+    origin: "https://steadfast.elmotalent.com.au",
+    homeHub: "sydney",
+  },
+  {
+    id: "sydney-edv",
+    name: "Endeavour Group",
+    sector: "Consumer and Retail",
+    platform: "attrax",
+    // Measured 2026-08-03: 47 cards on `?page=1&size=48`, so the board pages.
+    // Store-level roles across the whole country (Dan Murphy's, BWS), which is
+    // why maxPages is generous.
+    endpoint: "https://endeavourgroupcareers.com.au/jobs",
+    origin: "https://endeavourgroupcareers.com.au",
+    homeHub: "sydney",
+    pageSize: 48,
+    maxPages: 30,
+  },
+  {
+    id: "cmm",
+    name: "Capricorn Metals",
+    sector: "Gold",
+    platform: "wprest",
+    // The theme registers a `job` post type, so wp-json serves the board
+    // directly. Measured 2026-08-03: 6 roles. The records carry no location —
+    // it is prose in the post body — so they take the Perth home hub.
+    endpoint: "https://capmetals.com.au/wp-json/wp/v2/job?per_page=100",
+    origin: "https://capmetals.com.au",
+    homeHub: "perth",
+  },
+  {
+    id: "pru",
+    name: "Perseus Mining",
+    sector: "Gold",
+    platform: "wploop",
+    // The PAGE, not wp-json: see fetchWpLoop for why (the careers category holds
+    // 8 posts the REST API cannot tell apart; the page lists the 4 that are
+    // current, and only the page carries a Location). Measured 2026-08-03: 4,
+    // in Ghana, Tanzania and Subiaco — the African sites fall back to Perth,
+    // which is where Perseus's pin is.
+    endpoint: "https://perseusmining.com/current-opportunities/",
+    origin: "https://perseusmining.com",
+    homeHub: "perth",
+  },
 ];
 
 /**
@@ -1205,6 +1348,26 @@ export const PORTAL_GROUPS: string[][] = [
   // board in the batch, Sandfire, genuinely needs a browser and runs as a
   // GitHub Action (.github/workflows/sandfire-portal.yml).
   ["sydney-qub", "sydney-mgr", "nz-mercury-nz", "priv-bgc", "melbourne-ben"],
+  // Groups 28-29: the eleven in-Worker boards from the 2026-08-03 batch.
+  // Measured 2026-08-03: Endeavour 561, Harvey Norman 191, Ramelius 24,
+  // Netwealth 23, AGL 19, Meridian 10, Dexus 9, Whitehaven (SuccessFactors) 9,
+  // Steadfast 8, Capricorn 6, Perseus 4 = 864 roles.
+  //
+  // Endeavour and Harvey Norman are the only expensive ones and they lead
+  // separate ticks: Endeavour walks 12 pages of 48, and Harvey Norman spends a
+  // rationed facet budget plus the listing (its board serves an EMPTY result
+  // set rather than a 429 once the quota is gone, so packing it beside another
+  // deep walk would silently cost rows rather than error).
+  ["sydney-edv", "melbourne-nwl", "cmm", "pru"],
+  [
+    "sydney-hvn",
+    "sydney-dxs",
+    "sydney-agl",
+    "nz-meridian-energy",
+    "rms",
+    "sydney-whc-sf",
+    "sydney-sdf",
+  ],
 ];
 
 const UA =
@@ -1431,7 +1594,7 @@ const HUB_MATCH: [string, string | null][] = [
  * Vilvoorde role on Sydney because Goodman is Sydney-listed would be inventing
  * a fact the source never carried.
  */
-function hubFor(loc: string, home: string | null, homeCountry: RegExp): string | null {
+export function hubFor(loc: string, home: string | null, homeCountry: RegExp): string | null {
   // A trailing comma is appended before matching so that the three needles that
   // END in one — " wa,", " nt,", " vic," — also fire when the abbreviation is
   // the last thing in the string. Those three are written with the comma on
@@ -1443,9 +1606,17 @@ function hubFor(loc: string, home: string | null, homeCountry: RegExp): string |
   //
   // Appending can only ever ADD matches, never remove one, since every needle
   // is tested with includes() against a string that now merely ends differently.
-  const l = (loc || "").toLowerCase() + ",";
+  const raw = (loc || "").trim();
+  const l = raw.toLowerCase() + ",";
   for (const [needle, hub] of HUB_MATCH) if (l.includes(needle)) return hub;
-  if (!l.trim() || homeCountry.test(l)) return home;
+  // Emptiness is tested on the ORIGINAL string, not the comma-appended one.
+  // Appending the comma above quietly broke this: `l` for a blank location is
+  // "," which is truthy, so "no location stated" stopped falling back to the
+  // employer's home hub and started resolving to no hub at all. That is wrong
+  // for every board whose cards omit a location — JobAdder and the WordPress
+  // readers routinely do — and it is invisible, because an unplaced row still
+  // archives, it just stops appearing on the map.
+  if (!raw || homeCountry.test(l)) return home;
   return null;
 }
 
@@ -1467,7 +1638,7 @@ function workdayPosted(s: string): string {
 }
 
 /** Country patterns for the home-hub fallback, keyed by the hub itself. */
-const HOME_COUNTRY: Record<string, RegExp> = {
+export const HOME_COUNTRY: Record<string, RegExp> = {
   perth: /australia/,
   adelaide: /australia/,
   melbourne: /australia/,
@@ -3269,6 +3440,370 @@ async function fetchSfRmkApi(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── Ashby (Netwealth) ────────────────────────────────────────────────────────
+interface AshbyJob {
+  title?: string;
+  location?: string;
+  secondaryLocations?: { location?: string }[];
+  department?: string;
+  team?: string;
+  publishedAt?: string;
+  jobUrl?: string;
+  isListed?: boolean;
+}
+
+/**
+ * Ashby publishes a documented, unauthenticated job-board API keyed by the
+ * board's slug, and returns the WHOLE board in one call — no paging, no token,
+ * no HTML. `endpoint` is the slug as it appears in jobs.ashbyhq.com/<slug>.
+ *
+ * `isListed` is honoured because Ashby uses it for postings that exist but are
+ * deliberately not on the public board (confidential searches, evergreen
+ * pipelines). Archiving those would over-report a vacancy the employer has not
+ * advertised.
+ */
+async function fetchAshby(site: SiteDef): Promise<PortalJob[]> {
+  const data = await getJson<{ jobs?: AshbyJob[] }>(
+    `https://api.ashbyhq.com/posting-api/job-board/${site.endpoint}`,
+  );
+  const rows = data?.jobs ?? [];
+  const out: PortalJob[] = [];
+  for (const r of rows) {
+    const title = (r.title || "").trim();
+    if (!title || r.isListed === false) continue;
+    const locs = [r.location, ...(r.secondaryLocations ?? []).map((s) => s.location)]
+      .map((s) => (s || "").trim())
+      .filter(Boolean);
+    out.push(
+      job(
+        site,
+        title,
+        [...new Set(locs)].join(", "),
+        r.jobUrl || `https://jobs.ashbyhq.com/${site.endpoint}`,
+        (r.publishedAt || "").slice(0, 10),
+        [r.department, r.team].filter(Boolean).join(" — ") || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── ELMO Talent (Steadfast) ──────────────────────────────────────────────────
+/**
+ * ELMO's careers module is server-rendered Bootstrap: one `<li class=
+ * "list-group-item">` per role, the title in an `a.redirect_elmo_link` pointing
+ * at /careers/default/job/view/<id>, and the location in the row carried by the
+ * map-marker glyph.
+ *
+ * There is no paginator, and that is not an oversight to work around — the
+ * board serves every role on the one page. Measured on Steadfast 2026-08-03:
+ * 8 job links, and the category filter's own counts (Administration 1, Customer
+ * Service 1, Information Technology 3, Marketing 1, Other 2) sum to exactly 8.
+ * That sum is a free cross-check the fetcher uses: if the board ever starts
+ * paging, the counts will exceed the rows and the mismatch is logged rather
+ * than silently truncating.
+ */
+async function fetchElmo(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const item of html.split(/<li class="list-group-item"/i).slice(1)) {
+    const a = item.match(
+      /<a[^>]*class="[^"]*redirect_elmo_link[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i,
+    );
+    if (!a) continue;
+    const href = clean(a[1]);
+    const title = clean(a[2]);
+    if (!title || seen.has(href)) continue;
+    seen.add(href);
+    // The location sits in the div that follows the map-marker glyph; the
+    // pencil glyph below it carries the employment type. The capture has to be
+    // generous because ELMO indents its template heavily — the value is one
+    // short line inside ~250 characters of whitespace, and a tighter bound
+    // matched nothing at all.
+    const glyph = (name: string): string => {
+      const m = item.match(
+        new RegExp(`glyphicon-${name}[\\s\\S]{0,240}?<div[^>]*>([^<]{2,400})<\\/div>`, "i"),
+      );
+      return m ? clean(m[1]) : "";
+    };
+    const loc = glyph("map-marker");
+    const type = glyph("pencil");
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        href.startsWith("http") ? href : site.origin + href,
+        today(),
+        type || "Career portal",
+      ),
+    );
+  }
+  // The cross-check is per FILTER, not across all of them. The page carries
+  // several <select>s — job category, location, work type — and each one's
+  // counts sum to the board's total independently, so adding every option on
+  // the page triples it (measured on Steadfast: 8 roles, 24 across the three).
+  // The largest single filter's sum is the board's own claim about its size.
+  const advertised = Math.max(
+    0,
+    ...html
+      .split(/<select\b/i)
+      .slice(1)
+      .map((sel) =>
+        [...sel.split(/<\/select>/i)[0].matchAll(/\((\d+)\)\s*<\/option>/g)]
+          .map((m) => Number(m[1]))
+          .reduce((a, b) => a + b, 0),
+      ),
+  );
+  if (advertised && out.length < advertised) {
+    console.log(`elmo ${site.id}: ${out.length} rows vs ${advertised} advertised — board paging?`);
+  }
+  return out;
+}
+
+// ── Attrax (Endeavour Group) ─────────────────────────────────────────────────
+/**
+ * Endeavour's careers site is SmartRecruiters-backed but served through Attrax,
+ * which renders the results server-side as `attrax-vacancy-tile` cards. The
+ * SmartRecruiters API is NOT usable here: the public postings endpoint answers
+ * for a company code, and Endeavour's board is not exposed under one (every
+ * plausible code returns totalFound 0), so the rendered page is the only feed.
+ *
+ * Each card repeats its href three times (title, location, apply), so rows are
+ * grouped by `data-jobid` rather than counted by anchor — the same mistake the
+ * NSW parser made.
+ */
+async function fetchAttrax(site: SiteDef): Promise<PortalJob[]> {
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  const size = site.pageSize ?? 48;
+  for (let page = 1; page <= max; page++) {
+    const html = await getText(`${site.endpoint}?page=${page}&size=${size}`);
+    if (!html) break;
+    const tiles = html.split(/<div[^>]*class="[^"]*attrax-vacancy-tile[^"]*"[^>]*data-jobid="/i);
+    let added = 0;
+    for (const tile of tiles.slice(1)) {
+      const id = tile.slice(0, tile.indexOf('"'));
+      if (!id || seen.has(id)) continue;
+      const a = tile.match(
+        /<a[^>]*class="[^"]*attrax-vacancy-tile__title[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i,
+      );
+      if (!a) continue;
+      const title = clean(a[2]);
+      if (!title) continue;
+      seen.add(id);
+      added++;
+      // Every field is the same two-paragraph shape: a wrapper div named for
+      // the field, then `<p class="…item-label">Location</p>` followed by
+      // `<p class="…item-value">SPRINGWOOD, QLD, 4127</p>`. Reading the first
+      // <p> after the wrapper therefore returns the LABEL, not the value —
+      // which is what a first pass did, tagging every Endeavour role with the
+      // location "Location".
+      const field = (name: string): string => {
+        const block = tile.split(new RegExp(`attrax-vacancy-tile__${name}\\b`, "i"))[1];
+        if (!block) return "";
+        const v = block.match(/attrax-vacancy-tile__item-value[^>]*>([\s\S]{0,200}?)<\/p>/i);
+        return v ? clean(v[1]) : "";
+      };
+      const href = clean(a[1]);
+      out.push(
+        job(
+          site,
+          title,
+          // The free-text location is the specific one ("SPRINGWOOD, QLD,
+          // 4127"); the `option-locations` facet is just the state.
+          field("location-freetext") || field("option-locations"),
+          href.startsWith("http") ? href : site.origin + href,
+          today(),
+          field("option-departments") || "Career portal",
+        ),
+      );
+    }
+    if (added < size) break;
+  }
+  return out;
+}
+
+// ── WordPress REST (Capricorn Metals) ────────────────────────────────────────
+interface WpPost {
+  title?: { rendered?: string };
+  link?: string;
+  date?: string;
+}
+
+/**
+ * Some employers run their vacancies as ordinary WordPress content rather than
+ * an ATS. Where the theme registers a `job` post type, wp-json serves it
+ * directly: `endpoint` is the full REST URL, so one site can point at a custom
+ * type and another at a category of posts.
+ *
+ * There is no location on these records — the post body carries it as prose —
+ * so the row falls back to the employer's home hub, which is where its pin is.
+ */
+async function fetchWpRest(site: SiteDef): Promise<PortalJob[]> {
+  const rows = await getJson<WpPost[]>(site.endpoint);
+  if (!Array.isArray(rows)) return [];
+  const out: PortalJob[] = [];
+  for (const r of rows) {
+    const title = clean(r.title?.rendered || "");
+    if (!title || !r.link) continue;
+    out.push(job(site, title, "", r.link, (r.date || "").slice(0, 10), "Career portal"));
+  }
+  return out;
+}
+
+// ── WordPress / Elementor loop (Perseus Mining) ──────────────────────────────
+/**
+ * Perseus publishes vacancies as posts in a `careers` category and lists the
+ * current ones through an Elementor loop on /current-opportunities/.
+ *
+ * READ THE PAGE, NOT THE REST API, and the difference is not cosmetic. Measured
+ * 2026-08-03: the `careers` category holds 8 posts, all `publish`, with
+ * identical meta — the REST API cannot tell a live ad from a closed one. The
+ * page renders 4. Those 4 are what the employer advertises as current, and they
+ * are also the only ones carrying a Location. There is no pagination (`page/2/`
+ * and `?e-page-…=2` both return the same 4), so one fetch is the whole list.
+ *
+ * The first loop-item in the markup is Elementor's template stub and has no
+ * href; it is skipped rather than counted.
+ */
+async function fetchWpLoop(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const item of html.split(/data-elementor-type="loop-item"/i).slice(1)) {
+    const block = item.slice(0, 6000);
+    const href = block.match(/href="(https?:\/\/[^"]+)"/i);
+    const title = block.match(/<h2 class="elementor-heading-title[^"]*">([^<]+)<\/h2>/i);
+    if (!href || !title) continue;
+    const url = clean(href[1]);
+    if (seen.has(url)) continue;
+    seen.add(url);
+    const loc = block.match(/Location:\s*([^<]{2,70})/i);
+    out.push(job(site, clean(title[1]), loc ? clean(loc[1]) : "", url, "", "Career portal"));
+  }
+  return out;
+}
+
+// ── PageUp, classic theme (Harvey Norman) ────────────────────────────────────
+/**
+ * PageUp ships two themes and they share no markup. `pageupsites` reads the
+ * newer one (`<article>` cards, `job-search-results-card-title`, an "of <b>N</b>
+ * in total" label). Harvey Norman runs the classic one, which is a plain
+ * `<table id="search-results-content">`: `a.job-link` → /en/job/<id>/<slug> in
+ * the first cell, the location in the second, and nothing else.
+ *
+ * `page-items` is honoured by the classic theme — measured: `?page=1` serves 20
+ * rows and `?page=1&page-items=100` serves 100.
+ *
+ * WHY THE WALK IS PER LOCATION FACET RATHER THAN STRAIGHT DOWN THE LIST
+ * The location cell is the STORE, not a place a map can find: "Osborne Park
+ * Complex", "Bondi Junction Complex", "Springvale Complex". Walking the plain
+ * listing collected 191 roles of which 20 placed on a hub — 10% — and the other
+ * 171 archived with no city at all. Suburb names cannot be resolved by guessing
+ * either: Springwood is in both Queensland and New South Wales.
+ *
+ * But the board's own sidebar carries a Locations facet whose values ARE states
+ * ("NSW – Sydney Metro Area", "QLD – Other"), each with a count, and
+ * /en/search/?location=<value> honours it — measured: the "NSW – Sydney Metro
+ * Area" facet says 29 and the filtered search returns exactly 29. So the walk
+ * reads the facets once, then queries each one and appends its name to the
+ * store, turning "Bondi Junction Complex" into a string hubFor can place.
+ *
+ * Each facet is bounded by its OWN advertised count rather than by a short page,
+ * which is the bound this file prefers everywhere. Facets overlap slightly (they
+ * sum to 204 against 191 distinct roles — a role advertised in two regions
+ * appears in both), so rows are deduped by href across the whole walk.
+ */
+const PAGEUP_CLASSIC_PAGE = 100;
+
+async function fetchPageUpClassic(site: SiteDef): Promise<PortalJob[]> {
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+
+  /** Parses one results page. Returns how many job rows the PAGE carried, not
+   *  how many were new — a role can sit in two facets, and "every row here was
+   *  already collected" must not read the same as "this page came back empty". */
+  const rowsOf = (html: string, facet: string): number => {
+    const body = html.split(/<tbody id="search-results-content">/i)[1];
+    if (!body) return 0;
+    let onPage = 0;
+    for (const row of body.split(/<\/tr>/i)) {
+      const a = row.match(/<a[^>]*class="job-link"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
+      if (!a) continue;
+      const href = clean(a[1]);
+      const title = clean(a[2]);
+      if (!title) continue;
+      onPage++;
+      if (seen.has(href)) continue;
+      seen.add(href);
+      // The row is <td>title + blurb</td><td>location</td>; the location is the
+      // LAST cell, and taking its text is what avoids picking up the blurb.
+      const cells = row.split(/<td[^>]*>/i).slice(1);
+      const store = cells.length > 1 ? clean(cells[cells.length - 1]) : "";
+      out.push(
+        job(
+          site,
+          title,
+          [store, facet].filter(Boolean).join(", "),
+          href.startsWith("http") ? href : site.origin + href,
+          "",
+          "",
+        ),
+      );
+    }
+    return onPage;
+  };
+
+  const listing = await getText(`${site.endpoint}?page=1&page-items=${PAGEUP_CLASSIC_PAGE}`);
+  if (!listing) return [];
+  const facets = [
+    ...listing.matchAll(
+      /name="location" value="([^"]+)"[\s\S]{0,240}?<span class="count">(\d+)<\/span>/g,
+    ),
+  ].map((m) => ({ value: clean(m[1]), n: Number(m[2]) }));
+
+  // THE BOARD RATIONS FACETED SEARCHES, and it does it by serving an EMPTY
+  // result set rather than a 429 — which `getText` cannot see, because a 200
+  // with no rows is a valid answer. Measured three times over: walking all 15
+  // facets back to back, the first six or seven returned exactly their
+  // advertised counts and every one after that returned zero. It is a quota,
+  // not a rate: inserting 1s and then 2.5s between requests changed nothing,
+  // and only a ~20s pause restored capacity. Retrying inside the walk does not
+  // help for the same reason.
+  //
+  // So the walk spends its allowance on the LARGEST facets and then reads the
+  // plain listing for the rest. The roles are all collected either way — the
+  // facet is only there to supply a state, because the location cell alone is a
+  // store name — so the effect of the quota is that the biggest regions get a
+  // mappable location and the long tail keeps the store name. Deduping is by
+  // href, so a role already collected under its facet is not overwritten by the
+  // listing's less specific version.
+  const FACET_BUDGET = 6;
+  const search = site.endpoint.replace(/\/listing\/?$/, "/search/");
+  for (const f of [...facets].sort((a, b) => b.n - a.n).slice(0, FACET_BUDGET)) {
+    for (let page = 1; page <= max; page++) {
+      const html = await getText(
+        `${search}?page=${page}&page-items=${PAGEUP_CLASSIC_PAGE}&location=${encodeURIComponent(f.value)}`,
+      );
+      if (!html || rowsOf(html, f.value) < PAGEUP_CLASSIC_PAGE) break;
+    }
+  }
+  for (let page = 1; page <= max; page++) {
+    const html =
+      page === 1
+        ? listing
+        : await getText(`${site.endpoint}?page=${page}&page-items=${PAGEUP_CLASSIC_PAGE}`);
+    if (!html || rowsOf(html, "") < PAGEUP_CLASSIC_PAGE) break;
+  }
+  return out;
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   successfactors: fetchSuccessFactors,
   workday: fetchWorkday,
@@ -3296,6 +3831,12 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   snaphire: fetchSnapHire,
   jobadder: fetchJobAdder,
   sfrmkapi: fetchSfRmkApi,
+  ashby: fetchAshby,
+  elmo: fetchElmo,
+  attrax: fetchAttrax,
+  wprest: fetchWpRest,
+  wploop: fetchWpLoop,
+  pageupclassic: fetchPageUpClassic,
 };
 
 export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
@@ -3333,6 +3874,16 @@ const SOURCE_TAG: Record<Platform, string> = {
   // ATS, only a different front end, so its rows should dedupe against an
   // SF row for the same role rather than sitting beside it.
   sfrmkapi: "sf",
+  ashby: "ashby",
+  elmo: "elmo",
+  attrax: "attrax",
+  // Both WordPress readers write the same tag: the difference between them is
+  // how the page is parsed, not where the vacancy came from.
+  wprest: "wp",
+  wploop: "wp",
+  // Same ATS as `pageupsites`, only the older theme — so the same source tag,
+  // for the same reason sfrmkapi shares "sf".
+  pageupclassic: "pu",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */

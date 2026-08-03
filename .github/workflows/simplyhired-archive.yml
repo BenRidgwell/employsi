@@ -1,0 +1,56 @@
+# Daily SimplyHired Australia → D1 archive, one search per rostered company.
+#
+# simplyhired.com.au 403s a datacentre IP outright, so this runs here rather than
+# in the jobs-cron Worker. It needs no JS render — the search page ships its
+# results as a Next.js __NEXT_DATA__ payload — so the Oxylabs fetches are the
+# cheap non-rendering kind.
+#
+# Unlike the career-portal feeds, which read one employer's own board, this is an
+# aggregator: it indexes agency-posted and third-party-posted ads that an
+# employer's portal never shows. Rows are only filed under a company when the
+# board's own advertiser string passes scripts/advertiser_match.py.
+#
+# Required repo secrets:
+#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
+#   CLOUDFLARE_API_TOKEN                — a token with D1 edit on the employsi account
+# Optional repo variables (fall back to values baked into the script):
+#   CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# The job exits non-zero when the whole roster matches nothing, or when more than
+# a quarter of the searches fail — either is the board blocking us, not a market
+# with no vacancies.
+
+name: simplyhired-archive
+
+on:
+  schedule:
+    - cron: '40 18 * * *' # 18:40 UTC daily (~05:40 AEST)
+  workflow_dispatch: {}
+
+concurrency:
+  group: simplyhired-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Scrape SimplyHired AU → D1
+        env:
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/simplyhired-to-d1.py

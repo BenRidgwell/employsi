@@ -1124,6 +1124,12 @@ const PORTAL_TICKS: Record<string, number> = {
   // all taken, and a duplicate key here is silent (the later one just wins)
   // while a duplicate in `crons` is rejected by Cloudflare at deploy.
   "5 9 * * *": 27,
+  // Groups 28-29 — the 2026-08-03 batch. Endeavour Group is the deepest walk
+  // in the file after Woolworths (561 roles at 48 a page), so it leads its own
+  // tick; Harvey Norman leads the other because its board rations faceted
+  // searches and a crowded tick would cost it rows without erroring.
+  "15 9 * * *": 28,
+  "25 9 * * *": 29,
 };
 
 const NEWS_TICKS: Record<string, number> = {

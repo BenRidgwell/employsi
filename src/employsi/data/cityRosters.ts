@@ -81,6 +81,7 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["LOV", "Lovisa", CON],
       ["LSF", "L1 Long Short Fund", FIN],
       ["MPL", "Medibank", FIN],
+      ["NWL", "Netwealth Group", FIN],
       ["MSB", "Mesoblast", HLT],
       ["ORA", "Orora", ENR],
       ["PME", "Pro Medicus", HLT],

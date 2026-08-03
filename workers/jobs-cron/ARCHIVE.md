@@ -133,6 +133,101 @@ the employer, then add it to `ADVERTISER_ALIAS`.
 
 ---
 
+# Thirteen employer boards + SimplyHired, added 2026-08-03
+
+## In the Worker (`careerSites.ts`, PORTAL_GROUPS groups 28-29)
+
+Eleven feeds, 864 roles when probed. Five ran on platforms this file already
+read; six needed a new one.
+
+| Employer | Platform | Roles | Note |
+|---|---|---|---|
+| Endeavour Group | **attrax** (new) | 561 | Dan Murphy's / BWS store roles nationwide |
+| Harvey Norman | **pageupclassic** (new) | 191 | 84% placed on a hub — see below |
+| Ramelius Resources | jobadder | 24 | widget key `AU5_uf7oi7f5zhkevkmrualspwsjru` |
+| Netwealth Group | **ashby** (new) | 23 | new roster company, `melbourne-nwl` |
+| AGL Energy | workday | 19 | |
+| Meridian Energy | smartrecruiters | 10 | company code `MeridianEnergy1` |
+| Dexus | workday | 9 | |
+| Whitehaven Coal | successfactors | 9 | its Queensland board; NSW is on Dayforce |
+| Steadfast Group | **elmo** (new) | 8 | first ELMO Talent tenant |
+| Capricorn Metals | **wprest** (new) | 6 | WordPress `job` post type |
+| Perseus Mining | **wploop** (new) | 4 | Elementor loop, NOT the REST API |
+
+Two of the new readers exist because the employer runs no ATS at all:
+
+- **`wprest`** reads a WordPress custom post type through wp-json. Clean, and
+  there is nothing else to read.
+- **`wploop`** parses an Elementor loop off the page, and the distinction from
+  `wprest` is the point. Perseus's `careers` category holds 8 posts, all
+  `publish`, with identical meta — **the REST API cannot tell a live ad from a
+  closed one**. The page renders 4, and those 4 are also the only ones carrying
+  a Location. Reading the API would have over-reported by half.
+
+**Harvey Norman's location problem, and how far it could honestly be solved.**
+The listing's location cell is the STORE — "Osborne Park Complex", "Bondi
+Junction Complex" — which no hub table can place, and suburb names cannot be
+guessed at either (Springwood is in both Queensland and New South Wales). The
+plain walk placed 20 of 191 roles, 10%.
+
+The board's sidebar carries a Locations facet whose values ARE states, and
+`/en/search/?location=<value>` honours it exactly — the "NSW – Sydney Metro
+Area" facet says 29 and returns 29. But **the board rations faceted searches
+and signals it with an empty result set rather than a 429**: measured three
+times, the first six or seven facets returned their counts and every one after
+returned zero. It is a quota, not a rate — 1s and 2.5s delays changed nothing,
+and only a ~20s pause restored capacity — so retrying inside the walk does not
+help. The fetcher therefore spends its allowance on the largest facets and then
+reads the plain listing for the rest: every role is collected either way, and
+84% end up with a mappable location instead of 10%.
+
+## Off-Worker (GitHub Actions, via Oxylabs)
+
+- **`scripts/dyno-to-d1.py`** — Dyno Nobel, 33 roles. The old SuccessFactors RCM
+  portal (`career?company=IncitecPivot`), which server-renders no rows and pages
+  by `juic.fire(…,"_next")`, so the walk clicks through. Bounded by the board's
+  own "33 Jobs matched your search". dynonobel.com.au names the split itself:
+  this tenant is Australia and Indonesia, and North America is a separate Taleo
+  instance that is not read.
+- **`scripts/whitehaven-dayforce-to-d1.py`** — Whitehaven's NSW board, 36 roles.
+  Its search API exists (`GET` returns 405, so the path is right) but every
+  `POST` returns a bare 403 behind Cloudflare from a datacentre IP, with browser
+  headers, Origin, Referer and the portal's own session cookies. A Worker would
+  fare worse. Rendered through a residential IP instead.
+- **`scripts/simplyhired-to-d1.py`** — an aggregator walked once per rostered
+  employer, so it catches agency-posted ads an employer's own portal never
+  shows. Filtered through `scripts/advertiser_match.py`, because keyword search
+  returns anything that mentions the name. **The location filter is deliberately
+  empty**: the obvious URL to copy is a city search, which would have archived
+  only the Perth slice of every national employer.
+
+  Its salary coverage is thin and was measured rather than assumed — 1 of 20
+  BHP rows carried a `salaryInfo`. It is still salary the employer portals do
+  not publish, so it is taken where it is offered.
+
+## The hub bug these boards exposed
+
+`hubFor` stopped falling back to the employer's home hub when a board published
+NO location at all. The earlier fix that appends a trailing comma before
+matching (so " wa," fires when the state is last) also made the emptiness test
+`!l.trim()` permanently false — `l` for a blank location is `","`, which is
+truthy. So "no location stated" resolved to no hub instead of the company's own
+city, silently, for every board whose cards omit one: JobAdder rows, both
+WordPress readers, Cornerstone. An unplaced row still archives — it just stops
+appearing on the map, which is why nothing ever errored. Emptiness is now tested
+on the original string.
+
+## `scripts/map-hubs.ts`
+
+New bridge, the counterpart of `map-skills.ts`. The Action scrapers need the
+same location → hub answer the Worker would give, and `hubFor` is a long,
+carefully ordered list with real traps in it (Erskineville before Erskine, " wa,"
+carrying a comma, bare "hamilton" deliberately absent). Re-implementing it in
+Python would drift, and the drift would be invisible: a row with the wrong hub
+still archives, it just appears in the wrong city.
+
+---
+
 # NSW Government feed (`scripts/nsw-gov-to-d1.py`) — and the 303 rows that weren't jobs
 
 **What went wrong.** iworkfor.nsw.gov.au was rewritten as a client-rendered

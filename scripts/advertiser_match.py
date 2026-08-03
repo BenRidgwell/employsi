@@ -68,6 +68,11 @@ ADVERTISER_ALIAS = {
     # Austal's shipbuilding entity, and the name its Philippine yard at
     # Balamban advertises under.
     'austal ships': 'austal',
+    # BHP's own advertiser string on SimplyHired for a minority of its ads —
+    # the same requisitions appear under the bare "BHP" on the rest of the
+    # board, so this is BHP advertising under its operating name, not a
+    # different firm. Found by the near-miss report on the first run.
+    'bhp mining': 'bhp',
     # Zip Co Limited, with the spaces lost by the board rather than by us.
     'zipcolimited': 'zip',
     # Norco Co-operative Limited is Norco Co-op; "co op" and "co operative"

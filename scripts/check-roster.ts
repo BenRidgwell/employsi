@@ -45,6 +45,7 @@ const SCRIPT_FED: string[] = [
   "nz-auckland-international-airport", // browser-portals.yml
   "brisbane-tne", // browser-portals.yml — TechnologyOne
   "sfr", // sandfire-portal.yml — Sandfire Resources
+  "melbourne-dnl", // dyno-portal.yml — Dyno Nobel (SuccessFactors RCM)
 ];
 
 interface Finding {

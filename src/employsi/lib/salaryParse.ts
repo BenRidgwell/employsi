@@ -112,6 +112,9 @@ const COUNTRY_BY_SOURCE: Record<string, string> = {
   naukri: "in",
   gulftalent: "ae",
   "jobsdb-hk": "hk",
+  // simplyhired.com.au — the Australian site, so an ad it carries is priced in
+  // AUD even when the row's hub could not be resolved from its location text.
+  simplyhired: "au",
 };
 
 /**
