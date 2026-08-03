@@ -27,7 +27,7 @@
 import { COMPANIES } from "../src/employsi/data/companies";
 import { CITY_COMPANIES } from "../src/employsi/data/mapboxGeo";
 import { SEEK_ADVERTISERS } from "../src/employsi/data/seekAdvertisers";
-import { SITES as CAREER_SITES } from "../workers/jobs-cron/careerSites";
+import { SITES as CAREER_SITES, PORTAL_GROUPS } from "../workers/jobs-cron/careerSites";
 
 interface Finding {
   level: "error" | "warn";
@@ -115,6 +115,26 @@ for (const id of Object.keys(SEEK_ADVERTISERS)) {
         .map((c) => c.id)
         .join(", ")}${without.length > 8 ? ", …" : ""}`,
     );
+  }
+}
+
+// ── 6. Every career site is actually SCHEDULED ──────────────────────────────
+// A site in SITES but in no PORTAL_GROUPS slice never fetches, and nothing
+// errors — the run simply walks a list that does not include it. Thirteen feeds
+// sat idle that way, and one more was orphaned by renaming a site id without
+// touching the group that named it (`cba` -> `sydney-cba`).
+//
+// This checks the two files it can reach. PORTAL_TICKS (index.ts) and `crons`
+// (wrangler.jsonc) must move with them: a GROUP with no tick is the same
+// silent failure one level up, and is checked below by count.
+{
+  const grouped = new Set(PORTAL_GROUPS.flat());
+  const keys = CAREER_SITES.map((s) => s.key ?? s.id);
+  for (const k of keys) {
+    if (!grouped.has(k)) err("feed-not-scheduled", k, "in SITES but in no PORTAL_GROUPS slice");
+  }
+  for (const g of grouped) {
+    if (!keys.includes(g)) err("group-without-feed", g, "PORTAL_GROUPS names a site that is gone");
   }
 }
 

@@ -1034,7 +1034,7 @@ export const SITES: SiteDef[] = [
  * four ways, so no tick depends on the budget being generous.
  */
 export const PORTAL_GROUPS: string[][] = [
-  ["bhp", "wds", "cba", "melbourne-anz"],
+  ["bhp", "wds", "sydney-cba", "melbourne-anz"],
   ["rio", "fmg", "sydney-wbc", "wes"],
   ["sydney-mqg", "sydney-gmg"],
   ["london-hsba", "melbourne-csl"],
@@ -1088,6 +1088,14 @@ export const PORTAL_GROUPS: string[][] = [
   // Sonic HealthPlus joins an existing tick rather than taking a new one: its
   // Taleo board is 18 roles served in a single POST, so it costs one request.
   ["brisbane-nxt", "melbourne-car", "min", "sydney-shl-healthplus", "sydney-qan"],
+  // Groups 24-26: the boards added 2026-08 — Aurizon, HUB24, Genesis Minerals,
+  // Challenger, Greatland, Eagers, TPG, Light & Wonder, Cochlear, Yancoal,
+  // Codan, Amcor and JB Hi-Fi. Given their own ticks rather than packed into
+  // existing slices because six of them are Workday or SuccessFactors, which
+  // page hardest, and a tick that runs out of subrequests truncates silently.
+  ["brisbane-azj", "sydney-hub", "gmd", "sydney-cgf"],
+  ["perth-ggp", "brisbane-ape", "sydney-tpg", "sydney-lnw"],
+  ["sydney-coh", "sydney-yal", "adelaide-cda", "melbourne-amc", "melbourne-jbh"],
 ];
 
 const UA =

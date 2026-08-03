@@ -1083,6 +1083,12 @@ const PORTAL_TICKS: Record<string, number> = {
   "55 7 * * *": 21,
   "5 8 * * *": 22,
   "15 8 * * *": 23,
+  // Groups 24-26, added with the 2026-08 boards. SITES, PORTAL_GROUPS,
+  // PORTAL_TICKS and `crons` must all move together — a group with no tick
+  // never fetches and nothing errors, which is how thirteen feeds sat idle.
+  "45 6 * * *": 24,
+  "55 6 * * *": 25,
+  "5 7 * * *": 26,
 };
 
 const NEWS_TICKS: Record<string, number> = {
