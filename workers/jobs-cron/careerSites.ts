@@ -190,8 +190,12 @@ export const SITES: SiteDef[] = [
     homeHub: "perth",
   },
   {
-    id: "cba",
-    name: "Commonwealth Bank",
+    // The roster id, not the Workday tenant slug. It was "cba" — which matches
+    // the myworkdayjobs subdomain but no company in the roster — so every row
+    // this feed archived was attributed to a company_id nothing could render.
+    // Caught by scripts/check-roster.ts, which exists for exactly this.
+    id: "sydney-cba",
+    name: "Commonwealth Bank of Australia",
     sector: "Banking & Financial Services",
     platform: "workday",
     endpoint: "https://cba.wd3.myworkdayjobs.com/wday/cxs/cba/CommBank_Careers/jobs",
@@ -672,6 +676,19 @@ export const SITES: SiteDef[] = [
     endpoint: "QantasGroup",
     origin: "https://careers.qantas.com",
     homeHub: "sydney",
+  },
+  {
+    id: "melbourne-jbh",
+    name: "JB Hi-Fi",
+    sector: "Consumer & Retail",
+    platform: "smartrecruiters",
+    // The SmartRecruiters company is the GROUP tenant, not the JB Hi-Fi brand:
+    // read off the widget config on jbhifi.com.au/pages/jobs, which is the only
+    // place it appears. It covers The Good Guys as well, so rows land under
+    // whichever advertiser the posting names. Measured 316 live postings.
+    endpoint: "JBHi-FiTheGoodGuys1",
+    origin: "https://jobs.smartrecruiters.com",
+    homeHub: "melbourne",
   },
   {
     id: "melbourne-car",
