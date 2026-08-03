@@ -21,26 +21,15 @@
 
 name: roster-check
 
+# Runs on EVERY push and pull request, with no `paths` filter, because both
+# jobs are REQUIRED STATUS CHECKS on the protected branch. A required check that
+# is path-filtered never reports on a PR that touches none of those paths, and
+# GitHub waits for a report that will never come — the PR sits permanently
+# pending and cannot merge. Running always is the cheaper failure: a bun install
+# and one script, a few seconds.
 on:
-  push:
-    paths:
-      - 'src/employsi/data/companies.ts'
-      - 'src/employsi/data/cityRosters.ts'
-      - 'src/employsi/data/rosters.ts'
-      - 'src/employsi/data/mapboxGeo.ts'
-      - 'src/employsi/data/seekAdvertisers.ts'
-      - 'workers/jobs-cron/careerSites.ts'
-      - 'scripts/check-roster.ts'
-      - '.github/workflows/roster-check.yml'
-  pull_request:
-    paths:
-      - 'src/employsi/data/companies.ts'
-      - 'src/employsi/data/cityRosters.ts'
-      - 'src/employsi/data/rosters.ts'
-      - 'src/employsi/data/mapboxGeo.ts'
-      - 'src/employsi/data/seekAdvertisers.ts'
-      - 'workers/jobs-cron/careerSites.ts'
-      - 'scripts/check-roster.ts'
+  push: {}
+  pull_request: {}
   workflow_dispatch: {}
 
 jobs:

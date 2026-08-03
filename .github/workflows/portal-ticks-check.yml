@@ -16,20 +16,15 @@
 
 name: portal-ticks-check
 
+# Runs on EVERY push and pull request, with no `paths` filter, because both
+# jobs are REQUIRED STATUS CHECKS on the protected branch. A required check that
+# is path-filtered never reports on a PR that touches none of those paths, and
+# GitHub waits for a report that will never come — the PR sits permanently
+# pending and cannot merge. Running always is the cheaper failure: a bun install
+# and one script, a few seconds.
 on:
-  push:
-    paths:
-      - 'workers/jobs-cron/careerSites.ts'
-      - 'workers/jobs-cron/index.ts'
-      - 'workers/jobs-cron/wrangler.jsonc'
-      - 'scripts/check-portal-ticks.ts'
-      - '.github/workflows/portal-ticks-check.yml'
-  pull_request:
-    paths:
-      - 'workers/jobs-cron/careerSites.ts'
-      - 'workers/jobs-cron/index.ts'
-      - 'workers/jobs-cron/wrangler.jsonc'
-      - 'scripts/check-portal-ticks.ts'
+  push: {}
+  pull_request: {}
   workflow_dispatch: {}
 
 jobs:
