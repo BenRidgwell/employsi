@@ -54,6 +54,19 @@
  *     paging, fields labelled by `<span class="sr-only">`.
  *   - **Scentre's own board** (Scentre Group). A bespoke Rails board; AWS WAF
  *     guards the interactive JS but not the rendered cards.
+ *   - **PageUp Sites** (Qube). A server-rendered Rails board,
+ *     `/jobs/search?page=N`, 30 `<article>` cards a page, whose footer prints
+ *     "Displaying 1 - 30 of 106 in total" — so the walk is bounded by the
+ *     board's own count rather than by a short page.
+ *   - **Cornerstone OnDemand** (Mirvac). The career site is a client app, but
+ *     its shell carries an anonymous bearer in `csod.context.token`; with that,
+ *     `POST https://us.api.csod.com/rec-job-search/external/jobs` returns
+ *     `{data:{totalCount,requisitions[]}}` with structured city/state/country.
+ *   - **SnapHire** (Mercury NZ). Server-rendered `div.jobItem` tiles on one
+ *     page — the board has no paginator because it has never needed one.
+ *   - **JobAdder** (BGC). The site embeds a widget; the widget reads
+ *     `apps.jobadder.com/widgets/V1/Jobs/RenderJobList`, a JSONP endpoint
+ *     returning a chunk of HTML plus a "Page X of N" summary.
  *
  * NOT covered here, and why:
  *   - NAB (careers.nab.com.au, Clinch). Its AWS WAF returns an empty shell to a
@@ -101,7 +114,11 @@ type Platform =
   | "xmlfeed"
   | "ampol"
   | "taleo"
-  | "aurizon";
+  | "aurizon"
+  | "pageupsites"
+  | "cornerstone"
+  | "snaphire"
+  | "jobadder";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -1007,6 +1024,68 @@ export const SITES: SiteDef[] = [
     homeHub: "sydney",
   },
   {
+    id: "sydney-qub",
+    name: "Qube Holdings",
+    sector: "Industrial Manufacturing",
+    platform: "pageupsites",
+    // Server-rendered, so no browser is needed — verified by diffing a plain
+    // GET against a rendered one: the plain HTML carries all 30 cards, the
+    // rendered page carries the same 30 plus a "Featured opportunities" strip
+    // of 3 duplicates. Measured 2026-08-03: "Displaying 1 - 30 of 106 in
+    // total", 4 pages, 106 distinct job URLs collected.
+    endpoint: "https://careers.qube.com.au/jobs/search",
+    origin: "https://careers.qube.com.au",
+    homeHub: "sydney",
+    // 106 at 30 a page is 4; 8 leaves room to double before the bound bites,
+    // and the walk stops on the advertised total long before this anyway.
+    // `pageSize` is deliberately not set: this fetcher never uses one, because
+    // it is bounded by the board's printed total rather than by page arithmetic.
+    maxPages: 8,
+  },
+  {
+    id: "sydney-mgr",
+    name: "Mirvac",
+    sector: "Financial Services",
+    platform: "cornerstone",
+    // careers.mirvac.com is a redirect to the residential site — the actual
+    // board is the Cornerstone tenant, reachable either directly or proxied
+    // under www.mirvac.com/careers/job-search. The csod.com host is used
+    // because the proxy only forwards page routes, not the API. Measured
+    // 2026-08-03: totalCount 33, all Australian, 22 of them Sydney.
+    endpoint: "https://mirvac.csod.com/ux/ats/careersite/1/home?c=mirvac",
+    origin: "https://mirvac.csod.com",
+    homeHub: "sydney",
+  },
+  {
+    id: "nz-mercury-nz",
+    name: "Mercury NZ",
+    sector: "Electricity & Renewables",
+    platform: "snaphire",
+    // The board is one server-rendered page and has no paginator: no
+    // `?wpjb-page`-style knob, no "next", no results count. Measured
+    // 2026-08-03: 9 tiles, all in the central North Island (Rotorua, Taupō,
+    // Waikato, Cambridge, Hamilton) — Mercury's generation assets, not its
+    // Auckland head office, which is why those regions had to be added to
+    // HUB_MATCH for the rows to plot at all.
+    endpoint: "https://careers.mercury.co.nz/home",
+    origin: "https://careers.mercury.co.nz",
+    homeHub: "auckland",
+  },
+  {
+    id: "priv-bgc",
+    name: "BGC",
+    sector: "Construction & building products",
+    platform: "jobadder",
+    // The endpoint is the WIDGET KEY, not a URL: bgc.com.au/current-opportunities
+    // embeds apps.jobadder.com/widgets/v1/jobs.min.js and hands it
+    // `_jaJobsSettings.key`, which is the only place the key appears. Measured
+    // 2026-08-03: 6 roles, all Perth, confirmed complete by the widget's own
+    // pager summary (2 a page → "Page 1 of 3").
+    endpoint: "AU5_doy4r5eqk2wuporei5kef4424i",
+    origin: "https://www.bgc.com.au/current-opportunities/",
+    homeHub: "perth",
+  },
+  {
     // HSBC's portal is global and the roster carries the issuer twice (LSE and
     // HKEX). It is archived once, against the primary listing; the Hong Kong
     // line reads the same rows through COMPANY_ID_ALIAS in openRolesFn, so the
@@ -1096,6 +1175,14 @@ export const PORTAL_GROUPS: string[][] = [
   ["brisbane-azj", "sydney-hub", "gmd", "sydney-cgf"],
   ["perth-ggp", "brisbane-ape", "sydney-tpg", "sydney-lnw"],
   ["sydney-coh", "sydney-yal", "adelaide-cda", "melbourne-amc", "melbourne-jbh"],
+  // Group 27: the four boards whose platforms were reverse-engineered in the
+  // 2026-08-03 batch — Qube (PageUp Sites), Mirvac (Cornerstone), Mercury NZ
+  // (SnapHire) and BGC (JobAdder). Measured 106 / 33 / 9 / 6 = 154 roles across
+  // eleven requests, so they comfortably share one tick. The two boards from
+  // the same batch that a Worker cannot read — Bendigo and Sandfire, both of
+  // which need a browser — are not here; they run as a GitHub Action
+  // (.github/workflows/render-portals.yml).
+  ["sydney-qub", "sydney-mgr", "nz-mercury-nz", "priv-bgc"],
 ];
 
 const UA =
@@ -1156,6 +1243,13 @@ const HUB_MATCH: [string, string | null][] = [
   ["pannawonica", "perth"],
   ["kewdale", "perth"],
   ["western australia", "perth"],
+  // WA is also the US postal code for Washington State, and now that " wa,"
+  // fires at the end of a string as well as mid-string (see hubFor), "Seattle,
+  // WA" reaches it. Seattle is the only city we plot in Washington State, so it
+  // is tested first — the entry further down in the North America block is then
+  // unreachable for this spelling, and deliberately left there so the US list
+  // still reads as a complete list of US hubs.
+  ["seattle", "seattle"],
   [" wa,", "perth"],
   ["perth", "perth"],
   ["brisbane", "brisbane"],
@@ -1214,6 +1308,35 @@ const HUB_MATCH: [string, string | null][] = [
   ["auckland", "auckland"],
   ["wellington", "wellington"],
   ["christchurch", "wellington"], // no Christchurch hub; Wellington is nearest
+  // Central North Island. Mercury's nine roles are all here and none are in
+  // Auckland — its generation assets sit on the Waikato river and the Taupō
+  // geothermal field — so without these the whole feed resolved to no hub.
+  // Auckland is the nearest plotted hub for every one of them, the same
+  // nearest-hub reading as christchurch → wellington above.
+  //
+  // A bare "hamilton" is deliberately NOT one of them. Checked against the
+  // 10,354 distinct locations already in the archive: of the 25 that contain
+  // it, only four are the New Zealand city, and the rest are Hamilton in NSW,
+  // QLD, VIC, Ohio, New Jersey, Manhattan and Hamilton Hill in Perth. Every
+  // genuine NZ one but Qube's already says "NZ", "New Zealand" or "Waikato",
+  // so the region needles below cover them and the ambiguous name is left out.
+  // Qube's one bare "Hamilton" stays unplaced, which is the right answer: the
+  // card does not say which Hamilton it means.
+  //
+  // These sit AFTER every Australian needle on purpose. Bendigo advertises a
+  // "Hamilton, VIC, AUS" branch role and Qube a "Portland VIC" one; both match
+  // [" vic,"] earlier and land on Melbourne. Reordering this block above the
+  // Australian entries would move them to Auckland.
+  ["waikato", "auckland"],
+  ["rotorua", "auckland"],
+  ["taupō", "auckland"],
+  ["taupo", "auckland"],
+  ["tauranga", "auckland"],
+  ["new plymouth", "auckland"],
+  // Mercury writes its Karāpiro/Arapuni hydro roles as "Cambridge, Hamilton".
+  // The pairing is unambiguous — Cambridge NZ is 20 km from Hamilton NZ — where
+  // either name alone is not.
+  ["cambridge, hamilton", "auckland"],
   // Asia-Pacific
   ["singapore", "singapore"],
   ["hong kong", "hongkong"],
@@ -1271,7 +1394,18 @@ const HUB_MATCH: [string, string | null][] = [
  * a fact the source never carried.
  */
 function hubFor(loc: string, home: string | null, homeCountry: RegExp): string | null {
-  const l = (loc || "").toLowerCase();
+  // A trailing comma is appended before matching so that the three needles that
+  // END in one — " wa,", " nt,", " vic," — also fire when the abbreviation is
+  // the last thing in the string. Those three are written with the comma on
+  // purpose, because the bare forms are substrings of ordinary words
+  // (" wa" is in " waikato" and " warsaw", " nt" in " ntaria", " vic" in
+  // " vicenza"), and without this a state that is merely last went unplaced:
+  // Qube's "Broome, WA", "Albany, WA" and "North Fremantle, WA" all resolved to
+  // no hub while "Gladstone, QLD, Australia" resolved fine.
+  //
+  // Appending can only ever ADD matches, never remove one, since every needle
+  // is tested with includes() against a string that now merely ends differently.
+  const l = (loc || "").toLowerCase() + ",";
   for (const [needle, hub] of HUB_MATCH) if (l.includes(needle)) return hub;
   if (!l.trim() || homeCountry.test(l)) return home;
   return null;
@@ -1302,6 +1436,11 @@ const HOME_COUNTRY: Record<string, RegExp> = {
   sydney: /australia/,
   brisbane: /australia/,
   canberra: /australia/,
+  // The NZ-homed sites had no entry here, so an NZ role in a town HUB_MATCH
+  // does not name fell through to null instead of the employer's own hub —
+  // the same fallback every Australian site has always had.
+  auckland: /new zealand|\bnz\b/,
+  wellington: /new zealand|\bnz\b/,
   london: /united kingdom|england|\buk\b/,
   hongkong: /hong kong|china/,
 };
@@ -2688,6 +2827,309 @@ async function fetchAurizon(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── PageUp Sites (Qube) ──────────────────────────────────────────────────────
+/**
+ * A card's fields are labelled by class, not by position:
+ *
+ *   <li class="… job-component-location"><i …/><span …> Tauranga </span></li>
+ *   <li class="… job-component-category"><i …/><span …> Mechanical … </span></li>
+ *   <li class="… job-component-employment-type">…<span …> Full time </span></li>
+ *   <li class="… job-component-opening-on">…<span …> Opening on: Jul 31 2026 </span></li>
+ *
+ * so each is read by its own class rather than by index — verified across all
+ * four pages, where cards carry between two and four of these.
+ *
+ * THE CARD'S LOCATION IS THE CITY ONLY, and for the New Zealand roles that
+ * means no country ("Tauranga", "Auckland", "Hamilton"). The job URL's slug is
+ * `<title-slug>-<location-slug>` and does carry it, but it is not usable as the
+ * location: measured over the 106, the tail also carries raw UUIDs
+ * ("…-0f8d4208-21b0-40c0-8040-48373b06264f") and concatenated multi-site lists
+ * ("…-melbourne-vic-perth-sydney-nsw-brisbane-qld-adelaide-sa"). The card text
+ * is the clean field, so it is what gets stored, and the NZ city names were
+ * added to HUB_MATCH instead.
+ */
+async function fetchPageUpSites(site: SiteDef): Promise<PortalJob[]> {
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  let advertised = 0;
+  for (let page = 1; page <= max; page++) {
+    const html = await getText(`${site.endpoint}?page=${page}`);
+    if (!html) break;
+    if (!advertised) {
+      const t = html.match(/of\s*<b>\s*([\d,]+)\s*<\/b>\s*in total/i);
+      if (t) advertised = Number(t[1].replace(/,/g, ""));
+    }
+    // "Featured opportunities" above the results is a `div.job` strip of roles
+    // already in the list below; only <article> cards are the result set, so
+    // splitting on <article> both parses the list and skips the duplicates.
+    const cards = html.split(/<article\b/i).slice(1);
+    if (!cards.length) break;
+    let added = 0;
+    for (const card of cards) {
+      const a = card.match(
+        /job-search-results-card-title">\s*<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i,
+      );
+      if (!a) continue;
+      const url = clean(a[1]);
+      if (seen.has(url)) continue;
+      const title = clean(a[2]);
+      if (!title) continue;
+      seen.add(url);
+      added++;
+      const field = (name: string): string => {
+        const m = card.match(
+          new RegExp(`job-component-${name}"[\\s\\S]*?<span[^>]*>([\\s\\S]*?)<\\/span>`, "i"),
+        );
+        return m ? clean(m[1]) : "";
+      };
+      const cat = [field("category"), field("employment-type")].filter(Boolean).join(" — ");
+      const opening = field("opening-on").replace(/^Opening on:\s*/i, "");
+      out.push(job(site, title, field("location"), url, opening ? isoDay(opening) : "", cat));
+    }
+    // Bounded by the board's own count rather than by a short page: a fetch
+    // failure also returns zero rows, and stopping on that would be
+    // indistinguishable from reaching the end.
+    if (!added) break;
+    if (advertised && out.length >= advertised) break;
+  }
+  return out;
+}
+
+// ── Cornerstone OnDemand (Mirvac) ────────────────────────────────────────────
+interface CsodJob {
+  requisitionId: number;
+  displayJobTitle?: string;
+  postingEffectiveDate?: string;
+  locations?: { city?: string; state?: string; country?: string }[];
+}
+
+/**
+ * Two steps. The career site is a client app that serves a 5 KB shell, but the
+ * shell embeds an anonymous bearer good for about a day, and the API it unlocks
+ * returns everything in one structured call.
+ *
+ * The token is pulled with a field-level regex rather than by JSON.parse-ing
+ * the whole `csod.context={…}` blob: the blob is one 2 KB line whose only
+ * reliable terminator is the trailing semicolon, and a tenant that ever puts a
+ * semicolon in a string would turn a parse of it into a hard failure.
+ *
+ * `Bearer ` is REQUIRED and was the whole difficulty here — the raw token, and
+ * the `csod-accessToken` header the older player used, both return
+ * "CSOD Unauthorized Exception:Check your credentials." against the same body.
+ * The endpoint is on the shared cloud host (us.api.csod.com), not the tenant
+ * host: the tenant host answers 404 for it.
+ */
+async function fetchCornerstone(site: SiteDef): Promise<PortalJob[]> {
+  const shell = await getText(site.endpoint);
+  if (!shell) return [];
+  const token = shell.match(/"token"\s*:\s*"([^"]+)"/)?.[1];
+  const cloud = shell.match(/"cloud"\s*:\s*"([^"]+)"/)?.[1];
+  if (!token || !cloud) return [];
+  const corp = shell.match(/"corp"\s*:\s*"([^"]+)"/)?.[1] ?? "";
+  const cultureId = Number(shell.match(/"cultureID"\s*:\s*(\d+)/)?.[1] ?? 1);
+  const cultureName = shell.match(/"cultureName"\s*:\s*"([^"]+)"/)?.[1] ?? "en-US";
+  // The career site id is in csodPlayerRouteInfo, not csod.context, and it is a
+  // string there ("cid": "1"). It is also the careerSitePageId — the request
+  // builder in the player passes the same value for both.
+  const siteId = Number(shell.match(/"cid"\s*:\s*"?(\d+)"?/)?.[1] ?? 1);
+
+  const out: PortalJob[] = [];
+  const size = 50;
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  let total = 0;
+  for (let page = 1; page <= max; page++) {
+    const res = await getJson<{ data?: { totalCount?: number; requisitions?: CsodJob[] } }>(
+      `${cloud}rec-job-search/external/jobs`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          careerSiteId: siteId,
+          careerSitePageId: siteId,
+          pageNumber: page,
+          pageSize: size,
+          cultureId,
+          cultureName,
+          searchText: "",
+          states: [],
+          countryCodes: [],
+          cities: [],
+          placeID: "",
+          radius: 0,
+          postingsWithinDays: null,
+          customFieldCheckboxKeys: [],
+          customFieldDropdowns: [],
+          customFieldRadios: [],
+        }),
+      },
+    );
+    const rows = res?.data?.requisitions ?? [];
+    if (!rows.length) break;
+    total = res?.data?.totalCount ?? total;
+    for (const r of rows) {
+      const title = clean(r.displayJobTitle ?? "");
+      if (!title) continue;
+      const l = r.locations?.[0];
+      // The tenant writes the state two ways in the same response — "AU-NSW"
+      // on most rows and "NSW" on a few — so the ISO country prefix is
+      // stripped rather than the string being trusted as-is.
+      const loc = [l?.city, l?.state?.replace(/^[A-Z]{2}-/, ""), l?.country]
+        .filter(Boolean)
+        .join(", ");
+      out.push(
+        job(
+          site,
+          title,
+          loc,
+          `${site.origin}/ux/ats/careersite/${siteId}/home/requisition/${r.requisitionId}?c=${corp}`,
+          // dd/MM/yyyy — Date.parse would read it as the US ordering, so it is
+          // reordered before isoDay rather than handed over raw.
+          isoDay((r.postingEffectiveDate ?? "").replace(/^(\d{2})\/(\d{2})\/(\d{4})$/, "$3-$2-$1")),
+          "Career portal",
+        ),
+      );
+    }
+    if (out.length >= total) break;
+  }
+  return out;
+}
+
+// ── SnapHire (Mercury NZ) ────────────────────────────────────────────────────
+async function fetchSnapHire(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const item of html.split(/<div class="jobItem">/i).slice(1)) {
+    const a = item.match(/<a href="(\/jobdetails\/[^"]+)"[^>]*>\s*<span>([\s\S]*?)<\/span>/i);
+    if (!a) continue;
+    const href = clean(a[1]);
+    if (seen.has(href)) continue;
+    const title = clean(a[2]);
+    if (!title) continue;
+    seen.add(href);
+    // The location sits in the title line as `<span class="loc first"><strong>`,
+    // and the tile joins its metadata with " // " separators, which are layout
+    // and not part of any field.
+    const trim = (s: string): string =>
+      clean(s)
+        .replace(/\s*\/+\s*$/, "")
+        .trim();
+    const loc = item.match(/<span class="loc[^"]*"><strong>([\s\S]*?)<\/strong>/i);
+    const posted = item.match(/POSTED:<\/strong>([^<]*)</i);
+    const cat = item.match(/EXPERTISE:<\/strong>([^<]*)</i);
+    out.push(
+      job(
+        site,
+        title,
+        loc ? trim(loc[1]) : "",
+        `${site.origin}${href}`,
+        posted ? isoDay(trim(posted[1])) : "",
+        cat ? trim(cat[1]) : "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── JobAdder widget (BGC) ────────────────────────────────────────────────────
+/**
+ * `site.endpoint` is the widget key. The endpoint answers JSONP — a callback
+ * wrapping a JSON *string* whose contents are the rendered list markup — so the
+ * body is unwrapped, JSON-parsed once to get the HTML, then parsed as HTML.
+ *
+ * `pageNumber` is the paging parameter: `page` and `pageIndex` are both
+ * accepted and both silently ignored, which is the kind of knob that looks like
+ * it works because page 1 is a valid answer. Verified by asking for
+ * jobsPerPage=2 and checking the job ids actually changed.
+ */
+interface JobAdderRow {
+  id: string;
+  title: string;
+  lis: string[];
+  posted: string;
+}
+
+const JA_WORKTYPE = /permanent|contract|casual|temporary|full[ -]time|part[ -]time|fixed[ -]term/i;
+// The location cell is the one that ends in an Australian state or territory
+// abbreviation — "CBD, Inner & Western Suburbs, Perth WA". Nothing else in the
+// classification list does, and the cells are NOT in a fixed order across
+// tenants, so this is a content test rather than an index.
+const JA_LOCATION = /\b(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\b\s*$/;
+
+function parseJobAdderRows(markup: string): JobAdderRow[] {
+  const rows: JobAdderRow[] = [];
+  for (const block of markup.split(/<div class="job(?: alt)?">/i).slice(1)) {
+    const a = block.match(/data-job-id="(\d+)"[^>]*>([\s\S]*?)<\/a>/i);
+    if (!a) continue;
+    const title = clean(a[2]);
+    if (!title) continue;
+    const lis = [...block.matchAll(/<li data-id="\d+">([\s\S]*?)<\/li>/gi)]
+      .map((m) => clean(m[1]))
+      .filter(Boolean);
+    const d = block.match(/date-posted">\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
+    rows.push({
+      id: a[1],
+      title,
+      lis,
+      // d/M/yyyy on this widget.
+      posted: d ? `${d[3]}-${d[2].padStart(2, "0")}-${d[1].padStart(2, "0")}` : "",
+    });
+  }
+  return rows;
+}
+
+async function fetchJobAdder(site: SiteDef): Promise<PortalJob[]> {
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  let pages = 1;
+  for (let page = 1; page <= Math.min(pages, max); page++) {
+    const body = await getText(
+      "https://apps.jobadder.com/widgets/V1/Jobs/RenderJobList" +
+        `?key=${encodeURIComponent(site.endpoint)}&jobsPerPage=100&pageNumber=${page}` +
+        "&showDatePosted=true&showClassifications=true&alwaysShowPager=true" +
+        "&showPagerSummary=true&callback=cb",
+    );
+    if (!body) break;
+    const open = body.indexOf("(");
+    const close = body.lastIndexOf(")");
+    if (open < 0 || close <= open) break;
+    let markup = "";
+    try {
+      markup = JSON.parse(body.slice(open + 1, close)) as string;
+    } catch {
+      break;
+    }
+    const summary = markup.match(/Page\s+(\d+)\s+of\s+(\d+)/i);
+    if (summary) pages = Number(summary[2]);
+    const rows = parseJobAdderRows(markup);
+    if (!rows.length) break;
+    for (const r of rows) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      const loc = r.lis.find((x) => JA_LOCATION.test(x)) ?? "";
+      const cat = r.lis.filter((x) => x !== loc && !JA_WORKTYPE.test(x));
+      const work = r.lis.find((x) => JA_WORKTYPE.test(x));
+      out.push(
+        job(
+          site,
+          r.title,
+          loc,
+          // The widget's own deep link — the anchors are href="#" and the list
+          // is drawn client-side, so ?ja-job=<id> (what the widget pushes onto
+          // history) is the only address a reader can open.
+          `${site.origin}?ja-job=${r.id}`,
+          r.posted,
+          [cat.join(", "), work].filter(Boolean).join(" — ") || "Career portal",
+        ),
+      );
+    }
+  }
+  return out;
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   successfactors: fetchSuccessFactors,
   workday: fetchWorkday,
@@ -2710,6 +3152,10 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   ampol: fetchAmpol,
   taleo: fetchTaleo,
   aurizon: fetchAurizon,
+  pageupsites: fetchPageUpSites,
+  cornerstone: fetchCornerstone,
+  snaphire: fetchSnapHire,
+  jobadder: fetchJobAdder,
 };
 
 export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
@@ -2739,6 +3185,10 @@ const SOURCE_TAG: Record<Platform, string> = {
   ampol: "ale",
   taleo: "tl",
   aurizon: "azj",
+  pageupsites: "pu",
+  cornerstone: "csod",
+  snaphire: "snap",
+  jobadder: "ja",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */

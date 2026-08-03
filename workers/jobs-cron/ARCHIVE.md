@@ -207,6 +207,91 @@ python3 scripts/wayback-to-d1.py --app-id bhp --max-fetches 600 --via-oxylabs \
 
 ---
 
+# Six career boards added 2026-08-03 (Qube, Mirvac, Mercury NZ, BGC, Bendigo, Sandfire)
+
+Six employer boards were wired up in one batch. They split two ways, and **the
+split is the interesting part**: four turned out to be readable by a plain HTTP
+request and belong in the Worker, and only two genuinely need a browser. The
+rule that decided each one was: *fetch it unrendered first, and only reach for
+Oxylabs when the unrendered body is provably missing the rows.*
+
+## In the Worker (`careerSites.ts`, PORTAL_GROUPS group 27, tick `5 9 * * *`)
+
+| Company | Platform | Measured 2026-08-03 |
+|---|---|---|
+| Qube Holdings | PageUp Sites | 106 of 106 advertised, 4 pages |
+| Mirvac | Cornerstone OnDemand | 33 of 33 |
+| Mercury NZ | SnapHire | 9, single page |
+| BGC | JobAdder widget | 6, confirmed by the widget's own pager |
+
+Three were only reachable after finding the right entry point, and each looked
+like an empty board until then:
+
+- **Qube.** The *rendered* page shows 30 jobs and the *unrendered* one shows all
+  106 — rendering was actively worse, because the client-side script trims the
+  list. The footer prints "Displaying 1 - 30 of **106** in total", so the walk is
+  bounded by the board's own count rather than by a short page.
+- **Mirvac.** `careers.mirvac.com` redirects to the residential sales site; the
+  board is a Cornerstone tenant. Its 5 KB shell carries an anonymous bearer in
+  `csod.context.token`, and with `Authorization: Bearer …` (the bare token and
+  `csod-accessToken` both 401) `us.api.csod.com/rec-job-search/external/jobs`
+  returns every role with structured city/state/country.
+- **BGC.** The page embeds a JobAdder widget; the key is only in
+  `_jaJobsSettings`, and the endpoint is JSONP. `pageNumber` is the paging
+  parameter — `page` and `pageIndex` are accepted and silently ignored, which is
+  the kind of knob that looks like it works because page 1 is a valid answer.
+
+## Off-Worker, rendered (`.github/workflows/render-portals.yml`)
+
+- **Bendigo & Adelaide Bank** — SuccessFactors, but the UI5/React "NES" theme,
+  which server-renders nothing (138 KB of chrome, zero `/job/` links). 81
+  advertised. `startrow` is accepted and ignored, so the paginator is
+  click-only, exactly like Stockland's in a different theme.
+- **Sandfire Resources** — the OLD SuccessFactors RCM portal on the EU
+  datacentre, tenant `minasdeagu` (MATSA). The URL sandfire.com.au links to
+  renders a permanent "Loading…"; the list lives at
+  `career_ns=job_listing_summary`, and `rcm_site_locale=en_GB` has to be pinned
+  or the tenant answers in Spanish. 5 of 5 advertised.
+
+**Sandfire publishes no location, and nothing is invented to fill the gap.**
+Every row's note line ends in an empty span and the detail page has no location
+field either — "Perth" appears there only inside the company blurb. So
+`location` is written empty, the hub falls back to the company's own city, and
+the only rows that get a real location are the ones whose *title* names a
+Sandfire project site ("… - Kalkaroo" → Kalkaroo, South Australia → Adelaide).
+
+**Sandfire's Spanish board does not exist**, which was checked rather than
+assumed. `empleo.sandfirematsa.es` is an Instapage landing page carrying two
+TalentClue links, neither of which is a vacancy — one is a "Conoce nuestras
+ofertas" button and the other an internships procedure — and the TalentClue
+tenant behind them 404s every list path. Nothing is written for Spain.
+
+## The hub-matching fix these boards forced
+
+Qube advertises in Broome, Albany, Rockingham and North Fremantle, all written
+`"<town>, WA"` with nothing after the state. `HUB_MATCH` deliberately spells the
+Australian state codes with a trailing comma (`" wa,"`, `" nt,"`, `" vic,"`)
+because the bare forms are substrings of ordinary words — `" wa"` is inside
+`" waikato"` and `" warsaw"` — so a state that merely came *last* never matched
+and the role went unplaced. `hubFor` now appends a comma before testing, which
+can only ever add matches.
+
+Diffed against the 10,354 distinct locations already in the archive: **414
+changed, all of them fixes** — 226 Victorian, 162 Western Australian and 10
+Northern Territory locations that had no hub now have one, plus "Portland VIC"
+which had been resolving to Portland, Oregon. The one regression this exposed,
+`"Seattle, WA"` landing on Perth, is why `["seattle", "seattle"]` is now tested
+ahead of the WA block.
+
+New Zealand needed the same treatment: Mercury's nine roles are all in the
+central North Island, so `waikato`, `rotorua`, `taupō`, `tauranga` and
+`new plymouth` map to Auckland as the nearest plotted hub. A bare `hamilton`
+deliberately does **not** — of the 25 archived locations containing it, only
+four are the New Zealand city and the rest are Hamilton in NSW, QLD, VIC, Ohio,
+New Jersey, Manhattan and Hamilton Hill in Perth.
+
+---
+
 # Historical job archive (Cloudflare D1)
 
 Every listing pulled from **Adzuna, The Muse, Jooble, SEEK and Indeed** — the

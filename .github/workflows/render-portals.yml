@@ -1,0 +1,88 @@
+# Daily Bendigo + Sandfire careers boards → D1 archive, via Oxylabs.
+#
+# Both are employer portals the jobs-cron Worker cannot run, for the same
+# reason: they server-render no job rows at all and draw their lists client-side
+# after load, so they need a real browser and a Cloudflare Worker cannot render
+# a page. They are two different SuccessFactors themes, which is why each needs
+# its own parser rather than the Worker's `fetchSuccessFactors`:
+#
+#   Bendigo & Adelaide Bank (careers.bendigobank.com.au) runs the newer UI5/
+#   React "NES" theme. Unrendered it serves 138 KB of chrome and zero job
+#   links; rendered it serves 81. Its paginator is click-only — `startrow` is
+#   accepted and ignored — so the script clicks "next page" N-1 times.
+#
+#   Sandfire Resources (career55.sapsf.eu, tenant `minasdeagu`) runs the OLD
+#   RCM career portal, which fetches over DWR. The page sandfire.com.au links
+#   to renders a permanent "Loading…"; the job list is a different
+#   `career_ns`, and the locale has to be pinned or the tenant answers in
+#   Spanish.
+#
+# Rows land as `portal-sf` against `melbourne-ben` and `sfr`, through the same
+# key and upsert as every other portal, so a role already held from Adzuna,
+# SEEK or Jora refreshes rather than duplicating.
+#
+# Each script exits non-zero when it parses nothing, so a render that never
+# settles or a theme change fails the run loudly rather than leaving a card
+# reading zero. The two steps are independent: Bendigo failing must not stop
+# Sandfire writing, so the second step runs even if the first fails, and the
+# job's own status still reflects either failing.
+#
+# Required repo secrets:
+#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
+#   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
+# Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# Use "Run workflow" to verify before relying on the schedule.
+
+name: render-portals
+
+on:
+  schedule:
+    # 09:20 UTC daily — after the Worker's last portal tick (09:05), so the two
+    # systems are not writing the same table at the same minute.
+    - cron: '20 9 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: render-portals
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    # Bendigo's walk is quadratic in clicks — nine pages is 36 — and each page
+    # is a full browser render, so this needs more headroom than the other
+    # portal workflows.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # bun runs scripts/map-skills.ts, so these roles carry exactly the skills
+      # the same title would get from any other source.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Scrape Bendigo & Adelaide Bank careers → D1 (Oxylabs, rendered)
+        env:
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/bendigo-to-d1.py
+
+      - name: Scrape Sandfire Resources careers → D1 (Oxylabs, rendered)
+        # Runs even if Bendigo failed — they are unrelated boards on unrelated
+        # tenants, and one being blocked is no reason to skip archiving the
+        # other.
+        if: always()
+        env:
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/sandfire-to-d1.py

@@ -1089,6 +1089,11 @@ const PORTAL_TICKS: Record<string, number> = {
   "35 8 * * *": 24,
   "45 8 * * *": 25,
   "55 8 * * *": 26,
+  // Group 27 — Qube, Mirvac, Mercury NZ, BGC. 09:05 rather than another minute
+  // in the 08 hour because the 08 hour is now full: 5, 15, 35, 45 and 55 are
+  // all taken, and a duplicate key here is silent (the later one just wins)
+  // while a duplicate in `crons` is rejected by Cloudflare at deploy.
+  "5 9 * * *": 27,
 };
 
 const NEWS_TICKS: Record<string, number> = {

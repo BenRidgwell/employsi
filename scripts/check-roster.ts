@@ -29,6 +29,25 @@ import { CITY_COMPANIES } from "../src/employsi/data/mapboxGeo";
 import { SEEK_ADVERTISERS } from "../src/employsi/data/seekAdvertisers";
 import { SITES as CAREER_SITES } from "../workers/jobs-cron/careerSites";
 
+/**
+ * Companies whose dedicated feed is a GitHub Action rather than a Worker
+ * fetcher, because their board needs a browser or a residential exit and so
+ * cannot live in `careerSites.ts`. Without this list they read as "no dedicated
+ * feed" here while in fact being scraped daily — a warning that is wrong is
+ * worse than no warning, because it trains the reader to skim the list.
+ *
+ * Keep it in step with .github/workflows/*: one entry per company id that a
+ * `scripts/*-to-d1.py` scraper writes rows for.
+ */
+const SCRIPT_FED: string[] = [
+  "melbourne-nab", // nab-portal.yml
+  "sydney-sgp", // browser-portals.yml — Stockland
+  "nz-auckland-international-airport", // browser-portals.yml
+  "brisbane-tne", // browser-portals.yml — TechnologyOne
+  "melbourne-ben", // render-portals.yml — Bendigo & Adelaide Bank
+  "sfr", // render-portals.yml — Sandfire Resources
+];
+
 interface Finding {
   level: "error" | "warn";
   kind: string;
@@ -104,7 +123,11 @@ for (const id of Object.keys(SEEK_ADVERTISERS)) {
 // that is a legitimate state. It is reported so the list is a deliberate one
 // rather than an accident nobody has looked at.
 {
-  const fed = new Set<string>([...CAREER_SITES.map((s) => s.id), ...Object.keys(SEEK_ADVERTISERS)]);
+  const fed = new Set<string>([
+    ...CAREER_SITES.map((s) => s.id),
+    ...Object.keys(SEEK_ADVERTISERS),
+    ...SCRIPT_FED,
+  ]);
   const without = COMPANIES.filter((c) => !fed.has(c.id));
   if (without.length) {
     warn(
