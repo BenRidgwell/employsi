@@ -3,6 +3,11 @@
 Recover a dead career site's job advertisements from the Internet Archive and
 archive them to the D1 jobs table, deduplicated against everything already there.
 
+One tool, several dead sites: --app-id selects a profile from SITES below and is
+also the roster company id the rows are archived against. Today that is `bhp`
+(three retired BHP hostnames, 2003-2018) and `rio` (Rio Tinto's two regional job
+sites, 2011-2014).
+
 WHY THIS EXISTS
 Every live source in this repo answers "what is advertised today". TheirStack
 sells some of the back catalogue but charges per result and its free tier runs
@@ -28,18 +33,22 @@ markup the parsers below match on.
     purely how we reach the host from here. From a GitHub Action, drop
     --via-oxylabs and it will fetch directly.
 
-LISTING PAGES, NOT DETAIL PAGES
-A jobDetails page costs one fetch and yields one advertisement. A search-results
-page costs one fetch and yields twenty, with the title, the employer's own
-requisition reference, the location and the closing date already laid out in a
-table — everything the archive stores. There are ~36,000 result-page captures
-across the three hosts against ~21,000 detail captures, so listings are both
-richer and cheaper and this reads only those. Detail pages carry two extra
-fields (CSG/business unit, and an explicit "Advertised:" date in the later
-platform); they are left for a follow-up rather than paid for at 1/20th the
-yield.
+LISTING PAGES WHERE THERE ARE ANY, DETAIL PAGES WHERE THERE ARE NOT
+For BHP a jobDetails page costs one fetch and yields one advertisement, while a
+search-results page costs one fetch and yields twenty with the title, the
+requisition reference, the location and the closing date already in a table.
+There are ~36,000 result-page captures across those three hosts against ~21,000
+detail captures, so listings are both richer and cheaper and BHP reads only
+those.
 
-THREE LAYOUTS, ALL MEASURED AGAINST REAL CAPTURES
+Rio Tinto had no such choice. Its /browse/search pages are an 18 KB shell that
+loaded results over AJAX, and the Wayback Machine has no XHR responses to
+replay — measured, a 2012 capture of jobs.riotinto.com.au/browse/search carries
+zero job links. Its advertisements survive only as /browse/jobs/<slug> detail
+pages, one per fetch, which is affordable only because there are 539 of them.
+That is what `per_page` in the profile selects.
+
+FOUR LAYOUTS, ALL MEASURED AGAINST REAL CAPTURES
 The parsers below are written against captures I actually fetched and read, and
 each is commented with the capture it was verified on. The hosts changed
 platform twice:
@@ -53,6 +62,14 @@ platform twice:
                      with a nested span.job-externalJobNo, span.location, and
                      <time datetime="..."> for the opening and closing dates.
                      Verified: 20160105021231 jobs.bhpbilliton.com/cw/en/listing/
+  riotinto 2011-2014 One advertisement per page: the last <h1> is the title, and
+                     the place is either the hidden city_name/state_name pair
+                     (2012+) or li.timezone (2011, which has no hidden inputs).
+                     See parse_riotinto for what keying on the hidden input cost.
+                     Verified: 20111020034236 jobs.riotinto.ca/browse/jobs/
+                               planner-condition-monitoring-LAB000M8
+                               20120726025620 jobs.riotinto.com.au/browse/jobs/
+                               aboriginal-employment-opportunities-2012-PIL0076F
 
 DATES, AND WHAT WE REFUSE TO INVENT
 first_seen and last_seen are the FIRST and LAST capture the advertisement was
@@ -80,8 +97,10 @@ and nothing else. Sampling by month buys coverage of the span instead.
 Run:
   OXYLABS_USERNAME=… OXYLABS_PASSWORD=… CLOUDFLARE_API_TOKEN=… \
   python3 scripts/wayback-to-d1.py --app-id bhp --max-fetches 400 --via-oxylabs
+  python3 scripts/wayback-to-d1.py --app-id rio --max-fetches 600 --via-oxylabs
 Options:
-  --hosts a,b,c     override the default three BHP hostnames
+  --app-id bhp|rio  which dead site to recover (also the roster company id)
+  --hosts a,b,c     override the profile's hostnames
   --from/--to YYYY  bound the capture window
   --dry-run         parse and report, write nothing
   --cache DIR       reuse fetched captures between runs (default: none)
@@ -113,35 +132,62 @@ SOURCE = 'wayback'
 CDX = 'https://web.archive.org/cdx/search/cdx'
 WB = 'https://web.archive.org/web'
 
-# The three hostnames BHP recruited through, in the order they were used. All
-# three are dead; the company's board is now a PageUp tenant on bhp.com.
-DEFAULT_HOSTS = ['jobs.bhpbilliton.com', 'jobs.bhpbilliton.net', 'careers.bmacoal.com']
-
-# Which host was whose advertisement. careers.bmacoal.com is BHP Billiton
-# Mitsubishi Alliance, a 50/50 joint venture — its ads are BMA's, not BHP's, and
-# they are labelled as such rather than being quietly filed under the parent.
-# BHP's own board cross-listed some of them ("This job is advertised by BMA
-# coal", seen in capture 20050103030913), which is precisely why the advertiser
-# name has to come from somewhere other than the host it was read from.
-HOST_EMPLOYER = {
-    'careers.bmacoal.com': 'BHP Billiton Mitsubishi Alliance',
+# ── site profiles ────────────────────────────────────────────────────────────
+# One Wayback recovery tool, several dead career sites. Everything that differs
+# between them lives here; --app-id selects a profile and is also the roster
+# company id the rows are archived against.
+#
+# `per_page` is the important axis. BHP's platforms server-rendered a results
+# TABLE, so one fetch buys twenty advertisements and the walk reads listings.
+# Rio Tinto's did not: its /browse/search pages are an 18 KB shell that loaded
+# results over AJAX, and the Wayback Machine has no XHR responses to replay —
+# measured, a 2012 capture of jobs.riotinto.com.au/browse/search carries zero
+# job links. Its advertisements survive only as DETAIL pages, one per fetch,
+# which is affordable here only because there are 535 of them rather than BHP's
+# tens of thousands.
+SITES = {
+    'bhp': {
+        # The three hostnames BHP recruited through, in the order they were
+        # used. All three are dead; the board is now a PageUp tenant on bhp.com.
+        'hosts': ['jobs.bhpbilliton.com', 'jobs.bhpbilliton.net', 'careers.bmacoal.com'],
+        'employer': 'BHP Billiton',
+        # Which host was whose advertisement. careers.bmacoal.com is BHP
+        # Billiton Mitsubishi Alliance, a 50/50 joint venture — its ads are
+        # BMA's, not BHP's, and they are labelled as such rather than quietly
+        # filed under the parent. BHP's own board cross-listed some of them
+        # ("This job is advertised by BMA coal", capture 20050103030913), which
+        # is exactly why the advertiser name cannot come from the host.
+        'host_employer': {'careers.bmacoal.com': 'BHP Billiton Mitsubishi Alliance'},
+        'sector': 'Diversified Mining',
+        # Only listing pages. jobdetails/emailjob are one ad per fetch (see the
+        # module docstring); default.asp and jobmail.asp are the search form and
+        # the alert signup and carry no results.
+        'listing': r'/(searchresults|jobsearch)\.asp|/cw/[a-z]{2}/listing',
+        # …but not all listing URLs are equally worth a fetch. jobSearch.asp is
+        # the search FORM on the .com host — it renders the criteria, not the
+        # results, and returns zero rows every time. Measured on the first 168
+        # captures: the 2006-2014 slice came back empty because the sampler had
+        # picked jobSearch.asp for those months, while those same years hold
+        # thousands of searchresults.asp captures that do carry the table. So
+        # captures are ranked and the productive shapes taken first within each
+        # month; the form is kept as a last resort because on bmacoal the same
+        # filename does return results.
+        'productive': r'/searchresults\.asp|/cw/[a-z]{2}/listing',
+        'per_page': 'many',
+    },
+    'rio': {
+        # Rio Tinto ran two regional job sites on the same platform and retired
+        # both; recruitment moved to a single global Workday tenant. The archive
+        # holds 2011-2014 for Canada and 2012 for Australia.
+        'hosts': ['jobs.riotinto.ca', 'jobs.riotinto.com.au'],
+        'employer': 'Rio Tinto',
+        'host_employer': {},
+        'sector': 'Iron Ore & Metals',
+        'listing': r'/browse/jobs/',
+        'productive': r'/browse/jobs/',
+        'per_page': 'one',
+    },
 }
-DEFAULT_EMPLOYER = 'BHP Billiton'
-
-# Only listing pages. jobdetails/emailjob are one ad per fetch (see the module
-# docstring); default.asp and jobmail.asp are the search form and the alert
-# signup and carry no results.
-LISTING_RE = re.compile(r'/(searchresults|jobsearch)\.asp|/cw/[a-z]{2}/listing', re.I)
-# …but not all listing URLs are equally worth a fetch. jobSearch.asp is the
-# search FORM on the .com host — it renders the criteria, not the results, and
-# returns zero rows every time. Measured on the first 168 captures fetched: the
-# 2006-2014 slice came back with nothing at all because the sampler had picked
-# jobSearch.asp for those months, while those same years hold thousands of
-# searchresults.asp captures that do carry the table. So captures are ranked and
-# the productive shapes are taken first within each month; the form is kept as a
-# last resort because on bmacoal the same filename does return results.
-PRODUCTIVE_RE = re.compile(r'/searchresults\.asp|/cw/[a-z]{2}/listing', re.I)
-
 
 def rank(url: str) -> int:
     return 0 if PRODUCTIVE_RE.search(url) else 1
@@ -154,7 +200,18 @@ def _opt(name, default=None):
 
 
 APP_ID = _opt('--app-id', 'bhp')
-HOSTS = [h.strip() for h in (_opt('--hosts') or ','.join(DEFAULT_HOSTS)).split(',') if h.strip()]
+if APP_ID not in SITES:
+    sys.exit(f'--app-id must be one of {", ".join(sorted(SITES))} (got {APP_ID!r}).')
+SITE = SITES[APP_ID]
+HOSTS = [h.strip() for h in (_opt('--hosts') or ','.join(SITE['hosts'])).split(',') if h.strip()]
+HOST_EMPLOYER = SITE['host_employer']
+DEFAULT_EMPLOYER = SITE['employer']
+LISTING_RE = re.compile(SITE['listing'], re.I)
+PRODUCTIVE_RE = re.compile(SITE['productive'], re.I)
+# One advertisement per capture, so a distinct URL is a distinct ad and only one
+# capture of each needs fetching — the rest of its captures still count towards
+# the span, they just cost nothing.
+ONE_AD_PER_PAGE = SITE['per_page'] == 'one'
 MAX_FETCHES = int(_opt('--max-fetches', 400))
 YEAR_FROM = _opt('--from')
 YEAR_TO = _opt('--to')
@@ -166,7 +223,7 @@ CHUNK = 200          # futures in flight at once — see fetch_all()
 # Passed to the matcher only so INDUSTRY_GATED terms resolve the way they would
 # for this employer ("principal" is a school principal in education and a
 # seniority grade everywhere else). Give it the roster's own sector string.
-SECTOR = _opt('--sector', 'Diversified Mining')
+SECTOR = _opt('--sector') or SITE['sector']
 DRY = '--dry-run' in args
 VIA_OXY = '--via-oxylabs' in args
 
@@ -486,6 +543,89 @@ def parse_modern(h: str) -> list[dict]:
 TOTAL_RE = re.compile(r'of\s*<strong>\s*([\d,]+)\s*</strong>\s*jobs', re.I)
 
 
+# ── Rio Tinto detail pages, 2011-2014 ───────────────────────────────────────
+# Both regional sites ran the same template and both put the facts in the same
+# place, which is what makes one parser enough:
+#
+#   <h1 [class="red-block"]>Title</h1>          — the Canadian site omits the
+#                                                 reference, the Australian one
+#                                                 appends it: "Title - PIL0076F"
+#   <div class="infos">
+#     <input type="hidden" name="city_name"  value="Labrador City">
+#     <input type="hidden" name="state_name" value="Newfoundland and Labrador">
+#     <li class="timezone">Labrador City</li>
+#     <li class="schedule">Full-time</li>
+#
+# Verified against captures 20121127220751 jobs.riotinto.ca/browse/jobs/
+# 2013-graduate-civil-engineer-labrador-city-LAB001C6 and 20120726025620
+# jobs.riotinto.com.au/browse/jobs/aboriginal-employment-opportunities-2012-PIL0076F.
+#
+# THE HIDDEN INPUTS ARE A 2012 ADDITION. The 2011 Canadian template has neither
+# city_name nor state_name and carries the place only in li.timezone, so keying
+# the parse on the hidden input dropped a fifth of the corpus — measured, 104 of
+# 536 captures "held no rows" while their <title> plainly named a real
+# advertisement ("Planner, condition monitoring", capture 20111020034236). The
+# hidden pair is still preferred where it exists because it is the more specific
+# answer (city AND state); li.timezone is the fallback and the only source for
+# 2011.
+# THE TITLE IS THE LAST <h1>, not the first. Both pages open with a site-header
+# <h1> ("Join our team"), so taking the first would have archived every Rio
+# Tinto advertisement under that one title.
+#
+# NEITHER SITE PUBLISHES A POSTING DATE anywhere on the page, so `posted` stays
+# empty and the dates come from the capture timestamps — the same rule the BHP
+# legacy layout follows, and for the same reason: a date we did not read is not
+# a date we may write.
+RT_H1_RE = re.compile(r'<h1[^>]*>(.*?)</h1>', re.S | re.I)
+RT_CITY_RE = re.compile(r'name="city_name"\s+value="([^"]*)"', re.I)
+RT_STATE_RE = re.compile(r'name="state_name"\s+value="([^"]*)"', re.I)
+RT_SCHEDULE_RE = re.compile(r'<li class="schedule"[^>]*>(?:<[^>]+>)?\s*([^<]{2,40})', re.I)
+RT_TIMEZONE_RE = re.compile(r'<li class="timezone"[^>]*>(.*?)</li>', re.S | re.I)
+
+
+# "Technical Officer - PIL0086W". The Australian site appends the requisition
+# reference after a dash rather than in parentheses, so split_ref — which is
+# written for BHP's "Title (REF)" — leaves it in place. A reference is a token
+# with no lowercase letters and at least one digit, which is what tells it apart
+# from an ordinary dash-suffixed title ("Procurement Specialist - Kitimat
+# Modernization" keeps its suffix; "Technical Officer - PIL0086W" loses it).
+RT_REF_TAIL_RE = re.compile(r'^(.*?)\s+[-–]\s+([A-Z][A-Z0-9]{4,})$')
+
+
+def rt_split_ref(title: str) -> str:
+    body, ref = split_ref(title)
+    if ref:
+        return body
+    m = RT_REF_TAIL_RE.match(title)
+    return m.group(1).strip() if m and re.search(r'\d', m.group(2)) else title
+
+
+def parse_riotinto(h: str) -> list[dict]:
+    tz = RT_TIMEZONE_RE.search(h)
+    city = RT_CITY_RE.search(h)
+    if not tz and not city:
+        return []
+    heads = RT_H1_RE.findall(h)
+    title = rt_split_ref(txt(heads[-1])) if heads else ''
+    if not title:
+        return []
+    if city:
+        state = RT_STATE_RE.search(h)
+        loc = ', '.join(dict.fromkeys(
+            x for x in (txt(city.group(1)), txt(state.group(1)) if state else '') if x))
+    else:
+        loc = txt(tz.group(1))
+    if not loc:
+        return []
+    sched = RT_SCHEDULE_RE.search(h)
+    # `closes` stays EMPTY: neither site publishes a closing date. li.schedule
+    # is the work type ("Full-time"), and putting it in the closing-date field
+    # produced rows whose category read "closes Full-time" — a sentence the
+    # archive cannot support. It has its own field instead.
+    return [{'title': title, 'location': loc, 'href': '', 'posted': '',
+             'closes': '', 'worktype': txt(sched.group(1)) if sched else ''}]
+
+
 def parse_page(h: str) -> tuple[list[dict], int | None]:
     """Rows plus the site's own advertised total, when it states one.
 
@@ -494,7 +634,9 @@ def parse_page(h: str) -> tuple[list[dict], int | None]:
     turned the page, so page 1 is usually all there is — recording the total is
     what keeps that visible instead of letting 20 look like the whole board.
     """
-    rows = parse_legacy(h)
+    rows = parse_riotinto(h) if ONE_AD_PER_PAGE else []
+    if not rows:
+        rows = parse_legacy(h)
     if not rows:
         rows = parse_modern(h)
     m = TOTAL_RE.search(h)
@@ -689,6 +831,23 @@ def main() -> int:
         sys.stderr.write('No listing captures found — treating as a failure.\n')
         return 1
 
+    # ONE AD PER CAPTURE: a distinct URL is a distinct advertisement, so only one
+    # capture of each needs fetching. The others are not discarded — their
+    # timestamps still widen that ad's first/last seen span, they just cost
+    # nothing. (On BHP every capture is a different day's whole board, so there
+    # is nothing to collapse and this does not apply.)
+    span: dict[str, tuple[str, str]] = {}
+    if ONE_AD_PER_PAGE:
+        by_url: dict[str, list] = collections.defaultdict(list)
+        for c in caps:
+            by_url[c[1]].append(c)
+        for u, cs in by_url.items():
+            ts = sorted(c[0] for c in cs)
+            span[u] = (cap_day(ts[0]), cap_day(ts[-1]))
+        caps = [sorted(cs)[0] for cs in by_url.values()]
+        sys.stderr.write(f'  {len(caps)} distinct advertisements to fetch '
+                         f'(one capture each)\n')
+
     picked = budget(sorted(caps), MAX_FETCHES)
     months = sorted({c[0][:6] for c in picked})
     sys.stderr.write(f'  fetching {len(picked)} of {len(caps)} listing captures, '
@@ -709,6 +868,9 @@ def main() -> int:
         if not rows:
             stats['pages_no_rows'] += 1
         day = cap_day(ts)
+        # For a detail-page site the ad's real span is every capture of that
+        # URL, not just the one fetched.
+        first_day, last_day = span.get(url, (day, day))
         if advertised is not None:
             totals.append((day, len(rows), advertised))
         employer = HOST_EMPLOYER.get(host, DEFAULT_EMPLOYER)
@@ -717,14 +879,15 @@ def main() -> int:
             key = job_key(SOURCE, r['title'], employer, r['location'], day[:4])
             cur = jobs.get(key)
             if cur:
-                cur['first_seen'] = min(cur['first_seen'], day)
-                cur['last_seen'] = max(cur['last_seen'], day)
+                cur['first_seen'] = min(cur['first_seen'], first_day)
+                cur['last_seen'] = max(cur['last_seen'], last_day)
                 cur['posted'] = cur['posted'] or r['posted']
                 continue
             # An absolute Wayback URL for the ad itself: the original host is
             # dead, so a relative href would resolve to nothing. This one still
             # opens the advertisement as it stood.
-            href = urllib.parse.urljoin(f'http://{host}/', r['href'])
+            # A detail-page parser has no href to give — the capture IS the ad.
+            href = urllib.parse.urljoin(f'http://{host}/', r['href']) if r['href'] else url
             jobs[key] = {
                 'key': key, 'title': r['title'], 'company': employer,
                 'location': r['location'], 'hub': hub_for(r['location']),
@@ -732,8 +895,12 @@ def main() -> int:
                 'posted': r['posted'],
                 # Where it came from and when applications closed, kept together
                 # because neither has a column and both are worth not losing.
-                'category': f'{host}{" · closes " + r["closes"] if r["closes"] else ""}'[:120],
-                'first_seen': day, 'last_seen': day,
+                'category': (
+                    host
+                    + (f' · closes {r["closes"]}' if r['closes'] else '')
+                    + (f' · {r["worktype"]}' if r.get('worktype') else '')
+                )[:120],
+                'first_seen': first_day, 'last_seen': last_day,
             }
         if n % 25 == 0:
             sys.stderr.write(f'  {n}/{len(picked)} captures, {len(jobs)} distinct ads\n')

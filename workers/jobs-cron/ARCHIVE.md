@@ -354,6 +354,55 @@ A **one-off backfill, not a feed.** It reads the Internet Archive's captures of
 career sites that no longer exist and archives the advertisements that ran on
 them. Nothing schedules it and nothing should: the corpus is closed.
 
+One tool, several dead sites: `--app-id` picks a profile from `SITES` and is also
+the roster company id the rows are archived against. Two are configured — `bhp`
+and `rio`.
+
+## Rio Tinto (`--app-id rio`, added 2026-08-03)
+
+Rio Tinto ran two regional job sites on one platform and retired both when
+recruitment moved to a single global Workday tenant. The archive holds
+**jobs.riotinto.ca** (2011–2014) and **jobs.riotinto.com.au** (2012). Recovered:
+**539 distinct advertisements**, spanning 2011-10-29 to 2014-10-30, ~61% placed
+on a hub.
+
+**Detail pages, not listings — the opposite of BHP, and not a choice.** Rio
+Tinto's `/browse/search` pages are an 18 KB shell that loaded results over AJAX,
+and the Wayback Machine has no XHR responses to replay: a 2012 capture of
+`jobs.riotinto.com.au/browse/search` carries **zero** job links. The ads survive
+only as `/browse/jobs/<slug>-<REF>` detail pages, one per fetch. That is
+affordable only because there are 539 of them rather than BHP's tens of
+thousands, and it is what the profile's `per_page` flag selects.
+
+**One fetch per advertisement, not per capture.** For a detail-page site a
+distinct URL *is* a distinct ad, so only one capture of each is fetched — the
+other captures still widen that ad's first/last-seen span, they just cost
+nothing. (On BHP every capture is a different day's whole board, so there is
+nothing to collapse.)
+
+**Keying the parser on the hidden `city_name` input cost a fifth of the corpus.**
+The 2012 template carries `city_name`/`state_name` as hidden inputs; the 2011
+Canadian one does not, and puts the place only in `li.timezone`. Measured before
+the fix: 104 of 536 captures "held no rows" while their `<title>` plainly named a
+real ad ("Planner, condition monitoring", capture 20111020034236). The hidden
+pair is still preferred where it exists — it is the more specific answer, city
+*and* state — with `li.timezone` as the fallback.
+
+Two smaller traps, both measured: the **title is the last `<h1>`**, because both
+templates open with a site-header `<h1>` ("Join our team") and taking the first
+would have filed every Rio Tinto ad under that one title; and the Australian site
+appends the requisition reference after a **dash** rather than in parentheses, so
+`split_ref` (written for BHP's `Title (REF)`) leaves it in place. A reference is
+a token with no lowercase letters and a digit, which keeps "Procurement
+Specialist - Kitimat Modernization" intact while stripping "Technical Officer -
+PIL0086W".
+
+Neither site publishes a posting date anywhere on the page, so `posted` stays
+empty and the dates come from the capture timestamps — the same rule the BHP
+legacy layout follows, for the same reason.
+
+## BHP (`--app-id bhp`)
+
 First run recovered BHP's three retired hostnames:
 
 | host | captures indexed | listing captures | era |
