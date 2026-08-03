@@ -106,6 +106,11 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["WOW", "Woolworths Group", CON],
       ["SCG", "Scentre Group", FIN],
       ["QAN", "Qantas Airways", CON],
+      // Light & Wonder is US-headquartered (Las Vegas) and dual-listed on the
+      // ASX; it sits in Sydney because this roster places a company where it
+      // EMPLOYS, and Sydney is the base for the ANZ workforce its careers board
+      // recruits into — the same rule already applied to ResMed below.
+      ["LNW", "Light & Wonder", TMT],
       // ResMed's global HQ is San Diego and its primary listing is NYSE; it
       // sits in Sydney here because this roster places a company where it
       // EMPLOYS, and its Australian head office (Bella Vista) is the base for

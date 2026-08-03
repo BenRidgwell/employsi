@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getDataQuality } from "../../lib/dataQualityFn";
+import { CardLoader } from "./CardLoader";
 import { getEngagement, type Cohort } from "../../lib/engagementFn";
 import { useAppStore } from "../../state/store";
 
@@ -244,7 +245,12 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
         : { key: k, dir: FIRST_DIR[k] },
     );
 
-  const { data, isPending } = useQuery({
+  // isFetching, not isPending: React Query keeps the archive read for ten
+  // minutes, so a second open in the same session has data already and must NOT
+  // flash a loader over content that is right there. The loader is for the
+  // FIRST open, where there is nothing to show yet — same rule as What's
+  // trending, and the same reason the two use one component.
+  const { data, isPending, isFetching } = useQuery({
     queryKey: ["dataQuality"],
     queryFn: () => getDataQuality(),
     // The archive moves once a day; re-reading it on every open would scan the
@@ -254,7 +260,11 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
     enabled: isAdmin,
   });
 
-  const { data: eng, isPending: engPending } = useQuery({
+  const {
+    data: eng,
+    isPending: engPending,
+    isFetching: engFetching,
+  } = useQuery({
     queryKey: ["engagement", days],
     queryFn: () => getEngagement({ data: { days } }),
     // Events arrive continuously, so this is worth re-reading more often than
@@ -300,6 +310,10 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
 
   const liveTotal = useMemo(() => (data?.feeds ?? []).reduce((a, f) => a + f.live, 0), [data]);
 
+  // Nothing to draw yet on this tab: the white loader covers the wait rather
+  // than showing an empty card that reads as an empty archive.
+  const firstLoad = tab === "data" ? !data && isFetching : !eng && engFetching;
+
   const maxUnmapped = data?.unmapped?.[0]?.n ?? 1;
   const windowLabel = days === 1 ? "24 hours" : `${days} days`;
 
@@ -310,6 +324,7 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
           this rendered underneath the map and the rail. */}
       <div className="panescrim" onClick={onClose} />
       <div className="dqpane" role="dialog" aria-label="Admin console">
+        {firstLoad && <CardLoader />}
         <div className="dqhd">
           <div className="dqhdtext">
             {/* The design's eyebrow carries the read time, because every figure
@@ -362,7 +377,9 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
           <p className="dqmsg">Not permitted.</p>
         ) : tab === "data" ? (
           isPending ? (
-            <p className="dqmsg">Reading the archive…</p>
+            <p className="dqmsg" aria-live="polite">
+              Reading the archive…
+            </p>
           ) : !data?.ok ? (
             <p className="dqmsg">{data?.error || "Couldn't read the archive."}</p>
           ) : (

@@ -678,6 +678,49 @@ export const SITES: SiteDef[] = [
     homeHub: "sydney",
   },
   {
+    id: "sydney-lnw",
+    name: "Light & Wonder",
+    sector: "Technology, Media & Telecom",
+    platform: "workday",
+    // Tenant "lnw" on wd5. Verified: 100 postings on the cxs endpoint.
+    endpoint: "https://lnw.wd5.myworkdayjobs.com/wday/cxs/lnw/LightWonderExternalCareers/jobs",
+    origin: "https://lnw.wd5.myworkdayjobs.com/en-US/LightWonderExternalCareers",
+    homeHub: "sydney",
+  },
+  {
+    id: "sydney-coh",
+    name: "Cochlear",
+    sector: "Healthcare & Life Sciences",
+    platform: "workday",
+    // Tenant "cochlear" on wd3. Verified: 84 postings on the cxs endpoint.
+    endpoint: "https://cochlear.wd3.myworkdayjobs.com/wday/cxs/cochlear/Cochlear_Careers/jobs",
+    origin: "https://cochlear.wd3.myworkdayjobs.com/en-US/Cochlear_Careers",
+    homeHub: "sydney",
+  },
+  {
+    id: "sydney-yal",
+    name: "Yancoal Australia",
+    sector: "Energy & Natural Resources",
+    // The long query string on the careers link is SuccessFactors' own facet
+    // syntax (createNewAlert, optionsFacetsDD_*), so this is the ordinary
+    // branded career site and the existing fetcher reads it. Verified: 18 rows
+    // on page 1 of /search/?q=&startrow=0.
+    platform: "successfactors",
+    endpoint: "https://careers.yancoal.com.au",
+    origin: "https://careers.yancoal.com.au",
+    homeHub: "sydney",
+  },
+  {
+    id: "adelaide-cda",
+    name: "Codan",
+    sector: "Technology, Media & Telecom",
+    platform: "successfactors",
+    // Verified: 20 rows on page 1 of /search/?q=&startrow=0.
+    endpoint: "https://careers.codan.com.au",
+    origin: "https://careers.codan.com.au",
+    homeHub: "adelaide",
+  },
+  {
     id: "melbourne-amc",
     name: "Amcor",
     sector: "Energy & Natural Resources",
