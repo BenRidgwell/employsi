@@ -3,11 +3,7 @@ import { EmploysiLockup } from "@/components/EmploysiLogo";
 import { Ticker } from "@/components/Ticker";
 import { Showcase } from "@/components/Showcase";
 import { ArrowUpRight } from "lucide-react";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import ridgwellPhoto from "@/assets/ridgwell_photo.jpeg.asset.json";
@@ -42,14 +38,15 @@ function AboutPopover() {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      {open && mounted &&
+      {open &&
+        mounted &&
         createPortal(
           <div
             className="fixed inset-0 z-40 bg-black/10 backdrop-blur-sm"
             aria-hidden="true"
             onClick={() => setOpen(false)}
           />,
-          document.body
+          document.body,
         )}
       <PopoverTrigger asChild>
         <button className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-ink-2 cursor-pointer">
@@ -71,13 +68,11 @@ function AboutPopover() {
             />
           </div>
           <div className="space-y-2 text-center">
-            <h2 className="text-lg font-bold tracking-tight text-ink">
-              Hi, I'm Ben
-            </h2>
+            <h2 className="text-lg font-bold tracking-tight text-ink">Hi, I'm Ben</h2>
             <p className="text-[13px] leading-relaxed text-ink-2">
-              I'm a Director at a Big 4 consulting firm. I built Employsi to break down the
-              barriers of HR data visibility — creating transparency for both employees and
-              employers, akin to the way financial data is shared.
+              I'm a Director at a Big 4 consulting firm. I built Employsi to break down the barriers
+              of HR data visibility — creating transparency for both employees and employers, akin
+              to the way financial data is shared.
             </p>
           </div>
         </div>
