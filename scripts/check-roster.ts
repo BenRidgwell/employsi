@@ -44,8 +44,7 @@ const SCRIPT_FED: string[] = [
   "sydney-sgp", // browser-portals.yml — Stockland
   "nz-auckland-international-airport", // browser-portals.yml
   "brisbane-tne", // browser-portals.yml — TechnologyOne
-  "melbourne-ben", // render-portals.yml — Bendigo & Adelaide Bank
-  "sfr", // render-portals.yml — Sandfire Resources
+  "sfr", // sandfire-portal.yml — Sandfire Resources
 ];
 
 interface Finding {

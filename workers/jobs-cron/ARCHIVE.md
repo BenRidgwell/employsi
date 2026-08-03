@@ -210,16 +210,17 @@ python3 scripts/wayback-to-d1.py --app-id bhp --max-fetches 600 --via-oxylabs \
 # Six career boards added 2026-08-03 (Qube, Mirvac, Mercury NZ, BGC, Bendigo, Sandfire)
 
 Six employer boards were wired up in one batch. They split two ways, and **the
-split is the interesting part**: four turned out to be readable by a plain HTTP
-request and belong in the Worker, and only two genuinely need a browser. The
-rule that decided each one was: *fetch it unrendered first, and only reach for
-Oxylabs when the unrendered body is provably missing the rows.*
+split is the interesting part**: five turned out to be readable without a
+browser and belong in the Worker, and only one genuinely needs Oxylabs. The rule
+that decided each one was: *fetch it unrendered first, read the site's own
+bundle for the API it calls, and only reach for a browser when neither works.*
 
 ## In the Worker (`careerSites.ts`, PORTAL_GROUPS group 27, tick `5 9 * * *`)
 
 | Company | Platform | Measured 2026-08-03 |
 |---|---|---|
 | Qube Holdings | PageUp Sites | 106 of 106 advertised, 4 pages |
+| Bendigo & Adelaide Bank | SuccessFactors RMK search service | 81 of 81 |
 | Mirvac | Cornerstone OnDemand | 33 of 33 |
 | Mercury NZ | SnapHire | 9, single page |
 | BGC | JobAdder widget | 6, confirmed by the widget's own pager |
@@ -241,17 +242,36 @@ like an empty board until then:
   parameter — `page` and `pageIndex` are accepted and silently ignored, which is
   the kind of knob that looks like it works because page 1 is a valid answer.
 
-## Off-Worker, rendered (`.github/workflows/render-portals.yml`)
+### Bendigo very nearly became a browser job, and shouldn't have
 
-- **Bendigo & Adelaide Bank** — SuccessFactors, but the UI5/React "NES" theme,
-  which server-renders nothing (138 KB of chrome, zero `/job/` links). 81
-  advertised. `startrow` is accepted and ignored, so the paginator is
-  click-only, exactly like Stockland's in a different theme.
+It is SuccessFactors on the UI5/React "NES" theme, which server-renders nothing
+— 138 KB of chrome and zero `/job/` links against 81 advertised — and `startrow`
+is accepted and ignored, so its paginator is click-only. A rendered
+click-through was written, and it worked, at nine browser renders and 36 clicks
+a run. Then reading `j2w.searchManager.min.js` showed the page's own code
+posting to `/services/recruiting/v1/jobs` with
+`{keywords, locale, location, pageNumber, sortBy}` and getting structured JSON
+back. **Read the bundle before you reach for a browser.**
+
+**Its pager overlaps, and that is not a rendering artefact.** The service
+honours neither `sortBy: "recent"` nor any page-size parameter (eight spellings
+tried, all returned 10), so with an empty query every row ties on relevance and
+the tie-break differs per query execution: two identical requests seconds apart
+shared only 5 of 10 ids on page 1. A single nine-page walk therefore collects a
+*sample* — measured 66 of 81 through the browser and 72 of 81 through the API.
+The fetcher repeats the walk until the count reaches the board's own
+`totalJobs` or a pass adds nothing; measured, pass 1 collected 61 and pass 2
+completed it. This is affordable only because it is JSON — the same fix through
+a browser would have been 20 renders.
+
+## Off-Worker, rendered (`.github/workflows/sandfire-portal.yml`)
+
 - **Sandfire Resources** — the OLD SuccessFactors RCM portal on the EU
   datacentre, tenant `minasdeagu` (MATSA). The URL sandfire.com.au links to
   renders a permanent "Loading…"; the list lives at
   `career_ns=job_listing_summary`, and `rcm_site_locale=en_GB` has to be pinned
-  or the tenant answers in Spanish. 5 of 5 advertised.
+  or the tenant answers in Spanish. 5 of 5 advertised. Same platform as
+  Stockland, and the same reason it cannot run in a Worker.
 
 **Sandfire publishes no location, and nothing is invented to fill the gap.**
 Every row's note line ends in an empty span and the detail page has no location
@@ -282,6 +302,15 @@ Northern Territory locations that had no hub now have one, plus "Portland VIC"
 which had been resolving to Portland, Oregon. The one regression this exposed,
 `"Seattle, WA"` landing on Perth, is why `["seattle", "seattle"]` is now tested
 ahead of the WA block.
+
+Bendigo's branch network then found the rest of the hole: **South Australia, the
+ACT and Tasmania had no abbreviation needles at all**, and Tasmania had no
+needles of any kind — Hobart is a tracked hub with its own tas-gov feed, but
+tas-gov sets the hub itself and never consults this table, so the gap was
+invisible exactly as Darwin's was. Adding them changed a further **317
+locations, again all fixes**: 208 South Australian, 75 Tasmanian and 32 ACT
+locations that had no hub now have one, and "TAS - South Launceston - 299-301
+Wellington Street" stopped resolving to Wellington, New Zealand.
 
 New Zealand needed the same treatment: Mercury's nine roles are all in the
 central North Island, so `waikato`, `rotorua`, `taupō`, `tauranga` and

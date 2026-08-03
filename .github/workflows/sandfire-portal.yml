@@ -1,0 +1,66 @@
+# Daily Sandfire Resources careers board → D1 archive, via Oxylabs.
+#
+# Almost every employer portal on the roster is fetched by the jobs-cron Worker
+# (workers/jobs-cron/careerSites.ts). Sandfire is one of the few that cannot be,
+# and the reason is specific: it runs the OLD SuccessFactors RCM career portal
+# (`/career?company=…`) on the EU datacentre, which server-renders no job rows
+# at all and fetches its results over DWR after load. It needs a real browser,
+# and a Cloudflare Worker cannot render a page. Stockland is the same platform
+# and runs the same way, in browser-portals.yml.
+#
+# Bendigo & Adelaide Bank was in this workflow and is not any more: it looked
+# like a second render-only board — its UI5/React SuccessFactors theme also
+# server-renders nothing — but its own bundle turned out to call a plain JSON
+# service, so it moved into the Worker. Reach for a browser last, not first.
+#
+# Rows land as source `portal-sf` against company_id `sfr` — the same archive,
+# key and upsert as every other portal — so a Sandfire role already held from
+# Adzuna, SEEK or Jora refreshes rather than duplicating.
+#
+# The script exits non-zero when it parses nothing, so a render that never
+# settles or a listing-URL change fails the run loudly instead of quietly
+# leaving the card looking like Sandfire has no vacancies. Five roles is a
+# normal day for this board; zero is a bug.
+#
+# Required repo secrets:
+#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
+#   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
+# Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# Use "Run workflow" to verify before relying on the schedule.
+
+name: sandfire-portal
+
+on:
+  schedule:
+    # 09:20 UTC daily — after the Worker's last portal tick (09:05), so the two
+    # systems are not writing the same table at the same minute.
+    - cron: '20 9 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: sandfire-portal
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # bun runs scripts/map-skills.ts, so a Sandfire role carries exactly the
+      # skills the same title would get from any other source.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Scrape Sandfire Resources careers → D1 (Oxylabs, rendered)
+        env:
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/sandfire-to-d1.py

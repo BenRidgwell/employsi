@@ -67,6 +67,11 @@
  *   - **JobAdder** (BGC). The site embeds a widget; the widget reads
  *     `apps.jobadder.com/widgets/V1/Jobs/RenderJobList`, a JSONP endpoint
  *     returning a chunk of HTML plus a "Page X of N" summary.
+ *   - **SuccessFactors RMK, unified search service** (Bendigo & Adelaide
+ *     Bank). The newer UI5/React theme renders nothing server-side, but its
+ *     own bundle calls `POST /services/recruiting/v1/jobs`, which answers a
+ *     plain request with `{jobSearchResult[].response, totalJobs}`. See the
+ *     fetcher for why the walk repeats rather than paging once.
  *
  * NOT covered here, and why:
  *   - NAB (careers.nab.com.au, Clinch). Its AWS WAF returns an empty shell to a
@@ -118,7 +123,8 @@ type Platform =
   | "pageupsites"
   | "cornerstone"
   | "snaphire"
-  | "jobadder";
+  | "jobadder"
+  | "sfrmkapi";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -1072,6 +1078,21 @@ export const SITES: SiteDef[] = [
     homeHub: "auckland",
   },
   {
+    id: "melbourne-ben",
+    name: "Bendigo & Adelaide Bank",
+    sector: "Financial Services",
+    platform: "sfrmkapi",
+    // This is SuccessFactors, but NOT the theme fetchSuccessFactors reads: the
+    // UI5/React "NES" theme server-renders nothing (measured: 138 KB of chrome
+    // and zero /job/ links, against 81 advertised). It was very nearly a
+    // rendered GitHub Action before its own bundle turned out to call a plain
+    // JSON service. /viewalljobs/, the obvious way to skip paging, is a dead
+    // route on this tenant — empty rendered and not.
+    endpoint: "https://careers.bendigobank.com.au",
+    origin: "https://careers.bendigobank.com.au",
+    homeHub: "melbourne",
+  },
+  {
     id: "priv-bgc",
     name: "BGC",
     sector: "Construction & building products",
@@ -1175,14 +1196,15 @@ export const PORTAL_GROUPS: string[][] = [
   ["brisbane-azj", "sydney-hub", "gmd", "sydney-cgf"],
   ["perth-ggp", "brisbane-ape", "sydney-tpg", "sydney-lnw"],
   ["sydney-coh", "sydney-yal", "adelaide-cda", "melbourne-amc", "melbourne-jbh"],
-  // Group 27: the four boards whose platforms were reverse-engineered in the
+  // Group 27: the five boards whose platforms were reverse-engineered in the
   // 2026-08-03 batch — Qube (PageUp Sites), Mirvac (Cornerstone), Mercury NZ
-  // (SnapHire) and BGC (JobAdder). Measured 106 / 33 / 9 / 6 = 154 roles across
-  // eleven requests, so they comfortably share one tick. The two boards from
-  // the same batch that a Worker cannot read — Bendigo and Sandfire, both of
-  // which need a browser — are not here; they run as a GitHub Action
-  // (.github/workflows/render-portals.yml).
-  ["sydney-qub", "sydney-mgr", "nz-mercury-nz", "priv-bgc"],
+  // (SnapHire), BGC (JobAdder) and Bendigo (the SuccessFactors RMK search
+  // service). Measured 106 / 33 / 9 / 6 / 81 = 235 roles. Bendigo is the only
+  // one that costs real requests — its pager overlaps, so it walks twice — but
+  // they are small JSON calls, so the five still share one tick. The sixth
+  // board in the batch, Sandfire, genuinely needs a browser and runs as a
+  // GitHub Action (.github/workflows/sandfire-portal.yml).
+  ["sydney-qub", "sydney-mgr", "nz-mercury-nz", "priv-bgc", "melbourne-ben"],
 ];
 
 const UA =
@@ -1289,8 +1311,24 @@ const HUB_MATCH: [string, string | null][] = [
   [" vic,", "melbourne"],
   ["adelaide", "adelaide"],
   ["south australia", "adelaide"],
+  [" sa,", "adelaide"],
   ["canberra", "canberra"],
   ["woden", "canberra"],
+  ["belconnen", "canberra"],
+  ["australian capital territory", "canberra"],
+  [" act,", "canberra"],
+  // Tasmania. Hobart is a tracked hub — coordinates in mapboxWorldGeo, a state
+  // and a name in geo.ts, and its own tas-gov feed — but like Darwin before it,
+  // it was missing from this table entirely, so a career portal advertising in
+  // Tasmania resolved to no hub at all. tas-gov sets the hub itself and never
+  // consults this table, which is why the gap stayed invisible until Bendigo
+  // advertised in Huonville and Rosny Park.
+  ["hobart", "hobart"],
+  ["tasmania", "hobart"],
+  [" tas,", "hobart"],
+  ["launceston", "hobart"],
+  ["devonport, tas", "hobart"],
+  ["burnie, tas", "hobart"],
   // Erskineville (Sydney) must be tested BEFORE Erskine (Mandurah, WA) —
   // this is a substring match, so the shorter needle would otherwise swallow
   // the longer name and put an inner-Sydney role in Perth.
@@ -3130,6 +3168,107 @@ async function fetchJobAdder(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── SuccessFactors RMK unified search service (Bendigo & Adelaide Bank) ──────
+interface SfRmkJob {
+  id?: string;
+  urlTitle?: string;
+  unifiedStandardTitle?: string;
+  unifiedStandardStart?: string;
+  jobLocationShort?: string[];
+  filter2?: string[];
+  businessUnit_obj?: string[];
+  custEmploymentType?: string[];
+}
+
+/**
+ * THE PAGER IS NON-DETERMINISTIC, and this is the whole reason the fetcher
+ * looks the way it does. `pageNumber` walks 10 at a time and the service
+ * honours neither `sortBy: "recent"` nor any page-size parameter
+ * (pageSize/numberOfRows/rows/limit/count/numRows/resultsPerPage/size were all
+ * tried and all returned 10), so consecutive pages OVERLAP: with an empty query
+ * every row ties on relevance and the tie-break differs per query execution.
+ * Two identical requests seconds apart shared only 5 of 10 ids on page 1.
+ *
+ * A single nine-page walk therefore collects a SAMPLE, not the board — measured
+ * 66 of 81 one run and 72 of 81 another. So the walk is repeated until the
+ * collected count reaches the board's own `totalJobs` or a whole pass adds
+ * nothing new. Measured: pass 1 collected 61 of 81 and pass 2 completed it, so
+ * PASSES = 4 is generous. This is cheap precisely because it is JSON — 20-odd
+ * small requests, not 20 browser renders, which is what the first version of
+ * this cost before the service was found.
+ *
+ * A pass that adds nothing ends the walk, so a board that genuinely serves
+ * fewer than it advertises costs one wasted pass rather than looping to the cap.
+ */
+const SFRMK_PASSES = 4;
+const SFRMK_PAGES = 40;
+
+async function fetchSfRmkApi(site: SiteDef): Promise<PortalJob[]> {
+  const rows = new Map<string, SfRmkJob>();
+  let total = 0;
+  for (let pass = 0; pass < SFRMK_PASSES; pass++) {
+    const before = rows.size;
+    for (let page = 0; page < SFRMK_PAGES; page++) {
+      const res = await getJson<{
+        jobSearchResult?: { response?: SfRmkJob }[];
+        totalJobs?: number;
+      }>(`${site.endpoint}/services/recruiting/v1/jobs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          keywords: "",
+          locale: "en_GB",
+          location: "",
+          pageNumber: page,
+          sortBy: "recent",
+        }),
+      });
+      const hits = res?.jobSearchResult ?? [];
+      if (!hits.length) break;
+      if (res?.totalJobs) total = res.totalJobs;
+      for (const h of hits) {
+        const r = h.response;
+        if (r?.id) rows.set(r.id, r);
+      }
+    }
+    if (total && rows.size >= total) break;
+    if (rows.size === before) break;
+  }
+
+  const out: PortalJob[] = [];
+  for (const r of rows.values()) {
+    const title = clean(r.unifiedStandardTitle ?? "");
+    if (!title) continue;
+    // 11 of the 81 carry more than one location; they are joined rather than
+    // truncated so a role open in two states is not silently filed in one.
+    const loc = (r.jobLocationShort ?? [])
+      .map((x) => clean(x))
+      .filter(Boolean)
+      .join("; ");
+    const cat = [r.filter2?.[0], r.businessUnit_obj?.[0], r.custEmploymentType?.[0]]
+      .filter(Boolean)
+      .map((x) => clean(String(x)))
+      .join(" — ");
+    // dd/MM/yyyy — reordered before isoDay, which would otherwise read it as
+    // the US ordering.
+    const posted = (r.unifiedStandardStart ?? "").replace(
+      /^(\d{2})\/(\d{2})\/(\d{4})$/,
+      "$3-$2-$1",
+    );
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        `${site.origin}/job/${r.urlTitle ?? ""}/${r.id}-en_GB`,
+        posted ? isoDay(posted) : "",
+        cat || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   successfactors: fetchSuccessFactors,
   workday: fetchWorkday,
@@ -3156,6 +3295,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   cornerstone: fetchCornerstone,
   snaphire: fetchSnapHire,
   jobadder: fetchJobAdder,
+  sfrmkapi: fetchSfRmkApi,
 };
 
 export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
@@ -3189,6 +3329,10 @@ const SOURCE_TAG: Record<Platform, string> = {
   cornerstone: "csod",
   snaphire: "snap",
   jobadder: "ja",
+  // Same archive source as the other SuccessFactors tenants: it is the same
+  // ATS, only a different front end, so its rows should dedupe against an
+  // SF row for the same role rather than sitting beside it.
+  sfrmkapi: "sf",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */
