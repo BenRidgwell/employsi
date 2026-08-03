@@ -96,6 +96,27 @@ try:
 except Exception as e:  # noqa: BLE001
     check('zhaopin cross-check', False, f'raised {type(e).__name__}: {e}')
 
+# A roster loader must read the ARRAY, not the prose around it. sydneyGov.ts
+# carries a note that quotes two agency names to explain why they are spelled
+# the way they are, and the NSW loader turned both quotes into roster entries —
+# 78 agencies became 83, and vacancies were filed against ids like
+# nsw-gov-art-gallery-of-nsw that the app does not have. Nothing errors when
+# that happens: the company card is simply empty.
+try:
+    ns = load_module_head('scripts/nsw-gov-to-d1.py', '_t_comments')
+    names = ns['load_agency_names']()
+    leaked = [n for n in names if n.startswith('//') or 'already on this list' in n]
+    # The two names the comment quotes are real agencies under a DIFFERENT
+    # spelling, so the test is that the roster carries each body exactly once.
+    dupes = [n for n in ('Art Gallery of NSW', 'National Parks & Wildlife Service')
+             if n in names]
+    check('nsw-gov roster loader ignores comments', not leaked and not dupes,
+          f'leaked {leaked + dupes}')
+    check('nsw-gov roster names are unique', len(set(names)) == len(names),
+          f'{len(names)} entries, {len(set(names))} distinct')
+except Exception as e:  # noqa: BLE001
+    check('nsw-gov comment handling', False, f'raised {type(e).__name__}: {e}')
+
 print()
 if FAILS:
     print(f'{len(FAILS)} FAILED: {FAILS}')

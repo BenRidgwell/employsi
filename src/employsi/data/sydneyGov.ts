@@ -94,6 +94,31 @@ const NAMES: string[] = [
   "Museums of History NSW",
   "Aboriginal Affairs NSW",
   "Multicultural NSW",
+  // ── Added 2026-08-03, from the board itself ────────────────────────────────
+  // These are the employing entities the live iworkfor.nsw.gov.au feed named on
+  // vacancies that this roster could not place: 99 of 3,699 ads landed in the
+  // generic "NSW Government" bucket, and every one of them was advertised by a
+  // real agency that simply was not listed here. Counts are what each was
+  // advertising on the day.
+  //
+  // Not every unplaced entity became a new line. Three were bodies ALREADY on
+  // this list under a different spelling — "National Parks & Wildlife Service"
+  // for the ampersand, "Art Gallery of NSW" for the expansion, and the Library
+  // Council of NSW, which is the State Library's own governing body. Those are
+  // resolved in the scraper's matcher rather than duplicated here, because a
+  // second entry would put a second pin on the map for one employer.
+  "Department of Climate Change, Energy, the Environment and Water", // 37
+  "Department of Creative Industries, Tourism, Hospitality and Sport", // 6
+  "Department of Parliamentary Services", // 3
+  "Energy Corporation of NSW", // 10
+  "Energy Security Corporation", // 1
+  "Natural Resources Access Regulator", // 2 (advertises as "… CCEEW")
+  "NSW Ombudsman", // 3
+  "Law Enforcement Conduct Commission", // 1
+  "Office of Sport", // 2
+  "Liquor & Gaming NSW", // 1
+  "Museum of Applied Arts and Sciences", // 9 (the Powerhouse)
+  "Taronga Conservation Society Australia", // 1
 ];
 
 const STOP = new Set(["of", "and", "the", "for", "&", "a", "nsw"]);

@@ -89,7 +89,52 @@ if not SOLVE and not TOKEN:
 
 
 def norm(s: str) -> str:
+    """The ARCHIVE's normaliser, character-for-character the same as the one in
+    src/employsi/lib/jobArchive.ts.
+
+    It exists to build job_key, and job_key is shared with every other source —
+    an Adzuna or SEEK row for the same NSW vacancy dedupes against ours only if
+    both sides normalise identically. So this function must not be "improved".
+    It was, once: the roster-matching rewrites below were added here, every key
+    containing "&" or "NSW" changed shape, and a single re-run inserted 638
+    vacancies a second time instead of updating them.
+    """
     return re.sub(r'[^a-z0-9]+', ' ', (s or '').lower()).strip()[:120]
+
+
+def match_norm(s: str) -> str:
+    """Agency text → the form the ROSTER is matched on. Never used for a key.
+
+    Two rewrites happen before the non-alphanumerics are stripped, and both are
+    there because the board and the roster spell the SAME body differently:
+
+      &  ->  " and "     The board advertises "National Parks & Wildlife
+                         Service"; the roster carries "National Parks and
+                         Wildlife Service". Stripping the ampersand to a space
+                         leaves "parks wildlife" against "parks and wildlife",
+                         which is not a substring of the other in either
+                         direction, so the agency went unplaced.
+      NSW -> new south wales
+                         The board writes "Art Gallery of NSW", the roster
+                         "Art Gallery of New South Wales". Expanding rather than
+                         contracting is the safe direction: contracting would
+                         turn "New South Wales" into "nsw" everywhere and make
+                         several short agency names collide.
+    """
+    s = (s or '').lower().replace('&', ' and ')
+    s = re.sub(r'\bnsw\b', 'new south wales', s)
+    return re.sub(r'[^a-z0-9]+', ' ', s).strip()[:120]
+
+
+# Bodies the board advertises under a name that is not lexically reachable from
+# the roster's, and that are not a second employer. Checked, not guessed:
+# the Library Council of NSW is the State Library of NSW's own governing body
+# and the entity its vacancies are posted by, so its ads are State Library ads.
+# A second roster line would have put a second pin on the Sydney map for one
+# library.
+AGENCY_ALIAS = {
+    'library council of new south wales': 'State Library of New South Wales',
+}
 
 
 def job_key(source, title, company, location):
@@ -120,26 +165,39 @@ def load_agency_names():
     block = re.search(r'const NAMES:\s*string\[\]\s*=\s*\[(.*?)\];', txt, re.S)
     if not block:
         return []
+    body = block.group(1)
+    # COMMENTS ARE STRIPPED FIRST, and that is not tidiness. This regex takes
+    # every quoted string in the array body, so a comment that QUOTES an agency
+    # name — which is the natural way to explain why a name is spelled the way
+    # it is — silently became a roster entry. It happened: a note reading
+    # 'already on this list as "Art Gallery of NSW"' added a phantom 84th agency
+    # whose id was nsw-gov-art-gallery-of-nsw, so vacancies filed against it
+    # pointed at a company the app does not have. Nothing errors when that
+    # happens; the card is simply empty.
+    body = re.sub(r'/\*.*?\*/', '', body, flags=re.S)
+    body = re.sub(r'//[^\n]*', '', body)
     out = []
-    for m in re.finditer(r'"((?:[^"\\]|\\.)*)"|\'((?:[^\'\\]|\\.)*)\'', block.group(1)):
+    for m in re.finditer(r'"((?:[^"\\]|\\.)*)"|\'((?:[^\'\\]|\\.)*)\'', body):
         s = m.group(1) if m.group(1) is not None else m.group(2)
         out.append(s.replace('\\"', '"').replace("\\'", "'"))
     return out
 
 
 AGENCY_NAMES = load_agency_names()
-AGENCY_BY_NORM = {norm(n): nsw_gov_id(n) for n in AGENCY_NAMES}
+AGENCY_BY_NORM = {match_norm(n): nsw_gov_id(n) for n in AGENCY_NAMES}
 AGENCY_SORTED = sorted(AGENCY_NAMES, key=lambda n: len(n), reverse=True)
 
 
 def agency_to_id(agency):
-    n = norm(agency)
+    n = match_norm(agency)
     if not n:
         return 'nsw-gov', 'NSW Government'
+    if n in AGENCY_ALIAS:
+        n = match_norm(AGENCY_ALIAS[n])
     if n in AGENCY_BY_NORM:
         return AGENCY_BY_NORM[n], agency.strip()
     for name in AGENCY_SORTED:
-        nn = norm(name)
+        nn = match_norm(name)
         if nn and (nn in n or n in nn):
             return nsw_gov_id(name), agency.strip()
     return 'nsw-gov', agency.strip() or 'NSW Government'
