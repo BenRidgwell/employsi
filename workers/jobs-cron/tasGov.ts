@@ -117,13 +117,40 @@ async function fetchDetail(url: string, signalMs = 15000): Promise<string | null
 /**
  * Fill in salaries from job pages, up to DETAIL_BUDGET of them.
  *
- * Only jobs with no salary from the list view are candidates, and they are
- * taken in board order so the same head of the list is not re-fetched forever —
- * jobs whose salary was captured on an earlier run drop out of the candidate
- * set on the next one, so the window advances by itself.
+ * THE CANDIDATE SET HAS TO REMEMBER, and for a long time it did not. The
+ * comment here used to claim the window "advances by itself" because jobs
+ * priced on an earlier run drop out of it. That was never true: every run
+ * re-parses the board from scratch, the search page states no salary (measured:
+ * a dollar figure in 0 of 30 cards), so `!j.salN` held for every job every day
+ * and the slice re-fetched the SAME first 60 job pages forever. The board has
+ * ~230 live vacancies and the archive sat at 14 priced, which is what that
+ * looks like from the outside.
+ *
+ * So the salaries already known are passed IN, seeded onto the jobs before the
+ * candidate set is taken. Now a priced job really does drop out, the window
+ * really does advance, and the board fills in over a few runs — which is what
+ * DETAIL_BUDGET was always sized for.
  */
-async function enrichDetails(jobs: StoredTasJob[]): Promise<number> {
-  const todo = jobs.filter((j) => !j.salN && j.url).slice(0, DETAIL_BUDGET);
+/**
+ * Which jobs this run should open a detail page for. Exported so the advancing
+ * window can be tested without crawling the live board twice — the board
+ * throttles a second full crawl, which made an end-to-end test of this
+ * unreadable.
+ *
+ * Seeds `salN` from what is already known (mutating, so the callers' rows carry
+ * the figure onward to KV and D1), then takes the unpriced head of the list.
+ */
+export function salaryCandidates(
+  jobs: StoredTasJob[],
+  known?: Map<string, number>,
+  budget = DETAIL_BUDGET,
+): StoredTasJob[] {
+  if (known?.size) for (const j of jobs) if (!j.salN && j.url) j.salN = known.get(j.url);
+  return jobs.filter((j) => !j.salN && j.url).slice(0, budget);
+}
+
+async function enrichDetails(jobs: StoredTasJob[], known?: Map<string, number>): Promise<number> {
+  const todo = salaryCandidates(jobs, known);
   let found = 0;
   let fetched = 0;
   for (let i = 0; i < todo.length; i += DETAIL_CONCURRENCY) {
@@ -261,7 +288,12 @@ export interface TasGovResult {
 // Fetch every TAS agency's board, one at a time, into { agencyId → jobs }. Two
 // passes: agencies the board throttled on the first sweep are retried after a
 // cooldown so a single daily run reliably captures all of them.
-export async function fetchTasGov(today: string): Promise<TasGovResult | null> {
+export async function fetchTasGov(
+  today: string,
+  /** url -> salary already captured on an earlier run, so the detail-fetch
+   *  window advances instead of re-reading the same head of the board. */
+  knownSalaries?: Map<string, number>,
+): Promise<TasGovResult | null> {
   const byAgency: Record<string, StoredTasJob[]> = {};
   const ids = HOBART_GOV_IDS.filter((id) => TAS_GOV_UID[id]);
   let parsed = 0;
@@ -298,7 +330,7 @@ export async function fetchTasGov(today: string): Promise<TasGovResult | null> {
   // Open a bounded slice of job pages for the salaries the list view withholds.
   // Failure here is not failure of the run: the jobs are already parsed, so a
   // detail fetch that times out just leaves that salary for another day.
-  const enriched = await enrichDetails(Object.values(byAgency).flat());
+  const enriched = await enrichDetails(Object.values(byAgency).flat(), knownSalaries);
 
   return { updated: today, parsed, enriched, byAgency };
 }

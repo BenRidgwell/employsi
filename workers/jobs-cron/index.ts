@@ -823,7 +823,21 @@ function mergeGovJobs<T extends { url?: string; t?: string; seen?: string }>(
     if (j.seen && daysBetween(j.seen, day) > GOV_MAX_AGE_DAYS) continue;
     byKey.set(keyOf(j), j);
   }
-  for (const j of fresh) byKey.set(keyOf(j), { ...j, seen: day });
+  for (const j of fresh) {
+    // The fresh row wins field by field, but ONLY for fields it actually has.
+    // A blind `{...j}` discarded anything the board withholds from its search
+    // page and we had learned some other way — which is what silently undid
+    // TAS's salary enrichment: a job page fetched on Monday gave us a salary,
+    // Tuesday's search page re-listed the same job with none, and the overwrite
+    // threw it away. Every run re-learned and re-lost the same figures.
+    const before = byKey.get(keyOf(j));
+    const merged = { ...(before ?? ({} as T)) } as Record<string, unknown>;
+    for (const [k, v] of Object.entries(j as Record<string, unknown>)) {
+      if (v !== undefined && v !== null && v !== "") merged[k] = v;
+    }
+    merged.seen = day;
+    byKey.set(keyOf(j), merged as T);
+  }
   return [...byKey.values()].slice(0, 80);
 }
 
@@ -999,7 +1013,23 @@ async function processNtGov(
 
 async function processTasGov(env: Env): Promise<{ parsed: number; agencies: number }> {
   const day = today();
-  const res = await fetchTasGov(day);
+  // Salaries captured on earlier runs, so enrichDetails skips those jobs and
+  // spends its bounded detail-fetch budget on ones we have never priced. Read
+  // before the fetch on purpose: doing it after, as this used to, meant the
+  // enrichment could never see them.
+  const knownSalaries = new Map<string, number>();
+  for (const id of HOBART_GOV_IDS) {
+    try {
+      const raw = await env.OPEN_ROLES_HISTORY.get(`tasgov:${id}`);
+      const prev = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(prev?.jobs))
+        for (const j of prev.jobs as StoredTasJob[])
+          if (j.url && j.salN) knownSalaries.set(j.url, j.salN);
+    } catch {
+      /* a missing or corrupt snapshot just means nothing is known yet */
+    }
+  }
+  const res = await fetchTasGov(day, knownSalaries);
   if (!res) return { parsed: 0, agencies: 0 };
 
   let withRoles = 0;
