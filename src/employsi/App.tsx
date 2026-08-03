@@ -30,6 +30,31 @@ function App() {
   // httpOnly, so this is the only way the client can know — and the only
   // place that sets `account`.
   useAuthSession();
+
+  // Escape closes the frontmost open surface, app-wide.
+  //
+  // Bound once here rather than per card. Panels used to each bind their own
+  // Escape, so whether the key worked at all depended on which component had
+  // thought about it, and with two things open it was undefined which one went.
+  // The ORDER lives in the store (closeTopmost), next to the rules about which
+  // panels may be open together.
+  //
+  // Typing fields are left alone: Escape in the search box already clears and
+  // blurs it, and stealing that to close a card would be worse than not binding
+  // the key at all. Only when nothing was open does the event stay unhandled,
+  // so the browser's own Escape still applies.
+  const closeTopmost = useAppStore((s) => s.closeTopmost);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (closeTopmost()) e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [closeTopmost]);
+
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const globalOut = useAppStore((s) => s.globalOut);
 

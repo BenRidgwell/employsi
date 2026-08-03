@@ -692,8 +692,12 @@ export const SITES: SiteDef[] = [
   },
   {
     id: "melbourne-car",
-    name: "CAR Group",
+    name: "CAR Group (carsales.com)",
     sector: "Technology, Media and Telecommunications",
+    // Name matches the roster's, deliberately: the archive attributes rows by
+    // this string, and a feed calling the company something the roster does not
+    // use shows up in the admin console as a mis-attribution rather than as
+    // stale config. Flagged by scripts/check-roster.ts as name drift.
     // The SmartRecruiters company is still "carsales", the pre-rename brand.
     platform: "smartrecruiters",
     endpoint: "carsales",

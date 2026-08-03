@@ -200,6 +200,8 @@ export interface AppState {
   toggleMobileMenu: () => void;
   closeMobileMenu: () => void;
   toggleNewsCollapsed: () => void;
+  /** Close the frontmost open surface. Returns false if nothing was open. */
+  closeTopmost: () => boolean;
 }
 
 // Device settings, plus whatever follows this browser holds.
@@ -839,6 +841,47 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleMobileMenu: () => set((s) => solo("mobileMenuOpen", !s.mobileMenuOpen)),
   closeMobileMenu: () => set({ mobileMenuOpen: false }),
   toggleNewsCollapsed: () => set((s) => ({ newsCollapsed: !s.newsCollapsed })),
+
+  /**
+   * What Escape closes, in the order a reader would expect it to.
+   *
+   * ONE ordered rule rather than a handler per card. Panels used to each bind
+   * their own Escape, so whether the key worked depended on which component
+   * happened to have thought about it — and when two things were open it was
+   * undefined which one went. Order runs most-blocking first: a modal that took
+   * over the screen, then the auth sheet, then compare, then the company card,
+   * then whichever pane the rail or the header has open (EXCLUSIVE_GROUPS
+   * guarantees at most one of each family).
+   *
+   * Returns whether it closed anything, so the key handler can leave the event
+   * alone when nothing was open and the browser's own Escape behaviour still
+   * applies.
+   */
+  closeTopmost: () => {
+    const s = get();
+    if (s.comingSoon) return (set({ comingSoon: null }), true);
+    if (s.authOpen)
+      return (set({ authOpen: false, pendingFollowId: null, pendingFollowSkill: null }), true);
+    if (s.compareOpen) return (set({ compareOpen: false, selectedId: s.lastId }), true);
+    if (s.selectedId) return (set({ selectedId: null }), true);
+    const panes = [
+      "searchOpen",
+      "filterOpen",
+      "heatOpen",
+      "trendingOpen",
+      "analystOpen",
+      "dataQualityOpen",
+      "mobileMenuOpen",
+      "feedbackOpen",
+      "helpTourOpen",
+      "settingsOpen",
+      "alertsOpen",
+    ] as const;
+    const open = panes.filter((k) => s[k]);
+    if (!open.length) return false;
+    set(Object.fromEntries(open.map((k) => [k, false])));
+    return true;
+  },
 }));
 
 // Mirror account + saved companies + settings to localStorage whenever any of
