@@ -7,7 +7,7 @@ import slideCompany from "@/assets/slide-company.png.asset.json";
 function SkylineSVG() {
   return (
     <iframe
-      src="/skyline-v4.html"
+      src="/skyline-3d.html"
       title="Skyline"
       className="h-full w-full border-0"
       style={{ background: "transparent" }}
