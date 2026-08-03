@@ -205,6 +205,60 @@ reads the plain listing for the rest: every role is collected either way, and
   BHP rows carried a `salaryInfo`. It is still salary the employer portals do
   not publish, so it is taken where it is offered.
 
+## Dyno Nobel's second board, and startup.jobs (added later the same day)
+
+**`scripts/dyno-to-d1.py` now reads two boards**, both attributed to
+`melbourne-dnl` under their own platform tag. The Americas one took finding: the
+URL the Australian careers page links to (`tbe.taleo.net/CH11/…&cws=4`) is dead,
+and dead in a way worth recording — *every* path under that Taleo pod returns
+"undergoing maintenance", including one with a deliberately invented org code, so
+the pod is gone rather than the tenant. The live board is linked from the US site
+on a different pod entirely: `phh.tbe.taleo.net/phh02/…&cws=43`.
+
+It is also not "North America". Measured: 143 requisitions — US 96, Canada 39,
+Brazil 4, Chile 3, Mexico 1 — so the code calls it the Americas.
+
+**The session is what keeps it out of the Worker.** Results come from POSTing the
+search form, and the "next page" link the board hands back carries only a row
+offset, no query. Fetching that link cold, without the JSESSIONID from the
+search, returns a 1-byte body — the search state lives in the session, and
+`getText` in careerSites.ts is stateless by design. The walk ends when the board
+stops emitting `a.jscroll-next`, which is its own statement that there is no more.
+
+Only 5 of the 143 place on a hub, and that is correct rather than a gap: the
+locations are "US - CA - Mojave", "Canada - NB - Fredericton" — real places that
+are not tracked cities. Falling them back to Melbourne because the employer is
+Australian would put a Mojave blasting job on the Melbourne pin.
+
+**`scripts/startupjobs-to-d1.py`** walks startup.jobs once per rostered employer.
+Three things about that board are load-bearing:
+
+1. **Its company filter does not filter.** `?companies=Pinterest` returns 200 and
+   a normal-looking page carrying jobs from nineteen different companies —
+   `?companies=Canva` returns the identical rows. It is just the unfiltered feed.
+   What filters is `/company/<slug>`.
+2. **Slugs are not derivable** ("general-assembly", but also "renttherunway" and
+   "bookingcom"), and probing candidates costs a fetch per guess across 999
+   companies. The board's own sitemap lists all 42,885 company pages in one
+   un-proxied CDN request, turning resolution into an offline set lookup. 56 of
+   the roster's 999 have a page.
+3. **A slug match is a lead, not an identification.** `/company/igo` is "iGo" of
+   Pennsylvania; `/company/redox` is a US healthcare-interoperability firm;
+   `/company/compass` is the US real-estate brokerage; `/company/multiply` does
+   Atlanta mortgage origination. `advertiser_matches` passes all four, because
+   lexically the names ARE the same, and the page carries no website, no
+   description, nothing to corroborate with. So attribution is by an explicit
+   `CONFIRMED` map checked against each page's own roles and locations, and
+   unconfirmed matches are printed with their evidence rather than written.
+   First run: 16 employers confirmed, 1,324 roles; 5 advertising-but-unconfirmed
+   reported.
+
+And a parser trap worth knowing about on any Rails/Turbo board: **the results
+list contains a Mustache template**. A company with nothing advertised still
+renders one card-shaped block whose title is the literal `{{{highlighted_title}}}`,
+and a first pass archived it as a vacancy for 28 employers that had no jobs at
+all. robots.txt says so out loud. Any field still carrying braces is dropped.
+
 ## The hub bug these boards exposed
 
 `hubFor` stopped falling back to the employer's home hub when a board published

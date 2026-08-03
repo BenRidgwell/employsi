@@ -1,9 +1,19 @@
 # Daily Dyno Nobel → D1 archive (hosted, via the Oxylabs Web Scraper API).
 #
-# Dyno Nobel's Australian board is the OLD SuccessFactors RCM career portal
+# Dyno Nobel advertises on two boards and this reads both.
+#
+# The Australian one is the OLD SuccessFactors RCM career portal
 # (career4.successfactors.com/career?company=IncitecPivot). It server-renders no
 # job rows at all and fetches its results over DWR after load, so a Cloudflare
 # Worker cannot read it — the same reason Sandfire and Stockland run here.
+#
+# The Americas one is Taleo Business Edition. The URL the AU site links to is
+# dead (that whole Taleo pod answers "undergoing maintenance" for every org,
+# invented ones included); the live board is on phh.tbe.taleo.net with a
+# different career-site number. It needs no render, but it does need a SESSION:
+# the search is a POST and the next-page link carries only a row offset, so
+# fetching it without the search's cookie returns a 1-byte body. That statefulness
+# is what keeps it out of the Worker, whose fetch helper is stateless by design.
 #
 # Required repo secrets:
 #   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
@@ -11,9 +21,11 @@
 # Optional repo variables (fall back to values baked into the script):
 #   CF_ACCOUNT_ID, D1_DATABASE_ID
 #
-# The job exits non-zero (red X + notification) when the portal returns no job
-# rows, because a 3,000-person explosives manufacturer with operations in five
-# states does not stop advertising — zero means the render did not settle.
+# The job exits non-zero (red X + notification) when either board returns no job
+# rows, because a 3,000-person explosives manufacturer with operations across
+# Australia and the Americas does not stop advertising — zero means the render
+# did not settle or a board moved again. A dead Americas board does NOT discard
+# the Australian rows already read; the run just goes red.
 
 name: dyno-portal
 
@@ -41,7 +53,7 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Scrape Dyno Nobel careers → D1
+      - name: Scrape Dyno Nobel careers (AU + Americas) → D1
         env:
           OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
           OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}

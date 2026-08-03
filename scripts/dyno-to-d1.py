@@ -10,13 +10,22 @@ plain fetch of the listing URL returns 196 KB carrying zero `career_job_req_id`
 — and fetches its results over DWR after load. A Cloudflare Worker cannot render
 a page, so this runs as a GitHub Action through Oxylabs.
 
-WHICH BOARD, AND WHY THIS ONE
+TWO BOARDS, BOTH READ HERE
 dynonobel.com.au/careers/opportunities/ links out to two ATSs and names which is
 which: career4.successfactors.com/career?company=IncitecPivot for "Australia and
-Indonesia", and a Taleo instance (tbe.taleo.net, org=DYNONOBEL) for North
-America. The tenant is still called IncitecPivot because the SuccessFactors
-instance predates the demerger. Only the AU/Indonesia board is read here — the
-roster company is the Australian listing.
+Indonesia", and a Taleo instance for the Americas. The SuccessFactors tenant is
+still called IncitecPivot because it predates the demerger. Both feeds write the
+one roster company (melbourne-dnl) under their own platform source tag, so a
+role is attributed to Dyno Nobel and placed by its own location.
+
+The Americas board took some finding. The URL the AU site links to
+(tbe.taleo.net/CH11/…&cws=4) is DEAD — every path under that pod returns Taleo's
+"undergoing maintenance" page, including one with a deliberately invented org
+code, so the pod is gone rather than the tenant. The live board is linked from
+the US site instead, on a different pod with a different career-site number:
+phh.tbe.taleo.net/phh02/…&cws=43. And it is not "North America": measured
+2026-08-03, its 143 requisitions are US 96, Canada 39, Brazil 4, Chile 3,
+Mexico 1.
 
 PAGING IS A CLICK, NOT A PARAMETER. The paginator is `juic.fire(…,"_next")`, so
 there is no startrow to increment; the walk clicks "Next Page" and re-captures.
@@ -32,6 +41,10 @@ cell is appended to the location before hub resolution — that is the board's o
 statement that the role is in Australia, and it is what lets hubFor fall back to
 the company's home hub rather than leaving the row unplaced. Nothing is invented:
 where the site names a city ("AU Brisbane HQ") the row places on that city.
+
+Oxylabs is needed only for the SuccessFactors board. The Taleo one answers a
+plain session-bound HTTP flow — see scrape_americas for why that session is what
+keeps it out of the Worker.
 
 Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID,
      OXYLABS_USERNAME, OXYLABS_PASSWORD
@@ -61,7 +74,11 @@ TODAY = datetime.date.today().isoformat()
 
 # `portal-sf` is the SuccessFactors source tag careerSites.ts uses, so these rows
 # dedupe against a Worker-collected SF row for the same requisition.
+# The AU/Indonesia board is SuccessFactors; the Americas board is Taleo. They are
+# tagged with their own platforms so an archive row says which ATS it came from,
+# and both are attributed to the one roster company.
 SOURCE = 'portal-sf'
+SOURCE_AMERICAS = 'portal-tl'
 COMPANY_ID = 'melbourne-dnl'
 COMPANY = 'Dyno Nobel'
 SECTOR = 'Explosives & Chemicals'
@@ -70,6 +87,23 @@ BASE = 'https://career4.successfactors.com'
 TENANT = 'IncitecPivot'
 LISTING = (f'{BASE}/career?company={TENANT}&career_ns=job_listing_summary'
            '&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB')
+
+# ── the Americas board (Taleo Business Edition) ───────────────────────────────
+# dynonobel.com.au/careers/opportunities/ links to tbe.taleo.net/CH11/... for
+# North America and that URL IS DEAD: every path under that pod, including a
+# deliberately invented org code, returns Taleo's "system is currently
+# undergoing maintenance" page, so it is the pod that is gone, not the tenant.
+# The live board is linked from the US site (dynonobel.com/careers) and sits on
+# a different pod entirely, with a different career-site number:
+#
+#   phh.tbe.taleo.net/phh02/ats/careers/v2/…   cws=43   (not CH11 / cws=4)
+#
+# It is also not "North America". Measured 2026-08-03 across the whole board:
+# 143 requisitions — US 96, Canada 39, Brazil 4, Chile 3, Mexico 1 — so it is
+# the Americas, and calling it otherwise would misdescribe what it archives.
+TBE = 'https://phh.tbe.taleo.net/phh02/ats/careers/v2'
+TBE_ORG = 'DYNONOBEL'
+TBE_CWS = '43'
 
 args = sys.argv[1:]
 MAX_PAGES = int(args[args.index('--max-pages') + 1]) if '--max-pages' in args else 8
@@ -237,18 +271,18 @@ def d1(sql: str, params: list):
             time.sleep(attempt + 1)
 
 
-def upsert(jobs: list) -> int:
+def upsert(jobs: list, source: str = SOURCE) -> int:
     """Same key + upsert as src/employsi/lib/jobArchive.ts, so a role already
     archived from another source refreshes rather than duplicating."""
     skills = map_skills([j['title'] for j in jobs])
     hubs = map_hubs([j['location'] for j in jobs])
     rows, seen = [], set()
     for j, sk, hub in zip(jobs, skills, hubs):
-        key = job_key(SOURCE, j['title'], COMPANY, j['location'])
+        key = job_key(source, j['title'], COMPANY, j['location'])
         if key in seen:
             continue
         seen.add(key)
-        rows.append((key, SOURCE, j['title'], COMPANY, COMPANY_ID,
+        rows.append((key, source, j['title'], COMPANY, COMPANY_ID,
                      hub, j['location'], j['category'], None,
                      j['url'], j['posted'] or TODAY, json.dumps(sk) if sk else None))
     written = 0
@@ -270,6 +304,81 @@ def upsert(jobs: list) -> int:
         d1(sql, params)
         written += len(chunk)
     return written
+
+
+# ── the Americas board: Taleo Business Edition, session-bound ────────────────
+# THE SESSION IS NOT OPTIONAL, and that is what keeps this out of the Worker.
+# The results are reached by POSTing the search form, and the "next page" link
+# the board hands back is a GET carrying only `rowFrom` — no query, no filters.
+# Measured: fetching that next-page URL cold, without the JSESSIONID from the
+# search, returns a 1-byte body. The search state lives in the session, so the
+# walk has to be landing GET (session + CSRF) -> POST search -> GET next, in
+# order, on one cookie jar. `getText` in careerSites.ts is stateless by design.
+#
+# The walk ends when the board stops emitting `a.jscroll-next` — its own
+# statement that there is no more, which beats a short page.
+TBE_BLOCK = re.compile(
+    r'<h4 class="oracletaleocwsv2-head-title"><a href="([^"]*rid=(\d+))"[^>]*>(.*?)</a></h4>'
+    r'\s*<div tabindex="0"\s*>(.*?)</div>\s*<div tabindex="0"\s*>(.*?)</div>', re.S)
+TBE_NEXT = re.compile(r'<a href="([^"]+)" class="jscroll-next"')
+TBE_CSRF = re.compile(r"TBE_OBJ\.CSRF\.tokenValue\s*=\s*'([^']+)'")
+
+
+def scrape_americas() -> list[dict]:
+    import http.cookiejar
+    import urllib.parse
+    jar = http.cookiejar.CookieJar()
+    op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    ua = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+          '(KHTML, like Gecko) Chrome/126.0 Safari/537.36')
+
+    def get(url: str, data: bytes | None = None, ctype: str | None = None) -> str:
+        h = {'User-Agent': ua, 'Accept': 'text/html'}
+        if ctype:
+            h['Content-Type'] = ctype
+        with op.open(urllib.request.Request(url, data=data, headers=h), timeout=60) as r:
+            return r.read().decode('utf-8', 'replace')
+
+    landing = f'{TBE}/jobSearch?act=redirectCwsV2&cws={TBE_CWS}&org={TBE_ORG}'
+    try:
+        shell = get(landing)
+    except Exception as e:  # noqa: BLE001
+        sys.stderr.write(f'  americas: landing page failed ({e})\n')
+        return []
+    csrf = TBE_CSRF.search(shell)
+    form = {'act': 'search', 'org': TBE_ORG, 'cws': TBE_CWS, 'keywords': '',
+            'city': '', 'state': '', 'zipCode': '', 'region': '-1', 'department': '-1'}
+    if csrf:
+        form['_csrf'] = csrf.group(1)
+    try:
+        page_html = get(f'{TBE}/searchResults?org={TBE_ORG}&cws={TBE_CWS}',
+                        urllib.parse.urlencode(form).encode(),
+                        'application/x-www-form-urlencoded')
+    except Exception as e:  # noqa: BLE001
+        sys.stderr.write(f'  americas: search POST failed ({e})\n')
+        return []
+
+    jobs: dict[str, dict] = {}
+    # 40 pages of 10 is four times the board's measured size, so a paginator that
+    # ever loops cannot run away with the run.
+    for page in range(1, 41):
+        for url, rid, title, dept, loc in TBE_BLOCK.findall(page_html):
+            t = clean(title)
+            if t:
+                jobs[rid] = {'id': rid, 'title': t, 'location': clean(loc),
+                             'category': clean(dept) or 'Career portal',
+                             'url': url.replace('&amp;', '&'), 'posted': ''}
+        nxt = TBE_NEXT.search(page_html)
+        if not nxt:
+            sys.stderr.write(f'  americas: page {page} — no next link, end of list\n')
+            break
+        try:
+            page_html = get('https://phh.tbe.taleo.net' + nxt.group(1).replace('&amp;', '&'))
+        except Exception as e:  # noqa: BLE001
+            sys.stderr.write(f'  americas: page {page + 1} failed ({e})\n')
+            break
+        time.sleep(0.5)
+    return list(jobs.values())
 
 
 def main() -> int:
@@ -294,11 +403,32 @@ def main() -> int:
     for j, hub in zip(jobs, hubs):
         sys.stderr.write(f'  - {j["title"][:46]:46s} | {j["location"][:30]:30s} '
                          f'| {hub or "unplaced"} | {j["posted"]}\n')
+
+    sys.stderr.write('\nAmericas board (Taleo)…\n')
+    americas = scrape_americas()
+    if americas:
+        ahubs = map_hubs([j['location'] for j in americas])
+        placed = sum(1 for h in ahubs if h)
+        sys.stderr.write(f'{len(americas)} roles parsed, {placed} placed on a hub.\n')
+        for j, hub in list(zip(americas, ahubs))[:8]:
+            sys.stderr.write(f'  - {j["title"][:46]:46s} | {j["location"][:30]:30s} '
+                             f'| {hub or "unplaced"}\n')
+    else:
+        # NOT a hard failure. The AU board is the one this company is rostered
+        # for, and it has already been read; refusing to write it because a
+        # second board is down would throw away good rows to punish a bad feed.
+        # The run still goes red so the outage is visible.
+        sys.stderr.write('No roles parsed from the Americas board.\n')
+
     if DRY:
-        return 0
+        return 0 if americas else 1
     n = upsert(jobs)
     sys.stderr.write(f'{n} rows upserted to D1 as {SOURCE}/{COMPANY_ID}.\n')
-    return 0
+    if americas:
+        na = upsert(americas, SOURCE_AMERICAS)
+        sys.stderr.write(f'{na} rows upserted to D1 as {SOURCE_AMERICAS}/{COMPANY_ID}.\n')
+        return 0
+    return 1
 
 
 if __name__ == '__main__':

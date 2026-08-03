@@ -1,0 +1,56 @@
+# Daily startup.jobs → D1 archive, one company page per rostered employer.
+#
+# startup.jobs 403s a datacentre IP, so this runs here rather than in the
+# jobs-cron Worker. It needs no JS render — the company pages are server-rendered
+# — so the Oxylabs fetches are the cheap non-rendering kind, and the slug
+# directory comes straight off the board's CDN sitemap with no proxy at all.
+#
+# Attribution is by an explicit CONFIRMED list in the script, not by name match:
+# on this board /company/igo is "iGo" of Pennsylvania and /company/redox is a US
+# healthcare API firm, neither of which is the ASX company of that name. Slug
+# matches that are advertising but unconfirmed are printed at the end of the run
+# with their evidence, and nothing is written for them.
+#
+# Required repo secrets:
+#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
+#   CLOUDFLARE_API_TOKEN                — a token with D1 edit on the employsi account
+# Optional repo variables (fall back to values baked into the script):
+#   CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# The job exits non-zero if the sitemap is unreachable or if not one confirmed
+# employer returns a role — either is the board blocking us, not a quiet market.
+
+name: startupjobs-archive
+
+on:
+  schedule:
+    - cron: '50 18 * * *' # 18:50 UTC daily (~05:50 AEST), after simplyhired
+  workflow_dispatch: {}
+
+concurrency:
+  group: startupjobs-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Scrape startup.jobs → D1
+        env:
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/startupjobs-to-d1.py
