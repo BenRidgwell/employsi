@@ -328,6 +328,71 @@ New Jersey, Manhattan and Hamilton Hill in Perth.
 
 ---
 
+# Re-mapping the archive onto the current taxonomy (2026-08-03)
+
+Every row's `skills` column is frozen as JSON at the moment it is written, and
+the upsert does `skills = COALESCE(jobs.skills, excluded.skills)` — it never
+overwrites. So a taxonomy fix reaches new rows only, and the archive slowly
+fills with the verdicts of older, cruder matchers. Re-mapping is how that is
+paid off, and it is worth writing down how to do it without making things worse.
+
+## Reproduce each source's INPUT, not just its title
+
+The single thing that makes this dangerous is that **sources do not all map on
+the title alone**:
+
+| Source | Mapped on | Reproducible from the archive? |
+|---|---|---|
+| career portals | title + employer sector | yes — `company_id` → sector |
+| SEEK, Adzuna, Jora, Indeed, qld-gov … | title | yes |
+| wa-gov, vic-gov, tas-gov | title + occupation | yes — occupation IS the `category` column |
+| **nt-gov** | title + agency section | **no** — section is not stored |
+| **mycareersfuture** | title + the board's own skill tags | **no** — tags are not stored |
+
+Re-mapping the last two on the title alone reads as a catastrophe and isn't one:
+it would have stripped skills from **7,134 of 9,578** mycareersfuture rows and 80
+of 368 nt-gov rows. That is the method losing the input, not the taxonomy
+changing its mind, so **both sources are excluded** from the re-map. If they ever
+need re-mapping, store the extra field first.
+
+## What the re-map actually changed
+
+74,165 rows considered, **6,573 updated**: 4,427 rewritten, 2,016 that had no
+skills and now have some, and 130 cleared. The clears and losses are dominated by
+a single family of old bugs — terms matching in the MIDDLE of a word, which the
+`termMatches` word-boundary fix later stopped:
+
+- `Contractor` → *actor* → Creative & Performing Arts
+- `Authority`, `Authorization` → *author* → Journalism & Media
+- `Unaccredited`, `Accreditation` → *credit* → Banking & Lending
+- `District Manager` → *ict manager* → IT & Systems
+- `Enterprise`, `Perpetual` → *erp* → IT & Systems
+- `Hyundai` → *ai* → Data Science & Machine Learning
+- `Wesfarmers` → *farm* → Agriculture & Farming
+- `Telecommunications` → *comms* → Marketing & Comms
+
+## The re-map is also how you find gaps
+
+Word-boundary matching has a documented cost: a stem buried inside a compound no
+longer matches. Re-mapping surfaces those as rows that lose a correct skill and
+gain nothing, which is a much better detector than reading the term list. Four
+were found and fixed this way — `paralegal`, `neuropsycholog`, the singular
+`system administrator` (plus database and network), and
+`geoscientist`/`hydrochemist`/`microbiolog`.
+
+**Fix the gaps before writing, not after.** Run the re-map, list what each source
+would lose, and only stamp it across the archive once every remaining loss is a
+correction you can name.
+
+One gap is recorded and NOT fixed: the Chinese term list covers 生产/物流/司机 and
+their neighbours but not 骑手 (delivery rider), 保洁/家政 (cleaning) or 质检/品控
+(quality control), so 29 Zhaopin rows re-map to no skill. Their previous values
+were not better — a Meituan rider was filed under Manufacturing & Production and
+a cleaner under Human Resources — so an empty list is the honest reading until
+the terms are added.
+
+---
+
 # Historical job archive (Cloudflare D1)
 
 Every listing pulled from **Adzuna, The Muse, Jooble, SEEK and Indeed** — the
