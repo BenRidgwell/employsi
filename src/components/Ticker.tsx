@@ -4,7 +4,7 @@ export function Ticker() {
       <iframe
         src="/skills-ticker.html"
         title="Skills in demand ticker"
-        className="-mt-6 h-[140px] w-full border-0"
+        className="-mt-[72px] h-[140px] w-full border-0"
         style={{ background: "transparent" }}
       />
     </div>
