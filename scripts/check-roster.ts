@@ -27,8 +27,7 @@
 import { COMPANIES } from "../src/employsi/data/companies";
 import { CITY_COMPANIES } from "../src/employsi/data/mapboxGeo";
 import { SEEK_ADVERTISERS } from "../src/employsi/data/seekAdvertisers";
-import { readFileSync } from "node:fs";
-import { SITES as CAREER_SITES, PORTAL_GROUPS } from "../workers/jobs-cron/careerSites";
+import { SITES as CAREER_SITES } from "../workers/jobs-cron/careerSites";
 
 interface Finding {
   level: "error" | "warn";
@@ -119,97 +118,11 @@ for (const id of Object.keys(SEEK_ADVERTISERS)) {
   }
 }
 
-// ── 6. Every career site is actually SCHEDULED ──────────────────────────────
-// A site in SITES but in no PORTAL_GROUPS slice never fetches, and nothing
-// errors — the run simply walks a list that does not include it. Thirteen feeds
-// sat idle that way, and one more was orphaned by renaming a site id without
-// touching the group that named it (`cba` -> `sydney-cba`).
-//
-// This checks the two files it can reach. PORTAL_TICKS (index.ts) and `crons`
-// (wrangler.jsonc) must move with them: a GROUP with no tick is the same
-// silent failure one level up, and is checked below by count.
-{
-  const grouped = new Set(PORTAL_GROUPS.flat());
-  const keys = CAREER_SITES.map((s) => s.key ?? s.id);
-  for (const k of keys) {
-    if (!grouped.has(k)) err("feed-not-scheduled", k, "in SITES but in no PORTAL_GROUPS slice");
-  }
-  for (const g of grouped) {
-    if (!keys.includes(g)) err("group-without-feed", g, "PORTAL_GROUPS names a site that is gone");
-  }
-}
-
-// ── 7. Every group has a tick, and every tick has a cron ────────────────────
-// The chain a portal feed depends on is four links long, in three files:
-//
-//   SITES → PORTAL_GROUPS → PORTAL_TICKS (index.ts) → crons (wrangler.jsonc)
-//
-// and a break at ANY link fails silently. Section 6 covers the first two. These
-// are the other two, and each has already gone wrong once:
-//
-//   group with no tick   twenty-five boards were added to SITES and
-//                        PORTAL_GROUPS but never to PORTAL_TICKS, so they had
-//                        nothing to run on and fetched zero times.
-//   tick with no cron    a tick keyed on a minute the Worker is not scheduled
-//                        for is never delivered.
-//   duplicate tick key   JavaScript takes the LAST definition of a repeated
-//                        object key without complaining, so one of the two
-//                        groups silently stops running. Hit twice while fixing
-//                        this exact area.
-//   duplicate cron       Cloudflare REJECTS the deploy ("duplicate cron
-//                        found"), so this one is loud — but it is cheaper to
-//                        catch here than after a failed push.
-//
-// index.ts imports Worker-only bindings, so both files are read as TEXT rather
-// than imported. That is a deliberate trade: a regex over a literal is cruder
-// than a real parse, but it needs no Worker runtime, and the shapes it reads
-// are simple object literals and a string array.
-{
-  const src = readFileSync(new URL("../workers/jobs-cron/index.ts", import.meta.url), "utf8");
-  const wrangler = readFileSync(
-    new URL("../workers/jobs-cron/wrangler.jsonc", import.meta.url),
-    "utf8",
-  );
-  const table = (name: string): [string, number][] => {
-    const i = src.indexOf(`const ${name}`);
-    if (i < 0) return [];
-    return [...src.slice(i, src.indexOf("\n};", i)).matchAll(/"([^"]+)":\s*(\d+)/g)].map((m) => [
-      m[1],
-      Number(m[2]),
-    ]);
-  };
-  const portalTicks = table("PORTAL_TICKS");
-  const newsTicks = table("NEWS_TICKS");
-  const cronArr = wrangler.match(/"crons":\s*\[(.*?)\]/s)?.[1] ?? "";
-  const crons = [...cronArr.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
-
-  if (!portalTicks.length) err("ticks-unreadable", "PORTAL_TICKS", "found no entries in index.ts");
-  if (!crons.length) err("crons-unreadable", "wrangler.jsonc", "found no crons array");
-
-  const dupes = (xs: string[]) => [...new Set(xs.filter((x, i) => xs.indexOf(x) !== i))];
-
-  for (const d of dupes([...portalTicks, ...newsTicks].map(([c]) => c))) {
-    err("duplicate-tick", d, "declared twice — the later one silently wins");
-  }
-  for (const d of dupes(crons))
-    err("duplicate-cron", d, "listed twice — Cloudflare rejects the deploy");
-
-  const tickIdx = new Set(portalTicks.map(([, i]) => i));
-  PORTAL_GROUPS.forEach((g, i) => {
-    if (!tickIdx.has(i)) {
-      err("group-without-tick", `group ${i}`, `${g.length} site(s) with no cron minute to run on`);
-    }
-  });
-  for (const [, i] of portalTicks) {
-    if (i >= PORTAL_GROUPS.length) {
-      err("tick-without-group", `index ${i}`, "PORTAL_TICKS points past the end of PORTAL_GROUPS");
-    }
-  }
-  const cronSet = new Set(crons);
-  for (const [c] of [...portalTicks, ...newsTicks]) {
-    if (!cronSet.has(c)) err("tick-without-cron", c, "no such minute in wrangler.jsonc crons");
-  }
-}
+// Scheduling — SITES ↔ PORTAL_GROUPS ↔ PORTAL_TICKS ↔ crons — is NOT checked
+// here. scripts/check-portal-ticks.ts already owns that chain in full, and runs
+// in CI on every change to the three files involved. Two checkers over one
+// invariant is worse than one: they drift, disagree, and each becomes a reason
+// to ignore the other. This file owns the roster side; that one owns scheduling.
 
 // ── report ──────────────────────────────────────────────────────────────────
 const errors = findings.filter((f) => f.level === "error");

@@ -1,0 +1,56 @@
+# Roster wiring check.
+#
+# A company is not one record. Adding, renaming or removing one touches the
+# roster AND every file keyed on a company id — the career-site definitions the
+# cron worker walks, the SEEK advertiser ids, the city maps that decide where a
+# marker is drawn. Nothing links those files, so drift is silent and always the
+# same shape: a card that never shows a vacancy, rows archived under a
+# company_id nothing can render, or a company with no marker at all. Each looks
+# like an absence of DATA rather than an absence of WIRING.
+#
+# It has already happened twice. The Commonwealth Bank feed was keyed "cba" —
+# the Workday tenant slug, matching no roster company — so it ran daily, spent
+# its page budget, and attributed every row to something the app cannot display.
+# Renaming that id to "sydney-cba" then orphaned the PORTAL_GROUPS entry that
+# still named the old one.
+#
+# Scheduling is deliberately NOT checked here — scripts/check-portal-ticks.ts
+# owns that chain and has its own workflow. This one owns the roster side.
+#
+# See scripts/check-roster.ts.
+
+name: roster-check
+
+on:
+  push:
+    paths:
+      - 'src/employsi/data/companies.ts'
+      - 'src/employsi/data/cityRosters.ts'
+      - 'src/employsi/data/rosters.ts'
+      - 'src/employsi/data/mapboxGeo.ts'
+      - 'src/employsi/data/seekAdvertisers.ts'
+      - 'workers/jobs-cron/careerSites.ts'
+      - 'scripts/check-roster.ts'
+      - '.github/workflows/roster-check.yml'
+  pull_request:
+    paths:
+      - 'src/employsi/data/companies.ts'
+      - 'src/employsi/data/cityRosters.ts'
+      - 'src/employsi/data/rosters.ts'
+      - 'src/employsi/data/mapboxGeo.ts'
+      - 'src/employsi/data/seekAdvertisers.ts'
+      - 'workers/jobs-cron/careerSites.ts'
+      - 'scripts/check-roster.ts'
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Assert every feed, advertiser and marker maps to a real company
+        run: bun run scripts/check-roster.ts
