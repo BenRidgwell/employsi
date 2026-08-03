@@ -100,7 +100,8 @@ type Platform =
   | "plscareers"
   | "xmlfeed"
   | "ampol"
-  | "taleo";
+  | "taleo"
+  | "aurizon";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -676,6 +677,15 @@ export const SITES: SiteDef[] = [
     endpoint: "QantasGroup",
     origin: "https://careers.qantas.com",
     homeHub: "sydney",
+  },
+  {
+    id: "brisbane-azj",
+    name: "Aurizon",
+    sector: "Industrial Manufacturing",
+    platform: "aurizon",
+    endpoint: "https://www.aurizon.com.au",
+    origin: "https://www.aurizon.com.au",
+    homeHub: "brisbane",
   },
   {
     id: "sydney-hub",
@@ -2593,6 +2603,61 @@ async function fetchTaleo(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+/**
+ * Aurizon's own careers site (aurizon.com.au/careers/job-opportunities).
+ *
+ * Not a platform — a bespoke site — but it is included as one because it serves
+ * its ENTIRE board as HTML in a single response, which makes it cheaper and
+ * more complete than most of the tenanted platforms here. Measured: 51 distinct
+ * roles, no pagination control, no load-more, no client-side list. That is the
+ * whole board, so this deliberately does not page.
+ *
+ * The markup was mistaken for PageUp at first glance because the page mentions
+ * it; it does not use it. Each role is a `link-list__item` carrying:
+ *
+ *   <a href="/careers/job-description?jn=683277">        the requisition number
+ *   <div class="link-list__label">Locomotive Driver</div>            the title
+ *   <div class="link-list__description">Permanent - Full Time — …</div>  type + category
+ *   <div class="link-list__description">Berrimah, Darwin</div>        the locations
+ *
+ * The two descriptions are distinguished by ORDER, not by class — both carry the
+ * same `link-list__description`, and only a colour utility separates them
+ * visually. Keying on the colour class would tie this to a restyle; keying on
+ * order ties it to the content, which is the more stable of the two.
+ *
+ * The page also carries hidden `data-field="location" data-value-state="…"`
+ * spans, which are richer, but they sit OUTSIDE the item they describe and are
+ * matched to it only by document order. The visible location text says the same
+ * thing inside the row, so it is used instead and the pairing risk is avoided.
+ *
+ * Roles appear twice in the document (desktop and mobile renderings — 102 items
+ * for 51 roles), so the requisition number deduplicates.
+ */
+async function fetchAurizon(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(`${site.endpoint}/careers/job-opportunities?search=`);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const item of html.split("link-list__item").slice(1)) {
+    const a = item.match(/href="(\/careers\/job-description\?jn=(\d+))"/i);
+    const label = item.match(/link-list__label[^>]*>([\s\S]*?)<\/div>/i);
+    if (!a || !label) continue;
+    const ref = a[2];
+    if (seen.has(ref)) continue;
+    const title = clean(label[1]);
+    if (!title) continue;
+    seen.add(ref);
+    const descs = [...item.matchAll(/link-list__description[^>]*>([\s\S]*?)<\/div>/gi)].map((m) =>
+      clean(m[1]),
+    );
+    // [0] is "Permanent - Full Time — Category, Sub-category", [1] the locations.
+    const cat = descs[0] ?? "";
+    const loc = descs[1] ?? "";
+    out.push(job(site, title, loc, `${site.origin}${a[1]}`, "", cat));
+  }
+  return out;
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   successfactors: fetchSuccessFactors,
   workday: fetchWorkday,
@@ -2614,6 +2679,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   xmlfeed: fetchXmlFeed,
   ampol: fetchAmpol,
   taleo: fetchTaleo,
+  aurizon: fetchAurizon,
 };
 
 export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
@@ -2642,6 +2708,7 @@ const SOURCE_TAG: Record<Platform, string> = {
   xmlfeed: "xml",
   ampol: "ale",
   taleo: "tl",
+  aurizon: "azj",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */
