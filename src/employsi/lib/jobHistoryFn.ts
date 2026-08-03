@@ -4,6 +4,7 @@ import { marketVisible, isReleasedRow } from "./markets";
 import type { D1Like } from "./jobArchive";
 import { COMPANY_ID_ALIAS, type RolePoint } from "./openRolesFn";
 import { SKILL_CATEGORY, parseStoredSkills } from "../data/skillsTaxonomy";
+import { annualAud, medianAnnual } from "./salaryParse";
 
 // Reads the historical job archive (Cloudflare D1) written by the jobs-cron
 // worker + the app's live fetch (see jobArchive.ts). Powers the "Vacancy
@@ -224,6 +225,17 @@ export interface LiveSkillTrend {
   // honest line (see SPARK_MIN_POINTS below) — the ticker then shows the row
   // without one rather than inventing a shape.
   spark?: number[];
+  /**
+   * Median annual salary, in AUD, advertised across the currently-live
+   * Australian vacancies that demand this skill.
+   *
+   * Omitted when too few of them state one. Australian only, and never
+   * converted from another currency — see lib/salaryParse for why the currency
+   * of an archived salary string is knowable only from its hub, and why
+   * averaging a San Jose figure with a Brisbane one produces a number that is
+   * not a salary anywhere.
+   */
+  pay?: number;
 }
 
 // The three windows the ticker's window control cycles through, matching the
@@ -291,7 +303,7 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
     try {
       const res = await db
         .prepare(
-          `SELECT skills, first_seen, last_seen, hub, company_id FROM jobs
+          `SELECT skills, first_seen, last_seen, hub, company_id, salary FROM jobs
              WHERE skills IS NOT NULL AND last_seen >= ?1`,
         )
         .bind(scanFrom)
@@ -307,6 +319,13 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
       // New listings per day, used below to find the day collection actually
       // began rather than the day the first stray row landed.
       const newPerDay: Record<string, number> = {};
+      // skill -> every annual AUD figure advertised for it RIGHT NOW. See
+      // salaryParse for why only Australian rows count and why nothing is
+      // converted. `payFrom` is the same boundary the app uses for "currently
+      // advertised", so the median describes the ads a reader could go and
+      // apply to today — not the 60-day scan window the deltas need.
+      const payAds: Record<string, number[]> = {};
+      const payFrom = day(1);
       for (const r of rows) {
         // parseStoredSkills, not a bare JSON.parse: archived rows keep the
         // skill names they were written with, so a renamed skill needs its old
@@ -320,6 +339,10 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
           continue;
         if (fs < archiveStart) archiveStart = fs;
         newPerDay[fs] = (newPerDay[fs] || 0) + 1;
+        if (ls >= payFrom) {
+          const aud = annualAud(r.salary as string | null, r.hub as string | null);
+          if (aud !== null) for (const s of skills) (payAds[s] ||= []).push(aud);
+        }
         for (const b of bounds) {
           if (ls >= b.recentStart) for (const s of skills) b.now[s] = (b.now[s] || 0) + 1;
           if (fs <= b.priorEnd && ls >= b.priorStart)
@@ -428,6 +451,13 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
           tag: "Demand",
           v: p.v,
           spark: sparkFor(p.name),
+          // Undefined when too few Australian ads state a salary — the row then
+          // renders without a figure rather than with a thin one. It is the
+          // same figure in every window on purpose: the median is a LEVEL
+          // ("what these roles pay now") while the percentage is a MOVEMENT
+          // over the selected window, so rescaling it per window would be
+          // asserting a trend nothing measured.
+          pay: medianAnnual(payAds[p.name] || []) ?? undefined,
         }));
       }
       return out;

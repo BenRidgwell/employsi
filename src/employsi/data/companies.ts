@@ -1562,6 +1562,10 @@ export interface TickerItem {
   // archive holds enough history to draw one. The static seed below has none —
   // a sparkline is only shown for rows with real measured history.
   spark?: number[];
+  // Median annual AUD advertised across the live Australian vacancies demanding
+  // this skill, when enough of them state one. See lib/salaryParse — it is
+  // absent, not zero, when they do not.
+  pay?: number;
 }
 
 /**

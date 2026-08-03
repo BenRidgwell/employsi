@@ -2945,6 +2945,22 @@ body {
 .tspark.flat {
   color: var(--neutral-500);
 }
+/* Median advertised salary, between the sparkline and the delta chip, in the
+   design's muted mono. Deliberately quieter than the delta: the percentage is
+   what the strip is about ("Skills in demand") and the pay is context.
+
+   A row without one renders without the element rather than with a dash or a
+   zero — a skill whose live Australian ads mostly do not state a salary has no
+   median to show, and the same rule already governs the sparkline. */
+.tpay {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
 /* Delta chip: 21px tall, 7px radius, coloured to its direction. Per the design
    the fill is a FLASH, not a permanent tint — it appears when the value moves
    and fades back to transparent, so the resting row is text on the pill. */

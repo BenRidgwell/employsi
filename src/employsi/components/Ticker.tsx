@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { TickerItem } from "../data/companies";
 import { getLiveSkillTrends, TREND_WINDOWS } from "../lib/jobHistoryFn";
+import { fmtPay } from "../lib/salaryParse";
 
 /**
  * The skills trend ticker, built from `Skills Trend Ticker.dc.html` in the
@@ -28,6 +29,24 @@ import { getLiveSkillTrends, TREND_WINDOWS } from "../lib/jobHistoryFn";
  *     screen was not the number measured. The drift is gone. The flash is kept
  *     and fires when a value genuinely changes: a fresh archive read, or a
  *     window switch.
+ *
+ *  3. The design's row carries a pay figure ("$172k") from a hand-written table
+ *     of sixteen skills. Ours is measured: the median annual salary advertised
+ *     across the live vacancies demanding that skill. Two consequences the
+ *     design did not have to think about, both in lib/salaryParse:
+ *
+ *       • It is AUSTRALIAN and in AUD, because the currency of an archived
+ *         salary string is knowable only from the row's hub — Adzuna writes a
+ *         bare "72,038" for San Jose and "21,280–22,800" for London. Nothing is
+ *         converted; a figure that moved because the dollar moved would not be
+ *         a labour-market measurement.
+ *       • A row whose live Australian ads mostly do not state a salary shows NO
+ *         figure, rather than a thin median or a dash. 45 of the taxonomy's
+ *         skills currently clear the floor.
+ *
+ *     The figure is also the same in all three windows on purpose: it is a
+ *     level ("what these roles pay now") where the percentage is a movement
+ *     over the selected window.
  *
  * The pause button therefore stops the marquee rather than a value churn that
  * no longer exists, and its tooltip says so ("Pause ticker", not the design's
@@ -164,6 +183,11 @@ export function Ticker({ hidden }: { hidden: boolean }) {
           >
             <path d={path} />
           </svg>
+        )}
+        {t.pay !== undefined && (
+          <span className="tpay" title="Median advertised salary, live Australian vacancies">
+            {fmtPay(t.pay)}
+          </span>
         )}
         <span className={`tdelta ${dir}${flashed.has(t.name) ? " flash" : ""}`}>
           <svg
