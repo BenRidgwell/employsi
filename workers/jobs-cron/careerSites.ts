@@ -678,6 +678,20 @@ export const SITES: SiteDef[] = [
     homeHub: "sydney",
   },
   {
+    id: "melbourne-amc",
+    name: "Amcor",
+    sector: "Energy & Natural Resources",
+    // Amcor's careers page is a client-rendered shell on amcor.com with no API
+    // in the served HTML — rendering it through Oxylabs is what exposed the
+    // apply links, and they point at jobs-sf.amcor.com. "sf" is SuccessFactors:
+    // it is the ordinary branded career site, so the existing fetcher reads it
+    // unchanged. Measured 31 job tiles on page 1 of /search/?q=&startrow=0.
+    platform: "successfactors",
+    endpoint: "https://jobs-sf.amcor.com",
+    origin: "https://jobs-sf.amcor.com",
+    homeHub: "melbourne",
+  },
+  {
     id: "melbourne-jbh",
     name: "JB Hi-Fi",
     sector: "Consumer & Retail",
