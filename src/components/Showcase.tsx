@@ -136,8 +136,6 @@ export function Showcase() {
         <div className="flex h-[420px] w-full items-end justify-center md:h-[440px]">
           <SkylineSVG />
         </div>
-
-        <Carousel />
       </div>
 
       <section
