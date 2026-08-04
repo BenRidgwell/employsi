@@ -1,0 +1,52 @@
+# One-off measurement, not a feed: does a headless browser on an ORDINARY
+# GitHub runner get the four render-gated boards, or do they need the
+# residential IP too?
+#
+# Stockland, Dyno Nobel and Sandfire (SuccessFactors) and Whitehaven (Dayforce)
+# all go through Oxylabs with render=True. Probed without a browser they return
+# 200 and a full-looking page carrying ZERO rows, because the results arrive
+# after load. That proves they need a browser; it says nothing about the IP.
+#
+# The answer decides how much of the Oxylabs bill a self-hosted Playwright could
+# remove on its own — no proxy, no hardware. So it is worth one runner-minute to
+# know rather than assume.
+#
+# Manual only (workflow_dispatch). It writes nothing: no D1, no secrets, no
+# credentials of any kind. Re-run it whenever one of those boards changes
+# platform.
+
+name: probe-headless-ci
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install Playwright + Chromium
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Probe the four render-gated boards
+        run: python scripts/probe-headless-ci.py --json headless-probe.json
+
+      - name: Upload the raw result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: headless-probe
+          path: headless-probe.json
+          if-no-files-found: warn
