@@ -16,7 +16,6 @@
 # is what keeps it out of the Worker, whose fetch helper is stateless by design.
 #
 # Required repo secrets:
-#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
 #   CLOUDFLARE_API_TOKEN                — a token with D1 edit on the employsi account
 # Optional repo variables (fall back to values baked into the script):
 #   CF_ACCOUNT_ID, D1_DATABASE_ID
@@ -53,10 +52,16 @@ jobs:
         with:
           bun-version: latest
 
+      # Playwright drives the render locally now — the proxy was only ever
+      # supplying a browser for this board, not a residential IP.
+      - name: Install Playwright + Chromium
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
       - name: Scrape Dyno Nobel careers (AU + Americas) → D1
         env:
-          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
-          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}

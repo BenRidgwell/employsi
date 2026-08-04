@@ -18,6 +18,13 @@ career portal instead, and that renders nothing server-side. Measured:
 
 So this runs rendered, off-Worker. A Cloudflare Worker cannot render a page.
 
+RENDERED LOCALLY, NOT THROUGH A PROXY. This used Oxylabs' render=True purely for
+the browser — never for a residential IP. Measured 2026-08-04 on ubuntu-latest
+(.github/workflows/probe-headless-ci.yml), a headless Chromium on an ordinary CI
+address reads this board fine, so it now drives a local Playwright through the
+SAME instruction list (see scripts/browser_fetch.py). `--oxylabs` hands that list
+back to the proxy unchanged.
+
 WHAT IT TALKS TO
 
     GET https://career10.successfactors.com/career
@@ -61,6 +68,7 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+import browser_fetch  # noqa: E402
 
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
 ACCOUNT = os.environ.get('CF_ACCOUNT_ID') or '080a66721e2d85950d9d7dc939e08b76'
@@ -85,6 +93,11 @@ args = sys.argv[1:]
 # completes, while a broken "Next" that never advances costs six renders, not
 # forty — every extra page is another full browser render through Oxylabs.
 MAX_PAGES = int(args[args.index('--max-pages') + 1]) if '--max-pages' in args else 6
+# Playwright by default; --oxylabs sends the same instruction list to the Web
+# Scraper API instead. Measured 2026-08-04: this board renders for a headless
+# browser on an ordinary CI address, so the proxy was paying for a browser we
+# can run ourselves. See scripts/browser_fetch.py.
+VIA_OXYLABS = '--oxylabs' in args
 DRY = '--dry-run' in args
 
 # Seconds to let the RCM portal's DWR search settle before capturing, and again
@@ -146,15 +159,22 @@ NEXT_CLICK = {'type': 'click',
 
 
 def render(page: int) -> str | None:
-    """Render the listing and click through to `page` (1-based)."""
-    from oxylabs_client import fetch as oxy_fetch
+    """Render the listing and click through to `page` (1-based).
+
+    The instruction list is unchanged from when this went through Oxylabs — only
+    the executor moved. Chaining a click per page rather than jumping is
+    deliberate: SuccessFactors renders no page control that takes an index, so
+    "page 4" is only reachable as three Next clicks from a fresh load."""
     instructions: list[dict] = [{'type': 'wait', 'wait_time_s': SETTLE_S}]
     for _ in range(page - 1):
         instructions.append(NEXT_CLICK)
         instructions.append({'type': 'wait', 'wait_time_s': SETTLE_S})
-    content, _ = oxy_fetch(LISTING, geo='Australia', render=True,
-                           extra={'browser_instructions': instructions})
-    return content
+    if VIA_OXYLABS:
+        from oxylabs_client import fetch as oxy_fetch
+        content, _ = oxy_fetch(LISTING, geo='Australia', render=True,
+                               extra={'browser_instructions': instructions})
+        return content
+    return browser_fetch.render(LISTING, instructions)
 
 
 ROW_RE = re.compile(r'<tr class="jobResultItem">(.*?)</tr>', re.S)

@@ -1,4 +1,4 @@
-# Daily Stockland + Auckland Airport careers boards → D1 archive, via Oxylabs.
+# Daily Stockland + Auckland Airport careers boards → D1 archive, (rendered, local browser).
 #
 # Both are employer portals the jobs-cron Worker cannot run, for two different
 # reasons — which is worth keeping straight, because the fix differs:
@@ -27,7 +27,6 @@
 # status still reflects either failing.
 #
 # Required repo secrets:
-#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
 #   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
 # Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
 #
@@ -61,17 +60,25 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Scrape Stockland careers → D1 (Oxylabs, rendered)
+      # Playwright, for STOCKLAND ONLY. The other two steps in this workflow —
+      # Auckland Airport and TechnologyOne — were probed the same way and are
+      # Cloudflare-challenged from a datacentre address, so they keep the proxy.
+      # Three scrapers share this file; only one of them moved.
+      - name: Install Playwright + Chromium
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Scrape Stockland careers → D1 (rendered, local browser)
         id: stockland
         env:
-          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
-          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         run: python scripts/stockland-to-d1.py
 
-      - name: Scrape Auckland Airport careers → D1 (Oxylabs)
+      - name: Scrape Auckland Airport careers → D1 (Oxylabs — still needs the IP)
         # Runs even if Stockland failed — they are unrelated boards, and one
         # being blocked is no reason to skip archiving the other.
         if: always()
@@ -83,7 +90,7 @@ jobs:
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         run: python scripts/aucklandairport-to-d1.py
 
-      - name: Scrape TechnologyOne careers → D1 (Oxylabs)
+      - name: Scrape TechnologyOne careers → D1 (Oxylabs — still needs the IP)
         if: always()
         env:
           OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}

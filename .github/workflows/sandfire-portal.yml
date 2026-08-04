@@ -1,4 +1,4 @@
-# Daily Sandfire Resources careers board → D1 archive, via Oxylabs.
+# Daily Sandfire Resources careers board → D1 archive, (rendered, local browser).
 #
 # Almost every employer portal on the roster is fetched by the jobs-cron Worker
 # (workers/jobs-cron/careerSites.ts). Sandfire is one of the few that cannot be,
@@ -23,7 +23,6 @@
 # normal day for this board; zero is a bug.
 #
 # Required repo secrets:
-#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
 #   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
 # Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
 #
@@ -56,10 +55,16 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - name: Scrape Sandfire Resources careers → D1 (Oxylabs, rendered)
+      # Playwright drives the render locally now — the proxy was only ever
+      # supplying a browser for this board, not a residential IP.
+      - name: Install Playwright + Chromium
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Scrape Sandfire Resources careers → D1 (rendered, local browser)
         env:
-          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
-          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}

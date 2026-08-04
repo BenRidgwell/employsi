@@ -1,0 +1,69 @@
+# Runs the five Playwright-ported scrapers in their NO-WRITE modes and reports
+# what each one actually collected.
+#
+# WHY THIS EXISTS SEPARATELY FROM probe-headless-ci
+# That probe answers "can a headless browser on CI read this board" by counting
+# rows in a rendered page. This answers the different and more useful question:
+# does the SCRAPER, end to end — its paging, its parser, its skills mapping —
+# still produce the same rows now that the renderer is local Playwright instead
+# of Oxylabs' render=True. A board can render perfectly and still yield nothing
+# if the port broke a click or a selector.
+#
+# Every step writes nothing: --dry-run for the four portals, --solve for APS.
+# So this is safe to run at any time, and it is the regression check to run
+# after touching scripts/browser_fetch.py.
+#
+# `continue-on-error` on each step is deliberate: one board being down should
+# still let the others report, because the point is the comparison across all
+# five, not a pass/fail gate.
+
+name: verify-browser-scrapers
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      # bun runs scripts/map-skills.ts. Without it the scrapers still collect
+      # rows but log a skills failure, which would muddy the read.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Playwright + Chromium
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Stockland (SuccessFactors)
+        continue-on-error: true
+        run: python scripts/stockland-to-d1.py --dry-run
+
+      - name: Dyno Nobel (SuccessFactors + Taleo)
+        continue-on-error: true
+        run: python scripts/dyno-to-d1.py --dry-run
+
+      - name: Sandfire (SuccessFactors EU)
+        continue-on-error: true
+        run: python scripts/sandfire-to-d1.py --dry-run
+
+      - name: Whitehaven (Dayforce)
+        continue-on-error: true
+        run: python scripts/whitehaven-dayforce-to-d1.py --dry-run
+
+      - name: APS Jobs (Salesforce Aura)
+        continue-on-error: true
+        run: python scripts/aps-to-d1.py --solve

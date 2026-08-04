@@ -4,14 +4,22 @@ Scrape the APS Jobs board (apsjobs.gov.au — federal / Commonwealth vacancies) 
 archive it to the D1 jobs table, deduped — the federal counterpart of the state
 gov scrapers.
 
-Why Oxylabs: apsjobs.gov.au is a Salesforce Aura site whose results are fetched
+Why a browser: apsjobs.gov.au is a Salesforce Aura site whose results are fetched
 by a session-gated ApexAction and rendered client-side, so a plain HTTP client
-gets an empty "Guest user access is not allowed" shell. A headless Chromium on a
+gets an empty "Guest user access is not allowed" shell.
+
+This used to go through Oxylabs, on the record that "a headless Chromium on a
 GitHub runner doesn't help either — the datacenter IP is bot-blocked and the run
-scraped 0 vacancies. Oxylabs' Web Scraper API fetches through a residential IP
-and executes the page's JS server-side, returning the finished DOM (with the
-Aura-hydrated results in it), so this is now a plain HTTP flow with no browser —
-the same path Indeed/LinkedIn/NSW use, and it runs fine on GitHub Actions.
+scraped 0 vacancies". That was re-tested on 2026-08-04
+(.github/workflows/probe-headless-ci.yml) and is not what happens: headless
+Chromium on ubuntu-latest read 15 vacancies out of this board through the same
+`jobs_extract` path used below.
+
+The difference is the settle time. Aura hydrates in two steps, and the earlier
+attempt read the DOM too early — which returns the shell, i.e. exactly what a
+block looks like. Twelve seconds is enough; see SETTLE_S. So the residential IP
+was paying for a browser we can run ourselves, and this now drives a local
+Chromium. `--oxylabs` restores the proxy path unchanged.
 
 One pass scrapes every current APS vacancy, maps each to its `aps-<slug>` agency
 id (mapped ONLY against the federal roster — never a state gov id, so a federal
@@ -21,9 +29,11 @@ with the same source|title|company|location key + upsert as
 src/employsi/lib/jobArchive.ts. Jobs whose agency can't be matched are archived
 under company_id 'aps-gov' (the federal bucket).
 
-Env: OXYLABS_USERNAME, OXYLABS_PASSWORD (Web Scraper API), CLOUDFLARE_API_TOKEN
-     (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID.
-Run:  python3 scripts/aps-to-d1.py [--max-pages N] [--no-skills] [--solve] [--limit N]
+Needs: pip install playwright && python -m playwright install chromium
+Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID.
+     OXYLABS_USERNAME / OXYLABS_PASSWORD only if --oxylabs is passed.
+Run:  python3 scripts/aps-to-d1.py [--max-pages N] [--no-skills] [--solve]
+                                   [--limit N] [--oxylabs]
 """
 from __future__ import annotations
 import json, os, re, subprocess, sys, time, datetime
@@ -31,6 +41,7 @@ import json, os, re, subprocess, sys, time, datetime
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+import browser_fetch  # noqa: E402
 try:
     import oxylabs_client as oxy  # noqa: E402
     import jobs_extract as jx  # noqa: E402
@@ -55,6 +66,9 @@ def _opt(name, default=None):
 
 MAX_PAGES = int(_opt('--max-pages', 40))
 NO_SKILLS = '--no-skills' in args
+# Playwright by default; --oxylabs sends the same render request to the Web
+# Scraper API instead. See render() below.
+VIA_OXYLABS = '--oxylabs' in args
 SOLVE = '--solve' in args
 LIMIT = int(_opt('--limit', 10**9))
 
@@ -218,18 +232,39 @@ SEARCH_URL = 'https://www.apsjobs.gov.au/s/job-search?offset={offset}'
 PAGE_SIZE = 20  # APS board's own page size; offsets step by this
 
 
-def scrape_via_oxylabs(max_pages: int):
-    """Walk the APS board through Oxylabs, extracting the Aura-hydrated results.
+# Seconds to let Aura hydrate before reading the DOM. Twelve, not eight:
+# measured on a GitHub runner, the results arrive in two steps and eight was not
+# always enough — a short settle reads the shell and reports a healthy board with
+# nothing on it.
+SETTLE_S = 12
+
+
+def render(url: str) -> str | None:
+    """Rendered page, from a local browser by default; --oxylabs for the proxy.
+
+    APS needs JavaScript executed and, measured 2026-08-04, nothing else: a
+    headless Chromium on an ordinary GitHub runner read 15 vacancies out of this
+    board through the same `jobs_extract` path used below. The residential IP was
+    paying for a browser we can run ourselves."""
+    if VIA_OXYLABS:
+        content, status = oxy.fetch(url, geo='Australia', render=True)
+        if not content:
+            sys.stderr.write(f'  (oxylabs status={status})\n')
+        return content
+    return browser_fetch.render(url, [{'type': 'wait', 'wait_time_s': SETTLE_S}])
+
+
+def scrape_board(max_pages: int):
+    """Walk the APS board, extracting the Aura-hydrated results.
 
     Pagination is offset-based. We stop as soon as a page yields no NEW jobs, so
-    a short board costs only a couple of requests. oxylabs_client throttles and
-    backs off between calls, so this stays polite by construction."""
+    a short board costs only a couple of requests."""
     scraped, seen = [], set()
     for pg in range(max_pages):
         url = SEARCH_URL.format(offset=pg * PAGE_SIZE)
-        content, status = oxy.fetch(url, geo='Australia', render=True)
+        content = render(url)
         if not content:
-            sys.stderr.write(f'  page {pg + 1}: no content (status={status})\n')
+            sys.stderr.write(f'  page {pg + 1}: no content\n')
             break
         rows, how = jx.extract_jobs(content, r'job-details', 'https://www.apsjobs.gov.au')
         if not rows and pg == 0:
@@ -251,11 +286,13 @@ def scrape_via_oxylabs(max_pages: int):
 def main() -> int:
     if not AGENCY_NAMES:
         sys.exit('Could not parse agencies from src/employsi/data/canberraGov.ts')
-    if not (os.environ.get('OXYLABS_USERNAME') and os.environ.get('OXYLABS_PASSWORD')):
-        sys.exit('OXYLABS_USERNAME / OXYLABS_PASSWORD required (Web Scraper API).')
-    sys.stderr.write(f'APS -> D1 via Oxylabs: {len(AGENCY_NAMES)} federal agencies in roster; '
+    if VIA_OXYLABS and not (os.environ.get('OXYLABS_USERNAME')
+                            and os.environ.get('OXYLABS_PASSWORD')):
+        sys.exit('--oxylabs needs OXYLABS_USERNAME / OXYLABS_PASSWORD.')
+    sys.stderr.write(f'APS -> D1 via {"Oxylabs" if VIA_OXYLABS else "local browser"}: '
+                     f'{len(AGENCY_NAMES)} federal agencies in roster; '
                      f'{"SOLVE (no D1 write)" if SOLVE else "archiving"}.\n')
-    scraped = scrape_via_oxylabs(MAX_PAGES)
+    scraped = scrape_board(MAX_PAGES)
 
     sys.stderr.write(f'  scraped {len(scraped)} vacancies\n')
     if SOLVE:

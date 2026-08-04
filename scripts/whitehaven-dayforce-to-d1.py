@@ -25,8 +25,18 @@ session cookies attached. That is Cloudflare bot management refusing a
 datacentre IP, and a Cloudflare Worker would fare worse rather than better
 (SEEK already 403s this project on a Cloudflare-to-Cloudflare fingerprint).
 
-So the portal is RENDERED through Oxylabs on a residential IP, which returns the
-hydrated job list as ordinary HTML. Same shape as the NAB and Sandfire feeds.
+So the portal is RENDERED rather than called, which returns the hydrated job
+list as ordinary HTML. Same shape as the NAB and Sandfire feeds.
+
+RENDERED LOCALLY, NOT THROUGH A PROXY. This used Oxylabs' render=True for the
+browser. Measured 2026-08-04 on ubuntu-latest
+(.github/workflows/probe-headless-ci.yml), a headless Chromium on an ordinary CI
+address reads this board fine — 25 rows, and its page-2 click works too — so it
+now drives a local Playwright through the SAME instruction list (see
+scripts/browser_fetch.py). `--oxylabs` hands that list back to the proxy.
+
+Note what this does NOT change: the Cloudflare 403 above is on the search API,
+which is still refused. It is the RENDERED PORTAL that a CI browser can read.
 
 PAGING is an Ant Design paginator with no URL parameter, so it is clicked. The
 number of `ant-pagination-item-N` entries in the rendered page is the board's
@@ -52,6 +62,7 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+import browser_fetch  # noqa: E402
 
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
 ACCOUNT = os.environ.get('CF_ACCOUNT_ID') or '080a66721e2d85950d9d7dc939e08b76'
@@ -68,6 +79,11 @@ PORTAL = 'https://jobs.dayforcehcm.com/en-AU/whitehavencoal/CANDIDATEPORTAL'
 
 args = sys.argv[1:]
 MAX_PAGES = int(args[args.index('--max-pages') + 1]) if '--max-pages' in args else 10
+# Playwright by default; --oxylabs sends the same instruction list to the Web
+# Scraper API instead. Measured 2026-08-04: this board renders for a headless
+# browser on an ordinary CI address, so the proxy was paying for a browser we
+# can run ourselves. See scripts/browser_fetch.py.
+VIA_OXYLABS = '--oxylabs' in args
 DRY = '--dry-run' in args
 
 # Seconds to let the portal hydrate and fetch its list before capturing, and
@@ -94,8 +110,10 @@ def job_key(source: str, title: str, company: str, location: str) -> str:
 
 # ── fetch + parse ─────────────────────────────────────────────────────────────
 def render(page: int) -> str | None:
-    """Render the portal and click through to `page` (1-based)."""
-    from oxylabs_client import fetch as oxy_fetch
+    """Render the portal and click through to `page` (1-based).
+
+    The instruction list is unchanged from when this went through Oxylabs — only
+    the executor moved."""
     instructions: list[dict] = [{'type': 'wait', 'wait_time_s': SETTLE_S}]
     if page > 1:
         # Click the numbered page rather than "next" repeatedly: Ant renders the
@@ -106,9 +124,12 @@ def render(page: int) -> str | None:
             'selector': {'type': 'css', 'value': f'.ant-pagination-item-{page} a'},
         })
         instructions.append({'type': 'wait', 'wait_time_s': SETTLE_S})
-    content, _ = oxy_fetch(PORTAL, geo='Australia', render=True,
-                           extra={'browser_instructions': instructions}, timeout=300)
-    return content
+    if VIA_OXYLABS:
+        from oxylabs_client import fetch as oxy_fetch
+        content, _ = oxy_fetch(PORTAL, geo='Australia', render=True,
+                               extra={'browser_instructions': instructions}, timeout=300)
+        return content
+    return browser_fetch.render(PORTAL, instructions)
 
 
 CARD_RE = re.compile(r'test-id="job-posting-card"\s+job-posting-id="(\d+)"(.*?)(?=test-id="job-posting-card"|$)', re.S)

@@ -42,12 +42,19 @@ statement that the role is in Australia, and it is what lets hubFor fall back to
 the company's home hub rather than leaving the row unplaced. Nothing is invented:
 where the site names a city ("AU Brisbane HQ") the row places on that city.
 
-Oxylabs is needed only for the SuccessFactors board. The Taleo one answers a
+A BROWSER is needed only for the SuccessFactors board. The Taleo one answers a
 plain session-bound HTTP flow — see scrape_americas for why that session is what
 keeps it out of the Worker.
 
-Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID,
-     OXYLABS_USERNAME, OXYLABS_PASSWORD
+That browser is now a local Playwright, not Oxylabs. Measured 2026-08-04 on
+ubuntu-latest (.github/workflows/probe-headless-ci.yml), headless Chromium on an
+ordinary CI address reads this board, so the proxy was paying for a browser we
+can run ourselves. The instruction list is unchanged; `--oxylabs` sends it back
+to the proxy.
+
+Needs: pip install playwright && python -m playwright install chromium
+Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID.
+     OXYLABS_USERNAME / OXYLABS_PASSWORD only if --oxylabs is passed
 Run: python scripts/dyno-to-d1.py [--max-pages N] [--dry-run]
 """
 from __future__ import annotations
@@ -65,6 +72,7 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+import browser_fetch  # noqa: E402
 
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
 ACCOUNT = os.environ.get('CF_ACCOUNT_ID') or '080a66721e2d85950d9d7dc939e08b76'
@@ -107,6 +115,11 @@ TBE_CWS = '43'
 
 args = sys.argv[1:]
 MAX_PAGES = int(args[args.index('--max-pages') + 1]) if '--max-pages' in args else 8
+# Playwright by default; --oxylabs sends the same instruction list to the Web
+# Scraper API instead. Measured 2026-08-04: this board renders for a headless
+# browser on an ordinary CI address, so the proxy was paying for a browser we
+# can run ourselves. See scripts/browser_fetch.py.
+VIA_OXYLABS = '--oxylabs' in args
 DRY = '--dry-run' in args
 
 # Seconds to let the RCM portal's DWR search settle before capturing, and again
@@ -136,15 +149,22 @@ NEXT_CLICK = {'type': 'click',
 
 
 def render(page: int) -> str | None:
-    """Render the listing and click through to `page` (1-based)."""
-    from oxylabs_client import fetch as oxy_fetch
+    """Render the listing and click through to `page` (1-based).
+
+    The instruction list is unchanged from when this went through Oxylabs — only
+    the executor moved. Chaining a click per page rather than jumping is
+    deliberate: SuccessFactors renders no page control that takes an index, so
+    "page 4" is only reachable as three Next clicks from a fresh load."""
     instructions: list[dict] = [{'type': 'wait', 'wait_time_s': SETTLE_S}]
     for _ in range(page - 1):
         instructions.append(NEXT_CLICK)
         instructions.append({'type': 'wait', 'wait_time_s': SETTLE_S})
-    content, _ = oxy_fetch(LISTING, geo='Australia', render=True,
-                           extra={'browser_instructions': instructions})
-    return content
+    if VIA_OXYLABS:
+        from oxylabs_client import fetch as oxy_fetch
+        content, _ = oxy_fetch(LISTING, geo='Australia', render=True,
+                               extra={'browser_instructions': instructions})
+        return content
+    return browser_fetch.render(LISTING, instructions)
 
 
 ROW_RE = re.compile(r'<tr class="jobResultItem">(.*?)</tr>', re.S)

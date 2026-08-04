@@ -1,4 +1,4 @@
-# Daily Whitehaven Coal (Dayforce) → D1 archive (hosted, via Oxylabs).
+# Daily Whitehaven Coal (Dayforce) → D1 archive (hosted, (rendered, local browser)).
 #
 # Whitehaven advertises on two boards. The SuccessFactors one
 # (careers.whitehavencoal.com.au, its Queensland roles) is read in-process by the
@@ -12,7 +12,6 @@
 # fare worse, not better. So the page is rendered through a residential IP.
 #
 # Required repo secrets:
-#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
 #   CLOUDFLARE_API_TOKEN                — a token with D1 edit on the employsi account
 # Optional repo variables (fall back to values baked into the script):
 #   CF_ACCOUNT_ID, D1_DATABASE_ID
@@ -46,10 +45,16 @@ jobs:
         with:
           bun-version: latest
 
+      # Playwright drives the render locally now — the proxy was only ever
+      # supplying a browser for this board, not a residential IP.
+      - name: Install Playwright + Chromium
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
       - name: Scrape Whitehaven Dayforce portal → D1
         env:
-          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
-          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
