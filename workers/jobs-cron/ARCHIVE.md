@@ -566,6 +566,51 @@ fail in the two different ways worth telling apart: Naukri returns a hard Akamai
 16KB is a challenge page with no jobs in it. A run that only checked status codes
 would have scored Zhaopin as a pass.
 
+### The five are ported and verified end to end
+
+`scripts/browser_fetch.py` executes the SAME instruction vocabulary Oxylabs'
+`browser_instructions` used, so each scraper's port was an executor swap and its
+instruction list is unchanged:
+
+```
+{'type': 'wait',  'wait_time_s': 8}
+{'type': 'click', 'selector': {'type': 'css'|'xpath', 'value': …}}
+```
+
+`--oxylabs` on any of the five hands the identical list back to the proxy.
+
+`verify-browser-scrapers.yml` runs all five in their no-write modes on a hosted
+runner — a different question from the probe, which only asks whether a page
+renders. This asks whether the SCRAPER still works: its paging, its parser, its
+skills mapping. Measured 2026-08-04:
+
+| Scraper | Result |
+|---|---|
+| Stockland | pages 1-3 × 10 rows, page 4 empty → stop. **30 of 32 advertised** |
+| Dyno Nobel (SF) | pages 1-4, **33 of 33 advertised** |
+| Dyno Nobel (Taleo Americas) | 150 roles — unchanged path, still a session walk |
+| Sandfire | **6 of 6 advertised** |
+| Whitehaven (Dayforce) | page 1/2 = 25, **page 2/2 = 11**, 36 total |
+| APS Jobs | **15 vacancies** via job-cards; stopped at page 2 (0 new) |
+
+Two of those lines are the ones that matter, because they are what a careless
+port would have broken silently. Stockland's chained "Next Page" clicks still
+walk three pages and still stop at the fourth. Whitehaven's Ant paginator still
+answers a numbered-page click and returns a *different* eleven rows. A port that
+rendered page 1 four times would have reported 40 rows and looked healthier than
+the truth.
+
+Deliberately not optimised while porting: each render still gets a fresh context
+and re-navigates from the listing URL, so SuccessFactors paging stays quadratic
+in clicks exactly as it was. Every one of these parsers assumes a full render of
+the page it is looking at, and a port is the wrong place to change that.
+
+**`browser-portals.yml` needed care.** It runs three scrapers and only Stockland
+moved — Auckland Airport and TechnologyOne are Cloudflare-challenged from a
+datacentre address, so they keep their Oxylabs credentials in the same file. A
+first pass stripped the secrets from the whole workflow, which would have broken
+both of them.
+
 Note also that the block markers behaved correctly on this run: silent on all
 five boards that had rows, firing only on the two that were empty. That is the
 fix described below working as intended — the first run had reported blocks
@@ -614,11 +659,15 @@ self-hosted runner at all — and therefore raise none of this.
 
 **Where that leaves the seventeen:**
 
-| Group | Count | What it needs |
+| Group | Count | State |
 |---|---|---|
-| Browser only — **proven on a hosted runner** | 5 | Playwright in CI. No proxy, no hardware. |
-| Residential IP (± browser) | 11 | jora, gulftalent, glassdoor, indeed, linkedin-jobs, nsw-gov bearer, Auckland Airport, TechnologyOne, SimplyHired, startup.jobs company pages, NAB — plus naukri and zhaopin, now measured into this group |
+| Browser only | 5 | **Ported and verified.** Playwright on hosted runners, no proxy, no hardware. |
+| Residential IP (± browser) | 11 | jora, gulftalent, glassdoor, indeed, linkedin-jobs, nsw-gov bearer, Auckland Airport, TechnologyOne, SimplyHired, startup.jobs company pages, NAB — plus naukri and zhaopin, measured into this group |
 | Possibly nothing | 1 | linkedin-posts — reads company post feeds, answered CI on four slugs; needs a volume trial |
+
+So the Oxylabs surface is **17 workflows → 12**, and the five that came off it
+needed no purchase of any kind. What remains is the genuinely hard half: the
+targets that refuse a datacentre address outright.
 
 ---
 
