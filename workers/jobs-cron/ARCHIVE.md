@@ -493,20 +493,63 @@ attributing a shortfall to blocking, run the same walk both ways and compare.
 
 ## What is still on Oxylabs, and why
 
-Nine feeds. They split into two groups, and only one is hard:
+Seventeen workflows. Every target was probed from an ordinary datacentre address
+on 2026-08-04; what follows is what each one actually needs, measured rather than
+assumed.
 
-- **Needs JavaScript executed** — apsjobs (Salesforce Aura hydration), naukri
-  (0 job tuples in the raw HTML), zhaopin (2KB shell). A self-hosted Playwright
-  would satisfy this half without a vendor.
-- **Needs an IP that is not a datacentre** — jora, gulftalent, glassdoor,
-  indeed, linkedin, and the one step of nsw-gov that reads the bearer out of
-  `/_next/`. NAB needs both, plus a browser wait for its WAF.
+**Blocked by IP — a plain request never gets the content**
 
-Note what Oxylabs is really selling that group: **rotation**, not "an IP in a
-house". A single residential address walking 355 companies nightly on LinkedIn or
-Indeed will be flagged harder than a rotating pool, so the roster-wide feeds are
-the ones a self-hosted runner will struggle with; the single-board walks it would
-handle comfortably.
+| Target | From a DC IP |
+|---|---|
+| jora | 403 |
+| gulftalent | 403 (Akamai, 400B "Access Denied") |
+| glassdoor | 403 |
+| indeed | 403 (DataDome) |
+| iworkfor.nsw (bearer read only) | 403 |
+| careers.aucklandairport.co.nz | 403 Cloudflare "Just a moment" |
+| technology1.com | 403 Cloudflare "Just a moment" |
+| simplyhired.com.au | 403 Cloudflare, robots.txt included |
+| startup.jobs `/company/<slug>` | 403 Cloudflare |
+| careers.nab.com.au | Akamai denies every path, robots.txt included |
+
+**Blocked by rendering — the page loads, the data is not in it**
+
+| Target | From a DC IP |
+|---|---|
+| apsjobs.gov.au | 200, Aura shell, no vacancies |
+| naukri.com | 200, 0 job tuples |
+| zhaopin | 200, 2KB shell |
+| Stockland (SuccessFactors) | 200 / 179KB, **0 `jobResultItem` rows** |
+| Dyno Nobel (SuccessFactors) | 200 / 264KB, **0 rows** |
+| Sandfire (SuccessFactors EU) | 200 / 202KB, **0 rows** |
+| Whitehaven (Dayforce) | 200 / 452KB, paginator but **0 job cards**; API POST 403 |
+
+The four SuccessFactors/Dayforce boards are the useful discovery in that list:
+they serve their shell happily to a datacentre address and hand back **zero rows
+under the scrapers' own row regex**, because the results arrive from a
+`juic.fire(…,"_next")` call. What they need is a browser, and it is not yet known
+whether they need a residential IP as well — the shell loading proves nothing
+either way, and settling it needs a headless run from a plain CI address.
+
+**Possibly needs neither**
+
+`linkedin-posts-to-d1.py` reads company POST feeds, not the jobs API, and
+`linkedin.com/company/<slug>/` answered a datacentre address on four consecutive
+slugs (BHP, Rio Tinto, Woodside, Fortescue) with 60 posts each, real post text
+and **zero authwall markers**. Worth a proper trial — but four requests is not
+355 companies × several slug candidates a night, which is the volume that
+actually decides it, so this is a lead rather than a result.
+
+**One case that is already half-free.** `startup.jobs` challenges its company
+pages but publishes all 42,885 of them in a sitemap on `cdn.startup.jobs`, which
+answered a plain request with 7MB. The script already fetches that un-proxied;
+only the per-company page fetches need the proxy.
+
+Note what Oxylabs is really selling the first group: **rotation**, not "an IP in
+a house". A single residential address walking 355 companies nightly on LinkedIn
+or Indeed will be flagged harder than a rotating pool, so the roster-wide feeds
+are the ones a self-hosted runner will struggle with; the single-board walks it
+would handle comfortably.
 
 ---
 
