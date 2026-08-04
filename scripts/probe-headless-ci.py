@@ -4,25 +4,26 @@ Does a headless browser on a PLAIN CI address get these boards, or do they need
 the residential IP too?
 
 WHY THIS EXISTS
-Four feeds go through Oxylabs with `render=True` plus browser instructions:
-Stockland, Dyno Nobel and Sandfire (SAP SuccessFactors RCM) and Whitehaven
-(Dayforce). Probed from a datacentre address they all return 200 and a
-full-looking page — and ZERO rows under their own row regex, because the results
-arrive from a later `juic.fire(…,"_next")` / Ant render rather than in the
-served HTML.
+Seven feeds go through Oxylabs with `render=True`: Stockland, Dyno Nobel and
+Sandfire (SAP SuccessFactors RCM), Whitehaven (Dayforce), APS Jobs (Salesforce
+Aura), Naukri and Zhaopin. Probed from a datacentre address WITHOUT a browser
+they return 200 and a full-looking page carrying no readable jobs, because the
+results arrive after load.
 
 That proves they need a BROWSER. It does not say whether they also need the
 residential IP, and the difference decides how much of the Oxylabs bill a
-self-hosted Playwright could remove on its own. The shell loading tells you
-nothing either way, so the only way to settle it is to run a real headless
-browser from an ordinary GitHub runner and count what comes back.
+self-hosted (or plain hosted-runner) Playwright could remove on its own. The
+shell loading tells you nothing either way, so the only way to settle it is to
+run a real headless browser from an ordinary GitHub runner and count what comes
+back.
 
 WHAT IT DOES
 Drives Chromium through the same sequence the Oxylabs `browser_instructions`
-describe — load, settle, and for the paged check, click through — then applies
-each scraper's OWN row regex to the resulting DOM. Reusing the real regex is the
-point: a bespoke "did it look right" check would pass on a page the actual
-scraper cannot read.
+describe — load, settle, and where the board pages, click through — then counts
+rows THE WAY THE SCRAPER DOES: its own row regex, or for APS and Zhaopin its
+actual parser (`jobs_extract.extract_jobs`, `zhaopin.parse_search_html`), since
+those two read a payload rather than markup. A bespoke "did it look right" check
+would pass on a page the real scraper cannot read.
 
 Verdict per board:
     ROWS       rows found — a browser alone is enough, no residential IP needed
@@ -34,9 +35,16 @@ Needs: pip install playwright && playwright install chromium
 """
 from __future__ import annotations
 import json
+import os
 import re
 import sys
 import traceback
+
+# The real parsers for the boards that do not use a regex live beside this file.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    'tools', 'zhaopin-company-scraper'))
 
 # ── the four boards, with the settle/click behaviour their scrapers ask for ───
 # `rows` is copied verbatim from each scraper so this measures the same thing
@@ -88,7 +96,64 @@ BOARDS = [
         'title': r'test-id="job-title"',
         'next': '.ant-pagination-item-2 a',
     },
+    # The three added after the first four all came back ROWS. Same question,
+    # same method — these are the rest of the render-gated group.
+    {
+        'name': 'APS Jobs (Salesforce Aura)',
+        'script': 'scripts/aps-to-d1.py',
+        'url': 'https://www.apsjobs.gov.au/s/job-search?offset=0',
+        'settle': 12,  # Aura hydrates in two steps; 8s was not always enough
+        # APS does not parse with a regex — it goes through the shared
+        # defensive extractor. `counter` runs the real thing, so this measures
+        # what the scraper measures rather than something adjacent to it.
+        'counter': 'aps',
+        'rows': r'job-details',
+        'title': r'job-details',
+        'next': None,
+    },
+    {
+        'name': 'Naukri (Mumbai search)',
+        'script': 'scripts/naukri-to-d1.py',
+        # A company+city search, the shape the scraper actually walks, rather
+        # than the home page — the home page renders for anyone and would have
+        # told us nothing.
+        'url': 'https://www.naukri.com/tata-consultancy-services-jobs-in-mumbai',
+        'settle': 10,
+        'rows': r'srp-jobtuple-wrapper',
+        'title': r'class="[^"]*\btitle\b[^"]*"',
+        'next': None,
+    },
+    {
+        'name': 'Zhaopin (Shanghai search)',
+        'script': 'scripts/zhaopin-to-d1.py',
+        # jl=538 is Shanghai in Zhaopin's city ids.
+        'url': 'https://sou.zhaopin.com/?kw=HSBC&jl=538&p=1',
+        'settle': 10,
+        # Zhaopin's rows live in a __INITIAL_STATE__ island, not in markup, so
+        # the row count comes from the real parser via `counter`.
+        'counter': 'zhaopin',
+        'rows': r'positionURL',
+        'title': r'positionURL',
+        'next': None,
+    },
 ]
+
+
+def count_with_real_parser(which: str, html: str) -> int | None:
+    """Row count from the scraper's own parser, for the boards that do not use a
+    regex. Returns None if the helper cannot be imported, so a missing module
+    degrades to the regex count rather than silently reporting zero."""
+    try:
+        if which == 'aps':
+            import jobs_extract as jx
+            rows, _how = jx.extract_jobs(html, r'job-details', 'https://www.apsjobs.gov.au')
+            return len(rows)
+        if which == 'zhaopin':
+            import zhaopin_company_scraper as zp
+            return len(zp.parse_search_html(html))
+    except Exception as e:  # noqa: BLE001
+        sys.stderr.write(f'  real-parser count unavailable for {which}: {str(e)[:90]}\n')
+    return None
 
 # A challenge page is not a board. Counting rows on one would report NO ROWS,
 # which is the wrong diagnosis — "blocked" and "rendered but empty" need
@@ -144,6 +209,15 @@ def probe(pw, board: dict) -> dict:
         res['bytes'] = len(html)
         res['rows'] = len(re.findall(board['rows'], html))
         res['titles'] = len(re.findall(board['title'], html))
+        # Where the scraper uses a parser rather than a regex, that parser is
+        # the authority: a marker appearing in the markup is not the same claim
+        # as the scraper being able to read a job out of it.
+        if board.get('counter'):
+            real = count_with_real_parser(board['counter'], html)
+            if real is not None:
+                res['regex_hits'] = res['rows']
+                res['rows'] = real
+                res['titles'] = real
         # Only when there is an emptiness to explain — see BLOCK_MARKERS.
         res['blocked_as'] = None if res['rows'] else blocked_as(html)
 
@@ -151,7 +225,7 @@ def probe(pw, board: dict) -> dict:
         # also works — a board that renders page 1 but refuses to page is only
         # half solved.
         res['page2_rows'] = None
-        if res['rows']:
+        if res['rows'] and board.get('next'):
             try:
                 el = page.query_selector(board['next'])
                 if el:
