@@ -665,9 +665,15 @@ self-hosted runner at all — and therefore raise none of this.
 | Residential IP (± browser) | 11 | jora, gulftalent, glassdoor, indeed, linkedin-jobs, nsw-gov bearer, Auckland Airport, TechnologyOne, SimplyHired, startup.jobs company pages, NAB — plus naukri and zhaopin, measured into this group |
 | Possibly nothing | 1 | linkedin-posts — reads company post feeds, answered CI on four slugs; needs a volume trial |
 
-So the Oxylabs surface is **17 workflows → 12**, and the five that came off it
-needed no purchase of any kind. What remains is the genuinely hard half: the
-targets that refuse a datacentre address outright.
+Counting workflows rather than scrapers, the surface went **17 → 13**, not 17 →
+12: `browser-portals.yml` still carries the credentials because two of the three
+scrapers in it (Auckland Airport, TechnologyOne) still need them. Four workflows
+dropped Oxylabs outright — sandfire-portal, dyno-portal, whitehaven-dayforce,
+aps-archive.
+
+Five scrapers came off the proxy and needed no purchase of any kind. What remains
+is the genuinely hard half: the targets that refuse a datacentre address
+outright.
 
 ---
 
