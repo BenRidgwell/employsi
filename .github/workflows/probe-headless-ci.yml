@@ -1,11 +1,15 @@
 # One-off measurement, not a feed: does a headless browser on an ORDINARY
-# GitHub runner get the four render-gated boards, or do they need the
-# residential IP too?
+# GitHub runner get the render-gated boards, or do they need the residential IP
+# too?
 #
-# Stockland, Dyno Nobel and Sandfire (SuccessFactors) and Whitehaven (Dayforce)
-# all go through Oxylabs with render=True. Probed without a browser they return
-# 200 and a full-looking page carrying ZERO rows, because the results arrive
-# after load. That proves they need a browser; it says nothing about the IP.
+# Seven feeds go through Oxylabs with render=True — Stockland, Dyno Nobel and
+# Sandfire (SuccessFactors), Whitehaven (Dayforce), APS Jobs (Salesforce Aura),
+# Naukri and Zhaopin. Probed without a browser they return a full-looking page
+# carrying no readable jobs, because the results arrive after load. That proves
+# they need a browser; it says nothing about the IP.
+#
+# Measured 2026-08-04: five of the seven need ONLY the browser. Naukri (Akamai
+# 403) and Zhaopin (a 200 challenge page) need the residential IP as well.
 #
 # The answer decides how much of the Oxylabs bill a self-hosted Playwright could
 # remove on its own — no proxy, no hardware. So it is worth one runner-minute to
@@ -40,7 +44,7 @@ jobs:
           pip install playwright
           python -m playwright install --with-deps chromium
 
-      - name: Probe the four render-gated boards
+      - name: Probe the render-gated boards
         run: python scripts/probe-headless-ci.py --json headless-probe.json
 
       - name: Upload the raw result

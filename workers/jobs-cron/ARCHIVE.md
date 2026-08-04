@@ -514,45 +514,62 @@ assumed.
 
 **Blocked by rendering — the page loads, the data is not in it**
 
-| Target | From a DC IP |
-|---|---|
-| apsjobs.gov.au | 200, Aura shell, no vacancies |
-| naukri.com | 200, 0 job tuples |
-| zhaopin | 200, 2KB shell |
-| Stockland (SuccessFactors) | 200 / 179KB, **0 `jobResultItem` rows** |
-| Dyno Nobel (SuccessFactors) | 200 / 264KB, **0 rows** |
-| Sandfire (SuccessFactors EU) | 200 / 202KB, **0 rows** |
-| Whitehaven (Dayforce) | 200 / 452KB, paginator but **0 job cards**; API POST 403 |
+| Target | From a DC IP, no browser | With a headless browser on CI |
+|---|---|---|
+| Stockland (SuccessFactors) | 200 / 179KB, **0 `jobResultItem` rows** | **10 rows** |
+| Dyno Nobel (SuccessFactors) | 200 / 264KB, **0 rows** | **10 rows** |
+| Sandfire (SuccessFactors EU) | 200 / 202KB, **0 rows** | **6 rows** |
+| Whitehaven (Dayforce) | 200 / 452KB, paginator but **0 cards**; API POST 403 | **25 rows, pages** |
+| apsjobs.gov.au | 200, Aura shell, no vacancies | **15 rows** |
+| naukri.com | 200, 0 job tuples | 403 Akamai — needs the IP too |
+| zhaopin | 200, 2KB shell | 200 challenge page — needs the IP too |
 
-The four SuccessFactors/Dayforce boards are the useful discovery in that list:
-they serve their shell happily to a datacentre address and hand back **zero rows
-under the scrapers' own row regex**, because the results arrive from a
-`juic.fire(…,"_next")` call. What they need is a browser — and, as it turns out,
-nothing else.
+Five of those seven serve their shell happily to a datacentre address, hand back
+**zero rows under the scrapers' own parser**, and then work perfectly once a
+browser is pointed at them from the same kind of address. What they needed was a
+browser and nothing else.
 
-### A headless browser on an ordinary GitHub runner gets all four
+### A headless browser on an ordinary GitHub runner gets five of the seven
 
 Settled by measurement rather than argument:
 `.github/workflows/probe-headless-ci.yml` runs `scripts/probe-headless-ci.py`,
 which drives Chromium through the same load-and-settle sequence the Oxylabs
-`browser_instructions` describe and then applies **each scraper's own row regex**
-to the resulting DOM. Reusing the real regex is the point — a bespoke "looks
-about right" check would pass on a page the actual scraper cannot read.
+`browser_instructions` describe and then counts rows **the way each scraper
+does** — its own row regex, or its actual parser where it uses one
+(`jobs_extract.extract_jobs` for APS, `zhaopin.parse_search_html` for Zhaopin,
+both of which read a payload rather than markup). Reusing the real parser is the
+point: a marker appearing in the DOM is not the same claim as the scraper being
+able to read a job out of it.
 
-Run 1, `ubuntu-latest`, no proxy, no credentials:
+`ubuntu-latest`, no proxy, no credentials:
 
-| Board | rows | titles | paging |
+| Board | verdict | rows | paging |
 |---|---|---|---|
-| Stockland (SuccessFactors) | 10 | 10 | — |
-| Dyno Nobel (SuccessFactors) | 10 | 10 | — |
-| Sandfire (SuccessFactors EU) | 6 | 6 | — |
-| Whitehaven (Dayforce) | 25 | 25 | **page 2 → 11 rows** |
+| Stockland (SuccessFactors) | ROWS | 10 | — |
+| Dyno Nobel (SuccessFactors) | ROWS | 10 | — |
+| Sandfire (SuccessFactors EU) | ROWS | 6 | — |
+| Whitehaven (Dayforce) | ROWS | 25 | **page 2 → 11 rows** |
+| APS Jobs (Salesforce Aura) | ROWS | 15 | — |
+| Naukri (Mumbai search) | **BLOCKED** | 0 | 403, 330B, Akamai deny |
+| Zhaopin (Shanghai search) | **BLOCKED** | 0 | 200, 16KB challenge page |
 
-So these four need **a browser, not a residential IP**, and Whitehaven's Ant
-paginator answers a click from a datacentre address too — which matters, because
-a board that renders page 1 and then refuses to page is only half solved. All
-four could move to a self-hosted (or even hosted-runner) Playwright with no
-proxy and no hardware.
+So **five of the seven need a browser and nothing else** — including APS, whose
+Aura hydration completes on a datacentre address given 12 seconds to settle.
+Whitehaven's Ant paginator answers a click from CI too, which matters because a
+board that renders page 1 and then refuses to page is only half solved. Those
+five can move to Playwright on GitHub's own runners: no proxy, no hardware, no
+self-hosted runner and so none of the fork-PR exposure below.
+
+**Naukri and Zhaopin need the residential IP as well as the browser**, and they
+fail in the two different ways worth telling apart: Naukri returns a hard Akamai
+403 with a 330-byte body, while Zhaopin returns a perfectly ordinary 200 whose
+16KB is a challenge page with no jobs in it. A run that only checked status codes
+would have scored Zhaopin as a pass.
+
+Note also that the block markers behaved correctly on this run: silent on all
+five boards that had rows, firing only on the two that were empty. That is the
+fix described below working as intended — the first run had reported blocks
+against boards it had simultaneously read 10, 10, 6 and 25 rows from.
 
 **One flaw in the first run, worth recording because it nearly inverted the
 read.** The probe also scanned for block-page markers, and reported
@@ -589,9 +606,19 @@ plan. A self-hosted runner on a public repo will execute workflow code from fork
 pull requests on whatever machine it runs on — so "put a Pi on the home
 connection and label it `residential`" is not a safe default here. If that route
 is taken it needs, at minimum, the runner confined to a network segment with
-nothing else on it and `pull_request` events kept off it entirely. The
-render-only group above avoids the question completely, which is another reason
-to take that half first.
+nothing else on it and `pull_request` events kept off it entirely.
+
+Which is why the browser-only five are the half to take first: they run on
+GitHub's own hosted runners, so they need no proxy, no hardware and no
+self-hosted runner at all — and therefore raise none of this.
+
+**Where that leaves the seventeen:**
+
+| Group | Count | What it needs |
+|---|---|---|
+| Browser only — **proven on a hosted runner** | 5 | Playwright in CI. No proxy, no hardware. |
+| Residential IP (± browser) | 11 | jora, gulftalent, glassdoor, indeed, linkedin-jobs, nsw-gov bearer, Auckland Airport, TechnologyOne, SimplyHired, startup.jobs company pages, NAB — plus naukri and zhaopin, now measured into this group |
+| Possibly nothing | 1 | linkedin-posts — reads company post feeds, answered CI on four slugs; needs a volume trial |
 
 ---
 

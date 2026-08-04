@@ -46,7 +46,7 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     'tools', 'zhaopin-company-scraper'))
 
-# ── the four boards, with the settle/click behaviour their scrapers ask for ───
+# ── the boards, with the settle/click behaviour their scrapers ask for ───────
 # `rows` is copied verbatim from each scraper so this measures the same thing
 # the nightly run measures.
 SF_ROWS = r'<tr class="jobResultItem">'
@@ -256,8 +256,9 @@ def main() -> int:
     except ImportError:
         sys.exit('playwright not installed: pip install playwright && playwright install chromium')
 
-    print('Headless Chromium from this runner, against the four render-gated boards.')
-    print('Counting rows with each scraper\'s OWN regex.\n')
+    print(f'Headless Chromium from this runner, against {len(BOARDS)} render-gated boards.')
+    print("Counting rows the way each scraper does — its own regex, or its own "
+          "parser where it uses one.\n")
     out = []
     with sync_playwright() as pw:
         for b in BOARDS:
