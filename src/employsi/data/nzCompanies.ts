@@ -167,6 +167,28 @@ const RAW: Raw[] = [
       "Agriculture & Farming",
     ],
   ],
+  [
+    // Dual-listed (NZX ATM / ASX A2M) and Auckland-headquartered, at Level 10,
+    // 51 Shortland Street. Headcount is the reported 511 at 30 June 2025, up
+    // 4.7% on the prior year — the same annual-report figure the AU roster's
+    // headcounts come from, not an estimate.
+    "ATM",
+    "The a2 Milk Company",
+    "auckland",
+    [174.768234, -36.847109],
+    511,
+    4.7,
+    "Dairy & Nutrition",
+    "Consumer and Retail",
+    "NZX",
+    [
+      "Food Processing",
+      "Quality & Compliance",
+      "Supply Chain",
+      "Brand & Marketing",
+      "Nutrition Science",
+    ],
+  ],
   // ── Wellington ────────────────────────────────────────────────────────────
   [
     "IFT",

@@ -348,6 +348,72 @@ emptying the card.
 
 ---
 
+# a2 Milk, Telix and Sims, 2026-08-04 (PORTAL_GROUPS group 32)
+
+Five feeds for three employers, 186 roles, all in the Worker on one tick
+(`55 9 * * *`) — Greenhouse serves a whole board in a single call, a2 Milk is
+one listing plus four job pages, and Sims is the only one that pages.
+
+| Employer | Feed key | Platform | Roles | Placed |
+|---|---|---|---|---|
+| Sims Metal | `sydney-sgm` | successfactors | 105 | 26 |
+| Telix (USA/CA) | `melbourne-tlx-us` | greenhouse | 46 | 4 |
+| Telix (EMEA) | `melbourne-tlx-emea` | greenhouse | 18 | 0 |
+| Telix (APAC) | `melbourne-tlx-apac` | greenhouse | 11 | 7 |
+| The a2 Milk Company | `nz-the-a2-milk-company` | avature | 4 | 4 |
+
+**Telix runs three boards, not one.** Its careers page is a switch between them
+(`?region=telixus|telixapac|telixemea`), each a separate Greenhouse board. They
+belong to one roster company, so they share `melbourne-tlx` and take distinct
+`key`s — the same arrangement Transurban and BlueScope already use. Reading only
+the board the page happens to load first would have captured 46 of 75 roles and
+looked complete.
+
+**a2 Milk is a second Avature shape, and the distinction is the point.**
+Macquarie, Woolworths and Santos run Avature's search grid, whose result cards
+carry a location cell that `avatureCells` addresses by index. a2 Milk runs
+Avature's portal template: its cards are `[title, business unit, ref, posted
+date]` and there is **no location on the listing at all**. There is no index
+that could stand in for one — reading the cell before the date, which is what
+the tenants without `avatureCells` do, would have written "Ref #410" as the
+location for every role. The location exists only on each job's own page, in a
+labelled field table, so those tenants set `avatureDetail` and are read from
+there: Location, Date Published and Business Unit, one request per role. That
+cost is why the flag is opt-in per site rather than the default.
+
+A detail page that fails to fetch is **skipped, not archived with a blank
+location** — a blank falls back to the employer's home hub, so the failure would
+have quietly moved a Pokeno role onto whichever pin a2 Milk sits on rather than
+losing it visibly.
+
+**Sims' 79 unplaced rows are correct.** Its board is mostly US scrapyard towns —
+Mays Landing NJ, Tabb VA, Monessen PA — real places the map does not plot.
+Falling them back to Sydney because Sims is an Australian company would put a
+Virginia labourer on the Sydney pin. The 105 matches the board's own
+"Results 1 – 25 of 105", so the walk is complete rather than truncated.
+
+**One needle added to `hubFor`: Fishers → Indianapolis.** Telix's US
+manufacturing site is in Fishers, Indiana, an Indianapolis suburb the board
+names on its own, and Indianapolis is a city the app plots. It was added the way
+the Erskine Park needle was — by measuring first: not one row already in the
+archive carried "fishers" in a location, so the needle can only match this
+employer's Indiana roles rather than moving something already placed. Telix's
+remaining unplaced rows are genuinely unplaceable: 35 are "USA- Remote", and the
+rest are countries ("Belgium", "Switzerland", "Japan") or towns with no plotted
+city. **Geneva was checked and deliberately left alone** — it is not a city this
+app draws, so a needle for it would point at a hub that does not exist.
+
+## The a2 Milk Company joins the roster
+
+New company, `nz-the-a2-milk-company`, on the Auckland local layer at Level 10,
+51 Shortland Street (geocoded, `[174.768234, -36.847109]`). Headcount is the
+reported **511 at 30 June 2025, up 4.7%** on the prior year — the same
+annual-report source the AU roster's headcounts use, not an estimate. Dual-listed
+NZX ATM / ASX A2M; the NZ roster carries it under NZX, as it does every other
+Auckland company.
+
+---
+
 # NSW Government feed (`scripts/nsw-gov-to-d1.py`) — and the 303 rows that weren't jobs
 
 **What went wrong.** iworkfor.nsw.gov.au was rewritten as a client-rendered

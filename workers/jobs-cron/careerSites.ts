@@ -188,6 +188,17 @@ interface SiteDef {
    */
   avatureCells?: { loc: number; cat?: number };
   /**
+   * Avature only: read each role's fields off its OWN page instead of the
+   * listing card, because this tenant's listing has no location on it.
+   *
+   * a2 Milk runs Avature's portal template, whose cards are [title, business
+   * unit, ref, posted date] — there is no location cell and no cell index that
+   * could stand in for one, so `avatureCells` cannot express it. The job pages
+   * carry a labelled field table that does. Costs one request per role, so it
+   * is set only where the board is small enough to be worth it.
+   */
+  avatureDetail?: boolean;
+  /**
    * Avature only: the page this feed STARTS at, so one portal can be walked
    * across several ticks. Defaults to 0; `maxPages` then bounds how many pages
    * this feed walks from there.
@@ -1330,6 +1341,68 @@ export const SITES: SiteDef[] = [
     origin: "https://jobs.worley.com",
     homeHub: "sydney",
   },
+  {
+    id: "sydney-sgm",
+    name: "Sims Metal",
+    sector: "Energy & Natural Resources",
+    platform: "successfactors",
+    // Measured 2026-08-04: 105 roles, matching the board's own "Results 1 – 25
+    // of 105". Only 26 place on a hub, and that is right rather than a gap —
+    // most of them are US scrapyard towns (Mays Landing NJ, Tabb VA, Monessen
+    // PA) which are real places the map does not plot. Falling them back to
+    // Sydney because Sims is Australian would put a Virginia labourer on the
+    // Sydney pin.
+    endpoint: "https://careers.simsltd.com",
+    origin: "https://careers.simsltd.com",
+    homeHub: "sydney",
+  },
+  // Telix runs THREE Greenhouse boards, one per region, and its own careers
+  // page is just a switch between them (`?region=telixus|telixapac|telixemea`).
+  // They share the roster company and so need distinct keys — see `key`.
+  // Measured 2026-08-04: 46 + 11 + 18 = 75 roles.
+  {
+    id: "melbourne-tlx",
+    key: "melbourne-tlx-us",
+    name: "Telix Pharmaceuticals",
+    sector: "Healthcare and Life Sciences",
+    platform: "greenhouse",
+    endpoint: "https://boards-api.greenhouse.io/v1/boards/telixus/jobs",
+    origin: "https://telixpharma.com/careers/find-a-job",
+    homeHub: "melbourne",
+  },
+  {
+    id: "melbourne-tlx",
+    key: "melbourne-tlx-apac",
+    name: "Telix Pharmaceuticals",
+    sector: "Healthcare and Life Sciences",
+    platform: "greenhouse",
+    endpoint: "https://boards-api.greenhouse.io/v1/boards/telixapac/jobs",
+    origin: "https://telixpharma.com/careers/find-a-job",
+    homeHub: "melbourne",
+  },
+  {
+    id: "melbourne-tlx",
+    key: "melbourne-tlx-emea",
+    name: "Telix Pharmaceuticals",
+    sector: "Healthcare and Life Sciences",
+    platform: "greenhouse",
+    endpoint: "https://boards-api.greenhouse.io/v1/boards/telixemea/jobs",
+    origin: "https://telixpharma.com/careers/find-a-job",
+    homeHub: "melbourne",
+  },
+  {
+    id: "nz-the-a2-milk-company",
+    name: "The a2 Milk Company",
+    sector: "Dairy & Nutrition",
+    platform: "avature",
+    // Avature's PORTAL template, not the search grid the other Avature tenants
+    // run — its cards carry no location, so the roles are read off their own
+    // pages. See avatureDetail. Measured 2026-08-04: 4 roles, Pokeno and NSW.
+    endpoint: "https://a2milkkf.avature.net/careers/SearchJobs",
+    origin: "https://a2milkkf.avature.net",
+    homeHub: "auckland",
+    avatureDetail: true,
+  },
 ];
 
 /**
@@ -1449,6 +1522,17 @@ export const PORTAL_GROUPS: string[][] = [
   // real zero, not a failure, and it costs the tick a single request either way.
   ["sydney-wor"],
   ["sydney-dow", "melbourne-cwy", "sydney-amp", "igo"],
+  // Group 32: the five feeds added 2026-08-04 — Sims (105), Telix's three
+  // Greenhouse boards (46 + 11 + 18) and a2 Milk (4). One tick between them:
+  // Greenhouse serves a whole board in a single call, a2 Milk is one listing
+  // plus four job pages, and Sims is the only one that pages at all.
+  [
+    "sydney-sgm",
+    "melbourne-tlx-us",
+    "melbourne-tlx-apac",
+    "melbourne-tlx-emea",
+    "nz-the-a2-milk-company",
+  ],
 ];
 
 const UA =
@@ -1658,6 +1742,12 @@ const HUB_MATCH: [string, string | null][] = [
   ["bentonville", "bentonville"],
   ["omaha", "omaha"],
   ["indianapolis", "indianapolis"],
+  // Telix's US manufacturing site. Fishers is an Indianapolis suburb, ~30km
+  // north-east, and the board names only the suburb. Added after measuring the
+  // archive: not one of its rows carried "fishers" in a location, so the needle
+  // can only match this employer's Indiana roles rather than colliding with
+  // something already placed elsewhere.
+  ["fishers", "indianapolis"],
   ["charlotte", "charlotte"],
   ["minneapolis", "minneapolis"],
   ["cincinnati", "cincinnati"],
@@ -2255,6 +2345,13 @@ async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
       }
     }
   }
+  // a2 Milk's portal publishes NO location on the listing at all — its cards
+  // run [title, business unit, ref, posted date] and the location exists only
+  // on the job's own page. Reading a cell by position there would write "Ref
+  // #410" as the location, so those tenants take the detail-page path below
+  // instead. See avatureDetail.
+  if (site.avatureDetail) return avatureFromDetails(site, blocks);
+
   for (const b of blocks) {
     const a = b.match(/<a[^>]*href="([^"]*JobDetail[^"]*)"[^>]*>([\s\S]*?)<\/a>/i);
     if (!a) continue;
@@ -2303,6 +2400,79 @@ async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
         cat,
       ),
     );
+  }
+  return out;
+}
+
+/**
+ * One labelled field off an Avature job page.
+ *
+ * The portal template renders each field as a label div followed by a value
+ * div, with the tenant's own indentation between them:
+ *
+ *   <div class="article__content__view__field__label">  Location  </div>
+ *   <div class="article__content__view__field__value">  New Zealand - Pokeno  </div>
+ *
+ * The gap is bounded so a field the page does not carry cannot silently pick up
+ * the NEXT field's value — an unbounded `[\s\S]*?` would make a missing
+ * "Location" resolve to whatever label follows it.
+ */
+function avatureField(html: string, label: string): string {
+  const m = html.match(
+    new RegExp(
+      `field__label"[^>]*>\\s*${label}\\s*</div>[\\s\\S]{0,240}?field__value"[^>]*>([\\s\\S]*?)</div>`,
+      "i",
+    ),
+  );
+  return m ? clean(m[1]) : "";
+}
+
+/**
+ * Avature tenants whose LISTING carries no location (see avatureDetail).
+ *
+ * Each job's own page is fetched and its labelled field table read: Location,
+ * Date Published and Business Unit. That is one request per role on top of the
+ * listing walk, which is why the flag is opt-in per site rather than the
+ * default — it is only worth paying on a small board.
+ *
+ * The date comes from the detail page too. The listing's "Posted 07-Jul-2026"
+ * agrees with it, but the detail page states the field explicitly rather than
+ * leaving it to be found by shape, so there is no reason to prefer the guess.
+ */
+async function avatureFromDetails(site: SiteDef, blocks: string[]): Promise<PortalJob[]> {
+  const links: { href: string; title: string }[] = [];
+  const seen = new Set<string>();
+  for (const b of blocks) {
+    const a = b.match(/<a[^>]*href="([^"]*JobDetail[^"]*)"[^>]*>([\s\S]*?)<\/a>/i);
+    if (!a) continue;
+    const href = clean(a[1]);
+    const title = clean(a[2]);
+    if (!title || !href || seen.has(href)) continue;
+    seen.add(href);
+    links.push({ href: href.startsWith("http") ? href : site.origin + href, title });
+  }
+
+  const out: PortalJob[] = [];
+  for (let i = 0; i < links.length; i += PAGE_CONCURRENCY) {
+    const window = links.slice(i, i + PAGE_CONCURRENCY);
+    const pages = await Promise.all(window.map((l) => getText(l.href)));
+    window.forEach((l, n) => {
+      const html = pages[n];
+      // A detail page that failed to fetch is skipped rather than archived with
+      // an empty location: an empty location falls back to the home hub, which
+      // would quietly move an Auckland role to wherever the employer is pinned.
+      if (!html) return;
+      out.push(
+        job(
+          site,
+          avatureField(html, "Job Title") || l.title,
+          avatureField(html, "Location"),
+          l.href,
+          isoDay(avatureField(html, "Date Published")),
+          avatureField(html, "Business Unit") || "Career portal",
+        ),
+      );
+    });
   }
   return out;
 }

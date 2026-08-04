@@ -1135,6 +1135,8 @@ const PORTAL_TICKS: Record<string, number> = {
   // IGO share :45.
   "35 9 * * *": 30,
   "45 9 * * *": 31,
+  // Group 32 — Sims, Telix (three boards) and a2 Milk. All small, one tick.
+  "55 9 * * *": 32,
 };
 
 const NEWS_TICKS: Record<string, number> = {
