@@ -4,8 +4,8 @@ import { Mail } from "lucide-react";
 function SkylineSVG() {
   return (
     <iframe
-      src="/skyline-3d.html"
-      title="Skyline"
+      src="/waitlist-preview.html"
+      title="Preview"
       scrolling="no"
       className="h-full w-full border-0 overflow-hidden"
       style={{ background: "transparent", pointerEvents: "none" }}
