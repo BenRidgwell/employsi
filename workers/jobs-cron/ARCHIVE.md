@@ -626,14 +626,38 @@ rendered application for the words a block page uses will always find them
 somewhere. A block is a **diagnosis for an empty result**, not an independent
 signal, so the markers are now only consulted when the row count is zero.
 
-**Possibly needs neither**
+**The one lead that did not survive being tested**
 
 `linkedin-posts-to-d1.py` reads company POST feeds, not the jobs API, and
-`linkedin.com/company/<slug>/` answered a datacentre address on four consecutive
-slugs (BHP, Rio Tinto, Woodside, Fortescue) with 60 posts each, real post text
-and **zero authwall markers**. Worth a proper trial — but four requests is not
-355 companies × several slug candidates a night, which is the volume that
-actually decides it, so this is a lead rather than a result.
+`linkedin.com/company/<slug>/` answered on four consecutive slugs (BHP, Rio
+Tinto, Woodside, Fortescue) with 60 posts each, real post text and **zero
+authwall markers**. That was recorded here as a lead rather than a result,
+because four requests is not the several hundred the nightly walk makes.
+
+Tested properly (`.github/workflows/probe-linkedin-volume.yml`, 100 requests
+from ubuntu-latest, outcomes bucketed by request number):
+
+| requests | posts | authwall | error |
+|---|---|---|---|
+| 1-25 | **0** | 14 | 11 |
+| 26-50 | **0** | 11 | 14 |
+| 51-75 | **0** | 8 | 17 |
+| 76-100 | **0** | 12 | 13 |
+
+**Zero posts, from the very first bucket.** Not a cliff — it never worked at
+all. Roughly half the requests were authwalled and the rest failed at the
+transport, which is the same refusal wearing two hats.
+
+The four-slug success was an artefact of where it was measured. Those probes ran
+from the dev sandbox, which egresses through an agent proxy, and the note
+recording them said so: *"this sandbox egresses via the agent proxy … a 403 here
+is solid evidence; a 200 is weak evidence."* That caveat turned out to be the
+whole story. LinkedIn authwalls a GitHub runner on request one.
+
+Worth keeping as a method note: **a positive result from an unrepresentative
+vantage point is worth less than nothing**, because it invites work that the
+real environment will reject. The probe that settled it cost one runner-minute
+and disagreed with the lead completely.
 
 **One case that is already half-free.** `startup.jobs` challenges its company
 pages but publishes all 42,885 of them in a sitemap on `cdn.startup.jobs`, which
@@ -663,7 +687,7 @@ self-hosted runner at all — and therefore raise none of this.
 |---|---|---|
 | Browser only | 5 | **Ported and verified.** Playwright on hosted runners, no proxy, no hardware. |
 | Residential IP (± browser) | 11 | jora, gulftalent, glassdoor, indeed, linkedin-jobs, nsw-gov bearer, Auckland Airport, TechnologyOne, SimplyHired, startup.jobs company pages, NAB — plus naukri and zhaopin, measured into this group |
-| Possibly nothing | 1 | linkedin-posts — reads company post feeds, answered CI on four slugs; needs a volume trial |
+| Residential IP — **measured**, not assumed | +1 | linkedin-posts: 0 posts in 100 requests from a hosted runner, authwalled from the first |
 
 Counting workflows rather than scrapers, the surface went **17 → 13**, not 17 →
 12: `browser-portals.yml` still carries the credentials because two of the three
@@ -672,8 +696,9 @@ dropped Oxylabs outright — sandfire-portal, dyno-portal, whitehaven-dayforce,
 aps-archive.
 
 Five scrapers came off the proxy and needed no purchase of any kind. What remains
-is the genuinely hard half: the targets that refuse a datacentre address
-outright.
+is the genuinely hard half: twelve targets that refuse a datacentre address
+outright, with no remaining candidates for a free escape — the last one,
+linkedin-posts, was tested and failed.
 
 ---
 
