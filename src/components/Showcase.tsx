@@ -9,8 +9,9 @@ function SkylineSVG() {
     <iframe
       src="/skyline-3d.html"
       title="Skyline"
-      className="h-full w-full border-0"
-      style={{ background: "transparent" }}
+      scrolling="no"
+      className="h-full w-full border-0 overflow-hidden"
+      style={{ background: "transparent", pointerEvents: "none" }}
       loading="lazy"
     />
   );
