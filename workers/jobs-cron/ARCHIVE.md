@@ -626,6 +626,51 @@ rendered application for the words a block page uses will always find them
 somewhere. A block is a **diagnosis for an empty result**, not an independent
 signal, so the markers are now only consulted when the row count is zero.
 
+### The posts feed cannot finish, and therefore never writes
+
+Re-running `linkedin-posts-archive` after the lockfile fix got the scraper
+running properly for the first time in a while — and showed it cannot succeed at
+the current roster size. From the run of 2026-08-04:
+
+```
+1503 companies to try
+  [20/1503]  posts=129 resolved=13 unresolved=7
+  [40/1503]  posts=214 resolved=23 unresolved=17
+  [80/1503]  posts=413 resolved=43 unresolved=37
+  [100/1503] posts=519 resolved=54 unresolved=46
+```
+
+**100 companies in 42 minutes.** The full walk is therefore about ten and a half
+hours against a 60-minute job timeout. And the D1 write happens once, after the
+whole walk — `rows` accumulates in memory and the INSERT loop runs only when the
+last company is done. So the job times out mid-walk, writes nothing, and the
+519 posts it had already collected are discarded.
+
+That is why `company_posts` still holds 50 rows across 5 companies, dated
+2026-08-01: the table has never been filled by this workflow, only seeded.
+
+**The scraping itself is fine.** It resolves companies correctly and rejects
+wrong slugs with real reasoning — `/igo` is "BNI La Roche-sur-Yon Porte du
+Littoral", `/dyno-nobel` is the "Institute of Makers of Explosives",
+`/national-australia-bank` is a different page from NAB's. That identity check is
+doing exactly its job. The problem is throughput and persistence, not accuracy.
+
+Three things are wrong and they compound:
+
+1. **It walks 1,503 companies** — the whole `COMPANIES` list, government agencies
+   included, most of which have no company page worth reading. The other roster
+   walkers use `load_roster()` (355) or `with_cities` (995).
+2. **The write is all-or-nothing at the end**, so any interruption costs the
+   entire run rather than the tail of it.
+3. **Nothing is sharded across days**, unlike the news ticks or the Woolworths
+   portal, both of which split precisely because one invocation could not finish.
+
+Fixing (2) alone would make every run bank its progress. Fixing (1) and (3)
+together would let a full pass complete. Until then this feed is red every night
+whether or not `npm ci` works.
+
+---
+
 **The one lead that did not survive being tested**
 
 `linkedin-posts-to-d1.py` reads company POST feeds, not the jobs API, and
