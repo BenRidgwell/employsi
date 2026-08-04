@@ -42,9 +42,10 @@ jobs:
           python-version: '3.12'
 
       # Matches linkedin-posts-archive.yml exactly: node 22 and a plain
-      # `npm ci`. A first attempt used node 20 with extra flags and npm ci
-      # failed — the probe has to stand up the same way the real scraper does,
-      # or it is testing a different thing.
+      # `npm ci`. The probe has to stand up the same way the real scraper does,
+      # or it is testing a different thing — which is how it turned up that
+      # `npm ci` was failing repo-wide on a stale lockfile, taking the real
+      # linkedin-posts run down with it.
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
