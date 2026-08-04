@@ -105,9 +105,7 @@ export function Showcase() {
           <p className="mx-auto mb-8 max-w-[900px] text-[16px] leading-[1.6] text-[#555]">
             Employsi is the HR intelligence platform that treats the labour market like a stock
             market. Built on a live interactive 3D globe, it lets anyone search a skill and see
-            real-time demand across countries, cities, and individual companies. Job seekers
-            discover where their skills are worth most, and employers see exactly who they're
-            competing with for talent — and where.
+            real-time demand across countries, cities, and individual companies.
           </p>
 
           {submitted ? (
