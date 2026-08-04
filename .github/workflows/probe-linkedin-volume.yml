@@ -41,14 +41,19 @@ jobs:
         with:
           python-version: '3.12'
 
-      # The roster comes from dump-companies.ts, so node/tsx has to be present
-      # or the walk has nothing to walk.
+      # Matches linkedin-posts-archive.yml exactly: node 22 and a plain
+      # `npm ci`. A first attempt used node 20 with extra flags and npm ci
+      # failed — the probe has to stand up the same way the real scraper does,
+      # or it is testing a different thing.
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
-      - name: Install node deps (for dump-companies.ts)
-        run: npm ci --no-audit --no-fund
+      # dump-companies.ts reads the roster through TypeScript, which is the only
+      # correct reading of it — COMPANIES is assembled at runtime from several
+      # files, so a regex over companies.ts sees a fraction of them.
+      - name: Install deps
+        run: npm ci
 
       - name: Walk LinkedIn company pages and bucket the outcomes
         run: |
