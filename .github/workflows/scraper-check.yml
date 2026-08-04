@@ -20,6 +20,7 @@ on:
     paths:
       - 'scripts/jobs_extract.py'
       - 'scripts/oxylabs_client.py'
+      - 'scripts/http_fetch.py'
       - 'scripts/*-to-d1.py'
       - 'scripts/test_jobs_extract.py'
       - 'scripts/test_rosters.py'
@@ -32,6 +33,7 @@ on:
     paths:
       - 'scripts/jobs_extract.py'
       - 'scripts/oxylabs_client.py'
+      - 'scripts/http_fetch.py'
       - 'scripts/*-to-d1.py'
       - 'src/employsi/data/seekAdvertisers.ts'
       - 'src/employsi/data/chinaJobsTargets.ts'

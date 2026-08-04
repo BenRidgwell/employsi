@@ -1,10 +1,12 @@
-# Daily JobsDB Hong Kong (hk.jobsdb.com) → D1 archive, via the Oxylabs Web
-# Scraper API.
+# Daily JobsDB Hong Kong (hk.jobsdb.com) → D1 archive. No proxy.
 #
 # JobsDB runs SEEK's platform and exposes its JSON search API, so there is no
-# HTML to parse and no browser to drive. The requests go through Oxylabs for the
-# residential IP, throttling and backoff — walking the whole roster daily from a
-# datacentre IP is what gets rate-limited, not any single call.
+# HTML to parse and no browser to drive. This used to go through Oxylabs on the
+# theory that roster-volume walking is what gets rate-limited; measured
+# 2026-08-04 that is not what this endpoint does — direct and proxied runs
+# returned identical results — so it runs direct on the standard runner. The
+# throttle and backoff still apply (scripts/http_fetch.py); it is the residential
+# IP that was dropped, not the pacing. Pass --oxylabs to put it back.
 #
 # Every roster company is searched by legal name AND by a suffix-stripped brand
 # form ("ANZ Group Holdings" → "ANZ", which is how it advertises), then the
@@ -18,7 +20,6 @@
 # search contract has changed rather than the market being quiet.
 #
 # Required repo secrets:
-#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
 #   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
 # Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
 #
@@ -49,8 +50,6 @@ jobs:
           bun-version: latest
       - name: Scrape JobsDB HK → D1 (Oxylabs)
         env:
-          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
-          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}

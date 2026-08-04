@@ -16,13 +16,21 @@ which returns JSON directly — no HTML parsing, no JS rendering. Each job carri
 (The older /api/chalice-search/v4/ path is gone — it 404s behind an anti-bot
 page — so v5 is the one contract this depends on.)
 
-WHY OXYLABS
-The API answers a single curl fine, but this walks the whole roster daily from
-CI, and SEEK-platform sites rate-limit datacentre IPs hard at that volume. So
-every request goes through the shared Oxylabs client (scripts/oxylabs_client.py)
-for the residential IP, throttling and backoff, exactly as the Indeed and Zhaopin
-scrapers do. `--direct` bypasses it for local debugging, which is how the
-contract above was verified.
+WHY THIS NO LONGER USES OXYLABS
+It used to, on the theory that SEEK-platform sites rate-limit datacentre IPs
+hard at roster volume. Measured 2026-08-04, that is not what this endpoint does:
+the same four companies returned byte-for-byte identical results direct and
+through Oxylabs (ANZ 2 of 22 scanned, one company with HK ads out of three), and
+a plain request from a CI-class address answered with the full 33KB JSON. So the
+residential IP was buying nothing here and the default is now direct.
+
+What the proxy WAS also supplying is the throttle and backoff, and that part
+still matters — six worker threads walking 355 companies is exactly the shape a
+board rate-limits. That policy now lives in scripts/http_fetch.py and applies to
+this path too, so dropping the proxy did not drop the pacing.
+
+`--oxylabs` forces the old path back on, for the day the endpoint starts
+refusing us: nothing else has to change to use it.
 
 WHY THE KEYWORD SEARCH IS POST-FILTERED
 `keywords=` matches the whole ad, not the employer: "HSBC" returns 15,011 hits
@@ -36,11 +44,11 @@ loose hit and zero real ones, Rio Tinto zero. Empty is the correct answer for
 those, not a failure, and the run reports matched-vs-searched so a genuine
 breakage (everything zero) is distinguishable from an accurate zero.
 
-Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID,
-     OXYLABS_USERNAME, OXYLABS_PASSWORD.
+Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID.
+     OXYLABS_USERNAME / OXYLABS_PASSWORD only if --oxylabs is passed.
 Run: python scripts/jobsdb-to-d1.py [--only id1,id2] [--limit N]
-                                    [--max-pages N] [--concurrency N] [--direct]
-                                    [--dry-run]
+                                    [--max-pages N] [--concurrency N]
+                                    [--oxylabs] [--dry-run]
 """
 from __future__ import annotations
 import datetime
@@ -55,6 +63,7 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+import http_fetch  # noqa: E402
 
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
 ACCOUNT = os.environ.get('CF_ACCOUNT_ID') or '080a66721e2d85950d9d7dc939e08b76'
@@ -79,7 +88,9 @@ ONLY = set(_opt('--only', '').split(',')) if '--only' in args else None
 LIMIT = int(_opt('--limit', 10**9))
 MAX_PAGES = int(_opt('--max-pages', 5))
 CONCURRENCY = int(_opt('--concurrency', 6))
-DIRECT = '--direct' in args
+# Direct is the default now (see the header). `--direct` is still accepted so
+# any existing invocation keeps working; `--oxylabs` is the escape hatch.
+VIA_OXYLABS = '--oxylabs' in args
 DRY = '--dry-run' in args
 NO_SKILLS = '--no-skills' in args
 
@@ -142,12 +153,18 @@ def search_url(keywords: str, page: int) -> str:
 
 
 def fetch_json(url: str) -> dict | None:
-    """Through Oxylabs by default; --direct for local debugging."""
-    if DIRECT:
+    """Direct by default (throttled — see http_fetch); --oxylabs to go via proxy."""
+    if not VIA_OXYLABS:
+        # http_fetch.get, not a bare urlopen: this runs six-wide over the
+        # roster, so the shared throttle is what keeps that a trickle rather
+        # than a burst. Its clock is process-global, so the six threads are
+        # spaced against each other and not just against themselves.
+        text, _ = http_fetch.get(
+            url, headers={'Accept': 'application/json'}, timeout=45)
+        if not text:
+            return None
         try:
-            req = urllib.request.Request(url, headers={'User-Agent': UA, 'Accept': 'application/json'})
-            with urllib.request.urlopen(req, timeout=45) as r:
-                return json.loads(r.read().decode('utf-8', 'replace'))
+            return json.loads(text)
         except Exception:
             return None
     import oxylabs_client as oxy
@@ -334,7 +351,7 @@ def main() -> int:
         sys.exit('No companies matched — check --only.')
     sys.stderr.write(
         f'JobsDB HK -> D1: {len(companies)} companies, '
-        f'{"DIRECT" if DIRECT else "via Oxylabs"}{", DRY RUN" if DRY else ""}.\n')
+        f'{"via Oxylabs" if VIA_OXYLABS else "direct"}{", DRY RUN" if DRY else ""}.\n')
 
     from concurrent.futures import ThreadPoolExecutor
     results: dict[str, tuple[list, int]] = {}

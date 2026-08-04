@@ -414,6 +414,102 @@ Auckland company.
 
 ---
 
+# Cutting the Oxylabs dependency where the target never enforced it (2026-08-04)
+
+Fourteen scripts route through `scripts/oxylabs_client.py`. Each was probed from
+an ordinary datacentre address to establish which ones the residential IP is
+actually buying something for. Two turned out not to need it at all, one had
+already stopped using it without anyone updating the prose, and two had their
+dependency confirmed.
+
+| Target | Probed from a DC IP | Verdict |
+|---|---|---|
+| jobsdb | 200, full JSON; direct and proxied runs **identical** | direct now |
+| jobs.govt.nz | direct and proxied returned the **same 518 roles, same failures** | direct now |
+| iworkfor.sa.gov.au | already direct — dead import, stale docstring | cleaned up |
+| apsjobs.gov.au | 200, Aura shell, **no jobs in it** | still needs render |
+| careers.nab.com.au | Akamai `Access Denied` on every path, robots.txt included | still needs both |
+
+**The measurement that mattered is the control run, not the probe.** A single
+`curl` returning 200 proves very little — the interesting question is whether the
+proxied run returns *more*. For jobsdb it returned byte-identical output (ANZ 2
+of 22 scanned, one of three companies with HK ads). For jobs.govt.nz it returned
+the same 518 roles **with the same two Wellington pages failing** — which is what
+turned the diagnosis around: the "inconsistency" being blamed on the datacentre
+IP was reproducible through a residential one, so it was never the IP.
+
+## Dropping the proxy must not drop the pacing
+
+The throttle, jitter and backoff lived inside `oxylabs_client.py`, so they only
+applied to requests that went *through* Oxylabs. Every `--direct` path was a bare
+`urlopen` with no retries and no spacing. Flipping the default would therefore
+have quietly turned "stop paying a proxy" into "stop being polite" — and jobsdb
+walks 355 companies six threads wide, which is exactly the shape a board
+rate-limits.
+
+So the policy moved to **`scripts/http_fetch.py`** and `oxylabs_client` now
+imports it. Both transports share one clock: the throttle is process-global and
+lock-guarded, so six worker threads fetching directly are spaced against each
+other rather than each pacing itself, and a run mixing direct and proxied calls
+is still one stream. `--oxylabs` on either script puts the proxy back with
+nothing else to change.
+
+## The bug the proxy was hiding
+
+`jobs.govt.nz` serves **two link shapes in the same results table**:
+
+```
+legacy   jncustomsearch.viewFullSingle?in_organid=16563&in_jnCounter=226644015&…
+modern   /jobs/MPI26-1936535          (permalink carrying the agency's own ref)
+```
+
+`LINK_RE` required `in_jnCounter=\d+`. Every job on a modern permalink therefore
+matched nothing and was dropped by `if not a: continue` — silently, because a row
+the parser cannot read is indistinguishable from a row that was never advertised.
+Measured: page 0 of Wellington yielded **9 usable rows out of 20**, and the walk
+as a whole collected **518 of 721 advertised roles (72%)** while reporting
+success. Anchoring on the row's `<div class="position">` instead matches whatever
+the href is:
+
+|  | before | after |
+|---|---|---|
+| Auckland | 316 of 365 (87%) | 355 of 355 (100%) |
+| Wellington | 202 of 356 (57%) | 349 of 351 (99%) |
+| total parsed | 518 | **704** |
+
+Absolutising the href needed widening too: a root-relative `/jobs/…` joined onto
+`JOB_BASE` gives `…/jobtools//jobs/…`, which 404s — and the url is the dedup key,
+so a broken one also splits one role into two rows over time.
+
+**The reason this ran for months is that nothing failed.** So nzgov now carries
+the same floor the NSW scraper has: collect at least 80% of the board's own
+advertised total or exit non-zero having written nothing. The totals do move
+between runs — Wellington reported 356, then 151, then 351 within an hour as the
+board refreshed — so it is deliberately a floor rather than an equality test.
+
+That is the general lesson worth keeping: **a proxy is a plausible explanation
+for missing rows, which makes it a good place to hide a parser bug.** Before
+attributing a shortfall to blocking, run the same walk both ways and compare.
+
+## What is still on Oxylabs, and why
+
+Nine feeds. They split into two groups, and only one is hard:
+
+- **Needs JavaScript executed** — apsjobs (Salesforce Aura hydration), naukri
+  (0 job tuples in the raw HTML), zhaopin (2KB shell). A self-hosted Playwright
+  would satisfy this half without a vendor.
+- **Needs an IP that is not a datacentre** — jora, gulftalent, glassdoor,
+  indeed, linkedin, and the one step of nsw-gov that reads the bearer out of
+  `/_next/`. NAB needs both, plus a browser wait for its WAF.
+
+Note what Oxylabs is really selling that group: **rotation**, not "an IP in a
+house". A single residential address walking 355 companies nightly on LinkedIn or
+Indeed will be flagged harder than a rotating pool, so the roster-wide feeds are
+the ones a self-hosted runner will struggle with; the single-board walks it would
+handle comfortably.
+
+---
+
 # NSW Government feed (`scripts/nsw-gov-to-d1.py`) — and the 303 rows that weren't jobs
 
 **What went wrong.** iworkfor.nsw.gov.au was rewritten as a client-rendered

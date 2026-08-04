@@ -27,18 +27,24 @@ plots Auckland and Wellington, so those are the two locations scraped. Archiving
 roles we cannot place on any hub would inflate market-wide counts with rows no
 view can show.
 
-WHY OXYLABS
-The site is behind a filter that answers a datacentre IP inconsistently, so
-fetches go through the shared Oxylabs client for the residential IP, throttling
-and backoff. `--direct` bypasses it for local debugging.
+WHY THIS NO LONGER USES OXYLABS
+It used to, on the belief that the site "answers a datacentre IP
+inconsistently". Measured 2026-08-04, it does not: a direct walk and an Oxylabs
+walk of the same board returned the SAME 518 roles, with the same two Wellington
+pages coming back empty in both. The residential IP was buying nothing, and the
+inconsistency being blamed on it was in fact the parser (see the note on
+LINK_RE). The default is now direct; `--oxylabs` forces the old path back.
+
+The throttle and backoff the proxy client also supplied still apply — that
+policy lives in scripts/http_fetch.py now and covers this path too.
 
 `--agencies` prints the distinct agency names and their role counts instead of
 writing anything — that is how src/employsi/data/nzGov.ts was built, and how it
 should be refreshed when machinery-of-government changes rename agencies.
 
-Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID,
-     OXYLABS_USERNAME, OXYLABS_PASSWORD.
-Run: python scripts/nzgov-to-d1.py [--max-pages N] [--direct] [--dry-run]
+Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID.
+     OXYLABS_USERNAME / OXYLABS_PASSWORD only if --oxylabs is passed.
+Run: python scripts/nzgov-to-d1.py [--max-pages N] [--oxylabs] [--dry-run]
                                    [--agencies]
 """
 from __future__ import annotations
@@ -57,6 +63,7 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+import http_fetch  # noqa: E402
 
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
 ACCOUNT = os.environ.get('CF_ACCOUNT_ID') or '080a66721e2d85950d9d7dc939e08b76'
@@ -67,6 +74,7 @@ TODAY = datetime.date.today().isoformat()
 SOURCE = 'nz-gov'
 BASE = 'https://jobs.govt.nz/jobtools/jncustomsearch.searchResults'
 JOB_BASE = 'https://jobs.govt.nz/jobtools/'
+SITE_BASE = 'https://jobs.govt.nz'
 ORG_ID = 16563
 PAGE_ROWS = 20
 
@@ -82,7 +90,8 @@ def _opt(name, default=None):
 
 
 MAX_PAGES = int(_opt('--max-pages', 40))
-DIRECT = '--direct' in args
+# Direct is the default now (see the header); --oxylabs is the escape hatch.
+VIA_OXYLABS = '--oxylabs' in args
 DRY = '--dry-run' in args
 AGENCIES_ONLY = '--agencies' in args
 
@@ -109,14 +118,12 @@ def agency_id(name: str) -> str:
 
 
 def get(url: str) -> str | None:
-    if DIRECT:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        try:
-            with urllib.request.urlopen(req, timeout=45) as r:
-                return r.read().decode('utf-8', 'replace')
-        except Exception as e:
-            sys.stderr.write(f'  direct fetch failed: {e}\n')
-            return None
+    if not VIA_OXYLABS:
+        # http_fetch, not a bare urlopen: it carries the same throttle and
+        # backoff the proxy client applied, so going direct did not also mean
+        # going unpaced.
+        text, _ = http_fetch.get(url, timeout=45)
+        return text
     from oxylabs_client import fetch as oxy_fetch
     # No JS rendering: the results are server-rendered, so a headless browser
     # returns exactly the same 20 rows for ~7x the time (measured: 2.8s vs
@@ -127,10 +134,26 @@ def get(url: str) -> str | None:
 
 
 ROW_RE = re.compile(r'<tr>\s*<td class="job_title">(.*?)</tr>', re.S | re.I)
-# in_jnCounter is not always the last query parameter — when a location facet is
-# applied the site appends in_location after it — so the href capture must run
-# to the closing quote rather than stopping at the counter's digits.
-LINK_RE = re.compile(r'<a href="([^"]*in_jnCounter=\d+[^"]*)"[^>]*>(.*?)</a>', re.S | re.I)
+# The link is found by its POSITION in the row, not by the shape of its href.
+#
+# The board serves two link shapes side by side in the same result table:
+#
+#   legacy   jncustomsearch.viewFullSingle?in_organid=16563&in_jnCounter=226644015&…
+#   modern   /jobs/MPI26-1936535        (a permalink carrying the agency's own ref)
+#
+# The old pattern required `in_jnCounter=\d+`, so every job on a modern
+# permalink was skipped by the `if not a: continue` below — silently, because a
+# row that yields no link is indistinguishable from a row that was never there.
+# Measured 2026-08-04: 203 of 721 advertised roles (28%) were being dropped this
+# way, and page 0 of Wellington produced 9 usable rows out of 20. It read as the
+# board "answering inconsistently", which is what put this scraper on a
+# residential proxy that was never the cure.
+#
+# Anchoring on `<div class="position">` matches whatever the href is, so a third
+# shape appearing later costs nothing. The href runs to the closing quote
+# because a legacy link appends in_location AFTER the counter.
+LINK_RE = re.compile(
+    r'<div class="position"[^>]*>\s*<a[^>]*href="([^"]+)"[^>]*>(.*?)</a>', re.S | re.I)
 AGENCY_RE = re.compile(r'<div>\s*at\s*(.*?)</div>', re.S | re.I)
 TYPE_RE = re.compile(r'<div class="highlight ([^"]*)"', re.I)
 LOC_RE = re.compile(r'<td class="job_location">(.*?)</td>', re.S | re.I)
@@ -161,7 +184,15 @@ def parse_page(page_html: str, hub: str) -> list[dict]:
             'location': clean(loc.group(1)) if loc else '',
             'hub': hub,
             'category': clean(typ.group(1)).strip() if typ else 'NZ Government',
-            'url': href if href.startswith('http') else JOB_BASE + href,
+            # Three shapes to absolutise, not one: an absolute URL, a modern
+            # ROOT-relative permalink ("/jobs/MPI26-1936535") and a legacy
+            # path-relative link ("jncustomsearch.viewFullSingle?…"). Joining
+            # the root-relative one onto JOB_BASE would produce
+            # ".../jobtools//jobs/…", which is a 404 — and the url is the dedup
+            # key, so a broken one also silently splits a role into two rows.
+            'url': (href if href.startswith('http')
+                    else SITE_BASE + href if href.startswith('/')
+                    else JOB_BASE + href),
             'posted': iso_date(clean(listed.group(1)) if listed else ''),
         })
     return out
@@ -177,6 +208,7 @@ def iso_date(s: str) -> str:
 
 def scrape() -> list[dict]:
     jobs, seen = [], set()
+    coverage: list[str] = []
     for facet, hub in LOCATIONS:
         total, misses = None, 0
         for page in range(MAX_PAGES):
@@ -223,6 +255,23 @@ def scrape() -> list[dict]:
         got = sum(1 for j in jobs if j['hub'] == hub)
         sys.stderr.write(f'  {hub}: {got} roles collected'
                          f'{f" of {total} advertised" if total else ""}\n')
+        # A shortfall against the board's OWN total is a failure, not a result.
+        #
+        # This is the check that would have caught the LINK_RE bug on the day it
+        # started: the walk was returning 87% of Auckland and 57% of Wellington
+        # and reporting both cheerfully, because a row the parser cannot read is
+        # indistinguishable from a row that was never advertised. The same rule
+        # the NSW scraper applies — collect at least 80% of what the board says
+        # it has, or write nothing and go red.
+        #
+        # The totals do move between runs (measured: Wellington reported 356,
+        # then 151, then 351 within an hour, as the board refreshes), so this is
+        # deliberately a floor and not an equality test.
+        if total and got < total * 0.8:
+            coverage.append(f'{hub}: {got} of {total}')
+    if coverage:
+        sys.exit('FAIL: short of the board\'s own advertised total — '
+                 + '; '.join(coverage) + '. Nothing written.')
     return jobs
 
 
@@ -304,7 +353,7 @@ def upsert(jobs: list) -> int:
 
 def main() -> int:
     sys.stderr.write(
-        f'NZ Government jobs -> D1: {"DIRECT" if DIRECT else "via Oxylabs"}'
+        f'NZ Government jobs -> D1: {"via Oxylabs" if VIA_OXYLABS else "direct"}'
         f'{", DRY RUN" if DRY else ""}{", AGENCIES ONLY" if AGENCIES_ONLY else ""}\n')
     jobs = scrape()
     if not jobs:

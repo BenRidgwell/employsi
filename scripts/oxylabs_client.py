@@ -16,9 +16,7 @@ from __future__ import annotations
 import base64
 import json
 import os
-import random
 import sys
-import threading
 import time
 import urllib.request
 
@@ -34,22 +32,25 @@ def _auth_header() -> str:
 
 
 # ── polite-scraping controls ─────────────────────────────────────────────────
-# Every scraper in this repo funnels its page fetches through fetch() below, so
-# the throttle + backoff policy lives here once rather than being re-implemented
-# (inconsistently) per script.
+# The throttle + backoff policy lives in http_fetch and is IMPORTED here rather
+# than declared, so the scrapers that fetch a target directly obey exactly the
+# same one. Moving a scraper off Oxylabs must not quietly move it off being
+# polite, and sharing the module means both transports also share one clock: a
+# process mixing direct and proxied calls is spaced as a single stream.
 #
-#  • MIN_INTERVAL paces successive requests from this process, with jitter, so we
-#    never hammer a target at full loop speed even when responses are fast.
-#  • 429 / 503 are treated as explicit "slow down" signals: we honour Retry-After
-#    when the server sends it, else back off exponentially.
-#  • Backoff is exponential WITH jitter (not the old linear 3s/6s/9s), which is
-#    what avoids synchronised retry storms when several jobs run at once.
-# Tunable per-process via env so a heavy multi-company driver (Indeed/LinkedIn)
-# can pace itself differently from a single-board walk.
-MIN_INTERVAL = float(os.environ.get('OXY_MIN_INTERVAL', '1.0'))   # seconds between calls
-JITTER = float(os.environ.get('OXY_JITTER', '0.6'))               # extra random 0..JITTER
-MAX_BACKOFF = float(os.environ.get('OXY_MAX_BACKOFF', '60'))
-# Statuses worth another attempt.
+# Tunable per-process via env (OXY_MIN_INTERVAL / OXY_JITTER / OXY_MAX_BACKOFF)
+# so a heavy multi-company driver can pace itself differently from a single
+# board walk. See http_fetch for what each control does and why the throttle
+# holds its sleep inside the lock.
+from http_fetch import (  # noqa: E402
+    backoff as _backoff,
+    retry_after_seconds as _retry_after_seconds,
+    throttle as _throttle,
+)
+import http_fetch  # noqa: E402
+
+# Statuses worth another attempt: http_fetch's set (the target rate-limiting or
+# wobbling) plus the two that are OXYLABS' OWN.
 #
 # 429 and the 5xx family are the target rate-limiting or wobbling. 612 and 613
 # are OXYLABS' OWN fault codes — 613 is "faulted", meaning its worker could not
@@ -58,45 +59,7 @@ MAX_BACKOFF = float(os.environ.get('OXY_MAX_BACKOFF', '60'))
 # on page 1 and the run exited 2 with the board perfectly healthy, which a
 # retry moments later confirmed (the same URL returned 200 with 1.1MB). Naukri
 # and GulfTalent hit the same code earlier for the same reason.
-RETRY_STATUSES = {429, 500, 502, 503, 504, 522, 524, 612, 613}
-
-_last_call = 0.0
-# Serialises the spacing calculation, because callers may now be threads (the
-# Wayback backfill fetches concurrently — one capture is one HTTP round trip and
-# 36,000 of them serially is days). Without the lock every thread reads the same
-# `_last_call`, every thread computes "no wait needed", and they all fire at
-# once — the exact opposite of a throttle. The sleep is held INSIDE the lock on
-# purpose: that is what makes MIN_INTERVAL a real ceiling on requests per second
-# regardless of how many threads are running.
-_throttle_lock = threading.Lock()
-
-
-def _throttle() -> None:
-    """Space out successive requests (min interval + jitter). Thread-safe."""
-    global _last_call
-    with _throttle_lock:
-        now = time.monotonic()
-        wait = (_last_call + MIN_INTERVAL) - now
-        if wait > 0:
-            time.sleep(wait)
-        if JITTER > 0:
-            time.sleep(random.uniform(0, JITTER))
-        _last_call = time.monotonic()
-
-
-def _backoff(attempt: int, retry_after: float | None = None) -> float:
-    """Exponential backoff with full jitter, honouring Retry-After when given."""
-    if retry_after is not None:
-        return min(retry_after, MAX_BACKOFF)
-    return min(MAX_BACKOFF, random.uniform(0, (2 ** attempt) * 3.0))
-
-
-def _retry_after_seconds(e) -> float | None:
-    try:
-        v = e.headers.get('Retry-After') if getattr(e, 'headers', None) else None
-        return float(v) if v and str(v).strip().isdigit() else None
-    except Exception:  # noqa: BLE001
-        return None
+RETRY_STATUSES = http_fetch.RETRY_STATUSES | {612, 613}
 
 
 def fetch(url: str, geo: str | None = None, render: bool = True,

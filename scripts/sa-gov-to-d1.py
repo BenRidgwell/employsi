@@ -5,14 +5,22 @@ archive it to the D1 jobs table, deduped — the SA-Government counterpart of wh
 the jobs-cron worker does for the WA board, and of scripts/seek-to-d1.py /
 scripts/indeed-to-d1.py.
 
-Why Oxylabs: iworkfor.sa.gov.au runs a BigRedSky ATS whose result table is
-rendered ENTIRELY client-side — there is no server-rendered results page, no
-RSS/JSON feed, and a dead "JavaScript required" noscript fallback. A headless
-Chromium on a GitHub runner rendered 0 rows (the datacenter IP is bot-blocked).
-Oxylabs' Web Scraper API fetches through a residential IP and executes the page's
-JS server-side, returning the finished DOM, so this is now a plain HTTP flow with
-no browser — the same path Indeed/LinkedIn/NSW/APS use, and it runs unattended on
-GitHub Actions.
+Why no proxy and no browser: iworkfor.sa.gov.au runs a BigRedSky ATS whose
+RESULTS PAGE is rendered entirely client-side — there is no server-rendered
+listing, no RSS/JSON feed, and a dead "JavaScript required" noscript fallback.
+A headless Chromium on a GitHub runner rendered 0 rows, and an early version of
+this scraper went through Oxylabs for that reason.
+
+It does not need to. The page's own search form POSTs multipart to
+`/jb/page/report.cfm` with a `jobboard_token` scraped from the form, and THAT
+response is plain server-rendered HTML containing every vacancy. So the walk is
+a token fetch plus one POST a page, direct, from an ordinary CI address — which
+is why sa-gov-archive.yml carries no Oxylabs credentials and never has.
+
+Worth stating because the same trick keeps paying: a client-rendered board is
+not the same thing as an unreachable one. Whatever the JavaScript calls is
+usually a plain endpoint, and finding it removes the need for both the browser
+and the residential IP at once. nzgov and NSW were solved the same way.
 
 One pass scrapes EVERY current vacancy across all agencies (the report carries an
 "Agency"/"Department" column), maps each job to its sa-gov-<slug> company id, maps
@@ -38,7 +46,6 @@ import urllib.request  # noqa: E402
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 try:
-    import oxylabs_client as oxy  # noqa: E402
     import jobs_extract as jx  # noqa: E402
 except ImportError as e:
     sys.exit(f'Missing helper module ({e}).')

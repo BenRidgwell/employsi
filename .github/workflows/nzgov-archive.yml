@@ -1,4 +1,10 @@
-# Daily New Zealand government jobs (jobs.govt.nz) → D1 archive, via Oxylabs.
+# Daily New Zealand government jobs (jobs.govt.nz) → D1 archive. No proxy.
+#
+# This used to run through Oxylabs because the board was thought to answer a
+# datacentre IP inconsistently. Measured 2026-08-04, direct and proxied walks
+# returned the SAME roles and the same failures — the inconsistency was a parser
+# bug (see the LINK_RE note in the script), not the IP. Runs direct now, still
+# throttled via scripts/http_fetch.py. Pass --oxylabs to put the proxy back.
 #
 # Scrapes the all-of-government board filtered to Auckland and Wellington — the
 # two New Zealand cities the app plots — and archives each role against its own
@@ -14,7 +20,6 @@
 # contract changed or we were blocked.
 #
 # Required repo secrets:
-#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
 #   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
 # Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
 #
@@ -45,8 +50,6 @@ jobs:
           bun-version: latest
       - name: Scrape jobs.govt.nz → D1 (Oxylabs)
         env:
-          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
-          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
