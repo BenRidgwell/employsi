@@ -70,9 +70,10 @@ function AboutPopover() {
           <div className="space-y-2 text-center">
             <h2 className="text-lg font-bold tracking-tight text-ink">Hi, I'm Ben</h2>
             <p className="text-[13px] leading-relaxed text-ink-2">
-              I'm a Director at a Big 4 consulting firm. I built Employsi to break down the barriers
-              of HR data visibility — creating transparency for both employees and employers, akin
-              to the way financial data is shared.
+              I'm a Director at a Big 4 consulting firm specialising in HR analytics and workforce
+              planning. I built employsi to break down the barriers of HR data visibility I commonly
+              see across many organisations — creating transparency for all employees and employers,
+              akin to the way financial data is shared.
             </p>
           </div>
         </div>
