@@ -133,7 +133,7 @@ export function Showcase() {
           )}
         </div>
 
-        <div className="flex h-[420px] w-full items-end justify-center md:h-[440px]">
+        <div className="flex h-[520px] w-full items-end justify-center md:h-[580px]">
           <SkylineSVG />
         </div>
       </div>
