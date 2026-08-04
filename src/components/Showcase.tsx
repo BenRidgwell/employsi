@@ -102,9 +102,12 @@ export function Showcase() {
           <h1 className="mb-5 text-[clamp(30px,5.4vw,64px)] font-bold leading-[1.1] tracking-[-0.03em] text-black md:whitespace-nowrap">
             Explore the world of work.
           </h1>
-          <p className="mx-auto mb-8 max-w-[420px] text-[16px] leading-[1.6] text-[#555]">
-            A live 3D map of the skills economy — revealing where skills are emerging, evolving, and
-            driving the future of work.
+          <p className="mx-auto mb-8 max-w-[720px] text-[16px] leading-[1.6] text-[#555]">
+            Employsi is the HR intelligence platform that treats the labour market like a stock
+            market. Built on a live interactive 3D globe, it lets anyone search a skill and see
+            real-time demand across countries, cities, and individual companies. Job seekers
+            discover where their skills are worth most, and employers see exactly who they're
+            competing with for talent — and where.
           </p>
 
           {submitted ? (
