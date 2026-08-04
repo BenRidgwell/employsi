@@ -1,0 +1,66 @@
+# One-off measurement: does linkedin.com/company/<slug>/ keep answering an
+# ORDINARY GitHub runner across a roster-sized walk, or only for the first few?
+#
+# scripts/linkedin-posts-to-d1.py reads company POST pages, not the jobs API,
+# and four consecutive slugs answered a plain datacentre request on 2026-08-04
+# with 60 post cards each and no authwall. Four requests is not evidence — the
+# nightly walk makes several hundred, and LinkedIn throttles in exactly the way
+# that lets a few through and then stops.
+#
+# So this bucketes outcomes BY REQUEST NUMBER. A flat posts-rate across buckets
+# means the feed can come off the proxy; a cliff means it cannot, and is the
+# result the four-request check could never have found.
+#
+# Manual only. Writes nothing: no D1, no secrets, no credentials.
+
+name: probe-linkedin-volume
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Companies to walk (each may cost several slug attempts)'
+        required: false
+        default: '120'
+      bucket:
+        description: 'Requests per reporting bucket'
+        required: false
+        default: '25'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      # The roster comes from dump-companies.ts, so node/tsx has to be present
+      # or the walk has nothing to walk.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install node deps (for dump-companies.ts)
+        run: npm ci --no-audit --no-fund
+
+      - name: Walk LinkedIn company pages and bucket the outcomes
+        run: |
+          python scripts/probe-linkedin-volume.py \
+            --limit "${{ github.event.inputs.limit || '120' }}" \
+            --bucket "${{ github.event.inputs.bucket || '25' }}" \
+            --json linkedin-volume.json
+
+      - name: Upload the raw result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linkedin-volume
+          path: linkedin-volume.json
+          if-no-files-found: warn
