@@ -527,9 +527,42 @@ assumed.
 The four SuccessFactors/Dayforce boards are the useful discovery in that list:
 they serve their shell happily to a datacentre address and hand back **zero rows
 under the scrapers' own row regex**, because the results arrive from a
-`juic.fire(…,"_next")` call. What they need is a browser, and it is not yet known
-whether they need a residential IP as well — the shell loading proves nothing
-either way, and settling it needs a headless run from a plain CI address.
+`juic.fire(…,"_next")` call. What they need is a browser — and, as it turns out,
+nothing else.
+
+### A headless browser on an ordinary GitHub runner gets all four
+
+Settled by measurement rather than argument:
+`.github/workflows/probe-headless-ci.yml` runs `scripts/probe-headless-ci.py`,
+which drives Chromium through the same load-and-settle sequence the Oxylabs
+`browser_instructions` describe and then applies **each scraper's own row regex**
+to the resulting DOM. Reusing the real regex is the point — a bespoke "looks
+about right" check would pass on a page the actual scraper cannot read.
+
+Run 1, `ubuntu-latest`, no proxy, no credentials:
+
+| Board | rows | titles | paging |
+|---|---|---|---|
+| Stockland (SuccessFactors) | 10 | 10 | — |
+| Dyno Nobel (SuccessFactors) | 10 | 10 | — |
+| Sandfire (SuccessFactors EU) | 6 | 6 | — |
+| Whitehaven (Dayforce) | 25 | 25 | **page 2 → 11 rows** |
+
+So these four need **a browser, not a residential IP**, and Whitehaven's Ant
+paginator answers a click from a datacentre address too — which matters, because
+a board that renders page 1 and then refuses to page is only half solved. All
+four could move to a self-hosted (or even hosted-runner) Playwright with no
+proxy and no hardware.
+
+**One flaw in the first run, worth recording because it nearly inverted the
+read.** The probe also scanned for block-page markers, and reported
+"[Akamai deny]" against all three SuccessFactors boards and "[captcha /
+challenge]" against Dayforce — while simultaneously finding 10, 10, 6 and 25
+rows. The strings are in the pages' own JavaScript (error handling, an
+application-form captcha widget), not in a block page. Searching a fully
+rendered application for the words a block page uses will always find them
+somewhere. A block is a **diagnosis for an empty result**, not an independent
+signal, so the markers are now only consulted when the row count is zero.
 
 **Possibly needs neither**
 
@@ -550,6 +583,15 @@ a house". A single residential address walking 355 companies nightly on LinkedIn
 or Indeed will be flagged harder than a rotating pool, so the roster-wide feeds
 are the ones a self-hosted runner will struggle with; the single-board walks it
 would handle comfortably.
+
+**And this repository is PUBLIC**, which rules out the obvious shape of that
+plan. A self-hosted runner on a public repo will execute workflow code from fork
+pull requests on whatever machine it runs on — so "put a Pi on the home
+connection and label it `residential`" is not a safe default here. If that route
+is taken it needs, at minimum, the runner confined to a network segment with
+nothing else on it and `pull_request` events kept off it entirely. The
+render-only group above avoids the question completely, which is another reason
+to take that half first.
 
 ---
 

@@ -93,6 +93,15 @@ BOARDS = [
 # A challenge page is not a board. Counting rows on one would report NO ROWS,
 # which is the wrong diagnosis — "blocked" and "rendered but empty" need
 # different fixes, so they are told apart explicitly.
+#
+# These are matched ONLY when the page yielded no rows. The first run of this
+# probe reported "[Akamai deny]" against all three SuccessFactors boards and
+# "[captcha / challenge]" against Dayforce while simultaneously finding 10, 10,
+# 6 and 25 rows — the strings live in the pages' own JavaScript (error handling,
+# an application-form captcha widget), not in a block page. Searching a fully
+# rendered application for the words a block page uses will always find them
+# somewhere. A block is a diagnosis for an EMPTY result, not an independent
+# signal, so it is only asked about when there is an emptiness to explain.
 BLOCK_MARKERS = [
     (r'Just a moment', 'Cloudflare interstitial'),
     (r'Access Denied', 'Akamai deny'),
@@ -135,7 +144,8 @@ def probe(pw, board: dict) -> dict:
         res['bytes'] = len(html)
         res['rows'] = len(re.findall(board['rows'], html))
         res['titles'] = len(re.findall(board['title'], html))
-        res['blocked_as'] = blocked_as(html)
+        # Only when there is an emptiness to explain — see BLOCK_MARKERS.
+        res['blocked_as'] = None if res['rows'] else blocked_as(html)
 
         # One paging click, to show the interaction the nightly run depends on
         # also works — a board that renders page 1 but refuses to page is only
