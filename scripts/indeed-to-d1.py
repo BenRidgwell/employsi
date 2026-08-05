@@ -60,6 +60,11 @@ MAX_PAGES = int(_opt('--max-pages', 20))
 # 205-company roster is only daily-feasible with concurrency). Keep ≤ your
 # Oxylabs plan's concurrency limit.
 CONCURRENCY = int(_opt('--concurrency', 8))
+# How many companies may complete with ZERO listings between them before the
+# walk is treated as refused rather than quiet. 25 is comfortably more than
+# the longest run of genuinely empty employers on this roster, and small
+# enough that a refused run fails in minutes instead of at the 3-hour cap.
+DEAD_AFTER = int(_opt('--dead-after', 25))
 HEADFUL = '--headful' in args
 PROXY = _opt('--proxy', None)
 # --proxy-list <file-or-url>: rotate through a proxy pool, moving to the next
@@ -237,9 +242,20 @@ def main() -> int:
         sys.stderr.write(f'  via Oxylabs Web Scraper API (geo={geo}, concurrency={CONCURRENCY}) '
                          f'— {len(sel)} companies, no browser.\n')
         lock = threading.Lock()
-        st = {'fetch': 0, 'new': 0, 'empty': 0, 'done': 0}
+        st = {'fetch': 0, 'new': 0, 'empty': 0, 'done': 0, 'dead': False}
 
         def work(cid, name):
+            # STOP EARLY WHEN THE FEED IS DEAD RATHER THAN SLOW. Measured
+            # 2026-08-04: Oxylabs returned 613 ("faulted") on essentially every
+            # Indeed request, each one retried with backoff, and every company
+            # came back with 0 jobs. The run ground on for the full three-hour
+            # job cap and was cancelled — which reads in the run list as a
+            # timeout, not as "Indeed is refusing us", and writes nothing either
+            # way. Once DEAD_AFTER companies have completed and NOT ONE listing
+            # has been fetched, that is the target refusing the whole walk, not
+            # a run of quiet employers.
+            if st['dead']:
+                return
             jobs, seen = [], set()
             for pg in range(MAX_PAGES):
                 content, _ = oxy.fetch(ind.search_url(base, name, '', pg * 10), geo=geo, render=True)
@@ -263,6 +279,8 @@ def main() -> int:
             if not jobs:
                 with lock:
                     st['empty'] += 1; st['done'] += 1
+                    if st['done'] >= DEAD_AFTER and st['fetch'] == 0:
+                        st['dead'] = True
                 sys.stderr.write(f'  {cid:16} 0 jobs\n')
                 return
             have = existing_titles(cid)
@@ -278,6 +296,13 @@ def main() -> int:
         if SOLVE:
             sys.stderr.write(f'\n✓ {st["done"]} companies reachable via Oxylabs.\n')
             return 0
+        if st['dead']:
+            sys.stderr.write(
+                f'\nABORTED: {st["done"]} companies walked and not one listing '
+                f'fetched. Indeed is refusing the whole run (check the 613s '
+                f'above — that is Oxylabs failing to load the page, not an '
+                f'empty board). Nothing written.\n')
+            return 2
         sys.stderr.write(f'\nDone (Oxylabs). {st["fetch"]} listings fetched, {st["new"]} new rows '
                          f'archived, {st["empty"]} companies with 0 jobs.\n')
         return 0

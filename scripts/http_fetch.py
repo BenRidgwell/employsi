@@ -110,5 +110,9 @@ def get(url: str, headers: dict | None = None, timeout: int = 45,
             if attempt < retries - 1:
                 time.sleep(backoff(attempt))
     if not quiet:
-        sys.stderr.write(f'  direct fetch failed for {url[:70]}: {last}\n')
+        # The whole URL, not url[:70]. That cut landed exactly on the '?' of
+        # jobs.govt.nz's search URL, so every failure logged the same
+        # parameterless-looking address and the query string — the part that
+        # says which city and page failed — was invisible.
+        sys.stderr.write(f'  direct fetch failed for {url}: {last}\n')
     return None, None

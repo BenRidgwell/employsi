@@ -136,6 +136,30 @@ BOARDS = [
         'title': r'positionURL',
         'next': None,
     },
+    {
+        # jobs.ca is a CANDIDATE, not an existing scraper — there is no script
+        # for it yet. It is here to answer one question before any is written:
+        # a plain request from this repo's sandbox gets HTTP 429 with a "Vercel
+        # Security Checkpoint" page on EVERY path, robots.txt included, so the
+        # board is unreadable without either a residential exit or a real
+        # browser. If a headless Chromium on an ordinary runner address clears
+        # the checkpoint, jobs.ca can be built on Playwright like the five
+        # boards above; if it does not, it needs the proxy and that is a
+        # different decision.
+        'name': 'jobs.ca (Canada board, CANDIDATE)',
+        'script': '(none yet — probing feasibility)',
+        # A real employer search, not the home page: the home page may well be
+        # served to anyone, and would answer a question nobody asked.
+        'url': 'https://www.jobs.ca/search?q=Shopify',
+        'settle': 10,
+        # Deliberately loose. Nothing is known about this board's markup yet, so
+        # a wrong-but-specific selector would report zero rows and be read as a
+        # block. Any hit at all means the checkpoint was cleared, which is the
+        # only thing this entry is asked to establish.
+        'rows': r'job-?(card|item|result|listing)|/job/|data-job',
+        'title': r'<h[23][^>]*>',
+        'next': None,
+    },
 ]
 
 
@@ -173,6 +197,7 @@ BLOCK_MARKERS = [
     (r'captcha|challenge-platform', 'captcha / challenge'),
     (r'Request unsuccessful|Incapsula', 'Imperva'),
     (r'Pardon Our Interruption', 'DataDome'),
+    (r'Vercel Security Checkpoint', 'Vercel checkpoint'),
 ]
 
 args = sys.argv[1:]

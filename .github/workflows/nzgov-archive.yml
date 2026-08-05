@@ -1,10 +1,14 @@
-# Daily New Zealand government jobs (jobs.govt.nz) → D1 archive. No proxy.
+# Daily New Zealand government jobs (jobs.govt.nz) → D1 archive, through Oxylabs.
 #
-# This used to run through Oxylabs because the board was thought to answer a
-# datacentre IP inconsistently. Measured 2026-08-04, direct and proxied walks
-# returned the SAME roles and the same failures — the inconsistency was a parser
-# bug (see the LINK_RE note in the script), not the IP. Runs direct now, still
-# throttled via scripts/http_fetch.py. Pass --oxylabs to put the proxy back.
+# It was moved off the proxy on 2026-08-04, on a measurement that direct and
+# proxied walks returned the same roles and the same failures. That measurement
+# was taken from the dev sandbox, which egresses through an agent proxy — not
+# from a GitHub runner. The first scheduled run on the direct path timed out on
+# every request and collected nothing, so the proxy is back, and with it the
+# credentials this file stopped passing when the feed went direct.
+#
+# "Works from the sandbox" is not evidence about a runner. Pass --direct to try
+# the unproxied path again, but prove it from here before making it the default.
 #
 # Scrapes the all-of-government board filtered to Auckland and Wellington — the
 # two New Zealand cities the app plots — and archives each role against its own
@@ -21,6 +25,7 @@
 #
 # Required repo secrets:
 #   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
+#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Web Scraper API sub-user credentials
 # Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
 #
 # Use "Run workflow" to verify before relying on the schedule.
@@ -53,4 +58,6 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
         run: python scripts/nzgov-to-d1.py

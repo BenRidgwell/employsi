@@ -27,24 +27,37 @@ plots Auckland and Wellington, so those are the two locations scraped. Archiving
 roles we cannot place on any hub would inflate market-wide counts with rows no
 view can show.
 
-WHY THIS NO LONGER USES OXYLABS
-It used to, on the belief that the site "answers a datacentre IP
-inconsistently". Measured 2026-08-04, it does not: a direct walk and an Oxylabs
-walk of the same board returned the SAME 518 roles, with the same two Wellington
-pages coming back empty in both. The residential IP was buying nothing, and the
-inconsistency being blamed on it was in fact the parser (see the note on
-LINK_RE). The default is now direct; `--oxylabs` forces the old path back.
+WHY THIS USES OXYLABS AGAIN
+It was moved to a direct fetch on 2026-08-04, on the measurement that a direct
+walk and an Oxylabs walk returned the SAME 518 roles with the same two failing
+Wellington pages. That measurement was real but taken from the WRONG PLACE: the
+dev sandbox, which egresses through an agent proxy. The very first scheduled run
+on the new path — 2026-08-04 21:24, from a GitHub runner — timed out on every
+single request and collected nothing:
 
-The throttle and backoff the proxy client also supplied still apply — that
-policy lives in scripts/http_fetch.py now and covers this path too.
+    direct fetch failed for https://jobs.govt.nz/... <urlopen error timed out>
+    wellington: 0 roles collected
+    No roles parsed for either city — treating as a failure.
+
+The same URL answers this sandbox in under a second. So the proxy is buying
+something after all, just not the thing it was credited with: not consistency,
+but an exit address jobs.govt.nz will actually serve. Oxylabs is the default
+again and `--direct` is the escape hatch.
+
+THE LESSON, because it will come up again: "works from the sandbox" is not
+evidence about a GitHub runner. A transport change has to be proved from the
+place the job actually runs.
+
+The throttle and backoff apply either way — that policy lives in
+scripts/http_fetch.py and covers the direct path too.
 
 `--agencies` prints the distinct agency names and their role counts instead of
 writing anything — that is how src/employsi/data/nzGov.ts was built, and how it
 should be refreshed when machinery-of-government changes rename agencies.
 
 Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID.
-     OXYLABS_USERNAME / OXYLABS_PASSWORD only if --oxylabs is passed.
-Run: python scripts/nzgov-to-d1.py [--max-pages N] [--oxylabs] [--dry-run]
+     OXYLABS_USERNAME / OXYLABS_PASSWORD unless --direct is passed.
+Run: python scripts/nzgov-to-d1.py [--max-pages N] [--direct] [--dry-run]
                                    [--agencies]
 """
 from __future__ import annotations
@@ -90,8 +103,10 @@ def _opt(name, default=None):
 
 
 MAX_PAGES = int(_opt('--max-pages', 40))
-# Direct is the default now (see the header); --oxylabs is the escape hatch.
-VIA_OXYLABS = '--oxylabs' in args
+# Oxylabs is the default again (see the header): the one scheduled run that
+# went direct timed out on every request from the GitHub runner. `--oxylabs`
+# stays accepted so an existing invocation does not break.
+VIA_OXYLABS = '--direct' not in args
 DRY = '--dry-run' in args
 AGENCIES_ONLY = '--agencies' in args
 
