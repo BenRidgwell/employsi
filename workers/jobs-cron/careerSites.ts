@@ -1403,6 +1403,41 @@ export const SITES: SiteDef[] = [
     homeHub: "auckland",
     avatureDetail: true,
   },
+  {
+    id: "sydney-brg",
+    name: "Breville Group",
+    sector: "Consumer & Retail",
+    platform: "cornerstone",
+    // Same Cornerstone shape as Mirvac: the shell carries the bearer token and
+    // the API cloud host, and the walk is bounded by the response's totalCount.
+    // Measured 2026-08-05: 22 roles worldwide — 8 at the Alexandria (Sydney)
+    // head office, 4 Torrance CA, 2 Seattle, 2 London, the rest Korea, the
+    // Netherlands and Germany. `c=brevillesage` is the corp key the tenant
+    // needs on every deep link, and it is read back out of the shell rather
+    // than hardcoded, so the job URLs stay right if it ever changes.
+    endpoint: "https://brevillesage.csod.com/ux/ats/careersite/1/home?c=brevillesage",
+    origin: "https://brevillesage.csod.com",
+    homeHub: "sydney",
+  },
+  {
+    id: "sydney-vnt",
+    name: "Ventia Services Group",
+    sector: "Industrial Manufacturing",
+    platform: "phenom",
+    // Measured 2026-08-05: totalHits 222, and 222 collected — the island
+    // reports the true total, so the walk is bounded rather than paging until
+    // it sees a short page. Ventia is a services contractor, so this is the
+    // most geographically spread board in the file: 46 Brisbane, 41 Perth, 40
+    // Sydney, 17 Adelaide, 18 across NZ, and ~45 in towns hubFor has no needle
+    // for (Carnarvon, Paihia, East Sale). Those keep the archive row and lose
+    // only the city tag, which is the right way round.
+    endpoint: "https://jobs.ventia.com/global/en/search-results",
+    origin: "https://jobs.ventia.com",
+    homeHub: "sydney",
+    // 222 at 10 an island page is 23; 40 leaves room to roughly double before
+    // the bound bites, and the walk stops on the advertised total first.
+    maxPages: 40,
+  },
 ];
 
 /**
@@ -1533,6 +1568,10 @@ export const PORTAL_GROUPS: string[][] = [
     "melbourne-tlx-emea",
     "nz-the-a2-milk-company",
   ],
+  // Group 33: the two added 2026-08-05. Measured that day: Ventia 222,
+  // Breville 22. Ventia is the only one that pages (23 island pages), Breville
+  // is one shell fetch plus a single 50-row API call, so they share a tick.
+  ["sydney-vnt", "sydney-brg"],
 ];
 
 const UA =
@@ -2509,6 +2548,8 @@ interface PhenomJob {
   applyUrl?: string;
   jobId?: string;
   reqId?: string;
+  /** Phenom's permalink id — the only usable one, since applyUrl is empty. */
+  jobSeqNo?: string;
   postedDate?: string;
 }
 
@@ -2641,13 +2682,27 @@ async function fetchPhenom(site: SiteDef): Promise<PortalJob[]> {
     const loc = clean(
       String(r.cityState ?? [r.city, r.state].filter(Boolean).join(", ") ?? r.country ?? ""),
     );
-    const url = String(r.applyUrl ?? "");
+    // NO PHENOM TENANT ACTUALLY SERVES applyUrl. Measured 2026-08-05 across all
+    // three: Coles returns "", Newmont and Ventia omit the field entirely — so
+    // `site.origin + ""` was writing the careers homepage as every role's link.
+    // The canonical Phenom permalink is the search path with /job/<jobSeqNo> in
+    // place of /search-results, which was checked against a live role on each of
+    // the three tenants (200, and the page names the right requisition).
+    const applyUrl = String(r.applyUrl ?? "");
+    const seq = String(r.jobSeqNo ?? "");
+    const url = applyUrl.startsWith("http")
+      ? applyUrl
+      : applyUrl
+        ? site.origin + applyUrl
+        : seq
+          ? site.endpoint.replace(/\/search-results\/?$/, `/job/${encodeURIComponent(seq)}`)
+          : site.endpoint;
     out.push(
       job(
         site,
         title,
         loc,
-        url.startsWith("http") ? url : site.origin + url,
+        url,
         isoDay(String(r.postedDate ?? "")) || today(),
         clean(String(r.category ?? "")) || "Career portal",
       ),

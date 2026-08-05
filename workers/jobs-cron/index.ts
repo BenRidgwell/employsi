@@ -1137,6 +1137,11 @@ const PORTAL_TICKS: Record<string, number> = {
   "45 9 * * *": 31,
   // Group 32 — Sims, Telix (three boards) and a2 Milk. All small, one tick.
   "55 9 * * *": 32,
+  // Group 33 — Ventia and Breville. The 09 hour is full (5, 15, 25, 35, 45, 55
+  // all taken), so this opens the 10 hour. PORTAL_TICKS is consulted before the
+  // gov minute-prefix branches below and matches the WHOLE expression, so
+  // "5 10 * * *" is not confused with the ":05 every six hours" NT tick.
+  "5 10 * * *": 33,
 };
 
 const NEWS_TICKS: Record<string, number> = {
