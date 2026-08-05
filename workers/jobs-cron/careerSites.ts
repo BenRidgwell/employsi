@@ -127,6 +127,8 @@ type Platform =
   | "sfrmkapi"
   | "ashby"
   | "lever"
+  | "rippling"
+  | "aubgroup"
   | "elmo"
   | "attrax"
   | "wprest"
@@ -1484,8 +1486,12 @@ export const SITES: SiteDef[] = [
     origin: "https://westgold.wd103.myworkdayjobs.com/en-GB/westgold",
     // Measured 2026-08-05: 86 roles, 85 of them placed in Perth — Westgold's
     // sites are all Murchison/Bryah, and Workday prints "Perth, WA" for the
-    // residential and FIFO postings alike. One row carries no location at all
-    // and stays untagged rather than being assumed onto the home hub.
+    // residential and FIFO postings alike. The one that does not place is
+    // "Beta Hunt", the Kambalda mine, named as a SITE with no town or state
+    // beside it — hubFor has no needle for it and it does not read as
+    // Australian, so it stays untagged. A blank location would have fallen
+    // back to Perth instead; this one is unplaced because it says something
+    // hubFor cannot read, not because it says nothing.
     homeHub: "perth",
   },
   {
@@ -1574,6 +1580,70 @@ export const SITES: SiteDef[] = [
     // Oakland, which is where it actually is, because the hub list has no
     // Oakland — the roles themselves are placed from their own location cells.
     homeHub: "sanfrancisco",
+  },
+  {
+    id: "melbourne-twe",
+    name: "Treasury Wine Estates",
+    sector: "Consumer & Retail",
+    platform: "oracle",
+    endpoint: "https://ebpm.fa.us2.oraclecloud.com",
+    origin: "https://ebpm.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1",
+    siteNumber: "CX_1",
+    // Measured 2026-08-05: 48 roles. TWE sells wine worldwide, so the board is
+    // mostly Asian sales roles — 13 Shanghai, 6 Singapore, 2 Tokyo — and only 3
+    // in Australia. 24 sit in cities the hub list has no entry for (Bangkok,
+    // Kuala Lumpur, Seoul) and stay untagged.
+    homeHub: "melbourne",
+  },
+  {
+    id: "sydney-gqg",
+    name: "GQG Partners",
+    sector: "Financial Services",
+    platform: "cornerstone",
+    // Same Cornerstone shape as Mirvac and Breville. Measured 2026-08-05: 5
+    // roles — 2 Seattle, 1 Sydney, 2 unplaced.
+    endpoint: "https://gqg.csod.com/ux/ats/careersite/1/home?c=gqg",
+    origin: "https://gqg.csod.com",
+    // GQG Partners is headquartered in Fort Lauderdale, which the hub list does
+    // not carry; it is ASX-listed with a Sydney office, so it plots on Sydney.
+    // The roles themselves are placed from their own location cells.
+    homeHub: "sydney",
+  },
+  {
+    id: "nz-contact-energy",
+    name: "Contact Energy",
+    sector: "Electricity & Renewables",
+    platform: "smartrecruiters",
+    // contact.co.nz/about-us/careers is a shell that mounts the SmartRecruiters
+    // job widget; the company token is the one that widget loads, not the page
+    // path. Measured 2026-08-05: 11 roles, all placed — 7 Auckland, 4
+    // Wellington. "ContactEnergy1" returns nothing, so the token is exact.
+    endpoint: "ContactEnergy",
+    origin: "https://contact.co.nz/about-us/careers",
+    homeHub: "auckland",
+  },
+  {
+    id: "sydney-pni",
+    name: "Pinnacle Investment Management",
+    sector: "Financial Services",
+    platform: "rippling",
+    // Measured 2026-08-05: 5 roles in a single call.
+    endpoint: "pinnacle-investment-management",
+    origin: "https://ats.rippling.com/en-GB/pinnacle-investment-management/jobs",
+    homeHub: "sydney",
+  },
+  {
+    id: "sydney-aub",
+    name: "AUB Group",
+    sector: "Insurance",
+    platform: "aubgroup",
+    // AUB runs no ATS: its careers page links each opening straight to a
+    // LinkedIn posting. The roles are read off AUB's own page, which carries a
+    // title and nothing else — see fetchAubGroup for why that is preferred to
+    // following the links through a proxy for data already in front of us.
+    endpoint: "https://www.aubgroup.com.au/careers/",
+    origin: "https://www.aubgroup.com.au/careers/",
+    homeHub: "sydney",
   },
 ];
 
@@ -1722,6 +1792,11 @@ export const PORTAL_GROUPS: string[][] = [
   // ELMO and LiveHire are one page each.
   ["wgx", "brisbane-boq"],
   ["sanfrancisco-xyz", "brisbane-mp1", "melbourne-vea", "rrl", "nhc"],
+  // Group 36: the five added 2026-08-05 (second batch). Measured that day:
+  // Treasury Wine 48, Contact Energy 11, GQG 5, Pinnacle 5, AUB 5. Treasury
+  // Wine is the only one that pages; the other four are one or two calls each,
+  // so all five share a tick.
+  ["melbourne-twe", "nz-contact-energy", "sydney-gqg", "sydney-pni", "sydney-aub"],
 ];
 
 const UA =
@@ -4011,6 +4086,87 @@ async function fetchLever(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── Rippling ATS (Pinnacle Investment Management) ────────────────────────────
+interface RipplingJob {
+  uuid?: string;
+  name?: string;
+  url?: string;
+  department?: { label?: string };
+  workLocation?: { label?: string };
+}
+
+/**
+ * Rippling serves a whole board in one unauthenticated call, like Lever, so
+ * there is no paging to truncate. Measured 2026-08-05 against Pinnacle: 5 jobs.
+ *
+ * NO POSTING DATE. The board API returns uuid, name, department, url and
+ * workLocation and nothing else — checked field by field on the live response.
+ * So `created` is the day we first saw the role, not the day it was advertised.
+ * That is the same treatment several portals here already get; it is recorded
+ * because a date that is really "when we looked" reads exactly like a date that
+ * is really "when it was posted".
+ */
+async function fetchRippling(site: SiteDef): Promise<PortalJob[]> {
+  const rows =
+    (await getJson<RipplingJob[]>(
+      `https://api.rippling.com/platform/api/ats/v1/board/${site.endpoint}/jobs`,
+    )) ?? [];
+  const out: PortalJob[] = [];
+  for (const r of rows) {
+    const title = clean(r.name ?? "");
+    if (!title) continue;
+    out.push(
+      job(
+        site,
+        title,
+        clean(r.workLocation?.label ?? ""),
+        r.url || `https://ats.rippling.com/${site.endpoint}/jobs`,
+        today(),
+        clean(r.department?.label ?? "") || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── AUB Group's own careers page ─────────────────────────────────────────────
+/**
+ * AUB runs NO ATS. Its careers page lists each opening as a card whose "Find
+ * out more" link goes straight to a LinkedIn job posting — checked 2026-08-05,
+ * every link on the page is linkedin.com/jobs/view/<id>.
+ *
+ * The roles are read off AUB's own page rather than by following those links,
+ * which would mean fetching LinkedIn through a proxy for data already sitting
+ * in front of us. The trade is that the page carries a TITLE and nothing else:
+ * no location and no posting date.
+ *
+ * WHAT THAT MEANS FOR THE MAP, stated plainly because it is easy to misread.
+ * An empty location is not "unplaced" — hubFor deliberately falls a blank back
+ * to the employer's home hub, so all of these plot on Sydney whether or not the
+ * role is in Sydney. AUB is a broker network with member firms across Australia
+ * and New Zealand, so some of them will not be. The alternative is following
+ * each LinkedIn link for a location, which is a proxy fetch per role; until
+ * that is worth doing, these are Sydney-by-default and this comment is the
+ * record of why. `created` is likewise the day we first saw the role.
+ */
+async function fetchAubGroup(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const block of html.split(/<div class="job">/i).slice(1)) {
+    const card = block.slice(0, 2000);
+    const title = card.match(/<h5[^>]*>([\s\S]*?)<\/h5>/i);
+    if (!title) continue;
+    const t = clean(title[1]);
+    if (!t || seen.has(t)) continue;
+    seen.add(t);
+    const href = card.match(/href="(https?:\/\/[^"]+)"/i);
+    out.push(job(site, t, "", href ? clean(href[1]) : site.endpoint, today(), "Career portal"));
+  }
+  return out;
+}
+
 // ── ELMO Talent (Steadfast) ──────────────────────────────────────────────────
 /**
  * ELMO's careers module is server-rendered Bootstrap: one `<li class=
@@ -4463,6 +4619,8 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   sfrmkapi: fetchSfRmkApi,
   ashby: fetchAshby,
   lever: fetchLever,
+  rippling: fetchRippling,
+  aubgroup: fetchAubGroup,
   elmo: fetchElmo,
   attrax: fetchAttrax,
   wprest: fetchWpRest,
@@ -4508,6 +4666,9 @@ const SOURCE_TAG: Record<Platform, string> = {
   sfrmkapi: "sf",
   ashby: "ashby",
   lever: "lever",
+  rippling: "rippling",
+  // AUB has no ATS; the tag names the page it came from, not a platform.
+  aubgroup: "aubgroup",
   elmo: "elmo",
   attrax: "attrax",
   // Both WordPress readers write the same tag: the difference between them is

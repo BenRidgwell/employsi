@@ -1148,6 +1148,8 @@ const PORTAL_TICKS: Record<string, number> = {
   // the other five are one or two calls each and share :25.
   "15 10 * * *": 34,
   "25 10 * * *": 35,
+  // Group 36 — Treasury Wine, Contact Energy, GQG, Pinnacle and AUB.
+  "35 10 * * *": 36,
 };
 
 const NEWS_TICKS: Record<string, number> = {

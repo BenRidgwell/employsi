@@ -101,6 +101,7 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
     exchange: "ASX",
     companies: [
       ["CBA", "Commonwealth Bank of Australia", FIN],
+      ["GQG", "GQG Partners", FIN],
       ["MQG", "Macquarie Group", FIN],
       ["WBC", "Westpac Banking Corporation", FIN],
       ["GMG", "Goodman Group", FIN],
