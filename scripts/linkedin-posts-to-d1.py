@@ -192,12 +192,29 @@ def slug_candidates(name: str, domain: str) -> list[str]:
 
 
 
+def unescape_all(s: str) -> str:
+    """Unescape until it stops changing.
+
+    LinkedIn DOUBLE-ENCODES an ampersand in this attribute: the raw page carries
+    `&amp;amp;`, so a single unescape leaves `&amp;` and King & Wood Mallesons
+    reads as "King &amp; Wood Mallesons". norm() then turns that into
+    "king amp wood mallesons", the attribution gate finds no containment either
+    way, and a correctly-resolved page is thrown out as somebody else's.
+    Measured 2026-08-05."""
+    for _ in range(3):
+        out = htmllib.unescape(s)
+        if out == s:
+            return out
+        s = out
+    return s
+
+
 def parse_posts(html: str) -> tuple[str, list[dict]]:
     """(actor name, posts) from a company landing page."""
     actor = ''
     m = re.search(r'aria-label="View organization page for ([^"]+)"', html)
     if m:
-        actor = htmllib.unescape(m.group(1)).strip()
+        actor = unescape_all(m.group(1)).strip()
 
     posts: list[dict] = []
     # Each card starts at its activity urn; slice to the next one so text and
