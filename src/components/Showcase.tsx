@@ -161,8 +161,8 @@ export function Showcase() {
 
           <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4 md:gap-6">
             <LiveStat
-              min={1500}
-              max={1500}
+              min={1480}
+              max={1520}
               fmt={(v) => `${Math.round(v).toLocaleString("en-US")}`}
               label="Employers tracked live"
             />
