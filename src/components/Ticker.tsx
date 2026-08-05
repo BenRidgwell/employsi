@@ -1,6 +1,6 @@
 export function Ticker() {
   return (
-    <div className="sticky top-0 z-40 h-[92px] overflow-hidden bg-background">
+    <div className="sticky top-0 z-40 h-[92px] overflow-hidden bg-background/80 backdrop-blur">
       <iframe
         src="/skills-ticker.html"
         title="Skills in demand ticker"
