@@ -153,8 +153,8 @@ export function Showcase() {
             One live map for the entire workforce economy.
           </h2>
           <p className="mb-9 max-w-[560px] text-[17px] leading-[1.6] text-white/75">
-            Track hiring, salaries, and talent movement across every major employer — updated in
-            real time, anywhere.
+            Job seekers discover where their skills are worth most, and employers see exactly who
+            they're competing with for talent - and where.
           </p>
 
           <div className="my-11 h-px bg-[rgba(120,120,130,0.35)]" />
