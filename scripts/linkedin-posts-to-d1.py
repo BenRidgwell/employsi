@@ -33,9 +33,18 @@ class as the advertiser bug that filed 31 Manila roles under IGO. Every fetched
 page must name the company we asked for (the feed-actor name), or the rows are
 discarded and the slug reported as unresolved.
 
+THE WALK IS THE ROSTER, AND IT BANKS AS IT GOES
+Two faults measured on 2026-08-04, both fixed here. It walked all 1,503 entries
+of the company dump — every government agency included — rather than the
+355-company roster the other walkers use; and it wrote to D1 exactly once, at
+the end, so when the job timeout stopped it at company 100 the 519 posts it had
+already collected were discarded. It now walks the roster (see load_companies)
+and flushes every FLUSH_ROWS, so an interrupted run costs the tail, not the run.
+
 Env: OXYLABS_USERNAME, OXYLABS_PASSWORD, CLOUDFLARE_API_TOKEN.
 Usage:
   python3 scripts/linkedin-posts-to-d1.py [--limit N] [--only bhp,rio] [--dry-run]
+  python3 scripts/linkedin-posts-to-d1.py --all      # one-off: the full 1,503
 """
 from __future__ import annotations
 import argparse
@@ -182,12 +191,31 @@ def d1(sql: str, params: list):
     return j['result']
 
 
-def load_companies() -> list[dict]:
+def load_companies(everything: bool = False) -> list[dict]:
+    """The companies to walk, WITH their domains.
+
+    dump-companies.ts returns all 1,503 COMPANIES — every government agency
+    included — and walking that at ~25 seconds a company is a ten-hour job
+    against a one-hour budget, which is why this feed never finished. The other
+    roster walkers use scripts/roster.py's 355 instead.
+
+    Switching loaders outright would have made resolution WORSE, though:
+    load_roster() carries no `domain`, and the domain is slug_candidates' first
+    and best guess (bhp.com -> /bhp). So the dump is kept for its domains and
+    filtered down to the roster's ids — measured, all 355 are present in the
+    dump and all 355 carry a domain, so nothing is lost but the agencies.
+
+    `everything=True` restores the full 1,503 for a one-off backfill."""
     p = subprocess.run(['npx', 'tsx', os.path.join(HERE, 'dump-companies.ts')],
                        capture_output=True, timeout=300, cwd=ROOT)
     if p.returncode != 0:
         sys.exit('dump-companies.ts failed:\n' + p.stderr.decode()[-800:])
-    return json.loads(p.stdout.decode().strip().splitlines()[-1])
+    full = json.loads(p.stdout.decode().strip().splitlines()[-1])
+    if everything:
+        return full
+    from roster import load_roster
+    keep = {c['id'] for c in load_roster()}
+    return [c for c in full if c['id'] in keep]
 
 
 # A post's first line is its headline on the card. LinkedIn posts have no title
@@ -200,11 +228,77 @@ def headline(body: str, limit: int = 120) -> str:
     return cut + '…'
 
 
+DDL = '''CREATE TABLE IF NOT EXISTS company_posts (
+           post_key   TEXT PRIMARY KEY,
+           company_id TEXT NOT NULL,
+           author     TEXT,
+           title      TEXT NOT NULL,
+           body       TEXT,
+           url        TEXT NOT NULL,
+           image      TEXT,
+           posted     TEXT NOT NULL,
+           first_seen TEXT NOT NULL,
+           last_seen  TEXT NOT NULL)'''
+IDX = ('CREATE INDEX IF NOT EXISTS idx_company_posts_co '
+       'ON company_posts (company_id, posted DESC)')
+
+# Roughly 25 companies' worth of posts (measured ~10 stored posts a company), so
+# the walk banks progress about every ten minutes rather than only at the end.
+FLUSH_ROWS = 250
+
+
+def ensure_table() -> None:
+    d1(DDL, [])
+    d1(IDX, [])
+
+
+def write_rows(rows: list[tuple]) -> int:
+    """Insert a batch and return how many rows went in. Safe to call repeatedly:
+    the table is append-only and self-deduping."""
+    today = dt.date.today().isoformat()
+    written = 0
+    for i in range(0, len(rows), 8):
+        chunk = rows[i:i + 8]
+        values = ','.join(['(?,?,?,?,?,?,?,?,?,?)'] * len(chunk))
+        params: list = []
+        for r in chunk:
+            params.extend([*r, today, today])
+        # Append-only and self-deduping, the same contract the jobs table uses:
+        # a post seen again refreshes last_seen and nothing else, so an edited
+        # headline never rewrites what we first recorded.
+        d1(f'''INSERT INTO company_posts
+                 (post_key, company_id, author, title, body, url, image, posted,
+                  first_seen, last_seen)
+               VALUES {values}
+               ON CONFLICT(post_key) DO UPDATE SET last_seen = excluded.last_seen''', params)
+        written += len(chunk)
+    return written
+
+
+def write_sql(rows: list[tuple], path: str) -> None:
+    today = dt.date.today().isoformat()
+
+    def lit(v):
+        return 'NULL' if v is None or v == '' else "'" + str(v).replace("'", "''") + "'"
+
+    out = [DDL + ';', IDX + ';']
+    for r in rows:
+        vals = ','.join(lit(x) for x in [*r, today, today])
+        out.append(
+            'INSERT INTO company_posts (post_key, company_id, author, title, body, '
+            'url, image, posted, first_seen, last_seen) VALUES (' + vals + ') '
+            'ON CONFLICT(post_key) DO UPDATE SET last_seen = excluded.last_seen;')
+    open(path, 'w').write('\n'.join(out) + '\n')
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument('--limit', type=int, default=0)
     ap.add_argument('--only', default='')
     ap.add_argument('--dry-run', action='store_true')
+    # Walk all 1,503 COMPANIES instead of the 355 the roster defines. Kept as an
+    # escape hatch, not a default — see load_companies() for why.
+    ap.add_argument('--all', action='store_true')
     # The Cloudflare D1 HTTP API is reset by the dev sandbox's proxy (see
     # CLAUDE.md). In GitHub Actions the HTTP path works, same as every other
     # *-to-d1.py; locally, emit the statements and apply them with
@@ -212,7 +306,7 @@ def main() -> int:
     ap.add_argument('--sql-out', default='')
     a = ap.parse_args()
 
-    companies = load_companies()
+    companies = load_companies(everything=a.all)
     if a.only:
         want = {x.strip().lower() for x in a.only.split(',') if x.strip()}
         companies = [c for c in companies if c['id'].lower() in want]
@@ -221,6 +315,12 @@ def main() -> int:
 
     sys.stderr.write(f'{len(companies)} companies to try\n')
     rows, resolved, unresolved = [], [], []
+    # Rows already sent to D1, so the end-of-run total is the real total rather
+    # than whatever happens to be left in the buffer.
+    banked = 0
+    live = not (a.dry_run or a.sql_out)
+    if live:
+        ensure_table()
 
     for i, c in enumerate(companies, 1):
         got = None
@@ -256,70 +356,37 @@ def main() -> int:
                 f'li:{p["activity"]}', c['id'], actor, headline(p['body']), p['body'][:2000],
                 p['url'], p['image'], p['posted'],
             ))
+        # BANK PROGRESS AS IT IS EARNED. This walk is long enough that it used to
+        # be killed by the job timeout before reaching the write at the bottom,
+        # and because that write was the only one, every post collected was
+        # thrown away — measured 2026-08-04: 519 posts from 54 companies
+        # discarded when the run was stopped at company 100. Flushing here means
+        # an interrupted run costs the tail, not the whole thing.
+        if live and len(rows) >= FLUSH_ROWS:
+            banked += write_rows(rows)
+            rows = []
         if i % 10 == 0 or i == len(companies):
-            sys.stderr.write(f'  [{i}/{len(companies)}] posts={len(rows)} '
+            sys.stderr.write(f'  [{i}/{len(companies)}] posts={banked + len(rows)} '
                              f'resolved={len(resolved)} unresolved={len(unresolved)}\n')
 
-    sys.stderr.write(f'\n{len(rows)} posts from {len(resolved)} companies; '
+    sys.stderr.write(f'\n{banked + len(rows)} posts from {len(resolved)} companies; '
                      f'{len(unresolved)} unresolved\n')
     if a.dry_run:
         for r in rows[:8]:
             sys.stderr.write(f'  {r[1]:14s} {r[7][:10]}  {r[3][:70]}\n')
         return 0
-    if not rows:
+    if not (banked + len(rows)):
         sys.stderr.write('nothing to write — leaving the table alone\n')
         return 1
 
-    ddl = '''CREATE TABLE IF NOT EXISTS company_posts (
-             post_key   TEXT PRIMARY KEY,
-             company_id TEXT NOT NULL,
-             author     TEXT,
-             title      TEXT NOT NULL,
-             body       TEXT,
-             url        TEXT NOT NULL,
-             image      TEXT,
-             posted     TEXT NOT NULL,
-             first_seen TEXT NOT NULL,
-             last_seen  TEXT NOT NULL)'''
-    idx = ('CREATE INDEX IF NOT EXISTS idx_company_posts_co '
-           'ON company_posts (company_id, posted DESC)')
-
-    today = dt.date.today().isoformat()
-
     if a.sql_out:
-        def lit(v):
-            return 'NULL' if v is None or v == '' else "'" + str(v).replace("'", "''") + "'"
-        out = [ddl + ';', idx + ';']
-        for r in rows:
-            vals = ','.join(lit(x) for x in [*r, today, today])
-            out.append(
-                'INSERT INTO company_posts (post_key, company_id, author, title, body, '
-                'url, image, posted, first_seen, last_seen) VALUES (' + vals + ') '
-                'ON CONFLICT(post_key) DO UPDATE SET last_seen = excluded.last_seen;')
-        open(a.sql_out, 'w').write('\n'.join(out) + '\n')
+        write_sql(rows, a.sql_out)
         sys.stderr.write(f'wrote {len(rows)} statements to {a.sql_out}\n')
         return 0 if resolved else 2
 
-    d1(ddl, [])
-    d1(idx, [])
-    written = 0
-    for i in range(0, len(rows), 8):
-        chunk = rows[i:i + 8]
-        values = ','.join(['(?,?,?,?,?,?,?,?,?,?)'] * len(chunk))
-        params: list = []
-        for r in chunk:
-            params.extend([*r, today, today])
-        # Append-only and self-deduping, the same contract the jobs table uses:
-        # a post seen again refreshes last_seen and nothing else, so an edited
-        # headline never rewrites what we first recorded.
-        d1(f'''INSERT INTO company_posts
-                 (post_key, company_id, author, title, body, url, image, posted,
-                  first_seen, last_seen)
-               VALUES {values}
-               ON CONFLICT(post_key) DO UPDATE SET last_seen = excluded.last_seen''', params)
-        written += len(chunk)
-
-    sys.stderr.write(f'wrote {written} rows\n')
+    if rows:
+        banked += write_rows(rows)
+    sys.stderr.write(f'wrote {banked} rows\n')
     if unresolved:
         sys.stderr.write('unresolved: ' + ', '.join(unresolved[:25]) + '\n')
     # A run that resolved nothing is a broken run, not an empty market.
