@@ -1438,6 +1438,40 @@ export const SITES: SiteDef[] = [
     // the bound bites, and the walk stops on the advertised total first.
     maxPages: 40,
   },
+  {
+    id: "melbourne-ann",
+    name: "Ansell",
+    sector: "Healthcare and Life Sciences",
+    platform: "taleo",
+    // Ansell runs the OLD (non-faceted) Taleo career section, and it renders
+    // NOTHING for an anonymous client: jobsearch.ftl is a 151 KB shell whose
+    // job list arrives over the stateful JSF flow, and joblist.ftl is the same
+    // shell with the rows left out. Both were fetched and parsed to confirm
+    // that — zero jobdetail links in either, and posting the form back with all
+    // 197 hidden fields and a cookie jar returns the shell again. It looked
+    // like a job for a rendered browser.
+    //
+    // It is not: the REST jobboard the modern tenants use is still mounted on
+    // this host, it just refuses to resolve the career section without the
+    // portal number. `careerSectionUnAvailable: true` is what an empty, wrong
+    // or non-numeric portal gets, and it is indistinguishable from a dead
+    // board — which is why this is written down. Measured 2026-08-05: of "",
+    // "ex", 1, 123456789, 999999999, Sonic's 8115010150 and 101430233, only
+    // 101430233 resolves, and it returns Ansell's own requisitions (the
+    // Seeduwa and Melaka plants, the EMEA and LATAM sales roles). 103
+    // advertised, 25 a page.
+    endpoint: "https://ansell.taleo.net",
+    origin: "https://ansell.taleo.net",
+    portalNo: "101430233",
+    // Ansell is a global manufacturer with a small home office: on the day it
+    // was added, none of the 103 roles was in Australia. homeHub is where the
+    // company plots, not a claim about where the roles are — hubFor places each
+    // one from its own location cell and leaves the rest untagged.
+    homeHub: "melbourne",
+    // 103 at 25 a page is 5; 12 leaves room to double, and the walk stops on
+    // the first page that adds no new requisition id anyway.
+    maxPages: 12,
+  },
 ];
 
 /**
@@ -1568,10 +1602,11 @@ export const PORTAL_GROUPS: string[][] = [
     "melbourne-tlx-emea",
     "nz-the-a2-milk-company",
   ],
-  // Group 33: the two added 2026-08-05. Measured that day: Ventia 222,
-  // Breville 22. Ventia is the only one that pages (23 island pages), Breville
-  // is one shell fetch plus a single 50-row API call, so they share a tick.
-  ["sydney-vnt", "sydney-brg"],
+  // Group 33: the three added 2026-08-05. Measured that day: Ventia 222,
+  // Ansell 103, Breville 22. Ventia is the only deep one (23 island pages);
+  // Ansell is five REST pages and Breville a shell fetch plus one 50-row API
+  // call, so all three share a tick.
+  ["sydney-vnt", "melbourne-ann", "sydney-brg"],
 ];
 
 const UA =
@@ -3267,7 +3302,16 @@ async function fetchTaleo(site: SiteDef): Promise<PortalJob[]> {
           loc = clean(rawLoc);
         }
       }
-      const posted = cells.find((c) => /^\d{2}-[A-Za-z]{3}-\d{4}$/.test(c ?? "")) ?? "";
+      // Tenants disagree on how the date cell is written and there is no header
+      // to say which column it is, so the cell is found by shape. Measured
+      // 2026-08-05: Sonic HealthPlus prints "04-Aug-2026", Ansell prints
+      // "Aug 5, 2026". Date.parse reads both, but only once the right cell has
+      // been picked out — matching one shape alone silently dated a whole board
+      // to the day it was scraped.
+      const posted =
+        cells.find((c) => /^\d{1,2}-[A-Za-z]{3}-\d{4}$/.test(c ?? "")) ??
+        cells.find((c) => /^[A-Za-z]{3}\.? \d{1,2}, \d{4}$/.test(c ?? "")) ??
+        "";
       out.push(
         job(
           site,
