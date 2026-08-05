@@ -126,6 +126,7 @@ type Platform =
   | "jobadder"
   | "sfrmkapi"
   | "ashby"
+  | "lever"
   | "elmo"
   | "attrax"
   | "wprest"
@@ -1472,6 +1473,108 @@ export const SITES: SiteDef[] = [
     // the first page that adds no new requisition id anyway.
     maxPages: 12,
   },
+  {
+    id: "wgx",
+    name: "Westgold Resources",
+    sector: "Energy & Natural Resources",
+    platform: "workday",
+    // wd103, not the wd3 every other Workday tenant here sits on — the pod is
+    // part of the host and guessing it wrong 404s.
+    endpoint: "https://westgold.wd103.myworkdayjobs.com/wday/cxs/westgold/westgold/jobs",
+    origin: "https://westgold.wd103.myworkdayjobs.com/en-GB/westgold",
+    // Measured 2026-08-05: 86 roles, 85 of them placed in Perth — Westgold's
+    // sites are all Murchison/Bryah, and Workday prints "Perth, WA" for the
+    // residential and FIFO postings alike. One row carries no location at all
+    // and stays untagged rather than being assumed onto the home hub.
+    homeHub: "perth",
+  },
+  {
+    id: "brisbane-boq",
+    name: "Bank of Queensland",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://boq.wd3.myworkdayjobs.com/wday/cxs/boq/Careers-at-BOQGroup/jobs",
+    origin: "https://boq.wd3.myworkdayjobs.com/en-GB/Careers-at-BOQGroup",
+    // Measured 2026-08-05: 61 roles. A retail bank advertises by BRANCH, so
+    // half the location cells are suburb names ("Chermside") or the literal
+    // "2 Locations" that Workday prints for a multi-site requisition. 30 place,
+    // 31 do not, and the 31 keep their row untagged.
+    homeHub: "brisbane",
+  },
+  {
+    id: "melbourne-vea",
+    name: "Viva Energy",
+    sector: "Energy & Natural Resources",
+    platform: "smartrecruiters",
+    // The careers page is a shell that links out to SmartRecruiters; the
+    // company token is the one in those links, not the page's own path.
+    endpoint: "VivaEnergyAustralia",
+    origin: "https://www.vivaenergy.com.au/career-opportunities",
+    // Measured 2026-08-05: 13 roles and all 13 placed, spread over every
+    // mainland capital — refinery, terminal and retail network sites.
+    homeHub: "melbourne",
+  },
+  {
+    id: "rrl",
+    name: "Regis Resources",
+    sector: "Energy & Natural Resources",
+    platform: "elmo",
+    // The careers page embeds this board in an iframe (?layout=iframe); the
+    // same path without the layout parameter is the server-rendered list the
+    // ELMO reader already knows how to walk.
+    endpoint: "https://regisresources.elmotalent.com.au/careers/careers/jobs",
+    origin: "https://regisresources.elmotalent.com.au",
+    // Measured 2026-08-05: the board prints "1 - 5 of 5 jobs shown" and serves
+    // exactly those 5, four of them at the Duketon operation near Laverton.
+    // No paginator, so there is nothing to truncate.
+    homeHub: "perth",
+  },
+  {
+    id: "nhc",
+    name: "New Hope Group",
+    sector: "Energy & Natural Resources",
+    platform: "livehire",
+    // The LiveHire segment code, same shape as Wesfarmers. Found by probing the
+    // ATS hosts directly: newhopegroup.com.au itself is unreachable from this
+    // network, so the careers page could not be read to confirm the platform
+    // the usual way. `newhope` is not the segment — it returns nothing —
+    // `newhopegroup` is.
+    endpoint: "newhopegroup",
+    origin: "https://www.livehire.com",
+    // Measured 2026-08-05: 4 roles — Toowoomba and Port of Brisbane in
+    // Queensland, Muswellbrook and Bengalla in the NSW Hunter Valley.
+    homeHub: "brisbane",
+  },
+  {
+    id: "brisbane-mp1",
+    name: "Megaport",
+    sector: "Technology, Media & Telecom",
+    platform: "lever",
+    endpoint: "megaport",
+    origin: "https://jobs.lever.co/megaport",
+    // Measured 2026-08-05: 38 postings in one call. Megaport sells worldwide
+    // from a Brisbane base, so two thirds of the board is in places the hub
+    // list has no entry for (Arizona, Gurugram, Sofia, São Paulo); 9 land on
+    // Brisbane and the rest keep their row untagged.
+    homeHub: "brisbane",
+  },
+  {
+    id: "sanfrancisco-xyz",
+    name: "Block",
+    sector: "Technology, Media & Telecom",
+    platform: "greenhouse",
+    // block.xyz/careers/jobs is a front end over Greenhouse board "block" —
+    // the token is in the page's GREENHOUSE_BOARD constant. The endpoint is the
+    // full board URL because that is what fetchGreenhouse takes; handing it the
+    // bare token returns zero rows and looks exactly like an empty board.
+    endpoint: "https://boards-api.greenhouse.io/v1/boards/block/jobs",
+    origin: "https://block.xyz/careers/jobs",
+    // Measured 2026-08-05: 198 roles across 23 hubs, dates spanning 75 distinct
+    // days back to 2025-06-12. Block is plotted on San Francisco rather than
+    // Oakland, which is where it actually is, because the hub list has no
+    // Oakland — the roles themselves are placed from their own location cells.
+    homeHub: "sanfrancisco",
+  },
 ];
 
 /**
@@ -1607,6 +1710,18 @@ export const PORTAL_GROUPS: string[][] = [
   // Ansell is five REST pages and Breville a shell fetch plus one 50-row API
   // call, so all three share a tick.
   ["sydney-vnt", "melbourne-ann", "sydney-brg"],
+  // Groups 34-35: the seven added 2026-08-05. Measured that day: Block 198,
+  // Westgold 86, BOQ 61, Megaport 38, Viva 13, Regis 5, New Hope 4.
+  //
+  // The two Workday walks lead their own tick. Workday pages 20 at a time and
+  // is the slowest reader in the file, so 86 + 61 is ~8 requests more than
+  // everything else here put together.
+  //
+  // The other five are all single-call or near it: Greenhouse and Lever each
+  // serve a whole board in one request, SmartRecruiters is a short walk, and
+  // ELMO and LiveHire are one page each.
+  ["wgx", "brisbane-boq"],
+  ["sanfrancisco-xyz", "brisbane-mp1", "melbourne-vea", "rrl", "nhc"],
 ];
 
 const UA =
@@ -3845,6 +3960,57 @@ async function fetchAshby(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── Lever (Megaport) ─────────────────────────────────────────────────────────
+interface LeverJob {
+  id?: string;
+  text?: string;
+  createdAt?: number;
+  hostedUrl?: string;
+  categories?: {
+    location?: string;
+    allLocations?: string[];
+    department?: string;
+    team?: string;
+  };
+}
+
+/**
+ * Lever publishes a whole board in ONE unauthenticated call and returns every
+ * posting — no paging, no total to reconcile, so there is nothing here that can
+ * silently truncate. Measured 2026-08-05 against Megaport: 38 postings.
+ *
+ * A posting can be open in several places at once (`allLocations`), and the
+ * primary `location` is not always the one we care about — Megaport advertises
+ * roles as "Arizona" with Utah alongside. All of them are joined so hubFor sees
+ * every city the role is actually offered in, not just the first.
+ */
+async function fetchLever(site: SiteDef): Promise<PortalJob[]> {
+  const rows =
+    (await getJson<LeverJob[]>(`https://api.lever.co/v0/postings/${site.endpoint}?mode=json`)) ??
+    [];
+  const out: PortalJob[] = [];
+  for (const r of rows) {
+    const title = clean(r.text ?? "");
+    if (!title) continue;
+    const locs = [r.categories?.location, ...(r.categories?.allLocations ?? [])]
+      .map((s) => clean(s ?? ""))
+      .filter(Boolean);
+    out.push(
+      job(
+        site,
+        title,
+        [...new Set(locs)].join(", "),
+        r.hostedUrl || `https://jobs.lever.co/${site.endpoint}`,
+        // createdAt is epoch milliseconds, not seconds — isoFromEpoch takes
+        // seconds, so this divides rather than reusing it and landing in 1970.
+        r.createdAt ? new Date(r.createdAt).toISOString().slice(0, 10) : today(),
+        clean(r.categories?.department ?? "") || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
 // ── ELMO Talent (Steadfast) ──────────────────────────────────────────────────
 /**
  * ELMO's careers module is server-rendered Bootstrap: one `<li class=
@@ -4296,6 +4462,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   jobadder: fetchJobAdder,
   sfrmkapi: fetchSfRmkApi,
   ashby: fetchAshby,
+  lever: fetchLever,
   elmo: fetchElmo,
   attrax: fetchAttrax,
   wprest: fetchWpRest,
@@ -4340,6 +4507,7 @@ const SOURCE_TAG: Record<Platform, string> = {
   // SF row for the same role rather than sitting beside it.
   sfrmkapi: "sf",
   ashby: "ashby",
+  lever: "lever",
   elmo: "elmo",
   attrax: "attrax",
   // Both WordPress readers write the same tag: the difference between them is

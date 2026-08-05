@@ -189,6 +189,7 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
     exchange: "ASX",
     companies: [
       ["SUN", "Suncorp Group", FIN],
+      ["MP1", "Megaport", TMT],
       ["NSR", "National Storage REIT", FIN],
       ["BOQ", "Bank of Queensland", FIN],
       ["CTD", "Corporate Travel Management", CON],
@@ -411,6 +412,7 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
     exchange: "NASDAQ",
     companies: [
       ["DBX", "Dropbox", TMT],
+      ["XYZ", "Block", TMT, "NYSE"],
       ["AFRM", "Affirm", TMT],
       ["CART", "Instacart", TMT],
       ["GPS", "Gap Inc.", CON, "NYSE"],

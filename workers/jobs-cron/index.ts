@@ -1137,11 +1137,17 @@ const PORTAL_TICKS: Record<string, number> = {
   "45 9 * * *": 31,
   // Group 32 — Sims, Telix (three boards) and a2 Milk. All small, one tick.
   "55 9 * * *": 32,
-  // Group 33 — Ventia and Breville. The 09 hour is full (5, 15, 25, 35, 45, 55
-  // all taken), so this opens the 10 hour. PORTAL_TICKS is consulted before the
-  // gov minute-prefix branches below and matches the WHOLE expression, so
-  // "5 10 * * *" is not confused with the ":05 every six hours" NT tick.
+  // Group 33 — Ventia, Ansell and Breville. The 09 hour is full (5, 15, 25, 35,
+  // 45, 55 all taken), so this opens the 10 hour. PORTAL_TICKS is consulted
+  // before the gov minute-prefix branches below and matches the WHOLE cron
+  // expression, so a minute-5 portal tick in the 10 hour is never mistaken for
+  // the NT tick that runs at minute 5 of every sixth hour.
   "5 10 * * *": 33,
+  // Groups 34-35 — the 2026-08-05 seven. Westgold and BOQ share :15 because
+  // both are Workday, which pages 20 at a time and is the slowest reader here;
+  // the other five are one or two calls each and share :25.
+  "15 10 * * *": 34,
+  "25 10 * * *": 35,
 };
 
 const NEWS_TICKS: Record<string, number> = {
