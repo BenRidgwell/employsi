@@ -22,6 +22,16 @@
 # Optional repo variables:
 #   CF_ACCOUNT_ID, D1_DATABASE_ID
 #
+# ONE SHARD A DAY, NOT THE WHOLE ROSTER
+# The 355-company roster takes about 3.5 hours at the measured pace, so a single
+# daily run could only ever reach the first hundred — the rest were never looked
+# at, which reads on the card as "this employer posts nothing". The script splits
+# the roster into five shards by a hash of the company id and walks the one the
+# date selects, so every company comes round every five days, inside a job cap
+# with headroom. Dispatch with a `shard` input to re-run a specific day; leave it
+# blank for today's. Rows are flushed as they are collected, so a run that does
+# overrun still banks everything up to the point it stopped.
+#
 # The job fails when the run resolved NO company (exit 2). A slug that quietly
 # stops resolving looks exactly like a company that stopped posting, so silence
 # is treated as breakage. Individual companies that fail their attribution check
@@ -33,9 +43,15 @@ name: linkedin-posts-archive
 on:
   schedule:
     # 19:00 UTC daily — clear of the jobstreet windows (20:00 / 21:00) so the
-    # two never share a D1 write window.
+    # two never share a D1 write window. Each daily run walks ONE of the five
+    # shards, picked from the date, so the roster comes round every five days.
     - cron: '0 19 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      shard:
+        description: 'Shard 0-4 to walk (blank = the shard for today)'
+        required: false
+        default: ''
 
 concurrency:
   group: linkedin-posts-archive
@@ -44,7 +60,10 @@ concurrency:
 jobs:
   archive:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # The biggest of the five shards is 86 companies, about 50 minutes at the
+    # measured pace; 90 leaves real headroom for roster growth rather than the
+    # couple of minutes a 60-minute cap would.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v5
 
@@ -55,6 +74,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      # scripts/roster.py RUNS the roster TypeScript to read it, and it runs it
+      # under bun. Without this step it raises RosterError and the job dies in a
+      # second — which is exactly how run 6 failed on 2026-08-05.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
       # dump-companies.ts reads the roster through TypeScript, which is the only
       # correct reading of it — COMPANIES is assembled at runtime from several
@@ -72,4 +98,10 @@ jobs:
           # One page per company through a residential proxy; pace it rather
           # than racing the roster.
           OXY_MIN_INTERVAL: '1.0'
-        run: python scripts/linkedin-posts-to-d1.py
+          SHARD: ${{ inputs.shard }}
+        run: |
+          if [ -n "$SHARD" ]; then
+            python scripts/linkedin-posts-to-d1.py --shard "$SHARD"
+          else
+            python scripts/linkedin-posts-to-d1.py
+          fi

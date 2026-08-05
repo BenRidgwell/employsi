@@ -41,14 +41,20 @@ the end, so when the job timeout stopped it at company 100 the 519 posts it had
 already collected were discarded. It now walks the roster (see load_companies)
 and flushes every FLUSH_ROWS, so an interrupted run costs the tail, not the run.
 
+Even the roster does not fit one job, so it is split across days: each run walks
+one of SHARDS slices, chosen by date, and every company is refreshed every
+SHARDS days. See shard_of() for why membership is hashed rather than sliced.
+
 Env: OXYLABS_USERNAME, OXYLABS_PASSWORD, CLOUDFLARE_API_TOKEN.
 Usage:
   python3 scripts/linkedin-posts-to-d1.py [--limit N] [--only bhp,rio] [--dry-run]
-  python3 scripts/linkedin-posts-to-d1.py --all      # one-off: the full 1,503
+  python3 scripts/linkedin-posts-to-d1.py --shard 3  # re-run a missed day
+  python3 scripts/linkedin-posts-to-d1.py --all --no-shard   # one-off backfill
 """
 from __future__ import annotations
 import argparse
 import datetime as dt
+import hashlib
 import html as htmllib
 import importlib.util
 import json
@@ -218,6 +224,37 @@ def load_companies(everything: bool = False) -> list[dict]:
     return [c for c in full if c['id'] in keep]
 
 
+# THE ROSTER DOES NOT FIT ONE RUN, SO IT IS SPLIT ACROSS DAYS.
+# Measured 2026-08-04: about 35 seconds a company (an unresolved one costs three
+# slug attempts), so 355 companies is ~3.5 hours against a 60-minute job cap. The
+# run was stopped at company 100 and companies 101-355 were never reached at all
+# — not "no posts found" but never looked at, which is exactly the silent-tail
+# failure this codebase treats as a bug.
+#
+# Five shards, measured against the current 355-company roster: 60 / 67 / 86 /
+# 73 / 69, so the WORST day is 86 companies, about 50 minutes at the measured
+# pace. The workflow's cap is 90 minutes to leave that real headroom rather than
+# a couple of minutes of it — hash-mod shards are even, not equal, and the
+# roster grows. Refreshing every company every five days is well inside the
+# window the data covers anyway: LinkedIn shows a guest the ten most recent
+# posts, which for these employers spans weeks.
+SHARDS = 5
+
+
+def shard_of(company_id: str) -> int:
+    """Which day's shard a company belongs to.
+
+    Hashed rather than sliced (`companies[i::SHARDS]`) so membership is STABLE:
+    adding or removing one company moves only that company, where a slice
+    reshuffles everything after it and would re-walk companies already done
+    while skipping others for a full cycle."""
+    return int(hashlib.sha1(company_id.encode()).hexdigest()[:8], 16) % SHARDS
+
+
+def today_shard() -> int:
+    return dt.date.today().toordinal() % SHARDS
+
+
 # A post's first line is its headline on the card. LinkedIn posts have no title
 # field, so one is DERIVED rather than invented: the first sentence, trimmed.
 def headline(body: str, limit: int = 120) -> str:
@@ -299,6 +336,12 @@ def main() -> int:
     # Walk all 1,503 COMPANIES instead of the 355 the roster defines. Kept as an
     # escape hatch, not a default — see load_companies() for why.
     ap.add_argument('--all', action='store_true')
+    # Which day's slice to walk. Defaults to today's, so the daily cron rotates
+    # through the roster on its own; pass it explicitly to re-run a missed day.
+    ap.add_argument('--shard', type=int, default=-1,
+                    help=f'0..{SHARDS - 1}; default is the shard for today')
+    ap.add_argument('--no-shard', action='store_true',
+                    help='walk every company in one run (hours, not minutes)')
     # The Cloudflare D1 HTTP API is reset by the dev sandbox's proxy (see
     # CLAUDE.md). In GitHub Actions the HTTP path works, same as every other
     # *-to-d1.py; locally, emit the statements and apply them with
@@ -308,8 +351,19 @@ def main() -> int:
 
     companies = load_companies(everything=a.all)
     if a.only:
+        # An explicit list is the whole request; today's shard does not apply.
         want = {x.strip().lower() for x in a.only.split(',') if x.strip()}
         companies = [c for c in companies if c['id'].lower() in want]
+    elif not a.no_shard:
+        n = a.shard if a.shard >= 0 else today_shard()
+        if not 0 <= n < SHARDS:
+            sys.exit(f'--shard must be 0..{SHARDS - 1}')
+        companies = [c for c in companies if shard_of(c['id']) == n]
+        sys.stderr.write(f'shard {n} of {SHARDS}\n')
+        # An empty shard means the split or the roster is broken, not that
+        # today has no companies — every shard has members by construction.
+        if not companies:
+            sys.exit(f'shard {n} is empty — the roster or the split is broken')
     if a.limit:
         companies = companies[:a.limit]
 
