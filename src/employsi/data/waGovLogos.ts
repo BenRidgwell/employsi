@@ -35,6 +35,23 @@
  *    Health Support Services, PathWest) plus GESB, MyLeave, Parliamentary
  *    Services, Tourism WA.
  *
+ * SEARCHED AGAIN 2026-08-05, AND STILL EXCLUDED. Four were looked for directly
+ * and the reason each is still on the fallback is worth recording, because all
+ * four LOOK like they should be easy:
+ *
+ *  * PathWest and North Metropolitan Health Service — both sites serve the same
+ *    file, /images/hsps/logo.svg, byte for byte (257 KB, element ids
+ *    "badge-white-a"/"badge-white-b"). It is the shared health-services badge in
+ *    its WHITE variant, so it is both wrong-per-agency and invisible here.
+ *  * MyLeave — myleave.wa.gov.au answers 403 to this network on every path
+ *    tried, with and without www.
+ *  * WA Police — the only mark its wa.gov.au page publishes is
+ *    wa_police_force_logo_rgb_1200x600_white.png, a reverse variant. Swapping
+ *    "_white" out of that filename returns HTTP 200 with a PLACEHOLDER
+ *    "missing image" graphic rather than a 404, which a status check would have
+ *    accepted and shipped. Every URL in this file was opened and looked at, not
+ *    just status-checked, for exactly that reason.
+ *
  * Every URL below returned a 200 with image content when it was added.
  */
 
@@ -72,8 +89,13 @@ export const WA_GOV_LOGO_URL: Record<string, string> = {
     "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSSoSVj42AXDSt4AKaup48k-iswgYo7D6KHD0D56gHqPa3jRiGFE9WvIVWv&s=10", // Department of Biodiversity, Conservation and Attractions
   "perth-gov-department-of-education":
     "https://burningfruit.com/wp-content/uploads/2024/05/DOE_NO-PE-STATEMENT_RGB_BLACK-1.png", // Department of Education
+  // DFES had the generic whole-of-government PNG, which is the badge every WA
+  // agency page carries — so it looked like the crest agencies rather than
+  // itself. This is its own wordmark, the BLACK variant: the site also serves
+  // dfes-logo_2.png, which is the reverse version for the navy header and would
+  // be invisible on the light badge surface.
   "perth-gov-department-of-fire-emergency-services":
-    "https://www.dfes.wa.gov.au/images/wa-gov-logo_1wa-gov-logo.png", // Department of Fire & Emergency Services
+    "https://www.dfes.wa.gov.au/images/dfes-logo-black_2.png", // Department of Fire & Emergency Services
   "perth-gov-department-of-health":
     "https://www.health.wa.gov.au/~/media/Images/Corporate/Logo-Banner/logoDOH.gif", // Department of Health
   "perth-gov-department-of-primary-industries-and-regional-development":
@@ -85,8 +107,13 @@ export const WA_GOV_LOGO_URL: Record<string, string> = {
     "https://www.legalaid.wa.gov.au/themes/custom/legalaid/logo.svg", // Legal Aid Western Australia
   "perth-gov-legal-practice-board": "https://www.lpbwa.org.au/static/LPBWA-logo.jpg", // Legal Practice Board
   "perth-gov-lotterywest": "https://www.lotterywest.wa.gov.au/favicon.svg", // Lotterywest
+  // Main Roads had the generic wagov mark. This is its own device — the dark
+  // roundel with the road-and-lightning symbol. It is the SYMBOL, not the
+  // "mainroads WESTERN AUSTRALIA" lockup, because the only lockup the site
+  // publishes is mrwa-100-year-logo-white.svg, a reverse variant that would be
+  // invisible here. A square dark mark is the better badge anyway.
   "perth-gov-main-roads-wa":
-    "https://www.mainroads.wa.gov.au/49c224/contentassets/cdae6beda63d46168fadbdd2979bec24/wagov-logo.svg", // Main Roads WA
+    "https://www.mainroads.wa.gov.au/static/favicons/apple-touch-icon-152x152.png", // Main Roads WA
   "perth-gov-mental-health-commission":
     "https://www.mhc.wa.gov.au/awcontent/web/assets/images/logo.svg", // Mental Health Commission
   "perth-gov-office-of-the-auditor-general":
@@ -107,6 +134,27 @@ export const WA_GOV_LOGO_URL: Record<string, string> = {
     "https://visit.museum.wa.gov.au/themes/custom/wamuseum_theme/logo.svg", // Western Australian Museum
   "perth-gov-workcover-wa":
     "https://www.workcover.wa.gov.au/wp-content/themes/workcover/images/logo-mobile.svg", // WorkCover WA
+  // Three agencies moved out of WA_GOV_CREST_IDS below on 2026-08-05: each has a
+  // named brand lockup on its wa.gov.au organisation page, so the crest was
+  // hiding a real identity rather than reflecting one. All three were fetched
+  // and LOOKED AT, not just status-checked — see the note on WA Police for why
+  // that matters here.
+  "perth-gov-forest-products-commission":
+    "https://www.wa.gov.au/system/files/2023-12/fpc_logo_cmyk.png", // Forest Products Commission
+  "perth-gov-department-of-housing-and-works":
+    "https://www.wa.gov.au/system/files/2025-12/dhw_brandmark_0.png", // Department of Housing and Works
+  // The only URL here carrying an ?itok= token. The untokenised original at
+  // /system/files/2025-06/dmpe_wa_gov_au_logo_0.jpg is the same image at 593 KB,
+  // which is unreasonable for a 128 px badge; this derivative is 11 KB. The
+  // trade is a signed URL that can expire, against a half-megabyte download on
+  // every marker render.
+  "perth-gov-department-of-mines-petroleum-and-exploration":
+    "https://www.wa.gov.au/system/files/styles/organisation_branding_logo/private/2025-06/dmpe_wa_gov_au_logo_0.jpg?itok=G-aEhUzS", // Department of Mines, Petroleum and Exploration
+  // Gold Corporation trades as The Perth Mint and its swan is a square mark,
+  // which is what the badge wants. The site's logo.svg is the 602x64 wordmark
+  // and would render as a sliver.
+  "perth-gov-gold-corporation":
+    "https://www.perthmint.com/static/assets/images/favicons/apple-touch-icon.png", // Gold Corporation
 };
 
 /**
@@ -123,15 +171,12 @@ export const WA_GOV_CREST_IDS: string[] = [
   // and they now carry their own logo in WA_GOV_LOGO_URL above.
   "perth-gov-department-of-creative-industries-tourism-and-sport", // Department of Creative Industries, Tourism and Sport
   "perth-gov-department-of-energy-and-economic-diversification", // Department of Energy and Economic Diversification
-  "perth-gov-department-of-housing-and-works", // Department of Housing and Works
   "perth-gov-department-of-justice", // Department of Justice
   "perth-gov-department-of-local-government-industry-regulation-and-safety", // Department of Local Government, Industry Regulation and Safety
-  "perth-gov-department-of-mines-petroleum-and-exploration", // Department of Mines, Petroleum and Exploration
   "perth-gov-department-of-planning-lands-and-heritage", // Department of Planning, Lands and Heritage
   "perth-gov-department-of-the-premier-and-cabinet", // Department of the Premier and Cabinet
   "perth-gov-department-of-training-and-workforce-development", // Department of Training and Workforce Development
   "perth-gov-department-of-treasury-and-finance", // Department of Treasury and Finance
-  "perth-gov-forest-products-commission", // Forest Products Commission
   "perth-gov-metropolitan-cemeteries-board", // Metropolitan Cemeteries Board
   "perth-gov-public-sector-commission", // Public Sector Commission
   "perth-gov-state-solicitors-office", // State Solicitors Office
