@@ -33,6 +33,11 @@ class as the advertiser bug that filed 31 Manila roles under IGO. Every fetched
 page must name the company we asked for (the feed-actor name), or the rows are
 discarded and the slug reported as unresolved.
 
+Companies do rename, so the gate also accepts a short list of confirmed renames
+(REBRANDS). That list is per company and not a similarity rule, because a rule
+loose enough to admit "Bega Group" for Bega Cheese also admits "Swift TV" for
+Swift Networks Group — see the note above REBRANDS.
+
 SLUGS ARE GUESSED ONCE AND REMEMBERED
 A company's LinkedIn vanity slug cannot be derived from its name in general —
 Commonwealth Bank of Australia posts at /commbank, and no rule over that name
@@ -207,6 +212,54 @@ def unescape_all(s: str) -> str:
             return out
         s = out
     return s
+
+
+# Companies whose LinkedIn page carries a name the gate cannot derive from the
+# roster's, because the company renamed. Keyed by roster id and holding the
+# NORMALISED actor name, so each entry authorises exactly one page for exactly
+# one company.
+#
+# WHY THIS IS A LIST AND NOT A RULE. The obvious loosening — accept when the two
+# names share a distinctive token — was tested against the rejections this feed
+# actually produced, and it admits the impostors along with the rebrands:
+#
+#   Bega Cheese          -> "Bega Group"                   share "bega"
+#   Swift Networks Group -> "Swift TV"                     share "swift"
+#   Steadfast Group      -> "The Steadfast Security Group" share "steadfast"
+#
+# The first is the same company renamed; the other two are different companies
+# that happen to start with the same word. They are structurally identical, so
+# no similarity measure over the names can separate them — only knowing which
+# company actually renamed can, and that is a fact per company, checked once.
+#
+# The cost of being wrong here is filing somebody else's posts under an employer
+# and showing them on its card as its own, which is the failure this whole gate
+# exists to prevent. So entries are added only after confirming the rename, and
+# a new one appears in the run log as a "wrong-company" line naming both sides.
+REBRANDS: dict[str, tuple[str, ...]] = {
+    # Bega Cheese Limited trades as Bega Group; the roster still carries the
+    # older name. Page name measured 2026-08-05: "Bega Group".
+    'sydney-bga': ('bega group',),
+    # Opal Aged Care rebranded to Opal HealthCare.
+    'priv-opal-aged-care': ('opal healthcare',),
+    # Not a rename at all — the roster's "Drake Supermarkets" is missing the
+    # company's own plural. Kept here rather than edited into the roster because
+    # that name is also the key for news and job matching, and moving it is a
+    # bigger change than this feed should make on its own.
+    'priv-drake-supermarkets': ('drakes supermarkets',),
+}
+
+
+def attributed(company_id: str, company_name: str, actor: str) -> bool:
+    """Does this page belong to this company?
+
+    Containment on normalised names, plus the confirmed renames above."""
+    an, cn = norm(actor), norm(company_name)
+    if not an or not cn:
+        return False
+    if an in cn or cn in an:
+        return True
+    return an in REBRANDS.get(company_id, ())
 
 
 def parse_posts(html: str) -> tuple[str, list[dict]]:
@@ -527,10 +580,10 @@ def main() -> int:
                         f'  {c["id"]}: /{slug} is "{actor}" but served no posts '
                         f'(HTTP {status})\n')
                 continue
-            # ATTRIBUTION GATE — see the module docstring. One name must contain
-            # the other, on normalised tokens, or this is somebody else's page.
-            an, cn = norm(actor), norm(c['name'])
-            if not an or not cn or not (an in cn or cn in an):
+            # ATTRIBUTION GATE — see the module docstring and REBRANDS. One name
+            # must contain the other on normalised tokens, or be a confirmed
+            # rename of this company, or this is somebody else's page.
+            if not attributed(c['id'], c['name'], actor):
                 sys.stderr.write(f'  {c["id"]}: /{slug} is "{actor}" — not {c["name"]}, skipped\n')
                 seen_reason = 'wrong-company'
                 continue
