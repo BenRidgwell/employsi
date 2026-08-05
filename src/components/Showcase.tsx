@@ -167,8 +167,8 @@ export function Showcase() {
               label="Employers tracked live"
             />
             <LiveStat
-              min={2338}
-              max={2394}
+              min={1480}
+              max={1520}
               fmt={(v) => Math.round(v).toLocaleString("en-US")}
               label="Open roles mapped"
             />
