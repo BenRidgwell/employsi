@@ -150,7 +150,7 @@ export function Showcase() {
       >
         <div className="mx-auto max-w-[1100px]">
           <h2 className="mb-6 max-w-[780px] text-[clamp(30px,4vw,52px)] font-bold leading-[1.1] tracking-[-0.03em]">
-            One live map for the entire workforce economy.
+            One live, dynamic world for the entire workforce economy.
           </h2>
           <p className="mb-9 max-w-[560px] text-[17px] leading-[1.6] text-white/75">
             Job seekers discover where their skills are worth most, and employers see exactly who
@@ -162,8 +162,8 @@ export function Showcase() {
           <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4 md:gap-6">
             <LiveStat
               min={14}
-              max={19}
-              fmt={(v) => `${Math.round(v)}+`}
+              max={14}
+              fmt={(v) => `${Math.round(v)}`}
               label="Employers tracked live"
             />
             <LiveStat
