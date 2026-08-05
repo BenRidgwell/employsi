@@ -33,6 +33,20 @@ class as the advertiser bug that filed 31 Manila roles under IGO. Every fetched
 page must name the company we asked for (the feed-actor name), or the rows are
 discarded and the slug reported as unresolved.
 
+SLUGS ARE GUESSED ONCE AND REMEMBERED
+A company's LinkedIn vanity slug cannot be derived from its name in general —
+Commonwealth Bank of Australia posts at /commbank, and no rule over that name
+reaches it. So slug_candidates offers a handful of GENERAL variants, and the
+first one the attribution gate confirms is written to `company_slugs` and tried
+first from then on. That turns each company from a permanent guess into a
+one-request lookup, and is why the candidate list can afford to be wider than
+it was.
+
+When a company still does not resolve, the reason is counted rather than lumped
+in: the request failed, no such page, the page exists but served this client no
+posts, or the page belongs to somebody else. Those need opposite fixes and the
+run now says which it hit.
+
 THE WALK IS THE ROSTER, AND IT BANKS AS IT GOES
 Two faults measured on 2026-08-04, both fixed here. It walked all 1,503 entries
 of the company dump — every government agency included — rather than the
@@ -101,33 +115,81 @@ def posted_at(activity_id: str) -> str:
     # the far future, and a bad date is worse than no date.
     if not (1_400_000_000_000 <= ms <= 4_000_000_000_000):
         return ''
-    return dt.datetime.utcfromtimestamp(ms / 1000).replace(microsecond=0).isoformat() + 'Z'
+    return (dt.datetime.fromtimestamp(ms / 1000, dt.timezone.utc)
+            .replace(microsecond=0, tzinfo=None).isoformat() + 'Z')
+
+
+# Corporate tails that a LinkedIn page carries or drops with no pattern to it.
+# Measured on the roster: "New Hope Group" is /new-hope-group and keeps its
+# tail, "Mineral Resources" is /mineral-resources-limited and gains one it does
+# not use in its own name. So both directions get offered.
+CORP_TAIL = (
+    'group', 'limited', 'ltd', 'holdings', 'corporation', 'corp', 'plc',
+    'inc', 'company', 'australia', 'australasia', 'international', 'services',
+)
+
+
+def _slugify(s: str) -> str:
+    return re.sub(r'-+', '-', re.sub(r'[^a-z0-9]+', '-', (s or '').lower())).strip('-')
 
 
 def slug_candidates(name: str, domain: str) -> list[str]:
     """Plausible LinkedIn vanity slugs, most likely first.
 
     Only ever used to LOOK; whatever is fetched is then checked against the
-    company name before anything is stored.
-    """
+    company name before anything is stored, so a wrong guess costs a request
+    rather than a wrong row.
+
+    Every rule here is GENERAL. Hardcoding "commbank" for Commonwealth Bank
+    would raise the resolution rate by exactly one and teach the code nothing;
+    the per-company answers belong in company_slugs, which records what the
+    attribution gate actually confirmed."""
     out: list[str] = []
     d = (domain or '').strip().lower()
     if d:
         host = d.split('/')[0].replace('www.', '')
-        base = host.split('.')[0]
-        if base:
-            out.append(base)
-    n = norm(name)
-    if n:
-        out.append(n.replace(' ', '-'))
-        out.append(n.replace(' ', ''))
+        first = host.split('.')[0]
+        if first:
+            out.append(first)
+
+    # "&" is a word, and norm() deletes it: "Bendigo & Adelaide Bank" becomes
+    # "bendigo adelaide bank", when the page is bendigo-and-adelaide-bank.
+    n = re.sub(r'\s*&\s*', ' and ', name or '')
+    # "CAR Group (carsales.com)" — the parenthetical is our own disambiguator,
+    # never part of the name the company registered on LinkedIn.
+    n = re.sub(r'\s*\([^)]*\)', '', n)
+
+    base = _slugify(n)
+    if base:
+        out.append(base)
+        words = base.split('-')
+        if len(words) > 1 and words[-1] in CORP_TAIL:
+            # Dropping the tail can strand the preposition that introduced it —
+            # "commonwealth-bank-of-australia" would become
+            # "commonwealth-bank-of", which is not a name anyone registers.
+            words = words[:-1]
+            while len(words) > 1 and words[-1] in ('of', 'the', 'and', 'for'):
+                words = words[:-1]
+            out.append('-'.join(words))
+        else:
+            out.append(base + '-limited')
+        out.append(base.replace('-', ''))
+        # The un-expanded "&" form, for the pages that did drop the word.
+        plain = _slugify(re.sub(r'\s*\([^)]*\)', '', name or ''))
+        if plain and plain != base:
+            out.append(plain)
+
     seen, uniq = set(), []
     for s in out:
         s = re.sub(r'[^a-z0-9-]', '', s)
         if s and s not in seen:
             seen.add(s)
             uniq.append(s)
-    return uniq[:3]
+    # Five, not three: an unresolved company is the expensive case either way,
+    # and a company that resolves once is cached and costs one request after
+    # that. Measured 2026-08-05: three candidates resolved 31 of 73.
+    return uniq[:5]
+
 
 
 def parse_posts(html: str) -> tuple[str, list[dict]]:
@@ -284,9 +346,42 @@ IDX = ('CREATE INDEX IF NOT EXISTS idx_company_posts_co '
 FLUSH_ROWS = 250
 
 
+# A slug the attribution gate has already confirmed is a FACT, not a guess, and
+# it is the one thing guessing can never recover: Commonwealth Bank posts at
+# /commbank, and no rule over "Commonwealth Bank of Australia" reaches that.
+# Confirmed slugs are therefore recorded and tried first on later runs, which
+# also makes a resolved company cost one request instead of up to five.
+SLUG_DDL = '''CREATE TABLE IF NOT EXISTS company_slugs (
+                company_id TEXT PRIMARY KEY,
+                slug       TEXT NOT NULL,
+                actor      TEXT NOT NULL,
+                confirmed  TEXT NOT NULL)'''
+
+
 def ensure_table() -> None:
     d1(DDL, [])
     d1(IDX, [])
+    d1(SLUG_DDL, [])
+
+
+def load_slugs() -> dict[str, str]:
+    """company_id -> confirmed slug. Empty when the table is not there yet."""
+    try:
+        res = d1('SELECT company_id, slug FROM company_slugs', [])
+    except Exception as e:  # noqa: BLE001
+        sys.stderr.write(f'no slug cache ({str(e)[:60]})\n')
+        return {}
+    rows = (res[0] or {}).get('results') or []
+    return {r['company_id']: r['slug'] for r in rows if r.get('slug')}
+
+
+def save_slug(company_id: str, slug: str, actor: str) -> None:
+    d1('''INSERT INTO company_slugs (company_id, slug, actor, confirmed)
+          VALUES (?,?,?,?)
+          ON CONFLICT(company_id) DO UPDATE SET
+            slug = excluded.slug, actor = excluded.actor,
+            confirmed = excluded.confirmed''',
+       [company_id, slug, actor, dt.date.today().isoformat()])
 
 
 def write_rows(rows: list[tuple]) -> int:
@@ -375,34 +470,65 @@ def main() -> int:
     live = not (a.dry_run or a.sql_out)
     if live:
         ensure_table()
+    cached = load_slugs() if live else {}
+    if cached:
+        sys.stderr.write(f'{len(cached)} slugs already confirmed\n')
+    # WHY A COMPANY DID NOT RESOLVE, counted rather than lumped together.
+    # "unresolved" used to mean four different things at once — the request
+    # failed, the page did not exist, the page existed but showed a guest no
+    # posts, or the page belonged to somebody else — and they need opposite
+    # fixes. Guessing which one dominates is how you spend a day widening slug
+    # rules for a problem that was really an authwall.
+    why: dict[str, int] = {'no-page': 0, 'no-posts': 0, 'wrong-company': 0, 'fetch-failed': 0}
 
     for i, c in enumerate(companies, 1):
         got = None
-        for slug in slug_candidates(c['name'], c.get('domain') or ''):
+        # A confirmed slug is tried first and alone-first: it is the only
+        # candidate known to be right, so it saves the whole guess ladder.
+        tried = slug_candidates(c['name'], c.get('domain') or '')
+        hit = cached.get(c['id'])
+        if hit:
+            tried = [hit] + [s for s in tried if s != hit]
+        seen_reason = ''
+        for slug in tried:
             try:
-                body = oxy.fetch(PAGE.format(slug=slug))
+                body, status = oxy.fetch(PAGE.format(slug=slug))
             except Exception as e:  # noqa: BLE001
                 sys.stderr.write(f'  {c["id"]}/{slug}: {str(e)[:80]}\n')
+                seen_reason = seen_reason or 'fetch-failed'
                 continue
-            if isinstance(body, tuple):
-                body = body[0]
             actor, posts = parse_posts(body or '')
             if not posts:
+                # An actor name means the page is real and simply showed this
+                # client nothing; no actor means there was no page to read.
+                # Ranked, so the most informative reason survives to the report.
+                reason = 'no-posts' if actor else 'no-page'
+                if reason == 'no-posts' or seen_reason in ('', 'fetch-failed', 'no-page'):
+                    seen_reason = reason
+                if actor:
+                    sys.stderr.write(
+                        f'  {c["id"]}: /{slug} is "{actor}" but served no posts '
+                        f'(HTTP {status})\n')
                 continue
             # ATTRIBUTION GATE — see the module docstring. One name must contain
             # the other, on normalised tokens, or this is somebody else's page.
             an, cn = norm(actor), norm(c['name'])
             if not an or not cn or not (an in cn or cn in an):
                 sys.stderr.write(f'  {c["id"]}: /{slug} is "{actor}" — not {c["name"]}, skipped\n')
+                seen_reason = 'wrong-company'
                 continue
             got = (slug, actor, posts)
             break
 
         if not got:
             unresolved.append(c['id'])
+            why[seen_reason or 'no-page'] += 1
             continue
         slug, actor, posts = got
         resolved.append((c['id'], slug))
+        if live and cached.get(c['id']) != slug:
+            save_slug(c['id'], slug, actor)
+            cached[c['id']] = slug
         for p in posts:
             if not p['posted']:
                 continue  # no trustworthy date -> not stored
@@ -425,6 +551,8 @@ def main() -> int:
 
     sys.stderr.write(f'\n{banked + len(rows)} posts from {len(resolved)} companies; '
                      f'{len(unresolved)} unresolved\n')
+    if unresolved:
+        sys.stderr.write('  why: ' + ', '.join(f'{k}={v}' for k, v in why.items() if v) + '\n')
     if a.dry_run:
         for r in rows[:8]:
             sys.stderr.write(f'  {r[1]:14s} {r[7][:10]}  {r[3][:70]}\n')
