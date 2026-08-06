@@ -30,7 +30,7 @@ export function Ticker() {
 
       <button
         onClick={() => setExpanded(true)}
-        className={`fixed left-1/2 z-50 -translate-x-1/2 rounded-full border border-hairline bg-background/90 px-4 py-2 text-sm font-medium text-ink shadow-lg backdrop-blur transition-all duration-300 ease-out hover:bg-surface ${
+        className={`fixed left-1/2 z-50 -translate-x-1/2 rounded-full border border-hairline bg-background px-4 py-2 text-sm font-medium text-ink shadow-lg transition-all duration-300 ease-out hover:bg-surface ${
           expanded
             ? "pointer-events-none bottom-0 translate-y-full opacity-0"
             : "pointer-events-auto bottom-4 translate-y-0 opacity-100"
