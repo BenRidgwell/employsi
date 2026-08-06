@@ -133,6 +133,7 @@ type Platform =
   | "bigredsky"
   | "adp"
   | "teamtailor"
+  | "ukgready"
   | "workgr8"
   | "abngroup"
   | "johnhughes"
@@ -1966,6 +1967,24 @@ export const SITES: SiteDef[] = [
     homeHub: "brisbane",
   },
   {
+    id: "priv-craig-mostyn",
+    name: "Craig Mostyn",
+    sector: "Agri & protein production",
+    platform: "ukgready",
+    // The board URL's three ids, in the shape the bundle's own request builder
+    // uses: the company id in the path with a percent-encoded pipe, ein_id and
+    // career_portal_id as query parameters. `sort` is required by the builder,
+    // so it is carried here rather than defaulted in the reader.
+    endpoint:
+      "https://secure.workforceready.com.au/ta/rest/ui/recruitment/companies/%7C6071620/job-requisitions?ein_id=17489025&lang=en-AU&career_portal_id=1507329&sort=-post_date",
+    origin:
+      "https://secure.workforceready.com.au/ta/6071620.careers?CareersSearch=&ein_id=17489025&career_portal_id=1507329&lang=en-AU",
+    // Measured 2026-08-06: 21 of 21, its WA piggery, feedlot and processing
+    // sites (Wundowie, Davenport, Nambeelup, Fremantle) plus two Victorian
+    // roles at Indented Head.
+    homeHub: "perth",
+  },
+  {
     id: "melbourne-lov",
     name: "Lovisa",
     sector: "Consumer & Retail",
@@ -2172,6 +2191,7 @@ export const PORTAL_GROUPS: string[][] = [
     "sydney-rgn",
     "priv-john-hughes-group",
     "priv-vgw-holdings",
+    "priv-craig-mostyn",
   ],
 ];
 
@@ -4860,6 +4880,80 @@ async function fetchAdp(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── UKG Ready / WorkforceReady (Craig Mostyn) ────────────────────────────────
+interface UkgRequisition {
+  id?: number;
+  job_title?: string;
+  employee_type?: { name?: string };
+  location?: { city?: string; state?: string; country?: string };
+}
+
+/**
+ * The careers page is a React shell that renders nothing — 4.4 KB with no job
+ * anywhere in it — so this looked like the one board in this batch that needed
+ * a browser. It does not. The shell's own bundle builds the request, and the
+ * service behind it is unauthenticated:
+ *
+ *   /ta/rest/ui/recruitment/companies/|<companyId>/job-requisitions
+ *
+ * The pipe is literal and must be percent-encoded. `ein_id` and
+ * `career_portal_id` come from the board URL and are both required — the
+ * bundle appends them on every call. Found by reading getSearchResults() in
+ * jobs-jobs-*.js rather than by guessing paths; four rounds of guessing
+ * returned nothing but 404s and a sign-in page.
+ *
+ * `_paging.total` is authoritative and the walk is bounded by it. Measured
+ * 2026-08-06: 21 of 21 in one call — Craig Mostyn's WA piggery, feedlot and
+ * processing sites plus two Victorian roles.
+ *
+ * THERE IS NO POSTING DATE ON THIS BOARD. Not an empty one — the field does
+ * not exist on the record at all. So `created` is the day we saw it, the same
+ * as every other dateless feed here, rather than a date inferred from
+ * something that means something else.
+ */
+async function fetchUkgReady(site: SiteDef): Promise<PortalJob[]> {
+  const size = site.pageSize ?? 50;
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  let total = 0;
+  for (let offset = 0; offset < (site.maxPages ?? DEFAULT_MAX_PAGES) * size; offset += size) {
+    const json = await getJson<{
+      job_requisitions?: UkgRequisition[];
+      _paging?: { total?: number };
+    }>(`${site.endpoint}&offset=${offset}&size=${size}`);
+    if (!json) break;
+    total = json._paging?.total ?? total;
+    for (const r of json.job_requisitions ?? []) {
+      const title = clean(r.job_title ?? "");
+      const key = String(r.id ?? title);
+      if (!title || seen.has(key)) continue;
+      seen.add(key);
+      // city/state/country are separate fields, so the string is composed here
+      // rather than read — "AUS" is spelled out to "Australia" because the
+      // home-hub fallback tests for the country name, not the ISO code.
+      const l = r.location ?? {};
+      const loc = [l.city, l.state, l.country === "AUS" ? "Australia" : l.country]
+        .filter(Boolean)
+        .join(", ");
+      out.push(
+        job(
+          site,
+          title,
+          loc,
+          site.origin,
+          today(),
+          (r.employee_type?.name ?? "").trim() || "Career portal",
+        ),
+      );
+    }
+    if (total && out.length >= total) break;
+  }
+  if (total && out.length < total) {
+    console.log(`[ukgready] ${site.name}: collected ${out.length} of ${total} advertised`);
+  }
+  return out;
+}
+
 // ── Teamtailor (Lovisa) ──────────────────────────────────────────────────────
 /**
  * Teamtailor server-renders its list, 20 to a page, and prints the board total
@@ -5495,6 +5589,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   bigredsky: fetchBigRedSky,
   adp: fetchAdp,
   teamtailor: fetchTeamtailor,
+  ukgready: fetchUkgReady,
   workgr8: fetchWorkGr8,
   abngroup: fetchAbnGroup,
   johnhughes: fetchJohnHughes,
@@ -5551,6 +5646,7 @@ const SOURCE_TAG: Record<Platform, string> = {
   bigredsky: "bigredsky",
   adp: "adp",
   teamtailor: "teamtailor",
+  ukgready: "ukgready",
   workgr8: "workgr8",
   abngroup: "abngroup",
   johnhughes: "johnhughes",
