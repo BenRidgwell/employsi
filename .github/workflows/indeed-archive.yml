@@ -27,7 +27,18 @@ concurrency:
 jobs:
   archive:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    # 180 was not enough and the run said so in the worst way it could: run 16
+    # (2026-08-06) was cancelled at the cap having walked 325 of the roster's
+    # 355 companies. It was not failing — it archived steadily for the whole
+    # three hours and stopped about thirty companies short — but a cancelled
+    # job writes what it wrote and reports nothing about what it never reached,
+    # so a run that is 91% done looks the same as one that died early.
+    #
+    # The cost is the Oxylabs 613 backoffs, ~1.4 per company (449 across those
+    # 325), not the fetches themselves. 350 leaves roughly double the measured
+    # need, so the 613 rate can get materially worse before a run is at risk,
+    # and it is still inside the 360-minute ceiling for a hosted runner.
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
