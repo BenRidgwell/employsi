@@ -1782,6 +1782,22 @@ export const SITES: SiteDef[] = [
     // parameter, so 156 roles really is a 26-request walk.
     maxPages: 40,
   },
+  {
+    id: "brisbane-sul",
+    name: "Super Retail Group",
+    sector: "Consumer and Retail",
+    // The LiveHire segment code, same shape as Wesfarmers.
+    platform: "livehire",
+    endpoint: "superretailgroup",
+    origin: "https://www.livehire.com",
+    // Measured 2026-08-06: 76 roles across Supercheap Auto, rebel, BCF and
+    // Macpac stores plus the Brisbane support centre — so most rows are a
+    // store address, not a capital, and they place through HUB_MATCH's state
+    // needles rather than the home hub. That is what surfaced the postcode bug
+    // fixed in hubFor: "Altona North VIC 3025, Australia" and "Midland WA 6056,
+    // Australia" were both landing on Brisbane before it.
+    homeHub: "brisbane",
+  },
 ];
 
 /**
@@ -1949,8 +1965,9 @@ export const PORTAL_GROUPS: string[][] = [
   ],
   // Group 38: added 2026-08-06. Monadelphous leads its own tick — 156 roles at
   // six a page is 26 requests, the deepest walk added this week — with Liontown
-  // (14, one call) alongside it.
-  ["mnd", "ltr"],
+  // (14, one call) and Super Retail (76 at 50 a page, so a token plus two
+  // searches) alongside it.
+  ["mnd", "ltr", "brisbane-sul"],
 ];
 
 const UA =
@@ -2203,7 +2220,17 @@ export function hubFor(loc: string, home: string | null, homeCountry: RegExp): s
   // Appending can only ever ADD matches, never remove one, since every needle
   // is tested with includes() against a string that now merely ends differently.
   const raw = (loc || "").trim();
-  const l = raw.toLowerCase() + ",";
+  // A POSTCODE BETWEEN THE STATE AND THE COMMA HIDES THE STATE. The three
+  // needles that end in a comma — " wa,", " nt,", " vic," — are written that
+  // way because their bare forms are substrings of ordinary words. But
+  // "Altona North VIC 3025, Australia" puts a postcode where the comma was
+  // expected, so " vic," never matched and the row fell through to the
+  // employer's home hub: measured 2026-08-06 on Super Retail's LiveHire board,
+  // Melbourne and Perth stores were being filed under Brisbane, which reads as
+  // real data and is not. Dropping the postcode restores the comma the needle
+  // is looking for. Only this exact shape is touched — a state abbreviation
+  // followed by four digits — so nothing else in the string can be affected.
+  const l = raw.toLowerCase().replace(/\b(nsw|vic|qld|wa|sa|nt|act|tas)\s+\d{4}\b/g, "$1,") + ",";
   for (const [needle, hub] of HUB_MATCH) if (l.includes(needle)) return hub;
   // Emptiness is tested on the ORIGINAL string, not the comma-appended one.
   // Appending the comma above quietly broke this: `l` for a blank location is
