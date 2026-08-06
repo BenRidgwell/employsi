@@ -131,6 +131,7 @@ type Platform =
   | "aubgroup"
   | "zipco"
   | "bigredsky"
+  | "adp"
   | "elmo"
   | "attrax"
   | "wprest"
@@ -1798,6 +1799,23 @@ export const SITES: SiteDef[] = [
     // Australia" were both landing on Brisbane before it.
     homeHub: "brisbane",
   },
+  {
+    id: "vancouver-cs",
+    name: "Capstone Copper",
+    sector: "Energy & Natural Resources",
+    platform: "adp",
+    // The `cid` is the whole configuration — it is the one parameter the board
+    // URL carries, and the JSON service behind the shell wants nothing else.
+    endpoint:
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=ac1fee88-50b8-4eb9-be28-99e42c483a03",
+    origin:
+      "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=ac1fee88-50b8-4eb9-be28-99e42c483a03&ccId=19000101_000001&lang=en_US",
+    // Measured 2026-08-06: 54 roles, every one at Pinto Valley in Miami,
+    // Arizona. Arizona is not a hub we plot, so all 54 archive against the
+    // company and show on its card without appearing on any city — Capstone
+    // advertises nothing in Vancouver today, and that is what the board says.
+    homeHub: "vancouver",
+  },
 ];
 
 /**
@@ -1965,9 +1983,9 @@ export const PORTAL_GROUPS: string[][] = [
   ],
   // Group 38: added 2026-08-06. Monadelphous leads its own tick — 156 roles at
   // six a page is 26 requests, the deepest walk added this week — with Liontown
-  // (14, one call) and Super Retail (76 at 50 a page, so a token plus two
-  // searches) alongside it.
-  ["mnd", "ltr", "brisbane-sul"],
+  // (14, one call), Super Retail (76 at 50 a page, so a token plus two
+  // searches) and Capstone (54 at 20 a page, three calls) alongside it.
+  ["mnd", "ltr", "brisbane-sul", "vancouver-cs"],
 ];
 
 const UA =
@@ -2274,6 +2292,7 @@ export const HOME_COUNTRY: Record<string, RegExp> = {
   auckland: /new zealand|\bnz\b/,
   wellington: /new zealand|\bnz\b/,
   london: /united kingdom|england|\buk\b/,
+  vancouver: /canada/,
   hongkong: /hong kong|china/,
 };
 
@@ -4527,6 +4546,85 @@ async function fetchZipCo(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── ADP WorkforceNow (Capstone Copper) ───────────────────────────────────────
+interface AdpRequisition {
+  itemID?: string;
+  requisitionTitle?: string;
+  postDate?: string;
+  workLevelCode?: { shortName?: string };
+  customFieldGroup?: {
+    stringFields?: { stringValue?: string; nameCode?: { codeValue?: string } }[];
+  };
+  requisitionLocations?: { nameCode?: { shortName?: string } }[];
+}
+
+/**
+ * ADP WorkforceNow's "career center" is a JS shell, but the data behind it is a
+ * plain unauthenticated JSON service — the same host, /public/events/staffing.
+ * The `cid` in the board URL is the only parameter it needs.
+ *
+ * THIS BOARD RETURNS SHORT PAGES IN THE MIDDLE OF THE LIST, so "fewer rows than
+ * asked for" is NOT end-of-list here. Measured 2026-08-06 against Capstone:
+ * `$top=200` returned 19 while advertising 54, and `$top=5&$skip=0` returned 4
+ * where `$top=5&$skip=15` returned 5. Every heuristic this file normally uses to
+ * end a walk — a short page, an empty page — would have stopped at 19 of 54 and
+ * looked like a complete board.
+ *
+ * So the walk is bounded by `meta.totalNumber`, which the service reports on
+ * every response, and it keeps going until `skip` passes it regardless of how
+ * few rows any one page returned. Verified: 54 distinct of 54 advertised.
+ *
+ * The whole board is Capstone's Pinto Valley operation in Miami, Arizona, which
+ * is not a hub we plot, so these rows archive against the company and appear on
+ * its card without appearing on any city. That is the honest reading — Capstone
+ * advertises nothing at its Vancouver head office today — and filing 54 Arizona
+ * roles onto Vancouver to make the map look busier would be inventing a fact.
+ */
+async function fetchAdp(site: SiteDef): Promise<PortalJob[]> {
+  const size = site.pageSize ?? 20;
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  let advertised = 0;
+  for (let skip = 0; skip < (site.maxPages ?? DEFAULT_MAX_PAGES) * size; skip += size) {
+    const json = await getJson<{
+      jobRequisitions?: AdpRequisition[];
+      meta?: { totalNumber?: number };
+    }>(`${site.endpoint}&$top=${size}&$skip=${skip}`);
+    // A failed fetch is indistinguishable from an empty page, and this board
+    // serves empty-looking pages legitimately — so a null response ends the
+    // walk rather than being read as "the rest of the board is empty".
+    if (!json) break;
+    advertised = json.meta?.totalNumber ?? advertised;
+    for (const r of json.jobRequisitions ?? []) {
+      const title = (r.requisitionTitle || "").trim();
+      const key = String(r.itemID || title);
+      if (!title || seen.has(key)) continue;
+      seen.add(key);
+      const ext = (r.customFieldGroup?.stringFields ?? []).find(
+        (f) => f.nameCode?.codeValue === "ExternalJobID",
+      )?.stringValue;
+      // The location's shortName is "<site>, <city>, <state>, <country>" and
+      // sometimes leads with a bare comma when the site name is blank.
+      const loc = (r.requisitionLocations?.[0]?.nameCode?.shortName || "").replace(/^[\s,]+/, "");
+      out.push(
+        job(
+          site,
+          title,
+          loc,
+          ext ? `${site.origin}&jobId=${ext}` : site.origin,
+          isoDay(r.postDate || ""),
+          (r.workLevelCode?.shortName || "").trim() || "Career portal",
+        ),
+      );
+    }
+    if (advertised && skip + size >= advertised) break;
+  }
+  if (advertised && out.length < advertised) {
+    console.log(`[adp] ${site.name}: collected ${out.length} of ${advertised} advertised`);
+  }
+  return out;
+}
+
 // ── ELMO Talent (Steadfast) ──────────────────────────────────────────────────
 /**
  * ELMO's careers module is server-rendered Bootstrap: one `<li class=
@@ -4983,6 +5081,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   aubgroup: fetchAubGroup,
   zipco: fetchZipCo,
   bigredsky: fetchBigRedSky,
+  adp: fetchAdp,
   elmo: fetchElmo,
   attrax: fetchAttrax,
   wprest: fetchWpRest,
@@ -5034,6 +5133,7 @@ const SOURCE_TAG: Record<Platform, string> = {
   // Zip has no ATS; the tag names the page, not a platform.
   zipco: "zipco",
   bigredsky: "bigredsky",
+  adp: "adp",
   elmo: "elmo",
   attrax: "attrax",
   // Both WordPress readers write the same tag: the difference between them is

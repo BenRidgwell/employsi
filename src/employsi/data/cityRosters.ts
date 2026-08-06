@@ -558,6 +558,7 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["LULU", "Lululemon Athletica", CON, "NASDAQ"],
       ["TECK.B", "Teck Resources", ENR],
       ["FM", "First Quantum Minerals", ENR],
+      ["CS", "Capstone Copper", ENR],
     ],
   },
   ottawa: {
