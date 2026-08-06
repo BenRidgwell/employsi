@@ -1,0 +1,26 @@
+{
+  // The waitlist site — a separate Worker from the app, on purpose.
+  //
+  // The app worker (root wrangler.jsonc) is named benridgwell-globe-gazer-hr
+  // and serves the whole TanStack map application. The waitlist is one static
+  // page with no server behaviour at all, and the two want opposite things
+  // from a deploy: the app is rebuilt by Nitro on every change, the waitlist
+  // should sit still. Sharing one Worker would mean a map deploy could take
+  // the marketing page down and vice versa.
+  //
+  // `name` matches the Worker already created in the dashboard, so deploying
+  // this config REPLACES its "Hello World" template rather than creating a
+  // second Worker beside it.
+  "name": "employsi",
+  "compatibility_date": "2026-08-06",
+  // No `main`: this is assets-only. There is no script to run, so there is no
+  // cold start, no CPU time and nothing to break — Cloudflare serves the file
+  // from its edge cache directly.
+  "assets": {
+    "directory": "./dist",
+    // The page is the site. Anything else resolves to it rather than 404ing,
+    // so employsi.com.au/anything still shows the waitlist instead of an error
+    // while this is the only page.
+    "not_found_handling": "single-page-application"
+  }
+}
