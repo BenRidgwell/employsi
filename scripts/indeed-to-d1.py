@@ -7,6 +7,16 @@ Meant to run from YOUR OWN machine on a schedule (cron / launchd / Task
 Scheduler), NOT from CI/Workers: Indeed 403-blocks datacenter IPs, so only a
 residential connection reliably renders results.
 
+THE OXYLABS PATH IS THE ONE THAT RUNS IN CI, AND IT IS NOT DEAD.
+On 2026-08-04 it returned 613 on essentially every request and every company
+came back with 0 jobs, which looked like Indeed had shut us out. Re-measured
+2026-08-06 with the same credentials: 6 of 6 companies returned 200 with 12-16
+parsed rows each. So that was a transient fault on Oxylabs' side, not a block —
+and the run only looked permanent because it ground to the job cap instead of
+saying so (see DEAD_AFTER, which now stops it in minutes).
+
+The render request is dropped for the same reason: see the note at the fetch.
+
 THAT IS MEASURED, NOT ASSUMED, AND A BROWSER DOES NOT FIX IT. Checked
 2026-08-06 from a GitHub runner via probe-headless-ci: a real headless Chromium,
 loading a live Indeed search and counting with this file's own
@@ -269,7 +279,21 @@ def main() -> int:
                 return
             jobs, seen = [], set()
             for pg in range(MAX_PAGES):
-                content, _ = oxy.fetch(ind.search_url(base, name, '', pg * 10), geo=geo, render=True)
+                # NO RENDER. Indeed server-renders its result cards, so the
+                # headless browser Oxylabs runs for render='html' produces the
+                # same page for more work. Measured 2026-08-06 on the BHP
+                # search: rendered 1,132,577 bytes and unrendered 1,144,483,
+                # and parse_search_html returned the SAME 16 jobs from each,
+                # first row identical.
+                #
+                # That matters beyond the time saved, because it is the 613s.
+                # 613 is Oxylabs' own "faulted" code — its worker could not
+                # complete the fetch — and the render step is the most failure
+                # prone thing in that pipeline. Asking for a browser we do not
+                # need is asking for the failure we were getting. Measured the
+                # same day, unrendered: 6 of 6 companies returned 200 with
+                # 12-16 rows each, 35-82s apiece.
+                content, _ = oxy.fetch(ind.search_url(base, name, '', pg * 10), geo=geo, render=False)
                 if not content:
                     break
                 new = 0
