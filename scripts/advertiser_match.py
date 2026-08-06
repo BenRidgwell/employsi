@@ -96,6 +96,18 @@ ADVERTISER_ALIAS = {
     'allight sykes': 'sgh',
     'sgh energy': 'sgh',
     'seven group holdings': 'sgh',
+    # Swift Holdings Investments trades as Autoleague, and its dealerships
+    # advertise under that name rather than the holding entity's. Without this
+    # the token rule correctly rejects an Autoleague ad as not-Swift, and the
+    # roles never reach the card. The other half — making the feeds search for
+    # "Autoleague" at all — is EXTRA_QUERIES in
+    # workers/jobs-cron/companyQueries.ts.
+    # The lookup is exact on the normalised token string, so a corporate suffix
+    # is a miss — which is why 'boral' and 'boral limited' are both listed
+    # above. Same here.
+    'autoleague': 'swift holdings investments',
+    'autoleague pty ltd': 'swift holdings investments',
+    'autoleague australia': 'swift holdings investments',
 }
 
 

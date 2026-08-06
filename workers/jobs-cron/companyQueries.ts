@@ -35,6 +35,18 @@ export const EXTRA_QUERIES: Record<string, string[]> = {
   // SGH Energy is an investment arm and advertises under its own name rarely,
   // but is included because when it does, the ad is genuinely SGH's.
   "sydney-sgh": ["Boral", "WesTrac", "Coates Hire", "Allight Sykes", "SGH Energy"],
+  // Swift Holdings Investments is the holding entity; every one of its
+  // dealerships hires under the trading name Autoleague. Nobody advertises a
+  // job under "Swift Holdings Investments", so the feeds were searching a
+  // phrase that cannot match anything — the same failure SGH had above, and
+  // invisible for the same reason: a company with no ads looks like a company
+  // that is not hiring.
+  //
+  // This is only half the fix. It makes the feeds LOOK for the name;
+  // ADVERTISER_ALIAS in scripts/advertiser_match.py is what lets an ad found
+  // under "Autoleague" be attributed to the roster company rather than
+  // rejected by the token rule.
+  "priv-swift-holdings-investments": ["Autoleague"],
 };
 
 /** Every phrase to search for this company: its own name first, then any extras. */

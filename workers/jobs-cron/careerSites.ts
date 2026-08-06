@@ -132,6 +132,10 @@ type Platform =
   | "zipco"
   | "bigredsky"
   | "adp"
+  | "teamtailor"
+  | "workgr8"
+  | "abngroup"
+  | "johnhughes"
   | "elmo"
   | "attrax"
   | "wprest"
@@ -1834,6 +1838,148 @@ export const SITES: SiteDef[] = [
     // hub we plot, as they do for every other NZ feed.
     homeHub: "auckland",
   },
+  {
+    id: "ilu",
+    name: "Iluka Resources",
+    sector: "Mineral Sands & Rare Earths",
+    platform: "workday",
+    // Measured 2026-08-06: 5 roles. Four carry Iluka's own site names rather
+    // than a town ("Cataby", "Eneabba"), so they fall back to the home hub.
+    endpoint: "https://iluka.wd3.myworkdayjobs.com/wday/cxs/iluka/ilukacareers/jobs",
+    origin: "https://iluka.wd3.myworkdayjobs.com/ilukacareers",
+    homeHub: "perth",
+  },
+  {
+    id: "priv-hbf",
+    name: "HBF",
+    sector: "Private health insurance",
+    platform: "workday",
+    // Measured 2026-08-06: 13 roles — Perth, plus branch roles as far out as
+    // Mount Isa, which is why not all of them place on the home hub.
+    endpoint: "https://hbf.wd105.myworkdayjobs.com/wday/cxs/hbf/HBF_External/jobs",
+    origin: "https://hbf.wd105.myworkdayjobs.com/HBF_External",
+    homeHub: "perth",
+  },
+  {
+    id: "priv-rac-of-wa",
+    name: "RAC of WA",
+    sector: "Insurance & motoring club",
+    platform: "workday",
+    // Measured 2026-08-06: 27 roles. About half name a Perth suburb and place;
+    // the rest carry RAC's own site or product names.
+    endpoint: "https://racwa.wd3.myworkdayjobs.com/wday/cxs/racwa/RAC-WA/jobs",
+    origin: "https://racwa.wd3.myworkdayjobs.com/en-US/RAC-WA",
+    homeHub: "perth",
+  },
+  {
+    id: "priv-cbh-group",
+    name: "CBH Group",
+    sector: "Grain handling co-operative",
+    platform: "successfactors",
+    // The standard SuccessFactors theme, unlike Hancock below. Measured
+    // 2026-08-06: 13 roles, every one placing on Perth.
+    endpoint: "https://careers.cbh.com.au",
+    origin: "https://careers.cbh.com.au",
+    homeHub: "perth",
+  },
+  {
+    id: "priv-hancock-prospecting",
+    name: "Hancock Prospecting",
+    sector: "Iron ore mining",
+    platform: "sfrmkapi",
+    // SuccessFactors, but the UI5/React "NES" theme — the same one Bendigo
+    // runs, which server-renders no job rows at all. Read from the source:
+    // /search/?q= returns 93 KB with zero `data-row`, `job-tile-cell` or
+    // `jobTitle-link` matches, and the page loads bootstrap/3.4.8_NES. So it
+    // goes through the RMK JSON service rather than fetchSuccessFactors.
+    // Measured 2026-08-06 that way: 11 roles, all Pilbara, all placing Perth.
+    endpoint: "https://careers.hancockironore.com.au",
+    origin: "https://careers.hancockironore.com.au",
+    homeHub: "perth",
+  },
+  {
+    id: "priv-vgw-holdings",
+    name: "VGW Holdings",
+    sector: "Online social gaming",
+    platform: "greenhouse",
+    // vgw.co/jobs is WordPress with a greenhouse-connector plugin; the board
+    // token appears nowhere in the page, so it was found by probing the
+    // Greenhouse API directly — `vgw` answers, `virtualgamingworlds` and
+    // `vgwholdings` 404.
+    endpoint: "https://boards-api.greenhouse.io/v1/boards/vgw/jobs",
+    origin: "https://www.vgw.co/jobs/",
+    // Measured 2026-08-06: 10 roles and NOT ONE IS IN PERTH — seven US
+    // government-affairs leads and three Chumba Casino general managers. VGW is
+    // Perth-headquartered, so the temptation is to read that as a broken feed;
+    // the board's own department counts say otherwise (10 across 12
+    // departments, ten of them empty). Perth genuinely has nothing on this
+    // board today, and a real zero is left as zero.
+    homeHub: "perth",
+  },
+  {
+    id: "priv-abn-group",
+    name: "ABN Group",
+    sector: "Residential construction",
+    platform: "abngroup",
+    // Measured 2026-08-06: 36 roles — 30 on page one, 6 on page two, page
+    // three empty. 16 Perth and 20 Melbourne, which is the shape of the
+    // business: WA residential building plus the Victorian arm.
+    endpoint: "https://careers.abngroup.com.au/jobs/search",
+    origin: "https://careers.abngroup.com.au",
+    homeHub: "perth",
+  },
+  {
+    id: "priv-john-hughes-group",
+    name: "John Hughes Group",
+    sector: "Automotive retail",
+    platform: "johnhughes",
+    // Measured 2026-08-06: 8 roles across two dealership addresses, Welshpool
+    // and Wangara. Both suburbs had to be added to HUB_MATCH — the board gives
+    // a street address with a postcode where every other feed puts a state, so
+    // before that all eight resolved to no hub at all.
+    endpoint: "https://www.johnhughes.com.au/careers",
+    origin: "https://www.johnhughes.com.au",
+    homeHub: "perth",
+  },
+  {
+    id: "sydney-rgn",
+    name: "Region Group",
+    sector: "Financial Services",
+    platform: "workgr8",
+    // Measured 2026-08-06: the page header says "8 Job!" and the table lists
+    // four, all the same title in Sydney under four ids — so they collapse to
+    // one archive row on job_key. The reader logs the shortfall rather than
+    // guessing which number is right.
+    endpoint: "https://regiongroupau.workgr8.com/jobs",
+    origin: "https://regiongroupau.workgr8.com",
+    homeHub: "sydney",
+  },
+  {
+    id: "brisbane-dbi",
+    name: "Dalrymple Bay Infrastructure",
+    sector: "Industrial Manufacturing",
+    platform: "bigredsky",
+    // The same ATS as NRW Holdings, and the same one-request read: the GET
+    // carries the whole table. Measured 2026-08-06: 1 role.
+    endpoint: "https://dbct.bigredsky.com/page.php",
+    origin: "https://dbct.bigredsky.com",
+    homeHub: "brisbane",
+  },
+  {
+    id: "melbourne-lov",
+    name: "Lovisa",
+    sector: "Consumer & Retail",
+    platform: "teamtailor",
+    endpoint: "https://careers.lovisa.com/jobs",
+    origin: "https://careers.lovisa.com",
+    // Measured 2026-08-06: 755 roles, which is what the board itself prints,
+    // over 38 pages and about 70 seconds — the deepest walk added since
+    // Woolworths, which is why it takes a tick alone. Most are store roles
+    // outside Australia (France, the US, the UK), so they archive unplaced;
+    // the AU/NZ ones place normally.
+    homeHub: "melbourne",
+    maxPages: 45,
+  },
 ];
 
 /**
@@ -2005,6 +2151,28 @@ export const PORTAL_GROUPS: string[][] = [
   // searches), Capstone (54 at 20 a page, three calls) and Spark NZ (17,
   // two calls) alongside it.
   ["mnd", "ltr", "brisbane-sul", "vancouver-cs", "nz-spark-new-zealand"],
+  // Groups 39-41: the eleven added 2026-08-06 (second batch). Measured that
+  // day: Lovisa 755, ABN 36, RAC 27, HBF 13, CBH 13, Hancock 11, VGW 10, John
+  // Hughes 8, Iluka 5, Region 4, Dalrymple 1.
+  //
+  // Lovisa takes a tick alone. 755 roles at 20 a page is 38 sequential
+  // requests and about 70 seconds measured — the deepest walk added since
+  // Woolworths, and the one a crowded tick would truncate.
+  ["melbourne-lov"],
+  // The three Workday boards plus BigRedSky. Workday is the slowest reader in
+  // the file, so these share rather than joining the single-call group below.
+  ["ilu", "priv-hbf", "priv-rac-of-wa", "brisbane-dbi"],
+  // The rest are one or two calls each: Greenhouse and the two table readers
+  // serve a whole board in a single GET, ABN is two pages, and the two
+  // SuccessFactors variants are short walks.
+  [
+    "priv-cbh-group",
+    "priv-hancock-prospecting",
+    "priv-abn-group",
+    "sydney-rgn",
+    "priv-john-hughes-group",
+    "priv-vgw-holdings",
+  ],
 ];
 
 const UA =
@@ -2064,6 +2232,27 @@ const HUB_MATCH: [string, string | null][] = [
   ["pilbara", "perth"],
   ["pannawonica", "perth"],
   ["kewdale", "perth"],
+  // John Hughes writes its openings as a bare street address — "167 Welshpool
+  // Rd, Welshpool 6106" — with a postcode where every other board puts a state,
+  // so none of the needles below could reach them and all eight of its roles
+  // resolved to no hub. Both suburbs were checked against the archive first,
+  // the same way "fishers" was:
+  //
+  //   welshpool — 7 stored locations contain it and every one is the WA suburb.
+  //               There is a Welshpool in Wales; nothing we archive names it.
+  //   wangara   — matched BARE it also swallows WANGARATTA, which is in
+  //               Victoria and is in the archive twice. So it carries a
+  //               trailing space and a trailing comma instead, neither of which
+  //               "wangaratta" can satisfy. (hubFor appends a comma before
+  //               matching, so the comma form also catches a trailing "Wangara".)
+  //
+  // These sit in the Perth block, ahead of the NSW needle, on purpose: one
+  // archived row says "Wangara, New South Wales, Australia", which is simply
+  // wrong — Wangara is a Perth industrial suburb — and matching here files it
+  // in the city it is actually in.
+  ["welshpool", "perth"],
+  ["wangara ", "perth"],
+  ["wangara,", "perth"],
   ["western australia", "perth"],
   // WA is also the US postal code for Washington State, and now that " wa,"
   // fires at the end of a string as well as mid-string (see hubFor), "Seattle,
@@ -4014,13 +4203,27 @@ async function fetchCornerstone(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
-// ── SnapHire (Mercury NZ) ────────────────────────────────────────────────────
+// ── SnapHire (Mercury NZ, Genesis Energy) ────────────────────────────────────
+/**
+ * TWO TENANT DIALECTS, and they share nothing but the /jobdetails/ link.
+ *
+ * Mercury wraps each role in `<div class="jobItem">` and labels its fields
+ * inline — `<span class="loc first"><strong>`, `POSTED:</strong>`,
+ * `EXPERTISE:</strong>`. Genesis wraps them in `<div class="job-item">` and
+ * puts location, work type and posting date as three unlabelled `<span>`s
+ * inside a `top-categories` block, with expertise in its own div.
+ *
+ * So every field is read with a fallback rather than one pattern, and the split
+ * accepts both spellings. Measured 2026-08-06 on Genesis: 10 roles, which is
+ * the whole board — `?page=2` returns the same ten and the markup carries no
+ * paginator, next link or results count, the same single-page shape Mercury has.
+ */
 async function fetchSnapHire(site: SiteDef): Promise<PortalJob[]> {
   const html = await getText(site.endpoint);
   if (!html) return [];
   const out: PortalJob[] = [];
   const seen = new Set<string>();
-  for (const item of html.split(/<div class="jobItem">/i).slice(1)) {
+  for (const item of html.split(/<div class="job-?item">/i).slice(1)) {
     const a = item.match(/<a href="(\/jobdetails\/[^"]+)"[^>]*>\s*<span>([\s\S]*?)<\/span>/i);
     if (!a) continue;
     const href = clean(a[1]);
@@ -4035,17 +4238,30 @@ async function fetchSnapHire(site: SiteDef): Promise<PortalJob[]> {
       clean(s)
         .replace(/\s*\/+\s*$/, "")
         .trim();
+    // Genesis's three top-categories spans are positional and unlabelled, so
+    // they are read as a group: the posting date is the one that says so, and
+    // the location is the FIRST span rather than "the one that isn't a date" —
+    // the middle span is the work type ("Permanent full-time") and treating it
+    // as a location would file every role under no hub at all.
+    const catBlock = item.match(/<div class="top-categories">([\s\S]*?)<\/div>/i);
+    const cats = catBlock
+      ? [...catBlock[1].matchAll(/<span>([^<]*)<\/span>/gi)].map((m) => trim(m[1])).filter(Boolean)
+      : [];
     const loc = item.match(/<span class="loc[^"]*"><strong>([\s\S]*?)<\/strong>/i);
     const posted = item.match(/POSTED:<\/strong>([^<]*)</i);
     const cat = item.match(/EXPERTISE:<\/strong>([^<]*)</i);
+    const cats2 = item.match(/<div class="expertise">([^<]*)</i);
+    const postedText =
+      (posted ? trim(posted[1]) : "") ||
+      (cats.find((c) => /posted on:/i.test(c)) ?? "").replace(/^posted on:\s*/i, "");
     out.push(
       job(
         site,
         title,
-        loc ? trim(loc[1]) : "",
+        loc ? trim(loc[1]) : (cats[0] ?? ""),
         `${site.origin}${href}`,
-        posted ? isoDay(trim(posted[1])) : "",
-        cat ? trim(cat[1]) : "Career portal",
+        postedText ? isoDay(postedText) : "",
+        (cat ? trim(cat[1]) : "") || (cats2 ? trim(cats2[1]) : "") || "Career portal",
       ),
     );
   }
@@ -4644,6 +4860,183 @@ async function fetchAdp(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── Teamtailor (Lovisa) ──────────────────────────────────────────────────────
+/**
+ * Teamtailor server-renders its list, 20 to a page, and prints the board total
+ * ("755 jobs") above it — so the walk is bounded by that number rather than by
+ * a short page. Measured 2026-08-06: 37 full pages plus 15, exactly the 755
+ * advertised, and page 39 comes back empty.
+ *
+ * MOST OF THIS BOARD IS NOT AUSTRALIAN. Lovisa is a global retailer and the
+ * bulk of these are store roles in France, the US, the UK and so on, which
+ * resolve to no hub and archive unplaced. That is the honest reading: the
+ * company card shows what Lovisa is actually advertising worldwide, and the
+ * map shows only the ones in cities we plot.
+ *
+ * The card's two `<span>`s are department then location, in that order. They
+ * are read positionally because neither carries a class of its own — so if a
+ * tenant ever emits one span instead of two, the location goes missing rather
+ * than silently picking up "Retail Stores" as a place.
+ */
+async function fetchTeamtailor(site: SiteDef): Promise<PortalJob[]> {
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const size = site.pageSize ?? 20;
+  let advertised = 0;
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  for (let page = 1; page <= max; page++) {
+    const html = await getText(`${site.endpoint}?page=${page}`);
+    if (!html) break;
+    if (!advertised) {
+      advertised = Number(html.match(/([\d,]+)\s+jobs?\b/i)?.[1]?.replace(/,/g, "") ?? 0);
+    }
+    const items = html.split(/<li class="group border-b/i).slice(1);
+    if (!items.length) break;
+    for (const item of items) {
+      const a = item.match(
+        /<a class="no-company-style[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i,
+      );
+      if (!a) continue;
+      const url = clean(a[1]);
+      // The anchor wraps an absolutely-positioned overlay span before the text.
+      const title = clean(a[2].replace(/<span[^>]*><\/span>/gi, ""));
+      if (!title || seen.has(url)) continue;
+      seen.add(url);
+      const spans = [...item.matchAll(/<span>([^<]{2,80})<\/span>/g)].map((m) => clean(m[1]));
+      out.push(job(site, title, spans[1] ?? "", url, today(), spans[0] || "Career portal"));
+    }
+    if (advertised && out.length >= advertised) break;
+  }
+  if (advertised && out.length < advertised) {
+    console.log(`[teamtailor] ${site.name}: collected ${out.length} of ${advertised} advertised`);
+  }
+  return out;
+}
+
+// ── workgr8 (Region Group) ───────────────────────────────────────────────────
+/**
+ * One server-rendered table, three columns: id, a linked title, and a location.
+ * No paginator and no query knobs — the whole board is the one GET.
+ *
+ * THE HEADER COUNT AND THE TABLE DISAGREE, so both are recorded. Measured
+ * 2026-08-06: the page says "8 Job! at Region Group AU" and the table carries
+ * four rows. Which is right is not something this reader can decide, so it
+ * archives what the table actually lists and logs the shortfall — the same
+ * collected-vs-advertised shape used everywhere else here, so a board that
+ * starts hiding rows shows up in the logs rather than as a quiet decline.
+ *
+ * Those four rows are the same title at the same location under four ids, so
+ * they collapse to ONE archive row on job_key. That is correct — one advertised
+ * position is one vacancy however many requisition numbers it carries — but it
+ * is why this feed contributes far fewer rows than it appears to.
+ */
+async function fetchWorkGr8(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const m of html.matchAll(
+    /<tr>\s*<td>(\d+)<\/td>\s*<td><a href="([^"]+)"[^>]*>([\s\S]*?)<\/a><\/td>\s*<td>([\s\S]*?)<\/td>/g,
+  )) {
+    const id = m[1];
+    const title = clean(m[3]);
+    if (!title || seen.has(id)) continue;
+    seen.add(id);
+    out.push(job(site, title, clean(m[4]), clean(m[2]), today(), "Career portal"));
+  }
+  const advertised = Number(html.match(/(\d+)\s*Job!/i)?.[1] ?? 0);
+  if (advertised && out.length < advertised) {
+    console.log(`[workgr8] ${site.name}: collected ${out.length} of ${advertised} advertised`);
+  }
+  return out;
+}
+
+// ── ABN Group's career site ──────────────────────────────────────────────────
+/**
+ * A server-rendered results table on a Rails career-site product this file
+ * cannot name: the page carries no "powered by", no generator meta and no
+ * vendor domain, so the platform is named for the employer rather than
+ * guessed at — the same choice made for `aubgroup` and `zipco`.
+ *
+ * COLUMNS ARE FOUND BY CLASS, NOT POSITION (`job-search-results-title`,
+ * `-location`, `-category`). This tenant runs title / category / department /
+ * employment type / location / business unit and another need not; reading
+ * cell 5 because the location happens to sit there is how the Avature reader
+ * once wrote a whole board onto the wrong city.
+ *
+ * Measured 2026-08-06: 30 on page one, 6 on page two, page three empty — 36
+ * roles. The walk ends on the first page with no rows, which is safe here
+ * because the pager is a plain `?page=N` on a server-rendered table rather
+ * than a lazy list that can serve an empty page mid-run.
+ */
+async function fetchAbnGroup(site: SiteDef): Promise<PortalJob[]> {
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  for (let page = 1; page <= max; page++) {
+    const html = await getText(`${site.endpoint}?page=${page}`);
+    if (!html) break;
+    const rows = html.split(/<tr role="link"/i).slice(1);
+    if (!rows.length) break;
+    for (const raw of rows) {
+      const row = raw.split(/<\/tr>/i)[0];
+      const url = clean(row.match(/data-job-url="([^"]+)"/i)?.[1] ?? "");
+      const title = clean(
+        row.match(/class="job-search-results-title"[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i)?.[1] ?? "",
+      );
+      if (!title || !url || seen.has(url)) continue;
+      seen.add(url);
+      const cell = (name: string) =>
+        clean(
+          row.match(
+            new RegExp(`class="job-search-results-${name}"[\\s\\S]*?<li[^>]*>([^<]*)<`, "i"),
+          )?.[1] ?? "",
+        );
+      out.push(
+        job(site, title, cell("location"), url, today(), cell("category") || "Career portal"),
+      );
+    }
+  }
+  return out;
+}
+
+// ── John Hughes' careers page ────────────────────────────────────────────────
+/**
+ * A Next.js dealer site that server-renders its openings under a "Positions
+ * Available" heading: one card per role carrying an `<h5>` title, a
+ * `<p class="text-muted">` street address, a blurb, and an "Apply Now" link to
+ * /careers/<slug>.
+ *
+ * THE CARD IS FOUND FROM ITS LINK, not from its wrapper. The wrapper is a
+ * string of Tailwind utility classes ("rounded border p-4 shadow-sm mb-3")
+ * which is a styling decision, not a contract — a designer changing the shadow
+ * would silently empty this feed. The /careers/<slug> href is the thing the
+ * page cannot work without.
+ *
+ * The address is a street address ("167 Welshpool Rd, Welshpool 6106"), so it
+ * places through the suburb rather than a state needle; John Hughes is a Perth
+ * dealer group and its suburbs are Perth ones.
+ */
+async function fetchJohnHughes(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  // Bounded to the section that lists openings, so the site's own nav links to
+  // /careers/... are not read as vacancies.
+  const body = html.slice(html.search(/Positions Available/i));
+  for (const m of body.matchAll(
+    /<h5[^>]*>([\s\S]{2,120}?)<\/h5>\s*<p class="text-muted">([\s\S]{0,160}?)<\/p>[\s\S]{0,900}?href="(\/careers\/[^"]+)"/g,
+  )) {
+    const slug = clean(m[3]);
+    const title = clean(m[1]);
+    if (!title || seen.has(slug)) continue;
+    seen.add(slug);
+    out.push(job(site, title, clean(m[2]), `${site.origin}${slug}`, today(), "Career portal"));
+  }
+  return out;
+}
+
 // ── ELMO Talent (Steadfast) ──────────────────────────────────────────────────
 /**
  * ELMO's careers module is server-rendered Bootstrap: one `<li class=
@@ -5101,6 +5494,10 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   zipco: fetchZipCo,
   bigredsky: fetchBigRedSky,
   adp: fetchAdp,
+  teamtailor: fetchTeamtailor,
+  workgr8: fetchWorkGr8,
+  abngroup: fetchAbnGroup,
+  johnhughes: fetchJohnHughes,
   elmo: fetchElmo,
   attrax: fetchAttrax,
   wprest: fetchWpRest,
@@ -5153,6 +5550,10 @@ const SOURCE_TAG: Record<Platform, string> = {
   zipco: "zipco",
   bigredsky: "bigredsky",
   adp: "adp",
+  teamtailor: "teamtailor",
+  workgr8: "workgr8",
+  abngroup: "abngroup",
+  johnhughes: "johnhughes",
   elmo: "elmo",
   attrax: "attrax",
   // Both WordPress readers write the same tag: the difference between them is

@@ -1152,8 +1152,14 @@ const PORTAL_TICKS: Record<string, number> = {
   "35 10 * * *": 36,
   // Group 37 — Fletcher Building, Metcash, Zip, nib and West African.
   "45 10 * * *": 37,
-  // Group 38 — Monadelphous and Liontown.
+  // Group 38 — Monadelphous, Liontown, Super Retail, Capstone and Spark NZ.
   "55 10 * * *": 38,
+  // Group 39 — Lovisa alone; 38 pages is the deepest walk since Woolworths.
+  "5 11 * * *": 39,
+  // Group 40 — Iluka, HBF, RAC of WA and Dalrymple Bay.
+  "15 11 * * *": 40,
+  // Group 41 — CBH, Hancock, ABN, Region, John Hughes and VGW.
+  "25 11 * * *": 41,
 };
 
 const NEWS_TICKS: Record<string, number> = {
