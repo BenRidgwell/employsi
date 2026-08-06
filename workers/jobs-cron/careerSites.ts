@@ -134,6 +134,9 @@ type Platform =
   | "adp"
   | "teamtailor"
   | "ukgready"
+  | "recruitee"
+  | "trakstar"
+  | "jobadderboard"
   | "workgr8"
   | "abngroup"
   | "johnhughes"
@@ -1985,6 +1988,137 @@ export const SITES: SiteDef[] = [
     homeHub: "perth",
   },
   {
+    id: "perth-aa",
+    name: "Alcoa",
+    sector: "Energy & Natural Resources",
+    platform: "workday",
+    endpoint: "https://alcoa.wd5.myworkdayjobs.com/wday/cxs/alcoa/Careers/jobs",
+    origin: "https://alcoa.wd5.myworkdayjobs.com/Careers",
+    // Measured 2026-08-06: 94 roles, and this is a GLOBAL board — 24 place on
+    // Perth (Kwinana, Pinjarra, Wagerup, the Darling Range mines), 4 on
+    // Melbourne, and 66 are in Brazil, Spain, Iceland, Canada and the US and
+    // archive unplaced. Alcoa is plotted on Perth because that is where its
+    // Australian workforce is, not because the board is Australian.
+    homeHub: "perth",
+  },
+  {
+    id: "priv-perth-airport",
+    name: "Perth Airport",
+    sector: "Airport operations",
+    platform: "workday",
+    endpoint:
+      "https://perthairport.wd105.myworkdayjobs.com/wday/cxs/perthairport/PerthAirport/jobs",
+    origin: "https://perthairport.wd105.myworkdayjobs.com/en-US/PerthAirport",
+    // Measured 2026-08-06: 13 roles, all Perth.
+    homeHub: "perth",
+  },
+  {
+    id: "priv-georgiou",
+    name: "Georgiou",
+    sector: "Civil construction",
+    platform: "cornerstone",
+    // Cornerstone, same shape as Mirvac and Breville — but careersite/4 rather
+    // than /1. The number is the tenant's site id and is not interchangeable.
+    endpoint: "https://georgiou.csod.com/ux/ats/careersite/4/home?c=georgiou",
+    origin: "https://georgiou.csod.com",
+    // Measured 2026-08-06: 26 roles — 12 Perth, 12 Brisbane, 2 Sydney.
+    homeHub: "perth",
+  },
+  {
+    id: "melbourne-4dx",
+    name: "4DMedical",
+    sector: "Healthcare and Life Sciences",
+    platform: "rippling",
+    // 4dmedical.com/about/careers embeds Rippling's job-board script; the
+    // tenant slug is what the reader needs, not the page.
+    endpoint: "4dmedical",
+    origin: "https://4dmedical.com/about/careers/",
+    // Measured 2026-08-06: 5 roles, all Melbourne (Carlton).
+    homeHub: "melbourne",
+  },
+  {
+    id: "sydney-rwc",
+    key: "sydney-rwc-emea",
+    name: "Reliance Worldwide Corporation",
+    sector: "Industrial Manufacturing",
+    platform: "recruitee",
+    // RWC runs TWO boards on two platforms for two regions, so it is two feeds
+    // against one company id — the same shape Brambles and Transurban use.
+    // This is the EMEA one. Measured 2026-08-06: 7 roles, all England.
+    endpoint: "rwc",
+    origin: "https://rwc.recruitee.com",
+    homeHub: "sydney",
+  },
+  {
+    id: "sydney-rwc",
+    key: "sydney-rwc-am",
+    name: "Reliance Worldwide Corporation",
+    sector: "Industrial Manufacturing",
+    platform: "adp",
+    // The Americas board, on the same ADP service as Capstone. Measured
+    // 2026-08-06: 19 roles — Alabama, Georgia and Tennessee plants. Only the
+    // four Atlanta ones place; the rest are in towns we do not plot.
+    endpoint:
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=0d35cdee-8f25-492a-b86e-938916b084d5",
+    origin:
+      "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=0d35cdee-8f25-492a-b86e-938916b084d5&ccId=19000101_000001&lang=en_US",
+    homeHub: "sydney",
+  },
+  {
+    id: "brisbane-flt",
+    name: "Flight Centre Travel Group",
+    sector: "Consumer & Retail",
+    platform: "pageupclassic",
+    // The same PageUp classic theme Harvey Norman runs, on FCTG's own host.
+    endpoint: "https://careers.fctgcareers.com/en/listing/",
+    origin: "https://careers.fctgcareers.com",
+    // Measured 2026-08-06: 239 roles — 104 Brisbane, 49 Sydney, 19 Perth, and
+    // 54 unplaced because a travel retailer advertises by region ("Central
+    // Queensland", "Regional NSW") as often as by city.
+    homeHub: "brisbane",
+  },
+  {
+    id: "melbourne-msb",
+    name: "Mesoblast",
+    sector: "Healthcare and Life Sciences",
+    platform: "trakstar",
+    // /jobs, not the tenant root: the root serves an EMPTY openings container
+    // and the same board is server-rendered one path down.
+    endpoint: "https://mesoblast.hire.trakstar.com/jobs",
+    origin: "https://mesoblast.hire.trakstar.com",
+    // Measured 2026-08-06: 1 opening, in Garland, Texas — which is what the
+    // board says ("View 1 Opening"), not a truncated read. Mesoblast is
+    // Melbourne-listed but its only current vacancy is American, so it
+    // archives unplaced rather than being filed on Melbourne.
+    homeHub: "melbourne",
+  },
+  {
+    id: "brisbane-ctd",
+    name: "Corporate Travel Management",
+    sector: "Consumer & Retail",
+    platform: "jobadderboard",
+    endpoint: "https://clientapps.jobadder.com/62775/corporate-travel-management",
+    origin: "https://clientapps.jobadder.com",
+    // Measured 2026-08-06: 12 roles — 9 Brisbane, and one each in Melbourne,
+    // Auckland and Wellington. No paginator; the board is the one page.
+    homeHub: "brisbane",
+  },
+  {
+    id: "sydney-gyg",
+    name: "Guzman y Gomez",
+    sector: "Consumer and Retail",
+    platform: "smartrecruiters",
+    // guzmanygomez.com.au/careers is WordPress with a SmartRecruiters widget;
+    // `company_code: "GuzmanYGomez"` in the widget config is the only place the
+    // tenant code appears.
+    endpoint: "GuzmanYGomez",
+    origin: "https://www.guzmanygomez.com.au/careers/",
+    // Measured 2026-08-06: 790 roles across the restaurant network — 278
+    // Brisbane, 272 Sydney, 161 Melbourne, 48 Perth. The largest AU-only board
+    // in the file, which is why it leads its own tick.
+    homeHub: "sydney",
+  },
+  {
     id: "melbourne-lov",
     name: "Lovisa",
     sector: "Consumer & Retail",
@@ -2193,6 +2327,18 @@ export const PORTAL_GROUPS: string[][] = [
     "priv-vgw-holdings",
     "priv-craig-mostyn",
   ],
+  // Groups 42-44: the ten added 2026-08-06 (third batch). Measured that day:
+  // Guzman 790, Flight Centre 239, Alcoa 94, Georgiou 26, RWC Americas 19,
+  // Perth Airport 13, CTM 12, RWC EMEA 7, 4DMedical 5, Mesoblast 1.
+  //
+  // Guzman leads its own tick — 790 roles is the largest AU-only board here —
+  // with Mesoblast's single call alongside it.
+  ["sydney-gyg", "melbourne-msb"],
+  // Flight Centre spends a PageUp facet budget plus its listing, so it shares
+  // only with single-GET boards.
+  ["brisbane-flt", "brisbane-ctd", "sydney-rwc-emea", "sydney-rwc-am"],
+  // Two Workday walks plus Cornerstone and Rippling, all short.
+  ["perth-aa", "priv-perth-airport", "priv-georgiou", "melbourne-4dx"],
 ];
 
 const UA =
@@ -4880,6 +5026,141 @@ async function fetchAdp(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── Recruitee (RWC, EMEA) ────────────────────────────────────────────────────
+interface RecruiteeOffer {
+  id?: number;
+  title?: string;
+  location?: string;
+  careers_url?: string;
+  department?: string;
+  created_at?: string;
+}
+
+/**
+ * Recruitee publishes an unauthenticated board API at
+ * `https://<tenant>.recruitee.com/api/offers/`, which returns the whole board
+ * in one call — no paging, no token. `site.endpoint` is the tenant.
+ *
+ * `location` is already the composed "City, Region, Country" string, so it is
+ * used as-is rather than rebuilt from the separate city/state/country fields
+ * that sit beside it; those disagree with it on some records.
+ *
+ * Measured 2026-08-06 on RWC: 7 roles, all in England (West Drayton and
+ * Maidenhead). This is RWC's EMEA board only — its Americas roles are on a
+ * separate ADP tenant, wired as a second feed against the same company id.
+ */
+async function fetchRecruitee(site: SiteDef): Promise<PortalJob[]> {
+  const json = await getJson<{ offers?: RecruiteeOffer[] }>(
+    `https://${site.endpoint}.recruitee.com/api/offers/`,
+  );
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const o of json?.offers ?? []) {
+    const title = clean(o.title ?? "");
+    const key = String(o.id ?? title);
+    if (!title || seen.has(key)) continue;
+    seen.add(key);
+    out.push(
+      job(
+        site,
+        title,
+        clean(o.location ?? ""),
+        o.careers_url || site.origin,
+        isoDay(o.created_at ?? ""),
+        clean(o.department ?? "") || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── Trakstar Hire (Mesoblast) ────────────────────────────────────────────────
+/**
+ * The tenant root renders an EMPTY openings container — `js-openings-list` with
+ * nothing in it — so the board reads as a JS app. /jobs is the same board
+ * server-rendered, and that is what this reads.
+ *
+ * Title and location are taken from the `title=` ATTRIBUTES rather than the
+ * element text. Both elements carry `cut-text`, which is a CSS ellipsis class:
+ * the visible text is truncated for layout and the attribute holds the whole
+ * value. Reading the text would archive "Customer Service/Administrative…".
+ *
+ * Measured 2026-08-06 on Mesoblast: 1 opening, in Garland, Texas — the board
+ * says "View 1 Opening" and one card is what it serves.
+ */
+async function fetchTrakstar(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const card of html.split(/js-careers-page-job-list-item/i).slice(1)) {
+    const href = clean(card.match(/data-href="([^"]+)"/i)?.[1] ?? "");
+    const title = clean(
+      card.match(/js-job-list-opening-name[\s\S]{0,300}?title="([^"]*)"/i)?.[1] ?? "",
+    );
+    if (!title || seen.has(href || title)) continue;
+    seen.add(href || title);
+    const loc = clean(
+      card.match(/js-job-list-opening-loc[\s\S]{0,300}?title="([^"]*)"/i)?.[1] ?? "",
+    );
+    out.push(
+      job(site, title, loc, href ? `${site.origin}${href}` : site.origin, today(), "Career portal"),
+    );
+  }
+  return out;
+}
+
+// ── JobAdder hosted board (Corporate Travel Management) ──────────────────────
+/**
+ * NOT the JobAdder widget the `jobadder` platform reads. That one is a JSONP
+ * call keyed by a widget id embedded in the employer's own site; this is
+ * JobAdder's hosted board on clientapps.jobadder.com, which server-renders
+ * every role into `pricing-item` cards. Same vendor, different product, so it
+ * gets its own reader rather than a flag on the other one.
+ *
+ * THE LOCATION IS POSITIONAL AND THAT IS A RISK, so it is guarded. The card's
+ * `<ul class="list">` carries category, sub-category, location and work type as
+ * four unlabelled `<li>`s with nothing to tell them apart. Measured 2026-08-06
+ * across all 12 of CTM's cards: every one has exactly four, and the third is
+ * always the location (Brisbane, Auckland, Wellington, Melbourne, "Australia -
+ * Any Office Location"). So the third is read ONLY when there are exactly four
+ * — a card with a different shape yields no location rather than filing a
+ * work type as a place.
+ *
+ * The date is "04th August, 2026"; the ordinal suffix is stripped because
+ * Date.parse rejects it, and rejecting it would silently date every role today.
+ */
+async function fetchJobAdderBoard(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const card of html.split(/<div class="pricing-item/i).slice(1)) {
+    const a = card.match(/<a href="([^"]+)"[^>]*class="viewjob"[^>]*>([\s\S]*?)<\/a>/i);
+    if (!a) continue;
+    const href = clean(a[1]);
+    const title = clean(a[2]);
+    if (!title || seen.has(href)) continue;
+    seen.add(href);
+    const lis = [...card.matchAll(/<li>(?:<i[^>]*><\/i>)?([^<]*)<\/li>/g)].map((m) => clean(m[1]));
+    const posted = clean(card.match(/<sub>([^<]*)<\/sub>/i)?.[1] ?? "").replace(
+      /(\d+)(st|nd|rd|th)\b/i,
+      "$1",
+    );
+    out.push(
+      job(
+        site,
+        title,
+        lis.length === 4 ? lis[2] : "",
+        href.startsWith("http") ? href : `${site.origin}${href}`,
+        posted ? isoDay(posted) : today(),
+        lis[0] || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
 // ── UKG Ready / WorkforceReady (Craig Mostyn) ────────────────────────────────
 interface UkgRequisition {
   id?: number;
@@ -5590,6 +5871,9 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   adp: fetchAdp,
   teamtailor: fetchTeamtailor,
   ukgready: fetchUkgReady,
+  recruitee: fetchRecruitee,
+  trakstar: fetchTrakstar,
+  jobadderboard: fetchJobAdderBoard,
   workgr8: fetchWorkGr8,
   abngroup: fetchAbnGroup,
   johnhughes: fetchJohnHughes,
@@ -5647,6 +5931,9 @@ const SOURCE_TAG: Record<Platform, string> = {
   adp: "adp",
   teamtailor: "teamtailor",
   ukgready: "ukgready",
+  recruitee: "recruitee",
+  trakstar: "trakstar",
+  jobadderboard: "jobadderboard",
   workgr8: "workgr8",
   abngroup: "abngroup",
   johnhughes: "johnhughes",

@@ -1160,6 +1160,12 @@ const PORTAL_TICKS: Record<string, number> = {
   "15 11 * * *": 40,
   // Group 41 — CBH, Hancock, ABN, Region, John Hughes and VGW.
   "25 11 * * *": 41,
+  // Group 42 — Guzman y Gomez (790, the largest AU-only board) and Mesoblast.
+  "35 11 * * *": 42,
+  // Group 43 — Flight Centre, CTM and both RWC boards.
+  "45 11 * * *": 43,
+  // Group 44 — Alcoa, Perth Airport, Georgiou and 4DMedical.
+  "55 11 * * *": 44,
 };
 
 const NEWS_TICKS: Record<string, number> = {

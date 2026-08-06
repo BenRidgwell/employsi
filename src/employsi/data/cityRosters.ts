@@ -16,6 +16,11 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
   perth: {
     exchange: "ASX",
     companies: [
+      // Alcoa is NYSE-listed and Pittsburgh-headquartered, but it is plotted
+      // on Perth because that is where its Australian workforce is — the
+      // Kwinana, Pinjarra and Wagerup refineries and the Darling Range mines.
+      // The exchange override is the same one Lululemon uses on Vancouver.
+      ["AA", "Alcoa", ENR, "NYSE"],
       ["BGL", "Bellevue Gold", ENR],
       ["BWP", "BWP Trust", FIN],
       ["CYL", "Catalyst Metals", ENR],
@@ -101,6 +106,7 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
     exchange: "ASX",
     companies: [
       ["CBA", "Commonwealth Bank of Australia", FIN],
+      ["GYG", "Guzman y Gomez", CON],
       ["GQG", "GQG Partners", FIN],
       ["MQG", "Macquarie Group", FIN],
       ["WBC", "Westpac Banking Corporation", FIN],

@@ -1,3 +1,4 @@
+import { LOCAL_LOGO } from "../data/localLogos";
 import { PRIVATE_LOGO_URL, PRIVATE_DOMAIN } from "../data/privateLogos";
 import { WA_GOV_LOGO_URL, WA_GOV_CREST, WA_GOV_CREST_ID_SET } from "../data/waGovLogos";
 
@@ -11,6 +12,12 @@ import { WA_GOV_LOGO_URL, WA_GOV_CREST, WA_GOV_CREST_ID_SET } from "../data/waGo
  *
  * The order is best-available:
  *
+ *   0. a file committed under public/logos/, named for the roster id. This
+ *      wins over everything because it is the one source somebody chose
+ *      deliberately, and the only one that cannot stop resolving when another
+ *      party's server changes — the images are in the repo. It is therefore
+ *      also how a wrong or ugly badge gets overridden without editing any of
+ *      the data files below. See public/logos/README.md.
  *   1. the organisation's own logo file, where we have a verified one — the
  *      private roster from data/privateLogos.ts, the WA government agencies
  *      from data/waGovLogos.ts. A real brand mark, not a 16px favicon upscaled.
@@ -26,7 +33,7 @@ import { WA_GOV_LOGO_URL, WA_GOV_CREST, WA_GOV_CREST_ID_SET } from "../data/waGo
  * initials.
  */
 export function logoFor(id: string, domain: string, size = 128): string {
-  const direct = PRIVATE_LOGO_URL[id] || WA_GOV_LOGO_URL[id];
+  const direct = LOCAL_LOGO[id] || PRIVATE_LOGO_URL[id] || WA_GOV_LOGO_URL[id];
   if (direct) return direct;
   if (WA_GOV_CREST_ID_SET.has(id)) return WA_GOV_CREST;
   const host = PRIVATE_DOMAIN[id] || domain;
