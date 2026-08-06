@@ -1729,6 +1729,29 @@ export const SITES: SiteDef[] = [
     // Queensland, so the LOCATION column carries the real spread.
     homeHub: "perth",
   },
+  {
+    id: "nz-chorus",
+    name: "Chorus",
+    sector: "Technology, Media & Telecom",
+    platform: "successfactors",
+    // Chorus LIMITED, the New Zealand telecommunications company (NZX: CNU) —
+    // not Chorus Australia, the Perth community-care provider, whose Employment
+    // Hero board was the first one offered for this id. They share nothing but
+    // a name, and filing one's roles under the other is the fault class that
+    // once put 31 Manila roles under IGO. The board was found from
+    // company.chorus.co.nz/careers, which is the company's own site.
+    //
+    // ZERO ROLES TODAY, AND THAT IS THE BOARD'S OWN ANSWER. Measured
+    // 2026-08-06, the search page says "There are currently no open positions"
+    // and "The 0 most recent jobs posted by chorusnz are listed below" — so the
+    // walk returning nothing is agreement with the source, not a parse failure.
+    // The same reader pulls 72 from Metcash, so it is proven against this
+    // markup. An empty pull is never written (see processPortals), so a quiet
+    // period cannot blank a card that later fills.
+    endpoint: "https://chorusnz.jobs.hr.cloud.sap",
+    origin: "https://chorusnz.jobs.hr.cloud.sap",
+    homeHub: "auckland",
+  },
 ];
 
 /**
@@ -1885,7 +1908,15 @@ export const PORTAL_GROUPS: string[][] = [
   // Metcash 72, Zip 30, nib 1, West African 1. Fletcher is the only deep walk
   // (Avature pages its result list); the other four are one or two calls each,
   // so all five share a tick.
-  ["nz-fletcher-building", "sydney-mts", "sydney-zip", "sydney-nhf", "perth-waf", "nwh"],
+  [
+    "nz-fletcher-building",
+    "sydney-mts",
+    "sydney-zip",
+    "sydney-nhf",
+    "perth-waf",
+    "nwh",
+    "nz-chorus",
+  ],
 ];
 
 const UA =
