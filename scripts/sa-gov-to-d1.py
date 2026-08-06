@@ -254,13 +254,27 @@ UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
 # The form and the report were both fine an hour later, and the parser was never
 # the problem — the script simply was not patient enough to outlast a bad patch.
 #
-# Worst case now: the form retries (~5 min) plus page 0 retries (~7.5 min) before
-# the run reports upstream failure. Later pages break the walk on first failure
-# and keep what they have, so a mid-walk hiccup costs the tail, not the run.
+# WHAT THE TIMEOUT HAS TO OUTLAST, measured 2026-08-06 after the run failed
+# again on 2026-08-05. The board sits behind Cloudflare, and when the origin
+# hangs on the report query Cloudflare gives up on it and answers **HTTP 524**
+# — measured at 126 seconds from the POST. Our own timeout was 75s, so it fired
+# first, every time, and the log said "The read operation timed out" for what
+# was really an upstream 524. A client timeout shorter than the proxy's does two
+# bad things at once: it throws away a response that might still have arrived,
+# and it hides the diagnosis behind our own impatience.
+#
+# So PAGE_TIMEOUT now sits ABOVE Cloudflare's cut-off. A slow-but-alive origin
+# gets to finish, and a dead one returns 524 in the log where it can be read.
+#
+# The budget is also spent, rather than saved. On 2026-08-05 the run gave up
+# having used about 5 of its 30 available minutes. Worst case now: form retries
+# (~5 min) plus page 0 retries (~13 min) before reporting upstream failure, and
+# the workflow cap moves to 45 to leave that room. Later pages break the walk on
+# first failure and keep what they have, so a mid-walk hiccup costs the tail.
 FORM_ATTEMPTS = 4
 FORM_TIMEOUT = 60
-PAGE_ATTEMPTS = 5
-PAGE_TIMEOUT = 75
+PAGE_ATTEMPTS = 6
+PAGE_TIMEOUT = 140
 
 
 def _backoff(attempt: int) -> float:

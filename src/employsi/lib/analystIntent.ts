@@ -144,12 +144,17 @@ export function detectSkill(question: string): string | null {
 // two are published in all 56 covered areas, so neither prompt can land on a
 // scope that has no series for it.
 /**
- * The prompt row's four topics, each opening a menu of three questions.
+ * The prompt row's three topics, each opening a menu of three questions.
  *
- * From the design, which groups the questions rather than laying eight of them
- * flat. Every question here was run through detectIntent before being listed —
- * all twelve classify to a real intent, none to "unknown", so no menu entry can
- * lead to "I didn't understand that". Adding one means checking the same thing.
+ * From the design, which groups the questions rather than laying them flat.
+ * Every question here was run through detectIntent before being listed — all
+ * nine classify to a real intent, none to "unknown", so no menu entry can lead
+ * to "I didn't understand that". Adding one means checking the same thing.
+ *
+ * A fourth topic, "Competition", was removed on request 2026-08-06. Only the
+ * PROMPTS went: the "competition" intent below still exists and the router
+ * still answers those questions when they are typed, so this narrows what the
+ * card SUGGESTS, not what it can do.
  */
 export const PROMPT_TOPICS: { label: string; questions: string[] }[] = [
   {
@@ -174,14 +179,6 @@ export const PROMPT_TOPICS: { label: string; questions: string[] }[] = [
       "Which skills are rising fastest?",
       "Which skills are most in demand?",
       "Which skills take longest to fill?",
-    ],
-  },
-  {
-    label: "Competition",
-    questions: [
-      "How competitive is it for candidates?",
-      "How many applicants per role?",
-      "How does Nursing demand compare across cities?",
     ],
   },
 ];
