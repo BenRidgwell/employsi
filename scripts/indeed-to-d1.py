@@ -4,8 +4,19 @@ Scrape each company's Indeed board (across all its locations) and archive it to
 the D1 jobs table, deduped — the Indeed counterpart of scripts/seek-to-d1.py.
 
 Meant to run from YOUR OWN machine on a schedule (cron / launchd / Task
-Scheduler), NOT from CI/Workers: Indeed's DataDome hard-blocks datacenter IPs,
-so only a residential connection reliably renders results. It drives the
+Scheduler), NOT from CI/Workers: Indeed 403-blocks datacenter IPs, so only a
+residential connection reliably renders results.
+
+THAT IS MEASURED, NOT ASSUMED, AND A BROWSER DOES NOT FIX IT. Checked
+2026-08-06 from a GitHub runner via probe-headless-ci: a real headless Chromium,
+loading a live Indeed search and counting with this file's own
+parse_search_html, got HTTP 403, 38 KB and zero rows behind a Cloudflare
+interstitial. So running the Playwright path below on CI is not a fix for the
+Oxylabs path being dead — both transports are refused from a datacentre
+address, for the same reason, and the browser changes nothing about the address.
+(The wall is Cloudflare; this docstring previously said DataDome, which is what
+it was earlier. Recorded because the mechanism decides what a workaround would
+even look like.) It drives the
 tools/indeed-company-scraper browser (one warmed Chromium reused across all
 companies), maps skills for parity via the worker's own taxonomy
 (scripts/map-skills.ts), drops any role already archived for that company by

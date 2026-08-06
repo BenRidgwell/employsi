@@ -75,8 +75,14 @@ Regenerate the advertiser id map with `python scripts/gen-seek-advertisers.py`
 
 # Indeed company feed (`tools/indeed-company-scraper` + `scripts/indeed-to-d1.py`)
 
-Indeed sits behind **DataDome**, which 403-blocks datacenter/CI/Workers IPs, so
-it can't run from the cron worker *or* a GitHub Action. Instead the Indeed feed
+Indeed 403-blocks datacenter/CI/Workers IPs, so it can't run from the cron
+worker *or* a GitHub Action. Measured 2026-08-06 from a GitHub runner
+(`probe-headless-ci`), with a real headless Chromium and the scraper's own
+parser: **HTTP 403, 38 KB, zero rows, a Cloudflare interstitial**. Note the
+mechanism — this file and the script both used to say DataDome, which is what
+the block was in an earlier era; the wall is Cloudflare now. The conclusion is
+unchanged and is now measured rather than remembered: a browser does not get in
+from a datacentre address, because the address is what is being refused. Instead the Indeed feed
 runs from a **residential machine on a schedule** (cron/launchd/Task Scheduler):
 [`scripts/indeed-to-d1.py`](../../scripts/indeed-to-d1.py) drives the
 [`tools/indeed-company-scraper`](../../tools/indeed-company-scraper) browser
