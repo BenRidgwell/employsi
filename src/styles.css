@@ -43,13 +43,13 @@
 
 :root {
   --radius: 0.625rem;
-  --ink: oklch(0.205 0 0);          /* #1c1c1e */
-  --ink-2: oklch(0.36 0 0);         /* #48484a */
-  --ink-3: oklch(0.62 0 0);         /* #8e8e93 */
-  --ink-4: oklch(0.74 0 0);         /* #a0a0a6 */
+  --ink: oklch(0.205 0 0); /* #1c1c1e */
+  --ink-2: oklch(0.36 0 0); /* #48484a */
+  --ink-3: oklch(0.62 0 0); /* #8e8e93 */
+  --ink-4: oklch(0.74 0 0); /* #a0a0a6 */
   --surface: oklch(1 0 0);
-  --surface-2: oklch(0.965 0 0);    /* #f4f4f5 */
-  --hairline: oklch(0.93 0 0);      /* #ededf0 */
+  --surface-2: oklch(0.965 0 0); /* #f4f4f5 */
+  --hairline: oklch(0.93 0 0); /* #ededf0 */
 
   --background: var(--surface);
   --foreground: var(--ink);
@@ -73,8 +73,12 @@
 }
 
 @layer base {
-  * { border-color: var(--color-border); }
-  html { -webkit-font-smoothing: antialiased; }
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
@@ -92,10 +96,41 @@
 }
 
 @keyframes ticker-scroll {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 @utility animate-ticker {
   animation: ticker-scroll 60s linear infinite;
+}
+
+/* The ticker marquee and its live dot. The track is rendered twice and the
+   keyframe runs 0 → -50%, so the loop wraps without a visible jump. */
+@keyframes emp-ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes emp-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Hover pauses the marquee only — the data keeps updating. The pause button
+   stops both; that is handled in the component, not here. */
+.emp-lane:hover > div {
+  animation-play-state: paused;
 }

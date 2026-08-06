@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Mail } from "lucide-react";
+import { Mail, Check } from "lucide-react";
 
 function SkylineSVG() {
   return (
@@ -75,23 +75,38 @@ function LiveStat({
 
 export function Showcase() {
   const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  // Bots fill every field they can see. A real person never touches this one,
+  // so any value in it means the submit is automated and is dropped silently —
+  // silently on purpose, because telling a bot it failed teaches it to retry.
+  const [honeypot, setHoneypot] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const [error, setError] = useState("");
 
   const submit = async () => {
+    if (status === "sending") return;
+    if (honeypot) return;
     const e = email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
-      alert("Please enter a valid email address.");
+      setStatus("error");
+      setError("Enter a valid email address.");
       return;
     }
+    setStatus("sending");
+    setError("");
     try {
-      await fetch("https://submit-form.com/GnhYzrssE", {
+      const r = await fetch("https://submit-form.com/GnhYzrssE", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ email: e, _source: "employsi waitlist" }),
       });
-      setSubmitted(true);
+      // A 2xx is the only success. The previous version awaited the fetch and
+      // then showed the confirmation regardless, so a rejected submission read
+      // to the visitor exactly like an accepted one.
+      if (!r.ok) throw new Error(String(r.status));
+      setStatus("done");
     } catch {
-      alert("Something went wrong joining the waitlist. Please try again.");
+      setStatus("error");
+      setError("Something went wrong. Please try again.");
     }
   };
 
@@ -108,29 +123,61 @@ export function Showcase() {
             real-time demand across countries, cities, and individual companies.
           </p>
 
-          {submitted ? (
-            <p className="text-[15px] text-[#333]">
-              You're on the list — we'll be in touch at <strong>{email}</strong>.
-            </p>
-          ) : (
-            <div className="mx-auto flex max-w-[500px] items-center gap-2.5 rounded-full border border-[#e6e6ea] bg-[#f1f1f3] py-2 pr-2 pl-[22px] transition focus-within:border-[#dcdce1] focus-within:bg-[#ececef]">
-              <Mail size={20} className="shrink-0 text-[#9a9aa2]" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && submit()}
-                placeholder="Enter your email"
-                autoComplete="email"
-                className="min-w-0 flex-1 border-none bg-transparent px-1 py-3.5 text-[15px] text-ink outline-none placeholder:text-[#9a9aa2]"
-              />
-              <button
-                onClick={submit}
-                className="whitespace-nowrap rounded-full bg-ink px-7 py-3.5 text-[15px] font-semibold text-white transition hover:-translate-y-px hover:bg-black"
-              >
-                Join waitlist
-              </button>
+          {status === "done" ? (
+            <div className="mx-auto flex max-w-[500px] items-center justify-center gap-2.5 rounded-full border border-[#d7e6dd] bg-[#e8f3ec] px-6 py-4">
+              <Check size={18} strokeWidth={2.2} className="shrink-0 text-[#2f8f63]" />
+              <span className="text-[15px] text-[#1f6a48]">
+                You're on the list. We'll be in touch at <strong>{email}</strong>.
+              </span>
             </div>
+          ) : (
+            <>
+              <div
+                className="mx-auto flex max-w-[500px] items-center gap-2.5 rounded-full border bg-[#f1f1f3] py-2 pr-2 pl-[22px]"
+                style={{
+                  borderColor: status === "error" ? "#e3b8b3" : "#e6e6ea",
+                  transition: "border-color 160ms",
+                }}
+              >
+                <Mail size={20} className="shrink-0 text-[#9a9aa2]" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    // Typing is the visitor answering the error, so the error
+                    // should not still be on screen while they do.
+                    if (status === "error") {
+                      setStatus("idle");
+                      setError("");
+                    }
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && submit()}
+                  placeholder="Enter your email"
+                  autoComplete="email"
+                  className="min-w-0 flex-1 border-none bg-transparent px-1 py-3.5 text-[15px] text-ink outline-none placeholder:text-[#9a9aa2]"
+                />
+                <input
+                  type="text"
+                  value={honeypot}
+                  onChange={(e) => setHoneypot(e.target.value)}
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden
+                  style={{ position: "absolute", left: -9999, width: 1, height: 1 }}
+                />
+                <button
+                  onClick={submit}
+                  disabled={status === "sending"}
+                  className={`whitespace-nowrap rounded-full bg-ink px-7 py-3.5 text-[15px] font-semibold text-white transition duration-[120ms] hover:-translate-y-px hover:bg-black ${
+                    status === "sending" ? "opacity-60" : ""
+                  }`}
+                >
+                  {status === "sending" ? "Joining…" : "Join waitlist"}
+                </button>
+              </div>
+              {error && <p className="mt-3 text-[13px] text-[#c4463b]">{error}</p>}
+            </>
           )}
         </div>
 
@@ -142,7 +189,10 @@ export function Showcase() {
       </div>
 
       <section
-        className="relative mx-[-5vw] mt-24 overflow-hidden rounded-t-[44px] px-[8vw] pt-24 pb-18 text-white"
+        // `mx-[-5vw]` was here and caused ~92px of horizontal document overflow:
+        // this section is a SIBLING of the padded hero container, so there was no
+        // parent padding for the negative margin to cancel.
+        className="relative mt-24 overflow-hidden rounded-t-[44px] px-[8vw] pt-24 pb-18 text-white"
         style={{
           background:
             "radial-gradient(140% 90% at 50% -10%, rgba(255,255,255,0.16), rgba(255,255,255,0) 55%), linear-gradient(to bottom, #0a0a0c 0%, #151517 22%, #45454b 44%, #c4c4ca 62%, #ffffff 76%)",
@@ -160,30 +210,31 @@ export function Showcase() {
           <div className="my-11 h-px bg-[rgba(120,120,130,0.35)]" />
 
           <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4 md:gap-6">
+            {/* PLACEHOLDER RANGES, and they need to stay labelled as such. The
+                handoff says to swap them for real figures read from D1 before
+                launch. Two of them happen to be true today — 6 released
+                markets and 80 cities — but they are still tweened numbers, not
+                a query, and a figure nobody can point at a row for is exactly
+                what this codebase refuses to print. */}
+            <LiveStat
+              min={55800}
+              max={56200}
+              fmt={(v) => Math.round(v).toLocaleString("en-US")}
+              label="Vacancies tracked live"
+            />
             <LiveStat
               min={1480}
               max={1520}
               fmt={(v) => Math.round(v).toLocaleString("en-US")}
-              label="Employers tracked live"
+              label="Employers tracked"
             />
             <LiveStat
-              min={1480}
-              max={1520}
-              fmt={(v) => Math.round(v).toLocaleString("en-US")}
-              label="Open roles mapped"
+              min={5.6}
+              max={6.4}
+              fmt={(v) => String(Math.round(v))}
+              label="Countries tracked"
             />
-            <LiveStat
-              min={60700}
-              max={61500}
-              fmt={(v) => `${(v / 1000).toFixed(1)}K`}
-              label="Workforce covered"
-            />
-            <LiveStat
-              min={99.5}
-              max={100}
-              fmt={(v) => `${v >= 99.95 ? "100" : v.toFixed(1)}%`}
-              label="Real-time data"
-            />
+            <LiveStat min={78} max={82} fmt={(v) => String(Math.round(v))} label="Cities tracked" />
           </div>
         </div>
       </section>
