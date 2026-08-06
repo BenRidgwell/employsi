@@ -1150,6 +1150,8 @@ const PORTAL_TICKS: Record<string, number> = {
   "25 10 * * *": 35,
   // Group 36 — Treasury Wine, Contact Energy, GQG, Pinnacle and AUB.
   "35 10 * * *": 36,
+  // Group 37 — Fletcher Building, Metcash, Zip, nib and West African.
+  "45 10 * * *": 37,
 };
 
 const NEWS_TICKS: Record<string, number> = {

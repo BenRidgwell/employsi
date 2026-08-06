@@ -129,6 +129,7 @@ type Platform =
   | "lever"
   | "rippling"
   | "aubgroup"
+  | "zipco"
   | "elmo"
   | "attrax"
   | "wprest"
@@ -1645,6 +1646,75 @@ export const SITES: SiteDef[] = [
     origin: "https://www.aubgroup.com.au/careers/",
     homeHub: "sydney",
   },
+  {
+    id: "sydney-nhf",
+    name: "Nib",
+    sector: "Insurance",
+    platform: "workday",
+    // wd105, like Westgold — the pod is part of the host.
+    endpoint: "https://nib.wd105.myworkdayjobs.com/wday/cxs/nib/careers/jobs",
+    origin: "https://nib.wd105.myworkdayjobs.com/en-GB/careers",
+    // Measured 2026-08-05: ONE role, an ISMS Manager marked "2 Locations".
+    // That is the whole board, not a truncated walk — Workday reports total 1.
+    // A single-role portal looks like a broken feed and is not, which is
+    // exactly why the count is written down here.
+    homeHub: "sydney",
+  },
+  {
+    id: "sydney-mts",
+    name: "Metcash",
+    sector: "Consumer & Retail",
+    platform: "successfactors",
+    endpoint: "https://careers.metcash.com",
+    origin: "https://careers.metcash.com",
+    // Measured 2026-08-05: 72 roles across every mainland capital plus Hobart —
+    // a wholesaler with distribution centres in each. 70 of 72 place.
+    homeHub: "sydney",
+  },
+  {
+    id: "nz-fletcher-building",
+    name: "Fletcher Building",
+    sector: "Industrial Manufacturing",
+    platform: "avature",
+    endpoint: "https://careers.fbcareers.com/careers/SearchJobs",
+    origin: "https://careers.fbcareers.com",
+    // Measured 2026-08-05: 144 roles. Fletcher is why fetchAvature now prefers
+    // the `list-item-location` class over guessing the cell by position — its
+    // subtitle ends in a CLOSE date, not a posted one, so the positional anchor
+    // found nothing and all 144 came back location-less. That is not the same
+    // as unplaced: hubFor falls a blank back to the home hub, so the entire
+    // board silently plotted on Auckland, including roles whose own titles say
+    // Masterton. With the class read: 41 Auckland, 25 Wellington, and 76 in NZ
+    // regions the hub list has no entry for (Wairarapa, Hawke's Bay, Bay of
+    // Plenty), which now stay honestly untagged.
+    homeHub: "auckland",
+  },
+  {
+    id: "perth-waf",
+    name: "West African Resources",
+    sector: "Gold",
+    platform: "jobadder",
+    // The JobAdder widget key, read off the careers page's `_jaJobsSettings`
+    // the same way BGC's and Ramelius' were — the page itself is a WordPress
+    // shell whose only job content is an empty <div id="ja-jobs-widget">.
+    // Measured 2026-08-05: 1 role, and the widget publishes no location for it,
+    // which is its own omission rather than a parse gap (Ramelius does the same).
+    endpoint: "AU3_aerfbzsbvsze3n3hkg3let2rmi",
+    origin: "https://www.westafricanresources.com/careers/",
+    homeHub: "perth",
+  },
+  {
+    id: "sydney-zip",
+    name: "Zip",
+    sector: "Financial Services",
+    platform: "zipco",
+    // No third-party ATS: the list is server-rendered into Zip's own page.
+    // Measured 2026-08-05: 30 roles, exactly matching the page's own
+    // "30 roles in 4 locations" — 13 Sydney, 7 Melbourne, 10 offshore.
+    endpoint: "https://zip.co/careers/roles",
+    origin: "https://zip.co",
+    homeHub: "sydney",
+  },
 ];
 
 /**
@@ -1797,6 +1867,11 @@ export const PORTAL_GROUPS: string[][] = [
   // Wine is the only one that pages; the other four are one or two calls each,
   // so all five share a tick.
   ["melbourne-twe", "nz-contact-energy", "sydney-gqg", "sydney-pni", "sydney-aub"],
+  // Group 37: the five added 2026-08-06. Measured that day: Fletcher 144,
+  // Metcash 72, Zip 30, nib 1, West African 1. Fletcher is the only deep walk
+  // (Avature pages its result list); the other four are one or two calls each,
+  // so all five share a tick.
+  ["nz-fletcher-building", "sydney-mts", "sydney-zip", "sydney-nhf", "perth-waf"],
 ];
 
 const UA =
@@ -2646,7 +2721,25 @@ async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
     const DATE = /^(?:Posted\s+)?\d{1,2}[ -][A-Za-z]{3}[ -]\d{4}$/;
     const dateAt = cells.findIndex((c) => DATE.test(c));
     const at = site.avatureCells;
-    const loc = at ? (cells[at.loc] ?? "") : dateAt > 0 ? cells[dateAt - 1] : "";
+    // Avature's own class for the cell, where the tenant emits it. Preferred
+    // over every positional guess below because it is the template SAYING which
+    // cell is the location rather than us inferring it from neighbours.
+    //
+    // Fletcher Building is why this exists. Its subtitle runs
+    // [location, ref, "Close date 10-Sep-2026"], and that date is an EXPIRY,
+    // not a posting — so the DATE anchor finds nothing, `dateAt` is -1, and
+    // every one of its 144 roles came back with an empty location. Empty does
+    // not read as unplaced: hubFor falls a blank back to the home hub, so the
+    // whole board silently plotted on Auckland, including the ones whose own
+    // titles say Masterton.
+    const semantic = b.match(/class="[^"]*list-item-location[^"]*"[^>]*>([^<]+)</i);
+    const loc = semantic
+      ? clean(semantic[1])
+      : at
+        ? (cells[at.loc] ?? "")
+        : dateAt > 0
+          ? cells[dateAt - 1]
+          : "";
     const cat = at
       ? at.cat != null && cells[at.cat]
         ? cells[at.cat]
@@ -4167,6 +4260,56 @@ async function fetchAubGroup(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── Zip's own careers page ───────────────────────────────────────────────────
+/**
+ * Zip runs no third-party ATS on this page: the role list is SERVER-RENDERED
+ * into zip.co/careers/roles, so it is read directly rather than through a
+ * board API. Checked 2026-08-05 — the markup carries the title in an <h3> and
+ * then three <li> cells, [location, employment type, department].
+ *
+ * The class names are build-hashed ("mv3T5", "Xh6i9") and will change on any
+ * redeploy of their site, so NOTHING here anchors on one. The anchors are the
+ * href shape and the element order, which are the parts the page cannot change
+ * without changing what it is.
+ *
+ * The page prints its own total ("30 roles in 4 locations"), which is logged
+ * against what was collected — a silent shortfall here would look exactly like
+ * Zip having stopped hiring.
+ */
+async function fetchZipCo(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const advertised = Number(
+    html.match(/([\d,]+)\s+roles?\s+in\s+\d+\s+locations?/i)?.[1]?.replace(/,/g, "") ?? 0,
+  );
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const block of html.split(/href="\/careers\/roles\//).slice(1)) {
+    const id = block.slice(0, block.indexOf('"'));
+    if (!id || seen.has(id)) continue;
+    const card = block.slice(0, 1200);
+    const title = clean(card.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i)?.[1] ?? "");
+    if (!title) continue;
+    seen.add(id);
+    // The first cell is the location; the rest are employment type and team.
+    const cells = [...card.matchAll(/<li[^>]*>([^<]{2,60})<\/li>/g)].map((m) => clean(m[1]));
+    out.push(
+      job(
+        site,
+        title,
+        cells[0] ?? "",
+        `${site.origin}/careers/roles/${id}`,
+        today(),
+        cells[2] || "Career portal",
+      ),
+    );
+  }
+  if (advertised && out.length < advertised) {
+    console.log(`[zipco] ${site.name}: collected ${out.length} of ${advertised} advertised`);
+  }
+  return out;
+}
+
 // ── ELMO Talent (Steadfast) ──────────────────────────────────────────────────
 /**
  * ELMO's careers module is server-rendered Bootstrap: one `<li class=
@@ -4621,6 +4764,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   lever: fetchLever,
   rippling: fetchRippling,
   aubgroup: fetchAubGroup,
+  zipco: fetchZipCo,
   elmo: fetchElmo,
   attrax: fetchAttrax,
   wprest: fetchWpRest,
@@ -4669,6 +4813,8 @@ const SOURCE_TAG: Record<Platform, string> = {
   rippling: "rippling",
   // AUB has no ATS; the tag names the page it came from, not a platform.
   aubgroup: "aubgroup",
+  // Zip has no ATS; the tag names the page, not a platform.
+  zipco: "zipco",
   elmo: "elmo",
   attrax: "attrax",
   // Both WordPress readers write the same tag: the difference between them is
