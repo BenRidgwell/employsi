@@ -108,7 +108,7 @@ function Footer() {
 
 function Landing() {
   return (
-    <div className="min-h-screen bg-background text-ink">
+    <div className="min-h-screen bg-background pb-[92px] text-ink">
       <Ticker />
       <Nav />
       <Showcase />
