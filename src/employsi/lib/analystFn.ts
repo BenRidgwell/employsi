@@ -14,14 +14,14 @@ import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
  * figures with the sample they came from. Every number on screen is one the
  * archive can be re-queried for.
  *
- * The design's mock has four intents — hiring volume, pay, skills and candidate
+ * The design's mock had four intents — hiring volume, pay, skills and candidate
  * competition — with invented figures for each. Three of them map onto data we
- * actually hold. The fourth does not: competition is applicants-per-role and
- * fill rates, which is employer-side funnel data employsi has never collected.
- * Rather than fabricate it, that intent answers with what the archive CAN say
- * about how contested a market is (how long ads stay up, how often they are
- * reposted, how many employers are bidding) and says plainly that application
- * counts are not held.
+ * actually hold. The fourth never did: competition is applicants-per-role and
+ * fill rates, employer-side funnel data employsi has never collected. It was
+ * carried for a while as an intent that declined the question and offered ad
+ * persistence instead; it was removed entirely on 2026-08-06. Those questions
+ * now fall to "unknown" along with everything else outside the archive, which
+ * is a plainer answer than a partial one dressed up as a related one.
  *
  * Scope is resolved to a set of archive rows, not to a label: a company scope
  * filters on company_id, a city on hub, a country/region on that area's hubs.
@@ -592,37 +592,6 @@ export const askAnalyst = createServerFn({ method: "POST" })
       };
     }
 
-    if (intent === "competition") {
-      // No applicant data exists — see the file header. These are the real
-      // contest signals the archive does carry.
-      const agg = await db
-        .prepare(
-          `SELECT
-             AVG(julianday(last_seen) - julianday(first_seen)) AS avg_days,
-             SUM(CASE WHEN seen_count > 1 THEN 1 ELSE 0 END) AS repeated,
-             COUNT(DISTINCT company) AS employers,
-             COUNT(*) AS n
-           FROM jobs WHERE ${where} AND last_seen = ?`,
-        )
-        .bind(...binds, latest)
-        .first();
-      const avgDays = Number(agg?.avg_days) || 0;
-      const repeated = Number(agg?.repeated) || 0;
-      const employers = Number(agg?.employers) || 0;
-      const n = Number(agg?.n) || live;
-      const repeatShare = n ? Math.round((repeated / n) * 100) : 0;
-      return {
-        intent,
-        text: `I can't answer that one properly: employsi holds advertised vacancies, not application funnels, so applicants per role and fill rates aren't figures I have. What the archive can tell you about how contested ${label} is: ${plural(employers, "employer")} are advertising into it right now, the average live ad has been up ${avgDays.toFixed(1)} days, and ${repeatShare}% have been re-seen across more than one daily pull.`,
-        stats: [
-          { k: "Employers hiring", v: employers.toLocaleString("en-US") },
-          { k: "Avg days advertised", v: avgDays.toFixed(1) },
-          { k: "Re-seen ads", v: `${repeatShare}%` },
-        ],
-        source: `Ad persistence, not application data · ${archiveNote}`,
-      };
-    }
-
     if (intent === "volume") {
       const [thenRow, freshRow, employerRows, distinctRow] = await Promise.all([
         db
@@ -688,7 +657,7 @@ export const askAnalyst = createServerFn({ method: "POST" })
 
     return {
       intent: "unknown",
-      text: `I answer from the live vacancy archive, so I'm limited to what it holds for ${label}: how many roles are open and which way that's moving, what the ads disclose about pay, which skills they ask for, and how contested the market looks. Ask about one of those, or change the scope above.`,
+      text: `I answer from the live vacancy archive, so I'm limited to what it holds for ${label}: how many roles are open and which way that's moving, what the ads disclose about pay, which skills they ask for, and how long roles stay advertised. Ask about one of those, or change the scope above.`,
       source: archiveNote,
     };
   });

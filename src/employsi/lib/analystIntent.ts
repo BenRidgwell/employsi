@@ -15,7 +15,6 @@ export type AnalystIntent =
   | "pay"
   | "duration" // how long ads stay up, by skill
   | "skills"
-  | "competition"
   | "volume"
   | "unknown";
 
@@ -45,9 +44,11 @@ const RULES: { intent: AnalystIntent; match: string[] }[] = [
     ],
   },
   { intent: "pay", match: ["salary", "salaries", "pay", "paid", "compensation", "wage", "$"] },
-  // Before competition, which owns "how hard" and "fill rate": "time to fill"
-  // and "hardest to fill" are duration questions and would otherwise be
-  // swallowed by the funnel-data answer that has to decline them.
+  // This block used to have to sit ABOVE a "competition" rule that owned "how
+  // hard" and "fill rate", because "time to fill" and "hardest to fill" are
+  // duration questions and were otherwise swallowed by it. That rule is gone
+  // (2026-08-06), so the conflict is gone with it — kept in place because the
+  // order is still correct, not because it is still load-bearing.
   {
     intent: "duration",
     match: [
@@ -72,10 +73,6 @@ const RULES: { intent: AnalystIntent; match: string[] }[] = [
     ],
   },
   {
-    intent: "competition",
-    match: ["compet", "applicant", "how hard", "candidate", "contested", "crowded", "fill rate"],
-  },
-  {
     intent: "skills",
     match: ["skill", "capabilit", "hiring for", "what are they hiring", "occupation"],
   },
@@ -95,8 +92,23 @@ const RULES: { intent: AnalystIntent; match: string[] }[] = [
   },
 ];
 
+// Questions the archive CANNOT answer, held out before the rules run.
+//
+// Removing the "competition" intent was not enough on its own. "How many
+// applicants per role?" then matched the volume rule on "how many" and would
+// have been answered with a count of open roles — an applicant question given a
+// vacancy number, which is worse than declining it, because it looks like an
+// answer. Anything asking about applicants, fill rates or how contested a market
+// is now resolves to "unknown" and gets the fallback, which says what the
+// archive does hold.
+//
+// Note "hard to fill" and its variants are NOT here: those are duration
+// questions the archive genuinely answers from how long ads stay up.
+const NOT_HELD = ["applicant", "fill rate", "compet", "contested", "crowded", "how hard"];
+
 export function detectIntent(question: string): AnalystIntent {
   const lower = (question || "").toLowerCase();
+  if (NOT_HELD.some((m) => lower.includes(m))) return "unknown";
   return RULES.find((r) => r.match.some((m) => lower.includes(m)))?.intent ?? "unknown";
 }
 
@@ -151,10 +163,10 @@ export function detectSkill(question: string): string | null {
  * nine classify to a real intent, none to "unknown", so no menu entry can lead
  * to "I didn't understand that". Adding one means checking the same thing.
  *
- * A fourth topic, "Competition", was removed on request 2026-08-06. Only the
- * PROMPTS went: the "competition" intent below still exists and the router
- * still answers those questions when they are typed, so this narrows what the
- * card SUGGESTS, not what it can do.
+ * A fourth topic, "Competition", was removed on request 2026-08-06, and so was
+ * the intent behind it — the router no longer classifies or answers those
+ * questions at all, and they now fall to "unknown" like anything else outside
+ * what the archive holds.
  */
 export const PROMPT_TOPICS: { label: string; questions: string[] }[] = [
   {
