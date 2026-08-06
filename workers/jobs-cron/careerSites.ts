@@ -1752,6 +1752,36 @@ export const SITES: SiteDef[] = [
     origin: "https://chorusnz.jobs.hr.cloud.sap",
     homeHub: "auckland",
   },
+  {
+    id: "ltr",
+    name: "Liontown Resources",
+    sector: "Energy & Natural Resources",
+    platform: "successfactors",
+    // liontown.com/careers is a WordPress page that links out to this board.
+    // Measured 2026-08-06: 14 roles, every one at Kathleen Valley, the
+    // company's WA lithium operation — which is why all 14 place on Perth.
+    endpoint: "https://jobs.ltresources.com.au",
+    origin: "https://jobs.ltresources.com.au",
+    homeHub: "perth",
+  },
+  {
+    id: "mnd",
+    name: "Monadelphous Group",
+    sector: "Industrial Manufacturing",
+    platform: "avature",
+    // NOT careers.monadelphous.com.au, which is the marketing site — its
+    // "current vacancies" link redirects here, and here is the Avature tenant.
+    endpoint: "https://jobs.monadelphous.com.au/careers/SearchJobs",
+    origin: "https://jobs.monadelphous.com.au",
+    // Measured 2026-08-06: 156 roles — 107 Perth, 28 Brisbane, 10 Sydney, and
+    // a scatter across Darwin and Adelaide. A maintenance contractor, so many
+    // rows carry several sites at once ("Newman, WA, Perth, WA, Port Hedland,
+    // WA") and hubFor takes the first it recognises.
+    homeHub: "perth",
+    // Avature fixes this tenant's page size at 6 and ignores the size
+    // parameter, so 156 roles really is a 26-request walk.
+    maxPages: 40,
+  },
 ];
 
 /**
@@ -1917,6 +1947,10 @@ export const PORTAL_GROUPS: string[][] = [
     "nwh",
     "nz-chorus",
   ],
+  // Group 38: added 2026-08-06. Monadelphous leads its own tick — 156 roles at
+  // six a page is 26 requests, the deepest walk added this week — with Liontown
+  // (14, one call) alongside it.
+  ["mnd", "ltr"],
 ];
 
 const UA =
@@ -2657,7 +2691,14 @@ async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
   const size = site.pageSize ?? AV_PAGE;
   const page = async (i: number): Promise<string[]> => {
     const html = await getText(
-      `${site.endpoint}/?listFilterMode=1&jobRecordsPerPage=${size}&jobOffset=${i * size}`,
+      // BOTH parameter families, because Avature tenants disagree on which one
+      // they answer to. Monadelphous pages with folderRecordsPerPage /
+      // folderOffset and ignored the job* pair entirely, so every page request
+      // returned page one and the walk collected six roles out of fifty-five.
+      // Unknown parameters are ignored, so sending both is safe for the
+      // tenants that only read the job* pair.
+      `${site.endpoint}/?listFilterMode=1&jobRecordsPerPage=${size}&jobOffset=${i * size}` +
+        `&folderRecordsPerPage=${size}&folderOffset=${i * size}`,
     );
     // The result wrapper carries tenant-specific modifiers between the two
     // class names — Woolworths renders `article article--w--full
@@ -2672,7 +2713,7 @@ async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
       ? html
           .split(/class="article[^"]*article--result/i)
           .slice(1)
-          .filter((b) => /<a[^>]*href="[^"]*JobDetail[^"]*"/i.test(b))
+          .filter((b) => /<a[^>]*href="[^"]*(?:Job|Folder)Detail[^"]*"/i.test(b))
       : [];
   };
 
@@ -2693,7 +2734,7 @@ async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
   // the end of this feed's window, not of the portal.
   const from = site.pageFrom ?? 0;
   const first = await getText(
-    `${site.endpoint}/?listFilterMode=1&jobRecordsPerPage=${size}&jobOffset=${from * size}`,
+    `${site.endpoint}/?listFilterMode=1&jobRecordsPerPage=${size}&jobOffset=${from * size}&folderRecordsPerPage=${size}&folderOffset=${from * size}`,
   );
   const totalM = first?.match(/aria-label="([\d,]+) results"/i);
   const total = totalM ? Number(totalM[1].replace(/,/g, "")) : 0;
@@ -2703,7 +2744,7 @@ async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
     ? first
         .split(/class="article[^"]*article--result/i)
         .slice(1)
-        .filter((b) => /<a[^>]*href="[^"]*JobDetail[^"]*"/i.test(b))
+        .filter((b) => /<a[^>]*href="[^"]*(?:Job|Folder)Detail[^"]*"/i.test(b))
     : [];
   // A whole window of consecutive empty pages, not two. Two was still being
   // tripped early by throttling — the same portal returned 1072 roles on one
@@ -2737,7 +2778,10 @@ async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
   if (site.avatureDetail) return avatureFromDetails(site, blocks);
 
   for (const b of blocks) {
-    const a = b.match(/<a[^>]*href="([^"]*JobDetail[^"]*)"[^>]*>([\s\S]*?)<\/a>/i);
+    // JobDetail OR FolderDetail. Avature tenants use both link shapes for the
+    // same thing — Monadelphous publishes FolderDetail and matched nothing, so
+    // its whole board read as empty rather than as unparsed.
+    const a = b.match(/<a[^>]*href="([^"]*(?:Job|Folder)Detail[^"]*)"[^>]*>([\s\S]*?)<\/a>/i);
     if (!a) continue;
     const href = clean(a[1]);
     const title = clean(a[2]);
@@ -2778,13 +2822,29 @@ async function fetchAvature(site: SiteDef): Promise<PortalJob[]> {
     // whole board silently plotted on Auckland, including the ones whose own
     // titles say Masterton.
     const semantic = b.match(/class="[^"]*list-item-location[^"]*"[^>]*>([^<]+)</i);
+    // Failing that, the FIRST span of the card's subtitle. Avature's own
+    // template puts the location there and the reference after it — Monadelphous
+    // renders "<span> Newman, WA </span> · <span> Ref #300050311 </span>" and
+    // carries no date at all, so the positional anchor below had nothing to
+    // work from and every role came back location-less onto the home hub.
+    //
+    // Bounded at 900, not 400, and matching the SPAN directly rather than the
+    // enclosing </div>. Avature indents its markup so heavily that a single
+    // subtitle spans several hundred characters of whitespace — the same trap
+    // the cells regex above documents — and a 400 bound matched nothing here
+    // while looking perfectly reasonable.
+    const subtitle = b.match(
+      /article__header__text__subtitle[\s\S]{0,900}?<span[^>]*>([^<]+)<\/span>/i,
+    )?.[1];
     const loc = semantic
       ? clean(semantic[1])
-      : at
-        ? (cells[at.loc] ?? "")
-        : dateAt > 0
-          ? cells[dateAt - 1]
-          : "";
+      : subtitle && !/^\s*Ref\s*#/i.test(subtitle)
+        ? clean(subtitle)
+        : at
+          ? (cells[at.loc] ?? "")
+          : dateAt > 0
+            ? cells[dateAt - 1]
+            : "";
     const cat = at
       ? at.cat != null && cells[at.cat]
         ? cells[at.cat]
@@ -2845,7 +2905,7 @@ async function avatureFromDetails(site: SiteDef, blocks: string[]): Promise<Port
   const links: { href: string; title: string }[] = [];
   const seen = new Set<string>();
   for (const b of blocks) {
-    const a = b.match(/<a[^>]*href="([^"]*JobDetail[^"]*)"[^>]*>([\s\S]*?)<\/a>/i);
+    const a = b.match(/<a[^>]*href="([^"]*(?:Job|Folder)Detail[^"]*)"[^>]*>([\s\S]*?)<\/a>/i);
     if (!a) continue;
     const href = clean(a[1]);
     const title = clean(a[2]);

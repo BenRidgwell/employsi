@@ -1152,6 +1152,8 @@ const PORTAL_TICKS: Record<string, number> = {
   "35 10 * * *": 36,
   // Group 37 — Fletcher Building, Metcash, Zip, nib and West African.
   "45 10 * * *": 37,
+  // Group 38 — Monadelphous and Liontown.
+  "55 10 * * *": 38,
 };
 
 const NEWS_TICKS: Record<string, number> = {
