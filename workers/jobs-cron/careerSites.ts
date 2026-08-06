@@ -130,6 +130,7 @@ type Platform =
   | "rippling"
   | "aubgroup"
   | "zipco"
+  | "bigredsky"
   | "elmo"
   | "attrax"
   | "wprest"
@@ -1715,6 +1716,19 @@ export const SITES: SiteDef[] = [
     origin: "https://zip.co",
     homeHub: "sydney",
   },
+  {
+    id: "nwh",
+    name: "NRW Holdings",
+    sector: "Energy & Natural Resources",
+    platform: "bigredsky",
+    endpoint: "https://nrw-joinus.bigredsky.com/page.php?pageID=106",
+    origin: "https://nrw-joinus.bigredsky.com",
+    // Measured 2026-08-06: the board says "Viewing records: 1 to 20 of 25" and
+    // the showAllRecords POST returns all 25. NRW is a Perth contractor whose
+    // divisions (AES Equipment Solutions, Golding, Primero) hire across WA and
+    // Queensland, so the LOCATION column carries the real spread.
+    homeHub: "perth",
+  },
 ];
 
 /**
@@ -1871,7 +1885,7 @@ export const PORTAL_GROUPS: string[][] = [
   // Metcash 72, Zip 30, nib 1, West African 1. Fletcher is the only deep walk
   // (Avature pages its result list); the other four are one or two calls each,
   // so all five share a tick.
-  ["nz-fletcher-building", "sydney-mts", "sydney-zip", "sydney-nhf", "perth-waf"],
+  ["nz-fletcher-building", "sydney-mts", "sydney-zip", "sydney-nhf", "perth-waf", "nwh"],
 ];
 
 const UA =
@@ -4260,6 +4274,91 @@ async function fetchAubGroup(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── BigRedSky (NRW Holdings) ─────────────────────────────────────────────────
+/**
+ * BigRedSky renders its job list into a `brs_report_table_16` on the page —
+ * the same ATS the SA government board runs, but a much simpler tenant: SA's
+ * results only appear after a stateful search POST, whereas this one ships
+ * page one in the GET.
+ *
+ * PAGING IS AVOIDED RATHER THAN WALKED. The board serves 20 a page and the
+ * pager is not driven by a query parameter — `&Start=20` and `rowCount=100`
+ * were both tried and both returned page one again. What does work is posting
+ * the page's own hidden fields back with `reload_data[showAllRecords]=1`, which
+ * returns every record in one response. Measured 2026-08-06: 20 of 25 on the
+ * GET, 25 of 25 with the flag. One request, nothing to truncate.
+ *
+ * No session cookie is needed — verified by posting without one and getting the
+ * same 25 — so this stays a plain two-request fetch in the Worker.
+ *
+ * COLUMNS ARE FOUND BY HEADER NAME, not position. NRW's run
+ * [CLOSING DATE, JOB TITLE, DIVISION, LOCATION, Apply] and another tenant's
+ * will not; reading cell 3 because it happens to be the location here is how
+ * the Avature reader ended up writing a whole board onto the wrong city.
+ *
+ * That first column is a CLOSING date, not a posting date, so it is not used
+ * for `created`. A date that says when an ad expires is not a lesser version of
+ * when it appeared — it is a different fact, and recording it as the other one
+ * would age every row wrongly.
+ */
+async function fetchBigRedSky(site: SiteDef): Promise<PortalJob[]> {
+  const shell = await getText(site.endpoint);
+  if (!shell) return [];
+  const fields = new URLSearchParams();
+  for (const m of shell.matchAll(/<input[^>]*type="hidden"[^>]*>/gi)) {
+    const n = m[0].match(/name="([^"]+)"/)?.[1];
+    if (n) fields.set(n, m[0].match(/value="([^"]*)"/)?.[1] ?? "");
+  }
+  fields.set("reload_data[showAllRecords]", "1");
+  const full =
+    (await getText(site.endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: site.endpoint },
+      body: fields.toString(),
+    })) || shell;
+
+  const table = full.match(/<table[^>]*id="brs_report_table_16"[\s\S]*?<\/table>/i)?.[0];
+  if (!table) return [];
+  const rows = [...table.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map((r) =>
+    [...r[1].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map((c) => c[1]),
+  );
+  const head = rows.find((r) => r.some((c) => /JOB TITLE/i.test(clean(c))));
+  if (!head) return [];
+  const col = (name: RegExp) => head.findIndex((c) => name.test(clean(c)));
+  const iTitle = col(/^job title$/i);
+  const iLoc = col(/^location$/i);
+  const iDiv = col(/^division|department$/i);
+
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const r of rows) {
+    if (r === head || iTitle < 0 || !r[iTitle]) continue;
+    const title = clean(r[iTitle]);
+    const id = r.join(" ").match(/AdvertID=(\d+)/)?.[1] ?? "";
+    if (!title || /^job title$/i.test(title) || seen.has(id || title)) continue;
+    seen.add(id || title);
+    out.push(
+      job(
+        site,
+        title,
+        iLoc >= 0 ? clean(r[iLoc] ?? "") : "",
+        id ? `${site.origin}/page.php?pageID=160&windowUID=0&AdvertID=${id}` : site.endpoint,
+        today(),
+        (iDiv >= 0 ? clean(r[iDiv] ?? "") : "") || "Career portal",
+      ),
+    );
+  }
+  const advertised = Number(
+    clean(full)
+      .match(/Viewing\s+records:\s*[\d,]+\s*to\s*[\d,]+\s*of\s*([\d,]+)/i)?.[1]
+      ?.replace(/,/g, "") ?? 0,
+  );
+  if (advertised && out.length < advertised) {
+    console.log(`[bigredsky] ${site.name}: collected ${out.length} of ${advertised} advertised`);
+  }
+  return out;
+}
+
 // ── Zip's own careers page ───────────────────────────────────────────────────
 /**
  * Zip runs no third-party ATS on this page: the role list is SERVER-RENDERED
@@ -4765,6 +4864,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   rippling: fetchRippling,
   aubgroup: fetchAubGroup,
   zipco: fetchZipCo,
+  bigredsky: fetchBigRedSky,
   elmo: fetchElmo,
   attrax: fetchAttrax,
   wprest: fetchWpRest,
@@ -4815,6 +4915,7 @@ const SOURCE_TAG: Record<Platform, string> = {
   aubgroup: "aubgroup",
   // Zip has no ATS; the tag names the page, not a platform.
   zipco: "zipco",
+  bigredsky: "bigredsky",
   elmo: "elmo",
   attrax: "attrax",
   // Both WordPress readers write the same tag: the difference between them is
