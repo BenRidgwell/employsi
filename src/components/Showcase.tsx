@@ -163,7 +163,7 @@ export function Showcase() {
             <LiveStat
               min={1480}
               max={1520}
-              fmt={(v) => `${Math.round(v).toLocaleString("en-US")}`}
+              fmt={(v) => Math.round(v).toLocaleString("en-US")}
               label="Employers tracked live"
             />
             <LiveStat
