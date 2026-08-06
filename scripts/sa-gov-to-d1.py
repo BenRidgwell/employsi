@@ -288,8 +288,18 @@ def _backoff(attempt: int) -> float:
     return min(45.0, 4.0 * (2 ** attempt) + random.uniform(0, 3))
 
 
-def _open_retrying(op, target, timeout: int, attempts: int, label: str) -> str:
-    """GET/POST with real backoff. Returns '' once the budget is exhausted."""
+def _open_retrying(op, target, timeout: int, attempts: int, label: str,
+                   on_dead_session=None) -> str:
+    """GET/POST with real backoff. Returns '' once the budget is exhausted.
+
+    `on_dead_session` is called when the server answers with a redirect loop
+    instead of a page, and should return a FRESH request to try in place of the
+    original (or None to keep using it). Measured 2026-08-06: after four
+    consecutive 524s the board stops honouring the session entirely and every
+    further POST 302s back to the search form, so the last two attempts of the
+    budget were being spent on a session already known to be dead. Re-opening
+    the form gets a new NRJobBoardID and a new jobboard_token, which is the only
+    thing that can make attempt five differ from attempt four."""
     for attempt in range(attempts):
         try:
             return op.open(target, timeout=timeout).read().decode('utf-8', 'replace')
@@ -299,7 +309,12 @@ def _open_retrying(op, target, timeout: int, attempts: int, label: str) -> str:
                 return ''
             wait = _backoff(attempt)
             sys.stderr.write(f'  {label} attempt {attempt + 1}/{attempts} failed '
-                             f'({e}); retrying in {wait:.0f}s\n')
+                             f'({str(e).splitlines()[0]}); retrying in {wait:.0f}s\n')
+            if on_dead_session and 'redirect' in str(e).lower():
+                fresh = on_dead_session()
+                if fresh is not None:
+                    sys.stderr.write('    session was dead; re-opened the form\n')
+                    target = fresh
             time.sleep(wait)
     return ''
 
@@ -393,20 +408,33 @@ def scrape() -> tuple[list, str]:
         sys.stderr.write('  WARNING: no jobboard_token found — the form may have changed\n')
         jx.diagnose(form, 'sa-form')
 
-    def fetch(start: int):
+    def build(start: int, tok: str):
         fields = [('Advert[ID]', ''), ('saveTo[1]', 'Advert'), ('Advert[Data]', ''),
-                  ('action', 'Search'), ('jobboard_token', token), ('Start', str(start)),
+                  ('action', 'Search'), ('jobboard_token', tok), ('Start', str(start)),
                   ('orderByCol', '0'), ('orderByAscDesc', ''), ('saveTo[2]', 'Advert')]
         boundary = '----employsi' + '0' * 8
         buf = io.BytesIO()
         for k, v in fields:
             buf.write(f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode())
         buf.write(f'--{boundary}--\r\n'.encode())
-        req = urllib.request.Request(REPORT_POST, data=buf.getvalue(), headers={
+        return urllib.request.Request(REPORT_POST, data=buf.getvalue(), headers={
             'User-Agent': UA, 'Referer': START_URL,
             'Content-Type': f'multipart/form-data; boundary={boundary}'})
-        return _open_retrying(op, req, PAGE_TIMEOUT, PAGE_ATTEMPTS,
-                              f'search POST at Start={start}')
+
+    def fetch(start: int):
+        # A redirect loop means the session died, not that the board is busy —
+        # see _open_retrying. Re-open the form for a new cookie and token and
+        # hand back a request built from them, so the remaining attempts are
+        # spent on something that could actually succeed.
+        def reopen():
+            again = _open_retrying(op, START_URL, FORM_TIMEOUT, 2, 'form re-GET')
+            if not again:
+                return None
+            m = re.search(r"""name=["']jobboard_token["']\s+value=["']([^"']*)["']""", again)
+            return build(start, m.group(1)) if m else None
+
+        return _open_retrying(op, build(start, token), PAGE_TIMEOUT, PAGE_ATTEMPTS,
+                              f'search POST at Start={start}', on_dead_session=reopen)
 
     all_rows, seen = [], set()
     failure = ''
