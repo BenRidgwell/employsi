@@ -1816,6 +1816,24 @@ export const SITES: SiteDef[] = [
     // advertises nothing in Vancouver today, and that is what the board says.
     homeHub: "vancouver",
   },
+  {
+    id: "nz-spark-new-zealand",
+    name: "Spark New Zealand",
+    sector: "Technology, Media and Telecommunications",
+    platform: "avature",
+    // NOT spark.co.nz/about/careers, which sits behind a Radware bot wall and
+    // answers a challenge page, and not sparkjobs.co.nz, which does not resolve
+    // from here at all. The board itself is an Avature tenant on its own host,
+    // and it answers a plain GET.
+    endpoint: "https://careers.sparknz.co.nz/careers/SearchJobs",
+    origin: "https://careers.sparknz.co.nz",
+    // Measured 2026-08-06: the board prints "17 results" and the reader
+    // collects 17. Four are unplaced — Nelson, and the bare "Hamilton" that
+    // HUB_MATCH deliberately does not resolve because the name is ambiguous
+    // across the archive. Christchurch roles place on Wellington, the nearest
+    // hub we plot, as they do for every other NZ feed.
+    homeHub: "auckland",
+  },
 ];
 
 /**
@@ -1984,8 +2002,9 @@ export const PORTAL_GROUPS: string[][] = [
   // Group 38: added 2026-08-06. Monadelphous leads its own tick — 156 roles at
   // six a page is 26 requests, the deepest walk added this week — with Liontown
   // (14, one call), Super Retail (76 at 50 a page, so a token plus two
-  // searches) and Capstone (54 at 20 a page, three calls) alongside it.
-  ["mnd", "ltr", "brisbane-sul", "vancouver-cs"],
+  // searches), Capstone (54 at 20 a page, three calls) and Spark NZ (17,
+  // two calls) alongside it.
+  ["mnd", "ltr", "brisbane-sul", "vancouver-cs", "nz-spark-new-zealand"],
 ];
 
 const UA =
