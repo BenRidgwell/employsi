@@ -84,7 +84,7 @@ function AboutPopover() {
 
 function Nav() {
   return (
-    <header className="sticky top-[92px] z-30 border-b border-hairline bg-background/80 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-hairline bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-6 lg:px-10">
         <EmploysiLockup size={26} />
         <AboutPopover />
@@ -108,7 +108,7 @@ function Footer() {
 
 function Landing() {
   return (
-    <div className="min-h-screen bg-background text-ink">
+    <div className="min-h-screen bg-background pb-[92px] text-ink">
       <Ticker />
       <Nav />
       <Showcase />
