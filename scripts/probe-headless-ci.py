@@ -45,6 +45,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     'tools', 'zhaopin-company-scraper'))
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    'tools', 'indeed-company-scraper'))
 
 # ── the boards, with the settle/click behaviour their scrapers ask for ───────
 # `rows` is copied verbatim from each scraper so this measures the same thing
@@ -137,6 +140,29 @@ BOARDS = [
         'next': None,
     },
     {
+        # THE QUESTION THIS ONE ANSWERS. indeed-to-d1.py has two transports: an
+        # Oxylabs path and a Playwright path. The Oxylabs path is currently
+        # dead — 613 ("faulted") on essentially every request, every company
+        # returning 0 jobs — so the obvious move is to run the browser path on
+        # CI instead. The script's own docstring says that cannot work, that
+        # "Indeed's DataDome hard-blocks datacenter IPs" and it is meant to run
+        # from a residential machine. That claim is older than this probe and
+        # has never been tested from a runner, and today's nzgov regression came
+        # from trusting exactly this kind of untested belief about where a fetch
+        # runs from. So it gets measured.
+        #
+        # Counted with the scraper's OWN parser, not a marker: a page that
+        # renders Indeed chrome but no cards would otherwise look like a pass.
+        'name': 'Indeed (AU company search)',
+        'script': 'scripts/indeed-to-d1.py',
+        'url': 'https://au.indeed.com/jobs?q=%22BHP%22&l=&start=0',
+        'settle': 10,
+        'counter': 'indeed',
+        'rows': r'job_seen_beacon|jobTitle|data-jk=',
+        'title': r'jobTitle',
+        'next': None,
+    },
+    {
         # jobs.ca is a CANDIDATE, not an existing scraper — there is no script
         # for it yet. It is here to answer one question before any is written:
         # a plain request from this repo's sandbox gets HTTP 429 with a "Vercel
@@ -175,6 +201,9 @@ def count_with_real_parser(which: str, html: str) -> int | None:
         if which == 'zhaopin':
             import zhaopin_company_scraper as zp
             return len(zp.parse_search_html(html))
+        if which == 'indeed':
+            import indeed_company_scraper as ind
+            return len(ind.parse_search_html(html, 'https://au.indeed.com'))
     except Exception as e:  # noqa: BLE001
         sys.stderr.write(f'  real-parser count unavailable for {which}: {str(e)[:90]}\n')
     return None
