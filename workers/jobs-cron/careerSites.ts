@@ -138,7 +138,7 @@ type Platform =
   | "trakstar"
   | "jobadderboard"
   | "workgr8"
-  | "abngroup"
+  | "clinch"
   | "johnhughes"
   | "elmo"
   | "attrax"
@@ -1924,7 +1924,7 @@ export const SITES: SiteDef[] = [
     id: "priv-abn-group",
     name: "ABN Group",
     sector: "Residential construction",
-    platform: "abngroup",
+    platform: "clinch",
     // Measured 2026-08-06: 36 roles — 30 on page one, 6 on page two, page
     // three empty. 16 Perth and 20 Melbourne, which is the shape of the
     // business: WA residential building plus the Victorian arm.
@@ -5326,25 +5326,44 @@ async function fetchWorkGr8(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
-// ── ABN Group's career site ──────────────────────────────────────────────────
+// ── Clinch (ABN Group; NAB, via the Oxylabs script) ──────────────────────────
 /**
- * A server-rendered results table on a Rails career-site product this file
- * cannot name: the page carries no "powered by", no generator meta and no
- * vendor domain, so the platform is named for the employer rather than
- * guessed at — the same choice made for `aubgroup` and `zipco`.
+ * Clinch, named by scripts/nab-to-d1.py — which had the vendor written down all
+ * along. This reader first shipped as `abngroup` because ABN's page carries no
+ * "powered by", no generator meta and no vendor domain, so the platform was
+ * named for the employer. That was wrong: NAB runs the same product (identical
+ * cloudfront asset host, identical importmap hashes, same /jobs/search route
+ * and `jobs--search` controller), and naming a shared platform after one of its
+ * tenants makes the second one look like a different thing.
  *
- * COLUMNS ARE FOUND BY CLASS, NOT POSITION (`job-search-results-title`,
- * `-location`, `-category`). This tenant runs title / category / department /
- * employment type / location / business unit and another need not; reading
- * cell 5 because the location happens to sit there is how the Avature reader
- * once wrote a whole board onto the wrong city.
+ * TWO RESULT VIEWS, and a tenant picks one. ABN renders a TABLE
+ * (`<tr role="link">` with `data-job-url`); NAB renders CARDS
+ * (`job-search-results-card-col`). A reader that knew only the table would
+ * return zero on a card tenant and look exactly like an employer with no
+ * vacancies — so both are read, table first, cards when the table is absent.
+ * The card path was verified against 30 real NAB cards, 30 of 30 parsed.
  *
- * Measured 2026-08-06: 30 on page one, 6 on page two, page three empty — 36
- * roles. The walk ends on the first page with no rows, which is safe here
- * because the pager is a plain `?page=N` on a server-rendered table rather
- * than a lazy list that can serve an empty page mid-run.
+ * FIELDS ARE FOUND BY CLASS OR ID, NEVER POSITION. In the table that is
+ * `job-search-results-title` / `-location` / `-category`; in the cards it is
+ * the `location_icon_text_*` and `category_icon_text_*` ids. The id matters on
+ * the card path for a reason scripts/nab-to-d1.py records: the LABEL span
+ * beside each value ("Primary position location: ") carries
+ * `class="job-attribute"` and appears only in the rendered page, so a generic
+ * "first span in the item" match passes a raw-HTML test and then silently fills
+ * every row with the label.
+ *
+ * NAB IS NOT WIRED HERE and cannot be. Its AWS WAF returns an empty shell to a
+ * Worker and a challenge page to a datacentre IP; only a rendered fetch that
+ * waits out the challenge gets the listing, which is what the Python script
+ * does daily through Oxylabs. The card path exists because the NEXT Clinch
+ * tenant may well be reachable, not to serve NAB.
+ *
+ * Measured 2026-08-06 on ABN: 30 on page one, 6 on page two, page three empty —
+ * 36 roles. The walk ends on the first page with no rows, which is safe because
+ * the pager is a plain `?page=N` over server-rendered HTML rather than a lazy
+ * list that can serve an empty page mid-run.
  */
-async function fetchAbnGroup(site: SiteDef): Promise<PortalJob[]> {
+async function fetchClinch(site: SiteDef): Promise<PortalJob[]> {
   const out: PortalJob[] = [];
   const seen = new Set<string>();
   const max = site.maxPages ?? DEFAULT_MAX_PAGES;
@@ -5352,7 +5371,8 @@ async function fetchAbnGroup(site: SiteDef): Promise<PortalJob[]> {
     const html = await getText(`${site.endpoint}?page=${page}`);
     if (!html) break;
     const rows = html.split(/<tr role="link"/i).slice(1);
-    if (!rows.length) break;
+    const cards = rows.length ? [] : html.split(/job-search-results-card-col/i).slice(1);
+    if (!rows.length && !cards.length) break;
     for (const raw of rows) {
       const row = raw.split(/<\/tr>/i)[0];
       const url = clean(row.match(/data-job-url="([^"]+)"/i)?.[1] ?? "");
@@ -5369,6 +5389,27 @@ async function fetchAbnGroup(site: SiteDef): Promise<PortalJob[]> {
         );
       out.push(
         job(site, title, cell("location"), url, today(), cell("category") || "Career portal"),
+      );
+    }
+    for (const card of cards) {
+      const a = card.match(
+        /job-search-results-card-title[\s\S]{0,300}?<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i,
+      );
+      if (!a) continue;
+      const url = clean(a[1]);
+      const title = clean(a[2]);
+      if (!title || !url || seen.has(url)) continue;
+      seen.add(url);
+      // Keyed off the id, not "the first span": see the note above about the
+      // label span that only exists in the rendered page.
+      const byId = (name: string) =>
+        clean(
+          card.match(
+            new RegExp(`id="${name}_icon_text_[^"]*"[^>]*>([\\s\\S]*?)</span>`, "i"),
+          )?.[1] ?? "",
+        );
+      out.push(
+        job(site, title, byId("location"), url, today(), byId("category") || "Career portal"),
       );
     }
   }
@@ -5875,7 +5916,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   trakstar: fetchTrakstar,
   jobadderboard: fetchJobAdderBoard,
   workgr8: fetchWorkGr8,
-  abngroup: fetchAbnGroup,
+  clinch: fetchClinch,
   johnhughes: fetchJohnHughes,
   elmo: fetchElmo,
   attrax: fetchAttrax,
@@ -5935,7 +5976,7 @@ const SOURCE_TAG: Record<Platform, string> = {
   trakstar: "trakstar",
   jobadderboard: "jobadderboard",
   workgr8: "workgr8",
-  abngroup: "abngroup",
+  clinch: "cl",
   johnhughes: "johnhughes",
   elmo: "elmo",
   attrax: "attrax",
