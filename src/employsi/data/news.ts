@@ -626,8 +626,14 @@ function nstRealNews(): CompanyNews {
   };
 }
 
-// Companies with a hand-curated real feed above. Everyone else falls back to
-// the live Google-News feed (see NewsPanel), then to generated copy.
+// The companies with a hand-curated real feed above.
+//
+// This is no longer a SWITCH. It used to decide who skipped the live feed, and
+// that is exactly how the curated heroes went stale unnoticed — the fourteen
+// companies most likely to be looked at were the fourteen that never refreshed.
+// Every company now reads the live feed first and falls back to whatever
+// companyNews() has, curated or generated. The list is kept as an index of
+// which names have real articles behind that fallback.
 export const CURATED_NEWS_COMPANIES = new Set([
   "BHP",
   "Rio Tinto",

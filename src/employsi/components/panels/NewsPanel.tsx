@@ -1,11 +1,5 @@
 import { useMemo } from "react";
-import {
-  companyNews,
-  liveToCompanyNews,
-  CURATED_NEWS_COMPANIES,
-  type CompanyNews,
-  type NewsItem,
-} from "../../data/news";
+import { companyNews, liveToCompanyNews, type CompanyNews, type NewsItem } from "../../data/news";
 import { useArticleImages } from "../../hooks/useArticleImages";
 import { useLiveNews } from "../../hooks/useLiveNews";
 import { useCompanyPosts } from "../../hooks/useCompanyPosts";
@@ -23,10 +17,11 @@ import { CardLoader } from "./CardLoader";
 // else the Worker's og:image scrape), so a row shows the photo when there is
 // one and falls back to the design's tinted kicker when there isn't.
 //
-// The 14 pilot companies use a hand-curated real feed; everyone else pulls a
-// live feed on the Worker (Bing News → GDELT → named outlet RSS), falling back
-// to generated copy only if the live feed is empty. Article images come from
-// the feed's own image, or the Worker's og:image scrape of the article page.
+// EVERY company pulls a live feed on the Worker (Bing News → GDELT → named
+// outlet RSS), falling back to whatever data/news.ts has — a hand-curated real
+// feed for the 14 pilots, generated copy for everyone else — only when the live
+// feed comes back empty. Article images come from the feed's own image, or the
+// Worker's og:image scrape of the article page.
 
 function relTime(iso: string): string {
   const t = Date.parse(iso);
@@ -168,11 +163,18 @@ export function NewsPanel({
   loading?: boolean;
 }) {
   const generated = useMemo(() => companyNews(name, sector), [name, sector]);
-  const curated = CURATED_NEWS_COMPANIES.has(name);
-  // Non-curated companies fetch a live news feed keyed on the company name alone
-  // (the most reliable query). Curated companies (and BHP's live feed) skip this.
+  // EVERY company fetches the live feed, keyed on the company name alone (the
+  // most reliable query). The fourteen pilots used to skip it and show their
+  // hand-curated feed instead, and that feed does not refresh: by 2026-08 its
+  // "Trending" heroes were eight months to two years old, and Fortescue's led
+  // the card with a story from July 2024. A curated feed is only better than a
+  // live one while somebody is curating it.
+  //
+  // The curated set is still here and still good — it is now the FALLBACK,
+  // which is what it was always the right shape to be: real, checked articles
+  // for the day the live feed returns nothing.
   void ticker;
-  const liveQuery = !curated && !live ? `"${name}"` : null;
+  const liveQuery = !live ? `"${name}"` : null;
   const { items: liveItems, pending: newsPending } = useLiveNews(liveQuery, 6);
   const liveFeed = useMemo(() => liveToCompanyNews(liveItems), [liveItems]);
 
@@ -187,7 +189,6 @@ export function NewsPanel({
       posts.map((p) => ({
         cat: "Company post",
         title: p.title,
-        time: "",
         comments: 0,
         url: p.url,
         image: p.image,
@@ -198,7 +199,9 @@ export function NewsPanel({
     [posts],
   );
 
-  const articleNews = live ?? (curated ? generated : (liveFeed ?? generated));
+  // `live` (a feed handed in by the caller) beats the fetched one, which beats
+  // the curated/generated fallback. One order for every company now.
+  const articleNews = live ?? liveFeed ?? generated;
   // Interleaved by date, so recency decides the order and neither source can
   // permanently outrank the other. The HERO stays an article whenever one
   // exists — leading the card with the employer's own post would give a
