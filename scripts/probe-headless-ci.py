@@ -4,18 +4,30 @@ Does a headless browser on a PLAIN CI address get these boards, or do they need
 the residential IP too?
 
 WHY THIS EXISTS
-Seven feeds go through Oxylabs with `render=True`: Stockland, Dyno Nobel and
-Sandfire (SAP SuccessFactors RCM), Whitehaven (Dayforce), APS Jobs (Salesforce
-Aura), Naukri and Zhaopin. Probed from a datacentre address WITHOUT a browser
-they return 200 and a full-looking page carrying no readable jobs, because the
-results arrive after load.
+This answers one question for the WHOLE Oxylabs surface: which of these feeds is
+the proxy actually buying something for, measured from the environment the feeds
+run in rather than from a developer sandbox.
 
-That proves they need a BROWSER. It does not say whether they also need the
-residential IP, and the difference decides how much of the Oxylabs bill a
-self-hosted (or plain hosted-runner) Playwright could remove on its own. The
-shell loading tells you nothing either way, so the only way to settle it is to
-run a real headless browser from an ordinary GitHub runner and count what comes
-back.
+Two groups are probed, and they are asking different things.
+
+The RENDER-GATED group came first: Stockland, Dyno Nobel and Sandfire (SAP
+SuccessFactors RCM), Whitehaven (Dayforce), APS Jobs (Salesforce Aura), Naukri
+and Zhaopin. From a datacentre address without a browser they return 200 and a
+full-looking page carrying no readable jobs, because the results arrive after
+load. That proves they need a BROWSER; it says nothing about the IP.
+
+The ADDRESS group is everything else on the proxy — Jora, SimplyHired, LinkedIn
+jobs and posts, GulfTalent, startup.jobs, the NSW bearer step, jobs.govt.nz,
+NAB, Auckland Airport, TechnologyOne. Those go through Oxylabs for the exit
+address, and most of those dependencies were established long enough ago that
+they are beliefs rather than measurements.
+
+WHY IT IS WORTH A RUNNER-MINUTE
+One verdict in this repo's history was wrong in exactly this way. jobs.govt.nz
+was moved off the proxy on 2026-08-04 on the strength of a sandbox probe, and
+timed out on every request from the first real scheduled run. The sandbox
+egresses through an agent proxy: a 403 there is solid evidence, a 200 is weak
+evidence. This script runs where the feeds run, so its 200s mean something.
 
 WHAT IT DOES
 Drives Chromium through the same sequence the Oxylabs `browser_instructions`
@@ -186,6 +198,143 @@ BOARDS = [
         'title': r'<h[23][^>]*>',
         'next': None,
     },
+    # ── The rest of the Oxylabs surface, added 2026-08-07 ────────────────────
+    # The first eight entries above were the RENDER-gated group: boards that
+    # need a browser, asked whether they also need the IP. These eleven are the
+    # other question — the feeds that go through Oxylabs for the ADDRESS, whose
+    # dependency has never been re-measured from a runner. Each URL is the shape
+    # its scraper actually walks, and each `rows` marker is copied from that
+    # scraper, so a pass here means the nightly run would work.
+    #
+    # This matters because one verdict in this file's own history was wrong:
+    # jobs.govt.nz was moved to direct on a sandbox measurement and timed out on
+    # every request from the first real runner. A 200 from the wrong vantage
+    # point is weak evidence; this is the right vantage point.
+    {
+        'name': 'Jora (AU company search)',
+        'script': 'scripts/jora-to-d1.py',
+        'url': 'https://au.jora.com/j?q=BHP&l=Australia&p=1',
+        'settle': 6,
+        'rows': r'data-braze-job-panel-view="',
+        'title': r'data-braze-job-panel-view="',
+        'next': None,
+    },
+    {
+        'name': 'SimplyHired (AU search)',
+        'script': 'scripts/simplyhired-to-d1.py',
+        # The rows live in a __NEXT_DATA__ island. Quotes inside a <script> are
+        # not entity-escaped, so the marker matches page.content() directly.
+        'url': 'https://www.simplyhired.com.au/search?q=BHP',
+        'settle': 8,
+        'rows': r'"jobKey"',
+        'title': r'"jobKey"',
+        'next': None,
+    },
+    {
+        'name': 'LinkedIn jobs (guest search)',
+        'script': 'scripts/linkedin-to-d1.py',
+        # The guest endpoint the scraper uses, not the logged-in job search —
+        # it returns an HTML fragment of cards.
+        'url': ('https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings'
+                '/search?keywords=BHP&start=0&sortBy=DD'),
+        'settle': 5,
+        'rows': r'/jobs/view/',
+        'title': r'/jobs/view/',
+        'next': None,
+    },
+    {
+        'name': 'LinkedIn posts (company page)',
+        'script': 'scripts/linkedin-posts-to-d1.py',
+        # Measured from a hosted runner once before: 0 posts in 100 requests,
+        # authwalled from the first. Re-asked because that is the single most
+        # expensive feed to keep on the proxy if it ever stops being true.
+        'url': 'https://www.linkedin.com/company/bhp/',
+        'settle': 10,
+        'rows': r'urn:li:activity',
+        'title': r'urn:li:activity',
+        'next': None,
+    },
+    {
+        'name': 'GulfTalent (jobs API)',
+        'script': 'scripts/gulftalent-to-d1.py',
+        # A JSON endpoint. See `json_key`: navigating a browser to JSON wraps it
+        # in <pre> and entity-escapes the quotes, so this is counted by parsing
+        # the body text rather than by a regex over the markup.
+        'url': 'https://www.gulftalent.com/api/jobs/search?limit=50&offset=0',
+        'settle': 3,
+        'json_key': 'positions',
+        'rows': r'"positions"',
+        'title': r'"positions"',
+        'next': None,
+    },
+    {
+        'name': 'startup.jobs (company page)',
+        'script': 'scripts/startupjobs-to-d1.py',
+        # Only the per-company pages need the proxy; the 42,885-company sitemap
+        # on cdn.startup.jobs already answers a plain request.
+        'url': 'https://startup.jobs/company/canva',
+        'settle': 6,
+        'rows': r'data-post-template-target="title"',
+        'title': r'data-post-template-target="title"',
+        'next': None,
+    },
+    {
+        'name': 'NSW iworkfor (bearer step)',
+        'script': 'scripts/nsw-gov-to-d1.py',
+        # The search API (api.ad-core04.com) is already plain HTTP. Oxylabs is
+        # bought for ONE step: reading the OAuth bearer out of the site's own JS
+        # bundle, because iworkfor.nsw.gov.au sits behind Cloudflare's "Just a
+        # moment" and 403s a datacentre IP even for static /_next/ chunks. So
+        # the marker is the bundle, not a job.
+        'url': 'https://iworkfor.nsw.gov.au/',
+        'settle': 10,
+        'rows': r'/_next/static/',
+        'title': r'/_next/static/',
+        'next': None,
+    },
+    {
+        'name': 'jobs.govt.nz (Auckland page 1)',
+        'script': 'scripts/nzgov-to-d1.py',
+        # THE ONE THAT REVERTED. Moved to direct 2026-08-04 on a sandbox
+        # measurement, then timed out on every request from the first real
+        # runner and went back on the proxy. This is that measurement, taken
+        # from the environment the feed actually runs in.
+        'url': ('https://jobs.govt.nz/jobtools/jncustomsearch.searchResults'
+                '?in_organid=16563&in_jobDate=All&in_location=Auckland&in_pg=0'),
+        'settle': 5,
+        'rows': r'<td class="job_title">',
+        'title': r'<td class="job_title">',
+        'next': None,
+    },
+    {
+        'name': 'NAB careers (Clinch cards)',
+        'script': 'scripts/nab-to-d1.py',
+        # 12s is the settle its own scraper uses: below that the capture can
+        # still be the WAF challenge rather than the board.
+        'url': 'https://careers.nab.com.au/jobs/search',
+        'settle': 12,
+        'rows': r'job-search-results-card-col',
+        'title': r'job-search-results-card-title',
+        'next': None,
+    },
+    {
+        'name': 'Auckland Airport (WPJB)',
+        'script': 'scripts/aucklandairport-to-d1.py',
+        'url': 'https://careers.aucklandairport.co.nz/jobs/',
+        'settle': 6,
+        'rows': r'wpjb-job-tile',
+        'title': r'wpjb-job-tile',
+        'next': None,
+    },
+    {
+        'name': 'TechnologyOne (join-the-team)',
+        'script': 'scripts/technologyone-to-d1.py',
+        'url': 'https://www.technology1.com/company/life-at-techone/join-the-team',
+        'settle': 8,
+        'rows': r'<tr data-referrals="',
+        'title': r'<tr data-referrals="',
+        'next': None,
+    },
 ]
 
 
@@ -263,6 +412,21 @@ def probe(pw, board: dict) -> dict:
         res['bytes'] = len(html)
         res['rows'] = len(re.findall(board['rows'], html))
         res['titles'] = len(re.findall(board['title'], html))
+        # A JSON endpoint navigated by a BROWSER is not JSON any more: Chromium
+        # wraps it in <pre> and entity-escapes every quote, so `"positions"`
+        # matches nothing and the target reads as blocked when it answered
+        # perfectly. These are counted off the body text instead, and the count
+        # is the length of the array the scraper reads rather than a marker.
+        if board.get('json_key'):
+            try:
+                doc = json.loads(page.evaluate('document.body.innerText'))
+                arr = doc.get(board['json_key']) or []
+                res['rows'] = len(arr)
+                res['titles'] = len(arr)
+            except Exception as e:  # noqa: BLE001
+                res['json_error'] = str(e)[:120]
+                res['rows'] = 0
+                res['titles'] = 0
         # Where the scraper uses a parser rather than a regex, that parser is
         # the authority: a marker appearing in the markup is not the same claim
         # as the scraper being able to read a job out of it.
@@ -310,7 +474,7 @@ def main() -> int:
     except ImportError:
         sys.exit('playwright not installed: pip install playwright && playwright install chromium')
 
-    print(f'Headless Chromium from this runner, against {len(BOARDS)} render-gated boards.')
+    print(f'Headless Chromium from this runner, against {len(BOARDS)} Oxylabs targets.')
     print("Counting rows the way each scraper does — its own regex, or its own "
           "parser where it uses one.\n")
     out = []

@@ -1,6 +1,13 @@
 # One-off measurement, not a feed: does a headless browser on an ORDINARY
-# GitHub runner get the render-gated boards, or do they need the residential IP
-# too?
+# GitHub runner get these boards, or do they need the residential IP too?
+#
+# Covers the WHOLE Oxylabs surface — the render-gated boards it started with,
+# plus the eleven feeds that go through the proxy for the exit ADDRESS (Jora,
+# SimplyHired, LinkedIn jobs and posts, GulfTalent, startup.jobs, the NSW bearer
+# step, jobs.govt.nz, NAB, Auckland Airport, TechnologyOne). Most of those
+# dependencies are beliefs rather than measurements, and one of them —
+# jobs.govt.nz — was already wrong once, moved off the proxy on a sandbox probe
+# and timed out on every request from the first real run.
 #
 # Seven feeds go through Oxylabs with render=True — Stockland, Dyno Nobel and
 # Sandfire (SuccessFactors), Whitehaven (Dayforce), APS Jobs (Salesforce Aura),
@@ -30,7 +37,7 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
 
