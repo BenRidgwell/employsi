@@ -241,6 +241,14 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "perth-gov-north-metropolitan-tafe": "northmetrotafe.wa.edu.au",
   "perth-gov-office-of-the-director-of-public-prosecutions": "dpp.wa.gov.au",
   "perth-gov-pathwest": "pathwest.health.wa.gov.au",
+  // perron.com.au is PERRON INTEGRATED LOGISTICS, a different company — so the
+  // badge was serving another firm's mark on Perron Group's pin, which is the
+  // De Grey failure in miniature: confidently wrong rather than blank. Perron
+  // Group (the Stan Perron property/Toyota WA group) is perrongroup.com.au,
+  // confirmed from its own description. Its favicon is all white, so the badge
+  // goes from wrong to empty — which is the right direction, and the fix from
+  // here is a file in public/logos/.
+  "priv-perron-group": "perrongroup.com.au",
   // These two are the CORRECT domains and both sites answer 200, but the
   // favicon service has nothing for either today, so the badge does not change
   // yet. Recorded anyway: the domain is the fact, and the badge fixes itself
@@ -297,7 +305,6 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "priv-opal-aged-care": "opalhealthcare.com.au",
   "priv-pallion": "pallion.com.au",
   "priv-people-first-bank": "peoplefirstbank.com.au",
-  "priv-perron-group": "perron.com.au",
   "priv-pharmacare": "pharmacare.com.au",
   "priv-queensland-sugar": "qsl.com.au",
   "priv-refuelling-solutions": "refuellingsolutions.com.au",
