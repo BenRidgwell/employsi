@@ -272,10 +272,16 @@ BOARDS = [
         'script': 'scripts/startupjobs-to-d1.py',
         # Only the per-company pages need the proxy; the 42,885-company sitemap
         # on cdn.startup.jobs already answers a plain request.
-        'url': 'https://startup.jobs/company/canva',
+        # A slug taken from the company sitemap the scraper itself reads, NOT
+        # guessed: the first run of this entry used /company/canva, which does
+        # not exist. The runner answered 404 — reachable, wrong page — and the
+        # bare marker matched once on the 404 body, so it scored ROWS=1 and
+        # would have been read as a pass. The marker now requires the href the
+        # scraper's own CARD regex requires, so a stray attribute cannot score.
+        'url': 'https://startup.jobs/company/twitch',
         'settle': 6,
-        'rows': r'data-post-template-target="title"',
-        'title': r'data-post-template-target="title"',
+        'rows': r'data-post-template-target="title"[^>]*href="/',
+        'title': r'data-post-template-target="title"[^>]*href="/',
         'next': None,
     },
     {
