@@ -91,11 +91,33 @@ def d1(sql: str) -> list[dict]:
 
 
 def existing() -> dict[str, str]:
-    """The map as it stands, so a throttled run adds rather than replaces."""
+    """The map as it stands, so a throttled run adds rather than replaces.
+
+    QUOTE-AGNOSTIC, and it has to be. The first version required quoted keys,
+    but this file is written through Prettier, which drops the quotes from any
+    key that is a valid identifier — so `bhp:` was invisible while
+    `"perth-drr":` was not. Measured on the first full run: 55 of 87 entries
+    read, the other 32 unseen. Nothing was lost that day only because every
+    company happened to be re-fetched; a throttled run would have deleted them.
+    This is the same fault that took seek-to-d1.py to zero when Prettier
+    reformatted seekAdvertisers.ts.
+
+    And because a tolerant pattern is still a pattern, the count is CHECKED
+    against the file rather than trusted: every stored entry is one https URL,
+    so if the parse sees fewer than the file holds, it has broken again and
+    refuses rather than quietly returning a short map.
+    """
     if not os.path.exists(OUT):
         return {}
     txt = open(OUT).read()
-    return dict(re.findall(r'"([A-Za-z0-9_-]+)":\s*\n?\s*"([^"]+)"', txt))
+    found = dict(re.findall(r'"?([A-Za-z0-9_-]+)"?:\s*\n?\s*"(https://[^"]+)"', txt))
+    urls = txt.count('"https://')
+    if len(found) < urls:
+        raise RuntimeError(
+            f'read {len(found)} of {urls} stored logos from {os.path.basename(OUT)} — '
+            'the parser no longer understands the file it wrote. Refusing to run, '
+            'because merging against a short map deletes the entries it could not see.')
+    return found
 
 
 def logo_url(slug: str) -> tuple[str, str]:
