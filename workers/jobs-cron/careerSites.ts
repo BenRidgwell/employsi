@@ -145,7 +145,12 @@ type Platform =
   | "wprest"
   | "wploop"
   | "pageupclassic"
-  | "eightfoldpcs";
+  | "eightfoldpcs"
+  | "radancy"
+  | "adlogic"
+  | "wpjobmanager"
+  | "employmenthero"
+  | "chris21";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -224,6 +229,16 @@ interface SiteDef {
    * shape that was already completing before the cap was raised.
    */
   pageFrom?: number;
+  /**
+   * The advertiser name a row must carry to be filed against this company, on
+   * boards SHARED with other employers. Defaults to `name`.
+   *
+   * Bellevue Gold needs it: it advertises on the Gold Industry Group's board
+   * alongside nine other miners, so "the rows on this page" and "this
+   * company's rows" are only the same thing while the page template holds.
+   * Everywhere else the board belongs to one employer and this is unused.
+   */
+  expectCompany?: string;
 }
 
 export const SITES: SiteDef[] = [
@@ -2133,6 +2148,88 @@ export const SITES: SiteDef[] = [
     homeHub: "melbourne",
     maxPages: 45,
   },
+  {
+    id: "chevron",
+    name: "Chevron",
+    sector: "Oil, Gas & LNG",
+    platform: "radancy",
+    endpoint: "https://careers.chevron.com/search-jobs/results",
+    origin: "https://careers.chevron.com",
+    // Measured 2026-08-08: 155 advertised, 155 collected over two pages, and
+    // NONE of them in Australia — 41 Bengaluru, 22 Houston, 24 Buenos Aires,
+    // 16 Makati City, the rest scattered. Perth roles do appear here when they
+    // are open (Chevron Australia's own careers page links to a /job/perth/...
+    // URL on this board, now expired), so this is a real zero rather than a
+    // parser that found nothing. See fetchRadancy.
+    homeHub: "perth",
+    pageSize: 100,
+    // 155 at 100 a page is 2; 6 leaves room to triple before the bound bites,
+    // and the walk stops on the advertised total first.
+    maxPages: 6,
+  },
+  {
+    id: "asb",
+    name: "Austal",
+    sector: "Shipbuilding",
+    platform: "adlogic",
+    // page_id=4 is the WordPress page the AdLogic search widget is mounted on,
+    // read off the inline adlogicJobSearch({ajaxServer: ...}) config. It is
+    // per-tenant, not a constant.
+    endpoint: "https://careers.austal.com/adlogic-jobs?action=searchJobs&page_id=4",
+    origin: "https://careers.austal.com",
+    // Measured 2026-08-08: 95 advertised, 95 returned in ONE request, almost
+    // all at the Henderson yard with a few at Fremantle. The board's own RSS
+    // stops at 50 — see fetchAdLogic.
+    homeHub: "perth",
+    // The `to` row number asked for. 200 is roughly double the board, so the
+    // one-request read survives Austal doubling its hiring; the count it
+    // advertises is what actually bounds the result.
+    pageSize: 200,
+  },
+  {
+    id: "perth-bgl",
+    name: "Bellevue Gold",
+    sector: "Gold",
+    platform: "wpjobmanager",
+    // Bellevue has no ATS of its own — it advertises through the Gold Industry
+    // Group's shared board. Which is why expectCompany is set: nine other
+    // miners publish on the same site.
+    endpoint: "https://jobs.goldindustrygroup.com.au/companies/bellevue-gold/",
+    origin: "https://jobs.goldindustrygroup.com.au",
+    expectCompany: "Bellevue Gold",
+    // Measured 2026-08-08: 7 vacancies, all at Sir Samuel in the Goldfields,
+    // rendered in full with no pagination markup anywhere on the page.
+    homeHub: "perth",
+  },
+  {
+    id: "boe",
+    name: "Boss Energy",
+    sector: "Uranium",
+    platform: "employmenthero",
+    // The org slug is part of the careers URL Boss publishes
+    // (employmenthero.com/jobs/organisations/boss-energy-isd9j/); the API is
+    // named in that page's own markup.
+    endpoint:
+      "https://services.employmenthero.com/ats/api/v1/career_page/organisations/boss-energy-isd9j/jobs",
+    origin: "https://employmenthero.com",
+    // Measured 2026-08-08: 7 roles, every one of them advertised as Adelaide —
+    // Boss's producing asset is the Honeymoon mine in South Australia. They
+    // plot there. Perth is where the company sits.
+    homeHub: "perth",
+    pageSize: 100,
+  },
+  {
+    id: "ccv",
+    name: "Cash Converters",
+    sector: "Consumer finance",
+    platform: "chris21",
+    endpoint: "https://csz.chris21.com/CSZ_MER21p/Er21Mobile/GetMobileJobs/",
+    origin: "https://csz.chris21.com/CSZ_MER21p",
+    // Measured 2026-08-08: 16 vacancies — store roles across QLD, NSW, VIC and
+    // WA plus a few at the Perth head office. Reaching them needs a cookie the
+    // published entry point does not set; see fetchChris21.
+    homeHub: "perth",
+  },
 ];
 
 /**
@@ -2339,6 +2436,15 @@ export const PORTAL_GROUPS: string[][] = [
   ["brisbane-flt", "brisbane-ctd", "sydney-rwc-emea", "sydney-rwc-am"],
   // Two Workday walks plus Cornerstone and Rippling, all short.
   ["perth-aa", "priv-perth-airport", "priv-georgiou", "melbourne-4dx"],
+  // Group 45: the five added 2026-08-08, all Perth companies that had no
+  // direct feed. Measured that day: Chevron 155 (none in Australia), Austal 95,
+  // Cash Converters 16, Bellevue Gold 7, Boss Energy 7.
+  //
+  // They share one tick because none of them pages: Austal, Bellevue and Boss
+  // each serve their whole board in a single request, Chevron takes two at 100
+  // a page, and Cash Converters takes two because the first is spent being
+  // issued a cookie. Seven requests for 280 roles is the cheapest group here.
+  ["chevron", "asb", "ccv", "perth-bgl", "boe"],
 ];
 
 const UA =
@@ -5876,7 +5982,409 @@ async function fetchEightfoldPcs(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── Radancy TalentBrew (Chevron) ─────────────────────────────────────────────
+/**
+ * The visible page is a shell; its list arrives from /search-jobs/results as
+ * JSON whose `results` field is the rendered `<ul>`. Read that rather than the
+ * page, because the page is one fixed slice of the same thing.
+ *
+ * BOUNDED BY THE ADVERTISED TOTAL, not by a short page. `data-total-results` on
+ * the results section is the board's own count and it agrees with what is
+ * served: measured 2026-08-08 on Chevron, 155 advertised, 100 on page 1 and 55
+ * on page 2, 155 collected. Walking until a short page would work here and is
+ * the habit that has truncated two other feeds silently, so the total is used.
+ *
+ * `RecordsPerPage` is honoured up to at least 100 (the default page serves 15).
+ *
+ * Chevron is a global board with nothing in Australia on the day it was added —
+ * 41 Bengaluru, 22 Houston, 24 Buenos Aires, 16 Makati, and no AU role at all.
+ * That is a real zero, not a parse failure: the `/job/perth/...` URL shape is
+ * on the board's own site (the link Chevron Australia publishes points at an
+ * expired Perth cadet role, which now 404s), so Perth roles do appear here when
+ * they are open. homeHub is where the company plots; hubFor places each role
+ * from its own location cell and leaves the rest untagged, as it does for
+ * Ansell.
+ */
+async function fetchRadancy(site: SiteDef): Promise<PortalJob[]> {
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const pageSize = site.pageSize ?? 100;
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  let total = 0;
+  for (let page = 1; page <= max; page++) {
+    const params = new URLSearchParams({
+      ActiveFacetID: "0",
+      CurrentPage: String(page),
+      RecordsPerPage: String(pageSize),
+      Distance: "50",
+      RadiusUnitType: "0",
+      Keywords: "",
+      Location: "",
+      ShowRadius: "False",
+      IsPagination: page === 1 ? "False" : "True",
+      CustomFacetName: "",
+      FacetTerm: "",
+      FacetType: "0",
+      SearchResultsModuleName: "Search Results",
+      SearchFiltersModuleName: "Search Filters",
+      SortCriteria: "0",
+      SortDirection: "0",
+      SearchType: "5",
+      PostalCode: "",
+    });
+    const json = await getJson<{ results?: string }>(`${site.endpoint}?${params.toString()}`);
+    const html = json?.results;
+    if (!html) break;
+    if (page === 1) {
+      total = Number(html.match(/data-total-results="(\d+)"/i)?.[1] ?? 0);
+      // No total means the section shape changed. Stopping is right: paging on
+      // regardless would walk to maxPages against a board that may be serving
+      // something else entirely.
+      if (!total) break;
+    }
+    let added = 0;
+    for (const li of html.split(/<li>/i).slice(1)) {
+      const a = li.match(/<a href="([^"]+)"[^>]*data-job-id="([^"]*)"/i);
+      if (!a) continue;
+      const href = clean(a[1]);
+      const id = clean(a[2]) || href;
+      const title = clean(li.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i)?.[1] ?? "");
+      if (!title || seen.has(id)) continue;
+      seen.add(id);
+      added++;
+      out.push(
+        job(
+          site,
+          title,
+          clean(li.match(/class="job-location"[^>]*>([\s\S]*?)<\/span>/i)?.[1] ?? ""),
+          href.startsWith("http") ? href : `${site.origin}${href}`,
+          // The list carries no posting date, only the job page does. Dating
+          // every row "today" would be a fabricated field; the archive's
+          // last_seen is what actually tracks a role's life here.
+          today(),
+          "Career portal",
+        ),
+      );
+    }
+    if (!added || out.length >= total) break;
+  }
+  return out;
+}
+
+// ── AdLogic (Austal) ─────────────────────────────────────────────────────────
+/**
+ * A WordPress theme over AdLogic's recruitment-ad feed. The board's own RSS
+ * (/adlogic-jobs/rss and /bulk-rss) is the obvious read and is WRONG: measured
+ * 2026-08-08, both cap at 50 items against a board advertising 95. That is the
+ * silent-truncation shape this file keeps running into — a feed that answers
+ * successfully with half the roles.
+ *
+ * The searchJobs endpoint the page's own widget calls has no such cap. `from`
+ * and `to` are absolute row numbers, and asking for a window wider than the
+ * board returns everything: 95 advertised, 95 returned in one request. The
+ * count is read from `JobPostings.@attributes.count` and the walk stops on it.
+ *
+ * `page_id` is the WordPress page the search widget is mounted on. It is part
+ * of the tenant's endpoint, not a constant — it comes out of the inline
+ * `adlogicJobSearch({ajaxServer: ...})` config on the careers page.
+ *
+ * Locations arrive as a three-level array (country / state / town), joined
+ * most-specific-first so hubFor sees "Henderson, Western Australia, Australia"
+ * and reads the town before the country.
+ */
+interface AdLogicPosting {
+  "@attributes"?: { ad_id?: string };
+  JobTitle?: string;
+  pubDate?: string;
+  locations?: { location?: { value?: string }[] | { value?: string } };
+  classifications?: { classification?: { value?: string }[] | { value?: string } };
+}
+
+/**
+ * The JSON is a serialised XML document, so an EMPTY element arrives as `{}`
+ * rather than as "" — `{"value": {}}` for a classification with no text, and
+ * likewise for `reference` and the salary fields. Measured 2026-08-08: one of
+ * Austal's 95 postings carries exactly that, and passing it to clean() threw
+ * "s.replace is not a function" and lost the whole board. So the type is
+ * checked rather than defaulted, which `?? ""` cannot do — `{}` is not nullish.
+ */
+function adLogicText(v: unknown): string {
+  return typeof v === "string" ? clean(v) : "";
+}
+
+function adLogicValues(node: { value?: string }[] | { value?: string } | undefined): string[] {
+  if (!node) return [];
+  const list = Array.isArray(node) ? node : [node];
+  return list.map((v) => adLogicText(v?.value)).filter(Boolean);
+}
+
+async function fetchAdLogic(site: SiteDef): Promise<PortalJob[]> {
+  const want = (site.pageSize ?? 200) + 1;
+  const json = await getJson<{
+    JobPostings?: {
+      "@attributes"?: { count?: string };
+      JobPosting?: AdLogicPosting[] | AdLogicPosting;
+    };
+  }>(`${site.endpoint}&from=1&to=${want}&currentPage=0`);
+  const postings = json?.JobPostings?.JobPosting;
+  if (!postings) return [];
+  const rows = Array.isArray(postings) ? postings : [postings];
+  const total = Number(json?.JobPostings?.["@attributes"]?.count ?? 0);
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const p of rows) {
+    const title = adLogicText(p.JobTitle);
+    const id = adLogicText(p["@attributes"]?.ad_id) || title;
+    if (!title || seen.has(id)) continue;
+    seen.add(id);
+    // Most specific first: hubFor takes the first needle it recognises, and
+    // country-first would resolve every role to the home hub.
+    const parts = adLogicValues(p.locations?.location).reverse();
+    const state = parts[1] ?? parts[0] ?? "";
+    out.push(
+      job(
+        site,
+        title,
+        parts.join(", "),
+        // The canonical shape the board's own RSS emits. Only the trailing id
+        // is load-bearing — the title and state segments are decorative, and a
+        // wrong one still resolves (measured 2026-08-08) — but they are built
+        // properly so the stored link is the one a visitor would see.
+        `${site.origin}/job-details/query/${encodeURIComponent(title).replace(/%20/g, "+")}` +
+          `/in/${encodeURIComponent(state).replace(/%20/g, "+")}/${id}/`,
+        isoDay(adLogicText(p.pubDate)),
+        adLogicValues(p.classifications?.classification)[0] || "Career portal",
+      ),
+    );
+  }
+  // A short answer against the board's own count means the window was too
+  // narrow or the feed truncated; both are worth seeing rather than archiving
+  // silently. The rows already collected are still returned — a partial pull
+  // beats none — but the gap is logged.
+  if (total && out.length < total) {
+    console.log(`adlogic ${site.id}: ${out.length} of ${total} advertised`);
+  }
+  return out;
+}
+
+// ── WP Job Manager / WorkScout (Bellevue Gold, via the Gold Industry Group) ──
+/**
+ * Bellevue Gold has no ATS of its own: it advertises through the Gold Industry
+ * Group's shared board, whose company pages are WordPress (WP Job Manager rows
+ * in the WorkScout theme) rendered server-side in full — no pagination markup
+ * of any kind on the page, so one GET is the whole board (measured 2026-08-08:
+ * 7 vacancies, zero pagination/load-more markers).
+ *
+ * BECAUSE THE BOARD IS SHARED, the advertiser is checked. Ten employers publish
+ * here — AngloGold, Evolution, Gold Fields, Northern Star, Ramelius, Regis,
+ * Saturn, the Perth Mint and Westgold as well as Bellevue — and the company
+ * page is a WordPress template, so a layout change that widened the query would
+ * file another gold miner's roles against this one. `expectCompany` is the
+ * guard: a row whose own `company-name` cell disagrees is dropped.
+ *
+ * Location and category come from the icon-labelled cells, which is the only
+ * thing that distinguishes them: they are sibling <li>s with identical markup
+ * apart from the icon class (ln-icon-Map2 / ln-icon-Tag).
+ */
+async function fetchWpJobManager(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const want = clean(site.expectCompany ?? site.name).toLowerCase();
+  for (const card of html.split(/<li data-longitude/i).slice(1)) {
+    const href = clean(card.match(/<a href="([^"]+\/job\/[^"]+)"/i)?.[1] ?? "");
+    if (!href || seen.has(href)) continue;
+    // The title cell holds a work-type badge as well; the badge is stripped by
+    // cutting at its <span> rather than by cleaning the whole h4, which would
+    // run "Mine Surveyor" and "Full Time" together into one title.
+    const h4 = card.match(/<h4[^>]*>([\s\S]*?)<\/h4>/i)?.[1] ?? "";
+    const title = clean(h4.split(/<span/i)[0]);
+    if (!title) continue;
+    const company = clean(card.match(/class="company-name"[^>]*>([\s\S]*?)<\/li>/i)?.[1] ?? "");
+    if (want && company && company.toLowerCase() !== want) continue;
+    seen.add(href);
+    out.push(
+      job(
+        site,
+        title,
+        clean(card.match(/ln-icon-Map2[^>]*><\/i>([\s\S]*?)<\/li>/i)?.[1] ?? ""),
+        href,
+        // WP Job Manager prints "Posted 3 weeks ago" rather than a date, which
+        // is not a date. last_seen carries the freshness instead.
+        today(),
+        clean(card.match(/ln-icon-Tag[^>]*><\/i>([\s\S]*?)<\/li>/i)?.[1] ?? "") || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── Employment Hero ATS (Boss Energy) ────────────────────────────────────────
+/**
+ * The careers page is server-rendered, but it names its own API in the markup —
+ * services.employmenthero.com/ats/api/v1/career_page/organisations/<org>/jobs —
+ * and that is read instead, because it carries `total_items` to bound the walk
+ * and a location field the cards only render as free text.
+ *
+ * `item_per_page` is honoured to at least 100 (the default is 10), so a board
+ * this size is one request. Measured 2026-08-08 on Boss Energy: 7 roles, all at
+ * the Honeymoon mine and all advertised as Adelaide, which is where they plot —
+ * homeHub is Perth because that is where the company sits, not a claim about
+ * where it hires.
+ */
+interface EmploymentHeroJob {
+  title?: string;
+  friendly_id?: string;
+  vendor_location_name?: string;
+  created_at?: string;
+  team_name?: string;
+}
+
+async function fetchEmploymentHero(site: SiteDef): Promise<PortalJob[]> {
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const perPage = site.pageSize ?? 100;
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  let pages = 1;
+  for (let page = 1; page <= pages && page <= max; page++) {
+    const json = await getJson<{
+      data?: { items?: EmploymentHeroJob[]; total_pages?: number };
+    }>(`${site.endpoint}?page_index=${page}&item_per_page=${perPage}`);
+    const items = json?.data?.items;
+    if (!items?.length) break;
+    if (page === 1) pages = Math.max(1, Number(json?.data?.total_pages ?? 1));
+    for (const j of items) {
+      const title = clean(j.title ?? "");
+      const slug = clean(j.friendly_id ?? "");
+      const id = slug || title;
+      if (!title || seen.has(id)) continue;
+      seen.add(id);
+      out.push(
+        job(
+          site,
+          title,
+          clean(j.vendor_location_name ?? ""),
+          slug ? `${site.origin}/jobs/position/${slug}/` : site.origin,
+          isoDay(j.created_at ?? ""),
+          clean(j.team_name ?? "") || "Career portal",
+        ),
+      );
+    }
+  }
+  return out;
+}
+
+// ── Frontier Software chris21 (Cash Converters) ──────────────────────────────
+/**
+ * An AngularJS candidate portal whose vacancy list comes from
+ * Er21Mobile/GetMobileJobs. That endpoint is [Authorize]-gated even for
+ * anonymous browsing, and the fix is not obvious enough to leave unwritten:
+ *
+ *   GET the published entry point (/Home/index)  -> ASP.NET_SessionId only
+ *   GET /Account/Login                           -> ASP.NET_SessionId AND
+ *                                                   .AspNet.ApplicationCookie
+ *
+ * Only the second satisfies the gate. Measured 2026-08-08, three runs each:
+ * with no cookie, and with a jar seeded from /Home/index, GetMobileJobs 302s to
+ * /Account/Login every time and returns nothing; with a jar seeded from
+ * /Account/Login it returns the full 190 KB list every time. So the login page
+ * is fetched purely to be issued the anonymous auth ticket — nothing is posted
+ * to it and no credentials exist.
+ *
+ * That 302 is exactly what a block looks like, which is why it is written down.
+ *
+ * TWO NON-OBVIOUS REQUIREMENTS, both of which cost a run to find:
+ *
+ *  - `redirect: "manual"` on the seed. /Account/Login answers 302, and the
+ *    auth ticket is set ON THAT 302. Following it — the default — discards
+ *    those Set-Cookie headers and hands back only the destination's, so the
+ *    ticket is silently lost and the API 302s straight back.
+ *  - an explicit Accept-Language. Without one the runtime sends
+ *    `accept-language: *`, which this ASP.NET app answers with a 500 (it is not
+ *    a parseable culture). Measured: seed 500 with no header, 302 with one.
+ *
+ * The board carries no server-side per-vacancy route: the detail view is an
+ * Angular hash state driven by an id, and /Home/Vacancy/<id>,
+ * /Home/Vacancy?VacancyId=<id>, /Home/index?VacancyId=<id>, ?vacancy=<id> and
+ * /Home/index/<id> were all tried — the first two 404 and the rest serve the
+ * same shell with an empty GoVacancy. So every row links to the board itself
+ * rather than to a URL invented to look specific.
+ */
+interface Chris21Row {
+  Vacancy?: {
+    Id?: string | number;
+    Title?: string;
+    Location?: string;
+    JobSector?: string;
+    AdvertisedDate?: string;
+  };
+}
+
+async function fetchChris21(site: SiteDef): Promise<PortalJob[]> {
+  // The cookie the API needs, taken from the login page's response headers.
+  // getSetCookie() rather than get(): two Set-Cookie headers arrive and get()
+  // would fold them into one comma-joined string that no server parses back.
+  const lang = { "Accept-Language": "en-AU,en;q=0.9" };
+  let jar = "";
+  try {
+    const seed = await fetch(`${site.origin}/Account/Login`, {
+      headers: { "User-Agent": UA, ...lang },
+      redirect: "manual",
+    });
+    jar = seed.headers
+      .getSetCookie()
+      .map((c) => c.split(";")[0])
+      .filter(Boolean)
+      .join("; ");
+  } catch {
+    return [];
+  }
+  // No ticket means the gate will bounce us; returning early keeps the failure
+  // in one place instead of as an empty JSON parse two calls later.
+  if (!jar.includes("AspNet")) return [];
+  const rows = await getJson<Chris21Row[]>(
+    `${site.endpoint}?isInternalApplicant=false&isLoggedOn=false`,
+    { headers: { ...lang, Cookie: jar, Referer: `${site.origin}/Home/index` } },
+  );
+  if (!Array.isArray(rows)) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const r of rows) {
+    const v = r?.Vacancy;
+    const title = clean(v?.Title ?? "");
+    const id = String(v?.Id ?? "") || title;
+    if (!title || seen.has(id)) continue;
+    seen.add(id);
+    out.push(
+      job(
+        site,
+        title,
+        clean(v?.Location ?? ""),
+        `${site.origin}/Home/index#!/`,
+        // d/M/yyyy with a time — Date.parse reads the US order and would turn
+        // 5/08/2026 into May. Reordered to ISO before isoDay sees it.
+        chris21Date(v?.AdvertisedDate ?? ""),
+        clean(v?.JobSector ?? "") || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+/** "5/08/2026 12:00:00 AM" (d/M/yyyy) -> ISO day. */
+function chris21Date(s: string): string {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec((s || "").trim());
+  if (!m) return today();
+  return isoDay(`${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`);
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
+  radancy: fetchRadancy,
+  adlogic: fetchAdLogic,
+  wpjobmanager: fetchWpJobManager,
+  employmenthero: fetchEmploymentHero,
+  chris21: fetchChris21,
   successfactors: fetchSuccessFactors,
   workday: fetchWorkday,
   eightfold: fetchEightfold,
@@ -5991,6 +6499,14 @@ const SOURCE_TAG: Record<Platform, string> = {
   // advertisement is an advertisement, so it dedupes against an ef row rather
   // than sitting beside one.
   eightfoldpcs: "ef",
+  radancy: "radancy",
+  adlogic: "adlogic",
+  // The employer's roles on a THIRD-PARTY industry board, not on its own
+  // WordPress site — so this does not share the "wp" tag the wprest/wploop
+  // readers use. Where a row came from is the thing a source tag records.
+  wpjobmanager: "wpjm",
+  employmenthero: "eh",
+  chris21: "chris21",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */

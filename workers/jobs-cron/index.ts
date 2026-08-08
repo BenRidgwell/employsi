@@ -1168,6 +1168,10 @@ const PORTAL_TICKS: Record<string, number> = {
   "45 11 * * *": 43,
   // Group 44 — Alcoa, Perth Airport, Georgiou and 4DMedical.
   "55 11 * * *": 44,
+  // Group 45 — Chevron, Austal, Cash Converters, Bellevue Gold, Boss Energy.
+  // The 11 hour is full (5, 15, 25, 35, 45, 55 all taken), so this opens the
+  // 12 hour.
+  "5 12 * * *": 45,
 };
 
 const NEWS_TICKS: Record<string, number> = {
