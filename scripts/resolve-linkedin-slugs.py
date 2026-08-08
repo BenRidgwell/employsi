@@ -127,6 +127,43 @@ process.stdout.write(JSON.stringify(COMPANIES.map((c) => ({
         os.remove(tmp)
 
 
+# THE NAME GATE IS NOT ENOUGH FOR GOVERNMENT.
+#
+# The attribution gate asks "does this page name the company we asked for", and
+# for a government agency the answer is yes for every state at once. Measured
+# 2026-08-08 on the first run of this script: /department-of-education is
+# VICTORIA'S (vic.gov.au/education, 115,081 followers) and /department-of-justice
+# is TASMANIA'S (addressRegion "Tasmania"), and both sailed through the gate
+# because their names are byte-identical to Western Australia's.
+#
+# So a government page must also place itself in the right jurisdiction. Two
+# signals, both off the page: the structured addressRegion, and the agency's own
+# description — WA agencies say "Western Australian" constantly, and an
+# interstate one names its own government. Either alone is thin; a positive with
+# no contradiction is what passes.
+WA_EVIDENCE = re.compile(r'western australia|\bWA\b|wa\.gov\.au|perth', re.I)
+OTHER_JURISDICTION = re.compile(
+    r'victorian government|new south wales|queensland government|'
+    r'south australian government|tasmanian government|'
+    r'northern territory government|australian capital territory|'
+    r'vic\.gov\.au|nsw\.gov\.au|qld\.gov\.au|sa\.gov\.au|tas\.gov\.au|nt\.gov\.au',
+    re.I)
+
+
+def jurisdiction_ok(company_id: str, html: str) -> tuple[bool, str]:
+    """(passes, why not). Only government ids are held to this."""
+    if '-gov-' not in company_id:
+        return True, ''
+    region = (re.search(r'"addressRegion"\s*:\s*"([^"]*)"', html) or [None, ''])[1]
+    desc = (re.search(r'<meta name="description" content="([^"]{0,600})', html) or [None, ''])[1]
+    other = OTHER_JURISDICTION.search(desc) or OTHER_JURISDICTION.search(region)
+    if other:
+        return False, f'page is {other.group(0)}, not Western Australia'
+    if not WA_EVIDENCE.search(f'{region} {desc}'):
+        return False, f'page never places itself in WA (region "{region[:24]}")'
+    return True, ''
+
+
 def fetch(slug: str) -> str | None:
     try:
         req = urllib.request.Request(PAGE.format(slug=slug), headers={'User-Agent': UA})
@@ -160,12 +197,21 @@ def main() -> int:
         sys.stderr.write(f'[{i + 1}/{len(todo)}] {c["id"]} ({c["name"][:34]})... ')
         got = None
         why = 'no candidate resolved'
+        # A rejection that SAW a real page ("/x is Victoria's") is worth far
+        # more than a later candidate's 404, and the loop would otherwise
+        # overwrite it with whichever reason happened to come last. So a weak
+        # reason never replaces a strong one.
+        WEAK = ('no candidate resolved', 'no such page', 'fetch failed',
+                'page served no actor name')
+
+        def note(reason: str) -> str:
+            return reason if why in WEAK else why
         for slug in cands:
             html = fetch(slug)
             time.sleep(PAUSE)
             if html is None:
                 fails += 1
-                why = 'fetch failed'
+                why = note('fetch failed')
                 if fails >= GIVE_UP_AFTER:
                     sys.stderr.write('\nStopping: too many consecutive failures — '
                                      'LinkedIn has almost certainly started refusing this '
@@ -175,14 +221,18 @@ def main() -> int:
                 continue
             fails = 0
             if not html:
-                why = 'no such page'
+                why = note('no such page')
                 continue
             actor, _posts = rules['parse_posts'](html)
             if not actor:
-                why = 'page served no actor name'
+                why = note('page served no actor name')
                 continue
             if not rules['attributed'](c['id'], c['name'], actor):
-                why = f'/{slug} is "{actor[:34]}", not this company'
+                why = note(f'/{slug} is "{actor[:34]}", not this company')
+                continue
+            ok, bad = jurisdiction_ok(c['id'], html)
+            if not ok:
+                why = note(f'/{slug} {bad}')
                 continue
             got = (slug, actor)
             break
