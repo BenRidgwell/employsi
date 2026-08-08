@@ -65,10 +65,22 @@ function makePinImage(): { width: number; height: number; data: Uint8Array } | n
 }
 const PULSE_MS = 2200;
 // Zoom at which company name labels fade in. This sits BELOW every city's
-// arrival zoom (CITY_VIEWS ranges 16.1–16.4) so the labels are already there
-// when a local view lands, rather than needing a further zoom-in to appear —
-// at the old 17.1 they were always a scroll away from being readable.
-const LABEL_ZOOM = 15.9;
+// arrival zoom so the labels are already there when a local view lands, rather
+// than needing a further zoom-in to appear — at the original 17.1 they were
+// always a scroll away from being readable.
+//
+// 15.9 was cutting it too fine. The comment here used to say CITY_VIEWS ranged
+// 16.1–16.4, and that stopped being true: the street-level arrivals now run
+// 15.8–16.6, so Manila (15.8) landed BELOW the gate and opened with no names at
+// all — the exact thing this constant exists to prevent, and invisible unless
+// you happen to open that city. 15.4 clears the lowest street-level arrival by
+// half a zoom level and brings the names in sooner everywhere else.
+//
+// The one city deliberately left outside this is San Jose, which arrives at
+// 12.4 because Silicon Valley is a 30 km valley rather than a CBD (see
+// CITY_VIEWS). At valley scale every campus label at once is the unreadable
+// pile the gate is for, so its names still wait for a zoom-in.
+const LABEL_ZOOM = 15.4;
 const ZOOM_OUT_THRESHOLD = 11;
 
 const COMPANY_BY_ID: Record<string, Company> = Object.fromEntries(COMPANIES.map((c) => [c.id, c]));
