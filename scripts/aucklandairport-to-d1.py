@@ -127,7 +127,15 @@ def get(path: str) -> str | None:
         if status and status != 200:
             sys.stderr.write(f'  {path}: status {status}\n')
         return content
-    return browser_fetch.render(url, SETTLE, locale='en-NZ')
+    # raw_get, NOT render(). render() returns the serialised DOM, and this
+    # file's TILE_RE requires `<div class="wpjb-job-tile...">` to be followed
+    # immediately by its `<a href=`. Measured 2026-08-08: a rendered page a
+    # probe had just counted 56 tiles in parsed to ZERO here, and the script
+    # correctly reported that as "the Cloudflare challenge or a markup change"
+    # — which is exactly how a serialisation difference disguises itself.
+    # raw_get clears the challenge once in a browser and then fetches the
+    # original bytes, so the parser sees what it has always seen.
+    return browser_fetch.raw_get(url, settle=6, locale='en-NZ')
 
 
 TILE_RE = re.compile(r'<div class="wpjb-job-tile[^"]*">\s*<a href="([^"]+)"(.*?)</a>', re.S)

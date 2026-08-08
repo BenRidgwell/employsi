@@ -215,6 +215,49 @@ class Session:
             return None
 
 
+# ── raw bytes through a cleared browser ──────────────────────────────────────
+# One Session per process, opened on first use.
+_raw_session = None
+_raw_cleared: set[str] = set()
+
+
+def raw_get(url: str, settle: int = 6, locale: str = 'en-AU') -> str | None:
+    """Return the RAW body of `url`, fetched from inside a browser that has
+    already cleared the site's challenge.
+
+    WHY NOT render(): render() hands back `page.content()`, which is the
+    SERIALISED DOM and not the bytes the server sent. The browser normalises
+    whitespace, may reorder attributes, and inserts nodes of its own. Parsers
+    written against raw HTML can stop matching on markup that is otherwise
+    perfectly correct — measured 2026-08-08, when Auckland Airport's
+    `<div class="wpjb-job-tile...">\s*<a href=` found nothing in a rendered page
+    that a probe had just counted 56 tiles in. TechnologyOne's regex, which
+    requires no adjacency, survived the same treatment. That difference is the
+    whole bug: it is silent, and it looks exactly like a block.
+
+    So the browser is used for what it is actually needed for — satisfying the
+    Cloudflare challenge once — and every page after that is fetched with
+    `fetch()` from inside the cleared page, which returns the original body.
+
+    It is also much cheaper. A full render per page cost ~7x a plain fetch
+    (19.4s against 2.8s on jobs.govt.nz); this pays that once per origin and
+    then runs at fetch speed.
+    """
+    global _raw_session
+    from urllib.parse import urlsplit
+    origin = '{0.scheme}://{0.netloc}'.format(urlsplit(url))
+    if _raw_session is None:
+        _raw_session = Session(locale=locale)
+        _raw_session.__enter__()
+        atexit.register(lambda: _raw_session.__exit__(None, None, None))
+    if origin not in _raw_cleared:
+        # Navigate once to earn the clearance cookie for this origin.
+        if _raw_session.html(origin + '/', [{'type': 'wait', 'wait_time_s': settle}]) is None:
+            return None
+        _raw_cleared.add(origin)
+    return _raw_session.text(url)
+
+
 if __name__ == '__main__':
     # quick check: python3 scripts/browser_fetch.py <url> [settle_s]
     u = sys.argv[1] if len(sys.argv) > 1 else 'https://example.com'
