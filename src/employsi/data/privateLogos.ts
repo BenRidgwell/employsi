@@ -208,7 +208,46 @@ export const PRIVATE_LOGO_URL: Record<string, string> = {
 // Roster id → real website domain, where it differs from the name-derived
 // guess. Keying the favicon fallback on this is what fixes the badge for the
 // companies with no logo file of their own.
+//
+// NOT ONLY PRIVATE COMPANIES, despite the name and the rest of this file:
+// logoFor() reads it for every id, and the same failure turns up on the listed
+// roster and on government agencies. The roster derives a domain from the
+// COMPANY NAME, so anything that does not trade under its legal name gets a
+// domain that has never existed — commonwealthbankaustralia.com,
+// westpacbanking.com, northmetropolitantafe.com. The favicon service 404s, the
+// badge falls back to initials, and nothing reports it.
+//
+// Found by fetching all 145 Perth badges and decoding them (2026-08-08): 19
+// returned nothing at all, and 14 of those were this, not a missing logo.
 export const PRIVATE_DOMAIN: Record<string, string> = {
+  // ── corrections found by auditing the rendered badges, 2026-08-08 ──────────
+  // Every one verified twice: the site answers 200 and its <title> is the
+  // organisation (so the domain is not a squatter's), and the favicon service
+  // returns an image for it (so the badge will actually draw).
+  "sydney-apa": "apa.com.au",
+  "sydney-cba": "commbank.com.au",
+  "sydney-wbc": "westpac.com.au",
+  "perth-bgl": "bellevuegold.com.au",
+  "perth-bwp": "bwptrust.com.au",
+  cmm: "capmet.com.au", // Capricorn Metals trades on capmet, not capricornmetals
+  "perth-cyl": "catalystmetals.com.au",
+  "perth-ggp": "greatland.com.au", // Greatland Resources; greatland*resources* does not resolve
+  "perth-obm": "orabandamining.com.au",
+  // Swift Holdings Investments has no site of its own — it trades as
+  // Autoleague, which is also why the job feeds search that name
+  // (EXTRA_QUERIES) and attribute it back (ADVERTISER_ALIAS).
+  "priv-swift-holdings-investments": "autoleague.com.au",
+  "perth-gov-east-metropolitan-health-service": "emhs.health.wa.gov.au",
+  "perth-gov-north-metropolitan-tafe": "northmetrotafe.wa.edu.au",
+  "perth-gov-office-of-the-director-of-public-prosecutions": "dpp.wa.gov.au",
+  "perth-gov-pathwest": "pathwest.health.wa.gov.au",
+  // These two are the CORRECT domains and both sites answer 200, but the
+  // favicon service has nothing for either today, so the badge does not change
+  // yet. Recorded anyway: the domain is the fact, and the badge fixes itself
+  // the day the service indexes one.
+  "perth-gov-parliamentary-services-department": "parliament.wa.gov.au",
+  "sydney-wor": "worley.com",
+  // ── the original Top-150 private set ──────────────────────────────────────
   "priv-abc-tissue": "abctissue.com.au",
   "priv-abn-group": "abngroup.com.au",
   "priv-adco-constructions": "adcoconstruct.com.au",
