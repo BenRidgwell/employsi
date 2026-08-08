@@ -247,6 +247,22 @@ REBRANDS: dict[str, tuple[str, ...]] = {
     # that name is also the key for news and job matching, and moving it is a
     # bigger change than this feed should make on its own.
     'priv-drake-supermarkets': ('drakes supermarkets',),
+    # ── added 2026-08-08, from the Perth slug-resolution run ──────────────────
+    # Each was rejected as a "wrong-company" line, then read before being added.
+    # NAB is the bank's own page (707k followers, addressRegion Victoria); the
+    # roster carries the legal name and LinkedIn carries the brand.
+    'melbourne-nab': ('nab',),
+    # "PDI Gold (Predictive Discovery) is building West African's leading gold
+    # producer" — its own page says both names, addressRegion WA.
+    'perth-pdi': ('pdi gold',),
+    # "Legal Aid WA is the public face of the Legal Aid Commission of Western
+    # Australia", addressRegion Western Australia.
+    'perth-gov-legal-aid-western-australia': ('legal aid wa',),
+    # DELIBERATELY ABSENT, and worth recording because it looks like the three
+    # above: /dplh was rejected for the Department of Planning, Lands and
+    # Heritage, and DPLH is exactly that department's acronym. The page is a
+    # family-owned HONG KONG MANUFACTURER founded in 1971. An acronym rule would
+    # have taken it, which is the argument for this being a list restated.
 }
 
 
