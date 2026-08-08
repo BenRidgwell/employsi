@@ -95,13 +95,6 @@ export const AU_JOBS_TARGETS: JobsTarget[] = [
     cities: ["perth"],
   },
   {
-    id: "deg",
-    name: "De Grey Mining",
-    sector: "Gold",
-    group: "Energy & Natural Resources",
-    cities: ["perth"],
-  },
-  {
     id: "del",
     name: "Delorean Corporation",
     sector: "Bioenergy & Gas",

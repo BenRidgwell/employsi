@@ -157,7 +157,6 @@ export const CITY_COMPANIES: Record<string, CityCompany[]> = {
     { id: "rrl", coords: [115.83, -31.947] }, // Regis Resources — Subiaco
     { id: "pru", coords: [115.8385, -31.9482] }, // Perseus Mining — West Perth
     { id: "rms", coords: [115.8412, -31.9512] }, // Ramelius — West Perth
-    { id: "deg", coords: [115.856, -31.9525] }, // De Grey Mining — Perth CBD
     { id: "gmd", coords: [115.8428, -31.9468] }, // Genesis Minerals — West Perth
     { id: "gor", coords: [115.8378, -31.9495] }, // Gold Road — West Perth
     { id: "cmm", coords: [115.8442, -31.9508] }, // Capricorn Metals — West Perth

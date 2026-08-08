@@ -22,7 +22,7 @@ MIN_YEAR = 2024
 ASX = {
     'alk': 'ALK', 'asb': 'ASB', 'beach': 'BPT', 'bhp': 'BHP', 'bmn': 'BMN', 'boe': 'BOE',
     'ccv': 'CCV',
-    'cmm': 'CMM', 'cvn': 'CVN', 'cxo': 'CXO', 'deg': 'DEG', 'del': 'DEL', 'dyl': 'DYL',
+    'cmm': 'CMM', 'cvn': 'CVN', 'cxo': 'CXO', 'del': 'DEL', 'dyl': 'DYL',
     'fmg': 'FMG', 'gmd': 'GMD', 'gor': 'GOR', 'hgo': 'HGO', 'igo': 'IGO', 'ilu': 'ILU',
     'jms': 'JMS', 'ltr': 'LTR', 'mah': 'MAH', 'mgt': 'MGT', 'min': 'MIN', 'mmi': 'MMI',
     'mnd': 'MND', 'nhc': 'NHC', 'nst': 'NST', 'nwh': 'NWH', 'pdn': 'PDN', 'pls': 'PLS',
