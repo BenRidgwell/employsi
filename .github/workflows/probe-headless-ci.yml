@@ -22,14 +22,40 @@
 # remove on its own — no proxy, no hardware. So it is worth one runner-minute to
 # know rather than assume.
 #
-# Manual only (workflow_dispatch). It writes nothing: no D1, no secrets, no
-# credentials of any kind. Re-run it whenever one of those boards changes
-# platform.
+# TWO QUESTIONS, chosen at dispatch:
+#
+#   via_proxy=false (default)  does a plain CI address get these boards?
+#   via_proxy=true             does OUR residential exit get them? Needs the
+#                              SCRAPE_PROXY secret (http://user:pass@host:port).
+#                              The run prints the egress address it actually
+#                              used — a misconfigured proxy otherwise passes
+#                              everything and reads as "our exit works" when it
+#                              was never used.
+#
+#   volume=N                   walk N DIFFERENT company queries through Indeed,
+#                              SimplyHired and Jora and report where blocking
+#                              starts. Those three walk 355 companies a night,
+#                              and what stops them is not the first request but
+#                              the four-hundredth from one address — which a
+#                              single-request probe cannot see. Start around
+#                              60-80; a full 355 takes a while.
+#
+# Manual only (workflow_dispatch). It writes nothing to D1. Re-run it whenever
+# one of those boards changes platform.
 
 name: probe-headless-ci
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      via_proxy:
+        description: 'Egress through SCRAPE_PROXY instead of the runner address'
+        type: boolean
+        default: false
+      volume:
+        description: 'Volume walk: N different company queries per roster-wide feed (0 = skip)'
+        type: string
+        default: '0'
 
 permissions:
   contents: read
@@ -51,8 +77,22 @@ jobs:
           pip install playwright
           python -m playwright install --with-deps chromium
 
-      - name: Probe the render-gated boards
-        run: python scripts/probe-headless-ci.py --json headless-probe.json
+      - name: Probe the boards
+        env:
+          # Only set when the run asks for it, so an unset secret cannot silently
+          # turn a "from the runner" measurement into something else.
+          SCRAPE_PROXY: ${{ inputs.via_proxy && secrets.SCRAPE_PROXY || '' }}
+          # The probe writes nothing to D1, so nothing here needs to bypass the
+          # proxy. The FEEDS do: scripts/*-to-d1.py post their rows to
+          # api.cloudflare.com through the same urllib that fetches the boards,
+          # so a naive HTTPS_PROXY on a feed workflow would route every archive
+          # write through the home connection too. Recorded here because this is
+          # where the pattern gets copied from.
+          NO_PROXY: api.cloudflare.com
+        run: |
+          python scripts/probe-headless-ci.py --json headless-probe.json \
+            ${{ inputs.via_proxy && '--via-proxy' || '' }} \
+            ${{ (inputs.volume != '' && inputs.volume != '0') && format('--volume {0}', inputs.volume) || '' }}
 
       - name: Upload the raw result
         if: always()

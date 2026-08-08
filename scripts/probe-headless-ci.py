@@ -49,11 +49,13 @@ from __future__ import annotations
 import json
 import os
 import re
+from urllib.parse import quote
 import sys
 import traceback
 
 # The real parsers for the boards that do not use a regex live beside this file.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import browser_fetch  # noqa: E402
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     'tools', 'zhaopin-company-scraper'))
@@ -388,6 +390,20 @@ args = sys.argv[1:]
 HEADFUL = '--headful' in args
 OUT = args[args.index('--json') + 1] if '--json' in args else None
 
+# --via-proxy: egress through SCRAPE_PROXY instead of the runner's own address.
+# The whole point of the run changes with this flag — without it the question is
+# "does a plain CI address work", with it "does OUR residential exit work" — so
+# it is recorded in the JSON and printed in the header rather than left implicit.
+VIA_PROXY = '--via-proxy' in args
+# --volume N: for the roster-wide feeds, walk N DIFFERENT company queries in
+# sequence and report where blocking starts. See volume_walk() for why a
+# single-request probe is not evidence for these.
+VOLUME = int(args[args.index('--volume') + 1]) if '--volume' in args else 0
+
+PROXY = browser_fetch.proxy_from_env() if VIA_PROXY else None
+if VIA_PROXY and not PROXY:
+    sys.exit('--via-proxy needs SCRAPE_PROXY set (http://user:pass@host:port).')
+
 
 def blocked_as(html: str) -> str | None:
     for pat, label in BLOCK_MARKERS:
@@ -396,9 +412,113 @@ def blocked_as(html: str) -> str | None:
     return None
 
 
+# ── volume ───────────────────────────────────────────────────────────────────
+# WHY A SECOND MODE EXISTS AT ALL
+# The per-board probe answers "is the door open", by making ONE request. For the
+# roster-wide feeds that is not the question. Indeed walks 355 companies a night,
+# SimplyHired 355, Jora 355 — and the thing that blocks them is not the first
+# request, it is the four-hundredth from the same address. A single green request
+# through a residential exit is exactly the kind of positive result from an
+# unrepresentative sample that this repo has already been burned by twice.
+#
+# So this walks N DIFFERENT company queries in sequence, against the real search
+# URL each scraper uses, and reports the request number at which rows stop
+# coming back. "Blocked from request 1" and "blocked from request 220" are
+# different answers with different consequences, and neither is visible from a
+# single fetch.
+VOLUME_TARGETS = {
+    'indeed': ('https://au.indeed.com/jobs?q=%22{q}%22&l=&start=0',
+               r'job_seen_beacon|jobTitle|data-jk='),
+    'simplyhired': ('https://www.simplyhired.com.au/search?q={q}', r'"jobKey"'),
+    'jora': ('https://au.jora.com/j?q={q}&l=Australia&p=1',
+             r'data-braze-job-panel-view="'),
+}
+
+
+def roster_names(n: int) -> list[str]:
+    """Real employer names, so the walk looks like the walk it is modelling.
+
+    N repetitions of one query would be cached upstream and would test nothing;
+    the nightly runs search a different company every time. Read straight out of
+    auJobsTargets.ts because this file cannot run bun."""
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        'src', 'employsi', 'data', 'auJobsTargets.ts')
+    try:
+        names = re.findall(r'name:\s*"([^"]+)"', open(path, encoding='utf-8').read())
+    except OSError:
+        names = []
+    seen, out = set(), []
+    for nm in names:
+        if nm.lower() in seen:
+            continue
+        seen.add(nm.lower())
+        out.append(nm)
+    return out[:n]
+
+
+def volume_walk(pw, which: str, n: int) -> dict:
+    tmpl, row_re = VOLUME_TARGETS[which]
+    names = roster_names(n)
+    res = {'target': which, 'requested': n, 'attempted': len(names),
+           'ok': 0, 'first_block_at': None, 'consecutive_fail_tail': 0}
+    browser = pw.chromium.launch(headless=not HEADFUL,
+                                 **({'proxy': PROXY} if PROXY else {}))
+    try:
+        ctx = browser.new_context(
+            user_agent=('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                        'AppleWebKit/537.36 (KHTML, like Gecko) '
+                        'Chrome/126.0.0.0 Safari/537.36'),
+            locale='en-AU')
+        page = ctx.new_page()
+        run = 0
+        for i, nm in enumerate(names, 1):
+            url = tmpl.format(q=quote(f'"{nm}"' if which == 'indeed' else nm))
+            try:
+                page.goto(url, wait_until='domcontentloaded', timeout=60_000)
+                page.wait_for_timeout(2500)
+                hits = len(re.findall(row_re, page.content()))
+            except Exception:  # noqa: BLE001
+                hits = 0
+            if hits:
+                res['ok'] += 1
+                run = 0
+            else:
+                run += 1
+                if res['first_block_at'] is None:
+                    res['first_block_at'] = i
+            res['consecutive_fail_tail'] = run
+            # A long unbroken failure run means the address is done; walking the
+            # rest wastes minutes to learn nothing new.
+            if run >= 12:
+                res['stopped_early_at'] = i
+                break
+        ctx.close()
+    finally:
+        browser.close()
+    return res
+
+
+def egress_ip(pw) -> str:
+    """What the TARGETS see. Printed before anything else, because the failure
+    this guards against is silent: a proxy that is misconfigured, unreachable or
+    ignored leaves Chromium egressing from the runner, every board passes, and
+    the run is read as "our residential exit works" when it was never used. An
+    address is the only thing that distinguishes those two outcomes."""
+    browser = pw.chromium.launch(headless=True, **({'proxy': PROXY} if PROXY else {}))
+    try:
+        page = browser.new_page()
+        page.goto('https://api.ipify.org?format=json', timeout=45_000)
+        return json.loads(page.evaluate('document.body.innerText')).get('ip', '?')
+    except Exception as e:  # noqa: BLE001
+        return f'unknown ({str(e)[:60]})'
+    finally:
+        browser.close()
+
+
 def probe(pw, board: dict) -> dict:
     res = {'name': board['name'], 'script': board['script'], 'url': board['url']}
-    browser = pw.chromium.launch(headless=not HEADFUL)
+    browser = pw.chromium.launch(headless=not HEADFUL,
+                                 **({'proxy': PROXY} if PROXY else {}))
     try:
         ctx = browser.new_context(
             user_agent=('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
@@ -480,11 +600,30 @@ def main() -> int:
     except ImportError:
         sys.exit('playwright not installed: pip install playwright && playwright install chromium')
 
-    print(f'Headless Chromium from this runner, against {len(BOARDS)} Oxylabs targets.')
+    where = 'via SCRAPE_PROXY' if VIA_PROXY else 'from this runner'
+    print(f'Headless Chromium {where}, against {len(BOARDS)} Oxylabs targets.')
     print("Counting rows the way each scraper does — its own regex, or its own "
-          "parser where it uses one.\n")
+          "parser where it uses one.")
     out = []
     with sync_playwright() as pw:
+        ip = egress_ip(pw)
+        print(f'Egress address the targets see: {ip}')
+        if VIA_PROXY:
+            print('  (if that is a datacentre address, the proxy is not being '
+                  'used and every result below is about the runner, not your exit.)')
+        print()
+        vol = []
+        if VOLUME:
+            print(f'Volume walk: {VOLUME} different company queries per feed.\n')
+            for which in VOLUME_TARGETS:
+                r = volume_walk(pw, which, VOLUME)
+                vol.append(r)
+                print(f"  {which:<14} {r['ok']}/{r['attempted']} returned rows"
+                      + (f", first block at #{r['first_block_at']}"
+                         if r['first_block_at'] else ', no blocks')
+                      + (f", stopped early at #{r['stopped_early_at']}"
+                         if r.get('stopped_early_at') else ''))
+            print()
         for b in BOARDS:
             try:
                 r = probe(pw, b)
@@ -513,8 +652,13 @@ def main() -> int:
               'so they stay on a proxy.')
 
     if OUT:
+        # The transport and the egress address are part of the RESULT, not
+        # context around it: the same board list means opposite things read
+        # from a runner and read through a residential exit, and an artifact
+        # that records only the rows cannot tell you which run it was.
         with open(OUT, 'w') as f:
-            json.dump(out, f, indent=2)
+            json.dump({'via_proxy': VIA_PROXY, 'egress_ip': ip,
+                       'volume': vol, 'boards': out}, f, indent=2)
         print(f'wrote {OUT}')
     # Always exit 0: this is a measurement, and "they are blocked" is a real
     # result rather than a failure of the probe.

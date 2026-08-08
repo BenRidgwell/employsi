@@ -56,6 +56,31 @@ HEADFUL = os.environ.get('BROWSER_FETCH_HEADFUL') == '1'
 # one release old". Pointing at the existing binary is the documented way out.
 EXECUTABLE = os.environ.get('BROWSER_FETCH_EXECUTABLE') or None
 
+
+def proxy_from_env() -> dict | None:
+    """Playwright proxy config from SCRAPE_PROXY, or None.
+
+    SCRAPE_PROXY is one URL so it fits in one secret:
+        http://user:pass@host:port   (or socks5://, or no credentials)
+
+    Returning None means "go direct", which is the right default: every caller
+    here worked without a proxy before this existed. It is deliberately NOT an
+    error for the variable to be unset.
+    """
+    raw = (os.environ.get('SCRAPE_PROXY') or '').strip()
+    if not raw:
+        return None
+    from urllib.parse import urlsplit
+    u = urlsplit(raw)
+    if not u.hostname:
+        sys.exit(f'SCRAPE_PROXY is not a URL: {raw[:40]!r}')
+    cfg: dict = {'server': f'{u.scheme}://{u.hostname}:{u.port}' if u.port
+                 else f'{u.scheme}://{u.hostname}'}
+    if u.username:
+        cfg['username'] = u.username
+        cfg['password'] = u.password or ''
+    return cfg
+
 _pw = None
 _browser = None
 
@@ -74,6 +99,13 @@ def _browser_once():
     launch: dict = {'headless': not HEADFUL}
     if EXECUTABLE:
         launch['executable_path'] = EXECUTABLE
+    # Proxy at LAUNCH rather than per-context: Chromium resolves DNS through the
+    # proxy this way, so a target cannot see the runner's resolver even though
+    # its requests come from the proxy. Set per-context it would leak lookups.
+    prox = proxy_from_env()
+    if prox:
+        launch['proxy'] = prox
+        sys.stderr.write(f'  browser egressing via {prox["server"]}\n')
     _browser = _pw.chromium.launch(**launch)
     atexit.register(_close)
     return _browser
