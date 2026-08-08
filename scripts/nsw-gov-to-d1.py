@@ -32,19 +32,28 @@ board) survive the sanity check below and parse to annual AUD.
 THE TOKEN IS DISCOVERED, NOT STORED. It is a long-lived OAuth-client bearer that
 the site ships publicly to every browser in its JS bundle, so it is not a secret
 of ours — but it is not ours to hard-code either, and it can rotate. Each run
-reads it back out of the live bundle, so a rotation costs nothing. Oxylabs is
-still needed for that one step (and only that step): iworkfor.nsw.gov.au sits
-behind Cloudflare's "Just a moment" interstitial and 403s any datacenter IP,
-including the static /_next/ chunks. api.ad-core04.com does not, so the search
-calls themselves are plain HTTP.
+reads it back out of the live bundle, so a rotation costs nothing.
+
+That one step (and only that step) needed more than a plain request:
+iworkfor.nsw.gov.au sits behind Cloudflare's "Just a moment" interstitial and
+403s any datacentre IP, static /_next/ chunks included. api.ad-core04.com does
+not, so the search calls themselves are plain HTTP and always were.
+
+Since 2026-08-08 that step is a LOCAL HEADLESS RENDER rather than an Oxylabs
+fetch. The challenge is at the HTTP layer, not the address: a real browser on an
+ordinary runner clears it, measured twice (probe-headless-ci, 2026-08-08). The
+page and its chunks share ONE browser context, because the clearance lives in
+that context's cookies — see browser_fetch.Session.
 
 Each vacancy maps to its nsw-gov-<slug> company id (from data/sydneyGov.ts),
 maps skills via the worker taxonomy, and upserts through the D1 HTTP API using
 the same source|title|company|location key as src/employsi/lib/jobArchive.ts.
 
-Env: OXYLABS_USERNAME, OXYLABS_PASSWORD (Web Scraper API — token discovery only),
-     CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID.
+Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID. Also
+     OXYLABS_USERNAME / OXYLABS_PASSWORD, but ONLY with --oxylabs — by default
+     the token discovery renders locally and no proxy is involved.
 Run:  python3 scripts/nsw-gov-to-d1.py [--solve] [--limit N] [--page-size N]
+                                       [--oxylabs]
 """
 from __future__ import annotations
 import json, os, re, subprocess, sys, time, datetime
@@ -498,8 +507,13 @@ def fetch_all():
 def main() -> int:
     if not AGENCY_NAMES:
         sys.exit('Could not parse agency names from src/employsi/data/sydneyGov.ts')
-    if not (os.environ.get('OXYLABS_USERNAME') and os.environ.get('OXYLABS_PASSWORD')):
-        sys.exit('OXYLABS_USERNAME / OXYLABS_PASSWORD required (Web Scraper API).')
+    # Only the --oxylabs path needs credentials. The default renders the token
+    # discovery locally, so demanding them unconditionally would fail a run that
+    # never intended to touch the proxy — which is exactly what it did on the
+    # first migrated run.
+    if VIA_OXYLABS and not (os.environ.get('OXYLABS_USERNAME')
+                            and os.environ.get('OXYLABS_PASSWORD')):
+        sys.exit('--oxylabs needs OXYLABS_USERNAME / OXYLABS_PASSWORD (Web Scraper API).')
     sys.stderr.write(f'NSW gov -> D1: {len(AGENCY_NAMES)} agencies in roster.\n')
 
     scraped, total = fetch_all()

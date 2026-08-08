@@ -31,7 +31,8 @@ vacancy, and copying it onto seven maps would multiply the count sevenfold.
 Four roles list no location at all and fall back to the Brisbane head office.
 
 Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID,
-     OXYLABS_USERNAME, OXYLABS_PASSWORD
+     OXYLABS_USERNAME, OXYLABS_PASSWORD (only with --oxylabs; the default
+     renders locally in a headless Chromium and needs no proxy)
 Run: python scripts/technologyone-to-d1.py [--dry-run]
 """
 from __future__ import annotations

@@ -56,7 +56,8 @@ writing anything — that is how src/employsi/data/nzGov.ts was built, and how i
 should be refreshed when machinery-of-government changes rename agencies.
 
 Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID.
-     OXYLABS_USERNAME / OXYLABS_PASSWORD unless --direct is passed.
+     OXYLABS_USERNAME / OXYLABS_PASSWORD only with --oxylabs; the default
+     renders locally in a headless Chromium and needs no proxy.
 Run: python scripts/nzgov-to-d1.py [--max-pages N] [--direct] [--dry-run]
                                    [--agencies]
 """
