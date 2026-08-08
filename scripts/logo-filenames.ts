@@ -20,6 +20,7 @@ import { COMPANIES } from "../src/employsi/data/companies";
 import { LOCAL_LOGO } from "../src/employsi/data/localLogos";
 import { PRIVATE_LOGO_URL } from "../src/employsi/data/privateLogos";
 import { WA_GOV_LOGO_URL, WA_GOV_CREST_ID_SET } from "../src/employsi/data/waGovLogos";
+import { LINKEDIN_LOGO } from "../src/employsi/data/linkedinLogos";
 
 const args = process.argv.slice(2);
 const city = args.find((a) => !a.startsWith("--")) ?? "perth";
@@ -44,7 +45,9 @@ const rows: Row[] = roster.map(({ id }) => ({
       ? "supplied url"
       : WA_GOV_CREST_ID_SET.has(id)
         ? "WA crest"
-        : "favicon service",
+        : LINKEDIN_LOGO[id]
+          ? "LinkedIn"
+          : "favicon service",
 }));
 rows.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -53,7 +56,7 @@ const tally = (k: string) => rows.filter((r) => r.source === k).length;
 console.log(
   `${city}: ${rows.length} companies · local file ${tally("local file")} · ` +
     `supplied url ${tally("supplied url")} · WA crest ${tally("WA crest")} · ` +
-    `favicon service ${tally("favicon service")}`,
+    `LinkedIn ${tally("LinkedIn")} · favicon service ${tally("favicon service")}`,
 );
 for (const kind of ["listed", "private", "wa-gov"]) {
   const group = shown.filter((r) => r.kind === kind);

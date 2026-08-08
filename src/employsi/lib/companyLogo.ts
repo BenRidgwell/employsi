@@ -1,6 +1,7 @@
 import { LOCAL_LOGO } from "../data/localLogos";
 import { PRIVATE_LOGO_URL, PRIVATE_DOMAIN } from "../data/privateLogos";
 import { WA_GOV_LOGO_URL, WA_GOV_CREST, WA_GOV_CREST_ID_SET } from "../data/waGovLogos";
+import { LINKEDIN_LOGO } from "../data/linkedinLogos";
 
 /**
  * The badge image for a company, in one place.
@@ -23,9 +24,16 @@ import { WA_GOV_LOGO_URL, WA_GOV_CREST, WA_GOV_CREST_ID_SET } from "../data/waGo
  *      from data/waGovLogos.ts. A real brand mark, not a 16px favicon upscaled.
  *   2. the shared Government of WA crest, for the agencies that present the
  *      whole-of-government identity rather than a distinct logo of their own.
- *   3. the favicon service keyed on the organisation's REAL domain, where the
+ *   3. the company's LinkedIn avatar, where its slug has been confirmed
+ *      (data/linkedinLogos.ts). Ahead of the favicon because it is strictly
+ *      better on the two things the badge needs: it is always 200x200 and
+ *      SQUARE, which is the shape the round map pin crops to, and it is a brand
+ *      mark rather than whatever the site happens to put in <link rel=icon>.
+ *      Behind everything above because those were each chosen for this company;
+ *      this one is chosen by LinkedIn.
+ *   4. the favicon service keyed on the organisation's REAL domain, where the
  *      roster's name-derived guess is known to be wrong.
- *   4. the favicon service on the roster domain — the previous behaviour, and
+ *   5. the favicon service on the roster domain — the original behaviour, and
  *      still correct for everything we have nothing better for.
  *
  * Callers keep their own onError fallback to the ticker text: a logo file can
@@ -36,6 +44,7 @@ export function logoFor(id: string, domain: string, size = 128): string {
   const direct = LOCAL_LOGO[id] || PRIVATE_LOGO_URL[id] || WA_GOV_LOGO_URL[id];
   if (direct) return direct;
   if (WA_GOV_CREST_ID_SET.has(id)) return WA_GOV_CREST;
+  if (LINKEDIN_LOGO[id]) return LINKEDIN_LOGO[id];
   const host = PRIVATE_DOMAIN[id] || domain;
   return `https://www.google.com/s2/favicons?domain=${host}&sz=${size}`;
 }
