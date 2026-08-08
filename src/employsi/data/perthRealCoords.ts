@@ -69,7 +69,8 @@ export const PERTH_REAL_COORDS: Record<string, [number, number]> = {
   "perth-gov-main-roads-wa": [115.876645, -31.957365],
   "perth-gov-mental-health-commission": [115.865713, -31.951103],
   "perth-gov-metropolitan-cemeteries-board": [115.798574, -31.967205],
-  "perth-gov-myleave": [115.916889, -31.903086],
+  // Level 1, 503 Murray Street, Perth 6000 — moved from Bayswater.
+  "perth-gov-myleave": [115.850533, -31.950554],
   "perth-gov-north-metropolitan-health-service": [115.816733, -31.967641],
   "perth-gov-north-metropolitan-tafe": [115.861458, -31.947418],
   "perth-gov-north-regional-tafe": [115.861057, -31.948046],

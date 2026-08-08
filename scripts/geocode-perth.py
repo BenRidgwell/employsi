@@ -90,7 +90,15 @@ TARGETS: dict[str, tuple[str, str]] = {
     'perth-gov-department-of-treasury-and-finance': ('Dept Treasury and Finance', '200 St Georges Terrace, Perth, Western Australia 6000'),
     'perth-gov-legal-practice-board': ('Legal Practice Board', '55 St Georges Terrace, Perth, Western Australia 6000'),
     'perth-gov-mental-health-commission': ('Mental Health Commission', '1 Nash Street, Perth, Western Australia 6000'),
-    'perth-gov-myleave': ('MyLeave', '82 Beechboro Road South, Bayswater, Western Australia 6053'),
+    # Moved to the CBD (Level 1, 503 Murray Street) from Bayswater — about 7 km.
+    # NOMINATIM CANNOT CONFIRM THIS ONE: it resolves no house number on Murray
+    # Street and hands back a street-segment centroid, and the segments it
+    # offers are spread over 1.5 km (115.848–115.865), which is a worse answer
+    # than the address deserves. The stored coordinate came from Mapbox's
+    # geocoder instead, which returns the address exactly — "503 Murray Street,
+    # Perth Western Australia 6000" at relevance 0.91. A default run preserves
+    # it; --overwrite would replace it with the centroid, so don't.
+    'perth-gov-myleave': ('MyLeave', '503 Murray Street, Perth, Western Australia 6000'),
     'perth-gov-north-regional-tafe': ('North Regional TAFE', '2 Cable Beach Road, Broome, Western Australia 6725'),
     'perth-gov-state-solicitors-office': ("State Solicitor's Office", '141 St Georges Terrace, Perth, Western Australia 6000'),
 }
