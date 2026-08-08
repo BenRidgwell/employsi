@@ -50,6 +50,15 @@ jobs:
         with:
           python-version: '3.12'
 
+      # test_rosters.py exercises seek-to-d1.py's advertiser loader, which reads
+      # the map by running scripts/seek-advertisers.ts rather than regexing the
+      # source (a company's advertisers are composed at runtime, so there is no
+      # literal to match). Without bun that check would fail here for the wrong
+      # reason — and the real seek-archive run already depends on bun anyway.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Job-extraction parser tests
         run: python scripts/test_jobs_extract.py
 

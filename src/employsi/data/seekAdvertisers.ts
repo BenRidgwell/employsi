@@ -1,11 +1,22 @@
-// AUTO-GENERATED — SEEK advertiser ids for AU_JOBS_TARGETS companies.
+// AUTO-GENERATED — SEEK advertiser ids for roster companies.
 // Maps each app company id to its SEEK employer ("advertiser") id, resolved
 // offline by exact-name match against SEEK's search API. The jobs-cron Worker
 // pulls a company's full SEEK board (all classifications) by this id — one
-// request, no live name resolution. Companies with no current SEEK ads (or a
-// differently-named advertiser) are simply absent and fall back to Adzuna/Muse.
-// Regenerate with scripts/gen-seek-advertisers.py (run from a host that can
-// reach seek.com.au — not the Workers datacenter IPs).
+// request, no live name resolution.
+//
+// A company only resolves while it has live ads, so this file is written by
+// MERGE: scripts/gen-seek-advertisers.py adds and updates, and never drops an
+// id just because that company is between campaigns (--prune does that, on
+// purpose). Companies that have never advertised are simply absent and fall
+// back to Adzuna/Muse.
+//
+// Groups that hire under their brands rather than their own name cannot resolve
+// here by construction — the exact-name rule is what keeps recruiters out. Those
+// live in seekTradingNames.ts, which is hand-checked and which the generator
+// does not read or write.
+//
+// Regenerate with scripts/gen-seek-advertisers.py (from a host that can reach
+// seek.com.au — not the Workers datacenter IPs).
 export interface SeekAdvertiser {
   advertiserId: string;
   name: string;
@@ -14,6 +25,7 @@ export const SEEK_ADVERTISERS: Record<string, SeekAdvertiser> = {
   "adelaide-abc": { advertiserId: "3956", name: "Adbri Pty Ltd" },
   "adelaide-age": { advertiserId: "400397867", name: "Alligator Energy Ltd" },
   "adelaide-axe": { advertiserId: "38678692", name: "Archer Materials Limited" },
+  "adelaide-c79": { advertiserId: "40274805", name: "Chrysos Corporation Limited" },
   "adelaide-cda": { advertiserId: "730405", name: "Codan Limited" },
   "adelaide-eld": { advertiserId: "61450139", name: "Elders Limited" },
   aow: { advertiserId: "21947968", name: "Arrow Energy" },
@@ -28,8 +40,8 @@ export const SEEK_ADVERTISERS: Record<string, SeekAdvertiser> = {
   "brisbane-flt": { advertiserId: "35725927", name: "Flight Centre Travel Group" },
   "brisbane-nxt": { advertiserId: "26120226", name: "NEXTDC Limited" },
   "brisbane-smr": { advertiserId: "46069973", name: "Stanmore Resources Limited" },
-  "brisbane-sul": { advertiserId: "62578939", name: "Super Retail Group" },
-  "brisbane-sun": { advertiserId: "63588735", name: "Suncorp" },
+  "brisbane-sul": { advertiserId: "26669767", name: "Super Retail Group" },
+  "brisbane-sun": { advertiserId: "63592813", name: "Suncorp" },
   "brisbane-tne": { advertiserId: "61731004", name: "Technology One Limited" },
   "brisbane-vgn": { advertiserId: "4333307", name: "Virgin Australia" },
   ccv: { advertiserId: "28352802", name: "Cash Converters Pty Ltd" },
@@ -51,6 +63,7 @@ export const SEEK_ADVERTISERS: Record<string, SeekAdvertiser> = {
   "melbourne-cpu": { advertiserId: "7222504", name: "Computershare Ltd" },
   "melbourne-csl": { advertiserId: "19988157", name: "CSL Limited" },
   "melbourne-dnl": { advertiserId: "62033633", name: "Dyno Nobel Limited" },
+  "melbourne-hsn": { advertiserId: "21395763", name: "Hansen Technologies" },
   "melbourne-ifl": { advertiserId: "22301070", name: "Insignia Financial Ltd" },
   "melbourne-jbh": { advertiserId: "7240782", name: "JB Hi Fi Group Pty Ltd" },
   "melbourne-lov": { advertiserId: "25587581", name: "LOVISA" },
@@ -74,13 +87,115 @@ export const SEEK_ADVERTISERS: Record<string, SeekAdvertiser> = {
   nhc: { advertiserId: "26136809", name: "NEW HOPE GROUP" },
   nst: { advertiserId: "26063896", name: "Northern Star Resources Limited" },
   nwh: { advertiserId: "18230084", name: "NRW Pty Ltd" },
+  pdn: { advertiserId: "63317527", name: "Paladin Energy" },
   "perth-bgl": { advertiserId: "41514063", name: "Bellevue Gold Limited" },
   "perth-imd": { advertiserId: "21856827", name: "Imdex Limited" },
   "perth-lyc": { advertiserId: "32933879", name: "Lynas Rare Earths Ltd" },
   "perth-obm": { advertiserId: "43014210", name: "Ora Banda Mining Limited" },
+  "perth-pdi": { advertiserId: "63668993", name: "Predictive Discovery Pty Ltd" },
   "perth-prn": { advertiserId: "45401581", name: "Perenti Group" },
   "perth-vau": { advertiserId: "62915978", name: "Vault Minerals" },
   "perth-waf": { advertiserId: "37914763", name: "West African Resources Ltd" },
+  "priv-abn-group": { advertiserId: "33684585", name: "ABN Group" },
+  "priv-alto": { advertiserId: "45962034", name: "Alto Group" },
+  "priv-anytime-fitness": { advertiserId: "43178806", name: "Anytime Fitness" },
+  "priv-apco-service-stations": { advertiserId: "32330368", name: "APCO Service Stations" },
+  "priv-ara": { advertiserId: "400055376", name: "ARA Group Limited" },
+  "priv-ateco": { advertiserId: "23285267", name: "Ateco Group" },
+  "priv-aurecon": { advertiserId: "517583", name: "Aurecon" },
+  "priv-ausgrid": { advertiserId: "31189180", name: "Ausgrid" },
+  "priv-australian-unity": { advertiserId: "21444936", name: "Australian Unity" },
+  "priv-avant-mutual": { advertiserId: "31643435", name: "Avant Mutual Group" },
+  "priv-bgc": { advertiserId: "46804720", name: "BGC" },
+  "priv-bmd-group": { advertiserId: "11605728", name: "THE BMD GROUP" },
+  "priv-bolton-clarke": { advertiserId: "21171036", name: "Bolton Clarke" },
+  "priv-brisbane-catholic-education": {
+    advertiserId: "12584090",
+    name: "Brisbane Catholic Education",
+  },
+  "priv-chemist-warehouse": { advertiserId: "62449233", name: "Chemist Warehouse" },
+  "priv-choices-flooring": { advertiserId: "25527274", name: "Choices Flooring" },
+  "priv-cjd-equipment": { advertiserId: "26537695", name: "CJD Equipment" },
+  "priv-clayton-utz": { advertiserId: "22375625", name: "Clayton Utz" },
+  "priv-cmv-group": { advertiserId: "19925622", name: "CMV GROUP" },
+  "priv-consolidated-travel": { advertiserId: "16234081", name: "Consolidated Travel" },
+  "priv-craig-mostyn": { advertiserId: "20877486", name: "Craig Mostyn & Co Pty Ltd" },
+  "priv-creation-homes": { advertiserId: "47527215", name: "Creation Homes" },
+  "priv-defence-health": { advertiserId: "34997244", name: "Defence Health" },
+  "priv-detmold-group": { advertiserId: "814653", name: "Detmold Group" },
+  "priv-ey": { advertiserId: "20357645", name: "EY" },
+  "priv-firstmac": { advertiserId: "6979746", name: "Firstmac Limited" },
+  "priv-georgiou": { advertiserId: "9260831", name: "Georgiou Group Pty Ltd" },
+  "priv-ghd": { advertiserId: "21022424", name: "GHD Pty Ltd" },
+  "priv-gmhba": { advertiserId: "22094533", name: "GMHBA" },
+  "priv-goodstart-early-learning": { advertiserId: "39656267", name: "Goodstart Early Learning" },
+  "priv-grand-motors": { advertiserId: "20287744", name: "Grand Motors Pty Ltd" },
+  "priv-great-southern-bank": { advertiserId: "4329122", name: "Great Southern Bank" },
+  "priv-hammondcare": { advertiserId: "20659157", name: "HammondCare" },
+  "priv-hansen-yuncken": { advertiserId: "36224719", name: "Hansen Yuncken" },
+  "priv-hcf": { advertiserId: "12783002", name: "HCF Australia" },
+  "priv-john-hughes-group": { advertiserId: "20114968", name: "John Hughes Group" },
+  "priv-kennards-hire": { advertiserId: "36497312", name: "Kennards Hire" },
+  "priv-kennards-self-storage": { advertiserId: "21562392", name: "Kennards Self Storage" },
+  "priv-kpmg": { advertiserId: "21745547", name: "KPMG" },
+  "priv-leader-computers": { advertiserId: "22427790", name: "Leader Computers" },
+  "priv-life-without-barriers": { advertiserId: "25986077", name: "Life Without Barriers" },
+  "priv-linfox": { advertiserId: "675851", name: "Linfox Australia" },
+  "priv-loan-market": { advertiserId: "21613579", name: "Loan Market" },
+  "priv-manildra-group": { advertiserId: "26646234", name: "Manildra Group" },
+  "priv-mater": { advertiserId: "20898315", name: "Mater Group" },
+  "priv-mecca-brands": { advertiserId: "6893033", name: "MECCA Brands Pty Ltd" },
+  "priv-melbourne-airport": { advertiserId: "61806331", name: "Melbourne Airport" },
+  "priv-merivale": { advertiserId: "571052", name: "Merivale" },
+  "priv-metricon-homes": { advertiserId: "865763", name: "Metricon Homes" },
+  "priv-minterellison": { advertiserId: "21006268", name: "MinterEllison" },
+  "priv-mort-co": { advertiserId: "36512294", name: "Mort & Co" },
+  "priv-mpc-kinetic": { advertiserId: "28794086", name: "MPC Kinetic" },
+  "priv-newcastle-greater-mutual-group": {
+    advertiserId: "61665108",
+    name: "Newcastle Greater Mutual Group",
+  },
+  "priv-people-first-bank": { advertiserId: "20177329", name: "People First Bank" },
+  "priv-perfection-fresh": { advertiserId: "21128975", name: "Perfection Fresh Australia Pty Ltd" },
+  "priv-perth-airport": { advertiserId: "34089187", name: "Perth Airport Pty Ltd" },
+  "priv-peter-kittle-motor-company": {
+    advertiserId: "28414390",
+    name: "Peter Kittle Motor Company",
+  },
+  "priv-pharmacare": { advertiserId: "22550206", name: "PharmaCare" },
+  "priv-pwc-australia": { advertiserId: "2798", name: "PwC" },
+  "priv-raa": { advertiserId: "8676914", name: "RAA" },
+  "priv-racq": { advertiserId: "5425308", name: "RACQ" },
+  "priv-racv": { advertiserId: "561090", name: "RACV" },
+  "priv-refuelling-solutions": { advertiserId: "23759637", name: "Refuelling Solutions" },
+  "priv-richard-crookes-constructions": {
+    advertiserId: "25493607",
+    name: "Richard Crookes Constructions",
+  },
+  "priv-salvation-army-australia": { advertiserId: "39325409", name: "The Salvation Army" },
+  "priv-sarah-group": { advertiserId: "36395184", name: "Sarah Group" },
+  "priv-spotlight": { advertiserId: "21151364", name: "Spotlight Pty Ltd" },
+  "priv-st-john-of-god-health-care": {
+    advertiserId: "25567034",
+    name: "St John of God Health Care Inc",
+  },
+  "priv-st-vincent-s-health-australia": {
+    advertiserId: "26627705",
+    name: "St Vincent's Health Australia",
+  },
+  "priv-stowe-australia": { advertiserId: "37719154", name: "Stowe" },
+  "priv-sydney-tools": { advertiserId: "23197726", name: "Sydney Tools" },
+  "priv-teachers-health-fund": { advertiserId: "22083841", name: "Teachers Health Fund" },
+  "priv-team-global-express": { advertiserId: "60094332", name: "Team Global Express" },
+  "priv-tennis-australia": { advertiserId: "6653450", name: "Tennis Australia" },
+  "priv-teys-australia": { advertiserId: "25928297", name: "Teys Australia Pty Ltd" },
+  "priv-thomas-foods-international": {
+    advertiserId: "33914375",
+    name: "Thomas Foods International",
+  },
+  "priv-turosi": { advertiserId: "39663516", name: "Turosi Pty Ltd" },
+  "priv-united-petroleum": { advertiserId: "11340880", name: "United Petroleum Pty Ltd" },
+  "priv-visy": { advertiserId: "43138820", name: "VISY" },
   rio: { advertiserId: "39356396", name: "Rio Tinto" },
   rms: { advertiserId: "37515599", name: "Ramelius Resources Ltd" },
   rrl: { advertiserId: "27671061", name: "Regis Resources Limited" },
@@ -96,6 +211,7 @@ export const SEEK_ADVERTISERS: Record<string, SeekAdvertiser> = {
   "sydney-bga": { advertiserId: "18109779", name: "Bega Cheese" },
   "sydney-brg": { advertiserId: "21631646", name: "Breville" },
   "sydney-bsl": { advertiserId: "20781165", name: "BlueScope" },
+  "sydney-bxb": { advertiserId: "39069246", name: "Brambles" },
   "sydney-cgf": { advertiserId: "3891455", name: "Challenger Limited" },
   "sydney-coh": { advertiserId: "1211340", name: "Cochlear Limited." },
   "sydney-dro": { advertiserId: "54862165", name: "DroneShield" },
@@ -120,11 +236,13 @@ export const SEEK_ADVERTISERS: Record<string, SeekAdvertiser> = {
   "sydney-scg": { advertiserId: "8513902", name: "Scentre Group" },
   "sydney-sdf": { advertiserId: "30896401", name: "Steadfast" },
   "sydney-sgp": { advertiserId: "22458282", name: "Stockland" },
+  "sydney-tpg": { advertiserId: "21481035", name: "TPG Telecom" },
   "sydney-wbc": { advertiserId: "46210554", name: "Westpac Banking Corporation" },
   "sydney-whc": { advertiserId: "31791360", name: "Whitehaven Coal Limited" },
   "sydney-wor": { advertiserId: "29873058", name: "Worley" },
   "sydney-wow": { advertiserId: "10174028", name: "Woolworths Group" },
   "sydney-yal": { advertiserId: "27198629", name: "Yancoal" },
+  wds: { advertiserId: "716295", name: "Woodside Energy Ltd." },
   wes: { advertiserId: "563040", name: "Wesfarmers" },
   wgx: { advertiserId: "36799806", name: "Westgold Resources Limited" },
 };

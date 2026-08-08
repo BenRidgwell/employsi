@@ -63,7 +63,12 @@ print('Roster parsers\n')
 
 # (script, loader name, floor, what it reads)
 CASES = [
-    ('scripts/seek-to-d1.py', 'load_advertisers', 80, 'seekAdvertisers.ts'),
+    # SEEK no longer regexes the file — load_advertisers() runs
+    # scripts/seek-advertisers.ts through bun. The floor still earns its keep:
+    # it catches the dump breaking, the modules going empty, and a merge that
+    # drops companies, none of which raise.
+    ('scripts/seek-to-d1.py', 'load_advertisers', 80,
+     'seekAdvertisers.ts + seekTradingNames.ts (via bun)'),
     ('scripts/zhaopin-to-d1.py', 'load_targets', 30, 'chinaJobsTargets.ts'),
     # NSW is the one roster whose loss is INVISIBLE in the run log: with no
     # agency names every vacancy still archives, just into the generic
@@ -116,6 +121,24 @@ try:
           f'{len(names)} entries, {len(set(names))} distinct')
 except Exception as e:  # noqa: BLE001
     check('nsw-gov comment handling', False, f'raised {type(e).__name__}: {e}')
+
+# The SEEK map is two files merged, and only one of them has a floor above.
+# seekTradingNames.ts could go empty — or seekAdvertisersFor() could stop
+# merging — and the count would still clear 80 on the generated file alone,
+# while ~237 live ads quietly stopped being pulled. So assert the merge: at
+# least one company must resolve to more advertisers than a generated
+# exact-name match can produce, and Perenti (whose own id serves 0) must carry
+# the brands it actually hires under.
+try:
+    ns = load_module_head('scripts/seek-to-d1.py', '_t_seek_merge')
+    adv = ns['load_advertisers']()
+    multi = [c for c, v in adv.items() if len(v) > 1]
+    check('seek map merges trading names', bool(multi),
+          f'{len(multi)} companies with more than one advertiser')
+    prn = [a['name'] for a in adv.get('perth-prn', [])]
+    check('perth-prn carries its operating brands', len(prn) > 1, f'{prn}')
+except Exception as e:  # noqa: BLE001
+    check('seek trading-name merge', False, f'raised {type(e).__name__}: {e}')
 
 print()
 if FAILS:

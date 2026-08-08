@@ -47,6 +47,34 @@ export const EXTRA_QUERIES: Record<string, string[]> = {
   // under "Autoleague" be attributed to the roster company rather than
   // rejected by the token rule.
   "priv-swift-holdings-investments": ["Autoleague"],
+  // Perenti (ASX:PRN). Every one of its ~10,000 people is employed by a brand,
+  // not by "Perenti" — its own SEEK advertiser record has served 0 ads every
+  // time it has been checked, while the brands below were serving ~105.
+  //
+  // Worth knowing before adding more: on SEEK's keyword search the parent name
+  // already returns these ads (the brands name Perenti in the ad body), so the
+  // SEEK half of this was an ATTRIBUTION problem, fixed by ADVERTISER_ALIAS.
+  // These phrases are here for Adzuna, which matches the phrase against the ad
+  // rather than resolving an employer, and where the parent name finds nothing.
+  "perth-prn": [
+    "Barminco",
+    "Ausdrill",
+    "DDH1 Drilling",
+    "Swick Mining Services",
+    "BTP Group",
+    "AUMS",
+    "Strike Drilling",
+  ],
+  // Alkane Resources (ASX:ALK) hires under its two producing mines. Costerfield
+  // arrived with the Mandalay Resources merger (completed 2025-08-05).
+  alk: ["Costerfield Operations", "Tomingley Gold Operations"],
+  // Seven West Media's newspaper arm. The television arm advertises as the bare
+  // "Seven", which is far too short to search on — advertiser_match.py accepts
+  // it when an ad arrives, but nobody should go looking for it.
+  swm: ["West Australian Newspapers"],
+  // Catalyst Metals (ASX:CYL) advertises through the operating entity for its
+  // Plutonic gold mine rather than the listed parent.
+  "perth-cyl": ["Catalyst Plutonic"],
 };
 
 /** Every phrase to search for this company: its own name first, then any extras. */

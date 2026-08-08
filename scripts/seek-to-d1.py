@@ -71,33 +71,35 @@ def match_city(text: str):
     return None
 
 
-# ── SEEK advertiser map (parsed from the generated TS) ────────────────────────
-# Quote-AGNOSTIC, and it has to be. The previous pattern assumed single-quoted
-# keys and values; Prettier later reformatted seekAdvertisers.ts to double
-# quotes and dropped the quotes from keys that don't need them, so the pattern
-# matched 0 of the entries. The scraper then walked zero companies, archived
-# nothing, and exited 0 — four days of "successful" runs with no data. So: the
-# quote character is captured and back-referenced, and the key may be bare.
+# ── SEEK advertiser map (read by RUNNING the TS, not regexing it) ─────────────
+# This used to be a regex over seekAdvertisers.ts, and it failed exactly the way
+# a regex over source fails: Prettier reformatted the file to double-quoted keys
+# and values, the single-quote pattern matched 0 entries, and the scraper walked
+# zero companies and exited 0 for four days. A quote-agnostic pattern fixed that
+# instance without fixing the shape of the problem.
 #
-# (The sturdier fix is scripts/roster.py's: run the TypeScript instead of
-# regexing it. Worth doing here too, but a tolerant pattern plus the
-# empty-roster guard below is what stops this failing silently again.)
-ADVERTISER_RE = re.compile(
-    r'["\']?([A-Za-z0-9_-]+)["\']?\s*:\s*\{\s*'
-    r'advertiserId:\s*(["\'])(.*?)\2\s*,\s*'
-    r'name:\s*(["\'])((?:[^\\]|\\.)*?)\4\s*\}'
-)
-
-
+# It cannot survive the second half of the map at all. A company's advertisers
+# are now seekAdvertisers.ts (one exact-name match, generated) MERGED with
+# seekTradingNames.ts (an array of the brands it actually hires under), composed
+# by seekAdvertisersFor() — so the list a company resolves to is not a literal
+# anywhere in the source. Running the module is what keeps this driver and the
+# cron Worker walking the same advertisers by construction.
+#
+# No regex fallback, for scripts/roster.py's reason: a fallback would reintroduce
+# the short-roster-that-looks-successful failure this replaces.
 def load_advertisers() -> dict:
-    txt = open(os.path.join(ROOT, 'src/employsi/data/seekAdvertisers.ts')).read()
-    out = {}
-    for m in ADVERTISER_RE.finditer(txt):
-        out[m.group(1)] = {
-            'advertiserId': m.group(3),
-            'name': m.group(5).replace("\\'", "'").replace('\\"', '"'),
-        }
-    return out
+    """{companyId: [{advertiserId, name}, ...]} — own name first, then brands."""
+    try:
+        p = subprocess.run(['bun', 'run', os.path.join(HERE, 'seek-advertisers.ts')],
+                           capture_output=True, timeout=120, cwd=ROOT)
+    except FileNotFoundError as e:
+        raise RuntimeError(
+            'bun is required to read the SEEK advertiser map '
+            '(a company\'s advertisers are composed at runtime, not declared). '
+            'Install bun: https://bun.sh') from e
+    if p.returncode != 0:
+        raise RuntimeError(f'seek advertiser dump failed: {p.stderr.decode()[:300]}')
+    return json.loads(p.stdout.decode())
 
 
 # ── SEEK read (Python/requests-class client SEEK serves) ──────────────────────
@@ -256,18 +258,30 @@ def main() -> int:
         # data file moved or its format changed under the parser. Reporting
         # "Done. 0 archived." and exiting 0 is what hid this for four days.
         sys.stderr.write(
-            'No SEEK advertisers parsed from src/employsi/data/seekAdvertisers.ts.\n'
-            'The file is present but nothing matched, so its format has changed — '
-            'treating as a failure rather than archiving nothing quietly.\n')
+            'No SEEK advertisers from scripts/seek-advertisers.ts.\n'
+            'The dump ran but returned nothing, so seekAdvertisers.ts / '
+            'seekTradingNames.ts have gone empty — treating as a failure rather '
+            'than archiving nothing quietly.\n')
         return 1
     ids = [cid for cid in advertisers if not ONLY or cid in ONLY]
-    sys.stderr.write(f'SEEK -> D1: {len(ids)} mapped companies.\n')
+    n_adv = sum(len(advertisers[c]) for c in ids)
+    sys.stderr.write(f'SEEK -> D1: {len(ids)} mapped companies, {n_adv} advertisers.\n')
     total_fetch = total_new = blocked = done = 0
     for cid in ids:
         if done >= LIMIT:
             break
-        adv = advertisers[cid]
-        jobs = fetch_company(adv['advertiserId'], adv['name'])
+        # A company can hire under several advertiser ids (its own plus the
+        # trading names in seekTradingNames.ts). Pull each and pool them; the
+        # SEEK job id dedupe inside fetch_company is per-advertiser, so the
+        # pooling dedupes across them too.
+        jobs, seen_ids = [], set()
+        for adv in advertisers[cid]:
+            for j in fetch_company(adv['advertiserId'], adv['name']):
+                if j['url'] and j['url'] in seen_ids:
+                    continue
+                if j['url']:
+                    seen_ids.add(j['url'])
+                jobs.append(j)
         if not jobs:
             blocked += 1
             sys.stderr.write(f'  {cid:16} 0 jobs\n')

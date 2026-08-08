@@ -39,7 +39,7 @@ import { checkAdvertiser } from "./advertiser";
 import { queryPhrases } from "./companyQueries";
 import { fetchMcfJobs } from "./mycareersfuture";
 import { fetchSeekCompanyJobs } from "./seek";
-import { SEEK_ADVERTISERS } from "../../src/employsi/data/seekAdvertisers";
+import { seekAdvertisersFor } from "../../src/employsi/data/seekTradingNames";
 import { PERTH_GOV_IDS } from "../../src/employsi/data/perthGov";
 import { MELBOURNE_GOV_IDS } from "../../src/employsi/data/melbourneGov";
 import { BRISBANE_GOV_IDS } from "../../src/employsi/data/brisbaneGov";
@@ -273,12 +273,14 @@ async function pullCompany(
   // Layer SEEK on top: a company's full SEEK board (every classification, not
   // just IT), adding only roles Adzuna/Muse didn't already list — cross-checked
   // by normalised title so a job advertised on more than one board is counted
-  // once. Keyed on the offline-resolved advertiser id; companies without one (no
-  // current SEEK ads) contribute nothing, exactly like an unmatched Muse name.
-  // SEEK returning [] (unreachable / challenged) simply adds nothing this run.
+  // once. Keyed on the offline-resolved advertiser id PLUS any trading names the
+  // company hires under (seekTradingNames.ts) — a group like Perenti advertises
+  // only through its brands, so its own id returns nothing. Companies with
+  // neither (no current SEEK ads) contribute nothing, exactly like an unmatched
+  // Muse name. SEEK returning [] (unreachable / challenged) adds nothing.
   if (env.SEEK_VIA_WORKER === "1" && jobs.length < JOBS_PER_COMPANY) {
-    const adv = SEEK_ADVERTISERS[target.id];
-    if (adv) {
+    for (const adv of seekAdvertisersFor(target.id)) {
+      if (jobs.length >= JOBS_PER_COMPANY) break;
       const seek = await fetchSeekCompanyJobs(adv.advertiserId, adv.name);
       let added = 0;
       for (const s of seek) {
@@ -1487,7 +1489,11 @@ export default {
         return new Response("forbidden", { status: 403 });
       }
       const id = url.searchParams.get("id") || "bhp";
-      const adv = SEEK_ADVERTISERS[id];
+      // Every advertiser this company is pulled from, trading names included —
+      // the diagnostic has to see what the cron sees, or a group whose own id
+      // is empty (Perenti) reads as "SEEK has nothing" when its brands are full.
+      const advertisers = seekAdvertisersFor(id);
+      const adv = advertisers[0];
       if (!adv)
         return Response.json(
           { ok: false, id, error: "no SEEK advertiser mapped for this id" },
@@ -1543,11 +1549,20 @@ export default {
         }
       }
       try {
-        const jobs = await fetchSeekCompanyJobs(adv.advertiserId, adv.name);
+        // Per-advertiser counts, not just the total: an entry that has gone to
+        // zero is the thing worth seeing, and a group total hides it.
+        const per: { advertiserId: string; name: string; count: number }[] = [];
+        const jobs: Awaited<ReturnType<typeof fetchSeekCompanyJobs>> = [];
+        for (const a of advertisers) {
+          const got = await fetchSeekCompanyJobs(a.advertiserId, a.name);
+          per.push({ advertiserId: a.advertiserId, name: a.name, count: got.length });
+          jobs.push(...got);
+        }
         return Response.json({
           ok: true,
           id,
           advertiserId: adv.advertiserId,
+          advertisers: per,
           reachable: true,
           count: jobs.length,
           sample: jobs

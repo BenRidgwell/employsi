@@ -108,6 +108,56 @@ ADVERTISER_ALIAS = {
     'autoleague': 'swift holdings investments',
     'autoleague pty ltd': 'swift holdings investments',
     'autoleague australia': 'swift holdings investments',
+    # Perenti is a mining-services group whose people are all employed by its
+    # brands; its own advertiser record has served 0 ads every time it has been
+    # checked. Confirmed against Perenti's own "our businesses" listing:
+    #   contract mining   Barminco, AUMS (African Underground Mining Services)
+    #   drilling services Ausdrill, DDH1, Strike Drilling, Swick, Ranger
+    #   mining services   BTP
+    # Ranger, Supply Direct and Logistics Direct are listed for attribution even
+    # though they had no SEEK advertiser when this was written — an ad can still
+    # reach us under those names from Indeed, Jora or LinkedIn.
+    'barminco': 'perenti',
+    'barminco pty ltd': 'perenti',
+    'aums': 'perenti',
+    'african underground mining services': 'perenti',
+    'ausdrill': 'perenti',
+    'ausdrill limited': 'perenti',
+    'ddh1': 'perenti',
+    'ddh1 drilling': 'perenti',
+    'ddh1 drilling pty ltd': 'perenti',
+    # "Strike Drilling" is NOT Strike Energy (ASX:STX, also on the roster). The
+    # token rule already keeps them apart — ['strike','drilling'] does not
+    # prefix-match ['strike','energy'] — and this alias is an exact lookup, so
+    # it cannot reach the other company either.
+    'strike drilling': 'perenti',
+    'swick': 'perenti',
+    'swick mining services': 'perenti',
+    'ranger drilling': 'perenti',
+    'btp': 'perenti',
+    'btp group': 'perenti',
+    'supply direct': 'perenti',
+    'logistics direct': 'perenti',
+    # Alkane Resources advertises under its two producing mines and never under
+    # the corporate name. Costerfield (gold-antimony, Victoria) came with the
+    # Mandalay Resources merger completed 2025-08-05; Tomingley (gold, NSW) is
+    # the original Alkane operation.
+    'costerfield': 'alkane resources',
+    'costerfield operations': 'alkane resources',
+    'tomingley': 'alkane resources',
+    'tomingley gold': 'alkane resources',
+    'tomingley gold operations': 'alkane resources',
+    # Seven West Media hires under its mastheads and its network brand. The bare
+    # "Seven" needs no alias — it is shorter than the roster name and prefixes
+    # it, so the token rule accepts it already, and "Seven Miles Coffee
+    # Roasters" is correctly rejected by that same rule.
+    'west australian newspapers': 'seven west media',
+    'west australian newspapers limited': 'seven west media',
+    'the west australian': 'seven west media',
+    # Catalyst Metals advertises through the operating entity for its Plutonic
+    # gold mine in WA rather than the listed parent.
+    'catalyst plutonic': 'catalyst metals',
+    'catalyst plutonic pty ltd': 'catalyst metals',
 }
 
 

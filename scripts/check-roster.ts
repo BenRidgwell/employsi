@@ -27,6 +27,7 @@
 import { COMPANIES } from "../src/employsi/data/companies";
 import { CITY_COMPANIES } from "../src/employsi/data/mapboxGeo";
 import { SEEK_ADVERTISERS } from "../src/employsi/data/seekAdvertisers";
+import { SEEK_TRADING_NAMES } from "../src/employsi/data/seekTradingNames";
 import { SITES as CAREER_SITES } from "../workers/jobs-cron/careerSites";
 
 /**
@@ -93,9 +94,32 @@ for (const site of CAREER_SITES) {
 }
 
 // ── 3. Every SEEK advertiser id points at a roster company ──────────────────
+// Seeded with the generated map so a trading name that collides with an
+// already-resolved advertiser is caught as well as one that collides with
+// another trading name.
+const seekAdvertiserOwner = new Map<string, string>(
+  Object.entries(SEEK_ADVERTISERS).map(([id, a]) => [a.advertiserId, id]),
+);
 for (const id of Object.keys(SEEK_ADVERTISERS)) {
   if (!rosterIds.has(id)) {
     err("seek-without-company", id, "seekAdvertisers entry has no roster entry");
+  }
+}
+// The hand-written half of the map. A typo'd company id here is worse than a
+// missing feed: the ads are pulled and then filed against an id nothing reads,
+// so the board looks scraped and the card stays empty.
+for (const [id, list] of Object.entries(SEEK_TRADING_NAMES)) {
+  if (!rosterIds.has(id)) {
+    err("seek-trading-name-without-company", id, "seekTradingNames entry has no roster entry");
+  }
+  // An advertiser id repeated across two companies would credit one employer
+  // with the other's hiring — the failure mode that file's header warns about.
+  for (const adv of list) {
+    const owner = seekAdvertiserOwner.get(adv.advertiserId);
+    if (owner && owner !== id) {
+      err("seek-advertiser-shared", adv.advertiserId, `claimed by both ${owner} and ${id}`);
+    }
+    seekAdvertiserOwner.set(adv.advertiserId, id);
   }
 }
 
@@ -126,6 +150,7 @@ for (const id of Object.keys(SEEK_ADVERTISERS)) {
   const fed = new Set<string>([
     ...CAREER_SITES.map((s) => s.id),
     ...Object.keys(SEEK_ADVERTISERS),
+    ...Object.keys(SEEK_TRADING_NAMES),
     ...SCRIPT_FED,
   ]);
   const without = COMPANIES.filter((c) => !fed.has(c.id));
@@ -156,7 +181,8 @@ if (process.argv.includes("--json")) {
 } else {
   console.log(
     `Roster: ${COMPANIES.length} companies · ${CAREER_SITES.length} career sites · ` +
-      `${Object.keys(SEEK_ADVERTISERS).length} SEEK advertisers`,
+      `${Object.keys(SEEK_ADVERTISERS).length} SEEK advertisers ` +
+      `(+${Object.values(SEEK_TRADING_NAMES).flat().length} trading names)`,
   );
   for (const f of errors) console.log(`  ERROR  ${f.kind.padEnd(24)} ${f.id}  — ${f.detail}`);
   for (const f of warns) console.log(`  warn   ${f.kind.padEnd(24)} ${f.id}  — ${f.detail}`);
