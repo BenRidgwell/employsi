@@ -122,16 +122,8 @@ export const WA_GOV_LOGO_URL: Record<string, string> = {
     "https://ombudsman.wa.gov.au/sites/default/files/ombudsman_wa_logo_2026.png", // Ombudsman Western Australian
   "perth-gov-perth-zoo": "https://www.perthzoo.wa.gov.au/assets/images/perth-zoo-logo.png", // Perth Zoo
   "perth-gov-pilbara-ports-authority": "https://www.pilbaraports.com.au/images/logo.png", // Pilbara Ports Authority
-  "perth-gov-public-transport-authority":
-    "https://www.pta.wa.gov.au/Portals/_default/Skins/Ozone/assets/images/footerLogos/metronet-logo.svg", // Public Transport Authority
   "perth-gov-venueswest":
     "https://www.venueswest.wa.gov.au/assets/corp/static/images/icons/logo-left.svg", // VenuesWest
-  "perth-gov-wa-country-health-service":
-    "https://www.wacountry.health.wa.gov.au/images/hsps/logo.svg", // WA Country Health Service
-  "perth-gov-western-australian-electoral-commission":
-    "https://www.elections.wa.gov.au/themes/custom/waectheme/logo.svg", // Western Australian Electoral Commission
-  "perth-gov-western-australian-museum":
-    "https://visit.museum.wa.gov.au/themes/custom/wamuseum_theme/logo.svg", // Western Australian Museum
   "perth-gov-workcover-wa":
     "https://www.workcover.wa.gov.au/wp-content/themes/workcover/images/logo-mobile.svg", // WorkCover WA
   // Three agencies moved out of WA_GOV_CREST_IDS below on 2026-08-05: each has a

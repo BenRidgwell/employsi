@@ -110,8 +110,6 @@ export const PRIVATE_LOGO_URL: Record<string, string> = {
   "priv-goodstart-early-learning": "https://www.goodstart.org.au/images/goodstart-logo.svg",
   "priv-hammondcare":
     "https://www.hammond.com.au/hubfs/HammondCare%20Master%20Folder/Logos/ham-c-logo.svg",
-  "priv-hancock-prospecting":
-    "https://www.hancockprospecting.com.au/wp-content/uploads/2021/09/hancock-prospecting-logo.png",
   "priv-harris-farm":
     "https://cdn.shopify.com/s/files/1/0206/9470/t/232/assets/Uber_Logo_Black_RGB.svg",
   "priv-hcf": "https://www.hcf.com.au/content/dam/hcf/images/placeholder/logo_hcf1.png",
@@ -241,6 +239,19 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "perth-gov-north-metropolitan-tafe": "northmetrotafe.wa.edu.au",
   "perth-gov-office-of-the-director-of-public-prosecutions": "dpp.wa.gov.au",
   "perth-gov-pathwest": "pathwest.health.wa.gov.au",
+  // ── the three agencies whose white logo was removed, 2026-08-08 ───────────
+  // Taking away an invisible logo only helps if what replaces it is visible,
+  // and the favicon fallback is keyed on a name-derived domain that does not
+  // exist for any of these three (wacountryhealthservice.com,
+  // westernaustralianelectoralcommission.com, westernaustralianmuseum.com). The
+  // real domains were sitting in the logo URLs being removed. Each verified the
+  // usual two ways: the site is the agency's, and the favicon has ink in it.
+  //
+  // Public Transport Authority and Hancock Prospecting needed nothing — their
+  // roster domains (pta.wa.gov.au, hancockprospecting.com.au) already resolve.
+  "perth-gov-wa-country-health-service": "wacountry.health.wa.gov.au",
+  "perth-gov-western-australian-electoral-commission": "elections.wa.gov.au",
+  "perth-gov-western-australian-museum": "museum.wa.gov.au",
   // perron.com.au is PERRON INTEGRATED LOGISTICS, a different company — so the
   // badge was serving another firm's mark on Perron Group's pin, which is the
   // De Grey failure in miniature: confidently wrong rather than blank. Perron
