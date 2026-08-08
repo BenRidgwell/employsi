@@ -1,4 +1,5 @@
-# Daily New Zealand government jobs (jobs.govt.nz) → D1 archive, through Oxylabs.
+# Daily New Zealand government jobs (jobs.govt.nz) → D1 archive, rendered in a
+# local headless Chromium on the runner (no proxy).
 #
 # It was moved off the proxy on 2026-08-04, on a measurement that direct and
 # proxied walks returned the same roles and the same failures. That measurement
@@ -25,7 +26,6 @@
 #
 # Required repo secrets:
 #   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
-#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Web Scraper API sub-user credentials
 # Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
 #
 # Use "Run workflow" to verify before relying on the schedule.
@@ -53,11 +53,18 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - name: Scrape jobs.govt.nz → D1 (Oxylabs)
+      # Playwright: the feed renders jobs.govt.nz in a local headless Chromium
+      # rather than fetching it through Oxylabs. Measured twice from a hosted
+      # runner (probe-headless-ci, 2026-08-08) at 20 rows on Auckland page 1.
+      - name: Install Playwright + Chromium
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Scrape jobs.govt.nz → D1 (rendered, local browser)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
-          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
-          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
         run: python scripts/nzgov-to-d1.py

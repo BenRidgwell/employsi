@@ -50,6 +50,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
+import browser_fetch  # noqa: E402
+
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
 ACCOUNT = os.environ.get('CF_ACCOUNT_ID') or '080a66721e2d85950d9d7dc939e08b76'
 DB = os.environ.get('D1_DATABASE_ID') or '1c5f3ffb-b9d7-4233-b28b-0f1f8d193fe1'
@@ -111,12 +113,24 @@ def job_key(source: str, title: str, company: str, location: str) -> str:
 
 
 # ── fetch + parse ─────────────────────────────────────────────────────────────
+# Playwright on an ordinary runner by default; --oxylabs puts the proxy back.
+# Same finding as Auckland Airport: the 403 a datacentre request gets is a
+# Cloudflare challenge at the HTTP layer, and a real browser on that same
+# address clears it — measured twice from a hosted runner
+# (.github/workflows/probe-headless-ci.yml, 2026-08-08) at 37 rows both times.
+VIA_OXYLABS = '--oxylabs' in args
+
+SETTLE = [{'type': 'wait', 'wait_time_s': 8}]
+
+
 def get() -> str | None:
-    from oxylabs_client import fetch as oxy_fetch
-    content, status = oxy_fetch(LISTING, geo='Australia', render=False)
-    if status and status != 200:
-        sys.stderr.write(f'  listing returned status {status}\n')
-    return content
+    if VIA_OXYLABS:
+        from oxylabs_client import fetch as oxy_fetch
+        content, status = oxy_fetch(LISTING, geo='Australia', render=False)
+        if status and status != 200:
+            sys.stderr.write(f'  listing returned status {status}\n')
+        return content
+    return browser_fetch.render(LISTING, SETTLE, locale='en-AU')
 
 
 ROW_RE = re.compile(r'<tr data-referrals="[^"]*">(.*?)</tr>', re.S)

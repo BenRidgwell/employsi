@@ -76,6 +76,7 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+import browser_fetch  # noqa: E402
 import http_fetch  # noqa: E402
 
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
@@ -103,10 +104,28 @@ def _opt(name, default=None):
 
 
 MAX_PAGES = int(_opt('--max-pages', 40))
-# Oxylabs is the default again (see the header): the one scheduled run that
-# went direct timed out on every request from the GitHub runner. `--oxylabs`
-# stays accepted so an existing invocation does not break.
-VIA_OXYLABS = '--direct' not in args
+# A BROWSER on an ordinary runner is the default now. Three transports exist
+# and the history behind that is worth keeping, because two of them have been
+# wrong here:
+#
+#   --oxylabs  the proxy. Was the default after a direct run regressed.
+#   --direct   plain HTTP through http_fetch. Was made the default on
+#              2026-08-04 from a SANDBOX probe, and then timed out on every
+#              request from the first real GitHub runner. That is the mistake
+#              this file exists to not repeat.
+#   (default)  headless Chromium on the runner. Measured twice from a hosted
+#              runner (.github/workflows/probe-headless-ci.yml, 2026-08-08):
+#              HTTP 200 and 20 rows on Auckland page 1 both times — from the
+#              environment the feed actually runs in, not from a sandbox.
+#
+# The browser costs about 7x the wall time of a direct fetch (measured 19.4s a
+# page against 2.8s), so ~35 pages is roughly twelve minutes rather than two.
+# That is the price of the transport that is measured to work. --direct may
+# well work now too and is a page-one experiment away from being known, but a
+# feed that has already regressed once on an unverified transport change is not
+# the place to save ten minutes on a guess.
+VIA_OXYLABS = '--oxylabs' in args
+VIA_DIRECT = '--direct' in args
 DRY = '--dry-run' in args
 AGENCIES_ONLY = '--agencies' in args
 
@@ -132,20 +151,23 @@ def agency_id(name: str) -> str:
     return ('nz-' + slug)[:60]
 
 
+SETTLE = [{'type': 'wait', 'wait_time_s': 5}]
+
+
 def get(url: str) -> str | None:
-    if not VIA_OXYLABS:
+    if VIA_DIRECT:
         # http_fetch, not a bare urlopen: it carries the same throttle and
         # backoff the proxy client applied, so going direct did not also mean
         # going unpaced.
         text, _ = http_fetch.get(url, timeout=45)
         return text
-    from oxylabs_client import fetch as oxy_fetch
-    # No JS rendering: the results are server-rendered, so a headless browser
-    # returns exactly the same 20 rows for ~7x the time (measured: 2.8s vs
-    # 19.4s a page). Over ~35 pages that is the difference between a two-minute
-    # run and a twelve-minute one.
-    content, _ = oxy_fetch(url, geo='New Zealand', render=False)
-    return content
+    if VIA_OXYLABS:
+        # No JS rendering on this path: the results are server-rendered, so the
+        # proxy only ever needed to supply the address.
+        content, _ = __import__('oxylabs_client').fetch(
+            url, geo='New Zealand', render=False)
+        return content
+    return browser_fetch.render(url, SETTLE, locale='en-NZ')
 
 
 ROW_RE = re.compile(r'<tr>\s*<td class="job_title">(.*?)</tr>', re.S | re.I)
@@ -368,7 +390,7 @@ def upsert(jobs: list) -> int:
 
 def main() -> int:
     sys.stderr.write(
-        f'NZ Government jobs -> D1: {"via Oxylabs" if VIA_OXYLABS else "direct"}'
+        f'NZ Government jobs -> D1: {"via Oxylabs" if VIA_OXYLABS else "direct" if VIA_DIRECT else "browser"}'
         f'{", DRY RUN" if DRY else ""}{", AGENCIES ONLY" if AGENCIES_ONLY else ""}\n')
     jobs = scrape()
     if not jobs:

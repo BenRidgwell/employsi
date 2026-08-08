@@ -140,6 +140,81 @@ def render(url: str, instructions: list[dict] | None = None,
                 pass
 
 
+class Session:
+    """One browser context held open across several fetches.
+
+    `render()` above makes a FRESH context per call, which is right for the
+    boards it was written for — each is a full page load that stands alone. It
+    is wrong when a page and the assets it references have to be fetched
+    together: the NSW jobs site sits behind a Cloudflare interstitial, and the
+    clearance the render earns lives in that context's cookies. Re-navigating
+    from a new context would face the challenge again for every chunk.
+
+    `text()` fetches from INSIDE the page rather than by navigating to the URL.
+    That matters twice over: the request carries the clearance cookie and the
+    page's own Referer, and the response comes back as the raw body. Navigating
+    a browser to a .js or .json URL instead yields a document wrapping it in
+    <pre> with every quote entity-escaped, which silently breaks any regex
+    written against the real thing.
+    """
+
+    def __init__(self, locale: str = 'en-AU', timeout_s: int = 90):
+        self._locale = locale
+        self._timeout_s = timeout_s
+        self._ctx = None
+        self._page = None
+
+    def __enter__(self):
+        browser = _browser_once()
+        self._ctx = browser.new_context(user_agent=UA, locale=self._locale,
+                                        viewport={'width': 1440, 'height': 900})
+        self._page = self._ctx.new_page()
+        return self
+
+    def __exit__(self, *_exc):
+        if self._ctx is not None:
+            try:
+                self._ctx.close()
+            except Exception:  # noqa: BLE001
+                pass
+        self._ctx = None
+        self._page = None
+        return False
+
+    def html(self, url: str, instructions: list[dict] | None = None) -> str | None:
+        """Navigate and return the rendered HTML, running the same instruction
+        vocabulary render() accepts."""
+        try:
+            self._page.goto(url, wait_until='domcontentloaded',
+                            timeout=self._timeout_s * 1000)
+            for ins in (instructions or []):
+                kind = ins.get('type')
+                if kind == 'wait':
+                    self._page.wait_for_timeout(float(ins.get('wait_time_s', 1)) * 1000)
+                elif kind == 'click':
+                    _locator(self._page, ins.get('selector', {})).first.click(
+                        timeout=self._timeout_s * 1000)
+                else:
+                    raise ValueError(f'browser_fetch: unsupported instruction {kind!r}')
+            return self._page.content()
+        except Exception as e:  # noqa: BLE001
+            sys.stderr.write(f'  session render failed for {url[:70]}: {str(e)[:160]}\n')
+            return None
+
+    def text(self, url: str) -> str | None:
+        """Fetch `url` from inside the current page and return the raw body."""
+        try:
+            return self._page.evaluate(
+                """async (u) => {
+                     const r = await fetch(u, {credentials: 'include'});
+                     if (!r.ok) return null;
+                     return await r.text();
+                   }""", url)
+        except Exception as e:  # noqa: BLE001
+            sys.stderr.write(f'  session asset fetch failed for {url[:70]}: {str(e)[:120]}\n')
+            return None
+
+
 if __name__ == '__main__':
     # quick check: python3 scripts/browser_fetch.py <url> [settle_s]
     u = sys.argv[1] if len(sys.argv) > 1 else 'https://example.com'

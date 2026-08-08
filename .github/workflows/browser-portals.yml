@@ -11,9 +11,14 @@
 #   Auckland Airport (careers.aucklandairport.co.nz) and TechnologyOne
 #   (technology1.com) are READABLE but not REACHABLE. Their HTML carries every
 #   role with no JavaScript needed — verified identical rendered and not — but a
-#   plain datacentre request gets HTTP 403 and a challenge page. They only need
-#   a residential exit, so both are fetched UNRENDERED, which is cheaper and has
-#   one less thing to go wrong.
+#   plain datacentre request gets HTTP 403 and a Cloudflare challenge page.
+#
+#   That challenge is at the HTTP layer, not the address. A REAL BROWSER on the
+#   same datacentre address clears it: measured twice from a hosted runner
+#   (probe-headless-ci, 2026-08-08) at 56 tiles and 37 rows both times. So both
+#   moved off Oxylabs on 2026-08-08 and now render locally like Stockland. The
+#   browser is there only to satisfy the challenge — the jobs still need no
+#   JavaScript — and `--oxylabs` puts the proxy back on either.
 #
 # Rows land as `portal-sf`/`sydney-sgp` and `portal-wpjb`/
 # `nz-auckland-international-airport`, through the same key and upsert as every
@@ -60,10 +65,9 @@ jobs:
         with:
           bun-version: latest
 
-      # Playwright, for STOCKLAND ONLY. The other two steps in this workflow —
-      # Auckland Airport and TechnologyOne — were probed the same way and are
-      # Cloudflare-challenged from a datacentre address, so they keep the proxy.
-      # Three scrapers share this file; only one of them moved.
+      # Playwright, for all three scrapers in this file. Auckland Airport and
+      # TechnologyOne joined Stockland on 2026-08-08, so no step here needs the
+      # proxy any more and the workflow carries no Oxylabs credentials at all.
       - name: Install Playwright + Chromium
         run: |
           python -m pip install --upgrade pip
@@ -78,23 +82,19 @@ jobs:
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         run: python scripts/stockland-to-d1.py
 
-      - name: Scrape Auckland Airport careers → D1 (Oxylabs — still needs the IP)
+      - name: Scrape Auckland Airport careers → D1 (rendered, local browser)
         # Runs even if Stockland failed — they are unrelated boards, and one
         # being blocked is no reason to skip archiving the other.
         if: always()
         env:
-          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
-          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         run: python scripts/aucklandairport-to-d1.py
 
-      - name: Scrape TechnologyOne careers → D1 (Oxylabs — still needs the IP)
+      - name: Scrape TechnologyOne careers → D1 (rendered, local browser)
         if: always()
         env:
-          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
-          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}

@@ -1,14 +1,20 @@
 # Daily NSW Government → D1 archive (hosted).
 #
 # The board is a client-rendered Next.js app whose HTML contains no vacancies at
-# all, so the script reads the JSON search API its own browser client calls. That
-# API is plain HTTP and needs no proxy; Oxylabs is used for ONE step — reading
-# the bearer token out of the site's JS bundle — because iworkfor.nsw.gov.au sits
-# behind Cloudflare's "Just a moment" interstitial and 403s any datacenter IP,
-# static assets included. No browser, so this runs on an ordinary runner.
+# all, so the script reads the JSON search API its own browser client calls.
+#
+# That API (api.ad-core04.com) is plain HTTP and never needed a proxy. Exactly
+# ONE step did: reading the API's bearer token out of the site's own JS bundle,
+# because iworkfor.nsw.gov.au sits behind Cloudflare's "Just a moment"
+# interstitial and 403s any datacentre IP, static /_next/ chunks included.
+#
+# As of 2026-08-08 that step is a LOCAL HEADLESS RENDER instead of an Oxylabs
+# fetch, so this workflow needs no proxy credentials at all. The challenge is at
+# the HTTP layer, not the address: a real browser on an ordinary runner clears
+# it, measured twice (probe-headless-ci, 2026-08-08). The page and its chunks
+# are fetched in ONE browser context so the clearance cookie covers both.
 #
 # Required repo secrets:
-#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
 #   CLOUDFLARE_API_TOKEN                — a token with D1 edit on the employsi account
 # Optional repo variables (fall back to values baked into the script):
 #   CF_ACCOUNT_ID, D1_DATABASE_ID
@@ -46,10 +52,19 @@ jobs:
         with:
           bun-version: latest
 
+      # Playwright: the ONE step that ever needed the proxy — reading the search
+      # API's bearer out of the site's own JS bundle, behind Cloudflare's "Just
+      # a moment" — is now a local headless render. The search calls themselves
+      # were always plain HTTP. Measured from a hosted runner
+      # (probe-headless-ci, 2026-08-08): the jobs page and its /_next/ chunks.
+      - name: Install Playwright + Chromium
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
       - name: Scrape NSW gov → D1 (search API)
         env:
-          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
-          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}

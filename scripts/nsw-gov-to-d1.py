@@ -52,6 +52,7 @@ import json, os, re, subprocess, sys, time, datetime
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import urllib.request  # noqa: E402
 try:
+    import browser_fetch
     import oxylabs_client as oxy
     import jobs_extract as jx
 except Exception as e:  # noqa: BLE001
@@ -308,8 +309,58 @@ JWT_RE = re.compile(r'"(eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_
 CHUNK_RE = re.compile(r'<script[^>]+src="(/_next/static/chunks/[^"]+\.js)"')
 
 
+# Playwright on an ordinary runner by default; --oxylabs puts the proxy back.
+#
+# ONLY THIS STEP EVER NEEDED THE PROXY. The search calls against
+# api.ad-core04.com are, and always were, plain HTTP. Oxylabs was bought for the
+# one fetch that reads the bearer out of the site's own bundle, because
+# iworkfor.nsw.gov.au sits behind Cloudflare's "Just a moment" and 403s a
+# datacentre IP even for static /_next/ chunks.
+#
+# That wall is at the HTTP layer. A real browser on the same datacentre address
+# clears it: measured twice from a hosted runner
+# (.github/workflows/probe-headless-ci.yml, 2026-08-08), 40 and 42 /_next/
+# chunk references on the jobs page. So the whole feed comes off the proxy for
+# the cost of one page render a day.
+VIA_OXYLABS = '--oxylabs' in sys.argv[1:]
+
+SETTLE = [{'type': 'wait', 'wait_time_s': 10}]
+
+
+def _discover_via_browser():
+    """One browser context for the page AND its chunks.
+
+    The chunks are fetched from inside the page rather than by navigating to
+    them, so each request carries the clearance cookie the render just earned
+    and comes back as raw JavaScript. Navigating to a .js URL would return a
+    document that wraps it in <pre> with every quote entity-escaped, and
+    JWT_RE — which matches on a quoted literal — would find nothing in it.
+    """
+    with browser_fetch.Session(locale='en-AU') as ses:
+        page = ses.html(SEARCH_PAGE, SETTLE)
+        if not page:
+            sys.exit(f'Could not load {SEARCH_PAGE} in a browser.')
+        chunks = list(dict.fromkeys(CHUNK_RE.findall(page)))
+        if not chunks:
+            jx.diagnose(page, 'jobs-page')
+            sys.exit('No /_next/ chunks on the jobs page — the site was rebuilt '
+                     'on a different stack.')
+        sys.stderr.write(f'  scanning {len(chunks)} JS chunks for the API credentials…\n')
+        for src in chunks:
+            js = ses.text(SITE + src)
+            if not js:
+                continue
+            base, tok = API_BASE_RE.search(js), JWT_RE.search(js)
+            if base and tok:
+                sys.stderr.write(f'    found in {src.rsplit("/", 1)[-1]} -> {base.group(1)}\n')
+                return base.group(1), tok.group(1)
+    sys.exit(f'Could not find the search API credentials in any of {len(chunks)} chunks.')
+
+
 def discover_api():
     """(base_url, bearer) read out of the live bundle. Never stored in the repo."""
+    if not VIA_OXYLABS:
+        return _discover_via_browser()
     html, status = oxy.fetch(SEARCH_PAGE, geo='Australia', render=False)
     if not html:
         sys.exit(f'Could not load {SEARCH_PAGE} (status={status}).')
