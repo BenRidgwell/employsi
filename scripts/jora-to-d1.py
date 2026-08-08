@@ -53,6 +53,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
+import browser_fetch  # noqa: E402
+
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
 ACCOUNT = os.environ.get('CF_ACCOUNT_ID') or '080a66721e2d85950d9d7dc939e08b76'
 DB = os.environ.get('D1_DATABASE_ID') or '1c5f3ffb-b9d7-4233-b28b-0f1f8d193fe1'
@@ -72,7 +74,22 @@ ONLY = set(_opt('--only', '').split(',')) if '--only' in args else None
 LIMIT = int(_opt('--limit', 10**9))
 MAX_PAGES = int(_opt('--max-pages', 3))
 CONCURRENCY = int(_opt('--concurrency', 6))
+# PLAYWRIGHT'S SYNC API IS SINGLE-THREADED. Every call has to come from the
+# thread that created the playwright object, so the browser transport cannot be
+# driven from the pool below — six workers sharing one browser is not slow, it
+# is undefined. The proxy and direct paths are plain HTTP and keep their
+# concurrency; the browser path is forced to one worker, which it can afford
+# because raw_get pays for the render once and then fetches at HTTP speed.
 DIRECT = '--direct' in args
+# A BROWSER ON THE RUNNER IS THE DEFAULT. Jora went through Oxylabs with
+# render=True, so it was buying a browser and an address; measured 2026-08-08
+# from a hosted runner, it only ever needed the browser. The volume walk is the
+# evidence that matters here, because a single request proves nothing for a feed
+# that walks 355 companies: 76 of 80 different company searches returned rows
+# from a plain Azure address, with four scattered failures and no run-length to
+# them. Indeed and SimplyHired, walked the same way in the same run, refused
+# from request #1. See .github/workflows/probe-headless-ci.yml --volume.
+VIA_OXYLABS = '--oxylabs' in args
 DRY = '--dry-run' in args
 
 if not DRY and not TOKEN:
@@ -149,9 +166,16 @@ def get(url: str) -> str | None:
         except Exception as e:
             sys.stderr.write(f'  direct fetch failed (expected — Jora 403s): {e}\n')
             return None
-    from oxylabs_client import fetch as oxy_fetch
-    content, _ = oxy_fetch(url, geo='Australia', render=True)
-    return content
+    if VIA_OXYLABS:
+        from oxylabs_client import fetch as oxy_fetch
+        content, _ = oxy_fetch(url, geo='Australia', render=True)
+        return content
+    # raw_get: clear Jora's challenge ONCE in a real browser, then fetch each
+    # search page as raw bytes from inside the cleared page. A full render per
+    # request would be ~4s x several hundred requests; this pays the render once
+    # and then runs at fetch speed, and the parser keeps seeing the original
+    # bytes rather than a serialised DOM.
+    return browser_fetch.raw_get(url, settle=6, locale='en-AU')
 
 
 CARD_SPLIT = re.compile(r'class="job-card result', re.I)
@@ -319,11 +343,13 @@ def main() -> int:
         sys.exit('No companies matched — check --only.')
     sys.stderr.write(
         f'Jora AU -> D1: {len(companies)} companies, '
-        f'{"DIRECT" if DIRECT else "via Oxylabs"}{", DRY RUN" if DRY else ""}.\n')
+        f'{"DIRECT" if DIRECT else "via Oxylabs" if VIA_OXYLABS else "browser"}'
+        f'{", DRY RUN" if DRY else ""}.\n')
 
     from concurrent.futures import ThreadPoolExecutor
     results: dict[str, tuple[list, int]] = {}
-    with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
+    workers = 1 if not (DIRECT or VIA_OXYLABS) else CONCURRENCY
+    with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {pool.submit(scrape_company, c['id'], c['name']): c for c in companies}
         for f in futures:
             c = futures[f]

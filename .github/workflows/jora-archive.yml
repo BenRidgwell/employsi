@@ -1,8 +1,19 @@
-# Daily Jora (au.jora.com) → D1 archive, via the Oxylabs Web Scraper API.
+# Daily Jora (au.jora.com) → D1 archive, rendered in a local headless Chromium
+# on the runner (no proxy).
 #
-# Jora 403s plain datacentre requests, so every fetch goes through Oxylabs for
-# the residential IP, throttling and backoff — the same path the Indeed, Zhaopin
-# and JobsDB scrapers use.
+# Jora 403s a plain datacentre REQUEST, which is why this went through Oxylabs
+# with render=True — buying a browser and an address together. Measured
+# 2026-08-08 it only ever needed the browser: a headless Chromium on an ordinary
+# runner is fine. The evidence is the volume walk rather than a single request,
+# because a single request proves nothing for a feed that walks 355 companies —
+# 76 of 80 different company searches returned rows from a plain Azure address,
+# while Indeed and SimplyHired, walked the same way in the same run, refused
+# from request #1. See probe-headless-ci.yml --volume.
+#
+# The walk is SINGLE-THREADED on this path: Playwright's sync API must be driven
+# from one thread. It can afford that because the challenge is cleared once and
+# every search page after it is fetched at plain-HTTP speed (browser_fetch
+# raw_get), rather than paying a full render per request.
 #
 # Every roster company is searched by legal name AND by a suffix-stripped brand
 # form ("ANZ Group Holdings" → "ANZ", which is how it advertises), then the
@@ -19,7 +30,6 @@
 # market being quiet.
 #
 # Required repo secrets:
-#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
 #   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
 # Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
 #
@@ -48,10 +58,21 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - name: Scrape Jora AU → D1 (Oxylabs)
+      # Playwright: Jora is fetched by a local headless Chromium now, not through
+      # Oxylabs. It went through the proxy with render=True, so it was buying a
+      # browser AND an address; measured 2026-08-08 it only needed the browser.
+      # The evidence is the volume walk, not a single request: 76 of 80
+      # different company searches returned rows from a plain Azure address,
+      # while Indeed and SimplyHired — walked the same way, same run — refused
+      # from request #1.
+      - name: Install Playwright + Chromium
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Scrape Jora AU → D1 (rendered, local browser)
         env:
-          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
-          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}

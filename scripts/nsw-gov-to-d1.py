@@ -41,9 +41,15 @@ not, so the search calls themselves are plain HTTP and always were.
 
 Since 2026-08-08 that step is a LOCAL HEADLESS RENDER rather than an Oxylabs
 fetch. The challenge is at the HTTP layer, not the address: a real browser on an
-ordinary runner clears it, measured twice (probe-headless-ci, 2026-08-08). The
-page and its chunks share ONE browser context, because the clearance lives in
-that context's cookies — see browser_fetch.Session.
+ordinary runner clears it. The page and its chunks share ONE browser context,
+because the clearance lives in that context's cookies — see
+browser_fetch.Session.
+
+IT DOES NOT CLEAR IT EVERY TIME. Measured across four attempts from hosted
+runners on 2026-08-08: three cleared (40 and 42 chunk references, plus a real
+run that archived 2,823 rows) and one came back 403 with the interstitial. So
+discovery retries with a fresh session — see DISCOVERY_ATTEMPTS — because a
+one-in-four failure would otherwise cost a whole night's NSW archive.
 
 Each vacancy maps to its nsw-gov-<slug> company id (from data/sydneyGov.ts),
 maps skills via the worker taxonomy, and upserts through the D1 HTTP API using
@@ -336,6 +342,17 @@ VIA_OXYLABS = '--oxylabs' in sys.argv[1:]
 SETTLE = [{'type': 'wait', 'wait_time_s': 10}]
 
 
+# THE CHALLENGE IS INTERMITTENT, so one refusal is not an answer. Measured
+# 2026-08-08 across four attempts from hosted runners: three cleared it (40 and
+# 42 chunk references, plus a real run that wrote 2,823 rows) and one came back
+# 403 with Cloudflare's interstitial. A single-shot discovery therefore fails
+# the whole night's archive maybe one run in four — loudly, which is right, but
+# needlessly. Each attempt gets a FRESH session, because the clearance is a
+# property of the context: retrying inside the context that just failed asks
+# the same rejected browser to try again.
+DISCOVERY_ATTEMPTS = 4
+
+
 def _discover_via_browser():
     """One browser context for the page AND its chunks.
 
@@ -345,15 +362,33 @@ def _discover_via_browser():
     document that wraps it in <pre> with every quote entity-escaped, and
     JWT_RE — which matches on a quoted literal — would find nothing in it.
     """
+    for attempt in range(1, DISCOVERY_ATTEMPTS + 1):
+        got = _discover_once()
+        if got:
+            return got
+        if attempt < DISCOVERY_ATTEMPTS:
+            sys.stderr.write(f'  discovery attempt {attempt} did not clear the '
+                             f'challenge — retrying with a fresh session\n')
+            time.sleep(5 * attempt)
+    sys.exit(f'Could not clear {SEARCH_PAGE} in {DISCOVERY_ATTEMPTS} attempts.')
+
+
+def _discover_once():
     with browser_fetch.Session(locale='en-AU') as ses:
         page = ses.html(SEARCH_PAGE, SETTLE)
         if not page:
-            sys.exit(f'Could not load {SEARCH_PAGE} in a browser.')
+            return None
         chunks = list(dict.fromkeys(CHUNK_RE.findall(page)))
         if not chunks:
+            # No chunks can mean the challenge page rather than a rebuild, and
+            # those need opposite responses — one is worth retrying, the other
+            # never will be. The interstitial is short and carries no /_next/;
+            # a real rebuild serves a full page. Size tells them apart.
+            if len(page) < 60_000:
+                return None
             jx.diagnose(page, 'jobs-page')
-            sys.exit('No /_next/ chunks on the jobs page — the site was rebuilt '
-                     'on a different stack.')
+            sys.exit('No /_next/ chunks on a full-sized jobs page — the site was '
+                     'rebuilt on a different stack.')
         sys.stderr.write(f'  scanning {len(chunks)} JS chunks for the API credentials…\n')
         for src in chunks:
             js = ses.text(SITE + src)
@@ -363,6 +398,8 @@ def _discover_via_browser():
             if base and tok:
                 sys.stderr.write(f'    found in {src.rsplit("/", 1)[-1]} -> {base.group(1)}\n')
                 return base.group(1), tok.group(1)
+    # Chunks were readable but carried no credentials: a real contract change,
+    # not a block, so retrying is pointless.
     sys.exit(f'Could not find the search API credentials in any of {len(chunks)} chunks.')
 
 
