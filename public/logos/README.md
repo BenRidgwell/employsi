@@ -20,6 +20,20 @@ one, so you always know which file is live.
 
 ## Finding a company's roster id
 
+For a whole city's map at once — the filename this folder expects for every
+company on it, and what each badge falls back to today:
+
+```bash
+bun run scripts/logo-filenames.ts perth            # all 145
+bun run scripts/logo-filenames.ts perth --missing  # only the ones on the favicon service
+```
+
+`--missing` is the list worth working through: a company already on a supplied
+logo or the WA crest looks fine, while one on the favicon service is a 16px
+image scraped off a website and is usually why a card looks wrong.
+
+For one company by name:
+
 ```bash
 bun -e 'import { COMPANIES } from "./src/employsi/data/companies";
   for (const c of COMPANIES) if (c.name.toLowerCase().includes("alcoa")) console.log(c.id, c.name);'
