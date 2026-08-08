@@ -150,7 +150,11 @@ type Platform =
   | "adlogic"
   | "wpjobmanager"
   | "employmenthero"
-  | "chris21";
+  | "chris21"
+  | "workable"
+  | "bamboohr"
+  | "cjd"
+  | "delorean";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -2230,6 +2234,109 @@ export const SITES: SiteDef[] = [
     // published entry point does not set; see fetchChris21.
     homeHub: "perth",
   },
+  {
+    id: "perth-cyl",
+    name: "Catalyst Metals",
+    sector: "Gold",
+    platform: "workable",
+    // The Workable account slug, from apply.workable.com/catalyst-metals/.
+    endpoint: "catalyst-metals",
+    origin: "https://apply.workable.com/catalyst-metals",
+    // Measured 2026-08-08: 5 roles, all Perth. Catalyst also advertises through
+    // the operating entity for its Plutonic mine on SEEK (9 more) — see
+    // seekTradingNames.ts; the two feeds cross-check by title.
+    homeHub: "perth",
+  },
+  {
+    id: "cxo",
+    name: "Core Lithium",
+    sector: "Lithium",
+    platform: "bamboohr",
+    endpoint: "https://corelithium.bamboohr.com",
+    origin: "https://corelithium.bamboohr.com",
+    // Measured 2026-08-08: 6 roles, every one at Cox Peninsula NT — the Finniss
+    // operation — so none of them plots on Perth. That is the board being
+    // honest about where the work is, not a parse gap.
+    homeHub: "perth",
+  },
+  {
+    id: "del",
+    name: "Delorean Corporation",
+    sector: "Bioenergy",
+    platform: "delorean",
+    endpoint: "https://deloreancorporation.com.au/about/careers/",
+    origin: "https://deloreancorporation.com.au",
+    // Measured 2026-08-08: 2 roles, both Sydney, both advertised as PDFs on an
+    // Elementor page with no ATS behind it. See fetchDelorean for why the
+    // location has to be paired by position.
+    homeHub: "perth",
+  },
+  {
+    id: "mah",
+    name: "Macmahon Holdings",
+    sector: "Mining services",
+    platform: "successfactors",
+    endpoint: "https://careers.macmahon.com.au",
+    origin: "https://careers.macmahon.com.au",
+    // Measured 2026-08-08: 88 advertised. This tenant serves the TILE theme
+    // (job-tile-cell) rather than the table one — fetchSuccessFactors reads
+    // both, and takes tiles when the page carries no data rows.
+    homeHub: "perth",
+  },
+  {
+    id: "perth-obm",
+    name: "Ora Banda Mining",
+    sector: "Gold",
+    platform: "jobadder",
+    // The endpoint is the WIDGET KEY, not a URL — `_jaJobsSettings.key` on
+    // orabandamining.com.au/job-vacancies/, read the same way BGC's and
+    // Ramelius' were. Measured 2026-08-08: the widget serves the location as a
+    // classification cell, which is what fetchJobAdder expects.
+    endpoint: "au3_gl4lycndetpezbmdfwry3aut2a",
+    origin: "https://orabandamining.com.au/job-vacancies/",
+    homeHub: "perth",
+  },
+  {
+    id: "perth-prn",
+    name: "Perenti",
+    sector: "Mining services",
+    platform: "successfactors",
+    // The URL Perenti publishes is a category page (/go/All-Jobs/7836910/);
+    // /search/ is the same board unfiltered, which is what the SF reader walks.
+    endpoint: "https://jobs.perentigroup.com",
+    origin: "https://jobs.perentigroup.com",
+    // This is the OTHER half of Perenti's coverage. Its own SEEK advertiser id
+    // serves 0 because the group hires under Barminco, DDH1, Ausdrill, BTP,
+    // AUMS, Swick and Strike Drilling — seekTradingNames.ts pulls those. This
+    // board is where the group advertises under its own name. Measured
+    // 2026-08-08: the table theme, 25 rows a page.
+    homeHub: "perth",
+  },
+  {
+    id: "swm",
+    name: "Seven West Media",
+    sector: "Media",
+    platform: "workday",
+    endpoint: "https://sevenwestmedia.wd105.myworkdayjobs.com/wday/cxs/sevenwestmedia/SWM/jobs",
+    origin: "https://sevenwestmedia.wd105.myworkdayjobs.com/en-GB/SWM",
+    // wd105, not the wd3 most tenants here sit on — the pod is part of the host
+    // and guessing it wrong 404s. Measured 2026-08-08: 33 roles across Sydney,
+    // Melbourne, Perth and the regional mastheads (Narrogin, Port Lincoln).
+    // SWM is Perth-listed and hires nationally.
+    homeHub: "perth",
+  },
+  {
+    id: "priv-cjd-equipment",
+    name: "CJD Equipment",
+    sector: "Heavy equipment",
+    platform: "cjd",
+    endpoint: "https://www.cjd.com.au/careers/current-opportunities/",
+    origin: "https://www.cjd.com.au",
+    // Measured 2026-08-08: 12 roles across the branch network — Perth,
+    // Brisbane, Newcastle and the truck division. The whole board ships inside
+    // the page as JSON; see fetchCjd.
+    homeHub: "perth",
+  },
 ];
 
 /**
@@ -2445,6 +2552,18 @@ export const PORTAL_GROUPS: string[][] = [
   // a page, and Cash Converters takes two because the first is spent being
   // issued a cookie. Seven requests for 280 roles is the cheapest group here.
   ["chevron", "asb", "ccv", "perth-bgl", "boe"],
+  // Groups 46-47: the eight added 2026-08-08 (second batch). Measured that day:
+  // Perenti 139, Macmahon 88, Seven West Media 33, Ora Banda 21, CJD 12, Core
+  // Lithium 6, Catalyst Metals 5, Delorean 2.
+  //
+  // The three that page share a tick: Perenti and Macmahon are SuccessFactors
+  // at 25 a page (6 and 4 pages), SWM is Workday at 20.
+  ["perth-prn", "mah", "swm"],
+  // The five single-call boards. Delorean is here rather than with the small
+  // ones by rights — its careers page is a 230 KB Elementor document that takes
+  // ~21 seconds to serve, measured twice, which is longer than any of the
+  // paging walks above and would be the thing that truncates a crowded tick.
+  ["perth-obm", "priv-cjd-equipment", "cxo", "perth-cyl", "del"],
 ];
 
 const UA =
@@ -2462,6 +2581,12 @@ function clean(s: string): string {
       .replace(/&#(\d+);/g, (_, d: string) => String.fromCodePoint(Number(d)))
       .replace(/&#x([0-9a-f]+);/gi, (_, d: string) => String.fromCodePoint(parseInt(d, 16)))
       .replace(/&#39;/g, "'")
+      // &apos; is the named form of &#39;, and it turns up in URLs rather than
+      // in prose: SuccessFactors builds a job's path from its title, so
+      // Perenti's "Driller's Offsider" role is served at
+      // /job/Soansville-Driller&apos;s-Offsider-... and the stored link was
+      // carrying the entity verbatim.
+      .replace(/&apos;/g, "'")
       .replace(/&quot;/g, '"')
       .replace(/&nbsp;|\u00a0/g, " ")
       .replace(/<[^>]+>/g, " ")
@@ -2728,7 +2853,18 @@ export function hubFor(loc: string, home: string | null, homeCountry: RegExp): s
   // real data and is not. Dropping the postcode restores the comma the needle
   // is looking for. Only this exact shape is touched — a state abbreviation
   // followed by four digits — so nothing else in the string can be affected.
-  const l = raw.toLowerCase().replace(/\b(nsw|vic|qld|wa|sa|nt|act|tas)\s+\d{4}\b/g, "$1,") + ",";
+  // A LEADING SPACE for the same reason as the trailing comma. Several needles
+  // are written with a leading space — " nsw", " wa," — because the bare forms
+  // are substrings of ordinary words, and that space is a word boundary the
+  // START of a string also is. Without it a location that BEGINS with the state
+  // went unplaced: measured 2026-08-08 on Perenti's board, "WA, AU" and
+  // "NSW, AU" resolved to no hub while "Perth, WA, AU" resolved fine — 34 of
+  // 139 roles, which reads as a company hiring nowhere in particular.
+  //
+  // Like the comma, prepending can only ADD matches: every needle is still
+  // tested with includes() against a string that merely starts differently.
+  const l =
+    " " + raw.toLowerCase().replace(/\b(nsw|vic|qld|wa|sa|nt|act|tas)\s+\d{4}\b/g, "$1,") + ",";
   for (const [needle, hub] of HUB_MATCH) if (l.includes(needle)) return hub;
   // Emptiness is tested on the ORIGINAL string, not the comma-appended one.
   // Appending the comma above quietly broke this: `l` for a blank location is
@@ -4616,7 +4752,18 @@ async function fetchJobAdder(site: SiteDef): Promise<PortalJob[]> {
     for (const r of rows) {
       if (seen.has(r.id)) continue;
       seen.add(r.id);
-      const loc = r.lis.find((x) => JA_LOCATION.test(x)) ?? "";
+      const loc =
+        r.lis.find((x) => JA_LOCATION.test(x)) ??
+        // Ora Banda's widget prints a BARE city — "Perth", no state — so the
+        // state-suffix test finds nothing and every row fell back to the home
+        // hub. That is right for Ora Banda today and would be wrong the moment
+        // it advertises off its Goldfields sites, and it would be invisible.
+        // So: failing that, take the cell hubFor can actually place. A
+        // classification ("Mining / Oil & Gas / Utilities", "Engineering &
+        // Maintenance") resolves to nothing; a place name resolves; the
+        // work-type cell is already excluded above.
+        r.lis.find((x) => !JA_WORKTYPE.test(x) && hubFor(x, null, /$^/)) ??
+        "";
       const cat = r.lis.filter((x) => x !== loc && !JA_WORKTYPE.test(x));
       const work = r.lis.find((x) => JA_WORKTYPE.test(x));
       out.push(
@@ -6379,7 +6526,246 @@ function chris21Date(s: string): string {
   return isoDay(`${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`);
 }
 
+// ── Workable (Catalyst Metals) ───────────────────────────────────────────────
+/**
+ * The board is a JS shell (5 KB); its list comes from the v2 accounts API,
+ * which is a POST — a GET on the same path answers 400, so this is not the
+ * usual "try the JSON endpoint" case. An empty body is the whole board.
+ *
+ * `total` is the board's own count and bounds the walk. `limit`/`offset` exist
+ * for larger tenants; this one returns everything in one call.
+ *
+ * Measured 2026-08-08 on Catalyst Metals: 5 roles, all Perth.
+ */
+interface WorkableJob {
+  shortcode?: string;
+  title?: string;
+  published?: string;
+  location?: { city?: string; region?: string; country?: string };
+  department?: string[];
+}
+
+async function fetchWorkable(site: SiteDef): Promise<PortalJob[]> {
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  let total = 0;
+  let token = "";
+  for (let page = 0; page < max; page++) {
+    const json = await getJson<{ total?: number; results?: WorkableJob[]; nextPage?: string }>(
+      `https://apply.workable.com/api/v2/accounts/${site.endpoint}/jobs`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // An EMPTY body, deliberately. `limit` and `offset` are rejected
+        // outright — the API answers 400 {"limit":"Not allowed"} — and passing
+        // them as query parameters is silently ignored. Paging is a cursor:
+        // the response carries `nextPage` when there is more, and nothing when
+        // there is not. Measured 2026-08-08 on Catalyst Metals, which returns
+        // its whole board (total 5) in the first call with no cursor, so the
+        // cursor branch below is written from the API's contract rather than
+        // from a board large enough to exercise it.
+        body: JSON.stringify(token ? { token } : {}),
+      },
+    );
+    const rows = json?.results;
+    if (!rows?.length) break;
+    if (page === 0) total = Number(json?.total ?? 0);
+    for (const j of rows) {
+      const code = clean(j.shortcode ?? "");
+      const title = clean(j.title ?? "");
+      const id = code || title;
+      if (!title || seen.has(id)) continue;
+      seen.add(id);
+      out.push(
+        job(
+          site,
+          title,
+          // City first so hubFor reads the town before the country, as
+          // everywhere else.
+          [j.location?.city, j.location?.region, j.location?.country]
+            .map((p) => clean(p ?? ""))
+            .filter(Boolean)
+            .join(", "),
+          code ? `${site.origin}/j/${code}/` : site.origin,
+          isoDay(j.published ?? ""),
+          (j.department ?? []).map((d) => clean(d)).filter(Boolean)[0] || "Career portal",
+        ),
+      );
+    }
+    token = clean(json?.nextPage ?? "");
+    if (!token || (total && out.length >= total)) break;
+  }
+  if (total && out.length < total) {
+    console.log(`workable ${site.id}: ${out.length} of ${total} advertised`);
+  }
+  return out;
+}
+
+// ── BambooHR (Core Lithium) ──────────────────────────────────────────────────
+/**
+ * /careers is a JS shell; /careers/list is the JSON it reads, and it carries
+ * `meta.totalCount` — so the walk is bounded by the board's own number rather
+ * than by an empty page. There is no paging: the endpoint returns the lot.
+ *
+ * Measured 2026-08-08 on Core Lithium: 6 roles, every one at Cox Peninsula in
+ * the Northern Territory (the Finniss operation), so none of them plots on
+ * Perth. homeHub is where the company sits.
+ */
+interface BambooJob {
+  id?: string | number;
+  jobOpeningName?: string;
+  departmentLabel?: string;
+  employmentStatusLabel?: string;
+  location?: { city?: string; state?: string; country?: string };
+}
+
+async function fetchBambooHr(site: SiteDef): Promise<PortalJob[]> {
+  const json = await getJson<{ meta?: { totalCount?: number }; result?: BambooJob[] }>(
+    `${site.endpoint}/careers/list`,
+  );
+  const rows = json?.result;
+  if (!rows?.length) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const j of rows) {
+    const id = String(j.id ?? "");
+    const title = clean(j.jobOpeningName ?? "");
+    if (!title || seen.has(id || title)) continue;
+    seen.add(id || title);
+    out.push(
+      job(
+        site,
+        title,
+        [j.location?.city, j.location?.state, j.location?.country]
+          .map((p) => clean(p ?? ""))
+          .filter(Boolean)
+          .join(", "),
+        id ? `${site.endpoint}/careers/${id}` : `${site.endpoint}/careers`,
+        // The list carries no posting date — only a closing date on some rows,
+        // which is a different fact. last_seen tracks freshness instead.
+        today(),
+        clean(j.departmentLabel ?? "") || "Career portal",
+      ),
+    );
+  }
+  const total = Number(json?.meta?.totalCount ?? 0);
+  if (total && out.length < total) {
+    console.log(`bamboohr ${site.id}: ${out.length} of ${total} advertised`);
+  }
+  return out;
+}
+
+// ── CJD Equipment ────────────────────────────────────────────────────────────
+/**
+ * An Umbraco site whose careers page is drawn client-side from props embedded
+ * in the page itself: `<script id="careersListingData">` holds the whole board
+ * as JSON. So no API call and no browser — the list is already in the HTML the
+ * server sends, it is simply not in the markup.
+ *
+ * Locations are branch names ("CJD Perth", "CJD Brisbane", "CJD Trucks"). The
+ * city ones resolve through HUB_MATCH on their own; "CJD Trucks" is a business
+ * unit rather than a place and correctly falls back to the home hub — the row
+ * is real either way, and inventing a city for it would not be.
+ *
+ * Measured 2026-08-08: 12 roles across the national branch network.
+ */
+interface CjdJob {
+  id?: string | number;
+  title?: string;
+  location?: string;
+  url?: string;
+  categories?: string[];
+}
+
+async function fetchCjd(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const island = html.match(/<script[^>]*id="careersListingData"[^>]*>([\s\S]*?)<\/script>/i)?.[1];
+  if (!island) return [];
+  let rows: CjdJob[] = [];
+  try {
+    rows = JSON.parse(island) as CjdJob[];
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(rows)) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const j of rows) {
+    const title = clean(j.title ?? "");
+    const id = String(j.id ?? "") || title;
+    if (!title || seen.has(id)) continue;
+    seen.add(id);
+    const path = clean(j.url ?? "");
+    out.push(
+      job(
+        site,
+        title,
+        clean(j.location ?? ""),
+        path ? `${site.origin}${path}` : site.endpoint,
+        // closingDate is the only date on a row, and a closing date is not a
+        // posting date. Storing it as one would misdate every role.
+        today(),
+        (j.categories ?? []).map((c) => clean(c)).filter(Boolean)[0] || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── Delorean Corporation ─────────────────────────────────────────────────────
+/**
+ * No ATS at all. The careers page is Elementor, and each vacancy is a LINK TO A
+ * PDF — "DEL Job Opportunity – Engineering Manager" — with its location in a
+ * SEPARATE text widget further down the page. There is no container tying a
+ * title to its location; the page is a two-column grid and the only thing
+ * relating them is document order.
+ *
+ * So the two lists are read separately and paired by index, which is stated
+ * plainly because it is an assumption a redesign will break. It is guarded:
+ * pairing only happens when the counts match. When they do not, the roles are
+ * still archived — they are real vacancies — but with no location, which puts
+ * them on the company's home hub the way every unreadable location here does,
+ * and the mismatch is logged so it is visible rather than silent.
+ *
+ * Measured 2026-08-08: 2 roles, both Sydney. Delorean is a Perth company
+ * advertising interstate, which is exactly the case the index-pairing exists to
+ * get right — dropping the location would file both on Perth.
+ */
+async function fetchDelorean(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const links = [...html.matchAll(/<a href="([^"]+\.pdf)"[^>]*>([\s\S]*?)<\/a>/gi)].filter(
+    (m) => /job[-\s]?opportunity/i.test(m[1]) || /job opportunity/i.test(clean(m[2])),
+  );
+  if (!links.length) return [];
+  const locations = [...html.matchAll(/Location:\s*([^<]{2,60})</gi)].map((m) => clean(m[1]));
+  const paired = locations.length === links.length;
+  if (!paired && locations.length) {
+    console.log(`delorean ${site.id}: ${links.length} roles but ${locations.length} locations`);
+  }
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const [i, m] of links.entries()) {
+    const href = clean(m[1]);
+    // "DEL Job Opportunity – Engineering Manager" is a document name, not a job
+    // title. The role is what follows the last dash; the prefix is dropped so
+    // the archive and the skills matcher see "Engineering Manager".
+    const raw = clean(m[2]);
+    const title = clean(raw.split(/[–—-]/).slice(1).join("-")) || raw;
+    if (!title || seen.has(href)) continue;
+    seen.add(href);
+    out.push(job(site, title, paired ? locations[i] : "", href, today(), "Career portal"));
+  }
+  return out;
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
+  workable: fetchWorkable,
+  bamboohr: fetchBambooHr,
+  cjd: fetchCjd,
+  delorean: fetchDelorean,
   radancy: fetchRadancy,
   adlogic: fetchAdLogic,
   wpjobmanager: fetchWpJobManager,
@@ -6507,6 +6893,12 @@ const SOURCE_TAG: Record<Platform, string> = {
   wpjobmanager: "wpjm",
   employmenthero: "eh",
   chris21: "chris21",
+  workable: "workable",
+  bamboohr: "bamboo",
+  // Neither of these is a platform — each names the page the vacancy came from,
+  // as `aubgroup` and `zipco` already do for employers with no ATS.
+  cjd: "cjd",
+  delorean: "delorean",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */

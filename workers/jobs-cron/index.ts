@@ -1172,6 +1172,10 @@ const PORTAL_TICKS: Record<string, number> = {
   // The 11 hour is full (5, 15, 25, 35, 45, 55 all taken), so this opens the
   // 12 hour.
   "5 12 * * *": 45,
+  // Group 46 — Perenti, Macmahon and Seven West Media: the three that page.
+  "15 12 * * *": 46,
+  // Group 47 — Ora Banda, CJD, Core Lithium, Catalyst Metals and Delorean.
+  "25 12 * * *": 47,
 };
 
 const NEWS_TICKS: Record<string, number> = {
