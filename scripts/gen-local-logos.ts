@@ -57,9 +57,21 @@ if (unknown.length || dupes.length) process.exit(1);
 // because prettier (enforced through ESLint) rejects the blank one and this
 // file is NOT in the generated-file ignore list — it is small and normally
 // formatted, so linting it is a free check on the generator's own output.
-const body = byId.size
-  ? "{\n" + [...byId].map(([id, f]) => `  ${JSON.stringify(id)}: "/logos/${f}",`).join("\n") + "\n}"
-  : "{}";
+//
+// That check only stays free if the output is prettier-clean to begin with, and
+// the FIRST long id broke it: "perth-gov-north-metropolitan-health-service"
+// makes a 106-character line against a printWidth of 100, so `npm run lint`
+// went red on a file nobody had edited. Prettier's own answer is to break after
+// the key and indent the value four, which is what the long branch writes. The
+// threshold is prettier's, read from .prettierrc — if that changes, this has to
+// change with it.
+const PRINT_WIDTH = 100;
+const entry = (id: string, file: string) => {
+  const key = `  ${JSON.stringify(id)}:`;
+  const value = `"/logos/${file}",`;
+  return `${key} ${value}`.length <= PRINT_WIDTH ? `${key} ${value}` : `${key}\n    ${value}`;
+};
+const body = byId.size ? "{\n" + [...byId].map(([id, f]) => entry(id, f)).join("\n") + "\n}" : "{}";
 
 writeFileSync(
   OUT,

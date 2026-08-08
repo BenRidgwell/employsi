@@ -6,4 +6,7 @@
 // resolving when somebody else's server changes. companyLogo.ts reads this
 // first, which makes dropping a file in the folder the way to override a wrong
 // or low-quality badge without editing any data file.
-export const LOCAL_LOGO: Record<string, string> = {};
+export const LOCAL_LOGO: Record<string, string> = {
+  "perth-gov-north-metropolitan-health-service":
+    "/logos/perth-gov-north-metropolitan-health-service.jpeg",
+};
