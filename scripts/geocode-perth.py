@@ -89,6 +89,10 @@ TARGETS: dict[str, tuple[str, str]] = {
     'perth-gov-department-of-transport-and-major-infrastructure': ('Dept Transport and Major Infrastructure', '140 William Street, Perth, Western Australia 6000'),
     'perth-gov-department-of-treasury-and-finance': ('Dept Treasury and Finance', '200 St Georges Terrace, Perth, Western Australia 6000'),
     'perth-gov-legal-practice-board': ('Legal Practice Board', '55 St Georges Terrace, Perth, Western Australia 6000'),
+    # Belmont, not Osborne Park — the stored coordinate was 11 km out.
+    # Mapbox resolves this address exactly (relevance 0.91); as with
+    # MyLeave below, do not --overwrite it with a Nominatim centroid.
+    'perth-gov-construction-training-fund': ('Construction Training Fund', '104 Belgravia Street, Belmont, Western Australia 6104'),
     'perth-gov-mental-health-commission': ('Mental Health Commission', '1 Nash Street, Perth, Western Australia 6000'),
     # Moved to the CBD (Level 1, 503 Murray Street) from Bayswater — about 7 km.
     # NOMINATIM CANNOT CONFIRM THIS ONE: it resolves no house number on Murray

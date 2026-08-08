@@ -33,7 +33,8 @@ export const PERTH_REAL_COORDS: Record<string, [number, number]> = {
   "perth-gov-central-regional-tafe": [115.861057, -31.948046],
   "perth-gov-chemcentre": [115.891604, -32.01065],
   "perth-gov-child-and-adolescent-health-service": [115.81648, -31.970402],
-  "perth-gov-construction-training-fund": [115.811564, -31.912664],
+  // 104 Belgravia Street, Belmont 6104 — moved from Osborne Park.
+  "perth-gov-construction-training-fund": [115.92887, -31.9496],
   "perth-gov-corruption-and-crime-commission": [115.859236, -31.947979],
   "perth-gov-department-of-biodiversity-conservation-and-attractions": [115.883793, -31.995457],
   "perth-gov-department-of-communities": [115.748687, -32.054203],

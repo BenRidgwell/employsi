@@ -131,36 +131,63 @@ process.stdout.write(JSON.stringify(COMPANIES.map((c) => ({
 #
 # The attribution gate asks "does this page name the company we asked for", and
 # for a government agency the answer is yes for every state at once. Measured
-# 2026-08-08 on the first run of this script: /department-of-education is
-# VICTORIA'S (vic.gov.au/education, 115,081 followers) and /department-of-justice
-# is TASMANIA'S (addressRegion "Tasmania"), and both sailed through the gate
+# 2026-08-08 on the first Perth run: /department-of-education is VICTORIA'S
+# (vic.gov.au/education, 115,081 followers) and /department-of-justice is
+# TASMANIA'S (addressRegion "Tasmania"), and both sailed through the gate
 # because their names are byte-identical to Western Australia's.
 #
-# So a government page must also place itself in the right jurisdiction. Two
-# signals, both off the page: the structured addressRegion, and the agency's own
-# description — WA agencies say "Western Australian" constantly, and an
-# interstate one names its own government. Either alone is thin; a positive with
-# no contradiction is what passes.
-WA_EVIDENCE = re.compile(r'western australia|\bWA\b|wa\.gov\.au|perth', re.I)
-OTHER_JURISDICTION = re.compile(
-    r'victorian government|new south wales|queensland government|'
-    r'south australian government|tasmanian government|'
-    r'northern territory government|australian capital territory|'
-    r'vic\.gov\.au|nsw\.gov\.au|qld\.gov\.au|sa\.gov\.au|tas\.gov\.au|nt\.gov\.au',
-    re.I)
+# So a government page must also place itself in the RIGHT jurisdiction — which
+# the roster id already states: every government id is prefixed with its own
+# (vic-gov-, nsw-gov-, sa-gov-, qld-gov-, nt-gov-, tas-gov-, and Perth's
+# perth-gov- for WA). Two signals off the page: the structured addressRegion,
+# and the agency's own description, since these bodies name their state
+# constantly. A positive for the right state with no other state contradicting
+# it is what passes.
+#
+# Getting this per-state matters more than it looks. A WA-only rule would have
+# rejected every South Australian and Northern Territory agency as "not WA" —
+# 76 of Adelaide's 112 entities and all 23 of Darwin's are government.
+JURISDICTIONS: dict[str, tuple[str, str]] = {
+    # id prefix -> (label, regex of that state's own names/domains)
+    'perth-gov-': ('Western Australia', r'western australia|\bWA\b|wa\.gov\.au|perth'),
+    'sa-gov-': ('South Australia', r'south australia|\bSA\b|sa\.gov\.au|adelaide'),
+    'nt-gov-': ('Northern Territory', r'northern territory|\bNT\b|nt\.gov\.au|darwin'),
+    'vic-gov-': ('Victoria', r'victoria|\bVIC\b|vic\.gov\.au|melbourne'),
+    'nsw-gov-': ('New South Wales', r'new south wales|\bNSW\b|nsw\.gov\.au|sydney'),
+    'qld-gov-': ('Queensland', r'queensland|\bQLD\b|qld\.gov\.au|brisbane'),
+    'tas-gov-': ('Tasmania', r'tasmania|\bTAS\b|tas\.gov\.au|hobart'),
+}
+# What each state calls its own government, for the contradiction test. A page
+# that names ANOTHER state's government is that state's, whatever else it says.
+CLAIMS = {
+    'Western Australia': r'western australian government|wa\.gov\.au',
+    'South Australia': r'south australian government|sa\.gov\.au',
+    'Northern Territory': r'northern territory government|nt\.gov\.au',
+    'Victoria': r'victorian government|vic\.gov\.au',
+    'New South Wales': r'new south wales government|nsw government|nsw\.gov\.au',
+    'Queensland': r'queensland government|qld\.gov\.au',
+    'Tasmania': r'tasmanian government|tas\.gov\.au',
+}
 
 
 def jurisdiction_ok(company_id: str, html: str) -> tuple[bool, str]:
     """(passes, why not). Only government ids are held to this."""
-    if '-gov-' not in company_id:
+    hit = next(((p, v) for p, v in JURISDICTIONS.items() if company_id.startswith(p)), None)
+    if not hit:
+        if '-gov-' in company_id:
+            # A government id whose state we cannot name must not be waved
+            # through: that is how the Victorian department got in.
+            return False, 'government id with no known jurisdiction prefix'
         return True, ''
+    _prefix, (want, pattern) = hit
     region = (re.search(r'"addressRegion"\s*:\s*"([^"]*)"', html) or [None, ''])[1]
     desc = (re.search(r'<meta name="description" content="([^"]{0,600})', html) or [None, ''])[1]
-    other = OTHER_JURISDICTION.search(desc) or OTHER_JURISDICTION.search(region)
-    if other:
-        return False, f'page is {other.group(0)}, not Western Australia'
-    if not WA_EVIDENCE.search(f'{region} {desc}'):
-        return False, f'page never places itself in WA (region "{region[:24]}")'
+    blob = f'{region} {desc}'
+    for state, claim in CLAIMS.items():
+        if state != want and re.search(claim, blob, re.I):
+            return False, f'page is {state}, not {want}'
+    if not re.search(pattern, blob, re.I):
+        return False, f'page never places itself in {want} (region "{region[:24]}")'
     return True, ''
 
 
