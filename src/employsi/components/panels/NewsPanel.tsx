@@ -91,11 +91,24 @@ function articleUrl(item: NewsItem, name: string): string {
 }
 
 // The meta line "Category · Publisher · 6 hours ago".
+//
+// The age is shown ONLY when a real publish timestamp is in hand. This used to
+// fall back to a `time` string stored beside the headline, and that string was
+// written once and never moved: the hero on every curated feed claimed "2d
+// ago", "3d ago", "5d ago" while the articles behind them were 8 months to 2
+// YEARS old (Fortescue's said 3 days for a piece published in July 2024).
+//
+// Worse, it was inconsistent in a way that hid itself. The fallback only
+// applied when the Worker's scrape came back empty — so a card whose article
+// exposes a date showed the true "1y ago", and one whose publisher blocks the
+// scrape showed the invented "3d ago", in the same "Trending" slot. Half the
+// feed looked current because we could not read it.
+//
+// So: no timestamp, no age. "Trending · MINING.COM" is the honest line.
 function metaBits(item: NewsItem, meta?: ArticleMeta): string {
   const iso = publishedOf(item, meta);
-  const time = (iso && relTime(iso)) || item.time;
   const publisher = pubOf(item, meta);
-  return [item.cat, publisher, time].filter(Boolean).join(" · ");
+  return [item.cat, publisher, iso ? relTime(iso) : ""].filter(Boolean).join(" · ");
 }
 
 function Thumb({ img, seed, className }: { img?: string; seed: string; className: string }) {
