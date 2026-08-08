@@ -426,13 +426,84 @@ def blocked_as(html: str) -> str | None:
 # coming back. "Blocked from request 1" and "blocked from request 220" are
 # different answers with different consequences, and neither is visible from a
 # single fetch.
+# Three feeds walk COMPANY NAMES and three walk SLUGS, and mixing those up
+# would not fail loudly — it would 404 its way through the run and be recorded
+# as a block. So the query source is declared per target.
+#
+# The LinkedIn slugs are REAL ONES, read out of the production company_slugs
+# cache in D1 (78 confirmed 2026-08-05..08). Deriving them from company names
+# would have produced mostly-wrong guesses, and a wrong slug is a 404 rather
+# than a refusal — the exact confusion this measurement exists to avoid.
+LINKEDIN_SLUGS = [
+    'ansell', 'aragroup', 'aurizon', 'bolton-clarke',
+    'brisbane-catholic-education', 'consolidatedtravel', 'evolution-mining',
+    'evt-limited', 'fortescue', 'goodstart-early-learning',
+    'great-southern-bank', 'hansen-technologies', 'harvey-norman',
+    'iluka-resources', 'kennardshire', 'macmahon', 'mecca-brands', 'meriton',
+    'merivale', 'metcash', 'mirvac', 'orabandamining', 'perpetual',
+    'perseus-mining-limited', 'perth-airport', 'resolute-mining', 'san-remo',
+    'shell', 'sims-metal', 'super-retail-group', 'talent-international',
+    'teamglobalexpress', 'treasury-wine-estates', 'village-roadshow',
+    'wisetech-global', 'worley', '4dmedical', 'adco-constructions', 'akd',
+    'asx', 'australian-unity', 'bank-of-queensland', 'bega-cheese-limited',
+    'bhp', 'canberra-airport', 'car-group', 'cmv-group', 'creation-homes',
+    'dalrymple-bay-infrastructure', 'deterra-royalties', 'drake-supermarkets',
+    'dyno-nobel', 'gold-road-resources', 'hcf', 'jupitermines',
+    'kennards-self-storage', 'king-and-wood-mallesons', 'kpmg', 'lendlease',
+    'mineral-resources-limited', 'nickel-industries-limited',
+    'opal-aged-care', 'pallion', 'pro-medicus-limited', 'qube-holdings',
+    'regis-resources', 'richard-crookes-constructions', 'sigma-healthcare',
+    'sonic-healthcare', 'stanmore-resources-limited',
+    'stanmore-resources-limited', 'tabcorp', 'tasmea-limited',
+    'the-lottery-corporation', 'thomas-foods-international', 'transurban',
+    'turosi', 'woolworths',
+]
+
 VOLUME_TARGETS = {
-    'indeed': ('https://au.indeed.com/jobs?q=%22{q}%22&l=&start=0',
-               r'job_seen_beacon|jobTitle|data-jk='),
-    'simplyhired': ('https://www.simplyhired.com.au/search?q={q}', r'"jobKey"'),
-    'jora': ('https://au.jora.com/j?q={q}&l=Australia&p=1',
-             r'data-braze-job-panel-view="'),
+    'indeed': {'url': 'https://au.indeed.com/jobs?q=%22{q}%22&l=&start=0',
+               'rows': r'job_seen_beacon|jobTitle|data-jk=', 'source': 'names'},
+    'simplyhired': {'url': 'https://www.simplyhired.com.au/search?q={q}',
+                    'rows': r'"jobKey"', 'source': 'names'},
+    'jora': {'url': 'https://au.jora.com/j?q={q}&l=Australia&p=1',
+             'rows': r'data-braze-job-panel-view="', 'source': 'names'},
+    'linkedin-jobs': {
+        'url': ('https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings'
+                '/search?keywords={q}&start=0&sortBy=DD'),
+        'rows': r'/jobs/view/', 'source': 'names'},
+    'linkedin-posts': {'url': 'https://www.linkedin.com/company/{q}/',
+                       'rows': r'urn:li:activity', 'source': 'li-slugs'},
+    'startupjobs': {'url': 'https://startup.jobs/company/{q}',
+                    'rows': r'data-post-template-target="title"[^>]*href="/',
+                    'source': 'sj-slugs'},
 }
+
+
+def startupjobs_slugs(n: int) -> list[str]:
+    """Real slugs from the company sitemap the scraper itself reads.
+
+    The sitemap is on cdn.startup.jobs, which answers a plain request — it is
+    the half of that feed that never needed a proxy. Served uncompressed
+    despite the .gz name, which is why this does not gunzip it."""
+    import urllib.request
+    try:
+        req = urllib.request.Request(
+            'https://cdn.startup.jobs/sitemaps/startupjobs/companies.xml.gz',
+            headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=90) as r:
+            body = r.read(400_000).decode('utf-8', 'replace')
+    except Exception as e:  # noqa: BLE001
+        sys.stderr.write(f'  could not read the startup.jobs sitemap: {str(e)[:90]}\n')
+        return []
+    return re.findall(r'<loc>https://startup\.jobs/company/([a-z0-9-]+)</loc>', body)[:n]
+
+
+def volume_queries(which: str, n: int) -> list[str]:
+    src = VOLUME_TARGETS[which]['source']
+    if src == 'names':
+        return roster_names(n)
+    if src == 'li-slugs':
+        return LINKEDIN_SLUGS[:n]
+    return startupjobs_slugs(n)
 
 
 def roster_names(n: int) -> list[str]:
@@ -457,10 +528,12 @@ def roster_names(n: int) -> list[str]:
 
 
 def volume_walk(pw, which: str, n: int) -> dict:
-    tmpl, row_re = VOLUME_TARGETS[which]
-    names = roster_names(n)
+    spec = VOLUME_TARGETS[which]
+    tmpl, row_re = spec['url'], spec['rows']
+    names = volume_queries(which, n)
     res = {'target': which, 'requested': n, 'attempted': len(names),
-           'ok': 0, 'first_block_at': None, 'consecutive_fail_tail': 0}
+           'ok': 0, 'not_found': 0, 'first_block_at': None,
+           'consecutive_fail_tail': 0}
     browser = pw.chromium.launch(headless=not HEADFUL,
                                  **({'proxy': PROXY} if PROXY else {}))
     try:
@@ -473,8 +546,10 @@ def volume_walk(pw, which: str, n: int) -> dict:
         run = 0
         for i, nm in enumerate(names, 1):
             url = tmpl.format(q=quote(f'"{nm}"' if which == 'indeed' else nm))
+            status = None
             try:
-                page.goto(url, wait_until='domcontentloaded', timeout=60_000)
+                r = page.goto(url, wait_until='domcontentloaded', timeout=60_000)
+                status = r.status if r else None
                 page.wait_for_timeout(2500)
                 hits = len(re.findall(row_re, page.content()))
             except Exception:  # noqa: BLE001
@@ -482,6 +557,12 @@ def volume_walk(pw, which: str, n: int) -> dict:
             if hits:
                 res['ok'] += 1
                 run = 0
+            elif status == 404:
+                # A MISSING PAGE IS NOT A REFUSAL. The slug-driven feeds walk
+                # names that can legitimately no longer exist, and counting
+                # those as blocks would manufacture a wall out of churn. Not
+                # counted either way, and not allowed to end the walk.
+                res['not_found'] += 1
             else:
                 run += 1
                 if res['first_block_at'] is None:
@@ -618,7 +699,9 @@ def main() -> int:
             for which in VOLUME_TARGETS:
                 r = volume_walk(pw, which, VOLUME)
                 vol.append(r)
-                print(f"  {which:<14} {r['ok']}/{r['attempted']} returned rows"
+                print(f"  {which:<15} {r['ok']}/{r['attempted']} returned rows"
+                      + (f", {r['not_found']} not-found (not blocks)"
+                         if r['not_found'] else '')
                       + (f", first block at #{r['first_block_at']}"
                          if r['first_block_at'] else ', no blocks')
                       + (f", stopped early at #{r['stopped_early_at']}"
