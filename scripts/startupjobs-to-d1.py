@@ -405,6 +405,13 @@ def main() -> int:
                      f'{", DRY RUN" if DRY else ""}.\n')
 
     total_rows, with_ads = 0, 0
+    # PAGES THAT PARSED, confirmed or not. This is the block detector, and it is
+    # a different question from "did a confirmed employer advertise". A page
+    # that yields a heading came back and was read; a blocked one yields
+    # nothing. Counting only confirmed advertisers conflated "the board refused
+    # us" with "nobody we recognise is hiring today", and the second is a normal
+    # state on a board where a listed company can sit idle for months.
+    pages_read = 0
     unconfirmed: list = []
     all_misses: dict = {}
     for i, (c, slug) in enumerate(targets, 1):
@@ -416,6 +423,8 @@ def main() -> int:
                 jobs, heading, _ = collect(slug, c['name'], gate=False)
             except Exception:  # noqa: BLE001
                 jobs, heading = [], ''
+            if heading or jobs:
+                pages_read += 1
             if jobs:
                 unconfirmed.append((c['name'], slug, heading, len(jobs),
                                     [j['title'] for j in jobs[:2]],
@@ -426,6 +435,8 @@ def main() -> int:
         except Exception as e:  # noqa: BLE001
             sys.stderr.write(f'  [{i}/{len(targets)}] {c["name"]}: FAILED ({e})\n')
             continue
+        if heading or jobs:
+            pages_read += 1
         if misses:
             all_misses[c['name']] = misses
         if not jobs:
@@ -436,7 +447,8 @@ def main() -> int:
         total_rows += len(jobs) if DRY else upsert(c, jobs)
 
     sys.stderr.write(f'\n{with_ads} employers advertising, {total_rows} rows '
-                     f'{"parsed" if DRY else "archived"}.\n')
+                     f'{"parsed" if DRY else "archived"} '
+                     f'({pages_read} of {len(targets)} company pages read).\n')
     if unconfirmed:
         sys.stderr.write(
             f'\n{len(unconfirmed)} slug matches are ADVERTISING BUT UNCONFIRMED — nothing was\n'
@@ -451,8 +463,18 @@ def main() -> int:
     # Employers with a page but no live ads is a NORMAL state on this board — a
     # listed company can sit there for months without hiring — so zero rows is
     # only a failure when nothing at all came back across every page.
-    if targets and not with_ads:
-        sys.stderr.write('No employer returned a single role — treating as failure.\n')
+    #
+    # THAT IS WHAT THE CHECK NOW MEASURES. It used to test `with_ads`, which is
+    # confirmed employers ADVERTISING, and so failed a run on 2026-08-09 that
+    # had read 58 company pages perfectly well and found that none of the
+    # confirmed set happened to be hiring. The evidence it was working was in
+    # its own output: it reported /company/igo's heading, four roles, their
+    # titles and their locations, and correctly refused to file them under the
+    # ASX company of that name. A run that can read a page and reject it on
+    # merit has not been blocked.
+    if targets and not pages_read:
+        sys.stderr.write('Not one company page could be read — treating as failure. '
+                         'That is a block or a markup change, not a quiet board.\n')
         return 1
     return 0
 
