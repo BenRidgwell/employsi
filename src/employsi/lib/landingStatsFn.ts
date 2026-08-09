@@ -120,6 +120,73 @@ function employerKey(cid: string, cname: string): string | null {
 let memo: { at: number; role: string; value: LandingStats } | null = null;
 const MEMO_MS = 6 * 60 * 60 * 1000;
 
+/** One archive row, already lowered and trimmed by the SQL below. */
+export interface StatsRow {
+  hub: string;
+  cid: string;
+  cname: string;
+  title: string;
+}
+
+/**
+ * The counting itself, split out from the query so it can be run over real
+ * archive rows without a Worker.
+ *
+ * This sandbox cannot open the deployed page (Chromium has no route to remote
+ * hosts through the proxy), so "deployed and therefore working" is not a claim
+ * this repo can make from here. Exporting the pure half means the figures can
+ * at least be checked against the live table by pulling the same rows and
+ * calling the same function — see scripts/check-landing-stats.ts.
+ */
+export function aggregateLandingStats(
+  rows: StatsRow[],
+  seesAll: boolean,
+): Omit<LandingStats, "asAt"> {
+  const roles = new Set<string>();
+  const employers = new Set<string>();
+  const cities = new Set<string>();
+  const countries = new Set<string>();
+  for (const r of rows) {
+    const hub = (r.hub || "").trim();
+    if (!seesAll && !isReleasedRow(hub, r.cid)) continue;
+    const emp = employerKey(r.cid || "", r.cname || "");
+    const t = norm(r.title || "");
+    // A role needs an employer to be distinct FROM: without one, "Engineer" at
+    // two unrelated companies would collapse into a single vacancy.
+    if (emp && t) {
+      roles.add(`${emp}|${t}`);
+      employers.add(emp);
+    }
+    const h = hub.toLowerCase();
+    const cc = CITY_COUNTRY[h];
+    if (cc) {
+      // A plotted city. Gated on its country so an unreleased market's hub
+      // cannot leak into a public visitor's count.
+      if (seesAll || isReleasedCountry(cc)) {
+        cities.add(h);
+        countries.add(cc);
+      }
+    } else if (COUNTRY_HUB[h] && (seesAll || isReleasedCountry(COUNTRY_HUB[h]))) {
+      countries.add(COUNTRY_HUB[h]);
+    }
+  }
+  return {
+    vacancies: roles.size,
+    employers: employers.size,
+    countries: countries.size,
+    cities: cities.size,
+  };
+}
+
+/** The one query behind every figure, shared with the checking script. */
+export const STATS_SQL = `SELECT LOWER(TRIM(COALESCE(hub, ''))) AS hub,
+                  COALESCE(company_id, '') AS cid,
+                  LOWER(TRIM(COALESCE(company, ''))) AS cname,
+                  LOWER(TRIM(title)) AS title
+             FROM jobs
+            WHERE last_seen >= ?1 AND title IS NOT NULL AND TRIM(title) <> ''
+            GROUP BY hub, cid, cname, title`;
+
 export const getLandingStats = createServerFn({ method: "GET" }).handler(
   async (): Promise<LandingStats | null> => {
     const db = await getArchiveDb();
@@ -133,63 +200,16 @@ export const getLandingStats = createServerFn({ method: "GET" }).handler(
     const from = day(1);
     try {
       // Grouped in SQL purely to shrink the payload: the dedupe that decides
-      // the vacancy count is the JS `norm` below, since SQLite's LOWER/TRIM
-      // cannot collapse punctuation the way normTitle does.
-      const res = await db
-        .prepare(
-          `SELECT LOWER(TRIM(COALESCE(hub, ''))) AS hub,
-                  COALESCE(company_id, '') AS cid,
-                  LOWER(TRIM(COALESCE(company, ''))) AS cname,
-                  LOWER(TRIM(title)) AS title
-             FROM jobs
-            WHERE last_seen >= ?1 AND title IS NOT NULL AND TRIM(title) <> ''
-            GROUP BY hub, cid, cname, title`,
-        )
-        .bind(from)
-        .all();
-      const rows = res?.results ?? [];
-      const roles = new Set<string>();
-      const employers = new Set<string>();
-      const cities = new Set<string>();
-      const countries = new Set<string>();
-      for (const r of rows) {
-        const hub = String(r.hub || "").trim();
-        const cid = String(r.cid || "");
-        const cname = String(r.cname || "");
-        if (!seesAll && !isReleasedRow(hub, cid)) continue;
-        const emp = employerKey(cid, cname);
-        const t = norm(String(r.title || ""));
-        // A role needs an employer to be distinct FROM: without one, "Engineer"
-        // at two unrelated companies would collapse into a single vacancy.
-        if (emp && t) {
-          roles.add(`${emp}|${t}`);
-          employers.add(emp);
-        }
-        const h = hub.toLowerCase();
-        const cc = CITY_COUNTRY[h];
-        if (cc) {
-          // A plotted city. Gated on its country so an unreleased market's
-          // hub cannot leak into a public visitor's count.
-          if (seesAll || isReleasedCountry(cc)) {
-            cities.add(h);
-            countries.add(cc);
-          }
-        } else if (COUNTRY_HUB[h] && (seesAll || isReleasedCountry(COUNTRY_HUB[h]))) {
-          countries.add(COUNTRY_HUB[h]);
-        }
-      }
+      // the vacancy count is the JS `norm` in aggregateLandingStats, since
+      // SQLite's LOWER/TRIM cannot collapse punctuation the way normTitle does.
+      const res = await db.prepare(STATS_SQL).bind(from).all();
+      const rows = (res?.results ?? []) as unknown as StatsRow[];
       // A genuine zero is returned as zero rather than suppressed. If the
       // pipeline breaks the page should read 0, not quietly keep printing the
       // last plausible-looking number — the failure is supposed to be visible.
       // `null` is reserved for "could not read the archive at all", which is a
       // different statement and is what the UI suppresses on.
-      const value: LandingStats = {
-        vacancies: roles.size,
-        employers: employers.size,
-        countries: countries.size,
-        cities: cities.size,
-        asAt: day(0),
-      };
+      const value: LandingStats = { ...aggregateLandingStats(rows, seesAll), asAt: day(0) };
       // Shown, but never CACHED. An empty read is far more likely to be a
       // transient D1 failure than a day on which the entire market advertised
       // nothing, and memoising it would hold a wrong zero on the page for six
