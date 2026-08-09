@@ -39,13 +39,16 @@ GET /datasets/v3/snapshot/<id>) and this repo has no token to test with. So:
     and seniority; it does NOT document posted date or salary, and the card uses
     both. Whether they arrive is a question for the probe, not for a guess here.
 
-THE DATASET ID IS NOT GUESSED. Bright Data does not publish it; it is on the
-scraper's page in your dashboard. It has to be supplied, because a wrong id
-silently collects the wrong thing and bills for it.
+THE DATASET ID IS NOT GUESSED. Bright Data does not publish it, and a wrong id
+silently collects the wrong thing and bills for it, so it has to be supplied.
+`--list-datasets` prints every scraper id on your account (needs only the API
+token) and flags the LinkedIn jobs one; the dashboard shows the same id on the
+scraper's page.
 
 Env: BRIGHTDATA_API_TOKEN, BRIGHTDATA_DATASET_ID,
      CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID
-Run: python scripts/linkedin-brightdata-to-d1.py --probe --limit 20
+Run: python scripts/linkedin-brightdata-to-d1.py --list-datasets
+     python scripts/linkedin-brightdata-to-d1.py --probe --limit 20
      python scripts/linkedin-brightdata-to-d1.py --max-records 50000
 """
 from __future__ import annotations
@@ -100,10 +103,39 @@ MAX_RECORDS = int(_opt('--max-records', 20000))
 POLL_S = int(_opt('--poll', 20))
 TIMEOUT_MIN = int(_opt('--timeout-min', 45))
 PROBE = '--probe' in args
+# --list-datasets: print every scraper id on the account and stop. Needs only
+# the API token, and is the answer to "where do I get the dataset id".
+LIST_DATASETS = '--list-datasets' in args
 NO_SKILLS = '--no-skills' in args
 
 if not BD_TOKEN:
     sys.exit('BRIGHTDATA_API_TOKEN is required.')
+
+if LIST_DATASETS:
+    # GET /datasets/list returns every scraper id on the account. This is here
+    # because the alternative to knowing the id is guessing it, and a wrong id
+    # collects the wrong thing and bills for it.
+    import urllib.request as _u
+    _req = _u.Request('https://api.brightdata.com/datasets/list',
+                      headers={'Authorization': f'Bearer {BD_TOKEN}'})
+    try:
+        with _u.urlopen(_req, timeout=60) as _r:
+            _rows = json.loads(_r.read().decode())
+    except Exception as _e:  # noqa: BLE001
+        sys.exit(f'Could not list datasets: {_e}')
+    if isinstance(_rows, dict):
+        _rows = _rows.get('datasets') or _rows.get('data') or []
+    _hits = [d for d in _rows if isinstance(d, dict)]
+    print(f'{len(_hits)} scrapers on this account:\n')
+    for _d in sorted(_hits, key=lambda x: str(x.get('name', ''))):
+        _name = str(_d.get('name', ''))
+        _mark = '  <- LinkedIn jobs?' if ('linkedin' in _name.lower()
+                                          and 'job' in _name.lower()) else ''
+        print(f"  {str(_d.get('id', '')):28} {_name[:60]}{_mark}")
+    print('\nSet BRIGHTDATA_DATASET_ID to the LinkedIn *jobs* id — not profiles, '
+          'not companies.')
+    raise SystemExit(0)
+
 if not BD_DATASET:
     sys.exit('BRIGHTDATA_DATASET_ID is required — the LinkedIn Jobs scraper id from '
              'your Bright Data dashboard. It is deliberately not defaulted: a wrong '
