@@ -198,18 +198,34 @@ class Session:
     written against the real thing.
     """
 
-    def __init__(self, locale: str = 'en-AU', timeout_s: int = 90):
+    def __init__(self, locale: str = 'en-AU', timeout_s: int = 90,
+                 storage_state: str | None = None):
         self._locale = locale
         self._timeout_s = timeout_s
+        # A saved Playwright storage_state (cookies + localStorage). Supplied so
+        # a site that needs a SIGN-IN can be visited without signing in again on
+        # every run: repeated logins from a fresh address are both the slowest
+        # part of a run and the part most likely to look like an attack. Missing
+        # or unreadable is not an error — the caller logs in and calls
+        # save_state() to create it.
+        self._state_path = storage_state
         self._ctx = None
         self._page = None
 
     def __enter__(self):
         browser = _browser_once()
-        self._ctx = browser.new_context(user_agent=UA, locale=self._locale,
-                                        viewport={'width': 1440, 'height': 900})
+        opts: dict = {'user_agent': UA, 'locale': self._locale,
+                      'viewport': {'width': 1440, 'height': 900}}
+        if self._state_path and os.path.exists(self._state_path):
+            opts['storage_state'] = self._state_path
+        self._ctx = browser.new_context(**opts)
         self._page = self._ctx.new_page()
         return self
+
+    def save_state(self) -> None:
+        """Persist cookies so the next run does not have to sign in again."""
+        if self._ctx is not None and self._state_path:
+            self._ctx.storage_state(path=self._state_path)
 
     def __exit__(self, *_exc):
         if self._ctx is not None:
