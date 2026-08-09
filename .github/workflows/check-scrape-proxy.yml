@@ -45,8 +45,11 @@ jobs:
         env:
           SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
           SCRAPE_PROXY_COUNTRY: ${{ inputs.country }}
+          # ONE spelling only. GitHub Actions matches env names
+          # case-insensitively, so listing NO_PROXY and no_proxy together is a
+          # duplicate key and the whole workflow fails to parse — it cannot even
+          # be dispatched. Python's urllib reads either.
           NO_PROXY: api.cloudflare.com
-          no_proxy: api.cloudflare.com
         run: |
           if [ -z "$SCRAPE_PROXY" ]; then
             echo "SCRAPE_PROXY is not set. Add it as a repository secret first —"
