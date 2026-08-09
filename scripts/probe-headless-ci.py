@@ -780,43 +780,52 @@ def fingerprint_report(pw) -> int:
                   + (f"  {r['error']}" if r.get('error') else ''))
         print()
 
-    control = results.get('SimplyHired (AU search)', {})
-    base_ok = (control.get('baseline') or {}).get('rows', 0)
-    new_ok = (control.get('chrome') or {}).get('rows', 0)
-    # THE CONTROL HAS TO WORK UNDER TODAY'S LAUNCH FIRST. If it does not, this
-    # environment cannot reach the boards at all and every row below is a zero
-    # that means nothing — which would otherwise print as "refused under both"
-    # and read as a finding about Akamai. That is the failure this whole file
-    # exists to prevent, and the first version of this function walked straight
-    # into it from a sandbox with no egress.
-    # THE CONTROL PROVES THE HARNESS, AND EITHER PROFILE WILL DO IT. The first
-    # version of this demanded the control pass the BASELINE, on the reasoning
-    # that SimplyHired answers this exit in normal operation. It does — through
-    # raw_get, which clears the origin first. A cold goto with headless-shell is
-    # a different request, and on the first real run SimplyHired 403'd the
-    # baseline and returned 21 rows under chrome. That is not a broken harness,
-    # it is the result. The guard threw away its own evidence.
+    # WHAT PROVES THE HARNESS: any board returning rows under any profile.
     #
-    # What actually invalidates the table is the control failing under BOTH:
-    # then nothing reached the boards and every zero below is about this runner.
-    if not base_ok and not new_ok:
-        err = ((control.get('baseline') or {}).get('error')
-               or (control.get('chrome') or {}).get('error') or 'no rows')
-        print(f'CONTROL FAILED under BOTH profiles ({err}).')
-        print('Nothing reached the boards, so every zero above is about this '
-              'runner rather than about any target. No verdict — re-run from CI'
+    # This gate has now been wrong twice, in opposite directions, and both times
+    # it threw away a real finding. First it demanded the CONTROL pass the
+    # baseline — and the control failed baseline, passed chrome, and the run
+    # exited saying "the network is the problem" over a table showing two Akamai
+    # boards recovered. Then it demanded the control pass EITHER profile — and
+    # the control 403'd both while GulfTalent returned 50 rows in the same run,
+    # so it announced "nothing reached the boards" directly above fifty rows.
+    #
+    # The mistake both times was picking a designated control that is itself one
+    # of the flaky targets. SimplyHired through a cold goto is exactly the kind
+    # of request this probe exists to find unreliable, so it cannot certify
+    # anything. Rows anywhere in the table are self-evident proof the run
+    # reached the internet, and that is the only thing the gate needs to know.
+    any_rows = any(r[prof]['rows'] for r in results.values() for prof, _ in FP_PROFILES)
+    if not any_rows:
+        print('NO BOARD RETURNED ROWS UNDER EITHER PROFILE.')
+        print('That is consistent with an unreachable runner and with every '
+              'target refusing, and this run cannot tell those apart. No '
+              'verdict — re-run from CI'
               + ('' if VIA_PROXY else ', and with via_proxy=true') + '.')
         return 1
-    passed_under = 'both profiles' if (base_ok and new_ok) else (
-        'the baseline' if base_ok else 'the upgraded profile')
-    print(f'(control reached the board under {passed_under} — harness is sound)\n')
+    control = results.get('SimplyHired (AU search)', {})
+    cb = (control.get('baseline') or {}).get('rows', 0)
+    cc = (control.get('chrome') or {}).get('rows', 0)
+    print(f'(control SimplyHired: baseline {cb} rows, chrome {cc} rows — '
+          f'reported, not used as a gate)\n')
 
     print(f'{"board":<30}{"baseline":>10}{"chrome":>10}   verdict')
-    gained = []
+    def tunnel_failed(res):
+        e = res.get('error') or ''
+        return 'ERR_TUNNEL_CONNECTION_FAILED' in e or 'ERR_PROXY_CONNECTION_FAILED' in e
+
+    gained, unmeasured = [], []
     for b in boards:
         r = results[b['name']]
         a, c = r['baseline']['rows'], r['chrome']['rows']
-        if c and not a:
+        # A REFUSED TUNNEL IS NOT A REFUSED BOARD. The proxy never opened the
+        # connection, so the target saw nothing and has said nothing. Scoring it
+        # alongside a real 403 would retire a board on evidence that does not
+        # exist.
+        if tunnel_failed(r['chrome']) or tunnel_failed(r['baseline']):
+            v = 'UNMEASURED — proxy refused the tunnel'
+            unmeasured.append(b['name'])
+        elif c and not a:
             v, _ = 'RECOVERED by fingerprint', gained.append(b['name'])
         elif a and not c:
             v = 'lost — worse under chrome'
@@ -834,11 +843,14 @@ def fingerprint_report(pw) -> int:
         if VIA_PROXY and not (os.environ.get('SCRAPE_PROXY_SESSION') or '').strip():
             print('Do that only after a STICKY re-run confirms it: without a pinned '
                   'exit this cannot separate the client from the address.')
-    else:
-        print('No board was recovered by the fingerprint alone. These three refuse '
-              'a real Chrome from a residential address, which is the thing an '
-              'unblocker sells and not something worth rebuilding: buy it or drop '
-              'the feeds.')
+    elif not unmeasured:
+        print('No board was recovered by the fingerprint alone. These refuse a real '
+              'Chrome from a residential address, which is the thing an unblocker '
+              'sells and not something worth rebuilding: buy it or drop the feeds.')
+    if unmeasured:
+        print('Re-run for: ' + ', '.join(unmeasured)
+              + ' — the proxy refused the tunnel, so those rows are not a result. '
+                'A different sticky session id usually gets a different exit.')
     if OUT:
         with open(OUT, 'w') as f:
             json.dump({'via_proxy': VIA_PROXY, 'fingerprint': results}, f, indent=2)
