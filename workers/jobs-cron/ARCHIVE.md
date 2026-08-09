@@ -858,9 +858,51 @@ Worth keeping as a method note, because it is the second time today the same
 sentence was true: **when a workaround has two ingredients, the measurement
 that justified it only justifies the ingredient it varied.**
 
-That leaves **four workflows** carrying Oxylabs credentials: gulftalent, naukri,
-zhaopin, linkedin (the guest jobs endpoint) — and all four are targets that
-answered and refused, rather than targets that were never asked.
+### Naukri and GulfTalent left on a fingerprint; Indeed came back
+
+Naukri and GulfTalent turned out to be refusing the BROWSER BUILD, not the
+address. Real Chrome, headful under Xvfb, with the automation tells patched:
+403/332 bytes becomes 20 job tuples, 403/310 bytes becomes 50 positions.
+Reproduced three times including on two separately pinned exits, with a control
+board answering under both profiles in the confirming run. Production runs
+archived 357 and 407 rows. See scripts/browser_fetch.py's fingerprint section.
+
+**Indeed went the other way, and it is the sharpest lesson of the day.** It was
+moved off Oxylabs on the strength of one probe request — headless Chromium
+through IPRoyal, 16 rows, reproduced — and moved back hours later. Three
+configurations were tried against the real 354-company walk:
+
+| transport | result |
+|---|---|
+| headless-shell, rotating exit | every company: captcha challenge |
+| real Chrome + stealth, rotating | every company: captcha challenge |
+| headless-shell, sticky exit | every company: captcha challenge |
+
+The pages arrive — 432-442 KB of real Indeed — carrying a DataDome challenge
+instead of results. Not the address (a pinned exit failed identically), not the
+browser build (both failed identically), not the markup. **What DataDome refuses
+is the sustained walk**, and no single probe request can show that. This file
+already recorded the general form after the Jora work — *a single request proves
+nothing for a feed that walks 355 companies* — and the Indeed move was made
+without applying it.
+
+Two guards were wrong here as well, both now fixed:
+
+* The run reported a false green. `DEAD_AFTER` needs 25 completed companies
+  before it aborts, so a five-company test walked past it, printed "0 listings
+  fetched" and exited 0. Zero listings is now a failure whatever the walk
+  length — DEAD_AFTER stops a doomed run early, it does not decide whether one
+  worked.
+* The walk printed "0 jobs" per company with no way to tell a challenge from a
+  quiet employer. It now reports, once, the byte count of the first page that
+  parsed to nothing and names the challenge in it. That one line is what turned
+  three failed runs into a diagnosis.
+
+That leaves **two workflows** carrying Oxylabs credentials: indeed and zhaopin.
+Both are targets that answer and refuse, and both refuse the thing an address
+cannot fix. LinkedIn is the third open case and needs neither — IPRoyal
+blocklists the domain outright, so scripts/linkedin-brightdata-to-d1.py buys a
+purpose-built scraper instead of an exit.
 
 ### What each of the five would actually need
 

@@ -441,6 +441,19 @@ def main() -> int:
             return 2
         sys.stderr.write(f'\nDone (via {exit_name}). {st["fetch"]} listings fetched, '
                          f'{st["new"]} new rows archived, {st["empty"]} companies with 0 jobs.\n')
+        # ZERO LISTINGS IS A FAILURE WHATEVER THE WALK LENGTH. DEAD_AFTER exists
+        # to stop a doomed run early, not to decide whether it worked — and
+        # because it needs 25 completed companies, a shorter walk sailed past it
+        # and returned 0. Measured 2026-08-09: a five-company run fetched
+        # nothing, printed "0 listings fetched" and exited GREEN. Every company
+        # on this roster advertises somewhere, so a walk that fetched nothing
+        # was refused, and a refused feed must go red.
+        if sel and not st['fetch']:
+            sys.stderr.write(
+                f'FAILED: {st["done"]} companies walked and not one listing fetched. '
+                f'See the page-1 diagnostic above for whether that was a challenge, '
+                f'a moved layout or an empty response.\n')
+            return 2
         return 0
 
     if sync_playwright is None:

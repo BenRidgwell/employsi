@@ -1,32 +1,37 @@
-# Daily Indeed → D1 archive (hosted runner, headless Chromium + a residential
-# exit).
+# Daily Indeed → D1 archive, through the Oxylabs Web Scraper API.
 #
-# Indeed refuses a datacentre ADDRESS — a plain request from a runner gets 403
-# and a Cloudflare interstitial, and a browser on that same address gets the
-# same thing (measured 2026-08-06). So the address has to change, and the
-# question was only which residential exit.
+# IT WAS MOVED OFF OXYLABS ON 2026-08-09 AND MOVED BACK THE SAME DAY. The
+# evidence for the move was one probe request: headless Chromium through the
+# IPRoyal exit loaded a live au.indeed.com search and parse_search_html counted
+# 16 rows, reproduced. That is true and it does not survive a walk. Three
+# configurations were then tried against the real roster:
 #
-# Measured 2026-08-09 from a GitHub runner (probe-headless-ci.py, reproduced on
-# a second run): headless Chromium egressing through IPRoyal loaded a live
-# au.indeed.com company search and indeed_company_scraper.parse_search_html
-# counted 16 rows. Plain urllib through the same exit got nothing — the browser
-# is not optional here even with the right address.
+#   headless-shell, rotating exit    every company: captcha challenge
+#   real Chrome + stealth, rotating  every company: captcha challenge
+#   headless-shell, sticky exit      every company: captcha challenge
 #
-# The walk is single-threaded (Playwright's sync API is), but each search page
-# after the first is a fetch() from inside the cleared page rather than a
-# navigation, so it runs at plain-HTTP speed.
+# The pages arrive — 432-442 KB of real Indeed — and carry a DataDome challenge
+# instead of results. So it is not the address (a pinned exit failed the same
+# way), not the browser build (both failed the same way), and not the markup.
+# What DataDome refuses is the SUSTAINED WALK, which no single probe request can
+# reveal. ARCHIVE.md already recorded the general form of this after the Jora
+# work: a single request proves nothing for a feed that walks 355 companies.
+#
+# Indeed therefore needs an unblocker rather than an address, which is what
+# Oxylabs sells it. Bright Data has an Indeed scraper on the same per-record API
+# as scripts/linkedin-brightdata-to-d1.py if that bill is ever worth comparing.
+#
+# `scripts/indeed-to-d1.py` keeps all three transports — drop --oxylabs to use
+# the browser, add --nav for the warmed-browser walk — so re-testing costs a
+# dispatch rather than a rewrite.
 #
 # Required repo secrets:
-#   SCRAPE_PROXY          — residential exit, http://user:pass@host:port
-#   CLOUDFLARE_API_TOKEN  — D1 edit on the employsi account
+#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
+#   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
 # Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
 #
-# Pass --oxylabs (with OXYLABS_USERNAME / OXYLABS_PASSWORD restored to the env
-# below) to put the Web Scraper API back if IPRoyal stops getting through.
-#
-# Exits non-zero (red X) if Indeed starts returning nothing. Use "Run workflow"
-# to verify before relying on the schedule.
-
+# Exits non-zero if Indeed returns nothing — including on a short walk, which
+# used to slip past the DEAD_AFTER abort and report success on zero rows.
 name: indeed-archive
 
 on:
@@ -60,7 +65,7 @@ jobs:
     # until a full run has been timed, because a job cancelled at the cap writes
     # what it wrote and reports nothing about what it never reached — a run 91%
     # done looks exactly like one that died early.
-    timeout-minutes: 300
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -78,6 +83,10 @@ jobs:
 
       - name: Scrape Indeed → D1 (browser via SCRAPE_PROXY)
         env:
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          # Kept so a dispatch can re-test the browser path without editing this
+          # file: clear the oxylabs flag in the run line below and it takes over.
           SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
           # WHY A STICKY EXIT IS WORTH TRYING HERE. Measured 2026-08-09: every
           # company in the walk came back as a 432 KB page carrying a captcha
@@ -109,10 +118,11 @@ jobs:
         # The whole roster; up to 20 pages each (the walk stops early once a
         # company yields no new ads, so small employers cost little).
         run: |
-          if [ -z "$SCRAPE_PROXY" ]; then
-            echo "SCRAPE_PROXY is not set. Indeed 403s a datacentre address, so"
-            echo "this would spend the whole run collecting interstitials."
+          if [ -z "$OXYLABS_USERNAME" ]; then
+            echo "OXYLABS_USERNAME is not set. Indeed's DataDome answers every"
+            echo "other transport measured so far with a captcha challenge, so"
+            echo "this would spend the whole run collecting them."
             exit 1
           fi
-          python scripts/indeed-to-d1.py --max-pages 20 \
+          python scripts/indeed-to-d1.py --oxylabs --max-pages 20 --concurrency 8 \
             ${{ inputs.limit != '' && format('--limit {0}', inputs.limit) || '' }}
