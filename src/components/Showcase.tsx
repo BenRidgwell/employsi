@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Mail, Check } from "lucide-react";
+import { getLandingStats, type LandingStats } from "@/employsi/lib/landingStatsFn";
 
 function SkylineSVG() {
   return (
@@ -14,62 +16,105 @@ function SkylineSVG() {
   );
 }
 
-function LiveStat({
-  min,
-  max,
-  fmt,
-  label,
-}: {
-  min: number;
-  max: number;
-  fmt: (v: number) => string;
-  label: string;
-}) {
-  const [value, setValue] = useState((min + max) / 2);
-  const [flash, setFlash] = useState(false);
-  const currentRef = useRef((min + max) / 2);
+const NUM_CLASS =
+  "bg-gradient-to-br from-[#5c5c63] via-[#35353a] to-[#1f1f22] bg-clip-text text-[clamp(40px,5vw,64px)] font-bold leading-none tracking-tight text-transparent";
+
+/**
+ * One measured counter.
+ *
+ * The count-up is an ENTRANCE, not a churn. What was here before tweened the
+ * figure back and forth between two hard-coded bounds every couple of seconds
+ * to imitate liveness, which meant the number on screen was never a number
+ * anyone had counted. This runs once, from zero to the value the archive
+ * actually returned, and then stops there — the animation is decoration on a
+ * real figure rather than a substitute for one.
+ *
+ * `value === null` is "the archive could not be read", and prints an em dash.
+ * A zero is printed as zero: if the pipeline breaks, the page should say so
+ * rather than keep showing the last plausible-looking number.
+ */
+function Stat({ value, label }: { value: number | null | undefined; label: string }) {
+  const [shown, setShown] = useState(0);
+  const done = useRef(false);
 
   useEffect(() => {
+    if (value == null || done.current) return;
+    done.current = true;
+    if (value === 0) return;
     let raf = 0;
-    let timeout: ReturnType<typeof setTimeout>;
-    const tween = (target: number) => {
-      const start = currentRef.current;
-      const t0 = performance.now();
-      const dur = 650;
-      setFlash(true);
-      const step = (now: number) => {
-        const p = Math.min(1, (now - t0) / dur);
-        const e = 1 - Math.pow(1 - p, 3);
-        const v = start + (target - start) * e;
-        currentRef.current = v;
-        setValue(v);
-        if (p < 1) raf = requestAnimationFrame(step);
-        else setFlash(false);
-      };
-      raf = requestAnimationFrame(step);
+    const t0 = performance.now();
+    const dur = 900;
+    const step = (now: number) => {
+      const p = Math.min(1, (now - t0) / dur);
+      const e = 1 - Math.pow(1 - p, 3);
+      setShown(value * e);
+      if (p < 1) raf = requestAnimationFrame(step);
+      else setShown(value);
     };
-    const loop = () => {
-      tween(min + Math.random() * (max - min));
-      timeout = setTimeout(loop, 1900 + Math.random() * 2400);
-    };
-    timeout = setTimeout(loop, 700 + Math.random() * 1600);
-    return () => {
-      cancelAnimationFrame(raf);
-      clearTimeout(timeout);
-    };
-  }, [min, max]);
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
 
   return (
     <div>
-      <div
-        className={`bg-gradient-to-br from-[#5c5c63] via-[#35353a] to-[#1f1f22] bg-clip-text text-[clamp(40px,5vw,64px)] font-bold leading-none tracking-tight text-transparent transition-opacity ${
-          flash ? "opacity-60" : "opacity-100"
-        }`}
-      >
-        {fmt(value)}
-      </div>
+      {value === undefined ? (
+        // Loading. A pulsing bar rather than a zero or a placeholder figure —
+        // the same rule the app's ticker skeleton follows: say "reading"
+        // without asserting anything.
+        <div className="h-[clamp(40px,5vw,64px)] w-[70%] animate-pulse rounded-lg bg-white/15" />
+      ) : (
+        <div className={NUM_CLASS}>
+          {value === null ? "—" : Math.round(shown).toLocaleString("en-US")}
+        </div>
+      )}
       <div className="mt-3 text-[15px] text-[#4a4a50]">{label}</div>
     </div>
+  );
+}
+
+/** "2026-08-09" → "9 Aug 2026", for the measurement date under the counters. */
+function fmtAsAt(iso: string): string {
+  const d = new Date(iso + "T00:00:00Z");
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function LiveStats() {
+  // The archive only changes on the nightly cron, so this is read once a
+  // session and cached hard. The server memoises it too — see landingStatsFn.
+  const { data, isPending } = useQuery<LandingStats | null>({
+    queryKey: ["landingStats"],
+    queryFn: () => getLandingStats(),
+    staleTime: 6 * 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    retry: false,
+  });
+  // undefined = still reading, null = could not read. The two render
+  // differently and neither invents a figure.
+  const v = (k: keyof LandingStats) =>
+    isPending ? undefined : data == null ? null : (data[k] as number);
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4 md:gap-6">
+        <Stat value={v("vacancies")} label="Vacancies tracked live" />
+        <Stat value={v("employers")} label="Employers tracked" />
+        <Stat value={v("countries")} label="Countries tracked" />
+        <Stat value={v("cities")} label="Cities tracked" />
+      </div>
+      {data && (
+        // Names the source and the day. A counter with no provenance is what
+        // the placeholder version was; this is the difference.
+        <p className="mt-8 font-mono text-[11px] uppercase tracking-[0.12em] text-[#4a4a50]">
+          Counted from the live job archive · {fmtAsAt(data.asAt)}
+        </p>
+      )}
+    </>
   );
 }
 
@@ -209,33 +254,7 @@ export function Showcase() {
 
           <div className="my-11 h-px bg-[rgba(120,120,130,0.35)]" />
 
-          <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4 md:gap-6">
-            {/* PLACEHOLDER RANGES, and they need to stay labelled as such. The
-                handoff says to swap them for real figures read from D1 before
-                launch. Two of them happen to be true today — 6 released
-                markets and 80 cities — but they are still tweened numbers, not
-                a query, and a figure nobody can point at a row for is exactly
-                what this codebase refuses to print. */}
-            <LiveStat
-              min={55800}
-              max={56200}
-              fmt={(v) => Math.round(v).toLocaleString("en-US")}
-              label="Vacancies tracked live"
-            />
-            <LiveStat
-              min={1480}
-              max={1520}
-              fmt={(v) => Math.round(v).toLocaleString("en-US")}
-              label="Employers tracked"
-            />
-            <LiveStat
-              min={5.6}
-              max={6.4}
-              fmt={(v) => String(Math.round(v))}
-              label="Countries tracked"
-            />
-            <LiveStat min={78} max={82} fmt={(v) => String(Math.round(v))} label="Cities tracked" />
-          </div>
+          <LiveStats />
         </div>
       </section>
     </>

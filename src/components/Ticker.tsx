@@ -1,86 +1,53 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp, Activity } from "lucide-react";
+import {
+  getLiveSkillTrends,
+  TREND_WINDOWS,
+  type LiveSkillTrend,
+} from "@/employsi/lib/jobHistoryFn";
+import { fmtPay } from "@/employsi/lib/salaryParse";
 
 /**
- * The "skills in demand" ticker — a floating pill over a transparent bar.
+ * The "skills in demand" ticker on the landing page — a floating pill over a
+ * transparent bar.
  *
- * This replaced a 92px white bar containing an iframe to a 318KB static page.
- * Rendering it in React instead means one source of truth for the data, no
- * second document to keep in step, and no iframe to fight for scroll.
+ * WHAT CHANGED, AND WHY THE SHELL DIDN'T
+ * This used to be a second, entirely fabricated ticker: sixteen hand-written
+ * skills with hand-written salaries, deltas produced by a random walk every two
+ * seconds, and three "windows" that multiplied one delta by 1 / 2.1 / 3.4. The
+ * file said so in a comment and left the seeding in the open, which is the only
+ * reason it was defensible at all.
  *
- * THE FIGURES ARE PLACEHOLDERS AND THE CODE SHOULD SAY SO. Salaries and deltas
- * are generated here, not read from the archive — the handoff is explicit that
- * they are to be wired to D1 before launch. They are shaped like the real
- * thing, which is exactly why the seeding is written out in the open rather
- * than hidden behind a helper that could later be mistaken for a data source.
+ * It now reads the SAME server function the app's ticker does
+ * (getLiveSkillTrends → the D1 job archive), so the two cannot disagree: one
+ * measurement, rendered twice. What is deliberately NOT shared is the markup.
+ * The app's ticker is styled from `.ticker` in employsi/global.css, a 10k-line
+ * stylesheet scoped to the map app and imported only by employsi/App.tsx;
+ * pulling it into the landing route to reuse the component would drag the whole
+ * app's cascade onto a marketing page to gain a strip. So the presentation here
+ * stays the landing page's own Tailwind, and only the data layer is shared.
+ *
+ * Three consequences of using real figures, all inherited from the app:
+ *
+ *  1. The three windows are measured INDEPENDENTLY, each against its own prior
+ *     window (24h vs the day before, 7d vs the week before, 30d vs the month
+ *     before). Switching re-reads rather than rescaling.
+ *  2. A window whose prior half predates the archive's collection start reports
+ *     NOTHING rather than a figure — the server returns [] and the strip says
+ *     why. The window control is disabled when no window has data, because
+ *     there is nothing to switch to.
+ *  3. A skill whose live ads mostly do not state a salary shows no pay figure,
+ *     and a series too short or too flat to be honest shows no sparkline.
+ *     Rows render without them rather than with an invented one.
+ *
+ * The pause button therefore stops the marquee, not a value churn — there is no
+ * longer a churn to stop.
  */
-
-// [skill, median advertised base salary USD]
-const SEED: [string, number][] = [
-  ["Prompt engineering", 172000],
-  ["Kubernetes", 168000],
-  ["TypeScript", 152000],
-  ["Data modelling", 141000],
-  ["Rust", 178000],
-  ["Figma", 124000],
-  ["Salesforce admin", 98000],
-  ["Python", 148000],
-  ["Terraform", 161000],
-  ["Clinical coding", 76000],
-  ["React", 145000],
-  ["FP&A", 132000],
-  ["Go", 165000],
-  ["Technical writing", 104000],
-  ["Snowflake", 158000],
-  ["CNC machining", 68000],
-];
-
-// The three ranges the window button cycles. The multiplier scales the same
-// underlying delta rather than modelling three series: a longer window shows a
-// larger move, which is the shape the real data will have.
-const WINDOWS = [
-  { label: "· LAST 24 HOURS", short: "24h", mult: 1 },
-  { label: "· LAST 7 DAYS", short: "7d", mult: 2.1 },
-  { label: "· LAST 30 DAYS", short: "30d", mult: 3.4 },
-] as const;
 
 const UP = { fg: "#2f8f63", tint: "#e8f3ec" };
 const DOWN = { fg: "#c4463b", tint: "#f7ebe9" };
 const FLAT = { fg: "#8e8e93", tint: "#f4f4f5" };
-
-interface Row {
-  name: string;
-  pay: number;
-  hist: number[];
-  delta: number;
-  flash: boolean;
-}
-
-function seedRows(): Row[] {
-  return SEED.map(([name, pay], i) => {
-    const hist: number[] = [];
-    for (let j = 0; j < 14; j++) {
-      let v = 40 + ((i * 17) % 30);
-      v += Math.sin(i + j * 0.8) * 6;
-      hist.push(v);
-    }
-    return { name, pay, hist, delta: +(Math.sin(i * 2.3) * 9).toFixed(1), flash: false };
-  });
-}
-
-/** 14 history points → a 48x18 path. Normalised so a flat series sits mid-box. */
-function sparkPath(hist: number[]): string {
-  const min = Math.min(...hist);
-  const max = Math.max(...hist);
-  const span = max - min || 1;
-  return hist
-    .map((v, i) => {
-      const x = (i / (hist.length - 1)) * 46 + 1;
-      const y = 16 - ((v - min) / span) * 14;
-      return `${i ? "L" : "M"}${x.toFixed(2)} ${y.toFixed(2)}`;
-    })
-    .join(" ");
-}
 
 function toneFor(delta: number) {
   if (delta >= 0.15) return UP;
@@ -88,15 +55,53 @@ function toneFor(delta: number) {
   return FLAT;
 }
 
-function Lane({ rows, mult }: { rows: Row[]; mult: number }) {
+/**
+ * Daily live-vacancy counts → a 48x18 path.
+ *
+ * Returns null when there is nothing honest to draw: no series, fewer than two
+ * points, or a dead-flat line. The row then renders without a sparkline. The
+ * previous version took a guaranteed 14-point synthetic series and could always
+ * draw something; a real series cannot, and a placeholder shape would be
+ * actively misleading because the shape IS the information.
+ */
+function sparkPath(hist: number[] | undefined): string | null {
+  if (!hist || hist.length < 2) return null;
+  const min = Math.min(...hist);
+  const max = Math.max(...hist);
+  if (max === min) return null;
+  return hist
+    .map((v, i) => {
+      const x = (i / (hist.length - 1)) * 46 + 1;
+      // SVG y grows downward, so a higher count sits nearer the top.
+      const y = 16 - ((v - min) / (max - min)) * 14;
+      return `${i ? "L" : "M"}${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+}
+
+// Enough placeholder widths to fill the pill at any viewport width.
+const SKELETON = [72, 108, 88, 124, 96, 80, 116, 92];
+// Stable reference, so the empty state does not churn `items` identity and
+// re-trigger the flash effect on every render.
+const EMPTY: LiveSkillTrend[] = [];
+
+function Lane({
+  rows,
+  sparkDays,
+  flashed,
+}: {
+  rows: LiveSkillTrend[];
+  sparkDays: number;
+  flashed: ReadonlySet<string>;
+}) {
   return (
     <>
       {rows.map((r, i) => {
-        const shown = r.delta * mult;
-        const tone = toneFor(shown);
+        const tone = toneFor(r.v);
         // 0deg up, 180deg down, 90deg flat — one arrow, rotated, so the
         // transition between states is a turn rather than a swap.
-        const rot = shown >= 0.15 ? 0 : shown <= -0.15 ? 180 : 90;
+        const rot = r.v >= 0.15 ? 0 : r.v <= -0.15 ? 180 : 90;
+        const path = sparkPath(r.spark ? r.spark.slice(-sparkDays) : undefined);
         return (
           <div
             key={`${r.name}-${i}`}
@@ -105,25 +110,32 @@ function Lane({ rows, mult }: { rows: Row[]; mult: number }) {
             <span className="whitespace-nowrap text-[13px] font-medium tracking-[-0.006em] text-[#1c1c1e]">
               {r.name}
             </span>
-            <svg viewBox="0 0 48 18" width={48} height={18} aria-hidden>
-              <path
-                d={sparkPath(r.hist)}
-                fill="none"
-                stroke={tone.fg}
-                strokeWidth={1.6}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity={0.85}
-              />
-            </svg>
-            <span className="font-mono text-[12px] tabular-nums tracking-[-0.01em] text-[#6c6c72]">
-              ${Math.round(r.pay / 1000)}k
-            </span>
+            {path && (
+              <svg viewBox="0 0 48 18" width={48} height={18} aria-hidden>
+                <path
+                  d={path}
+                  fill="none"
+                  stroke={tone.fg}
+                  strokeWidth={1.6}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity={0.85}
+                />
+              </svg>
+            )}
+            {r.pay !== undefined && (
+              <span
+                className="font-mono text-[12px] tabular-nums tracking-[-0.01em] text-[#6c6c72]"
+                title="Median annual salary advertised across the live Australian vacancies demanding this skill"
+              >
+                {fmtPay(r.pay)}
+              </span>
+            )}
             <span
               className="inline-flex h-[21px] items-center gap-1 rounded-[7px] px-[7px]"
               style={{
                 color: tone.fg,
-                background: r.flash ? tone.tint : "rgba(244,244,245,0)",
+                background: flashed.has(r.name) ? tone.tint : "rgba(244,244,245,0)",
                 transition: "background 700ms ease-out",
               }}
             >
@@ -145,7 +157,14 @@ function Lane({ rows, mult }: { rows: Row[]; mult: number }) {
                 <path d="M12 19V5M5 12l7-7 7 7" />
               </svg>
               <span className="font-mono text-[12px] tabular-nums">
-                {Math.abs(shown).toFixed(1)}%
+                {Math.abs(r.v).toFixed(1)}%
+              </span>
+              {/* Names what the percentage measures. Without it the figure sits
+                  beside a dollar amount and reads as a change in PAY, which is
+                  the one thing it is not — it is the change in how many
+                  vacancies demand the skill. */}
+              <span className="font-mono text-[10px] uppercase tracking-[.08em] opacity-70">
+                Demand
               </span>
             </span>
           </div>
@@ -157,39 +176,54 @@ function Lane({ rows, mult }: { rows: Row[]; mult: number }) {
 
 export function Ticker() {
   const [expanded, setExpanded] = useState(true);
-  const [rows, setRows] = useState<Row[]>(seedRows);
   const [win, setWin] = useState(0);
   const [paused, setPaused] = useState(false);
-  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Real market-wide skill-demand movers from the D1 archive, all three windows
+  // in one read. Cached hard: the archive only moves on the nightly cron.
+  const { data: live } = useQuery({
+    queryKey: ["liveSkillTrends"],
+    queryFn: () => getLiveSkillTrends(),
+    staleTime: 6 * 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    retry: false,
+  });
+
+  const w = TREND_WINDOWS[win];
+  const rows = live?.[w.key];
+  // Three distinct states, and conflating any two of them is what let invented
+  // figures onto this strip in the first place:
+  //   loading    — the read has not returned. A skeleton, not numbers.
+  //   no history — the archive is too young for THIS window's comparison, so
+  //                the server returned nothing on purpose. Say that.
+  //   live       — real movers.
+  const loading = !live;
+  const items = useMemo(() => (rows && rows.length ? rows : EMPTY), [rows]);
+  const noHistory = !loading && items.length === 0;
+  // Cycling is only offered when some window has data to cycle TO.
+  const anyLive = !!live && TREND_WINDOWS.some((x) => (live[x.key]?.length ?? 0) > 0);
+
+  // Flash the delta chip on rows whose value actually moved. `items` is a
+  // stable reference, so this fires on a real data change or a window switch —
+  // not on a timer, and not on every render.
+  const lastValues = useRef<Record<string, number>>({});
+  const [flashed, setFlashed] = useState<ReadonlySet<string>>(new Set());
   useEffect(() => {
-    if (paused) return;
-    const tick = setInterval(() => {
-      setRows((prev) => {
-        const next = prev.map((r) => ({ ...r, flash: false }));
-        for (let k = 0; k < 3; k++) {
-          const i = Math.floor(Math.random() * next.length);
-          const step = (Math.random() - 0.48) * 5;
-          const r = next[i];
-          r.delta = +Math.max(-14, Math.min(16, r.delta + step)).toFixed(1);
-          r.hist = [...r.hist.slice(1), r.hist[r.hist.length - 1] + step * 1.6];
-          r.flash = true;
-        }
-        return next;
-      });
-      if (flashTimer.current) clearTimeout(flashTimer.current);
-      flashTimer.current = setTimeout(
-        () => setRows((prev) => prev.map((r) => (r.flash ? { ...r, flash: false } : r))),
-        800,
-      );
-    }, 2000);
-    return () => {
-      clearInterval(tick);
-      if (flashTimer.current) clearTimeout(flashTimer.current);
-    };
-  }, [paused]);
+    const changed = new Set<string>();
+    for (const t of items) {
+      const before = lastValues.current[t.name];
+      if (before !== undefined && Math.abs(before - t.v) >= 0.05) changed.add(t.name);
+      lastValues.current[t.name] = t.v;
+    }
+    if (!changed.size) return;
+    setFlashed(changed);
+    const id = setTimeout(() => setFlashed(new Set()), 800);
+    return () => clearTimeout(id);
+  }, [items]);
 
-  const w = WINDOWS[win];
+  // The 30-day window draws the full month; the shorter windows draw the tail
+  // of the same daily series.
+  const sparkDays = w.days >= 30 ? 30 : 14;
   const seconds = 90;
 
   return (
@@ -216,7 +250,9 @@ export function Ticker() {
             <span className="font-mono text-[11px] uppercase tracking-[.14em]">
               Skills in demand
             </span>
-            <span className="font-mono text-[11px] tracking-[.08em] text-[#b4b4ba]">{w.label}</span>
+            <span className="font-mono text-[11px] tracking-[.08em] text-[#b4b4ba]">
+              {w.label.toUpperCase()}
+            </span>
           </div>
 
           <div
@@ -228,25 +264,49 @@ export function Ticker() {
                 "linear-gradient(90deg, transparent 0, #000 40px, #000 calc(100% - 56px), transparent 100%)",
             }}
           >
-            <div
-              className="flex w-max"
-              style={{
-                animation: `emp-ticker ${seconds}s linear infinite`,
-                animationPlayState: paused ? "paused" : undefined,
-              }}
-            >
-              {/* Rendered twice: the keyframe runs 0 → −50%, so the second copy
-                  is what makes the wrap seamless rather than a jump. */}
-              <Lane rows={rows} mult={w.mult} />
-              <Lane rows={rows} mult={w.mult} />
-            </div>
+            {loading ? (
+              <div className="flex w-max items-center" aria-hidden>
+                {[...SKELETON, ...SKELETON].map((width, i) => (
+                  <div key={i} className="border-r border-[#f0f0f2] px-[18px]">
+                    <span
+                      className="block h-[11px] animate-pulse rounded-full bg-[#ededf0]"
+                      style={{ width }}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : noHistory ? (
+              <span className="truncate px-[18px] text-[13px] text-[#8e8e93]">
+                Not enough archive history yet to measure change over{" "}
+                {w.label.replace("· Last ", "the last ").toLowerCase()}.
+              </span>
+            ) : (
+              <div
+                className="flex w-max"
+                style={{
+                  animation: `emp-ticker ${seconds}s linear infinite`,
+                  animationPlayState: paused ? "paused" : undefined,
+                }}
+              >
+                {/* Rendered twice: the keyframe runs 0 → −50%, so the second
+                    copy is what makes the wrap seamless rather than a jump. */}
+                <Lane rows={items} sparkDays={sparkDays} flashed={flashed} />
+                <Lane rows={items} sparkDays={sparkDays} flashed={flashed} />
+              </div>
+            )}
           </div>
 
           <div className="ml-1 flex flex-none items-center gap-0.5 border-l border-[#ededf0] pl-2">
             <button
               type="button"
-              onClick={() => setWin((v) => (v + 1) % WINDOWS.length)}
-              className="h-[34px] rounded-[10px] px-[9px] font-mono text-[11px] uppercase tracking-[.1em] text-[#48484a] transition hover:bg-[#f4f4f5] hover:text-ink active:scale-[.96]"
+              onClick={() => setWin((v) => (v + 1) % TREND_WINDOWS.length)}
+              disabled={!anyLive}
+              className="h-[34px] rounded-[10px] px-[9px] font-mono text-[11px] uppercase tracking-[.1em] text-[#48484a] transition hover:bg-[#f4f4f5] hover:text-ink active:scale-[.96] disabled:pointer-events-none disabled:opacity-40"
+              title={
+                anyLive
+                  ? `Showing ${w.label.replace("· ", "").toLowerCase()} — click to change`
+                  : "Comparison windows unlock once the job archive has history"
+              }
               aria-label="Change time window"
             >
               {w.short}
@@ -255,7 +315,8 @@ export function Ticker() {
               type="button"
               onClick={() => setPaused((v) => !v)}
               className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] text-[#48484a] transition hover:bg-[#f4f4f5] hover:text-ink active:scale-[.96]"
-              aria-label={paused ? "Resume updates" : "Pause updates"}
+              aria-label={paused ? "Resume ticker" : "Pause ticker"}
+              aria-pressed={paused}
             >
               <svg width={18} height={18} viewBox="0 0 18 18" aria-hidden>
                 <path
