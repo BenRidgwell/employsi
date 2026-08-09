@@ -10,6 +10,8 @@ export const LOCAL_LOGO: Record<string, string> = {
   "perth-gov-arts-and-culture-trust": "/logos/perth-gov-arts-and-culture-trust.jpeg",
   "perth-gov-department-of-creative-industries-tourism-and-sport":
     "/logos/perth-gov-department-of-creative-industries-tourism-and-sport.png",
+  "perth-gov-department-of-energy-and-economic-diversification":
+    "/logos/perth-gov-department-of-energy-and-economic-diversification.jpeg",
   "perth-gov-department-of-justice": "/logos/perth-gov-department-of-justice.png",
   "perth-gov-department-of-local-government-industry-regulation-and-safety":
     "/logos/perth-gov-department-of-local-government-industry-regulation-and-safety.jpg",
