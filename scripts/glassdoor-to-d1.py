@@ -225,8 +225,32 @@ def sign_in(sess) -> str:
     except Exception as e:  # noqa: BLE001
         return f'could not open the reviews page: {str(e)[:90]}'
     html = page.content()
+    # CHECK FOR A BLOCK BEFORE BLAMING THE FORM. The first version only looked
+    # for a challenge AFTER trying to fill the sign-in fields, so a DataDome
+    # page — which has no sign-in form on it — was reported as "sign-in form not
+    # as expected". That is a diagnosis pointing at the wrong thing entirely,
+    # and it is the difference between "fix a selector" and "we are blocked".
+    early = blocked_as(html)
+    if early:
+        return f'blocked before sign-in ({early})'
     if re.search(r'"isLoggedIn"\s*:\s*true|data-test="site-header-profile', html):
         return ''
+    if PROBE:
+        # The probe exists to make the next fix possible without guessing. When
+        # the form is not where it was expected, say what IS on the page.
+        title = (re.search(r'<title[^>]*>([^<]{0,120})', html) or ['', ''])[1]
+        sys.stderr.write(f'    page title: {title.strip()}\n')
+        sys.stderr.write(f'    bytes: {len(html)}\n')
+        for probe_sel in ['input[name="username"]', 'input[type="email"]',
+                          'input[name="password"]', 'button[data-test="sign-in"]',
+                          '[data-test="signin-button"]', 'a[href*="/profile/login"]',
+                          '#inlineUserEmail', '[data-test="emailInput"]']:
+            try:
+                n = page.locator(probe_sel).count()
+            except Exception:  # noqa: BLE001
+                n = -1
+            if n:
+                sys.stderr.write(f'    present: {probe_sel} x{n}\n')
     if not (email and password):
         return ('signed out and no credentials supplied — set GLASSDOOR_EMAIL and '
                 'GLASSDOOR_PASSWORD (use a dedicated account, not a personal one)')
