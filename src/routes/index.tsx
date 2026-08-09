@@ -6,7 +6,18 @@ import { ArrowUpRight } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import ridgwellPhoto from "@/assets/ridgwell_photo.jpeg.asset.json";
+// The IMAGE, not the .asset.json sidecar beside it.
+//
+// That sidecar is Lovable's asset record, and the `url` it carries
+// ("/__l5e/assets-v1/<uuid>/ridgwell_photo.jpeg") is served by Lovable's
+// preview host — not by this Worker. On the deployed site it 404s and the About
+// card showed a broken circle; the file was never even in the build output,
+// because nothing imported the jpeg itself.
+//
+// Importing the file makes Vite fingerprint it and emit it under /assets/,
+// which _headers already marks immutable, so it ships with the page and is
+// cached forever. The sidecar is left in place for Lovable's own bookkeeping.
+import ridgwellPhoto from "@/assets/ridgwell_photo.jpeg";
 
 /** The one address this page wants to be found at. See the canonical link below. */
 const CANONICAL_URL = "https://employsi.com.au/";
@@ -80,8 +91,14 @@ function AboutPopover() {
         <div className="flex flex-col items-center px-5 pt-7 pb-6 text-center">
           <div className="mb-4 h-20 w-20 overflow-hidden rounded-full border-2 border-hairline bg-surface-2 shadow-sm">
             <img
-              src={ridgwellPhoto.url}
+              src={ridgwellPhoto}
               alt="Ben Ridgwell"
+              width={80}
+              height={80}
+              // The source is 800x800 for an 80px circle. Stating the box means
+              // the browser decodes to the size it will actually paint, and
+              // reserves the space before the file arrives so the card does not
+              // reflow around it as it loads.
               className="h-full w-full object-cover"
             />
           </div>
