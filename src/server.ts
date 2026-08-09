@@ -86,6 +86,26 @@ export default {
       const url = new URL(request.url);
       const host = url.hostname.toLowerCase();
 
+      // HTTPS only on the public domain.
+      //
+      // A Worker Custom Domain answers on both schemes, and this one was
+      // measured serving the full waitlist over plain http — 200, 14,596
+      // bytes, no redirect. The form itself posts to an https endpoint either
+      // way, so nothing was travelling in the clear, but a public page asking
+      // for an email address over http is the kind of thing browsers have
+      // started marking and people are right to distrust.
+      //
+      // The better home for this is the zone's "Always Use HTTPS" setting,
+      // which acts at the edge before a request ever reaches a Worker. This is
+      // here because the deploy credentials are account-scoped and cannot
+      // touch zone settings; it is correct on its own and harmless if that
+      // setting is switched on later, since the edge would then redirect first
+      // and this would simply stop being reached.
+      if (url.protocol === "http:" && (host === MARKETING_APEX || host === MARKETING_WWW)) {
+        url.protocol = "https:";
+        return Response.redirect(url.toString(), 301);
+      }
+
       // One canonical hostname. 301 because it is permanent — www is an alias
       // for the apex and always will be — and because a cached redirect is the
       // point: a visitor who typed www should stop paying for the hop.
