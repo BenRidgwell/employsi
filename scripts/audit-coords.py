@@ -43,7 +43,13 @@ OUT = args[args.index('--json') + 1] if '--json' in args else None
 # Precise enough to trust. Anything else means the geocoder answered a broader
 # question than the one the address asked.
 PRECISE = {'building', 'house', 'amenity', 'office', 'shop', 'tourism',
-           'leisure', 'industrial', 'place', 'railway', 'aeroway'}
+           'industrial', 'place', 'railway', 'aeroway'}
+# An office is never in the middle of a park, a reserve or a river. When a pin
+# reverse-geocodes to one of these it is not an imprecise address, it is a
+# generated fan position that happened to land on open ground — which is what a
+# reader notices first and trusts least.
+OPEN_GROUND = {'leisure', 'park', 'garden', 'water', 'natural', 'landuse',
+               'waterway', 'forest', 'grass', 'recreation_ground', 'pitch'}
 VAGUE = {'road', 'suburb', 'city', 'town', 'village', 'postcode', 'state',
          'county', 'municipality', 'neighbourhood', 'hamlet', 'locality'}
 
@@ -51,15 +57,20 @@ VAGUE = {'road', 'suburb', 'city', 'town', 'village', 'postcode', 'state',
 def roster() -> list[dict]:
     """The city's plotted companies and their coordinates, read through bun so
     this cannot disagree with what the app draws."""
+    # THE DRAWN COORDINATE, not the stored one. These differed for 306 government
+    # agencies until 2026-08-09: only Perth consulted realCoord(), so every other
+    # city drew a fan position while auRealCoords.ts held the right answer — and
+    # an audit that reads the data file reports a map that is fine while the one
+    # on screen is not. What the user sees is what has to be checked.
     script = f'''
     import {{ CITY_COMPANIES }} from "{ROOT}/src/employsi/data/mapboxGeo";
     import {{ AU_REAL_COORDS }} from "{ROOT}/src/employsi/data/auRealCoords";
     import {{ COMPANIES }} from "{ROOT}/src/employsi/data/companies";
     const name = new Map(COMPANIES.map((c) => [c.id, c.name]));
     const out = (CITY_COMPANIES[{json.dumps(CITY)}] ?? [])
-      .filter((c) => AU_REAL_COORDS[c.id])
       .map((c) => ({{ id: c.id, name: name.get(c.id) ?? c.id,
-                      lon: AU_REAL_COORDS[c.id][0], lat: AU_REAL_COORDS[c.id][1] }}));
+                      lon: c.coords[0], lat: c.coords[1],
+                      pinned: Boolean(AU_REAL_COORDS[c.id]) }}));
     console.log(JSON.stringify(out));
     '''
     path = os.path.join('/tmp', f'_roster_{CITY}.ts')
@@ -116,7 +127,10 @@ def main() -> int:
                              addr.get(c['id'], ('', ''))[0]) or [None, ''])[1]
         got_pc = a.get('postcode', '')
         flags = []
-        if atype in VAGUE:
+        if atype in OPEN_GROUND or (a.get('leisure') or a.get('natural')):
+            flags.append(f'lands on open ground ({atype or a.get("leisure") or a.get("natural")})'
+                         + ('' if c.get('pinned') else ' — no geocoded address, on the fan'))
+        elif atype in VAGUE:
             flags.append(f'lands on a {atype}, not a building')
         elif atype not in PRECISE:
             flags.append(f'unrecognised match type "{atype}"')

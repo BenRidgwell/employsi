@@ -76,8 +76,16 @@ def load_addresses():
     return out
 
 
+# SQUARE was missing and Adelaide is built around five of them. Without it
+# "200 Victoria Square" was not recognised as a street line at all, so the whole
+# address went to the geocoder with "Level 9, State Administration Centre" still
+# attached and matched nothing — four SA agencies sat on the fan because of one
+# absent word. The rest here are the other Australian street types that appear in
+# addresses and were equally missing.
 STREET_WORD = (r"(street|road|avenue|drive|circuit|crescent|parade|place|highway|"
-               r"terrace|way|lane|esplanade|boulevard|close|court|quay|mall|walk|st|rd|ave)")
+               r"terrace|way|lane|esplanade|boulevard|close|court|quay|mall|walk|"
+               r"square|circus|grove|rise|loop|row|gardens|promenade|arcade|"
+               r"st|rd|ave|sq)")
 
 
 def street_segments(addr):
@@ -233,6 +241,16 @@ PINNED: dict[str, tuple[float, float, str]] = {
                                                     'OSM house number 19, Smith Street Mall [shop]'),
     'nt-gov-department-of-treasury-and-finance': (130.843114, -12.464606,
                                                  'OSM house number 19, Smith Street Mall [shop]'),
+    # "Torrens Parade Ground, Victoria Drive" — a named parade ground, mapped
+    # under its own name; Victoria Drive runs the length of the parklands.
+    'sa-gov-history-trust-of-south-australia': (138.600475, -34.917793,
+                                               'OSM "Torrens Parade Ground" [amenity]'),
+    # Main North Road through Clare IS Horrocks Highway — the road was renamed
+    # and OSM carries the new name, so the street-match gate rejected an answer
+    # that was correct. Pinned rather than teaching the gate about road aliases,
+    # which would weaken it everywhere to fix one address.
+    'sa-gov-northern-and-yorke-landscape-board': (138.613308, -33.834961,
+                                                 'OSM Horrocks Highway (= Main North Road), Clare'),
 }
 
 # Standing notes emitted above an entry, so an explanation survives the next

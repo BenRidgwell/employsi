@@ -22,7 +22,7 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "adelaide-ar3": [138.601801, -34.925311], // 111 Gawler Place, Adelaide SA 5000
   "adelaide-arg": [138.598757, -34.92485], // Level 25, 91 King William Street, Adelaide SA 5000
   "adelaide-axe": [138.608529, -34.919318], // Lot 14, North Terrace and Frome Road, Adelaide SA 5000
-  "adelaide-bgd": [138.603442, -34.934117], // Level 4, 12 Gilles Street, Adelaide SA 5000
+  "adelaide-bgd": [138.615109, -34.93355], // Level 4, 12 Gilles Street, Adelaide SA 5000
   "adelaide-c79": [138.57025, -35.007448], // 2A Venture Road, Tonsley SA 5042
   "adelaide-coe": [138.596648, -34.927049], // Level 8, 70 Franklin Street, Adelaide SA 5000
   "adelaide-eld": [138.602696, -34.923473], // Level 10, 80 Grenfell Street, Adelaide SA 5000
@@ -247,7 +247,7 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "priv-creation-homes": [144.977182, -37.843183], // 484 St Kilda Road, Melbourne VIC 3004
   "priv-defence-health": [144.970983, -37.832164], // 380 St Kilda Road, Melbourne VIC 3004
   "priv-deloitte-touche-tohmatsu": [151.211508, -33.862996], // Quay Quarter Tower, 50 Bridge Street, Sydney NSW 2000
-  "priv-detmold-group": [138.577103, -34.900487], // 45 Chief Street, Brompton SA 5007
+  "priv-detmold-group": [138.573509, -34.904134], // 45 Chief Street, Brompton SA 5007
   "priv-drake-supermarkets": [138.558047, -34.924356], // 159 Henley Beach Road, Torrensville SA 5031
   "priv-employers-mutual": [151.206713, -33.867906], // Level 3, 345 George Street, Sydney NSW 2000
   "priv-epworth-healthcare": [144.993061, -37.816989], // 89 Bridge Road, Richmond VIC 3121
@@ -275,7 +275,7 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "priv-kennards-self-storage": [151.12457, -33.780396], // 7 Khartoum Road, Macquarie Park NSW 2113
   "priv-king-wood-mallesons": [144.959704, -37.818046], // Level 27, Collins Arch, 447 Collins Street, Melbourne VIC 3000
   "priv-kpmg": [151.202083, -33.865121], // Tower Three, International Towers Sydney, 300 Barangaroo Avenue, Sydney NSW 2000
-  "priv-leader-computers": [138.597621, -34.927219], // 165-187 Franklin Street, Adelaide SA 5000
+  "priv-leader-computers": [138.591074, -34.927599], // 165-187 Franklin Street, Adelaide SA 5000
   "priv-life-without-barriers": [151.773881, -32.92687], // 352 Hunter Street, Newcastle NSW 2300
   "priv-linfox": [145.008765, -37.827262], // 490 Swan Street, Richmond VIC 3121
   "priv-loan-market": [153.030092, -27.467849], // Level 18, 111 Eagle Street, Brisbane QLD 4000
@@ -306,7 +306,7 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "priv-perfection-fresh": [151.087408, -33.834439], // Level 4, Building F, 1 Homebush Bay Drive, Rhodes NSW 2138
   "priv-perron-group": [115.874076, -31.961905], // 4 Plain Street, East Perth WA 6004
   "priv-perth-airport": [115.955259, -31.933594], // 2 George Wiencke Drive, Perth Airport WA 6105
-  "priv-peter-kittle-motor-company": [138.63973, -34.800015], // 1459 Main North Road, Para Hills West SA 5096
+  "priv-peter-kittle-motor-company": [138.632797, -34.807769], // 1459 Main North Road, Para Hills West SA 5096
   "priv-pharmacare": [151.286675, -33.678262], // 18 Jubilee Avenue, Warriewood NSW 2102
   "priv-pwc-australia": [151.20224, -33.863371], // One International Towers, Watermans Quay, Barangaroo NSW 2000
   "priv-qcoal": [153.029861, -27.468284], // 40 Creek Street, Brisbane QLD 4000
@@ -401,10 +401,11 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "sa-gov-adelaide-festival-centre-trust": [138.597791, -34.919576], // King William Road, Adelaide SA 5000
   "sa-gov-alinytjara-wilurara-landscape-board": [138.590271, -34.926249], // Level 9, 81-95 Waymouth Street, Adelaide SA 5000
   "sa-gov-attorney-general-s-department": [138.601457, -34.926044], // 45 Pirie Street, Adelaide SA 5000
+  "sa-gov-audit-office-of-south-australia": [138.601019, -34.927667], // Level 9, State Administration Centre, 200 Victoria Square, Adelaide SA 5000
   "sa-gov-carclew-youth-arts-centre": [138.592711, -34.912325], // 11 Jeffcott Street, North Adelaide SA 5006
-  "sa-gov-child-death-and-serious-injury-review-committee": [138.566642, -34.901661], // Level 7, 5 South Road, Hindmarsh SA 5007
+  "sa-gov-child-death-and-serious-injury-review-committee": [138.566547, -34.901923], // Level 7, 5 South Road, Hindmarsh SA 5007
   "sa-gov-commissioner-for-children-and-young-people": [138.59373, -34.929606], // 251 Morphett Street, Adelaide SA 5000
-  "sa-gov-country-arts-sa": [138.618491, -34.885317], // 85 North East Road, Collinswood SA 5081
+  "sa-gov-country-arts-sa": [138.61322, -34.88932], // 85 North East Road, Collinswood SA 5081
   "sa-gov-courts-administration-authority": [138.591277, -34.930567], // 1 Gouger Street, Adelaide SA 5000
   "sa-gov-dairysafe": [138.61877, -34.942465], // 136 Glen Osmond Road, Parkside SA 5063
   "sa-gov-defence-sa": [138.605486, -34.92586], // Level 4, 151 Pirie Street, Adelaide SA 5000
@@ -415,12 +416,13 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "sa-gov-department-for-environment-and-water": [138.590271, -34.926249], // 81-95 Waymouth Street, Adelaide SA 5000
   "sa-gov-department-for-housing-and-urban-development": [138.598848, -34.926067], // Level 16, 11 Waymouth Street, Adelaide SA 5000
   "sa-gov-department-for-infrastructure-and-transport": [138.602728, -34.924642], // 77 Grenfell Street, Adelaide SA 5000
-  "sa-gov-department-of-human-services": [138.609439, -34.920951], // Riverside Centre, North Terrace, Adelaide SA 5000
+  "sa-gov-department-of-human-services": [138.608171, -34.921019], // Riverside Centre, North Terrace, Adelaide SA 5000
   "sa-gov-department-of-primary-industries-and-regions": [138.600863, -34.924858], // Level 14, 25 Grenfell Street, Adelaide SA 5000
   "sa-gov-department-of-state-development": [138.598848, -34.926067], // 11 Waymouth Street, Adelaide SA 5000
   "sa-gov-department-of-the-premier-and-cabinet": [138.601019, -34.927667], // State Administration Centre, 200 Victoria Square, Adelaide SA 5000
   "sa-gov-department-of-treasury-and-finance": [138.601019, -34.927667], // State Administration Centre, 200 Victoria Square, Adelaide SA 5000
   "sa-gov-education-standards-board": [138.597685, -34.927515], // Level 7, 33 Franklin Street, Adelaide SA 5000
+  "sa-gov-electoral-commission-of-sa": [138.594107, -34.924383], // Level 6, 60 Light Square, Adelaide SA 5000
   "sa-gov-environment-protection-authority": [138.598832, -34.928295], // 211 Victoria Square, Adelaide SA 5000
   "sa-gov-essential-services-commission-of-sa": [138.605486, -34.92586], // Level 1, 151 Pirie Street, Adelaide SA 5000
   "sa-gov-eyre-peninsula-landscape-board": [135.861412, -34.721386], // 86 Tasman Terrace, Port Lincoln SA 5606
@@ -430,6 +432,7 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "sa-gov-guardian-for-children-and-young-people": [138.601801, -34.925311], // Level 3, 111 Gawler Place, Adelaide SA 5000
   "sa-gov-health-and-community-services-complaints-commissioner": [138.601662, -34.923869], // Level 4, 50 Grenfell Street, Adelaide SA 5000
   "sa-gov-hills-and-fleurieu-landscape-board": [138.859005, -35.068492], // Unit 8, 22 Mann Street, Mount Barker SA 5251
+  "sa-gov-history-trust-of-south-australia": [138.600475, -34.917793], // Torrens Parade Ground, Victoria Drive, Adelaide SA 5000
   "sa-gov-independent-commission-against-corruption": [138.597156, -34.924896], // Level 9, 55 Currie Street, Adelaide SA 5000
   "sa-gov-infrastructure-sa": [138.601906, -34.928227], // Level 15, Wakefield House, 30 Wakefield Street, Adelaide SA 5000
   "sa-gov-kangaroo-island-landscape-board": [137.635463, -35.658197], // 35 Dauncey Street, Kingscote SA 5223
@@ -440,32 +443,36 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "sa-gov-limestone-coast-landscape-board": [140.774391, -37.828793], // 11 Helen Street, Mount Gambier SA 5290
   "sa-gov-motor-accident-commission": [138.599958, -34.924067], // Level 10, 80 King William Street, Adelaide SA 5000
   "sa-gov-murraylands-and-riverland-landscape-board": [139.279741, -35.121503], // Unit 5-6, Level 1, Sturt Centre, 2 Sturt Reserve Road, Murray Bridge SA 5253
+  "sa-gov-northern-and-yorke-landscape-board": [138.613308, -33.834961], // 318 Main North Road, Clare SA 5453
   "sa-gov-office-for-early-childhood-development": [138.601684, -34.927381], // 31 Flinders Street, Adelaide SA 5000
   "sa-gov-office-for-recreation-sport-and-racing": [138.531099, -34.913639], // 27 Valetta Road, Kidman Park SA 5025
   "sa-gov-office-of-hydrogen-power-sa": [138.598757, -34.92485], // Level 27, 91 King William Street, Adelaide SA 5000
   "sa-gov-office-of-the-commissioner-for-public-sector-employment": [138.600863, -34.924858], // Level 5, 25 Grenfell Street, Adelaide SA 5000
   "sa-gov-office-of-the-sa-productivity-commission": [138.601906, -34.928227], // Level 15, Wakefield House, 30 Wakefield Street, Adelaide SA 5000
-  "sa-gov-parliament-of-sa": [138.609439, -34.920951], // Parliament House, North Terrace, Adelaide SA 5000
+  "sa-gov-parliament-of-sa": [138.608171, -34.921019], // Parliament House, North Terrace, Adelaide SA 5000
+  "sa-gov-preventive-health-sa": [138.604892, -34.923327], // Citi Centre Building, 11 Hindmarsh Square, Adelaide SA 5000
   "sa-gov-renewal-sa": [138.602744, -34.925974], // Level 9, 83 Pirie Street, Adelaide SA 5000
   "sa-gov-sa-arid-lands-landscape-board": [137.770849, -32.488167], // 1 Jervois Street, Port Augusta SA 5700
   "sa-gov-sa-country-fire-service": [138.597327, -34.925636], // Level 7, 60 Waymouth Street, Adelaide SA 5000
-  "sa-gov-sa-employment-tribunal": [138.609439, -34.920951], // Level 6, Riverside Centre, North Terrace, Adelaide SA 5000
+  "sa-gov-sa-employment-tribunal": [138.608171, -34.921019], // Level 6, Riverside Centre, North Terrace, Adelaide SA 5000
   "sa-gov-sa-film-corporation": [138.626414, -34.943276], // Adelaide Studios, 1 Mulberry Road, Glenside SA 5065
   "sa-gov-sa-fire-and-emergency-services-commission": [138.597327, -34.925636], // Level 7, 60 Waymouth Street, Adelaide SA 5000
   "sa-gov-sa-health": [138.604892, -34.923327], // 11 Hindmarsh Square, Adelaide SA 5000
-  "sa-gov-sa-housing-trust": [138.609439, -34.920951], // Riverside Centre, North Terrace, Adelaide SA 5000
+  "sa-gov-sa-housing-trust": [138.608171, -34.921019], // Riverside Centre, North Terrace, Adelaide SA 5000
   "sa-gov-sa-lotteries": [138.629147, -34.913793], // 18 Union Street, Stepney SA 5069
   "sa-gov-sa-metropolitan-fire-service": [138.604742, -34.928743], // 99 Wakefield Street, Adelaide SA 5000
+  "sa-gov-sa-motor-sport-board": [138.600988, -34.927359], // Level 5, 182 Victoria Square, Adelaide SA 5000
   "sa-gov-sa-state-emergency-service": [138.597327, -34.925636], // Level 7, 60 Waymouth Street, Adelaide SA 5000
+  "sa-gov-sa-tourism-commission": [138.601282, -34.92963], // Level 9, 250 Victoria Square, Adelaide SA 5000
   "sa-gov-sace-board-of-sa": [138.593713, -34.942015], // 60 Greenhill Road, Wayville SA 5034
-  "sa-gov-safework-sa": [138.571729, -34.942101], // 33 Richmond Road, Keswick SA 5035
+  "sa-gov-safework-sa": [138.580804, -34.941668], // 33 Richmond Road, Keswick SA 5035
   "sa-gov-south-australia-police": [138.604652, -34.929506], // 100 Angas Street, Adelaide SA 5000
-  "sa-gov-state-opera-sa": [138.618491, -34.885317], // 85 North East Road, Collinswood SA 5081
-  "sa-gov-state-theatre-company-of-sa": [138.618491, -34.885317], // 85 North East Road, Collinswood SA 5081
+  "sa-gov-state-opera-sa": [138.61322, -34.88932], // 85 North East Road, Collinswood SA 5081
+  "sa-gov-state-theatre-company-of-sa": [138.61322, -34.88932], // 85 North East Road, Collinswood SA 5081
   "sa-gov-study-adelaide": [138.598224, -34.926872], // Level 1, 26 Franklin Street, Adelaide SA 5000
   "sa-gov-tafe-sa": [138.59479, -34.924242], // 120 Currie Street, Adelaide SA 5000
   "sa-gov-teachers-registration-board": [138.606783, -34.925161], // Level 6, 70 Pirie Street, Adelaide SA 5000
-  "sa-gov-west-beach-parks": [138.505268, -34.947335], // 1 Military Road, West Beach SA 5024
+  "sa-gov-west-beach-parks": [138.503734, -34.943265], // 1 Military Road, West Beach SA 5024
   "sfr": [115.841389, -31.952468], // Level 2, 10 Kings Park Road, West Perth WA 6005
   "shell": [115.855175, -31.949814], // 562 Wellington Street, Perth WA 6000
   "smr": [153.029651, -27.468519], // Level 32, 12 Creek Street, Brisbane QLD 4000
