@@ -7,6 +7,41 @@ type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
 
+/**
+ * THE PUBLIC MARKETING DOMAIN.
+ *
+ * employsi.com.au is the waitlist, and only the waitlist. The same Worker also
+ * serves the map app, so pointing a domain at it would otherwise publish an
+ * unreleased product on the address the product is about to be advertised at —
+ * discoverable, linkable and indexable. The gate is HOST-BASED rather than a
+ * removal, so nothing is lost: /app stays fully reachable on the workers.dev
+ * URL, which is where it is developed and demoed from.
+ *
+ * This is a visibility gate on a marketing domain, NOT a security boundary, and
+ * the difference matters if you are tempted to lean on it. The per-market data
+ * gate in employsi/lib/markets.ts is the boundary; it runs server-side on every
+ * archive read and is unaffected by which hostname asked.
+ *
+ * RELEASING THE APP is deleting APP_ONLY_PATHS, and nothing else.
+ */
+const MARKETING_APEX = "employsi.com.au";
+const MARKETING_WWW = "www.employsi.com.au";
+
+/**
+ * Paths that belong to the product rather than the waitlist.
+ *
+ * `/api/auth` is here because an open sign-up endpoint on a promoted domain is
+ * surface with nothing behind it: the waitlist page has no auth UI, and the
+ * server functions it does call resolve the caller's role in-process through
+ * auth.api.getSession rather than over this route, so closing it costs the
+ * waitlist nothing. Verified before closing it.
+ */
+const APP_ONLY_PATHS = ["/app", "/mobile-frame", "/api/auth"];
+
+function isAppOnlyPath(pathname: string): boolean {
+  return APP_ONLY_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
+
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
 async function getServerEntry(): Promise<ServerEntry> {
@@ -49,6 +84,25 @@ export default {
       // visitor hitting a callback URL cannot end up rendering the app shell
       // mid-redirect.
       const url = new URL(request.url);
+      const host = url.hostname.toLowerCase();
+
+      // One canonical hostname. 301 because it is permanent — www is an alias
+      // for the apex and always will be — and because a cached redirect is the
+      // point: a visitor who typed www should stop paying for the hop.
+      if (host === MARKETING_WWW) {
+        url.hostname = MARKETING_APEX;
+        return Response.redirect(url.toString(), 301);
+      }
+
+      // 302, NOT 301. This gate comes off when the app is released, and a 301
+      // is cached by browsers indefinitely — every visitor who hit /app while
+      // it was closed would keep being bounced to the waitlist long after it
+      // opened, with nothing on the server able to undo it. A temporary
+      // condition gets a temporary redirect.
+      if (host === MARKETING_APEX && isAppOnlyPath(url.pathname)) {
+        return Response.redirect(new URL("/", url).toString(), 302);
+      }
+
       if (url.pathname.startsWith("/api/auth/")) {
         let auth;
         try {
