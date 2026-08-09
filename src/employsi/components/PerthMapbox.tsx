@@ -602,6 +602,23 @@ export function PerthMapbox() {
               logoAlt: c.ticker,
             }),
           );
+          // Hover name for the zooms where the caption is hidden.
+          //
+          // Below LABEL_ZOOM a dense CBD is deliberately just discs — that reads
+          // calmly, and it is why the captions fade in rather than always
+          // showing. The cost is that a marker you are pointing at has nothing
+          // to say what it is, and the only way to find out is to click it and
+          // open a whole card. This gives the answer on hover instead.
+          //
+          // CSS decides WHEN it shows (see .mktip): only while the container
+          // lacks .shownames and the marker is not selected, so it never
+          // duplicates a caption that is already on screen. Keeping that in one
+          // place means the tooltip cannot drift out of step with the very
+          // rule it exists to compensate for.
+          const tip = document.createElement("span");
+          tip.className = "mktip";
+          tip.textContent = c.name;
+          el.appendChild(tip);
           el.addEventListener("click", (ev) => {
             ev.stopPropagation();
             useAppStore.getState().select(c.id);

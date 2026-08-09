@@ -1389,6 +1389,19 @@ body {
 .mkpin {
   cursor: pointer;
   line-height: 0;
+  /* NO `position` HERE. The hover tip is absolutely positioned and needs a
+     positioned ancestor, and the obvious move is `position: relative` — but the
+     comment above is not decoration: .mapboxgl-marker sets position on this
+     element, our stylesheet loads after Mapbox's, and a same-specificity
+     override would unpin every marker on the map. Mapbox's own `absolute`
+     already makes this a containing block, so the tip anchors correctly and
+     the line that would have broken it is deliberately absent. */
+}
+/* A hovered pin is lifted above its neighbours. Markers are separate siblings
+   in one container, so without this the tip is painted over by whichever pin
+   happens to come later in the DOM — which in a dense CBD is most of them. */
+.mkpin:hover {
+  z-index: 5;
 }
 /* Everything visual. Mapbox never touches this element, so an inline opacity
    set here (the local layer's skill-search fade) sticks. */
@@ -2575,6 +2588,45 @@ body {
 .mount.shownames .mk-company .mkcaption,
 .mk-company.on .mkcaption {
   opacity: 1;
+}
+/* Hover name for the zooms where the caption above is hidden.
+   Same treatment as the action rail's .railtip — inverse surface, 7px radius,
+   11px medium, 140ms fade — because it answers the same question and there is
+   no reason for the map to invent a second tooltip language. It sits ABOVE the
+   pin rather than beside it: the caption's slot is below, and a tip that
+   appeared there would read as the label finally arriving. */
+.mktip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.01em;
+  /* .mkpin sets line-height: 0 so the disc has no stray leading; the tip has
+     real text and needs it back, or the label sits crushed against its box. */
+  line-height: 1.35;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 2;
+  transition:
+    opacity 140ms,
+    transform 140ms;
+}
+/* Only while the caption is genuinely absent. `.shownames` means the labels are
+   on screen, and a selected company keeps its caption at every zoom — in both
+   cases the tip would be a second copy of a name already visible. */
+.mount:not(.shownames) .mkpin:hover .mktip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.mount:not(.shownames) .mkpin:hover .mk-company.on ~ .mktip {
+  opacity: 0;
 }
 /* Mapbox trial: the global/domestic Mapbox overview sits on top of the local
    3D map (it comes after PerthMapbox in the DOM, so it stacks above it without
