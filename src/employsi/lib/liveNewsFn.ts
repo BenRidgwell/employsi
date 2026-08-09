@@ -6,6 +6,10 @@ import type { JsonRecord } from "./json";
 import { str } from "./json";
 import { isBlockedArticle } from "../data/newsBlocklist";
 import { kvBinding } from "./kv";
+import { COMPANIES } from "../data/companies";
+import { CITY_COMPANIES } from "../data/mapboxGeo";
+import { CITY_COUNTRY } from "../data/cityCountry";
+import { NEWS_OUTLETS } from "../data/newsOutletFeeds";
 
 // NB: kept out of any `server/` directory — the bundler denies importing paths
 // under **/server/**. createServerFn runs this only on the Cloudflare Worker,
@@ -222,7 +226,103 @@ const OUTLET_FEEDS: { url: string; publisher: string }[] = [
   { url: "https://www.businessnews.com.au/rssfeed/latest.rss", publisher: "Business News WA" },
   { url: "https://feeds.bloomberg.com/markets/news.rss", publisher: "Bloomberg" },
 ];
-let outletCache: { at: number; items: LiveNewsItem[] } | null = null;
+
+/**
+ * Company name → country, for choosing which national press to pull.
+ *
+ * Built ONCE from CITY_COMPANIES rather than per call. The call site has a
+ * company NAME (the news query is built from the roster name everywhere), not
+ * an id, and cityForCompany() scans all 54 city lists per lookup — doing that
+ * on every card open, inside a request already racing a news provider, would be
+ * paying 1,500 comparisons to save a map.
+ */
+const COUNTRY_BY_NAME: Map<string, string> = (() => {
+  const cityOf = new Map<string, string>();
+  for (const [city, list] of Object.entries(CITY_COMPANIES)) {
+    for (const c of list) if (!cityOf.has(c.id)) cityOf.set(c.id, city);
+  }
+  const out = new Map<string, string>();
+  for (const c of COMPANIES) {
+    const country = CITY_COUNTRY[cityOf.get(c.id) ?? ""];
+    if (country) out.set(c.name.trim().toLowerCase(), country);
+  }
+  return out;
+})();
+
+function countryForCompanyName(name: string): string | null {
+  return COUNTRY_BY_NAME.get(name.trim().toLowerCase()) ?? null;
+}
+
+/**
+ * Does a headline actually name this company?
+ *
+ * A plain `title.includes(name)` was fine against three feeds and is not fine
+ * against eighty-six. Measured on one live pull of the Australian pool: "Shell"
+ * matched "Palantir CEO drops 11-word bombshell", and a company called "Built"
+ * matched "built to fail". The pool's whole value is that its articles are
+ * about the company, so a substring hit is worse than no hit — it puts a story
+ * about US bond markets on a mining company's card, with a real image and a
+ * real byline making it look thoroughly checked.
+ *
+ * So the name has to sit on WORD BOUNDARIES. Same fault, same fix as the skills
+ * taxonomy's term matcher, which reads "legal" out of "paralegal" if you let it.
+ *
+ * The length floor is TWO, not four. Four was the obvious guess and it silently
+ * excluded BHP — along with AGL, NAB, ANZ and every other three-letter name on
+ * the roster, which are exactly the companies most written about. With word
+ * boundaries doing the real work, a three-letter acronym in a headline is
+ * almost always the company; one or two letters is not evidence of anything.
+ *
+ * What boundaries CANNOT fix is a company whose name is an ordinary word — a
+ * headline saying something was "built to fail" matches a company called Built,
+ * correctly by every rule available here. That is a limit of matching on names,
+ * not a bug to code around, and it is why this only ever ADDS to the search
+ * results rather than replacing them.
+ */
+function headlineMatcher(name: string): RegExp | null {
+  const n = name.trim();
+  if (n.length < 3) return null;
+  const esc = n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?<![\\p{L}\\p{N}])${esc}(?![\\p{L}\\p{N}])`, "iu");
+}
+
+/**
+ * How many feeds a single pool refresh may fetch, beyond the three above.
+ *
+ * The generated file holds 94 verified feeds. Fetching all of them to answer a
+ * question about one company would be 94 subrequests against a Worker's
+ * thousand-request budget, and ninety of them would be about the wrong country.
+ * So a refresh takes the company's OWN national press plus the global business
+ * pool, capped — enough to widen coverage materially without turning one card
+ * open into a crawl.
+ *
+ * The cap bites only on India (22 feeds); every other country is under it.
+ */
+const MAX_COUNTRY_FEEDS = 12;
+const MAX_BUSINESS_FEEDS = 8;
+
+/**
+ * The feeds to pull for a company in `country`.
+ *
+ * A country with no national feeds — New Zealand, the UAE, Switzerland, South
+ * Korea, China, Singapore, Malaysia, 249 plotted companies — still gets the
+ * business pool and the hand-picked three. It is narrower coverage, not a
+ * failure, and it is the same coverage those companies had before this existed.
+ */
+function feedsFor(country: string | null): { url: string; publisher: string }[] {
+  const national = country ? (NEWS_OUTLETS[country] ?? []).slice(0, MAX_COUNTRY_FEEDS) : [];
+  const business = (NEWS_OUTLETS.business ?? []).slice(0, MAX_BUSINESS_FEEDS);
+  const seen = new Set<string>();
+  return [...OUTLET_FEEDS, ...national, ...business].filter((f) =>
+    seen.has(f.url) ? false : (seen.add(f.url), true),
+  );
+}
+
+// Cached PER COUNTRY, because the pools differ. One shared cache would serve a
+// Perth company whichever country happened to warm it first — and would do so
+// invisibly, since a pool that returns no name matches looks identical to a
+// company nobody wrote about.
+const outletCache = new Map<string, { at: number; items: LiveNewsItem[] }>();
 const OUTLET_TTL = 15 * 60 * 1000;
 
 function itemImage(block: string): string | undefined {
@@ -233,11 +333,13 @@ function itemImage(block: string): string | undefined {
   return m ? decodeEntities(m[1]) : undefined;
 }
 
-async function outletPool(signal: AbortSignal): Promise<LiveNewsItem[]> {
-  if (outletCache && Date.now() - outletCache.at < OUTLET_TTL) return outletCache.items;
+async function outletPool(signal: AbortSignal, country: string | null): Promise<LiveNewsItem[]> {
+  const key = country ?? "-";
+  const hit = outletCache.get(key);
+  if (hit && Date.now() - hit.at < OUTLET_TTL) return hit.items;
   const all: LiveNewsItem[] = [];
   await Promise.all(
-    OUTLET_FEEDS.map(async (feed) => {
+    feedsFor(country).map(async (feed) => {
       try {
         const res = await fetch(feed.url, {
           signal,
@@ -268,7 +370,7 @@ async function outletPool(signal: AbortSignal): Promise<LiveNewsItem[]> {
       }
     }),
   );
-  outletCache = { at: Date.now(), items: all };
+  outletCache.set(key, { at: Date.now(), items: all });
   return all;
 }
 
@@ -396,10 +498,11 @@ export const getLiveNews = createServerFn({ method: "GET" })
       try {
         const name = search.replace(/^"|"$/g, "").trim().toLowerCase();
         if (name) {
-          const pool = await outletPool(controller.signal);
+          const pool = await outletPool(controller.signal, countryForCompanyName(name));
           const have = new Set(items.map((i) => i.url));
+          const named = headlineMatcher(name);
           const matches = pool.filter(
-            (p) => p.title.toLowerCase().includes(name) && !have.has(p.url),
+            (p) => named !== null && named.test(p.title) && !have.has(p.url),
           );
           for (const m of matches) items.push(m);
           // Sort the whole feed newest-first so outlet articles interleave.
