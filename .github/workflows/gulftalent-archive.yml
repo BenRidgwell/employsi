@@ -1,5 +1,27 @@
-# Daily GulfTalent (gulftalent.com) → D1 archive, via the Oxylabs Web Scraper
-# API. Covers the Dubai hub.
+# Daily GulfTalent (Dubai) → D1 archive, in real Chrome through a residential
+# exit (SCRAPE_PROXY / IPRoyal).
+#
+# GulfTalent's JSON jobs API refuses a datacentre address, and refuses an
+# automated-looking browser from a residential one too. The second half is what
+# used to be bought rather than built.
+#
+# WHAT MAKES THIS WORK WITHOUT A PAID UNBLOCKER. Measured 2026-08-09
+# (probe-headless-ci.py --fingerprint), through the SAME IPRoyal exit address,
+# the two profiles minutes apart:
+#
+#   chromium-headless-shell                          403 Akamai deny, ~330 bytes
+#   real Chrome, headful under Xvfb, stealth patches 200, rows
+#
+# Reproduced on two separately pinned sticky sessions, with a control board
+# returning 21 rows under BOTH profiles in the confirming run — so the exit was
+# healthy for the baseline too and this is not a luckier IP. Akamai was
+# fingerprinting the BROWSER BUILD: chromium-headless-shell is a stripped binary
+# that is not Chrome (no proprietary codecs, SwiftShader WebGL strings, no
+# chrome.runtime). The address was never the thing being refused, which is what
+# Oxylabs had been paid for here.
+#
+# The BROWSER_FETCH_* env vars below are load-bearing. Without them the run gets
+# the 403 and reports the board as blocked.#
 #
 # The board's JSON endpoint sits behind Akamai, which returns 403 to a
 # datacentre IP, so requests go through Oxylabs for the residential IP. No JS
@@ -15,7 +37,7 @@
 # without being attributed to a company we have not matched.
 #
 # Required repo secrets:
-#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
+#   SCRAPE_PROXY                        — residential exit, http://user:pass@host:port
 #   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
 # Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
 #
@@ -44,11 +66,31 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - name: Scrape GulfTalent (Dubai) → D1 (Oxylabs)
+
+      - name: Install Playwright, real Chrome and Xvfb
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install --with-deps chromium
+          python -m playwright install --with-deps chrome
+          sudo apt-get install -y xvfb
+      - name: Scrape GulfTalent (Dubai) → D1 (real Chrome via SCRAPE_PROXY)
         env:
-          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
-          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
+          # THE FINGERPRINT IS THE POINT. Measured 2026-08-09: this board answers
+          # chromium-headless-shell with a 403 Akamai deny and real Chrome with
+          # rows, from the SAME exit address. Without these two the run gets the
+          # 403 and reports the board as blocked.
+          BROWSER_FETCH_CHANNEL: chrome
+          BROWSER_FETCH_STEALTH: '1'
+          BROWSER_FETCH_HEADFUL: '1'
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
-        run: python scripts/gulftalent-to-d1.py --max-pages 40
+        run: |
+          if [ -z "$SCRAPE_PROXY" ]; then
+            echo "SCRAPE_PROXY is not set. This board refuses a datacentre"
+            echo "address regardless of browser, so the run would only collect 403s."
+            exit 1
+          fi
+          xvfb-run -a python scripts/gulftalent-to-d1.py --max-pages 40

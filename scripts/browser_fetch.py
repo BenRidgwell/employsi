@@ -501,6 +501,37 @@ def nav_get(url: str, settle: int = 6, locale: str = 'en-AU') -> str | None:
     return _raw_session.html(url, [{'type': 'wait', 'wait_time_s': settle}])
 
 
+def json_get(url: str, settle: int = 3, locale: str = 'en-AU') -> str | None:
+    """Return a JSON endpoint's body, read from a browser that has cleared the
+    site's challenge.
+
+    WHY NOT nav_get. Navigating Chromium to a JSON URL does not hand back JSON:
+    the browser wraps it in a document — `<pre>` with every quote
+    entity-escaped — so page.content() is HTML that json.loads cannot read, and
+    a regex written against the real payload matches nothing. probe-headless-ci
+    hit exactly this on GulfTalent and had to add a `json_key` path for it.
+
+    document.body.innerText is the way out. It is the TEXT the browser rendered
+    into that <pre>, entities already decoded, which is byte-for-byte the
+    original payload.
+
+    Shares raw_get's session, so the Akamai clearance earned by one request
+    carries to the next.
+    """
+    global _raw_session
+    if _raw_session is None:
+        _raw_session = Session(locale=locale)
+        _raw_session.__enter__()
+        atexit.register(lambda: _raw_session.__exit__(None, None, None))
+    if _raw_session.html(url, [{'type': 'wait', 'wait_time_s': settle}]) is None:
+        return None
+    try:
+        return _raw_session._page.evaluate('document.body.innerText')
+    except Exception as e:  # noqa: BLE001
+        sys.stderr.write(f'  json_get could not read the body of {url[:70]}: {str(e)[:120]}\n')
+        return None
+
+
 if __name__ == '__main__':
     # quick check: python3 scripts/browser_fetch.py <url> [settle_s]
     u = sys.argv[1] if len(sys.argv) > 1 else 'https://example.com'

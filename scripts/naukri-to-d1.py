@@ -39,6 +39,22 @@ Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID,
 Run: python scripts/naukri-to-d1.py [--only id1,id2] [--limit N]
                                     [--max-pages N] [--concurrency N]
                                     [--india-only] [--direct] [--dry-run]
+
+WHY THIS NO LONGER NEEDS OXYLABS (measured 2026-08-09, probe-headless-ci.py
+--fingerprint, reproduced on two pinned IPRoyal exits):
+
+    chromium-headless-shell   403 Akamai, 332-byte body
+    real Chrome, headful under Xvfb, stealth patches   200, 20 job tuples
+
+Same exit address, same request, minutes apart, with a control board returning
+21 rows under BOTH profiles — so the exit was healthy for the baseline too and
+the difference is not a luckier IP. Akamai was fingerprinting the BROWSER BUILD.
+chromium-headless-shell is a stripped binary that is not Chrome: no proprietary
+codecs, SwiftShader WebGL strings, no chrome.runtime.
+
+So the address was never the thing being refused, and Oxylabs was being paid for
+one. Set BROWSER_FETCH_CHANNEL=chrome and BROWSER_FETCH_STEALTH=1 (the workflow
+does) and run it headful under xvfb-run.
 """
 from __future__ import annotations
 import datetime
@@ -55,6 +71,8 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+import browser_fetch  # noqa: E402
+import http_fetch  # noqa: E402
 
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
 ACCOUNT = os.environ.get('CF_ACCOUNT_ID') or '080a66721e2d85950d9d7dc939e08b76'
@@ -84,6 +102,10 @@ CONCURRENCY = int(_opt('--concurrency', 5))
 INDIA_ONLY = '--india-only' in args or '--only' not in args
 DIRECT = '--direct' in args
 DRY = '--dry-run' in args
+# Real Chrome through SCRAPE_PROXY by default; --oxylabs restores the Web
+# Scraper API. See the header for what the fingerprint is doing here.
+VIA_OXYLABS = '--oxylabs' in args
+SETTLE = int(_opt('--settle', 10))
 
 if not DRY and not TOKEN:
     sys.exit('CLOUDFLARE_API_TOKEN is required (needs D1 edit). Use --dry-run to skip the write.')
@@ -142,9 +164,11 @@ def get(url: str) -> str | None:
         except Exception as e:
             sys.stderr.write(f'  direct fetch failed (expected — Naukri blocks DC IPs): {e}\n')
             return None
-    from oxylabs_client import fetch as oxy_fetch
-    content, _ = oxy_fetch(url, geo='India', render=True)
-    return content
+    if VIA_OXYLABS:
+        from oxylabs_client import fetch as oxy_fetch
+        content, _ = oxy_fetch(url, geo='India', render=True)
+        return content
+    return browser_fetch.nav_get(url, settle=SETTLE, locale='en-IN')
 
 
 TUPLE_SPLIT = re.compile(r'srp-jobtuple-wrapper', re.I)
@@ -311,11 +335,17 @@ def main() -> int:
         sys.exit('No companies matched — check --only / --india-only.')
     sys.stderr.write(
         f'Naukri (Mumbai + Bengaluru) -> D1: {len(companies)} companies, '
-        f'{"DIRECT" if DIRECT else "via Oxylabs"}{", DRY RUN" if DRY else ""}.\n')
+        f'{"DIRECT" if DIRECT else "via Oxylabs" if VIA_OXYLABS else f"real Chrome via {http_fetch.proxy_label()}"}'
+        f'{", DRY RUN" if DRY else ""}.\n')
 
     from concurrent.futures import ThreadPoolExecutor
     results: dict[str, tuple[list, int]] = {}
-    with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
+    # ONE WORKER on the browser path. Playwright's sync API must be driven from
+    # the thread that created it, so CONCURRENCY only applies to the Oxylabs and
+    # direct transports. 12 companies x 2 cities x 2 pages is 48 requests; that
+    # is minutes single-threaded, not hours.
+    workers = CONCURRENCY if (VIA_OXYLABS or DIRECT) else 1
+    with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {pool.submit(scrape_company, c['id'], c['name']): c for c in companies}
         for f in futures:
             c = futures[f]

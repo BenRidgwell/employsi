@@ -32,6 +32,21 @@ and backoff. No JS rendering is needed — it is a plain JSON endpoint.
 Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID,
      OXYLABS_USERNAME, OXYLABS_PASSWORD.
 Run: python scripts/gulftalent-to-d1.py [--max-pages N] [--dry-run] [--direct]
+
+WHY THIS NO LONGER NEEDS OXYLABS (measured 2026-08-09, probe-headless-ci.py
+--fingerprint, reproduced three times including on two pinned IPRoyal exits):
+
+    chromium-headless-shell   403 Akamai "Access Denied", ~310-byte body
+    real Chrome, headful under Xvfb, stealth patches   200, 50 positions
+
+Byte-identical at 124,120 on every passing run, and a control board returned 21
+rows under BOTH profiles in the confirming run — so the exit was healthy for the
+baseline too and this is not a luckier IP. Akamai was fingerprinting the BROWSER
+BUILD, not the address, and Oxylabs was being paid for an address that was never
+the thing being refused.
+
+Set BROWSER_FETCH_CHANNEL=chrome and BROWSER_FETCH_STEALTH=1 (the workflow does)
+and run it headful under xvfb-run.
 """
 from __future__ import annotations
 import datetime
@@ -48,6 +63,8 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+import browser_fetch  # noqa: E402
+import http_fetch  # noqa: E402
 
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
 ACCOUNT = os.environ.get('CF_ACCOUNT_ID') or '080a66721e2d85950d9d7dc939e08b76'
@@ -65,6 +82,10 @@ args = sys.argv[1:]
 MAX_PAGES = int(args[args.index('--max-pages') + 1]) if '--max-pages' in args else 40
 DRY = '--dry-run' in args
 DIRECT = '--direct' in args
+# Real Chrome through SCRAPE_PROXY by default; --oxylabs restores the Web
+# Scraper API. See the header for what the fingerprint is doing here.
+VIA_OXYLABS = '--oxylabs' in args
+SETTLE = int(args[args.index('--settle') + 1] if '--settle' in args else 3)
 
 if not DRY and not TOKEN:
     sys.exit('CLOUDFLARE_API_TOKEN is required (needs D1 edit). Use --dry-run to skip the write.')
@@ -118,9 +139,15 @@ def get(url: str) -> str | None:
         except Exception as e:
             sys.stderr.write(f'  direct fetch failed (expected — Akamai blocks DC IPs): {e}\n')
             return None
-    from oxylabs_client import fetch as oxy_fetch
-    content, _ = oxy_fetch(url, geo='United Arab Emirates', render=False)
-    return content
+    if VIA_OXYLABS:
+        from oxylabs_client import fetch as oxy_fetch
+        content, _ = oxy_fetch(url, geo='United Arab Emirates', render=False)
+        return content
+    # json_get, not nav_get: this endpoint returns JSON, and navigating a
+    # browser to JSON hands back a <pre> document with entity-escaped quotes
+    # that json.loads below cannot read. json_get returns the rendered TEXT,
+    # which is the original payload.
+    return browser_fetch.json_get(url, settle=SETTLE, locale='en-AE')
 
 
 def scrape() -> list[dict]:
@@ -246,7 +273,7 @@ def upsert(jobs: list) -> int:
 
 def main() -> int:
     sys.stderr.write(
-        f'GulfTalent (Dubai) -> D1: {"DIRECT" if DIRECT else "via Oxylabs"}'
+        f'GulfTalent (Dubai) -> D1: {"DIRECT" if DIRECT else "via Oxylabs" if VIA_OXYLABS else f"real Chrome via {http_fetch.proxy_label()}"}'
         f'{", DRY RUN" if DRY else ""}\n')
     jobs = scrape()
     if not jobs:
