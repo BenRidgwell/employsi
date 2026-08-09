@@ -3,16 +3,76 @@ import { useQuery } from "@tanstack/react-query";
 import { Mail, Check } from "lucide-react";
 import { getLandingStats, type LandingStats } from "@/employsi/lib/landingStatsFn";
 
-function SkylineSVG() {
+/**
+ * The product graphic between the hero and the stats.
+ *
+ * WHY THE HEIGHT IS MEASURED RATHER THAN DECLARED
+ * The graphic is a design-system export (public/waitlist-preview.html, written
+ * by scripts/unpack-design-bundle.py) that fits ITSELF to whatever width it is
+ * given: it reads its container's clientWidth and scales a fixed 1080×660
+ * artboard down to match. So its height is a function of the width it lands at,
+ * and no single aspect-ratio in this file describes it at every breakpoint —
+ * the previous `aspect-[3/2]` was right at desktop width and clipped a few
+ * pixels off the bottom on a narrow phone, because the export's top padding
+ * was a constant while the artboard beside it shrank.
+ *
+ * So the frame reports its rendered height and this sizes to it. The
+ * aspect-ratio below is only a pre-measurement fallback: it is what the export
+ * currently works out to (0.64 × width), so the reserved space is right before
+ * the first message arrives and stays right if scripting never runs at all.
+ */
+function PreviewFrame() {
+  const [height, setHeight] = useState<number | null>(null);
+  const frame = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      // Same-origin only: the frame is served by this Worker, so anything from
+      // another origin is not it.
+      if (e.origin !== window.location.origin) return;
+      const h = (e.data as { employsiPreviewHeight?: unknown } | null)?.employsiPreviewHeight;
+      if (typeof h === "number" && h > 0) setHeight(Math.ceil(h));
+    };
+    // The frame boots faster than this route hydrates, so its unprompted first
+    // message is usually already gone by the time we are listening. Ask for one
+    // as well as waiting for one; the frame answers a ping unconditionally.
+    const ping = () => {
+      frame.current?.contentWindow?.postMessage(
+        { employsiPreviewPing: true },
+        window.location.origin,
+      );
+    };
+    window.addEventListener("message", onMessage);
+    window.addEventListener("resize", ping);
+    ping();
+    // Covers a frame that has not finished booting yet, without polling
+    // forever: once it answers, its own ResizeObserver keeps us current.
+    const retries = [120, 400, 1200, 2500].map((d) => setTimeout(ping, d));
+    return () => {
+      window.removeEventListener("message", onMessage);
+      window.removeEventListener("resize", ping);
+      retries.forEach(clearTimeout);
+    };
+  }, []);
+
   return (
-    <iframe
-      src="/waitlist-preview.html"
-      title="Preview"
-      scrolling="no"
-      className="h-full w-full border-0 overflow-hidden"
-      style={{ background: "transparent", pointerEvents: "none" }}
-      loading="lazy"
-    />
+    <div
+      className="w-full max-w-[1100px] aspect-[1000/641]"
+      style={height ? { height, aspectRatio: "auto" } : undefined}
+    >
+      <iframe
+        ref={frame}
+        src="/waitlist-preview.html"
+        title="A preview of the Employsi map: a live labour-market globe and a company card"
+        scrolling="no"
+        className="h-full w-full overflow-hidden border-0"
+        style={{ background: "transparent", pointerEvents: "none" }}
+        // Not lazy: it sits in the first screenful on a laptop, and a lazy
+        // frame that has not booted has not reported a height either, so the
+        // block would hold its fallback ratio until the visitor scrolled to it.
+        loading="eager"
+      />
+    </div>
   );
 }
 
@@ -227,9 +287,7 @@ export function Showcase() {
         </div>
 
         <div className="flex w-full justify-center">
-          <div className="w-full max-w-[1100px] aspect-[3/2]">
-            <SkylineSVG />
-          </div>
+          <PreviewFrame />
         </div>
       </div>
 
