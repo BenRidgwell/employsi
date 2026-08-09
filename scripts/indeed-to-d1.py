@@ -332,7 +332,8 @@ def main() -> int:
             sys.stderr.write(f'  browser via {http_fetch.proxy_label()} — {len(sel)} companies, '
                              f'single-threaded.\n')
         lock = threading.Lock()
-        st = {'fetch': 0, 'new': 0, 'empty': 0, 'done': 0, 'reach': 0, 'dead': False}
+        st = {'fetch': 0, 'new': 0, 'empty': 0, 'done': 0, 'reach': 0,
+              'dead': False, 'diagnosed': False}
 
         def work(cid, name):
             # STOP EARLY WHEN THE FEED IS DEAD RATHER THAN SLOW. Measured
@@ -365,6 +366,23 @@ def main() -> int:
                 content = fetch_search(ind.search_url(base, name, '', pg * 10))
                 if not content:
                     break
+                # SAY WHY THE FIRST EMPTY PAGE WAS EMPTY. A page that renders
+                # and parses to nothing is indistinguishable in this loop from a
+                # quiet employer, and the run-level DEAD_AFTER abort tells you
+                # only that it happened 25 times. One line naming the size and
+                # the challenge, once, is the difference between "Indeed refused
+                # the run" and knowing WHICH refusal.
+                if not jobs and pg == 0:
+                    with lock:
+                        first = not st['diagnosed']
+                        st['diagnosed'] = True
+                    if first and not ind.parse_search_html(content, base):
+                        why = next((lbl for pat, lbl in browser_fetch.BLOCK_MARKERS
+                                    if re.search(pat, content, re.I)), '')
+                        sys.stderr.write(
+                            f'  [{cid}] page 1 parsed 0 rows from {len(content)} bytes'
+                            + (f' [{why}]' if why else ' (no challenge marker — the '
+                               'markup may have changed)') + '\n')
                 new = 0
                 for j in ind.parse_search_html(content, base):
                     k = (norm(j['title']), norm(j.get('location', '')))
