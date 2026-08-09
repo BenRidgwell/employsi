@@ -88,7 +88,11 @@ function AboutPopover() {
         sideOffset={8}
         className="z-50 w-72 rounded-3xl border-hairline bg-surface p-0 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.28)]"
       >
-        <div className="flex flex-col items-center px-5 pt-7 pb-6 text-center">
+        {/* Left-aligned: the avatar sits on the same left edge the heading and
+            body start from, so the card reads as one column rather than a
+            centred stack. `items-start` is what places the avatar — it is a
+            flex child, so text-align alone would not move it. */}
+        <div className="flex flex-col items-start px-5 pt-7 pb-6 text-left">
           <div className="mb-4 h-20 w-20 overflow-hidden rounded-full border-2 border-hairline bg-surface-2 shadow-sm">
             <img
               src={ridgwellPhoto}
@@ -102,7 +106,7 @@ function AboutPopover() {
               className="h-full w-full object-cover"
             />
           </div>
-          <div className="space-y-2 text-center">
+          <div className="space-y-2 text-left">
             <h2 className="text-lg font-bold tracking-tight text-ink">Hi, I'm Ben</h2>
             <p className="text-[13px] leading-relaxed text-ink-2">
               I'm a Director at a Big 4 consulting firm specialising in HR analytics and workforce
