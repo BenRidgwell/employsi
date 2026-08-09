@@ -150,6 +150,60 @@ REPORT_JS = """
 """
 
 
+FONT_FACE_RE = re.compile(r"@font-face\s*\{[^}]*\}")
+FAMILY_RE = re.compile(r"font-family:\s*'([^']+)'")
+
+
+def alias_orphan_font_families(page: str) -> tuple[str, list[tuple[str, str]]]:
+    """Give a font the name the document actually asks for.
+
+    The export declares its webfonts under their full names — 'Mona Sans
+    Variable' — while every element asks for the family name — 'Mona Sans'. CSS
+    matches @font-face by exact family name, so the brand face never applied:
+    the page rendered in system-ui and the two Mona Sans woff2 files it ships
+    were downloaded by nobody. Confirmed in a real browser before and after.
+
+    An @font-face rule takes exactly one family name, so a name can only be
+    added by duplicating the rule. Aliasing rather than renaming is deliberate:
+    a rename would break any future export that DOES use the long name, and
+    a duplicate rule costs nothing at runtime (the browser downloads a face only
+    when something selects it).
+
+    Generalised rather than hardcoded to Mona Sans, so the next export is
+    checked too: any family that is asked for but never declared, and that is a
+    prefix of exactly one declared family, gets an alias. Anything less clear
+    cut is left alone and reported, because inventing a mapping between two
+    fonts is not a thing a build script should decide.
+    """
+    faces = FONT_FACE_RE.findall(page)
+    declared = {m.group(1) for f in faces for m in [FAMILY_RE.search(f)] if m}
+
+    used: set[str] = set()
+    for decl in re.findall(r"font-family:\s*([^;}\"']*(?:'[^']*'[^;}\"']*)*)", page):
+        for fam in re.findall(r"'([^']+)'", decl):
+            used.add(fam)
+    # Names appearing only inside an @font-face are declarations, not uses.
+    in_faces = {fam for f in faces for fam in re.findall(r"'([^']+)'", f)}
+    used -= in_faces - {f for f in used if f not in declared}
+
+    aliased: list[tuple[str, str]] = []
+    for want in sorted(used - declared):
+        matches = [d for d in declared if d.startswith(want + " ")]
+        if len(matches) != 1:
+            if matches:
+                print(f"  ! '{want}' is undeclared and matches {matches} — left alone.")
+            continue
+        source = matches[0]
+        for face in faces:
+            m = FAMILY_RE.search(face)
+            if not m or m.group(1) != source:
+                continue
+            clone = face.replace(f"'{source}'", f"'{want}'", 1)
+            page = page.replace(face, face + "\n" + clone, 1)
+        aliased.append((source, want))
+    return page, aliased
+
+
 def unpack(bundle: pathlib.Path, name: str) -> None:
     src = bundle.read_text(encoding="utf8", errors="replace")
 
@@ -248,6 +302,8 @@ def unpack(bundle: pathlib.Path, name: str) -> None:
     if page == before:
         print("  ! sizing patch did not apply — the export's root style changed.")
 
+    page, aliased = alias_orphan_font_families(page)
+
     page = page.replace("</body>", UNPIN_CSS + REPORT_JS + "</body>", 1)
 
     target = ROOT / "public" / f"{name}.html"
@@ -255,6 +311,8 @@ def unpack(bundle: pathlib.Path, name: str) -> None:
 
     total = sum((outdir / f).stat().st_size for f in written.values())
     print(f"{target.relative_to(ROOT)}  {target.stat().st_size:,} bytes")
+    for source, want in aliased:
+        print(f"  aliased @font-face '{source}' -> '{want}' (the name the page asks for)")
     for uuid, filename in sorted(written.items(), key=lambda kv: kv[1]):
         print(f"  {name}/{filename:<28} {(outdir / filename).stat().st_size:>9,}")
     print(f"  {'assets total':<30} {total:>9,}")

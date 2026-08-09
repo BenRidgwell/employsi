@@ -132,18 +132,6 @@ function Stat({ value, label }: { value: number | null | undefined; label: strin
   );
 }
 
-/** "2026-08-09" → "9 Aug 2026", for the measurement date under the counters. */
-function fmtAsAt(iso: string): string {
-  const d = new Date(iso + "T00:00:00Z");
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
 function LiveStats() {
   // The archive only changes on the nightly cron, so this is read once a
   // session and cached hard. The server memoises it too — see landingStatsFn.
@@ -160,21 +148,12 @@ function LiveStats() {
     isPending ? undefined : data == null ? null : (data[k] as number);
 
   return (
-    <>
-      <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4 md:gap-6">
-        <Stat value={v("vacancies")} label="Vacancies tracked live" />
-        <Stat value={v("employers")} label="Employers tracked" />
-        <Stat value={v("countries")} label="Countries tracked" />
-        <Stat value={v("cities")} label="Cities tracked" />
-      </div>
-      {data && (
-        // Names the source and the day. A counter with no provenance is what
-        // the placeholder version was; this is the difference.
-        <p className="mt-8 font-mono text-[11px] uppercase tracking-[0.12em] text-[#4a4a50]">
-          Counted from the live job archive · {fmtAsAt(data.asAt)}
-        </p>
-      )}
-    </>
+    <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4 md:gap-6">
+      <Stat value={v("vacancies")} label="Vacancies tracked live" />
+      <Stat value={v("employers")} label="Employers tracked" />
+      <Stat value={v("countries")} label="Countries tracked" />
+      <Stat value={v("cities")} label="Cities tracked" />
+    </div>
   );
 }
 

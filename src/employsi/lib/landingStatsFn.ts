@@ -52,7 +52,15 @@ export interface LandingStats {
   countries: number;
   /** Plotted cities with live vacancies in the archive. */
   cities: number;
-  /** The UTC day these counts were measured on (YYYY-MM-DD). */
+  /**
+   * The UTC day these counts were measured on (YYYY-MM-DD).
+   *
+   * Nothing renders this — the page used to print "Counted from the live job
+   * archive · 9 Aug 2026" under the counters and no longer does. It stays in
+   * the payload because the figures are served from a six-hour memo, so when
+   * one looks stale the first question is which day it describes, and that is
+   * only answerable if the answer travels with it.
+   */
   asAt: string;
 }
 
