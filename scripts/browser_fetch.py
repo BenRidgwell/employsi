@@ -359,6 +359,45 @@ def raw_get(url: str, settle: int = 6, locale: str = 'en-AU') -> str | None:
     return _raw_session.text(url)
 
 
+def nav_get(url: str, settle: int = 6, locale: str = 'en-AU') -> str | None:
+    """Return `url` by NAVIGATING to it in a reused browser context.
+
+    THE DIFFERENCE FROM raw_get, AND WHY BOTH EXIST. raw_get clears an origin's
+    challenge once and then pulls every later page with fetch() from inside the
+    cleared page. That is cheaper, and it hands back the server's own bytes.
+    It also assumes the site treats an in-page fetch the way it treats a
+    document navigation, and some do not:
+
+        in-page fetch 403 for https://startup.jobs/company/abbvie
+            [Cloudflare interstitial] (5914B)
+
+    Measured 2026-08-09. The clearance navigation to https://startup.jobs/
+    succeeded; every fetch() for a /company/ page from inside that cleared page
+    came back 403 with an interstitial. Cloudflare was scoring the XHR
+    separately from the document, and no amount of settle time changes that.
+    Navigating to the same URL returns the page — which is what
+    probe-headless-ci.py had measured all along, and the mistake was porting a
+    scraper onto a transport the probe had never exercised.
+
+    So: use raw_get where a parser needs the raw bytes and the site allows the
+    fetch (jora, jobs.govt.nz, Auckland Airport, TechnologyOne all do). Use
+    nav_get where the site only serves documents. The cost is a real navigation
+    per page instead of a fetch, and the return value is `page.content()` — the
+    SERIALISED DOM, so check any adjacency-sensitive regex against it before
+    switching a parser over. For the two callers here that check is the probe's
+    own row counts, which were taken from exactly this.
+
+    The context is shared with raw_get's, so the clearance is earned once
+    whichever way a given origin is read.
+    """
+    global _raw_session
+    if _raw_session is None:
+        _raw_session = Session(locale=locale)
+        _raw_session.__enter__()
+        atexit.register(lambda: _raw_session.__exit__(None, None, None))
+    return _raw_session.html(url, [{'type': 'wait', 'wait_time_s': settle}])
+
+
 if __name__ == '__main__':
     # quick check: python3 scripts/browser_fetch.py <url> [settle_s]
     u = sys.argv[1] if len(sys.argv) > 1 else 'https://example.com'

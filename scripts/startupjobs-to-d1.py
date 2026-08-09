@@ -68,11 +68,13 @@ on the direct path — there is no reason to spend a proxy request on it.
 Measured from a GitHub runner on 2026-08-09 (probe-headless-ci.py, reproduced):
 headless Chromium through the IPRoyal exit loaded /company/twitch and counted 20
 cards with this file's own CARD marker. A plain urllib request through the same
-exit did not, which is why the transport is a browser and not just an address:
-it clears Cloudflare once, then raw_get fetches each page as `fetch()` from
-inside the cleared page. That also returns the SERVER's bytes rather than a
-serialised DOM, which the CARD regex needs — it matches adjacent attributes, and
-a rendered DOM reorders them.
+exit did not, which is why the transport is a browser and not just an address.
+
+The pages are NAVIGATED to, not fetched from inside a cleared page: Cloudflare
+scores an in-page fetch() separately from a document request here and answers it
+403 with an interstitial. The CARD regex is adjacency-sensitive, so it was
+checked against the serialised DOM before this switched over — that is exactly
+what the probe counted its 20 rows with.
 
 Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID,
      SCRAPE_PROXY (the residential exit; the default transport),
@@ -231,7 +233,12 @@ def fetch(url: str) -> str | None:
         from oxylabs_client import fetch as oxy_fetch
         content, _ = oxy_fetch(url, geo='United States', render=False, timeout=200)
         return content
-    return browser_fetch.raw_get(url, settle=SETTLE, locale='en-US')
+    # nav_get, NOT raw_get: startup.jobs answers an in-page fetch() for a
+    # /company/ page with a Cloudflare 403 even from a cleared context
+    # (measured 2026-08-09 — 58 employers, every one a 5.9 KB interstitial).
+    # It serves the same URL fine when the browser NAVIGATES to it, which is
+    # what the probe that justified this move actually did.
+    return browser_fetch.nav_get(url, settle=SETTLE, locale='en-US')
 
 
 def collect(slug: str, name: str, gate: bool = True) -> tuple[list, str, set]:
