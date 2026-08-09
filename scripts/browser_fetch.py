@@ -75,7 +75,12 @@ def proxy_from_env() -> dict | None:
     secret. The failure that causes is a 407 from the proxy on every request,
     which this probe would otherwise report as "the boards blocked us".
     """
-    raw = (os.environ.get('SCRAPE_PROXY') or '').strip()
+    # Through http_fetch so the two transports read ONE definition of the exit,
+    # including its per-run targeting flags. They were separate, and a sticky
+    # session set for a browser run would silently not apply to a urllib one.
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from http_fetch import scrape_proxy_url  # noqa: PLC0415
+    raw = scrape_proxy_url()
     if not raw:
         return None
     from urllib.parse import unquote, urlsplit

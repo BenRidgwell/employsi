@@ -38,6 +38,14 @@ on:
         description: 'Pages this run may read (hard ceiling 40)'
         type: string
         default: '3'
+      proxy_session:
+        description: 'Sticky IPRoyal session id — Cloudflare treats a persistent address far better than a rotating one'
+        type: string
+        default: 'gd01'
+      proxy_lifetime:
+        description: 'How long that session should hold its address'
+        type: string
+        default: '30m'
 
 # One run at a time, ever. Two concurrent runs would double the request rate
 # against a target we are trying to be gentle with, and would do it from two
@@ -70,6 +78,13 @@ jobs:
           GLASSDOOR_PASSWORD: ${{ secrets.GLASSDOOR_PASSWORD }}
           GLASSDOOR_STATE: .glassdoor-state.json
           SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
+          # STICKY, deliberately, unlike every other scraper here. The stored
+          # secret is rotating because the roster-wide walks want a fresh
+          # address per request. Cloudflare wants the opposite: the first probe
+          # through the rotating pool was served an interstitial before the
+          # sign-in page could load. These flags ride on the password.
+          SCRAPE_PROXY_SESSION: ${{ inputs.proxy_session }}
+          SCRAPE_PROXY_LIFETIME: ${{ inputs.proxy_lifetime }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           NO_PROXY: api.cloudflare.com
         run: |

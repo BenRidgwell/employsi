@@ -35,24 +35,10 @@ import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-# SCRAPE_PROXY_COUNTRY appends IPRoyal's country flag to the PASSWORD before
-# http_fetch reads the URL, so one stored secret can be pointed at a different
-# exit country per run without re-entering credentials. IPRoyal carries its
-# targeting on the password as underscore-separated flags, not on the path.
-#
-# Applied here rather than in the workflow because it has to happen before
-# http_fetch is imported — that module binds its opener at import time, so a URL
-# rewritten afterwards would be ignored and the input would silently do nothing.
-_country = (os.environ.get('SCRAPE_PROXY_COUNTRY') or '').strip().lower()
-if _country:
-    _raw = (os.environ.get('SCRAPE_PROXY') or '').strip()
-    _m = re.match(r'^(\w+://[^:]+:)([^@]*)(@.*)$', _raw)
-    if _m:
-        os.environ['SCRAPE_PROXY'] = f'{_m.group(1)}{_m.group(2)}_country-{_country}{_m.group(3)}'
-    elif _raw:
-        sys.exit('SCRAPE_PROXY_COUNTRY was set but SCRAPE_PROXY has no user:pass to '
-                 'append it to — the country flag rides on the password.')
-
+# Per-run targeting (SCRAPE_PROXY_COUNTRY / _SESSION / _LIFETIME) is folded
+# into the password by http_fetch.scrape_proxy_url(), which both transports
+# now share. This file used to do it itself, which meant a flag set for one
+# fetcher silently did not apply to the other.
 sys.path.insert(0, HERE)
 import http_fetch  # noqa: E402
 

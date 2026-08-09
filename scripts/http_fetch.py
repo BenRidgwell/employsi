@@ -59,7 +59,46 @@ UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
 # One URL so it fits in one secret:  http://user:pass@host:port
 # For IPRoyal the endpoint is geo.iproyal.com:12321 and the targeting options
 # ride on the PASSWORD — see .github/workflows/probe-headless-ci.yml.
-_PROXY_URL = (os.environ.get('SCRAPE_PROXY') or '').strip()
+def scrape_proxy_url() -> str:
+    """SCRAPE_PROXY with any per-run targeting folded into the password.
+
+    IPRoyal carries targeting as underscore-separated flags on the PASSWORD, not
+    on the path, so a caller that wants a different country or a sticky session
+    cannot express it in a URL parameter — and storing a second secret per
+    variation would mean re-entering credentials to change one flag.
+
+    WHY A RUN WOULD WANT A STICKY SESSION. The stored secret is rotating,
+    because that is what the roster-wide scrapers need: a fresh address per
+    request is the whole reason to buy residential when you are walking 355
+    companies. But Cloudflare treats an address that persists far more kindly
+    than one that changes every request, so a target behind it wants the
+    opposite. One secret, per-run flags.
+
+        SCRAPE_PROXY_COUNTRY=au         -> _country-au
+        SCRAPE_PROXY_SESSION=gd01       -> _session-gd01
+        SCRAPE_PROXY_LIFETIME=30m       -> _lifetime-30m
+    """
+    raw = (os.environ.get('SCRAPE_PROXY') or '').strip()
+    if not raw:
+        return ''
+    flags = []
+    for env, flag in (('SCRAPE_PROXY_COUNTRY', 'country'),
+                      ('SCRAPE_PROXY_SESSION', 'session'),
+                      ('SCRAPE_PROXY_LIFETIME', 'lifetime')):
+        v = (os.environ.get(env) or '').strip()
+        if v:
+            flags.append(f'_{flag}-{v.lower() if flag == "country" else v}')
+    if not flags:
+        return raw
+    import re as _re
+    m = _re.match(r'^(\w+://[^:]+:)([^@]*)(@.*)$', raw)
+    if not m:
+        sys.exit('SCRAPE_PROXY has no user:pass, so targeting flags cannot be '
+                 'appended — they ride on the password.')
+    return f'{m.group(1)}{m.group(2)}{"".join(flags)}{m.group(3)}'
+
+
+_PROXY_URL = scrape_proxy_url()
 
 
 def proxy_label() -> str:
