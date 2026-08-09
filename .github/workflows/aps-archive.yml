@@ -1,11 +1,20 @@
 # Daily APS (federal) Government → D1 archive (hosted, off your PC).
 #
 # apsjobs.gov.au is a Salesforce Experience Cloud (Aura) site: results come from
-# a session-gated ApexAction and render only after the page's JS runs. A headless
-# Chromium on GitHub's runner does NOT work — the datacenter IP is bot-blocked and
-# the run scraped 0 vacancies. So this fetches through the Oxylabs Web Scraper API
-# (residential IP + server-side JS render) and parses the finished DOM — no
-# browser, same path as the Indeed/LinkedIn/NSW archives.
+# a session-gated ApexAction and render only after the page's JS runs. So it
+# needs a browser — and, measured, NOTHING ELSE.
+#
+# This file used to say the opposite: that a headless Chromium on a runner does
+# not work because the datacenter IP is bot-blocked, and that the fetch
+# therefore went through Oxylabs. That was wrong, and it stayed here contradicting
+# the steps below after the feed was ported on 2026-08-04. What the board
+# refuses is a request with no JavaScript, not a datacentre ADDRESS: a local
+# Playwright Chromium on an ordinary runner reads the board fine. The proxy was
+# only ever supplying a browser we can run ourselves.
+#
+# Five consecutive scheduled runs on the local-browser path (2026-08-04 through
+# 2026-08-08) succeeded, most recently 15 vacancies in 33 seconds. `--oxylabs`
+# restores the proxy path unchanged if that ever stops being true.
 #
 # Required repo secrets:
 #   CLOUDFLARE_API_TOKEN  — a token with D1 edit on the employsi account
