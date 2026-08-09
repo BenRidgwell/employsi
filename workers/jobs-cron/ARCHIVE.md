@@ -805,8 +805,60 @@ why the default is the fetch-speed walk instead.
   and a 30-minute sticky IPRoyal session all got a Cloudflare interstitial
   before the sign-in page could load. The scraper and its UI feature are gone.
 
-That leaves **six workflows** carrying Oxylabs credentials: gulftalent, naukri,
-zhaopin, linkedin, linkedin-posts, nab.
+### linkedin-posts, dropped the same day
+
+Not for cost — because it never worked anywhere but behind a paid unblocker, and
+the measurement was already in this file. 100 requests from `ubuntu-latest`:
+**zero posts from the very first bucket**, roughly half authwalled and the rest
+failing at the transport. A residential address does not answer an authwall;
+only a signed-in session does, and running one of those through a rotating
+residential pool is exactly the shape that had just failed three times on
+Glassdoor.
+
+`scripts/linkedin-posts-to-d1.py`, its workflow, and `probe-linkedin-volume`
+(which existed only to measure it) are gone. Two things it carried had to
+survive it:
+
+* **The slug rules.** `slug_candidates`, the rebrand list and the attribution
+  gate now live in `scripts/linkedin_slugs.py`. They were previously reached by
+  `resolve-linkedin-slugs.py` reading the scraper's source, splitting it on the
+  literal `def d1(` and exec'ing the half above — a contract invisible to anyone
+  editing either file, which would have failed with a RuntimeError naming a
+  function that was still perfectly well defined.
+* **The `company_posts` read.** `companyPostsFn.ts` still queries the table, and
+  needs no change: its `MAX_AGE_DAYS` window means the frozen rows stop being
+  returned as they age out and the card falls back to news only. The feature
+  degrades instead of showing a months-old post as current.
+
+That leaves **five workflows** carrying Oxylabs credentials: gulftalent, naukri,
+zhaopin, linkedin (the guest jobs endpoint), nab.
+
+### What each of the five would actually need
+
+Two groups, and they are not the same problem.
+
+**Refused by the target, measured through IPRoyal and from a plain runner** —
+naukri (403 Akamai), gulftalent (403 Akamai), zhaopin (200 captcha page). These
+are not address-blocked, they are client-blocked. What Oxylabs sells them is the
+UNBLOCKER — TLS/JA3 matching, header ordering, challenge retry, captcha solving —
+not the IP, and no plain proxy substitutes for it. Leaving Oxylabs here is a
+procurement decision (an equivalent unblocker) or a decision to drop the feeds,
+not an engineering one.
+
+**Never asked** — linkedin jobs and nab returned `PROXY FAIL`: IPRoyal refused
+the CONNECT tunnel, so the target saw nothing. `probe-headless-ci.py
+--tunnel-check` now speaks CONNECT to the proxy directly and reports its status
+line, which distinguishes a provider domain blocklist (403) from credentials
+(407) from upstream (502) — Chromium collapses all three into
+`ERR_TUNNEL_CONNECTION_FAILED`. LinkedIn is blocklisted by most residential
+providers; banks commonly are too.
+
+NAB may not need a proxy at all, which is what `--nab-route` asks. Its list is
+server-rendered, and `nab-to-d1.py`'s own note says the FIRST request from a
+plain address returns the full page and later ones a 202 — so the WAF flags by
+volume, not by client. The probe walks paced pages from a plain runner and
+captures every JSON response, because this repo has twice found an ATS API on a
+host the WAF did not cover.
 
 ---
 

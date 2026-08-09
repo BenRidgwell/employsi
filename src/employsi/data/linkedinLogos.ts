@@ -2,7 +2,7 @@
 // Run: python scripts/gen-linkedin-logos.py
 //
 // Roster id -> the company's LinkedIn avatar, for companies whose LinkedIn slug
-// has been confirmed by scripts/linkedin-posts-to-d1.py (the `company_slugs`
+// has been confirmed by scripts/resolve-linkedin-slugs.py (the `company_slugs`
 // table). companyLogo.ts reads this ahead of the favicon service and behind
 // everything chosen deliberately.
 //

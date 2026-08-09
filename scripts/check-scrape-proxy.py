@@ -61,7 +61,6 @@ BOARDS = [
     ('jora', 'https://au.jora.com/j?q=BHP&l=Australia&p=1', r'data-braze-job-panel-view="'),
     ('linkedin-jobs', 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings'
      '/search?keywords=BHP&start=0&sortBy=DD', r'/jobs/view/'),
-    ('linkedin-posts', 'https://www.linkedin.com/company/bhp/', r'urn:li:activity'),
     ('startupjobs', 'https://startup.jobs/company/twitch',
      r'data-post-template-target="title"[^>]*href="/'),
     ('gulftalent', 'https://www.gulftalent.com/api/jobs/search?limit=50&offset=0', r'"positions"'),

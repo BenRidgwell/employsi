@@ -268,18 +268,6 @@ BOARDS = [
         'next': None,
     },
     {
-        'name': 'LinkedIn posts (company page)',
-        'script': 'scripts/linkedin-posts-to-d1.py',
-        # Measured from a hosted runner once before: 0 posts in 100 requests,
-        # authwalled from the first. Re-asked because that is the single most
-        # expensive feed to keep on the proxy if it ever stops being true.
-        'url': 'https://www.linkedin.com/company/bhp/',
-        'settle': 10,
-        'rows': r'urn:li:activity',
-        'title': r'urn:li:activity',
-        'next': None,
-    },
-    {
         'name': 'GulfTalent (jobs API)',
         'script': 'scripts/gulftalent-to-d1.py',
         # A JSON endpoint. See `json_key`: navigating a browser to JSON wraps it
@@ -467,34 +455,6 @@ def blocked_as(html: str) -> str | None:
 # would not fail loudly — it would 404 its way through the run and be recorded
 # as a block. So the query source is declared per target.
 #
-# The LinkedIn slugs are REAL ONES, read out of the production company_slugs
-# cache in D1 (78 confirmed 2026-08-05..08). Deriving them from company names
-# would have produced mostly-wrong guesses, and a wrong slug is a 404 rather
-# than a refusal — the exact confusion this measurement exists to avoid.
-LINKEDIN_SLUGS = [
-    'ansell', 'aragroup', 'aurizon', 'bolton-clarke',
-    'brisbane-catholic-education', 'consolidatedtravel', 'evolution-mining',
-    'evt-limited', 'fortescue', 'goodstart-early-learning',
-    'great-southern-bank', 'hansen-technologies', 'harvey-norman',
-    'iluka-resources', 'kennardshire', 'macmahon', 'mecca-brands', 'meriton',
-    'merivale', 'metcash', 'mirvac', 'orabandamining', 'perpetual',
-    'perseus-mining-limited', 'perth-airport', 'resolute-mining', 'san-remo',
-    'shell', 'sims-metal', 'super-retail-group', 'talent-international',
-    'teamglobalexpress', 'treasury-wine-estates', 'village-roadshow',
-    'wisetech-global', 'worley', '4dmedical', 'adco-constructions', 'akd',
-    'asx', 'australian-unity', 'bank-of-queensland', 'bega-cheese-limited',
-    'bhp', 'canberra-airport', 'car-group', 'cmv-group', 'creation-homes',
-    'dalrymple-bay-infrastructure', 'deterra-royalties', 'drake-supermarkets',
-    'dyno-nobel', 'gold-road-resources', 'hcf', 'jupitermines',
-    'kennards-self-storage', 'king-and-wood-mallesons', 'kpmg', 'lendlease',
-    'mineral-resources-limited', 'nickel-industries-limited',
-    'opal-aged-care', 'pallion', 'pro-medicus-limited', 'qube-holdings',
-    'regis-resources', 'richard-crookes-constructions', 'sigma-healthcare',
-    'sonic-healthcare', 'stanmore-resources-limited',
-    'stanmore-resources-limited', 'tabcorp', 'tasmea-limited',
-    'the-lottery-corporation', 'thomas-foods-international', 'transurban',
-    'turosi', 'woolworths',
-]
 
 VOLUME_TARGETS = {
     'indeed': {'url': 'https://au.indeed.com/jobs?q=%22{q}%22&l=&start=0',
@@ -507,8 +467,6 @@ VOLUME_TARGETS = {
         'url': ('https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings'
                 '/search?keywords={q}&start=0&sortBy=DD'),
         'rows': r'/jobs/view/', 'source': 'names'},
-    'linkedin-posts': {'url': 'https://www.linkedin.com/company/{q}/',
-                       'rows': r'urn:li:activity', 'source': 'li-slugs'},
     'startupjobs': {'url': 'https://startup.jobs/company/{q}',
                     'rows': r'data-post-template-target="title"[^>]*href="/',
                     'source': 'sj-slugs'},
@@ -538,8 +496,6 @@ def volume_queries(which: str, n: int) -> list[str]:
     src = VOLUME_TARGETS[which]['source']
     if src == 'names':
         return roster_names(n)
-    if src == 'li-slugs':
-        return LINKEDIN_SLUGS[:n]
     return startupjobs_slugs(n)
 
 
@@ -849,7 +805,7 @@ def nab_report(pw) -> int:
 # the second one wastes everybody's time.
 TUNNEL_HOSTS = [
     ('api.ipify.org', 'control — must succeed for anything below to mean anything'),
-    ('www.linkedin.com', 'linkedin-to-d1.py, linkedin-posts-to-d1.py'),
+    ('www.linkedin.com', 'linkedin-to-d1.py (the guest jobs endpoint)'),
     ('careers.nab.com.au', 'nab-to-d1.py'),
     ('www.apsjobs.gov.au', 'aps-to-d1.py (already off the proxy; asked for completeness)'),
     ('iworkfor.nsw.gov.au', 'nsw-gov-to-d1.py (already off the proxy; asked for completeness)'),

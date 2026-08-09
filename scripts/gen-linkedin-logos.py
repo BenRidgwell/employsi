@@ -19,11 +19,14 @@ matter were checked rather than assumed:
     e=2147483647, the 32-bit maximum: 19 January 2038
 
 WHY THIS IS CHEAP
-scripts/linkedin-posts-to-d1.py already fetches these exact pages every night
-and already sees this image — it explicitly discards it as "not post media".
-And the hard part, knowing a company's vanity slug, is already solved: that
-script resolves slugs through its attribution gate and writes the confirmed ones
-to the `company_slugs` table. This reads that table; it never guesses a slug.
+The hard part, knowing a company's vanity slug, is already solved:
+scripts/resolve-linkedin-slugs.py resolves them through the attribution gate in
+scripts/linkedin_slugs.py and writes the confirmed ones to the `company_slugs`
+table. This reads that table; it never guesses a slug.
+
+(Until 2026-08-09 the nightly post scrape resolved slugs too, as a side effect,
+and already saw this image — discarding it as "not post media". That feed is
+gone; the slug resolver is not.)
 
 WHY IT MERGES
 LinkedIn rate-limits hard — the volume probe was blocked at the fourth request
@@ -166,7 +169,7 @@ def write_ts(rows: dict[str, str]) -> None:
 // Run: python scripts/gen-linkedin-logos.py
 //
 // Roster id -> the company's LinkedIn avatar, for companies whose LinkedIn slug
-// has been confirmed by scripts/linkedin-posts-to-d1.py (the `company_slugs`
+// has been confirmed by scripts/resolve-linkedin-slugs.py (the `company_slugs`
 // table). companyLogo.ts reads this ahead of the favicon service and behind
 // everything chosen deliberately.
 //

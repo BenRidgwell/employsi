@@ -12,10 +12,15 @@ import { isReleasedCompany, seesAllMarkets } from "./markets";
  * would present marketing as coverage, which is the one thing a news card must
  * not do.
  *
- * Collected daily by scripts/linkedin-posts-to-d1.py into `company_posts`. That
- * script explains why the referenced scrapfly scraper could not be used (it has
- * no company-feed capability) and how the real publish date is recovered from
- * the activity id rather than the relative "1w" label.
+ * NO LONGER COLLECTED. scripts/linkedin-posts-to-d1.py filled `company_posts`
+ * nightly until 2026-08-09, when the feed was dropped: LinkedIn authwalls a
+ * hosted runner on request one (0 posts in 100 requests), so it only ever ran
+ * through a paid unblocker.
+ *
+ * This read stays, and it degrades on its own rather than going stale — the
+ * MAX_AGE_DAYS window below means the frozen rows stop being returned as they
+ * age out, and the card falls back to news only. Nothing here shows a post as
+ * current that is not.
  *
  * MARKET-GATED, like every other server function that returns company data: an
  * end user gets nothing for a company outside the released markets, so this

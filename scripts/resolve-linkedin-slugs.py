@@ -2,17 +2,19 @@
 """
 Find the LinkedIn vanity slug for companies that do not have one yet.
 
-WHY SEPARATE FROM linkedin-posts-to-d1.py
-That script resolves slugs, but only as a side effect of collecting posts, and
-only for the companies it walks — the 355-company AU roster. The Perth map holds
-144 entities, 63 of them WA government agencies it never visits, so most of the
-map could never acquire a slug no matter how often the nightly job ran. This
-walks whatever you point it at and does nothing but resolve.
+THIS IS NOW THE ONLY THING THAT RESOLVES SLUGS
+It used to share the job with linkedin-posts-to-d1.py, which resolved them as a
+side effect of collecting posts — but only for the companies it walked, the
+355-company AU roster. The Perth map holds 144 entities, 63 of them WA
+government agencies that scrape never visited, so most of the map could never
+acquire a slug however often the nightly job ran. That feed was dropped on
+2026-08-09 (LinkedIn authwalls a hosted runner on request one), which leaves
+this, and this walks whatever you point it at.
 
 IT REUSES THE SAME RULES, LITERALLY
-slug_candidates() and the attribution gate are exec'd out of
-linkedin-posts-to-d1.py rather than copied, the way scripts/test_rosters.py
-reads a scraper's parsing layer. Copying them would let the two drift, and the
+slug_candidates() and the attribution gate are imported from
+scripts/linkedin_slugs.py rather than copied. Copying them would let the two
+drift, and the
 one that matters is the gate: a slug guessed from a company name resolves to
 whoever owns it, so every page fetched must NAME the company we asked for before
 the slug is stored. That is the same fault class as the advertiser bug that
@@ -45,6 +47,13 @@ import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
+sys.path.insert(0, HERE)
+# The slug candidates, the rebrand list and the attribution gate. These used to
+# be read out of linkedin-posts-to-d1.py's source by splitting it on `def d1(`
+# and exec'ing the half above — a contract invisible to anyone editing either
+# file. They are a module now, and that scraper is gone.
+import linkedin_slugs  # noqa: E402
+
 UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 '
       '(KHTML, like Gecko) Version/17.4.1 Safari/605.1.15')
 PAGE = 'https://www.linkedin.com/company/{slug}/'
@@ -67,26 +76,6 @@ ONLY_CITY = opt('--city')
 ONLY_IDS = set(opt('--only').split(',')) if '--only' in args else None
 LIMIT = int(opt('--limit', 10 ** 9))
 DRY = '--dry-run' in args
-
-
-def borrow_from_posts_scraper():
-    """slug_candidates / attributed / parse_posts, from the scraper itself.
-
-    Everything above `def d1(` is the rule layer — candidates, normalisation,
-    the rebrand list and the gate — and it has no side effects, which is why it
-    can be exec'd. The scraper parses argv and needs a token at import, so it
-    cannot simply be imported even if its filename allowed it.
-    """
-    src = open(os.path.join(HERE, 'linkedin-posts-to-d1.py'), encoding='utf-8').read()
-    head = src.split('def d1(')[0]
-    # __file__ has to be present: the scraper's head computes HERE/ROOT from it.
-    ns: dict = {'__name__': '_linkedin_rules', '__file__': os.path.join(HERE, 'linkedin-posts-to-d1.py'),
-                're': re, 'os': os, 'sys': sys}
-    exec(compile(head, 'linkedin-posts-to-d1.py', 'exec'), ns)  # noqa: S102 — our own source
-    missing = [n for n in ('slug_candidates', 'attributed', 'parse_posts') if n not in ns]
-    if missing:
-        raise RuntimeError(f'linkedin-posts-to-d1.py no longer defines {missing} above d1()')
-    return ns
 
 
 def d1(sql: str, params: list | None = None):
@@ -253,7 +242,6 @@ def fetch(slug: str) -> str | None:
 
 
 def main() -> int:
-    rules = borrow_from_posts_scraper()
     have = {r['company_id'] for r in d1('SELECT company_id FROM company_slugs')}
     rows = roster()
     if ONLY_CITY:
@@ -270,7 +258,7 @@ def main() -> int:
 
     resolved, misses, fails = 0, [], 0
     for i, c in enumerate(todo):
-        cands = rules['slug_candidates'](c['name'], c['domain'])
+        cands = linkedin_slugs.slug_candidates(c['name'], c['domain'])
         sys.stderr.write(f'[{i + 1}/{len(todo)}] {c["id"]} ({c["name"][:34]})... ')
         got = None
         why = 'no candidate resolved'
@@ -300,11 +288,11 @@ def main() -> int:
             if not html:
                 why = note('no such page')
                 continue
-            actor, _posts = rules['parse_posts'](html)
+            actor, _posts = linkedin_slugs.parse_posts(html)
             if not actor:
                 why = note('page served no actor name')
                 continue
-            if not rules['attributed'](c['id'], c['name'], actor):
+            if not linkedin_slugs.attributed(c['id'], c['name'], actor):
                 why = note(f'/{slug} is "{actor[:34]}", not this company')
                 continue
             ok, bad = jurisdiction_ok(c['id'], html)
