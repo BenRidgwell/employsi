@@ -202,14 +202,45 @@ export function NewsPanel({
   // `live` (a feed handed in by the caller) beats the fetched one, which beats
   // the curated/generated fallback. One order for every company now.
   const articleNews = live ?? liveFeed ?? generated;
-  // Interleaved by date, so recency decides the order and neither source can
-  // permanently outrank the other. The HERO stays an article whenever one
-  // exists — leading the card with the employer's own post would give a
+  // Merged on a QUOTA, not on date alone. The HERO stays an article whenever
+  // one exists — leading the card with the employer's own post would give a
   // marketing line the most editorial-looking slot on the card.
+  //
+  // WHY DATE SORTING FAILED. Sorting the two sources together by recency sounds
+  // neutral and is not, because they arrive at completely different rates: a
+  // big employer posts to LinkedIn most days, while the press writes about it
+  // some weeks. Recency then hands the company every slot below the hero
+  // purely because it published more often. On BHP the whole visible list under
+  // the hero was company posts — the card stopped being coverage and became a
+  // feed the company writes.
+  //
+  // So posts are rationed to one in every POST_EVERY items and spread through
+  // the list rather than stacked at the top. Within each source recency still
+  // decides, which is the part of date-sorting that was right. Posts beyond the
+  // quota are dropped: they are still on the company's own page, and the card
+  // is not a mirror of it.
   const rawNews = useMemo<CompanyNews>(() => {
     if (!postItems.length) return articleNews;
     const at = (a: NewsItem) => Date.parse(a.publishedIso || "") || 0;
-    const merged = [...articleNews.items, ...postItems].sort((a, b) => at(b) - at(a));
+    const articles = [...articleNews.items].sort((a, b) => at(b) - at(a));
+    const posts = [...postItems].sort((a, b) => at(b) - at(a));
+    // One post per two articles. Low enough that coverage still leads the card,
+    // high enough that an employer's own announcements are not a rarity.
+    const POST_EVERY = 3;
+    const merged: NewsItem[] = [];
+    let p = 0;
+    for (const a of articles) {
+      merged.push(a);
+      if (merged.length % POST_EVERY === 0 && p < posts.length) merged.push(posts[p++]);
+    }
+    // A company with almost no press coverage would otherwise show nothing but
+    // its hero. When the articles run out before the quota does, the remaining
+    // posts fill in — an announcement is better than an empty card, and it is
+    // still tagged as one.
+    while (p < posts.length && merged.length < articles.length + posts.length) {
+      merged.push(posts[p++]);
+      if (articles.length >= 3) break;
+    }
     return { hero: articleNews.hero, items: merged };
   }, [articleNews, postItems]);
   // Blocked publishers are dropped HERE as well as in the live fetch, because
