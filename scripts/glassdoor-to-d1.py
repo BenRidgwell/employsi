@@ -246,6 +246,32 @@ def sign_in(sess) -> str:
     return ''
 
 
+def employer_name(html: str) -> str:
+    """Whose review page is this, according to the page itself."""
+    for pat in (r'"employerName"\s*:\s*"([^"]{2,80})"',
+                r'<meta property="og:title" content="([^"]{2,80})"',
+                r'"name"\s*:\s*"([^"]{2,80})"\s*,\s*"@type"\s*:\s*"Organization"'):
+        m = re.search(pat, html)
+        if m:
+            return re.sub(r'\s+(Reviews|Employee Reviews).*$', '', m.group(1)).strip()
+    return ''
+
+
+def name_matches(page: str, expect: str) -> bool:
+    """Loose containment either way, case- and punctuation-insensitive.
+
+    A URL carries an opaque employer id — E5658 — and nothing in it says which
+    company that is. Getting it wrong writes another employer's reviews under
+    our company and there is no later signal that it happened: the rows look
+    perfectly well-formed. So the page has to say the name we expect before a
+    single row is written. Same guard as the careerSites portals' expectCompany
+    and the LinkedIn slug jurisdiction check, for the same reason.
+    """
+    norm = lambda s: re.sub(r'[^a-z0-9]+', ' ', (s or '').lower()).strip()  # noqa: E731
+    a, b = norm(page), norm(expect)
+    return bool(a and b and (a in b or b in a or a.split()[0] == b.split()[0]))
+
+
 def page_url(base: str, n: int) -> str:
     """Page n of a Glassdoor reviews URL (`..._P2.htm`). Page 1 is the base."""
     if n <= 1:
@@ -292,6 +318,14 @@ def main() -> int:
             if not html:
                 stop_reason = 'no response'
                 break
+            if n == 1:
+                who = employer_name(html)
+                expect = opt('--expect-name') or COMPANY or ''
+                sys.stderr.write(f'    page says the employer is: {who or "(not found)"}\n')
+                if not PROBE and expect and who and not name_matches(who, expect):
+                    print(f'STOPPED: this page is "{who}", not "{expect}". Refusing to '
+                          'write another company\'s reviews under that id.')
+                    return 1
             rows = parse_reviews(html)
             if not rows:
                 why = blocked_as(html)
