@@ -18,10 +18,10 @@
  * is approximate but honest. Extending this table is how they get fixed.
  */
 export const AU_REAL_COORDS: Record<string, [number, number]> = {
-  "adelaide-age": [153.027298, -27.46181], // Unit 2, 128 Bowen Street, Spring Hill QLD 4000
+  "adelaide-age": [138.600668, -34.942171], // Level 1, 5-7 King William Road, Unley SA 5061
   "adelaide-ar3": [138.601801, -34.925311], // 111 Gawler Place, Adelaide SA 5000
   "adelaide-arg": [138.598757, -34.92485], // Level 25, 91 King William Street, Adelaide SA 5000
-  "adelaide-axe": [138.609439, -34.920951], // Lot Fourteen, North Terrace, Adelaide SA 5000
+  "adelaide-axe": [138.608529, -34.919318], // Lot 14, North Terrace and Frome Road, Adelaide SA 5000
   "adelaide-bgd": [138.603442, -34.934117], // Level 4, 12 Gilles Street, Adelaide SA 5000
   "adelaide-c79": [138.57025, -35.007448], // 2A Venture Road, Tonsley SA 5042
   "adelaide-coe": [138.596648, -34.927049], // Level 8, 70 Franklin Street, Adelaide SA 5000
@@ -41,7 +41,7 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "aps-australian-securities-and-investments-commission": [151.208882, -33.870485], // Level 5, 100 Market Street, Sydney NSW 2000
   "aps-australian-security-intelligence-organisation": [149.138838, -35.287995], // Ben Chifley Building, 70 Constitution Avenue, Parkes ACT 2600
   "aps-australian-signals-directorate": [149.147736, -35.295069], // Russell Offices, Russell Drive, Russell ACT 2600
-  "aps-australian-space-agency": [138.609439, -34.920951], // McEwin Building, Lot Fourteen, North Terrace, Adelaide SA 5000
+  "aps-australian-space-agency": [138.608774, -34.920494], // Lot 14, 364-370 North Terrace, Adelaide SA 5000
   "aps-australian-sports-commission": [149.100163, -35.24762], // Leverrier Street, Bruce ACT 2617
   "aps-australian-taxation-office": [149.131989, -35.277151], // 21 Genge Street, Canberra ACT 2601
   "aps-australian-trade-and-investment-commission": [149.122942, -35.284743], // Nishi Building, 2 Phillip Law Street, Canberra ACT 2601
@@ -64,7 +64,7 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "aps-national-library-of-australia": [149.135887, -35.300403], // Parkes Place, Parkes ACT 2600
   "aps-reserve-bank-of-australia": [151.211671, -33.86818], // 65 Martin Place, Sydney NSW 2000
   "aps-safe-work-australia": [149.122942, -35.284743], // 2 Phillip Law Street, Canberra ACT 2601
-  "bhp": [144.968287, -37.815649], // 171 Collins Street, Melbourne VIC 3000
+  "bhp": [138.598754, -34.926787], // 171 Collins Street, Melbourne VIC 3000
   "brisbane-alq": [153.004439, -27.473396], // Level 2, 299 Coronation Drive, Milton QLD 4064
   "brisbane-ape": [153.042749, -27.444019], // 5 Edmund Street, Newstead QLD 4006
   "brisbane-aqz": [153.133266, -27.392394], // 81 Pandanus Avenue, Brisbane Airport QLD 4008
@@ -332,7 +332,7 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "priv-team-global-express": [144.976864, -37.840436], // Level 3, 417 St Kilda Road, Melbourne VIC 3004
   "priv-tennis-australia": [144.976205, -37.823071], // Olympic Boulevard, Melbourne VIC 3001
   "priv-teys-australia": [153.107545, -27.589703], // Building 3, Freeway Office Park, 2728 Logan Road, Eight Mile Plains QLD 4113
-  "priv-thomas-foods-international": [139.264367, -35.10779], // Lagoon Road, Northern Heights (Murray Bridge) SA 5253
+  "priv-thomas-foods-international": [138.623855, -34.930029], // Level 2, 162 Fullarton Road, Rose Park SA 5067
   "priv-turosi": [144.998029, -37.691032], // 5 Lipton Drive, Thomastown VIC 3074
   "priv-united-petroleum": [145.035412, -37.824503], // 600 Glenferrie Road, Hawthorn VIC 3122
   "priv-uniting": [151.208181, -33.87194], // 222 Pitt Street, Sydney NSW 2000
@@ -393,8 +393,8 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "qld-gov-youth-justice-and-victim-support": [153.025829, -27.475126], // 1 William Street, Brisbane QLD 4000
   "rio": [144.969385, -37.813737], // Level 43, 120 Collins Street, Melbourne VIC 3000
   "s32": [115.856832, -31.954441], // 108 St Georges Terrace, Perth WA 6000
-  "sa-gov-adelaide-cemeteries-authority": [138.614682, -34.859593], // Enfield Memorial Park, Browning Street, Clearview SA 5085
-  "sa-gov-adelaide-festival-centre-trust": [138.599276, -34.920821], // King William Road, Adelaide SA 5000
+  "sa-gov-adelaide-cemeteries-authority": [138.610278, -34.857389], // Enfield Memorial Park, Browning Street, Clearview SA 5085
+  "sa-gov-adelaide-festival-centre-trust": [138.597791, -34.919576], // King William Road, Adelaide SA 5000
   "sa-gov-alinytjara-wilurara-landscape-board": [138.590271, -34.926249], // Level 9, 81-95 Waymouth Street, Adelaide SA 5000
   "sa-gov-attorney-general-s-department": [138.601457, -34.926044], // 45 Pirie Street, Adelaide SA 5000
   "sa-gov-carclew-youth-arts-centre": [138.592711, -34.912325], // 11 Jeffcott Street, North Adelaide SA 5006
@@ -435,7 +435,7 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "sa-gov-lifetime-support-authority-of-sa": [138.601906, -34.928227], // 30 Wakefield Street, Adelaide SA 5000
   "sa-gov-limestone-coast-landscape-board": [140.774391, -37.828793], // 11 Helen Street, Mount Gambier SA 5290
   "sa-gov-motor-accident-commission": [138.599958, -34.924067], // Level 10, 80 King William Street, Adelaide SA 5000
-  "sa-gov-murraylands-and-riverland-landscape-board": [139.279741, -35.121503], // Units 5-6, Level 1, Sturt Centre, 2 Sturt Reserve Road, Murray Bridge SA 5253
+  "sa-gov-murraylands-and-riverland-landscape-board": [139.279741, -35.121503], // Unit 5-6, Level 1, Sturt Centre, 2 Sturt Reserve Road, Murray Bridge SA 5253
   "sa-gov-office-for-early-childhood-development": [138.601684, -34.927381], // 31 Flinders Street, Adelaide SA 5000
   "sa-gov-office-for-recreation-sport-and-racing": [138.531099, -34.913639], // 27 Valetta Road, Kidman Park SA 5025
   "sa-gov-office-of-hydrogen-power-sa": [138.598757, -34.92485], // Level 27, 91 King William Street, Adelaide SA 5000
@@ -492,7 +492,7 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   // ResMed's Australian head office. The global HQ is 9001 Spectrum Center
   // Blvd, San Diego — this roster plots where a company employs, and the ANZ
   // workforce its careers board recruits into is based here.
-  "sydney-rmd": [150.943516, -33.731555], // 1 Elizabeth Macarthur Drive, Bella Vista NSW 2153
+  "sydney-rmd": [150.943516, -33.731555], // no address row (merged from a previous run)
   "sydney-rwc": [145.111103, -37.991844], // 25 Downard Street, Braeside VIC 3195
   "sydney-sdf": [151.205895, -33.874481], // Level 3, 99 Bathurst Street, Sydney NSW 2000
   "sydney-sgh": [151.210667, -33.877151], // Level 30, 175 Liverpool Street, Sydney NSW 2000

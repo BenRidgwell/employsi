@@ -157,12 +157,83 @@ def queries_for(addr):
     return out
 
 
+# Coordinates confirmed by hand, used INSTEAD of a lookup.
+#
+# This is not a loophole in the no-name-search rule above. That rule bans asking
+# the geocoder to find a COMPANY, because it answers with a similarly-named
+# firm's building. These are the opposite case: a user-supplied address whose
+# location is a NAMED PLACE — a precinct, a cemetery, a theatre — where the
+# street line alone resolves to the middle of a road and the place itself
+# resolves exactly. Each was checked against OpenStreetMap and the match type it
+# returned is recorded, so the claim can be re-tested rather than believed.
+PINNED: dict[str, tuple[float, float, str]] = {
+    # BHP IS PLOTTED IN SIX CITIES AND CAN HOLD ONE COORDINATE. realCoord() is
+    # keyed by company id, so whatever is here is where BHP's pin sits in Perth,
+    # Melbourne, Adelaide, Brisbane, Manila and Kuala Lumpur alike — it was at
+    # 171 Collins Street, Melbourne, which put it 654 km off-frame on the
+    # Adelaide map and further on the others. Pinned to the Adelaide office at
+    # the user's instruction; the CSV still records Melbourne as the registered
+    # office, because that remains true and is not this file's job to overwrite.
+    # A per-city coordinate is the real fix and is a larger change than this.
+    'bhp': (138.598754, -34.926787, 'OSM "GPO Exchange, 10 Franklin Street" [building]'),
+    # Lot Fourteen is a precinct on the old RAH site; "North Terrace and Frome
+    # Rd" is a corner, and a corner geocodes to a road.
+    'adelaide-axe': (138.608529, -34.919318, 'OSM "Lot 14, Adelaide" [institutional]'),
+    # The building is named in the address and IS in OSM; the street number is
+    # not. Sits inside Lot Fourteen, ~30 m from Archer above.
+    'aps-australian-space-agency': (138.608774, -34.920494, 'OSM "McEwin Building" [building]'),
+    # King William Road has no number for the Centre; the Centre is an amenity.
+    'sa-gov-adelaide-festival-centre-trust': (138.597791, -34.919576,
+                                              'OSM "Adelaide Festival Centre" [amenity]'),
+    # Browning Street is the frontage of a 60-hectare cemetery; the park is the
+    # place, and the road centroid is 500 m from it.
+    'sa-gov-adelaide-cemeteries-authority': (138.610278, -34.857389,
+                                             'OSM "Enfield Memorial Park & Crematorium" [cemetery]'),
+}
+
+# Standing notes emitted above an entry, so an explanation survives the next
+# regeneration. The file says "do not hand-edit" and means it: a note written
+# into the output is deleted by the following run, silently, and the reason a
+# coordinate looks wrong goes with it. This one was already there and was lost
+# the first time the merge path ran.
+NOTES: dict[str, list[str]] = {
+    'sydney-rmd': ["ResMed's Australian head office. The global HQ is 9001 Spectrum Center",
+                   'Blvd, San Diego — this roster plots where a company employs, and the ANZ',
+                   'workforce its careers board recruits into is based here.'],
+}
+
+# --only id,id: regenerate just these and keep every other entry as it stands.
+# Without it a one-address correction re-queries all 625, which is 25 minutes of
+# somebody else's rate limit and re-rolls every coordinate in the file against
+# whatever OSM says today — a change nobody asked for, attached to one they did.
+ONLY = set((_opt_only := [a for a in sys.argv[1:]]) and
+           (sys.argv[sys.argv.index('--only') + 1].split(',') if '--only' in sys.argv else []))
+
+
+def existing_coords() -> dict[str, list]:
+    """What the generated file already holds, so --only can merge into it."""
+    if not os.path.exists(OUT):
+        return {}
+    txt = open(OUT, encoding='utf-8').read()
+    return {m.group(1): [float(m.group(2)), float(m.group(3))]
+            for m in re.finditer(r'"?([A-Za-z0-9_-]+)"?:\s*\[(-?[\d.]+),\s*(-?[\d.]+)\]', txt)}
+
+
 def main() -> int:
     ADDRESSES = load_addresses()
-    out: dict[str, list] = {}
+    out: dict[str, list] = existing_coords() if ONLY else {}
+    if ONLY:
+        sys.stderr.write(f'--only: regenerating {len(ONLY)} of {len(out)} stored entries\n')
     rejected: list[str] = []
     far: list[str] = []
     for cid, (city, addr) in sorted(ADDRESSES.items()):
+        if ONLY and cid not in ONLY:
+            continue
+        if cid in PINNED:
+            lon, lat, why = PINNED[cid]
+            out[cid] = [lon, lat]
+            print(f'  pinned {cid}: {lon},{lat} — {why}')
+            continue
         res, err = [], None
         for q in queries_for(addr):
             try:
@@ -227,7 +298,14 @@ def main() -> int:
             ' */',
             'export const AU_REAL_COORDS: Record<string, [number, number]> = {']
     for cid, (lon, lat) in sorted(out.items()):
-        body.append(f'  "{cid}": [{lon}, {lat}], // {ADDRESSES[cid][1]}')
+        # An id carried over by --only may no longer have a CSV row (a company
+        # dropped from the roster keeps its coordinate until someone removes it).
+        # Annotating it is a nicety; crashing the whole write over a missing
+        # comment is not.
+        for line in NOTES.get(cid, []):
+            body.append(f'  // {line}')
+        note = ADDRESSES[cid][1] if cid in ADDRESSES else 'no address row (merged from a previous run)'
+        body.append(f'  "{cid}": [{lon}, {lat}], // {note}')
     body.append('};')
     with open(OUT, 'w', encoding='utf-8') as f:
         f.write('\n'.join(body) + '\n')

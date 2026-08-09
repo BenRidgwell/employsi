@@ -165,7 +165,7 @@ sydney,Private company,priv-clayton-utz,Clayton Utz,Legal services,"Level 15, 1 
 sydney,Private company,priv-bing-lee-electrics,Bing Lee Electrics,Appliance retail,"69 Allingham Street, Condell Park NSW 2200",medium
 sydney,Private company,priv-hammondcare,HammondCare,Aged & dementia care,"Level 4, 207B Pacific Highway, St Leonards NSW 2065",google_maps
 sydney,Listed company,wes,Wesfarmers,Diversified Retail,"Level 14, Brookfield Place Tower 2, 123 St Georges Terrace, Perth WA 6000",high
-melbourne,Listed company,bhp,BHP,Diversified Mining,"171 Collins Street, Melbourne VIC 3000",high
+melbourne,Listed company,bhp,BHP,Diversified Mining,"171 Collins Street, Melbourne VIC 3000",medium
 melbourne,Listed company,rio,Rio Tinto,Iron Ore & Metals,"Level 43, 120 Collins Street, Melbourne VIC 3000",high
 melbourne,Listed company,s32,South32,Metals & Mining,"108 St Georges Terrace, Perth WA 6000",high
 melbourne,Listed company,melbourne-vcx,Vicinity Centres,Financial Services,"Level 4, Chadstone Tower One, 1341 Dandenong Road, Chadstone VIC 3148",high
@@ -327,7 +327,7 @@ melbourne,Private company,priv-tennis-australia,Tennis Australia,Sport & enterta
 melbourne,Private company,priv-australian-consolidated-milk,Australian Consolidated Milk,Dairy,Girgarre VIC 3624,google_maps
 melbourne,Private company,priv-bowens-timber-hardware,Bowens Timber & Hardware,Timber & hardware retail,"12 Redland Drive, Mitcham VIC 3132",user_provided
 melbourne,Listed company,wes,Wesfarmers,Diversified Retail,"Level 14, Brookfield Place Tower 2, 123 St Georges Terrace, Perth WA 6000",high
-brisbane,Listed company,bhp,BHP,Diversified Mining,"171 Collins Street, Melbourne VIC 3000",high
+brisbane,Listed company,bhp,BHP,Diversified Mining,"171 Collins Street, Melbourne VIC 3000",medium
 brisbane,Listed company,rio,Rio Tinto,Iron Ore & Metals,"Level 43, 120 Collins Street, Melbourne VIC 3000",high
 brisbane,Listed company,smr,Stanmore Resources,Coal,"Level 32, 12 Creek Street, Brisbane QLD 4000",google_maps
 brisbane,Listed company,nhc,New Hope Group,Coal,"Level 3, 22 Magnolia Drive, Brookwater QLD 4300",medium
@@ -433,7 +433,7 @@ brisbane,Private company,priv-pharmacare,PharmaCare,Consumer health products,"18
 brisbane,Private company,priv-sunny-queen-farms,Sunny Queen Farms,Egg production,"145 Mica Street, Carole Park QLD 4300",google_maps
 brisbane,Listed company,sydney-whc,Whitehaven Coal,Energy & Natural Resources,"Level 28, 259 George Street, Sydney NSW 2000",medium
 brisbane,Listed company,sto,Santos,Oil & Gas,"Ground Floor, Santos Centre, 60 Flinders Street, Adelaide SA 5000",high
-adelaide,Listed company,bhp,BHP,Diversified Mining,"171 Collins Street, Melbourne VIC 3000",high
+adelaide,Listed company,bhp,BHP,Diversified Mining,"171 Collins Street, Melbourne VIC 3000",medium
 adelaide,Listed company,sto,Santos,Oil & Gas,"Ground Floor, Santos Centre, 60 Flinders Street, Adelaide SA 5000",high
 adelaide,Listed company,mgt,Magnetite Mines,Iron Ore,"Suite 3.03, 30 Currie Street, Adelaide SA 5000",google_maps
 adelaide,Listed company,hgo,Hillgrove Resources,Copper & Base Metals,"5/7 King William Road, Unley SA 5061",google_maps
@@ -443,12 +443,12 @@ adelaide,Listed company,adelaide-coe,Cooper Energy,Energy & Natural Resources,"L
 adelaide,Listed company,adelaide-c79,Chrysos Corporation,"Technology, Media & Telecom","2A Venture Road, Tonsley SA 5042",google_maps
 adelaide,Listed company,adelaide-tea,Tasmea,Industrial Manufacturing,"108 Wakefield Street, Adelaide SA 5000",google_maps
 adelaide,Listed company,adelaide-pro,Prophecy International Holdings,"Technology, Media & Telecom","Level 5, 60 Waymouth Street, Adelaide SA 5000",google_maps
-adelaide,Listed company,adelaide-axe,Archer Materials,"Technology, Media & Telecom","Lot Fourteen, North Terrace, Adelaide SA 5000",google_maps
+adelaide,Listed company,adelaide-axe,Archer Materials,"Technology, Media & Telecom","Lot 14, North Terrace and Frome Road, Adelaide SA 5000",user_provided
 adelaide,Listed company,adelaide-ar3,Australian Rare Earths,Energy & Natural Resources,"111 Gawler Place, Adelaide SA 5000",google_maps
-adelaide,Listed company,adelaide-age,Alligator Energy,Energy & Natural Resources,"Unit 2, 128 Bowen Street, Spring Hill QLD 4000",google_maps
+adelaide,Listed company,adelaide-age,Alligator Energy,Energy & Natural Resources,"Level 1, 5-7 King William Road, Unley SA 5061",user_provided
 adelaide,Listed company,adelaide-bgd,Barton Gold Holdings,Energy & Natural Resources,"Level 4, 12 Gilles Street, Adelaide SA 5000",google_maps
-adelaide,State agency,sa-gov-adelaide-cemeteries-authority,Adelaide Cemeteries Authority,Government,"Enfield Memorial Park, Browning Street, Clearview SA 5085",google_maps
-adelaide,State agency,sa-gov-adelaide-festival-centre-trust,Adelaide Festival Centre Trust,Government,"King William Road, Adelaide SA 5000",high
+adelaide,State agency,sa-gov-adelaide-cemeteries-authority,Adelaide Cemeteries Authority,Government,"Enfield Memorial Park, Browning Street, Clearview SA 5085",user_provided
+adelaide,State agency,sa-gov-adelaide-festival-centre-trust,Adelaide Festival Centre Trust,Government,"King William Road, Adelaide SA 5000",user_provided
 adelaide,State agency,sa-gov-alinytjara-wilurara-landscape-board,Alinytjara Wilurara Landscape Board,Government,"Level 9, 81-95 Waymouth Street, Adelaide SA 5000",user_provided
 adelaide,State agency,sa-gov-attorney-general-s-department,Attorney-General's Department,Government,"45 Pirie Street, Adelaide SA 5000",medium
 adelaide,State agency,sa-gov-audit-office-of-south-australia,Audit Office of South Australia,Government,"Level 9, State Administration Centre, 200 Victoria Square, Adelaide SA 5000",medium
@@ -492,7 +492,7 @@ adelaide,State agency,sa-gov-legal-services-commission,Legal Services Commission
 adelaide,State agency,sa-gov-lifetime-support-authority-of-sa,Lifetime Support Authority of SA,Government,"30 Wakefield Street, Adelaide SA 5000",google_maps
 adelaide,State agency,sa-gov-limestone-coast-landscape-board,Limestone Coast Landscape Board,Government,"11 Helen Street, Mount Gambier SA 5290",verified
 adelaide,State agency,sa-gov-motor-accident-commission,Motor Accident Commission,Government,"Level 10, 80 King William Street, Adelaide SA 5000",user_provided
-adelaide,State agency,sa-gov-murraylands-and-riverland-landscape-board,Murraylands and Riverland Landscape Board,Government,"Units 5-6, Level 1, Sturt Centre, 2 Sturt Reserve Road, Murray Bridge SA 5253",google_maps
+adelaide,State agency,sa-gov-murraylands-and-riverland-landscape-board,Murraylands and Riverland Landscape Board,Government,"Unit 5-6, Level 1, Sturt Centre, 2 Sturt Reserve Road, Murray Bridge SA 5253",user_provided
 adelaide,State agency,sa-gov-northern-and-yorke-landscape-board,Northern and Yorke Landscape Board,Government,"318 Main North Road, Clare SA 5453",google_maps
 adelaide,State agency,sa-gov-office-for-early-childhood-development,Office for Early Childhood Development,Government,"31 Flinders Street, Adelaide SA 5000",user_provided
 adelaide,State agency,sa-gov-office-for-recreation-sport-and-racing,Office for Recreation Sport and Racing,Government,"27 Valetta Road, Kidman Park SA 5025",medium
@@ -523,9 +523,9 @@ adelaide,State agency,sa-gov-study-adelaide,Study Adelaide,Government,"Level 1, 
 adelaide,State agency,sa-gov-tafe-sa,TAFE SA,Government,"120 Currie Street, Adelaide SA 5000",medium
 adelaide,State agency,sa-gov-teachers-registration-board,Teachers Registration Board,Government,"Level 6, 70 Pirie Street, Adelaide SA 5000",google_maps
 adelaide,State agency,sa-gov-west-beach-parks,West Beach Parks,Government,"1 Military Road, West Beach SA 5024",medium
-adelaide,Federal agency,aps-australian-space-agency,Australian Space Agency,Government,"McEwin Building, Lot Fourteen, North Terrace, Adelaide SA 5000",high
+adelaide,Federal agency,aps-australian-space-agency,Australian Space Agency,Government,"Lot 14, 364-370 North Terrace, Adelaide SA 5000",user_provided
 adelaide,Private company,priv-peregrine,Peregrine,Fuel & convenience retail,"121 Richmond Road, Marleston SA 5033",medium
-adelaide,Private company,priv-thomas-foods-international,Thomas Foods International,Meat processing,"Lagoon Road, Northern Heights (Murray Bridge) SA 5253",google_maps
+adelaide,Private company,priv-thomas-foods-international,Thomas Foods International,Meat processing,"Level 2, 162 Fullarton Road, Rose Park SA 5067",user_provided
 adelaide,Private company,priv-cmv-group,CMV Group,Automotive & truck retail,"48 Greenhill Road, Wayville SA 5034",google_maps
 adelaide,Private company,priv-people-first-bank,People First Bank,Mutual banking,"50 Flinders Street, Adelaide SA 5000",medium
 adelaide,Private company,priv-drake-supermarkets,Drake Supermarkets,Supermarkets,"159 Henley Beach Road, Torrensville SA 5031",user_provided
@@ -536,7 +536,7 @@ adelaide,Private company,priv-peter-kittle-motor-company,Peter Kittle Motor Comp
 adelaide,Private company,priv-detmold-group,Detmold Group,Packaging manufacturing,"45 Chief Street, Brompton SA 5007",medium
 adelaide,Private company,priv-sarah-group,Sarah Group,Construction & property,"49 Glen Osmond Road, Eastwood SA 5063",google_maps
 perth,Listed company,rio,Rio Tinto,Iron Ore & Metals,"Level 43, 120 Collins Street, Melbourne VIC 3000",high
-perth,Listed company,bhp,BHP,Diversified Mining,"171 Collins Street, Melbourne VIC 3000",high
+perth,Listed company,bhp,BHP,Diversified Mining,"171 Collins Street, Melbourne VIC 3000",medium
 perth,Listed company,s32,South32,Metals & Mining,"108 St Georges Terrace, Perth WA 6000",high
 perth,Listed company,fmg,Fortescue,Iron Ore & Green Energy,"Level 2, 87 Adelaide Terrace, East Perth WA 6004",high
 perth,Listed company,wds,Woodside Energy,"Oil, Gas & LNG","Mia Yellagonga, 11 Mount Street, Perth WA 6000",high
