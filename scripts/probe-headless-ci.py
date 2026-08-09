@@ -733,7 +733,20 @@ def nab_route(pw, pages: int = 8, pace_s: float = 6.0) -> dict:
                 if row['status'] == 202 or (row['bytes'] < 2000 and not row['cards']):
                     row['waf'] = True
                 elif not row['cards']:
-                    row['blocked_as'] = blocked_as(html)
+                    # AN EMPTY PAGE PAST THE END IS NOT A BLOCK. The board's
+                    # "no results" page is a stable document: same status, same
+                    # byte count every time. A block is not — it is a 202, a
+                    # challenge body, or a different size. Calling the first one
+                    # blocking is exactly the mistake this file exists to stop,
+                    # and the first version of this probe made it, reporting
+                    # "dies after 3 pages" for a walk that had read the whole
+                    # board.
+                    prev = res['pages'][-1] if res['pages'] else None
+                    if prev and prev.get('bytes') == row['bytes'] and not prev.get('cards'):
+                        row['end'] = True
+                    else:
+                        row['blocked_as'] = blocked_as(html)
+                        row['maybe_end'] = True
             except Exception as e:  # noqa: BLE001
                 row['error'] = str(e)[:140]
             res['pages'].append(row)
@@ -754,19 +767,38 @@ def nab_report(pw) -> int:
     print('Asking two things: how far a paced walk gets, and whether the page '
           'talks to a JSON API on a host the WAF does not cover.\n')
     r = nab_route(pw)
-    ok = 0
+    ok = total_cards = 0
+    first_cards = None
+    short_page = None
+    waf = False
     for row in r['pages']:
         if row.get('error'):
             print(f"  page {row['page']:<2} ERROR {row['error']}")
             continue
-        tag = ('WAF' if row.get('waf') else
-               (row.get('blocked_as') or 'ok') if not row.get('cards') else 'CARDS')
+        if row.get('waf'):
+            tag, waf = 'WAF', True
+        elif row.get('cards'):
+            tag = 'CARDS'
+        elif row.get('end'):
+            tag = 'past the end'
+        else:
+            tag = row.get('blocked_as') or 'empty (first)'
         if row.get('cards'):
             ok += 1
+            total_cards += row['cards']
+            if first_cards is None:
+                first_cards = row['cards']
+            elif row['cards'] < first_cards and short_page is None:
+                short_page = row['page']
         print(f"  page {row['page']:<2} {tag:<22} status={row.get('status')} "
               f"bytes={row.get('bytes')} cards={row.get('cards')}")
     print(f"\n  {ok} of {len(r['pages'])} pages returned cards at "
-          f"{r['pace_s']}s spacing, no proxy.")
+          f"{r['pace_s']}s spacing, no proxy — {total_cards} cards in total.")
+    if short_page:
+        print(f"  page {short_page} was SHORT ({first_cards} a page before it), which is "
+              f"the end of a list, not a refusal.")
+    r['_walked_out'] = bool(short_page and not waf)
+    r['_total_cards'] = total_cards
     print('\n  JSON endpoints the page called:')
     if not r['network']:
         print('      (none — the list really is server-rendered HTML only, so '
@@ -776,14 +808,20 @@ def nab_report(pw) -> int:
     if r.get('error'):
         print(f"\n  probe error: {r['error']}")
     print()
-    if ok == len(r['pages']):
-        print('VERDICT: a paced walk got every page from a plain runner. NAB can '
-              'come off the proxy — port it to browser_fetch with this spacing '
-              'and keep the existing "no cards = exit non-zero" floor.')
+    if r.get('_walked_out'):
+        print(f"VERDICT: a paced walk read the WHOLE board from a plain runner — "
+              f"{r['_total_cards']} cards, ending on a short page and then the "
+              f"board's own empty-results document. No 202, no challenge. NAB does "
+              f"not need a paid exit; port it to browser_fetch at this spacing and "
+              f"keep the existing \"no cards = exit non-zero\" floor.")
+    elif ok == len(r['pages']):
+        print('VERDICT: every page returned cards and the walk never reached the '
+              'end. Raise the page count and re-run before concluding anything — '
+              'this did not find the boundary.')
     elif ok:
-        print(f'VERDICT: it dies after {ok} page(s). Pacing alone is not enough for '
-              f'a full walk; if a JSON endpoint appeared above, that is the route '
-              f'worth taking instead.')
+        print(f'VERDICT: {ok} page(s) of cards and then something that is not the '
+              f'end of a list. Pacing alone is not enough; if a JSON endpoint '
+              f'appeared above, that is the route worth taking instead.')
     else:
         print('VERDICT: not one page from a plain runner. The WAF is on the address '
               'and NAB stays on a paid exit.')
@@ -945,19 +983,39 @@ def aps_total(text: str):
 
 def aps_controls(page) -> list:
     """Every clickable that looks like pagination, so the real mechanism is
-    visible rather than guessed at."""
+    visible rather than guessed at.
+
+    THIS WALKS SHADOW ROOTS. The first version used a plain
+    document.querySelectorAll and came back with an EMPTY list on a board that
+    obviously paginates somehow — which is not "there are no controls", it is
+    "the query cannot see them". apsjobs.gov.au is Salesforce Lightning, and LWC
+    renders components into shadow DOM, which querySelectorAll does not pierce.
+    An empty result from a blind query is the most confident-looking wrong
+    answer this probe could give.
+    """
     try:
         return page.evaluate("""() => {
             const out = [];
-            for (const el of document.querySelectorAll('a,button,li,span[role=button]')) {
+            const all = [];
+            const walk = (root, depth) => {
+                if (depth > 12) return;
+                for (const el of root.querySelectorAll('*')) {
+                    all.push(el);
+                    if (el.shadowRoot) walk(el.shadowRoot, depth + 1);
+                }
+            };
+            walk(document, 0);
+            for (const el of all) {
+                if (!/^(a|button|li|lightning-button|span)$/i.test(el.tagName)) continue;
                 const t = (el.innerText || '').trim().slice(0, 30);
                 const al = el.getAttribute('aria-label') || '';
                 const cl = (el.className && el.className.baseVal !== undefined
                             ? el.className.baseVal : el.className) || '';
                 const hay = (t + ' ' + al + ' ' + cl).toLowerCase();
-                if (/next|paginat|page|more|load/.test(hay)) {
+                if (/next|paginat|page|more|load|show/.test(hay)) {
                     out.push({tag: el.tagName.toLowerCase(), text: t, aria: al,
                               cls: String(cl).slice(0, 60),
+                              shadow: el.getRootNode() !== document,
                               disabled: el.disabled === true ||
                                         el.getAttribute('aria-disabled') === 'true'});
                 }
