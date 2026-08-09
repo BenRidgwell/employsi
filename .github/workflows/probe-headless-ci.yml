@@ -143,6 +143,14 @@ on:
         description: 'A/B the client profile against the boards still on Oxylabs (~5 min; use with via_proxy)'
         type: boolean
         default: false
+      proxy_session:
+        description: 'Sticky IPRoyal session id — REQUIRED for a trustworthy fingerprint A/B (pins both profiles to one address)'
+        type: string
+        default: ''
+      proxy_lifetime:
+        description: 'How long that session holds its address'
+        type: string
+        default: '30m'
 
 permissions:
   contents: read
@@ -185,6 +193,13 @@ jobs:
           # write through the home connection too. Recorded here because this is
           # where the pattern gets copied from.
           NO_PROXY: api.cloudflare.com
+          # A rotating pool gives the two fingerprint profiles two DIFFERENT
+          # addresses, and then a board that answers the second and not the
+          # first could be the client or could be a luckier IP. Pinning the exit
+          # is what makes the A/B about the thing it claims to be about. These
+          # flags ride on the password (http_fetch.scrape_proxy_url).
+          SCRAPE_PROXY_SESSION: ${{ inputs.proxy_session }}
+          SCRAPE_PROXY_LIFETIME: ${{ inputs.proxy_lifetime }}
         # xvfb-run only where the fingerprint A/B asks for a headful browser;
         # every other mode runs exactly as it always has.
         run: |

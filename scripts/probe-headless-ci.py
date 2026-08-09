@@ -744,7 +744,23 @@ def fp_probe(pw, board: dict, profile: dict) -> dict:
 def fingerprint_report(pw) -> int:
     where = 'via SCRAPE_PROXY' if VIA_PROXY else 'from this runner'
     print(f'Fingerprint A/B, {where}.')
-    print('Same boards, same exit, two client profiles minutes apart.\n')
+    print('Same boards, two client profiles minutes apart.')
+    # "SAME EXIT" IS A CLAIM THE ROTATING POOL DOES NOT HONOUR. The profiles run
+    # in sequence, so through a rotating pool they leave from DIFFERENT
+    # addresses, and a board that answers the second and not the first could be
+    # the fingerprint or could be a luckier IP. Those are not the same finding
+    # and the run must not present them as one.
+    if VIA_PROXY:
+        sticky = (os.environ.get('SCRAPE_PROXY_SESSION') or '').strip()
+        if sticky:
+            print(f'Exit pinned to sticky session "{sticky}" — both profiles '
+                  f'leave from the same address, so a difference is the client.')
+        else:
+            print('WARNING: no SCRAPE_PROXY_SESSION set. The pool rotates, so the '
+                  'two profiles may leave from different addresses and a change '
+                  'below could be the address rather than the fingerprint. '
+                  'Re-run with a sticky session before acting on it.')
+    print()
     boards = [b for b in BOARDS if b['name'] in FINGERPRINT_BOARDS]
     missing = set(FINGERPRINT_BOARDS) - {b['name'] for b in boards}
     if missing:
@@ -773,22 +789,27 @@ def fingerprint_report(pw) -> int:
     # and read as a finding about Akamai. That is the failure this whole file
     # exists to prevent, and the first version of this function walked straight
     # into it from a sandbox with no egress.
-    if not base_ok:
-        err = (control.get('baseline') or {}).get('error') or 'no rows'
-        print(f'CONTROL FAILED under the BASELINE profile ({err}).')
-        print('SimplyHired answers this exit in normal operation, so if it does not '
-              'answer here the harness or the network is the problem, not the '
-              'boards. No verdict — re-run from CI'
+    # THE CONTROL PROVES THE HARNESS, AND EITHER PROFILE WILL DO IT. The first
+    # version of this demanded the control pass the BASELINE, on the reasoning
+    # that SimplyHired answers this exit in normal operation. It does — through
+    # raw_get, which clears the origin first. A cold goto with headless-shell is
+    # a different request, and on the first real run SimplyHired 403'd the
+    # baseline and returned 21 rows under chrome. That is not a broken harness,
+    # it is the result. The guard threw away its own evidence.
+    #
+    # What actually invalidates the table is the control failing under BOTH:
+    # then nothing reached the boards and every zero below is about this runner.
+    if not base_ok and not new_ok:
+        err = ((control.get('baseline') or {}).get('error')
+               or (control.get('chrome') or {}).get('error') or 'no rows')
+        print(f'CONTROL FAILED under BOTH profiles ({err}).')
+        print('Nothing reached the boards, so every zero above is about this '
+              'runner rather than about any target. No verdict — re-run from CI'
               + ('' if VIA_PROXY else ', and with via_proxy=true') + '.')
         return 1
-    if base_ok and not new_ok:
-        err = (control.get('chrome') or {}).get('error') or 'no rows'
-        print(f'CONTROL FAILED under the upgraded profile ({err}).')
-        print('The chrome profile is broken — most likely Chrome or Xvfb is not '
-              'installed on this runner. Nothing in the table above is evidence '
-              'about any target, because a launch that does not work looks '
-              'exactly like a board that refused.')
-        return 1
+    passed_under = 'both profiles' if (base_ok and new_ok) else (
+        'the baseline' if base_ok else 'the upgraded profile')
+    print(f'(control reached the board under {passed_under} — harness is sound)\n')
 
     print(f'{"board":<30}{"baseline":>10}{"chrome":>10}   verdict')
     gained = []
@@ -810,6 +831,9 @@ def fingerprint_report(pw) -> int:
         print('Port those to browser_fetch with BROWSER_FETCH_CHANNEL=chrome and '
               'BROWSER_FETCH_STEALTH=1, and re-measure from their real workflow '
               'before trusting it — this is one request per board, not a walk.')
+        if VIA_PROXY and not (os.environ.get('SCRAPE_PROXY_SESSION') or '').strip():
+            print('Do that only after a STICKY re-run confirms it: without a pinned '
+                  'exit this cannot separate the client from the address.')
     else:
         print('No board was recovered by the fingerprint alone. These three refuse '
               'a real Chrome from a residential address, which is the thing an '
