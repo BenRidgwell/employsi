@@ -1,0 +1,56 @@
+# Which job boards does our residential exit actually recover?
+#
+# Run this BEFORE moving any feed off Oxylabs. Swapping a scraper's transport is
+# a one-line change and an untestable claim, and this repo has already paid for
+# making it on weak evidence: jobs.govt.nz was moved to direct on a sandbox
+# measurement and timed out on every request from the first scheduled run.
+#
+# It measures the PLAIN-HTTP transport — urllib through http_fetch.get(), which
+# is how most of these boards are fetched. probe-headless-ci.yml asks the same
+# question through Chromium, and the two can disagree: a proxy a browser
+# negotiates happily can still fail an HTTP CONNECT from urllib.
+#
+# Required repo secret:
+#   SCRAPE_PROXY  — http://user:pass@host:port
+#                   For IPRoyal residential the endpoint is
+#                   geo.iproyal.com:12321 and the targeting options ride on the
+#                   PASSWORD, not the path:
+#                     http://USER:PASS_country-au@geo.iproyal.com:12321
+#                   Percent-encode the password if it contains @ or :.
+#
+# NO_PROXY keeps the Cloudflare API off the residential exit. Nothing here
+# writes to D1, but the setting is inherited by anything this job later grows
+# and metered residential traffic should not be spent on a host that is happy to
+# answer a datacentre.
+name: check-scrape-proxy
+
+on:
+  workflow_dispatch:
+    inputs:
+      country:
+        description: 'IPRoyal country code appended to the password (blank = leave the secret as stored)'
+        type: string
+        default: ''
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check the exit, then every board that uses it
+        env:
+          SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
+          SCRAPE_PROXY_COUNTRY: ${{ inputs.country }}
+          NO_PROXY: api.cloudflare.com
+          no_proxy: api.cloudflare.com
+        run: |
+          if [ -z "$SCRAPE_PROXY" ]; then
+            echo "SCRAPE_PROXY is not set. Add it as a repository secret first —"
+            echo "Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          python3 scripts/check-scrape-proxy.py

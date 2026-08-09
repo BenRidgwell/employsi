@@ -45,6 +45,57 @@ RETRY_STATUSES = {429, 500, 502, 503, 504, 522, 524}
 UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36')
 
+# ── residential exit ─────────────────────────────────────────────────────────
+# SCRAPE_PROXY routes the SCRAPING fetches — and only those — through a
+# residential exit. Set it and every caller of get() below gains the exit at
+# once; leave it unset and nothing changes.
+#
+# SCOPE IS THE POINT. This opener is used by get() and nowhere else, so the D1
+# writes, the Cloudflare API calls and the SingStat/ABS downloads each script
+# also makes keep going out directly. Routing those through a metered
+# residential proxy would spend traffic on requests no one is blocking, and
+# api.cloudflare.com in particular is happy to answer a datacentre.
+#
+# One URL so it fits in one secret:  http://user:pass@host:port
+# For IPRoyal the endpoint is geo.iproyal.com:12321 and the targeting options
+# ride on the PASSWORD — see .github/workflows/probe-headless-ci.yml.
+_PROXY_URL = (os.environ.get('SCRAPE_PROXY') or '').strip()
+
+
+def proxy_label() -> str:
+    """Host:port of the exit, or 'direct'. For logging — never the password."""
+    if not _PROXY_URL:
+        return 'direct'
+    from urllib.parse import urlsplit
+    u = urlsplit(_PROXY_URL)
+    return f'{u.hostname}:{u.port}' if u.port else (u.hostname or 'proxy')
+
+
+def _build_opener():
+    """An opener bound to SCRAPE_PROXY, or None to use urllib's default.
+
+    Credentials are PERCENT-DECODED, same as browser_fetch.proxy_from_env: a
+    residential password can contain @ or :, which makes the URL unparseable
+    unless it is encoded, and passing the encoded form through authenticates
+    with the wrong secret and 407s every request.
+    """
+    if not _PROXY_URL:
+        return None
+    from urllib.parse import unquote, urlsplit
+    u = urlsplit(_PROXY_URL)
+    if not u.hostname:
+        sys.exit(f'SCRAPE_PROXY is not a URL: {_PROXY_URL[:40]!r}')
+    hostport = f'{u.hostname}:{u.port}' if u.port else u.hostname
+    auth = ''
+    if u.username:
+        auth = f'{unquote(u.username)}:{unquote(u.password or "")}@'
+    target = f'{u.scheme or "http"}://{auth}{hostport}'
+    return urllib.request.build_opener(
+        urllib.request.ProxyHandler({'http': target, 'https': target}))
+
+
+_opener = _build_opener()
+
 _last_call = 0.0
 # Serialises the spacing calculation, because callers may be threads (jobsdb and
 # the Wayback backfill both fetch concurrently). Without the lock every thread
@@ -97,7 +148,8 @@ def get(url: str, headers: dict | None = None, timeout: int = 45,
         throttle()
         try:
             req = urllib.request.Request(url, headers=hdrs)
-            with urllib.request.urlopen(req, timeout=timeout) as r:
+            opener = _opener.open if _opener else urllib.request.urlopen
+            with opener(req, timeout=timeout) as r:
                 return r.read().decode('utf-8', 'replace'), getattr(r, 'status', 200)
         except urllib.error.HTTPError as e:
             last = f'HTTP {e.code}'
