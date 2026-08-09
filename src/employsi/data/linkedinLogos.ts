@@ -23,11 +23,80 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/D560BAQE3Owans5b-4Q/company-logo_200_200/B56Z73Vz2TKEAE-/0/1782266151118/argo_investments_logo?e=2147483647&v=beta&t=ngNWTk4qvxyqgb-7az1EV1QdGxGf6DFbJK2TfIlMsy0",
   "adelaide-cda":
     "https://media.licdn.com/dms/image/v2/C560BAQFu-W4ACYHtwQ/company-logo_200_200/company-logo_200_200/0/1630596622518/codan_limited_logo?e=2147483647&v=beta&t=LD2sQ-6wJCkOvjk_mOobvNZQcz150eYSsw6fGJqJBoM",
+  aow: "https://media.licdn.com/dms/image/v2/C560BAQF-bxuyTW4mKg/company-logo_200_200/company-logo_200_200/0/1630648363527/arrowenergy_logo?e=2147483647&v=beta&t=JSeMb-vV1QtZ4QRkUX7hzNM4yB8hEmbPPwgH1jTtfcs",
+  "aps-australian-communications-and-media-authority":
+    "https://media.licdn.com/dms/image/v2/D560BAQHl9wuw4vrFXw/company-logo_200_200/B56Z0ckHS9JsAI-/0/1774300722858/australian_communications_and_media_authority_logo?e=2147483647&v=beta&t=Bl4coKQrjHH_pplwYjzuGyE39TQUHHfIMIDCGDsmcLQ",
+  "aps-australian-criminal-intelligence-commission":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQE_yDUfFRQ3gw/company-logo_200_200/company-logo_200_200/0/1703022428271?e=2147483647&v=beta&t=nqGl6n4NJPw0IAl81HyB_mDgCFg7JVnyV8LIfBJnyjs",
+  "aps-australian-electoral-commission":
+    "https://media.licdn.com/dms/image/v2/D560BAQHgiEEFUuUbWA/company-logo_200_200/B56ZW1tVI1HoAI-/0/1742510314640/australian_electoral_commission_logo?e=2147483647&v=beta&t=_-5XrCgdQ1vEwOqwoNkKifjWE5tTJ_odgYiZrZOD4bI",
+  "aps-australian-federal-police":
+    "https://media.licdn.com/dms/image/v2/D560BAQHaif1mYV92pQ/company-logo_200_200/B56ZUQgJeaGQAM-/0/1739738618768/australian_federal_police_logo?e=2147483647&v=beta&t=TK7MzugSJFxgOAWhgAfWlzwoiW4m-XUyVY4YWLSzfYM",
+  "aps-australian-institute-of-health-and-welfare":
+    "https://media.licdn.com/dms/image/v2/D560BAQHhrCzae-ptKA/company-logo_200_200/company-logo_200_200/0/1729120424732/australian_institute_of_health_and_welfare_logo?e=2147483647&v=beta&t=h6zj8Y6Kcb0Ec7Q1E5PTjjltBm7RvadHkA3SR9QZuiw",
+  "aps-australian-national-audit-office":
+    "https://media.licdn.com/dms/image/v2/D560BAQFAPyyLgOqfjg/company-logo_200_200/company-logo_200_200/0/1667285068477/australian_national_audit_office_logo?e=2147483647&v=beta&t=8iwVtuWkzJJzIGDUjECU0Bg11hQFnvJCBQd68UeJE2w",
+  "aps-australian-signals-directorate":
+    "https://media.licdn.com/dms/image/v2/D560BAQGB1fIY2VT4Ug/company-logo_200_200/company-logo_200_200/0/1734410114529/australian_signals_directorate_logo?e=2147483647&v=beta&t=Xkucjn6h1EkbX_ZLKNyDeu0Mg2xIq5pgN19tXXbk9g8",
   "aps-australian-space-agency":
     "https://media.licdn.com/dms/image/v2/C560BAQHt1tJozdM2BA/company-logo_200_200/company-logo_200_200/0/1630565827175/australian_space_agency_logo?e=2147483647&v=beta&t=fQTQMQkd6QR2eHH3nYFWMSkbq9yFbw7C6AdgFMVdIFM",
+  "aps-australian-sports-commission":
+    "https://media.licdn.com/dms/image/v2/C560BAQHIMKCJeyxr0Q/company-logo_200_200/company-logo_200_200/0/1663570234591/sport_australia_logo?e=2147483647&v=beta&t=0VuXoGvUQz7XUTikiBI9nywN-vh1WTVpuPwd_ujvPiU",
+  "aps-australian-taxation-office":
+    "https://media.licdn.com/dms/image/v2/D560BAQHksYKUI2N3cA/company-logo_200_200/company-logo_200_200/0/1701604848329/australian_taxation_office_logo?e=2147483647&v=beta&t=XpHM1OZikiTGEu_pUef4iChcZkDoT_Uff2nVtul6l_o",
+  "aps-clean-energy-regulator":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQFHTJk4VCBj5Q/company-logo_200_200/company-logo_200_200/0/1654556673119/clean_energy_regulator_logo?e=2147483647&v=beta&t=1GFAjPuVuj_FxWuydGgewEhb11F92hEbmGWFlRdKg4U",
+  "aps-comcare":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQF6U4HP4oUDjw/company-logo_200_200/company-logo_200_200/0/1631301665638?e=2147483647&v=beta&t=kktaPIoDp7ijir4spsNfNhR95XfKYn-FdcXBovFPfNg",
+  "aps-csiro":
+    "https://media.licdn.com/dms/image/v2/D560BAQG4SlM_peMNQw/company-logo_200_200/B56ZzRVpLHJQAI-/0/1773038638249/csiro_logo?e=2147483647&v=beta&t=buJVMMlAvdg-b_QW0BId9iGYtC6BJ-tWF0t9rx9cUj4",
+  "aps-department-of-climate-change-energy-the-environment-and-water":
+    "https://media.licdn.com/dms/image/v2/D560BAQFVPpAxj24dcg/company-logo_200_200/company-logo_200_200/0/1690247857586/department_of_climate_change_energy_the_environment_and_water_logo?e=2147483647&v=beta&t=lHxSUOQVqp3ykErwtrwL1Noylr1RsUV-3PQV-BTz5E4",
+  "aps-department-of-employment-and-workplace-relations":
+    "https://media.licdn.com/dms/image/v2/D560BAQFoNOXpBQlHYA/company-logo_200_200/B56Z.r91FzKEAI-/0/1785296540222/department_of_employment_and_workplace_relations_logo?e=2147483647&v=beta&t=nYijR7DN9VMUz5iY9RAdqnZBKwuuVSQ0Ki94SEZQmNE",
+  "aps-department-of-foreign-affairs-and-trade":
+    "https://media.licdn.com/dms/image/v2/C560BAQE87WlinDn5Mw/company-logo_200_200/company-logo_200_200/0/1675297247918/department_of_foreign_affairs_and_trade_logo?e=2147483647&v=beta&t=myQ7QXRqIHOx-MkaAImribuAmml-mK1ekxKSMF2n1fU",
+  "aps-department-of-the-prime-minister-and-cabinet":
+    "https://media.licdn.com/dms/image/v2/D560BAQEkFOmhjW4aUw/company-logo_200_200/B56Z8aw5bnIoAE-/0/1782860453843/department_of_the_prime_minister_and_cabinet_logo?e=2147483647&v=beta&t=K3zxS6zDI2wrNpMbpjiPF6xIAuKyJM_PTQE9meeIe0U",
+  "aps-department-of-veterans-affairs":
+    "https://media.licdn.com/dms/image/v2/C560BAQGsl_8G72scfw/company-logo_200_200/company-logo_200_200/0/1631320179251?e=2147483647&v=beta&t=P6c4LthlaEiMru-5bCwAEjYczkuyNfJBpny-JNyS-hY",
+  "aps-digital-transformation-agency":
+    "https://media.licdn.com/dms/image/v2/D560BAQFnCX3IHvCA_Q/company-logo_200_200/B56Zyxpp5_JMAI-/0/1772507017188/digital_transformation_agency_logo?e=2147483647&v=beta&t=-iuJcxHeVbmR74c_9MVXJhDta1Q7hUAPhhSH7NsPFCI",
+  "aps-geoscience-australia":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQHLJkhpIdL8lg/company-logo_200_200/company-logo_200_200/0/1654654555576/geoscience_australia_logo?e=2147483647&v=beta&t=dV0UuT3Dau7flMkd6wmuCsvW-B1Y4K4Suojvkjdf_h4",
+  "aps-ip-australia":
+    "https://media.licdn.com/dms/image/v2/D560BAQEK1bZ_VOVKmw/company-logo_200_200/B56ZfJBjmRG0AI-/0/1751424318726/ip_australia_logo?e=2147483647&v=beta&t=BbLrJmI-UTAlCJF8k2r7UpKi9FC1bMOjpymp8EGKYUY",
+  "aps-national-archives-of-australia":
+    "https://media.licdn.com/dms/image/v2/C560BAQG65VcDFCvExQ/company-logo_200_200/company-logo_200_200/0/1651039232467/national_archives_of_australia_logo?e=2147483647&v=beta&t=eY00k1nDxdhj9M2aOGaOnXW2MUV7yihS5MqF8HRj8Tk",
+  "aps-national-indigenous-australians-agency":
+    "https://media.licdn.com/dms/image/v2/C560BAQFrClxYcNiO_Q/company-logo_200_200/company-logo_200_200/0/1630612646898/national_indigenous_australians_agency_logo?e=2147483647&v=beta&t=Bn0wRldCJuiUExq8F1qSCXn7-wxz5shC_o-IN2dGb-A",
+  "aps-national-library-of-australia":
+    "https://media.licdn.com/dms/image/v2/D560BAQGhoPn_KRsFYQ/company-logo_200_200/company-logo_200_200/0/1733790762136/national_library_of_australia_logo?e=2147483647&v=beta&t=ArrBvKrm_E9JXX0aMSUQk-ChCwlvk1aoE7GR5VxFj_U",
+  "aps-safe-work-australia":
+    "https://media.licdn.com/dms/image/v2/D560BAQEwmKrYNihBlA/company-logo_200_200/company-logo_200_200/0/1727685953565/safe_work_australia_logo?e=2147483647&v=beta&t=SBQllTzb7XyyGXozDiNmpjnARh8cTa7hunFrX--Z6Ww",
+  "aps-services-australia":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQEWSje_1aMOmg/company-logo_200_200/company-logo_200_200/0/1639525081959/services_australia_logo?e=2147483647&v=beta&t=xwqv459BKhb1ipfAlZYBGKlJdtxm7VPYyn1QWlfJUs4",
   asb: "https://media.licdn.com/dms/image/v2/C560BAQFSQCCFh0A2cA/company-logo_200_200/company-logo_200_200/0/1631412397286/austal__logo?e=2147483647&v=beta&t=qMsoAq0IVCvmOnC343zJXycFwp921iPcM2Ne7O7nLYI",
   bhp: "https://media.licdn.com/dms/image/v2/C4D0BAQELDYAj2D7aWw/company-logo_200_200/company-logo_200_200/0/1631313788325?e=2147483647&v=beta&t=zf-HklhmR9C3l2dIXEAOWxDY3RC9c8l6vXYm4VOK2DU",
   bmn: "https://media.licdn.com/dms/image/v2/C560BAQFluhgS-3K_2w/company-logo_200_200/company-logo_200_200/0/1630655148832/bannerman_resources_limited_logo?e=2147483647&v=beta&t=d-TbCJs412BQy9wrf9XYx2jRWNtVwXneaHSFoL-LDlg",
+  "brisbane-alq":
+    "https://media.licdn.com/dms/image/v2/D560BAQEvef0vRwt8aA/company-logo_200_200/company-logo_200_200/0/1719851393792/als_logo?e=2147483647&v=beta&t=b0TaPA0PTogCAClK28ztSfq25XwRC7hgQYB-i_HZmHc",
+  "brisbane-ape":
+    "https://media.licdn.com/dms/image/v2/D560BAQECl8HwyrixFg/company-logo_200_200/company-logo_200_200/0/1719257272038/eagers_automotive_limited_logo?e=2147483647&v=beta&t=_5hzInNVFgWpJENQroXuT44S_NRswXVc7rfuBJ9_zxQ",
+  "brisbane-aqz":
+    "https://media.licdn.com/dms/image/v2/C560BAQFcG-lZH5rlYQ/company-logo_200_200/company-logo_200_200/0/1660743250611/alliance_aviation_services_logo?e=2147483647&v=beta&t=-JF02ZM_by_OY61i7JJgQHNBR6KKHS-wvRC0eCCLSQc",
+  "brisbane-crn":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQEe0t-9SHn0Qw/company-logo_200_200/company-logo_200_200/0/1660705018587/coronado_global_resources_logo?e=2147483647&v=beta&t=uI3EIoo1wB0zKp8h3nsYfaNXvaB1zp2lxQe8u5RJNyo",
+  "brisbane-dtl":
+    "https://media.licdn.com/dms/image/v2/D560BAQGWvA10NpYbMg/company-logo_200_200/B56ZuLROqqJMAI-/0/1767568108620/data3_logo?e=2147483647&v=beta&t=BAvBOumXdwa_hO-_92oCgQYueeWi6kdbQBOxbRyj4nQ",
+  "brisbane-mp1":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQEjssYzrMlrNA/company-logo_200_200/B4EZ2x4AtrJUAI-/0/1776805743825/megaport_logo?e=2147483647&v=beta&t=Wm2-FIxt2TarQc9T2n6QMzpOG9JYOiEJdP89_k_j5j8",
+  "brisbane-nxt":
+    "https://media.licdn.com/dms/image/v2/C560BAQG3iLEhQiSjAA/company-logo_200_200/company-logo_200_200/0/1630595961691/nextdc_logo?e=2147483647&v=beta&t=-2kmeRSGf3YQqTc-OIsvK_omyQvGNDmw-XV4xOKw44k",
+  "brisbane-sun":
+    "https://media.licdn.com/dms/image/v2/D560BAQGGtxWynEwadw/company-logo_200_200/B56Z.nnQ.IHIAE-/0/1785223516719?e=2147483647&v=beta&t=bBQb7ttFy3KuzdfDN20jJH0-yCcTLRcXJzr385ITHfI",
+  "brisbane-vgn":
+    "https://media.licdn.com/dms/image/v2/D560BAQFgmY7Tl_5nYw/company-logo_200_200/B56ZkmTe4CHAAM-/0/1757284265978/virgin_australia_logo?e=2147483647&v=beta&t=wkTPdOnDrl2m_Vi7Io3bAfVcXaU9QT3UonDIHRFs2zI",
   ccv: "https://media.licdn.com/dms/image/v2/C4D0BAQFupwbRpkKbcQ/company-logo_200_200/company-logo_200_200/0/1630520133422/domaxis_be_logo?e=2147483647&v=beta&t=T4VcBECouHmHD7oihkOnwPBihSh9moGuuyv6UemkHT4",
   chevron:
     "https://media.licdn.com/dms/image/v2/C560BAQFIzPIYfEdWdw/company-logo_200_200/company-logo_200_200/0/1630597725146/chevron_logo?e=2147483647&v=beta&t=vGrex5btdgvrkVlQ0gZH7gqOyUqFvY2EW5Ws4FsEN2U",
@@ -41,16 +110,122 @@ export const LINKEDIN_LOGO: Record<string, string> = {
   jms: "https://media.licdn.com/dms/image/v2/D560BAQFbDAznatuaTw/company-logo_200_200/company-logo_200_200/0/1731306323538/jupitermines_logo?e=2147483647&v=beta&t=NNm37dwSNktjSQB5t_ZRIP37zMumr_eCq15phWCRQe4",
   ltr: "https://media.licdn.com/dms/image/v2/C560BAQGpLRMr_gz1-Q/company-logo_200_200/company-logo_200_200/0/1649132718841/liontown_resources_limited_logo?e=2147483647&v=beta&t=Q9jKrg4QvdEgWTk7PCkKblyHkne1bpp8PWiexhYq5qI",
   mah: "https://media.licdn.com/dms/image/v2/D560BAQF6he3PVnOU-g/company-logo_200_200/company-logo_200_200/0/1684822925507/macmahon_logo?e=2147483647&v=beta&t=LsTQeOXHIEYrMJ-ztXOk114MZOXh6ctP7EyxEOZjRJ0",
+  "melbourne-amc":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQF0sed-lbowMg/company-logo_200_200/company-logo_200_200/0/1630499181382/amcor_logo?e=2147483647&v=beta&t=hZfa7WVAcSnlFS_3Zr0q-X5jkNvhNuMNxrRZFC9E6Ro",
+  "melbourne-col":
+    "https://media.licdn.com/dms/image/v2/D560BAQEE1puAFu2smw/company-logo_200_200/company-logo_200_200/0/1688961657986/colesgroup_logo?e=2147483647&v=beta&t=Zp2ARZJGEaz6LcPUOfug0-q5PdCOlbwUANAxapBngZ4",
+  "melbourne-cpu":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQGxLeQ98ONK5A/company-logo_200_200/B4EZU37fJ4GgAI-/0/1740400096277/computershare_logo?e=2147483647&v=beta&t=9w_bTPtLqGkpbk66RbUpLuZ3_ABIzsoudfAmgy7kpSk",
+  "melbourne-csl":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQEZFaB6g9vwMg/company-logo_200_200/B4EZ8d5ycLK4AM-/0/1782913116133/csl_logo?e=2147483647&v=beta&t=2xR2MXlnC4mWJ6_8XtPdKV4i7h_ByRuSanodaVtSW0Q",
+  "melbourne-ifl":
+    "https://media.licdn.com/dms/image/v2/D560BAQFce8Zj8GtzEw/company-logo_200_200/company-logo_200_200/0/1719884844361/insignia_financial_logo?e=2147483647&v=beta&t=aqixWLjYIVphCK5K_lOwEOUdZOfo2cJVR2R4BYNGGrU",
+  "melbourne-mpl":
+    "https://media.licdn.com/dms/image/v2/C560BAQGjlU8di6JN3w/company-logo_200_200/company-logo_200_200/0/1657671909890/medibank_logo?e=2147483647&v=beta&t=AwrbSGgErsa6gdlV6uXOnhWwIRhk7DdEMtiGVh0sQ-0",
+  "melbourne-msb":
+    "https://media.licdn.com/dms/image/v2/D560BAQFTNSA3ita4Fg/company-logo_200_200/company-logo_200_200/0/1711578287087/mesoblast_logo?e=2147483647&v=beta&t=qpG8f-KiQMea_NwbNPRB4UqK1Fc8Wh8t06Mb7JrseAM",
   "melbourne-nab":
     "https://media.licdn.com/dms/image/v2/D560BAQEpfH1XRQvlXQ/company-logo_200_200/B56Zg0mZ6gG4AM-/0/1753229140372/nab_logo?e=2147483647&v=beta&t=617bX7F-U8oiTdR7NLwRZdV8PAMPGRZ4uxGeeeWjMZ4",
+  "melbourne-nwl":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQGxq63NRnPlEw/company-logo_200_200/company-logo_200_200/0/1642674993385/netwealth_logo?e=2147483647&v=beta&t=Ilm4KFcvI4houyMdVmcjsxb0Evk9B--jsT-pKEl4WfI",
   "melbourne-ori":
     "https://media.licdn.com/dms/image/v2/C4E0BAQEyR-MmWYkDcQ/company-logo_200_200/company-logo_200_200/0/1631312717785?e=2147483647&v=beta&t=ED7EUGUmEkOEa3zzZIBGMPsRqSMPu3yHNLMUNCb6KnY",
+  "melbourne-pxa":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQG0rr5cZLl06Q/company-logo_200_200/company-logo_200_200/0/1656651013945/pexa_logo?e=2147483647&v=beta&t=n5b1itLL7cAxgriPNsszRVzMYIbJZq1cnTjCPMu-lEw",
+  "melbourne-rea":
+    "https://media.licdn.com/dms/image/v2/C560BAQEA8N_DSsRn0Q/company-logo_200_200/company-logo_200_200/0/1636331627220/rea_group_logo?e=2147483647&v=beta&t=RLzmsj5pZTDXqJILxmyfoccDyvHLAMFthACryIh_CLw",
+  "melbourne-sek":
+    "https://media.licdn.com/dms/image/v2/C560BAQFGixkrB-vxvQ/company-logo_200_200/company-logo_200_200/0/1631308964609?e=2147483647&v=beta&t=odw7L6qwNCwVhzDpRVFQ80yIgycu9zHAmGcVBqaeWKc",
   "melbourne-tls":
     "https://media.licdn.com/dms/image/v2/D560BAQGNrMi-laFnUw/company-logo_200_200/company-logo_200_200/0/1684822727411/telstra_logo?e=2147483647&v=beta&t=l6120HmvQD9JWfSdV_4X7YsFM6CDVdWoIMwLaGTunDg",
+  "melbourne-vea":
+    "https://media.licdn.com/dms/image/v2/D560BAQE6KhrIvFIw1g/company-logo_200_200/B56ZaClWZHHsAI-/0/1745947551735/viva_energy_logo?e=2147483647&v=beta&t=juxZsiKIymu5VWJ5ogaKNg18ecyT3fr16rA5Q6UWe18",
   mgt: "https://media.licdn.com/dms/image/v2/C560BAQHMVh5O1MkBXA/company-logo_200_200/company-logo_200_200/0/1645251691033/magnetite_mines_limited_logo?e=2147483647&v=beta&t=DpPXPv37TLtE9nho3nxVbkAMTkUX_ca2IrpgopALr3A",
   min: "https://media.licdn.com/dms/image/v2/D4E0BAQE_yUw4ASAvJQ/company-logo_200_200/B4EZ5oKCQqG0AE-/0/1779863923127/mineral_resources_limited_logo?e=2147483647&v=beta&t=XZAn7twUFxQQlLIAcFpC_InUi3QEs_aNogcTyDq_XwY",
   mnd: "https://media.licdn.com/dms/image/v2/C560BAQF0L7BeDMNdqA/company-logo_200_200/company-logo_200_200/0/1630580091808/monadelphous_logo?e=2147483647&v=beta&t=Qo_S90SyrpzZYYOD7TdduJwIiasDXBfbqzrtWUbaY2c",
   nst: "https://media.licdn.com/dms/image/v2/D560BAQGqYuX_NxfPvg/company-logo_200_200/company-logo_200_200/0/1734503369120/northern_star_resources_limited_logo?e=2147483647&v=beta&t=SgMSQOwXSe3sPtEiZjhd5U0LL-V3SkBHYzB0oXOhJ08",
+  "nsw-gov-aboriginal-affairs-nsw":
+    "https://media.licdn.com/dms/image/v2/D560BAQEDkEIpeJWPtg/company-logo_200_200/company-logo_200_200/0/1695966995120/aboriginal_affairs_logo?e=2147483647&v=beta&t=3DwxM4nzCJyob5PB2NMVNjinpWXNdBjd0eq8itO2O74",
+  "nsw-gov-australian-museum":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQFJB4G2imn7Pg/company-logo_200_200/B4EZ0s4bOHJAAQ-/0/1774574483224/australian_museum_logo?e=2147483647&v=beta&t=OBlicVgmmOnrznIGTmIcEroWFzDtBFO_Ir7ac29R4uk",
+  "nsw-gov-cancer-institute-nsw":
+    "https://media.licdn.com/dms/image/v2/C560BAQGs0htvC3uz8Q/company-logo_200_200/company-logo_200_200/0/1649664810434/cancer_institute_nsw_logo?e=2147483647&v=beta&t=6HRqksgKLzC6yeesxIB6pjZERM1wA2f5QbyIUU1q2sU",
+  "nsw-gov-clinical-excellence-commission":
+    "https://media.licdn.com/dms/image/v2/D560BAQE9srJzXw8Raw/company-logo_200_200/B56ZVaU.nVHoAI-/0/1740977204050/clinical_excellence_commission_logo?e=2147483647&v=beta&t=eYXiJZYA_yfiHIjQPU0Z_uBzNeJuuRuhfTOS0I0dV2o",
+  "nsw-gov-corrective-services-nsw":
+    "https://media.licdn.com/dms/image/v2/D560BAQGql6uKQnynEw/company-logo_200_200/B56ZbMr9MKH0AI-/0/1747190797460/corrective_services_nsw_logo?e=2147483647&v=beta&t=55i3Az8QX5kSnZO9vo461P7truGA033Ga_6VIo-UIRM",
+  "nsw-gov-create-nsw":
+    "https://media.licdn.com/dms/image/v2/D560BAQE_9twfWE1KKw/company-logo_200_200/B56Zyrea7HIcAM-/0/1772403405450/creatensw_logo?e=2147483647&v=beta&t=Kb1uOHiMEk1fiOQeme_FNUQIkSYFvtaljumZ3GXbzTY",
+  "nsw-gov-destination-nsw":
+    "https://media.licdn.com/dms/image/v2/C560BAQHPZ3S818eMZA/company-logo_200_200/company-logo_200_200/0/1649740109769/destination_nsw_logo?e=2147483647&v=beta&t=6MwWUpb99dcRJE6ohyib_6Dcc0SMTZR7KIMKBjzo8-g",
+  "nsw-gov-ehealth-nsw":
+    "https://media.licdn.com/dms/image/v2/D560BAQHP0dPcvWCCgA/company-logo_200_200/B56ZypoPi0GoAI-/0/1772372426332/ehealth_nsw_logo?e=2147483647&v=beta&t=O7mgYursFfb_K9YakRSvYjjyQzK69-QqBUnUqjRTAaw",
+  "nsw-gov-essential-energy":
+    "https://media.licdn.com/dms/image/v2/D560BAQE8wTx7qBVrJg/company-logo_200_200/company-logo_200_200/0/1719257673770/essential_energy_logo?e=2147483647&v=beta&t=DwkdpaMpzsw60AXEa6Tj9-k40gPTlSUdmwoPuVUe8Rw",
+  "nsw-gov-forestry-corporation-of-nsw":
+    "https://media.licdn.com/dms/image/v2/C560BAQGyiyi0RPIygQ/company-logo_200_200/company-logo_200_200/0/1631388939843?e=2147483647&v=beta&t=Hb188uQhuuKsfoH6clgnGAFEXAm9hvYnV0ywRTVRd-4",
+  "nsw-gov-health-infrastructure":
+    "https://media.licdn.com/dms/image/v2/D560BAQELFu5Bwr55ig/company-logo_200_200/B56ZyrYC08IAAM-/0/1772401733406/health_infrastructure_logo?e=2147483647&v=beta&t=2yca4oSE7qjpJ3VhYZTUpiB_BzRMvHBT4QMHQgAJukg",
+  "nsw-gov-healthshare-nsw":
+    "https://media.licdn.com/dms/image/v2/D560BAQEBRh2FCCg9Tw/company-logo_200_200/B56ZyrkbDYKkAM-/0/1772404979118/healthsharensw_logo?e=2147483647&v=beta&t=Kj1sFhGiJAduot_SZT2_S-ObIKrQcdw05oiiRo4sJyw",
+  "nsw-gov-hunter-water":
+    "https://media.licdn.com/dms/image/v2/C560BAQF_iC8HH8bFTg/company-logo_200_200/company-logo_200_200/0/1630573019167/hunter_water_corporation_logo?e=2147483647&v=beta&t=7O882PJyPoTkRL3EP50BPbQEtCXW84iwLg3S1zAEHFc",
+  "nsw-gov-independent-pricing-and-regulatory-tribunal":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQF8t7JTs28LgA/company-logo_200_200/company-logo_200_200/0/1630548834496/independent_pricing_and_regulatory_tribunal_logo?e=2147483647&v=beta&t=eHeZ4iZiUSOgnoLVdij4ZF2N78jFHdlYuXtq2u-lwNY",
+  "nsw-gov-landcom":
+    "https://media.licdn.com/dms/image/v2/D560BAQGBT9rGdcOqtw/company-logo_200_200/B56Z0kePKMIMAI-/0/1774433400362/landcom_logo?e=2147483647&v=beta&t=-9UECAJSJF1WYnFa3mEXowwUOqEm6410THQDpXucU2c",
+  "nsw-gov-law-enforcement-conduct-commission":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQFiHXn0rRnR3w/company-logo_200_200/company-logo_200_200/0/1656394000539/law_enforcement_conduct_commission_logo?e=2147483647&v=beta&t=3ij_Ywpufjq8FVgK5GNvuTeZUxgFpLcjkMFgSFuCLBA",
+  "nsw-gov-legal-aid-nsw":
+    "https://media.licdn.com/dms/image/v2/C560BAQEavoBY4QVX5w/company-logo_200_200/company-logo_200_200/0/1630660726241/legalaidnsw_logo?e=2147483647&v=beta&t=y_IM8JIsxTH0Wyf9FtQlpLkJv5nSkUG7UiiFSIddZNQ",
+  "nsw-gov-local-land-services":
+    "https://media.licdn.com/dms/image/v2/D560BAQG8VI87HK631Q/company-logo_200_200/B56ZyrhLdbJMAI-/0/1772404128672/local_land_services_logo?e=2147483647&v=beta&t=LDKMLYMjc9sC46AuhrIH1aonwktcGzxNl5eWdeeHaF0",
+  "nsw-gov-multicultural-nsw":
+    "https://media.licdn.com/dms/image/v2/D560BAQFPaa88xto4dw/company-logo_200_200/B56Z81tvqEKUAE-/0/1783312612193/multicultural_nsw_logo?e=2147483647&v=beta&t=UP-vn97aH15rkzd2dr-5uIky0May9PkklBf9Cn8hgY0",
+  "nsw-gov-natural-resources-access-regulator":
+    "https://media.licdn.com/dms/image/v2/D560BAQExdUW3xA_J1Q/company-logo_200_200/B56ZysBTgaIwAI-/0/1772412549776/natural_resources_access_regulator_logo?e=2147483647&v=beta&t=YX3f62zduqJtaAiO_EfYFq1abgUx8-YbZMPPiL2iLcs",
+  "nsw-gov-northern-sydney-local-health-district":
+    "https://media.licdn.com/dms/image/v2/C560BAQGJf7XCWOR2Tw/company-logo_200_200/company-logo_200_200/0/1678238448010/northern_sydney_local_health_district_logo?e=2147483647&v=beta&t=ivmyVPGKEZmkciBsP28XZX7fcIBFFpaYrAUBzm0nf5U",
+  "nsw-gov-nsw-ambulance":
+    "https://media.licdn.com/dms/image/v2/D560BAQGW-IjPVdRLXw/company-logo_200_200/B56ZyrS8fRIAAI-/0/1772400396699/nsw_ambulance_logo?e=2147483647&v=beta&t=NzFGaOVy9EXGbgfXWfPRE4gYkLA5XT4UIayljMnZN40",
+  "nsw-gov-nsw-education-standards-authority":
+    "https://media.licdn.com/dms/image/v2/D560BAQFl3cFH3wn1fA/company-logo_200_200/B56ZyrrkO7KkAI-/0/1772406850902/nsw_education_standards_authority_logo?e=2147483647&v=beta&t=GR-XAKjgmncW_7fzoXRG_8CtCKtZZslzVmn_i2my7Y0",
+  "nsw-gov-nsw-electoral-commission":
+    "https://media.licdn.com/dms/image/v2/C560BAQEaCr_IYd1bdQ/company-logo_200_200/company-logo_200_200/0/1630620174637/nsw_electoral_commission_logo?e=2147483647&v=beta&t=qfVkUirEUZeMuNp8eE8vZxqy1Ii54cz4Qw0rvHOdeTE",
+  "nsw-gov-nsw-health":
+    "https://media.licdn.com/dms/image/v2/D560BAQF0-ijZvgusig/company-logo_200_200/B56ZypmxTgJMAI-/0/1772372039992/nsw_health_logo?e=2147483647&v=beta&t=MZ0R23sSjPt0MVFbOP8heRuJUQhWiMFg0JT8ZoxZpMA",
+  "nsw-gov-nsw-health-pathology":
+    "https://media.licdn.com/dms/image/v2/D560BAQE11FyTjWW3DQ/company-logo_200_200/B56Zyokdx_GoAM-/0/1772354659790?e=2147483647&v=beta&t=iL7hi26rf5RKkgUoQmRA5iQRs-60J4GdXrWXLJlopTw",
+  "nsw-gov-nsw-ombudsman":
+    "https://media.licdn.com/dms/image/v2/C560BAQFB6xUPmurnsA/company-logo_200_200/company-logo_200_200/0/1678060576886/nsw_ombudsman_logo?e=2147483647&v=beta&t=n5AXSg_KiYLPdW5E802IpkZH22j4f3gif2RH2LNYWxs",
+  "nsw-gov-nsw-police-force":
+    "https://media.licdn.com/dms/image/v2/D560BAQGhyC7gMEAEfQ/company-logo_200_200/B56ZyroMmpK8AI-/0/1772405969114/nsw_police_force_logo?e=2147483647&v=beta&t=f6VfSu2QSj7k8K2VrOpwWx29hZIbmSfbXTPXT8al3gA",
+  "nsw-gov-nsw-rural-fire-service":
+    "https://media.licdn.com/dms/image/v2/D560BAQGn5B9Jx6ef4g/company-logo_200_200/B56Zyrv_7bIcAI-/0/1772408013291/nsw_rural_fire_service_logo?e=2147483647&v=beta&t=IvswoqX_extvewQMVyC3K9HPuJ5UgBOvykIUwOizGGo",
+  "nsw-gov-nsw-treasury":
+    "https://media.licdn.com/dms/image/v2/D560BAQF1GWsRzLUYYw/company-logo_200_200/B56Zyr.uMPIYAI-/0/1772411872500/nsw_treasury_logo?e=2147483647&v=beta&t=r9rwPS8fpF2HKT0eceSgKYF1eeLv4k5W2ITJz1cwhV8",
+  "nsw-gov-nsw-trustee-and-guardian":
+    "https://media.licdn.com/dms/image/v2/D560BAQGW62oJmzqHcQ/company-logo_200_200/B56ZyrWE4gIwAI-/0/1772401217620/nswtg_logo?e=2147483647&v=beta&t=QI7UrFQ_IBFZvq4Wig24HJw1k9eRMgjAroeOiiAhiEg",
+  "nsw-gov-office-of-the-director-of-public-prosecutions":
+    "https://media.licdn.com/dms/image/v2/C560BAQGTYXBFwdzTcA/company-logo_200_200/company-logo_200_200/0/1632182455280/officeofthedirectorofpublicprosecutions_logo?e=2147483647&v=beta&t=NNPQVC9FKwTttVay7s5l48KIQ8uGwPdAkb-4xm5MNLc",
+  "nsw-gov-revenue-nsw":
+    "https://media.licdn.com/dms/image/v2/D560BAQEY3Phq64bqEQ/company-logo_200_200/B56ZyrXtHKIYAI-/0/1772401644619/revenuensw_logo?e=2147483647&v=beta&t=JkWKm-RmXrDJrp9_XGe7k79whrYvLf6KiwsMvZdYE6I",
+  "nsw-gov-service-nsw":
+    "https://media.licdn.com/dms/image/v2/C560BAQHMnQRSKU-FRg/company-logo_200_200/company-logo_200_200/0/1645134217947/servicensw_logo?e=2147483647&v=beta&t=cuAvkEtlEqWWSDRQLns87KG5K-lIMGC0VLu1BIdXuFM",
+  "nsw-gov-sydney-local-health-district":
+    "https://media.licdn.com/dms/image/v2/D560BAQF5ws9O2iWeiQ/company-logo_200_200/B56ZyxPmLXKEAI-/0/1772500183691?e=2147483647&v=beta&t=1jHOV_jj02F5fxzw7CmH-iycj06cQWGPz4FEBM6XG0E",
+  "nsw-gov-sydney-opera-house":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQHWSH6QYaifCQ/company-logo_200_200/B4EZ60MmQAHsAE-/0/1781139662059/sydney_opera_house_logo?e=2147483647&v=beta&t=J3DBLLDWQBDU0Q_8xiicmycR3epIRMI_Je-YJb63bSY",
+  "nsw-gov-sydney-water":
+    "https://media.licdn.com/dms/image/v2/D560BAQEDzCFiUra_6w/company-logo_200_200/B56Zyw7LSiJ8AI-/0/1772494829205/sydney_water_logo?e=2147483647&v=beta&t=pDjuIF4Nvm3CZmZ8PY1D61W2nYWLeKh_Pa0Da4ra8FU",
+  "nsw-gov-taronga-conservation-society-australia":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQEbrmGi1vAxXQ/company-logo_200_200/company-logo_200_200/0/1631327574574?e=2147483647&v=beta&t=SurxNg-h6AlgktCUYDkaREPa8m0Nt9Ov41Q43Ho1jCc",
+  "nsw-gov-transport-for-nsw":
+    "https://media.licdn.com/dms/image/v2/D560BAQFMX8mtL7ufHw/company-logo_200_200/B56Zyr2KcyJQAI-/0/1772409629265/transport_for_nsw_logo?e=2147483647&v=beta&t=vvCe5BCYuMtCZBIqFcsYVnk-Jlb1Gcl4unqlxM8CXWo",
+  "nsw-gov-waternsw":
+    "https://media.licdn.com/dms/image/v2/D560BAQFKoQGOvR8-gg/company-logo_200_200/company-logo_200_200/0/1715643664585/waternsw_logo?e=2147483647&v=beta&t=--tIBU2D6eiLbFc--birxYxvxqDMArvjIyz2m_mMYzk",
+  "nsw-gov-western-sydney-local-health-district":
+    "https://media.licdn.com/dms/image/v2/D560BAQFtjWdYbTghiw/company-logo_200_200/B56ZyrpAIwHUAI-/0/1772406178716/westernsydneylocalhealthdistrict_logo?e=2147483647&v=beta&t=hNMVojJtAuHhPwehH7zTg5X0QNjs26R-uFxo2twuFNQ",
   "nt-gov-batchelor-institute-of-indigenous-tertiary-education":
     "https://media.licdn.com/dms/image/v2/D560BAQHjMTygPHickQ/company-logo_200_200/company-logo_200_200/0/1734413115365/batchelor_institute_of_indigenous_tertiary_education_logo?e=2147483647&v=beta&t=m9S7GzVJ67ZAubKatDJFKt0CN-i7qhAi51sYeQWytnc",
   "nt-gov-land-development-corporation":
@@ -137,20 +312,58 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/D560BAQEcQKALqz4Ykg/company-logo_200_200/company-logo_200_200/0/1727755442166/red_5_limited_logo?e=2147483647&v=beta&t=Kb7SwjZ9KdDFFeFII-wm_ZfpvomqIwCSPldPwvUeiRk",
   "priv-abn-group":
     "https://media.licdn.com/dms/image/v2/D560BAQHN0saAakQIhA/company-logo_200_200/company-logo_200_200/0/1720075961817/abn_group_logo?e=2147483647&v=beta&t=drsIqBekyjFOzXofzbq1BZbTut5_PaW4gTaGQXHYfF4",
+  "priv-anytime-fitness":
+    "https://media.licdn.com/dms/image/v2/C560BAQGns8ZPWsFMSw/company-logo_200_200/company-logo_200_200/0/1673479378826?e=2147483647&v=beta&t=8d6JCJ0yr4ofFy-wrWuvWcPJDyc6o0YpimEYlb_Mjsk",
+  "priv-apco-service-stations":
+    "https://media.licdn.com/dms/image/v2/C560BAQFFyOJg6WhkYg/company-logo_200_200/company-logo_200_200/0/1648437994749/apco_service_stations_pty_ltd__logo?e=2147483647&v=beta&t=xQctNM9r49_zZY-81UOlSmPKtlaL24qM7As6YJ8DfC8",
+  "priv-aurecon":
+    "https://media.licdn.com/dms/image/v2/D560BAQHvUDy6sPqLsw/company-logo_200_200/company-logo_200_200/0/1688338608906/aurecon_logo?e=2147483647&v=beta&t=3qti6YKVutsesrkoMg8bs6_Xpf6slTv-vatq_wdsznA",
+  "priv-ausgrid":
+    "https://media.licdn.com/dms/image/v2/D560BAQFMy56GevBoNA/company-logo_200_200/company-logo_200_200/0/1710114077712/ausgrid_logo?e=2147483647&v=beta&t=nQ2qR_oBByyv8aeNtyOXUOvXbDbU0dxbvu_ZNxt4H24",
+  "priv-baiada-poultry":
+    "https://media.licdn.com/dms/image/v2/C510BAQHlcREgtJoYQg/company-logo_200_200/company-logo_200_200/0/1631438485829/baiada_poultry_logo?e=2147483647&v=beta&t=LMJwHmd0ONptu-u-dzLX1bMdFYJmE5TIsUPWzqBaF9A",
+  "priv-calvary-health-care":
+    "https://media.licdn.com/dms/image/v2/C560BAQFCZ3tzpxwVLA/company-logo_200_200/company-logo_200_200/0/1676858307397/calvaryhealthcare_logo?e=2147483647&v=beta&t=8FUoc_ZHOU40bGLH1Eu2jzeoMvqJMFxGeC04HX-4WsA",
   "priv-cbh-group":
     "https://media.licdn.com/dms/image/v2/C510BAQGADQyx7sxxEg/company-logo_200_200/company-logo_200_200/0/1631423552634/cbh_group_logo?e=2147483647&v=beta&t=ypegZHiCQhvxl750Jys98IY8skL1s0TiA6pxl26kcos",
   "priv-cjd-equipment":
     "https://media.licdn.com/dms/image/v2/C560BAQHnBGeKr4VbvA/company-logo_200_200/company-logo_200_200/0/1679020083538/cjdequipment_logo?e=2147483647&v=beta&t=rzP4fs2fxbeTvVyZGCaRg2Oy5Mr-7O4b-DjZNBwQmVw",
+  "priv-clayton-utz":
+    "https://media.licdn.com/dms/image/v2/D560BAQEWE6pUlzP7gA/company-logo_200_200/B56ZfOwql9GQAM-/0/1751520553738/clayton_utz_logo?e=2147483647&v=beta&t=dOOW45stbZaFFwifdidP_E6JyXOYBCf4NiN2akIf7B4",
   "priv-detmold-group":
     "https://media.licdn.com/dms/image/v2/C510BAQEvydKsyOxOew/company-logo_200_200/company-logo_200_200/0/1631372518818?e=2147483647&v=beta&t=09cHOPL7R9jnAKezmPdsREC8479wJpMfA82lbgQQO4o",
+  "priv-fdc":
+    "https://media.licdn.com/dms/image/v2/D4D0BAQH7vw_YApdf-g/company-logo_200_200/company-logo_200_200/0/1704344593810/fdc_limited_logo?e=2147483647&v=beta&t=iSy0TIJToUS0CotD6RxMszpJr0rFXP5mgrgp0Z7umDg",
   "priv-georgiou":
     "https://media.licdn.com/dms/image/v2/D560BAQFO-jnmGJ8aYA/company-logo_200_200/B56ZiW5qraHcAQ-/0/1754878356601/georgiou_logo?e=2147483647&v=beta&t=qmOTp_hlvtr6y3DuD8eB9voUWUNQMShHCvxZ9iPcxDw",
+  "priv-ghd":
+    "https://media.licdn.com/dms/image/v2/C560BAQFjSC3BiyESeg/company-logo_200_200/company-logo_200_200/0/1630656148999/ghd_logo?e=2147483647&v=beta&t=GVgFZ6npdlkgSKVXiA9QuH4Qvf6pekgRU8GF0i6zpv8",
+  "priv-gmhba":
+    "https://media.licdn.com/dms/image/v2/C510BAQFyFmm5JxLZ_Q/company-logo_200_200/company-logo_200_200/0/1631360962806?e=2147483647&v=beta&t=mfy7w8jm4gTjdeNxD8MMo8kN0qiISi2iOYzD-KoGG3o",
+  "priv-hammondcare":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQEjVMGIbb9qHg/company-logo_200_200/company-logo_200_200/0/1653026863327/hammondcare_logo?e=2147483647&v=beta&t=R6_mq8_S_oEiUpk1gxpU2LQjH6uSiPaV1LcI_DwYtUk",
   "priv-hancock-prospecting":
     "https://media.licdn.com/dms/image/v2/D560BAQEjA2B5RiNWWA/company-logo_200_200/B56ZhQk3H_HMAI-/0/1753698498263/hancock_prospecting_group_logo?e=2147483647&v=beta&t=KOx08bMMA4b11QHFiikadzhvG0NChdRy9jCG4s1h0NM",
+  "priv-hansen-yuncken":
+    "https://media.licdn.com/dms/image/v2/C560BAQHFGNVTnItP0g/company-logo_200_200/company-logo_200_200/0/1631400728187/hansen_yuncken_logo?e=2147483647&v=beta&t=ckK7bCm1rZRJQH2XxC5Oza1gEiZUXfZhDhdPpOUGtsM",
   "priv-hbf":
     "https://media.licdn.com/dms/image/v2/D560BAQGlqaZx_VBiCQ/company-logo_200_200/company-logo_200_200/0/1695186068721/hbf_logo?e=2147483647&v=beta&t=JDXBT5pTrleZL6V7dGcjMx4VugC0ABMH6IZ4iksf0pU",
   "priv-john-hughes-group":
     "https://media.licdn.com/dms/image/v2/C4D0BAQECAbDjqnKjeg/company-logo_200_200/company-logo_200_200/0/1631364664832/johnhughesgroup_logo?e=2147483647&v=beta&t=hKTM-0PWMJn0at4rqxDgTg1N1lFyEkXb5LljmarP1DI",
+  "priv-life-without-barriers":
+    "https://media.licdn.com/dms/image/v2/C560BAQHjpy5OKmd-2w/company-logo_200_200/company-logo_200_200/0/1678057681481/life_without_barriers_logo?e=2147483647&v=beta&t=7V3VTzsDmmubYRWYtjyUyU3dsDa0QaYNUYxvn5Pl9F8",
+  "priv-linfox":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQEayDnGZaf-vw/company-logo_200_200/company-logo_200_200/0/1631303541528?e=2147483647&v=beta&t=SCmqav72ERqzNo70uURYdgb9pO0S4oQzBaGNla2b5CQ",
+  "priv-melbourne-airport":
+    "https://media.licdn.com/dms/image/v2/C510BAQFu_-MWONzxXw/company-logo_200_200/company-logo_200_200/0/1631424038709/melbourne_airport_logo?e=2147483647&v=beta&t=N3qL45OAUs2NO4hMBZ6cZi6PoA3LTm8HB_BK9d8qw_U",
+  "priv-metricon-homes":
+    "https://media.licdn.com/dms/image/v2/D560BAQGAdnVHzlSauQ/company-logo_200_200/B56ZVogvniGUAM-/0/1741215169282/grihamliving_logo?e=2147483647&v=beta&t=ievW87g0kbCaSvc8IrMFspHMJfEwypubGnySdhk8LWo",
+  "priv-mort-co":
+    "https://media.licdn.com/dms/image/v2/D560BAQFww_zv4YSTjw/company-logo_200_200/company-logo_200_200/0/1684976405093/mortco_logo?e=2147483647&v=beta&t=Ze3_1eRM6FqJusEOF38Nyx1rcJTSQHeNrHTJ0ri7xLA",
+  "priv-mpc-kinetic":
+    "https://media.licdn.com/dms/image/v2/D560BAQEbKVH5sHcjnw/company-logo_200_200/company-logo_200_200/0/1727230428798/mpc_kinetic_logo?e=2147483647&v=beta&t=WFakStmQqso2aMApDgfE5erBjutNVW8546m8m0RslzY",
+  "priv-patterson-cheney":
+    "https://media.licdn.com/dms/image/v2/C560BAQEN-AC1GdAP7A/company-logo_200_200/company-logo_200_200/0/1630607986246?e=2147483647&v=beta&t=TPCdx0uv_RCv-inuuUjjsfxtRFS2pNDx1YjNBRYeoM0",
   "priv-people-first-bank":
     "https://media.licdn.com/dms/image/v2/D560BAQF5DSFlDK40VA/company-logo_200_200/company-logo_200_200/0/1709264793319/people_first_bank_logo?e=2147483647&v=beta&t=0DAQQsanv13bGlYEEs6va2qoc6k103W5Q1gBQlo2wNc",
   "priv-perron-group":
@@ -159,13 +372,77 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/C560BAQGoeG7rrw2SyA/company-logo_200_200/company-logo_200_200/0/1630593639470/perth_airport_logo?e=2147483647&v=beta&t=DOGkAUYGLAVtyp8gUI5EJ_uYRvowBCp67huQovKPCsY",
   "priv-peter-kittle-motor-company":
     "https://media.licdn.com/dms/image/v2/C560BAQEGR5KosVMN2A/company-logo_200_200/company-logo_200_200/0/1631348035155?e=2147483647&v=beta&t=uBQ5NhKXFf_MwlQ9pnxhNxWC6H6-1vDEDmxEUrqk3GY",
+  "priv-pwc-australia":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQFVfAbYbmcpvA/company-logo_200_200/B4EZaB6j58H0AI-/0/1745936334912/pwc_logo?e=2147483647&v=beta&t=AZ371jrBpz0f1_o-juZo_WSpZRTfFDYlXTGejFHG1k4",
   "priv-rac-of-wa":
     "https://media.licdn.com/dms/image/v2/C4E0BAQETHjv0Zh2jow/company-logo_200_200/company-logo_200_200/0/1663679515144/rac_logo?e=2147483647&v=beta&t=MUqEiEK3YjzdSfpRXq3oRGlV7yYRXTpAOjznaCkZT9g",
+  "priv-racq":
+    "https://media.licdn.com/dms/image/v2/D560BAQE6TweSH2Lrbg/company-logo_200_200/company-logo_200_200/0/1724028630801/racq_logo?e=2147483647&v=beta&t=_fjJBtHTt1qwUrYy2VVYRa_mycjglVyKhbot-zB1qXc",
+  "priv-racv":
+    "https://media.licdn.com/dms/image/v2/C560BAQF-0jYLoHltdQ/company-logo_200_200/company-logo_200_200/0/1644464295556/racv_logo?e=2147483647&v=beta&t=DhETbfo7KBp2Ud_e4_1T2EABu2e9jSNOJvUeDi80VDM",
+  "priv-refuelling-solutions":
+    "https://media.licdn.com/dms/image/v2/D4D0BAQFhYueLdlXr9Q/company-logo_200_200/B4DZyeSImbJYAI-/0/1772182081067?e=2147483647&v=beta&t=4lgGbxzbp3ghddPxz6Wf5zBXGugRR8E8kLyv3YHeXu4",
   "priv-sarah-group":
     "https://media.licdn.com/dms/image/v2/D560BAQFG9Alib8Fs2Q/company-logo_200_200/B56ZhYUG7QHQAM-/0/1753828323454/sarah_group_logo?e=2147483647&v=beta&t=aFCOgvywTQRNfK0DuREnl8LABkdpFb8QLhY92fo-OAc",
+  "priv-spotlight":
+    "https://media.licdn.com/dms/image/v2/C560BAQGCCQT4phvtjg/company-logo_200_200/company-logo_200_200/0/1677202321749/spotlight_logo?e=2147483647&v=beta&t=i-s3jvDDgoUbOXymVmyrSkcCFcGB-gv2jkEqY2rtUaQ",
   "priv-st-john-of-god-health-care":
     "https://media.licdn.com/dms/image/v2/C4E0BAQEh63Idu1LFqg/company-logo_200_200/company-logo_200_200/0/1631348313243?e=2147483647&v=beta&t=FR8mFj0CrnV6Zox33BVAZB8gI72_3gRY8PVkpCjGnPQ",
+  "priv-st-vincent-s-health-australia":
+    "https://media.licdn.com/dms/image/v2/C560BAQGa58cjZ3y15Q/company-logo_200_200/company-logo_200_200/0/1630640251106/st_vincents_health_australia_logo?e=2147483647&v=beta&t=L-8_ea7xueIkiaE7b3Fln8Yf3zBjSECLiTZFvxkKuT4",
+  "priv-stowe-australia":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQHxpiEYegMXVA/company-logo_200_200/company-logo_200_200/0/1631304888340?e=2147483647&v=beta&t=HAno0E3cay0eMNxm62G8lxV8mHNcarN6n0MaQB3LEM8",
+  "priv-sunpork-group":
+    "https://media.licdn.com/dms/image/v2/C560BAQHn7v__QCOTTg/company-logo_200_200/company-logo_200_200/0/1661753177458/sunpork_group_logo?e=2147483647&v=beta&t=xZU7aIY6tV06sfu4feaK7YHQ5rkYAw4t3RHpbW5CS6k",
+  "priv-teachers-health-fund":
+    "https://media.licdn.com/dms/image/v2/D560BAQGqE4xvcomPkQ/company-logo_200_200/B56Z444qQoGsAE-/0/1779070838014/teachers_health_fund_logo?e=2147483647&v=beta&t=hlXTPEOEmU7iI4mD1Njddq9CQppTZHCE_uPIMHEi2xM",
+  "priv-tennis-australia":
+    "https://media.licdn.com/dms/image/v2/D560BAQFCd-hHUAHFww/company-logo_200_200/company-logo_200_200/0/1696548522714/tennis_australia_logo?e=2147483647&v=beta&t=f8JKmLE_sVHqinGrXcoMQUjbe3iykAOOfqkkamPgS0g",
+  "priv-united-petroleum":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQHsLlK6ReUBBA/company-logo_200_200/company-logo_200_200/0/1659752177017/grupohaina_logo?e=2147483647&v=beta&t=rwkmDj7TpSlz0KRzAFYmYEVwXFA9vA39RAjjH-A1-lo",
+  "priv-unitingcare-queensland":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQHe8TRW5yjz_g/company-logo_200_200/company-logo_200_200/0/1630564455593/unitingcare_queensland_logo?e=2147483647&v=beta&t=F17DknEltVfzeInFkG8LxVtt4mGYAWl1CeJ-qaBrs4k",
+  "priv-walker-corporation":
+    "https://media.licdn.com/dms/image/v2/D560BAQG0ze9a5mbLGQ/company-logo_200_200/B56Z2uvVikIkAI-/0/1776753138714/walker_corporation_logo?e=2147483647&v=beta&t=0nnhAuTQR8zfb-voO1TBrx81ZsHhmA2XOLb0kX4k2dA",
+  "priv-winning-appliances":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQHDLmY55vkIgQ/company-logo_200_200/company-logo_200_200/0/1630613079229/winning_appliances_logo?e=2147483647&v=beta&t=PfJ74BQx3mywSpNOfKIzzMsyiQSfwKhlqwSmyH4ONso",
+  "priv-workpac":
+    "https://media.licdn.com/dms/image/v2/D560BAQGhnh_ACP-d8A/company-logo_200_200/B56Zslh9eTI0AU-/0/1765861218672/workpac_logo?e=2147483647&v=beta&t=tCsHcXsDCpl_lB-5pUnUuGSXEfEx0GMHswFQ3-0dEYQ",
   pru: "https://media.licdn.com/dms/image/v2/C560BAQETXpOVqK2HUQ/company-logo_200_200/company-logo_200_200/0/1634018066590/perseus_mining_limited_logo?e=2147483647&v=beta&t=009UGjiTiIiQC6Fl6sqD6RO61TpDXwl6l0YMcbz9Yyk",
+  "qld-gov-department-of-customer-services-open-data-and-small-and-family-business":
+    "https://media.licdn.com/dms/image/v2/D560BAQGA_kGD2TCjSg/company-logo_200_200/B56Zm9eXrPHAAI-/0/1759820479949/department_of_customer_services_open_data_and_small_and_family_business_logo?e=2147483647&v=beta&t=OKLX2jM83kMoupKt1HruZgyqcAevqF5EHAy2VHaHkws",
+  "qld-gov-economic-development-queensland":
+    "https://media.licdn.com/dms/image/v2/D560BAQEXpRgAyPMF-w/company-logo_200_200/B56ZlWSVYUKAAI-/0/1758089271308/economic_development_queensland_logo?e=2147483647&v=beta&t=hSKgG4BhlGIrQje-FZ6yKaE4HNP0cd21qAx5yYJZApE",
+  "qld-gov-health-and-wellbeing-queensland":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQEZlRpFeeSQ-A/company-logo_200_200/company-logo_200_200/0/1679457824800/health_and_wellbeing_queensland_logo?e=2147483647&v=beta&t=j3vOkHxz9vUpcH5y2pxzbOEc92gFiXAlLTH1gAcOgsM",
+  "qld-gov-office-of-industrial-relations":
+    "https://media.licdn.com/dms/image/v2/D560BAQGjtihdpXX4Yg/company-logo_200_200/B56ZicUrf2G0AI-/0/1754969324143/office_of_industrial_relations_logo?e=2147483647&v=beta&t=ybm5gmuVLMSlkLWE3qdzE_TUAuwrQ7CVFVTgKtMmAhg",
+  "qld-gov-office-of-the-health-ombudsman":
+    "https://media.licdn.com/dms/image/v2/D560BAQET4h3ItGUZpg/company-logo_200_200/company-logo_200_200/0/1687751198582/office_of_the_health_ombudsman_logo?e=2147483647&v=beta&t=2mCzLv6qBJU4Ek6bZ-8zbGfF5Cq_1ALu2S_9jZVsyAY",
+  "qld-gov-queensland-academy-of-sport":
+    "https://media.licdn.com/dms/image/v2/D560BAQE9ssSIxDhB0w/company-logo_200_200/B56Z3dFypRJ4AM-/0/1777530776628/queenslandacademyofsport_logo?e=2147483647&v=beta&t=cy7u2eKhTu2mrZ8ndf5STU3VSE9S5OscnLyrgW7chVI",
+  "qld-gov-queensland-ambulance-service":
+    "https://media.licdn.com/dms/image/v2/D560BAQGoVFywtDTDWQ/company-logo_200_200/company-logo_200_200/0/1730435975328/queensland_ambulance_service_logo?e=2147483647&v=beta&t=SuuC4Cv-I2CWjYB9xhmCGR0M2m6-SiFfkTVlH7awFmI",
+  "qld-gov-queensland-corrective-services":
+    "https://media.licdn.com/dms/image/v2/C560BAQG4yL2jqoYKBQ/company-logo_200_200/company-logo_200_200/0/1664249169984/queensland_corrective_services_logo?e=2147483647&v=beta&t=MtuUI-g6c9vdkrC8oE9RDDOBVt_1EPFx8u7-EraH9cg",
+  "qld-gov-queensland-curriculum-and-assessment-authority":
+    "https://media.licdn.com/dms/image/v2/C560BAQEVVa1XJgKN5g/company-logo_200_200/company-logo_200_200/0/1635141128775/queensland_curriculum_and_assessment_authority_logo?e=2147483647&v=beta&t=LcrwO2wf6Mu8ugLwXeedUPxxZJJQGRt3EVKZeJn7S00",
+  "qld-gov-queensland-family-and-child-commission":
+    "https://media.licdn.com/dms/image/v2/D560BAQESAD3hJSYsPg/company-logo_200_200/B56Ze_EwnsGoAI-/0/1751257386268/queensland_family_and_child_commission_logo?e=2147483647&v=beta&t=-efNYN1Zgd2XEj1U8DtOG9xR7I8r9Wj9FS03TqiFvXM",
+  "qld-gov-queensland-fire-department":
+    "https://media.licdn.com/dms/image/v2/D560BAQGyrS8oXK6teg/company-logo_200_200/company-logo_200_200/0/1722471727882/queensland_fire_and_emergency_services_logo?e=2147483647&v=beta&t=_4xrtqnJgoXYBZab3o6VfC7EoMg_RjS3rnNvcFIfYz0",
+  "qld-gov-queensland-health":
+    "https://media.licdn.com/dms/image/v2/D560BAQGFxPRRFoYZSQ/company-logo_200_200/B56Zmn9DFCJwAI-/0/1759459423258/queensland_health_logo?e=2147483647&v=beta&t=SmqvRTLfnAWZqCgCXY3rXazjTq9_mxP6P2NO69XBg8g",
+  "qld-gov-queensland-mental-health-commission":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQFWzAoxfgI4pQ/company-logo_200_200/company-logo_200_200/0/1631304505523?e=2147483647&v=beta&t=t5nq2PSt99xpkHbuJggoxVLpf1NdK-OsN5xF23PomO4",
+  "qld-gov-queensland-police-service":
+    "https://media.licdn.com/dms/image/v2/D560BAQGTix-QZcuiCA/company-logo_200_200/B56Zu.4FUAGwAI-/0/1768433932344/queensland_police_service_logo?e=2147483647&v=beta&t=5gq5WLhNEpEIsJwKIMoRyftoF4uMOzQJV9lB-7xZ3FI",
+  "qld-gov-queensland-racing-integrity-commission":
+    "https://media.licdn.com/dms/image/v2/C560BAQEMA_O4QTLVKQ/company-logo_200_200/company-logo_200_200/0/1630668489794/queensland_racing_integrity_commission_logo?e=2147483647&v=beta&t=l-DEvNzeJJm_HaBj6vRloRr6FDt_Nkp9fvvPxmcn3e8",
+  "qld-gov-queensland-treasury":
+    "https://media.licdn.com/dms/image/v2/D560BAQH9g-8l9aakuA/company-logo_200_200/B56ZxGVW2JJMAI-/0/1770706530205/queensland_treasury_logo?e=2147483647&v=beta&t=pQigwVQDRKUYb7B7yV3VtCjSaA6ixX_gsAxsj6cCGkU",
+  "qld-gov-stadiums-queensland":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQEdJVncB8199w/company-logo_200_200/company-logo_200_200/0/1631345007963?e=2147483647&v=beta&t=wmw4qRQjVvc8wg14_UwJc1jmd5lTILIP9ryZl7P40Dg",
   rio: "https://media.licdn.com/dms/image/v2/D560BAQFBmNPHgN7h1A/company-logo_200_200/company-logo_200_200/0/1719791037771/rio_tinto_logo?e=2147483647&v=beta&t=orF7vuvwTWf9aHClbZZUWVPtydNUCWzlpxgMUvryYQU",
   rms: "https://media.licdn.com/dms/image/v2/D560BAQGVWZ4iF233mA/company-logo_200_200/B56Zlxlah6KAAM-/0/1758547259705/ramelius_resources_limited_logo?e=2147483647&v=beta&t=dUqUPUGu_obhgW9BDgOmxUvDOQckQiwdRzoRAa9S4N8",
   rrl: "https://media.licdn.com/dms/image/v2/C560BAQFQwQ-Htxx4lA/company-logo_200_200/company-logo_200_200/0/1630655518667/regis_resources_logo?e=2147483647&v=beta&t=QVe44dez4lC7qQFpf-ZTKKhnS82cGDW8UTC5zoD1czQ",
@@ -230,14 +507,164 @@ export const LINKEDIN_LOGO: Record<string, string> = {
   sto: "https://media.licdn.com/dms/image/v2/C4D0BAQFT2rtioUKgAg/company-logo_200_200/company-logo_200_200/0/1631331100978?e=2147483647&v=beta&t=6s-LyB2kHZXHWfCssuVdzvqUSu8bWU7YpLlNm7cC_SQ",
   stx: "https://media.licdn.com/dms/image/v2/C560BAQFd3FD5TGHd0A/company-logo_200_200/company-logo_200_200/0/1630563933576/strike_energy_logo?e=2147483647&v=beta&t=cKpdKXKckV-LUvVWqnVaaiic3yHn9p06ODHht17ItUA",
   swm: "https://media.licdn.com/dms/image/v2/C560BAQEnCGbnY4RU_w/company-logo_200_200/company-logo_200_200/0/1630650164344/sevenwestmedia_logo?e=2147483647&v=beta&t=bWyBFOvdub4v-IOYVx75KOK0N-a2FiE2swuw7ABDizs",
+  "sydney-ald":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQFAE6R90l9omQ/company-logo_200_200/company-logo_200_200/0/1630570098408/ampol_australia_logo?e=2147483647&v=beta&t=hvfOpUTmhpn5n4JIbrU8ZH-kpefVxLbpK9D_QEWd3RE",
+  "sydney-amp":
+    "https://media.licdn.com/dms/image/v2/D560BAQGSzSqvo5Mb3w/company-logo_200_200/B56ZzVFnV2H8AI-/0/1773101545234/amp_logo?e=2147483647&v=beta&t=huGb9BOXD94N_Yk9_hDo6g7JqbqNjLNMzSusgTbRSXw",
   "sydney-apa":
     "https://media.licdn.com/dms/image/v2/D560BAQFf8ejlb_4bKg/company-logo_200_200/company-logo_200_200/0/1724794845150/apa_group_logo?e=2147483647&v=beta&t=HLyp_5kr0KU9wP1wFkfkG2dc2lXVq8JhBB1MyKGEt8g",
+  "sydney-bxb":
+    "https://media.licdn.com/dms/image/v2/C560BAQG1kf_ZsvYstA/company-logo_200_200/company-logo_200_200/0/1631309627288?e=2147483647&v=beta&t=wfhaHn2xEG0QmLHsdDYjK0kNq53ylmhW_zAZ8QSLs6M",
+  "sydney-cgf":
+    "https://media.licdn.com/dms/image/v2/D560BAQFDXEs7F6xTcw/company-logo_200_200/company-logo_200_200/0/1709504677497/challenger_limited_logo?e=2147483647&v=beta&t=N5k4__4w2cuH8PDpWaHSirWdcbJ3qCkiaNTAq4H_7PU",
+  "sydney-chc":
+    "https://media.licdn.com/dms/image/v2/C510BAQF4QvaFzk_2pQ/company-logo_200_200/company-logo_200_200/0/1630579557684/charter_hall_logo?e=2147483647&v=beta&t=2QoFGsmrUHqNbkZXLVCsyB2OATvR2Q_K3tLh4aPZFxg",
+  "sydney-coh":
+    "https://media.licdn.com/dms/image/v2/C560BAQHKEgme7s9LwA/company-logo_200_200/company-logo_200_200/0/1630651253810/cochlear_logo?e=2147483647&v=beta&t=V5qP-Psi6HMtLNQvHINX9B3i12m3mlQJHgORWM384sc",
   "sydney-dow":
     "https://media.licdn.com/dms/image/v2/C4E0BAQFLXI2ti1h88g/company-logo_200_200/company-logo_200_200/0/1631308092500?e=2147483647&v=beta&t=2v4HJVhuFM1QU5eddBvulG7HRjJJL3PzS04kGkpuLno",
+  "sydney-dro":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQE3f3zQmal_lA/company-logo_200_200/company-logo_200_200/0/1630559197152/droneshield_logo?e=2147483647&v=beta&t=4v2dtr8FaL2_GOIHJ7Vp7NZB7369lAMqxe-l2nvw7mY",
+  "sydney-gmg":
+    "https://media.licdn.com/dms/image/v2/D560BAQGCvknM3oX6Mg/company-logo_200_200/B56Zpr3wxQHQAI-/0/1762746372167/goodman_logo?e=2147483647&v=beta&t=CW_SO6LVvkJiyY2xypUnpHoS7nKP6B4JB-sSbtQQUfc",
+  "sydney-gpt":
+    "https://media.licdn.com/dms/image/v2/D560BAQEyDBxQ7gXU9g/company-logo_200_200/company-logo_200_200/0/1691918059095/gpt_group_logo?e=2147483647&v=beta&t=TzmCQ3X-VHLfaNwvK6LHaaZTfFEGZyFZQZiUcrOJKdg",
+  "sydney-gqg":
+    "https://media.licdn.com/dms/image/v2/D560BAQGCMJPiwgAYqQ/company-logo_200_200/company-logo_200_200/0/1688562788666/gqgpartners_logo?e=2147483647&v=beta&t=mmeOGfUakToCdNv4U4J-ZwNA_m0_kv08y3CinlHeVyc",
+  "sydney-jhx":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQEWSRQhpRuixg/company-logo_200_200/company-logo_200_200/0/1630485405014/james_hardie_building_products_logo?e=2147483647&v=beta&t=oybNKjAOTLzceM_gLk_Qkv9Z-D87kIYyiuz8AxS9UY4",
   "sydney-mqg":
     "https://media.licdn.com/dms/image/v2/C4D0BAQFWxaMqRxHNZQ/company-logo_200_200/company-logo_200_200/0/1630472263203/macquariegroup_logo?e=2147483647&v=beta&t=0Fi5wZjXRSevd8JcvmpRhIsZs5E81BX3s0eOji18VLU",
+  "sydney-org":
+    "https://media.licdn.com/dms/image/v2/D560BAQGgO-rIivb2Uw/company-logo_200_200/B56ZXCX2ZJHQAI-/0/1742722787356/origin_energy_logo?e=2147483647&v=beta&t=eBP-QXbVAodwAOAxWzLjz_DbVY75_MRB7Ul8cMytGUs",
+  "sydney-pni":
+    "https://media.licdn.com/dms/image/v2/C560BAQGXdxRodrihCw/company-logo_200_200/company-logo_200_200/0/1630650379243/pinnacle_investment_management_logo?e=2147483647&v=beta&t=B-Go5aW6N1ppVVmrtPaDPHZKJUv3S23pxNRiquP3j-4",
+  "sydney-rdx":
+    "https://media.licdn.com/dms/image/v2/C510BAQG-lzXQamdsHw/company-logo_200_200/company-logo_200_200/0/1631414808010/redox_pty_ltd_logo?e=2147483647&v=beta&t=SqojN9ETRIop1X6CwDAMndfJflfI_VIXL7Fgj0H8pTw",
+  "sydney-rgn":
+    "https://media.licdn.com/dms/image/v2/C560BAQHCzngv0V78SA/company-logo_200_200/company-logo_200_200/0/1669592072117/regiongroup_logo?e=2147483647&v=beta&t=xPiyQpvwcgcbsSglKZkgTzu3d2EKYwJM7lAyxPH-iLg",
+  "sydney-rhc":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQFXdba7XwSpfQ/company-logo_200_200/company-logo_200_200/0/1631313784238?e=2147483647&v=beta&t=9GVuYPcovXksZ7JHPa0pqNWQjbVPnidHp1B55bWHmt8",
+  "sydney-rmd":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQHQn2mIzEBL3w/company-logo_200_200/B4EZWq1v43HUAU-/0/1742327971764/resmed_logo?e=2147483647&v=beta&t=_XsY1s8cLpoRWvZSMqT-cxOxVS7p1S_53_hlS2k6cBM",
+  "sydney-rwc":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQGiacQcqc8L3A/company-logo_200_200/company-logo_200_200/0/1719821362409/reliance_worldwide_corporation_logo?e=2147483647&v=beta&t=bKZDaWo74ez-Pv3lOhWsH-g90aNoEup6FKMPrXgqfoc",
+  "sydney-scg":
+    "https://media.licdn.com/dms/image/v2/D560BAQFs3_3YeEbV0Q/company-logo_200_200/B56Z4VWxZiIkAI-/0/1778474752990/scentre_group_logo?e=2147483647&v=beta&t=llgBtUsHcaeOkZyDYQVTgX_RCHwAVtHywdfTmFYc0Ro",
+  "sydney-sgp":
+    "https://media.licdn.com/dms/image/v2/D560BAQFGR4Cp2k2ggQ/company-logo_200_200/B56Zy1qkNHIsAI-/0/1772574361306/stockland_logo?e=2147483647&v=beta&t=E6Z31MSlszgVMEGdPaq4x4K-MZaPhfX4CWStUtCFzTE",
+  "sydney-tpg":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQEucXXVQs1vvQ/company-logo_200_200/company-logo_200_200/0/1656633077562/tpg_telecom_logo?e=2147483647&v=beta&t=7UXHAVVy-4-Ai963jJ0D_-zBu9ldyIBeJGceURwvQmw",
+  "sydney-whc":
+    "https://media.licdn.com/dms/image/v2/D560BAQFnww2tOGJ4uw/company-logo_200_200/B56ZUgHRw9HQAI-/0/1740000534155/whitehaven_coal_logo?e=2147483647&v=beta&t=rve7GNCBUZkngjH4t2gIaBc770CFn_9arREG55IQJjo",
   "sydney-wor":
     "https://media.licdn.com/dms/image/v2/D560BAQHfoyQ1BKjqmQ/company-logo_200_200/company-logo_200_200/0/1701033439470/worley_logo?e=2147483647&v=beta&t=bUCfhClAJMLFAazxfza2rgkztGWpBZRbo6jLvajIXT4",
+  "tas-gov-department-of-justice":
+    "https://media.licdn.com/dms/image/v2/D560BAQFsmt16QhK6fQ/company-logo_200_200/company-logo_200_200/0/1730764406801/justicetas_logo?e=2147483647&v=beta&t=OYXSQRf5AVC1DvrL92gN6pEQzlFd6mnyfLWJBMjAZQw",
+  "tas-gov-department-of-police-fire-and-emergency-management":
+    "https://media.licdn.com/dms/image/v2/C560BAQE-IzTjiaexlA/company-logo_200_200/company-logo_200_200/0/1661908887313/department_of_police_fire_and_emergency_management_logo?e=2147483647&v=beta&t=U1DHJksswj7joE37jU5BKFCIpo4CVn3QN8Ik7I0CqtU",
+  "tas-gov-macquarie-point-development-corporation":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQHaWWNgjf6qaA/company-logo_200_200/company-logo_200_200/0/1630574847407/macquarie_point_development_corporation_logo?e=2147483647&v=beta&t=NrYAokBx9E89TpBH9FBMBm2FLuwm6aXqvgCb4DZGr7Q",
+  "tas-gov-tourism-tasmania":
+    "https://media.licdn.com/dms/image/v2/D560BAQFuwPktE8Fhxg/company-logo_200_200/B56Z6QMPSuI8AE-/0/1780535588235/tourism_tasmania_logo?e=2147483647&v=beta&t=C-fF7XXkbjYSbqMZlq49DcncxK9DC6wsXCtwm1fcaMA",
+  "vic-gov-ambulance-victoria":
+    "https://media.licdn.com/dms/image/v2/D560BAQG1tplBLMxoFA/company-logo_200_200/B56ZttcIJvJoAM-/0/1767067649423?e=2147483647&v=beta&t=jBz6wrNrVxGMCJt34zqWfUTEN0cXIZUA5xpPs_cMiPM",
+  "vic-gov-austin-health":
+    "https://media.licdn.com/dms/image/v2/C560BAQFQT8SzZgc9zQ/company-logo_200_200/company-logo_200_200/0/1630592258172/austin_health_logo?e=2147483647&v=beta&t=kgqpQ-bNtyzT0PX2SIAlqR25-Qf8ogPg7KUywyjZOsA",
+  "vic-gov-bairnsdale-regional-health-service":
+    "https://media.licdn.com/dms/image/v2/C560BAQHX1y9aGUANpg/company-logo_200_200/company-logo_200_200/0/1631300706637?e=2147483647&v=beta&t=9CEb6VgyMpspLlr5CvyxcRenV5GovaHSi1fWH2nBPxo",
+  "vic-gov-barwon-health":
+    "https://media.licdn.com/dms/image/v2/D560BAQGmEteVyogdIA/company-logo_200_200/company-logo_200_200/0/1684836999003?e=2147483647&v=beta&t=uz78Bdx8d3aINdyR5Uij5EMKpqHOkHKZBQANdtsb5yQ",
+  "vic-gov-benalla-health":
+    "https://media.licdn.com/dms/image/v2/C560BAQE4uCajm6151g/company-logo_200_200/company-logo_200_200/0/1631385834034?e=2147483647&v=beta&t=ikzbgLrFU8o7e0GhYEvVD6MlwRpl22roe62b8-usdWs",
+  "vic-gov-bendigo-health":
+    "https://media.licdn.com/dms/image/v2/D560BAQE6iL2DasBwOA/company-logo_200_200/company-logo_200_200/0/1720399841258?e=2147483647&v=beta&t=09F8l201PMGeY07HqMXZgBXYojn6iDcBhklZ8nl7E0Q",
+  "vic-gov-cenitex":
+    "https://media.licdn.com/dms/image/v2/D560BAQE63GfCf5P-6Q/company-logo_200_200/company-logo_200_200/0/1707713342196/cenitex_logo?e=2147483647&v=beta&t=HkJU5b5kdpZH818vBu6U49Htjklak-6mxLuNAHBEWlo",
+  "vic-gov-corryong-health":
+    "https://media.licdn.com/dms/image/v2/C510BAQFL7jflwp1K9g/company-logo_200_200/company-logo_200_200/0/1630592372891?e=2147483647&v=beta&t=eBI_dL1usb4YwwbAezgIMHe7xUJNZ3CbXOXBd9pjPU4",
+  "vic-gov-court-services-victoria":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQHthgC1TAFcfQ/company-logo_200_200/company-logo_200_200/0/1638916144901/court_services_victoria_logo?e=2147483647&v=beta&t=x3t5N8ebtN10YU35HUm7HiOmCww3Z4tcZdmsUq6nQ-Y",
+  "vic-gov-department-of-education":
+    "https://media.licdn.com/dms/image/v2/C560BAQFX-kdO8ywXzg/company-logo_200_200/company-logo_200_200/0/1635903315835/detvic_logo?e=2147483647&v=beta&t=1FRieRiD6xaaOxeigE0yj4ytSlzTkg9aPTg4Y2R9jGk",
+  "vic-gov-department-of-energy-environment-and-climate-action":
+    "https://media.licdn.com/dms/image/v2/C560BAQFuuak1-9Ybwg/company-logo_200_200/company-logo_200_200/0/1672711877623/department_of_energy_environment_and_climate_action_logo?e=2147483647&v=beta&t=zMXyDUKvRb_NV0wKFOJ7SEsts4MfDsETRA5mAFT_INI",
+  "vic-gov-department-of-government-services":
+    "https://media.licdn.com/dms/image/v2/D560BAQHKLkUzswB3zg/company-logo_200_200/B56ZilxAASHMAI-/0/1755127743308/department_of_government_services_logo?e=2147483647&v=beta&t=w5dbFogJwrpQK7f3JIKNMC-5bdGRN6QrS7qpg7_mEqQ",
+  "vic-gov-department-of-jobs-skills-industry-and-regions":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQFxqn2yRzeyow/company-logo_200_200/company-logo_200_200/0/1631341214103?e=2147483647&v=beta&t=1LpPQeZTRd7nfwPioY0FHuRlUnyPhlOr6zRMC-BpKPo",
+  "vic-gov-department-of-transport-and-planning":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQGAzKZYEfvhIA/company-logo_200_200/company-logo_200_200/0/1672496157825/department_of_transport_and_planning_logo?e=2147483647&v=beta&t=ZUlhGvbe8QwvcMeb2QkukUJrGd9PbJ9MJqjlLbGZGqI",
+  "vic-gov-dhelkaya-health":
+    "https://media.licdn.com/dms/image/v2/D560BAQFr-WlTaGm4jg/company-logo_200_200/company-logo_200_200/0/1711317330642/dhelkayahealth_logo?e=2147483647&v=beta&t=zdWWfs89xUtSFzZctm4zms1vaEllJTNVYXIBkHRvOA8",
+  "vic-gov-energy-safe-victoria":
+    "https://media.licdn.com/dms/image/v2/C560BAQEJALmxYWBtHg/company-logo_200_200/company-logo_200_200/0/1630666239934/energy_safe_victoria_logo?e=2147483647&v=beta&t=dbuVnc4qntAwCGbDoqGjKzC92xbmOu3ectl_IsDja7U",
+  "vic-gov-goulburn-valley-health":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQGp4eTU7o6Rgw/company-logo_200_200/company-logo_200_200/0/1631319284184?e=2147483647&v=beta&t=Dt1ELYNZXObNsa7SmV5_e0dsvxbopgGZ0Nao5y1WDtg",
+  "vic-gov-homes-victoria":
+    "https://media.licdn.com/dms/image/v2/C560BAQGoJte2NI_dQg/company-logo_200_200/company-logo_200_200/0/1658726131934/homes_victoria_logo?e=2147483647&v=beta&t=zYKW0qSTfG518c0BkKCV87iOYoamIAOUqkBrLax4tF0",
+  "vic-gov-inglewood-and-districts-health-service":
+    "https://media.licdn.com/dms/image/v2/D560BAQHEIWX1_Bl9Lg/company-logo_200_200/company-logo_200_200/0/1699928598463?e=2147483647&v=beta&t=71a6zDB2rL3FtKSkk2vuuZxs-ZWNz8Tl4txw-JkFRBs",
+  "vic-gov-latrobe-regional-health":
+    "https://media.licdn.com/dms/image/v2/D560BAQEZDrTO7eBtgA/company-logo_200_200/company-logo_200_200/0/1688341576477/latrobe_regional_hospital_logo?e=2147483647&v=beta&t=dktJHZA7mVl2BOz7V3CTT7K-s4-nbOCjPbHKcXYoah8",
+  "vic-gov-moyne-health-services":
+    "https://media.licdn.com/dms/image/v2/D560BAQFfkxXVC-cmyg/company-logo_200_200/company-logo_200_200/0/1712625541545/moyne_health_services_logo?e=2147483647&v=beta&t=sRMuM_IH2iv7J3U4HulMk3Y5JQof5s2O7dwFckTrI68",
+  "vic-gov-ncn-health":
+    "https://media.licdn.com/dms/image/v2/C560BAQGmHLC191E2jw/company-logo_200_200/company-logo_200_200/0/1630640828743?e=2147483647&v=beta&t=7XgvgXXdAR92GpKSXNp1rZk6z85XvcqRunZ1Q9u3Op4",
+  "vic-gov-northeast-health-wangaratta":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQGRcoxsf6Yorw/company-logo_200_200/company-logo_200_200/0/1631341304786?e=2147483647&v=beta&t=CEP-9-z_odiCExLoEJqKws7P-IxWuktwEDMSb1GBFsI",
+  "vic-gov-orbost-regional-health":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQHInwUqrUKv9g/company-logo_200_200/company-logo_200_200/0/1630577044026/orbost_regional_health_logo?e=2147483647&v=beta&t=-4rDtRnzweIoUaMjI8k__svx3TIPT_GkVRhsi_zhiX8",
+  "vic-gov-parks-victoria":
+    "https://media.licdn.com/dms/image/v2/C560BAQFd7GyG3IuySw/company-logo_200_200/company-logo_200_200/0/1630599505310/parks_victoria_logo?e=2147483647&v=beta&t=SRgITmirquBdUTg5Wr4x9sulFe-7OEqMPEDzLFoug4M",
+  "vic-gov-peninsula-health":
+    "https://media.licdn.com/dms/image/v2/D560BAQEO0cWYjbwp-A/company-logo_200_200/B56ZgF58ReG0AQ-/0/1752445732356/peninsula_health_logo?e=2147483647&v=beta&t=9hVlx1Ja0E3TBgLD_pGKykTIrNwoIQ0xie9mQsj8nTI",
+  "vic-gov-peter-maccallum-cancer-centre":
+    "https://media.licdn.com/dms/image/v2/C560BAQGet_7-ozjwrg/company-logo_200_200/company-logo_200_200/0/1631338148840?e=2147483647&v=beta&t=miuxMAirCCWr8HtMv1ERJ2Zycs1iA9o7kqcVMKtJw94",
+  "vic-gov-portable-long-service-authority":
+    "https://media.licdn.com/dms/image/v2/D560BAQExbVevyYTTuw/company-logo_200_200/company-logo_200_200/0/1731024581586/plsa_victoria_logo?e=2147483647&v=beta&t=7NNEb4WuF-Z4gDV5OXpIfvsUIaQ58LEkpAFZpSIxNHk",
+  "vic-gov-royal-botanic-gardens-victoria":
+    "https://media.licdn.com/dms/image/v2/C560BAQHzM5rIkLGI2w/company-logo_200_200/company-logo_200_200/0/1630663666372/royal_botanic_gardens_victoria_logo?e=2147483647&v=beta&t=sjT3eAYsQi-a8FB5FG4CDGCphO9yqOdvxCn28njSql8",
+  "vic-gov-social-services-regulator":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQE9JOfN10BGEQ/company-logo_200_200/company-logo_200_200/0/1718843309718/social_services_regulator_logo?e=2147483647&v=beta&t=RtTR-_zNIMvl7bzHBtBVvzZNyGAfPK-mZpQlA4jfmvA",
+  "vic-gov-state-revenue-office":
+    "https://media.licdn.com/dms/image/v2/D560BAQGFynas3T5l8g/company-logo_200_200/company-logo_200_200/0/1664855828170/state_revenue_office_logo?e=2147483647&v=beta&t=LcUKoCx7Be1eRBg7_DmFQUMDSa-r1KrlgWL9nmhj0DU",
+  "vic-gov-state-trustees-limited":
+    "https://media.licdn.com/dms/image/v2/C560BAQEDC7XWeke0Ng/company-logo_200_200/company-logo_200_200/0/1630661339643/state_trustees_logo?e=2147483647&v=beta&t=8xNxsYhHsGRnFlTvOvOaovJEQxJEvSpq5jvAUwJVixU",
+  "vic-gov-triple-zero-victoria":
+    "https://media.licdn.com/dms/image/v2/D560BAQHtr9303P4Pvg/company-logo_200_200/company-logo_200_200/0/1703222682575?e=2147483647&v=beta&t=-Y2pCrzqdZEHS_CjDSzgpBdAA5Z-m6B1poc_M5J-UIM",
+  "vic-gov-vicgrid":
+    "https://media.licdn.com/dms/image/v2/D560BAQFy6p_PsOgYIQ/company-logo_200_200/company-logo_200_200/0/1703107537314?e=2147483647&v=beta&t=DFEt3LANrzafQ1VW3_AJIUwDMvpDT6tnmH88iEim9TY",
+  "vic-gov-vicscreen":
+    "https://media.licdn.com/dms/image/v2/C560BAQEtv36lsMOoAw/company-logo_200_200/company-logo_200_200/0/1646199512670/film_victoria_logo?e=2147483647&v=beta&t=BMGEmYR5Nk2vRzuWZSzdCh3Y6yXzaizFTeSJchzgBh0",
+  "vic-gov-victoria-legal-aid":
+    "https://media.licdn.com/dms/image/v2/D560BAQGBgIx_3LF6zQ/company-logo_200_200/company-logo_200_200/0/1739139510549/victoria_legal_aid_logo?e=2147483647&v=beta&t=Bj4e6dT13x5M1qO6ac2IQIETcjMBrfShBKOhj6vd_1g",
+  "vic-gov-victoria-police":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQHq6vNzfyRoAQ/company-logo_200_200/company-logo_200_200/0/1631359301113/victoria_police_force_logo?e=2147483647&v=beta&t=-6-LRaLXXaBzo7NJh0-sutO-ODZhyCcj9Hu5TjIn_3c",
+  "vic-gov-victoria-state-emergency-service":
+    "https://media.licdn.com/dms/image/v2/C510BAQF3_XBly3hukQ/company-logo_200_200/company-logo_200_200/0/1630613259876/victoria_state_emergency_service_logo?e=2147483647&v=beta&t=HXFWiOT1lfOzZnTU3Hq2RWMFlD8urusgo9W7zOSoCyE",
+  "vic-gov-victorian-electoral-commission":
+    "https://media.licdn.com/dms/image/v2/C560BAQETkqoS-6JGOQ/company-logo_200_200/company-logo_200_200/0/1630635492842/victorian_electoral_commission_logo?e=2147483647&v=beta&t=HsWq1squ2ZfNl5GOI9EeUQIcnRS1oOSlr4wkwPUdZdI",
+  "vic-gov-victorian-gambling-and-casino-control-commission":
+    "https://media.licdn.com/dms/image/v2/D560BAQFER4wvU_fAuA/company-logo_200_200/B56ZYdKyCVGcAI-/0/1744246088229/victorian_gambling_and_casino_control_commission_logo?e=2147483647&v=beta&t=RuOjdHHMUhEFPU6G2LDiFlEedPkhuISO46pVJACdMiI",
+  "vic-gov-victorian-infrastructure-delivery-authority":
+    "https://media.licdn.com/dms/image/v2/D560BAQFD9grEcK4HqQ/company-logo_200_200/company-logo_200_200/0/1713150722061/victorian_infrastructure_delivery_authority_logo?e=2147483647&v=beta&t=1q_sLTuviRbGQL6Kkw-v16LY21qTLtIDbLrK8U-gOVQ",
+  "vic-gov-victorian-institute-of-forensic-medicine":
+    "https://media.licdn.com/dms/image/v2/D560BAQGgg1pYbnXK8Q/company-logo_200_200/company-logo_200_200/0/1719976756689/victorian_institute_of_forensic_medicine_logo?e=2147483647&v=beta&t=U5T8dp-Rp0iP73-sxfBxxaghe-ulDS_phWq4TJwiDGQ",
+  "vic-gov-victorian-institute-of-teaching":
+    "https://media.licdn.com/dms/image/v2/C560BAQFiaR6stiNkaw/company-logo_200_200/company-logo_200_200/0/1645513260688/victorian_institute_of_teaching_logo?e=2147483647&v=beta&t=E-UtRbHuFnj95qZJI-XgxYic-UgvayR0Mle9G8IU4Iw",
+  "vic-gov-victorian-managed-insurance-authority":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQE1j_ne_V6yvA/company-logo_200_200/company-logo_200_200/0/1630592645500/victorian_managed_insurance_authority_logo?e=2147483647&v=beta&t=O8-EP-2soHtHipa6rq2Gvbm5fM4Xtlry7h9iwFfMBGg",
+  "vic-gov-victorian-ombudsman":
+    "https://media.licdn.com/dms/image/v2/D560BAQH1zzZ3jzomWQ/company-logo_200_200/company-logo_200_200/0/1732756972607/victorian_ombudsman_logo?e=2147483647&v=beta&t=ssKnFE8uOFi82-F0D6XtQ18q0dQqIjqLn5XpYTj3NH4",
+  "vic-gov-victorian-school-building-authority":
+    "https://media.licdn.com/dms/image/v2/C560BAQEbxJ2IMS6sFA/company-logo_200_200/company-logo_200_200/0/1630563881108/victorian_school_building_authority_logo?e=2147483647&v=beta&t=-pJ3HkbwusSu-ddmfkvY4ocebP0JrZw_tQ6cTCATgNw",
+  "vic-gov-west-gippsland-healthcare-group":
+    "https://media.licdn.com/dms/image/v2/D560BAQGDvtoibHF7Eg/company-logo_200_200/B56Zu_6YB4IUAI-/0/1768451310177/west_gippsland_healthcare_group_logo?e=2147483647&v=beta&t=USqxCeFqE7RCP8TBUEGo00Cv4ex9h7OYXlwY5V23IQ0",
+  "vic-gov-western-health":
+    "https://media.licdn.com/dms/image/v2/D560BAQGYTGbv0UsGFw/company-logo_200_200/company-logo_200_200/0/1688079881893/western_health_logo?e=2147483647&v=beta&t=o6ye9khlDiS4IhAGhtJLJOog-yHhFbHhbmZ7G9nNWog",
+  "vic-gov-workplace-injury-commission":
+    "https://media.licdn.com/dms/image/v2/C560BAQFd06zXTW03kg/company-logo_200_200/company-logo_200_200/0/1661945350359/workplace_injury_commission_logo?e=2147483647&v=beta&t=v8cjHUrzcPjLct9zzeBziPP1yktpYVFJXDuwwzIRYPw",
   wds: "https://media.licdn.com/dms/image/v2/D560BAQEJkyj3JlLtnw/company-logo_200_200/B56Z6GANeiJsAE-/0/1780364662896/woodside_energy_logo?e=2147483647&v=beta&t=uJTPPsXwtGmWXa1xCisUtsBKEUWzBBbayKjp8TriSFs",
   wes: "https://media.licdn.com/dms/image/v2/C560BAQEru3hAx9DZpA/company-logo_200_200/company-logo_200_200/0/1631322279957?e=2147483647&v=beta&t=EoJqcnHfVFr1WJoO95qVe0ce8Do8C7Ik7aYVFkT3-Oc",
   wgx: "https://media.licdn.com/dms/image/v2/D560BAQElQMtQHVVtKg/company-logo_200_200/company-logo_200_200/0/1708573073823?e=2147483647&v=beta&t=Wri93a1beBSUe_1WU4XO4FVUMyA7wjFn5KsMUYnOKIo",
