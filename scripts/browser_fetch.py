@@ -40,7 +40,21 @@ Run: pip install playwright && playwright install chromium
 from __future__ import annotations
 import atexit
 import os
+import re as _re
 import sys
+
+# Consulted ONLY to label a non-2xx in text(). A fully rendered board mentions
+# "captcha" in its own JavaScript often enough that treating these as an
+# independent signal would report blocks that are not there — so they never
+# decide anything, they only put a name on a status the server already gave us.
+BLOCK_MARKERS = [
+    (r'Just a moment', 'Cloudflare interstitial'),
+    (r'Access Denied', 'Akamai deny'),
+    (r'Pardon Our Interruption', 'DataDome'),
+    (r'Request unsuccessful|Incapsula', 'Imperva'),
+    (r'Vercel Security Checkpoint', 'Vercel checkpoint'),
+    (r'captcha|challenge-platform', 'captcha / challenge'),
+]
 
 UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36')
@@ -263,17 +277,43 @@ class Session:
             return None
 
     def text(self, url: str) -> str | None:
-        """Fetch `url` from inside the current page and return the raw body."""
+        """Fetch `url` from inside the current page and return the raw body.
+
+        A NON-2xx SAYS SO. This used to be `if (!r.ok) return null` — the status
+        was discarded inside the page and nothing was written anywhere, so a 403
+        challenge and a genuinely empty board arrived at the caller as the same
+        None. Measured 2026-08-09: the first startup.jobs run through IPRoyal
+        walked 58 employers, archived nothing, and printed not one line
+        explaining why. The status is the whole diagnosis, and it was being
+        thrown away one stack frame from where it was needed.
+        """
         try:
-            return self._page.evaluate(
+            res = self._page.evaluate(
                 """async (u) => {
-                     const r = await fetch(u, {credentials: 'include'});
-                     if (!r.ok) return null;
-                     return await r.text();
+                     try {
+                       const r = await fetch(u, {credentials: 'include'});
+                       return {ok: r.ok, status: r.status, body: await r.text()};
+                     } catch (e) {
+                       return {ok: false, status: 0, body: '', error: String(e)};
+                     }
                    }""", url)
         except Exception as e:  # noqa: BLE001
             sys.stderr.write(f'  session asset fetch failed for {url[:70]}: {str(e)[:120]}\n')
             return None
+        if not res:
+            sys.stderr.write(f'  session asset fetch returned nothing for {url[:70]}\n')
+            return None
+        if not res.get('ok'):
+            body = res.get('body') or ''
+            why = next((label for pat, label in BLOCK_MARKERS
+                        if _re.search(pat, body, _re.I)), '')
+            sys.stderr.write(
+                f'  in-page fetch {res.get("status")} for {url[:70]}'
+                f'{" [" + why + "]" if why else ""}'
+                f'{" " + str(res.get("error"))[:80] if res.get("error") else ""}'
+                f' ({len(body)}B)\n')
+            return None
+        return res.get('body')
 
 
 # ── raw bytes through a cleared browser ──────────────────────────────────────
