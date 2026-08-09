@@ -424,6 +424,9 @@ VOLUME = int(args[args.index('--volume') + 1]) if '--volume' in args else 0
 # --proxy-check: stop after check_egress(). Three requests instead of an hour,
 # for confirming the secret is right before spending the hour.
 PROXY_CHECK = '--proxy-check' in args
+# --aps-paging: one board, one question, ~2 minutes. Does anything advance the
+# APS result set past the first fifteen rows?
+APS_PAGING = '--aps-paging' in args
 
 PROXY = browser_fetch.proxy_from_env() if VIA_PROXY else None
 if VIA_PROXY and not PROXY:
@@ -696,6 +699,163 @@ def check_egress(pw) -> dict:
     return info
 
 
+# ── APS pagination: does page 2 hold DIFFERENT jobs? ─────────────────────────
+# aps-to-d1.py pages by rewriting ?offset= and stops as soon as a page yields no
+# NEW jobs. Its nightly log says:
+#
+#     page 1: 15 rows (15 new) via job-cards
+#     page 2: 15 rows (0 new) via job-cards
+#     scraped 15 vacancies
+#
+# Page 2 returned the SAME fifteen. So either the board really does advertise
+# fifteen roles across 49 federal agencies, or the offset does nothing and the
+# walk has been reading page 1 twice and calling it the whole board. Those two
+# possibilities produce identical logs and an identical green tick, which is
+# why this has to be measured rather than reasoned about.
+#
+# COUNTING ROWS CANNOT ANSWER IT. The uniform `next` click in probe() reports
+# page-2 ROW COUNT, and the failing case returns 15 there too. This compares
+# job IDENTITY — the same (title, id, location) key the scraper dedupes on —
+# so "advanced" and "re-rendered page 1" cannot look alike.
+#
+# It also captures the board's OWN advertised total, which is the thing that
+# settles the question in one number, and dumps the pagination controls actually
+# present in the DOM so the fix can be written against the real mechanism
+# instead of a guessed one.
+APS_URL = 'https://www.apsjobs.gov.au/s/job-search'
+APS_SETTLE = 12
+
+# "1 - 15 of 1,234", "1,234 jobs", "1,234 results" — whichever the board uses.
+APS_TOTAL_PATTERNS = [
+    r'of\s+([\d,]+)\s+(?:jobs?|results?|vacanc)',
+    r'([\d,]+)\s+(?:jobs?|results?|vacancies)\s+found',
+    r'([\d,]+)\s+(?:jobs?|results?|vacancies)\b',
+]
+
+
+def aps_jobs(html: str) -> list:
+    """(title, id, location) keys via the scraper's own extractor."""
+    import jobs_extract as jx
+    rows, _how = jx.extract_jobs(html, r'job-details', 'https://www.apsjobs.gov.au')
+    return [(r['t'].strip().lower(), r.get('id') or '', (r.get('loc') or '').strip().lower())
+            for r in rows]
+
+
+def aps_total(text: str):
+    for pat in APS_TOTAL_PATTERNS:
+        m = re.search(pat, text, re.I)
+        if m:
+            try:
+                return int(m.group(1).replace(',', ''))
+            except ValueError:
+                pass
+    return None
+
+
+def aps_controls(page) -> list:
+    """Every clickable that looks like pagination, so the real mechanism is
+    visible rather than guessed at."""
+    try:
+        return page.evaluate("""() => {
+            const out = [];
+            for (const el of document.querySelectorAll('a,button,li,span[role=button]')) {
+                const t = (el.innerText || '').trim().slice(0, 30);
+                const al = el.getAttribute('aria-label') || '';
+                const cl = (el.className && el.className.baseVal !== undefined
+                            ? el.className.baseVal : el.className) || '';
+                const hay = (t + ' ' + al + ' ' + cl).toLowerCase();
+                if (/next|paginat|page|more|load/.test(hay)) {
+                    out.push({tag: el.tagName.toLowerCase(), text: t, aria: al,
+                              cls: String(cl).slice(0, 60),
+                              disabled: el.disabled === true ||
+                                        el.getAttribute('aria-disabled') === 'true'});
+                }
+            }
+            return out.slice(0, 25);
+        }""")
+    except Exception as e:  # noqa: BLE001
+        return [{'error': str(e)[:120]}]
+
+
+def aps_open(pw):
+    browser = pw.chromium.launch(headless=not HEADFUL,
+                                 **({'proxy': PROXY} if PROXY else {}))
+    ctx = browser.new_context(
+        user_agent=('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                    '(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'),
+        viewport={'width': 1440, 'height': 900}, locale='en-AU')
+    return browser, ctx
+
+
+def aps_paging(pw) -> dict:
+    """Which mechanism, if any, actually advances the APS result set."""
+    res = {'page1': {}, 'attempts': []}
+    browser, ctx = aps_open(pw)
+    try:
+        page = ctx.new_page()
+        page.goto(f'{APS_URL}?offset=0', wait_until='domcontentloaded', timeout=90_000)
+        page.wait_for_timeout(APS_SETTLE * 1000)
+        html = page.content()
+        first = aps_jobs(html)
+        body = page.evaluate('document.body.innerText')
+        res['page1'] = {
+            'rows': len(first),
+            'advertised_total': aps_total(body),
+            'sample': [t for t, _i, _l in first[:3]],
+        }
+        res['controls'] = aps_controls(page)
+
+        # THE MECHANISM THE SCRAPER USES, first. PAGE_SIZE is 20 in
+        # aps-to-d1.py but the board returns 15 a page, so both steps are tried
+        # — if the offset works at all, 20 skips five jobs per page and 15 is
+        # the right step.
+        for label, url in (('?offset=15', f'{APS_URL}?offset=15'),
+                           ('?offset=20', f'{APS_URL}?offset=20'),
+                           ('?page=2', f'{APS_URL}?page=2')):
+            try:
+                page.goto(url, wait_until='domcontentloaded', timeout=90_000)
+                page.wait_for_timeout(APS_SETTLE * 1000)
+                got = aps_jobs(page.content())
+                fresh = [k for k in got if k not in set(first)]
+                res['attempts'].append({
+                    'how': label, 'rows': len(got), 'new_vs_page1': len(fresh),
+                    'sample_new': [t for t, _i, _l in fresh[:3]],
+                })
+            except Exception as e:  # noqa: BLE001
+                res['attempts'].append({'how': label, 'error': str(e)[:140]})
+
+        # And the interaction, which is how every other Aura/SuccessFactors
+        # board here pages.
+        for sel in ('button[aria-label*="Next" i]', 'a[aria-label*="Next" i]',
+                    'button:has-text("Next")', 'lightning-button:has-text("Next")',
+                    '.slds-button:has-text("Next")'):
+            try:
+                page.goto(f'{APS_URL}?offset=0', wait_until='domcontentloaded',
+                          timeout=90_000)
+                page.wait_for_timeout(APS_SETTLE * 1000)
+                el = page.query_selector(sel)
+                if not el:
+                    continue
+                el.click()
+                page.wait_for_timeout(APS_SETTLE * 1000)
+                got = aps_jobs(page.content())
+                fresh = [k for k in got if k not in set(first)]
+                res['attempts'].append({
+                    'how': f'click {sel}', 'rows': len(got),
+                    'new_vs_page1': len(fresh),
+                    'sample_new': [t for t, _i, _l in fresh[:3]],
+                })
+                break
+            except Exception as e:  # noqa: BLE001
+                res['attempts'].append({'how': f'click {sel}', 'error': str(e)[:140]})
+        ctx.close()
+    except Exception as e:  # noqa: BLE001
+        res['error'] = str(e)[:200]
+    finally:
+        browser.close()
+    return res
+
+
 def probe(pw, board: dict) -> dict:
     res = {'name': board['name'], 'script': board['script'], 'url': board['url']}
     browser = pw.chromium.launch(headless=not HEADFUL,
@@ -792,6 +952,56 @@ def main() -> int:
         sys.exit('playwright not installed: pip install playwright && playwright install chromium')
 
     where = 'via SCRAPE_PROXY' if VIA_PROXY else 'from this runner'
+
+    if APS_PAGING:
+        # No egress check: this asks about a board's paginator, not about an
+        # exit, and it runs from a plain runner where APS already works.
+        print(f'APS pagination probe, {where}.')
+        print('Comparing job IDENTITY across pages — a row COUNT cannot tell '
+              '"advanced" from "re-rendered page 1".\n')
+        with sync_playwright() as pw:
+            r = aps_paging(pw)
+        p1 = r.get('page1') or {}
+        print(f"  page 1: {p1.get('rows')} rows"
+              f"{'  ·  board advertises ' + str(p1['advertised_total']) if p1.get('advertised_total') else '  ·  no advertised total found'}")
+        for t in p1.get('sample') or []:
+            print(f'      e.g. {t[:70]}')
+        print()
+        for a in r.get('attempts') or []:
+            if a.get('error'):
+                print(f"  {a['how']:<34} ERROR {a['error']}")
+                continue
+            verdict = 'ADVANCES' if a['new_vs_page1'] else 'SAME PAGE'
+            print(f"  {a['how']:<34} {verdict:<10} {a['rows']} rows, "
+                  f"{a['new_vs_page1']} new vs page 1")
+            for t in a.get('sample_new') or []:
+                print(f'      new: {t[:70]}')
+        print('\n  pagination controls in the DOM:')
+        for c in (r.get('controls') or [])[:15]:
+            print(f'      {c}')
+        if r.get('error'):
+            print(f"\n  probe error: {r['error']}")
+        works = [a for a in (r.get('attempts') or []) if a.get('new_vs_page1')]
+        total = p1.get('advertised_total')
+        print()
+        if works:
+            print(f"VERDICT: {works[0]['how']} advances the board. The nightly walk's "
+                  f"?offset= is not the mechanism, so it has been archiving page 1 only.")
+        elif total and total > (p1.get('rows') or 0):
+            print(f"VERDICT: nothing tried advances it, and the board itself advertises "
+                  f"{total} against the {p1.get('rows')} we read. Truncated, mechanism "
+                  f"still unknown — see the controls above.")
+        elif p1.get('rows'):
+            print(f"VERDICT: nothing advances it and no larger total is advertised. "
+                  f"{p1.get('rows')} may genuinely be the whole board.")
+        else:
+            print('VERDICT: page 1 itself returned nothing — fix that before paging.')
+        if OUT:
+            with open(OUT, 'w') as f:
+                json.dump({'via_proxy': VIA_PROXY, 'aps_paging': r}, f, indent=2)
+            print(f'wrote {OUT}')
+        return 0
+
     print(f'Headless Chromium {where}, against {len(BOARDS)} Oxylabs targets.')
     print("Counting rows the way each scraper does — its own regex, or its own "
           "parser where it uses one.")

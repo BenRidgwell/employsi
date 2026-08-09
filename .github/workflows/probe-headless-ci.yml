@@ -53,6 +53,18 @@
 # different question. The run samples the address twice and reports which mode
 # it got, so a rotating result cannot be mistaken for a sticky one.
 #
+#   aps_paging=true            APS Jobs only, and a different KIND of question:
+#                              not "can we reach it" — we can, nightly, from a
+#                              plain runner — but "does anything advance it past
+#                              the first fifteen rows". The nightly walk pages by
+#                              rewriting ?offset= and gets the SAME fifteen jobs
+#                              back on page 2, then stops and reports 15 as the
+#                              whole federal board across 49 agencies. This
+#                              compares job IDENTITY across pages, captures the
+#                              board's own advertised total, and dumps the
+#                              pagination controls in the DOM. ~2 minutes; skips
+#                              every other board.
+#
 #   volume=N                   walk N DIFFERENT company queries through Indeed,
 #                              SimplyHired and Jora and report where blocking
 #                              starts. Those three walk 355 companies a night,
@@ -81,6 +93,10 @@ on:
         description: 'Volume walk: N different company queries per roster-wide feed (0 = skip)'
         type: string
         default: '0'
+      aps_paging:
+        description: 'APS only: does anything advance the board past page 1? (~2 min, skips everything else)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -118,6 +134,7 @@ jobs:
           python scripts/probe-headless-ci.py --json headless-probe.json \
             ${{ inputs.via_proxy && '--via-proxy' || '' }} \
             ${{ inputs.proxy_check && '--proxy-check' || '' }} \
+            ${{ inputs.aps_paging && '--aps-paging' || '' }} \
             ${{ (inputs.volume != '' && inputs.volume != '0') && format('--volume {0}', inputs.volume) || '' }}
 
       - name: Upload the raw result
