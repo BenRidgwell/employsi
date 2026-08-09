@@ -18,6 +18,26 @@ import { HK_SERIES, HK_SKILL_BY_CITY } from "../data/hkVacancyDemand";
 import { PH_SERIES, PH_SKILL_BY_CITY } from "../data/phVacancyDemand";
 import { US_SERIES, US_SKILL_BY_CITY } from "../data/usVacancyDemand";
 import type { SkillIndex } from "./skillsFn";
+import { rankedByRate, vacancyRate } from "./vacancyRate";
+
+/**
+ * Which question the map and the rankings are answering.
+ *
+ *   volume — internet vacancies. Where are the most job ads.
+ *   rate   — vacancies per 1,000 employed. Where is labour tightest relative to
+ *            the pool already doing the work.
+ *
+ * They are different questions, not better and worse answers, which is why this
+ * is a mode the user chooses rather than a replacement.
+ *
+ * RATE IS AUSTRALIA-ONLY, and the code must not paper over that. The denominator
+ * is ABS employment by occupation; there is no equivalent wired up for Canada,
+ * Singapore, NZ, the UK, the EU, the US, Hong Kong or the Philippines. In rate
+ * mode those cities are ABSENT from the results rather than zero — a city with
+ * no denominator has an unknown rate, and drawing it as cold would assert
+ * slackness we have not measured.
+ */
+export type DemandMode = "volume" | "rate";
 
 // The AU (JSA/IVI), Canada (StatCan), Singapore (MRSD), New Zealand (MBIE), UK
 // (ONS), EU (Eurostat, by country), US (BLS OEWS × JOLTS, by metro), Hong Kong
@@ -77,10 +97,40 @@ const IVI_SORTED = Object.values(IVI_SKILL_NATIONAL)
 const IVI_LO = qtile(IVI_SORTED, 0.34);
 const IVI_HI = qtile(IVI_SORTED, 0.67);
 
-export function demandLevel(skill: string, global: boolean, idx: SkillIndex | null): DemandBadge {
+/**
+ * The national rate distribution, for bucketing and percentiles in rate mode.
+ *
+ * Built once from the latest month. Skills with no denominator are absent here
+ * exactly as they are absent from rankedByRate — including them at 0 would put
+ * unmeasured skills at the bottom of the scale and make every measured skill
+ * look tighter than it is.
+ */
+const RATE_LATEST: Record<string, number> = Object.fromEntries(
+  rankedByRate("national", IVI_MONTHS[IVI_MONTHS.length - 1]).map((r) => [r.skill, r.rate]),
+);
+const RATE_SORTED = Object.values(RATE_LATEST).sort((a, b) => a - b);
+const RATE_LO = qtile(RATE_SORTED, 0.34);
+const RATE_HI = qtile(RATE_SORTED, 0.67);
+
+export function demandLevel(
+  skill: string,
+  global: boolean,
+  idx: SkillIndex | null,
+  mode: DemandMode = "volume",
+): DemandBadge {
   let v: number;
   let lo: number;
   let hi: number;
+  if (!global && mode === "rate") {
+    // A skill with no denominator gets no band. Falling through to the volume
+    // buckets would label it from a different metric while the UI said "rate",
+    // which is the kind of quiet substitution that makes a number untrustworthy.
+    const r = RATE_LATEST[skill];
+    if (r === undefined) return { label: "Rate unavailable", tone: "lo" };
+    if (r >= RATE_HI && RATE_HI > 0) return { label: "Tight labour", tone: "hi" };
+    if (r >= RATE_LO && RATE_LO > 0) return { label: "Moderately tight", tone: "mid" };
+    return { label: "Loose labour", tone: "lo" };
+  }
   if (global) {
     const totals = idx
       ? Object.values(idx.skills)
@@ -110,7 +160,17 @@ export function demandLevel(skill: string, global: boolean, idx: SkillIndex | nu
  * of skills with less demand than this one — not a score out of 100, so a skill
  * at 90 genuinely has more demand than 90% of the taxonomy.
  */
-export function demandPercentile(skill: string, global: boolean, idx: SkillIndex | null): number {
+export function demandPercentile(
+  skill: string,
+  global: boolean,
+  idx: SkillIndex | null,
+  mode: DemandMode = "volume",
+): number {
+  if (!global && mode === "rate") {
+    const v = RATE_LATEST[skill];
+    if (v === undefined || !RATE_SORTED.length) return 0;
+    return Math.round((RATE_SORTED.filter((x) => x < v).length / RATE_SORTED.length) * 100);
+  }
   const values = global
     ? idx
       ? Object.values(idx.skills)
@@ -136,12 +196,28 @@ export function iviCityDemand(skill: string | null): Record<string, number> {
 // Same, but at a specific month in the shared IVI/StatCan history (index into
 // IVI_MONTHS), so the time slider can scrub the heat map back through the series.
 // Falls back to the latest month when the index is out of range.
-export function iviCityDemandAt(skill: string | null, monthIndex: number): Record<string, number> {
+export function iviCityDemandAt(
+  skill: string | null,
+  monthIndex: number,
+  mode: DemandMode = "volume",
+): Record<string, number> {
   if (!skill) return {};
   const series = seriesFor(skill);
   if (!series) return {};
   const last = IVI_MONTHS.length - 1;
   const i = monthIndex < 0 || monthIndex > last ? last : monthIndex;
+  if (mode === "rate") {
+    // Only the cities that have BOTH sides appear. vacancyRate returns null for
+    // a city with no ABS denominator — every non-AU hub, and the handful of
+    // AU skill/territory pairs with no measured employment — and those are
+    // omitted rather than coerced to 0. See DemandMode.
+    const out: Record<string, number> = {};
+    for (const city of Object.keys(series)) {
+      const r = vacancyRate(skill, city, IVI_MONTHS[i]);
+      if (r !== null) out[city] = r;
+    }
+    return out;
+  }
   const out: Record<string, number> = {};
   for (const city of Object.keys(series)) out[city] = series[city][i] ?? 0;
   return out;
@@ -276,10 +352,24 @@ export interface LayerCtx {
   domesticRegion: string;
   localCity: string;
 }
-export function popularSkills(idx: SkillIndex | null, ctx: LayerCtx, n = 10): string[] {
+export function popularSkills(
+  idx: SkillIndex | null,
+  ctx: LayerCtx,
+  n = 10,
+  mode: DemandMode = "volume",
+): string[] {
   // Domestic views with a whole-of-market government vacancy series.
   if (ctx.zoomedOut && !ctx.globalOut) {
-    if (ctx.domesticRegion === "australia" && IVI_SKILLS.length) return IVI_SKILLS.slice(0, n);
+    if (ctx.domesticRegion === "australia" && IVI_SKILLS.length) {
+      // Australia is the only region with a supply side, so it is the only one
+      // whose ranking can change with the mode. The others keep their volume
+      // ordering rather than being silently left in a mode they cannot honour.
+      if (mode === "rate") {
+        const ranked = rankedByRate("national", IVI_MONTHS[IVI_MONTHS.length - 1]);
+        if (ranked.length) return ranked.slice(0, n).map((r) => r.skill);
+      }
+      return IVI_SKILLS.slice(0, n);
+    }
     if (ctx.domesticRegion === "northamerica" && NORTHAMERICA_SKILLS.length)
       return NORTHAMERICA_SKILLS.slice(0, n);
     if (ctx.domesticRegion === "asia" && SG_SKILLS.length) return SG_SKILLS.slice(0, n);

@@ -71,9 +71,16 @@ export function TopBar() {
   // Popular-skill chips, ranked by real demand for the current layer — on the
   // local view that's the companies in this city (shared helper keeps the
   // global/domestic centred search in sync).
+  const demandMode = useAppStore((s) => s.demandMode);
   const skills = useMemo(
-    () => popularSkillsForLayer(skillIndex, { zoomedOut, globalOut, domesticRegion, localCity }, 8),
-    [skillIndex, zoomedOut, globalOut, domesticRegion, localCity],
+    () =>
+      popularSkillsForLayer(
+        skillIndex,
+        { zoomedOut, globalOut, domesticRegion, localCity },
+        8,
+        demandMode,
+      ),
+    [skillIndex, zoomedOut, globalOut, domesticRegion, localCity, demandMode],
   );
 
   // Full search — the same skills + companies + cities the desktop GlobalSearch

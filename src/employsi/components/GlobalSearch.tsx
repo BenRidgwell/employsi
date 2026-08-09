@@ -9,6 +9,8 @@ import {
   demandLevel,
   type DemandTone,
 } from "../lib/skillHeat";
+import { employmentFor, vacancyRate } from "../lib/vacancyRate";
+import { IVI_MONTHS } from "../data/iviSkillDemand";
 import { describeSkills } from "../lib/describeSkills";
 import { useOntologyReady } from "../hooks/useOntologyReady";
 import {
@@ -78,6 +80,7 @@ function FollowGlyph({ on: _on }: { on: boolean }) {
 
 export function GlobalSearch() {
   const globalOut = useAppStore((s) => s.globalOut);
+  const demandMode = useAppStore((s) => s.demandMode);
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const searchQuery = useAppStore((s) => s.searchQuery);
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
@@ -106,6 +109,7 @@ export function GlobalSearch() {
       skillIndex,
       { zoomedOut, globalOut, domesticRegion, localCity },
       CHIP_POOL,
+      demandMode,
     );
     const draw = [...pool];
     for (let i = draw.length - 1; i > 0; i--) {
@@ -113,7 +117,7 @@ export function GlobalSearch() {
       [draw[i], draw[j]] = [draw[j], draw[i]];
     }
     return draw.slice(0, CHIP_COUNT);
-  }, [skillIndex, zoomedOut, globalOut, domesticRegion, localCity]);
+  }, [skillIndex, zoomedOut, globalOut, domesticRegion, localCity, demandMode]);
 
   const [focused, setFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -165,11 +169,11 @@ export function GlobalSearch() {
       ? describeSkills(searchQuery).filter((sk) => !direct.includes(sk))
       : [];
     const skills: Result[] = [...direct, ...described].slice(0, 7).map((sk) => {
-      const badge = demandLevel(sk, globalOut, skillIndex);
+      const badge = demandLevel(sk, globalOut, skillIndex, demandMode);
       return { kind: "skill" as const, id: sk, label: sk, sub: badge.label, tone: badge.tone };
     });
     return [...skills, ...companies, ...cities];
-  }, [q, searchQuery, skillIndex, globalOut, seesAllMarkets, ontologyReady]);
+  }, [q, searchQuery, skillIndex, globalOut, seesAllMarkets, ontologyReady, demandMode]);
 
   const topSkill = results.find((r) => r.kind === "skill") as
     Extract<Result, { kind: "skill" }> | undefined;
@@ -184,6 +188,19 @@ export function GlobalSearch() {
   const card = useMemo(
     () => (cardSkill && !cardBlocked ? buildSkillCard(cardSkill, heatMonth) : null),
     [cardSkill, cardBlocked, heatMonth],
+  );
+  // The national rate for the skill on the card, AT THE SCRUBBED MONTH — not the
+  // latest — so the figure beside the toggle always describes the same month the
+  // map is coloured by. Null when either half is missing, which is what hides
+  // the toggle rather than showing it next to a blank.
+  const setDemandMode = useAppStore((s) => s.setDemandMode);
+  const cardRate = useMemo(
+    () => (cardSkill ? vacancyRate(cardSkill, "national", IVI_MONTHS[heatMonth]) : null),
+    [cardSkill, heatMonth],
+  );
+  const cardEmployed = useMemo(
+    () => (cardSkill ? employmentFor(cardSkill, "national", IVI_MONTHS[heatMonth]) : null),
+    [cardSkill, heatMonth],
   );
   const event = useMemo(() => eventFor(heatMonth), [heatMonth]);
   const monthPct = (heatMonth / TIMELINE_SPAN) * 100;
@@ -545,6 +562,39 @@ export function GlobalSearch() {
               {card.summaryTail}
             </p>
           </div>
+
+          {/* Volume or rate. Two different questions — "where are the most job
+              ads" and "where is labour tightest relative to the people already
+              doing the work" — so it is the user's choice rather than a
+              redefinition of what "demand" means.
+
+              Shown only when this skill HAS a rate. The denominator is ABS
+              employment by occupation, which exists for Australia only, so
+              offering the switch on a skill it cannot answer would be a control
+              that silently does nothing. */}
+          {cardRate !== null && (
+            <div className="gsmode" role="group" aria-label="Demand measure">
+              <button
+                type="button"
+                className={demandMode === "volume" ? "on" : ""}
+                onClick={() => setDemandMode("volume")}
+              >
+                Vacancies
+              </button>
+              <button
+                type="button"
+                className={demandMode === "rate" ? "on" : ""}
+                onClick={() => setDemandMode("rate")}
+              >
+                Per 1,000 employed
+              </button>
+              <span className="gsmodeval">
+                {demandMode === "rate"
+                  ? `${cardRate.toFixed(1)} per 1,000 · ${cardEmployed?.toLocaleString("en-AU")} employed`
+                  : "AU only"}
+              </span>
+            </div>
+          )}
 
           {/* Timeline. Scrubs the same month index the heat map colours by, so
               the card and the map are always showing the same month. */}

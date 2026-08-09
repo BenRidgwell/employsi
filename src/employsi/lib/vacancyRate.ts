@@ -30,6 +30,30 @@ import { ABS_EMPLOYMENT, ABS_EMPLOYMENT_NATIONAL, ABS_QUARTERS } from "../data/a
 export const RATE_BASE = 1000;
 
 /**
+ * Smallest denominator that may produce a rate.
+ *
+ * EQ08 is a household SURVEY, and its small cells are estimates built from very
+ * few sampled records. Measured across the 604 skill/city pairs at 2026-05:
+ * Canberra Quality Assurance came back with ONE employed person against 20
+ * vacancies — 20,000 per 1,000 — and Canberra Mining Engineering with one
+ * person against four. Six pairs implied more vacancies than workers and two
+ * more were merely absurd; every one of the eight sat below 100 employed, while
+ * nothing above about 140 was implausible.
+ *
+ * So the floor is 1,000: a cell smaller than the thousand-person unit the source
+ * is denominated in is sampling noise, and a rate computed from it is noise
+ * multiplied by a thousand. This is a judgement, not a threshold the ABS
+ * publishes — it is set where the measured nonsense stops rather than tuned to
+ * make a number look right, and it costs 66 of 604 pairs (11%), all of them in
+ * Darwin, Hobart and Canberra where the specialist occupations are thinnest.
+ *
+ * Suppressed, not floored: those pairs return null and vanish from the map and
+ * the rankings. Clamping them to a plausible-looking rate would be inventing the
+ * figure the whole exercise exists to avoid.
+ */
+export const MIN_EMPLOYED = 1000;
+
+/**
  * Index into ABS_QUARTERS for the quarter a month belongs to, or -1.
  *
  * The ABS publishes quarterly (mid-quarter Feb/May/Aug/Nov) and the IVI
@@ -56,10 +80,10 @@ export function employmentFor(skill: string, hub: string, month: string): number
   if (qi < 0) return null;
   const series = hub === "national" ? ABS_EMPLOYMENT_NATIONAL[skill] : ABS_EMPLOYMENT[skill]?.[hub];
   const v = series?.[qi];
-  // Zero is not a denominator. A skill with no measured employment in a
-  // territory (several are genuinely zero in Darwin and Hobart) has no rate,
-  // and reporting one would be division by an absence.
-  return v && v > 0 ? v : null;
+  // Zero is not a denominator, and neither is a survey cell too small to mean
+  // anything — see MIN_EMPLOYED. A skill with no usable employment figure in a
+  // territory has no rate, and reporting one would be division by an absence.
+  return v && v >= MIN_EMPLOYED ? v : null;
 }
 
 /** Internet vacancies for a skill in a hub at a month, or null. */

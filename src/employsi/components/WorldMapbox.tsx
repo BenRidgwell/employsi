@@ -1164,7 +1164,7 @@ export function WorldMapbox() {
           s.domesticRegion === "asia" ||
           s.domesticRegion === "europe")
       ) {
-        const ivi = iviCityDemandAt(skill, s.heatMonth);
+        const ivi = iviCityDemandAt(skill, s.heatMonth, s.demandMode);
         cityDemand = { ...cityDemand };
         for (const [c, v] of Object.entries(ivi)) cityDemand[c] = (cityDemand[c] || 0) + v;
       }

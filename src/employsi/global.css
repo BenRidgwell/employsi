@@ -6687,6 +6687,45 @@ body {
    Scrubs the shared month index, so the card and the map move together. Ticks
    mark the labour-market events; the one at or before the handle is described
    in the panel below. */
+/* Vacancies vs vacancies-per-1,000-employed. Sits directly above the timeline
+   because the two controls answer the same card together: this one picks the
+   measure, that one picks the month. */
+.gsmode {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+.gsmode button {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.gsmode button:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-strong, var(--border-subtle));
+}
+.gsmode button.on {
+  color: var(--text-primary);
+  border-color: currentColor;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+.gsmodeval {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-left: auto;
+}
 .gstimeline {
   display: flex;
   flex-direction: column;

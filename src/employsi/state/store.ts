@@ -13,6 +13,7 @@ import { CITY_COMPANIES, cityForCompany } from "../data/mapboxGeo";
 import { HUB_LNGLAT } from "../data/mapboxWorldGeo";
 import type { HeatMetric } from "../lib/heat";
 import type { SkillIndex } from "../lib/skillsFn";
+import type { DemandMode } from "../lib/skillHeat";
 import { IVI_MONTHS } from "../data/iviSkillDemand";
 
 export interface Account {
@@ -66,6 +67,12 @@ export interface AppState {
   // Index into IVI_MONTHS for the AU-domestic time slider (defaults to the
   // latest month). Lets the user scrub the skill heat map back to 2006.
   heatMonth: number;
+  // Whether skill demand is read as a VOLUME of vacancies or as a RATE per
+  // 1,000 people already employed in the work. Two different questions — "where
+  // are the most ads" and "where is labour tightest" — so the user picks.
+  // Volume stays the default: it is the only one every country can answer, as
+  // the rate's denominator (ABS employment by occupation) is Australia-only.
+  demandMode: DemandMode;
   activeSectors: string[];
   // Master listing filter: null = any, else public / private. The exchange
   // filter (activeExchanges) is a drill-down that only applies under 'public'.
@@ -155,6 +162,7 @@ export interface AppState {
   clearSearch: () => void;
   setSkillIndex: (idx: SkillIndex | null) => void;
   setHeatMonth: (i: number) => void;
+  setDemandMode: (m: DemandMode) => void;
   toggleSector: (cat: string) => void;
   setListingType: (v: ListingType) => void;
   toggleExchange: (ex: string) => void;
@@ -403,6 +411,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   searchQuery: "",
   skillIndex: null,
   heatMonth: Math.max(0, IVI_MONTHS.length - 1),
+  demandMode: "volume",
   activeSectors: [],
   listingType: null,
   activeExchanges: [],
@@ -651,6 +660,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSkillIndex: (idx) => set({ skillIndex: idx }),
   setHeatMonth: (i) =>
     set({ heatMonth: Math.max(0, Math.min(IVI_MONTHS.length - 1, Math.round(i))) }),
+  setDemandMode: (m) => set({ demandMode: m }),
   toggleSector: (cat) =>
     set((s) => {
       const has = s.activeSectors.includes(cat);
