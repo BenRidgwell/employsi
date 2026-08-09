@@ -1,11 +1,30 @@
-# Daily NAB careers portal (careers.nab.com.au) → D1 archive, via Oxylabs.
+# Daily NAB careers portal (careers.nab.com.au) → D1 archive, rendered in a
+# local headless Chromium on the runner (no proxy).
 #
 # Every other employer portal on the roster is fetched by the jobs-cron Worker
 # (workers/jobs-cron/careerSites.ts). NAB is the exception: its AWS WAF returns
-# an empty shell to a Cloudflare Worker, and a challenge page to a plain request
-# from a datacentre IP. Only a rendered fetch that waits for the challenge to
-# settle gets the listing, which is what scripts/nab-to-d1.py does through the
-# Oxylabs Web Scraper API.
+# an empty shell to a Cloudflare Worker, and a challenge to a client that never
+# runs its JavaScript. Only a rendered fetch that waits for the challenge to
+# settle gets the listing.
+#
+# THAT WAIT WAS THE FIX, NOT THE ADDRESS. This ran through Oxylabs until
+# 2026-08-09 on the reading that a datacentre IP was what the WAF objected to.
+# The evidence for that was a plain urllib walk which got one page and then
+# empty 202s — a different CLIENT, not a different address. Measured from a
+# hosted runner with no proxy at all (probe-headless-ci.py --nab-route), pages
+# six seconds apart:
+#
+#     page 1  200  277,081 bytes  30 cards
+#     page 2  200  290,841 bytes  30 cards
+#     page 3  200  252,541 bytes  12 cards
+#     page 4  200  195,677 bytes   0 cards   <- and pages 5-8, byte-identical
+#
+# 72 roles — the whole board, ending on a short page and then the board's own
+# empty-results document. The probe also caught the page calling awswaf.com's
+# mp_verify and inputs?client=browser and getting 200s: the browser is solving
+# the challenge. Same finding as Jora, Auckland Airport and TechnologyOne.
+#
+# `--oxylabs` puts the Web Scraper API back if that stops being true.
 #
 # The rows land as source `portal-cl` against company_id `melbourne-nab` — the
 # same archive, key and upsert as every other portal — so a NAB role already
@@ -15,7 +34,6 @@
 # loudly instead of quietly leaving the card looking like NAB has no vacancies.
 #
 # Required repo secrets:
-#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
 #   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
 # Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
 #
@@ -46,10 +64,15 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - name: Scrape NAB careers → D1 (Oxylabs)
+
+      - name: Install Playwright + Chromium
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Scrape NAB careers → D1 (rendered, local browser)
         env:
-          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
-          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}

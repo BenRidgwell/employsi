@@ -830,8 +830,37 @@ survive it:
   returned as they age out and the card falls back to news only. The feature
   degrades instead of showing a months-old post as current.
 
-That leaves **five workflows** carrying Oxylabs credentials: gulftalent, naukri,
-zhaopin, linkedin (the guest jobs endpoint), nab.
+### NAB left too, and it never needed a paid exit
+
+`--nab-route`, from a hosted runner with no proxy, six seconds between pages:
+
+| page | status | bytes | cards |
+|---|---|---|---|
+| 1 | 200 | 277,081 | 30 |
+| 2 | 200 | 290,841 | 30 |
+| 3 | 200 | 252,541 | **12** |
+| 4-8 | 200 | 195,677 (identical) | 0 |
+
+72 roles — the whole board, ending on a short page and then the board's own
+empty-results document. No 202, no challenge. The probe also caught the page
+calling `awswaf.com`'s `mp_verify` and `inputs?client=browser` and getting 200s:
+**the browser is solving the WAF's challenge**, which is the same finding that
+took Jora, Auckland Airport and TechnologyOne off the proxy.
+
+The belief that NAB needed a residential address rested on a plain urllib walk
+that got one page and then empty 202s. That is a different CLIENT, not a
+different address — and this file's own record of the Oxylabs work said as much
+without anyone reading it that way: rendering ALONE returned the challenge page,
+rendering AND a browser wait returned the listing. The wait was the fix. The
+address was never the variable.
+
+Worth keeping as a method note, because it is the second time today the same
+sentence was true: **when a workaround has two ingredients, the measurement
+that justified it only justifies the ingredient it varied.**
+
+That leaves **four workflows** carrying Oxylabs credentials: gulftalent, naukri,
+zhaopin, linkedin (the guest jobs endpoint) — and all four are targets that
+answered and refused, rather than targets that were never asked.
 
 ### What each of the five would actually need
 

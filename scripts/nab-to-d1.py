@@ -10,14 +10,33 @@ through. Measured, not assumed:
 
   * From the Worker: zero roles, while every other site in the same tick
     returned hundreds.
-  * From a plain datacentre IP: the first request returned the full page, and
-    subsequent ones a 202 with an empty body — the WAF flags the address by
-    reputation and volume, so a CI runner would be blocked within a page or two.
+  * From a plain datacentre IP with urllib: the first request returned the full
+    page, and subsequent ones a 202 with an empty body.
   * Through Oxylabs with rendering alone: the challenge page.
   * Through Oxylabs with rendering AND a browser wait: the real page, 30 cards.
 
-So this runs through Oxylabs with a `wait` browser instruction, giving the WAF's
-JavaScript the second or two it needs to settle before the HTML is captured.
+THE WAF IS AT THE JAVASCRIPT LAYER, NOT ON THE ADDRESS, and that reading of the
+third and fourth measurements was there all along — rendering plus a wait is
+what fixed it, on an address that was already a datacentre one. The second
+measurement was of UNPACED urllib, which is a different client, not a different
+address.
+
+Measured 2026-08-09 from a hosted GitHub runner with NO proxy
+(probe-headless-ci.py --nab-route), pages spaced six seconds apart:
+
+    page 1  200  277,081 bytes  30 cards
+    page 2  200  290,841 bytes  30 cards
+    page 3  200  252,541 bytes  12 cards
+    page 4  200  195,677 bytes   0 cards   <- and pages 5-8, byte-identical
+
+72 roles, the whole board, ending on a short page and then the board's own
+empty-results document. No 202, no challenge, no proxy. The probe also captured
+the page calling awswaf.com's mp_verify, telemetry and inputs?client=browser
+endpoints and getting 200s — the browser is solving the challenge, which is the
+same thing that took Jora, Auckland Airport and TechnologyOne off the proxy.
+
+So this now drives a local headless Chromium through scripts/browser_fetch.py.
+`--oxylabs` puts the Web Scraper API back unchanged.
 
 WHAT IT TALKS TO
 NAB runs Clinch. The job list is server-rendered at
@@ -34,9 +53,10 @@ If a run gets pages with no cards at all, the WAF won and the script exits
 non-zero rather than quietly writing nothing — a silent zero here would read as
 "NAB has no vacancies".
 
-Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID,
-     OXYLABS_USERNAME, OXYLABS_PASSWORD
-Run: python scripts/nab-to-d1.py [--max-pages N] [--dry-run] [--direct]
+Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID.
+     OXYLABS_USERNAME / OXYLABS_PASSWORD only with --oxylabs.
+Run: python scripts/nab-to-d1.py [--max-pages N] [--dry-run]
+                                 [--oxylabs] [--direct] [--page-gap S]
 """
 from __future__ import annotations
 import datetime
@@ -53,6 +73,7 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+import browser_fetch  # noqa: E402
 
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
 ACCOUNT = os.environ.get('CF_ACCOUNT_ID') or '080a66721e2d85950d9d7dc939e08b76'
@@ -75,10 +96,16 @@ UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
 args = sys.argv[1:]
 MAX_PAGES = int(args[args.index('--max-pages') + 1]) if '--max-pages' in args else 20
 DRY = '--dry-run' in args
-# --direct skips Oxylabs. Kept for local debugging only: the WAF serves a plain
-# IP about one page before it starts returning empty 202s, so a --direct run is
-# not a substitute for the real path.
+# --direct is plain urllib, no browser. Kept for local debugging only, and it is
+# NOT the same thing as the default: the WAF serves an unpaced urllib about one
+# page before it starts returning empty 202s. What it objects to is a client
+# that never answers its JavaScript, which is exactly what urllib is.
 DIRECT = '--direct' in args
+# --oxylabs restores the Web Scraper API. The default is a local browser.
+VIA_OXYLABS = '--oxylabs' in args
+# Seconds between pages. The measured walk used six and read the whole board;
+# there is no reason to go faster for three pages, and every reason not to.
+PAGE_GAP_S = float(args[args.index('--page-gap') + 1] if '--page-gap' in args else 6)
 # Seconds the headless browser waits after load, for the WAF's JS to settle.
 # 12s was the value verified against the live site; below that the capture can
 # still be the challenge page.
@@ -125,6 +152,19 @@ def job_key(source: str, title: str, company: str, location: str) -> str:
 
 
 # ── fetch + parse ─────────────────────────────────────────────────────────────
+_SESSION = None
+
+
+def _session():
+    global _SESSION
+    if _SESSION is None:
+        import atexit
+        _SESSION = browser_fetch.Session(locale='en-AU')
+        _SESSION.__enter__()
+        atexit.register(lambda: _SESSION.__exit__(None, None, None))
+    return _SESSION
+
+
 def get(url: str) -> str | None:
     if DIRECT:
         req = urllib.request.Request(url, headers={
@@ -142,11 +182,23 @@ def get(url: str) -> str | None:
                     return None
                 time.sleep(2 ** attempt)
         return None
-    from oxylabs_client import fetch as oxy_fetch
-    content, _ = oxy_fetch(
-        url, geo='Australia', render=True,
-        extra={'browser_instructions': [{'type': 'wait', 'wait_time_s': WAF_WAIT_S}]})
-    return content
+    if VIA_OXYLABS:
+        from oxylabs_client import fetch as oxy_fetch
+        content, _ = oxy_fetch(
+            url, geo='Australia', render=True,
+            extra={'browser_instructions': [{'type': 'wait', 'wait_time_s': WAF_WAIT_S}]})
+        return content
+    # ONE SESSION ACROSS THE WHOLE WALK, deliberately. The WAF hands out a token
+    # once its JavaScript has run, and it lives in the browser context — a fresh
+    # context per page would face the challenge again every time and pay the
+    # 12-second settle for it.
+    #
+    # A full navigation per page, not an in-page fetch: goto + settle + content
+    # is precisely the sequence the 2026-08-09 measurement used, and this file's
+    # LOC_RE was already written against a RENDERED page (see its note about the
+    # label span that only exists after rendering), so the serialised DOM is
+    # what the parser expects here rather than a hazard.
+    return _session().html(url, [{'type': 'wait', 'wait_time_s': WAF_WAIT_S}])
 
 
 CARD_SPLIT = re.compile(r'job-search-results-card-col', re.I)
@@ -215,6 +267,8 @@ def get_page(page: int) -> tuple[list[dict], bool]:
 def scrape() -> list[dict]:
     jobs, seen = [], set()
     for page in range(1, MAX_PAGES + 1):
+        if page > 1 and PAGE_GAP_S:
+            time.sleep(PAGE_GAP_S)
         rows, blocked = get_page(page)
         if blocked:
             sys.stderr.write(f'  page {page}: blocked after {PAGE_ATTEMPTS} attempts; stopping.\n')
@@ -312,7 +366,8 @@ def upsert(jobs: list) -> int:
 
 def main() -> int:
     sys.stderr.write(
-        f'NAB careers -> D1: {"DIRECT" if DIRECT else "via Oxylabs"}'
+        f'NAB careers -> D1: '
+        f'{"DIRECT (urllib, debugging only)" if DIRECT else "via Oxylabs" if VIA_OXYLABS else f"local browser, {PAGE_GAP_S}s between pages"}'
         f'{", DRY RUN" if DRY else ""}\n')
     jobs = scrape()
     if not jobs:
@@ -320,7 +375,9 @@ def main() -> int:
         # means the WAF blocked us, not that NAB has stopped hiring.
         sys.stderr.write(
             'No roles parsed. careers.nab.com.au served no job cards — either the AWS WAF '
-            'challenge outlasted the browser wait, or the card markup changed.\n')
+            'challenge outlasted the browser wait, or the card markup changed.\n'
+            'Distinguish them by the page sizes above: a challenge is ~3 KB or ~60 KB, '
+            'the real listing ~250-290 KB. A full-size page with no cards is the markup.\n')
         return 1
     sys.stderr.write(f'{len(jobs)} roles parsed.\n')
     for j in jobs[:5]:
