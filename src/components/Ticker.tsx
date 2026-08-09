@@ -105,13 +105,22 @@ function Lane({
         return (
           <div
             key={`${r.name}-${i}`}
-            className="flex items-center gap-2.5 border-r border-[#f0f0f2] px-[18px]"
+            className="flex items-center gap-2 border-r border-[#f0f0f2] px-3 sm:gap-2.5 sm:px-[18px]"
           >
-            <span className="whitespace-nowrap text-[13px] font-medium tracking-[-0.006em] text-[#1c1c1e]">
+            <span className="whitespace-nowrap text-[12px] font-medium tracking-[-0.006em] text-[#1c1c1e] sm:text-[13px]">
               {r.name}
             </span>
+            {/* Dropped on phones: 48px of sparkline per row against a lane barely
+                wider than one row leaves no room for the figures beside it, and
+                the shape is the least legible part at that size. */}
             {path && (
-              <svg viewBox="0 0 48 18" width={48} height={18} aria-hidden>
+              <svg
+                className="hidden sm:block"
+                viewBox="0 0 48 18"
+                width={48}
+                height={18}
+                aria-hidden
+              >
                 <path
                   d={path}
                   fill="none"
@@ -229,7 +238,10 @@ export function Ticker() {
   return (
     <>
       <div
-        className={`pointer-events-none fixed inset-x-0 bottom-0 z-50 flex h-[92px] items-center px-6 transition-transform duration-300 ease-out ${
+        // px-2 on phones: the desktop inset costs 48px of a 390px screen, and
+        // every pixel of it comes straight out of the marquee. The app's own
+        // ticker goes further and drops to a full-bleed strip at this size.
+        className={`pointer-events-none fixed inset-x-0 bottom-0 z-50 flex h-[92px] items-center px-2 transition-transform duration-300 ease-out sm:px-6 ${
           expanded ? "translate-y-0" : "translate-y-full"
         }`}
         style={{ background: "transparent" }}
@@ -242,15 +254,24 @@ export function Ticker() {
               "inset 0 1px 0 rgba(255,255,255,.9), inset 0 -1px 0 rgba(28,28,30,.04), 0 1px 2px rgba(28,28,30,.06), 0 12px 28px -12px rgba(28,28,30,.22)",
           }}
         >
-          <div className="flex h-[34px] flex-none items-center gap-2 rounded-[15px] bg-[#1c1c1e] px-3 text-white">
+          {/* THE CHIP HAS TO YIELD ON A PHONE.
+              Measured at 390px wide: this label was 290px and the controls 122px
+              inside a 342px pill, so the marquee — the only part carrying any
+              actual data — was squeezed to exactly 0px. All a phone showed was
+              the words "Skills in demand · last 24 hours" and nothing else.
+              So below `sm` the window suffix goes, the type steps down, and the
+              padding tightens; the app's own ticker does the same thing in
+              global.css for the same reason. */}
+          <div className="flex h-[34px] flex-none items-center gap-1 rounded-[15px] bg-[#1c1c1e] px-2 text-white sm:gap-2 sm:px-3">
             <span
-              className="h-[7px] w-[7px] rounded-full bg-white"
+              className="h-[6px] w-[6px] shrink-0 rounded-full bg-white sm:h-[7px] sm:w-[7px]"
               style={{ animation: "emp-pulse 1.8s ease-in-out infinite" }}
             />
-            <span className="font-mono text-[11px] uppercase tracking-[.14em]">
+            <span className="whitespace-nowrap font-mono text-[8px] uppercase tracking-[.06em] sm:text-[11px] sm:tracking-[.14em]">
               Skills in demand
             </span>
-            <span className="font-mono text-[11px] tracking-[.08em] text-[#b4b4ba]">
+            {/* The window is still legible from the control button's label. */}
+            <span className="hidden whitespace-nowrap font-mono text-[11px] tracking-[.08em] text-[#b4b4ba] sm:inline">
               {w.label.toUpperCase()}
             </span>
           </div>
@@ -296,12 +317,17 @@ export function Ticker() {
             )}
           </div>
 
-          <div className="ml-1 flex flex-none items-center gap-0.5 border-l border-[#ededf0] pl-2">
+          {/* Two of the three controls are desktop-only, for the width. Minimize
+              is the one that stays, and it is the right one to keep: it is also
+              what lets a visitor stop the marquee moving, which a scrolling
+              strip owes them (WCAG 2.2.2 is satisfied by pause, stop OR hide —
+              minimize hides it outright). */}
+          <div className="ml-1 flex flex-none items-center gap-0.5 border-l border-[#ededf0] pl-1 sm:pl-2">
             <button
               type="button"
               onClick={() => setWin((v) => (v + 1) % TREND_WINDOWS.length)}
               disabled={!anyLive}
-              className="h-[34px] rounded-[10px] px-[9px] font-mono text-[11px] uppercase tracking-[.1em] text-[#48484a] transition hover:bg-[#f4f4f5] hover:text-ink active:scale-[.96] disabled:pointer-events-none disabled:opacity-40"
+              className="hidden h-[34px] rounded-[10px] px-[9px] font-mono text-[11px] uppercase tracking-[.1em] text-[#48484a] transition hover:bg-[#f4f4f5] hover:text-ink active:scale-[.96] disabled:pointer-events-none disabled:opacity-40 sm:block"
               title={
                 anyLive
                   ? `Showing ${w.label.replace("· ", "").toLowerCase()} — click to change`
@@ -314,7 +340,7 @@ export function Ticker() {
             <button
               type="button"
               onClick={() => setPaused((v) => !v)}
-              className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] text-[#48484a] transition hover:bg-[#f4f4f5] hover:text-ink active:scale-[.96]"
+              className="hidden h-[34px] w-[34px] items-center justify-center rounded-[10px] text-[#48484a] transition hover:bg-[#f4f4f5] hover:text-ink active:scale-[.96] sm:flex"
               aria-label={paused ? "Resume ticker" : "Pause ticker"}
               aria-pressed={paused}
             >
