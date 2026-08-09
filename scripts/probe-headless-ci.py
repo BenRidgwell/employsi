@@ -42,7 +42,29 @@ Verdict per board:
     NO ROWS    browser ran, page loaded, no rows — needs more than a browser
     BLOCKED    never got a usable page at all
 
+RUNNING IT THROUGH A RESIDENTIAL EXIT
+--via-proxy sends Chromium out through SCRAPE_PROXY instead of the runner, which
+turns "does a plain CI address work" into "does OUR exit work". The two runs are
+only comparable if the proxy was genuinely used, so that is CHECKED rather than
+displayed: the run also fetches the runner's own address with no proxy, and ends
+non-zero if the two match. See check_egress().
+
+    SCRAPE_PROXY=http://user:pass@host:port
+
+For IPRoyal residential the host is geo.iproyal.com:12321 and the targeting
+options ride on the PASSWORD, not the path:
+
+    http://USER:PASS_country-au@geo.iproyal.com:12321                 rotating
+    http://USER:PASS_country-au_session-abc123_lifetime-30m@geo...    sticky
+
+Which of those you want depends on the question. The volume walk is asking
+whether ONE residential address survives 355 searches a night, and a rotating
+pool answers it with 355 different addresses — a much prettier number about
+something else. Use a sticky session for the volume walk. The run reports which
+mode it got either way, by sampling the address twice.
+
 Run: python3 scripts/probe-headless-ci.py [--headful] [--json out.json]
+     python3 scripts/probe-headless-ci.py --via-proxy --proxy-check
 Needs: pip install playwright && playwright install chromium
 """
 from __future__ import annotations
@@ -399,10 +421,16 @@ VIA_PROXY = '--via-proxy' in args
 # sequence and report where blocking starts. See volume_walk() for why a
 # single-request probe is not evidence for these.
 VOLUME = int(args[args.index('--volume') + 1]) if '--volume' in args else 0
+# --proxy-check: stop after check_egress(). Three requests instead of an hour,
+# for confirming the secret is right before spending the hour.
+PROXY_CHECK = '--proxy-check' in args
 
 PROXY = browser_fetch.proxy_from_env() if VIA_PROXY else None
 if VIA_PROXY and not PROXY:
     sys.exit('--via-proxy needs SCRAPE_PROXY set (http://user:pass@host:port).')
+if PROXY_CHECK and not VIA_PROXY:
+    sys.exit('--proxy-check only means something with --via-proxy: without it there '
+             'is no proxy to check.')
 
 
 def blocked_as(html: str) -> str | None:
@@ -579,13 +607,13 @@ def volume_walk(pw, which: str, n: int) -> dict:
     return res
 
 
-def egress_ip(pw) -> str:
+def egress_ip(pw, proxy: dict | None = None) -> str:
     """What the TARGETS see. Printed before anything else, because the failure
     this guards against is silent: a proxy that is misconfigured, unreachable or
     ignored leaves Chromium egressing from the runner, every board passes, and
     the run is read as "our residential exit works" when it was never used. An
     address is the only thing that distinguishes those two outcomes."""
-    browser = pw.chromium.launch(headless=True, **({'proxy': PROXY} if PROXY else {}))
+    browser = pw.chromium.launch(headless=True, **({'proxy': proxy} if proxy else {}))
     try:
         page = browser.new_page()
         page.goto('https://api.ipify.org?format=json', timeout=45_000)
@@ -594,6 +622,78 @@ def egress_ip(pw) -> str:
         return f'unknown ({str(e)[:60]})'
     finally:
         browser.close()
+
+
+def check_egress(pw) -> dict:
+    """Establish, before spending the runner's time, that the proxy is real.
+
+    Printing the address was not enough. It made the silent failure VISIBLE but
+    still left it up to a human to notice that the "residential exit" run
+    reported the runner's own datacentre address — and the whole reason this
+    check exists is that such a run reads as a pass on every board. So the
+    comparison is made here and a match ends the run non-zero.
+
+    Three samples, answering three different things:
+
+      direct   the runner's own address, fetched with no proxy at all. Without
+               it there is nothing to compare against and "is that a datacentre
+               address?" is a judgement call rather than a test.
+      first    the address the targets see through SCRAPE_PROXY.
+      second   the same request again. STICKY vs ROTATING changes what the
+               volume walk means, and neither mode is wrong — but a rotating
+               pool answering 80 queries is 80 addresses sharing the load, and
+               reading that as "one residential IP survives 80 requests" is the
+               same unrepresentative-sample error this probe was written to
+               stop. It is recorded rather than assumed.
+
+    A failed DIRECT sample is only a warning: it makes the comparison
+    impossible, but it is not itself evidence the proxy went unused.
+    """
+    first = egress_ip(pw, PROXY)
+    info = {'egress_ip': first, 'direct_ip': None, 'second_ip': None, 'rotates': None}
+    print(f'Egress address the targets see: {first}')
+    if not VIA_PROXY:
+        return info
+
+    direct = egress_ip(pw, None)
+    second = egress_ip(pw, PROXY)
+    info.update(direct_ip=direct, second_ip=second)
+    print(f'Runner address with no proxy:   {direct}')
+    print(f'Second sample through it:       {second}')
+
+    if first.startswith('unknown'):
+        # A DEAD PROXY IS NOT A BLOCKED BOARD, and left alone it would be
+        # recorded as twenty of them: every fetch fails, every verdict is
+        # BLOCKED, and the summary line reads "None — these need the
+        # residential IP as well as the browser". That is the strongest
+        # possible wrong conclusion, drawn from the proxy never having
+        # answered. The same-address check below cannot catch it, because an
+        # unreachable proxy never matches anything.
+        sys.exit(f'\nFAILED: nothing answered through SCRAPE_PROXY — {first}.\n'
+                 + (f'The runner itself reached the check from {direct}, so the '
+                    'proxy is the part that is down, not the network.\n'
+                    if not direct.startswith('unknown') else '')
+                 + 'Every board would fail below and be recorded as a block, so the '
+                   'run stops here. Check the host, port and credentials.')
+
+    if direct.startswith('unknown'):
+        print('  WARNING: could not read the runner\'s own address, so "was the '
+              'proxy used?" could not be checked. Read the result accordingly.')
+    elif first == direct:
+        sys.exit('\nFAILED: the address through SCRAPE_PROXY is the runner\'s own '
+                 f'address ({direct}).\nChromium is not egressing through the proxy, '
+                 'so every board result below would be about this runner rather than '
+                 'your residential exit. Fix the secret and re-dispatch; a pass here '
+                 'would be meaningless.')
+
+    if not first.startswith('unknown') and not second.startswith('unknown'):
+        info['rotates'] = first != second
+        print('  Session: ' + ('ROTATING — a new address per request, so the volume '
+                               'walk below measures a POOL, not one address.'
+                               if info['rotates'] else
+                               'STICKY — one address for the whole run, which is what '
+                               'the volume walk needs to mean anything.'))
+    return info
 
 
 def probe(pw, board: dict) -> dict:
@@ -687,12 +787,22 @@ def main() -> int:
           "parser where it uses one.")
     out = []
     with sync_playwright() as pw:
-        ip = egress_ip(pw)
-        print(f'Egress address the targets see: {ip}')
-        if VIA_PROXY:
-            print('  (if that is a datacentre address, the proxy is not being '
-                  'used and every result below is about the runner, not your exit.)')
+        egress = check_egress(pw)
+        ip = egress['egress_ip']
         print()
+        if PROXY_CHECK:
+            # The point of stopping here is cost. The full run is 20 boards plus
+            # an optional volume walk and takes most of an hour; getting the
+            # secret's format wrong is the likeliest way for that hour to be
+            # wasted, and it is answerable in three requests.
+            print('--proxy-check: the proxy answered and is not the runner. '
+                  'Re-dispatch without it for the boards.')
+            if OUT:
+                with open(OUT, 'w') as f:
+                    json.dump({'via_proxy': VIA_PROXY, **egress,
+                               'proxy_check_only': True}, f, indent=2)
+                print(f'wrote {OUT}')
+            return 0
         vol = []
         if VOLUME:
             print(f'Volume walk: {VOLUME} different company queries per feed.\n')
@@ -740,7 +850,7 @@ def main() -> int:
         # from a runner and read through a residential exit, and an artifact
         # that records only the rows cannot tell you which run it was.
         with open(OUT, 'w') as f:
-            json.dump({'via_proxy': VIA_PROXY, 'egress_ip': ip,
+            json.dump({'via_proxy': VIA_PROXY, **egress,
                        'volume': vol, 'boards': out}, f, indent=2)
         print(f'wrote {OUT}')
     # Always exit 0: this is a measurement, and "they are blocked" is a real

@@ -66,19 +66,27 @@ def proxy_from_env() -> dict | None:
     Returning None means "go direct", which is the right default: every caller
     here worked without a proxy before this existed. It is deliberately NOT an
     error for the variable to be unset.
+
+    The credentials are PERCENT-DECODED, and they have to be. A residential
+    provider's password is a random string that can contain `@` or `:`, and
+    either character makes the URL unparseable unless it is encoded — so
+    encoding it is the only way to express such a password here, and passing
+    the encoded form through to Chromium would authenticate with the wrong
+    secret. The failure that causes is a 407 from the proxy on every request,
+    which this probe would otherwise report as "the boards blocked us".
     """
     raw = (os.environ.get('SCRAPE_PROXY') or '').strip()
     if not raw:
         return None
-    from urllib.parse import urlsplit
+    from urllib.parse import unquote, urlsplit
     u = urlsplit(raw)
     if not u.hostname:
         sys.exit(f'SCRAPE_PROXY is not a URL: {raw[:40]!r}')
     cfg: dict = {'server': f'{u.scheme}://{u.hostname}:{u.port}' if u.port
                  else f'{u.scheme}://{u.hostname}'}
     if u.username:
-        cfg['username'] = u.username
-        cfg['password'] = u.password or ''
+        cfg['username'] = unquote(u.username)
+        cfg['password'] = unquote(u.password or '')
     return cfg
 
 _pw = None

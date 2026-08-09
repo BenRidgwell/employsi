@@ -27,10 +27,31 @@
 #   via_proxy=false (default)  does a plain CI address get these boards?
 #   via_proxy=true             does OUR residential exit get them? Needs the
 #                              SCRAPE_PROXY secret (http://user:pass@host:port).
-#                              The run prints the egress address it actually
-#                              used — a misconfigured proxy otherwise passes
-#                              everything and reads as "our exit works" when it
-#                              was never used.
+#                              The run also fetches the runner's own address
+#                              with no proxy and FAILS if the two match — a
+#                              misconfigured proxy otherwise passes everything
+#                              and reads as "our exit works" when it was never
+#                              used.
+#
+#   proxy_check=true           stop after that address check. Three requests
+#                              instead of most of an hour, for confirming the
+#                              secret's format before spending the hour.
+#
+# SETTING SCRAPE_PROXY (repo secret, Settings > Secrets and variables > Actions).
+# For IPRoyal residential the endpoint is geo.iproyal.com:12321 and the
+# targeting options ride on the PASSWORD:
+#
+#   http://USER:PASS_country-au@geo.iproyal.com:12321                rotating
+#   http://USER:PASS_country-au_session-ab12_lifetime-30m@geo...     sticky
+#
+# Percent-encode the password if it contains @ or : — proxy_from_env() decodes
+# it back before handing it to Chromium.
+#
+# Use a STICKY session for a volume walk. The walk is asking whether one
+# residential address survives 355 searches a night; a rotating pool answers
+# with 355 different addresses, which is a much better-looking number about a
+# different question. The run samples the address twice and reports which mode
+# it got, so a rotating result cannot be mistaken for a sticky one.
 #
 #   volume=N                   walk N DIFFERENT company queries through Indeed,
 #                              SimplyHired and Jora and report where blocking
@@ -50,6 +71,10 @@ on:
     inputs:
       via_proxy:
         description: 'Egress through SCRAPE_PROXY instead of the runner address'
+        type: boolean
+        default: false
+      proxy_check:
+        description: 'Only verify SCRAPE_PROXY works and stop (needs via_proxy)'
         type: boolean
         default: false
       volume:
@@ -92,6 +117,7 @@ jobs:
         run: |
           python scripts/probe-headless-ci.py --json headless-probe.json \
             ${{ inputs.via_proxy && '--via-proxy' || '' }} \
+            ${{ inputs.proxy_check && '--proxy-check' || '' }} \
             ${{ (inputs.volume != '' && inputs.volume != '0') && format('--volume {0}', inputs.volume) || '' }}
 
       - name: Upload the raw result
