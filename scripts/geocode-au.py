@@ -33,6 +33,7 @@ import csv
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 import urllib.parse
@@ -59,7 +60,13 @@ CITY_CENTRE = {
 
 
 def load_addresses():
-    """id -> (city, address), from the supplied CSV.
+    """(city, id) -> address, from the supplied CSV.
+
+    KEYED BY CITY AND COMPANY, not company alone. The CSV has always carried one
+    row per city a company is plotted in, and this used to key by company — so
+    the last row silently won and every other city's address was discarded. That
+    was invisible while coordinates were company-keyed too; it stops being
+    invisible the moment a company has a real office in more than one city.
 
     The addresses are validated externally and are the source of truth. This
     script's job is to catch GEOCODING error — a lookup that lands on the wrong
@@ -72,8 +79,34 @@ def load_addresses():
             cid = (row.get('company_id') or '').strip()
             city = (row.get('city') or '').strip()
             if addr and cid and city:
-                out[cid] = (city, addr)
+                out[(city, cid)] = addr
     return out
+
+
+def plotted_cities() -> dict[str, int]:
+    """company id -> how many cities the map plots it in.
+
+    Read from CITY_COMPANIES through bun, because it decides the OUTPUT KEY and
+    guessing it would reintroduce the bug this change exists to fix: a company
+    on one map gets a plain company-keyed coordinate, a company on several gets
+    only city-scoped ones. Give the Commonwealth Bank a plain key off its
+    Adelaide address and its Sydney, Melbourne, Brisbane and Perth pins all move
+    to Adelaide.
+    """
+    script = f'''
+    import {{ CITY_COMPANIES }} from "{ROOT}/src/employsi/data/mapboxGeo";
+    const n: Record<string, number> = {{}};
+    for (const list of Object.values(CITY_COMPANIES)) {{
+      for (const c of list) n[c.id] = (n[c.id] ?? 0) + 1;
+    }}
+    console.log(JSON.stringify(n));
+    '''
+    path = os.path.join('/tmp', '_plotted_cities.ts')
+    open(path, 'w').write(script)
+    p = subprocess.run(['bun', 'run', path], capture_output=True, timeout=180)
+    if p.returncode != 0:
+        sys.exit(f'could not read CITY_COMPANIES: {p.stderr.decode()[:300]}')
+    return json.loads(p.stdout.decode().strip().splitlines()[-1])
 
 
 # SQUARE was missing and Adelaide is built around five of them. Without it
@@ -251,6 +284,18 @@ PINNED: dict[str, tuple[float, float, str]] = {
     # which would weaken it everywhere to fix one address.
     'sa-gov-northern-and-yorke-landscape-board': (138.613308, -33.834961,
                                                  'OSM Horrocks Highway (= Main North Road), Clare'),
+    # CBA's Adelaide address is a CORNER — "North Terrace and Frome Street" —
+    # which names an intersection rather than a building, and geocodes to
+    # nothing. That corner is the Lot Fourteen precinct, already resolved for
+    # Archer Materials and the Space Agency, so it is pinned to the same point;
+    # realCoord() nudges co-located pins onto a ring so all three stay
+    # clickable. Keyed to Adelaide only: CBA is drawn on five maps.
+    'adelaide:sydney-cba': (138.608529, -34.919318, 'OSM "Lot 14, Adelaide" [institutional]'),
+    # "Festival Tower, Station Road, Adelaide" — Adelaide's Station Road is
+    # short and unnumbered in OSM, and there is another Station Road at
+    # Blackwood 13 km south, which is what a road-name query returns. The tower
+    # is mapped under its own name at 1 Festival Drive.
+    'adelaide:sydney-org': (138.598067, -34.920687, 'OSM "Festival Tower" [building], postcode 5000'),
 }
 
 # Standing notes emitted above an entry, so an explanation survives the next
@@ -277,8 +322,23 @@ def existing_coords() -> dict[str, list]:
     if not os.path.exists(OUT):
         return {}
     txt = open(OUT, encoding='utf-8').read()
-    return {m.group(1): [float(m.group(2)), float(m.group(3))]
-            for m in re.finditer(r'"?([A-Za-z0-9_-]+)"?:\s*\[(-?[\d.]+),\s*(-?[\d.]+)\]', txt)}
+    # THE COLON IS PART OF THE KEY. City-scoped entries look like
+    # "adelaide:sydney-wbc", and a character class without ':' still matched the
+    # tail — so the merge read that key back as plain "sydney-wbc" and rewrote
+    # it unscoped, quietly undoing the scoping the previous run had done. It was
+    # only visible because Westpac's Sydney pin moved to Adelaide.
+    found = {m.group(1): [float(m.group(2)), float(m.group(3))]
+             for m in re.finditer(r'"([A-Za-z0-9_:-]+)":\s*\[(-?[\d.]+),\s*(-?[\d.]+)\]', txt)}
+    # Same guard as gen-linkedin-logos: a tolerant pattern is still a pattern,
+    # so the count is checked against the file rather than trusted. Merging
+    # against a short map deletes every entry it could not see.
+    entries = len(re.findall(r'^\s*"?[A-Za-z0-9_:-]+"?:\s*\[', txt, re.M))
+    if len(found) < entries:
+        raise RuntimeError(
+            f'read {len(found)} of {entries} stored coordinates — the parser no longer '
+            'understands the file it wrote. Refusing to merge, because a short map '
+            'silently deletes the entries it could not see.')
+    return found
 
 
 def main() -> int:
@@ -288,13 +348,27 @@ def main() -> int:
         sys.stderr.write(f'--only: regenerating {len(ONLY)} of {len(out)} stored entries\n')
     rejected: list[str] = []
     far: list[str] = []
-    for cid, (city, addr) in sorted(ADDRESSES.items()):
+    NCITIES = plotted_cities()
+
+    def key_for(city: str, cid: str) -> str:
+        """Where this coordinate is written.
+
+        A company on ONE map keeps its plain company key — nothing about it is
+        ambiguous and every existing reader still finds it. A company on
+        SEVERAL gets city-scoped keys only, so its Adelaide office cannot become
+        its Sydney pin. realCoord() in mapboxGeo.ts reads "<city>:<id>" first
+        and falls back to "<id>".
+        """
+        return cid if NCITIES.get(cid, 1) <= 1 else f'{city}:{cid}'
+
+    for (city, cid), addr in sorted(ADDRESSES.items()):
         if ONLY and cid not in ONLY:
             continue
-        if cid in PINNED:
-            lon, lat, why = PINNED[cid]
-            out[cid] = [lon, lat]
-            print(f'  pinned {cid}: {lon},{lat} — {why}')
+        pin = PINNED.get(f'{city}:{cid}') or PINNED.get(cid)
+        if pin:
+            lon, lat, why = pin
+            out[key_for(city, cid)] = [lon, lat]
+            print(f'  pinned {key_for(city, cid)}: {lon},{lat} — {why}')
             continue
         res, err = [], None
         for q in queries_for(addr):
@@ -320,16 +394,51 @@ def main() -> int:
         # different street, and comparing it literally rejected a correct answer.
         got = re.sub(r'^the\s+', '', road.lower())
         want = re.sub(r'^the\s+', '', want)
+        # POSTCODE, checked alongside the street name. Matching only the road
+        # name accepts the RIGHT STREET IN THE WRONG SUBURB, and Australian
+        # street names repeat constantly: "Station Road, Adelaide SA 5000"
+        # returns Station Road at Blackwood, postcode 5051, thirteen kilometres
+        # south — a perfectly formed coordinate for a different place, which is
+        # how Origin Energy came to be pinned at a suburban railway station.
+        # Only applied when the address states a postcode and the geocoder
+        # returns one; a missing value on either side proves nothing.
+        want_pc = (re.search(r'\b(?:NSW|VIC|QLD|SA|WA|NT|ACT|TAS)\s+(\d{4})\b', addr)
+                   or [None, ''])[1]
+        got_pc = (hit.get('address') or {}).get('postcode', '') or ''
         if want and want not in got:
             # Right city, wrong street: exactly the Macquarie failure.
             rejected.append(f'{cid}: asked for {want!r}, geocoder returned {road!r} — {addr}')
+        elif want_pc and got_pc and want_pc != got_pc:
+            rejected.append(f'{cid}: right street name, wrong place — postcode {got_pc} '
+                            f'not {want_pc} — {addr}')
         else:
-            out[cid] = [round(lon, 6), round(lat, 6)]
+            out[key_for(city, cid)] = [round(lon, 6), round(lat, 6)]
             cx, cy = CITY_CENTRE.get(city, (lon, lat))
             km = (((lon - cx) * 88) ** 2 + ((lat - cy) * 111) ** 2) ** 0.5
             if km > 120:
                 far.append(f'{cid} ({city}): {km:.0f} km out — {addr}')
         time.sleep(1.2)
+
+    # A MULTI-CITY COMPANY MUST NOT KEEP A PLAIN KEY. realCoord() falls back
+    # from "<city>:<id>" to "<id>", so one left behind by an earlier run — or by
+    # the merge, which carries every stored key forward — becomes the coordinate
+    # for every city that has no scoped entry. That is exactly how Westpac's
+    # Sydney pin ended up on its Adelaide office: the scoped key was correct and
+    # a stale plain key underneath it won everywhere else.
+    # ONLY when a scoped key actually exists to replace it. A partial --only run
+    # regenerates a handful of companies, so dropping every multi-city plain key
+    # would strip Santos, Rio, South32 and Woodside of the only coordinate they
+    # have and send them to the fan on every map — deleting good data to fix a
+    # different company. Measured: the unconditional version dropped 12 keys and
+    # 5 of them had no replacement.
+    scoped = {k.split(':', 1)[1] for k in out if ':' in k}
+    stale = [k for k in out if ':' not in k and NCITIES.get(k, 1) > 1 and k in scoped]
+    for k in stale:
+        del out[k]
+    if stale:
+        print(f'dropped {len(stale)} plain keys for companies drawn on more than one map '
+              f'(they fall back to the fan where no city-scoped address exists): '
+              + ', '.join(sorted(stale)))
 
     print(f'\nresolved {len(out)} / {len(ADDRESSES)}')
     if far:
@@ -369,9 +478,12 @@ def main() -> int:
         # dropped from the roster keeps its coordinate until someone removes it).
         # Annotating it is a nicety; crashing the whole write over a missing
         # comment is not.
-        for line in NOTES.get(cid, []):
+        for line in NOTES.get(cid.split(':', 1)[-1], []):
             body.append(f'  // {line}')
-        note = ADDRESSES[cid][1] if cid in ADDRESSES else 'no address row (merged from a previous run)'
+        base = cid.split(':', 1)[1] if ':' in cid else cid
+        hit = next((a for (c, i), a in ADDRESSES.items() if i == base
+                    and (':' not in cid or c == cid.split(':', 1)[0])), None)
+        note = hit or 'no address row (merged from a previous run)'
         body.append(f'  "{cid}": [{lon}, {lat}], // {note}')
     body.append('};')
     with open(OUT, 'w', encoding='utf-8') as f:

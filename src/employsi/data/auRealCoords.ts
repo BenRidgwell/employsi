@@ -18,16 +18,27 @@
  * is approximate but honest. Extending this table is how they get fixed.
  */
 export const AU_REAL_COORDS: Record<string, [number, number]> = {
+  "adelaide-abc": [138.605486, -34.92586], // Level 4, 151 Pirie Street, Adelaide SA 5000
   "adelaide-age": [138.600668, -34.942171], // Level 1, 5-7 King William Road, Unley SA 5061
   "adelaide-ar3": [138.601801, -34.925311], // 111 Gawler Place, Adelaide SA 5000
   "adelaide-arg": [138.598757, -34.92485], // Level 25, 91 King William Street, Adelaide SA 5000
   "adelaide-axe": [138.608529, -34.919318], // Lot 14, North Terrace and Frome Road, Adelaide SA 5000
   "adelaide-bgd": [138.615109, -34.93355], // Level 4, 12 Gilles Street, Adelaide SA 5000
   "adelaide-c79": [138.57025, -35.007448], // 2A Venture Road, Tonsley SA 5042
+  "adelaide-cda": [138.622999, -34.816113], // Technology Park, 2 Second Avenue, Mawson Lakes SA 5095
   "adelaide-coe": [138.596648, -34.927049], // Level 8, 70 Franklin Street, Adelaide SA 5000
   "adelaide-eld": [138.602696, -34.923473], // Level 10, 80 Grenfell Street, Adelaide SA 5000
   "adelaide-pro": [138.597327, -34.925636], // Level 5, 60 Waymouth Street, Adelaide SA 5000
   "adelaide-tea": [138.604766, -34.927994], // 108 Wakefield Street, Adelaide SA 5000
+  "adelaide:bhp": [138.598754, -34.926787], // 171 Collins Street, Melbourne VIC 3000
+  "adelaide:melbourne-anz": [138.602744, -34.925974], // Level 18, 83 Pirie Street, Adelaide SA 5000
+  "adelaide:melbourne-nab": [138.600224, -34.923625], // Ground Floor, 60 King William Street, Adelaide SA 5000
+  "adelaide:melbourne-tls": [138.600224, -34.923625], // 60 King William Street, Adelaide SA 5000
+  "adelaide:sto": [138.602834, -34.926573], // Ground Floor, Santos Centre, 60 Flinders Street, Adelaide SA 5000
+  "adelaide:sydney-agl": [138.600216, -34.925108], // 100 King William Street, Adelaide SA 5000
+  "adelaide:sydney-cba": [138.608529, -34.919318], // Lot Fourteen, Corner North Terrace and Frome Street, Adelaide SA 5000
+  "adelaide:sydney-org": [138.598067, -34.920687], // Level 19, Festival Tower, Station Road, Adelaide SA 5000
+  "adelaide:sydney-wbc": [138.598757, -34.92485], // Westpac House, 91 King William Street, Adelaide SA 5000
   "aps-australian-criminal-intelligence-commission": [149.127907, -35.277942], // 80 Moore Street, Canberra ACT 2601
   "aps-australian-digital-health-agency": [149.085162, -35.341261], // Discovery House West, 47 Bowes Street, Phillip ACT 2606
   "aps-australian-financial-security-authority": [149.134047, -35.305829], // 2-4 National Circuit, Barton ACT 2600
@@ -64,7 +75,7 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "aps-national-library-of-australia": [149.135887, -35.300403], // Parkes Place, Parkes ACT 2600
   "aps-reserve-bank-of-australia": [151.211671, -33.86818], // 65 Martin Place, Sydney NSW 2000
   "aps-safe-work-australia": [149.122942, -35.284743], // 2 Phillip Law Street, Canberra ACT 2601
-  "bhp": [138.598754, -34.926787], // 171 Collins Street, Melbourne VIC 3000
+  "beach": [138.603346, -34.926486], // Level 8, 80 Flinders Street, Adelaide SA 5000
   "brisbane-alq": [153.004439, -27.473396], // Level 2, 299 Coronation Drive, Milton QLD 4064
   "brisbane-ape": [153.042749, -27.444019], // 5 Edmund Street, Newstead QLD 4006
   "brisbane-aqz": [153.133266, -27.392394], // 81 Pandanus Avenue, Brisbane Airport QLD 4008
@@ -80,6 +91,10 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "brisbane-sya": [153.029841, -27.469195], // Level 28, 10 Eagle Street, Brisbane QLD 4000
   "brisbane-tne": [153.038124, -27.4525], // 540 Wickham Street, Fortitude Valley QLD 4006
   "brisbane-vgn": [153.016263, -27.470922], // 275 Grey Street, South Brisbane QLD 4101
+  "brisbane:bhp": [138.598754, -34.926787], // 171 Collins Street, Melbourne VIC 3000
+  "brisbane:rio": [144.969385, -37.813737], // Level 43, 120 Collins Street, Melbourne VIC 3000
+  "brisbane:sto": [138.602834, -34.926573], // Ground Floor, Santos Centre, 60 Flinders Street, Adelaide SA 5000
+  "brisbane:sydney-whc": [151.206497, -33.864018], // Level 28, 259 George Street, Sydney NSW 2000
   "chevron": [115.850857, -31.952325], // QV1 Building, 250 St Georges Terrace, Perth WA 6000
   "fmg": [115.868669, -31.958827], // Level 2, 87 Adelaide Terrace, East Perth WA 6004
   "hgo": [138.600668, -34.942171], // 5/7 King William Road, Unley SA 5061
@@ -108,6 +123,10 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "melbourne-tlx": [144.954318, -37.799741], // 55 Flemington Road, North Melbourne VIC 3051
   "melbourne-twe": [144.968829, -37.815553], // Level 8, 161 Collins Street, Melbourne VIC 3000
   "melbourne-vea": [144.949109, -37.817816], // 720 Bourke Street, Docklands VIC 3008
+  "melbourne:bhp": [138.598754, -34.926787], // 171 Collins Street, Melbourne VIC 3000
+  "melbourne:rio": [144.969385, -37.813737], // Level 43, 120 Collins Street, Melbourne VIC 3000
+  "melbourne:s32": [115.856832, -31.954441], // 108 St Georges Terrace, Perth WA 6000
+  "melbourne:wes": [115.85482, -31.955498], // Level 14, Brookfield Place Tower 2, 123 St Georges Terrace, Perth WA 6000
   "mgt": [138.598282, -34.924284], // Suite 3.03, 30 Currie Street, Adelaide SA 5000
   "min": [115.808277, -31.909375], // 20 Walters Drive, Osborne Park WA 6017
   "mmi": [153.025426, -27.464363], // Level 4, 135 Wickham Terrace, Brisbane QLD 4000
@@ -201,6 +220,12 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "perth-cyl": [115.841673, -31.949762], // 3/50 Colin Street, West Perth WA 6005
   "perth-emr": [115.846328, -31.949709], // 1110 Hay Street, West Perth WA 6005
   "perth-pdi": [115.850448, -31.976711], // 4 Charles Street, South Perth WA 6151
+  "perth:bhp": [138.598754, -34.926787], // 171 Collins Street, Melbourne VIC 3000
+  "perth:rio": [144.969385, -37.813737], // Level 43, 120 Collins Street, Melbourne VIC 3000
+  "perth:s32": [115.856832, -31.954441], // 108 St Georges Terrace, Perth WA 6000
+  "perth:sto": [138.602834, -34.926573], // Ground Floor, Santos Centre, 60 Flinders Street, Adelaide SA 5000
+  "perth:wds": [115.849831, -31.953822], // Mia Yellagonga, 11 Mount Street, Perth WA 6000
+  "perth:wes": [115.85482, -31.955498], // Level 14, Brookfield Place Tower 2, 123 St Georges Terrace, Perth WA 6000
   "pls": [115.843002, -31.946816], // Level 2, 146 Colin Street, West Perth WA 6005
   "priv-abc-tissue": [150.916928, -33.8443], // 34-36 Redfern Street, Wetherill Park NSW 2164
   "priv-abn-group": [115.840223, -31.936453], // 301 Vincent Street, Leederville WA 6007
@@ -395,8 +420,6 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "qld-gov-trade-employment-and-training": [153.025829, -27.475126], // 1 William Street, Brisbane QLD 4000
   "qld-gov-transport-and-main-roads": [153.025829, -27.475126], // 1 William Street, Brisbane QLD 4000
   "qld-gov-youth-justice-and-victim-support": [153.025829, -27.475126], // 1 William Street, Brisbane QLD 4000
-  "rio": [144.969385, -37.813737], // Level 43, 120 Collins Street, Melbourne VIC 3000
-  "s32": [115.856832, -31.954441], // 108 St Georges Terrace, Perth WA 6000
   "sa-gov-adelaide-cemeteries-authority": [138.610278, -34.857389], // Enfield Memorial Park, Browning Street, Clearview SA 5085
   "sa-gov-adelaide-festival-centre-trust": [138.597791, -34.919576], // King William Road, Adelaide SA 5000
   "sa-gov-alinytjara-wilurara-landscape-board": [138.590271, -34.926249], // Level 9, 81-95 Waymouth Street, Adelaide SA 5000
@@ -476,7 +499,6 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "sfr": [115.841389, -31.952468], // Level 2, 10 Kings Park Road, West Perth WA 6005
   "shell": [115.855175, -31.949814], // 562 Wellington Street, Perth WA 6000
   "smr": [153.029651, -27.468519], // Level 32, 12 Creek Street, Brisbane QLD 4000
-  "sto": [138.602834, -34.926573], // Ground Floor, Santos Centre, 60 Flinders Street, Adelaide SA 5000
   "sydney-ask": [151.207952, -33.86498], // Level 34, Australia Square, 264-278 George Street, Sydney NSW 2000
   "sydney-aub": [151.20932, -33.838321], // Level 14, 141 Walker Street, North Sydney NSW 2060
   "sydney-bga": [149.823064, -36.666859], // 23-45 Ridge Street, Bega NSW 2550
@@ -511,11 +533,12 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "sydney-sol": [151.204164, -33.863038], // Level 14, 151 Clarence Street, Sydney NSW 2000
   "sydney-vnt": [151.2081, -33.840572], // Level 8, 80 Pacific Highway, North Sydney NSW 2060
   "sydney-wam": [151.211316, -33.864067], // Level 26, Governor Phillip Tower, 1 Farrer Place, Sydney NSW 2000
-  "sydney-whc": [151.206497, -33.864018], // Level 28, 259 George Street, Sydney NSW 2000
   "sydney-wle": [151.211316, -33.864067], // Level 26, Governor Phillip Tower, 1 Farrer Place, Sydney NSW 2000
   "sydney-wtc": [151.197215, -33.907935], // 33 Bourke Road, Alexandria NSW 2015
   "sydney-yal": [151.20368, -33.872371], // Level 18, Darling Park Tower 2, 201 Sussex Street, Sydney NSW 2000
   "sydney-zip": [151.209162, -33.864809], // Level 14, 10 Spring Street, Sydney NSW 2000
+  "sydney:sydney-whc": [151.206497, -33.864018], // Level 28, 259 George Street, Sydney NSW 2000
+  "sydney:wes": [115.85482, -31.955498], // Level 14, Brookfield Place Tower 2, 123 St Georges Terrace, Perth WA 6000
   "tas-gov-building-tasmania": [147.329871, -42.885461], // 4 Salamanca Place, Hobart TAS 7000
   "tas-gov-department-for-education-children-and-young-people": [147.329871, -42.885461], // 4 Salamanca Place, Hobart TAS 7000
   "tas-gov-department-of-health": [147.326363, -42.884114], // Level 7, 110 Collins Street, Hobart TAS 7000
@@ -619,5 +642,4 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "vic-gov-workforce-inspectorate-victoria": [144.970425, -37.812775], // Level 27, 121 Exhibition Street, Melbourne VIC 3000
   "vic-gov-workplace-injury-commission": [144.971884, -37.809798], // Level 1, 215 Spring Street, Melbourne VIC 3000
   "vic-gov-worksafe": [144.358819, -38.146047], // 1 Malop Street, Geelong VIC 3220
-  "wds": [115.849831, -31.953822], // Mia Yellagonga, 11 Mount Street, Perth WA 6000
 };

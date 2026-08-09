@@ -228,8 +228,22 @@ const REAL_COORDS: Record<string, [number, number]> = {
 };
 
 const _realSeen = new Map<string, number>();
-function realCoord(id: string): [number, number] | undefined {
-  const base = REAL_COORDS[id];
+/**
+ * A company's verified coordinate for the city it is being drawn on.
+ *
+ * "<city>:<id>" is tried before "<id>". A company plotted on one map keeps a
+ * plain company key; one plotted on several — the Commonwealth Bank is on five,
+ * Telstra on seven — gets city-scoped keys only, because a single coordinate
+ * per company means its Adelaide office IS its Sydney pin. That is how BHP came
+ * to sit at 171 Collins Street on the Perth, Brisbane, Manila and Kuala Lumpur
+ * maps.
+ *
+ * A multi-city company with no coordinate for the city being drawn falls back
+ * to the generated fan, which is honest: we do not know where its office in
+ * that city is.
+ */
+function realCoord(id: string, city?: string): [number, number] | undefined {
+  const base = (city ? REAL_COORDS[`${city}:${id}`] : undefined) ?? REAL_COORDS[id];
   if (!base) return undefined;
   const key = `${base[0]},${base[1]}`;
   const n = _realSeen.get(key) ?? 0;
@@ -255,7 +269,7 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   const pts = spreadCoordsCity(view.center, offset + roster.companies.length, CITY_PLACEMENT[city]);
   roster.companies.forEach((entry, i) => {
     const id = rosterId(city, entry[0]);
-    existing.push({ id, coords: realCoord(id) ?? pts[offset + i] });
+    existing.push({ id, coords: realCoord(id, city) ?? pts[offset + i] });
   });
 }
 
@@ -266,7 +280,9 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   const existing = (CITY_COMPANIES.perth ||= []);
   const offset = existing.length;
   const pts = spreadCoords(view.center, offset + PERTH_GOV_IDS.length);
-  PERTH_GOV_IDS.forEach((id, i) => existing.push({ id, coords: realCoord(id) ?? pts[offset + i] }));
+  PERTH_GOV_IDS.forEach((id, i) =>
+    existing.push({ id, coords: realCoord(id, "perth") ?? pts[offset + i] }),
+  );
 }
 
 // Adelaide SA government agencies: fan their office pins around the Adelaide
@@ -281,7 +297,7 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
     CITY_PLACEMENT.adelaide,
   );
   ADELAIDE_GOV_IDS.forEach((id, i) =>
-    existing.push({ id, coords: realCoord(id) ?? pts[offset + i] }),
+    existing.push({ id, coords: realCoord(id, "adelaide") ?? pts[offset + i] }),
   );
 }
 
@@ -296,7 +312,7 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
     CITY_PLACEMENT.melbourne,
   );
   MELBOURNE_GOV_IDS.forEach((id, i) =>
-    existing.push({ id, coords: realCoord(id) ?? pts[offset + i] }),
+    existing.push({ id, coords: realCoord(id, "melbourne") ?? pts[offset + i] }),
   );
 }
 
@@ -311,7 +327,7 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
     CITY_PLACEMENT.brisbane,
   );
   BRISBANE_GOV_IDS.forEach((id, i) =>
-    existing.push({ id, coords: realCoord(id) ?? pts[offset + i] }),
+    existing.push({ id, coords: realCoord(id, "brisbane") ?? pts[offset + i] }),
   );
 }
 
@@ -338,7 +354,7 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   const offset = existing.length;
   const pts = spreadCoordsCity(view.center, offset + DARWIN_GOV_IDS.length, CITY_PLACEMENT.darwin);
   DARWIN_GOV_IDS.forEach((id, i) =>
-    existing.push({ id, coords: realCoord(id) ?? pts[offset + i] }),
+    existing.push({ id, coords: realCoord(id, "darwin") ?? pts[offset + i] }),
   );
 }
 
@@ -350,7 +366,7 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   const offset = existing.length;
   const pts = spreadCoordsCity(view.center, offset + HOBART_GOV_IDS.length, CITY_PLACEMENT.hobart);
   HOBART_GOV_IDS.forEach((id, i) =>
-    existing.push({ id, coords: realCoord(id) ?? pts[offset + i] }),
+    existing.push({ id, coords: realCoord(id, "hobart") ?? pts[offset + i] }),
   );
 }
 
@@ -362,7 +378,7 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   const offset = existing.length;
   const pts = spreadCoordsCity(view.center, offset + SYDNEY_GOV_IDS.length, CITY_PLACEMENT.sydney);
   SYDNEY_GOV_IDS.forEach((id, i) =>
-    existing.push({ id, coords: realCoord(id) ?? pts[offset + i] }),
+    existing.push({ id, coords: realCoord(id, "sydney") ?? pts[offset + i] }),
   );
 }
 
@@ -376,7 +392,7 @@ for (const [city, ids] of Object.entries(TOP_PRIVATE_BY_CITY)) {
   const existing = (CITY_COMPANIES[city] ||= []);
   const offset = existing.length;
   const pts = spreadCoordsCity(view.center, offset + ids.length, CITY_PLACEMENT[city]);
-  ids.forEach((id, i) => existing.push({ id, coords: realCoord(id) ?? pts[offset + i] }));
+  ids.forEach((id, i) => existing.push({ id, coords: realCoord(id, city) ?? pts[offset + i] }));
 }
 
 // New Zealand companies: plotted at their real geocoded HQ coordinates on the
