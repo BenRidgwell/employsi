@@ -281,11 +281,25 @@ def write_csv(rows: list[dict], path: str) -> None:
 LAUNCH_ARGS = ['--no-sandbox', '--disable-blink-features=AutomationControlled', '--disable-dev-shm-usage']
 
 
-def launch_browser(p, headful: bool = False, proxy: str | None = None):
+def proxy_kw(proxy):
+    """Normalise `proxy` into Playwright's launch keyword, or {}.
+
+    Accepts either a bare server URL (`--proxy http://host:port`, how this has
+    always been called) or an already-split dict {server, username, password}.
+    The dict form is what an AUTHENTICATED exit needs: Chromium ignores
+    credentials embedded in the server URL, so `http://user:pass@host:port`
+    passed as a string authenticates as nobody and every request comes back 407
+    — which reads at this level as "the target blocked us".
+    """
+    if not proxy:
+        return {}
+    return {'proxy': proxy if isinstance(proxy, dict) else {'server': proxy}}
+
+
+def launch_browser(p, headful: bool = False, proxy=None):
     """Launch Chromium (using a pre-provisioned binary when available)."""
     kw = {'headless': not headful, 'args': LAUNCH_ARGS}
-    if proxy:
-        kw['proxy'] = {'server': proxy}
+    kw.update(proxy_kw(proxy))
     exe = chromium_executable()
     if exe:
         kw['executable_path'] = exe
@@ -303,7 +317,7 @@ def new_stealth_page(browser):
     return ctx.new_page()
 
 
-def open_session(p, headful: bool = False, proxy: str | None = None, profile: str | None = None):
+def open_session(p, headful: bool = False, proxy=None, profile: str | None = None):
     """
     Open a browsing session. Returns (closeable, page); call closeable.close()
     to tear it down. With `profile` set, uses a PERSISTENT context stored in that
@@ -314,8 +328,7 @@ def open_session(p, headful: bool = False, proxy: str | None = None, profile: st
     exe = chromium_executable()
     if profile:
         kw = dict(user_data_dir=profile, headless=not headful, args=LAUNCH_ARGS, **CTX_KW)
-        if proxy:
-            kw['proxy'] = {'server': proxy}
+        kw.update(proxy_kw(proxy))
         if exe:
             kw['executable_path'] = exe
         ctx = p.chromium.launch_persistent_context(**kw)

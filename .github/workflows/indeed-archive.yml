@@ -1,14 +1,28 @@
-# Daily Indeed → D1 archive (hosted, via the Oxylabs Web Scraper API).
+# Daily Indeed → D1 archive (hosted runner, headless Chromium + a residential
+# exit).
 #
-# Indeed's DataDome blocks datacenter IPs, so instead of a browser this fetches
-# Indeed's rendered search HTML through the Oxylabs Web Scraper API (which
-# supplies the residential IP + DataDome bypass + JS rendering) and parses it —
-# no Playwright, so it runs on an ordinary GitHub runner. Verified end-to-end.
+# Indeed refuses a datacentre ADDRESS — a plain request from a runner gets 403
+# and a Cloudflare interstitial, and a browser on that same address gets the
+# same thing (measured 2026-08-06). So the address has to change, and the
+# question was only which residential exit.
+#
+# Measured 2026-08-09 from a GitHub runner (probe-headless-ci.py, reproduced on
+# a second run): headless Chromium egressing through IPRoyal loaded a live
+# au.indeed.com company search and indeed_company_scraper.parse_search_html
+# counted 16 rows. Plain urllib through the same exit got nothing — the browser
+# is not optional here even with the right address.
+#
+# The walk is single-threaded (Playwright's sync API is), but each search page
+# after the first is a fetch() from inside the cleared page rather than a
+# navigation, so it runs at plain-HTTP speed.
 #
 # Required repo secrets:
-#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
-#   CLOUDFLARE_API_TOKEN                — D1 edit on the employsi account
+#   SCRAPE_PROXY          — residential exit, http://user:pass@host:port
+#   CLOUDFLARE_API_TOKEN  — D1 edit on the employsi account
 # Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# Pass --oxylabs (with OXYLABS_USERNAME / OXYLABS_PASSWORD restored to the env
+# below) to put the Web Scraper API back if IPRoyal stops getting through.
 #
 # Exits non-zero (red X) if Indeed starts returning nothing. Use "Run workflow"
 # to verify before relying on the schedule.
@@ -27,18 +41,13 @@ concurrency:
 jobs:
   archive:
     runs-on: ubuntu-latest
-    # 180 was not enough and the run said so in the worst way it could: run 16
-    # (2026-08-06) was cancelled at the cap having walked 325 of the roster's
-    # 355 companies. It was not failing — it archived steadily for the whole
-    # three hours and stopped about thirty companies short — but a cancelled
-    # job writes what it wrote and reports nothing about what it never reached,
-    # so a run that is 91% done looks the same as one that died early.
-    #
-    # The cost is the Oxylabs 613 backoffs, ~1.4 per company (449 across those
-    # 325), not the fetches themselves. 350 leaves roughly double the measured
-    # need, so the 613 rate can get materially worse before a run is at risk,
-    # and it is still inside the 360-minute ceiling for a hosted runner.
-    timeout-minutes: 350
+    # The Oxylabs path needed 350 and used nearly all of it, but most of that
+    # was its own 613 backoffs (~1.4 per company) rather than the fetches. This
+    # path has no backoffs and no concurrency; 300 is kept deliberately generous
+    # until a full run has been timed, because a job cancelled at the cap writes
+    # what it wrote and reports nothing about what it never reached — a run 91%
+    # done looks exactly like one that died early.
+    timeout-minutes: 300
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -47,13 +56,25 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - name: Scrape Indeed → D1 (Oxylabs)
+
+      - name: Install Playwright + Chromium
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Scrape Indeed → D1 (browser via SCRAPE_PROXY)
         env:
-          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
-          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
-        # All ~205 roster companies; up to 20 pages each (the driver stops early
-        # once a company yields no new ads, so small employers cost little).
-        run: python scripts/indeed-to-d1.py --max-pages 20 --concurrency 8
+        # The whole roster; up to 20 pages each (the walk stops early once a
+        # company yields no new ads, so small employers cost little).
+        run: |
+          if [ -z "$SCRAPE_PROXY" ]; then
+            echo "SCRAPE_PROXY is not set. Indeed 403s a datacentre address, so"
+            echo "this would spend the whole run collecting interstitials."
+            exit 1
+          fi
+          python scripts/indeed-to-d1.py --max-pages 20

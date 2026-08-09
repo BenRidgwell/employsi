@@ -7,7 +7,17 @@ Meant to run from YOUR OWN machine on a schedule (cron / launchd / Task
 Scheduler), NOT from CI/Workers: Indeed 403-blocks datacenter IPs, so only a
 residential connection reliably renders results.
 
-THE OXYLABS PATH IS THE ONE THAT RUNS IN CI, AND IT IS NOT DEAD.
+WHAT RUNS IN CI: THE BROWSER, THROUGH SCRAPE_PROXY (IPRoyal residential).
+Measured from a GitHub runner on 2026-08-09 by probe-headless-ci.py: headless
+Chromium egressing through the IPRoyal exit loaded a live au.indeed.com search
+and parse_search_html counted 16 rows. Reproduced on a second run. That is the
+whole reason this moved — the address is what Indeed refuses, and a residential
+address in a browser gets the page.
+
+--oxylabs is still here, and still works, as the fallback for the day IPRoyal
+stops getting through. The notes below are from when it was the default:
+
+THE OXYLABS PATH IS NOT DEAD.
 On 2026-08-04 it returned 613 on essentially every request and every company
 came back with 0 jobs, which looked like Indeed had shut us out. Re-measured
 2026-08-06 with the same credentials: 6 of 6 companies returned 200 with 12-16
@@ -35,7 +45,18 @@ source|title|company|location key + upsert as src/employsi/lib/jobArchive.ts.
 
 Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID.
 Run:  python scripts/indeed-to-d1.py [--country au] [--only id1,id2] [--limit N]
-                                     [--headful] [--proxy URL] [--max-pages N]
+                                     [--max-pages N] [--oxylabs]
+                                     [--nav [--headful] [--proxy URL]]
+
+Transports, all three parsing the same search HTML with parse_search_html:
+  (default)  browser_fetch.raw_get through SCRAPE_PROXY — Chromium clears the
+             challenge once per origin, then fetches each page from inside the
+             cleared page. This is what CI runs.
+  --oxylabs  the Web Scraper API. The fallback, unchanged.
+  --nav      a warmed browser navigating page to page with jittered delays.
+             What this file used to do; kept for hand-runs from a residential
+             machine (--headful solves a wall once, --profile caches it), and
+             too slow for the whole roster in CI.
 
 First time on a fresh machine:
     pip install playwright && playwright install chromium
@@ -60,6 +81,9 @@ except ImportError:
     sync_playwright = None
 
 import urllib.request  # noqa: E402
+from urllib.parse import urlsplit  # noqa: E402
+import browser_fetch  # noqa: E402
+import http_fetch  # noqa: E402
 
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
 ACCOUNT = os.environ.get('CF_ACCOUNT_ID') or '080a66721e2d85950d9d7dc939e08b76'
@@ -88,6 +112,17 @@ CONCURRENCY = int(_opt('--concurrency', 8))
 DEAD_AFTER = int(_opt('--dead-after', 25))
 HEADFUL = '--headful' in args
 PROXY = _opt('--proxy', None)
+# The transport. Oxylabs is now OPT-IN rather than "whenever the credentials
+# happen to be in the environment": which exit a run used has to be visible in
+# the command line, because it is the first thing you need to know when a run
+# comes back with zero rows.
+VIA_OXYLABS = '--oxylabs' in args
+# --nav drives a warmed browser through page.goto() per search page, with the
+# jittered delays below. It was the only browser path; it is now opt-in, because
+# it cannot finish this roster inside a hosted runner's ceiling.
+NAV = '--nav' in args
+# One-off wait for Cloudflare's challenge on the first navigation.
+SETTLE = int(_opt('--settle', 8))
 # --proxy-list <file-or-url>: rotate through a proxy pool, moving to the next
 # working proxy whenever the current IP gets blocked (see scripts/proxy_pool.py).
 # Overrides --proxy. Works with the iplocate free list or a paid residential one.
@@ -250,20 +285,48 @@ def main() -> int:
         sys.stderr.write('  (headless: verifying the cached profile gets through. '
                          'Add --headful the first time to solve the wall by hand.)\n')
 
-    # ── Oxylabs Web Scraper API path (no browser / no proxy) ──────────────────
-    # When OXYLABS_USERNAME is set we fetch Indeed's rendered search HTML through
-    # Oxylabs — which supplies the residential IP + DataDome bypass + JS render —
-    # and parse it, so there's no Playwright and this can run on any host.
-    if os.environ.get('OXYLABS_USERNAME'):
-        import oxylabs_client as oxy
+    # ── the SEARCH-HTML walk ─────────────────────────────────────────────────
+    # Fetch each search page's HTML and parse it with parse_search_html. Two
+    # transports fill in the fetch; the walk around them is identical, which is
+    # the point — the parsing, the dedupe, the DEAD_AFTER guard and the D1 write
+    # are the same code whichever exit the bytes came through.
+    #
+    #   default    browser_fetch.raw_get through SCRAPE_PROXY. Chromium clears
+    #              Indeed's Cloudflare challenge once, then every search page is
+    #              a fetch() from inside the cleared page — so this runs at
+    #              plain-HTTP speed rather than a full navigation per page.
+    #   --oxylabs  the Web Scraper API, which supplies the address and the
+    #              bypass together.
+    #
+    # The alternative below (--nav) drives a warmed browser through goto() with
+    # jittered human-ish delays. It is the right shape for a hand-run from a
+    # residential machine, and the wrong one for CI: 355 companies at 8-25s
+    # apiece plus a navigation per page does not fit in a runner's six hours.
+    if VIA_OXYLABS or not NAV:
         from concurrent.futures import ThreadPoolExecutor
         import threading
         geo = ind.GEO_FOR.get(COUNTRY)
         sel = companies[:LIMIT] if LIMIT < len(companies) else companies
-        sys.stderr.write(f'  via Oxylabs Web Scraper API (geo={geo}, concurrency={CONCURRENCY}) '
-                         f'— {len(sel)} companies, no browser.\n')
+        if VIA_OXYLABS:
+            if not os.environ.get('OXYLABS_USERNAME'):
+                sys.exit('--oxylabs needs OXYLABS_USERNAME / OXYLABS_PASSWORD.')
+            import oxylabs_client as oxy
+            fetch_search = lambda u: oxy.fetch(u, geo=geo, render=False)[0]  # noqa: E731
+            workers = max(1, CONCURRENCY)
+            sys.stderr.write(f'  via Oxylabs Web Scraper API (geo={geo}, concurrency={workers}) '
+                             f'— {len(sel)} companies, no browser.\n')
+        else:
+            fetch_search = lambda u: browser_fetch.raw_get(u, settle=SETTLE, locale='en-AU')  # noqa: E731
+            # ONE worker, not CONCURRENCY. Playwright's sync API must be driven
+            # from the thread that created it, so the pool below is a pool of
+            # one here. Jora's browser path has the same constraint and the same
+            # answer; it is fast enough because the challenge is cleared once
+            # and the pages after it are fetches, not navigations.
+            workers = 1
+            sys.stderr.write(f'  browser via {http_fetch.proxy_label()} — {len(sel)} companies, '
+                             f'single-threaded.\n')
         lock = threading.Lock()
-        st = {'fetch': 0, 'new': 0, 'empty': 0, 'done': 0, 'dead': False}
+        st = {'fetch': 0, 'new': 0, 'empty': 0, 'done': 0, 'reach': 0, 'dead': False}
 
         def work(cid, name):
             # STOP EARLY WHEN THE FEED IS DEAD RATHER THAN SLOW. Measured
@@ -293,7 +356,7 @@ def main() -> int:
                 # need is asking for the failure we were getting. Measured the
                 # same day, unrendered: 6 of 6 companies returned 200 with
                 # 12-16 rows each, 35-82s apiece.
-                content, _ = oxy.fetch(ind.search_url(base, name, '', pg * 10), geo=geo, render=False)
+                content = fetch_search(ind.search_url(base, name, '', pg * 10))
                 if not content:
                     break
                 new = 0
@@ -307,9 +370,17 @@ def main() -> int:
                 if new == 0:  # page repeated / empty → end of results
                     break
             if SOLVE:
+                # ROWS, NOT A COMPLETED CALL. This printed "reachable ✓" for any
+                # company that finished the loop, so a run where every fetch
+                # died — connection reset, challenge page, dead proxy — reported
+                # a clean tick on zero listings and exited 0. That is the check
+                # reporting on itself rather than on Indeed.
                 with lock:
                     st['fetch'] += len(jobs); st['done'] += 1
-                sys.stderr.write(f'  {cid:16} {len(jobs):3} jobs · reachable ✓\n')
+                    if jobs:
+                        st['reach'] += 1
+                sys.stderr.write(f'  {cid:16} {len(jobs):3} jobs · '
+                                 f'{"reachable ✓" if jobs else "NOTHING"}\n')
                 return
             if not jobs:
                 with lock:
@@ -326,25 +397,31 @@ def main() -> int:
             sys.stderr.write(f'  {cid:16} {len(jobs):3} indeed · {written:3} new '
                              f'({len(jobs) - len(fresh)} already archived)\n')
 
-        with ThreadPoolExecutor(max_workers=max(1, CONCURRENCY)) as ex:
+        with ThreadPoolExecutor(max_workers=workers) as ex:
             list(ex.map(lambda cn: work(*cn), sel))
+        exit_name = 'Oxylabs' if VIA_OXYLABS else f'the browser ({http_fetch.proxy_label()})'
         if SOLVE:
-            sys.stderr.write(f'\n✓ {st["done"]} companies reachable via Oxylabs.\n')
-            return 0
+            sys.stderr.write(f'\n{st["reach"]} of {st["done"]} companies returned listings '
+                             f'via {exit_name} ({st["fetch"]} in total).\n')
+            # Nothing anywhere is a refused exit, not a roster of quiet
+            # employers — every company on this roster advertises somewhere.
+            return 0 if st['reach'] else 2
         if st['dead']:
             sys.stderr.write(
                 f'\nABORTED: {st["done"]} companies walked and not one listing '
-                f'fetched. Indeed is refusing the whole run (check the 613s '
-                f'above — that is Oxylabs failing to load the page, not an '
-                f'empty board). Nothing written.\n')
+                f'fetched. Indeed is refusing the whole run, not returning empty '
+                f'boards. On --oxylabs check the 613s above (that is Oxylabs '
+                f'failing to load the page); on the browser path check for a '
+                f'Cloudflare interstitial, which means the exit is burnt. '
+                f'Nothing written.\n')
             return 2
-        sys.stderr.write(f'\nDone (Oxylabs). {st["fetch"]} listings fetched, {st["new"]} new rows '
-                         f'archived, {st["empty"]} companies with 0 jobs.\n')
+        sys.stderr.write(f'\nDone (via {exit_name}). {st["fetch"]} listings fetched, '
+                         f'{st["new"]} new rows archived, {st["empty"]} companies with 0 jobs.\n')
         return 0
 
     if sync_playwright is None:
-        sys.exit('No browser: install Playwright, or set OXYLABS_USERNAME/OXYLABS_PASSWORD '
-                 'to use the Oxylabs Web Scraper API path.')
+        sys.exit('No browser: install Playwright, or pass --oxylabs (with '
+                 'OXYLABS_USERNAME / OXYLABS_PASSWORD) to use the Web Scraper API path.')
 
     # Optional proxy pool: pick an initial working proxy, rotate on repeated blocks.
     rotator = proxy = open_resilient = None
@@ -358,7 +435,15 @@ def main() -> int:
         except Exception as e:
             sys.stderr.write(f'  proxy pool error ({e}) — running direct.\n')
     else:
-        proxy = PROXY
+        # SCRAPE_PROXY is the default exit, split into Playwright's
+        # {server, username, password} — Chromium ignores credentials embedded
+        # in the server URL, so passing the raw URL 407s every request. An
+        # explicit --proxy still wins, and no proxy at all still runs direct
+        # (which is how this is used from a residential machine by hand).
+        proxy = PROXY or browser_fetch.proxy_from_env()
+        # Host:port only — a residential proxy URL carries a password.
+        where = urlsplit(PROXY).netloc.rsplit('@', 1)[-1] if PROXY else http_fetch.proxy_label()
+        sys.stderr.write(f'  browser exit: {where}\n')
 
     total_fetch = total_new = blocked = done = 0
     consecutive_blocks = 0

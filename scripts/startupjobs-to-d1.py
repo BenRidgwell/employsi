@@ -60,11 +60,25 @@ string `{{{highlighted_title}}}`, and a first pass archived it as a vacancy for
 so out loud ("Disallow: URLs found in <template>'s such as
 /company/{{{company_slug}}}"). Any field still carrying braces is dropped.
 
+THE COMPANY PAGES NEED A RESIDENTIAL ADDRESS; THE SITEMAP DOES NOT.
+/company/<slug> 403s a datacentre IP, so it goes through SCRAPE_PROXY. The
+42,885-company sitemap on cdn.startup.jobs answers a plain request and is left
+on the direct path — there is no reason to spend a proxy request on it.
+
+Measured from a GitHub runner on 2026-08-09 (probe-headless-ci.py, reproduced):
+headless Chromium through the IPRoyal exit loaded /company/twitch and counted 20
+cards with this file's own CARD marker. A plain urllib request through the same
+exit did not, which is why the transport is a browser and not just an address:
+it clears Cloudflare once, then raw_get fetches each page as `fetch()` from
+inside the cleared page. That also returns the SERVER's bytes rather than a
+serialised DOM, which the CARD regex needs — it matches adjacent attributes, and
+a rendered DOM reorders them.
+
 Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID,
-     OXYLABS_USERNAME, OXYLABS_PASSWORD (the site 403s a datacentre IP; no JS
-     render is needed, so the fetches are the cheap non-rendering kind)
+     SCRAPE_PROXY (the residential exit; the default transport),
+     OXYLABS_USERNAME / OXYLABS_PASSWORD only with --oxylabs.
 Run: python scripts/startupjobs-to-d1.py [--limit N] [--only id,id]
-                                         [--max-pages N] [--dry-run]
+                                         [--max-pages N] [--dry-run] [--oxylabs]
 """
 from __future__ import annotations
 import datetime
@@ -104,11 +118,18 @@ LIMIT = int(_opt('--limit', 10 ** 9))
 ONLY = set(_opt('--only', '').split(',')) if '--only' in args else None
 MAX_PAGES = int(_opt('--max-pages', 10))
 DRY = '--dry-run' in args
+# Browser + SCRAPE_PROXY by default; --oxylabs puts the Web Scraper API back.
+VIA_OXYLABS = '--oxylabs' in args
+# One-off wait for Cloudflare's challenge on the first navigation, matching the
+# settle the probe that measured this feed used.
+SETTLE = int(_opt('--settle', 6))
 NO_SKILLS = '--no-skills' in args
 
 if not TOKEN and not DRY:
     sys.exit('CLOUDFLARE_API_TOKEN is required (needs D1 edit). Use --dry-run to skip the write.')
 
+import browser_fetch  # noqa: E402
+import http_fetch  # noqa: E402
 from advertiser_match import advertiser_matches, near_miss, norm  # noqa: E402
 
 # startup.jobs slug -> the roster company it has been CONFIRMED to be, by reading
@@ -206,9 +227,11 @@ PAGE_H1 = re.compile(r'<h1[^>]*>(.*?)</h1>', re.S)
 
 
 def fetch(url: str) -> str | None:
-    from oxylabs_client import fetch as oxy_fetch
-    content, _ = oxy_fetch(url, geo='United States', render=False, timeout=200)
-    return content
+    if VIA_OXYLABS:
+        from oxylabs_client import fetch as oxy_fetch
+        content, _ = oxy_fetch(url, geo='United States', render=False, timeout=200)
+        return content
+    return browser_fetch.raw_get(url, settle=SETTLE, locale='en-US')
 
 
 def collect(slug: str, name: str, gate: bool = True) -> tuple[list, str, set]:
@@ -356,7 +379,8 @@ def main() -> int:
         # nothing would report a clean run that archived nothing.
         sys.stderr.write('Company sitemap empty or unreachable — treating as failure.\n')
         return 1
-    sys.stderr.write(f'startup.jobs: {len(slugs)} company pages in the sitemap.\n')
+    sys.stderr.write(f'startup.jobs: {len(slugs)} company pages in the sitemap · '
+                     f'{"via Oxylabs" if VIA_OXYLABS else f"browser via {http_fetch.proxy_label()}"}.\n')
 
     by_name, targets = {}, []
     for c in roster:

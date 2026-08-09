@@ -1,9 +1,18 @@
 # Daily startup.jobs → D1 archive, one company page per rostered employer.
 #
-# startup.jobs 403s a datacentre IP, so this runs here rather than in the
-# jobs-cron Worker. It needs no JS render — the company pages are server-rendered
-# — so the Oxylabs fetches are the cheap non-rendering kind, and the slug
-# directory comes straight off the board's CDN sitemap with no proxy at all.
+# startup.jobs 403s a datacentre IP, so the company pages run here rather than in
+# the jobs-cron Worker, through a residential exit (SCRAPE_PROXY / IPRoyal). The
+# 42,885-company slug directory comes straight off the board's CDN sitemap,
+# which answers a plain request and is left on the direct path.
+#
+# Measured 2026-08-09 from a GitHub runner (probe-headless-ci.py, reproduced on
+# a second run): headless Chromium through that exit loaded /company/twitch and
+# counted 20 cards with the scraper's own CARD marker. Plain urllib through the
+# same exit did not, so the browser is the challenge-clearer here, not the
+# renderer — the pages are server-rendered and need no JS. Each page after the
+# first is a fetch() from inside the cleared page, which returns the server's
+# own bytes; the CARD regex matches adjacent attributes and a serialised DOM
+# reorders them.
 #
 # Attribution is by an explicit CONFIRMED list in the script, not by name match:
 # on this board /company/igo is "iGo" of Pennsylvania and /company/redox is a US
@@ -12,8 +21,10 @@
 # with their evidence, and nothing is written for them.
 #
 # Required repo secrets:
-#   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
+#   SCRAPE_PROXY                        — residential exit, http://user:pass@host:port
 #   CLOUDFLARE_API_TOKEN                — a token with D1 edit on the employsi account
+# Pass --oxylabs (with OXYLABS_USERNAME / OXYLABS_PASSWORD restored to the env
+# below) to put the Web Scraper API back if IPRoyal stops getting through.
 # Optional repo variables (fall back to values baked into the script):
 #   CF_ACCOUNT_ID, D1_DATABASE_ID
 #
@@ -46,11 +57,22 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Scrape startup.jobs → D1
+      - name: Install Playwright + Chromium
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Scrape startup.jobs → D1 (browser via SCRAPE_PROXY)
         env:
-          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
-          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
-        run: python scripts/startupjobs-to-d1.py
+        run: |
+          if [ -z "$SCRAPE_PROXY" ]; then
+            echo "SCRAPE_PROXY is not set. startup.jobs 403s a datacentre address,"
+            echo "so the company pages would only return challenges."
+            exit 1
+          fi
+          python scripts/startupjobs-to-d1.py

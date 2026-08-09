@@ -509,7 +509,6 @@ assumed.
 |---|---|
 | jora | 403 |
 | gulftalent | 403 (Akamai, 400B "Access Denied") |
-| glassdoor | 403 |
 | indeed | 403 (DataDome) |
 | iworkfor.nsw (bearer read only) | 403 |
 | careers.aucklandairport.co.nz | 403 Cloudflare "Just a moment" |
@@ -750,6 +749,64 @@ Five scrapers came off the proxy and needed no purchase of any kind. What remain
 is the genuinely hard half: twelve targets that refuse a datacentre address
 outright, with no remaining candidates for a free escape — the last one,
 linkedin-posts, was tested and failed.
+
+### 2026-08-08: four more went, and the browser turned out to be the whole fix
+
+Re-measured with `probe-headless-ci.py` from a hosted runner, no proxy: **jora,
+jobs.govt.nz, Auckland Airport and TechnologyOne all answer a headless Chromium
+on an ordinary datacentre address.** Their 403s were at the HTTP layer, not the
+address — a real browser clears the challenge and the rows are there. So the
+table above overstates the problem for those four; they are on plain runners now
+and cost nothing.
+
+Jora is the one worth reading twice, because it shows what a single request
+proves. One request proves nothing for a feed that walks 355 companies, so the
+evidence is a volume walk: **76 of 80 different company searches returned rows
+from a plain Azure address**, while Indeed and SimplyHired — walked the same way,
+in the same run — refused from request #1.
+
+### 2026-08-09: IPRoyal replaces Oxylabs on the three that genuinely need an address
+
+A residential exit is now configured as the `SCRAPE_PROXY` secret, read by both
+transports through one definition (`http_fetch.scrape_proxy_url`, which
+`browser_fetch.proxy_from_env` also calls, so a per-run flag set for one applies
+to the other).
+
+**The first measurement is the one that decided the shape of this.** Plain
+urllib through IPRoyal recovered **1 of 12** boards (`check-scrape-proxy.py`).
+The same exit driving headless Chromium recovered **11 of 20**
+(`probe-headless-ci.py --proxy`). These boards fingerprint the CLIENT, not only
+the address, so "buy a residential IP" was never the whole answer — the browser
+is doing real work alongside it.
+
+Moved, both runs reproduced:
+
+| Feed | rows through IPRoyal + Chromium | transport now |
+|---|---|---|
+| Indeed (AU company search) | 16 | `browser_fetch.raw_get`, single-threaded |
+| SimplyHired (AU search) | 21 | `browser_fetch.raw_get` |
+| startup.jobs (company page) | 20 | `browser_fetch.raw_get`; the CDN sitemap stays direct |
+
+All three keep `--oxylabs` as an explicit fallback. Indeed's old warmed-browser
+navigation path is still there under `--nav` for hand-runs from a residential
+machine — it cannot finish 355 companies inside a runner's six hours, which is
+why the default is the fetch-speed walk instead.
+
+**Not moved, and why:**
+
+* **Naukri (403 Akamai), GulfTalent (403 Akamai), Zhaopin (captcha)** — refused
+  through IPRoyal too. Measured, not assumed. They stay on Oxylabs.
+* **APS, LinkedIn jobs, LinkedIn posts, NSW iworkfor, NAB** — IPRoyal refused
+  the CONNECT tunnel for these hosts; the target was never asked. That is
+  `PROXY FAIL`, which is **unmeasured, not blocked**, and filing it as a block
+  would be inventing a result. They stay where they are until the tunnel
+  question is answered.
+* **Glassdoor** — dropped entirely (2026-08-09). Datacentre, rotating IPRoyal
+  and a 30-minute sticky IPRoyal session all got a Cloudflare interstitial
+  before the sign-in page could load. The scraper and its UI feature are gone.
+
+That leaves **six workflows** carrying Oxylabs credentials: gulftalent, naukri,
+zhaopin, linkedin, linkedin-posts, nab.
 
 ---
 

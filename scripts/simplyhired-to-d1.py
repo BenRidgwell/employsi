@@ -19,10 +19,24 @@ test are dropped, and NEAR misses are reported at the end of the run so a real
 subsidiary can be confirmed and added to ADVERTISER_ALIAS rather than the rule
 being loosened.
 
-WHY OXYLABS. simplyhired.com.au 403s a datacentre IP outright (measured: a plain
-request returns 403 with a 5.8 KB challenge body), so it cannot run in the
-Worker. It needs no JS render though — the search page ships its results as a
-Next.js `__NEXT_DATA__` payload — so the fetch is the cheap non-rendering kind.
+WHY A RESIDENTIAL EXIT. simplyhired.com.au 403s a datacentre IP outright
+(measured: a plain request returns 403 with a 5.8 KB challenge body), so it
+cannot run in the Worker. The address is the whole problem — it needs no JS
+render, because the search page ships its results as a Next.js `__NEXT_DATA__`
+payload.
+
+The exit is now IPRoyal via SCRAPE_PROXY rather than Oxylabs. Measured from a
+GitHub runner on 2026-08-09 (probe-headless-ci.py, reproduced on a second run):
+headless Chromium through the IPRoyal exit loaded the live BHP search and
+counted 21 `"jobKey"` rows. A PLAIN urllib request through the same exit did
+NOT — 1 of 12 boards answered that way — so the browser is doing real work here
+beyond carrying the address: it clears the Cloudflare challenge once, and
+raw_get then fetches each search page as `fetch()` from inside the cleared page,
+which returns the SERVER's bytes rather than a serialised DOM. That matters:
+`__NEXT_DATA__` is parsed out of the raw body.
+
+--oxylabs still selects the Web Scraper API, unchanged, for the day IPRoyal
+stops getting through.
 
 WHAT THE PAYLOAD GIVES, and why it is worth having: title, the ADVERTISER, a
 location with a state, a posting timestamp, and `salaryInfo` — an advertised
@@ -35,9 +49,10 @@ search (`&l=Perth+WA`), and it is the wrong one: it would archive only the Perth
 slice of every national employer. `l=` unset searches the whole country.
 
 Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID,
-     OXYLABS_USERNAME, OXYLABS_PASSWORD
+     SCRAPE_PROXY (the residential exit; the default transport),
+     OXYLABS_USERNAME / OXYLABS_PASSWORD only with --oxylabs.
 Run: python scripts/simplyhired-to-d1.py [--limit N] [--only id,id]
-                                         [--max-pages N] [--dry-run]
+                                         [--max-pages N] [--dry-run] [--oxylabs]
 """
 from __future__ import annotations
 import datetime
@@ -75,11 +90,19 @@ LIMIT = int(_opt('--limit', 10 ** 9))
 ONLY = set(_opt('--only', '').split(',')) if '--only' in args else None
 MAX_PAGES = int(_opt('--max-pages', 5))
 DRY = '--dry-run' in args
+# Browser + SCRAPE_PROXY by default; --oxylabs puts the Web Scraper API back.
+VIA_OXYLABS = '--oxylabs' in args
+# The one-off wait for Cloudflare's challenge on the first navigation. 8s is
+# what the probe that measured this feed used; below that the clearance cookie
+# is not always set and every page after it comes back as the challenge.
+SETTLE = int(_opt('--settle', 8))
 NO_SKILLS = '--no-skills' in args
 
 if not TOKEN and not DRY:
     sys.exit('CLOUDFLARE_API_TOKEN is required (needs D1 edit). Use --dry-run to skip the write.')
 
+import browser_fetch  # noqa: E402
+import http_fetch  # noqa: E402
 from advertiser_match import advertiser_matches, near_miss, norm  # noqa: E402
 
 
@@ -117,10 +140,13 @@ def page_props(html: str) -> dict:
 
 
 def search(name: str, cursor: str | None) -> dict:
-    from oxylabs_client import fetch as oxy_fetch
     q = urllib.parse.urlencode({'q': name, 'l': ''})
     url = f'{SITE}/search?{q}' + (f'&cursor={urllib.parse.quote(cursor)}' if cursor else '')
-    content, _ = oxy_fetch(url, geo='Australia', render=False, timeout=200)
+    if VIA_OXYLABS:
+        from oxylabs_client import fetch as oxy_fetch
+        content, _ = oxy_fetch(url, geo='Australia', render=False, timeout=200)
+    else:
+        content = browser_fetch.raw_get(url, settle=SETTLE, locale='en-AU')
     return page_props(content)
 
 
@@ -285,7 +311,8 @@ def main() -> int:
         targets.append(c)
     targets = targets[:LIMIT]
 
-    sys.stderr.write(f'SimplyHired AU -> D1: {len(targets)} employers'
+    sys.stderr.write(f'SimplyHired AU -> D1: {len(targets)} employers · '
+                     f'{"via Oxylabs" if VIA_OXYLABS else f"browser via {http_fetch.proxy_label()}"}'
                      f'{", DRY RUN" if DRY else ""}\n')
     total_rows = 0
     with_ads = 0
