@@ -9,7 +9,6 @@ export interface Layoff {
 }
 
 export interface CultureData {
-  glassdoor: number; // out of 5
   femalePct: number; // % of workforce
   payGap: number; // median gender pay gap %, women vs men
   layoffs: Layoff | null;
@@ -20,7 +19,6 @@ export interface CultureData {
 // published figure (not a placeholder): WGEA's 2023-24 median total-remuneration
 // gender pay gap for the Australian mining industry (19.9%).
 export const INDUSTRY_BENCH = {
-  glassdoor: 3.6,
   payGap: 19.9,
 };
 
@@ -32,7 +30,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
   // in allowance-heavy operational roles. Indigenous share left as an estimate
   // (Rio reports Australian-operations detail, not a single group figure).
   rio: {
-    glassdoor: 3.9,
     femalePct: 25.2,
     payGap: 7.7,
     layoffs: null,
@@ -46,14 +43,13 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   // Real figures (bhp.com WGEA Employer Statement + Sustainability Report,
-  // FY2024/FY2025): Glassdoor 4.1/5 (2,614 reviews); female workforce 41.3%
+  // FY2024/FY2025): female workforce 41.3%
   // (FY2025); median gender pay gap 11.2% (2023-24, WGEA); women people
   // leaders 36.5%, shown against BHP's own public 50% workforce-gender
   // target; Indigenous employment 8.3% (Minerals Australia, FY2024) — BHP's
   // own FY2027 target for this is 9.7%, higher than the shared industry
   // benchmark below, so the card understates how far BHP is from its own goal.
   bhp: {
-    glassdoor: 4.1,
     femalePct: 41.3,
     payGap: 11.2,
     layoffs: null,
@@ -67,7 +63,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   s32: {
-    glassdoor: 3.7,
     femalePct: 24,
     payGap: 13.1,
     layoffs: { period: "Q4 2025", roles: 180, pct: -2.4, note: "Manganese cost-reduction program" },
@@ -84,7 +79,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
   // global workforce) as it slowed its green-hydrogen ambitions (mining.com /
   // The Nightly). Diversity figures remain estimates.
   fmg: {
-    glassdoor: 3.8,
     femalePct: 26,
     payGap: 9.6,
     layoffs: {
@@ -103,7 +97,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   wds: {
-    glassdoor: 3.9,
     femalePct: 29,
     payGap: 11.2,
     layoffs: null,
@@ -117,7 +110,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   sto: {
-    glassdoor: 3.6,
     femalePct: 27,
     payGap: 12.0,
     layoffs: { period: "Q1 2026", roles: 90, pct: -1.6, note: "Cost-discipline program" },
@@ -131,7 +123,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   sfr: {
-    glassdoor: 3.5,
     femalePct: 21,
     payGap: 14.2,
     layoffs: null,
@@ -145,7 +136,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   igo: {
-    glassdoor: 3.8,
     femalePct: 30,
     payGap: 10.4,
     layoffs: null,
@@ -159,7 +149,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   min: {
-    glassdoor: 3.4,
     femalePct: 20,
     payGap: 14.6,
     layoffs: { period: "Q2 2026", roles: 260, pct: -3.8, note: "Onslow Iron ramp-down" },
@@ -173,7 +162,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   pls: {
-    glassdoor: 3.9,
     femalePct: 27,
     payGap: 10.2,
     layoffs: null,
@@ -187,7 +175,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   ltr: {
-    glassdoor: 3.7,
     femalePct: 29,
     payGap: 9.4,
     layoffs: null,
@@ -201,7 +188,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   ilu: {
-    glassdoor: 3.6,
     femalePct: 25,
     payGap: 12.2,
     layoffs: null,
@@ -215,7 +201,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   nst: {
-    glassdoor: 3.8,
     femalePct: 23,
     payGap: 12.8,
     layoffs: null,
@@ -229,7 +214,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   chevron: {
-    glassdoor: 4.1,
     femalePct: 30,
     payGap: 11.6,
     layoffs: null,
@@ -243,7 +227,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   beach: {
-    glassdoor: 3.6,
     femalePct: 26,
     payGap: 12.9,
     layoffs: null,
@@ -257,7 +240,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   mgt: {
-    glassdoor: 3.3,
     femalePct: 22,
     payGap: 14.4,
     layoffs: null,
@@ -271,7 +253,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   hgo: {
-    glassdoor: 3.4,
     femalePct: 21,
     payGap: 13.9,
     layoffs: null,
@@ -285,7 +266,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   smr: {
-    glassdoor: 3.5,
     femalePct: 20,
     payGap: 14.1,
     layoffs: null,
@@ -299,7 +279,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   nhc: {
-    glassdoor: 3.6,
     femalePct: 22,
     payGap: 13.4,
     layoffs: null,
@@ -313,7 +292,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   shell: {
-    glassdoor: 4.0,
     femalePct: 32,
     payGap: 10.6,
     layoffs: null,
@@ -327,7 +305,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   aow: {
-    glassdoor: 3.7,
     femalePct: 27,
     payGap: 12.2,
     layoffs: null,
@@ -341,7 +318,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   mmi: {
-    glassdoor: 3.4,
     femalePct: 23,
     payGap: 13.6,
     layoffs: null,
@@ -355,7 +331,6 @@ export const COMPANY_CULTURE: Record<string, CultureData> = {
     ],
   },
   jellinbah: {
-    glassdoor: 3.5,
     femalePct: 19,
     payGap: 14.8,
     layoffs: null,

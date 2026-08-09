@@ -25,7 +25,6 @@ export interface BhpFeed {
   metroDelta: string;
   headcount: number;
   growth: number;
-  glassdoor: number;
   // workforce trend inputs
   trend: number[];
   revPerEmp: number;
@@ -63,7 +62,6 @@ export function buildBhpFeed(now: number = Date.now()): BhpFeed {
   // which read as a live feed but was pure noise.
   const headcount = COMPANY_HEADCOUNT.bhp?.now ?? c.headcount;
   const growth = +(c.growth + d1 * 0.3).toFixed(1);
-  const glassdoor = +Math.min(5, Math.max(0, cul.glassdoor + d2 * 0.05)).toFixed(1);
   const revPerEmp = +(c.revPerEmp * (1 + d4 * 0.01)).toFixed(2);
   const ebitdaPerEmp = +(c.ebitdaPerEmp * (1 + d2 * 0.012)).toFixed(2);
 
@@ -132,7 +130,6 @@ export function buildBhpFeed(now: number = Date.now()): BhpFeed {
     metroDelta: c.metroDelta,
     headcount,
     growth,
-    glassdoor,
     trend,
     revPerEmp,
     ebitdaPerEmp,

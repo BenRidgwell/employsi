@@ -11453,48 +11453,6 @@ body {
   font-weight: 500;
   text-align: right;
 }
-.ccrating {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px;
-  background: #fafafa;
-}
-.ccratingscore {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-  flex: 0 0 auto;
-  font-family: "JetBrains Mono", monospace;
-  font-size: 22px;
-  letter-spacing: -0.03em;
-}
-.ccratingof {
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
-.ccratingmain {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.ccstars {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-.ccstars svg {
-  display: block;
-}
-.ccratingmeta {
-  font-size: 11.5px;
-  color: var(--text-tertiary);
-}
-
 /* ── section headers, skill chips, hiring bars ──────────────────────────── */
 .ccsecth {
   display: flex;

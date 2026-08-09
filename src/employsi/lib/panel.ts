@@ -1,7 +1,6 @@
 import { COMPANIES, companyGroup } from "../data/companies";
 import { COMPANY_CULTURE, INDUSTRY_BENCH, type Layoff } from "../data/culture";
 import { COMPANY_HEADCOUNT } from "../data/companyHeadcount";
-import { PRIVATE_COMPANY_FACTS } from "../data/privateCompanyFacts";
 import { GOV_HEADCOUNT } from "../data/perthGovWorkforce";
 import type { CompanyNews } from "../data/news";
 import type { BhpFeed } from "../data/bhpFeed";
@@ -83,27 +82,6 @@ export function buildPanel(
   let bigStats: BigStat[];
   let subStats: SubStat[];
 
-  // Private companies have no culture feed; their Glassdoor rating (when we've
-  // fetched a real one) comes from PRIVATE_COMPANY_FACTS. Absent that, the
-  // rating stays the industry benchmark and is flagged as not company-specific.
-  const pvtFacts = PRIVATE_COMPANY_FACTS[c.id];
-  const glass = live
-    ? live.glassdoor
-    : culture
-      ? culture.glassdoor
-      : (pvtFacts?.glassdoorRating ?? 3.6);
-  const glassReal = !!live || !!culture || pvtFacts?.glassdoorRating !== undefined;
-  const glassDelta = +(glass - INDUSTRY_BENCH.glassdoor).toFixed(1);
-  const glassSub = (glassDelta >= 0 ? "+" : "−") + Math.abs(glassDelta).toFixed(1) + " vs industry";
-  const glassSub2: SubStat = glassReal
-    ? {
-        value: glass.toFixed(1) + " ★",
-        label: "Glassdoor rating",
-        sub: glassSub,
-        subCls: glassDelta >= 0 ? "" : "neg",
-      }
-    : { value: "—", label: "Glassdoor rating", sub: "not disclosed", subCls: "" };
-
   if (roleTitle) {
     // Role-focused figures, derived deterministically from the role title.
     const h = hash01(roleTitle);
@@ -127,7 +105,7 @@ export function buildPanel(
         subCls: rgPos ? "" : "neg",
       },
     ];
-    subStats = [glassSub2, { value: roleTitle, label: "Focused role" }];
+    subStats = [{ value: roleTitle, label: "Focused role" }];
   } else {
     // Live feed (BHP) overrides the illustrative headline figures where present.
     const openRoles = live ? live.openRoles : c.openRoles;
@@ -148,7 +126,7 @@ export function buildPanel(
         subCls: gPos ? "" : "neg",
       },
     ];
-    subStats = [glassSub2, { value: topRole, label: "Biggest hiring area" }];
+    subStats = [{ value: topRole, label: "Biggest hiring area" }];
   }
 
   const mx = Math.max(...roleList.map((r) => r.count));

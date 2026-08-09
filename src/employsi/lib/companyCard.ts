@@ -20,8 +20,8 @@
  *     company id (see data/topPrivateCompanies.ts and the gov rosters); it is
  *     layout filler, not a measurement. Nothing we ingest records when a
  *     requisition opened and when it was filled.
- *   - **Last valuation.** No source. The private-company fetch covers Glassdoor
- *     rating and a self-reported size band only.
+ *   - **Last valuation.** No source, and nothing we ingest carries one for a
+ *     proprietary company.
  *   - **Revenue per employee over time.** We hold the latest ratio (from the
  *     company-stats fetch, or the static seed), not a quarterly history — so
  *     the private card gets a figure, not a line.
@@ -93,13 +93,6 @@ export interface CardHiring {
   delta: string | null;
 }
 
-export interface CardRating {
-  score: string;
-  meta: string;
-  /** 0–5, for the filled-star count. */
-  value: number;
-}
-
 export interface CompanyCard {
   id: string;
   name: string;
@@ -114,7 +107,6 @@ export interface CompanyCard {
   /** Why the chart is missing, when it is. */
   chartNote: string | null;
   facts: CardFact[];
-  rating: CardRating | null;
   skills: CardSkill[];
   /** Everything beyond the first SKILLS_SHOWN, so the card's "+N more" chip can
    *  reveal them without another round trip. */
@@ -207,8 +199,6 @@ export interface CardInputs {
    *  none do — the seed `Company.salary` is illustrative, so a card with no
    *  live salary shows a gap rather than that number. */
   medianPay?: { text: string; n: number } | null;
-  /** Glassdoor, only when it is this company's own rating. */
-  glassdoor?: { score: number; reviews?: number | null } | null;
   /** Skill → live-ad count for this company. */
   skillCounts: Record<string, number>;
   /** Role area → live-ad count for this company. */
@@ -338,17 +328,6 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
     facts.push({ k: "Listed on", v: c.exchange });
   }
 
-  // ── rating ──────────────────────────────────────────────────────────────
-  const rating: CardRating | null = input.glassdoor
-    ? {
-        score: input.glassdoor.score.toFixed(1),
-        value: input.glassdoor.score,
-        meta: input.glassdoor.reviews
-          ? `Glassdoor · ${input.glassdoor.reviews.toLocaleString("en-AU")} reviews`
-          : "Glassdoor",
-      }
-    : null;
-
   // ── skills + hiring ─────────────────────────────────────────────────────
   const skillEntries = Object.entries(input.skillCounts)
     .filter(([, n]) => n > 0)
@@ -377,7 +356,6 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
     chart,
     chartNote,
     facts,
-    rating,
     skills,
     restSkills,
     moreSkills: restSkills.length,

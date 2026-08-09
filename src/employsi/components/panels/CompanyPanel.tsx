@@ -414,10 +414,6 @@ export function CompanyPanel() {
   // PSC reports). When absent, the agency's headcount is genuinely unknown and
   // the workforce chart / headcount stat are suppressed rather than faked.
   const govWf = panel && isGov ? GOV_WORKFORCE[panel.companyId] : undefined;
-  // Only BHP currently has a live culture feed (Glassdoor, diversity, layoffs);
-  // for every other company those are illustrative, so we show them as gaps
-  // (0 / not reported) rather than fabricated numbers.
-  const cultureReal = isBhp && !!feed;
   // Median salary is real only when derived from live advertised salaries.
   const salaryReal = !!medianPay;
   // Real headcount (annual report / gov bulletin / live feed), not the
@@ -503,22 +499,18 @@ export function CompanyPanel() {
     });
   }, [panel, roleFilter, roleJobs, jobSample, rolesChecking, liveRoles, medianPay, headcountReal]);
 
-  // Sub-stats: Glassdoor is real only for the live-feed company; "Biggest
-  // hiring area" is real only from live job ads. Both fall back to a 0 / dash
-  // gap otherwise so the card never shows an illustrative figure.
+  // Sub-stats: "Biggest hiring area" is real only from live job ads, and falls
+  // back to a dash otherwise so the card never shows an illustrative figure.
   const subStats = useMemo(() => {
     if (!panel) return [];
     return panel.subStats.map((s) => {
-      if (s.label === "Glassdoor rating") {
-        return cultureReal ? s : { ...s, value: "0.0 ★", sub: "no data", subCls: "" };
-      }
       if (s.label === "Biggest hiring area") {
         const top = liveHiring && liveHiring.length ? liveHiring[0].title : null;
         return { ...s, value: top ?? "—", sub: top ? "from live job ads" : undefined };
       }
       return s;
     });
-  }, [panel, cultureReal, liveHiring]);
+  }, [panel, liveHiring]);
 
   // Share price is real only from the live feed (BHP) or the live Yahoo series;
   // the illustrative shareTrend fallback is dropped so the chart only appears
@@ -572,24 +564,10 @@ export function CompanyPanel() {
       share: liveShare ?? null,
       revPerEmp,
       medianPay,
-      // Only the live culture feed carries a rating this company actually has;
-      // everything else would be an industry average wearing its name.
-      glassdoor: cultureReal && feed ? { score: feed.glassdoor, reviews: null } : null,
       skillCounts,
       roleCounts,
     });
-  }, [
-    company,
-    liveRoles,
-    vacancySeries,
-    liveShare,
-    revPerEmp,
-    medianPay,
-    cultureReal,
-    feed,
-    skillCounts,
-    roleCounts,
-  ]);
+  }, [company, liveRoles, vacancySeries, liveShare, revPerEmp, medianPay, skillCounts, roleCounts]);
 
   // The card holds a loading frame until the fetches it actually renders have
   // settled: the live vacancy count (the multi-second one), and the job sample
@@ -831,28 +809,6 @@ export function CompanyPanel() {
                           <span className="ccfactv">{f.v}</span>
                         </div>
                       ))}
-                    </div>
-                  )}
-
-                  {card.rating != null && (
-                    <div className="ccrating">
-                      <span className="ccratingscore">
-                        {card.rating.score}
-                        <span className="ccratingof">/ 5</span>
-                      </span>
-                      <span className="ccratingmain">
-                        <span className="ccstars">
-                          {[1, 2, 3, 4, 5].map((i) => (
-                            <svg key={i} viewBox="0 0 24 24" width="13" height="13">
-                              <path
-                                d="M12 3.6l2.6 5.6 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 10l6-.8z"
-                                fill={i <= (card.rating?.value ?? 0) ? "#1c1c1e" : "#d8d8dc"}
-                              />
-                            </svg>
-                          ))}
-                        </span>
-                        <span className="ccratingmeta">{card.rating.meta}</span>
-                      </span>
                     </div>
                   )}
                 </div>
