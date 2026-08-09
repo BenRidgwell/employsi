@@ -96,6 +96,16 @@ def street_segments(addr):
     locality, e.g. "Girgarre VIC 3624"); the caller then sends the whole string.
     """
     segs = [s.strip() for s in addr.split(',') if s.strip()]
+    # A NUMBERED segment wins over an earlier unnumbered one. Building names
+    # routinely end in a street word — "Manunda Place, 38 Cavenagh Street" — and
+    # taking the first match made "Manunda Place" the street, so the gate below
+    # demanded the geocoder return Manunda Place, rejected the correct Cavenagh
+    # Street answer, and left the NT Department of Health on the fan with a
+    # perfectly good address. A real street line starts with its number.
+    numbered = [i for i, seg in enumerate(segs)
+                if re.match(STREET_NUMBER, seg) and re.search(r"\b" + STREET_WORD + r"\b", seg, re.I)]
+    if numbered:
+        return segs[numbered[0]:]
     for i, seg in enumerate(segs):
         if re.search(r"\b" + STREET_WORD + r"\b", seg, re.I):
             return segs[i:]
@@ -154,6 +164,20 @@ def queries_for(addr):
                 out.append(cand)
     if addr not in out:
         out.append(addr)
+    # 4. LAST RESORT: the street without its number. OSM has no house numbers on
+    #    many Australian streets, and for some — "19 The Mall, Darwin",
+    #    "76 The Esplanade, Darwin" — a numbered query returns NOTHING rather
+    #    than the road, so the whole address is rejected and the company falls
+    #    back to a fan position bearing no relation to where it is. The street
+    #    centroid is less precise than a building and far better than that; the
+    #    street-match gate still applies, so it can only land on the named road.
+    #    21 of Adelaide's entries already sit at street level for the same
+    #    reason, accepted because the road matched.
+    if segs:
+        bare = re.sub(STREET_NUMBER, '', segs[0]).strip()
+        cand = ', '.join([bare] + segs[1:])
+        if bare and cand not in out:
+            out.append(cand)
     return out
 
 
@@ -189,6 +213,14 @@ PINNED: dict[str, tuple[float, float, str]] = {
     # place, and the road centroid is 500 m from it.
     'sa-gov-adelaide-cemeteries-authority': (138.610278, -34.857389,
                                              'OSM "Enfield Memorial Park & Crematorium" [cemetery]'),
+    # Darwin. "Parliament House, Mitchell Street" has no number and Mitchell
+    # Street is a kilometre long; the building is mapped by name.
+    'nt-gov-department-of-legislative-assembly': (130.842857, -12.466656,
+                                                 'OSM "NT Parliament House, State Square" [office]'),
+    # "Berrimah Farm, Makagon Road" — the farm is a research precinct, mapped
+    # under its full name, and Makagon Road runs past several of them.
+    'nt-gov-department-of-agriculture-and-fisheries': (130.929498, -12.444127,
+                                                      'OSM "Berrimah Research Farm" [amenity]'),
 }
 
 # Standing notes emitted above an entry, so an explanation survives the next
@@ -253,7 +285,12 @@ def main() -> int:
         road = (hit.get('address') or {}).get('road', '') or ''
         want = street_of(addr)
 
-        if want and want not in road.lower():
+        # "The Esplanade" is what the address says and "Esplanade" is what OSM
+        # calls it; a leading definite article is a naming convention, not a
+        # different street, and comparing it literally rejected a correct answer.
+        got = re.sub(r'^the\s+', '', road.lower())
+        want = re.sub(r'^the\s+', '', want)
+        if want and want not in got:
             # Right city, wrong street: exactly the Macquarie failure.
             rejected.append(f'{cid}: asked for {want!r}, geocoder returned {road!r} — {addr}')
         else:

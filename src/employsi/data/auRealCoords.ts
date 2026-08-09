@@ -178,22 +178,24 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "nt-gov-attorney-general-s-department": [130.844978, -12.46361], // 4 Cavenagh Street, Darwin NT 0800
   "nt-gov-batchelor-institute-of-indigenous-tertiary-education": [131.029827, -13.046969], // 10 Nurndina Street, Batchelor NT 0845
   "nt-gov-department-mining-and-energy": [130.843036, -12.464882], // Charles Darwin Centre, 19 Smith Street, Darwin NT 0800
-  "nt-gov-department-of-agriculture-and-fisheries": [130.927336, -12.443179], // Berrimah Farm, Makagon Road, Berrimah NT 0828
+  "nt-gov-department-of-agriculture-and-fisheries": [130.929498, -12.444127], // Berrimah Farm, Makagon Road, Berrimah NT 0828
   "nt-gov-department-of-children-and-families": [130.839891, -12.463809], // 55 Mitchell Street, Darwin NT 0800
   "nt-gov-department-of-corporate-and-digital-development": [130.843036, -12.464882], // Charles Darwin Centre, 19 Smith Street, Darwin NT 0800
   "nt-gov-department-of-corrections": [130.839891, -12.463809], // Mitchell Centre, 55-59 Mitchell Street, Darwin NT 0800
   "nt-gov-department-of-education-and-training": [130.839891, -12.463809], // Mitchell Centre, 55-59 Mitchell Street, Darwin NT 0800
-  "nt-gov-department-of-housing-local-government-and-community-development": [130.842079, -12.465273], // RCG Centre, 47 Mitchell Street, Darwin NT 0800
-  "nt-gov-department-of-lands-planning-and-environment": [130.985823, -12.482864], // 25 Chung Wah Terrace, Palmerston NT 0830
-  "nt-gov-department-of-legislative-assembly": [130.842079, -12.465273], // Parliament House, Mitchell Street, Darwin NT 0800
-  "nt-gov-department-of-logistics-and-infrastructure": [130.840658, -12.438042], // 18 Goyder Road, Parap NT 0820
+  "nt-gov-department-of-health": [130.842723, -12.461589], // Manunda Place, 38 Cavenagh Street, Darwin NT 0800
+  "nt-gov-department-of-housing-local-government-and-community-development": [130.83519, -12.45864], // RCG Centre, 47 Mitchell Street, Darwin NT 0800
+  "nt-gov-department-of-lands-planning-and-environment": [130.983267, -12.480537], // 25 Chung Wah Terrace, Palmerston NT 0830
+  "nt-gov-department-of-legislative-assembly": [130.842857, -12.466656], // Parliament House, Mitchell Street, Darwin NT 0800
+  "nt-gov-department-of-logistics-and-infrastructure": [130.839699, -12.438092], // 18 Goyder Road, Parap NT 0820
   "nt-gov-department-of-people-sport-and-culture": [130.879151, -12.398727], // 40 Abala Road, Marrara NT 0812
-  "nt-gov-department-of-the-chief-minister-and-cabinet": [130.842079, -12.465273], // NT House, 22 Mitchell Street, Darwin NT 0800
-  "nt-gov-land-development-corporation": [130.842079, -12.465273], // Level 10, 24 Mitchell Street, Darwin NT 0800
-  "nt-gov-nt-fire-and-emergency-services": [130.920847, -12.409085], // Peter McAulay Centre, McMillans Road, Berrimah NT 0828
-  "nt-gov-nt-police-force": [130.920847, -12.409085], // Peter McAulay Centre, McMillans Road, Berrimah NT 0828
+  "nt-gov-department-of-the-chief-minister-and-cabinet": [130.83519, -12.45864], // NT House, 22 Mitchell Street, Darwin NT 0800
+  "nt-gov-department-of-trade-business-and-asian-relations": [130.838627, -12.463183], // Development House, 76 The Esplanade, Darwin NT 0800
+  "nt-gov-land-development-corporation": [130.842058, -12.465333], // Level 10, 24 Mitchell Street, Darwin NT 0800
+  "nt-gov-nt-fire-and-emergency-services": [130.920912, -12.408971], // Peter McAulay Centre, McMillans Road, Berrimah NT 0828
+  "nt-gov-nt-police-force": [130.920912, -12.408971], // Peter McAulay Centre, McMillans Road, Berrimah NT 0828
   "nt-gov-power-and-water-corporation": [130.839891, -12.463809], // Mitchell Centre, 55 Mitchell Street, Darwin NT 0800
-  "nt-gov-territory-generation": [130.909579, -12.428258], // 3/631 Stuart Highway, Berrimah NT 0828
+  "nt-gov-territory-generation": [130.952322, -12.444744], // 3/631 Stuart Highway, Berrimah NT 0828
   "perth-cyl": [115.841673, -31.949762], // 3/50 Colin Street, West Perth WA 6005
   "perth-emr": [115.846328, -31.949709], // 1110 Hay Street, West Perth WA 6005
   "perth-pdi": [115.850448, -31.976711], // 4 Charles Street, South Perth WA 6151
