@@ -768,6 +768,16 @@ def probe(pw, board: dict) -> dict:
 
     if res.get('rows'):
         res['verdict'] = 'ROWS'
+    elif 'ERR_TUNNEL_CONNECTION_FAILED' in (res.get('error') or '') or \
+         'ERR_PROXY_CONNECTION_FAILED' in (res.get('error') or ''):
+        # THE PROXY FAILED, NOT THE BOARD. Chromium reports this when it cannot
+        # open a CONNECT tunnel to the host — the target never saw a request and
+        # has refused nothing. Reporting it as BLOCKED puts a working feed in the
+        # "still needs Oxylabs" column and would keep us paying for a board that
+        # was never asked. Residential providers commonly refuse certain hosts
+        # outright (LinkedIn especially), so this is a routine outcome, not an
+        # exotic one.
+        res['verdict'] = 'PROXY FAIL'
     elif res.get('blocked_as') or res.get('error'):
         res['verdict'] = 'BLOCKED'
     else:
@@ -832,8 +842,18 @@ def main() -> int:
                   + (f"  err={r['error']}" if r.get('error') else ''))
 
     got = [r for r in out if r['verdict'] == 'ROWS']
+    tunnel = [r for r in out if r['verdict'] == 'PROXY FAIL']
+    # The transport belongs in the headline. This sentence used to say "on a
+    # plain CI address" unconditionally, so a run through the residential exit
+    # reported the opposite of what it did — and that headline is the line
+    # somebody quotes when deciding what to migrate.
+    where = 'through SCRAPE_PROXY' if VIA_PROXY else 'on a plain CI address'
     print(f"\n{len(got)} of {len(out)} boards returned rows to a headless browser "
-          f"on a plain CI address.")
+          f"{where}.")
+    if tunnel:
+        print(f"{len(tunnel)} never reached their target — the proxy could not open a "
+              f"tunnel, so these are UNMEASURED rather than blocked: "
+              + ', '.join(r['name'] for r in tunnel))
     if len(got) == len(out):
         print('=> A self-hosted Playwright would replace Oxylabs for all four. '
               'No residential IP needed.')
