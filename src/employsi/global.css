@@ -990,6 +990,21 @@ body {
 }
 /* How many filters are on, in the header where it is visible with the body
    scrolled. Ink pill, mono, matching the design. */
+/* Names the layer every count on the card is scoped to — "Perth", "Australia &
+   New Zealand", "Worldwide". Quiet by design: it is a caption for the numbers,
+   not a control, and it sits beside the active-filter pill rather than
+   competing with it. */
+.fpscope {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary, #8a8a8e);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 168px;
+}
 .fpcount {
   display: inline-flex;
   align-items: center;

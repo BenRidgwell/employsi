@@ -95,6 +95,25 @@ export const REGION_HUBS: Record<string, string[]> = Object.entries(CITY_CONTINE
   return acc;
 }, {});
 
+/**
+ * Display name for a domestic region, keyed exactly as REGION_HUBS is.
+ *
+ * Lives beside REGION_HUBS rather than in whichever component needed it first,
+ * because the label has to describe the hub list it sits next to — "australia"
+ * is called Australia & New Zealand precisely because Auckland and Wellington
+ * are in that region's hubs. Two copies of this could disagree about that, and
+ * the one showing a company COUNT would be the copy that made it look like a
+ * bug.
+ */
+export const REGION_LABEL: Record<string, string> = {
+  australia: "Australia & New Zealand",
+  asia: "Asia",
+  india: "India",
+  northamerica: "North America",
+  europe: "Europe",
+  africa: "Africa",
+};
+
 // Display label for any hub, domestic-only city, or EU country id. The Eurostat
 // ids are country-level ('germany', 'spain', …) and appear as their own markers
 // on the Europe domestic view, so they need a proper name here too — without

@@ -5,7 +5,7 @@ import { NotificationBell } from "./NotificationBell";
 import { IconClose, IconFeedback, IconHelp, IconSettings } from "./ActionIcons";
 import { SettingsPanel } from "./SettingsPanel";
 import { CITY_COMPANIES } from "../data/mapboxGeo";
-import { REGION_HUBS } from "../data/mapboxWorldGeo";
+import { REGION_HUBS, REGION_LABEL } from "../data/mapboxWorldGeo";
 import { CITY_LABEL, GLOBAL_HUB_LABEL } from "../data/geo";
 
 /**
@@ -62,15 +62,6 @@ function nameList(keys: string[], show = 3): string {
   }
   return `${names.slice(0, show).join(", ")} or ${names.length - show} others`;
 }
-
-const REGION_LABEL: Record<string, string> = {
-  australia: "Australia & New Zealand",
-  asia: "Asia",
-  india: "India",
-  northamerica: "North America",
-  europe: "Europe",
-  africa: "Africa",
-};
 
 function tourFor(layer: Layer, city: string, region: string, hasCard: boolean) {
   if (layer === "local") {

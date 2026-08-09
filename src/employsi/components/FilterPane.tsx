@@ -1,6 +1,8 @@
 import { useMemo, type CSSProperties } from "react";
 import { useAppStore, matchesFilters, type FilterState } from "../state/store";
 import { COMPANIES, SECTOR_GROUPS, SECTOR_SHORT, EXCHANGES } from "../data/companies";
+import { CITY_COMPANIES } from "../data/mapboxGeo";
+import { REGION_HUBS, REGION_LABEL, cityLabel } from "../data/mapboxWorldGeo";
 import { isReleasedCompany } from "../lib/markets";
 
 /**
@@ -65,11 +67,55 @@ export function FilterPane() {
   const maxAttrition = useAppStore((s) => s.maxAttrition);
   const seesAllMarkets = useAppStore((s) => s.role) === "admin";
 
-  // The companies this account can see at all. Counting against anything wider
-  // would advertise markets the person cannot open.
+  const zoomedOut = useAppStore((s) => s.zoomedOut);
+  const globalOut = useAppStore((s) => s.globalOut);
+  const domesticRegion = useAppStore((s) => s.domesticRegion);
+  const localCity = useAppStore((s) => s.localCity);
+
+  /**
+   * The companies in view at the CURRENT LAYER, or null when the layer is the
+   * whole world and no narrowing applies.
+   *
+   * Every number in this card counts markers the user can actually see. A chip
+   * reading "Energy & Natural Resources 212" while Perth shows 31 of them is
+   * not a filter preview, it is a fact about a different screen — and the
+   * counts exist to tell you what clicking will do here.
+   *
+   * The scope is taken from the same two maps the map components use, not from
+   * a definition invented here: PerthMapbox draws CITY_COMPANIES[city], and the
+   * domestic views walk REGION_HUBS[region]. Note that region 'australia'
+   * includes Auckland and Wellington, which is why it is labelled Australia &
+   * New Zealand — the count and the label agree because both come from the same
+   * hub list.
+   */
+  const scopeIds = useMemo(() => {
+    if (!zoomedOut) return new Set((CITY_COMPANIES[localCity] || []).map((c) => c.id));
+    if (!globalOut) {
+      const ids = new Set<string>();
+      for (const hub of REGION_HUBS[domesticRegion] || []) {
+        for (const c of CITY_COMPANIES[hub] || []) ids.add(c.id);
+      }
+      return ids;
+    }
+    return null;
+  }, [zoomedOut, globalOut, domesticRegion, localCity]);
+
+  /** What the counts are counting, for the header. */
+  const scopeLabel = !zoomedOut
+    ? cityLabel(localCity)
+    : !globalOut
+      ? REGION_LABEL[domesticRegion] || domesticRegion
+      : "Worldwide";
+
+  // The companies this account can see at all, narrowed to the layer. Counting
+  // against anything wider would advertise markets the person cannot open.
   const universe = useMemo(
-    () => COMPANIES.filter((c) => seesAllMarkets || isReleasedCompany(c.id)),
-    [seesAllMarkets],
+    () =>
+      COMPANIES.filter(
+        (c) =>
+          (seesAllMarkets || isReleasedCompany(c.id)) && (scopeIds === null || scopeIds.has(c.id)),
+      ),
+    [seesAllMarkets, scopeIds],
   );
 
   const base: FilterState = useMemo(
@@ -137,6 +183,10 @@ export function FilterPane() {
           <div className="fphdleft">
             <span className="fptitle">Filter</span>
             {activeCount > 0 && <span className="fpcount">{activeCount}</span>}
+            {/* Names what every count below is counting. Without it the numbers
+                change as you zoom and there is nothing on the card explaining
+                why. */}
+            <span className="fpscope">{scopeLabel}</span>
           </div>
           <div className="fphdright">
             {activeCount > 0 && (
