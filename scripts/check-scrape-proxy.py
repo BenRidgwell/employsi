@@ -62,6 +62,12 @@ import http_fetch  # noqa: E402
 # The render-gated boards (Naukri, Zhaopin, APS, the SuccessFactors set) are
 # deliberately absent: they need a browser, and probe-headless-ci.py is where
 # they are measured.
+#
+# JobsDB is absent for a different reason. Its scraper POSTs to
+# /api/jobsearch/v5/search; the first version of this list guessed an HTML search
+# path, got a 404, and reported it as BLOCKED alongside the real blocks. A check
+# that cannot exercise a feed the way its scraper does should not report on that
+# feed at all — a wrong URL and a hostile target look identical here.
 BOARDS = [
     ('indeed', 'https://au.indeed.com/jobs?q=%22BHP%22&l=&start=0',
      r'job_seen_beacon|data-jk='),
@@ -73,7 +79,6 @@ BOARDS = [
     ('startupjobs', 'https://startup.jobs/company/twitch',
      r'data-post-template-target="title"[^>]*href="/'),
     ('gulftalent', 'https://www.gulftalent.com/api/jobs/search?limit=50&offset=0', r'"positions"'),
-    ('jobsdb', 'https://hk.jobsdb.com/hk/search-jobs/bhp/1', r'data-automation="job'),
     ('nzgov', 'https://jobs.govt.nz/jobtools/jncustomsearch.searchResults'
      '?in_organid=16563&in_jobDate=All&in_location=Auckland&in_pg=0', r'<td class="job_title">'),
     ('nsw-iworkfor', 'https://iworkfor.nsw.gov.au/', r'/_next/static/'),
