@@ -153,6 +153,53 @@ REPORT_JS = """
 FONT_FACE_RE = re.compile(r"@font-face\s*\{[^}]*\}")
 FAMILY_RE = re.compile(r"font-family:\s*'([^']+)'")
 
+# The three elements that make up the physical devices: the laptop lid, the
+# wider deck it sits on, and the phone body. Each is identified by the set of
+# properties that makes it that object, not by a uuid or a position in the
+# document, so a re-export that moves things around still matches.
+DEVICE_CHROME = {
+    "laptop lid": ("width:960px", "background:#1c1c1e", "border-radius:18px"),
+    "laptop deck": ("background:#dcdce0",),
+    "phone body": ("width:312px", "background:#1c1c1e", "border-radius:46px"),
+}
+SHADOW_DECL_RE = re.compile(r";?box-shadow:[^;\"]+")
+
+
+def flatten_device_shadows(page: str) -> tuple[str, list[str]]:
+    """Drop the drop-shadows that make the devices float above the page.
+
+    The export renders the laptop and phone hovering over a white field, lit
+    from above. Embedded in a page that is already white, that reads as two
+    objects casting shadows onto the article rather than as a picture — the
+    ask was for it to sit flush.
+
+    ONLY the device chrome. The other eight shadows in the artboard are inside
+    the screens — the search pill, the globe's glow, the map pins, the phone's
+    bottom-sheet lip — and they are part of the product being depicted, not of
+    the frame around it. Flattening those would be retouching the mock-up
+    rather than seating the image.
+
+    Raises if the expected three are not all found: silently leaving a shadow
+    behind after a re-export would look like the change simply had not been
+    made, and this is exactly the kind of thing nobody re-checks.
+    """
+    removed: list[str] = []
+    for name, signature in DEVICE_CHROME.items():
+        for m in list(re.finditer(r'style="([^"]*)"', page)):
+            style = m.group(1)
+            if "box-shadow:" not in style or not all(s in style for s in signature):
+                continue
+            page = page.replace(m.group(0), 'style="' + SHADOW_DECL_RE.sub("", style, count=1) + '"')
+            removed.append(name)
+            break
+    missing = [n for n in DEVICE_CHROME if n not in removed]
+    if missing:
+        raise SystemExit(
+            f"Device chrome not found, so its shadow was left on: {missing}. "
+            "The export's markup changed — re-read DEVICE_CHROME against it."
+        )
+    return page, removed
+
 
 def alias_orphan_font_families(page: str) -> tuple[str, list[tuple[str, str]]]:
     """Give a font the name the document actually asks for.
@@ -301,14 +348,30 @@ def unpack(bundle: pathlib.Path, name: str) -> None:
     # the parent would leave dead space under it. Percentage padding replaces
     # the fixed 60px so the breathing room (and the room the drop shadows need)
     # scales with the graphic instead of swamping it on a phone.
+    # THE SIDE PADDING IS LOAD-BEARING, AND 4% IS NOT A ROUND NUMBER PICKED BY EYE.
+    #
+    # The artboard is declared 1080 wide, but its content is not inside it: the
+    # laptop column is positioned at left:0 and the deck under it is 1040 wide
+    # centred on a 960 column, so the deck spans -40..1000 in artboard
+    # coordinates. It is an opaque bar, and the root clips, so the overhang was
+    # sliced off down the left-hand edge — visible as a hard vertical cut under
+    # the laptop, which is what prompted this.
+    #
+    # Padding is a percentage of width, so it scales with the artboard and the
+    # fit holds at every breakpoint. The overhang needs
+    #   p >= 40(1-2p)/1080  ->  p >= 40/1160 = 3.45%
+    # of the width; 4% clears it with a margin. Reducing it below 3.45% brings
+    # the clip back at every size at once.
     before = page
     page = page.replace(
         "min-height:100vh;background:#ffffff;font-family:'Mona Sans'",
         "background:#ffffff;font-family:'Mona Sans'",
         1,
-    ).replace("padding:60px 32px 0;box-sizing:border-box", "padding:2.5% 2.5% 3.5%;box-sizing:border-box", 1)
+    ).replace("padding:60px 32px 0;box-sizing:border-box", "padding:2% 4%;box-sizing:border-box", 1)
     if page == before:
         print("  ! sizing patch did not apply — the export's root style changed.")
+
+    page, deshadowed = flatten_device_shadows(page)
 
     page, aliased = alias_orphan_font_families(page)
 
@@ -321,6 +384,7 @@ def unpack(bundle: pathlib.Path, name: str) -> None:
     print(f"{target.relative_to(ROOT)}  {target.stat().st_size:,} bytes")
     for source, want in aliased:
         print(f"  aliased @font-face '{source}' -> '{want}' (the name the page asks for)")
+    print(f"  removed drop-shadow from: {', '.join(deshadowed)}")
     for uuid, filename in sorted(written.items(), key=lambda kv: kv[1]):
         print(f"  {name}/{filename:<28} {(outdir / filename).stat().st_size:>9,}")
     print(f"  {'assets total':<30} {total:>9,}")

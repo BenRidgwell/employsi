@@ -57,7 +57,7 @@ function PreviewFrame() {
 
   return (
     <div
-      className="w-full max-w-[1100px] aspect-[1000/641]"
+      className="w-full max-w-[1100px] aspect-[1000/602]"
       style={height ? { height, aspectRatio: "auto" } : undefined}
     >
       <iframe
