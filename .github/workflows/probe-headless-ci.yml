@@ -85,6 +85,20 @@
 #                              way. Run it WITHOUT via_proxy — a plain address is
 #                              the question.
 #
+#   fingerprint=true           Does a better CLIENT beat Akamai and the captcha?
+#                              Through the same IPRoyal exits, plain urllib
+#                              recovered 1 of 12 boards and Chromium 11 of 20 —
+#                              a ~10x gap that was entirely the client, not the
+#                              address. So the three still on Oxylabs may be a
+#                              harder version of that gap. Runs each board TWICE
+#                              in one job: today's chromium-headless-shell, then
+#                              real Chrome headful under Xvfb with the stealth
+#                              patches. A control board that already works runs
+#                              in both, and the run refuses to print a verdict
+#                              unless it passes the baseline first. Use with
+#                              via_proxy=true — these targets refuse a plain
+#                              address regardless of client.
+#
 #   volume=N                   walk N DIFFERENT company queries through Indeed,
 #                              SimplyHired and Jora and report where blocking
 #                              starts. Those three walk 355 companies a night,
@@ -125,6 +139,10 @@ on:
         description: 'NAB only: how far does a paced walk get with NO proxy, and is there a JSON API? (~1 min)'
         type: boolean
         default: false
+      fingerprint:
+        description: 'A/B the client profile against the boards still on Oxylabs (~5 min; use with via_proxy)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -146,6 +164,15 @@ jobs:
           pip install playwright
           python -m playwright install --with-deps chromium
 
+      # Only for the fingerprint A/B, which needs the things the ordinary probe
+      # deliberately does NOT have: real Google Chrome (not the headless-shell
+      # build every other run uses) and a virtual display to run it headful in.
+      - name: Install real Chrome + Xvfb
+        if: inputs.fingerprint
+        run: |
+          python -m playwright install --with-deps chrome
+          sudo apt-get install -y xvfb
+
       - name: Probe the boards
         env:
           # Only set when the run asks for it, so an unset secret cannot silently
@@ -158,13 +185,17 @@ jobs:
           # write through the home connection too. Recorded here because this is
           # where the pattern gets copied from.
           NO_PROXY: api.cloudflare.com
+        # xvfb-run only where the fingerprint A/B asks for a headful browser;
+        # every other mode runs exactly as it always has.
         run: |
+          ${{ inputs.fingerprint && 'xvfb-run -a' || '' }} \
           python scripts/probe-headless-ci.py --json headless-probe.json \
             ${{ inputs.via_proxy && '--via-proxy' || '' }} \
             ${{ inputs.proxy_check && '--proxy-check' || '' }} \
             ${{ inputs.aps_paging && '--aps-paging' || '' }} \
             ${{ inputs.tunnel_check && '--tunnel-check' || '' }} \
             ${{ inputs.nab_route && '--nab-route' || '' }} \
+            ${{ inputs.fingerprint && '--fingerprint' || '' }} \
             ${{ (inputs.volume != '' && inputs.volume != '0') && format('--volume {0}', inputs.volume) || '' }}
 
       - name: Upload the raw result

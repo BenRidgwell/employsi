@@ -421,6 +421,9 @@ APS_PAGING = '--aps-paging' in args
 TUNNEL_CHECK = '--tunnel-check' in args
 # --nab-route: can careers.nab.com.au be walked from a plain runner?
 NAB_ROUTE = '--nab-route' in args
+# --fingerprint: A/B the client profile against the three boards still on
+# Oxylabs. Answers whether anything needs buying at all.
+FINGERPRINT = '--fingerprint' in args
 
 PROXY = browser_fetch.proxy_from_env() if VIA_PROXY else None
 if VIA_PROXY and not PROXY:
@@ -659,6 +662,164 @@ def check_egress(pw) -> dict:
                                'STICKY — one address for the whole run, which is what '
                                'the volume walk needs to mean anything.'))
     return info
+
+
+# ── does a better fingerprint beat Akamai and the captcha? ───────────────────
+# THE MEASUREMENT THAT PROMPTED THIS. Through the SAME IPRoyal exits, plain
+# urllib recovered 1 of 12 boards and Chromium recovered 11 of 20. The address
+# was identical; the ~10x was entirely the client. So the three still on Oxylabs
+# — Naukri and GulfTalent behind Akamai, Zhaopin behind a captcha — might be a
+# harder version of that same gap rather than a categorically different problem.
+#
+# This is an A/B, not a demo. Running the upgraded profile alone and finding
+# rows would not show the upgrade did anything: these boards are intermittent,
+# and "we changed four things and it worked" is how a lucky run becomes a
+# permanent belief. Both profiles run against the same board in the same job,
+# minutes apart, through the same exit.
+#
+#   baseline   chromium-headless-shell, no stealth — today's launch exactly
+#   chrome     real Chrome via channel=, headful under Xvfb, stealth patches
+#
+# A CONTROL BOARD RUNS IN BOTH. If SimplyHired (which already answers this exit)
+# returns rows under baseline and not under chrome, the upgraded profile is
+# broken and nothing else in the table means anything — a launch that fails to
+# start looks exactly like a target that refused.
+FINGERPRINT_BOARDS = ['SimplyHired (AU search)', 'Naukri (Mumbai search)',
+                      'GulfTalent (jobs API)', 'Zhaopin (Shanghai search)']
+
+FP_PROFILES = [
+    ('baseline', {'headless': True, 'stealth': False, 'channel': None}),
+    ('chrome', {'headless': False, 'stealth': True, 'channel': 'chrome'}),
+]
+
+
+def fp_probe(pw, board: dict, profile: dict) -> dict:
+    """One board, one fingerprint profile. Same counting as probe()."""
+    res = {'rows': 0}
+    launch: dict = {'headless': profile['headless']}
+    if profile['channel']:
+        launch['channel'] = profile['channel']
+    if profile['stealth']:
+        launch['args'] = browser_fetch.STEALTH_ARGS
+    if PROXY:
+        launch['proxy'] = PROXY
+    browser = None
+    try:
+        browser = pw.chromium.launch(**launch)
+        ctx = browser.new_context(
+            user_agent=browser_fetch.UA, locale='en-AU',
+            **browser_fetch.CONTEXT_KW)
+        if profile['stealth']:
+            ctx.add_init_script(browser_fetch.STEALTH_JS)
+        page = ctx.new_page()
+        r = page.goto(board['url'], wait_until='domcontentloaded', timeout=90_000)
+        res['status'] = r.status if r else None
+        page.wait_for_timeout(board['settle'] * 1000)
+        html = page.content()
+        res['bytes'] = len(html)
+        res['rows'] = len(re.findall(board['rows'], html))
+        if board.get('json_key'):
+            try:
+                doc = json.loads(page.evaluate('document.body.innerText'))
+                res['rows'] = len(doc.get(board['json_key']) or [])
+            except Exception:  # noqa: BLE001
+                res['rows'] = 0
+        if board.get('counter'):
+            real = count_with_real_parser(board['counter'], html)
+            if real is not None:
+                res['rows'] = real
+        res['blocked_as'] = None if res['rows'] else blocked_as(html)
+        ctx.close()
+    except Exception as e:  # noqa: BLE001
+        res['error'] = str(e)[:160]
+    finally:
+        if browser is not None:
+            try:
+                browser.close()
+            except Exception:  # noqa: BLE001
+                pass
+    return res
+
+
+def fingerprint_report(pw) -> int:
+    where = 'via SCRAPE_PROXY' if VIA_PROXY else 'from this runner'
+    print(f'Fingerprint A/B, {where}.')
+    print('Same boards, same exit, two client profiles minutes apart.\n')
+    boards = [b for b in BOARDS if b['name'] in FINGERPRINT_BOARDS]
+    missing = set(FINGERPRINT_BOARDS) - {b['name'] for b in boards}
+    if missing:
+        print(f'  (not in BOARDS, skipped: {", ".join(sorted(missing))})\n')
+
+    results: dict = {}
+    for name, profile in FP_PROFILES:
+        print(f'  --- {name} ---')
+        for b in boards:
+            r = fp_probe(pw, b, profile)
+            results.setdefault(b['name'], {})[name] = r
+            verdict = ('ROWS' if r['rows'] else
+                       'ERROR' if r.get('error') else
+                       (r.get('blocked_as') or 'NO ROWS'))
+            print(f"    {b['name']:<30} {verdict:<22} rows={r['rows']:<4} "
+                  f"status={r.get('status')} bytes={r.get('bytes')}"
+                  + (f"  {r['error']}" if r.get('error') else ''))
+        print()
+
+    control = results.get('SimplyHired (AU search)', {})
+    base_ok = (control.get('baseline') or {}).get('rows', 0)
+    new_ok = (control.get('chrome') or {}).get('rows', 0)
+    # THE CONTROL HAS TO WORK UNDER TODAY'S LAUNCH FIRST. If it does not, this
+    # environment cannot reach the boards at all and every row below is a zero
+    # that means nothing — which would otherwise print as "refused under both"
+    # and read as a finding about Akamai. That is the failure this whole file
+    # exists to prevent, and the first version of this function walked straight
+    # into it from a sandbox with no egress.
+    if not base_ok:
+        err = (control.get('baseline') or {}).get('error') or 'no rows'
+        print(f'CONTROL FAILED under the BASELINE profile ({err}).')
+        print('SimplyHired answers this exit in normal operation, so if it does not '
+              'answer here the harness or the network is the problem, not the '
+              'boards. No verdict — re-run from CI'
+              + ('' if VIA_PROXY else ', and with via_proxy=true') + '.')
+        return 1
+    if base_ok and not new_ok:
+        err = (control.get('chrome') or {}).get('error') or 'no rows'
+        print(f'CONTROL FAILED under the upgraded profile ({err}).')
+        print('The chrome profile is broken — most likely Chrome or Xvfb is not '
+              'installed on this runner. Nothing in the table above is evidence '
+              'about any target, because a launch that does not work looks '
+              'exactly like a board that refused.')
+        return 1
+
+    print(f'{"board":<30}{"baseline":>10}{"chrome":>10}   verdict')
+    gained = []
+    for b in boards:
+        r = results[b['name']]
+        a, c = r['baseline']['rows'], r['chrome']['rows']
+        if c and not a:
+            v, _ = 'RECOVERED by fingerprint', gained.append(b['name'])
+        elif a and not c:
+            v = 'lost — worse under chrome'
+        elif a and c:
+            v = 'works under both'
+        else:
+            v = 'refused under both'
+        print(f'{b["name"]:<30}{a:>10}{c:>10}   {v}')
+    print()
+    if gained:
+        print('The fingerprint was the missing ingredient for: ' + ', '.join(gained))
+        print('Port those to browser_fetch with BROWSER_FETCH_CHANNEL=chrome and '
+              'BROWSER_FETCH_STEALTH=1, and re-measure from their real workflow '
+              'before trusting it — this is one request per board, not a walk.')
+    else:
+        print('No board was recovered by the fingerprint alone. These three refuse '
+              'a real Chrome from a residential address, which is the thing an '
+              'unblocker sells and not something worth rebuilding: buy it or drop '
+              'the feeds.')
+    if OUT:
+        with open(OUT, 'w') as f:
+            json.dump({'via_proxy': VIA_PROXY, 'fingerprint': results}, f, indent=2)
+        print(f'wrote {OUT}')
+    return 0
 
 
 # ── can NAB be walked without a proxy at all? ────────────────────────────────
@@ -1206,6 +1367,10 @@ def main() -> int:
         # No browser at all: this speaks CONNECT to the proxy itself, so
         # launching Chromium would only add a way to fail.
         return tunnel_report()
+
+    if FINGERPRINT:
+        with sync_playwright() as pw:
+            return fingerprint_report(pw)
 
     if NAB_ROUTE:
         with sync_playwright() as pw:

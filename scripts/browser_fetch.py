@@ -70,6 +70,104 @@ HEADFUL = os.environ.get('BROWSER_FETCH_HEADFUL') == '1'
 # one release old". Pointing at the existing binary is the documented way out.
 EXECUTABLE = os.environ.get('BROWSER_FETCH_EXECUTABLE') or None
 
+# ── fingerprint ──────────────────────────────────────────────────────────────
+# WHY THIS EXISTS, in one measurement taken 2026-08-09 from a GitHub runner:
+#
+#     plain urllib through IPRoyal   1 of 12 boards answered
+#     Chromium through IPRoyal       11 of 20 rows found
+#
+# Same exit addresses, same targets. That ~10x gap is not the address — it is
+# the CLIENT. urllib's TLS handshake, its HTTP/2 settings and its header order
+# say "script"; Chromium's say "Chrome". Which means the remaining refusals
+# (Naukri and GulfTalent on Akamai, Zhaopin on a captcha) may be a harder
+# version of the same gap rather than a different problem, and the cheapest
+# thing to try before renting a fingerprint from anyone is to stop advertising
+# that this one is automated.
+#
+# THREE THINGS GIVE US AWAY, in descending order of how loudly:
+#
+#   1. THE BINARY. `chromium.launch(headless=True)` resolves to
+#      chromium-headless-shell — a stripped build, not Chrome. The CI logs say
+#      so out loud ("Chrome Headless Shell 151.0.7922.34"). It is missing
+#      proprietary codecs, has different WebGL vendor strings and no
+#      chrome.runtime, and it is the single most fingerprintable browser in
+#      common use. BROWSER_FETCH_CHANNEL=chrome launches real Chrome instead.
+#   2. HEADLESSNESS ITSELF, which is detectable independently of the binary.
+#      Running headful under Xvfb costs one apt package and removes the flag.
+#   3. AUTOMATION ARTEFACTS in the page: navigator.webdriver, an empty plugin
+#      list, a missing window.chrome, a SwiftShader WebGL renderer. STEALTH_JS
+#      below patches the ones that are patchable from script.
+#
+# All three are OFF BY DEFAULT and switched on by environment, so the feeds that
+# already work keep the exact launch they were measured with. Nothing here is
+# assumed to help: probe-headless-ci.py --fingerprint measures it.
+CHANNEL = os.environ.get('BROWSER_FETCH_CHANNEL') or None
+STEALTH = os.environ.get('BROWSER_FETCH_STEALTH') == '1'
+
+# Applied via add_init_script, so it runs before any page script can look.
+# Deliberately conservative: each patch fixes a property that a stock automated
+# Chromium reports differently from a real one. Over-patching is its own tell —
+# a browser claiming forty plugins is as odd as one claiming none.
+STEALTH_JS = """
+Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+Object.defineProperty(navigator, 'languages', {get: () => ['en-AU', 'en-US', 'en']});
+Object.defineProperty(navigator, 'plugins', {
+  get: () => [
+    {name: 'PDF Viewer', filename: 'internal-pdf-viewer'},
+    {name: 'Chrome PDF Viewer', filename: 'internal-pdf-viewer'},
+    {name: 'Chromium PDF Viewer', filename: 'internal-pdf-viewer'},
+  ],
+});
+window.chrome = window.chrome || {runtime: {}, loadTimes: () => ({}), csi: () => ({})};
+// Headless Chromium renders through SwiftShader and says so. A real machine
+// reports its GPU; these are the strings an ordinary Windows laptop returns.
+const _gp = WebGLRenderingContext.prototype.getParameter;
+WebGLRenderingContext.prototype.getParameter = function (p) {
+  if (p === 37445) return 'Intel Inc.';
+  if (p === 37446) return 'Intel Iris OpenGL Engine';
+  return _gp.apply(this, [p]);
+};
+// Stock automation resolves this to 'denied' while Notification.permission is
+// 'default' — a contradiction no real browser produces.
+const _q = window.navigator.permissions.query;
+window.navigator.permissions.query = (p) =>
+  p.name === 'notifications'
+    ? Promise.resolve({state: Notification.permission})
+    : _q(p);
+"""
+
+# --disable-blink-features=AutomationControlled removes the flag that sets
+# navigator.webdriver at the engine level, which is a cleaner fix than patching
+# the getter afterwards (the patch stays for the properties there is no flag for).
+STEALTH_ARGS = [
+    '--disable-blink-features=AutomationControlled',
+    '--disable-features=IsolateOrigins,site-per-process',
+    '--no-sandbox',
+]
+
+# Context options that have to AGREE with each other. A UA claiming Windows
+# beside an Australia/Perth timezone and a 1440x900 viewport is coherent; the
+# tell is not any single value but a combination no real machine produces.
+CONTEXT_KW = dict(
+    viewport={'width': 1440, 'height': 900},
+    device_scale_factor=1,
+    timezone_id='Australia/Perth',
+    has_touch=False,
+    is_mobile=False,
+)
+
+
+def stealth_context(browser, locale: str = 'en-AU', **extra):
+    """A context with the fingerprint patches applied, when they are enabled."""
+    opts = dict(user_agent=UA, locale=locale, **CONTEXT_KW)
+    opts.update(extra)
+    ctx = browser.new_context(**opts)
+    if STEALTH:
+        ctx.add_init_script(STEALTH_JS)
+    return ctx
+
+
+
 
 def proxy_from_env() -> dict | None:
     """Playwright proxy config from SCRAPE_PROXY, or None.
@@ -124,8 +222,15 @@ def _browser_once():
                  '(or pass --oxylabs to use the Web Scraper API instead)')
     _pw = sync_playwright().start()
     launch: dict = {'headless': not HEADFUL}
-    if EXECUTABLE:
+    # channel and executable_path are mutually exclusive in Playwright: a
+    # channel names an installed browser, a path names a binary. Passing both
+    # is an error, and the channel is the more specific request.
+    if CHANNEL:
+        launch['channel'] = CHANNEL
+    elif EXECUTABLE:
         launch['executable_path'] = EXECUTABLE
+    if STEALTH:
+        launch['args'] = STEALTH_ARGS
     # Proxy at LAUNCH rather than per-context: Chromium resolves DNS through the
     # proxy this way, so a target cannot see the runner's resolver even though
     # its requests come from the proxy. Set per-context it would leak lookups.
@@ -170,8 +275,7 @@ def render(url: str, instructions: list[dict] | None = None,
     browser = _browser_once()
     ctx = None
     try:
-        ctx = browser.new_context(user_agent=UA, locale=locale,
-                                  viewport={'width': 1440, 'height': 900})
+        ctx = stealth_context(browser, locale=locale)
         page = ctx.new_page()
         page.goto(url, wait_until='domcontentloaded', timeout=timeout_s * 1000)
         for ins in (instructions or []):
@@ -233,11 +337,10 @@ class Session:
 
     def __enter__(self):
         browser = _browser_once()
-        opts: dict = {'user_agent': UA, 'locale': self._locale,
-                      'viewport': {'width': 1440, 'height': 900}}
+        extra = {}
         if self._state_path and os.path.exists(self._state_path):
-            opts['storage_state'] = self._state_path
-        self._ctx = browser.new_context(**opts)
+            extra['storage_state'] = self._state_path
+        self._ctx = stealth_context(browser, locale=self._locale, **extra)
         self._page = self._ctx.new_page()
         return self
 
