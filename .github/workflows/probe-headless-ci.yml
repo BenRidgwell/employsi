@@ -65,6 +65,26 @@
 #                              pagination controls in the DOM. ~2 minutes; skips
 #                              every other board.
 #
+#   tunnel_check=true          NOT a board question. PROXY FAIL is one bucket
+#                              hiding a provider domain blocklist, a plan
+#                              restriction and DNS, and Chromium collapses all
+#                              three into ERR_TUNNEL_CONNECTION_FAILED. This
+#                              speaks HTTP CONNECT to the proxy directly, so the
+#                              proxy's OWN status line is the diagnosis — 403 is
+#                              a blocklist, 407 is credentials, 502 is upstream.
+#                              A control host runs in the same pass, because
+#                              "the tunnel failed" and "the proxy is down today"
+#                              are otherwise the same output. Needs via_proxy.
+#
+#   nab_route=true             careers.nab.com.au SERVER-RENDERS its job list and
+#                              its first request from a plain address works — the
+#                              AWS WAF flags by volume, not by client. So: how far
+#                              does a PACED walk get with no proxy, and does the
+#                              page call a JSON API on a host the WAF does not
+#                              cover? This repo has twice found an ATS API that
+#                              way. Run it WITHOUT via_proxy — a plain address is
+#                              the question.
+#
 #   volume=N                   walk N DIFFERENT company queries through Indeed,
 #                              SimplyHired and Jora and report where blocking
 #                              starts. Those three walk 355 companies a night,
@@ -95,6 +115,14 @@ on:
         default: '0'
       aps_paging:
         description: 'APS only: does anything advance the board past page 1? (~2 min, skips everything else)'
+        type: boolean
+        default: false
+      tunnel_check:
+        description: 'Does SCRAPE_PROXY open a CONNECT tunnel to LinkedIn / NAB at all? (seconds; needs via_proxy)'
+        type: boolean
+        default: false
+      nab_route:
+        description: 'NAB only: how far does a paced walk get with NO proxy, and is there a JSON API? (~1 min)'
         type: boolean
         default: false
 
@@ -135,6 +163,8 @@ jobs:
             ${{ inputs.via_proxy && '--via-proxy' || '' }} \
             ${{ inputs.proxy_check && '--proxy-check' || '' }} \
             ${{ inputs.aps_paging && '--aps-paging' || '' }} \
+            ${{ inputs.tunnel_check && '--tunnel-check' || '' }} \
+            ${{ inputs.nab_route && '--nab-route' || '' }} \
             ${{ (inputs.volume != '' && inputs.volume != '0') && format('--volume {0}', inputs.volume) || '' }}
 
       - name: Upload the raw result

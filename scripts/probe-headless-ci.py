@@ -78,6 +78,7 @@ import traceback
 # The real parsers for the boards that do not use a regex live beside this file.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import browser_fetch  # noqa: E402
+import http_fetch  # noqa: E402
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     'tools', 'zhaopin-company-scraper'))
@@ -427,6 +428,11 @@ PROXY_CHECK = '--proxy-check' in args
 # --aps-paging: one board, one question, ~2 minutes. Does anything advance the
 # APS result set past the first fifteen rows?
 APS_PAGING = '--aps-paging' in args
+# --tunnel-check: does the proxy open a CONNECT tunnel to these hosts at all?
+# Seconds, not minutes, and it answers a question no board probe can.
+TUNNEL_CHECK = '--tunnel-check' in args
+# --nab-route: can careers.nab.com.au be walked from a plain runner?
+NAB_ROUTE = '--nab-route' in args
 
 PROXY = browser_fetch.proxy_from_env() if VIA_PROXY else None
 if VIA_PROXY and not PROXY:
@@ -699,6 +705,235 @@ def check_egress(pw) -> dict:
     return info
 
 
+# ── can NAB be walked without a proxy at all? ────────────────────────────────
+# careers.nab.com.au runs Clinch and SERVER-RENDERS its job list — no JavaScript
+# is needed to read a card. What stops a plain address is an AWS WAF that flags
+# by reputation and VOLUME, and the note in nab-to-d1.py is precise about the
+# shape: "the first request returned the full page, and subsequent ones a 202
+# with an empty body".
+#
+# A first request that works is the whole opening. Two things follow from it and
+# neither has been measured:
+#
+#   1. HOW FAR does a plain runner actually get, and does pacing move that line?
+#      The scraper walks ~20 pages of 30 cards. If a paced walk gets all of them
+#      the feed needs no proxy at all. If it dies at page 2 no pacing will save
+#      it. Either way it is one runner-minute to know.
+#   2. WHAT DOES THE PAGE TALK TO? This repo has twice found an ATS's JSON API
+#      on a host the WAF does not cover (/api/pcsx/search, /api/apply/v2/jobs).
+#      Every request the page makes is captured here, so the answer comes from
+#      the site rather than from guessing Clinch's URL scheme.
+#
+# A 202 WITH AN EMPTY BODY IS THE WAF, NOT AN EMPTY BOARD, and the two are told
+# apart explicitly — reporting "0 cards" for a throttled page is how a blocked
+# feed gets recorded as a quiet employer.
+NAB_SEARCH = 'https://careers.nab.com.au/jobs/search'
+NAB_CARD = r'job-search-results-card-col'   # copied from nab-to-d1.py's CARD_SPLIT
+
+
+def nab_route(pw, pages: int = 8, pace_s: float = 6.0) -> dict:
+    res = {'pages': [], 'network': [], 'pace_s': pace_s}
+    browser = pw.chromium.launch(headless=not HEADFUL,
+                                 **({'proxy': PROXY} if PROXY else {}))
+    try:
+        ctx = browser.new_context(
+            user_agent=('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                        '(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'),
+            viewport={'width': 1440, 'height': 900}, locale='en-AU')
+        page = ctx.new_page()
+
+        seen_hosts: dict = {}
+
+        def note(response):
+            try:
+                from urllib.parse import urlsplit
+                u = urlsplit(response.url)
+                ct = (response.headers or {}).get('content-type', '')
+                # JSON off ANY host is the interesting case — that is what an
+                # ATS API looks like, and it is what could take this off the
+                # proxy for nothing.
+                if 'json' in ct.lower():
+                    k = f'{u.netloc}{u.path}'
+                    if k not in seen_hosts:
+                        seen_hosts[k] = {'url': response.url[:160],
+                                         'status': response.status,
+                                         'content_type': ct[:60]}
+            except Exception:  # noqa: BLE001
+                pass
+
+        page.on('response', note)
+
+        for n in range(1, pages + 1):
+            url = f'{NAB_SEARCH}?page={n}'
+            row = {'page': n}
+            try:
+                r = page.goto(url, wait_until='domcontentloaded', timeout=90_000)
+                row['status'] = r.status if r else None
+                page.wait_for_timeout(3000)
+                html = page.content()
+                row['bytes'] = len(html)
+                # The split yields one leading chunk before the first card.
+                row['cards'] = max(0, len(re.split(NAB_CARD, html)) - 1)
+                if row['status'] == 202 or (row['bytes'] < 2000 and not row['cards']):
+                    row['waf'] = True
+                elif not row['cards']:
+                    row['blocked_as'] = blocked_as(html)
+            except Exception as e:  # noqa: BLE001
+                row['error'] = str(e)[:140]
+            res['pages'].append(row)
+            if n < pages:
+                page.wait_for_timeout(int(pace_s * 1000))
+        res['network'] = list(seen_hosts.values())[:20]
+        ctx.close()
+    except Exception as e:  # noqa: BLE001
+        res['error'] = str(e)[:200]
+    finally:
+        browser.close()
+    return res
+
+
+def nab_report(pw) -> int:
+    where = 'via SCRAPE_PROXY' if VIA_PROXY else 'from this runner, NO proxy'
+    print(f'NAB route probe, {where}.')
+    print('Asking two things: how far a paced walk gets, and whether the page '
+          'talks to a JSON API on a host the WAF does not cover.\n')
+    r = nab_route(pw)
+    ok = 0
+    for row in r['pages']:
+        if row.get('error'):
+            print(f"  page {row['page']:<2} ERROR {row['error']}")
+            continue
+        tag = ('WAF' if row.get('waf') else
+               (row.get('blocked_as') or 'ok') if not row.get('cards') else 'CARDS')
+        if row.get('cards'):
+            ok += 1
+        print(f"  page {row['page']:<2} {tag:<22} status={row.get('status')} "
+              f"bytes={row.get('bytes')} cards={row.get('cards')}")
+    print(f"\n  {ok} of {len(r['pages'])} pages returned cards at "
+          f"{r['pace_s']}s spacing, no proxy.")
+    print('\n  JSON endpoints the page called:')
+    if not r['network']:
+        print('      (none — the list really is server-rendered HTML only, so '
+              'there is no API shortcut to take)')
+    for n in r['network']:
+        print(f"      {n['status']} {n['url']}")
+    if r.get('error'):
+        print(f"\n  probe error: {r['error']}")
+    print()
+    if ok == len(r['pages']):
+        print('VERDICT: a paced walk got every page from a plain runner. NAB can '
+              'come off the proxy — port it to browser_fetch with this spacing '
+              'and keep the existing "no cards = exit non-zero" floor.')
+    elif ok:
+        print(f'VERDICT: it dies after {ok} page(s). Pacing alone is not enough for '
+              f'a full walk; if a JSON endpoint appeared above, that is the route '
+              f'worth taking instead.')
+    else:
+        print('VERDICT: not one page from a plain runner. The WAF is on the address '
+              'and NAB stays on a paid exit.')
+    return 0
+
+
+# ── why the proxy refuses a tunnel ───────────────────────────────────────────
+# PROXY FAIL is one bucket hiding at least three different causes, and they have
+# different fixes: a provider-side domain blocklist (ask them to lift it), a
+# plan or port restriction (change plan), or DNS. Chromium collapses all of them
+# into ERR_TUNNEL_CONNECTION_FAILED, which names none.
+#
+# So this skips Chromium and speaks HTTP CONNECT to the proxy directly. The
+# proxy's OWN status line is the diagnosis — 403 is a blocklist, 407 is
+# credentials, 502/504 is upstream — and it is the sentence to quote at support.
+#
+# A CONTROL HOST RUNS IN THE SAME PASS. Without it, "the tunnel failed" cannot
+# be told apart from "the proxy is down today", and a support ticket built on
+# the second one wastes everybody's time.
+TUNNEL_HOSTS = [
+    ('api.ipify.org', 'control — must succeed for anything below to mean anything'),
+    ('www.linkedin.com', 'linkedin-to-d1.py, linkedin-posts-to-d1.py'),
+    ('careers.nab.com.au', 'nab-to-d1.py'),
+    ('www.apsjobs.gov.au', 'aps-to-d1.py (already off the proxy; asked for completeness)'),
+    ('iworkfor.nsw.gov.au', 'nsw-gov-to-d1.py (already off the proxy; asked for completeness)'),
+]
+
+
+def tunnel_check(host: str, port: int = 443) -> dict:
+    """Ask the proxy for a tunnel to `host` and report what it says back."""
+    import base64
+    import socket
+    from urllib.parse import urlsplit
+
+    out = {'host': host}
+    prox = browser_fetch.proxy_from_env()
+    if not prox:
+        return {**out, 'result': 'SCRAPE_PROXY not set'}
+    u = urlsplit(prox['server'])
+    req = f'CONNECT {host}:{port} HTTP/1.1\r\nHost: {host}:{port}\r\n'
+    if prox.get('username'):
+        # Credentials come back DECODED from proxy_from_env, which is what the
+        # Basic header needs — encoding them twice authenticates as nobody and
+        # returns a 407 that reads exactly like a blocklist.
+        tok = base64.b64encode(
+            f"{prox['username']}:{prox['password']}".encode()).decode()
+        req += f'Proxy-Authorization: Basic {tok}\r\n'
+    req += '\r\n'
+    try:
+        with socket.create_connection((u.hostname, u.port or 8080), timeout=30) as sk:
+            sk.sendall(req.encode())
+            sk.settimeout(30)
+            raw = b''
+            while b'\r\n\r\n' not in raw and len(raw) < 8192:
+                chunk = sk.recv(4096)
+                if not chunk:
+                    break
+                raw += chunk
+    except Exception as e:  # noqa: BLE001
+        return {**out, 'result': f'{type(e).__name__}: {str(e)[:120]}'}
+    if not raw:
+        return {**out, 'result': 'proxy closed the connection without answering'}
+    head = raw.decode('latin-1', 'replace').split('\r\n\r\n')[0]
+    lines = [ln for ln in head.split('\r\n') if ln.strip()]
+    status = lines[0] if lines else '(no status line)'
+    code = 0
+    parts = status.split()
+    if len(parts) > 1 and parts[1].isdigit():
+        code = int(parts[1])
+    return {**out, 'status': status, 'code': code,
+            'headers': lines[1:6], 'ok': 200 <= code < 300}
+
+
+def tunnel_report() -> int:
+    print('CONNECT tunnel check, straight to the proxy — no browser.')
+    print(f'exit: {http_fetch.proxy_label()}\n')
+    rows = [(h, why, tunnel_check(h)) for h, why in TUNNEL_HOSTS]
+    for host, why, r in rows:
+        verdict = ('OPEN' if r.get('ok') else
+                   'REFUSED' if r.get('code') else 'NO ANSWER')
+        print(f'  {host:24} {verdict:<10} {r.get("status") or r.get("result")}')
+        for h in r.get('headers') or []:
+            print(f'      {h[:100]}')
+        print(f'      ({why})')
+    print()
+    control = next((r for h, _w, r in rows if h == 'api.ipify.org'), {})
+    if not control.get('ok'):
+        print('The CONTROL host did not tunnel either. Nothing below it is evidence '
+              'about any particular target — the proxy or the credentials are the '
+              'problem. Fix that before reading the rest or raising a ticket.')
+        return 1
+    refused = [(h, r) for h, _w, r in rows
+               if h != 'api.ipify.org' and not r.get('ok')]
+    if not refused:
+        print('Every host tunnels. The earlier PROXY FAILs were not a blocklist — '
+              're-run the board probe (--via-proxy) and read the targets instead.')
+        return 0
+    print('The control tunnels and these do not, so the refusal is per-HOST — '
+          'a provider-side blocklist rather than a broken exit:')
+    for h, r in refused:
+        print(f'  {h}: {r.get("status") or r.get("result")}')
+    print('\nQuote those status lines at IPRoyal and ask whether the domain can be '
+          'enabled on this plan.')
+    return 0
+
+
 # ── APS pagination: does page 2 hold DIFFERENT jobs? ─────────────────────────
 # aps-to-d1.py pages by rewriting ?offset= and stops as soon as a page yields no
 # NEW jobs. Its nightly log says:
@@ -952,6 +1187,15 @@ def main() -> int:
         sys.exit('playwright not installed: pip install playwright && playwright install chromium')
 
     where = 'via SCRAPE_PROXY' if VIA_PROXY else 'from this runner'
+
+    if TUNNEL_CHECK:
+        # No browser at all: this speaks CONNECT to the proxy itself, so
+        # launching Chromium would only add a way to fail.
+        return tunnel_report()
+
+    if NAB_ROUTE:
+        with sync_playwright() as pw:
+            return nab_report(pw)
 
     if APS_PAGING:
         # No egress check: this asks about a board's paginator, not about an
