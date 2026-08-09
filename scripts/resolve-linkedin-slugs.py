@@ -156,6 +156,17 @@ JURISDICTIONS: dict[str, tuple[str, str]] = {
     'nsw-gov-': ('New South Wales', r'new south wales|\bNSW\b|nsw\.gov\.au|sydney'),
     'qld-gov-': ('Queensland', r'queensland|\bQLD\b|qld\.gov\.au|brisbane'),
     'tas-gov-': ('Tasmania', r'tasmania|\bTAS\b|tas\.gov\.au|hobart'),
+    # THE COMMONWEALTH, and it is not optional. Federal ids carry no '-gov-', so
+    # before this line every one of them skipped the check entirely — and the
+    # Canberra roster is 49 federal agencies including a Department of
+    # Education, an Attorney-General's Department and a Department of Health.
+    # Those are the very names that already resolved to the WRONG BODY twice:
+    # /department-of-education is Victoria's and /department-of-justice is
+    # Tasmania's. Every state has a department by most of these names, so an
+    # unheld federal id is the likeliest wrong save on the whole roster, not the
+    # least.
+    'aps-': ('Commonwealth',
+             r'australian government|commonwealth|canberra|australian capital territory'),
 }
 # What each state calls its own government, for the contradiction test. A page
 # that names ANOTHER state's government is that state's, whatever else it says.
@@ -167,6 +178,32 @@ CLAIMS = {
     'New South Wales': r'new south wales government|nsw government|nsw\.gov\.au',
     'Queensland': r'queensland government|qld\.gov\.au',
     'Tasmania': r'tasmanian government|tas\.gov\.au',
+    # Symmetric with the entry above: a STATE id whose page claims the federal
+    # government is as wrong as a federal id landing on a state's. Deliberately
+    # narrow — "Australian Government" alone appears on state pages that mention
+    # federal funding, so only the self-identifying phrasings count.
+    'Commonwealth': r'australian government department|commonwealth of australia',
+}
+
+
+# addressRegion is a STRUCTURED field, which is what makes an abbreviation safe
+# to match here and nowhere else: "ACT" as a region is the territory, while "ACT"
+# in prose is "the Fair Work Act". Matching it exactly, in this field only, is
+# how the federal agencies get placed without that collision.
+#
+# 'ACT' maps to Commonwealth because every federal agency on the roster sits in
+# Canberra and no ACT-government body is plotted. Were one ever added, its id
+# would carry an act-gov- prefix that is not in JURISDICTIONS, and the unknown
+# prefix would fail closed rather than borrow this line.
+REGION_STATE = {
+    'wa': 'Western Australia', 'western australia': 'Western Australia',
+    'sa': 'South Australia', 'south australia': 'South Australia',
+    'nt': 'Northern Territory', 'northern territory': 'Northern Territory',
+    'vic': 'Victoria', 'victoria': 'Victoria',
+    'nsw': 'New South Wales', 'new south wales': 'New South Wales',
+    'qld': 'Queensland', 'queensland': 'Queensland',
+    'tas': 'Tasmania', 'tasmania': 'Tasmania',
+    'act': 'Commonwealth', 'australian capital territory': 'Commonwealth',
 }
 
 
@@ -186,6 +223,19 @@ def jurisdiction_ok(company_id: str, html: str) -> tuple[bool, str]:
     for state, claim in CLAIMS.items():
         if state != want and re.search(claim, blob, re.I):
             return False, f'page is {state}, not {want}'
+    placed = REGION_STATE.get(region.strip().lower())
+    if placed and placed != want:
+        return False, f'page is registered in {placed}, not {want}'
+    if want == 'Commonwealth':
+        # ASYMMETRIC ON PURPOSE. For a state id, "never places itself in
+        # Victoria" is real evidence, because eight bodies share the name and
+        # only one is the right one. A federal agency has no single state to
+        # place itself in, so the same silence says nothing — measured against
+        # the live pages, requiring a positive signal rejected CSIRO, the ATO
+        # and Services Australia, all of them correct. Contradiction is
+        # therefore the whole test here: a claim of a state government above, or
+        # a registered region that is a state, and nothing else.
+        return True, ''
     if not re.search(pattern, blob, re.I):
         return False, f'page never places itself in {want} (region "{region[:24]}")'
     return True, ''
