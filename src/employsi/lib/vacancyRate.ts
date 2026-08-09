@@ -25,6 +25,8 @@
 // a share of the workforce and is not offered here.
 import { IVI_MONTHS, IVI_SERIES } from "../data/iviSkillDemand";
 import { ABS_EMPLOYMENT, ABS_EMPLOYMENT_NATIONAL, ABS_QUARTERS } from "../data/absOccupationSupply";
+import { SG_GROUP_EMPLOYMENT, SG_SKILL_GROUP, SG_SUPPLY_YEARS } from "../data/sgOccupationSupply";
+import { SG_SERIES } from "../data/sgVacancyDemand";
 
 /** Vacancies per this many employed persons. */
 export const RATE_BASE = 1000;
@@ -74,8 +76,59 @@ export function quarterIndexForMonth(month: string): number {
   return found;
 }
 
+export type RateGranularity = "occupation" | "occupation-group";
+
+/**
+ * How precisely a hub's denominator is measured. The two are NOT the same claim
+ * and the UI should say which it is showing.
+ *
+ *   occupation        Australia. ABS EQ08, 478 ANZSCO unit groups — a skill
+ *                     divides by the people doing that specific work.
+ *   occupation-group  Singapore. SingStat M182081, 8 SSOC major groups — a
+ *                     skill divides by its whole major group, so Software
+ *                     Engineering and Medical Practice share one denominator.
+ *
+ * The Singapore reweighting is real ACROSS groups (Craftsmen ~52k against
+ * Service & Sales ~247k is a four-fold correction) and absent WITHIN them,
+ * where two skills keep the order their vacancy counts already gave them.
+ */
+export function rateGranularity(hub: string): RateGranularity | null {
+  if (hub === "singapore") return "occupation-group";
+  return "occupation";
+}
+
+/**
+ * Singapore employment for a skill at a month, or null.
+ *
+ * The source is ANNUAL and newest-first, and the month steps back to the most
+ * recent year AT OR BEFORE it — the same rule Australia's quarters use, for the
+ * same reason: nothing is interpolated.
+ *
+ * Matching the year EXACTLY was the first version and it returned null for
+ * every current month. SingStat's latest is 2025 and the vacancy series runs to
+ * 2026-05, so exact matching silently produced no Singapore rate at all — a
+ * feature that looks simply absent rather than broken. The cost of stepping is
+ * that the newest months divide by employment up to eighteen months old; that
+ * is a real lag on a stock that moves a percent or two a year, and it is worth
+ * naming rather than hiding. A month BEFORE the first published year still
+ * returns null, because there is nothing to step back to.
+ */
+function sgEmploymentFor(skill: string, month: string): number | null {
+  const group = SG_SKILL_GROUP[skill];
+  if (!group) return null;
+  const year = month.slice(0, 4);
+  // Newest-first, so the first entry at or before the month is the one wanted.
+  const yi = SG_SUPPLY_YEARS.findIndex((y) => y <= year);
+  if (yi < 0) return null;
+  const v = SG_GROUP_EMPLOYMENT[group]?.[yi];
+  // null is 'na' in the source — not measured, which must never become a zero
+  // denominator. See the generated file's header.
+  return typeof v === "number" && v >= MIN_EMPLOYED ? v : null;
+}
+
 /** Employed persons for a skill in a hub (or "national") at a month, or null. */
 export function employmentFor(skill: string, hub: string, month: string): number | null {
+  if (hub === "singapore") return sgEmploymentFor(skill, month);
   const qi = quarterIndexForMonth(month);
   if (qi < 0) return null;
   const series = hub === "national" ? ABS_EMPLOYMENT_NATIONAL[skill] : ABS_EMPLOYMENT[skill]?.[hub];
@@ -90,6 +143,11 @@ export function employmentFor(skill: string, hub: string, month: string): number
 export function vacanciesFor(skill: string, hub: string, month: string): number | null {
   const mi = IVI_MONTHS.indexOf(month);
   if (mi < 0) return null;
+  // Singapore's vacancies are their own series (MRSD), not the Australian IVI.
+  // Reading IVI_SERIES for the singapore hub returns undefined, so the rate
+  // would never form and the whole feature would look simply absent — the
+  // quietest possible way for this to be broken.
+  if (hub === "singapore") return SG_SERIES[skill]?.singapore?.[mi] ?? null;
   if (hub === "national") {
     const byHub = IVI_SERIES[skill];
     if (!byHub) return null;
