@@ -426,6 +426,20 @@ const RAW_SKILLS: SkillDef[] = [
       "pmo",
       "program and project",
       "project administrat",
+      // The public-sector spelling of the same job, and the largest single
+      // unmapped shape in the archive: 202 rows on 2026-08-09 carrying no skill
+      // at all ("Senior Project Officer" 31, "Project Officer" 30, "Principal
+      // Project Officer" 12, then a long tail of one-offs). Every state and
+      // federal agency grades this role rather than calling it a manager, so
+      // "project manager" reached almost none of them.
+      "project officer",
+      // Both written separately because terms match at the start of a word and
+      // then literally: "project officer" is not inside "projects officer"
+      // (4 rows) and neither is inside "project support officer" (23) — the
+      // support grade of the same function, alongside "project administrat"
+      // just above.
+      "projects officer",
+      "project support officer",
     ],
   },
   {
@@ -513,6 +527,27 @@ const RAW_SKILLS: SkillDef[] = [
       "sales representative",
       "sales manager",
       "technical sales",
+      // 154 unmapped rows on 2026-08-09 — "Sales Executive" 56 on its own, then
+      // qualified forms (B2B, Agency, Vehicle, Conference & Events, Wagering).
+      // "account executive" above never reached them and "sales manager" only
+      // catches the grade above.
+      //
+      // The TRUNCATED stem is deliberate. A term matches at a word start and
+      // then literally, so "sales exec" covers "Sales Executive" AND the
+      // abbreviated forms ("Sales Exec - QT Parramatta", "B2B Sales Execs")
+      // that a full-word term would miss. norm() leaves punctuation alone, so
+      // "Sales - Executive Admin Assistant" — an EA sitting in a sales team —
+      // keeps its separator and is NOT swept in.
+      //
+      // What it does also catch, checked against all 79,831 distinct titles in
+      // the archive rather than assumed: three "Marketing Manager Sales
+      // Execution" rows. Those are commodity-marketing roles and they already
+      // carry Marketing & Comms; gaining Sales & Business Dev as well is a fair
+      // reading of route-to-market work, so the stem is kept. It is written
+      // down because it is the one thing here that is a judgement rather than a
+      // match, and the next person to widen this term should know it is already
+      // reaching a word other than "executive".
+      "sales exec",
     ],
   },
   {

@@ -66,8 +66,20 @@ def map_skills(titles):
     return json.loads(p.stdout.decode())
 
 
+# UNMAPPED ROWS ARE INCLUDED, and excluding them was this script's biggest
+# blind spot. The filter used to be `skills IS NOT NULL`, which sounds like it
+# skips rows with nothing to correct — but an unmapped row stores NULL, not an
+# empty array, so the clause excluded EVERY row that the matcher had never
+# placed. Measured 2026-08-09: 48,594 of the archive's 131,430 rows carry NULL
+# and 0 carry '[]'. Those are precisely the rows a widened taxonomy is meant to
+# rescue, so a remap after adding terms reached none of them: adding "project
+# officer" and "sales exec" changed 333 rows and left 362 untouched, all of them
+# the ones the change was made for.
+#
+# The script also WRITES NULL when a row maps to nothing, so it was manufacturing
+# rows it could never revisit.
 rows = d1('SELECT job_key, title, company, skills FROM jobs '
-          'WHERE skills IS NOT NULL AND title LIKE ? LIMIT ?', [LIKE, LIMIT])
+          'WHERE title LIKE ? LIMIT ?', [LIKE, LIMIT])
 sys.stderr.write(f'{len(rows)} rows matching {LIKE!r}\n')
 
 fresh = map_skills([r['title'] or '' for r in rows])
