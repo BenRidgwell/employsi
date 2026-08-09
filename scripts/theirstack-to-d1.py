@@ -59,9 +59,15 @@ represents.
 
 Env: THEIRSTACK_TOKEN (never committed — pass it in the environment),
      CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID.
-Run: python scripts/theirstack-to-d1.py --company-id <id> --app-id bhp
+Run: python scripts/theirstack-to-d1.py --company-id <id>[,<id2>] --app-id bhp
        [--name BHP] [--sector S] [--max-pages N] [--page-size N]
-       [--start-page N] [--dry-run]
+       [--start-page N] [--max-age-days N] [--dry-run]
+
+--company-id takes a COMMA-SEPARATED list because one employer is not always one
+TheirStack company: BHP is two records, and 5,560 of its postings in the last two
+years are only visible when both are passed. --max-age-days bounds the window
+(730 for two years); it defaults to all of history, since a narrow default is how
+a "full history" pull comes back quietly partial.
 """
 from __future__ import annotations
 import datetime
@@ -101,18 +107,29 @@ def _opt(name, default=None):
     return args[args.index(name) + 1] if name in args else default
 
 
-COMPANY_ID = _opt('--company-id')
+# Comma-separated, because one employer is not always one TheirStack company.
+# BHP is two records — TI1SAwwqiw+Q04oXdD5jBg== and a longer one — and passing
+# only the first silently returns a fraction of the postings while still looking
+# like a completed run. The API's own field is `company_id_or`, so this is the
+# shape it always wanted; it was the flag that was narrower.
+COMPANY_IDS = [c for c in (_opt('--company-id') or '').split(',') if c.strip()]
 APP_ID = _opt('--app-id')
 NAME = _opt('--name', APP_ID or '')
 MAX_PAGES = int(_opt('--max-pages', 400))
 PAGE = max(1, min(int(_opt('--page-size', PAGE_DEFAULT)), 500))
 START_PAGE = int(_opt('--start-page', 0))
 SECTOR = _opt('--sector')
+# The window, in days. The default stays "all of it" (36500 = a hundred years),
+# because a narrow default is how a full-history pull comes back quietly partial
+# — the API's own default is a recent window, which is the trap this guards.
+# Set it when you want a bounded slice: --max-age-days 730 for two years.
+MAX_AGE_DAYS = int(_opt('--max-age-days', 36500))
 FLUSH_ROWS = 100  # write to D1 roughly every four pages
 DRY = '--dry-run' in args
 
-if not COMPANY_ID or not APP_ID:
-    sys.exit('--company-id (TheirStack) and --app-id (our roster id) are both required.')
+if not COMPANY_IDS or not APP_ID:
+    sys.exit('--company-id (TheirStack, comma-separated for multiple) and --app-id '
+             '(our roster id) are both required.')
 if not TS_TOKEN:
     sys.exit('THEIRSTACK_TOKEN is required (pass it in the environment, never in the repo).')
 if not DRY and not TOKEN:
@@ -199,13 +216,13 @@ def wait_out_limits(headers) -> None:
 
 def ts_page(page: int) -> tuple[list, int | None]:
     body = json.dumps({
-        'company_id_or': [COMPANY_ID],
+        'company_id_or': COMPANY_IDS,
         'limit': PAGE,
         'page': page,
         'include_total_results': True,
         # Without a wide window the search quietly returns only recent postings,
         # which would make a "full history" pull silently partial.
-        'posted_at_max_age_days': 36500,
+        'posted_at_max_age_days': MAX_AGE_DAYS,
     }).encode()
     for attempt in range(4):
         req = urllib.request.Request(ENDPOINT, data=body, headers={
