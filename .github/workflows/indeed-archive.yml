@@ -57,15 +57,26 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install Playwright + Chromium
+      - name: Install Playwright, real Chrome and Xvfb
         run: |
           python -m pip install --upgrade pip
           pip install playwright
           python -m playwright install --with-deps chromium
+          python -m playwright install --with-deps chrome
+          sudo apt-get install -y xvfb
 
       - name: Scrape Indeed → D1 (browser via SCRAPE_PROXY)
         env:
           SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
+          # The same fingerprint that took Naukri and GulfTalent off Oxylabs on
+          # 2026-08-09: chromium-headless-shell is a stripped build that is not
+          # Chrome, and the anti-bot vendors read that. Indeed answered the
+          # shell through this exit when it was probed, so this is insurance
+          # rather than a fix — but it is insurance on the feed that matters
+          # most, against the class of wall Indeed actually sits behind.
+          BROWSER_FETCH_CHANNEL: chrome
+          BROWSER_FETCH_STEALTH: '1'
+          BROWSER_FETCH_HEADFUL: '1'
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
@@ -77,4 +88,4 @@ jobs:
             echo "this would spend the whole run collecting interstitials."
             exit 1
           fi
-          python scripts/indeed-to-d1.py --max-pages 20
+          xvfb-run -a python scripts/indeed-to-d1.py --max-pages 20

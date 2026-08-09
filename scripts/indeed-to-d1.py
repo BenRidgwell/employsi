@@ -49,9 +49,9 @@ Run:  python scripts/indeed-to-d1.py [--country au] [--only id1,id2] [--limit N]
                                      [--nav [--headful] [--proxy URL]]
 
 Transports, all three parsing the same search HTML with parse_search_html:
-  (default)  browser_fetch.raw_get through SCRAPE_PROXY — Chromium clears the
-             challenge once per origin, then fetches each page from inside the
-             cleared page. This is what CI runs.
+  (default)  browser_fetch.nav_get through SCRAPE_PROXY, in real Chrome —
+             a navigation per search page, which is what the probe measured.
+             This is what CI runs.
   --oxylabs  the Web Scraper API. The fallback, unchanged.
   --nav      a warmed browser navigating page to page with jittered delays.
              What this file used to do; kept for hand-runs from a residential
@@ -291,10 +291,9 @@ def main() -> int:
     # the point — the parsing, the dedupe, the DEAD_AFTER guard and the D1 write
     # are the same code whichever exit the bytes came through.
     #
-    #   default    browser_fetch.raw_get through SCRAPE_PROXY. Chromium clears
-    #              Indeed's Cloudflare challenge once, then every search page is
-    #              a fetch() from inside the cleared page — so this runs at
-    #              plain-HTTP speed rather than a full navigation per page.
+    #   default    browser_fetch.nav_get through SCRAPE_PROXY, in real Chrome
+    #              under Xvfb with the stealth patches. A navigation per search
+    #              page — the sequence probe-headless-ci actually measured.
     #   --oxylabs  the Web Scraper API, which supplies the address and the
     #              bypass together.
     #
@@ -316,7 +315,14 @@ def main() -> int:
             sys.stderr.write(f'  via Oxylabs Web Scraper API (geo={geo}, concurrency={workers}) '
                              f'— {len(sel)} companies, no browser.\n')
         else:
-            fetch_search = lambda u: browser_fetch.raw_get(u, settle=SETTLE, locale='en-AU')  # noqa: E731
+            # nav_get, NOT raw_get. probe-headless-ci measured page.goto() and
+            # counted 16 rows with parse_search_html; raw_get pulls each page
+            # with fetch() from inside a cleared context, which is a transport
+            # the probe never exercised. startup.jobs was ported onto that same
+            # assumption on the same day and answered every in-page fetch with a
+            # Cloudflare 403 while navigation worked fine. Same measurement, same
+            # mistake — caught here before it ran.
+            fetch_search = lambda u: browser_fetch.nav_get(u, settle=SETTLE, locale='en-AU')  # noqa: E731
             # ONE worker, not CONCURRENCY. Playwright's sync API must be driven
             # from the thread that created it, so the pool below is a pool of
             # one here. Jora's browser path has the same constraint and the same
