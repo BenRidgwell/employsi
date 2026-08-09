@@ -8,6 +8,9 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import ridgwellPhoto from "@/assets/ridgwell_photo.jpeg.asset.json";
 
+/** The one address this page wants to be found at. See the canonical link below. */
+const CANONICAL_URL = "https://employsi.com.au/";
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -23,6 +26,21 @@ export const Route = createFileRoute("/")({
         content:
           "HR intelligence for understanding talent markets, compensation, and the shifting shape of work.",
       },
+      { property: "og:url", content: CANONICAL_URL },
+    ],
+    links: [
+      // ABSOLUTE, and hardcoded to the apex on purpose.
+      //
+      // This page is served on employsi.com.au and on the workers.dev URL, and
+      // they are byte-identical. A search engine that finds both has to pick
+      // one, and left to guess it can split the ranking across them or settle
+      // on the workers.dev address — which is the development URL, not the one
+      // being advertised. Naming the apex here makes every copy point at the
+      // same original, whatever host served it.
+      //
+      // Deriving this from the request host would defeat the entire point: each
+      // copy would declare itself canonical.
+      { rel: "canonical", href: CANONICAL_URL },
     ],
   }),
   component: Landing,

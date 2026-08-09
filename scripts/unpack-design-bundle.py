@@ -279,7 +279,15 @@ def unpack(bundle: pathlib.Path, name: str) -> None:
     if "world-atlas" in by_stem:
         resources["worldAtlas"] = f"/{name}/{by_stem['world-atlas']}"
 
+    # This page is an iframe target, not a destination. It has a real URL, so a
+    # crawler can reach it directly and index a bare product mock-up as if it
+    # were a page of the site. noindex rather than a robots.txt Disallow on
+    # purpose: a Disallow would also block the assets beside it, and a search
+    # engine that cannot fetch them cannot render the landing page that embeds
+    # them either. This keeps the document out of the index while leaving every
+    # resource fetchable.
     shim = (
+        '<meta name="robots" content="noindex">\n'
         "<script>window.__resources = "
         + json.dumps(resources, indent=2)
         + ";</script>\n"

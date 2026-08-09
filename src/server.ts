@@ -42,6 +42,31 @@ function isAppOnlyPath(pathname: string): boolean {
   return APP_ONLY_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 
+/**
+ * robots.txt, which has to differ by hostname — so it is served here rather
+ * than dropped in public/, where one file would answer for every host.
+ *
+ * The waitlist is deployed on employsi.com.au AND on the workers.dev URL, and
+ * they are the same page. Left alone, a search engine finds both, has to guess
+ * which is canonical, and splits the ranking between them. The canonical tag on
+ * the landing route names the apex as the real one; this stops the workers.dev
+ * copy being crawled at all, which is the belt to that braces.
+ *
+ * It is deliberately NOT a blanket disallow on non-apex hosts only in spirit:
+ * the workers.dev URL is where the app is developed and demoed, and keeping it
+ * out of the index is wanted there too.
+ *
+ * `/_serverFn/` is disallowed on the apex because those are RPC endpoints for
+ * the page's own fetches — they answer JSON to a correctly-formed call and 500
+ * to a bare GET, so a crawler spending budget on them gets nothing either way.
+ */
+function robotsTxt(host: string): string {
+  if (host !== MARKETING_APEX) {
+    return "# Not the canonical host — see https://employsi.com.au\nUser-agent: *\nDisallow: /\n";
+  }
+  return ["User-agent: *", "Allow: /", "Disallow: /_serverFn/", ""].join("\n");
+}
+
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
 async function getServerEntry(): Promise<ServerEntry> {
@@ -121,6 +146,19 @@ export default {
       // condition gets a temporary redirect.
       if (host === MARKETING_APEX && isAppOnlyPath(url.pathname)) {
         return Response.redirect(new URL("/", url).toString(), 302);
+      }
+
+      // After the host redirects, so a crawler asking www for robots.txt is
+      // sent to the apex's copy rather than being answered twice.
+      if (url.pathname === "/robots.txt") {
+        return new Response(robotsTxt(host), {
+          headers: {
+            "content-type": "text/plain; charset=utf-8",
+            // Short: this is the file to be able to change quickly if the
+            // wrong thing turns out to be indexed.
+            "cache-control": "public, max-age=300",
+          },
+        });
       }
 
       if (url.pathname.startsWith("/api/auth/")) {
