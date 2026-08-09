@@ -610,7 +610,7 @@ darwin,State agency,nt-gov-department-of-children-and-families,Department of Chi
 darwin,State agency,nt-gov-department-of-agriculture-and-fisheries,Department of Agriculture and Fisheries,Government,"Berrimah Farm, Makagon Road, Berrimah NT 0828",low
 darwin,State agency,nt-gov-nt-police-force,NT Police Force,Government,"Peter McAulay Centre, McMillans Road, Berrimah NT 0828",high
 darwin,State agency,nt-gov-department-of-lands-planning-and-environment,"Department of Lands, Planning and Environment",Government,"25 Chung Wah Terrace, Palmerston NT 0830",google_maps
-darwin,State agency,nt-gov-department-of-tourism-and-hospitality,Department of Tourism and Hospitality,Government,"Level 8, Charles Darwin Centre, 19 The Mall, Darwin NT 0800",google_maps
+darwin,State agency,nt-gov-department-of-tourism-and-hospitality,Department of Tourism and Hospitality,Government,"Level 14, Charles Darwin Centre, 19 The Mall, Darwin NT 0800",user_provided
 darwin,State agency,nt-gov-department-of-the-chief-minister-and-cabinet,Department of the Chief Minister and Cabinet,Government,"NT House, 22 Mitchell Street, Darwin NT 0800",medium
 darwin,State agency,nt-gov-department-of-housing-local-government-and-community-development,"Department of Housing, Local Government and Community Development",Government,"RCG Centre, 47 Mitchell Street, Darwin NT 0800",user_provided
 darwin,State agency,nt-gov-land-development-corporation,Land Development Corporation,Government,"Level 10, 24 Mitchell Street, Darwin NT 0800",google_maps
@@ -620,7 +620,7 @@ darwin,State agency,nt-gov-nt-fire-and-emergency-services,NT Fire and Emergency 
 darwin,State agency,nt-gov-territory-generation,Territory Generation,Government,"3/631 Stuart Highway, Berrimah NT 0828",google_maps
 darwin,State agency,nt-gov-batchelor-institute-of-indigenous-tertiary-education,Batchelor Institute of Indigenous Tertiary Education,Government,"10 Nurndina Street, Batchelor NT 0845",medium
 darwin,State agency,nt-gov-department-of-trade-business-and-asian-relations,"Department of Trade, Business and Asian Relations",Government,"Development House, 76 The Esplanade, Darwin NT 0800",user_provided
-darwin,State agency,nt-gov-department-of-treasury-and-finance,Department of Treasury and Finance,Government,"Charles Darwin Centre, 19 The Mall, Darwin NT 0800",google_maps
+darwin,State agency,nt-gov-department-of-treasury-and-finance,Department of Treasury and Finance,Government,"Level 8, Charles Darwin Centre, 19 The Mall, Darwin City NT 0800",user_provided
 darwin,State agency,nt-gov-department-of-legislative-assembly,Department of Legislative Assembly,Government,"Parliament House, Mitchell Street, Darwin NT 0800",high
 hobart,State agency,tas-gov-department-of-health,Department of Health,Government,"Level 7, 110 Collins Street, Hobart TAS 7000",google_maps
 hobart,State agency,tas-gov-department-for-education-children-and-young-people,"Department for Education, Children and Young People",Government,"4 Salamanca Place, Hobart TAS 7000",google_maps

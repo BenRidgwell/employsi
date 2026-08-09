@@ -190,7 +190,9 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "nt-gov-department-of-logistics-and-infrastructure": [130.839699, -12.438092], // 18 Goyder Road, Parap NT 0820
   "nt-gov-department-of-people-sport-and-culture": [130.879151, -12.398727], // 40 Abala Road, Marrara NT 0812
   "nt-gov-department-of-the-chief-minister-and-cabinet": [130.83519, -12.45864], // NT House, 22 Mitchell Street, Darwin NT 0800
+  "nt-gov-department-of-tourism-and-hospitality": [130.843114, -12.464606], // Level 14, Charles Darwin Centre, 19 The Mall, Darwin NT 0800
   "nt-gov-department-of-trade-business-and-asian-relations": [130.838627, -12.463183], // Development House, 76 The Esplanade, Darwin NT 0800
+  "nt-gov-department-of-treasury-and-finance": [130.843114, -12.464606], // Level 8, Charles Darwin Centre, 19 The Mall, Darwin City NT 0800
   "nt-gov-land-development-corporation": [130.842058, -12.465333], // Level 10, 24 Mitchell Street, Darwin NT 0800
   "nt-gov-nt-fire-and-emergency-services": [130.920912, -12.408971], // Peter McAulay Centre, McMillans Road, Berrimah NT 0828
   "nt-gov-nt-police-force": [130.920912, -12.408971], // Peter McAulay Centre, McMillans Road, Berrimah NT 0828

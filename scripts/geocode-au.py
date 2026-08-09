@@ -221,6 +221,18 @@ PINNED: dict[str, tuple[float, float, str]] = {
     # under its full name, and Makagon Road runs past several of them.
     'nt-gov-department-of-agriculture-and-fisheries': (130.929498, -12.444127,
                                                       'OSM "Berrimah Research Farm" [amenity]'),
+    # "19 The Mall" is 19 SMITH STREET MALL — Darwin's pedestrian mall, which the
+    # addresses shorten to "The Mall" and OSM does not. A numbered query for
+    # "The Mall" found Bradshaw Terrace, a different street entirely, which the
+    # street-match gate correctly rejected; that is why both departments sat on
+    # the fan. OSM carries house number 19 on Smith Street Mall under its
+    # ground-floor tenant, which is the building the Charles Darwin Centre is.
+    # Two floors of one building, so both share the coordinate — realCoord()
+    # nudges the second pin ~20 m so neither becomes unclickable.
+    'nt-gov-department-of-tourism-and-hospitality': (130.843114, -12.464606,
+                                                    'OSM house number 19, Smith Street Mall [shop]'),
+    'nt-gov-department-of-treasury-and-finance': (130.843114, -12.464606,
+                                                 'OSM house number 19, Smith Street Mall [shop]'),
 }
 
 # Standing notes emitted above an entry, so an explanation survives the next

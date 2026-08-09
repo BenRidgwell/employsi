@@ -280,7 +280,9 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
     offset + ADELAIDE_GOV_IDS.length,
     CITY_PLACEMENT.adelaide,
   );
-  ADELAIDE_GOV_IDS.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
+  ADELAIDE_GOV_IDS.forEach((id, i) =>
+    existing.push({ id, coords: realCoord(id) ?? pts[offset + i] }),
+  );
 }
 
 // Melbourne VIC government agencies: fan pins around the Melbourne centre.
@@ -293,7 +295,9 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
     offset + MELBOURNE_GOV_IDS.length,
     CITY_PLACEMENT.melbourne,
   );
-  MELBOURNE_GOV_IDS.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
+  MELBOURNE_GOV_IDS.forEach((id, i) =>
+    existing.push({ id, coords: realCoord(id) ?? pts[offset + i] }),
+  );
 }
 
 // Brisbane QLD government agencies: fan pins around the Brisbane centre.
@@ -306,7 +310,9 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
     offset + BRISBANE_GOV_IDS.length,
     CITY_PLACEMENT.brisbane,
   );
-  BRISBANE_GOV_IDS.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
+  BRISBANE_GOV_IDS.forEach((id, i) =>
+    existing.push({ id, coords: realCoord(id) ?? pts[offset + i] }),
+  );
 }
 
 // APS federal agencies: grouped by their HQ city (Canberra for most, a few in
@@ -331,7 +337,9 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   const existing = (CITY_COMPANIES.darwin ||= []);
   const offset = existing.length;
   const pts = spreadCoordsCity(view.center, offset + DARWIN_GOV_IDS.length, CITY_PLACEMENT.darwin);
-  DARWIN_GOV_IDS.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
+  DARWIN_GOV_IDS.forEach((id, i) =>
+    existing.push({ id, coords: realCoord(id) ?? pts[offset + i] }),
+  );
 }
 
 // Tasmanian government agencies: all plotted in Hobart, fanned around the Hobart
@@ -341,7 +349,9 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   const existing = (CITY_COMPANIES.hobart ||= []);
   const offset = existing.length;
   const pts = spreadCoordsCity(view.center, offset + HOBART_GOV_IDS.length, CITY_PLACEMENT.hobart);
-  HOBART_GOV_IDS.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
+  HOBART_GOV_IDS.forEach((id, i) =>
+    existing.push({ id, coords: realCoord(id) ?? pts[offset + i] }),
+  );
 }
 
 // New South Wales government agencies: all plotted in Sydney, fanned around the
@@ -351,7 +361,9 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   const existing = (CITY_COMPANIES.sydney ||= []);
   const offset = existing.length;
   const pts = spreadCoordsCity(view.center, offset + SYDNEY_GOV_IDS.length, CITY_PLACEMENT.sydney);
-  SYDNEY_GOV_IDS.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
+  SYDNEY_GOV_IDS.forEach((id, i) =>
+    existing.push({ id, coords: realCoord(id) ?? pts[offset + i] }),
+  );
 }
 
 // Top-150 private companies. The Perth set now has real geocoded head-office
