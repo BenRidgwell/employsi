@@ -24,12 +24,19 @@
 # design and the script caps records per run. Bright Data gives 5,000
 # records/month free; start there with probe=true.
 #
-# THERE IS NO `schedule:` YET, on purpose. Nothing here has been run against the
-# live API — it is written from Bright Data's published contract and this repo
-# had no token to test with. Run it by hand with probe=true first, read the
-# field-coverage table (particularly whether posted date and salary arrive,
-# since the card shows both), and enable the schedule at the bottom once a real
-# run has looked boring.
+# THE SCHEDULE IS WEEKLY AND MUST STAY WEEKLY. Billing is per record returned,
+# so the cadence IS the invoice: ~300 records from a 20-company sweep is ~1,200
+# a month weekly against ~9,000 nightly, and Bright Data's free allowance is
+# 5,000 records/month. Nightly would exceed the free tier in the first week and
+# buy almost nothing — postings do not churn daily, and the archive's
+# `seen_count` already tracks a role that stays up.
+#
+# The Indeed scraper was verified against the live API on 2026-08-10 before this
+# schedule was enabled: 94 records over 6 companies, title/company/location/url/
+# posted all at 98.9%, salary_formatted arriving on 2.1% (advertisers mostly do
+# not post pay). A 6-company probe took 9m47s and a 3-company one 2m23s, which
+# is why `limit` stays modest — the full roster would run for hours and bill for
+# thousands of records.
 #
 # Required repo secrets:
 #   BRIGHTDATA_API_TOKEN   — API token
@@ -45,6 +52,10 @@
 name: brightdata-archive
 
 on:
+  schedule:
+    # Weekly, Mondays 17:20 UTC — NOT nightly, see the billing note above.
+    # 10 min ahead of nsw-gov (17:30) and clear of every other feed's slot.
+    - cron: '20 17 * * 1'
   workflow_dispatch:
     inputs:
       list_datasets:
@@ -111,21 +122,30 @@ jobs:
             exit 1
           fi
           if [ "${{ inputs.list_datasets }}" = "true" ]; then
-            python scripts/brightdata-to-d1.py --list-datasets --grep '${{ inputs.grep }}'
+            python scripts/brightdata-to-d1.py --list-datasets \
+              --grep '${{ inputs.grep || 'indeed,linkedin,job' }}'
             exit $?
           fi
+          # EVERY INPUT NEEDS A FALLBACK BECAUSE A SCHEDULED RUN HAS NO INPUTS.
+          # On a `schedule` event the whole `inputs` context is null, so these
+          # interpolate to empty strings and the run dies before it starts:
+          #
+          #     ValueError: invalid literal for int() with base 10: ''
+          #
+          # Confirmed by running the script with empty arguments. The defaults
+          # declared on workflow_dispatch above do NOT apply to schedule.
+          #
+          # `probe` is deliberately left without one: null is falsy, so a
+          # scheduled run collects for real, which is the point of scheduling it.
           python scripts/brightdata-to-d1.py \
-            --source '${{ inputs.source }}' \
-            --limit '${{ inputs.limit }}' \
-            --max-records '${{ inputs.max_records }}' \
+            --source '${{ inputs.source || 'indeed' }}' \
+            --limit '${{ inputs.limit || '20' }}' \
+            --max-records '${{ inputs.max_records || '20000' }}' \
             ${{ inputs.snapshot != '' && format('--snapshot {0}', inputs.snapshot) || '' }} \
             ${{ inputs.probe && '--probe' || '' }}
-# Once a real run has succeeded and the coverage table looks right, add:
-#
-# on:
-#   schedule:
-#     - cron: '20 17 * * 1'   # weekly, Mondays. NOT nightly: billing is per
-#                             # record, and postings do not churn daily.
-#
-# A schedule fires ONE source, so a second workflow (or a matrix) is needed to
-# cover both — deliberately not written until a manual run of each has worked.
+# THE SCHEDULE COLLECTS INDEED ONLY. A schedule fires one source, and `source`
+# falls back to indeed above. LinkedIn is still dispatch-only: its dataset id has
+# not been confirmed — the two LinkedIn datasets found on the account were people
+# profiles rather than job postings — so scheduling it would fire a run with the
+# wrong id every Monday. Add a second workflow (or a matrix) once a manual
+# LinkedIn run has worked.
