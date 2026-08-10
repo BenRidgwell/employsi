@@ -1,0 +1,55 @@
+# What would we lose by dropping a source? Read-only analysis of the D1 archive.
+#
+# Every source costs something — a subscription, a runner-hour, a maintenance
+# burden — and the only honest measure of what it is worth is how many roles it
+# contributes that NOTHING ELSE HOLDS. "LinkedIn returns 8,000 rows" is not that
+# number; most may also arrive from Indeed, SEEK, a career portal or Adzuna, in
+# which case dropping LinkedIn costs nothing but the duplicate.
+#
+# Roles are matched across sources on the part of job_key AFTER the source
+# prefix — `normTitle|normCompany|normLocation` — which is the same identity the
+# archive already dedupes on within a source, not an approximation.
+#
+# IT PRINTS EACH SOURCE'S NEWEST ROW FIRST, deliberately. A feed that stopped
+# running contributes nothing to a window and reads exactly like a feed whose
+# rows were all duplicates. On 2026-08-09 both Indeed and Zhaopin were dead
+# (Oxylabs quota) and a live-window reading that day would have said "drop them"
+# about feeds that were merely switched off.
+#
+# Writes nothing — SELECTs only.
+#
+# Required repo secrets: CLOUDFLARE_API_TOKEN (D1 read)
+# Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
+
+name: source-overlap
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Window in days (1 = currently advertised; 30-90 = what a source has contributed over its life)'
+        type: string
+        default: '30'
+      pair:
+        description: 'Two sources to compare head to head'
+        type: string
+        default: 'linkedin,indeed'
+
+jobs:
+  analyse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Source overlap
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: |
+          python scripts/source-overlap.py \
+            --days '${{ inputs.days }}' \
+            --pair '${{ inputs.pair }}'
