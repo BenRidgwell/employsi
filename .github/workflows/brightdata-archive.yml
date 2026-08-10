@@ -24,12 +24,21 @@
 # design and the script caps records per run. Bright Data gives 5,000
 # records/month free; start there with probe=true.
 #
-# THE SCHEDULE IS WEEKLY AND MUST STAY WEEKLY. Billing is per record returned,
-# so the cadence IS the invoice: ~300 records from a 20-company sweep is ~1,200
-# a month weekly against ~9,000 nightly, and Bright Data's free allowance is
-# 5,000 records/month. Nightly would exceed the free tier in the first week and
-# buy almost nothing — postings do not churn daily, and the archive's
-# `seen_count` already tracks a role that stays up.
+# THE SCHEDULE IS FORTNIGHTLY, AND THIS SWEEP IS NOT FREE. Billing is per record
+# returned, so the cadence IS the invoice. Measured rate: 94 records over 6
+# companies, ~15.7 per company. The roster is 354 companies, so one full sweep
+# is roughly 5,500 records and a fortnightly cadence is ~12,000 records/month.
+#
+# BRIGHT DATA'S FREE ALLOWANCE IS 5,000 RECORDS/MONTH, so this is expected to
+# bill — that is a deliberate choice for full-roster coverage, not an oversight.
+# Nightly at this breadth would be ~165,000 records/month and is out of the
+# question; even weekly is ~24,000. If the invoice needs to come down, reduce
+# `limit` before reaching for the cadence: coverage per run is what costs money,
+# and postings do not churn daily anyway — the archive's `seen_count` already
+# tracks a role that stays up.
+#
+# `max_records` (default 20,000) is the backstop against a roster change or a
+# hiring spree turning into an invoice nobody chose.
 #
 # The Indeed scraper was verified against the live API on 2026-08-10 before this
 # schedule was enabled: 94 records over 6 companies, title/company/location/url/
@@ -53,7 +62,16 @@ name: brightdata-archive
 
 on:
   schedule:
-    # Weekly, Mondays 17:20 UTC — NOT nightly, see the billing note above.
+    # FORTNIGHTLY, and cron cannot say that. This fires every Monday 17:20 UTC
+    # and the job drops the odd ISO weeks, which gives a true 14-day gap rather
+    # than the 13-17 day drift of a `1,15 * *` day-of-month schedule. Simulated
+    # over a year from 2026-08-10: 25 runs, every gap 14 days except one.
+    #
+    # THAT EXCEPTION IS A 21-DAY GAP, not a short one. In a year with an ISO
+    # week 53 — 2026 is one — weeks 53 and 1 are both odd, so two skips land
+    # back to back across New Year. Harmless for a vacancy archive, but it is a
+    # three-week hole and not the fortnight the schedule otherwise keeps.
+    # A skipped week costs a few runner-seconds and is visible in the log.
     # 10 min ahead of nsw-gov (17:30) and clear of every other feed's slot.
     - cron: '20 17 * * 1'
   workflow_dispatch:
@@ -76,9 +94,13 @@ on:
         type: boolean
         default: true
       limit:
-        description: 'Companies to search (start small — billing is per record)'
+        description: 'Companies to search — "all" for the whole roster (billing is per record)'
         type: string
-        default: '20'
+        default: 'all'
+      timeout_min:
+        description: 'Minutes to wait for the Bright Data snapshot before giving up'
+        type: string
+        default: '300'
       max_records:
         description: 'Hard cap on records kept from one run'
         type: string
@@ -97,7 +119,14 @@ concurrency:
 jobs:
   archive:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    # A FULL-ROSTER SWEEP IS 354 COMPANIES AND THE OLD 90 WAS SIZED FOR 20.
+    # Measured: 3 companies 2m23s, 6 companies 9m47s. Extrapolating that rate to
+    # 354 lands beyond even this, and 360 is GitHub's hard ceiling for a hosted
+    # runner — so a full sweep may still be cut off, and the run will say so
+    # rather than appearing to have collected everything. The script's own
+    # snapshot wait (timeout_min) is set below this so it reports a clean
+    # "not ready" instead of being killed mid-download.
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -117,6 +146,18 @@ jobs:
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         run: |
+          # FORTNIGHTLY GATE. The cron above fires weekly because cron has no
+          # way to say "every 14 days"; even ISO weeks are collected and odd
+          # ones skipped. A manual dispatch always runs — this only applies to
+          # the schedule.
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            WEEK=$(date -u +%V)
+            if [ $((10#$WEEK % 2)) -ne 0 ]; then
+              echo "ISO week $WEEK is odd; this feed is fortnightly. Skipping."
+              exit 0
+            fi
+            echo "ISO week $WEEK is even; proceeding with the fortnightly sweep."
+          fi
           if [ -z "$BRIGHTDATA_API_TOKEN" ]; then
             echo "BRIGHTDATA_API_TOKEN is not set."
             exit 1
@@ -139,8 +180,9 @@ jobs:
           # scheduled run collects for real, which is the point of scheduling it.
           python scripts/brightdata-to-d1.py \
             --source '${{ inputs.source || 'indeed' }}' \
-            --limit '${{ inputs.limit || '20' }}' \
+            --limit '${{ inputs.limit || 'all' }}' \
             --max-records '${{ inputs.max_records || '20000' }}' \
+            --timeout-min '${{ inputs.timeout_min || '300' }}' \
             ${{ inputs.snapshot != '' && format('--snapshot {0}', inputs.snapshot) || '' }} \
             ${{ inputs.probe && '--probe' || '' }}
 # THE SCHEDULE COLLECTS INDEED ONLY. A schedule fires one source, and `source`

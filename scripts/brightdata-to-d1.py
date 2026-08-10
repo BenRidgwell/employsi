@@ -174,7 +174,20 @@ def _opt(name, default=None):
 
 LOCATION = _opt('--location', 'Australia')
 ONLY = set(_opt('--only', '').split(',')) if '--only' in args else None
-LIMIT = int(_opt('--limit', 10 ** 9))
+
+
+def _limit(v) -> int:
+    """--limit accepts 'all' (or 0, or empty) for the whole roster.
+
+    Spelling "every company" as a number large enough to exceed the roster is
+    the kind of thing that silently becomes wrong when the roster grows past the
+    number someone picked. 'all' cannot rot.
+    """
+    s = str(v).strip().lower()
+    return 10 ** 9 if s in ('all', '', '0') else int(s)
+
+
+LIMIT = _limit(_opt('--limit', 'all'))
 # THE COST GUARD. Per-record billing means a roster change or a hiring spree
 # turns into money without anyone deciding to spend it. The run refuses to keep
 # records past this and says so.
