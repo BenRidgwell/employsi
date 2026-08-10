@@ -251,6 +251,20 @@ def report(days: int) -> None:
         print(f'\n  employers: {a} {cov["a"]}, {b} {cov["b"]}, '
               f'in both {cov["shared"]}')
 
+        # WHO does each of the pair actually duplicate? "18.6% unique" is only
+        # actionable once you know which feed is holding the other 81.4% — a
+        # source that duplicates a feed we pay for is a different decision from
+        # one that duplicates a free career portal.
+        for x in (a, b):
+            partners = d1(
+                f'WITH live AS ({LIVE_LOOSE}) '
+                'SELECT o.source, COUNT(DISTINCT o.role_key) shared '
+                'FROM live x JOIN live o ON o.role_key = x.role_key '
+                'WHERE x.source = ?2 AND o.source != ?2 '
+                'GROUP BY o.source ORDER BY shared DESC LIMIT 6', [win, x])
+            head = ', '.join(f'{p["source"]} {p["shared"]:,}' for p in partners)
+            print(f'  {x} shares most with: {head or "(nothing)"}')
+
 
 def main() -> int:
     if SAMPLE:
