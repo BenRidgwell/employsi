@@ -133,25 +133,27 @@ SOURCES = {
         # BRIGHTDATA_DATASET_ID to the Indeed *jobs* id it prints.
         'dataset': None,
         'discover_by': 'keyword',
-        # PLAIN NAME, NOT `company:"Name"`. The first attempt sent Indeed's own
-        # advertiser operator, on the reasoning that it is what
-        # ind.search_url() builds. Bright Data rejected it:
+        # THE FIELD NAMES CAME FROM BRIGHT DATA, not from a fourth guess. Its
+        # validation_error names them outright once the response is not
+        # truncated:
         #
-        #   HTTP 400 {"error":"Invalid input provided","code":"validation_error",
-        #     "line":"{\"keyword\":\"company:\\\"Alkane Resources\\\"\",
-        #              \"location\":\"Australia\",\"country\":\"AU\",...}"}
+        #   ["keyword",       "This input should not contain a keyword field"]
+        #   ["domain",        "Required field"]
+        #   ["keyword_search","Required field"]
         #
-        # That field is Bright Data's, not Indeed's search box, so the operator
-        # is not a query it passes through. A plain name is what every other
-        # keyword feed here sends, and advertiser_matches() below is the gate
-        # that keeps the noise out — the same rule SimplyHired and Jora use.
+        # So this scraper's search term is `keyword_search`, NOT `keyword` —
+        # `keyword` belongs to a different discover mode and is rejected outright
+        # — and `domain` is required rather than optional. au.indeed.com is the
+        # Australian site; scripts/indeed-to-d1.py's COUNTRIES map calls it the
+        # same thing.
         #
-        # The error echoed the full accepted shape, which is where the rest of
-        # these keys come from rather than a guess: keyword, location, country,
-        # domain, keyword_search, date_posted, posted_by, location_radius. Only
-        # the three we have a value for are sent; Bright Data fills the rest.
-        'input': lambda name: {'keyword': name,
-                               'location': LOCATION, 'country': 'AU'},
+        # A PLAIN COMPANY NAME, not Indeed's `company:"Name"` operator. That was
+        # tried and is not what this field takes; attribution is handled by
+        # advertiser_matches() below, the same gate SimplyHired and Jora use.
+        'input': lambda name: {'keyword_search': name,
+                               'domain': 'au.indeed.com',
+                               'location': LOCATION,
+                               'country': 'AU'},
         'fields': {
             'title': ('job_title', 'title', 'jobtitle'),
             'company': ('company_name', 'company', 'companyName'),
