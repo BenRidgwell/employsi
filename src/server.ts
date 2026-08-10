@@ -7,6 +7,66 @@ type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
 
+/**
+ * THE PUBLIC MARKETING DOMAIN.
+ *
+ * employsi.com.au is the waitlist, and only the waitlist. The same Worker also
+ * serves the map app, so pointing a domain at it would otherwise publish an
+ * unreleased product on the address the product is about to be advertised at —
+ * discoverable, linkable and indexable. The gate is HOST-BASED rather than a
+ * removal, so nothing is lost: /app stays fully reachable on the workers.dev
+ * URL, which is where it is developed and demoed from.
+ *
+ * This is a visibility gate on a marketing domain, NOT a security boundary, and
+ * the difference matters if you are tempted to lean on it. The per-market data
+ * gate in employsi/lib/markets.ts is the boundary; it runs server-side on every
+ * archive read and is unaffected by which hostname asked.
+ *
+ * RELEASING THE APP is deleting APP_ONLY_PATHS, and nothing else.
+ */
+const MARKETING_APEX = "employsi.com.au";
+const MARKETING_WWW = "www.employsi.com.au";
+
+/**
+ * Paths that belong to the product rather than the waitlist.
+ *
+ * `/api/auth` is here because an open sign-up endpoint on a promoted domain is
+ * surface with nothing behind it: the waitlist page has no auth UI, and the
+ * server functions it does call resolve the caller's role in-process through
+ * auth.api.getSession rather than over this route, so closing it costs the
+ * waitlist nothing. Verified before closing it.
+ */
+const APP_ONLY_PATHS = ["/app", "/mobile-frame", "/api/auth"];
+
+function isAppOnlyPath(pathname: string): boolean {
+  return APP_ONLY_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
+
+/**
+ * robots.txt, which has to differ by hostname — so it is served here rather
+ * than dropped in public/, where one file would answer for every host.
+ *
+ * The waitlist is deployed on employsi.com.au AND on the workers.dev URL, and
+ * they are the same page. Left alone, a search engine finds both, has to guess
+ * which is canonical, and splits the ranking between them. The canonical tag on
+ * the landing route names the apex as the real one; this stops the workers.dev
+ * copy being crawled at all, which is the belt to that braces.
+ *
+ * It is deliberately NOT a blanket disallow on non-apex hosts only in spirit:
+ * the workers.dev URL is where the app is developed and demoed, and keeping it
+ * out of the index is wanted there too.
+ *
+ * `/_serverFn/` is disallowed on the apex because those are RPC endpoints for
+ * the page's own fetches — they answer JSON to a correctly-formed call and 500
+ * to a bare GET, so a crawler spending budget on them gets nothing either way.
+ */
+function robotsTxt(host: string): string {
+  if (host !== MARKETING_APEX) {
+    return "# Not the canonical host — see https://employsi.com.au\nUser-agent: *\nDisallow: /\n";
+  }
+  return ["User-agent: *", "Allow: /", "Disallow: /_serverFn/", ""].join("\n");
+}
+
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
 async function getServerEntry(): Promise<ServerEntry> {
@@ -49,6 +109,58 @@ export default {
       // visitor hitting a callback URL cannot end up rendering the app shell
       // mid-redirect.
       const url = new URL(request.url);
+      const host = url.hostname.toLowerCase();
+
+      // HTTPS only on the public domain.
+      //
+      // A Worker Custom Domain answers on both schemes, and this one was
+      // measured serving the full waitlist over plain http — 200, 14,596
+      // bytes, no redirect. The form itself posts to an https endpoint either
+      // way, so nothing was travelling in the clear, but a public page asking
+      // for an email address over http is the kind of thing browsers have
+      // started marking and people are right to distrust.
+      //
+      // The better home for this is the zone's "Always Use HTTPS" setting,
+      // which acts at the edge before a request ever reaches a Worker. This is
+      // here because the deploy credentials are account-scoped and cannot
+      // touch zone settings; it is correct on its own and harmless if that
+      // setting is switched on later, since the edge would then redirect first
+      // and this would simply stop being reached.
+      if (url.protocol === "http:" && (host === MARKETING_APEX || host === MARKETING_WWW)) {
+        url.protocol = "https:";
+        return Response.redirect(url.toString(), 301);
+      }
+
+      // One canonical hostname. 301 because it is permanent — www is an alias
+      // for the apex and always will be — and because a cached redirect is the
+      // point: a visitor who typed www should stop paying for the hop.
+      if (host === MARKETING_WWW) {
+        url.hostname = MARKETING_APEX;
+        return Response.redirect(url.toString(), 301);
+      }
+
+      // 302, NOT 301. This gate comes off when the app is released, and a 301
+      // is cached by browsers indefinitely — every visitor who hit /app while
+      // it was closed would keep being bounced to the waitlist long after it
+      // opened, with nothing on the server able to undo it. A temporary
+      // condition gets a temporary redirect.
+      if (host === MARKETING_APEX && isAppOnlyPath(url.pathname)) {
+        return Response.redirect(new URL("/", url).toString(), 302);
+      }
+
+      // After the host redirects, so a crawler asking www for robots.txt is
+      // sent to the apex's copy rather than being answered twice.
+      if (url.pathname === "/robots.txt") {
+        return new Response(robotsTxt(host), {
+          headers: {
+            "content-type": "text/plain; charset=utf-8",
+            // Short: this is the file to be able to change quickly if the
+            // wrong thing turns out to be indexed.
+            "cache-control": "public, max-age=300",
+          },
+        });
+      }
+
       if (url.pathname.startsWith("/api/auth/")) {
         let auth;
         try {

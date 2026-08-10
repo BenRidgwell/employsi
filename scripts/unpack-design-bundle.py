@@ -1,0 +1,397 @@
+#!/usr/bin/env python3
+"""Unpack a design-system "bundled page" export into a plain static page.
+
+The design tool exports a single self-extracting HTML file: a base64+gzip
+manifest of every asset, a JSON template, and a ~30KB runtime that unpacks the
+manifest into blob URLs on DOMContentLoaded. That format exists so one file can
+be emailed around. It is the wrong thing to serve:
+
+  * the whole 1.5MB payload is one uncacheable HTML document, re-downloaded in
+    full whenever any part of the design changes;
+  * nothing renders until the unpacker has base64-decoded and gunzipped ~1.9MB
+    on the main thread, so the visitor sees a placeholder thumbnail and an
+    "Unpacking…" badge first;
+  * the runtime mints blob: URLs and runs a postMessage relay between frames,
+    neither of which a static marketing graphic has any use for.
+
+So this writes the template out as ordinary HTML with the assets beside it as
+ordinary files, which the CDN can cache individually and the browser can render
+without executing an unpacker.
+
+    python3 scripts/unpack-design-bundle.py <bundle.html> <name>
+
+writes public/<name>.html and public/<name>/*.
+
+TWO THINGS THE RUNTIME DID THAT THIS HAS TO DO INSTEAD
+Both are hooks the design runtime already supports, so neither is a patch to
+vendored code:
+
+  1. `window.__resources` maps an original CDN URL to a replacement. dc-runtime
+     reads it through cdnScriptFor() before falling back to unpkg, and the
+     globe component reads `__resources.worldAtlas` before falling back to
+     jsDelivr. Setting it is what keeps the page off the network — without it
+     the page still works, but silently fetches React, ReactDOM and a 108KB
+     world atlas from public CDNs on every visit.
+  2. dc-runtime's boot() re-fetches location.href to re-read the template when
+     `window.__resources` is absent. Defining it also removes that second fetch
+     of the whole document.
+
+SIZING: the design scales itself to whatever width it is given (see the fit()
+handler in the template — it reads clientWidth and applies a transform), so its
+height is a FUNCTION of its width and cannot be pinned by one aspect-ratio in
+the embedding page. A height-reporting shim is injected so the parent can size
+the iframe exactly; see the comment on REPORT_JS.
+"""
+
+import base64
+import gzip
+import json
+import pathlib
+import re
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+EXT = {
+    "image/svg+xml": "svg",
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/webp": "webp",
+    "application/json": "json",
+    "text/javascript": "js",
+    "application/javascript": "js",
+    "text/css": "css",
+    "font/woff2": "woff2",
+    "font/woff": "woff",
+}
+
+# Recognised payloads get a real filename. Matching is on content, not on the
+# uuid, because the uuids are regenerated on every export — a name table keyed
+# by uuid would silently fall back to uuid filenames on the next bundle.
+SIGNATURES = [
+    ("react-dom", lambda t: "react-dom.production.min.js" in t[:400]),
+    ("react", lambda t: "react.production.min.js" in t[:400]),
+    ("d3", lambda t: t.startswith("// https://d3js.org")),
+    ("topojson-client", lambda t: "topojson-client" in t[:200]),
+    ("lucide", lambda t: "@license lucide" in t[:200]),
+    ("skills-globe", lambda t: t.lstrip().startswith("// <skills-globe>")),
+    ("dc-runtime", lambda t: "GENERATED from dc-runtime" in t[:200]),
+    ("ds-bundle", lambda t: t.lstrip().startswith("/* @ds-bundle:")),
+    ("world-atlas", lambda t: '"type":"Topology"' in t[:200]),
+]
+
+# The CDN URLs dc-runtime would otherwise reach for. Kept verbatim: they are
+# lookup KEYS into __resources, matched by exact string, not URLs we fetch.
+REACT_URL = "https://unpkg.com/react@18.3.1/umd/react.production.min.js"
+REACT_DOM_URL = "https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"
+
+# dc-runtime injects its own base stylesheet at init:
+#
+#     html,body{height:100%;margin:0}#dc-root,#dc-root>.sc-host{height:100%}
+#
+# which is right for a page that owns the viewport and wrong for one being
+# measured: it holds the document at exactly the frame's height no matter how
+# small the artboard scaled, so the height reported below would be whatever the
+# parent already guessed and could never correct it downward. Verified in a
+# real browser — the export reported 1000px at every width until this was
+# added. The runtime's rule carries no !important, so this wins on that alone,
+# but the selectors are also more specific so it survives a reordering.
+UNPIN_CSS = """
+<style>
+  html:root, :root body { height: auto !important; min-height: 0 !important; }
+  :root #dc-root, :root #dc-root > .sc-host { height: auto !important; }
+</style>
+"""
+
+REPORT_JS = """
+<script>
+/* Report our rendered height to the embedding page.
+ *
+ * The design fits itself to the width it is handed and its height follows from
+ * that, so the parent cannot express this as a fixed aspect-ratio without
+ * either clipping the graphic or leaving a band of dead space under it. The
+ * parent listens for this message and sets the iframe height to match; it
+ * falls back to an approximate ratio if this never arrives.
+ *
+ * Same-origin (both are served by the app Worker), so the message is addressed
+ * to this exact origin rather than '*'. */
+(function () {
+  var last = 0;
+  function report(force) {
+    var h = Math.ceil(document.documentElement.getBoundingClientRect().height);
+    if (!h || (h === last && !force)) return;
+    last = h;
+    try { parent.postMessage({ employsiPreviewHeight: h }, location.origin); } catch (e) {}
+  }
+  /* Answer a ping unconditionally, ignoring the de-dupe above.
+   *
+   * Without this the embed is a race the parent loses more often than not:
+   * this page finishes booting and posts its one height before the parent
+   * route has hydrated and attached its listener, and every later post is
+   * suppressed because the height has not CHANGED since. Measured in a real
+   * browser — the parent received nothing and silently kept its fallback
+   * ratio, which is a 1px clip at phone widths and would be a much worse one
+   * the moment the artboard's proportions change. So the parent asks, and an
+   * answer is always sent. */
+  window.addEventListener('message', function (e) {
+    if (e.origin !== location.origin) return;
+    if (e.data && e.data.employsiPreviewPing) report(true);
+  });
+  window.addEventListener('resize', report);
+  window.addEventListener('load', report);
+  document.addEventListener('DOMContentLoaded', report);
+  if (window.ResizeObserver) new ResizeObserver(report).observe(document.documentElement);
+  /* The runtime swaps <x-dc> for the rendered tree only after React has
+   * loaded, and web fonts settle later still. ResizeObserver catches both, but
+   * these bounded retries cover a browser without one. */
+  [0, 60, 200, 600, 1500, 3000].forEach(function (d) { setTimeout(report, d); });
+})();
+</script>
+"""
+
+
+FONT_FACE_RE = re.compile(r"@font-face\s*\{[^}]*\}")
+FAMILY_RE = re.compile(r"font-family:\s*'([^']+)'")
+
+# The three elements that make up the physical devices: the laptop lid, the
+# wider deck it sits on, and the phone body. Each is identified by the set of
+# properties that makes it that object, not by a uuid or a position in the
+# document, so a re-export that moves things around still matches.
+DEVICE_CHROME = {
+    "laptop lid": ("width:960px", "background:#1c1c1e", "border-radius:18px"),
+    "laptop deck": ("background:#dcdce0",),
+    "phone body": ("width:312px", "background:#1c1c1e", "border-radius:46px"),
+}
+SHADOW_DECL_RE = re.compile(r";?box-shadow:[^;\"]+")
+
+
+def flatten_device_shadows(page: str) -> tuple[str, list[str]]:
+    """Drop the drop-shadows that make the devices float above the page.
+
+    The export renders the laptop and phone hovering over a white field, lit
+    from above. Embedded in a page that is already white, that reads as two
+    objects casting shadows onto the article rather than as a picture — the
+    ask was for it to sit flush.
+
+    ONLY the device chrome. The other eight shadows in the artboard are inside
+    the screens — the search pill, the globe's glow, the map pins, the phone's
+    bottom-sheet lip — and they are part of the product being depicted, not of
+    the frame around it. Flattening those would be retouching the mock-up
+    rather than seating the image.
+
+    Raises if the expected three are not all found: silently leaving a shadow
+    behind after a re-export would look like the change simply had not been
+    made, and this is exactly the kind of thing nobody re-checks.
+    """
+    removed: list[str] = []
+    for name, signature in DEVICE_CHROME.items():
+        for m in list(re.finditer(r'style="([^"]*)"', page)):
+            style = m.group(1)
+            if "box-shadow:" not in style or not all(s in style for s in signature):
+                continue
+            page = page.replace(m.group(0), 'style="' + SHADOW_DECL_RE.sub("", style, count=1) + '"')
+            removed.append(name)
+            break
+    missing = [n for n in DEVICE_CHROME if n not in removed]
+    if missing:
+        raise SystemExit(
+            f"Device chrome not found, so its shadow was left on: {missing}. "
+            "The export's markup changed — re-read DEVICE_CHROME against it."
+        )
+    return page, removed
+
+
+def alias_orphan_font_families(page: str) -> tuple[str, list[tuple[str, str]]]:
+    """Give a font the name the document actually asks for.
+
+    The export declares its webfonts under their full names — 'Mona Sans
+    Variable' — while every element asks for the family name — 'Mona Sans'. CSS
+    matches @font-face by exact family name, so the brand face never applied:
+    the page rendered in system-ui and the two Mona Sans woff2 files it ships
+    were downloaded by nobody. Confirmed in a real browser before and after.
+
+    An @font-face rule takes exactly one family name, so a name can only be
+    added by duplicating the rule. Aliasing rather than renaming is deliberate:
+    a rename would break any future export that DOES use the long name, and
+    a duplicate rule costs nothing at runtime (the browser downloads a face only
+    when something selects it).
+
+    Generalised rather than hardcoded to Mona Sans, so the next export is
+    checked too: any family that is asked for but never declared, and that is a
+    prefix of exactly one declared family, gets an alias. Anything less clear
+    cut is left alone and reported, because inventing a mapping between two
+    fonts is not a thing a build script should decide.
+    """
+    faces = FONT_FACE_RE.findall(page)
+    declared = {m.group(1) for f in faces for m in [FAMILY_RE.search(f)] if m}
+
+    used: set[str] = set()
+    for decl in re.findall(r"font-family:\s*([^;}\"']*(?:'[^']*'[^;}\"']*)*)", page):
+        for fam in re.findall(r"'([^']+)'", decl):
+            used.add(fam)
+    # Names appearing only inside an @font-face are declarations, not uses.
+    in_faces = {fam for f in faces for fam in re.findall(r"'([^']+)'", f)}
+    used -= in_faces - {f for f in used if f not in declared}
+
+    aliased: list[tuple[str, str]] = []
+    for want in sorted(used - declared):
+        matches = [d for d in declared if d.startswith(want + " ")]
+        if len(matches) != 1:
+            if matches:
+                print(f"  ! '{want}' is undeclared and matches {matches} — left alone.")
+            continue
+        source = matches[0]
+        for face in faces:
+            m = FAMILY_RE.search(face)
+            if not m or m.group(1) != source:
+                continue
+            clone = face.replace(f"'{source}'", f"'{want}'", 1)
+            page = page.replace(face, face + "\n" + clone, 1)
+        aliased.append((source, want))
+    return page, aliased
+
+
+def unpack(bundle: pathlib.Path, name: str) -> None:
+    src = bundle.read_text(encoding="utf8", errors="replace")
+
+    def island(kind: str) -> str | None:
+        m = re.search(r'<script type="__bundler/%s"[^>]*>(.*?)</script>' % kind, src, re.S)
+        return m.group(1) if m else None
+
+    manifest_raw, template_raw = island("manifest"), island("template")
+    if not manifest_raw or not template_raw:
+        sys.exit("Not a bundled page: missing manifest/template islands.")
+    manifest = json.loads(manifest_raw)
+    template = json.loads(template_raw)
+
+    outdir = ROOT / "public" / name
+    outdir.mkdir(parents=True, exist_ok=True)
+    for stale in outdir.iterdir():
+        if stale.is_file():
+            stale.unlink()
+
+    used: set[str] = set()
+    written: dict[str, str] = {}
+    for uuid, entry in manifest.items():
+        raw = base64.b64decode(entry["data"])
+        if entry.get("compressed"):
+            raw = gzip.decompress(raw)
+        ext = EXT.get(entry["mime"])
+        if not ext:
+            sys.exit(f"Unknown mime {entry['mime']} for {uuid} — add it to EXT.")
+        stem = None
+        if ext in ("js", "json", "svg"):
+            text = raw.decode("utf8", "replace")
+            for candidate, test in SIGNATURES:
+                if test(text):
+                    stem = candidate
+                    break
+        if stem is None:
+            # Fall back to the alt text / font-family the template gives it, so
+            # the directory stays readable even for assets with no signature.
+            m = re.search(r'<img src="%s" alt="([^"]{1,40})"' % re.escape(uuid), template)
+            if m:
+                stem = re.sub(r"[^a-z0-9]+", "-", m.group(1).lower()).strip("-")
+            else:
+                m = re.search(
+                    r"font-family:\s*'([^']+)';[^}]*?font-weight:\s*([^;]+);\s*src:\s*url\(\"%s\"\)"
+                    % re.escape(uuid),
+                    template,
+                    re.S,
+                )
+                if m:
+                    fam = re.sub(r"[^a-z0-9]+", "-", m.group(1).lower()).strip("-")
+                    stem = f"{fam}-{re.sub(r'[^0-9]+', '-', m.group(2)).strip('-')}"
+        if stem is None:
+            stem = uuid[:8]
+        filename = f"{stem}.{ext}"
+        n = 2
+        while filename in used:
+            filename = f"{stem}-{n}.{ext}"
+            n += 1
+        used.add(filename)
+        (outdir / filename).write_bytes(raw)
+        written[uuid] = filename
+
+    page = template
+    for uuid, filename in written.items():
+        page = page.replace(uuid, f"/{name}/{filename}")
+
+    by_stem = {v.rsplit(".", 1)[0]: v for v in written.values()}
+    resources = {}
+    if "react" in by_stem:
+        resources[REACT_URL] = f"/{name}/{by_stem['react']}"
+    if "react-dom" in by_stem:
+        resources[REACT_DOM_URL] = f"/{name}/{by_stem['react-dom']}"
+    if "world-atlas" in by_stem:
+        resources["worldAtlas"] = f"/{name}/{by_stem['world-atlas']}"
+
+    # This page is an iframe target, not a destination. It has a real URL, so a
+    # crawler can reach it directly and index a bare product mock-up as if it
+    # were a page of the site. noindex rather than a robots.txt Disallow on
+    # purpose: a Disallow would also block the assets beside it, and a search
+    # engine that cannot fetch them cannot render the landing page that embeds
+    # them either. This keeps the document out of the index while leaving every
+    # resource fetchable.
+    shim = (
+        '<meta name="robots" content="noindex">\n'
+        "<script>window.__resources = "
+        + json.dumps(resources, indent=2)
+        + ";</script>\n"
+    )
+    # Must run before dc-runtime, which reads __resources during its own load.
+    page = page.replace("<head>", "<head>\n" + shim, 1)
+
+    # The exported page is built to stand alone at full viewport height. Framed,
+    # `min-height:100vh` would hold the document at the iframe's height however
+    # small the graphic scaled, so the reported height could never shrink and
+    # the parent would leave dead space under it. Percentage padding replaces
+    # the fixed 60px so the breathing room (and the room the drop shadows need)
+    # scales with the graphic instead of swamping it on a phone.
+    # THE SIDE PADDING IS LOAD-BEARING, AND 4% IS NOT A ROUND NUMBER PICKED BY EYE.
+    #
+    # The artboard is declared 1080 wide, but its content is not inside it: the
+    # laptop column is positioned at left:0 and the deck under it is 1040 wide
+    # centred on a 960 column, so the deck spans -40..1000 in artboard
+    # coordinates. It is an opaque bar, and the root clips, so the overhang was
+    # sliced off down the left-hand edge — visible as a hard vertical cut under
+    # the laptop, which is what prompted this.
+    #
+    # Padding is a percentage of width, so it scales with the artboard and the
+    # fit holds at every breakpoint. The overhang needs
+    #   p >= 40(1-2p)/1080  ->  p >= 40/1160 = 3.45%
+    # of the width; 4% clears it with a margin. Reducing it below 3.45% brings
+    # the clip back at every size at once.
+    before = page
+    page = page.replace(
+        "min-height:100vh;background:#ffffff;font-family:'Mona Sans'",
+        "background:#ffffff;font-family:'Mona Sans'",
+        1,
+    ).replace("padding:60px 32px 0;box-sizing:border-box", "padding:2% 4%;box-sizing:border-box", 1)
+    if page == before:
+        print("  ! sizing patch did not apply — the export's root style changed.")
+
+    page, deshadowed = flatten_device_shadows(page)
+
+    page, aliased = alias_orphan_font_families(page)
+
+    page = page.replace("</body>", UNPIN_CSS + REPORT_JS + "</body>", 1)
+
+    target = ROOT / "public" / f"{name}.html"
+    target.write_text(page, encoding="utf8")
+
+    total = sum((outdir / f).stat().st_size for f in written.values())
+    print(f"{target.relative_to(ROOT)}  {target.stat().st_size:,} bytes")
+    for source, want in aliased:
+        print(f"  aliased @font-face '{source}' -> '{want}' (the name the page asks for)")
+    print(f"  removed drop-shadow from: {', '.join(deshadowed)}")
+    for uuid, filename in sorted(written.items(), key=lambda kv: kv[1]):
+        print(f"  {name}/{filename:<28} {(outdir / filename).stat().st_size:>9,}")
+    print(f"  {'assets total':<30} {total:>9,}")
+    print(f"  bundle was {bundle.stat().st_size:,} bytes as one file")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        sys.exit(__doc__)
+    unpack(pathlib.Path(sys.argv[1]), sys.argv[2])
