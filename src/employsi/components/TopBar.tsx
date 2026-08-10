@@ -163,11 +163,16 @@ export function TopBar() {
             open its flyout. On desktop the centred GlobalSearch is the search
             on every layer, so the top-right button is always hidden there via
             the `gshidden` class (CSS, desktop only). */}
-        <div className="cgroup searchwrap gshidden" data-tour="search">
+        <div className="cgroup searchwrap gshidden">
           <span className="seglbl">Search</span>
           <button
             className={`searchbtn ${searchOpen ? "on" : ""} ${searchActive ? "active" : ""}`}
             onClick={toggleSearch}
+            /* The tour anchors the BUTTON, not the group around it: `.gshidden`
+               hides this button on desktop but leaves the wrapper laid out, so
+               a wrapper anchor measured non-zero and won the "first visible"
+               race while rendering nothing the user can see. */
+            data-tour="search"
           >
             <SearchIcon />
             <span>Search</span>

@@ -236,7 +236,7 @@ const WORLD_TOURS: Record<string, TourDef> = {
         place: "bottom",
         pad: 8,
         radius: 22,
-        title: "Alerts and analysts",
+        title: "Alerts",
         body: () =>
           "Notifications flag movement on skills you follow. The message icon opens a feedback board where you can submit ideas and raise issues.",
       },
@@ -351,9 +351,16 @@ function anchorRect(anchor: string, pad: number): Rect | null {
   if (typeof document === "undefined") return null;
   const q = anchor === "marker" ? ".mapboxgl-marker .mk" : `[data-tour="${anchor}"]`;
   const all = Array.from(document.querySelectorAll(q));
-  // Fall back to the first match so a step still positions its card against
-  // something when nothing is fully in view, rather than jumping to centre.
-  const el = all.find(isVisible) ?? all[0] ?? null;
+  const hasSize = (e: Element) => {
+    const r = e.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  };
+  // Fully in view, else anything with SIZE, else nothing. The middle rung
+  // matters: falling straight back to `all[0]` could land on a display:none
+  // twin, which measures zero and drops the spotlight — the exact failure this
+  // ordering exists to prevent. A partly off-screen element still frames
+  // something real.
+  const el = all.find(isVisible) ?? all.find(hasSize) ?? null;
   if (!el) return null;
   const r = el.getBoundingClientRect();
   if (!r.width && !r.height) return null;
