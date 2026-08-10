@@ -9246,6 +9246,11 @@ body {
   position: fixed;
   z-index: 70;
 }
+/* Flipped under the point, when there is no room for it above. Overrides
+   .wttip's transform by order, not specificity — keep it after that rule. */
+.wttipbelow {
+  transform: translate(-50%, 14px);
+}
 .wttiplabel {
   font-size: 10px;
   font-weight: 700;
@@ -11596,15 +11601,22 @@ body {
   text-align: left;
   box-shadow: 0 12px 28px -12px rgba(28, 28, 30, 0.65);
 }
+/* The stem tracks the point rather than the flag: when ChartTooltip pushes the
+   body in off a viewport edge it sets --wttip-stem to how far it moved, and the
+   stem slides back the other way so it still lands on the marker. */
 .ccflag::after {
   content: "";
   position: absolute;
-  left: 50%;
+  left: calc(50% + var(--wttip-stem, 0px));
   bottom: -13px;
   width: 2px;
   height: 14px;
   transform: translateX(-50%);
   background: var(--neutral-900);
+}
+.ccflag.wttipbelow::after {
+  bottom: auto;
+  top: -13px;
 }
 .ccflag .wttiplabel {
   margin-bottom: 6px;
