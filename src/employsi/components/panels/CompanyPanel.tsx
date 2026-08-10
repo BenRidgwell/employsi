@@ -761,7 +761,7 @@ export function CompanyPanel() {
                             <path
                               className="ccline2"
                               d={card.chart.second.path}
-                              strokeWidth="1.5"
+                              strokeWidth="1.8"
                               strokeLinejoin="round"
                               strokeLinecap="round"
                               vectorEffect="non-scaling-stroke"
@@ -826,14 +826,21 @@ export function CompanyPanel() {
                               topPct={0}
                             >
                               <div className="wttiplabel">{fmtDay(card.chart.days[chartIdx])}</div>
+                              {/* .ccsw, not the shared .wtsw: those swatches are
+                                  coloured for the workforce/financial charts
+                                  (ink primary, green second) and this chart
+                                  inverts that — its primary line carries the
+                                  trend colour and its second line is ink, so
+                                  .wtsw labelled each row with the other row's
+                                  colour. */}
                               <div className="wttiprow">
-                                <i className="wtsw ink" />
+                                <i className={`ccsw ${card.chart.vacancies.up ? "up" : "down"}`} />
                                 <b>{card.chart.vacValues[chartIdx]?.toLocaleString("en-AU")}</b>
                                 <span>Vacancies</span>
                               </div>
                               {card.chart.secondValues && card.chart.second && (
                                 <div className="wttiprow">
-                                  <i className="wtsw acc" />
+                                  <i className="ccsw alt" />
                                   <b>{card.chart.secondValues[chartIdx]?.toFixed(2)}</b>
                                   <span>{card.chart.second.label}</span>
                                 </div>
