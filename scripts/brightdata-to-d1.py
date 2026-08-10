@@ -188,6 +188,9 @@ def _limit(v) -> int:
 
 
 LIMIT = _limit(_opt('--limit', 'all'))
+# Where in the roster this run starts. With --limit it makes a chunk, so a
+# roster too big for one job can be swept by several.
+OFFSET = int(_opt('--offset', 0) or 0)
 # THE COST GUARD. Per-record billing means a roster change or a hiring spree
 # turns into money without anyone deciding to spend it. The run refuses to keep
 # records past this and says so.
@@ -477,11 +480,26 @@ def upsert(company_id: str, jobs: list) -> int:
 
 
 def main() -> int:
-    companies = load_companies()[:LIMIT]
+    # --offset SLICES THE ROSTER SO A SWEEP CAN BE SPLIT ACROSS RUNS.
+    #
+    # Measured on 2026-08-10: 20 companies took 28m41s, and 3 and 6 companies
+    # took 2m23s and 9m47s — about 1.4 min per company once past the small
+    # cases. The roster is 354, so one sweep is ~8.5 HOURS and a GitHub hosted
+    # runner is capped at 6. A whole-roster run in one job cannot finish.
+    #
+    # Worse, it fails to nothing: the snapshot is downloaded only once Bright
+    # Data reports it ready, so a timeout means the records were collected and
+    # BILLED but no row reaches D1. Chunking is what makes full coverage
+    # affordable to actually land.
+    all_companies = load_companies()
+    companies = all_companies[OFFSET:OFFSET + LIMIT]
     if not companies:
-        sys.exit('No companies matched — check --only.')
+        sys.exit(f'No companies in slice [{OFFSET}:{OFFSET + LIMIT}] of '
+                 f'{len(all_companies)} — check --offset/--limit/--only.')
+    span = (f'{OFFSET}-{OFFSET + len(companies) - 1} of {len(all_companies)}'
+            if OFFSET or len(companies) < len(all_companies) else 'whole roster')
     sys.stderr.write(
-        f'{WHICH} via Bright Data -> D1: {len(companies)} companies, '
+        f'{WHICH} via Bright Data -> D1: {len(companies)} companies [{span}], '
         f'location="{LOCATION}", dataset {BD_DATASET}, cap {MAX_RECORDS} records'
         f'{", PROBE (no write)" if PROBE else ""}.\n')
 

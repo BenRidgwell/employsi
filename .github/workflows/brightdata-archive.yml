@@ -40,6 +40,17 @@
 # `max_records` (default 20,000) is the backstop against a roster change or a
 # hiring spree turning into an invoice nobody chose.
 #
+# THE SWEEP IS CHUNKED BECAUSE 354 COMPANIES DO NOT FIT IN ONE JOB. Measured
+# 2026-08-10: 20 companies took 28m41s (~1.4 min each), so a whole-roster run is
+# ~8.5 hours against GitHub's 6-hour hard cap on a hosted runner. It would also
+# fail to NOTHING — the snapshot is downloaded only once Bright Data reports it
+# ready, so a timeout means the records were collected and billed but no row
+# reached D1. Four parallel chunks of 90 are ~2.1 hours each and exactly cover
+# the roster (verified: 354 companies, no duplicates, none missed).
+#
+# If a chunk does time out, the snapshot id is in its log and `snapshot=<id>`
+# re-downloads it without triggering — and without paying for the records twice.
+#
 # The Indeed scraper was verified against the live API on 2026-08-10 before this
 # schedule was enabled: 94 records over 6 companies, title/company/location/url/
 # posted all at 98.9%, salary_formatted arriving on 2.1% (advertisers mostly do
@@ -97,6 +108,10 @@ on:
         description: 'Companies to search — "all" for the whole roster (billing is per record)'
         type: string
         default: 'all'
+      offset:
+        description: 'Start this far into the roster (with limit, sweeps one chunk)'
+        type: string
+        default: '0'
       timeout_min:
         description: 'Minutes to wait for the Bright Data snapshot before giving up'
         type: string
@@ -110,22 +125,69 @@ on:
         type: string
         default: ''
 
-# One collection at a time. Two concurrent runs would trigger two collections
-# and pay for both.
+# ONE SWEEP AT A TIME — but the four chunks WITHIN a sweep must run together,
+# which is why this is keyed per workflow run rather than per workflow. Keying
+# it globally would serialise the chunks and turn a ~2 hour sweep back into an
+# ~8 hour one that cannot finish. Two separate sweeps overlapping would trigger
+# two collections and pay for both, so runs still queue behind each other.
 concurrency:
-  group: brightdata-archive
+  group: brightdata-archive-${{ github.event_name == 'schedule' && 'scheduled' || github.run_id }}
   cancel-in-progress: false
 
 jobs:
-  archive:
+  # WHAT TO SWEEP, AND WHETHER TO SWEEP AT ALL. Kept out of the collecting job
+  # so a skipped fortnight costs one trivial job rather than four, and so a
+  # MANUAL dispatch runs ONCE instead of being multiplied by the matrix.
+  plan:
     runs-on: ubuntu-latest
-    # A FULL-ROSTER SWEEP IS 354 COMPANIES AND THE OLD 90 WAS SIZED FOR 20.
-    # Measured: 3 companies 2m23s, 6 companies 9m47s. Extrapolating that rate to
-    # 354 lands beyond even this, and 360 is GitHub's hard ceiling for a hosted
-    # runner — so a full sweep may still be cut off, and the run will say so
-    # rather than appearing to have collected everything. The script's own
-    # snapshot wait (timeout_min) is set below this so it reports a clean
-    # "not ready" instead of being killed mid-download.
+    outputs:
+      chunks: ${{ steps.p.outputs.chunks }}
+      run: ${{ steps.p.outputs.run }}
+    steps:
+      - id: p
+        run: |
+          # FORTNIGHTLY GATE. The cron fires weekly because cron cannot say
+          # "every 14 days"; even ISO weeks collect, odd ones skip. A manual
+          # dispatch always runs.
+          RUN=true
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            WEEK=$(date -u +%V)
+            if [ $((10#$WEEK % 2)) -ne 0 ]; then
+              echo "ISO week $WEEK is odd; this feed is fortnightly. Skipping."
+              RUN=false
+            else
+              echo "ISO week $WEEK is even; proceeding with the fortnightly sweep."
+            fi
+            # The scheduled sweep is the whole roster, in chunks that fit a run.
+            echo 'chunks=[0,90,180,270]' >> "$GITHUB_OUTPUT"
+          else
+            # A dispatch sweeps exactly the slice it was asked for, once.
+            echo 'chunks=[${{ inputs.offset || 0 }}]' >> "$GITHUB_OUTPUT"
+          fi
+          echo "run=$RUN" >> "$GITHUB_OUTPUT"
+
+  archive:
+    needs: plan
+    if: needs.plan.outputs.run == 'true'
+    strategy:
+      # THE ROSTER IS SWEPT IN CHUNKS BECAUSE IT DOES NOT FIT IN ONE JOB.
+      # 354 companies at the measured ~1.4 min each is ~8.5 hours against a
+      # 6-hour hard cap on a hosted runner. Four chunks of 90 are ~2.1 hours
+      # each and run in parallel, so the sweep still finishes in one sitting.
+      # A manual dispatch overrides these with its own offset/limit.
+      matrix:
+        chunk: ${{ fromJSON(needs.plan.outputs.chunks) }}
+      # One chunk failing must not cancel the other three — each writes its own
+      # employers, and a partial sweep beats no sweep.
+      fail-fast: false
+      # Bright Data bills per record, not per request, so parallel chunks cost
+      # the same as serial ones.
+      max-parallel: 4
+    runs-on: ubuntu-latest
+    # Sized for a 90-company chunk (~129 min at the measured rate), with room
+    # for Bright Data being slower than measured. The script's own snapshot wait
+    # (timeout_min, 300) sits below this so it reports a clean "not ready"
+    # instead of being killed mid-download.
     timeout-minutes: 350
     steps:
       - uses: actions/checkout@v5
@@ -146,18 +208,6 @@ jobs:
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         run: |
-          # FORTNIGHTLY GATE. The cron above fires weekly because cron has no
-          # way to say "every 14 days"; even ISO weeks are collected and odd
-          # ones skipped. A manual dispatch always runs — this only applies to
-          # the schedule.
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            WEEK=$(date -u +%V)
-            if [ $((10#$WEEK % 2)) -ne 0 ]; then
-              echo "ISO week $WEEK is odd; this feed is fortnightly. Skipping."
-              exit 0
-            fi
-            echo "ISO week $WEEK is even; proceeding with the fortnightly sweep."
-          fi
           if [ -z "$BRIGHTDATA_API_TOKEN" ]; then
             echo "BRIGHTDATA_API_TOKEN is not set."
             exit 1
@@ -180,7 +230,8 @@ jobs:
           # scheduled run collects for real, which is the point of scheduling it.
           python scripts/brightdata-to-d1.py \
             --source '${{ inputs.source || 'indeed' }}' \
-            --limit '${{ inputs.limit || 'all' }}' \
+            --offset '${{ matrix.chunk }}' \
+            --limit '${{ github.event_name == 'schedule' && '90' || (inputs.limit || 'all') }}' \
             --max-records '${{ inputs.max_records || '20000' }}' \
             --timeout-min '${{ inputs.timeout_min || '300' }}' \
             ${{ inputs.snapshot != '' && format('--snapshot {0}', inputs.snapshot) || '' }} \
