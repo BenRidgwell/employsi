@@ -96,11 +96,14 @@ def dataset_env(source: str) -> str:
     which does not fail loudly: it collects the wrong board's postings under the
     other board's source tag and bills for every record.
 
-    The shared name still works as a fallback so a single-source run needs no
-    change.
+    Returns only the per-source variable. The SHARED name is deliberately not
+    consulted here — see the resolution order below, where it ranks BELOW the
+    known-good id in SOURCES. Consulting it first is what makes the silent
+    mis-collection possible: with the shared variable holding Indeed's id, a
+    LinkedIn run that simply has no per-source secret set would collect Indeed
+    postings and file them under `linkedin`.
     """
-    return (os.environ.get(f'BRIGHTDATA_DATASET_ID_{source.upper()}')
-            or os.environ.get('BRIGHTDATA_DATASET_ID', ''))
+    return os.environ.get(f'BRIGHTDATA_DATASET_ID_{source.upper()}', '')
 
 CITIES = ['perth', 'adelaide', 'brisbane', 'melbourne', 'sydney', 'canberra']
 
@@ -120,7 +123,15 @@ CITIES = ['perth', 'adelaide', 'brisbane', 'melbourne', 'sydney', 'canberra']
 SOURCES = {
     'linkedin': {
         'source': 'linkedin',
-        'dataset': None,
+        # "Linkedin job listings information" — read off the account with
+        # --list-datasets on 2026-08-10. Chosen from five LinkedIn datasets that
+        # mention jobs because it is the exact analogue of the Indeed scraper
+        # already working here ("Indeed job listings information"); the others
+        # are `Linkedin jobs count` (counts, not postings), `Linkedin Company
+        # with Jobs`, `LinkedIn profiles Jobs Listings` (profile-oriented) and
+        # `Linkedin Jobs listing`. A dataset id is an identifier, not a
+        # credential, so it belongs in the repo where it can be reviewed.
+        'dataset': 'gd_lpfll7v5hcqtkxl6l',
         'discover_by': 'keyword',
         'input': lambda name: {'keyword': name, 'location': LOCATION},
         'fields': {
@@ -148,7 +159,10 @@ SOURCES = {
         # which scraper" into "something is broken at Bright Data". Run
         # --list-datasets, which needs only the API token, and set
         # BRIGHTDATA_DATASET_ID to the Indeed *jobs* id it prints.
-        'dataset': None,
+        #
+        # RESOLVED: "Indeed job listings information", verified against the live
+        # API on 2026-08-10 — 283 records over 20 companies, 112 rows written.
+        'dataset': 'gd_l4dx9j9sscpvs7no2',
         'discover_by': 'keyword',
         # THE FIELD NAMES CAME FROM BRIGHT DATA, not from a fourth guess. Its
         # validation_error names them outright once the response is not
@@ -264,8 +278,15 @@ if WHICH not in SOURCES:
     sys.exit(f'--source must be one of: {", ".join(sorted(SOURCES))}')
 CFG = SOURCES[WHICH]
 SOURCE = CFG['source']
-# The env var wins, so a dashboard change needs no commit.
-BD_DATASET = dataset_env(WHICH) or CFG['dataset'] or ''
+# RESOLUTION ORDER, AND THE SHARED VARIABLE RANKS LAST ON PURPOSE.
+#   1. BRIGHTDATA_DATASET_ID_<SOURCE> — per-board override, no commit needed.
+#   2. SOURCES[...]['dataset']        — the id verified against the live API.
+#   3. BRIGHTDATA_DATASET_ID          — legacy shared name, single-source setups.
+# Putting (3) above (2) is what allows a board with no per-source secret to
+# quietly collect a DIFFERENT board's postings under its own source tag, which
+# no error would ever surface.
+BD_DATASET = dataset_env(WHICH) or CFG['dataset'] or \
+    os.environ.get('BRIGHTDATA_DATASET_ID', '')
 if not BD_DATASET:
     sys.exit(f'No dataset id for --source {WHICH}. Set '
              f'BRIGHTDATA_DATASET_ID_{WHICH.upper()} (or BRIGHTDATA_DATASET_ID) to '

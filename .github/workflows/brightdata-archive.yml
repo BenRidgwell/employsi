@@ -142,6 +142,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       chunks: ${{ steps.p.outputs.chunks }}
+      sources: ${{ steps.p.outputs.sources }}
       run: ${{ steps.p.outputs.run }}
     steps:
       - id: p
@@ -158,11 +159,16 @@ jobs:
             else
               echo "ISO week $WEEK is even; proceeding with the fortnightly sweep."
             fi
-            # The scheduled sweep is the whole roster, in chunks that fit a run.
+            # The scheduled sweep is the whole roster, in chunks that fit a run,
+            # across BOTH boards — 8 jobs, each its own snapshot and its own
+            # dataset id. They are separate scrapers, so neither waits on the
+            # other and one board failing does not cost the other its sweep.
             echo 'chunks=[0,90,180,270]' >> "$GITHUB_OUTPUT"
+            echo 'sources=["indeed","linkedin"]' >> "$GITHUB_OUTPUT"
           else
             # A dispatch sweeps exactly the slice it was asked for, once.
             echo 'chunks=[${{ inputs.offset || 0 }}]' >> "$GITHUB_OUTPUT"
+            echo 'sources=["${{ inputs.source || 'indeed' }}"]' >> "$GITHUB_OUTPUT"
           fi
           echo "run=$RUN" >> "$GITHUB_OUTPUT"
 
@@ -176,13 +182,14 @@ jobs:
       # each and run in parallel, so the sweep still finishes in one sitting.
       # A manual dispatch overrides these with its own offset/limit.
       matrix:
+        source: ${{ fromJSON(needs.plan.outputs.sources) }}
         chunk: ${{ fromJSON(needs.plan.outputs.chunks) }}
       # One chunk failing must not cancel the other three — each writes its own
       # employers, and a partial sweep beats no sweep.
       fail-fast: false
       # Bright Data bills per record, not per request, so parallel chunks cost
-      # the same as serial ones.
-      max-parallel: 4
+      # the same as serial ones. 8 on a scheduled sweep: 2 boards x 4 chunks.
+      max-parallel: 8
     runs-on: ubuntu-latest
     # Sized for a 90-company chunk (~129 min at the measured rate), with room
     # for Bright Data being slower than measured. The script's own snapshot wait
@@ -203,6 +210,13 @@ jobs:
       - name: Collect jobs → D1 (Bright Data)
         env:
           BRIGHTDATA_API_TOKEN: ${{ secrets.BRIGHTDATA_API_TOKEN }}
+          # PER-SOURCE FIRST. Each board is a different scraper with a different
+          # id, and a scheduled sweep collects both in the same run — one shared
+          # id would silently collect one board under the other's source tag and
+          # bill for it. BRIGHTDATA_DATASET_ID stays as the fallback so an
+          # existing single-source setup keeps working.
+          BRIGHTDATA_DATASET_ID_INDEED: ${{ secrets.BRIGHTDATA_DATASET_ID_INDEED }}
+          BRIGHTDATA_DATASET_ID_LINKEDIN: ${{ secrets.BRIGHTDATA_DATASET_ID_LINKEDIN }}
           BRIGHTDATA_DATASET_ID: ${{ secrets.BRIGHTDATA_DATASET_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
@@ -229,7 +243,7 @@ jobs:
           # `probe` is deliberately left without one: null is falsy, so a
           # scheduled run collects for real, which is the point of scheduling it.
           python scripts/brightdata-to-d1.py \
-            --source '${{ inputs.source || 'indeed' }}' \
+            --source '${{ matrix.source }}' \
             --offset '${{ matrix.chunk }}' \
             --limit '${{ github.event_name == 'schedule' && '90' || (inputs.limit || 'all') }}' \
             --max-records '${{ inputs.max_records || '20000' }}' \
