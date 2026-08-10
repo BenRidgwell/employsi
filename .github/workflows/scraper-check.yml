@@ -65,5 +65,12 @@ jobs:
       - name: Roster parsers still read their data files
         run: python scripts/test_rosters.py
 
+      # A company added to the roster appears on the map immediately, whether or
+      # not any job board is searched for it — so without this, a new employer
+      # can sit there showing zero open roles and read as one that is not
+      # hiring. Fails on any rostered company with no keyword-feed target.
+      - name: Every rostered company reaches the keyword feeds
+        run: python scripts/check-feed-coverage.py
+
       - name: Byte-compile the scrapers
         run: python -m compileall -q scripts/*.py
