@@ -176,6 +176,26 @@ function pillLabel(name: string, ticker: string): string {
   return out || ticker;
 }
 
+// ── Entering a city ─────────────────────────────────────────────────────────
+// How far back the local camera starts before settling into the city view.
+// 1.8 zoom levels and 18° of pitch is enough to read as continued descent
+// without the first frame looking like a different, wider map than the one
+// that resolves — the overview has already flown to 9.5, so starting near
+// 14.6 keeps the whole handover moving one way.
+const ENTRY_ZOOM_BACK = 1.8;
+const ENTRY_PITCH_BACK = 18;
+const ENTRY_MS = 900;
+// Never start wider than the overview handed over at, or the camera would
+// visibly step BACKWARDS at the swap.
+const ENTRY_MIN_ZOOM = 10;
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
 // On a phone the city fills a much smaller viewport, so the default local zoom
 // reads as uncomfortably close. Pull the default view back a notch on mobile
 // (kept high enough to still show the 3D buildings). Company-framing zooms are
@@ -387,6 +407,14 @@ export function PerthMapbox() {
   const crossedRef = useRef(false);
   const interactedLocalRef = useRef(false);
   const autoRotateRaf = useRef<number | undefined>(undefined);
+  /**
+   * True while the entry ease is running.
+   *
+   * The auto-rotate loop sets bearing every frame, and map.setBearing() is a
+   * jumpTo under the hood — it would cancel the entry animation on its first
+   * frame. This parks the rotation until the camera has arrived.
+   */
+  const enteringRef = useRef(false);
   const pulseRaf = useRef<number | undefined>(undefined);
   const carsRef = useRef<
     { marker: mapboxgl.Marker; path: RoadPath | null; dist: number; speed: number }[]
@@ -439,6 +467,11 @@ export function PerthMapbox() {
 
   useEffect(() => {
     if (!containerRef.current) return;
+    // Clears `enteringRef` once the entry ease has landed. Re-entering a city
+    // before the last one finished must not leave the auto-rotate parked, so
+    // the pending timer is always cancelled before a new one is set.
+    let enterTimer: ReturnType<typeof setTimeout> | undefined;
+
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: "mapbox://styles/mapbox/standard",
@@ -729,7 +762,9 @@ export function PerthMapbox() {
       updateFocus();
 
       const loop = () => {
-        if (!interactedLocalRef.current) {
+        // `enteringRef`: setBearing is a jumpTo in mapbox-gl, so rotating while
+        // the entry ease runs would cancel it on the first frame.
+        if (!interactedLocalRef.current && !enteringRef.current) {
           map.setBearing(map.getBearing() + 0.025);
         }
         autoRotateRaf.current = requestAnimationFrame(loop);
@@ -888,39 +923,70 @@ export function PerthMapbox() {
       const st = useAppStore.getState();
       const city = st.localCity;
       const v = CITY_VIEWS[city] || CITY_VIEWS.perth;
-      // Jump (hidden behind the overlay fade) so we don't fly across the
-      // continent, then swap in the city's companies + reveal.
-      map.jumpTo({
-        center: v.center,
-        zoom: localDefaultZoom(v.zoom),
-        pitch: v.pitch,
-        bearing: v.bearing,
-      });
-      renderCityRef.current?.(city);
+
       // If we arrived with a company already selected (from search or the saved
       // list), frame that company — it may sit well outside the city's default
-      // camera (e.g. Mineral Resources in Osborne Park), so the jumpTo above
+      // camera (e.g. Mineral Resources in Osborne Park), so the default view
       // would otherwise leave its pill off-screen. The [selectedId] effect can
       // miss this because the placements aren't ready when it first runs.
       const sel = st.selectedId
         ? cityPlacements(city).find((p) => p.company.id === st.selectedId)
         : null;
-      if (sel) {
-        // Measured off the map container, not the window: the map is now an
-        // inset card, so viewport width would over-reserve by the frame gutter.
-        const rightPad = Math.min(760, Math.round(map.getContainer().clientWidth * 0.6));
-        map.easeTo({
-          center: sel.coords,
-          zoom: Math.max(v.zoom, 16.5),
-          padding: { top: 0, bottom: 0, left: 0, right: rightPad },
-          duration: 700,
-        });
+      // Measured off the map container, not the window: the map is now an
+      // inset card, so viewport width would over-reserve by the frame gutter.
+      const rightPad = sel ? Math.min(760, Math.round(map.getContainer().clientWidth * 0.6)) : 0;
+      const target = {
+        center: sel ? sel.coords : v.center,
+        zoom: sel ? Math.max(v.zoom, 16.5) : localDefaultZoom(v.zoom),
+        pitch: v.pitch,
+        bearing: v.bearing,
+        ...(sel ? { padding: { top: 0, bottom: 0, left: 0, right: rightPad } } : {}),
+      };
+
+      // ARRIVE STILL MOVING, rather than cutting to the final camera.
+      //
+      // The overview flies to zoom 9.5 and hands over; the local view sits at
+      // ~16.4 with 60° of pitch. Jumping straight there teleports seven zoom
+      // levels behind the cross-fade, which is why the handover read as a cut
+      // rather than as descending into the city. So the local map is placed
+      // WIDE and FLAT and then settles into the real camera, and the last
+      // stretch of the push-in is the part you actually see.
+      //
+      // Only zoom and pitch move. Bearing is deliberately left at its final
+      // value: the auto-rotate loop below calls map.setBearing() every frame,
+      // and in mapbox-gl that is a jumpTo, which would cancel this ease
+      // outright. `enteringRef` parks that loop until the entry finishes.
+      if (prefersReducedMotion()) {
+        map.jumpTo(target);
+        renderCityRef.current?.(city);
+        return;
       }
+      map.jumpTo({
+        center: target.center,
+        zoom: Math.max(ENTRY_MIN_ZOOM, target.zoom - ENTRY_ZOOM_BACK),
+        pitch: Math.max(0, target.pitch - ENTRY_PITCH_BACK),
+        bearing: target.bearing,
+      });
+      renderCityRef.current?.(city);
+      enteringRef.current = true;
+      map.easeTo({
+        ...target,
+        duration: ENTRY_MS,
+        // Decelerating: fast out of the handover, easing to rest at street
+        // level. A linear ease reads as a machine moving the camera.
+        easing: (t: number) => 1 - Math.pow(1 - t, 3),
+      });
+      clearTimeout(enterTimer);
+      enterTimer = setTimeout(() => {
+        enteringRef.current = false;
+      }, ENTRY_MS + 60);
     };
     window.addEventListener("perth-zoom-reset", onZoomReset);
 
     return () => {
       window.removeEventListener("perth-zoom-reset", onZoomReset);
+      clearTimeout(enterTimer);
+      enteringRef.current = false;
       if (autoRotateRaf.current) cancelAnimationFrame(autoRotateRaf.current);
       if (pulseRaf.current) cancelAnimationFrame(pulseRaf.current);
       if (carRaf.current) cancelAnimationFrame(carRaf.current);
