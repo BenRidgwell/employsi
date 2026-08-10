@@ -246,7 +246,7 @@ export function HelpDock() {
   const anyPanelOpen = open || fbOpen || settingsOpen;
 
   return (
-    <div className="helpdock">
+    <div className="helpdock" data-tour="utility">
       {/* Click-away scrim: tapping outside an open panel closes it. */}
       {anyPanelOpen && (
         <div
@@ -276,15 +276,14 @@ export function HelpDock() {
         onClick={toggleHelpTour}
         anchor="help"
       >
-        {/* THE LOCAL LAYER GETS THE GUIDED TOUR; the other two keep the written
-            steps until their own design lands. Splitting on layer rather than
-            replacing outright is deliberate: the guided version spotlights real
-            controls, and the ones its steps name — the city banner, an employer
-            pin — do not exist on the global or domestic map, so pointing it at
-            those layers would frame empty space and describe it confidently. */}
+        {/* EVERY LAYER NOW HAS A GUIDED TOUR — the local set for a city, the
+            world set for the globe and a region. The written steps below are
+            kept only as the fallback for a layer with no set, which cannot
+            happen today; deleting them would make the next new layer silently
+            render nothing instead of degrading to prose. */}
         {open &&
-          (layer === "local" ? (
-            <GuidedTour onClose={closeHelpTour} />
+          (layer === "local" || layer === "global" || layer === "domestic" ? (
+            <GuidedTour layer={layer} onClose={closeHelpTour} />
           ) : (
             <div className="dockpanel helppanel">
               <div className="dockhd">

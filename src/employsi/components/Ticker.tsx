@@ -221,7 +221,7 @@ export function Ticker({ hidden }: { hidden: boolean }) {
   };
 
   return (
-    <div className={`ticker ${hidden ? "zoomhide" : ""}`}>
+    <div className={`ticker ${hidden ? "zoomhide" : ""}`} data-tour="ticker">
       <div className="tickerlbl">
         <i />
         <span>Skills in demand</span>

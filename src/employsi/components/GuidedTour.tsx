@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useAppStore } from "../state/store";
 import { CITY_LABEL, GLOBAL_HUB_LABEL } from "../data/geo";
+import { REGION_LABEL } from "../data/mapboxWorldGeo";
 
 /**
  * The guided help layer, from `Employsi Guided Help — Local Tour.dc.html`.
@@ -18,12 +19,16 @@ import { CITY_LABEL, GLOBAL_HUB_LABEL } from "../data/geo";
  * asserts something is there. `data-tour` exists only for this, so it does not
  * move unless someone means to move it.
  *
- * THE CITY IS READ FROM THE APP, not written into the copy. The design's mock
- * says "You are in Perth" throughout; hardcoding that would be wrong in the 51
- * other cities, so every string that names a place takes it from `localCity`.
+ * THE PLACE IS READ FROM THE APP, not written into the copy. The mocks say
+ * "Perth" and "WORLD VIEW" throughout; hardcoding either would be wrong in the
+ * 51 other cities and on the regional layer, so every string that names a place
+ * takes it from the store via `TourCtx`.
  *
- * This covers the LOCAL layer only. The global/domestic walkthroughs are a
- * separate design and the hub is only offered where its steps can resolve.
+ * TWO SETS, THREE LAYERS. `LOCAL_TOURS` serves a city; `WORLD_TOURS` serves the
+ * globe AND a region, because every control it names exists on both. They are
+ * not interchangeable in the other direction: two local steps spotlight the city
+ * banner and an employer pin, and neither exists once you step out of a city, so
+ * reusing that set out there would frame empty space and describe it anyway.
  */
 
 /**
@@ -37,6 +42,23 @@ import { CITY_LABEL, GLOBAL_HUB_LABEL } from "../data/geo";
  */
 type Place = "right" | "top" | "top-end" | "bottom";
 
+/** Which map layer the user is on — the tour set follows it. */
+export type TourLayer = "local" | "domestic" | "global";
+
+/**
+ * What a step knows about where the user is.
+ *
+ * Copy takes this rather than baking a place name in. The world tour is shared
+ * by the global AND domestic layers, and several of its lines would be wrong on
+ * one of them if written for the other — "the globe view is active" is false
+ * when you are looking at a region. `scope` is the place in words, `layer` is
+ * for the handful of lines that genuinely differ.
+ */
+export interface TourCtx {
+  scope: string;
+  layer: TourLayer;
+}
+
 interface TourStep {
   /** `data-tour` value of the element to spotlight. */
   anchor: string;
@@ -46,7 +68,7 @@ interface TourStep {
   /** Spotlight corner radius — 999 for pills, ~18 for cards. */
   radius: number;
   title: string;
-  body: (city: string) => string;
+  body: (ctx: TourCtx) => string;
 }
 
 interface TourDef {
@@ -56,7 +78,7 @@ interface TourDef {
   hubTitle: string;
   /** Hub row: how long it takes. */
   hubMeta: string;
-  icon: "pin" | "card" | "globe";
+  icon: "pin" | "card" | "globe" | "chart";
   steps: TourStep[];
 }
 
@@ -73,8 +95,8 @@ const LOCAL_TOURS: Record<string, TourDef> = {
         pad: 8,
         radius: 999,
         title: "Where you are",
-        body: (c) =>
-          `The banner names the city you have dropped into and sizes the market: employers tracked, roles open now, and total workforce for ${c}.`,
+        body: (ctx) =>
+          `The banner names the city you have dropped into and sizes the market: employers tracked, roles open now, and total workforce for ${ctx.scope}.`,
       },
       {
         anchor: "marker",
@@ -100,7 +122,8 @@ const LOCAL_TOURS: Record<string, TourDef> = {
         pad: 6,
         radius: 999,
         title: "Filter the city by skill",
-        body: (c) => `Search a skill and the map shades ${c} by which employers are hiring for it.`,
+        body: (ctx) =>
+          `Search a skill and the map shades ${ctx.scope} by which employers are hiring for it.`,
       },
       {
         anchor: "help",
@@ -162,6 +185,122 @@ const LOCAL_TOURS: Record<string, TourDef> = {
         title: "Or jump by name",
         body: () =>
           "Search a company and Employsi flies straight to its office, in whichever city it sits.",
+      },
+    ],
+  },
+};
+
+/**
+ * From `Employsi Guided Help — Global Tour.dc.html`. ONE SET SERVES THE GLOBAL
+ * AND DOMESTIC LAYERS, as asked — every control it names (search, the rail, the
+ * ticker, the utility cluster) is present on both, which is exactly why the
+ * local set could not be reused: two of ITS steps name a city banner and an
+ * employer pin, neither of which exists out here.
+ */
+const WORLD_TOURS: Record<string, TourDef> = {
+  orient: {
+    label: "Get oriented",
+    hubTitle: "Get oriented in Employsi",
+    hubMeta: "5 steps · 40 seconds",
+    icon: "globe",
+    steps: [
+      {
+        anchor: "search",
+        place: "bottom",
+        pad: 6,
+        radius: 999,
+        title: "Start with a search",
+        body: () =>
+          "Every advertised role is a collection of skills in demand. Type a skill by name, or describe it in your own words — Employsi resolves it to the closest tracked skill and takes you there.",
+      },
+      {
+        anchor: "rail",
+        place: "right",
+        pad: 8,
+        radius: 26,
+        title: "Change what you are looking at",
+        body: () =>
+          "Global, regional, city and company views live in this tray. Whatever you pick here sets the scope of every panel on screen.",
+      },
+      {
+        anchor: "ticker",
+        place: "top",
+        pad: 8,
+        radius: 20,
+        title: "Read the live demand ticker",
+        body: () =>
+          "Each entry is a skill: the sparkline is the recent trend, then median advertised base pay, then the change in demand.",
+      },
+      {
+        anchor: "utility",
+        place: "bottom",
+        pad: 8,
+        radius: 22,
+        title: "Alerts and analysts",
+        body: () =>
+          "Notifications flag movement on skills you follow. The message icon opens a feedback board where you can submit ideas and raise issues.",
+      },
+      {
+        anchor: "help",
+        place: "bottom",
+        pad: 8,
+        radius: 999,
+        title: "Help follows you",
+        body: () =>
+          "This panel is contextual — open it on any screen and the walkthroughs change to match what you are looking at.",
+      },
+    ],
+  },
+  ticker: {
+    label: "Read the ticker",
+    hubTitle: "Read the demand ticker",
+    hubMeta: "2 steps · on this screen",
+    icon: "chart",
+    steps: [
+      {
+        anchor: "ticker",
+        place: "top",
+        pad: 8,
+        radius: 20,
+        title: "Every figure on the bar",
+        body: () =>
+          "A live sparkline, the median advertised base pay, and the change in demand against the previous period — for one skill.",
+      },
+      {
+        anchor: "rail",
+        place: "right",
+        pad: 8,
+        radius: 26,
+        title: "The ticker follows your scope",
+        body: () => "Drop into a region or a city and the same bar re-reads for that market only.",
+      },
+    ],
+  },
+  hubs: {
+    label: "Explore a market",
+    hubTitle: "Explore a market hub",
+    hubMeta: "2 steps · on this screen",
+    icon: "pin",
+    steps: [
+      {
+        anchor: "rail",
+        place: "right",
+        pad: 8,
+        radius: 26,
+        title: "Pick a layer",
+        body: (ctx) =>
+          ctx.layer === "global"
+            ? "The globe view is active. Hubs glow by the metric you have selected — click one to drop into its region."
+            : `The regional view is active, showing ${ctx.scope}. Each city glows by the metric you have selected — click one to drop into it, or step back out to the globe.`,
+      },
+      {
+        anchor: "search",
+        place: "bottom",
+        pad: 6,
+        radius: 999,
+        title: "Or jump straight there",
+        body: () =>
+          "Search a company or skill in the header to land on its market without navigating the map.",
       },
     ],
   },
@@ -238,6 +377,14 @@ function HubIcon({ kind }: { kind: TourDef["icon"] }) {
       </svg>
     );
   }
+  if (kind === "chart") {
+    return (
+      <svg {...common}>
+        <polyline points="4,15 9,10 13,13.5 20,6" />
+        <path d="M4 19.5h16" />
+      </svg>
+    );
+  }
   return (
     <svg {...common}>
       <circle cx="12" cy="12" r="8.5" />
@@ -247,10 +394,26 @@ function HubIcon({ kind }: { kind: TourDef["icon"] }) {
   );
 }
 
-export function GuidedTour({ onClose }: { onClose: () => void }) {
+export function GuidedTour({ layer, onClose }: { layer: TourLayer; onClose: () => void }) {
   const localCity = useAppStore((s) => s.localCity);
+  const domesticRegion = useAppStore((s) => s.domesticRegion);
   const toggleAnalyst = useAppStore((s) => s.toggleAnalyst);
   const city = GLOBAL_HUB_LABEL[localCity] || CITY_LABEL[localCity] || localCity;
+  const region = REGION_LABEL[domesticRegion] || domesticRegion;
+
+  // The set follows the layer: the local walkthroughs name a city banner and an
+  // employer pin, which do not exist once you step out of a city.
+  const tours = layer === "local" ? LOCAL_TOURS : WORLD_TOURS;
+  const scope = layer === "local" ? city : layer === "domestic" ? region : "the world";
+  const ctx: TourCtx = { scope, layer };
+  // What the hub's eyebrow says it is helping with. "WORLD VIEW" would be wrong
+  // on the domestic layer, which is a region rather than the globe.
+  const eyebrow =
+    layer === "local"
+      ? `HELP · ${city.toUpperCase()} LOCAL VIEW`
+      : layer === "domestic"
+        ? `HELP · ${region.toUpperCase()} VIEW`
+        : "HELP · WORLD VIEW";
 
   const [tour, setTour] = useState<string | null>(null);
   const [step, setStep] = useState(0);
@@ -259,7 +422,7 @@ export function GuidedTour({ onClose }: { onClose: () => void }) {
   const tipRef = useRef<HTMLDivElement | null>(null);
   const [tipH, setTipH] = useState(210);
 
-  const def = tour ? LOCAL_TOURS[tour] : null;
+  const def = tour ? tours[tour] : null;
   const s = def?.steps[step];
 
   // Re-measure on every step, and while the window moves under the tour. The
@@ -387,7 +550,7 @@ export function GuidedTour({ onClose }: { onClose: () => void }) {
             </button>
           </div>
           <div className="gttitle">{s.title}</div>
-          <div className="gtbody">{s.body(city)}</div>
+          <div className="gtbody">{s.body(ctx)}</div>
           <div className="gttipft">
             <span className="gtlabel">{def.label.toUpperCase()}</span>
             <div className="gtnav">
@@ -431,9 +594,13 @@ export function GuidedTour({ onClose }: { onClose: () => void }) {
     <div className="dockpanel gthub">
       <div className="gthubhd">
         <div className="gthubhdtext">
-          <span className="gteyebrow">HELP · {city.toUpperCase()} LOCAL VIEW</span>
+          <span className="gteyebrow">{eyebrow}</span>
           <span className="gthubtitle">Need help?</span>
-          <span className="gthubsub">Guided walkthroughs for the city layer you are in.</span>
+          <span className="gthubsub">
+            {layer === "local"
+              ? "Guided walkthroughs for the city layer you are in."
+              : "Guided walkthroughs for what is on screen right now."}
+          </span>
         </div>
         <button type="button" className="gtx" onClick={onClose} aria-label="Close">
           <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor">
@@ -444,7 +611,7 @@ export function GuidedTour({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="gthublist">
-        {Object.entries(LOCAL_TOURS).map(([key, t]) => (
+        {Object.entries(tours).map(([key, t]) => (
           <button
             key={key}
             type="button"
