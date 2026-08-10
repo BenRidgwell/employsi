@@ -6,9 +6,12 @@
 # number; most may also arrive from Indeed, SEEK, a career portal or Adzuna, in
 # which case dropping LinkedIn costs nothing but the duplicate.
 #
-# Roles are matched across sources on the part of job_key AFTER the source
-# prefix — `normTitle|normCompany|normLocation` — which is the same identity the
-# archive already dedupes on within a source, not an approximation.
+# Roles are matched on company_id + title with the employer's own name stripped
+# and the location ignored. The obvious key — the job_key suffix — was tried
+# first and disproved: it reported ~100% unique for every source, because each
+# scraper stores whatever the advertiser wrote ("managing partner bhp") and
+# whatever granularity the board uses ("perth cbd perth" vs "Perth WA"). Both
+# figures are printed; the gap between them is the measurement error.
 #
 # IT PRINTS EACH SOURCE'S NEWEST ROW FIRST, deliberately. A feed that stopped
 # running contributes nothing to a window and reads exactly like a feed whose
@@ -38,6 +41,10 @@ on:
         description: 'Dump raw job_keys for one company and stop (use when the overlap numbers look impossible)'
         type: boolean
         default: false
+      company:
+        description: 'company_id to sample keys for'
+        type: string
+        default: 'bhp'
 
 jobs:
   analyse:
@@ -57,4 +64,5 @@ jobs:
           python scripts/source-overlap.py \
             --days '${{ inputs.days }}' \
             --pair '${{ inputs.pair }}' \
+            --company '${{ inputs.company }}' \
             ${{ inputs.sample && '--sample' || '' }}

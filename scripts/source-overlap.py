@@ -8,16 +8,40 @@ contributes that NOTHING ELSE HOLDS. "LinkedIn returns 8,000 rows" is not that
 number; most of those rows may also arrive from Indeed, SEEK, a career portal or
 Adzuna, in which case dropping LinkedIn costs nothing but the duplicate.
 
-HOW A ROLE IS MATCHED ACROSS SOURCES, exactly.
+HOW A ROLE IS MATCHED ACROSS SOURCES — AND WHY THE OBVIOUS KEY DOES NOT WORK.
 `job_key` is `source|normTitle|normCompany|normLocation` (see
-src/employsi/lib/jobArchive.ts). Everything after the FIRST pipe is therefore a
-source-independent identity for the role, and two sources holding the same
-vacancy produce the same suffix. That is not an approximation — it is the same
-key the archive already dedupes on within a source.
+src/employsi/lib/jobArchive.ts), so the part after the first pipe LOOKS like a
+source-independent identity for the role. This script asserted exactly that, and
+the first run disproved it: every source came back ~100% unique, and LinkedIn
+and Indeed shared none of 2,658 and 4,267 roles at the same employers. Sampling
+the raw keys showed why — the strings are not the same strings:
 
-    substr(job_key, instr(job_key, '|') + 1)
+    adzuna    | managing partner bhp                | bhp | perth cbd perth
+    adzuna    | electricians bhp shutdowns          | bhp | port hedland port hedland area
+    adzuna    | fifo carpenter bhp od south 14 14   | bhp | australia
 
-TWO CAVEATS THIS PRINTS RATHER THAN HIDES.
+Titles are whatever the advertiser wrote (recruiters repeat the employer name in
+the title and bolt the roster onto it), and locations are whatever granularity
+the board uses — "perth cbd perth" on Adzuna, "Perth WA" on Indeed, "Perth,
+Western Australia, Australia" on LinkedIn. An exact suffix match therefore
+measures string agreement between scrapers, not whether two boards carry the
+same vacancy, and it answers "how unique is this source?" with "very" every
+time.
+
+So the suffix key is NOT used. A role's identity here is:
+
+    company_id + normalised title, with the location dropped and the employer's
+    own name removed from the title
+
+which is looser than the archive's own dedupe key and deliberately so — it can
+merge two genuinely different vacancies with the same title at one employer, and
+that error runs TOWARDS finding overlap. Uniqueness figures from it are
+therefore an UPPER BOUND on what a source really adds: if it says LinkedIn holds
+few unique roles, that is trustworthy; if it says LinkedIn holds many, some of
+those are title-wording differences rather than real vacancies. Both figures are
+printed so the gap is visible.
+
+TWO FURTHER CAVEATS THIS PRINTS RATHER THAN HIDES.
 
 1. A BROKEN FEED LOOKS LIKE A WORTHLESS ONE. A source that has not run recently
    contributes nothing to a "currently advertised" window, which reads exactly
@@ -59,6 +83,7 @@ DAYS = int(_opt('--days', 30))
 PAIR = (_opt('--pair', 'linkedin,indeed') or '').split(',')
 # --sample: dump raw job_keys for one company and stop. Evidence before theory.
 SAMPLE = '--sample' in args
+COMPANY = _opt('--company', 'bhp')
 
 if not TOKEN:
     sys.exit('CLOUDFLARE_API_TOKEN is required (D1 read).')
@@ -75,29 +100,63 @@ def d1(sql: str, params: list | None = None):
     return j['result'][0]['results']
 
 
-# Everything after the first pipe: the role identity, minus which source saw it.
-ROLE = "substr(job_key, instr(job_key, '|') + 1)"
-LIVE = f"SELECT source, company_id, {ROLE} AS role_key FROM jobs " \
-       f"WHERE last_seen >= date('now', ?1)"
+# The archive's own key, split back into its parts. `rest` is everything after
+# the source prefix; `title` and `comp` are its first two fields.
+_SPLIT = """
+  SELECT source, company_id,
+         substr(rest, 1, instr(rest, '|') - 1) AS title,
+         substr(substr(rest, instr(rest, '|') + 1), 1,
+                instr(substr(rest, instr(rest, '|') + 1), '|') - 1) AS comp
+  FROM (SELECT source, company_id,
+               substr(job_key, instr(job_key, '|') + 1) AS rest
+        FROM jobs WHERE last_seen >= date('now', ?1))
+"""
+
+# STRICT: the whole suffix, byte for byte. Kept only to print alongside the
+# loose figure, because the distance between the two IS the measurement error.
+LIVE_STRICT = ("SELECT source, company_id, "
+               "substr(job_key, instr(job_key, '|') + 1) AS role_key "
+               "FROM jobs WHERE last_seen >= date('now', ?1)")
+
+# LOOSE: company_id + title, location dropped, and the employer's own name
+# removed from the title as a whitespace-delimited run — recruiters routinely
+# put it there ("managing partner bhp", "electricians bhp shutdowns") and Indeed
+# and the career portals do not.
+LIVE_LOOSE = f"""
+SELECT source, company_id,
+       company_id || '|' ||
+       trim(replace(' ' || title || ' ', ' ' || comp || ' ', ' ')) AS role_key
+FROM ({_SPLIT})
+"""
+
+LIVE = LIVE_LOOSE
 
 
-def sample_keys() -> None:
-    """Print raw job_keys for one company across sources.
+def sample_keys(company: str = 'bhp', per_source: int = 6) -> None:
+    """Print raw job_keys for one company, a few from EVERY source that has any.
 
     WHY THIS EXISTS. The first run of this script reported ~100% unique for
     EVERY source and zero overlap between LinkedIn and Indeed across thousands
     of roles for the same employers. That is not a finding, it is a broken
     measurement — so the next step is to look at the keys rather than to theorise
     about them.
+
+    A flat `ORDER BY source LIMIT 40` is not enough and the first attempt proved
+    it: 40 rows of adzuna and not one row of the two sources under comparison.
+    Sampling is per-source for that reason.
     """
-    rows = d1(
-        "SELECT source, job_key FROM jobs "
-        "WHERE company_id = ?1 ORDER BY source LIMIT 40", ['bhp'])
-    print(f'\n{"=" * 78}\nRAW job_key SAMPLES for company_id=bhp\n{"=" * 78}')
-    for r in rows:
-        print(f'  {r["source"]:<16} {r["job_key"][:110]}')
-    if not rows:
-        print('  (no rows for bhp — try another company_id)')
+    print(f'\n{"=" * 78}\nRAW job_key SAMPLES for company_id={company}\n{"=" * 78}')
+    srcs = d1('SELECT source, COUNT(*) n FROM jobs WHERE company_id = ?1 '
+              'GROUP BY source ORDER BY n DESC', [company])
+    if not srcs:
+        print(f'  (no rows for {company} — try another company_id)')
+        return
+    for s in srcs:
+        rows = d1('SELECT job_key FROM jobs WHERE company_id = ?1 AND source = ?2 '
+                  'ORDER BY last_seen DESC LIMIT ?3', [company, s['source'], per_source])
+        print(f'\n  --- {s["source"]}  ({s["n"]:,} rows) ---')
+        for r in rows:
+            print(f'    {r["job_key"][:130]}')
 
 
 def report(days: int) -> None:
@@ -125,6 +184,8 @@ def report(days: int) -> None:
     if not rows:
         print(f'\n  No rows in this window at all.')
         return
+    print('\n  (matched on company_id + title, employer name stripped, '
+          'location ignored)')
     print(f'\n{"source":<22}{"rows":>9}{"only here":>11}{"unique %":>10}{"companies":>11}')
     for r in rows:
         pct = 100.0 * r['only_here'] / r['total'] if r['total'] else 0
@@ -132,42 +193,63 @@ def report(days: int) -> None:
               f'{pct:>9.1f}%{r["companies"]:>11}')
 
     # The pairwise question: if we kept only ONE of these two, what is lost?
+    # Answered under BOTH keys. The strict figure is the one that reported no
+    # overlap at all; printing the two together shows how much of a source's
+    # apparent uniqueness was only the two scrapers wording a title differently.
     if len(PAIR) == 2 and all(PAIR):
         a, b = PAIR[0].strip(), PAIR[1].strip()
-        print(f'\n--- {a} vs {b}, in this window ---')
-        for x, y in ((a, b), (b, a)):
-            q = d1(
-                f'WITH live AS ({LIVE}) '
+        for label, sql in (('title match, employer name stripped', LIVE_LOOSE),
+                           ('exact job_key suffix (known to over-count)', LIVE_STRICT)):
+            print(f'\n--- {a} vs {b}, in this window [{label}] ---')
+            for x, y in ((a, b), (b, a)):
+                q = d1(
+                    f'WITH live AS ({sql}) '
+                    'SELECT COUNT(*) n FROM ('
+                    '  SELECT role_key FROM live WHERE source = ?2 '
+                    '  EXCEPT SELECT role_key FROM live WHERE source = ?3)',
+                    [win, x, y])
+                tot = d1(f'WITH live AS ({sql}) '
+                         'SELECT COUNT(DISTINCT role_key) n FROM live WHERE source = ?2',
+                         [win, x])
+                n, t = q[0]['n'], tot[0]['n']
+                pct = 100.0 * n / t if t else 0
+                print(f'  roles {x} has that {y} does not : {n:,} of {t:,} ({pct:.1f}%)')
+            # And what neither would cover that the rest of the archive does.
+            both = d1(
+                f'WITH live AS ({sql}) '
                 'SELECT COUNT(*) n FROM ('
-                '  SELECT role_key FROM live WHERE source = ?2 '
-                '  EXCEPT SELECT role_key FROM live WHERE source = ?3)',
-                [win, x, y])
-            tot = d1(f'WITH live AS ({LIVE}) '
-                     'SELECT COUNT(DISTINCT role_key) n FROM live WHERE source = ?2',
-                     [win, x])
-            n, t = q[0]['n'], tot[0]['n']
-            pct = 100.0 * n / t if t else 0
-            print(f'  roles {x} has that {y} does not : {n:,} of {t:,} ({pct:.1f}%)')
-        # And what neither would cover that the rest of the archive does.
-        both = d1(
-            f'WITH live AS ({LIVE}) '
-            'SELECT COUNT(*) n FROM ('
-            '  SELECT role_key FROM live WHERE source IN (?2, ?3) '
-            '  EXCEPT SELECT role_key FROM live WHERE source NOT IN (?2, ?3))',
-            [win, a, b])
-        print(f'  roles ONLY {a}+{b} hold (no other source): {both[0]["n"]:,}')
+                '  SELECT role_key FROM live WHERE source IN (?2, ?3) '
+                '  EXCEPT SELECT role_key FROM live WHERE source NOT IN (?2, ?3))',
+                [win, a, b])
+            print(f'  roles ONLY {a}+{b} hold (no other source): {both[0]["n"]:,}')
+
+        # Do the two sources even cover the same employers? If they do not,
+        # nothing above is about duplication — it is about different companies.
+        cov = d1(
+            f'WITH live AS ({LIVE_LOOSE}) '
+            'SELECT (SELECT COUNT(DISTINCT company_id) FROM live WHERE source = ?2) a, '
+            '       (SELECT COUNT(DISTINCT company_id) FROM live WHERE source = ?3) b, '
+            '       (SELECT COUNT(*) FROM ('
+            '          SELECT company_id FROM live WHERE source = ?2 '
+            '          INTERSECT SELECT company_id FROM live WHERE source = ?3)) shared',
+            [win, a, b])[0]
+        print(f'\n  employers: {a} {cov["a"]}, {b} {cov["b"]}, '
+              f'in both {cov["shared"]}')
 
 
 def main() -> int:
     if SAMPLE:
-        sample_keys()
+        sample_keys(COMPANY)
         return 0
     for d in sorted({1, DAYS}):
         report(d)
     print('\nA source with few "only here" rows is one the archive already covers '
           'elsewhere.\nCheck its newest date above before concluding that — a feed '
           'that stopped\nrunning contributes nothing and looks identical to one that '
-          'was redundant.')
+          'was redundant.\n\nThe "only here" counts are an UPPER BOUND: two boards '
+          'wording the same vacancy\ndifferently still count as two roles, so a high '
+          'figure may be wording rather\nthan coverage. A low figure is the trustworthy '
+          'direction.')
     return 0
 
 
