@@ -14,7 +14,7 @@ import {
   scopeForRegion,
   WORLD_SCOPE,
 } from "../../lib/analystScope";
-import { describeQuery, resolveTurn, type AnalystQuery } from "../../lib/analystTurn";
+import { describeQuery, followUpsFor, resolveTurn, type AnalystQuery } from "../../lib/analystTurn";
 import { ALL_SECTORS, companyIdsForSector, sectorsInScope } from "../../lib/analystSector";
 import { IconClose } from "../ActionIcons";
 import { AnalystChartView } from "./AnalystChart";
@@ -233,6 +233,30 @@ export function AnalystPane() {
     if (!open) setOpenTopic(null);
   }, [open]);
 
+  /**
+   * Drop the conversation and everything it was carrying.
+   *
+   * The scope goes back to the chip row rather than staying wherever the last
+   * question moved it — a cleared thread that still answers about Canada has
+   * not really been cleared.
+   */
+  /**
+   * Pivots worth offering after the current answer, drawn from the same chip
+   * list so a suggestion can only ever name a scope that exists. Empty until a
+   * question has been asked — there is nothing to follow up on before that.
+   */
+  const followUps = useMemo(
+    () => (carried ? followUpsFor(carried, chips, localCity) : []),
+    [carried, chips, localCity],
+  );
+
+  const startOver = () => {
+    setThread([{ id: nextId.current++, role: "analyst", text: OPENER }]);
+    setCarried(null);
+    setActiveScope(null);
+    setOpenTopic(null);
+  };
+
   const ask = async (raw: string) => {
     const question = raw.trim();
     if (!question || thinking) return;
@@ -298,6 +322,16 @@ export function AnalystPane() {
             <span className="antitle">Ask an analyst</span>
             <span className="ansub">Answers grounded in live employsi vacancy data</span>
           </div>
+          {/* Clearing the thread is the only way to drop a carried analysis on
+              purpose. Without it the conversation can only be escaped by asking
+              a question that happens to name every dimension, which is not
+              something a user should have to work out. Hidden until there is
+              something to clear. */}
+          {thread.length > 1 && (
+            <button className="anreset" onClick={startOver} type="button">
+              Start over
+            </button>
+          )}
           <button className="anx" onClick={closeAnalyst} aria-label="Close">
             <IconClose />
           </button>
@@ -425,6 +459,26 @@ export function AnalystPane() {
                     </div>
                   )}
                 </div>
+
+                {/* Offered on the NEWEST answer only. A follow-up applies to
+                    the analysis as it stands now, so chips under an older turn
+                    would pivot from somewhere the conversation has already
+                    left. */}
+                {m.id === thread[thread.length - 1]?.id && followUps.length > 0 && !thinking && (
+                  <div className="anfollow">
+                    {followUps.map((f) => (
+                      <button
+                        key={f.question}
+                        type="button"
+                        className="anfollowq"
+                        title={f.question}
+                        onClick={() => ask(f.question)}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ),
           )}

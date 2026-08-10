@@ -109,6 +109,56 @@ export function resolveTurn(
   };
 }
 
+export interface FollowUp {
+  /** What the chip reads. */
+  label: string;
+  /** The sentence it asks — a real question, put through the same router. */
+  question: string;
+}
+
+/**
+ * Follow-ups worth offering after an answer, so the capability is discoverable.
+ *
+ * Nobody guesses that a deterministic router takes "what about Sydney?". The
+ * design already solves the same problem for opening questions — PROMPT_TOPICS
+ * exists because a question the analyst cannot answer is worse than no
+ * suggestion — and these are that idea applied to the second turn.
+ *
+ * EVERY SUGGESTION IS ROUND-TRIPPED BEFORE IT IS OFFERED. A chip that reads
+ * "Australia" but resolves somewhere else is worse than no chip, and that is a
+ * real case rather than a hypothetical: the region chip and the country are both
+ * labelled "Australia", and detectScope resolves the sentence to the COUNTRY,
+ * because country is the more specific kind. So a suggestion is only returned
+ * when asking its own question lands on the scope it claims — anything that does
+ * not round-trip is dropped rather than shown and quietly disobeyed.
+ */
+export function followUpsFor(
+  current: AnalystQuery,
+  alternatives: ResolvedScope[],
+  localCity?: string,
+): FollowUp[] {
+  const out: FollowUp[] = [];
+
+  for (const alt of alternatives) {
+    if (alt.kind === current.scope.kind && alt.id === current.scope.id) continue;
+    const question = `What about ${alt.label}?`;
+    const landed = detectScope(question, localCity);
+    if (!landed || landed.kind !== alt.kind || landed.id !== alt.id) continue;
+    out.push({ label: alt.label, question });
+  }
+
+  // The area split, but only where there is a subject to split and it is not
+  // already what is on screen.
+  if (current.skill && !current.wantsAreas) {
+    out.push({
+      label: "Across cities",
+      question: `How does ${current.skill} compare across cities?`,
+    });
+  }
+
+  return out.slice(0, 4);
+}
+
 /**
  * A short, human description of what the analyst is about to answer, for the
  * pane to show above an answer that inherited anything.

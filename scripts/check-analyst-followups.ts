@@ -12,8 +12,19 @@
  *
  * So the cases below are mostly about what must NOT resolve.
  */
-import { detectScope, scopeForCity } from "../src/employsi/lib/analystScope";
-import { describeQuery, resolveTurn, type AnalystQuery } from "../src/employsi/lib/analystTurn";
+import {
+  detectScope,
+  scopeForCity,
+  scopeForCountry,
+  scopeForRegion,
+  WORLD_SCOPE,
+} from "../src/employsi/lib/analystScope";
+import {
+  describeQuery,
+  followUpsFor,
+  resolveTurn,
+  type AnalystQuery,
+} from "../src/employsi/lib/analystTurn";
 
 let failures = 0;
 const fail = (msg: string) => {
@@ -191,6 +202,63 @@ console.log("\ninherited turns are labelled:");
     fail(`describeQuery -> ${JSON.stringify(describeQuery(withSkill.query))}`);
   }
   if (failures === before) console.log("  ok    first turn inherits nothing; pivots are labelled");
+}
+
+// ── 8. Suggested follow-ups must do what their label says ───────────────────
+// PROMPT_TOPICS exists because a suggestion leading to "I can't answer that" is
+// worse than no suggestion. Same standard here, with a sharper edge: a chip
+// reading "Australia" that silently answers about somewhere else is worse than
+// a chip that fails, because the answer looks right.
+console.log("\nsuggested follow-ups resolve to what they claim:");
+{
+  const before = failures;
+  const alternatives = [
+    scopeForCity("perth")!,
+    scopeForCity("sydney")!,
+    scopeForCountry("au")!,
+    scopeForRegion("australia")!,
+    WORLD_SCOPE,
+  ];
+  const base = resolveTurn("Which skills are most in demand?", null, alternatives[0], "perth");
+  const ups = followUpsFor(base.query, alternatives, "perth");
+  if (!ups.length) fail("no follow-ups offered at all");
+  for (const f of ups) {
+    // Ask the chip's own question and check it lands where the chip said.
+    const turn = resolveTurn(f.question, base.query, alternatives[0], "perth");
+    if (turn.query.scope.label !== f.label && f.label !== "Across cities") {
+      fail(
+        `chip ${JSON.stringify(f.label)} asks ${JSON.stringify(f.question)} -> ${turn.query.scope.label}`,
+      );
+    } else console.log(`  ok    ${f.label.padEnd(14)} -> ${turn.query.scope.label}`);
+  }
+  // Never offer a pivot to where the analysis already is.
+  if (ups.some((f) => f.label === base.query.scope.label)) {
+    fail("offered a pivot to the scope already in play");
+  }
+  // The region chip and the country share the label "Australia", and the
+  // sentence resolves to the COUNTRY. Whichever of the two survives, exactly
+  // one must — offering both would put two identical chips side by side that
+  // do different things.
+  if (ups.filter((f) => f.label === "Australia").length > 1) {
+    fail("two chips both labelled Australia");
+  }
+  if (failures === before) console.log("  ok    every offered pivot round-trips");
+}
+
+// ── 9. A skill in play offers the area split, and only then ─────────────────
+console.log("\nthe area split is offered only when there is a subject to split:");
+{
+  const before = failures;
+  const perth = scopeForCity("perth")!;
+  const noSkill = resolveTurn("How is hiring trending?", null, perth, "perth");
+  if (followUpsFor(noSkill.query, [perth], "perth").some((f) => f.label === "Across cities")) {
+    fail("offered an area split with no skill in play");
+  }
+  const withSkill = resolveTurn("and for Nursing?", noSkill.query, perth, "perth");
+  if (!followUpsFor(withSkill.query, [perth], "perth").some((f) => f.label === "Across cities")) {
+    fail("no area split offered with a skill in play");
+  }
+  if (failures === before) console.log("  ok    offered with a skill, withheld without one");
 }
 
 console.log(failures ? `\n${failures} failure(s).` : "\nAll analyst follow-up checks passed.");

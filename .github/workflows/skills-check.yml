@@ -21,6 +21,7 @@ on:
       - 'scripts/gen-*-demand.py'
       - 'scripts/check-analyst-followups.ts'
       - 'src/employsi/lib/analystScope.ts'
+      - 'src/employsi/lib/analystTurn.ts'
       - 'src/employsi/data/companies.ts'
       - '.github/workflows/skills-check.yml'
   pull_request:
@@ -31,6 +32,7 @@ on:
       - 'scripts/test_skills_taxonomy.py'
       - 'scripts/check-analyst-followups.ts'
       - 'src/employsi/lib/analystScope.ts'
+      - 'src/employsi/lib/analystTurn.ts'
       - 'src/employsi/data/companies.ts'
   workflow_dispatch: {}
 

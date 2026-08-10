@@ -466,6 +466,28 @@ body {
 .anx:active {
   transform: scale(0.94);
 }
+/* Drops the thread and everything it was carrying. Quiet by design — it sits
+   beside the close button and should not compete with it. */
+.anreset {
+  flex: 0 0 auto;
+  height: 26px;
+  padding: 0 11px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--surface-card);
+  color: var(--neutral-700);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+.anreset:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.anreset:active {
+  transform: scale(0.96);
+}
 /* Scope row: which rows of the archive / which areas of the series a question
    is answered against. */
 .anscopes {
@@ -603,6 +625,35 @@ body {
 /* What a follow-up is about, when the sentence itself did not say. Rendered
    only on turns that inherited something, above the answer text — it is the
    visible half of carried state, not a caption. */
+/* Pivots offered under the newest answer. These are how anyone discovers that
+   the analyst takes a follow-up at all — see followUpsFor(). Indented to the
+   answer's edge so they read as belonging to it rather than as a new turn. */
+.anfollow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0 34px;
+}
+.anfollowq {
+  height: 26px;
+  padding: 0 11px;
+  border: 1px dashed var(--border-subtle);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--neutral-700);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+.anfollowq:hover {
+  border-style: solid;
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.anfollowq:active {
+  transform: scale(0.97);
+}
 .ancontext {
   margin-bottom: -6px;
   font-size: 11px;
