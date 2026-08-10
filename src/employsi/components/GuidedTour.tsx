@@ -224,7 +224,7 @@ const WORLD_TOURS: Record<string, TourDef> = {
       },
       {
         anchor: "ticker",
-        place: "top",
+        place: "top-end",
         pad: 8,
         radius: 20,
         title: "Read the live demand ticker",
@@ -259,7 +259,7 @@ const WORLD_TOURS: Record<string, TourDef> = {
     steps: [
       {
         anchor: "ticker",
-        place: "top",
+        place: "top-end",
         pad: 8,
         radius: 20,
         title: "Every figure on the bar",
