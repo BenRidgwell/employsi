@@ -317,35 +317,43 @@ const TIP_W = 340;
 /** Keep the card off the viewport edge, per the design's clamp. */
 const MARGIN = 20;
 
+/** On screen and big enough to be worth framing. */
+function isVisible(el: Element): boolean {
+  const r = el.getBoundingClientRect();
+  return (
+    r.width > 0 &&
+    r.height > 0 &&
+    r.top >= 0 &&
+    r.left >= 0 &&
+    r.bottom <= window.innerHeight &&
+    r.right <= window.innerWidth
+  );
+}
+
 /**
  * The element a step spotlights.
  *
- * `marker` is the one anchor that cannot be a fixed element: map pins are
- * created and destroyed by Mapbox as the camera moves, so the tour asks for
- * whichever pin is currently ON SCREEN rather than holding a reference to one
- * that may have been recycled. Off-screen pins are skipped — spotlighting one
- * would frame empty space outside the viewport.
+ * AN ANCHOR CAN MATCH SEVERAL ELEMENTS, AND ONLY ONE OF THEM IS ON SCREEN. The
+ * app carries two search entry points — a centred bar on desktop and a top-right
+ * button for the mobile flyout — and the mobile one stays in the DOM at every
+ * width, hidden on desktop by `.gshidden`. Taking the FIRST match spotlighted
+ * that hidden button: it measures zero, so the step silently lost its spotlight
+ * and the card drifted to the middle of the screen. So every match is
+ * considered and the first VISIBLE one wins, which also picks the right search
+ * on a phone without a second anchor name.
+ *
+ * `marker` is the same rule with a different query: map pins are created and
+ * destroyed by Mapbox as the camera moves, so the tour asks for whichever pin is
+ * currently on screen rather than holding a reference to one that may have been
+ * recycled.
  */
 function anchorRect(anchor: string, pad: number): Rect | null {
   if (typeof document === "undefined") return null;
-  let el: Element | null = null;
-  if (anchor === "marker") {
-    const pins = Array.from(document.querySelectorAll(".mapboxgl-marker .mk"));
-    el =
-      pins.find((p) => {
-        const r = p.getBoundingClientRect();
-        return (
-          r.width > 0 &&
-          r.height > 0 &&
-          r.top >= 0 &&
-          r.left >= 0 &&
-          r.bottom <= window.innerHeight &&
-          r.right <= window.innerWidth
-        );
-      }) ?? null;
-  } else {
-    el = document.querySelector(`[data-tour="${anchor}"]`);
-  }
+  const q = anchor === "marker" ? ".mapboxgl-marker .mk" : `[data-tour="${anchor}"]`;
+  const all = Array.from(document.querySelectorAll(q));
+  // Fall back to the first match so a step still positions its card against
+  // something when nothing is fully in view, rather than jumping to centre.
+  const el = all.find(isVisible) ?? all[0] ?? null;
   if (!el) return null;
   const r = el.getBoundingClientRect();
   if (!r.width && !r.height) return null;
