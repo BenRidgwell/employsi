@@ -19,7 +19,7 @@
 #
 # Indeed therefore needs an unblocker rather than an address, which is what
 # Oxylabs sells it. Bright Data has an Indeed scraper on the same per-record API
-# as scripts/linkedin-brightdata-to-d1.py if that bill is ever worth comparing.
+# as scripts/brightdata-to-d1.py if that bill is ever worth comparing.
 #
 # `scripts/indeed-to-d1.py` keeps all three transports — drop --oxylabs to use
 # the browser, add --nav for the warmed-browser walk — so re-testing costs a

@@ -93,7 +93,15 @@ for path, fn_name, floor, source_file in CASES:
 try:
     txt = open(os.path.join(ROOT, 'src/employsi/data/chinaJobsTargets.ts'), encoding='utf-8').read()
     body = txt.split('CHINA_JOBS_TARGETS: ChinaJobTarget[] = [')[1].split('\n];')[0]
-    in_file = body.count('{ id:')
+    # COUNTED WITHOUT ASSUMING A LAYOUT. This was `body.count('{ id:')`, which
+    # only sees records Prettier left on one line — so on 2026-08-09 it counted
+    # 46 of 93 and AGREED with a loader that was matching the same 46 for an
+    # unrelated reason (its pattern rejected the trailing comma after `hub`).
+    # Two independent counts that share a blind spot are one count, and this
+    # test exists precisely to be the independent one.
+    #
+    # `id:` not preceded by a letter, so `cityId:` does not inflate it.
+    in_file = len(re.findall(r'(?<![A-Za-z])id:\s*["\']', body))
     ns = load_module_head('scripts/zhaopin-to-d1.py', '_t_cross')
     parsed = len(ns['load_targets']())
     check('zhaopin parses every entry in the array', parsed == in_file,

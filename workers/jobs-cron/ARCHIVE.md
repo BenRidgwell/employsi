@@ -901,7 +901,7 @@ Two guards were wrong here as well, both now fixed:
 That leaves **two workflows** carrying Oxylabs credentials: indeed and zhaopin.
 Both are targets that answer and refuse, and both refuse the thing an address
 cannot fix. LinkedIn is the third open case and needs neither — IPRoyal
-blocklists the domain outright, so scripts/linkedin-brightdata-to-d1.py buys a
+blocklists the domain outright, so scripts/brightdata-to-d1.py buys a
 purpose-built scraper instead of an exit.
 
 ### What each of the five would actually need

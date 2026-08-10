@@ -1,55 +1,62 @@
 #!/usr/bin/env python3
-"""LinkedIn jobs -> D1, through Bright Data's LinkedIn Jobs Scraper API.
+"""Job boards -> D1, through Bright Data's per-board Scraper APIs.
 
-WHY A SECOND LINKEDIN FEED RATHER THAN A NEW TRANSPORT FOR THE OLD ONE
-scripts/linkedin-to-d1.py fetches the guest search endpoint and parses HTML. It
-cannot move off Oxylabs the way every other feed did this week, for a reason no
-amount of engineering fixes: IPRoyal refuses a CONNECT tunnel to linkedin.com
-outright, so the target is never even asked.
+ONE SCRIPT, SEVERAL BOARDS, because the only thing that differs between them is
+a dataset id, the shape of one search input and the names Bright Data gives its
+columns. The walk, the attribution gate, the skills mapping and the D1 upsert
+are the parts worth having once.
 
-    www.linkedin.com   REFUSED   HTTP/1.1 403 Forbidden
-                                 X-Response-Origin: proxy-server
+WHY EITHER BOARD IS HERE AT ALL — two different dead ends, same answer.
 
-That is the proxy's own answer, not LinkedIn's — measured 2026-08-09 by
-probe-headless-ci.py --tunnel-check, with a control host tunnelling fine in the
-same pass. LinkedIn is blocklisted by most residential providers, so "find a
-cheaper proxy" is not a plan.
+  linkedin  IPRoyal refuses a CONNECT tunnel to linkedin.com outright, so the
+            target is never even asked:
 
-Bright Data sells a purpose-built LinkedIn Jobs scraper instead of an address,
-which sidesteps the blocklist and replaces HTML parsing with structured records.
+                www.linkedin.com  REFUSED  HTTP/1.1 403 Forbidden
+                                           X-Response-Origin: proxy-server
+
+            That is the proxy answering, measured 2026-08-09 with a control host
+            tunnelling fine in the same pass. Most residential providers
+            blocklist the domain, so a cheaper proxy is not a plan.
+
+  indeed    Three transports were measured against the real 354-company walk on
+            2026-08-09 and all three returned a DataDome challenge on 432-442 KB
+            of real Indeed: headless-shell on a rotating exit, real Chrome with
+            stealth on a rotating exit, and headless-shell on a PINNED exit. Not
+            the address, not the browser build. What DataDome refuses is the
+            sustained walk. Oxylabs served it until the plan's quota ran out the
+            same day, at which point the feed had no working transport at all.
 
 WHAT THIS COSTS, AND WHY THAT SHAPE MATTERS
 Billing is per RECORD RETURNED, not per request — a different shape from every
-other source here, and the one thing most likely to produce a surprise invoice.
-354 companies at ~20 live roles each is ~7,000 records a sweep: nightly is
-~210k/month, weekly is ~48k. Job postings do not churn daily and the archive's
-last_seen model ages rows out on its own, so weekly is the sane default and this
-script will not trigger a bigger collection than --max-records allows.
+other source here, and the one most able to produce a surprise invoice. ~354
+companies at ~20 live roles each is ~7,000 records a sweep: nightly is
+~210k/month, weekly ~48k. Postings do not churn daily and the archive ages rows
+out on last_seen, so weekly is the sane cadence and --max-records caps a run.
 
-Bright Data gives 5,000 records/month free. Start there with --probe.
+Bright Data gives 5,000 records/month free. Start there, with --probe.
 
 NOTHING HERE HAS BEEN RUN AGAINST THE LIVE API. It is written from Bright Data's
 published contract (POST /datasets/v3/trigger, GET /datasets/v3/progress/<id>,
-GET /datasets/v3/snapshot/<id>) and this repo has no token to test with. So:
+GET /datasets/v3/snapshot/<id>) and this repo has no token to test with. So the
+unknowns are made visible rather than assumed away:
 
-  * --probe triggers, waits, downloads and REPORTS — writing nothing to D1. Run
-    that first, read the field-coverage table, and only then let it write.
-  * Every field is read defensively and the run reports which ones were actually
-    present. Bright Data documents title, company, company id, location, summary
-    and seniority; it does NOT document posted date or salary, and the card uses
-    both. Whether they arrive is a question for the probe, not for a guess here.
+  * --probe triggers, waits, downloads and REPORTS, writing nothing to D1.
+  * The run prints a FIELD COVERAGE table over the records that actually arrive.
+    Column names differ per board and are documented only partially, so every
+    field is looked up under several plausible keys and its absence is REPORTED.
+    If nothing carries a title under any known key the run dumps the first
+    record's keys and stops — that means the response shape is not what this
+    parser expects, and guessing further would be inventing data.
+  * --input-json overrides the search input verbatim, so a shape copied from
+    Bright Data's own playground needs no code change. A 4xx from the trigger
+    exits with Bright Data's own message, which is usually the schema.
 
-THE DATASET ID IS NOT GUESSED. Bright Data does not publish it, and a wrong id
-silently collects the wrong thing and bills for it, so it has to be supplied.
-`--list-datasets` prints every scraper id on your account (needs only the API
-token) and flags the LinkedIn jobs one; the dashboard shows the same id on the
-scraper's page.
-
-Env: BRIGHTDATA_API_TOKEN, BRIGHTDATA_DATASET_ID,
-     CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID
-Run: python scripts/linkedin-brightdata-to-d1.py --list-datasets
-     python scripts/linkedin-brightdata-to-d1.py --probe --limit 20
-     python scripts/linkedin-brightdata-to-d1.py --max-records 50000
+Env: BRIGHTDATA_API_TOKEN, optionally BRIGHTDATA_DATASET_ID (overrides the
+     per-source default), CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID,
+     D1_DATABASE_ID
+Run: python scripts/brightdata-to-d1.py --list-datasets
+     python scripts/brightdata-to-d1.py --source indeed --probe --limit 20
+     python scripts/brightdata-to-d1.py --source linkedin --max-records 50000
 """
 from __future__ import annotations
 import datetime
@@ -78,13 +85,60 @@ BD_TOKEN = os.environ.get('BRIGHTDATA_API_TOKEN', '')
 BD_DATASET = os.environ.get('BRIGHTDATA_DATASET_ID', '')
 BD_BASE = 'https://api.brightdata.com/datasets/v3'
 
-# Same source tag as the guest-API feed. The two are different TRANSPORTS for
-# the same publisher, and job_key already dedupes on
-# source|title|company|location — so a role seen by both refreshes one row
-# instead of creating a second. Tagging this 'linkedin-bd' would double-count
-# every shared listing until the stale variants aged out.
-SOURCE = 'linkedin'
 CITIES = ['perth', 'adelaide', 'brisbane', 'melbourne', 'sydney', 'canberra']
+
+# THE `source` TAG MATCHES THE EXISTING FEED FOR THAT BOARD, deliberately. These
+# are different TRANSPORTS for the same publisher, and job_key dedupes on
+# source|title|company|location — so a role seen by both the old scraper and
+# this one refreshes a single row. A distinct tag like 'linkedin-bd' would
+# double-count every shared listing until the stale variants aged out.
+#
+# `dataset` is the scraper id from the Bright Data dashboard. Where it is None
+# it MUST be supplied, because a wrong id silently collects the wrong thing and
+# bills for it. --list-datasets prints the ids on your account.
+#
+# `fields` maps our column to the keys that board might use. Several candidates
+# each because Bright Data documents these only partially; the first non-empty
+# one wins and the coverage table reports what was actually found.
+SOURCES = {
+    'linkedin': {
+        'source': 'linkedin',
+        'dataset': None,
+        'discover_by': 'keyword',
+        'input': lambda name: {'keyword': name, 'location': LOCATION},
+        'fields': {
+            'title': ('job_title', 'title', 'job_position'),
+            'company': ('company_name', 'company', 'companyName'),
+            'location': ('job_location', 'location', 'job_location_text'),
+            'url': ('url', 'job_url', 'link'),
+            'posted': ('job_posted_date', 'posted_date', 'date_posted', 'job_posted_time'),
+            'salary': ('job_base_pay_range', 'salary', 'base_salary', 'compensation'),
+        },
+    },
+    'indeed': {
+        'source': 'indeed',
+        # Supplied by the operator 2026-08-09. NOT verified from here, and worth
+        # confirming with --list-datasets before a paid run: every dataset id in
+        # Bright Data's own documentation is `gd_`-prefixed and this one is
+        # `sd_`. It may simply be a newer prefix — but "the id looked plausible"
+        # is exactly the reasoning this field exists to avoid.
+        'dataset': 'sd_msmsowmy2q27hoajjt',
+        'discover_by': 'keyword',
+        # `company:"Name"` is Indeed's own advertiser filter — the same query
+        # scripts/indeed-to-d1.py builds in ind.search_url(). Plain keyword
+        # search returns every ad that merely mentions the name.
+        'input': lambda name: {'keyword': f'company:"{name}"',
+                               'location': LOCATION, 'country': 'AU'},
+        'fields': {
+            'title': ('job_title', 'title', 'jobtitle'),
+            'company': ('company_name', 'company', 'companyName'),
+            'location': ('location', 'job_location', 'formatted_location'),
+            'url': ('url', 'job_link', 'link'),
+            'posted': ('date_posted', 'job_posted_date', 'posted_date', 'date'),
+            'salary': ('salary_formatted', 'salary', 'job_salary', 'compensation'),
+        },
+    },
+}
 
 args = sys.argv[1:]
 
@@ -107,6 +161,11 @@ PROBE = '--probe' in args
 # the API token, and is the answer to "where do I get the dataset id".
 LIST_DATASETS = '--list-datasets' in args
 NO_SKILLS = '--no-skills' in args
+WHICH = _opt('--source', '')
+# --input-json '<json>': replace the generated search input entirely. Bright
+# Data's playground shows the exact shape each scraper wants; this pastes it in
+# without a code change, which beats another round of guessing at a schema.
+INPUT_JSON = _opt('--input-json')
 
 if not BD_TOKEN:
     sys.exit('BRIGHTDATA_API_TOKEN is required.')
@@ -129,17 +188,25 @@ if LIST_DATASETS:
     print(f'{len(_hits)} scrapers on this account:\n')
     for _d in sorted(_hits, key=lambda x: str(x.get('name', ''))):
         _name = str(_d.get('name', ''))
-        _mark = '  <- LinkedIn jobs?' if ('linkedin' in _name.lower()
-                                          and 'job' in _name.lower()) else ''
+        _low = _name.lower()
+        _mark = ('  <- ' + _w for _w in ('linkedin', 'indeed') if _w in _low)
+        _mark = next(_mark, '')
         print(f"  {str(_d.get('id', '')):28} {_name[:60]}{_mark}")
-    print('\nSet BRIGHTDATA_DATASET_ID to the LinkedIn *jobs* id — not profiles, '
-          'not companies.')
+    print('\nUse the JOBS scraper for a board — not profiles, not companies. '
+          'Set BRIGHTDATA_DATASET_ID, or add it to SOURCES in this file.')
     raise SystemExit(0)
 
+if WHICH not in SOURCES:
+    sys.exit(f'--source must be one of: {", ".join(sorted(SOURCES))}')
+CFG = SOURCES[WHICH]
+SOURCE = CFG['source']
+# The env var wins, so a dashboard change needs no commit.
+BD_DATASET = BD_DATASET or CFG['dataset'] or ''
 if not BD_DATASET:
-    sys.exit('BRIGHTDATA_DATASET_ID is required — the LinkedIn Jobs scraper id from '
-             'your Bright Data dashboard. It is deliberately not defaulted: a wrong '
-             'id collects the wrong thing and bills you for it.')
+    sys.exit(f'No dataset id for --source {WHICH}. Set BRIGHTDATA_DATASET_ID to the '
+             f'scraper id from your Bright Data dashboard — run --list-datasets to '
+             f'see them. It is deliberately not defaulted for this source: a wrong '
+             f'id collects the wrong thing and bills you for it.')
 if not PROBE and not TOKEN:
     sys.exit('CLOUDFLARE_API_TOKEN is required (needs D1 edit). Use --probe to skip the write.')
 
@@ -199,9 +266,16 @@ def bd(method: str, path: str, body=None, params: str = '') -> dict | list:
 
 
 def trigger(companies: list[tuple[str, str]]) -> str:
-    """Start one discover-by-keyword collection for the whole roster."""
-    inputs = [{'keyword': name, 'location': LOCATION} for _cid, name in companies]
-    params = (f'dataset_id={BD_DATASET}&type=discover_new&discover_by=keyword'
+    """Start one discover collection for the whole roster."""
+    if INPUT_JSON:
+        inputs = json.loads(INPUT_JSON)
+        if isinstance(inputs, dict):
+            inputs = [inputs]
+        sys.stderr.write(f'  using --input-json verbatim ({len(inputs)} input(s))\n')
+    else:
+        inputs = [CFG['input'](name) for _cid, name in companies]
+    params = (f'dataset_id={BD_DATASET}&type=discover_new'
+              f'&discover_by={CFG["discover_by"]}'
               f'&format=json&include_errors=true')
     res = bd('POST', '/trigger', inputs, params)
     sid = (res or {}).get('snapshot_id') or (res or {}).get('id')
@@ -236,20 +310,11 @@ def download(snapshot_id: str) -> list[dict]:
 
 
 # ── record -> row ─────────────────────────────────────────────────────────────
-# Bright Data documents job title, company name, company id, location, summary
-# and seniority. It does NOT document a posted date or a salary, and the company
-# card uses both — so every field is looked up under several plausible names and
-# its absence is REPORTED rather than filled in. A missing salary must stay
-# missing: this archive's rule is that a number on a card came from a row.
-FIELDS = {
-    'title': ('job_title', 'title', 'job_position'),
-    'company': ('company_name', 'company', 'companyName'),
-    'location': ('job_location', 'location', 'job_location_text'),
-    'url': ('url', 'job_url', 'link'),
-    'posted': ('job_posted_date', 'posted_date', 'date_posted', 'job_posted_time'),
-    'salary': ('job_base_pay_range', 'salary', 'base_salary', 'compensation'),
-    'seniority': ('job_seniority_level', 'seniority_level', 'seniority'),
-}
+# Column names differ per board and Bright Data documents them only partially,
+# so each field is looked up under several plausible names and its absence is
+# REPORTED rather than filled in. A missing salary must stay missing: this
+# archive's rule is that a number on a card came from a row.
+FIELDS = CFG['fields']
 
 
 def pick(rec: dict, field: str) -> str:
@@ -354,8 +419,8 @@ def main() -> int:
     if not companies:
         sys.exit('No companies matched — check --only.')
     sys.stderr.write(
-        f'LinkedIn via Bright Data -> D1: {len(companies)} companies, '
-        f'location="{LOCATION}", cap {MAX_RECORDS} records'
+        f'{WHICH} via Bright Data -> D1: {len(companies)} companies, '
+        f'location="{LOCATION}", dataset {BD_DATASET}, cap {MAX_RECORDS} records'
         f'{", PROBE (no write)" if PROBE else ""}.\n')
 
     snap = _opt('--snapshot')

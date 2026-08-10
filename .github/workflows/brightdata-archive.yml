@@ -1,23 +1,28 @@
-# LinkedIn jobs → D1, through Bright Data's LinkedIn Jobs Scraper API.
+# Job boards → D1, through Bright Data's per-board Scraper APIs.
 #
-# WHY THIS EXISTS ALONGSIDE linkedin-archive.yml
-# The guest-API feed cannot move off Oxylabs the way every other feed did this
-# week. IPRoyal refuses a CONNECT tunnel to linkedin.com outright — measured
-# 2026-08-09 by probe-headless-ci.py --tunnel-check, with a control host
-# tunnelling fine in the same pass:
+# WHY EITHER BOARD IS HERE — two different dead ends, same answer.
 #
-#     www.linkedin.com   REFUSED   HTTP/1.1 403 Forbidden
-#                                  X-Response-Origin: proxy-server
+#   linkedin  IPRoyal refuses a CONNECT tunnel to linkedin.com outright, so the
+#             target is never even asked:
 #
-# That is the proxy answering, not LinkedIn. Most residential providers
-# blocklist the domain, so a cheaper proxy is not the answer. Bright Data sells
-# a purpose-built LinkedIn Jobs scraper instead of an address.
+#                 www.linkedin.com  REFUSED  HTTP/1.1 403 Forbidden
+#                                            X-Response-Origin: proxy-server
 #
-# BILLING IS PER RECORD RETURNED, not per request — the only source here shaped
-# that way, and the one most able to produce a surprise invoice. 354 companies
-# at ~20 live roles is ~7,000 records a sweep: nightly would be ~210k/month,
-# weekly ~48k. Job postings do not churn daily and the archive ages rows out on
-# last_seen, so this runs WEEKLY and the script caps records per run.
+#             That is the proxy answering, measured 2026-08-09 with a control
+#             host tunnelling fine in the same pass.
+#
+#   indeed    Three transports measured against the real 354-company walk on
+#             2026-08-09 all returned a DataDome challenge on 432-442 KB of real
+#             Indeed: headless-shell rotating, real Chrome + stealth rotating,
+#             and headless-shell on a PINNED exit. Not the address, not the
+#             browser build — what DataDome refuses is the sustained walk.
+#             Oxylabs served it until that plan's quota ran out the same day.
+#
+# BILLING IS PER RECORD RETURNED, not per request — the only sources here shaped
+# that way, and the ones most able to produce a surprise invoice. ~7,000 records
+# a sweep means ~210k/month nightly against ~48k weekly, so this is weekly by
+# design and the script caps records per run. Bright Data gives 5,000
+# records/month free; start there with probe=true.
 #
 # THERE IS NO `schedule:` YET, on purpose. Nothing here has been run against the
 # live API — it is written from Bright Data's published contract and this repo
@@ -28,17 +33,22 @@
 #
 # Required repo secrets:
 #   BRIGHTDATA_API_TOKEN   — API token
-#   BRIGHTDATA_DATASET_ID  — the LinkedIn Jobs scraper id from the dashboard.
-#                            Deliberately not defaulted anywhere: a wrong id
-#                            collects the wrong thing and bills for it.
 #   CLOUDFLARE_API_TOKEN   — D1 edit
+# Optional:
+#   BRIGHTDATA_DATASET_ID  — overrides the per-source default in the script.
+#                            Needed for linkedin, which has none: a wrong id
+#                            collects the wrong thing and bills for it.
 # Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
-
-name: linkedin-brightdata
+name: brightdata-archive
 
 on:
   workflow_dispatch:
     inputs:
+      source:
+        description: 'Which board to collect'
+        type: choice
+        options: [indeed, linkedin]
+        default: indeed
       probe:
         description: 'Collect and report only — write nothing to D1'
         type: boolean
@@ -59,7 +69,7 @@ on:
 # One collection at a time. Two concurrent runs would trigger two collections
 # and pay for both.
 concurrency:
-  group: linkedin-brightdata
+  group: brightdata-archive
   cancel-in-progress: false
 
 jobs:
@@ -77,7 +87,7 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Collect LinkedIn jobs → D1 (Bright Data)
+      - name: Collect jobs → D1 (Bright Data)
         env:
           BRIGHTDATA_API_TOKEN: ${{ secrets.BRIGHTDATA_API_TOKEN }}
           BRIGHTDATA_DATASET_ID: ${{ secrets.BRIGHTDATA_DATASET_ID }}
@@ -85,12 +95,12 @@ jobs:
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         run: |
-          if [ -z "$BRIGHTDATA_API_TOKEN" ] || [ -z "$BRIGHTDATA_DATASET_ID" ]; then
-            echo "BRIGHTDATA_API_TOKEN and BRIGHTDATA_DATASET_ID must both be set."
-            echo "The dataset id is on the LinkedIn Jobs scraper's page in the dashboard."
+          if [ -z "$BRIGHTDATA_API_TOKEN" ]; then
+            echo "BRIGHTDATA_API_TOKEN is not set."
             exit 1
           fi
-          python scripts/linkedin-brightdata-to-d1.py \
+          python scripts/brightdata-to-d1.py \
+            --source '${{ inputs.source }}' \
             --limit '${{ inputs.limit }}' \
             --max-records '${{ inputs.max_records }}' \
             ${{ inputs.snapshot != '' && format('--snapshot {0}', inputs.snapshot) || '' }} \
@@ -101,3 +111,6 @@ jobs:
 #   schedule:
 #     - cron: '20 17 * * 1'   # weekly, Mondays. NOT nightly: billing is per
 #                             # record, and postings do not churn daily.
+#
+# A schedule fires ONE source, so a second workflow (or a matrix) is needed to
+# cover both — deliberately not written until a manual run of each has worked.
