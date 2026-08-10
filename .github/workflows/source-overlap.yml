@@ -34,6 +34,10 @@ on:
         description: 'Two sources to compare head to head'
         type: string
         default: 'linkedin,indeed'
+      sample:
+        description: 'Dump raw job_keys for one company and stop (use when the overlap numbers look impossible)'
+        type: boolean
+        default: false
 
 jobs:
   analyse:
@@ -52,4 +56,5 @@ jobs:
         run: |
           python scripts/source-overlap.py \
             --days '${{ inputs.days }}' \
-            --pair '${{ inputs.pair }}'
+            --pair '${{ inputs.pair }}' \
+            ${{ inputs.sample && '--sample' || '' }}

@@ -57,6 +57,8 @@ def _opt(name, default=None):
 
 DAYS = int(_opt('--days', 30))
 PAIR = (_opt('--pair', 'linkedin,indeed') or '').split(',')
+# --sample: dump raw job_keys for one company and stop. Evidence before theory.
+SAMPLE = '--sample' in args
 
 if not TOKEN:
     sys.exit('CLOUDFLARE_API_TOKEN is required (D1 read).')
@@ -77,6 +79,25 @@ def d1(sql: str, params: list | None = None):
 ROLE = "substr(job_key, instr(job_key, '|') + 1)"
 LIVE = f"SELECT source, company_id, {ROLE} AS role_key FROM jobs " \
        f"WHERE last_seen >= date('now', ?1)"
+
+
+def sample_keys() -> None:
+    """Print raw job_keys for one company across sources.
+
+    WHY THIS EXISTS. The first run of this script reported ~100% unique for
+    EVERY source and zero overlap between LinkedIn and Indeed across thousands
+    of roles for the same employers. That is not a finding, it is a broken
+    measurement — so the next step is to look at the keys rather than to theorise
+    about them.
+    """
+    rows = d1(
+        "SELECT source, job_key FROM jobs "
+        "WHERE company_id = ?1 ORDER BY source LIMIT 40", ['bhp'])
+    print(f'\n{"=" * 78}\nRAW job_key SAMPLES for company_id=bhp\n{"=" * 78}')
+    for r in rows:
+        print(f'  {r["source"]:<16} {r["job_key"][:110]}')
+    if not rows:
+        print('  (no rows for bhp — try another company_id)')
 
 
 def report(days: int) -> None:
@@ -138,6 +159,9 @@ def report(days: int) -> None:
 
 
 def main() -> int:
+    if SAMPLE:
+        sample_keys()
+        return 0
     for d in sorted({1, DAYS}):
         report(d)
     print('\nA source with few "only here" rows is one the archive already covers '
