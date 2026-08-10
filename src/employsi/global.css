@@ -13588,3 +13588,376 @@ body {
     animation: in-veil 200ms linear both;
   }
 }
+
+/* ===========================================================================
+   Guided help — the local/city walkthroughs.
+   From `Employsi Guided Help — Local Tour.dc.html`.
+
+   The design's mock writes raw hex (#1c1c1e, #8e8e93, #ededf0) because it ships
+   standalone. Here those resolve to the tokens they came from, so the tour
+   follows the app's theme instead of pinning a second copy of the palette that
+   would drift the first time a token moves.
+   =========================================================================== */
+
+/* --- The hub, inside the existing dock panel --- */
+.gthub {
+  width: 340px;
+  overflow: hidden;
+  padding: 0;
+}
+.gthubhd {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 14px 10px;
+}
+.gthubhdtext {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.gteyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--text-tertiary);
+}
+.gthubtitle {
+  font-size: 16px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.gthubsub {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.gthublist {
+  display: flex;
+  flex-direction: column;
+  padding: 2px 8px 8px;
+}
+.gthubrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 150ms;
+}
+.gthubrow:hover {
+  background: var(--surface-hover);
+}
+.gthubicon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 11px;
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+.gthubicon svg {
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.gthubrowtext {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.gthubrowtitle {
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.012em;
+  color: var(--text-primary);
+}
+.gthubrowmeta {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.gthubchev {
+  flex: 0 0 auto;
+  color: var(--neutral-400);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.gthubft {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--surface-sunken);
+  background: var(--surface-subtle);
+}
+.gthubftlbl {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.gthubask {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+.gthubask:active {
+  transform: scale(0.97);
+}
+
+/* --- The running tour --- */
+.gtlayer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  animation: emppop 180ms ease-out both;
+}
+/* THE DIM IS THE SPOTLIGHT'S OWN SHADOW, not a separate scrim: a 9999px spread
+   paints everything outside the box and nothing inside it, so there is no
+   second element to keep in sync with the hole. */
+.gtspot {
+  position: absolute;
+  box-shadow: 0 0 0 9999px rgba(28, 28, 30, 0.55);
+  outline: 2px solid rgba(255, 255, 255, 0.95);
+  outline-offset: 2px;
+  cursor: pointer;
+  transition:
+    left 320ms cubic-bezier(0.32, 0.72, 0, 1),
+    top 320ms cubic-bezier(0.32, 0.72, 0, 1),
+    width 320ms cubic-bezier(0.32, 0.72, 0, 1),
+    height 320ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.gttip {
+  position: absolute;
+  box-sizing: border-box;
+  width: 340px;
+  padding: 16px 16px 14px;
+  border-radius: 18px;
+  background: var(--surface-card);
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.08),
+    0 34px 68px -28px rgba(28, 28, 30, 0.75);
+  transition:
+    left 320ms cubic-bezier(0.32, 0.72, 0, 1),
+    top 320ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.gttiphd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+}
+.gtprogress {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px 0 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+}
+.gtdots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.gtdot {
+  width: 10px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--neutral-200);
+  transition:
+    width 220ms,
+    background 220ms;
+}
+.gtdot.past {
+  background: var(--neutral-300);
+}
+.gtdot.on {
+  width: 16px;
+  background: var(--neutral-900);
+}
+.gtleft {
+  font-size: 12.5px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.gtx {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  color: var(--neutral-700);
+  cursor: pointer;
+  transition: background 150ms;
+}
+.gtx:hover {
+  background: var(--surface-hover);
+}
+.gtx svg {
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+.gthubhd .gtx {
+  width: 28px;
+  height: 28px;
+}
+.gttitle {
+  font-size: 17px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+  padding-bottom: 6px;
+  color: var(--text-primary);
+}
+.gtbody {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--neutral-700);
+  text-wrap: pretty;
+}
+.gttipft {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+}
+.gtlabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--text-tertiary);
+}
+.gtnav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gtback,
+.gtnext {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+.gtback {
+  padding: 0 14px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  transition: background 150ms;
+}
+.gtback:hover:not(.off) {
+  background: var(--surface-hover);
+}
+.gtback.off {
+  color: var(--neutral-400);
+  cursor: default;
+}
+.gtnext {
+  padding: 0 18px;
+  border: 0;
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+  transition: transform 110ms;
+}
+.gtnext:active {
+  transform: scale(0.97);
+}
+
+/* --- Completion toast --- */
+.gtdone {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--surface-card);
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 26px 52px -24px rgba(28, 28, 30, 0.5);
+  animation: emppop 220ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.gtdoneicon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+}
+.gtdoneicon svg {
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.gtdonetext {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.gtdonetitle {
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.012em;
+  color: var(--text-primary);
+}
+.gtdonesub {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* The spotlight's travel is the whole point of the effect, but it is also a
+   large moving mask — held still for anyone who asked for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  .gtspot,
+  .gttip {
+    transition: none;
+  }
+  .gtlayer,
+  .gtdone {
+    animation: none;
+  }
+}

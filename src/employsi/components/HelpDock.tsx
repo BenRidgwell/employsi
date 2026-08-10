@@ -4,6 +4,7 @@ import { FeedbackBoard } from "./FeedbackBoard";
 import { NotificationBell } from "./NotificationBell";
 import { IconClose, IconFeedback, IconHelp, IconSettings } from "./ActionIcons";
 import { SettingsPanel } from "./SettingsPanel";
+import { GuidedTour } from "./GuidedTour";
 import { CITY_COMPANIES } from "../data/mapboxGeo";
 import { REGION_HUBS, REGION_LABEL } from "../data/mapboxWorldGeo";
 import { CITY_LABEL, GLOBAL_HUB_LABEL } from "../data/geo";
@@ -166,6 +167,7 @@ function DockButton({
   peek,
   onClick,
   children,
+  anchor,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -175,6 +177,8 @@ function DockButton({
   peek?: boolean;
   onClick: () => void;
   children?: React.ReactNode;
+  /** `data-tour` hook, when a guided-tour step spotlights this button. */
+  anchor?: string;
 }) {
   return (
     <div className="dockslot">
@@ -184,6 +188,7 @@ function DockButton({
         onClick={onClick}
         aria-label={label}
         aria-pressed={on}
+        data-tour={anchor}
       >
         {icon}
         {/* Tooltip below the button, per the design, and suppressed while the
@@ -269,28 +274,38 @@ export function HelpDock() {
         on={open}
         peek={peek}
         onClick={toggleHelpTour}
+        anchor="help"
       >
-        {open && (
-          <div className="dockpanel helppanel">
-            <div className="dockhd">
-              <div className="dockhdtext">
-                <span className="docktitle">{tour.title}</span>
-                <span className="docksub">{tour.sub}</span>
+        {/* THE LOCAL LAYER GETS THE GUIDED TOUR; the other two keep the written
+            steps until their own design lands. Splitting on layer rather than
+            replacing outright is deliberate: the guided version spotlights real
+            controls, and the ones its steps name — the city banner, an employer
+            pin — do not exist on the global or domestic map, so pointing it at
+            those layers would frame empty space and describe it confidently. */}
+        {open &&
+          (layer === "local" ? (
+            <GuidedTour onClose={closeHelpTour} />
+          ) : (
+            <div className="dockpanel helppanel">
+              <div className="dockhd">
+                <div className="dockhdtext">
+                  <span className="docktitle">{tour.title}</span>
+                  <span className="docksub">{tour.sub}</span>
+                </div>
+                <button className="dockx" onClick={closeHelpTour} aria-label="Close">
+                  <IconClose />
+                </button>
               </div>
-              <button className="dockx" onClick={closeHelpTour} aria-label="Close">
-                <IconClose />
-              </button>
+              <ol className="helpsteps">
+                {tour.steps.map((s, i) => (
+                  <li key={i}>
+                    <span className="helpnum">{i + 1}</span>
+                    <span>{s}</span>
+                  </li>
+                ))}
+              </ol>
             </div>
-            <ol className="helpsteps">
-              {tour.steps.map((s, i) => (
-                <li key={i}>
-                  <span className="helpnum">{i + 1}</span>
-                  <span>{s}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
+          ))}
       </DockButton>
 
       <DockButton
