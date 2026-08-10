@@ -488,11 +488,42 @@ def main() -> int:
     # needs eight; this is the table that says whether the other two exist,
     # rather than a hopeful mapping that silently yields empty columns.
     coverage = {f: sum(1 for r in records if pick(r, f)) for f in FIELDS}
+    # PRESENT-BUT-EMPTY IS A DIFFERENT FAULT FROM ABSENT, and the two demand
+    # opposite fixes. A key the dataset never returns means the mapping is
+    # wrong; a key it returns as null on every record means the advertisers did
+    # not post that value and no mapping change will conjure it. Counting only
+    # non-empty values cannot tell them apart, so the key presence is counted
+    # separately — salary read 0/50 on the first Indeed probe and the coverage
+    # table alone could not say which of the two had happened.
+    present = {f: sum(1 for r in records if any(k in r for k in FIELDS[f]))
+               for f in FIELDS}
     sys.stderr.write('\n  field coverage across the returned records:\n')
     for f, n in sorted(coverage.items(), key=lambda kv: -kv[1]):
         pct = 100.0 * n / len(records)
-        sys.stderr.write(f'    {f:10} {n:6}/{len(records)}  {pct:5.1f}%'
-                         + ('   <- MISSING' if not n else '') + '\n')
+        if n:
+            note = ''
+        elif present[f]:
+            note = f'   <- key returned on {present[f]}, always empty (not posted)'
+        else:
+            note = '   <- KEY ABSENT: mapping is wrong'
+        sys.stderr.write(f'    {f:10} {n:6}/{len(records)}  {pct:5.1f}%{note}\n')
+
+    # Any key the payload carries that looks like pay and we are NOT reading.
+    # This is how a renamed field gets caught instead of silently emptying a
+    # column the company card displays.
+    known = {k for ks in FIELDS.values() for k in ks}
+    seen: dict[str, int] = {}
+    for r in records:
+        for k, v in r.items():
+            if k in known or v in (None, '', [], {}):
+                continue
+            if re.search(r'salary|pay|wage|compensation|remuneration', k, re.I):
+                seen[k] = seen.get(k, 0) + 1
+    if seen:
+        sys.stderr.write('\n  pay-like keys present in the payload but NOT mapped:\n')
+        for k, n in sorted(seen.items(), key=lambda kv: -kv[1]):
+            ex = next((str(r[k])[:60] for r in records if r.get(k)), '')
+            sys.stderr.write(f'    {k:28} {n:4}/{len(records)}  e.g. {ex}\n')
     if not coverage['title']:
         sys.stderr.write('\nNo record carried a title under any known key. The response '
                          'shape is not what this parser expects — print a record and fix '
