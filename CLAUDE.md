@@ -44,12 +44,41 @@ npx tsx -e 'import {SITES,fetchPortal} from "./workers/jobs-cron/careerSites";
 
 ### Deploying
 
-Two independent deploys — doing one does not update the other:
+> **`npx wrangler deploy` PUBLISHES TO PRODUCTION — https://employsi.com.au.**
+> Never run it unless the user has asked for that deploy **in this conversation**.
+> "Deploy so I can look at it" is not that request; see the preview options below.
+
+There is **no separate staging environment**. The custom domain is attached to the
+same Worker as `benridgwell-globe-gazer-hr.employsi.workers.dev` (the attachment lives
+in the Cloudflare dashboard, so nothing in `wrangler.jsonc` reveals it). Deploying to
+"the workers.dev preview" *is* deploying to the public site — they are one Worker,
+serving byte-identical assets.
+
+**Production does not track `main`.** The live site was built from
+`claude/waitlist-page-updates-053rss`, which carries the D1-backed landing stats
+(`src/employsi/lib/landingStatsFn.ts`), the domain routing in `src/server.ts` and the
+un-clipped hero graphic. A deploy from `main` silently reverts all of it: the ticker
+falls back to the hardcoded `SEED` placeholders in `src/components/Ticker.tsx`, and
+the hero clips. **Check what branch production is on before deploying anything.**
+This happened on 2026-08-10 and was recovered with `wrangler rollback`.
+
+To let someone LOOK at a change without touching the public site, upload a version
+without shifting traffic — this prints its own preview URL:
 
 ```bash
-npx wrangler deploy                                          # the app worker
+npx wrangler versions upload      # builds + uploads, serves 0% of traffic
+npx wrangler versions list        # find a version id
+npx wrangler rollback <version-id> --message "why"   # emergency restore
+```
+
+Deploys, when actually asked for:
+
+```bash
+npx wrangler deploy                                          # the app worker -> PRODUCTION
 npx wrangler deploy --config workers/jobs-cron/wrangler.jsonc # the scraper worker
 ```
+
+Two independent deploys — doing one does not update the other.
 
 `CLOUDFLARE_API_TOKEN` must be in the environment. Do **not** pass `--noproxy '*'` to
 Cloudflare API calls in this sandbox; it breaks them.
