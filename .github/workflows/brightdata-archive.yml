@@ -124,6 +124,10 @@ on:
         description: 'Re-download an existing snapshot id instead of triggering a new collection'
         type: string
         default: ''
+      input_json:
+        description: 'Replace the search input verbatim (JSON object or array) — for testing a shape without a commit'
+        type: string
+        default: ''
 
 # ONE SWEEP AT A TIME — but the four chunks WITHIN a sweep must run together,
 # which is why this is keyed per workflow run rather than per workflow. Keying
@@ -221,6 +225,10 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+          # Through the environment, NOT interpolated into the command line —
+          # this is JSON full of quotes and braces, and pasting it into a shell
+          # string is both fragile and an injection hole.
+          INPUT_JSON: ${{ inputs.input_json }}
         run: |
           if [ -z "$BRIGHTDATA_API_TOKEN" ]; then
             echo "BRIGHTDATA_API_TOKEN is not set."
@@ -242,6 +250,8 @@ jobs:
           #
           # `probe` is deliberately left without one: null is falsy, so a
           # scheduled run collects for real, which is the point of scheduling it.
+          EXTRA=()
+          if [ -n "$INPUT_JSON" ]; then EXTRA+=(--input-json "$INPUT_JSON"); fi
           python scripts/brightdata-to-d1.py \
             --source '${{ matrix.source }}' \
             --offset '${{ matrix.chunk }}' \
@@ -249,10 +259,15 @@ jobs:
             --max-records '${{ inputs.max_records || '20000' }}' \
             --timeout-min '${{ inputs.timeout_min || '300' }}' \
             ${{ inputs.snapshot != '' && format('--snapshot {0}', inputs.snapshot) || '' }} \
-            ${{ inputs.probe && '--probe' || '' }}
-# THE SCHEDULE COLLECTS INDEED ONLY. A schedule fires one source, and `source`
-# falls back to indeed above. LinkedIn is still dispatch-only: its dataset id has
-# not been confirmed — the two LinkedIn datasets found on the account were people
-# profiles rather than job postings — so scheduling it would fire a run with the
-# wrong id every Monday. Add a second workflow (or a matrix) once a manual
-# LinkedIn run has worked.
+            ${{ inputs.probe && '--probe' || '' }} \
+            "${EXTRA[@]}"
+# THE SCHEDULE COLLECTS BOTH BOARDS — the matrix is source x chunk, so a
+# fortnightly sweep is 8 jobs: indeed and linkedin, each over four chunks of 90.
+#
+# LINKEDIN IS WIRED BUT NOT YET PROVEN. Its dataset id
+# (gd_lpfll7v5hcqtkxl6l, "Linkedin job listings information") accepts the
+# trigger, but a 6-company probe on 2026-08-10 returned ZERO records: the input
+# shape is valid to Bright Data and still matches nothing. Until a probe returns
+# rows, expect the linkedin half of each sweep to fail loudly on "No records at
+# all" rather than to write anything — which is the intended behaviour, not a
+# regression. Use input_json to test a shape without a commit.
