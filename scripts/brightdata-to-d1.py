@@ -132,21 +132,30 @@ SOURCES = {
         # `Linkedin Jobs listing`. A dataset id is an identifier, not a
         # credential, so it belongs in the repo where it can be reviewed.
         'dataset': 'gd_lpfll7v5hcqtkxl6l',
-        # THE INPUT SHAPE BELOW IS UNVERIFIED, and the one probe of it proves
-        # nothing. On 2026-08-10 a 6-company probe returned an EMPTY snapshot
-        # from an accepted trigger, which reads as "the query matched nothing".
-        # Six minutes later the same dataset answered
+        # THE EMPLOYER GOES IN `company`, NOT IN `keyword`, and getting that
+        # wrong cost three empty runs.
         #
-        #     HTTP 400: Customer is not active
+        # `keyword` was the obvious choice because Indeed's equivalent
+        # (`keyword_search`) matches the employer. LinkedIn's does not: it
+        # matches job TITLES and DESCRIPTIONS, so searching "Alkane Resources"
+        # as a keyword legitimately finds nothing. Every request was valid and
+        # every snapshot came back empty, which is the hardest kind of wrong —
+        # nothing errors, so it reads as a quiet job market.
         #
-        # so the account was being refused around the time of that probe. The
-        # empty result is therefore INCONCLUSIVE — it is at least as likely to
-        # be the account as the query. Re-probe once Bright Data is active
-        # before changing anything here; Indeed's shape took three rejections to
-        # learn and guessing at this one on top of a bad measurement would just
-        # bury a working config under fixes for a problem it never had.
+        # The schema was not guessed. Posting a deliberately invalid field made
+        # Bright Data echo the whole contract it accepts:
+        #
+        #   {"location":"", "keyword":"", "country":"", "time_range":"",
+        #    "job_type":"", "experience_level":"", "remote":"", "company":"",
+        #    "location_radius":""}
+        #   errors: [["location", "Required field"]]
+        #
+        # which is where `company` came from, and why `location` is always sent.
         'discover_by': 'keyword',
-        'input': lambda name: {'keyword': name, 'location': LOCATION},
+        'input': lambda name: {'company': name,
+                               'location': LOCATION,
+                               'country': COUNTRY,
+                               'keyword': ''},
         'fields': {
             'title': ('job_title', 'title', 'job_position'),
             'company': ('company_name', 'company', 'companyName'),
@@ -217,6 +226,9 @@ def _opt(name, default=None):
 
 
 LOCATION = _opt('--location', 'Australia')
+# LinkedIn geo-resolves a search by country code as well as by the location
+# string; Indeed's input carries its own `country`. Both default to AU.
+COUNTRY = _opt('--country', 'AU')
 ONLY = set(_opt('--only', '').split(',')) if '--only' in args else None
 
 
