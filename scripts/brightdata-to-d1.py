@@ -280,7 +280,14 @@ def bd(method: str, path: str, body=None, params: str = '') -> dict | list:
                 raw = r.read().decode('utf-8', 'replace')
                 return json.loads(raw) if raw.strip() else {}
         except urllib.error.HTTPError as e:
-            detail = e.read().decode('utf-8', 'replace')[:300]
+            # 1200, not 300. A validation_error carries an "errors" array that
+            # names the offending KEY, and it sits at the END of the body —
+            # after the echoed input line. Truncating at 300 cut it off at
+            # exactly `"errors":[["key`, which is the one part of the response
+            # worth having. Measured 2026-08-10: two runs were spent guessing at
+            # a schema Bright Data had already described in a string this
+            # function was throwing away.
+            detail = e.read().decode('utf-8', 'replace')[:1200]
             # 4xx is a contract problem — a wrong dataset id, a malformed body,
             # an unfunded account. Retrying it just spends time being wrong.
             if 400 <= e.code < 500:
