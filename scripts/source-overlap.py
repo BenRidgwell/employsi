@@ -90,18 +90,32 @@ COMPANY = _opt('--company', 'bhp')
 if not TOKEN:
     sys.exit('CLOUDFLARE_API_TOKEN is required (D1 read).')
 
+# Tables go to stdout and errors to stderr, and in a CI log the first is
+# block-buffered while the second is not — so a fatal error printed in the
+# MIDDLE of the tables it aborted, thousands of lines from where it happened.
+# Line buffering keeps the log in the order events occurred.
+sys.stdout.reconfigure(line_buffering=True)
 
-def d1(sql: str, params: list | None = None):
-    """One D1 query, backing off when the API rate-limits us.
 
-    This report is many small SELECTs rather than one big one, and a full run
-    crossed Cloudflare's per-minute limit: HTTP 429 killed the run AFTER the
-    useful tables had already printed, turning a completed analysis into a
-    failure. 429 is the API asking us to slow down, not an error to abort on,
-    so it is waited out. Genuine errors still exit.
+def d1(sql: str, params: list | None = None, soft: bool = False):
+    """One D1 query.
+
+    TWO DIFFERENT FAILURES ARRIVE AS HTTP 429 AND ONLY ONE IS WORTH RETRYING.
+
+      * Genuine rate limiting — the API asking us to slow down. Waiting helps,
+        so it is waited out.
+      * `"code": 7429, "D1 DB exceeded its CPU time limit and was reset"` — the
+        query itself is too expensive for D1's per-query CPU budget. Waiting
+        cannot help; the same query will burn the same CPU next time. Retrying
+        it once cost four minutes and still failed. It is reported as what it
+        is: a query to make cheaper, not a limit to wait out.
+
+    `soft` returns None instead of exiting, for supplementary sections that
+    must not turn an otherwise complete report into a failed run.
     """
     body = json.dumps({'sql': sql, 'params': params or []}).encode()
-    for attempt in range(6):
+    j = None
+    for attempt in range(5):
         req = urllib.request.Request(API, data=body, headers={
             'Authorization': f'Bearer {TOKEN}', 'Content-Type': 'application/json'})
         try:
@@ -109,13 +123,25 @@ def d1(sql: str, params: list | None = None):
                 j = json.loads(r.read().decode())
             break
         except urllib.error.HTTPError as e:
-            if e.code != 429 or attempt == 5:
-                sys.exit(f'D1 HTTP {e.code}: {e.read().decode()[:400]}')
-            wait = 2 ** attempt
-            sys.stderr.write(f'  D1 rate-limited, waiting {wait}s\n')
-            time.sleep(wait)
-    if not j.get('success'):
-        sys.exit(f'D1 error: {str(j.get("errors"))[:300]}')
+            detail = e.read().decode()[:400]
+            too_costly = 'CPU time' in detail or '7429' in detail
+            if e.code == 429 and not too_costly and attempt < 4:
+                wait = 2 ** attempt
+                sys.stderr.write(f'  D1 rate-limited, waiting {wait}s\n')
+                time.sleep(wait)
+                continue
+            msg = (f'D1 query too expensive (CPU limit): {detail}' if too_costly
+                   else f'D1 HTTP {e.code}: {detail}')
+            if soft:
+                sys.stderr.write(f'  SKIPPED: {msg}\n')
+                return None
+            sys.exit(msg)
+    if not j or not j.get('success'):
+        msg = f'D1 error: {str((j or {}).get("errors"))[:300]}'
+        if soft:
+            sys.stderr.write(f'  SKIPPED: {msg}\n')
+            return None
+        sys.exit(msg)
     return j['result'][0]['results']
 
 
@@ -282,12 +308,20 @@ def report(days: int) -> None:
         # source that duplicates a feed we pay for is a different decision from
         # one that duplicates a free career portal.
         for x in (a, b):
+            # JOIN THE SMALL SIDE. `live x JOIN live o` was live-against-live
+            # over ~100k rows and blew D1's per-query CPU budget outright. One
+            # source's DISTINCT role_keys is a few thousand, so materialising
+            # that first turns the join into big-against-small and it fits.
             partners = d1(
-                f'WITH live AS ({LIVE_LOOSE}) '
-                'SELECT o.source, COUNT(DISTINCT o.role_key) shared '
-                'FROM live x JOIN live o ON o.role_key = x.role_key '
-                'WHERE x.source = ?2 AND o.source != ?2 '
-                'GROUP BY o.source ORDER BY shared DESC LIMIT 6', [win, x])
+                f'WITH live AS ({LIVE_LOOSE}), '
+                'mine AS (SELECT DISTINCT role_key FROM live WHERE source = ?2) '
+                'SELECT l.source, COUNT(DISTINCT l.role_key) shared '
+                'FROM live l JOIN mine m ON m.role_key = l.role_key '
+                'WHERE l.source != ?2 '
+                'GROUP BY l.source ORDER BY shared DESC LIMIT 6',
+                [win, x], soft=True)
+            if partners is None:
+                continue
             head = ', '.join(f'{p["source"]} {p["shared"]:,}' for p in partners)
             print(f'  {x} shares most with: {head or "(nothing)"}')
 
