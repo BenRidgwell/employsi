@@ -740,22 +740,6 @@ export function CompanyPanel() {
                               />
                             </linearGradient>
                           </defs>
-                          {/* Dashed gridlines sit at the series max, midpoint and
-                              min, so they mark real levels rather than an
-                              arbitrary split of the box. They carry no labels —
-                              the headline count and the hover readout are where
-                              values are read. */}
-                          {card.chart.ticks.map((y) => (
-                            <line
-                              key={y}
-                              className="ccgrid"
-                              x1="0"
-                              x2="400"
-                              y1={y}
-                              y2={y}
-                              vectorEffect="non-scaling-stroke"
-                            />
-                          ))}
                           <path d={card.chart.area} fill="url(#cc-fade)" />
                           {card.chart.second && (
                             <path

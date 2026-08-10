@@ -64,12 +64,6 @@ export interface CardChart {
   second: CardChartLine | null;
   axis: string[];
   /**
-   * y positions (in the 400×150 viewBox) for the dashed gridlines — the series
-   * max, midpoint and min, so they mark real levels of the plotted data rather
-   * than an arbitrary split of the box.
-   */
-  ticks: number[];
-  /**
    * The plotted points, so the chart can be scrubbed and markers can sit on the
    * lines. The paths above are already-projected SVG strings and a value cannot
    * be read back out of them, which is why the chart had no hover readout at
@@ -142,8 +136,6 @@ const BASE_Y = 140;
 interface Scale {
   x: (i: number) => number;
   y: (v: number) => number;
-  min: number;
-  max: number;
 }
 
 function scaleFor(d: number[]): Scale {
@@ -159,8 +151,6 @@ function scaleFor(d: number[]): Scale {
   return {
     x: (i) => (i / Math.max(1, n - 1)) * (VB_W - 4) + 2,
     y: (v) => PLOT_BOT - ((v - lo) / (hi - lo)) * (PLOT_BOT - PLOT_TOP),
-    min,
-    max,
   };
 }
 
@@ -173,15 +163,6 @@ function plot(d: number[]): [number, number][] {
 function areaOf(pts: [number, number][]): string {
   if (pts.length < 2) return "";
   return smoothPath(pts) + ` L ${VB_W} ${BASE_Y} L 0 ${BASE_Y} Z`;
-}
-
-/** Gridline positions at the series max, midpoint and min. A flat series
- *  collapses all three onto one line, so it draws a single rule. */
-function ticksOf(d: number[]): number[] {
-  if (d.length < 2) return [];
-  const s = scaleFor(d);
-  const vals = s.max === s.min ? [s.max] : [s.max, (s.min + s.max) / 2, s.min];
-  return vals.map((v) => +s.y(v).toFixed(1));
 }
 
 function pctChange(d: number[]): number {
@@ -343,7 +324,6 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
       area: areaOf(pts),
       second,
       axis: axisOf(vac.map((p) => p.d)),
-      ticks: ticksOf(vals),
       days: vac.map((p) => p.d),
       vacValues: vals,
       secondValues,
