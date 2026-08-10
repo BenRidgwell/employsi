@@ -11489,9 +11489,9 @@ body {
   stroke-width: 1;
   stroke-dasharray: 3 3;
 }
-/* Latest point: white core inside a coloured ring, over a soft halo — the
-   design's endpoint marker. Sits on the curve, so it is nudged back onto the
-   plot at the right edge where it would otherwise be half clipped. */
+/* Markers are a solid coloured core inside a white ring, over a soft halo —
+   the reference's endpoint marker. The white ring is what keeps them legible
+   where they sit on top of their own line. */
 .ccnow,
 .ccdot {
   position: absolute;
@@ -11499,18 +11499,18 @@ body {
   height: 11px;
   margin: -5.5px 0 0 -5.5px;
   border-radius: 50%;
-  background: var(--neutral-0);
+  background: var(--status-success-fg);
   pointer-events: none;
 }
 .ccnow {
-  width: 13px;
-  height: 13px;
-  margin: -6.5px 0 0 -6.5px;
-  border: 3px solid var(--status-success-fg);
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border: 3px solid var(--neutral-0);
   animation: ccnowpulse 2.4s var(--ease-standard) infinite;
 }
 .ccnow.down {
-  border-color: var(--status-danger-fg);
+  background: var(--status-danger-fg);
   animation-name: ccnowpulsedown;
 }
 /* The halo is the animated part; the ring itself stays put so the marker never
@@ -11555,20 +11555,19 @@ body {
   }
 }
 .ccdot {
-  border: 2.5px solid var(--status-success-fg);
+  border: 2.5px solid var(--neutral-0);
   box-shadow: var(--shadow-sm);
 }
 .ccdot.down {
-  border-color: var(--status-danger-fg);
+  background: var(--status-danger-fg);
 }
-/* Solid ink disc, against the trend marker's white core in a coloured ring —
-   so the two scrub markers differ in shape as well as colour and stay
-   separable where the lines cross. */
+/* Ink core and a smaller footprint, so the two scrub markers stay separable
+   where the lines cross. */
 .ccdot.alt {
-  width: 8px;
-  height: 8px;
-  margin: -4px 0 0 -4px;
-  border: 2px solid var(--neutral-0);
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-width: 2px;
   background: var(--neutral-900);
 }
 .ccaxis {
@@ -11578,6 +11577,68 @@ body {
   font-size: 10px;
   letter-spacing: 0.08em;
   color: var(--text-tertiary);
+}
+
+/* ── hover flag ───────────────────────────────────────────────────────────
+   The reference's readout: one solid rounded block of the brand colour, white
+   text, on a stem that lands on the marker. Ink rather than the trend green
+   because the flag reads BOTH series — tinting it by the vacancy line's
+   direction would imply the share-price row shares that direction.
+
+   .wttip positions itself 14px above the anchor point, so a 14px stem meets
+   the marker exactly. Both live on the body-level portal, which is why the
+   stem is drawn on the flag rather than in the plot. */
+.ccflag {
+  padding: 9px 13px 10px;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--neutral-900);
+  text-align: left;
+  box-shadow: 0 12px 28px -12px rgba(28, 28, 30, 0.65);
+}
+.ccflag::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -13px;
+  width: 2px;
+  height: 14px;
+  transform: translateX(-50%);
+  background: var(--neutral-900);
+}
+.ccflag .wttiplabel {
+  margin-bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: left;
+  color: rgba(255, 255, 255, 0.62);
+}
+.ccflag .wttiprow {
+  gap: 7px;
+  font-size: 13px;
+  color: var(--neutral-0);
+}
+.ccflag .wttiprow b {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+.ccflag .wttiprow span {
+  color: rgba(255, 255, 255, 0.55);
+}
+/* Swatches step up a stop on the ink ground — the 700-weight foregrounds the
+   plot uses are near-invisible against it. */
+.ccflag .ccsw {
+  background: var(--green-500);
+}
+.ccflag .ccsw.down {
+  background: var(--red-500);
+}
+.ccflag .ccsw.alt {
+  background: var(--neutral-300);
 }
 
 /* ── facts + rating ─────────────────────────────────────────────────────── */

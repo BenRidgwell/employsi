@@ -804,10 +804,21 @@ export function CompanyPanel() {
                                 }}
                               />
                             )}
+                            {/* Anchored to whichever series is higher at this
+                                day, so the flag's stem lands on a marker and
+                                the card never covers the other line. */}
                             <ChartTooltip
                               boxRef={plotRef}
-                              leftPct={(chartIdx / Math.max(1, card.chart.days.length - 1)) * 100}
-                              topPct={0}
+                              className="ccflag"
+                              leftPct={(card.chart.vacPts[chartIdx][0] / 400) * 100}
+                              topPct={
+                                (Math.min(
+                                  card.chart.vacPts[chartIdx][1],
+                                  card.chart.secondPts?.[chartIdx]?.[1] ?? Infinity,
+                                ) /
+                                  150) *
+                                100
+                              }
                             >
                               <div className="wttiplabel">{fmtDay(card.chart.days[chartIdx])}</div>
                               {/* .ccsw, not the shared .wtsw: those swatches are

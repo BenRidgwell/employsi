@@ -12,11 +12,16 @@ export function ChartTooltip({
   boxRef,
   leftPct,
   topPct,
+  className,
   children,
 }: {
   boxRef: RefObject<HTMLDivElement | null>;
   leftPct: number;
   topPct: number;
+  /** Extra class for a per-chart variant, e.g. the company card's solid flag.
+   *  The base .wttip look stays the default so the workforce and financial
+   *  charts are unaffected. */
+  className?: string;
   children: ReactNode;
 }) {
   const box = boxRef.current;
@@ -25,7 +30,7 @@ export function ChartTooltip({
   const left = rect.left + (leftPct / 100) * rect.width;
   const top = rect.top + (topPct / 100) * rect.height;
   return createPortal(
-    <div className="wttip wttipfixed" style={{ left, top }}>
+    <div className={`wttip wttipfixed${className ? " " + className : ""}`} style={{ left, top }}>
       {children}
     </div>,
     document.body,
