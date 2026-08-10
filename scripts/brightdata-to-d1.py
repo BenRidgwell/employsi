@@ -117,12 +117,21 @@ SOURCES = {
     },
     'indeed': {
         'source': 'indeed',
-        # Supplied by the operator 2026-08-09. NOT verified from here, and worth
-        # confirming with --list-datasets before a paid run: every dataset id in
-        # Bright Data's own documentation is `gd_`-prefixed and this one is
-        # `sd_`. It may simply be a newer prefix — but "the id looked plausible"
-        # is exactly the reasoning this field exists to avoid.
-        'dataset': 'sd_msmsowmy2q27hoajjt',
+        # NO DEFAULT, and the reason is recorded because it cost a run.
+        # `sd_msmsowmy2q27hoajjt` was supplied on 2026-08-09 and answered
+        #
+        #     POST /trigger -> HTTP 404: dataset does not exist
+        #
+        # Every dataset id in Bright Data's documentation is `gd_`-prefixed and
+        # that one is `sd_`, which is why it shipped flagged as unverified
+        # rather than trusted. `sd_` appears to identify a different resource
+        # than the Web Scraper dataset this endpoint takes.
+        #
+        # A default that 404s is worse than none: it turns "you have not told me
+        # which scraper" into "something is broken at Bright Data". Run
+        # --list-datasets, which needs only the API token, and set
+        # BRIGHTDATA_DATASET_ID to the Indeed *jobs* id it prints.
+        'dataset': None,
         'discover_by': 'keyword',
         # `company:"Name"` is Indeed's own advertiser filter — the same query
         # scripts/indeed-to-d1.py builds in ind.search_url(). Plain keyword
@@ -255,7 +264,14 @@ def bd(method: str, path: str, body=None, params: str = '') -> dict | list:
             # 4xx is a contract problem — a wrong dataset id, a malformed body,
             # an unfunded account. Retrying it just spends time being wrong.
             if 400 <= e.code < 500:
-                sys.exit(f'Bright Data {method} {path} -> HTTP {e.code}: {detail}')
+                hint = ''
+                if e.code == 404 and 'dataset' in detail.lower():
+                    hint = (f'\n  The dataset id ({BD_DATASET}) is not one this '
+                            f'endpoint knows. Run:\n'
+                            f'    python scripts/brightdata-to-d1.py --list-datasets\n'
+                            f'  and set BRIGHTDATA_DATASET_ID to the {WHICH} JOBS '
+                            f'scraper id it prints.')
+                sys.exit(f'Bright Data {method} {path} -> HTTP {e.code}: {detail}{hint}')
             if attempt == 3:
                 sys.exit(f'Bright Data {method} {path} -> HTTP {e.code} after 4 tries: {detail}')
         except Exception as e:  # noqa: BLE001

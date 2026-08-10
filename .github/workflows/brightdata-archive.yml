@@ -34,16 +34,23 @@
 # Required repo secrets:
 #   BRIGHTDATA_API_TOKEN   — API token
 #   CLOUDFLARE_API_TOKEN   — D1 edit
-# Optional:
-#   BRIGHTDATA_DATASET_ID  — overrides the per-source default in the script.
-#                            Needed for linkedin, which has none: a wrong id
-#                            collects the wrong thing and bills for it.
+#   BRIGHTDATA_DATASET_ID  — the JOBS scraper id for the board being collected.
+#                            NEITHER source has a default: an id supplied on
+#                            2026-08-09 answered `404 dataset does not exist`,
+#                            and a default that 404s turns "you have not said
+#                            which scraper" into "Bright Data is broken".
+#                            Dispatch with list_datasets=true to print the ids
+#                            on your account — that needs only the API token.
 # Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
 name: brightdata-archive
 
 on:
   workflow_dispatch:
     inputs:
+      list_datasets:
+        description: 'Just list the scraper ids on the account and stop (needs only the API token)'
+        type: boolean
+        default: false
       source:
         description: 'Which board to collect'
         type: choice
@@ -98,6 +105,10 @@ jobs:
           if [ -z "$BRIGHTDATA_API_TOKEN" ]; then
             echo "BRIGHTDATA_API_TOKEN is not set."
             exit 1
+          fi
+          if [ "${{ inputs.list_datasets }}" = "true" ]; then
+            python scripts/brightdata-to-d1.py --list-datasets
+            exit $?
           fi
           python scripts/brightdata-to-d1.py \
             --source '${{ inputs.source }}' \
