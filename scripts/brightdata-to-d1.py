@@ -133,10 +133,24 @@ SOURCES = {
         # BRIGHTDATA_DATASET_ID to the Indeed *jobs* id it prints.
         'dataset': None,
         'discover_by': 'keyword',
-        # `company:"Name"` is Indeed's own advertiser filter — the same query
-        # scripts/indeed-to-d1.py builds in ind.search_url(). Plain keyword
-        # search returns every ad that merely mentions the name.
-        'input': lambda name: {'keyword': f'company:"{name}"',
+        # PLAIN NAME, NOT `company:"Name"`. The first attempt sent Indeed's own
+        # advertiser operator, on the reasoning that it is what
+        # ind.search_url() builds. Bright Data rejected it:
+        #
+        #   HTTP 400 {"error":"Invalid input provided","code":"validation_error",
+        #     "line":"{\"keyword\":\"company:\\\"Alkane Resources\\\"\",
+        #              \"location\":\"Australia\",\"country\":\"AU\",...}"}
+        #
+        # That field is Bright Data's, not Indeed's search box, so the operator
+        # is not a query it passes through. A plain name is what every other
+        # keyword feed here sends, and advertiser_matches() below is the gate
+        # that keeps the noise out — the same rule SimplyHired and Jora use.
+        #
+        # The error echoed the full accepted shape, which is where the rest of
+        # these keys come from rather than a guess: keyword, location, country,
+        # domain, keyword_search, date_posted, posted_by, location_radius. Only
+        # the three we have a value for are sent; Bright Data fills the rest.
+        'input': lambda name: {'keyword': name,
                                'location': LOCATION, 'country': 'AU'},
         'fields': {
             'title': ('job_title', 'title', 'jobtitle'),
@@ -271,6 +285,10 @@ def bd(method: str, path: str, body=None, params: str = '') -> dict | list:
             # an unfunded account. Retrying it just spends time being wrong.
             if 400 <= e.code < 500:
                 hint = ''
+                if e.code == 400 and 'validation' in detail.lower():
+                    hint = ('\n  Bright Data echoes the shape it wanted in "line" '
+                            'above. Copy that, edit the values, and pass it back '
+                            'with --input-json to test a fix without a code change.')
                 if e.code == 404 and 'dataset' in detail.lower():
                     hint = (f'\n  The dataset id ({BD_DATASET}) is not one this '
                             f'endpoint knows. Run:\n'
