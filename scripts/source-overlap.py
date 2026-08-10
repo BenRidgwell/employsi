@@ -145,6 +145,21 @@ def sample_keys(company: str = 'bhp', per_source: int = 6) -> None:
     it: 40 rows of adzuna and not one row of the two sources under comparison.
     Sampling is per-source for that reason.
     """
+    # "auto" picks the employer the two --pair sources BOTH cover most heavily.
+    # Sampling a company only one of them carries proves nothing about overlap,
+    # and bhp turned out to be exactly that case.
+    if company == 'auto' and len(PAIR) == 2 and all(PAIR):
+        a, b = PAIR[0].strip(), PAIR[1].strip()
+        hit = d1('SELECT company_id, COUNT(*) n FROM jobs WHERE source IN (?1, ?2) '
+                 'AND company_id IN (SELECT company_id FROM jobs WHERE source = ?1 '
+                 '                   INTERSECT SELECT company_id FROM jobs WHERE source = ?2) '
+                 'GROUP BY company_id ORDER BY n DESC LIMIT 1', [a, b])
+        if not hit:
+            print(f'  ({a} and {b} share no company_id at all)')
+            return
+        company = hit[0]['company_id']
+        print(f'  (auto-picked {company}: the employer {a} and {b} both cover most)')
+
     print(f'\n{"=" * 78}\nRAW job_key SAMPLES for company_id={company}\n{"=" * 78}')
     srcs = d1('SELECT source, COUNT(*) n FROM jobs WHERE company_id = ?1 '
               'GROUP BY source ORDER BY n DESC', [company])
