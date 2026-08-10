@@ -65,6 +65,8 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
+import urllib.error
 import urllib.request
 
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
@@ -90,11 +92,28 @@ if not TOKEN:
 
 
 def d1(sql: str, params: list | None = None):
+    """One D1 query, backing off when the API rate-limits us.
+
+    This report is many small SELECTs rather than one big one, and a full run
+    crossed Cloudflare's per-minute limit: HTTP 429 killed the run AFTER the
+    useful tables had already printed, turning a completed analysis into a
+    failure. 429 is the API asking us to slow down, not an error to abort on,
+    so it is waited out. Genuine errors still exit.
+    """
     body = json.dumps({'sql': sql, 'params': params or []}).encode()
-    req = urllib.request.Request(API, data=body, headers={
-        'Authorization': f'Bearer {TOKEN}', 'Content-Type': 'application/json'})
-    with urllib.request.urlopen(req, timeout=120) as r:
-        j = json.loads(r.read().decode())
+    for attempt in range(6):
+        req = urllib.request.Request(API, data=body, headers={
+            'Authorization': f'Bearer {TOKEN}', 'Content-Type': 'application/json'})
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                j = json.loads(r.read().decode())
+            break
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or attempt == 5:
+                sys.exit(f'D1 HTTP {e.code}: {e.read().decode()[:400]}')
+            wait = 2 ** attempt
+            sys.stderr.write(f'  D1 rate-limited, waiting {wait}s\n')
+            time.sleep(wait)
     if not j.get('success'):
         sys.exit(f'D1 error: {str(j.get("errors"))[:300]}')
     return j['result'][0]['results']
@@ -174,15 +193,22 @@ def sample_keys(company: str = 'bhp', per_source: int = 6) -> None:
             print(f'    {r["job_key"][:130]}')
 
 
+_HEALTH = None
+
+
 def report(days: int) -> None:
     win = f'-{days} day'
     print(f'\n{"=" * 78}\nROWS SEEN IN THE LAST {days} DAY(S)\n{"=" * 78}')
 
     # HEALTH FIRST. A source that stopped running has no rows to be unique, and
     # that is not the same finding as a source whose rows were all duplicates.
-    health = d1(
-        'SELECT source, COUNT(*) n, MAX(last_seen) newest, MIN(first_seen) oldest, '
-        'COUNT(DISTINCT company_id) companies FROM jobs GROUP BY source ORDER BY n DESC')
+    # Window-independent, so it is fetched once however many windows we report.
+    global _HEALTH
+    if _HEALTH is None:
+        _HEALTH = d1(
+            'SELECT source, COUNT(*) n, MAX(last_seen) newest, MIN(first_seen) oldest, '
+            'COUNT(DISTINCT company_id) companies FROM jobs GROUP BY source ORDER BY n DESC')
+    health = _HEALTH
     print(f'\n{"source":<22}{"rows(all time)":>15}{"companies":>11}  {"newest":<12}{"oldest":<12}')
     for r in health:
         print(f'{r["source"]:<22}{r["n"]:>15,}{r["companies"]:>11}  '
