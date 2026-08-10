@@ -82,8 +82,25 @@ API = f'https://api.cloudflare.com/client/v4/accounts/{ACCOUNT}/d1/database/{DB}
 TODAY = datetime.date.today().isoformat()
 
 BD_TOKEN = os.environ.get('BRIGHTDATA_API_TOKEN', '')
-BD_DATASET = os.environ.get('BRIGHTDATA_DATASET_ID', '')
 BD_BASE = 'https://api.brightdata.com/datasets/v3'
+
+
+def dataset_env(source: str) -> str:
+    """The dataset id for one board, per-source first.
+
+    ONE SHARED `BRIGHTDATA_DATASET_ID` CANNOT SERVE TWO SCHEDULED SOURCES. Each
+    board is a different scraper with a different id, so a schedule collecting
+    both Indeed and LinkedIn needs both ids present at once —
+    BRIGHTDATA_DATASET_ID_INDEED and BRIGHTDATA_DATASET_ID_LINKEDIN. Whichever
+    one happened to be in the shared variable would otherwise be used for BOTH,
+    which does not fail loudly: it collects the wrong board's postings under the
+    other board's source tag and bills for every record.
+
+    The shared name still works as a fallback so a single-source run needs no
+    change.
+    """
+    return (os.environ.get(f'BRIGHTDATA_DATASET_ID_{source.upper()}')
+            or os.environ.get('BRIGHTDATA_DATASET_ID', ''))
 
 CITIES = ['perth', 'adelaide', 'brisbane', 'melbourne', 'sydney', 'canberra']
 
@@ -248,12 +265,13 @@ if WHICH not in SOURCES:
 CFG = SOURCES[WHICH]
 SOURCE = CFG['source']
 # The env var wins, so a dashboard change needs no commit.
-BD_DATASET = BD_DATASET or CFG['dataset'] or ''
+BD_DATASET = dataset_env(WHICH) or CFG['dataset'] or ''
 if not BD_DATASET:
-    sys.exit(f'No dataset id for --source {WHICH}. Set BRIGHTDATA_DATASET_ID to the '
-             f'scraper id from your Bright Data dashboard — run --list-datasets to '
-             f'see them. It is deliberately not defaulted for this source: a wrong '
-             f'id collects the wrong thing and bills you for it.')
+    sys.exit(f'No dataset id for --source {WHICH}. Set '
+             f'BRIGHTDATA_DATASET_ID_{WHICH.upper()} (or BRIGHTDATA_DATASET_ID) to '
+             f'the scraper id from your Bright Data dashboard — run --list-datasets '
+             f'to see them. It is deliberately not defaulted for this source: a '
+             f'wrong id collects the wrong thing and bills you for it.')
 if not PROBE and not TOKEN:
     sys.exit('CLOUDFLARE_API_TOKEN is required (needs D1 edit). Use --probe to skip the write.')
 
