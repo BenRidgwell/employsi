@@ -88,17 +88,44 @@ def job_key(source: str, title: str, company: str, location: str) -> str:
 # assumed single quotes; Prettier reformatted chinaJobsTargets.ts to double
 # quotes and it went from 93 matches to 0, after which the scraper walked no
 # companies and exited 0 every night.
+# TWO BUGS LIVED IN THIS PATTERN AND BOTH FAILED SILENTLY. Measured against the
+# live data file 2026-08-09: it matched 46 of the 93 records, and 17 of those 46
+# carried a corrupted keyword.
+#
+#   1. TRAILING COMMA. Every record is written `hub: "beijing",\n  }` and the
+#      pattern ended `\s*\}` — no comma allowed — so only the records Prettier
+#      happened to leave without one matched. 47 targets, half the Chinese
+#      roster, were never walked at all and nothing said so.
+#   2. QUOTES INSIDE THE VALUE CLASS. `[^\\]` excludes backslashes but NOT the
+#      quote that terminates the value, so a non-greedy kw match crossed its own
+#      closing quote and ran on until it could satisfy the FOLLOWING record's
+#      `cityId:`. The result was keywords like
+#      `华能",\n cityId: 530,\n hub: "beijing",\n },\n { id: "beijing-601398"...`
+#      searched against Zhaopin verbatim.
+#
+# Both are the same class as the bug the note below already records: this file
+# reads TypeScript with a regex, so every assumption about the formatting is
+# load-bearing and none of them announce themselves when they break.
 TARGET_RE = re.compile(
     r'\{\s*id:\s*(["\'])(.*?)\1\s*,\s*'
-    r'name:\s*(["\'])((?:[^\\]|\\.)*?)\3\s*,\s*'
-    r'kw:\s*(["\'])((?:[^\\]|\\.)*?)\5\s*,\s*'
+    r'name:\s*(["\'])((?:[^"\'\\]|\\.)*?)\3\s*,\s*'
+    r'kw:\s*(["\'])((?:[^"\'\\]|\\.)*?)\5\s*,\s*'
     r'cityId:\s*(\d+)\s*,\s*'
-    r'hub:\s*(["\'])([^"\']+)\8\s*\}'
+    r'hub:\s*(["\'])([^"\']+)\8\s*,?\s*\}'
 )
 
 
 def load_targets() -> list[dict]:
     txt = open(os.path.join(ROOT, 'src/employsi/data/chinaJobsTargets.ts')).read()
+    # THE FILE'S OWN RECORD COUNT IS THE FLOOR. Counting `cityId:` needs no
+    # regex agreement with the rest of the pattern, so it still holds when the
+    # pattern stops matching — which is exactly when it is needed. Parsing
+    # fewer targets than the file contains has happened twice and been invisible
+    # both times.
+    # `cityId:\s*\d` and not a bare `cityId:` — the interface declares
+    # `cityId: number;` and counting that would make the floor demand one target
+    # more than the file holds, failing every run for the sake of a type.
+    declared = len(re.findall(r'cityId:\s*\d', txt))
     out = []
     for m in TARGET_RE.finditer(txt):
         cid = m.group(2)
@@ -107,6 +134,11 @@ def load_targets() -> list[dict]:
         unq = lambda s: s.replace("\\'", "'").replace('\\"', '"')  # noqa: E731
         out.append({'id': cid, 'name': unq(m.group(4)), 'kw': unq(m.group(6)),
                     'cityId': int(m.group(7)), 'hub': m.group(9)})
+    if not ONLY and declared and len(out) < declared:
+        sys.exit(f'chinaJobsTargets.ts declares {declared} targets and TARGET_RE '
+                 f'parsed {len(out)}. The file was reformatted and this regex no '
+                 f'longer reads all of it — fix the pattern rather than walking '
+                 f'the {len(out)} it still happens to match.')
     return out
 
 
@@ -266,6 +298,18 @@ def main() -> int:
             return 0
         sys.stderr.write(f'\nDone (Oxylabs). {st["fetch"]} listings fetched, {st["new"]} new rows '
                          f'archived, {st["empty"]} companies with 0 jobs.\n')
+        # ZERO LISTINGS ACROSS THE WHOLE WALK IS A FAILURE. Measured 2026-08-09:
+        # every one of 46 targets came back empty because the Oxylabs plan's
+        # quota was exhausted — each request answered HTTP 429 — and this run
+        # printed "0 new rows archived" and exited GREEN. A feed that collected
+        # nothing must go red, whatever the reason; the reason is in the fetch
+        # errors above.
+        if sel and not st['fetch']:
+            sys.stderr.write(
+                f'FAILED: {len(sel)} targets walked and not one listing fetched. '
+                f'Check the fetch errors above — an HTTP 429 is the Oxylabs plan '
+                f'quota, not Zhaopin refusing us.\n')
+            return 2
         return 0
 
     if sync_playwright is None:
@@ -350,6 +394,10 @@ def main() -> int:
 
     sys.stderr.write(f'\nDone. {total_fetch} Zhaopin listings fetched, {total_new} new rows archived, '
                      f'{blocked} companies blocked.\n')
+    if targets and not total_fetch:
+        sys.stderr.write(f'FAILED: {len(targets)} targets walked and not one listing '
+                         f'fetched.\n')
+        return 2
     if targets and blocked > len(targets) * 0.5:
         sys.stderr.write('WARNING: over half blocked — solve the security check via --headful --profile.\n')
         return 2
