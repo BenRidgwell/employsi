@@ -31,6 +31,7 @@
  */
 
 import type { Company } from "../data/companies";
+import { smoothPath } from "./chart";
 import { logoFor } from "./companyLogo";
 import type { RolePoint } from "./openRolesFn";
 import type { ShareSeries } from "./shareSeriesFn";
@@ -63,16 +64,25 @@ export interface CardChart {
   second: CardChartLine | null;
   axis: string[];
   /**
-   * The plotted points, so the chart can be scrubbed. The paths above are
-   * already-projected SVG strings and a value cannot be read back out of them,
-   * which is why the chart had no hover readout at all.
+   * y positions (in the 400×150 viewBox) for the dashed gridlines — the series
+   * max, midpoint and min, so they mark real levels of the plotted data rather
+   * than an arbitrary split of the box.
+   */
+  ticks: number[];
+  /**
+   * The plotted points, so the chart can be scrubbed and markers can sit on the
+   * lines. The paths above are already-projected SVG strings and a value cannot
+   * be read back out of them, which is why the chart had no hover readout at
+   * all.
    *
-   * `days`, `vacValues` and `secondValues` are index-aligned; `secondValues` is
-   * null when there is no second series.
+   * `days`, `vacValues` and `secondValues` are index-aligned; `secondValues`
+   * and `secondPts` are null when there is no second series.
    */
   days: string[];
   vacValues: number[];
   secondValues: number[] | null;
+  vacPts: [number, number][];
+  secondPts: [number, number][] | null;
 }
 
 export interface CardFact {
@@ -123,33 +133,55 @@ export const TREND_DOWN = DOWN;
 
 const VB_W = 400;
 const VB_H = 150;
+/** Plot band inside the viewBox. The area fill closes on BASE_Y below the band
+ *  so the gradient runs past the lowest point instead of stopping on it. */
+const PLOT_TOP = 14;
+const PLOT_BOT = 124;
+const BASE_Y = 140;
 
-function plot(d: number[]): [number, number][] {
+interface Scale {
+  x: (i: number) => number;
+  y: (v: number) => number;
+  min: number;
+  max: number;
+}
+
+function scaleFor(d: number[]): Scale {
   const n = d.length;
-  if (n < 2) return [];
   const min = Math.min(...d);
   const max = Math.max(...d);
   const span = max - min || 1;
   // The design pads the range by 35% either side so a flat series doesn't draw
   // as a line pinned to the floor of the box.
   const pad = span * 0.35;
-  return d.map((v, i) => [
-    (i / (n - 1)) * (VB_W - 4) + 2,
-    122 - ((v - (min - pad)) / (span + pad * 2)) * 92,
-  ]);
+  const lo = min - pad;
+  const hi = max + pad;
+  return {
+    x: (i) => (i / Math.max(1, n - 1)) * (VB_W - 4) + 2,
+    y: (v) => PLOT_BOT - ((v - lo) / (hi - lo)) * (PLOT_BOT - PLOT_TOP),
+    min,
+    max,
+  };
 }
 
-function pathOf(pts: [number, number][]): string {
-  return pts.map(([x, y], i) => (i ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1)).join(" ");
+function plot(d: number[]): [number, number][] {
+  if (d.length < 2) return [];
+  const s = scaleFor(d);
+  return d.map((v, i) => [s.x(i), s.y(v)]);
 }
 
 function areaOf(pts: [number, number][]): string {
-  if (!pts.length) return "";
-  return (
-    "M0 138 L" +
-    pts.map(([x, y]) => x.toFixed(1) + " " + y.toFixed(1)).join(" L") +
-    ` L${VB_W} 138 Z`
-  );
+  if (pts.length < 2) return "";
+  return smoothPath(pts) + ` L ${VB_W} ${BASE_Y} L 0 ${BASE_Y} Z`;
+}
+
+/** Gridline positions at the series max, midpoint and min. A flat series
+ *  collapses all three onto one line, so it draws a single rule. */
+function ticksOf(d: number[]): number[] {
+  if (d.length < 2) return [];
+  const s = scaleFor(d);
+  const vals = s.max === s.min ? [s.max] : [s.max, (s.min + s.max) / 2, s.min];
+  return vals.map((v) => +s.y(v).toFixed(1));
 }
 
 function pctChange(d: number[]): number {
@@ -157,8 +189,16 @@ function pctChange(d: number[]): number {
   return ((d[d.length - 1] - d[0]) / d[0]) * 100;
 }
 
+/** A tenth of a percent is meaningful at 6.5% and noise at 4250% — past 100 the
+ *  decimal is dropped and the thousands separated, so the pill stays readable. */
 function signed(v: number, unit = "%"): string {
-  return (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1) + unit;
+  const a = Math.abs(v);
+  const digits = a >= 100 ? 0 : 1;
+  return (
+    (v >= 0 ? "+" : "−") +
+    a.toLocaleString("en-AU", { minimumFractionDigits: digits, maximumFractionDigits: digits }) +
+    unit
+  );
 }
 
 /** "2026-07-21" → "21 Jul". */
@@ -256,6 +296,7 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
     const days = vac.length;
     let second: CardChartLine | null = null;
     let secondValues: number[] | null = null;
+    let secondPts: [number, number][] | null = null;
     // The second line is only drawn when it sits on the SAME days as the
     // vacancy series. A quarterly share series or a single revenue ratio would
     // both look like a second line on this axis while measuring another window.
@@ -279,10 +320,11 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
       }
       if (matched >= 2) {
         secondValues = aligned;
+        secondPts = plot(aligned);
         const chg2 = pctChange(aligned);
         second = {
           label: "Share price",
-          path: pathOf(plot(aligned)),
+          path: smoothPath(secondPts),
           latest: `${input.share?.currency === "AUD" ? "A$" : "$"}${aligned[aligned.length - 1].toFixed(2)}`,
           delta: signed(chg2),
           up: chg2 >= 0,
@@ -293,7 +335,7 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
       label: `Last ${days} day${days === 1 ? "" : "s"}`,
       vacancies: {
         label: "Vacancies",
-        path: pathOf(pts),
+        path: smoothPath(pts),
         latest: vals[vals.length - 1].toLocaleString("en-AU"),
         delta: signed(chg),
         up: chg >= 0,
@@ -301,9 +343,12 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
       area: areaOf(pts),
       second,
       axis: axisOf(vac.map((p) => p.d)),
+      ticks: ticksOf(vals),
       days: vac.map((p) => p.d),
       vacValues: vals,
       secondValues,
+      vacPts: pts,
+      secondPts,
     };
   } else {
     chartNote =

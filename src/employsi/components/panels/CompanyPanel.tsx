@@ -678,22 +678,31 @@ export function CompanyPanel() {
 
                   {card.chart ? (
                     <div className="ccchart">
-                      <div className="ccchartend">
-                        <span className="cceyebrow">{card.chart.label}</span>
-                        <div className="cclegend">
-                          <span className="cclegitem">
-                            <span
-                              className={`cclegline ${card.chart.vacancies.up ? "up" : "down"}`}
-                            />
-                            Vacancies
+                      {/* Headline block, left-aligned above the plot: eyebrow,
+                          the live vacancy count with its change pill inline,
+                          then the second series as a quieter line beneath.
+                          These used to float inside the plot as four absolutely
+                          positioned boxes, which sat on top of the line itself
+                          whenever a series ran near the top or bottom of the
+                          band. */}
+                      <div className="ccreadout">
+                        <span className="cceyebrow">Vacancies · {card.chart.label}</span>
+                        <span className="ccreadv">
+                          {card.chart.vacancies.latest}
+                          <span className={`ccdelta ${card.chart.vacancies.up ? "up" : "down"}`}>
+                            {card.chart.vacancies.up ? "▲" : "▼"} {card.chart.vacancies.delta}
                           </span>
-                          {card.chart.second && (
-                            <span className="cclegitem">
-                              <span className="cclegline dash" />
-                              {card.chart.second.label}
+                        </span>
+                        {card.chart.second && (
+                          <span className="ccreadsub">
+                            <i className="cclegline alt" />
+                            {card.chart.second.latest}
+                            <em>{card.chart.second.label.toLowerCase()}</em>
+                            <span className={`ccsubd ${card.chart.second.up ? "up" : "down"}`}>
+                              {card.chart.second.up ? "▲" : "▼"} {card.chart.second.delta}
                             </span>
-                          )}
-                        </div>
+                          </span>
+                        )}
                       </div>
 
                       <div
@@ -711,10 +720,18 @@ export function CompanyPanel() {
                         <svg viewBox="0 0 400 150" preserveAspectRatio="none" fill="none">
                           <defs>
                             <linearGradient id="cc-fade" x1="0" y1="0" x2="0" y2="1">
+                              {/* The design leads with the fill, not the stroke:
+                                  saturated at the curve and washing out to
+                                  nothing at the floor. */}
                               <stop
                                 offset="0"
                                 stopColor={card.chart.vacancies.up ? TREND_UP : TREND_DOWN}
-                                stopOpacity=".18"
+                                stopOpacity=".42"
+                              />
+                              <stop
+                                offset=".5"
+                                stopColor={card.chart.vacancies.up ? TREND_UP : TREND_DOWN}
+                                stopOpacity=".14"
                               />
                               <stop
                                 offset="1"
@@ -723,33 +740,86 @@ export function CompanyPanel() {
                               />
                             </linearGradient>
                           </defs>
+                          {/* Dashed gridlines sit at the series max, midpoint and
+                              min, so they mark real levels rather than an
+                              arbitrary split of the box. They carry no labels —
+                              the headline count and the hover readout are where
+                              values are read. */}
+                          {card.chart.ticks.map((y) => (
+                            <line
+                              key={y}
+                              className="ccgrid"
+                              x1="0"
+                              x2="400"
+                              y1={y}
+                              y2={y}
+                              vectorEffect="non-scaling-stroke"
+                            />
+                          ))}
                           <path d={card.chart.area} fill="url(#cc-fade)" />
+                          {card.chart.second && (
+                            <path
+                              className="ccline2"
+                              d={card.chart.second.path}
+                              strokeWidth="1.5"
+                              strokeLinejoin="round"
+                              strokeLinecap="round"
+                              vectorEffect="non-scaling-stroke"
+                            />
+                          )}
                           <path
                             d={card.chart.vacancies.path}
                             stroke={card.chart.vacancies.up ? TREND_UP : TREND_DOWN}
-                            strokeWidth="2"
+                            strokeWidth="2.25"
                             strokeLinejoin="round"
                             strokeLinecap="round"
+                            vectorEffect="non-scaling-stroke"
                           />
-                          {card.chart.second && (
-                            <path
-                              d={card.chart.second.path}
-                              stroke="#8e8e93"
-                              strokeWidth="1.8"
-                              strokeDasharray="5 4"
-                              strokeLinejoin="round"
-                              strokeLinecap="round"
+                          {chartIdx != null && card.chart.vacPts[chartIdx] && (
+                            <line
+                              className="ccscrubline"
+                              x1={card.chart.vacPts[chartIdx][0]}
+                              x2={card.chart.vacPts[chartIdx][0]}
+                              y1="6"
+                              y2="140"
+                              vectorEffect="non-scaling-stroke"
                             />
                           )}
                         </svg>
+
+                        {/* Markers are HTML, not SVG: the plot stretches with
+                            preserveAspectRatio="none", which would squash an
+                            SVG circle into an ellipse. */}
+                        {chartIdx == null && card.chart.vacPts.length > 0 && (
+                          <span
+                            className={`ccnow ${card.chart.vacancies.up ? "up" : "down"}`}
+                            style={{
+                              left: `${(card.chart.vacPts[card.chart.vacPts.length - 1][0] / 400) * 100}%`,
+                              top: `${(card.chart.vacPts[card.chart.vacPts.length - 1][1] / 150) * 100}%`,
+                            }}
+                          />
+                        )}
+
                         {chartIdx != null && card.chart.days[chartIdx] && (
                           <>
-                            <span
-                              className="ccscrub"
-                              style={{
-                                left: `${(chartIdx / Math.max(1, card.chart.days.length - 1)) * 100}%`,
-                              }}
-                            />
+                            {card.chart.secondPts?.[chartIdx] && (
+                              <span
+                                className="ccdot alt"
+                                style={{
+                                  left: `${(card.chart.secondPts[chartIdx][0] / 400) * 100}%`,
+                                  top: `${(card.chart.secondPts[chartIdx][1] / 150) * 100}%`,
+                                }}
+                              />
+                            )}
+                            {card.chart.vacPts[chartIdx] && (
+                              <span
+                                className={`ccdot ${card.chart.vacancies.up ? "up" : "down"}`}
+                                style={{
+                                  left: `${(card.chart.vacPts[chartIdx][0] / 400) * 100}%`,
+                                  top: `${(card.chart.vacPts[chartIdx][1] / 150) * 100}%`,
+                                }}
+                              />
+                            )}
                             <ChartTooltip
                               boxRef={plotRef}
                               leftPct={(chartIdx / Math.max(1, card.chart.days.length - 1)) * 100}
@@ -770,24 +840,6 @@ export function CompanyPanel() {
                               )}
                             </ChartTooltip>
                           </>
-                        )}
-                        <span className="cccallout left">
-                          <span className="cccalloutv">{card.chart.vacancies.latest}</span>
-                          <span className="cccalloutl">Vacancies</span>
-                        </span>
-                        {card.chart.second && (
-                          <span className="cccallout right">
-                            <span className="cccalloutv">{card.chart.second.latest}</span>
-                            <span className="cccalloutl">{card.chart.second.label}</span>
-                          </span>
-                        )}
-                        <span className={`ccdelta left ${card.chart.vacancies.up ? "up" : "down"}`}>
-                          {card.chart.vacancies.delta}
-                        </span>
-                        {card.chart.second && (
-                          <span className={`ccdelta right ${card.chart.second.up ? "up" : "down"}`}>
-                            {card.chart.second.delta}
-                          </span>
                         )}
                       </div>
 

@@ -11365,128 +11365,195 @@ body {
   text-overflow: ellipsis;
 }
 
-/* ── chart ──────────────────────────────────────────────────────────────── */
+/* ── chart ────────────────────────────────────────────────────────────────
+   Restyled from the stock-investment UI kit the design references: the numbers
+   are read from a headline block above the plot, and the plot itself is a
+   fill-led area with dashed level rules and one marker on the latest point.
+   Nothing floats over the curve any more — the old layout pinned two callouts
+   and two change pills inside the plot box, where they covered the line on any
+   series that ran high or low in the band. */
 .ccchart {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
-.ccchartend {
+.ccreadout {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+/* The headline count. Tabular figures so the number doesn't jitter as the
+   scrub changes it, and a tight optical size to match the design's display
+   weight. */
+.ccreadv {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
+  font-size: 30px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-display);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
-.cclegend {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.cclegitem {
+.ccdelta {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 3px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0;
   white-space: nowrap;
-  font-size: 11.5px;
+}
+.ccdelta.up {
+  background: var(--status-success-bg);
+  color: var(--status-success-fg);
+}
+.ccdelta.down {
+  background: var(--status-danger-bg);
+  color: var(--status-danger-fg);
+}
+/* Second series: one quiet line under the headline rather than a second
+   equal-weight callout, because the share price is context for the vacancy
+   count, not a competing headline. */
+.ccreadsub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
 }
-.cclegline {
-  width: 14px;
+.ccreadsub em {
+  font-style: normal;
+  color: var(--text-tertiary);
+}
+.ccsubd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.ccsubd.up {
+  color: var(--status-success-fg);
+}
+.ccsubd.down {
+  color: var(--status-danger-fg);
+}
+/* Swatch for the second series, coloured to match how that line is actually
+   drawn — a swatch that doesn't look like its line is worse than no swatch. */
+.cclegline.alt {
+  width: 12px;
   height: 2px;
-  border-radius: 999px;
-  background: #1f6a48;
-}
-.cclegline.down {
-  background: #97332b;
-}
-/* The second series is dashed and grey, matching how it is drawn — a legend
-   that doesn't look like its line is worse than no legend. */
-.cclegline.dash {
-  height: 0;
-  border-top: 2px dashed var(--text-tertiary);
-  background: none;
+  border-radius: var(--radius-pill);
+  background: var(--neutral-400);
 }
 .ccplot {
   position: relative;
   cursor: crosshair;
 }
-/* Vertical scrub line marking the hovered day. The readout itself is portalled
-   to the body (ChartTooltip) because the card clips its own overflow. */
-.ccscrub {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: var(--line);
-  pointer-events: none;
-}
 .ccplot svg {
   display: block;
   width: 100%;
-  height: 150px;
+  height: 164px;
 }
-.cccallout {
+.ccgrid {
+  stroke: var(--border-default);
+  stroke-width: 1;
+  stroke-dasharray: 5 6;
+}
+.ccline2 {
+  stroke: var(--neutral-400);
+}
+.ccscrubline {
+  stroke: var(--neutral-400);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+/* Latest point: white core inside a coloured ring, over a soft halo — the
+   design's endpoint marker. Sits on the curve, so it is nudged back onto the
+   plot at the right edge where it would otherwise be half clipped. */
+.ccnow,
+.ccdot {
   position: absolute;
-  top: 0;
-  display: inline-flex;
-  flex-direction: column;
-  padding: 5px 9px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  width: 11px;
+  height: 11px;
+  margin: -5.5px 0 0 -5.5px;
+  border-radius: 50%;
   background: var(--neutral-0);
-  box-shadow: 0 4px 12px -6px rgba(28, 28, 30, 0.4);
+  pointer-events: none;
 }
-.cccallout.left {
-  left: 0;
+.ccnow {
+  width: 13px;
+  height: 13px;
+  margin: -6.5px 0 0 -6.5px;
+  border: 3px solid var(--status-success-fg);
+  animation: ccnowpulse 2.4s var(--ease-standard) infinite;
 }
-.cccallout.right {
-  right: 0;
-  align-items: flex-end;
+.ccnow.down {
+  border-color: var(--status-danger-fg);
+  animation-name: ccnowpulsedown;
 }
-.cccalloutv {
-  font-family: "JetBrains Mono", monospace;
-  font-size: 14px;
-  letter-spacing: -0.02em;
+/* The halo is the animated part; the ring itself stays put so the marker never
+   looks like it is drifting off the curve. */
+@keyframes ccnowpulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 4px rgba(47, 143, 99, 0.1),
+      var(--shadow-sm);
+  }
+  50% {
+    box-shadow:
+      0 0 0 8px rgba(47, 143, 99, 0.2),
+      var(--shadow-sm);
+  }
 }
-.cccalloutl {
-  font-family: "JetBrains Mono", monospace;
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
+@keyframes ccnowpulsedown {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 4px rgba(196, 70, 59, 0.1),
+      var(--shadow-sm);
+  }
+  50% {
+    box-shadow:
+      0 0 0 8px rgba(196, 70, 59, 0.2),
+      var(--shadow-sm);
+  }
 }
-.ccdelta {
-  display: inline-flex;
-  align-items: center;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: 999px;
-  font-family: "JetBrains Mono", monospace;
-  font-size: 11px;
-  white-space: nowrap;
+@media (prefers-reduced-motion: reduce) {
+  .ccnow {
+    animation: none;
+    box-shadow:
+      0 0 0 5px rgba(47, 143, 99, 0.14),
+      var(--shadow-sm);
+  }
+  .ccnow.down {
+    box-shadow:
+      0 0 0 5px rgba(196, 70, 59, 0.14),
+      var(--shadow-sm);
+  }
 }
-.ccplot > .ccdelta {
-  position: absolute;
-  bottom: 28px;
+.ccdot {
+  border: 2.5px solid var(--status-success-fg);
+  box-shadow: var(--shadow-sm);
 }
-.ccplot > .ccdelta.left {
-  left: 0;
+.ccdot.down {
+  border-color: var(--status-danger-fg);
 }
-.ccplot > .ccdelta.right {
-  right: 0;
-}
-.ccdelta.up {
-  background: #e8f3ec;
-  color: #1f6a48;
-}
-.ccdelta.down {
-  background: #f7ebe9;
-  color: #97332b;
+.ccdot.alt {
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border: 2px solid var(--neutral-400);
 }
 .ccaxis {
   display: flex;
   justify-content: space-between;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.08em;
   color: var(--text-tertiary);
