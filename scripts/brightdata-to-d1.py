@@ -132,6 +132,19 @@ SOURCES = {
         # `Linkedin Jobs listing`. A dataset id is an identifier, not a
         # credential, so it belongs in the repo where it can be reviewed.
         'dataset': 'gd_lpfll7v5hcqtkxl6l',
+        # THE INPUT SHAPE BELOW IS UNVERIFIED, and the one probe of it proves
+        # nothing. On 2026-08-10 a 6-company probe returned an EMPTY snapshot
+        # from an accepted trigger, which reads as "the query matched nothing".
+        # Six minutes later the same dataset answered
+        #
+        #     HTTP 400: Customer is not active
+        #
+        # so the account was being refused around the time of that probe. The
+        # empty result is therefore INCONCLUSIVE — it is at least as likely to
+        # be the account as the query. Re-probe once Bright Data is active
+        # before changing anything here; Indeed's shape took three rejections to
+        # learn and guessing at this one on top of a bad measurement would just
+        # bury a working config under fixes for a problem it never had.
         'discover_by': 'keyword',
         'input': lambda name: {'keyword': name, 'location': LOCATION},
         'fields': {
@@ -349,7 +362,24 @@ def bd(method: str, path: str, body=None, params: str = '') -> dict | list:
             # an unfunded account. Retrying it just spends time being wrong.
             if 400 <= e.code < 500:
                 hint = ''
-                if e.code == 400 and 'validation' in detail.lower():
+                # AN ACCOUNT-STATE ERROR IS NOT A REQUEST ERROR, and reading it
+                # as one wastes hours. "Customer is not active" arrives as a
+                # plain HTTP 400 alongside genuine validation failures, so it
+                # looks like a bad payload. On 2026-08-10 it appeared minutes
+                # after a LinkedIn probe returned an EMPTY snapshot from an
+                # accepted trigger — and that empty result was read as a wrong
+                # search shape, which sent the next run chasing a schema bug
+                # that did not exist. Nothing about the request can fix this.
+                if 'not active' in detail.lower() or 'suspend' in detail.lower():
+                    hint = ('\n  THIS IS THE ACCOUNT, NOT THE REQUEST. Bright Data '
+                            'is refusing to collect for this customer at all — '
+                            'usually billing, a spent allowance or a suspended '
+                            'plan. No dataset id, search shape or --input-json '
+                            'will change it, and an empty snapshot returned '
+                            'around the same time probably means this too rather '
+                            'than a query that matched nothing. Check the Bright '
+                            'Data dashboard before changing any code here.')
+                elif e.code == 400 and 'validation' in detail.lower():
                     hint = ('\n  Bright Data echoes the shape it wanted in "line" '
                             'above. Copy that, edit the values, and pass it back '
                             'with --input-json to test a fix without a code change.')
