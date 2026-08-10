@@ -162,6 +162,7 @@ _SPLIT = """
 LIVE_STRICT = ("SELECT source, company_id, "
                "substr(job_key, instr(job_key, '|') + 1) AS role_key "
                "FROM jobs WHERE last_seen >= date('now', ?1)")
+LIVE_STRICT_PAIR = LIVE_STRICT + ' AND source IN (?2, ?3)'
 
 # LOOSE: company_id + title, location dropped, and the employer's own name
 # removed from the title as a whitespace-delimited run — recruiters routinely
@@ -172,6 +173,29 @@ SELECT source, company_id,
        company_id || '|' ||
        trim(replace(' ' || title || ' ', ' ' || comp || ' ', ' ')) AS role_key
 FROM ({_SPLIT})
+"""
+
+# THE SAME KEY, BUT BUILT FOR TWO SOURCES ONLY.
+#
+# Every comparison below is between a PAIR of sources, and the whole-archive
+# CTE above cannot serve them: the loose key is substr/instr/replace/trim per
+# row, a pairwise query references the CTE twice, and over ~100k live rows that
+# doubled string work exceeds D1's per-query CPU budget outright —
+#
+#     "code": 7429, "D1 DB exceeded its CPU time limit and was reset"
+#
+# Pushing `source IN (?2, ?3)` down INTO the scan is what makes these queries
+# affordable: the string work then runs over the two feeds' few thousand rows
+# instead of the archive's hundred thousand. Filtering after the CTE does not
+# help, because the cost is incurred building it.
+_SPLIT_PAIR = _SPLIT.replace(
+    "WHERE last_seen >= date('now', ?1)",
+    "WHERE last_seen >= date('now', ?1) AND source IN (?2, ?3)")
+LIVE_PAIR = f"""
+SELECT source, company_id,
+       company_id || '|' ||
+       trim(replace(' ' || title || ' ', ' ' || comp || ' ', ' ')) AS role_key
+FROM ({_SPLIT_PAIR})
 """
 
 LIVE = LIVE_LOOSE
@@ -265,8 +289,9 @@ def report(days: int) -> None:
     # apparent uniqueness was only the two scrapers wording a title differently.
     if len(PAIR) == 2 and all(PAIR):
         a, b = PAIR[0].strip(), PAIR[1].strip()
-        for label, sql in (('title match, employer name stripped', LIVE_LOOSE),
-                           ('exact job_key suffix (known to over-count)', LIVE_STRICT)):
+        for label, sql in (('title match, employer name stripped', LIVE_PAIR),
+                           ('exact job_key suffix (known to over-count)',
+                            LIVE_STRICT_PAIR)):
             print(f'\n--- {a} vs {b}, in this window [{label}] ---')
             for x, y in ((a, b), (b, a)):
                 q = d1(
@@ -277,7 +302,7 @@ def report(days: int) -> None:
                     [win, x, y])
                 tot = d1(f'WITH live AS ({sql}) '
                          'SELECT COUNT(DISTINCT role_key) n FROM live WHERE source = ?2',
-                         [win, x])
+                         [win, x, y])
                 n, t = q[0]['n'], tot[0]['n']
                 pct = 100.0 * n / t if t else 0
                 print(f'  roles {x} has that {y} does not : {n:,} of {t:,} ({pct:.1f}%)')
@@ -293,7 +318,7 @@ def report(days: int) -> None:
         # Do the two sources even cover the same employers? If they do not,
         # nothing above is about duplication — it is about different companies.
         cov = d1(
-            f'WITH live AS ({LIVE_LOOSE}) '
+            f'WITH live AS ({LIVE_PAIR}) '
             'SELECT (SELECT COUNT(DISTINCT company_id) FROM live WHERE source = ?2) a, '
             '       (SELECT COUNT(DISTINCT company_id) FROM live WHERE source = ?3) b, '
             '       (SELECT COUNT(*) FROM ('
@@ -307,22 +332,31 @@ def report(days: int) -> None:
         # actionable once you know which feed is holding the other 81.4% — a
         # source that duplicates a feed we pay for is a different decision from
         # one that duplicates a free career portal.
-        for x in (a, b):
-            # JOIN THE SMALL SIDE. `live x JOIN live o` was live-against-live
-            # over ~100k rows and blew D1's per-query CPU budget outright. One
-            # source's DISTINCT role_keys is a few thousand, so materialising
-            # that first turns the join into big-against-small and it fits.
-            partners = d1(
-                f'WITH live AS ({LIVE_LOOSE}), '
-                'mine AS (SELECT DISTINCT role_key FROM live WHERE source = ?2) '
-                'SELECT l.source, COUNT(DISTINCT l.role_key) shared '
-                'FROM live l JOIN mine m ON m.role_key = l.role_key '
-                'WHERE l.source != ?2 '
-                'GROUP BY l.source ORDER BY shared DESC LIMIT 6',
-                [win, x], soft=True)
-            if partners is None:
-                continue
-            head = ', '.join(f'{p["source"]} {p["shared"]:,}' for p in partners)
+        #
+        # ONE CHEAP QUERY PER CANDIDATE, not one expensive query over everything.
+        # Two whole-archive formulations were tried and both exceeded D1's CPU
+        # budget: a live-against-live self-join, and then a join against one
+        # source's materialised keys. The cost was never the join — it was
+        # building the loose key across ~100k rows. Asking about one pair at a
+        # time keeps every query inside the budget, at the price of N requests.
+        # Only the biggest feeds are worth asking about, so this stops at the
+        # top few by volume in this window.
+        candidates = [r['source'] for r in rows[:12]] if days > 1 else []
+        for x in (a, b) if candidates else ():
+            shared = []
+            for p in candidates:
+                if p == x:
+                    continue
+                got = d1(
+                    f'WITH live AS ({LIVE_PAIR}) '
+                    'SELECT COUNT(*) n FROM ('
+                    '  SELECT role_key FROM live WHERE source = ?2 '
+                    '  INTERSECT SELECT role_key FROM live WHERE source = ?3)',
+                    [win, x, p], soft=True)
+                if got and got[0]['n']:
+                    shared.append((p, got[0]['n']))
+            shared.sort(key=lambda kv: -kv[1])
+            head = ', '.join(f'{p} {n:,}' for p, n in shared[:6])
             print(f'  {x} shares most with: {head or "(nothing)"}')
 
 
