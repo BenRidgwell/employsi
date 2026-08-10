@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { D1Like } from "./jobArchive";
 import { SKILL_CATEGORY, parseStoredSkills } from "../data/skillsTaxonomy";
-import { detectIntent } from "./analystIntent";
+import { detectIntent, type AnalystIntent } from "./analystIntent";
 import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
 
 /**
@@ -322,6 +322,17 @@ export interface AnalystRequest {
    * archive stores an employer, not a sector). Empty/absent = no narrowing.
    */
   companyIds?: string[];
+  /**
+   * The intent this turn resolved to, once the conversation is taken into
+   * account (see lib/analystTurn.ts).
+   *
+   * Sent rather than re-derived because a follow-up does not contain its own
+   * intent: "what about Sydney?" classifies as "unknown" on its own, so reading
+   * the sentence again here would answer the fallback and discard the question
+   * it was following up on. Absent, the sentence is classified on its own — the
+   * behaviour every caller had before follow-ups existed.
+   */
+  intent?: AnalystIntent;
 }
 
 // POST rather than GET: a GET server fn serialises its payload into the URL,
@@ -332,7 +343,7 @@ export const askAnalyst = createServerFn({ method: "POST" })
   .validator((data: AnalystRequest) => data)
   .handler(async ({ data }): Promise<AnalystAnswer> => {
     const { question, scope, hubs, country, sector, companyIds } = data;
-    const intent = detectIntent(question || "");
+    const intent = data.intent ?? detectIntent(question || "");
     const db = await getArchiveDb();
     if (!db) {
       return {

@@ -12,7 +12,8 @@
  *
  * So the cases below are mostly about what must NOT resolve.
  */
-import { detectScope } from "../src/employsi/lib/analystScope";
+import { detectScope, scopeForCity } from "../src/employsi/lib/analystScope";
+import { describeQuery, resolveTurn, type AnalystQuery } from "../src/employsi/lib/analystTurn";
 
 let failures = 0;
 const fail = (msg: string) => {
@@ -100,6 +101,96 @@ console.log("\nresolved scopes carry hubs:");
     }
   }
   if (failures === before) console.log("  ok    every resolved scope has hubs (world excepted)");
+}
+
+// ── 6. Turn sequences: what a follow-up actually inherits ───────────────────
+// Single sentences are not the feature. These are.
+console.log("\ncarrying an analysis across turns:");
+const PERTH = scopeForCity("perth")!;
+
+interface Step {
+  q: string;
+  intent: string;
+  skill: string | null;
+  scope: string;
+}
+const SEQUENCES: { name: string; steps: Step[] }[] = [
+  {
+    name: "pivot the place, keep the question",
+    steps: [
+      { q: "Which skills are most in demand?", intent: "skills", skill: null, scope: "Perth" },
+      { q: "What about Sydney?", intent: "skills", skill: null, scope: "Sydney" },
+      { q: "and Canada?", intent: "skills", skill: null, scope: "Canada" },
+    ],
+  },
+  {
+    name: "pivot the skill, keep the question and the place",
+    steps: [
+      { q: "How is hiring trending?", intent: "volume", skill: null, scope: "Perth" },
+      { q: "What about Sydney?", intent: "volume", skill: null, scope: "Sydney" },
+      { q: "and for Nursing?", intent: "volume", skill: "Nursing", scope: "Sydney" },
+    ],
+  },
+  {
+    name: "pivot to a company",
+    steps: [
+      { q: "What do these roles pay?", intent: "pay", skill: null, scope: "Perth" },
+      { q: "what about BHP?", intent: "pay", skill: null, scope: "BHP" },
+    ],
+  },
+  {
+    name: "A NEW QUESTION MUST DROP THE OLD SKILL",
+    // The failure this guards: inherit-everything-always would answer a
+    // market-wide question about one skill, silently, with real figures.
+    steps: [
+      {
+        q: "How does Software Engineering pay?",
+        intent: "pay",
+        skill: "Software Engineering",
+        scope: "Perth",
+      },
+      { q: "Which skills are most in demand?", intent: "skills", skill: null, scope: "Perth" },
+    ],
+  },
+  {
+    name: "a new question still keeps the place",
+    steps: [
+      { q: "What about Sydney?", intent: "unknown", skill: null, scope: "Sydney" },
+      { q: "Which skills take longest to fill?", intent: "duration", skill: null, scope: "Sydney" },
+    ],
+  },
+];
+
+for (const seq of SEQUENCES) {
+  let carried: AnalystQuery | null = null;
+  const before = failures;
+  for (const step of seq.steps) {
+    const turn = resolveTurn(step.q, carried, PERTH, "perth");
+    carried = turn.query;
+    const got = `${turn.query.intent}/${turn.query.skill ?? "—"}/${turn.query.scope.label}`;
+    const want = `${step.intent}/${step.skill ?? "—"}/${step.scope}`;
+    if (got !== want) fail(`${seq.name}: ${JSON.stringify(step.q)} -> ${got}, expected ${want}`);
+  }
+  if (failures === before) console.log(`  ok    ${seq.name}`);
+}
+
+// ── 7. An inherited turn must be able to say what it is about ───────────────
+// Carried state steering real figures has to be visible; see TurnResult.inherited.
+console.log("\ninherited turns are labelled:");
+{
+  const before = failures;
+  const first = resolveTurn("How is hiring trending?", null, PERTH, "perth");
+  if (first.inherited.length) fail("the first turn inherited something");
+  const next = resolveTurn("What about Sydney?", first.query, PERTH, "perth");
+  if (!next.inherited.includes("intent")) fail("a bare pivot did not record the inherited intent");
+  if (describeQuery(next.query) !== "Sydney") {
+    fail(`describeQuery -> ${JSON.stringify(describeQuery(next.query))}, expected "Sydney"`);
+  }
+  const withSkill = resolveTurn("and for Nursing?", next.query, PERTH, "perth");
+  if (describeQuery(withSkill.query) !== "Nursing · Sydney") {
+    fail(`describeQuery -> ${JSON.stringify(describeQuery(withSkill.query))}`);
+  }
+  if (failures === before) console.log("  ok    first turn inherits nothing; pivots are labelled");
 }
 
 console.log(failures ? `\n${failures} failure(s).` : "\nAll analyst follow-up checks passed.");

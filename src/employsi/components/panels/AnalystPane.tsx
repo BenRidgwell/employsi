@@ -1,12 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../../state/store";
-import { COMPANIES, SECTOR_SHORT } from "../../data/companies";
-import { CITY_LABEL, GLOBAL_HUB_LABEL, CITY_CONTINENT } from "../../data/geo";
-import { CITY_COUNTRY, COUNTRIES, COUNTRY_MEMBERS, REGION_HUBS } from "../../data/mapboxWorldGeo";
-import { cityForCompany } from "../../data/mapboxGeo";
+import { SECTOR_SHORT } from "../../data/companies";
+import { CITY_CONTINENT } from "../../data/geo";
+import { CITY_COUNTRY } from "../../data/mapboxWorldGeo";
 import { answerQuestion } from "../../lib/analystAnswer";
 import type { AnalystAnswer, AnalystScope } from "../../lib/analystFn";
 import { PROMPT_TOPICS } from "../../lib/analystIntent";
+import {
+  type ResolvedScope,
+  scopeForCompany,
+  scopeForCity,
+  scopeForCountry,
+  scopeForRegion,
+  WORLD_SCOPE,
+} from "../../lib/analystScope";
+import { describeQuery, resolveTurn, type AnalystQuery } from "../../lib/analystTurn";
 import { ALL_SECTORS, companyIdsForSector, sectorsInScope } from "../../lib/analystSector";
 import { IconClose } from "../ActionIcons";
 import { AnalystChartView } from "./AnalystChart";
@@ -46,6 +54,8 @@ interface Msg {
   role: "user" | "analyst";
   text: string;
   answer?: AnalystAnswer;
+  /** "Nursing · Sydney" — set only when this turn inherited something. */
+  context?: string;
 }
 
 const OPENER =
@@ -77,12 +87,15 @@ const SCOPE_PATHS: Record<string, string[]> = {
   ],
 };
 
-interface ScopeOption extends AnalystScope {
-  /** Archive hub keys this scope covers. */
-  hubs: string[];
-  /** ISO country, when the scope sits in exactly one — fixes salary currency. */
-  country?: string;
-}
+/**
+ * The chip row's scopes. Built by lib/analystScope.ts, which also resolves the
+ * scope a QUESTION names, so a chip and a sentence can never disagree about
+ * what "Perth" covers.
+ */
+type ScopeOption = ResolvedScope;
+
+/** Two scopes are the same scope when they point at the same rows. */
+const sameScope = (a: AnalystScope, b: AnalystScope) => a.kind === b.kind && a.id === b.id;
 
 function AnalystIcon() {
   return (
@@ -114,55 +127,56 @@ export function AnalystPane() {
   // Scopes follow the user rather than being a fixed list: whatever company is
   // open, the city they're in, its country, its region, and everything.
   const scopes = useMemo<ScopeOption[]>(() => {
-    const out: ScopeOption[] = [];
-    const company = selectedId ? COMPANIES.find((c) => c.id === selectedId) : undefined;
-    if (company) {
-      out.push({
-        kind: "company",
-        id: company.id,
-        label: company.name,
-        hubs: [cityForCompany(company.id, localCity)],
-        country: CITY_COUNTRY[cityForCompany(company.id, localCity)],
-      });
-    }
+    const out: (ScopeOption | null)[] = [];
+    if (selectedId) out.push(scopeForCompany(selectedId, localCity));
     const city = localCity;
     if (city) {
-      out.push({
-        kind: "city",
-        id: city,
-        label: GLOBAL_HUB_LABEL[city] || CITY_LABEL[city] || city,
-        hubs: [city],
-        country: CITY_COUNTRY[city],
-      });
+      out.push(scopeForCity(city));
       const cc = CITY_COUNTRY[city];
-      if (cc && COUNTRIES[cc]) {
-        out.push({
-          kind: "country",
-          id: cc,
-          label: COUNTRIES[cc].label,
-          // The country's own label appears as a hub on some rows, so include it.
-          hubs: [...(COUNTRY_MEMBERS[cc] ?? [city]), COUNTRIES[cc].label],
-          country: cc,
-        });
-      }
+      if (cc) out.push(scopeForCountry(cc));
     }
-    const region = domesticRegion || CITY_CONTINENT[city];
-    if (region && REGION_HUBS[region]) {
-      out.push({
-        kind: "region",
-        id: region,
-        label: region.charAt(0).toUpperCase() + region.slice(1),
-        hubs: REGION_HUBS[region],
-      });
-    }
-    out.push({ kind: "world", id: "", label: "Worldwide", hubs: [] });
+    out.push(scopeForRegion(domesticRegion || CITY_CONTINENT[city]));
+    out.push(WORLD_SCOPE);
     // De-duplicate by label, keeping the most specific (earliest) entry.
     const seen = new Set<string>();
-    return out.filter((s) => (seen.has(s.label) ? false : (seen.add(s.label), true)));
+    return out
+      .filter((s): s is ScopeOption => !!s)
+      .filter((s) => (seen.has(s.label) ? false : (seen.add(s.label), true)));
   }, [selectedId, localCity, domesticRegion]);
 
-  const [scopeIdx, setScopeIdx] = useState(0);
-  const scope = scopes[Math.min(scopeIdx, scopes.length - 1)];
+  /**
+   * The scope the ANALYSIS is on, which is not always a chip.
+   *
+   * Held by value rather than as an index into `scopes`, because a question can
+   * move the analysis somewhere the chip row does not offer — "what about
+   * Canada?" while the chips read Perth / Australia / Asia. An index cannot
+   * represent that, and clamping one (the previous behaviour) would silently
+   * answer about a different place than the user asked for.
+   */
+  const [activeScope, setActiveScope] = useState<ScopeOption | null>(null);
+  const scope = activeScope ?? scopes[0];
+  /**
+   * The last resolved question, so the next one can be a follow-up.
+   *
+   * This is the entire memory of the feature. Null means the next sentence is
+   * read on its own — the behaviour before follow-ups existed.
+   */
+  const [carried, setCarried] = useState<AnalystQuery | null>(null);
+
+  // A scope reached by asking still needs a chip, or the row would show one
+  // place highlighted while the answer came from another.
+  const chips = useMemo<ScopeOption[]>(
+    () => (scopes.some((s) => sameScope(s, scope)) ? scopes : [scope, ...scopes]),
+    [scopes, scope],
+  );
+
+  // Moving the map out from under the pane invalidates a scope that came from a
+  // question — the chips rebuild around the new place, and an analysis still
+  // pinned to the old one would be answering about somewhere the user has left.
+  useEffect(() => {
+    setActiveScope(null);
+    setCarried(null);
+  }, [selectedId, localCity, domesticRegion]);
 
   // Sector narrowing, within whatever scope is selected. Only sectors that
   // actually have employers in this scope are offered — a chip that can only
@@ -225,18 +239,36 @@ export function AnalystPane() {
     setThread((t) => [...t, { id: nextId.current++, role: "user", text: question }]);
     setDraft("");
     setThinking(true);
+    // Merge this sentence with the conversation BEFORE querying: a follow-up
+    // carries no intent of its own, so asking the archive about the raw text
+    // would answer the fallback instead of the question being followed up on.
+    const turn = resolveTurn(question, carried, scope, localCity);
+    // A question that named a place moves the chip too. Leaving the chip behind
+    // would show one place while the numbers came from another.
+    if (!sameScope(turn.query.scope, scope)) setActiveScope(turn.query.scope);
+    setCarried(turn.query);
     try {
       const answer = await answerQuestion(
         question,
-        scope,
-        scope.hubs,
-        scope.country,
+        turn.query.scope,
+        turn.query.scope.hubs,
+        turn.query.scope.country,
         activeSector === ALL_SECTORS ? undefined : activeSector,
         sectorIds,
+        { intent: turn.query.intent, skill: turn.query.skill, wantsAreas: turn.query.wantsAreas },
       );
       setThread((t) => [
         ...t,
-        { id: nextId.current++, role: "analyst", text: answer.text, answer },
+        {
+          id: nextId.current++,
+          role: "analyst",
+          text: answer.text,
+          answer,
+          // Only when something was carried: labelling every answer with its own
+          // scope is noise, but an answer that quietly changed subject has to
+          // say what it is about. See TurnResult.inherited.
+          context: turn.inherited.length ? describeQuery(turn.query) : undefined,
+        },
       ]);
     } catch {
       setThread((t) => [
@@ -273,13 +305,21 @@ export function AnalystPane() {
 
         <div className="anscopes">
           <span className="anscopelbl">Scope</span>
-          {scopes.map((s, i) => (
+          {chips.map((s) => (
             <button
               key={s.kind + s.id}
               type="button"
-              className={`anscope${i === scopeIdx ? " on" : ""}`}
-              aria-pressed={i === scopeIdx}
-              onClick={() => setScopeIdx(i)}
+              // Highlighted by identity, not by index: the active scope can be
+              // one the question introduced rather than one of the derived
+              // chips, and an index cannot point at that.
+              className={`anscope${sameScope(s, scope) ? " on" : ""}`}
+              aria-pressed={sameScope(s, scope)}
+              onClick={() => {
+                setActiveScope(s);
+                // Picking a scope by hand re-bases the conversation on it, so
+                // the next "what about nursing?" is asked about THIS place.
+                setCarried((q) => (q ? { ...q, scope: s } : q));
+              }}
             >
               <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor">
                 {(SCOPE_PATHS[s.kind] ?? []).map((d) => (
@@ -318,6 +358,13 @@ export function AnalystPane() {
               <div key={m.id} className="anrow">
                 <div className="ananswer">
                   <span className="antail" />
+                  {/* What this answer is ABOUT, shown only when the turn
+                      inherited it rather than saying it. A follow-up like "what
+                      about Sydney?" is answered from context the sentence does
+                      not contain, and hidden context steering real figures is
+                      exactly what analystIntent.ts's "predictable rule"
+                      principle is there to prevent. */}
+                  {m.context && <span className="ancontext">{m.context}</span>}
                   <span className="antext">{m.text}</span>
 
                   {/* The chart sits directly under the sentence that states the

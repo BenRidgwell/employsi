@@ -600,6 +600,17 @@ body {
   background: var(--surface-card);
   transform: rotate(12deg) skewX(-8deg);
 }
+/* What a follow-up is about, when the sentence itself did not say. Rendered
+   only on turns that inherited something, above the answer text — it is the
+   visible half of carried state, not a caption. */
+.ancontext {
+  margin-bottom: -6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
 .antext {
   font-size: 14px;
   line-height: 1.5;

@@ -1,5 +1,6 @@
 import { askAnalyst, type AnalystAnswer, type AnalystBar, type AnalystScope } from "./analystFn";
-import { detectIntent, detectSkill } from "./analystIntent";
+import { detectIntent, detectSkill, type AnalystIntent } from "./analystIntent";
+import { wantsAreas as wantsAreasIn } from "./analystTurn";
 import {
   HISTORY_SPAN,
   hasCoverage,
@@ -208,6 +209,15 @@ function marketHistoryAnswer(
   };
 }
 
+/**
+ * `resolved` is the turn already merged with the conversation so far (see
+ * lib/analystTurn.ts). It MUST win over re-deriving from the sentence: a
+ * follow-up like "what about Sydney?" carries no intent of its own, so reading
+ * the sentence again here would classify it "unknown" and answer with the
+ * fallback — throwing away the very thing the merge established. Absent, the
+ * sentence is read on its own, which is the first turn and every non-pane
+ * caller.
+ */
 export async function answerQuestion(
   question: string,
   scope: AnalystScope,
@@ -215,9 +225,10 @@ export async function answerQuestion(
   country?: string,
   sector?: string,
   companyIds?: string[],
+  resolved?: { intent: AnalystIntent; skill: string | null; wantsAreas: boolean },
 ): Promise<AnalystAnswer> {
-  const intent = detectIntent(question);
-  const skill = detectSkill(question);
+  const intent = resolved?.intent ?? detectIntent(question);
+  const skill = resolved ? resolved.skill : detectSkill(question);
   const covered = hasCoverage(hubs);
 
   // Long-run questions, and any question about a NAMED skill's demand, are
@@ -234,9 +245,7 @@ export async function answerQuestion(
   // "…across cities", "…by region", "where is it strongest" — the same skill
   // split by area rather than read against the market. Keyword-matched like
   // every other route here, so what you get is predictable from what you typed.
-  const wantsAreas = /\b(across|compare|between|by (city|cities|region|state)|where)\b/i.test(
-    question,
-  );
+  const wantsAreas = resolved?.wantsAreas ?? wantsAreasIn(question);
 
   if (wantsHistory && covered) {
     const answer = skill
@@ -272,5 +281,5 @@ export async function answerQuestion(
 
   // Everything else is a question about the live market: what is open, who is
   // advertising, what the ads say. That is the archive's job.
-  return askAnalyst({ data: { question, scope, hubs, country, sector, companyIds } });
+  return askAnalyst({ data: { question, scope, hubs, country, sector, companyIds, intent } });
 }
