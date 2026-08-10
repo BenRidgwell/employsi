@@ -175,14 +175,18 @@ WHICH = _opt('--source', '')
 # Data's playground shows the exact shape each scraper wants; this pastes it in
 # without a code change, which beats another round of guessing at a schema.
 INPUT_JSON = _opt('--input-json')
+# --grep: narrow --list-datasets. Defaults to job-board words; 'all' disables.
+GREP = _opt('--grep')
 
 if not BD_TOKEN:
     sys.exit('BRIGHTDATA_API_TOKEN is required.')
 
 if LIST_DATASETS:
-    # GET /datasets/list returns every scraper id on the account. This is here
-    # because the alternative to knowing the id is guessing it, and a wrong id
-    # collects the wrong thing and bills for it.
+    # GET /datasets/list returns every dataset the account can see, which on a
+    # real account is the whole marketplace — ~1,900 entries of "test dataset -
+    # ignore", tiktok posts and speedtest.net. A dump that size does not answer
+    # "which id do I use", so it is FILTERED by default. --grep all shows
+    # everything; --grep <terms> narrows to your own words.
     import urllib.request as _u
     _req = _u.Request('https://api.brightdata.com/datasets/list',
                       headers={'Authorization': f'Bearer {BD_TOKEN}'})
@@ -193,16 +197,18 @@ if LIST_DATASETS:
         sys.exit(f'Could not list datasets: {_e}')
     if isinstance(_rows, dict):
         _rows = _rows.get('datasets') or _rows.get('data') or []
-    _hits = [d for d in _rows if isinstance(d, dict)]
-    print(f'{len(_hits)} scrapers on this account:\n')
-    for _d in sorted(_hits, key=lambda x: str(x.get('name', ''))):
-        _name = str(_d.get('name', ''))
-        _low = _name.lower()
-        _mark = ('  <- ' + _w for _w in ('linkedin', 'indeed') if _w in _low)
-        _mark = next(_mark, '')
-        print(f"  {str(_d.get('id', '')):28} {_name[:60]}{_mark}")
-    print('\nUse the JOBS scraper for a board — not profiles, not companies. '
-          'Set BRIGHTDATA_DATASET_ID, or add it to SOURCES in this file.')
+    _all = [d for d in _rows if isinstance(d, dict)]
+    _terms = [t.strip().lower() for t in (GREP or 'indeed,linkedin,job,seek,glassdoor'
+                                          ).split(',') if t.strip()]
+    _show = _all if _terms == ['all'] else [
+        d for d in _all if any(t in str(d.get('name', '')).lower() for t in _terms)]
+    print(f'{len(_show)} of {len(_all)} datasets match {_terms}:\n')
+    for _d in sorted(_show, key=lambda x: str(x.get('name', ''))):
+        print(f"  {str(_d.get('id', '')):28} {str(_d.get('name', ''))[:70]}")
+    if not _show:
+        print('  (nothing matched — try --grep all, or --grep with your own terms)')
+    print('\nPick the JOBS scraper for the board you want — not profiles, not '
+          'companies — and set BRIGHTDATA_DATASET_ID to its id.')
     raise SystemExit(0)
 
 if WHICH not in SOURCES:

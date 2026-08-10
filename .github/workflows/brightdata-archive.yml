@@ -48,9 +48,13 @@ on:
   workflow_dispatch:
     inputs:
       list_datasets:
-        description: 'Just list the scraper ids on the account and stop (needs only the API token)'
+        description: 'Just list matching dataset ids and stop (needs only the API token)'
         type: boolean
         default: false
+      grep:
+        description: 'Filter that listing (comma-separated, or "all" — the account can see ~1900 datasets)'
+        type: string
+        default: 'indeed,linkedin,job'
       source:
         description: 'Which board to collect'
         type: choice
@@ -107,7 +111,7 @@ jobs:
             exit 1
           fi
           if [ "${{ inputs.list_datasets }}" = "true" ]; then
-            python scripts/brightdata-to-d1.py --list-datasets
+            python scripts/brightdata-to-d1.py --list-datasets --grep '${{ inputs.grep }}'
             exit $?
           fi
           python scripts/brightdata-to-d1.py \
