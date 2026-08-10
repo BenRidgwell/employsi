@@ -19,6 +19,9 @@ on:
       - 'scripts/skills_taxonomy.py'
       - 'scripts/test_skills_taxonomy.py'
       - 'scripts/gen-*-demand.py'
+      - 'scripts/check-analyst-followups.ts'
+      - 'src/employsi/lib/analystScope.ts'
+      - 'src/employsi/data/companies.ts'
       - '.github/workflows/skills-check.yml'
   pull_request:
     paths:
@@ -26,6 +29,9 @@ on:
       - 'scripts/check-skills.ts'
       - 'scripts/skills_taxonomy.py'
       - 'scripts/test_skills_taxonomy.py'
+      - 'scripts/check-analyst-followups.ts'
+      - 'src/employsi/lib/analystScope.ts'
+      - 'src/employsi/data/companies.ts'
   workflow_dispatch: {}
 
 jobs:
@@ -46,6 +52,13 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           JOBS_ARCHIVE_DB_ID: ${{ secrets.JOBS_ARCHIVE_DB_ID }}
         run: bun run scripts/check-skills.ts
+
+      # The analyst's scope resolver reads the COMPANY ROSTER, so this can break
+      # without anyone touching the analyst: adding an employer whose name is a
+      # short ordinary word is enough to make a follow-up resolve to it. Runs on
+      # companies.ts changes for exactly that reason.
+      - name: Assert analyst follow-ups resolve to the right scope
+        run: bun run scripts/check-analyst-followups.ts
 
       - uses: actions/setup-python@v6
         with:
