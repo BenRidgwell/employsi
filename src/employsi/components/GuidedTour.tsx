@@ -26,8 +26,16 @@ import { CITY_LABEL, GLOBAL_HUB_LABEL } from "../data/geo";
  * separate design and the hub is only offered where its steps can resolve.
  */
 
-/** Where the tooltip sits relative to the spotlit element. */
-type Place = "right" | "top" | "bottom";
+/**
+ * Where the tooltip sits relative to the spotlit element.
+ *
+ * `top` and `top-end` sit at the same height and differ only in which edge they
+ * align to. That distinction exists because of the city banner: it runs almost
+ * the full width of the window, so aligning the card to its LEFT edge put it
+ * underneath the vertical rail, which floats over that corner. `top-end` aligns
+ * the card's right edge to the element's instead, which lands it in open map.
+ */
+type Place = "right" | "top" | "top-end" | "bottom";
 
 interface TourStep {
   /** `data-tour` value of the element to spotlight. */
@@ -61,7 +69,7 @@ const LOCAL_TOURS: Record<string, TourDef> = {
     steps: [
       {
         anchor: "banner",
-        place: "top",
+        place: "top-end",
         pad: 8,
         radius: 999,
         title: "Where you are",
@@ -122,7 +130,7 @@ const LOCAL_TOURS: Record<string, TourDef> = {
       },
       {
         anchor: "banner",
-        place: "top",
+        place: "top-end",
         pad: 8,
         radius: 999,
         title: "Counts stay in sync",
@@ -328,6 +336,10 @@ export function GuidedTour({ onClose }: { onClose: () => void }) {
       top = r.y;
     } else if (s.place === "top") {
       left = r.x;
+      top = r.y - 18 - tipH;
+    } else if (s.place === "top-end") {
+      // Same height as `top`, right edge aligned instead of left — see Place.
+      left = r.x + r.w - TIP_W;
       top = r.y - 18 - tipH;
     } else {
       left = r.x + r.w - TIP_W;
