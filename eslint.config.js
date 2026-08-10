@@ -17,6 +17,12 @@ export default tseslint.config(
       // .wrangler. Git ignores both; ESLint was still linting the bundles and
       // reporting a thousand prettier errors in generated output.
       "**/.wrangler/**",
+      // Third-party bundles shipped verbatim with the waitlist design handoff
+      // (React, lucide, topojson, the design-system bundle, world-atlas). They
+      // are vendored artefacts, not source: nobody edits them here, Prettier
+      // wants to reformat every minified line, and linting them took `npm run
+      // lint` from seconds to minutes for eleven errors in react.js alone.
+      "public/waitlist-preview/**",
       // Machine-generated data modules (each carries a "GENERATED — do not edit
       // by hand" header and is rewritten by a script in scripts/). Prettier would
       // reformat their compact one-line-per-record arrays into hundreds of
