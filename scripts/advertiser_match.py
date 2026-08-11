@@ -174,6 +174,35 @@ ADVERTISER_ALIAS = {
     # like the gate working correctly.
     'herbert smith freehills kramer': 'herbert smith freehills',
     'herbert smith freehills kramer llp': 'herbert smith freehills',
+    # DIVISIONS THAT ADVERTISE UNDER THEIR OWN BANNER. Each was losing every ad
+    # it placed, measured on the Indeed chunk of 2026-08-11 (the count is what
+    # the drop report showed against what the parent kept that run):
+    #
+    #   Woolworths Supermarkets  31 dropped   Woolworths Group kept  4
+    #   Wesfarmers Health        28 dropped   Wesfarmers       kept  7
+    #   Ampol Retail Store       20 dropped   Ampol            kept 12
+    #
+    # In each case the extra word is a line of business, not corporate form, so
+    # the token rule rejects it and is right to by default — that is the same
+    # rule keeping "IGO Techonologies" off IGO.
+    #
+    # WHY THESE THREE AND NOT THE OTHER NEAR MISSES in the same report. These
+    # are divisions of the rostered parent, so their vacancies genuinely are the
+    # parent's. The ones deliberately left rejected are separate organisations
+    # that merely share a word:
+    #
+    #   Endeavour Foundation  a disability charity, NOT Endeavour Group — and
+    #                         Endeavour Group itself demerged from Woolworths in
+    #                         2021, so it is not Woolworths either
+    #   Macquarie University  not Macquarie Group
+    #   SA Health             a state health department, on nobody's roster
+    #
+    # Only the strings actually observed are listed. The lookup is exact on the
+    # normalised tokens, so a variant is a miss — and the drop report is how the
+    # next one gets found, rather than by pre-inventing spellings here.
+    'woolworths supermarkets': 'woolworths group',
+    'wesfarmers health': 'wesfarmers',
+    'ampol retail store': 'ampol',
 }
 
 
