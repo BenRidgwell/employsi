@@ -1,0 +1,151 @@
+<!doctype html>
+<!--
+  SOURCE for public/og-image.png. Rendered by scripts/gen-og-image.sh; see that
+  file for why this is a browser render rather than a drawing library.
+
+  FONT_MONA_SANS and FONT_JETBRAINS_MONO are replaced by the generator with
+  base64 woff2 payloads before the render, so this file opens with fallback
+  fonts if you load it directly — that is expected, and the checked-in PNG is
+  the artefact that ships, not this page.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>employsi — social card source</title>
+    <style>
+      @font-face {
+        font-family: "Mona Sans Variable";
+        src: url(data:font/woff2;base64,FONT_MONA_SANS) format("woff2");
+        font-weight: 200 900;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        src: url(data:font/woff2;base64,FONT_JETBRAINS_MONO) format("woff2");
+        font-weight: 500;
+        font-display: block;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+      }
+
+      /* The dark half of the landing page's own gradient, held at the top of
+         its ramp. The full landing gradient runs all the way to white by 76%;
+         at card proportions that reads as a washed-out band rather than a
+         graphic, so this stops at the mid greys and keeps the type on ink. */
+      .card {
+        position: relative;
+        width: 1200px;
+        height: 630px;
+        padding: 72px 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        background:
+          radial-gradient(
+            120% 140% at 78% -20%,
+            rgba(255, 255, 255, 0.18),
+            rgba(255, 255, 255, 0) 58%
+          ),
+          linear-gradient(160deg, #0a0a0c 0%, #151517 46%, #2a2a2f 78%, #45454b 100%);
+        font-family: "Mona Sans Variable", system-ui, sans-serif;
+        color: #ffffff;
+      }
+
+      .lockup {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .lockup span {
+        font-size: 34px;
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        line-height: 1;
+        color: #f3f3f4;
+      }
+
+      h1 {
+        font-size: 82px;
+        font-weight: 700;
+        line-height: 1.04;
+        letter-spacing: -0.035em;
+        max-width: 900px;
+      }
+
+      .sub {
+        margin-top: 26px;
+        font-size: 27px;
+        font-weight: 400;
+        line-height: 1.45;
+        letter-spacing: -0.005em;
+        max-width: 840px;
+        color: rgba(255, 255, 255, 0.72);
+      }
+
+      .foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-weight: 500;
+        font-size: 17px;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: rgba(255, 255, 255, 0.48);
+      }
+
+      .rule {
+        height: 1px;
+        margin-bottom: 26px;
+        background: rgba(160, 160, 172, 0.34);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="lockup">
+        <!-- The four rects of EmploysiMark in src/components/EmploysiLogo.tsx,
+             in its `reversed` palette. Inlined rather than <img src> so the
+             render has no file it can silently fail to load. -->
+        <svg viewBox="0 0 120 120" width="44" height="44">
+          <rect x="24" y="24" width="15" height="72" rx="7.5" fill="#ffffff" />
+          <rect x="24" y="24" width="40" height="15" rx="7.5" fill="rgba(255,255,255,0.55)" />
+          <rect x="24" y="52.5" width="55" height="15" rx="7.5" fill="rgba(255,255,255,0.78)" />
+          <rect x="24" y="81" width="72" height="15" rx="7.5" fill="#ffffff" />
+        </svg>
+        <span>employsi</span>
+      </div>
+
+      <div>
+        <!-- Word for word the page's own H1 and the first sentence of its
+             standfirst. A social card that promises something the page does not
+             say is the same failure as a fabricated stat. -->
+        <h1>Explore the world&nbsp;of&nbsp;work.</h1>
+        <p class="sub">
+          The HR intelligence platform that treats the labour market like a stock market — live
+          skill demand across countries, cities and companies.
+        </p>
+      </div>
+
+      <div>
+        <div class="rule"></div>
+        <div class="foot">
+          <span>employsi.com.au</span>
+          <span>HR intelligence</span>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

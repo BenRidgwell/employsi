@@ -2,6 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { MARKETING_APEX, MARKETING_WWW } from "./lib/site";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -23,9 +24,13 @@ type ServerEntry = {
  * archive read and is unaffected by which hostname asked.
  *
  * RELEASING THE APP is deleting APP_ONLY_PATHS, and nothing else.
+ *
+ * MARKETING_APEX and MARKETING_WWW come from ./lib/site, which is also what the
+ * canonical link, og:url and og:image are built from. They were duplicated here
+ * as literals; one hostname spelled in two files is one file getting missed the
+ * day the domain changes, and the failure would be silent — a canonical tag
+ * pointing at a host this Worker no longer answers on.
  */
-const MARKETING_APEX = "employsi.com.au";
-const MARKETING_WWW = "www.employsi.com.au";
 
 /**
  * Paths that belong to the product rather than the waitlist.
@@ -59,12 +64,61 @@ function isAppOnlyPath(pathname: string): boolean {
  * `/_serverFn/` is disallowed on the apex because those are RPC endpoints for
  * the page's own fetches — they answer JSON to a correctly-formed call and 500
  * to a bare GET, so a crawler spending budget on them gets nothing either way.
+ *
+ * The named .html pages are scratch renders that happen to live in public/, so
+ * the static handler serves them on the marketing domain: measured 2026-08-11,
+ * https://employsi.com.au/skyline-3d and /waitlist-preview both answer 200 with
+ * a full page (nitro 307s the .html form to the extensionless one, so BOTH
+ * spellings need naming). `<title>Bundled Page</title>` indexed under this
+ * domain is worse than no second page at all. Disallow rather than delete
+ * because they are working files the design still renders from; deleting them
+ * is a separate decision from keeping them out of the index.
  */
 function robotsTxt(host: string): string {
   if (host !== MARKETING_APEX) {
     return "# Not the canonical host — see https://employsi.com.au\nUser-agent: *\nDisallow: /\n";
   }
-  return ["User-agent: *", "Allow: /", "Disallow: /_serverFn/", ""].join("\n");
+  return [
+    "User-agent: *",
+    "Allow: /",
+    "Disallow: /_serverFn/",
+    "Disallow: /skyline-3d",
+    "Disallow: /skyline-v4",
+    "Disallow: /waitlist-preview",
+    "",
+    // Absolute by specification: the Sitemap directive is the one line in
+    // robots.txt that is not relative to the host that served the file.
+    `Sitemap: https://${MARKETING_APEX}/sitemap.xml`,
+    "",
+  ].join("\n");
+}
+
+/**
+ * The sitemap, which today lists exactly one URL — the landing page is the only
+ * thing the apex serves. That is not a reason to skip it: a sitemap is how
+ * Search Console is given a crawl entry point it will report coverage against,
+ * and this file is where the second page goes on the day there is one.
+ *
+ * NO `lastmod`, `changefreq` or `priority`. Google ignores the last two
+ * outright, and it ignores `lastmod` from any site whose dates it decides are
+ * not trustworthy. Nothing available inside a Worker at request time knows when
+ * the landing copy actually changed — the deploy timestamp would move on every
+ * unrelated deploy, which is precisely the untrustworthy signal that gets a
+ * site's dates discounted. An absent field beats an invented one.
+ *
+ * Served here rather than from public/ for the same reason robots.txt is: one
+ * static file would answer for every host, and this one names the apex.
+ */
+function sitemapXml(): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    "  <url>",
+    `    <loc>https://${MARKETING_APEX}/</loc>`,
+    "  </url>",
+    "</urlset>",
+    "",
+  ].join("\n");
 }
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
@@ -157,6 +211,26 @@ export default {
             // Short: this is the file to be able to change quickly if the
             // wrong thing turns out to be indexed.
             "cache-control": "public, max-age=300",
+          },
+        });
+      }
+
+      // Apex only. Every other host answers `Disallow: /` above, so a sitemap
+      // there would be advertising a list of URLs to a crawler that has just
+      // been told not to crawl — and a sitemap naming the apex, served from a
+      // host the apex does not own, is a cross-host submission that Search
+      // Console rejects anyway. 404 is the honest answer off the apex.
+      if (url.pathname === "/sitemap.xml") {
+        if (host !== MARKETING_APEX) {
+          return new Response("Not found", {
+            status: 404,
+            headers: { "content-type": "text/plain; charset=utf-8" },
+          });
+        }
+        return new Response(sitemapXml(), {
+          headers: {
+            "content-type": "application/xml; charset=utf-8",
+            "cache-control": "public, max-age=3600",
           },
         });
       }

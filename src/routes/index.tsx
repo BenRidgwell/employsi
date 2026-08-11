@@ -18,9 +18,61 @@ import { createPortal } from "react-dom";
 // which _headers already marks immutable, so it ships with the page and is
 // cached forever. The sidecar is left in place for Lovable's own bookkeeping.
 import ridgwellPhoto from "@/assets/ridgwell_photo.jpeg";
+import { CANONICAL_URL, SITE_ORIGIN, OG_IMAGE_URL } from "@/lib/site";
 
-/** The one address this page wants to be found at. See the canonical link below. */
-const CANONICAL_URL = "https://employsi.com.au/";
+/**
+ * Structured data — the machine-readable version of what this page already
+ * says in prose, for Google's knowledge panel and rich results.
+ *
+ * EVERY FIELD IS SOURCED FROM THE PAGE OR THE DEPLOYMENT. `name`, `description`
+ * and `founder` are the H1, the standfirst and the About card verbatim; `url`
+ * and `logo` are files this Worker serves. There is no `sameAs`, because
+ * Employsi has no social profile to name and a guessed handle would attribute
+ * the product to whoever owns it — the same reasoning that keeps twitter:site
+ * off the root route. There is no `SearchAction` either: that markup declares a
+ * site-search endpoint, and this site has no search. Structured data is read by
+ * a machine that cannot sanity-check it, which makes an invented field worse
+ * here than anywhere else on the page.
+ *
+ * Two nodes in one @graph rather than two <script> tags, so the WebSite can
+ * point its publisher at the Organization by @id instead of restating it.
+ */
+const STRUCTURED_DATA = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_ORIGIN}/#organization`,
+      name: "Employsi",
+      url: CANONICAL_URL,
+      // The LOGO, not the social card. Google renders this field as the
+      // organisation's mark in a knowledge panel, so the promo card — headline,
+      // standfirst and all — is the wrong image for it even though it is the
+      // better one for `image`. Verified 2026-08-11 that this path is served:
+      // 200, image/svg+xml. SVG is an accepted format for this field.
+      logo: `${SITE_ORIGIN}/assets/employsi-logo-horizontal.svg`,
+      image: OG_IMAGE_URL,
+      description:
+        "Employsi is the HR intelligence platform that treats the labour market like a stock market, showing live skill demand across countries, cities and companies.",
+      founder: {
+        "@type": "Person",
+        name: "Ben Ridgwell",
+      },
+      areaServed: {
+        "@type": "Country",
+        name: "Australia",
+      },
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_ORIGIN}/#website`,
+      name: "Employsi",
+      url: CANONICAL_URL,
+      inLanguage: "en-AU",
+      publisher: { "@id": `${SITE_ORIGIN}/#organization` },
+    },
+  ],
+};
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -38,6 +90,15 @@ export const Route = createFileRoute("/")({
           "HR intelligence for understanding talent markets, compensation, and the shifting shape of work.",
       },
       { property: "og:url", content: CANONICAL_URL },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        // JSON.stringify, never a template literal. An unescaped "</script>"
+        // inside the payload would close the tag early; stringify is what keeps
+        // the copy above data rather than markup.
+        children: JSON.stringify(STRUCTURED_DATA),
+      },
     ],
     links: [
       // ABSOLUTE, and hardcoded to the apex on purpose.
