@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { callerRole } from "./sessionRole";
 import { marketVisible, isReleasedRow } from "./markets";
-import type { D1Like } from "./jobArchive";
+import type { D1Like, SqlValue } from "./jobArchive";
 import { COMPANY_ID_ALIAS, type RolePoint } from "./openRolesFn";
 import { SKILL_CATEGORY, parseStoredSkills } from "../data/skillsTaxonomy";
 import { annualAud, medianAnnual } from "./salaryParse";
@@ -796,3 +796,229 @@ export const getVacancyTrend = createServerFn({ method: "GET" })
       return [];
     }
   });
+
+// ── per-skill demand for one company ────────────────────────────────────────
+//
+// What a single employer is actually recruiting for, skill by skill, with a
+// daily series behind each one. Powers the company card's skill search (which
+// skills can be picked) and the per-skill sparklines beside them.
+//
+// This is a COMPANY-SCOPED version of the reconstruction getLiveSkillTrends
+// already runs market-wide: the archive stores `skills`, `first_seen` and
+// `last_seen` on every row, so "how many of this employer's vacancies demanded
+// skill X on day D" is recoverable for any day the archive was running. No new
+// storage, and the line lengthens on its own as the archive accumulates.
+//
+// It is deliberately NOT getSkillTrends above. That one answers "which skills
+// moved most" in 13 weekly buckets over ~3 months and returns the top 8 movers;
+// this one answers "everything this employer is hiring for right now", daily,
+// unranked and uncapped, which is what a search list and a per-row sparkline
+// need. The two would fight if merged.
+
+export interface CompanySkillDemand {
+  skill: string;
+  /** Skill category, for the search row's second line. */
+  cat: string;
+  /** Ads currently advertised by this company that demand the skill. */
+  now: number;
+  /** Daily live count across `CompanySkillTrends.days`, oldest → newest.
+   *  Omitted when the archive is too young to draw an honest line, or when the
+   *  line is dead flat — see SPARK_MIN_POINTS. */
+  spark?: number[];
+  /** Change across the covered window. Null when the window is too short to
+   *  support one, in which case the row shows a count and no percentage. */
+  pct: number | null;
+  dir: "up" | "down" | "flat";
+  /** Median annual AUD across the currently-live Australian ads demanding this
+   *  skill. Undefined when too few state one (medianAnnual enforces MIN_ADS) —
+   *  the card then shows the gap rather than a median over two ads. */
+  pay?: number;
+  /** Australian live ads for this skill that state a salary at all. */
+  payN: number;
+}
+
+export interface CompanySkillTrends {
+  /** The days every `spark` is indexed against, oldest → newest. Trimmed to
+   *  days the archive actually covered, so a young archive returns a short
+   *  array rather than a long one padded with zeros. */
+  days: string[];
+  /** Every canonical skill with at least one live ad, highest count first.
+   *  Uncapped: this is the set a search box offers, and a list that silently
+   *  stops would read as the complete one. Callers cap their own display. */
+  skills: CompanySkillDemand[];
+}
+
+const NO_SKILL_TRENDS: CompanySkillTrends = { days: [], skills: [] };
+
+/** Days of daily history the card's sparklines draw. */
+const SKILL_SPARK_DAYS = 14;
+/** Below this many covered days the line says more about the archive's age
+ *  than about demand, so it is dropped. Same threshold the ticker uses. */
+const SKILL_SPARK_MIN = 5;
+
+const isoDaysAgo = (offset: number): string => {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - offset);
+  return d.toISOString().slice(0, 10);
+};
+
+/**
+ * The first day the archive was genuinely COLLECTING, not merely the oldest row.
+ *
+ * Confusing the two is what broke the ticker once already (see the long note in
+ * getLiveSkillTrends): the first rows trickle in while a feed is set up — a
+ * handful a day — and then the real ramp starts. Treating the trickle as the
+ * start makes those days look like near-zero demand and every skill then reads
+ * as explosive growth against them.
+ *
+ * Asked archive-wide rather than per company, because "when did we start
+ * collecting" is a property of the archive. A single employer's own first_seen
+ * histogram is far too sparse for the median test to mean anything.
+ */
+async function archiveCoverageStart(db: D1Like): Promise<string | null> {
+  const res = await db
+    .prepare(`SELECT first_seen AS d, COUNT(*) AS n FROM jobs GROUP BY first_seen`)
+    .all();
+  const rows = res?.results ?? [];
+  if (!rows.length) return null;
+  const counts = rows.map((r) => Number(r.n) || 0).sort((a, b) => a - b);
+  const median = counts[Math.floor(counts.length / 2)] || 0;
+  const collecting = rows
+    .filter((r) => (Number(r.n) || 0) >= median * 0.1)
+    .map((r) => String(r.d || ""))
+    .filter(Boolean)
+    .sort();
+  return collecting[0] ?? null;
+}
+
+export const getCompanySkillTrends = createServerFn({ method: "GET" })
+  .validator((data: { id: string }) => data)
+  .handler(async ({ data }): Promise<CompanySkillTrends> => {
+    const id = (data.id || "").trim();
+    if (!id) return NO_SKILL_TRENDS;
+    // Unreleased market: withhold the data as well as the marker, exactly as
+    // the other per-company readers here do. See lib/markets.ts.
+    if (!marketVisible(await callerRole(), id, true)) return NO_SKILL_TRENDS;
+    const db = await getArchiveDb();
+    if (!db) return NO_SKILL_TRENDS;
+    try {
+      // Oldest → newest, the days the sparkline could cover.
+      const window: string[] = [];
+      for (let i = SKILL_SPARK_DAYS - 1; i >= 0; i--) window.push(isoDaysAgo(i));
+      const scanFrom = window[0];
+      // "Currently advertised" is the same one-day boundary the rest of the app
+      // uses, so this card's counts and the headline's cannot disagree.
+      const liveFrom = isoDaysAgo(1);
+
+      const res = await db
+        .prepare(
+          `SELECT skills, first_seen, last_seen, salary, hub, source FROM jobs
+             WHERE company_id = ?1 AND skills IS NOT NULL AND last_seen >= ?2`,
+        )
+        // Same alias the headline and the vacancy chart use, so a dual-listed
+        // issuer's skills read the rows its counts came from (HSBC is on the
+        // roster twice but archived once).
+        .bind(COMPANY_ID_ALIAS[id] ?? id, scanFrom)
+        .all();
+      const rows = res?.results ?? [];
+      if (!rows.length) return NO_SKILL_TRENDS;
+
+      // Trim the window to days the archive actually covered. Days before
+      // collection began are not "no demand", they are "nobody was looking",
+      // and drawing them renders every skill as a hockey stick.
+      const coverage = await archiveCoverageStart(db);
+      const firstCovered = coverage ? window.findIndex((d) => d >= coverage) : 0;
+      const from = firstCovered < 0 ? window.length : firstCovered;
+
+      return foldSkillRows(rows, window, liveFrom, from);
+    } catch {
+      return NO_SKILL_TRENDS;
+    }
+  });
+
+/** The archive columns the fold below reads. Structurally a SqlRow, so query
+ *  results pass straight through and a test can hand-build one. */
+export type SkillRow = Partial<
+  Record<"skills" | "first_seen" | "last_seen" | "salary" | "hub" | "source", SqlValue>
+>;
+
+/**
+ * The pure half of getCompanySkillTrends: archive rows in, per-skill demand
+ * out. Split from the handler so the day-membership reconstruction — the part
+ * that is easy to get subtly wrong and impossible to eyeball on a chart — can
+ * be exercised directly. See scripts/check-skill-trends.ts.
+ *
+ * `window` is every day the sparkline could cover, oldest → newest; `from` is
+ * the index where archive coverage begins within it.
+ */
+export function foldSkillRows(
+  rows: SkillRow[],
+  window: string[],
+  liveFrom: string,
+  from: number,
+): CompanySkillTrends {
+  const now: Record<string, number> = {};
+  const daily: Record<string, number[]> = {};
+  const payAds: Record<string, number[]> = {};
+
+  {
+    for (const r of rows) {
+      // parseStoredSkills, not a bare JSON.parse: archived rows keep the skill
+      // names they were written with, so a renamed skill needs mapping forward
+      // or that row's demand vanishes (see SKILL_ALIAS).
+      const skills = parseStoredSkills(r.skills).filter((s) => s in SKILL_CATEGORY);
+      if (!skills.length) continue;
+      const fs = String(r.first_seen || "");
+      const ls = String(r.last_seen || "");
+      if (!fs || !ls) continue;
+
+      if (ls >= liveFrom) {
+        for (const s of skills) now[s] = (now[s] || 0) + 1;
+        const aud = annualAud({
+          salary: r.salary as string | null,
+          hub: r.hub as string | null,
+          source: r.source as string | null,
+        });
+        if (aud !== null) for (const s of skills) (payAds[s] ||= []).push(aud);
+      }
+      // A listing is live on day D when it was first seen on or before D and
+      // last seen on or after it.
+      for (let i = 0; i < window.length; i++) {
+        const d = window[i];
+        if (fs > d || ls < d) continue;
+        for (const s of skills) {
+          const arr = (daily[s] ||= new Array(window.length).fill(0));
+          arr[i] += 1;
+        }
+      }
+    }
+  }
+
+  const liveSkills = Object.keys(now);
+  if (!liveSkills.length) return NO_SKILL_TRENDS;
+  const days = window.slice(from);
+
+  const skills: CompanySkillDemand[] = liveSkills
+    .map((s) => {
+      const full = daily[s];
+      const cut = full ? full.slice(from) : [];
+      const enough = cut.length >= SKILL_SPARK_MIN;
+      // A dead-flat line is noise, not signal — leave it off, and with it the
+      // 0% it would imply.
+      const moves = enough && cut.some((v) => v !== cut[0]);
+      const pct = moves && cut[0] > 0 ? ((cut[cut.length - 1] - cut[0]) / cut[0]) * 100 : null;
+      return {
+        skill: s,
+        cat: SKILL_CATEGORY[s],
+        now: now[s],
+        spark: moves ? cut : undefined,
+        pct: pct === null ? null : Math.round(pct * 10) / 10,
+        dir: pct === null ? ("flat" as const) : pct >= 0 ? ("up" as const) : ("down" as const),
+        pay: medianAnnual(payAds[s] || []) ?? undefined,
+        payN: (payAds[s] || []).length,
+      };
+    })
+    .sort((a, b) => b.now - a.now || a.skill.localeCompare(b.skill));
+
+  return { days, skills };
+}

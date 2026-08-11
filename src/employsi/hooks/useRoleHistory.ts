@@ -1,7 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
-import { getRoleHistory, getVacancyTrend, getSkillTrends } from "../lib/jobHistoryFn";
-import type { RoleHistory, SkillMover } from "../lib/jobHistoryFn";
+import {
+  getRoleHistory,
+  getVacancyTrend,
+  getSkillTrends,
+  getCompanySkillTrends,
+} from "../lib/jobHistoryFn";
+import type { RoleHistory, SkillMover, CompanySkillTrends } from "../lib/jobHistoryFn";
 import type { RolePoint } from "../lib/openRolesFn";
+
+// Stable empty value, so a card that has not loaded yet does not get a fresh
+// object identity on every render and re-run its memos.
+const EMPTY_SKILL_TRENDS: CompanySkillTrends = { days: [], skills: [] };
 
 // A company's archived role history (D1). Null until the archive has at least
 // one listing for the company, or off-Worker. Cached for the session — the
@@ -44,4 +53,23 @@ export function useSkillTrends(id: string | undefined, enabled: boolean): SkillM
     retry: false,
   });
   return data ?? [];
+}
+
+// Everything one company is currently recruiting for, skill by skill, with a
+// daily series behind each (D1). Backs the card's skill search and the
+// per-skill sparklines. Same session-length cache as its neighbours — the
+// archive only moves on the daily cron or a fresh live fetch.
+export function useCompanySkillTrends(
+  id: string | undefined,
+  enabled: boolean,
+): CompanySkillTrends {
+  const { data } = useQuery({
+    queryKey: ["companySkillTrends", id],
+    queryFn: () => getCompanySkillTrends({ data: { id: id as string } }),
+    enabled: enabled && !!id,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    retry: false,
+  });
+  return data ?? EMPTY_SKILL_TRENDS;
 }
