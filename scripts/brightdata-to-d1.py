@@ -635,7 +635,12 @@ def main() -> int:
     if not companies:
         sys.exit(f'No companies in slice [{OFFSET}:{OFFSET + LIMIT}] of '
                  f'{len(all_companies)} — check --offset/--limit/--only.')
-    span = (f'{OFFSET}-{OFFSET + len(companies) - 1} of {len(all_companies)}'
+    # The span is the SLICE asked for, not the count left after quarantine —
+    # those differ once a company is dropped, and labelling the slice by its
+    # surviving length prints a range that never existed (a 267..269 slice with
+    # 268 quarantined reported itself as "267-268").
+    span_end = min(OFFSET + LIMIT, len(all_companies)) - 1
+    span = (f'{OFFSET}-{span_end} of {len(all_companies)}'
             if OFFSET or len(companies) < len(all_companies) else 'whole roster')
     sys.stderr.write(
         f'{WHICH} via Bright Data -> D1: {len(companies)} companies [{span}], '
@@ -733,6 +738,14 @@ def main() -> int:
     # the roster name before it is filed under that employer.
     by_company: dict[str, list] = {}
     unmatched = 0
+    # WHO GOT DROPPED. "N dropped as another advertiser" is the right default —
+    # a keyword search really does return other employers — but it cannot
+    # distinguish "correctly rejected a recruiter" from "our roster spells this
+    # employer's name the way it was spelled before a merger". Counting the
+    # rejected names makes that answerable from the log instead of from a
+    # separate investigation; 2026-08-11 it is how Herbert Smith Freehills was
+    # found losing all 28 of its ads.
+    dropped_names: dict[str, int] = {}
     for rec in records:
         title = pick(rec, 'title')
         if not title:
@@ -742,6 +755,8 @@ def main() -> int:
                     if advertiser and advertiser_matches(advertiser, name)), None)
         if not hit:
             unmatched += 1
+            if advertiser:
+                dropped_names[advertiser] = dropped_names.get(advertiser, 0) + 1
             continue
         by_company.setdefault(hit, []).append({
             'title': title,
@@ -755,6 +770,17 @@ def main() -> int:
     kept = sum(len(v) for v in by_company.values())
     sys.stderr.write(f'\n  {kept} ads kept for {len(by_company)} employers; '
                      f'{unmatched} dropped as another advertiser.\n')
+    # Only the heavy hitters, and only when the drop rate is high enough to be
+    # worth a look. A healthy run drops a long tail of one-off recruiters, and
+    # printing those every night would train everyone to skim past this.
+    if unmatched and unmatched >= max(5, kept // 4):
+        top = sorted(dropped_names.items(), key=lambda kv: -kv[1])[:8]
+        sys.stderr.write(
+            '    most-dropped advertisers (a searched employer appearing here '
+            'means the roster\n    spells its name differently, not that it is '
+            'someone else):\n')
+        for name, n in top:
+            sys.stderr.write(f'      {n:5}  {name[:66]}\n')
     if PROBE:
         for cid, jobs in sorted(by_company.items())[:10]:
             j = jobs[0]
