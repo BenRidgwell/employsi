@@ -48,12 +48,23 @@
 # reached D1. Four chunks of 90 exactly cover the roster (verified: 354
 # companies, no duplicates, none missed).
 #
-# THE TWO BOARDS ARE NOT THE SAME SPEED, so do not carry Indeed's rate over to
-# LinkedIn. Measured on LINKEDIN 2026-08-11, a 90-company chunk is ~6 minutes
-# end to end, because Bright Data collects the whole batch into one snapshot
-# rather than walking company by company. Whether Indeed behaves the same way at
-# 90 has not been measured — its ~1.4 min/company figure came from a 20-company
-# run, and the 4-chunk shape was sized against that, not against LinkedIn.
+# THE TWO BOARDS ARE NOT THE SAME SPEED. Both now measured at the production
+# 90-company shape, 2026-08-11:
+#
+#   linkedin   90 companies ->  ~6 min   (2,457 records)
+#   indeed     90 companies -> 44.7 min  (1,439 records; 44.3 of that is the
+#                                         snapshot wait, the D1 write is ~30s)
+#
+# So Indeed is ~7x slower per chunk, but NOT the 1.4 min/company that the old
+# 20-company run suggested — that extrapolation would have predicted 126 min and
+# an 8.5-hour Indeed sweep. Measured is 0.50 min/company. A full serial sweep is
+# therefore ~3.0 hours of Indeed plus ~24 min of LinkedIn: about 3.5 hours for
+# all eight chunks, one at a time, well inside a single scheduled run.
+#
+# That is the number to re-check if the roster grows a lot. The four-chunk shape
+# holds comfortably at 354 companies; it is the 350-minute per-job timeout, not
+# the sweep total, that would bite first, and one Indeed chunk uses an eighth of
+# it.
 #
 # They run ONE AT A TIME regardless; see max-parallel below for why.
 #
