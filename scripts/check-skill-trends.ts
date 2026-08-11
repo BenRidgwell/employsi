@@ -186,8 +186,12 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
   check("...and every ad counts as live", s.now === 4);
 }
 {
+  // Four ads down to two. Volume matters: under SKILL_MIN_VOLUME the fold
+  // reports no percentage at all, which is the point of the floor.
   const rows: SkillRow[] = [
     row(["Welding & Fabrication"], "2026-08-01", "2026-08-10"),
+    row(["Welding & Fabrication"], "2026-08-01", "2026-08-10"),
+    row(["Welding & Fabrication"], "2026-08-01", "2026-08-05"),
     row(["Welding & Fabrication"], "2026-08-01", "2026-08-05"),
   ];
   const out = foldSkillRows(rows, DAYS, LIVE_FROM, 0);
@@ -287,6 +291,10 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
       category: "Engineering",
       source: "adzuna",
     }),
+    row(["Mining Engineering"], "2026-08-06", "2026-08-10", {
+      category: "Engineering",
+      source: "adzuna",
+    }),
     row(["Electrical Trade"], "2026-08-01", "2026-08-10", {
       category: "Trade & Construction",
       source: "adzuna",
@@ -299,10 +307,10 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
     out.areas.length === 2,
     JSON.stringify(out.areas.map((a) => a.area)),
   );
-  check("area live counts are per listing", eng.now === 2);
+  check("area live counts are per listing", eng.now === 3);
   check(
-    "area growth is measured across the covered window",
-    eng.pct === 100 && eng.dir === "up",
+    "area growth compares half-window means",
+    eng.pct === 200 && eng.dir === "up",
     `pct=${eng.pct}`,
   );
   check(
@@ -317,12 +325,12 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
   // A category that did not move is FLAT, not up — a 0% with a growth arrow
   // asserts something nothing measured.
   const out = foldSkillRows(
-    [
+    Array.from({ length: 3 }, () =>
       row(["Geotechnical"], "2026-08-01", "2026-08-10", {
         category: "Scientific & QA",
         source: "adzuna",
       }),
-    ],
+    ),
     DAYS,
     LIVE_FROM,
     0,
@@ -447,6 +455,35 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
     eq(s.hubs, [{ hub: "perth", n: 1 }]),
     JSON.stringify(s.hubs),
   );
+}
+
+// ── volume floor ────────────────────────────────────────────────────────────
+{
+  // One ad appearing is +100% and means nothing. Measured on the live archive,
+  // the untrimmed tail reported Geotechnical at +1,500% (0 -> 3 ads) next to a
+  // real +7%, which makes the two read as the same kind of fact.
+  const out = foldSkillRows(
+    [
+      row(["Geotechnical"], "2026-08-07", "2026-08-10"),
+      row(["Geotechnical"], "2026-08-09", "2026-08-10"),
+    ],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  const s = find(out, "Geotechnical")!;
+  check("a skill too thin to trend reports no percentage", s.pct === null, `pct=${s.pct}`);
+  check("...but keeps its count and its line", s.now === 2 && !!s.spark);
+}
+{
+  // Three on the busiest day clears the floor.
+  const rows: SkillRow[] = [
+    row(["Mining Engineering"], "2026-08-01", "2026-08-10"),
+    row(["Mining Engineering"], "2026-08-05", "2026-08-10"),
+    row(["Mining Engineering"], "2026-08-07", "2026-08-10"),
+  ];
+  const out = foldSkillRows(rows, DAYS, LIVE_FROM, 0);
+  check("a skill with enough volume still trends", find(out, "Mining Engineering")!.pct !== null);
 }
 
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");

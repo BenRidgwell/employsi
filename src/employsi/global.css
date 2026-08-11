@@ -11653,6 +11653,419 @@ body {
   background: var(--neutral-300);
 }
 
+/* ── skills section (SkillDemand.tsx) ─────────────────────────────────────
+   The archive-backed replacement for the flat chip list: the top skill at
+   size, a hot-spot map, then one row per remaining skill. Tokens only — the
+   one saturated surface is the top-skill card, and its tint is the skill's
+   DIRECTION, which is a real status rather than decoration. */
+.tsk {
+  position: relative;
+  margin-bottom: 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+}
+.tsk.up {
+  color: var(--status-success-fg);
+  border-color: #cfe4d8;
+  background: linear-gradient(180deg, #e9f4ee 0%, #f6fbf8 52%, var(--neutral-0) 100%);
+}
+.tsk.down {
+  color: var(--status-danger-fg);
+  border-color: #eed7d3;
+  background: linear-gradient(180deg, #f9edeb 0%, #fdf7f6 52%, var(--neutral-0) 100%);
+}
+.tskhd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px 13px 0;
+}
+.tskval {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 13px 0;
+}
+.tskv {
+  font-size: 32px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-display);
+  line-height: 1;
+  /* Ink, not the tint: the headline is a count, not a status. */
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.tskvsub {
+  font-size: 12.5px;
+  color: var(--text-tertiary);
+}
+/* Window length sits beside the change rather than in the eyebrow, where it
+   wrapped the header onto two lines next to the picker. */
+.tskwin {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.alskmore {
+  align-self: flex-start;
+  margin-top: 12px;
+}
+.tskmeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 13px 0;
+}
+.tskcat {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.tskranks {
+  display: inline-flex;
+  gap: 5px;
+}
+.tskrank {
+  display: inline-flex;
+  gap: 4px;
+  padding: 2px 7px;
+  border: 1px solid rgba(28, 28, 30, 0.06);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.7);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.tskrank b {
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+/* picker, shared with the hot-spot map */
+.tskpick {
+  position: relative;
+  flex: 0 0 auto;
+}
+.tskbtn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 200px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(28, 28, 30, 0.07);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  box-shadow: var(--shadow-xs);
+}
+.tskbtn > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tskbtn svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+}
+.tskbtn:hover {
+  background: var(--neutral-0);
+}
+.tskbtn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.tskmenu {
+  position: absolute;
+  right: 0;
+  top: 34px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  min-width: 230px;
+  padding: 5px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--neutral-0);
+  box-shadow: var(--shadow-lg);
+}
+.tskopt {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.tskopt:hover,
+.tskopt[aria-selected="true"] {
+  background: var(--surface-hover);
+}
+.tskopt[aria-selected="true"] {
+  font-weight: var(--weight-semibold);
+}
+.tskoptr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background: var(--surface-active);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+.tskoptn {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tskoptv {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+/* plot. The clip sits on a wrapper around the SVG alone: on the plot it cuts
+   off the readout, on the card it cuts off the open picker. */
+.tskplot {
+  position: relative;
+  margin-top: -4px;
+  cursor: crosshair;
+}
+.tskclip {
+  overflow: hidden;
+  border-bottom-left-radius: 13px;
+  border-bottom-right-radius: 13px;
+}
+.tskplot svg {
+  display: block;
+  width: 100%;
+  height: 124px;
+}
+.tskbar {
+  fill: currentColor;
+  opacity: 0.22;
+}
+.tskguide {
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+.tskdot {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  margin: -6.5px 0 0 -6.5px;
+  border: 3px solid var(--neutral-0);
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+}
+.tsktip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 12px));
+  padding: 5px 9px;
+  border-radius: 9px;
+  background: var(--neutral-900);
+  color: var(--neutral-0);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* hot spots */
+.hsp {
+  margin-bottom: 14px;
+}
+.hspmap {
+  position: relative;
+  margin-top: 8px;
+}
+.hspmap svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.hspland {
+  fill: var(--surface-sunken);
+}
+.hsphot {
+  fill: var(--status-success-fg);
+  fill-opacity: 0.3;
+  stroke: var(--status-success-fg);
+  stroke-opacity: 0.7;
+  stroke-width: 0.8;
+}
+.hsphot.core {
+  fill-opacity: 0.9;
+  stroke: var(--neutral-0);
+  stroke-width: 0.9;
+  stroke-opacity: 1;
+}
+.hsphit {
+  fill: transparent;
+  cursor: pointer;
+}
+.hsptip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 9px));
+  padding: 5px 9px;
+  border-radius: 9px;
+  background: var(--neutral-900);
+  color: var(--neutral-0);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 3;
+}
+.hspfoot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+/* Most archived ads carry a country, not a city. Saying so beats letting the
+   cluster read as the whole picture. */
+.hspcov {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--text-disabled);
+  text-align: right;
+}
+
+/* the rest, one row each */
+.alsk {
+  margin-top: 2px;
+}
+.alskrows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.alskrow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 88px auto;
+  align-items: center;
+  gap: 12px;
+}
+.alskmain {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.alskname {
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.alskcat {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+/* currentColor drives the stroke AND the gradient, so direction is set once. */
+.alspark {
+  display: block;
+  width: 88px;
+  height: 26px;
+}
+.alspark.up {
+  color: var(--status-success-fg);
+}
+.alspark.down {
+  color: var(--status-danger-fg);
+}
+.alsparknone {
+  display: block;
+  width: 88px;
+}
+.alskval {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+.alskn {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.alskd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.alskd.up {
+  color: var(--status-success-fg);
+}
+.alskd.down {
+  color: var(--status-danger-fg);
+}
+
+/* hiring bars: change beside the count. Only the ARROW takes the direction
+   colour — six coloured percentages in a column read as six alerts. Arrows use
+   the 500 tier (--status-*-dot), the palette's weight for a small graphic
+   mark, not the 700 tier it uses for text. */
+.cchireval {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+.cchiretr {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.cchiretr svg {
+  width: 12px;
+  height: 12px;
+}
+.cchiretr.up svg {
+  color: var(--status-success-dot);
+}
+.cchiretr.down svg {
+  color: var(--status-danger-dot);
+}
+
 /* ── facts + rating ─────────────────────────────────────────────────────── */
 .ccfacts {
   display: flex;

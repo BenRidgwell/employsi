@@ -43,6 +43,7 @@ export default tseslint.config(
       "src/employsi/data/sharePrices.ts",
       "src/employsi/data/sgVacancyDemand.ts",
       "src/employsi/data/skillOntology.ts",
+      "src/employsi/data/worldOutline.ts",
       "src/employsi/data/ukVacancyDemand.ts",
       "src/employsi/data/usVacancyDemand.ts",
     ],

@@ -12,12 +12,18 @@ import { useCompanyStats } from "../../hooks/useCompanyStats";
 import { useOpenRoles } from "../../hooks/useOpenRoles";
 import { useRolesHistory } from "../../hooks/useRolesHistory";
 import { useCompanyJobs } from "../../hooks/useSkillData";
-import { useVacancyTrend } from "../../hooks/useRoleHistory";
+import {
+  useVacancyTrend,
+  useCompanySkillTrends,
+  useSkillMarketRanks,
+} from "../../hooks/useRoleHistory";
 import { cityForCompany } from "../../data/mapboxGeo";
+import { CITY_COUNTRY, COUNTRY_MEMBERS } from "../../data/mapboxWorldGeo";
 import { marketForCity } from "../../data/cityMarket";
 import { NewsPanel } from "./NewsPanel";
 import { CardLoader } from "./CardLoader";
 import { ChartTooltip } from "./ChartTooltip";
+import { SkillDemand } from "./SkillDemand";
 
 type CardTab = "Overview" | "Skills" | "Hiring";
 
@@ -177,6 +183,27 @@ function RoleSearch({
   );
 }
 
+// Direction glyph for a hiring area's change. Only the ARROW is coloured: six
+// coloured percentages stacked in a column read as six alerts, one arrow each
+// reads as a direction. A measured zero gets the figure and no arrow, which is
+// distinct from having no comparable window at all — that case renders nothing.
+function AreaTrend({ pct }: { pct: number }) {
+  if (pct === 0) return <span className="cchiretr">0.0%</span>;
+  const up = pct > 0;
+  return (
+    <span className={`cchiretr ${up ? "up" : "down"}`}>
+      {Math.abs(pct).toFixed(1)}%
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+        <path
+          d={up ? "M7 17 17 7M10.5 7H17v6.5" : "M7 7l10 10M10.5 17H17v-6.5"}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
+  );
+}
+
 export function CompanyPanel() {
   const selectedId = useAppStore((s) => s.selectedId);
   const lastId = useAppStore((s) => s.lastId);
@@ -277,6 +304,25 @@ export function CompanyPanel() {
   // Adzuna, so their vacancy chart is built from the stored history instead of
   // the forward-built KV snapshots the private companies use.
   const vacancyTrend = useVacancyTrend(panel?.companyId, open && !roleFilter);
+  // Per-skill demand from the D1 archive: a daily series, a change, a median,
+  // the hubs the live ads sit in. What the skills section is built from.
+  const skillTrends = useCompanySkillTrends(panel?.companyId, open);
+  // "Local" for the rank chips is the company's OWN country, not a fixed
+  // Australia — a London or Houston card should rank its skills against the
+  // market it sits in. Resolved from the same city the rest of the card uses.
+  const localHubs = useMemo(() => {
+    const city = lastId ? cityForCompany(lastId, localCity) : localCity;
+    const country = CITY_COUNTRY[city];
+    return country ? (COUNTRY_MEMBERS[country] ?? [city]) : [city];
+  }, [lastId, localCity]);
+  const skillRanks = useSkillMarketRanks(localHubs, open && skillTrends.skills.length > 0);
+  // Board category -> 14-day change, for the hiring bars. Keyed on the same
+  // tidied name the bars carry ("Engineering", not "Engineering Jobs").
+  const areaTrend = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const a of skillTrends.areas) if (a.pct !== null) m.set(a.area, a.pct);
+    return m;
+  }, [skillTrends.areas]);
   const jobSample = useMemo(
     () => (liveRoles?.jobs?.length ? liveRoles.jobs : (companyJobs?.jobs ?? null)),
     [liveRoles, companyJobs],
@@ -870,42 +916,55 @@ export function CompanyPanel() {
 
               {tab === "Skills" && (
                 <div className="ccpane">
-                  <div className="ccsecth">
-                    <span className="cceyebrow">Skills in demand</span>
-                    <span className="ccsecthsub">
-                      {rolesChecking && !card.skills.length
-                        ? "checking live ads…"
-                        : `from ${card.stats[0].value} live ads`}
-                    </span>
-                  </div>
-                  {card.skills.length ? (
-                    <div className="ccchips">
-                      {card.skills.map((s) => (
-                        <span className="ccchip" key={s.name}>
-                          {s.name}
-                          <span className="ccchipn">{s.n}</span>
+                  {/* Archive-backed section: the top skill at size with its
+                      market rank, where its live ads sit, and the rest as rows
+                      with their own line. Falls back to the flat chips below
+                      when the archive holds nothing for this company yet — a
+                      card opened on a company first queried today should still
+                      show what it is advertising for. */}
+                  {skillTrends.skills.length > 0 && (
+                    <SkillDemand trends={skillTrends} ranks={skillRanks} />
+                  )}
+                  {skillTrends.skills.length === 0 && (
+                    <>
+                      <div className="ccsecth">
+                        <span className="cceyebrow">Skills in demand</span>
+                        <span className="ccsecthsub">
+                          {rolesChecking && !card.skills.length
+                            ? "checking live ads…"
+                            : `from ${card.stats[0].value} live ads`}
                         </span>
-                      ))}
-                      {skillsOpen &&
-                        card.restSkills.map((s) => (
-                          <span className="ccchip" key={s.name}>
-                            {s.name}
-                            <span className="ccchipn">{s.n}</span>
-                          </span>
-                        ))}
-                      {card.moreSkills > 0 && (
-                        <button
-                          type="button"
-                          className="ccchip ccchipmore"
-                          aria-expanded={skillsOpen}
-                          onClick={() => setSkillsOpen((v) => !v)}
-                        >
-                          {skillsOpen ? "show fewer" : `+${card.moreSkills} more`}
-                        </button>
+                      </div>
+                      {card.skills.length ? (
+                        <div className="ccchips">
+                          {card.skills.map((s) => (
+                            <span className="ccchip" key={s.name}>
+                              {s.name}
+                              <span className="ccchipn">{s.n}</span>
+                            </span>
+                          ))}
+                          {skillsOpen &&
+                            card.restSkills.map((s) => (
+                              <span className="ccchip" key={s.name}>
+                                {s.name}
+                                <span className="ccchipn">{s.n}</span>
+                              </span>
+                            ))}
+                          {card.moreSkills > 0 && (
+                            <button
+                              type="button"
+                              className="ccchip ccchipmore"
+                              aria-expanded={skillsOpen}
+                              onClick={() => setSkillsOpen((v) => !v)}
+                            >
+                              {skillsOpen ? "show fewer" : `+${card.moreSkills} more`}
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="dataempty">No live job ads</div>
                       )}
-                    </div>
-                  ) : (
-                    <div className="dataempty">No live job ads</div>
+                    </>
                   )}
                 </div>
               )}
@@ -918,15 +977,24 @@ export function CompanyPanel() {
                   </div>
                   {card.hiring.length ? (
                     <div className="cchiring">
-                      {card.hiring.map((h) => (
-                        <div className="cchirerow" key={h.name}>
-                          <span className="cchirename">{h.name}</span>
-                          <span className="cchirebar">
-                            <span className="cchirefill" style={{ width: h.pct }} />
-                          </span>
-                          <span className="cchiren">{h.n}</span>
-                        </div>
-                      ))}
+                      {card.hiring.map((h) => {
+                        // Change over the archive's own window, matched on the
+                        // board category the bar is labelled with. Absent when
+                        // the archive cannot support one — the bar still reads.
+                        const t = areaTrend.get(h.name);
+                        return (
+                          <div className="cchirerow" key={h.name}>
+                            <span className="cchirename">{h.name}</span>
+                            <span className="cchirebar">
+                              <span className="cchirefill" style={{ width: h.pct }} />
+                            </span>
+                            <span className="cchireval">
+                              <span className="cchiren">{h.n}</span>
+                              {t !== undefined && <AreaTrend pct={t} />}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="dataempty">No live job ads</div>

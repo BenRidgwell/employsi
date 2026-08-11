@@ -845,6 +845,11 @@ export interface CompanySkillDemand {
    * makes for every other marker it draws.
    */
   hubs: { hub: string; n: number }[];
+  /** Ads FIRST SEEN on each day of `days` — new postings, against `spark`'s
+   *  count of ads live. Stock and flow are different questions and the card
+   *  draws them together; one is not the other restated. Omitted alongside
+   *  `spark` when the window is too short to say anything. */
+  newSpark?: number[];
   /** Live ads for this skill with no hub recorded at all. With `hubs` this is
    *  what lets a map say how much of the picture it is showing rather than
    *  implying it is showing all of it. */
@@ -909,6 +914,19 @@ const AREA_UNKNOWN = "unknown";
 /** Below this many covered days the line says more about the archive's age
  *  than about demand, so it is dropped. Same threshold the ticker uses. */
 const SKILL_SPARK_MIN = 5;
+/**
+ * Live ads a skill or area needs on its busiest day before a percentage is
+ * reported at all.
+ *
+ * Without it the tail of the list is nonsense: measured on BHP, Geotechnical
+ * went 0 -> 3 ads and reported +1,500%, Warehousing & Logistics went 3 -> 1 and
+ * reported -83.3%. Those are two ads moving, not a market shifting, and printed
+ * beside a real +7% they read as the same kind of fact. The row keeps its
+ * count; it just stops claiming a trend. Same reasoning as the ticker's
+ * `now + prev < 3` guard.
+ */
+const SKILL_MIN_VOLUME = 3;
+
 /** How far back the collection-start test looks. Long enough to hold a normal
  *  run of collecting days, short enough that back-dated rows cannot drag the
  *  median under the floor. Matches the ticker's widest scan. */
@@ -1077,6 +1095,7 @@ export function foldSkillRows(
   const areaDaily: Record<string, number[]> = {};
   const hubNow: Record<string, Record<string, number>> = {};
   const hubless: Record<string, number> = {};
+  const fresh: Record<string, number[]> = {};
 
   {
     for (const r of rows) {
@@ -1118,6 +1137,9 @@ export function foldSkillRows(
           }
         }
       }
+      const newAt = window.indexOf(fs);
+      if (newAt >= 0)
+        for (const sk of skills) (fresh[sk] ||= new Array(window.length).fill(0))[newAt] += 1;
       // A listing is live on day D when it was first seen on or before D and
       // last seen on or after it.
       for (let i = 0; i < window.length; i++) {
@@ -1146,12 +1168,14 @@ export function foldSkillRows(
       const enough = cut.length >= SKILL_SPARK_MIN;
       // A dead-flat line is noise, not signal — leave it off.
       const moves = enough && cut.some((v) => v !== cut[0]);
-      const { pct } = halfWindowChange(cut);
+      const loud = cut.length > 0 && Math.max(...cut) >= SKILL_MIN_VOLUME;
+      const { pct } = loud ? halfWindowChange(cut) : { pct: null };
       return {
         skill: s,
         cat: SKILL_CATEGORY[s],
         now: now[s],
         spark: moves ? cut : undefined,
+        newSpark: moves ? (fresh[s] || new Array(cut.length).fill(0)).slice(from) : undefined,
         pct,
         dir:
           pct === null || pct === 0
@@ -1172,9 +1196,10 @@ export function foldSkillRows(
   const areas: CompanyAreaDemand[] = Object.keys(areaNow)
     .map((a) => {
       const cut = (areaDaily[a] || []).slice(from);
-      // Same floor and the same half-window comparison the skills use, so a
+      // Same floors and the same half-window comparison the skills use, so a
       // bar and its arrow are measured the same way.
-      const { pct, prev } = halfWindowChange(cut);
+      const loud = cut.length > 0 && Math.max(...cut) >= SKILL_MIN_VOLUME;
+      const { pct, prev } = loud ? halfWindowChange(cut) : { pct: null, prev: 0 };
       return {
         area: a,
         now: areaNow[a],
