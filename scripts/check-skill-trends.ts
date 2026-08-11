@@ -401,5 +401,53 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
   check('"Unknown" is not a hiring area', out.areas.length === 0);
 }
 
+// ── hot spots ───────────────────────────────────────────────────────────────
+{
+  const out = foldSkillRows(
+    [
+      row(["Mining Engineering"], "2026-08-09", "2026-08-10", { hub: "perth" }),
+      row(["Mining Engineering"], "2026-08-09", "2026-08-10", { hub: "perth" }),
+      row(["Mining Engineering"], "2026-08-09", "2026-08-10", { hub: "adelaide" }),
+      row(["Mining Engineering"], "2026-08-09", "2026-08-10", { hub: "" }),
+    ],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  const s = find(out, "Mining Engineering")!;
+  check(
+    "hot spots are counted per hub, busiest first",
+    eq(s.hubs, [
+      { hub: "perth", n: 2 },
+      { hub: "adelaide", n: 1 },
+    ]),
+    JSON.stringify(s.hubs),
+  );
+  check("an ad with no hub is counted, not dropped", s.hubless === 1);
+  check(
+    "...and the two together account for every live ad",
+    s.hubs.reduce((t, h) => t + h.n, 0) + s.hubless === s.now,
+  );
+}
+{
+  // A hub only counts while the ad is live: the map answers "where are they
+  // hiring this now", not "where have they ever".
+  const out = foldSkillRows(
+    [
+      row(["Geotechnical"], "2026-08-01", "2026-08-05", { hub: "brisbane" }),
+      row(["Geotechnical"], "2026-08-09", "2026-08-10", { hub: "perth" }),
+    ],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  const s = find(out, "Geotechnical")!;
+  check(
+    "a hub whose ads have all closed is not a hot spot",
+    eq(s.hubs, [{ hub: "perth", n: 1 }]),
+    JSON.stringify(s.hubs),
+  );
+}
+
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");
 process.exit(failures ? 1 : 0);

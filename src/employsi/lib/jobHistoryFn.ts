@@ -835,6 +835,20 @@ export interface CompanySkillDemand {
   pay?: number;
   /** Australian live ads for this skill that state a salary at all. */
   payN: number;
+  /**
+   * Where the live ads for this skill sit, highest first — the hot-spot map.
+   *
+   * Hub KEYS only, not coordinates: the lng/lat table (data/mapboxWorldGeo)
+   * belongs to the map layer and pulling it in here would drag the whole roster
+   * and city graph into a Worker that only needs to count. It also means the
+   * caller decides what is plottable, which is the same judgement it already
+   * makes for every other marker it draws.
+   */
+  hubs: { hub: string; n: number }[];
+  /** Live ads for this skill with no hub recorded at all. With `hubs` this is
+   *  what lets a map say how much of the picture it is showing rather than
+   *  implying it is showing all of it. */
+  hubless: number;
 }
 
 /** A hiring area — the job-board category an ad was filed under — with the same
@@ -1061,6 +1075,8 @@ export function foldSkillRows(
   // a query — and the card draws both.
   const areaNow: Record<string, number> = {};
   const areaDaily: Record<string, number[]> = {};
+  const hubNow: Record<string, Record<string, number>> = {};
+  const hubless: Record<string, number> = {};
 
   {
     for (const r of rows) {
@@ -1090,6 +1106,17 @@ export function foldSkillRows(
         });
         if (aud !== null) for (const s of skills) (payAds[s] ||= []).push(aud);
         if (area && area.toLowerCase() !== AREA_UNKNOWN) areaNow[area] = (areaNow[area] || 0) + 1;
+        // Hot spots are LIVE ads only: the map answers "where are they hiring
+        // this now", not "where have they ever".
+        const hub = String(r.hub || "").trim();
+        for (const sk of skills) {
+          if (hub) {
+            const byHub = (hubNow[sk] ||= {});
+            byHub[hub] = (byHub[hub] || 0) + 1;
+          } else {
+            hubless[sk] = (hubless[sk] || 0) + 1;
+          }
+        }
       }
       // A listing is live on day D when it was first seen on or before D and
       // last seen on or after it.
@@ -1134,6 +1161,10 @@ export function foldSkillRows(
               : ("down" as const),
         pay: medianAnnual(payAds[s] || []) ?? undefined,
         payN: (payAds[s] || []).length,
+        hubs: Object.entries(hubNow[s] || {})
+          .map(([hub, n]) => ({ hub, n }))
+          .sort((x, y) => y.n - x.n || x.hub.localeCompare(y.hub)),
+        hubless: hubless[s] || 0,
       };
     })
     .sort((a, b) => b.now - a.now || a.skill.localeCompare(b.skill));
@@ -1163,3 +1194,109 @@ export function foldSkillRows(
 
   return { days, skills, areas };
 }
+
+// ── market rank for a skill ─────────────────────────────────────────────────
+//
+// Where a skill sits by live-ad count across every employer in the archive,
+// locally and worldwide. The company card prints it beside a skill's own count,
+// because the count alone does not say whether it is a lot: measured on the
+// live archive, BHP's largest skill is Mining Engineering at 63 ads, which is
+// 54th of 96 nationally — big for this employer, niche in the market. HSE /
+// Safety at 48 ads is 28th. Without the rank those two read the same way.
+//
+// Its own function, not a field on getCompanySkillTrends, for two reasons: the
+// answer is identical for every company, so it wants one cache entry rather
+// than one per card; and it is a market-wide scan, which is a different cost
+// and a different market-visibility question from a company-scoped read.
+
+export interface SkillRank {
+  /** Rank by live ads inside `hubs`, 1 = most advertised. Null when the skill
+   *  has no live ad there at all — absent is not "last". */
+  localRank: number | null;
+  localOf: number;
+  localAds: number;
+  globalRank: number | null;
+  globalOf: number;
+  globalAds: number;
+}
+
+export type SkillRanks = Record<string, SkillRank>;
+
+export const getSkillMarketRanks = createServerFn({ method: "GET" })
+  .validator((data: { hubs?: string[] }) => data)
+  .handler(async ({ data }): Promise<SkillRanks> => {
+    const db = await getArchiveDb();
+    if (!db) return {};
+    // "Local" is whatever hub set the caller names. The geography lives in the
+    // map layer (CITY_COUNTRY, HUB_LNGLAT) and this function should not grow a
+    // second opinion about which cities are in which country — it counts, the
+    // caller decides what it is counting.
+    const local = new Set((data.hubs || []).map((h) => h.trim()).filter(Boolean));
+    // A market-wide roll-up has to be rolled up over the markets the reader can
+    // actually see, or an end user reads a headline rank carrying vacancies
+    // from countries the product has not released to them. Same rule the
+    // ticker applies, same reason.
+    const seesAll = (await callerRole()) === "admin";
+    try {
+      const res = await db
+        .prepare(
+          `SELECT skills, hub, company_id FROM jobs
+             WHERE skills IS NOT NULL AND last_seen >= ?1`,
+        )
+        .bind(isoDaysAgo(1))
+        .all();
+      const rows = res?.results ?? [];
+      if (!rows.length) return {};
+
+      const globalN: Record<string, number> = {};
+      const localN: Record<string, number> = {};
+      for (const r of rows) {
+        const hub = String(r.hub || "").trim();
+        if (!seesAll && !isReleasedRow(hub || null, r.company_id as string | null)) continue;
+        const skills = parseStoredSkills(r.skills).filter((s) => s in SKILL_CATEGORY);
+        if (!skills.length) continue;
+        const isLocal = local.has(hub);
+        for (const s of skills) {
+          globalN[s] = (globalN[s] || 0) + 1;
+          if (isLocal) localN[s] = (localN[s] || 0) + 1;
+        }
+      }
+
+      // Ties share a rank rather than being split by name: two skills on 40 ads
+      // are equally in demand, and printing one as #12 and the other as #13
+      // invents a distinction the counts do not carry.
+      const ranked = (counts: Record<string, number>): Record<string, number> => {
+        const order = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        const out: Record<string, number> = {};
+        let rank = 0;
+        let prev: number | null = null;
+        order.forEach(([name, n], i) => {
+          if (n !== prev) {
+            rank = i + 1;
+            prev = n;
+          }
+          out[name] = rank;
+        });
+        return out;
+      };
+      const gRank = ranked(globalN);
+      const lRank = ranked(localN);
+      const gOf = Object.keys(globalN).length;
+      const lOf = Object.keys(localN).length;
+
+      const out: SkillRanks = {};
+      for (const s of Object.keys(globalN)) {
+        out[s] = {
+          localRank: lRank[s] ?? null,
+          localOf: lOf,
+          localAds: localN[s] || 0,
+          globalRank: gRank[s] ?? null,
+          globalOf: gOf,
+          globalAds: globalN[s],
+        };
+      }
+      return out;
+    } catch {
+      return {};
+    }
+  });
