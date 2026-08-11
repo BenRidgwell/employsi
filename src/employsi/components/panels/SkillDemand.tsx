@@ -281,15 +281,81 @@ function TopSkill({ skills, ranks }: { skills: CompanySkillDemand[]; ranks: Skil
 
 interface Spot {
   hub: string;
+  label: string;
   n: number;
   x: number;
   y: number;
 }
 
-function HotSpots({ skills }: { skills: CompanySkillDemand[] }) {
+/** Smallest span the frame will zoom to, in viewBox units. One hub has no
+ *  extent of its own, and without a floor the frame collapses onto it and the
+ *  coastline behind becomes an unreadable smear. ~40 units is a country. */
+const FRAME_MIN = 40;
+/** Breathing room around the spots, as a share of the framed span. Labels sit
+ *  beside their dot and need somewhere to go. */
+const FRAME_PAD = 0.38;
+/** The frame's shape. Fixed so the card does not change height when the picker
+ *  moves between a one-city skill and a worldwide one. */
+const FRAME_ASPECT = 1.5;
+
+/**
+ * Frame the map on the data.
+ *
+ * The whole world is the wrong view for most employers: BHP's placeable ads sit
+ * in four Australian cities and Manila, so a global projection spends nearly
+ * all of its area on empty ocean. The path and the projection are unchanged —
+ * only the viewBox moves, which costs nothing and keeps every coordinate
+ * comparable with the app's other maps.
+ */
+function frameFor(spots: Spot[]): { x: number; y: number; w: number; h: number } {
+  const xs = spots.map((s) => s.x);
+  const ys = spots.map((s) => s.y);
+  let minX = Math.min(...xs);
+  let maxX = Math.max(...xs);
+  let minY = Math.min(...ys);
+  let maxY = Math.max(...ys);
+  const padX = Math.max((maxX - minX) * FRAME_PAD, FRAME_MIN / 2);
+  const padY = Math.max((maxY - minY) * FRAME_PAD, FRAME_MIN / 2);
+  minX -= padX;
+  maxX += padX;
+  minY -= padY;
+  maxY += padY;
+  let w = maxX - minX;
+  let h = maxY - minY;
+  // Grow the short side rather than the long one, so framing never crops a hub.
+  if (w / h < FRAME_ASPECT) {
+    const want = h * FRAME_ASPECT;
+    minX -= (want - w) / 2;
+    w = want;
+  } else {
+    const want = w / FRAME_ASPECT;
+    minY -= (want - h) / 2;
+    h = want;
+  }
+  // Keep the frame on the map. Shift before clamping, so a frame that runs off
+  // an edge slides back in at full size instead of being squashed against it.
+  if (w > WORLD_W) {
+    minX = 0;
+    w = WORLD_W;
+  } else minX = Math.max(0, Math.min(minX, WORLD_W - w));
+  if (h > WORLD_H) {
+    minY = 0;
+    h = WORLD_H;
+  } else minY = Math.max(0, Math.min(minY, WORLD_H - h));
+  return { x: minX, y: minY, w, h };
+}
+
+function HotSpots({
+  skills,
+  liveAds,
+  companyHubs,
+}: {
+  skills: CompanySkillDemand[];
+  liveAds: number;
+  companyHubs: { hub: string; n: number }[];
+}) {
   const [i, setI] = useState(0);
   const [open, setOpen] = useState(false);
-  const [hover, setHover] = useState<number | null>(null);
   const pickRef = useRef<HTMLDivElement | null>(null);
 
   // Only skills with somewhere to plot. A skill whose ads all carry a country
@@ -304,15 +370,13 @@ function HotSpots({ skills }: { skills: CompanySkillDemand[] }) {
             .filter((h) => HUB_COORD[h.hub])
             .map((h) => {
               const [x, y] = worldProject(HUB_COORD[h.hub][0], HUB_COORD[h.hub][1]);
-              return { hub: h.hub, n: h.n, x, y } as Spot;
+              return { hub: h.hub, label: hubLabel(h.hub), n: h.n, x, y } as Spot;
             }),
         }))
         .filter((e) => e.spots.length > 0)
-        .sort((a, b) => {
-          const ta = a.spots.reduce((t, s) => t + s.n, 0);
-          const tb = b.spots.reduce((t, s) => t + s.n, 0);
-          return tb - ta;
-        }),
+        .sort(
+          (a, b) => b.spots.reduce((t, s) => t + s.n, 0) - a.spots.reduce((t, s) => t + s.n, 0),
+        ),
     [skills],
   );
 
@@ -325,11 +389,29 @@ function HotSpots({ skills }: { skills: CompanySkillDemand[] }) {
     return () => document.removeEventListener("mousedown", away);
   }, [open]);
 
-  if (!plottable.length) return null;
-  const sel = Math.min(i, plottable.length - 1);
-  const { skill, spots } = plottable[sel];
+  // Company-wide coverage, from ads counted once each rather than once per
+  // skill. It is the honest denominator for "how much of this employer is on
+  // the map", and it does not move as the picker does.
+  const located = useMemo(
+    () => companyHubs.filter((h) => HUB_COORD[h.hub]).reduce((t, h) => t + h.n, 0),
+    [companyHubs],
+  );
+
+  const sel = Math.min(i, Math.max(0, plottable.length - 1));
+  const entry = plottable[sel];
+  const frame = useMemo(() => (entry ? frameFor(entry.spots) : null), [entry]);
+  if (!entry || !frame) return null;
+
+  const { skill, spots } = entry;
   const placed = spots.reduce((t, s) => t + s.n, 0);
   const max = Math.max(...spots.map((s) => s.n));
+  // Percentages are relative to the FRAME, not the world, so the overlays track
+  // the zoom. The container is given the frame's aspect so `meet` fills it
+  // exactly and there is no letterbox to correct for.
+  const posOf = (sp: Spot) => ({
+    left: `${((sp.x - frame.x) / frame.w) * 100}%`,
+    top: `${((sp.y - frame.y) / frame.h) * 100}%`,
+  });
 
   return (
     <section className="hsp">
@@ -360,7 +442,6 @@ function HotSpots({ skills }: { skills: CompanySkillDemand[] }) {
                     className="tskopt"
                     onClick={() => {
                       setI(k);
-                      setHover(null);
                       setOpen(false);
                     }}
                   >
@@ -374,52 +455,55 @@ function HotSpots({ skills }: { skills: CompanySkillDemand[] }) {
         )}
       </div>
 
-      <div className="hspmap">
-        <svg viewBox={`0 0 ${WORLD_W} ${WORLD_H}`} preserveAspectRatio="xMidYMid meet" aria-hidden>
+      <div className="hspmap" style={{ aspectRatio: `${FRAME_ASPECT}` }}>
+        <svg viewBox={`${frame.x} ${frame.y} ${frame.w} ${frame.h}`} aria-hidden>
           <path className="hspland" d={WORLD_OUTLINE} />
-          {spots.map((sp, k) => {
-            // AREA tracks the count. Scaling the radius would exaggerate a big
-            // hub by its square.
-            const r = 4 + Math.sqrt(sp.n / max) * 10;
-            return (
-              <g key={sp.hub}>
-                <circle className="hsphot" cx={sp.x} cy={sp.y} r={r} />
-                <circle className="hsphot core" cx={sp.x} cy={sp.y} r={2.6} />
-                <circle
-                  className="hsphit"
-                  cx={sp.x}
-                  cy={sp.y}
-                  r={Math.max(6, r)}
-                  onMouseEnter={() => setHover(k)}
-                  onMouseLeave={() => setHover(null)}
-                />
-              </g>
-            );
-          })}
         </svg>
-        {hover !== null && spots[hover] && (
-          <span
-            className="hsptip"
-            style={{
-              left: `${(spots[hover].x / WORLD_W) * 100}%`,
-              top: `${(spots[hover].y / WORLD_H) * 100}%`,
-            }}
-          >
-            {hubLabel(spots[hover].hub)} · {spots[hover].n} {spots[hover].n === 1 ? "ad" : "ads"}
-          </span>
-        )}
+        {/* Markers and labels are HTML: text placed in SVG under a moving
+            viewBox scales with the zoom, so a tightly framed map would render
+            its labels at several times the size of a wide one. */}
+        {spots.map((sp) => {
+          // AREA tracks the count. Scaling the radius would exaggerate a busy
+          // hub by its square.
+          const size = 22 + Math.sqrt(sp.n / max) * 22;
+          // Labels sit right of the dot, and flip to the left in the right-hand
+          // third where they would otherwise run off the card.
+          const right = (sp.x - frame.x) / frame.w > 0.62;
+          return (
+            <span key={sp.hub} className="hspspot" style={posOf(sp)}>
+              <span className="hsphalo" style={{ width: size, height: size }} />
+              <span className="hspcore" />
+              <span
+                className={`hsplabel ${right ? "left" : ""}`}
+                style={{ [right ? "right" : "left"]: size / 2 + 8 }}
+              >
+                <b>{sp.label}</b>
+                <em>
+                  {sp.n} {sp.n === 1 ? "ad" : "ads"}
+                </em>
+              </span>
+            </span>
+          );
+        })}
       </div>
 
       <div className="hspfoot">
-        <span>
-          {placed} {placed === 1 ? "ad" : "ads"} across {spots.length}{" "}
+        <span className="hsptally">
+          <b>{placed}</b> {placed === 1 ? "ad" : "ads"} <i>/</i> <b>{spots.length}</b>{" "}
           {spots.length === 1 ? "hub" : "hubs"}
         </span>
-        {/* Most archived ads record a country, not a city. Saying so beats
-            letting the cluster read as the whole picture. */}
-        <span className="hspcov">
-          {placed} of {skill.now} live ads carry a city
-        </span>
+        {/* Most archived ads record a country, or nothing. The bar is the point:
+            without it the cluster reads as the whole employer. */}
+        {liveAds > 0 && (
+          <span className="hspcov">
+            <span className="hspbar">
+              <span className="hspbarfill" style={{ width: `${(located / liveAds) * 100}%` }} />
+            </span>
+            <em>
+              {located} / {liveAds} located
+            </em>
+          </span>
+        )}
       </div>
     </section>
   );
@@ -517,7 +601,7 @@ export function SkillDemand({ trends, ranks }: { trends: CompanySkillTrends; ran
   return (
     <>
       <TopSkill skills={top} ranks={ranks} />
-      <HotSpots skills={trends.skills} />
+      <HotSpots skills={trends.skills} liveAds={trends.liveAds} companyHubs={trends.hubs} />
       <AlsoAdvertised skills={rest} />
     </>
   );

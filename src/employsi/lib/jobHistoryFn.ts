@@ -883,9 +883,29 @@ export interface CompanySkillTrends {
   /** Hiring areas, highest live count first. Same rows, same window — the
    *  card's "where they're hiring" bars and their trend arrows. */
   areas: CompanyAreaDemand[];
+  /**
+   * Currently-advertised ads for this company, counted ONCE each.
+   *
+   * Not the sum of the per-skill counts: an ad carrying four skills is one ad
+   * and four of those. This is the denominator a map needs to say how much of
+   * the company it is showing, and adding up the skills would overstate it
+   * several times over.
+   */
+  liveAds: number;
+  /** The same ads by hub, also counted once each. A caller filters this by
+   *  whatever it can actually place — "Australia" is a hub in this archive and
+   *  is not a dot — and the shortfall against `liveAds` is the honest coverage
+   *  figure. */
+  hubs: { hub: string; n: number }[];
 }
 
-const NO_SKILL_TRENDS: CompanySkillTrends = { days: [], skills: [], areas: [] };
+const NO_SKILL_TRENDS: CompanySkillTrends = {
+  days: [],
+  skills: [],
+  areas: [],
+  liveAds: 0,
+  hubs: [],
+};
 
 /** Days of daily history the card's sparklines draw. */
 const SKILL_SPARK_DAYS = 14;
@@ -1095,6 +1115,9 @@ export function foldSkillRows(
   const areaDaily: Record<string, number[]> = {};
   const hubNow: Record<string, Record<string, number>> = {};
   const hubless: Record<string, number> = {};
+  // Row-level, so an ad with four skills counts once here and four times above.
+  let liveAds = 0;
+  const liveByHub: Record<string, number> = {};
   const fresh: Record<string, number[]> = {};
 
   {
@@ -1128,6 +1151,8 @@ export function foldSkillRows(
         // Hot spots are LIVE ads only: the map answers "where are they hiring
         // this now", not "where have they ever".
         const hub = String(r.hub || "").trim();
+        liveAds += 1;
+        if (hub) liveByHub[hub] = (liveByHub[hub] || 0) + 1;
         for (const sk of skills) {
           if (hub) {
             const byHub = (hubNow[sk] ||= {});
@@ -1217,7 +1242,15 @@ export function foldSkillRows(
     })
     .sort((a, b) => b.now - a.now || a.area.localeCompare(b.area));
 
-  return { days, skills, areas };
+  return {
+    days,
+    skills,
+    areas,
+    liveAds,
+    hubs: Object.entries(liveByHub)
+      .map(([hub, n]) => ({ hub, n }))
+      .sort((x, y) => y.n - x.n || x.hub.localeCompare(y.hub)),
+  };
 }
 
 // ── market rank for a skill ─────────────────────────────────────────────────

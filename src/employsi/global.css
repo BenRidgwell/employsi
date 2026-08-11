@@ -11903,64 +11903,153 @@ body {
 .hsp {
   margin-bottom: 14px;
 }
+/* The frame's aspect is set inline from FRAME_ASPECT so the SVG fills the box
+   exactly and the HTML overlays can be positioned in plain percentages. */
 .hspmap {
   position: relative;
   margin-top: 8px;
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+  overflow: hidden;
 }
 .hspmap svg {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
 }
 .hspland {
-  fill: var(--surface-sunken);
+  fill: var(--surface-active);
 }
-.hsphot {
-  fill: var(--status-success-fg);
-  fill-opacity: 0.3;
-  stroke: var(--status-success-fg);
-  stroke-opacity: 0.7;
-  stroke-width: 0.8;
-}
-.hsphot.core {
-  fill-opacity: 0.9;
-  stroke: var(--neutral-0);
-  stroke-width: 0.9;
-  stroke-opacity: 1;
-}
-.hsphit {
-  fill: transparent;
-  cursor: pointer;
-}
-.hsptip {
+/* A marker is a point: everything inside it is centred on that point, so the
+   halo can grow without moving the dot. */
+.hspspot {
   position: absolute;
-  transform: translate(-50%, calc(-100% - 9px));
-  padding: 5px 9px;
-  border-radius: 9px;
-  background: var(--neutral-900);
-  color: var(--neutral-0);
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  white-space: nowrap;
+  width: 0;
+  height: 0;
   pointer-events: none;
-  z-index: 3;
+}
+.hsphalo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--status-success-fg);
+  opacity: 0.22;
+  animation: hsppulse 2.6s var(--ease-standard) infinite;
+}
+.hspcore {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border: 2px solid var(--neutral-0);
+  border-radius: 50%;
+  background: var(--status-success-fg);
+  box-shadow: var(--shadow-xs);
+}
+/* The halo breathes; the dot does not. A marker that moves reads as a position
+   that is uncertain, which is the opposite of what this is saying. */
+@keyframes hsppulse {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(0.82);
+    opacity: 0.28;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.12);
+    opacity: 0.14;
+  }
+}
+.hsplabel {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+.hsplabel.left {
+  align-items: flex-end;
+  text-align: right;
+}
+.hsplabel b {
+  font-size: 12.5px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.hsplabel em {
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
 }
 .hspfoot {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-top: 8px;
-  font-size: 11px;
+  gap: 12px;
+  margin-top: 10px;
+}
+.hsptally {
+  font-size: 12.5px;
   color: var(--text-tertiary);
 }
-/* Most archived ads carry a country, not a city. Saying so beats letting the
-   cluster read as the whole picture. */
+.hsptally b {
+  font-size: 16px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.hsptally i {
+  font-style: normal;
+  margin: 0 2px;
+  color: var(--border-strong);
+}
+/* Coverage. Most archived ads record a country or nothing, so the map shows a
+   fraction of the employer — the bar is what stops the cluster reading as all
+   of it. */
 .hspcov {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  min-width: 0;
+}
+.hspbar {
+  width: 112px;
+  max-width: 40vw;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-active);
+  overflow: hidden;
+}
+.hspbarfill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--neutral-900);
+}
+.hspcov em {
+  font-style: normal;
   font-family: var(--font-mono);
-  font-size: 9.5px;
-  color: var(--text-disabled);
-  text-align: right;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hsphalo {
+    animation: none;
+    transform: translate(-50%, -50%);
+  }
 }
 
 /* the rest, one row each */
