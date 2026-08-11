@@ -169,7 +169,10 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
 
 // ── growth ──────────────────────────────────────────────────────────────────
 {
-  // 1 ad on day 0 rising to 4 by day 9 = +300%.
+  // Change is the mean of the older half against the mean of the newer half,
+  // NOT first-vs-last. Daily counts are noisy enough that two arbitrary days
+  // should not carry the whole figure.
+  // Series here: [1,1,1,2,2,3,3,4,4,4] -> before mean 1.4, after mean 3.6.
   const rows: SkillRow[] = [
     row(["Automation & Robotics"], "2026-08-01", "2026-08-10"),
     row(["Automation & Robotics"], "2026-08-04", "2026-08-10"),
@@ -178,7 +181,7 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
   ];
   const out = foldSkillRows(rows, DAYS, LIVE_FROM, 0);
   const s = find(out, "Automation & Robotics")!;
-  check("growth is measured across the covered window", s.pct === 300, `pct=${s.pct}`);
+  check("growth compares half-window means", s.pct === 157.1, `pct=${s.pct}`);
   check("...and the direction follows it", s.dir === "up");
   check("...and every ad counts as live", s.now === 4);
 }
@@ -190,6 +193,22 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
   const out = foldSkillRows(rows, DAYS, LIVE_FROM, 0);
   const s = find(out, "Welding & Fabrication")!;
   check("a shrinking series reads down", s.dir === "down" && s.pct === -50, `pct=${s.pct}`);
+}
+{
+  // One freak day at the end must not become the whole trend. Endpoint
+  // arithmetic called this +200%; against half-window means it is flat, which
+  // is what a fortnight of 3s with one 9 on the last day actually is.
+  const flat = Array.from({ length: 3 }, (_, k) =>
+    row([`x${k}`, "Mining Engineering"].slice(1), "2026-08-01", "2026-08-10"),
+  );
+  const spike = [row(["Mining Engineering"], "2026-08-10", "2026-08-10")];
+  const out = foldSkillRows([...flat, ...spike], DAYS, LIVE_FROM, 0);
+  const s = find(out, "Mining Engineering")!;
+  check(
+    "a single spike on the last day does not become the trend",
+    s.pct !== null && Math.abs(s.pct) < 25,
+    `pct=${s.pct}`,
+  );
 }
 
 // ── ordering ────────────────────────────────────────────────────────────────
@@ -260,9 +279,18 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
 // skills per listing, one pass over both.
 {
   const rows: SkillRow[] = [
-    row(["Mining Engineering"], "2026-08-01", "2026-08-10", { category: "Engineering jobs" }),
-    row(["Mining Engineering"], "2026-08-06", "2026-08-10", { category: "Engineering" }),
-    row(["Electrical Trade"], "2026-08-01", "2026-08-10", { category: "Trade & Construction" }),
+    row(["Mining Engineering"], "2026-08-01", "2026-08-10", {
+      category: "Engineering jobs",
+      source: "adzuna",
+    }),
+    row(["Mining Engineering"], "2026-08-06", "2026-08-10", {
+      category: "Engineering",
+      source: "adzuna",
+    }),
+    row(["Electrical Trade"], "2026-08-01", "2026-08-10", {
+      category: "Trade & Construction",
+      source: "adzuna",
+    }),
   ];
   const out = foldSkillRows(rows, DAYS, LIVE_FROM, 0);
   const eng = out.areas.find((a) => a.area === "Engineering")!;
@@ -289,7 +317,12 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
   // A category that did not move is FLAT, not up — a 0% with a growth arrow
   // asserts something nothing measured.
   const out = foldSkillRows(
-    [row(["Geotechnical"], "2026-08-01", "2026-08-10", { category: "Scientific & QA" })],
+    [
+      row(["Geotechnical"], "2026-08-01", "2026-08-10", {
+        category: "Scientific & QA",
+        source: "adzuna",
+      }),
+    ],
     DAYS,
     LIVE_FROM,
     0,
@@ -301,7 +334,12 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
   // Below the covered-window floor there is no percentage at all — distinct
   // from a measured zero.
   const out = foldSkillRows(
-    [row(["Geotechnical"], "2026-08-08", "2026-08-10", { category: "Engineering" })],
+    [
+      row(["Geotechnical"], "2026-08-08", "2026-08-10", {
+        category: "Engineering",
+        source: "adzuna",
+      }),
+    ],
     DAYS,
     LIVE_FROM,
     8,
@@ -312,12 +350,55 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
 }
 {
   const out = foldSkillRows(
-    [row(["Geotechnical"], "2026-08-09", "2026-08-10", { category: "" })],
+    [row(["Geotechnical"], "2026-08-09", "2026-08-10", { category: "", source: "adzuna" })],
     DAYS,
     LIVE_FROM,
     0,
   );
   check("a blank category is skipped, not bucketed as Other", out.areas.length === 0);
+}
+{
+  // Most feeds put the PLATFORM in `category`, not a job category — measured on
+  // the live archive, tallying it unfiltered produced areas called "LinkedIn",
+  // "Career portal", "au" and "Monday to Friday". Only sources with a real
+  // taxonomy contribute.
+  const out = foldSkillRows(
+    [
+      row(["Geotechnical"], "2026-08-01", "2026-08-10", {
+        category: "LinkedIn",
+        source: "linkedin",
+      }),
+      row(["Geotechnical"], "2026-08-01", "2026-08-10", {
+        category: "Full-time, Monday to Friday",
+        source: "simplyhired",
+      }),
+      row(["Geotechnical"], "2026-08-01", "2026-08-10", {
+        category: "Engineering Jobs",
+        source: "adzuna",
+      }),
+    ],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  check(
+    "a platform name in the category column is not a hiring area",
+    eq(
+      out.areas.map((a) => a.area),
+      ["Engineering"],
+    ),
+    JSON.stringify(out.areas.map((a) => a.area)),
+  );
+}
+{
+  // Adzuna's own placeholder for an ad it could not classify.
+  const out = foldSkillRows(
+    [row(["Geotechnical"], "2026-08-01", "2026-08-10", { category: "Unknown", source: "adzuna" })],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  check('"Unknown" is not a hiring area', out.areas.length === 0);
 }
 
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");

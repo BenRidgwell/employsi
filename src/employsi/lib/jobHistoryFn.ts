@@ -870,9 +870,60 @@ const NO_SKILL_TRENDS: CompanySkillTrends = { days: [], skills: [], areas: [] };
 
 /** Days of daily history the card's sparklines draw. */
 const SKILL_SPARK_DAYS = 14;
+
+/**
+ * Sources whose `category` column is an actual job category.
+ *
+ * It is not one everywhere. jobArchive types the column "job category / posted
+ * via platform", and most feeds use the second sense: measured across the live
+ * archive, linkedin / jora / indeed / the government boards and two thirds of
+ * the career portals store ONE distinct value each — the platform's own name —
+ * while simplyhired stores 355 of them, free text like "Full-time, Monday to
+ * Friday". Tallying that column unfiltered produced hiring areas called
+ * "LinkedIn", "Career portal", "au" and "Monday to Friday".
+ *
+ * Adzuna is the one AU feed with a stable published taxonomy (55 values,
+ * "Engineering Jobs", "IT Jobs", …) and it is also what the card's bars are
+ * already built from, via the live job sample. Restricting to it keeps the bar
+ * and its trend arrow describing the same taxonomy. SEEK has a clean taxonomy
+ * too but a DIFFERENT one, and merging the two yields near-duplicate areas
+ * ("Engineering" beside "Engineering & Technical") splitting one count in half.
+ */
+const AREA_SOURCES = new Set(["adzuna"]);
+/** Adzuna's placeholder for an ad it could not classify. Not an area. */
+const AREA_UNKNOWN = "unknown";
 /** Below this many covered days the line says more about the archive's age
  *  than about demand, so it is dropped. Same threshold the ticker uses. */
 const SKILL_SPARK_MIN = 5;
+/** How far back the collection-start test looks. Long enough to hold a normal
+ *  run of collecting days, short enough that back-dated rows cannot drag the
+ *  median under the floor. Matches the ticker's widest scan. */
+const COVERAGE_HORIZON_DAYS = 60;
+
+/**
+ * Change between the two halves of a covered window, as a percentage.
+ *
+ * Means, not endpoints. A daily live-vacancy count is noisy — one big posting
+ * day or one slow scrape moves a single point several ads — and first-vs-last
+ * hands that whole swing to two arbitrary days. Comparing the mean of the older
+ * half against the mean of the newer half is the same construction
+ * MarketSkillMovers already uses ("mean daily live vacancies, recent window vs
+ * prior"), and it survives a single bad day.
+ *
+ * Returns null when there is nothing to compare against, which is different
+ * from zero and must stay different: null is "not measurable", zero is
+ * "measured, did not move".
+ */
+function halfWindowChange(series: number[]): { pct: number | null; prev: number } {
+  if (series.length < SKILL_SPARK_MIN) return { pct: null, prev: 0 };
+  const half = Math.floor(series.length / 2);
+  const mean = (a: number[]) => a.reduce((t, v) => t + v, 0) / a.length;
+  const before = mean(series.slice(0, half));
+  const after = mean(series.slice(series.length - half));
+  const prev = Math.round(before);
+  if (before <= 0) return { pct: null, prev };
+  return { pct: Math.round(((after - before) / before) * 1000) / 10, prev };
+}
 
 const isoDaysAgo = (offset: number): string => {
   const d = new Date();
@@ -894,8 +945,24 @@ const isoDaysAgo = (offset: number): string => {
  * histogram is far too sparse for the median test to mean anything.
  */
 async function archiveCoverageStart(db: D1Like): Promise<string | null> {
+  // SCOPED TO A RECENT HORIZON, and that is the whole trick.
+  //
+  // Asked over the entire table this returns 2003-12-29. `first_seen` is not
+  // purely "the day we first saw it" — measured on the live archive there are
+  // 798 distinct values reaching back two decades, because some feeds carry a
+  // historical date in. Twenty years of thin days drags the median down to 9,
+  // the 10% floor to 0.9, and every day with a single row then qualifies as a
+  // collecting day. The guard silently passed everything.
+  //
+  // Over the last 60 days the median is ~4,600 and the floor ~460, which cleanly
+  // separates the setup trickle (6, 9, 2, 1 rows on 16-19 July 2026) from the
+  // day collection actually started (3,627 on the 20th) — the date CLAUDE.md
+  // records independently.
   const res = await db
-    .prepare(`SELECT first_seen AS d, COUNT(*) AS n FROM jobs GROUP BY first_seen`)
+    .prepare(
+      `SELECT first_seen AS d, COUNT(*) AS n FROM jobs WHERE first_seen >= ?1 GROUP BY first_seen`,
+    )
+    .bind(isoDaysAgo(COVERAGE_HORIZON_DAYS))
     .all();
   const rows = res?.results ?? [];
   if (!rows.length) return null;
@@ -920,12 +987,23 @@ export const getCompanySkillTrends = createServerFn({ method: "GET" })
     const db = await getArchiveDb();
     if (!db) return NO_SKILL_TRENDS;
     try {
-      // Oldest → newest, the days the sparkline could cover.
+      // Oldest → newest, the days the sparkline covers. It ENDS YESTERDAY, not
+      // today.
+      //
+      // Today is always mid-collection: the crons run through the day, so only
+      // the ads re-seen so far carry today's last_seen. Measured on the live
+      // archive for BHP: 346 rows last seen on the 10th against 113 on the 11th
+      // at the time of writing. Ending the window on that partial day put a
+      // collapse at the right-hand end of every series and made the change
+      // read as a crash — Welding & Fabrication came out at −100% while its
+      // real fortnight was flat. getVacancyTrend already ends a day back for
+      // the same reason.
       const window: string[] = [];
-      for (let i = SKILL_SPARK_DAYS - 1; i >= 0; i--) window.push(isoDaysAgo(i));
+      for (let i = SKILL_SPARK_DAYS; i >= 1; i--) window.push(isoDaysAgo(i));
       const scanFrom = window[0];
-      // "Currently advertised" is the same one-day boundary the rest of the app
-      // uses, so this card's counts and the headline's cannot disagree.
+      // The same one-day boundary the rest of the app calls "currently
+      // advertised", and the last day of the window above, so the card's counts
+      // and its line end at the same place.
       const liveFrom = isoDaysAgo(1);
 
       const res = await db
@@ -997,9 +1075,11 @@ export function foldSkillRows(
       // The board's own category, tidied the way the card already tidies it
       // ("Engineering jobs" -> "Engineering"). Blank stays blank and is skipped
       // rather than bucketed as "Other", which would invent an area.
-      const area = String(r.category || "")
-        .replace(/\s*jobs?$/i, "")
-        .trim();
+      const area = AREA_SOURCES.has(String(r.source || ""))
+        ? String(r.category || "")
+            .replace(/\s*jobs?$/i, "")
+            .trim()
+        : "";
 
       if (ls >= liveFrom) {
         for (const s of skills) now[s] = (now[s] || 0) + 1;
@@ -1009,7 +1089,7 @@ export function foldSkillRows(
           source: r.source as string | null,
         });
         if (aud !== null) for (const s of skills) (payAds[s] ||= []).push(aud);
-        if (area) areaNow[area] = (areaNow[area] || 0) + 1;
+        if (area && area.toLowerCase() !== AREA_UNKNOWN) areaNow[area] = (areaNow[area] || 0) + 1;
       }
       // A listing is live on day D when it was first seen on or before D and
       // last seen on or after it.
@@ -1020,7 +1100,7 @@ export function foldSkillRows(
           const arr = (daily[s] ||= new Array(window.length).fill(0));
           arr[i] += 1;
         }
-        if (area) {
+        if (area && area.toLowerCase() !== AREA_UNKNOWN) {
           const arr = (areaDaily[area] ||= new Array(window.length).fill(0));
           arr[i] += 1;
         }
@@ -1037,17 +1117,21 @@ export function foldSkillRows(
       const full = daily[s];
       const cut = full ? full.slice(from) : [];
       const enough = cut.length >= SKILL_SPARK_MIN;
-      // A dead-flat line is noise, not signal — leave it off, and with it the
-      // 0% it would imply.
+      // A dead-flat line is noise, not signal — leave it off.
       const moves = enough && cut.some((v) => v !== cut[0]);
-      const pct = moves && cut[0] > 0 ? ((cut[cut.length - 1] - cut[0]) / cut[0]) * 100 : null;
+      const { pct } = halfWindowChange(cut);
       return {
         skill: s,
         cat: SKILL_CATEGORY[s],
         now: now[s],
         spark: moves ? cut : undefined,
-        pct: pct === null ? null : Math.round(pct * 10) / 10,
-        dir: pct === null ? ("flat" as const) : pct >= 0 ? ("up" as const) : ("down" as const),
+        pct,
+        dir:
+          pct === null || pct === 0
+            ? ("flat" as const)
+            : pct > 0
+              ? ("up" as const)
+              : ("down" as const),
         pay: medianAnnual(payAds[s] || []) ?? undefined,
         payN: (payAds[s] || []).length,
       };
@@ -1057,16 +1141,14 @@ export function foldSkillRows(
   const areas: CompanyAreaDemand[] = Object.keys(areaNow)
     .map((a) => {
       const cut = (areaDaily[a] || []).slice(from);
-      // Same floor as the sparklines: under it the change describes the
-      // archive's age, so the card shows a count and no arrow.
-      const usable = cut.length >= SKILL_SPARK_MIN && cut[0] > 0;
-      const prev = usable ? cut[0] : 0;
-      const pct = usable ? ((cut[cut.length - 1] - cut[0]) / cut[0]) * 100 : null;
+      // Same floor and the same half-window comparison the skills use, so a
+      // bar and its arrow are measured the same way.
+      const { pct, prev } = halfWindowChange(cut);
       return {
         area: a,
         now: areaNow[a],
         prev,
-        pct: pct === null ? null : Math.round(pct * 10) / 10,
+        pct,
         // Zero is a measured no-change, distinct from null. Rendering it as
         // "up" would put a growth arrow on a category that did not move.
         dir:
