@@ -158,6 +158,22 @@ ADVERTISER_ALIAS = {
     # gold mine in WA rather than the listed parent.
     'catalyst plutonic': 'catalyst metals',
     'catalyst plutonic pty ltd': 'catalyst metals',
+    # THE FIRM RENAMED; THE ROSTER DID NOT. Herbert Smith Freehills now
+    # advertises as "Herbert Smith Freehills Kramer" after its Kramer Levin
+    # merger, and every one of its ads was being rejected — 28 of 28 on
+    # 2026-08-11, which is the whole employer, not a rounding error.
+    #
+    # "Kramer" is a business name rather than corporate form, so the token rule
+    # is RIGHT to reject it by default: an extra business word is exactly how
+    # "IGO Techonologies" once landed on IGO. Widening CORPORATE_WORDS to admit
+    # it would reopen that hole for every short name on the roster. An alias is
+    # the narrow statement — this specific string is this specific employer.
+    #
+    # Found by the most-dropped-advertiser report, which is what that report is
+    # for: the count alone said "28 dropped as another advertiser", which reads
+    # like the gate working correctly.
+    'herbert smith freehills kramer': 'herbert smith freehills',
+    'herbert smith freehills kramer llp': 'herbert smith freehills',
 }
 
 
