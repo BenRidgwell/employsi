@@ -2,6 +2,11 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <!-- Scratch render, served on employsi.com.au because it sits in public/.
+       noindex rather than a robots.txt Disallow: a disallowed page is the one
+       page whose noindex can never be read, and blocking by path prefix here
+       is what would take the landing page's iframed hero down with it. -->
+  <meta name="robots" content="noindex">
   <title>Bundled Page</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }

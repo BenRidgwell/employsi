@@ -65,14 +65,28 @@ function isAppOnlyPath(pathname: string): boolean {
  * the page's own fetches — they answer JSON to a correctly-formed call and 500
  * to a bare GET, so a crawler spending budget on them gets nothing either way.
  *
- * The named .html pages are scratch renders that happen to live in public/, so
- * the static handler serves them on the marketing domain: measured 2026-08-11,
- * https://employsi.com.au/skyline-3d and /waitlist-preview both answer 200 with
- * a full page (nitro 307s the .html form to the extensionless one, so BOTH
- * spellings need naming). `<title>Bundled Page</title>` indexed under this
- * domain is worse than no second page at all. Disallow rather than delete
- * because they are working files the design still renders from; deleting them
- * is a separate decision from keeping them out of the index.
+ * NOTHING ELSE IS DISALLOWED HERE, and the scratch pages in public/ are the
+ * reason that rule needs writing down.
+ *
+ * Those pages are served on this domain — measured 2026-08-11,
+ * /skyline-3d and /waitlist-preview both answer 200 with `<title>Bundled
+ * Page</title>` — so the reflex is to Disallow them. Doing that breaks the
+ * landing page. `/waitlist-preview.html` is the hero graphic: Showcase.tsx
+ * loads it in an eager <iframe> in the first screenful, and its React and font
+ * files sit under `/waitlist-preview/`. A Disallow line is a PREFIX match, so
+ * one entry for `/waitlist-preview` blocks the frame and every asset it pulls,
+ * and Google renders with a headless browser — the page it scored would be the
+ * page with its main graphic missing.
+ *
+ * A blocked URL is also the one URL whose `noindex` can never be read. Robots
+ * blocking and noindex are alternatives, not layers: a page that is disallowed
+ * can still be indexed from an external link precisely because the crawler was
+ * never allowed to fetch the tag telling it not to.
+ *
+ * So the scratch pages carry `<meta name="robots" content="noindex">` in their
+ * own <head> instead, which keeps them out of the index without hiding
+ * anything from the renderer. Keep it that way: adding a path here to "tidy
+ * up" is what would silently cost the landing page its hero.
  */
 function robotsTxt(host: string): string {
   if (host !== MARKETING_APEX) {
@@ -82,9 +96,6 @@ function robotsTxt(host: string): string {
     "User-agent: *",
     "Allow: /",
     "Disallow: /_serverFn/",
-    "Disallow: /skyline-3d",
-    "Disallow: /skyline-v4",
-    "Disallow: /waitlist-preview",
     "",
     // Absolute by specification: the Sitemap directive is the one line in
     // robots.txt that is not relative to the host that served the file.
