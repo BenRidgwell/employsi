@@ -340,12 +340,70 @@ def match_city(text: str):
 
 SECTOR_BY_ID: dict[str, str] = {}
 
+# COMPANIES THAT DESTROY THE BATCH THEY TRAVEL IN, per board.
+#
+# One employer here does not merely return nothing for itself — it makes the
+# WHOLE snapshot come back empty, taking the other 89 companies in the chunk
+# with it. Bright Data reports the snapshot `ready` and serves an empty file, so
+# there is no error anywhere to read.
+#
+# HOW HANSEN YUNCKEN WAS PROVEN, 2026-08-11. Its chunk returned 0 records twice,
+# including once with nothing else running, so it was not the concurrency fault
+# fixed in the workflow the same night. Bisecting the 90-company chunk down to 3
+# and then pairing each suspect against a known-good anchor (Beach Energy, which
+# returns exactly 1 ad) isolated it:
+#
+#     [Beach Energy, Data#3]                 -> 33 records  (1 + 32)
+#     [Beach Energy, QCoal]                  ->  1 record   (1 + 0, simply quiet)
+#     [Beach Energy, Herbert Smith Freehills]-> 29 records  (1 + 28)
+#     [Beach Energy, Hansen Yuncken]         ->  0 records  <- anchor destroyed
+#
+# The anchor surviving in three cases and dying in the fourth is what makes this
+# an identification rather than a guess. Note QCoal: it returns nothing for
+# itself and harms nothing — a real zero, which the archive should record as
+# zero. The two look identical in a chunk log and are completely different.
+#
+# THE COMPANY STAYS ON THE ROSTER. It keeps its pin, its card and every other
+# feed; only this board cannot search it. Dropping a real employer to satisfy a
+# scraper would put a hole in the map to tidy up a log.
+#
+# To re-test one, pair it with the anchor through --input-json and see whether
+# the anchor's single ad survives. If Bright Data fixes its end, delete the
+# entry — nothing else needs changing.
+QUARANTINE: dict[str, dict[str, str]] = {
+    'linkedin': {
+        'priv-hansen-yuncken': 'zeroes any snapshot it is included in '
+                               '(measured 2026-08-11, anchor test above)',
+    },
+}
+
 
 def load_companies() -> list[tuple[str, str]]:
     from roster import load_roster
     rows = load_roster()
     SECTOR_BY_ID.update({c['id']: c.get('sector') or '' for c in rows})
     return [(c['id'], c['name']) for c in rows if not ONLY or c['id'] in ONLY]
+
+
+def drop_quarantined(companies: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Remove this board's batch-destroying companies from an ALREADY-SLICED list.
+
+    DELIBERATELY AFTER SLICING. Filtering before would renumber the roster, so
+    --offset 90 would no longer mean the same 90 companies it meant last run and
+    the four chunks would quietly stop tiling the roster — a company could fall
+    down the gap between two chunks and simply never be collected again.
+    """
+    banned = QUARANTINE.get(WHICH, {})
+    if not banned:
+        return companies
+    kept = [(cid, name) for cid, name in companies if cid not in banned]
+    for cid, name in companies:
+        if cid in banned:
+            sys.stderr.write(
+                f'  SKIPPING {name} ({cid}) on {WHICH}: {banned[cid]}.\n'
+                f'    It stays on the roster and in every other feed; this board '
+                f'alone cannot search it.\n')
+    return kept
 
 
 # ── Bright Data ───────────────────────────────────────────────────────────────
@@ -573,7 +631,7 @@ def main() -> int:
     # BILLED but no row reaches D1. Chunking is what makes full coverage
     # affordable to actually land.
     all_companies = load_companies()
-    companies = all_companies[OFFSET:OFFSET + LIMIT]
+    companies = drop_quarantined(all_companies[OFFSET:OFFSET + LIMIT])
     if not companies:
         sys.exit(f'No companies in slice [{OFFSET}:{OFFSET + LIMIT}] of '
                  f'{len(all_companies)} — check --offset/--limit/--only.')
@@ -592,8 +650,30 @@ def main() -> int:
     records = download(snap)
     sys.stderr.write(f'  {len(records)} records returned.\n')
     if not records:
-        sys.stderr.write('No records at all — that is a collection failure, not a '
-                         'quiet job market. Nothing written.\n')
+        first, last = companies[0][1], companies[-1][1]
+        sys.stderr.write(
+            'No records at all — that is a collection failure, not a quiet job '
+            'market. Nothing written.\n\n'
+            '  TWO CAUSES HAVE DONE THIS, and they need opposite responses.\n\n'
+            '  1. Another snapshot was open on the account. Measured 2026-08-11:\n'
+            '     three chunks triggered together returned 0, 0 and 870 records,\n'
+            '     and a slice that returned 0 alongside them returned 1,908 when\n'
+            '     re-run by itself. If anything else was collecting, just re-run\n'
+            '     this chunk on its own before believing the data is at fault.\n\n'
+            '  2. One company in the batch zeroes the whole snapshot. Bisect this\n'
+            '     slice by halving --limit, then confirm the single suspect by\n'
+            '     pairing it with a company known to return ads:\n\n'
+            '       --probe --input-json \'[{"company":"Beach Energy","location":'
+            '"Australia","country":"AU","keyword":""},\n'
+            '                              {"company":"<SUSPECT>","location":'
+            '"Australia","country":"AU","keyword":""}]\'\n\n'
+            '     Beach Energy returns exactly 1 ad. If that 1 survives, the\n'
+            '     suspect is merely quiet and is not the cause; if the pair\n'
+            '     returns 0, the suspect destroyed the batch — add it to\n'
+            '     QUARANTINE with the measurement. Do NOT drop it from the\n'
+            '     roster: it belongs on the map either way.\n\n'
+            f'  This slice was [{OFFSET}:{OFFSET + LIMIT}], {len(companies)} '
+            f'companies, {first} .. {last}.\n')
         return 1
 
     # WHICH FIELDS ACTUALLY ARRIVED. Bright Data documents six and the card
