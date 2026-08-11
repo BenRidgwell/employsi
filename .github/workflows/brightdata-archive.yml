@@ -264,10 +264,19 @@ jobs:
 # THE SCHEDULE COLLECTS BOTH BOARDS — the matrix is source x chunk, so a
 # fortnightly sweep is 8 jobs: indeed and linkedin, each over four chunks of 90.
 #
-# LINKEDIN IS WIRED BUT NOT YET PROVEN. Its dataset id
-# (gd_lpfll7v5hcqtkxl6l, "Linkedin job listings information") accepts the
-# trigger, but a 6-company probe on 2026-08-10 returned ZERO records: the input
-# shape is valid to Bright Data and still matches nothing. Until a probe returns
-# rows, expect the linkedin half of each sweep to fail loudly on "No records at
-# all" rather than to write anything — which is the intended behaviour, not a
-# regression. Use input_json to test a shape without a commit.
+# LINKEDIN IS PROVEN END TO END as of 2026-08-10, and the thing that was wrong
+# is worth keeping written down. Its dataset (gd_lpfll7v5hcqtkxl6l, "Linkedin
+# job listings information") accepted the trigger from the first attempt and
+# returned ZERO records, because the employer name was going into `keyword`.
+# LinkedIn keyword-matches TITLES AND DESCRIPTIONS, not the advertiser — so
+# "BHP" matched nothing and the request looked valid the whole way. The employer
+# belongs in `company`. Bright Data will state its own contract if you post an
+# invalid field: it echoes the accepted keys back in the error.
+#
+# Measured on the first real chunk (offset 0, 90 companies): snapshot ready in
+# 4m22s, 2457 records, 2332 kept for 43 employers, 1970 rows upserted (1878 new
+# + 92 refreshed by job_key). title/company/location/url/posted all 100%.
+# `salary` is returned on every record and is ALWAYS EMPTY — LinkedIn does not
+# publish pay on these listings, so a blank there is correct, not a mapping bug.
+#
+# Use input_json to test a shape without a commit.
