@@ -255,5 +255,70 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
   );
 }
 
+// ── hiring areas ────────────────────────────────────────────────────────────
+// Areas come off the same rows as the skills: one category per listing, many
+// skills per listing, one pass over both.
+{
+  const rows: SkillRow[] = [
+    row(["Mining Engineering"], "2026-08-01", "2026-08-10", { category: "Engineering jobs" }),
+    row(["Mining Engineering"], "2026-08-06", "2026-08-10", { category: "Engineering" }),
+    row(["Electrical Trade"], "2026-08-01", "2026-08-10", { category: "Trade & Construction" }),
+  ];
+  const out = foldSkillRows(rows, DAYS, LIVE_FROM, 0);
+  const eng = out.areas.find((a) => a.area === "Engineering")!;
+  check(
+    'a trailing "jobs" is stripped so one area is not two',
+    out.areas.length === 2,
+    JSON.stringify(out.areas.map((a) => a.area)),
+  );
+  check("area live counts are per listing", eng.now === 2);
+  check(
+    "area growth is measured across the covered window",
+    eng.pct === 100 && eng.dir === "up",
+    `pct=${eng.pct}`,
+  );
+  check(
+    "areas come back highest live count first",
+    eq(
+      out.areas.map((a) => a.area),
+      ["Engineering", "Trade & Construction"],
+    ),
+  );
+}
+{
+  // A category that did not move is FLAT, not up — a 0% with a growth arrow
+  // asserts something nothing measured.
+  const out = foldSkillRows(
+    [row(["Geotechnical"], "2026-08-01", "2026-08-10", { category: "Scientific & QA" })],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  const a = out.areas[0];
+  check("an unmoved area reads flat with a real zero", a.pct === 0 && a.dir === "flat");
+}
+{
+  // Below the covered-window floor there is no percentage at all — distinct
+  // from a measured zero.
+  const out = foldSkillRows(
+    [row(["Geotechnical"], "2026-08-08", "2026-08-10", { category: "Engineering" })],
+    DAYS,
+    LIVE_FROM,
+    8,
+  );
+  const a = out.areas[0];
+  check("too short a window yields no area percentage", a.pct === null && a.dir === "flat");
+  check("...but the area count still stands", a.now === 1);
+}
+{
+  const out = foldSkillRows(
+    [row(["Geotechnical"], "2026-08-09", "2026-08-10", { category: "" })],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  check("a blank category is skipped, not bucketed as Other", out.areas.length === 0);
+}
+
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");
 process.exit(failures ? 1 : 0);

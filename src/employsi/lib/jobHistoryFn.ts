@@ -837,6 +837,21 @@ export interface CompanySkillDemand {
   payN: number;
 }
 
+/** A hiring area — the job-board category an ad was filed under — with the same
+ *  14-day comparison the skills carry. */
+export interface CompanyAreaDemand {
+  area: string;
+  /** Ads currently advertised in this area. */
+  now: number;
+  /** The same count at the start of the covered window. */
+  prev: number;
+  /** Change across it. Null when the window is too short to support one; the
+   *  card then shows the count and no arrow. Zero is a measured no-change and
+   *  is NOT null — the two states read differently. */
+  pct: number | null;
+  dir: "up" | "down" | "flat";
+}
+
 export interface CompanySkillTrends {
   /** The days every `spark` is indexed against, oldest → newest. Trimmed to
    *  days the archive actually covered, so a young archive returns a short
@@ -846,9 +861,12 @@ export interface CompanySkillTrends {
    *  Uncapped: this is the set a search box offers, and a list that silently
    *  stops would read as the complete one. Callers cap their own display. */
   skills: CompanySkillDemand[];
+  /** Hiring areas, highest live count first. Same rows, same window — the
+   *  card's "where they're hiring" bars and their trend arrows. */
+  areas: CompanyAreaDemand[];
 }
 
-const NO_SKILL_TRENDS: CompanySkillTrends = { days: [], skills: [] };
+const NO_SKILL_TRENDS: CompanySkillTrends = { days: [], skills: [], areas: [] };
 
 /** Days of daily history the card's sparklines draw. */
 const SKILL_SPARK_DAYS = 14;
@@ -912,7 +930,7 @@ export const getCompanySkillTrends = createServerFn({ method: "GET" })
 
       const res = await db
         .prepare(
-          `SELECT skills, first_seen, last_seen, salary, hub, source FROM jobs
+          `SELECT skills, category, first_seen, last_seen, salary, hub, source FROM jobs
              WHERE company_id = ?1 AND skills IS NOT NULL AND last_seen >= ?2`,
         )
         // Same alias the headline and the vacancy chart use, so a dual-listed
@@ -939,7 +957,7 @@ export const getCompanySkillTrends = createServerFn({ method: "GET" })
 /** The archive columns the fold below reads. Structurally a SqlRow, so query
  *  results pass straight through and a test can hand-build one. */
 export type SkillRow = Partial<
-  Record<"skills" | "first_seen" | "last_seen" | "salary" | "hub" | "source", SqlValue>
+  Record<"skills" | "category" | "first_seen" | "last_seen" | "salary" | "hub" | "source", SqlValue>
 >;
 
 /**
@@ -960,6 +978,11 @@ export function foldSkillRows(
   const now: Record<string, number> = {};
   const daily: Record<string, number[]> = {};
   const payAds: Record<string, number[]> = {};
+  // Areas are tallied off the SAME rows in the same pass. A listing carries one
+  // category and many skills, so they cannot share a bucket, but they can share
+  // a query — and the card draws both.
+  const areaNow: Record<string, number> = {};
+  const areaDaily: Record<string, number[]> = {};
 
   {
     for (const r of rows) {
@@ -971,6 +994,12 @@ export function foldSkillRows(
       const fs = String(r.first_seen || "");
       const ls = String(r.last_seen || "");
       if (!fs || !ls) continue;
+      // The board's own category, tidied the way the card already tidies it
+      // ("Engineering jobs" -> "Engineering"). Blank stays blank and is skipped
+      // rather than bucketed as "Other", which would invent an area.
+      const area = String(r.category || "")
+        .replace(/\s*jobs?$/i, "")
+        .trim();
 
       if (ls >= liveFrom) {
         for (const s of skills) now[s] = (now[s] || 0) + 1;
@@ -980,6 +1009,7 @@ export function foldSkillRows(
           source: r.source as string | null,
         });
         if (aud !== null) for (const s of skills) (payAds[s] ||= []).push(aud);
+        if (area) areaNow[area] = (areaNow[area] || 0) + 1;
       }
       // A listing is live on day D when it was first seen on or before D and
       // last seen on or after it.
@@ -988,6 +1018,10 @@ export function foldSkillRows(
         if (fs > d || ls < d) continue;
         for (const s of skills) {
           const arr = (daily[s] ||= new Array(window.length).fill(0));
+          arr[i] += 1;
+        }
+        if (area) {
+          const arr = (areaDaily[area] ||= new Array(window.length).fill(0));
           arr[i] += 1;
         }
       }
@@ -1020,5 +1054,30 @@ export function foldSkillRows(
     })
     .sort((a, b) => b.now - a.now || a.skill.localeCompare(b.skill));
 
-  return { days, skills };
+  const areas: CompanyAreaDemand[] = Object.keys(areaNow)
+    .map((a) => {
+      const cut = (areaDaily[a] || []).slice(from);
+      // Same floor as the sparklines: under it the change describes the
+      // archive's age, so the card shows a count and no arrow.
+      const usable = cut.length >= SKILL_SPARK_MIN && cut[0] > 0;
+      const prev = usable ? cut[0] : 0;
+      const pct = usable ? ((cut[cut.length - 1] - cut[0]) / cut[0]) * 100 : null;
+      return {
+        area: a,
+        now: areaNow[a],
+        prev,
+        pct: pct === null ? null : Math.round(pct * 10) / 10,
+        // Zero is a measured no-change, distinct from null. Rendering it as
+        // "up" would put a growth arrow on a category that did not move.
+        dir:
+          pct === null || pct === 0
+            ? ("flat" as const)
+            : pct > 0
+              ? ("up" as const)
+              : ("down" as const),
+      };
+    })
+    .sort((a, b) => b.now - a.now || a.area.localeCompare(b.area));
+
+  return { days, skills, areas };
 }

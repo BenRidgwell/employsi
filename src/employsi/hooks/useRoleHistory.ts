@@ -10,7 +10,7 @@ import type { RolePoint } from "../lib/openRolesFn";
 
 // Stable empty value, so a card that has not loaded yet does not get a fresh
 // object identity on every render and re-run its memos.
-const EMPTY_SKILL_TRENDS: CompanySkillTrends = { days: [], skills: [] };
+const EMPTY_SKILL_TRENDS: CompanySkillTrends = { days: [], skills: [], areas: [] };
 
 // A company's archived role history (D1). Null until the archive has at least
 // one listing for the company, or off-Worker. Cached for the session — the
