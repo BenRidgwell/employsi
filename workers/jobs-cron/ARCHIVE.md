@@ -1366,11 +1366,16 @@ Add to `workers/jobs-cron/wrangler.jsonc` **and** the root `wrangler.jsonc`
 ```bash
 # cron
 cd workers/jobs-cron && wrangler deploy
-# app + mobile
+# app + mobile + preview. VITE_MAPBOX_TOKEN must be set or the build refuses —
+# see the deploy section of CLAUDE.md before satisfying it with a placeholder.
 bun run build
-wrangler deploy --name benridgwell-globe-gazer-hr
+wrangler deploy --name benridgwell-globe-gazer-hr          # PRODUCTION, employsi.com.au
 wrangler deploy --name benridgwell-globe-gazer-hr-mobile
+wrangler deploy --name employsi-preview                    # for review, not public
 ```
+
+All of these share the one D1 above, so a preview or mobile deploy reads and writes
+the same archive production does.
 
 ## Inspecting the archive
 

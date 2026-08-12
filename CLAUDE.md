@@ -48,27 +48,69 @@ npx tsx -e 'import {SITES,fetchPortal} from "./workers/jobs-cron/careerSites";
 > Never run it unless the user has asked for that deploy **in this conversation**.
 > "Deploy so I can look at it" is not that request; see the preview options below.
 
-There is **no separate staging environment**. The custom domain is attached to the
-same Worker as `benridgwell-globe-gazer-hr.employsi.workers.dev` (the attachment lives
-in the Cloudflare dashboard, so nothing in `wrangler.jsonc` reveals it). Deploying to
-"the workers.dev preview" *is* deploying to the public site — they are one Worker,
-serving byte-identical assets.
+The custom domain is attached to `benridgwell-globe-gazer-hr` in the Cloudflare
+dashboard, so nothing in `wrangler.jsonc` reveals it. A bare `npx wrangler deploy`
+uses the name in the config and therefore hits that Worker: `employsi.com.au` and
+`benridgwell-globe-gazer-hr.employsi.workers.dev` are one Worker serving
+byte-identical assets, and deploying to "the workers.dev URL" is deploying to the
+public site.
+
+**There IS a preview Worker, despite what this file said until 2026-08-12.**
+`employsi-preview.employsi.workers.dev` is a separate Worker running the same
+codebase, and it is the right target for "deploy so I can look at it". Nothing in
+this repo references it — no `wrangler.jsonc`, no workflow in `.github/` — so it is
+invisible from the source tree and easy to miss. `wrangler deploy --name` is how you
+reach it; the comment at the top of `wrangler.jsonc` already documents that pattern
+for the prod/mobile split.
+
+Workers on the account, verified 2026-08-12:
+
+| Worker | What it is |
+| --- | --- |
+| `benridgwell-globe-gazer-hr` | **PRODUCTION.** Carries `employsi.com.au` |
+| `employsi-preview` | Preview of the same app — deploy here to be looked at |
+| `benridgwell-globe-gazer-hr-mobile` | Mobile build |
+| `benridgwell-globe-gazer-hr-mapbox-trial` | Trial, last touched 2026-07-15 |
+| `employsi-jobs-cron` | The scraper. Separate config, separate deploy |
+| `employsi` | Another deployment of this same app, last built 2026-08-06. Purpose unrecorded — do not deploy over it without asking |
+
+`--name` cannot capture the custom domain, because neither `wrangler.jsonc` nor the
+generated `.output/server/wrangler.json` declares `routes` or `custom_domain` — the
+attachment is dashboard-side. Verify that still holds before trusting it.
+
+**A `--name` deploy inherits the PRODUCTION bindings.** They are declared in the
+config, not per-Worker, so the preview reads and writes the real `JOBS_ARCHIVE` D1
+and the real `OPEN_ROLES_HISTORY` KV. Reads are the point — the preview shows real
+data — but nothing is isolated, so a change that writes needs thinking about before
+it runs there.
+
+**The card is on `/`, not `/app`.** `/app` is `src/routes/app.tsx` →
+`MobileFramePreview.tsx`, the mobile-frame surface. Sending someone to
+`…workers.dev/app` to review company-card work shows them the wrong screen.
 
 **Production does not track `main`.** The live site was built from
 `claude/waitlist-page-updates-053rss`, which carries the D1-backed landing stats
 (`src/employsi/lib/landingStatsFn.ts`), the domain routing in `src/server.ts` and the
-un-clipped hero graphic. A deploy from `main` silently reverts all of it: the ticker
-falls back to the hardcoded `SEED` placeholders in `src/components/Ticker.tsx`, and
-the hero clips. **Check what branch production is on before deploying anything.**
-This happened on 2026-08-10 and was recovered with `wrangler rollback`.
-
-To let someone LOOK at a change without touching the public site, upload a version
-without shifting traffic — this prints its own preview URL:
+un-clipped hero graphic. A deploy from a branch missing those silently reverts them:
+the ticker falls back to hardcoded placeholders and the hero clips. This happened on
+2026-08-10 and was recovered with `wrangler rollback`. **Check before deploying
+anything** — the test is whether your branch contains that one, not what it is named:
 
 ```bash
-npx wrangler versions upload      # builds + uploads, serves 0% of traffic
-npx wrangler versions list        # find a version id
-npx wrangler rollback <version-id> --message "why"   # emergency restore
+git fetch origin claude/waitlist-page-updates-053rss
+git merge-base --is-ancestor origin/claude/waitlist-page-updates-053rss HEAD \
+  && echo safe || echo "WOULD REVERT PRODUCTION"
+```
+
+To let someone LOOK at a change, either deploy to the preview Worker or upload a
+version to production without shifting traffic — the second prints its own URL:
+
+```bash
+npx wrangler deploy --name employsi-preview   # -> employsi-preview.employsi.workers.dev
+npx wrangler versions upload                  # builds + uploads, serves 0% of traffic
+npx wrangler versions list                    # find a version id
+npx wrangler rollback <version-id> --message "why"            # production
+npx wrangler rollback <version-id> --name employsi-preview --message "why"
 ```
 
 Deploys, when actually asked for:
@@ -78,10 +120,22 @@ npx wrangler deploy                                          # the app worker ->
 npx wrangler deploy --config workers/jobs-cron/wrangler.jsonc # the scraper worker
 ```
 
-Two independent deploys — doing one does not update the other.
+Two independent deploys — doing one does not update the other. Record the version id
+you are replacing before either: `wrangler deployments list` prints it, and it is the
+only cheap way back.
 
-`CLOUDFLARE_API_TOKEN` must be in the environment. Do **not** pass `--noproxy '*'` to
-Cloudflare API calls in this sandbox; it breaks them.
+**Both tokens must be in the environment, and the second one is easy to miss.**
+
+- `CLOUDFLARE_API_TOKEN` — needs Workers Scripts:Edit to deploy.
+- `VITE_MAPBOX_TOKEN` — a BUILD-time inline. `vite.config.ts` refuses to build
+  without it, which is the guard working. Do not satisfy it with a placeholder to
+  get a build out: the deploy succeeds and the map then fails to render for every
+  visitor. If a build was made with a dummy value, throw it away and rebuild —
+  `grep -rl "pk\.eyJ" .output/public/` should find the real token, and
+  `grep -rl "build-check" .output/` should find nothing.
+
+Do **not** pass `--noproxy '*'` to Cloudflare API calls in this sandbox; it breaks
+them.
 
 ### Firing a cron by hand
 
