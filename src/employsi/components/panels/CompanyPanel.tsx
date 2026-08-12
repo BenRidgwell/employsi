@@ -27,6 +27,9 @@ import { SkillDemand } from "./SkillDemand";
 
 type CardTab = "Overview" | "Skills" | "Hiring";
 
+/** Hiring bars shown before the list names what it left out. */
+const HIRING_ROWS = 6;
+
 // NZ public-sector agency ids. Matched as a set rather than by prefix because
 // the NZ private roster (data/nzCompanies.ts) shares the `nz-` prefix.
 const NZ_GOV_ID_SET = new Set(NZ_GOV_IDS);
@@ -108,81 +111,6 @@ function CompanyLogo({ src, ticker }: { src: string; ticker: string }) {
   );
 }
 
-function RoleSearch({
-  options,
-  value,
-  onChange,
-}: {
-  options: string[];
-  value: string | null;
-  onChange: (v: string | null) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const pick = (o: string) => {
-    onChange(o);
-    setOpen(false);
-  };
-  return (
-    <div className="rolesearch">
-      {/* Same pill as the header's skill search — same height, radius, raised
-          surface and magnifier gesture — so the card's search doesn't read as a
-          different control from the one above the map. */}
-      <button
-        className={`prole ${value ? "picked" : ""} ${open ? "on" : ""}`}
-        onClick={() => setOpen((o) => !o)}
-      >
-        <svg
-          className="gsicon"
-          viewBox="0 0 24 24"
-          width={19}
-          height={19}
-          fill="none"
-          stroke="currentColor"
-          aria-hidden
-        >
-          <circle className="gsiconlens" cx="11" cy="11" r="6.4" />
-          <line className="gsiconhandle" x1="15.8" y1="15.8" x2="20" y2="20" />
-        </svg>
-        <span className="prolelbl">{value || "Search a role in this company"}</span>
-        {value && (
-          <span
-            className="proleclear"
-            onClick={(e) => {
-              e.stopPropagation();
-              onChange(null);
-              setOpen(false);
-            }}
-          >
-            ✕
-          </span>
-        )}
-      </button>
-      {open && (
-        // The whole live list, no second search box: the pill above IS the
-        // control, and typing to narrow a list you can already see in full was
-        // an extra step for nothing. Titles are one line each, clipped with an
-        // ellipsis rather than wrapped, so every card is the same height and
-        // the grid stays a grid; the full title is on the tooltip.
-        <div className="roledrop">
-          <div className="rolechips">
-            {options.map((o) => (
-              <button
-                key={o}
-                className={`rolechip ${value === o ? "on" : ""}`}
-                onClick={() => pick(o)}
-                title={o}
-              >
-                {o}
-              </button>
-            ))}
-            {options.length === 0 && <div className="rolenone">No live vacancies</div>}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // Direction glyph for a hiring area's change. Only the ARROW is coloured: six
 // coloured percentages stacked in a column read as six alerts, one arrow each
 // reads as a direction. A measured zero gets the figure and no arrow, which is
@@ -214,7 +142,6 @@ export function CompanyPanel() {
   const requestFollow = useAppStore((s) => s.requestFollow);
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const zoomingIn = useAppStore((s) => s.zoomingIn);
-  const [roleFilter, setRoleFilter] = useState<string | null>(null);
   // Whether the skills section is showing everything past the first six.
   const [skillsOpen, setSkillsOpen] = useState(false);
   // Scrubbed point on the vacancies chart (null = not hovering).
@@ -237,7 +164,6 @@ export function CompanyPanel() {
   // close, so it wouldn't otherwise change on that null -> id transition.
   useEffect(() => {
     if (!selectedId) return;
-    setRoleFilter(null);
     setSkillsOpen(false);
     setChartIdx(null);
     scrollRef.current?.scrollTo(0, 0);
@@ -249,7 +175,7 @@ export function CompanyPanel() {
   const isBhp = lastId === "bhp";
   const feed = useBhpFeed(isBhp && open);
 
-  const panel = buildPanel(lastId, roleFilter, isBhp ? feed : undefined);
+  const panel = buildPanel(lastId, null, isBhp ? feed : undefined);
   // Following is an account-scoped action: only reflect the saved state when
   // signed in, so the button reads "Follow" (→ prompts sign-up) when there's no
   // account to save it to.
@@ -282,7 +208,7 @@ export function CompanyPanel() {
     () => ({ country: market.country, where: market.where, region: market.region.source }),
     [market],
   );
-  const liveEnabled = open && !!panel && !roleFilter;
+  const liveEnabled = open && !!panel;
   const { roles: liveRoles, settled: rolesSettled } = useOpenRoles(
     panel?.name ?? null,
     panel?.companyId,
@@ -303,7 +229,7 @@ export function CompanyPanel() {
   // WA government agencies — their live count comes from the scraped board, not
   // Adzuna, so their vacancy chart is built from the stored history instead of
   // the forward-built KV snapshots the private companies use.
-  const vacancyTrend = useVacancyTrend(panel?.companyId, open && !roleFilter);
+  const vacancyTrend = useVacancyTrend(panel?.companyId, open);
   // Per-skill demand from the D1 archive: a daily series, a change, a median,
   // the hubs the live ads sit in. What the skills section is built from.
   const skillTrends = useCompanySkillTrends(panel?.companyId, open);
@@ -316,49 +242,10 @@ export function CompanyPanel() {
     return country ? (COUNTRY_MEMBERS[country] ?? [city]) : [city];
   }, [lastId, localCity]);
   const skillRanks = useSkillMarketRanks(localHubs, open && skillTrends.skills.length > 0);
-  // Board category -> 14-day change, for the hiring bars. Keyed on the same
-  // tidied name the bars carry ("Engineering", not "Engineering Jobs").
-  const areaTrend = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const a of skillTrends.areas) if (a.pct !== null) m.set(a.area, a.pct);
-    return m;
-  }, [skillTrends.areas]);
   const jobSample = useMemo(
     () => (liveRoles?.jobs?.length ? liveRoles.jobs : (companyJobs?.jobs ?? null)),
     [liveRoles, companyJobs],
   );
-  // The roles the company is ACTUALLY advertising right now, for the card's role
-  // search. culture.ts carries a hand-written roleOptions list per company, but
-  // it is illustrative, it is only present for the companies someone wrote one
-  // for (every other card offered an empty dropdown), and it has no relationship
-  // to what is open today. The live vacancy sample does, so it takes precedence
-  // and the hand-written list is only the fallback.
-  //
-  // Titles are deduped case-insensitively (the same ad appears on more than one
-  // board) and sorted, keeping the first spelling seen.
-  const liveRoleTitles = useMemo(() => {
-    if (!jobSample?.length) return null;
-    const byKey = new Map<string, string>();
-    for (const j of jobSample) {
-      const t = (j.t || "").trim();
-      if (!t) continue;
-      const k = t.toLowerCase().replace(/\s+/g, " ");
-      if (!byKey.has(k)) byKey.set(k, t);
-    }
-    const list = [...byKey.values()].sort((a, b) => a.localeCompare(b));
-    return list.length ? list : null;
-  }, [jobSample]);
-
-  // The live vacancies behind the selected role, so the role-focused figures can
-  // be counted rather than invented (see bigStats below).
-  const roleJobs = useMemo(() => {
-    if (!roleFilter || !jobSample?.length) return null;
-    const want = roleFilter.toLowerCase().replace(/\s+/g, " ");
-    const hits = jobSample.filter(
-      (j) => (j.t || "").trim().toLowerCase().replace(/\s+/g, " ") === want,
-    );
-    return hits.length ? hits : null;
-  }, [roleFilter, jobSample]);
 
   // Rank the company's real in-demand skills by how many live roles mention
   // them; falls back to the illustrative skill chips when no jobs are stored.
@@ -469,56 +356,6 @@ export function CompanyPanel() {
   const showWorkforce = headcountReal && !!panel && panel.trend.length >= 2;
   const bigStats = useMemo(() => {
     if (!panel) return [];
-    if (roleFilter) {
-      // Role-focused figures, COUNTED from the live ads for that exact role.
-      //
-      // buildPanel derives these from a hash of the role title — a deterministic
-      // invention, which was tolerable while the role list was itself an
-      // illustrative hand-written one, but is not once the list is real live
-      // vacancies: picking a genuine open role and being shown a made-up count
-      // and salary for it is worse than showing nothing. Where the role came
-      // from live ads we count instead, and where a figure is not advertised we
-      // say so rather than filling the space.
-      if (!roleJobs) return panel.bigStats;
-      const sals = roleJobs
-        .map((j) => j.salN)
-        .filter((n): n is number => typeof n === "number" && n > 0)
-        .sort((a, b) => a - b);
-      const m = Math.floor(sals.length / 2);
-      const med = sals.length
-        ? sals.length % 2
-          ? sals[m]
-          : Math.round((sals[m - 1] + sals[m]) / 2)
-        : null;
-      const share = jobSample?.length
-        ? Math.round((roleJobs.length / jobSample.length) * 100)
-        : null;
-      return [
-        {
-          value: roleJobs.length.toLocaleString("en-US"),
-          label: "Open roles",
-          sub: roleFilter,
-          subCls: "",
-        },
-        {
-          value: med ? (med >= 1000 ? `$${Math.round(med / 1000)}k` : `$${Math.round(med)}`) : "—",
-          label: "Median salary",
-          sub: med
-            ? `median · ${sals.length} live ad${sals.length === 1 ? "" : "s"}`
-            : "not advertised",
-          subCls: "",
-        },
-        // Not "demand YoY": the archive does not go back a year, so a
-        // year-on-year figure for one role would have to be manufactured. This
-        // is the same ads, expressed as a share of everything they have open.
-        {
-          value: share === null ? "—" : `${share}%`,
-          label: "Share of vacancies",
-          sub: share === null ? "no live ads" : "of this employer's live ads",
-          subCls: "",
-        },
-      ];
-    }
     return panel.bigStats.map((s) => {
       if (s.label === "Open roles") {
         if (rolesChecking) return { ...s, value: "···", sub: "checking live ads…", subCls: "" };
@@ -543,7 +380,7 @@ export function CompanyPanel() {
       }
       return s;
     });
-  }, [panel, roleFilter, roleJobs, jobSample, rolesChecking, liveRoles, medianPay, headcountReal]);
+  }, [panel, rolesChecking, liveRoles, medianPay, headcountReal]);
 
   // Sub-stats: "Biggest hiring area" is real only from live job ads, and falls
   // back to a dash otherwise so the card never shows an illustrative figure.
@@ -577,14 +414,6 @@ export function CompanyPanel() {
   // Hiring. Reset to Overview whenever the card opens on a new company.
   const [tab, setTab] = useState<CardTab>("Overview");
 
-  // A role focus set on Hiring must not follow the reader to Overview or
-  // Skills: the filter reshapes the whole panel — buildPanel takes it, and the
-  // live fetches switch off while it is set — so a tab without the control
-  // would show narrowed numbers with nothing on screen explaining them.
-  useEffect(() => {
-    if (tab !== "Hiring" && roleFilter) setRoleFilter(null);
-  }, [tab, roleFilter]);
-
   useEffect(() => {
     if (selectedId) setTab("Overview");
   }, [selectedId]);
@@ -613,6 +442,10 @@ export function CompanyPanel() {
     return top ? { name: top[0], n: top[1] } : null;
   }, [skillTrends.skills, skillCounts]);
 
+  // Same source as the bars below, so the fact and the top bar cannot name
+  // different areas.
+  const topArea = useMemo(() => skillTrends.areas[0]?.area ?? null, [skillTrends.areas]);
+
   // The vacancy series behind the chart: the D1 archive where the company has
   // one, else the forward-built KV snapshots.
   const vacancySeries = vacancyTrend.length >= 2 ? vacancyTrend : rolesHistory;
@@ -630,6 +463,7 @@ export function CompanyPanel() {
       revPerEmp,
       medianPay,
       topSkill,
+      topArea,
       skillCounts,
       roleCounts,
     });
@@ -641,6 +475,7 @@ export function CompanyPanel() {
     revPerEmp,
     medianPay,
     topSkill,
+    topArea,
     skillCounts,
     roleCounts,
   ]);
@@ -651,6 +486,39 @@ export function CompanyPanel() {
   // NOT in here — it only decorates the chart's second line, so waiting on it
   // would hold the whole card back for a detail, and it fades in on arrival.
   const cardLoading = open && (!card || rolesChecking);
+
+  /**
+   * The hiring bars.
+   *
+   * The archive first, the live job sample only as a fallback. The sample's
+   * `cat` is whatever each feed put in its category column, and most feeds put
+   * the PLATFORM there — BHP's bars listed "Career portal", "LinkedIn", "Jora"
+   * and "Job board" as hiring areas. The archive side already filters to feeds
+   * with a real published taxonomy, and it carries the change per area, so
+   * taking both from one place also stops a bar and its arrow disagreeing.
+   */
+  const hiringRows = useMemo(() => {
+    if (skillTrends.areas.length) {
+      const max = skillTrends.areas[0].now || 1;
+      return skillTrends.areas.map((a) => ({
+        name: a.area,
+        n: a.now,
+        width: `${Math.max(3, Math.round((a.now / max) * 100))}%`,
+        pct: a.pct,
+      }));
+    }
+    return (card?.hiring ?? []).map((h) => ({ name: h.name, n: h.n, width: h.pct, pct: null }));
+  }, [skillTrends.areas, card]);
+
+  // How much of the employer the bars actually account for. An ad carries one
+  // category, so summing the areas is row-level and comparable with liveAds.
+  const classified = useMemo(
+    () => ({
+      n: skillTrends.areas.reduce((t, a) => t + a.now, 0),
+      total: skillTrends.areas.length ? skillTrends.liveAds : 0,
+    }),
+    [skillTrends.areas, skillTrends.liveAds],
+  );
 
   // The news column tucks behind the company card, which then slides right
   // into the space it left. The choice is a PREFERENCE and lives in the store,
@@ -987,24 +855,6 @@ export function CompanyPanel() {
 
               {tab === "Hiring" && (
                 <div className="ccpane">
-                  {/* Role focus lives with the hiring breakdown, which is the
-                      only view it changes the shape of. Above the tabs it sat
-                      over Overview and Skills too, where narrowing to one job
-                      title silently rewrote figures the control was nowhere
-                      near.
-
-                      Keyed on the open company so the control REMOUNTS per
-                      card. Its open/closed state and typed query live inside
-                      it, and the component keeps its place in the tree when you
-                      switch cards, so without this a search left open on one
-                      company was still open — and still highlighted — on the
-                      next one you opened. */}
-                  <RoleSearch
-                    key={selectedId ?? ""}
-                    options={liveRoleTitles ?? panel.roleOptions}
-                    value={roleFilter}
-                    onChange={setRoleFilter}
-                  />
                   <div className="ccsecth">
                     <span className="cceyebrow">Where they&rsquo;re hiring</span>
                     {/* When the rows carry arrows the heading has to describe
@@ -1015,31 +865,43 @@ export function CompanyPanel() {
                         two disagreeing under one heading is worse than either
                         being vague. */}
                     <span className="ccsecthsub">
-                      {areaTrend.size > 0 && skillTrends.days.length > 1
+                      {skillTrends.areas.length > 0 && skillTrends.days.length > 1
                         ? `${skillTrends.days.length}-day change`
                         : (card.hiringWindow ?? "share of live ads")}
                     </span>
                   </div>
-                  {card.hiring.length ? (
+                  {hiringRows.length ? (
                     <div className="cchiring">
-                      {card.hiring.map((h) => {
-                        // Change over the archive's own window, matched on the
-                        // board category the bar is labelled with. Absent when
-                        // the archive cannot support one — the bar still reads.
-                        const t = areaTrend.get(h.name);
-                        return (
-                          <div className="cchirerow" key={h.name}>
-                            <span className="cchirename">{h.name}</span>
-                            <span className="cchirebar">
-                              <span className="cchirefill" style={{ width: h.pct }} />
-                            </span>
-                            <span className="cchireval">
-                              <span className="cchiren">{h.n}</span>
-                              {t !== undefined && <AreaTrend pct={t} />}
-                            </span>
-                          </div>
-                        );
-                      })}
+                      {hiringRows.slice(0, HIRING_ROWS).map((h) => (
+                        <div className="cchirerow" key={h.name}>
+                          <span className="cchirename">{h.name}</span>
+                          <span className="cchirebar">
+                            <span className="cchirefill" style={{ width: h.width }} />
+                          </span>
+                          <span className="cchireval">
+                            <span className="cchiren">{h.n}</span>
+                            {/* Absent when the archive cannot support a change —
+                                the bar still reads. */}
+                            {h.pct !== null && <AreaTrend pct={h.pct} />}
+                          </span>
+                        </div>
+                      ))}
+                      {/* What the bars cover, and what the list left out.
+                          Both matter here: only feeds with a real published
+                          taxonomy contribute an area, so these bars describe a
+                          fraction of the employer's live ads — without the
+                          figure the tallest bar reads as the whole picture. */}
+                      {(hiringRows.length > HIRING_ROWS || classified.total > 0) && (
+                        <div className="cchiremore">
+                          {hiringRows.length > HIRING_ROWS &&
+                            `+${hiringRows.length - HIRING_ROWS} more area${
+                              hiringRows.length - HIRING_ROWS === 1 ? "" : "s"
+                            }`}
+                          {hiringRows.length > HIRING_ROWS && classified.total > 0 && " · "}
+                          {classified.total > 0 &&
+                            `${classified.n} of ${classified.total} ads classified`}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="dataempty">No live job ads</div>

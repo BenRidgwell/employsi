@@ -12144,6 +12144,13 @@ body {
    colour — six coloured percentages in a column read as six alerts. Arrows use
    the 500 tier (--status-*-dot), the palette's weight for a small graphic
    mark, not the 700 tier it uses for text. */
+.cchiremore {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-disabled);
+}
 .cchireval {
   display: flex;
   flex-direction: column;

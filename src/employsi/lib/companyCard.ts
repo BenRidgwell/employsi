@@ -224,6 +224,11 @@ export interface CardInputs {
    *  none do — the seed `Company.salary` is illustrative, so a card with no
    *  live salary shows a gap rather than that number. */
   medianPay?: { text: string; n: number } | null;
+  /** The busiest hiring area right now, for the "Biggest hiring area" fact.
+   *  Passed in for the same reason as `topSkill`: the Hiring bars are drawn
+   *  from the archive where it has areas, and a fact naming a different area
+   *  than the top bar on the same card is worse than either being stale. */
+  topArea?: string | null;
   /** The single most-advertised skill right now, for the headline tile.
    *  Passed in rather than taken off `skillCounts` so it comes from the same
    *  source as the Skills tab — the two naming different top skills on one card
@@ -355,7 +360,8 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
   // last valuation) has none for any company — see the file header.
   const facts: CardFact[] = [];
   const roleEntries = Object.entries(input.roleCounts).sort((a, b) => b[1] - a[1]);
-  if (roleEntries.length) facts.push({ k: "Biggest hiring area", v: roleEntries[0][0] });
+  const biggestArea = input.topArea ?? roleEntries[0]?.[0] ?? null;
+  if (biggestArea) facts.push({ k: "Biggest hiring area", v: biggestArea });
   if (vac.length >= MIN_TREND_DAYS) {
     const week = vac.slice(-7);
     const added = Math.max(0, week[week.length - 1].c - week[0].c);
