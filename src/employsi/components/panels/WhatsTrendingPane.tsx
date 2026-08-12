@@ -1,14 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../../state/store";
-import { COMPANIES } from "../../data/companies";
-import {
-  TREND_SECTIONS,
-  MOST_VIEWED,
-  type TrendIcon,
-  type TrendItem,
-  type ViewedItem,
-} from "../../data/trending";
+import type { ViewedItem } from "../../data/trending";
 import { getMarketSkillMovers, type MarketSkillMover } from "../../lib/jobHistoryFn";
 import { MARKET_WINDOWS, DEFAULT_MARKET_WINDOW } from "../../lib/jobHistoryFn";
 import { useSkillMarket } from "../../hooks/useRoleHistory";
@@ -26,10 +19,6 @@ import { getMostViewed, type ViewedRow } from "../../lib/viewsFn";
 import { CardLoader } from "./CardLoader";
 import { CITY_CONTINENT } from "../../data/geo";
 import { CITY_COUNTRY } from "../../data/mapboxWorldGeo";
-
-const TICKER_TO_ID: Record<string, string> = Object.fromEntries(
-  COMPANIES.map((c) => [c.ticker, c.id]),
-);
 
 function ViewedIcon({ kind }: { kind: ViewedItem["kind"] | "city" }) {
   const c = {
@@ -66,43 +55,6 @@ function ViewedIcon({ kind }: { kind: ViewedItem["kind"] | "city" }) {
   );
 }
 
-function SectionIcon({ icon }: { icon: TrendIcon }) {
-  const common = {
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.8,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-  };
-  if (icon === "movers")
-    return (
-      <svg viewBox="0 0 24 24">
-        <path {...common} d="M4 15l5-5 3 3 6-7M14 6h5v5" />
-      </svg>
-    );
-  if (icon === "salary")
-    return (
-      <svg viewBox="0 0 24 24">
-        <path
-          {...common}
-          d="M12 3v18M8.5 7.5a3 3 0 0 1 3-2.5h1a3 3 0 0 1 0 6h-2a3 3 0 0 0 0 6h1a3 3 0 0 0 3-2.5"
-        />
-      </svg>
-    );
-  return (
-    <svg viewBox="0 0 24 24">
-      <path
-        {...common}
-        d="M12 3c1.6 3 4.2 4.6 4.2 8.2a4.2 4.2 0 0 1-8.4 0c0-1.8.8-3 1.9-4.1C10.6 8.1 11.5 6.2 12 3Z"
-      />
-    </svg>
-  );
-}
-
-function fmtDelta(d: number): string {
-  return (d >= 0 ? "+" : "−") + Math.abs(d).toFixed(1) + "%";
-}
-
 // Animated trend-line icons for the real risers / fallers cards: an up-and-away
 // line for risers, its mirror (down-and-away) for fallers. Both gently bob in
 // their direction (see .moveico in global.css).
@@ -131,54 +83,19 @@ function MoveIcon({ dir }: { dir: "up" | "down" }) {
 }
 
 // Render a real skill risers/fallers card. Each row links to the skill heat map.
-function renderMoversCard(
-  title: string,
-  caption: string,
-  dir: "up" | "down",
-  rows: MarketSkillMover[],
-  onSkill: (skill: string) => void,
-) {
-  return (
-    <section className="trendcard">
-      <div className="trendcardhead">
-        <span className={`trendcardicon ic-${dir === "up" ? "movers" : "fallers"}`}>
-          <MoveIcon dir={dir} />
-        </span>
-        <div className="trendcardmeta">
-          <div className="trendcardtitle">{title}</div>
-          <div className="trendcardcap">{caption}</div>
-        </div>
-      </div>
-      <div className="trendrows">
-        {rows.length ? (
-          rows.map((m, i) => (
-            <div
-              className="trendrow link"
-              key={m.skill}
-              onClick={() => onSkill(m.skill)}
-              role="button"
-            >
-              <span className="trendrank">{i + 1}</span>
-              <span className="trendinfo">
-                <span className="trendlabel">{m.skill}</span>
-                <span className="trendsub">
-                  {m.cat} · {m.now} live vacanc{m.now === 1 ? "y" : "ies"} a day, from {m.prev}
-                </span>
-              </span>
-              <span className={`trenddelta ${m.dir}`}>
-                {m.dir === "up" ? "▲" : "▼"} {m.dir === "up" ? "+" : "−"}
-                {Math.abs(m.pct)}%
-              </span>
-            </div>
-          ))
-        ) : (
-          <div className="dataempty">No {title.toLowerCase()} yet</div>
-        )}
-      </div>
-    </section>
-  );
-}
-
+/**
+ * Risers and fallers, in the dashboard's own idiom.
+ *
+ * Unchanged in substance — getMarketSkillMovers still measures mean daily live
+ * vacancies against the prior window of the same length. What changed is that
+ * these no longer sit alone: the priced rows above already establish that a
+ * percentage on this pane is a DEMAND figure, so these can drop the long
+ * caption that used to carry that job and show the movement itself.
+ *
+ * The pay figure is joined in from the market read, because a skill moving 30%
+ * on $60k and one moving 30% on $160k are different news and the movers query
+ * has never known what anything pays.
+ */
 /** $2,113,000,000 → "$2.11b". A magnitude, not an accountant's figure — the
  *  precision would imply a book that does not exist. */
 function money(v: number): string {
@@ -238,6 +155,56 @@ function MarketCoverage({
         {loading && <span className="dim">updating…</span>}
       </div>
     </div>
+  );
+}
+
+function MoversCard({
+  title,
+  dir,
+  rows,
+  payOf,
+  onSkill,
+}: {
+  title: string;
+  dir: "up" | "down";
+  rows: MarketSkillMover[];
+  payOf: (skill: string) => number | null;
+  onSkill: (skill: string) => void;
+}) {
+  if (!rows.length) return null;
+  return (
+    <section className="mvr">
+      <div className="ccsecth">
+        <span className="cceyebrow">{title}</span>
+        <span className="ccsecthsub">mean daily vacancies</span>
+      </div>
+      <div className="mvrrows">
+        {rows.map((m) => {
+          const pay = payOf(m.skill);
+          return (
+            <button type="button" className="mvrrow" key={m.skill} onClick={() => onSkill(m.skill)}>
+              <span className="mvrmain">
+                <span className="mvrname">{m.skill}</span>
+                <span className="mvrsub">
+                  {m.cat} · {m.now} a day, from {m.prev}
+                  {pay !== null && ` · $${Math.round(pay / 1000)}k median`}
+                </span>
+              </span>
+              <span className={`mvrdelta ${dir}`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}>
+                  <path
+                    d={dir === "up" ? "M7 17 17 7M10.5 7H17v6.5" : "M7 7l10 10M10.5 17H17v-6.5"}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                {Math.abs(m.pct)}%
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -379,29 +346,16 @@ export function WhatsTrendingPane() {
     }
   };
 
+  /** The market read already priced every skill in this scope, so the movers
+   *  can borrow it rather than the server computing pay twice. */
+  const payOf = useMemo(() => {
+    const m = new Map(market.rows.map((r) => [r.skill, r.pay]));
+    return (skill: string) => m.get(skill) ?? null;
+  }, [market.rows]);
+
   const activateSkill = (skill: string) => {
     toggleSkillQuery(skill);
     closeTrending();
-  };
-
-  const activateViewed = (v: ViewedItem) => {
-    if (v.kind === "company" && v.ticker && TICKER_TO_ID[v.ticker]) select(TICKER_TO_ID[v.ticker]);
-    else if (v.kind === "skill" && v.skill) {
-      toggleSkillQuery(v.skill);
-      closeTrending();
-    } else if (v.kind === "continent") {
-      setGlobalOut(v.label !== "Australia");
-      closeTrending();
-    }
-  };
-
-  const activate = (it: TrendItem) => {
-    if (it.ticker && TICKER_TO_ID[it.ticker]) {
-      select(TICKER_TO_ID[it.ticker]);
-    } else if (it.skill) {
-      toggleSkillQuery(it.skill);
-      closeTrending();
-    }
   };
 
   return (
@@ -489,59 +443,51 @@ export function WhatsTrendingPane() {
               <span className="trendsnaptitle">Most viewed</span>
               <span className="trendsnapcap">What people are exploring now</span>
             </div>
-            {hasViews
-              ? viewed!.map((v) => (
-                  <button
-                    className="trendsnaprow"
-                    key={`${v.kind}-${v.ref}`}
-                    onClick={() => activateViewedRow(v)}
-                  >
-                    <span className={`trendsnapic tv-${v.kind}`}>
-                      <ViewedIcon kind={v.kind} />
-                    </span>
-                    <span className="trendsnapinfo">
-                      <span className="trendsnaplabel">{v.label}</span>
-                      <span className="trendsnapsub">{v.sub}</span>
-                    </span>
-                    <span className="trendsnapshare">
-                      <b>{v.share}</b>
-                      <span>of views</span>
-                    </span>
-                  </button>
-                ))
-              : MOST_VIEWED.map((v) => (
-                  <button className="trendsnaprow" key={v.kind} onClick={() => activateViewed(v)}>
-                    <span className={`trendsnapic tv-${v.kind}`}>
-                      <ViewedIcon kind={v.kind} />
-                    </span>
-                    <span className="trendsnapinfo">
-                      <span className="trendsnaplabel">{v.label}</span>
-                      <span className="trendsnapsub">{v.sub}</span>
-                    </span>
-                    <span className="trendsnapshare">
-                      <b>{v.share}</b>
-                      <span>of views</span>
-                    </span>
-                  </button>
-                ))}
+            {hasViews ? (
+              viewed!.slice(0, 3).map((v) => (
+                <button
+                  className="trendsnaprow"
+                  key={`${v.kind}:${v.ref}`}
+                  onClick={() => activateViewedRow(v)}
+                >
+                  <span className={`trendsnapic tv-${v.kind}`}>
+                    <ViewedIcon kind={v.kind} />
+                  </span>
+                  <span className="trendsnapinfo">
+                    <span className="trendsnaplabel">{v.label}</span>
+                    <span className="trendsnapsub">{v.sub}</span>
+                  </span>
+                  <span className="trendsnapshare">
+                    <b>{v.share}</b>
+                    <span>of views</span>
+                  </span>
+                </button>
+              ))
+            ) : (
+              // Was a hand-written seed reading "BHP 18% of views". Every other
+              // figure on this pane is now measured, and one invented
+              // percentage among them is worse than an empty state — it is
+              // indistinguishable from the real ones.
+              <div className="dataempty">No views recorded yet</div>
+            )}
           </div>
 
-          {hasReal ? (
+          {hasReal && (
             <>
-              {renderMoversCard(
-                "Biggest risers",
-                "Skills with the fastest-growing vacancy demand",
-                "up",
-                movers!.risers,
-                activateSkill,
-              )}
-              {renderMoversCard(
-                "Biggest fallers",
-                "Skills with the sharpest drop in vacancy demand",
-                "down",
-                movers!.fallers,
-                activateSkill,
-              )}
+              <MoversCard
+                title="Biggest risers"
+                dir="up"
+                rows={movers!.risers}
+                payOf={payOf}
+                onSkill={activateSkill}
+              />
+              <MoversCard
+                title="Biggest fallers"
+                dir="down"
+                rows={movers!.fallers}
+                payOf={payOf}
+                onSkill={activateSkill}
+              />
               {/* State the period, because it is chosen from how much history
                   the archive actually holds rather than fixed — and because
                   both lists are two ends of this one comparison. */}
@@ -551,48 +497,12 @@ export function WhatsTrendingPane() {
                 covering both periods
               </div>
             </>
-          ) : (
-            <>
-              {TREND_SECTIONS.map((s) => (
-                <section className="trendcard" key={s.id}>
-                  <div className="trendcardhead">
-                    <span className={`trendcardicon ic-${s.icon}`}>
-                      <SectionIcon icon={s.icon} />
-                    </span>
-                    <div className="trendcardmeta">
-                      <div className="trendcardtitle">{s.title}</div>
-                      <div className="trendcardcap">{s.caption}</div>
-                    </div>
-                  </div>
-                  <div className="trendrows">
-                    {s.items.map((it, i) => {
-                      const up = it.delta >= 0;
-                      const link = !!(it.ticker || it.skill);
-                      return (
-                        <div
-                          className={`trendrow ${link ? "link" : ""}`}
-                          key={it.label + i}
-                          onClick={link ? () => activate(it) : undefined}
-                          role={link ? "button" : undefined}
-                        >
-                          <span className="trendrank">{i + 1}</span>
-                          <span className="trendinfo">
-                            <span className="trendlabel">{it.label}</span>
-                            <span className="trendsub">{it.sub}</span>
-                          </span>
-                          <span className={`trenddelta ${up ? "up" : "down"}`}>
-                            {up ? "▲" : "▼"} {fmtDelta(it.delta)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-              ))}
-              <div className="brieffoot">
-                Building live movers from job-feed history — illustrative for now
-              </div>
-            </>
+          )}
+          {!hasReal && !moversFetching && market.rows.length > 0 && (
+            <div className="brieffoot">
+              No movers for {scope.label} yet — a skill needs enough daily vacancies in BOTH the
+              recent window and the one before it before a change can be measured.
+            </div>
           )}
         </div>
       </aside>
