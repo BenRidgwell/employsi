@@ -134,7 +134,7 @@ export function ActionRail() {
 
       {/* The layer picker as the design's sunken tray — the four read as one
           control, "pick one", rather than as four unrelated buttons. */}
-      <div className="railtray">
+      <div className="railtray" data-tour="rail">
         <RailButton
           icon={<IconGlobal />}
           label="Global"

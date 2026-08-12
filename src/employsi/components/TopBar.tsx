@@ -168,6 +168,11 @@ export function TopBar() {
           <button
             className={`searchbtn ${searchOpen ? "on" : ""} ${searchActive ? "active" : ""}`}
             onClick={toggleSearch}
+            /* The tour anchors the BUTTON, not the group around it: `.gshidden`
+               hides this button on desktop but leaves the wrapper laid out, so
+               a wrapper anchor measured non-zero and won the "first visible"
+               race while rendering nothing the user can see. */
+            data-tour="search"
           >
             <SearchIcon />
             <span>Search</span>

@@ -41,7 +41,7 @@ export function LocalBanner() {
   ];
 
   return (
-    <div className="lvb" key={localCity}>
+    <div className="lvb" key={localCity} data-tour="banner">
       <div className="lvbcity">
         <span className="lvbdot" />
         <span className="lvbname">{cityName}</span>

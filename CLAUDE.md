@@ -135,6 +135,81 @@ npx wrangler rollback <version-id> --message "why"            # production
 npx wrangler rollback <version-id> --name employsi-preview --message "why"
 ```
 
+### The preview Worker — `employsi-preview`
+
+A version-upload URL is fine for LOOKING at a change, but it cannot be used to
+test **signing in**. `BETTER_AUTH_URL` is a fixed origin, so the OAuth
+`redirect_uri` always points at whatever that says no matter which host served
+the page — start on a version preview and the round trip finishes on the *other*
+origin, the cookie is set there, and the preview stays signed out. It reads
+exactly like "login is broken". Version URLs also change hash on every upload,
+so they can never be registered with Google or LinkedIn.
+
+So auth testing has its own Worker, at a hostname that does not move:
+
+```bash
+npm run build
+npx wrangler deploy --name employsi-preview     # NOT prod; see below
+```
+
+https://employsi-preview.employsi.workers.dev
+
+It is a **separate Worker** that happens to run the same code. It has no custom
+domain (the generated `wrangler.json` carries no `routes`; employsi.com.au is
+attached to the other Worker in the dashboard), and `robots.txt` already
+disallows every non-apex host, so it is not indexed. Deploying to it cannot
+touch employsi.com.au — but note that the safety comes entirely from `--name`.
+**A bare `npx wrangler deploy` is still production**, even in a session where
+every other command was aimed here.
+
+It shares the production D1 and KV, deliberately: the point is to test against
+real users, follows and vacancies. Sign-ins there write real rows to the live
+`user` table.
+
+Secrets are per-Worker, which is what makes role testing safe — `ADMIN_EMAILS`
+here is independent of production, so flipping an address in and out to compare
+the admin and end-user surfaces never changes who is an admin on the live site.
+
+Its OAuth client IDs and `BETTER_AUTH_URL` are set; each provider also needs its
+`*_CLIENT_SECRET` set here and its redirect URI registered:
+
+```
+https://employsi-preview.employsi.workers.dev/api/auth/callback/google
+https://employsi-preview.employsi.workers.dev/api/auth/callback/linkedin
+```
+
+Until both halves of a provider exist, `authAvailable()` is false and the app
+says "Sign-in is not configured on this deployment" rather than offering a
+button that 500s. That message is the expected state of a half-set-up provider,
+not a bug to chase.
+
+**A SECRET IS NOT LIVE UNTIL ITS VERSION IS DEPLOYED**, and on this Worker
+`wrangler secret put` does NOT deploy it. It uploads a new version and leaves
+traffic where it was, so the secret store and the running code disagree:
+
+```bash
+npx wrangler secret list     --name employsi-preview   # shows the secret
+npx wrangler versions list   --name employsi-preview   # "Add secret: X" — a version_upload
+npx wrangler deployments list --name employsi-preview  # still the OLDER version at 100%
+```
+
+Measured 2026-08-12: both client secrets were set, `secret list` showed them,
+and the app still answered "Sign-in is not configured on this deployment"
+because 100% of traffic was on a version uploaded an hour earlier. Promote the
+newest version and it works immediately:
+
+```bash
+npx wrangler versions deploy <newest-version-id>@100% --name employsi-preview --yes
+```
+
+This is worth knowing because the symptom is indistinguishable from a secret
+that failed to save, and the natural next move — setting it again — produces
+another undeployed version and the same result. Check `deployments list`, not
+`secret list`. A secret-only version carries the code of whatever was live when
+it was created, so promoting one does not change the build; confirm that anyway
+by comparing the served asset hash, since a surprise code change here would be
+silent.
+
 Deploys, when actually asked for:
 
 ```bash

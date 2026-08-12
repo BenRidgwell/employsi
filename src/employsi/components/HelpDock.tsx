@@ -4,6 +4,7 @@ import { FeedbackBoard } from "./FeedbackBoard";
 import { NotificationBell } from "./NotificationBell";
 import { IconClose, IconFeedback, IconHelp, IconSettings } from "./ActionIcons";
 import { SettingsPanel } from "./SettingsPanel";
+import { GuidedTour } from "./GuidedTour";
 import { CITY_COMPANIES } from "../data/mapboxGeo";
 import { REGION_HUBS, REGION_LABEL } from "../data/mapboxWorldGeo";
 import { CITY_LABEL, GLOBAL_HUB_LABEL } from "../data/geo";
@@ -166,6 +167,7 @@ function DockButton({
   peek,
   onClick,
   children,
+  anchor,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -175,6 +177,8 @@ function DockButton({
   peek?: boolean;
   onClick: () => void;
   children?: React.ReactNode;
+  /** `data-tour` hook, when a guided-tour step spotlights this button. */
+  anchor?: string;
 }) {
   return (
     <div className="dockslot">
@@ -184,6 +188,7 @@ function DockButton({
         onClick={onClick}
         aria-label={label}
         aria-pressed={on}
+        data-tour={anchor}
       >
         {icon}
         {/* Tooltip below the button, per the design, and suppressed while the
@@ -241,7 +246,7 @@ export function HelpDock() {
   const anyPanelOpen = open || fbOpen || settingsOpen;
 
   return (
-    <div className="helpdock">
+    <div className="helpdock" data-tour="utility">
       {/* Click-away scrim: tapping outside an open panel closes it. */}
       {anyPanelOpen && (
         <div
@@ -269,28 +274,37 @@ export function HelpDock() {
         on={open}
         peek={peek}
         onClick={toggleHelpTour}
+        anchor="help"
       >
-        {open && (
-          <div className="dockpanel helppanel">
-            <div className="dockhd">
-              <div className="dockhdtext">
-                <span className="docktitle">{tour.title}</span>
-                <span className="docksub">{tour.sub}</span>
+        {/* EVERY LAYER NOW HAS A GUIDED TOUR — the local set for a city, the
+            world set for the globe and a region. The written steps below are
+            kept only as the fallback for a layer with no set, which cannot
+            happen today; deleting them would make the next new layer silently
+            render nothing instead of degrading to prose. */}
+        {open &&
+          (layer === "local" || layer === "global" || layer === "domestic" ? (
+            <GuidedTour layer={layer} onClose={closeHelpTour} />
+          ) : (
+            <div className="dockpanel helppanel">
+              <div className="dockhd">
+                <div className="dockhdtext">
+                  <span className="docktitle">{tour.title}</span>
+                  <span className="docksub">{tour.sub}</span>
+                </div>
+                <button className="dockx" onClick={closeHelpTour} aria-label="Close">
+                  <IconClose />
+                </button>
               </div>
-              <button className="dockx" onClick={closeHelpTour} aria-label="Close">
-                <IconClose />
-              </button>
+              <ol className="helpsteps">
+                {tour.steps.map((s, i) => (
+                  <li key={i}>
+                    <span className="helpnum">{i + 1}</span>
+                    <span>{s}</span>
+                  </li>
+                ))}
+              </ol>
             </div>
-            <ol className="helpsteps">
-              {tour.steps.map((s, i) => (
-                <li key={i}>
-                  <span className="helpnum">{i + 1}</span>
-                  <span>{s}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
+          ))}
       </DockButton>
 
       <DockButton

@@ -462,6 +462,44 @@ def raw_get(url: str, settle: int = 6, locale: str = 'en-AU') -> str | None:
     return _raw_session.text(url)
 
 
+def reset_session() -> None:
+    """Throw away the shared browser session so the next fetch opens a new one.
+
+    WHAT THIS IS FOR. raw_get earns an origin's Cloudflare clearance once and
+    then pulls every later page with fetch() from inside that cleared page. When
+    the site decides it does not like the caller, that judgement sticks to the
+    session: the clearance navigation keeps succeeding and every in-page fetch
+    comes back 403, for the rest of the run. SimplyHired did exactly that on
+    2026-08-07, -08 and -09 — three whole nights archived nothing, each ending
+
+        in-page fetch 403 for https://www.simplyhired.com.au/search?q=... (48B)
+        0 employers advertising, 0 rows archived.
+
+    and recovered on its own on the 10th, which is the signature of a decision
+    made about the exit rather than about the scraper.
+
+    Dropping the session drops the cookie jar AND the connection, so the next
+    call re-clears the origin over a new one. SCRAPE_PROXY's stored credential
+    is rotating (see http_fetch.scrape_proxy_url), so that reconnection is
+    normally a different residential address — which is the point. It is NOT
+    guaranteed: with SCRAPE_PROXY_SESSION set the exit is deliberately sticky
+    and a reset will return to the same address, so a caller that resets forever
+    would just spin. Callers must bound their retries.
+
+    Deliberately quiet on teardown failure: this runs when things are already
+    going wrong, and a browser that will not close cleanly must not be the
+    reason a scrape that could still recover dies instead.
+    """
+    global _raw_session
+    if _raw_session is not None:
+        try:
+            _raw_session.__exit__(None, None, None)
+        except Exception as e:  # noqa: BLE001
+            sys.stderr.write(f'  (session teardown failed, continuing: {str(e)[:100]})\n')
+    _raw_session = None
+    _raw_cleared.clear()
+
+
 def nav_get(url: str, settle: int = 6, locale: str = 'en-AU') -> str | None:
     """Return `url` by NAVIGATING to it in a reused browser context.
 

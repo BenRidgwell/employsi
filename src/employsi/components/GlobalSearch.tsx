@@ -339,7 +339,7 @@ export function GlobalSearch() {
     <div className="gsearch">
       <div className="gsearchhd">Explore the world of work today</div>
 
-      <div className={`gsearchbar ${focused ? "on" : ""}`}>
+      <div className={`gsearchbar ${focused ? "on" : ""}`} data-tour="search">
         {/* The magnifier tightens and its handle shifts on focus, per the design. */}
         <svg
           className="gsicon"

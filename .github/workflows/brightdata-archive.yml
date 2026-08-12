@@ -40,13 +40,33 @@
 # `max_records` (default 20,000) is the backstop against a roster change or a
 # hiring spree turning into an invoice nobody chose.
 #
-# THE SWEEP IS CHUNKED BECAUSE 354 COMPANIES DO NOT FIT IN ONE JOB. Measured
-# 2026-08-10: 20 companies took 28m41s (~1.4 min each), so a whole-roster run is
-# ~8.5 hours against GitHub's 6-hour hard cap on a hosted runner. It would also
-# fail to NOTHING — the snapshot is downloaded only once Bright Data reports it
-# ready, so a timeout means the records were collected and billed but no row
-# reached D1. Four parallel chunks of 90 are ~2.1 hours each and exactly cover
-# the roster (verified: 354 companies, no duplicates, none missed).
+# THE SWEEP IS CHUNKED BECAUSE 354 COMPANIES DO NOT FIT IN ONE JOB. Measured on
+# INDEED 2026-08-10: 20 companies took 28m41s (~1.4 min each), so a whole-roster
+# run is ~8.5 hours against GitHub's 6-hour hard cap on a hosted runner. It would
+# also fail to NOTHING — the snapshot is downloaded only once Bright Data reports
+# it ready, so a timeout means the records were collected and billed but no row
+# reached D1. Four chunks of 90 exactly cover the roster (verified: 354
+# companies, no duplicates, none missed).
+#
+# THE TWO BOARDS ARE NOT THE SAME SPEED. Both now measured at the production
+# 90-company shape, 2026-08-11:
+#
+#   linkedin   90 companies ->  ~6 min   (2,457 records)
+#   indeed     90 companies -> 44.7 min  (1,439 records; 44.3 of that is the
+#                                         snapshot wait, the D1 write is ~30s)
+#
+# So Indeed is ~7x slower per chunk, but NOT the 1.4 min/company that the old
+# 20-company run suggested — that extrapolation would have predicted 126 min and
+# an 8.5-hour Indeed sweep. Measured is 0.50 min/company. A full serial sweep is
+# therefore ~3.0 hours of Indeed plus ~24 min of LinkedIn: about 3.5 hours for
+# all eight chunks, one at a time, well inside a single scheduled run.
+#
+# That is the number to re-check if the roster grows a lot. The four-chunk shape
+# holds comfortably at 354 companies; it is the 350-minute per-job timeout, not
+# the sweep total, that would bite first, and one Indeed chunk uses an eighth of
+# it.
+#
+# They run ONE AT A TIME regardless; see max-parallel below for why.
 #
 # If a chunk does time out, the snapshot id is in its log and `snapshot=<id>`
 # re-downloads it without triggering — and without paying for the records twice.
@@ -191,9 +211,32 @@ jobs:
       # One chunk failing must not cancel the other three — each writes its own
       # employers, and a partial sweep beats no sweep.
       fail-fast: false
-      # Bright Data bills per record, not per request, so parallel chunks cost
-      # the same as serial ones. 8 on a scheduled sweep: 2 boards x 4 chunks.
-      max-parallel: 8
+      # ONE SNAPSHOT AT A TIME. THIS IS MEASURED, NOT CAUTION.
+      #
+      # This was max-parallel: 8, on the reasoning that Bright Data bills per
+      # record rather than per request, so parallel chunks cost what serial ones
+      # do. That is true of the BILLING and false of the COLLECTION.
+      #
+      # Measured 2026-08-11. Three LinkedIn chunks triggered within 18 seconds
+      # of each other: two returned ZERO records, one returned 870. Re-running
+      # one of the failed slices ALONE, with the same offset, limit, dataset and
+      # input, returned 1,908 records. Same request, opposite result — the only
+      # variable was how many snapshots were open on the account:
+      #
+      #   offset 90   concurrent  12m35s  ->     0 records
+      #   offset 90   alone        5m09s  -> 1,908 records
+      #   offset 180  concurrent  16m10s  ->     0 records
+      #   offset 270  concurrent   7m20s  ->   870 records
+      #
+      # Note the shape of the failure: the overflow snapshots did not error.
+      # They waited LONGER than the one that worked, reported `ready`, and
+      # delivered an empty file. Nothing in the API response says "throttled".
+      #
+      # At 8-wide the scheduled sweep would therefore have lost most of its
+      # chunks every fortnight while several jobs still went green, and the
+      # archive would have quietly held a fraction of the roster. A LinkedIn
+      # chunk takes ~6 minutes, so serial costs the sweep under an hour.
+      max-parallel: 1
     runs-on: ubuntu-latest
     # Sized for a 90-company chunk (~129 min at the measured rate), with room
     # for Bright Data being slower than measured. The script's own snapshot wait
@@ -264,10 +307,19 @@ jobs:
 # THE SCHEDULE COLLECTS BOTH BOARDS — the matrix is source x chunk, so a
 # fortnightly sweep is 8 jobs: indeed and linkedin, each over four chunks of 90.
 #
-# LINKEDIN IS WIRED BUT NOT YET PROVEN. Its dataset id
-# (gd_lpfll7v5hcqtkxl6l, "Linkedin job listings information") accepts the
-# trigger, but a 6-company probe on 2026-08-10 returned ZERO records: the input
-# shape is valid to Bright Data and still matches nothing. Until a probe returns
-# rows, expect the linkedin half of each sweep to fail loudly on "No records at
-# all" rather than to write anything — which is the intended behaviour, not a
-# regression. Use input_json to test a shape without a commit.
+# LINKEDIN IS PROVEN END TO END as of 2026-08-10, and the thing that was wrong
+# is worth keeping written down. Its dataset (gd_lpfll7v5hcqtkxl6l, "Linkedin
+# job listings information") accepted the trigger from the first attempt and
+# returned ZERO records, because the employer name was going into `keyword`.
+# LinkedIn keyword-matches TITLES AND DESCRIPTIONS, not the advertiser — so
+# "BHP" matched nothing and the request looked valid the whole way. The employer
+# belongs in `company`. Bright Data will state its own contract if you post an
+# invalid field: it echoes the accepted keys back in the error.
+#
+# Measured on the first real chunk (offset 0, 90 companies): snapshot ready in
+# 4m22s, 2457 records, 2332 kept for 43 employers, 1970 rows upserted (1878 new
+# + 92 refreshed by job_key). title/company/location/url/posted all 100%.
+# `salary` is returned on every record and is ALWAYS EMPTY — LinkedIn does not
+# publish pay on these listings, so a blank there is correct, not a mapping bug.
+#
+# Use input_json to test a shape without a commit.

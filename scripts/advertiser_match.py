@@ -158,6 +158,57 @@ ADVERTISER_ALIAS = {
     # gold mine in WA rather than the listed parent.
     'catalyst plutonic': 'catalyst metals',
     'catalyst plutonic pty ltd': 'catalyst metals',
+    # THE FIRM RENAMED; THE ROSTER DID NOT. Herbert Smith Freehills now
+    # advertises as "Herbert Smith Freehills Kramer" after its Kramer Levin
+    # merger, and every one of its ads was being rejected — 28 of 28 on
+    # 2026-08-11, which is the whole employer, not a rounding error.
+    #
+    # "Kramer" is a business name rather than corporate form, so the token rule
+    # is RIGHT to reject it by default: an extra business word is exactly how
+    # "IGO Techonologies" once landed on IGO. Widening CORPORATE_WORDS to admit
+    # it would reopen that hole for every short name on the roster. An alias is
+    # the narrow statement — this specific string is this specific employer.
+    #
+    # Found by the most-dropped-advertiser report, which is what that report is
+    # for: the count alone said "28 dropped as another advertiser", which reads
+    # like the gate working correctly.
+    'herbert smith freehills kramer': 'herbert smith freehills',
+    'herbert smith freehills kramer llp': 'herbert smith freehills',
+    # DIVISIONS THAT ADVERTISE UNDER THEIR OWN BANNER. Each was losing every ad
+    # it placed, measured on the Indeed chunk of 2026-08-11 (the count is what
+    # the drop report showed against what the parent kept that run):
+    #
+    #   Woolworths Supermarkets  31 dropped   Woolworths Group kept  4
+    #   Wesfarmers Health        28 dropped   Wesfarmers       kept  7
+    #   Ampol Retail Store       20 dropped   Ampol            kept 12
+    #
+    # In each case the extra word is a line of business, not corporate form, so
+    # the token rule rejects it and is right to by default — that is the same
+    # rule keeping "IGO Techonologies" off IGO.
+    #
+    # WHY THESE THREE AND NOT THE OTHER NEAR MISSES in the same report. These
+    # are divisions of the rostered parent, so their vacancies genuinely are the
+    # parent's. The ones deliberately left rejected are separate organisations
+    # that merely share a word:
+    #
+    #   Endeavour Foundation  a disability charity, NOT Endeavour Group — and
+    #                         Endeavour Group itself demerged from Woolworths in
+    #                         2021, so it is not Woolworths either
+    #   Macquarie University  not Macquarie Group
+    #   SA Health             a state health department, on nobody's roster
+    #
+    # Only the strings actually observed are listed. The lookup is exact on the
+    # normalised tokens, so a variant is a miss — and the drop report is how the
+    # next one gets found, rather than by pre-inventing spellings here.
+    'woolworths supermarkets': 'woolworths group',
+    'wesfarmers health': 'wesfarmers',
+    'ampol retail store': 'ampol',
+    # Uni Roles prints Monash both ways, on the same board, on the same day —
+    # "Monash University" and "Monash Uni" were one ad each on 2026-08-12. The
+    # abbreviation is not a shortened PREFIX of the roster name ("uni" against
+    # "university"), so the token rule cannot forgive it the way it forgives
+    # "Deloitte" for "Deloitte Touche Tohmatsu".
+    'monash uni': 'monash university',
 }
 
 
@@ -166,11 +217,37 @@ def norm(s: str) -> str:
     return re.sub(r'[^a-z0-9]+', ' ', (s or '').lower()).strip()[:120]
 
 
+def _no_leading_the(tokens: list[str]) -> list[str]:
+    """Drop a leading "the", which is style rather than identity.
+
+    "The" is already in CORPORATE_WORDS, but that set is only consulted for
+    words that come AFTER the shared prefix — so a leading one breaks the
+    comparison outright instead of being forgiven:
+
+        "The University of Queensland" vs "University of Queensland"   rejected
+        "Walt Disney Company"     vs "The Walt Disney Company"         rejected
+
+    Both are the same employer under any reading, and the first form is how
+    several Australian universities officially style themselves — 126 of the 422
+    ads on Uni Roles were being dropped over it (measured 2026-08-12), across
+    Queensland, Western Australia and Adelaide.
+
+    Guarded so a company literally named "The" cannot normalise to nothing.
+    """
+    return tokens[1:] if len(tokens) > 1 and tokens[0] == 'the' else tokens
+
+
 def advertiser_matches(advertiser: str, name: str) -> bool:
     a, n = norm(advertiser).split(), norm(name).split()
     if not a or not n:
         return False
+    # The alias lookup runs on the UNSTRIPPED tokens: entries are keyed on the
+    # advertiser string exactly as a board prints it, and one of them
+    # ("the west australian") starts with the very word below.
     if a == n or ADVERTISER_ALIAS.get(' '.join(a)) == ' '.join(n):
+        return True
+    a, n = _no_leading_the(a), _no_leading_the(n)
+    if a == n:
         return True
     long_, short_ = (a, n) if len(a) >= len(n) else (n, a)
     if long_[:len(short_)] != short_:

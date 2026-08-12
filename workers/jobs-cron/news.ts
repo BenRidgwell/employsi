@@ -158,7 +158,9 @@ async function fetchNews(name: string, limit: number): Promise<StoredNewsItem[]>
   // the roster name, so the app finds this entry exactly where it expects to.
   const url =
     "https://www.bing.com/news/search?q=" +
-    encodeURIComponent(`"${newsQueryFor(name)}"`) +
+    // newsQueryFor returns the FINISHED query, quotes and all — see
+    // newsQueries.ts. Do not wrap it: BHP's entry is deliberately unquoted.
+    encodeURIComponent(newsQueryFor(name)) +
     "&format=RSS&setmkt=en-AU";
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
