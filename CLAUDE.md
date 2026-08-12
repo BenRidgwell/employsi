@@ -54,13 +54,29 @@ in the Cloudflare dashboard, so nothing in `wrangler.jsonc` reveals it). Deployi
 "the workers.dev preview" *is* deploying to the public site — they are one Worker,
 serving byte-identical assets.
 
-**Production does not track `main`.** The live site was built from
-`claude/waitlist-page-updates-053rss`, which carries the D1-backed landing stats
-(`src/employsi/lib/landingStatsFn.ts`), the domain routing in `src/server.ts` and the
-un-clipped hero graphic. A deploy from `main` silently reverts all of it: the ticker
-falls back to the hardcoded `SEED` placeholders in `src/components/Ticker.tsx`, and
-the hero clips. **Check what branch production is on before deploying anything.**
-This happened on 2026-08-10 and was recovered with `wrangler rollback`.
+**Production does not track `main`.** As of 2026-08-12 the live site is version
+`52e5abaa-dccb-434a-8c15-da93871d0974`, deployed from
+`claude/employsi-indexing-seo-u2yzcv`. That branch contains all of
+`claude/waitlist-page-updates-053rss` (the previous production branch) plus the
+crawler files in `src/server.ts` and `src/lib/site.ts`.
+
+Everything the older note warned about still applies, because `main` still lacks
+it all: the D1-backed landing stats (`src/employsi/lib/landingStatsFn.ts`), the
+domain routing in `src/server.ts` and the un-clipped hero graphic. A deploy from
+`main` silently reverts them — the ticker falls back to the hardcoded `SEED`
+placeholders in `src/components/Ticker.tsx`, and the hero clips. It would now
+also drop `/sitemap.xml` and the social card. **Check what branch production is
+on before deploying anything.** The revert happened on 2026-08-10 and was
+recovered with `wrangler rollback`.
+
+Deploying needs `VITE_MAPBOX_TOKEN` as well as `CLOUDFLARE_API_TOKEN` —
+`vite.config.ts` refuses to build without it, so a deploy cannot be done from an
+environment that only has the Cloudflare credential.
+
+**Cloudflare caches `/sitemap.xml` and `/robots.txt` at the edge.** A 404 fetched
+before a deploy is still served for a while after it, so verifying with a bare
+`curl` can show the pre-deploy answer and read as a failed deploy. Bust it with a
+query string (`/sitemap.xml?cb=1`) before concluding anything.
 
 To let someone LOOK at a change without touching the public site, upload a version
 without shifting traffic — this prints its own preview URL:
