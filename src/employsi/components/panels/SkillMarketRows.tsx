@@ -4,6 +4,20 @@ import type { SkillMarket, SkillMarketRow } from "../../lib/jobHistoryFn";
 
 /** Rows before the list says what it left out. */
 const ROWS_SHOWN = 12;
+
+/**
+ * What the list is ordered by.
+ *
+ * Three, not two, because the default has to be one of them. Value is the index
+ * the whole pane is built on — price times volume — and leaving it unnamed while
+ * offering its two components would make the opening order look arbitrary.
+ */
+type SortKey = "value" | "salary" | "volume";
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: "value", label: "Value" },
+  { key: "salary", label: "Salary" },
+  { key: "volume", label: "Volume" },
+];
 const SP_W = 96;
 const SP_H = 26;
 
@@ -87,13 +101,27 @@ export function SkillMarketRows({
   onPick: (skill: string) => void;
 }) {
   const [cat, setCat] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortKey>("value");
   const [all, setAll] = useState(false);
 
   const cats = useMemo(() => market.categories.map((c) => c.cat), [market.categories]);
-  const rows = useMemo(
-    () => (cat ? market.rows.filter((r) => r.cat === cat) : market.rows),
-    [market.rows, cat],
-  );
+  const rows = useMemo(() => {
+    const base = cat ? market.rows.filter((r) => r.cat === cat) : market.rows;
+    // Copy before sorting: market.rows is the query's cached array, and sorting
+    // it in place would reorder the hero's view of the same data.
+    return [...base].sort((x, y) => {
+      if (sort === "salary") {
+        // Unpriced skills go last rather than sorting as zero. They are not the
+        // cheapest thing in the market, they are the things it cannot price.
+        if (x.pay === null && y.pay === null) return y.now - x.now;
+        if (x.pay === null) return 1;
+        if (y.pay === null) return -1;
+        return y.pay - x.pay || y.now - x.now;
+      }
+      if (sort === "volume") return y.now - x.now || (y.value ?? -1) - (x.value ?? -1);
+      return (y.value ?? -1) - (x.value ?? -1) || y.now - x.now;
+    });
+  }, [market.rows, cat, sort]);
   const shown = all ? rows : rows.slice(0, ROWS_SHOWN);
   const unpriced = rows.filter((r) => r.pay === null).length;
 
@@ -103,7 +131,20 @@ export function SkillMarketRows({
     <section className="smk">
       <div className="ccsecth">
         <span className="cceyebrow">Skills</span>
-        <span className="ccsecthsub">demand · median salary</span>
+        <div className="smksorts" role="tablist" aria-label="Sort by">
+          {SORTS.map((o) => (
+            <button
+              type="button"
+              key={o.key}
+              role="tab"
+              aria-selected={sort === o.key}
+              className={`smksort ${sort === o.key ? "on" : ""}`}
+              onClick={() => setSort(o.key)}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {cats.length > 1 && (

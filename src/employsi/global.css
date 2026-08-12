@@ -14652,6 +14652,40 @@ body {
 /* One scrolling line, not a wrapped block. There are 27 categories, and
    wrapping them pushed five rows of chips above the first number — the filter
    is secondary to the data it filters. */
+/* Order the list by the index, or by either of the two figures it multiplies.
+   Sits in the section header, opposite the label, because it changes what the
+   section IS rather than filtering what is in it. */
+.smksorts {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+.smksort {
+  padding: 3px 9px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.smksort:hover {
+  color: var(--text-secondary);
+}
+.smksort.on {
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-weight: 650;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+}
+.smksort:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
 .smkcats {
   display: flex;
   flex-wrap: nowrap;
@@ -14861,12 +14895,14 @@ body {
    control. Keeping them together matters — split across panels, a reader has to
    take on trust that the number and the chart are the same quantity.
 
-   THE GREEN IS A DEPARTURE AND A DELIBERATE ONE. This product is monochrome and
-   spends colour only on semantic status, so one saturated panel is the most
-   colour anywhere in the app. It is confined to this single card, it is built
-   from the existing green family (--green-500 as the base) rather than a new
-   hue, and everything inside it is white or a white tint — no second accent
-   competing inside the one place colour is spent. */
+   INK, NOT COLOUR. The reference for this card is a green portfolio panel, and
+   it was built that way first. It is ink now, because this product is
+   monochrome and spends colour only on real status — a saturated panel at the
+   top of the pane was the single largest use of colour in the app and it read
+   as a status the market was not in. On ink the same structure survives intact:
+   white line, white rings, white type, and the one white pill marking the
+   selected period. --surface-inverse is the token the design system already
+   uses for exactly this. */
 .mkhero {
   --hero-ink: #ffffff;
   display: flex;
@@ -14875,7 +14911,9 @@ body {
   margin: 12px 16px 14px;
   padding: 16px 18px 12px;
   border-radius: var(--radius-lg);
-  background: linear-gradient(160deg, #45b47c 0%, #34996a 58%, #2f8f63 100%);
+  /* A slight lift toward the top rather than flat ink: the card is large enough
+     that a single value reads as a hole in the pane. */
+  background: linear-gradient(165deg, var(--neutral-800) 0%, var(--surface-inverse) 62%);
   color: var(--hero-ink);
   overflow: hidden;
 }
@@ -15045,7 +15083,7 @@ body {
 }
 .mkherowin.on {
   background: var(--hero-ink);
-  color: #2f8f63;
+  color: var(--surface-inverse);
   font-weight: 700;
 }
 .mkherowin:focus-visible {
