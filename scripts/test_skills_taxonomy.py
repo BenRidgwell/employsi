@@ -242,6 +242,53 @@ class RealTaxonomy(unittest.TestCase):
                       'Data entry administrators', 'Contract, Program and Project Administrators'):
             self.assertIn('Administration & Office Support', self.match(title), title)
 
+    def test_hr_the_licence_and_hr_the_department_are_separated(self):
+        """"HR" names a truck licence and an hourly rate as well as a department.
+
+        Measured on the live archive: the matcher tagged 2875 ads Human
+        Resources over 90 days and 692 of them were not HR at all — Heavy Rigid
+        licence ads ("HR Driver" was the commonest HR title in the archive at 39
+        ads), pay rates ("$49/hr"), and talent pools wrapping some other
+        occupation entirely. Deleting the terms was not available: "hr " is the
+        only thing matching "HR Business Partner", and bare "talent" carries
+        "Senior Director, Global Talent".
+        """
+        for title in ('HR Driver', 'HR Truck Driver', 'MR/HR Truck Driver (Civil)',
+                      'Warehouse Storeperson - HR Forklift', 'Local - HR Driver - Kalgoorlie',
+                      '$24/hr Bonuses Driving in Sunnyvale!',
+                      'Respiratory Therapist (RT) - up to $49/hr',
+                      'EOI Talent Community: Mechanical Fitters',
+                      'Dragline Operators | Saraji | BMA | Talent Pool',
+                      'Visy Workforce - Multi-Site Electrician'):
+            self.assertNotIn('Human Resources', self.match(title), title)
+        # …and the department is untouched.
+        for title in ('HR Business Partner', 'HR Advisor', 'HR Manager', 'Human Resources Advisor',
+                      'Talent Acquisition Specialist', 'Senior Director, Global Talent',
+                      'Workforce Planner', 'People and Culture Business Partner',
+                      'Employee Relations Advisor'):
+            self.assertIn('Human Resources', self.match(title), title)
+
+    def test_hr_licence_ads_still_reach_the_skill_they_are(self):
+        """Suppressing HR must not leave a driving ad with no skill at all."""
+        self.assertIn('Driving & Transport', self.match('HR Truck Driver'))
+        self.assertIn('Driving & Transport', self.match('HR Driver'))
+        self.assertIn('Warehousing & Logistics',
+                      self.match('Warehouse Storeperson - HR Forklift'))
+
+    def test_hr_except_does_not_touch_the_agency_occupations(self):
+        """The whole-of-market series feed published unit-group titles through
+        this same matcher, so an except written against AD titles must not move
+        a national number."""
+        for title in ('Human Resource Managers', 'Human Resource Professionals',
+                      'Human Resource Advisers', 'Human Resource Clerks',
+                      'Training and Development Professionals', 'Recruitment Consultants',
+                      'Human Resources Specialists'):
+            self.assertIn('Human Resources', self.match(title), title)
+        for title in ('Truck Drivers', 'Truck Drivers, Heavy and Tractor-Trailer',
+                      'Heavy Truck and Tractor-Trailer Drivers'):
+            self.assertIn('Driving & Transport', self.match(title), title)
+            self.assertNotIn('Human Resources', self.match(title), title)
+
     def test_excepts_are_read_at_all(self):
         """A negative rule the reader silently ignores is worse than none: the
         app would apply it and the generated datasets would not."""

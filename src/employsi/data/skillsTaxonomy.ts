@@ -491,6 +491,65 @@ const RAW_SKILLS: SkillDef[] = [
       "employee relations",
       "industrial relations",
     ],
+    // Three different things spell themselves "HR", "talent" or "workforce" and
+    // none of them is this skill. Measured on the live archive, 90 days: the
+    // matcher tagged 2875 ads Human Resources and 692 of them (24.1%) were one
+    // of these. The commonest single "HR" title in the whole archive was
+    // "HR Driver", 39 ads.
+    //
+    //   HR = HEAVY RIGID, the truck licence class. "HR Driver", "MR/HR Truck
+    //   Driver", "Warehouse Storeperson - HR Forklift". 116 of the 121
+    //   driver/truck ones were ALREADY tagged Driving & Transport, so the ad
+    //   was counted correctly once and then again as HR demand.
+    //
+    //   /hr = an HOURLY RATE. "$24/hr Bonuses Driving in Sunnyvale!",
+    //   "Respiratory Therapist (RT) - up to $49/hr". The term is "hr " and
+    //   termMatches only blocks a preceding LETTER OR DIGIT, so the slash in
+    //   "$49/hr " lets it through.
+    //
+    //   talent pool / talent community = a hiring CONTAINER, not a role.
+    //   "EOI Talent Community: Mechanical Fitters", "Dragline Operators |
+    //   Saraji | BMA | Talent Pool". The occupation is named in the title and
+    //   already maps to its own skill; the HR tag is pure noise.
+    //
+    // "visy workforce" is an employer brand ("Visy Workforce - Multi-Site
+    // Electrician"), listed by name rather than by excepting "workforce",
+    // which would cost the genuine "Workforce Planner" / "Workforce Analyst".
+    //
+    // Deleting the terms instead was not an option: "hr " is also the only
+    // thing matching "HR Business Partner" (20 ads), "HR Advisor" and "HR
+    // Manager", and bare "talent" carries "Senior Director, Global Talent" and
+    // "Talent & Leadership". The distinguishing word comes before or after the
+    // match, which is what except is for — same shape as the administrator
+    // case above.
+    //
+    // Known cost, accepted: "Human Resources Talent Community" (4 ads) is a
+    // real HR posting and is suppressed with the rest, because an except is a
+    // statement about the whole title and cannot say "unless". 4 ads against
+    // 692 is the trade.
+    except: [
+      "hr driver",
+      "hr truck",
+      "hr forklift",
+      "hr side lift",
+      "hr delivery",
+      "hr licence",
+      "hr license",
+      "hr class",
+      "hr and roller",
+      "hr / mc",
+      "hr/mc",
+      "mr/hr",
+      "mr / hr",
+      "hc/hr",
+      "hr/hc",
+      "truck driver",
+      "prime mover",
+      "/hr",
+      "visy workforce",
+      "talent pool",
+      "talent community",
+    ],
   },
   {
     skill: "Commercial & Legal",
