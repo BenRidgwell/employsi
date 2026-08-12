@@ -329,6 +329,86 @@ const dayStr = (offset: number) => {
   return d.toISOString().slice(0, 10);
 };
 
+/** `n` days before an ISO day, so a window can be anchored to a day in the data
+ *  rather than to the clock. */
+const minusDays = (iso: string, n: number) => {
+  const t = Date.parse(iso + "T00:00:00Z");
+  if (Number.isNaN(t)) return iso;
+  return new Date(t - n * 86400000).toISOString().slice(0, 10);
+};
+
+/**
+ * How many ads were live on a given day, as a WHERE fragment.
+ *
+ * An ad is live on day D if it was first seen on or before D and last seen on
+ * or after D. That is the archive's only honest answer to "how many were open
+ * then", and — crucially — it is the SAME question on both sides of a
+ * comparison. Counting today with `last_seen = <newest day>` and the past with
+ * this reconstruction compares two different measures and produces a change
+ * figure that is mostly the difference between them.
+ *
+ * It also spans collection gaps: an ad first seen on the 3rd and last seen on
+ * the 9th is live on the 6th whether or not any row carries last_seen = the
+ * 6th, so a day the crons skipped does not read as an empty market.
+ */
+const LIVE_ON_DAY = "first_seen <= ? AND last_seen >= ?";
+
+/** How far back a feed can have last written and still count toward coverage.
+ *  Past this it is dead or dormant, and a dead feed must not be able to veto
+ *  every recent day for everyone else. */
+const FEED_LOOKBACK_DAYS = 21;
+/** Share of the scope's rows that must be evidenced before a day is usable. */
+const COVERAGE_TARGET = 0.95;
+/**
+ * How far coverage is allowed to drag the reference day back.
+ *
+ * A floor, because the two failure modes are not symmetric. Reporting a short
+ * day as a real fall is a wrong answer; reporting a complete day from a while
+ * ago is a true answer about the wrong moment — worse the further back it
+ * goes, and past a few days it stops being an answer about now at all.
+ *
+ * It is a real risk, not a hypothetical: BHP clears the 95% target by 882 rows
+ * against 876.85 needed. Had its dormant vendor feed carried a little more,
+ * coverage would have pointed at 2026-07-29 and the answer would have been a
+ * fortnight stale without saying anything was wrong. Past this floor the
+ * shortfall is accepted, and the date the note already prints is what lets a
+ * reader see which day they are being told about.
+ */
+const MAX_STEP_BACK_DAYS = 3;
+
+/**
+ * The most recent day the scope's feeds have actually confirmed.
+ *
+ * LIVE_ON_DAY can only see an ad as live on day D if some feed pulled it on or
+ * after D. Feeds run on their own crons, so the last day or two is always
+ * short: whatever has not cycled yet is missing, and the count climbs as the
+ * day's runs land. Measured on production 2026-08-12, BHP's live-on-day curve
+ * sat between 360 and 452 for a fortnight, then read 235 for the 11th and 92
+ * for the 12th — no vacancies closed, two feeds simply had not run.
+ *
+ * Stepping back one fixed day does not fix it (the 11th is short too), and
+ * requiring EVERY feed to have pulled is worse: one weekly feed with six rows
+ * would permanently pin the whole world scope five days back. So the rule is
+ * by weight — walk the feeds newest-pull first and take the day at which the
+ * ones counted reach COVERAGE_TARGET of the scope's rows. Measured the same
+ * day, that picks the 10th for BHP (452 live, and the short 11th correctly
+ * rejected) and the 11th for Perth and for worldwide, both of which were
+ * stable there. A slow feed carrying under 5% is outvoted rather than
+ * obeyed — the cost is that its ads are missing from the last day or two,
+ * which is why the target is 95% and not lower.
+ */
+export function coverageDay(feeds: Array<{ mx: string; n: number }>): string {
+  const total = feeds.reduce((t, f) => t + f.n, 0);
+  if (!total) return "";
+  const need = total * COVERAGE_TARGET;
+  let acc = 0;
+  for (const f of [...feeds].sort((a, b) => (a.mx < b.mx ? 1 : a.mx > b.mx ? -1 : 0))) {
+    acc += f.n;
+    if (acc >= need) return f.mx;
+  }
+  return "";
+}
+
 const daysBetween = (a: string, b: string) => {
   const ta = Date.parse(a + "T00:00:00Z");
   const tb = Date.parse(b + "T00:00:00Z");
@@ -398,13 +478,28 @@ export const askAnalyst = createServerFn({ method: "POST" })
     // would be false.
     let since = "";
     let latest = "";
+    // When each feed in this scope last pulled, and how much of the scope it
+    // carries — the inputs to asOf below. Bounded to the recent past so a feed
+    // that died months ago cannot inflate the denominator with its back
+    // catalogue and drag the reference day down with it.
+    let feeds: Array<{ mx: string; n: number }> = [];
     try {
-      const span = await db
-        .prepare(`SELECT MIN(first_seen) AS mn, MAX(last_seen) AS mx FROM jobs WHERE ${where}`)
-        .bind(...binds)
-        .first();
+      const [span, srcs] = await Promise.all([
+        db
+          .prepare(`SELECT MIN(first_seen) AS mn, MAX(last_seen) AS mx FROM jobs WHERE ${where}`)
+          .bind(...binds)
+          .first(),
+        db
+          .prepare(
+            `SELECT MAX(last_seen) AS mx, COUNT(*) AS n FROM jobs
+               WHERE ${where} AND last_seen >= ? GROUP BY source`,
+          )
+          .bind(...binds, dayStr(FEED_LOOKBACK_DAYS))
+          .all(),
+      ]);
       since = String(span?.mn || "");
       latest = String(span?.mx || "");
+      feeds = (srcs?.results ?? []).map((r) => ({ mx: String(r.mx || ""), n: Number(r.n) || 0 }));
     } catch {
       /* handled below */
     }
@@ -417,28 +512,69 @@ export const askAnalyst = createServerFn({ method: "POST" })
         source: "employsi vacancy archive",
       };
     }
-    const spanDays = daysBetween(since, latest);
-    // Compare the latest day against a day this far back; capped by how much
+    /**
+     * The day every figure below is measured AS AT: the most recent one the
+     * archive can actually stand behind.
+     *
+     * Not `latest`. The crons run right through the day, so a day still in
+     * progress holds only what has been re-pulled so far. Anchoring "live now"
+     * to it and comparing against a completed day a week back had the analyst
+     * reporting BHP down 75% on a week when nothing of the sort happened —
+     * measured on production 2026-08-12. getVacancyTrend and the card's skill
+     * trends already end a day back for the same reason.
+     *
+     * Two guards, because one is not enough. Today is always partial, so step
+     * off it; and the day before can be short too where a feed has not cycled,
+     * which is what coverageDay measures. Both are data-anchored rather than
+     * clock-anchored, so a stalled scraper degrades sensibly instead of the
+     * analyst insisting on a "yesterday" the archive never saw.
+     *
+     * Last resort: a scope younger than the guards can serve has no settled day
+     * to step back to, so the partial one is all there is. It is reported with
+     * `steppedBack` false and the note says plainly what it was measured to.
+     */
+    const yesterday = dayStr(1);
+    let asOf = latest > yesterday ? yesterday : latest;
+    const coverage = coverageDay(feeds);
+    if (coverage && coverage < asOf) {
+      const floor = minusDays(asOf, MAX_STEP_BACK_DAYS);
+      asOf = coverage > floor ? coverage : floor;
+    }
+    if (asOf < since) asOf = latest;
+    const steppedBack = asOf !== latest;
+
+    const spanDays = daysBetween(since, asOf);
+    // Compare the reference day against a day this far back; capped by how much
     // history exists, so the comparison is always over real collected days.
     const window = Math.max(1, Math.min(7, Math.floor(spanDays / 2)));
-    const then = dayStr(window);
+    // Anchored to asOf rather than to today, so both ends of the comparison sit
+    // on days the archive actually completed. Taking it off the clock instead
+    // could put `then` AFTER the newest data whenever collection is behind.
+    const then = minusDays(asOf, window);
     const canCompare = spanDays >= 2;
     const archiveNote =
       `employsi vacancy archive · ${label} · collected ${since} to ${latest}` +
+      // The archive runs to `latest`, but the figures are measured to the last
+      // finished day. Both facts, because a reader who checks will find rows
+      // dated after the day the answer claims.
+      (steppedBack
+        ? ` · measured as at ${asOf}, the most recent day every feed had reported`
+        : "") +
       // Say how the sector was resolved, so the figure can be reproduced and so
       // it is clear this counts employers, not every ad in the market.
       (sectorOn ? ` · ${plural(companyIds?.length ?? 0, "employer")} matched` : "");
 
-    // Live now = still appearing in the most recent pull.
+    // Live = open on the reference day, by the same reconstruction the
+    // comparison below uses. See LIVE_ON_DAY.
     const liveRow = await db
-      .prepare(`SELECT COUNT(*) AS n FROM jobs WHERE ${where} AND last_seen = ?`)
-      .bind(...binds, latest)
+      .prepare(`SELECT COUNT(*) AS n FROM jobs WHERE ${where} AND ${LIVE_ON_DAY}`)
+      .bind(...binds, asOf, asOf)
       .first();
     const live = Number(liveRow?.n) || 0;
     if (!live) {
       return {
         intent,
-        text: `Nothing is live for ${label} in the most recent pull (${latest}), so any figure I gave you would be about a market that isn't there. Try a wider scope.`,
+        text: `Nothing was live for ${label} as at ${asOf}, so any figure I gave you would be about a market that isn't there. Try a wider scope.`,
         source: archiveNote,
       };
     }
@@ -447,9 +583,9 @@ export const askAnalyst = createServerFn({ method: "POST" })
       const rows = await db
         .prepare(
           `SELECT salary, hub FROM jobs
-             WHERE ${where} AND salary IS NOT NULL AND salary <> '' AND last_seen = ?`,
+             WHERE ${where} AND salary IS NOT NULL AND salary <> '' AND ${LIVE_ON_DAY}`,
         )
-        .bind(...binds, latest)
+        .bind(...binds, asOf, asOf)
         .all();
       const fallback = (country && COUNTRY_CURRENCY[country]) || "";
       const byCurrency: Record<string, number[]> = {};
@@ -507,7 +643,11 @@ export const askAnalyst = createServerFn({ method: "POST" })
         const ls = String(r.last_seen || "");
         for (const s of skills) {
           if (!(s in SKILL_CATEGORY)) continue;
-          if (ls === latest) now[s] = (now[s] || 0) + 1;
+          // Both ends by the same reconstruction. `ls === latest` counted only
+          // the ads re-pulled so far on a day still in progress, against a
+          // completed day for `before` — every skill then looked like it was
+          // collapsing, in proportion to how far through the day the crons were.
+          if (fs <= asOf && ls >= asOf) now[s] = (now[s] || 0) + 1;
           if (fs <= then && ls >= then) before[s] = (before[s] || 0) + 1;
         }
       }
@@ -578,7 +718,10 @@ export const askAnalyst = createServerFn({ method: "POST" })
                AND skills IS NOT NULL
              ORDER BY last_seen DESC LIMIT 8000`,
         )
-        .bind(...binds, latest)
+        // Closed as at the reference day, not as at `latest`: an ad whose last
+        // sighting is the reference day may simply not have been re-pulled yet,
+        // and counting it as finished truncates its run.
+        .bind(...binds, asOf)
         .all();
       const bySkill: Record<string, number[]> = {};
       const all: number[] = [];
@@ -640,30 +783,34 @@ export const askAnalyst = createServerFn({ method: "POST" })
 
     if (intent === "volume") {
       const [thenRow, freshRow, employerRows, distinctRow] = await Promise.all([
+        // The comparison end. `live` above is the same count on `asOf`, so the
+        // two sides differ only in which day they ask about.
         db
-          .prepare(
-            `SELECT COUNT(*) AS n FROM jobs WHERE ${where} AND first_seen <= ? AND last_seen >= ?`,
-          )
+          .prepare(`SELECT COUNT(*) AS n FROM jobs WHERE ${where} AND ${LIVE_ON_DAY}`)
           .bind(...binds, then, then)
           .first(),
+        // Bounded at the top too: an ad first seen on a day the answer does not
+        // yet claim to cover is not "new in the last N days" of that answer.
         db
-          .prepare(`SELECT COUNT(*) AS n FROM jobs WHERE ${where} AND first_seen >= ?`)
-          .bind(...binds, then)
+          .prepare(
+            `SELECT COUNT(*) AS n FROM jobs WHERE ${where} AND first_seen >= ? AND first_seen <= ?`,
+          )
+          .bind(...binds, then, asOf)
           .first(),
         db
           .prepare(
             `SELECT company, COUNT(*) AS n FROM jobs
-               WHERE ${where} AND last_seen = ? AND company IS NOT NULL AND company <> ''
+               WHERE ${where} AND ${LIVE_ON_DAY} AND company IS NOT NULL AND company <> ''
                GROUP BY company ORDER BY n DESC LIMIT 4`,
           )
-          .bind(...binds, latest)
+          .bind(...binds, asOf, asOf)
           .all(),
         db
           .prepare(
             `SELECT COUNT(DISTINCT company) AS n FROM jobs
-               WHERE ${where} AND last_seen = ? AND company IS NOT NULL AND company <> ''`,
+               WHERE ${where} AND ${LIVE_ON_DAY} AND company IS NOT NULL AND company <> ''`,
           )
-          .bind(...binds, latest)
+          .bind(...binds, asOf, asOf)
           .first(),
       ]);
       const prior = Number(thenRow?.n) || 0;
@@ -682,7 +829,7 @@ export const askAnalyst = createServerFn({ method: "POST" })
           : `That's ${pct >= 0 ? "up" : "down"} ${Math.abs(pct).toFixed(1)}% on ${then}, ${plural(window, "day")} back — a short-run read, not month on month, because collection here starts at ${since}.`;
       return {
         intent,
-        text: `${label} has ${plural(live, "role")} live in the latest pull (${latest}), with ${plural(fresh, "ad")} first seen in the last ${plural(window, "day")}. ${dirText}`,
+        text: `${label} had ${plural(live, "role")} live as at ${asOf}${steppedBack ? ", the most recent day the feeds had all reported" : ""}, with ${plural(fresh, "ad")} first seen in the ${plural(window, "day")} before that. ${dirText}`,
         stats: [
           {
             k: "Live roles",
@@ -736,6 +883,14 @@ export const getSkillPay = createServerFn({ method: "GET" })
       const latestRow = await db.prepare(`SELECT MAX(last_seen) AS mx FROM jobs`).first();
       const latest = String(latestRow?.mx || "");
       if (!latest) return null;
+      // Measured as at the last FULL day of collection, for the same reason the
+      // analyst is — see asOf in askAnalyst. There is no comparison here to
+      // skew, but a day still in progress holds only the ads re-pulled so far,
+      // so the sample this median rests on would depend on what time the card
+      // was opened, and could fall under PAY_MIN_SAMPLE and suppress a figure
+      // that is perfectly well evidenced by mid-afternoon.
+      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      const asOf = latest > yesterday ? yesterday : latest;
       // The skills column is a JSON array of canonical names, so matching the
       // QUOTED name is an exact containment test — "SQL" can't match "MySQL",
       // and "Nursing" can't match "Nursing Assistant".
@@ -743,13 +898,17 @@ export const getSkillPay = createServerFn({ method: "GET" })
       const rows = await db
         .prepare(
           `SELECT salary, hub FROM jobs
-             WHERE last_seen = ?1 AND skills LIKE ?2 AND salary IS NOT NULL AND salary <> ''`,
+             WHERE first_seen <= ?1 AND last_seen >= ?1 AND skills LIKE ?2
+               AND salary IS NOT NULL AND salary <> ''`,
         )
-        .bind(latest, quoted)
+        .bind(asOf, quoted)
         .all();
       const liveRow = await db
-        .prepare(`SELECT COUNT(*) AS n FROM jobs WHERE last_seen = ?1 AND skills LIKE ?2`)
-        .bind(latest, quoted)
+        .prepare(
+          `SELECT COUNT(*) AS n FROM jobs
+             WHERE first_seen <= ?1 AND last_seen >= ?1 AND skills LIKE ?2`,
+        )
+        .bind(asOf, quoted)
         .first();
       const live = Number(liveRow?.n) || 0;
       const byCurrency: Record<string, number[]> = {};
