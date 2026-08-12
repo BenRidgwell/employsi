@@ -236,7 +236,7 @@ const WORLD_TOURS: Record<string, TourDef> = {
         place: "bottom",
         pad: 8,
         radius: 22,
-        title: "Alerts and Feedback",
+        title: "Alerts, Settings & Feedback",
         body: () =>
           "Notifications flag movement on skills you follow. The message icon opens a feedback board where you can submit ideas and raise issues.",
       },
