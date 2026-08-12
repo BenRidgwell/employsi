@@ -91,9 +91,24 @@ and the real `OPEN_ROLES_HISTORY` KV. Reads are the point — the preview shows 
 data — but nothing is isolated, so a change that writes needs thinking about before
 it runs there.
 
-**The card is on `/`, not `/app`.** `/app` is `src/routes/app.tsx` →
-`MobileFramePreview.tsx`, the mobile-frame surface. Sending someone to
-`…workers.dev/app` to review company-card work shows them the wrong screen.
+**THE APP IS AT `/app`. `/` IS THE WAITLIST, ON EVERY HOST.** `src/routes/index.tsx`
+is the marketing page; `src/routes/app.tsx` is the product. Send a reviewer to
+`…workers.dev/app` — a link to `/` shows them the waitlist and nothing you built.
+
+This is easy to get backwards, and this file said the opposite until 2026-08-12.
+`app.tsx` imports `MobileFramePreview` statically, so that chunk appears in
+`/app`'s asset list on every host and the route looks like the mobile frame. It
+is not: the frame only wraps the app when the hostname matches `-mobile`, and
+the app itself is `lazy(() => import("@/employsi/App"))`, so it loads after
+hydration and never shows up in the SSR HTML. Read the `<title>` instead —
+"Employsi map — the live labour-market globe" is the app, "Employsi — Exploring
+the world of work" is the waitlist.
+
+The apex serves the waitlist ONLY: `employsi.com.au/app` 302s away (see
+`APP_ONLY_PATHS` in `src/server.ts`). So a production deploy of app work is
+reachable at `benridgwell-globe-gazer-hr.employsi.workers.dev/app` and nowhere
+else — checking `employsi.com.au` returns 200 proves the waitlist is up, not
+that the app deployed.
 
 **Production does not track `main`.** The live site was built from
 `claude/waitlist-page-updates-053rss`, which carries the D1-backed landing stats
