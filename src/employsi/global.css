@@ -14275,94 +14275,181 @@ body {
   }
 }
 
-/* ── Company card · archive window slider ────────────────────────────────────
-   Sits above the skills section and sets how far back every archive-backed
-   figure on the card looks. Monochrome like the rest of the card: the track is
-   a border tone, the filled half and the thumb are ink, and no colour is spent
-   on a control that is not reporting a status. */
-.ccwin {
-  margin-bottom: 16px;
+/* ── Company card · timeline scrubber ───────────────────────────────────────
+   The period control on the Skills tab: the employer's daily vacancy volume
+   with a time axis under it, so the reader can see where the history is dense
+   before choosing how far back to look.
+
+   Monochrome, like the rest of the card. The one place value does the work is
+   the pair of bands — the requested period sits behind in a light tone and the
+   period actually covered in front in ink, so when the archive cannot reach as
+   far back as the reader asked, the gap between them is visible rather than
+   only stated. */
+.cctl {
+  margin-bottom: 18px;
 }
-.ccwinh {
+.cctlh {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 7px;
+  margin-bottom: 6px;
 }
-.ccwinv {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  color: var(--text-secondary);
+.cctlv {
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
   white-space: nowrap;
 }
-.ccwinl {
+.cctll {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
   color: var(--text-tertiary);
 }
-/* Reset first: the platform slider is styled per-engine and inherits nothing
-   useful from the card. */
-.ccwinr {
-  -webkit-appearance: none;
-  appearance: none;
+.cctlplot {
+  position: relative;
+  height: 34px;
+}
+.cctlplot svg {
   display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.cctlline {
+  fill: none;
+  stroke: var(--neutral-500);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.cctlgap {
+  fill: var(--neutral-100);
+}
+/* Both bands run from their own left edge to today, so the shorter one (the
+   covered period) sits on top of the longer. */
+.cctlband {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+.cctlband.req {
+  background: var(--neutral-150);
+  mix-blend-mode: multiply;
+}
+.cctlband.cov {
+  background: var(--neutral-300);
+  mix-blend-mode: multiply;
+}
+.cctltrack {
+  position: relative;
+  height: 18px;
+  margin-top: 3px;
+}
+/* The axis itself, and the selected stretch of it drawn over the top. */
+.cctltrack::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 8px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--border-default);
+}
+.cctlfill {
+  position: absolute;
+  right: 0;
+  top: 8px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--neutral-900);
+}
+.cctltick {
+  position: absolute;
+  top: 4px;
+  width: 1px;
+  height: 10px;
+  background: var(--border-strong);
+}
+.cctlthumb {
+  position: absolute;
+  top: 2px;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  border: 2px solid var(--neutral-900);
+  background: var(--neutral-0);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
+  pointer-events: none;
+}
+/* The real control, invisible over the drawn one. It keeps the native
+   behaviours — drag, click-to-position, focus, screen-reader semantics — while
+   the thumb above is positioned by TIME rather than by the browser's own
+   even spacing, which is what lets it sit exactly on the band's edge. */
+.cctlr {
+  position: absolute;
+  left: 0;
+  top: 0;
   width: 100%;
   height: 18px;
   margin: 0;
-  background: transparent;
-  cursor: pointer;
-}
-.ccwinr:focus-visible {
-  outline: 2px solid var(--border-focus);
-  outline-offset: 3px;
-  border-radius: var(--radius-sm, 4px);
-}
-.ccwinr::-webkit-slider-runnable-track {
-  height: 3px;
-  border-radius: 999px;
-  background: var(--border-default);
-}
-.ccwinr::-moz-range-track {
-  height: 3px;
-  border-radius: 999px;
-  background: var(--border-default);
-}
-.ccwinr::-moz-range-progress {
-  height: 3px;
-  border-radius: 999px;
-  background: var(--neutral-900);
-}
-.ccwinr::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
-  /* Centres the 14px thumb on the 3px track: (3 - 14) / 2. */
-  margin-top: -5.5px;
+  background: transparent;
+  cursor: pointer;
+  /* The drawn thumb below carries the focus ring; the native outline would
+     box the whole track, which is not what has focus. */
+  outline: none;
+}
+.cctlr::-webkit-slider-runnable-track {
+  height: 18px;
+  background: transparent;
+}
+.cctlr::-moz-range-track {
+  height: 18px;
+  background: transparent;
+}
+.cctlr::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 0;
   border-radius: 50%;
-  border: 2px solid var(--neutral-0);
-  background: var(--neutral-900);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 22%);
+  background: transparent;
 }
-.ccwinr::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+.cctlr::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 0;
   border-radius: 50%;
-  border: 2px solid var(--neutral-0);
-  background: var(--neutral-900);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 22%);
+  background: transparent;
 }
-/* Tick labels under the track. Buttons so a pointer user can jump straight to
-   a stop, but tabIndex -1 and aria-hidden: the range input above is the real
-   control and duplicating it in the tab order would make the same choice twice
-   for a keyboard user. */
-.ccwint {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 2px;
+/* Focus has to show on the drawn thumb, since the real one is transparent.
+   Keyed off the track rather than a sibling selector: the drawn thumb comes
+   BEFORE the input in the DOM, so `~` would never match it. */
+.cctltrack:focus-within .cctlthumb {
+  box-shadow:
+    0 0 0 3px var(--neutral-0),
+    0 0 0 5px var(--border-focus);
 }
-.ccwintk {
-  padding: 2px 4px;
+.cctlt {
+  position: relative;
+  height: 13px;
+  margin-top: 1px;
+}
+.cctltk {
+  position: absolute;
+  transform: translateX(-50%);
+  padding: 0 2px;
   border: 0;
   background: none;
   font-family: var(--font-mono);
@@ -14370,19 +14457,24 @@ body {
   letter-spacing: 0.06em;
   color: var(--text-tertiary);
   cursor: pointer;
+  white-space: nowrap;
 }
-.ccwintk:first-child {
-  padding-left: 0;
-}
-.ccwintk:last-child {
-  padding-right: 0;
-}
-.ccwintk.on {
+.cctltk.on {
   color: var(--text-primary);
   font-weight: 600;
 }
-.ccwinnote {
-  margin: 7px 0 0;
+/* The end labels sit on the axis ends, so centring them hangs half of each
+   one outside the card. They align to their edge instead. */
+.cctltk.first {
+  transform: none;
+  padding-left: 0;
+}
+.cctltk.last {
+  transform: translateX(-100%);
+  padding-right: 0;
+}
+.cctlnote {
+  margin: 8px 0 0;
   font-size: 10.5px;
   line-height: 1.45;
   color: var(--text-tertiary);

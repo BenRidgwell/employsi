@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../../state/store";
 import { buildPanel } from "../../lib/panel";
 import { buildCompanyCard, TREND_UP, TREND_DOWN } from "../../lib/companyCard";
+import { smoothPath } from "../../lib/chart";
+import type { RolePoint } from "../../lib/openRolesFn";
 import { COMPANIES } from "../../data/companies";
 import { COMPANY_HEADCOUNT } from "../../data/companyHeadcount";
 import { GOV_HEADCOUNT, GOV_WORKFORCE } from "../../data/perthGovWorkforce";
@@ -47,62 +49,190 @@ function fmtDay(iso: string): string {
   });
 }
 
+/** The scrubber's axis is as long as the longest window it can select. */
+const TL_SPAN = SKILL_WINDOWS[SKILL_WINDOWS.length - 1];
+/** "2026-08-11" → "11 Aug". */
+const shortDay = (iso: string) => {
+  const t = Date.parse((iso || "") + "T00:00:00Z");
+  if (Number.isNaN(t)) return iso || "";
+  return new Date(t).toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  });
+};
+
 /**
- * The reader's control over how far back the archive-backed sections look.
+ * The reader's control over how far back the archive-backed sections look,
+ * drawn over the employer's own vacancy volume.
  *
- * A range input over the INDEX of SKILL_WINDOWS rather than over days, so the
- * stops are evenly spaced under the thumb — 7/14/30/60 mapped linearly would
- * put three of the four options in the first quarter of the track and make the
- * short windows nearly unhittable.
+ * The volume line is the point. Choosing a period blind is guesswork; with the
+ * daily count behind it the reader can see where this employer's history is
+ * dense enough to be worth asking about, and — just as usefully — where it runs
+ * out. It is the SAME series the Overview chart draws, deliberately: two
+ * different vacancy lines on one card would invite the reader to reconcile
+ * them.
  *
- * `covered` is what the archive actually returned, and it is shown whenever it
- * falls short of what was asked for. Collection began on 2026-07-20, so every
- * window longer than that is currently trimmed, and a slider reading "60 days"
- * over 24 days of data would be the card claiming history it does not have.
+ * THREE THINGS ARE DRAWN OVER ONE TIME AXIS, and they are not the same thing:
+ *
+ *   · the axis, always the full TL_SPAN, so the stops keep fixed positions
+ *     and the control does not resize under the cursor as data arrives;
+ *   · the REQUESTED period, from the thumb to today;
+ *   · the COVERED period, the days the fold could honestly return.
+ *
+ * When the request outruns the archive the covered band is visibly shorter than
+ * the requested one, which is the note below said as a picture. Collection
+ * began on 2026-07-20 and each employer's feeds arrived later still, so that is
+ * the normal case today rather than an edge one.
+ *
+ * The thumb is TIME-PROPORTIONAL, not evenly spaced: it marks where the period
+ * starts on the axis, so it has to sit at the edge of the band it controls.
+ * That rules out a range input over the stop index — hence a range over days,
+ * snapped on change, with arrow keys handled separately so the keyboard steps
+ * stop to stop instead of getting stuck between two that snap back.
  */
-function WindowSlider({
+function TimelineScrubber({
   days,
   covered,
+  series,
   loading,
   onChange,
 }: {
   days: number;
   covered: number;
+  series: RolePoint[];
   loading: boolean;
   onChange: (d: number) => void;
 }) {
-  const i = Math.max(0, SKILL_WINDOWS.indexOf(days as (typeof SKILL_WINDOWS)[number]));
+  const geom = useMemo(() => {
+    if (series.length < 2) return null;
+    const end = series[series.length - 1].d;
+    const endT = Date.parse(end + "T00:00:00Z");
+    if (Number.isNaN(endT)) return null;
+    // Oldest → newest, one slot per day, so a gap in collection stays a gap
+    // rather than being closed up by the line.
+    const axis: (number | null)[] = new Array(TL_SPAN).fill(null);
+    const at = new Map(series.map((p) => [p.d, p.c]));
+    for (let i = 0; i < TL_SPAN; i++) {
+      const d = new Date(endT - (TL_SPAN - 1 - i) * 86400000).toISOString().slice(0, 10);
+      const v = at.get(d);
+      axis[i] = v === undefined ? null : v;
+    }
+    const known = axis.filter((v): v is number => v !== null);
+    if (known.length < 2) return null;
+    const max = Math.max(...known, 1);
+    const W = 300;
+    const H = 34;
+    const x = (i: number) => (i / (TL_SPAN - 1)) * W;
+    const y = (v: number) => H - (v / max) * (H - 3) - 1.5;
+    // One path per unbroken run, so the line never bridges days with no data.
+    const runs: string[] = [];
+    let cur: [number, number][] = [];
+    for (let i = 0; i < TL_SPAN; i++) {
+      const v = axis[i];
+      if (v === null) {
+        if (cur.length > 1) runs.push(smoothPath(cur));
+        cur = [];
+      } else cur.push([x(i), y(v)]);
+    }
+    if (cur.length > 1) runs.push(smoothPath(cur));
+    const firstKnown = axis.findIndex((v) => v !== null);
+    return { W, H, x, runs, end, first: series[0].d, gapEnd: firstKnown > 0 ? x(firstKnown) : 0 };
+  }, [series]);
+
+  const pct = (d: number) => `${((TL_SPAN - d) / TL_SPAN) * 100}%`;
   const short = covered > 0 && covered < days;
+  const startsOn =
+    geom && Date.parse(geom.end + "T00:00:00Z")
+      ? new Date(Date.parse(geom.end + "T00:00:00Z") - (covered - 1) * 86400000)
+          .toISOString()
+          .slice(0, 10)
+      : "";
+
+  // Nearest allowed window to a raw day count, so dragging anywhere on the axis
+  // lands on a stop.
+  const snap = (d: number) =>
+    SKILL_WINDOWS.reduce((best, w) => (Math.abs(w - d) < Math.abs(best - d) ? w : best));
+  const step = (dir: number) => {
+    const i = SKILL_WINDOWS.indexOf(days as (typeof SKILL_WINDOWS)[number]);
+    const next = SKILL_WINDOWS[Math.min(SKILL_WINDOWS.length - 1, Math.max(0, i + dir))];
+    if (next !== days) onChange(next);
+  };
+
   return (
-    <div className="ccwin">
-      <div className="ccwinh">
-        <label className="cceyebrow" htmlFor="ccwinr">
-          Period
+    <div className="cctl">
+      <div className="cctlh">
+        <label className="cceyebrow" htmlFor="cctlrange">
+          Timeline{geom ? ` · ${shortDay(geom.first)} – ${shortDay(geom.end)}` : ""}
         </label>
-        <span className="ccwinv">
-          {short ? `${covered} days collected` : `last ${days} days`}
-          {loading && <span className="ccwinl"> · updating…</span>}
+        <span className="cctlv">
+          {days} days
+          {loading && <span className="cctll"> · updating…</span>}
         </span>
       </div>
-      <input
-        id="ccwinr"
-        className="ccwinr"
-        type="range"
-        min={0}
-        max={SKILL_WINDOWS.length - 1}
-        step={1}
-        value={i}
-        // The days, not the index — a screen reader announcing "3 of 4" says
-        // nothing about what the control does.
-        aria-valuetext={`last ${days} days`}
-        onChange={(e) => onChange(SKILL_WINDOWS[Number(e.target.value)])}
-      />
-      <div className="ccwint" aria-hidden="true">
+
+      {geom && (
+        <div className="cctlplot">
+          <svg viewBox={`0 0 ${geom.W} ${geom.H}`} preserveAspectRatio="none" aria-hidden="true">
+            {/* Before the archive reaches back, there is nothing to draw and
+                nothing to imply. Shading it says "no coverage here" rather than
+                leaving blank space that reads as zero demand. */}
+            {geom.gapEnd > 0 && (
+              <rect className="cctlgap" x={0} y={0} width={geom.gapEnd} height={geom.H} />
+            )}
+            {geom.runs.map((d, k) => (
+              <path key={k} className="cctlline" d={d} />
+            ))}
+          </svg>
+          {/* Requested behind, covered in front, both anchored to today. */}
+          <span className="cctlband req" style={{ left: pct(days) }} />
+          {covered > 0 && <span className="cctlband cov" style={{ left: pct(covered) }} />}
+        </div>
+      )}
+
+      <div className="cctltrack">
+        <span className="cctlfill" style={{ left: pct(days) }} />
         {SKILL_WINDOWS.map((w) => (
+          <span key={w} className="cctltick" style={{ left: pct(w) }} aria-hidden="true" />
+        ))}
+        <span className="cctlthumb" style={{ left: pct(days) }} aria-hidden="true" />
+        <input
+          id="cctlrange"
+          className="cctlr"
+          type="range"
+          min={0}
+          max={TL_SPAN}
+          step={1}
+          value={TL_SPAN - days}
+          // Days, not the raw slider number — "53 of 60" describes nothing.
+          aria-valuetext={
+            short ? `last ${days} days requested, ${covered} collected` : `last ${days} days`
+          }
+          onChange={(e) => onChange(snap(TL_SPAN - Number(e.target.value)))}
+          onKeyDown={(e) => {
+            // Left is further back. Without this the arrows move one day and
+            // snap straight back, so the keyboard cannot leave a stop at all.
+            if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+              e.preventDefault();
+              step(1);
+            } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+              e.preventDefault();
+              step(-1);
+            }
+          }}
+        />
+      </div>
+
+      <div className="cctlt" aria-hidden="true">
+        {SKILL_WINDOWS.map((w, k) => (
           <button
             type="button"
             key={w}
-            className={`ccwintk ${w === days ? "on" : ""}`}
+            className={
+              `cctltk ${w === days ? "on" : ""}` +
+              (k === SKILL_WINDOWS.length - 1 ? " first" : k === 0 ? " last" : "")
+            }
+            style={{ left: pct(w) }}
             tabIndex={-1}
             onClick={() => onChange(w)}
           >
@@ -110,12 +240,21 @@ function WindowSlider({
           </button>
         ))}
       </div>
-      {short && (
-        <p className="ccwinnote">
-          The archive holds {covered} days for this employer — asking for {days} draws what exists
-          rather than padding the rest with zeros.
-        </p>
-      )}
+
+      <p className="cctlnote">
+        {short ? (
+          <>
+            Drawing {covered} days, from {shortDay(startsOn)} — that is where every feed covering
+            this employer had arrived. Earlier days are missing feeds, so their counts would climb
+            as the archive filled rather than as hiring moved.
+          </>
+        ) : (
+          <>
+            Daily live vacancies across the archive, so you can see where this employer&rsquo;s
+            history is worth asking about.
+          </>
+        )}
+      </p>
     </div>
   );
 }
@@ -774,7 +913,7 @@ export function CompanyPanel() {
                           />
                           {chartIdx != null && card.chart.vacPts[chartIdx] && (
                             <line
-                              className="ccscrubline"
+                              className="cctlline"
                               x1={card.chart.vacPts[chartIdx][0]}
                               x2={card.chart.vacPts[chartIdx][0]}
                               y1="6"
@@ -896,9 +1035,10 @@ export function CompanyPanel() {
                           window at all, so no setting of the slider can empty
                           the section and strand the control with it. Only the
                           lines and the percentages change. */}
-                      <WindowSlider
+                      <TimelineScrubber
                         days={windowDays}
                         covered={skillTrends.days.length}
+                        series={vacancySeries}
                         loading={trendsLoading}
                         onChange={setWindowDays}
                       />
