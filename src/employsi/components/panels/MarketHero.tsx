@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { smoothPath } from "../../lib/chart";
-import type { SkillMarket } from "../../lib/jobHistoryFn";
+import { MARKET_WINDOWS, type SkillMarket } from "../../lib/jobHistoryFn";
 
 const W = 320;
 const TOP = 26;
@@ -61,10 +61,14 @@ export function MarketHero({
   market,
   skill,
   onClear,
+  days: windowDays,
+  onDays,
 }: {
   market: SkillMarket;
   skill: string | null;
   onClear: () => void;
+  days: number;
+  onDays: (d: number) => void;
 }) {
   const picked = skill ? (market.rows.find((r) => r.skill === skill) ?? null) : null;
 
@@ -108,7 +112,7 @@ export function MarketHero({
     <div className={`mkhero ${picked ? "picked" : ""}`}>
       <div className="mkherohd">
         <div className="mkherottl">
-          <span className="cceyebrow">
+          <span className="mkheroeye">
             {picked ? "Skill" : "Advertised value"}
             {days.length > 1 && ` · ${shortDay(days[0])} – ${shortDay(days[days.length - 1])}`}
           </span>
@@ -121,14 +125,43 @@ export function MarketHero({
         )}
       </div>
 
+      {/* The headline sits INSIDE the card with the line it describes. Split
+          apart — a figure in one panel, its chart in the next — a reader has to
+          take on trust that they are the same quantity. */}
+      <div className="mkherobig">
+        <span className="mkherovalue">{money(latest)}</span>
+        {pct !== null && (
+          <span className={`mkherochg ${pct >= 0 ? "up" : "down"}`}>
+            {pct >= 0 ? "+" : "−"}
+            {Math.abs(pct).toFixed(1)}% over {days.length} days
+          </span>
+        )}
+      </div>
+
       {geom ? (
         <div className="mkheroplot">
           <svg viewBox={`0 0 ${W} ${BASE}`} preserveAspectRatio="none" aria-hidden="true">
             <path className="mkheroarea" d={geom.area} />
             <path className="mkheroline" d={geom.line} />
-            <circle className="mkheropt" cx={geom.x(geom.hiAt)} cy={geom.y(geom.hi)} r={3} />
-            <circle className="mkheropt" cx={geom.x(geom.loAt)} cy={geom.y(geom.lo)} r={3} />
           </svg>
+          {/* Markers are HTML, not <circle>. The viewBox is stretched to the
+              card's width with preserveAspectRatio="none", which turns a circle
+              into an ellipse — the reference's markers are round. Positioned in
+              percentages against the same geometry the path uses. */}
+          <span
+            className="mkheropt"
+            style={{
+              left: pos(geom.hiAt, series.length).left,
+              top: `${(geom.y(geom.hi) / BASE) * 100}%`,
+            }}
+          />
+          <span
+            className="mkheropt"
+            style={{
+              left: pos(geom.loAt, series.length).left,
+              top: `${(geom.y(geom.lo) / BASE) * 100}%`,
+            }}
+          />
           {/* Labels are HTML over the SVG, not text inside it: the viewBox is
               stretched to the pane's width and text in it would stretch too. */}
           <span
@@ -152,19 +185,21 @@ export function MarketHero({
         </div>
       )}
 
-      {geom && (
-        <div className="mkherofoot">
-          <span>
-            <b>{money(latest)}</b> {picked ? "advertised for this skill" : "across the market"}
-          </span>
-          {pct !== null && (
-            <span className={pct >= 0 ? "up" : "down"}>
-              {pct >= 0 ? "+" : "−"}
-              {Math.abs(pct).toFixed(1)}% over {days.length} days
-            </span>
-          )}
-        </div>
-      )}
+      {/* The period belongs with the chart it resizes, not in a toolbar two
+          sections away. */}
+      <div className="mkherowins" role="tablist" aria-label="Period">
+        {MARKET_WINDOWS.map((w) => (
+          <button
+            key={w}
+            role="tab"
+            aria-selected={w === windowDays}
+            className={`mkherowin ${w === windowDays ? "on" : ""}`}
+            onClick={() => onDays(w)}
+          >
+            {w}d
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

@@ -4088,7 +4088,10 @@ body {
   left: var(--pane-left);
   top: var(--pane-top);
   bottom: 28px;
-  width: 344px;
+  /* Widened from 344px for the market dashboard: a skill row carries a
+     name, a sparkline, a percentage and a priced figure, and at 344 the
+     longer skill names truncated before the second word. */
+  width: 400px;
   max-width: calc(100vw - var(--pane-left) - 24px);
   z-index: 45;
   display: flex;
@@ -14853,16 +14856,28 @@ body {
 }
 
 /* ── What's Trending · the market's line ─────────────────────────────────────
-   The window's advertised value, or one skill's when a row is picked. High and
-   low are marked and labelled instead of an axis being drawn: nine days does
-   not support a gridded scale, and where it peaked and bottomed are the two
-   readings the shape is actually good for. */
+   The reference for this is a portfolio card: one coloured panel carrying the
+   headline figure, the line it describes, its labelled extremes and the period
+   control. Keeping them together matters — split across panels, a reader has to
+   take on trust that the number and the chart are the same quantity.
+
+   THE GREEN IS A DEPARTURE AND A DELIBERATE ONE. This product is monochrome and
+   spends colour only on semantic status, so one saturated panel is the most
+   colour anywhere in the app. It is confined to this single card, it is built
+   from the existing green family (--green-500 as the base) rather than a new
+   hue, and everything inside it is white or a white tint — no second accent
+   competing inside the one place colour is spent. */
 .mkhero {
+  --hero-ink: #ffffff;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px 20px 16px;
-  border-bottom: 1px solid var(--border-subtle);
+  gap: 10px;
+  margin: 12px 16px 14px;
+  padding: 16px 18px 12px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(160deg, #45b47c 0%, #34996a 58%, #2f8f63 100%);
+  color: var(--hero-ink);
+  overflow: hidden;
 }
 .mkherohd {
   display: flex;
@@ -14876,11 +14891,18 @@ body {
   gap: 2px;
   min-width: 0;
 }
+.mkheroeye {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 72%);
+}
 .mkheroname {
   font-size: 15px;
   font-weight: 650;
   letter-spacing: -0.01em;
-  color: var(--text-primary);
+  color: var(--hero-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -14888,27 +14910,52 @@ body {
 .mkheroclear {
   flex: 0 0 auto;
   padding: 3px 10px;
-  border: 1px solid var(--border-default);
+  border: 1px solid rgb(255 255 255 / 45%);
   border-radius: var(--radius-pill);
-  background: var(--surface-card);
-  color: var(--text-secondary);
+  background: rgb(255 255 255 / 14%);
+  color: var(--hero-ink);
   font-size: 11px;
   cursor: pointer;
 }
 .mkheroclear:hover {
-  border-color: var(--border-strong);
-  color: var(--text-primary);
+  background: rgb(255 255 255 / 24%);
 }
 .mkheroclear:focus-visible {
-  outline: 2px solid var(--border-focus);
+  outline: 2px solid var(--hero-ink);
   outline-offset: 2px;
+}
+
+.mkherobig {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.mkherovalue {
+  font-family: var(--font-mono);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+  color: var(--hero-ink);
+}
+/* Inside the card there is no red/green to spend — the ground is already
+   green. Direction is carried by the sign and a tint of the same white. */
+.mkherochg {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: rgb(255 255 255 / 82%);
+}
+.mkherochg.down {
+  color: rgb(255 255 255 / 66%);
 }
 
 .mkheroplot {
   position: relative;
-  height: 118px;
-  /* Room for the tags, which sit above and below the extremes. */
-  margin-top: 4px;
+  height: 126px;
+  margin-top: 2px;
 }
 .mkheroplot svg {
   display: block;
@@ -14918,55 +14965,50 @@ body {
 }
 .mkheroline {
   fill: none;
-  stroke: var(--neutral-900);
-  stroke-width: 1.8;
+  stroke: var(--hero-ink);
+  stroke-width: 2.4;
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
 .mkheroarea {
-  fill: var(--neutral-900);
-  opacity: 0.07;
+  fill: rgb(255 255 255 / 22%);
   stroke: none;
 }
+/* Open rings, as the reference draws them: the ground shows through the middle
+   so the marker reads as a point ON the line rather than a dot beside it.
+   HTML rather than <circle>, because the SVG is stretched horizontally and an
+   SVG circle in it renders as an ellipse. */
 .mkheropt {
-  fill: var(--surface-card);
-  stroke: var(--neutral-900);
-  stroke-width: 2;
-  vector-effect: non-scaling-stroke;
-}
-/* A selected skill borrows the section's own accent so the hero and the picked
-   row visibly belong together. */
-.mkhero.picked .mkheroline {
-  stroke: var(--status-success-fg);
-}
-.mkhero.picked .mkheroarea {
-  fill: var(--status-success-fg);
-}
-.mkhero.picked .mkheropt {
-  stroke: var(--status-success-fg);
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  margin: -5.5px 0 0 -5.5px;
+  border: 2.5px solid var(--hero-ink);
+  border-radius: 50%;
+  background: none;
+  pointer-events: none;
 }
 .mkherotag {
   position: absolute;
   transform: translateX(-50%);
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: var(--surface-card);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--text-secondary);
+  color: var(--hero-ink);
   white-space: nowrap;
   pointer-events: none;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 14%);
 }
 .mkherotag.hi {
-  top: -2px;
+  top: -4px;
 }
 .mkherotag.lo {
-  bottom: 0;
+  bottom: -2px;
 }
 /* An extreme on the first or last day would otherwise hang half its label
-   outside the pane. Same rule as the timeline scrubber's end ticks. */
+   outside the card. Same rule as the timeline scrubber's end ticks. */
 .mkherotag.first {
   transform: none;
 }
@@ -14974,32 +15016,41 @@ body {
   transform: translateX(-100%);
 }
 .mkheronone {
-  padding: 18px 0;
+  padding: 22px 0;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--text-tertiary);
+  color: rgb(255 255 255 / 80%);
 }
-.mkherofoot {
+
+/* The period control, on the card with the chart it resizes. */
+.mkherowins {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 11.5px;
-  color: var(--text-tertiary);
+  justify-content: center;
+  gap: 4px;
+  margin-top: 2px;
 }
-.mkherofoot b {
+.mkherowin {
+  padding: 5px 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: rgb(255 255 255 / 78%);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.mkherowin:hover {
+  color: var(--hero-ink);
+}
+.mkherowin.on {
+  background: var(--hero-ink);
+  color: #2f8f63;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
 }
-.mkherofoot .up {
-  color: var(--status-success-fg);
-}
-.mkherofoot .down {
-  color: var(--status-danger-fg);
+.mkherowin:focus-visible {
+  outline: 2px solid var(--hero-ink);
+  outline-offset: 2px;
 }
 
 /* ── What's Trending · risers and fallers ────────────────────────────────────

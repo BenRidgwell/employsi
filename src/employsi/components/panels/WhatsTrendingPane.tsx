@@ -132,10 +132,6 @@ function MarketCoverage({
   if (!drawn && !loading) return null;
   return (
     <div className="mktcov">
-      <div className="mktcovval">
-        <b>{money(market.totalValue)}</b>
-        <span>advertised annual salary, summed across open ads</span>
-      </div>
       <div className="mktcovnotes">
         <span>
           <b>{market.priced}</b> of {market.seen} skills priced
@@ -385,9 +381,11 @@ export function WhatsTrendingPane() {
           </div>
           <div className="briefheadtxt">
             <div className="brieftitle">What's Trending</div>
-            <div className="briefdate">
-              {hasReal ? "Skill demand · month on month" : "Movers this quarter"}
-            </div>
+            {/* Says what the number below it IS. The old copy read "Skill
+                demand · month on month", which named neither the quantity nor
+                the window: the pane shows advertised value, over whatever span
+                the archive could cover. */}
+            <div className="briefdate">Advertised value over the window</div>
           </div>
           <button className="briefclose" onClick={closeTrending} aria-label="Close">
             ✕
@@ -412,27 +410,19 @@ export function WhatsTrendingPane() {
               </button>
             ))}
           </div>
-          <div className="mktwins" role="tablist" aria-label="Period">
-            {MARKET_WINDOWS.map((w) => (
-              <button
-                key={w}
-                role="tab"
-                aria-selected={w === windowDays}
-                className={`mktwin ${w === windowDays ? "on" : ""}`}
-                onClick={() => setWindowDays(w)}
-              >
-                {w}d
-              </button>
-            ))}
-          </div>
         </div>
-        <MarketCoverage market={market} requested={windowDays} loading={marketLoading} />
-
         <div className="briefscroll">
           {/* The market's line, or one skill's when a row is picked. Above the
               rows it cross-filters with, so the selection and its effect are
               never separated by a scroll. */}
-          <MarketHero market={market} skill={pickedSkill} onClear={() => setPickedSkill(null)} />
+          <MarketHero
+            market={market}
+            skill={pickedSkill}
+            onClear={() => setPickedSkill(null)}
+            days={windowDays}
+            onDays={setWindowDays}
+          />
+          <MarketCoverage market={market} requested={windowDays} loading={marketLoading} />
           <SkillMarketRows
             market={market}
             selected={pickedSkill}
