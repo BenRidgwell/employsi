@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { callerRole } from "./sessionRole";
-import type { D1Like } from "./jobArchive";
+import { HISTORICAL_SOURCES, type D1Like } from "./jobArchive";
 import { COMPANIES } from "../data/companies";
 import { normName, sameCompanyName, substringOnlyMatch } from "./advertiserMatch";
 
@@ -29,17 +29,18 @@ async function d1(): Promise<D1Like | null> {
 }
 
 /**
- * Sources that are CLOSED CORPORA, not feeds — they are not expected to write
- * again, so the freshness check does not apply to them.
+ * Re-exported so this module keeps reading as the health panel's own vocabulary.
+ * The set is defined in jobArchive because the analyst answers need it too and
+ * must not import this admin-only module to get it.
  *
- * `wayback` recovers advertisements from dead career sites through the Internet
- * Archive (scripts/wayback-to-d1.py). Its newest row is from 2018 because the
- * hostnames were retired in 2018, which is the correct answer, not a fault.
+ * Here it means: a closed corpus is not expected to write again, so the
+ * freshness check does not apply. `wayback`'s newest row is from 2018 because
+ * the hostnames were retired in 2018, which is the correct answer, not a fault.
  * Left in the staleness check it would sit permanently red at "3000d silent"
  * and every real outage would then have to be found next to a false alarm that
  * never clears — which is how a health panel stops being read at all.
  */
-export const HISTORICAL_SOURCES = new Set(["wayback"]);
+export { HISTORICAL_SOURCES };
 
 /**
  * What KIND of thing each source is, because "seek" and "portal-sf" are not the

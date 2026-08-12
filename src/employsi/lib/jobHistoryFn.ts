@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { callerRole } from "./sessionRole";
 import { marketVisible, isReleasedRow } from "./markets";
-import type { D1Like, SqlValue } from "./jobArchive";
+import { LIVE_FEEDS_ONLY_SQL, type D1Like, type SqlValue } from "./jobArchive";
 import { COMPANY_ID_ALIAS, type RolePoint } from "./openRolesFn";
 import { SKILL_CATEGORY, parseStoredSkills } from "../data/skillsTaxonomy";
 import { AREA_SOURCES, canonicalArea } from "../data/hiringAreas";
@@ -64,11 +64,19 @@ export const getRoleHistory = createServerFn({ method: "GET" })
     const today = new Date().toISOString().slice(0, 10);
     try {
       // Longest-running first: order by the first-seen → last-seen span.
+      //
+      // The closed corpora are excluded for the same reason the analyst excludes
+      // them (see LIVE_FEEDS_ONLY_SQL). This ranks by span and reports `since`
+      // as the archive's depth, and both are exactly what the Wayback recovery
+      // distorts: measured on production 2026-08-12, 8,436 of BHP's 8,879 rows
+      // are 2003–2018 recoveries, so `since` read 2003-12-29 against a real
+      // 2026-07-16, and any evergreen posting that sat on a dead career site
+      // for a year outranks every live vacancy permanently.
       const rowsRes = await db
         .prepare(
           `SELECT title, source, location, salary, first_seen, last_seen, seen_count
              FROM jobs
-            WHERE company_id = ?1
+            WHERE company_id = ?1 AND ${LIVE_FEEDS_ONLY_SQL}
             ORDER BY (julianday(last_seen) - julianday(first_seen)) DESC, first_seen ASC
             LIMIT 40`,
         )
@@ -78,7 +86,10 @@ export const getRoleHistory = createServerFn({ method: "GET" })
       if (!rows.length) return null;
 
       const aggRes = await db
-        .prepare(`SELECT COUNT(*) AS n, MIN(first_seen) AS since FROM jobs WHERE company_id = ?1`)
+        .prepare(
+          `SELECT COUNT(*) AS n, MIN(first_seen) AS since FROM jobs
+             WHERE company_id = ?1 AND ${LIVE_FEEDS_ONLY_SQL}`,
+        )
         .bind(id)
         .first();
       const total = Number(aggRes?.n) || rows.length;

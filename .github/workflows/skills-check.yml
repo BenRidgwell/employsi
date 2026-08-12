@@ -20,9 +20,15 @@ on:
       - 'scripts/test_skills_taxonomy.py'
       - 'scripts/gen-*-demand.py'
       - 'scripts/check-analyst-followups.ts'
+      - 'scripts/check-analyst-scope.ts'
+      - 'scripts/check-skill-trends.ts'
+      - 'src/employsi/lib/analystFn.ts'
       - 'src/employsi/lib/analystScope.ts'
       - 'src/employsi/lib/analystTurn.ts'
+      - 'src/employsi/lib/jobArchive.ts'
+      - 'src/employsi/lib/jobHistoryFn.ts'
       - 'src/employsi/data/companies.ts'
+      - 'src/employsi/data/hiringAreas.ts'
       - '.github/workflows/skills-check.yml'
   pull_request:
     paths:
@@ -31,9 +37,15 @@ on:
       - 'scripts/skills_taxonomy.py'
       - 'scripts/test_skills_taxonomy.py'
       - 'scripts/check-analyst-followups.ts'
+      - 'scripts/check-analyst-scope.ts'
+      - 'scripts/check-skill-trends.ts'
+      - 'src/employsi/lib/analystFn.ts'
       - 'src/employsi/lib/analystScope.ts'
       - 'src/employsi/lib/analystTurn.ts'
+      - 'src/employsi/lib/jobArchive.ts'
+      - 'src/employsi/lib/jobHistoryFn.ts'
       - 'src/employsi/data/companies.ts'
+      - 'src/employsi/data/hiringAreas.ts'
   workflow_dispatch: {}
 
 jobs:
@@ -61,6 +73,22 @@ jobs:
       # companies.ts changes for exactly that reason.
       - name: Assert analyst follow-ups resolve to the right scope
         run: bun run scripts/check-analyst-followups.ts
+
+      # The analyst answers about the market NOW and dates its evidence off
+      # MIN(first_seen), so a scope that admits the closed Wayback corpus does
+      # not answer with older data, it answers wrongly — it once reported
+      # "2 roles live in the latest pull (2018-01-04)". One predicate on every
+      # branch of scopeClause prevents that, and a new scope kind is exactly
+      # what forgets it.
+      - name: Assert every analyst scope excludes the closed corpora
+        run: bun run scripts/check-analyst-scope.ts
+
+      # The company card's per-skill and per-area reconstruction. Everything it
+      # can get wrong is invisible on the rendered chart — an off-by-one at a
+      # window edge, pre-collection days counted as zero demand, a feed that
+      # joined mid-window drawing its own arrival as growth.
+      - name: Assert the card's skill and area trends reconstruct correctly
+        run: bun run scripts/check-skill-trends.ts
 
       - uses: actions/setup-python@v6
         with:

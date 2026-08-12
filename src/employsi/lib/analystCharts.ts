@@ -28,9 +28,12 @@ import type {
  *     company, of which three are real (52-week low, 52-week high, last close)
  *     and the path between them is explicitly illustrative. Companies outside
  *     that list get a series derived from a hash of the ticker.
- *   • The vacancy archive's own history is one month deep — first_seen spans
- *     2026-07 to 2026-08 — and the `posted` dates that reach further back ramp
- *     from 88 rows a month to 36,733 as COLLECTION grew, not as hiring did.
+ *   • The vacancy archive's own history is one month deep — first_seen across
+ *     the live feeds spans 2026-07 to 2026-08 — and the `posted` dates that
+ *     reach further back ramp from 88 rows a month to 36,733 as COLLECTION
+ *     grew, not as hiring did. (The raw column reaches 2003, but only through
+ *     the Wayback corpus, which is a closed recovery of dead career sites and
+ *     not depth in any feed — see HISTORICAL_SOURCES in jobArchive.)
  *
  * A Pearson r over an interpolated quarterly curve and a collection ramp would
  * be a number with three decimal places and nothing behind it. So the lead–lag

@@ -52,6 +52,38 @@ export interface ArchiveRow {
   skills?: string[]; // mapped canonical skills
 }
 
+/**
+ * Sources that are CLOSED CORPORA, not feeds — a fixed set of rows recovered
+ * once, not a market being watched.
+ *
+ * `wayback` recovers advertisements from dead career sites through the Internet
+ * Archive (scripts/wayback-to-d1.py). Measured on production 2026-08-12: 8,436
+ * rows spanning first_seen 2003-12-29 to last_seen 2018-04-22, and the only
+ * source in the archive with any first_seen before 2020.
+ *
+ * They live in the same table as the live feeds because they are the same kind
+ * of thing — an ad that was up on a day — and the company card's history wants
+ * them. But any aggregate that means "the market NOW", or that derives the
+ * archive's own depth from MIN(first_seen), has to leave them out, because on
+ * those questions they are not old data, they are the wrong data. Measured on
+ * the same day: BHP's span reads 2003-12-29 → 2026-08-12 with them and
+ * 2026-07-16 → 2026-08-12 without, so "collected since" was wrong by 22 years
+ * and 95% of BHP's rows are Wayback.
+ */
+export const HISTORICAL_SOURCES = new Set(["wayback"]);
+
+/**
+ * The above as a SQL predicate, to `AND` onto a WHERE clause.
+ *
+ * COALESCE rather than a bare `NOT IN`: a NULL source would make `NOT IN`
+ * evaluate to NULL and drop the row silently. There are none today, but an
+ * unattributed row is far likelier to be a live feed with a parser fault than a
+ * closed corpus, and losing it without trace is the worse failure.
+ */
+export const LIVE_FEEDS_ONLY_SQL = `COALESCE(source,'') NOT IN (${[...HISTORICAL_SOURCES]
+  .map((s) => `'${s}'`)
+  .join(",")})`;
+
 function norm(s: string): string {
   return (s || "")
     .toLowerCase()

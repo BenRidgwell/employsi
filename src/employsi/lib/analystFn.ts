@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { D1Like } from "./jobArchive";
+import { LIVE_FEEDS_ONLY_SQL, type D1Like } from "./jobArchive";
 import { SKILL_CATEGORY, parseStoredSkills } from "../data/skillsTaxonomy";
 import { detectIntent, type AnalystIntent } from "./analystIntent";
 import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
@@ -260,7 +260,10 @@ const MIN_DURATION_PER_SKILL = 8;
 // Hub values in the archive are mostly lower-case city keys, but a few rows
 // carry a capitalised or country-level hub ("Singapore", "Australia"), so
 // matching is done on lower(hub) against the scope's keys plus its own label.
-function scopeClause(
+/** Exported only so scripts/check-analyst-scope.ts can assert the invariant
+ *  below — that every branch excludes the closed corpora. Nothing else calls
+ *  it. */
+export function scopeClause(
   scope: AnalystScope,
   hubs: string[],
   companyIds?: string[],
@@ -280,13 +283,42 @@ function scopeClause(
       : " AND 0=1"
     : "";
 
+  // EVERY analyst statement inherits this, which is the point of putting it
+  // here rather than on the individual queries.
+  //
+  // The analyst only ever answers about the market NOW — what is open, which
+  // way it is moving, what the ads disclose, how long they run — and it dates
+  // its own evidence off MIN(first_seen) for the scope. The Wayback corpus
+  // (see HISTORICAL_SOURCES) is 2003–2018 ads recovered from career sites that
+  // no longer exist, so on all four questions it is not old data, it is the
+  // wrong data. Measured on production 2026-08-12 with it included:
+  //
+  //   · "collected 2003-12-29 to 2026-08-12" on any scope holding BHP, and
+  //     2011-09-30 on any holding Rio. Real starts: 2026-07-16 and 2026-07-21.
+  //   · spanDays ~8,262 instead of 27, which pins the comparison window at its
+  //     7-day ceiling and makes canCompare true on scopes whose live feeds are
+  //     a day or two deep — the archive-depth guard those two exist to be.
+  //   · the duration median for BHP built from 2,746 closed ads of which 2,271
+  //     (83%) came down between 2003 and 2018. Excluding them moves the mean
+  //     span 15.0d → 22.5d on the 475 ads that are actually recent.
+  //   · worst of all, `latest` is MAX(last_seen) WITHIN THE SCOPE, so a scope
+  //     with no live coverage dated itself off the corpus: Santiago's 572 rows
+  //     are all Wayback, and asking about it answered "2 roles live in the
+  //     latest pull (2018-01-04)" — a seven-year-old number presented as now.
+  //     It is the only such scope today; after this it correctly reports no
+  //     coverage instead, which is the honest answer and not a regression.
+  //
+  // The company card still reads the corpus; it is asking a question the
+  // corpus can answer. This one is not.
+  const feedsOnly = ` AND ${LIVE_FEEDS_ONLY_SQL}`;
+
   if (scope.kind === "company" && scope.id) {
-    return { where: "company_id = ?", binds: [scope.id] };
+    return { where: `company_id = ?${feedsOnly}`, binds: [scope.id] };
   }
-  if (!hubs.length) return { where: `1=1${sectorWhere}`, binds: [] };
+  if (!hubs.length) return { where: `1=1${sectorWhere}${feedsOnly}`, binds: [] };
   const keys = hubs.map((h) => h.toLowerCase());
   return {
-    where: `lower(hub) IN (${keys.map(() => "?").join(",")})${sectorWhere}`,
+    where: `lower(hub) IN (${keys.map(() => "?").join(",")})${sectorWhere}${feedsOnly}`,
     binds: keys,
   };
 }
@@ -521,7 +553,10 @@ export const askAnalyst = createServerFn({ method: "POST" })
       //  1. CLOSED ADS ONLY. A live ad's last_seen is today, so its span says
       //     "still open", not how long it ran. Including live ads would drag
       //     every figure toward zero and make the hardest-to-fill skills look
-      //     the fastest, which is exactly backwards.
+      //     the fastest, which is exactly backwards. "Closed" is not the same
+      //     as "any old row" — the Wayback corpus is closed too, and is kept
+      //     out by scopeClause, because how long a BHP ad ran in 2007 is not
+      //     an answer to how long one runs now.
       //  2. MEASURED FROM THE AD'S OWN POSTED DATE, not from first_seen.
       //     Collection began recently, so first_seen is capped by the archive's
       //     depth: measured that way the whole market averages under two days,
