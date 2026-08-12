@@ -1598,6 +1598,12 @@ COMPANIES.push(...HOBART_GOV_COMPANIES);
 import { SYDNEY_GOV_COMPANIES } from "./sydneyGov";
 COMPANIES.push(...SYDNEY_GOV_COMPANIES);
 
+// Australian universities (private / public-sector), on their home-state
+// capital. Same treatment as the government rosters above — see
+// universityTargets.ts for what is deliberately left at zero and why.
+import { UNIVERSITY_COMPANIES } from "./universityTargets";
+COMPANIES.push(...UNIVERSITY_COMPANIES);
+
 // AFR/IBISWorld Top 150 private companies, plotted on their home-state capital.
 import { TOP_PRIVATE_COMPANIES } from "./topPrivateCompanies";
 COMPANIES.push(...TOP_PRIVATE_COMPANIES);

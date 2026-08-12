@@ -31,11 +31,7 @@ import { UNIVERSITY_TARGETS } from "../../src/employsi/data/universityTargets";
 // a category added here and not there (or vice versa) leaves companies on the
 // map that half the pipeline never searches for, with nothing erroring — which
 // is what scripts/check-feed-coverage.py exists to catch.
-const AU_JOBS_TARGETS: JobsTarget[] = [
-  ...AU_LISTED,
-  ...TOP_PRIVATE_TARGETS,
-  ...UNIVERSITY_TARGETS,
-];
+const AU_JOBS_TARGETS: JobsTarget[] = [...AU_LISTED, ...TOP_PRIVATE_TARGETS, ...UNIVERSITY_TARGETS];
 import { GLOBAL_HUB_TARGETS, type HubTarget } from "../../src/employsi/data/globalHubTargets";
 import { JOOBLE_HUB_TARGETS, type JoobleHubTarget } from "../../src/employsi/data/joobleHubTargets";
 import { skillsForText } from "../../src/employsi/data/skillsTaxonomy";

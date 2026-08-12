@@ -13,6 +13,7 @@ import { APS_GOV_IDS, APS_GOV_HUB } from "./canberraGov";
 import { DARWIN_GOV_IDS } from "./darwinGov";
 import { HOBART_GOV_IDS } from "./hobartGov";
 import { SYDNEY_GOV_IDS } from "./sydneyGov";
+import { UNIVERSITY_IDS_BY_CITY } from "./universityTargets";
 import { TOP_PRIVATE_BY_CITY } from "./topPrivateCompanies";
 import { NZ_BY_CITY } from "./nzCompanies";
 import { NZ_GOV_IDS, NZ_GOV_HUB } from "./nzGov";
@@ -380,6 +381,25 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
   SYDNEY_GOV_IDS.forEach((id, i) =>
     existing.push({ id, coords: realCoord(id, "sydney") ?? pts[offset + i] }),
   );
+}
+
+// Australian universities: fan each city's universities around that city's
+// centre, offset past everything already placed there. Driven by a map rather
+// than one block per city because they span eight capitals — Perth, Adelaide,
+// Melbourne, Brisbane, Sydney, Canberra, Hobart and Darwin — and repeating the
+// same six lines eight times is how one of them silently gets left out.
+//
+// A campus is NOT at its capital's CBD; these are fanned placeholder pins in
+// the same way the government agencies' are. Only entries in realCoord() are
+// true geocoded positions, and a university gains one the same way any other
+// company does.
+for (const [city, ids] of Object.entries(UNIVERSITY_IDS_BY_CITY)) {
+  const view = CITY_VIEWS[city];
+  if (!view) continue;
+  const existing = (CITY_COMPANIES[city] ||= []);
+  const offset = existing.length;
+  const pts = spreadCoordsCity(view.center, offset + ids.length, CITY_PLACEMENT[city]);
+  ids.forEach((id, i) => existing.push({ id, coords: realCoord(id, city) ?? pts[offset + i] }));
 }
 
 // Top-150 private companies. The Perth set now has real geocoded head-office
