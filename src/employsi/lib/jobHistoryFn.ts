@@ -6,6 +6,8 @@ import { COMPANY_ID_ALIAS, type RolePoint } from "./openRolesFn";
 import { SKILL_CATEGORY, parseStoredSkills } from "../data/skillsTaxonomy";
 import { AREA_SOURCES, canonicalArea } from "../data/hiringAreas";
 import { annualAud, medianAnnual } from "./salaryParse";
+import { FX_AS_AT } from "../data/fxRates";
+import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
 
 // Reads the historical job archive (Cloudflare D1) written by the jobs-cron
 // worker + the app's live fetch (see jobArchive.ts). Powers the "Vacancy
@@ -1489,5 +1491,411 @@ export const getSkillMarketRanks = createServerFn({ method: "GET" })
       return out;
     } catch {
       return {};
+    }
+  });
+
+// ── the skills market ───────────────────────────────────────────────────────
+//
+// What the "What's trending" dashboard runs on: every skill in a market priced
+// by the median salary its live ads advertise, with the demand behind it.
+//
+// THREE QUANTITIES, AND THEY MUST NOT BLUR INTO EACH OTHER.
+//
+//   price   median advertised salary. Measured on production 2026-08-12, this
+//           is very nearly STATIC on the archive's timescale: Teaching &
+//           Education moved 0.0% over ten days, Leadership & Coordination 0.8%.
+//           It carries no percentage, because it has none to report.
+//   volume  live vacancies demanding the skill. This is what moves.
+//   value   price x volume — what the market is advertising to pay for the
+//           skill in total. It moves because volume does: 15% median across AU
+//           categories over one week.
+//
+// The percentage anywhere on the dashboard is a VOLUME change. Putting one on
+// the price would print zeros, and the one skill that appeared to move —
+// Nursing at -13% — turned out to be its sample growing from 411 ads to 998 as
+// the archive filled out, which is this codebase's most familiar bug.
+
+/** Skills whose price rests on fewer ads than this are shown unpriced rather
+ *  than priced badly. Same floor the company card uses (salaryParse.MIN_ADS). */
+export interface SkillMarketRow {
+  skill: string;
+  cat: string;
+  /** Live vacancies on the reference day. */
+  now: number;
+  /** Daily live count across `days`, oldest → newest. Omitted when flat or too
+   *  short to draw, exactly as the company card's sparklines are. */
+  spark?: number[];
+  /** VOLUME change across the window. Null = not measurable, 0 = measured flat. */
+  pct: number | null;
+  dir: "up" | "down" | "flat";
+  /** Median advertised salary in AUD, or null below the floor. */
+  pay: number | null;
+  /** Ads the price rests on. Shown, because a price is only as good as this. */
+  payN: number;
+  /** Markets the price was built from. 1 for a scoped read; for worldwide this
+   *  is how many countries voted, and a 2 needs to look different from a 12. */
+  payMarkets: number;
+  /** pay x now, or null when unpriced. Never 0 — that would read as "worth
+   *  nothing" rather than "not priced". */
+  value: number | null;
+}
+
+export interface SkillMarketCategory {
+  cat: string;
+  /** Constituent skills seen live, and how many of them carry a price. 13 of
+   *  the 27 categories hold one or two skills, so an index over one of them is
+   *  one skill wearing a hat — the count is what says so. */
+  skills: number;
+  priced: number;
+  now: number;
+  value: number | null;
+  /** Value change across the window; null when it cannot be measured. */
+  pct: number | null;
+  dir: "up" | "down" | "flat";
+}
+
+export interface SkillMarket {
+  /** Days the series cover, oldest → newest. Trimmed to what the scope's feeds
+   *  can support, so it can be shorter than the window requested. */
+  days: string[];
+  rows: SkillMarketRow[];
+  categories: SkillMarketCategory[];
+  /** Total advertised value on the reference day, and its daily series. */
+  totalValue: number;
+  valueSeries: number[];
+  /** Coverage header: priced of seen, and seen of the whole taxonomy. */
+  priced: number;
+  seen: number;
+  taxonomy: number;
+  /** Priced ads that carry no hub, so they can be valued but not placed. 9% of
+   *  the archive's priced ads. They are excluded from a worldwide index and
+   *  reported here rather than silently dropped. */
+  unplaceable: number;
+  scope: string;
+  /** The rate table's date — a converted figure is only as current as its FX. */
+  fxAsAt: string;
+}
+
+const NO_MARKET: SkillMarket = {
+  days: [],
+  rows: [],
+  categories: [],
+  totalValue: 0,
+  valueSeries: [],
+  priced: 0,
+  seen: 0,
+  taxonomy: 0,
+  unplaceable: 0,
+  scope: "",
+  fxAsAt: "",
+};
+
+/** Rows the market fold reads. */
+export type MarketRow = Partial<
+  Record<"skills" | "first_seen" | "last_seen" | "salary" | "hub" | "source", SqlValue>
+>;
+
+/**
+ * Median advertised salary for one bag of ads.
+ *
+ * `byCountry` is the whole point. Pooling every ad worldwide answers "what does
+ * the median ADVERTISEMENT pay", which is a question about where the ads happen
+ * to be, not about the skill: measured on production, Financial pooled to $8k
+ * because 151 of its 296 priced ads were Philippine at ~A$7k, and 199 of them
+ * carried no hub at all. Taking the median OF THE MARKET MEDIANS instead gives
+ * every market one vote — an equal-weighted index rather than a volume-weighted
+ * one — and the same category comes out at $113k from 2 markets.
+ *
+ * Within a single market the two are the same thing, so a scoped read just
+ * pools.
+ */
+function priceOf(
+  byCountry: Map<string, number[]>,
+  pooled: number[],
+  worldwide: boolean,
+): { pay: number | null; n: number; markets: number } {
+  const n = pooled.length;
+  if (!worldwide) return { pay: medianAnnual(pooled), n, markets: byCountry.size ? 1 : 0 };
+  const perMarket: number[] = [];
+  for (const v of byCountry.values()) {
+    const m = medianAnnual(v);
+    if (m !== null) perMarket.push(m);
+  }
+  if (!perMarket.length) return { pay: null, n, markets: 0 };
+  perMarket.sort((a, b) => a - b);
+  const mid = Math.floor(perMarket.length / 2);
+  const pay =
+    perMarket.length % 2 ? perMarket[mid] : Math.round((perMarket[mid - 1] + perMarket[mid]) / 2);
+  return { pay, n, markets: perMarket.length };
+}
+
+/**
+ * The pure half of getSkillMarket: archive rows in, a priced market out.
+ *
+ * Split out for the same reason foldSkillRows is — the day arithmetic and the
+ * price construction are both easy to get subtly wrong and impossible to eyeball
+ * on a rendered ticker. See scripts/check-skill-trends.ts.
+ *
+ * `window` is oldest → newest and already trimmed to days the scope's feeds
+ * cover; `asOf` is its last day, the reference day every level is measured at.
+ */
+export function foldSkillMarket(
+  rows: MarketRow[],
+  window: string[],
+  asOf: string,
+  opts: { worldwide: boolean; scope: string; fxAsAt: string; countryOf: (hub: string) => string },
+): SkillMarket {
+  if (!window.length) return { ...NO_MARKET, scope: opts.scope, fxAsAt: opts.fxAsAt };
+
+  const daily: Record<string, number[]> = {};
+  const nowBy: Record<string, number> = {};
+  const pooled: Record<string, number[]> = {};
+  const byCountry: Record<string, Map<string, number[]>> = {};
+  // When each feed arrived in THIS scope, and how much of it each carries — the
+  // inputs to the window trim below.
+  const sourceStart: Record<string, string> = {};
+  const sourceRows: Record<string, number> = {};
+  let unplaceable = 0;
+
+  for (const r of rows) {
+    const skills = parseStoredSkills(r.skills).filter((s) => s in SKILL_CATEGORY);
+    if (!skills.length) continue;
+    const fs = String(r.first_seen || "");
+    const ls = String(r.last_seen || "");
+    if (!fs || !ls) continue;
+    const src = String(r.source || "");
+    if (!sourceStart[src] || fs < sourceStart[src]) sourceStart[src] = fs;
+    sourceRows[src] = (sourceRows[src] || 0) + 1;
+
+    // Demand: live on every day between first and last sighting, inclusive.
+    for (let i = 0; i < window.length; i++) {
+      const d = window[i];
+      if (fs > d || ls < d) continue;
+      for (const s of skills) {
+        const arr = (daily[s] ||= new Array(window.length).fill(0));
+        arr[i] += 1;
+      }
+    }
+    if (fs <= asOf && ls >= asOf) for (const s of skills) nowBy[s] = (nowBy[s] || 0) + 1;
+
+    // Price: only ads live on the reference day, so the price describes the
+    // market being reported rather than everything the window ever held.
+    if (fs > asOf || ls < asOf) continue;
+    const aud = annualAud({
+      salary: r.salary as string | null,
+      hub: r.hub as string | null,
+      source: r.source as string | null,
+    });
+    if (aud === null) continue;
+    const hub = String(r.hub || "").toLowerCase();
+    const country = opts.countryOf(hub);
+    if (!country) unplaceable += 1;
+    for (const s of skills) {
+      (pooled[s] ||= []).push(aud);
+      if (!country) continue;
+      const m = (byCountry[s] ||= new Map());
+      const bag = m.get(country);
+      if (bag) bag.push(aud);
+      else m.set(country, [aud]);
+    }
+  }
+
+  const seenSkills = Object.keys(nowBy);
+  if (!seenSkills.length) return { ...NO_MARKET, scope: opts.scope, fxAsAt: opts.fxAsAt };
+
+  /**
+   * Trim to days this scope was actually covered.
+   *
+   * Without this the dashboard reproduces the codebase's most familiar bug at
+   * its loudest. Measured on production before the trim: a 30-day window over a
+   * 24-day archive opened at $0.0m and closed at $2.1b, and every category
+   * reported between +387% and +869% — none of which was hiring. The series was
+   * drawing the archive switching on.
+   *
+   * Same weighted rule and the same 95% as coveredFrom everywhere else: a feed
+   * carrying a sliver of the scope cannot veto the whole window, and a feed
+   * carrying most of it cannot be ignored.
+   */
+  const feedStart = coveredFrom(sourceStart, sourceRows);
+  const firstWhole = feedStart ? window.findIndex((d) => d >= feedStart) : 0;
+  const from = firstWhole < 0 ? window.length - 1 : Math.max(0, firstWhole);
+  const days = window.slice(from);
+  const cut = (a: number[]) => a.slice(from);
+
+  const rowsOut: SkillMarketRow[] = seenSkills
+    .map((s) => {
+      const series = cut(daily[s] || new Array(window.length).fill(0));
+      const enough = series.length >= SKILL_SPARK_MIN;
+      const moves = enough && series.some((v) => v !== series[0]);
+      const loud = series.length > 0 && Math.max(...series) >= SKILL_MIN_VOLUME;
+      const { pct } = loud ? halfWindowChange(series) : { pct: null };
+      const { pay, n, markets } = priceOf(
+        byCountry[s] ?? new Map(),
+        pooled[s] ?? [],
+        opts.worldwide,
+      );
+      const now = nowBy[s];
+      return {
+        skill: s,
+        cat: SKILL_CATEGORY[s],
+        now,
+        spark: moves ? series : undefined,
+        pct,
+        dir:
+          pct === null || pct === 0
+            ? ("flat" as const)
+            : pct > 0
+              ? ("up" as const)
+              : ("down" as const),
+        pay,
+        payN: n,
+        payMarkets: markets,
+        // Null, never zero: an unpriced skill is one we cannot value, not one
+        // the market values at nothing.
+        value: pay === null ? null : pay * now,
+      };
+    })
+    .sort(
+      (a, b) =>
+        (b.value ?? -1) - (a.value ?? -1) || b.now - a.now || a.skill.localeCompare(b.skill),
+    );
+
+  // Value series: price is static across the window (measured), so the series
+  // is the price applied to each day's count. That is what makes the hero chart
+  // and the ticker's percentage the SAME quantity, measured over the same days.
+  const valueSeries = new Array(days.length).fill(0);
+  const catSeries: Record<string, number[]> = {};
+  for (const r of rowsOut) {
+    if (r.pay === null) continue;
+    const series = cut(daily[r.skill] || []);
+    const cs = (catSeries[r.cat] ||= new Array(days.length).fill(0));
+    for (let i = 0; i < days.length; i++) {
+      const v = (series[i] || 0) * r.pay;
+      valueSeries[i] += v;
+      cs[i] += v;
+    }
+  }
+
+  const byCat = new Map<string, SkillMarketRow[]>();
+  for (const r of rowsOut) {
+    const list = byCat.get(r.cat);
+    if (list) list.push(r);
+    else byCat.set(r.cat, [r]);
+  }
+  const categories: SkillMarketCategory[] = [...byCat.entries()]
+    .map(([cat, list]) => {
+      const priced = list.filter((r) => r.pay !== null);
+      const series = catSeries[cat] || [];
+      const loud = series.length >= SKILL_SPARK_MIN;
+      const { pct } = loud ? halfWindowChange(series) : { pct: null };
+      return {
+        cat,
+        skills: list.length,
+        priced: priced.length,
+        now: list.reduce((t, r) => t + r.now, 0),
+        value: priced.length ? priced.reduce((t, r) => t + (r.value ?? 0), 0) : null,
+        pct,
+        dir:
+          pct === null || pct === 0
+            ? ("flat" as const)
+            : pct > 0
+              ? ("up" as const)
+              : ("down" as const),
+      };
+    })
+    .sort((a, b) => (b.value ?? -1) - (a.value ?? -1) || a.cat.localeCompare(b.cat));
+
+  return {
+    days,
+    rows: rowsOut,
+    categories,
+    totalValue: rowsOut.reduce((t, r) => t + (r.value ?? 0), 0),
+    valueSeries,
+    priced: rowsOut.filter((r) => r.pay !== null).length,
+    seen: rowsOut.length,
+    taxonomy: Object.keys(SKILL_CATEGORY).length,
+    unplaceable,
+    scope: opts.scope,
+    fxAsAt: opts.fxAsAt,
+  };
+}
+
+/** Windows the dashboard can ask for. Same allowlist reasoning as the company
+ *  card's: the window drives an unindexed date scan, and a fixed set keeps the
+ *  query cache to a handful of keys per scope. */
+export const MARKET_WINDOWS = [7, 14, 30] as const;
+export const DEFAULT_MARKET_WINDOW = 30;
+export function marketWindowDays(days: unknown): number {
+  const n = Number(days);
+  return (MARKET_WINDOWS as readonly number[]).includes(n) ? n : DEFAULT_MARKET_WINDOW;
+}
+
+export const getSkillMarket = createServerFn({ method: "GET" })
+  .validator((data: { hubs?: string[]; label?: string; days?: number }) => data)
+  .handler(async ({ data }): Promise<SkillMarket> => {
+    const db = await getArchiveDb();
+    const scope = data?.label || "Worldwide";
+    if (!db) return { ...NO_MARKET, scope };
+    const hubs = (data?.hubs ?? []).map((h) => String(h).toLowerCase()).filter(Boolean);
+    const worldwide = hubs.length === 0;
+    const want = marketWindowDays(data?.days);
+    const hubWhere = hubs.length ? ` AND lower(hub) IN (${hubs.map(() => "?").join(",")})` : "";
+    try {
+      // Yesterday. Today is always mid-collection, and anchoring a market's
+      // "now" to a partial day is the -75% mistake the analyst used to make.
+      const asOf = shiftDay(new Date().toISOString().slice(0, 10), -1);
+
+      // How far back THIS SCOPE's feeds reach. Coverage is not uniform: the
+      // Chinese and Indian feeds carry no Australian rows, so a Perth window
+      // must not be picked from feeds that never covered Perth.
+      const cov = await db
+        .prepare(
+          `SELECT source, MIN(first_seen) AS mn, COUNT(*) AS n FROM jobs
+             WHERE skills IS NOT NULL AND ${LIVE_FEEDS_ONLY_SQL}${hubWhere} GROUP BY source`,
+        )
+        .bind(...hubs)
+        .all();
+      const feeds = (cov?.results ?? [])
+        .map((r) => ({ mn: String(r.mn || ""), n: Number(r.n) || 0 }))
+        .filter((f) => f.mn);
+      if (!feeds.length) return { ...NO_MARKET, scope };
+      const totalRows = feeds.reduce((a, f) => a + f.n, 0);
+
+      // The longest window, up to what was asked for, whose covering feeds hold
+      // most of the scope's rows. Same construction the movers use — a series
+      // that begins before its feeds arrived draws the archive filling out.
+      let span = 0;
+      for (let w = want; w >= SKILL_SPARK_MIN; w--) {
+        const start = shiftDay(asOf, -(w - 1));
+        const share = feeds.filter((f) => f.mn <= start).reduce((a, f) => a + f.n, 0) / totalRows;
+        if (share >= MOVER_MIN_COVERAGE) {
+          span = w;
+          break;
+        }
+      }
+      if (!span) return { ...NO_MARKET, scope };
+
+      const window: string[] = [];
+      for (let i = span - 1; i >= 0; i--) window.push(shiftDay(asOf, -i));
+
+      const res = await db
+        .prepare(
+          `SELECT skills, first_seen, last_seen, salary, hub, source FROM jobs
+             WHERE skills IS NOT NULL AND ${LIVE_FEEDS_ONLY_SQL}
+               AND last_seen >= ? AND first_seen <= ?${hubWhere}`,
+        )
+        .bind(window[0], asOf, ...hubs)
+        .all();
+      const rows = res?.results ?? [];
+      if (!rows.length) return { ...NO_MARKET, scope };
+
+      return foldSkillMarket(rows, window, asOf, {
+        worldwide,
+        scope,
+        fxAsAt: FX_AS_AT,
+        countryOf: (hub) => CITY_COUNTRY[hub] ?? (hub === "australia" ? "au" : ""),
+      });
+    } catch {
+      return { ...NO_MARKET, scope };
     }
   });

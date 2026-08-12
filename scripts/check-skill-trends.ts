@@ -13,7 +13,9 @@
  */
 import {
   foldSkillRows,
+  foldSkillMarket,
   type SkillRow,
+  type MarketRow,
   type CompanySkillTrends,
 } from "../src/employsi/lib/jobHistoryFn";
 
@@ -813,6 +815,265 @@ const ANCHOR = row(["Administration & Office Support"], DAYS[0], DAYS[DAYS.lengt
       `new=${s.newSpark?.length} spark=${s.spark.length}`,
     );
   }
+}
+
+// ── the skills market ───────────────────────────────────────────────────────
+// foldSkillMarket prices each skill by median advertised salary and multiplies
+// by live vacancies. Three quantities that must not blur: price is near-static,
+// volume moves, value is the product. Everything asserted here is invisible on
+// a rendered ticker — a wrong price still looks like a price.
+
+const MK = (
+  skills: string[],
+  first: string,
+  last: string,
+  extra: Partial<MarketRow> = {},
+): MarketRow => ({ skills: JSON.stringify(skills), first_seen: first, last_seen: last, ...extra });
+const AS_OF = DAYS[DAYS.length - 1];
+const COUNTRY: Record<string, string> = {
+  perth: "au",
+  sydney: "au",
+  singapore: "sg",
+  manila: "ph",
+};
+const mkOpts = (worldwide: boolean) => ({
+  worldwide,
+  scope: "Test",
+  fxAsAt: "2026-08-03",
+  countryOf: (h: string) => COUNTRY[h] ?? "",
+});
+// A feed present across the whole window, so the coverage trim does not fire.
+const MK_ANCHOR = Array.from({ length: 3 }, () =>
+  MK(["Administration & Office Support"], DAYS[0], AS_OF, {
+    source: "adzuna",
+    hub: "perth",
+    salary: "90000",
+  }),
+);
+
+{
+  // Eight priced ads at one figure: the median is that figure, and value is it
+  // times the live count. The 8-ad floor is salaryParse.MIN_ADS.
+  const rows: MarketRow[] = [
+    ...MK_ANCHOR,
+    ...Array.from({ length: 8 }, () =>
+      MK(["Mining Engineering"], DAYS[0], AS_OF, {
+        source: "adzuna",
+        hub: "perth",
+        salary: "150000",
+      }),
+    ),
+  ];
+  const m = foldSkillMarket(rows, DAYS, AS_OF, mkOpts(false));
+  const r = m.rows.find((x) => x.skill === "Mining Engineering")!;
+  check("a priced skill takes the median of its ads", r.pay === 150000, `pay=${r.pay}`);
+  check("...over the ads it actually has", r.payN === 8, `n=${r.payN}`);
+  check(
+    "value is price x live vacancies",
+    r.value === 150000 * r.now,
+    `${r.value} vs ${150000 * r.now}`,
+  );
+  check("a scoped read counts as one market", r.payMarkets === 1, `${r.payMarkets}`);
+}
+{
+  // Under the floor: demand is real, the price is not reportable. The row must
+  // survive — a skill being hired for without disclosed pay is a fact.
+  const rows: MarketRow[] = [
+    ...MK_ANCHOR,
+    ...Array.from({ length: 7 }, () =>
+      MK(["Geology"], DAYS[0], AS_OF, { source: "adzuna", hub: "perth", salary: "150000" }),
+    ),
+  ];
+  const m = foldSkillMarket(rows, DAYS, AS_OF, mkOpts(false));
+  const r = m.rows.find((x) => x.skill === "Geology");
+  check("a thin skill stays in the list", !!r, "row missing");
+  check("...with no price", r?.pay === null, `pay=${r?.pay}`);
+  check("...and a NULL value, never zero", r?.value === null, `value=${r?.value}`);
+  check("...but its demand still counts", r?.now === 7, `now=${r?.now}`);
+  check("coverage header counts priced of seen", m.priced < m.seen && m.taxonomy === 100);
+}
+{
+  // The worldwide construction, built from the shape that actually caused the
+  // problem: a high-volume low-wage market against a smaller expensive one.
+  // Pooled, production put Financial at $8k on exactly this.
+  const rows: MarketRow[] = [
+    ...MK_ANCHOR,
+    ...Array.from({ length: 40 }, () =>
+      MK(["Banking & Lending"], DAYS[0], AS_OF, {
+        source: "jobstreet-ph",
+        hub: "manila",
+        salary: "₱25,000 per month",
+      }),
+    ),
+    ...Array.from({ length: 8 }, () =>
+      MK(["Banking & Lending"], DAYS[0], AS_OF, {
+        source: "seek",
+        hub: "sydney",
+        salary: "A$150,000",
+      }),
+    ),
+  ];
+  const pooled = foldSkillMarket(rows, DAYS, AS_OF, mkOpts(false));
+  const world = foldSkillMarket(rows, DAYS, AS_OF, mkOpts(true));
+  const p = pooled.rows.find((x) => x.skill === "Banking & Lending")!;
+  const w = world.rows.find((x) => x.skill === "Banking & Lending")!;
+  check("pooled lets the busiest market win", p.pay === 6959, `pay=${p.pay}`);
+  check("worldwide gives each market one vote", w.pay === 78480, `pay=${w.pay}`);
+  check("...and reports how many voted", w.payMarkets === 2, `${w.payMarkets}`);
+  check(
+    "both rest on the same ad count",
+    p.payN === w.payN && p.payN === 48,
+    `${p.payN}/${w.payN}`,
+  );
+  check("the two constructions really do disagree here", p.pay !== w.pay);
+}
+{
+  // Hubless ads can be valued but not placed, so they cannot join a market
+  // vote. 9% of the archive's priced ads are in this state, led by sa-gov,
+  // jobstreet-ph and linkedin.
+  const rows: MarketRow[] = [
+    ...MK_ANCHOR,
+    ...Array.from({ length: 8 }, () =>
+      MK(["Banking & Lending"], DAYS[0], AS_OF, {
+        source: "jobstreet-ph",
+        hub: null,
+        salary: "₱25,000 per month",
+      }),
+    ),
+    ...Array.from({ length: 8 }, () =>
+      MK(["Banking & Lending"], DAYS[0], AS_OF, {
+        source: "seek",
+        hub: "sydney",
+        salary: "A$150,000",
+      }),
+    ),
+  ];
+  const m = foldSkillMarket(rows, DAYS, AS_OF, mkOpts(true));
+  const r = m.rows.find((x) => x.skill === "Banking & Lending")!;
+  check("unplaceable ads are counted", m.unplaceable === 8, `${m.unplaceable}`);
+  check(
+    "...and kept out of the worldwide vote",
+    r.pay === 150000 && r.payMarkets === 1,
+    `pay=${r.pay} mkt=${r.payMarkets}`,
+  );
+  check("...while still counting toward the sample", r.payN === 16, `n=${r.payN}`);
+}
+{
+  // Categories: constituent counts are the disclosure that stops a one-skill
+  // index reading like a broad one.
+  const rows: MarketRow[] = [
+    ...MK_ANCHOR,
+    ...Array.from({ length: 8 }, () =>
+      MK(["Mining Engineering"], DAYS[0], AS_OF, {
+        source: "adzuna",
+        hub: "perth",
+        salary: "100000",
+      }),
+    ),
+    ...Array.from({ length: 4 }, () =>
+      MK(["Geology"], DAYS[0], AS_OF, { source: "adzuna", hub: "perth", salary: "100000" }),
+    ),
+  ];
+  const m = foldSkillMarket(rows, DAYS, AS_OF, mkOpts(false));
+  const mining = m.categories.find((c) => c.cat === "Mining")!;
+  check("a category counts every constituent skill", mining.skills === 2, `${mining.skills}`);
+  check("...and how many of them carry a price", mining.priced === 1, `${mining.priced}`);
+  check(
+    "category value sums only its priced skills",
+    mining.value ===
+      m.rows
+        .filter((r) => r.cat === "Mining" && r.value !== null)
+        .reduce((t, r) => t + (r.value ?? 0), 0),
+  );
+  check("category demand counts all of them", mining.now === 12, `${mining.now}`);
+}
+{
+  // The ramp guard. Before it, a 30-day window over a 24-day archive opened at
+  // $0.0m and every category reported between +387% and +869%.
+  const rows: MarketRow[] = [
+    ...Array.from({ length: 10 }, () =>
+      MK(["Mining Engineering"], DAYS[0], AS_OF, {
+        source: "adzuna",
+        hub: "perth",
+        salary: "100000",
+      }),
+    ),
+    // A feed carrying a third of the scope, switching on at day 6.
+    ...Array.from({ length: 6 }, () =>
+      MK(["Mining Engineering"], DAYS[5], AS_OF, {
+        source: "seek",
+        hub: "perth",
+        salary: "100000",
+      }),
+    ),
+  ];
+  const m = foldSkillMarket(rows, DAYS, AS_OF, mkOpts(false));
+  check(
+    "the window starts where the late feed arrived",
+    eq(m.days, DAYS.slice(5)),
+    JSON.stringify(m.days),
+  );
+  check("the value series matches the trimmed window", m.valueSeries.length === m.days.length);
+  check("...and never opens at zero", m.valueSeries[0] > 0, `${m.valueSeries[0]}`);
+  const r = m.rows.find((x) => x.skill === "Mining Engineering")!;
+  check("sparklines are trimmed with it", !r.spark || r.spark.length === m.days.length);
+}
+{
+  // Price is measured on ads live at the reference day, not everything the
+  // window ever held — otherwise a closed ad keeps pricing a market it left.
+  const rows: MarketRow[] = [
+    ...MK_ANCHOR,
+    ...Array.from({ length: 8 }, () =>
+      MK(["Mining Engineering"], DAYS[0], DAYS[2], {
+        source: "adzuna",
+        hub: "perth",
+        salary: "999000",
+      }),
+    ),
+    ...Array.from({ length: 8 }, () =>
+      MK(["Mining Engineering"], DAYS[0], AS_OF, {
+        source: "adzuna",
+        hub: "perth",
+        salary: "100000",
+      }),
+    ),
+  ];
+  const m = foldSkillMarket(rows, DAYS, AS_OF, mkOpts(false));
+  const r = m.rows.find((x) => x.skill === "Mining Engineering")!;
+  check("closed ads do not price a live market", r.pay === 100000, `pay=${r.pay}`);
+  check("...nor count toward live demand", r.now === 8, `now=${r.now}`);
+}
+{
+  // Total value is the sum of the rows, and the series ends on it.
+  const rows: MarketRow[] = [
+    ...MK_ANCHOR,
+    ...Array.from({ length: 8 }, () =>
+      MK(["Mining Engineering"], DAYS[0], AS_OF, {
+        source: "adzuna",
+        hub: "perth",
+        salary: "100000",
+      }),
+    ),
+  ];
+  const m = foldSkillMarket(rows, DAYS, AS_OF, mkOpts(false));
+  const sum = m.rows.reduce((t, r) => t + (r.value ?? 0), 0);
+  check(
+    "total value is the sum of the priced rows",
+    m.totalValue === sum,
+    `${m.totalValue} vs ${sum}`,
+  );
+  check(
+    "the value series ends on the total",
+    m.valueSeries[m.valueSeries.length - 1] === m.totalValue,
+    `${m.valueSeries[m.valueSeries.length - 1]} vs ${m.totalValue}`,
+  );
+}
+{
+  const m = foldSkillMarket([], DAYS, AS_OF, mkOpts(false));
+  check(
+    "an empty market returns empty, not a shape full of zeros",
+    m.rows.length === 0 && m.days.length === 0,
+  );
 }
 
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");
