@@ -11344,6 +11344,17 @@ body {
   font-size: 22px;
   letter-spacing: -0.03em;
 }
+/* A name, not a figure. The mono display face is for numbers; a skill title
+   set in it does not fit a third of a 440px card and reads as a measurement. */
+.ccstatv.text {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
 .ccstatd {
   font-family: "JetBrains Mono", monospace;
   font-size: 11px;

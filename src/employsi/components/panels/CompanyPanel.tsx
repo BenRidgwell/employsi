@@ -594,6 +594,16 @@ export function CompanyPanel() {
     return out;
   }, [liveHiring]);
 
+  // The Overview tile's top skill. The archive is preferred so it names the
+  // same skill the Skills tab leads with; the live job sample is the fallback
+  // for a company the archive has not reached yet.
+  const topSkill = useMemo(() => {
+    const fromArchive = skillTrends.skills[0];
+    if (fromArchive) return { name: fromArchive.skill, n: fromArchive.now };
+    const top = Object.entries(skillCounts).sort((a, b) => b[1] - a[1])[0];
+    return top ? { name: top[0], n: top[1] } : null;
+  }, [skillTrends.skills, skillCounts]);
+
   // The vacancy series behind the chart: the D1 archive where the company has
   // one, else the forward-built KV snapshots.
   const vacancySeries = vacancyTrend.length >= 2 ? vacancyTrend : rolesHistory;
@@ -610,10 +620,21 @@ export function CompanyPanel() {
       share: liveShare ?? null,
       revPerEmp,
       medianPay,
+      topSkill,
       skillCounts,
       roleCounts,
     });
-  }, [company, liveRoles, vacancySeries, liveShare, revPerEmp, medianPay, skillCounts, roleCounts]);
+  }, [
+    company,
+    liveRoles,
+    vacancySeries,
+    liveShare,
+    revPerEmp,
+    medianPay,
+    topSkill,
+    skillCounts,
+    roleCounts,
+  ]);
 
   // The card holds a loading frame until the fetches it actually renders have
   // settled: the live vacancy count (the multi-second one), and the job sample
@@ -708,7 +729,7 @@ export function CompanyPanel() {
                   <div className="ccstats">
                     {card.stats.map((s) => (
                       <div className="ccstat" key={s.label}>
-                        <span className="ccstatv">
+                        <span className={`ccstatv${s.textValue ? " text" : ""}`}>
                           {s.value}
                           {s.delta && (
                             <span className={`ccstatd ${s.deltaUp ? "up" : "down"}`}>

@@ -39,6 +39,10 @@ import type { ShareSeries } from "./shareSeriesFn";
 export interface CardStat {
   value: string;
   label: string;
+  /** The value is a NAME, not a figure. The tile drops the mono display face
+   *  for it — a skill title set at 22px monospace does not fit a third of a
+   *  440px card, and set in figures' clothing it reads as a measurement. */
+  textValue?: boolean;
   /** Small coloured figure beside the value (the headcount YoY). */
   delta?: string | null;
   deltaUp?: boolean;
@@ -220,6 +224,11 @@ export interface CardInputs {
    *  none do — the seed `Company.salary` is illustrative, so a card with no
    *  live salary shows a gap rather than that number. */
   medianPay?: { text: string; n: number } | null;
+  /** The single most-advertised skill right now, for the headline tile.
+   *  Passed in rather than taken off `skillCounts` so it comes from the same
+   *  source as the Skills tab — the two naming different top skills on one card
+   *  would be worse than either being slightly stale. */
+  topSkill?: { name: string; n: number } | null;
   /** Skill → live-ad count for this company. */
   skillCounts: Record<string, number>;
   /** Role area → live-ad count for this company. */
@@ -239,11 +248,17 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
   const open = input.openRoles ?? c.openRoles;
   const hc = input.headcount;
   const pay = input.medianPay;
+  const top = input.topSkill;
   const stats: CardStat[] = [
     { value: open.toLocaleString("en-AU"), label: "Open roles" },
-    pay
-      ? { value: pay.text, label: "Median salary", sub: `from ${pay.n} live ads` }
-      : { value: "—", label: "Median salary", sub: "no live salary data" },
+    top
+      ? {
+          value: top.name,
+          label: "Top skill in demand",
+          sub: `${top.n} live ${top.n === 1 ? "ad" : "ads"}`,
+          textValue: true,
+        }
+      : { value: "—", label: "Top skill in demand", sub: "no live ads mapped yet" },
   ];
   if (hc) {
     stats.push({
@@ -348,6 +363,11 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
   }
   if (isPrivate && input.revPerEmp) {
     facts.push({ k: "Revenue per employee", v: `$${input.revPerEmp.toFixed(2)}m` });
+  }
+  if (pay) {
+    // Displaced from the headline tiles by the top skill, but still a real
+    // measurement off live ads — it keeps a row rather than leaving the card.
+    facts.push({ k: "Median advertised salary", v: `${pay.text} · ${pay.n} live ads` });
   }
   if (!isPrivate && c.exchange) {
     facts.push({ k: "Listed on", v: c.exchange });
