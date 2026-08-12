@@ -19,11 +19,23 @@ import {
   type JobsTarget,
 } from "../../src/employsi/data/auJobsTargets";
 import { TOP_PRIVATE_TARGETS } from "../../src/employsi/data/topPrivateCompanies";
+import { UNIVERSITY_TARGETS } from "../../src/employsi/data/universityTargets";
 
-// The listed (ASX) roster plus the Top-150 private companies — both driven by
-// the same daily Adzuna pull, so private-company cards get live vacancies and
-// contribute to the skill-demand heat index like any listed name.
-const AU_JOBS_TARGETS: JobsTarget[] = [...AU_LISTED, ...TOP_PRIVATE_TARGETS];
+// The listed (ASX) roster plus the Top-150 private companies and the Australian
+// universities — all driven by the same daily Adzuna pull, so their cards get
+// live vacancies and contribute to the skill-demand heat index like any listed
+// name.
+//
+// KEEP THIS IN STEP WITH scripts/roster.ts, which composes the same three files
+// for every Python driver. They are two independent assemblies of one roster, so
+// a category added here and not there (or vice versa) leaves companies on the
+// map that half the pipeline never searches for, with nothing erroring — which
+// is what scripts/check-feed-coverage.py exists to catch.
+const AU_JOBS_TARGETS: JobsTarget[] = [
+  ...AU_LISTED,
+  ...TOP_PRIVATE_TARGETS,
+  ...UNIVERSITY_TARGETS,
+];
 import { GLOBAL_HUB_TARGETS, type HubTarget } from "../../src/employsi/data/globalHubTargets";
 import { JOOBLE_HUB_TARGETS, type JoobleHubTarget } from "../../src/employsi/data/joobleHubTargets";
 import { skillsForText } from "../../src/employsi/data/skillsTaxonomy";

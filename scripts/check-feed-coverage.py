@@ -1,40 +1,46 @@
 #!/usr/bin/env python3
-"""Every rostered company must be reachable by the keyword feeds.
+"""The roster the scrapers walk and the roster the Worker pulls must be the same.
 
 THE FAILURE THIS EXISTS TO CATCH. Adding a company to the roster makes it appear
-on the map immediately — it gets a pin, a card and a place in the counts. Whether
-any job board is actually SEARCHED for it is a separate question, and nothing
-used to connect the two. So a new employer could sit on the map showing zero
-open roles, indefinitely, and look like a company that simply is not hiring.
+on the map immediately — it gets a pin, a card and a place in the counts.
+Whether anything actually SEARCHES for it is a separate question, and nothing
+connects the two. So a new employer can sit on the map showing zero open roles,
+indefinitely, and look like a company that simply is not hiring.
 
-TWO KINDS OF FEED, ONLY ONE OF WHICH SELF-UPDATES.
+TWO INDEPENDENT COMPOSITIONS, WHICH IS THE WHOLE PROBLEM. The same roster is
+assembled twice, in two languages, from the same source modules:
 
-  * The Python drivers (indeed, linkedin, jora, simplyhired, jobsdb, jobstreet,
-    naukri, startupjobs, brightdata) call roster.load_roster() at run time, so a
-    new company is picked up on the next run with no action at all.
+  * workers/jobs-cron/index.ts   const AU_JOBS_TARGETS = [...AU_LISTED,
+                                   ...TOP_PRIVATE_TARGETS]   -> the daily Adzuna
+                                   pull, and the advertiser gate
+  * scripts/roster.ts           [...AU_JOBS_TARGETS, ...TOP_PRIVATE_TARGETS]
+                                   -> every Python driver (indeed, linkedin,
+                                   jora, simplyhired, brightdata, ...)
 
-  * The daily Adzuna pull in the Worker reads a GENERATED file,
-    src/employsi/data/auJobsTargets.ts, written by scripts/gen-asx200.py. A
-    company added to the roster is invisible to Adzuna until that generator is
-    re-run and its output committed. Nothing enforced that, which is the gap.
+Add a NEW CATEGORY of company — a third data file — and you must remember both.
+Wire it into one and the other silently disagrees: the companies exist on the
+map and half the pipeline never looks for them. Neither side errors, because
+each is internally consistent. This check is the thing that notices.
 
-  * Career portals (workers/jobs-cron/careerSites.ts) are deliberately NOT
-    checked here. Each needs a hand-measured ATS tenant URL, so "every rostered
-    company has a portal" is not a thing that can ever be true, and asserting it
-    would be permanent noise.
+WHAT THIS FILE USED TO SAY, AND WHY IT WAS WRONG. It compared the roster against
+the auJobsTargets.ts FILE alone and reported the Top-150 private companies as a
+permanent 150-company hole in the Adzuna coverage. That was a misreading: the
+Worker composes that file PLUS topPrivateCompanies.ts, so those companies are
+searched like any other. The archive says so plainly — 5,725 Adzuna rows across
+120 priv-* companies on 2026-08-12, led by Perth Airport (261) and St John of
+God Health Care (219). A check that reports a healthy feed as broken is worse
+than no check, because it trains everyone to ignore its output.
 
-THE RATCHET. There is already a large gap — the Top-150 private roster is
-missing from the Adzuna targets — and this check does not pretend otherwise or
-fail forever because of it. That set is recorded in BASELINE_GAP below, printed
-on every run so it stays visible, and anything OUTSIDE it fails. So the check
-answers the question it was written for — "does a NEW company reach the feeds?"
-— without blocking on a pre-existing decision nobody has taken yet.
+Career portals (workers/jobs-cron/careerSites.ts) are deliberately NOT checked:
+each needs a hand-measured ATS tenant URL, so "every company has a portal" can
+never be true and asserting it would be permanent noise.
 
 Run: python scripts/check-feed-coverage.py
 """
 from __future__ import annotations
+import json
 import os
-import re
+import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -43,59 +49,72 @@ sys.path.insert(0, HERE)
 
 from roster import load_roster  # noqa: E402
 
-TARGETS_TS = os.path.join(ROOT, 'src', 'employsi', 'data', 'auJobsTargets.ts')
+# The Worker's own composition, evaluated rather than pattern-matched. Reading
+# it any other way is the exact mistake this file was written to stop repeating:
+# TOP_PRIVATE_TARGETS is built by `RAW.map(buildPrivate)`, so its ids do not
+# exist as literals anywhere and a regex over the source cannot see them.
+WORKER_TARGETS_TS = """
+import { AU_JOBS_TARGETS as AU_LISTED } from "./src/employsi/data/auJobsTargets";
+import { TOP_PRIVATE_TARGETS } from "./src/employsi/data/topPrivateCompanies";
+import { UNIVERSITY_TARGETS } from "./src/employsi/data/universityTargets";
+const all = [...AU_LISTED, ...TOP_PRIVATE_TARGETS, ...UNIVERSITY_TARGETS];
+console.log(JSON.stringify(all.map((t) => t.id)));
+"""
 
-# The gap as it stood on 2026-08-10: every company on the Top-150 PRIVATE
-# roster. They are absent because gen-asx200.py parses the TypeScript with a
-# regex, and the private roster is built by `RAW.map(buildPrivate)` — its ids
-# only exist once the module has RUN, so a regex cannot see them. The same flaw
-# is documented in roster.py, which is why that file shells out to bun instead.
-#
-# This is recorded, not endorsed. Closing it means deciding to search Adzuna for
-# 150 more employers, which costs request volume — a call for whoever owns that
-# budget, not something to slip in behind a lint fix.
-BASELINE_GAP_PREFIX = 'priv-'
 
-
-def target_ids() -> set[str]:
-    with open(TARGETS_TS, encoding='utf-8') as f:
-        return set(re.findall(r'id:\s*"([^"]+)"', f.read()))
+def worker_target_ids() -> set[str]:
+    """The ids the jobs-cron Worker will actually pull, by running its imports."""
+    path = os.path.join(ROOT, '.feed-coverage-probe.ts')
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(WORKER_TARGETS_TS)
+    try:
+        out = subprocess.run(['bun', 'run', path], cwd=ROOT,
+                             capture_output=True, text=True, timeout=120)
+        if out.returncode != 0:
+            sys.exit(f'Could not evaluate the Worker roster:\n{out.stderr[-800:]}')
+        return set(json.loads(out.stdout.strip().splitlines()[-1]))
+    finally:
+        os.remove(path)
 
 
 def main() -> int:
     roster = {c['id']: c['name'] for c in load_roster()}
-    targets = target_ids()
-    missing = sorted(set(roster) - targets)
+    worker = worker_target_ids()
 
-    baseline = [m for m in missing if m.startswith(BASELINE_GAP_PREFIX)]
-    unexpected = [m for m in missing if not m.startswith(BASELINE_GAP_PREFIX)]
+    missing = sorted(set(roster) - worker)      # walked by Python, never pulled
+    extra = sorted(worker - set(roster))        # pulled, but not on the map
 
-    print(f'roster companies              : {len(roster)}')
-    print(f'auJobsTargets.ts (Adzuna)     : {len(targets)}')
-    print(f'known gap (private roster)    : {len(baseline)}')
-    print(f'unexpected gap                : {len(unexpected)}')
+    print(f'roster.ts (Python drivers)    : {len(roster)}')
+    print(f'jobs-cron Worker (Adzuna)     : {len(worker)}')
+    print(f'in roster but not the Worker  : {len(missing)}')
+    print(f'in the Worker but not roster  : {len(extra)}')
 
-    if baseline:
+    if missing:
+        print('\nFAIL: on the map and walked by the Python feeds, but the Worker')
+        print('never pulls them — so their cards miss the daily Adzuna vacancies:')
+        for cid in missing[:40]:
+            print(f'  {cid:32} {roster[cid]}')
+        if len(missing) > 40:
+            print(f'  ... and {len(missing) - 40} more')
+    if extra:
+        print('\nFAIL: the Worker pulls these, but they are not on the roster the')
+        print('Python drivers walk — so every other feed skips them:')
+        for cid in extra[:40]:
+            print(f'  {cid:32}')
+        if len(extra) > 40:
+            print(f'  ... and {len(extra) - 40} more')
+
+    if missing or extra:
         print(
-            f'\n  NOTE: {len(baseline)} private-roster companies are not searched on '
-            f'Adzuna.\n  They are on the map and in the Python feeds, but the daily '
-            f'Adzuna pull\n  never asks for them. Re-running scripts/gen-asx200.py '
-            f'does not fix it —\n  that generator regexes the TypeScript and cannot '
-            f'see a roster built at\n  run time. See roster.py for the same lesson.'
-        )
-
-    if unexpected:
-        print('\nFAIL: these companies are on the roster but no keyword feed target:')
-        for cid in unexpected:
-            print(f'  {cid:28} {roster[cid]}')
-        print(
-            '\nA company with no target sits on the map showing zero open roles and\n'
-            'reads as an employer that is not hiring. Add it to the Adzuna targets\n'
-            '(scripts/gen-asx200.py) or, if it is deliberately excluded, say so here.'
+            '\nA new category of company has to be added in BOTH places:\n'
+            '  workers/jobs-cron/index.ts   (AU_JOBS_TARGETS)\n'
+            '  scripts/roster.ts            (the array it composes)\n'
+            'Wiring only one leaves companies on the map that half the pipeline\n'
+            'never searches for, and nothing else reports it.'
         )
         return 1
 
-    print('\nEvery rostered company outside the recorded gap has a feed target.')
+    print('\nBoth compositions cover the same companies.')
     return 0
 
 

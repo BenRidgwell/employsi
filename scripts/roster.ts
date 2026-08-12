@@ -15,6 +15,7 @@
 // Run: bun run scripts/roster.ts
 import { AU_JOBS_TARGETS } from "../src/employsi/data/auJobsTargets";
 import { TOP_PRIVATE_TARGETS } from "../src/employsi/data/topPrivateCompanies";
+import { UNIVERSITY_TARGETS } from "../src/employsi/data/universityTargets";
 import { CITY_ROSTERS } from "../src/employsi/data/cityRosters";
 import { rosterId } from "../src/employsi/data/rosters";
 
@@ -36,9 +37,13 @@ const CITY_TARGETS = Object.entries(CITY_ROSTERS).flatMap(([city, r]) =>
 // 355 companies to ~995 and change what those daily runs mean. Only the
 // scrapers that actually cover those markets ask for them.
 const withCities = process.argv.includes("--with-cities");
-const all = withCities
-  ? [...AU_JOBS_TARGETS, ...TOP_PRIVATE_TARGETS, ...CITY_TARGETS]
-  : [...AU_JOBS_TARGETS, ...TOP_PRIVATE_TARGETS];
+// KEEP IN STEP WITH workers/jobs-cron/index.ts, which composes the same three
+// AU files for the Adzuna pull. Two independent assemblies of one roster: a
+// category added there and not here is a set of companies the Worker pulls that
+// no Python driver walks, and neither side errors. check-feed-coverage.py
+// compares the two for exactly that reason.
+const AU_ALL = [...AU_JOBS_TARGETS, ...TOP_PRIVATE_TARGETS, ...UNIVERSITY_TARGETS];
+const all = withCities ? [...AU_ALL, ...CITY_TARGETS] : AU_ALL;
 const seen = new Set<string>();
 const out = all.filter((t) => {
   if (!t.id || seen.has(t.id)) return false;

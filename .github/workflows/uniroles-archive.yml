@@ -1,0 +1,85 @@
+# Uni Roles (uniroles.com.au) → D1, daily.
+#
+# WHY THIS BOARD. The roster gained the Australian universities, and a
+# university's own ATS is a per-tenant integration that has to be measured one
+# at a time. Uni Roles is the sector's shared board, so one walk covers all of
+# them at once — and it is the only source here that publishes an advertised
+# TOTAL, which is what lets the run prove it read everything.
+#
+# WHY IT RUNS IN GITHUB ACTIONS AND NOT THE WORKER. It could run in the Worker:
+# measured 2026-08-12, uniroles.com.au answered a plain datacentre request with
+# HTTP 200 and no challenge, so no residential exit is needed. It lives here
+# because a 43-page walk with a 0.7s pause is ~40 seconds of wall time, and the
+# jobs-cron Worker's budget is shaped around short bursts — the same reason the
+# other whole-board walks are Actions rather than Worker ticks. If that changes,
+# moving it needs no parser work.
+#
+# NO PROXY SECRET, deliberately. Adding SCRAPE_PROXY "just in case" would spend
+# residential bandwidth on a site that does not ask for it, and would hide the
+# day the site starts asking.
+name: uniroles-archive
+
+on:
+  schedule:
+    # 19:20 UTC (~05:20 AEST). Ten minutes clear of the 19:00 and 19:30 slots
+    # either side of it, so this walk is not competing with another feed's D1
+    # writes for the same CPU budget.
+    - cron: '20 19 * * *'
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: 'Parse and report only — write nothing to D1'
+        type: boolean
+        default: false
+      limit:
+        description: 'Stop after this many pages (0 = every page the total implies)'
+        type: string
+        default: '0'
+  push:
+    paths:
+      - 'scripts/uniroles-to-d1.py'
+      - 'src/employsi/data/universityTargets.ts'
+      - '.github/workflows/uniroles-archive.yml'
+
+concurrency:
+  group: uniroles-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # bun runs map-skills.ts and map-hubs.ts, so a university role carries
+      # exactly the skills the same title would get from any other source, and
+      # lands on the same city hub.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # A push to the parser must not be able to write a half-tested change into
+      # the archive, so a push event parses and reports without writing. The
+      # schedule and a manual dispatch write for real.
+      - name: Scrape Uni Roles → D1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "CLOUDFLARE_API_TOKEN is not set."
+            exit 1
+          fi
+          # Every input needs a fallback: on a `schedule` event the whole
+          # `inputs` context is null, so an unguarded ${{ inputs.limit }}
+          # interpolates to an empty string and the run dies before it starts.
+          DRY=""
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.dry }}" = "true" ]; then
+            DRY="--dry"
+            echo "Parsing without writing (push event, or dry requested)."
+          fi
+          python scripts/uniroles-to-d1.py $DRY --limit '${{ inputs.limit || 0 }}'

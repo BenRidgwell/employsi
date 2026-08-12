@@ -203,6 +203,12 @@ ADVERTISER_ALIAS = {
     'woolworths supermarkets': 'woolworths group',
     'wesfarmers health': 'wesfarmers',
     'ampol retail store': 'ampol',
+    # Uni Roles prints Monash both ways, on the same board, on the same day —
+    # "Monash University" and "Monash Uni" were one ad each on 2026-08-12. The
+    # abbreviation is not a shortened PREFIX of the roster name ("uni" against
+    # "university"), so the token rule cannot forgive it the way it forgives
+    # "Deloitte" for "Deloitte Touche Tohmatsu".
+    'monash uni': 'monash university',
 }
 
 
@@ -211,11 +217,37 @@ def norm(s: str) -> str:
     return re.sub(r'[^a-z0-9]+', ' ', (s or '').lower()).strip()[:120]
 
 
+def _no_leading_the(tokens: list[str]) -> list[str]:
+    """Drop a leading "the", which is style rather than identity.
+
+    "The" is already in CORPORATE_WORDS, but that set is only consulted for
+    words that come AFTER the shared prefix — so a leading one breaks the
+    comparison outright instead of being forgiven:
+
+        "The University of Queensland" vs "University of Queensland"   rejected
+        "Walt Disney Company"     vs "The Walt Disney Company"         rejected
+
+    Both are the same employer under any reading, and the first form is how
+    several Australian universities officially style themselves — 126 of the 422
+    ads on Uni Roles were being dropped over it (measured 2026-08-12), across
+    Queensland, Western Australia and Adelaide.
+
+    Guarded so a company literally named "The" cannot normalise to nothing.
+    """
+    return tokens[1:] if len(tokens) > 1 and tokens[0] == 'the' else tokens
+
+
 def advertiser_matches(advertiser: str, name: str) -> bool:
     a, n = norm(advertiser).split(), norm(name).split()
     if not a or not n:
         return False
+    # The alias lookup runs on the UNSTRIPPED tokens: entries are keyed on the
+    # advertiser string exactly as a board prints it, and one of them
+    # ("the west australian") starts with the very word below.
     if a == n or ADVERTISER_ALIAS.get(' '.join(a)) == ' '.join(n):
+        return True
+    a, n = _no_leading_the(a), _no_leading_the(n)
+    if a == n:
         return True
     long_, short_ = (a, n) if len(a) >= len(n) else (n, a)
     if long_[:len(short_)] != short_:
