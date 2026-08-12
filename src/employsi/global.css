@@ -14312,12 +14312,18 @@ body {
 .cctlplot {
   position: relative;
   height: 34px;
+  /* Same token and the same clip as .hspmap, the hot-spot map further down the
+     tab: both are bounded panels of data inside the card, and a square-cornered
+     one between two rounded ones reads as unfinished. The clip is what does the
+     work — the volume line, the no-coverage shading and both period bands all
+     run to the panel's edges, so each of them has to take the corner. */
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 .cctlplot svg {
   display: block;
   width: 100%;
   height: 100%;
-  overflow: visible;
 }
 .cctlline {
   fill: none;
