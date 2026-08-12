@@ -14904,8 +14904,14 @@ body {
    structure survives: white line over a fading white wash, open white rings,
    dashed white rules, and an inverted white callout. --surface-inverse is the
    token the design system already uses for exactly this. */
+/* Direction is the one thing on this card that carries colour, and it is the
+   same ramp the rows below use — lightened for an ink ground, not a second
+   palette invented for it. A card with no series has no direction and keeps
+   the white. */
 .mkhero {
   --hero-ink: #ffffff;
+  --hero-dir: var(--hero-ink);
+  --hero-dirbg: rgb(255 255 255 / 13%);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -14919,6 +14925,14 @@ body {
   background: linear-gradient(165deg, var(--neutral-800) 0%, var(--surface-inverse) 62%);
   color: var(--hero-ink);
   overflow: hidden;
+}
+.mkhero.up {
+  --hero-dir: color-mix(in oklab, var(--green-500) 62%, #ffffff);
+  --hero-dirbg: color-mix(in oklab, var(--green-500) 30%, transparent);
+}
+.mkhero.down {
+  --hero-dir: color-mix(in oklab, var(--red-500) 70%, #ffffff);
+  --hero-dirbg: color-mix(in oklab, var(--red-500) 30%, transparent);
 }
 .mkherohd {
   display: flex;
@@ -14989,25 +15003,21 @@ body {
   letter-spacing: -0.02em;
   color: rgb(255 255 255 / 52%);
 }
-/* The reference's change badge is a green pill. There is no red/green to spend
-   here — the direction is in the triangle and the sign, and the pill is the
-   same white as everything else at two weights. */
+/* The reference's change badge is a green pill; so is this one, and a falling
+   market gets the red. Everything else on the card stays ink and white — the
+   colour is spent on the one fact it reports. */
 .mkherochg {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   padding: 4px 11px;
   border-radius: var(--radius-pill);
-  background: rgb(255 255 255 / 13%);
+  background: var(--hero-dirbg);
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--hero-ink);
-}
-.mkherochg.down {
-  background: rgb(255 255 255 / 8%);
-  color: rgb(255 255 255 / 74%);
+  color: var(--hero-dir);
 }
 .mkherotri {
   font-size: 9px;
@@ -15016,7 +15026,8 @@ body {
 .mkherodelta {
   margin-top: 7px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11.5px;
+  line-height: 1.5;
   font-variant-numeric: tabular-nums;
   color: rgb(255 255 255 / 70%);
 }
@@ -15035,10 +15046,13 @@ body {
   display: block;
   width: 100%;
   height: 100%;
+  /* The gradient's stops are currentColor, so the wash and the line are one
+     colour by construction rather than by two declarations kept in step. */
+  color: var(--hero-dir);
 }
 .mkheroline {
   fill: none;
-  stroke: var(--hero-ink);
+  stroke: var(--hero-dir);
   stroke-width: 2.4;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -15047,31 +15061,6 @@ body {
 .mkheroarea {
   fill: url(#mkheroFill);
   stroke: none;
-}
-/* One rule per labelled level, running from the card's left edge to the point
-   it belongs to. The reference's gridlines are unlabelled texture; these carry
-   their own figure, so nothing is drawn at a level the reader is not told. */
-.mkherorule {
-  position: absolute;
-  left: 0;
-  border-top: 1px dashed rgb(255 255 255 / 26%);
-  pointer-events: none;
-}
-.mkherolvl {
-  position: absolute;
-  left: 14px;
-  bottom: 3px;
-  /* Chipped, not bare. The rule sits wherever its extreme fell, and the line
-     itself passes over that band elsewhere in the window — a bare label
-     collides with the stroke about as often as not. */
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: rgb(18 18 20 / 72%);
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  font-variant-numeric: tabular-nums;
-  color: rgb(255 255 255 / 74%);
-  white-space: nowrap;
 }
 /* Open rings, as the reference draws them: the ground shows through the middle
    so the marker reads as a point ON the line rather than a dot beside it.
@@ -15082,7 +15071,7 @@ body {
   width: 10px;
   height: 10px;
   margin: -5px 0 0 -5px;
-  border: 2px solid rgb(255 255 255 / 78%);
+  border: 2px solid color-mix(in oklab, var(--hero-dir) 82%, transparent);
   border-radius: 50%;
   background: none;
   pointer-events: none;
@@ -15095,7 +15084,7 @@ body {
   height: 4px;
   margin: -2px 0 0 -2px;
   border-radius: 50%;
-  box-shadow: 0 0 34px 17px rgb(255 255 255 / 15%);
+  box-shadow: 0 0 34px 17px var(--hero-dirbg);
   pointer-events: none;
 }
 .mkheroend {
@@ -15103,7 +15092,7 @@ body {
   width: 13px;
   height: 13px;
   margin: -6.5px 0 0 -6.5px;
-  border: 3px solid var(--hero-ink);
+  border: 3px solid var(--hero-dir);
   border-radius: 50%;
   background: var(--surface-inverse);
   pointer-events: none;

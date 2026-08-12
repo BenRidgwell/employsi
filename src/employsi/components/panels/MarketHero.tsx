@@ -45,6 +45,27 @@ function shortDay(iso: string): string {
 }
 
 /**
+ * One extreme: an open ring on the point it fell on.
+ *
+ * The figures live in the line under the headline, not on the plot. Chipped
+ * onto the chart they read better in isolation but the high sat under the
+ * callout about as often as not — the callout is anchored above the last point
+ * and a peak late in the window lands squarely behind it. A label that
+ * disappears at certain shapes is worse than one placed somewhere dull.
+ */
+function Extreme({
+  geom,
+  at,
+  v,
+}: {
+  geom: { px: (i: number) => string; y: (v: number) => number };
+  at: number;
+  v: number;
+}) {
+  return <span className="mkheropt" style={{ left: geom.px(at), top: `${geom.y(v)}px` }} />;
+}
+
+/**
  * Advertised value over the window: the market's own line, or one skill's when
  * a row below is selected.
  *
@@ -53,10 +74,13 @@ function shortDay(iso: string): string {
  * the two points a reader actually wants from a shape like this are where it
  * peaked and where it bottomed — which is what the reference design does too.
  *
- * THE DASHED RULES ARE NOT DECORATION. The reference's gridlines are unlabelled
- * texture; here each one runs from the left edge to the extreme it belongs to
- * and carries that extreme's figure, so the two lines in the card are the two
- * levels the card names. Nothing is drawn at a level the reader is not told.
+ * THE EXTREMES ARE LABELLED ON THEIR OWN MARKERS, with no rule drawn across the
+ * card to them. Chipped, because the stroke crosses that band elsewhere in the
+ * window and a bare label collides with it about as often as not.
+ *
+ * DIRECTION IS THE ONE THING ON THIS CARD THAT CARRIES COLOUR, and it is the
+ * same green and red the rows below already use — the ramp in tokens.css,
+ * lightened for an ink ground rather than a second palette invented for it.
  *
  * A SELECTED SKILL'S LINE IS DERIVED, NOT REFETCHED. Value is price times
  * volume and the price is static across the window, so the skill's series is
@@ -130,14 +154,11 @@ export function MarketHero({
   // headline of "$0" says it is worth nothing rather than that it is unpriced.
   const [head, tail] = series.length ? moneyParts(latest) : ["—", ""];
 
-  /** A rule ending under its own marker, with a floor so an extreme on day one
-   *  still draws something to hang its figure on. */
-  const rule = (i: number) => ({
-    width: `${Math.max(22, (i / Math.max(1, series.length - 1)) * 100)}%`,
-  });
+  // No series, no direction: the card stays white rather than guessing one.
+  const dir = pct === null ? "" : pct > 0 ? "up" : pct < 0 ? "down" : "flat";
 
   return (
-    <div className={`mkhero ${picked ? "picked" : ""}`}>
+    <div className={`mkhero ${dir} ${picked ? "picked" : ""}`}>
       <div className="mkherohd">
         <span className="mkherottl">{picked ? picked.skill : market.scope}</span>
         {picked && (
@@ -169,10 +190,22 @@ export function MarketHero({
           </span>
         )}
       </div>
-      {delta !== null && (
+      {/* The movement, then the two levels the rings on the plot mark. Off the
+          chart deliberately: see Extreme. */}
+      {(delta !== null || geom) && (
         <span className="mkherodelta">
-          {delta >= 0 ? "+" : "−"}
-          {money(Math.abs(delta))} over {days.length} days
+          {delta !== null && (
+            <>
+              {delta >= 0 ? "+" : "−"}
+              {money(Math.abs(delta))} over {days.length} days
+            </>
+          )}
+          {geom && !geom.flat && (
+            <>
+              {delta !== null && " · "}
+              high {money(geom.hi)} · low {money(geom.lo)}
+            </>
+          )}
         </span>
       )}
 
@@ -181,42 +214,22 @@ export function MarketHero({
           <svg viewBox={`0 0 ${W} ${BASE}`} preserveAspectRatio="none" aria-hidden="true">
             <defs>
               <linearGradient id="mkheroFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#fff" stopOpacity="0.28" />
-                <stop offset="45%" stopColor="#fff" stopOpacity="0.08" />
-                <stop offset="100%" stopColor="#fff" stopOpacity="0" />
+                {/* currentColor, set on the svg by .mkhero.up / .mkhero.down,
+                    so the wash is the same colour as the line above it. */}
+                <stop offset="0%" stopColor="currentColor" stopOpacity="0.42" />
+                <stop offset="45%" stopColor="currentColor" stopOpacity="0.13" />
+                <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
               </linearGradient>
             </defs>
             <path className="mkheroarea" d={geom.area} />
             <path className="mkheroline" d={geom.line} />
           </svg>
 
-          {/* Each rule is one labelled level, drawn from the card's left edge to
-              the point it belongs to. */}
-          <span className="mkherorule" style={{ top: `${geom.y(geom.hi)}px`, ...rule(geom.hiAt) }}>
-            <span className="mkherolvl">{money(geom.hi)}</span>
-          </span>
-          {!geom.flat && (
-            <span
-              className="mkherorule"
-              style={{ top: `${geom.y(geom.lo)}px`, ...rule(geom.loAt) }}
-            >
-              <span className="mkherolvl">{money(geom.lo)}</span>
-            </span>
-          )}
-
           {/* Markers are HTML, not <circle>. The viewBox is stretched to the
               card's width with preserveAspectRatio="none", which turns a circle
               into an ellipse — the reference's markers are round. */}
-          <span
-            className="mkheropt"
-            style={{ left: geom.px(geom.hiAt), top: `${geom.y(geom.hi)}px` }}
-          />
-          {!geom.flat && (
-            <span
-              className="mkheropt"
-              style={{ left: geom.px(geom.loAt), top: `${geom.y(geom.lo)}px` }}
-            />
-          )}
+          <Extreme geom={geom} at={geom.hiAt} v={geom.hi} />
+          {!geom.flat && <Extreme geom={geom} at={geom.loAt} v={geom.lo} />}
 
           {/* The reference's callout: the latest reading, named and dated, on
               the point that carries it. It is the same figure as the headline —
