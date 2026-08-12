@@ -417,8 +417,11 @@ export const getLiveNews = createServerFn({ method: "GET" })
     // newsQueries.ts can supply a fuller trading name. Everything that
     // identifies the company — the cache key, the KV key, the official-feed
     // lookup — stays on the roster name, so only the provider query changes.
-    const phrase = newsQueryFor(query);
-    const search = phrase === query.replace(/^"|"$/g, "").trim() ? query : `"${phrase}"`;
+    // newsQueryFor returns the FINISHED query, quotes and all — see
+    // newsQueries.ts. Do not re-quote it: BHP's entry is deliberately unquoted,
+    // and the cron reads the same function, so re-quoting here would have the
+    // app and the nightly store searching two different things for one company.
+    const search = newsQueryFor(query);
     const key = `${query}::${limit}`;
     const hit = cache.get(key);
     if (hit && Date.now() - hit.at < TTL) return { items: hit.items };
