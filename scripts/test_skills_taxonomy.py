@@ -359,6 +359,51 @@ class RealTaxonomy(unittest.TestCase):
                              ('Civil Engineering Professionals', 'Civil Engineering')):
             self.assertIn(skill, self.match(title), title)
 
+    def test_a_stylist_on_a_shop_floor_is_not_a_hairdresser(self):
+        """512 archive ads match a bare "stylist" and only 20 are hair.
+
+        The retail ones are seasonal and part-time fashion floor staff and were
+        placed nowhere at all; the hair ones already resolve through
+        "hairstylist"/"hair stylist" and must not gain Retail on top.
+        """
+        for title in ('Sydney | Festive Stylist | 2026', 'Stylist | Part Time | Tea Tree Plaza',
+                      'Regional QLD | Festive Stylist | 2026'):
+            self.assertIn('Retail & Customer Service', self.match(title), title)
+            self.assertNotIn('Personal Services & Beauty', self.match(title), title)
+        for title in ('Hair Stylist', 'Hairstylist', 'Director, Master Hair Stylist'):
+            self.assertIn('Personal Services & Beauty', self.match(title), title)
+            self.assertNotIn('Retail & Customer Service', self.match(title), title)
+
+    def test_the_other_vocabulary_for_a_health_job(self):
+        """Roles the taxonomy already had, under the name the ad actually uses."""
+        cases = {
+            'Physical Therapist Career Opportunity': 'Allied Health',   # 134 live ads
+            'Travel Physical Therapy Assistant': 'Allied Health',
+            'Physiotherapist': 'Allied Health',                          # unchanged
+            'Oral Health Therapist': 'Dental',                           # 7
+            'Travel ER RN': 'Nursing',
+            'Emergency Department RN': 'Nursing',
+            'Float Pool RN': 'Nursing',
+            'Registered Nurse': 'Nursing',                               # unchanged
+            'Barber': 'Personal Services & Beauty',
+            'Salon Manager': 'Personal Services & Beauty',
+        }
+        for title, skill in cases.items():
+            self.assertIn(skill, self.match(title), title)
+
+    def test_rn_cannot_fire_inside_a_word(self):
+        """A two-letter term is only safe because termMatches blocks a preceding
+        alphanumeric and the term carries a trailing space."""
+        for title in ('Return to Work Coordinator', 'Barn Hand', 'Turnaround Planner'):
+            self.assertNotIn('Nursing', self.match(title), title)
+
+    def test_hr_is_also_a_unit_of_time(self):
+        """"12-hr shift" is manufacturing, not a department."""
+        for title in ('Equipment Technician (12-hr Shift, Manufacturing)',
+                      'Engineering Assistant (Semiconductor, 12-hr shift)'):
+            self.assertNotIn('Human Resources', self.match(title), title)
+        self.assertIn('Human Resources', self.match('HR Business Partner'))
+
     def test_excepts_are_read_at_all(self):
         """A negative rule the reader silently ignores is worse than none: the
         app would apply it and the generated datasets would not."""

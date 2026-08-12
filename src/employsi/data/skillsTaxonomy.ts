@@ -571,6 +571,9 @@ const RAW_SKILLS: SkillDef[] = [
       "truck driver",
       "prime mover",
       "/hr",
+      // …and "hr" is a unit of TIME as well as a rate: "Equipment Technician
+      // (12-hr Shift, Manufacturing)". 6 ads, all manufacturing shift work.
+      "hr shift",
       "visy workforce",
       "talent pool",
       "talent community",
@@ -854,6 +857,16 @@ const RAW_SKILLS: SkillDef[] = [
     skill: "Nursing",
     cat: "Health",
     terms: [
+      // The US travel-nursing vocabulary, which abbreviates past every term
+      // below: "Travel ER RN", "Travel RN Acute Care Float Pool". Bare "rn"
+      // is far too short to be a term on its own.
+      // Measured before adding: 1,504 archive ads carry a standalone "rn" and
+      // every one sampled was a registered nurse — "Emergency Department RN",
+      // "Float Pool RN", "Scrub/Scout RN", "Interventional Radiology RN". The
+      // trailing space plus termMatches' lookbehind is what makes a two-letter
+      // term safe: it cannot fire inside "turn", "barn" or "Kern".
+      "rn ",
+      "travel nurse",
       "registered nurse",
       "enrolled nurse",
       "nurse ",
@@ -882,6 +895,12 @@ const RAW_SKILLS: SkillDef[] = [
     skill: "Allied Health",
     cat: "Health",
     terms: [
+      // "physical therapist" is the US and international name for the job
+      // "physiotherapist" already covers, and it was matching nothing: 134 live
+      // ads across 51 titles, led by "Physical Therapist Career Opportunity"
+      // (24) and the travel-contract variants. Same reason the US SOC block
+      // near the end of this file exists — one occupation, two vocabularies.
+      "physical therap",
       "physiotherap",
       "occupational therap",
       "podiatr",
@@ -901,7 +920,13 @@ const RAW_SKILLS: SkillDef[] = [
       "sonographer",
     ],
   },
-  { skill: "Dental", cat: "Health", terms: ["dental", "dentist", "orthodont"] },
+  // "oral health therapist" is a registered dental role in its own right and
+  // shares no word with "dental" or "dentist" — 7 live ads, none placed.
+  {
+    skill: "Dental",
+    cat: "Health",
+    terms: ["dental", "dentist", "orthodont", "oral health therap"],
+  },
   { skill: "Pharmacy", cat: "Health", terms: ["pharmacist", "pharmacy"] },
   {
     skill: "Medical Imaging & Pathology",
@@ -1241,7 +1266,18 @@ const RAW_SKILLS: SkillDef[] = [
   {
     skill: "Retail & Customer Service",
     cat: "Sales",
+    // "stylist" on a shop floor is retail, not hairdressing. 512 ads in the
+    // archive match it and only 20 are hair — the rest are seasonal and
+    // part-time fashion floor staff: "Festive Stylist" by state and city
+    // (51 in Sydney alone), "Stylist | Part Time | Tea Tree Plaza". None of
+    // them were placed anywhere before.
+    //
+    // The except below is what keeps the two apart. termMatches already blocks
+    // "hairstylist" on its own — the lookbehind sees the "r" — but "Hair
+    // Stylist" as two words would otherwise pick this skill up alongside
+    // Personal Services & Beauty, and a stylist in a salon is not shop floor.
     terms: [
+      "stylist",
       "sales assistant",
       "checkout",
       "service station",
@@ -1262,6 +1298,12 @@ const RAW_SKILLS: SkillDef[] = [
       "nightfill",
       "shop assistant",
     ],
+    // Must sit AFTER `terms`: skills_taxonomy.py's entry regex reads the keys
+    // in skill/cat/terms/except order, and an except placed before the terms
+    // made the whole def invisible to it — caught by its declared-vs-parsed
+    // count, which refused to return a short list rather than quietly dropping
+    // this skill from every generated dataset.
+    except: ["hair stylist", "hairstylist"],
   },
 
   // ── Creative, media & design ───────────────────────────────────────────
@@ -1389,6 +1431,11 @@ const RAW_SKILLS: SkillDef[] = [
       // several were sitting in Retail & Customer Service, which is what a
       // beautician working in a salon is not.
       "beautician",
+      "barber",
+      "salon manager",
+      "brow specialist",
+      "brow technician",
+      "lash technician",
       "spa therapist",
       "hairstylist",
       "hair stylist",
