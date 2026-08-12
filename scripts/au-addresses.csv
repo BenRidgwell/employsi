@@ -645,3 +645,39 @@ adelaide,Listed company,melbourne-anz,ANZ Group Holdings,Financial Services,"Lev
 adelaide,Listed company,melbourne-tls,Telstra Group,"Technology, Media & Telecom","60 King William Street, Adelaide SA 5000",user_provided
 adelaide,Listed company,sydney-org,Origin Energy,Energy & Natural Resources,"Level 19, Festival Tower, Station Road, Adelaide SA 5000",user_provided
 adelaide,Listed company,sydney-agl,AGL Energy,Energy & Natural Resources,"100 King William Street, Adelaide SA 5000",user_provided
+sydney,University,uni-university-of-sydney,University of Sydney,Higher education,"City Road, Darlington NSW 2008",high
+sydney,University,uni-university-of-new-south-wales,University of New South Wales,Higher education,"High Street, Kensington NSW 2052",high
+sydney,University,uni-university-of-technology-sydney,University of Technology Sydney,Higher education,"15 Broadway, Ultimo NSW 2007",high
+sydney,University,uni-macquarie-university,Macquarie University,Higher education,"Balaclava Road, Macquarie Park NSW 2109",high
+sydney,University,uni-western-sydney-university,Western Sydney University,Higher education,"169 Macquarie Street, Parramatta NSW 2150",high
+sydney,University,uni-university-of-wollongong,University of Wollongong,Higher education,"Northfields Avenue, Wollongong NSW 2522",high
+sydney,University,uni-university-of-newcastle,University of Newcastle,Higher education,"University Drive, Callaghan NSW 2308",high
+sydney,University,uni-university-of-new-england,University of New England,Higher education,"Elm Avenue, Armidale NSW 2351",high
+sydney,University,uni-charles-sturt-university,Charles Sturt University,Higher education,"Panorama Avenue, Bathurst NSW 2795",high
+sydney,University,uni-southern-cross-university,Southern Cross University,Higher education,"Military Road, East Lismore NSW 2480",high
+sydney,University,uni-australian-catholic-university,Australian Catholic University,Higher education,"40 Edward Street, North Sydney NSW 2060",high
+sydney,University,uni-nan-tien-institute,Nan Tien Institute,Higher education,"231 Nolan Street, Berkeley NSW 2506",high
+melbourne,University,uni-university-of-melbourne,University of Melbourne,Higher education,"Grattan Street, Parkville VIC 3010",high
+melbourne,University,uni-monash-university,Monash University,Higher education,"Wellington Road, Clayton VIC 3800",high
+melbourne,University,uni-rmit-university,RMIT University,Higher education,"124 La Trobe Street, Melbourne VIC 3000",high
+melbourne,University,uni-deakin-university,Deakin University,Higher education,"221 Burwood Highway, Burwood VIC 3125",high
+melbourne,University,uni-la-trobe-university,La Trobe University,Higher education,"Kingsbury Drive, Bundoora VIC 3086",high
+melbourne,University,uni-swinburne-university-of-technology,Swinburne University of Technology,Higher education,"John Street, Hawthorn VIC 3122",high
+melbourne,University,uni-victoria-university,Victoria University,Higher education,"Ballarat Road, Footscray VIC 3011",high
+melbourne,University,uni-federation-university-australia,Federation University Australia,Higher education,"University Drive, Mount Helen VIC 3350",high
+brisbane,University,uni-university-of-queensland,University of Queensland,Higher education,"Sir Fred Schonell Drive, St Lucia QLD 4067",high
+brisbane,University,uni-queensland-university-of-technology,Queensland University of Technology,Higher education,"2 George Street, Brisbane QLD 4000",high
+brisbane,University,uni-griffith-university,Griffith University,Higher education,"170 Kessels Road, Nathan QLD 4111",high
+brisbane,University,uni-james-cook-university,James Cook University,Higher education,"1 James Cook Drive, Douglas QLD 4814",high
+brisbane,University,uni-cquniversity,CQUniversity,Higher education,"554-700 Yaamba Road, Norman Gardens QLD 4701",high
+brisbane,University,uni-university-of-southern-queensland,University of Southern Queensland,Higher education,"487-535 West Street, Darling Heights QLD 4350",high
+brisbane,University,uni-university-of-the-sunshine-coast,University of the Sunshine Coast,Higher education,"90 Sippy Downs Drive, Sippy Downs QLD 4556",high
+brisbane,University,uni-bond-university,Bond University,Higher education,"14 University Drive, Robina QLD 4226",high
+adelaide,University,uni-university-of-adelaide,University of Adelaide,Higher education,"North Terrace, Adelaide SA 5005",high
+adelaide,University,uni-university-of-south-australia,University of South Australia,Higher education,"101 Currie Street, Adelaide SA 5000",high
+adelaide,University,uni-flinders-university,Flinders University,Higher education,"Sturt Road, Bedford Park SA 5042",high
+adelaide,University,uni-torrens-university-australia,Torrens University Australia,Higher education,"88 Wakefield Street, Adelaide SA 5000",high
+canberra,University,uni-australian-national-university,Australian National University,Higher education,"Fellows Road, Acton ACT 2601",high
+canberra,University,uni-university-of-canberra,University of Canberra,Higher education,"11 Kirinari Street, Bruce ACT 2617",high
+hobart,University,uni-university-of-tasmania,University of Tasmania,Higher education,"Churchill Avenue, Sandy Bay TAS 7005",high
+darwin,University,uni-charles-darwin-university,Charles Darwin University,Higher education,"Ellengowan Drive, Casuarina NT 0810",high
