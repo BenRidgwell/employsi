@@ -76,7 +76,7 @@ Workers on the account, verified 2026-08-12:
 | --- | --- |
 | `benridgwell-globe-gazer-hr` | **PRODUCTION.** Carries `employsi.com.au` |
 | `employsi-preview` | Preview of the same app — deploy here to be looked at |
-| `benridgwell-globe-gazer-hr-mobile` | Mobile build |
+| `benridgwell-globe-gazer-hr-mobile` | Mobile preview — `/app` there wraps the app in a phone mockup |
 | `benridgwell-globe-gazer-hr-mapbox-trial` | Trial, last touched 2026-07-15 |
 | `employsi-jobs-cron` | The scraper. Separate config, separate deploy |
 | `employsi` | Another deployment of this same app, last built 2026-08-06. Purpose unrecorded — do not deploy over it without asking |
@@ -103,6 +103,33 @@ the app itself is `lazy(() => import("@/employsi/App"))`, so it loads after
 hydration and never shows up in the SSR HTML. Read the `<title>` instead —
 "Employsi map — the live labour-market globe" is the app, "Employsi — Exploring
 the world of work" is the waitlist.
+
+### Previewing the MOBILE layout
+
+`npx wrangler deploy --name benridgwell-globe-gazer-hr-mobile`, then open
+**`https://benridgwell-globe-gazer-hr-mobile.employsi.workers.dev/app`**. On a
+hostname matching `-mobile`, `/app` renders `MobileFramePreview` instead of the
+app: an iframe pinned to 375/390/430 CSS px, which is the only reliable way to
+get the `≤680px` media queries to evaluate from a desktop browser (devtools
+zoom and scrollbars skew the effective width).
+
+The path is the whole trick and it is easy to get wrong twice over. The mobile
+Worker's `/` is the waitlist like everywhere else, so the frame is at `/app`;
+and the frame's OWN iframe must load `/app?app=1` — `?app=1` suppresses the
+hostname check so the framed page renders the raw app instead of nesting
+another frame. That inner src said `/?app=1` until 2026-08-12, left over from
+when the index route was the app: nothing on the index route reads the flag, so
+the mockup rendered the marketing page at phone width and looked entirely
+plausible. If the phone shows a waitlist, this is why.
+
+`/mobile-frame` is the same component on a plain route, so it works on any host
+— use it to get a phone view off `employsi-preview` or a `versions upload` URL
+without deploying the mobile Worker at all.
+
+**Neither the build nor the deploy is possible without both tokens** (see
+below): no `VITE_MAPBOX_TOKEN` and the map throws on mount, so every phone
+screenshot is the "This page didn't load" boundary rather than the layout —
+confirmed against a local dev server, not inferred.
 
 The apex serves the waitlist ONLY: `employsi.com.au/app` 302s away (see
 `APP_ONLY_PATHS` in `src/server.ts`). So a production deploy of app work is

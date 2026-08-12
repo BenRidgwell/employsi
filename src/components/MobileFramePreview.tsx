@@ -6,9 +6,18 @@ import { useState } from "react";
 // iframe gets its own independent viewport, so @media queries inside it
 // evaluate against exactly the iframe's box.
 //
-// The iframe loads "/?app=1": the app-forcing flag the index route reads to
-// render the raw app rather than this frame, which prevents the frame from
-// recursively embedding itself when it's served as the mobile Worker's root.
+// The iframe loads "/app?app=1".
+//
+// THE PATH MATTERS. "/" is the waitlist on every host — the app lives at
+// "/app" (src/routes/app.tsx). This frame pointed at "/?app=1" until
+// 2026-08-12, from back when the index route WAS the app; after the split,
+// nothing on the index route reads "?app=1", so the phone mockup faithfully
+// rendered the marketing page at 390px and looked like a working preview of
+// the wrong thing.
+//
+// "?app=1" is still needed, and only for the inner load: app.tsx renders this
+// frame when the hostname matches "-mobile", so without the flag the framed
+// /app would embed the frame again, recursively.
 
 export const PHONE_PRESETS = [
   { label: "iPhone SE", width: 375, height: 667 },
@@ -89,7 +98,7 @@ export function MobileFramePreview() {
       >
         <iframe
           key={reloadKey}
-          src="/?app=1"
+          src="/app?app=1"
           title="Mobile preview"
           style={{
             width: preset.width,
