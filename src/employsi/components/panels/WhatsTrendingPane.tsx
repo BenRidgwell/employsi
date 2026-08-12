@@ -13,6 +13,7 @@ import { getMarketSkillMovers, type MarketSkillMover } from "../../lib/jobHistor
 import { MARKET_WINDOWS, DEFAULT_MARKET_WINDOW } from "../../lib/jobHistoryFn";
 import { useSkillMarket } from "../../hooks/useRoleHistory";
 import type { SkillMarket } from "../../lib/jobHistoryFn";
+import { SkillMarketRows } from "./SkillMarketRows";
 import {
   WORLD_SCOPE,
   scopeForCity,
@@ -304,7 +305,16 @@ export function WhatsTrendingPane() {
     setPicked(null);
   }, [localCity, domesticRegion]);
 
+  // A skill priced in one market is not the same row in another, and its focus
+  // should not survive the move.
+  useEffect(() => {
+    setPickedSkill(null);
+  }, [scope.label]);
+
   const [windowDays, setWindowDays] = useState<number>(DEFAULT_MARKET_WINDOW);
+  /** The skill the dashboard is focused on. Held here rather than in the rows,
+   *  because step 5's hero chart reads the same selection. */
+  const [pickedSkill, setPickedSkill] = useState<string | null>(null);
   const { market, loading: marketLoading } = useSkillMarket(
     scope.hubs,
     scope.label,
@@ -464,6 +474,11 @@ export function WhatsTrendingPane() {
         <MarketCoverage market={market} requested={windowDays} loading={marketLoading} />
 
         <div className="briefscroll">
+          <SkillMarketRows
+            market={market}
+            selected={pickedSkill}
+            onPick={(sk) => setPickedSkill((cur) => (cur === sk ? null : sk))}
+          />
           <div className="trendsnap">
             <div className="trendsnaphd">
               <span className="trendsnaptitle">Most viewed</span>

@@ -14630,3 +14630,224 @@ body {
 .mktcovnotes .dim {
   color: var(--text-disabled);
 }
+
+/* ── What's Trending · skill rows ────────────────────────────────────────────
+   One row per skill: what it is, how demand is moving, what it pays.
+
+   The demand line and its percentage sit TOGETHER in the middle column, and the
+   salary sits alone on the right. That separation is the whole point. A stock
+   row puts the percentage beside the price because a share price moves; median
+   advertised salary does not — measured over ten days it shifted 0.0% for
+   Teaching and 0.8% for Leadership. Putting the two together would attach the
+   movement to the wrong number. */
+.smk {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 20px 4px;
+}
+/* One scrolling line, not a wrapped block. There are 27 categories, and
+   wrapping them pushed five rows of chips above the first number — the filter
+   is secondary to the data it filters. */
+.smkcats {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+  /* Fades the cut-off edge so the row reads as scrollable rather than clipped. */
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+}
+.smkcats::-webkit-scrollbar {
+  display: none;
+}
+.smkcat {
+  flex: 0 0 auto;
+}
+.smkcat {
+  padding: 3px 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.smkcat:hover {
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+}
+.smkcat.on {
+  border-color: var(--action-primary);
+  background: var(--action-primary);
+  color: var(--text-inverse);
+}
+.smkrows {
+  display: flex;
+  flex-direction: column;
+}
+.smkrow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 8px;
+  margin: 0 -8px;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.smkrow:last-child {
+  border-bottom: 0;
+}
+.smkrow:hover {
+  background: var(--surface-hover);
+}
+.smkrow.on {
+  background: var(--surface-active);
+}
+.smkrow:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: -2px;
+}
+.smkmain {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.smkname {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.smksub {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.smkdemand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.smkspark {
+  display: block;
+  width: 96px;
+  height: 26px;
+  overflow: visible;
+}
+.smksparkline {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.smksparkarea {
+  fill: currentColor;
+  opacity: 0.1;
+  stroke: none;
+}
+.smkspark.up {
+  color: var(--status-success-dot);
+}
+.smkspark.down {
+  color: var(--status-danger-dot);
+}
+.smkspark.flat {
+  color: var(--neutral-400);
+}
+/* Holds the column when there is no line to draw, so the pay figures stay in
+   one vertical line down the list. */
+.smksparknone {
+  display: block;
+  width: 96px;
+  height: 26px;
+}
+.smkpct {
+  min-width: 46px;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.smkpct.up {
+  color: var(--status-success-fg);
+}
+.smkpct.down {
+  color: var(--status-danger-fg);
+}
+.smkpct.flat,
+.smkpct.none {
+  color: var(--text-disabled);
+}
+.smkpay {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+  min-width: 74px;
+}
+.smkpayv {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.smkpayv.none {
+  color: var(--text-disabled);
+  font-weight: 500;
+}
+.smkpayl {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.smkfoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 4px;
+}
+.smkmore {
+  padding: 4px 10px;
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+.smkmore:hover {
+  border-style: solid;
+  color: var(--text-primary);
+}
+.smkfootnote {
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+}
