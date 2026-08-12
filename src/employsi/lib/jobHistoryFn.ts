@@ -333,12 +333,18 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
       // New listings per day, used below to find the day collection actually
       // began rather than the day the first stray row landed.
       const newPerDay: Record<string, number> = {};
-      // skill -> every annual AUD figure advertised for it RIGHT NOW. See
-      // salaryParse for why only Australian rows count and why nothing is
-      // converted. `payFrom` is the same boundary the app uses for "currently
-      // advertised", so the median describes the ads a reader could go and
-      // apply to today — not the 60-day scan window the deltas need.
+      // skill -> the annual AUD figures advertised for it RIGHT NOW, kept BOTH
+      // pooled and split by market. `payFrom` is the same boundary the app uses
+      // for "currently advertised", so the median describes ads a reader could
+      // go and apply to today — not the 60-day scan window the deltas need.
+      //
+      // Split by market because this ticker is worldwide and a pooled median
+      // over every market answers the wrong question — see priceOf. Measured on
+      // production 2026-08-12, pooled put Banking & Lending at $8k, because 151
+      // of its 296 priced ads were Philippine at about A$7k a year. The figure
+      // was arithmetically correct and completely misleading.
       const payAds: Record<string, number[]> = {};
+      const payByMarket: Record<string, Map<string, number[]>> = {};
       const payFrom = day(1);
       for (const r of rows) {
         // parseStoredSkills, not a bare JSON.parse: archived rows keep the
@@ -359,7 +365,20 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
             hub: r.hub as string | null,
             source: r.source as string | null,
           });
-          if (aud !== null) for (const s of skills) (payAds[s] ||= []).push(aud);
+          if (aud !== null) {
+            const hub = String(r.hub || "").toLowerCase();
+            // Hubless ads can be valued but not placed, so they price the
+            // pooled bag and cannot cast a market vote.
+            const country = CITY_COUNTRY[hub] ?? (hub === "australia" ? "au" : "");
+            for (const s of skills) {
+              (payAds[s] ||= []).push(aud);
+              if (!country) continue;
+              const m = (payByMarket[s] ||= new Map());
+              const bag = m.get(country);
+              if (bag) bag.push(aud);
+              else m.set(country, [aud]);
+            }
+          }
         }
         for (const b of bounds) {
           if (ls >= b.recentStart) for (const s of skills) b.now[s] = (b.now[s] || 0) + 1;
@@ -469,13 +488,17 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
           tag: "Demand",
           v: p.v,
           spark: sparkFor(p.name),
-          // Undefined when too few Australian ads state a salary — the row then
-          // renders without a figure rather than with a thin one. It is the
-          // same figure in every window on purpose: the median is a LEVEL
-          // ("what these roles pay now") while the percentage is a MOVEMENT
-          // over the selected window, so rescaling it per window would be
-          // asserting a trend nothing measured.
-          pay: medianAnnual(payAds[p.name] || []) ?? undefined,
+          // Undefined when too few ads state a salary — the row then renders
+          // without a figure rather than with a thin one. It is the same figure
+          // in every window on purpose: the median is a LEVEL ("what these
+          // roles pay now") while the percentage is a MOVEMENT over the
+          // selected window, so rescaling it per window would be asserting a
+          // trend nothing measured.
+          //
+          // Equal-weighted across markets, not pooled across ads: one vote per
+          // market that clears the floor on its own. See priceOf.
+          pay:
+            priceOf(payByMarket[p.name] ?? new Map(), payAds[p.name] ?? [], true).pay ?? undefined,
         }));
       }
       return out;
