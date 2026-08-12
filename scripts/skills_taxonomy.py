@@ -53,6 +53,20 @@ class TaxonomyError(RuntimeError):
     pass
 
 
+def _norm(s: str) -> str:
+    """The .ts `norm`, character for character.
+
+    This used to be a bare `.lower()`, and the difference was silent and
+    one-directional: the app rewrote "&" to " and " before matching and this did
+    not, so every term containing " and " — "food and beverage", "cafe and
+    restaurant", "building and surveying", "training and development" — matched
+    an ad the app placed and missed the same ad here. The generated
+    whole-of-market datasets and the live archive therefore disagreed about the
+    same title, which is the exact failure this module exists to prevent.
+    """
+    return re.sub(r'\s+', ' ', (s or '').lower().replace('&', ' and '))
+
+
 def _unescape(s: str) -> str:
     return re.sub(r'\\(.)', r'\1', s)
 
@@ -224,14 +238,26 @@ def matcher(path: str):
     skills = load_skills(path)
     excepts = load_excepts(path)
     memo: dict[str, list[str]] = {}
+    term_re: dict[str, re.Pattern] = {}
+
+    def matches(hay: str, term: str) -> bool:
+        r = term_re.get(term)
+        if r is None:
+            # Mirrors termMatches in the .ts exactly: a term that STARTS with an
+            # alphanumeric may not begin mid-word, so "cook" does not fire on
+            # "recook"; a term starting with punctuation ("/hr") has no such
+            # guard, because there is no word to be inside.
+            r = term_re[term] = re.compile(
+                (r'(?<![a-z0-9])' if term[:1].isalnum() else '') + re.escape(term))
+        return r.search(hay) is not None
 
     def match(label: str) -> list[str]:
         if label not in memo:
-            hay = ' ' + (label or '').lower() + ' '
+            hay = ' ' + _norm(label) + ' '
             memo[label] = [
                 n for (n, ts) in skills
                 if not any(x in hay for x in excepts.get(n, ()))
-                and any(t in hay for t in ts)
+                and any(matches(hay, t) for t in ts)
             ]
         return memo[label]
 

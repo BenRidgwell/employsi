@@ -108,7 +108,25 @@ const RAW_SKILLS: SkillDef[] = [
   {
     skill: "Hydrogen & Renewables",
     cat: "Energy",
-    terms: ["hydrogen", "renewable", "solar", "wind farm", "electrolyser"],
+    // "renewable" on its own is not an energy word — it is what a CONTRACT is.
+    // Measured on the live archive: 42 rows carried this skill because their
+    // term was renewable, not their power ("1 Year Renewable Contract Lab
+    // Technician", "AI Software Engineer (1-year renewable)", "Administrative
+    // Assistant (1 year contract renewable)"). Narrowed rather than excepted,
+    // because an except on "renewable contract" would also disown a genuine
+    // Renewable Contracts Manager. "renewables" has no trailing boundary in
+    // termMatches, so it still catches "Renewables & Infrastructure".
+    // Known cost: "Student Renewable Engineer" (2 rows) is no longer matched.
+    terms: [
+      "hydrogen",
+      "renewables",
+      "renewable energy",
+      "renewable power",
+      "renewable generation",
+      "solar",
+      "wind farm",
+      "electrolyser",
+    ],
   },
   {
     skill: "Decarbonisation",
@@ -134,7 +152,14 @@ const RAW_SKILLS: SkillDef[] = [
   {
     skill: "Civil Engineering",
     cat: "Engineering",
-    terms: ["civil engineer", "civil engineering", "structural engineer"],
+    // "site engineer" is deliberately declared HERE AND on Construction
+    // Management, not split between them. 149 rows in the archive and the
+    // discipline is in the suffix, not the head: "Site Engineer - Civil",
+    // "- Mechanical", "- Stations", "- Earthworks". One occupation carrying
+    // every skill it genuinely covers is the existing convention (see the
+    // ANZSCO 2621 note on Data Engineering); picking one owner would have made
+    // the other read as zero demand for work that is plainly being advertised.
+    terms: ["civil engineer", "civil engineering", "structural engineer", "site engineer"],
   },
   {
     skill: "Instrumentation & Control",
@@ -686,6 +711,14 @@ const RAW_SKILLS: SkillDef[] = [
     terms: [
       "clerk",
       "administrator",
+      // The abbreviated forms, which the archive uses far more than the long
+      // ones: 281 rows, led by "Administration Manager" (34+9) and "Admin
+      // Assistant" (17). "administrator" does not reach them — the noun is
+      // "admin" and the head word is the seniority.
+      "admin assistant",
+      "admin executive",
+      "admin officer",
+      "administration manager",
       "administration officer",
       "administrative officer",
       "administration assistant",
@@ -729,7 +762,18 @@ const RAW_SKILLS: SkillDef[] = [
   {
     skill: "Bookkeeping & Payroll",
     cat: "Admin",
-    terms: ["bookkeeper", "payroll", "accounting clerk", "accounts clerk"],
+    // "accounts assistant" is the advertised form of "accounting clerk" — 69
+    // rows, none of them previously placed. "accounts executive" was
+    // deliberately NOT added: it means an accounting role in Singapore and a
+    // sales one elsewhere, and nothing in the title separates them.
+    terms: [
+      "bookkeeper",
+      "payroll",
+      "accounting clerk",
+      "accounts clerk",
+      "accounts assistant",
+      "account assistant",
+    ],
   },
   {
     skill: "Library & Information",
@@ -966,6 +1010,12 @@ const RAW_SKILLS: SkillDef[] = [
     skill: "Education Support",
     cat: "Education",
     terms: [
+      // "teacher aide" is the ANZSCO word; "education assistant" is what the
+      // job is actually advertised as in WA and SA, and it was matching
+      // nothing — 106 rows, led by "Education Assistant - Special Needs"
+      // (37+22) and "Aboriginal and Islander Education Officer".
+      "education assistant",
+      "education officer",
       "integration aide",
       "inclusion support",
       "education support",
@@ -982,6 +1032,21 @@ const RAW_SKILLS: SkillDef[] = [
     skill: "Hospitality & Food Service",
     cat: "Hospitality",
     terms: [
+      // The largest single gap in the archive: 721 rows, led by "Assistant
+      // Restaurant Manager" (57), "Restaurant Manager" (36) and "Catering
+      // Assistant" (24). The list had the kitchen roles (chef, cook,
+      // kitchenhand) and none of the front-of-house or management ones.
+      //
+      // "f and b", NOT "f&b" — norm() rewrites & to " and " before matching,
+      // so a literal ampersand in a term can never fire.
+      "restaurant manager",
+      "restaurant captain",
+      "catering manager",
+      "catering assistant",
+      "kitchen assistant",
+      "kitchen crew",
+      "f and b",
+      "food and beverage",
       "chef",
       "cook",
       "waiter",
@@ -1009,6 +1074,9 @@ const RAW_SKILLS: SkillDef[] = [
     skill: "Construction Management",
     cat: "Construction",
     terms: [
+      // Sits beside the existing site manager / superintendent / foreman family,
+      // and is ALSO declared on Civil Engineering — see the note there.
+      "site engineer",
       "construction manager",
       "site manager",
       "superintendent",
@@ -1062,7 +1130,25 @@ const RAW_SKILLS: SkillDef[] = [
   {
     skill: "Architecture & Planning",
     cat: "Built Environment",
-    terms: ["architect", "landscape architect", "urban and regional plann", "architectural"],
+    // Drafting sits here rather than under Design, whose terms are all the
+    // CREATIVE kind (graphic, web, interior, fashion, illustrator). A CAD
+    // drafter or BIM modeller is technical drawing, which is where both ANZSCO
+    // ("Architectural, Building and Surveying Technicians", "Civil Engineering
+    // Draftspersons and Technicians") and the archive put it: 108 rows, led by
+    // "Senior CAD Drafter I Energy", "Electrical Design Drafter", "Civil
+    // Drafter, Roads" and "BIM Modeller", none of which the taxonomy placed at
+    // all before.
+    terms: [
+      "architect",
+      "landscape architect",
+      "urban and regional plann",
+      "architectural",
+      "drafter",
+      "draftsman",
+      "draughtsman",
+      "bim modeller",
+      "bim technician",
+    ],
   },
 
   // ── Automotive & other trades ──────────────────────────────────────────
@@ -1297,6 +1383,22 @@ const RAW_SKILLS: SkillDef[] = [
     skill: "Personal Services & Beauty",
     cat: "Personal",
     terms: [
+      // The trade names its own roles, and "hairdress"/"beauty therap" caught
+      // neither of the two commonest: 216 rows led by SPA THERAPIST (22),
+      // BEAUTICIAN (19+18) and Hairstylist. All were previously unmapped —
+      // several were sitting in Retail & Customer Service, which is what a
+      // beautician working in a salon is not.
+      "beautician",
+      "spa therapist",
+      "hairstylist",
+      "hair stylist",
+      "hair salon",
+      "reflexolog",
+      "nail technician",
+      "beauty consultant",
+      "beauty advisor",
+      "aesthetician",
+      "scalp therapist",
       "hairdress",
       "beauty therap",
       "funeral",

@@ -289,6 +289,76 @@ class RealTaxonomy(unittest.TestCase):
             self.assertIn('Driving & Transport', self.match(title), title)
             self.assertNotIn('Human Resources', self.match(title), title)
 
+    def test_the_trade_names_its_own_roles(self):
+        """Terms added from the archive's own vocabulary, not the classification's.
+
+        Each of these was matching NOTHING before, while carrying a wrong tag
+        frozen from an earlier taxonomy. Row counts are 90-day measurements on
+        the live archive at the time they were added.
+        """
+        cases = {
+            'SPA THERAPIST': 'Personal Services & Beauty',            # 22
+            'BEAUTICIAN': 'Personal Services & Beauty',               # 19+18
+            'Hairstylist': 'Personal Services & Beauty',              # 7+6
+            'FOOT REFLEXOLOGIST': 'Personal Services & Beauty',       # 9
+            'Education Assistant - Special Needs': 'Education Support',   # 37+22
+            'Aboriginal and Islander Education Officer': 'Education Support',  # 7+3
+            'Assistant Restaurant Manager': 'Hospitality & Food Service',     # 57
+            'Restaurant Manager': 'Hospitality & Food Service',        # 36
+            'CATERING MANAGER': 'Hospitality & Food Service',          # 16
+            'Kitchen Assistant': 'Hospitality & Food Service',         # 7
+            'F&B MANAGER': 'Hospitality & Food Service',               # ampersand -> " and "
+            'Food and Beverage Attendant': 'Hospitality & Food Service',
+            'Administration Manager': 'Administration & Office Support',   # 34+9
+            'Admin Assistant': 'Administration & Office Support',      # 17
+            'Admin Executive': 'Administration & Office Support',      # 7
+            'Accounts Assistant': 'Bookkeeping & Payroll',             # 17
+            'Senior CAD Drafter I Energy': 'Architecture & Planning',
+            'BIM Modeller': 'Architecture & Planning',
+        }
+        for title, skill in cases.items():
+            self.assertIn(skill, self.match(title), title)
+
+    def test_fb_is_matched_through_the_normaliser(self):
+        """norm() rewrites & to " and " BEFORE matching, so a term written with a
+        literal ampersand can never fire. The term is "f and b"."""
+        self.assertIn('Hospitality & Food Service', self.match('F&B Duty Manager'))
+        self.assertIn('Hospitality & Food Service', self.match('Assistant Manager, F&B Operation'))
+
+    def test_site_engineer_reaches_both_of_its_skills(self):
+        """The discipline is in the suffix, not the head, so one owner would have
+        read as zero demand for the other."""
+        for title in ('Site Engineer', 'Site Engineer - Civil', 'SITE ENGINEER (CONSTRUCTION)'):
+            got = self.match(title)
+            self.assertIn('Civil Engineering', got, title)
+            self.assertIn('Construction Management', got, title)
+
+    def test_a_renewable_contract_is_not_renewable_energy(self):
+        """"renewable" describes the CONTRACT far more often than the power.
+        Measured: 42 rows carried Hydrogen & Renewables for that reason."""
+        for title in ('1 Year Renewable Contract Lab Technician',
+                      'AI Software Engineer (1-year renewable)',
+                      'Administrative Assistant (1 year contract renewable)',
+                      '3 Months Renewable Locum Pharmacy Technician'):
+            self.assertNotIn('Hydrogen & Renewables', self.match(title), title)
+        for title in ('Design Engineer (Renewable Energy)', 'Business Development Officer (Renewable Power)',
+                      'Head of Renewables & Infrastructure', 'Hydrogen Project Manager'):
+            self.assertIn('Hydrogen & Renewables', self.match(title), title)
+
+    def test_new_terms_do_not_disturb_the_agency_occupations(self):
+        """Same guard as the HR except: these terms were written against AD
+        titles and must not move a whole-of-market number."""
+        for title, skill in (('Cafe and Restaurant Managers', 'Hospitality & Food Service'),
+                             ('Chefs', 'Hospitality & Food Service'),
+                             ('Hairdressers', 'Personal Services & Beauty'),
+                             ('Beauty Therapists', 'Personal Services & Beauty'),
+                             ('Education Aides', 'Teaching & Education'),
+                             ('General Clerks', 'Administration & Office Support'),
+                             ('Bookkeepers', 'Bookkeeping & Payroll'),
+                             ('Construction Managers', 'Construction Management'),
+                             ('Civil Engineering Professionals', 'Civil Engineering')):
+            self.assertIn(skill, self.match(title), title)
+
     def test_excepts_are_read_at_all(self):
         """A negative rule the reader silently ignores is worse than none: the
         app would apply it and the generated datasets would not."""
