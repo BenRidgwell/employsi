@@ -119,6 +119,33 @@ says "Sign-in is not configured on this deployment" rather than offering a
 button that 500s. That message is the expected state of a half-set-up provider,
 not a bug to chase.
 
+**A SECRET IS NOT LIVE UNTIL ITS VERSION IS DEPLOYED**, and on this Worker
+`wrangler secret put` does NOT deploy it. It uploads a new version and leaves
+traffic where it was, so the secret store and the running code disagree:
+
+```bash
+npx wrangler secret list     --name employsi-preview   # shows the secret
+npx wrangler versions list   --name employsi-preview   # "Add secret: X" — a version_upload
+npx wrangler deployments list --name employsi-preview  # still the OLDER version at 100%
+```
+
+Measured 2026-08-12: both client secrets were set, `secret list` showed them,
+and the app still answered "Sign-in is not configured on this deployment"
+because 100% of traffic was on a version uploaded an hour earlier. Promote the
+newest version and it works immediately:
+
+```bash
+npx wrangler versions deploy <newest-version-id>@100% --name employsi-preview --yes
+```
+
+This is worth knowing because the symptom is indistinguishable from a secret
+that failed to save, and the natural next move — setting it again — produces
+another undeployed version and the same result. Check `deployments list`, not
+`secret list`. A secret-only version carries the code of whatever was live when
+it was created, so promoting one does not change the build; confirm that anyway
+by comparing the served asset hash, since a surprise code change here would be
+silent.
+
 Deploys, when actually asked for:
 
 ```bash
