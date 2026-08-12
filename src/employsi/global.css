@@ -15018,6 +15018,80 @@ body {
   flex-direction: column;
 }
 .mvrrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 8px;
+  margin: 0 -8px;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.mvrrow:last-child {
+  border-bottom: 0;
+}
+.mvrrow:hover {
+  background: var(--surface-hover);
+}
+.mvrrow:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: -2px;
+}
+.mvrmain {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.mvrname {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mvrsub {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Same tinted chip the hiring bars use, so a change reads identically wherever
+   it appears in the product. */
+.mvrdelta {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.mvrdelta svg {
+  width: 11px;
+  height: 11px;
+}
+.mvrdelta.up {
+  color: var(--status-success-fg);
+  background: var(--status-success-bg);
+}
+.mvrdelta.down {
+  color: var(--status-danger-fg);
+  background: var(--status-danger-bg);
+}
+
 /* ===========================================================================
    Guided help — the local/city walkthroughs.
    From `Employsi Guided Help — Local Tour.dc.html`.
@@ -15195,74 +15269,6 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  width: 100%;
-  padding: 8px;
-  margin: 0 -8px;
-  border: 0;
-  border-bottom: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  background: none;
-  text-align: left;
-  cursor: pointer;
-}
-.mvrrow:last-child {
-  border-bottom: 0;
-}
-.mvrrow:hover {
-  background: var(--surface-hover);
-}
-.mvrrow:focus-visible {
-  outline: 2px solid var(--border-focus);
-  outline-offset: -2px;
-}
-.mvrmain {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-}
-.mvrname {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.mvrsub {
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-/* Same tinted chip the hiring bars use, so a change reads identically wherever
-   it appears in the product. */
-.mvrdelta {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 3px 8px;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-.mvrdelta svg {
-  width: 11px;
-  height: 11px;
-}
-.mvrdelta.up {
-  color: var(--status-success-fg);
-  background: var(--status-success-bg);
-}
-.mvrdelta.down {
-  color: var(--status-danger-fg);
-  background: var(--status-danger-bg);
   padding-bottom: 8px;
 }
 .gtprogress {
