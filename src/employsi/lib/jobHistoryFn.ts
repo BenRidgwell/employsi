@@ -4,6 +4,7 @@ import { marketVisible, isReleasedRow } from "./markets";
 import type { D1Like, SqlValue } from "./jobArchive";
 import { COMPANY_ID_ALIAS, type RolePoint } from "./openRolesFn";
 import { SKILL_CATEGORY, parseStoredSkills } from "../data/skillsTaxonomy";
+import { AREA_SOURCES, canonicalArea } from "../data/hiringAreas";
 import { annualAud, medianAnnual } from "./salaryParse";
 
 // Reads the historical job archive (Cloudflare D1) written by the jobs-cron
@@ -910,27 +911,6 @@ const NO_SKILL_TRENDS: CompanySkillTrends = {
 /** Days of daily history the card's sparklines draw. */
 const SKILL_SPARK_DAYS = 14;
 
-/**
- * Sources whose `category` column is an actual job category.
- *
- * It is not one everywhere. jobArchive types the column "job category / posted
- * via platform", and most feeds use the second sense: measured across the live
- * archive, linkedin / jora / indeed / the government boards and two thirds of
- * the career portals store ONE distinct value each — the platform's own name —
- * while simplyhired stores 355 of them, free text like "Full-time, Monday to
- * Friday". Tallying that column unfiltered produced hiring areas called
- * "LinkedIn", "Career portal", "au" and "Monday to Friday".
- *
- * Adzuna is the one AU feed with a stable published taxonomy (55 values,
- * "Engineering Jobs", "IT Jobs", …) and it is also what the card's bars are
- * already built from, via the live job sample. Restricting to it keeps the bar
- * and its trend arrow describing the same taxonomy. SEEK has a clean taxonomy
- * too but a DIFFERENT one, and merging the two yields near-duplicate areas
- * ("Engineering" beside "Engineering & Technical") splitting one count in half.
- */
-const AREA_SOURCES = new Set(["adzuna"]);
-/** Adzuna's placeholder for an ad it could not classify. Not an area. */
-const AREA_UNKNOWN = "unknown";
 /** Below this many covered days the line says more about the archive's age
  *  than about demand, so it is dropped. Same threshold the ticker uses. */
 const SKILL_SPARK_MIN = 5;
@@ -1113,6 +1093,10 @@ export function foldSkillRows(
   // a query — and the card draws both.
   const areaNow: Record<string, number> = {};
   const areaDaily: Record<string, number[]> = {};
+  // Earliest row per contributing feed. A feed that only started covering this
+  // employer part-way through the window would otherwise draw a step change
+  // that reads as hiring — see areaStart below.
+  const areaSourceStart: Record<string, string> = {};
   const hubNow: Record<string, Record<string, number>> = {};
   const hubless: Record<string, number> = {};
   // Row-level, so an ad with four skills counts once here and four times above.
@@ -1130,24 +1114,22 @@ export function foldSkillRows(
       const fs = String(r.first_seen || "");
       const ls = String(r.last_seen || "");
       if (!fs || !ls) continue;
-      // The board's own category, tidied the way the card already tidies it
-      // ("Engineering jobs" -> "Engineering"). Blank stays blank and is skipped
-      // rather than bucketed as "Other", which would invent an area.
-      const area = AREA_SOURCES.has(String(r.source || ""))
-        ? String(r.category || "")
-            .replace(/\s*jobs?$/i, "")
-            .trim()
-        : "";
+      // One vocabulary across both feeds that publish a taxonomy. See
+      // data/hiringAreas.ts for why the two are mapped into a third rather than
+      // SEEK being folded onto Adzuna, and for what is deliberately not an area.
+      const src = String(r.source || "");
+      const area = AREA_SOURCES.has(src) ? canonicalArea(r.category as string | null) : null;
+      if (area && (!areaSourceStart[src] || fs < areaSourceStart[src])) areaSourceStart[src] = fs;
 
       if (ls >= liveFrom) {
         for (const s of skills) now[s] = (now[s] || 0) + 1;
         const aud = annualAud({
           salary: r.salary as string | null,
           hub: r.hub as string | null,
-          source: r.source as string | null,
+          source: src,
         });
         if (aud !== null) for (const s of skills) (payAds[s] ||= []).push(aud);
-        if (area && area.toLowerCase() !== AREA_UNKNOWN) areaNow[area] = (areaNow[area] || 0) + 1;
+        if (area) areaNow[area] = (areaNow[area] || 0) + 1;
         // Hot spots are LIVE ads only: the map answers "where are they hiring
         // this now", not "where have they ever".
         const hub = String(r.hub || "").trim();
@@ -1174,7 +1156,7 @@ export function foldSkillRows(
           const arr = (daily[s] ||= new Array(window.length).fill(0));
           arr[i] += 1;
         }
-        if (area && area.toLowerCase() !== AREA_UNKNOWN) {
+        if (area) {
           const arr = (areaDaily[area] ||= new Array(window.length).fill(0));
           arr[i] += 1;
         }
@@ -1218,9 +1200,33 @@ export function foldSkillRows(
     })
     .sort((a, b) => b.now - a.now || a.skill.localeCompare(b.skill));
 
+  /**
+   * Where the AREA series can honestly start.
+   *
+   * Not the same day the skills can. A feed that only began covering this
+   * employer part-way through the window contributes nothing before that day,
+   * so the areas it carries climb from near-zero — as collection, not as
+   * hiring. Measured when SEEK was added: Mater's SEEK rows begin on one day,
+   * 56 of 63 of them, and Healthcare & Medical came out at +996% over a
+   * fortnight in which nothing much happened.
+   *
+   * So the area window starts at the LATEST first appearance among the feeds
+   * that contributed one. Conservative — a feed that covered the employer all
+   * along but genuinely had no ads until day 8 is treated the same way — and
+   * conservative is the right direction, because the alternative is printing a
+   * collection artefact as growth.
+   */
+  const areaStart = Object.values(areaSourceStart).sort().pop();
+  const areaFrom = areaStart
+    ? Math.max(
+        from,
+        window.findIndex((d) => d >= areaStart),
+      )
+    : from;
+
   const areas: CompanyAreaDemand[] = Object.keys(areaNow)
     .map((a) => {
-      const cut = (areaDaily[a] || []).slice(from);
+      const cut = (areaDaily[a] || []).slice(areaFrom < 0 ? window.length : areaFrom);
       // Same floors and the same half-window comparison the skills use, so a
       // bar and its arrow are measured the same way.
       const loud = cut.length > 0 && Math.max(...cut) >= SKILL_MIN_VOLUME;

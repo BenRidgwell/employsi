@@ -317,7 +317,7 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
     "areas come back highest live count first",
     eq(
       out.areas.map((a) => a.area),
-      ["Engineering", "Trade & Construction"],
+      ["Engineering", "Trades & Construction"],
     ),
   );
 }
@@ -484,6 +484,203 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
   ];
   const out = foldSkillRows(rows, DAYS, LIVE_FROM, 0);
   check("a skill with enough volume still trends", find(out, "Mining Engineering")!.pct !== null);
+}
+
+// ── the two taxonomies meet in one vocabulary ───────────────────────────────
+{
+  // SEEK and Adzuna name the same work differently. Left unmapped they would
+  // arrive as two areas splitting one count between them.
+  const out = foldSkillRows(
+    [
+      row(["Mining Engineering"], "2026-08-01", "2026-08-10", {
+        category: "Engineering",
+        source: "seek",
+      }),
+      row(["Mining Engineering"], "2026-08-01", "2026-08-10", {
+        category: "Engineering Jobs",
+        source: "adzuna",
+      }),
+      row(["Mining Engineering"], "2026-08-01", "2026-08-10", {
+        category: "Engineering",
+        source: "seek",
+      }),
+    ],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  check(
+    "SEEK and Adzuna fold into one area, not two",
+    eq(
+      out.areas.map((a) => `${a.area}:${a.now}`),
+      ["Engineering:3"],
+    ),
+    JSON.stringify(out.areas.map((a) => `${a.area}:${a.now}`)),
+  );
+}
+{
+  // SEEK's largest category on this roster has no Adzuna equivalent, which is
+  // why the target vocabulary is a third one rather than Adzuna's.
+  const out = foldSkillRows(
+    [
+      row(["Mining Engineering"], "2026-08-01", "2026-08-10", {
+        category: "Mining, Resources & Energy",
+        source: "seek",
+      }),
+      row(["Mining Engineering"], "2026-08-01", "2026-08-10", {
+        category: "Energy, Oil & Gas Jobs",
+        source: "adzuna",
+      }),
+    ],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  check(
+    "SEEK's mining bucket and Adzuna's energy one share a canonical area",
+    eq(
+      out.areas.map((a) => a.area),
+      ["Mining, Resources & Energy"],
+    ),
+    JSON.stringify(out.areas.map((a) => a.area)),
+  );
+}
+{
+  // SEEK bundles manufacturing with transport; Adzuna splits them. The bundle
+  // wins, because splitting SEEK's one into Adzuna's two would be a guess.
+  const out = foldSkillRows(
+    [
+      row(["Mechanical Fitting"], "2026-08-01", "2026-08-10", {
+        category: "Manufacturing, Transport & Logistics",
+        source: "seek",
+      }),
+      row(["Mechanical Fitting"], "2026-08-01", "2026-08-10", {
+        category: "Logistics & Warehouse Jobs",
+        source: "adzuna",
+      }),
+      row(["Mechanical Fitting"], "2026-08-01", "2026-08-10", {
+        category: "Manufacturing Jobs",
+        source: "adzuna",
+      }),
+    ],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  check(
+    "the coarser grain wins where the taxonomies disagree",
+    eq(
+      out.areas.map((a) => `${a.area}:${a.now}`),
+      ["Manufacturing, Transport & Logistics:3"],
+    ),
+    JSON.stringify(out.areas.map((a) => `${a.area}:${a.now}`)),
+  );
+}
+{
+  // Adzuna publishes its French-market categories in French. Same categories.
+  const out = foldSkillRows(
+    [
+      row(["HSE / Safety"], "2026-08-01", "2026-08-10", {
+        category: "Emplois Soins de santé et infirmiers",
+        source: "adzuna",
+      }),
+      row(["HSE / Safety"], "2026-08-01", "2026-08-10", {
+        category: "Healthcare & Nursing Jobs",
+        source: "adzuna",
+      }),
+    ],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  check(
+    "a category published in French is the same area",
+    eq(
+      out.areas.map((a) => `${a.area}:${a.now}`),
+      ["Healthcare & Medical:2"],
+    ),
+    JSON.stringify(out.areas.map((a) => `${a.area}:${a.now}`)),
+  );
+}
+{
+  // A working pattern is not a part of a business.
+  const out = foldSkillRows(
+    [
+      row(["Geotechnical"], "2026-08-01", "2026-08-10", {
+        category: "Part time Jobs",
+        source: "adzuna",
+      }),
+      row(["Geotechnical"], "2026-08-01", "2026-08-10", { category: "Unknown", source: "adzuna" }),
+      row(["Geotechnical"], "2026-08-01", "2026-08-10", {
+        category: "Other/General Jobs",
+        source: "adzuna",
+      }),
+    ],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  check(
+    "a working pattern or seniority band is not an area",
+    out.areas.length === 0,
+    JSON.stringify(out.areas),
+  );
+}
+{
+  // A board category nobody has mapped is dropped, not turned into a bar.
+  const out = foldSkillRows(
+    [
+      row(["Geotechnical"], "2026-08-01", "2026-08-10", {
+        category: "Underwater Basket Weaving",
+        source: "seek",
+      }),
+    ],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  check("an unmapped board category is left unclassified", out.areas.length === 0);
+}
+
+// ── a feed that joined late ─────────────────────────────────────────────────
+{
+  // Adzuna has covered this employer all window; SEEK's rows all begin on day
+  // 8. The areas SEEK carries climb from nothing — as collection, not hiring.
+  // Measured live when SEEK was added: Mater's Healthcare & Medical came out at
+  // +996% over a fortnight in which nothing much happened.
+  const rows: SkillRow[] = [
+    ...Array.from({ length: 4 }, () =>
+      row(["HSE / Safety"], "2026-08-01", "2026-08-10", {
+        category: "Healthcare & Nursing Jobs",
+        source: "adzuna",
+      }),
+    ),
+    ...Array.from({ length: 20 }, () =>
+      row(["HSE / Safety"], "2026-08-08", "2026-08-10", {
+        category: "Healthcare & Medical",
+        source: "seek",
+      }),
+    ),
+  ];
+  const out = foldSkillRows(rows, DAYS, LIVE_FROM, 0);
+  const a = out.areas[0];
+  check("a late-joining feed still contributes its ads", a.now === 24, `now=${a.now}`);
+  check("...but no trend is reported over its ramp", a.pct === null, `pct=${a.pct}`);
+}
+{
+  // The guard must not punish an employer whose feeds all covered the window.
+  const rows: SkillRow[] = Array.from({ length: 4 }, (_, k) =>
+    row(["Mining Engineering"], "2026-08-01", k < 2 ? "2026-08-05" : "2026-08-10", {
+      category: "Engineering Jobs",
+      source: "adzuna",
+    }),
+  );
+  const out = foldSkillRows(rows, DAYS, LIVE_FROM, 0);
+  check(
+    "one feed present throughout still trends",
+    out.areas[0].pct !== null,
+    `pct=${out.areas[0]?.pct}`,
+  );
 }
 
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");
