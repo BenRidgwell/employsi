@@ -5,10 +5,19 @@ import {
   getSkillTrends,
   getCompanySkillTrends,
   getSkillMarketRanks,
+  getSkillMarket,
   skillWindowDays,
+  marketWindowDays,
   DEFAULT_SKILL_WINDOW,
+  DEFAULT_MARKET_WINDOW,
 } from "../lib/jobHistoryFn";
-import type { RoleHistory, SkillMover, CompanySkillTrends, SkillRanks } from "../lib/jobHistoryFn";
+import type {
+  RoleHistory,
+  SkillMover,
+  CompanySkillTrends,
+  SkillRanks,
+  SkillMarket,
+} from "../lib/jobHistoryFn";
 
 /** The trends plus whether a newer window is still in flight, so the card can
  *  say it is updating instead of silently showing the previous span's numbers
@@ -114,4 +123,43 @@ export function useSkillMarketRanks(hubs: string[], enabled: boolean): SkillRank
     retry: false,
   });
   return data ?? EMPTY_RANKS;
+}
+
+const EMPTY_MARKET: SkillMarket = {
+  days: [],
+  rows: [],
+  categories: [],
+  totalValue: 0,
+  valueSeries: [],
+  priced: 0,
+  seen: 0,
+  taxonomy: 0,
+  unplaceable: 0,
+  scope: "",
+  fxAsAt: "",
+};
+
+/** Every skill in a market, priced and with its demand — what the trending
+ *  dashboard runs on. Keyed on the hub set AND the window, so changing either
+ *  refetches rather than showing the previous scope's numbers under the new
+ *  label. Previous data is held during the fetch so the dashboard does not
+ *  blank out mid-scrub. */
+export function useSkillMarket(
+  hubs: string[],
+  label: string,
+  days: number = DEFAULT_MARKET_WINDOW,
+  enabled = true,
+): { market: SkillMarket; loading: boolean } {
+  const span = marketWindowDays(days);
+  const key = hubs.join(",");
+  const { data, isFetching } = useQuery({
+    queryKey: ["skillMarket", key, span],
+    queryFn: () => getSkillMarket({ data: { hubs, label, days: span } }),
+    enabled,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 2 * 60 * 60 * 1000,
+    retry: false,
+    placeholderData: (prev) => prev,
+  });
+  return { market: data ?? EMPTY_MARKET, loading: isFetching };
 }

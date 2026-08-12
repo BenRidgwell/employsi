@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../../state/store";
 import { COMPANIES } from "../../data/companies";
@@ -10,10 +10,20 @@ import {
   type ViewedItem,
 } from "../../data/trending";
 import { getMarketSkillMovers, type MarketSkillMover } from "../../lib/jobHistoryFn";
+import { MARKET_WINDOWS, DEFAULT_MARKET_WINDOW } from "../../lib/jobHistoryFn";
+import { useSkillMarket } from "../../hooks/useRoleHistory";
+import type { SkillMarket } from "../../lib/jobHistoryFn";
+import {
+  WORLD_SCOPE,
+  scopeForCity,
+  scopeForCountry,
+  scopeForRegion,
+  type ResolvedScope,
+} from "../../lib/analystScope";
 import { getMostViewed, type ViewedRow } from "../../lib/viewsFn";
 import { CardLoader } from "./CardLoader";
-import { REGION_HUBS } from "../../data/mapboxWorldGeo";
-import { CITY_LABEL, GLOBAL_HUB_LABEL, CITY_CONTINENT } from "../../data/geo";
+import { CITY_CONTINENT } from "../../data/geo";
+import { CITY_COUNTRY } from "../../data/mapboxWorldGeo";
 
 const TICKER_TO_ID: Record<string, string> = Object.fromEntries(
   COMPANIES.map((c) => [c.ticker, c.id]),
@@ -167,6 +177,68 @@ function renderMoversCard(
   );
 }
 
+/** $2,113,000,000 → "$2.11b". A magnitude, not an accountant's figure — the
+ *  precision would imply a book that does not exist. */
+function money(v: number): string {
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}b`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}m`;
+  if (v >= 1e3) return `$${Math.round(v / 1e3)}k`;
+  return `$${Math.round(v)}`;
+}
+
+/**
+ * What the archive could price in this market, stated before any price is shown.
+ *
+ * Three separate shortfalls, and they are not interchangeable:
+ *
+ *   priced/seen   skills in demand here that disclose enough pay to value. Perth
+ *                 prices 23 of 100; showing 23 rows without saying so would read
+ *                 as a market with 23 skills in it.
+ *   days          the window drawn against the one requested. Collection began
+ *                 2026-07-20, so a 30-day request currently draws about 9.
+ *   unplaceable   priced ads carrying no hub. They can be valued but not placed,
+ *                 so a worldwide index leaves them out — 9% of priced ads.
+ */
+function MarketCoverage({
+  market,
+  requested,
+  loading,
+}: {
+  market: SkillMarket;
+  requested: number;
+  loading: boolean;
+}) {
+  const drawn = market.days.length;
+  const short = drawn > 0 && drawn < requested;
+  if (!drawn && !loading) return null;
+  return (
+    <div className="mktcov">
+      <div className="mktcovval">
+        <b>{money(market.totalValue)}</b>
+        <span>advertised annual salary, summed across open ads</span>
+      </div>
+      <div className="mktcovnotes">
+        <span>
+          <b>{market.priced}</b> of {market.seen} skills priced
+          {market.seen < market.taxonomy && ` · ${market.seen} of ${market.taxonomy} in demand`}
+        </span>
+        <span className={short ? "warn" : undefined}>
+          {drawn ? `${drawn}-day window` : "no window"}
+          {short && ` · ${requested} requested, ${drawn} collected`}
+        </span>
+        {market.unplaceable > 0 && (
+          <span>
+            <b>{market.unplaceable.toLocaleString("en-AU")}</b> priced ads carry no location, so
+            they are left out of the worldwide index
+          </span>
+        )}
+        {market.fxAsAt && <span>converted to AUD at rates as at {market.fxAsAt}</span>}
+        {loading && <span className="dim">updating…</span>}
+      </div>
+    </div>
+  );
+}
+
 export function WhatsTrendingPane() {
   const trendingOpen = useAppStore((s) => s.trendingOpen);
   const closeTrending = useAppStore((s) => s.closeTrending);
@@ -194,29 +266,51 @@ export function WhatsTrendingPane() {
   const domesticRegion = useAppStore((s) => s.domesticRegion);
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const globalOut = useAppStore((s) => s.globalOut);
-  const scope = useMemo(() => {
-    if (!zoomedOut && localCity) {
-      return {
-        hubs: [localCity],
-        label: GLOBAL_HUB_LABEL[localCity] || CITY_LABEL[localCity] || localCity,
-      };
+  /**
+   * Places the reader can price. Built with the analyst's own resolvers rather
+   * than a second set: the analyst already knows which hubs "Australia" means,
+   * and two resolvers would eventually disagree about it.
+   */
+  const scopes = useMemo<ResolvedScope[]>(() => {
+    const out: (ResolvedScope | null)[] = [];
+    if (localCity) {
+      out.push(scopeForCity(localCity));
+      const cc = CITY_COUNTRY[localCity];
+      if (cc) out.push(scopeForCountry(cc));
     }
-    if (!globalOut) {
-      const region = domesticRegion || CITY_CONTINENT[localCity] || "australia";
-      const hubs = REGION_HUBS[region];
-      if (hubs?.length) {
-        // The region's own name is carried as a hub on some rows rather than a
-        // city — 938 of the archive's rows sit on hub "australia" — so include
-        // it alongside the member cities, the same way the analyst's country
-        // scope does. Harmless for regions that have no such rows.
-        return {
-          hubs: [...hubs, region],
-          label: region.charAt(0).toUpperCase() + region.slice(1),
-        };
-      }
-    }
-    return { hubs: [], label: "Worldwide" };
-  }, [zoomedOut, globalOut, localCity, domesticRegion]);
+    out.push(scopeForRegion(domesticRegion || CITY_CONTINENT[localCity]));
+    out.push(WORLD_SCOPE);
+    const seen = new Set<string>();
+    return out
+      .filter((x): x is ResolvedScope => !!x)
+      .filter((x) => (seen.has(x.label) ? false : (seen.add(x.label), true)));
+  }, [localCity, domesticRegion]);
+
+  /**
+   * The scope being priced. Held by value, not as an index: the chip row
+   * rebuilds when the map moves, and an index would silently point at a
+   * different place than the one whose figures are on screen.
+   *
+   * Null means "follow the map", which is what the pane did before it had a
+   * control at all — so opening it still lands where the reader already is.
+   */
+  const [picked, setPicked] = useState<ResolvedScope | null>(null);
+  const scope = picked ?? scopes[0] ?? WORLD_SCOPE;
+
+  // Moving the map out from under an explicit pick invalidates it: the chips
+  // rebuild around the new place and a figure still pinned to the old one would
+  // be labelled with a scope the row no longer offers.
+  useEffect(() => {
+    setPicked(null);
+  }, [localCity, domesticRegion]);
+
+  const [windowDays, setWindowDays] = useState<number>(DEFAULT_MARKET_WINDOW);
+  const { market, loading: marketLoading } = useSkillMarket(
+    scope.hubs,
+    scope.label,
+    windowDays,
+    open,
+  );
 
   // Real skill risers/fallers from the D1 archive, for THIS scope. Keyed on the
   // scope so moving between layers refetches rather than showing the last one's
@@ -334,6 +428,40 @@ export function WhatsTrendingPane() {
             ✕
           </button>
         </div>
+
+        {/* The scope every dollar figure on this pane depends on, and what the
+            archive could actually price inside it. Both belong at the top: a
+            price with no market is meaningless, and a coverage figure found
+            after the numbers is a footnote nobody reads. */}
+        <div className="mktbar">
+          <div className="mktscopes" role="tablist" aria-label="Market">
+            {scopes.map((sc) => (
+              <button
+                key={sc.label}
+                role="tab"
+                aria-selected={sc.label === scope.label}
+                className={`mktscope ${sc.label === scope.label ? "on" : ""}`}
+                onClick={() => setPicked(sc)}
+              >
+                {sc.label}
+              </button>
+            ))}
+          </div>
+          <div className="mktwins" role="tablist" aria-label="Period">
+            {MARKET_WINDOWS.map((w) => (
+              <button
+                key={w}
+                role="tab"
+                aria-selected={w === windowDays}
+                className={`mktwin ${w === windowDays ? "on" : ""}`}
+                onClick={() => setWindowDays(w)}
+              >
+                {w}d
+              </button>
+            ))}
+          </div>
+        </div>
+        <MarketCoverage market={market} requested={windowDays} loading={marketLoading} />
 
         <div className="briefscroll">
           <div className="trendsnap">
