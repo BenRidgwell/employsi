@@ -8,15 +8,24 @@ const ROWS_SHOWN = 12;
 /**
  * What the list is ordered by.
  *
- * Three, not two, because the default has to be one of them. Value is the index
- * the whole pane is built on — price times volume — and leaving it unnamed while
- * offering its two components would make the opening order look arbitrary.
+ * THERE IS NO "VALUE" SORT, though value is the index the hero is built on.
+ * Measured against production on 2026-08-12, ordering by price x volume was
+ * very nearly ordering by volume — Kendall tau 0.83 (Perth), 0.87 (Australia),
+ * 0.82 (worldwide), with 8 to 10 of the twelve visible rows shared. It could
+ * hardly be otherwise: volume spans 1 to 3,744 ads while median pay spans a
+ * factor of 2.3 to 4.4, so the salary term barely perturbs the order.
+ *
+ * What difference it did make was the wrong difference. Value is null for an
+ * unpriced skill, so a value sort put every one of them last: for Perth that
+ * demoted 72 of 92 skills in demand for a reason that has nothing to do with
+ * demand, and the visible list stopped being the market's biggest skills. A
+ * third chip that mostly reproduces this one and misleads where it doesn't is
+ * worse than two that each answer a question.
  */
-type SortKey = "value" | "salary" | "volume";
+type SortKey = "salary" | "volume";
 const SORTS: { key: SortKey; label: string }[] = [
-  { key: "value", label: "Value" },
-  { key: "salary", label: "Salary" },
   { key: "volume", label: "Volume" },
+  { key: "salary", label: "Salary" },
 ];
 const SP_W = 96;
 const SP_H = 26;
@@ -101,7 +110,7 @@ export function SkillMarketRows({
   onPick: (skill: string) => void;
 }) {
   const [cat, setCat] = useState<string | null>(null);
-  const [sort, setSort] = useState<SortKey>("value");
+  const [sort, setSort] = useState<SortKey>("volume");
   const [all, setAll] = useState(false);
 
   const cats = useMemo(() => market.categories.map((c) => c.cat), [market.categories]);
@@ -118,8 +127,10 @@ export function SkillMarketRows({
         if (y.pay === null) return -1;
         return y.pay - x.pay || y.now - x.now;
       }
-      if (sort === "volume") return y.now - x.now || (y.value ?? -1) - (x.value ?? -1);
-      return (y.value ?? -1) - (x.value ?? -1) || y.now - x.now;
+      // Volume, and on a tie the better-paid of the two — but a tie between an
+      // unpriced skill and a priced one is not an argument for demoting it, so
+      // it only breaks ties, it never reorders.
+      return y.now - x.now || (y.pay ?? 0) - (x.pay ?? 0);
     });
   }, [market.rows, cat, sort]);
   const shown = all ? rows : rows.slice(0, ROWS_SHOWN);
