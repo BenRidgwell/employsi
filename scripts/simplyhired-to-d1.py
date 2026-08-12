@@ -126,7 +126,13 @@ def load_roster() -> list:
 
 
 # ── SimplyHired read ──────────────────────────────────────────────────────────
-NEXT_DATA_RE = re.compile(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', re.S)
+# `id` is not required to be the FIRST attribute. It is today, because Next.js
+# emits `<script id="__NEXT_DATA__" type="application/json">` and raw_get hands
+# back the server's own bytes — but anchoring on attribute order means a
+# reordered tag parses as "no ads" rather than as an error, which is
+# indistinguishable in the log from an employer that is simply not hiring. The
+# same applies to any body that has been through a DOM serialiser.
+NEXT_DATA_RE = re.compile(r'<script[^>]*id="__NEXT_DATA__"[^>]*>(.*?)</script>', re.S)
 
 
 def page_props(html: str) -> dict:
@@ -139,14 +145,62 @@ def page_props(html: str) -> dict:
         return {}
 
 
+# RECOVERING FROM A BLOCKED SESSION, ONCE.
+#
+# The failure this exists for: SimplyHired stops answering the in-page fetches
+# while still serving the clearance navigation, so raw_get returns None for
+# every company and the run archives nothing. It cost three consecutive nights
+# (2026-08-07/08/09) before recovering by itself on the 10th.
+#
+# A dead session stays dead, so retrying the same one is pointless — the only
+# move that can help is dropping it and re-clearing over a new connection.
+#
+# STRICTLY BOUNDED, for two reasons. The exit may be sticky (see
+# browser_fetch.reset_session), in which case reconnecting returns to the same
+# address and no number of resets will help. And a genuine site-wide block
+# SHOULD still end the run red rather than be retried into a timeout: the
+# archive is better served by a loud failure than by a run that quietly spends
+# 350 minutes discovering the same thing.
+_BLOCK_STREAK = 0          # consecutive fetches that came back with nothing
+_RESETS = 0
+_RESET_AFTER = 6           # ~2 companies' worth of pages before calling it a block
+_MAX_RESETS = 2
+
+
 def search(name: str, cursor: str | None) -> dict:
+    global _BLOCK_STREAK, _RESETS
     q = urllib.parse.urlencode({'q': name, 'l': ''})
     url = f'{SITE}/search?{q}' + (f'&cursor={urllib.parse.quote(cursor)}' if cursor else '')
     if VIA_OXYLABS:
         from oxylabs_client import fetch as oxy_fetch
         content, _ = oxy_fetch(url, geo='Australia', render=False, timeout=200)
-    else:
-        content = browser_fetch.raw_get(url, settle=SETTLE, locale='en-AU')
+        return page_props(content)
+
+    content = browser_fetch.raw_get(url, settle=SETTLE, locale='en-AU')
+    if content is not None:
+        _BLOCK_STREAK = 0
+        return page_props(content)
+
+    # None means the transport failed — a 403, or the fetch threw. One of those
+    # is ordinary; a run of them is the session being refused.
+    _BLOCK_STREAK += 1
+    if _BLOCK_STREAK < _RESET_AFTER or _RESETS >= _MAX_RESETS:
+        return {}
+
+    _RESETS += 1
+    sys.stderr.write(
+        f'  {_BLOCK_STREAK} fetches in a row returned nothing — the session looks '
+        f'refused.\n  Dropping it and re-clearing over a new connection '
+        f'(reset {_RESETS} of {_MAX_RESETS}).\n')
+    browser_fetch.reset_session()
+    _BLOCK_STREAK = 0
+    # Retry THIS page on the new session, so the company that triggered the
+    # reset is not the one company skipped by it.
+    content = browser_fetch.raw_get(url, settle=SETTLE, locale='en-AU')
+    if content is None:
+        sys.stderr.write('  still nothing after the reset.\n')
+        return {}
+    sys.stderr.write('  recovered on the new session.\n')
     return page_props(content)
 
 
