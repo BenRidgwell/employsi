@@ -324,17 +324,26 @@ function CompanyLogo({ src, ticker }: { src: string; ticker: string }) {
   );
 }
 
-// Direction glyph for a hiring area's change. Only the ARROW is coloured: six
-// coloured percentages stacked in a column read as six alerts, one arrow each
-// reads as a direction. A measured zero gets the figure and no arrow, which is
-// distinct from having no comparable window at all — that case renders nothing.
-function AreaTrend({ pct }: { pct: number }) {
-  if (pct === 0) return <span className="cchiretr">0.0%</span>;
+/**
+ * A hiring area's change, as a tinted chip at the start of its bar.
+ *
+ * It reads as a column because every chip occupies the same fixed slot whether
+ * or not it has anything in it — the bars have to start on one line, and a row
+ * whose window is too short to trend must not pull its bar left and out of the
+ * comparison. That is what `pct === null` renders: the slot, and nothing in it.
+ *
+ * A measured zero gets a chip in neutral rather than a tint, because it did not
+ * go either way. Distinct again from null, which is "not measurable" — the two
+ * must never look the same.
+ */
+function AreaTrend({ pct }: { pct: number | null }) {
+  if (pct === null) return <span className="cchiretr none" aria-hidden="true" />;
+  if (pct === 0) return <span className="cchiretr flat">0.0%</span>;
   const up = pct > 0;
   return (
     <span className={`cchiretr ${up ? "up" : "down"}`}>
       {Math.abs(pct).toFixed(1)}%
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}>
         <path
           d={up ? "M7 17 17 7M10.5 7H17v6.5" : "M7 7l10 10M10.5 17H17v-6.5"}
           strokeLinecap="round"
@@ -1113,15 +1122,15 @@ export function CompanyPanel() {
                       {hiringRows.slice(0, HIRING_ROWS).map((h) => (
                         <div className="cchirerow" key={h.name}>
                           <span className="cchirename">{h.name}</span>
+                          {/* Immediately left of the scale, so the change and
+                              the bar it belongs to read as one thing. Holds its
+                              slot when the archive cannot support a change, or
+                              the bars would stop lining up. */}
+                          <AreaTrend pct={h.pct} />
                           <span className="cchirebar">
                             <span className="cchirefill" style={{ width: h.width }} />
                           </span>
-                          <span className="cchireval">
-                            <span className="cchiren">{h.n}</span>
-                            {/* Absent when the archive cannot support a change —
-                                the bar still reads. */}
-                            {h.pct !== null && <AreaTrend pct={h.pct} />}
-                          </span>
+                          <span className="cchiren">{h.n}</span>
                         </div>
                       ))}
                       {/* What the bars cover, and what the list left out.

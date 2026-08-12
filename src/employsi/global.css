@@ -12151,31 +12151,51 @@ body {
   text-transform: uppercase;
   color: var(--text-disabled);
 }
-.cchireval {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  flex: 0 0 auto;
-}
+/* The change chip, sitting at the start of the bar it describes.
+   A FIXED slot, always, so every bar begins on the same line — a row whose
+   window is too short to trend renders `.none`, which is the slot and nothing
+   in it. Without that the bars shuffle left row by row and stop being
+   comparable, which is the one job a bar chart has.
+
+   The tint is the design system's muted status surface, the same pair the
+   demand levels use. It is carrying real status here — which way an employer's
+   hiring went — not decoration. */
 .cchiretr {
+  flex: 0 0 62px;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  justify-content: center;
+  gap: 2px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  background: var(--surface-sunken);
 }
 .cchiretr svg {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
 }
-.cchiretr.up svg {
-  color: var(--status-success-dot);
+.cchiretr.up {
+  color: var(--status-success-fg);
+  background: var(--status-success-bg);
 }
-.cchiretr.down svg {
-  color: var(--status-danger-dot);
+.cchiretr.down {
+  color: var(--status-danger-fg);
+  background: var(--status-danger-bg);
+}
+/* Measured, did not move. Neutral rather than tinted — it went neither way. */
+.cchiretr.flat {
+  color: var(--text-tertiary);
+}
+/* Not measurable. Holds the slot and draws nothing, so it can never be read as
+   a zero. */
+.cchiretr.none {
+  background: none;
 }
 
 /* ── facts + rating ─────────────────────────────────────────────────────── */
@@ -12277,7 +12297,7 @@ body {
 .cchirerow {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 .cchirename {
   flex: 1 1 auto;
@@ -12299,13 +12319,17 @@ body {
   border-radius: 999px;
   background: var(--neutral-900);
 }
+/* The total is the row's headline figure, so it is set as one: ink and bold
+   against the muted chip beside it. */
 .cchiren {
   flex: 0 0 auto;
   min-width: 26px;
   text-align: right;
   font-family: "JetBrains Mono", monospace;
-  font-size: 11px;
-  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ===========================================================================
