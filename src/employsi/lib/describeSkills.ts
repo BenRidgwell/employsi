@@ -106,6 +106,16 @@ export function describeSkills(query: string, n = 6): string[] {
   }
   const acc = new Map<number, number>();
   for (const t of new Set(tokens(q))) {
+    // hasOwn, NOT a truthiness check on the lookup. TASK_INDEX is a plain
+    // object literal, so `TASK_INDEX["constructor"]` answers with the inherited
+    // Object.prototype member for any token it does not hold — an object, so
+    // truthy, with no `s` on it, and the destructuring loop below then throws
+    // on the whole query. Every token here is lowercased and stripped of
+    // non-alphanumerics, which rules out `toString` and `__proto__` but not
+    // `constructor`, an ordinary word someone can type into a search box.
+    // The generator also refuses to emit these names (PROTO_KEYS), so this
+    // guard is what makes the search safe rather than what makes it correct.
+    if (!Object.hasOwn(onto.TASK_INDEX, t)) continue;
     const e = onto.TASK_INDEX[t];
     if (!e) continue;
     for (const [si, share] of e.s) acc.set(si, (acc.get(si) || 0) + e.w * share);

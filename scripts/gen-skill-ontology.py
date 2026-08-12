@@ -35,6 +35,34 @@ report reports process processes procedure procedures general standard standards
 required requires requiring order orders one two three""".split())
 
 
+# Token names that are already members of Object.prototype, and so cannot be
+# emitted as keys of the TASK_INDEX object literal.
+#
+# TASK_INDEX is a `Record<string, OntologyEntry>` object literal, and TypeScript
+# does not apply the contextual element type to a property whose name shadows an
+# Object.prototype member — so `"constructor": { …, s: [[82,0.333]] }` infers as
+# number[][] rather than [number, number][] and fails the build (TS2322). Worse,
+# the same names break the LOOKUP: `TASK_INDEX[t]` for a token not in the index
+# returns the inherited prototype member, which is truthy, and describeSkills
+# then reads `.s` off a function and throws. That one is guarded on the query
+# side too (see lib/describeSkills.ts) because it is a property of the lookup,
+# not of this file — but a token that cannot be typed has no business being
+# emitted either.
+#
+# Only lowercase names can actually collide: tokens() lowercases and splits on
+# non-alphanumerics, so `toString` arrives as "tostring" and `__proto__` as
+# "proto". In practice that means `constructor`, which entered the index when
+# the cap rose to 16000 and mapped weakly (w 0.283) to the construction skills.
+# Listed in full rather than filtered to the reachable one, so a change to the
+# tokeniser cannot quietly re-admit the others.
+PROTO_KEYS = {
+    'constructor', 'hasownproperty', 'isprototypeof', 'propertyisenumerable',
+    'tolocalestring', 'tostring', 'valueof', 'proto', '__proto__',
+    'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable',
+    'toLocaleString', 'toString', 'valueOf',
+}
+
+
 def stem(w):
     if len(w) > 5 and w.endswith('ing'):
         return w[:-3]
@@ -153,6 +181,8 @@ def main(folder):
 
     index = {}
     for t, sc in seed.items():
+        if t in PROTO_KEYS:
+            continue
         e = entry(sc, 1.0, 0.30)
         if e:
             index[t] = e
@@ -185,7 +215,7 @@ def main(folder):
     CAP = 16000
     cands = []
     for t, sc in onet.items():
-        if t in index or ofreq[t] < 3:
+        if t in index or t in PROTO_KEYS or ofreq[t] < 3:
             continue
         e = entry(sc, 0.85, 0.28)
         if not e:
