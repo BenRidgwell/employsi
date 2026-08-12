@@ -27,12 +27,19 @@ There is **no test runner**. What CI actually checks (`.github/workflows/skills-
 `scraper-check.yml`) is:
 
 ```bash
-bun run scripts/check-skills.ts       # skill taxonomy invariants
+bun run scripts/check-skills.ts            # skill taxonomy invariants
+bun run scripts/check-analyst-followups.ts # a follow-up resolves to the scope it names
+bun run scripts/check-analyst-scope.ts     # every analyst scope excludes the closed corpora
+bun run scripts/check-skill-trends.ts      # the card's per-skill/per-area reconstruction
 python scripts/test_skills_taxonomy.py
 python scripts/test_jobs_extract.py
-python scripts/test_rosters.py         # roster parsers still read their data files
+python scripts/test_rosters.py             # roster parsers still read their data files
 python -m compileall -q scripts/*.py
 ```
+
+The three `check-*.ts` beyond the taxonomy one all guard the same class of bug: an
+aggregate that still renders a plausible number after the reasoning behind it breaks.
+None of them would fail visibly in the app — that is the point of asserting them.
 
 To exercise a scraper without deploying, call it directly through `tsx` — the fetchers are
 plain exported functions:
@@ -250,6 +257,29 @@ so a new stat needs a source, not a formula over a hash.
 a comment next to the code that depends on it. Nearly every comment in `careerSites.ts` that
 looks over-explanatory is load-bearing: it names the assumption a future breakage will
 violate.
+
+**A window over the archive is only as wide as the feeds covering it.** The single most
+productive bug in this codebase: a daily series climbs because the ARCHIVE was filling out,
+not because anyone was hiring, and the change figure over it is enormous and entirely false.
+Measured instances — Mater's areas at +996% when SEEK picked the employer up mid-window; BHP's
+top skill at +347.6% over 30 days as its ten feeds came online across three weeks; BHP's
+analyst volume at −75% because "now" was a day still being collected and the comparison day
+was not.
+
+It has two ends and both bite:
+
+- **The start.** A series can only begin once the feeds carrying this employer had arrived.
+  `foldSkillRows` computes that (`feedStart`), and the areas take the later of it and their
+  own feeds' arrival (`areaStart`).
+- **The end.** A day is only complete once the feeds have reported it. Today never is, and
+  yesterday often is not either — `coverageDay` in `analystFn` picks the last day that holds.
+
+Both weigh feeds by share rather than waiting for every one, at 95%: `sourceStart` is the
+oldest row a feed still holds, so a small fast-churn feed always looks like it just started,
+and a strict rule lets three ads collapse a series to nothing. Both are asserted in the check
+scripts. **Never compare two days measured different ways** — an exact-day count against a
+`first_seen <= D AND last_seen >= D` reconstruction is mostly measuring the difference
+between the two methods. And report the span actually drawn, never the one requested.
 
 **Secrets** (Oxylabs, Cloudflare, TheirStack) live only in the environment, never in the
 repo. Before committing:
