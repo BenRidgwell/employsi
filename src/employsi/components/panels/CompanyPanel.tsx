@@ -576,6 +576,15 @@ export function CompanyPanel() {
   // chart and facts on Overview; the skill chips on Skills; the role areas on
   // Hiring. Reset to Overview whenever the card opens on a new company.
   const [tab, setTab] = useState<CardTab>("Overview");
+
+  // A role focus set on Hiring must not follow the reader to Overview or
+  // Skills: the filter reshapes the whole panel — buildPanel takes it, and the
+  // live fetches switch off while it is set — so a tab without the control
+  // would show narrowed numbers with nothing on screen explaining them.
+  useEffect(() => {
+    if (tab !== "Hiring" && roleFilter) setRoleFilter(null);
+  }, [tab, roleFilter]);
+
   useEffect(() => {
     if (selectedId) setTab("Overview");
   }, [selectedId]);
@@ -696,20 +705,6 @@ export function CompanyPanel() {
                 </button>
               </div>
             </div>
-
-            {/* Keyed on the open company so the control REMOUNTS per card.
-                Its open/closed state and typed query live inside it, and the
-                component keeps its place in the tree when you switch cards, so
-                without this a search left open on one company was still open —
-                and still highlighted — on the next one you opened. The key also
-                changes to "" as the card closes, which is what returns the pill
-                to its static state rather than leaving it lit. */}
-            <RoleSearch
-              key={selectedId ?? ""}
-              options={liveRoleTitles ?? panel.roleOptions}
-              value={roleFilter}
-              onChange={setRoleFilter}
-            />
 
             <div className="cctabs">
               {(["Overview", "Skills", "Hiring"] as CardTab[]).map((t) => (
@@ -992,9 +987,38 @@ export function CompanyPanel() {
 
               {tab === "Hiring" && (
                 <div className="ccpane">
+                  {/* Role focus lives with the hiring breakdown, which is the
+                      only view it changes the shape of. Above the tabs it sat
+                      over Overview and Skills too, where narrowing to one job
+                      title silently rewrote figures the control was nowhere
+                      near.
+
+                      Keyed on the open company so the control REMOUNTS per
+                      card. Its open/closed state and typed query live inside
+                      it, and the component keeps its place in the tree when you
+                      switch cards, so without this a search left open on one
+                      company was still open — and still highlighted — on the
+                      next one you opened. */}
+                  <RoleSearch
+                    key={selectedId ?? ""}
+                    options={liveRoleTitles ?? panel.roleOptions}
+                    value={roleFilter}
+                    onChange={setRoleFilter}
+                  />
                   <div className="ccsecth">
                     <span className="cceyebrow">Where they&rsquo;re hiring</span>
-                    <span className="ccsecthsub">{card.hiringWindow ?? "share of live ads"}</span>
+                    {/* When the rows carry arrows the heading has to describe
+                        what the ARROWS measure, not the vacancy chart's window.
+                        card.hiringWindow is the chart's span — 25 days on this
+                        card — while the change beside each bar compares the two
+                        halves of the archive's covered window, which is 14. The
+                        two disagreeing under one heading is worse than either
+                        being vague. */}
+                    <span className="ccsecthsub">
+                      {areaTrend.size > 0 && skillTrends.days.length > 1
+                        ? `${skillTrends.days.length}-day change`
+                        : (card.hiringWindow ?? "share of live ads")}
+                    </span>
                   </div>
                   {card.hiring.length ? (
                     <div className="cchiring">

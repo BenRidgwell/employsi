@@ -9822,6 +9822,11 @@ body {
   position: relative;
   margin: 14px 18px 0;
 }
+/* Inside the Hiring pane the body already supplies the gutter, so the control
+   only needs to close the gap to the section heading under it. */
+.ccpane > .rolesearch {
+  margin: 0 0 -4px;
+}
 .prole {
   display: flex;
   align-items: center;
