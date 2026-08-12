@@ -17,6 +17,7 @@ import {
   useCompanySkillTrends,
   useSkillMarketRanks,
 } from "../../hooks/useRoleHistory";
+import { SKILL_WINDOWS, DEFAULT_SKILL_WINDOW } from "../../lib/jobHistoryFn";
 import { cityForCompany } from "../../data/mapboxGeo";
 import { CITY_COUNTRY, COUNTRY_MEMBERS } from "../../data/mapboxWorldGeo";
 import { marketForCity } from "../../data/cityMarket";
@@ -44,6 +45,79 @@ function fmtDay(iso: string): string {
     year: "numeric",
     timeZone: "UTC",
   });
+}
+
+/**
+ * The reader's control over how far back the archive-backed sections look.
+ *
+ * A range input over the INDEX of SKILL_WINDOWS rather than over days, so the
+ * stops are evenly spaced under the thumb — 7/14/30/60 mapped linearly would
+ * put three of the four options in the first quarter of the track and make the
+ * short windows nearly unhittable.
+ *
+ * `covered` is what the archive actually returned, and it is shown whenever it
+ * falls short of what was asked for. Collection began on 2026-07-20, so every
+ * window longer than that is currently trimmed, and a slider reading "60 days"
+ * over 24 days of data would be the card claiming history it does not have.
+ */
+function WindowSlider({
+  days,
+  covered,
+  loading,
+  onChange,
+}: {
+  days: number;
+  covered: number;
+  loading: boolean;
+  onChange: (d: number) => void;
+}) {
+  const i = Math.max(0, SKILL_WINDOWS.indexOf(days as (typeof SKILL_WINDOWS)[number]));
+  const short = covered > 0 && covered < days;
+  return (
+    <div className="ccwin">
+      <div className="ccwinh">
+        <label className="cceyebrow" htmlFor="ccwinr">
+          Period
+        </label>
+        <span className="ccwinv">
+          {short ? `${covered} days collected` : `last ${days} days`}
+          {loading && <span className="ccwinl"> · updating…</span>}
+        </span>
+      </div>
+      <input
+        id="ccwinr"
+        className="ccwinr"
+        type="range"
+        min={0}
+        max={SKILL_WINDOWS.length - 1}
+        step={1}
+        value={i}
+        // The days, not the index — a screen reader announcing "3 of 4" says
+        // nothing about what the control does.
+        aria-valuetext={`last ${days} days`}
+        onChange={(e) => onChange(SKILL_WINDOWS[Number(e.target.value)])}
+      />
+      <div className="ccwint" aria-hidden="true">
+        {SKILL_WINDOWS.map((w) => (
+          <button
+            type="button"
+            key={w}
+            className={`ccwintk ${w === days ? "on" : ""}`}
+            tabIndex={-1}
+            onClick={() => onChange(w)}
+          >
+            {w}d
+          </button>
+        ))}
+      </div>
+      {short && (
+        <p className="ccwinnote">
+          The archive holds {covered} days for this employer — asking for {days} draws what exists
+          rather than padding the rest with zeros.
+        </p>
+      )}
+    </div>
+  );
 }
 
 const CompareIcon = () => (
@@ -144,6 +218,10 @@ export function CompanyPanel() {
   const zoomingIn = useAppStore((s) => s.zoomingIn);
   // Whether the skills section is showing everything past the first six.
   const [skillsOpen, setSkillsOpen] = useState(false);
+  // How far back the archive-backed sections look. Reader-controlled from the
+  // Skills tab; the Hiring arrows read the same fold, so one window governs the
+  // whole card and no two headings can claim different spans.
+  const [windowDays, setWindowDays] = useState<number>(DEFAULT_SKILL_WINDOW);
   // Scrubbed point on the vacancies chart (null = not hovering).
   const [chartIdx, setChartIdx] = useState<number | null>(null);
   const plotRef = useRef<HTMLDivElement | null>(null);
@@ -166,6 +244,7 @@ export function CompanyPanel() {
     if (!selectedId) return;
     setSkillsOpen(false);
     setChartIdx(null);
+    setWindowDays(DEFAULT_SKILL_WINDOW);
     scrollRef.current?.scrollTo(0, 0);
   }, [selectedId]);
 
@@ -232,7 +311,11 @@ export function CompanyPanel() {
   const vacancyTrend = useVacancyTrend(panel?.companyId, open);
   // Per-skill demand from the D1 archive: a daily series, a change, a median,
   // the hubs the live ads sit in. What the skills section is built from.
-  const skillTrends = useCompanySkillTrends(panel?.companyId, open);
+  const { trends: skillTrends, loading: trendsLoading } = useCompanySkillTrends(
+    panel?.companyId,
+    open,
+    windowDays,
+  );
   // "Local" for the rank chips is the company's OWN country, not a fixed
   // Australia — a London or Houston card should rank its skills against the
   // market it sits in. Resolved from the same city the rest of the card uses.
@@ -807,7 +890,20 @@ export function CompanyPanel() {
                       card opened on a company first queried today should still
                       show what it is advertising for. */}
                   {skillTrends.skills.length > 0 && (
-                    <SkillDemand trends={skillTrends} ranks={skillRanks} />
+                    <>
+                      {/* Safe to gate on the skill list: the live counts come
+                          from `last_seen >= yesterday` and do not depend on the
+                          window at all, so no setting of the slider can empty
+                          the section and strand the control with it. Only the
+                          lines and the percentages change. */}
+                      <WindowSlider
+                        days={windowDays}
+                        covered={skillTrends.days.length}
+                        loading={trendsLoading}
+                        onChange={setWindowDays}
+                      />
+                      <SkillDemand trends={skillTrends} ranks={skillRanks} />
+                    </>
                   )}
                   {skillTrends.skills.length === 0 && (
                     <>
@@ -858,15 +954,17 @@ export function CompanyPanel() {
                   <div className="ccsecth">
                     <span className="cceyebrow">Where they&rsquo;re hiring</span>
                     {/* When the rows carry arrows the heading has to describe
-                        what the ARROWS measure, not the vacancy chart's window.
-                        card.hiringWindow is the chart's span — 25 days on this
-                        card — while the change beside each bar compares the two
-                        halves of the archive's covered window, which is 14. The
-                        two disagreeing under one heading is worse than either
-                        being vague. */}
+                        what the ARROWS measure, not the vacancy chart's window
+                        and not the sparklines' either. card.hiringWindow is the
+                        chart's span, while the change beside each bar compares
+                        the two halves of the AREA window — which is its own
+                        number, because only two feeds publish a taxonomy and
+                        their coverage of an employer can start later than the
+                        rest. Any two of those disagreeing under one heading is
+                        worse than the heading being vague. */}
                     <span className="ccsecthsub">
-                      {skillTrends.areas.length > 0 && skillTrends.days.length > 1
-                        ? `${skillTrends.days.length}-day change`
+                      {skillTrends.areas.length > 0 && skillTrends.areaDays > 1
+                        ? `${skillTrends.areaDays}-day change`
                         : (card.hiringWindow ?? "share of live ads")}
                     </span>
                   </div>

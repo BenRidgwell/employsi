@@ -48,6 +48,22 @@ const row = (skills: string[], first: string, last: string, extra: Partial<Skill
 
 const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill === s);
 
+/**
+ * A full-window ad in an unrelated skill, from the same (unnamed) feed.
+ *
+ * The fold trims every series back to the day the employer's feeds had actually
+ * arrived — otherwise a feed switching on mid-window draws its own arrival as a
+ * hiring surge (see feedStart). A case built from ONE short-lived ad therefore
+ * looks like a feed that started on that ad's first day, and the window
+ * collapses to it, which is right in production and useless in a test that is
+ * pinning day-membership at the leading edge.
+ *
+ * Including this makes the fixture say what those cases mean: the feed covered
+ * the whole window, and the ad under test is what moved within it. A different
+ * skill, so the series being asserted on is untouched.
+ */
+const ANCHOR = row(["Administration & Office Support"], DAYS[0], DAYS[DAYS.length - 1]);
+
 // ── day membership ──────────────────────────────────────────────────────────
 {
   // A skill whose only ad closed mid-window is NOT something the company is
@@ -66,7 +82,7 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
   // A still-live ad that opened mid-window contributes to its days only — the
   // off-by-one at the leading edge is the thing being pinned here.
   const out = foldSkillRows(
-    [row(["Mining Engineering"], "2026-08-04", "2026-08-10")],
+    [ANCHOR, row(["Mining Engineering"], "2026-08-04", "2026-08-10")],
     DAYS,
     LIVE_FROM,
     0,
@@ -97,7 +113,7 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
 {
   // An ad first seen after the window still counts on the days it covers.
   const out = foldSkillRows(
-    [row(["Geotechnical"], "2026-08-09", "2026-08-10")],
+    [ANCHOR, row(["Geotechnical"], "2026-08-09", "2026-08-10")],
     DAYS,
     LIVE_FROM,
     0,
@@ -120,6 +136,7 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
   // Two ads, same skill, overlapping — the day count is ads, not distinct skills.
   const out = foldSkillRows(
     [
+      ANCHOR,
       row(["HSE / Safety"], "2026-08-05", "2026-08-10"),
       row(["HSE / Safety"], "2026-08-08", "2026-08-10"),
     ],
@@ -464,6 +481,7 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
   // real +7%, which makes the two read as the same kind of fact.
   const out = foldSkillRows(
     [
+      ANCHOR,
       row(["Geotechnical"], "2026-08-07", "2026-08-10"),
       row(["Geotechnical"], "2026-08-09", "2026-08-10"),
     ],
@@ -681,6 +699,120 @@ const find = (r: CompanySkillTrends, s: string) => r.skills.find((x) => x.skill 
     out.areas[0].pct !== null,
     `pct=${out.areas[0]?.pct}`,
   );
+}
+
+// ── feed coverage: where a SERIES can honestly start ────────────────────────
+// Not the same question as `from`. That is the day the ARCHIVE began; this is
+// the day THIS EMPLOYER was essentially fully covered. Feeds arrive on their
+// own schedules, and until the last of them is on, the daily count climbs
+// because the archive is filling out. Measured on production 2026-08-12, BHP's
+// ten feeds first appear across 07-16 to 08-03 and its live-on-day count runs
+// 11 -> 105 -> 215 -> 375 -> 452 over that stretch; folded across 30 days its
+// top skill reported +347.6%.
+{
+  // Two feeds. The big one runs throughout, the other switches on at day 6 —
+  // so the days before that are missing a third of the picture and the series
+  // must not start there.
+  const rows: SkillRow[] = [
+    ...Array.from({ length: 6 }, () =>
+      row(["Mining Engineering"], "2026-08-01", "2026-08-10", { source: "adzuna" }),
+    ),
+    ...Array.from({ length: 4 }, () =>
+      row(["Mining Engineering"], "2026-08-06", "2026-08-10", { source: "seek" }),
+    ),
+  ];
+  const out = foldSkillRows(rows, DAYS, LIVE_FROM, 0);
+  check(
+    "a series starts where the late feed arrived, not where the archive did",
+    eq(out.days, DAYS.slice(5)),
+    JSON.stringify(out.days),
+  );
+  const s = find(out, "Mining Engineering")!;
+  check(
+    "...and the sparkline is trimmed to match",
+    s.spark === undefined || s.spark.length === out.days.length,
+    `spark=${s.spark?.length} days=${out.days.length}`,
+  );
+  check("...while every live ad still counts", s.now === 10, `now=${s.now}`);
+}
+{
+  // The whole point of weighting. A feed carrying 2 of 42 ads that only shows
+  // up on the last day must NOT collapse the window to one day — `sourceStart`
+  // is the oldest row a feed still has, so a small fast-churn feed always looks
+  // like it just started.
+  const rows: SkillRow[] = [
+    ...Array.from({ length: 40 }, () =>
+      row(["Mining Engineering"], "2026-08-01", "2026-08-10", { source: "adzuna" }),
+    ),
+    ...Array.from({ length: 2 }, () =>
+      row(["Mining Engineering"], "2026-08-10", "2026-08-10", { source: "jora" }),
+    ),
+  ];
+  const out = foldSkillRows(rows, DAYS, LIVE_FROM, 0);
+  check(
+    "a feed under the coverage target cannot veto the window",
+    eq(out.days, DAYS),
+    JSON.stringify(out.days),
+  );
+}
+{
+  // ...and the coverage trim still wins where it is the later of the two. A
+  // guard that replaced `from` instead of flooring it would resurrect
+  // pre-collection days.
+  const rows: SkillRow[] = Array.from({ length: 4 }, () =>
+    row(["Mining Engineering"], "2026-08-01", "2026-08-10", { source: "adzuna" }),
+  );
+  const out = foldSkillRows(rows, DAYS, LIVE_FROM, 4);
+  check(
+    "the archive-wide coverage start is a floor, never overridden",
+    eq(out.days, DAYS.slice(4)),
+    JSON.stringify(out.days),
+  );
+}
+{
+  // Areas rest on a subset of the feeds, so their own window can differ — but
+  // never start earlier than the point the employer was covered at all.
+  const rows: SkillRow[] = [
+    ...Array.from({ length: 20 }, () =>
+      row(["Mining Engineering"], "2026-08-01", "2026-08-10", {
+        source: "adzuna",
+        category: "Engineering Jobs",
+      }),
+    ),
+    ...Array.from({ length: 20 }, () =>
+      row(["Mining Engineering"], "2026-08-04", "2026-08-10", { source: "portal-sf" }),
+    ),
+  ];
+  const out = foldSkillRows(rows, DAYS, LIVE_FROM, 0);
+  check(
+    "areaDays never exceeds the days the employer was covered for",
+    out.areaDays <= out.days.length,
+    `areaDays=${out.areaDays} days=${out.days.length}`,
+  );
+  check("areaDays is reported for the bars' heading", out.areaDays === out.days.length);
+}
+{
+  // newSpark is index-aligned with spark. It used to be sized to the ALREADY
+  // trimmed series and then trimmed again, so it came up short — and empty once
+  // the window outran the archive by more than half.
+  const rows: SkillRow[] = [
+    row(["Mining Engineering"], "2026-08-01", "2026-08-10", { source: "adzuna" }),
+    row(["Mining Engineering"], "2026-08-05", "2026-08-10", { source: "adzuna" }),
+    row(["Mining Engineering"], "2026-08-07", "2026-08-10", { source: "adzuna" }),
+    // No new ads of its own, so it takes the zero-filled fallback path.
+    row(["Electrical Trade"], "2026-07-20", "2026-08-10", { source: "adzuna" }),
+    row(["Electrical Trade"], "2026-07-21", "2026-08-09", { source: "adzuna" }),
+    row(["Electrical Trade"], "2026-07-22", "2026-08-06", { source: "adzuna" }),
+  ];
+  const out = foldSkillRows(rows, DAYS, LIVE_FROM, 3);
+  for (const s of out.skills) {
+    if (!s.spark) continue;
+    check(
+      `newSpark aligns with spark for ${s.skill}`,
+      s.newSpark?.length === s.spark.length,
+      `new=${s.newSpark?.length} spark=${s.spark.length}`,
+    );
+  }
 }
 
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");

@@ -244,6 +244,8 @@ const SKILLS_SHOWN = 6;
 const HIRING_SHOWN = 6;
 /** Below this many days the archive cannot support a change figure. */
 const MIN_TREND_DAYS = 14;
+/** The hiring-velocity comparison, capped by what the archive holds. */
+const VELOCITY_DAYS = 30;
 
 export function buildCompanyCard(input: CardInputs): CompanyCard {
   const c = input.company;
@@ -363,9 +365,26 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
   const biggestArea = input.topArea ?? roleEntries[0]?.[0] ?? null;
   if (biggestArea) facts.push({ k: "Biggest hiring area", v: biggestArea });
   if (vac.length >= MIN_TREND_DAYS) {
-    const week = vac.slice(-7);
-    const added = Math.max(0, week[week.length - 1].c - week[0].c);
-    facts.push({ k: "Hiring velocity", v: `${added} more ads than 7 days ago` });
+    // A month, not a week. A single scrape landing late moves a seven-day
+    // endpoint-to-endpoint read by more than most employers move in a month, so
+    // the shorter window was mostly reporting collection noise.
+    //
+    // The span is whatever the archive can actually supply up to VELOCITY_DAYS,
+    // and the sentence names it. Collection began on 2026-07-20, so asking for
+    // 30 currently yields fewer; claiming "30 days ago" over 24 days of history
+    // would be the card inventing a month it never watched. N points span N-1
+    // days between the two endpoints being compared.
+    const win = vac.slice(-VELOCITY_DAYS);
+    const spanDays = win.length - 1;
+    const moved = win[win.length - 1].c - win[0].c;
+    // Signed. The previous form clamped at zero, so an employer that had shed
+    // forty ads read "0 more ads" — indistinguishable from one that had not
+    // moved at all.
+    const v =
+      moved === 0
+        ? `unchanged on ${spanDays} days ago`
+        : `${Math.abs(moved)} ${moved > 0 ? "more" : "fewer"} ads than ${spanDays} days ago`;
+    facts.push({ k: "Hiring velocity", v });
   }
   if (isPrivate && input.revPerEmp) {
     facts.push({ k: "Revenue per employee", v: `$${input.revPerEmp.toFixed(2)}m` });

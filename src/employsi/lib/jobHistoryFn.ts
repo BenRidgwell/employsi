@@ -892,9 +892,19 @@ export interface CompanySkillTrends {
    *  Uncapped: this is the set a search box offers, and a list that silently
    *  stops would read as the complete one. Callers cap their own display. */
   skills: CompanySkillDemand[];
-  /** Hiring areas, highest live count first. Same rows, same window — the
-   *  card's "where they're hiring" bars and their trend arrows. */
+  /** Hiring areas, highest live count first. Same rows — the card's "where
+   *  they're hiring" bars and their trend arrows. */
   areas: CompanyAreaDemand[];
+  /**
+   * Days behind the AREA percentages, which is not always `days.length`.
+   *
+   * Only two feeds publish a taxonomy, so the areas rest on a subset of the
+   * rows with its own coverage history — when SEEK picked up an employer
+   * mid-window, its areas had days the skills did not. The bars' heading has to
+   * name the window the ARROWS were measured over, not the one the sparklines
+   * were.
+   */
+  areaDays: number;
   /**
    * Currently-advertised ads for this company, counted ONCE each.
    *
@@ -915,12 +925,35 @@ const NO_SKILL_TRENDS: CompanySkillTrends = {
   days: [],
   skills: [],
   areas: [],
+  areaDays: 0,
   liveAds: 0,
   hubs: [],
 };
 
-/** Days of daily history the card's sparklines draw. */
-const SKILL_SPARK_DAYS = 14;
+/**
+ * Windows the card's skills section can be asked for, shortest first.
+ *
+ * An allowlist rather than a free number, for two reasons. The window sets
+ * `scanFrom` on an unindexed date range, so an arbitrary caller-supplied depth
+ * is an arbitrary amount of scanning; and a fixed set of values keeps the query
+ * cache useful — four keys per company instead of one per pixel of a slider.
+ *
+ * 60 is deliberately longer than the archive is currently deep. It does not
+ * fabricate anything: the coverage trim below cuts the window back to days
+ * collection actually ran, so today it renders the same ~24 days that 30 does,
+ * and it lengthens on its own as the archive fills. Every label is drawn from
+ * the returned `days`, never from the requested number, so the card always
+ * names the span it really drew.
+ */
+export const SKILL_WINDOWS = [7, 14, 30, 60] as const;
+/** What the card asks for unless the reader moves the slider. */
+export const DEFAULT_SKILL_WINDOW = 30;
+
+/** The nearest allowed window, so a hand-made request cannot widen the scan. */
+export function skillWindowDays(days: unknown): number {
+  const n = Number(days);
+  return (SKILL_WINDOWS as readonly number[]).includes(n) ? n : DEFAULT_SKILL_WINDOW;
+}
 
 /** Below this many covered days the line says more about the archive's age
  *  than about demand, so it is dropped. Same threshold the ticker uses. */
@@ -942,6 +975,39 @@ const SKILL_MIN_VOLUME = 3;
  *  run of collecting days, short enough that back-dated rows cannot drag the
  *  median under the floor. Matches the ticker's widest scan. */
 const COVERAGE_HORIZON_DAYS = 60;
+
+/**
+ * Share of an employer's rows whose feeds must have been running before a day
+ * counts as covered for that employer. Same value, and the same argument, as
+ * COVERAGE_TARGET in analystFn: below about this much the shortfall is inside
+ * ordinary daily noise, above it the missing feed is visible as a trend.
+ */
+const FEED_COVERAGE_TARGET = 0.95;
+
+/**
+ * The day by which feeds carrying FEED_COVERAGE_TARGET of an employer's rows
+ * had begun covering it, or "" when that cannot be established.
+ *
+ * Walk the feeds oldest-start first, accumulating their share; the day the
+ * running total clears the target is the first day the picture is essentially
+ * complete. Everything before it is missing whichever feeds had not arrived,
+ * which is the archive assembling itself rather than a market moving.
+ */
+function coveredFrom(starts: Record<string, string>, rows: Record<string, number>): string {
+  const feeds = Object.keys(starts);
+  if (!feeds.length) return "";
+  const total = feeds.reduce((t, s) => t + (rows[s] || 0), 0);
+  if (!total) return "";
+  const need = total * FEED_COVERAGE_TARGET;
+  let acc = 0;
+  for (const s of feeds.sort((a, b) =>
+    starts[a] < starts[b] ? -1 : starts[a] > starts[b] ? 1 : 0,
+  )) {
+    acc += rows[s] || 0;
+    if (acc >= need) return starts[s];
+  }
+  return "";
+}
 
 /**
  * Change between the two halves of a covered window, as a percentage.
@@ -1020,10 +1086,11 @@ async function archiveCoverageStart(db: D1Like): Promise<string | null> {
 }
 
 export const getCompanySkillTrends = createServerFn({ method: "GET" })
-  .validator((data: { id: string }) => data)
+  .validator((data: { id: string; days?: number }) => data)
   .handler(async ({ data }): Promise<CompanySkillTrends> => {
     const id = (data.id || "").trim();
     if (!id) return NO_SKILL_TRENDS;
+    const spanDays = skillWindowDays(data.days);
     // Unreleased market: withhold the data as well as the marker, exactly as
     // the other per-company readers here do. See lib/markets.ts.
     if (!marketVisible(await callerRole(), id, true)) return NO_SKILL_TRENDS;
@@ -1042,7 +1109,7 @@ export const getCompanySkillTrends = createServerFn({ method: "GET" })
       // real fortnight was flat. getVacancyTrend already ends a day back for
       // the same reason.
       const window: string[] = [];
-      for (let i = SKILL_SPARK_DAYS; i >= 1; i--) window.push(isoDaysAgo(i));
+      for (let i = spanDays; i >= 1; i--) window.push(isoDaysAgo(i));
       const scanFrom = window[0];
       // The same one-day boundary the rest of the app calls "currently
       // advertised", and the last day of the window above, so the card's counts
@@ -1104,9 +1171,12 @@ export function foldSkillRows(
   // a query — and the card draws both.
   const areaNow: Record<string, number> = {};
   const areaDaily: Record<string, number[]> = {};
-  // Earliest row per contributing feed. A feed that only started covering this
-  // employer part-way through the window would otherwise draw a step change
-  // that reads as hiring — see areaStart below.
+  // Earliest row per contributing feed, for every feed and again for just the
+  // ones that carry an area. A feed that only started covering this employer
+  // part-way through the window would otherwise draw its own arrival as a step
+  // change that reads as hiring — see feedStart and areaStart below.
+  const sourceStart: Record<string, string> = {};
+  const sourceRows: Record<string, number> = {};
   const areaSourceStart: Record<string, string> = {};
   const hubNow: Record<string, Record<string, number>> = {};
   const hubless: Record<string, number> = {};
@@ -1130,6 +1200,8 @@ export function foldSkillRows(
       // SEEK being folded onto Adzuna, and for what is deliberately not an area.
       const src = String(r.source || "");
       const area = AREA_SOURCES.has(src) ? canonicalArea(r.category as string | null) : null;
+      if (!sourceStart[src] || fs < sourceStart[src]) sourceStart[src] = fs;
+      sourceRows[src] = (sourceRows[src] || 0) + 1;
       if (area && (!areaSourceStart[src] || fs < areaSourceStart[src])) areaSourceStart[src] = fs;
 
       if (ls >= liveFrom) {
@@ -1177,12 +1249,47 @@ export function foldSkillRows(
 
   const liveSkills = Object.keys(now);
   if (!liveSkills.length) return NO_SKILL_TRENDS;
-  const days = window.slice(from);
+
+  /**
+   * Where a SERIES for this employer can honestly start.
+   *
+   * `from` is archive-wide: the day collection began at all. That is not the
+   * day this employer was fully covered. Feeds arrive on their own schedules,
+   * and until the last of them is on, the daily count is climbing because the
+   * archive is filling out — not because anyone is hiring.
+   *
+   * Measured on production 2026-08-12, BHP: its ten feeds first appear on
+   * 07-16, 07-21 (adzuna, 36% of its rows), 07-24, 07-28 (portal-sf, 18%),
+   * 08-01 and 08-03. Its live-on-day count runs 11, 105, 107, 126, 215, 375,
+   * 452 across that stretch — a 40x climb that is entirely feeds coming
+   * online. Folded over 30 days, its top skill reported +347.6%.
+   *
+   * So the series starts at the LATEST first appearance among the feeds that
+   * cover this employer. Conservative, and deliberately so: the alternative is
+   * printing the archive's own construction as a hiring boom. It costs
+   * recency — BHP gets 9 days rather than 23 — and it repairs itself as the
+   * archive matures, because the gap between the feeds' start dates stops
+   * mattering once every window begins after all of them.
+   *
+   * This is the same guard `areaStart` already applies to the hiring areas,
+   * lifted to cover every series the fold produces — but BY WEIGHT rather than
+   * strictly. Waiting for literally every feed lets one tiny high-churn feed
+   * veto the whole window: `sourceStart` is the oldest row a feed still has in
+   * this window, so a feed contributing three ads all posted last week looks
+   * like it started last week, and a strict maximum would collapse the series
+   * to nothing. Weighted, it is outvoted. Same threshold and the same reasoning
+   * as coverageDay in analystFn, which solves the mirror of this problem at the
+   * other end of the window.
+   */
+  const feedStart = coveredFrom(sourceStart, sourceRows);
+  const firstWhole = feedStart ? window.findIndex((d) => d >= feedStart) : from;
+  const skillFrom = Math.max(from, firstWhole < 0 ? window.length : firstWhole);
+  const days = window.slice(skillFrom);
 
   const skills: CompanySkillDemand[] = liveSkills
     .map((s) => {
       const full = daily[s];
-      const cut = full ? full.slice(from) : [];
+      const cut = full ? full.slice(skillFrom) : [];
       const enough = cut.length >= SKILL_SPARK_MIN;
       // A dead-flat line is noise, not signal — leave it off.
       const moves = enough && cut.some((v) => v !== cut[0]);
@@ -1193,7 +1300,14 @@ export function foldSkillRows(
         cat: SKILL_CATEGORY[s],
         now: now[s],
         spark: moves ? cut : undefined,
-        newSpark: moves ? (fresh[s] || new Array(cut.length).fill(0)).slice(from) : undefined,
+        // Padded to the FULL window before trimming, like fresh[] itself is —
+        // sizing the fallback to the already-trimmed `cut` and then slicing it
+        // again by `from` cut the same days off twice, so a skill with no new
+        // ads got a short series and, once the window outran the archive by
+        // more than half, an empty one.
+        newSpark: moves
+          ? (fresh[s] || new Array(window.length).fill(0)).slice(skillFrom)
+          : undefined,
         pct,
         dir:
           pct === null || pct === 0
@@ -1226,18 +1340,19 @@ export function foldSkillRows(
    * along but genuinely had no ads until day 8 is treated the same way — and
    * conservative is the right direction, because the alternative is printing a
    * collection artefact as growth.
+   *
+   * Floored at `skillFrom`, never below it. The area-bearing feeds are a subset
+   * of all of them, so their own latest start can fall EARLIER than the point
+   * the employer was fully covered — and an area series is still a count of
+   * this employer's ads, so it inherits the same floor the skills do.
    */
   const areaStart = Object.values(areaSourceStart).sort().pop();
-  const areaFrom = areaStart
-    ? Math.max(
-        from,
-        window.findIndex((d) => d >= areaStart),
-      )
-    : from;
+  const areaFirst = areaStart ? window.findIndex((d) => d >= areaStart) : skillFrom;
+  const areaFrom = Math.max(skillFrom, areaFirst < 0 ? window.length : areaFirst);
 
   const areas: CompanyAreaDemand[] = Object.keys(areaNow)
     .map((a) => {
-      const cut = (areaDaily[a] || []).slice(areaFrom < 0 ? window.length : areaFrom);
+      const cut = (areaDaily[a] || []).slice(areaFrom);
       // Same floors and the same half-window comparison the skills use, so a
       // bar and its arrow are measured the same way.
       const loud = cut.length > 0 && Math.max(...cut) >= SKILL_MIN_VOLUME;
@@ -1263,6 +1378,7 @@ export function foldSkillRows(
     days,
     skills,
     areas,
+    areaDays: Math.max(0, window.length - areaFrom),
     liveAds,
     hubs: Object.entries(liveByHub)
       .map(([hub, n]) => ({ hub, n }))

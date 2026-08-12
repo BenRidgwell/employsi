@@ -5,8 +5,18 @@ import {
   getSkillTrends,
   getCompanySkillTrends,
   getSkillMarketRanks,
+  skillWindowDays,
+  DEFAULT_SKILL_WINDOW,
 } from "../lib/jobHistoryFn";
 import type { RoleHistory, SkillMover, CompanySkillTrends, SkillRanks } from "../lib/jobHistoryFn";
+
+/** The trends plus whether a newer window is still in flight, so the card can
+ *  say it is updating instead of silently showing the previous span's numbers
+ *  under the new label. */
+export interface CompanySkillTrendsState {
+  trends: CompanySkillTrends;
+  loading: boolean;
+}
 import type { RolePoint } from "../lib/openRolesFn";
 
 // Stable empty value, so a card that has not loaded yet does not get a fresh
@@ -15,6 +25,7 @@ const EMPTY_SKILL_TRENDS: CompanySkillTrends = {
   days: [],
   skills: [],
   areas: [],
+  areaDays: 0,
   liveAds: 0,
   hubs: [],
 };
@@ -70,16 +81,23 @@ export function useSkillTrends(id: string | undefined, enabled: boolean): SkillM
 export function useCompanySkillTrends(
   id: string | undefined,
   enabled: boolean,
-): CompanySkillTrends {
-  const { data } = useQuery({
-    queryKey: ["companySkillTrends", id],
-    queryFn: () => getCompanySkillTrends({ data: { id: id as string } }),
+  days: number = DEFAULT_SKILL_WINDOW,
+): CompanySkillTrendsState {
+  const span = skillWindowDays(days);
+  const { data, isFetching } = useQuery({
+    queryKey: ["companySkillTrends", id, span],
+    queryFn: () => getCompanySkillTrends({ data: { id: id as string, days: span } }),
     enabled: enabled && !!id,
     staleTime: 30 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
     retry: false,
+    // Moving the slider changes the query key, and without this the card would
+    // blank to the empty fallback for the length of the fetch — every section
+    // unmounting and remounting under the reader's cursor. Holding the previous
+    // window's data keeps the layout still while the new one lands.
+    placeholderData: (prev) => prev,
   });
-  return data ?? EMPTY_SKILL_TRENDS;
+  return { trends: data ?? EMPTY_SKILL_TRENDS, loading: isFetching };
 }
 
 // Where each skill ranks by live ads, locally and worldwide. Independent of the
