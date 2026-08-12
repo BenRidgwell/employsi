@@ -253,6 +253,68 @@ if (ACCOUNT && DB && TOKEN) {
   console.log("· Principal archive check skipped (no D1 credentials in the environment).");
 }
 
+// 4. The search ontology still covers the taxonomy, and still answers.
+//
+// skillOntology.ts is generated from O*NET and is the only thing standing
+// between a typed phrase and a skill ("workforce planning" → Human Resources).
+// It drifts silently in two directions, and both had happened by the time this
+// check was written:
+//
+//   • BEHIND the taxonomy. It pins skills by INDEX into its own name list, so a
+//     skill added to skillsTaxonomy.ts after the last generation is simply not
+//     in it — unreachable by description, with nothing anywhere saying so. Ten
+//     skills had accumulated that way (Data Engineering, Business Analysis,
+//     Policy & Programs, Product Management, Operations, …).
+//
+//   • EMPTY. The generator used to parse the taxonomy with its own private
+//     regex, which a repo-wide Prettier reformat plus the RAW_SKILLS rename
+//     had reduced to matching nothing at all. It would have written a valid
+//     file with no skills in it and exited 0. It now uses skills_taxonomy.py,
+//     which raises instead — this asserts the OUTPUT, so a future regression
+//     anywhere in that chain is caught here rather than by a user typing.
+//
+// The probes are the two examples named in the generator's header comment, so
+// the file's own documentation is what CI holds it to. Deliberately asserting
+// membership, not rank: ranking shifts legitimately whenever the taxonomy grows
+// (every added skill divides O*NET's per-occupation share one way further), and
+// a check that pinned first place would fail on every honest regeneration.
+try {
+  const { ONTOLOGY_SKILLS } = await import("../src/employsi/data/skillOntology");
+  const { loadOntology, describeSkills } = await import("../src/employsi/lib/describeSkills");
+  await loadOntology();
+
+  const known = new Set(ONTOLOGY_SKILLS);
+  const uncovered = ALL_SKILLS.filter((s) => !known.has(s));
+  if (uncovered.length) {
+    failed = true;
+    console.error(
+      `✗ ${uncovered.length} skill(s) are in the taxonomy but not in the search ontology, ` +
+        `so no typed description can reach them: ${uncovered.join(", ")}`,
+    );
+    console.error("  Fix: re-run scripts/gen-skill-ontology.py against the O*NET database.");
+  } else {
+    console.log(`✓ Search ontology covers all ${ALL_SKILLS.length} skills.`);
+  }
+
+  const probes: [string, string][] = [
+    ["workforce planning", "Human Resources"],
+    ["caring for the elderly", "Aged & Disability Care"],
+  ];
+  const dead = probes.filter(([q, want]) => !describeSkills(q).includes(want));
+  if (dead.length) {
+    failed = true;
+    for (const [q, want] of dead) {
+      console.error(`✗ Search ontology no longer resolves “${q}” to ${want}.`);
+      console.error(`    got: ${JSON.stringify(describeSkills(q))}`);
+    }
+  } else {
+    console.log(`✓ ${probes.length} description queries still reach their skill.`);
+  }
+} catch (e) {
+  failed = true;
+  console.error(`✗ Search ontology could not be read: ${(e as Error).message}`);
+}
+
 if (failed) {
   console.error(
     "\nFix: add new match terms to the EXISTING def for that skill, " +

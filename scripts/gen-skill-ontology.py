@@ -15,6 +15,9 @@ Download: https://www.onetcenter.org/dl_files/database/db_29_1_text/
 import sys, re, json, math
 from collections import defaultdict
 
+sys.path.insert(0, __file__.rsplit('/', 1)[0])
+from skills_taxonomy import load_skills, matcher  # noqa: E402
+
 ROOT = __file__.rsplit('/scripts/', 1)[0]
 TAX = f'{ROOT}/src/employsi/data/skillsTaxonomy.ts'
 OUT = f'{ROOT}/src/employsi/data/skillOntology.ts'
@@ -40,14 +43,6 @@ def stem(w):
     if len(w) > 3 and w.endswith('s') and not w.endswith('ss'):
         return w[:-1]
     return w
-
-
-def load_skills():
-    body = open(TAX).read().split('export const SKILLS', 1)[1].split('];', 1)[0]
-    out = []
-    for m in re.finditer(r"\{\s*skill:\s*'([^']+)',\s*cat:\s*'([^']+)',\s*terms:\s*\[([^\]]*)\]\s*\}", body):
-        out.append((m.group(1), re.findall(r"'([^']*)'", m.group(3))))
-    return out
 
 
 def rows(path):
@@ -80,13 +75,19 @@ def tokens(text):
 
 
 def main(folder):
-    skills = load_skills()
+    skills = load_skills(TAX)
     names = [n for n, _ in skills]
     idx_of = {n: i for i, n in enumerate(names)}
-
-    def skills_for(title):
-        hay = ' ' + title.lower() + ' '
-        return [n for (n, ts) in skills if any(t in hay for t in ts)]
+    # The SHARED reader, not a private regex. This script used to carry its own
+    # copy, and it had drifted into reading nothing at all: it split on
+    # `export const SKILLS` (which is now the merge IIFE — the defs live in
+    # RAW_SKILLS) and matched single-quoted properties, which a repo-wide
+    # Prettier reformat turned into double-quoted ones. Both halves failed
+    # silently, so the generator would have written an EMPTY ontology rather
+    # than erroring. skills_taxonomy.py exists precisely to stop that (see its
+    # docstring) and validates what it parsed; it also honours `except`, so an
+    # occupation the app refuses to map is not mapped here either.
+    skills_for = matcher(TAX)
 
     occ_title = {}
     for r in rows(f'{folder}/Occupation Data.txt'):
@@ -156,7 +157,32 @@ def main(folder):
         if e:
             index[t] = e
 
-    CAP = 12000
+    # Measured against a 20-query suite of the plain-English tasks this feature
+    # exists to answer (the two named at the top of this file included), and
+    # against the previous 90-skill index, on O*NET 29.1:
+    #
+    #   CAP     tokens   raw     gzip    top-1    top-3
+    #   12000   12000    711KB   151KB   14/20    16/20   loses "caring for the
+    #                                                     elderly": `elderly`
+    #                                                     ranks 13472 of 15386
+    #                                                     candidates, cut at
+    #                                                     10734 slots
+    #   16000   16000   1008KB   213KB   14/20    17/20
+    #   20000   16652   1058KB   223KB   14/20    17/20   only 652 more tokens
+    #                                                     exist to keep, and
+    #                                                     they answer nothing
+    #
+    # So 16000 is the knee, not a round number: it is where the candidate list
+    # stops containing anything the suite can detect. The 12000 that stood here
+    # was tuned when the taxonomy had 90 skills; every skill added since divides
+    # `share` in addo() one way further, which lowers every O*NET token's
+    # concentration and pushes real ones under the cut. Re-measure this table
+    # when the taxonomy grows again — the cap is a size budget, and the budget
+    # has to be spent against evidence rather than held at its old value.
+    #
+    # The ~62KB gzipped this costs is on the lazy chunk (see lib/describeSkills.ts),
+    # fetched on the first search keystroke, never on the boot path.
+    CAP = 16000
     cands = []
     for t, sc in onet.items():
         if t in index or ofreq[t] < 3:
