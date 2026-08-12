@@ -3248,6 +3248,90 @@ body {
 .tickerpause svg {
   stroke-width: 1.9;
 }
+
+/* ── The ticker, collapsed ───────────────────────────────────────────────────
+   A centred pill where the full-width strip was. It keeps the strip's surface,
+   border and shadow so it reads as the same object tucked away rather than a
+   new control that appeared, and it sits on the same `bottom` so nothing
+   shifts vertically when it opens.
+
+   `left/right: auto` with the translate is what centres it: the expanded strip
+   is pinned to both rails, and a collapsed pill inheriting that would stretch
+   the full width with its content in the middle. */
+.tickerpill {
+  position: absolute;
+  left: 50%;
+  right: auto;
+  bottom: 32px;
+  transform: translateX(-50%);
+  z-index: 5;
+}
+.tickerpill button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 20px;
+  box-sizing: border-box;
+  border: 1px solid var(--border-subtle);
+  border-radius: 22px;
+  background: var(--raised-surface);
+  box-shadow: var(--raised-shadow);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition:
+    background var(--duration-base) cubic-bezier(0.32, 0.72, 0, 1),
+    transform 110ms;
+}
+.tickerpill button:hover {
+  background: var(--surface-hover);
+}
+.tickerpill button:active {
+  transform: scale(0.98);
+}
+/* The pulse line is the one coloured thing on the pill, for the same reason the
+   expanded strip's dot is: it says the feed is live. Green, not the movement
+   red/green of a delta — nothing here is up or down. */
+.tickerpill button > svg:first-child {
+  color: var(--status-success-fg);
+  flex: 0 0 auto;
+}
+.tpillchev {
+  color: var(--neutral-700);
+  flex: 0 0 auto;
+}
+
+/* Collapse control, far right of the expanded strip's cluster. Same size and
+   hover as the pause button beside it — it is one more control in that row,
+   not a different kind of thing. */
+.tickercollapse {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--neutral-700);
+  cursor: pointer;
+  transition:
+    background var(--duration-base) cubic-bezier(0.32, 0.72, 0, 1),
+    color var(--duration-base),
+    transform 110ms;
+}
+.tickercollapse:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.tickercollapse:active {
+  transform: scale(0.94);
+}
 .tickerpause svg.paused line:first-of-type {
   transform: translateX(1.5px);
 }

@@ -122,6 +122,15 @@ export interface AppState {
    * the bigger annoyance.
    */
   newsCollapsed: boolean;
+  /**
+   * The skills ticker, collapsed to its pill.
+   *
+   * Persisted for the same reason newsCollapsed is: a reader who does not want
+   * a moving strip across the bottom of the map does not want it back on the
+   * next visit either. Collapsing leaves a labelled pill rather than nothing,
+   * so the ticker is still visibly there and one click from returning.
+   */
+  tickerCollapsed: boolean;
   followedIds: string[];
   followedSkills: string[];
 
@@ -208,6 +217,7 @@ export interface AppState {
   toggleMobileMenu: () => void;
   closeMobileMenu: () => void;
   toggleNewsCollapsed: () => void;
+  toggleTickerCollapsed: () => void;
   /** Close the frontmost open surface. Returns false if nothing was open. */
   closeTopmost: () => boolean;
 }
@@ -231,6 +241,8 @@ interface Persisted {
   placeLabels: boolean;
   /** The company card's news column, tucked or not. See AppState.newsCollapsed. */
   newsCollapsed: boolean;
+  /** The skills ticker, collapsed to its pill. See AppState.tickerCollapsed. */
+  tickerCollapsed: boolean;
 }
 const PERSIST_DEFAULTS: Persisted = {
   followedIds: [],
@@ -239,6 +251,7 @@ const PERSIST_DEFAULTS: Persisted = {
   nightMode: false,
   placeLabels: true,
   newsCollapsed: false,
+  tickerCollapsed: false,
 };
 function loadPersisted(): Persisted {
   if (typeof localStorage === "undefined") return PERSIST_DEFAULTS;
@@ -253,6 +266,7 @@ function loadPersisted(): Persisted {
       nightMode: p.nightMode ?? false,
       placeLabels: p.placeLabels ?? true,
       newsCollapsed: p.newsCollapsed ?? false,
+      tickerCollapsed: p.tickerCollapsed ?? false,
     };
   } catch {
     return PERSIST_DEFAULTS;
@@ -435,6 +449,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   helpTourOpen: false,
   mobileMenuOpen: false,
   newsCollapsed: persisted.newsCollapsed,
+  tickerCollapsed: persisted.tickerCollapsed,
   followedIds: persisted.followedIds,
   followedSkills: persisted.followedSkills,
 
@@ -851,6 +866,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleMobileMenu: () => set((s) => solo("mobileMenuOpen", !s.mobileMenuOpen)),
   closeMobileMenu: () => set({ mobileMenuOpen: false }),
   toggleNewsCollapsed: () => set((s) => ({ newsCollapsed: !s.newsCollapsed })),
+  toggleTickerCollapsed: () => set((s) => ({ tickerCollapsed: !s.tickerCollapsed })),
 
   /**
    * What Escape closes, in the order a reader would expect it to.
@@ -903,7 +919,8 @@ useAppStore.subscribe((s, prev) => {
     s.reduceMotion !== prev.reduceMotion ||
     s.nightMode !== prev.nightMode ||
     s.placeLabels !== prev.placeLabels ||
-    s.newsCollapsed !== prev.newsCollapsed
+    s.newsCollapsed !== prev.newsCollapsed ||
+    s.tickerCollapsed !== prev.tickerCollapsed
   ) {
     savePersisted({
       followedIds: s.followedIds,
@@ -912,6 +929,7 @@ useAppStore.subscribe((s, prev) => {
       nightMode: s.nightMode,
       placeLabels: s.placeLabels,
       newsCollapsed: s.newsCollapsed,
+      tickerCollapsed: s.tickerCollapsed,
     });
   }
 });

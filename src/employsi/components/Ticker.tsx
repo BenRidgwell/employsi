@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { TickerItem } from "../data/companies";
 import { getLiveSkillTrends, TREND_WINDOWS } from "../lib/jobHistoryFn";
 import { fmtPay, FX_AS_AT } from "../lib/salaryParse";
+import { useAppStore } from "../state/store";
 
 /**
  * The skills trend ticker, built from `Skills Trend Ticker.dc.html` in the
@@ -127,6 +128,8 @@ export function Ticker({ hidden }: { hidden: boolean }) {
     retry: false,
   });
 
+  const collapsed = useAppStore((st) => st.tickerCollapsed);
+  const toggleCollapsed = useAppStore((st) => st.toggleTickerCollapsed);
   const [winIdx, setWinIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const win = TREND_WINDOWS[winIdx];
@@ -220,6 +223,50 @@ export function Ticker({ hidden }: { hidden: boolean }) {
     );
   };
 
+  // COLLAPSED: a centred pill instead of the full-width strip.
+  //
+  // Deliberately not "hide the ticker". The strip is the app's one always-on
+  // signal that the archive is live, and a reader who tucks it away to see more
+  // map still needs to know it is there — so what is left says what it is, and
+  // reopens on one click. `data-tour="ticker"` stays on whichever element is
+  // rendered, so the guided tour still has something to point at either way.
+  if (collapsed) {
+    return (
+      <div className={`tickerpill ${hidden ? "zoomhide" : ""}`} data-tour="ticker">
+        <button type="button" onClick={toggleCollapsed} aria-expanded={false}>
+          <svg
+            viewBox="0 0 24 24"
+            width={18}
+            height={18}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <polyline points="2 12 7 12 10 5 14 19 17 12 22 12" />
+          </svg>
+          <span>Live trends</span>
+          <svg
+            className="tpillchev"
+            viewBox="0 0 24 24"
+            width={16}
+            height={16}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <polyline points="18 15 12 9 6 15" />
+          </svg>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className={`ticker ${hidden ? "zoomhide" : ""}`} data-tour="ticker">
       <div className="tickerlbl">
@@ -287,6 +334,31 @@ export function Ticker({ hidden }: { hidden: boolean }) {
           >
             <line x1="9.5" y1="5" x2="9.5" y2="19" />
             <line x1="14.5" y1="5" x2="14.5" y2="19" />
+          </svg>
+        </button>
+        {/* Far right of the cluster, after the window and pause controls —
+            the order the reader meets them in: change what it shows, stop it
+            moving, put it away. */}
+        <button
+          type="button"
+          className="tickercollapse"
+          onClick={toggleCollapsed}
+          aria-label="Collapse the ticker"
+          aria-expanded
+        >
+          <span className="tickertip">Collapse</span>
+          <svg
+            viewBox="0 0 24 24"
+            width={18}
+            height={18}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <polyline points="6 9 12 15 18 9" />
           </svg>
         </button>
       </div>
