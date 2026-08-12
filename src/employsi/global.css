@@ -14890,26 +14890,29 @@ body {
 }
 
 /* ── What's Trending · the market's line ─────────────────────────────────────
-   The reference for this is a portfolio card: one coloured panel carrying the
-   headline figure, the line it describes, its labelled extremes and the period
-   control. Keeping them together matters — split across panels, a reader has to
-   take on trust that the number and the chart are the same quantity.
+   The reference for this is a portfolio card: one dark panel carrying a title,
+   the headline figure, the line it describes, its labelled levels, a callout on
+   the latest reading and the period control. Keeping them together matters —
+   split across panels, a reader has to take on trust that the number and the
+   chart are the same quantity.
 
-   INK, NOT COLOUR. The reference for this card is a green portfolio panel, and
-   it was built that way first. It is ink now, because this product is
-   monochrome and spends colour only on real status — a saturated panel at the
-   top of the pane was the single largest use of colour in the app and it read
-   as a status the market was not in. On ink the same structure survives intact:
-   white line, white rings, white type, and the one white pill marking the
-   selected period. --surface-inverse is the token the design system already
-   uses for exactly this. */
+   INK, NOT COLOUR. The reference is a black card with a saturated blue fill,
+   and an earlier version of this one was green. It is ink and white now,
+   because this product is monochrome and spends colour only on real status — a
+   saturated panel at the top of the pane was the single largest use of colour
+   in the app and it read as a status the market was not in. On ink the whole
+   structure survives: white line over a fading white wash, open white rings,
+   dashed white rules, and an inverted white callout. --surface-inverse is the
+   token the design system already uses for exactly this. */
 .mkhero {
   --hero-ink: #ffffff;
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 10px;
   margin: 12px 16px 14px;
-  padding: 16px 18px 12px;
+  /* No bottom padding: the plot bleeds to all three lower edges the way the
+     reference's fill runs off its card, and overflow:hidden crops it. */
+  padding: 16px 18px 10px;
   border-radius: var(--radius-lg);
   /* A slight lift toward the top rather than flat ink: the card is large enough
      that a single value reads as a hole in the pane. */
@@ -14923,40 +14926,38 @@ body {
   justify-content: space-between;
   gap: 10px;
 }
+/* The reference leads with a large plain title, above the label and the figure.
+   That order is right here too: the market's name is what the whole card is
+   about, and it was previously the smallest thing on it. */
 .mkherottl {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
   min-width: 0;
-}
-.mkheroeye {
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  color: rgb(255 255 255 / 72%);
-}
-.mkheroname {
-  font-size: 15px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
+  font-size: 21px;
+  font-weight: 680;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
   color: var(--hero-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.mkherolbl {
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: rgb(255 255 255 / 62%);
+}
 .mkheroclear {
   flex: 0 0 auto;
+  margin-top: 2px;
   padding: 3px 10px;
-  border: 1px solid rgb(255 255 255 / 45%);
+  border: 1px solid rgb(255 255 255 / 40%);
   border-radius: var(--radius-pill);
-  background: rgb(255 255 255 / 14%);
+  background: rgb(255 255 255 / 12%);
   color: var(--hero-ink);
   font-size: 11px;
   cursor: pointer;
 }
 .mkheroclear:hover {
-  background: rgb(255 255 255 / 24%);
+  background: rgb(255 255 255 / 22%);
 }
 .mkheroclear:focus-visible {
   outline: 2px solid var(--hero-ink);
@@ -14965,41 +14966,75 @@ body {
 
 .mkherobig {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
+  margin-top: 3px;
 }
 .mkherovalue {
   font-family: var(--font-mono);
-  font-size: 30px;
+  font-size: 34px;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
   line-height: 1.05;
   color: var(--hero-ink);
 }
-/* Inside the card there is no red/green to spend — the ground is already
-   green. Direction is carried by the sign and a tint of the same white. */
+/* The tail set small and dim, as the reference does with its cents. Not only a
+   flourish: at this magnitude the leading digits are the part a median of
+   medians actually supports, and dimming the rest says so without a caveat. */
+.mkherotail {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: rgb(255 255 255 / 52%);
+}
+/* The reference's change badge is a green pill. There is no red/green to spend
+   here — the direction is in the triangle and the sign, and the pill is the
+   same white as everything else at two weights. */
 .mkherochg {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 11px;
+  border-radius: var(--radius-pill);
+  background: rgb(255 255 255 / 13%);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: rgb(255 255 255 / 82%);
+  color: var(--hero-ink);
 }
 .mkherochg.down {
-  color: rgb(255 255 255 / 66%);
+  background: rgb(255 255 255 / 8%);
+  color: rgb(255 255 255 / 74%);
+}
+.mkherotri {
+  font-size: 9px;
+  line-height: 1;
+}
+.mkherodelta {
+  margin-top: 7px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: rgb(255 255 255 / 70%);
 }
 
 .mkheroplot {
   position: relative;
-  height: 126px;
-  margin-top: 2px;
+  /* Must equal BASE in MarketHero.tsx: the overlays are positioned in SVG user
+     units read as pixels. */
+  height: 150px;
+  /* Bleeds to the card's left, right and bottom edges. The negative bottom
+     margin is what puts the period tabs over the fill, as the reference does,
+     instead of on a strip below it. */
+  margin: 8px -18px -46px;
 }
 .mkheroplot svg {
   display: block;
   width: 100%;
   height: 100%;
-  overflow: visible;
 }
 .mkheroline {
   fill: none;
@@ -15010,8 +15045,33 @@ body {
   vector-effect: non-scaling-stroke;
 }
 .mkheroarea {
-  fill: rgb(255 255 255 / 22%);
+  fill: url(#mkheroFill);
   stroke: none;
+}
+/* One rule per labelled level, running from the card's left edge to the point
+   it belongs to. The reference's gridlines are unlabelled texture; these carry
+   their own figure, so nothing is drawn at a level the reader is not told. */
+.mkherorule {
+  position: absolute;
+  left: 0;
+  border-top: 1px dashed rgb(255 255 255 / 26%);
+  pointer-events: none;
+}
+.mkherolvl {
+  position: absolute;
+  left: 14px;
+  bottom: 3px;
+  /* Chipped, not bare. The rule sits wherever its extreme fell, and the line
+     itself passes over that band elsewhere in the window — a bare label
+     collides with the stroke about as often as not. */
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgb(18 18 20 / 72%);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: rgb(255 255 255 / 74%);
+  white-space: nowrap;
 }
 /* Open rings, as the reference draws them: the ground shows through the middle
    so the marker reads as a point ON the line rather than a dot beside it.
@@ -15019,71 +15079,100 @@ body {
    SVG circle in it renders as an ellipse. */
 .mkheropt {
   position: absolute;
-  width: 11px;
-  height: 11px;
-  margin: -5.5px 0 0 -5.5px;
-  border: 2.5px solid var(--hero-ink);
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border: 2px solid rgb(255 255 255 / 78%);
   border-radius: 50%;
   background: none;
   pointer-events: none;
 }
-.mkherotag {
+/* The latest reading: a solid ring on a soft bloom, right at the card's edge
+   where the series ends. */
+.mkheroglow {
   position: absolute;
-  transform: translateX(-50%);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--hero-ink);
-  white-space: nowrap;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  box-shadow: 0 0 34px 17px rgb(255 255 255 / 15%);
   pointer-events: none;
-  text-shadow: 0 1px 2px rgb(0 0 0 / 14%);
 }
-.mkherotag.hi {
-  top: -4px;
+.mkheroend {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  margin: -6.5px 0 0 -6.5px;
+  border: 3px solid var(--hero-ink);
+  border-radius: 50%;
+  background: var(--surface-inverse);
+  pointer-events: none;
 }
-.mkherotag.lo {
-  bottom: -2px;
+/* The callout, inverted out of the card the way the reference's is: the last
+   day and the figure standing on it — the same figure as the headline, which is
+   the point of putting it on the line. */
+.mkherocall {
+  position: absolute;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 11px;
+  border-radius: 9px;
+  background: var(--hero-ink);
+  color: var(--surface-inverse);
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 34%);
 }
-/* An extreme on the first or last day would otherwise hang half its label
-   outside the card. Same rule as the timeline scrubber's end ticks. */
-.mkherotag.first {
-  transform: none;
+.mkherocallk {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
 }
-.mkherotag.last {
-  transform: translateX(-100%);
+.mkherocallv {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 .mkheronone {
-  padding: 22px 0;
+  padding: 20px 0 6px;
   font-size: 12px;
   line-height: 1.5;
-  color: rgb(255 255 255 / 80%);
+  color: rgb(255 255 255 / 78%);
 }
 
-/* The period control, on the card with the chart it resizes. */
+/* The period control, on the card with the chart it resizes and over the fill
+   rather than below it. The reference marks the selected period by weight and
+   brightness alone; a pill here would be a second inverted surface competing
+   with the callout. */
 .mkherowins {
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: center;
-  gap: 4px;
-  margin-top: 2px;
+  gap: 6px;
 }
 .mkherowin {
-  padding: 5px 14px;
+  padding: 6px 12px;
   border: 0;
   border-radius: var(--radius-pill);
   background: none;
-  color: rgb(255 255 255 / 78%);
+  color: rgb(255 255 255 / 52%);
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.04em;
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
   cursor: pointer;
 }
 .mkherowin:hover {
-  color: var(--hero-ink);
+  color: rgb(255 255 255 / 82%);
 }
 .mkherowin.on {
-  background: var(--hero-ink);
-  color: var(--surface-inverse);
+  color: var(--hero-ink);
   font-weight: 700;
 }
 .mkherowin:focus-visible {

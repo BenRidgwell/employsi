@@ -3,9 +3,14 @@ import { smoothPath } from "../../lib/chart";
 import { MARKET_WINDOWS, type SkillMarket } from "../../lib/jobHistoryFn";
 
 const W = 320;
-const TOP = 26;
-const BOT = 104;
-const BASE = 118;
+/** The line's band. The viewBox runs to BASE so the fill carries on below the
+ *  lowest point and out of the card, leaving the strip the period tabs sit on. */
+const TOP = 30;
+const BOT = 100;
+/** The plot is exactly BASE pixels tall (.mkheroplot in global.css), so an SVG
+ *  y IS a pixel offset and the HTML overlays can be positioned from the same
+ *  numbers the path uses. Change one and change the other. */
+const BASE = 150;
 
 function money(v: number): string {
   if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}b`;
@@ -15,20 +20,17 @@ function money(v: number): string {
 }
 
 /**
- * Where a tag sits, and how it aligns.
+ * "$195.6m" → ["$195", ".6m"].
  *
- * An extreme on the first or last day is the common case — a series that ends
- * on its high or low is exactly what a reader looks for — and a centred tag
- * there hangs half of itself outside the pane. Those two align to their edge
- * instead, which is the same rule the timeline scrubber's end labels follow.
+ * The reference sets the dollars large and the tail small and dim, which is
+ * worth copying for a reason beyond looks: at this scale the leading digits are
+ * the only part a median-of-medians actually supports. Dimming the tail says so
+ * without a caveat.
  */
-function edge(i: number, n: number): string {
-  if (i === 0) return "first";
-  if (i === n - 1) return "last";
-  return "";
-}
-function pos(i: number, n: number): { left: string } {
-  return { left: `${(i / Math.max(1, n - 1)) * 100}%` };
+function moneyParts(v: number): [string, string] {
+  const m = /^(\$[\d,]+)(\.\d+)?([a-z]?)$/.exec(money(v));
+  if (!m) return [money(v), ""];
+  return [m[1], `${m[2] ?? ""}${m[3]}`];
 }
 
 /** "2026-08-11" → "11 Aug". */
@@ -50,6 +52,11 @@ function shortDay(iso: string): string {
  * y-axis on nine days of data implies a precision the series does not have, and
  * the two points a reader actually wants from a shape like this are where it
  * peaked and where it bottomed — which is what the reference design does too.
+ *
+ * THE DASHED RULES ARE NOT DECORATION. The reference's gridlines are unlabelled
+ * texture; here each one runs from the left edge to the extreme it belongs to
+ * and carries that extreme's figure, so the two lines in the card are the two
+ * levels the card names. Nothing is drawn at a level the reader is not told.
  *
  * A SELECTED SKILL'S LINE IS DERIVED, NOT REFETCHED. Value is price times
  * volume and the price is static across the window, so the skill's series is
@@ -87,37 +94,52 @@ export function MarketHero({
     const pad = (hi - lo || Math.max(1, hi * 0.1)) * 0.25;
     const a = lo - pad;
     const b = hi + pad;
-    const x = (i: number) => (i / (series.length - 1)) * W;
+    const n = series.length;
+    const x = (i: number) => (i / (n - 1)) * W;
     const y = (v: number) => BOT - ((v - a) / (b - a)) * (BOT - TOP);
     const pts: [number, number][] = series.map((v, i) => [x(i), y(v)]);
     const line = smoothPath(pts);
+    const hiAt = series.indexOf(hi);
+    const loAt = series.indexOf(lo);
+    // Percentages, because the SVG is stretched to the card's width and the
+    // overlays are HTML sitting on top of it — and clamped, because the plot
+    // bleeds to the card's edges and a ring centred on day one or on the last
+    // day would otherwise be sliced in half by overflow:hidden.
+    const px = (i: number) =>
+      `min(calc(100% - 10px), max(10px, ${(i / Math.max(1, n - 1)) * 100}%))`;
     return {
       line,
       area: `${line} L ${W} ${BASE} L 0 ${BASE} Z`,
-      hiAt: series.indexOf(hi),
-      loAt: series.indexOf(lo),
+      hiAt,
+      loAt,
       hi,
       lo,
-      x,
+      lastVal: series[n - 1],
+      px,
       y,
+      flat: hi === lo,
     };
   }, [series]);
 
   const latest = series.length ? series[series.length - 1] : 0;
   const first = series.length ? series[0] : 0;
   const pct = first > 0 ? ((latest - first) / first) * 100 : null;
+  const delta = first > 0 ? latest - first : null;
   const days = market.days;
+  // An em-dash, not $0. A skill with no disclosed pay has no value, and a
+  // headline of "$0" says it is worth nothing rather than that it is unpriced.
+  const [head, tail] = series.length ? moneyParts(latest) : ["—", ""];
+
+  /** A rule ending under its own marker, with a floor so an extreme on day one
+   *  still draws something to hang its figure on. */
+  const rule = (i: number) => ({
+    width: `${Math.max(22, (i / Math.max(1, series.length - 1)) * 100)}%`,
+  });
 
   return (
     <div className={`mkhero ${picked ? "picked" : ""}`}>
       <div className="mkherohd">
-        <div className="mkherottl">
-          <span className="mkheroeye">
-            {picked ? "Skill" : "Advertised value"}
-            {days.length > 1 && ` · ${shortDay(days[0])} – ${shortDay(days[days.length - 1])}`}
-          </span>
-          <span className="mkheroname">{picked ? picked.skill : market.scope}</span>
-        </div>
+        <span className="mkherottl">{picked ? picked.skill : market.scope}</span>
         {picked && (
           <button type="button" className="mkheroclear" onClick={onClear}>
             Whole market
@@ -125,56 +147,94 @@ export function MarketHero({
         )}
       </div>
 
+      <span className="mkherolbl">
+        {picked ? "Advertised value · this skill" : "Advertised value"}
+        {days.length > 1 && ` · ${shortDay(days[0])} – ${shortDay(days[days.length - 1])}`}
+      </span>
+
       {/* The headline sits INSIDE the card with the line it describes. Split
           apart — a figure in one panel, its chart in the next — a reader has to
           take on trust that they are the same quantity. */}
       <div className="mkherobig">
-        <span className="mkherovalue">{money(latest)}</span>
+        <span className="mkherovalue">
+          {head}
+          {tail && <span className="mkherotail">{tail}</span>}
+        </span>
         {pct !== null && (
           <span className={`mkherochg ${pct >= 0 ? "up" : "down"}`}>
-            {pct >= 0 ? "+" : "−"}
-            {Math.abs(pct).toFixed(1)}% over {days.length} days
+            <span aria-hidden="true" className="mkherotri">
+              {pct >= 0 ? "▲" : "▼"}
+            </span>
+            {Math.abs(pct).toFixed(1)}%
           </span>
         )}
       </div>
+      {delta !== null && (
+        <span className="mkherodelta">
+          {delta >= 0 ? "+" : "−"}
+          {money(Math.abs(delta))} over {days.length} days
+        </span>
+      )}
 
       {geom ? (
         <div className="mkheroplot">
           <svg viewBox={`0 0 ${W} ${BASE}`} preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="mkheroFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#fff" stopOpacity="0.28" />
+                <stop offset="45%" stopColor="#fff" stopOpacity="0.08" />
+                <stop offset="100%" stopColor="#fff" stopOpacity="0" />
+              </linearGradient>
+            </defs>
             <path className="mkheroarea" d={geom.area} />
             <path className="mkheroline" d={geom.line} />
           </svg>
+
+          {/* Each rule is one labelled level, drawn from the card's left edge to
+              the point it belongs to. */}
+          <span className="mkherorule" style={{ top: `${geom.y(geom.hi)}px`, ...rule(geom.hiAt) }}>
+            <span className="mkherolvl">{money(geom.hi)}</span>
+          </span>
+          {!geom.flat && (
+            <span
+              className="mkherorule"
+              style={{ top: `${geom.y(geom.lo)}px`, ...rule(geom.loAt) }}
+            >
+              <span className="mkherolvl">{money(geom.lo)}</span>
+            </span>
+          )}
+
           {/* Markers are HTML, not <circle>. The viewBox is stretched to the
               card's width with preserveAspectRatio="none", which turns a circle
-              into an ellipse — the reference's markers are round. Positioned in
-              percentages against the same geometry the path uses. */}
+              into an ellipse — the reference's markers are round. */}
           <span
             className="mkheropt"
-            style={{
-              left: pos(geom.hiAt, series.length).left,
-              top: `${(geom.y(geom.hi) / BASE) * 100}%`,
-            }}
+            style={{ left: geom.px(geom.hiAt), top: `${geom.y(geom.hi)}px` }}
+          />
+          {!geom.flat && (
+            <span
+              className="mkheropt"
+              style={{ left: geom.px(geom.loAt), top: `${geom.y(geom.lo)}px` }}
+            />
+          )}
+
+          {/* The reference's callout: the latest reading, named and dated, on
+              the point that carries it. It is the same figure as the headline —
+              which is the point of putting it on the line. */}
+          <span
+            className="mkheroglow"
+            style={{ left: geom.px(series.length - 1), top: `${geom.y(geom.lastVal)}px` }}
           />
           <span
-            className="mkheropt"
-            style={{
-              left: pos(geom.loAt, series.length).left,
-              top: `${(geom.y(geom.lo) / BASE) * 100}%`,
-            }}
+            className="mkheroend"
+            style={{ left: geom.px(series.length - 1), top: `${geom.y(geom.lastVal)}px` }}
           />
-          {/* Labels are HTML over the SVG, not text inside it: the viewBox is
-              stretched to the pane's width and text in it would stretch too. */}
           <span
-            className={`mkherotag hi ${edge(geom.hiAt, series.length)}`}
-            style={pos(geom.hiAt, series.length)}
+            className="mkherocall"
+            style={{ top: `${Math.max(2, geom.y(geom.lastVal) - 52)}px` }}
           >
-            {money(geom.hi)}
-          </span>
-          <span
-            className={`mkherotag lo ${edge(geom.loAt, series.length)}`}
-            style={pos(geom.loAt, series.length)}
-          >
-            {money(geom.lo)}
+            <span className="mkherocallk">{shortDay(days[days.length - 1] ?? "")}</span>
+            <span className="mkherocallv">{money(geom.lastVal)}</span>
           </span>
         </div>
       ) : (
