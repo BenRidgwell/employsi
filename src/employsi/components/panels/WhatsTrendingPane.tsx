@@ -14,6 +14,7 @@ import { MARKET_WINDOWS, DEFAULT_MARKET_WINDOW } from "../../lib/jobHistoryFn";
 import { useSkillMarket } from "../../hooks/useRoleHistory";
 import type { SkillMarket } from "../../lib/jobHistoryFn";
 import { SkillMarketRows } from "./SkillMarketRows";
+import { MarketHero } from "./MarketHero";
 import {
   WORLD_SCOPE,
   scopeForCity,
@@ -474,6 +475,10 @@ export function WhatsTrendingPane() {
         <MarketCoverage market={market} requested={windowDays} loading={marketLoading} />
 
         <div className="briefscroll">
+          {/* The market's line, or one skill's when a row is picked. Above the
+              rows it cross-filters with, so the selection and its effect are
+              never separated by a scroll. */}
+          <MarketHero market={market} skill={pickedSkill} onClear={() => setPickedSkill(null)} />
           <SkillMarketRows
             market={market}
             selected={pickedSkill}

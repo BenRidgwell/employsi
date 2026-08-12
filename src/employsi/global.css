@@ -14851,3 +14851,153 @@ body {
   font-size: 10.5px;
   color: var(--text-tertiary);
 }
+
+/* ── What's Trending · the market's line ─────────────────────────────────────
+   The window's advertised value, or one skill's when a row is picked. High and
+   low are marked and labelled instead of an axis being drawn: nine days does
+   not support a gridded scale, and where it peaked and bottomed are the two
+   readings the shape is actually good for. */
+.mkhero {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 20px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.mkherohd {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.mkherottl {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.mkheroname {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mkheroclear {
+  flex: 0 0 auto;
+  padding: 3px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+.mkheroclear:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+.mkheroclear:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.mkheroplot {
+  position: relative;
+  height: 118px;
+  /* Room for the tags, which sit above and below the extremes. */
+  margin-top: 4px;
+}
+.mkheroplot svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.mkheroline {
+  fill: none;
+  stroke: var(--neutral-900);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.mkheroarea {
+  fill: var(--neutral-900);
+  opacity: 0.07;
+  stroke: none;
+}
+.mkheropt {
+  fill: var(--surface-card);
+  stroke: var(--neutral-900);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+/* A selected skill borrows the section's own accent so the hero and the picked
+   row visibly belong together. */
+.mkhero.picked .mkheroline {
+  stroke: var(--status-success-fg);
+}
+.mkhero.picked .mkheroarea {
+  fill: var(--status-success-fg);
+}
+.mkhero.picked .mkheropt {
+  stroke: var(--status-success-fg);
+}
+.mkherotag {
+  position: absolute;
+  transform: translateX(-50%);
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--surface-card);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.mkherotag.hi {
+  top: -2px;
+}
+.mkherotag.lo {
+  bottom: 0;
+}
+/* An extreme on the first or last day would otherwise hang half its label
+   outside the pane. Same rule as the timeline scrubber's end ticks. */
+.mkherotag.first {
+  transform: none;
+}
+.mkherotag.last {
+  transform: translateX(-100%);
+}
+.mkheronone {
+  padding: 18px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+.mkherofoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+.mkherofoot b {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.mkherofoot .up {
+  color: var(--status-success-fg);
+}
+.mkherofoot .down {
+  color: var(--status-danger-fg);
+}
