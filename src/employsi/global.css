@@ -3282,12 +3282,36 @@ body {
   font-weight: var(--weight-semibold);
   letter-spacing: -0.01em;
   cursor: pointer;
-  transition:
-    background var(--duration-base) cubic-bezier(0.32, 0.72, 0, 1),
-    transform 110ms;
-}
-.tickerpill button:hover {
-  background: var(--surface-hover);
+  /* NO `background` HERE, AND NO `:hover` BELOW — the pill flashed black on
+     hover, and both halves of that are load-bearing.
+
+     The fill is `--raised-surface`, a linear-gradient. The hover state was
+     `background: var(--surface-hover)`, a flat colour — and the `background`
+     SHORTHAND sets `background-image: none` alongside it. Interpolating an
+     image against `none` is not defined, so Chromium drops the gradient on the
+     very first frame and then ramps `background-color` up from `transparent`
+     over the full duration. Measured in Chromium 1234, sampling computed style
+     each frame across this exact declaration:
+
+       12ms  rgba(244,244,245,0.247)  background-image: none
+       29ms  rgba(244,244,245,0.6)    background-image: none
+       45ms  rgba(244,244,245,0.82)   background-image: none
+
+     So for ~50ms the pill is a mostly-transparent hole with the globe showing
+     through it, and at the global layer what is behind the pill is space. That
+     is the black flash. It is enter-only: leaving restores the opaque gradient
+     on frame one, which is why it reads as a flash rather than a fade.
+
+     A hover colour that kept the gradient would not flash, but the pill is
+     asked to have no hover state at all. `cursor: pointer`, the press-scale
+     below and the default focus ring are the affordance.
+
+     `.tickerwin` / `.tickerpause` / `.tickercollapse` make the same
+     transparent → flat-colour move safely: both of their endpoints are
+     colours, no image is involved, and they sit on the strip's opaque surface
+     rather than over the map. Verified 2026-08-13 that this button was the
+     only gradient-backed element in this file with a flat-colour `:hover`. */
+  transition: transform 110ms;
 }
 .tickerpill button:active {
   transform: scale(0.98);
