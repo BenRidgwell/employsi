@@ -3332,6 +3332,53 @@ body {
 .tickercollapse:active {
   transform: scale(0.94);
 }
+
+/* ── Collapsing the ticker ───────────────────────────────────────────────────
+   Both the strip and the pill are always in the DOM (see Ticker.tsx), and this
+   cross-fades between them. The previous version swapped one for the other in a
+   single frame, so there was nothing to interpolate and the toggle read as a
+   glitch rather than a movement.
+
+   Each side scales very slightly toward its own centre as it leaves — enough to
+   read as one object being put away and brought back, not enough to blur the
+   text on the way. The strip is full-width so its scale is subtler than the
+   pill's; an equal scale on a 1400px strip is a much bigger visual move than on
+   a 180px pill.
+
+   `visibility` is what actually removes the hidden one from hit-testing, and it
+   is delayed by the length of the fade so it does not blink out early. Opacity
+   alone would leave an invisible full-width strip swallowing clicks over the
+   map. `inert` in the component covers focus and the accessibility tree; this
+   covers the pointer.
+
+   Suppressed wholesale by `.reduce-motion *`, which zeroes every transition —
+   the states still swap, just instantly. */
+.ticker,
+.tickerpill {
+  transition:
+    opacity 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    visibility 0s linear 0s;
+  visibility: visible;
+}
+.ticker.tkgone,
+.tickerpill.tkgone {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    opacity 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    visibility 0s linear 220ms;
+}
+.ticker.tkgone {
+  transform: scale(0.985);
+}
+/* The pill is already centred with translateX(-50%); a bare `scale()` here
+   would drop that and send it to the right-hand half of the screen. */
+.tickerpill.tkgone {
+  transform: translateX(-50%) scale(0.92);
+}
 .tickerpause svg.paused line:first-of-type {
   transform: translateX(1.5px);
 }
