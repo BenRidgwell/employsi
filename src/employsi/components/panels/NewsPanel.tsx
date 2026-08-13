@@ -219,7 +219,19 @@ export function NewsPanel({
   // decides, which is the part of date-sorting that was right. Posts beyond the
   // quota are dropped: they are still on the company's own page, and the card
   // is not a mirror of it.
-  const rawNews = useMemo<CompanyNews>(() => {
+  const rawNews = useMemo<CompanyNews | null>(() => {
+    // No checked articles AND no company posts: there is nothing to show, and
+    // the card says so rather than inventing a headline. See data/news.ts.
+    if (!articleNews && !postItems.length) return null;
+    // Articles are gone but the employer's own posts are real — lead with them
+    // rather than showing an empty column. The quota below exists to stop posts
+    // crowding out coverage; with no coverage to crowd, it has nothing to do.
+    if (!articleNews) {
+      const byDate = [...postItems].sort(
+        (a, b) => (Date.parse(b.publishedIso || "") || 0) - (Date.parse(a.publishedIso || "") || 0),
+      );
+      return { hero: byDate[0], items: byDate.slice(1) };
+    }
     if (!postItems.length) return articleNews;
     const at = (a: NewsItem) => Date.parse(a.publishedIso || "") || 0;
     const articles = [...articleNews.items].sort((a, b) => at(b) - at(a));
@@ -249,6 +261,7 @@ export function NewsPanel({
   // is common to all of them. If the hero itself is blocked, the first
   // surviving item is promoted rather than leaving the card headless.
   const news = useMemo(() => {
+    if (!rawNews) return null;
     const ok = (a: NewsItem) => !isBlockedArticle(a.url, a.publisher);
     const items = rawNews.items.filter(ok);
     if (ok(rawNews.hero)) return { ...rawNews, items };
@@ -258,9 +271,9 @@ export function NewsPanel({
 
   // Scrape article pages for the real image + publisher + publish date. Live
   // feed items may already carry an image; curated items are scraped.
-  const scrapeUrls = [news.hero, ...news.items].filter((a) => a.url).map((a) => a.url);
+  const scrapeUrls = news ? [news.hero, ...news.items].filter((a) => a.url).map((a) => a.url) : [];
   const meta = useArticleImages(scrapeUrls);
-  const heroMeta = news.hero.url ? meta[news.hero.url] : undefined;
+  const heroMeta = news?.hero.url ? meta[news.hero.url] : undefined;
 
   // Cap the feed to recent coverage once a real publish date is known.
   const RECENT_MS = 300 * 24 * 3600 * 1000;
@@ -268,15 +281,15 @@ export function NewsPanel({
     const p = publishedOf(a, a.url ? meta[a.url] : undefined);
     return p ? Date.now() - Date.parse(p) > RECENT_MS : false;
   };
-  const fresh = news.items.filter((a) => !isStale(a));
-  const items = fresh.length >= 3 ? fresh : news.items.slice(0, 4);
+  const fresh = (news?.items ?? []).filter((a) => !isStale(a));
+  const items = fresh.length >= 3 ? fresh : (news?.items ?? []).slice(0, 4);
 
-  const heroImg = imageOf(news.hero, heroMeta);
+  const heroImg = news ? imageOf(news.hero, heroMeta) : undefined;
 
   // "Updated Nh ago" from the freshest article we actually have a date for —
   // the design hard-codes 18h; this is the real recency of the feed below it.
   const updated = (() => {
-    const stamps = [news.hero, ...items]
+    const stamps = (news ? [news.hero, ...items] : [])
       .map((a) => publishedOf(a, a.url ? meta[a.url] : undefined))
       .map((p) => (p ? Date.parse(p) : NaN))
       .filter((t) => !Number.isNaN(t));
@@ -334,45 +347,67 @@ export function NewsPanel({
         )}
       </div>
       <div className="nwscroll">
-        <a className="nwhero" href={articleUrl(news.hero, name)} target="_blank" rel="noreferrer">
-          <Thumb img={heroImg} seed={news.hero.title} className="nwheroimg" />
-          <span className="nwheroshade" />
-          <span className="nwherochip">{news.hero.cat}</span>
-          <span className="nwherobody">
-            <span className="nwherotitle">{news.hero.title}</span>
-            <span className="nwherometa">{metaBits(news.hero, heroMeta)}</span>
-          </span>
-        </a>
-
-        {items.map((a, i) => {
-          const m = a.url ? meta[a.url] : undefined;
-          const img = imageOf(a, m);
-          const k = kickerOf(a, m);
-          return (
+        {!news ? (
+          /* NOTHING FOUND, SAID PLAINLY. This replaces a generated feed —
+             headlines built from the company's name, with engagement counts
+             from a hash of it. Those read exactly like reporting and were
+             invented, which is the one thing this card must not do. An empty
+             column is worth more than a confident one that is wrong. */
+          <div className="nwempty">
+            <span className="nwemptyhd">No recent coverage found</span>
+            <span className="nwemptysub">
+              Nothing has been published about {name} in the sources we read. This updates
+              overnight.
+            </span>
+          </div>
+        ) : (
+          <>
             <a
-              className="nwrow"
-              key={i}
-              href={articleUrl(a, name)}
+              className="nwhero"
+              href={articleUrl(news.hero, name)}
               target="_blank"
               rel="noreferrer"
             >
-              {img ? (
-                <Thumb img={img} seed={a.title} className="nwrowimg" />
-              ) : (
-                <span className="nwrowimg nwrowkicker" style={{ background: k.tint }}>
-                  {k.code}
-                </span>
-              )}
-              <span className="nwrowbody">
-                <span className="nwrowtitle">{a.title}</span>
-                <span className="nwrowmeta">
-                  {a.kind === "post" && <PostTag />}
-                  {metaBits(a, m)}
-                </span>
+              <Thumb img={heroImg} seed={news.hero.title} className="nwheroimg" />
+              <span className="nwheroshade" />
+              <span className="nwherochip">{news.hero.cat}</span>
+              <span className="nwherobody">
+                <span className="nwherotitle">{news.hero.title}</span>
+                <span className="nwherometa">{metaBits(news.hero, heroMeta)}</span>
               </span>
             </a>
-          );
-        })}
+
+            {items.map((a, i) => {
+              const m = a.url ? meta[a.url] : undefined;
+              const img = imageOf(a, m);
+              const k = kickerOf(a, m);
+              return (
+                <a
+                  className="nwrow"
+                  key={i}
+                  href={articleUrl(a, name)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {img ? (
+                    <Thumb img={img} seed={a.title} className="nwrowimg" />
+                  ) : (
+                    <span className="nwrowimg nwrowkicker" style={{ background: k.tint }}>
+                      {k.code}
+                    </span>
+                  )}
+                  <span className="nwrowbody">
+                    <span className="nwrowtitle">{a.title}</span>
+                    <span className="nwrowmeta">
+                      {a.kind === "post" && <PostTag />}
+                      {metaBits(a, m)}
+                    </span>
+                  </span>
+                </a>
+              );
+            })}
+          </>
+        )}
       </div>
     </aside>
   );

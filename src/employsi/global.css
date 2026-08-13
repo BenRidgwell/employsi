@@ -8998,6 +8998,27 @@ body {
   pointer-events: none;
 }
 
+/* Nothing found. Replaces a generated feed of invented headlines, so it has to
+   read as a deliberate, informative state rather than a broken panel — hence a
+   heading plus a line saying where we looked and when it refreshes. Uses the
+   panel's own text tokens so it sits in the column rather than on top of it. */
+.nwempty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 28px 4px;
+}
+.nwemptyhd {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.008em;
+  color: var(--nw-text);
+}
+.nwemptysub {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--nw-muted);
+}
 .nwrowmeta {
   font-size: 11.5px;
   color: var(--nw-muted);
