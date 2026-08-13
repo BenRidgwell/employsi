@@ -283,6 +283,9 @@ async function flushXref(env: NewsEnv, xref: Record<string, StoredNewsItem[]>): 
     const items = [...byUrl.values()]
       .sort((a, b) => (Date.parse(b.published) || 0) - (Date.parse(a.published) || 0))
       .slice(0, XREF_PER_COMPANY);
+    // Everything found was too old to keep. Writing the empty result would
+    // leave a key that says nothing and still costs a read on every card open.
+    if (!items.length) continue;
     await env.OPEN_ROLES_HISTORY.put(
       xrefKey(name),
       JSON.stringify({ updated: new Date().toISOString(), items }),
@@ -345,6 +348,32 @@ export async function processNews(
   if (empty.length) {
     await sleep(2000);
     empty = await sweep(empty);
+  }
+
+  // A company whose fetch failed keeps yesterday's articles — and those
+  // articles still name whoever they name. Without this, a throttled company
+  // contributes NOTHING to the cross-index that night, which is not a
+  // hypothetical: measured 2026-08-13, Rio Tinto came back empty, so the AFR's
+  // "Trump taps BHP and Rio Tinto" never reached BHP's card even though it was
+  // sitting in Rio's stored feed the whole time.
+  //
+  // Bounded by construction: this reads only the companies that missed twice
+  // (9-13 per part), and reads what is already in KV rather than going out to
+  // the network again.
+  for (const name of empty) {
+    try {
+      const raw = await env.OPEN_ROLES_HISTORY.get(newsKey(name));
+      if (!raw) continue;
+      const parsed = JSON.parse(raw) as { items?: StoredNewsItem[] };
+      for (const it of parsed.items ?? []) {
+        if (!it?.title) continue;
+        for (const other of companiesNamedIn(it.title, compiled, name)) {
+          (xref[other] ||= []).push(it);
+        }
+      }
+    } catch {
+      /* a company with no stored feed simply has nothing to contribute */
+    }
   }
 
   await flushXref(env, xref);
