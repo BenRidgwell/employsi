@@ -164,7 +164,26 @@ export function buildPanel(
           payGapBench: INDUSTRY_BENCH.payGap,
         },
     layoffs: live ? live.layoffs : culture ? culture.layoffs : null,
-    news: live ? live.news : null,
+    // ALWAYS null, even for BHP — see below. This is what makes the news column
+    // ask for live coverage.
+    //
+    // BHP is the one company handed a `live` BhpFeed (CompanyPanel gates it on
+    // `lastId === "bhp"`), and that feed carried a `news` block built from
+    // data/news.ts's curated set with its comment counts wobbled to look like
+    // movement. Passing it through here set NewsPanel's `live` prop, which
+    // makes it compute `liveQuery = null` — and that DISABLES the live news
+    // query outright. So the one company with a bespoke feed was the only one
+    // that never fetched real coverage, and its card showed the same static
+    // headlines indefinitely: on 2026-08-13 it was still leading with a CEO
+    // transition from March and a MINING.COM piece four months old.
+    //
+    // That is the opposite of what the rest of the panel intends — NewsPanel's
+    // own comment says every company fetches the live feed and the curated set
+    // is the FALLBACK. BHP now does the same, and still falls back to exactly
+    // those articles on a day the live feed returns nothing.
+    //
+    // The BhpFeed's other fields are untouched; only its news is ignored.
+    news: null,
     companyId: c.id,
   };
 }
