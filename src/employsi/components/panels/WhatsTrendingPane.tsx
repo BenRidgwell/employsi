@@ -122,7 +122,10 @@ function MoversCard({
 }) {
   if (!rows.length) return null;
   return (
-    <section className="mvr">
+    // The direction is on the section so the dashboard grid can place risers
+    // and fallers in named cells. Two `.mvr` siblings distinguished only by
+    // :nth-of-type would break the moment anything else is added here.
+    <section className={`mvr mvr-${dir}`}>
       <div className="ccsecth">
         <span className="cceyebrow">{title}</span>
         {/* The span rides in the eyebrow rather than a footer under both
@@ -370,83 +373,95 @@ export function WhatsTrendingPane() {
             ))}
           </div>
         </div>
+        {/* TWO EXPLICIT COLUMNS, NOT A GRID WITH SPANS.
+            The board wants the skills tile — the only section of unbounded
+            length — running the full height beside the shorter cards. Done
+            with `grid-row: 1 / 3` it looked right and was not: .mkhero sets
+            overflow:hidden for its bleeding chart, which zeroes its automatic
+            minimum height, so the spanning tile's row distribution squashed
+            the hero to 199px and clipped 86px of its own chart away. Columns
+            of flex items size honestly and need no such reasoning. */}
         <div className="briefscroll">
-          {/* The market's line, or one skill's when a row is picked. Above the
-              rows it cross-filters with, so the selection and its effect are
-              never separated by a scroll. */}
-          <MarketHero
-            market={market}
-            skill={pickedSkill}
-            onClear={() => setPickedSkill(null)}
-            days={windowDays}
-            onDays={setWindowDays}
-            loading={marketLoading}
-          />
-          <SkillMarketRows
-            market={market}
-            selected={pickedSkill}
-            onPick={(sk) => setPickedSkill((cur) => (cur === sk ? null : sk))}
-          />
-          <div className="trendsnap">
-            <div className="trendsnaphd">
-              <span className="trendsnaptitle">Most viewed</span>
-              <span className="trendsnapcap">What people are exploring now</span>
-            </div>
-            {hasViews ? (
-              viewed!.slice(0, 3).map((v) => (
-                <button
-                  className="trendsnaprow"
-                  key={`${v.kind}:${v.ref}`}
-                  onClick={() => activateViewedRow(v)}
-                >
-                  <span className={`trendsnapic tv-${v.kind}`}>
-                    <ViewedIcon kind={v.kind} />
-                  </span>
-                  <span className="trendsnapinfo">
-                    <span className="trendsnaplabel">{v.label}</span>
-                    <span className="trendsnapsub">{v.sub}</span>
-                  </span>
-                  <span className="trendsnapshare">
-                    <b>{v.share}</b>
-                    <span>of views</span>
-                  </span>
-                </button>
-              ))
-            ) : (
-              // Was a hand-written seed reading "BHP 18% of views". Every other
-              // figure on this pane is now measured, and one invented
-              // percentage among them is worse than an empty state — it is
-              // indistinguishable from the real ones.
-              <div className="dataempty">No views recorded yet</div>
+          <div className="mktcol">
+            {/* The market's line, or one skill's when a row is picked. */}
+            <MarketHero
+              market={market}
+              skill={pickedSkill}
+              onClear={() => setPickedSkill(null)}
+              days={windowDays}
+              onDays={setWindowDays}
+              loading={marketLoading}
+            />
+            {hasReal && (
+              <>
+                <MoversCard
+                  title="Biggest risers"
+                  dir="up"
+                  rows={movers!.risers}
+                  days={movers!.windowDays}
+                  payOf={payOf}
+                  onSkill={activateSkill}
+                />
+                <MoversCard
+                  title="Biggest fallers"
+                  dir="down"
+                  rows={movers!.fallers}
+                  days={movers!.windowDays}
+                  payOf={payOf}
+                  onSkill={activateSkill}
+                />
+              </>
+            )}
+            {!hasReal && !moversFetching && market.rows.length > 0 && (
+              <div className="brieffoot">
+                No movers for {scope.label} yet — a skill needs enough daily vacancies in BOTH the
+                recent window and the one before it before a change can be measured.
+              </div>
             )}
           </div>
 
-          {hasReal && (
-            <>
-              <MoversCard
-                title="Biggest risers"
-                dir="up"
-                rows={movers!.risers}
-                days={movers!.windowDays}
-                payOf={payOf}
-                onSkill={activateSkill}
-              />
-              <MoversCard
-                title="Biggest fallers"
-                dir="down"
-                rows={movers!.fallers}
-                days={movers!.windowDays}
-                payOf={payOf}
-                onSkill={activateSkill}
-              />
-            </>
-          )}
-          {!hasReal && !moversFetching && market.rows.length > 0 && (
-            <div className="brieffoot">
-              No movers for {scope.label} yet — a skill needs enough daily vacancies in BOTH the
-              recent window and the one before it before a change can be measured.
+          {/* The right column carries the one tile that can run to 99 rows, so
+              it is the one that flexes and scrolls itself. */}
+          <div className="mktcol">
+            <SkillMarketRows
+              market={market}
+              selected={pickedSkill}
+              onPick={(sk) => setPickedSkill((cur) => (cur === sk ? null : sk))}
+            />
+            <div className="trendsnap">
+              <div className="trendsnaphd">
+                <span className="trendsnaptitle">Most viewed</span>
+                <span className="trendsnapcap">What people are exploring now</span>
+              </div>
+              {hasViews ? (
+                viewed!.slice(0, 3).map((v) => (
+                  <button
+                    className="trendsnaprow"
+                    key={`${v.kind}:${v.ref}`}
+                    onClick={() => activateViewedRow(v)}
+                  >
+                    <span className={`trendsnapic tv-${v.kind}`}>
+                      <ViewedIcon kind={v.kind} />
+                    </span>
+                    <span className="trendsnapinfo">
+                      <span className="trendsnaplabel">{v.label}</span>
+                      <span className="trendsnapsub">{v.sub}</span>
+                    </span>
+                    <span className="trendsnapshare">
+                      <b>{v.share}</b>
+                      <span>of views</span>
+                    </span>
+                  </button>
+                ))
+              ) : (
+                // Was a hand-written seed reading "BHP 18% of views". Every
+                // other figure on this pane is now measured, and one invented
+                // percentage among them is worse than an empty state — it is
+                // indistinguishable from the real ones.
+                <div className="dataempty">No views recorded yet</div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </aside>
     </>

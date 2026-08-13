@@ -193,25 +193,23 @@ export function MarketHero({
         )}
       </div>
       {/* The movement, then the two levels the rings on the plot mark. Off the
-          chart deliberately: see Extreme. */}
-      {(delta !== null || geom) && (
+          chart deliberately: see Extreme. Two lines rather than one, because
+          together they run to about 366px and the card is 359 wide in the
+          dashboard's left column — as one line they wrapped, and a mono line
+          that wraps mid-figure reads as a mistake. */}
+      {delta !== null && (
         <span className="mkherodelta">
-          {delta !== null && (
-            <>
-              {delta >= 0 ? "+" : "−"}
-              {money(Math.abs(delta))} over {days.length}
-              {/* "of 30" whenever the archive could not fill the window asked
-                  for. Without it, pressing 30d on nine days of history looks
-                  like a control that does nothing. */}
-              {days.length < windowDays ? ` of ${windowDays}` : ""} days
-            </>
-          )}
-          {geom && !geom.flat && (
-            <>
-              {delta !== null && " · "}
-              high {money(geom.hi)} · low {money(geom.lo)}
-            </>
-          )}
+          {delta >= 0 ? "+" : "−"}
+          {money(Math.abs(delta))} over {days.length}
+          {/* "of 30" whenever the archive could not fill the window asked for.
+              Without it, pressing 30d on nine days of history looks like a
+              control that does nothing. */}
+          {days.length < windowDays ? ` of ${windowDays}` : ""} days
+        </span>
+      )}
+      {geom && !geom.flat && (
+        <span className="mkherolevels">
+          high {money(geom.hi)} · low {money(geom.lo)}
         </span>
       )}
 

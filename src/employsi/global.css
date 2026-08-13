@@ -14955,9 +14955,18 @@ body {
   margin-top: 7px;
   font-family: var(--font-mono);
   font-size: 11.5px;
-  line-height: 1.5;
+  line-height: 1.45;
   font-variant-numeric: tabular-nums;
   color: rgb(255 255 255 / 70%);
+}
+/* The two levels the rings mark, under the movement rather than beside it. */
+.mkherolevels {
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  color: rgb(255 255 255 / 50%);
 }
 
 .mkheroplot {
@@ -15549,6 +15558,172 @@ body {
 
 /* The spotlight's travel is the whole point of the effect, but it is also a
    large moving mask — held still for anyone who asked for less motion. */
+/* ── What's Trending · the dashboard layout ──────────────────────────────────
+   The pane is a wide tile board, not a tall column. Stacked one-per-row at
+   400px it ran to about 1,700px of content — hero, 12 skill rows, most viewed
+   and two movers lists — so most of it lived below the fold and the comparison
+   the pane exists to support (this market's line against the skills driving
+   it) could not be held in one view.
+
+   It follows the shape .dqpane already established here: a fixed-height card
+   at the rail anchor, a tinted body, and white tiles with a hairline and a 1px
+   lift. Nothing invents a surface the product did not already have.
+
+       ┌───────────────┬───────────────┐
+       │ hero          │ skills        │
+       ├───────────────┤ (flexes, and  │
+       │ risers        │  scrolls      │
+       ├───────────────┤  itself)      │
+       │ fallers       ├───────────────┤
+       │               │ most viewed   │
+       └───────────────┴───────────────┘
+
+   TWO COLUMNS OF FLEX ITEMS, NOT A GRID WITH SPANS. The first attempt gave
+   the skills tile `grid-row: 1 / 3` beside the two short cards. It looked
+   right and was not: .mkhero sets overflow:hidden for its bleeding chart,
+   which zeroes its automatic minimum height, so the spanning tile's row
+   distribution squashed the hero to 199px and clipped 86px of its own chart
+   away — silently, since the clipping is what overflow:hidden is there for.
+   Columns size honestly and need no such reasoning. */
+.trendpane {
+  width: 940px;
+  /* Replaces the base pane's `bottom`, which stretched this one to the full
+     viewport height and left the tiles floating in it. */
+  bottom: auto;
+  height: min(780px, var(--pane-max-h));
+  /* The tinted body runs to the pane's edge, so the pane has to clip. */
+  overflow: hidden;
+}
+.trendpane .briefscroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  /* Scrolls rather than clips. On a short viewport --pane-max-h wins over the
+     780 and the left column no longer fits — measured at 1280x860 it is about
+     10px over. Hidden, that 10px is the bottom of the fallers tile silently
+     sliced off; auto, the board scrolls the little it needs to. */
+  overflow-y: auto;
+  display: grid;
+  /* Not an even split. The skills tile carries four things per row — name,
+     line, percentage, price — and at a true half of 940 the longer names
+     ellipsed at the second word ("Administration & Offi…"). The hero needs
+     only enough for its own sub-line, which is about 360px. */
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  gap: 14px;
+  padding: 14px;
+  background: #fbfbfc;
+}
+.mktcol {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+/* A scroller must never compress what it scrolls — the same trap .dqbody
+   documents. Every tile here sets overflow:hidden for its corners, which opts
+   it out of its own automatic minimum height and lets the column squash it.
+   The skills tile is the one exception: it is meant to absorb the slack. */
+.mktcol > * {
+  flex: 0 0 auto;
+}
+.trendpane .mkhero {
+  /* The column owns the spacing now. */
+  margin: 0;
+}
+.trendpane .trendsnap {
+  margin: 0;
+}
+
+/* Tile chrome, matching .dqcard exactly. The hero brings its own — it is the
+   one dark surface on the board — and most viewed already had a card. */
+.trendpane .smk,
+.trendpane .mvr {
+  border: 1px solid #ededf0;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(28, 28, 30, 0.04);
+  padding: 14px 16px;
+  overflow: hidden;
+}
+.trendpane .trendsnap {
+  box-shadow: 0 1px 2px rgba(28, 28, 30, 0.04);
+}
+
+/* Trimmed inside the tile to buy the name column back another dozen pixels.
+   The line is a shape, not a reading — nothing is measured off its width. */
+.trendpane .smkspark {
+  width: 84px;
+}
+
+/* THE SKILLS TILE TAKES THE SLACK AND SCROLLS ITSELF. It is the only section
+   whose length is unbounded — 92 skills for Perth, 99 worldwide — and letting
+   it set the board's height is what made the pane a column in the first
+   place. Bounded here, the whole dashboard fits one screen and the list keeps
+   every row behind its own scrollbar. */
+.trendpane .smk {
+  flex: 1 1 auto;
+  min-height: 200px;
+}
+.trendpane .smkrows {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  /* Fades the cut-off row so the list reads as scrollable rather than as
+     having ended mid-name. Same device as .smkcats uses horizontally. */
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
+}
+.trendpane .smkfoot,
+.trendpane .smkcats,
+.trendpane .smk .ccsecth {
+  flex: 0 0 auto;
+}
+
+/* One column below the width the board needs. 940 plus the rail anchor and a
+   margin is about 1,076px; under that the pane falls back to the single
+   column it had before, at its old width, and every tile drops its chrome
+   again — a hairline box around each section reads as clutter at 400px. */
+@media (max-width: 1100px) {
+  .trendpane {
+    width: 400px;
+    height: auto;
+    bottom: 28px;
+  }
+  .trendpane .briefscroll {
+    display: block;
+    overflow-y: auto;
+    padding: 4px 14px 14px;
+    background: transparent;
+  }
+  .mktcol {
+    display: block;
+  }
+  .trendpane .smk,
+  .trendpane .mvr {
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    overflow: visible;
+  }
+  .trendpane .smk {
+    padding: 2px 20px 4px;
+  }
+  .trendpane .mvr {
+    padding: 16px 20px 4px;
+  }
+  .trendpane .mkhero {
+    margin: 12px 16px 14px;
+  }
+  .trendpane .trendsnap {
+    margin: 8px 0 6px;
+    box-shadow: none;
+  }
+  .trendpane .smkrows {
+    overflow-y: visible;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .gtspot,
   .gttip {
