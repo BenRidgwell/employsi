@@ -33,6 +33,13 @@
  */
 
 import { isBlockedArticle } from "../../src/employsi/data/newsBlocklist";
+import {
+  compileMentions,
+  companiesNamedIn,
+  xrefKey,
+  XREF_MAX_AGE_MS,
+  XREF_PER_COMPANY,
+} from "../../src/employsi/lib/newsMentions";
 import { officialFeedFor, type OfficialFeed } from "../../src/employsi/data/officialNewsFeeds";
 import { scrapeNewsroom } from "../../src/employsi/lib/newsroomScrape";
 import { newsQueryFor } from "../../src/employsi/data/newsQueries";
@@ -240,6 +247,49 @@ async function pool<T>(items: T[], limit: number, job: (item: T) => Promise<void
   await Promise.all(workers);
 }
 
+/**
+ * Merge this pass's cross-mentions into each named company's xref entry.
+ *
+ * READ-MERGE-WRITE rather than overwrite, because the four parts run on
+ * separate ticks and each sees only its own slice of the roster: an overwrite
+ * would mean the last part of the night silently discarded what the first three
+ * found. Entries carry the article's own published date and are pruned by age,
+ * so a story drops off on its own rather than needing a sweep to remove it.
+ */
+async function flushXref(env: NewsEnv, xref: Record<string, StoredNewsItem[]>): Promise<void> {
+  const cutoff = Date.now() - XREF_MAX_AGE_MS;
+  for (const [name, found] of Object.entries(xref)) {
+    if (!found.length) continue;
+    let existing: StoredNewsItem[] = [];
+    try {
+      const raw = await env.OPEN_ROLES_HISTORY.get(xrefKey(name));
+      if (raw) {
+        const parsed = JSON.parse(raw) as { items?: StoredNewsItem[] };
+        if (Array.isArray(parsed.items)) existing = parsed.items;
+      }
+    } catch {
+      /* a corrupt entry is replaced by this pass rather than failing it */
+    }
+    const byUrl = new Map<string, StoredNewsItem>();
+    for (const it of [...existing, ...found]) {
+      if (!it?.url || !it.title) continue;
+      const when = Date.parse(it.published || "");
+      // An undated article is kept — Bing omits pubDate often enough that
+      // dropping them would thin the index — but it cannot outlive the window,
+      // so it is treated as of now and ages out from this pass.
+      if (!Number.isNaN(when) && when < cutoff) continue;
+      byUrl.set(it.url, it);
+    }
+    const items = [...byUrl.values()]
+      .sort((a, b) => (Date.parse(b.published) || 0) - (Date.parse(a.published) || 0))
+      .slice(0, XREF_PER_COMPANY);
+    await env.OPEN_ROLES_HISTORY.put(
+      xrefKey(name),
+      JSON.stringify({ updated: new Date().toISOString(), items }),
+    );
+  }
+}
+
 /** How many ticks the nightly refresh is spread over. */
 export const NEWS_PARTS = 4;
 
@@ -254,6 +304,11 @@ export async function processNews(
   if (!names.length) return { refreshed: [], empty: [] };
   const refreshed: string[] = [];
   let empty: string[] = [];
+  // Compiled against the WHOLE roster, not this part's slice: an article found
+  // under a company in part 0 can name one in part 3, and the point is to catch
+  // exactly those.
+  const compiled = compileMentions(allNames);
+  const xref: Record<string, StoredNewsItem[]> = {};
 
   const sweep = async (list: string[]) => {
     const missed: string[] = [];
@@ -271,6 +326,14 @@ export async function processNews(
         JSON.stringify({ updated: new Date().toISOString(), items }),
       );
       refreshed.push(name);
+      // Note every OTHER rostered company this company's articles name, so the
+      // story reaches their cards too. Collected here and written once at the
+      // end of the pass — a per-article write would be thousands of KV puts.
+      for (const it of items) {
+        for (const other of companiesNamedIn(it.title, compiled, name)) {
+          (xref[other] ||= []).push(it);
+        }
+      }
     });
     return missed;
   };
@@ -283,6 +346,8 @@ export async function processNews(
     await sleep(2000);
     empty = await sweep(empty);
   }
+
+  await flushXref(env, xref);
 
   await env.OPEN_ROLES_HISTORY.put(
     `news:lastrun:${part}`,
