@@ -7,6 +7,8 @@ import { HintPulse } from "./components/HintPulse";
 import { ActionRail } from "./components/ActionRail";
 import { FilterPane } from "./components/FilterPane";
 import { MobileTabBar } from "./components/MobileTabBar";
+import { MobileLayerBar } from "./components/MobileLayerBar";
+import { MobileSearch } from "./components/MobileSearch";
 import { MobileMenu } from "./components/MobileMenu";
 import { Toast } from "./components/Toast";
 import { LocalBanner } from "./components/LocalBanner";
@@ -96,6 +98,11 @@ function App() {
       <div className="apphead">
         <TopBar />
         <GlobalSearch />
+        {/* Phones only (CSS hides both above 680px). The design stacks a
+            permanent search field and the layer segmented control under the
+            wordmark, in place of the desktop's centred pill and left rail. */}
+        <MobileSearch />
+        <MobileLayerBar />
       </div>
 
       {/* ── Map frame ───────────────────────────────────────────────────────

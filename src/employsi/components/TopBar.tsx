@@ -1,16 +1,10 @@
 import { useMemo } from "react";
-import { isReleasedCompany, isReleasedPlace } from "../lib/markets";
 import { BrandMark } from "./BrandMark";
 import { AccountButton } from "./AccountButton";
 import { HelpDock } from "./HelpDock";
 import { useAppStore, isSearchActive, type FilterState } from "../state/store";
-import { COMPANIES } from "../data/companies";
-import { searchCityFor } from "../data/mapboxGeo";
 import { popularSkills as popularSkillsForLayer } from "../lib/skillHeat";
-import { GLOBAL_HUB_LABEL } from "../data/geo";
-import { ALL_SKILLS } from "../data/skillsTaxonomy";
-import { describeSkills } from "../lib/describeSkills";
-import { useOntologyReady } from "../hooks/useOntologyReady";
+import { useGlobalSearch, type SearchResult } from "../hooks/useGlobalSearch";
 
 function SearchIcon() {
   return (
@@ -84,60 +78,12 @@ export function TopBar() {
   );
 
   // Full search — the same skills + companies + cities the desktop GlobalSearch
-  // offers, so the mobile bottom-bar search (which uses this flyout on every
-  // layer) has parity with dev instead of only finding local-city companies.
-  type SResult =
-    | { kind: "company"; id: string; label: string; sub: string }
-    | { kind: "city"; id: string; label: string; sub: string }
-    | { kind: "skill"; id: string; label: string; sub: string };
-  const ontologyReady = useOntologyReady();
+  // offers. Shared with the phone's persistent field (MobileSearch) through
+  // useGlobalSearch, so the two surfaces cannot drift apart.
+  const { results: searchResults, go } = useGlobalSearch();
 
-  const searchResults = useMemo<SResult[]>(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return [];
-    // Same market filter as GlobalSearch — this is the second search surface,
-    // and gating one of two doors is not gating the door.
-    const companies: SResult[] = COMPANIES.filter(
-      (c) =>
-        (c.name.toLowerCase().includes(q) || c.ticker.toLowerCase().includes(q)) &&
-        (seesAllMarkets || isReleasedCompany(c.id)),
-    )
-      .slice(0, 6)
-      .map((c) => ({ kind: "company", id: c.id, label: c.name, sub: c.ticker }));
-    const cities: SResult[] = Object.entries(GLOBAL_HUB_LABEL)
-      .filter(
-        ([id, label]) => label.toLowerCase().includes(q) && (seesAllMarkets || isReleasedPlace(id)),
-      )
-      .slice(0, 6)
-      .map(([id, label]) => ({ kind: "city", id, label, sub: "City" }));
-    const direct = ALL_SKILLS.filter((sk) => sk.toLowerCase().includes(q));
-    // Gated on the flag rather than relying on describeSkills' own empty
-    // return, so the memo genuinely depends on it — the dependency is a
-    // re-run trigger for when the ontology chunk lands, not decoration.
-    const described = ontologyReady
-      ? describeSkills(searchQuery).filter((sk) => !direct.includes(sk))
-      : [];
-    const skillRes: SResult[] = [...direct, ...described]
-      .slice(0, 7)
-      .map((sk) => ({ kind: "skill", id: sk, label: sk, sub: "Skill" }));
-    return [...skillRes, ...companies, ...cities];
-  }, [searchQuery, seesAllMarkets, ontologyReady]);
-
-  const goSearchResult = (r: SResult) => {
-    if (r.kind === "skill") {
-      toggleSkillQuery(r.id);
-      return; // keep the flyout for further picks; the map recolours behind it
-    }
-    if (r.kind === "company") {
-      // Head office from the globe; the nearest office in the region otherwise
-      // — same rule as the main search bar (see searchCityFor).
-      zoomInCity(searchCityFor(r.id, globalOut ? {} : { region: domesticRegion, near: localCity }));
-      select(r.id);
-    } else {
-      zoomInCity(r.id);
-    }
-    setSearchQuery("");
-    if (searchOpen) toggleSearch();
+  const goSearchResult = (r: SearchResult) => {
+    if (go(r) && searchOpen) toggleSearch();
   };
 
   return (

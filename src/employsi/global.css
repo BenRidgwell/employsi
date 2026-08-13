@@ -10414,47 +10414,16 @@ body {
 /* Pure reflow of the desktop overlays — no markup changes.            */
 /* ------------------------------------------------------------------ */
 @media (max-width: 680px) {
-  /* ── Shell: revert to full-bleed on phones ────────────────────────────────
-     The map-border design is a desktop layout (its preview is 1200x760). At
-     390px a 20px gutter plus a 28px radius costs a meaningful share of the
-     map, and the mobile chrome (tab bar, bottom sheets) already assumes an
-     edge-to-edge canvas — so below this breakpoint the frame is removed
-     entirely and the previous layout stands. */
-  .apphead {
-    height: auto;
-    padding: 10px 12px;
-    gap: 10px;
-  }
-  .mapframe {
-    top: 0;
-    padding: 0;
-  }
-  .mapcard {
-    border-radius: 0;
-    box-shadow: none;
-  }
-  /* The rail is desktop-only; MobileTabBar + MobileMenu own this chrome on
-     phones (they already hide .mapactions / .toolsdock below). */
+  /* NOTE: the phone shell — header, map frame, ticker and tab bar — is laid
+     out by the "MOBILE REDESIGN" block at the END of this file, which is
+     built from `Employsi_Mobile.html`. This block keeps the rules that
+     survived it. In particular the shell no longer reverts to full-bleed:
+     the design keeps the inset rounded map card at phone widths too.
+
+     The rail is desktop-only; MobileTabBar + MobileLayerBar own this chrome
+     on phones (they already hide .mapactions / .toolsdock below). */
   .actionrail {
     display: none;
-  }
-  /* Ticker returns to a full-width strip rather than an inset pill, and sits
-     above the bottom tab bar — the same band .lvb and .briefpane use. */
-  .ticker {
-    left: 0;
-    right: 0;
-    bottom: calc(86px + env(safe-area-inset-bottom, 0px));
-    height: 38px;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: rgba(255, 255, 255, 0.86);
-    backdrop-filter: blur(10px);
-    box-shadow: none;
-  }
-  .tickerlbl {
-    height: 100%;
-    border-radius: 0;
   }
 
   /* --- Top bar: tighter, controls compacted to icon pills --- */
@@ -10970,97 +10939,10 @@ body {
     flex: 0 0 108px;
   }
 
-  /* The bar itself */
-  /* Brand-black bar with white icons. */
-  /* Floating tab bar: a rounded, detached pill hovering above the map rather
-     than a full-width edge-to-edge bar. Keeps the dark palette + white icons. */
-  .mtabbar {
-    position: fixed;
-    left: 14px;
-    right: 14px;
-    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-    /* Above every pop-out it launches (search/filter z42, More z44, brief/trend
-       panes z44-45) so the bar stays visible AND tappable — the user can switch
-       straight to another tab while a pop-out floats above it. */
-    z-index: 47;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    align-items: stretch;
-    background: rgba(28, 28, 30, 0.92);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 22px;
-    box-shadow:
-      0 18px 38px -12px rgba(0, 0, 0, 0.55),
-      0 2px 6px -2px rgba(0, 0, 0, 0.4);
-    overflow: hidden;
-  }
-  .mtab {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    padding: 10px 0 9px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: rgba(255, 255, 255, 0.88);
-    -webkit-tap-highlight-color: transparent;
-  }
-  .mtab .mtablbl {
-    color: rgba(255, 255, 255, 0.72);
-  }
-  .mtab.on,
-  .mtab.on .mtablbl {
-    color: #fff;
-  }
-  .mtabic {
-    position: relative;
-    width: 23px;
-    height: 23px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .mtabic svg {
-    width: 22px;
-    height: 22px;
-  }
-  /* Selected tab: its icon pulses to show which pop-out is currently open (the
-     pop-out floats above the bar, so this is the cue tying the two together). */
-  .mtab.on .mtabic {
-    animation: mtabpulse 1.35s ease-in-out infinite;
-  }
-  .mtab.on .mtabic::before {
-    content: "";
-    position: absolute;
-    inset: -6px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.16);
-    animation: mtabhalo 1.35s ease-in-out infinite;
-  }
-  @keyframes mtabpulse {
-    0%,
-    100% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.18);
-    }
-  }
-  @keyframes mtabhalo {
-    0%,
-    100% {
-      opacity: 0;
-      transform: scale(0.7);
-    }
-    50% {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
+  /* The bar itself is styled by the MOBILE REDESIGN block at the end of this
+     file — a flat white bar with a tinted tile behind the selected icon,
+     replacing the dark floating pill this block used to draw. Only the parts
+     the redesign reuses unchanged (.mtabdot, .mtablbl) stay here. */
   .mtabdot {
     position: absolute;
     top: -2px;
@@ -15884,5 +15766,465 @@ body {
   .gtlayer,
   .gtdone {
     animation: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MOBILE REDESIGN — built from `Employsi_Mobile.html`
+   ══════════════════════════════════════════════════════════════════════════
+   The phone shell, in the design's own order: wordmark + icon row, a
+   persistent search field, the layer segmented control, the inset map card
+   with the live-trends bar inside it, and a flat tab bar at the foot.
+
+   This block comes LAST on purpose. The older `max-width: 680px` block above
+   still owns the parts the redesign did not touch, and where the two overlap
+   the cascade must land here — same specificity, later wins. The rules the
+   design genuinely replaced (the full-bleed shell revert, the mobile ticker
+   strip, the dark floating tab pill) were deleted up there rather than left
+   to fight this, so there is one source of truth per rule.
+
+   Everything is inside the media query except the two `display: none`
+   defaults, which keep the phone-only components out of the desktop layout.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.msearch,
+.mlayerbar {
+  display: none;
+}
+
+@media (max-width: 680px) {
+  /* ── Shell ───────────────────────────────────────────────────────────────
+     The header is no longer a fixed-height row: it stacks three bands (the
+     wordmark row, the search field, the layer control), so it has to size to
+     content. On desktop .mapframe is pinned at `top: var(--head-height)`,
+     which cannot work against a header whose height is now content-driven —
+     so at this width .app becomes a column flexbox and the map an ordinary
+     flex child that takes whatever the header leaves. */
+  .app {
+    display: flex;
+    flex-direction: column;
+  }
+  .apphead {
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 6px 0 10px;
+  }
+  /* Desktop gives .topbar `display: contents` so .brand and .controls become
+     flex children of .apphead — that is how the wordmark, the centred search
+     and the account control share one row there. Here .apphead is a COLUMN,
+     so leaving it promoted would stack the wordmark and the icon row as two
+     separate bands (and `order: 1` on .brand would push it below the search).
+     Restoring a real flex row puts them back on one line. */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    pointer-events: auto;
+  }
+  .apphead .brand {
+    order: 0;
+  }
+  .apphead .controls {
+    order: 1;
+    margin-left: auto;
+  }
+  .mapframe {
+    position: static;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0 14px;
+  }
+  .mapcard {
+    border-radius: 26px;
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+      0 20px 44px -28px rgba(15, 28, 49, 0.7);
+  }
+
+  /* ── Header row: wordmark + the five icon controls ───────────────────── */
+  .topbar {
+    padding: 6px 18px 10px;
+    gap: 12px;
+  }
+  .logo {
+    font-size: 21px;
+  }
+  .controls {
+    gap: 2px;
+  }
+  /* The dock's buttons are BACK in the header. The older mobile block hides
+     them ("the More sheet opens those panels now") — but the design deletes
+     the More sheet and puts notifications, feedback, help and settings at the
+     header's right edge instead, so the thing that replaced them no longer
+     exists. Re-shown here rather than by deleting that rule, because the dock
+     still hides its buttons in other mobile states it owns. */
+  .helpdock .dockbtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* The design's control is a bare 34px icon button — no pill, no border, no
+     label. HelpDock, NotificationBell and AccountButton all render into this
+     row, so they are normalised together rather than one at a time. */
+  .controls .dockbtn,
+  .controls .searchbtn,
+  .controls .acctbtn {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--neutral-700, #48484a);
+    box-shadow: none;
+  }
+  /* The account control is the one filled chip in the row — a circle, since
+     it carries the avatar once you are signed in.
+     `display` is set explicitly: AccountButton's button also carries the
+     `searchbtn` class, so the older block's `.controls .searchbtn {display:
+     none}` hides it too. Same specificity, so this only wins by coming later
+     — and only for the properties it actually names. */
+  .controls .acctbtn {
+    display: flex;
+    border-radius: 999px;
+    background: var(--neutral-100, #f4f4f5);
+  }
+  /* Hover tooltips are a pointer affordance; on a phone they only ever fire
+     as a stuck label after a tap. */
+  .controls .docktip {
+    display: none;
+  }
+  .controls .dockbtn svg,
+  .controls .acctbtn svg {
+    width: 19px;
+    height: 19px;
+  }
+  /* Search moved out of the header into its own field below, so the header's
+     search group goes — but ONLY that one. AccountButton shares the
+     `.cgroup.searchwrap` class names and has to stay. */
+  .controls .searchwrap:not(.acctwrap) {
+    display: none;
+  }
+  /* The desktop centred pill is replaced by .msearch at this width. */
+  .gsearch {
+    display: none;
+  }
+
+  /* ── Persistent search field ─────────────────────────────────────────── */
+  .msearch {
+    position: relative;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 46px;
+    margin: 0 18px 10px;
+    padding: 0 6px 0 14px;
+    border: 1px solid var(--neutral-150, #ededf0);
+    border-radius: 999px;
+    background: linear-gradient(#ffffff, #fbfbfc);
+    color: var(--neutral-500, #8e8e93);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 1px 2px rgba(28, 28, 30, 0.06),
+      0 10px 22px -14px rgba(28, 28, 30, 0.3);
+  }
+  .msearchin {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 44px;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--neutral-900, #1c1c1e);
+    font-size: 13.5px;
+    letter-spacing: -0.005em;
+  }
+  .msearchgo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: var(--neutral-900, #1c1c1e);
+    color: #fff;
+    cursor: pointer;
+  }
+  .msscrim {
+    position: fixed;
+    inset: 0;
+    z-index: 29;
+    background: rgba(13, 15, 20, 0.28);
+  }
+  /* Anchored to the field, so it follows the header instead of a fixed
+     offset that has to be kept in step with the header's height. */
+  .msresults {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    max-height: 58vh;
+    overflow-y: auto;
+    padding: 8px;
+    border: 1px solid var(--neutral-150, #ededf0);
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 22px 50px -18px rgba(15, 27, 61, 0.45);
+  }
+  .msresult {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 9px 8px;
+    border: 0;
+    border-radius: 11px;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+  }
+  .msresult:active {
+    background: var(--neutral-100, #f4f4f5);
+  }
+  .msresultname {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--neutral-900, #1c1c1e);
+  }
+  .msresultsub {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--neutral-500, #8e8e93);
+  }
+  .msempty {
+    padding: 12px 8px;
+    font-size: 13px;
+    color: var(--neutral-500, #8e8e93);
+  }
+  .mslabel {
+    padding: 10px 8px 6px;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--neutral-500, #8e8e93);
+  }
+  .mschips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 4px 4px;
+  }
+  .mschip {
+    padding: 7px 11px;
+    border: 1px solid var(--neutral-200, #e5e5ea);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--neutral-800, #2c2c2e);
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .mschip.on {
+    border-color: var(--neutral-900, #1c1c1e);
+    background: var(--neutral-900, #1c1c1e);
+    color: #fff;
+  }
+  .msclear {
+    width: 100%;
+    margin-top: 6px;
+    padding: 10px;
+    border: 0;
+    border-radius: 11px;
+    background: var(--neutral-100, #f4f4f5);
+    color: var(--neutral-800, #2c2c2e);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  /* ── Layer segmented control ─────────────────────────────────────────── */
+  .mlayerbar {
+    display: flex;
+    gap: 2px;
+    flex: 0 0 auto;
+    margin: 0 18px;
+    padding: 3px;
+    border-radius: 14px;
+    background: #e6e6ea;
+  }
+  .mlayer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex: 1 1 0;
+    height: 36px;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--neutral-700, #48484a);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: -0.004em;
+    cursor: pointer;
+    transition:
+      background 200ms cubic-bezier(0.32, 0.72, 0, 1),
+      color 200ms;
+  }
+  .mlayer.on {
+    background: var(--neutral-900, #1c1c1e);
+    color: #fff;
+  }
+
+  /* ── Live-trends bar, inside the map card ────────────────────────────── */
+  /* Ticker renders at the app root, NOT inside .mapcard — the card is
+     `overflow: hidden` to round the map's corners and would clip the bar's
+     shadow. So it is positioned against .app and the offsets are composed to
+     land it inside the card's bottom edge: the card's own 14px gutter plus
+     the design's 12px inset, and above the tab bar rather than under it. */
+  .ticker {
+    position: absolute;
+    left: 26px;
+    right: 26px;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+    top: auto;
+    display: flex;
+    align-items: center;
+    height: 34px;
+    padding: 0 2px 0 0;
+    border: 0;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 8px 22px -14px rgba(8, 18, 34, 0.9);
+    backdrop-filter: none;
+    overflow: hidden;
+  }
+  .tickerlbl {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    height: 28px;
+    margin-left: 3px;
+    padding: 0 9px;
+    border-radius: 11px;
+    background: var(--neutral-900, #1c1c1e);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* ── Bottom tab bar ──────────────────────────────────────────────────── */
+  .mtabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 47;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    align-items: center;
+    gap: 2px;
+    height: 72px;
+    padding: 6px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+    border: 0;
+    border-radius: 0;
+    background: var(--surface-page, #fff);
+    backdrop-filter: none;
+    box-shadow: none;
+    overflow: visible;
+  }
+  /* The map card must not run under the bar. .mapframe is in flow now, so the
+     room is made here rather than by an inset on a fixed element. */
+  .mapframe {
+    padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  }
+  .mtab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 0;
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+    color: var(--neutral-500, #8e8e93);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 180ms;
+  }
+  .mtab.on,
+  .mtab.on .mtablbl {
+    color: var(--neutral-900, #1c1c1e);
+  }
+  .mtab .mtablbl {
+    color: inherit;
+    font-weight: 500;
+  }
+  .mtabic {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 30px;
+    border-radius: 11px;
+    background: transparent;
+    transition: background 200ms;
+  }
+  .mtab.on .mtabic {
+    background: var(--neutral-100, #f1f1f4);
+  }
+  .mtabic svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  /* ── Bottom sheets ───────────────────────────────────────────────────────
+     Trending, Analyst and Filter are three different components that the
+     design presents identically: a full-width card that rises from the foot
+     of the screen, rounded across the top, stopping on the tab bar so the
+     bar stays visible and tappable underneath.
+
+     They are declared together because the previous mobile rules sized each
+     one separately and only .briefpane had been given left/right offsets —
+     the other two kept their desktop widths and ran off the right edge,
+     taking the close button with them. One geometry for all three is what
+     stops that recurring the next time a pane is added. */
+  .briefpane,
+  .analystpane,
+  .filterpane {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-width: none;
+    max-height: 72vh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 26px 26px 0 0;
+    box-shadow: 0 -8px 40px -12px rgba(15, 27, 61, 0.34);
+  }
+  /* The scrim stops BELOW the tab bar (bar is z 47) so switching straight to
+     another tab stays a single tap, as it did before. */
+  .panescrim {
+    z-index: 44;
   }
 }

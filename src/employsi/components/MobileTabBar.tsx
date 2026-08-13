@@ -1,66 +1,64 @@
 import { useAppStore, isFilterActive, type FilterState } from "../state/store";
 
 // The single mobile navigation bar. On phones the scattered desktop docks
-// (top-bar controls, the action rail, the help dock) are
-// hidden; this fixed bottom bar becomes the one launcher for them, driving the
-// same store flags those controls use. It only shows on the bare map — opening
-// any sheet or a company card hides it, so a full-height sheet never has to
-// fight the bar for the bottom edge.
+// (top-bar controls, the action rail, the help dock) are hidden; this fixed
+// bottom bar becomes the one launcher for them, driving the same store flags
+// those controls use.
+//
+// The four tabs come from `Employsi_Mobile.html`: Trending, Analyst, Map,
+// Filter. Two things changed from the earlier Search / Filter / Trending /
+// More set, and both are the design's calls rather than ours:
+//
+//  1. SEARCH LEFT THE BAR. It is a persistent field under the wordmark now
+//     (MobileSearch), so it costs no tap and no tab slot.
+//  2. "MORE" IS GONE. Account, feedback, help and settings moved to the icon
+//     row at the header's right edge, which is where the design puts them —
+//     so the bar holds only the four surfaces you switch BETWEEN, not a
+//     drawer of everything else.
+//
+// That frees the two slots Analyst and Map now occupy. Map is not a panel:
+// it is the way back to the bare map, so it reads as selected exactly when
+// nothing else is open.
 
-const SearchIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <circle cx="11" cy="11" r="7" />
-    <line x1="21" y1="21" x2="16.6" y2="16.6" />
+const svg = {
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.9,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+};
+
+/** Icon paths lifted verbatim from the design's ICONS table. */
+const Icon = ({ d }: { d: string[] }) => (
+  <svg {...svg} width="21" height="21">
+    {d.map((p) => (
+      <path key={p} d={p} />
+    ))}
   </svg>
 );
-const FilterIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <line x1="4" y1="7" x2="20" y2="7" />
-    <line x1="7" y1="12" x2="17" y2="12" />
-    <line x1="10" y1="17" x2="14" y2="17" />
-  </svg>
-);
-const TrendingIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M4 15l4.5-5 3.5 3.5L20 6" />
-    <path d="M15 6h5v5" />
-  </svg>
-);
-const MoreIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <line x1="4" y1="7" x2="20" y2="7" />
-    <line x1="4" y1="12" x2="20" y2="12" />
-    <line x1="4" y1="17" x2="20" y2="17" />
-  </svg>
-);
+
+const TRENDING = ["M3 17 9 11l4 4 8-8", "M15 7h6v6"];
+const ANALYST = [
+  "M12 8.5a2.9 2.9 0 1 0 0-5.8 2.9 2.9 0 0 0 0 5.8",
+  "M9.5 9 12 12.2 14.5 9",
+  "M9.5 9 6.4 10.3A4.4 4.4 0 0 0 3.8 14.4V20h6.1",
+  "M14.5 9l3.1 1.3a4.4 4.4 0 0 1 2.6 4.1V20h-6.1",
+  "M10.6 12.9h2.8l-.7 3.1.9 3.9h-3.2l.9-3.9Z",
+];
+const MAP = [
+  "M9.2 4.2 3.6 6.4v13.4l5.6-2.2 5.6 2.2 5.6-2.2V4.2l-5.6 2.2Z",
+  "M9.2 4.2v13.4",
+  "M14.8 6.4v13.4",
+];
+const FILTER = [
+  "M3.5 7h17",
+  "M3.5 12h17",
+  "M3.5 17h17",
+  "M9 7a2.1 2.1 0 1 0 0 .01",
+  "M15.5 12a2.1 2.1 0 1 0 0 .01",
+  "M7.5 17a2.1 2.1 0 1 0 0 .01",
+];
 
 export function MobileTabBar() {
   const selectedId = useAppStore((s) => s.selectedId);
@@ -70,15 +68,13 @@ export function MobileTabBar() {
   const feedbackOpen = useAppStore((s) => s.feedbackOpen);
   const helpTourOpen = useAppStore((s) => s.helpTourOpen);
 
-  const searchOpen = useAppStore((s) => s.searchOpen);
   const filterOpen = useAppStore((s) => s.filterOpen);
   const trendingOpen = useAppStore((s) => s.trendingOpen);
-  const mobileMenuOpen = useAppStore((s) => s.mobileMenuOpen);
+  const analystOpen = useAppStore((s) => s.analystOpen);
 
-  const toggleSearch = useAppStore((s) => s.toggleSearch);
   const toggleFilter = useAppStore((s) => s.toggleFilter);
   const toggleTrending = useAppStore((s) => s.toggleTrending);
-  const toggleMobileMenu = useAppStore((s) => s.toggleMobileMenu);
+  const toggleAnalyst = useAppStore((s) => s.toggleAnalyst);
 
   const activeSectors = useAppStore((s) => s.activeSectors);
   const listingType = useAppStore((s) => s.listingType);
@@ -100,51 +96,54 @@ export function MobileTabBar() {
   };
   const filterActive = isFilterActive(filterState);
 
-  // The bar stays put whenever one of ITS OWN pop-outs is open (Search / Filter
-  // / Trending / More): those
-  // sheets now float ABOVE the bar so the user can switch straight to another
-  // tab or keep using the open one. Only a true full-screen takeover — a company
-  // card, the compare view, or the account/settings/feedback/help panels — hides
-  // the bar.
-  void searchOpen;
-  void filterOpen;
-  void mobileMenuOpen;
+  // The bar stays put whenever one of ITS OWN sheets is open: those float
+  // above it so the user can switch straight to another tab. Only a true
+  // full-screen takeover — a company card, the compare view, or the
+  // account/settings/feedback/help panels — hides it.
   const fullTakeover =
     selectedId || compareOpen || authOpen || settingsOpen || feedbackOpen || helpTourOpen;
   if (fullTakeover) return null;
 
+  // "Map" is the bare map, so it is selected exactly when no sheet is up, and
+  // pressing it closes whichever one is.
+  //
+  // Closing each explicitly rather than looping closeTopmost(): that helper
+  // also owns the company card, compare and comingSoon, none of which this
+  // tab should reach past — and a loop over it spins forever if any branch
+  // ever reports "closed something" without changing state. The three toggles
+  // are already mutually exclusive in the store, so at most one fires.
+  const anySheet = trendingOpen || analystOpen || filterOpen;
+  const showMap = () => {
+    if (trendingOpen) toggleTrending();
+    if (analystOpen) toggleAnalyst();
+    if (filterOpen) toggleFilter();
+  };
+
   const tabs = [
-    {
-      id: "search",
-      label: "Search",
-      icon: <SearchIcon />,
-      on: searchOpen,
-      dot: false,
-      onClick: toggleSearch,
-    },
-    {
-      id: "filter",
-      label: "Filter",
-      icon: <FilterIcon />,
-      on: filterOpen,
-      dot: filterActive,
-      onClick: toggleFilter,
-    },
     {
       id: "trending",
       label: "Trending",
-      icon: <TrendingIcon />,
+      d: TRENDING,
       on: trendingOpen,
       dot: false,
       onClick: toggleTrending,
     },
     {
-      id: "more",
-      label: "More",
-      icon: <MoreIcon />,
-      on: mobileMenuOpen,
+      id: "analyst",
+      label: "Analyst",
+      d: ANALYST,
+      on: analystOpen,
       dot: false,
-      onClick: toggleMobileMenu,
+      onClick: toggleAnalyst,
+    },
+    { id: "map", label: "Map", d: MAP, on: !anySheet, dot: false, onClick: showMap },
+    {
+      id: "filter",
+      label: "Filter",
+      d: FILTER,
+      on: filterOpen,
+      dot: filterActive,
+      onClick: toggleFilter,
     },
   ];
 
@@ -156,9 +155,10 @@ export function MobileTabBar() {
           className={`mtab ${t.on ? "on" : ""}`}
           onClick={t.onClick}
           aria-label={t.label}
+          aria-pressed={t.on}
         >
           <span className="mtabic">
-            {t.icon}
+            <Icon d={t.d} />
             {t.dot && <span className="mtabdot" />}
           </span>
           <span className="mtablbl">{t.label}</span>
