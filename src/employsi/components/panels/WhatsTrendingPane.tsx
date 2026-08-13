@@ -393,41 +393,15 @@ export function WhatsTrendingPane() {
               loading={marketLoading}
             />
             {hasReal && (
-              <>
-                <MoversCard
-                  title="Biggest risers"
-                  dir="up"
-                  rows={movers!.risers}
-                  days={movers!.windowDays}
-                  payOf={payOf}
-                  onSkill={activateSkill}
-                />
-                <MoversCard
-                  title="Biggest fallers"
-                  dir="down"
-                  rows={movers!.fallers}
-                  days={movers!.windowDays}
-                  payOf={payOf}
-                  onSkill={activateSkill}
-                />
-              </>
+              <MoversCard
+                title="Biggest risers"
+                dir="up"
+                rows={movers!.risers}
+                days={movers!.windowDays}
+                payOf={payOf}
+                onSkill={activateSkill}
+              />
             )}
-            {!hasReal && !moversFetching && market.rows.length > 0 && (
-              <div className="brieffoot">
-                No movers for {scope.label} yet — a skill needs enough daily vacancies in BOTH the
-                recent window and the one before it before a change can be measured.
-              </div>
-            )}
-          </div>
-
-          {/* The right column carries the one tile that can run to 99 rows, so
-              it is the one that flexes and scrolls itself. */}
-          <div className="mktcol">
-            <SkillMarketRows
-              market={market}
-              selected={pickedSkill}
-              onPick={(sk) => setPickedSkill((cur) => (cur === sk ? null : sk))}
-            />
             <div className="trendsnap">
               <div className="trendsnaphd">
                 <span className="trendsnaptitle">Most viewed</span>
@@ -461,6 +435,32 @@ export function WhatsTrendingPane() {
                 <div className="dataempty">No views recorded yet</div>
               )}
             </div>
+            {!hasReal && !moversFetching && market.rows.length > 0 && (
+              <div className="brieffoot">
+                No movers for {scope.label} yet — a skill needs enough daily vacancies in BOTH the
+                recent window and the one before it before a change can be measured.
+              </div>
+            )}
+          </div>
+
+          {/* The right column carries the one tile that can run to 99 rows, so
+              it is the one that flexes and scrolls itself. */}
+          <div className="mktcol">
+            <SkillMarketRows
+              market={market}
+              selected={pickedSkill}
+              onPick={(sk) => setPickedSkill((cur) => (cur === sk ? null : sk))}
+            />
+            {hasReal && (
+              <MoversCard
+                title="Biggest fallers"
+                dir="down"
+                rows={movers!.fallers}
+                days={movers!.windowDays}
+                payOf={payOf}
+                onSkill={activateSkill}
+              />
+            )}
           </div>
         </div>
       </aside>

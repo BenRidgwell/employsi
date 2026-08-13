@@ -15726,8 +15726,8 @@ body {
        ├───────────────┤ (flexes, and  │
        │ risers        │  scrolls      │
        ├───────────────┤  itself)      │
-       │ fallers       ├───────────────┤
-       │               │ most viewed   │
+       │ most viewed   ├───────────────┤
+       │               │ fallers       │
        └───────────────┴───────────────┘
 
    TWO COLUMNS OF FLEX ITEMS, NOT A GRID WITH SPANS. The first attempt gave
@@ -15814,7 +15814,10 @@ body {
    every row behind its own scrollbar. */
 .trendpane .smk {
   flex: 1 1 auto;
-  min-height: 200px;
+  /* A floor, not a preference. The fallers tile below it can run to six rows,
+     and with the tile free to shrink to nothing the skills list — the thing
+     the pane is for — collapsed to four visible rows. 360 keeps six. */
+  min-height: 360px;
 }
 .trendpane .smkrows {
   flex: 1 1 auto;
