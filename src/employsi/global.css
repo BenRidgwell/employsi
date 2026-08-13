@@ -3248,6 +3248,137 @@ body {
 .tickerpause svg {
   stroke-width: 1.9;
 }
+
+/* ── The ticker, collapsed ───────────────────────────────────────────────────
+   A centred pill where the full-width strip was. It keeps the strip's surface,
+   border and shadow so it reads as the same object tucked away rather than a
+   new control that appeared, and it sits on the same `bottom` so nothing
+   shifts vertically when it opens.
+
+   `left/right: auto` with the translate is what centres it: the expanded strip
+   is pinned to both rails, and a collapsed pill inheriting that would stretch
+   the full width with its content in the middle. */
+.tickerpill {
+  position: absolute;
+  left: 50%;
+  right: auto;
+  bottom: 32px;
+  transform: translateX(-50%);
+  z-index: 5;
+}
+.tickerpill button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 20px;
+  box-sizing: border-box;
+  border: 1px solid var(--border-subtle);
+  border-radius: 22px;
+  background: var(--raised-surface);
+  box-shadow: var(--raised-shadow);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition:
+    background var(--duration-base) cubic-bezier(0.32, 0.72, 0, 1),
+    transform 110ms;
+}
+.tickerpill button:hover {
+  background: var(--surface-hover);
+}
+.tickerpill button:active {
+  transform: scale(0.98);
+}
+/* The pulse line is the one coloured thing on the pill, for the same reason the
+   expanded strip's dot is: it says the feed is live. Green, not the movement
+   red/green of a delta — nothing here is up or down. */
+.tickerpill button > svg:first-child {
+  color: var(--status-success-fg);
+  flex: 0 0 auto;
+}
+.tpillchev {
+  color: var(--neutral-700);
+  flex: 0 0 auto;
+}
+
+/* Collapse control, far right of the expanded strip's cluster. Same size and
+   hover as the pause button beside it — it is one more control in that row,
+   not a different kind of thing. */
+.tickercollapse {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--neutral-700);
+  cursor: pointer;
+  transition:
+    background var(--duration-base) cubic-bezier(0.32, 0.72, 0, 1),
+    color var(--duration-base),
+    transform 110ms;
+}
+.tickercollapse:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.tickercollapse:active {
+  transform: scale(0.94);
+}
+
+/* ── Collapsing the ticker ───────────────────────────────────────────────────
+   Both the strip and the pill are always in the DOM (see Ticker.tsx), and this
+   cross-fades between them. The previous version swapped one for the other in a
+   single frame, so there was nothing to interpolate and the toggle read as a
+   glitch rather than a movement.
+
+   Each side scales very slightly toward its own centre as it leaves — enough to
+   read as one object being put away and brought back, not enough to blur the
+   text on the way. The strip is full-width so its scale is subtler than the
+   pill's; an equal scale on a 1400px strip is a much bigger visual move than on
+   a 180px pill.
+
+   `visibility` is what actually removes the hidden one from hit-testing, and it
+   is delayed by the length of the fade so it does not blink out early. Opacity
+   alone would leave an invisible full-width strip swallowing clicks over the
+   map. `inert` in the component covers focus and the accessibility tree; this
+   covers the pointer.
+
+   Suppressed wholesale by `.reduce-motion *`, which zeroes every transition —
+   the states still swap, just instantly. */
+.ticker,
+.tickerpill {
+  transition:
+    opacity 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    visibility 0s linear 0s;
+  visibility: visible;
+}
+.ticker.tkgone,
+.tickerpill.tkgone {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    opacity 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    visibility 0s linear 220ms;
+}
+.ticker.tkgone {
+  transform: scale(0.985);
+}
+/* The pill is already centred with translateX(-50%); a bare `scale()` here
+   would drop that and send it to the right-hand half of the screen. */
+.tickerpill.tkgone {
+  transform: translateX(-50%) scale(0.92);
+}
 .tickerpause svg.paused line:first-of-type {
   transform: translateX(1.5px);
 }
@@ -4088,7 +4219,10 @@ body {
   left: var(--pane-left);
   top: var(--pane-top);
   bottom: 28px;
-  width: 344px;
+  /* Widened from 344px for the market dashboard: a skill row carries a
+     name, a sparkline, a percentage and a priced figure, and at 344 the
+     longer skill names truncated before the second word. */
+  width: 400px;
   max-width: calc(100vw - var(--pane-left) - 24px);
   z-index: 45;
   display: flex;
@@ -8914,6 +9048,27 @@ body {
   pointer-events: none;
 }
 
+/* Nothing found. Replaces a generated feed of invented headlines, so it has to
+   read as a deliberate, informative state rather than a broken panel — hence a
+   heading plus a line saying where we looked and when it refreshes. Uses the
+   panel's own text tokens so it sits in the column rather than on top of it. */
+.nwempty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 28px 4px;
+}
+.nwemptyhd {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.008em;
+  color: var(--nw-text);
+}
+.nwemptysub {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--nw-muted);
+}
 .nwrowmeta {
   font-size: 11.5px;
   color: var(--nw-muted);
@@ -14549,88 +14704,6 @@ body {
   border-color: var(--action-primary);
   color: var(--text-inverse);
 }
-/* The period sits apart from the places: they are different questions, and a
-   single undifferentiated row of chips would read as one list. */
-.mktwins {
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  border-radius: var(--radius-sm);
-  background: var(--surface-sunken);
-}
-.mktwin {
-  padding: 3px 9px;
-  border: 0;
-  border-radius: 4px;
-  background: none;
-  color: var(--text-tertiary);
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-}
-.mktwin.on {
-  background: var(--surface-card);
-  color: var(--text-primary);
-  font-weight: 600;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
-}
-.mktscope:focus-visible,
-.mktwin:focus-visible {
-  outline: 2px solid var(--border-focus);
-  outline-offset: 2px;
-}
-
-.mktcov {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 12px 20px 14px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-.mktcovval {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.mktcovval b {
-  font-family: var(--font-mono);
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
-}
-/* The caveat is not a tooltip. "$2.11b" with no qualifier reads as money
-   changing hands; it is advertised salary summed over open ads. */
-.mktcovval span {
-  font-size: 11.5px;
-  color: var(--text-tertiary);
-}
-.mktcovnotes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  font-size: 11px;
-  line-height: 1.45;
-  color: var(--text-tertiary);
-}
-.mktcovnotes b {
-  color: var(--text-secondary);
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-}
-.mktcovnotes .warn {
-  color: var(--status-warning-fg);
-}
-.mktcovnotes .warn b {
-  color: var(--status-warning-fg);
-}
-.mktcovnotes .dim {
-  color: var(--text-disabled);
-}
-
 /* ── What's Trending · skill rows ────────────────────────────────────────────
    One row per skill: what it is, how demand is moving, what it pays.
 
@@ -14644,11 +14717,48 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 16px 20px 4px;
+  /* Tight to the hero above it. There is no coverage strip or rule between
+     them any more, so the old 16px sat on top of the hero's own 14px margin
+     and read as a gap where something had been removed. */
+  padding: 2px 20px 4px;
 }
 /* One scrolling line, not a wrapped block. There are 27 categories, and
    wrapping them pushed five rows of chips above the first number — the filter
    is secondary to the data it filters. */
+/* Order the list by the index, or by either of the two figures it multiplies.
+   Sits in the section header, opposite the label, because it changes what the
+   section IS rather than filtering what is in it. */
+.smksorts {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+.smksort {
+  padding: 3px 9px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.smksort:hover {
+  color: var(--text-secondary);
+}
+.smksort.on {
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-weight: 650;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+}
+.smksort:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
 .smkcats {
   display: flex;
   flex-wrap: nowrap;
@@ -14853,16 +14963,56 @@ body {
 }
 
 /* ── What's Trending · the market's line ─────────────────────────────────────
-   The window's advertised value, or one skill's when a row is picked. High and
-   low are marked and labelled instead of an axis being drawn: nine days does
-   not support a gridded scale, and where it peaked and bottomed are the two
-   readings the shape is actually good for. */
+   The reference for this is a portfolio card: one dark panel carrying a title,
+   the headline figure, the line it describes, its labelled levels, a callout on
+   the latest reading and the period control. Keeping them together matters —
+   split across panels, a reader has to take on trust that the number and the
+   chart are the same quantity.
+
+   INK, NOT COLOUR. The reference is a black card with a saturated blue fill,
+   and an earlier version of this one was green. It is ink and white now,
+   because this product is monochrome and spends colour only on real status — a
+   saturated panel at the top of the pane was the single largest use of colour
+   in the app and it read as a status the market was not in. On ink the whole
+   structure survives: white line over a fading white wash, open white rings,
+   dashed white rules, and an inverted white callout. --surface-inverse is the
+   token the design system already uses for exactly this. */
+/* Direction is the one thing on this card that carries colour, and it is the
+   same ramp the rows below use — lightened for an ink ground, not a second
+   palette invented for it. A card with no series has no direction and keeps
+   the white. */
 .mkhero {
+  --hero-ink: #ffffff;
+  --hero-dir: var(--hero-ink);
+  --hero-dirbg: rgb(255 255 255 / 13%);
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px 20px 16px;
-  border-bottom: 1px solid var(--border-subtle);
+  margin: 12px 16px 14px;
+  /* No bottom padding: the plot bleeds to all three lower edges the way the
+     reference's fill runs off its card, and overflow:hidden crops it. */
+  padding: 16px 18px 10px;
+  border-radius: var(--radius-lg);
+  /* A slight lift toward the top rather than flat ink: the card is large enough
+     that a single value reads as a hole in the pane. */
+  background: linear-gradient(165deg, var(--neutral-800) 0%, var(--surface-inverse) 62%);
+  color: var(--hero-ink);
+  overflow: hidden;
+  transition: opacity 0.18s ease;
+}
+/* The only remaining sign that a scope or window swap is in flight. The pane
+   keeps the previous market on screen while the next one loads, so without
+   this the card looks like it simply ignored the click. */
+.mkhero.busy {
+  opacity: 0.55;
+}
+.mkhero.up {
+  --hero-dir: color-mix(in oklab, var(--green-500) 62%, #ffffff);
+  --hero-dirbg: color-mix(in oklab, var(--green-500) 30%, transparent);
+}
+.mkhero.down {
+  --hero-dir: color-mix(in oklab, var(--red-500) 70%, #ffffff);
+  --hero-dirbg: color-mix(in oklab, var(--red-500) 30%, transparent);
 }
 .mkherohd {
   display: flex;
@@ -14870,136 +15020,242 @@ body {
   justify-content: space-between;
   gap: 10px;
 }
+/* The reference leads with a large plain title, above the label and the figure.
+   That order is right here too: the market's name is what the whole card is
+   about, and it was previously the smallest thing on it. */
 .mkherottl {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
   min-width: 0;
-}
-.mkheroname {
-  font-size: 15px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  color: var(--text-primary);
+  font-size: 21px;
+  font-weight: 680;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: var(--hero-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.mkherolbl {
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: rgb(255 255 255 / 62%);
+}
 .mkheroclear {
   flex: 0 0 auto;
+  margin-top: 2px;
   padding: 3px 10px;
-  border: 1px solid var(--border-default);
+  border: 1px solid rgb(255 255 255 / 40%);
   border-radius: var(--radius-pill);
-  background: var(--surface-card);
-  color: var(--text-secondary);
+  background: rgb(255 255 255 / 12%);
+  color: var(--hero-ink);
   font-size: 11px;
   cursor: pointer;
 }
 .mkheroclear:hover {
-  border-color: var(--border-strong);
-  color: var(--text-primary);
+  background: rgb(255 255 255 / 22%);
 }
 .mkheroclear:focus-visible {
-  outline: 2px solid var(--border-focus);
+  outline: 2px solid var(--hero-ink);
   outline-offset: 2px;
+}
+
+.mkherobig {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 3px;
+}
+.mkherovalue {
+  font-family: var(--font-mono);
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+  color: var(--hero-ink);
+}
+/* The tail set small and dim, as the reference does with its cents. Not only a
+   flourish: at this magnitude the leading digits are the part a median of
+   medians actually supports, and dimming the rest says so without a caveat. */
+.mkherotail {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: rgb(255 255 255 / 52%);
+}
+/* The reference's change badge is a green pill; so is this one, and a falling
+   market gets the red. Everything else on the card stays ink and white — the
+   colour is spent on the one fact it reports. */
+.mkherochg {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 11px;
+  border-radius: var(--radius-pill);
+  background: var(--hero-dirbg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--hero-dir);
+}
+.mkherotri {
+  font-size: 9px;
+  line-height: 1;
+}
+.mkherodelta {
+  margin-top: 7px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  color: rgb(255 255 255 / 70%);
+}
+/* The two levels the rings mark, under the movement rather than beside it. */
+.mkherolevels {
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  color: rgb(255 255 255 / 50%);
 }
 
 .mkheroplot {
   position: relative;
-  height: 118px;
-  /* Room for the tags, which sit above and below the extremes. */
-  margin-top: 4px;
+  /* Must equal BASE in MarketHero.tsx: the overlays are positioned in SVG user
+     units read as pixels. */
+  height: 150px;
+  /* Bleeds to the card's left, right and bottom edges. The negative bottom
+     margin is what puts the period tabs over the fill, as the reference does,
+     instead of on a strip below it. */
+  margin: 8px -18px -46px;
 }
 .mkheroplot svg {
   display: block;
   width: 100%;
   height: 100%;
-  overflow: visible;
+  /* The gradient's stops are currentColor, so the wash and the line are one
+     colour by construction rather than by two declarations kept in step. */
+  color: var(--hero-dir);
 }
 .mkheroline {
   fill: none;
-  stroke: var(--neutral-900);
-  stroke-width: 1.8;
+  stroke: var(--hero-dir);
+  stroke-width: 2.4;
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
 .mkheroarea {
-  fill: var(--neutral-900);
-  opacity: 0.07;
+  fill: url(#mkheroFill);
   stroke: none;
 }
+/* Open rings, as the reference draws them: the ground shows through the middle
+   so the marker reads as a point ON the line rather than a dot beside it.
+   HTML rather than <circle>, because the SVG is stretched horizontally and an
+   SVG circle in it renders as an ellipse. */
 .mkheropt {
-  fill: var(--surface-card);
-  stroke: var(--neutral-900);
-  stroke-width: 2;
-  vector-effect: non-scaling-stroke;
-}
-/* A selected skill borrows the section's own accent so the hero and the picked
-   row visibly belong together. */
-.mkhero.picked .mkheroline {
-  stroke: var(--status-success-fg);
-}
-.mkhero.picked .mkheroarea {
-  fill: var(--status-success-fg);
-}
-.mkhero.picked .mkheropt {
-  stroke: var(--status-success-fg);
-}
-.mkherotag {
   position: absolute;
-  transform: translateX(-50%);
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: var(--surface-card);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-secondary);
-  white-space: nowrap;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border: 2px solid color-mix(in oklab, var(--hero-dir) 82%, transparent);
+  border-radius: 50%;
+  background: none;
   pointer-events: none;
 }
-.mkherotag.hi {
-  top: -2px;
+/* The latest reading: a solid ring on a soft bloom, right at the card's edge
+   where the series ends. */
+.mkheroglow {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  box-shadow: 0 0 34px 17px var(--hero-dirbg);
+  pointer-events: none;
 }
-.mkherotag.lo {
-  bottom: 0;
+.mkheroend {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  margin: -6.5px 0 0 -6.5px;
+  border: 3px solid var(--hero-dir);
+  border-radius: 50%;
+  background: var(--surface-inverse);
+  pointer-events: none;
 }
-/* An extreme on the first or last day would otherwise hang half its label
-   outside the pane. Same rule as the timeline scrubber's end ticks. */
-.mkherotag.first {
-  transform: none;
-}
-.mkherotag.last {
-  transform: translateX(-100%);
-}
-.mkheronone {
-  padding: 18px 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--text-tertiary);
-}
-.mkherofoot {
+/* The callout, inverted out of the card the way the reference's is: the last
+   day and the figure standing on it — the same figure as the headline, which is
+   the point of putting it on the line. */
+.mkherocall {
+  position: absolute;
+  right: 12px;
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 11.5px;
-  color: var(--text-tertiary);
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 11px;
+  border-radius: 9px;
+  background: var(--hero-ink);
+  color: var(--surface-inverse);
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 34%);
 }
-.mkherofoot b {
+.mkherocallk {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.mkherocallv {
+  font-family: var(--font-mono);
+  font-size: 14px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
-.mkherofoot .up {
-  color: var(--status-success-fg);
+.mkheronone {
+  padding: 20px 0 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgb(255 255 255 / 78%);
 }
-.mkherofoot .down {
-  color: var(--status-danger-fg);
+
+/* The period control, on the card with the chart it resizes and over the fill
+   rather than below it. The reference marks the selected period by weight and
+   brightness alone; a pill here would be a second inverted surface competing
+   with the callout. */
+.mkherowins {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+.mkherowin {
+  padding: 6px 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: rgb(255 255 255 / 52%);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+.mkherowin:hover {
+  color: rgb(255 255 255 / 82%);
+}
+.mkherowin.on {
+  color: var(--hero-ink);
+  font-weight: 700;
+}
+.mkherowin:focus-visible {
+  outline: 2px solid var(--hero-ink);
+  outline-offset: 2px;
 }
 
 /* ── What's Trending · risers and fallers ────────────────────────────────────
@@ -15454,6 +15710,172 @@ body {
 
 /* The spotlight's travel is the whole point of the effect, but it is also a
    large moving mask — held still for anyone who asked for less motion. */
+/* ── What's Trending · the dashboard layout ──────────────────────────────────
+   The pane is a wide tile board, not a tall column. Stacked one-per-row at
+   400px it ran to about 1,700px of content — hero, 12 skill rows, most viewed
+   and two movers lists — so most of it lived below the fold and the comparison
+   the pane exists to support (this market's line against the skills driving
+   it) could not be held in one view.
+
+   It follows the shape .dqpane already established here: a fixed-height card
+   at the rail anchor, a tinted body, and white tiles with a hairline and a 1px
+   lift. Nothing invents a surface the product did not already have.
+
+       ┌───────────────┬───────────────┐
+       │ hero          │ skills        │
+       ├───────────────┤ (flexes, and  │
+       │ risers        │  scrolls      │
+       ├───────────────┤  itself)      │
+       │ fallers       ├───────────────┤
+       │               │ most viewed   │
+       └───────────────┴───────────────┘
+
+   TWO COLUMNS OF FLEX ITEMS, NOT A GRID WITH SPANS. The first attempt gave
+   the skills tile `grid-row: 1 / 3` beside the two short cards. It looked
+   right and was not: .mkhero sets overflow:hidden for its bleeding chart,
+   which zeroes its automatic minimum height, so the spanning tile's row
+   distribution squashed the hero to 199px and clipped 86px of its own chart
+   away — silently, since the clipping is what overflow:hidden is there for.
+   Columns size honestly and need no such reasoning. */
+.trendpane {
+  width: 940px;
+  /* Replaces the base pane's `bottom`, which stretched this one to the full
+     viewport height and left the tiles floating in it. */
+  bottom: auto;
+  height: min(780px, var(--pane-max-h));
+  /* The tinted body runs to the pane's edge, so the pane has to clip. */
+  overflow: hidden;
+}
+.trendpane .briefscroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  /* Scrolls rather than clips. On a short viewport --pane-max-h wins over the
+     780 and the left column no longer fits — measured at 1280x860 it is about
+     10px over. Hidden, that 10px is the bottom of the fallers tile silently
+     sliced off; auto, the board scrolls the little it needs to. */
+  overflow-y: auto;
+  display: grid;
+  /* Not an even split. The skills tile carries four things per row — name,
+     line, percentage, price — and at a true half of 940 the longer names
+     ellipsed at the second word ("Administration & Offi…"). The hero needs
+     only enough for its own sub-line, which is about 360px. */
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  gap: 14px;
+  padding: 14px;
+  background: #fbfbfc;
+}
+.mktcol {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+/* A scroller must never compress what it scrolls — the same trap .dqbody
+   documents. Every tile here sets overflow:hidden for its corners, which opts
+   it out of its own automatic minimum height and lets the column squash it.
+   The skills tile is the one exception: it is meant to absorb the slack. */
+.mktcol > * {
+  flex: 0 0 auto;
+}
+.trendpane .mkhero {
+  /* The column owns the spacing now. */
+  margin: 0;
+}
+.trendpane .trendsnap {
+  margin: 0;
+}
+
+/* Tile chrome, matching .dqcard exactly. The hero brings its own — it is the
+   one dark surface on the board — and most viewed already had a card. */
+.trendpane .smk,
+.trendpane .mvr {
+  border: 1px solid #ededf0;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(28, 28, 30, 0.04);
+  padding: 14px 16px;
+  overflow: hidden;
+}
+.trendpane .trendsnap {
+  box-shadow: 0 1px 2px rgba(28, 28, 30, 0.04);
+}
+
+/* Trimmed inside the tile to buy the name column back another dozen pixels.
+   The line is a shape, not a reading — nothing is measured off its width. */
+.trendpane .smkspark {
+  width: 84px;
+}
+
+/* THE SKILLS TILE TAKES THE SLACK AND SCROLLS ITSELF. It is the only section
+   whose length is unbounded — 92 skills for Perth, 99 worldwide — and letting
+   it set the board's height is what made the pane a column in the first
+   place. Bounded here, the whole dashboard fits one screen and the list keeps
+   every row behind its own scrollbar. */
+.trendpane .smk {
+  flex: 1 1 auto;
+  min-height: 200px;
+}
+.trendpane .smkrows {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  /* Fades the cut-off row so the list reads as scrollable rather than as
+     having ended mid-name. Same device as .smkcats uses horizontally. */
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
+}
+.trendpane .smkfoot,
+.trendpane .smkcats,
+.trendpane .smk .ccsecth {
+  flex: 0 0 auto;
+}
+
+/* One column below the width the board needs. 940 plus the rail anchor and a
+   margin is about 1,076px; under that the pane falls back to the single
+   column it had before, at its old width, and every tile drops its chrome
+   again — a hairline box around each section reads as clutter at 400px. */
+@media (max-width: 1100px) {
+  .trendpane {
+    width: 400px;
+    height: auto;
+    bottom: 28px;
+  }
+  .trendpane .briefscroll {
+    display: block;
+    overflow-y: auto;
+    padding: 4px 14px 14px;
+    background: transparent;
+  }
+  .mktcol {
+    display: block;
+  }
+  .trendpane .smk,
+  .trendpane .mvr {
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    overflow: visible;
+  }
+  .trendpane .smk {
+    padding: 2px 20px 4px;
+  }
+  .trendpane .mvr {
+    padding: 16px 20px 4px;
+  }
+  .trendpane .mkhero {
+    margin: 12px 16px 14px;
+  }
+  .trendpane .trendsnap {
+    margin: 8px 0 6px;
+    box-shadow: none;
+  }
+  .trendpane .smkrows {
+    overflow-y: visible;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .gtspot,
   .gttip {

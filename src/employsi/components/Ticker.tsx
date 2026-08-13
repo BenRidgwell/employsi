@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { TickerItem } from "../data/companies";
 import { getLiveSkillTrends, TREND_WINDOWS } from "../lib/jobHistoryFn";
 import { fmtPay, FX_AS_AT } from "../lib/salaryParse";
+import { useAppStore } from "../state/store";
 
 /**
  * The skills trend ticker, built from `Skills Trend Ticker.dc.html` in the
@@ -127,6 +128,8 @@ export function Ticker({ hidden }: { hidden: boolean }) {
     retry: false,
   });
 
+  const collapsed = useAppStore((st) => st.tickerCollapsed);
+  const toggleCollapsed = useAppStore((st) => st.toggleTickerCollapsed);
   const [winIdx, setWinIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const win = TREND_WINDOWS[winIdx];
@@ -220,76 +223,174 @@ export function Ticker({ hidden }: { hidden: boolean }) {
     );
   };
 
-  return (
-    <div className={`ticker ${hidden ? "zoomhide" : ""}`} data-tour="ticker">
-      <div className="tickerlbl">
-        <i />
-        <span>Skills in demand</span>
-        <span className="tlblwin">{win.label}</span>
-      </div>
-
-      <div className="tickerwrap">
-        {loading ? (
-          <div className="tickertrack skeleton" aria-hidden>
-            {[...SKELETON, ...SKELETON].map((w, i) => (
-              <div className="titem" key={i}>
-                <span className="tskel" style={{ width: w }} />
-              </div>
-            ))}
-          </div>
-        ) : noHistory ? (
-          <div className="tickerempty">
-            Not enough archive history yet to measure change over{" "}
-            {win.label.replace("· Last ", "the last ").toLowerCase()}.
-          </div>
-        ) : (
-          <div className={`tickertrack${paused ? " paused" : ""}`}>
-            {items.map((t, i) => renderItem(t, "a" + i))}
-            {items.map((t, i) => renderItem(t, "b" + i))}
-          </div>
-        )}
-      </div>
-
-      <div className="tickerctl">
-        <button
-          type="button"
-          className="tickerwin"
-          onClick={() => setWinIdx((i) => (i + 1) % TREND_WINDOWS.length)}
-          disabled={!anyLive}
-          aria-label={`Trend window: ${win.short}`}
+  // BOTH STATES ARE ALWAYS MOUNTED, and the collapsed one is the pill.
+  //
+  // The first version returned one or the other, which is why the toggle looked
+  // janky: React tore down a full-width strip and built a centred pill in the
+  // same frame, so there was never a moment where both existed for the browser
+  // to interpolate between. Nothing was animating — the swap was instant and
+  // the eye read it as a glitch.
+  //
+  // Keeping both and cross-fading costs one hidden subtree. The marquee keeps
+  // running underneath while collapsed, which is deliberate: it means expanding
+  // is a fade rather than a fade plus a re-layout and a restarted animation.
+  // The skill-trends query is shared and cached for six hours, so a mounted
+  // hidden strip does not fetch anything extra.
+  //
+  // `inert` takes the hidden one out of the tab order and the accessibility
+  // tree — without it the strip's window/pause buttons stay focusable behind a
+  // pill that is visually the only thing on screen.
+  //
+  // Motion is suppressed globally by `.reduce-motion *`, so the preference
+  // needs nothing here.
+  // COLLAPSED: a centred pill instead of the full-width strip.
+  //
+  // Deliberately not "hide the ticker". The strip is the app's one always-on
+  // signal that the archive is live, and a reader who tucks it away to see more
+  // map still needs to know it is there — so what is left says what it is, and
+  // reopens on one click. `data-tour="ticker"` stays on whichever element is
+  // rendered, so the guided tour still has something to point at either way.
+  const pill = (
+    <div
+      className={`tickerpill ${hidden ? "zoomhide" : ""}${collapsed ? "" : " tkgone"}`}
+      data-tour={collapsed ? "ticker" : undefined}
+      inert={!collapsed || undefined}
+    >
+      <button type="button" onClick={toggleCollapsed} aria-expanded={false}>
+        <svg
+          viewBox="0 0 24 24"
+          width={18}
+          height={18}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
         >
-          {/* The pause button beside it has always had the design's dark tip;
+          <polyline points="2 12 7 12 10 5 14 19 17 12 22 12" />
+        </svg>
+        <span>Live trends</span>
+        <svg
+          className="tpillchev"
+          viewBox="0 0 24 24"
+          width={16}
+          height={16}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <polyline points="18 15 12 9 6 15" />
+        </svg>
+      </button>
+    </div>
+  );
+
+  return (
+    <>
+      {pill}
+      <div
+        className={`ticker ${hidden ? "zoomhide" : ""}${collapsed ? " tkgone" : ""}`}
+        data-tour={collapsed ? undefined : "ticker"}
+        inert={collapsed || undefined}
+      >
+        <div className="tickerlbl">
+          <i />
+          <span>Skills in demand</span>
+          <span className="tlblwin">{win.label}</span>
+        </div>
+
+        <div className="tickerwrap">
+          {loading ? (
+            <div className="tickertrack skeleton" aria-hidden>
+              {[...SKELETON, ...SKELETON].map((w, i) => (
+                <div className="titem" key={i}>
+                  <span className="tskel" style={{ width: w }} />
+                </div>
+              ))}
+            </div>
+          ) : noHistory ? (
+            <div className="tickerempty">
+              Not enough archive history yet to measure change over{" "}
+              {win.label.replace("· Last ", "the last ").toLowerCase()}.
+            </div>
+          ) : (
+            <div className={`tickertrack${paused ? " paused" : ""}`}>
+              {items.map((t, i) => renderItem(t, "a" + i))}
+              {items.map((t, i) => renderItem(t, "b" + i))}
+            </div>
+          )}
+        </div>
+
+        <div className="tickerctl">
+          <button
+            type="button"
+            className="tickerwin"
+            onClick={() => setWinIdx((i) => (i + 1) % TREND_WINDOWS.length)}
+            disabled={!anyLive}
+            aria-label={`Trend window: ${win.short}`}
+          >
+            {/* The pause button beside it has always had the design's dark tip;
               this one was on the browser's native `title`, which looks like a
               different product and waits a second before appearing. */}
-          <span className="tickertip">
-            {anyLive
-              ? `Showing ${win.label.replace("· ", "").toLowerCase()} — click to change`
-              : "Comparison windows unlock once the job archive has history"}
-          </span>
-          {win.short}
-        </button>
-        <button
-          type="button"
-          className="tickerpause"
-          onClick={() => setPaused((p) => !p)}
-          aria-label={paused ? "Resume ticker" : "Pause ticker"}
-          aria-pressed={paused}
-        >
-          <span className="tickertip">{paused ? "Resume ticker" : "Pause ticker"}</span>
-          <svg
-            className={paused ? "paused" : ""}
-            viewBox="0 0 24 24"
-            width={18}
-            height={18}
-            fill="none"
-            stroke="currentColor"
-            aria-hidden
+            <span className="tickertip">
+              {anyLive
+                ? `Showing ${win.label.replace("· ", "").toLowerCase()} — click to change`
+                : "Comparison windows unlock once the job archive has history"}
+            </span>
+            {win.short}
+          </button>
+          <button
+            type="button"
+            className="tickerpause"
+            onClick={() => setPaused((p) => !p)}
+            aria-label={paused ? "Resume ticker" : "Pause ticker"}
+            aria-pressed={paused}
           >
-            <line x1="9.5" y1="5" x2="9.5" y2="19" />
-            <line x1="14.5" y1="5" x2="14.5" y2="19" />
-          </svg>
-        </button>
+            <span className="tickertip">{paused ? "Resume ticker" : "Pause ticker"}</span>
+            <svg
+              className={paused ? "paused" : ""}
+              viewBox="0 0 24 24"
+              width={18}
+              height={18}
+              fill="none"
+              stroke="currentColor"
+              aria-hidden
+            >
+              <line x1="9.5" y1="5" x2="9.5" y2="19" />
+              <line x1="14.5" y1="5" x2="14.5" y2="19" />
+            </svg>
+          </button>
+          {/* Far right of the cluster, after the window and pause controls —
+            the order the reader meets them in: change what it shows, stop it
+            moving, put it away. */}
+          <button
+            type="button"
+            className="tickercollapse"
+            onClick={toggleCollapsed}
+            aria-label="Collapse the ticker"
+            aria-expanded
+          >
+            <span className="tickertip">Collapse</span>
+            <svg
+              viewBox="0 0 24 24"
+              width={18}
+              height={18}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

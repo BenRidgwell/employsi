@@ -126,4 +126,24 @@ export const PERTH_REAL_COORDS: Record<string, [number, number]> = {
   sw1: [115.808513, -31.897075],
   swm: [115.812099, -31.91212],
   wgx: [115.853199, -31.953072],
+
+  // ── Universities: the MAIN CAMPUS, geocoded from its street address ───────
+  // Every one of these sits well outside the CBD, which is why the generated
+  // fan looked wrong on the map: Murdoch is ~13km south of the centre, Notre
+  // Dame ~19km south-west in Fremantle, and Edith Cowan ~25km north at
+  // Joondalup. A university is where its campus is, so the fan — which assumes
+  // a head office near the city — is the wrong shape for them entirely.
+  //
+  // Addresses and the resulting coordinates, via Nominatim 2026-08-12, each
+  // inside the Perth metro bounding box that scripts/geocode-perth.py checks:
+  //   35 Stirling Highway, Crawley        -> Crawley
+  //   Kent Street, Bentley                -> Bentley
+  //   90 South Street, Murdoch            -> Murdoch
+  //   270 Joondalup Drive, Joondalup      -> Joondalup
+  //   32 Mouat Street, Fremantle          -> Fremantle
+  "uni-university-of-western-australia": [115.81905, -31.974691],
+  "uni-curtin-university": [115.888546, -32.00601],
+  "uni-murdoch-university": [115.829346, -32.067476],
+  "uni-edith-cowan-university": [115.777081, -31.751946],
+  "uni-university-of-notre-dame-australia": [115.743837, -32.056298],
 };

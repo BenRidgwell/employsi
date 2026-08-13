@@ -18,7 +18,24 @@ worse than the fan, so anything outside the box (or not found) is reported and
 left out rather than written.
 
 Usage: python3 scripts/geocode-perth.py [--dry-run]
-Re-run any time; existing verified coordinates are preserved unless --overwrite.
+
+DO NOT "re-run any time". This file used to say existing verified coordinates
+were preserved unless --overwrite. That is NOT what it does, measured
+2026-08-12: a plain run REWROTE 32 lines of the output file — it re-geocoded
+entities that already had a checked coordinate and moved them (Alkane Resources
+went from Burswood to a point 5km away), dropped several ids entirely, and
+stripped the hand-written comments recording where a value came from. None of
+that is reported; the summary line just says "24 new".
+
+So treat a run as regenerating the WHOLE file from TARGETS, not as topping it
+up. If you only need to add an entity, run --dry-run, take the coordinates it
+prints for that entity, and add those lines by hand — which is how the five
+universities were added. If you do run it, diff the output before committing
+and put back anything it moved that you did not mean to move.
+
+The underlying fix — merge into the existing map instead of replacing it — is
+worth doing, but it is a change to this script's contract and not something to
+slip in behind an unrelated edit.
 """
 from __future__ import annotations
 import json
@@ -40,6 +57,22 @@ BOX = (115.55, -32.60, 116.20, -31.55)
 # head offices. Where a company shares a serviced-office tower (common for the
 # small WA juniors), that tower IS the registered head office.
 TARGETS: dict[str, tuple[str, str]] = {
+    # ── Universities: the MAIN CAMPUS, not a city office ──────────────────
+    # A university is where its campus is, and every one of these sits well
+    # outside the CBD frame the fan placed them in — Murdoch is ~13km south,
+    # Joondalup ~25km north, Fremantle ~19km south-west. The fan put all five
+    # within a few hundred metres of the city centre, which is why they looked
+    # wrong: the pins were placeholders, not geocodes.
+    'uni-university-of-western-australia': (
+        'University of Western Australia', '35 Stirling Highway, Crawley, Western Australia 6009'),
+    'uni-curtin-university': (
+        'Curtin University', 'Kent Street, Bentley, Western Australia 6102'),
+    'uni-murdoch-university': (
+        'Murdoch University', '90 South Street, Murdoch, Western Australia 6150'),
+    'uni-edith-cowan-university': (
+        'Edith Cowan University', '270 Joondalup Drive, Joondalup, Western Australia 6027'),
+    'uni-university-of-notre-dame-australia': (
+        'University of Notre Dame Australia', '32 Mouat Street, Fremantle, Western Australia 6160'),
     # ── Tier A: listed juniors previously placed at rounded suburb points ──
     'pdn': ('Paladin Energy', '502 Hay Street, Subiaco, Western Australia 6008'),
     'wgx': ('Westgold Resources', '28 The Esplanade, Perth, Western Australia 6000'),
