@@ -94,12 +94,14 @@ export function MarketHero({
   onClear,
   days: windowDays,
   onDays,
+  loading,
 }: {
   market: SkillMarket;
   skill: string | null;
   onClear: () => void;
   days: number;
   onDays: (d: number) => void;
+  loading: boolean;
 }) {
   const picked = skill ? (market.rows.find((r) => r.skill === skill) ?? null) : null;
 
@@ -158,7 +160,7 @@ export function MarketHero({
   const dir = pct === null ? "" : pct > 0 ? "up" : pct < 0 ? "down" : "flat";
 
   return (
-    <div className={`mkhero ${dir} ${picked ? "picked" : ""}`}>
+    <div className={`mkhero ${dir} ${picked ? "picked" : ""} ${loading ? "busy" : ""}`}>
       <div className="mkherohd">
         <span className="mkherottl">{picked ? picked.skill : market.scope}</span>
         {picked && (
@@ -197,7 +199,11 @@ export function MarketHero({
           {delta !== null && (
             <>
               {delta >= 0 ? "+" : "−"}
-              {money(Math.abs(delta))} over {days.length} days
+              {money(Math.abs(delta))} over {days.length}
+              {/* "of 30" whenever the archive could not fill the window asked
+                  for. Without it, pressing 30d on nine days of history looks
+                  like a control that does nothing. */}
+              {days.length < windowDays ? ` of ${windowDays}` : ""} days
             </>
           )}
           {geom && !geom.flat && (

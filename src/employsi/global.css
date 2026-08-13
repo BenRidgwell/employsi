@@ -14552,88 +14552,6 @@ body {
   border-color: var(--action-primary);
   color: var(--text-inverse);
 }
-/* The period sits apart from the places: they are different questions, and a
-   single undifferentiated row of chips would read as one list. */
-.mktwins {
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  border-radius: var(--radius-sm);
-  background: var(--surface-sunken);
-}
-.mktwin {
-  padding: 3px 9px;
-  border: 0;
-  border-radius: 4px;
-  background: none;
-  color: var(--text-tertiary);
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-}
-.mktwin.on {
-  background: var(--surface-card);
-  color: var(--text-primary);
-  font-weight: 600;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
-}
-.mktscope:focus-visible,
-.mktwin:focus-visible {
-  outline: 2px solid var(--border-focus);
-  outline-offset: 2px;
-}
-
-.mktcov {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 12px 20px 14px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-.mktcovval {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.mktcovval b {
-  font-family: var(--font-mono);
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
-}
-/* The caveat is not a tooltip. "$2.11b" with no qualifier reads as money
-   changing hands; it is advertised salary summed over open ads. */
-.mktcovval span {
-  font-size: 11.5px;
-  color: var(--text-tertiary);
-}
-.mktcovnotes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  font-size: 11px;
-  line-height: 1.45;
-  color: var(--text-tertiary);
-}
-.mktcovnotes b {
-  color: var(--text-secondary);
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-}
-.mktcovnotes .warn {
-  color: var(--status-warning-fg);
-}
-.mktcovnotes .warn b {
-  color: var(--status-warning-fg);
-}
-.mktcovnotes .dim {
-  color: var(--text-disabled);
-}
-
 /* ── What's Trending · skill rows ────────────────────────────────────────────
    One row per skill: what it is, how demand is moving, what it pays.
 
@@ -14647,7 +14565,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 16px 20px 4px;
+  /* Tight to the hero above it. There is no coverage strip or rule between
+     them any more, so the old 16px sat on top of the hero's own 14px margin
+     and read as a gap where something had been removed. */
+  padding: 2px 20px 4px;
 }
 /* One scrolling line, not a wrapped block. There are 27 categories, and
    wrapping them pushed five rows of chips above the first number — the filter
@@ -14925,6 +14846,13 @@ body {
   background: linear-gradient(165deg, var(--neutral-800) 0%, var(--surface-inverse) 62%);
   color: var(--hero-ink);
   overflow: hidden;
+  transition: opacity 0.18s ease;
+}
+/* The only remaining sign that a scope or window swap is in flight. The pane
+   keeps the previous market on screen while the next one loads, so without
+   this the card looks like it simply ignored the click. */
+.mkhero.busy {
+  opacity: 0.55;
 }
 .mkhero.up {
   --hero-dir: color-mix(in oklab, var(--green-500) 62%, #ffffff);

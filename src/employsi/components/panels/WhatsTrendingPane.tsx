@@ -105,55 +105,6 @@ function money(v: number): string {
   return `$${Math.round(v)}`;
 }
 
-/**
- * What the archive could price in this market, stated before any price is shown.
- *
- * Three separate shortfalls, and they are not interchangeable:
- *
- *   priced/seen   skills in demand here that disclose enough pay to value. Perth
- *                 prices 23 of 100; showing 23 rows without saying so would read
- *                 as a market with 23 skills in it.
- *   days          the window drawn against the one requested. Collection began
- *                 2026-07-20, so a 30-day request currently draws about 9.
- *   unplaceable   priced ads carrying no hub. They can be valued but not placed,
- *                 so a worldwide index leaves them out — 9% of priced ads.
- */
-function MarketCoverage({
-  market,
-  requested,
-  loading,
-}: {
-  market: SkillMarket;
-  requested: number;
-  loading: boolean;
-}) {
-  const drawn = market.days.length;
-  const short = drawn > 0 && drawn < requested;
-  if (!drawn && !loading) return null;
-  return (
-    <div className="mktcov">
-      <div className="mktcovnotes">
-        <span>
-          <b>{market.priced}</b> of {market.seen} skills priced
-          {market.seen < market.taxonomy && ` · ${market.seen} of ${market.taxonomy} in demand`}
-        </span>
-        <span className={short ? "warn" : undefined}>
-          {drawn ? `${drawn}-day window` : "no window"}
-          {short && ` · ${requested} requested, ${drawn} collected`}
-        </span>
-        {market.unplaceable > 0 && (
-          <span>
-            <b>{market.unplaceable.toLocaleString("en-AU")}</b> priced ads carry no location, so
-            they are left out of the worldwide index
-          </span>
-        )}
-        {market.fxAsAt && <span>converted to AUD at rates as at {market.fxAsAt}</span>}
-        {loading && <span className="dim">updating…</span>}
-      </div>
-    </div>
-  );
-}
-
 function MoversCard({
   title,
   dir,
@@ -429,8 +380,8 @@ export function WhatsTrendingPane() {
             onClear={() => setPickedSkill(null)}
             days={windowDays}
             onDays={setWindowDays}
+            loading={marketLoading}
           />
-          <MarketCoverage market={market} requested={windowDays} loading={marketLoading} />
           <SkillMarketRows
             market={market}
             selected={pickedSkill}
