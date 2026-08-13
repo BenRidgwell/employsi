@@ -158,12 +158,14 @@ function MoversCard({
   title,
   dir,
   rows,
+  days,
   payOf,
   onSkill,
 }: {
   title: string;
   dir: "up" | "down";
   rows: MarketSkillMover[];
+  days: number;
   payOf: (skill: string) => number | null;
   onSkill: (skill: string) => void;
 }) {
@@ -172,7 +174,13 @@ function MoversCard({
     <section className="mvr">
       <div className="ccsecth">
         <span className="cceyebrow">{title}</span>
-        <span className="ccsecthsub">mean daily vacancies</span>
+        {/* The span rides in the eyebrow rather than a footer under both
+            lists. It is not fixed — it is chosen from how much history the
+            archive actually holds — so a percentage here means nothing
+            without it. */}
+        <span className="ccsecthsub">
+          mean daily vacancies · {days}d vs prior {days}d
+        </span>
       </div>
       <div className="mvrrows">
         {rows.map((m) => {
@@ -468,6 +476,7 @@ export function WhatsTrendingPane() {
                 title="Biggest risers"
                 dir="up"
                 rows={movers!.risers}
+                days={movers!.windowDays}
                 payOf={payOf}
                 onSkill={activateSkill}
               />
@@ -475,17 +484,10 @@ export function WhatsTrendingPane() {
                 title="Biggest fallers"
                 dir="down"
                 rows={movers!.fallers}
+                days={movers!.windowDays}
                 payOf={payOf}
                 onSkill={activateSkill}
               />
-              {/* State the period, because it is chosen from how much history
-                  the archive actually holds rather than fixed — and because
-                  both lists are two ends of this one comparison. */}
-              <div className="brieffoot">
-                {movers!.scope} · mean daily live vacancies · {movers!.windowDays} days to{" "}
-                {movers!.to} vs the {movers!.windowDays} before · {movers!.sources.length} feeds
-                covering both periods
-              </div>
             </>
           )}
           {!hasReal && !moversFetching && market.rows.length > 0 && (
