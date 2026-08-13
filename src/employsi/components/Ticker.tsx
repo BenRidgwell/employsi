@@ -297,9 +297,15 @@ export function Ticker({ hidden }: { hidden: boolean }) {
         data-tour={collapsed ? undefined : "ticker"}
         inert={collapsed || undefined}
       >
+        {/* Two labels, one shown at a time by breakpoint. At 390px the bar is
+            the full width of the map card, and "Skills in demand · Last 30
+            days" ate close to half of it — leaving the scrolling skills, which
+            are the actual content, a sliver. The design's answer is a compact
+            "LIVE" pill, so that is what phones get. */}
         <div className="tickerlbl">
           <i />
-          <span>Skills in demand</span>
+          <span className="tlblfull">Skills in demand</span>
+          <span className="tlblshort">Live</span>
           <span className="tlblwin">{win.label}</span>
         </div>
 

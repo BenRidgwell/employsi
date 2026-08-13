@@ -180,6 +180,30 @@ export function FilterPane() {
       <div className="fpscrim" onClick={toggleFilter} />
       <div className="filterpane">
         <div className="fphd">
+          {/* The icon tile the other two sheets already carry (.briefmark,
+              .anavatar). Filter was the odd one out, so on a phone — where
+              the three are the same bottom sheet switched by the tab bar —
+              its header read as a different component. CSS-hidden above
+              680px, where the desktop panel's own header stands. */}
+          <span className="fpmark" aria-hidden>
+            <svg
+              viewBox="0 0 24 24"
+              width={17}
+              height={17}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.9}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3.5 7h17" />
+              <path d="M3.5 12h17" />
+              <path d="M3.5 17h17" />
+              <path d="M9 7a2.1 2.1 0 1 0 0 .01" />
+              <path d="M15.5 12a2.1 2.1 0 1 0 0 .01" />
+              <path d="M7.5 17a2.1 2.1 0 1 0 0 .01" />
+            </svg>
+          </span>
           <div className="fphdleft">
             <span className="fptitle">Filter</span>
             {activeCount > 0 && <span className="fpcount">{activeCount}</span>}

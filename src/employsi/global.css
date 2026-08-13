@@ -15788,7 +15788,11 @@ body {
    ────────────────────────────────────────────────────────────────────────── */
 
 .msearch,
-.mlayerbar {
+.mlayerbar,
+/* The ticker's short "LIVE" label and Filter's header icon tile exist only
+   for the phone sheet; the desktop bar and panel carry their own. */
+.tlblshort,
+.fpmark {
   display: none;
 }
 
@@ -16196,35 +16200,202 @@ body {
   }
 
   /* ── Bottom sheets ───────────────────────────────────────────────────────
-     Trending, Analyst and Filter are three different components that the
-     design presents identically: a full-width card that rises from the foot
-     of the screen, rounded across the top, stopping on the tab bar so the
-     bar stays visible and tappable underneath.
+     Trending, Analyst and Filter are three components the design presents
+     identically: an inset card that rises from the foot of the screen and
+     stops above the tab bar, so the bar stays visible and tappable.
 
-     They are declared together because the previous mobile rules sized each
-     one separately and only .briefpane had been given left/right offsets —
-     the other two kept their desktop widths and ran off the right edge,
-     taking the close button with them. One geometry for all three is what
-     stops that recurring the next time a pane is added. */
+     Declared together because the previous mobile rules sized each one
+     separately and only .briefpane had been given left/right offsets — the
+     other two kept their desktop widths and ran off the right edge, close
+     button included. One geometry for all three is what stops that
+     recurring the next time a pane is added.
+
+     Inset with a full radius, NOT flush with a rounded top: the design
+     floats the card clear of all four edges (left/right 12, and clear of
+     the bar below), which is what keeps the map readable behind it. */
   .briefpane,
   .analystpane,
   .filterpane {
     position: fixed;
-    left: 0;
-    right: 0;
+    left: 12px;
+    right: 12px;
     top: auto;
-    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
     width: auto;
     max-width: none;
-    max-height: 72vh;
+    max-height: 64%;
     display: flex;
     flex-direction: column;
-    border-radius: 26px 26px 0 0;
-    box-shadow: 0 -8px 40px -12px rgba(15, 27, 61, 0.34);
+    padding: 12px 0 16px;
+    border: 1px solid var(--neutral-150, #ededf0);
+    border-radius: 24px;
+    background: #fff;
+    backdrop-filter: none;
+    box-shadow:
+      0 1px 2px rgba(28, 28, 30, 0.08),
+      0 26px 52px -24px rgba(28, 28, 30, 0.6);
+    animation: emp-sheet 240ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  @keyframes emp-sheet {
+    from {
+      transform: translateY(14px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  /* .briefpane animates by transform on .open; the keyframe above would
+     fight that, so trending keeps its own transition. */
+  .briefpane {
+    animation: none;
   }
   /* The scrim stops BELOW the tab bar (bar is z 47) so switching straight to
      another tab stays a single tap, as it did before. */
   .panescrim {
     z-index: 44;
+    background: rgba(28, 28, 30, 0.34);
+    backdrop-filter: blur(2px);
+  }
+
+  /* ── One sheet header for all three ──────────────────────────────────────
+     Same three parts in each pane under different names: an icon tile, a
+     title with a subtitle under it, and a close button. Mapping the existing
+     class names onto one set of rules keeps each component's markup as it is
+     — this is a phone presentation of three panels, not a rewrite of them. */
+  .briefhead,
+  .anhd,
+  .fphd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex: 0 0 auto;
+    padding: 0 16px 12px;
+    border: 0;
+  }
+  .briefmark,
+  .anavatar,
+  .fpmark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 11px;
+    background: #e2e2e6;
+    color: var(--neutral-900, #1c1c1e);
+  }
+  .briefmark svg,
+  .anavatar svg,
+  .fpmark svg {
+    width: 17px;
+    height: 17px;
+  }
+  .briefheadtxt,
+  .anhdtext,
+  .fphdleft {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .brieftitle,
+  .antitle,
+  .fptitle {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--neutral-900, #1c1c1e);
+  }
+  /* Wraps rather than truncating. The design's own subtitles run to two lines
+     on the analyst sheet, and these say what the numbers below them ARE —
+     clipping "…rising, falling and in demand" to "…falling and in …" spends
+     the same row on less meaning. */
+  .briefdate,
+  .ansub,
+  .fpscope {
+    font-size: 11.5px;
+    line-height: 1.3;
+    color: var(--neutral-500, #8e8e93);
+    white-space: normal;
+  }
+  .briefclose,
+  .anx,
+  .fpx {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid var(--neutral-150, #ededf0);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--neutral-700, #48484a);
+    cursor: pointer;
+  }
+  /* Filter's header is a two-column layout on desktop (title block | actions).
+     Flattened here so the tile, the text and the close button sit on the one
+     row the other two use. */
+  .fphdright {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+  }
+  .fpcount {
+    display: none;
+  }
+
+  /* ── The live-trends bar's own controls ──────────────────────────────────
+     The design keeps one control on the bar: the chevron that collapses it.
+     The window switcher and pause are pointer-era affordances that would
+     take a third of the width here — and the window is still shown in the
+     sheet, so nothing becomes unreachable. */
+  .tlblfull,
+  .tickerwin,
+  .tickerpause,
+  .tlblwin {
+    display: none;
+  }
+  .tlblshort {
+    display: inline;
+  }
+  /* `display` named explicitly: the older mobile block hides the whole
+     control cluster, and a rule that only sets flex/padding leaves that
+     standing — which took the collapse chevron with it. */
+  .tickerctl {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    padding-right: 4px;
+  }
+  /* The empty/short states are plain text in the scroll area; without this
+     they run under the chevron instead of stopping short of it. */
+  .tickerempty {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tickertip {
+    display: none;
+  }
+  /* Collapsed: a centred pill on the map card, matching the bar it replaces.
+     `transform: none` is required, not tidiness — the desktop rule centres
+     the pill with `left: 50%` + `translateX(-50%)`, and that shift stays in
+     force against these left/right offsets, carrying the pill 169px off the
+     left edge of the screen. */
+  .tickerpill {
+    left: 26px;
+    right: 26px;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+    transform: none;
+    display: flex;
+    justify-content: center;
   }
 }
