@@ -684,7 +684,32 @@ export function liveToCompanyNews(
   };
 }
 
-export function companyNews(name: string, sector: string): CompanyNews {
+/**
+ * A company's CHECKED coverage, or null when we have none.
+ *
+ * NULL IS THE POINT. This used to end in a template generator: a company with
+ * no curated set got headlines built from its name —
+ *
+ *     `${n} lifts full-year guidance as demand rebounds`
+ *     `Analysts upgrade ${n} on stronger margins`
+ *     `${n} strikes multi-year offtake deal with Asian buyers`
+ *
+ * — with engagement counts from a hash of the name, rendered under "Trending"
+ * and "News" exactly like real coverage and indistinguishable from it.
+ *
+ * Those are invented financial claims about real, named employers. "Lifts
+ * full-year guidance" and "analysts upgrade" are statements a reader could act
+ * on, and no source anywhere in this repo says either. Measured 2026-08-13, 23
+ * rostered companies had no stored feed and so hit that branch on every card
+ * open — and any company whose live fetch fails on a given day landed there
+ * too.
+ *
+ * The fourteen curated sets below are real, checked articles and stay: they are
+ * the fallback for a day the live feed returns nothing. Everything else now
+ * returns null and the card says it found nothing, which is true.
+ */
+export function companyNews(name: string, sector: string): CompanyNews | null {
+  void sector;
   if (name === "BHP") return bhpRealNews();
   if (name === "Rio Tinto") return rioRealNews();
   if (name === "Fortescue") return fmgRealNews();
@@ -699,17 +724,5 @@ export function companyNews(name: string, sector: string): CompanyNews {
   if (name === "Liontown Resources") return ltrRealNews();
   if (name === "Iluka Resources") return iluRealNews();
   if (name === "Northern Star Resources") return nstRealNews();
-  const seed = seedOf(name + sector);
-  const pick = <T>(arr: T[], k: number) => arr[(seed + k) % arr.length];
-  const hero: NewsItem = {
-    cat: "Trending",
-    title: (pick(HERO_TEMPLATES, 0) as (n: string) => string)(name),
-    comments: 4 + ((seed + 7) % 40),
-  };
-  const items: NewsItem[] = [0, 1, 2, 3].map((i) => ({
-    cat: pick(CATS, i + 2),
-    title: ITEM_TEMPLATES[(seed + i * 3) % ITEM_TEMPLATES.length](name),
-    comments: 1 + ((seed + i * 5) % 30),
-  }));
-  return { hero, items };
+  return null;
 }

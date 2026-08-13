@@ -3248,6 +3248,137 @@ body {
 .tickerpause svg {
   stroke-width: 1.9;
 }
+
+/* ── The ticker, collapsed ───────────────────────────────────────────────────
+   A centred pill where the full-width strip was. It keeps the strip's surface,
+   border and shadow so it reads as the same object tucked away rather than a
+   new control that appeared, and it sits on the same `bottom` so nothing
+   shifts vertically when it opens.
+
+   `left/right: auto` with the translate is what centres it: the expanded strip
+   is pinned to both rails, and a collapsed pill inheriting that would stretch
+   the full width with its content in the middle. */
+.tickerpill {
+  position: absolute;
+  left: 50%;
+  right: auto;
+  bottom: 32px;
+  transform: translateX(-50%);
+  z-index: 5;
+}
+.tickerpill button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 20px;
+  box-sizing: border-box;
+  border: 1px solid var(--border-subtle);
+  border-radius: 22px;
+  background: var(--raised-surface);
+  box-shadow: var(--raised-shadow);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition:
+    background var(--duration-base) cubic-bezier(0.32, 0.72, 0, 1),
+    transform 110ms;
+}
+.tickerpill button:hover {
+  background: var(--surface-hover);
+}
+.tickerpill button:active {
+  transform: scale(0.98);
+}
+/* The pulse line is the one coloured thing on the pill, for the same reason the
+   expanded strip's dot is: it says the feed is live. Green, not the movement
+   red/green of a delta — nothing here is up or down. */
+.tickerpill button > svg:first-child {
+  color: var(--status-success-fg);
+  flex: 0 0 auto;
+}
+.tpillchev {
+  color: var(--neutral-700);
+  flex: 0 0 auto;
+}
+
+/* Collapse control, far right of the expanded strip's cluster. Same size and
+   hover as the pause button beside it — it is one more control in that row,
+   not a different kind of thing. */
+.tickercollapse {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--neutral-700);
+  cursor: pointer;
+  transition:
+    background var(--duration-base) cubic-bezier(0.32, 0.72, 0, 1),
+    color var(--duration-base),
+    transform 110ms;
+}
+.tickercollapse:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.tickercollapse:active {
+  transform: scale(0.94);
+}
+
+/* ── Collapsing the ticker ───────────────────────────────────────────────────
+   Both the strip and the pill are always in the DOM (see Ticker.tsx), and this
+   cross-fades between them. The previous version swapped one for the other in a
+   single frame, so there was nothing to interpolate and the toggle read as a
+   glitch rather than a movement.
+
+   Each side scales very slightly toward its own centre as it leaves — enough to
+   read as one object being put away and brought back, not enough to blur the
+   text on the way. The strip is full-width so its scale is subtler than the
+   pill's; an equal scale on a 1400px strip is a much bigger visual move than on
+   a 180px pill.
+
+   `visibility` is what actually removes the hidden one from hit-testing, and it
+   is delayed by the length of the fade so it does not blink out early. Opacity
+   alone would leave an invisible full-width strip swallowing clicks over the
+   map. `inert` in the component covers focus and the accessibility tree; this
+   covers the pointer.
+
+   Suppressed wholesale by `.reduce-motion *`, which zeroes every transition —
+   the states still swap, just instantly. */
+.ticker,
+.tickerpill {
+  transition:
+    opacity 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    visibility 0s linear 0s;
+  visibility: visible;
+}
+.ticker.tkgone,
+.tickerpill.tkgone {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    opacity 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    visibility 0s linear 220ms;
+}
+.ticker.tkgone {
+  transform: scale(0.985);
+}
+/* The pill is already centred with translateX(-50%); a bare `scale()` here
+   would drop that and send it to the right-hand half of the screen. */
+.tickerpill.tkgone {
+  transform: translateX(-50%) scale(0.92);
+}
 .tickerpause svg.paused line:first-of-type {
   transform: translateX(1.5px);
 }
@@ -8917,6 +9048,27 @@ body {
   pointer-events: none;
 }
 
+/* Nothing found. Replaces a generated feed of invented headlines, so it has to
+   read as a deliberate, informative state rather than a broken panel — hence a
+   heading plus a line saying where we looked and when it refreshes. Uses the
+   panel's own text tokens so it sits in the column rather than on top of it. */
+.nwempty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 28px 4px;
+}
+.nwemptyhd {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.008em;
+  color: var(--nw-text);
+}
+.nwemptysub {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--nw-muted);
+}
 .nwrowmeta {
   font-size: 11.5px;
   color: var(--nw-muted);

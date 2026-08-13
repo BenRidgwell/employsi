@@ -552,6 +552,42 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "tas-gov-public-trustee": [147.316388, -42.87712], // 116 Murray Street, Hobart TAS 7000
   "tas-gov-tourism-tasmania": [147.319903, -42.879721], // Level 3, 15 Murray Street, Hobart TAS 7000
   "tas-gov-whole-of-government-programs": [147.319903, -42.879721], // Executive Building, 15 Murray Street, Hobart TAS 7000
+  "uni-australian-catholic-university": [151.20388, -33.837165], // 40 Edward Street, North Sydney NSW 2060
+  "uni-australian-national-university": [149.118048, -35.279143], // Fellows Road, Acton ACT 2601
+  "uni-bond-university": [153.415796, -28.072482], // 14 University Drive, Robina QLD 4226
+  "uni-charles-darwin-university": [130.872829, -12.370797], // Ellengowan Drive, Brinkin NT 0810
+  "uni-charles-sturt-university": [149.564702, -33.432215], // Panorama Avenue, Bathurst NSW 2795
+  "uni-cquniversity": [150.516639, -23.316436], // 554-700 Yaamba Road, Norman Gardens QLD 4701
+  "uni-deakin-university": [145.114947, -37.847514], // 221 Burwood Highway, Burwood VIC 3125
+  "uni-federation-university-australia": [143.882385, -37.624383], // University Drive, Mount Helen VIC 3350
+  "uni-flinders-university": [138.575502, -35.016473], // Sturt Road, Bedford Park SA 5042
+  "uni-griffith-university": [153.05177, -27.55278], // 170 Kessels Road, Nathan QLD 4111
+  "uni-james-cook-university": [146.761173, -19.329389], // 1 James Cook Drive, Douglas QLD 4814
+  "uni-la-trobe-university": [145.043775, -37.717565], // Kingsbury Drive, Bundoora VIC 3083
+  "uni-macquarie-university": [151.110456, -33.776675], // Balaclava Road, Macquarie Park NSW 2113
+  "uni-monash-university": [145.147343, -37.917268], // Wellington Road, Clayton VIC 3168
+  "uni-nan-tien-institute": [150.844038, -34.470282], // 231 Nolan Street, Berkeley NSW 2506
+  "uni-queensland-university-of-technology": [153.028337, -27.477388], // 2 George Street, Brisbane QLD 4000
+  "uni-rmit-university": [144.966074, -37.80874], // 124 La Trobe Street, Melbourne VIC 3000
+  "uni-southern-cross-university": [153.298537, -28.824096], // Military Road, East Lismore NSW 2480
+  "uni-swinburne-university-of-technology": [145.039123, -37.821371], // John Street, Hawthorn VIC 3122
+  "uni-torrens-university-australia": [138.607171, -34.928226], // 88 Wakefield Street, Adelaide SA 5000
+  "uni-university-of-adelaide": [138.608171, -34.921019], // North Terrace, Adelaide SA 5000
+  "uni-university-of-canberra": [149.085249, -35.239802], // 11 Kirinari Street, Bruce ACT 2617
+  "uni-university-of-melbourne": [144.955773, -37.799517], // Grattan Street, Parkville VIC 3052
+  "uni-university-of-new-england": [151.643554, -30.495909], // Elm Avenue, Armidale NSW 2350
+  "uni-university-of-new-south-wales": [151.231259, -33.915627], // High Street, Kensington NSW 2033
+  "uni-university-of-newcastle": [151.701901, -32.896756], // University Drive, Callaghan NSW 2308
+  "uni-university-of-queensland": [153.01086, -27.494468], // Sir Fred Schonell Drive, St Lucia QLD 4067
+  "uni-university-of-south-australia": [138.595733, -34.925188], // 101 Currie Street, Adelaide SA 5000
+  "uni-university-of-southern-queensland": [151.93548, -27.604819], // 487-535 West Street, Darling Heights QLD 4350
+  "uni-university-of-sydney": [151.193085, -33.887824], // City Road, Darlington NSW 2008
+  "uni-university-of-tasmania": [147.32475, -42.903055], // Churchill Avenue, Sandy Bay TAS 7005
+  "uni-university-of-technology-sydney": [151.200858, -33.883668], // 15 Broadway, Ultimo NSW 2007
+  "uni-university-of-the-sunshine-coast": [153.069618, -26.713546], // 90 Sippy Downs Drive, Sippy Downs QLD 4556
+  "uni-university-of-wollongong": [150.880618, -34.408301], // Northfields Avenue, Wollongong NSW 2500
+  "uni-victoria-university": [144.904179, -37.794921], // Ballarat Road, Footscray VIC 3011
+  "uni-western-sydney-university": [151.005615, -33.816068], // 169 Macquarie Street, Parramatta NSW 2150
   "vic-gov-albury-wodonga-health": [146.947332, -36.076029], // Borella Road, Albury NSW 2640
   "vic-gov-alexandra-district-health": [145.716691, -37.195167], // 12 Cooper Street, Alexandra VIC 3714
   "vic-gov-ambulance-victoria": [145.123369, -37.779713], // 375 Manningham Road, Doncaster VIC 3108

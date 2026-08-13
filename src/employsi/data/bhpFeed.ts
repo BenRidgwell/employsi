@@ -38,7 +38,7 @@ export interface BhpFeed {
   skills: string[];
   roles: { title: string; count: number }[];
   layoffs: Layoff;
-  news: CompanyNews;
+  news: CompanyNews | null;
 }
 
 // Smooth −1..1 oscillator; different periods/phases decorrelate the fields.
@@ -108,13 +108,20 @@ export function buildBhpFeed(now: number = Date.now()): BhpFeed {
 
   // News engagement: keep the (deterministic) headlines stable but let the
   // comment counts tick as a live signal.
+  // NOT consumed any more: lib/panel.ts sets panel.news to null for every
+  // company so BHP asks for live coverage like the rest. Kept, typed nullable,
+  // because the field is part of BhpFeed's shape — and it must never manufacture
+  // a hero, which is exactly what the old unconditional build did once
+  // companyNews stopped generating one.
   const baseNews = companyNews(c.name, c.sector);
   const bumpC = (v: number, i: number) =>
     Math.max(0, Math.round(v + wob(now, 4200 + i * 600, i * 0.6) * 5));
-  const news: CompanyNews = {
-    hero: { ...baseNews.hero, comments: bumpC(baseNews.hero.comments, 0) },
-    items: baseNews.items.map((it, i) => ({ ...it, comments: bumpC(it.comments, i + 1) })),
-  };
+  const news: CompanyNews | null = baseNews
+    ? {
+        hero: { ...baseNews.hero, comments: bumpC(baseNews.hero.comments, 0) },
+        items: baseNews.items.map((it, i) => ({ ...it, comments: bumpC(it.comments, i + 1) })),
+      }
+    : null;
 
   const diversity: BhpDiversity = {
     femalePct: +Math.max(0, cul.femalePct + d4 * 0.4).toFixed(1),

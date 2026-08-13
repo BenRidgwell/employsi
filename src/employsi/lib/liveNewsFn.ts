@@ -5,6 +5,7 @@ import { newsQueryFor } from "../data/newsQueries";
 import type { JsonRecord } from "./json";
 import { str } from "./json";
 import { isBlockedArticle } from "../data/newsBlocklist";
+import { xrefKey, XREF_MAX_AGE_MS } from "./newsMentions";
 import { kvBinding } from "./kv";
 import { COMPANIES } from "../data/companies";
 import { CITY_COMPANIES } from "../data/mapboxGeo";
@@ -385,6 +386,51 @@ function newsKey(name: string): string {
 /** Stale after this long, at which point the on-demand fetch takes over. */
 const STORE_MAX_AGE = 3 * 24 * 60 * 60 * 1000;
 
+/**
+ * Articles found under ANOTHER company that name this one — see lib/newsMentions.
+ *
+ * Read alongside the company's own stored feed and merged into it, so a story
+ * about two employers reaches both cards. Kept as a SEPARATE key rather than
+ * appended to the company's feed, because that feed is overwritten wholesale by
+ * the nightly refresh and anything merged into it would be lost the same night.
+ *
+ * Best-effort throughout: a missing, stale or corrupt xref entry just means the
+ * card shows its own coverage, which is what it showed before this existed.
+ */
+async function crossMentions(name: string): Promise<LiveNewsItem[]> {
+  try {
+    const mod = (await import("cloudflare:workers")) as { env?: Record<string, unknown> };
+    const kv = kvBinding(mod.env, "OPEN_ROLES_HISTORY");
+    if (!kv) return [];
+    const raw = await kv.get(xrefKey(name));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as { items?: LiveNewsItem[] };
+    const items = Array.isArray(parsed.items) ? parsed.items : [];
+    const cutoff = Date.now() - XREF_MAX_AGE_MS;
+    return items.filter((i) => {
+      if (!i?.url || !i.title) return false;
+      if (isBlockedArticle(i.url, i.publisher)) return false;
+      const when = Date.parse(i.published || "");
+      return Number.isNaN(when) || when >= cutoff;
+    });
+  } catch {
+    return [];
+  }
+}
+
+/** Merge cross-mentions into a feed, newest first, without duplicating a URL. */
+function withCrossMentions(
+  own: LiveNewsItem[],
+  cross: LiveNewsItem[],
+  limit: number,
+): LiveNewsItem[] {
+  if (!cross.length) return own.slice(0, limit);
+  const have = new Set(own.map((i) => i.url));
+  const merged = [...own, ...cross.filter((i) => !have.has(i.url))];
+  merged.sort((a, b) => (Date.parse(b.published) || 0) - (Date.parse(a.published) || 0));
+  return merged.slice(0, limit);
+}
+
 async function fromStore(query: string, limit: number): Promise<LiveNewsItem[] | null> {
   try {
     const mod = (await import("cloudflare:workers")) as { env?: Record<string, unknown> };
@@ -400,7 +446,9 @@ async function fromStore(query: string, limit: number): Promise<LiveNewsItem[] |
     const age = Date.now() - Date.parse(parsed.updated || "");
     if (!Number.isNaN(age) && age > STORE_MAX_AGE) return null;
     const clean = items.filter((i) => !isBlockedArticle(i.url, i.publisher));
-    return clean.length ? clean.slice(0, limit) : null;
+    if (!clean.length) return null;
+    const cross = await crossMentions(query.replace(/^"|"$/g, ""));
+    return withCrossMentions(clean, cross, limit);
   } catch {
     return null;
   }
