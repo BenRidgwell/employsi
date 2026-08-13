@@ -344,7 +344,7 @@ export function WhatsTrendingPane() {
                 demand · month on month", which named neither the quantity nor
                 the window: the pane shows advertised value, over whatever span
                 the archive could cover. */}
-            <div className="briefdate">Advertised value over the window</div>
+            <div className="briefdate">See which skills are rising, falling and in demand</div>
           </div>
           <button className="briefclose" onClick={closeTrending} aria-label="Close">
             ✕
