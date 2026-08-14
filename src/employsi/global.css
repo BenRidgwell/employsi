@@ -15936,13 +15936,22 @@ body {
      This only bit once the header controls came back on phones — on desktop
      `.acctwrap` is `display: none` and the panels come from elsewhere, so the
      bug was latent rather than new. */
-  .controls .sfscrim,
-  .helpdock .dockscrim {
+  .controls .sfscrim {
     z-index: 1;
+  }
+  /* The dock's scrim needs to beat `.msearch` (z-index 30), which is a
+     SIBLING of .topbar rather than inside it — so unlike the account card's
+     scrim (scoped inside .acctwrap's z-index 46, and therefore already above
+     the field) this one competes with the search field directly. At z-index 1
+     the field floated on top of the dimming, unblurred, while feedback, help
+     and settings were open behind it.
+     .dockslot rides above the scrim so the panels it wraps stay in front. */
+  .helpdock .dockscrim {
+    z-index: 31;
   }
   .helpdock .dockslot {
     position: relative;
-    z-index: 2;
+    z-index: 32;
   }
   .controls .dockbtn svg,
   .controls .acctbtn svg {
@@ -16419,21 +16428,15 @@ body {
     color: var(--neutral-500, #8e8e93);
     white-space: normal;
   }
+  /* NO CLOSE BUTTON on the three draggable sheets. There are already two
+     ways out that the sheet itself teaches — drag it down, or press the tab
+     that opened it — and a third control in the corner spends header width
+     on the one action the gesture makes obvious. Desktop keeps its close: the
+     panes are docked there, with no drag and no tab bar. */
   .briefclose,
   .anx,
   .fpx {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-    width: 30px;
-    height: 30px;
-    padding: 0;
-    border: 1px solid var(--neutral-150, #ededf0);
-    border-radius: 10px;
-    background: #fff;
-    color: var(--neutral-700, #48484a);
-    cursor: pointer;
+    display: none;
   }
   /* Filter's header is a two-column layout on desktop (title block | actions).
      Flattened here so the tile, the text and the close button sit on the one

@@ -279,7 +279,9 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
   async (): Promise<LiveSkillTrends> => {
     const empty: LiveSkillTrends = { "24h": [], "7d": [], "30d": [] };
     const db = await getArchiveDb();
-    if (!db) return empty;
+    // No binding is a deployment fault, not a quiet market — same reasoning as
+    // the catch below, and it must not be reported as "no movers" either.
+    if (!db) throw new Error("JOBS_ARCHIVE binding unavailable");
     // The ticker is a market-wide roll-up, so it has to be rolled up over the
     // markets the reader can actually see — otherwise an end user reads a
     // headline demand figure carrying vacancies from countries the product has
@@ -502,8 +504,22 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
         }));
       }
       return out;
-    } catch {
-      return empty;
+    } catch (err) {
+      // A FAULT IS NOT AN ABSENCE.
+      //
+      // This used to answer a failed read with `empty`, which is a valid,
+      // successful-looking "nothing moved" — indistinguishable at the client
+      // from an archive that genuinely has no movers. The ticker would show
+      // real figures on load and then, on any later refetch that happened to
+      // fail, replace them with "not enough archive history yet". The numbers
+      // were real; the thing that erased them was a timeout.
+      //
+      // Throwing hands the query layer something it can act on: it retries,
+      // it KEEPS the last good data rather than blanking the bar, and if it
+      // finally gives up the ticker says the archive is unavailable instead
+      // of making a claim about the labour market.
+      console.error("getLiveSkillTrends:", err);
+      throw err;
     }
   },
 );
