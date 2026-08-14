@@ -168,7 +168,9 @@ export function FilterPane() {
     (minGrowth > 0 ? 1 : 0) +
     (maxAttrition < 16 ? 1 : 0);
 
-  if (!filterOpen) return null;
+  // `visible`, not `filterOpen`: the pane must stay mounted while it slides
+  // back down. It is identical to `filterOpen` above 680px.
+  if (!sheet.visible) return null;
 
   const listings: { key: "all" | "public" | "private"; label: string }[] = [
     { key: "all", label: "All" },

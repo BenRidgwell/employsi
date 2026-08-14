@@ -23,6 +23,10 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
  */
 
 export type Detent = "peek" | "full";
+type Phase = "closed" | "entering" | "open" | "exiting";
+
+/** Must match the transition below, so the pane unmounts as the slide ends. */
+const EXIT_MS = 300;
 
 /** How much of the sheet the peek position leaves on screen, in px. */
 const PEEK_HEIGHT = 224;
@@ -58,56 +62,93 @@ export function useMobileSheet({ open, onClose }: Options) {
   }, [open]);
 
   /**
-   * The sheet's own height, measured rather than assumed.
+   * THE ENTRANCE AND EXIT — the sheet rises from below and sinks back, rather
+   * than appearing and vanishing at peek.
    *
-   * It has to be held in state: on the first render after opening,
-   * `ref.current` is still null, so an offset computed then comes out 0 —
-   * which is the FULL position. Every sheet opened filling the screen and
-   * only fell back to peek if something else happened to re-render it.
+   * Neither can be a CSS animation. The detent is driven by an inline
+   * transform, and an animation outranks an inline style in the cascade, so
+   * animating `transform` here pins the sheet wherever the last keyframe says
+   * and no drag can move it afterwards (that exact bug shipped once already).
+   * Both are TRANSITIONS between two inline values instead.
+   *
+   * `translateY(100%)` is the far end because it needs no measurement — 100%
+   * of the element's own height is exactly "fully below its own box", whatever
+   * that height turns out to be.
+   *
+   * The sheet outlives `open` by one animation, so it needs its own phase.
+   *
+   *   closed → entering → open → exiting → closed
+   *
+   * `exiting` is the reason this is a phase and not a boolean: on the way out
+   * the pane has to STAY MOUNTED while it slides back down, and the store flag
+   * that owns it has already gone false. `visible` below is what the panes
+   * render on instead — Analyst and Filter return null on it, and Trending
+   * (which never unmounts) keeps its `.open` class from it, so its opacity
+   * holds until the slide finishes rather than blinking out at the start.
    */
-  // Layout effect, not effect: the height decides where peek is, so measuring
-  // after the browser has painted means one frame drawn at the wrong offset.
-  useLayoutEffect(() => {
-    if (!enabled || !open) return;
-    const measure = () => setHeight(ref.current?.offsetHeight ?? 0);
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [enabled, open]);
+  const [phase, setPhase] = useState<Phase>("closed");
 
-  /**
-   * THE ENTRANCE — the sheet rises from below rather than appearing at peek.
-   *
-   * It cannot be a CSS animation. The detent is driven by an inline transform,
-   * and an animation outranks an inline style in the cascade, so animating
-   * `transform` here pins the sheet wherever the last keyframe says and no
-   * drag can move it afterwards (that exact bug shipped once already). So the
-   * entrance is a TRANSITION between two inline values instead.
-   *
-   * `translateY(100%)` is the starting point because it needs no measurement —
-   * 100% of the element's own height is exactly "fully below its own box",
-   * whatever that height turns out to be.
-   *
-   * Two frames are needed: the browser has to paint the start value before the
-   * end value can transition from it, and one rAF is not reliably enough since
-   * React may not have committed the first style yet. Waiting for a measured
-   * height as well keeps the sheet from animating to the wrong resting place.
-   */
-  const [entered, setEntered] = useState(false);
   useEffect(() => {
-    if (!enabled || !open || height <= 0) {
-      setEntered(false);
+    if (!enabled) {
+      // Desktop has no entrance to play; the phase just mirrors the flag so
+      // `visible` stays exactly as truthful as `open`.
+      setPhase(open ? "open" : "closed");
       return;
     }
+    // Re-opening part-way through an exit restarts the entrance, rather than
+    // stranding the sheet mid-slide.
+    setPhase((p) => (open ? "entering" : p === "closed" ? "closed" : "exiting"));
+  }, [enabled, open]);
+
+  // entering → open, once the start value has been painted and the height is
+  // known. Two frames: the browser must paint `translateY(100%)` before the
+  // resting offset can transition from it.
+  useEffect(() => {
+    if (!enabled || phase !== "entering" || height <= 0) return;
     let inner = 0;
     const outer = requestAnimationFrame(() => {
-      inner = requestAnimationFrame(() => setEntered(true));
+      inner = requestAnimationFrame(() => setPhase("open"));
     });
     return () => {
       cancelAnimationFrame(outer);
       cancelAnimationFrame(inner);
     };
-  }, [enabled, open, height]);
+  }, [enabled, phase, height]);
+
+  // exiting → closed, once the slide has had time to run. A timer rather than
+  // `transitionend`: that event does not fire if the sheet is already at the
+  // position it is animating to, which would leave the pane mounted for good.
+  useEffect(() => {
+    if (phase !== "exiting") return;
+    const id = window.setTimeout(() => setPhase("closed"), EXIT_MS);
+    return () => window.clearTimeout(id);
+  }, [phase]);
+
+  const visible = enabled ? phase !== "closed" : open;
+
+  /**
+   * The sheet's own height, measured rather than assumed — peek is
+   * `height - PEEK_HEIGHT`, so nothing can be positioned without it.
+   *
+   * KEYED ON `phase`, NOT `open`. Analyst and Filter render nothing until
+   * `visible` is true, and `visible` only becomes true once the phase has
+   * moved to `entering` — one render AFTER `open` flipped. An effect keyed on
+   * `open` therefore ran while the pane was still unmounted, measured a null
+   * ref as 0, and never ran again: height stayed 0, the promotion to `open`
+   * below waits on a real height, and both sheets sat in `entering` at
+   * `translateY(100%)` for as long as they were "open". Trending hid the bug
+   * completely, because it never unmounts and so always had a node to measure.
+   *
+   * Layout effect rather than effect: measuring after paint means one frame
+   * drawn at the wrong offset.
+   */
+  useLayoutEffect(() => {
+    if (!enabled || phase === "closed") return;
+    const measure = () => setHeight(ref.current?.offsetHeight ?? 0);
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [enabled, phase]);
 
   const offsetFor = useCallback(
     (d: Detent) => {
@@ -236,11 +277,23 @@ export function useMobileSheet({ open, onClose }: Options) {
     window.addEventListener("pointercancel", up);
   };
 
-  const offset = drag ?? (enabled && open ? offsetFor(detent) : 0);
+  /**
+   * The resting offset. Deliberately NOT gated on `open`.
+   *
+   * It used to read `enabled && open ? offsetFor(detent) : 0`, which put a
+   * hole in the exit: on the single render where `open` has gone false but
+   * the phase has not yet caught up to `exiting`, that ternary collapsed to
+   * 0 — the FULL position — so the sheet snapped up to full height and was
+   * unmounted before the slide could start. `offset` is only ever read while
+   * the phase is "open", so it has no business consulting `open` itself.
+   */
+  const offset = drag ?? offsetFor(detent);
 
   return {
     enabled,
     detent,
+    /** Render the pane while this is true — it stays true through the exit. */
+    visible,
     dragging: drag !== null,
     /**
      * Spread onto the pane's root element.
@@ -253,19 +306,23 @@ export function useMobileSheet({ open, onClose }: Options) {
      * the closed state back to the CSS that owns it.
      */
     sheetProps:
-      enabled && open
+      enabled && visible
         ? {
             ref,
             style: {
-              // Below its own box until the entrance frame, then the detent.
-              transform: entered ? `translateY(${offset}px)` : "translateY(100%)",
-              // No transition on the starting frame — that value must be
-              // painted, not animated to — and none mid-drag, where the sheet
-              // has to track the finger exactly.
+              // At rest only while genuinely open; below its own box both
+              // before the entrance and during the exit.
+              transform: phase === "open" ? `translateY(${offset}px)` : "translateY(100%)",
+              // `entering` is the one phase with no transition: that first
+              // value has to be PAINTED, not animated to, or the entrance has
+              // nothing to travel from. `exiting` keeps it — that IS the slide.
               transition:
-                drag !== null || !entered ? "none" : "transform 320ms cubic-bezier(0.32,0.72,0,1)",
+                drag !== null || phase === "entering"
+                  ? "none"
+                  : `transform ${EXIT_MS}ms cubic-bezier(0.32,0.72,0,1)`,
             } as React.CSSProperties,
             "data-detent": detent,
+            "data-phase": phase,
           }
         : { ref },
     /** Spread onto the grab handle and the sheet header — chrome, never the

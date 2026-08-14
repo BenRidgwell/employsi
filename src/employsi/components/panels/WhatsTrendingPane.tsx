@@ -328,7 +328,7 @@ export function WhatsTrendingPane() {
         <div className="panescrim" onClick={closeTrending} />
       )}
       <aside
-        className={`briefpane trendpane ${open ? "open" : ""}`}
+        className={`briefpane trendpane ${sheet.visible ? "open" : ""}`}
         aria-hidden={!open}
         {...sheet.sheetProps}
       >

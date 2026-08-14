@@ -311,7 +311,9 @@ export function AnalystPane() {
     }
   };
 
-  if (!open) return null;
+  // `visible`, not `open`: the pane must stay mounted while it slides back
+  // down. It is identical to `open` above 680px.
+  if (!sheet.visible) return null;
 
   return (
     <>
