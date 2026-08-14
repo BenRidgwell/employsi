@@ -206,17 +206,27 @@ export function useMobileSheet({ open, onClose }: Options) {
     enabled,
     detent,
     dragging: drag !== null,
-    /** Spread onto the pane's root element. */
-    sheetProps: enabled
-      ? {
-          ref,
-          style: {
-            transform: `translateY(${offset}px)`,
-            transition: drag !== null ? "none" : "transform 320ms cubic-bezier(0.32,0.72,0,1)",
-          } as React.CSSProperties,
-          "data-detent": detent,
-        }
-      : { ref },
+    /**
+     * Spread onto the pane's root element.
+     *
+     * NOTHING IS WRITTEN WHILE CLOSED. Trending's pane stays mounted when it
+     * is shut — it hides itself with `opacity: 0` on `.briefpane:not(.open)`
+     * rather than unmounting, unlike Analyst and Filter which return null. An
+     * inline `transform: translateY(0)` on a closed pane is the FULL position,
+     * so it parked the closed card over the map; leaving the style off hands
+     * the closed state back to the CSS that owns it.
+     */
+    sheetProps:
+      enabled && open
+        ? {
+            ref,
+            style: {
+              transform: `translateY(${offset}px)`,
+              transition: drag !== null ? "none" : "transform 320ms cubic-bezier(0.32,0.72,0,1)",
+            } as React.CSSProperties,
+            "data-detent": detent,
+          }
+        : { ref },
     /** Spread onto the grab handle and the sheet header — chrome, never the
      *  scrolling body, so the body's own scrolling is untouched. */
     dragProps: enabled ? { onPointerDown } : {},

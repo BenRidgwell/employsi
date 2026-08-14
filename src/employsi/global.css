@@ -16240,12 +16240,23 @@ body {
     box-shadow:
       0 1px 2px rgba(28, 28, 30, 0.08),
       0 26px 52px -24px rgba(28, 28, 30, 0.6);
-    /* Fades in only. It MUST NOT animate `transform`: useMobileSheet drives
-       the detent by writing an inline transform, and a CSS animation beats
-       an inline style in the cascade — with `fill-mode: both` the final
-       keyframe kept re-pinning every sheet at translateY(0), so all three
-       opened full-screen and no drag could move them. The slide is the
-       hook's transition; this is just the appearance. */
+  }
+  /* The entry fade, and ONLY on a sheet that is actually open.
+     Two cascade traps live here, both already sprung once:
+       - It must not animate `transform`. useMobileSheet drives the detent
+         with an inline transform, and an animation beats an inline style —
+         with `fill-mode: both` the final keyframe re-pinned every sheet at
+         translateY(0), so all three opened full-screen and no drag moved
+         them.
+       - It must not reach a CLOSED pane. Trending stays mounted when shut and
+         hides with `opacity: 0`; `fill-mode: both` held this animation's
+         `opacity: 1` over that, so the card sat open on the map from the
+         moment the page loaded. Analyst and Filter unmount, so they never
+         showed it — which is exactly why the bug looked like it belonged to
+         Trending alone. */
+  .briefpane.open,
+  .analystpane,
+  .filterpane {
     animation: emp-sheet-in 200ms ease both;
   }
   @keyframes emp-sheet-in {
