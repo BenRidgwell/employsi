@@ -85,12 +85,29 @@ STALE_DAYS = {
     # Career portals run in four grouped ticks; a group is touched daily.
     **{f'portal-{k}': 4 for k in
        ('ef', 'csl', 'av', 'sf', 'wd', 'sy', 'or', 'nx', 'cl', 'gh', 'lh')},
+    # startup.jobs: ZERO ROWS IS A NORMAL DAY HERE, and 3 days was crying wolf.
+    #
+    # Only 59 of the 1,037 rostered employers have a page on that board at all,
+    # and they are startups' listings of ASX names — most sit there for weeks
+    # without advertising. The 2026-08-13 run read 59 of 59 company pages
+    # perfectly, found nothing confirmed advertising, and correctly refused to
+    # file /company/igo ("iGo", Pennsylvania, 4 roles) under the ASX company of
+    # that name. It was flagged CRITICAL for working exactly as intended.
+    #
+    # The scraper already fails loudly on the condition that matters — see the
+    # `if targets and not pages_read` guard in startupjobs-to-d1.py, which is
+    # what a block or a markup change actually looks like. This number is only
+    # the long-stop for "the board has gone quiet for an implausible stretch".
+    'startupjobs': 14,
 }
 
 # Sources that are NOT scheduled, so silence means nothing. TheirStack is an
 # on-demand paid backfill; the Muse is a fallback that only fires when Adzuna
-# returns nothing for a company.
-ON_DEMAND = {'theirstack', 'muse'}
+# returns nothing for a company; wayback is a one-off historical import whose
+# rows are all dated 2018 and which has no workflow to run again — it was
+# reporting "no rows written for 3036 days" as CRITICAL every single night,
+# which is noise sitting on top of the report people read to find real faults.
+ON_DEMAND = {'theirstack', 'muse', 'wayback'}
 
 # A source needs at least this many rows before its baselines mean anything —
 # below it, one row moves a percentage by double digits.
@@ -171,23 +188,37 @@ def check_freshness(src: str, last_seen: str, findings: list) -> None:
 
 
 def check_volume(src: str, by_day: list[dict], findings: list) -> None:
-    """Latest day's live count against this source's own recent median."""
-    if len(by_day) < 5:
+    """Latest COMPLETE day's live count against this source's own recent median.
+
+    TODAY IS EXCLUDED, and that is the whole correctness of this check. A day
+    is only complete once the feeds have reported it, and this job is scheduled
+    at 23:30 UTC — so any drift past midnight makes `by_day[0]` a day that is
+    minutes old, measured against a median of full ones.
+
+    That is not hypothetical. The 2026-08-14 run started at 00:07 UTC and
+    warned that adzuna had "427 rows on 2026-08-14 against a median of 1225
+    (35%)" and mycareersfuture "294 against 717 (41%)". Both were seven
+    minutes of a day being compared with whole ones; both feeds were healthy
+    and had written all day. False warnings here are not harmless — this
+    report is read to find the real ones.
+    """
+    complete = [r for r in by_day if r['d'] < TODAY.isoformat()]
+    if len(complete) < 5:
         return  # not enough history to say anything honest
-    latest = by_day[0]['n']
-    baseline = median([r['n'] for r in by_day[1:]])
+    latest = complete[0]['n']
+    baseline = median([r['n'] for r in complete[1:]])
     if baseline < 20:
         return  # a small source's day-to-day noise is not a signal
     ratio = latest / baseline
     if ratio < VOLUME_CRITICAL:
         findings.append(Finding(
             src, 'CRITICAL', 'VOLUME COLLAPSE',
-            f'{latest} rows on {by_day[0]["d"]} against a median of {baseline:.0f} '
+            f'{latest} rows on {complete[0]["d"]} against a median of {baseline:.0f} '
             f'({ratio:.0%}) — likely paging or auth breaking part-way'))
     elif ratio < VOLUME_WARN:
         findings.append(Finding(
             src, 'WARN', 'VOLUME DROP',
-            f'{latest} rows on {by_day[0]["d"]} against a median of {baseline:.0f} ({ratio:.0%})'))
+            f'{latest} rows on {complete[0]["d"]} against a median of {baseline:.0f} ({ratio:.0%})'))
 
 
 def check_fields(src: str, rows: dict, findings: list) -> None:
