@@ -120,12 +120,28 @@ export function Ticker({ hidden }: { hidden: boolean }) {
   // windows at once (one scan serves them all). Refreshes once a day — the
   // archive only changes on the daily cron — and falls back to the static seed
   // while loading or before the archive has enough history.
-  const { data: live } = useQuery({
+  const {
+    data: live,
+    isPending: pending,
+    isError: failed,
+  } = useQuery({
     queryKey: ["liveSkillTrends"],
     queryFn: () => getLiveSkillTrends(),
     staleTime: 6 * 60 * 60 * 1000,
     gcTime: 24 * 60 * 60 * 1000,
-    retry: false,
+    // RETRY, and recover on refocus.
+    //
+    // This was `retry: false`, and that is the likeliest reason the ticker
+    // showed figures on one load and nothing on the next. The read behind it
+    // is not cheap — it reconstructs daily series across the whole archive —
+    // so an occasional failure or timeout is expected. Without a retry a
+    // single one left `data` undefined for the WHOLE session: nothing refetches
+    // it, staleTime is six hours, and the bar sat on its loading shimmer with
+    // no way back short of a reload. Which is exactly "sometimes it has
+    // values, sometimes it doesn't".
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1500 * 2 ** attempt, 8000),
+    refetchOnWindowFocus: true,
   });
 
   const collapsed = useAppStore((st) => st.tickerCollapsed);
@@ -134,6 +150,43 @@ export function Ticker({ hidden }: { hidden: boolean }) {
   const [paused, setPaused] = useState(false);
   const win = TREND_WINDOWS[winIdx];
 
+  /**
+   * OPEN ON A WINDOW THAT ACTUALLY HAS DATA.
+   *
+   * The windows are NOT equally answerable, and which ones are changes as the
+   * archive ages. Each compares a recent span against the span of equal length
+   * before it, so a window needs history reaching back TWICE its length — and
+   * the archive's real start is 2026-07-16, about a month deep.
+   *
+   * Measured against the live archive on 2026-08-14 (recent / prior live rows):
+   *
+   *     24h    57,163 / 61,764   answerable, and the most volatile — one day
+   *                              against one day, before the day is complete
+   *     7d     99,652 / 95,314   answerable, and steady
+   *     30d   155,053 /      0   NOT answerable: 30-60 days back is empty
+   *
+   * So the long window is the one that cannot answer, which is the reverse of
+   * the intuition that a longer span is the safer default. And the DEFAULT was
+   * the volatile one: a 24h reading thins out early in the UTC day, before the
+   * nightly cron has filled it in, at which point the bar announced "not
+   * enough archive history" with 95,000 rows of perfectly good 7-day history
+   * sitting one window along. That is the intermittency.
+   *
+   * Opening on the shortest window that returned rows is not a fudge: every
+   * window is the same measurement over a different span, and the span is
+   * named beside the figures either way (see .tlblwin / .tlblwinshort). The
+   * alternative is a bar that says nothing while real data sits one window
+   * along.
+   *
+   * A manual pick wins from then on — this only chooses the opening window.
+   */
+  const userPickedWindow = useRef(false);
+  useEffect(() => {
+    if (!live || userPickedWindow.current) return;
+    const i = TREND_WINDOWS.findIndex((w) => (live[w.key]?.length ?? 0) > 0);
+    if (i >= 0) setWinIdx(i);
+  }, [live]);
+
   const rows = live?.[win.key];
   // Three distinct states, and conflating any two of them is what let invented
   // figures onto the ticker:
@@ -141,7 +194,11 @@ export function Ticker({ hidden }: { hidden: boolean }) {
   //   no history   — the archive is too young for THIS window's comparison, so
   //                  the server returned nothing on purpose. Say that.
   //   live         — real movers.
-  const loading = !live;
+  // FOUR states, not three. `loading` used to be `!live`, which folded a
+  // FAILED read in with a pending one — so a failure showed the skeleton
+  // forever, looking like a request still in flight rather than one that had
+  // already given up. Reading the query's own flags keeps them apart.
+  const loading = pending;
   // Memoised because the empty branch is a fresh array literal: without this,
   // `items` changes identity every render and the flash effect below — which
   // depends on it — would re-run continuously.
@@ -307,6 +364,13 @@ export function Ticker({ hidden }: { hidden: boolean }) {
           <span className="tlblfull">Skills in demand</span>
           <span className="tlblshort">Live</span>
           <span className="tlblwin">{win.label}</span>
+          {/* The same fact as .tlblwin, at a width a phone can carry. It is
+              NOT decoration and it is not optional: these deltas are a
+              comparison over a span, the span is now chosen automatically
+              from what the archive holds, and a percentage whose window is
+              unstated is the kind of number this codebase exists not to
+              print. .tlblwin is hidden below 680px; this replaces it. */}
+          <span className="tlblwinshort">{win.short}</span>
         </div>
 
         <div className="tickerwrap">
@@ -318,6 +382,11 @@ export function Ticker({ hidden }: { hidden: boolean }) {
                 </div>
               ))}
             </div>
+          ) : failed ? (
+            // Named as a fault rather than dressed up as "no data": the
+            // archive not answering and the archive having nothing to say are
+            // different facts, and only one of them is about the labour market.
+            <div className="tickerempty">Live demand is unavailable right now.</div>
           ) : noHistory ? (
             <div className="tickerempty">
               Not enough archive history yet to measure change over{" "}
@@ -335,7 +404,10 @@ export function Ticker({ hidden }: { hidden: boolean }) {
           <button
             type="button"
             className="tickerwin"
-            onClick={() => setWinIdx((i) => (i + 1) % TREND_WINDOWS.length)}
+            onClick={() => {
+              userPickedWindow.current = true;
+              setWinIdx((i) => (i + 1) % TREND_WINDOWS.length);
+            }}
             disabled={!anyLive}
             aria-label={`Trend window: ${win.short}`}
           >

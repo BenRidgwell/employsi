@@ -15789,9 +15789,11 @@ body {
 
 .msearch,
 .mlayerbar,
-/* The ticker's short "LIVE" label and Filter's header icon tile exist only
-   for the phone sheet; the desktop bar and panel carry their own. */
+/* The ticker's short "LIVE" label and its compact window token, and Filter's
+   header icon tile, exist only for the phone layout; the desktop bar and
+   panel carry their full-length equivalents. */
 .tlblshort,
+.tlblwinshort,
 .fpmark {
   display: none;
 }
@@ -16418,6 +16420,15 @@ body {
   }
   .tlblshort {
     display: inline;
+  }
+  /* The window the deltas are measured over. It rides in the LIVE pill so it
+     cannot be separated from the figures it qualifies. */
+  .tlblwinshort {
+    display: inline;
+    padding-left: 6px;
+    margin-left: 5px;
+    border-left: 1px solid rgba(255, 255, 255, 0.32);
+    opacity: 0.82;
   }
   /* `display` named explicitly: the older mobile block hides the whole
      control cluster, and a rule that only sets flex/padding leaves that
