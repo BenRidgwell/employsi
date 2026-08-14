@@ -17,6 +17,8 @@ import {
 } from "../../lib/analystScope";
 import { getMostViewed, type ViewedRow } from "../../lib/viewsFn";
 import { CardLoader } from "./CardLoader";
+import { MobileSheetHandle } from "../MobileSheetHandle";
+import { useMobileSheet } from "../../hooks/useMobileSheet";
 import { CITY_CONTINENT } from "../../data/geo";
 import { CITY_COUNTRY } from "../../data/mapboxWorldGeo";
 
@@ -178,6 +180,7 @@ export function WhatsTrendingPane() {
   // Open whenever toggled, on any layer — the mobile tab bar can trigger it from
   // the local view too, where the old `zoomedOut` gate left it silently closed.
   const open = trendingOpen;
+  const sheet = useMobileSheet({ open, onClose: closeTrending });
 
   // WHICH AREA THE PANE IS ABOUT — the one the map is currently showing.
   //
@@ -318,10 +321,26 @@ export function WhatsTrendingPane() {
 
   return (
     <>
-      {open && <div className="panescrim" onClick={closeTrending} />}
-      <aside className={`briefpane trendpane ${open ? "open" : ""}`} aria-hidden={!open}>
+      {/* The scrim only appears once the sheet is FULL. At peek the map is
+          still the subject — dimming it there would contradict the position's
+          whole purpose, which is to show a snapshot without taking the screen. */}
+      {open && (!sheet.enabled || sheet.detent === "full") && (
+        <div className="panescrim" onClick={closeTrending} />
+      )}
+      <aside
+        className={`briefpane trendpane ${open ? "open" : ""}`}
+        aria-hidden={!open}
+        {...sheet.sheetProps}
+      >
+        {sheet.enabled && (
+          <MobileSheetHandle
+            dragProps={sheet.dragProps}
+            detent={sheet.detent}
+            onToggle={sheet.toggleDetent}
+          />
+        )}
         {firstLoad && <CardLoader />}
-        <div className="briefhead">
+        <div className="briefhead" {...sheet.dragProps}>
           <div className="briefmark">
             <svg
               className="trendmark"

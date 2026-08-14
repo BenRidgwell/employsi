@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { MobileSheetHandle } from "../MobileSheetHandle";
+import { useMobileSheet } from "../../hooks/useMobileSheet";
 import { useAppStore } from "../../state/store";
 import { SECTOR_SHORT } from "../../data/companies";
 import { CITY_CONTINENT } from "../../data/geo";
@@ -120,6 +122,7 @@ function AnalystIcon() {
 export function AnalystPane() {
   const open = useAppStore((s) => s.analystOpen);
   const closeAnalyst = useAppStore((s) => s.closeAnalyst);
+  const sheet = useMobileSheet({ open, onClose: closeAnalyst });
   const selectedId = useAppStore((s) => s.selectedId);
   const localCity = useAppStore((s) => s.localCity);
   const domesticRegion = useAppStore((s) => s.domesticRegion);
@@ -312,9 +315,20 @@ export function AnalystPane() {
 
   return (
     <>
-      <div className="panescrim" onClick={closeAnalyst} />
-      <div className="analystpane">
-        <div className="anhd">
+      {/* On a phone the scrim appears only at FULL — at peek the map is still
+          the subject. Desktop has no detents, so it always gets the scrim. */}
+      {(!sheet.enabled || sheet.detent === "full") && (
+        <div className="panescrim" onClick={closeAnalyst} />
+      )}
+      <div className="analystpane" {...sheet.sheetProps}>
+        {sheet.enabled && (
+          <MobileSheetHandle
+            dragProps={sheet.dragProps}
+            detent={sheet.detent}
+            onToggle={sheet.toggleDetent}
+          />
+        )}
+        <div className="anhd" {...sheet.dragProps}>
           <span className="anavatar">
             <AnalystIcon />
           </span>

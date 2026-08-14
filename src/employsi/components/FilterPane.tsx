@@ -1,4 +1,6 @@
 import { useMemo, type CSSProperties } from "react";
+import { MobileSheetHandle } from "./MobileSheetHandle";
+import { useMobileSheet } from "../hooks/useMobileSheet";
 import { useAppStore, matchesFilters, type FilterState } from "../state/store";
 import { COMPANIES, SECTOR_GROUPS, SECTOR_SHORT, EXCHANGES } from "../data/companies";
 import { CITY_COMPANIES } from "../data/mapboxGeo";
@@ -52,6 +54,7 @@ const HEAD_MAX = 12000;
 export function FilterPane() {
   const filterOpen = useAppStore((s) => s.filterOpen);
   const toggleFilter = useAppStore((s) => s.toggleFilter);
+  const sheet = useMobileSheet({ open: filterOpen, onClose: toggleFilter });
   const activeSectors = useAppStore((s) => s.activeSectors);
   const toggleSector = useAppStore((s) => s.toggleSector);
   const listingType = useAppStore((s) => s.listingType);
@@ -176,10 +179,22 @@ export function FilterPane() {
 
   return (
     <>
-      {/* Click-away, matching the pointerdown-outside listener in the design. */}
-      <div className="fpscrim" onClick={toggleFilter} />
-      <div className="filterpane">
-        <div className="fphd">
+      {/* Click-away, matching the pointerdown-outside listener in the design.
+          On a phone it appears only once the sheet is FULL: at peek the map is
+          still the subject, and dimming it there would contradict what the
+          position is for. */}
+      {(!sheet.enabled || sheet.detent === "full") && (
+        <div className="fpscrim" onClick={toggleFilter} />
+      )}
+      <div className="filterpane" {...sheet.sheetProps}>
+        {sheet.enabled && (
+          <MobileSheetHandle
+            dragProps={sheet.dragProps}
+            detent={sheet.detent}
+            onToggle={sheet.toggleDetent}
+          />
+        )}
+        <div className="fphd" {...sheet.dragProps}>
           {/* The icon tile the other two sheets already carry (.briefmark,
               .anavatar). Filter was the odd one out, so on a phone — where
               the three are the same bottom sheet switched by the tab bar —

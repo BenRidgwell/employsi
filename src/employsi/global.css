@@ -16223,7 +16223,13 @@ body {
     bottom: calc(84px + env(safe-area-inset-bottom, 0px));
     width: auto;
     max-width: none;
-    max-height: 64%;
+    /* A DEFINITE height, not a max: useMobileSheet positions the sheet by
+       translating it down from full, so "how far down is peek" is
+       `height - PEEK_HEIGHT`. Against `max-height` the element's height
+       tracks its content, so the same drag would land at a different place
+       on every panel — and on Trending it would move as its data arrived. */
+    height: 74vh;
+    max-height: none;
     display: flex;
     flex-direction: column;
     padding: 12px 0 16px;
@@ -16234,29 +16240,65 @@ body {
     box-shadow:
       0 1px 2px rgba(28, 28, 30, 0.08),
       0 26px 52px -24px rgba(28, 28, 30, 0.6);
-    animation: emp-sheet 240ms cubic-bezier(0.32, 0.72, 0, 1) both;
+    /* Fades in only. It MUST NOT animate `transform`: useMobileSheet drives
+       the detent by writing an inline transform, and a CSS animation beats
+       an inline style in the cascade — with `fill-mode: both` the final
+       keyframe kept re-pinning every sheet at translateY(0), so all three
+       opened full-screen and no drag could move them. The slide is the
+       hook's transition; this is just the appearance. */
+    animation: emp-sheet-in 200ms ease both;
   }
-  @keyframes emp-sheet {
+  @keyframes emp-sheet-in {
     from {
-      transform: translateY(14px);
       opacity: 0;
     }
     to {
-      transform: translateY(0);
       opacity: 1;
     }
   }
-  /* .briefpane animates by transform on .open; the keyframe above would
-     fight that, so trending keeps its own transition. */
-  .briefpane {
-    animation: none;
-  }
   /* The scrim stops BELOW the tab bar (bar is z 47) so switching straight to
-     another tab stays a single tap, as it did before. */
-  .panescrim {
+     another tab stays a single tap, as it did before. It is only mounted at
+     the full detent — see the panes. */
+  .panescrim,
+  .fpscrim {
     z-index: 44;
     background: rgba(28, 28, 30, 0.34);
     backdrop-filter: blur(2px);
+  }
+
+  /* ── The drag handle ─────────────────────────────────────────────────────
+     `touch-action: none` is what makes the drag work at all: without it the
+     browser claims the vertical gesture for scrolling before a pointermove
+     ever reaches us, and the sheet simply does not follow the finger. */
+  .msheetgrab {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 22px;
+    margin-top: -6px;
+    touch-action: none;
+    cursor: grab;
+  }
+  .msheetgrab:active {
+    cursor: grabbing;
+  }
+  .msheetgrabbar {
+    width: 40px;
+    height: 5px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: var(--neutral-300, #d1d1d6);
+    cursor: inherit;
+  }
+  /* The header drags too, so it must not hand the gesture to the scroller —
+     but its own buttons keep their taps, which is why the hook only captures
+     the pointer once the finger has actually moved. */
+  .briefhead,
+  .anhd,
+  .fphd {
+    touch-action: none;
   }
 
   /* ── One sheet header for all three ──────────────────────────────────────
