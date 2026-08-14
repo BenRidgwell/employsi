@@ -15913,6 +15913,37 @@ body {
   .controls .docktip {
     display: none;
   }
+
+  /* ── Header popouts must sit above their own scrim ───────────────────────
+     Every panel launched from the header — the account card, feedback, help,
+     settings — was rendering BEHIND its own click-away scrim: blurred by the
+     scrim's backdrop-filter, dimmed by its background, and with every tap
+     inside the panel landing on the scrim and closing it. Measured with
+     elementFromPoint at each panel's own centre: all four returned the scrim.
+
+     It is a stacking-context problem, not a z-index race. `.sfscrim` (41) is
+     a sibling of `.accard` (8) inside `.acctwrap`, which sets `z-index: 46`
+     and so scopes both; the scrim simply sits higher within it. The dock is
+     the same shape.
+
+     Lowering the SCRIMS is the fix rather than raising the panels, because
+     the scrims do not need a high z-index at all: they are `position: fixed`
+     inside `.apphead`, which carries `z-index: 12`, so the whole subtree
+     already paints above the map. Their own value only has to lose to their
+     panel. `.dockslot` is raised with them because it wraps the dock panels
+     and would otherwise cap them at its own level.
+
+     This only bit once the header controls came back on phones — on desktop
+     `.acctwrap` is `display: none` and the panels come from elsewhere, so the
+     bug was latent rather than new. */
+  .controls .sfscrim,
+  .helpdock .dockscrim {
+    z-index: 1;
+  }
+  .helpdock .dockslot {
+    position: relative;
+    z-index: 2;
+  }
   .controls .dockbtn svg,
   .controls .acctbtn svg {
     width: 19px;
