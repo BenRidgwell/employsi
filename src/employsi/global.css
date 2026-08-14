@@ -15878,6 +15878,16 @@ body {
   .controls .dockbtn,
   .controls .searchbtn,
   .controls .acctbtn {
+    /* Centre BOTH axes. These buttons inherit a row layout that only sets
+       `align-items`, so the glyph was centred vertically and flush against
+       the left edge horizontally — measured at dx=0 with 15px of slack on the
+       right, which is exactly the avatar sitting off-centre in its circle.
+       `gap` goes too: the account button carries a second, empty child, and
+       an 8px gap against it nudges the glyph off centre again. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
     width: 34px;
     height: 34px;
     padding: 0;
