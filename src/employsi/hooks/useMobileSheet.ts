@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 /**
  * The phone sheet's drag behaviour: a Google-Maps-style card with three
@@ -65,13 +65,49 @@ export function useMobileSheet({ open, onClose }: Options) {
    * which is the FULL position. Every sheet opened filling the screen and
    * only fell back to peek if something else happened to re-render it.
    */
-  useEffect(() => {
+  // Layout effect, not effect: the height decides where peek is, so measuring
+  // after the browser has painted means one frame drawn at the wrong offset.
+  useLayoutEffect(() => {
     if (!enabled || !open) return;
     const measure = () => setHeight(ref.current?.offsetHeight ?? 0);
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, [enabled, open]);
+
+  /**
+   * THE ENTRANCE — the sheet rises from below rather than appearing at peek.
+   *
+   * It cannot be a CSS animation. The detent is driven by an inline transform,
+   * and an animation outranks an inline style in the cascade, so animating
+   * `transform` here pins the sheet wherever the last keyframe says and no
+   * drag can move it afterwards (that exact bug shipped once already). So the
+   * entrance is a TRANSITION between two inline values instead.
+   *
+   * `translateY(100%)` is the starting point because it needs no measurement —
+   * 100% of the element's own height is exactly "fully below its own box",
+   * whatever that height turns out to be.
+   *
+   * Two frames are needed: the browser has to paint the start value before the
+   * end value can transition from it, and one rAF is not reliably enough since
+   * React may not have committed the first style yet. Waiting for a measured
+   * height as well keeps the sheet from animating to the wrong resting place.
+   */
+  const [entered, setEntered] = useState(false);
+  useEffect(() => {
+    if (!enabled || !open || height <= 0) {
+      setEntered(false);
+      return;
+    }
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setEntered(true));
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
+  }, [enabled, open, height]);
 
   const offsetFor = useCallback(
     (d: Detent) => {
@@ -221,8 +257,13 @@ export function useMobileSheet({ open, onClose }: Options) {
         ? {
             ref,
             style: {
-              transform: `translateY(${offset}px)`,
-              transition: drag !== null ? "none" : "transform 320ms cubic-bezier(0.32,0.72,0,1)",
+              // Below its own box until the entrance frame, then the detent.
+              transform: entered ? `translateY(${offset}px)` : "translateY(100%)",
+              // No transition on the starting frame — that value must be
+              // painted, not animated to — and none mid-drag, where the sheet
+              // has to track the finger exactly.
+              transition:
+                drag !== null || !entered ? "none" : "transform 320ms cubic-bezier(0.32,0.72,0,1)",
             } as React.CSSProperties,
             "data-detent": detent,
           }
