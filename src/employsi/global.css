@@ -10604,9 +10604,18 @@ body {
      content came to 543px inside a 364px box, so nearly a third of it sat off
      the right edge behind an `overflow-x: auto` that gives no hint it is
      there — which is exactly "cut off the screen". Letting the stats flow
-     onto a second line shows all of them at once.
-     Raised clear of the live-trends bar too: at `bottom: 86px` the two
-     occupied the same band and overlapped. */
+     onto a second line shows all of them at once. */
+  /* IT SITS ON THE LIVE-TRENDS BAR'S OWN LINE, and that is safe rather than a
+     collision. This rule used to hold it at 134px, "raised clear of the bar",
+     which was a real layout overlap but never a visible one: the bar carries
+     `zoomhide` on the local layer, and the local layer is the ONLY place this
+     pill renders at all (LocalBanner returns null when zoomedOut). Measured
+     across all three layers — global and domestic show the bar at opacity 1
+     with no pill; local shows the pill with the bar at opacity 0. They cannot
+     both be on screen, so clearing the bar cost 38px of height for nothing and
+     left the pill floating in the middle of empty map.
+     90px is the bar's own offset, which puts the pill 12px above the map
+     card's bottom edge — the same margin the bar keeps. */
   /* IT HAS TO FIT THE MAP CARD, NOT THE WINDOW. At `left/right: 8px` the pill
      measured 8..382 while the rounded map card it sits on measured 14..376 —
      6px proud on each side, hanging over the card's 26px corners. Aligned to
@@ -10619,7 +10628,7 @@ body {
     left: 26px;
     right: auto;
     max-width: calc(100vw - 52px);
-    bottom: calc(134px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
     gap: 3px;
     padding: 3px;
     flex-wrap: nowrap;
