@@ -3023,7 +3023,17 @@ body {
   display: block;
   height: 11px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #ededf0 0%, #f7f7f8 50%, #ededf0 100%);
+  /* DARK ENOUGH TO SEE ON A WHITE BAR. These were #ededf0 → #f7f7f8, which is
+     a 2-3% step off white: on the phone bar (solid #fff since the live-trends
+     bar was whitened) the loading state was invisible, and the shimmer swept
+     the lighter stop across to make it more invisible still. The bar then
+     read as "no data" for as long as the archive read took — which is the
+     whole of "the ticker doesn't appear when I refresh". Reproduced by
+     holding the read 8s: dark LIVE pill, blank strip, indistinguishable from
+     an empty bar.
+     The loading state is the one state that must never look like the empty
+     state, because the two say opposite things about the data. */
+  background: linear-gradient(90deg, #cbcbd4 0%, #e2e2e9 50%, #cbcbd4 100%);
   background-size: 200% 100%;
   animation: tskelshimmer 1400ms ease-in-out infinite;
 }
@@ -16700,6 +16710,31 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  /* THE FADE MASK IS SIZED FOR THE DESKTOP BAR, AND A PHONE IS NOT ONE.
+     The desktop strip runs the width of the map, so 40px in and 56px out is
+     a soft edge on something like 900px. Measured on a 390px phone the
+     marquee window is 189px wide — those same insets leave a 93px opaque
+     band, so HALF the window is faded and a whole skill name is legible in
+     2% of the marquee's 46-second loop. That is why the figures read as
+     coming and going even when the archive is answering perfectly.
+     Scaling the fade to the window gives a 165px band: 77% more readable
+     width, and the edges still soften rather than cut. */
+  .tickerwrap {
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      transparent 0,
+      #000 12px,
+      #000 calc(100% - 12px),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      90deg,
+      transparent 0,
+      #000 12px,
+      #000 calc(100% - 12px),
+      transparent 100%
+    );
   }
   .tickertip {
     display: none;
