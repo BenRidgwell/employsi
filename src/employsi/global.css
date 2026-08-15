@@ -16017,6 +16017,45 @@ body {
   .controls .docktip {
     display: none;
   }
+  /* THE LOG-IN CARD IS THE LAST HEADER POP-OUT STILL DROPPING FROM ITS BUTTON.
+     Settings, feedback and help all rise from the bottom edge on a phone; this
+     one kept the desktop geometry — `position: absolute; top: calc(100% +
+     10px); right: 0` — so it hung from the avatar as a 352px card pinned to
+     the right edge, which is a different interaction from every sibling it
+     shares a row with. Same sheet treatment as the dock's three.
+
+     `top: auto` is load-bearing for the same reason it is on those: the card
+     is anchored from the top on desktop, and leaving that `top` standing
+     over-constrains the box against `bottom: 0`, at which point the browser
+     drops the `bottom` and the sheet hangs off the header instead of the
+     bottom edge.
+
+     Nothing needed for scrolling — `.acclist` is already `flex: 1 1 auto;
+     min-height: 0; overflow-y: auto`, so a long follow list scrolls inside
+     the 82vh cap rather than pushing the card off screen. */
+  .controls .accard {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    width: auto;
+    max-width: none;
+    max-height: 82vh;
+    border-radius: 20px 20px 0 0;
+    /* Rises from below, rather than dropping from above. The closed state has
+       to be restated because the base rule's `translateY(-6px)` is an entrance
+       from the wrong direction here. */
+    transform: translateY(14px);
+  }
+  /* (0,3,0): `.accard.open` is (0,2,0) and earlier, so the rule above would
+     otherwise hold the card 14px low for the whole of its open life. */
+  .controls .accard.open {
+    transform: translateY(0);
+  }
+  .controls .accard .accfoot {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
 
   /* ── Header popouts must sit above their own scrim ───────────────────────
      Every panel launched from the header — the account card, feedback, help,
