@@ -16233,7 +16233,8 @@ body {
     padding: 0 2px 0 0;
     border: 0;
     border-radius: 14px;
-    background: rgba(255, 255, 255, 0.94);
+    /* Solid white, not 94% — over the dark map that translucency read as grey. */
+    background: #ffffff;
     box-shadow: 0 8px 22px -14px rgba(8, 18, 34, 0.9);
     backdrop-filter: none;
     overflow: hidden;
@@ -16680,6 +16681,10 @@ body {
      the pill with `left: 50%` + `translateX(-50%)`, and that shift stays in
      force against these left/right offsets, carrying the pill 169px off the
      left edge of the screen. */
+  /* Same solid white as the bar it stands in for. */
+  .tickerpill button {
+    background: #ffffff;
+  }
   .tickerpill {
     left: 26px;
     right: 26px;

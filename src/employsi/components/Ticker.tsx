@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { TickerItem } from "../data/companies";
 import { getLiveSkillTrends, TREND_WINDOWS } from "../lib/jobHistoryFn";
+import type { TrendWindow } from "../lib/jobHistoryFn";
 import { fmtPay, FX_AS_AT } from "../lib/salaryParse";
 import { useAppStore } from "../state/store";
 
@@ -202,7 +203,26 @@ export function Ticker({ hidden }: { hidden: boolean }) {
   // Memoised because the empty branch is a fresh array literal: without this,
   // `items` changes identity every render and the flash effect below — which
   // depends on it — would re-run continuously.
-  const items: TickerItem[] = useMemo(() => (rows && rows.length ? rows : EMPTY_ITEMS), [rows]);
+  /**
+   * THE LAST REAL ROWS FOR THIS WINDOW, KEPT FOR THE SESSION.
+   *
+   * The bar's figures come from a once-a-day cron, so WITHIN one page view a
+   * change from "here are the movers" to "there is nothing" is never news
+   * about the labour market — it is the read failing, or a refetch landing
+   * empty. Blanking a bar that was showing real data is the one outcome that
+   * is always wrong, and it is what the flicker looked like: figures, then
+   * nothing, then figures again.
+   *
+   * Keyed by window, so switching windows still shows that window's own data
+   * rather than the previous one's. `EMPTY_ITEMS` is still returned when a
+   * window has never had rows — a genuine empty stays empty.
+   */
+  const lastGood = useRef<Partial<Record<TrendWindow, TickerItem[]>>>({});
+  if (rows && rows.length) lastGood.current[win.key] = rows;
+  const items: TickerItem[] = useMemo(
+    () => (rows && rows.length ? rows : (lastGood.current[win.key] ?? EMPTY_ITEMS)),
+    [rows, win.key],
+  );
   const noHistory = !loading && items.length === 0;
   // Cycling is only offered when there is real data to cycle THROUGH; on the
   // seed every window would show the same fabricated figures.
