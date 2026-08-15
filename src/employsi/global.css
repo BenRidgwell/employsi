@@ -10903,6 +10903,15 @@ body {
      top on desktop, and leaving that `top` in place over-constrains the box
      against `bottom: 0`, at which point the browser drops the `bottom` and the
      sheet hangs from the header instead of the bottom edge. */
+  /* `.dockpanel` LEADS THE LIST, and that is the fix rather than a tidy-up.
+     Naming the three panels individually missed the help panel, because Help
+     does not open `.helppanel` at all — it opens GuidedTour's hub, which is
+     `.dockpanel gthub`. So it kept the desktop pop-out geometry on a phone:
+     measured at 390px it opened at top 59, left -42, i.e. hanging 42px off
+     the left edge of the screen, while Settings and Feedback rose from the
+     bottom. Matching the shared `.dockpanel` class catches every panel this
+     dock opens, including the next one. */
+  .helpdock .dockpanel,
   .helpdock .helppanel,
   .helpdock .setpanel,
   .helpdock .fbboard {
@@ -10916,6 +10925,16 @@ body {
     max-height: 82vh;
     border-radius: 20px 20px 0 0;
     z-index: 47;
+  }
+  /* The hub is `overflow: hidden` at a desktop width where its list always
+     fits. Capped at 82vh it needs somewhere for a long list to go. */
+  .helpdock .gthub {
+    display: flex;
+    flex-direction: column;
+  }
+  .helpdock .gthublist {
+    overflow-y: auto;
+    min-height: 0;
   }
   .helpdock .helppanel,
   /* The settings card now carries its own 26px gutters and a scrolling body,
@@ -15960,6 +15979,27 @@ body {
     background: transparent;
     color: var(--neutral-700, #48484a);
     box-shadow: none;
+  }
+  /* SELECTED: a white icon on the ink chip. `.dockbtn.on` already asks for
+     exactly that — `background: var(--action-primary)` with `color:
+     var(--action-primary-text)` — but the normalising rule above sets
+     `color: var(--neutral-700)`, and the two are both (0,2,0), so the later
+     one wins on source order alone. The chip therefore went ink while the
+     glyph stayed #48484a: measured, a dark grey stroke on a #1c1c1e ground,
+     which is the icon all but disappearing at the moment it is meant to read
+     as chosen. Restated at (0,3,0) so the selected state cannot lose that tie
+     again. The glyphs are `stroke: currentColor`, so colour is all it takes.
+
+     The account control is in the list because it takes the same `.on` class
+     when its card is open, and had the same problem twice over: a grey glyph
+     on the grey resting chip, so "open" and "closed" looked identical. Its
+     own `background` rule below is (0,2,0) and later, hence the (0,3,0) here.
+     Signed in it carries an avatar that covers the chip, so this only shows
+     on the signed-out person glyph — which is the state that needed it. */
+  .controls .dockbtn.on,
+  .controls .acctbtn.on {
+    background: var(--action-primary, #1c1c1e);
+    color: var(--action-primary-text, #ffffff);
   }
   /* The account control is the one filled chip in the row — a circle, since
      it carries the avatar once you are signed in.
