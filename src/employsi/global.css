@@ -10590,14 +10590,24 @@ body {
      they are the reason to be on the local layer. It sits above the tab bar,
      tightens up, and scrolls sideways if the city name is long enough to push
      the last figure off the edge. */
+  /* WRAPS, rather than scrolling sideways. Measured at 390px the strip's
+     content came to 543px inside a 364px box, so nearly a third of it sat off
+     the right edge behind an `overflow-x: auto` that gives no hint it is
+     there — which is exactly "cut off the screen". Letting the stats flow
+     onto a second line shows all of them at once.
+     Raised clear of the live-trends bar too: at `bottom: 86px` the two
+     occupied the same band and overlapped. */
   .lvb {
     left: 12px;
     right: 12px;
-    bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(134px + env(safe-area-inset-bottom, 0px));
     gap: 4px;
     padding: 5px;
-    overflow-x: auto;
-    scrollbar-width: none;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    overflow: visible;
+    height: auto;
+    border-radius: 16px;
   }
   .lvb::-webkit-scrollbar {
     display: none;
@@ -10618,8 +10628,14 @@ body {
   .lvbkicker {
     font-size: 9px;
   }
+  /* The stats are a nested row of their own, so wrapping `.lvb` alone left
+     THIS still overflowing — the city pill moved to its own line and the
+     figures stayed one un-wrappable strip. */
   .lvbstats {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-wrap: wrap;
+    row-gap: 2px;
   }
   .lvbstat {
     gap: 5px;
@@ -15937,6 +15953,28 @@ body {
      This only bit once the header controls came back on phones — on desktop
      `.acctwrap` is `display: none` and the panels come from elsewhere, so the
      bug was latent rather than new. */
+  /* THE HEADER LIFTS ITSELF WHILE A PANEL IS OPEN.
+     `.apphead` carries `z-index: 12`, which traps its whole subtree — the
+     scrims included — below anything outside it with a higher value: the
+     local banner (30), the sheets (45), the company card (48). So the dock
+     scrim could dim the search field beside it but never the Perth stats
+     panel, which is what made that panel sit lit on top of the dimming.
+     `:has()` raises the header only while one of its own scrims exists, so
+     the normal order — sheets drawing over the header — is untouched the
+     rest of the time.
+
+     SCOPED TO THE TWO SCRIMS THAT ARE REALLY HEADER PANELS'. A bare
+     `:has(.sfscrim)` also matches TopBar's search group, which still renders
+     a scrim of that class when search is open even though the group itself
+     is `display: none` here — `:has()` does not care about display. That lit
+     the header to 49 whenever the search results were up, putting its subtree
+     over the company card (48) so the card's drag handle stopped receiving
+     anything at all. */
+  .apphead:has(.helpdock .dockscrim),
+  .apphead:has(.acctwrap .sfscrim) {
+    z-index: 49;
+  }
+
   .controls .sfscrim {
     z-index: 1;
   }
@@ -16402,7 +16440,7 @@ body {
     top: auto;
     left: 12px;
     right: 12px;
-    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    bottom: 0;
     width: auto;
     height: 74vh;
     max-height: none;
@@ -16417,7 +16455,12 @@ body {
     box-shadow:
       0 1px 2px rgba(28, 28, 30, 0.08),
       0 26px 52px -24px rgba(28, 28, 30, 0.6);
-    z-index: 45;
+    /* Over the tab bar (47), and down to the very bottom rather than stopping
+       above it. Asked for on the company card ONLY: its preview sits in front
+       of the four buttons, and they come back the moment it is dismissed. The
+       other three sheets deliberately stop short so you can switch tabs with
+       one tap while they are open. */
+    z-index: 48;
     overflow: hidden;
   }
   /* The card fills the sheet rather than being a floating panel inside it. */
