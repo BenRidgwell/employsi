@@ -16751,8 +16751,15 @@ body {
   /* NO CLOSE BUTTON on the company card either — same reasoning as the three
      sheets below. Drag it down, or press Map. `.ccactions` sits at the end of
      a flex row, so Compare and Follow take the vacated space by themselves
-     and end flush with the card's right inset; nothing needs repositioning. */
-  .ccbtn-close {
+     and end flush with the card's right inset; nothing needs repositioning.
+
+     SCOPED TO `.cardstage`, and that scope is the whole point. Unqualified,
+     this also caught the COMPARE card, which shares the `.ccbtn-close` class
+     and has none of the company card's ways out: compare is a full takeover,
+     so the tab bar is unmounted, there is no drag handle, and a phone has no
+     Escape key. Measured, that left an 8px sliver of backdrop around the card
+     as the only exit — technically escapable, in practice a dead end. */
+  .cardstage .ccbtn-close {
     display: none;
   }
 
@@ -16777,6 +16784,42 @@ body {
   }
   .fpcount {
     display: none;
+  }
+
+  /* ── Compare, at phone width ─────────────────────────────────────────────
+     The card itself already fits (measured 8..382 of 390, top 8 to bottom
+     836) — what did not fit was one row inside it. `.cmpbar` wraps, so the
+     B-company selector drops to its own line, but `.cmpseg` itself does not:
+     its buttons are `white-space: nowrap` and it has no width to give, so at
+     390px it measured 554px inside a 372px row and put 182px of itself —
+     most of the third employer — off the right edge of the card.
+
+     Wrapping the segment rather than scrolling it, deliberately. An
+     `overflow-x: auto` here would hide the same 182px behind a scroller with
+     nothing on screen to say it is there, which is the exact shape of the
+     bug this file already recorded against the local stats banner. */
+  .cmpseg {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+  /* `.cmpspacer` is `flex: 1 1 auto`, there to push the benchmark group to
+     the far end of one wide row. Once the row wraps into four stacked bands
+     it has no far end to push to — it just leaves the benchmark group ragged
+     against a right edge nothing else in the card uses. */
+  .cmpspacer {
+    display: none;
+  }
+  /* The bar and the lens row carry the card's 22px desktop gutters. At this
+     width those gutters cost 12% of the row, so they come down to match the
+     rest of the phone chrome. */
+  .cmpbar,
+  .cmplensrow {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .cmphead {
+    padding-left: 16px;
+    padding-right: 16px;
   }
 
   /* ── The live-trends bar's own controls ──────────────────────────────────
