@@ -16520,13 +16520,17 @@ body {
      fold, and Trending looked like an empty card rather than a loading one
      for as long as the fetch took.
      Pinned to the top while the sheet is at peek; once it is dragged to full
-     there is a whole card again and the centred version is correct. */
-  .briefpane[data-detent="peek"] .ccload {
+     there is a whole card again and the centred version is correct. The
+     company card has the identical problem for the identical reason — same
+     loader, same peek band — so both are named here. */
+  .briefpane[data-detent="peek"] .ccload,
+  .cardstage[data-detent="peek"] .ccload {
     justify-content: flex-start;
     padding-top: 86px;
     gap: 10px;
   }
-  .briefpane[data-detent="peek"] .ccloadmark {
+  .briefpane[data-detent="peek"] .ccloadmark,
+  .cardstage[data-detent="peek"] .ccloadmark {
     width: 34px;
     height: 34px;
   }
@@ -16546,6 +16550,14 @@ body {
     color: var(--neutral-500, #8e8e93);
     white-space: normal;
   }
+  /* NO CLOSE BUTTON on the company card either — same reasoning as the three
+     sheets below. Drag it down, or press Map. `.ccactions` sits at the end of
+     a flex row, so Compare and Follow take the vacated space by themselves
+     and end flush with the card's right inset; nothing needs repositioning. */
+  .ccbtn-close {
+    display: none;
+  }
+
   /* NO CLOSE BUTTON on the three draggable sheets. There are already two
      ways out that the sheet itself teaches — drag it down, or press the tab
      that opened it — and a third control in the corner spends header width
