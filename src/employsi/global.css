@@ -10607,9 +10607,18 @@ body {
      onto a second line shows all of them at once.
      Raised clear of the live-trends bar too: at `bottom: 86px` the two
      occupied the same band and overlapped. */
+  /* IT HAS TO FIT THE MAP CARD, NOT THE WINDOW. At `left/right: 8px` the pill
+     measured 8..382 while the rounded map card it sits on measured 14..376 —
+     6px proud on each side, hanging over the card's 26px corners. Aligned to
+     the live-trends bar's own inset (26px) it sits inside the card, and the
+     two now share an edge instead of disagreeing about where the screen ends.
+     Shrink-wrapped rather than stretched, like the desktop pill: `right:
+     auto` with a cap at the card's width, so it is as long as its content and
+     no longer. */
   .lvb {
-    left: 8px;
-    right: 8px;
+    left: 26px;
+    right: auto;
+    max-width: calc(100vw - 52px);
     bottom: calc(134px + env(safe-area-inset-bottom, 0px));
     gap: 3px;
     padding: 3px;
@@ -10632,17 +10641,17 @@ body {
      against 357 available, and these five pixels are the difference between
      one line and two. */
   .lvbcity {
-    height: 30px;
+    height: 28px;
     gap: 5px;
-    padding: 0 7px 0 6px;
+    padding: 0 8px 0 6px;
     flex: 0 0 auto;
   }
   .lvbdot {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
   }
   .lvbname {
-    font-size: 13px;
+    font-size: 12.5px;
   }
   .lvbkicker {
     font-size: 9px;
@@ -10651,20 +10660,39 @@ body {
      THIS still overflowing — the city pill moved to its own line and the
      figures stayed one un-wrappable strip. */
   .lvbstats {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-width: 0;
     flex-wrap: nowrap;
   }
+  /* VALUE OVER LABEL, so each figure costs the width of its longer half
+     instead of both halves plus a gap. This is what actually shortens the
+     pill, and it had to be robust rather than merely enough for Perth:
+     `localCity` reaches 54 cities, and Perth is not the widest. Measured
+     against the two that are, at every framed phone width:
+
+                       375px          390px          430px
+       side by side    SF  -40px ✗    SF  -25px ✗    fits
+                       Melb -38px ✗   Melb -23px ✗
+       stacked         fits ✓         fits ✓         fits ✓
+
+     So the version that fits Perth by two pixels is the version that hangs
+     San Francisco's figures off the map. Stacked, all 54 cities clear it, and
+     the pill is 36px tall against the 38px it replaces — shorter, not taller,
+     so it stays one strip and does not crowd the live-trends bar below. */
   .lvbstat {
-    gap: 4px;
-    padding: 0 4px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0;
+    padding: 0 6px;
+    line-height: 1.15;
     white-space: nowrap;
   }
   .lvbvalue {
-    font-size: 11.5px;
+    font-size: 12px;
   }
   .lvblabel {
-    font-size: 10.5px;
+    font-size: 9px;
   }
 
   /* Marker captions: markedly more compact on a phone so they don't blanket the
