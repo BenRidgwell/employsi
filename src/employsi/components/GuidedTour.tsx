@@ -526,6 +526,28 @@ export function GuidedTour({ layer, onClose }: { layer: TourLayer; onClose: () =
     left = Math.max(MARGIN, Math.min(left, vw - TIP_W - MARGIN));
     top = Math.max(MARGIN, Math.min(top, vh - tipH - MARGIN));
 
+    // THE CLAMP CAN PARK THE CARD ON TOP OF THE THING IT POINTS AT.
+    // `place: "right"` wants TIP_W + 18px beside the anchor. A 390px phone has
+    // none, so the clamp pulls the card back across the anchor and the step
+    // explains an element it is covering — the spotlight is lit underneath and
+    // invisible. Measured on the layer bar at 390px: spot y 110-168, card
+    // clamped to y 110, exactly on it.
+    //
+    // Falling back to below (then above) rather than picking a side: the
+    // vertical axis is the one a phone has to spare, and it is what `place`
+    // already uses when there is no better answer. Left as-is if neither fits,
+    // which only happens when the anchor is taller than the free space.
+    if (rect) {
+      const overlaps =
+        left < r.x + r.w && left + TIP_W > r.x && top < r.y + r.h && top + tipH > r.y;
+      if (overlaps) {
+        const below = r.y + r.h + 16;
+        const above = r.y - 18 - tipH;
+        if (below + tipH + MARGIN <= vh) top = below;
+        else if (above >= MARGIN) top = above;
+      }
+    }
+
     const left_ = def.steps.length - step - 1;
     const stepsLeft = left_ === 0 ? "Last step" : `${left_} step${left_ === 1 ? "" : "s"} left`;
 

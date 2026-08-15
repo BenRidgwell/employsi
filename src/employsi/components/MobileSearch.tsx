@@ -62,7 +62,15 @@ export function MobileSearch() {
   return (
     <>
       {searchOpen && <div className="msscrim" onClick={close} />}
-      <div className={`msearch ${searchOpen ? "on" : ""}`}>
+      {/* The guided tour's "Start with a search" step spotlights whatever
+          carries `data-tour="search"`. Both desktop hooks — GlobalSearch's
+          pill and TopBar's button — are `display: none` at this width, so
+          with no hook here the step measured nothing: no spotlight, no dim,
+          just a card floating over a fully lit app while every other step
+          dimmed correctly. anchorRect already takes the first VISIBLE match
+          rather than the first in the document, so this coexists with the two
+          desktop hooks without either needing a separate anchor name. */}
+      <div className={`msearch ${searchOpen ? "on" : ""}`} data-tour="search">
         <svg
           viewBox="0 0 24 24"
           width="17"

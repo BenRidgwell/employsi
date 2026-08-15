@@ -80,7 +80,11 @@ export function MobileLayerBar() {
   };
 
   return (
-    <div className="mlayerbar" role="group" aria-label="Map layer">
+    // Same reason as MobileSearch's `data-tour="search"`: the tour's "Change
+    // what you are looking at" step anchors on `rail`, which only exists on
+    // ActionRail's tray — hidden at this width. This bar IS the layer tray on
+    // a phone, so it is what that step should be pointing at.
+    <div className="mlayerbar" role="group" aria-label="Map layer" data-tour="rail">
       {LAYERS.map((l) => (
         <button
           key={l.key}
