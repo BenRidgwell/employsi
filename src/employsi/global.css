@@ -10598,24 +10598,33 @@ body {
      Raised clear of the live-trends bar too: at `bottom: 86px` the two
      occupied the same band and overlapped. */
   .lvb {
-    left: 12px;
-    right: 12px;
+    left: 8px;
+    right: 8px;
     bottom: calc(134px + env(safe-area-inset-bottom, 0px));
-    gap: 4px;
-    padding: 5px;
-    flex-wrap: wrap;
+    gap: 3px;
+    padding: 3px;
+    flex-wrap: nowrap;
     justify-content: flex-start;
     overflow: visible;
     height: auto;
-    border-radius: 16px;
+  }
+  /* "LOCAL VIEW" goes: the pill only ever appears ON the local layer, so it
+     labels the one thing already true, and it was the widest thing standing
+     between this and a single line. */
+  .lvbkicker,
+  .lvbcityword {
+    display: none;
   }
   .lvb::-webkit-scrollbar {
     display: none;
   }
+  /* Every value here was measured, not chosen: at 375px the row needed 362px
+     against 357 available, and these five pixels are the difference between
+     one line and two. */
   .lvbcity {
-    height: 32px;
-    gap: 8px;
-    padding: 0 12px 0 10px;
+    height: 30px;
+    gap: 5px;
+    padding: 0 7px 0 6px;
     flex: 0 0 auto;
   }
   .lvbdot {
@@ -10634,18 +10643,18 @@ body {
   .lvbstats {
     flex: 1 1 auto;
     min-width: 0;
-    flex-wrap: wrap;
-    row-gap: 2px;
+    flex-wrap: nowrap;
   }
   .lvbstat {
-    gap: 5px;
-    padding: 0 10px;
+    gap: 4px;
+    padding: 0 4px;
+    white-space: nowrap;
   }
   .lvbvalue {
-    font-size: 12.5px;
+    font-size: 11.5px;
   }
   .lvblabel {
-    font-size: 11.5px;
+    font-size: 10.5px;
   }
 
   /* Marker captions: markedly more compact on a phone so they don't blanket the

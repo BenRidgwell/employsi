@@ -34,10 +34,21 @@ export function LocalBanner() {
   const cityName =
     GLOBAL_HUB_LABEL[localCity] || localCity.charAt(0).toUpperCase() + localCity.slice(1);
 
-  const stats: [string, string][] = [
+  // The city qualifier on the workforce figure is wrapped so the phone can
+  // drop it: at that width the city is named in the pill immediately to its
+  // left, so "Perth 45K Perth workforce" says it twice and the repetition is
+  // what pushes the row onto a second line. Desktop keeps it — there the pill
+  // can sit far from the figure.
+  const stats: [string, React.ReactNode][] = [
     [companies.length.toLocaleString("en-AU"), "employers"],
     [totalRoles.toLocaleString("en-AU"), "open roles"],
-    [`${totalHeads.toLocaleString("en-AU")}K`, `${cityName} workforce`],
+    [
+      `${totalHeads.toLocaleString("en-AU")}K`,
+      <>
+        <span className="lvbcityword">{cityName} </span>
+        workforce
+      </>,
+    ],
   ];
 
   return (
@@ -48,8 +59,8 @@ export function LocalBanner() {
         <span className="lvbkicker">LOCAL VIEW</span>
       </div>
       <div className="lvbstats">
-        {stats.map(([value, label]) => (
-          <div className="lvbstat" key={label}>
+        {stats.map(([value, label], i) => (
+          <div className="lvbstat" key={i}>
             <span className="lvbvalue">{value}</span>
             <span className="lvblabel">{label}</span>
           </div>
