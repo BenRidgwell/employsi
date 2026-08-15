@@ -16140,7 +16140,16 @@ body {
     align-items: center;
     justify-content: center;
     gap: 6px;
-    flex: 1 1 0;
+    /* `1 1 auto`, not `1 1 0`. A zero basis divides the bar into four equal
+       86px cells regardless of what is in them, and the four labels are not
+       equal: measured at 390px the content came to Global 59px, Domestic 77,
+       Local 52, Company 78. So Local sat in 34px of slack looking adrift
+       while Company had 8px and looked squeezed against its own edges.
+       Sizing from content and sharing the remainder gives every chip the
+       same breathing room instead of the same width. */
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0 4px;
     height: 36px;
     border: 0;
     border-radius: 11px;
@@ -16418,6 +16427,14 @@ body {
   .fphdleft {
     display: flex;
     flex-direction: column;
+    /* `align-items` is named because .fphdleft carries `center` in its base
+       rule, where it is a ROW and centring is what aligns the title with the
+       count pill and the scope eyebrow beside it. Turned into a column here,
+       that same declaration centres the title and subtitle HORIZONTALLY,
+       which is why Filter's header read as centred while Trending's and
+       Analyst's — neither of which sets align-items — sat left. */
+    align-items: flex-start;
+    text-align: left;
     gap: 1px;
     flex: 1 1 auto;
     min-width: 0;
