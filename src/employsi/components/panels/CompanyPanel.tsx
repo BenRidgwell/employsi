@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../../state/store";
+import { MobileSheetHandle } from "../MobileSheetHandle";
+import { useMobileSheet } from "../../hooks/useMobileSheet";
 import { buildPanel } from "../../lib/panel";
 import { buildCompanyCard, TREND_UP, TREND_DOWN } from "../../lib/companyCard";
 import { smoothPath } from "../../lib/chart";
@@ -397,6 +399,10 @@ export function CompanyPanel() {
   }, [selectedId]);
 
   const open = !!selectedId;
+  // The phone treats the company card as the same draggable sheet Trending,
+  // Analyst and Filter use: opens at a peek over the map, drag up for the
+  // whole card, drag down to dismiss.
+  const sheet = useMobileSheet({ open, onClose: closePanel });
   // BHP is the pilot for real-time data: poll its live feed while the card is
   // open and overlay it onto the panel; every other company stays illustrative.
   const isBhp = lastId === "bhp";
@@ -762,12 +768,22 @@ export function CompanyPanel() {
   const toggleNewsCollapsed = useAppStore((s) => s.toggleNewsCollapsed);
 
   return (
-    <div className={`cardstage ${open ? "open" : ""}${newsCollapsed ? " newstucked" : ""}`}>
-      <aside className={`cc ${open ? "open" : ""}`}>
+    <div
+      className={`cardstage ${sheet.visible ? "open" : ""}${newsCollapsed ? " newstucked" : ""}`}
+      {...sheet.sheetProps}
+    >
+      {sheet.enabled && (
+        <MobileSheetHandle
+          dragProps={sheet.dragProps}
+          detent={sheet.detent}
+          onToggle={sheet.toggleDetent}
+        />
+      )}
+      <aside className={`cc ${sheet.visible ? "open" : ""}`}>
         {cardLoading && <CardLoader tone="light" />}
         {card && panel && (
           <>
-            <div className="cchead">
+            <div className="cchead" {...sheet.dragProps}>
               <span className="ccmark">
                 <CompanyLogo src={card.logo} ticker={panel.ticker} />
               </span>

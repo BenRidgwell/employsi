@@ -75,6 +75,7 @@ export function MobileTabBar() {
   const toggleFilter = useAppStore((s) => s.toggleFilter);
   const toggleTrending = useAppStore((s) => s.toggleTrending);
   const toggleAnalyst = useAppStore((s) => s.toggleAnalyst);
+  const closePanel = useAppStore((s) => s.closePanel);
 
   const activeSectors = useAppStore((s) => s.activeSectors);
   const listingType = useAppStore((s) => s.listingType);
@@ -98,10 +99,13 @@ export function MobileTabBar() {
 
   // The bar stays put whenever one of ITS OWN sheets is open: those float
   // above it so the user can switch straight to another tab. Only a true
-  // full-screen takeover — a company card, the compare view, or the
-  // account/settings/feedback/help panels — hides it.
-  const fullTakeover =
-    selectedId || compareOpen || authOpen || settingsOpen || feedbackOpen || helpTourOpen;
+  // full-screen takeover — the compare view, or the account / settings /
+  // feedback / help panels — hides it.
+  //
+  // `selectedId` used to be in this list. The company card is a peek/full
+  // sheet like the other three now, so the bar stays reachable behind it and
+  // Map closes the card the same way it closes them.
+  const fullTakeover = compareOpen || authOpen || settingsOpen || feedbackOpen || helpTourOpen;
   if (fullTakeover) return null;
 
   // "Map" is the bare map, so it is selected exactly when no sheet is up, and
@@ -112,11 +116,12 @@ export function MobileTabBar() {
   // tab should reach past — and a loop over it spins forever if any branch
   // ever reports "closed something" without changing state. The three toggles
   // are already mutually exclusive in the store, so at most one fires.
-  const anySheet = trendingOpen || analystOpen || filterOpen;
+  const anySheet = trendingOpen || analystOpen || filterOpen || !!selectedId;
   const showMap = () => {
     if (trendingOpen) toggleTrending();
     if (analystOpen) toggleAnalyst();
     if (filterOpen) toggleFilter();
+    if (selectedId) closePanel();
   };
 
   const tabs = [

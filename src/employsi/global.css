@@ -16387,6 +16387,68 @@ body {
     touch-action: none;
   }
 
+  /* ── The company card is the fourth sheet ────────────────────────────────
+     `.cardstage` is `position: fixed; top: var(--head-height)` with a height
+     of `100vh - var(--head-height)`, which is the DESKTOP geometry: the phone
+     header is content-driven and about twice that variable, so the card was
+     laid out against a height the header no longer has and hung off the
+     screen. Given the same box as the other three sheets, its position stops
+     depending on that variable at all.
+
+     opacity is deliberately NOT set here — `.cardstage` is always mounted and
+     hides itself with `opacity: 0`, exactly like `.briefpane`, and the `.open`
+     class now comes from the hook's `visible` so it survives the exit slide. */
+  .cardstage {
+    top: auto;
+    left: 12px;
+    right: 12px;
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    height: 74vh;
+    max-height: none;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0;
+    padding: 12px 0 16px;
+    border: 1px solid var(--neutral-150, #ededf0);
+    border-radius: 24px;
+    background: #fff;
+    box-shadow:
+      0 1px 2px rgba(28, 28, 30, 0.08),
+      0 26px 52px -24px rgba(28, 28, 30, 0.6);
+    z-index: 45;
+    overflow: hidden;
+  }
+  /* The card fills the sheet rather than being a floating panel inside it. */
+  .cardstage .cc {
+    width: auto;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    flex: 1 1 auto;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .cchead {
+    touch-action: none;
+  }
+  /* `.cardstage` is `pointer-events: none` in its base rule — the desktop
+     stage spans the right half of the screen and must not swallow clicks
+     meant for the map, so only the card inside it takes events. The grab
+     handle is a direct child of the stage, so it inherited that and the
+     drag never received a single pointerdown. */
+  /* `.open` is load-bearing: without it this rule ties with — and being later,
+     beats — `.cardstage:not(.open) *`, which is what shuts the closed stage
+     off. The closed stage still spans y 135-760 here, so an always-live handle
+     sat invisibly across the search results and swallowed taps on them. */
+  .cardstage.open .msheetgrab {
+    pointer-events: auto;
+  }
+
   /* ── One sheet header for all three ──────────────────────────────────────
      Same three parts in each pane under different names: an icon tile, a
      title with a subtitle under it, and a close button. Mapping the existing
