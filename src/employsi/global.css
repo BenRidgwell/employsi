@@ -15790,11 +15790,12 @@ body {
 .msearch,
 .mlayerbar,
 /* The ticker's short "LIVE" label and its compact window token, and Filter's
-   header icon tile, exist only for the phone layout; the desktop bar and
-   panel carry their full-length equivalents. */
+   header icon tile and sentence subtitle, exist only for the phone layout;
+   the desktop bar and panel carry their full-length equivalents. */
 .tlblshort,
 .tlblwinshort,
-.fpmark {
+.fpmark,
+.fpsub {
   display: none;
 }
 
@@ -15939,6 +15940,13 @@ body {
   .controls .sfscrim {
     z-index: 1;
   }
+  /* The account control must sit UNDER the dock's scrim, or the avatar stays
+     lit while feedback/help/settings dim everything around it. Its base
+     z-index is 46, chosen for the desktop layout; here it only needs to beat
+     the search field (30) so its own card and scrim still cover that. */
+  .controls .acctwrap {
+    z-index: 31;
+  }
   /* The dock's scrim needs to beat `.msearch` (z-index 30), which is a
      SIBLING of .topbar rather than inside it — so unlike the account card's
      scrim (scoped inside .acctwrap's z-index 46, and therefore already above
@@ -15947,11 +15955,17 @@ body {
      and settings were open behind it.
      .dockslot rides above the scrim so the panels it wraps stay in front. */
   .helpdock .dockscrim {
-    z-index: 31;
+    z-index: 32;
   }
+  /* Raised ONLY while this slot actually holds a panel. A permanent raise
+     would put the dock's four buttons above the ACCOUNT card's scrim, so
+     opening the account card would leave them lit — the same defect as the
+     avatar, mirrored. `:has()` scopes the lift to the one slot that is open. */
   .helpdock .dockslot {
     position: relative;
-    z-index: 32;
+  }
+  .helpdock .dockslot:has(.dockpanel, .fbboard, .helppanel, .setpanel) {
+    z-index: 33;
   }
   .controls .dockbtn svg,
   .controls .acctbtn svg {
@@ -16420,9 +16434,34 @@ body {
      on the analyst sheet, and these say what the numbers below them ARE —
      clipping "…rising, falling and in demand" to "…falling and in …" spends
      the same row on less meaning. */
+  /* ── The loading state has to live in the PEEK band ─────────────────────
+     `.ccload` is `inset: 0` and centres its mark, which is right for a card
+     you can see all of. The phone sheet opens at peek — 224px of a 74vh card
+     — so "centred" put the mark around 310px down, out of sight below the
+     fold, and Trending looked like an empty card rather than a loading one
+     for as long as the fetch took.
+     Pinned to the top while the sheet is at peek; once it is dragged to full
+     there is a whole card again and the centred version is correct. */
+  .briefpane[data-detent="peek"] .ccload {
+    justify-content: flex-start;
+    padding-top: 86px;
+    gap: 10px;
+  }
+  .briefpane[data-detent="peek"] .ccloadmark {
+    width: 34px;
+    height: 34px;
+  }
+
+  /* Filter shows the sentence, not the eyebrow — see FilterPane. */
+  .fpscope {
+    display: none;
+  }
+  .fpsub {
+    display: block;
+  }
   .briefdate,
   .ansub,
-  .fpscope {
+  .fpsub {
     font-size: 11.5px;
     line-height: 1.3;
     color: var(--neutral-500, #8e8e93);

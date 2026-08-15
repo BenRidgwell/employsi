@@ -228,6 +228,17 @@ export function FilterPane() {
                 change as you zoom and there is nothing on the card explaining
                 why. */}
             <span className="fpscope">{scopeLabel}</span>
+            {/* The same fact as a SENTENCE, for the phone sheet.
+                Trending and Analyst both head their sheets with a plain-sans
+                line saying what the card is for; Filter had only `.fpscope`,
+                which is a 10px mono uppercase eyebrow reading "WORLDWIDE" —
+                the right treatment for a data token in the desktop panel's
+                header row, and visibly a different kind of thing when the
+                three sit behind one tab bar. The scope rides along rather
+                than being dropped: the counts below change with the layer,
+                and this line is the only place that says so. CSS shows
+                exactly one of the two per breakpoint. */}
+            <span className="fpsub">Narrow what the map shows · {scopeLabel}</span>
           </div>
           <div className="fphdright">
             {activeCount > 0 && (
