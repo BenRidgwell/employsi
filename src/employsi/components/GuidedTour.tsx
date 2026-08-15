@@ -355,12 +355,47 @@ function anchorRect(anchor: string, pad: number): Rect | null {
     const r = e.getBoundingClientRect();
     return r.width > 0 && r.height > 0;
   };
-  // Fully in view, else anything with SIZE, else nothing. The middle rung
-  // matters: falling straight back to `all[0]` could land on a display:none
-  // twin, which measures zero and drops the spotlight — the exact failure this
-  // ordering exists to prevent. A partly off-screen element still frames
-  // something real.
-  const el = all.find(isVisible) ?? all.find(hasSize) ?? null;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  /** Any overlap with the viewport at all — not the whole box, as isVisible wants. */
+  const intersects = (e: Element) => {
+    const r = e.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < vh && r.left < vw;
+  };
+  const fromCentre = (e: Element) => {
+    const r = e.getBoundingClientRect();
+    return Math.hypot(r.left + r.width / 2 - vw / 2, r.top + r.height / 2 - vh / 2);
+  };
+  // Fully in view, else anything OVERLAPPING the viewport, else anything with
+  // size. Within whichever rung answers, the match nearest the middle of the
+  // screen wins.
+  //
+  // THE NEAREST RULE IS FOR MARKERS, and it is a fix rather than a
+  // refinement. `marker` matches every pin Mapbox is holding, and Mapbox keeps
+  // them all in the DOM, positioned by transform — so most of them are well
+  // outside the viewport at any moment, at full size. A pin that is only
+  // PARTLY on screen fails isVisible, so the old ordering fell through to
+  // `all.find(hasSize)`, which is simply the first pin in DOM order: usually
+  // one nowhere near the screen. The step then dimmed the app and drew its
+  // spotlight off-screen, which reads exactly like the spotlight not working.
+  // Asking for the closest pin to the centre points the step at one the reader
+  // can actually see.
+  //
+  // The `hasSize` rung stays as the last resort: falling straight back to
+  // `all[0]` could land on a display:none twin, which measures zero and drops
+  // the spotlight — the failure this ordering has always existed to prevent.
+  const near = (pool: Element[]) =>
+    pool.length ? pool.reduce((a, c) => (fromCentre(c) < fromCentre(a) ? c : a)) : null;
+  // AND IT HAS TO BE ONE THE READER CAN SEE. PerthMapbox fades a pin that the
+  // active skill search does not match to `opacity: 0.1` (setMarkerFade), and
+  // a faded pin still measures full size — so with a search running, the step
+  // could frame a marker that is all but invisible and the spotlight would
+  // look like it had landed on empty map. Only ruled out below 0.25, which is
+  // the fade's own level; a merely dimmed marker is still a fair thing to
+  // point at.
+  const lit = (e: Element) => Number(getComputedStyle(e).opacity || "1") >= 0.25;
+  const onScreen = all.filter((e) => intersects(e) && lit(e));
+  const el = near(onScreen.filter(isVisible)) ?? near(onScreen) ?? all.find(hasSize) ?? null;
   if (!el) return null;
   const r = el.getBoundingClientRect();
   if (!r.width && !r.height) return null;

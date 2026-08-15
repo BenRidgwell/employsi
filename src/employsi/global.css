@@ -16137,7 +16137,7 @@ body {
      was dimmed AND blurred, and every tap on Next landed on the scrim.
      `.gtlayer` sets `z-index: 50` itself, which bought it nothing — that 50
      is scoped inside this slot's stacking context. */
-  .helpdock .dockslot:has(.dockpanel, .fbboard, .helppanel, .setpanel, .gtlayer) {
+  .helpdock .dockslot:has(.dockpanel, .fbboard, .helppanel, .setpanel, .gtlayer, .gtdone) {
     z-index: 33;
   }
   /* The dock's scrim goes for the duration of a tour. Not tidiness either:
@@ -16148,14 +16148,20 @@ body {
      spotlight exists to single out. Measured with the tour on step 1: the
      search field it was highlighting was blurred out along with everything
      else, so the tour highlighted nothing at all. */
-  .helpdock:has(.gtlayer) .dockscrim {
+  /* `.gtdone` is here for the same reason `.gtlayer` is, and it is a SEPARATE
+     render: finishing a tour unmounts the layer and returns the completion
+     toast on its own, so a rule keyed only on `.gtlayer` stopped applying at
+     the exact moment the toast appeared and the scrim closed back over it.
+     The tour is over by then, so there is nothing left for the scrim to dim —
+     it was holding the screen dark behind a toast that says the opposite. */
+  .helpdock:has(.gtlayer, .gtdone) .dockscrim {
     display: none;
   }
   /* The header's own lift currently keys off the scrim's presence. With the
      scrim gone during a tour that test would be the only thing holding the
      dock above the map, so it is stated for the tour directly rather than
      left riding on a rule about something else. */
-  .apphead:has(.helpdock .gtlayer) {
+  .apphead:has(.helpdock .gtlayer, .helpdock .gtdone) {
     z-index: 49;
   }
   .controls .dockbtn svg,
