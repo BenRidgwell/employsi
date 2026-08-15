@@ -16364,6 +16364,16 @@ body {
       0 1px 2px rgba(28, 28, 30, 0.08),
       0 26px 52px -24px rgba(28, 28, 30, 0.6);
   }
+  /* Trending stays mounted when shut, so it has the same exit trap the
+     company card had: the moment the hook stops writing an inline transform
+     the pane falls back to its desktop resting state — `translateX(-14px)
+     scale(0.98)` on a 0.22s transform transition — and travels there in view
+     while it fades. Pin it below its own box instead, and leave transform out
+     of the transition. Analyst and Filter unmount, so they need nothing. */
+  .briefpane:not(.open) {
+    transform: translateY(100%);
+    transition: opacity 0.16s linear;
+  }
   /* The entry fade, and ONLY on a sheet that is actually open.
      Two cascade traps live here, both already sprung once:
        - It must not animate `transform`. useMobileSheet drives the detent
@@ -16500,6 +16510,24 @@ body {
      sat invisibly across the search results and swallowed taps on them. */
   .cardstage.open .msheetgrab {
     pointer-events: auto;
+  }
+  /* WHERE THE CARD RESTS ONCE IT IS SHUT — and why the exit needed this.
+     The hook writes an inline `translateY(100%)` for the exit slide and then,
+     when the phase reaches `closed`, stops writing a style at all. The stage
+     falls back to its base rule, which is the DESKTOP resting state:
+     `translateX(24px)` under a `transform 0.36s` transition. So the card kept
+     right on moving after the slide had "finished" — measured travelling from
+     top=764 to top=493 over the next 380ms at opacity 0.96 → 0.5, in full
+     view, which is the card flying back up behind everything.
+
+     Pinning the shut state to where the slide left it, with transform out of
+     the transition list, gives it nothing to animate back from. The other
+     three sheets are safe by accident rather than design: Analyst and Filter
+     unmount, so there is no element left to travel — Trending does not, and
+     gets the same treatment below. */
+  .cardstage:not(.open) {
+    transform: translateY(100%);
+    transition: opacity 0.16s linear;
   }
 
   /* ── One sheet header for all three ──────────────────────────────────────
