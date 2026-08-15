@@ -16113,6 +16113,24 @@ body {
   .controls .sfscrim {
     z-index: 1;
   }
+  /* THE AVATAR STAYS LIT ABOVE ITS OWN CARD'S SCRIM. `.sfscrim` is a sibling
+     of the button inside `.acctwrap` and comes after it in the DOM, so at
+     `z-index: 1` against the button's `auto` it painted over the control that
+     opened it — including over the ink `.on` state added for exactly this
+     moment, which no one could see. Clicking the notification bell while
+     signed out is the same case: it opens this card, so the same scrim dimmed
+     the avatar beside it.
+
+     This does NOT undo the settings behaviour. That one is decided a level up:
+     `.acctwrap` sits at 31 against the dock's scrim at 32, so the whole
+     account control — this z-index included — is dimmed whenever feedback,
+     help or settings is the thing that is open. Raising the button inside its
+     own wrapper only reaches the scrim its own card puts up. Below `.accard`
+     (8) on purpose, so the card still passes in front where the two meet. */
+  .controls .acctbtn {
+    position: relative;
+    z-index: 2;
+  }
   /* The account control must sit UNDER the dock's scrim, or the avatar stays
      lit while feedback/help/settings dim everything around it. Its base
      z-index is 46, chosen for the desktop layout; here it only needs to beat
