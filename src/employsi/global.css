@@ -16128,8 +16128,35 @@ body {
   .helpdock .dockslot {
     position: relative;
   }
-  .helpdock .dockslot:has(.dockpanel, .fbboard, .helppanel, .setpanel) {
+  /* `.gtlayer` IS IN THIS LIST, and leaving it out was a real bug rather than
+     an omission of tidiness. Starting a tour swaps the hub (`.dockpanel`) out
+     of this slot for the tour layer, so the slot stopped matching and fell
+     back to `z-index: 2` — under `.dockscrim` at 32. The tour then rendered
+     inside a slot the scrim painted over: measured, `elementFromPoint` at
+     five points across the tour card all returned `.dockscrim`, so the card
+     was dimmed AND blurred, and every tap on Next landed on the scrim.
+     `.gtlayer` sets `z-index: 50` itself, which bought it nothing — that 50
+     is scoped inside this slot's stacking context. */
+  .helpdock .dockslot:has(.dockpanel, .fbboard, .helppanel, .setpanel, .gtlayer) {
     z-index: 33;
+  }
+  /* The dock's scrim goes for the duration of a tour. Not tidiness either:
+     the tour paints its OWN dim, as the spotlight's 9999px box-shadow, which
+     is what leaves a lit hole over the element being pointed at. Stacking the
+     dock's scrim on top of that dims the screen twice and — because the scrim
+     carries `backdrop-filter: blur(2px)` — blurs the very element the
+     spotlight exists to single out. Measured with the tour on step 1: the
+     search field it was highlighting was blurred out along with everything
+     else, so the tour highlighted nothing at all. */
+  .helpdock:has(.gtlayer) .dockscrim {
+    display: none;
+  }
+  /* The header's own lift currently keys off the scrim's presence. With the
+     scrim gone during a tour that test would be the only thing holding the
+     dock above the map, so it is stated for the tour directly rather than
+     left riding on a rule about something else. */
+  .apphead:has(.helpdock .gtlayer) {
+    z-index: 49;
   }
   .controls .dockbtn svg,
   .controls .acctbtn svg {
