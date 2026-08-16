@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../../state/store";
 import { buildPanel } from "../../lib/panel";
 import { buildCompanyCard, TREND_UP, TREND_DOWN } from "../../lib/companyCard";
+import type { StatIcon } from "../../lib/companyCard";
 import { smoothPath } from "../../lib/chart";
 import type { RolePoint } from "../../lib/openRolesFn";
 import { COMPANIES } from "../../data/companies";
@@ -32,6 +33,57 @@ type CardTab = "Overview" | "Skills" | "Hiring";
 
 /** Hiring bars shown before the list names what it left out. */
 const HIRING_ROWS = 6;
+
+/**
+ * The headline stats' badges.
+ *
+ * One glyph per stat, drawn on the same 24-box at the same stroke weight so the
+ * three read as a set. Each says what its stat MEASURES rather than decorating
+ * it: a briefcase for vacancies, a rising line for skill demand, a group for
+ * headcount. Purely decorative here — the label beside each one already names
+ * the stat — so they are hidden from assistive tech rather than given a label
+ * that would be read out twice.
+ */
+const STAT_PATHS: Record<StatIcon, React.ReactNode> = {
+  roles: (
+    <>
+      <rect x="2" y="7" width="20" height="14" rx="2" />
+      <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </>
+  ),
+  skill: (
+    <>
+      <path d="M3 17l5-5 4 4 8-8" />
+      <path d="M16 8h4v4" />
+    </>
+  ),
+  headcount: (
+    <>
+      <path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 20v-2a4 4 0 0 0-3-3.87" />
+    </>
+  ),
+};
+
+function StatBadge({ icon }: { icon: StatIcon }) {
+  return (
+    <span className="ccstatbdg" aria-hidden>
+      <svg
+        viewBox="0 0 24 24"
+        width={18}
+        height={18}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {STAT_PATHS[icon]}
+      </svg>
+    </span>
+  );
+}
 
 // NZ public-sector agency ids. Matched as a set rather than by prefix because
 // the NZ private roster (data/nzCompanies.ts) shares the `nz-` prefix.
@@ -820,18 +872,37 @@ export function CompanyPanel() {
             <div className="ccbody" ref={scrollRef}>
               {tab === "Overview" && (
                 <div className="ccpane">
+                  {/* Badge, then label, then figure — the reading order of the
+                      reference design. The badge sits ABOVE rather than beside
+                      it: the card is 440px wide with 18px gutters, so each of
+                      the three columns has ~132px, and a 64px disc alongside
+                      the text needs roughly twice that. */}
                   <div className="ccstats">
                     {card.stats.map((s) => (
                       <div className="ccstat" key={s.label}>
-                        <span className={`ccstatv${s.textValue ? " text" : ""}`}>
-                          {s.value}
-                          {s.delta && (
-                            <span className={`ccstatd ${s.deltaUp ? "up" : "down"}`}>
-                              {s.delta}
-                            </span>
-                          )}
-                        </span>
+                        {s.icon && <StatBadge icon={s.icon} />}
                         <span className="ccstatl">{s.label}</span>
+                        <span className={`ccstatv${s.textValue ? " text" : ""}`}>{s.value}</span>
+                        {s.delta && (
+                          <span className={`ccstatd ${s.deltaUp ? "up" : "down"}`}>
+                            <svg
+                              viewBox="0 0 12 12"
+                              width={11}
+                              height={11}
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              aria-hidden
+                            >
+                              <line x1="6" y1="10" x2="6" y2="2" />
+                              <polyline points="2.5 5.5 6 2 9.5 5.5" />
+                            </svg>
+                            <b>{s.delta}</b>
+                            {s.deltaNote && <i>{s.deltaNote}</i>}
+                          </span>
+                        )}
                         {s.sub && <span className="ccstatsub">{s.sub}</span>}
                       </div>
                     ))}
