@@ -381,7 +381,12 @@ def scrape_board(max_pages: int):
 # collapse detector, not a quality target. MIN_SAMPLE keeps a genuinely quiet
 # board — a long weekend, a short first page — from failing on three rows.
 MIN_ATTRIBUTED_SHARE = 0.25
-MIN_SAMPLE = 20
+# Five, not twenty. Twenty was set from the archive's 232 stored rows without
+# checking what one RUN actually returns — and measured on 2026-08-16 the board
+# yields 15 vacancies, so the floor sat above the entire sample and the guard
+# could never fire. It duly reported "attribution: 0/15 (0%)" and exited 0,
+# which is precisely the silent-green failure it was added to end.
+MIN_SAMPLE = 5
 
 
 def main() -> int:
