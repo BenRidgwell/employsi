@@ -37,7 +37,11 @@ type Row = { id: string; name: string; kind: string; source: string };
 const rows: Row[] = roster.map(({ id }) => ({
   id,
   name: byId.get(id)?.name ?? "(not on the roster)",
-  kind: id.startsWith("priv-") ? "private" : /-gov-/.test(id) ? "wa-gov" : "listed",
+  // "government", not "wa-gov": this script takes a CITY, so the same branch
+  // labels sa-gov-*, vic-gov-*, qld-gov-*, aps-* and the rest. Calling every
+  // one of them "wa-gov" printed "## wa-gov (76)" over a list of South
+  // Australian agencies.
+  kind: id.startsWith("priv-") ? "private" : /-gov-/.test(id) ? "government" : "listed",
   // Mirrors the order in src/employsi/lib/companyLogo.ts.
   source: LOCAL_LOGO[id]
     ? "local file"
@@ -58,7 +62,7 @@ console.log(
     `supplied url ${tally("supplied url")} · WA crest ${tally("WA crest")} · ` +
     `LinkedIn ${tally("LinkedIn")} · favicon service ${tally("favicon service")}`,
 );
-for (const kind of ["listed", "private", "wa-gov"]) {
+for (const kind of ["listed", "private", "government"]) {
   const group = shown.filter((r) => r.kind === kind);
   if (!group.length) continue;
   console.log(`\n## ${kind} (${group.length})`);
