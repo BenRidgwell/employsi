@@ -272,6 +272,45 @@ check(
     jx._grab('Agency - Main Roads WA Location Perth', ORG_LABELS))
 
 
+# ── raw XHR bodies: the Aura payload behind the APS board ────────────────────
+# The board renders its results client-side, so the page's HTML carries the
+# cards and not the fields. Reading the response instead is what gives the
+# agency its own value rather than a run of flattened card text — the whole
+# reason 230 of 232 archived rows were unattributable.
+#
+# Aura DOUBLE-ENCODES: the action's returnValue is a STRING holding the JSON.
+# walk_json only descends real dicts and lists, so without the unwrap the
+# response parses, nothing job-like is found, and the endpoint looks empty.
+_APS_JOBS = json.dumps({'jobs': [
+    {'Id': 'a0X1', 'Job_Title__c': 'Cyber Security Analyst',
+     'Agency__c': 'Australian Signals Directorate', 'Location__c': 'Canberra ACT',
+     'Salary__c': '$100,425 to $157,637'},
+    {'Id': 'a0X2', 'Job_Title__c': 'Assistant Director, Legal',
+     'Agency__c': 'Department of Finance', 'Location__c': 'Canberra ACT'},
+]})
+DOUBLE = json.dumps({'actions': [{'id': '123;a', 'state': 'SUCCESS',
+                                  'returnValue': {'returnValue': _APS_JOBS}}]})
+SINGLE = json.dumps({'actions': [{'returnValue': {'returnValue': json.loads(_APS_JOBS)}}]})
+
+for label, body in (('double-encoded', DOUBLE), ('single-encoded', SINGLE)):
+    rows = jx.jobs_from_json_text(body)
+    check(f'an {label} Aura body yields both vacancies', len(rows) == 2, f'{len(rows)} rows')
+    if len(rows) == 2:
+        check(f'{label}: the agency survives as its own field',
+              rows[0]['agency'] == 'Australian Signals Directorate', rows[0]['agency'])
+        check(f'{label}: Agency__c normalises onto `agency`',
+              rows[1]['agency'] == 'Department of Finance', rows[1]['agency'])
+
+# A body with no jobs in it must return nothing rather than site chrome — the
+# same rule looks_like_job enforces for embedded page JSON.
+CHROME = json.dumps({'actions': [{'returnValue': {'returnValue': json.dumps(
+    {'facets': [{'id': 1, 'name': 'Canberra ACT'}, {'id': 2, 'name': 'Ongoing'}]})}}]})
+check('an Aura body of filter facets yields no jobs',
+      jx.jobs_from_json_text(CHROME) == [], str(jx.jobs_from_json_text(CHROME))[:120])
+check('a non-JSON body is survived', jx.jobs_from_json_text('<html>nope</html>') == [], 'raised?')
+check('an empty body is survived', jx.jobs_from_json_text('') == [], 'raised?')
+
+
 print()
 if FAILS:
     print(f'{len(FAILS)} FAILED: {FAILS}')

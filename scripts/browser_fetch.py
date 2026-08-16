@@ -303,6 +303,66 @@ def render(url: str, instructions: list[dict] | None = None,
                 pass
 
 
+def render_capturing(url: str, capture: str, instructions: list[dict] | None = None,
+                     locale: str = 'en-AU', timeout_s: int = 90,
+                     ) -> tuple[str | None, list[tuple[str, str]]]:
+    """Like `render`, but also returns the XHR bodies whose URL matches `capture`.
+
+    WHY A PAGE'S HTML IS NOT ALWAYS ITS DATA. A Salesforce Aura board fetches its
+    results through a session-gated endpoint and renders them client-side, so
+    `page.content()` gives the RENDERED CARDS — the same figures with the
+    structure thrown away. Everything downstream then has to recover fields by
+    mining flattened text, which is how the APS feed ended up filing 230 of 232
+    rows under a fragment of a job ad: the response it needed had the agency in
+    its own field the whole time, and nothing was reading it.
+
+    So this listens to the traffic instead. The response objects are collected in
+    the handler and their bodies read AFTER the waits finish: reading a body from
+    inside a Playwright sync event handler re-enters the event loop and can
+    deadlock, while the bodies stay retrievable as long as the page has not
+    navigated away — which it has not, because instructions here only wait and
+    click.
+
+    Returns (html, [(url, body), ...]). A body that cannot be read is skipped
+    rather than failing the render: a capture is an extra, and the HTML path
+    behind it still works.
+    """
+    browser = _browser_once()
+    ctx = None
+    pat = _re.compile(capture, _re.I)
+    pending: list = []
+    try:
+        ctx = stealth_context(browser, locale=locale)
+        page = ctx.new_page()
+        page.on('response', lambda r: pat.search(r.url) and pending.append(r))
+        page.goto(url, wait_until='domcontentloaded', timeout=timeout_s * 1000)
+        for ins in (instructions or []):
+            kind = ins.get('type')
+            if kind == 'wait':
+                page.wait_for_timeout(float(ins.get('wait_time_s', 1)) * 1000)
+            elif kind == 'click':
+                _locator(page, ins.get('selector', {})).first.click(
+                    timeout=timeout_s * 1000)
+            else:
+                raise ValueError(f'browser_fetch: unsupported instruction {kind!r}')
+        bodies: list[tuple[str, str]] = []
+        for r in pending:
+            try:
+                bodies.append((r.url, r.text()))
+            except Exception:  # noqa: BLE001
+                continue
+        return page.content(), bodies
+    except Exception as e:  # noqa: BLE001
+        sys.stderr.write(f'  browser render failed for {url[:70]}: {str(e)[:160]}\n')
+        return None, []
+    finally:
+        if ctx is not None:
+            try:
+                ctx.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+
 class Session:
     """One browser context held open across several fetches.
 

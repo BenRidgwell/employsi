@@ -299,6 +299,51 @@ def jobs_from_embedded_json(html: str) -> list[dict]:
     return out
 
 
+def _inner_json_strings(node, depth: int = 0):
+    """Yield string values that are themselves JSON documents.
+
+    Salesforce Aura returns its payload double-encoded — the action's
+    `returnValue` is a STRING containing the JSON, not the JSON itself:
+
+        {"actions":[{"returnValue":{"returnValue":"{\\"jobs\\":[ ... ]}"}}]}
+
+    walk_json only descends real dicts and lists, so without this the records
+    are invisible: the response parses, the walk finds nothing job-like, and the
+    caller concludes the endpoint carries no jobs.
+    """
+    if depth > 30:
+        return
+    if isinstance(node, str):
+        s = node.strip()
+        if len(s) > 2 and s[0] in '{[':
+            yield s
+        return
+    if isinstance(node, dict):
+        for v in node.values():
+            yield from _inner_json_strings(v, depth + 1)
+    elif isinstance(node, list):
+        for v in node:
+            yield from _inner_json_strings(v, depth + 1)
+
+
+def jobs_from_json_text(text: str) -> list[dict]:
+    """Job-like records from a RAW JSON body — an XHR response, not a page.
+
+    `jobs_from_embedded_json` above mines JSON out of HTML (script blobs, Next.js
+    flight chunks). This one takes a body that is already JSON, which is what a
+    captured API response is, and unwraps one level of double-encoding on the way
+    so an Aura payload is read rather than walked past.
+    """
+    out: list[dict] = []
+    seen: set = set()
+    for obj in _json_objects(text or ''):
+        walk_json(obj, out, 0, seen)
+        for inner in _inner_json_strings(obj):
+            for sub in _json_objects(inner):
+                walk_json(sub, out, 0, seen)
+    return out
+
+
 # ── block mining, shared by the two DOM strategies below ─────────────────────
 # Labels that are ALSO the first word of many employers' own names. "Department
 # of Foreign Affairs and Trade" is not a labelled field — the whole string is the

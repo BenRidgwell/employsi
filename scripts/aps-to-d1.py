@@ -320,37 +320,81 @@ PAGE_SIZE = 20  # APS board's own page size; offsets step by this
 # nothing on it.
 SETTLE_S = 12
 
+# The Aura endpoint the board's results arrive on. Matched loosely because the
+# query string carries a per-session token; the path is the stable part.
+AURA_URL_RE = r'/aura\?|sfsites/aura'
 
-def render(url: str) -> str | None:
-    """Rendered page, from a local browser by default; --oxylabs for the proxy.
+
+def render(url: str) -> tuple[str | None, list[tuple[str, str]]]:
+    """Rendered page plus any Aura responses, as (html, [(url, body), ...]).
 
     APS needs JavaScript executed and, measured 2026-08-04, nothing else: a
     headless Chromium on an ordinary GitHub runner read 15 vacancies out of this
     board through the same `jobs_extract` path used below. The residential IP was
-    paying for a browser we can run ourselves."""
+    paying for a browser we can run ourselves.
+
+    The Oxylabs path returns no captures — it fetches a rendered document, not a
+    session — so `--oxylabs` keeps the DOM behaviour it always had.
+    """
     if VIA_OXYLABS:
         content, status = oxy.fetch(url, geo='Australia', render=True)
         if not content:
             sys.stderr.write(f'  (oxylabs status={status})\n')
-        return content
-    return browser_fetch.render(url, [{'type': 'wait', 'wait_time_s': SETTLE_S}])
+        return content, []
+    return browser_fetch.render_capturing(
+        url, AURA_URL_RE, [{'type': 'wait', 'wait_time_s': SETTLE_S}])
 
 
 def scrape_board(max_pages: int):
-    """Walk the APS board, extracting the Aura-hydrated results.
+    """Walk the APS board, reading the Aura RESPONSES rather than the cards.
 
-    Pagination is offset-based. We stop as soon as a page yields no NEW jobs, so
-    a short board costs only a couple of requests."""
+    WHY THE RESPONSE AND NOT THE PAGE. This board is a Salesforce Aura app: the
+    results arrive on a session-gated endpoint as JSON and are rendered
+    client-side. Reading `page.content()` therefore reads the rendered cards,
+    where the agency, title and salary have been flattened into one run of text —
+    and recovering them from that is what filed 230 of 232 archived rows under a
+    fragment of a job ad. The response carries `Agency__c` as its own field, which
+    is the shape test_jobs_extract.py has always covered.
+
+    So each page is now read twice and the better answer wins: the captured JSON
+    if it yields rows, the DOM otherwise. That ordering is deliberate rather than
+    a preference — a page that renders cards without the capture firing still
+    works exactly as it did, so this cannot be worse than what it replaces.
+
+    Every run says which path produced its rows and what the capture saw, because
+    the failure being fixed here was silent: a scraper mining the wrong thing
+    looks identical to one mining the right thing until you read the rows.
+    """
     scraped, seen = [], set()
     for pg in range(max_pages):
         url = SEARCH_URL.format(offset=pg * PAGE_SIZE)
-        content = render(url)
+        content, captured = render(url)
         if not content:
             sys.stderr.write(f'  page {pg + 1}: no content\n')
             break
-        rows, how = jx.extract_jobs(content, r'job-details', 'https://www.apsjobs.gov.au')
+
+        # What the capture actually caught, named on every run. Without this the
+        # difference between "no Aura traffic", "traffic with no jobs in it" and
+        # "traffic we failed to parse" is invisible from a CI log.
+        json_rows: list[dict] = []
+        for cap_url, body in captured:
+            got = jx.jobs_from_json_text(body)
+            if pg == 0:
+                tail = cap_url.split('/')[-1][:48]
+                sys.stderr.write(
+                    f'    [aura] {len(body):>7} bytes  {len(got):>3} job-like  …{tail}\n')
+            json_rows.extend(got)
+        if pg == 0 and not captured:
+            sys.stderr.write(f'    [aura] no response matched {AURA_URL_RE}\n')
+
+        dom_rows, how = jx.extract_jobs(content, r'job-details', 'https://www.apsjobs.gov.au')
+        if json_rows:
+            rows, how = json_rows, 'aura-json'
+        else:
+            rows = dom_rows
         if not rows and pg == 0:
             jx.diagnose(content, 'aps-page1')
+
         new = 0
         for r in rows:
             key = (r['t'].lower(), (r.get('id') or ''), (r.get('loc') or '').lower())
@@ -359,7 +403,9 @@ def scrape_board(max_pages: int):
             seen.add(key)
             scraped.append(r)
             new += 1
-        sys.stderr.write(f'  page {pg + 1}: {len(rows)} rows ({new} new) via {how}\n')
+        sys.stderr.write(
+            f'  page {pg + 1}: {len(rows)} rows ({new} new) via {how}'
+            f'{f" [dom would give {len(dom_rows)}]" if json_rows else ""}\n')
         if new == 0:
             break
     return scraped
