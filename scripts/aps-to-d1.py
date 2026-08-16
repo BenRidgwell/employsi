@@ -384,6 +384,16 @@ def scrape_board(max_pages: int):
         json_rows: list[dict] = []
         for cap_url, body in captured:
             got = jx.jobs_from_json_text(body)
+            # The board states its own total. Reported because the gap between it
+            # and what we collect IS the under-collection: measured 2026-08-16 the
+            # payload said jobListingCount 608 while the walk returned 15 and the
+            # whole archive held 232 rows for the entire APS.
+            if pg == 0:
+                total = re.search(r'"jobListingCount"\s*:\s*(\d+)', body)
+                if total:
+                    sys.stderr.write(
+                        f'    [aura] board advertises {total.group(1)} vacancies '
+                        f'({len(got)} in this response)\n')
             if pg == 0:
                 tail = cap_url.split('/')[-1][:48]
                 sys.stderr.write(

@@ -310,6 +310,42 @@ check('an Aura body of filter facets yields no jobs',
 check('a non-JSON body is survived', jx.jobs_from_json_text('<html>nope</html>') == [], 'raised?')
 check('an empty body is survived', jx.jobs_from_json_text('') == [], 'raised?')
 
+# ── the APS board's own schema, transcribed from the live response ───────────
+# Read off apsjobs.gov.au on 2026-08-16. Only jobLocation and jobId were covered
+# by the key sets before, and a record with a location and an id but no TITLE is
+# not job-like — so every vacancy in this payload was discarded and the feed fell
+# back to mining the rendered cards.
+_APS_REC = {
+    'agencyEmploymentAct': 'PS Act 1999',
+    'applicationURL': 'https://www.apsjobs.gov.au/s/job-details?id=a0X1',
+    'departmentName': 'Australian Signals Directorate',
+    'jobClassification': 'APS Level 6', 'jobCloseDate': '2026-08-29',
+    'jobId': 'a0X1', 'jobLocation': 'Canberra ACT',
+    'jobName': 'Cyber Security Analyst', 'jobPostedDate': '2026-08-08',
+    'jobStatus': 'Open', 'jobType': 'Ongoing', 'vacancyNumber': 'ASD/12345',
+}
+APS_BODY = json.dumps({'actions': [{'id': '97;a', 'state': 'SUCCESS', 'returnValue': {
+    'returnValue': {'jobListingCount': 608, 'jobListings': [_APS_REC]}}}]})
+aps = jx.jobs_from_json_text(APS_BODY)
+check('the APS Aura payload yields its vacancy', len(aps) == 1, f'{len(aps)} rows')
+if aps:
+    check('jobName is read as the title', aps[0]['t'] == 'Cyber Security Analyst', aps[0]['t'])
+    check('departmentName is read as the agency',
+          aps[0]['agency'] == 'Australian Signals Directorate', aps[0]['agency'])
+    check('jobPostedDate is the posted date, not the close date',
+          aps[0]['posted'] == '2026-08-08' and aps[0]['close'] == '2026-08-29', str(aps[0]))
+
+# THE TRAP. The same page returns filter options in a 1.78MB sibling response —
+# 36,778 label/value pairs, and the department ones carry real agency NAMES. If
+# those ever qualified as jobs the archive would gain a vacancy for every filter
+# entry, which is the failure that put 303 NSW nav labels in as vacancies once.
+APS_OPTIONS = json.dumps({'actions': [{'returnValue': {'returnValue': {
+    'departmentOptions': [{'label': 'Department of Finance', 'value': 'a01'},
+                          {'label': 'Services Australia', 'value': 'a02'}],
+    'suburbOptions': [{'label': 'Canberra ACT', 'value': 's1'}]}}}]})
+check('the filter-options payload yields no vacancies',
+      jx.jobs_from_json_text(APS_OPTIONS) == [], str(jx.jobs_from_json_text(APS_OPTIONS))[:120])
+
 
 print()
 if FAILS:

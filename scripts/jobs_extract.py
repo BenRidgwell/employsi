@@ -103,17 +103,31 @@ def _ymd(y, m, d) -> str:
 # Keys that plausibly carry each field, most specific first. Matching is done on
 # a normalised key (lowercased, non-alphanumerics stripped) so jobTitle,
 # job_title and JobTitle all hit the same rule.
-TITLE_KEYS = ('jobtitle', 'positiontitle', 'roletitle', 'advertisedtitle', 'title', 'name')
-ORG_KEYS = ('organisation', 'organization', 'agency', 'department', 'employer',
-            'agencyname', 'organisationname', 'cluster', 'company', 'entity')
+# `jobname` / `departmentname` / `jobclosedate` / `jobposteddate` /
+# `applicationurl` are the APS board's Aura schema, read off the live response on
+# 2026-08-16:
+#
+#   {"jobListingCount":608,"jobListings":[{"jobName":…,"departmentName":…,
+#    "jobLocation":…,"jobPostedDate":…,"jobCloseDate":…,"jobId":…,
+#    "applicationURL":…,"vacancyNumber":…}]}
+#
+# Only `jobLocation` and `jobId` were already covered, and a record with a
+# location and an id but no TITLE is not job-like, so every one of these was
+# discarded. The board's data had been arriving intact all along and failing this
+# one test — which is why the feed fell back to mining the rendered cards.
+TITLE_KEYS = ('jobtitle', 'positiontitle', 'roletitle', 'advertisedtitle', 'jobname',
+              'title', 'name')
+ORG_KEYS = ('organisation', 'organization', 'agency', 'agencyname', 'departmentname',
+            'department', 'employer', 'organisationname', 'cluster', 'company', 'entity')
 LOC_KEYS = ('location', 'joblocation', 'worklocation', 'region', 'suburb', 'city', 'locationname')
-URL_KEYS = ('url', 'joburl', 'link', 'href', 'applyurl', 'detailurl')
+URL_KEYS = ('url', 'joburl', 'applicationurl', 'link', 'href', 'applyurl', 'detailurl')
 SALARY_KEYS = ('salary', 'salaryrange', 'remuneration', 'packagerange', 'salarydescription')
-CLOSE_KEYS = ('closingdate', 'closedate', 'closes', 'applicationclosingdate', 'expirydate')
+CLOSE_KEYS = ('closingdate', 'closedate', 'jobclosedate', 'closes',
+              'applicationclosingdate', 'expirydate')
 # The date the ad went UP, which is what the archive's `posted` column means.
 # Kept strictly separate from CLOSE_KEYS: a closing date is not a posting date,
 # and conflating them is exactly the bug this set exists to fix.
-POSTED_KEYS = ('posteddate', 'postingdate', 'dateposted', 'publisheddate',
+POSTED_KEYS = ('posteddate', 'postingdate', 'jobposteddate', 'dateposted', 'publisheddate',
                'publicationdate', 'advertiseddate', 'opendate', 'startdate',
                'createddate', 'posted', 'published')
 ID_KEYS = ('jobid', 'id', 'jobreference', 'referencenumber', 'requisitionid', 'vacancyid')
@@ -136,8 +150,9 @@ ID_KEYS = ('jobid', 'id', 'jobreference', 'referencenumber', 'requisitionid', 'v
 #   • a generic title ("title", "name") needs real corroboration — an
 #     organisation, a location, a salary, a closing date, or a JOB-specific id.
 #     A bare "id" is not corroboration, because everything has one.
-JOB_TITLE_KEYS = ('jobtitle', 'positiontitle', 'roletitle', 'advertisedtitle')
-STRONG_ID_KEYS = ('jobid', 'jobreference', 'requisitionid', 'vacancyid', 'referencenumber')
+JOB_TITLE_KEYS = ('jobtitle', 'positiontitle', 'roletitle', 'advertisedtitle', 'jobname')
+STRONG_ID_KEYS = ('jobid', 'jobreference', 'requisitionid', 'vacancyid', 'referencenumber',
+                  'vacancynumber')
 
 # Titles this short/long are almost certainly not real job titles.
 MIN_TITLE, MAX_TITLE = 4, 160
