@@ -28,6 +28,11 @@ on:
       # Zhaopin rosters, so a change to either has to re-run the parsers.
       - 'src/employsi/data/seekAdvertisers.ts'
       - 'src/employsi/data/chinaJobsTargets.ts'
+      # The APS agency list, for the same reason: its loader read this file with
+      # a regex and lost the 7 entries that carry a hub override when Prettier
+      # normalised the quotes. scripts/aps-roster.ts is now what reads it.
+      - 'src/employsi/data/canberraGov.ts'
+      - 'scripts/aps-roster.ts'
       - '.github/workflows/scraper-check.yml'
   pull_request:
     paths:
@@ -37,6 +42,8 @@ on:
       - 'scripts/*-to-d1.py'
       - 'src/employsi/data/seekAdvertisers.ts'
       - 'src/employsi/data/chinaJobsTargets.ts'
+      - 'src/employsi/data/canberraGov.ts'
+      - 'scripts/aps-roster.ts'
   workflow_dispatch: {}
 
 jobs:

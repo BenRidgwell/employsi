@@ -23,8 +23,10 @@ company is added or removed.
 Run: python scripts/test_rosters.py
 """
 from __future__ import annotations
+import json
 import os
 import re
+import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -147,6 +149,44 @@ try:
     check('perth-prn carries its operating brands', len(prn) > 1, f'{prn}')
 except Exception as e:  # noqa: BLE001
     check('seek trading-name merge', False, f'raised {type(e).__name__}: {e}')
+
+# The APS agency roster, asserted EXACTLY rather than against a floor.
+#
+# This file's own preamble describes the bug that hit aps-to-d1.py — a loader
+# that assumed single quotes, meeting a file Prettier had written with double
+# ones. The APS case is the version a floor cannot catch, because the loss was
+# PARTIAL: the regex accepted an entry with no hub override and rejected one
+# with a hub, so it returned 49 of the 56 agencies. Any floor below 49 passes.
+# The seven it dropped were exactly the seven that carry a hub because they are
+# not in Canberra — ASIC, APRA, the RBA, the Bureau of Meteorology, ARPANSA, the
+# Australian Space Agency and the AIFS — so those agencies' vacancies could not
+# be attributed at all: their names were not in the table being matched against.
+#
+# The loader now runs the TypeScript instead of reading it, so the two cannot
+# drift. This asserts that they haven't.
+try:
+    # The driver parses argv at import and exits without a D1 token; --solve is
+    # the flag that says "no write", which is exactly this test's situation.
+    _argv = sys.argv
+    sys.argv = ['aps-to-d1.py', '--solve']
+    try:
+        aps = load_module_head('scripts/aps-to-d1.py', '_t_aps_roster')
+    finally:
+        sys.argv = _argv
+    driver_names = sorted(aps['AGENCY_NAMES'])
+    truth_names = sorted(x['name'] for x in json.loads(subprocess.run(
+        ['bun', 'run', os.path.join(ROOT, 'scripts/aps-roster.ts')],
+        capture_output=True, timeout=120, cwd=ROOT).stdout.decode()))
+    check('aps driver sees every agency canberraGov.ts declares',
+          driver_names == truth_names,
+          f'driver {len(driver_names)} vs file {len(truth_names)}; '
+          f'missing {sorted(set(truth_names) - set(driver_names))[:4]}')
+    # The hub overrides are the entries the old regex choked on, so name them.
+    hubbed = [i for i, h in aps['AGENCY_HUB'].items() if h != 'canberra']
+    check('agencies outside Canberra survive the load', len(hubbed) >= 7,
+          f'{len(hubbed)} with a hub override')
+except Exception as e:  # noqa: BLE001
+    check('aps agency roster', False, f'raised {type(e).__name__}: {e}')
 
 print()
 if FAILS:

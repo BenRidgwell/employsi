@@ -241,6 +241,37 @@ j = jx.job_from(BOTH)
 check('posting date is taken and normalised', j['posted'] == '2026-08-01', str(j))
 
 
+# ── block mining: a label that is also the employer's first word ──────────────
+# These cases are not hypothetical. Each `block` below is reconstructed from a
+# company string this feed actually wrote to D1, and the old grab() turned the
+# first one into "of Finance Senior Drupal Developer $ 101,355 to $ 123,702 Opp"
+# — the employer's name decapitated and then run 70 characters into the ad. 230
+# of the aps-gov feed's 232 rows were stored that way.
+ORG_LABELS = [r'organisation', r'organization', r'agency', r'department',
+              r'cluster', r'employer']
+check(
+    'an unlabelled "Department of X" keeps its first word',
+    jx._grab('Department of Finance Senior Drupal Developer $ 101,355 to $ 123,702',
+             ORG_LABELS).lower().startswith('department of finance'),
+    jx._grab('Department of Finance Senior Drupal Developer $ 101,355', ORG_LABELS))
+check(
+    'a genuinely labelled Department: still drops the label',
+    jx._grab('Department: Education Location: Perth', ORG_LABELS).startswith('Education'),
+    jx._grab('Department: Education Location: Perth', ORG_LABELS))
+check(
+    'a labelled organisation is unaffected',
+    jx._grab('Organisation: NSW Health Location: Sydney', ORG_LABELS).startswith('NSW Health'),
+    jx._grab('Organisation: NSW Health Location: Sydney', ORG_LABELS))
+check(
+    'an unlabelled organisation value is still taken bare',
+    jx._grab('Organisation NSW Health Location Sydney', ORG_LABELS).startswith('NSW Health'),
+    jx._grab('Organisation NSW Health Location Sydney', ORG_LABELS))
+check(
+    'a dash separator counts as a separator',
+    jx._grab('Agency - Main Roads WA Location Perth', ORG_LABELS).startswith('Main Roads WA'),
+    jx._grab('Agency - Main Roads WA Location Perth', ORG_LABELS))
+
+
 print()
 if FAILS:
     print(f'{len(FAILS)} FAILED: {FAILS}')

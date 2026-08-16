@@ -93,7 +93,7 @@ def match_city(text: str):
     return None
 
 
-# ── APS agency roster → aps-<slug> id (parsed from data/canberraGov.ts) ────────
+# ── APS agency roster → aps-<slug> id (RUN from data/canberraGov.ts) ──────────
 def slug(name: str) -> str:
     return re.sub(r'^-|-$', '', re.sub(r'[^a-z0-9]+', '-', name.lower()))
 
@@ -103,33 +103,115 @@ def aps_id(name: str) -> str:
 
 
 def load_agencies() -> tuple[list[str], dict]:
-    txt = open(os.path.join(ROOT, 'src/employsi/data/canberraGov.ts')).read()
-    block = re.search(r'const AGENCIES:\s*AgencyEntry\[\]\s*=\s*\[(.*?)\];', txt, re.S)
-    names, hubs = [], {}
-    if block:
-        for m in re.finditer(r'\[\s*("(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\')\s*(?:,\s*\'([^\']+)\')?\s*\]', block.group(1)):
-            raw = m.group(1)[1:-1].replace('\\"', '"').replace("\\'", "'")
-            names.append(raw)
-            hubs[aps_id(raw)] = m.group(2) or 'canberra'
-    return names, hubs
+    """Every federal agency, via scripts/aps-roster.ts — never a regex.
+
+    This read the TypeScript with a regex until 2026-08-16, and the regex only
+    accepted a hub override in SINGLE quotes:
+
+        (?:,\\s*'([^']+)')?\\s*\\]
+
+    Prettier writes the file with DOUBLE quotes, so ["Reserve Bank of Australia",
+    "sydney"] did not match at all and the entry was dropped — not logged, not
+    counted, just absent. The loader returned 49 agencies where canberraGov.ts
+    declares 56, and the seven lost were exactly the seven that carry a hub
+    because they are not in Canberra: ASIC, APRA, the RBA, the Bureau of
+    Meteorology, ARPANSA, the Australian Space Agency and the AIFS. Their
+    vacancies could never be attributed, because their names were not in the
+    table being matched against.
+
+    scripts/roster.py exists to end this exact failure elsewhere in the tree; it
+    raises rather than falling back, on the reasoning that a short roster which
+    looks like a successful run is the bug. Same rule here.
+    """
+    try:
+        p = subprocess.run(['bun', 'run', os.path.join(HERE, 'aps-roster.ts')],
+                           capture_output=True, timeout=120, cwd=ROOT)
+    except FileNotFoundError as e:
+        raise RuntimeError(
+            'bun is required to read the APS agency roster '
+            '(canberraGov.ts derives ids and hubs at module load, so it cannot '
+            'be read from source). Install bun: https://bun.sh') from e
+    if p.returncode != 0:
+        raise RuntimeError(f'APS roster dump failed: {p.stderr.decode()[:300]}')
+    rows = json.loads(p.stdout.decode())
+    if not isinstance(rows, list) or not rows:
+        raise RuntimeError('APS roster dump was empty')
+    return [r['name'] for r in rows], {r['id']: r['hub'] for r in rows}
 
 
 AGENCY_NAMES, AGENCY_HUB = load_agencies()
 AGENCY_BY_NORM = {norm(n): aps_id(n) for n in AGENCY_NAMES}
-AGENCY_SORTED = sorted(AGENCY_NAMES, key=lambda n: len(n), reverse=True)
+AGENCY_CANON = {norm(n): n for n in AGENCY_NAMES}
+
+
+def _agency_keys() -> list[tuple[str, str]]:
+    """Normalised text a job's agency field may carry → the canonical agency.
+
+    Two keys per agency, longest first so the specific wins:
+
+      "department of employment and workplace relations"   the name as declared
+      "of employment and workplace relations"              decapitated
+
+    The decapitated key exists because the board's own text does not always
+    survive extraction with its leading word intact — see agency_to_id below.
+    """
+    keys: list[tuple[str, str]] = []
+    for name in AGENCY_NAMES:
+        n = norm(name)
+        keys.append((n, name))
+        headless = re.match(r'^department\s+(.+)$', n)
+        if headless:
+            keys.append((headless.group(1), name))
+    keys.sort(key=lambda k: -len(k[0]))
+    return keys
+
+
+AGENCY_KEYS = _agency_keys()
 
 
 def agency_to_id(agency: str) -> tuple[str, str]:
-    """Map a job's agency text to an aps-* id ONLY (never a state gov id)."""
+    """Map a job's agency text to an aps-* id ONLY (never a state gov id).
+
+    THE TEXT ARRIVES WITH THE JOB TITLE STUCK TO IT, and often without its first
+    word. Both come from jobs_extract's block mining: the APS board renders the
+    agency and the title as sibling elements, `text_of` flattens them into one
+    run, and the field grab then took a fixed 70 characters. Measured against the
+    230 rows this had put in the unattributed bucket by 2026-08-16:
+
+        "of Foreign Affairs and Trade Assistant Director, Fraud and Sanctions C"
+        "of Finance Senior Drupal Developer $ 101,355 to $ 123,702 Opportunity"
+
+    So an equality test — which is all this did, plus a substring rule that could
+    not fire on strings shaped like these — bucketed essentially everything. Two
+    of 232 rows reached a real agency, and both were CSIRO, the one agency whose
+    name is a single token with nothing in front of it.
+
+    Matching is therefore EXACT, then LONGEST PREFIX, and nothing looser. Prefix
+    is not a guess at the shape: the corruption only ever appends (the title
+    follows the agency), so what survives is always the head of the string.
+    Measured over those 230 rows, prefix matching recovers 39 of the 68 distinct
+    strings and every recovery is correct; a substring pass on top recovered no
+    additional string, so it is deliberately absent rather than kept as a
+    safety net — a rule that adds no true positives can only add false ones,
+    and filing a vacancy under the wrong employer is the error this archive is
+    least willing to make.
+
+    The 29 that stay in the bucket carry no agency text at all ("Senior Cloud
+    Engineer $ 123,193 to ..."), or name a Commonwealth employer that is not in
+    canberraGov.ts — Parliamentary Services, the House of Representatives, ANSTO
+    and NEMA all appear in the live data and are not in the roster's 56.
+
+    Returns the CANONICAL name, not the text that was matched, so the archive
+    stops storing 70-character fragments as employer names.
+    """
     n = norm(agency)
     if not n:
         return 'aps-gov', 'Australian Public Service'
     if n in AGENCY_BY_NORM:
-        return AGENCY_BY_NORM[n], agency.strip()
-    for name in AGENCY_SORTED:
-        nn = norm(name)
-        if nn and (nn in n or n in nn):
-            return aps_id(name), agency.strip()
+        return AGENCY_BY_NORM[n], AGENCY_CANON[n]
+    for key, name in AGENCY_KEYS:
+        if key and n.startswith(key + ' '):
+            return aps_id(name), name
     return 'aps-gov', agency.strip() or 'Australian Public Service'
 
 
@@ -283,9 +365,26 @@ def scrape_board(max_pages: int):
     return scraped
 
 
+# Below this share of scraped vacancies reaching a named agency, the run is
+# reporting a board it cannot actually read, and says so instead of exiting 0.
+#
+# Nothing asserted this until 2026-08-16, and that is the whole reason the
+# attribution bug survived: the feed wrote rows every night, the workflow went
+# green every night, and 230 of its 232 rows were filed under a 70-character
+# fragment of a job ad. A scraper that returns garbage looks exactly like a
+# scraper that works, right up until someone opens an agency card.
+#
+# The floor is deliberately far below what a healthy run produces (measured over
+# the archive's own strings, prefix matching alone resolves ~57% of the distinct
+# employer strings, and more by row because Defence and Finance advertise most)
+# so ordinary variation in what the board is advertising cannot trip it. It is a
+# collapse detector, not a quality target. MIN_SAMPLE keeps a genuinely quiet
+# board — a long weekend, a short first page — from failing on three rows.
+MIN_ATTRIBUTED_SHARE = 0.25
+MIN_SAMPLE = 20
+
+
 def main() -> int:
-    if not AGENCY_NAMES:
-        sys.exit('Could not parse agencies from src/employsi/data/canberraGov.ts')
     if VIA_OXYLABS and not (os.environ.get('OXYLABS_USERNAME')
                             and os.environ.get('OXYLABS_PASSWORD')):
         sys.exit('--oxylabs needs OXYLABS_USERNAME / OXYLABS_PASSWORD.')
@@ -314,6 +413,23 @@ def main() -> int:
     sys.stderr.write(f'\nDone. {len(scraped)} vacancies scraped, {written} new rows archived '
                      f'({matched} attributed to a specific agency, {written - matched} to the APS bucket, '
                      f'{len(scraped) - len(rows)} already archived by another source).\n')
+
+    # Attribution health over EVERY vacancy read this run, not just the new rows:
+    # on a quiet day almost everything is a re-seen ad, so a ratio over `kept`
+    # alone would be computed from a handful of rows and swing wildly.
+    seen_ids = [agency_to_id(r.get('agency') or '')[0] for r in scraped]
+    named = sum(1 for c in seen_ids if c != 'aps-gov')
+    share = named / len(seen_ids) if seen_ids else 0.0
+    sys.stderr.write(f'  attribution: {named}/{len(seen_ids)} '
+                     f'({share:.0%}) of scraped vacancies reached a named agency.\n')
+    if len(seen_ids) >= MIN_SAMPLE and share < MIN_ATTRIBUTED_SHARE:
+        sys.stderr.write(
+            f'\n✗ Only {share:.0%} of {len(seen_ids)} vacancies could be attributed to an '
+            f'agency (floor {MIN_ATTRIBUTED_SHARE:.0%}). The rows are archived, but almost all of '
+            f'them are in the generic aps-gov bucket, so the agency cards will read empty. '
+            f'This is what a changed board layout looks like — run with --solve and compare the '
+            f'agency column against the live page.\n')
+        return 2
     return 0
 
 

@@ -299,6 +299,48 @@ def jobs_from_embedded_json(html: str) -> list[dict]:
     return out
 
 
+# ── block mining, shared by the two DOM strategies below ─────────────────────
+# Labels that are ALSO the first word of many employers' own names. "Department
+# of Foreign Affairs and Trade" is not a labelled field — the whole string is the
+# VALUE, and there is no label anywhere near it.
+#
+# This mattered because the separator below is optional, which it has to be:
+# plenty of boards render "Organisation" and its value as sibling elements with
+# nothing but whitespace between them once `text_of` has flattened them. But that
+# same optional separator let `department` match the employer's own first word,
+# start the capture AFTER it, and then take a blind 70 characters — which on the
+# APS board runs straight through the job title and into the salary:
+#
+#   Department of Finance Senior Drupal Developer $ 101,355 to $ 123,702 Opport…
+#            ->  "of Finance Senior Drupal Developer $ 101,355 to $ 123,702 Opp"
+#
+# Measured 2026-08-16, that had put 230 of the aps-gov feed's 232 rows in the
+# unattributed bucket, each stored under a 70-character fragment as its employer
+# name, every daily run green throughout.
+#
+# So when one of these labels matches WITHOUT a real separator, the label word is
+# kept as part of the value instead of being eaten. Boards that do write
+# "Department: X" are unaffected — they have a separator, and take the labelled
+# branch exactly as before.
+NAME_INITIAL_LABELS = ('department',)
+_SEP = r'[:\-–—]'
+
+
+def _grab(block: str, labels) -> str:
+    """First labelled value found in `block`, '' if none of `labels` appear."""
+    for lb in labels:
+        m = re.search(r'(' + lb + r')(\s*' + _SEP + r'\s*|\s+)([^|\n]{2,70})',
+                      block or '', re.I)
+        if not m:
+            continue
+        label, sep, value = m.group(1), m.group(2), m.group(3).strip()
+        if lb in NAME_INITIAL_LABELS and not re.search(_SEP, sep):
+            value = f'{label} {value}'.strip()
+        if value:
+            return value
+    return ''
+
+
 # ── 2. DOM anchors (fallback) ────────────────────────────────────────────────
 def jobs_from_anchors(html: str, href_re: str, site: str = '') -> list[dict]:
     """Extract jobs by anchoring on job-detail links, mining the surrounding block."""
@@ -316,11 +358,7 @@ def jobs_from_anchors(html: str, href_re: str, site: str = '') -> list[dict]:
         block = text_of(html[s:e])
 
         def grab(labels):
-            for lb in labels:
-                g = re.search(lb + r'\s*[:\-]?\s*([^|\n]{2,70})', block, re.I)
-                if g:
-                    return g.group(1).strip()
-            return ''
+            return _grab(block, labels)
         rows.append({
             't': title,
             'agency': grab([r'organisation', r'organization', r'agency', r'department', r'cluster', r'employer']),
@@ -409,11 +447,7 @@ def jobs_from_cards(html: str, href_re: str, site: str = '') -> list[dict]:
         block = text_of((html or '')[s:e])
 
         def grab(labels):
-            for lb in labels:
-                g = re.search(lb + r'\s*[:\-]?\s*([^|\n]{2,70})', block, re.I)
-                if g:
-                    return g.group(1).strip()
-            return ''
+            return _grab(block, labels)
         if not rec['agency']:
             rec['agency'] = grab([r'organisation', r'organization', r'agency',
                                   r'department', r'cluster', r'employer'])
