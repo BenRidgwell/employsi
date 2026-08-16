@@ -324,6 +324,11 @@ SETTLE_S = 12
 # query string carries a per-session token; the path is the stable part.
 AURA_URL_RE = r'/aura\?|sfsites/aura'
 
+# Only describe responses big enough to plausibly BE the board. The framework
+# chatter on this page is 1.6–9KB a piece; the ApexAction payloads are 114KB and
+# 1.78MB, so this reports the candidates and stays quiet about the beacons.
+SHAPE_MIN_BYTES = 50_000
+
 
 def render(url: str) -> tuple[str | None, list[tuple[str, str]]]:
     """Rendered page plus any Aura responses, as (html, [(url, body), ...]).
@@ -383,6 +388,14 @@ def scrape_board(max_pages: int):
                 tail = cap_url.split('/')[-1][:48]
                 sys.stderr.write(
                     f'    [aura] {len(body):>7} bytes  {len(got):>3} job-like  …{tail}\n')
+                # A big response that yields nothing is the interesting case: the
+                # capture is plainly working (measured 2026-08-16, three
+                # ApexAction bodies at 1.78MB each) and the parser still finds no
+                # jobs, which is either the wrong schema or not JSON at all. The
+                # opening bytes and the key histogram separate those two, and
+                # neither needs 1.78MB in the log to see.
+                if not got and len(body) >= SHAPE_MIN_BYTES:
+                    sys.stderr.write(f'      {jx.json_shape(body)}\n')
             json_rows.extend(got)
         if pg == 0 and not captured:
             sys.stderr.write(f'    [aura] no response matched {AURA_URL_RE}\n')

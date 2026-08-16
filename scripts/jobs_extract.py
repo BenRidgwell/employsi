@@ -24,6 +24,7 @@ import html as htmllib
 import json
 import re
 import sys
+from collections import Counter
 
 TAG = re.compile(r'<[^>]+>')
 WS = re.compile(r'\s+')
@@ -326,6 +327,28 @@ def _inner_json_strings(node, depth: int = 0):
             yield from _inner_json_strings(v, depth + 1)
 
 
+# Anti-JSON-hijacking prefixes. Salesforce and several other frameworks send
+# one ahead of the payload so a <script src> of the endpoint cannot read it;
+# json.loads sees it as a syntax error.
+_JSON_GUARD = re.compile(r"^\s*(?:while\s*\(\s*1\s*\)\s*;|for\s*\(\s*;\s*;\s*\)\s*;|\)\]\}'?,?)")
+
+
+def json_shape(text: str, top: int = 26) -> str:
+    """A one-line description of a JSON body that yielded no jobs.
+
+    Written for the case where a capture is plainly working — the APS board's
+    ApexAction responses arrive at 1.78MB apiece — and the parser still finds
+    nothing in them. The two things that distinguish "wrong schema" from "not
+    actually JSON" are the opening bytes and the key names, and neither is worth
+    dumping 1.78MB to a CI log to see.
+    """
+    t = (text or '').strip()
+    head = t[:120].replace('\n', ' ')
+    keys = Counter(re.findall(r'"([A-Za-z_][A-Za-z0-9_]{1,40})"\s*:', t))
+    common = ' '.join(f'{k}×{n}' for k, n in keys.most_common(top))
+    return f'head={head!r}\n      keys: {common}'
+
+
 def jobs_from_json_text(text: str) -> list[dict]:
     """Job-like records from a RAW JSON body — an XHR response, not a page.
 
@@ -336,7 +359,8 @@ def jobs_from_json_text(text: str) -> list[dict]:
     """
     out: list[dict] = []
     seen: set = set()
-    for obj in _json_objects(text or ''):
+    body = _JSON_GUARD.sub('', text or '', count=1)
+    for obj in _json_objects(body):
         walk_json(obj, out, 0, seen)
         for inner in _inner_json_strings(obj):
             for sub in _json_objects(inner):
