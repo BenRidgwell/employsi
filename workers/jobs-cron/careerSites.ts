@@ -1693,6 +1693,29 @@ export const SITES: SiteDef[] = [
     homeHub: "perth",
   },
   {
+    id: "uni-curtin-university",
+    name: "Curtin University",
+    sector: "Education",
+    platform: "jobadder",
+    // The KEY, not a URL — fetchJobAdder passes site.endpoint to JobAdder's
+    // RenderJobList widget API. Read out of the board page's own
+    // `_jaJobsSettings` on 2026-08-17.
+    //
+    // WHY THIS WAS FIRST REPORTED AS UNSCRAPEABLE, so the mistake is not made
+    // again: staff.curtin.edu.au/job-vacancies/ IS the board, but its listings
+    // are drawn client-side by the JobAdder widget, so the served HTML carries
+    // the search form and no roles. Two checks then agreed it was empty and
+    // both were wrong — a scan for vacancy-shaped anchor text missed titles
+    // like "Early Childhood Educators", and a scan of script hosts missed
+    // `//apps.jobadder.com/...` because it required an explicit https: scheme.
+    // The board was in front of both the whole time.
+    //
+    // Measured 2026-08-17: Page 1 of 1, so one call takes it.
+    endpoint: "AU6_klpob7rbkadenmkicx2r7fya7a",
+    origin: "https://staff.curtin.edu.au/job-vacancies/",
+    homeHub: "perth",
+  },
+  {
     id: "uni-murdoch-university",
     name: "Murdoch University",
     sector: "Education",
@@ -2594,9 +2617,9 @@ export const PORTAL_GROUPS: string[][] = [
   // paging walks above and would be the thing that truncates a crowded tick.
   ["perth-obm", "priv-cjd-equipment", "cxo", "perth-cyl", "del"],
   // Group 48 — the two WA university boards. Both are small and quick
-  // (UWA 34 vacancies over two pages, Murdoch 11 in one call), so they
-  // share a tick rather than taking one each.
-  ["uni-university-of-western-australia", "uni-murdoch-university"],
+  // (UWA 34 vacancies over two pages, Murdoch 11 and Curtin one page each),
+  // so they share a tick rather than taking one each.
+  ["uni-university-of-western-australia", "uni-murdoch-university", "uni-curtin-university"],
 ];
 
 const UA =
