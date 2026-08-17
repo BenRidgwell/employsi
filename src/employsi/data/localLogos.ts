@@ -7,6 +7,7 @@
 // first, which makes dropping a file in the folder the way to override a wrong
 // or low-quality badge without editing any data file.
 export const LOCAL_LOGO: Record<string, string> = {
+  "adelaide-coe": "/logos/adelaide-coe.jpeg",
   "perth-gov-arts-and-culture-trust": "/logos/perth-gov-arts-and-culture-trust.jpeg",
   "perth-gov-department-of-creative-industries-tourism-and-sport":
     "/logos/perth-gov-department-of-creative-industries-tourism-and-sport.png",
@@ -36,4 +37,33 @@ export const LOCAL_LOGO: Record<string, string> = {
     "/logos/perth-gov-western-australia-police-force.webp",
   "priv-cjd-equipment": "/logos/priv-cjd-equipment.jpg",
   "priv-vgw-holdings": "/logos/priv-vgw-holdings.jpeg",
+  "sa-gov-attorney-general-s-department": "/logos/sa-gov-attorney-general-s-department.jpg",
+  "sa-gov-carclew-youth-arts-centre": "/logos/sa-gov-carclew-youth-arts-centre.png",
+  "sa-gov-child-death-and-serious-injury-review-committee":
+    "/logos/sa-gov-child-death-and-serious-injury-review-committee.png",
+  "sa-gov-commissioner-for-children-and-young-people":
+    "/logos/sa-gov-commissioner-for-children-and-young-people.jpg",
+  "sa-gov-dairysafe": "/logos/sa-gov-dairysafe.jpg",
+  "sa-gov-department-of-human-services": "/logos/sa-gov-department-of-human-services.jpeg",
+  "sa-gov-department-of-the-premier-and-cabinet":
+    "/logos/sa-gov-department-of-the-premier-and-cabinet.png",
+  "sa-gov-electoral-commission-of-sa": "/logos/sa-gov-electoral-commission-of-sa.jpg",
+  "sa-gov-environment-protection-authority": "/logos/sa-gov-environment-protection-authority.png",
+  "sa-gov-essential-services-commission-of-sa":
+    "/logos/sa-gov-essential-services-commission-of-sa.png",
+  "sa-gov-history-trust-of-south-australia": "/logos/sa-gov-history-trust-of-south-australia.jpg",
+  "sa-gov-legal-services-commission": "/logos/sa-gov-legal-services-commission.png",
+  "sa-gov-lifetime-support-authority-of-sa": "/logos/sa-gov-lifetime-support-authority-of-sa.jpeg",
+  "sa-gov-office-of-the-sa-productivity-commission":
+    "/logos/sa-gov-office-of-the-sa-productivity-commission.png",
+  "sa-gov-sa-employment-tribunal": "/logos/sa-gov-sa-employment-tribunal.jpeg",
+  "sa-gov-sa-lotteries": "/logos/sa-gov-sa-lotteries.png",
+  "sa-gov-sa-metropolitan-fire-service": "/logos/sa-gov-sa-metropolitan-fire-service.png",
+  "sa-gov-sa-tourism-commission": "/logos/sa-gov-sa-tourism-commission.png",
+  "sa-gov-sace-board-of-sa": "/logos/sa-gov-sace-board-of-sa.jpg",
+  "sa-gov-state-opera-sa": "/logos/sa-gov-state-opera-sa.png",
+  "sa-gov-state-theatre-company-of-sa": "/logos/sa-gov-state-theatre-company-of-sa.jpeg",
+  "sa-gov-tafe-sa": "/logos/sa-gov-tafe-sa.jpeg",
+  "sa-gov-teachers-registration-board": "/logos/sa-gov-teachers-registration-board.jpeg",
+  "sydney-agl": "/logos/sydney-agl.png",
 };
