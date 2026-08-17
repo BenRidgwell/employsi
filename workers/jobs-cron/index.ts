@@ -1184,6 +1184,9 @@ const PORTAL_TICKS: Record<string, number> = {
   "15 12 * * *": 46,
   // Group 47 — Ora Banda, CJD, Core Lithium, Catalyst Metals and Delorean.
   "25 12 * * *": 47,
+  // Group 48 — UWA and Murdoch. Their own boards, run alongside the
+  // uniroles.com.au aggregator rather than instead of it.
+  "35 12 * * *": 48,
 };
 
 const NEWS_TICKS: Record<string, number> = {

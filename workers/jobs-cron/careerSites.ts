@@ -138,6 +138,7 @@ type Platform =
   | "trakstar"
   | "jobadderboard"
   | "workgr8"
+  | "uwajobs"
   | "clinch"
   | "johnhughes"
   | "elmo"
@@ -1675,6 +1676,34 @@ export const SITES: SiteDef[] = [
     origin: "https://www.aubgroup.com.au/careers/",
     homeHub: "sydney",
   },
+  // ── WA universities ───────────────────────────────────────────────────────
+  // Their own boards, alongside the uniroles.com.au aggregator: a university
+  // advertises plenty that never reaches the aggregator, and the two dedupe on
+  // job_key anyway, so the overlap costs nothing and the gap is real coverage.
+  {
+    id: "uni-university-of-western-australia",
+    name: "University of Western Australia",
+    sector: "Education",
+    platform: "uwajobs",
+    // Measured 2026-08-17: 34 vacancies over two pages of 30. See fetchUwaJobs
+    // for why this board looks client-rendered and is not.
+    endpoint: "https://external.jobs.uwa.edu.au/jobs/search",
+    origin: "https://external.jobs.uwa.edu.au/jobs/search",
+    maxPages: 8,
+    homeHub: "perth",
+  },
+  {
+    id: "uni-murdoch-university",
+    name: "Murdoch University",
+    sector: "Education",
+    platform: "workday",
+    // wd3. Measured 2026-08-17: Workday reports total 11 for this tenant — a
+    // small board, not a truncated walk, which is exactly the case that looks
+    // like a broken feed and is not.
+    endpoint: "https://murdoch.wd3.myworkdayjobs.com/wday/cxs/murdoch/MurdochCareers/jobs",
+    origin: "https://murdoch.wd3.myworkdayjobs.com/en-GB/MurdochCareers",
+    homeHub: "perth",
+  },
   {
     id: "sydney-nhf",
     name: "Nib",
@@ -2564,6 +2593,10 @@ export const PORTAL_GROUPS: string[][] = [
   // ~21 seconds to serve, measured twice, which is longer than any of the
   // paging walks above and would be the thing that truncates a crowded tick.
   ["perth-obm", "priv-cjd-equipment", "cxo", "perth-cyl", "del"],
+  // Group 48 — the two WA university boards. Both are small and quick
+  // (UWA 34 vacancies over two pages, Murdoch 11 in one call), so they
+  // share a tick rather than taking one each.
+  ["uni-university-of-western-australia", "uni-murdoch-university"],
 ];
 
 const UA =
@@ -5065,6 +5098,59 @@ async function fetchAubGroup(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── UWA's own careers board ──────────────────────────────────────────────────
+/**
+ * UWA runs a self-hosted board at external.jobs.uwa.edu.au rather than an ATS.
+ *
+ * IT IS SERVER-RENDERED, which is worth stating because it does not look it: the
+ * page is driven by a Stimulus controller (`data-jobs--search-target`) and the
+ * job links are ABSOLUTE and slug-based —
+ * `https://external.jobs.uwa.edu.au/jobs/senior-research-adviser-pre-award-…` —
+ * so probing for the usual relative `/jobs/<id>` finds nothing and the board
+ * looks like it hydrates client-side. It does not; the cards are in the GET.
+ *
+ * Measured 2026-08-17: 30 cards on page 1, 4 on page 2, 0 on page 3 — 34
+ * vacancies, page size 30. `?page=N` drives it.
+ *
+ * PAGING STOPS ON AN EMPTY PAGE, and here that is safe in a way it is not
+ * elsewhere in this file: page 3 returning zero cards is the documented end of
+ * this board, not the ambiguous "fetch failed or list ended" that has silently
+ * truncated pagedParallel walks twice. A failed fetch returns null from getText
+ * and is told apart from an empty page below.
+ *
+ * Location comes off the card's own component span; the board gives no posting
+ * date, so `created` is the day we first saw the role.
+ */
+async function fetchUwaJobs(site: SiteDef): Promise<PortalJob[]> {
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (let page = 1; page <= (site.maxPages ?? 8); page++) {
+    const html = await getText(`${site.endpoint}?page=${page}`);
+    // null is a FAILED fetch — stop, but keep what we have rather than
+    // treating it as the end of the list.
+    if (html === null) break;
+    const cards = html.split(/<article[^>]*class="[^"]*job-search-results-card-col/i).slice(1);
+    if (!cards.length) break;
+    let added = 0;
+    for (const card of cards) {
+      const m = card.match(
+        /class="card-title job-search-results-card-title">\s*<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i,
+      );
+      if (!m) continue;
+      const title = clean(m[2]);
+      if (!title || seen.has(title)) continue;
+      seen.add(title);
+      const loc = card.match(
+        /job-component-location[\s\S]{0,300}?<span[^>]*>\s*([^<]{2,60}?)\s*<\/span>/i,
+      );
+      out.push(job(site, title, loc ? clean(loc[1]) : "", clean(m[1]), today(), "Career portal"));
+      added++;
+    }
+    if (!added) break;
+  }
+  return out;
+}
+
 // ── BigRedSky (NRW Holdings) ─────────────────────────────────────────────────
 /**
  * BigRedSky renders its job list into a `brs_report_table_16` on the page —
@@ -6810,6 +6896,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   trakstar: fetchTrakstar,
   jobadderboard: fetchJobAdderBoard,
   workgr8: fetchWorkGr8,
+  uwajobs: fetchUwaJobs,
   clinch: fetchClinch,
   johnhughes: fetchJohnHughes,
   elmo: fetchElmo,
@@ -6870,6 +6957,8 @@ const SOURCE_TAG: Record<Platform, string> = {
   trakstar: "trakstar",
   jobadderboard: "jobadderboard",
   workgr8: "workgr8",
+  // UWA runs its own board rather than an ATS, so the tag names the site.
+  uwajobs: "uwajobs",
   clinch: "cl",
   johnhughes: "johnhughes",
   elmo: "elmo",
