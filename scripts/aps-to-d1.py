@@ -49,6 +49,7 @@ except ImportError as e:
     sys.exit(f'Missing helper module ({e}).')
 
 import urllib.request  # noqa: E402
+import urllib.parse  # noqa: E402
 
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
 ACCOUNT = os.environ.get('CF_ACCOUNT_ID') or '080a66721e2d85950d9d7dc939e08b76'
@@ -329,6 +330,65 @@ AURA_URL_RE = r'/aura\?|sfsites/aura'
 # 1.78MB, so this reports the candidates and stays quiet about the beacons.
 SHAPE_MIN_BYTES = 50_000
 
+# Params worth seeing in an ApexAction POST. The body is a URL-encoded blob with
+# the whole Aura context in it (component descriptors, framework uid, the session
+# token) — hundreds of lines of noise around the handful of numbers that actually
+# select which slice of the board comes back.
+_PAGER_KEYS = re.compile(
+    r'"(\w*(?:page|offset|limit|size|start|index|from|count|sort|total)\w*)"\s*:\s*'
+    r'("[^"]{0,40}"|-?\d+|true|false|null)', re.I)
+
+
+# Controls that might advance the board. Two ways to reach page 2 of an Aura
+# app: replay its ApexAction with a different page number, or click the thing the
+# user clicks. Clicking is the more durable of the two — it needs no session
+# token and survives a change to the action's parameters — so this reports what
+# is available to click before choosing between them.
+_CONTROL = re.compile(
+    r'<(?:button|a)\b[^>]*?(?:aria-label|title)="([^"]{1,60})"[^>]*>|'
+    r'<(?:button|a)\b[^>]*>\s*([^<]{1,40}?)\s*<', re.I)
+_PAGER_WORDS = re.compile(r'next|more|page|show|load|›|»|＞', re.I)
+
+
+def _pager_controls(html: str, limit: int = 12) -> list[str]:
+    """Labels of clickable things that look like pagination."""
+    out, seen = [], set()
+    for m in _CONTROL.finditer(html or ''):
+        label = (m.group(1) or m.group(2) or '').strip()
+        if not label or not _PAGER_WORDS.search(label):
+            continue
+        key = label.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(label)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _pager_params(post_data: str) -> str:
+    """The pagination-ish parameters out of an Aura POST, or a reason there are none."""
+    if not post_data:
+        return '(no post body — not an XHR we can replay)'
+    try:
+        blob = urllib.parse.unquote_plus(post_data)
+    except Exception:  # noqa: BLE001
+        blob = post_data
+    hits = _PAGER_KEYS.findall(blob)
+    if not hits:
+        return f'no page-ish params in {len(blob)} chars; head={blob[:100]!r}'
+    seen, out = set(), []
+    for k, v in hits:
+        if k.lower() in seen:
+            continue
+        seen.add(k.lower())
+        out.append(f'{k}={v}')
+    # Also name the Apex method, so the action to replay is identified.
+    method = re.search(r'"(?:method|apexMethod|classname|method)"\s*:\s*"([^"]+)"', blob, re.I)
+    prefix = f'{method.group(1)} · ' if method else ''
+    return prefix + ' '.join(out[:14])
+
 
 def render(url: str) -> tuple[str | None, list[tuple[str, str]]]:
     """Rendered page plus any Aura responses, as (html, [(url, body), ...]).
@@ -382,7 +442,8 @@ def scrape_board(max_pages: int):
         # difference between "no Aura traffic", "traffic with no jobs in it" and
         # "traffic we failed to parse" is invisible from a CI log.
         json_rows: list[dict] = []
-        for cap_url, body in captured:
+        for cap in captured:
+            cap_url, body = cap['url'], cap['body']
             got = jx.jobs_from_json_text(body)
             # The board states its own total. Reported because the gap between it
             # and what we collect IS the under-collection: measured 2026-08-16 the
@@ -394,6 +455,11 @@ def scrape_board(max_pages: int):
                     sys.stderr.write(
                         f'    [aura] board advertises {total.group(1)} vacancies '
                         f'({len(got)} in this response)\n')
+                # The REQUEST that produced the vacancies. On an ApexAction every
+                # call goes to the same URL, so the page number and page size are
+                # in the POST or nowhere — and they are what a fix has to drive.
+                if got:
+                    sys.stderr.write(f'    [aura] request: {_pager_params(cap["post_data"])}\n')
             if pg == 0:
                 tail = cap_url.split('/')[-1][:48]
                 sys.stderr.write(
@@ -409,6 +475,9 @@ def scrape_board(max_pages: int):
             json_rows.extend(got)
         if pg == 0 and not captured:
             sys.stderr.write(f'    [aura] no response matched {AURA_URL_RE}\n')
+        if pg == 0:
+            ctrls = _pager_controls(content)
+            sys.stderr.write(f'    [pager] clickable candidates: {ctrls or "none found"}\n')
 
         dom_rows, how = jx.extract_jobs(content, r'job-details', 'https://www.apsjobs.gov.au')
         if json_rows:

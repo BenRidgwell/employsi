@@ -305,7 +305,7 @@ def render(url: str, instructions: list[dict] | None = None,
 
 def render_capturing(url: str, capture: str, instructions: list[dict] | None = None,
                      locale: str = 'en-AU', timeout_s: int = 90,
-                     ) -> tuple[str | None, list[tuple[str, str]]]:
+                     ) -> tuple[str | None, list[dict]]:
     """Like `render`, but also returns the XHR bodies whose URL matches `capture`.
 
     WHY A PAGE'S HTML IS NOT ALWAYS ITS DATA. A Salesforce Aura board fetches its
@@ -323,9 +323,14 @@ def render_capturing(url: str, capture: str, instructions: list[dict] | None = N
     navigated away — which it has not, because instructions here only wait and
     click.
 
-    Returns (html, [(url, body), ...]). A body that cannot be read is skipped
-    rather than failing the render: a capture is an extra, and the HTML path
-    behind it still works.
+    Returns (html, [{url, body, post_data}, ...]). The REQUEST body is carried
+    alongside the response because on an RPC-style endpoint it is the only place
+    the parameters appear — a Salesforce ApexAction is one URL for every call, so
+    the page number, page size and filters live in the POST and nowhere else.
+    Without it, "which request produced these 15 of 608 rows" is unanswerable.
+
+    A body that cannot be read is skipped rather than failing the render: a
+    capture is an extra, and the HTML path behind it still works.
     """
     browser = _browser_once()
     ctx = None
@@ -345,12 +350,17 @@ def render_capturing(url: str, capture: str, instructions: list[dict] | None = N
                     timeout=timeout_s * 1000)
             else:
                 raise ValueError(f'browser_fetch: unsupported instruction {kind!r}')
-        bodies: list[tuple[str, str]] = []
+        bodies: list[dict] = []
         for r in pending:
             try:
-                bodies.append((r.url, r.text()))
+                body = r.text()
             except Exception:  # noqa: BLE001
                 continue
+            try:
+                post = r.request.post_data or ''
+            except Exception:  # noqa: BLE001
+                post = ''
+            bodies.append({'url': r.url, 'body': body, 'post_data': post})
         return page.content(), bodies
     except Exception as e:  # noqa: BLE001
         sys.stderr.write(f'  browser render failed for {url[:70]}: {str(e)[:160]}\n')
