@@ -1,4 +1,5 @@
-# Daily Stockland + Auckland Airport careers boards → D1 archive, (rendered, local browser).
+# Daily Stockland + Auckland Airport + TechnologyOne + ECU careers boards → D1
+# archive (rendered, local browser).
 #
 # Both are employer portals the jobs-cron Worker cannot run, for two different
 # reasons — which is worth keeping straight, because the fix differs:
@@ -12,6 +13,12 @@
 #   (technology1.com) are READABLE but not REACHABLE. Their HTML carries every
 #   role with no JavaScript needed — verified identical rendered and not — but a
 #   plain datacentre request gets HTTP 403 and a Cloudflare challenge page.
+#
+#   Edith Cowan (ecu.nga.net.au) is the same shape with a different doorman:
+#   NGA.NET answers a plain request with HTTP 405 and a 2.1 KB "Human
+#   Verification" page. Measured 2026-08-17, and re-measured with HTTP_PROXY
+#   unset to rule out the authoring sandbox's own proxy — same result, so the
+#   405 is NGA.NET's bot check rather than the network in front of it.
 #
 #   That challenge is at the HTTP layer, not the address. A REAL BROWSER on the
 #   same datacentre address clears it: measured twice from a hosted runner
@@ -99,3 +106,11 @@ jobs:
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         run: python scripts/technologyone-to-d1.py
+
+      - name: Scrape Edith Cowan University careers → D1 (rendered, local browser)
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/ecu-to-d1.py
