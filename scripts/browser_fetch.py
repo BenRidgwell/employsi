@@ -262,6 +262,11 @@ def _locator(page, selector: dict):
         return page.locator(f'xpath={value}')
     if kind == 'css':
         return page.locator(value)
+    if kind == 'text':
+        # Matches a button or a link by its visible label, which is what a
+        # pager diagnostic can actually report. Case-insensitive substring, so
+        # "Load More" still matches "Load more results".
+        return page.get_by_text(_re.compile(_re.escape(value), _re.I))
     raise ValueError(f'browser_fetch: unsupported selector type {kind!r}')
 
 
@@ -348,6 +353,33 @@ def render_capturing(url: str, capture: str, instructions: list[dict] | None = N
             elif kind == 'click':
                 _locator(page, ins.get('selector', {})).first.click(
                     timeout=timeout_s * 1000)
+            elif kind == 'click_until_gone':
+                # "Load More" pagination: click, let the fetch land, click again,
+                # and stop when the control is no longer there. The capture above
+                # collects every response these produce, so one render yields the
+                # whole board instead of one page of it.
+                #
+                # STOPPING IS THE WHOLE DESIGN HERE. The control vanishing is the
+                # end of the list and NOT an error, so a failed click ends the
+                # loop quietly; anything else and a board whose last page has no
+                # button would fail the entire render. `max` bounds it so a
+                # control that never disappears cannot spin forever — it is a
+                # backstop, not the expected exit.
+                sel = ins.get('selector', {})
+                limit = int(ins.get('max', 50))
+                gap = float(ins.get('wait_s', 2))
+                clicks = 0
+                for _ in range(limit):
+                    try:
+                        loc = _locator(page, sel).first
+                        if not loc.is_visible(timeout=4000):
+                            break
+                        loc.click(timeout=8000)
+                    except Exception:  # noqa: BLE001
+                        break
+                    clicks += 1
+                    page.wait_for_timeout(gap * 1000)
+                sys.stderr.write(f'  clicked {ins.get("label", "control")} {clicks}×\n')
             else:
                 raise ValueError(f'browser_fetch: unsupported instruction {kind!r}')
         bodies: list[dict] = []

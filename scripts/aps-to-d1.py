@@ -321,6 +321,11 @@ PAGE_SIZE = 20  # APS board's own page size; offsets step by this
 # nothing on it.
 SETTLE_S = 12
 
+# How many "Load More" clicks to allow. The board serves 15 a click and advertised
+# 608 vacancies on 2026-08-16, so ~41 clicks covers it; 60 leaves headroom for the
+# board growing without letting a control that never disappears spin forever.
+MAX_LOADS = int(_opt('--max-loads', 60))
+
 # The Aura endpoint the board's results arrive on. Matched loosely because the
 # query string carries a per-session token; the path is the stable part.
 AURA_URL_RE = r'/aura\?|sfsites/aura'
@@ -406,8 +411,16 @@ def render(url: str) -> tuple[str | None, list[tuple[str, str]]]:
         if not content:
             sys.stderr.write(f'  (oxylabs status={status})\n')
         return content, []
-    return browser_fetch.render_capturing(
-        url, AURA_URL_RE, [{'type': 'wait', 'wait_time_s': SETTLE_S}])
+    return browser_fetch.render_capturing(url, AURA_URL_RE, [
+        {'type': 'wait', 'wait_time_s': SETTLE_S},
+        # The board pages by "Load More", not by the `?offset=` in SEARCH_URL —
+        # measured 2026-08-16, page 2 of that URL returned the same fifteen rows,
+        # which is why the archive held 232 rows for the whole APS against a
+        # jobListingCount of 608. Each click fires a fresh ApexAction and the
+        # capture collects its response, so the whole board arrives in one render.
+        {'type': 'click_until_gone', 'selector': {'type': 'text', 'value': 'Load More'},
+         'max': MAX_LOADS, 'wait_s': 1.5, 'label': 'Load More'},
+    ])
 
 
 def scrape_board(max_pages: int):
@@ -499,6 +512,14 @@ def scrape_board(max_pages: int):
             f'  page {pg + 1}: {len(rows)} rows ({new} new) via {how}'
             f'{f" [dom would give {len(dom_rows)}]" if json_rows else ""}\n')
         if new == 0:
+            break
+        if json_rows:
+            # The Load More walk above already took the whole board in this one
+            # render, so there is nothing for a second `?offset=` page to add —
+            # and it provably adds nothing anyway: page 2 of that URL returns the
+            # same rows as page 1, which is the bug being fixed. Going round again
+            # would re-render and re-click the entire board for a guaranteed zero.
+            sys.stderr.write('  (whole board taken in one render; no offset walk needed)\n')
             break
     return scraped
 
