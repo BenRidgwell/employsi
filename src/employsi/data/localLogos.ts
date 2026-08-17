@@ -7,6 +7,7 @@
 // first, which makes dropping a file in the folder the way to override a wrong
 // or low-quality badge without editing any data file.
 export const LOCAL_LOGO: Record<string, string> = {
+  "adelaide-axe": "/logos/adelaide-axe.jpeg",
   "adelaide-coe": "/logos/adelaide-coe.jpeg",
   "perth-gov-arts-and-culture-trust": "/logos/perth-gov-arts-and-culture-trust.jpeg",
   "perth-gov-department-of-creative-industries-tourism-and-sport":
