@@ -36,7 +36,8 @@ MyCareersFuture.
 
 Exit code is 1 when anything is CRITICAL, so a scheduled run fails loudly
 instead of reporting green. WARN alone exits 0 — worth reading, not worth
-waking anyone.
+waking anyone. NOTE is quieter still: a source in QUIET_OK that has legitimately
+written nothing, printed so it stays visible but never failing the run.
 
 Env: CLOUDFLARE_API_TOKEN (D1 read), CF_ACCOUNT_ID, D1_DATABASE_ID
 Run: python scripts/scraper-health.py [--json] [--quiet] [--days N]
@@ -89,8 +90,32 @@ STALE_DAYS = {
 
 # Sources that are NOT scheduled, so silence means nothing. TheirStack is an
 # on-demand paid backfill; the Muse is a fallback that only fires when Adzuna
-# returns nothing for a company.
-ON_DEMAND = {'theirstack', 'muse'}
+# returns nothing for a company. `wayback` is a one-off historical import — 8,436
+# rows dated 2003-12-29 to 2018-04-22 for two companies, written by hand through
+# scripts/wayback-to-d1.py, which has no workflow and never will.
+ON_DEMAND = {'theirstack', 'muse', 'wayback'}
+
+# Sources that ARE scheduled but for which writing nothing is a normal outcome,
+# with the reason. Reported, never CRITICAL.
+#
+# WHY THIS SET HAD TO EXIST. On 2026-08-20 this check reported four criticals and
+# three of them were false: wayback (above — 3,042 days "stale", and it will be
+# 3,043 tomorrow), startupjobs, and portal-aubgroup. Only zhaopin was real. A
+# check that is permanently red teaches everyone to ignore it, which costs more
+# than the check earns — the real failure that night, an exhausted Oxylabs quota,
+# was sitting in the same list as three sources behaving correctly.
+#
+# The distinction is between "no rows because nothing could be read" and "no rows
+# because there was nothing to write". The scrapers below already tell those
+# apart themselves and exit 0 on the second — startupjobs-to-d1.py says so in as
+# many words, and fails only when not one company page could be READ. This set
+# stops the health check contradicting them.
+QUIET_OK = {
+    'startupjobs': 'an employer can sit on this board for months without hiring; '
+                   'the scraper fails only when no company page can be read at all',
+    'portal-aubgroup': 'a single-employer portal — AUB\'s own page reads '
+                       '"There are no current opportunities" (checked 2026-08-17)',
+}
 
 # A source needs at least this many rows before its baselines mean anything —
 # below it, one row moves a percentage by double digits.
@@ -160,6 +185,16 @@ def check_freshness(src: str, last_seen: str, findings: list) -> None:
     age = days_since(last_seen)
     limit = STALE_DAYS.get(src, DEFAULT_STALE_DAYS)
     if age > limit:
+        # Still reported — a quiet source is worth seeing, and a board that goes
+        # quiet for months may well have broken. It just does not fail the run,
+        # because for these sources silence is a legitimate outcome and the
+        # scraper itself has already decided so.
+        if src in QUIET_OK:
+            findings.append(Finding(
+                src, 'NOTE', 'QUIET',
+                f'no rows for {age} days (last {last_seen or "never"}) — expected: '
+                f'{QUIET_OK[src]}'))
+            return
         findings.append(Finding(
             src, 'CRITICAL', 'STALE',
             f'no rows written for {age} days (last {last_seen or "never"}, '
@@ -252,6 +287,7 @@ def main() -> int:
 
     crit = [f for f in findings if f.level == 'CRITICAL']
     warn = [f for f in findings if f.level == 'WARN']
+    note = [f for f in findings if f.level == 'NOTE']
 
     if AS_JSON:
         print(json.dumps({
@@ -260,6 +296,7 @@ def main() -> int:
             'rows': sum(t['n'] for t in totals),
             'critical': len(crit),
             'warn': len(warn),
+            'noted': len(note),
             'findings': [f.as_dict() for f in findings],
         }, indent=1))
         return 1 if crit else 0
@@ -282,9 +319,11 @@ def main() -> int:
         print('OK — every source is writing, at volume, with its fields intact.')
         return 0
 
-    for f in sorted(findings, key=lambda x: (x.level != 'CRITICAL', x.source)):
+    order = {'CRITICAL': 0, 'WARN': 1, 'NOTE': 2}
+    for f in sorted(findings, key=lambda x: (order.get(x.level, 3), x.source)):
         print(f'{f.level:<9}{f.source:<18}{f.code:<18}{f.detail}')
-    print(f'\n{len(crit)} critical, {len(warn)} warning.')
+    print(f'\n{len(crit)} critical, {len(warn)} warning, {len(note)} noted.')
+    # NOTE never fails the run — see QUIET_OK.
     return 1 if crit else 0
 
 

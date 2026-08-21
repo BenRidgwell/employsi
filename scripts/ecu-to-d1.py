@@ -8,8 +8,25 @@ ecu.nga.net.au answers a plain request with HTTP 405 and a 2.1 KB page titled
 this sandbox's own proxy (the README's 405 case is a non-CONNECT request; the
 result was identical with HTTP_PROXY unset, and the status endpoint recorded no
 relay failure). So the 405 is NGA.NET's bot check, not the network in front of
-it. That makes ECU the same shape as Auckland Airport and TechnologyOne:
-blocked at the HTTP layer, where a real browser on the same address clears it.
+it.
+
+A BROWSER IS NOT ENOUGH, which is where this differs from its neighbours in
+browser-portals.yml. It was added on the premise that ECU is the same shape as
+Auckland Airport and TechnologyOne — blocked at the HTTP layer, where a real
+browser on the same datacentre address clears it. Measured on a hosted runner
+2026-08-20 and again 2026-08-21, that premise is FALSE: headless Chromium is
+served the same bot check curl gets, at 9,519 bytes rather than 2,117. NGA.NET
+is testing something a stock Chromium does not satisfy.
+
+This therefore needs a RESIDENTIAL exit, not a browser. `--oxylabs` is the path
+and it is not usable today: that plan's quota is exhausted, verified against the
+API directly on 2026-08-21 — a bare example.com request returns the same 429 the
+scrapers do. Until that is resolved the workflow step is marked
+continue-on-error, so a board that has never once succeeded cannot fail a run
+whose other three boards did.
+
+None of the parsing below needs to change when access is arranged: the block
+detection already tells "the doorman answered" apart from "the markup moved".
 
 THE PARSER IS DELIBERATELY GENERIC, AND THIS IS THE ONE PLACE IN THIS TREE THAT
 IS THE RIGHT CALL RATHER THAN A SHORTCUT. Every other scraper here keys off

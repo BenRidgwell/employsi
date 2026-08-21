@@ -109,6 +109,23 @@ jobs:
 
       - name: Scrape Edith Cowan University careers → D1 (rendered, local browser)
         if: always()
+        # NOT YET WORKING, and allowed to fail the step without failing the run.
+        #
+        # The premise when this was added was that ECU is the same shape as
+        # Auckland Airport and TechnologyOne — blocked at the HTTP layer, where a
+        # real browser on the same datacentre address clears it. Measured on a
+        # hosted runner 2026-08-20 and 2026-08-21, that is wrong: NGA.NET answers
+        # headless Chromium with the same bot check it gives curl, at 9,519 bytes
+        # rather than 2,117. A browser is not enough; this needs a residential
+        # exit, and the Oxylabs plan it would use is currently out of quota.
+        #
+        # It stays here rather than being deleted because the scraper is correct
+        # and self-diagnosing — it tells a block apart from a markup change — so
+        # the day the access problem is solved it starts working with no code
+        # change. What it must not do meanwhile is fail a run whose other three
+        # boards all succeeded, which is what it did twice: a workflow that is red
+        # every morning for a known reason stops being read.
+        continue-on-error: true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
