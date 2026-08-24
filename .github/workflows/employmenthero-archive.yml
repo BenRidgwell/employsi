@@ -1,0 +1,61 @@
+# Daily Employment Hero → D1 archive, across all six of its markets.
+#
+# A MARKET-WIDE feed, not an employer portal: it sweeps Employment Hero's public
+# board for AU, NZ, GB, SG, MY and CA, then keeps only the roles whose advertiser
+# is a company on our roster. That is what makes it cover companies added later
+# with no per-company configuration — the match runs against the live roster on
+# every run.
+#
+# It runs in Actions rather than the jobs-cron Worker for one reason: the roster
+# match needs scripts/roster.py and advertiser_match.py, the same Python the
+# other keyword feeds use, so it belongs beside Adzuna/SEEK/LinkedIn rather than
+# in careerSites.ts.
+#
+# EXPECT ZERO ROWS ON MOST DAYS, and do not read that as a broken feed. Measured
+# 2026-08-24: 1,191 roles advertised across the six markets in the window, from
+# 550 distinct employers, and NOT ONE of them was a company we track. This board
+# is dominated by small businesses. The scraper therefore fails only when the
+# SWEEP itself returns nothing — that means the board refused us or the route
+# moved — and exits 0 when it swept fine and simply found none of ours.
+#
+# Required repo secrets:
+#   CLOUDFLARE_API_TOKEN  — D1 edit on the employsi account
+# Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
+#
+# Use "Run workflow" to verify before relying on the schedule.
+
+name: employmenthero-archive
+
+on:
+  schedule:
+    # 17:50 UTC daily (~03:20 ACST). An empty slot: 17:20, 17:30 and 18:00
+    # through 18:50 are all taken, and 18:20 is Whitehaven's.
+    - cron: '50 17 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: employmenthero-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # bun runs scripts/roster.ts (the roster is generated at module load, so
+      # it cannot be read from source) and scripts/map-skills.ts, so these roles
+      # carry exactly the skills the same title gets from any other source.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Sweep Employment Hero → D1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/employmenthero-to-d1.py
