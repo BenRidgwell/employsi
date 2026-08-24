@@ -105,78 +105,36 @@ function money(v: number): string {
   return `$${Math.round(v)}`;
 }
 
-/**
- * What the archive could price in this market, stated before any price is shown.
- *
- * Three separate shortfalls, and they are not interchangeable:
- *
- *   priced/seen   skills in demand here that disclose enough pay to value. Perth
- *                 prices 23 of 100; showing 23 rows without saying so would read
- *                 as a market with 23 skills in it.
- *   days          the window drawn against the one requested. Collection began
- *                 2026-07-20, so a 30-day request currently draws about 9.
- *   unplaceable   priced ads carrying no hub. They can be valued but not placed,
- *                 so a worldwide index leaves them out — 9% of priced ads.
- */
-function MarketCoverage({
-  market,
-  requested,
-  loading,
-}: {
-  market: SkillMarket;
-  requested: number;
-  loading: boolean;
-}) {
-  const drawn = market.days.length;
-  const short = drawn > 0 && drawn < requested;
-  if (!drawn && !loading) return null;
-  return (
-    <div className="mktcov">
-      <div className="mktcovval">
-        <b>{money(market.totalValue)}</b>
-        <span>advertised annual salary, summed across open ads</span>
-      </div>
-      <div className="mktcovnotes">
-        <span>
-          <b>{market.priced}</b> of {market.seen} skills priced
-          {market.seen < market.taxonomy && ` · ${market.seen} of ${market.taxonomy} in demand`}
-        </span>
-        <span className={short ? "warn" : undefined}>
-          {drawn ? `${drawn}-day window` : "no window"}
-          {short && ` · ${requested} requested, ${drawn} collected`}
-        </span>
-        {market.unplaceable > 0 && (
-          <span>
-            <b>{market.unplaceable.toLocaleString("en-AU")}</b> priced ads carry no location, so
-            they are left out of the worldwide index
-          </span>
-        )}
-        {market.fxAsAt && <span>converted to AUD at rates as at {market.fxAsAt}</span>}
-        {loading && <span className="dim">updating…</span>}
-      </div>
-    </div>
-  );
-}
-
 function MoversCard({
   title,
   dir,
   rows,
+  days,
   payOf,
   onSkill,
 }: {
   title: string;
   dir: "up" | "down";
   rows: MarketSkillMover[];
+  days: number;
   payOf: (skill: string) => number | null;
   onSkill: (skill: string) => void;
 }) {
   if (!rows.length) return null;
   return (
-    <section className="mvr">
+    // The direction is on the section so the dashboard grid can place risers
+    // and fallers in named cells. Two `.mvr` siblings distinguished only by
+    // :nth-of-type would break the moment anything else is added here.
+    <section className={`mvr mvr-${dir}`}>
       <div className="ccsecth">
         <span className="cceyebrow">{title}</span>
-        <span className="ccsecthsub">mean daily vacancies</span>
+        {/* The span rides in the eyebrow rather than a footer under both
+            lists. It is not fixed — it is chosen from how much history the
+            archive actually holds — so a percentage here means nothing
+            without it. */}
+        <span className="ccsecthsub">
+          mean daily vacancies · {days}d vs prior {days}d
+        </span>
       </div>
       <div className="mvrrows">
         {rows.map((m) => {
@@ -385,9 +343,11 @@ export function WhatsTrendingPane() {
           </div>
           <div className="briefheadtxt">
             <div className="brieftitle">What's Trending</div>
-            <div className="briefdate">
-              {hasReal ? "Skill demand · month on month" : "Movers this quarter"}
-            </div>
+            {/* Says what the number below it IS. The old copy read "Skill
+                demand · month on month", which named neither the quantity nor
+                the window: the pane shows advertised value, over whatever span
+                the archive could cover. */}
+            <div className="briefdate">See which skills are rising, falling and in demand</div>
           </div>
           <button className="briefclose" onClick={closeTrending} aria-label="Close">
             ✕
@@ -412,98 +372,96 @@ export function WhatsTrendingPane() {
               </button>
             ))}
           </div>
-          <div className="mktwins" role="tablist" aria-label="Period">
-            {MARKET_WINDOWS.map((w) => (
-              <button
-                key={w}
-                role="tab"
-                aria-selected={w === windowDays}
-                className={`mktwin ${w === windowDays ? "on" : ""}`}
-                onClick={() => setWindowDays(w)}
-              >
-                {w}d
-              </button>
-            ))}
-          </div>
         </div>
-        <MarketCoverage market={market} requested={windowDays} loading={marketLoading} />
-
+        {/* TWO EXPLICIT COLUMNS, NOT A GRID WITH SPANS.
+            The board wants the skills tile — the only section of unbounded
+            length — running the full height beside the shorter cards. Done
+            with `grid-row: 1 / 3` it looked right and was not: .mkhero sets
+            overflow:hidden for its bleeding chart, which zeroes its automatic
+            minimum height, so the spanning tile's row distribution squashed
+            the hero to 199px and clipped 86px of its own chart away. Columns
+            of flex items size honestly and need no such reasoning. */}
         <div className="briefscroll">
-          {/* The market's line, or one skill's when a row is picked. Above the
-              rows it cross-filters with, so the selection and its effect are
-              never separated by a scroll. */}
-          <MarketHero market={market} skill={pickedSkill} onClear={() => setPickedSkill(null)} />
-          <SkillMarketRows
-            market={market}
-            selected={pickedSkill}
-            onPick={(sk) => setPickedSkill((cur) => (cur === sk ? null : sk))}
-          />
-          <div className="trendsnap">
-            <div className="trendsnaphd">
-              <span className="trendsnaptitle">Most viewed</span>
-              <span className="trendsnapcap">What people are exploring now</span>
-            </div>
-            {hasViews ? (
-              viewed!.slice(0, 3).map((v) => (
-                <button
-                  className="trendsnaprow"
-                  key={`${v.kind}:${v.ref}`}
-                  onClick={() => activateViewedRow(v)}
-                >
-                  <span className={`trendsnapic tv-${v.kind}`}>
-                    <ViewedIcon kind={v.kind} />
-                  </span>
-                  <span className="trendsnapinfo">
-                    <span className="trendsnaplabel">{v.label}</span>
-                    <span className="trendsnapsub">{v.sub}</span>
-                  </span>
-                  <span className="trendsnapshare">
-                    <b>{v.share}</b>
-                    <span>of views</span>
-                  </span>
-                </button>
-              ))
-            ) : (
-              // Was a hand-written seed reading "BHP 18% of views". Every other
-              // figure on this pane is now measured, and one invented
-              // percentage among them is worse than an empty state — it is
-              // indistinguishable from the real ones.
-              <div className="dataempty">No views recorded yet</div>
-            )}
-          </div>
-
-          {hasReal && (
-            <>
+          <div className="mktcol">
+            {/* The market's line, or one skill's when a row is picked. */}
+            <MarketHero
+              market={market}
+              skill={pickedSkill}
+              onClear={() => setPickedSkill(null)}
+              days={windowDays}
+              onDays={setWindowDays}
+              loading={marketLoading}
+            />
+            {hasReal && (
               <MoversCard
                 title="Biggest risers"
                 dir="up"
                 rows={movers!.risers}
+                days={movers!.windowDays}
                 payOf={payOf}
                 onSkill={activateSkill}
               />
+            )}
+            <div className="trendsnap">
+              <div className="trendsnaphd">
+                <span className="trendsnaptitle">Most viewed</span>
+                <span className="trendsnapcap">What people are exploring now</span>
+              </div>
+              {hasViews ? (
+                viewed!.slice(0, 3).map((v) => (
+                  <button
+                    className="trendsnaprow"
+                    key={`${v.kind}:${v.ref}`}
+                    onClick={() => activateViewedRow(v)}
+                  >
+                    <span className={`trendsnapic tv-${v.kind}`}>
+                      <ViewedIcon kind={v.kind} />
+                    </span>
+                    <span className="trendsnapinfo">
+                      <span className="trendsnaplabel">{v.label}</span>
+                      <span className="trendsnapsub">{v.sub}</span>
+                    </span>
+                    <span className="trendsnapshare">
+                      <b>{v.share}</b>
+                      <span>of views</span>
+                    </span>
+                  </button>
+                ))
+              ) : (
+                // Was a hand-written seed reading "BHP 18% of views". Every
+                // other figure on this pane is now measured, and one invented
+                // percentage among them is worse than an empty state — it is
+                // indistinguishable from the real ones.
+                <div className="dataempty">No views recorded yet</div>
+              )}
+            </div>
+            {!hasReal && !moversFetching && market.rows.length > 0 && (
+              <div className="brieffoot">
+                No movers for {scope.label} yet — a skill needs enough daily vacancies in BOTH the
+                recent window and the one before it before a change can be measured.
+              </div>
+            )}
+          </div>
+
+          {/* The right column carries the one tile that can run to 99 rows, so
+              it is the one that flexes and scrolls itself. */}
+          <div className="mktcol">
+            <SkillMarketRows
+              market={market}
+              selected={pickedSkill}
+              onPick={(sk) => setPickedSkill((cur) => (cur === sk ? null : sk))}
+            />
+            {hasReal && (
               <MoversCard
                 title="Biggest fallers"
                 dir="down"
                 rows={movers!.fallers}
+                days={movers!.windowDays}
                 payOf={payOf}
                 onSkill={activateSkill}
               />
-              {/* State the period, because it is chosen from how much history
-                  the archive actually holds rather than fixed — and because
-                  both lists are two ends of this one comparison. */}
-              <div className="brieffoot">
-                {movers!.scope} · mean daily live vacancies · {movers!.windowDays} days to{" "}
-                {movers!.to} vs the {movers!.windowDays} before · {movers!.sources.length} feeds
-                covering both periods
-              </div>
-            </>
-          )}
-          {!hasReal && !moversFetching && market.rows.length > 0 && (
-            <div className="brieffoot">
-              No movers for {scope.label} yet — a skill needs enough daily vacancies in BOTH the
-              recent window and the one before it before a change can be measured.
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </aside>
     </>
