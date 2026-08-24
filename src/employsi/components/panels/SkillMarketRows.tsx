@@ -4,6 +4,29 @@ import type { SkillMarket, SkillMarketRow } from "../../lib/jobHistoryFn";
 
 /** Rows before the list says what it left out. */
 const ROWS_SHOWN = 12;
+
+/**
+ * What the list is ordered by.
+ *
+ * THERE IS NO "VALUE" SORT, though value is the index the hero is built on.
+ * Measured against production on 2026-08-12, ordering by price x volume was
+ * very nearly ordering by volume — Kendall tau 0.83 (Perth), 0.87 (Australia),
+ * 0.82 (worldwide), with 8 to 10 of the twelve visible rows shared. It could
+ * hardly be otherwise: volume spans 1 to 3,744 ads while median pay spans a
+ * factor of 2.3 to 4.4, so the salary term barely perturbs the order.
+ *
+ * What difference it did make was the wrong difference. Value is null for an
+ * unpriced skill, so a value sort put every one of them last: for Perth that
+ * demoted 72 of 92 skills in demand for a reason that has nothing to do with
+ * demand, and the visible list stopped being the market's biggest skills. A
+ * third chip that mostly reproduces this one and misleads where it doesn't is
+ * worse than two that each answer a question.
+ */
+type SortKey = "salary" | "volume";
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: "volume", label: "Volume" },
+  { key: "salary", label: "Salary" },
+];
 const SP_W = 96;
 const SP_H = 26;
 
@@ -87,13 +110,29 @@ export function SkillMarketRows({
   onPick: (skill: string) => void;
 }) {
   const [cat, setCat] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortKey>("volume");
   const [all, setAll] = useState(false);
 
   const cats = useMemo(() => market.categories.map((c) => c.cat), [market.categories]);
-  const rows = useMemo(
-    () => (cat ? market.rows.filter((r) => r.cat === cat) : market.rows),
-    [market.rows, cat],
-  );
+  const rows = useMemo(() => {
+    const base = cat ? market.rows.filter((r) => r.cat === cat) : market.rows;
+    // Copy before sorting: market.rows is the query's cached array, and sorting
+    // it in place would reorder the hero's view of the same data.
+    return [...base].sort((x, y) => {
+      if (sort === "salary") {
+        // Unpriced skills go last rather than sorting as zero. They are not the
+        // cheapest thing in the market, they are the things it cannot price.
+        if (x.pay === null && y.pay === null) return y.now - x.now;
+        if (x.pay === null) return 1;
+        if (y.pay === null) return -1;
+        return y.pay - x.pay || y.now - x.now;
+      }
+      // Volume, and on a tie the better-paid of the two — but a tie between an
+      // unpriced skill and a priced one is not an argument for demoting it, so
+      // it only breaks ties, it never reorders.
+      return y.now - x.now || (y.pay ?? 0) - (x.pay ?? 0);
+    });
+  }, [market.rows, cat, sort]);
   const shown = all ? rows : rows.slice(0, ROWS_SHOWN);
   const unpriced = rows.filter((r) => r.pay === null).length;
 
@@ -103,7 +142,20 @@ export function SkillMarketRows({
     <section className="smk">
       <div className="ccsecth">
         <span className="cceyebrow">Skills</span>
-        <span className="ccsecthsub">demand · median salary</span>
+        <div className="smksorts" role="tablist" aria-label="Sort by">
+          {SORTS.map((o) => (
+            <button
+              type="button"
+              key={o.key}
+              role="tab"
+              aria-selected={sort === o.key}
+              className={`smksort ${sort === o.key ? "on" : ""}`}
+              onClick={() => setSort(o.key)}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {cats.length > 1 && (
