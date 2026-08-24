@@ -85,7 +85,7 @@ export const LOCAL_LOGO: Record<string, string> = {
   "sa-gov-department-for-housing-and-urban-development":
     "/logos/sa-gov-department-for-housing-and-urban-development.png",
   "sa-gov-department-for-infrastructure-and-transport":
-    "/logos/sa-gov-department-for-infrastructure-and-transport.png",
+    "/logos/sa-gov-department-for-infrastructure-and-transport.avif",
   "sa-gov-department-of-human-services": "/logos/sa-gov-department-of-human-services.jpeg",
   "sa-gov-department-of-state-development": "/logos/sa-gov-department-of-state-development.png",
   "sa-gov-department-of-the-premier-and-cabinet":
@@ -111,11 +111,11 @@ export const LOCAL_LOGO: Record<string, string> = {
   "sa-gov-office-of-hydrogen-power-sa": "/logos/sa-gov-office-of-hydrogen-power-sa.jpeg",
   "sa-gov-office-of-the-sa-productivity-commission":
     "/logos/sa-gov-office-of-the-sa-productivity-commission.png",
-  "sa-gov-sa-country-fire-service": "/logos/sa-gov-sa-country-fire-service.png",
+  "sa-gov-sa-country-fire-service": "/logos/sa-gov-sa-country-fire-service.webp",
   "sa-gov-sa-employment-tribunal": "/logos/sa-gov-sa-employment-tribunal.jpeg",
   "sa-gov-sa-fire-and-emergency-services-commission":
     "/logos/sa-gov-sa-fire-and-emergency-services-commission.jpeg",
-  "sa-gov-sa-lotteries": "/logos/sa-gov-sa-lotteries.png",
+  "sa-gov-sa-lotteries": "/logos/sa-gov-sa-lotteries.webp",
   "sa-gov-sa-metropolitan-fire-service": "/logos/sa-gov-sa-metropolitan-fire-service.png",
   "sa-gov-sa-motor-sport-board": "/logos/sa-gov-sa-motor-sport-board.png",
   "sa-gov-sa-state-emergency-service": "/logos/sa-gov-sa-state-emergency-service.jpeg",
@@ -126,4 +126,14 @@ export const LOCAL_LOGO: Record<string, string> = {
   "sa-gov-tafe-sa": "/logos/sa-gov-tafe-sa.jpeg",
   "sa-gov-teachers-registration-board": "/logos/sa-gov-teachers-registration-board.jpeg",
   "sydney-agl": "/logos/sydney-agl.png",
+  "tas-gov-department-for-education-children-and-young-people":
+    "/logos/tas-gov-department-for-education-children-and-young-people.png",
+  "tas-gov-department-of-health": "/logos/tas-gov-department-of-health.webp",
+  "tas-gov-department-of-natural-resources-and-environment-tasmania":
+    "/logos/tas-gov-department-of-natural-resources-and-environment-tasmania.jpeg",
+  "tas-gov-department-of-premier-and-cabinet":
+    "/logos/tas-gov-department-of-premier-and-cabinet.png",
+  "tas-gov-homes-tasmania": "/logos/tas-gov-homes-tasmania.jpeg",
+  "tas-gov-public-trustee": "/logos/tas-gov-public-trustee.jpg",
+  "tas-gov-whole-of-government-programs": "/logos/tas-gov-whole-of-government-programs.svg",
 };

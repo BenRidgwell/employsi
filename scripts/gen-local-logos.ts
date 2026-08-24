@@ -21,7 +21,13 @@ import { COMPANIES } from "../src/employsi/data/companies";
 
 const DIR = join(import.meta.dir ?? ".", "..", "public", "logos");
 const OUT = join(import.meta.dir ?? ".", "..", "src", "employsi", "data", "localLogos.ts");
-const EXT = /\.(png|jpg|jpeg|svg|webp)$/i;
+// avif is here because a supplied logo turned out to be one. Cloudflare serves
+// assets by EXTENSION, so a file must be named for what it actually IS — an
+// AVIF called .png goes out as image/png full of AVIF bytes. Renaming it to
+// .avif is the fix, and that only works if the generator will pick it up;
+// otherwise the file is silently dropped from the map instead, which is worse
+// than the mislabelling it was meant to correct.
+const EXT = /\.(png|jpg|jpeg|svg|webp|avif)$/i;
 
 const ids = new Set((COMPANIES as { id: string }[]).map((c) => c.id));
 const byId = new Map<string, string>();
