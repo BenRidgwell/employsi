@@ -262,6 +262,11 @@ def _locator(page, selector: dict):
         return page.locator(f'xpath={value}')
     if kind == 'css':
         return page.locator(value)
+    if kind == 'text':
+        # Matches a button or a link by its visible label, which is what a
+        # pager diagnostic can actually report. Case-insensitive substring, so
+        # "Load More" still matches "Load more results".
+        return page.get_by_text(_re.compile(_re.escape(value), _re.I))
     raise ValueError(f'browser_fetch: unsupported selector type {kind!r}')
 
 
@@ -295,6 +300,103 @@ def render(url: str, instructions: list[dict] | None = None,
     except Exception as e:  # noqa: BLE001
         sys.stderr.write(f'  browser render failed for {url[:70]}: {str(e)[:160]}\n')
         return None
+    finally:
+        if ctx is not None:
+            try:
+                ctx.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+
+def render_capturing(url: str, capture: str, instructions: list[dict] | None = None,
+                     locale: str = 'en-AU', timeout_s: int = 90,
+                     ) -> tuple[str | None, list[dict]]:
+    """Like `render`, but also returns the XHR bodies whose URL matches `capture`.
+
+    WHY A PAGE'S HTML IS NOT ALWAYS ITS DATA. A Salesforce Aura board fetches its
+    results through a session-gated endpoint and renders them client-side, so
+    `page.content()` gives the RENDERED CARDS — the same figures with the
+    structure thrown away. Everything downstream then has to recover fields by
+    mining flattened text, which is how the APS feed ended up filing 230 of 232
+    rows under a fragment of a job ad: the response it needed had the agency in
+    its own field the whole time, and nothing was reading it.
+
+    So this listens to the traffic instead. The response objects are collected in
+    the handler and their bodies read AFTER the waits finish: reading a body from
+    inside a Playwright sync event handler re-enters the event loop and can
+    deadlock, while the bodies stay retrievable as long as the page has not
+    navigated away — which it has not, because instructions here only wait and
+    click.
+
+    Returns (html, [{url, body, post_data}, ...]). The REQUEST body is carried
+    alongside the response because on an RPC-style endpoint it is the only place
+    the parameters appear — a Salesforce ApexAction is one URL for every call, so
+    the page number, page size and filters live in the POST and nowhere else.
+    Without it, "which request produced these 15 of 608 rows" is unanswerable.
+
+    A body that cannot be read is skipped rather than failing the render: a
+    capture is an extra, and the HTML path behind it still works.
+    """
+    browser = _browser_once()
+    ctx = None
+    pat = _re.compile(capture, _re.I)
+    pending: list = []
+    try:
+        ctx = stealth_context(browser, locale=locale)
+        page = ctx.new_page()
+        page.on('response', lambda r: pat.search(r.url) and pending.append(r))
+        page.goto(url, wait_until='domcontentloaded', timeout=timeout_s * 1000)
+        for ins in (instructions or []):
+            kind = ins.get('type')
+            if kind == 'wait':
+                page.wait_for_timeout(float(ins.get('wait_time_s', 1)) * 1000)
+            elif kind == 'click':
+                _locator(page, ins.get('selector', {})).first.click(
+                    timeout=timeout_s * 1000)
+            elif kind == 'click_until_gone':
+                # "Load More" pagination: click, let the fetch land, click again,
+                # and stop when the control is no longer there. The capture above
+                # collects every response these produce, so one render yields the
+                # whole board instead of one page of it.
+                #
+                # STOPPING IS THE WHOLE DESIGN HERE. The control vanishing is the
+                # end of the list and NOT an error, so a failed click ends the
+                # loop quietly; anything else and a board whose last page has no
+                # button would fail the entire render. `max` bounds it so a
+                # control that never disappears cannot spin forever — it is a
+                # backstop, not the expected exit.
+                sel = ins.get('selector', {})
+                limit = int(ins.get('max', 50))
+                gap = float(ins.get('wait_s', 2))
+                clicks = 0
+                for _ in range(limit):
+                    try:
+                        loc = _locator(page, sel).first
+                        if not loc.is_visible(timeout=4000):
+                            break
+                        loc.click(timeout=8000)
+                    except Exception:  # noqa: BLE001
+                        break
+                    clicks += 1
+                    page.wait_for_timeout(gap * 1000)
+                sys.stderr.write(f'  clicked {ins.get("label", "control")} {clicks}×\n')
+            else:
+                raise ValueError(f'browser_fetch: unsupported instruction {kind!r}')
+        bodies: list[dict] = []
+        for r in pending:
+            try:
+                body = r.text()
+            except Exception:  # noqa: BLE001
+                continue
+            try:
+                post = r.request.post_data or ''
+            except Exception:  # noqa: BLE001
+                post = ''
+            bodies.append({'url': r.url, 'body': body, 'post_data': post})
+        return page.content(), bodies
+    except Exception as e:  # noqa: BLE001
+        sys.stderr.write(f'  browser render failed for {url[:70]}: {str(e)[:160]}\n')
+        return None, []
     finally:
         if ctx is not None:
             try:

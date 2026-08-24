@@ -343,7 +343,11 @@ for (const [city, roster] of Object.entries(CITY_ROSTERS)) {
     const existing = (CITY_COMPANIES[hub] ||= []);
     const offset = existing.length;
     const pts = spreadCoordsCity(view.center, offset + ids.length, CITY_PLACEMENT[hub]);
-    ids.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
+    // realCoord FIRST, fan as the fallback — the same order every other block
+    // here uses. Without it this block ignored AU_REAL_COORDS entirely, so the
+    // Australian Space Agency sat in the generated fan while its verified Lot
+    // Fourteen coordinate sat unread in the table.
+    ids.forEach((id, i) => existing.push({ id, coords: realCoord(id, hub) ?? pts[offset + i] }));
   }
 }
 
@@ -436,7 +440,11 @@ for (const [city, entries] of Object.entries(NZ_BY_CITY)) {
     const existing = (CITY_COMPANIES[hub] ||= []);
     const offset = existing.length;
     const pts = spreadCoordsCity(view.center, offset + ids.length, CITY_PLACEMENT[hub]);
-    ids.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
+    // No NZ agency has a verified address today, so this always falls through
+    // to the fan. It is written the same way as every other block regardless,
+    // so adding one coordinate later is all it takes — rather than adding one
+    // and finding it silently ignored.
+    ids.forEach((id, i) => existing.push({ id, coords: realCoord(id, hub) ?? pts[offset + i] }));
   }
 }
 
@@ -474,7 +482,11 @@ for (const [id, city] of Object.entries(HQ_OVERRIDE)) {
       offset + ids.length,
       CITY_PLACEMENT[city],
     );
-    ids.forEach((id, i) => existing.push({ id, coords: pts[offset + i] }));
+    // The `city:id` keys in AU_REAL_COORDS exist FOR this block — a company
+    // plotted in a city that is not its head office. Without the lookup,
+    // "adelaide:sydney-org" (Origin Energy's Festival Tower address) was dead
+    // data, and Origin sat wherever the fan put it.
+    ids.forEach((id, i) => existing.push({ id, coords: realCoord(id, city) ?? pts[offset + i] }));
   }
 }
 

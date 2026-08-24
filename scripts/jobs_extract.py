@@ -24,6 +24,7 @@ import html as htmllib
 import json
 import re
 import sys
+from collections import Counter
 
 TAG = re.compile(r'<[^>]+>')
 WS = re.compile(r'\s+')
@@ -102,17 +103,31 @@ def _ymd(y, m, d) -> str:
 # Keys that plausibly carry each field, most specific first. Matching is done on
 # a normalised key (lowercased, non-alphanumerics stripped) so jobTitle,
 # job_title and JobTitle all hit the same rule.
-TITLE_KEYS = ('jobtitle', 'positiontitle', 'roletitle', 'advertisedtitle', 'title', 'name')
-ORG_KEYS = ('organisation', 'organization', 'agency', 'department', 'employer',
-            'agencyname', 'organisationname', 'cluster', 'company', 'entity')
+# `jobname` / `departmentname` / `jobclosedate` / `jobposteddate` /
+# `applicationurl` are the APS board's Aura schema, read off the live response on
+# 2026-08-16:
+#
+#   {"jobListingCount":608,"jobListings":[{"jobName":…,"departmentName":…,
+#    "jobLocation":…,"jobPostedDate":…,"jobCloseDate":…,"jobId":…,
+#    "applicationURL":…,"vacancyNumber":…}]}
+#
+# Only `jobLocation` and `jobId` were already covered, and a record with a
+# location and an id but no TITLE is not job-like, so every one of these was
+# discarded. The board's data had been arriving intact all along and failing this
+# one test — which is why the feed fell back to mining the rendered cards.
+TITLE_KEYS = ('jobtitle', 'positiontitle', 'roletitle', 'advertisedtitle', 'jobname',
+              'title', 'name')
+ORG_KEYS = ('organisation', 'organization', 'agency', 'agencyname', 'departmentname',
+            'department', 'employer', 'organisationname', 'cluster', 'company', 'entity')
 LOC_KEYS = ('location', 'joblocation', 'worklocation', 'region', 'suburb', 'city', 'locationname')
-URL_KEYS = ('url', 'joburl', 'link', 'href', 'applyurl', 'detailurl')
+URL_KEYS = ('url', 'joburl', 'applicationurl', 'link', 'href', 'applyurl', 'detailurl')
 SALARY_KEYS = ('salary', 'salaryrange', 'remuneration', 'packagerange', 'salarydescription')
-CLOSE_KEYS = ('closingdate', 'closedate', 'closes', 'applicationclosingdate', 'expirydate')
+CLOSE_KEYS = ('closingdate', 'closedate', 'jobclosedate', 'closes',
+              'applicationclosingdate', 'expirydate')
 # The date the ad went UP, which is what the archive's `posted` column means.
 # Kept strictly separate from CLOSE_KEYS: a closing date is not a posting date,
 # and conflating them is exactly the bug this set exists to fix.
-POSTED_KEYS = ('posteddate', 'postingdate', 'dateposted', 'publisheddate',
+POSTED_KEYS = ('posteddate', 'postingdate', 'jobposteddate', 'dateposted', 'publisheddate',
                'publicationdate', 'advertiseddate', 'opendate', 'startdate',
                'createddate', 'posted', 'published')
 ID_KEYS = ('jobid', 'id', 'jobreference', 'referencenumber', 'requisitionid', 'vacancyid')
@@ -135,8 +150,9 @@ ID_KEYS = ('jobid', 'id', 'jobreference', 'referencenumber', 'requisitionid', 'v
 #   • a generic title ("title", "name") needs real corroboration — an
 #     organisation, a location, a salary, a closing date, or a JOB-specific id.
 #     A bare "id" is not corroboration, because everything has one.
-JOB_TITLE_KEYS = ('jobtitle', 'positiontitle', 'roletitle', 'advertisedtitle')
-STRONG_ID_KEYS = ('jobid', 'jobreference', 'requisitionid', 'vacancyid', 'referencenumber')
+JOB_TITLE_KEYS = ('jobtitle', 'positiontitle', 'roletitle', 'advertisedtitle', 'jobname')
+STRONG_ID_KEYS = ('jobid', 'jobreference', 'requisitionid', 'vacancyid', 'referencenumber',
+                  'vacancynumber')
 
 # Titles this short/long are almost certainly not real job titles.
 MIN_TITLE, MAX_TITLE = 4, 160
@@ -299,6 +315,116 @@ def jobs_from_embedded_json(html: str) -> list[dict]:
     return out
 
 
+def _inner_json_strings(node, depth: int = 0):
+    """Yield string values that are themselves JSON documents.
+
+    Salesforce Aura returns its payload double-encoded — the action's
+    `returnValue` is a STRING containing the JSON, not the JSON itself:
+
+        {"actions":[{"returnValue":{"returnValue":"{\\"jobs\\":[ ... ]}"}}]}
+
+    walk_json only descends real dicts and lists, so without this the records
+    are invisible: the response parses, the walk finds nothing job-like, and the
+    caller concludes the endpoint carries no jobs.
+    """
+    if depth > 30:
+        return
+    if isinstance(node, str):
+        s = node.strip()
+        if len(s) > 2 and s[0] in '{[':
+            yield s
+        return
+    if isinstance(node, dict):
+        for v in node.values():
+            yield from _inner_json_strings(v, depth + 1)
+    elif isinstance(node, list):
+        for v in node:
+            yield from _inner_json_strings(v, depth + 1)
+
+
+# Anti-JSON-hijacking prefixes. Salesforce and several other frameworks send
+# one ahead of the payload so a <script src> of the endpoint cannot read it;
+# json.loads sees it as a syntax error.
+_JSON_GUARD = re.compile(r"^\s*(?:while\s*\(\s*1\s*\)\s*;|for\s*\(\s*;\s*;\s*\)\s*;|\)\]\}'?,?)")
+
+
+def json_shape(text: str, top: int = 26) -> str:
+    """A one-line description of a JSON body that yielded no jobs.
+
+    Written for the case where a capture is plainly working — the APS board's
+    ApexAction responses arrive at 1.78MB apiece — and the parser still finds
+    nothing in them. The two things that distinguish "wrong schema" from "not
+    actually JSON" are the opening bytes and the key names, and neither is worth
+    dumping 1.78MB to a CI log to see.
+    """
+    t = (text or '').strip()
+    head = t[:120].replace('\n', ' ')
+    keys = Counter(re.findall(r'"([A-Za-z_][A-Za-z0-9_]{1,40})"\s*:', t))
+    common = ' '.join(f'{k}×{n}' for k, n in keys.most_common(top))
+    return f'head={head!r}\n      keys: {common}'
+
+
+def jobs_from_json_text(text: str) -> list[dict]:
+    """Job-like records from a RAW JSON body — an XHR response, not a page.
+
+    `jobs_from_embedded_json` above mines JSON out of HTML (script blobs, Next.js
+    flight chunks). This one takes a body that is already JSON, which is what a
+    captured API response is, and unwraps one level of double-encoding on the way
+    so an Aura payload is read rather than walked past.
+    """
+    out: list[dict] = []
+    seen: set = set()
+    body = _JSON_GUARD.sub('', text or '', count=1)
+    for obj in _json_objects(body):
+        walk_json(obj, out, 0, seen)
+        for inner in _inner_json_strings(obj):
+            for sub in _json_objects(inner):
+                walk_json(sub, out, 0, seen)
+    return out
+
+
+# ── block mining, shared by the two DOM strategies below ─────────────────────
+# Labels that are ALSO the first word of many employers' own names. "Department
+# of Foreign Affairs and Trade" is not a labelled field — the whole string is the
+# VALUE, and there is no label anywhere near it.
+#
+# This mattered because the separator below is optional, which it has to be:
+# plenty of boards render "Organisation" and its value as sibling elements with
+# nothing but whitespace between them once `text_of` has flattened them. But that
+# same optional separator let `department` match the employer's own first word,
+# start the capture AFTER it, and then take a blind 70 characters — which on the
+# APS board runs straight through the job title and into the salary:
+#
+#   Department of Finance Senior Drupal Developer $ 101,355 to $ 123,702 Opport…
+#            ->  "of Finance Senior Drupal Developer $ 101,355 to $ 123,702 Opp"
+#
+# Measured 2026-08-16, that had put 230 of the aps-gov feed's 232 rows in the
+# unattributed bucket, each stored under a 70-character fragment as its employer
+# name, every daily run green throughout.
+#
+# So when one of these labels matches WITHOUT a real separator, the label word is
+# kept as part of the value instead of being eaten. Boards that do write
+# "Department: X" are unaffected — they have a separator, and take the labelled
+# branch exactly as before.
+NAME_INITIAL_LABELS = ('department',)
+_SEP = r'[:\-–—]'
+
+
+def _grab(block: str, labels) -> str:
+    """First labelled value found in `block`, '' if none of `labels` appear."""
+    for lb in labels:
+        m = re.search(r'(' + lb + r')(\s*' + _SEP + r'\s*|\s+)([^|\n]{2,70})',
+                      block or '', re.I)
+        if not m:
+            continue
+        label, sep, value = m.group(1), m.group(2), m.group(3).strip()
+        if lb in NAME_INITIAL_LABELS and not re.search(_SEP, sep):
+            value = f'{label} {value}'.strip()
+        if value:
+            return value
+    return ''
+
+
 # ── 2. DOM anchors (fallback) ────────────────────────────────────────────────
 def jobs_from_anchors(html: str, href_re: str, site: str = '') -> list[dict]:
     """Extract jobs by anchoring on job-detail links, mining the surrounding block."""
@@ -316,11 +442,7 @@ def jobs_from_anchors(html: str, href_re: str, site: str = '') -> list[dict]:
         block = text_of(html[s:e])
 
         def grab(labels):
-            for lb in labels:
-                g = re.search(lb + r'\s*[:\-]?\s*([^|\n]{2,70})', block, re.I)
-                if g:
-                    return g.group(1).strip()
-            return ''
+            return _grab(block, labels)
         rows.append({
             't': title,
             'agency': grab([r'organisation', r'organization', r'agency', r'department', r'cluster', r'employer']),
@@ -409,11 +531,7 @@ def jobs_from_cards(html: str, href_re: str, site: str = '') -> list[dict]:
         block = text_of((html or '')[s:e])
 
         def grab(labels):
-            for lb in labels:
-                g = re.search(lb + r'\s*[:\-]?\s*([^|\n]{2,70})', block, re.I)
-                if g:
-                    return g.group(1).strip()
-            return ''
+            return _grab(block, labels)
         if not rec['agency']:
             rec['agency'] = grab([r'organisation', r'organization', r'agency',
                                   r'department', r'cluster', r'employer'])

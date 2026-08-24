@@ -49,6 +49,7 @@ except ImportError as e:
     sys.exit(f'Missing helper module ({e}).')
 
 import urllib.request  # noqa: E402
+import urllib.parse  # noqa: E402
 
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
 ACCOUNT = os.environ.get('CF_ACCOUNT_ID') or '080a66721e2d85950d9d7dc939e08b76'
@@ -93,7 +94,7 @@ def match_city(text: str):
     return None
 
 
-# ── APS agency roster → aps-<slug> id (parsed from data/canberraGov.ts) ────────
+# ── APS agency roster → aps-<slug> id (RUN from data/canberraGov.ts) ──────────
 def slug(name: str) -> str:
     return re.sub(r'^-|-$', '', re.sub(r'[^a-z0-9]+', '-', name.lower()))
 
@@ -103,33 +104,115 @@ def aps_id(name: str) -> str:
 
 
 def load_agencies() -> tuple[list[str], dict]:
-    txt = open(os.path.join(ROOT, 'src/employsi/data/canberraGov.ts')).read()
-    block = re.search(r'const AGENCIES:\s*AgencyEntry\[\]\s*=\s*\[(.*?)\];', txt, re.S)
-    names, hubs = [], {}
-    if block:
-        for m in re.finditer(r'\[\s*("(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\')\s*(?:,\s*\'([^\']+)\')?\s*\]', block.group(1)):
-            raw = m.group(1)[1:-1].replace('\\"', '"').replace("\\'", "'")
-            names.append(raw)
-            hubs[aps_id(raw)] = m.group(2) or 'canberra'
-    return names, hubs
+    """Every federal agency, via scripts/aps-roster.ts — never a regex.
+
+    This read the TypeScript with a regex until 2026-08-16, and the regex only
+    accepted a hub override in SINGLE quotes:
+
+        (?:,\\s*'([^']+)')?\\s*\\]
+
+    Prettier writes the file with DOUBLE quotes, so ["Reserve Bank of Australia",
+    "sydney"] did not match at all and the entry was dropped — not logged, not
+    counted, just absent. The loader returned 49 agencies where canberraGov.ts
+    declares 56, and the seven lost were exactly the seven that carry a hub
+    because they are not in Canberra: ASIC, APRA, the RBA, the Bureau of
+    Meteorology, ARPANSA, the Australian Space Agency and the AIFS. Their
+    vacancies could never be attributed, because their names were not in the
+    table being matched against.
+
+    scripts/roster.py exists to end this exact failure elsewhere in the tree; it
+    raises rather than falling back, on the reasoning that a short roster which
+    looks like a successful run is the bug. Same rule here.
+    """
+    try:
+        p = subprocess.run(['bun', 'run', os.path.join(HERE, 'aps-roster.ts')],
+                           capture_output=True, timeout=120, cwd=ROOT)
+    except FileNotFoundError as e:
+        raise RuntimeError(
+            'bun is required to read the APS agency roster '
+            '(canberraGov.ts derives ids and hubs at module load, so it cannot '
+            'be read from source). Install bun: https://bun.sh') from e
+    if p.returncode != 0:
+        raise RuntimeError(f'APS roster dump failed: {p.stderr.decode()[:300]}')
+    rows = json.loads(p.stdout.decode())
+    if not isinstance(rows, list) or not rows:
+        raise RuntimeError('APS roster dump was empty')
+    return [r['name'] for r in rows], {r['id']: r['hub'] for r in rows}
 
 
 AGENCY_NAMES, AGENCY_HUB = load_agencies()
 AGENCY_BY_NORM = {norm(n): aps_id(n) for n in AGENCY_NAMES}
-AGENCY_SORTED = sorted(AGENCY_NAMES, key=lambda n: len(n), reverse=True)
+AGENCY_CANON = {norm(n): n for n in AGENCY_NAMES}
+
+
+def _agency_keys() -> list[tuple[str, str]]:
+    """Normalised text a job's agency field may carry → the canonical agency.
+
+    Two keys per agency, longest first so the specific wins:
+
+      "department of employment and workplace relations"   the name as declared
+      "of employment and workplace relations"              decapitated
+
+    The decapitated key exists because the board's own text does not always
+    survive extraction with its leading word intact — see agency_to_id below.
+    """
+    keys: list[tuple[str, str]] = []
+    for name in AGENCY_NAMES:
+        n = norm(name)
+        keys.append((n, name))
+        headless = re.match(r'^department\s+(.+)$', n)
+        if headless:
+            keys.append((headless.group(1), name))
+    keys.sort(key=lambda k: -len(k[0]))
+    return keys
+
+
+AGENCY_KEYS = _agency_keys()
 
 
 def agency_to_id(agency: str) -> tuple[str, str]:
-    """Map a job's agency text to an aps-* id ONLY (never a state gov id)."""
+    """Map a job's agency text to an aps-* id ONLY (never a state gov id).
+
+    THE TEXT ARRIVES WITH THE JOB TITLE STUCK TO IT, and often without its first
+    word. Both come from jobs_extract's block mining: the APS board renders the
+    agency and the title as sibling elements, `text_of` flattens them into one
+    run, and the field grab then took a fixed 70 characters. Measured against the
+    230 rows this had put in the unattributed bucket by 2026-08-16:
+
+        "of Foreign Affairs and Trade Assistant Director, Fraud and Sanctions C"
+        "of Finance Senior Drupal Developer $ 101,355 to $ 123,702 Opportunity"
+
+    So an equality test — which is all this did, plus a substring rule that could
+    not fire on strings shaped like these — bucketed essentially everything. Two
+    of 232 rows reached a real agency, and both were CSIRO, the one agency whose
+    name is a single token with nothing in front of it.
+
+    Matching is therefore EXACT, then LONGEST PREFIX, and nothing looser. Prefix
+    is not a guess at the shape: the corruption only ever appends (the title
+    follows the agency), so what survives is always the head of the string.
+    Measured over those 230 rows, prefix matching recovers 39 of the 68 distinct
+    strings and every recovery is correct; a substring pass on top recovered no
+    additional string, so it is deliberately absent rather than kept as a
+    safety net — a rule that adds no true positives can only add false ones,
+    and filing a vacancy under the wrong employer is the error this archive is
+    least willing to make.
+
+    The 29 that stay in the bucket carry no agency text at all ("Senior Cloud
+    Engineer $ 123,193 to ..."), or name a Commonwealth employer that is not in
+    canberraGov.ts — Parliamentary Services, the House of Representatives, ANSTO
+    and NEMA all appear in the live data and are not in the roster's 56.
+
+    Returns the CANONICAL name, not the text that was matched, so the archive
+    stops storing 70-character fragments as employer names.
+    """
     n = norm(agency)
     if not n:
         return 'aps-gov', 'Australian Public Service'
     if n in AGENCY_BY_NORM:
-        return AGENCY_BY_NORM[n], agency.strip()
-    for name in AGENCY_SORTED:
-        nn = norm(name)
-        if nn and (nn in n or n in nn):
-            return aps_id(name), agency.strip()
+        return AGENCY_BY_NORM[n], AGENCY_CANON[n]
+    for key, name in AGENCY_KEYS:
+        if key and n.startswith(key + ' '):
+            return aps_id(name), name
     return 'aps-gov', agency.strip() or 'Australian Public Service'
 
 
@@ -238,37 +321,185 @@ PAGE_SIZE = 20  # APS board's own page size; offsets step by this
 # nothing on it.
 SETTLE_S = 12
 
+# How many "Load More" clicks to allow. The board serves 15 a click and advertised
+# 608 vacancies on 2026-08-16, so ~41 clicks covers it; 60 leaves headroom for the
+# board growing without letting a control that never disappears spin forever.
+MAX_LOADS = int(_opt('--max-loads', 60))
 
-def render(url: str) -> str | None:
-    """Rendered page, from a local browser by default; --oxylabs for the proxy.
+# The Aura endpoint the board's results arrive on. Matched loosely because the
+# query string carries a per-session token; the path is the stable part.
+AURA_URL_RE = r'/aura\?|sfsites/aura'
+
+# Only describe responses big enough to plausibly BE the board. The framework
+# chatter on this page is 1.6–9KB a piece; the ApexAction payloads are 114KB and
+# 1.78MB, so this reports the candidates and stays quiet about the beacons.
+SHAPE_MIN_BYTES = 50_000
+
+# Params worth seeing in an ApexAction POST. The body is a URL-encoded blob with
+# the whole Aura context in it (component descriptors, framework uid, the session
+# token) — hundreds of lines of noise around the handful of numbers that actually
+# select which slice of the board comes back.
+_PAGER_KEYS = re.compile(
+    r'"(\w*(?:page|offset|limit|size|start|index|from|count|sort|total)\w*)"\s*:\s*'
+    r'("[^"]{0,40}"|-?\d+|true|false|null)', re.I)
+
+
+# Controls that might advance the board. Two ways to reach page 2 of an Aura
+# app: replay its ApexAction with a different page number, or click the thing the
+# user clicks. Clicking is the more durable of the two — it needs no session
+# token and survives a change to the action's parameters — so this reports what
+# is available to click before choosing between them.
+_CONTROL = re.compile(
+    r'<(?:button|a)\b[^>]*?(?:aria-label|title)="([^"]{1,60})"[^>]*>|'
+    r'<(?:button|a)\b[^>]*>\s*([^<]{1,40}?)\s*<', re.I)
+_PAGER_WORDS = re.compile(r'next|more|page|show|load|›|»|＞', re.I)
+
+
+def _pager_controls(html: str, limit: int = 12) -> list[str]:
+    """Labels of clickable things that look like pagination."""
+    out, seen = [], set()
+    for m in _CONTROL.finditer(html or ''):
+        label = (m.group(1) or m.group(2) or '').strip()
+        if not label or not _PAGER_WORDS.search(label):
+            continue
+        key = label.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(label)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _pager_params(post_data: str) -> str:
+    """The pagination-ish parameters out of an Aura POST, or a reason there are none."""
+    if not post_data:
+        return '(no post body — not an XHR we can replay)'
+    try:
+        blob = urllib.parse.unquote_plus(post_data)
+    except Exception:  # noqa: BLE001
+        blob = post_data
+    hits = _PAGER_KEYS.findall(blob)
+    if not hits:
+        return f'no page-ish params in {len(blob)} chars; head={blob[:100]!r}'
+    seen, out = set(), []
+    for k, v in hits:
+        if k.lower() in seen:
+            continue
+        seen.add(k.lower())
+        out.append(f'{k}={v}')
+    # Also name the Apex method, so the action to replay is identified.
+    method = re.search(r'"(?:method|apexMethod|classname|method)"\s*:\s*"([^"]+)"', blob, re.I)
+    prefix = f'{method.group(1)} · ' if method else ''
+    return prefix + ' '.join(out[:14])
+
+
+def render(url: str) -> tuple[str | None, list[tuple[str, str]]]:
+    """Rendered page plus any Aura responses, as (html, [(url, body), ...]).
 
     APS needs JavaScript executed and, measured 2026-08-04, nothing else: a
     headless Chromium on an ordinary GitHub runner read 15 vacancies out of this
     board through the same `jobs_extract` path used below. The residential IP was
-    paying for a browser we can run ourselves."""
+    paying for a browser we can run ourselves.
+
+    The Oxylabs path returns no captures — it fetches a rendered document, not a
+    session — so `--oxylabs` keeps the DOM behaviour it always had.
+    """
     if VIA_OXYLABS:
         content, status = oxy.fetch(url, geo='Australia', render=True)
         if not content:
             sys.stderr.write(f'  (oxylabs status={status})\n')
-        return content
-    return browser_fetch.render(url, [{'type': 'wait', 'wait_time_s': SETTLE_S}])
+        return content, []
+    return browser_fetch.render_capturing(url, AURA_URL_RE, [
+        {'type': 'wait', 'wait_time_s': SETTLE_S},
+        # The board pages by "Load More", not by the `?offset=` in SEARCH_URL —
+        # measured 2026-08-16, page 2 of that URL returned the same fifteen rows,
+        # which is why the archive held 232 rows for the whole APS against a
+        # jobListingCount of 608. Each click fires a fresh ApexAction and the
+        # capture collects its response, so the whole board arrives in one render.
+        {'type': 'click_until_gone', 'selector': {'type': 'text', 'value': 'Load More'},
+         'max': MAX_LOADS, 'wait_s': 1.5, 'label': 'Load More'},
+    ])
 
 
 def scrape_board(max_pages: int):
-    """Walk the APS board, extracting the Aura-hydrated results.
+    """Walk the APS board, reading the Aura RESPONSES rather than the cards.
 
-    Pagination is offset-based. We stop as soon as a page yields no NEW jobs, so
-    a short board costs only a couple of requests."""
+    WHY THE RESPONSE AND NOT THE PAGE. This board is a Salesforce Aura app: the
+    results arrive on a session-gated endpoint as JSON and are rendered
+    client-side. Reading `page.content()` therefore reads the rendered cards,
+    where the agency, title and salary have been flattened into one run of text —
+    and recovering them from that is what filed 230 of 232 archived rows under a
+    fragment of a job ad. The response carries `Agency__c` as its own field, which
+    is the shape test_jobs_extract.py has always covered.
+
+    So each page is now read twice and the better answer wins: the captured JSON
+    if it yields rows, the DOM otherwise. That ordering is deliberate rather than
+    a preference — a page that renders cards without the capture firing still
+    works exactly as it did, so this cannot be worse than what it replaces.
+
+    Every run says which path produced its rows and what the capture saw, because
+    the failure being fixed here was silent: a scraper mining the wrong thing
+    looks identical to one mining the right thing until you read the rows.
+    """
     scraped, seen = [], set()
     for pg in range(max_pages):
         url = SEARCH_URL.format(offset=pg * PAGE_SIZE)
-        content = render(url)
+        content, captured = render(url)
         if not content:
             sys.stderr.write(f'  page {pg + 1}: no content\n')
             break
-        rows, how = jx.extract_jobs(content, r'job-details', 'https://www.apsjobs.gov.au')
+
+        # What the capture actually caught, named on every run. Without this the
+        # difference between "no Aura traffic", "traffic with no jobs in it" and
+        # "traffic we failed to parse" is invisible from a CI log.
+        json_rows: list[dict] = []
+        for cap in captured:
+            cap_url, body = cap['url'], cap['body']
+            got = jx.jobs_from_json_text(body)
+            # The board states its own total. Reported because the gap between it
+            # and what we collect IS the under-collection: measured 2026-08-16 the
+            # payload said jobListingCount 608 while the walk returned 15 and the
+            # whole archive held 232 rows for the entire APS.
+            if pg == 0:
+                total = re.search(r'"jobListingCount"\s*:\s*(\d+)', body)
+                if total:
+                    sys.stderr.write(
+                        f'    [aura] board advertises {total.group(1)} vacancies '
+                        f'({len(got)} in this response)\n')
+                # The REQUEST that produced the vacancies. On an ApexAction every
+                # call goes to the same URL, so the page number and page size are
+                # in the POST or nowhere — and they are what a fix has to drive.
+                if got:
+                    sys.stderr.write(f'    [aura] request: {_pager_params(cap["post_data"])}\n')
+            if pg == 0:
+                tail = cap_url.split('/')[-1][:48]
+                sys.stderr.write(
+                    f'    [aura] {len(body):>7} bytes  {len(got):>3} job-like  …{tail}\n')
+                # A big response that yields nothing is the interesting case: the
+                # capture is plainly working (measured 2026-08-16, three
+                # ApexAction bodies at 1.78MB each) and the parser still finds no
+                # jobs, which is either the wrong schema or not JSON at all. The
+                # opening bytes and the key histogram separate those two, and
+                # neither needs 1.78MB in the log to see.
+                if not got and len(body) >= SHAPE_MIN_BYTES:
+                    sys.stderr.write(f'      {jx.json_shape(body)}\n')
+            json_rows.extend(got)
+        if pg == 0 and not captured:
+            sys.stderr.write(f'    [aura] no response matched {AURA_URL_RE}\n')
+        if pg == 0:
+            ctrls = _pager_controls(content)
+            sys.stderr.write(f'    [pager] clickable candidates: {ctrls or "none found"}\n')
+
+        dom_rows, how = jx.extract_jobs(content, r'job-details', 'https://www.apsjobs.gov.au')
+        if json_rows:
+            rows, how = json_rows, 'aura-json'
+        else:
+            rows = dom_rows
         if not rows and pg == 0:
             jx.diagnose(content, 'aps-page1')
+
         new = 0
         for r in rows:
             key = (r['t'].lower(), (r.get('id') or ''), (r.get('loc') or '').lower())
@@ -277,15 +508,47 @@ def scrape_board(max_pages: int):
             seen.add(key)
             scraped.append(r)
             new += 1
-        sys.stderr.write(f'  page {pg + 1}: {len(rows)} rows ({new} new) via {how}\n')
+        sys.stderr.write(
+            f'  page {pg + 1}: {len(rows)} rows ({new} new) via {how}'
+            f'{f" [dom would give {len(dom_rows)}]" if json_rows else ""}\n')
         if new == 0:
+            break
+        if json_rows:
+            # The Load More walk above already took the whole board in this one
+            # render, so there is nothing for a second `?offset=` page to add —
+            # and it provably adds nothing anyway: page 2 of that URL returns the
+            # same rows as page 1, which is the bug being fixed. Going round again
+            # would re-render and re-click the entire board for a guaranteed zero.
+            sys.stderr.write('  (whole board taken in one render; no offset walk needed)\n')
             break
     return scraped
 
 
+# Below this share of scraped vacancies reaching a named agency, the run is
+# reporting a board it cannot actually read, and says so instead of exiting 0.
+#
+# Nothing asserted this until 2026-08-16, and that is the whole reason the
+# attribution bug survived: the feed wrote rows every night, the workflow went
+# green every night, and 230 of its 232 rows were filed under a 70-character
+# fragment of a job ad. A scraper that returns garbage looks exactly like a
+# scraper that works, right up until someone opens an agency card.
+#
+# The floor is deliberately far below what a healthy run produces (measured over
+# the archive's own strings, prefix matching alone resolves ~57% of the distinct
+# employer strings, and more by row because Defence and Finance advertise most)
+# so ordinary variation in what the board is advertising cannot trip it. It is a
+# collapse detector, not a quality target. MIN_SAMPLE keeps a genuinely quiet
+# board — a long weekend, a short first page — from failing on three rows.
+MIN_ATTRIBUTED_SHARE = 0.25
+# Five, not twenty. Twenty was set from the archive's 232 stored rows without
+# checking what one RUN actually returns — and measured on 2026-08-16 the board
+# yields 15 vacancies, so the floor sat above the entire sample and the guard
+# could never fire. It duly reported "attribution: 0/15 (0%)" and exited 0,
+# which is precisely the silent-green failure it was added to end.
+MIN_SAMPLE = 5
+
+
 def main() -> int:
-    if not AGENCY_NAMES:
-        sys.exit('Could not parse agencies from src/employsi/data/canberraGov.ts')
     if VIA_OXYLABS and not (os.environ.get('OXYLABS_USERNAME')
                             and os.environ.get('OXYLABS_PASSWORD')):
         sys.exit('--oxylabs needs OXYLABS_USERNAME / OXYLABS_PASSWORD.')
@@ -314,6 +577,23 @@ def main() -> int:
     sys.stderr.write(f'\nDone. {len(scraped)} vacancies scraped, {written} new rows archived '
                      f'({matched} attributed to a specific agency, {written - matched} to the APS bucket, '
                      f'{len(scraped) - len(rows)} already archived by another source).\n')
+
+    # Attribution health over EVERY vacancy read this run, not just the new rows:
+    # on a quiet day almost everything is a re-seen ad, so a ratio over `kept`
+    # alone would be computed from a handful of rows and swing wildly.
+    seen_ids = [agency_to_id(r.get('agency') or '')[0] for r in scraped]
+    named = sum(1 for c in seen_ids if c != 'aps-gov')
+    share = named / len(seen_ids) if seen_ids else 0.0
+    sys.stderr.write(f'  attribution: {named}/{len(seen_ids)} '
+                     f'({share:.0%}) of scraped vacancies reached a named agency.\n')
+    if len(seen_ids) >= MIN_SAMPLE and share < MIN_ATTRIBUTED_SHARE:
+        sys.stderr.write(
+            f'\n✗ Only {share:.0%} of {len(seen_ids)} vacancies could be attributed to an '
+            f'agency (floor {MIN_ATTRIBUTED_SHARE:.0%}). The rows are archived, but almost all of '
+            f'them are in the generic aps-gov bucket, so the agency cards will read empty. '
+            f'This is what a changed board layout looks like — run with --solve and compare the '
+            f'agency column against the live page.\n')
+        return 2
     return 0
 
 

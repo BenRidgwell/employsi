@@ -7,6 +7,8 @@
 // first, which makes dropping a file in the folder the way to override a wrong
 // or low-quality badge without editing any data file.
 export const LOCAL_LOGO: Record<string, string> = {
+  "adelaide-axe": "/logos/adelaide-axe.jpeg",
+  "adelaide-coe": "/logos/adelaide-coe.jpeg",
   "perth-gov-arts-and-culture-trust": "/logos/perth-gov-arts-and-culture-trust.jpeg",
   "perth-gov-department-of-creative-industries-tourism-and-sport":
     "/logos/perth-gov-department-of-creative-industries-tourism-and-sport.png",
@@ -35,5 +37,61 @@ export const LOCAL_LOGO: Record<string, string> = {
   "perth-gov-western-australia-police-force":
     "/logos/perth-gov-western-australia-police-force.webp",
   "priv-cjd-equipment": "/logos/priv-cjd-equipment.jpg",
+  "priv-drake-supermarkets": "/logos/priv-drake-supermarkets.png",
+  "priv-leader-computers": "/logos/priv-leader-computers.png",
   "priv-vgw-holdings": "/logos/priv-vgw-holdings.jpeg",
+  "sa-gov-adelaide-festival-centre-trust": "/logos/sa-gov-adelaide-festival-centre-trust.jpeg",
+  "sa-gov-attorney-general-s-department": "/logos/sa-gov-attorney-general-s-department.jpg",
+  "sa-gov-carclew-youth-arts-centre": "/logos/sa-gov-carclew-youth-arts-centre.png",
+  "sa-gov-child-death-and-serious-injury-review-committee":
+    "/logos/sa-gov-child-death-and-serious-injury-review-committee.png",
+  "sa-gov-commissioner-for-children-and-young-people":
+    "/logos/sa-gov-commissioner-for-children-and-young-people.jpg",
+  "sa-gov-dairysafe": "/logos/sa-gov-dairysafe.jpg",
+  "sa-gov-department-for-child-protection": "/logos/sa-gov-department-for-child-protection.png",
+  "sa-gov-department-for-energy-and-mining": "/logos/sa-gov-department-for-energy-and-mining.png",
+  "sa-gov-department-for-housing-and-urban-development":
+    "/logos/sa-gov-department-for-housing-and-urban-development.png",
+  "sa-gov-department-for-infrastructure-and-transport":
+    "/logos/sa-gov-department-for-infrastructure-and-transport.png",
+  "sa-gov-department-of-human-services": "/logos/sa-gov-department-of-human-services.jpeg",
+  "sa-gov-department-of-state-development": "/logos/sa-gov-department-of-state-development.png",
+  "sa-gov-department-of-the-premier-and-cabinet":
+    "/logos/sa-gov-department-of-the-premier-and-cabinet.png",
+  "sa-gov-department-of-treasury-and-finance":
+    "/logos/sa-gov-department-of-treasury-and-finance.jpeg",
+  "sa-gov-electoral-commission-of-sa": "/logos/sa-gov-electoral-commission-of-sa.jpg",
+  "sa-gov-environment-protection-authority": "/logos/sa-gov-environment-protection-authority.png",
+  "sa-gov-essential-services-commission-of-sa":
+    "/logos/sa-gov-essential-services-commission-of-sa.png",
+  "sa-gov-guardian-for-children-and-young-people":
+    "/logos/sa-gov-guardian-for-children-and-young-people.jpg",
+  "sa-gov-history-trust-of-south-australia": "/logos/sa-gov-history-trust-of-south-australia.jpg",
+  "sa-gov-independent-commission-against-corruption":
+    "/logos/sa-gov-independent-commission-against-corruption.png",
+  "sa-gov-legal-profession-conduct-commissioner":
+    "/logos/sa-gov-legal-profession-conduct-commissioner.jpeg",
+  "sa-gov-legal-services-commission": "/logos/sa-gov-legal-services-commission.png",
+  "sa-gov-lifetime-support-authority-of-sa": "/logos/sa-gov-lifetime-support-authority-of-sa.jpeg",
+  "sa-gov-motor-accident-commission": "/logos/sa-gov-motor-accident-commission.jpeg",
+  "sa-gov-office-for-early-childhood-development":
+    "/logos/sa-gov-office-for-early-childhood-development.png",
+  "sa-gov-office-of-hydrogen-power-sa": "/logos/sa-gov-office-of-hydrogen-power-sa.jpeg",
+  "sa-gov-office-of-the-sa-productivity-commission":
+    "/logos/sa-gov-office-of-the-sa-productivity-commission.png",
+  "sa-gov-sa-country-fire-service": "/logos/sa-gov-sa-country-fire-service.png",
+  "sa-gov-sa-employment-tribunal": "/logos/sa-gov-sa-employment-tribunal.jpeg",
+  "sa-gov-sa-fire-and-emergency-services-commission":
+    "/logos/sa-gov-sa-fire-and-emergency-services-commission.jpeg",
+  "sa-gov-sa-lotteries": "/logos/sa-gov-sa-lotteries.png",
+  "sa-gov-sa-metropolitan-fire-service": "/logos/sa-gov-sa-metropolitan-fire-service.png",
+  "sa-gov-sa-motor-sport-board": "/logos/sa-gov-sa-motor-sport-board.png",
+  "sa-gov-sa-state-emergency-service": "/logos/sa-gov-sa-state-emergency-service.jpeg",
+  "sa-gov-sa-tourism-commission": "/logos/sa-gov-sa-tourism-commission.png",
+  "sa-gov-sace-board-of-sa": "/logos/sa-gov-sace-board-of-sa.jpg",
+  "sa-gov-state-opera-sa": "/logos/sa-gov-state-opera-sa.png",
+  "sa-gov-state-theatre-company-of-sa": "/logos/sa-gov-state-theatre-company-of-sa.jpeg",
+  "sa-gov-tafe-sa": "/logos/sa-gov-tafe-sa.jpeg",
+  "sa-gov-teachers-registration-board": "/logos/sa-gov-teachers-registration-board.jpeg",
+  "sydney-agl": "/logos/sydney-agl.png",
 };

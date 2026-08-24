@@ -291,6 +291,28 @@ def main() -> int:
         return 0
     sys.stderr.write(f'\nDone (Oxylabs). {st["fetch"]} listings fetched, {st["new"]} new rows '
                      f'archived, {st["empty"]} companies with 0 jobs.\n')
+
+    # A TOTAL WIPEOUT IS A FAILURE, and this was the one Oxylabs driver that did
+    # not say so. Measured 2026-08-18 through 2026-08-20: three consecutive runs
+    # printed "0 listings fetched, 0 new rows archived, 395 companies with 0
+    # jobs", exited 0, and were reported green — while every request underneath
+    # returned HTTP 429, the Oxylabs plan quota. Nothing wrote for four days and
+    # the workflow history said everything was fine.
+    #
+    # zhaopin-to-d1.py and indeed-to-d1.py both already fail on exactly this
+    # shape. The asymmetry was the bug: three sources sharing one proxy account,
+    # and only two of them able to report it running out.
+    #
+    # The condition is deliberately "not ONE listing across every company", not
+    # a threshold. Individual companies legitimately have nothing advertised —
+    # `empty` is a normal figure and always has been — but 395 of 395 returning
+    # nothing is the account or the endpoint, never the labour market.
+    if sel and not st['fetch']:
+        sys.stderr.write(
+            f'\nFAILED: {len(sel)} companies walked and not one listing fetched. That is the '
+            f'fetch path failing, not LinkedIn having no jobs — an HTTP 429 above is the '
+            f'Oxylabs plan quota rather than LinkedIn refusing us. Nothing written.\n')
+        return 2
     return 0
 
 

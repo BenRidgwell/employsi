@@ -36,16 +36,25 @@ import { logoFor } from "./companyLogo";
 import type { RolePoint } from "./openRolesFn";
 import type { ShareSeries } from "./shareSeriesFn";
 
+/** Which badge the tile draws. Three fixed stats, so three fixed glyphs. */
+export type StatIcon = "roles" | "skill" | "headcount";
+
 export interface CardStat {
   value: string;
   label: string;
+  /** Badge glyph. The tile draws nothing if absent, so a new stat is not
+   *  silently given someone else's icon. */
+  icon?: StatIcon;
   /** The value is a NAME, not a figure. The tile drops the mono display face
    *  for it — a skill title set at 22px monospace does not fit a third of a
    *  440px card, and set in figures' clothing it reads as a measurement. */
   textValue?: boolean;
-  /** Small coloured figure beside the value (the headcount YoY). */
+  /** Small coloured figure below the value (the headcount YoY). */
   delta?: string | null;
   deltaUp?: boolean;
+  /** What the delta is measured over, set beside it in the quiet colour —
+   *  "12.8%" alone does not say over what. */
+  deltaNote?: string | null;
   /** Provenance line, e.g. "40,648 · Jun 2025". */
   sub?: string | null;
 }
@@ -256,24 +265,33 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
   const hc = input.headcount;
   const pay = input.medianPay;
   const top = input.topSkill;
+  // Labels are short because the tile is 132px per column and they now sit on
+  // their own line above the figure rather than beneath it — "Top skill in
+  // demand" wraps to three lines there. The section heading below already says
+  // "Skills in demand", so the longer phrasing was repeating itself anyway. The
+  // YoY qualifier moved onto the delta line, where the percentage it qualifies
+  // actually is.
   const stats: CardStat[] = [
-    { value: open.toLocaleString("en-AU"), label: "Open roles" },
+    { value: open.toLocaleString("en-AU"), label: "Open roles", icon: "roles" },
     top
       ? {
           value: top.name,
-          label: "Top skill in demand",
+          label: "Top skill",
           sub: `${top.n} live ${top.n === 1 ? "ad" : "ads"}`,
           textValue: true,
+          icon: "skill",
         }
-      : { value: "—", label: "Top skill in demand", sub: "no live ads mapped yet" },
+      : { value: "—", label: "Top skill", sub: "no live ads mapped yet", icon: "skill" },
   ];
   if (hc) {
     stats.push({
       value: hc.now >= 1000 ? `${(hc.now / 1000).toFixed(hc.now >= 10000 ? 0 : 1)}k` : `${hc.now}`,
-      label: "Headcount · YoY",
+      label: "Headcount",
       delta: signed(hc.yoy),
       deltaUp: hc.yoy >= 0,
+      deltaNote: "YoY",
       sub: `${hc.now.toLocaleString("en-AU")} · ${hc.asof}`,
+      icon: "headcount",
     });
   } else {
     // No filed headcount: show the figure we do have and DON'T attach a YoY,
@@ -285,6 +303,7 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
           : `${c.headcount}`,
       label: "Headcount",
       sub: isPrivate ? "not disclosed · estimated" : null,
+      icon: "headcount",
     });
   }
 
