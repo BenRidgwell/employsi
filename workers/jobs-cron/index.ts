@@ -1189,6 +1189,8 @@ const PORTAL_TICKS: Record<string, number> = {
   "35 12 * * *": 48,
   // Group 49 — Carclew's own page.
   "45 12 * * *": 49,
+  // Group 50 — West Beach Parks and Drake.
+  "55 12 * * *": 50,
 };
 
 const NEWS_TICKS: Record<string, number> = {

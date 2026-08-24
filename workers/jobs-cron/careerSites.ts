@@ -141,6 +141,7 @@ type Platform =
   | "uwajobs"
   | "carclew"
   | "statetheatre"
+  | "expr3ss"
   | "clinch"
   | "johnhughes"
   | "elmo"
@@ -1695,6 +1696,30 @@ export const SITES: SiteDef[] = [
     homeHub: "perth",
   },
   {
+    id: "sa-gov-west-beach-parks",
+    name: "West Beach Parks",
+    sector: "Government",
+    platform: "elmo",
+    // Same ELMO shape as Steadfast. Measured 2026-08-24: 6 roles, matching the
+    // board's own "West Beach (6)" facet count.
+    endpoint: "https://westbeachparks.elmotalent.com.au/careers/default/jobs",
+    origin: "https://westbeachparks.elmotalent.com.au",
+    homeHub: "adelaide",
+  },
+  {
+    id: "priv-drake-supermarkets",
+    name: "Drake Supermarkets",
+    sector: "Supermarket retail",
+    platform: "expr3ss",
+    // The board renders every division in one response, so the query string is
+    // part of the endpoint. Measured 2026-08-24: 39 rows, 39 distinct job ids.
+    endpoint:
+      "https://drakesupermarkets.expr3ss.com/home?action=&display=division&hotjobs=on" +
+      "&collapse=on&displaystyle=41&search=",
+    origin: "https://drakesupermarkets.expr3ss.com",
+    homeHub: "adelaide",
+  },
+  {
     id: "priv-detmold-group",
     name: "Detmold Group",
     sector: "Packaging manufacturing",
@@ -2667,6 +2692,9 @@ export const PORTAL_GROUPS: string[][] = [
   // Detmold (LiveHire, 12 roles in one call) and State Theatre (an
   // accordion, empty today). One request each.
   ["sa-gov-carclew-youth-arts-centre", "priv-detmold-group", "sa-gov-state-theatre-company-of-sa"],
+  // Group 50 — West Beach Parks (ELMO, 6 roles) and Drake (Expr3ss!, 39 in
+  // one response). Both single requests.
+  ["sa-gov-west-beach-parks", "priv-drake-supermarkets"],
 ];
 
 const UA =
@@ -5351,6 +5379,69 @@ async function fetchStateTheatre(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── Expr3ss! ─────────────────────────────────────────────────────────────────
+/**
+ * Expr3ss! server-renders its whole board into one table. Rows are
+ * `<tr class='jobSearchN'>` — SINGLE-quoted attributes, which is why the usual
+ * `class="` patterns find nothing here.
+ *
+ *   <td class='jobTitle'>
+ *     <div class='link jobdescription' onclick="location.href='jobDetails?selectJob=2073&…'">
+ *       After School and Weekend Casuals <span class='location'>[Drakes Kingscote]</span>
+ *     </div>
+ *   </td>
+ *   <td class='jobWorkType center'>Casual / Temp</td>
+ *
+ * DEDUPE BY JOB ID, NEVER BY TITLE. Measured on Drake 2026-08-24: 39 rows, 39
+ * distinct selectJob ids, 39 distinct (title, location) pairs — but only 25
+ * distinct TITLES. A supermarket group advertises "Bakery Assistant Manager" at
+ * several stores at once, and they are different vacancies in different suburbs.
+ * Keying on the title would have thrown away 14 of 39 real roles and looked
+ * tidy doing it.
+ *
+ * THE PAGE'S OWN COUNTERS CANNOT BE USED AS A TOTAL, which is worth writing down
+ * because they look like one. The board renders a "N Current Jobs" heading per
+ * DIVISION panel — 19, 14, 2, 17, 13, 4, 7 on that measurement — and a role can
+ * sit in more than one panel, so they neither sum to the board nor agree with
+ * each other. The row count after id-dedupe is the honest figure.
+ *
+ * The location is the store name in square brackets. It is kept as published:
+ * hubFor resolves "Drakes Kingscote" through the home hub, and inventing a
+ * suburb for it would be worse than an approximate pin.
+ */
+async function fetchExpr3ss(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const row of html.split(/<tr class='jobSearch\d+'/i).slice(1)) {
+    const block = row.slice(0, row.indexOf("</tr>") + 1 || 4000);
+    const cell = block.match(/class='link jobdescription'[^>]*>([\s\S]*?)<\/div>/i);
+    if (!cell) continue;
+    const inner = cell[1];
+    const locM = inner.match(/<span class='location'>\[?([^\]<]*)\]?<\/span>/i);
+    const title = clean(inner.replace(/<span class='location'>[\s\S]*?<\/span>/i, ""));
+    // The id is the only thing that distinguishes two stores hiring the same
+    // role — see the note above.
+    const id = block.match(/selectJob=(\d+)/i)?.[1] ?? "";
+    const key = id || `${title}|${locM?.[1] ?? ""}`;
+    if (!title || seen.has(key)) continue;
+    seen.add(key);
+    const work = block.match(/<td class='jobWorkType[^']*'\s*>([\s\S]*?)<\/td>/i);
+    out.push(
+      job(
+        site,
+        title,
+        locM ? clean(locM[1]) : "",
+        id ? `${site.origin}/jobDetails?selectJob=${id}` : site.endpoint,
+        today(),
+        clean(work?.[1] ?? "") || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
 // ── BigRedSky (NRW Holdings) ─────────────────────────────────────────────────
 /**
  * BigRedSky renders its job list into a `brs_report_table_16` on the page —
@@ -7099,6 +7190,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   uwajobs: fetchUwaJobs,
   carclew: fetchCarclew,
   statetheatre: fetchStateTheatre,
+  expr3ss: fetchExpr3ss,
   clinch: fetchClinch,
   johnhughes: fetchJohnHughes,
   elmo: fetchElmo,
@@ -7165,6 +7257,8 @@ const SOURCE_TAG: Record<Platform, string> = {
   carclew: "carclew",
   // State Theatre runs no ATS; the tag names the page.
   statetheatre: "statetheatre",
+  // Expr3ss! is a real ATS, so the tag is the platform.
+  expr3ss: "expr3ss",
   clinch: "cl",
   johnhughes: "johnhughes",
   elmo: "elmo",
