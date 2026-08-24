@@ -1187,6 +1187,8 @@ const PORTAL_TICKS: Record<string, number> = {
   // Group 48 — UWA and Murdoch. Their own boards, run alongside the
   // uniroles.com.au aggregator rather than instead of it.
   "35 12 * * *": 48,
+  // Group 49 — Carclew's own page.
+  "45 12 * * *": 49,
 };
 
 const NEWS_TICKS: Record<string, number> = {

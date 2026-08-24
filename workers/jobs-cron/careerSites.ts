@@ -139,6 +139,7 @@ type Platform =
   | "jobadderboard"
   | "workgr8"
   | "uwajobs"
+  | "carclew"
   | "clinch"
   | "johnhughes"
   | "elmo"
@@ -1693,6 +1694,17 @@ export const SITES: SiteDef[] = [
     homeHub: "perth",
   },
   {
+    id: "sa-gov-carclew-youth-arts-centre",
+    name: "Carclew Youth Arts Centre",
+    sector: "Government",
+    platform: "carclew",
+    // Measured 2026-08-21: three roles, stated as "the following three roles"
+    // on the page itself. See fetchCarclew for why the article scope matters.
+    endpoint: "https://carclew.com.au/join-the-team/",
+    origin: "https://carclew.com.au/join-the-team/",
+    homeHub: "adelaide",
+  },
+  {
     id: "uni-curtin-university",
     name: "Curtin University",
     sector: "Education",
@@ -2620,6 +2632,8 @@ export const PORTAL_GROUPS: string[][] = [
   // (UWA 34 vacancies over two pages, Murdoch 11 and Curtin one page each),
   // so they share a tick rather than taking one each.
   ["uni-university-of-western-australia", "uni-murdoch-university", "uni-curtin-university"],
+  // Group 49 — Carclew. A three-role page, so it costs one request.
+  ["sa-gov-carclew-youth-arts-centre"],
 ];
 
 const UA =
@@ -5174,6 +5188,78 @@ async function fetchUwaJobs(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── Carclew's own careers page ───────────────────────────────────────────────
+/**
+ * Carclew runs no ATS. Its vacancies are EDITORIAL PROSE on a WordPress page:
+ * a lead sentence naming how many roles there are, then one `<h3>` per role
+ * with a paragraph and a position-description PDF under each.
+ *
+ * SCOPE IS THE WHOLE PARSER HERE. Measured 2026-08-21: three `<h3>` inside
+ * `<main class="content-main">`, and FOUR in the page — the fourth is site
+ * furniture outside the article. Reading h3s document-wide would invent a
+ * vacancy called "Areas of interest" every single day, so the article boundary
+ * is not tidiness, it is the difference between three roles and four.
+ *
+ * THE PAGE STATES ITS OWN COUNT — "the following three roles" — and that is
+ * checked against what was parsed. It is the same discipline as bounding the
+ * uniroles walk by its advertised total: this markup is prose, an editor can
+ * add an `<h3>` sub-heading inside the article any day, and the sentence is the
+ * only independent statement of how many roles there really are. A mismatch is
+ * reported and the parse is still returned, because the count sentence is
+ * itself hand-written and may be the half that is stale.
+ *
+ * The role's URL is its position-description PDF where one follows the heading
+ * — that is the only per-role address on the page — else the page itself. No
+ * location is published; hubFor falls a blank back to Adelaide, which is right:
+ * Carclew is a single-site South Australian agency on North Terrace.
+ */
+const NUMBER_WORD: Record<string, number> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+};
+
+async function fetchCarclew(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  // Everything below reads the ARTICLE only — see the note above.
+  const main = html.match(/<main class="content-main">([\s\S]*?)<\/main>/i);
+  if (!main) return [];
+  const body = main[1];
+
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  // Split on the headings so each role keeps the block beneath it, which is
+  // where its position-description link lives.
+  const blocks = body.split(/<h3[^>]*>/i).slice(1);
+  for (const block of blocks) {
+    const end = block.indexOf("</h3>");
+    if (end < 0) continue;
+    const title = clean(block.slice(0, end));
+    if (!title || seen.has(title)) continue;
+    seen.add(title);
+    const pdf = block.slice(end).match(/href="([^"]+\.pdf)"/i);
+    out.push(job(site, title, "", pdf ? clean(pdf[1]) : site.endpoint, today(), "Career portal"));
+  }
+
+  const stated = clean(body).match(/following\s+([a-z]+)\s+roles?/i);
+  const want = stated ? NUMBER_WORD[stated[1].toLowerCase()] : undefined;
+  if (want !== undefined && want !== out.length) {
+    console.log(
+      `carclew: page says ${stated?.[1]} roles, parsed ${out.length} — ` +
+        `one of the two is stale, keeping what was parsed`,
+    );
+  }
+  return out;
+}
+
 // ── BigRedSky (NRW Holdings) ─────────────────────────────────────────────────
 /**
  * BigRedSky renders its job list into a `brs_report_table_16` on the page —
@@ -6920,6 +7006,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   jobadderboard: fetchJobAdderBoard,
   workgr8: fetchWorkGr8,
   uwajobs: fetchUwaJobs,
+  carclew: fetchCarclew,
   clinch: fetchClinch,
   johnhughes: fetchJohnHughes,
   elmo: fetchElmo,
@@ -6982,6 +7069,8 @@ const SOURCE_TAG: Record<Platform, string> = {
   workgr8: "workgr8",
   // UWA runs its own board rather than an ATS, so the tag names the site.
   uwajobs: "uwajobs",
+  // Carclew runs no ATS; the tag names the page, as aubgroup and zipco do.
+  carclew: "carclew",
   clinch: "cl",
   johnhughes: "johnhughes",
   elmo: "elmo",
