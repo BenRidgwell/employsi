@@ -9,6 +9,37 @@
 export const LOCAL_LOGO: Record<string, string> = {
   "adelaide-axe": "/logos/adelaide-axe.jpeg",
   "adelaide-coe": "/logos/adelaide-coe.jpeg",
+  "nt-gov-attorney-general-s-department": "/logos/nt-gov-attorney-general-s-department.svg",
+  "nt-gov-department-mining-and-energy": "/logos/nt-gov-department-mining-and-energy.jpeg",
+  "nt-gov-department-of-agriculture-and-fisheries":
+    "/logos/nt-gov-department-of-agriculture-and-fisheries.jpeg",
+  "nt-gov-department-of-children-and-families":
+    "/logos/nt-gov-department-of-children-and-families.jpeg",
+  "nt-gov-department-of-corporate-and-digital-development":
+    "/logos/nt-gov-department-of-corporate-and-digital-development.jpeg",
+  "nt-gov-department-of-corrections": "/logos/nt-gov-department-of-corrections.jpeg",
+  "nt-gov-department-of-education-and-training":
+    "/logos/nt-gov-department-of-education-and-training.jpeg",
+  "nt-gov-department-of-health": "/logos/nt-gov-department-of-health.png",
+  "nt-gov-department-of-housing-local-government-and-community-development":
+    "/logos/nt-gov-department-of-housing-local-government-and-community-development.jpeg",
+  "nt-gov-department-of-lands-planning-and-environment":
+    "/logos/nt-gov-department-of-lands-planning-and-environment.jpeg",
+  "nt-gov-department-of-legislative-assembly":
+    "/logos/nt-gov-department-of-legislative-assembly.png",
+  "nt-gov-department-of-logistics-and-infrastructure":
+    "/logos/nt-gov-department-of-logistics-and-infrastructure.jpeg",
+  "nt-gov-department-of-people-sport-and-culture":
+    "/logos/nt-gov-department-of-people-sport-and-culture.jpeg",
+  "nt-gov-department-of-the-chief-minister-and-cabinet":
+    "/logos/nt-gov-department-of-the-chief-minister-and-cabinet.png",
+  "nt-gov-department-of-tourism-and-hospitality":
+    "/logos/nt-gov-department-of-tourism-and-hospitality.jpeg",
+  "nt-gov-department-of-trade-business-and-asian-relations":
+    "/logos/nt-gov-department-of-trade-business-and-asian-relations.jpeg",
+  "nt-gov-department-of-treasury-and-finance":
+    "/logos/nt-gov-department-of-treasury-and-finance.jpeg",
+  "nt-gov-nt-fire-and-emergency-services": "/logos/nt-gov-nt-fire-and-emergency-services.jpeg",
   "perth-gov-arts-and-culture-trust": "/logos/perth-gov-arts-and-culture-trust.jpeg",
   "perth-gov-department-of-creative-industries-tourism-and-sport":
     "/logos/perth-gov-department-of-creative-industries-tourism-and-sport.png",
