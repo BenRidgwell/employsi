@@ -140,6 +140,7 @@ type Platform =
   | "workgr8"
   | "uwajobs"
   | "carclew"
+  | "statetheatre"
   | "clinch"
   | "johnhughes"
   | "elmo"
@@ -1694,6 +1695,36 @@ export const SITES: SiteDef[] = [
     homeHub: "perth",
   },
   {
+    id: "priv-detmold-group",
+    name: "Detmold Group",
+    sector: "Packaging manufacturing",
+    platform: "livehire",
+    // The SEGMENT CODE, not a URL — read out of the careers page's own LiveHire
+    // iframe, https://www.livehire.com/widgets/job-listings/detmoldgroup.
+    // Measured 2026-08-21: totalCount 12, hasMoreResults false. Roles are not
+    // all in Adelaide — one Sydney, one in the Philippines — so the locations
+    // the API returns are the placement, not the home hub.
+    endpoint: "detmoldgroup",
+    // livehire.com, NOT detmoldgroup.com — fetchLiveHire builds both the token
+    // and the search URL from `origin`, so pointing it at the employer's own
+    // marketing page makes every call 404 and the feed return a silent zero.
+    origin: "https://www.livehire.com",
+    homeHub: "adelaide",
+  },
+  {
+    id: "sa-gov-state-theatre-company-of-sa",
+    name: "State Theatre Company of SA",
+    sector: "Government",
+    platform: "statetheatre",
+    // Measured 2026-08-21: the accordion is present and EMPTY, and the page
+    // says "There are currently no vacant positions". See fetchStateTheatre for
+    // how that confirmed zero is told apart from a parse that has stopped
+    // working.
+    endpoint: "https://statetheatrecompany.com.au/careers/",
+    origin: "https://statetheatrecompany.com.au/careers/",
+    homeHub: "adelaide",
+  },
+  {
     id: "sa-gov-carclew-youth-arts-centre",
     name: "Carclew Youth Arts Centre",
     sector: "Government",
@@ -2632,8 +2663,10 @@ export const PORTAL_GROUPS: string[][] = [
   // (UWA 34 vacancies over two pages, Murdoch 11 and Curtin one page each),
   // so they share a tick rather than taking one each.
   ["uni-university-of-western-australia", "uni-murdoch-university", "uni-curtin-university"],
-  // Group 49 — Carclew. A three-role page, so it costs one request.
-  ["sa-gov-carclew-youth-arts-centre"],
+  // Group 49 — three small Adelaide boards: Carclew (a three-role page),
+  // Detmold (LiveHire, 12 roles in one call) and State Theatre (an
+  // accordion, empty today). One request each.
+  ["sa-gov-carclew-youth-arts-centre", "priv-detmold-group", "sa-gov-state-theatre-company-of-sa"],
 ];
 
 const UA =
@@ -5260,6 +5293,64 @@ async function fetchCarclew(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── State Theatre Company SA's own careers page ──────────────────────────────
+/**
+ * State Theatre runs no ATS. Its careers page holds an accordion of vacancies:
+ *
+ *   <div class="content_items">
+ *     <div class="t-copy content_contained"><p><em>There are currently no
+ *       vacant positions.</em></p></div>
+ *     <ul class="accordion content_contained"></ul>
+ *   </div>
+ *
+ * Measured 2026-08-21, and the board is EMPTY that day — which is why the
+ * container is parsed rather than the items. The `<ul class="accordion">` is
+ * there in the markup with nothing in it, so its existence is a fact; what a
+ * populated `<li>` looks like is not, because there has not been one to look at.
+ *
+ * THAT UNCERTAINTY IS HANDLED RATHER THAN GUESSED AROUND. Three states are told
+ * apart, because two of them look identical to a scraper that only counts rows:
+ *
+ *   accordion present, empty, and the page says so   -> a confirmed zero, quiet
+ *   accordion present, empty, and the page does NOT  -> logged: either they
+ *     changed the copy or roles are rendered somewhere this does not read
+ *   accordion missing entirely                       -> logged: the page moved
+ *
+ * Without that, the day this page first advertises a role, a parser written
+ * blind against markup nobody has seen would return zero and be indistinguishable
+ * from the honest zero it returns today — the ambiguity that made AUB Group's
+ * silent feed take a user report to notice.
+ */
+async function fetchStateTheatre(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const acc = html.match(/<ul class="accordion[^"]*"[^>]*>([\s\S]*?)<\/ul>/i);
+  if (!acc) {
+    console.log('statetheatre: no <ul class="accordion"> on the page — the layout moved');
+    return [];
+  }
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const li of acc[1].split(/<li\b/i).slice(1)) {
+    // The title is the item's first heading, or its first link's text.
+    const m =
+      li.match(/<h[2-5][^>]*>([\s\S]*?)<\/h[2-5]>/i) ?? li.match(/<a[^>]*>([\s\S]*?)<\/a>/i);
+    if (!m) continue;
+    const title = clean(m[1]);
+    if (!title || seen.has(title)) continue;
+    seen.add(title);
+    const href = li.match(/href="([^"]+)"/i);
+    out.push(job(site, title, "", href ? clean(href[1]) : site.endpoint, today(), "Career portal"));
+  }
+  if (!out.length && !/currently no vacant positions/i.test(html)) {
+    console.log(
+      "statetheatre: accordion is empty but the page no longer says there are no " +
+        "vacancies — check whether roles moved out of the accordion",
+    );
+  }
+  return out;
+}
+
 // ── BigRedSky (NRW Holdings) ─────────────────────────────────────────────────
 /**
  * BigRedSky renders its job list into a `brs_report_table_16` on the page —
@@ -7007,6 +7098,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   workgr8: fetchWorkGr8,
   uwajobs: fetchUwaJobs,
   carclew: fetchCarclew,
+  statetheatre: fetchStateTheatre,
   clinch: fetchClinch,
   johnhughes: fetchJohnHughes,
   elmo: fetchElmo,
@@ -7071,6 +7163,8 @@ const SOURCE_TAG: Record<Platform, string> = {
   uwajobs: "uwajobs",
   // Carclew runs no ATS; the tag names the page, as aubgroup and zipco do.
   carclew: "carclew",
+  // State Theatre runs no ATS; the tag names the page.
+  statetheatre: "statetheatre",
   clinch: "cl",
   johnhughes: "johnhughes",
   elmo: "elmo",
