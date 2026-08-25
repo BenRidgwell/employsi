@@ -1001,6 +1001,20 @@ body {
   background: transparent;
   z-index: 47;
 }
+/* The line chart's headline block, in the company card's chart language.
+   .ccreadout / .cceyebrow / .ccreadv / .ccdelta are REUSED rather than
+   copied — a second set of rules with the same values is a second set to
+   drift, and the whole point of this is that the two panes read alike. */
+.anchartcard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.anchartcard .anchartsvg {
+  display: block;
+  width: 100%;
+}
+
 /* ── Ask an analyst · the board ──────────────────────────────────────────────
    Controls left, conversation right, on the same container as What's Trending
    (--board-w / --board-h) so the two panes do not resize under the reader when
