@@ -3,42 +3,81 @@
 //
 // Historical median pay per skill, for the years the live archive cannot reach:
 // it begins 2026-07-20, so it cannot say whether a skill is worth more than it
-// used to be. Source: ATO Taxation Statistics — Individuals Table 15 (CC BY 2.5 AU), which publishes median salary or
-// wage income by ANZSCO4 unit group, annually.
+// used to be.
 //
-// READ THE UNIT BEFORE USING A NUMBER FROM HERE. This is annual income actually
-// RECEIVED by people who lodged a return — part-year and part-time earners are
-// in it at what they earned — not a full-time-equivalent rate and not an
-// advertised salary. It answers "what did people in this occupation earn that
-// year", not "what does this job pay".
+// READ THE UNIT BEFORE USING A NUMBER FROM HERE. This is income actually
+// RECEIVED by people — part-year and part-time earners are in it at what they
+// earned — not a full-time-equivalent rate and not an advertised salary. It
+// answers "what did people in this occupation earn that year", not "what does
+// this job pay". Hospitality reads about $30k in AU 2023-24 for exactly that
+// reason.
 //
 // NEVER DIFFERENCE IT AGAINST THE APP'S LIVE ADVERTISED MEDIAN. The two differ
 // on instrument, unit, disclosure and geography all at once, so the gap between
 // them is mostly the gap between two measuring devices. A percentage is honest
-// WITHIN this series — every year here is measured the same way — and nowhere
-// else.
+// WITHIN one market's series and nowhere else — NOT between AU and NZ either,
+// whose bases differ (salary or wage income against total personal income).
 //
-// Figures are NOMINAL, each in its own year's dollars. No CPI deflation.
+// Figures are NOMINAL, each in its own year's dollars and its own currency.
 //
 // A skill spans several occupations, and medians do not compose: each figure is
-// a weighted median of the unit-group medians behind it, weighted by people. It
+// a weighted median of the published medians behind it, weighted by people. It
 // approximates the population median and is not it.
-export const BASELINE_SOURCE = "ATO Taxation Statistics — Individuals Table 15";
-export const BASELINE_SOURCE_URL = "https://data.gov.au/data/dataset/taxation-statistics-2023-24";
-export const BASELINE_LICENCE = "CC BY 2.5 AU";
-export const BASELINE_BASIS = "median salary or wage income, annual, nominal AUD";
 
-// Financial years, oldest first. Every series below is aligned to this.
-export const BASELINE_YEARS: string[] = ["2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22", "2022-23", "2023-24"];
+export interface BaselineMarket {
+  /** Reference years, oldest first. Every series for this market's areas is
+   *  positional against THIS array — the markets do not share an axis. */
+  years: string[];
+  /** Areas belonging to the market; the first is the national one. */
+  areas: string[];
+  basis: string;
+  source: string;
+  sourceUrl: string;
+  licence: string;
+  currency: string;
+  /** Years for which the non-national areas carry figures. The ATO published a
+   *  state split in one year only; the NZ census publishes a regional split in
+   *  all three. A hub series is null outside these, deliberately, rather than
+   *  repeating the national figure as though it were local. */
+  areaYears: string[];
+  /** Groups of skills this market cannot tell apart, because they resolve to
+   *  the same occupations at the granularity it publishes. Every skill in a
+   *  group carries an identical figure, and the surface must say so rather than
+   *  imply each was measured separately. Empty where the data is fine enough. */
+  shared: string[][];
+}
 
-// "au" is national. The ATO published a state breakdown in 2023-24 and in no
-// other year of this range, so hub series carry a figure for that year alone and
-// null everywhere else — deliberately, rather than repeating the national number
-// as though it were local.
-export const BASELINE_AREAS: string[] = ["au", "perth", "adelaide", "brisbane", "melbourne", "sydney", "darwin", "canberra", "hobart"];
+export const BASELINE_MARKETS: Record<string, BaselineMarket> = {
+  "au": {
+    years: ["2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22", "2022-23", "2023-24"],
+    areas: ["au", "perth", "adelaide", "brisbane", "melbourne", "sydney", "darwin", "canberra", "hobart"],
+    basis: "median salary or wage income, annual, nominal AUD",
+    source: "ATO Taxation Statistics — Individuals Table 15",
+    sourceUrl: "https://data.gov.au/data/dataset/taxation-statistics-2023-24",
+    licence: "CC BY 2.5 AU",
+    currency: "AUD",
+    areaYears: ["2023-24"],
+    shared: [],
+  },
+  "nz": {
+    years: ["2013", "2018", "2023"],
+    areas: ["nz", "auckland", "wellington"],
+    basis: "median total personal income, census year, nominal NZD",
+    source: "Stats NZ Census — CEN23_WRK_011, occupation by total personal income",
+    sourceUrl: "https://explore.data.stats.govt.nz/vis?df[ds]=ds-nsiws-disseminate&df[id]=CEN23_WRK_011",
+    licence: "CC BY 4.0",
+    currency: "NZD",
+    areaYears: ["2013", "2018", "2023"],
+    shared: [["Administration & Office Support", "Project Management"], ["Aged & Disability Care", "Social & Community Services"], ["Bricklaying & Concreting", "Plumbing"], ["Creative & Performing Arts", "Journalism & Media"], ["IT & Systems", "Software Engineering"], ["Personal Services & Beauty", "Sport & Recreation"]],
+  },
+};
 
-// skill -> area -> [median AUD, individuals behind it] per year, or null where
-// the ATO published nothing or the sample fell below the floor (1,000 people).
+/** Area -> the market whose `years` its series is aligned to. */
+export const AREA_MARKET: Record<string, string> = {"au": "au", "perth": "au", "adelaide": "au", "brisbane": "au", "melbourne": "au", "sydney": "au", "darwin": "au", "canberra": "au", "hobart": "au", "nz": "nz", "auckland": "nz", "wellington": "nz"};
+
+// skill -> area -> [median, people behind it] per year of that area's market,
+// or null where nothing was published or the sample fell below the floor
+// (1,000 people).
 export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | null)[]>> = {
   "Administration & Office Support": {
     "au": [[45923,1482153],[47448,1499767],[48949,1523422],[49669,1515481],[51171,1510149],[53466,1557232],[62669,1598456],[65463,1628130]],
@@ -50,6 +89,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[73396,15113]],
     "canberra": [null,null,null,null,null,null,null,[89461,40673]],
     "hobart": [null,null,null,null,null,null,null,[60000,31235]],
+    "nz": [[43100,51558],[45600,87183],[57500,83970]],
+    "auckland": [[46100,15546],[48300,26742],[60500,25428]],
+    "wellington": [[47100,7206],[50700,11169],[63800,10707]],
   },
   "Aged & Disability Care": {
     "au": [[36868,328576],[37800,355502],[38770,387710],[39903,417491],[43183,455371],[44876,495897],[46607,533855],[50917,581220]],
@@ -61,6 +103,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[57548,8236]],
     "canberra": [null,null,null,null,null,null,null,[62378,8115]],
     "hobart": [null,null,null,null,null,null,null,[55475,16205]],
+    "nz": [[35400,17949],[38400,29229],[51200,37470]],
+    "auckland": [[37100,4875],[40200,7551],[54200,9606]],
+    "wellington": [[35500,1959],[37600,3093],[50300,3717]],
   },
   "Agriculture & Farming": {
     "au": [[36405,254553],[40294,261483],[42194,268800],[41135,275985],[43984,280954],[45248,286887],[41045,259234],[43460,273122]],
@@ -72,6 +117,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[50294,2329]],
     "canberra": [null,null,null,null,null,null,null,[58222,1447]],
     "hobart": [null,null,null,null,null,null,null,[46558,11728]],
+    "nz": [[43300,57036],[47900,66240],[57600,66597]],
+    "auckland": [[35800,2757],[41100,2796],[51300,3384]],
+    "wellington": [[40800,1644],[46000,1836],[55000,2031]],
   },
   "Allied Health": {
     "au": [[55648,80268],[58014,85386],[59671,91377],[62957,95896],[66595,101008],[68526,107417],[71631,113252],[73442,118510]],
@@ -103,6 +151,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[93832,2302]],
     "canberra": [null,null,null,null,null,null,null,[76875,1784]],
     "hobart": [null,null,null,null,null,null,null,[75938,3784]],
+    "nz": [[47000,47355],[52800,57579],[62300,55071]],
+    "auckland": [[47400,13662],[53000,16755],[62800,15633]],
+    "wellington": [[44600,3033],[50400,3417],[60800,3426]],
   },
   "Banking & Lending": {
     "au": [[57723,126133],[59907,128219],[62424,127827],[65514,127807],[69359,127987],[74228,132851],[79311,134081],[83482,133043]],
@@ -124,6 +175,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[71840,1346]],
     "canberra": [null,null,null,null,null,null,null,[82461,2414]],
     "hobart": [null,null,null,null,null,null,null,[63398,2471]],
+    "nz": [[45000,37188],[50200,40773],[61500,39471]],
+    "auckland": [[47300,14985],[52600,17358],[64500,16098]],
+    "wellington": [[47900,5181],[54000,5325],[65300,4614]],
   },
   "Bricklaying & Concreting": {
     "au": [[56990,113141],[59888,121382],[60841,124869],[62484,123757],[63979,128013],[65089,134556],[70762,138492],[75480,138882]],
@@ -134,6 +188,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "sydney": [null,null,null,null,null,null,null,[71890,41323]],
     "canberra": [null,null,null,null,null,null,null,[54479,1515]],
     "hobart": [null,null,null,null,null,null,null,[49176,3093]],
+    "nz": [[39400,17298],[43500,24213],[53600,22488]],
+    "auckland": [[38800,4419],[43100,7332],[53300,7623]],
+    "wellington": [[37600,1446],[40800,2193],[51300,2043]],
   },
   "Business Analysis": {
     "au": [[94580,45548],[98388,47268],[100604,49873],[103726,51275],[106308,52054],[113417,55096],[115013,82187],[118630,83896]],
@@ -154,6 +211,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[92700,1094]],
     "canberra": [null,null,null,null,null,null,null,[78746,2045]],
     "hobart": [null,null,null,null,null,null,null,[73934,4023]],
+    "nz": [[43000,40839],[48600,60627],[57900,68451]],
+    "auckland": [[42100,10536],[46900,18033],[57100,21324]],
+    "wellington": [[42800,4641],[47600,6390],[58200,7386]],
   },
   "Childcare & Early Learning": {
     "au": [[32307,165749],[33498,174751],[34904,186104],[35349,192564],[37019,201536],[37724,213456],[41005,225884],[43197,244277]],
@@ -186,17 +246,22 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[42434,3651]],
     "canberra": [null,null,null,null,null,null,null,[50028,4920]],
     "hobart": [null,null,null,null,null,null,null,[34942,8008]],
+    "nz": [[18700,39135],[20000,52860],[28300,43170]],
+    "auckland": [[20800,10161],[21800,14100],[32400,11841]],
+    "wellington": [[19600,4062],[20500,5355],[28500,4335]],
   },
   "Commercial & Legal": {
-    "au": [[26609,211375],[27282,221755],[28049,232350],[27749,241910],[30362,246822],[31727,254589],[33897,265301],[35674,269406]],
-    "perth": [null,null,null,null,null,null,null,[36419,30622]],
-    "adelaide": [null,null,null,null,null,null,null,[31823,15662]],
-    "brisbane": [null,null,null,null,null,null,null,[36970,55197]],
-    "melbourne": [null,null,null,null,null,null,null,[61910,66145]],
-    "sydney": [null,null,null,null,null,null,null,[59030,85442]],
-    "darwin": [null,null,null,null,null,null,null,[42434,2549]],
-    "canberra": [null,null,null,null,null,null,null,[71846,6534]],
-    "hobart": [null,null,null,null,null,null,null,[34942,5754]],
+    "au": [[89065,101439],[92284,105706],[94183,109691],[97792,112416],[101561,115194],[107538,121812],[113532,127699],[119210,132547]],
+    "perth": [null,null,null,null,null,null,null,[119528,11435]],
+    "adelaide": [null,null,null,null,null,null,null,[101580,6854]],
+    "brisbane": [null,null,null,null,null,null,null,[115110,24310]],
+    "melbourne": [null,null,null,null,null,null,null,[115170,35567]],
+    "sydney": [null,null,null,null,null,null,null,[127184,46635]],
+    "canberra": [null,null,null,null,null,null,null,[128636,3739]],
+    "hobart": [null,null,null,null,null,null,null,[104505,1891]],
+    "nz": [[53700,40338],[57700,51687],[71900,56424]],
+    "auckland": [[56500,14265],[59800,18471],[75900,20169]],
+    "wellington": [[59700,6753],[65200,8448],[81800,8313]],
   },
   "Construction Labouring": {
     "au": [[78148,21825],[81646,23592],[83412,25152],[86882,26030],[87930,26914],[92461,29392],[95846,32232],[101282,33914]],
@@ -226,6 +291,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "brisbane": [null,null,null,null,null,null,null,[58942,10258]],
     "melbourne": [null,null,null,null,null,null,null,[60842,18263]],
     "sydney": [null,null,null,null,null,null,null,[69588,25867]],
+    "nz": [[39700,17511],[44400,18843],[58200,24513]],
+    "auckland": [[46200,7677],[51200,8142],[65200,10107]],
+    "wellington": [[46800,3132],[52100,3435],[65700,3870]],
   },
   "Data Analytics": {
     "au": [[94580,54172],[98388,52904],[88625,63875],[103726,56895],[106308,59670],[99115,72730],[115013,96438],[118630,104095]],
@@ -262,6 +330,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "melbourne": [null,null,null,null,null,null,null,[120270,2072]],
     "sydney": [null,null,null,null,null,null,null,[143161,13415]],
     "hobart": [null,null,null,null,null,null,null,[118358,1067]],
+    "nz": [[40000,26898],[45400,33387],[56800,44559]],
+    "auckland": [[38100,8814],[43500,12138],[54600,14742]],
+    "wellington": [[37900,1812],[43700,2127],[55200,3045]],
   },
   "Driving & Transport": {
     "au": [[64499,332290],[67362,346321],[69175,356941],[70370,357038],[71891,358177],[74644,366117],[79221,371417],[82818,373947]],
@@ -273,6 +344,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[86310,3441]],
     "canberra": [null,null,null,null,null,null,null,[80028,3727]],
     "hobart": [null,null,null,null,null,null,null,[77284,8287]],
+    "nz": [[41000,39969],[46200,61581],[55500,59628]],
+    "auckland": [[38600,10941],[43800,18150],[53700,18579]],
+    "wellington": [[37300,3903],[40800,5430],[48800,5235]],
   },
   "Electrical Engineering": {
     "au": [[105434,39403],[109518,40706],[112402,42070],[114364,42956],[116787,43070],[120737,44883],[124140,56749],[130630,57282]],
@@ -292,6 +366,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[117818,1882]],
     "canberra": [null,null,null,null,null,null,null,[105178,2351]],
     "hobart": [null,null,null,null,null,null,null,[98781,3712]],
+    "nz": [[52400,21876],[58200,30777],[65700,35976]],
+    "auckland": [[51500,6951],[55800,10113],[64400,11385]],
+    "wellington": [[52200,2301],[57200,3087],[65500,3342]],
   },
   "Electronics & Telecoms Trade": {
     "au": [[65468,61271],[68138,63128],[70303,63312],[71634,62381],[73982,60532],[77737,60186],[80830,62146],[84367,62601]],
@@ -312,6 +389,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[105515,4214]],
     "canberra": [null,null,null,null,null,null,null,[102598,4033]],
     "hobart": [null,null,null,null,null,null,null,[107685,4287]],
+    "nz": [[57900,25509],[60700,32604],[70400,32793]],
+    "auckland": [[56300,7956],[58300,10515],[67800,10785]],
+    "wellington": [[60300,3450],[64300,4308],[74700,4029]],
   },
   "Environmental": {
     "au": [[71491,39451],[73935,40923],[76227,42706],[79823,43951],[80672,45220],[82720,47957],[84746,52528],[89999,54955]],
@@ -333,6 +413,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[86091,1488]],
     "canberra": [null,null,null,null,null,null,null,[104529,5620]],
     "hobart": [null,null,null,null,null,null,null,[82336,3765]],
+    "nz": [[64400,94134],[70100,123153],[81900,177804]],
+    "auckland": [[66000,40092],[71100,53292],[84400,69393]],
+    "wellington": [[73700,19572],[81700,25677],[94600,35031]],
   },
   "Food Trades": {
     "au": [[46081,77696],[46990,78109],[48632,79700],[48796,78241],[51858,77128],[53500,78635],[56300,83577],[58241,88018]],
@@ -353,6 +436,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[97552,6071]],
     "canberra": [null,null,null,null,null,null,null,[130858,29644]],
     "hobart": [null,null,null,null,null,null,null,[89999,11006]],
+    "nz": [[71700,70665],[82600,90015],[99600,80520]],
+    "auckland": [[78700,28320],[90000,36006],[112900,31650]],
+    "wellington": [[86900,8799],[98300,10188],[123600,8985]],
   },
   "Geology": {
     "au": [[102097,9312],[107135,9625],[111378,9878],[116761,10128],[121453,10162],[128448,10537],[131945,11110],[137248,11381]],
@@ -386,6 +472,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[42470,8103]],
     "canberra": [null,null,null,null,null,null,null,[32749,16487]],
     "hobart": [null,null,null,null,null,null,null,[33864,19975]],
+    "nz": [[16900,35436],[17500,54126],[23400,48525]],
+    "auckland": [[15700,12012],[16000,19119],[21200,16368]],
+    "wellington": [[15400,4443],[16700,6327],[22000,5787]],
   },
   "Human Resources": {
     "au": [[62306,106832],[64503,111784],[66250,116870],[67781,118083],[69532,119498],[74285,127879],[78125,131291],[81674,135409]],
@@ -407,6 +496,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[92901,1259]],
     "canberra": [null,null,null,null,null,null,null,[143202,9500]],
     "hobart": [null,null,null,null,null,null,null,[93574,2732]],
+    "nz": [[70800,39807],[79200,58599],[94700,76629]],
+    "auckland": [[73100,17328],[79900,27147],[98700,33678]],
+    "wellington": [[82300,10692],[90300,14808],[109200,17256]],
   },
   "Insurance & Actuarial": {
     "au": [[60972,41925],[63602,41868],[66297,42495],[68497,43135],[70338,43618],[72219,46949],[76298,60751],[80022,66722]],
@@ -424,6 +516,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "brisbane": [null,null,null,null,null,null,null,[79999,4664]],
     "melbourne": [null,null,null,null,null,null,null,[80037,9159]],
     "sydney": [null,null,null,null,null,null,null,[88031,13735]],
+    "nz": [[39700,17511],[44400,18843],[58200,24513]],
+    "auckland": [[46200,7677],[51200,8142],[65200,10107]],
+    "wellington": [[46800,3132],[52100,3435],[65700,3870]],
   },
   "Leadership & Coordination": {
     "au": [[51386,170803],[52906,176739],[54435,180329],[55162,181481],[56994,182759],[59837,190585],[63310,197064],[65463,204100]],
@@ -435,6 +530,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[68538,1490]],
     "canberra": [null,null,null,null,null,null,null,[69441,2742]],
     "hobart": [null,null,null,null,null,null,null,[63750,3700]],
+    "nz": [[40000,69135],[46300,77487],[58700,79722]],
+    "auckland": [[42100,22554],[48200,26124],[61000,26055]],
+    "wellington": [[42800,7728],[48200,8337],[61700,8274]],
   },
   "Manufacturing & Production": {
     "au": [[45122,297617],[46269,304154],[47175,307513],[48195,302541],[48823,305433],[50486,316930],[52823,330679],[56248,332846]],
@@ -444,6 +542,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "melbourne": [null,null,null,null,null,null,null,[56076,103575]],
     "sydney": [null,null,null,null,null,null,null,[56972,88924]],
     "hobart": [null,null,null,null,null,null,null,[63056,7626]],
+    "nz": [[34200,38358],[36400,52698],[46000,41523]],
+    "auckland": [[31600,9234],[32600,13299],[42300,11370]],
+    "wellington": [[31500,1821],[32700,2415],[44900,2064]],
   },
   "Marketing & Comms": {
     "au": [[79411,299126],[81795,314375],[84964,324384],[85801,326615],[89400,323106],[96013,332301],[101349,344715],[105230,351196]],
@@ -521,6 +622,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[101082,4867]],
     "canberra": [null,null,null,null,null,null,null,[93799,8481]],
     "hobart": [null,null,null,null,null,null,null,[77559,13322]],
+    "nz": [[59800,73914],[63100,96318],[78600,116364]],
+    "auckland": [[62200,23877],[64600,31743],[80900,37644]],
+    "wellington": [[61300,8379],[64300,10788],[81000,12447]],
   },
   "Painting & Plastering": {
     "au": [[43151,74281],[44434,77346],[46792,78510],[47944,76913],[49980,77391],[52598,78345],[56309,79107],[60000,79362]],
@@ -541,6 +645,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "sydney": [null,null,null,null,null,null,null,[38356,28461]],
     "canberra": [null,null,null,null,null,null,null,[48052,1186]],
     "hobart": [null,null,null,null,null,null,null,[38988,2164]],
+    "nz": [[30000,28425],[32100,39318],[39900,38076]],
+    "auckland": [[32500,10566],[35800,14865],[42500,13329]],
+    "wellington": [[29800,3441],[31500,4428],[39100,4338]],
   },
   "Pharmacy": {
     "au": [[27545,61576],[28174,63398],[29111,63895],[29505,65093],[29995,65089],[30851,67360],[31865,69999],[32772,71474]],
@@ -561,6 +668,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "sydney": [null,null,null,null,null,null,null,[89304,40554]],
     "darwin": [null,null,null,null,null,null,null,[99603,1694]],
     "hobart": [null,null,null,null,null,null,null,[41696,4549]],
+    "nz": [[42300,16719],[48000,25680],[58600,22980]],
+    "auckland": [[38400,2847],[43800,5229],[54200,5082]],
+    "wellington": [null,[49400,1389],[57200,1212]],
   },
   "Plumbing": {
     "au": [[42654,138175],[44919,149006],[46462,155258],[47797,155479],[48621,160732],[51211,169347],[54321,180511],[57165,188325]],
@@ -572,6 +682,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[46337,2190]],
     "canberra": [null,null,null,null,null,null,null,[53615,2747]],
     "hobart": [null,null,null,null,null,null,null,[57902,3645]],
+    "nz": [[39400,17298],[43500,24213],[53600,22488]],
+    "auckland": [[38800,4419],[43100,7332],[53300,7623]],
+    "wellington": [[37600,1446],[40800,2193],[51300,2043]],
   },
   "Policy & Programs": {
     "au": [[51446,19157],[53302,19629],[54851,19827],[55071,19531],[56930,19675],[59570,19872],[63384,18407],[65947,18832]],
@@ -597,6 +710,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "sydney": [null,null,null,null,null,null,null,[65294,41059]],
     "canberra": [null,null,null,null,null,null,null,[63530,1270]],
     "hobart": [null,null,null,null,null,null,null,[57131,1741]],
+    "nz": [[46300,32067],[51200,40956],[59500,66348]],
+    "auckland": [[47100,13647],[51700,18165],[61600,24858]],
+    "wellington": [[46800,3453],[50900,3852],[60200,6387]],
   },
   "Project Management": {
     "au": [[61720,146144],[63343,156871],[64358,176037],[66458,183941],[68886,191369],[71043,206937],[70772,258870],[73800,300519]],
@@ -608,6 +724,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[75306,4806]],
     "canberra": [null,null,null,null,null,null,null,[91350,18913]],
     "hobart": [null,null,null,null,null,null,null,[68019,6111]],
+    "nz": [[43100,51558],[45600,87183],[57500,83970]],
+    "auckland": [[46100,15546],[48300,26742],[60500,25428]],
+    "wellington": [[47100,7206],[50700,11169],[63800,10707]],
   },
   "Quality Assurance": {
     "au": [[39690,2874],[40778,2875],[42967,2831],[44185,2892],[45751,2944],[46971,3031],[47984,3370],[49908,3448]],
@@ -633,6 +752,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[36360,6089]],
     "canberra": [null,null,null,null,null,null,null,[31786,14336]],
     "hobart": [null,null,null,null,null,null,null,[33960,20815]],
+    "nz": [[17200,21771],[18600,24576],[26200,20355]],
+    "auckland": [[20000,7275],[21300,8619],[31200,6969]],
+    "wellington": [[14700,2496],[17000,2610],[23000,2106]],
   },
   "Retail Operations": {
     "au": [[49959,138502],[51224,144851],[52954,146385],[52432,146876],[54600,146732],[56056,149164],[60567,151598],[63120,152598]],
@@ -663,6 +785,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[57143,1933]],
     "canberra": [null,null,null,null,null,null,null,[103860,4473]],
     "hobart": [null,null,null,null,null,null,null,[58511,5679]],
+    "nz": [[42700,57183],[46600,74490],[57100,67746]],
+    "auckland": [[42700,24207],[46200,32034],[57300,27444]],
+    "wellington": [[42500,6564],[47200,8094],[58800,6930]],
   },
   "Science & Laboratory": {
     "au": [[71782,129158],[74014,133676],[76227,138572],[78827,142134],[80672,145112],[82720,152341],[84746,160516],[89999,165053]],
@@ -694,6 +819,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[57548,7005]],
     "canberra": [null,null,null,null,null,null,null,[63992,5529]],
     "hobart": [null,null,null,null,null,null,null,[56237,9604]],
+    "nz": [[35400,17949],[38400,29229],[51200,37470]],
+    "auckland": [[37100,4875],[40200,7551],[54200,9606]],
+    "wellington": [[35500,1959],[37600,3093],[50300,3717]],
   },
   "Software Engineering": {
     "au": [[89527,101499],[92528,110183],[95694,120112],[100041,127144],[105504,130193],[114516,142299],[120658,156239],[125617,160825]],
@@ -704,6 +832,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "sydney": [null,null,null,null,null,null,null,[134999,62502]],
     "canberra": [null,null,null,null,null,null,null,[126001,5742]],
     "hobart": [null,null,null,null,null,null,null,[103238,1196]],
+    "nz": [[70800,39807],[79200,58599],[94700,76629]],
+    "auckland": [[73100,17328],[79900,27147],[98700,33678]],
+    "wellington": [[82300,10692],[90300,14808],[109200,17256]],
   },
   "Sport & Recreation": {
     "au": [[23285,69498],[24105,74742],[24644,78356],[22659,80226],[24339,79911],[25561,81363],[30739,86420],[32718,90952]],
@@ -714,6 +845,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "sydney": [null,null,null,null,null,null,null,[35065,29000]],
     "canberra": [null,null,null,null,null,null,null,[18815,1781]],
     "hobart": [null,null,null,null,null,null,null,[32162,1483]],
+    "nz": [[30000,28425],[32100,39318],[39900,38076]],
+    "auckland": [[32500,10566],[35800,14865],[42500,13329]],
+    "wellington": [[29800,3441],[31500,4428],[39100,4338]],
   },
   "Surveying": {
     "au": [[73405,58837],[75724,62285],[77972,65191],[79379,66210],[81207,67843],[84587,71240],[88920,74927],[93640,75658]],
@@ -735,6 +869,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[95715,7373]],
     "canberra": [null,null,null,null,null,null,null,[97129,13804]],
     "hobart": [null,null,null,null,null,null,null,[83139,17258]],
+    "nz": [[53300,99315],[54200,122052],[63500,134001]],
+    "auckland": [[54700,32418],[54400,41031],[64400,43797]],
+    "wellington": [[54200,11685],[56100,13881],[65200,14397]],
   },
   "Telecommunications": {
     "au": [[69345,35689],[70472,38230],[71640,38966],[70864,38524],[72080,37150],[75789,36991],[81236,37605],[85615,38057]],
@@ -754,6 +891,9 @@ export const SALARY_BASELINE: Record<string, Record<string, ([number, number] | 
     "darwin": [null,null,null,null,null,null,null,[58716,2067]],
     "canberra": [null,null,null,null,null,null,null,[52168,1667]],
     "hobart": [null,null,null,null,null,null,null,[54362,5640]],
+    "nz": [[35800,17472],[38700,26610],[47700,26790]],
+    "auckland": [[35100,7992],[37700,13239],[46700,13191]],
+    "wellington": [[34800,1233],[38100,1509],[46600,1416]],
   },
   "Welding & Fabrication": {
     "au": [[65512,78906],[68816,80156],[70684,80968],[71423,79316],[73801,78991],[77468,80183],[82253,81309],[86500,83238]],

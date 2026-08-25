@@ -51,6 +51,20 @@ OVERRIDE = {
     # collides with it. Shipbuilding & Marine already claims "aircraft
     # maintenance" deliberately, so that is where the occupation goes.
     '3231': ['Shipbuilding & Marine'],
+    # 8112 "Cleaner - commercial" is the same shape of collision and a much
+    # bigger one: 136,859 Australians, matching Commercial & Legal on the bare
+    # term "commercial" and landing commercial cleaners among the lawyers. Like
+    # 3231 the term is right for job ads — "Commercial Manager" and "Commercial
+    # Analyst" belong to that skill — so the correction is made here against the
+    # one classification title that collides with it.
+    #
+    # Found through the NZ baseline, which is what makes it worth recording:
+    # rolled up to ANZSCO sub-major, this single code made Commercial & Legal
+    # claim 51% of "81 Cleaners and Laundry Workers", so New Zealand's figure
+    # for the skill was half the median of the country's cleaners. It read as a
+    # 259% rise between 2018 and 2023. At four digits the same error is diluted
+    # across hundreds of codes and shows up as nothing at all.
+    '8112': ['Cleaning & Facilities'],
     '5212': ['Administration & Office Support'], '2247': ['General Management'],
     '2244': ['Data Analytics'], '1493': ['Marketing & Comms'], '1494': ['Warehousing & Logistics'],
     '1343': ['Teaching & Education'], '1325': ['General Management'], '1344': ['Teaching & Education'],
