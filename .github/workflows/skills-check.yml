@@ -19,6 +19,7 @@ on:
       - 'scripts/skills_taxonomy.py'
       - 'scripts/test_skills_taxonomy.py'
       - 'scripts/gen-*-demand.py'
+      - 'scripts/check-occupation-overrides.py'
       - 'scripts/check-analyst-followups.ts'
       - 'scripts/check-analyst-scope.ts'
       - 'scripts/check-skill-trends.ts'
@@ -36,6 +37,8 @@ on:
       - 'scripts/check-skills.ts'
       - 'scripts/skills_taxonomy.py'
       - 'scripts/test_skills_taxonomy.py'
+      - 'scripts/gen-*-demand.py'
+      - 'scripts/check-occupation-overrides.py'
       - 'scripts/check-analyst-followups.ts'
       - 'scripts/check-analyst-scope.ts'
       - 'scripts/check-skill-trends.ts'
@@ -96,3 +99,10 @@ jobs:
 
       - name: Taxonomy reader tests (generators' term matcher)
         run: python scripts/test_skills_taxonomy.py
+
+      # OVERRIDE is shared by the IVI, ABS and ATO generators, so an entry added
+      # for one of them edits the other two. The ATO-variance block is only safe
+      # because every entry equals what the ABS label already matched; a
+      # taxonomy edit can break that equality without breaking anything visible.
+      - name: Assert the ATO-variance overrides stay no-ops for IVI and ABS
+        run: python scripts/check-occupation-overrides.py
