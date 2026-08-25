@@ -11893,6 +11893,15 @@ body {
   font-family: var(--font-mono);
   font-weight: var(--weight-medium);
   font-variant-numeric: tabular-nums;
+  /* MUST be stated, and it is not belt-and-braces. `.wttiprow b` sets
+     `color: var(--ink)` directly on the element for the light .wttip callout,
+     and a direct declaration beats an inherited one no matter what the
+     specificity of the rule doing the inheriting — so `.ccflag .wttiprow`'s
+     white reached the row but never the number inside it. Both values rendered
+     in near-black ink on this near-black flag and simply were not there, while
+     their labels showed fine because .ccflag overrides those spans explicitly.
+     A tooltip that shows what a figure IS but not the figure. */
+  color: var(--neutral-0);
 }
 .ccflag .wttiprow span {
   color: rgba(255, 255, 255, 0.55);

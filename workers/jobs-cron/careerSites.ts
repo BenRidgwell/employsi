@@ -182,6 +182,25 @@ interface SiteDef {
   origin: string;
   /** Default hub when a role's location text matches no known city. */
   homeHub: string | null;
+  /**
+   * Per-site location needles, tried BEFORE the global HUB_MATCH.
+   *
+   * For boards that publish a place with no state or country attached — a store
+   * name, a campus, a site. HUB_MATCH cannot help there: it is a list of cities
+   * and state abbreviations, deliberately not a gazetteer, and it is GLOBAL, so
+   * a suburb added to it resolves that way for every employer in the file.
+   * "West Beach" is an Adelaide suburb and also a place near Esperance in WA;
+   * whose it is depends entirely on who is advertising.
+   *
+   * Scoping the hint to the site is what makes it safe to be specific. Needles
+   * are lowercase substrings, tested against the same normalised string
+   * HUB_MATCH sees, and the FIRST match wins — so order longest-first where one
+   * needle contains another.
+   *
+   * A location that matches nothing here still falls through to HUB_MATCH and
+   * then to homeHub, so a hint list is additive and never removes a placement.
+   */
+  hubHints?: [needle: string, hub: string][];
   /** Hard ceiling on pages, so a paging bug can't run away with the budget. */
   maxPages?: number;
   /** Rows a page, where the tenant fixes it at something other than the
@@ -1705,6 +1724,10 @@ export const SITES: SiteDef[] = [
     endpoint: "https://westbeachparks.elmotalent.com.au/careers/default/jobs",
     origin: "https://westbeachparks.elmotalent.com.au",
     homeHub: "adelaide",
+    // Every role reads "West Beach" — the Adelaide suburb the parks are in, with
+    // no state attached, so all six sat unplaced. Scoped rather than added to
+    // HUB_MATCH because there is also a West Beach near Esperance in WA.
+    hubHints: [["west beach", "adelaide"]],
   },
   {
     id: "priv-drake-supermarkets",
@@ -1718,6 +1741,53 @@ export const SITES: SiteDef[] = [
       "&collapse=on&displaystyle=41&search=",
     origin: "https://drakesupermarkets.expr3ss.com",
     homeHub: "adelaide",
+    // The board publishes the STORE, not a place: "Drakes Hope Valley". No
+    // state, so nothing in HUB_MATCH can fire and 25 of 39 sat unplaced.
+    //
+    // Drake is a South Australian group with a Queensland arm, so the split is
+    // real and cannot be guessed from the employer: filing every unknown store
+    // under Adelaide would put Rockhampton in South Australia, which is exactly
+    // the "reads as real data and is not" failure hubFor's own comments describe.
+    // So the stores are listed, taken from what the board actually advertised on
+    // 2026-08-24, and anything new falls through to unplaced — visible, and
+    // fixed by adding a line rather than by silently landing in the wrong state.
+    //
+    // The Queensland stores are regional (Rockhampton, Biloela, Mundubbera) and
+    // brisbane is the only Queensland hub, so they plot approximately — the same
+    // trade already made for Bunbury on ECU.
+    hubHints: [
+      // Queensland — longest first, so "pumicestone road" wins before any
+      // shorter needle inside the same string.
+      ["pumicestone road", "brisbane"],
+      ["north lakes", "brisbane"],
+      ["allenstown", "brisbane"],
+      ["mundubbera", "brisbane"],
+      ["caboolture", "brisbane"],
+      ["rockhampton", "brisbane"],
+      ["emu park", "brisbane"],
+      ["glenmore", "brisbane"],
+      ["samford", "brisbane"],
+      ["biloela", "brisbane"],
+      ["ipswich", "brisbane"],
+      // South Australia
+      ["distribution centre - edinburgh north", "adelaide"],
+      ["allenby gardens", "adelaide"],
+      ["fulham gardens", "adelaide"],
+      ["edinburgh north", "adelaide"],
+      ["victor harbor", "adelaide"],
+      ["torrensville", "adelaide"],
+      ["hope valley", "adelaide"],
+      ["north haven", "adelaide"],
+      ["clovercrest", "adelaide"],
+      ["sun valley", "adelaide"],
+      ["yankalilla", "adelaide"],
+      ["ascot park", "adelaide"],
+      ["royal park", "adelaide"],
+      ["ardrossan", "adelaide"],
+      ["kingscote", "adelaide"],
+      ["beverley", "adelaide"],
+      ["findon", "adelaide"],
+    ],
   },
   {
     id: "priv-detmold-group",
@@ -2961,7 +3031,12 @@ const HUB_MATCH: [string, string | null][] = [
  * Vilvoorde role on Sydney because Goodman is Sydney-listed would be inventing
  * a fact the source never carried.
  */
-export function hubFor(loc: string, home: string | null, homeCountry: RegExp): string | null {
+export function hubFor(
+  loc: string,
+  home: string | null,
+  homeCountry: RegExp,
+  hints?: [string, string][],
+): string | null {
   // A trailing comma is appended before matching so that the three needles that
   // END in one — " wa,", " nt,", " vic," — also fire when the abbreviation is
   // the last thing in the string. Those three are written with the comma on
@@ -2996,6 +3071,10 @@ export function hubFor(loc: string, home: string | null, homeCountry: RegExp): s
   // tested with includes() against a string that merely starts differently.
   const l =
     " " + raw.toLowerCase().replace(/\b(nsw|vic|qld|wa|sa|nt|act|tas)\s+\d{4}\b/g, "$1,") + ",";
+  // Site hints first — they are the specific case, HUB_MATCH the general one.
+  // A store or campus name only resolves for the employer that uses it, so it
+  // must beat a global needle that happens to appear in the same string.
+  if (hints) for (const [needle, hub] of hints) if (l.includes(needle)) return hub;
   for (const [needle, hub] of HUB_MATCH) if (l.includes(needle)) return hub;
   // Emptiness is tested on the ORIGINAL string, not the comma-appended one.
   // Appending the comma above quietly broke this: `l` for a blank location is
@@ -3051,7 +3130,7 @@ function job(site: SiteDef, title: string, loc: string, url: string, created: st
     cat,
     url,
     created,
-    city: hubFor(loc, site.homeHub, HOME_COUNTRY[site.homeHub ?? ""] ?? /$^/),
+    city: hubFor(loc, site.homeHub, HOME_COUNTRY[site.homeHub ?? ""] ?? /$^/, site.hubHints),
     skills: skillsForText(title, undefined, { sector: site.sector }),
   };
 }
