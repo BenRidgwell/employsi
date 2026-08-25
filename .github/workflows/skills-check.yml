@@ -20,6 +20,9 @@ on:
       - 'scripts/test_skills_taxonomy.py'
       - 'scripts/gen-*-demand.py'
       - 'scripts/check-occupation-overrides.py'
+      - 'scripts/check-salary-baseline.ts'
+      - 'scripts/gen-salary-baseline.py'
+      - 'src/employsi/data/salaryBaseline.ts'
       - 'scripts/check-analyst-followups.ts'
       - 'scripts/check-analyst-scope.ts'
       - 'scripts/check-skill-trends.ts'
@@ -39,6 +42,9 @@ on:
       - 'scripts/test_skills_taxonomy.py'
       - 'scripts/gen-*-demand.py'
       - 'scripts/check-occupation-overrides.py'
+      - 'scripts/check-salary-baseline.ts'
+      - 'scripts/gen-salary-baseline.py'
+      - 'src/employsi/data/salaryBaseline.ts'
       - 'scripts/check-analyst-followups.ts'
       - 'scripts/check-analyst-scope.ts'
       - 'scripts/check-skill-trends.ts'
@@ -92,6 +98,14 @@ jobs:
       # joined mid-window drawing its own arrival as growth.
       - name: Assert the card's skill and area trends reconstruct correctly
         run: bun run scripts/check-skill-trends.ts
+
+      # The historical baseline is eight ATO vintages folded into one file, and
+      # every way it can be wrong still renders a clean line and a tidy dollar
+      # figure: a skill priced off one tiny occupation, a year read from the
+      # average column instead of the median, a baseline stranded under a skill
+      # name the taxonomy no longer has.
+      - name: Assert the salary baseline's invariants
+        run: bun run scripts/check-salary-baseline.ts
 
       - uses: actions/setup-python@v6
         with:

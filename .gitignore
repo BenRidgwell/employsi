@@ -42,3 +42,7 @@ triage-status.txt
 
 # Staged by scripts/build-waitlist.sh from public/waitlist-preview.html.
 workers/waitlist/dist/
+
+# Source workbooks for scripts/gen-salary-baseline.py. Downloaded from
+# data.gov.au on demand and re-fetchable; the generated .ts is what is tracked.
+.cache/
