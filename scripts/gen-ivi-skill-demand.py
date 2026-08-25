@@ -67,6 +67,62 @@ OVERRIDE = {
     '3621': ['Retail & Customer Service'], '2232': ['Teaching & Education'], '3933': ['Manufacturing & Production'],
     '3931': ['Manufacturing & Production'], '3993': ['Administration & Office Support'],
     '1333': ['Procurement & Supply'], '1412': ['Hospitality & Food Service'],
+
+    # ── Codes the ATO spells differently from the ABS ────────────────────────
+    #
+    # Everything above corrects the MATCHER. This block corrects for the fact
+    # that two publishers label the same ANZSCO4 code differently, which only
+    # became visible when a third dataset arrived: the ATO's Taxation Statistics
+    # (Individuals Table 15) is keyed on the same codes but writes its own
+    # occupation names, and term-matching those names silently lost 56 unit
+    # groups where matching the ABS names had worked fine.
+    #
+    # The variances are mundane and none of them is a judgement call — singular
+    # against plural ("Kitchen hand" / "Kitchenhands"), "or" against "and"
+    # ("Café or restaurant manager" / "Cafe and restaurant managers"), a
+    # different word for the same job ("Window dresser" / "Visual
+    # merchandisers", "Bank teller, officer or employee" / "Bank workers"), and
+    # one outright misspelling ("Dietician" for dietitian).
+    #
+    # EVERY ENTRY BELOW IS A NO-OP FOR THE IVI AND ABS GENERATORS, and that is
+    # the property that makes adding them safe rather than a silent revision of
+    # two published datasets. Each value is exactly what skills_for() already
+    # returns for that code's ABS label, so an override that now short-circuits
+    # the match produces the identical answer on this side and a correct one on
+    # the ATO side. check-occupation-overrides.py asserts that equality; if a
+    # taxonomy edit ever makes one of these disagree with its ABS label, the
+    # check fails rather than letting the two drift apart.
+    #
+    # Deliberately NOT included: codes where the ABS label maps to nothing
+    # either. Those are not label variances — they are occupations the taxonomy
+    # genuinely does not cover (Legislators, the defence-force ranks, the "Other
+    # miscellaneous …" catch-alls), and inventing a mapping for them here would
+    # change the IVI and ABS series rather than repair them. Also excluded are
+    # the ATO's own 9xxx apprentice/trainee/consultant codes and its "Occupation
+    # blank" bucket, which have no ANZSCO counterpart at all; the ATO generator
+    # reports their size rather than absorbing them, the same way the ABS one
+    # reports nfd.
+    '8513': ['Hospitality & Food Service'],   # Kitchen hand / Kitchenhands
+    '1351': ['IT & Systems'],                 # IT manager / ICT managers
+    '5521': ['Banking & Lending'],            # Bank teller, officer or employee / Bank workers
+    '4312': ['Hospitality & Food Service'],   # Café worker / Cafe workers
+    '1411': ['Hospitality & Food Service'],   # Café or restaurant manager / Cafe and restaurant managers
+    '8322': ['Manufacturing & Production'],   # Assembly line worker / Product assemblers
+    '3423': ['Electronics & Telecoms Trade'], # Electronic equipment trades worker / Electronics trades workers
+    '8219': ['Construction Labouring'],       # Other construction or mining labourer / …and mining labourers
+    '1336': ['Procurement & Supply'],         # Supply and distribution manager / Supply, distribution and procurement managers
+    '2491': ['Teaching & Education'],         # Education advisor or reviewer / Education advisers and reviewers
+    '1413': ['Hospitality & Food Service'],   # Hotel or motel manager / Hotel and motel managers
+    '2533': ['Medical Practice'],             # Internal medicine specialist / Specialist physicians
+    '3241': ['Automotive Trade'],             # Panel beater / Panelbeaters
+    '6394': ['Retail & Customer Service'],    # Ticket seller / Ticket salespersons
+    '8992': ['Shipbuilding & Marine'],        # Deck or fishing hand / Deck and fishing hands
+    '2511': ['Allied Health'],                # Dietician [sic] / Nutrition professionals
+    '4115': ['Aged & Disability Care'],       # Aboriginal and Torres Strait Islander health worker / Indigenous health workers
+    '7123': ['Manufacturing & Production'],   # Metal press operator / Engineering production workers
+    '5615': ['Administration & Office Support'],  # Market research interviewer / Survey interviewers
+    '2122': ['Journalism & Media'],           # Author, or book or script editor / Authors, and book and script editors
+    '6395': ['Retail Operations'],            # Window dresser / Visual merchandisers
 }
 
 
