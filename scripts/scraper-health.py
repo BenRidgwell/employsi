@@ -86,6 +86,26 @@ STALE_DAYS = {
     # Career portals run in four grouped ticks; a group is touched daily.
     **{f'portal-{k}': 4 for k in
        ('ef', 'csl', 'av', 'sf', 'wd', 'sy', 'or', 'nx', 'cl', 'gh', 'lh')},
+
+    # FORTNIGHTLY, via brightdata-archive.yml. Both boards moved off the daily
+    # Oxylabs workflows on 2026-08-29; Bright Data bills per RECORD RETURNED, so
+    # the sweep is deliberately every 14 days rather than every day.
+    #
+    # 22 AND NOT 17, WHICH LOOKS TOO SLACK UNTIL YOU READ THE SCHEDULE. The cron
+    # fires weekly and the job drops odd ISO weeks, because cron cannot say
+    # "every 14 days". In a year with an ISO week 53 — 2026 is one — weeks 53
+    # and 1 are both odd, so two skips land back to back and the gap across New
+    # Year is 21 DAYS, not 14. A 17-day limit would therefore go critical once a
+    # year on a feed behaving exactly as designed.
+    #
+    # The cost of 22 is three weeks of blindness on these two, and it is the
+    # right trade for the same reason QUIET_OK exists: a check that cries wolf
+    # on a schedule nobody has changed is a check people stop reading. A genuine
+    # Bright Data failure is not silent anyway — the collector exits non-zero on
+    # a zero-record snapshot and says so, which is how the 2026-08-17 gap in
+    # indeed[0:90] and linkedin[180:270] was found.
+    'indeed': 22,
+    'linkedin': 22,
 }
 
 # Sources that are NOT scheduled, so silence means nothing. TheirStack is an

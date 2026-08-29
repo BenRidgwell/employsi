@@ -1,4 +1,5 @@
-# Daily Indeed → D1 archive, through the Oxylabs Web Scraper API.
+# Indeed → D1 archive through the Oxylabs Web Scraper API. NO LONGER SCHEDULED —
+# dispatch-only since 2026-08-29; brightdata-archive.yml collects Indeed now.
 #
 # IT WAS MOVED OFF OXYLABS ON 2026-08-09 AND MOVED BACK THE SAME DAY. The
 # evidence for the move was one probe request: headless Chromium through the
@@ -35,8 +36,23 @@
 name: indeed-archive
 
 on:
-  schedule:
-    - cron: '0 20 * * *' # 20:00 UTC daily
+  # SCHEDULE REMOVED 2026-08-29 — INDEED IS COLLECTED BY brightdata-archive.yml
+  # NOW, which is what the note at the top of this file anticipated when it said
+  # Bright Data "has an Indeed scraper on the same per-record API ... if that
+  # bill is ever worth comparing". It was, and the comparison has been made.
+  #
+  # The dispatch inputs below are kept deliberately. This file holds all three
+  # transports and the measurements that ruled two of them out, so re-testing
+  # DataDome after it changes should cost a dispatch rather than a rewrite.
+  #
+  # It was '0 20 * * *'. Leaving it on cost 8 red runs in the week to 2026-08-28,
+  # every one of them ending
+  #
+  #     oxylabs auth failed (401) — check OXYLABS_USERNAME/PASSWORD
+  #
+  # which is the account being rejected rather than the plan quota running out —
+  # that is a 429, and it is what happened on 2026-08-09. The credentials 401
+  # when tested directly too, so this is not a stale repo secret.
   workflow_dispatch:
     inputs:
       proxy_session:

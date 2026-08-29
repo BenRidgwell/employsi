@@ -1,4 +1,5 @@
-# Daily LinkedIn → D1 archive (hosted, via the Oxylabs Web Scraper API).
+# LinkedIn → D1 archive via the Oxylabs Web Scraper API. NO LONGER SCHEDULED —
+# dispatch-only since 2026-08-29; brightdata-archive.yml collects LinkedIn now.
 #
 # LinkedIn blocks datacenter IPs (429 / auth-wall), so instead of a browser this
 # fetches LinkedIn's guest jobs-search HTML through the Oxylabs Web Scraper API
@@ -18,8 +19,28 @@
 name: linkedin-archive
 
 on:
-  schedule:
-    - cron: '30 21 * * *' # 21:30 UTC daily (after the Indeed run at 20:00)
+  # SCHEDULE REMOVED 2026-08-29 — LinkedIn IS COLLECTED BY brightdata-archive.yml
+  # NOW. This workflow is kept for dispatch, not retired, because it is the only
+  # thing that exercises the Oxylabs transport and re-testing it should cost a
+  # dispatch rather than a rewrite.
+  #
+  # It was '30 21 * * *'. Leaving it on cost 7 red runs in the week to 2026-08-28
+  # and would have gone on costing one a day: every request answers
+  #
+  #     oxylabs auth failed (401) — check OXYLABS_USERNAME/PASSWORD
+  #
+  # which is the Oxylabs ACCOUNT being rejected, not a quota (that is a 429) and
+  # not a missing secret — the same credentials 401 when tested directly, and the
+  # runner shows both as set. The other ~24 scripts that import oxylabs_client
+  # share those credentials, so this is not the place to fix that; several of
+  # them are still writing daily, which is worth understanding before anyone
+  # assumes the account is uniformly dead.
+  #
+  # The real cost of leaving it was not the runner minutes. A feed that fails
+  # every day trains everyone to ignore its failures, and this one masked the
+  # fact that LinkedIn was collecting perfectly well on another workflow — the
+  # 2026-08-17 rows in D1 came from Bright Data, and were read as Oxylabs
+  # survivors.
   workflow_dispatch: {}
 
 concurrency:
