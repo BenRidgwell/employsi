@@ -61,10 +61,23 @@
 # therefore ~3.0 hours of Indeed plus ~24 min of LinkedIn: about 3.5 hours for
 # all eight chunks, one at a time, well inside a single scheduled run.
 #
-# That is the number to re-check if the roster grows a lot. The four-chunk shape
-# holds comfortably at 354 companies; it is the 350-minute per-job timeout, not
-# the sweep total, that would bite first, and one Indeed chunk uses an eighth of
-# it.
+# That is the number to re-check if the roster grows a lot.
+#
+# SUPERSEDED 2026-09-01, AND THE MEASUREMENTS ABOVE STILL STAND — read them
+# before changing the chunk size back. Everything above is what a HEALTHY Indeed
+# does, and on 2026-09-01 it stopped doing it: all four chunks of 90 stalled at
+# `running` past the 300-minute wait, ~20 hours of runner time for zero rows,
+# while LinkedIn collected normally on the same account and token.
+#
+# The sweep now runs twenty chunks of 20 rather than four of 90. That is SLOWER
+# when things work — the curve above is sublinear (20 companies 28m41s, 90
+# companies 44.7 min), so twenty small chunks are ~10 hours of Indeed against
+# ~3 — and it is not a fix for the stall, whose cause is at Bright Data. It buys
+# two things only: a stalled chunk costs 45 minutes instead of 300, and a dead
+# chunk loses 20 companies instead of 90.
+#
+# PUT IT BACK TO [0,90,180,270] AND limit 90 ONCE INDEED IS HEALTHY. The
+# four-chunk shape is strictly better on this curve.
 #
 # They run ONE AT A TIME regardless; see max-parallel below for why.
 #
@@ -183,11 +196,41 @@ jobs:
             else
               echo "ISO week $WEEK is even; proceeding with the fortnightly sweep."
             fi
-            # The scheduled sweep is the whole roster, in chunks that fit a run,
-            # across BOTH boards — 8 jobs, each its own snapshot and its own
-            # dataset id. They are separate scrapers, so neither waits on the
-            # other and one board failing does not cost the other its sweep.
-            echo 'chunks=[0,90,180,270]' >> "$GITHUB_OUTPUT"
+            # The scheduled sweep is the whole roster across BOTH boards — 40
+            # jobs, each its own snapshot. They are separate scrapers, so
+            # neither waits on the other and one board failing does not cost
+            # the other its sweep.
+            #
+            # TWENTY, AND IT COSTS WALL TIME RATHER THAN SAVING IT — read the
+            # timing header above before assuming this is the faster shape.
+            # Indeed's snapshot cost is heavily SUBLINEAR: 20 companies took
+            # 28m41s and 90 took 44.7 min, so most of a chunk is fixed cost and
+            # four big chunks beat twenty small ones roughly three to one on a
+            # healthy sweep (~3 hours against ~10).
+            #
+            # It is set to 20 anyway because the 2026-09-01 sweep did not have a
+            # healthy Indeed: all four chunks of 90 stalled, four separate
+            # snapshots reporting `running` and never reaching `ready`, each
+            # burning the full five-hour wait for zero rows — about twenty hours
+            # of runner time and nothing written. Ninety HAD worked, at 44.7 min
+            # on 2026-08-11, so the stall is 6.7x the measured time and
+            # something changed at Bright Data rather than in this repo.
+            #
+            # So this is a smaller blast radius, not a fix: if the stall
+            # persists it now costs 30 minutes per chunk instead of five hours,
+            # and a chunk that dies takes 20 companies with it instead of 90.
+            # If Indeed comes back healthy, put this back to [0,90,180,270] —
+            # the sublinear curve makes that strictly better.
+            #
+            # LinkedIn did NOT need this — it collected 3 of 4 chunks of 90 in
+            # five to ten minutes each on the same sweep, same account, same
+            # token. It is swept at 20 as well only because the matrix is
+            # source x chunk and one list serves both. That is a change to a
+            # working feed, and it is accepted for a second reason: when a
+            # chunk dies it takes its whole slice with it, and LinkedIn's
+            # [180:270] has now failed twice, losing 89 companies each time.
+            # At 20 the same failure costs 20.
+            echo 'chunks=[0,20,40,60,80,100,120,140,160,180,200,220,240,260,280,300,320,340,360,380]' >> "$GITHUB_OUTPUT"
             echo 'sources=["indeed","linkedin"]' >> "$GITHUB_OUTPUT"
           else
             # A dispatch sweeps exactly the slice it was asked for, once.
@@ -202,13 +245,21 @@ jobs:
     strategy:
       # THE ROSTER IS SWEPT IN CHUNKS BECAUSE IT DOES NOT FIT IN ONE JOB.
       # 354 companies at the measured ~1.4 min each is ~8.5 hours against a
-      # 6-hour hard cap on a hosted runner. Four chunks of 90 are ~2.1 hours
-      # each and run in parallel, so the sweep still finishes in one sitting.
-      # A manual dispatch overrides these with its own offset/limit.
+      # 6-hour hard cap on a hosted runner. Twenty chunks of 20 keep each job
+      # well inside that; the chunk list and the reason it is 20 rather than 90
+      # live in `plan` above. A manual dispatch overrides these with its own
+      # offset/limit.
+      #
+      # THEY DO NOT RUN IN PARALLEL, whatever max-parallel suggests — this said
+      # they did until 2026-09-01. The account gets one concurrent runner, so
+      # the chunks serialise regardless, and every sweep on record shows each
+      # job starting within seconds of the previous one ending. It matters now
+      # that there are 40 of them: the sweep's wall time is the SUM of its
+      # chunks, not the longest one.
       matrix:
         source: ${{ fromJSON(needs.plan.outputs.sources) }}
         chunk: ${{ fromJSON(needs.plan.outputs.chunks) }}
-      # One chunk failing must not cancel the other three — each writes its own
+      # One chunk failing must not cancel the rest — each writes its own
       # employers, and a partial sweep beats no sweep.
       fail-fast: false
       # ONE SNAPSHOT AT A TIME. THIS IS MEASURED, NOT CAUTION.
@@ -238,11 +289,19 @@ jobs:
       # chunk takes ~6 minutes, so serial costs the sweep under an hour.
       max-parallel: 1
     runs-on: ubuntu-latest
-    # Sized for a 90-company chunk (~129 min at the measured rate), with room
-    # for Bright Data being slower than measured. The script's own snapshot wait
-    # (timeout_min, 300) sits below this so it reports a clean "not ready"
-    # instead of being killed mid-download.
-    timeout-minutes: 350
+    # Sized for a 20-company chunk, which measured 28m41s on 2026-08-10. The
+    # script's own snapshot wait sits BELOW this on purpose, so it reports a
+    # clean "not ready" and names the snapshot id instead of being killed
+    # mid-download and leaving nothing to re-download with. On a schedule that
+    # wait is 45 minutes, so 60 leaves room for the checkout, the two toolchain
+    # setups and the D1 write.
+    #
+    # A DISPATCH CAN STILL ASK FOR 300, which is longer than this cap. That is
+    # deliberate rather than an oversight: the long wait exists for
+    # re-downloading a snapshot that is genuinely still collecting, and if the
+    # job is killed at 45 the snapshot id is already in the log of the run that
+    # created it, so the work is not lost — re-dispatch with --snapshot.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -295,17 +354,40 @@ jobs:
           # scheduled run collects for real, which is the point of scheduling it.
           EXTRA=()
           if [ -n "$INPUT_JSON" ]; then EXTRA+=(--input-json "$INPUT_JSON"); fi
+          # FORTY-FIVE MINUTES ON A SCHEDULE, NOT THREE HUNDRED. The chunks run
+          # strictly serially (max-parallel: 1), so the wait is paid once per
+          # chunk and 20 chunks x 2 boards is 40 of them. At the old 300 a
+          # fortnight where every snapshot stalled would hold the runner for 200
+          # HOURS — the 2026-09-01 sweep spent 20 on four Indeed chunks alone,
+          # and that was the four-chunk version.
+          #
+          # FORTY-FIVE AND NOT THIRTY, which was the first number here and was
+          # wrong. A healthy 20-company Indeed chunk MEASURED 28m41s on
+          # 2026-08-10, so a 30-minute cap has four percent of headroom and
+          # would fail runs that were working. 45 is 1.6x the measurement, which
+          # is slack enough for Bright Data being slower than measured and still
+          # far below the >300 a real stall reaches.
+          #
+          # A dispatch keeps the long default, because a human watching one
+          # chunk can afford to wait and may be re-downloading a snapshot that
+          # genuinely takes hours.
+          #
+          # NOTE FOR THE NEXT EDITOR: keep comments OUT of the argument list
+          # below. The lines are joined by backslashes, so a `#` among them
+          # comments out every argument after it and the run silently collects
+          # the wrong thing.
           python scripts/brightdata-to-d1.py \
             --source '${{ matrix.source }}' \
             --offset '${{ matrix.chunk }}' \
-            --limit '${{ github.event_name == 'schedule' && '90' || (inputs.limit || 'all') }}' \
+            --limit '${{ github.event_name == 'schedule' && '20' || (inputs.limit || 'all') }}' \
             --max-records '${{ inputs.max_records || '20000' }}' \
-            --timeout-min '${{ inputs.timeout_min || '300' }}' \
+            --timeout-min '${{ github.event_name == 'schedule' && '45' || (inputs.timeout_min || '300') }}' \
             ${{ inputs.snapshot != '' && format('--snapshot {0}', inputs.snapshot) || '' }} \
             ${{ inputs.probe && '--probe' || '' }} \
             "${EXTRA[@]}"
 # THE SCHEDULE COLLECTS BOTH BOARDS — the matrix is source x chunk, so a
-# fortnightly sweep is 8 jobs: indeed and linkedin, each over four chunks of 90.
+# fortnightly sweep is 40 jobs: indeed and linkedin, each over twenty chunks of
+# 20. It was four chunks of 90 until 2026-09-01; see the chunk note in `plan`.
 #
 # LINKEDIN IS PROVEN END TO END as of 2026-08-10, and the thing that was wrong
 # is worth keeping written down. Its dataset (gd_lpfll7v5hcqtkxl6l, "Linkedin
