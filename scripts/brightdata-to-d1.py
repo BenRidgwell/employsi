@@ -54,7 +54,19 @@ unknowns are made visible rather than assumed away:
 Env: BRIGHTDATA_API_TOKEN, optionally BRIGHTDATA_DATASET_ID (overrides the
      per-source default), CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID,
      D1_DATABASE_ID
+TWO MODES, AND ONLY ONE OF THEM GROWS THE ARCHIVE.
+
+  discovery (default)  Ask Bright Data which jobs an employer has, by keyword.
+                       This is the sweep, and it is what finds new postings.
+  --refresh            Re-scrape the URLs the archive already holds, through
+                       the /scrape collect-by-URL endpoint. It keeps known rows
+                       alive and CANNOT find a posting nobody has seen, so it
+                       is a stopgap for a broken discovery path rather than a
+                       substitute for one. Added 2026-09-02 because Indeed's
+                       discovery stalled; see the note on REFRESH below.
+
 Run: python scripts/brightdata-to-d1.py --list-datasets
+     python scripts/brightdata-to-d1.py --source indeed --refresh --probe --limit 20
      python scripts/brightdata-to-d1.py --source indeed --probe --limit 20
      python scripts/brightdata-to-d1.py --source linkedin --max-records 50000
 """
@@ -123,6 +135,14 @@ CITIES = ['perth', 'adelaide', 'brisbane', 'melbourne', 'sydney', 'canberra']
 SOURCES = {
     'linkedin': {
         'source': 'linkedin',
+        # The board name, written to the archive's `category` column. That
+        # column is free text and every source uses it differently — gov feeds
+        # write "Government", the portals "Careerportal", Adzuna a real job
+        # category — and for these two it is the board. It was HARDCODED to
+        # 'LinkedIn' for both until 2026-09-02, which filed 1,886 Indeed rows
+        # under LinkedIn. Cosmetic rather than load-bearing, but it is the kind
+        # of wrong that gets believed later.
+        'label': 'LinkedIn',
         # "Linkedin job listings information" — read off the account with
         # --list-datasets on 2026-08-10. Chosen from five LinkedIn datasets that
         # mention jobs because it is the exact analogue of the Indeed scraper
@@ -167,6 +187,7 @@ SOURCES = {
     },
     'indeed': {
         'source': 'indeed',
+        'label': 'Indeed',
         # NO DEFAULT, and the reason is recorded because it cost a run.
         # `sd_msmsowmy2q27hoajjt` was supplied on 2026-08-09 and answered
         #
@@ -266,6 +287,49 @@ INPUT_JSON = _opt('--input-json')
 # --grep: narrow --list-datasets. Defaults to job-board words; 'all' disables.
 GREP = _opt('--grep')
 
+# --refresh: RE-SCRAPE THE URLS THIS SOURCE ALREADY HAS, instead of discovering
+# new ones. A different Bright Data endpoint (/scrape, collect-by-URL) and a
+# different question.
+#
+# WHY IT EXISTS. Indeed's discovery path stopped completing on 2026-08-29: five
+# consecutive snapshots — four at 90 companies, one at 20 — were accepted,
+# reported `running`, and never reached `ready`, including one left for the full
+# 300 minutes. LinkedIn collected normally throughout on the same account,
+# token and code, so it is the Indeed dataset's discover_new path rather than
+# the account. Chunk size was ruled out by the 20-company probe on 2026-09-02.
+#
+# WHAT IT CANNOT DO, WHICH MATTERS MORE THAN WHAT IT CAN. Collect-by-URL takes
+# job pages you already know about; it cannot find a posting you have never
+# seen. So this REFRESHES the archive and cannot GROW it: run it alone and
+# Indeed becomes self-referential, re-confirming a set that only shrinks as ads
+# expire, until the feed is measuring its own history. It is a stopgap that
+# keeps 6,153 known rows alive while discovery is broken — NOT a replacement
+# for the sweep, and the moment discovery works again the sweep is what matters.
+#
+# It is cheap in the way that matters: billing is per record returned, and this
+# returns at most one record per URL asked for, which is a number chosen here
+# rather than discovered by a crawl.
+REFRESH = '--refresh' in args
+# How far back to reach for URLs worth re-checking. An ad this source has not
+# seen in months is almost certainly down, and asking for it bills a record to
+# learn nothing.
+REFRESH_DAYS = int(_opt('--refresh-days', 45))
+# URLs per /scrape call. Unmeasured — the shape came from a working request
+# carrying four. Kept modest so a rejection costs one small call rather than the
+# whole run, and so a slow response stays inside the timeout below.
+REFRESH_BATCH = int(_opt('--refresh-batch', 50))
+# THE COST GUARD FOR THIS MODE, and it needs its own because --limit means
+# something different here. For discovery --limit counts COMPANIES and 'all' is
+# bounded by the roster at 395. For a refresh it counts URLS, and the archive
+# holds 6,153 Indeed rows inside the default window — so the same 'all' that is
+# a safe default over there asks for fifteen times the roster in billable
+# records over here, and MAX_RECORDS at 20,000 would not stop it.
+#
+# So an unbounded --limit is capped, loudly, and going past it has to be asked
+# for. 1,500 is roughly a quarter of the archive: enough that a run is worth
+# doing, small enough that nobody discovers the cost on an invoice.
+REFRESH_MAX_URLS = int(_opt('--refresh-max-urls', 1500))
+
 if not BD_TOKEN:
     sys.exit('BRIGHTDATA_API_TOKEN is required.')
 
@@ -320,6 +384,13 @@ if not BD_DATASET:
              f'wrong id collects the wrong thing and bills you for it.')
 if not PROBE and not TOKEN:
     sys.exit('CLOUDFLARE_API_TOKEN is required (needs D1 edit). Use --probe to skip the write.')
+# --probe waives the token for discovery because that path only WRITES to D1.
+# --refresh also READS from it — the URLs to re-scrape are the archive's own —
+# so probing a refresh without a token dies inside d1() with an auth error that
+# looks like Cloudflare being down rather than a missing argument.
+if REFRESH and not TOKEN:
+    sys.exit('CLOUDFLARE_API_TOKEN is required for --refresh even with --probe: '
+             'the URLs to re-scrape are read from D1.')
 
 
 def norm(s: str) -> str:
@@ -407,7 +478,8 @@ def drop_quarantined(companies: list[tuple[str, str]]) -> list[tuple[str, str]]:
 
 
 # ── Bright Data ───────────────────────────────────────────────────────────────
-def bd(method: str, path: str, body=None, params: str = '') -> dict | list:
+def bd(method: str, path: str, body=None, params: str = '',
+       timeout: int = 120) -> dict | list:
     url = f'{BD_BASE}{path}' + (f'?{params}' if params else '')
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(url, data=data, method=method, headers={
@@ -416,7 +488,7 @@ def bd(method: str, path: str, body=None, params: str = '') -> dict | list:
     })
     for attempt in range(4):
         try:
-            with urllib.request.urlopen(req, timeout=120) as r:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
                 raw = r.read().decode('utf-8', 'replace')
                 return json.loads(raw) if raw.strip() else {}
         except urllib.error.HTTPError as e:
@@ -581,6 +653,81 @@ def d1(sql: str, params: list):
             time.sleep(2 ** attempt)
 
 
+JK_RE = re.compile(r'[?&]jk=([0-9A-Za-z]+)')
+
+
+def known_urls() -> list[tuple[str, str, str]]:
+    """(jk, url, company_id) for postings this source already holds.
+
+    THE ATTRIBUTION IS ALREADY DECIDED, which is the quiet advantage of this
+    path over discovery. Every URL here came from a row that was matched to a
+    rostered employer when it was first archived, so the refresh carries the
+    company_id forward and never re-runs advertiser_matches(). A keyword search
+    has to guess which employer an ad belongs to; a re-scrape does not.
+
+    Ordered most-recently-seen first so a --limit smaller than the archive
+    spends the budget on the ads most likely to still be up.
+    """
+    want = LIMIT
+    if want > REFRESH_MAX_URLS:
+        if LIMIT < 10 ** 9:
+            sys.stderr.write(
+                f'  --limit {LIMIT} is above the {REFRESH_MAX_URLS}-URL cost guard; '
+                f'raise --refresh-max-urls to mean it.\n')
+        else:
+            sys.stderr.write(
+                f'  --limit is unbounded, which for a refresh means every URL in the '
+                f'window.\n  Capped at {REFRESH_MAX_URLS} — pass --refresh-max-urls '
+                f'to spend more.\n')
+        want = REFRESH_MAX_URLS
+    res = d1(
+        "SELECT url, company_id FROM jobs "
+        "WHERE source = ?1 AND url LIKE '%jk=%' AND company_id IS NOT NULL "
+        "AND last_seen >= date('now', ?2) "
+        "ORDER BY last_seen DESC, first_seen DESC LIMIT ?3",
+        [SOURCE, f'-{REFRESH_DAYS} day', want])
+    rows = (res[0] if isinstance(res, list) else res).get('results') or []
+    out, seen = [], set()
+    for r in rows:
+        url = (r.get('url') or '').strip()
+        m = JK_RE.search(url)
+        if not m or m.group(1) in seen:
+            continue
+        seen.add(m.group(1))
+        out.append((m.group(1), url, r['company_id']))
+    return out
+
+
+def scrape_urls(urls: list[str]) -> list[dict]:
+    """Collect-by-URL: one /scrape call for a batch of known job pages.
+
+    A DIFFERENT ENDPOINT FROM THE REST OF THIS FILE. Discovery posts to
+    /trigger and then polls /progress until a snapshot is ready; /scrape takes
+    the URLs directly. That is the whole reason this path is worth having while
+    discovery is stalling — it does not go near the machinery that is broken.
+    The response has been seen as a plain list of records; a snapshot_id is
+    handled too rather than assumed away, because the API is documented only
+    partially and a large batch may well be made asynchronous.
+    """
+    body = {'input': [{'url': u} for u in urls], 'limit_per_input': None}
+    params = f'dataset_id={BD_DATASET}&notify=false&include_errors=true'
+    # Generous next to bd()'s default: this call does the collecting itself
+    # rather than handing back a snapshot to poll for.
+    res = bd('POST', '/scrape', body, params, timeout=600)
+    if isinstance(res, dict):
+        sid = res.get('snapshot_id') or res.get('id')
+        if sid:
+            sys.stderr.write(f'  /scrape returned snapshot {sid}; polling it\n')
+            wait_ready(sid)
+            return download(sid)
+        # include_errors=true means a per-URL failure arrives as data, not as a
+        # non-2xx. Report it rather than counting it as "no ads".
+        if res.get('error') or res.get('errors'):
+            sys.stderr.write(f'  /scrape error: {str(res)[:300]}\n')
+        return []
+    return [r for r in res if isinstance(r, dict)]
+
+
 def upsert(company_id: str, jobs: list) -> int:
     titles = [j['title'] for j in jobs]
     skills = map_skills(titles, SECTOR_BY_ID.get(company_id))
@@ -593,7 +740,7 @@ def upsert(company_id: str, jobs: list) -> int:
             continue
         seen.add(key)
         rows.append((key, SOURCE, j['title'], company or None, company_id,
-                     match_city(location), location, 'LinkedIn',
+                     match_city(location), location, CFG.get('label', SOURCE),
                      j.get('salary') or None, j.get('url') or '', j.get('posted') or '',
                      json.dumps(sk) if sk else None))
     written = 0
@@ -618,6 +765,85 @@ def upsert(company_id: str, jobs: list) -> int:
     return written
 
 
+def refresh() -> int:
+    """Re-scrape known URLs and refresh what the archive already holds."""
+    known = known_urls()
+    if not known:
+        sys.stderr.write(
+            f'No {SOURCE} rows with a job URL seen in the last {REFRESH_DAYS} days.\n'
+            'There is nothing to refresh — this mode cannot find postings the\n'
+            'archive has never seen. Discovery is what does that.\n')
+        return 1
+    sys.stderr.write(
+        f'{WHICH} REFRESH via Bright Data -> D1: {len(known)} known URLs, seen in the '
+        f'last {REFRESH_DAYS} days, {REFRESH_BATCH} per call, dataset {BD_DATASET}, '
+        f'cap {MAX_RECORDS} records{", PROBE (no write)" if PROBE else ""}.\n'
+        '  This REFRESHES the archive and cannot grow it; see --refresh in the header.\n')
+
+    by_jk = {jk: cid for jk, _u, cid in known}
+    records: list[dict] = []
+    for i in range(0, len(known), REFRESH_BATCH):
+        batch = known[i:i + REFRESH_BATCH]
+        got = scrape_urls([u for _jk, u, _c in batch])
+        records.extend(got)
+        sys.stderr.write(f'  [{i:>5}-{i + len(batch) - 1:<5}] {len(got):>4} records\n')
+        if len(records) >= MAX_RECORDS:
+            sys.stderr.write(f'  reached --max-records {MAX_RECORDS}; stopping early.\n')
+            break
+
+    if not records:
+        sys.stderr.write(
+            '\nNo records from any batch. Nothing written.\n'
+            '  This is NOT the discovery stall — /scrape is a different endpoint and\n'
+            '  does not use snapshots. Check the dataset accepts collect-by-URL, and\n'
+            '  that the URLs are still the shape it wants (jk= job pages).\n')
+        return 1
+
+    # BACK TO THE EMPLOYER BY jk, not by advertiser name. The row these URLs
+    # came from already carries company_id, so a re-scrape does not re-litigate
+    # attribution and cannot silently re-file an ad under a different employer.
+    by_company: dict[str, list] = {}
+    unmatched = 0
+    for rec in records:
+        title = pick(rec, 'title')
+        m = JK_RE.search(pick(rec, 'url') or '')
+        cid = by_jk.get(m.group(1)) if m else None
+        if not title or not cid:
+            unmatched += 1
+            continue
+        by_company.setdefault(cid, []).append({
+            'title': title,
+            'company': pick(rec, 'company'),
+            'location': pick(rec, 'location'),
+            'url': pick(rec, 'url'),
+            'posted': iso_date(pick(rec, 'posted')),
+            'salary': pick(rec, 'salary') or None,
+        })
+
+    kept = sum(len(v) for v in by_company.values())
+    sys.stderr.write(
+        f'\n  {kept} ads refreshed across {len(by_company)} employers; '
+        f'{unmatched} records carried no title or no matching jk.\n'
+        f'  {len(known) - kept} of the {len(known)} URLs asked for returned nothing — '
+        f'those ads are most likely down,\n  and they are left alone to age out '
+        f'rather than being marked live.\n')
+    if PROBE:
+        for cid, jobs in sorted(by_company.items())[:10]:
+            j = jobs[0]
+            sys.stderr.write(f'    {cid:24} {len(jobs):3} | {j["title"][:44]:44} | '
+                             f'{j["location"][:22]:22} | {j["posted"] or "-":10}\n')
+        sys.stderr.write('\nPROBE: nothing written.\n')
+        return 0
+    if not kept:
+        return 1
+
+    total = 0
+    for cid, jobs in sorted(by_company.items()):
+        total += upsert(cid, jobs)
+    sys.stderr.write(f'\n{total} rows upserted to D1 as {SOURCE} (refresh).\n')
+    return 0
+
+
 def main() -> int:
     # --offset SLICES THE ROSTER SO A SWEEP CAN BE SPLIT ACROSS RUNS.
     #
@@ -630,6 +856,9 @@ def main() -> int:
     # Data reports it ready, so a timeout means the records were collected and
     # BILLED but no row reaches D1. Chunking is what makes full coverage
     # affordable to actually land.
+    if REFRESH:
+        return refresh() or 0
+
     all_companies = load_companies()
     companies = drop_quarantined(all_companies[OFFSET:OFFSET + LIMIT])
     if not companies:
