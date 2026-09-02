@@ -137,6 +137,10 @@ on:
         description: 'Collect and report only — write nothing to D1'
         type: boolean
         default: true
+      refresh:
+        description: 'Re-scrape URLs the archive already has (collect-by-URL) instead of discovering new jobs'
+        type: boolean
+        default: false
       limit:
         description: 'Companies to search — "all" for the whole roster (billing is per record)'
         type: string
@@ -372,6 +376,15 @@ jobs:
           # chunk can afford to wait and may be re-downloading a snapshot that
           # genuinely takes hours.
           #
+          # `refresh` IS DISPATCH-ONLY BY CONSTRUCTION, and that is the point
+          # rather than an accident of how it is written. On a schedule the
+          # whole `inputs` context is null, so `inputs.refresh` is falsy and the
+          # flag never appears — which is what has to be true, because a
+          # scheduled refresh would look like a working sweep while quietly
+          # replacing it with a mode that CANNOT find a new posting. Indeed
+          # would go green every fortnight, re-confirming a set that only
+          # shrinks, until the feed was measuring its own history.
+          #
           # NOTE FOR THE NEXT EDITOR: keep comments OUT of the argument list
           # below. The lines are joined by backslashes, so a `#` among them
           # comments out every argument after it and the run silently collects
@@ -384,6 +397,7 @@ jobs:
             --timeout-min '${{ github.event_name == 'schedule' && '45' || (inputs.timeout_min || '300') }}' \
             ${{ inputs.snapshot != '' && format('--snapshot {0}', inputs.snapshot) || '' }} \
             ${{ inputs.probe && '--probe' || '' }} \
+            ${{ inputs.refresh && '--refresh' || '' }} \
             "${EXTRA[@]}"
 # THE SCHEDULE COLLECTS BOTH BOARDS — the matrix is source x chunk, so a
 # fortnightly sweep is 40 jobs: indeed and linkedin, each over twenty chunks of
