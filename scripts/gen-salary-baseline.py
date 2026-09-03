@@ -27,6 +27,47 @@ Stats NZ's INC_INC_004 ("Earnings ... by occupation (ANZSCO 2006)") sounds like
 the right table and is not: its occupation codelist holds the same EIGHT major
 groups. The census table is the one with sub-major detail.
 
+SINGAPORE IS NOT A MARKET HERE, AND THAT IS A DECISION RATHER THAN AN OMISSION.
+It was third in the intended order (AU, NZ, SG, PH, MY) and was investigated on
+2026-08-25. The data exists, is annual, is a real median, and is better than
+Australia's on two axes — MOM's mrsd_37_Res_occ_income.xlsx publishes median
+gross monthly income from employment for FULL-TIME employed residents (so no
+part-time drag, unlike the ATO), back to 2001 (twenty-five years against eight),
+in Incl-CPF and Excl-CPF variants.
+
+It is published at EIGHT SSOC major groups and nothing finer. SingStat M920131
+is the same eight. Nothing finer was found through SingStat's API, MOM's site or
+data.gov.sg, whose search ignores its own query parameter.
+
+What eight groups cost is measurable from this repo, because
+gen-sg-occupation-supply.py already had to map the taxonomy onto them:
+
+    Professionals                           41 skills
+    Associate Professionals & Technicians   18
+    Craftsmen & Related Trades              13
+    Managers & Administrators               12
+    Plant & Machine Operators                7
+    Service & Sales                          5
+    Cleaners, Labourers                      3
+    Clerical Support                         1
+
+So Singapore would publish EIGHT DISTINCT VALUES FOR 100 SKILLS. Software
+Engineering, Medical Practice, Commercial & Legal, Geology and Journalism &
+Media would all read the same number, and a reader looking at one skill's card
+could not tell. Against AU's ~69 distinguishable of 75, and NZ's 67, that is not
+a coarser version of the same product — it is a category average wearing a
+skill's name.
+
+The counter-argument was precedent: sgOccupationSupply.ts already ships at these
+same eight groups. But that figure is a DENOMINATOR for a vacancy rate, where
+reweighting across groups still carries information, and vacancyRate.ts refuses
+to blend it with Australia's for exactly this reason. A salary printed beside a
+skill is read as that skill's pay, which is the "plausible number, broken
+reasoning" failure this file exists to avoid.
+
+If Singapore is wanted later, the thing to look for is a finer MOM occupational
+wage table — not a way to present eight numbers as a hundred.
+
 THE MARKETS DO NOT SHARE AN AXIS, AND MUST NOT BE MADE TO
 AU is eight financial years with a state split in one of them; NZ is three
 census years with a regional split in all three. Their bases differ too — the
