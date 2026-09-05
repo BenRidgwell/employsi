@@ -1293,31 +1293,9 @@ body {
   outline: none;
   box-shadow: var(--focus-ring);
 }
-.fpswitchtext {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.fpswitchtitle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: #1c1c1e;
-}
-.fpswitchsub {
-  font-size: 12.5px;
-  color: #8e8e93;
-}
-.fpmuted .fpswitchtitle {
-  color: #8e8e93;
-}
-.fpmuted .fpswitchsub {
-  color: #aeaeb2;
-}
+/* The switch row's styles (.fpswitchtext, .fpswitchtitle, .fpswitchsub and the
+   .fpmuted variants) went with the "Hiring now only" row on 2026-09-05. Nothing
+   else used them. `.fpsecrow` stays — the Listing row is the other one. */
 .fpfoot {
   flex: 0 0 auto;
   display: flex;

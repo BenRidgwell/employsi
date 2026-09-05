@@ -30,11 +30,15 @@ import { isReleasedCompany } from "../lib/markets";
  *     has no room for, and dropping working behaviour to match a picture is not
  *     a trade worth making. It uses the same chip style as Sector.
  *
- *  4. "Hiring now only" is marked Coming soon, using the same treatment as the
- *     settings card. The filter runs client-side over the static roster; whether
- *     a company advertised in the last 30 days lives in D1 and is only fetched
- *     when a card opens. A switch that silently did nothing would be worse than
- *     one that says it is not ready.
+ *  4. THERE IS NO "Hiring now only" ROW. It existed as a disabled switch marked
+ *     Coming soon until 2026-09-05, when it was removed on request. Nothing was
+ *     lost: it had no state behind it and never filtered anything.
+ *
+ *     If it comes back, the reason it was never wired is still true. This panel
+ *     filters client-side over the static roster, and whether a company
+ *     advertised in the last 30 days lives in D1 — fetched only when a card
+ *     opens. Making it work means the panel has to reach the archive, which is
+ *     a different shape of component, not a missing boolean.
  *
  * The apply button closes the panel: filters are applied live as they change
  * (they always have been), so there is nothing to defer — it is a "done".
@@ -337,26 +341,6 @@ export function FilterPane() {
               <span>Any</span>
               <span>{HEAD_MAX.toLocaleString("en-US")}+</span>
             </div>
-          </section>
-
-          <section className="fpsec fpsecrow fpmuted">
-            <div className="fpswitchtext">
-              <span className="fpswitchtitle">
-                Hiring now only
-                <span className="stsoon">Coming soon</span>
-              </span>
-              <span className="fpswitchsub">Companies advertising in the last 30 days.</span>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={false}
-              aria-label="Toggle hiring now only"
-              className="stswitch"
-              disabled
-            >
-              <span className="stswitchknob" />
-            </button>
           </section>
         </div>
 
