@@ -14580,6 +14580,10 @@ body {
   position: absolute;
   top: 0;
   transform: translateX(-50%);
+  /* Inter, not the brand sans. The design sets this control in Inter and it is
+     loaded for that in __root.tsx; before it was, this fell through to
+     system-ui and the value read in the OS face. */
+  font-family: Inter, system-ui, sans-serif;
   font-size: 19px;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -14589,6 +14593,13 @@ body {
 }
 .cctlval.s {
   transform: none;
+}
+/* The mirror of `.s`, and it only became reachable when the axis went
+   continuous: the shortest STOP is 7d at 89.83%, which centres fine, but the
+   thumb can now be dragged to 1d at 100% where half the label would sit outside
+   the card. Same defect as the 60d end, same fix. */
+.cctlval.e {
+  transform: translateX(-100%);
 }
 .cctlstem {
   position: absolute;
@@ -14703,10 +14714,16 @@ body {
 }
 /* Focus has to show on the drawn dot, since the real thumb is transparent.
    Keyed off the stage rather than a sibling selector: the drawn dot comes
-   BEFORE the input in the DOM, so `~` would never match it. The inner ring
-   keeps the dot's own 4px card-coloured halo, so the two do not stack into a
-   thick blob. */
-.cctlstage:focus-within .cctldot {
+   BEFORE the input in the DOM, so `~` would never match it, and `:has()` is
+   what lets the stage answer for its input.
+
+   :focus-visible, NOT :focus-within, AND THAT IS THE WHOLE POINT. With
+   focus-within, clicking anywhere on the scrubber focused the input and drew
+   this ring — so the solid dot the design specifies turned into a ringed
+   target the instant you touched it, and stayed that way. The browser only
+   marks focus "visible" for keyboard interaction, which is exactly when a
+   focus ring is wanted and a mouse drag is not. */
+.cctlstage:has(.cctlr:focus-visible) .cctldot {
   box-shadow:
     0 0 0 4px var(--surface-card),
     0 0 0 6px var(--border-focus);

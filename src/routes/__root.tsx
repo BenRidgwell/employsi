@@ -114,9 +114,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://cdn.jsdelivr.net/npm/@fontsource-variable/mona-sans/index.css",
       },
+      // Inter is here for the company card's timeline scrubber, whose supplied
+      // design names it explicitly rather than taking the brand sans. Without
+      // it that CSS silently fell through to system-ui and the control was set
+      // in whatever face the OS supplies — which is what "not in Inter" looked
+      // like. One request for both families rather than two.
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap",
+        href:
+          "https://fonts.googleapis.com/css2?family=Inter:wght@400;600" +
+          "&family=JetBrains+Mono:wght@400;500&display=swap",
       },
     ],
   }),

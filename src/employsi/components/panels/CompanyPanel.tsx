@@ -144,11 +144,22 @@ const shortDay = (iso: string) => {
  * and each employer's feeds arrived later still, so a 60-day request is
  * routinely answered with fewer days and the axis alone will not say so.
  *
+ * IT SCRUBS A DAY AT A TIME. It used to snap to the four labelled stops, which
+ * made the thumb jump in quarters and put "51 days" out of reach; the stops are
+ * now just clickable presets under a continuous axis. Two things had to change
+ * together for that: skillWindowDays() went from an allowlist of the four to a
+ * clamp of 1..60 (its comment explains why the guard that mattered survives),
+ * and the drag is held in LOCAL state and committed on release, so a gesture
+ * costs one fetch rather than one per day crossed.
+ *
+ * `shown` is what the control displays and `days` is what the card was drawn
+ * from. They differ only mid-gesture, which is the one moment the label may
+ * lead the data; everything below the scrubber keeps naming the span it really
+ * drew, from the fold's returned `days`.
+ *
  * The thumb is TIME-PROPORTIONAL, not evenly spaced: it marks where the period
  * starts on the axis, so it has to sit at the edge of the period it controls.
- * That rules out a range input over the stop index — hence a range over days,
- * snapped on change, with arrow keys handled separately so the keyboard steps
- * stop to stop instead of getting stuck between two that snap back.
+ * That rules out a range input over the stop index — hence a range over days.
  *
  * The axis is the design's: a 1-day floor, so the stops land on the percentages
  * the mockup hardcodes its tick labels at. The range input spans the same
@@ -173,6 +184,11 @@ function TimelineScrubber({
   // open at once with a hardcoded id would both resolve to whichever mounted
   // first, and the second would silently take the first's fill.
   const fadeId = useId();
+  // The value under the pointer mid-drag; null when nothing is being dragged.
+  // `shown` is therefore what the control DISPLAYS, and `days` what the card
+  // has actually been drawn from — they differ only during a gesture.
+  const [drag, setDrag] = useState<number | null>(null);
+  const shown = drag ?? days;
   const geom = useMemo(() => {
     if (series.length < 2) return null;
     const end = series[series.length - 1].d;
@@ -232,11 +248,15 @@ function TimelineScrubber({
    * 440px card: at 60d, "60 days" starts ~14px past the card's left edge.
    *
    * Keyed off the POSITION rather than `days === 60`, so it still holds if the
-   * longest window changes. The right-hand end needs no equivalent: the
-   * shortest stop is 7d at 89.83%, and its label was measured to clear the
-   * right edge with room to spare.
+   * longest window changes.
+   *
+   * BOTH ENDS NEED IT NOW. When the thumb could only stop at 7/14/30/60 the
+   * right-hand end was safe — 7d sits at 89.83% and its label was measured to
+   * clear the edge. Day-by-day scrubbing put 1d at 100% within reach, so the
+   * same overhang exists there and gets the same treatment.
    */
-  const atLeftEnd = (TL_SPAN - days) / (TL_SPAN - TL_MIN) < 0.1;
+  const atPct = (TL_SPAN - shown) / (TL_SPAN - TL_MIN);
+  const anchor = atPct < 0.1 ? " s" : atPct > 0.9 ? " e" : "";
   const short = covered > 0 && covered < days;
   const startsOn =
     geom && Date.parse(geom.end + "T00:00:00Z")
@@ -245,14 +265,21 @@ function TimelineScrubber({
           .slice(0, 10)
       : "";
 
-  // Nearest allowed window to a raw day count, so dragging anywhere on the axis
-  // lands on a stop.
-  const snap = (d: number) =>
-    SKILL_WINDOWS.reduce((best, w) => (Math.abs(w - d) < Math.abs(best - d) ? w : best));
-  const step = (dir: number) => {
-    const i = SKILL_WINDOWS.indexOf(days as (typeof SKILL_WINDOWS)[number]);
-    const next = SKILL_WINDOWS[Math.min(SKILL_WINDOWS.length - 1, Math.max(0, i + dir))];
-    if (next !== days) onChange(next);
+  /**
+   * End of a drag: hand the value up, which changes the query key and fetches.
+   *
+   * THE DRAG ITSELF IS LOCAL, and that split is what makes day-by-day scrubbing
+   * affordable. The thumb and its label follow the pointer on `drag` state at
+   * every step, so the control feels continuous; the fold is only asked once,
+   * when the gesture ends. Committing on every input event instead would fetch
+   * up to sixty times per drag and put one cache entry per pixel crossed —
+   * which is the cost the old four-value allowlist existed to avoid.
+   */
+  const commit = () => {
+    setDrag((d) => {
+      if (d !== null && d !== days) onChange(d);
+      return null;
+    });
   };
 
   return (
@@ -269,10 +296,10 @@ function TimelineScrubber({
           the number the reader is setting sits over the point they are setting
           it at rather than in a corner. */}
       <div className="cctlstage">
-        <span className={`cctlval${atLeftEnd ? " s" : ""}`} style={{ left: pct(days) }}>
-          {days} days
+        <span className={`cctlval${anchor}`} style={{ left: pct(shown) }}>
+          {shown} {shown === 1 ? "day" : "days"}
         </span>
-        <span className="cctlstem" style={{ left: pct(days) }} aria-hidden="true" />
+        <span className="cctlstem" style={{ left: pct(shown) }} aria-hidden="true" />
 
         {geom && (
           <svg
@@ -303,7 +330,7 @@ function TimelineScrubber({
         )}
 
         <span className="cctlbase" aria-hidden="true" />
-        <span className="cctldot" style={{ left: pct(days) }} aria-hidden="true" />
+        <span className="cctldot" style={{ left: pct(shown) }} aria-hidden="true" />
         <input
           id="cctlrange"
           className="cctlr"
@@ -315,23 +342,18 @@ function TimelineScrubber({
           min={0}
           max={TL_SPAN - TL_MIN}
           step={1}
-          value={TL_SPAN - days}
+          value={TL_SPAN - shown}
           // Days, not the raw slider number — "53 of 60" describes nothing.
           aria-valuetext={
-            short ? `last ${days} days requested, ${covered} collected` : `last ${days} days`
+            short ? `last ${days} days requested, ${covered} collected` : `last ${shown} days`
           }
-          onChange={(e) => onChange(snap(TL_SPAN - Number(e.target.value)))}
-          onKeyDown={(e) => {
-            // Left is further back. Without this the arrows move one day and
-            // snap straight back, so the keyboard cannot leave a stop at all.
-            if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
-              e.preventDefault();
-              step(1);
-            } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
-              e.preventDefault();
-              step(-1);
-            }
-          }}
+          // A step moves the thumb only. `commit` is what asks the fold, and it
+          // runs when the gesture ends — see its comment above.
+          onChange={(e) => setDrag(TL_SPAN - Number(e.target.value))}
+          onPointerUp={commit}
+          onPointerCancel={commit}
+          onKeyUp={commit}
+          onBlur={commit}
         />
       </div>
 
@@ -344,7 +366,10 @@ function TimelineScrubber({
             style={{ left: pct(w) }}
             tabIndex={-1}
             aria-hidden="true"
-            onClick={() => onChange(w)}
+            onClick={() => {
+              setDrag(null);
+              onChange(w);
+            }}
           >
             {w}d
           </button>

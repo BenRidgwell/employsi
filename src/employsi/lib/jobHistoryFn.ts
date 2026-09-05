@@ -956,12 +956,10 @@ const NO_SKILL_TRENDS: CompanySkillTrends = {
 };
 
 /**
- * Windows the card's skills section can be asked for, shortest first.
+ * The card's labelled window STOPS, shortest first — the four the scrubber
+ * prints under its axis and jumps to when one is clicked.
  *
- * An allowlist rather than a free number, for two reasons. The window sets
- * `scanFrom` on an unindexed date range, so an arbitrary caller-supplied depth
- * is an arbitrary amount of scanning; and a fixed set of values keeps the query
- * cache useful — four keys per company instead of one per pixel of a slider.
+ * These are no longer the only values the fold accepts; see skillWindowDays.
  *
  * 60 is deliberately longer than the archive is currently deep. It does not
  * fabricate anything: the coverage trim below cuts the window back to days
@@ -973,11 +971,44 @@ const NO_SKILL_TRENDS: CompanySkillTrends = {
 export const SKILL_WINDOWS = [7, 14, 30, 60] as const;
 /** What the card asks for unless the reader moves the slider. */
 export const DEFAULT_SKILL_WINDOW = 30;
+/** The deepest scan any caller can ask for. */
+export const SKILL_WINDOW_MAX = SKILL_WINDOWS[SKILL_WINDOWS.length - 1];
 
-/** The nearest allowed window, so a hand-made request cannot widen the scan. */
+/**
+ * Any whole number of days from 1 to SKILL_WINDOW_MAX.
+ *
+ * THIS WAS AN ALLOWLIST OF THE FOUR STOPS until 2026-09-05, and the swap is
+ * safe because only one of the two reasons it existed was about this function.
+ *
+ *   · SCAN DEPTH, which is the reason that mattered, is fully preserved. The
+ *     window sets `scanFrom` on an unindexed date range, so what had to be
+ *     stopped was a hand-made request asking for ten thousand days. A clamp
+ *     stops that exactly as an allowlist did — 60 was always the ceiling, and
+ *     51 days is strictly less scanning than the 60 that was already allowed.
+ *
+ *   · CACHE KEYS, four per company rather than one per pixel of a slider, is
+ *     not enforceable here: this function cannot see how often it is called.
+ *     It is handled where the calling actually happens — TimelineScrubber
+ *     moves its thumb on local state and only commits the value, and so only
+ *     changes the query key, when the drag ENDS. One fetch per gesture, not
+ *     one per pixel. If that commit-on-release is ever removed, this comment
+ *     is the warning that dragging will then fetch continuously.
+ *
+ * ABSENT INPUT FALLS BACK TO THE DEFAULT, NOT TO THE FLOOR, and that needs
+ * saying because the obvious clamp gets it wrong. `Number(null)` is 0 and
+ * `Number([])` is 0, both of which are finite, so `Math.max(1, …)` turns a
+ * missing window into a ONE-DAY card — a plausible-looking render of nearly no
+ * data, from a request that simply forgot to say how far back to look. The
+ * allowlist this replaced returned the default for anything it did not
+ * recognise; so does this. Only a value that is genuinely a number or a numeric
+ * string is clamped.
+ */
 export function skillWindowDays(days: unknown): number {
-  const n = Number(days);
-  return (SKILL_WINDOWS as readonly number[]).includes(n) ? n : DEFAULT_SKILL_WINDOW;
+  if (typeof days !== "number" && typeof days !== "string") return DEFAULT_SKILL_WINDOW;
+  if (typeof days === "string" && days.trim() === "") return DEFAULT_SKILL_WINDOW;
+  const n = Math.round(Number(days));
+  if (!Number.isFinite(n)) return DEFAULT_SKILL_WINDOW;
+  return Math.min(SKILL_WINDOW_MAX, Math.max(1, n));
 }
 
 /** Below this many covered days the line says more about the archive's age
