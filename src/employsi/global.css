@@ -996,32 +996,32 @@ body {
   background: transparent;
   z-index: 47;
 }
-/* ── Filter card (Filter_Popout.html) ──────────────────────────────────────
-   The design's card: 392px, 18px radius, 22px gutters, a header carrying the
-   active count / "Clear all" / a 32px round close, a scrolling body of
-   hairline-separated sections with mono eyebrows, and a #fbfbfc footer.
+/* ── Filter card (Filter_Card.html) ────────────────────────────────────────
+   REDRAWN 2026-09-05 to the second supplied design. What changed from the
+   first: the card is 500px rather than 392px, the sector row became a 4-across
+   grid of 52px icon circles with a count badge and a label under each — not
+   text chips — and every size, weight and colour below comes from the design's
+   own tokens rather than the hex literals this block used to carry.
 
    It keeps this app's anchor (the left rail's --pane-left/--pane-top) rather
    than the mock's centred canvas, and caps against the viewport with the body
-   as the only scrolling part — sector chips plus the exchange drill-down can
-   run long. See components/FilterPane.tsx for the four places the content
-   deliberately differs from the mock. */
+   as the only scrolling part — the sector grid plus the exchange drill-down can
+   run long. See components/FilterPane.tsx for where the content deliberately
+   differs from the mock. */
 .filterpane {
   position: fixed;
   left: var(--pane-left);
   top: var(--pane-top);
   box-sizing: border-box;
-  width: 392px;
+  width: 500px;
   max-width: calc(100vw - 32px);
   max-height: var(--pane-max-h);
   display: flex;
   flex-direction: column;
   padding: 0;
-  border-radius: 18px;
-  background: #ffffff;
-  box-shadow:
-    0 24px 60px -20px rgba(28, 28, 30, 0.32),
-    0 2px 6px rgba(28, 28, 30, 0.06);
+  border-radius: var(--radius-xl);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
   animation: emppop 200ms cubic-bezier(0.32, 0.72, 0, 1) both;
   z-index: 49;
@@ -1032,89 +1032,73 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 20px 22px 14px;
+  padding: 26px 30px 0;
 }
 .fphdleft {
   display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.fphdright {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
 }
 .fptitle {
-  font-size: 19px;
+  font-size: 29px;
   font-weight: 600;
-  letter-spacing: -0.022em;
-  color: #1c1c1e;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--text-primary);
 }
-/* How many filters are on, in the header where it is visible with the body
-   scrolled. Ink pill, mono, matching the design. */
 /* Names the layer every count on the card is scoped to — "Perth", "Australia &
    New Zealand", "Worldwide". Quiet by design: it is a caption for the numbers,
-   not a control, and it sits beside the active-filter pill rather than
-   competing with it. */
+   not a control. */
 .fpscope {
   font-family: var(--font-label);
-  font-size: 10px;
-  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--text-tertiary, #8a8a8e);
+  color: var(--text-tertiary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 168px;
+  max-width: 220px;
 }
-.fpcount {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 7px;
-  border-radius: 999px;
-  background: #1c1c1e;
-  color: #ffffff;
-  font-family: var(--font-label);
-  font-size: 11px;
-}
+/* Sits in the FOOTER now — the design's header is the title, the scope and the
+   close button, with no room for an action. */
 .fpghost {
-  height: 32px;
-  padding: 0 10px;
+  flex: 0 0 auto;
+  padding: 0 4px;
   border: 0;
-  border-radius: 9px;
   background: transparent;
-  color: #6c6c72;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
+  color: var(--text-tertiary);
+  font-family: var(--font-label);
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
   cursor: pointer;
-  transition: background 0.12s ease;
+  transition: color 0.12s ease;
 }
 .fpghost:hover {
-  background: #f4f4f5;
+  color: var(--text-primary);
 }
 .fpx {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 42px;
+  height: 42px;
   flex: 0 0 auto;
   padding: 0;
-  border: 1px solid #e5e5ea;
+  border: 1px solid var(--border-default);
   border-radius: 999px;
-  background: #ffffff;
-  color: #3a3a3c;
+  background: var(--surface-card);
+  color: var(--text-primary);
   cursor: pointer;
   transition:
     background 160ms,
     transform 110ms;
 }
 .fpx:hover {
-  background: #f4f4f5;
+  background: var(--surface-hover);
 }
 .fpx:active {
   transform: scale(0.96);
@@ -1123,14 +1107,20 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  padding: 0 22px;
+  padding: 0 30px;
 }
 .fpsec {
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  padding: 14px 0;
-  border-top: 1px solid #ededf0;
+  gap: 18px;
+  padding: 22px 0 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+.fpsec:first-child {
+  padding-top: 24px;
+}
+.fpsec:last-child {
+  padding-bottom: 26px;
 }
 /* A section whose control sits beside its eyebrow rather than under it. */
 .fpsecrow {
@@ -1143,24 +1133,110 @@ body {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
 }
 .fpeyebrow {
   font-family: var(--font-label);
-  font-size: 10px;
+  font-size: 12px;
+  font-weight: 500;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #8e8e93;
+  color: var(--text-tertiary);
 }
 .fpsummary {
   font-family: var(--font-label);
-  font-size: 11px;
-  color: #aeaeb2;
+  font-size: 12px;
+  color: var(--text-disabled);
 }
 .fpchips {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
+}
+/* ── Sector picker ──────────────────────────────────────────────────────────
+   Four across, so the seven groups fill a row of four and a short row of three.
+   Each is an icon in a circle with its facet count riding on the rim and the
+   short name beneath. Selected inverts the circle to ink, which also flips the
+   badge — the count has to stay legible against both. */
+.fpsectors {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px 8px;
+  justify-items: center;
+}
+.fpsector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+.fpsecticon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  transition:
+    background 120ms var(--ease-standard),
+    border-color 120ms var(--ease-standard);
+}
+.fpsector:hover .fpsecticon {
+  background: var(--surface-hover);
+}
+.fpsector.on .fpsecticon {
+  border-color: var(--action-primary);
+  background: var(--action-primary);
+  color: var(--text-inverse);
+}
+.fpsector:active .fpsecticon {
+  transform: scale(0.96);
+}
+/* The rim badge. Its 1px border is the CARD colour, not a hairline — it is
+   punching the badge out of the circle's edge rather than outlining it. */
+.fpsectn {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  box-sizing: border-box;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border: 1px solid var(--surface-card);
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  color: var(--text-tertiary);
+  font-family: var(--font-label);
+  font-size: 10px;
+  line-height: 17px;
+  text-align: center;
+}
+.fpsector.on .fpsectn {
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+.fpsectlabel {
+  display: block;
+  min-height: 26px;
+  font-family: var(--font-label);
+  font-size: 10.5px;
+  line-height: 1.25;
+  text-align: center;
+  text-wrap: pretty;
+  color: var(--text-secondary);
+}
+.fpsector.on .fpsectlabel {
+  color: var(--text-primary);
 }
 .fpchip {
   display: inline-flex;
@@ -1205,40 +1281,36 @@ body {
 }
 .fpseg {
   display: inline-flex;
-  padding: 3px;
-  gap: 3px;
-  border: 1px solid #e5e5ea;
-  border-radius: 9px;
-  background: #f4f4f5;
+  padding: 4px;
+  gap: 2px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-sunken);
 }
 .fpsegbtn {
-  height: 28px;
-  padding: 0 15px;
+  padding: 9px 20px;
   border: 0;
-  border-radius: 7px;
+  border-radius: 999px;
   background: transparent;
-  color: #8e8e93;
+  color: var(--text-tertiary);
   font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.006em;
+  font-size: 15px;
+  font-weight: 500;
   cursor: pointer;
-  transition:
-    background 120ms ease,
-    color 120ms ease;
+  transition: background 120ms var(--ease-standard);
 }
 .fpsegbtn.on {
-  background: #ffffff;
-  color: #1c1c1e;
-  box-shadow: 0 1px 2px rgba(28, 28, 30, 0.1);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-xs);
 }
+/* The chosen value, beside its eyebrow. Set like the scrubber's figure rather
+   than like a caption — it is the number the section is about. */
 .fpvalue {
-  font-family: var(--font-label);
-  font-size: 14px;
-  color: #aeaeb2;
-}
-.fpvalue.on {
-  color: #1c1c1e;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
 }
 /* The design's end labels under each slider, so the range is readable without
    dragging it. */
@@ -1247,50 +1319,93 @@ body {
   align-items: center;
   justify-content: space-between;
   font-family: var(--font-label);
-  font-size: 10px;
-  color: #c7c7cc;
+  font-size: 12.5px;
+  color: var(--text-disabled);
 }
-/* The design draws its own track and thumb over a pointer-drag div. A real
-   range input is used instead so the control stays keyboard-operable; these
-   rules give it the design's 5px track, ink fill and 18px thumb. */
+/* ── Sliders ────────────────────────────────────────────────────────────────
+   The design draws a 4px rail, an ink fill and a 22px ring thumb over a
+   pointer-drag div. Those three are drawn here as spans, positioned from the
+   --fill custom property the component sets, and a REAL range input is laid
+   transparent over the top — so the control looks like the drawing and still
+   answers to the keyboard and to a screen reader. Same split as the company
+   card's timeline scrubber, for the same reason. */
+.fptrack {
+  position: relative;
+  height: 22px;
+}
+.fprail,
+.fpfill {
+  position: absolute;
+  top: 9px;
+  height: 4px;
+  border-radius: 999px;
+  pointer-events: none;
+}
+.fprail {
+  left: 0;
+  right: 0;
+  background: var(--surface-sunken);
+}
+.fpfill {
+  left: 0;
+  width: var(--fill, 0%);
+  background: var(--text-primary);
+}
+.fpthumb {
+  position: absolute;
+  top: 0;
+  left: var(--fill, 0%);
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  border: 3px solid var(--text-primary);
+  border-radius: 999px;
+  background: var(--surface-card);
+  pointer-events: none;
+}
 .fprange {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 22px;
+  margin: 0;
   -webkit-appearance: none;
   appearance: none;
-  width: 100%;
-  height: 5px;
-  margin: 4px 0;
-  border-radius: 999px;
-  background: linear-gradient(
-    to right,
-    #1c1c1e 0,
-    #1c1c1e var(--fill, 0%),
-    #ededf0 var(--fill, 0%),
-    #ededf0 100%
-  );
-  cursor: pointer;
+  background: transparent;
+  cursor: ew-resize;
+  /* The design's track carries this; without it a touch drag scrolls the card
+     instead of moving the thumb. */
+  touch-action: none;
+  outline: none;
+}
+.fprange::-webkit-slider-runnable-track {
+  height: 22px;
+  background: transparent;
+}
+.fprange::-moz-range-track {
+  height: 22px;
+  background: transparent;
 }
 .fprange::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
-  border: 2px solid #1c1c1e;
+  width: 22px;
+  height: 22px;
+  border: 0;
   border-radius: 999px;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(28, 28, 30, 0.22);
-  cursor: pointer;
+  background: transparent;
 }
 .fprange::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border: 2px solid #1c1c1e;
+  width: 22px;
+  height: 22px;
+  border: 0;
   border-radius: 999px;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(28, 28, 30, 0.22);
-  cursor: pointer;
+  background: transparent;
 }
-.fprange:focus-visible {
-  outline: none;
+/* Keyboard only, for the same reason the scrubber's dot rings only on
+   :focus-visible — a click would otherwise ring the thumb and hold it. */
+.fptrack:has(.fprange:focus-visible) .fpthumb {
   box-shadow: var(--focus-ring);
 }
 /* The switch row's styles (.fpswitchtext, .fpswitchtitle, .fpswitchsub and the
@@ -1300,35 +1415,36 @@ body {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 22px 18px;
-  border-top: 1px solid #ededf0;
-  background: #fbfbfc;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-subtle);
 }
 .fpnote {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 12.5px;
-  color: #8e8e93;
+  font-family: var(--font-label);
+  font-size: 14px;
+  color: var(--text-tertiary);
 }
 .fpapply {
   flex: 0 0 auto;
-  height: 38px;
-  padding: 0 16px;
+  padding: 15px 26px;
   border: 0;
-  border-radius: 10px;
-  background: #1c1c1e;
-  color: #ffffff;
+  border-radius: 12px;
+  background: var(--action-primary);
+  color: var(--action-primary-text);
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: 16px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   cursor: pointer;
   transition:
-    background 0.12s ease,
-    transform 0.12s ease;
+    background 120ms var(--ease-standard),
+    transform 120ms var(--ease-standard);
 }
 .fpapply:hover {
-  background: #2c2c2e;
+  background: var(--action-primary-hover);
 }
 .fpapply:active {
   transform: scale(0.98);

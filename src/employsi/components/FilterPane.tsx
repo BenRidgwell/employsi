@@ -1,4 +1,14 @@
 import { useMemo, type CSSProperties } from "react";
+import {
+  Building2,
+  Cpu,
+  Factory,
+  HeartPulse,
+  Landmark,
+  Pickaxe,
+  ShoppingBag,
+  type LucideIcon,
+} from "lucide-react";
 import { useAppStore, matchesFilters, type FilterState } from "../state/store";
 import { COMPANIES, SECTOR_GROUPS, SECTOR_SHORT, EXCHANGES } from "../data/companies";
 import { CITY_COMPANIES } from "../data/mapboxGeo";
@@ -48,6 +58,30 @@ import { isReleasedCompany } from "../lib/markets";
 function fill(value: number, min: number, max: number): CSSProperties {
   return { "--fill": `${((value - min) / (max - min)) * 100}%` } as CSSProperties;
 }
+
+/**
+ * One Lucide glyph per sector group, exactly the seven the design names —
+ * pickaxe, landmark, cpu, shopping-bag, factory, heart-pulse, building-2, in
+ * that order.
+ *
+ * The design draws them as CSS masks over a remote unpkg URL. These are the
+ * same icons as React components from the `lucide-react` already in
+ * package.json: no third-party request at render time, no mask support to worry
+ * about, and `currentColor` inherits the selected/unselected foreground the
+ * same way the mask did.
+ *
+ * Keyed on the FULL group name, which is what COMPANIES stores and what
+ * SECTOR_GROUPS iterates; SECTOR_SHORT supplies the label beneath.
+ */
+const SECTOR_ICON: Record<string, LucideIcon> = {
+  "Energy & Natural Resources": Pickaxe,
+  "Financial Services": Landmark,
+  "Technology, Media and Telecommunications": Cpu,
+  "Consumer and Retail": ShoppingBag,
+  "Industrial Manufacturing": Factory,
+  "Healthcare and Life Sciences": HeartPulse,
+  "Infrastructure and Government": Building2,
+};
 
 const SALARY_MIN = 130;
 const SALARY_MAX = 160;
@@ -186,58 +220,58 @@ export function FilterPane() {
         <div className="fphd">
           <div className="fphdleft">
             <span className="fptitle">Filter</span>
-            {activeCount > 0 && <span className="fpcount">{activeCount}</span>}
             {/* Names what every count below is counting. Without it the numbers
                 change as you zoom and there is nothing on the card explaining
                 why. */}
             <span className="fpscope">{scopeLabel}</span>
           </div>
-          <div className="fphdright">
-            {activeCount > 0 && (
-              <button type="button" className="fpghost" onClick={clearFilters}>
-                Clear all
-              </button>
-            )}
-            <button type="button" className="fpx" onClick={toggleFilter} aria-label="Close filter">
-              <svg
-                viewBox="0 0 24 24"
-                width={15}
-                height={15}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                strokeLinecap="round"
-                aria-hidden
-              >
-                <path d="M6 6l12 12M18 6L6 18" />
-              </svg>
-            </button>
-          </div>
+          <button type="button" className="fpx" onClick={toggleFilter} aria-label="Close filter">
+            <svg
+              viewBox="0 0 24 24"
+              width={17}
+              height={17}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              aria-hidden
+            >
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
         </div>
 
         <div className="fpbody">
           <section className="fpsec">
             <div className="fpsechd">
               <span className="fpeyebrow">Sector</span>
-              <span className="fpsummary">
-                {activeSectors.length
-                  ? `${activeSectors.length} of ${SECTOR_GROUPS.length}`
-                  : "All sectors"}
-              </span>
             </div>
-            <div className="fpchips">
+            {/* Four across, seven items, so the last row is short — the design
+                is drawn that way rather than balanced. */}
+            <div className="fpsectors">
               {SECTOR_GROUPS.map((cat) => {
                 const on = activeSectors.includes(cat);
+                const Icon = SECTOR_ICON[cat];
+                const label = SECTOR_SHORT[cat] || cat;
                 return (
                   <button
                     key={cat}
                     type="button"
-                    className={`fpchip${on ? " on" : ""}`}
+                    className={`fpsector${on ? " on" : ""}`}
                     aria-pressed={on}
+                    // The visible label is the SHORT one, so the full group name
+                    // has to reach a screen reader some other way — an icon
+                    // button reading "Tech & media 4" otherwise loses which
+                    // classification it belongs to.
+                    title={cat}
+                    aria-label={`${cat}, ${sectorCounts[cat] ?? 0} companies`}
                     onClick={() => toggleSector(cat)}
                   >
-                    {SECTOR_SHORT[cat] || cat}
-                    <span className="fpchipn">{sectorCounts[cat] ?? 0}</span>
+                    <span className="fpsecticon">
+                      <Icon size={21} strokeWidth={1.75} aria-hidden />
+                      <span className="fpsectn">{sectorCounts[cat] ?? 0}</span>
+                    </span>
+                    <span className="fpsectlabel">{label}</span>
                   </button>
                 );
               })}
@@ -302,17 +336,25 @@ export function FilterPane() {
                 {minSalary > SALARY_MIN ? `$${minSalary}k+` : "Any"}
               </span>
             </div>
-            <input
-              type="range"
-              className="fprange"
-              style={fill(minSalary, SALARY_MIN, SALARY_MAX)}
-              min={SALARY_MIN}
-              max={SALARY_MAX}
-              step={1}
-              value={minSalary}
-              onChange={(e) => setMinSalary(Number(e.target.value))}
-              aria-label="Minimum salary"
-            />
+            {/* The design draws rail, fill and thumb itself over a pointer-drag
+                div. A real range input is kept and made transparent on top of
+                those, so the control keeps its keyboard and screen-reader
+                behaviour while looking exactly like the drawing. */}
+            <div className="fptrack" style={fill(minSalary, SALARY_MIN, SALARY_MAX)}>
+              <span className="fprail" />
+              <span className="fpfill" />
+              <span className="fpthumb" />
+              <input
+                type="range"
+                className="fprange"
+                min={SALARY_MIN}
+                max={SALARY_MAX}
+                step={1}
+                value={minSalary}
+                onChange={(e) => setMinSalary(Number(e.target.value))}
+                aria-label="Minimum salary"
+              />
+            </div>
             <div className="fpends">
               <span>Any</span>
               <span>${SALARY_MAX}k+</span>
@@ -326,17 +368,21 @@ export function FilterPane() {
                 {minHeadcount > 0 ? minHeadcount.toLocaleString("en-US") + "+" : "Any"}
               </span>
             </div>
-            <input
-              type="range"
-              className="fprange"
-              style={fill(minHeadcount, 0, HEAD_MAX)}
-              min={0}
-              max={HEAD_MAX}
-              step={250}
-              value={minHeadcount}
-              onChange={(e) => setMinHeadcount(Number(e.target.value))}
-              aria-label="Minimum headcount"
-            />
+            <div className="fptrack" style={fill(minHeadcount, 0, HEAD_MAX)}>
+              <span className="fprail" />
+              <span className="fpfill" />
+              <span className="fpthumb" />
+              <input
+                type="range"
+                className="fprange"
+                min={0}
+                max={HEAD_MAX}
+                step={250}
+                value={minHeadcount}
+                onChange={(e) => setMinHeadcount(Number(e.target.value))}
+                aria-label="Minimum headcount"
+              />
+            </div>
             <div className="fpends">
               <span>Any</span>
               <span>{HEAD_MAX.toLocaleString("en-US")}+</span>
@@ -347,9 +393,19 @@ export function FilterPane() {
         <div className="fpfoot">
           <span className="fpnote">
             {activeCount
-              ? `${activeCount} ${activeCount === 1 ? "filter" : "filters"} active`
+              ? `${activeCount} ${activeCount === 1 ? "filter" : "filters"} applied`
               : "No filters applied"}
           </span>
+          {/* MOVED HERE FROM THE HEADER, which the design gives to the title,
+              the scope and the close button alone. Clearing is a real action
+              and the design has nowhere else for it; the footer's left slot is
+              already about the filter state, so it reads with the count rather
+              than competing with the primary button. */}
+          {activeCount > 0 && (
+            <button type="button" className="fpghost" onClick={clearFilters}>
+              Clear all
+            </button>
+          )}
           <button type="button" className="fpapply" onClick={toggleFilter}>
             Show {results.toLocaleString("en-US")} {results === 1 ? "company" : "companies"}
           </button>
