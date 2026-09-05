@@ -997,11 +997,23 @@ body {
   z-index: 47;
 }
 /* ── Filter card (Filter_Card.html) ────────────────────────────────────────
-   REDRAWN 2026-09-05 to the second supplied design. What changed from the
-   first: the card is 500px rather than 392px, the sector row became a 4-across
-   grid of 52px icon circles with a count badge and a label under each — not
-   text chips — and every size, weight and colour below comes from the design's
-   own tokens rather than the hex literals this block used to carry.
+   REDRAWN 2026-09-05 to the second supplied design: the sector row became a
+   4-across grid of 52px icon circles with a count badge and a label under each
+   — not text chips — and every colour below comes from the design's own tokens
+   rather than the hex literals this block used to carry.
+
+   SIZED TO THE COMPANY CARD, NOT TO THE MOCKUP. The design is drawn standalone
+   at 500px on generous gutters, which beside a 440px company card reads as a
+   different, louder component rather than a sibling. So the card is 440px on
+   18px body gutters — .ccard and .ccbody exactly — and the section rhythm is
+   tightened to match (sections 15/14 with a 12px gap, header 16px, footer 13px,
+   against the mockup's 22/20, 18, 26 and 20). The type is likewise the app's
+   scale; the mapping is spelled out below.
+
+   WHAT IS STILL THE MOCKUP'S, and should stay that way: the 52px circles and
+   their 21px glyphs, the badge on the rim, the 4-column grid, the pill
+   segmented control, the 4px rail with its 22px ring thumb, and every colour.
+   Those are the design; the frame around them is this app's.
 
    It keeps this app's anchor (the left rail's --pane-left/--pane-top) rather
    than the mock's centred canvas, and caps against the viewport with the body
@@ -1009,12 +1021,7 @@ body {
    run long. See components/FilterPane.tsx for where the content deliberately
    differs from the mock.
 
-   THE TYPE IS THE APP'S SCALE, NOT THE MOCKUP'S, and that is a deliberate
-   departure rather than a half-finished import. The design is drawn as a
-   standalone 500px card and sizes its type for that; dropped into a product
-   where the company card beside it titles at 19px, the same figures read as a
-   different, louder component. So each element takes the app's existing
-   equivalent instead:
+   THE TYPE MAPPING, each element onto this app's existing equivalent:
 
      title      19px/600/-0.02em   = .ccname
      eyebrows   10px/0.12em        = .cceyebrow  (mockup: 12px/0.16em)
@@ -1022,14 +1029,13 @@ body {
      segmented  13px               = .cctab      (mockup: 15px)
 
    and the rest — section value, slider ends, footer note, CTA — steps down
-   with them. The LAYOUT is untouched: widths, the 52px circles, the grid, the
-   rail and thumb geometry and every colour are still the mockup's. */
+   with them. */
 .filterpane {
   position: fixed;
   left: var(--pane-left);
   top: var(--pane-top);
   box-sizing: border-box;
-  width: 500px;
+  width: 440px;
   max-width: calc(100vw - 32px);
   max-height: var(--pane-max-h);
   display: flex;
@@ -1047,13 +1053,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 26px 30px 0;
+  gap: 14px;
+  padding: 16px 18px 0;
 }
 .fphdleft {
   display: flex;
   align-items: baseline;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 .fptitle {
@@ -1076,7 +1082,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
+  max-width: 180px;
 }
 /* Sits in the FOOTER now — the design's header is the title, the scope and the
    close button, with no room for an action. */
@@ -1123,20 +1129,20 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  padding: 0 30px;
+  padding: 0 18px;
 }
 .fpsec {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 22px 0 20px;
+  gap: 12px;
+  padding: 15px 0 14px;
   border-top: 1px solid var(--border-subtle);
 }
 .fpsec:first-child {
-  padding-top: 24px;
+  padding-top: 16px;
 }
 .fpsec:last-child {
-  padding-bottom: 26px;
+  padding-bottom: 18px;
 }
 /* A section whose control sits beside its eyebrow rather than under it. */
 .fpsecrow {
@@ -1149,7 +1155,7 @@ body {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 }
 .fpeyebrow {
   font-family: var(--font-label);
@@ -1177,7 +1183,7 @@ body {
 .fpsectors {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px 8px;
+  gap: 12px 6px;
   justify-items: center;
 }
 .fpsector {
@@ -1431,8 +1437,8 @@ body {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 20px 24px;
+  gap: 10px;
+  padding: 13px 18px;
   border-top: 1px solid var(--border-subtle);
   background: var(--surface-subtle);
 }
