@@ -103,6 +103,9 @@ function fmtDay(iso: string): string {
 
 /** The scrubber's axis is as long as the longest window it can select. */
 const TL_SPAN = SKILL_WINDOWS[SKILL_WINDOWS.length - 1];
+/** …and bottoms out at one day, per the supplied design. Not zero: a zero-day
+ *  window is not a period, and the axis would then never reach 100%. */
+const TL_MIN = 1;
 /** "2026-08-11" → "11 Aug". */
 const shortDay = (iso: string) => {
   const t = Date.parse((iso || "") + "T00:00:00Z");
@@ -133,15 +136,13 @@ const shortDay = (iso: string) => {
  *     the value riding above it;
  *   · the COVERED period, the days the fold could honestly return.
  *
- * THE COVERED MARK IS THE ONE THING HERE THE DESIGN DID NOT ASK FOR, and it is
- * kept deliberately. The mockup this was redrawn from (2026-09-05) has no
- * bands, which is cleaner and right for the common case — but nothing else on
- * this card says that the archive cannot reach as far back as the reader asked.
- * Collection began on 2026-07-20 and each employer's feeds arrived later still,
- * so a 60-day request is routinely answered with fewer days, and without the
- * mark that answer is indistinguishable from a full one. It renders ONLY when
- * `covered < days`, so the design's clean state is the state the reader sees
- * whenever there is nothing to warn about.
+ * NOTHING IS DRAWN OVER THE AXIS BUT THE STEM AND THE THUMB. An earlier pass
+ * kept a dashed mark at the covered start, so that a request the archive cannot
+ * fill was visible as well as stated; it was dropped on request, and the shape
+ * of the answer is now told only in words, by the note below. That note is
+ * therefore load-bearing rather than decorative: collection began 2026-07-20
+ * and each employer's feeds arrived later still, so a 60-day request is
+ * routinely answered with fewer days and the axis alone will not say so.
  *
  * The thumb is TIME-PROPORTIONAL, not evenly spaced: it marks where the period
  * starts on the axis, so it has to sit at the edge of the period it controls.
@@ -149,11 +150,11 @@ const shortDay = (iso: string) => {
  * snapped on change, with arrow keys handled separately so the keyboard steps
  * stop to stop instead of getting stuck between two that snap back.
  *
- * THE AXIS MAPPING IS THE APP'S, NOT THE MOCKUP'S. The design places its stops
- * with a 1-day floor ((60-d)/59), which puts 7d at 89.83%; this uses the app's
- * existing (60-d)/60, which puts it at 88.33%. The difference is under two
- * percent and invisible, and matching the mockup would have desynchronised the
- * thumb from the range input and the covered mark, which all read `pct`.
+ * The axis is the design's: a 1-day floor, so the stops land on the percentages
+ * the mockup hardcodes its tick labels at. The range input spans the same
+ * 0..(TL_SPAN - TL_MIN), because the browser lays its own thumb out linearly
+ * over that span and a different denominator would drift the pointer away from
+ * the dot it is dragging.
  */
 function TimelineScrubber({
   days,
@@ -220,7 +221,11 @@ function TimelineScrubber({
     return { W, H, x, runs, end, first: series[0].d, gapEnd: firstKnown > 0 ? x(firstKnown) : 0 };
   }, [series]);
 
-  const pct = (d: number) => `${((TL_SPAN - d) / TL_SPAN) * 100}%`;
+  // THE DESIGN'S MAPPING: a 1-day floor, not a 0-day one, so the axis runs
+  // 60d → 0% and 1d → 100%. It puts the stops at 0 / 50.85 / 77.97 / 89.83%,
+  // which is where the mockup's tick labels are hardcoded. `TL_MIN` is also the
+  // range input's span (below) so the pointer and the drawn dot cannot drift.
+  const pct = (d: number) => `${((TL_SPAN - d) / (TL_SPAN - TL_MIN)) * 100}%`;
   const short = covered > 0 && covered < days;
   const startsOn =
     geom && Date.parse(geom.end + "T00:00:00Z")
@@ -239,11 +244,6 @@ function TimelineScrubber({
     if (next !== days) onChange(next);
   };
 
-  // The moving label is centred on the thumb, which hangs half of it off the
-  // card at either end of the axis. It aligns to the edge instead there.
-  const at = ((TL_SPAN - days) / TL_SPAN) * 100;
-  const anchor = at < 10 ? "cctlval s" : at > 90 ? "cctlval e" : "cctlval";
-
   return (
     <div className="cctl">
       <div className="cctlh">
@@ -258,7 +258,7 @@ function TimelineScrubber({
           the number the reader is setting sits over the point they are setting
           it at rather than in a corner. */}
       <div className="cctlstage">
-        <span className={anchor} style={{ left: pct(days) }}>
+        <span className="cctlval" style={{ left: pct(days) }}>
           {days} days
         </span>
         <span className="cctlstem" style={{ left: pct(days) }} aria-hidden="true" />
@@ -292,18 +292,17 @@ function TimelineScrubber({
         )}
 
         <span className="cctlbase" aria-hidden="true" />
-        {/* WHERE THE REQUEST OUTRUNS THE ARCHIVE. The thumb marks what was
-            asked for; this marks what can actually be returned, and it only
-            appears when the two differ. Without it a 60-day request over 47
-            days of collection looks exactly like a 60-day answer. */}
-        {short && <span className="cctlcov" style={{ left: pct(covered) }} aria-hidden="true" />}
         <span className="cctldot" style={{ left: pct(days) }} aria-hidden="true" />
         <input
           id="cctlrange"
           className="cctlr"
           type="range"
+          // 0..59, matching pct()'s TL_SPAN - TL_MIN. The browser positions its
+          // own (transparent) thumb linearly over this span, so sharing the
+          // denominator is what keeps the pointer and the drawn dot together —
+          // over 0..60 they drift by 1.5%, about six pixels at this width.
           min={0}
-          max={TL_SPAN}
+          max={TL_SPAN - TL_MIN}
           step={1}
           value={TL_SPAN - days}
           // Days, not the raw slider number — "53 of 60" describes nothing.
@@ -330,9 +329,7 @@ function TimelineScrubber({
           <button
             type="button"
             key={w}
-            className={
-              `cctltk ${w === days ? "on" : ""}` + (k === SKILL_WINDOWS.length - 1 ? " first" : "")
-            }
+            className={`cctltk${k === SKILL_WINDOWS.length - 1 ? " first" : ""}`}
             style={{ left: pct(w) }}
             tabIndex={-1}
             aria-hidden="true"

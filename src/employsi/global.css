@@ -14559,12 +14559,16 @@ body {
    opposite corner, the volume line gained a fading area fill, and the pill
    track became a hairline with a solid dot.
 
-   Monochrome, like the rest of the card, and now with no filled bands at all —
-   the design carries the selection on the stem and the moving label. The one
-   thing kept from the old treatment is `.cctlcov`, the dashed mark for where
-   the request outruns the archive, because nothing else on the card says that
-   and a 60-day request over 47 days of collection otherwise looks exactly like
-   a 60-day answer. It is absent whenever the two agree. */
+   Monochrome, like the rest of the card, and with no bands or marks over the
+   axis at all: the design carries the selection on the stem and the moving
+   label and nothing else. An earlier pass kept a dashed mark for where the
+   request outruns the archive; it was dropped on request. That fact is still
+   told, in `.cctlnote` under the control, which names the covered span and the
+   date it starts — so it is stated rather than drawn.
+
+   The one element here the mockup does not have is `.cctlgap`, the wash over
+   days the archive never collected. It predates this redraw and is inside the
+   plot rather than over the axis. */
 .cctl {
   margin-bottom: 18px;
 }
@@ -14590,6 +14594,9 @@ body {
   position: relative;
   height: 100px;
 }
+/* Centred on the thumb at every position, as the design has it. At the 60d end
+   that puts ~31px of a 62px label left of 0%; the card's 26px gutter absorbs
+   most of it and the last ~5px overhang is the design's own behaviour. */
 .cctlval {
   position: absolute;
   top: 0;
@@ -14600,14 +14607,6 @@ body {
   color: var(--text-primary);
   white-space: nowrap;
   pointer-events: none;
-}
-/* At either end of the axis a centred label hangs half of itself off the card,
-   so it aligns to its edge there instead. */
-.cctlval.s {
-  transform: none;
-}
-.cctlval.e {
-  transform: translateX(-100%);
 }
 .cctlstem {
   position: absolute;
@@ -14661,17 +14660,6 @@ body {
   background: var(--border-default);
   pointer-events: none;
 }
-/* Where the request outruns the archive. Muted and dashed so it reads as a
-   limit rather than as a second thing to set, and absent entirely when the
-   archive covers everything asked for. */
-.cctlcov {
-  position: absolute;
-  bottom: 14px;
-  height: 13px;
-  width: 0;
-  border-left: 1px dashed var(--border-strong);
-  pointer-events: none;
-}
 .cctldot {
   position: absolute;
   bottom: 14px;
@@ -14701,6 +14689,9 @@ body {
   appearance: none;
   background: transparent;
   cursor: ew-resize;
+  /* The design's track carries this. Without it a touch drag across the chart
+     scrolls the card instead of moving the thumb. */
+  touch-action: none;
   /* The drawn dot carries the focus ring; the native outline would box the
      whole stage, which is not what has focus. */
   outline: none;
@@ -14742,26 +14733,26 @@ body {
   position: relative;
   height: 14px;
 }
+/* SANS, NOT MONO. The design sets this row in `Inter, system-ui, sans-serif`
+   even though its own --font-sans is Mona Sans, so the family is spelled out
+   here rather than taken from a token. The mono face this carried before was
+   inherited from the control it replaced, not chosen. */
 .cctltk {
   position: absolute;
   transform: translateX(-50%);
   padding: 0 2px;
   border: 0;
   background: none;
-  font-family: var(--font-mono);
+  font-family: Inter, system-ui, sans-serif;
   font-size: 10px;
   letter-spacing: 0.1em;
   color: var(--text-disabled);
   cursor: pointer;
   white-space: nowrap;
 }
-.cctltk.on {
-  color: var(--text-secondary);
-}
 /* 60d sits at 0% of the axis, so centring it hangs half the label outside the
-   card. It aligns to that edge instead. The others have room to centre: the
-   shortest window is 7d at 88.3%, which clears the right edge by more than
-   half a label. */
+   card — the design left-aligns it there for the same reason. The rest have
+   room to centre; the shortest is 7d at 89.83%. */
 .cctltk.first {
   transform: none;
   padding-left: 0;
