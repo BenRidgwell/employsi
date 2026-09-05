@@ -16,14 +16,22 @@ import { REGION_HUBS, REGION_LABEL, cityLabel } from "../data/mapboxWorldGeo";
 import { isReleasedCompany } from "../lib/markets";
 
 /**
- * The Filter panel, built from `Filter_Popout.html`.
+ * The Filter panel, built from `Filter_Card.html` (2026-09-05), which replaced
+ * the earlier `Filter_Popout.html`.
  *
- * The design's card: a header carrying the active-filter count, "Clear all" and
- * a round close; then eyebrowed sections for Sector (chips with counts),
- * Listing (a segmented control), two stepped sliders and a switch; then a
- * footer stating how many filters are on beside the primary apply button.
+ * The design's card: a header of title, scope and a round close; then eyebrowed
+ * sections for Sector (a 4-across grid of icon circles, each with its facet
+ * count on the rim and a short label beneath), Listing (a segmented control on a
+ * pill) and two sliders; then a footer stating how many filters are on beside
+ * the primary apply button.
  *
- * FOUR PLACES THIS DIFFERS FROM THE MOCK, EACH FOR A REASON
+ * ITS TYPE IS THE APP'S, NOT THE MOCKUP'S. The design is drawn standalone at
+ * 500px and sizes its type for that; beside a company card that titles at 19px
+ * the same figures read as a louder, different component. Every size steps down
+ * to this app's existing equivalent — see the CSS block for the mapping. The
+ * layout, the colours and the geometry are all still the mockup's.
+ *
+ * SIX PLACES THIS DIFFERS FROM THE MOCK, EACH FOR A REASON
  *
  *  1. The counts are REAL. The mock hard-codes seven sector counts and derives a
  *     result total by multiplying invented factors together. Here every number
@@ -38,7 +46,17 @@ import { isReleasedCompany } from "../lib/markets";
  *
  *  3. Stock exchange stays. It is a real drill-down under Public that the mock
  *     has no room for, and dropping working behaviour to match a picture is not
- *     a trade worth making. It uses the same chip style as Sector.
+ *     a trade worth making. It keeps the text-chip style the sector row used
+ *     before the icon grid replaced it.
+ *
+ *  5. "Clear all" MOVED to the footer rather than being dropped. The design's
+ *     header is title, scope and close with no room for an action, but clearing
+ *     is real behaviour, and the footer's left slot is already about filter
+ *     state so it reads with the count rather than against the apply button.
+ *
+ *  6. The header's active-count pill is GONE. The footer already says "N
+ *     filters applied", which is what the design shows, and two counts of the
+ *     same thing on one card invite the reader to look for a difference.
  *
  *  4. THERE IS NO "Hiring now only" ROW. It existed as a disabled switch marked
  *     Coming soon until 2026-09-05, when it was removed on request. Nothing was
@@ -228,8 +246,8 @@ export function FilterPane() {
           <button type="button" className="fpx" onClick={toggleFilter} aria-label="Close filter">
             <svg
               viewBox="0 0 24 24"
-              width={17}
-              height={17}
+              width={15}
+              height={15}
               fill="none"
               stroke="currentColor"
               strokeWidth={2}

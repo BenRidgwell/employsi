@@ -1007,7 +1007,23 @@ body {
    than the mock's centred canvas, and caps against the viewport with the body
    as the only scrolling part — the sector grid plus the exchange drill-down can
    run long. See components/FilterPane.tsx for where the content deliberately
-   differs from the mock. */
+   differs from the mock.
+
+   THE TYPE IS THE APP'S SCALE, NOT THE MOCKUP'S, and that is a deliberate
+   departure rather than a half-finished import. The design is drawn as a
+   standalone 500px card and sizes its type for that; dropped into a product
+   where the company card beside it titles at 19px, the same figures read as a
+   different, louder component. So each element takes the app's existing
+   equivalent instead:
+
+     title      19px/600/-0.02em   = .ccname
+     eyebrows   10px/0.12em        = .cceyebrow  (mockup: 12px/0.16em)
+     round close 34px              = .ccbtn      (mockup: 42px)
+     segmented  13px               = .cctab      (mockup: 15px)
+
+   and the rest — section value, slider ends, footer note, CTA — steps down
+   with them. The LAYOUT is untouched: widths, the 52px circles, the grid, the
+   rail and thumb geometry and every colour are still the mockup's. */
 .filterpane {
   position: fixed;
   left: var(--pane-left);
@@ -1041,10 +1057,10 @@ body {
   min-width: 0;
 }
 .fptitle {
-  font-size: 29px;
+  font-size: 19px;
   font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
   color: var(--text-primary);
 }
 /* Names the layer every count on the card is scoped to — "Perth", "Australia &
@@ -1052,9 +1068,9 @@ body {
    not a control. */
 .fpscope {
   font-family: var(--font-label);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-tertiary);
   white-space: nowrap;
@@ -1071,7 +1087,7 @@ body {
   background: transparent;
   color: var(--text-tertiary);
   font-family: var(--font-label);
-  font-size: 14px;
+  font-size: 12px;
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
@@ -1084,8 +1100,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   flex: 0 0 auto;
   padding: 0;
   border: 1px solid var(--border-default);
@@ -1137,9 +1153,9 @@ body {
 }
 .fpeyebrow {
   font-family: var(--font-label);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-tertiary);
 }
@@ -1288,13 +1304,13 @@ body {
   background: var(--surface-sunken);
 }
 .fpsegbtn {
-  padding: 9px 20px;
+  padding: 7px 16px;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: var(--text-tertiary);
   font-family: inherit;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: background 120ms var(--ease-standard);
@@ -1307,7 +1323,7 @@ body {
 /* The chosen value, beside its eyebrow. Set like the scrubber's figure rather
    than like a caption — it is the number the section is about. */
 .fpvalue {
-  font-size: 19px;
+  font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--text-primary);
@@ -1319,7 +1335,7 @@ body {
   align-items: center;
   justify-content: space-between;
   font-family: var(--font-label);
-  font-size: 12.5px;
+  font-size: 10.5px;
   color: var(--text-disabled);
 }
 /* ── Sliders ────────────────────────────────────────────────────────────────
@@ -1424,18 +1440,18 @@ body {
   flex: 1 1 auto;
   min-width: 0;
   font-family: var(--font-label);
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text-tertiary);
 }
 .fpapply {
   flex: 0 0 auto;
-  padding: 15px 26px;
+  padding: 11px 18px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--action-primary);
   color: var(--action-primary-text);
   font-family: inherit;
-  font-size: 16px;
+  font-size: 13.5px;
   font-weight: 600;
   letter-spacing: -0.01em;
   cursor: pointer;
