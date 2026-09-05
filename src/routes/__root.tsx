@@ -114,16 +114,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://cdn.jsdelivr.net/npm/@fontsource-variable/mona-sans/index.css",
       },
-      // Inter is here for the company card's timeline scrubber, whose supplied
-      // design names it explicitly rather than taking the brand sans. Without
-      // it that CSS silently fell through to system-ui and the control was set
-      // in whatever face the OS supplies — which is what "not in Inter" looked
-      // like. One request for both families rather than two.
+      // INTER IS THE LABEL FACE, and as of 2026-09-05 it REPLACES JetBrains
+      // Mono rather than sitting beside it — see --font-label in
+      // employsi/styles/tokens.css, and --font-mono in styles.css for the
+      // Tailwind utility of that name. Nothing loads JetBrains Mono any more,
+      // so it is gone from this request instead of being fetched unused.
+      //
+      // Four weights because the rules that use this face ask for all of them:
+      // 400 and 500 on eyebrows and data, 600 and 700 on the emphatic ones.
       {
         rel: "stylesheet",
-        href:
-          "https://fonts.googleapis.com/css2?family=Inter:wght@400;600" +
-          "&family=JetBrains+Mono:wght@400;500&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
       },
     ],
   }),

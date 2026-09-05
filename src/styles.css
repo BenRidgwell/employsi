@@ -38,7 +38,11 @@
   --color-surface-2: var(--surface-2);
   --color-hairline: var(--hairline);
   --font-sans: "Mona Sans Variable", "Mona Sans", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  /* Inter since 2026-09-05, with JetBrains Mono retired from the design
+     system. The NAME stays --font-mono here and only here: it backs
+     Tailwind's own `font-mono` utility, which Ticker/chart/index use by
+     that name. The employsi side calls the same face --font-label. */
+  --font-mono: Inter, system-ui, -apple-system, sans-serif;
 }
 
 :root {

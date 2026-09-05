@@ -500,7 +500,7 @@ body {
   overflow-x: auto;
 }
 .anscopelbl {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -698,7 +698,7 @@ body {
   display: flex;
   align-items: baseline;
   gap: 5px;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 17px;
   letter-spacing: -0.025em;
 }
@@ -710,7 +710,7 @@ body {
   color: var(--red-700);
 }
 .anstatk {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -749,7 +749,7 @@ body {
 }
 .anbarv {
   flex: 0 0 auto;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 11.5px;
   color: var(--neutral-700);
 }
@@ -845,7 +845,7 @@ body {
 }
 .anmenulbl {
   padding: 7px 10px 6px;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9.5px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -1057,7 +1057,7 @@ body {
    not a control, and it sits beside the active-filter pill rather than
    competing with it. */
 .fpscope {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1077,7 +1077,7 @@ body {
   border-radius: 999px;
   background: #1c1c1e;
   color: #ffffff;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 11px;
 }
 .fpghost {
@@ -1146,14 +1146,14 @@ body {
   gap: 12px;
 }
 .fpeyebrow {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #8e8e93;
 }
 .fpsummary {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 11px;
   color: #aeaeb2;
 }
@@ -1196,7 +1196,7 @@ body {
 /* The facet count riding inside each sector chip. */
 .fpchipn {
   padding-left: 7px;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 10.5px;
   color: #aeaeb2;
 }
@@ -1233,7 +1233,7 @@ body {
   box-shadow: 0 1px 2px rgba(28, 28, 30, 0.1);
 }
 .fpvalue {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 14px;
   color: #aeaeb2;
 }
@@ -1246,7 +1246,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 10px;
   color: #c7c7cc;
 }
@@ -1636,7 +1636,7 @@ body {
    company's ticker when its logo won't load. */
 .mkcode {
   display: block;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   letter-spacing: 0.02em;
 }
 .mk-country .mkcode {
@@ -1753,7 +1753,7 @@ body {
   transform: rotate(var(--a, 0deg)) translateY(calc(max(var(--m, 0), var(--sel, 0)) * -1px));
 }
 .mkdelta span {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 11px;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
@@ -1777,7 +1777,7 @@ body {
    where grey reads fine. On a basemap it has to hold its own against roads,
    parks and coastline. */
 .mkcount {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -1817,7 +1817,7 @@ body {
   border-radius: 999px;
   background: #f7ebe9;
   color: #97332b;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 9.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1825,7 +1825,7 @@ body {
 }
 .dqcount2 {
   margin: 8px 0 0;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 10.5px;
   letter-spacing: 0.06em;
   color: #aeaeb2;
@@ -1875,7 +1875,7 @@ body {
   min-width: 0;
 }
 .dqeyebrow {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -1911,7 +1911,7 @@ body {
   border-radius: 7px;
   background: transparent;
   color: #8e8e93;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 11px;
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -2007,14 +2007,14 @@ body {
   box-shadow: 0 1px 2px rgba(28, 28, 30, 0.04);
 }
 .dqkpilbl {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #8e8e93;
 }
 .dqkpival {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 26px;
   font-weight: 500;
   letter-spacing: -0.02em;
@@ -2102,7 +2102,7 @@ body {
   border-left: 0;
 }
 .dqleadlbl {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -2114,14 +2114,14 @@ body {
   gap: 8px;
 }
 .dqleadval {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 24px;
   font-weight: 500;
   letter-spacing: -0.02em;
   color: #1c1c1e;
 }
 .dqleaddelta {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 12px;
 }
 .dqleaddelta.up {
@@ -2170,7 +2170,7 @@ body {
 }
 .dqcohorthd {
   padding-bottom: 6px;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -2184,12 +2184,12 @@ body {
   padding: 3px 0;
 }
 .dqcohortwk {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 12px;
   color: #6c6c72;
 }
 .dqcohortn {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 12px;
   text-align: right;
   color: #8e8e93;
@@ -2200,7 +2200,7 @@ body {
   justify-content: center;
   height: 30px;
   border-radius: 7px;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 11.5px;
   background: #f4f4f5;
   color: #8e8e93;
@@ -2259,7 +2259,7 @@ body {
   flex: 0 0 auto;
 }
 .dqlagval {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 17px;
   color: #1c1c1e;
 }
@@ -2272,7 +2272,7 @@ body {
 }
 .dqband {
   flex: 0 0 74px;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 12px;
   color: #6c6c72;
 }
@@ -2292,7 +2292,7 @@ body {
 .dqbandpct {
   flex: 0 0 42px;
   text-align: right;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 12px;
   color: #8e8e93;
 }
@@ -2369,7 +2369,7 @@ body {
   padding: 5px 6px;
   border: 0;
   background: none;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -2403,7 +2403,7 @@ body {
   border-bottom: 1px solid #f4f4f5;
 }
 .dqsrc {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 11.5px;
 }
 /* The source type. Set in the body face, not the mono one the source id uses:
@@ -2439,7 +2439,7 @@ body {
   border-radius: 999px;
   background: #97332b;
   color: #fff;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10px;
 }
 /* The historical-corpus tag. Deliberately neutral, not the red .dqflag: it
@@ -2451,7 +2451,7 @@ body {
   border-radius: 999px;
   background: #f4f4f5;
   color: #6c6c72;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10px;
 }
 .dqlist {
@@ -2473,7 +2473,7 @@ body {
   flex: 0 0 auto;
   min-width: 34px;
   text-align: right;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-variant-numeric: tabular-nums;
   color: var(--slate, #6c6c72);
 }
@@ -2488,13 +2488,13 @@ body {
 }
 .dqsrctag {
   flex: 0 0 auto;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10.5px;
   color: var(--slate, #8e8e93);
 }
 .dqfoot {
   margin: 0;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -2514,7 +2514,7 @@ body {
   border-top: 1px dashed var(--line, #ededf0);
 }
 .fbmodlbl {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -2600,7 +2600,7 @@ body {
 .mkcount.mknone {
   background: #f7f7f8;
   color: #b4b4ba;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
 }
 /* No hover lift or ring either — nothing here responds, so nothing should
    suggest it will. */
@@ -2925,7 +2925,7 @@ body {
   border-radius: 15px;
   background: var(--surface-inverse);
   color: var(--text-inverse);
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 11px;
   letter-spacing: var(--tracking-eyebrow);
   text-transform: uppercase;
@@ -3060,7 +3060,7 @@ body {
    zero — a skill whose live Australian ads mostly do not state a salary has no
    median to show, and the same rule already governs the sparkline. */
 .tpay {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 12px;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
@@ -3089,7 +3089,7 @@ body {
 .tdunit {
   align-self: flex-start;
   margin-left: 1px;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 7px;
   line-height: 1.6;
   letter-spacing: 0.1em;
@@ -3098,7 +3098,7 @@ body {
   white-space: nowrap;
 }
 .tpct {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 12px;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
@@ -3189,7 +3189,7 @@ body {
 }
 .tickerwin {
   padding: 0 9px;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -5147,7 +5147,7 @@ body {
 }
 .sfresultticker {
   flex: 0 0 auto;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10.5px;
   font-weight: 700;
   color: var(--slate);
@@ -5425,7 +5425,7 @@ body {
   border-color: #d1d1d6;
 }
 .accstatv {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 18px;
   letter-spacing: -0.02em;
   color: #1c1c1e;
@@ -6411,7 +6411,7 @@ body {
   margin-top: 10px;
 }
 .gsauthsavedlbl {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -6557,7 +6557,7 @@ body {
 }
 .gsrsub {
   flex: 0 0 auto;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10.5px;
   font-weight: 600;
   color: var(--slate);
@@ -6627,7 +6627,7 @@ body {
   padding: 0 9px;
   border-radius: 999px;
   color: #fff;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -6873,7 +6873,7 @@ body {
   padding: 0 10px;
   border-radius: 999px;
   color: #fff;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -6904,14 +6904,14 @@ body {
   background: var(--surface-card);
 }
 .gsstatk {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-tertiary);
 }
 .gsstatv {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 17px;
   letter-spacing: -0.02em;
 }
@@ -6964,7 +6964,7 @@ body {
   border-top: 1px solid var(--border-subtle);
 }
 .gsmode button {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -6986,7 +6986,7 @@ body {
   background: color-mix(in srgb, currentColor 8%, transparent);
 }
 .gsmodeval {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   color: var(--text-tertiary);
   margin-left: auto;
@@ -7005,14 +7005,14 @@ body {
   gap: 16px;
 }
 .gstimelbl {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-tertiary);
 }
 .gstimemonth {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 14px;
   letter-spacing: -0.01em;
   color: var(--text-primary);
@@ -7107,7 +7107,7 @@ body {
   border-radius: 999px;
   background: var(--surface-inverse);
   color: var(--text-inverse);
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -7138,7 +7138,7 @@ body {
   border-top: 1px solid var(--border-subtle);
 }
 .gsrelatedlbl {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -7503,7 +7503,7 @@ body {
   flex-direction: column;
 }
 .steyebrow {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 9.5px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -7569,7 +7569,7 @@ body {
   border-radius: 999px;
   background: #f4f4f5;
   color: #8e8e93;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 9.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -7655,7 +7655,7 @@ body {
   background: #fbfbfc;
 }
 .stver {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 10.5px;
   letter-spacing: 0.1em;
   color: #aeaeb2;
@@ -7940,7 +7940,7 @@ body {
   color: #c0453f;
 }
 .fbscore {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -8322,7 +8322,7 @@ body {
   white-space: nowrap;
 }
 .lvbkicker {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 9.5px;
   font-weight: 500;
   letter-spacing: 0.1em;
@@ -8346,7 +8346,7 @@ body {
   border-left-color: transparent;
 }
 .lvbvalue {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 12.5px;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -8495,7 +8495,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.8px;
@@ -8809,7 +8809,7 @@ body {
   fill: rgba(255, 255, 255, 0.78);
 }
 .ccloadstage {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -8899,7 +8899,7 @@ body {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.9);
   color: var(--text-primary);
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -8956,7 +8956,7 @@ body {
   background-position: center;
 }
 .nwrowkicker {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.08em;
   color: var(--nw-dim);
@@ -9035,7 +9035,7 @@ body {
      in 26px of width. */
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -9094,7 +9094,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.86);
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9px;
   font-weight: 500;
   letter-spacing: 0.08em;
@@ -9838,14 +9838,14 @@ body {
 }
 .rolepay {
   flex: 0 0 auto;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 11px;
   font-weight: 700;
   color: #12905e;
   white-space: nowrap;
 }
 .rolec {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 12px;
   font-weight: 600;
   color: var(--slate);
@@ -9949,7 +9949,7 @@ body {
   gap: 2px;
 }
 .vhdays {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 11.5px;
   font-weight: 700;
   color: var(--slate);
@@ -10365,7 +10365,7 @@ body {
 .subl,
 .seglbl,
 .secth {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-weight: 500;
 }
 .secth span {
@@ -11344,7 +11344,7 @@ body {
   border-radius: 999px;
   background: var(--surface-active);
   color: var(--text-secondary);
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -11353,7 +11353,7 @@ body {
   text-overflow: ellipsis;
 }
 .ccticker {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.06em;
   color: var(--text-tertiary);
@@ -11579,7 +11579,7 @@ body {
   transform: rotate(180deg);
 }
 .cceyebrow {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -11641,7 +11641,7 @@ body {
   height: 24px;
   padding: 0 10px;
   border-radius: var(--radius-pill);
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 11px;
   font-weight: var(--weight-medium);
   letter-spacing: 0;
@@ -11672,7 +11672,7 @@ body {
   color: var(--text-tertiary);
 }
 .ccsubd {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 11px;
 }
 .ccsubd.up {
@@ -11812,7 +11812,7 @@ body {
 .ccaxis {
   display: flex;
   justify-content: space-between;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.08em;
   color: var(--text-tertiary);
@@ -11854,7 +11854,7 @@ body {
 }
 .ccflag .wttiplabel {
   margin-bottom: 6px;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9.5px;
   font-weight: var(--weight-medium);
   letter-spacing: 0.12em;
@@ -11868,7 +11868,7 @@ body {
   color: var(--neutral-0);
 }
 .ccflag .wttiprow b {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-weight: var(--weight-medium);
   font-variant-numeric: tabular-nums;
   /* MUST be stated, and it is not belt-and-braces. `.wttiprow b` sets
@@ -11947,7 +11947,7 @@ body {
    wrapped the header onto two lines next to the picker. */
 .tskwin {
   margin-left: auto;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9.5px;
   letter-spacing: 0.06em;
   color: var(--text-tertiary);
@@ -11965,7 +11965,7 @@ body {
   padding: 5px 13px 0;
 }
 .tskcat {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -11982,7 +11982,7 @@ body {
   border: 1px solid rgba(28, 28, 30, 0.06);
   border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.7);
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9.5px;
   color: var(--text-secondary);
   white-space: nowrap;
@@ -12076,7 +12076,7 @@ body {
   flex: 0 0 auto;
   border-radius: 6px;
   background: var(--surface-active);
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   color: var(--text-secondary);
 }
@@ -12087,7 +12087,7 @@ body {
   white-space: nowrap;
 }
 .tskoptv {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 11px;
   color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
@@ -12136,7 +12136,7 @@ body {
   border-radius: 9px;
   background: var(--neutral-900);
   color: var(--neutral-0);
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10.5px;
   white-space: nowrap;
   pointer-events: none;
@@ -12227,7 +12227,7 @@ body {
 }
 .hsplabel em {
   font-style: normal;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -12282,7 +12282,7 @@ body {
 }
 .hspcov em {
   font-style: normal;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -12323,7 +12323,7 @@ body {
   text-overflow: ellipsis;
 }
 .alskcat {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -12352,12 +12352,12 @@ body {
   gap: 1px;
 }
 .alskn {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
 .alskd {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
 }
 .alskd.up {
@@ -12372,7 +12372,7 @@ body {
    the 500 tier (--status-*-dot), the palette's weight for a small graphic
    mark, not the 700 tier it uses for text. */
 .cchiremore {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9.5px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -12396,7 +12396,7 @@ body {
   height: 18px;
   padding: 0 5px;
   border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
@@ -12485,7 +12485,7 @@ body {
   border-radius: 999px;
   background: var(--surface-active);
   color: var(--text-secondary);
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10.5px;
 }
 /* Now a <button> that expands the rest of the skills, so it needs to reset the
@@ -12497,7 +12497,7 @@ body {
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10.5px;
   cursor: pointer;
   transition:
@@ -12552,7 +12552,7 @@ body {
   flex: 0 0 auto;
   min-width: 26px;
   text-align: right;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 12px;
   font-weight: 700;
   color: var(--text-primary);
@@ -12673,7 +12673,7 @@ body {
   border-radius: 8px;
   background: var(--neutral-900);
   color: var(--neutral-0);
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 11px;
 }
 .cmpsubjectname {
@@ -12681,7 +12681,7 @@ body {
   font-weight: 500;
 }
 .cmpvs {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -12843,12 +12843,12 @@ body {
   gap: 9px;
 }
 .cmpmetrica {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 13px;
   letter-spacing: -0.02em;
 }
 .cmpmetricb {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 12px;
   color: var(--text-tertiary);
 }
@@ -12858,7 +12858,7 @@ body {
   height: 20px;
   padding: 0 7px;
   border-radius: 999px;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10.5px;
 }
 .cmpgap.up {
@@ -12994,7 +12994,7 @@ body {
   border-radius: 999px;
   background: var(--neutral-900);
   color: var(--neutral-0);
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10.5px;
   white-space: nowrap;
 }
@@ -13049,7 +13049,7 @@ body {
   padding: 0 7px;
   flex: 0 0 auto;
   border-radius: 999px;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-label);
   font-size: 10.5px;
 }
 .cmptaketag.up {
@@ -13361,7 +13361,7 @@ body {
   animation: cs-blink 1.4s ease-in-out infinite;
 }
 .cschiptext {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 9.5px;
   font-weight: 500;
   letter-spacing: 0.12em;
@@ -13626,7 +13626,7 @@ body {
   gap: 7px;
 }
 .cseyebrow {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-label);
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.14em;
@@ -13730,7 +13730,7 @@ body {
   overflow: visible;
 }
 .anchartaxis text {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 14px;
   letter-spacing: 0.06em;
   fill: var(--text-tertiary);
@@ -13753,7 +13753,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9.5px;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -13776,7 +13776,7 @@ body {
   border-top: 2px dashed #aeaeb2;
 }
 .anchartnote {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9.5px;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -13810,7 +13810,7 @@ body {
   letter-spacing: -0.008em;
 }
 .anmultidelta {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   color: var(--green-700);
 }
@@ -13818,7 +13818,7 @@ body {
   color: var(--red-700);
 }
 .anmultinote {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9.5px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -13915,7 +13915,7 @@ body {
   border-radius: 999px;
   background: var(--neutral-900);
   color: #fff;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 8px;
   font-weight: 600;
   line-height: 1;
@@ -13979,7 +13979,7 @@ body {
 }
 .nbsub {
   white-space: nowrap;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -14050,7 +14050,7 @@ body {
 }
 .nbtabn {
   margin-left: 5px;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   color: var(--neutral-400);
 }
@@ -14087,7 +14087,7 @@ body {
   border-radius: 9px;
   background: var(--surface-sunken);
   color: var(--neutral-700);
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   font-weight: 600;
 }
@@ -14114,7 +14114,7 @@ body {
   height: 18px;
   padding: 0 7px;
   border-radius: 999px;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -14136,7 +14136,7 @@ body {
 }
 .nbwhen {
   margin-left: auto;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   color: var(--neutral-400);
 }
@@ -14169,7 +14169,7 @@ body {
 .nbbarlbl {
   width: 52px;
   flex: 0 0 auto;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -14196,7 +14196,7 @@ body {
   width: 30px;
   flex: 0 0 auto;
   text-align: right;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 11px;
   font-weight: 600;
   color: var(--neutral-900);
@@ -14222,7 +14222,7 @@ body {
   border-top: 1px solid var(--border-subtle);
 }
 .nbfootnote {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -14472,7 +14472,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-family: var(--font-label);
   font-size: 10.5px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -14558,7 +14558,7 @@ body {
   margin-bottom: 2px;
 }
 .cctll {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   font-weight: 400;
   letter-spacing: 0.06em;
@@ -14580,10 +14580,10 @@ body {
   position: absolute;
   top: 0;
   transform: translateX(-50%);
-  /* Inter, not the brand sans. The design sets this control in Inter and it is
-     loaded for that in __root.tsx; before it was, this fell through to
-     system-ui and the value read in the OS face. */
-  font-family: Inter, system-ui, sans-serif;
+  /* The label face, not the brand sans — the design sets this control in
+     Inter. Hardcoded when it was the only Inter in the app; now that Inter IS
+     the label face it goes through the token like everything else. */
+  font-family: var(--font-label);
   font-size: 19px;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -14732,17 +14732,16 @@ body {
   position: relative;
   height: 14px;
 }
-/* SANS, NOT MONO. The design sets this row in `Inter, system-ui, sans-serif`
-   even though its own --font-sans is Mona Sans, so the family is spelled out
-   here rather than taken from a token. The mono face this carried before was
-   inherited from the control it replaced, not chosen. */
+/* The design sets this row in Inter, which is now what --font-label holds, so
+   it takes the token. It briefly spelled the family out, back when this was the
+   only Inter in the app. */
 .cctltk {
   position: absolute;
   transform: translateX(-50%);
   padding: 0 2px;
   border: 0;
   background: none;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.1em;
   color: var(--text-disabled);
@@ -14940,7 +14939,7 @@ body {
   white-space: nowrap;
 }
 .smksub {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9.5px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -14993,7 +14992,7 @@ body {
 .smkpct {
   min-width: 46px;
   text-align: right;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
@@ -15015,7 +15014,7 @@ body {
   min-width: 74px;
 }
 .smkpayv {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 14px;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -15027,7 +15026,7 @@ body {
   font-weight: 500;
 }
 .smkpayl {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 8.5px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -15164,7 +15163,7 @@ body {
   margin-top: 3px;
 }
 .mkherovalue {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 34px;
   font-weight: 700;
   letter-spacing: -0.035em;
@@ -15191,7 +15190,7 @@ body {
   padding: 4px 11px;
   border-radius: var(--radius-pill);
   background: var(--hero-dirbg);
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -15203,7 +15202,7 @@ body {
 }
 .mkherodelta {
   margin-top: 7px;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 11.5px;
   line-height: 1.45;
   font-variant-numeric: tabular-nums;
@@ -15212,7 +15211,7 @@ body {
 /* The two levels the rings mark, under the movement rather than beside it. */
 .mkherolevels {
   margin-top: 2px;
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 11px;
   line-height: 1.45;
   font-variant-numeric: tabular-nums;
@@ -15302,14 +15301,14 @@ body {
   box-shadow: 0 6px 18px rgb(0 0 0 / 34%);
 }
 .mkherocallk {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9.5px;
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--text-secondary);
 }
 .mkherocallv {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 14px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -15339,7 +15338,7 @@ body {
   border-radius: var(--radius-pill);
   background: none;
   color: rgb(255 255 255 / 52%);
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 12.5px;
   letter-spacing: 0.03em;
   cursor: pointer;
@@ -15411,7 +15410,7 @@ body {
   white-space: nowrap;
 }
 .mvrsub {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 9.5px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -15429,7 +15428,7 @@ body {
   gap: 3px;
   padding: 3px 8px;
   border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
@@ -15475,7 +15474,7 @@ body {
   gap: 2px;
 }
 .gteyebrow {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.16em;
   color: var(--text-tertiary);
@@ -15710,7 +15709,7 @@ body {
   padding-top: 16px;
 }
 .gtlabel {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10px;
   letter-spacing: 0.16em;
   color: var(--text-tertiary);

@@ -87,7 +87,13 @@
 
   /* --- Typography --- */
   --font-sans: "Mona Sans Variable", "Mona Sans", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  /* THE LABEL FACE. Was JetBrains Mono until 2026-09-05; the design system
+     now sets eyebrows, labels and data in Inter. Renamed from --font-mono
+     at the same time, because a token called "mono" holding a
+     proportional face misleads every future reader of these rules.
+     Tabular alignment is unaffected: the rules that need it already say
+     font-variant-numeric: tabular-nums, and Inter ships tnum. */
+  --font-label: Inter, system-ui, -apple-system, sans-serif;
 
   --weight-regular: 400;
   --weight-medium: 500;

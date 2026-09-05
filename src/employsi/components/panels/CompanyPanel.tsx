@@ -184,11 +184,27 @@ function TimelineScrubber({
   // open at once with a hardcoded id would both resolve to whichever mounted
   // first, and the second would silently take the first's fill.
   const fadeId = useId();
-  // The value under the pointer mid-drag; null when nothing is being dragged.
-  // `shown` is therefore what the control DISPLAYS, and `days` what the card
-  // has actually been drawn from — they differ only during a gesture.
+  /**
+   * THREE VALUES, AND THE DIFFERENCE BETWEEN THEM IS THE POINT.
+   *
+   *   drag    what is under the pointer right now; null when not dragging.
+   *   shown   where the THUMB sits — it has to track the pointer, or the
+   *           control feels broken.
+   *   settled the last window whose data has actually arrived. The LABEL reads
+   *           this, so the number never describes a card that is not drawn yet.
+   *
+   * The label is deliberately the slow one. It used to follow the thumb, which
+   * meant that during a drag and the fetch after it, a bold "51 days" sat above
+   * a chart still showing thirty — the label leading the data by a second or
+   * two. Everything under the scrubber already reports the span it really drew;
+   * this makes the headline number agree with them at every instant.
+   */
   const [drag, setDrag] = useState<number | null>(null);
   const shown = drag ?? days;
+  const [settled, setSettled] = useState(days);
+  useEffect(() => {
+    if (!loading) setSettled(days);
+  }, [loading, days]);
   const geom = useMemo(() => {
     if (series.length < 2) return null;
     const end = series[series.length - 1].d;
@@ -296,8 +312,11 @@ function TimelineScrubber({
           the number the reader is setting sits over the point they are setting
           it at rather than in a corner. */}
       <div className="cctlstage">
+        {/* Positioned by the thumb, but READING the settled window — so it
+            slides with the drag and only changes number once the card behind
+            it has been redrawn. */}
         <span className={`cctlval${anchor}`} style={{ left: pct(shown) }}>
-          {shown} {shown === 1 ? "day" : "days"}
+          {settled} {settled === 1 ? "day" : "days"}
         </span>
         <span className="cctlstem" style={{ left: pct(shown) }} aria-hidden="true" />
 
