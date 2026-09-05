@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../../state/store";
 import { buildPanel } from "../../lib/panel";
 import { buildCompanyCard, TREND_UP, TREND_DOWN } from "../../lib/companyCard";
@@ -129,19 +129,31 @@ const shortDay = (iso: string) => {
  *
  *   · the axis, always the full TL_SPAN, so the stops keep fixed positions
  *     and the control does not resize under the cursor as data arrives;
- *   · the REQUESTED period, from the thumb to today;
+ *   · the REQUESTED period, from the thumb to today, carried by the stem and
+ *     the value riding above it;
  *   · the COVERED period, the days the fold could honestly return.
  *
- * When the request outruns the archive the covered band is visibly shorter than
- * the requested one, which is the note below said as a picture. Collection
- * began on 2026-07-20 and each employer's feeds arrived later still, so that is
- * the normal case today rather than an edge one.
+ * THE COVERED MARK IS THE ONE THING HERE THE DESIGN DID NOT ASK FOR, and it is
+ * kept deliberately. The mockup this was redrawn from (2026-09-05) has no
+ * bands, which is cleaner and right for the common case — but nothing else on
+ * this card says that the archive cannot reach as far back as the reader asked.
+ * Collection began on 2026-07-20 and each employer's feeds arrived later still,
+ * so a 60-day request is routinely answered with fewer days, and without the
+ * mark that answer is indistinguishable from a full one. It renders ONLY when
+ * `covered < days`, so the design's clean state is the state the reader sees
+ * whenever there is nothing to warn about.
  *
  * The thumb is TIME-PROPORTIONAL, not evenly spaced: it marks where the period
- * starts on the axis, so it has to sit at the edge of the band it controls.
+ * starts on the axis, so it has to sit at the edge of the period it controls.
  * That rules out a range input over the stop index — hence a range over days,
  * snapped on change, with arrow keys handled separately so the keyboard steps
  * stop to stop instead of getting stuck between two that snap back.
+ *
+ * THE AXIS MAPPING IS THE APP'S, NOT THE MOCKUP'S. The design places its stops
+ * with a 1-day floor ((60-d)/59), which puts 7d at 89.83%; this uses the app's
+ * existing (60-d)/60, which puts it at 88.33%. The difference is under two
+ * percent and invisible, and matching the mockup would have desynchronised the
+ * thumb from the range input and the covered mark, which all read `pct`.
  */
 function TimelineScrubber({
   days,
@@ -156,6 +168,10 @@ function TimelineScrubber({
   loading: boolean;
   onChange: (d: number) => void;
 }) {
+  // The gradient is referenced by url(#id), which is DOCUMENT-scoped: two cards
+  // open at once with a hardcoded id would both resolve to whichever mounted
+  // first, and the second would silently take the first's fill.
+  const fadeId = useId();
   const geom = useMemo(() => {
     if (series.length < 2) return null;
     const end = series[series.length - 1].d;
@@ -173,21 +189,33 @@ function TimelineScrubber({
     const known = axis.filter((v): v is number => v !== null);
     if (known.length < 2) return null;
     const max = Math.max(...known, 1);
-    const W = 300;
-    const H = 34;
+    // The design's own coordinate space, so its stroke weight and gradient read
+    // the same here as in the mockup.
+    const W = 1000;
+    const H = 60;
     const x = (i: number) => (i / (TL_SPAN - 1)) * W;
-    const y = (v: number) => H - (v / max) * (H - 3) - 1.5;
+    const y = (v: number) => H - (v / max) * (H - 6) - 3;
     // One path per unbroken run, so the line never bridges days with no data.
-    const runs: string[] = [];
+    // Each run carries its own closed AREA as well as its line: a single area
+    // spanning a gap would fill under days that were never collected, which is
+    // the one thing the run-splitting exists to prevent.
+    const runs: { line: string; area: string }[] = [];
     let cur: [number, number][] = [];
+    const flush = () => {
+      if (cur.length < 2) return;
+      const line = smoothPath(cur);
+      const x0 = cur[0][0].toFixed(2);
+      const x1 = cur[cur.length - 1][0].toFixed(2);
+      runs.push({ line, area: `${line} L ${x1} ${H} L ${x0} ${H} Z` });
+    };
     for (let i = 0; i < TL_SPAN; i++) {
       const v = axis[i];
       if (v === null) {
-        if (cur.length > 1) runs.push(smoothPath(cur));
+        flush();
         cur = [];
       } else cur.push([x(i), y(v)]);
     }
-    if (cur.length > 1) runs.push(smoothPath(cur));
+    flush();
     const firstKnown = axis.findIndex((v) => v !== null);
     return { W, H, x, runs, end, first: series[0].d, gapEnd: firstKnown > 0 ? x(firstKnown) : 0 };
   }, [series]);
@@ -211,43 +239,65 @@ function TimelineScrubber({
     if (next !== days) onChange(next);
   };
 
+  // The moving label is centred on the thumb, which hangs half of it off the
+  // card at either end of the axis. It aligns to the edge instead there.
+  const at = ((TL_SPAN - days) / TL_SPAN) * 100;
+  const anchor = at < 10 ? "cctlval s" : at > 90 ? "cctlval e" : "cctlval";
+
   return (
     <div className="cctl">
       <div className="cctlh">
         <label className="cceyebrow" htmlFor="cctlrange">
           Timeline{geom ? ` · ${shortDay(geom.first)} – ${shortDay(geom.end)}` : ""}
         </label>
-        <span className="cctlv">
-          {days} days
-          {loading && <span className="cctll"> · updating…</span>}
-        </span>
+        {loading && <span className="cctll">updating…</span>}
       </div>
 
-      {geom && (
-        <div className="cctlplot">
-          <svg viewBox={`0 0 ${geom.W} ${geom.H}`} preserveAspectRatio="none" aria-hidden="true">
+      {/* ONE STAGE, not a boxed plot above a separate track. The value, the
+          stem, the volume line and the thumb all key off the same `left`, so
+          the number the reader is setting sits over the point they are setting
+          it at rather than in a corner. */}
+      <div className="cctlstage">
+        <span className={anchor} style={{ left: pct(days) }}>
+          {days} days
+        </span>
+        <span className="cctlstem" style={{ left: pct(days) }} aria-hidden="true" />
+
+        {geom && (
+          <svg
+            className="cctlspark"
+            viewBox={`0 0 ${geom.W} ${geom.H}`}
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <defs>
+              <linearGradient id={fadeId} x1="0" y1="0" x2="0" y2="1">
+                <stop className="cctlfadea" offset="0%" />
+                <stop className="cctlfadeb" offset="100%" />
+              </linearGradient>
+            </defs>
             {/* Before the archive reaches back, there is nothing to draw and
-                nothing to imply. Shading it says "no coverage here" rather than
+                nothing to imply. Washing it says "no coverage here" rather than
                 leaving blank space that reads as zero demand. */}
             {geom.gapEnd > 0 && (
               <rect className="cctlgap" x={0} y={0} width={geom.gapEnd} height={geom.H} />
             )}
-            {geom.runs.map((d, k) => (
-              <path key={k} className="cctlline" d={d} />
+            {geom.runs.map((r, k) => (
+              <path key={`a${k}`} className="cctlarea" d={r.area} fill={`url(#${fadeId})`} />
+            ))}
+            {geom.runs.map((r, k) => (
+              <path key={`l${k}`} className="cctlline" d={r.line} />
             ))}
           </svg>
-          {/* Requested behind, covered in front, both anchored to today. */}
-          <span className="cctlband req" style={{ left: pct(days) }} />
-          {covered > 0 && <span className="cctlband cov" style={{ left: pct(covered) }} />}
-        </div>
-      )}
+        )}
 
-      <div className="cctltrack">
-        <span className="cctlfill" style={{ left: pct(days) }} />
-        {SKILL_WINDOWS.map((w) => (
-          <span key={w} className="cctltick" style={{ left: pct(w) }} aria-hidden="true" />
-        ))}
-        <span className="cctlthumb" style={{ left: pct(days) }} aria-hidden="true" />
+        <span className="cctlbase" aria-hidden="true" />
+        {/* WHERE THE REQUEST OUTRUNS THE ARCHIVE. The thumb marks what was
+            asked for; this marks what can actually be returned, and it only
+            appears when the two differ. Without it a 60-day request over 47
+            days of collection looks exactly like a 60-day answer. */}
+        {short && <span className="cctlcov" style={{ left: pct(covered) }} aria-hidden="true" />}
+        <span className="cctldot" style={{ left: pct(days) }} aria-hidden="true" />
         <input
           id="cctlrange"
           className="cctlr"
@@ -275,17 +325,17 @@ function TimelineScrubber({
         />
       </div>
 
-      <div className="cctlt" aria-hidden="true">
+      <div className="cctlt">
         {SKILL_WINDOWS.map((w, k) => (
           <button
             type="button"
             key={w}
             className={
-              `cctltk ${w === days ? "on" : ""}` +
-              (k === SKILL_WINDOWS.length - 1 ? " first" : k === 0 ? " last" : "")
+              `cctltk ${w === days ? "on" : ""}` + (k === SKILL_WINDOWS.length - 1 ? " first" : "")
             }
             style={{ left: pct(w) }}
             tabIndex={-1}
+            aria-hidden="true"
             onClick={() => onChange(w)}
           >
             {w}d

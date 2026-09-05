@@ -14553,11 +14553,18 @@ body {
    with a time axis under it, so the reader can see where the history is dense
    before choosing how far back to look.
 
-   Monochrome, like the rest of the card. The one place value does the work is
-   the pair of bands — the requested period sits behind in a light tone and the
-   period actually covered in front in ink, so when the archive cannot reach as
-   far back as the reader asked, the gap between them is visible rather than
-   only stated. */
+   REDRAWN 2026-09-05 to the supplied design. What changed is the arrangement,
+   not the data: the boxed plot and its separate pill track became one stage, on
+   which the selected value rides above the thumb instead of sitting in the
+   opposite corner, the volume line gained a fading area fill, and the pill
+   track became a hairline with a solid dot.
+
+   Monochrome, like the rest of the card, and now with no filled bands at all —
+   the design carries the selection on the stem and the moving label. The one
+   thing kept from the old treatment is `.cctlcov`, the dashed mark for where
+   the request outruns the archive, because nothing else on the card says that
+   and a 60-day request over 47 days of collection otherwise looks exactly like
+   a 60-day answer. It is absent whenever the two agree. */
 .cctl {
   margin-bottom: 18px;
 }
@@ -14566,14 +14573,7 @@ body {
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 6px;
-}
-.cctlv {
-  font-size: 21px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-  color: var(--text-primary);
-  white-space: nowrap;
+  margin-bottom: 2px;
 }
 .cctll {
   font-family: var(--font-mono);
@@ -14582,91 +14582,105 @@ body {
   letter-spacing: 0.06em;
   color: var(--text-tertiary);
 }
-.cctlplot {
+/* ONE STAGE. The value, the stem, the volume line, the covered mark and the
+   thumb are all positioned by the same `left`, so the number the reader is
+   setting sits directly over the point on the axis they are setting it at.
+   The boxed plot this replaced put the number in the opposite corner. */
+.cctlstage {
   position: relative;
-  height: 34px;
-  /* Same token and the same clip as .hspmap, the hot-spot map further down the
-     tab: both are bounded panels of data inside the card, and a square-cornered
-     one between two rounded ones reads as unfinished. The clip is what does the
-     work — the volume line, the no-coverage shading and both period bands all
-     run to the panel's edges, so each of them has to take the corner. */
-  border-radius: var(--radius-md);
-  overflow: hidden;
+  height: 100px;
 }
-.cctlplot svg {
-  display: block;
+.cctlval {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  white-space: nowrap;
+  pointer-events: none;
+}
+/* At either end of the axis a centred label hangs half of itself off the card,
+   so it aligns to its edge there instead. */
+.cctlval.s {
+  transform: none;
+}
+.cctlval.e {
+  transform: translateX(-100%);
+}
+.cctlstem {
+  position: absolute;
+  top: 30px;
+  bottom: 22px;
+  width: 1px;
+  background: var(--text-primary);
+  pointer-events: none;
+}
+.cctlspark {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 30px;
+  height: 52px;
   width: 100%;
-  height: 100%;
+  display: block;
+  overflow: visible;
 }
 .cctlline {
   fill: none;
-  stroke: var(--neutral-500);
+  stroke: var(--text-primary);
   stroke-width: 1.25;
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
+.cctlarea {
+  stroke: none;
+}
+.cctlfadea {
+  stop-color: var(--text-primary);
+  stop-opacity: 0.16;
+}
+.cctlfadeb {
+  stop-color: var(--text-primary);
+  stop-opacity: 0;
+}
+/* A wash, not a block: the panel it used to sit inside is gone, so an opaque
+   fill would read as a drawn bar rather than as absence. */
 .cctlgap {
-  fill: var(--neutral-100);
+  fill: var(--text-primary);
+  opacity: 0.04;
 }
-/* Both bands run from their own left edge to today, so the shorter one (the
-   covered period) sits on top of the longer. */
-.cctlband {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-}
-.cctlband.req {
-  background: var(--neutral-150);
-  mix-blend-mode: multiply;
-}
-.cctlband.cov {
-  background: var(--neutral-300);
-  mix-blend-mode: multiply;
-}
-.cctltrack {
-  position: relative;
-  height: 18px;
-  margin-top: 3px;
-}
-/* The axis itself, and the selected stretch of it drawn over the top. */
-.cctltrack::before {
-  content: "";
+.cctlbase {
   position: absolute;
   left: 0;
   right: 0;
-  top: 8px;
-  height: 2px;
-  border-radius: 999px;
+  bottom: 20px;
+  height: 1px;
   background: var(--border-default);
+  pointer-events: none;
 }
-.cctlfill {
+/* Where the request outruns the archive. Muted and dashed so it reads as a
+   limit rather than as a second thing to set, and absent entirely when the
+   archive covers everything asked for. */
+.cctlcov {
   position: absolute;
-  right: 0;
-  top: 8px;
-  height: 2px;
+  bottom: 14px;
+  height: 13px;
+  width: 0;
+  border-left: 1px dashed var(--border-strong);
+  pointer-events: none;
+}
+.cctldot {
+  position: absolute;
+  bottom: 14px;
+  width: 13px;
+  height: 13px;
+  margin-left: -6.5px;
   border-radius: 999px;
-  background: var(--neutral-900);
-}
-.cctltick {
-  position: absolute;
-  top: 4px;
-  width: 1px;
-  height: 10px;
-  background: var(--border-strong);
-}
-.cctlthumb {
-  position: absolute;
-  top: 2px;
-  width: 14px;
-  height: 14px;
-  margin-left: -7px;
-  border-radius: 50%;
-  border: 2px solid var(--neutral-900);
-  background: var(--neutral-0);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
+  background: var(--text-primary);
+  box-shadow: 0 0 0 4px var(--surface-card);
   pointer-events: none;
 }
 /* The real control, invisible over the drawn one. It keeps the native
@@ -14674,56 +14688,59 @@ body {
    the thumb above is positioned by TIME rather than by the browser's own
    even spacing, which is what lets it sit exactly on the band's edge. */
 .cctlr {
+  /* THE HIT AREA IS THE WHOLE STAGE, not a strip by the dot. The design invites
+     a drag anywhere across the chart — that is what the ew-resize cursor on its
+     track means — so the input covers the stage rather than the old 18px band. */
   position: absolute;
   left: 0;
-  top: 0;
+  top: 26px;
   width: 100%;
-  height: 18px;
+  height: 74px;
   margin: 0;
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
-  cursor: pointer;
-  /* The drawn thumb below carries the focus ring; the native outline would
-     box the whole track, which is not what has focus. */
+  cursor: ew-resize;
+  /* The drawn dot carries the focus ring; the native outline would box the
+     whole stage, which is not what has focus. */
   outline: none;
 }
 .cctlr::-webkit-slider-runnable-track {
-  height: 18px;
+  height: 74px;
   background: transparent;
 }
 .cctlr::-moz-range-track {
-  height: 18px;
+  height: 74px;
   background: transparent;
 }
 .cctlr::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 18px;
-  height: 18px;
+  height: 74px;
   border: 0;
-  border-radius: 50%;
   background: transparent;
 }
 .cctlr::-moz-range-thumb {
   width: 18px;
-  height: 18px;
+  height: 74px;
   border: 0;
-  border-radius: 50%;
+  border-radius: 0;
   background: transparent;
 }
-/* Focus has to show on the drawn thumb, since the real one is transparent.
-   Keyed off the track rather than a sibling selector: the drawn thumb comes
-   BEFORE the input in the DOM, so `~` would never match it. */
-.cctltrack:focus-within .cctlthumb {
+/* Focus has to show on the drawn dot, since the real thumb is transparent.
+   Keyed off the stage rather than a sibling selector: the drawn dot comes
+   BEFORE the input in the DOM, so `~` would never match it. The inner ring
+   keeps the dot's own 4px card-coloured halo, so the two do not stack into a
+   thick blob. */
+.cctlstage:focus-within .cctldot {
   box-shadow:
-    0 0 0 3px var(--neutral-0),
-    0 0 0 5px var(--border-focus);
+    0 0 0 4px var(--surface-card),
+    0 0 0 6px var(--border-focus);
 }
 .cctlt {
   position: relative;
-  height: 13px;
-  margin-top: 1px;
+  height: 14px;
 }
 .cctltk {
   position: absolute;
@@ -14732,25 +14749,22 @@ body {
   border: 0;
   background: none;
   font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.06em;
-  color: var(--text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--text-disabled);
   cursor: pointer;
   white-space: nowrap;
 }
 .cctltk.on {
-  color: var(--text-primary);
-  font-weight: 600;
+  color: var(--text-secondary);
 }
-/* The end labels sit on the axis ends, so centring them hangs half of each
-   one outside the card. They align to their edge instead. */
+/* 60d sits at 0% of the axis, so centring it hangs half the label outside the
+   card. It aligns to that edge instead. The others have room to centre: the
+   shortest window is 7d at 88.3%, which clears the right edge by more than
+   half a label. */
 .cctltk.first {
   transform: none;
   padding-left: 0;
-}
-.cctltk.last {
-  transform: translateX(-100%);
-  padding-right: 0;
 }
 .cctlnote {
   margin: 8px 0 0;
