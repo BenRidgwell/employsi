@@ -14572,9 +14572,10 @@ body {
   position: relative;
   height: 100px;
 }
-/* Centred on the thumb at every position, as the design has it. At the 60d end
-   that puts ~31px of a 62px label left of 0%; the card's 26px gutter absorbs
-   most of it and the last ~5px overhang is the design's own behaviour. */
+/* Centred on the thumb, as the design has it — except at the far-left stop,
+   where centring on a thumb at 0% puts the label ~14px outside the card
+   (measured at the real 440px width). `.s` left-aligns it there. The design
+   does the same thing unguarded; its 700px demo just never shows that state. */
 .cctlval {
   position: absolute;
   top: 0;
@@ -14585,6 +14586,9 @@ body {
   color: var(--text-primary);
   white-space: nowrap;
   pointer-events: none;
+}
+.cctlval.s {
+  transform: none;
 }
 .cctlstem {
   position: absolute;

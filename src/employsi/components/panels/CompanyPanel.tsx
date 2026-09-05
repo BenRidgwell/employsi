@@ -226,6 +226,17 @@ function TimelineScrubber({
   // which is where the mockup's tick labels are hardcoded. `TL_MIN` is also the
   // range input's span (below) so the pointer and the drawn dot cannot drift.
   const pct = (d: number) => `${((TL_SPAN - d) / (TL_SPAN - TL_MIN)) * 100}%`;
+  /**
+   * The value label is centred on the thumb, which at the far-left stop puts
+   * half of it outside the card. Measured in a headless render at the real
+   * 440px card: at 60d, "60 days" starts ~14px past the card's left edge.
+   *
+   * Keyed off the POSITION rather than `days === 60`, so it still holds if the
+   * longest window changes. The right-hand end needs no equivalent: the
+   * shortest stop is 7d at 89.83%, and its label was measured to clear the
+   * right edge with room to spare.
+   */
+  const atLeftEnd = (TL_SPAN - days) / (TL_SPAN - TL_MIN) < 0.1;
   const short = covered > 0 && covered < days;
   const startsOn =
     geom && Date.parse(geom.end + "T00:00:00Z")
@@ -258,7 +269,7 @@ function TimelineScrubber({
           the number the reader is setting sits over the point they are setting
           it at rather than in a corner. */}
       <div className="cctlstage">
-        <span className="cctlval" style={{ left: pct(days) }}>
+        <span className={`cctlval${atLeftEnd ? " s" : ""}`} style={{ left: pct(days) }}>
           {days} days
         </span>
         <span className="cctlstem" style={{ left: pct(days) }} aria-hidden="true" />
