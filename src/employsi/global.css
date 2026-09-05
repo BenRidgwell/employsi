@@ -325,9 +325,9 @@ body {
   left: var(--pane-left);
   top: var(--pane-top);
   box-sizing: border-box;
-  width: 470px;
+  width: var(--board-w);
   max-width: calc(100vw - var(--pane-left) - 24px);
-  height: min(620px, var(--pane-max-h));
+  height: var(--board-h);
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border-default);
@@ -493,11 +493,8 @@ body {
 .anscopes {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
-  flex: 0 0 auto;
-  padding: 11px 18px;
-  border-bottom: 1px solid var(--surface-sunken);
-  overflow-x: auto;
 }
 .anscopelbl {
   font-family: var(--font-mono);
@@ -576,8 +573,14 @@ body {
   filter: blur(3px);
   opacity: 0.55;
 }
+/* WRAPS, so the follow-up chips drop UNDER the answer instead of sharing its
+   line. .anfollow is a flex sibling of .ananswer, and without this the two
+   split the row: measured on the shipped 470px pane, the chips sat to the
+   right and squeezed the bubble to 311px of a 432px row, which is why answers
+   have always looked narrower than the pane they are in. */
 .anrow {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-start;
 }
 .anrow-user {
@@ -629,6 +632,8 @@ body {
    the analyst takes a follow-up at all — see followUpsFor(). Indented to the
    answer's edge so they read as belonging to it rather than as a new turn. */
 .anfollow {
+  /* Its own line, always — see .anrow. */
+  flex: 0 0 100%;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -996,6 +1001,187 @@ body {
   background: transparent;
   z-index: 47;
 }
+/* The line chart's headline block, in the company card's chart language.
+   .ccreadout / .cceyebrow / .ccreadv / .ccdelta are REUSED rather than
+   copied — a second set of rules with the same values is a second set to
+   drift, and the whole point of this is that the two panes read alike. */
+.anchartcard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.anchartcard .anchartsvg {
+  display: block;
+  width: 100%;
+}
+
+/* ── Ask an analyst · the board ──────────────────────────────────────────────
+   Controls left, conversation right, on the same container as What's Trending
+   (--board-w / --board-h) so the two panes do not resize under the reader when
+   they switch between them at the same anchor.
+
+   Everything in the left column used to be a full-width strip stacked above
+   the thread: Scope, Sector, and three topic chips whose menu opened upward
+   OVER the conversation with the thread dimmed behind it. Together they cost
+   about 140px, leaving roughly 350px of a 620px pane for the conversation
+   itself. In a column beside it the thread gets about 600px of 780. */
+.anboard {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  /* The same split the trending board uses, for the same reason: the wider
+     column is the one carrying measured content — answers, charts, bars. */
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  gap: 14px;
+  padding: 14px;
+  background: #fbfbfc;
+}
+.ancol {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+/* A scroller must never compress what it scrolls: every tile sets
+   overflow:hidden for its corners, which opts it out of its own automatic
+   minimum height. The thread is the one item meant to absorb the slack. */
+.ancol > * {
+  flex: 0 0 auto;
+}
+/* Tile chrome, the same .dqcard shape the trending board uses. */
+.antile {
+  padding: 12px 14px;
+  border: 1px solid #ededf0;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(28, 28, 30, 0.04);
+  overflow: hidden;
+}
+/* The controls column can outrun the board on a short viewport — nine
+   questions plus two chip sets — so it scrolls rather than clipping. */
+.ancolctl {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.antopics {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.antopic {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.antopic .anscopelbl {
+  margin-bottom: 2px;
+}
+.antopics .anmenuq {
+  text-align: left;
+}
+
+/* The thread takes the slack in its own column and scrolls itself. */
+.ancolchat .anbody {
+  flex: 1 1 auto;
+  min-height: 160px;
+  border: 1px solid #ededf0;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(28, 28, 30, 0.04);
+}
+/* An answer is prose. Past about 75 characters a line gets harder to track
+   back to, and the right column is wider than the bubble ever was, so the
+   text is capped where the reading is rather than where the tile ends. */
+.ancolchat .antext {
+  max-width: 62ch;
+}
+.ancolchat .ancompose {
+  margin: 0;
+}
+
+/* One column below the width the board needs — the same 1100px the trending
+   pane falls back at, and back to this pane's own 470px rather than the
+   board's 940. Tiles drop their chrome: a hairline box around each section
+   reads as clutter at that width. */
+@media (max-width: 1100px) {
+  .analystpane {
+    width: 470px;
+    height: min(620px, var(--pane-max-h));
+  }
+  .anboard {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+    background: none;
+    /* The THREAD scrolls here, not the board — the composer has to stay
+       pinned at the foot of a 620px pane. */
+    overflow: hidden;
+  }
+  .ancol {
+    display: contents;
+  }
+  /* display:contents leaves .anbody matching `.ancol > *` above, which would
+     freeze it at its 160px floor and hand the scrolling to the board. */
+  .ancolchat .anbody {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .antile {
+    padding: 11px 18px;
+    border: 0;
+    border-bottom: 1px solid var(--surface-sunken);
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .ancolchat .anbody {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .ancolchat .ancompose {
+    margin: 8px 14px 14px;
+  }
+  /* The scope and sector rows go back to one scrolling line rather than
+     wrapping: at 470px a wrapped sector set is three rows of chrome above a
+     620px pane's conversation. */
+  .anscopes {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  /* And the nine questions become one scrolling strip of pills. Listed open
+     they are right for a column beside the thread and wrong above it — they
+     ran to ~400px and left the thread 36px. The grouping labels go with the
+     column; the questions read on their own. */
+  .antopics {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .antopics::-webkit-scrollbar {
+    display: none;
+  }
+  .antopic {
+    flex-direction: row;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+  }
+  .antopic .anscopelbl {
+    display: none;
+  }
+  .antopics .anmenuq {
+    width: auto;
+    flex: 0 0 auto;
+    padding: 5px 11px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+}
+
 /* ── Filter card (Filter_Popout.html) ──────────────────────────────────────
    The design's card: 392px, 18px radius, 22px gutters, a header carrying the
    active count / "Clear all" / a 32px round close, a scrolling body of
@@ -15832,11 +16018,11 @@ body {
    away — silently, since the clipping is what overflow:hidden is there for.
    Columns size honestly and need no such reasoning. */
 .trendpane {
-  width: 940px;
+  width: var(--board-w);
   /* Replaces the base pane's `bottom`, which stretched this one to the full
      viewport height and left the tiles floating in it. */
   bottom: auto;
-  height: min(780px, var(--pane-max-h));
+  height: var(--board-h);
   /* The tinted body runs to the pane's edge, so the pane has to clip. */
   overflow: hidden;
 }

@@ -200,38 +200,11 @@ export function AnalystPane() {
   const [thinking, setThinking] = useState(false);
   const nextId = useRef(1);
   const bodyRef = useRef<HTMLDivElement | null>(null);
-  /** Which prompt topic's menu is open, if any. */
-  const [openTopic, setOpenTopic] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
   // Keep the newest exchange in view as the thread grows.
   useEffect(() => {
     const el = bodyRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [thread, thinking]);
-
-  // Click away or press Escape to close the topic menu. Pointerdown rather than
-  // click so the menu is gone before whatever was pressed underneath reacts.
-  useEffect(() => {
-    if (!openTopic) return;
-    const away = (e: PointerEvent) => {
-      if (!menuRef.current?.contains(e.target as Node)) setOpenTopic(null);
-    };
-    const esc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpenTopic(null);
-    };
-    document.addEventListener("pointerdown", away);
-    document.addEventListener("keydown", esc);
-    return () => {
-      document.removeEventListener("pointerdown", away);
-      document.removeEventListener("keydown", esc);
-    };
-  }, [openTopic]);
-
-  // A closed pane must not reopen with a menu hanging over the thread.
-  useEffect(() => {
-    if (!open) setOpenTopic(null);
-  }, [open]);
 
   /**
    * Drop the conversation and everything it was carrying.
@@ -254,7 +227,6 @@ export function AnalystPane() {
     setThread([{ id: nextId.current++, role: "analyst", text: OPENER }]);
     setCarried(null);
     setActiveScope(null);
-    setOpenTopic(null);
   };
 
   const ask = async (raw: string) => {
@@ -337,235 +309,227 @@ export function AnalystPane() {
           </button>
         </div>
 
-        <div className="anscopes">
-          <span className="anscopelbl">Scope</span>
-          {chips.map((s) => (
-            <button
-              key={s.kind + s.id}
-              type="button"
-              // Highlighted by identity, not by index: the active scope can be
-              // one the question introduced rather than one of the derived
-              // chips, and an index cannot point at that.
-              className={`anscope${sameScope(s, scope) ? " on" : ""}`}
-              aria-pressed={sameScope(s, scope)}
-              onClick={() => {
-                setActiveScope(s);
-                // Picking a scope by hand re-bases the conversation on it, so
-                // the next "what about nursing?" is asked about THIS place.
-                setCarried((q) => (q ? { ...q, scope: s } : q));
-              }}
-            >
-              <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor">
-                {(SCOPE_PATHS[s.kind] ?? []).map((d) => (
-                  <path key={d} d={d} />
+        {/* TWO COLUMNS ON THE TRENDING BOARD'S CONTAINER.
+            Controls left, conversation right. Everything in the left column
+            used to be a full-width row above the thread, costing it about
+            140px of height for things a reader touches once per question; the
+            thread ran to ~350px of a 620px pane. It is ~600px of a 780px one
+            now. */}
+        <div className="anboard">
+          <div className="ancol ancolctl">
+            <div className="antile anscopes">
+              <span className="anscopelbl">Scope</span>
+              {chips.map((s) => (
+                <button
+                  key={s.kind + s.id}
+                  type="button"
+                  // Highlighted by identity, not by index: the active scope can be
+                  // one the question introduced rather than one of the derived
+                  // chips, and an index cannot point at that.
+                  className={`anscope${sameScope(s, scope) ? " on" : ""}`}
+                  aria-pressed={sameScope(s, scope)}
+                  onClick={() => {
+                    setActiveScope(s);
+                    // Picking a scope by hand re-bases the conversation on it, so
+                    // the next "what about nursing?" is asked about THIS place.
+                    setCarried((q) => (q ? { ...q, scope: s } : q));
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor">
+                    {(SCOPE_PATHS[s.kind] ?? []).map((d) => (
+                      <path key={d} d={d} />
+                    ))}
+                  </svg>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            {sectorOptions.length > 0 && (
+              <div className="antile anscopes ansectors">
+                <span className="anscopelbl">Sector</span>
+                {[ALL_SECTORS, ...sectorOptions].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={`anscope${s === activeSector ? " on" : ""}`}
+                    aria-pressed={s === activeSector}
+                    onClick={() => setSector(s)}
+                  >
+                    {SECTOR_SHORT[s] || s}
+                  </button>
                 ))}
-              </svg>
-              {s.label}
-            </button>
-          ))}
-        </div>
-
-        {sectorOptions.length > 0 && (
-          <div className="anscopes ansectors">
-            <span className="anscopelbl">Sector</span>
-            {[ALL_SECTORS, ...sectorOptions].map((s) => (
-              <button
-                key={s}
-                type="button"
-                className={`anscope${s === activeSector ? " on" : ""}`}
-                aria-pressed={s === activeSector}
-                onClick={() => setSector(s)}
-              >
-                {SECTOR_SHORT[s] || s}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className={`anbody${openTopic ? " dimmed" : ""}`} ref={bodyRef}>
-          {thread.map((m) =>
-            m.role === "user" ? (
-              <div key={m.id} className="anrow anrow-user">
-                <div className="anuser">{m.text}</div>
               </div>
-            ) : (
-              <div key={m.id} className="anrow">
-                <div className="ananswer">
-                  <span className="antail" />
-                  {/* What this answer is ABOUT, shown only when the turn
+            )}
+
+            {/* THE TOPICS ARE A LIST, NOT A MENU. They used to be three chips
+                under the thread whose menu opened UPWARD over it, with the
+                thread dimmed behind — so choosing a follow-up hid the answer
+                being followed up on. In a column all nine questions stand
+                open, and the popover, its outside-click handler and the
+                dimming go with it. */}
+            <div className="antile antopics">
+              {PROMPT_TOPICS.map((t) => (
+                <div className="antopic" key={t.label}>
+                  <span className="anscopelbl">{t.label}</span>
+                  {t.questions.map((q) => (
+                    <button key={q} type="button" className="anmenuq" onClick={() => ask(q)}>
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* The conversation and the box you type into, together and alone in
+              their column: the composer belongs under the thread it appends
+              to, not under the whole board. */}
+          <div className="ancol ancolchat">
+            <div className="anbody" ref={bodyRef}>
+              {thread.map((m) =>
+                m.role === "user" ? (
+                  <div key={m.id} className="anrow anrow-user">
+                    <div className="anuser">{m.text}</div>
+                  </div>
+                ) : (
+                  <div key={m.id} className="anrow">
+                    <div className="ananswer">
+                      <span className="antail" />
+                      {/* What this answer is ABOUT, shown only when the turn
                       inherited it rather than saying it. A follow-up like "what
                       about Sydney?" is answered from context the sentence does
                       not contain, and hidden context steering real figures is
                       exactly what analystIntent.ts's "predictable rule"
                       principle is there to prevent. */}
-                  {m.context && <span className="ancontext">{m.context}</span>}
-                  <span className="antext">{m.text}</span>
+                      {m.context && <span className="ancontext">{m.context}</span>}
+                      <span className="antext">{m.text}</span>
 
-                  {/* The chart sits directly under the sentence that states the
+                      {/* The chart sits directly under the sentence that states the
                       finding and above the figures, which is the design's own
                       order: read the claim, see the shape, then the numbers. */}
-                  {m.answer?.chart && (
-                    <AnalystChartView
-                      chart={m.answer.chart}
-                      title={m.text}
-                      source={m.answer.source}
-                    />
-                  )}
+                      {m.answer?.chart && (
+                        <AnalystChartView
+                          chart={m.answer.chart}
+                          title={m.text}
+                          source={m.answer.source}
+                        />
+                      )}
 
-                  {!!m.answer?.stats?.length && (
-                    <div className="anstats">
-                      {m.answer.stats.map((st) => (
-                        <div key={st.k} className="anstat">
-                          <span className="anstatv">
-                            {st.v}
-                            {st.d && (
-                              <span className={`anstatd${st.down ? " down" : ""}`}>{st.d}</span>
-                            )}
-                          </span>
-                          <span className="anstatk">{st.k}</span>
+                      {!!m.answer?.stats?.length && (
+                        <div className="anstats">
+                          {m.answer.stats.map((st) => (
+                            <div key={st.k} className="anstat">
+                              <span className="anstatv">
+                                {st.v}
+                                {st.d && (
+                                  <span className={`anstatd${st.down ? " down" : ""}`}>{st.d}</span>
+                                )}
+                              </span>
+                              <span className="anstatk">{st.k}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      )}
 
-                  {!!m.answer?.bars?.length && (
-                    <div className="anbars">
-                      {m.answer.bars.map((b) => (
-                        <div key={b.name} className="anbar">
-                          <span className="anbarname">{b.name}</span>
-                          <span className="anbartrack">
-                            <span className="anbarfill" style={{ width: `${b.pct}%` }} />
-                          </span>
-                          <span className={`anbarv${b.down ? " down" : ""}`}>{b.v}</span>
+                      {!!m.answer?.bars?.length && (
+                        <div className="anbars">
+                          {m.answer.bars.map((b) => (
+                            <div key={b.name} className="anbar">
+                              <span className="anbarname">{b.name}</span>
+                              <span className="anbartrack">
+                                <span className="anbarfill" style={{ width: `${b.pct}%` }} />
+                              </span>
+                              <span className={`anbarv${b.down ? " down" : ""}`}>{b.v}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      )}
 
-                  {m.answer?.source && (
-                    <div className="ansource">
-                      <svg
-                        viewBox="0 0 24 24"
-                        width={13}
-                        height={13}
-                        fill="none"
-                        stroke="currentColor"
-                        aria-hidden
-                      >
-                        <path d="M6 4h9l4 4v12H6z" />
-                        <path d="M15 4v4h4" />
-                      </svg>
-                      <span>{m.answer.source}</span>
+                      {m.answer?.source && (
+                        <div className="ansource">
+                          <svg
+                            viewBox="0 0 24 24"
+                            width={13}
+                            height={13}
+                            fill="none"
+                            stroke="currentColor"
+                            aria-hidden
+                          >
+                            <path d="M6 4h9l4 4v12H6z" />
+                            <path d="M15 4v4h4" />
+                          </svg>
+                          <span>{m.answer.source}</span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                {/* Offered on the NEWEST answer only. A follow-up applies to
+                    {/* Offered on the NEWEST answer only. A follow-up applies to
                     the analysis as it stands now, so chips under an older turn
                     would pivot from somewhere the conversation has already
                     left. */}
-                {m.id === thread[thread.length - 1]?.id && followUps.length > 0 && !thinking && (
-                  <div className="anfollow">
-                    {followUps.map((f) => (
-                      <button
-                        key={f.question}
-                        type="button"
-                        className="anfollowq"
-                        title={f.question}
-                        onClick={() => ask(f.question)}
-                      >
-                        {f.label}
-                      </button>
-                    ))}
+                    {m.id === thread[thread.length - 1]?.id &&
+                      followUps.length > 0 &&
+                      !thinking && (
+                        <div className="anfollow">
+                          {followUps.map((f) => (
+                            <button
+                              key={f.question}
+                              type="button"
+                              className="anfollowq"
+                              title={f.question}
+                              onClick={() => ask(f.question)}
+                            >
+                              {f.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                   </div>
-                )}
-              </div>
-            ),
-          )}
+                ),
+              )}
 
-          {thinking && (
-            <div className="anrow">
-              <div className="anthinking">
-                <span />
-                <span />
-                <span />
-              </div>
+              {thinking && (
+                <div className="anrow">
+                  <div className="anthinking">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        <div className="anprompts" ref={menuRef}>
-          {openTopic && (
-            <div className="anmenu" role="menu">
-              <span className="anmenulbl">{openTopic}</span>
-              {(PROMPT_TOPICS.find((t) => t.label === openTopic)?.questions ?? []).map((q) => (
-                <button
-                  key={q}
-                  type="button"
-                  className="anmenuq"
-                  role="menuitem"
-                  onClick={() => {
-                    setOpenTopic(null);
-                    ask(q);
-                  }}
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-          )}
-          {PROMPT_TOPICS.map((t) => (
-            <button
-              key={t.label}
-              type="button"
-              className={`anprompt${openTopic === t.label ? " on" : ""}`}
-              aria-expanded={openTopic === t.label}
-              aria-haspopup="menu"
-              onClick={() => setOpenTopic((v) => (v === t.label ? null : t.label))}
-            >
-              {t.label}
-              <svg
-                viewBox="0 0 24 24"
-                width={12}
-                height={12}
-                fill="none"
-                stroke="currentColor"
-                aria-hidden
+            <div className="ancompose">
+              <input
+                className="aninput"
+                placeholder="Ask about vacancies, salaries or hiring velocity"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    ask(draft);
+                  }
+                }}
+                aria-label="Ask the analyst a question"
+              />
+              <button
+                type="button"
+                className="ansend"
+                onClick={() => ask(draft)}
+                disabled={!draft.trim() || thinking}
+                aria-label="Send"
               >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
-          ))}
-        </div>
-
-        <div className="ancompose">
-          <input
-            className="aninput"
-            placeholder="Ask about vacancies, salaries or hiring velocity"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                ask(draft);
-              }
-            }}
-            aria-label="Ask the analyst a question"
-          />
-          <button
-            type="button"
-            className="ansend"
-            onClick={() => ask(draft)}
-            disabled={!draft.trim() || thinking}
-            aria-label="Send"
-          >
-            <svg viewBox="0 0 24 24" width={17} height={17} fill="none" stroke="currentColor">
-              <g className="ai-send">
-                <line x1="5" y1="19" x2="19" y2="5" />
-                <polyline points="10 5 19 5 19 14" />
-              </g>
-            </svg>
-          </button>
+                <svg viewBox="0 0 24 24" width={17} height={17} fill="none" stroke="currentColor">
+                  <g className="ai-send">
+                    <line x1="5" y1="19" x2="19" y2="5" />
+                    <polyline points="10 5 19 5 19 14" />
+                  </g>
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </>

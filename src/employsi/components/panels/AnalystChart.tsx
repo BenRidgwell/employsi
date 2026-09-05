@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { exportChart, type ExportFormat } from "../../lib/chartExport";
+import { TREND_DOWN, TREND_UP } from "../../lib/companyCard";
 import type {
   AnalystChart as Chart,
   AnalystChartLine,
@@ -43,14 +44,32 @@ function monthTick(iso: string): string {
   return `${names[Number(m) - 1] ?? m} ${y.slice(2)}`;
 }
 
-/** 1a — two indexed series over time. */
+/**
+ * 1a — two indexed series over time, drawn in the company card's chart
+ * language.
+ *
+ * The card is the reference for this and the shapes are now the same: a mono
+ * eyebrow, the level large with its change in a pill beside it, a gradient
+ * fill saturated at the curve and washing out to the floor, the direction
+ * carried by the stroke colour, and a ringed marker on the latest reading.
+ * A reader moving between a company card and an answer should not have to
+ * re-learn what a green area under a line means.
+ *
+ * TWO THINGS THE CARD DOES NOT HAVE SURVIVE HERE. The dashed grey reference
+ * stays — it is the comparison the chart exists to make, and dropping it to
+ * match a single-series card would leave the subject rising against nothing.
+ * And the y-axis stays gone rather than becoming the card's: these series are
+ * REBASED, so the level is an index, not a count, and the eyebrow says which
+ * month it is indexed to. Without that line the same "138" would read as 138
+ * vacancies.
+ */
 function LineChart({ chart }: { chart: AnalystChartLine }) {
   const W = 640;
-  const H = 244;
-  const L = 46; // left gutter for the value axis
-  const R = 592;
-  const TOP = 30;
-  const BOT = 200;
+  const H = 214;
+  const L = 4;
+  const R = 636;
+  const TOP = 16;
+  const BOT = 170;
 
   const all = chart.series.flatMap((s) => s.points);
   const lo = Math.min(...all);
@@ -63,70 +82,95 @@ function LineChart({ chart }: { chart: AnalystChartLine }) {
   const n = chart.months.length;
   const x = (i: number) => L + (i / Math.max(1, n - 1)) * (R - L);
   const y = (v: number) => BOT - ((v - min) / (max - min || 1)) * (BOT - TOP);
+  const path = (pts: number[]) =>
+    pts.map((v, i) => `${i ? "L" : "M"} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
 
-  // Five gridlines, labelled with the index value they sit at.
-  const rows = [0, 1, 2, 3, 4].map((k) => {
-    const v = min + ((max - min) * k) / 4;
-    return { v, y: y(v) };
-  });
+  const subject = chart.series.find((s) => s.tone === "ink") ?? chart.series[0];
+  const latest = subject.points[subject.points.length - 1];
+  // A rebased series opens at 100, so its change since the base month IS its
+  // level minus 100. Stated rather than recomputed, so the pill and the line
+  // cannot disagree.
+  const change = latest - 100;
+  const up = change >= 0;
+  const tone = up ? TREND_UP : TREND_DOWN;
 
-  // Six ticks at most, always including both ends.
+  // Six ticks at most, always including both ends. The last stepped tick is
+  // dropped when the end tick would land on top of it — 38 months steps by 7,
+  // which puts a tick at 35 and the end at 37, and the two labels overprinted.
   const step = Math.max(1, Math.floor((n - 1) / 5));
   const ticks: number[] = [];
   for (let i = 0; i < n; i += step) ticks.push(i);
-  if (ticks[ticks.length - 1] !== n - 1) ticks.push(n - 1);
+  if (ticks[ticks.length - 1] !== n - 1) {
+    if (n - 1 - ticks[ticks.length - 1] < step * 0.6) ticks.pop();
+    ticks.push(n - 1);
+  }
 
   return (
-    <svg className="anchartsvg" viewBox={`0 0 ${W} ${H}`} width="100%" role="img">
-      <g stroke="#f4f4f5" strokeWidth={1}>
-        {rows.map((r) => (
-          <line key={r.v} x1={L} y1={r.y} x2={R} y2={r.y} />
-        ))}
-      </g>
-      {chart.series.map((s) => (
-        <polyline
-          key={s.label}
-          points={s.points.map((v, i) => `${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ")}
+    <div className="anchartcard">
+      <div className="ccreadout">
+        {/* The series is already named in the key above; the eyebrow carries
+            what the level MEANS, which is the thing a bare "144" does not. */}
+        <span className="cceyebrow">{chart.note}</span>
+        <span className="ccreadv">
+          {latest.toFixed(0)}
+          <span className={`ccdelta ${up ? "up" : "down"}`}>
+            {up ? "▲" : "▼"} {up ? "+" : "−"}
+            {Math.abs(change).toFixed(1)}%
+          </span>
+        </span>
+      </div>
+      <svg className="anchartsvg" viewBox={`0 0 ${W} ${H}`} width="100%" role="img">
+        <defs>
+          <linearGradient id="an-fade" x1="0" y1="0" x2="0" y2="1">
+            {/* The card leads with the fill, not the stroke: saturated at the
+                curve and washing out to nothing at the floor. */}
+            <stop offset="0" stopColor={tone} stopOpacity=".42" />
+            <stop offset=".5" stopColor={tone} stopOpacity=".14" />
+            <stop offset="1" stopColor={tone} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path
+          d={`${path(subject.points)} L ${R} ${BOT} L ${L} ${BOT} Z`}
+          fill="url(#an-fade)"
+          stroke="none"
+        />
+        {chart.series.map((s) =>
+          s.tone === "ink" ? null : (
+            <path
+              key={s.label}
+              d={path(s.points)}
+              fill="none"
+              stroke={MUTED}
+              strokeWidth={1.8}
+              strokeDasharray="5 4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ),
+        )}
+        <path
+          d={path(subject.points)}
           fill="none"
-          stroke={s.tone === "ink" ? INK : MUTED}
-          strokeWidth={s.tone === "ink" ? 2.2 : 1.8}
-          strokeDasharray={s.tone === "ink" ? undefined : "5 4"}
+          stroke={tone}
+          strokeWidth={2.25}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-      ))}
-      {chart.series.map((s) =>
-        s.tone === "ink" ? (
-          <circle key={s.label} cx={x(n - 1)} cy={y(s.points[n - 1])} r={3.4} fill={INK} />
-        ) : (
-          <circle
-            key={s.label}
-            cx={x(n - 1)}
-            cy={y(s.points[n - 1])}
-            r={3}
-            fill="#fff"
-            stroke={MUTED}
-            strokeWidth={1.8}
-          />
-        ),
-      )}
-      <g className="anchartaxis">
-        {rows.map((r) => (
-          <text key={r.v} x={L - 8} y={r.y + 3} textAnchor="end">
-            {Math.round(r.v)}
-          </text>
-        ))}
-        {ticks.map((i) => (
-          <text key={i} x={x(i)} y={BOT + 26} textAnchor="middle">
-            {monthTick(chart.months[i])}
-          </text>
-        ))}
-      </g>
-    </svg>
+        {/* Round because this SVG keeps its aspect ratio — unlike the card's,
+            which stretches and has to place its markers as HTML. */}
+        <circle cx={x(n - 1)} cy={y(latest)} r={7} fill={tone} stroke="#fff" strokeWidth={3} />
+        <g className="anchartaxis">
+          {ticks.map((i) => (
+            <text key={i} x={x(i)} y={BOT + 26} textAnchor="middle">
+              {monthTick(chart.months[i])}
+            </text>
+          ))}
+        </g>
+      </svg>
+    </div>
   );
 }
 
-/** 1c — categories placed by how they moved, sized by volume. */
 function ScatterChart({ chart }: { chart: AnalystChartScatter }) {
   const W = 520;
   const H = 292;
@@ -343,7 +387,6 @@ export function AnalystChartView({
             ))}
           </div>
           <LineChart chart={chart} />
-          <span className="anchartnote">{chart.note}</span>
         </>
       )}
       {chart.kind === "scatter" && <ScatterChart chart={chart} />}
