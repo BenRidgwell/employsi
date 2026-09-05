@@ -58,9 +58,11 @@
 #
 # So Indeed is ~7x slower per chunk, but NOT the 1.4 min/company that the old
 # 20-company run suggested — that extrapolation would have predicted 126 min and
-# an 8.5-hour Indeed sweep. Measured is 0.50 min/company. A full serial sweep is
-# therefore ~3.0 hours of Indeed plus ~24 min of LinkedIn: about 3.5 hours for
-# all eight chunks, one at a time, well inside a single scheduled run.
+# an 8.5-hour Indeed sweep. Measured is 0.50 min/company. A sweep of BOTH boards
+# is therefore ~3.0 hours of Indeed plus ~24 min of LinkedIn: about 3.5 hours for
+# all ten chunks, one at a time, well inside a single scheduled run.
+#
+# With Indeed gated off, the scheduled sweep is the ~30 min of LinkedIn's five.
 #
 # That is the number to re-check if the roster grows a lot.
 #
@@ -69,6 +71,19 @@
 # reported `running`, and never reached `ready` — six of them across four days,
 # one left the full 300 minutes. LinkedIn collected normally throughout on the
 # same account and token.
+#
+# THEY DO NOT TERMINATE, WHICH IS DIFFERENT FROM BEING SLOW, and the difference
+# decides whether a longer wait would help. Measured 2026-09-05: the snapshot
+# from the 2026-08-31 sweep, sd_mths10c46vu2a9aut, was re-polled with --snapshot
+# and still reported `running` — 105 HOURS after it was triggered. Never `ready`,
+# never `failed`.
+#
+# `failed` is the status the collector can act on, and Bright Data does not send
+# it, so a wedged snapshot and a collecting one are indistinguishable from here.
+# That is the concrete thing a support ticket needs, alongside the six ids.
+#
+# SO INDEED IS OFF THE SCHEDULE from 2026-09-05 (see `plan`). Dispatch still
+# collects it, which is how the fix gets verified before the schedule trusts it.
 #
 # THREE THINGS WERE ELIMINATED BY MEASUREMENT, so nobody repeats them:
 #
@@ -83,9 +98,10 @@
 # What is left is the Indeed dataset itself, which is Bright Data's side. The
 # snapshot ids from those runs are what a support ticket needs.
 #
-# So the shape is back to four chunks of 90, because with size ruled out the
-# small shape was pure cost: the curve above is sublinear, so twenty chunks of
-# 20 is ~10 hours of Indeed against ~3 for four of 90, and they run serially.
+# So the shape is back to chunks of 90 — FIVE of them, see `plan` — because with
+# size ruled out the small shape was pure cost: the curve above is sublinear, so
+# twenty chunks of 20 is ~10 hours of Indeed against ~3 for five of 90, and they
+# run serially. That shape is what Indeed returns to when it is re-enabled.
 #
 # They run ONE AT A TIME regardless; see max-parallel below for why.
 #
@@ -208,10 +224,10 @@ jobs:
             else
               echo "ISO week $WEEK is even; proceeding with the fortnightly sweep."
             fi
-            # The scheduled sweep is the whole roster across BOTH boards — 40
-            # jobs, each its own snapshot. They are separate scrapers, so
-            # neither waits on the other and one board failing does not cost
-            # the other its sweep.
+            # The scheduled sweep is the whole roster on LINKEDIN ONLY as of
+            # 2026-09-05 — 5 jobs, each its own snapshot. Indeed is gated off
+            # below; the two are separate scrapers, so dropping one costs the
+            # other nothing.
             #
             # NINETY. It was 20 for one day (2026-09-02 to 09-03) on the theory
             # that Indeed's stall was a load problem, and it is back because the
@@ -257,7 +273,33 @@ jobs:
             # a stall — bisect it with --limit rather than shrinking the sweep
             # for everyone.
             echo 'chunks=[0,90,180,270,360]' >> "$GITHUB_OUTPUT"
-            echo 'sources=["indeed","linkedin"]' >> "$GITHUB_OUTPUT"
+            # INDEED IS GATED OFF THE SCHEDULE PENDING BRIGHT DATA, 2026-09-05.
+            # Restore it by putting "indeed" back in this list — nothing else
+            # here needs changing, and a dispatch can still collect Indeed today
+            # (the else branch below reads inputs.source), which is how the
+            # vendor's fix gets tested before the schedule depends on it again.
+            #
+            # WHY, and it is stronger evidence than the earlier stalls. The
+            # snapshot from the 2026-08-31 sweep, sd_mths10c46vu2a9aut, was
+            # re-polled on 2026-09-05 with --snapshot: still `running`, 105
+            # HOURS after it was triggered. Not `ready`, not `failed`. So these
+            # are not slow collections that would land if the wait were longer —
+            # they never terminate, and no timeout value fixes that.
+            #
+            # THE COST OF LEAVING IT IN. The five Indeed chunks would each burn
+            # the full 90-minute wait for zero rows: 7.5 hours of runner time a
+            # fortnight, producing nothing, on a feed already proven stuck. And
+            # a failing chunk every fortnight is exactly the noise that trained
+            # everyone to ignore the Oxylabs reds in August, which is how the
+            # real gap stayed invisible for a week.
+            #
+            # WHAT THIS DOES NOT DO — deliberately. The archive still has no
+            # Indeed rows since 2026-08-17, and scraper-health.py is NOT muted
+            # for it, so it goes CRITICAL at 22 days (~2026-09-08) and stays
+            # there. That is correct: turning off a sweep does not make the data
+            # fresh, and the staleness is the true statement about the feed. Do
+            # not add indeed to QUIET_OK to make the check go green.
+            echo 'sources=["linkedin"]' >> "$GITHUB_OUTPUT"
           else
             # A dispatch sweeps exactly the slice it was asked for, once.
             echo 'chunks=[${{ inputs.offset || 0 }}]' >> "$GITHUB_OUTPUT"
@@ -270,18 +312,18 @@ jobs:
     if: needs.plan.outputs.run == 'true'
     strategy:
       # THE ROSTER IS SWEPT IN CHUNKS BECAUSE IT DOES NOT FIT IN ONE JOB.
-      # 354 companies at the measured ~1.4 min each is ~8.5 hours against a
-      # 6-hour hard cap on a hosted runner. Four chunks of 90 keep each job well
-      # inside that; the chunk list and why it is 90 rather than 20 live in
-      # `plan` above. A manual dispatch overrides these with its own
-      # offset/limit.
+      # 395 companies at the measured 0.50 min each is ~3.3 hours of Indeed
+      # against a 6-hour hard cap on a hosted runner. Five chunks of 90 keep
+      # each job well inside that; the chunk list, why it is 90 rather than 20,
+      # and why Indeed is currently absent from `sources` all live in `plan`
+      # above. A manual dispatch overrides these with its own offset/limit.
       #
       # THEY DO NOT RUN IN PARALLEL, whatever max-parallel suggests — this said
       # they did until 2026-09-01. The account gets one concurrent runner, so
       # the chunks serialise regardless, and every sweep on record shows each
-      # job starting within seconds of the previous one ending. It matters now
-      # that there are 40 of them: the sweep's wall time is the SUM of its
-      # chunks, not the longest one.
+      # job starting within seconds of the previous one ending. So a sweep's
+      # wall time is the SUM of its chunks, not the longest one — which is why
+      # gating Indeed off saves 7.5 hours a fortnight rather than nothing.
       matrix:
         source: ${{ fromJSON(needs.plan.outputs.sources) }}
         chunk: ${{ fromJSON(needs.plan.outputs.chunks) }}

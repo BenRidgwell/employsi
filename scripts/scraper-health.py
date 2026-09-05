@@ -104,6 +104,19 @@ STALE_DAYS = {
     # Bright Data failure is not silent anyway — the collector exits non-zero on
     # a zero-record snapshot and says so, which is how the 2026-08-17 gap in
     # indeed[0:90] and linkedin[180:270] was found.
+    #
+    # INDEED IS NO LONGER ON THAT FORTNIGHTLY SCHEDULE — it was gated out of
+    # brightdata-archive.yml's scheduled sweep on 2026-09-05 because its Bright
+    # Data snapshots never terminate (one re-polled at 105 hours, still
+    # `running`). Its allowance is LEFT AT 22 and it is deliberately NOT added
+    # to QUIET_OK, so it goes CRITICAL around 2026-09-08 and stays there.
+    #
+    # That is the point. Turning a sweep off does not make the archive fresh,
+    # and the honest statement about Indeed is that it has written nothing since
+    # 2026-08-17. QUIET_OK is for a source that is silent BY DESIGN; this one is
+    # silent because it is broken at the vendor. Re-enable the schedule and this
+    # entry is already correct; mute it here and the outage disappears from the
+    # only place that reports it.
     'indeed': 22,
     'linkedin': 22,
 }
