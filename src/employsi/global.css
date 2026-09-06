@@ -11391,7 +11391,8 @@ body {
 /* ── header (Company_Card.html, 2026-09-06) ─────────────────────────────────
    The supplied design: a 56px logo carrying a sector badge on its corner, a
    26px name over an uppercase sector eyebrow, a dot, a two-tone ticker chip,
-   and TWO 38px square actions. Compare was removed with it — see the component.
+   and TWO actions — the design's third, Compare, was removed with it. The
+   actions are 28px ROUND rather than the design's 38px square; see .ccbtn.
 
    Centred rather than top-aligned. The old header hung its 34px buttons off the
    top of a 48px logo row, which left them floating high; the design aligns
@@ -11549,12 +11550,14 @@ body {
 /* THE HEADER CONTROL GROUP — follow and close, since Company_Card.html dropped
    compare.
 
-   38px ON A 10px RADIUS, WHICH IS THE DESIGN'S AND NOT .paneclose's. These were
-   briefly 28px round, to match the close button on every other card; the
-   supplied design then specified a larger square action, and the design wins
-   for this card. So the company and compare headers are deliberately the one
-   place a close button is not 28px round — worth knowing before someone
-   "fixes" it back.
+   28px ROUND, WHICH IS .paneclose's AND NOT THE DESIGN'S. Company_Card.html
+   draws these as 38px squares; they were built that way and then taken back to
+   28px round on request, so that the close here is the same button as the close
+   on every other card. Both actions moved, not just the close — a lone circle
+   beside a square reads as a mistake rather than as consistency.
+
+   This is the one place the header knowingly departs from the supplied design,
+   so it should not be "restored" to 38px square by someone comparing the two.
 
    They keep their own class because the group has behaviour .paneclose does
    not: the tooltips, and the follow button's `on` state.
@@ -11568,13 +11571,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 28px;
+  height: 28px;
   padding: 0;
-  border: 1px solid var(--border-default);
-  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
   background: var(--surface-card);
-  color: var(--text-secondary);
+  color: var(--neutral-700);
   cursor: pointer;
   --m: 0;
   transition:
@@ -11584,13 +11587,13 @@ body {
     transform 110ms;
 }
 .ccbtn svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   display: block;
 }
 .ccbtn:hover {
   --m: 1;
-  background: var(--surface-subtle);
+  background: var(--surface-hover);
   color: var(--text-primary);
 }
 .ccbtn:active {
