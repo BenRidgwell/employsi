@@ -14888,13 +14888,17 @@ body {
    inside it both sit above the numbers. A price with no market named is
    meaningless, and a coverage figure placed after the figures is a footnote
    nobody reads. */
+/* 16px of gutter, not 20, so the scope chips start on the same left edge as
+   the flame mark above them (.briefhead, 16px) and the skill rows below
+   (.briefscroll 14px + .briefcard 2px = 16px). At 20 this row alone sat 4px
+   further in than everything else on the pane. */
 .mktbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 12px 20px 0;
+  padding: 12px 16px 0;
 }
 .mktscopes {
   display: flex;
