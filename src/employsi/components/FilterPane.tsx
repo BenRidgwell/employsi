@@ -14,6 +14,7 @@ import { COMPANIES, SECTOR_GROUPS, SECTOR_SHORT, EXCHANGES } from "../data/compa
 import { CITY_COMPANIES } from "../data/mapboxGeo";
 import { REGION_HUBS, REGION_LABEL, cityLabel } from "../data/mapboxWorldGeo";
 import { isReleasedCompany } from "../lib/markets";
+import { IconClose } from "./ActionIcons";
 
 /**
  * The Filter panel, built from `Filter_Card.html` (2026-09-05), which replaced
@@ -49,16 +50,16 @@ import { isReleasedCompany } from "../lib/markets";
  *     a trade worth making. It keeps the text-chip style the sector row used
  *     before the icon grid replaced it.
  *
- *  5. "Clear all" MOVED to the footer rather than being dropped. The design's
+ *  4. "Clear all" MOVED to the footer rather than being dropped. The design's
  *     header is title, scope and close with no room for an action, but clearing
  *     is real behaviour, and the footer's left slot is already about filter
  *     state so it reads with the count rather than against the apply button.
  *
- *  6. The header's active-count pill is GONE. The footer already says "N
+ *  5. The header's active-count pill is GONE. The footer already says "N
  *     filters applied", which is what the design shows, and two counts of the
  *     same thing on one card invite the reader to look for a difference.
  *
- *  4. THERE IS NO "Hiring now only" ROW. It existed as a disabled switch marked
+ *  6. THERE IS NO "Hiring now only" ROW. It existed as a disabled switch marked
  *     Coming soon until 2026-09-05, when it was removed on request. Nothing was
  *     lost: it had no state behind it and never filtered anything.
  *
@@ -243,19 +244,13 @@ export function FilterPane() {
                 why. */}
             <span className="fpscope">{scopeLabel}</span>
           </div>
-          <button type="button" className="fpx" onClick={toggleFilter} aria-label="Close filter">
-            <svg
-              viewBox="0 0 24 24"
-              width={15}
-              height={15}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinecap="round"
-              aria-hidden
-            >
-              <path d="M6 6l12 12M18 6L6 18" />
-            </svg>
+          <button
+            type="button"
+            className="paneclose"
+            onClick={toggleFilter}
+            aria-label="Close filter"
+          >
+            <IconClose />
           </button>
         </div>
 

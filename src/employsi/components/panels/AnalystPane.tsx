@@ -332,7 +332,7 @@ export function AnalystPane() {
               Start over
             </button>
           )}
-          <button className="anx" onClick={closeAnalyst} aria-label="Close">
+          <button type="button" className="paneclose" onClick={closeAnalyst} aria-label="Close">
             <IconClose />
           </button>
         </div>

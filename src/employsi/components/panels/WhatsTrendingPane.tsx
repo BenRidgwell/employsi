@@ -5,6 +5,7 @@ import type { ViewedItem } from "../../data/trending";
 import { getMarketSkillMovers, type MarketSkillMover } from "../../lib/jobHistoryFn";
 import { MARKET_WINDOWS, DEFAULT_MARKET_WINDOW } from "../../lib/jobHistoryFn";
 import { useSkillMarket } from "../../hooks/useRoleHistory";
+import { IconClose } from "../ActionIcons";
 import type { SkillMarket } from "../../lib/jobHistoryFn";
 import { SkillMarketRows } from "./SkillMarketRows";
 import { MarketHero } from "./MarketHero";
@@ -349,8 +350,8 @@ export function WhatsTrendingPane() {
                 the archive could cover. */}
             <div className="briefdate">See which skills are rising, falling and in demand</div>
           </div>
-          <button className="briefclose" onClick={closeTrending} aria-label="Close">
-            ✕
+          <button type="button" className="paneclose" onClick={closeTrending} aria-label="Close">
+            <IconClose />
           </button>
         </div>
 
