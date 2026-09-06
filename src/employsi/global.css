@@ -1059,13 +1059,22 @@ body {
   animation: emppop 200ms cubic-bezier(0.32, 0.72, 0, 1) both;
   z-index: 49;
 }
+/* SYMMETRIC PADDING, so the rule below the header is not flush against the
+   close button — it had none at the bottom until 2026-09-06, and the first
+   section's border-top landed directly under the button.
+
+   The divider is deliberately still that border-top rather than a border-bottom
+   here. Ask an analyst puts it on its own header, but that header has no side
+   gutters so the line runs edge to edge; on this card the body is inset 18px
+   and every other divider is inset with it, as they are in the design. Moving
+   it up here would make the top rule full-bleed and the rest inset. */
 .fphd {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 16px 18px 0;
+  padding: 16px 18px;
 }
 .fphdleft {
   display: flex;
