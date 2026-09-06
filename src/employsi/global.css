@@ -11390,7 +11390,7 @@ body {
 
 /* ── header (Company_Card.html, 2026-09-06) ─────────────────────────────────
    The supplied design: a 56px logo carrying a sector badge on its corner, a
-   26px name over an uppercase sector eyebrow, a dot, a two-tone ticker chip,
+   name over an uppercase sector eyebrow, a dot, a two-tone ticker chip,
    and TWO actions — the design's third, Compare, was removed with it. The
    actions are 28px ROUND rather than the design's 38px square; see .ccbtn.
 
@@ -11476,10 +11476,18 @@ body {
   flex: 1 1 auto;
   min-width: 0;
 }
+/* 19px, NOT THE DESIGN'S 26. Company_Card.html sizes its name for a 620px
+   canvas; this card is 440px, and 26 x (440/620) is 18.5 — so 19 is what the
+   design's own proportion asks for at this width. It is also .fptitle, the
+   filter card's title, so the two cards title alike.
+
+   It fixes a real truncation as well as reading better: at 26px the name block
+   is ~244px and "Australian Space Agency" needs ~287, so it ellipsed. At 19px
+   it fits. The ellipsis rules stay for names longer still. */
 .ccname {
-  font-size: 26px;
+  font-size: 19px;
   font-weight: 600;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
@@ -11491,11 +11499,16 @@ body {
   gap: 10px;
   min-width: 0;
 }
+/* 10px, for the same reason .ccname is 19 and not 26: the design's 11.5 was
+   drawn against a 26px name on a 620px canvas, and left at that size under a
+   19px name it competes with it. 10px/0.12em is this app's eyebrow — the same
+   .cceyebrow and .fpeyebrow use — and 19-over-10 is the pairing the filter
+   card's header already runs. */
 .ccsector {
   font-family: var(--font-label);
-  font-size: 11.5px;
+  font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-secondary);
   white-space: nowrap;
@@ -11525,18 +11538,18 @@ body {
   border-radius: 6px;
   overflow: hidden;
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1;
   letter-spacing: 0.06em;
   white-space: nowrap;
 }
 .cctickerex {
-  padding: 5px 6px;
+  padding: 4px 6px;
   background: var(--action-primary);
   color: var(--text-inverse);
 }
 .cctickersym {
-  padding: 5px 7px;
+  padding: 4px 7px;
   background: var(--surface-card);
   color: var(--text-primary);
   font-weight: 600;
