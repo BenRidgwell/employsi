@@ -27,6 +27,7 @@ import { marketForCity } from "../../data/cityMarket";
 import { NewsPanel } from "./NewsPanel";
 import { CardLoader } from "./CardLoader";
 import { ChartTooltip } from "./ChartTooltip";
+import { IconClose } from "../ActionIcons";
 import { SkillDemand } from "./SkillDemand";
 
 type CardTab = "Overview" | "Skills" | "Hiring";
@@ -449,18 +450,6 @@ const FollowIcon = ({ on }: { on: boolean }) =>
       <path d="M12 5v14M5 12h14" />
     </svg>
   );
-const CloseIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={1.9}
-    strokeLinecap="round"
-  >
-    <path d="M6 6l12 12M18 6L6 18" />
-  </svg>
-);
-
 // The badge image. The URL is resolved once in lib/companyLogo.ts and carried
 // on the card, so this only has to render it and handle the failure — a logo
 // file verified months ago can stop resolving, and initials beat a broken
@@ -954,7 +943,7 @@ export function CompanyPanel() {
                 </button>
                 <button className="ccbtn ccbtn-close" onClick={closePanel} aria-label="Close">
                   <span className="cctip">Close</span>
-                  <CloseIcon />
+                  <IconClose />
                 </button>
               </div>
             </div>

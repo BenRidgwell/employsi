@@ -1036,7 +1036,7 @@ body {
 
      title      19px/600/-0.02em   = .ccname
      eyebrows   10px/0.12em        = .cceyebrow  (mockup: 12px/0.16em)
-     round close 34px              = .ccbtn      (mockup: 42px)
+     round close 28px              = .paneclose  (mockup: 42px)
      segmented  13px               = .cctab      (mockup: 15px)
 
    and the rest — section value, slider ends, footer note, CTA — steps down
@@ -11486,18 +11486,31 @@ body {
   gap: 4px;
   flex: 0 0 auto;
 }
+/* THE HEADER CONTROL GROUP — compare, follow, close. Sized and shaped to
+   .paneclose since 2026-09-06, so the close here reads as the same button as
+   the one on every other card: 28px round rather than a 34px squircle.
+
+   ALL THREE MOVED, NOT JUST THE CLOSE. They are a set sitting side by side, and
+   a lone 28px circle between two 34px squircles looks like a mistake rather
+   than like consistency. They keep their own class because the group has
+   behaviour .paneclose does not — the tooltips, and the follow button's `on`
+   state.
+
+   `--m` was already here and already flipped on hover; the close button simply
+   used a local icon with no .ai-quarter on it, so it was the one control in the
+   group that did not animate. It uses the shared <IconClose /> now. */
 .ccbtn {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: 1px solid var(--border-subtle);
-  border-radius: 11px;
-  background: var(--neutral-0);
-  color: var(--text-secondary);
+  border-radius: 999px;
+  background: var(--surface-card);
+  color: var(--neutral-700);
   cursor: pointer;
   --m: 0;
   transition:
@@ -11507,8 +11520,8 @@ body {
     transform 110ms;
 }
 .ccbtn svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   display: block;
 }
 .ccbtn:hover {

@@ -3,6 +3,7 @@ import { useAppStore } from "../../state/store";
 import { COMPANIES } from "../../data/companies";
 import { buildCompareCard, peersFor, type BenchKey } from "../../lib/compareCard";
 import { useVacancyTrend } from "../../hooks/useRoleHistory";
+import { IconClose } from "../ActionIcons";
 
 /**
  * The compare view, from `Employsi Compare View.html`.
@@ -88,18 +89,7 @@ export function ComparePanel() {
                 </button>
                 <button className="ccbtn ccbtn-close" onClick={closeCompare} aria-label="Close">
                   <span className="cctip">Close</span>
-                  <svg
-                    viewBox="0 0 24 24"
-                    width="16"
-                    height="16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    strokeLinecap="round"
-                  >
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                  </svg>
+                  <IconClose />
                 </button>
               </div>
             </div>
