@@ -5,7 +5,7 @@ import { buildCompanyCard, TREND_UP, TREND_DOWN } from "../../lib/companyCard";
 import type { StatIcon } from "../../lib/companyCard";
 import { smoothPath } from "../../lib/chart";
 import type { RolePoint } from "../../lib/openRolesFn";
-import { COMPANIES } from "../../data/companies";
+import { COMPANIES, companyGroup } from "../../data/companies";
 import { COMPANY_HEADCOUNT } from "../../data/companyHeadcount";
 import { GOV_HEADCOUNT, GOV_WORKFORCE } from "../../data/perthGovWorkforce";
 import { NZ_GOV_IDS } from "../../data/nzGov";
@@ -28,6 +28,7 @@ import { NewsPanel } from "./NewsPanel";
 import { CardLoader } from "./CardLoader";
 import { ChartTooltip } from "./ChartTooltip";
 import { IconClose } from "../ActionIcons";
+import { sectorIcon } from "../../data/sectorIcons";
 import { SkillDemand } from "./SkillDemand";
 
 type CardTab = "Overview" | "Skills" | "Hiring";
@@ -414,18 +415,6 @@ function TimelineScrubber({
   );
 }
 
-const CompareIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={1.9}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M8 4H4v13M4 4l4 4M16 20h4V7M20 20l-4-4" />
-  </svg>
-);
 const FollowIcon = ({ on }: { on: boolean }) =>
   on ? (
     <svg
@@ -501,7 +490,6 @@ export function CompanyPanel() {
   const selectedId = useAppStore((s) => s.selectedId);
   const lastId = useAppStore((s) => s.lastId);
   const closePanel = useAppStore((s) => s.closePanel);
-  const openCompare = useAppStore((s) => s.openCompare);
   const followedIds = useAppStore((s) => s.followedIds);
   const account = useAppStore((s) => s.account);
   const requestFollow = useAppStore((s) => s.requestFollow);
@@ -825,6 +813,11 @@ export function CompanyPanel() {
   const vacancySeries = vacancyTrend.length >= 2 ? vacancyTrend : rolesHistory;
 
   const company = useMemo(() => COMPANIES.find((c) => c.id === lastId) ?? null, [lastId]);
+  // The sector badge's glyph, resolved once per card rather than inside the
+  // header — it is a component type, so recreating it each render would
+  // remount the <svg> on every state change the card makes.
+  const SectorGlyph = sectorIcon(company ? companyGroup(company) : undefined);
+
   const card = useMemo(() => {
     if (!company) return null;
     const hcRec = COMPANY_HEADCOUNT[company.id] ?? GOV_HEADCOUNT[company.id];
@@ -911,28 +904,41 @@ export function CompanyPanel() {
         {card && panel && (
           <>
             <div className="cchead">
-              <span className="ccmark">
-                <CompanyLogo src={card.logo} ticker={panel.ticker} />
+              {/* The logo, with the employer's SECTOR GROUP badged on its
+                  corner. The badge is the same glyph the filter card's sector
+                  picker uses for that group — see data/sectorIcons.ts — so the
+                  two surfaces cannot say different things about one company. */}
+              <span className="ccmarkwrap">
+                <span className="ccmark">
+                  <CompanyLogo src={card.logo} ticker={panel.ticker} />
+                </span>
+                <span className="ccsectorbadge" title={card.group}>
+                  <SectorGlyph size={13} strokeWidth={2} aria-hidden />
+                </span>
               </span>
+
               <div className="ccheadmain">
                 <span className="ccname">{card.name}</span>
-                <span className="ccmeta">
+                <div className="ccmeta">
                   <span className="ccsector">{card.sector}</span>
-                  {/* Private companies have no ticker, so the field is empty —
-                      rendering it anyway leaves a stray separator dot after the
-                      sector. */}
-                  {card.ticker ? <span className="ccticker">{card.ticker}</span> : null}
-                </span>
+                  <span className="ccmetadot" aria-hidden />
+                  {/* Two-tone in the design: the exchange on ink, the symbol on
+                      card. A private company has neither, so it gets the single
+                      chip rather than an empty ink half. */}
+                  {card.exchange ? (
+                    <span className="cctickerchip">
+                      <span className="cctickerex">{card.exchange}</span>
+                      <span className="cctickersym">{card.symbol}</span>
+                    </span>
+                  ) : (
+                    <span className="cctickerchip">
+                      <span className="cctickersym">{card.ticker}</span>
+                    </span>
+                  )}
+                </div>
               </div>
+
               <div className="ccactions">
-                <button
-                  className="ccbtn ccbtn-compare"
-                  onClick={() => openCompare(card.id)}
-                  aria-label="Compare"
-                >
-                  <span className="cctip">Compare</span>
-                  <CompareIcon />
-                </button>
                 <button
                   className={`ccbtn ccbtn-follow ${following ? "on" : ""}`}
                   onClick={() => requestFollow(card.id)}

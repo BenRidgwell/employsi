@@ -11388,12 +11388,44 @@ body {
   pointer-events: auto;
 }
 
-/* ── header ─────────────────────────────────────────────────────────────── */
+/* ── header (Company_Card.html, 2026-09-06) ─────────────────────────────────
+   The supplied design: a 56px logo carrying a sector badge on its corner, a
+   26px name over an uppercase sector eyebrow, a dot, a two-tone ticker chip,
+   and TWO 38px square actions. Compare was removed with it — see the component.
+
+   Centred rather than top-aligned. The old header hung its 34px buttons off the
+   top of a 48px logo row, which left them floating high; the design aligns
+   everything on the row's middle. */
 .cchead {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 18px 18px 14px;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 22px 20px;
+}
+/* Holds the logo and its badge together so the badge can hang off the corner
+   without the logo's own overflow:hidden clipping it. */
+.ccmarkwrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+/* The employer's SECTOR GROUP, on the logo's corner. Its 2px border is the CARD
+   colour rather than a hairline — it punches the badge out of the logo's edge
+   instead of outlining it, the same trick the filter card's count badge uses. */
+.ccsectorbadge {
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--surface-card);
+  border-radius: 999px;
+  background: var(--action-primary);
+  color: var(--text-inverse);
+  pointer-events: none;
 }
 /* The logo frame.
    It used to be a fixed 44px square holding a 28px circle-cropped image, which
@@ -11410,15 +11442,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: auto;
-  min-width: 48px;
-  max-width: 124px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   padding: 3px;
   flex: 0 0 auto;
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  background: #fafafa;
+  border-radius: 14px;
+  background: var(--surface-sunken);
   overflow: hidden;
 }
 /* The badge is the frame here, so the nested pill must not draw a second one. */
@@ -11446,71 +11476,105 @@ body {
   min-width: 0;
 }
 .ccname {
-  font-size: 19px;
+  font-size: 26px;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   line-height: 1.1;
-}
-.ccmeta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-.ccsector {
-  display: inline-flex;
-  align-items: center;
-  height: 20px;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: var(--surface-active);
-  color: var(--text-secondary);
-  font-family: var(--font-label);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ccticker {
+.ccmeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.ccsector {
   font-family: var(--font-label);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  color: var(--text-tertiary);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The separator between the sector and the ticker chip. */
+.ccmetadot {
+  flex: 0 0 auto;
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--border-strong);
+}
+/* TWO-TONE, and still monospace. The design sets this chip in JetBrains Mono
+   even though the rest of it is Inter — a ticker is a code, and the one place
+   the retired mono face is still wanted is the one place digits and capitals
+   have to line up. It is named here rather than taken from --font-label, which
+   is Inter now. */
+.cctickerchip {
+  display: inline-flex;
+  align-items: stretch;
+  flex: 0 0 auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  overflow: hidden;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.cctickerex {
+  padding: 5px 6px;
+  background: var(--action-primary);
+  color: var(--text-inverse);
+}
+.cctickersym {
+  padding: 5px 7px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-weight: 600;
 }
 .ccactions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   flex: 0 0 auto;
 }
-/* THE HEADER CONTROL GROUP — compare, follow, close. Sized and shaped to
-   .paneclose since 2026-09-06, so the close here reads as the same button as
-   the one on every other card: 28px round rather than a 34px squircle.
+/* THE HEADER CONTROL GROUP — follow and close, since Company_Card.html dropped
+   compare.
 
-   ALL THREE MOVED, NOT JUST THE CLOSE. They are a set sitting side by side, and
-   a lone 28px circle between two 34px squircles looks like a mistake rather
-   than like consistency. They keep their own class because the group has
-   behaviour .paneclose does not — the tooltips, and the follow button's `on`
-   state.
+   38px ON A 10px RADIUS, WHICH IS THE DESIGN'S AND NOT .paneclose's. These were
+   briefly 28px round, to match the close button on every other card; the
+   supplied design then specified a larger square action, and the design wins
+   for this card. So the company and compare headers are deliberately the one
+   place a close button is not 28px round — worth knowing before someone
+   "fixes" it back.
 
-   `--m` was already here and already flipped on hover; the close button simply
-   used a local icon with no .ai-quarter on it, so it was the one control in the
-   group that did not animate. It uses the shared <IconClose /> now. */
+   They keep their own class because the group has behaviour .paneclose does
+   not: the tooltips, and the follow button's `on` state.
+
+   `--m` is the hover hook .ai-quarter reads to spin an icon a quarter turn.
+   It has been here all along; the close button just used a local icon without
+   that class, so it was the one control in its own group that sat still. It
+   uses the shared <IconClose /> now. */
 .ccbtn {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 38px;
+  height: 38px;
   padding: 0;
-  border: 1px solid var(--border-subtle);
-  border-radius: 999px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
   background: var(--surface-card);
-  color: var(--neutral-700);
+  color: var(--text-secondary);
   cursor: pointer;
   --m: 0;
   transition:
@@ -11520,13 +11584,13 @@ body {
     transform 110ms;
 }
 .ccbtn svg {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   display: block;
 }
 .ccbtn:hover {
   --m: 1;
-  background: var(--surface-hover);
+  background: var(--surface-subtle);
   color: var(--text-primary);
 }
 .ccbtn:active {

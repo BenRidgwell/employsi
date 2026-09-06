@@ -1,19 +1,10 @@
 import { useMemo, type CSSProperties } from "react";
-import {
-  Building2,
-  Cpu,
-  Factory,
-  HeartPulse,
-  Landmark,
-  Pickaxe,
-  ShoppingBag,
-  type LucideIcon,
-} from "lucide-react";
 import { useAppStore, matchesFilters, type FilterState } from "../state/store";
 import { COMPANIES, SECTOR_GROUPS, SECTOR_SHORT, EXCHANGES } from "../data/companies";
 import { CITY_COMPANIES } from "../data/mapboxGeo";
 import { REGION_HUBS, REGION_LABEL, cityLabel } from "../data/mapboxWorldGeo";
 import { isReleasedCompany } from "../lib/markets";
+import { SECTOR_ICON } from "../data/sectorIcons";
 import { IconClose } from "./ActionIcons";
 
 /**
@@ -77,30 +68,6 @@ import { IconClose } from "./ActionIcons";
 function fill(value: number, min: number, max: number): CSSProperties {
   return { "--fill": `${((value - min) / (max - min)) * 100}%` } as CSSProperties;
 }
-
-/**
- * One Lucide glyph per sector group, exactly the seven the design names —
- * pickaxe, landmark, cpu, shopping-bag, factory, heart-pulse, building-2, in
- * that order.
- *
- * The design draws them as CSS masks over a remote unpkg URL. These are the
- * same icons as React components from the `lucide-react` already in
- * package.json: no third-party request at render time, no mask support to worry
- * about, and `currentColor` inherits the selected/unselected foreground the
- * same way the mask did.
- *
- * Keyed on the FULL group name, which is what COMPANIES stores and what
- * SECTOR_GROUPS iterates; SECTOR_SHORT supplies the label beneath.
- */
-const SECTOR_ICON: Record<string, LucideIcon> = {
-  "Energy & Natural Resources": Pickaxe,
-  "Financial Services": Landmark,
-  "Technology, Media and Telecommunications": Cpu,
-  "Consumer and Retail": ShoppingBag,
-  "Industrial Manufacturing": Factory,
-  "Healthcare and Life Sciences": HeartPulse,
-  "Infrastructure and Government": Building2,
-};
 
 const SALARY_MIN = 130;
 const SALARY_MAX = 160;

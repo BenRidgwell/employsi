@@ -30,7 +30,7 @@
  *     null until the window they claim actually exists.
  */
 
-import type { Company } from "../data/companies";
+import { companyGroup, type Company } from "../data/companies";
 import { smoothPath } from "./chart";
 import { logoFor } from "./companyLogo";
 import type { RolePoint } from "./openRolesFn";
@@ -114,8 +114,16 @@ export interface CompanyCard {
   id: string;
   name: string;
   sector: string;
+  /** The broad SECTOR_GROUPS bucket, for the header's sector badge. Distinct
+   *  from `sector`, which is the granular label the card prints — "Metals &
+   *  Mining" is displayed, "Energy & Natural Resources" picks the glyph. */
+  group: string;
   /** "ASX: WES", or "Private". */
   ticker: string;
+  /** The two halves of the ticker chip, which the design colours separately.
+   *  Both empty for a private company, which gets a single "Private" chip. */
+  exchange: string;
+  symbol: string;
   isPrivate: boolean;
   logo: string;
   mark: string;
@@ -437,7 +445,10 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
     id: c.id,
     name: c.name,
     sector: c.sector,
+    group: companyGroup(c),
     ticker: isPrivate ? "Private" : `${c.exchange || "ASX"}: ${c.ticker}`,
+    exchange: isPrivate ? "" : c.exchange || "ASX",
+    symbol: isPrivate ? "" : c.ticker,
     isPrivate,
     logo: logoFor(c.id, c.domain),
     mark: c.ticker,
