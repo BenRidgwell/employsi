@@ -269,7 +269,20 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
   const isPrivate = !!c.private;
 
   // ── headline stats ──────────────────────────────────────────────────────
-  const open = input.openRoles ?? c.openRoles;
+  /**
+   * The live open-role count, or NOTHING.
+   *
+   * This used to be `input.openRoles ?? c.openRoles`, and the fallback was the
+   * bug behind a card that showed "111 open roles" beside an empty vacancy
+   * chart: the chart draws only archived days and had none, while the number
+   * came from hash01(ticker + name). The two halves of the card disagreed
+   * because one was measured and one was invented.
+   *
+   * A roster company's figure is now suppressed instead. Curated records
+   * (companies.ts) have no `illustrative` flag and keep their fallback, which
+   * is a real number someone entered.
+   */
+  const open = input.openRoles ?? (c.illustrative ? null : c.openRoles);
   const hc = input.headcount;
   const pay = input.medianPay;
   const top = input.topSkill;
@@ -280,7 +293,16 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
   // YoY qualifier moved onto the delta line, where the percentage it qualifies
   // actually is.
   const stats: CardStat[] = [
-    { value: open.toLocaleString("en-AU"), label: "Open roles", icon: "roles" },
+    open === null
+      ? {
+          // Same shape as the "Top skill" miss below: an em dash and a reason,
+          // rather than a figure with nothing behind it.
+          value: "—",
+          label: "Open roles",
+          sub: "no live feed for this employer",
+          icon: "roles",
+        }
+      : { value: open.toLocaleString("en-AU"), label: "Open roles", icon: "roles" },
     top
       ? {
           value: top.name,
@@ -301,9 +323,9 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
       sub: `${hc.now.toLocaleString("en-AU")} · ${hc.asof}`,
       icon: "headcount",
     });
-  } else {
-    // No filed headcount: show the figure we do have and DON'T attach a YoY,
-    // which would have nothing behind it.
+  } else if (!c.illustrative) {
+    // No filed headcount, but a curated one someone entered. Show it, and
+    // DON'T attach a YoY, which would have nothing behind it.
     stats.push({
       value:
         c.headcount >= 1000
@@ -311,6 +333,16 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
           : `${c.headcount}`,
       label: "Headcount",
       sub: isPrivate ? "not disclosed · estimated" : null,
+      icon: "headcount",
+    });
+  } else {
+    // A roster company with no filed headcount. Its `c.headcount` is
+    // hash01(ticker + name) — Deterra Royalties came out at 9,883 against a
+    // real staff count in the tens — so it is not shown.
+    stats.push({
+      value: "—",
+      label: "Headcount",
+      sub: "not filed",
       icon: "headcount",
     });
   }

@@ -19,6 +19,23 @@ export interface Company {
    *  current company is publicly listed. Drives the Public/Private master
    *  filter; the exchange filter only applies to public companies. */
   private?: boolean;
+  /**
+   * TRUE WHEN THIS RECORD'S FIGURES ARE ILLUSTRATIVE, NOT MEASURED.
+   *
+   * buildRosterCompany() derives headcount, openRoles, salary, growth,
+   * turnover, trend and the productivity ratios from hash01(ticker + name) —
+   * a deterministic formula over the company's own name, with nothing behind
+   * it. That is deliberate: it populates a 1,549-company map from compact
+   * roster entries. It is also 805 of those companies, and the numbers are not
+   * merely soft — BWP Trust comes out at 4,226 staff against a real headcount
+   * in the low tens.
+   *
+   * So anything that PRINTS one of these fields has to know. The company card
+   * suppresses them rather than showing an invented figure; see
+   * buildCompanyCard. Curated records (companies.ts) leave this unset and are
+   * displayed as before.
+   */
+  illustrative?: boolean;
   headcount: number;
   growth: number;
   openRoles: number;

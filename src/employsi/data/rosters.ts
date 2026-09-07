@@ -425,6 +425,13 @@ const GROUP_PROFILE: Record<
 const DEFAULT_PROFILE = GROUP_PROFILE["Energy & Natural Resources"];
 
 // Build a full illustrative Company record from a compact roster entry.
+//
+// "Illustrative" is meant literally: headcount, openRoles, salary, growth,
+// turnover, trend and the productivity ratios are all functions of
+// hash01(ticker + name). They exist so a 1,549-company map is populated, and
+// they are marked `illustrative: true` so that nothing displays them as
+// measurement. If you add a real source for one of these fields, set it here
+// and the card will start showing it.
 export function buildRosterCompany(
   city: string,
   cityExchange: string,
@@ -456,6 +463,10 @@ export function buildRosterCompany(
     sector: prof.sector,
     group,
     exchange,
+    // EVERY FIGURE BELOW IS DERIVED FROM hash01(ticker + name), not measured.
+    // The flag is what lets the company card tell that apart and suppress the
+    // ones it would otherwise print as fact — see Company.illustrative.
+    illustrative: true,
     headcount,
     growth,
     openRoles: Math.round(20 + h * 380),
