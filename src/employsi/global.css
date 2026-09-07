@@ -14546,13 +14546,24 @@ body {
 }
 
 /* ── Intro loader ───────────────────────────────────────────────────────────
-   From `App_Intro_Animation.html`. The build-up keeps the design's timings to
+   From `App_Intro_Animation_2.html`. The build-up keeps the design's timings to
    the millisecond; the handoff and the veil are triggered by `.is-out` instead
    of a delay, because the veil has to wait for the app rather than the clock
    (see components/IntroLoader.tsx).
 
    z-index 90 puts it above every panel and the toast (max 70) — while it is up
-   it owns the screen, which is the point of a splash.                         */
+   it owns the screen, which is the point of a splash.
+
+   REDRAWN 2026-09-07 to the second design. The lockup, rule and caption keep
+   their geometry and timings exactly; what is new is the setting around them —
+   a 56px graph-paper grid under the wash, a footage band across the bottom
+   third, and a shaded rolling globe in place of the line-art one.
+
+   THE VEIL IS NOW OPAQUE. It was rgba(255,255,255,.62) over a backdrop blur, so
+   the map showed through it hazily. The design paints #ffffff, and with a grid
+   and a video inside the veil that is the only coherent reading: a half-built
+   map bleeding through printed graph paper is not a background, it is two
+   pictures at once.                                                          */
 @keyframes in-stem {
   0% { transform: scaleY(0); opacity: 0; }
   30% { opacity: 1; }
@@ -14588,8 +14599,33 @@ body {
   0% { opacity: 1; }
   100% { opacity: 0; visibility: hidden; }
 }
-@keyframes in-globe {
-  to { transform: rotate(360deg); }
+@keyframes in-grid {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes in-band {
+  0% { opacity: 0; transform: translateY(18px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+/* The globe: a bob, two bands of land scrolling at different rates, and a
+   breathing highlight. The two land layers run on the same 3.4s period but
+   over different tile widths (9px and 11px), so they drift apart instead of
+   marching in step — which is what stops the sphere reading as a flat disc. */
+@keyframes globe-bob {
+  0%, 100% { transform: translateY(0) rotate(-6deg); }
+  50% { transform: translateY(-1.5px) rotate(-6deg); }
+}
+@keyframes globe-roll {
+  from { background-position: 0 0; }
+  to { background-position: -9px 0; }
+}
+@keyframes globe-roll-2 {
+  from { background-position: 0 0; }
+  to { background-position: -11px 0; }
+}
+@keyframes globe-shine {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
 }
 
 .introveil {
@@ -14599,9 +14635,17 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.62);
-  backdrop-filter: blur(18px) saturate(112%);
-  -webkit-backdrop-filter: blur(18px) saturate(112%);
+  background: #ffffff;
+}
+.introgrid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(#ededf0 1px, transparent 1px),
+    linear-gradient(90deg, #ededf0 1px, transparent 1px);
+  background-size: 56px 56px;
+  opacity: 0.5;
+  animation: in-grid 620ms ease both;
 }
 .introveil.is-out {
   animation: in-veil 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -14625,6 +14669,35 @@ body {
   background: rgba(255, 255, 255, 0.16);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
+}
+.introband {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 33.333%;
+  overflow: hidden;
+  animation: in-band 720ms cubic-bezier(0.16, 1, 0.3, 1) 1300ms both;
+}
+.introband video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center bottom;
+  filter: grayscale(1);
+}
+/* Fades the band's top edge into the page, so it reads as the composition
+   settling onto a horizon rather than a video pasted across the bottom. */
+.introbandfade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    rgba(255, 255, 255, 0.62) 16%,
+    rgba(255, 255, 255, 0) 40%
+  );
 }
 .introstage {
   position: relative;
@@ -14698,24 +14771,94 @@ body {
   align-items: center;
   gap: 7px;
   font-family: var(--font-label);
-  font-size: 10.5px;
-  letter-spacing: 0.16em;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
   color: #8e8e93;
   animation: in-caption 420ms cubic-bezier(0.16, 1, 0.3, 1) 1480ms both;
 }
+/* The globe body: a sphere lit from the upper left, with the inset shadows
+   doing the rounding. Everything inside is clipped to the circle. */
 .introglobe {
+  position: relative;
   display: block;
   flex: 0 0 auto;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  animation: in-globe 3s linear infinite;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: radial-gradient(
+    circle at 34% 26%,
+    #d9d9de 0%,
+    #a3a3a9 42%,
+    #6c6c72 78%,
+    #48484a 100%
+  );
+  box-shadow:
+    inset -1.5px -2px 3px rgba(28, 28, 30, 0.34),
+    inset 1.5px 2px 3px rgba(255, 255, 255, 0.42),
+    0 1.5px 3px rgba(28, 28, 30, 0.22);
+  animation: globe-bob 2.4s ease-in-out infinite;
+}
+/* Land, as two repeating rows of soft blobs. `background-repeat: repeat-x`
+   with a tile narrower than the sphere is what makes them scroll off one edge
+   and back on the other. */
+.introglobe .ig-land {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(ellipse 3.4px 2.2px at 2px 5px, #f4f4f5 0%, #f4f4f5 70%, transparent 71%),
+    radial-gradient(ellipse 2.6px 3px at 7px 12px, #f4f4f5 0%, #f4f4f5 70%, transparent 71%);
+  background-size: 9px 18px;
+  background-repeat: repeat-x;
+  opacity: 0.78;
+  animation: globe-roll 3.4s linear infinite;
+}
+.introglobe .ig-land2 {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(ellipse 2.2px 1.6px at 3px 13px, #1c1c1e 0%, #1c1c1e 70%, transparent 71%),
+    radial-gradient(ellipse 1.8px 2.4px at 8px 6px, #1c1c1e 0%, #1c1c1e 70%, transparent 71%);
+  background-size: 11px 18px;
+  background-repeat: repeat-x;
+  opacity: 0.2;
+  animation: globe-roll-2 3.4s linear infinite;
+}
+.introglobe .ig-shine {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle at 30% 22%,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.28) 22%,
+    rgba(255, 255, 255, 0) 46%
+  );
+  animation: globe-shine 2.4s ease-in-out infinite;
+}
+/* Rides over the land so the sphere keeps a hard rim and a shaded limb, rather
+   than the continents running flat to the edge. */
+.introglobe .ig-edge {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  box-shadow:
+    inset 0 0 0 0.5px rgba(28, 28, 30, 0.28),
+    inset -2px -3px 5px rgba(28, 28, 30, 0.3);
 }
 
-/* Small screens: the 52px wordmark plus a 62px mark overruns a 390px phone. */
+/* Small screens: the 52px wordmark plus a 62px mark overruns a 390px phone.
+   The design is a fixed 1120x700 canvas and carries no breakpoint, so this
+   whole block is ours.
+
+   250px, not the 220px it used to be: the caption sets 243px wide at the
+   design's 11px/.15em, so a narrower foot wrapped "…WORLD OF / WORK" and, with
+   the caption being an inline-flex row, hung the second line off to the left.
+   250px also happens to be about the width of the shrunken lockup, so the rule
+   still reads as sitting under it. text-align centres the wrap that a phone
+   narrower than any we target would still force. */
 @media (max-width: 680px) {
   .introword {
     font-size: 38px;
@@ -14725,7 +14868,10 @@ body {
     height: 46px;
   }
   .introfoot {
-    width: 220px;
+    width: 250px;
+  }
+  .introcaption {
+    text-align: center;
   }
 }
 
@@ -14737,7 +14883,12 @@ body {
   .introword,
   .introrule,
   .introcaption,
+  .introgrid,
+  .introband,
   .introglobe,
+  .introglobe .ig-land,
+  .introglobe .ig-land2,
+  .introglobe .ig-shine,
   .intromark .i-stem,
   .intromark .i-arm {
     animation: none !important;

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 /**
  * The intro animation that covers the app while it boots, from
- * `App_Intro_Animation.html`.
+ * `App_Intro_Animation_2.html`.
  *
  * WHY THE HANDOFF IS NOT ON A TIMER
  * The design choreographs the whole thing on fixed delays — the veil lifts at
@@ -12,18 +12,30 @@ import { useEffect, useRef, useState } from "react";
  * would hand off to a half-built map just as often as to a ready one.
  *
  * So the BUILD-UP keeps the design's timings exactly (stem, arms, lockup,
- * wordmark, rule, caption — all on their original delays), and only the last
- * two steps, the handoff and the veil, are driven by state instead. They fire
- * when both of these are true:
+ * wordmark, rule, caption, band — all on their original delays), and only the
+ * last two steps, the handoff and the veil, are driven by state instead. They
+ * fire when both of these are true:
  *
  *   • the build-up has finished, so the animation is never cut off mid-stroke;
  *   • the app says it is ready.
+ *
+ * The design multiplies every delay by a `speed` prop defaulting to 2.4, which
+ * is its preview control — at that setting the build-up alone runs 5.3s. The
+ * delays here are the unmultiplied ones (speed = 1), which is the choreography
+ * the design describes and the only version that fits inside a loading screen.
  *
  * CEILING
  * `ready` is a best-effort signal, so it is never allowed to trap anyone: after
  * MAX_HOLD the veil lifts regardless. A user looking at a slightly unfinished
  * map can still use the app; a user looking at a permanent splash screen cannot.
  * That is the whole reason this is a ceiling and not a condition.
+ *
+ * WHAT THE DESIGN FILE CARRIES THAT THIS DOES NOT
+ * Two pieces of it are scaffolding for the design canvas rather than product:
+ * a mocked app shell (sidebar, top bar, shimmering tiles) that stands in for
+ * "the app is behind the veil", and a "Replay intro" button wired to the
+ * canvas's own replay(). Here the real app is behind the veil, so drawing a
+ * fake one over it would be a second, wrong app; and there is nothing to replay.
  */
 
 /** When the design's build-up finishes and the handoff becomes possible. */
@@ -35,16 +47,19 @@ export function IntroLoader({ ready }: { ready: boolean }) {
   const [built, setBuilt] = useState(false);
   const [out, setOut] = useState(false);
   const [gone, setGone] = useState(false);
-  // Reduced motion: the design is a 2.7s piece of motion, which is exactly what
-  // this preference asks us not to play. The veil still covers the boot — it
-  // just appears and leaves without the choreography.
-  const reduced = useRef(false);
+  // Reduced motion: the design is 2.7s of motion over a looping clip, which is
+  // exactly what this preference asks us not to play. The veil still covers the
+  // boot — it just appears and leaves without the choreography, and without the
+  // footage, which no CSS rule can hold still.
+  const [reduced, setReduced] = useState(false);
+  const reducedRef = useRef(false);
 
   useEffect(() => {
-    reduced.current =
+    reducedRef.current =
       typeof window !== "undefined" &&
       !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const build = window.setTimeout(() => setBuilt(true), reduced.current ? 0 : BUILD_MS);
+    setReduced(reducedRef.current);
+    const build = window.setTimeout(() => setBuilt(true), reducedRef.current ? 0 : BUILD_MS);
     const ceiling = window.setTimeout(() => setOut(true), MAX_HOLD);
     return () => {
       window.clearTimeout(build);
@@ -68,8 +83,29 @@ export function IntroLoader({ ready }: { ready: boolean }) {
 
   return (
     <div className={`introveil${out ? " is-out" : ""}`} aria-hidden="true">
+      <div className="introgrid" />
       <div className="introglow" />
       <div className="introhaze" />
+
+      {/* The footage band across the bottom third. It carries no information —
+          the white gradient over it fades its top 40% out — so a browser that
+          has not finished fetching it, or refuses to autoplay it, leaves the
+          band empty and the rest of the composition intact. */}
+      {!reduced && (
+        <div className="introband">
+          <video
+            src="/assets/intro-band.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            /* Not focusable and not announced: it is texture behind a splash
+               screen, and the veil is already aria-hidden. */
+            tabIndex={-1}
+          />
+          <div className="introbandfade" />
+        </div>
+      )}
 
       <div className={`introstage${out ? " is-out" : ""}`}>
         <div className="introlockup">
@@ -111,12 +147,16 @@ export function IntroLoader({ ready }: { ready: boolean }) {
         <div className="introfoot">
           <span className="introrule" />
           <span className="introcaption">
-            <svg viewBox="0 0 24 24" width="13" height="13" className="introglobe">
-              <circle cx="12" cy="12" r="9" />
-              <ellipse cx="12" cy="12" rx="4" ry="9" />
-              <path d="M3.6 9h16.8" />
-              <path d="M3.6 15h16.8" />
-            </svg>
+            {/* A shaded sphere with two bands of "land" scrolling across it at
+                different rates, so it reads as a globe turning rather than a
+                disc spinning. Five nested layers, per the design: body, light
+                continents, dark continents, specular highlight, terminator. */}
+            <span className="introglobe">
+              <span className="ig-land" />
+              <span className="ig-land2" />
+              <span className="ig-shine" />
+              <span className="ig-edge" />
+            </span>
             Explore the world of work
           </span>
         </div>
