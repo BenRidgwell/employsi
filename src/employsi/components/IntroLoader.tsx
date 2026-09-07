@@ -124,7 +124,17 @@ export function IntroLoader({ ready }: { ready: boolean }) {
                 having arrived. Measured on the Chromium in this repo's own
                 tooling, where canPlayType('video/mp4; codecs="avc1.42E01E"')
                 answers "". VP9 is listed first so anything that can take it
-                does; the MP4 is what Safari uses. */}
+                does; the MP4 is what Safari uses.
+
+                BOTH ARE 1920x480, WHICH IS THE SOURCE'S NATIVE DETAIL AND THE
+                CEILING. The band shows the bottom 480 rows of a 1920x1080
+                clip, so that crop is taken 1:1 and anything larger would be
+                upscaling a file nobody has the pixels for. ~850KB each,
+                against 3.84MB for the original: the crop is baked in rather
+                than downloaded and discarded, the encode is greyscale because
+                CSS applies grayscale(1) anyway, and the muted audio track is
+                gone. It was briefly 1280x320 and ~450KB, which was visibly
+                soft once a 2x display upscaled it 1.75x. */}
             <source src="/assets/intro-band.webm" type="video/webm" />
             <source src="/assets/intro-band.mp4" type="video/mp4" />
           </video>
