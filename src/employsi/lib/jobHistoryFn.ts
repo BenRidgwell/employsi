@@ -1357,8 +1357,13 @@ export function foldSkillRows(
       // archive cannot hold one in practice — and it gets a key of its own
       // rather than being folded in with every other untitled row. Erring
       // towards counting twice beats merging two unrelated vacancies.
+      //
+      // The LEADING SPACE keeps that key out of the titles' namespace:
+      // normRoleTitle trims, so no real title can ever normalise to something
+      // starting with one, and a vacancy actually called "Untitled row 3"
+      // cannot collide with the sentinel.
       const t = normRoleTitle(String(r.title || ""));
-      const key = t || ` untitled ${untitled++}`;
+      const key = t || ` untitled row ${untitled++}`;
       let g = roles.get(key);
       if (!g) {
         g = {
@@ -1596,6 +1601,8 @@ export interface SkillRank {
    *  has no live ad there at all — absent is not "last". */
   localRank: number | null;
   localOf: number;
+  /** VACANCIES, not archive rows — the same unit the company card's own count
+   *  uses, so the two sides of "13 ads · Local #4" agree. See foldSkillRanks. */
   localAds: number;
   globalRank: number | null;
   globalOf: number;
@@ -1622,66 +1629,117 @@ export const getSkillMarketRanks = createServerFn({ method: "GET" })
     try {
       const res = await db
         .prepare(
-          `SELECT skills, hub, company_id FROM jobs
+          // `title` and `company_id` together identify a vacancy across the
+          // feeds carrying it — see foldSkillRanks.
+          `SELECT title, skills, hub, company_id FROM jobs
              WHERE skills IS NOT NULL AND last_seen >= ?1`,
         )
         .bind(isoDaysAgo(1))
         .all();
       const rows = res?.results ?? [];
       if (!rows.length) return {};
-
-      const globalN: Record<string, number> = {};
-      const localN: Record<string, number> = {};
-      for (const r of rows) {
-        const hub = String(r.hub || "").trim();
-        if (!seesAll && !isReleasedRow(hub || null, r.company_id as string | null)) continue;
-        const skills = parseStoredSkills(r.skills).filter((s) => s in SKILL_CATEGORY);
-        if (!skills.length) continue;
-        const isLocal = local.has(hub);
-        for (const s of skills) {
-          globalN[s] = (globalN[s] || 0) + 1;
-          if (isLocal) localN[s] = (localN[s] || 0) + 1;
-        }
-      }
-
-      // Ties share a rank rather than being split by name: two skills on 40 ads
-      // are equally in demand, and printing one as #12 and the other as #13
-      // invents a distinction the counts do not carry.
-      const ranked = (counts: Record<string, number>): Record<string, number> => {
-        const order = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-        const out: Record<string, number> = {};
-        let rank = 0;
-        let prev: number | null = null;
-        order.forEach(([name, n], i) => {
-          if (n !== prev) {
-            rank = i + 1;
-            prev = n;
-          }
-          out[name] = rank;
-        });
-        return out;
-      };
-      const gRank = ranked(globalN);
-      const lRank = ranked(localN);
-      const gOf = Object.keys(globalN).length;
-      const lOf = Object.keys(localN).length;
-
-      const out: SkillRanks = {};
-      for (const s of Object.keys(globalN)) {
-        out[s] = {
-          localRank: lRank[s] ?? null,
-          localOf: lOf,
-          localAds: localN[s] || 0,
-          globalRank: gRank[s] ?? null,
-          globalOf: gOf,
-          globalAds: globalN[s],
-        };
-      }
-      return out;
+      return foldSkillRanks(rows, local, seesAll);
     } catch {
       return {};
     }
   });
+
+/** The archive columns foldSkillRanks reads. */
+export type RankRow = Partial<Record<"title" | "skills" | "hub" | "company_id", SqlValue>>;
+
+/**
+ * The pure half of getSkillMarketRanks: every live row in the market in, one
+ * rank per skill out.
+ *
+ * COUNTS VACANCIES, NOT ROWS, for the same reason foldSkillRows does — a role
+ * posted to four boards is four rows of the same employer's demand. It matters
+ * more here than it looks: the rank is printed beside the company card's own
+ * live-ad count, and that count is folded, so leaving this on rows made the two
+ * halves of one line disagree about what an ad is. Duplication is also not
+ * uniform across skills — it is the overlap between whichever feeds cover the
+ * employers hiring for that skill — so it does not cancel out of a ranking.
+ *
+ * A vacancy is `company_id` plus normalised title. Rows with NO company_id are
+ * each their own vacancy: they are ads the archive could not attribute to a
+ * roster employer, so two identically-titled ones are as likely to be two
+ * hospitals as one, and counting twice beats merging strangers.
+ *
+ * The release gate runs per ROW, before folding, so an ad advertised in both a
+ * released market and an unreleased one still counts through its released rows.
+ */
+export function foldSkillRanks(rows: RankRow[], local: Set<string>, seesAll: boolean): SkillRanks {
+  /** vacancy key -> the skills it demands and the hubs its feeds named. */
+  const roles = new Map<string, { skills: Set<string>; hubs: Map<string, number> }>();
+  let unattributed = 0;
+
+  for (const r of rows) {
+    const hub = String(r.hub || "").trim();
+    if (!seesAll && !isReleasedRow(hub || null, r.company_id as string | null)) continue;
+    const skills = parseStoredSkills(r.skills).filter((s) => s in SKILL_CATEGORY);
+    if (!skills.length) continue;
+    const cid = String(r.company_id || "").trim();
+    const t = normRoleTitle(String(r.title || ""));
+    // A leading space cannot come out of normRoleTitle, so the fallback key can
+    // never collide with a real company+title pair.
+    const key = cid && t ? `${cid}|${t}` : ` unattributed ${unattributed++}`;
+    let g = roles.get(key);
+    if (!g) {
+      g = { skills: new Set(), hubs: new Map() };
+      roles.set(key, g);
+    }
+    for (const s of skills) g.skills.add(s);
+    if (hub) g.hubs.set(hub, (g.hubs.get(hub) || 0) + 1);
+  }
+
+  const globalN: Record<string, number> = {};
+  const localN: Record<string, number> = {};
+  for (const g of roles.values()) {
+    // One hub per vacancy, the one most of its feeds named — the same choice
+    // the company card's hot spots make, so a skill's local rank is measured
+    // over the same vacancies the card would show in that city.
+    const hub = modal(g.hubs);
+    const isLocal = !!hub && local.has(hub);
+    for (const s of g.skills) {
+      globalN[s] = (globalN[s] || 0) + 1;
+      if (isLocal) localN[s] = (localN[s] || 0) + 1;
+    }
+  }
+
+  // Ties share a rank rather than being split by name: two skills on 40 ads
+  // are equally in demand, and printing one as #12 and the other as #13
+  // invents a distinction the counts do not carry.
+  const ranked = (counts: Record<string, number>): Record<string, number> => {
+    const order = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const out: Record<string, number> = {};
+    let rank = 0;
+    let prev: number | null = null;
+    order.forEach(([name, n], i) => {
+      if (n !== prev) {
+        rank = i + 1;
+        prev = n;
+      }
+      out[name] = rank;
+    });
+    return out;
+  };
+  const gRank = ranked(globalN);
+  const lRank = ranked(localN);
+  const gOf = Object.keys(globalN).length;
+  const lOf = Object.keys(localN).length;
+
+  const out: SkillRanks = {};
+  for (const s of Object.keys(globalN)) {
+    out[s] = {
+      localRank: lRank[s] ?? null,
+      localOf: lOf,
+      localAds: localN[s] || 0,
+      globalRank: gRank[s] ?? null,
+      globalOf: gOf,
+      globalAds: globalN[s],
+    };
+  }
+  return out;
+}
 
 // ── the skills market ───────────────────────────────────────────────────────
 //

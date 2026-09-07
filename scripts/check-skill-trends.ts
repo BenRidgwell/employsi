@@ -14,8 +14,10 @@
 import {
   foldSkillRows,
   foldSkillMarket,
+  foldSkillRanks,
   type SkillRow,
   type MarketRow,
+  type RankRow,
   type CompanySkillTrends,
 } from "../src/employsi/lib/jobHistoryFn";
 
@@ -1252,6 +1254,144 @@ const MK_ANCHOR = Array.from({ length: 3 }, () =>
     "an empty market returns empty, not a shape full of zeros",
     m.rows.length === 0 && m.days.length === 0,
   );
+}
+
+// ── market ranks ────────────────────────────────────────────────────────────
+//
+// The rank printed beside a skill on the company card ("Local #4/96"). It is
+// read next to that card's OWN live-ad count, so the two have to agree about
+// what an ad is: the fold counts vacancies — company_id plus normalised title —
+// not archive rows. Duplication does not cancel out of a ranking either, since
+// it is the overlap between whichever feeds cover the employers hiring for that
+// skill, which differs skill by skill.
+{
+  const rr = (
+    company: string,
+    title: string,
+    skills: string[],
+    hub: string,
+    extra: Partial<RankRow> = {},
+  ) =>
+    ({
+      company_id: company,
+      title,
+      skills: JSON.stringify(skills),
+      hub,
+      ...extra,
+    }) as RankRow;
+  const PERTH = new Set(["perth"]);
+
+  {
+    const out = foldSkillRanks(
+      [
+        rr("rio", "Construction Manager", ["Mining Engineering"], "perth"),
+        rr("rio", "construction manager", ["Mining Engineering"], "perth"),
+        rr("rio", "Construction Manager!", ["Mining Engineering"], "bayswater"),
+        rr("bhp", "Geologist", ["Geotechnical"], "perth"),
+      ],
+      PERTH,
+      true,
+    );
+    check(
+      "one role on three feeds is one ad in the market count",
+      out["Mining Engineering"]?.globalAds === 1,
+      `globalAds=${out["Mining Engineering"]?.globalAds}`,
+    );
+    check(
+      "...so it does not outrank a genuinely equal skill",
+      out["Mining Engineering"].globalRank === 1 && out["Geotechnical"].globalRank === 1,
+      `${out["Mining Engineering"].globalRank} vs ${out["Geotechnical"].globalRank}`,
+    );
+  }
+  {
+    // Two employers advertising the same job title are two vacancies. Only the
+    // company+title pair folds.
+    const out = foldSkillRanks(
+      [
+        rr("rio", "Geologist", ["Geotechnical"], "perth"),
+        rr("bhp", "Geologist", ["Geotechnical"], "perth"),
+      ],
+      PERTH,
+      true,
+    );
+    check("the same title at two employers is two ads", out["Geotechnical"].globalAds === 2);
+  }
+  {
+    // Rows the archive could not attribute to a roster employer each stay their
+    // own vacancy — two identically-titled ones are as likely to be two
+    // employers as one, and counting twice beats merging strangers.
+    const out = foldSkillRanks(
+      [
+        rr("", "Registered Nurse", ["Nursing"], "perth"),
+        rr("", "Registered Nurse", ["Nursing"], "perth"),
+      ],
+      PERTH,
+      true,
+    );
+    check("unattributed rows are not folded into each other", out["Nursing"].globalAds === 2);
+  }
+  {
+    // The local count is over the same vacancies, placed in the hub most of
+    // their feeds named — the choice the company card's hot spots make.
+    const out = foldSkillRanks(
+      [
+        rr("rio", "Shift Super", ["Mining Engineering"], "perth"),
+        rr("rio", "Shift Super", ["Mining Engineering"], "perth"),
+        rr("rio", "Shift Super", ["Mining Engineering"], "adelaide"),
+        rr("bhp", "Plant Op", ["Mining Engineering"], "adelaide"),
+      ],
+      PERTH,
+      true,
+    );
+    const s = out["Mining Engineering"];
+    check("a folded vacancy counts once locally", s.localAds === 1, `localAds=${s.localAds}`);
+    check("...and once globally alongside the other employer's", s.globalAds === 2);
+  }
+  {
+    // Feeds disagree about the union of skills on one ad, the same way they do
+    // on the company card.
+    const out = foldSkillRanks(
+      [
+        rr("rio", "Mine Planner", ["Mining Engineering"], "perth"),
+        rr("rio", "Mine Planner", ["Metallurgy"], "perth"),
+      ],
+      PERTH,
+      true,
+    );
+    check(
+      "a vacancy demands the union of its feeds' skills",
+      out["Mining Engineering"]?.globalAds === 1 && out["Metallurgy"]?.globalAds === 1,
+    );
+  }
+  {
+    // The release gate still runs PER ROW, before folding, so an ad carried in
+    // both a released market and an unreleased one counts through its released
+    // rows rather than being decided by whichever hub happened to win.
+    const seen = foldSkillRanks(
+      [
+        rr("", "Data Engineer", ["Data Engineering"], "london"),
+        rr("", "Data Engineer", ["Data Engineering"], "london"),
+      ],
+      PERTH,
+      false,
+    );
+    check(
+      "an unreleased market is withheld from a non-admin",
+      seen["Data Engineering"] === undefined,
+    );
+    const admin = foldSkillRanks(
+      [rr("", "Data Engineer", ["Data Engineering"], "london")],
+      PERTH,
+      true,
+    );
+    check("...and visible to an admin", admin["Data Engineering"]?.globalAds === 1);
+  }
+  {
+    check(
+      "an empty market ranks nothing",
+      Object.keys(foldSkillRanks([], PERTH, true)).length === 0,
+    );
+  }
 }
 
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");
