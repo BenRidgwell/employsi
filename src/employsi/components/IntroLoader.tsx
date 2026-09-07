@@ -11,10 +11,10 @@ import { useEffect, useRef, useState } from "react";
  * the screen/data loads in the background", and a veil that lifts on a timer
  * would hand off to a half-built map just as often as to a ready one.
  *
- * So the BUILD-UP keeps the design's timings exactly (stem, arms, lockup,
- * wordmark, rule, caption, band — all on their original delays), and only the
- * last two steps, the handoff and the veil, are driven by state instead. They
- * fire when both of these are true:
+ * So the BUILD-UP keeps the design's timings (stem, arms, lockup, wordmark,
+ * rule, caption — all on their original delays; the band is the one exception,
+ * see .introband), and only the last two steps, the handoff and the veil, are
+ * driven by state instead. They fire when both of these are true:
  *
  *   • the build-up has finished, so the animation is never cut off mid-stroke;
  *   • the app says it is ready.
@@ -38,8 +38,19 @@ import { useEffect, useRef, useState } from "react";
  * fake one over it would be a second, wrong app; and there is nothing to replay.
  */
 
-/** When the design's build-up finishes and the handoff becomes possible. */
-const BUILD_MS = 2200;
+/**
+ * When the build-up finishes and the handoff becomes possible.
+ *
+ * The last stroke of the choreography lands at 2220ms (the rule finishes
+ * drawing), so this is that plus a short settle. It used to be 2200 — a beat
+ * BEFORE the composition was complete, which is why the footage band was never
+ * seen: it reached full opacity at 2020ms and the veil started leaving at 2200,
+ * so on a warm load the finished picture existed for 180 milliseconds.
+ *
+ * This is a FLOOR ON EVERY APP OPEN, which is the reason not to raise it
+ * further: 2600ms is what it costs to let the thing be looked at.
+ */
+const BUILD_MS = 2600;
 /** Hard ceiling — the veil always lifts by here, ready or not. */
 const MAX_HOLD = 6000;
 
@@ -83,7 +94,6 @@ export function IntroLoader({ ready }: { ready: boolean }) {
 
   return (
     <div className={`introveil${out ? " is-out" : ""}`} aria-hidden="true">
-      <div className="introgrid" />
       <div className="introglow" />
       <div className="introhaze" />
 
@@ -94,15 +104,30 @@ export function IntroLoader({ ready }: { ready: boolean }) {
       {!reduced && (
         <div className="introband">
           <video
-            src="/assets/intro-band.mp4"
             autoPlay
             muted
             loop
             playsInline
+            /* Explicit rather than left to the autoplay heuristics: this file
+               has about a second and a half to arrive before the band is on
+               screen, so there is no version of "later" that is any use. */
+            preload="auto"
             /* Not focusable and not announced: it is texture behind a splash
                screen, and the veil is already aria-hidden. */
             tabIndex={-1}
-          />
+          >
+            {/* TWO ENCODES, and the WebM is not an optimisation — H.264 is
+                patent-encumbered and a Chromium built without the proprietary
+                codecs cannot decode it at all. It does not fail loudly: the
+                element reports MEDIA_ERR_SRC_NOT_SUPPORTED and the band renders
+                empty, which is indistinguishable from the video simply not
+                having arrived. Measured on the Chromium in this repo's own
+                tooling, where canPlayType('video/mp4; codecs="avc1.42E01E"')
+                answers "". VP9 is listed first so anything that can take it
+                does; the MP4 is what Safari uses. */}
+            <source src="/assets/intro-band.webm" type="video/webm" />
+            <source src="/assets/intro-band.mp4" type="video/mp4" />
+          </video>
           <div className="introbandfade" />
         </div>
       )}

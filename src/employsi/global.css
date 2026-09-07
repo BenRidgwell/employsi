@@ -14547,17 +14547,20 @@ body {
 
 /* ── Intro loader ───────────────────────────────────────────────────────────
    From `App_Intro_Animation_2.html`. The build-up keeps the design's timings to
-   the millisecond; the handoff and the veil are triggered by `.is-out` instead
-   of a delay, because the veil has to wait for the app rather than the clock
-   (see components/IntroLoader.tsx).
+   the millisecond, apart from the band (see .introband); the handoff and the
+   veil are triggered by `.is-out` instead of a delay, because the veil has to
+   wait for the app rather than the clock (see components/IntroLoader.tsx).
 
    z-index 90 puts it above every panel and the toast (max 70) — while it is up
    it owns the screen, which is the point of a splash.
 
    REDRAWN 2026-09-07 to the second design. The lockup, rule and caption keep
    their geometry and timings exactly; what is new is the setting around them —
-   a 56px graph-paper grid under the wash, a footage band across the bottom
-   third, and a shaded rolling globe in place of the line-art one.
+   a footage band across the bottom third, and a shaded rolling globe in place
+   of the line-art one.
+
+   NO GRID. The design lays a 56px graph-paper grid under the wash; it was
+   built and then removed on request, the ground being flush white instead.
 
    THE VEIL IS NOW OPAQUE. It was rgba(255,255,255,.62) over a backdrop blur, so
    the map showed through it hazily. The design paints #ffffff, and with a grid
@@ -14599,10 +14602,6 @@ body {
   0% { opacity: 1; }
   100% { opacity: 0; visibility: hidden; }
 }
-@keyframes in-grid {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
 @keyframes in-band {
   0% { opacity: 0; transform: translateY(18px); }
   100% { opacity: 1; transform: translateY(0); }
@@ -14637,16 +14636,6 @@ body {
   justify-content: center;
   background: #ffffff;
 }
-.introgrid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(#ededf0 1px, transparent 1px),
-    linear-gradient(90deg, #ededf0 1px, transparent 1px);
-  background-size: 56px 56px;
-  opacity: 0.5;
-  animation: in-grid 620ms ease both;
-}
 .introveil.is-out {
   animation: in-veil 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
   /* The fade takes 460ms, so the overlay is still hit-testable while it plays.
@@ -14670,6 +14659,13 @@ body {
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
 }
+/* 700ms, not the design's 1300ms — THIS IS THE ONE TIMING THAT HAD TO MOVE.
+   Every other delay here is the design's, and its 1300ms is right against ITS
+   veil, which lifts at 2280ms x its speed prop of 2.4 = 5472ms. Against this
+   loader's handoff the same delay left the band fully opaque from 2020ms to
+   2200ms: 180 milliseconds, so nobody ever saw it, whatever was in the file.
+   In at 1420ms against a 2600ms handoff gives it 1.2s on screen, which is
+   about the dwell the design gives it as a fraction of its own run. */
 .introband {
   position: absolute;
   left: 0;
@@ -14677,7 +14673,7 @@ body {
   bottom: 0;
   height: 33.333%;
   overflow: hidden;
-  animation: in-band 720ms cubic-bezier(0.16, 1, 0.3, 1) 1300ms both;
+  animation: in-band 720ms cubic-bezier(0.16, 1, 0.3, 1) 700ms both;
 }
 .introband video {
   display: block;
@@ -14883,7 +14879,6 @@ body {
   .introword,
   .introrule,
   .introcaption,
-  .introgrid,
   .introband,
   .introglobe,
   .introglobe .ig-land,
