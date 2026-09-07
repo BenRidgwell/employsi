@@ -124,6 +124,184 @@ const ANCHOR = row(["Administration & Office Support"], DAYS[0], DAYS[DAYS.lengt
   check("an ad opening late fills only the tail", eq(s.spark, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1]));
 }
 
+// ── one role, many feeds ────────────────────────────────────────────────────
+//
+// `job_key` is `source|title|company|location`, so the archive dedupes WITHIN a
+// feed only: one vacancy posted to four boards is four rows, and the boards
+// disagree about the location string enough that nothing else collapses them.
+// Measured on the live archive 2026-09-07, Rio Tinto's card read "Construction
+// Management — 30 live ads" over 13 real roles; roster-wide, 28,275 rows stood
+// for 20,412 vacancies. The vacancy chart has folded by normalised title since
+// it was written; this fold did not, so the line and the count beside it were
+// measuring different things.
+//
+// Rows carry titles here, unlike everywhere else in this file — the cases above
+// leave the column unset, which keeps every one of them its own vacancy.
+{
+  const four = ["indeed", "jora", "adzuna", "seek"].map((source) =>
+    row(["Mining Engineering"], "2026-08-01", "2026-08-10", {
+      title: "Construction Manager",
+      source,
+      hub: "perth",
+    }),
+  );
+  const out = foldSkillRows(four, DAYS, LIVE_FROM, 0);
+  const s = find(out, "Mining Engineering")!;
+  check("one role on four feeds is one live ad", out.liveAds === 1, `liveAds=${out.liveAds}`);
+  check("...and one unit of skill demand", s.now === 1, `now=${s.now}`);
+  check(
+    "...and one hot spot, not four",
+    eq(out.hubs, [{ hub: "perth", n: 1 }]),
+    JSON.stringify(out.hubs),
+  );
+}
+{
+  // Punctuation and case are exactly what the feeds disagree about.
+  const out = foldSkillRows(
+    [
+      row(["Metallurgy"], "2026-08-01", "2026-08-10", { title: "Senior Metallurgist" }),
+      row(["Metallurgy"], "2026-08-01", "2026-08-10", { title: "senior  metallurgist" }),
+      row(["Metallurgy"], "2026-08-01", "2026-08-10", { title: "Senior Metallurgist!" }),
+    ],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  check("titles differing only in case or punctuation are one role", out.liveAds === 1);
+}
+{
+  const out = foldSkillRows(
+    [
+      row(["Metallurgy"], "2026-08-01", "2026-08-10", { title: "Senior Metallurgist" }),
+      row(["Metallurgy"], "2026-08-01", "2026-08-10", { title: "Junior Metallurgist" }),
+    ],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  check("genuinely different titles stay two roles", out.liveAds === 2, `${out.liveAds}`);
+}
+{
+  // Feeds see the same vacancy over different stretches. The role was open
+  // across the union of them, and every feed's spans are kept — so a gap NO
+  // feed covered stays a gap, rather than being bridged by a min/max span.
+  //
+  // One anchor PER FEED, because feedStart trims the window to the last feed
+  // to arrive and here the two feeds' geotech rows begin eight days apart —
+  // without them the window collapses to the tail and there is no gap left to
+  // assert on.
+  const out = foldSkillRows(
+    [
+      row(["Administration & Office Support"], DAYS[0], DAYS[9], {
+        title: "Site Admin",
+        source: "jora",
+      }),
+      row(["Administration & Office Support"], DAYS[0], DAYS[9], {
+        title: "Rosters Clerk",
+        source: "seek",
+      }),
+      row(["Geotechnical"], "2026-08-01", "2026-08-02", { title: "Geotech Lead", source: "jora" }),
+      row(["Geotechnical"], "2026-08-09", "2026-08-10", { title: "Geotech Lead", source: "seek" }),
+    ],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  const s = find(out, "Geotechnical")!;
+  check(
+    "a role's days are the union of its feeds' spans, gap included",
+    eq(s.spark, [1, 1, 0, 0, 0, 0, 0, 0, 1, 1]),
+    JSON.stringify(s.spark),
+  );
+  check("...and it is one live ad, not two", s.now === 1, `now=${s.now}`);
+}
+{
+  // One feed's copy of an ad mentions a skill the other's does not. The
+  // vacancy asked for both, so the union is what it demanded.
+  const out = foldSkillRows(
+    [
+      row(["Mining Engineering"], "2026-08-01", "2026-08-10", {
+        title: "Mine Planner",
+        source: "jora",
+      }),
+      row(["Metallurgy"], "2026-08-01", "2026-08-10", { title: "Mine Planner", source: "seek" }),
+    ],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  check("a role demands the union of its feeds' skills", out.skills.length === 2);
+  check("...and is still one ad", out.liveAds === 1, `liveAds=${out.liveAds}`);
+}
+{
+  // A board that stopped refreshing does not close a vacancy the others still
+  // advertise — the role is live if ANY feed still carries it.
+  const out = foldSkillRows(
+    [
+      ANCHOR,
+      row(["Geotechnical"], "2026-08-01", "2026-08-04", { title: "Geotech Lead", source: "jora" }),
+      row(["Geotechnical"], "2026-08-01", "2026-08-10", { title: "Geotech Lead", source: "seek" }),
+    ],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  check("a role one stale feed dropped is still live", find(out, "Geotechnical")?.now === 1);
+}
+{
+  // Feeds label the same vacancy with different locations — that IS the reason
+  // the rows do not collapse in the archive. The role is counted once, under
+  // the location most of its feeds gave it.
+  const hub = (h: string, source: string) =>
+    row(["Mining Engineering"], "2026-08-09", "2026-08-10", {
+      title: "Shift Super",
+      hub: h,
+      source,
+    });
+  const out = foldSkillRows(
+    [hub("perth", "jora"), hub("perth", "seek"), hub("adelaide", "indeed")],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  check(
+    "a role sits in one hub, the one most of its feeds named",
+    eq(out.hubs, [{ hub: "perth", n: 1 }]),
+    JSON.stringify(out.hubs),
+  );
+}
+{
+  // The feed-arrival guard reads RAW rows on purpose: it answers "when did this
+  // feed start covering this employer, and how much does it carry". Folding it
+  // by title would make a feed's weight the number of roles it shares with the
+  // others, and a late feed could then veto — or fail to trim — the window on
+  // the wrong evidence. Here one feed joined on day 6 carrying most of the
+  // rows, and the window must still start there even though every one of its
+  // rows duplicates a role another feed already had.
+  const dup = (t: string, first: string, source: string) =>
+    row(["Mining Engineering"], first, "2026-08-10", { title: t, source });
+  const out = foldSkillRows(
+    [
+      dup("Role A", "2026-08-01", "jora"),
+      dup("Role B", "2026-08-06", "seek"),
+      dup("Role C", "2026-08-06", "seek"),
+      dup("Role D", "2026-08-06", "seek"),
+      dup("Role B", "2026-08-06", "jora"),
+      dup("Role C", "2026-08-06", "jora"),
+      dup("Role D", "2026-08-06", "jora"),
+    ],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  check(
+    "feed arrival is still measured on raw rows, so the window trims to the late feed",
+    eq(out.days, DAYS.slice(5)),
+    JSON.stringify(out.days),
+  );
+  check("...over four roles, not seven rows", out.liveAds === 4, `liveAds=${out.liveAds}`);
+}
+
 // ── taxonomy handling ───────────────────────────────────────────────────────
 {
   const out = foldSkillRows(

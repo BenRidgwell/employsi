@@ -786,11 +786,7 @@ export const getVacancyTrend = createServerFn({ method: "GET" })
       // one day but only 4,006 distinct company+title pairs — the row count
       // overstated by 47%. It is worst for employers that advertise one role in
       // many locations: CSL had 1,089 rows for 438 real roles.
-      const norm = (s: string) =>
-        s
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, " ")
-          .trim();
+      const norm = normRoleTitle;
       // title -> the day-spans it was open for, so a role listed by three
       // sources contributes one span set rather than three roles.
       const byTitle = new Map<string, [string, string][]>();
@@ -1174,7 +1170,10 @@ export const getCompanySkillTrends = createServerFn({ method: "GET" })
 
       const res = await db
         .prepare(
-          `SELECT skills, category, first_seen, last_seen, salary, hub, source FROM jobs
+          // `title` is here so the fold can collapse the same role listed by
+          // several feeds into one ad, the way the vacancy chart already does.
+          // Without it every count on this card was a count of ROWS.
+          `SELECT title, skills, category, first_seen, last_seen, salary, hub, source FROM jobs
              WHERE company_id = ?1 AND skills IS NOT NULL AND last_seen >= ?2`,
         )
         // Same alias the headline and the vacancy chart use, so a dual-listed
@@ -1201,8 +1200,60 @@ export const getCompanySkillTrends = createServerFn({ method: "GET" })
 /** The archive columns the fold below reads. Structurally a SqlRow, so query
  *  results pass straight through and a test can hand-build one. */
 export type SkillRow = Partial<
-  Record<"skills" | "category" | "first_seen" | "last_seen" | "salary" | "hub" | "source", SqlValue>
+  Record<
+    "title" | "skills" | "category" | "first_seen" | "last_seen" | "salary" | "hub" | "source",
+    SqlValue
+  >
 >;
+
+/**
+ * The key two archive rows share when they are the SAME advertised role.
+ *
+ * `job_key` is `source|title|company|location`, so the archive only dedupes
+ * WITHIN a feed: one role posted to four boards is four rows, and the location
+ * grain differs enough between them ("Perth, WA, AU", "Perth WA", "Bayswater,
+ * Bayswater Area", "Perth, Perth Region") that no location rule collapses them
+ * either. Title is the one field the feeds agree on, up to punctuation and
+ * case.
+ *
+ * Measured on the live archive 2026-09-07: 4,157 distinct company+title pairs
+ * occupied 9,629 rows, ~18% of the 53,253 rows live that day. Rio Tinto's card
+ * read "Construction Management — 30 live ads" over 13 real roles; Woolworths
+ * held 1,029 rows for 110.
+ *
+ * Shared, not copied: getVacancyTrend has folded by this key since the day the
+ * chart was written, and the two disagreeing is exactly the bug this fixes —
+ * the line and the count beside it were measuring different things.
+ */
+export const normRoleTitle = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+/** The most-named entry in a tally, ties broken alphabetically so the same rows
+ *  always fold to the same answer. Null when nothing was named. */
+function modal(tally: Map<string, number>): string | null {
+  let best: string | null = null;
+  let bestN = 0;
+  for (const [k, n] of tally) {
+    if (n > bestN || (n === bestN && best !== null && k < best)) {
+      best = k;
+      bestN = n;
+    }
+  }
+  return best;
+}
+
+/** A plain median, with no minimum-sample floor — this one runs over the two
+ *  or three feeds carrying ONE ad, where medianAnnual's MIN_ADS would reject
+ *  every group. The floor still applies where it belongs, over the ads. */
+function midAnnual(values: number[]): number | null {
+  if (!values.length) return null;
+  const v = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(v.length / 2);
+  return v.length % 2 ? v[mid] : Math.round((v[mid - 1] + v[mid]) / 2);
+}
 
 /**
  * The pure half of getCompanySkillTrends: archive rows in, per-skill demand
@@ -1212,6 +1263,12 @@ export type SkillRow = Partial<
  *
  * `window` is every day the sparkline could cover, oldest → newest; `from` is
  * the index where archive coverage begins within it.
+ *
+ * IT COUNTS ADS, NOT ROWS. Rows sharing a normalised title are one vacancy
+ * carried by several feeds (see normRoleTitle), and every figure the card
+ * prints — live ads, each skill's count, the areas, the hot spots, the
+ * sparklines — is over the folded ads. Only the feed-arrival tallies stay on
+ * raw rows, because those describe the feeds rather than the vacancies.
  */
 export function foldSkillRows(
   rows: SkillRow[],
@@ -1236,12 +1293,42 @@ export function foldSkillRows(
   const areaSourceStart: Record<string, string> = {};
   const hubNow: Record<string, Record<string, number>> = {};
   const hubless: Record<string, number> = {};
-  // Row-level, so an ad with four skills counts once here and four times above.
+  // Ad-level, so a vacancy asking for four skills counts once here and four
+  // times above — and one carried by four feeds still counts once (see
+  // RoleGroup).
   let liveAds = 0;
   const liveByHub: Record<string, number> = {};
   const fresh: Record<string, number[]> = {};
 
+  /**
+   * One ROLE, assembled from every row advertising it.
+   *
+   * The rows are per feed; the card's reader is asking about jobs. See
+   * normRoleTitle for the measurement — a role carried by four boards was
+   * being counted four times in every figure on this card.
+   */
+  interface RoleGroup {
+    /** Union across the feeds. Each writes its own description, so one may
+     *  name a skill another's copy never mentions; the ad asked for both. */
+    skills: Set<string>;
+    /** Every feed's span, kept apart rather than flattened to min/max — an ad
+     *  that lapsed and came back was not open in between, and the vacancy
+     *  chart tests day-membership the same way. */
+    spans: [string, string][];
+    /** Earliest first_seen: the day the role appeared, whichever feed saw it. */
+    opened: string;
+    /** Live if ANY feed still carries it. A board that stopped refreshing does
+     *  not close a vacancy the others still show. */
+    live: boolean;
+    areas: Map<string, number>;
+    hubs: Map<string, number>;
+    pays: number[];
+  }
+
   {
+    const roles = new Map<string, RoleGroup>();
+    let untitled = 0;
+
     for (const r of rows) {
       // parseStoredSkills, not a bare JSON.parse: archived rows keep the skill
       // names they were written with, so a renamed skill needs mapping forward
@@ -1256,22 +1343,70 @@ export function foldSkillRows(
       // SEEK being folded onto Adzuna, and for what is deliberately not an area.
       const src = String(r.source || "");
       const area = AREA_SOURCES.has(src) ? canonicalArea(r.category as string | null) : null;
+      // FEED ARRIVAL IS MEASURED ON RAW ROWS, deliberately — and this is the
+      // one thing in the fold that must not be deduplicated. `sourceStart` and
+      // `sourceRows` answer "when did this feed start covering this employer,
+      // and how much of the employer does it carry", which is a fact about the
+      // feed, not about the roles. Fold them by title and a feed's weight
+      // becomes the number of roles it happens to share with the others.
       if (!sourceStart[src] || fs < sourceStart[src]) sourceStart[src] = fs;
       sourceRows[src] = (sourceRows[src] || 0) + 1;
       if (area && (!areaSourceStart[src] || fs < areaSourceStart[src])) areaSourceStart[src] = fs;
 
+      // A row with no title is malformed — title is part of job_key, so the
+      // archive cannot hold one in practice — and it gets a key of its own
+      // rather than being folded in with every other untitled row. Erring
+      // towards counting twice beats merging two unrelated vacancies.
+      const t = normRoleTitle(String(r.title || ""));
+      const key = t || ` untitled ${untitled++}`;
+      let g = roles.get(key);
+      if (!g) {
+        g = {
+          skills: new Set(),
+          spans: [],
+          opened: fs,
+          live: false,
+          areas: new Map(),
+          hubs: new Map(),
+          pays: [],
+        };
+        roles.set(key, g);
+      }
+      for (const s of skills) g.skills.add(s);
+      g.spans.push([fs, ls]);
+      if (fs < g.opened) g.opened = fs;
+      if (area) g.areas.set(area, (g.areas.get(area) || 0) + 1);
       if (ls >= liveFrom) {
-        for (const s of skills) now[s] = (now[s] || 0) + 1;
+        g.live = true;
+        // Hub and salary are read off the LIVE rows only, for the same reason
+        // the tallies below are: the map answers "where are they hiring this
+        // now", and a closed ad's salary is not a current offer.
+        const hub = String(r.hub || "").trim();
+        if (hub) g.hubs.set(hub, (g.hubs.get(hub) || 0) + 1);
         const aud = annualAud({
           salary: r.salary as string | null,
           hub: r.hub as string | null,
           source: src,
         });
+        if (aud !== null) g.pays.push(aud);
+      }
+    }
+
+    for (const g of roles.values()) {
+      const skills = [...g.skills];
+      // One area and one hub per role. The feeds label the same vacancy
+      // differently — that is the whole problem — so the majority label wins
+      // and the role is counted once under it, rather than once per feed under
+      // each. modal() breaks ties alphabetically so the fold is deterministic.
+      const area = modal(g.areas);
+      if (g.live) {
+        for (const s of skills) now[s] = (now[s] || 0) + 1;
+        const aud = midAnnual(g.pays);
         if (aud !== null) for (const s of skills) (payAds[s] ||= []).push(aud);
         if (area) areaNow[area] = (areaNow[area] || 0) + 1;
         // Hot spots are LIVE ads only: the map answers "where are they hiring
         // this now", not "where have they ever".
-        const hub = String(r.hub || "").trim();
+        const hub = modal(g.hubs);
         liveAds += 1;
         if (hub) liveByHub[hub] = (liveByHub[hub] || 0) + 1;
         for (const sk of skills) {
@@ -1283,14 +1418,14 @@ export function foldSkillRows(
           }
         }
       }
-      const newAt = window.indexOf(fs);
+      const newAt = window.indexOf(g.opened);
       if (newAt >= 0)
         for (const sk of skills) (fresh[sk] ||= new Array(window.length).fill(0))[newAt] += 1;
       // A listing is live on day D when it was first seen on or before D and
-      // last seen on or after it.
+      // last seen on or after it — on ANY of the feeds carrying it.
       for (let i = 0; i < window.length; i++) {
         const d = window[i];
-        if (fs > d || ls < d) continue;
+        if (!g.spans.some(([fs, ls]) => fs <= d && ls >= d)) continue;
         for (const s of skills) {
           const arr = (daily[s] ||= new Array(window.length).fill(0));
           arr[i] += 1;
