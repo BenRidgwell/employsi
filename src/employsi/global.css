@@ -11389,7 +11389,8 @@ body {
 }
 
 /* ── header (Company_Card.html, 2026-09-06) ─────────────────────────────────
-   The supplied design: a 56px logo carrying a sector badge on its corner, a
+   The supplied design: a 56px logo (circular here, not its squircle) carrying
+   a sector badge on its edge, a
    name over an uppercase sector eyebrow, a dot, a two-tone ticker chip,
    and TWO actions — the design's third, Compare, was removed with it. The
    actions are 28px ROUND rather than the design's 38px square; see .ccbtn.
@@ -11412,10 +11413,15 @@ body {
 /* The employer's SECTOR GROUP, on the logo's corner. Its 2px border is the CARD
    colour rather than a hairline — it punches the badge out of the logo's edge
    instead of outlining it, the same trick the filter card's count badge uses. */
+/* -3, NOT the design's -7, because the frame is a circle now. A square's
+   corner sits 39.6px from its centre and a circle's edge only 28, so an offset
+   tuned to a corner leaves the badge hanging off a circle barely touching it.
+   At -3 the badge centre is 25.5px out — seated on the edge, still clear of
+   the logo. Measured across -7/-5/-3/-1. */
 .ccsectorbadge {
   position: absolute;
-  right: -7px;
-  bottom: -7px;
+  right: -3px;
+  bottom: -3px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -11439,6 +11445,11 @@ body {
    Now the frame grows with the mark: square logos keep the square, and a
    wordmark widens the frame up to MAX_MARK before height starts giving way.
    `contain` means nothing is ever cropped. */
+/* CIRCULAR, not the design's 14px squircle — asked for on 2026-09-07.
+   Safe for wordmarks: .ccmark img below is `object-fit: contain` capped at
+   100% width, so a wide logo letterboxes into a band across the middle, which
+   is where a circle is widest. Only the corners clip, which is the ordinary
+   avatar crop. */
 .ccmark {
   display: flex;
   align-items: center;
@@ -11448,7 +11459,7 @@ body {
   padding: 3px;
   flex: 0 0 auto;
   border: 1px solid var(--border-subtle);
-  border-radius: 14px;
+  border-radius: 999px;
   background: var(--surface-sunken);
   overflow: hidden;
 }
