@@ -138,13 +138,22 @@ const shortDay = (iso: string) => {
  *     the value riding above it;
  *   · the COVERED period, the days the fold could honestly return.
  *
- * NOTHING IS DRAWN OVER THE AXIS BUT THE STEM AND THE THUMB. An earlier pass
- * kept a dashed mark at the covered start, so that a request the archive cannot
- * fill was visible as well as stated; it was dropped on request, and the shape
- * of the answer is now told only in words, by the note below. That note is
- * therefore load-bearing rather than decorative: collection began 2026-07-20
- * and each employer's feeds arrived later still, so a 60-day request is
- * routinely answered with fewer days and the axis alone will not say so.
+ * THE COVERED PERIOD IS NO LONGER STATED ON THE CARD, and that is a decision
+ * rather than an oversight — record it here so it is not re-added by accident.
+ * Two things used to say it: a dashed mark at the covered start, dropped
+ * 2026-09-05, and a sentence under the control ("Drawing 28 days, from
+ * 10 Aug…"), dropped 2026-09-07. Both on request.
+ *
+ * It still matters. Collection began 2026-07-20 and each employer's feeds
+ * arrived later still, so a 30-day request is routinely answered with fewer —
+ * Rio Tinto drew 28 of 30 the day the sentence was removed. The axis cannot
+ * show that, and the label reads the REQUESTED window, so a reader now has no
+ * visible way to tell a full answer from a short one.
+ *
+ * What is left is the range input's aria-valuetext, which still reads "last 30
+ * days requested, 28 collected" — so the fact survives for a screen reader and
+ * only for a screen reader. If the gap should be visible again, that string is
+ * the wording to start from.
  *
  * IT SCRUBS A DAY AT A TIME. It used to snap to the four labelled stops, which
  * made the thumb jump in quarters and put "51 days" out of reach; the stops are
@@ -276,12 +285,6 @@ function TimelineScrubber({
   const atPct = (TL_SPAN - shown) / (TL_SPAN - TL_MIN);
   const anchor = atPct < 0.1 ? " s" : atPct > 0.9 ? " e" : "";
   const short = covered > 0 && covered < days;
-  const startsOn =
-    geom && Date.parse(geom.end + "T00:00:00Z")
-      ? new Date(Date.parse(geom.end + "T00:00:00Z") - (covered - 1) * 86400000)
-          .toISOString()
-          .slice(0, 10)
-      : "";
 
   /**
    * End of a drag: hand the value up, which changes the query key and fetches.
@@ -398,18 +401,8 @@ function TimelineScrubber({
       </div>
 
       <p className="cctlnote">
-        {short ? (
-          <>
-            Drawing {covered} days, from {shortDay(startsOn)} — that is where every feed covering
-            this employer had arrived. Earlier days are missing feeds, so their counts would climb
-            as the archive filled rather than as hiring moved.
-          </>
-        ) : (
-          <>
-            Daily live vacancies across the archive, so you can see where this employer&rsquo;s
-            history is worth asking about.
-          </>
-        )}
+        Daily live vacancies across the archive, so you can see where this employer&rsquo;s history
+        is worth asking about.
       </p>
     </div>
   );
