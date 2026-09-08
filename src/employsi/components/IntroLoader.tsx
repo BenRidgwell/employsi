@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 /**
  * The intro animation that covers the app while it boots, from
- * `App_Intro_Animation_2.html`.
+ * `App_Intro_Animation_3.html`.
  *
  * WHY THE HANDOFF IS NOT ON A TIMER
  * The design choreographs the whole thing on fixed delays — the veil lifts at
@@ -11,10 +11,10 @@ import { useEffect, useRef, useState } from "react";
  * the screen/data loads in the background", and a veil that lifts on a timer
  * would hand off to a half-built map just as often as to a ready one.
  *
- * So the BUILD-UP keeps the design's timings (stem, arms, lockup, wordmark,
- * rule, caption — all on their original delays; the band is the one exception,
- * see .introband), and only the last two steps, the handoff and the veil, are
- * driven by state instead. They fire when both of these are true:
+ * So the BUILD-UP keeps the design's timings exactly (stem, arms, lockup,
+ * wordmark, rule, caption, band — all on their original delays), and only the
+ * last two steps, the handoff and the veil, are driven by state instead. They
+ * fire when both of these are true:
  *
  *   • the build-up has finished, so the animation is never cut off mid-stroke;
  *   • the app says it is ready.
@@ -36,21 +36,24 @@ import { useEffect, useRef, useState } from "react";
  * "the app is behind the veil", and a "Replay intro" button wired to the
  * canvas's own replay(). Here the real app is behind the veil, so drawing a
  * fake one over it would be a second, wrong app; and there is nothing to replay.
+ *
+ * Its stylesheet and logic also still carry a parallax city built out of divs
+ * (cityFar/cityMid/cityNear/traffic, and the city-drift, city-window and
+ * city-traffic keyframes) and the previous version's grid and two-layer globe.
+ * None of it is referenced by the markup any more — it is superseded by the
+ * footage band — so none of it is built here either.
  */
 
 /**
  * When the build-up finishes and the handoff becomes possible.
  *
- * The last stroke of the choreography lands at 2220ms (the rule finishes
- * drawing), so this is that plus a short settle. It used to be 2200 — a beat
- * BEFORE the composition was complete, which is why the footage band was never
- * seen: it reached full opacity at 2020ms and the veil started leaving at 2200,
- * so on a warm load the finished picture existed for 180 milliseconds.
- *
- * This is a FLOOR ON EVERY APP OPEN, which is the reason not to raise it
- * further: 2600ms is what it costs to let the thing be looked at.
+ * The design's own handoff, unchanged. It was briefly 2600 under the previous
+ * design, where the band did not finish arriving until 2020ms and needed the
+ * extra time to be seen at all. This one brings the band in at 200ms, so the
+ * composition is complete and dwelling long before here and the 400ms that
+ * bought is no longer worth charging to every app open.
  */
-const BUILD_MS = 2600;
+const BUILD_MS = 2200;
 /** Hard ceiling — the veil always lifts by here, ready or not. */
 const MAX_HOLD = 6000;
 
@@ -94,13 +97,12 @@ export function IntroLoader({ ready }: { ready: boolean }) {
 
   return (
     <div className={`introveil${out ? " is-out" : ""}`} aria-hidden="true">
-      <div className="introglow" />
-      <div className="introhaze" />
-
-      {/* The footage band across the bottom third. It carries no information —
-          the white gradient over it fades its top 40% out — so a browser that
-          has not finished fetching it, or refuses to autoplay it, leaves the
-          band empty and the rest of the composition intact. */}
+      {/* The skyline across the bottom 44%. No gradient over its top edge, and
+          that is deliberate rather than an omission: the footage is a city
+          against a blown-out white sky, so it dissolves into the page on its
+          own and a fade would only grey the buildings' tops. The previous
+          design needed one because its band was a street scene, opaque to its
+          top edge. */}
       {!reduced && (
         <div className="introband">
           <video
@@ -109,8 +111,8 @@ export function IntroLoader({ ready }: { ready: boolean }) {
             loop
             playsInline
             /* Explicit rather than left to the autoplay heuristics: this file
-               has about a second and a half to arrive before the band is on
-               screen, so there is no version of "later" that is any use. */
+               has under a second to arrive before the band is on screen, so
+               there is no version of "later" that is any use. */
             preload="auto"
             /* Not focusable and not announced: it is texture behind a splash
                screen, and the veil is already aria-hidden. */
@@ -126,19 +128,18 @@ export function IntroLoader({ ready }: { ready: boolean }) {
                 answers "". VP9 is listed first so anything that can take it
                 does; the MP4 is what Safari uses.
 
-                BOTH ARE 1920x480, WHICH IS THE SOURCE'S NATIVE DETAIL AND THE
-                CEILING. The band shows the bottom 480 rows of a 1920x1080
-                clip, so that crop is taken 1:1 and anything larger would be
-                upscaling a file nobody has the pixels for. ~850KB each,
-                against 3.84MB for the original: the crop is baked in rather
-                than downloaded and discarded, the encode is greyscale because
-                CSS applies grayscale(1) anyway, and the muted audio track is
-                gone. It was briefly 1280x320 and ~450KB, which was visibly
-                soft once a 2x display upscaled it 1.75x. */}
+                Both are the source's native 1280x720, uncropped — unlike the
+                previous band, this one is not safe to crop, because at phone
+                aspect ratios the 44% band is TALLER than it is wide relative
+                to the footage and cover() uses the full frame height. 333KB
+                and 248KB against the supplied file's 3.9MB, which is almost
+                all bitrate: 7345 kb/s for a slow drift. The encodes are
+                greyscale, because CSS applies grayscale(1) anyway and the
+                chroma planes were being carried for nothing, and the muted
+                audio track is dropped. */}
             <source src="/assets/intro-band.webm" type="video/webm" />
             <source src="/assets/intro-band.mp4" type="video/mp4" />
           </video>
-          <div className="introbandfade" />
         </div>
       )}
 
@@ -182,13 +183,12 @@ export function IntroLoader({ ready }: { ready: boolean }) {
         <div className="introfoot">
           <span className="introrule" />
           <span className="introcaption">
-            {/* A shaded sphere with two bands of "land" scrolling across it at
-                different rates, so it reads as a globe turning rather than a
-                disc spinning. Five nested layers, per the design: body, light
-                continents, dark continents, specular highlight, terminator. */}
+            {/* A pale sphere with one band of land scrolling across it, a
+                static highlight and a shaded limb. Lighter and calmer than the
+                previous design's globe, which had two land layers at different
+                rates plus a bob and a breathing shine. */}
             <span className="introglobe">
               <span className="ig-land" />
-              <span className="ig-land2" />
               <span className="ig-shine" />
               <span className="ig-edge" />
             </span>
