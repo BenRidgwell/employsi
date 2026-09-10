@@ -46,3 +46,8 @@ workers/waitlist/dist/
 # Source workbooks for scripts/gen-salary-baseline.py. Downloaded from
 # data.gov.au on demand and re-fetchable; the generated .ts is what is tracked.
 .cache/
+
+# Undo files written by scripts/backfill-skill-children.ts before it writes to
+# D1. They are operational artefacts holding a slice of archive data, useful
+# only next to the run that produced them.
+skills-backfill-backup-*.jsonl

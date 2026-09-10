@@ -1911,45 +1911,78 @@ function termMatches(hay: string, term: string): boolean {
   return re.test(hay);
 }
 
-export function skillsForText(title: string, _description?: string, ctx?: SkillContext): string[] {
-  const hay = " " + norm(title) + " ";
+/** Does this def claim this (already normalised, space-padded) title? */
+function claims(def: SkillDef, hay: string, industry: string | null): boolean {
+  // Checked before the terms, not after: an except is a statement about the
+  // TITLE, so no amount of term evidence should override it.
+  if (def.except?.some((t) => hay.includes(t))) return false;
+  const hits = def.terms.filter((t) => termMatches(hay, t));
+  if (!hits.length) return false;
+  // Drop a skill whose ONLY evidence is a gated term nothing licenses. This
+  // runs whether or not a caller supplied context — the title is the primary
+  // source of evidence, so the check cannot be skipped by omitting ctx.
+  const licensed = hits.filter((t) => {
+    const titleGate = GATED_TERMS[t];
+    if (!titleGate) return true;
+    if (titleGate.test(hay)) return true;
+    const industryGate = INDUSTRY_GATED[t];
+    return industry !== null && industryGate ? industryGate.test(industry) : false;
+  });
+  return licensed.length > 0;
+}
+
+const industryOf = (ctx?: SkillContext) =>
   // No context means no gate: callers that genuinely don't know the employer
   // (free-text search) keep the old behaviour rather than silently losing
   // matches.
-  const industry = ctx ? `${ctx.sector ?? ""} ${ctx.group ?? ""}` : null;
+  ctx ? `${ctx.sector ?? ""} ${ctx.group ?? ""}` : null;
 
-  const claims = (def: SkillDef): boolean => {
-    // Checked before the terms, not after: an except is a statement about the
-    // TITLE, so no amount of term evidence should override it.
-    if (def.except?.some((t) => hay.includes(t))) return false;
-    const hits = def.terms.filter((t) => termMatches(hay, t));
-    if (!hits.length) return false;
-    // Drop a skill whose ONLY evidence is a gated term nothing licenses. This
-    // runs whether or not a caller supplied context — the title is the primary
-    // source of evidence, so the check cannot be skipped by omitting ctx.
-    const licensed = hits.filter((t) => {
-      const titleGate = GATED_TERMS[t];
-      if (!titleGate) return true;
-      if (titleGate.test(hay)) return true;
-      const industryGate = INDUSTRY_GATED[t];
-      return industry !== null && industryGate ? industryGate.test(industry) : false;
-    });
-    return licensed.length > 0;
-  };
-
+export function skillsForText(title: string, _description?: string, ctx?: SkillContext): string[] {
+  const hay = " " + norm(title) + " ";
+  const industry = industryOf(ctx);
   // A Set from the start, because a canonical skill can be declared by more
   // than one def (an English def plus a Chinese-terms def for the Zhaopin
   // source), so a title hitting both would otherwise list the skill twice.
   const out = new Set<string>();
   // PASS ONE — the broad skills, on their own evidence.
-  for (const def of SKILLS) if (!def.parent && claims(def)) out.add(def.skill);
+  for (const def of SKILLS) if (!def.parent && claims(def, hay, industry)) out.add(def.skill);
   // PASS TWO — specialities, but only inside a parent this title already
   // claimed. See `parent` on SkillDef: a child narrows its parent rather than
   // standing beside it, so "Aged Care Worker" cannot become Aged Care Nursing
   // however plainly it says "aged care". Both survive into the result, so a
   // parent's count is unchanged by children existing beneath it.
-  for (const def of SKILLS)
-    if (def.parent && out.has(def.parent) && claims(def)) out.add(def.skill);
+  for (const c of childSkillsForTitle(title, out, ctx)) out.add(c);
+  return [...out];
+}
+
+/**
+ * The specialities a title claims, GIVEN a set of parents already established.
+ *
+ * Pass two of skillsForText, exposed because the archive backfill needs exactly
+ * this and must not re-derive the parents. Those rows were written over years
+ * of taxonomy changes — gates added, terms retuned — so re-running the whole
+ * matcher over an old title would silently restate its broad skills as today's
+ * matcher sees them, which is a different and much larger edit than the one
+ * being asked for. Handing in the parents the row already has keeps the
+ * backfill purely additive.
+ *
+ * Sharing this with the matcher rather than reimplementing it is the point: a
+ * backfill that mapped titles even slightly differently from the live pipeline
+ * would leave the archive disagreeing with itself by write date.
+ */
+export function childSkillsForTitle(
+  title: string,
+  parents: Iterable<string>,
+  ctx?: SkillContext,
+): string[] {
+  const hay = " " + norm(title) + " ";
+  const industry = industryOf(ctx);
+  const have = parents instanceof Set ? parents : new Set(parents);
+  const out = new Set<string>();
+  for (const def of SKILLS) {
+    if (!def.parent || !have.has(def.parent)) continue;
+    if (claims(def, hay, industry)) out.add(def.skill);
+  }
   return [...out];
 }
 
