@@ -193,18 +193,10 @@ export function IntroLoader({ ready }: { ready: boolean }) {
 
         <div className="introfoot">
           <span className="introrule" />
-          <span className="introcaption">
-            {/* A pale sphere with one band of land scrolling across it, a
-                static highlight and a shaded limb. Lighter and calmer than the
-                previous design's globe, which had two land layers at different
-                rates plus a bob and a breathing shine. */}
-            <span className="introglobe">
-              <span className="ig-land" />
-              <span className="ig-shine" />
-              <span className="ig-edge" />
-            </span>
-            Explore the world of work
-          </span>
+          {/* Just the line. The design sets a small rolling globe before it —
+              a shaded sphere with a band of land scrolling across — dropped on
+              request. */}
+          <span className="introcaption">Explore the world of work</span>
         </div>
       </div>
     </div>

@@ -14565,6 +14565,10 @@ body {
    56% and the footage anchors at 78% down its frame rather than to its bottom
    edge. Same clip, byte for byte.
 
+   NO GLOBE. Every design in the series sets a small rolling sphere before the
+   caption; it was built each time and then removed on request, leaving the line
+   on its own under the rule.
+
    The design's own stylesheet still carries a div-built parallax city
    (city-drift, city-window, city-traffic) plus the previous version's grid and
    two-layer globe. Its markup references none of them — they are superseded by
@@ -14608,13 +14612,6 @@ body {
   0% { opacity: 0; transform: translateY(18px); }
   100% { opacity: 1; transform: translateY(0); }
 }
-/* One land band, scrolling once across a 10px tile every 9 seconds — slow
-   enough to read as a globe turning rather than a texture sliding. */
-@keyframes globe-roll {
-  from { background-position: 0 0; }
-  to { background-position: -10px 0; }
-}
-
 .introveil {
   position: fixed;
   inset: 0;
@@ -14730,7 +14727,6 @@ body {
 .introcaption {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
   font-family: var(--font-label);
   font-size: 11px;
   font-weight: 500;
@@ -14739,71 +14735,19 @@ body {
   color: #8e8e93;
   animation: in-caption 420ms cubic-bezier(0.16, 1, 0.3, 1) 1480ms both;
 }
-/* The globe body: a pale sphere lit from the upper left. Everything inside is
-   clipped to the circle. */
-.introglobe {
-  position: relative;
-  display: block;
-  flex: 0 0 auto;
-  width: 17px;
-  height: 17px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: radial-gradient(
-    circle at 38% 32%,
-    #f2f2f4 0%,
-    #dedee2 46%,
-    #c2c2c8 76%,
-    #aeaeb4 100%
-  );
-}
-/* Land, as one repeating row of three soft blobs. `background-repeat: repeat-x`
-   with a tile narrower than the sphere is what makes them scroll off one edge
-   and back on the other. */
-.introglobe .ig-land {
-  position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(ellipse 2.6px 1.5px at 2px 5px, #6c6c72 0%, #6c6c72 70%, transparent 71%),
-    radial-gradient(ellipse 2px 2.2px at 7px 11px, #6c6c72 0%, #6c6c72 70%, transparent 71%),
-    radial-gradient(ellipse 1.4px 1.1px at 5.5px 3px, #6c6c72 0%, #6c6c72 70%, transparent 71%);
-  background-size: 10px 17px;
-  background-repeat: repeat-x;
-  opacity: 0.55;
-  animation: globe-roll 9s linear infinite;
-}
-.introglobe .ig-shine {
-  position: absolute;
-  inset: 0;
-  border-radius: 999px;
-  background: radial-gradient(
-    circle at 34% 28%,
-    rgba(255, 255, 255, 0.55) 0%,
-    rgba(255, 255, 255, 0.12) 26%,
-    rgba(255, 255, 255, 0) 52%
-  );
-}
-/* Rides over the land so the sphere keeps a hard rim and a shaded limb, rather
-   than the continents running flat to the edge. */
-.introglobe .ig-edge {
-  position: absolute;
-  inset: 0;
-  border-radius: 999px;
-  box-shadow:
-    inset -2px -2.5px 5px rgba(28, 28, 30, 0.18),
-    inset 0 0 0 0.5px rgba(28, 28, 30, 0.14);
-}
 
 /* Small screens: the 52px wordmark plus a 62px mark overruns a 390px phone.
    The design is a fixed 1120x700 canvas and carries no breakpoint, so this
    whole block is ours.
 
-   250px, not the 280px above: the caption sets 243px wide at the design's
+   250px, not the 280px above: the caption sets 218px wide at the design's
    11px/.15em, so a narrower foot wrapped "…WORLD OF / WORK" and, the caption
-   being an inline-flex row, hung the second line off to the left. 250px also
-   happens to be about the width of the shrunken lockup, so the rule still reads
-   as sitting under it. text-align centres the wrap that a phone narrower than
-   any we target would still force.
+   being an inline-flex row, hung the second line off to the left. It was 243px
+   before the globe came out, so the 32px of slack here is now real rather than
+   nominal — but 250px stays, because it is also about the width of the shrunken
+   lockup and the rule wants to read as sitting under it. Anything nearer 220
+   would be one font fallback away from wrapping again. text-align centres the
+   wrap a phone narrower than any we target would still force.
 
    The stage's 20% bottom margin is a proportion of a 700px-tall canvas; on a
    tall phone the same 20% is far more pixels and pushes the lockup into the top
@@ -14838,7 +14782,6 @@ body {
   .introrule,
   .introcaption,
   .introband,
-  .introglobe .ig-land,
   .intromark .i-stem,
   .intromark .i-arm {
     animation: none !important;
