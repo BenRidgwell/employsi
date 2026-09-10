@@ -47,13 +47,23 @@ import { useEffect, useRef, useState } from "react";
 /**
  * When the build-up finishes and the handoff becomes possible.
  *
- * The design's own handoff, unchanged. It was briefly 2600 under the previous
- * design, where the band did not finish arriving until 2020ms and needed the
- * extra time to be seen at all. This one brings the band in at 200ms, so the
- * composition is complete and dwelling long before here and the 400ms that
- * bought is no longer worth charging to every app open.
+ * The design hands off at 2200ms, a shade before its own last stroke — the
+ * rule finishes drawing at 2220ms — so the completed picture never actually
+ * rests. This holds it for ~780ms after that, on request, which takes the whole
+ * intro from about 2.7s to about 3.5s including the 520ms fade out.
+ *
+ * NOT DONE BY STRETCHING THE CHOREOGRAPHY. Every stroke keeps the design's
+ * exact delay and duration; what got longer is the pause on the finished
+ * composition. Slowing the strokes themselves would be redrawing the design
+ * rather than showing it for longer, and the design's own `speed` prop is what
+ * that would amount to.
+ *
+ * This is a FLOOR ON EVERY APP OPEN and the only reason not to raise it
+ * further. It sat at 2600 two designs ago for a different reason: the band
+ * then did not finish arriving until 2020ms and needed the room to be seen at
+ * all. This band is in by 960ms, so all 800ms here is dwell.
  */
-const BUILD_MS = 2200;
+const BUILD_MS = 3000;
 /** Hard ceiling — the veil always lifts by here, ready or not. */
 const MAX_HOLD = 6000;
 
