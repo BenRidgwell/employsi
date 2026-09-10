@@ -31,14 +31,40 @@ _TERM = re.compile(r"""'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)\"""")
 # quotes and silently emptied this parser (and with it every generated dataset).
 # Trailing commas inside the entry are equally Prettier's business.
 _STR = r"""(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")"""
-# `except` is optional and comes after `terms` — see SkillDef in the .ts. It is
-# captured here rather than skipped so the generators apply the SAME
-# suppressions the app does; a negative rule honoured on one side only is worse
-# than no negative rule at all, because the two then disagree silently.
+
+
+def _named(tag: str) -> str:
+    """_STR again, but with NAMED groups.
+
+    So that adding an optional key between two existing ones cannot silently
+    renumber the ones after it. Adding `parent` is exactly that edit, and with
+    positional groups it would have moved `terms` from 5 to 7 and handed
+    load_skills the except list instead — a shape this file has been bitten by
+    once already, when a repo-wide reformat flipped every quote style.
+    """
+    return (r"(?:'(?P<" + tag + r"a>(?:[^'\\]|\\.)*)'"
+            r"|\"(?P<" + tag + r"b>(?:[^\"\\]|\\.)*)\")")
+
+
+def _g(m, tag):
+    """The value of a named _STR pair, whichever quote style it used."""
+    return m.group(tag + "a") if m.group(tag + "a") is not None else m.group(tag + "b")
+
+
+# `parent` is optional and sits between cat and terms — see SkillDef in the .ts.
+# It names the broad skill this entry is a speciality within, and it is captured
+# so load_skills() can LEAVE CHILDREN OUT (see its docstring for why the
+# generated datasets must not see them).
+#
+# `except` is optional and comes after `terms`. It is captured here rather than
+# skipped so the generators apply the SAME suppressions the app does; a negative
+# rule honoured on one side only is worse than no negative rule at all, because
+# the two then disagree silently.
 _ENTRY = re.compile(
-    r"\{\s*skill:\s*" + _STR + r"\s*,\s*cat:\s*" + _STR +
-    r"\s*,\s*terms:\s*\[([^\]]*)\]\s*,?"
-    r"(?:\s*except:\s*\[([^\]]*)\]\s*,?)?\s*\}"
+    r"\{\s*skill:\s*" + _named("skill") + r"\s*,\s*cat:\s*" + _named("cat") +
+    r"(?:\s*,\s*parent:\s*" + _named("parent") + r")?"
+    r"\s*,\s*terms:\s*\[(?P<terms>[^\]]*)\]\s*,?"
+    r"(?:\s*except:\s*\[(?P<except>[^\]]*)\]\s*,?)?\s*\}"
 )
 # A usable term has at least one letter or digit. Latin, CJK and any other
 # script all qualify; a run of punctuation and spaces does not.
@@ -120,8 +146,19 @@ def _check_complete(body: str, parsed: int) -> None:
         )
 
 
-def load_skills(path: str) -> list[tuple[str, list[str]]]:
+def load_skills(path: str, children: bool = False) -> list[tuple[str, list[str]]]:
     """[(skill, terms)] from RAW_SKILLS, for term-matching occupation titles.
+
+    CHILDREN ARE EXCLUDED BY DEFAULT, and every generator wants that default.
+    An entry with a `parent` is a speciality within a broader skill (Midwifery
+    inside Nursing), mined from the wording of real job ADS. What these callers
+    match against is an official occupation classification — ANZSCO, SOC, the
+    Eurostat and ONS groupings — whose granularity is fixed by the statistician
+    and is nowhere near that fine. Letting children through would split one
+    coarse occupation's vacancies across specialities the source never
+    distinguished, which is inventing precision rather than reporting it, and
+    would silently change every generated dataset the moment a child was added.
+    Pass children=True only if you are matching ad titles.
 
     Terms only. `except` phrases are returned by load_excepts() and applied by
     matcher(); a caller that wants raw terms (there is one: the override
@@ -146,8 +183,10 @@ def load_skills(path: str) -> list[tuple[str, list[str]]]:
     entries = 0
     for m in _ENTRY.finditer(body):
         entries += 1
-        skill = _unescape(m.group(1) or m.group(2))
-        terms = [_unescape(a or b) for a, b in _TERM.findall(m.group(5))]
+        skill = _unescape(_g(m, "skill"))
+        if not children and _g(m, "parent") is not None:
+            continue
+        terms = [_unescape(a or b) for a, b in _TERM.findall(m.group("terms"))]
         for t in terms:
             if not _MEANINGFUL.search(t):
                 bad.append((skill, t))
@@ -182,10 +221,12 @@ def load_categories(path: str) -> list[tuple[str, str]]:
     src = open(path).read()
     body = _strip_comments(src.split('RAW_SKILLS', 1)[1]).split('];', 1)[0]
     seen: dict[str, str] = {}
-    for m in re.finditer(r"\{\s*skill:\s*" + _STR + r"\s*,\s*cat:\s*" + _STR, body):
-        skill = _unescape(m.group(1) or m.group(2))
+    for m in _ENTRY.finditer(body):
+        if _g(m, "parent") is not None:
+            continue  # children are out for the same reason as in load_skills
+        skill = _unescape(_g(m, "skill"))
         if skill not in seen:
-            seen[skill] = _unescape(m.group(3) or m.group(4))
+            seen[skill] = _unescape(_g(m, "cat"))
     if not seen:
         raise TaxonomyError(f'No skill/cat pairs parsed from {path}')
     return list(seen.items())
@@ -201,8 +242,8 @@ def load_excepts(path: str) -> dict[str, list[str]]:
     body = _strip_comments(src.split('RAW_SKILLS', 1)[1]).split('];', 1)[0]
     out: dict[str, list[str]] = {}
     for m in _ENTRY.finditer(body):
-        skill = _unescape(m.group(1) or m.group(2))
-        raw = m.group(6)
+        skill = _unescape(_g(m, "skill"))
+        raw = m.group("except")
         if not raw:
             continue
         got = out.setdefault(skill, [])

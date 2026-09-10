@@ -11,6 +11,36 @@
 export interface SkillDef {
   skill: string; // canonical display name
   cat: string; // grouping for the legend
+  /**
+   * The broader skill this one is a speciality WITHIN, e.g. "Talent
+   * Acquisition" inside "Human Resources".
+   *
+   * THE PARENT MUST MATCH ON ITS OWN EVIDENCE BEFORE A CHILD CAN.
+   * A child is not an independent skill that happens to be related; it is a
+   * narrowing of its parent, so the title has to be a parent title first. That
+   * rule is what makes child terms safe to write loosely: "aged care" is a
+   * sound term for Aged Care Nursing precisely because the title must
+   * independently say "nurse", so "Aged Care Worker" — a real job, and not a
+   * nursing one — never reaches it. Without the gate every child term would
+   * need re-qualifying with its parent's vocabulary and would still leak.
+   *
+   * A child does NOT replace its parent. Both are emitted, so every existing
+   * count over a parent is unchanged by adding children beneath it, and a
+   * child's count is a SUBSET of its parent's rather than a sibling of it.
+   *
+   * One level only: a parent may not itself have a parent. Asserted in
+   * scripts/check-skills.ts, along with a child sharing its parent's `cat` and
+   * clearing an evidence floor in the live archive — a speciality nobody
+   * advertises is a speciality we should not be reporting on.
+   *
+   * WHAT LIMITS THIS. The matcher reads TITLES (see skillsForText), and the
+   * archive stores no description column, so a child only exists if employers
+   * name it in the title. Measured 2026-09-10 over released markets: children
+   * reach 26% of Human Resources ads and 29% of Nursing ads. The rest say only
+   * "HR Advisor" or "Registered Nurse", which is not a gap in the taxonomy —
+   * it is the ad not saying.
+   */
+  parent?: string;
   terms: string[]; // lowercase substrings matched against title (+ description)
   /**
    * Titles this skill must NOT claim, however well its terms match.
@@ -492,6 +522,102 @@ const RAW_SKILLS: SkillDef[] = [
       "industrial relations",
     ],
   },
+  // ── Human Resources · specialities ─────────────────────────────────────
+  //
+  // Children of the skill above; see `parent` on SkillDef for the rule. Each
+  // one was mined from the archive's own titles rather than from an idea of
+  // what HR contains, and each clears the evidence floor check-skills.ts
+  // enforces. Shares and title counts below are over RELEASED MARKETS on
+  // 2026-09-10, which is 3,613 distinct HR titles / 4,858 rows.
+  //
+  // Not minted, for want of evidence: Remuneration & Benefits (18 titles),
+  // Diversity & Inclusion (7), WHS / Injury Management (3). They are real
+  // specialities that Australian employers mostly do not put in a title.
+  {
+    skill: "Talent Acquisition",
+    cat: "Corporate",
+    parent: "Human Resources",
+    // 491 titles, 14.3% of HR — by a distance the largest speciality.
+    // "talent acquisition" spelled out rather than the parent's bare "talent",
+    // which also catches "Talent Pool"/"Talent Community" registers — 6.1% of
+    // the parent, and mostly advertising train drivers and process operators.
+    terms: ["talent acquisition", "recruit", "resourcing", "sourcing specialist", "talent scout"],
+  },
+  {
+    skill: "Employee Relations",
+    cat: "Corporate",
+    parent: "Human Resources",
+    // 81 titles, 3.7%.
+    terms: [
+      "employee relations",
+      "industrial relations",
+      "workplace relations",
+      "employment relations",
+      "enterprise bargaining",
+    ],
+  },
+  {
+    skill: "Learning & Development",
+    cat: "Corporate",
+    parent: "Human Resources",
+    // 76 titles, 2.4%.
+    terms: [
+      "learning and development",
+      "training and development",
+      "instructional design",
+      "capability development",
+      "learning designer",
+      "organisational development",
+      "organizational development",
+    ],
+  },
+  {
+    skill: "Workforce Planning",
+    cat: "Corporate",
+    parent: "Human Resources",
+    // 83 titles, 2.7%. Stems, not the parent's bare "workforce", which is on
+    // every "workforce services" and "workforce administration" title.
+    terms: [
+      "workforce plan",
+      "workforce analy",
+      "workforce strateg",
+      "workforce management",
+      "workforce insight",
+    ],
+  },
+  {
+    skill: "HR Systems",
+    cat: "Corporate",
+    parent: "Human Resources",
+    // 63 titles, 1.8% — thin, and named here because the platforms are what
+    // employers actually write. Products are listed individually because a
+    // title says "Workday" or "Aurion" far more often than "HR system".
+    terms: [
+      "hris",
+      "hrms",
+      "hr system",
+      "people system",
+      "workday",
+      "successfactors",
+      "success factors",
+      "chris21",
+      "aurion",
+      "preceda",
+      "peoplesoft",
+      "hr technology",
+      "hr information",
+      "hr data",
+      "people analytics",
+      "hr analytics",
+      "hr operations",
+    ],
+  },
+  // NO PAYROLL CHILD, though the evidence was there (57 titles, 1.4%). The
+  // taxonomy already carries "Bookkeeping & Payroll" as a broad skill under
+  // Admin, on the identical term, so minting this would have been one concept
+  // under two names — and an HR payroll title already resolves through it.
+  // Duplication like that is what SKILL_ALIAS exists to clean up after; better
+  // not to create it.
   {
     skill: "Commercial & Legal",
     cat: "Corporate",
@@ -760,6 +886,118 @@ const RAW_SKILLS: SkillDef[] = [
       "nurse manager",
       "nurse educator",
     ],
+  },
+  // ── Nursing · specialities ─────────────────────────────────────────────
+  //
+  // Children of the skill above. Mined over RELEASED MARKETS on 2026-09-10 —
+  // 5,046 distinct titles / 6,509 rows — deliberately excluding the US, where
+  // "travel nurse" agency postings are 16% of the parent and would have shaped
+  // every child around a hiring mode that does not exist here.
+  //
+  // Not minted, for want of evidence: Community Nursing (14 titles), Mental
+  // Health Nursing (30, and Mental Health & Counselling already covers it as a
+  // top-level skill), Medical Imaging Nursing (21).
+  {
+    skill: "Midwifery",
+    cat: "Health",
+    parent: "Nursing",
+    // 449 titles, 8.4% — the largest by some way. "midwif" is a stem so it
+    // takes midwife, midwifery and midwifery-led.
+    terms: ["midwif", "midwive", "birth suite", "obstetric nurse"],
+  },
+  {
+    skill: "Perioperative Nursing",
+    cat: "Health",
+    parent: "Nursing",
+    // 188 titles, 4.1%. Anaesthetics and recovery sit here rather than in a
+    // child of their own: they are stages of the same theatre pathway, and
+    // splitting them left both under the floor.
+    terms: [
+      "periopera",
+      "theatre nurse",
+      "operating theatre",
+      "scrub scout",
+      "anaesthe",
+      "recovery nurse",
+      "pacu",
+    ],
+  },
+  {
+    skill: "Critical Care Nursing",
+    cat: "Health",
+    parent: "Nursing",
+    // 142 titles, 3.0%.
+    terms: ["intensive care", "critical care", "coronary care", "high dependency", "icu"],
+  },
+  {
+    skill: "Nurse Education",
+    cat: "Health",
+    parent: "Nursing",
+    // 157 titles, 2.8%.
+    terms: [
+      "nurse educator",
+      "nursing educator",
+      "clinical educator",
+      "clinical facilitator",
+      "nurse education",
+    ],
+  },
+  {
+    skill: "Oncology & Palliative Nursing",
+    cat: "Health",
+    parent: "Nursing",
+    // 144 titles, 2.7%. One child rather than two because palliative nursing
+    // alone did not clear the floor and the two share wards and rosters here.
+    terms: ["oncolog", "chemotherapy", "palliative", "haematology nurse"],
+  },
+  {
+    skill: "Emergency Nursing",
+    cat: "Health",
+    parent: "Nursing",
+    // 118 titles, 2.5%.
+    terms: ["emergency department", "emergency nurse", "triage nurse", "emergency registered"],
+  },
+  {
+    skill: "Aged Care Nursing",
+    cat: "Health",
+    parent: "Nursing",
+    // 125 titles, 2.0%. "nursing home" was a term here and is deliberately
+    // gone: it names the WORKPLACE, not the speciality, and was claiming an
+    // "HR Generalist (nursing home)" and an "Operations Executive (nursing
+    // home)" as nursing specialists.
+    terms: ["aged care", "residential aged", "geriatric"],
+  },
+  {
+    skill: "Nurse Practitioner",
+    cat: "Health",
+    parent: "Nursing",
+    // 96 titles, 1.9%. A scope of practice rather than a ward, but employers
+    // advertise it as the role, which is what this taxonomy follows.
+    terms: ["nurse practitioner"],
+  },
+  {
+    skill: "Paediatric Nursing",
+    cat: "Health",
+    parent: "Nursing",
+    // 92 titles, 1.5%. Both spellings: the archive carries US-sourced rows.
+    terms: ["paediatric", "pediatric", "neonatal", "nicu", "child health nurse"],
+  },
+  {
+    skill: "Renal Nursing",
+    cat: "Health",
+    parent: "Nursing",
+    // 78 titles, 1.4%.
+    terms: ["renal", "dialysis", "nephrolog"],
+  },
+  {
+    skill: "Surgical Nursing",
+    cat: "Health",
+    parent: "Nursing",
+    // 40 titles, 0.8% — exactly on the floor, and kept for that reason rather
+    // than in spite of it: the floor is where the evidence stops being enough.
+    // Deliberately narrow terms, because a bare "surgical" is on most theatre
+    // and ward titles and would have swallowed Perioperative.
+    terms: ["surgical ward", "surgical nurse", "orthopaedic nurse", "ortho nurse"],
   },
   {
     skill: "Medical Practice",
@@ -1524,6 +1762,13 @@ export const SKILLS: SkillDef[] = (() => {
         ex.except = [...(ex.except ?? [])];
         for (const t of d.except) if (!ex.except.includes(t)) ex.except.push(t);
       }
+      // A skill declared twice must not disagree about whose speciality it is.
+      // Recorded rather than resolved, for the same reason category conflicts
+      // are: silently picking one declaration is how the app and the
+      // generators drift apart.
+      if (d.parent && ex.parent !== d.parent && !SKILL_NAME_CONFLICTS.includes(d.skill)) {
+        SKILL_NAME_CONFLICTS.push(d.skill);
+      }
     } else {
       byName.set(d.skill, {
         ...d,
@@ -1672,13 +1917,13 @@ export function skillsForText(title: string, _description?: string, ctx?: SkillC
   // (free-text search) keep the old behaviour rather than silently losing
   // matches.
   const industry = ctx ? `${ctx.sector ?? ""} ${ctx.group ?? ""}` : null;
-  const out: string[] = [];
-  for (const def of SKILLS) {
+
+  const claims = (def: SkillDef): boolean => {
     // Checked before the terms, not after: an except is a statement about the
     // TITLE, so no amount of term evidence should override it.
-    if (def.except?.some((t) => hay.includes(t))) continue;
+    if (def.except?.some((t) => hay.includes(t))) return false;
     const hits = def.terms.filter((t) => termMatches(hay, t));
-    if (!hits.length) continue;
+    if (!hits.length) return false;
     // Drop a skill whose ONLY evidence is a gated term nothing licenses. This
     // runs whether or not a caller supplied context — the title is the primary
     // source of evidence, so the check cannot be skipped by omitting ctx.
@@ -1689,19 +1934,54 @@ export function skillsForText(title: string, _description?: string, ctx?: SkillC
       const industryGate = INDUSTRY_GATED[t];
       return industry !== null && industryGate ? industryGate.test(industry) : false;
     });
-    if (!licensed.length) continue;
-    out.push(def.skill);
-  }
-  // Dedupe: a canonical skill can be declared by more than one def (e.g. an
-  // English def plus a Chinese-terms def for the Zhaopin source), so a title
-  // hitting both would otherwise list the skill twice.
-  return [...new Set(out)];
+    return licensed.length > 0;
+  };
+
+  // A Set from the start, because a canonical skill can be declared by more
+  // than one def (an English def plus a Chinese-terms def for the Zhaopin
+  // source), so a title hitting both would otherwise list the skill twice.
+  const out = new Set<string>();
+  // PASS ONE — the broad skills, on their own evidence.
+  for (const def of SKILLS) if (!def.parent && claims(def)) out.add(def.skill);
+  // PASS TWO — specialities, but only inside a parent this title already
+  // claimed. See `parent` on SkillDef: a child narrows its parent rather than
+  // standing beside it, so "Aged Care Worker" cannot become Aged Care Nursing
+  // however plainly it says "aged care". Both survive into the result, so a
+  // parent's count is unchanged by children existing beneath it.
+  for (const def of SKILLS)
+    if (def.parent && out.has(def.parent) && claims(def)) out.add(def.skill);
+  return [...out];
 }
 
-export const ALL_SKILLS: string[] = SKILLS.map((s) => s.skill);
+/**
+ * The broad skills — every canonical skill that is not a speciality within
+ * another.
+ *
+ * Search, the analyst charts and the heat map all enumerate this, and they mean
+ * "the skills there are" rather than "every name the taxonomy knows". Adding
+ * children to it would put Midwifery beside Nursing in a list that reads as a
+ * partition, and would have every per-skill scan do a third more work counting
+ * rows it already counted under the parent. Children are reachable through
+ * SKILL_CHILDREN and are accepted everywhere a stored name is read.
+ */
+export const ALL_SKILLS: string[] = SKILLS.filter((s) => !s.parent).map((s) => s.skill);
+/** Every canonical name including specialities — what an archived `skills`
+ *  column may legitimately contain. */
+export const ALL_SKILLS_AND_CHILDREN: string[] = SKILLS.map((s) => s.skill);
 export const SKILL_CATEGORY: Record<string, string> = Object.fromEntries(
   SKILLS.map((s) => [s.skill, s.cat]),
 );
+/** Speciality → the broad skill it narrows. Absent for a broad skill. */
+export const SKILL_PARENT: Record<string, string> = Object.fromEntries(
+  SKILLS.filter((s) => s.parent).map((s) => [s.skill, s.parent as string]),
+);
+/** Broad skill → its specialities, declaration order. Only skills that have
+ *  any appear as keys. */
+export const SKILL_CHILDREN: Record<string, string[]> = (() => {
+  const out: Record<string, string[]> = {};
+  for (const s of SKILLS) if (s.parent) (out[s.parent] ??= []).push(s.skill);
+  return out;
+})();
 
 // ── Legacy names in stored data ─────────────────────────────────────────────
 // The D1 archive freezes each listing's mapped skills as JSON at the moment it

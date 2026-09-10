@@ -3,7 +3,7 @@ import { callerRole } from "./sessionRole";
 import { marketVisible, isReleasedRow } from "./markets";
 import { LIVE_FEEDS_ONLY_SQL, type D1Like, type SqlValue } from "./jobArchive";
 import { COMPANY_ID_ALIAS, type RolePoint } from "./openRolesFn";
-import { SKILL_CATEGORY, parseStoredSkills } from "../data/skillsTaxonomy";
+import { ALL_SKILLS, SKILL_CATEGORY, parseStoredSkills } from "../data/skillsTaxonomy";
 import { AREA_SOURCES, canonicalArea } from "../data/hiringAreas";
 import { annualAud, medianAnnual } from "./salaryParse";
 import { FX_AS_AT } from "../data/fxRates";
@@ -1810,7 +1810,12 @@ export interface SkillMarket {
   /** Total advertised value on the reference day, and its daily series. */
   totalValue: number;
   valueSeries: number[];
-  /** Coverage header: priced of seen, and seen of the whole taxonomy. */
+  /** Coverage header: priced of seen, and seen of the whole taxonomy.
+   *
+   *  `taxonomy` counts the BROAD skills only. Specialities (Midwifery inside
+   *  Nursing) are subsets of a skill already counted here, so including them
+   *  would inflate the denominator with rows the dashboard never lists and make
+   *  "seen 62 of 100" read as worse coverage for no change in the market. */
   priced: number;
   seen: number;
   taxonomy: number;
@@ -2060,7 +2065,7 @@ export function foldSkillMarket(
     valueSeries,
     priced: rowsOut.filter((r) => r.pay !== null).length,
     seen: rowsOut.length,
-    taxonomy: Object.keys(SKILL_CATEGORY).length,
+    taxonomy: ALL_SKILLS.length,
     unplaceable,
     scope: opts.scope,
     fxAsAt: opts.fxAsAt,

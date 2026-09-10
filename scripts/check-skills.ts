@@ -11,13 +11,28 @@
  */
 import {
   ALL_SKILLS,
+  ALL_SKILLS_AND_CHILDREN,
+  SKILLS,
   SKILL_ALIAS,
   SKILL_CATEGORY,
+  SKILL_CHILDREN,
   SKILL_NAME_CONFLICTS,
+  SKILL_PARENT,
   skillsForText,
 } from "../src/employsi/data/skillsTaxonomy";
 
 let failed = false;
+
+/**
+ * How many distinct archived titles a speciality needs before we report on it.
+ *
+ * 40 is where the mined candidates stopped being a speciality and started being
+ * a handful of ads: measured 2026-09-10, Community Nursing had 14 titles and
+ * Diversity & Inclusion 7, both real jobs and neither a thing the Australian
+ * market names often enough to chart. The children that shipped sit between 40
+ * and 449.
+ */
+const CHILD_TITLE_FLOOR = 40;
 
 // 1. No duplicate canonical skill names in the exported list.
 const counts = new Map<string, number>();
@@ -30,10 +45,19 @@ if (dups.length) {
   console.log(`✓ ${ALL_SKILLS.length} skills, all unique.`);
 }
 
-// SKILL_CATEGORY is keyed by name, so its size must equal the unique-name count.
-if (Object.keys(SKILL_CATEGORY).length !== counts.size) {
+// SKILL_CATEGORY is keyed by name and must cover EVERY canonical name —
+// specialities included, because parseStoredSkills uses it as the membership
+// test for an archived name and would drop a child's demand without it. So it
+// is checked against ALL_SKILLS_AND_CHILDREN, not against ALL_SKILLS, which is
+// deliberately the broad skills only.
+const catKeys = new Set(Object.keys(SKILL_CATEGORY));
+const missingCat = ALL_SKILLS_AND_CHILDREN.filter((s) => !catKeys.has(s));
+if (missingCat.length || catKeys.size !== new Set(ALL_SKILLS_AND_CHILDREN).size) {
   failed = true;
-  console.error("✗ SKILL_CATEGORY key count does not match the unique skill count.");
+  console.error(
+    `✗ SKILL_CATEGORY does not cover every canonical name` +
+      (missingCat.length ? `: missing ${missingCat.join(", ")}` : " (extra keys present)."),
+  );
 }
 
 // 2. No same-named defs with conflicting categories (silently dropped on merge).
@@ -251,6 +275,169 @@ if (ACCOUNT && DB && TOKEN) {
   }
 } else {
   console.log("· Principal archive check skipped (no D1 credentials in the environment).");
+}
+
+// ── 5. Parent / child specialities ──────────────────────────────────────────
+//
+// The structural half runs offline. The evidence half needs the archive and is
+// further down, with the other D1-backed checks.
+{
+  const kids = Object.keys(SKILL_PARENT);
+  const problems: string[] = [];
+  for (const child of kids) {
+    const parent = SKILL_PARENT[child];
+    // A parent that does not exist would make the child unreachable: the
+    // matcher gates on `out.has(def.parent)`, which can never be true.
+    if (!(parent in SKILL_CATEGORY)) problems.push(`${child}: parent "${parent}" is not a skill`);
+    // One level. A grandchild would need the middle skill to have matched, and
+    // nothing in skillsForText walks a chain.
+    else if (parent in SKILL_PARENT)
+      problems.push(`${child}: parent "${parent}" is itself a child`);
+    // Same category, so a speciality legends and colours with the skill it
+    // narrows rather than appearing in an unrelated part of the chart.
+    else if (SKILL_CATEGORY[child] !== SKILL_CATEGORY[parent])
+      problems.push(
+        `${child}: cat "${SKILL_CATEGORY[child]}" != parent's "${SKILL_CATEGORY[parent]}"`,
+      );
+  }
+  // A child sharing a term with an UNRELATED broad skill is two names for one
+  // concept — the state SKILL_ALIAS exists to clean up after. (Sharing terms
+  // with its own parent is normal and expected.)
+  for (const child of kids) {
+    const def = SKILLS.find((s) => s.skill === child)!;
+    for (const other of SKILLS) {
+      if (other.parent || other.skill === SKILL_PARENT[child]) continue;
+      const shared = def.terms.filter((t) => other.terms.includes(t));
+      // "aged care" is deliberately on both Aged Care Nursing and the broad
+      // Aged & Disability Care: a nurse specialising in aged care really is
+      // doing both, and the two are read by different audiences. Anything else
+      // is duplication.
+      const allowed = child === "Aged Care Nursing" && other.skill === "Aged & Disability Care";
+      if (shared.length && !allowed)
+        problems.push(
+          `${child} shares term(s) with broad skill ${other.skill}: ${shared.join(", ")}`,
+        );
+    }
+  }
+  if (problems.length) {
+    failed = true;
+    console.error(`✗ Parent/child problems:\n   ${problems.join("\n   ")}`);
+  } else {
+    const summary = Object.entries(SKILL_CHILDREN)
+      .map(([p, c]) => `${p} (${c.length})`)
+      .join(", ");
+    console.log(
+      `✓ ${kids.length} specialities under ${Object.keys(SKILL_CHILDREN).length} parents: ${summary}.`,
+    );
+  }
+  // The matcher's central rule, asserted rather than assumed: a child cannot
+  // fire unless the title independently claims its parent. Without this,
+  // "Aged Care Worker" — a real job, and not a nursing one — becomes Aged Care
+  // Nursing, and every loosely-worded child term leaks the same way.
+  const GATE: [string, string, boolean][] = [
+    ["Aged Care Worker", "Aged Care Nursing", false],
+    ["Registered Nurse - Aged Care", "Aged Care Nursing", true],
+    ["Talent Acquisition Partner", "Talent Acquisition", true],
+    ["Acquisition Analyst", "Talent Acquisition", false],
+    ["Renal Dietitian", "Renal Nursing", false],
+    ["Registered Nurse - Renal Dialysis", "Renal Nursing", true],
+    ["Workday Finance Consultant", "HR Systems", false],
+    ["HR Systems Analyst", "HR Systems", true],
+  ];
+  const gateFails = GATE.filter(([t, s, want]) => skillsForText(t).includes(s) !== want);
+  if (gateFails.length) {
+    failed = true;
+    for (const [t, s, want] of gateFails)
+      console.error(`✗ "${t}" should ${want ? "" : "NOT "}map to ${s}; got [${skillsForText(t)}]`);
+  } else {
+    console.log(`✓ ${GATE.length} titles honour the parent gate.`);
+  }
+  // Every child name must be readable back out of the archive, or a row
+  // written with it silently loses that demand (see parseStoredSkills).
+  const unreadable = kids.filter((k) => !ALL_SKILLS_AND_CHILDREN.includes(k));
+  if (unreadable.length) {
+    failed = true;
+    console.error(`✗ Children missing from ALL_SKILLS_AND_CHILDREN: ${unreadable.join(", ")}`);
+  }
+
+  // ── the evidence floor ────────────────────────────────────────────────────
+  //
+  // A speciality has to be one employers actually advertise. Each child here
+  // was minted off a measured count of distinct titles in the archive, and this
+  // re-measures it: a child that decays below the floor is one the product is
+  // reporting on with too little behind it, and it should fail the build rather
+  // than keep rendering a plausible small number. Same discipline as the
+  // coverage checks in check-skill-trends.ts.
+  //
+  // Distinct TITLES, not rows, for the reason the whole archive now counts that
+  // way: one vacancy on four job boards is four rows and one role.
+  //
+  // Titles are matched with skillsForText, so what is measured is what the
+  // matcher would actually produce — not a re-implementation of it that could
+  // drift.
+  if (ACCOUNT && DB && TOKEN) {
+    try {
+      const res = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/d1/database/${DB}/query`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            // A YEAR, not all of it. The floor asks "do employers still
+            // advertise this speciality", and over the whole archive — which
+            // reaches back to 2003 — a speciality that died years ago would
+            // keep clearing it on history alone. A year is also what keeps the
+            // scan affordable: it is ~144k distinct titles rather than ~150k,
+            // each of which goes through the real matcher.
+            sql:
+              "SELECT DISTINCT lower(trim(title)) t FROM jobs " +
+              "WHERE title IS NOT NULL AND last_seen >= date('now','-365 day')",
+          }),
+        },
+      );
+      const json = (await res.json()) as {
+        success?: boolean;
+        result?: { results?: { t?: string }[] }[];
+      };
+      if (!json.success) throw new Error("D1 title query failed");
+      const titles = (json.result?.[0]?.results ?? []).map((r) => r.t ?? "");
+      const n: Record<string, number> = Object.fromEntries(kids.map((k) => [k, 0]));
+      // Only titles that contain at least one child TERM can possibly count
+      // toward a child, so the rest never reach the matcher. Exact, not an
+      // approximation — a child with no term present cannot match — and it is
+      // the difference between a couple of seconds and a couple of minutes,
+      // because the full taxonomy is 116 defs and 900-odd terms per title.
+      const childTerms = kids.flatMap((k) => SKILLS.find((d) => d.skill === k)?.terms ?? []);
+      for (const t of titles) {
+        if (!childTerms.some((term) => t.includes(term))) continue;
+        for (const s of skillsForText(t)) if (s in n) n[s] += 1;
+      }
+      const thin = kids.filter((k) => n[k] < CHILD_TITLE_FLOOR);
+      if (thin.length) {
+        failed = true;
+        console.error(
+          `✗ Specialities below the ${CHILD_TITLE_FLOOR}-title evidence floor: ` +
+            thin.map((k) => `${k} (${n[k]})`).join(", "),
+        );
+        console.error(
+          "   Either the archive has moved on and the speciality should be retired,\n" +
+            "   or its terms have stopped matching how employers word the title.",
+        );
+      } else {
+        const lowest = kids.reduce((a, b) => (n[a] <= n[b] ? a : b));
+        console.log(
+          `✓ All ${kids.length} specialities clear the ${CHILD_TITLE_FLOOR}-title floor ` +
+            `(thinnest: ${lowest} at ${n[lowest]}, over ${titles.length} titles from the last year).`,
+        );
+      }
+    } catch (e) {
+      // Same rule as the checks above: a checking failure is not a taxonomy
+      // failure. Say so rather than turning a network blip into a red build.
+      console.log(`· Speciality evidence check skipped: ${(e as Error).message}`);
+    }
+  } else {
+    console.log("· Speciality evidence check skipped (no D1 credentials in the environment).");
+  }
 }
 
 if (failed) {
