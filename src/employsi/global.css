@@ -14546,7 +14546,7 @@ body {
 }
 
 /* ── Intro loader ───────────────────────────────────────────────────────────
-   From `App_Intro_Animation_3.html`. The build-up keeps the design's timings to
+   From `App_Intro_Animation_4.html`. The build-up keeps the design's timings to
    the millisecond; the handoff and the veil are triggered by `.is-out` instead
    of a delay, because the veil has to wait for the app rather than the clock
    (see components/IntroLoader.tsx).
@@ -14554,12 +14554,16 @@ body {
    z-index 90 puts it above every panel and the toast (max 70) — while it is up
    it owns the screen, which is the point of a splash.
 
-   REDRAWN 2026-09-08 to the third design, which is mostly a stripping-out. The
+   REDRAWN 2026-09-08 to the third design, which was mostly a stripping-out. The
    radial wash, the backdrop-blurred haze and the gradient over the band's top
    edge are all gone; the ground is flush white and the footage meets it. The
-   band grows from a third of the screen to 44% and now arrives at 200ms rather
-   than 1300ms, the stage lifts off centre by 20%, and the globe loses its
+   band grew from a third of the screen to 44% and now arrives at 200ms rather
+   than 1300ms, the stage lifts off centre by 20%, and the globe lost its
    second land layer, its bob and its breathing shine for a single pale sphere.
+
+   The fourth design changes two properties and nothing else: the band goes to
+   56% and the footage anchors at 78% down its frame rather than to its bottom
+   edge. Same clip, byte for byte.
 
    The design's own stylesheet still carries a div-built parallax city
    (city-drift, city-window, city-traffic) plus the previous version's grid and
@@ -14635,7 +14639,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 44%;
+  height: 56%;
   overflow: hidden;
   isolation: isolate;
   animation: in-band 760ms cubic-bezier(0.16, 1, 0.3, 1) 200ms both;
@@ -14647,7 +14651,10 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center bottom;
+  /* 78% down the frame, not its bottom edge: with the band at 56% the footage
+     overflows by less, and anchoring to the bottom pushed the skyline's tops
+     out of view. */
+  object-position: center 78%;
   filter: grayscale(1);
 }
 /* Lifted off centre so the lockup sits in the white above the skyline rather

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 /**
  * The intro animation that covers the app while it boots, from
- * `App_Intro_Animation_3.html`.
+ * `App_Intro_Animation_4.html`.
  *
  * WHY THE HANDOFF IS NOT ON A TIMER
  * The design choreographs the whole thing on fixed delays — the veil lifts at
@@ -97,7 +97,7 @@ export function IntroLoader({ ready }: { ready: boolean }) {
 
   return (
     <div className={`introveil${out ? " is-out" : ""}`} aria-hidden="true">
-      {/* The skyline across the bottom 44%. No gradient over its top edge, and
+      {/* The skyline across the bottom 56%. No gradient over its top edge, and
           that is deliberate rather than an omission: the footage is a city
           against a blown-out white sky, so it dissolves into the page on its
           own and a fade would only grey the buildings' tops. The previous
@@ -129,9 +129,10 @@ export function IntroLoader({ ready }: { ready: boolean }) {
                 does; the MP4 is what Safari uses.
 
                 Both are the source's native 1280x720, uncropped — unlike the
-                previous band, this one is not safe to crop, because at phone
-                aspect ratios the 44% band is TALLER than it is wide relative
-                to the footage and cover() uses the full frame height. 333KB
+                street-scene band two designs ago, this one is not safe to crop:
+                at phone aspect ratios the 56% band is TALLER than it is wide
+                relative to the footage, so cover() uses the full frame height,
+                and the 78% anchor draws on the middle of the frame too. 333KB
                 and 248KB against the supplied file's 3.9MB, which is almost
                 all bitrate: 7345 kb/s for a slow drift. The encodes are
                 greyscale, because CSS applies grayscale(1) anyway and the
