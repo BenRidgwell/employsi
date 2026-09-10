@@ -498,7 +498,107 @@ const RAW_SKILLS: SkillDef[] = [
       "financial planning",
       "fp and a",
       "fpa",
+      // "audit", not just "auditor". Surfaced while adding the Audit
+      // speciality below, which could not fire on titles the PARENT did not
+      // recognise: measured on the archive, 477 distinct titles containing
+      // "audit" but never the word "auditor" — "Audit Manager", "Internal
+      // Audit Manager", "Audit Associate", "Associate Partner - Audit" — over
+      // 704 rows, and most of them were carrying NO skill at all. That is 704
+      // rows of audit demand the product could not see.
+      //
+      // The cost is an audit of something other than the accounts, taken back
+      // by the except below. "auditorium" does not appear in the archive at
+      // all, so the left anchor needs no help there.
+      "audit",
     ],
+    except: [
+      // An audit of a ward, a worksite or an energy bill is not accounting
+      // work, and each of these suppresses the skill for the whole title —
+      // right, because none of them is partly a finance role.
+      //
+      // Measured before adding them: clinical, energy and environmental audits
+      // map to Finance & Accounting on NO rows today, so those three are
+      // purely preventive against the new "audit" term. Safety and quality
+      // audits do match 8 rows today, through "auditor", and those 8 are
+      // wrong for the same reason the others would be.
+      //
+      // "night audit" is deliberately NOT here. A hotel night auditor really
+      // does reconcile the day's accounts, it maps to this skill on 19 rows
+      // today, and taking that away would be a regression rather than a fix.
+      // It is excepted on the Audit speciality instead, which is the narrower
+      // claim it should not make.
+      "clinical audit",
+      "safety audit",
+      "quality audit",
+      "energy audit",
+      "environmental audit",
+    ],
+  },
+  // ── Finance & Accounting · specialities ────────────────────────────────
+  //
+  // Counts over RELEASED MARKETS on 2026-09-10 — 2,788 distinct titles / 4,704
+  // rows. Children reach 20% of the parent; the rest are "Finance Manager" and
+  // "Financial Accountant"-adjacent titles that name no function beyond finance.
+  //
+  // Not minted, for want of evidence: Treasury (23 titles) and Accounts Payable
+  // & Receivable (14) — the latter is thin here because those roles resolve to
+  // the broad Bookkeeping & Payroll skill instead, which is where they belong.
+  {
+    skill: "Taxation",
+    cat: "Corporate",
+    parent: "Finance & Accounting",
+    // 143 titles, 7.0%. Spelled out rather than the parent's bare "tax", which
+    // is also on "tax-free", "taxi" is excluded by the left anchor, and which
+    // as a child term would claim every finance title mentioning tax at all.
+    terms: [
+      "taxation",
+      "tax advisory",
+      "tax manager",
+      "tax accountant",
+      "tax consultant",
+      "corporate tax",
+      "tax analyst",
+      "tax specialist",
+    ],
+  },
+  {
+    skill: "Management Accounting",
+    cat: "Corporate",
+    parent: "Finance & Accounting",
+    // 100 titles, 4.7%. The inward-facing half of the profession — planning,
+    // costing and commercial analysis — against Financial Accounting's
+    // outward-facing statutory reporting.
+    terms: [
+      "management accountant",
+      "cost accountant",
+      "commercial analyst",
+      "fp and a",
+      "financial planning and analysis",
+    ],
+  },
+  {
+    skill: "Audit",
+    cat: "Corporate",
+    parent: "Finance & Accounting",
+    // 93 titles, 4.3%. Internal and external both: the archive does not
+    // separate them often enough to carry two children.
+    //
+    // One term does it. "audit" anchors the start of a word so it takes
+    // "auditor", "auditing" and "audit manager" alike, and the parent gate
+    // plus the parent's except have already ruled out the audits that are not
+    // of accounts. Listing the spellings separately only invited a gap: the
+    // first draft had five and still missed "Audit Associate".
+    terms: ["audit"],
+    // The parent keeps its hotel night auditors — see the note there — but
+    // reconciling a hotel's takings overnight is not the audit profession.
+    except: ["night audit"],
+  },
+  {
+    skill: "Financial Accounting",
+    cat: "Corporate",
+    parent: "Finance & Accounting",
+    // 58 titles, 3.4%.
+    terms: ["financial accountant", "financial reporting", "statutory report", "group accountant"],
   },
   {
     skill: "Procurement & Supply",
@@ -1036,6 +1136,56 @@ const RAW_SKILLS: SkillDef[] = [
       "sonographer",
     ],
   },
+  // ── Allied Health · specialities ───────────────────────────────────────
+  //
+  // The best-named parent in the taxonomy: allied health professions are
+  // registered titles, so employers write them exactly. Children reach 62% of
+  // the parent's ads, against 26-29% for HR and Nursing.
+  //
+  // Counts over RELEASED MARKETS on 2026-09-10 — 1,830 distinct titles / 2,394
+  // rows. The terms restate the parent's, which is normal for a child: the
+  // parent needs them to recognise an allied-health title at all, and the child
+  // needs them to say which profession it is.
+  //
+  // Not minted, for want of evidence: Podiatry (39 titles, one short of the
+  // floor and left out for that reason), Exercise Physiology (37), Audiology
+  // (13), Music & Art Therapy (9), Orthotics & Prosthetics (1).
+  //
+  // NO SOCIAL WORK CHILD, though it measured 78 titles here. "Social &
+  // Community Services" already carries the term "social work" as a broad
+  // skill, and a Social Worker title resolves there today — minting this would
+  // have been one concept under two names, the same trap that kept Payroll out
+  // from under Human Resources.
+  {
+    skill: "Occupational Therapy",
+    cat: "Health",
+    parent: "Allied Health",
+    // 432 titles, 23.7% — the largest speciality anywhere in the taxonomy.
+    terms: ["occupational therap"],
+  },
+  {
+    skill: "Physiotherapy",
+    cat: "Health",
+    parent: "Allied Health",
+    // 386 titles, 22.4%. "physio " with the trailing space is the abbreviation
+    // as a whole word; without it the stem already covers physiotherapist.
+    terms: ["physiotherap", "physio "],
+  },
+  {
+    skill: "Speech Pathology",
+    cat: "Health",
+    parent: "Allied Health",
+    // 152 titles, 8.8%. Three namings of one profession: Australia says speech
+    // pathologist, other markets say speech therapist or speech-language.
+    terms: ["speech patholog", "speech therap", "speech language"],
+  },
+  {
+    skill: "Dietetics & Nutrition",
+    cat: "Health",
+    parent: "Allied Health",
+    // 123 titles, 6.4%.
+    terms: ["dietit", "dietic", "nutritionist"],
+  },
   { skill: "Dental", cat: "Health", terms: ["dental", "dentist", "orthodont"] },
   { skill: "Pharmacy", cat: "Health", terms: ["pharmacist", "pharmacy"] },
   {
@@ -1114,6 +1264,61 @@ const RAW_SKILLS: SkillDef[] = [
       "educator",
       "learning specialist",
       "curriculum",
+    ],
+  },
+  // ── Teaching & Education · specialities ────────────────────────────────
+  //
+  // The SECTOR a teacher works in, which is what Australian education ads
+  // actually name. Counts over RELEASED MARKETS on 2026-09-10 — 4,992 distinct
+  // titles / 6,260 rows.
+  //
+  // Education Leadership, Childcare & Early Learning and Education Support are
+  // broad skills in their own right and are deliberately not restated here.
+  //
+  // Not minted, for want of evidence: Vocational Education (31 titles — and
+  // "vocational education" is already a term on the parent) and Languages
+  // Teaching (7).
+  {
+    skill: "Primary Teaching",
+    cat: "Education",
+    parent: "Teaching & Education",
+    // 644 titles, 12.3%. A bare "primary" is safe ONLY because of the parent
+    // gate: the title has to be a teaching title first, so "primary care" and
+    // "primary industries" never reach it. The dominant Australian wording is
+    // "Teacher - Primary", which is why a "primary teacher" term would have
+    // found barely a tenth of these.
+    terms: ["primary"],
+  },
+  {
+    skill: "Secondary Teaching",
+    cat: "Education",
+    parent: "Teaching & Education",
+    // 507 titles, 8.4%. Same reasoning as Primary.
+    //
+    // "high school" is NOT a term here. It reads as the sector but is nearly
+    // always the EMPLOYER in these titles — "Vocational Education Coordinator
+    // - Lowood State High School" — the same workplace-not-speciality trap that
+    // kept "nursing home" out of Aged Care Nursing.
+    terms: ["secondary", "high school teacher"],
+  },
+  {
+    skill: "Higher Education",
+    cat: "Education",
+    parent: "Teaching & Education",
+    // 343 titles, 7.8%.
+    terms: ["lecturer", "associate professor", "academic ", "postdoctoral", "research fellow"],
+  },
+  {
+    skill: "Special Education",
+    cat: "Education",
+    parent: "Teaching & Education",
+    // 178 titles, 2.9%.
+    terms: [
+      "special education",
+      "learning support teacher",
+      "inclusion teacher",
+      "special needs teacher",
+      "special school",
     ],
   },
   {
@@ -1290,6 +1495,59 @@ const RAW_SKILLS: SkillDef[] = [
       "dasher",
       "rideshare",
     ],
+  },
+  // ── Driving & Transport · specialities ─────────────────────────────────
+  //
+  // What is being driven, which is the distinction the licence classes and the
+  // pay both turn on. Counts over RELEASED MARKETS on 2026-09-10 — 972 distinct
+  // titles / 1,954 rows. Children reach 50% of the parent, the second-best
+  // coverage in the taxonomy after Allied Health.
+  //
+  // NO RAIL OPERATIONS CHILD. It measured 45 titles over released markets and
+  // looked comfortable, then came out at 39 against the floor's own window —
+  // every archived title from the last year — and worse, four of those were
+  // "road train", which is a TRUCK. Excluding those puts it further under. The
+  // rail vocabulary that is here, "locomotive driver", belongs to Truck
+  // Driving's parent well enough without a child claiming it thinly.
+  //
+  // NO BUS & COACH CHILD, and the reason is worth keeping. It measured 36
+  // titles against a floor of 40 — genuinely short — and the obvious way to
+  // make up the difference was a bare "bus" term, which cannot be used: terms
+  // anchor the start of a word, so "bus" matches "BUSiness" and was picking up
+  // "10ft lorry driver & business support". Loosening a term to clear a floor
+  // is the wrong way round in any case.
+  {
+    skill: "Truck Driving",
+    cat: "Transport",
+    parent: "Driving & Transport",
+    // 213 titles, 24.2%. The licence classes are the Australian naming: HR is
+    // Heavy Rigid, HC Heavy Combination, MC Multi Combination. "hr driver" is
+    // the one term in this taxonomy that means something different under two
+    // parents — Human Resources also matches it, on the "hr " term — and here
+    // it is unambiguously the truck licence.
+    terms: [
+      "truck driver",
+      "lorry driver",
+      "hr driver",
+      "hc driver",
+      "mc driver",
+      "heavy vehicle driver",
+      "tipper driver",
+      "heavy rigid",
+      "heavy combination",
+      // A ROAD TRAIN IS A TRUCK — several trailers behind one prime mover, and
+      // an outback Australian one at that. It reads as rail to anyone who has
+      // not met the term, and it very nearly shipped inside a Rail Operations
+      // speciality on the strength of "train driver".
+      "road train",
+    ],
+  },
+  {
+    skill: "Delivery Driving",
+    cat: "Transport",
+    parent: "Driving & Transport",
+    // 179 titles, 18.5%.
+    terms: ["delivery driver", "courier", "van driver", "parcel delivery", "delivery rider"],
   },
   {
     skill: "Warehousing & Logistics",

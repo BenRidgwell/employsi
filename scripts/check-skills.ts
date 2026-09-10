@@ -343,6 +343,23 @@ if (ACCOUNT && DB && TOKEN) {
     ["Registered Nurse - Renal Dialysis", "Renal Nursing", true],
     ["Workday Finance Consultant", "HR Systems", false],
     ["HR Systems Analyst", "HR Systems", true],
+    // The gate is what lets these child terms stay short. Each false case is a
+    // real title the term would claim on its own.
+    ["Primary Health Care Nurse", "Primary Teaching", false],
+    ["Primary School Cleaner", "Primary Teaching", false],
+    ["Teacher - Primary", "Primary Teaching", true],
+    ["Teacher - Secondary Generalist", "Secondary Teaching", true],
+    ["Occupational Health and Safety Advisor", "Occupational Therapy", false],
+    ["Occupational Therapist - Paediatrics", "Occupational Therapy", true],
+    ["Clinical Audit Coordinator", "Audit", false],
+    ["Night Auditor", "Audit", false],
+    ["Internal Audit Manager", "Audit", true],
+    ["Taxi Driver", "Taxation", false],
+    ["Tax Accountant", "Taxation", true],
+    // "hr driver" is Heavy Rigid under one parent and Human Resources under
+    // another. Both readings are correct and both must survive.
+    ["HR Driver - Sydney", "Truck Driving", true],
+    ["HR Business Partner", "Truck Driving", false],
   ];
   const gateFails = GATE.filter(([t, s, want]) => skillsForText(t).includes(s) !== want);
   if (gateFails.length) {
