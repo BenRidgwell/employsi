@@ -3,7 +3,12 @@ import { callerRole } from "./sessionRole";
 import { marketVisible, isReleasedRow } from "./markets";
 import { LIVE_FEEDS_ONLY_SQL, type D1Like, type SqlValue } from "./jobArchive";
 import { COMPANY_ID_ALIAS, type RolePoint } from "./openRolesFn";
-import { ALL_SKILLS, SKILL_CATEGORY, parseStoredSkills } from "../data/skillsTaxonomy";
+import {
+  ALL_SKILLS,
+  SKILL_CATEGORY,
+  SKILL_PARENT,
+  parseStoredSkills,
+} from "../data/skillsTaxonomy";
 import { AREA_SOURCES, canonicalArea } from "../data/hiringAreas";
 import { annualAud, medianAnnual } from "./salaryParse";
 import { FX_AS_AT } from "../data/fxRates";
@@ -1597,8 +1602,19 @@ export function foldSkillRows(
 // and a different market-visibility question from a company-scoped read.
 
 export interface SkillRank {
-  /** Rank by live ads inside `hubs`, 1 = most advertised. Null when the skill
-   *  has no live ad there at all — absent is not "last". */
+  /**
+   * Rank by live ads inside `hubs`, 1 = most advertised. Null when the skill
+   * has no live ad there at all — absent is not "last" — and also null when it
+   * had nobody to be ranked against (see below).
+   *
+   * RANKED AMONG PEERS. A broad skill is ranked against the other broad
+   * skills; a speciality against the other specialities of the SAME parent. So
+   * `localOf` / `globalOf` is the size of that peer group, not of the
+   * taxonomy: "Midwifery #1 of 11" means first among the nursing specialities
+   * advertised in this market, and "Nursing #2 of 64" means second among the
+   * broad skills. A cohort of one yields a null rank, because "#1 of 1" is a
+   * comparison that never happened.
+   */
   localRank: number | null;
   localOf: number;
   /** VACANCIES, not archive rows — the same unit the company card's own count
@@ -1705,36 +1721,66 @@ export function foldSkillRanks(rows: RankRow[], local: Set<string>, seesAll: boo
     }
   }
 
+  /**
+   * A skill is ranked among its PEERS, not among every name in the taxonomy.
+   *
+   * Broad skills compete with broad skills; a speciality competes with the
+   * other specialities of the same parent. Ranking the two together produced a
+   * number that was wrong twice over: Midwifery came out ranked against
+   * Nursing, which contains it and must always beat it, and every broad skill's
+   * "of N" silently grew as specialities were added — the same market, a worse
+   * looking rank, for no reason but taxonomy work.
+   *
+   * Siblings rather than all specialities, because "the most advertised
+   * speciality" is only a question inside one field. Midwifery against
+   * Perioperative Nursing is a real comparison; Midwifery against Truck Driving
+   * is not.
+   */
+  const cohortOf = (skill: string) => SKILL_PARENT[skill] ?? "";
+
   // Ties share a rank rather than being split by name: two skills on 40 ads
   // are equally in demand, and printing one as #12 and the other as #13
   // invents a distinction the counts do not carry.
-  const ranked = (counts: Record<string, number>): Record<string, number> => {
-    const order = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    const out: Record<string, number> = {};
-    let rank = 0;
-    let prev: number | null = null;
-    order.forEach(([name, n], i) => {
-      if (n !== prev) {
-        rank = i + 1;
-        prev = n;
-      }
-      out[name] = rank;
-    });
-    return out;
+  const ranked = (counts: Record<string, number>) => {
+    const rank: Record<string, number> = {};
+    const size: Record<string, number> = {};
+    const byCohort = new Map<string, [string, number][]>();
+    for (const [name, n] of Object.entries(counts)) {
+      const c = cohortOf(name);
+      (byCohort.get(c) ?? byCohort.set(c, []).get(c)!).push([name, n]);
+    }
+    for (const [c, entries] of byCohort) {
+      entries.sort((a, b) => b[1] - a[1]);
+      let r = 0;
+      let prev: number | null = null;
+      entries.forEach(([name, n], i) => {
+        if (n !== prev) {
+          r = i + 1;
+          prev = n;
+        }
+        rank[name] = r;
+        size[name] = entries.length;
+      });
+      void c;
+    }
+    return { rank, size };
   };
-  const gRank = ranked(globalN);
-  const lRank = ranked(localN);
-  const gOf = Object.keys(globalN).length;
-  const lOf = Object.keys(localN).length;
+  const g = ranked(globalN);
+  const l = ranked(localN);
 
   const out: SkillRanks = {};
   for (const s of Object.keys(globalN)) {
+    // A cohort of one ranks nothing. "#1 of 1" is true and says nothing —
+    // there was no comparison — and the card already omits a figure wherever
+    // the data cannot carry it rather than printing a softened one.
+    const gAlone = (g.size[s] ?? 0) < 2;
+    const lAlone = (l.size[s] ?? 0) < 2;
     out[s] = {
-      localRank: lRank[s] ?? null,
-      localOf: lOf,
+      localRank: lAlone ? null : (l.rank[s] ?? null),
+      localOf: l.size[s] ?? 0,
       localAds: localN[s] || 0,
-      globalRank: gRank[s] ?? null,
-      globalOf: gOf,
+      globalRank: gAlone ? null : (g.rank[s] ?? null),
+      globalOf: g.size[s] ?? 0,
       globalAds: globalN[s],
     };
   }

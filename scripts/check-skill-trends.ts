@@ -1392,6 +1392,75 @@ const MK_ANCHOR = Array.from({ length: 3 }, () =>
       Object.keys(foldSkillRanks([], PERTH, true)).length === 0,
     );
   }
+  // ── ranked among peers, not among the whole taxonomy ──────────────────────
+  //
+  // A speciality is a subset of its parent, so ranking the two together gave a
+  // number that was wrong twice: the child could never beat the parent that
+  // contains it, and every broad skill's "of N" grew each time a speciality was
+  // added — a worse-looking rank for the same market, caused by taxonomy work
+  // rather than by hiring.
+  {
+    // Distinct company+title per row, so every row is its own vacancy and the
+    // counts below are the ad counts they look like.
+    let id = 0;
+    const mk = (n: number, sk: string[]): RankRow[] =>
+      Array.from({ length: n }, () => ({
+        company_id: `c${id}`,
+        title: `t${id++}`,
+        skills: JSON.stringify(sk),
+        hub: "perth",
+      }));
+    const out = foldSkillRanks(
+      [
+        ...mk(60, ["Nursing", "Midwifery"]),
+        ...mk(40, ["Nursing", "Critical Care Nursing"]),
+        ...mk(25, ["Nursing", "Emergency Nursing"]),
+        ...mk(25, ["Nursing", "Renal Nursing"]),
+        ...mk(90, ["Nursing"]),
+        ...mk(70, ["Allied Health", "Physiotherapy"]),
+        ...mk(50, ["Pharmacy"]),
+      ],
+      PERTH,
+      true,
+    );
+    check(
+      "a broad skill is ranked only against broad skills",
+      out["Nursing"].globalRank === 1 && out["Nursing"].globalOf === 3,
+      `#${out["Nursing"].globalRank} of ${out["Nursing"].globalOf} (want #1 of 3)`,
+    );
+    check(
+      "...so specialities do not inflate its denominator",
+      out["Pharmacy"].globalOf === 3,
+      `${out["Pharmacy"].globalOf}`,
+    );
+    check(
+      "a speciality is ranked against its SIBLINGS",
+      out["Midwifery"].globalRank === 1 && out["Midwifery"].globalOf === 4,
+      `#${out["Midwifery"].globalRank} of ${out["Midwifery"].globalOf} (want #1 of 4)`,
+    );
+    check(
+      "...never against the parent that contains it",
+      out["Midwifery"].globalAds < out["Nursing"].globalAds &&
+        out["Midwifery"].globalRank === 1 &&
+        out["Nursing"].globalRank === 1,
+      "both are first, each in its own cohort",
+    );
+    check(
+      "...and a tie inside a cohort shares a rank",
+      out["Emergency Nursing"].globalRank === 3 && out["Renal Nursing"].globalRank === 3,
+      `${out["Emergency Nursing"].globalRank} / ${out["Renal Nursing"].globalRank}`,
+    );
+    check(
+      "a lone speciality has no rank, because nothing was compared",
+      out["Physiotherapy"].globalRank === null && out["Physiotherapy"].globalOf === 1,
+      `#${out["Physiotherapy"].globalRank} of ${out["Physiotherapy"].globalOf}`,
+    );
+    check(
+      "...but its ad count is still reported",
+      out["Physiotherapy"].globalAds === 70,
+      `${out["Physiotherapy"].globalAds}`,
+    );
+  }
 }
 
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");
