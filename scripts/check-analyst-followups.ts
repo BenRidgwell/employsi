@@ -27,6 +27,8 @@ import {
   resolveTurn,
   type AnalystQuery,
 } from "../src/employsi/lib/analystTurn";
+import { detectSkillMatch } from "../src/employsi/lib/analystIntent";
+import { answerQuestion } from "../src/employsi/lib/analystAnswer";
 
 let failures = 0;
 const fail = (msg: string) => {
@@ -261,6 +263,104 @@ console.log("\nthe area split is offered only when there is a subject to split:"
     fail("no area split offered with a skill in play");
   }
   if (failures === before) console.log("  ok    offered with a skill, withheld without one");
+}
+
+// ── a question naming a speciality ──────────────────────────────────────────
+//
+// The long-run answers come from the statistical agencies' vacancy series, and
+// those are per broad occupation — skillHistory("Midwifery") is null, as it is
+// for all 122 specialities. Naming one used to be ignored outright: the word
+// was dropped and a market-wide answer came back. It now resolves to the skill
+// the speciality narrows, WHICH IS ONLY ACCEPTABLE BECAUSE THE ANSWER SAYS SO.
+// The disclosure is the thing under test here; routing without it would be
+// changing the subject quietly.
+{
+  const before = failures;
+  const m = detectSkillMatch("how is midwifery demand trending?");
+  if (m?.skill !== "Nursing" || m?.via !== "Midwifery") {
+    fail(`a speciality did not resolve to its parent — got ${JSON.stringify(m)}`);
+  }
+  const direct = detectSkillMatch("how is nursing demand trending?");
+  if (direct?.skill !== "Nursing" || direct?.via !== null) {
+    fail(`naming a broad skill was answered by way of a speciality — ${JSON.stringify(direct)}`);
+  }
+  // Longest wins, so the more specific reading is taken.
+  const longer = detectSkillMatch("aged care nursing trend");
+  if (longer?.via !== "Aged Care Nursing") {
+    fail(`longest match did not win — got ${JSON.stringify(longer)}`);
+  }
+  if (failures === before) console.log("  ok    a speciality resolves to the skill it narrows");
+}
+{
+  const before = failures;
+  const t1 = resolveTurn("how is midwifery demand trending?", null, WORLD_SCOPE);
+  if (t1.query.skill !== "Nursing" || t1.query.skillVia !== "Midwifery") {
+    fail("the turn did not carry the speciality");
+  }
+  if (!describeQuery(t1.query).includes("Midwifery")) {
+    fail(`the chip dropped the speciality — "${describeQuery(t1.query)}"`);
+  }
+  // Inherited WITH the skill, never apart from it.
+  const t2 = resolveTurn("and across cities?", t1.query, WORLD_SCOPE);
+  if (t2.query.skillVia !== "Midwifery") fail("a follow-up lost the speciality");
+  // A new question naming the broad skill must not keep the old speciality.
+  const t3 = resolveTurn("how is nursing demand trending?", t1.query, WORLD_SCOPE);
+  if (t3.query.skillVia !== null) fail(`a pivot kept a stale via — ${t3.query.skillVia}`);
+  if (failures === before) {
+    console.log("  ok    it is inherited with the skill, and cleared by a pivot");
+  }
+}
+{
+  const before = failures;
+  // The answer itself, on the static series path — no D1 needed.
+  const q = "how is midwifery demand trending?";
+  const t = resolveTurn(q, null, WORLD_SCOPE);
+  const a = await answerQuestion(
+    q,
+    t.query.scope,
+    t.query.scope.hubs,
+    t.query.scope.country,
+    undefined,
+    undefined,
+    {
+      intent: t.query.intent,
+      skill: t.query.skill,
+      skillVia: t.query.skillVia,
+      wantsAreas: t.query.wantsAreas,
+    },
+  );
+  if (!a.text.includes("Midwifery") || !a.text.includes("Nursing")) {
+    fail(`the answer did not name both the speciality and the skill:\n    ${a.text.slice(0, 160)}`);
+  }
+  // Said BEFORE any figure, because it changes what every figure is about.
+  const said = a.text.indexOf("speciality within");
+  const firstNumber = a.text.search(/\d/);
+  if (said < 0 || (firstNumber >= 0 && said > firstNumber)) {
+    fail("the disclosure did not come before the first number");
+  }
+  const plain = "how is nursing demand trending?";
+  const tp = resolveTurn(plain, null, WORLD_SCOPE);
+  const ap = await answerQuestion(
+    plain,
+    tp.query.scope,
+    tp.query.scope.hubs,
+    tp.query.scope.country,
+    undefined,
+    undefined,
+    {
+      intent: tp.query.intent,
+      skill: tp.query.skill,
+      skillVia: tp.query.skillVia,
+      wantsAreas: tp.query.wantsAreas,
+    },
+  );
+  if (ap.text.includes("speciality within")) {
+    fail("a question naming the broad skill was given the speciality disclosure");
+  }
+  if (failures === before) {
+    console.log("  ok    the answer says which skill it read, before any figure");
+    console.log("  ok    ...and a direct question is left alone");
+  }
 }
 
 // ── the analyst's two skill rankings must not double-count ──────────────────

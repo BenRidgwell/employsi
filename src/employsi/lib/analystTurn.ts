@@ -1,5 +1,5 @@
 import type { AnalystIntent } from "./analystIntent";
-import { detectIntent, detectSkill } from "./analystIntent";
+import { detectIntent, detectSkillMatch } from "./analystIntent";
 import { detectScope, type ResolvedScope } from "./analystScope";
 
 /**
@@ -29,6 +29,13 @@ import { detectScope, type ResolvedScope } from "./analystScope";
 export interface AnalystQuery {
   intent: AnalystIntent;
   skill: string | null;
+  /**
+   * The speciality the question named, when it named one instead of the broad
+   * skill in `skill`. Carried so the ANSWER can say it analysed the skill the
+   * speciality narrows — see detectSkillMatch. Inherited with `skill`, never
+   * apart from it, or a pivot would keep a "via" from a question two turns ago.
+   */
+  skillVia: string | null;
   scope: ResolvedScope;
   wantsAreas: boolean;
 }
@@ -64,7 +71,8 @@ export function resolveTurn(
   localCity?: string,
 ): TurnResult {
   const explicitIntent = detectIntent(question);
-  const explicitSkill = detectSkill(question);
+  const explicitMatch = detectSkillMatch(question);
+  const explicitSkill = explicitMatch?.skill ?? null;
   const explicitScope = detectScope(question, localCity);
   const isNewQuestion = explicitIntent !== "unknown";
   const inherited: TurnResult["inherited"] = [];
@@ -78,8 +86,10 @@ export function resolveTurn(
 
   // Skill: inherited only by a pivot, for the reason in the header.
   let skill = explicitSkill;
+  let skillVia = explicitMatch?.via ?? null;
   if (!explicitSkill && !isNewQuestion && prev?.skill) {
     skill = prev.skill;
+    skillVia = prev.skillVia;
     inherited.push("skill");
   }
 
@@ -97,6 +107,7 @@ export function resolveTurn(
     query: {
       intent,
       skill,
+      skillVia,
       scope,
       // An area split is a property of how THIS sentence was phrased, so it is
       // never inherited: "across cities" then "what about pay?" is a question
@@ -168,5 +179,9 @@ export function followUpsFor(
  * say so.
  */
 export function describeQuery(q: AnalystQuery): string {
-  return [q.skill, q.scope.label].filter(Boolean).join(" · ");
+  // The speciality is named in the chip too. The user typed "midwifery" and
+  // the analysis is of Nursing; a chip reading only "Nursing" looks like the
+  // word was ignored.
+  const subject = q.skill && q.skillVia ? `${q.skill} · via ${q.skillVia}` : q.skill;
+  return [subject, q.scope.label].filter(Boolean).join(" · ");
 }

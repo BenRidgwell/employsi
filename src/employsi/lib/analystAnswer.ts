@@ -1,5 +1,5 @@
 import { askAnalyst, type AnalystAnswer, type AnalystBar, type AnalystScope } from "./analystFn";
-import { detectIntent, detectSkill, type AnalystIntent } from "./analystIntent";
+import { detectIntent, detectSkillMatch, type AnalystIntent } from "./analystIntent";
 import { wantsAreas as wantsAreasIn } from "./analystTurn";
 import {
   HISTORY_SPAN,
@@ -65,6 +65,7 @@ function skillHistoryAnswer(
   label: string,
   only?: Set<string>,
   wantsAreas?: boolean,
+  via?: string | null,
 ): AnalystAnswer | null {
   const h = skillHistory(skill, keys);
   if (!h) return null;
@@ -98,9 +99,18 @@ function skillHistoryAnswer(
     v: fmtNum(r.v),
   }));
 
-  const parts: string[] = [
+  const parts: string[] = [];
+  // Said FIRST, before any number, because it changes what every number below
+  // is about. The question named a speciality and this is the series for the
+  // skill it narrows — the closest thing published, and not the same thing.
+  if (via) {
+    parts.push(
+      `${via} is a speciality within ${skill}, and no statistical agency publishes it separately — so this is ${skill} as a whole.`,
+    );
+  }
+  parts.push(
     `Published vacancies for ${skill} across ${label} stand at ${fmtNum(h.latest)} in ${monthName(h.latestMonth)}.`,
-  ];
+  );
   if (h.yoy !== null) {
     parts.push(
       `That's ${h.yoy >= 0 ? "up" : "down"} ${Math.abs(h.yoy).toFixed(1)}% on a year earlier`,
@@ -225,10 +235,19 @@ export async function answerQuestion(
   country?: string,
   sector?: string,
   companyIds?: string[],
-  resolved?: { intent: AnalystIntent; skill: string | null; wantsAreas: boolean },
+  resolved?: {
+    intent: AnalystIntent;
+    skill: string | null;
+    skillVia?: string | null;
+    wantsAreas: boolean;
+  },
 ): Promise<AnalystAnswer> {
   const intent = resolved?.intent ?? detectIntent(question);
-  const skill = resolved ? resolved.skill : detectSkill(question);
+  const match = resolved ? null : detectSkillMatch(question);
+  const skill = resolved ? resolved.skill : (match?.skill ?? null);
+  // The speciality that led here, whether it came from this sentence or was
+  // inherited with the skill from the turn before.
+  const skillVia = resolved ? (resolved.skillVia ?? null) : (match?.via ?? null);
   const covered = hasCoverage(hubs);
 
   // Long-run questions, and any question about a NAMED skill's demand, are
@@ -249,7 +268,7 @@ export async function answerQuestion(
 
   if (wantsHistory && covered) {
     const answer = skill
-      ? skillHistoryAnswer(skill, hubs, scope.label, sectorSkills, wantsAreas)
+      ? skillHistoryAnswer(skill, hubs, scope.label, sectorSkills, wantsAreas, skillVia)
       : marketHistoryAnswer(hubs, scope.label, sector, sectorSkills);
     if (answer) return answer;
     if (!skill && sector) {
@@ -265,7 +284,9 @@ export async function answerQuestion(
       // silently answering a different question.
       return {
         intent: "history",
-        text: `No statistical agency covering ${scope.label} publishes a vacancy series for ${skill}, so I can't give you its history there. I can still tell you what's live in the ad archive right now, or you can widen the scope.`,
+        text: skillVia
+          ? `${skillVia} is a speciality within ${skill}, and no statistical agency publishes it separately — but none covering ${scope.label} publishes ${skill} either, so I can't give you a history there. I can still tell you what's live in the ad archive right now, or you can widen the scope.`
+          : `No statistical agency covering ${scope.label} publishes a vacancy series for ${skill}, so I can't give you its history there. I can still tell you what's live in the ad archive right now, or you can widen the scope.`,
         source: `National vacancy series · ${HISTORY_SPAN}`,
       };
     }

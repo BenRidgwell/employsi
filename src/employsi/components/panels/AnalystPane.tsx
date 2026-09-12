@@ -279,7 +279,14 @@ export function AnalystPane() {
         turn.query.scope.country,
         activeSector === ALL_SECTORS ? undefined : activeSector,
         sectorIds,
-        { intent: turn.query.intent, skill: turn.query.skill, wantsAreas: turn.query.wantsAreas },
+        {
+          intent: turn.query.intent,
+          skill: turn.query.skill,
+          // Carried, or the answer analyses Nursing for a question about
+          // Midwifery without ever saying which one it read.
+          skillVia: turn.query.skillVia,
+          wantsAreas: turn.query.wantsAreas,
+        },
       );
       setThread((t) => [
         ...t,

@@ -1,4 +1,4 @@
-import { ALL_SKILLS } from "../data/skillsTaxonomy";
+import { ALL_SKILLS, SKILL_PARENT } from "../data/skillsTaxonomy";
 
 /**
  * Question classification for "Ask an analyst", shared by the client pane and
@@ -128,14 +128,64 @@ export function detectIntent(question: string): AnalystIntent {
  * one arbitrary skill's history. A question that doesn't name a skill should
  * fall through to the market-level answer, not to a lucky guess.
  */
-export function detectSkill(question: string): string | null {
+export interface SkillMatch {
+  /** The BROAD skill to analyse. Always one of ALL_SKILLS. */
+  skill: string;
+  /** The speciality the question actually named, when it named one. */
+  via: string | null;
+}
+
+/**
+ * A SPECIALITY RESOLVES TO THE SKILL IT NARROWS, and says so.
+ *
+ * The analyst's long-run answers come from the statistical agencies' vacancy
+ * series, and those are published per broad occupation: skillHistory("Midwifery")
+ * is null, as it is for all 122 specialities. So a question naming one has three
+ * possible answers and only one of them is good.
+ *
+ * Ignore it — what this did until now — and "how is midwifery demand moving?"
+ * falls through to a market-wide answer with the word silently dropped.
+ * Detect it and answer literally, and the user is told no agency publishes a
+ * series for midwifery, which is true and useless.
+ * Detect it, analyse the skill it narrows, AND SAY SO — which is this. The
+ * reader gets the nursing series, under the nursing name, with one sentence
+ * explaining why that is the closest thing that exists.
+ *
+ * The disclosure is not optional and is the whole reason `via` is carried
+ * rather than thrown away at the match: answering about Nursing when asked
+ * about Midwifery without mentioning it would be changing the subject quietly,
+ * which is the failure this file's header is already written against.
+ *
+ * Longest match wins across broad skills and specialities together, so "aged
+ * care nursing" resolves through that speciality rather than stopping at
+ * "nursing". A broad skill wins a tie, so naming one exactly is never answered
+ * by way of one of its own specialities.
+ */
+export function detectSkillMatch(question: string): SkillMatch | null {
   const lower = (question || "").toLowerCase().trim();
   if (!lower) return null;
-  let best: string | null = null;
+  let best: SkillMatch | null = null;
+  let bestLen = 0;
   for (const s of ALL_SKILLS) {
-    if (lower.includes(s.toLowerCase()) && (!best || s.length > best.length)) best = s;
+    if (lower.includes(s.toLowerCase()) && s.length > bestLen) {
+      best = { skill: s, via: null };
+      bestLen = s.length;
+    }
+  }
+  for (const [child, parent] of Object.entries(SKILL_PARENT)) {
+    // Strictly longer, so a broad skill holds a tie.
+    if (lower.includes(child.toLowerCase()) && child.length > bestLen) {
+      best = { skill: parent, via: child };
+      bestLen = child.length;
+    }
   }
   return best;
+}
+
+/** The broad skill a question is about, if any. Specialities resolve to the
+ *  skill they narrow — use detectSkillMatch when the answer needs to say so. */
+export function detectSkill(question: string): string | null {
+  return detectSkillMatch(question)?.skill ?? null;
 }
 
 // The design's four suggested prompts, rewritten to match what this analyst can
