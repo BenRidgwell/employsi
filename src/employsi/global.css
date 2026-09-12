@@ -12583,6 +12583,121 @@ body {
   color: var(--status-danger-fg);
 }
 
+/* ── specialities ───────────────────────────────────────────────────────────
+   A speciality is a SUBSET of the skill above it. Listed flat they broke the
+   card's arithmetic — Queensland Health's visible rows summed to 973 against
+   891 live ads, because Midwifery's 46 were already inside Nursing's 355 — so
+   they sit here, under the skill they narrow, behind a summary that names how
+   many ads specialised at all.                                              */
+.spec {
+  /* A second grid row inside .alskrow, which is three columns wide. Without
+     this the block lands in an implicit fourth column and squeezes the name. */
+  grid-column: 1 / -1;
+  margin-top: 2px;
+}
+.specsum {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.specsum:hover {
+  color: var(--text-secondary);
+}
+.specsumt {
+  font-family: var(--font-label);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.specsumt b {
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+.specchev {
+  width: 0;
+  height: 0;
+  flex: 0 0 auto;
+  border-left: 4px solid currentColor;
+  border-top: 3.5px solid transparent;
+  border-bottom: 3.5px solid transparent;
+  transition: transform 140ms;
+}
+.spec.is-open .specchev {
+  transform: rotate(90deg);
+}
+.speclist {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 0 2px;
+  padding: 0 0 0 10px;
+  list-style: none;
+  /* Hangs off the parent row rather than floating free, so the nesting reads
+     without a box around it. */
+  border-left: 1px solid var(--border-subtle);
+}
+.specrow {
+  display: grid;
+  /* FIXED columns, not auto. Each row is its own grid, so auto columns sized
+     themselves independently and the counts stepped in and out down the list —
+     worst on the remainder row, which has no change beside it and pushed its
+     number a column further right than every speciality above it. */
+  grid-template-columns: minmax(0, 1fr) 34px 62px;
+  align-items: baseline;
+  gap: 8px;
+}
+.specname {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.specn {
+  font-family: var(--font-label);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.specd {
+  font-family: var(--font-label);
+  font-size: 10px;
+  text-align: right;
+}
+.specd.up {
+  color: var(--status-success-fg);
+}
+.specd.down {
+  color: var(--status-danger-fg);
+}
+/* The complement of the rows above, not another speciality — so it is set
+   apart rather than listed as one more kind of nurse. */
+.specrest {
+  margin-top: 3px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--border-subtle);
+  color: var(--text-tertiary);
+}
+.specrest .specname,
+.specrest .specn {
+  color: var(--text-tertiary);
+}
+
+/* Under the top skill the block sits on its own rather than inside a grid row,
+   and carries a rule above it to separate it from the rank line. */
+.tsk .spec {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--surface-sunken);
+}
+
 /* hiring bars: change beside the count. Only the ARROW takes the direction
    colour — six coloured percentages in a column read as six alerts. Arrows use
    the 500 tier (--status-*-dot), the palette's weight for a small graphic

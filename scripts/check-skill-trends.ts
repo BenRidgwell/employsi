@@ -997,6 +997,80 @@ const ANCHOR = row(["Administration & Office Support"], DAYS[0], DAYS[DAYS.lengt
   }
 }
 
+// ── specialities, and the ads that named none ───────────────────────────────
+//
+// The card lists a speciality under the skill it narrows, and reports how many
+// of that skill's ads named one at all. `specialised` is what that line rests
+// on, and it must be counted PER AD: one ad can carry two specialities, so
+// summing the children would put the named share above the ads it came from.
+{
+  const t = (title: string, skills: string[]) =>
+    row(skills, DAYS[0], DAYS[9], { title, source: "seek" });
+  const out = foldSkillRows(
+    [
+      t("Registered Nurse A", ["Nursing"]),
+      t("Registered Nurse B", ["Nursing"]),
+      t("Registered Midwife", ["Nursing", "Midwifery"]),
+      // One ad, two specialities — the case that makes summing wrong.
+      t("Nurse Practitioner - Emergency Department", [
+        "Nursing",
+        "Nurse Practitioner",
+        "Emergency Nursing",
+      ]),
+    ],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  const nursing = find(out, "Nursing")!;
+  check("the parent still counts every one of its ads", nursing.now === 4, `${nursing.now}`);
+  check(
+    "specialised counts ADS, not specialities",
+    nursing.specialised === 2,
+    `${nursing.specialised} (the three child rows sum to 3)`,
+  );
+  const kids = out.skills.filter((s) => s.skill !== "Nursing");
+  check(
+    "...and the children really do sum to more",
+    kids.reduce((a, k) => a + k.now, 0) === 3,
+    `${kids.reduce((a, k) => a + k.now, 0)}`,
+  );
+  check(
+    "the remainder is the parent's ads that named nothing",
+    nursing.now - nursing.specialised! === 2,
+    `${nursing.now - nursing.specialised!}`,
+  );
+}
+{
+  // A skill with no specialities advertised says nothing about specialisation,
+  // rather than reporting zero — which would read as a finding about the
+  // employer instead of silence about the taxonomy.
+  const out = foldSkillRows(
+    [row(["Pharmacy"], DAYS[0], DAYS[9], { title: "Pharmacist", source: "seek" })],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  check(
+    "a skill with no speciality advertised reports none",
+    find(out, "Pharmacy")!.specialised === undefined,
+  );
+}
+{
+  // A speciality on an ad whose parent is NOT stored cannot contribute: the
+  // figure is "of this skill's ads", so it needs the skill to be there.
+  const out = foldSkillRows(
+    [row(["Midwifery"], DAYS[0], DAYS[9], { title: "Registered Midwife", source: "seek" })],
+    DAYS,
+    LIVE_FROM,
+    0,
+  );
+  check(
+    "an orphaned speciality does not invent a parent figure",
+    find(out, "Nursing") === undefined && find(out, "Midwifery")!.specialised === undefined,
+  );
+}
+
 // ── the skills market ───────────────────────────────────────────────────────
 // foldSkillMarket prices each skill by median advertised salary and multiplies
 // by live vacancies. Three quantities that must not blur: price is near-static,

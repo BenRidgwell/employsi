@@ -3,6 +3,7 @@ import { smoothPath } from "../../lib/chart";
 import { HUB_LNGLAT, AU_CITY_LNGLAT } from "../../data/mapboxWorldGeo";
 import { CITY_LABEL, GLOBAL_HUB_LABEL } from "../../data/geo";
 import { WORLD_OUTLINE, WORLD_W, WORLD_H, worldProject } from "../../data/worldOutline";
+import { SKILL_PARENT } from "../../data/skillsTaxonomy";
 import type { CompanySkillDemand, CompanySkillTrends, SkillRanks } from "../../lib/jobHistoryFn";
 
 // The company card's skills section, built on getCompanySkillTrends +
@@ -81,7 +82,15 @@ const TS_BASE = 150;
  *  the bars are context under the line, not a second chart competing with it. */
 const TS_BAR_MAX = 46;
 
-function TopSkill({ skills, ranks }: { skills: CompanySkillDemand[]; ranks: SkillRanks }) {
+function TopSkill({
+  skills,
+  ranks,
+  kidsOf,
+}: {
+  skills: CompanySkillDemand[];
+  ranks: SkillRanks;
+  kidsOf: (skill: string) => CompanySkillDemand[];
+}) {
   const [i, setI] = useState(0);
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState<number | null>(null);
@@ -187,6 +196,11 @@ function TopSkill({ skills, ranks }: { skills: CompanySkillDemand[]; ranks: Skil
           </span>
         )}
       </div>
+
+      {/* The top skills are parents, so without this their specialities would
+          have nowhere to appear at all — they are filtered out of the rows
+          below precisely because they belong to a skill already on screen. */}
+      <Specialities parent={s} kids={kidsOf(s.skill)} />
 
       {geom && (
         <div
@@ -509,12 +523,83 @@ function HotSpots({
   );
 }
 
+// ── specialities ────────────────────────────────────────────────────────────
+
+/**
+ * The specialities of one skill, and — named, not implied — the ads that
+ * declared none.
+ *
+ * A speciality is a SUBSET of the skill above it, never a sibling. Listed flat
+ * they broke the card's arithmetic: Queensland Health's visible rows summed to
+ * 973 against 891 live ads, because Midwifery's 46 were already inside
+ * Nursing's 355. So they live here, under the skill they narrow, and nowhere
+ * else.
+ *
+ * THE REMAINDER IS THE POINT OF THE HEADER LINE. 247 of those 355 nursing ads
+ * said only "Registered Nurse", and that is a fact about how employers write
+ * ads rather than a gap in the taxonomy. Leaving it out would invite the
+ * reader to take the listed specialities for the whole picture — the same
+ * reason the map states how much of the employer it can place, and the series
+ * reports the span actually drawn.
+ *
+ * `specialised` is counted per ad upstream, so it is never the sum of the rows
+ * below: one ad can name two specialities, and measured on the archive 82
+ * nursing titles do.
+ */
+function Specialities({
+  parent,
+  kids,
+}: {
+  parent: CompanySkillDemand;
+  kids: CompanySkillDemand[];
+}) {
+  const [open, setOpen] = useState(false);
+  const named = parent.specialised ?? 0;
+  if (!kids.length || !named) return null;
+  const rest = parent.now - named;
+  return (
+    <div className={`spec${open ? " is-open" : ""}`}>
+      <button type="button" className="specsum" onClick={() => setOpen((v) => !v)}>
+        <span className="specchev" aria-hidden />
+        <span className="specsumt">
+          <b>{named}</b> of {parent.now} named a speciality
+        </span>
+      </button>
+      {open && (
+        <ul className="speclist">
+          {kids.map((k) => (
+            <li className="specrow" key={k.skill}>
+              <span className="specname">{k.skill}</span>
+              <span className="specn">{k.now}</span>
+              <Delta pct={k.pct} className="specd" />
+            </li>
+          ))}
+          {/* Last, and styled apart: it is the complement of the rows above,
+              not another speciality. */}
+          {rest > 0 && (
+            <li className="specrow specrest">
+              <span className="specname">No speciality named</span>
+              <span className="specn">{rest}</span>
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 // ── the rest ────────────────────────────────────────────────────────────────
 
 const SP_W = 88;
 const SP_H = 26;
 
-function AlsoAdvertised({ skills }: { skills: CompanySkillDemand[] }) {
+function AlsoAdvertised({
+  skills,
+  kidsOf,
+}: {
+  skills: CompanySkillDemand[];
+  kidsOf: (skill: string) => CompanySkillDemand[];
+}) {
   const [all, setAll] = useState(false);
   if (!skills.length) return null;
   const shown = all ? skills : skills.slice(0, ROWS_SHOWN);
@@ -575,6 +660,7 @@ function AlsoAdvertised({ skills }: { skills: CompanySkillDemand[] }) {
                 <span className="alskn">{s.now}</span>
                 <Delta pct={s.pct} className="alskd" />
               </div>
+              <Specialities parent={s} kids={kidsOf(s.skill)} />
             </div>
           );
         })}
@@ -595,14 +681,37 @@ function AlsoAdvertised({ skills }: { skills: CompanySkillDemand[] }) {
 }
 
 export function SkillDemand({ trends, ranks }: { trends: CompanySkillTrends; ranks: SkillRanks }) {
-  const top = trends.skills.slice(0, TOP_N);
-  const rest = trends.skills.slice(TOP_N);
+  /**
+   * Specialities come out of the flat list and go under the skill they narrow.
+   *
+   * They are subsets, so listing them alongside their parents both broke the
+   * arithmetic — the visible rows summed to more live ads than the employer
+   * has — and cost whole unrelated skills their place, because a speciality
+   * took a row that Pharmacy needed. `trends.skills` is untouched: the fold is
+   * right, it was the flat presentation that lied.
+   */
+  const { parents, kidsOf } = useMemo(() => {
+    const byParent = new Map<string, CompanySkillDemand[]>();
+    const parents: CompanySkillDemand[] = [];
+    for (const s of trends.skills) {
+      const p = SKILL_PARENT[s.skill];
+      if (!p) parents.push(s);
+      else (byParent.get(p) ?? byParent.set(p, []).get(p)!).push(s);
+    }
+    return { parents, kidsOf: (skill: string) => byParent.get(skill) ?? [] };
+  }, [trends.skills]);
+
+  const top = parents.slice(0, TOP_N);
+  const rest = parents.slice(TOP_N);
   if (!top.length) return null;
   return (
     <>
-      <TopSkill skills={top} ranks={ranks} />
+      <TopSkill skills={top} ranks={ranks} kidsOf={kidsOf} />
+      {/* The map keeps every skill, specialities included. It plots ONE at a
+          time, so it cannot double-count, and "where are the midwifery jobs"
+          is a better question than "where are the nursing jobs". */}
       <HotSpots skills={trends.skills} liveAds={trends.liveAds} companyHubs={trends.hubs} />
-      <AlsoAdvertised skills={rest} />
+      <AlsoAdvertised skills={rest} kidsOf={kidsOf} />
     </>
   );
 }

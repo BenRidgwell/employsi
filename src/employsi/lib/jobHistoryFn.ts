@@ -859,6 +859,20 @@ export interface CompanySkillDemand {
   cat: string;
   /** Ads currently advertised by this company that demand the skill. */
   now: number;
+  /**
+   * Of `now`, how many also named one of this skill's SPECIALITIES.
+   *
+   * Present only on a skill that has specialities among this employer's live
+   * ads; the card reports the complement beside them — "355 nursing ads, 108
+   * named a speciality, 247 said only Registered Nurse". That remainder is a
+   * fact about how employers write ads rather than a gap in the taxonomy, and
+   * naming it is what stops a reader taking the listed specialities for the
+   * whole picture.
+   *
+   * Counted per AD, so it is never the sum of the children: one ad can carry
+   * two of them.
+   */
+  specialised?: number;
   /** Daily live count across `CompanySkillTrends.days`, oldest → newest.
    *  Omitted when the archive is too young to draw an honest line, or when the
    *  line is dead flat — see SPARK_MIN_POINTS. */
@@ -1298,6 +1312,11 @@ export function foldSkillRows(
   const areaSourceStart: Record<string, string> = {};
   const hubNow: Record<string, Record<string, number>> = {};
   const hubless: Record<string, number> = {};
+  // Per PARENT: how many of its live ads also named one of its specialities.
+  // The complement — its ads that named none — is the figure the card reports
+  // beside them, because "247 said only Registered Nurse" is a fact about how
+  // employers write ads and not a hole in the taxonomy.
+  const namedAds: Record<string, number> = {};
   // Ad-level, so a vacancy asking for four skills counts once here and four
   // times above — and one carried by four feeds still counts once (see
   // RoleGroup).
@@ -1411,6 +1430,18 @@ export function foldSkillRows(
       const area = modal(g.areas);
       if (g.live) {
         for (const s of skills) now[s] = (now[s] || 0) + 1;
+        // How many of a skill's live ads said WHICH KIND. Counted once per AD,
+        // not by summing the specialities, because one ad can carry two —
+        // measured on the archive, 82 nursing titles are claimed by more than
+        // one child, and "Nurse Practitioner - Emergency Department" is both.
+        // Summing the children would make the named share exceed the ads it
+        // came from, which is the arithmetic this figure exists to fix.
+        const named = new Set<string>();
+        for (const s of skills) {
+          const p = SKILL_PARENT[s];
+          if (p && skills.includes(p)) named.add(p);
+        }
+        for (const p of named) namedAds[p] = (namedAds[p] || 0) + 1;
         const aud = midAnnual(g.pays);
         if (aud !== null) for (const s of skills) (payAds[s] ||= []).push(aud);
         if (area) areaNow[area] = (areaNow[area] || 0) + 1;
@@ -1500,6 +1531,10 @@ export function foldSkillRows(
         skill: s,
         cat: SKILL_CATEGORY[s],
         now: now[s],
+        // Absent, not zero, when this employer advertises no speciality of
+        // this skill: the card then says nothing about specialisation rather
+        // than reporting that none was named, which would read as a finding.
+        specialised: namedAds[s] || undefined,
         spark: moves ? cut : undefined,
         // Padded to the FULL window before trimming, like fresh[] itself is —
         // sizing the fallback to the already-trimmed `cut` and then slicing it
