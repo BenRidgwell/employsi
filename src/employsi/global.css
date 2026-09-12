@@ -14610,8 +14610,6 @@ body {
      the space above the bar, and the caption wants less. */
   margin-top: -12px;
 }
-/* The bottom third. Its top edge is MASKED rather than cut, so the buildings
-   dissolve into the page instead of ending on a line. */
 .introband {
   position: absolute;
   left: 0;
@@ -14621,8 +14619,6 @@ body {
   overflow: hidden;
   pointer-events: none;
   opacity: 0.62;
-  mask-image: linear-gradient(to bottom, transparent 0%, #000 18%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18%);
 }
 /*
  * ANCHORED TO THE GROUND LINE, NOT THE SKY.
