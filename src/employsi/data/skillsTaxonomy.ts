@@ -481,6 +481,57 @@ const RAW_SKILLS: SkillDef[] = [
       "multimedia",
     ],
   },
+
+  // ── Software Engineering · specialities ────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 3,149. These four name 736, 23% — the lowest coverage of any
+  // parent here, and honestly so: most of this market advertises "Software
+  // Engineer" or "Developer" with no layer named at all.
+  //
+  // Embedded Systems (32) and Test Automation (15) are both under the floor.
+  // Test Automation would also have collided with Quality Assurance, a
+  // top-level skill that owns testing.
+  {
+    skill: "Full Stack",
+    cat: "Digital",
+    parent: "Software Engineering",
+    // 412 titles, the largest here. The parent already carries "full stack", so
+    // this names that slice. The hyphenated and closed-up spellings are written
+    // separately because a term matches literally.
+    terms: ["full stack", "fullstack", "full-stack"],
+  },
+  {
+    skill: "Frontend",
+    cat: "Digital",
+    parent: "Software Engineering",
+    // 146 titles. The framework names earn their place — they are how this half
+    // of the market advertises — and inside the parent they reach nothing else.
+    terms: ["frontend", "front end", "front-end", "react developer", "angular", "vue"],
+  },
+  {
+    skill: "Backend",
+    cat: "Digital",
+    parent: "Software Engineering",
+    // 111 titles.
+    terms: ["backend", "back end", "back-end", "api developer"],
+  },
+  {
+    skill: "Mobile Development",
+    cat: "Digital",
+    parent: "Software Engineering",
+    // 67 titles, and only 21 outside the parent — the tightest set here,
+    // because every phrase names a platform and nothing else.
+    terms: [
+      "ios developer",
+      "android developer",
+      "mobile developer",
+      "mobile engineer",
+      "mobile application developer",
+      "react native",
+      "flutter",
+    ],
+  },
   {
     skill: "Cloud & DevOps",
     cat: "Digital",
@@ -577,6 +628,13 @@ const RAW_SKILLS: SkillDef[] = [
       // just above.
       "projects officer",
       "project support officer",
+      // French for "project manager", and the largest single group caught by
+      // the "chef" gate in GATED_TERMS: 192 archived titles that were being
+      // read as kitchen staff. Given a home here before the gate takes them out
+      // of Hospitality, so they are reclassified rather than merely dropped.
+      // Both numbers, because a term matches literally.
+      "chef de projet",
+      "chef de projets",
     ],
   },
 
@@ -1281,6 +1339,77 @@ const RAW_SKILLS: SkillDef[] = [
       "server administrator",
     ],
   },
+
+  // ── Administration & Office Support · specialities ─────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 3,488. These four name 1,068, 31%.
+  //
+  // Records & Data Entry (21) is under the floor.
+  {
+    skill: "Executive & Personal Assistance",
+    cat: "Admin",
+    parent: "Administration & Office Support",
+    // 500 titles, the largest here, and only 72 outside the parent — these
+    // phrases name one job and are rarely borrowed.
+    terms: [
+      "executive assistant",
+      "personal assistant",
+      "executive support officer",
+      "secretary",
+      "secretarial",
+    ],
+    // A company secretary is not a secretary. It is the officer responsible for
+    // board governance and statutory filings, which Finance & Accounting
+    // already claims through "company secretar" — and 32 of the 148 "secretary"
+    // titles inside this parent are that job, a 22% error rate on the bare
+    // word. Caught by a gate case, not by reading.
+    //
+    // Scoped to this speciality rather than the parent: the office-support
+    // reading of those titles is defensible, and removing it is not this
+    // except's business.
+    except: ["company secretar", "corporate secretar", "board secretar"],
+  },
+  {
+    skill: "Reception",
+    cat: "Admin",
+    parent: "Administration & Office Support",
+    // 337 titles. Bare "reception" is deliberate alongside "receptionist": it
+    // reaches "Reception Coordinator" and "Reception & Administration", which
+    // the longer word cannot, and inside the parent it cannot wander.
+    terms: ["receptionist", "reception", "front desk"],
+  },
+  {
+    skill: "Medical Administration",
+    cat: "Admin",
+    parent: "Administration & Office Support",
+    // 144 titles. The administrative side of a clinic — booking, records and
+    // reception — which is office work in a health setting and not clinical
+    // work. Distinct from Medical Practice, which is the clinicians.
+    terms: [
+      "medical receptionist",
+      "medical administrat",
+      "ward clerk",
+      "practice manager",
+      "patient administrat",
+      "health information",
+      "medical records",
+    ],
+  },
+  {
+    skill: "School Administration",
+    cat: "Admin",
+    parent: "Administration & Office Support",
+    // 87 titles. The front office of a school, which is why it hangs off
+    // Administration rather than Education: these are not teaching roles, and
+    // Education Support already names the ones that are.
+    terms: [
+      "school administrat",
+      "school officer",
+      "school support officer",
+      "school business manager",
+    ],
+  },
   {
     skill: "Bookkeeping & Payroll",
     cat: "Admin",
@@ -1897,6 +2026,59 @@ const RAW_SKILLS: SkillDef[] = [
       "licensed club",
     ],
   },
+
+  // ── Hospitality & Food Service · specialities ──────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 1,832. These three name 313, 17%.
+  //
+  // THE KITCHEN IS DELIBERATELY NOT ONE OF THEM. "chef" and "cook" together
+  // reach 1,709 titles — 78% of this parent — which makes them a synonym for
+  // the skill rather than a speciality within it, the same reason Leadership &
+  // Coordination has no Team Leadership child. Naming the majority tells the
+  // reader nothing they did not already have from the parent; naming the
+  // baristas and the bar staff tells them something.
+  //
+  // Accommodation (11 inside the parent) is far under the floor: housekeeping
+  // and guest services barely appear in this archive under those words.
+  {
+    skill: "Barista & Cafe",
+    cat: "Hospitality",
+    parent: "Hospitality & Food Service",
+    // 167 titles, and ZERO outside the parent — the only term in this file that
+    // names its job so exactly that the gate has nothing to hold back.
+    terms: ["barista"],
+  },
+  {
+    skill: "Bar & Beverage",
+    cat: "Hospitality",
+    parent: "Hospitality & Food Service",
+    // 78 titles.
+    terms: [
+      "bartender",
+      "bar attendant",
+      "bar staff",
+      "sommelier",
+      "bar manager",
+      "bar supervisor",
+    ],
+  },
+  {
+    skill: "Front of House",
+    cat: "Hospitality",
+    parent: "Hospitality & Food Service",
+    // 68 titles. The gate holds back 398, nearly all of them "host" and
+    // "restaurant manager" used outside hospitality, which is why bare "host"
+    // is not a term here.
+    terms: [
+      "waiter",
+      "waitress",
+      "food and beverage attendant",
+      "restaurant manager",
+      "hostess",
+      "front of house",
+    ],
+  },
   {
     skill: "Food Trades",
     cat: "Hospitality",
@@ -2212,6 +2394,45 @@ const RAW_SKILLS: SkillDef[] = [
       "retail team member",
       "nightfill",
       "shop assistant",
+    ],
+  },
+
+  // ── Retail & Customer Service · specialities ───────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 2,341. These two name 1,041, 44% — and like Sales & Business Dev,
+  // they are the two halves already written into the skill's own name.
+  //
+  // Contact Centre was mined and rejected. On its own terms — call centre,
+  // contact centre, inbound, outbound — it is 24 titles inside the parent, well
+  // under the floor. It only looked viable when "customer service
+  // representative" was included, and that phrase belongs to Customer Support
+  // below; borrowing it would have made one speciality look real by taking
+  // another's evidence.
+  {
+    skill: "Retail Sales",
+    cat: "Sales",
+    parent: "Retail & Customer Service",
+    // 572 titles. The shop floor.
+    terms: [
+      "sales assistant",
+      "retail assistant",
+      "sales consultant",
+      "store assistant",
+      "retail sales",
+    ],
+  },
+  {
+    skill: "Customer Support",
+    cat: "Sales",
+    parent: "Retail & Customer Service",
+    // 469 titles. Serving customers after the sale rather than making one.
+    terms: [
+      "customer service officer",
+      "customer service representative",
+      "customer support",
+      "customer care",
+      "customer experience",
     ],
   },
 
@@ -2755,6 +2976,31 @@ const GATED_TERMS: Record<string, RegExp> = {
   // that term regardless, so a genuine "AWS Cloud Engineer ($8k + AWS)" is
   // unaffected.
   aws: /^(?!.*(?:\+\s*aws|aws\s*\+)).*(?:cloud|devops|dev ops|kubernetes|azure|gcp|terraform|linux|serverless|lambda|snowflake|redshift|postgres|kafka|python|java|node|scala|spark|engineer|architect|developer|programmer|sre|site reliability|infrastructur|platform|software|system|network|database|data cent|technical|technolog|migration|solutions|security|api|full stack|backend|back end)/i,
+  // "Chef de X" is French for "head of X", and almost none of them cook.
+  // Measured on the archive 2026-09-12: 33 distinct non-culinary forms over 349
+  // titles, every one of them mapped to Hospitality & Food Service and 295 to
+  // that skill and NOTHING ELSE — project managers, site managers, product
+  // managers, department heads and an audit engagement lead, all counted as
+  // kitchen demand. "chef de projet" alone is 192 of them.
+  //
+  // A GATE RATHER THAN AN EXCEPT, deliberately. An except would need one
+  // literal per form, and "chef de X" is a productive construction in French —
+  // the list would be out of date the first time a new noun appeared. This
+  // instead licenses "chef" ONLY where it is not followed by " de <something
+  // non-culinary>", so the culinary forms keep working by name and every new
+  // managerial one is excluded automatically.
+  //
+  // Licensed:   "Head Chef", "Sous Chef", "Chef/Cook", "Chef de Partie",
+  //             "Chef de Cuisine", "Chef de Rang", "Chef de Brigade"
+  // Refused:    "Chef de Projet", "Chef de Chantier", "Chef de Secteur",
+  //             "Chef de Produit", "Chef de Bureau", "Chef de Mission"
+  //
+  // Suppression is the right outcome for the ones with no other skill: a French
+  // office manager counted as a chef is fabricated demand, and this file's
+  // first rule is to suppress rather than fabricate. The largest group does get
+  // a home — "chef de projet" is added to Project Management — but the long
+  // tail is left to map to nothing, which is honest.
+  chef: /(?<![a-z0-9])chef(?! de (?!partie|cuisine|rang|brigade|party|cuisines))/i,
 };
 
 /** A gated term's second route: an employer whose industry genuinely licenses it. */

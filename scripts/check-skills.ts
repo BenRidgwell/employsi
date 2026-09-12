@@ -449,6 +449,36 @@ if (ACCOUNT && DB && TOKEN) {
     // there and takes the whole skill with it.
     ["After-Sales Engineer", "Sales & Business Dev", false],
     ["Sales Engineer - Pumps", "Sales & Business Dev", true],
+    // ── the 2026-09-12 second pass ───────────────────────────────────────────
+    // "Chef de X" is French for "head of X". The gate licenses the culinary
+    // forms by name and refuses every managerial one, including ones nobody has
+    // written down yet — 349 archived titles were counted as kitchen demand.
+    ["Chef de Projet Sage X3", "Hospitality & Food Service", false],
+    ["Chef de Projet Sage X3", "Project Management", true],
+    ["Chef de Chantier", "Hospitality & Food Service", false],
+    ["Chef de Secteur", "Hospitality & Food Service", false],
+    ["Chef de Partie", "Hospitality & Food Service", true],
+    ["Chef de Cuisine", "Hospitality & Food Service", true],
+    ["Head Chef", "Hospitality & Food Service", true],
+    ["Sous Chef", "Hospitality & Food Service", true],
+    // A ward clerk is office work in a hospital, not clinical work.
+    ["Ward Clerk - Emergency", "Medical Administration", true],
+    ["Registered Nurse - Emergency", "Medical Administration", false],
+    // A school's front office is not a teaching job.
+    ["School Administration Officer", "School Administration", true],
+    ["Primary School Teacher", "School Administration", false],
+    ["Executive Assistant to the CEO", "Executive & Personal Assistance", true],
+    ["Company Secretary", "Executive & Personal Assistance", false],
+    ["Medical Receptionist", "Reception", true],
+    ["Full Stack Developer", "Full Stack", true],
+    ["Front End Developer", "Frontend", true],
+    ["Front of House Supervisor", "Frontend", false],
+    ["iOS Developer", "Mobile Development", true],
+    ["Mobile Plant Operator", "Mobile Development", false],
+    ["Retail Sales Assistant", "Retail Sales", true],
+    ["Customer Service Officer", "Customer Support", true],
+    ["Barista - Coffee Bar", "Barista & Cafe", true],
+    ["Bar Attendant", "Bar & Beverage", true],
     ["Outsystems Architect", "Architecture & Planning", false],
     ["Outsystems Architect", "Software Engineering", true],
     ["OutSystems Developer", "Software Engineering", true],
