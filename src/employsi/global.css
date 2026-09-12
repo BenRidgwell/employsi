@@ -4864,9 +4864,13 @@ body {
 }
 /* Bottom-right dock icon idle animations — every control (Employer/Employee
    tools, Feedback, Need help, Settings) gets the same "always gently alive"
-   treatment as the What's Trending flame, so the whole stack reads as one
-   animated family. Each targets the icon's own transform-box so the wobble
-   pivots around the glyph, not the button. */
+   treatment, so the whole stack reads as one animated family. Each targets the
+   icon's own transform-box so the wobble pivots around the glyph, not the
+   button.
+
+   This used to name the What's Trending flame as the reference. That flame was
+   removed on 2026-09-12 when the pane's header was set like the filter card's,
+   and the nearest surviving sibling is the hot-companies flicker just above. */
 .tdtoggle.td-employer svg {
   animation: tdbuild 3.4s ease-in-out infinite;
 }
