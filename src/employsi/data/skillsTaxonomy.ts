@@ -737,11 +737,108 @@ const RAW_SKILLS: SkillDef[] = [
       "conveyancer",
       "legal executive",
     ],
+    except: [
+      // "counsel" matches the start of "counsellor", so student, mental-health
+      // and sexual-assault counsellors were being read as legal roles: measured
+      // on released markets, 199 distinct titles over 230 rows, 8.7% of this
+      // skill. None of them is partly a commercial or legal job.
+      //
+      // Safe to suppress outright, because these titles already carry Mental
+      // Health & Counselling on its own "counsellor" term — checked before
+      // adding this, so the except moves them rather than stranding them.
+      "counsellor",
+      "counselling",
+      "counselor",
+      "counseling",
+    ],
+  },
+  // ── Commercial & Legal · specialities ──────────────────────────────────
+  //
+  // Counts over RELEASED MARKETS on 2026-09-12 — 2,289 distinct titles.
+  // Contract Management is not minted: 28 titles, and "contract administrat"
+  // is already a term on the parent.
+  {
+    skill: "Legal Practice",
+    cat: "Corporate",
+    parent: "Commercial & Legal",
+    // 286 titles. Private practice and litigation, against the in-house role
+    // below — the two halves of the profession employers advertise for.
+    terms: ["solicitor", "lawyer", "law clerk", "litigation"],
+  },
+  {
+    skill: "In-house Counsel",
+    cat: "Corporate",
+    parent: "Commercial & Legal",
+    // 136 titles.
+    terms: ["legal counsel", "general counsel", "in house counsel", "group counsel"],
+  },
+  {
+    skill: "Paralegal & Support",
+    cat: "Corporate",
+    parent: "Commercial & Legal",
+    // 86 titles.
+    terms: ["paralegal", "legal assistant", "legal secretary", "legal support"],
   },
   {
     skill: "Marketing & Comms",
     cat: "Corporate",
     terms: ["marketing", "communications", "brand", "content", "advertising", "public relations"],
+  },
+  // ── Marketing & Comms · specialities ───────────────────────────────────
+  //
+  // Counts over RELEASED MARKETS on 2026-09-12 — 6,085 distinct titles, the
+  // second most varied parent in the taxonomy. Marketing Automation is not
+  // minted at 15 titles: employers here name the platform, not the discipline.
+  {
+    skill: "Communications & PR",
+    cat: "Corporate",
+    parent: "Marketing & Comms",
+    // 466 titles. "communications" anchors the start of a word, so it cannot
+    // reach inside "telecommunications" — that stays its own broad skill.
+    terms: ["communications", "public relations", "media relations", "corporate affairs"],
+  },
+  {
+    skill: "Events",
+    cat: "Corporate",
+    parent: "Marketing & Comms",
+    // 365 titles.
+    terms: ["events", "event manager", "event coordinator", "conference producer"],
+  },
+  {
+    skill: "Brand Marketing",
+    cat: "Corporate",
+    parent: "Marketing & Comms",
+    // 183 titles. The qualified forms, not the parent's bare "brand", which is
+    // on every "brand ambassador" and in-store promotions title.
+    terms: ["brand manager", "brand marketing", "brand strateg", "brand lead", "brand director"],
+  },
+  {
+    skill: "Content & Social",
+    cat: "Corporate",
+    parent: "Marketing & Comms",
+    // 115 titles.
+    terms: [
+      "content marketing",
+      "social media",
+      "copywriter",
+      "content creator",
+      "content producer",
+    ],
+  },
+  {
+    skill: "Digital Marketing",
+    cat: "Corporate",
+    parent: "Marketing & Comms",
+    // 105 titles.
+    terms: [
+      "digital marketing",
+      "performance marketing",
+      "growth marketing",
+      "seo ",
+      "paid media",
+      "paid search",
+      "search engine market",
+    ],
   },
   {
     skill: "Sales & Business Dev",
@@ -942,6 +1039,49 @@ const RAW_SKILLS: SkillDef[] = [
       "wealth",
     ],
   },
+  // ── Banking & Lending · specialities ───────────────────────────────────
+  //
+  // Which side of a bank, which is how these roles are advertised and paid.
+  // Counts over RELEASED MARKETS on 2026-09-12 — 2,036 distinct titles.
+  {
+    skill: "Wealth & Private Banking",
+    cat: "Financial",
+    parent: "Banking & Lending",
+    // 299 titles, the largest here.
+    terms: ["wealth", "private bank", "private client", "investment adviser"],
+  },
+  {
+    skill: "Business Banking",
+    cat: "Financial",
+    parent: "Banking & Lending",
+    // 141 titles.
+    terms: ["business banking", "commercial banking", "institutional banking", "corporate banking"],
+  },
+  {
+    skill: "Retail Banking",
+    cat: "Financial",
+    parent: "Banking & Lending",
+    // 123 titles. "branch manager" is deliberately absent: it is already a term
+    // on Leadership & Coordination, and measured on the archive it adds nothing
+    // here — 125 titles with it, 125 without — so it would have been pure
+    // duplication for no coverage.
+    terms: ["teller", "personal banker", "customer banking", "retail banking"],
+  },
+  {
+    skill: "Mortgage & Home Lending",
+    cat: "Financial",
+    parent: "Banking & Lending",
+    // 99 titles.
+    terms: ["mortgage", "home loan", "home lending", "lending specialist"],
+  },
+  {
+    skill: "Credit Analysis",
+    cat: "Financial",
+    parent: "Banking & Lending",
+    // 91 titles. The qualified forms, not the parent's bare "credit", which is
+    // also on every "credit card" and "credit control" title.
+    terms: ["credit analyst", "credit manager", "credit risk", "credit assessor", "credit officer"],
+  },
   {
     skill: "Insurance & Actuarial",
     cat: "Financial",
@@ -1113,6 +1253,44 @@ const RAW_SKILLS: SkillDef[] = [
       "medical officer",
     ],
   },
+  // ── Medical Practice · specialities ────────────────────────────────────
+  //
+  // The smallest parent to carry children — 638 distinct titles over released
+  // markets on 2026-09-12 — and the best covered, at 57%: a doctor's ad names
+  // the specialty because the registration does.
+  //
+  // Not minted, for want of evidence: Surgery (36 titles, four short of the
+  // floor), Anaesthetics (29) and Registrar & Resident (23). All three are
+  // already terms on the parent, so the demand is counted, just not split out.
+  {
+    skill: "Visiting Medical Officer",
+    cat: "Health",
+    parent: "Medical Practice",
+    // 170 titles, 27% of the parent on its own. An appointment type rather than
+    // a specialty, and it is here because it is what these ads say: a VMO is a
+    // doctor contracted to a hospital rather than employed by it, and public
+    // health services advertise the arrangement in the title.
+    terms: ["visiting medical"],
+  },
+  {
+    skill: "General Practice",
+    cat: "Health",
+    parent: "Medical Practice",
+    // 76 titles. "gp " with the trailing space is the abbreviation as a whole
+    // word — without it the stem would reach into "gpo" and "gps".
+    terms: ["general practitioner", "gp ", "vr gp", "general practice"],
+  },
+  {
+    skill: "Psychiatry",
+    cat: "Health",
+    parent: "Medical Practice",
+    // 64 titles. UNDER MEDICAL PRACTICE, not Mental Health & Counselling,
+    // which was the other candidate: measured before choosing, "Psychiatrist"
+    // maps only to Medical Practice, because Mental Health's terms are
+    // counsellor / psycholog / mental health and none of them reaches it. A
+    // psychiatrist is a doctor, and the archive words it that way.
+    terms: ["psychiatr"],
+  },
   {
     skill: "Allied Health",
     cat: "Health",
@@ -1227,6 +1405,37 @@ const RAW_SKILLS: SkillDef[] = [
     // archived neuropsychologist rows matched nothing, because "psycholog"
     // only matches at the start of a word.
     terms: ["counsellor", "psycholog", "neuropsycholog", "mental health"],
+  },
+  // ── Mental Health & Counselling · specialities ─────────────────────────
+  //
+  // Counts over RELEASED MARKETS on 2026-09-12 — 1,823 distinct titles.
+  //
+  // No Psychiatry child here: it sits under Medical Practice, because
+  // "Psychiatrist" does not match any of this skill's terms and a psychiatrist
+  // is a doctor. See the note there.
+  {
+    skill: "Psychology",
+    cat: "Care",
+    parent: "Mental Health & Counselling",
+    // 455 titles.
+    terms: ["psychologist", "psychology", "neuropsych"],
+  },
+  {
+    skill: "Counselling",
+    cat: "Care",
+    parent: "Mental Health & Counselling",
+    // 179 titles. These are the same titles Commercial & Legal used to claim
+    // through "counsel" matching the start of "counsellor" — see the except
+    // there. This is where they belonged all along.
+    terms: ["counsellor", "counselling", "counselor", "counseling"],
+  },
+  {
+    skill: "Alcohol & Other Drugs",
+    cat: "Care",
+    parent: "Mental Health & Counselling",
+    // 72 titles. " aod" with the leading space, because the abbreviation is
+    // three letters that appear inside ordinary words otherwise.
+    terms: ["alcohol and other drug", "drug and alcohol", "addiction", " aod"],
   },
   {
     skill: "Social & Community Services",
@@ -1563,6 +1772,44 @@ const RAW_SKILLS: SkillDef[] = [
       "shelf filler",
       "warehouse",
     ],
+  },
+  // ── Warehousing & Logistics · specialities ─────────────────────────────
+  //
+  // Counts over RELEASED MARKETS on 2026-09-12 — 1,464 distinct titles.
+  {
+    skill: "Forklift Operation",
+    cat: "Transport",
+    parent: "Warehousing & Logistics",
+    // 151 titles. A licensed skill rather than a job, which is why employers
+    // put it in the title even when the role is a general warehouse one.
+    terms: ["forklift", "reach truck", "high reach", "order picker", "counterbalance"],
+  },
+  {
+    skill: "Store & Inventory",
+    cat: "Transport",
+    parent: "Warehousing & Logistics",
+    // 108 titles.
+    terms: ["storeperson", "storeman", "inventory", "stock control", "stores officer"],
+  },
+  {
+    skill: "Freight Forwarding",
+    cat: "Transport",
+    parent: "Warehousing & Logistics",
+    // 90 titles.
+    terms: [
+      "freight forward",
+      "customs broker",
+      "import export",
+      "international freight",
+      "freight coordinator",
+    ],
+  },
+  {
+    skill: "Pick & Pack",
+    cat: "Transport",
+    parent: "Warehousing & Logistics",
+    // 73 titles.
+    terms: ["picker", "packer", "pick and pack", "order picking", "pick pack"],
   },
 
   // ── Manufacturing & production ─────────────────────────────────────────

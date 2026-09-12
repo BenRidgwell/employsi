@@ -360,6 +360,24 @@ if (ACCOUNT && DB && TOKEN) {
     // another. Both readings are correct and both must survive.
     ["HR Driver - Sydney", "Truck Driving", true],
     ["HR Business Partner", "Truck Driving", false],
+    // "counsel" matches the start of "counsellor". These two assert the except
+    // that took student and mental-health counsellors out of Commercial &
+    // Legal, and that they land where they belonged.
+    ["Student Counsellor", "Counselling", true],
+    ["Student Counsellor", "Legal Practice", false],
+    ["Legal Counsel - Corporate", "In-house Counsel", true],
+    // A psychiatrist is a doctor, and Mental Health's terms do not reach the
+    // word at all — so the speciality hangs off Medical Practice.
+    ["Psychiatrist - Adult Acute", "Psychiatry", true],
+    ["Clinical Psychologist", "Psychiatry", false],
+    // "communications" anchors a word start, so it cannot reach inside
+    // "telecommunications".
+    ["Telecommunications Technician", "Communications & PR", false],
+    ["Internal Communications Manager", "Communications & PR", true],
+    // The parent's bare "brand" is on every brand-ambassador title; the child
+    // takes only the qualified forms.
+    ["Brand Ambassador", "Brand Marketing", false],
+    ["Brand Marketing Manager", "Brand Marketing", true],
   ];
   const gateFails = GATE.filter(([t, s, want]) => skillsForText(t).includes(s) !== want);
   if (gateFails.length) {

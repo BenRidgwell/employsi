@@ -232,16 +232,24 @@ def load_categories(path: str) -> list[tuple[str, str]]:
     return list(seen.items())
 
 
-def load_excepts(path: str) -> dict[str, list[str]]:
+def load_excepts(path: str, children: bool = False) -> dict[str, list[str]]:
     """{skill: [phrase, …]} — titles a skill must not claim, from its `except`.
 
     Merged the same way terms are, because a skill declared in two vocabularies
     must not claim a title that either declaration disowns.
+
+    Children excluded by default, to match load_skills. Returning a rule for a
+    skill the caller does not have is harmless but untidy — matcher() would
+    carry a suppression it can never apply — and the two functions disagreeing
+    about what the taxonomy contains is exactly the drift this module exists to
+    prevent.
     """
     src = open(path).read()
     body = _strip_comments(src.split('RAW_SKILLS', 1)[1]).split('];', 1)[0]
     out: dict[str, list[str]] = {}
     for m in _ENTRY.finditer(body):
+        if not children and _g(m, "parent") is not None:
+            continue
         skill = _unescape(_g(m, "skill"))
         raw = m.group("except")
         if not raw:
