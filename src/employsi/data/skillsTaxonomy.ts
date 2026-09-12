@@ -1983,6 +1983,14 @@ const RAW_SKILLS: SkillDef[] = [
     //   "senior architect" (6) — ambiguous on its own; the IT ones spell out
     //     "senior solution architect" and are caught by the entries below,
     //     since an except is a plain substring test, not a prefix one.
+    //
+    // KNOWN RESIDUE, measured 2026-09-12 and deliberately not chased: three
+    // rows survive on word-order variants an exact phrase cannot see —
+    // "Solution Integrations Architect - SAP" (two rows, already also IT &
+    // Systems via "sap") and "MTS, Technical Solution Sales Architect". Three
+    // rows in a 275k archive is below any floor this file acts on, and the fix
+    // would be one more literal per variant for as long as employers keep
+    // inventing them.
     except: [
       "solution architect",
       "solutions architect",
