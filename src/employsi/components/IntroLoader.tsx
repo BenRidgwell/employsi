@@ -2,91 +2,72 @@ import { useEffect, useRef, useState } from "react";
 
 /**
  * The intro animation that covers the app while it boots, from
- * `App_Intro_Animation_4.html`.
+ * `employsi-loader.html`.
  *
  * WHY THE HANDOFF IS NOT ON A TIMER
- * The design choreographs the whole thing on fixed delays — the veil lifts at
- * 2280ms whatever else is happening. That is right for a design file, which has
- * nothing behind it, and wrong here: the brief is a loader that plays "whilst
- * the screen/data loads in the background", and a veil that lifts on a timer
- * would hand off to a half-built map just as often as to a ready one.
+ * The brief is a loader that plays "whilst the screen/data loads in the
+ * background", so the veil lifts when the app says it is ready rather than at a
+ * fixed moment — a timer would hand off to a half-built map as often as to a
+ * ready one.
  *
- * So the BUILD-UP keeps the design's timings exactly (stem, arms, lockup,
- * wordmark, rule, caption, band — all on their original delays), and only the
- * last two steps, the handoff and the veil, are driven by state instead. They
- * fire when both of these are true:
- *
- *   • the build-up has finished, so the animation is never cut off mid-stroke;
- *   • the app says it is ready.
- *
- * The design multiplies every delay by a `speed` prop defaulting to 2.4, which
- * is its preview control — at that setting the build-up alone runs 5.3s. The
- * delays here are the unmultiplied ones (speed = 1), which is the choreography
- * the design describes and the only version that fits inside a loading screen.
+ * There is no build-up to protect any more. The previous design drew itself on
+ * over 2.2s of choreography and the handoff had to wait for the last stroke;
+ * this one is a standing composition with two loops in it, the sweep and the
+ * pan, so DWELL_MS below is only a floor that stops the veil flashing past on a
+ * warm load.
  *
  * CEILING
  * `ready` is a best-effort signal, so it is never allowed to trap anyone: after
  * MAX_HOLD the veil lifts regardless. A user looking at a slightly unfinished
  * map can still use the app; a user looking at a permanent splash screen cannot.
- * That is the whole reason this is a ceiling and not a condition.
  *
- * WHAT THE DESIGN FILE CARRIES THAT THIS DOES NOT
- * Two pieces of it are scaffolding for the design canvas rather than product:
- * a mocked app shell (sidebar, top bar, shimmering tiles) that stands in for
- * "the app is behind the veil", and a "Replay intro" button wired to the
- * canvas's own replay(). Here the real app is behind the veil, so drawing a
- * fake one over it would be a second, wrong app; and there is nothing to replay.
+ * WHAT THIS CARRIES THAT THE DESIGN FILE DOES NOT, and why:
  *
- * Its stylesheet and logic also still carry a parallax city built out of divs
- * (cityFar/cityMid/cityNear/traffic, and the city-drift, city-window and
- * city-traffic keyframes) and the previous version's grid and two-layer globe.
- * None of it is referenced by the markup any more — it is superseded by the
- * footage band — so none of it is built here either.
+ *  • The skyline is a file, not a data: URI. The design builds it in the page
+ *    with buildSkyline() and inlines ~140KB into the document on every load.
+ *    The drawing is deterministic, so scripts/gen-intro-skyline.js runs the
+ *    same function once and writes public/assets/intro-skyline.svg — 11KB over
+ *    the wire, and cached after the first load.
+ *  • The skyline is anchored to its GROUND LINE rather than its sky. See
+ *    .introsky in global.css.
+ *  • A reduced-motion branch, and a breakpoint for phones. The design is one
+ *    desktop canvas and carries neither.
  */
 
 /**
- * When the build-up finishes and the handoff becomes possible.
+ * The floor on how long the veil stays up.
  *
- * The design hands off at 2200ms, a shade before its own last stroke — the
- * rule finishes drawing at 2220ms — so the completed picture never actually
- * rests. This holds it for ~780ms after that, on request, which takes the whole
- * intro from about 2.7s to about 3.5s including the 520ms fade out.
+ * Nothing is being protected from being cut off any more — the composition is
+ * standing, not drawn on — so this is purely about not flashing. A veil that
+ * appears and leaves inside 300ms on a warm load reads as a glitch rather than
+ * as a loading screen, and the sweep below it would not complete one pass.
  *
- * NOT DONE BY STRETCHING THE CHOREOGRAPHY. Every stroke keeps the design's
- * exact delay and duration; what got longer is the pause on the finished
- * composition. Slowing the strokes themselves would be redrawing the design
- * rather than showing it for longer, and the design's own `speed` prop is what
- * that would amount to.
- *
- * This is a FLOOR ON EVERY APP OPEN and the only reason not to raise it
- * further. It sat at 2600 two designs ago for a different reason: the band
- * then did not finish arriving until 2020ms and needed the room to be seen at
- * all. This band is in by 960ms, so all 800ms here is dwell.
+ * 1900ms is one full sweep (see em-sweep), so the bar always finishes a stroke
+ * rather than stopping halfway across. Down from 3000, which was the previous
+ * design's build-up plus its dwell and has nothing to measure here.
  */
-const BUILD_MS = 3000;
-/** Hard ceiling — the veil always lifts by here, ready or not. */
+const DWELL_MS = 1900;
 const MAX_HOLD = 6000;
 
 export function IntroLoader({ ready }: { ready: boolean }) {
   const [built, setBuilt] = useState(false);
   const [out, setOut] = useState(false);
   const [gone, setGone] = useState(false);
-  // Reduced motion: the design is 2.7s of motion over a looping clip, which is
-  // exactly what this preference asks us not to play. The veil still covers the
-  // boot — it just appears and leaves without the choreography, and without the
-  // footage, which no CSS rule can hold still.
-  const [reduced, setReduced] = useState(false);
+  // Reduced motion: the sweep and the 52s pan are both loops, which is exactly
+  // what this preference asks us not to play. Both are stopped in CSS; this
+  // state also drops the dwell, so the veil covers the boot and leaves as soon
+  // as the app is ready rather than holding a still picture for a sweep that is
+  // not running.
   const reducedRef = useRef(false);
 
   useEffect(() => {
     reducedRef.current =
       typeof window !== "undefined" &&
       !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    setReduced(reducedRef.current);
-    const build = window.setTimeout(() => setBuilt(true), reducedRef.current ? 0 : BUILD_MS);
+    const dwell = window.setTimeout(() => setBuilt(true), reducedRef.current ? 0 : DWELL_MS);
     const ceiling = window.setTimeout(() => setOut(true), MAX_HOLD);
     return () => {
-      window.clearTimeout(build);
+      window.clearTimeout(dwell);
       window.clearTimeout(ceiling);
     };
   }, []);
@@ -107,97 +88,41 @@ export function IntroLoader({ ready }: { ready: boolean }) {
 
   return (
     <div className={`introveil${out ? " is-out" : ""}`} aria-hidden="true">
-      {/* The skyline across the bottom 56%. No gradient over its top edge, and
-          that is deliberate rather than an omission: the footage is a city
-          against a blown-out white sky, so it dissolves into the page on its
-          own and a fade would only grey the buildings' tops. The previous
-          design needed one because its band was a street scene, opaque to its
-          top edge. */}
-      {!reduced && (
-        <div className="introband">
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            /* Explicit rather than left to the autoplay heuristics: this file
-               has under a second to arrive before the band is on screen, so
-               there is no version of "later" that is any use. */
-            preload="auto"
-            /* Not focusable and not announced: it is texture behind a splash
-               screen, and the veil is already aria-hidden. */
-            tabIndex={-1}
-          >
-            {/* TWO ENCODES, and the WebM is not an optimisation — H.264 is
-                patent-encumbered and a Chromium built without the proprietary
-                codecs cannot decode it at all. It does not fail loudly: the
-                element reports MEDIA_ERR_SRC_NOT_SUPPORTED and the band renders
-                empty, which is indistinguishable from the video simply not
-                having arrived. Measured on the Chromium in this repo's own
-                tooling, where canPlayType('video/mp4; codecs="avc1.42E01E"')
-                answers "". VP9 is listed first so anything that can take it
-                does; the MP4 is what Safari uses.
-
-                Both are the source's native 1280x720, uncropped — unlike the
-                street-scene band two designs ago, this one is not safe to crop:
-                at phone aspect ratios the 56% band is TALLER than it is wide
-                relative to the footage, so cover() uses the full frame height,
-                and the 78% anchor draws on the middle of the frame too. 333KB
-                and 248KB against the supplied file's 3.9MB, which is almost
-                all bitrate: 7345 kb/s for a slow drift. The encodes are
-                greyscale, because CSS applies grayscale(1) anyway and the
-                chroma planes were being carried for nothing, and the muted
-                audio track is dropped. */}
-            <source src="/assets/intro-band.webm" type="video/webm" />
-            <source src="/assets/intro-band.mp4" type="video/mp4" />
-          </video>
-        </div>
-      )}
-
-      <div className={`introstage${out ? " is-out" : ""}`}>
+      <div className="introstage">
         <div className="introlockup">
-          {/* The four rects of the employsi mark, drawn individually so each
-              can animate: the stem grows up, then the three arms extend. */}
-          <svg viewBox="0 0 120 120" width="62" height="62" className="intromark">
-            <rect x="24" y="24" width="15" height="72" rx="7.5" fill="#1c1c1e" className="i-stem" />
-            <rect
-              x="24"
-              y="24"
-              width="40"
-              height="15"
-              rx="7.5"
-              fill="#8e8e93"
-              className="i-arm i-arm1"
-            />
-            <rect
-              x="24"
-              y="52.5"
-              width="55"
-              height="15"
-              rx="7.5"
-              fill="#48484a"
-              className="i-arm i-arm2"
-            />
-            <rect
-              x="24"
-              y="81"
-              width="72"
-              height="15"
-              rx="7.5"
-              fill="#1c1c1e"
-              className="i-arm i-arm3"
-            />
+          {/* The four rects of the employsi mark. Flat here — the previous
+              design drew them on individually and this one does not, so they
+              carry the design's opacities instead of its animation. */}
+          <svg
+            viewBox="24 24 72 72"
+            width="77"
+            height="77"
+            fill="currentColor"
+            className="intromark"
+            aria-hidden="true"
+          >
+            <rect x="24" y="24" width="15" height="72" rx="7.5" />
+            <rect x="24" y="24" width="40" height="15" rx="7.5" opacity=".45" />
+            <rect x="24" y="52.5" width="55" height="15" rx="7.5" opacity=".72" />
+            <rect x="24" y="81" width="72" height="15" rx="7.5" />
           </svg>
           <span className="introword">employsi</span>
         </div>
 
-        <div className="introfoot">
-          <span className="introrule" />
-          {/* Just the line. The design sets a small rolling globe before it —
-              a shaded sphere with a band of land scrolling across — dropped on
-              request. */}
-          <span className="introcaption">Explore the world of work</span>
+        {/* An indeterminate sweep, not a progress bar: nothing here knows how
+            far along the boot is, and a bar that filled would be claiming it
+            did. */}
+        <div className="introbar">
+          <span className="introbarfill" />
         </div>
+
+        <div className="introcaption">Explore the world of work.</div>
+      </div>
+
+      {/* The skyline across the bottom third, panning slowly. Its top is masked
+          away rather than cut, so the buildings dissolve into the page. */}
+      <div className="introband">
+        <img className="introsky" src="/assets/intro-skyline.svg" alt="" draggable={false} />
       </div>
     </div>
   );

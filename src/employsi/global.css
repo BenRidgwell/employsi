@@ -14504,53 +14504,52 @@ body {
    (city-drift, city-window, city-traffic) plus the previous version's grid and
    two-layer globe. Its markup references none of them — they are superseded by
    the footage band — so they are not built here.                              */
-@keyframes in-stem {
-  0% { transform: scaleY(0); opacity: 0; }
-  30% { opacity: 1; }
-  100% { transform: scaleY(1); opacity: 1; }
+/* ── The intro loader ────────────────────────────────────────────────────────
+   From `employsi-loader.html`. See components/IntroLoader.tsx for what this
+   carries that the design file does not.
+
+   The design is one set of inline styles on a 1440-ish canvas; these are the
+   same numbers as classes, with two additions it has no need for — a
+   reduced-motion stop and a phone breakpoint. */
+@keyframes em-sweep {
+  0% {
+    left: -34%;
+  }
+  100% {
+    left: 100%;
+  }
 }
-@keyframes in-arm {
-  0% { transform: scaleX(0.06); opacity: 0; }
-  30% { opacity: 1; }
-  100% { transform: scaleX(1); opacity: 1; }
-}
-@keyframes in-lockup {
-  0% { transform: translateX(46px); }
-  100% { transform: translateX(0); }
-}
-@keyframes in-word {
-  0% { clip-path: inset(0 100% 0 0); opacity: 0; }
-  20% { opacity: 1; }
-  100% { clip-path: inset(0 0 0 0); opacity: 1; }
-}
-@keyframes in-rule {
-  0% { transform: scaleX(0); }
-  100% { transform: scaleX(1); }
-}
-@keyframes in-caption {
-  0% { opacity: 0; transform: translateY(5px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-@keyframes in-handoff {
-  0% { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(-26px) scale(0.62); }
+@keyframes em-pan {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-13%);
+  }
 }
 @keyframes in-veil {
-  0% { opacity: 1; }
-  100% { opacity: 0; visibility: hidden; }
-}
-@keyframes in-band {
-  0% { opacity: 0; transform: translateY(18px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0% {
+    opacity: 1;
+    visibility: visible;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
 }
 .introveil {
   position: fixed;
   inset: 0;
   z-index: 90;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
+  /* Lifts the lockup off centre so it sits in the white ABOVE the skyline
+     rather than on it. The band below is the same 34vh. */
+  padding-bottom: 34vh;
+  box-sizing: border-box;
+  overflow: hidden;
   background: #ffffff;
+  color: #1c1c1e;
 }
 .introveil.is-out {
   animation: in-veil 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -14559,172 +14558,144 @@ body {
      during the handoff reaches the map, not the veil. */
   pointer-events: none;
 }
-/* `isolation: isolate` is the design's, and it earns its place: it gives the
-   band its own stacking context so the video cannot be composited against the
-   veil's own layer during the fade. */
+/* stretch, not center: it is what makes the sweep bar span the lockup exactly,
+   so the rule is as wide as the mark and wordmark together and needs no width
+   of its own. */
+.introstage {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 30px;
+}
+.introlockup {
+  display: flex;
+  align-items: center;
+  gap: 27px;
+}
+.intromark {
+  display: block;
+  flex: none;
+}
+.introword {
+  font-size: 64px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+.introbar {
+  position: relative;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(128, 128, 128, 0.24);
+  overflow: hidden;
+}
+.introbarfill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 34%;
+  border-radius: 2px;
+  background: currentColor;
+  animation: em-sweep 1.9s cubic-bezier(0.65, 0.05, 0.36, 1) infinite;
+}
+.introcaption {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  text-align: center;
+  opacity: 0.5;
+  /* Pulls the caption back up under the bar: the stage's 30px gap is set for
+     the space above the bar, and the caption wants less. */
+  margin-top: -12px;
+}
+/* The bottom third. Its top edge is MASKED rather than cut, so the buildings
+   dissolve into the page instead of ending on a line. */
 .introband {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 56%;
+  height: 34vh;
   overflow: hidden;
-  isolation: isolate;
-  animation: in-band 760ms cubic-bezier(0.16, 1, 0.3, 1) 200ms both;
+  pointer-events: none;
+  opacity: 0.62;
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 18%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18%);
 }
-.introband video {
+/*
+ * ANCHORED TO THE GROUND LINE, NOT THE SKY.
+ *
+ * The source is 2868x708 and the band is far wider than it is tall, so
+ * object-fit: cover always has to throw some of the drawing away — measured at
+ * 1440x860, 82px of 409, a fifth of it. WHICH fifth is object-position's
+ * choice, and the design's `center top` gives up the bottom: the buildings lose
+ * their bases and the city reads as sinking through the floor. `center bottom`
+ * gives up the top instead, where there is sky and a few spire tips, and where
+ * the band's mask is already fading everything out.
+ *
+ * `bottom: 0` for the same reason — the design's `-4vh` pushes another 34px of
+ * the ground line below the fold on top of the crop.
+ */
+.introsky {
   position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
+  left: 0;
+  bottom: 0;
+  width: max(115vw, 160vh);
+  /* WITHOUT THIS THE PAN TEARS. The app's reset carries `img { max-width: 100% }`,
+     which the design file has no equivalent of, and it clamps the width above
+     back to the viewport's. The two numbers are a matched pair: the image is
+     115vw wide and em-pan slides it 13% of that, which is 14.95vw — so the
+     right edge finishes at 100.05vw, a rounding error inside the frame. Clamp
+     the width to 100vw and the same 13% drags 13vw of white onto the right of
+     the screen. */
+  max-width: none;
+  height: 38vh;
   object-fit: cover;
-  /* 78% down the frame, not its bottom edge: with the band at 56% the footage
-     overflows by less, and anchoring to the bottom pushed the skyline's tops
-     out of view. */
-  object-position: center 78%;
-  filter: grayscale(1);
-}
-/* Lifted off centre so the lockup sits in the white above the skyline rather
-   than on it. */
-.introstage {
-  position: relative;
-  margin-bottom: 20%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 22px;
-}
-.introstage.is-out {
-  animation: in-handoff 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.introlockup {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  animation: in-lockup 620ms cubic-bezier(0.16, 1, 0.3, 1) 960ms both;
-}
-.intromark {
+  object-position: center bottom;
   display: block;
+  filter: grayscale(1) contrast(1.02);
+  animation: em-pan 52s ease-in-out infinite alternate;
 }
-/* transform-box: fill-box makes each rect scale about its OWN edge rather than
-   the SVG viewport's origin, which is what lets the stem grow up from its base
-   and the arms extend from the stem. */
-.intromark .i-stem,
-.intromark .i-arm {
-  transform-box: fill-box;
-}
-.intromark .i-stem {
-  transform-origin: bottom center;
-  animation: in-stem 560ms cubic-bezier(0.32, 0.72, 0, 1) 100ms both;
-}
-.intromark .i-arm {
-  transform-origin: left center;
-}
-.intromark .i-arm1 {
-  animation: in-arm 520ms cubic-bezier(0.32, 0.72, 0, 1) 420ms both;
-}
-.intromark .i-arm2 {
-  animation: in-arm 520ms cubic-bezier(0.32, 0.72, 0, 1) 540ms both;
-}
-.intromark .i-arm3 {
-  animation: in-arm 520ms cubic-bezier(0.32, 0.72, 0, 1) 660ms both;
-}
-.introword {
-  display: block;
-  font-size: 52px;
-  font-weight: 600;
-  letter-spacing: -0.045em;
-  line-height: 0.86;
-  color: #1c1c1e;
-  animation: in-word 640ms cubic-bezier(0.16, 1, 0.3, 1) 1020ms both;
-}
-.introfoot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  width: 280px;
-}
-.introrule {
-  display: block;
-  width: 100%;
-  height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #1c1c1e, #d1d1d6);
-  transform-origin: left center;
-  animation: in-rule 900ms cubic-bezier(0.22, 0.61, 0.36, 1) 1320ms both;
-}
-.introcaption {
-  display: inline-flex;
-  align-items: center;
-  font-family: var(--font-label);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: #8e8e93;
-  animation: in-caption 420ms cubic-bezier(0.16, 1, 0.3, 1) 1480ms both;
-}
-
-/* Small screens: the 52px wordmark plus a 62px mark overruns a 390px phone.
-   The design is a fixed 1120x700 canvas and carries no breakpoint, so this
-   whole block is ours.
-
-   250px, not the 280px above: the caption sets 218px wide at the design's
-   11px/.15em, so a narrower foot wrapped "…WORLD OF / WORK" and, the caption
-   being an inline-flex row, hung the second line off to the left. It was 243px
-   before the globe came out, so the 32px of slack here is now real rather than
-   nominal — but 250px stays, because it is also about the width of the shrunken
-   lockup and the rule wants to read as sitting under it. Anything nearer 220
-   would be one font fallback away from wrapping again. text-align centres the
-   wrap a phone narrower than any we target would still force.
-
-   The stage's 20% bottom margin is a proportion of a 700px-tall canvas; on a
-   tall phone the same 20% is far more pixels and pushes the lockup into the top
-   third. Capped so it stays a lift off centre rather than a move to the top. */
+/* The design is a desktop canvas: 77px of mark, 27px of gap and a 64px wordmark
+   set about 390px wide, which is a whole phone. */
 @media (max-width: 680px) {
   .introword {
-    font-size: 38px;
+    font-size: 40px;
   }
   .intromark {
-    width: 46px;
-    height: 46px;
+    width: 50px;
+    height: 50px;
   }
-  .introfoot {
-    width: 250px;
-  }
-  .introcaption {
-    text-align: center;
+  .introlockup {
+    gap: 16px;
   }
   .introstage {
-    margin-bottom: min(20%, 110px);
+    gap: 22px;
+  }
+  .introcaption {
+    letter-spacing: 0.22em;
   }
 }
-
-/* The design is 2.7s of motion over a looping clip, which is precisely what
-   this preference asks us not to play. The veil still covers the boot — it just
-   arrives and leaves without the choreography, and without the footage, which
-   no CSS rule can hold still (the band is not rendered at all; see
-   IntroLoader.tsx). */
+/* Both loops stopped. The composition still stands; it just holds still, with
+   the sweep parked a third of the way across so the bar does not read as an
+   empty track. The veil's own fade is kept but shortened — it is a state
+   change rather than motion for its own sake, and leaving it out would make
+   the app appear with a hard cut. */
 @media (prefers-reduced-motion: reduce) {
-  .introlockup,
-  .introword,
-  .introrule,
-  .introcaption,
-  .introband,
-  .intromark .i-stem,
-  .intromark .i-arm {
-    animation: none !important;
+  .introbarfill,
+  .introsky {
+    animation: none;
   }
-  .introstage.is-out {
-    animation: none !important;
-    opacity: 0;
+  .introbarfill {
+    left: 33%;
   }
   .introveil.is-out {
     animation: in-veil 200ms linear both;
   }
 }
+
 /* ── Company card · timeline scrubber ───────────────────────────────────────
    The period control on the Skills tab: the employer's daily vacancy volume
    with a time axis under it, so the reader can see where the history is dense
