@@ -6853,17 +6853,29 @@ body {
   animation: anrise 260ms cubic-bezier(0.32, 0.72, 0, 1) both;
   text-align: left;
 }
+/* Three children on two rows: the title takes the first row with the close
+   button pinned to its right, and the demand chip and Follow take the second.
+   The card is a fixed 380px, so those two never fitted beside a 22px title
+   anyway — this only stops the CLOSE button wrapping down with them, which put
+   it halfway down the card and somewhere different from every other pane. */
 .gscardhd {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
+  align-items: center;
+  gap: 12px 16px;
   flex-wrap: wrap;
 }
 .gscardname {
   display: flex;
   align-items: center;
   gap: 10px;
+  /* Takes the row, which is what pushes the close button to the corner.
+     BASIS 0, not auto. With flex-wrap on, the browser breaks lines using each
+     item's hypothetical size before it shrinks anything — so an auto basis let
+     a long title claim the whole first line on its own and bumped the close
+     button down to the second. At 0 the title never forces a wrap and grows
+     into whatever the close button leaves; "Data Science & Machine Learning",
+     the longest name in the taxonomy, wraps inside it instead. */
+  flex: 1 1 0;
   min-width: 0;
 }
 .gscardicon {
@@ -6875,6 +6887,8 @@ body {
   stroke-linejoin: round;
 }
 .gscardtitle {
+  /* Long names break rather than widening the flex item past its share. */
+  overflow-wrap: anywhere;
   font-size: 22px;
   font-weight: var(--weight-semibold);
   letter-spacing: -0.022em;
@@ -6883,34 +6897,11 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  /* Its own row, stated rather than left to whether the content happens to
+     overflow — the close button's position should not depend on how long a
+     skill's name is. */
+  flex: 0 0 100%;
   flex-wrap: wrap;
-}
-.gscardx {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 auto;
-  padding: 0;
-  border: 1px solid var(--border-subtle);
-  border-radius: 999px;
-  background: var(--surface-card);
-  color: var(--neutral-700);
-  cursor: pointer;
-  --m: 0;
-  transition:
-    background 160ms,
-    color 160ms,
-    transform 110ms;
-}
-.gscardx:hover {
-  --m: 1;
-  background: var(--surface-hover);
-  color: var(--text-primary);
-}
-.gscardx:active {
-  transform: scale(0.94);
 }
 .gscardlevel {
   display: inline-flex;

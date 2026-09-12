@@ -464,6 +464,28 @@ export function GlobalSearch() {
               </svg>
               <span className="gscardtitle">{card.skill}</span>
             </span>
+            {/* The design's card fills a page and never needs dismissing; in
+                the corner it sits over the map, so it does.
+
+                A sibling of the title rather than the last of the actions, so
+                it sits in the top-right corner the way every other pane's does
+                (see .paneclose). Inside .gscardactions it rode along with the
+                demand chip and Follow, which at this card's fixed 380px always
+                wrap to their own line — putting the dismiss control halfway
+                down the card, and in a different place from the same control
+                on the analyst, company, filter and trending panes. */}
+            <button
+              type="button"
+              className="paneclose"
+              onClick={() => {
+                setCarded(null);
+                setSearched(false);
+                setSearchQuery("");
+              }}
+              aria-label="Close skill detail"
+            >
+              <IconClose />
+            </button>
             <div className="gscardactions">
               <span className={`gscardlevel dmd-${card.tone}`}>
                 <i />
@@ -475,19 +497,6 @@ export function GlobalSearch() {
               >
                 <FollowGlyph on={followedSkills.includes(card.skill)} />
                 {followedSkills.includes(card.skill) ? "Following" : "Follow"}
-              </button>
-              {/* The design's card fills a page and never needs dismissing; in
-                  the corner it sits over the map, so it does. */}
-              <button
-                className="gscardx"
-                onClick={() => {
-                  setCarded(null);
-                  setSearched(false);
-                  setSearchQuery("");
-                }}
-                aria-label="Close skill detail"
-              >
-                <IconClose />
               </button>
             </div>
           </div>
