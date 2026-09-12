@@ -52,3 +52,4 @@ workers/waitlist/dist/
 # only next to the run that produced them.
 skills-backfill-backup-*.jsonl
 skills-except-backup-*.jsonl
+it-architect-remap-backup-*.jsonl
