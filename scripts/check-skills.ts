@@ -400,6 +400,12 @@ if (ACCOUNT && DB && TOKEN) {
     ["Landscape Architect", "Architecture & Planning", true],
     ["Project Architect", "Architecture & Planning", true],
     ["Senior Naval Architect", "Shipbuilding & Marine", true],
+    // The except is a substring test and the term is prefix-anchored, so
+    // "systems architect" disowns "OutSystems Architect" without any term of
+    // that spelling claiming it. The product name closes the gap.
+    ["Outsystems Architect", "Architecture & Planning", false],
+    ["Outsystems Architect", "Software Engineering", true],
+    ["OutSystems Developer", "Software Engineering", true],
   ];
   const gateFails = GATE.filter(([t, s, want]) => skillsForText(t).includes(s) !== want);
   if (gateFails.length) {

@@ -389,6 +389,15 @@ const RAW_SKILLS: SkillDef[] = [
       // 14 archived rows, all of which were Architecture & Planning before the
       // IT architects were untangled on 2026-09-12.
       "software architect",
+      // OutSystems is a low-code development platform, so every role on it is a
+      // software one: the archive's 14 OutSystems titles are developers, tech
+      // leads and one architect. The product name is matched rather than the
+      // roles because "Outsystems Architect" is the case that forced it —
+      // an except is a plain substring test and "systems architect" reaches
+      // inside "outsystems architect", while the TERM of the same spelling is
+      // prefix-anchored and does not. Without this the except would have taken
+      // that title out of the Built Environment and left it with no skill.
+      "outsystems",
       "developer",
       "full stack",
       "python",
