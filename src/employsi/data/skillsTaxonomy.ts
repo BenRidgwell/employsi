@@ -1404,7 +1404,22 @@ const RAW_SKILLS: SkillDef[] = [
     // "neuropsycholog" for the same buried-stem reason as "paralegal": nine
     // archived neuropsychologist rows matched nothing, because "psycholog"
     // only matches at the start of a word.
-    terms: ["counsellor", "psycholog", "neuropsycholog", "mental health"],
+    // "counselor"/"counseling" are the US spellings, and without them this
+    // skill matched nothing on 49 archived rows over 28 titles — "Licensed
+    // Professional Counselor", "Licensed Mental Health Counselor". Nearly all
+    // are US rows, so they are gated out of any released-market rollup either
+    // way, but the archive should still know what they are: those rows carried
+    // Commercial & Legal and NOTHING else, so removing that wrong mapping
+    // without this would have left them with no skill at all rather than the
+    // right one. Same reason Paediatric Nursing carries "pediatric".
+    terms: [
+      "counsellor",
+      "counselor",
+      "counseling",
+      "psycholog",
+      "neuropsycholog",
+      "mental health",
+    ],
   },
   // ── Mental Health & Counselling · specialities ─────────────────────────
   //

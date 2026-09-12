@@ -51,3 +51,4 @@ workers/waitlist/dist/
 # D1. They are operational artefacts holding a slice of archive data, useful
 # only next to the run that produced them.
 skills-backfill-backup-*.jsonl
+skills-except-backup-*.jsonl
