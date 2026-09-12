@@ -323,33 +323,11 @@ export function WhatsTrendingPane() {
       <aside className={`briefpane trendpane ${open ? "open" : ""}`} aria-hidden={!open}>
         {firstLoad && <CardLoader />}
         <div className="briefhead">
-          <div className="briefmark">
-            <svg
-              className="trendmark"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.7}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <g className="flameicon">
-                <path d="M12 3c1.6 3 4.2 4.6 4.2 8.2a4.2 4.2 0 0 1-8.4 0c0-1.8.8-3 1.9-4.1C10.6 8.1 11.5 6.2 12 3Z" />
-                <path
-                  className="flameember"
-                  d="M12 10.5c.8 1.3 1.6 2 1.6 3.1a1.6 1.6 0 0 1-3.2 0c0-1.1.8-1.8 1.6-3.1Z"
-                />
-              </g>
-            </svg>
-          </div>
-          <div className="briefheadtxt">
-            <div className="brieftitle">What's Trending</div>
-            {/* Says what the number below it IS. The old copy read "Skill
-                demand · month on month", which named neither the quantity nor
-                the window: the pane shows advertised value, over whatever span
-                the archive could cover. */}
-            <div className="briefdate">See which skills are rising, falling and in demand</div>
-          </div>
+          {/* Title and the close button, set like the filter card's header. The
+              flame tile and the line under the title are gone: the sections
+              below say what they are, and the rail button that opens this pane
+              already reads "What's trending". */}
+          <div className="brieftitle">What's Trending</div>
           <button type="button" className="paneclose" onClick={closeTrending} aria-label="Close">
             <IconClose />
           </button>

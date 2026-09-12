@@ -4073,41 +4073,6 @@ body {
 .mapactions .marow:hover .malabel {
   opacity: 1;
 }
-/* Flame flicker */
-.flameicon {
-  transform-box: fill-box;
-  transform-origin: center bottom;
-  animation: flameflicker 1.5s ease-in-out infinite;
-}
-@keyframes flameflicker {
-  0%,
-  100% {
-    transform: scale(1, 1);
-  }
-  25% {
-    transform: scale(1.07, 0.95) translateY(-0.2px);
-  }
-  50% {
-    transform: scale(0.94, 1.06);
-  }
-  75% {
-    transform: scale(1.04, 0.98) translateX(0.3px);
-  }
-}
-.flameember {
-  transform-box: fill-box;
-  transform-origin: center bottom;
-  animation: emberpulse 1.5s ease-in-out infinite;
-}
-@keyframes emberpulse {
-  0%,
-  100% {
-    opacity: 0.45;
-  }
-  50% {
-    opacity: 1;
-  }
-}
 /* Coffee steam rising */
 .briefsteam path {
   transform-box: fill-box;
@@ -4361,67 +4326,42 @@ body {
   transform: translateX(0) scale(1);
   pointer-events: auto;
 }
+/* Set like the filter card's header and Ask an analyst's: a title, the shared
+   round close, and a rule inset from the corners rather than run to them. The
+   34px flame tile and the line of description under the title are gone — the
+   sections below name themselves ("Biggest risers", "Most viewed"), and the
+   rail button that opens this pane is already labelled "What's trending".
+
+   THE INSET IS 16px, NOT THE 18px the other two cards use, because this pane's
+   own gutter is 16 (see .mktbar) and a rule should line up with the content it
+   separates rather than with another card. */
 .briefhead {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 16px 16px 12px;
-  border-bottom: 1px solid var(--line);
+  padding: 13px 16px;
 }
-.briefmark {
-  flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
-  background: rgba(28, 28, 30, 0.06);
-  color: var(--ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.briefhead::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 0;
+  height: 1px;
+  background: var(--border-subtle);
 }
-.briefmarksvg {
-  width: 22px;
-  height: 22px;
-  transform-box: fill-box;
-  transform-origin: bottom center;
-  animation: newsrock 3.2s ease-in-out infinite;
-}
-@keyframes newsrock {
-  0%,
-  100% {
-    transform: rotate(-4.5deg) translateY(0);
-  }
-  50% {
-    transform: rotate(4.5deg) translateY(-0.5px);
-  }
-}
-.briefmarklines {
-  animation: newslines 3.2s ease-in-out infinite;
-}
-@keyframes newslines {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-.briefheadtxt {
+/* .fptitle's setting exactly, so the three cards that open over the map read as
+   one family. It was 18px/800 in Mona Sans with -0.3px tracking — heavier and
+   tighter than either of the others. */
+.brieftitle {
   flex: 1 1 auto;
   min-width: 0;
-}
-.brieftitle {
-  font-family: "Mona Sans Variable", "Mona Sans", sans-serif;
-  font-weight: 800;
-  font-size: 18px;
-  letter-spacing: -0.3px;
-  color: var(--ink);
-}
-.briefdate {
-  font-size: 11px;
-  color: var(--slate);
-  margin-top: 1px;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--text-primary);
 }
 /* .briefclose went to the shared .paneclose on 2026-09-06. */
 .briefscroll {
@@ -4688,11 +4628,6 @@ body {
   color: var(--slate);
 }
 /* What's Trending pane (reuses .briefpane shell) */
-.briefmark .trendmark {
-  width: 26px;
-  height: 26px;
-  color: var(--ink);
-}
 .trendcard {
   padding: 14px 0 2px;
   border-bottom: 1px solid var(--line);
@@ -15120,10 +15055,10 @@ body {
    inside it both sit above the numbers. A price with no market named is
    meaningless, and a coverage figure placed after the figures is a footnote
    nobody reads. */
-/* 16px of gutter, not 20, so the scope chips start on the same left edge as
-   the flame mark above them (.briefhead, 16px) and the skill rows below
-   (.briefscroll 14px + .briefcard 2px = 16px). At 20 this row alone sat 4px
-   further in than everything else on the pane. */
+/* 16px of gutter, not 20, so the scope chips start on the same left edge as the
+   header above them (.briefhead, 16px — and the inset rule it draws) and the
+   skill rows below (.briefscroll 14px + .briefcard 2px = 16px). At 20 this row
+   alone sat 4px further in than everything else on the pane. */
 .mktbar {
   display: flex;
   flex-wrap: wrap;
