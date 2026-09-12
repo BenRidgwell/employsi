@@ -12,6 +12,8 @@
  *
  * So the cases below are mostly about what must NOT resolve.
  */
+import { readFileSync } from "node:fs";
+
 import {
   detectScope,
   scopeForCity,
@@ -259,6 +261,45 @@ console.log("\nthe area split is offered only when there is a subject to split:"
     fail("no area split offered with a skill in play");
   }
   if (failures === before) console.log("  ok    offered with a skill, withheld without one");
+}
+
+// ── the analyst's two skill rankings must not double-count ──────────────────
+//
+// Both live inside createServerFn bodies and cannot be called from here, so
+// this reads the source instead. A source check is the weaker kind and is used
+// deliberately: the failure it guards against is a control being silently
+// opted out of — someone adds a third ranking, or rewrites one of these two,
+// and the top five quietly starts listing a speciality beside the skill it
+// narrows again. Nothing about that renders wrong; the bars just add up to
+// more ads than the scope holds. The rule itself is asserted behaviourally in
+// check-skill-trends.ts; what is asserted here is that the analyst applies it.
+{
+  const before = failures;
+  const src = readFileSync(new URL("../src/employsi/lib/analystFn.ts", import.meta.url), "utf8");
+  // Targeted at the two maps that are KEYED BY SKILL — `now` in the skills
+  // fold and `bySkill` in the duration fold. Matching on "a ranking" instead
+  // was tried and caught the salary-by-currency one too, which has nothing to
+  // do with the taxonomy; naming the two maps keeps the guard honest about
+  // what it covers.
+  const SKILL_MAPS = ["Object.entries(now)", "Object.entries(bySkill)"];
+  for (const needle of SKILL_MAPS) {
+    const at = src.indexOf(needle);
+    if (at < 0) {
+      fail(`analystFn no longer contains ${needle} — this guard needs rewriting`);
+      continue;
+    }
+    // The dedupe wraps the ranking, so it sits just before the map is read.
+    if (!src.slice(Math.max(0, at - 220), at).includes("dropRedundantKin(")) {
+      fail(`the ranking over ${needle} does not drop specialities`);
+    }
+  }
+  if (!src.includes("withParent(")) {
+    fail("analystFn no longer labels a speciality with the skill it narrows");
+  }
+  if (failures === before) {
+    console.log("  ok    both skill rankings drop a speciality whose parent is listed");
+    console.log("  ok    ...and label any speciality that survives");
+  }
 }
 
 console.log(failures ? `\n${failures} failure(s).` : "\nAll analyst follow-up checks passed.");

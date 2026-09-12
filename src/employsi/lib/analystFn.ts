@@ -1,6 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { LIVE_FEEDS_ONLY_SQL, type D1Like } from "./jobArchive";
-import { SKILL_CATEGORY, parseStoredSkills } from "../data/skillsTaxonomy";
+import {
+  SKILL_CATEGORY,
+  dropRedundantKin,
+  parseStoredSkills,
+  withParent,
+} from "../data/skillsTaxonomy";
 import { detectIntent, type AnalystIntent } from "./analystIntent";
 import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
 
@@ -651,9 +656,15 @@ export const askAnalyst = createServerFn({ method: "POST" })
           if (fs <= then && ls >= then) before[s] = (before[s] || 0) + 1;
         }
       }
-      const top = Object.entries(now)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5);
+      // A SPECIALITY IS NOT A PEER OF THE SKILL IT NARROWS. Every midwifery ad
+      // is also a nursing ad, so ranking both puts two bars on one population
+      // and invites the reader to add them — and in a top FIVE, the cost is not
+      // only the double count: a speciality takes the slot a different skill
+      // needed. Deduped before the slice so suppressing one frees its place.
+      const top = dropRedundantKin(
+        Object.entries(now).sort((a, b) => b[1] - a[1]),
+        ([name]) => name,
+      ).slice(0, 5);
       if (!top.length) {
         return {
           intent,
@@ -666,19 +677,22 @@ export const askAnalyst = createServerFn({ method: "POST" })
         const prev = before[name] || 0;
         const delta = canCompare && prev > 0 ? Math.round(((n - prev) / prev) * 100) : null;
         return {
-          name,
+          // A speciality only reaches here when the skill it narrows did not,
+          // so the bar says which one it is a slice of.
+          name: withParent(name),
           pct: Math.round((n / max) * 100),
           v: delta === null ? `${n}` : `${n} · ${delta > 0 ? "+" : ""}${delta}%`,
           down: delta !== null && delta < 0,
         };
       });
       const lead = top[0];
+      const leadName = withParent(lead[0]);
       const changeNote = canCompare
         ? ` Change is measured against ${then}, ${plural(window, "day")} back — the archive only starts at ${since}, so this is a short-run read, not month on month.`
         : ` The archive is only ${plural(spanDays, "day")} deep here, so I can show what's in demand but not yet how it's moving.`;
       return {
         intent,
-        text: `The most demanded skill in ${label} right now is ${lead[0]}, named in ${plural(lead[1], "live ad")}.${changeNote}`,
+        text: `The most demanded skill in ${label} right now is ${leadName}, named in ${plural(lead[1], "live ad")}.${changeNote}`,
         bars,
         source: `Skills extracted from live ad titles · ${archiveNote}`,
       };
@@ -744,10 +758,17 @@ export const askAnalyst = createServerFn({ method: "POST" })
       // Rank by median, longest first, over skills with enough closed ads to
       // mean anything. The cut is per-skill, not global: a scope can hold
       // plenty of ads overall and still have one skill resting on three.
-      const ranked = Object.entries(bySkill)
-        .filter(([, v]) => v.length >= MIN_DURATION_PER_SKILL)
-        .map(([name, v]) => ({ name, med: median(v), n: v.length }))
-        .sort((a, b) => b.med - a.med);
+      // Same rule as the skills fold, and for the same reason: a speciality's
+      // closed ads are a subset of its parent's, so the two medians are not
+      // independent readings and must not share a ranking. Deduped before the
+      // slice, and before `fastest` is taken off the tail.
+      const ranked = dropRedundantKin(
+        Object.entries(bySkill)
+          .filter(([, v]) => v.length >= MIN_DURATION_PER_SKILL)
+          .map(([name, v]) => ({ name, med: median(v), n: v.length }))
+          .sort((a, b) => b.med - a.med),
+        (r) => r.name,
+      );
       if (!ranked.length) {
         return {
           intent,
@@ -762,7 +783,7 @@ export const askAnalyst = createServerFn({ method: "POST" })
       const slowest = ranked.slice(0, 5);
       const max = slowest[0].med || 1;
       const bars: AnalystBar[] = slowest.map((s) => ({
-        name: s.name,
+        name: withParent(s.name),
         pct: Math.round((s.med / max) * 100),
         v: `${s.med}d · ${s.n}`,
       }));
@@ -770,7 +791,7 @@ export const askAnalyst = createServerFn({ method: "POST" })
       const overall = median(all);
       return {
         intent,
-        text: `In ${label}, ads naming ${slowest[0].name} stayed up longest — a median of ${plural(slowest[0].med, "day")} from posting to coming down, against ${plural(overall, "day")} across the market. The quickest of the skills with enough ads to rank is ${fastest.name} at ${plural(fastest.med, "day")}. Read that as how long a vacancy stays advertised, not as time to fill: employsi sees ads, not hires, so an ad disappearing might mean filled, expired or withdrawn, and I can't tell those apart. It's measured from each ad's own posted date over ${plural(all.length, "ad")} that have since come down.`,
+        text: `In ${label}, ads naming ${withParent(slowest[0].name)} stayed up longest — a median of ${plural(slowest[0].med, "day")} from posting to coming down, against ${plural(overall, "day")} across the market. The quickest of the skills with enough ads to rank is ${withParent(fastest.name)} at ${plural(fastest.med, "day")}. Read that as how long a vacancy stays advertised, not as time to fill: employsi sees ads, not hires, so an ad disappearing might mean filled, expired or withdrawn, and I can't tell those apart. It's measured from each ad's own posted date over ${plural(all.length, "ad")} that have since come down.`,
         bars,
         stats: [
           { k: "Median days advertised", v: String(overall) },

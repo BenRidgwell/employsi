@@ -1,6 +1,6 @@
 import { COMPANIES, SECTOR_GROUPS, companyGroup } from "../data/companies";
 import { CITY_COMPANIES } from "../data/mapboxGeo";
-import { SKILL_CATEGORY } from "../data/skillsTaxonomy";
+import { ALL_SKILLS, SKILL_CATEGORY } from "../data/skillsTaxonomy";
 
 /**
  * Narrowing "Ask an analyst" to one sector.
@@ -56,8 +56,14 @@ export function skillsForSector(sector: string): Set<string> | undefined {
   if (!cats) return undefined;
   const want = new Set(cats);
   const out = new Set<string>();
-  for (const [skill, cat] of Object.entries(SKILL_CATEGORY)) {
-    if (want.has(cat)) out.add(skill);
+  // BROAD SKILLS ONLY. SKILL_CATEGORY covers specialities as well, and every
+  // consumer of this set uses it as a membership filter inside a loop over
+  // ALL_SKILLS — so a speciality in here is inert rather than harmful. It is
+  // excluded anyway, because a set whose contents can never match is a trap for
+  // the next reader, and the one thing this set is for is narrowing the
+  // national occupation series, which are published for broad skills alone.
+  for (const skill of ALL_SKILLS) {
+    if (want.has(SKILL_CATEGORY[skill])) out.add(skill);
   }
   return out.size ? out : undefined;
 }
