@@ -378,6 +378,28 @@ if (ACCOUNT && DB && TOKEN) {
     // takes only the qualified forms.
     ["Brand Ambassador", "Brand Marketing", false],
     ["Brand Marketing Manager", "Brand Marketing", true],
+    // An architect in a technology title designs systems, not buildings. These
+    // were 18% of Architecture & Planning until 2026-09-12. Each pair asserts
+    // both halves of the fix: out of the Built Environment, and into a real
+    // Digital skill — a suppression alone would have stranded 512 rows.
+    ["Senior Solution Architect", "Architecture & Planning", false],
+    ["Senior Solution Architect", "IT & Systems", true],
+    ["Lead Enterprise Architect", "Architecture & Planning", false],
+    ["Lead Enterprise Architect", "IT & Systems", true],
+    ["Data Architect & Governance Lead", "Architecture & Planning", false],
+    ["Data Architect & Governance Lead", "Data Engineering", true],
+    ["Senior Security Architect", "Architecture & Planning", false],
+    ["Senior Security Architect", "Cybersecurity", true],
+    ["Senior Process Architect", "Architecture & Planning", false],
+    ["Senior Process Architect", "Business Analysis", true],
+    ["Principal Software Architect", "Architecture & Planning", false],
+    ["Principal Software Architect", "Software Engineering", true],
+    // And the ones the except deliberately leaves alone. A building architect
+    // is still a building architect, and a naval architect designs ships.
+    ["Graduate Architect", "Architecture & Planning", true],
+    ["Landscape Architect", "Architecture & Planning", true],
+    ["Project Architect", "Architecture & Planning", true],
+    ["Senior Naval Architect", "Shipbuilding & Marine", true],
   ];
   const gateFails = GATE.filter(([t, s, want]) => skillsForText(t).includes(s) !== want);
   if (gateFails.length) {
@@ -387,6 +409,34 @@ if (ACCOUNT && DB && TOKEN) {
   } else {
     console.log(`✓ ${GATE.length} titles honour the parent gate.`);
   }
+  // ── an except must redirect, not delete ───────────────────────────────────
+  //
+  // Architecture & Planning's except exists to move the IT architects to the
+  // Digital skills they belong to, and that only works while each form HAS one
+  // to move to. Every entry there mapped to Architecture & Planning and to
+  // nothing else before the fix, so adding a form to the list without first
+  // adding a term somewhere in Digital does not reclassify those ads — it
+  // silently drops them out of the taxonomy altogether, and the enforcer
+  // script then nulls the archived rows to match.
+  //
+  // Scoped to this one skill on purpose. Elsewhere an except that leaves a
+  // title with no skill is the correct outcome (a night auditor is not in
+  // finance and need not be anywhere), so this is not a general rule.
+  const AP_EXCEPT = SKILLS.filter((d) => d.skill === "Architecture & Planning").flatMap(
+    (d) => d.except ?? [],
+  );
+  const stranded = AP_EXCEPT.filter((form) => skillsForText(form).length === 0);
+  if (stranded.length) {
+    failed = true;
+    console.error(
+      `✗ Architecture & Planning excepts ${stranded.length} form(s) that map to no skill at all,\n` +
+        `   so those ads would leave the taxonomy rather than move: ${stranded.join(", ")}.\n` +
+        `   Give each a term in the Digital skill it belongs to before excepting it.`,
+    );
+  } else {
+    console.log(`✓ all ${AP_EXCEPT.length} IT-architect forms redirect to a skill, none strand.`);
+  }
+
   // Every child name must be readable back out of the archive, or a row
   // written with it silently loses that demand (see parseStoredSkills).
   const unreadable = kids.filter((k) => !ALL_SKILLS_AND_CHILDREN.includes(k));

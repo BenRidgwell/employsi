@@ -330,6 +330,9 @@ const RAW_SKILLS: SkillDef[] = [
       "database administrator",
       "database designer",
       "database architect",
+      // "database architect" was here; "data architect" was not, and the 15
+      // archived rows spelling it that way went to Architecture & Planning.
+      "data architect",
       "database and network",
     ],
   },
@@ -344,6 +347,9 @@ const RAW_SKILLS: SkillDef[] = [
       "business analyst",
       "business analysis",
       "process analyst",
+      // A process architect designs business processes. Six archived rows, all
+      // of which were landing in Architecture & Planning.
+      "process architect",
       "requirements analyst",
       "product owner",
       "business partner",
@@ -380,6 +386,9 @@ const RAW_SKILLS: SkillDef[] = [
     cat: "Digital",
     terms: [
       "software engineer",
+      // 14 archived rows, all of which were Architecture & Planning before the
+      // IT architects were untangled on 2026-09-12.
+      "software architect",
       "developer",
       "full stack",
       "python",
@@ -397,7 +406,22 @@ const RAW_SKILLS: SkillDef[] = [
   {
     skill: "Cybersecurity",
     cat: "Digital",
-    terms: ["cyber", "security engineer", "infosec", "ict security"],
+    // "security architect" earns its place here rather than in IT & Systems:
+    // it is the one architect form whose subject matter is a skill of its own.
+    // "cyber security architect" already matched on "cyber"; the bare-security
+    // spelling did not, and its 19 archived rows went to Architecture & Planning.
+    terms: [
+      "cyber",
+      "security engineer",
+      "security architect",
+      // Spelled out separately because terms are prefix-anchored substrings and
+      // "security architect" is not one of "security solution architect" — 10
+      // archived rows. Those titles also match IT & Systems on "solution
+      // architect", which is correct: they are both.
+      "security solution architect",
+      "infosec",
+      "ict security",
+    ],
   },
   {
     skill: "Automation & Robotics",
@@ -1671,6 +1695,45 @@ const RAW_SKILLS: SkillDef[] = [
     skill: "Architecture & Planning",
     cat: "Built Environment",
     terms: ["architect", "landscape architect", "urban and regional plann", "architectural"],
+    // A technology architect is not a building architect. Measured 2026-09-12:
+    // 268 distinct titles over 512 rows — 18% of everything this skill claimed —
+    // were solution, enterprise, data and security architects, here purely
+    // because "architect" is a prefix-anchored term and those titles end in it.
+    //
+    // THE ORDER OF THE FIX MATTERS. Every one of these forms mapped to this
+    // skill and to nothing else, so excepting them first would have moved 512
+    // rows from the wrong skill to no skill at all. Each was given a home in
+    // Digital before this list was written — IT & Systems for the general
+    // forms, Data Engineering for "data architect", Cybersecurity for
+    // "security architect", Business Analysis for "process architect" — and
+    // every entry below is covered there. Do not add a form here without
+    // checking skillsForText still returns something for it.
+    //
+    // DELIBERATELY ABSENT, all three verified against the archive:
+    //   "architect" bare (11 rows) — the genuine building architect.
+    //   "naval architect" (6) — already correctly Shipbuilding & Marine, and
+    //     it designs ships, not software.
+    //   "senior architect" (6) — ambiguous on its own; the IT ones spell out
+    //     "senior solution architect" and are caught by the entries below,
+    //     since an except is a plain substring test, not a prefix one.
+    except: [
+      "solution architect",
+      "solutions architect",
+      "enterprise architect",
+      "technical architect",
+      "domain architect",
+      "integration architect",
+      "application architect",
+      "platform architect",
+      "systems architect",
+      "servicenow architect",
+      "data architect",
+      "security architect",
+      "process architect",
+      "cloud architect",
+      "ai architect",
+      "software architect",
+    ],
   },
 
   // ── Automotive & other trades ──────────────────────────────────────────
@@ -2221,6 +2284,30 @@ const RAW_SKILLS: SkillDef[] = [
       "user support specialist",
       "computer support",
       "computer network support",
+      // ── IT architects ──────────────────────────────────────────────────
+      // An "architect" in a technology title designs systems, not buildings,
+      // and the archive is full of them: measured 2026-09-12, 268 distinct
+      // titles over 512 rows — 18% of Architecture & Planning — were solution,
+      // enterprise, data and security architects sitting in the Built
+      // Environment. Every one of those forms mapped to Architecture & Planning
+      // and NOTHING ELSE, which is why they are given a home here before that
+      // skill is taught to disown them: an except on its own would have moved
+      // them from the wrong skill to no skill.
+      //
+      // The specialised ones go where they belong rather than all landing here
+      // — "data architect" to Data Engineering, "security architect" to
+      // Cybersecurity, "process architect" to Business Analysis — and "cloud
+      // architect" and "ai architect" already had homes.
+      "solution architect",
+      "solutions architect",
+      "enterprise architect",
+      "technical architect",
+      "domain architect",
+      "integration architect",
+      "application architect",
+      "platform architect",
+      "systems architect",
+      "servicenow architect",
     ],
   },
   { skill: "Cybersecurity", cat: "Digital", terms: ["information security"] },
