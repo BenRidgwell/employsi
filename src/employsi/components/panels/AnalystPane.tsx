@@ -97,26 +97,6 @@ type ScopeOption = ResolvedScope;
 /** Two scopes are the same scope when they point at the same rows. */
 const sameScope = (a: AnalystScope, b: AnalystScope) => a.kind === b.kind && a.id === b.id;
 
-function AnalystIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" aria-hidden>
-      {/* The design's 5.2s idle: a slow nod and a tie sway, with a halo ring on
-          the tile behind (see .anavatar::after). Long and small enough to read
-          as alive rather than as something demanding attention. */}
-      <circle className="anhead" cx="12" cy="5.6" r="2.9" />
-      <path d="M9.5 9 12 12.2 14.5 9" />
-      <path d="M9.5 9 6.4 10.3A4.4 4.4 0 0 0 3.8 14.4V20h6.1" />
-      <path d="M14.5 9l3.1 1.3a4.4 4.4 0 0 1 2.6 4.1V20h-6.1" />
-      <path
-        className="antie"
-        d="M10.6 12.9h2.8l-.7 3.1.9 3.9h-3.2l.9-3.9Z"
-        fill="currentColor"
-        stroke="none"
-      />
-    </svg>
-  );
-}
-
 export function AnalystPane() {
   const open = useAppStore((s) => s.analystOpen);
   const closeAnalyst = useAppStore((s) => s.closeAnalyst);
@@ -322,13 +302,11 @@ export function AnalystPane() {
       <div className="panescrim" onClick={closeAnalyst} />
       <div className="analystpane">
         <div className="anhd">
-          <span className="anavatar">
-            <AnalystIcon />
-          </span>
-          <div className="anhdtext">
-            <span className="antitle">Ask an analyst</span>
-            <span className="ansub">Answers grounded in live employsi vacancy data</span>
-          </div>
+          {/* Title and actions only, set like the filter card's header. The
+              avatar and the one-line description that used to sit here were
+              saying what the opening message and every answer's source line
+              already say. */}
+          <span className="antitle">Ask an analyst</span>
           {/* Clearing the thread is the only way to drop a carried analysis on
               purpose. Without it the conversation can only be escaped by asking
               a question that happens to name every dimension, which is not

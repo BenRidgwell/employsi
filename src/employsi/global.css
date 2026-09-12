@@ -341,103 +341,43 @@ body {
   z-index: 49;
 }
 .anhd {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
   flex: 0 0 auto;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--surface-sunken);
+  padding: 13px 18px;
 }
-.anavatar {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 auto;
-  border-radius: 11px;
-  background: var(--surface-active);
-  color: var(--text-primary);
-}
-.anavatar svg {
-  position: relative;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-/* The design's 5.2s idle. Long, small and mostly still — the figure nods once,
-   the tie settles, a ring pulses on the tile. Anything faster would pull the
-   eye away from the answer, which is the thing on this card worth reading. */
-.anavatar::after {
+/* THE RULE UNDER THE HEADER IS INSET, matching the filter card, where it is the
+   first section's border-top and is inset because the body it sits in has 18px
+   side gutters. This card has no such wrapper — the header, the scope row and
+   the thread are siblings of the pane itself — so the same line is drawn as a
+   pseudo-element rather than a border, which is the only way to hold it off the
+   corners. Full-bleed until 2026-09-12, and it made the top of the card read as
+   a title BAR rather than as a title. */
+.anhd::after {
   content: "";
   position: absolute;
-  inset: 0;
-  border-radius: 11px;
-  border: 1px solid var(--border-strong);
-  animation: an-halo 5.2s ease-in-out infinite;
+  left: 18px;
+  right: 18px;
+  bottom: 0;
+  height: 1px;
+  background: var(--border-subtle);
 }
-.anhead {
-  transform-origin: 12px 8px;
-  animation: an-nod 5.2s ease-in-out infinite;
-}
-.antie {
-  transform-origin: 12px 12.9px;
-  animation: an-tie 5.2s ease-in-out infinite;
-}
-@keyframes an-halo {
-  0%,
-  55%,
-  100% {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  68% {
-    opacity: 0.5;
-    transform: scale(1.06);
-  }
-}
-@keyframes an-nod {
-  0%,
-  62%,
-  100% {
-    transform: translateY(0);
-  }
-  70% {
-    transform: translateY(-1.2px);
-  }
-  82% {
-    transform: translateY(0.5px);
-  }
-}
-@keyframes an-tie {
-  0%,
-  58%,
-  100% {
-    transform: rotate(0deg);
-  }
-  72% {
-    transform: rotate(4.5deg);
-  }
-  88% {
-    transform: rotate(-2deg);
-  }
-}
-.anhdtext {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
+/* Set exactly like .fptitle. The subtitle that used to sit under it — "Answers
+   grounded in live employsi vacancy data" — is gone: the opening message in the
+   thread already says the same thing at more length ("Every answer is a query
+   over employsi's vacancy data, and I'll show you the source"), and every
+   answer carries its own source line, so the header was the third place to say
+   it. */
+.antitle {
   flex: 1 1 auto;
   min-width: 0;
-}
-.antitle {
-  font-size: 16px;
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.018em;
-}
-.ansub {
-  font-size: 12px;
-  color: var(--text-secondary);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--text-primary);
 }
 /* THE ONE CLOSE BUTTON, shared by every card that has one — Ask an analyst,
    What's Trending and Filter. It was three different buttons until 2026-09-06:
@@ -507,7 +447,19 @@ body {
   gap: 8px;
   flex: 0 0 auto;
   padding: 11px 18px;
-  border-bottom: 1px solid var(--surface-sunken);
+  /* Inset like the header's, but drawn as a background rather than a
+     pseudo-element: this row scrolls horizontally when the chips overflow, and
+     an absolutely positioned line would scroll away with them. A background is
+     painted against the element box and stays put. */
+  background-image: linear-gradient(
+    to right,
+    transparent 0 18px,
+    var(--border-subtle) 18px calc(100% - 18px),
+    transparent calc(100% - 18px)
+  );
+  background-size: 100% 1px;
+  background-position: bottom left;
+  background-repeat: no-repeat;
   overflow-x: auto;
 }
 .anscopelbl {
