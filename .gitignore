@@ -53,3 +53,4 @@ workers/waitlist/dist/
 skills-backfill-backup-*.jsonl
 skills-except-backup-*.jsonl
 it-architect-remap-backup-*.jsonl
+remap-*-backup-*.jsonl
