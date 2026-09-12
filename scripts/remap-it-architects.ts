@@ -110,9 +110,16 @@ const q = (s: string) => s.replace(/'/g, "''");
 // Normalise the title the way the matcher does before comparing — "&" becomes
 // " and " there, so a LIKE against the raw column would miss those titles.
 const NORM_TITLE = `lower(replace(title,'&',' and '))`;
-const ROW_FILTER = `skills LIKE '%"${q(TARGET)}"%' AND (${FORMS.map(
-  (f) => `${NORM_TITLE} LIKE '%${q(f)}%'`,
-).join(" OR ")})`;
+// Two shapes, not one. The obvious shape is a row still carrying the target.
+// The second is a row that is already NULL — which happens when
+// enforce-skill-excepts.ts runs FIRST: it is removal-only, so it drops
+// Architecture & Planning and leaves nothing behind, producing exactly the
+// stranded row this script exists to prevent. That happened on 2026-09-12 (one
+// row, "Sr. Solutions Architect, Agentic WorkSpaces, Canada"), so the ordering
+// is no longer something a runbook has to get right: whichever script goes
+// first, running this one afterwards puts the row where it belongs.
+const ARCH_TITLE = `(${FORMS.map((f) => `${NORM_TITLE} LIKE '%${q(f)}%'`).join(" OR ")})`;
+const ROW_FILTER = `(skills LIKE '%"${q(TARGET)}"%' OR skills IS NULL) AND ${ARCH_TITLE}`;
 
 const norm = (s: string) =>
   " " + (s || "").toLowerCase().replace(/&/g, " and ").replace(/\s+/g, " ") + " ";
@@ -130,13 +137,15 @@ let after = 0;
 for (;;) {
   const rows = await d1<Row>(
     `SELECT rowid, title, skills FROM jobs
-      WHERE skills IS NOT NULL AND title IS NOT NULL AND (${ROW_FILTER}) AND rowid > ${after}
+      WHERE title IS NOT NULL AND (${ROW_FILTER}) AND rowid > ${after}
       ORDER BY rowid LIMIT 2000`,
   );
   if (!rows.length) break;
   after = rows[rows.length - 1].rowid;
   for (const r of rows) {
     scanned++;
+    // A NULL row reads as [], which is the right starting point: it claims
+    // nothing, so the union below is simply what the title derives to.
     let stored: unknown;
     try {
       stored = JSON.parse(r.skills ?? "[]");

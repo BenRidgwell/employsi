@@ -89,7 +89,7 @@ if (!EXCEPTS.size) {
 // full-table walk into a handful of pages.
 const PHRASES = [...new Set([...EXCEPTS.values()].flat())];
 const q = (s: string) => s.replace(/'/g, "''");
-const ROW_FILTER = [
+const FILTER_CLAUSES = [
   ...PHRASES.map((p) => `lower(title) LIKE '%${q(p)}%'`),
   // Orphans are found in their own right, not only as a side effect of an
   // except firing on the same row. The first run of this script left eight:
@@ -99,7 +99,19 @@ const ROW_FILTER = [
   ...Object.entries(SKILL_PARENT).map(
     ([child, parent]) => `(skills LIKE '%"${q(child)}"%' AND skills NOT LIKE '%"${q(parent)}"%')`,
   ),
-].join(" OR ");
+];
+
+// D1 REFUSES A FILTER THIS WIDE IN ONE QUERY. SQLite caps an expression tree at
+// depth 100, and a chain of ORs nests one level per term, so the scan started
+// failing outright ("Expression tree is too large") the moment the taxonomy
+// passed 66 specialities — the clause count is excepts plus one per child and
+// it only ever grows. Running the same filter in bounded chunks and merging by
+// rowid gives identical results; a row matching two chunks is simply planned
+// once. 40 keeps a wide margin under the cap for the rest of the WHERE.
+const CHUNK = 40;
+const FILTER_CHUNKS: string[] = [];
+for (let i = 0; i < FILTER_CLAUSES.length; i += CHUNK)
+  FILTER_CHUNKS.push(FILTER_CLAUSES.slice(i, i + CHUNK).join(" OR "));
 
 // The taxonomy normalises "&" to " and " before matching, and an except is a
 // plain substring test against that same normalised title. Both halves have to
@@ -114,62 +126,69 @@ interface Row {
 }
 type Plan = { rowid: number; title: string; before: string[]; after: string[]; dropped: string[] };
 
-const plan: Plan[] = [];
-let scanned = 0;
-let after = 0;
-for (;;) {
-  const rows = await d1<Row>(
-    `SELECT rowid, title, skills FROM jobs
+// Keyed by rowid, because the chunked scan can return the same row from more
+// than one chunk and it must be planned exactly once.
+const planned = new Map<number, Plan>();
+const seenRows = new Set<number>();
+for (const ROW_FILTER of FILTER_CHUNKS) {
+  let after = 0;
+  for (;;) {
+    const rows = await d1<Row>(
+      `SELECT rowid, title, skills FROM jobs
       WHERE skills IS NOT NULL AND title IS NOT NULL AND (${ROW_FILTER}) AND rowid > ${after}
       ORDER BY rowid LIMIT 2000`,
-  );
-  if (!rows.length) break;
-  after = rows[rows.length - 1].rowid;
-  for (const r of rows) {
-    scanned++;
-    let stored: unknown;
-    try {
-      stored = JSON.parse(r.skills ?? "[]");
-    } catch {
-      continue;
-    }
-    if (!Array.isArray(stored)) continue;
-    const before = stored.map(String);
-    const hay = norm(r.title ?? "");
-    const dropped: string[] = [];
-    const kept = before.filter((name) => {
-      // Through SKILL_ALIAS, because a row written under an old name is still
-      // that skill and is still governed by its except.
-      const ex = EXCEPTS.get(SKILL_ALIAS[name] ?? name);
-      if (ex?.some((p) => hay.includes(p))) {
-        dropped.push(name);
-        return false;
+    );
+    if (!rows.length) break;
+    after = rows[rows.length - 1].rowid;
+    for (const r of rows) {
+      if (seenRows.has(r.rowid)) continue;
+      seenRows.add(r.rowid);
+      let stored: unknown;
+      try {
+        stored = JSON.parse(r.skills ?? "[]");
+      } catch {
+        continue;
       }
-      return true;
-    });
-    // CASCADE. A speciality is a subset of its parent and must never outlive
-    // it: dropping "Finance & Accounting" from a clinical-audit title while
-    // leaving "Audit" behind would leave the row claiming a narrowing of a
-    // skill it no longer has. Caught by the integrity check after the first
-    // run of this script, which found exactly 8 such rows.
-    //
-    // Iterated, because a grandchild would have to go too — the taxonomy is one
-    // level deep today and this does not assume it stays that way.
-    for (;;) {
-      const have = new Set(kept.map((n) => SKILL_ALIAS[n] ?? n));
-      const orphan = kept.findIndex((n) => {
-        const parent = SKILL_PARENT[SKILL_ALIAS[n] ?? n];
-        return parent !== undefined && !have.has(parent);
+      if (!Array.isArray(stored)) continue;
+      const before = stored.map(String);
+      const hay = norm(r.title ?? "");
+      const dropped: string[] = [];
+      const kept = before.filter((name) => {
+        // Through SKILL_ALIAS, because a row written under an old name is still
+        // that skill and is still governed by its except.
+        const ex = EXCEPTS.get(SKILL_ALIAS[name] ?? name);
+        if (ex?.some((p) => hay.includes(p))) {
+          dropped.push(name);
+          return false;
+        }
+        return true;
       });
-      if (orphan < 0) break;
-      dropped.push(kept[orphan]);
-      kept.splice(orphan, 1);
+      // CASCADE. A speciality is a subset of its parent and must never outlive
+      // it: dropping "Finance & Accounting" from a clinical-audit title while
+      // leaving "Audit" behind would leave the row claiming a narrowing of a
+      // skill it no longer has. Caught by the integrity check after the first
+      // run of this script, which found exactly 8 such rows.
+      //
+      // Iterated, because a grandchild would have to go too — the taxonomy is one
+      // level deep today and this does not assume it stays that way.
+      for (;;) {
+        const have = new Set(kept.map((n) => SKILL_ALIAS[n] ?? n));
+        const orphan = kept.findIndex((n) => {
+          const parent = SKILL_PARENT[SKILL_ALIAS[n] ?? n];
+          return parent !== undefined && !have.has(parent);
+        });
+        if (orphan < 0) break;
+        dropped.push(kept[orphan]);
+        kept.splice(orphan, 1);
+      }
+      if (!dropped.length) continue;
+      planned.set(r.rowid, { rowid: r.rowid, title: r.title ?? "", before, after: kept, dropped });
     }
-    if (!dropped.length) continue;
-    plan.push({ rowid: r.rowid, title: r.title ?? "", before, after: kept, dropped });
+    if (rows.length < 2000) break;
   }
-  if (rows.length < 2000) break;
 }
+const plan = [...planned.values()].sort((a, b) => a.rowid - b.rowid);
+const scanned = seenRows.size;
 
 const bySkill = new Map<string, number>();
 for (const p of plan) for (const d of p.dropped) bySkill.set(d, (bySkill.get(d) ?? 0) + 1);
