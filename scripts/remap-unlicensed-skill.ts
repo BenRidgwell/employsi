@@ -51,7 +51,21 @@ import {
 } from "../src/employsi/data/skillsTaxonomy";
 
 interface Rule {
-  /** The skill to take off rows whose title no longer licenses it. */
+  /**
+   * What this rule does to a row.
+   *
+   *   "remove"  the row carries `skill` and the matcher no longer licenses it.
+   *   "fill"    the row's skills are NULL and the matcher now maps the title.
+   *
+   * The second exists because a TERM ADDED to the taxonomy reaches new rows
+   * only. The cron's upsert is `skills = COALESCE(skills, ?)`, so it refills a
+   * NULL row when it sees the ad again — and an ad taken down last month never
+   * will be. Teaching the taxonomy that a facilities manager works in
+   * facilities does nothing for the 110 archived ones already sitting at NULL
+   * unless something goes back for them.
+   */
+  mode: "remove" | "fill";
+  /** The skill to take off rows whose title no longer licenses it ("remove"). */
   skill: string;
   /** SQL LIKE bodies against the normalised title. Narrows the scan ONLY. */
   prefilter: () => string[];
@@ -74,6 +88,7 @@ interface Rule {
 
 const RULES: Record<string, Rule> = {
   "it-architects": {
+    mode: "remove",
     skill: "Architecture & Planning",
     // Straight from the taxonomy's own except list, so adding a form there is
     // all that is ever needed here.
@@ -83,6 +98,7 @@ const RULES: Record<string, Rule> = {
     note: "Solution, enterprise, data and security architects design systems, not buildings.",
   },
   "chef-de": {
+    mode: "remove",
     skill: "Hospitality & Food Service",
     // "chef de" catches both the culinary forms and the managerial ones; the
     // matcher then decides which is which, through the `chef` gate in
@@ -90,6 +106,29 @@ const RULES: Record<string, Rule> = {
     prefilter: () => ["chef de "],
     allowEmpty: true,
     note: '"Chef de X" is French for "head of X", and almost none of them cook.',
+  },
+  rehabilitation: {
+    mode: "remove",
+    skill: "Environmental",
+    // Bare "rehabilitation" was an Environmental term until 2026-09-12. The
+    // matcher now decides: a title saying "mine rehabilitation" or
+    // "rehabilitation and closure" still licenses the skill, a spinal rehab
+    // ward does not.
+    prefilter: () => ["rehabilitation"],
+    allowEmpty: true,
+    note: "417 of 429 rehabilitation titles were clinical, not mine rehabilitation.",
+  },
+  "fill-unmapped": {
+    mode: "fill",
+    skill: "",
+    // No prefilter: every NULL row is a candidate, because the terms added on
+    // 2026-09-12 (facilities management, town planning, service desk, the
+    // university research grades, sales engineer) are spread across the
+    // archive and listing them here would be a copy of the taxonomy that rots.
+    // The matcher decides, one row at a time.
+    prefilter: () => [],
+    allowEmpty: false,
+    note: "Rows stored as NULL — unknown — that the taxonomy can now map.",
   },
 };
 
@@ -156,7 +195,7 @@ for (const name of TO_RUN) {
   const { skill: TARGET } = rule;
   const patterns = rule.prefilter();
   console.log(`\n${"═".repeat(72)}\n${name} — ${TARGET}\n  ${rule.note}\n${"═".repeat(72)}`);
-  if (!patterns.length) {
+  if (!patterns.length && rule.mode !== "fill") {
     console.error(`✗ ${name} produced no prefilter. Is the taxonomy rule present?`);
     failed = true;
     continue;
@@ -166,8 +205,13 @@ for (const name of TO_RUN) {
   // second happens when enforce-skill-excepts.ts runs first — it is
   // removal-only, so it strips the skill and leaves nothing behind. Covering
   // both here means run order stops mattering.
-  const TITLE_MATCH = `(${patterns.map((p) => `${NORM_TITLE} LIKE '%${q(p)}%'`).join(" OR ")})`;
-  const ROW_FILTER = `(skills LIKE '%"${q(TARGET)}"%' OR skills IS NULL) AND ${TITLE_MATCH}`;
+  const TITLE_MATCH = patterns.length
+    ? `AND (${patterns.map((p) => `${NORM_TITLE} LIKE '%${q(p)}%'`).join(" OR ")})`
+    : "";
+  const ROW_FILTER =
+    rule.mode === "fill"
+      ? `skills IS NULL ${TITLE_MATCH}`
+      : `(skills LIKE '%"${q(TARGET)}"%' OR skills IS NULL) ${TITLE_MATCH}`;
 
   const plan: Plan[] = [];
   let scanned = 0;
@@ -194,10 +238,14 @@ for (const name of TO_RUN) {
       const before = stored.map(String);
       const title = r.title ?? "";
       const derived = skillsForText(title);
-      // THE DECISION. The matcher still licenses this title, so the row is
-      // right and is left alone — this is what keeps a culinary "Chef de
-      // Partie" out of the plan without restating the gate.
-      if (derived.includes(TARGET)) continue;
+      // THE DECISION. In "remove" mode the matcher still licensing the title
+      // means the row is right and is left alone — this is what keeps a
+      // culinary "Chef de Partie" out of the plan without restating the gate.
+      // In "fill" mode there is nothing to remove and the only question is
+      // whether the taxonomy can now say anything at all.
+      if (rule.mode === "fill") {
+        if (!derived.length) continue;
+      } else if (derived.includes(TARGET)) continue;
 
       const kept = before.filter((n) => (SKILL_ALIAS[n] ?? n) !== TARGET);
       const out = [...kept];
@@ -225,7 +273,11 @@ for (const name of TO_RUN) {
   const emptied = plan.filter((p) => !p.after.length);
 
   console.log(`Scanned ${scanned} rows; ${plan.length} to correct.\n`);
-  console.log(`   ${TARGET} removed from ${plan.length} rows, and in its place:\n`);
+  console.log(
+    rule.mode === "fill"
+      ? `   ${plan.length} rows stored as NULL now map to:\n`
+      : `   ${TARGET} removed from ${plan.length} rows, and in its place:\n`,
+  );
   for (const [s, n] of [...gainCount].sort((a, b) => b[1] - a[1]))
     console.log(`   ${s.padEnd(34)} gained by ${String(n).padStart(5)} rows`);
   if (!gainCount.size) console.log("   (nothing — these titles map to no skill at all)");
@@ -262,7 +314,11 @@ for (const name of TO_RUN) {
     failed = true;
     continue;
   }
-  console.log(`\n✓ ${TARGET} is the only name removed; every row keeps everything else.`);
+  console.log(
+    rule.mode === "fill"
+      ? `\n✓ Nothing removed; every row here claimed nothing before.`
+      : `\n✓ ${TARGET} is the only name removed; every row keeps everything else.`,
+  );
 
   if (!APPLY) {
     console.log("Dry run — nothing written.");
