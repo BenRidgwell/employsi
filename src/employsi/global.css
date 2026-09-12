@@ -14652,7 +14652,19 @@ body {
   object-position: center bottom;
   display: block;
   filter: grayscale(1) contrast(1.02);
-  animation: em-pan 52s ease-in-out infinite alternate;
+  /* THE NEGATIVE DELAY IS THE SPEED CONTROL, NOT THE DURATION.
+     The veil only lives 1.9s-6s (DWELL_MS/MAX_HOLD in IntroLoader.tsx), and
+     ease-in-out spends its first few percent almost stationary — measured at
+     1440x860, the design's 52s moved the skyline 0.6px across the whole dwell,
+     so the pan was there in the stylesheet and invisible on screen. Trimming
+     the duration alone does not fix that: 44s on its own is 0.8px.
+     Starting 14s in puts the visible window on the curve's cruising section —
+     measured in the browser at 9.1px/s, 15.8px of drift across the dwell at
+     1440x860 and 5.5px/s at 390x844. Gentle, but actually moving.
+     The travel stays -13% so the right-edge coverage above is untouched, and
+     the eased reversal at each end is kept — it just happens at 44s, long
+     after the veil has gone. */
+  animation: em-pan 44s ease-in-out -14s infinite alternate;
 }
 /* The design is a desktop canvas: 77px of mark, 27px of gap and a 64px wordmark
    set about 390px wide, which is a whole phone. */
