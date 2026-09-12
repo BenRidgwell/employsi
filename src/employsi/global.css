@@ -15516,6 +15516,10 @@ body {
 
 .mkheroplot {
   position: relative;
+  /* The plot takes the pointer now — see MarketHero's onMouseMove. The markers
+     and the callout on top of it stay pointer-events:none, or moving onto one
+     would register as leaving the plot and drop the scrub. */
+  cursor: crosshair;
   /* Must equal BASE in MarketHero.tsx: the overlays are positioned in SVG user
      units read as pixels. */
   height: 150px;
@@ -15578,6 +15582,25 @@ body {
   border-radius: 50%;
   background: var(--surface-inverse);
   pointer-events: none;
+}
+/* The scrub guide: a hairline dropped from above the plotted band to the card's
+   bottom edge on the day under the pointer. Dim, because it is a pointer, not a
+   reading — the ring and the callout carry the reading. */
+.mkheroguide {
+  stroke: color-mix(in oklab, var(--hero-dir) 42%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  pointer-events: none;
+}
+/* The scrubbed figure, inside the shared .wttip callout. It sits on a white
+   body (see ChartTooltip), NOT on this card's ink ground, so it takes the
+   normal text colour rather than the inverted one .mkherocallv uses. */
+.mkherotipv {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 /* The callout, inverted out of the card the way the reference's is: the last
    day and the figure standing on it — the same figure as the headline, which is

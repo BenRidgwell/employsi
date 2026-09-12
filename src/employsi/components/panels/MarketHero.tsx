@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { smoothPath } from "../../lib/chart";
 import { MARKET_WINDOWS, type SkillMarket } from "../../lib/jobHistoryFn";
+import { ChartTooltip } from "./ChartTooltip";
 
 const W = 320;
 /** The line's band. The viewBox runs to BASE so the fill carries on below the
@@ -105,6 +106,16 @@ export function MarketHero({
 }) {
   const picked = skill ? (market.rows.find((r) => r.skill === skill) ?? null) : null;
 
+  /**
+   * The scrubbed day, or null when the pointer is off the plot.
+   *
+   * Same interaction as the company card's vacancy chart: the pointer's x
+   * across the plot picks the nearest day, a guide drops to it, the ring moves
+   * onto it and the callout reads that day rather than the last one.
+   */
+  const [idx, setIdx] = useState<number | null>(null);
+  const plotRef = useRef<HTMLDivElement | null>(null);
+
   const series = useMemo(() => {
     if (!picked) return market.valueSeries;
     // An unpriced skill has no value line; its demand is still a series, but
@@ -112,6 +123,10 @@ export function MarketHero({
     if (picked.pay === null || !picked.spark) return [];
     return picked.spark.map((v) => v * picked.pay!);
   }, [picked, market.valueSeries]);
+
+  // A held index means a different day once the window or the selected skill
+  // changes under it, so the scrub is dropped rather than re-pointed.
+  useEffect(() => setIdx(null), [skill, windowDays, series.length]);
 
   const geom = useMemo(() => {
     if (series.length < 2) return null;
@@ -214,7 +229,21 @@ export function MarketHero({
       )}
 
       {geom ? (
-        <div className="mkheroplot">
+        <div
+          className="mkheroplot"
+          ref={plotRef}
+          // Mouse only, exactly as the company card's chart does it: a
+          // pointermove handler here would claim the touch that scrolls the
+          // pane, and this plot bleeds to both edges of it.
+          onMouseMove={(e) => {
+            const n = series.length;
+            if (n < 2) return;
+            const r = e.currentTarget.getBoundingClientRect();
+            const f = (e.clientX - r.left) / r.width;
+            setIdx(Math.max(0, Math.min(n - 1, Math.round(f * (n - 1)))));
+          }}
+          onMouseLeave={() => setIdx(null)}
+        >
           <svg viewBox={`0 0 ${W} ${BASE}`} preserveAspectRatio="none" aria-hidden="true">
             <defs>
               <linearGradient id="mkheroFill" x1="0" y1="0" x2="0" y2="1">
@@ -227,6 +256,19 @@ export function MarketHero({
             </defs>
             <path className="mkheroarea" d={geom.area} />
             <path className="mkheroline" d={geom.line} />
+            {idx != null && (
+              // Drawn in the SVG so it stretches with the plot, and with a
+              // non-scaling stroke so preserveAspectRatio="none" cannot smear
+              // a 1px line into a wedge.
+              <line
+                className="mkheroguide"
+                x1={(idx / Math.max(1, series.length - 1)) * W}
+                x2={(idx / Math.max(1, series.length - 1)) * W}
+                y1={TOP - 22}
+                y2={BASE}
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
           </svg>
 
           {/* Markers are HTML, not <circle>. The viewBox is stretched to the
@@ -237,22 +279,56 @@ export function MarketHero({
 
           {/* The reference's callout: the latest reading, named and dated, on
               the point that carries it. It is the same figure as the headline —
-              which is the point of putting it on the line. */}
-          <span
-            className="mkheroglow"
-            style={{ left: geom.px(series.length - 1), top: `${geom.y(geom.lastVal)}px` }}
-          />
-          <span
-            className="mkheroend"
-            style={{ left: geom.px(series.length - 1), top: `${geom.y(geom.lastVal)}px` }}
-          />
-          <span
-            className="mkherocall"
-            style={{ top: `${Math.max(2, geom.y(geom.lastVal) - 52)}px` }}
-          >
-            <span className="mkherocallk">{shortDay(days[days.length - 1] ?? "")}</span>
-            <span className="mkherocallv">{money(geom.lastVal)}</span>
-          </span>
+              which is the point of putting it on the line. Stood down while the
+              reader is scrubbing, so the card never shows two callouts making
+              two different claims about "the" figure. */}
+          {idx == null && (
+            <>
+              <span
+                className="mkheroglow"
+                style={{ left: geom.px(series.length - 1), top: `${geom.y(geom.lastVal)}px` }}
+              />
+              <span
+                className="mkheroend"
+                style={{ left: geom.px(series.length - 1), top: `${geom.y(geom.lastVal)}px` }}
+              />
+              <span
+                className="mkherocall"
+                style={{ top: `${Math.max(2, geom.y(geom.lastVal) - 52)}px` }}
+              >
+                <span className="mkherocallk">{shortDay(days[days.length - 1] ?? "")}</span>
+                <span className="mkherocallv">{money(geom.lastVal)}</span>
+              </span>
+            </>
+          )}
+
+          {idx != null && series[idx] !== undefined && (
+            <>
+              <span
+                className="mkheroend"
+                style={{ left: geom.px(idx), top: `${geom.y(series[idx])}px` }}
+              />
+              {/* Portalled to the body by ChartTooltip, which is what lets it
+                  clear this plot: the plot bleeds past the card's left and
+                  right edges and is clipped there, so a callout positioned
+                  inside it would be sliced off at exactly the days a reader is
+                  most likely to scrub to. */}
+              <ChartTooltip
+                boxRef={plotRef}
+                leftPct={(idx / Math.max(1, series.length - 1)) * 100}
+                topPct={(geom.y(series[idx]) / BASE) * 100}
+              >
+                {/* The date is shown only when the series and the day list are
+                    the same length. They are built from one window slice and so
+                    always should be — but a scrubbed value carrying the wrong
+                    date would be worse than one carrying none. */}
+                {days.length === series.length && (
+                  <div className="wttiplabel">{shortDay(days[idx])}</div>
+                )}
+                <div className="mkherotipv">{money(series[idx])}</div>
+              </ChartTooltip>
+            </>
+          )}
         </div>
       ) : (
         <div className="mkheronone">
