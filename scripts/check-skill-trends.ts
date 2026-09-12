@@ -20,6 +20,14 @@ import {
   type RankRow,
   type CompanySkillTrends,
 } from "../src/employsi/lib/jobHistoryFn";
+import {
+  ALL_SKILLS,
+  SKILL_CATEGORY,
+  SKILL_PARENT,
+  dropRedundantKin,
+  searchSkillMatches,
+  withParent,
+} from "../src/employsi/data/skillsTaxonomy";
 
 let failures = 0;
 function check(name: string, cond: boolean, detail?: string) {
@@ -1535,6 +1543,90 @@ const MK_ANCHOR = Array.from({ length: 3 }, () =>
       `${out["Physiotherapy"].globalAds}`,
     );
   }
+}
+
+// ── how specialities are presented ──────────────────────────────────────────
+//
+// The company card NESTS a speciality under the skill it narrows. The ticker
+// and the market movers are flat and cannot, so they drop a speciality whose
+// parent is in the same list — otherwise one movement is reported twice and
+// the reader is invited to add the two rows together. None of this fails
+// visibly: the lists still render, they just quietly say a thing that is not
+// true, which is the class of bug every other check here exists for.
+console.log("\nspecialities in the flat lists:");
+{
+  const kin = (names: string[]) => dropRedundantKin(names, (n) => n);
+  const child = Object.keys(SKILL_PARENT)[0];
+  const parent = SKILL_PARENT[child];
+  check(
+    "a speciality is dropped when the skill it narrows is in the same list",
+    eq(kin([parent, child, "Pharmacy"]), [parent, "Pharmacy"]),
+    kin([parent, child, "Pharmacy"]).join(", "),
+  );
+  check(
+    "...and kept when it is not, since nothing is double-counted",
+    eq(kin([child, "Pharmacy"]), [child, "Pharmacy"]),
+    kin([child, "Pharmacy"]).join(", "),
+  );
+  check(
+    "order survives, so a caller may filter before it slices to a top N",
+    eq(kin(["Pharmacy", "Dental", parent]), ["Pharmacy", "Dental", parent]),
+  );
+  check(
+    "a speciality that does appear is labelled with the skill it narrows",
+    withParent(child) === `${parent} · ${child}` && withParent(parent) === parent,
+    withParent(child),
+  );
+}
+
+console.log("\nsearching for a speciality:");
+{
+  // A speciality has no vacancy series of its own — the statistical agencies
+  // publish for the broad skills — so it must never be offered as a result
+  // that opens an empty card.
+  const child = "Midwifery";
+  const m = searchSkillMatches(child);
+  check(
+    "a speciality resolves to the skill it narrows",
+    m.length === 1 && m[0].skill === SKILL_PARENT[child] && m[0].via === child,
+    JSON.stringify(m),
+  );
+  check(
+    "every result is a broad skill, never a speciality",
+    ["nurs", "care", "data", "eng", "a"].every((q) =>
+      searchSkillMatches(q).every((r) => ALL_SKILLS.includes(r.skill)),
+    ),
+  );
+  check(
+    "a direct hit is not answered by way of one of its own specialities",
+    eq(searchSkillMatches("nursing"), [{ skill: "Nursing" }]),
+    JSON.stringify(searchSkillMatches("nursing")),
+  );
+  check(
+    "no skill is offered twice",
+    ["a", "e", "man", "care"].every((q) => {
+      const r = searchSkillMatches(q).map((x) => x.skill);
+      return new Set(r).size === r.length;
+    }),
+  );
+}
+
+console.log("\nwhat a skill card offers next:");
+{
+  // SKILL_CATEGORY covers specialities too, so reading it directly put a
+  // skill's OWN specialities in its related list — Nursing suggesting
+  // Midwifery, which is part of nursing rather than an alternative to it, and
+  // which opens an empty card.
+  const related = (skill: string) =>
+    ALL_SKILLS.filter((x) => x !== skill && SKILL_CATEGORY[x] === SKILL_CATEGORY[skill]);
+  check(
+    "a skill never suggests one of its own specialities",
+    ALL_SKILLS.every((s) => !related(s).some((r) => SKILL_PARENT[r] === s)),
+  );
+  check(
+    "and never suggests a speciality of any other skill",
+    ALL_SKILLS.every((s) => related(s).every((r) => !(r in SKILL_PARENT))),
+  );
 }
 
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");

@@ -3796,6 +3796,79 @@ export const SKILL_CHILDREN: Record<string, string[]> = (() => {
   return out;
 })();
 
+/**
+ * Drop any speciality whose own parent is in the same list.
+ *
+ * A SPECIALITY IS NOT AN INDEPENDENT OBSERVATION. Every midwifery ad is also a
+ * nursing ad, so a list that ranks "Nursing +3%" beside "Midwifery +25%" is
+ * reporting one movement twice and inviting the reader to add them up. The
+ * company card solves this by nesting — specialities sit inside a disclosure
+ * under the skill they narrow — but the ticker and the market movers are flat
+ * lists with no room to nest, so they have to choose.
+ *
+ * THEY KEEP THE PARENT. It is the superset, so its count is the one that can be
+ * compared with every other row in the list, and dropping it in favour of the
+ * child would silently change what the number covers. The cost is real and
+ * worth stating: a speciality moving much faster than its parent — which is a
+ * genuine story — is not told in these two places. It is told on the company
+ * card, where the nesting makes the relationship visible.
+ *
+ * A speciality whose parent is ABSENT is kept: nothing is being double-counted,
+ * and `withParent` below labels it so the reader knows what it is a slice of.
+ *
+ * Order is preserved, so callers can filter before they slice to a top N and
+ * lose no slots.
+ */
+export function dropRedundantKin<T>(rows: T[], nameOf: (row: T) => string): T[] {
+  const present = new Set(rows.map(nameOf));
+  return rows.filter((r) => {
+    const parent = SKILL_PARENT[nameOf(r)];
+    return parent === undefined || !present.has(parent);
+  });
+}
+
+/**
+ * Name matches for a search box: broad skills, plus specialities routed to the
+ * broad skill they narrow.
+ *
+ * WHY A SPECIALITY DOES NOT GET ITS OWN RESULT. The skill card and the map heat
+ * are built from the statistical agencies' vacancy series, which are published
+ * for the 100 broad skills and for nothing else — `seriesFor("Midwifery")` is
+ * null, and so is every other speciality's. A result that opened an empty card
+ * and painted no heat would be worse than no result at all.
+ *
+ * So the 122 specialities are searchable as ROUTES: typing "midwifery" finds
+ * Nursing, and `via` names the speciality that got you there so the jump is not
+ * mysterious. The user reaches the data that exists, under the name they know.
+ *
+ * Deduped on the skill actually opened, and a direct hit on the broad skill
+ * always wins — typing "nursing" must not be answered by way of Aged Care
+ * Nursing.
+ */
+export function searchSkillMatches(query: string): { skill: string; via?: string }[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const out: { skill: string; via?: string }[] = [];
+  const seen = new Set<string>();
+  for (const s of ALL_SKILLS) {
+    if (!s.toLowerCase().includes(q)) continue;
+    seen.add(s);
+    out.push({ skill: s });
+  }
+  for (const [child, parent] of Object.entries(SKILL_PARENT)) {
+    if (!child.toLowerCase().includes(q) || seen.has(parent)) continue;
+    seen.add(parent);
+    out.push({ skill: parent, via: child });
+  }
+  return out;
+}
+
+/** "Midwifery" → "Nursing · Midwifery"; a broad skill is returned unchanged.
+ *  For the flat lists, where a bare speciality name gives the reader no way to
+ *  tell it is a slice of something larger. */
+export const withParent = (skill: string): string =>
+  SKILL_PARENT[skill] ? `${SKILL_PARENT[skill]} · ${skill}` : skill;
+
 // ── Legacy names in stored data ─────────────────────────────────────────────
 // The D1 archive freezes each listing's mapped skills as JSON at the moment it
 // is written, so a row keeps whatever the skill was CALLED that day. Rename a

@@ -7,6 +7,8 @@ import {
   ALL_SKILLS,
   SKILL_CATEGORY,
   SKILL_PARENT,
+  dropRedundantKin,
+  withParent,
   parseStoredSkills,
 } from "../data/skillsTaxonomy";
 import { AREA_SOURCES, canonicalArea } from "../data/hiringAreas";
@@ -472,15 +474,19 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
         }
         // Biggest absolute movers first; interleave so the ticker mixes up + down.
         movers.sort((a, b2) => b2.sig - a.sig || Math.abs(b2.v) - Math.abs(a.v));
-        const picked = movers.slice(0, 16);
+        // Before the slice, not after, so suppressing a speciality frees its
+        // slot for a different skill instead of shortening the ticker.
+        const picked = dropRedundantKin(movers, (m) => m.name).slice(0, 16);
         // Fallback: if the archive is too young for real movers in this window,
         // show the highest-demand skills right now as a mild positive so the
         // ticker still reads live.
         if (picked.length < 6) {
-          const top = Object.entries(b.now)
-            .filter(([s]) => s in SKILL_CATEGORY)
-            .sort((x, y) => y[1] - x[1])
-            .slice(0, 16);
+          const top = dropRedundantKin(
+            Object.entries(b.now)
+              .filter(([s]) => s in SKILL_CATEGORY)
+              .sort((x, y) => y[1] - x[1]),
+            ([s]) => s,
+          ).slice(0, 16);
           const seen = new Set(picked.map((p) => p.name));
           for (const [name, cnt] of top) {
             if (seen.has(name)) continue;
@@ -489,7 +495,10 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
           }
         }
         out[b.key] = picked.map((p) => ({
-          name: p.name,
+          // A speciality only reaches here when its parent did not, so the
+          // label says which skill it narrows — "Midwifery" alone reads like a
+          // peer of Nursing rather than a slice of it.
+          name: withParent(p.name),
           tag: "Demand",
           v: p.v,
           spark: sparkFor(p.name),
@@ -727,11 +736,15 @@ export const getMarketSkillMovers = createServerFn({ method: "GET" })
           dir: pctRaw > 0 ? "up" : "down",
         });
       }
-      const risers = movers
+      // Same rule as the ticker: a speciality and the skill it narrows are not
+      // two findings. Applied once, before the split, so a suppressed row
+      // cannot reappear on the other side.
+      const independent = dropRedundantKin(movers, (m) => m.skill);
+      const risers = independent
         .filter((m) => m.dir === "up")
         .sort((a, b) => b.pct - a.pct || b.now - a.now)
         .slice(0, 6);
-      const fallers = movers
+      const fallers = independent
         .filter((m) => m.dir === "down")
         .sort((a, b) => a.pct - b.pct || b.prev - a.prev)
         .slice(0, 6);

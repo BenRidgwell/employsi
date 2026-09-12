@@ -3,7 +3,7 @@ import { isReleasedCompany, isReleasedPlace } from "../lib/markets";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../state/store";
 import { GLOBAL_HUB_LABEL } from "../data/geo";
-import { ALL_SKILLS } from "../data/skillsTaxonomy";
+import { searchSkillMatches } from "../data/skillsTaxonomy";
 import {
   popularSkills as popularSkillsForLayer,
   demandLevel,
@@ -161,7 +161,11 @@ export function GlobalSearch() {
       .map(([id, label]) => ({ kind: "city" as const, id, label }));
     // Direct name matches first, then skills inferred from the description via
     // the O*NET ontology ("workforce planning" → Human Resources), deduped.
-    const direct = ALL_SKILLS.filter((sk) => sk.toLowerCase().includes(q));
+    // Specialities resolve to the broad skill they narrow rather than getting
+    // results of their own — see searchSkillMatches.
+    const matches = searchSkillMatches(q);
+    const direct = matches.map((m) => m.skill);
+    const viaOf = new Map(matches.filter((m) => m.via).map((m) => [m.skill, m.via!]));
     // Gated on the flag rather than relying on describeSkills' own empty
     // return, so the memo genuinely depends on it — the dependency is a
     // re-run trigger for when the ontology chunk lands, not decoration.
@@ -170,7 +174,16 @@ export function GlobalSearch() {
       : [];
     const skills: Result[] = [...direct, ...described].slice(0, 7).map((sk) => {
       const badge = demandLevel(sk, globalOut, skillIndex, demandMode);
-      return { kind: "skill" as const, id: sk, label: sk, sub: badge.label, tone: badge.tone };
+      const via = viaOf.get(sk);
+      return {
+        kind: "skill" as const,
+        id: sk,
+        label: sk,
+        // The demand badge still describes the skill being opened; the
+        // speciality that matched is appended so the jump is explicable.
+        sub: via ? `${badge.label} · via ${via}` : badge.label,
+        tone: badge.tone,
+      };
     });
     return [...skills, ...companies, ...cities];
   }, [q, searchQuery, skillIndex, globalOut, seesAllMarkets, ontologyReady, demandMode]);

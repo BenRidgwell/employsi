@@ -8,7 +8,7 @@ import { COMPANIES } from "../data/companies";
 import { searchCityFor } from "../data/mapboxGeo";
 import { popularSkills as popularSkillsForLayer } from "../lib/skillHeat";
 import { GLOBAL_HUB_LABEL } from "../data/geo";
-import { ALL_SKILLS } from "../data/skillsTaxonomy";
+import { searchSkillMatches } from "../data/skillsTaxonomy";
 import { describeSkills } from "../lib/describeSkills";
 import { useOntologyReady } from "../hooks/useOntologyReady";
 
@@ -110,16 +110,24 @@ export function TopBar() {
       )
       .slice(0, 6)
       .map(([id, label]) => ({ kind: "city", id, label, sub: "City" }));
-    const direct = ALL_SKILLS.filter((sk) => sk.toLowerCase().includes(q));
+    // Specialities are searchable, but they resolve to the broad skill they
+    // narrow — see searchSkillMatches for why they cannot have cards of their
+    // own.
+    const matches = searchSkillMatches(q);
+    const direct = matches.map((m) => m.skill);
+    const viaOf = new Map(matches.filter((m) => m.via).map((m) => [m.skill, m.via!]));
     // Gated on the flag rather than relying on describeSkills' own empty
     // return, so the memo genuinely depends on it — the dependency is a
     // re-run trigger for when the ontology chunk lands, not decoration.
     const described = ontologyReady
       ? describeSkills(searchQuery).filter((sk) => !direct.includes(sk))
       : [];
-    const skillRes: SResult[] = [...direct, ...described]
-      .slice(0, 7)
-      .map((sk) => ({ kind: "skill", id: sk, label: sk, sub: "Skill" }));
+    const skillRes: SResult[] = [...direct, ...described].slice(0, 7).map((sk) => ({
+      kind: "skill",
+      id: sk,
+      label: sk,
+      sub: viaOf.has(sk) ? `Skill · via ${viaOf.get(sk)}` : "Skill",
+    }));
     return [...skillRes, ...companies, ...cities];
   }, [searchQuery, seesAllMarkets, ontologyReady]);
 

@@ -1,4 +1,4 @@
-import { SKILL_CATEGORY } from "../data/skillsTaxonomy";
+import { ALL_SKILLS, SKILL_CATEGORY } from "../data/skillsTaxonomy";
 import { IVI_MONTHS } from "../data/iviSkillDemand";
 import { LABOUR_EVENTS, type LabourEvent } from "../data/labourEvents";
 import { demandPercentile, type DemandTone } from "./skillHeat";
@@ -193,13 +193,20 @@ function sparkPaths(
   return { line, area };
 }
 
-/** Related skills: the rest of this skill's taxonomy category, strongest first. */
+/** Related skills: the rest of this skill's taxonomy category, strongest first.
+ *
+ *  BROAD SKILLS ONLY. SKILL_CATEGORY covers specialities too — it has to, since
+ *  parseStoredSkills uses it as the membership test for an archived name — so
+ *  reading it directly put a skill's OWN specialities in its related list:
+ *  Nursing suggested Midwifery and Aged Care Nursing as things to look at next,
+ *  which are not alternatives to nursing but parts of it. Worse, none of them
+ *  have a demand series to open (the heat index is built from the statistical
+ *  agencies, which publish for the 100 broad skills), so every such suggestion
+ *  led to an empty card. */
 function relatedSkills(skill: string): string[] {
   const cat = SKILL_CATEGORY[skill];
   if (!cat) return [];
-  return Object.entries(SKILL_CATEGORY)
-    .filter(([s, c]) => c === cat && s !== skill)
-    .map(([s]) => s)
+  return ALL_SKILLS.filter((s) => s !== skill && SKILL_CATEGORY[s] === cat)
     .sort((a, b) => demandPercentile(b, true, null) - demandPercentile(a, true, null))
     .slice(0, 4);
 }
