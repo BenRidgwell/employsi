@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../state/store";
 import { getAlerts, type AlertRow } from "../lib/alertsFn";
+import { IconClose } from "./ActionIcons";
 
 /**
  * The notification bell, from `Notification_Bell`.
@@ -180,13 +181,7 @@ export function NotificationBell() {
           <div className="nbscrim" onClick={closeAlerts} />
           <div className="nbpanel" role="dialog" aria-label="Alerts">
             <div className="nbhd">
-              <div className="nbhdtext">
-                <span className="nbtitle">Alerts</span>
-                <span className="nbsub">
-                  {data?.companies ?? 0} {data?.companies === 1 ? "company" : "companies"}
-                  {rows.length && rows[0].at ? ` · week of ${weekLabel(rows[0].at)}` : ""}
-                </span>
-              </div>
+              <span className="nbtitle">Alerts</span>
               <div className="nbhdbtns">
                 <button
                   type="button"
@@ -206,8 +201,29 @@ export function NotificationBell() {
                   <MuteIcon />
                   {muted ? "Muted" : "Mute"}
                 </button>
+                {/* This panel had no close button at all — it could only be
+                    dismissed by clicking the scrim. Every other card that opens
+                    over the map carries one, and a panel that looks like them
+                    and cannot be closed like them is the worse kind of
+                    inconsistency. */}
+                <button
+                  type="button"
+                  className="paneclose"
+                  onClick={closeAlerts}
+                  aria-label="Close alerts"
+                >
+                  <IconClose />
+                </button>
               </div>
             </div>
+
+            {/* Was the line under the title: what is being counted and over
+                which week. It says what the list below holds, so it sits with
+                the list. */}
+            <p className="panecap nbcap">
+              {data?.companies ?? 0} {data?.companies === 1 ? "company" : "companies"}
+              {rows.length && rows[0].at ? ` · week of ${weekLabel(rows[0].at)}` : ""}
+            </p>
 
             <div className="nbtabs">
               {TABS.map((t) => (

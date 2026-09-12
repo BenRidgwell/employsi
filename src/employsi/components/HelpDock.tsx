@@ -287,14 +287,14 @@ export function HelpDock() {
           ) : (
             <div className="dockpanel helppanel">
               <div className="dockhd">
-                <div className="dockhdtext">
-                  <span className="docktitle">{tour.title}</span>
-                  <span className="docksub">{tour.sub}</span>
-                </div>
-                <button className="dockx" onClick={closeHelpTour} aria-label="Close">
+                <span className="docktitle">{tour.title}</span>
+                <button className="paneclose" onClick={closeHelpTour} aria-label="Close">
                   <IconClose />
                 </button>
               </div>
+              {/* Was the second line of the header. It describes the tour rather
+                  than naming the panel, so it leads the body. */}
+              <p className="panecap">{tour.sub}</p>
               <ol className="helpsteps">
                 {tour.steps.map((s, i) => (
                   <li key={i}>

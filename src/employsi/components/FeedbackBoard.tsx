@@ -10,7 +10,7 @@ import {
   type FbStatus,
 } from "../lib/feedbackFn";
 import { useAppStore } from "../state/store";
-import { EmploysiMark } from "../../components/EmploysiLogo";
+import { IconClose } from "./ActionIcons";
 
 // The feedback board: real requests from real people, stored in D1 and shared
 // across everyone who opens the app. It starts EMPTY — there are no seeded
@@ -255,24 +255,9 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
   return (
     <div className="fbboard" role="dialog" aria-label="Feedback board">
       <div className="fbhd">
-        <div className="fbhdleft">
-          <EmploysiMark size={20} />
-          <span className="fbhdtitle">Feedback board</span>
-        </div>
-        <button className="fbhdx" onClick={onClose} aria-label="Close">
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            aria-hidden
-          >
-            <path d="M18 6 6 18" />
-            <path d="m6 6 12 12" />
-          </svg>
+        <span className="fbhdtitle">Feedback board</span>
+        <button className="paneclose" onClick={onClose} aria-label="Close">
+          <IconClose />
         </button>
       </div>
 

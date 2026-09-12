@@ -127,16 +127,17 @@ export function SettingsPanel() {
   return (
     <div className="dockpanel setpanel">
       <div className="sthead">
-        <div className="stheadtext">
-          <span className="sttitle">Settings</span>
-          <span className="stsubtitle">Preferences apply to this device.</span>
-        </div>
-        <button className="stclose" onClick={closeSettings} aria-label="Close">
+        <span className="sttitle">Settings</span>
+        <button className="paneclose" onClick={closeSettings} aria-label="Close">
           <IconClose />
         </button>
       </div>
 
       <div className="stbody">
+        {/* Was the line under the title. It is a caveat about where these
+            settings live, not a label for the panel, so it reads as the body's
+            opening sentence instead. */}
+        <p className="panecap">Preferences apply to this device.</p>
         <div className="stgroup">
           <span className="steyebrow">Appearance</span>
 

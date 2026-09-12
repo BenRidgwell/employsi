@@ -341,36 +341,38 @@ body {
   z-index: 49;
 }
 .anhd {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
   flex: 0 0 auto;
   padding: 13px 18px;
 }
-/* THE RULE UNDER THE HEADER IS INSET, matching the filter card, where it is the
-   first section's border-top and is inset because the body it sits in has 18px
-   side gutters. This card has no such wrapper — the header, the scope row and
-   the thread are siblings of the pane itself — so the same line is drawn as a
-   pseudo-element rather than a border, which is the only way to hold it off the
-   corners. Full-bleed until 2026-09-12, and it made the top of the card read as
-   a title BAR rather than as a title. */
-.anhd::after {
-  content: "";
-  position: absolute;
-  left: 18px;
-  right: 18px;
-  bottom: 0;
-  height: 1px;
-  background: var(--border-subtle);
-}
-/* Set exactly like .fptitle. The subtitle that used to sit under it — "Answers
-   grounded in live employsi vacancy data" — is gone: the opening message in the
-   thread already says the same thing at more length ("Every answer is a query
-   over employsi's vacancy data, and I'll show you the source"), and every
-   answer carries its own source line, so the header was the third place to say
-   it. */
-.antitle {
+
+/* ── THE CARD HEADER, one family ────────────────────────────────────────────
+   Every panel that opens over the map wears the same header: the title, then
+   whatever actions it has, then the shared round close, over a hairline held
+   off the corners. Filter is the reference (see .fphd), and the other six were
+   six different headers until 2026-09-12 — titles at 14, 15, 16 and 18px in two
+   font stacks and four tracking values, three of them behind a decorative icon
+   tile, two with a line of description under the title, and four with their own
+   hand-rolled close button.
+
+   ONE RULE, NOT SEVEN COPIES OF ONE RULE. The temptation is to paste the same
+   five declarations into each panel's own class, which is how they drifted
+   apart in the first place. A grouped selector means the next change lands
+   everywhere or nowhere.
+
+   A DESCRIPTION DOES NOT BELONG UP HERE. Where a panel had one it moved into
+   its body as .panecap — see Settings, Alerts and Need help. The one exception
+   is Filter's scope (.fpscope), which is a short caption naming what the card's
+   numbers count, not a sentence about the card. */
+.fptitle,
+.antitle,
+.brieftitle,
+.sttitle,
+.nbtitle,
+.fbhdtitle,
+.docktitle {
   flex: 1 1 auto;
   min-width: 0;
   font-size: 19px;
@@ -378,6 +380,41 @@ body {
   letter-spacing: -0.02em;
   line-height: 1.1;
   color: var(--text-primary);
+}
+/* The hairline under a header, drawn rather than bordered so it can be held off
+   the rounded corners. Each header sets its own inset, because each panel has
+   its own gutter and this line should agree with the content it separates
+   rather than with another card. */
+.anhd::after,
+.briefhead::after,
+.sthead::after,
+.nbhd::after,
+.fbhd::after,
+.helppanel .dockhd::after {
+  content: "";
+  position: absolute;
+  left: var(--panehd-inset, 18px);
+  right: var(--panehd-inset, 18px);
+  bottom: 0;
+  height: 1px;
+  background: var(--border-subtle);
+}
+.anhd,
+.briefhead,
+.sthead,
+.nbhd,
+.fbhd,
+.helppanel .dockhd {
+  position: relative;
+}
+/* The line of description that used to sit under a title. First thing in the
+   body, so it still reads as the panel's opening sentence. */
+.panecap {
+  margin: 0;
+  padding: 11px 0 2px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
 }
 /* THE ONE CLOSE BUTTON, shared by every card that has one — Ask an analyst,
    What's Trending and Filter. It was three different buttons until 2026-09-06:
@@ -4336,33 +4373,17 @@ body {
    own gutter is 16 (see .mktbar) and a rule should line up with the content it
    separates rather than with another card. */
 .briefhead {
-  position: relative;
+  /* 16, not the 18 the other panels use: this pane's gutter is 16 throughout
+     (see .mktbar) and the rule should line up with the content it separates. */
+  --panehd-inset: 16px;
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 13px 16px;
 }
-.briefhead::after {
-  content: "";
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 0;
-  height: 1px;
-  background: var(--border-subtle);
-}
-/* .fptitle's setting exactly, so the three cards that open over the map read as
-   one family. It was 18px/800 in Mona Sans with -0.3px tracking — heavier and
-   tighter than either of the others. */
-.brieftitle {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 19px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  color: var(--text-primary);
-}
+/* .brieftitle's setting lives with the rest of the family — see the grouped
+   rule near .fptitle. It was 18px/800 in Mona Sans at -0.3px tracking, heavier
+   and tighter than any of its siblings. */
 /* .briefclose went to the shared .paneclose on 2026-09-06. */
 .briefscroll {
   overflow-y: auto;
@@ -7297,58 +7318,26 @@ body {
 /* Panel header: title (+ optional subtitle) and the rotating close X. */
 .dockhd {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding-bottom: 14px;
+  padding-bottom: 13px;
+}
+/* The help panel pads itself, so its header's rule reaches the panel's own
+   gutter rather than an 18px one measured from nowhere. */
+.helppanel .dockhd {
+  --panehd-inset: 0px;
 }
 .dockhdline {
   align-items: center;
   padding-bottom: 13px;
   border-bottom: 1px solid var(--border-subtle);
 }
-.dockhdtext {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
 .docktitle {
   font-size: 14px;
   font-weight: var(--weight-semibold);
   letter-spacing: -0.015em;
   color: var(--text-primary);
-}
-.docksub {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-.dockx {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 auto;
-  padding: 0;
-  border: 1px solid var(--border-subtle);
-  border-radius: 999px;
-  background: var(--surface-card);
-  color: var(--neutral-700);
-  cursor: pointer;
-  --m: 0;
-  transition:
-    background 160ms,
-    color 160ms,
-    transform 110ms;
-}
-.dockx:hover {
-  --m: 1;
-  background: var(--surface-hover);
-  color: var(--text-primary);
-}
-.dockx:active {
-  transform: scale(0.94);
 }
 .helppanel {
   width: 252px;
@@ -7473,47 +7462,10 @@ body {
 .sthead {
   flex: 0 0 auto;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 16px 12px 18px;
-}
-.stheadtext {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.sttitle {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-}
-.stsubtitle {
-  font-size: 12px;
-  color: #8e8e93;
-}
-.stclose {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 auto;
-  border: 1px solid #e5e5ea;
-  border-radius: 999px;
-  background: #fff;
-  color: #3a3a3c;
-  cursor: pointer;
-  transition:
-    background 0.12s ease,
-    transform 0.12s ease;
-}
-.stclose:hover {
-  background: #f4f4f5;
-}
-.stclose:active {
-  transform: scale(0.98);
+  padding: 13px 18px;
 }
 .stbody {
   flex: 1 1 auto;
@@ -7825,41 +7777,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 16px 14px 18px;
-  border-bottom: 1px solid var(--line, #ededf0);
-}
-.fbhdleft {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  min-width: 0;
-}
-.fbhdtitle {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
-.fbhdx {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 auto;
-  padding: 0;
-  border: 1px solid var(--line, #ededf0);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--slate, #8e8e93);
-  cursor: pointer;
-  transition:
-    background 120ms ease,
-    color 120ms ease;
-}
-.fbhdx:hover {
-  background: #f4f4f5;
-  color: #1c1c1e;
+  padding: 13px 18px;
 }
 
 /* --- tabs --- */
@@ -14210,29 +14128,10 @@ body {
 }
 .nbhd {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 18px 12px;
-}
-.nbhdtext {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-.nbtitle {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-.nbsub {
-  white-space: nowrap;
-  font-family: var(--font-label);
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
+  padding: 13px 18px;
 }
 .nbhdbtns {
   display: flex;
@@ -14268,6 +14167,11 @@ body {
   background: var(--neutral-900);
   border-color: var(--neutral-900);
   color: #fff;
+}
+/* The Alerts caption sits outside .nblist, which pads itself, so it carries the
+   panel's gutter on its own. */
+.nbcap {
+  padding: 10px 18px 2px;
 }
 .nbtabs {
   display: flex;
