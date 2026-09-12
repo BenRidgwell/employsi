@@ -1032,6 +1032,16 @@ body {
    run long. See components/FilterPane.tsx for where the content deliberately
    differs from the mock.
 
+   TIGHTENED 2026-09-12, because in its default state it scrolled on a phone and
+   scrolling hid the Apply button — the one control the card exists to reach.
+   650px of content became 567px: 2-4px off each padding and gap, plus a 26px
+   two-line reservation under the sector labels that nothing used above a 440px
+   viewport. Nothing was removed and nothing was resized — the 52px circles, the
+   4-column grid, every type size and every colour are untouched. Measured
+   across phone, tablet and desktop widths, it now fits without scrolling on any
+   viewport 640px tall or more. Below that it scrolls again, which is the honest
+   limit: the four sections are all load-bearing.
+
    THE TYPE MAPPING, each element onto this app's existing equivalent:
 
      title      19px/600/-0.02em   = .ccname
@@ -1074,7 +1084,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 16px 18px;
+  padding: 13px 18px;
 }
 .fphdleft {
   display: flex;
@@ -1132,15 +1142,15 @@ body {
 .fpsec {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 15px 0 14px;
+  gap: 10px;
+  padding: 12px 0 11px;
   border-top: 1px solid var(--border-subtle);
 }
 .fpsec:first-child {
-  padding-top: 16px;
+  padding-top: 13px;
 }
 .fpsec:last-child {
-  padding-bottom: 18px;
+  padding-bottom: 12px;
 }
 /* A section whose control sits beside its eyebrow rather than under it. */
 .fpsecrow {
@@ -1181,14 +1191,14 @@ body {
 .fpsectors {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px 6px;
+  gap: 8px 6px;
   justify-items: center;
 }
 .fpsector {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
   padding: 0;
   border: 0;
@@ -1245,9 +1255,19 @@ body {
   background: var(--surface-card);
   color: var(--text-primary);
 }
+/* NO min-height, and that is worth explaining because it looks like an
+   alignment bug waiting to happen. It reserved 26px — two lines — so every
+   label filled the same box whether it wrapped or not. Measured 2026-09-12: no
+   label wraps at or above a 440px viewport (the column is 96px and the longest,
+   "Consumer & retail", needs 88px), so at every width this card is normally
+   seen at, that was 13px of empty space under each of the two rows.
+
+   Below 400px two labels do wrap, and they still align: grid items in a row
+   stretch to the tallest, and the icon above them is a fixed 52px, so the
+   labels in a row start at the same y with or without this. The only difference
+   is that a row holding a wrapped label is taller than the row below it. */
 .fpsectlabel {
   display: block;
-  min-height: 26px;
   font-family: var(--font-label);
   font-size: 10.5px;
   line-height: 1.25;
@@ -1308,7 +1328,7 @@ body {
   background: var(--surface-sunken);
 }
 .fpsegbtn {
-  padding: 7px 16px;
+  padding: 6px 16px;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -1436,7 +1456,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 13px 18px;
+  padding: 11px 18px;
   border-top: 1px solid var(--border-subtle);
   background: var(--surface-subtle);
 }
@@ -1449,7 +1469,7 @@ body {
 }
 .fpapply {
   flex: 0 0 auto;
-  padding: 11px 18px;
+  padding: 10px 18px;
   border: 0;
   border-radius: 10px;
   background: var(--action-primary);
@@ -11039,7 +11059,14 @@ body {
     transform: none;
     width: auto;
     max-width: none;
-    max-height: 82vh;
+    /* 82vh until 2026-09-12, which was less than this card needs: on a 642px
+       phone the content is 567px and the cap was 526, so the sheet scrolled
+       with only four sections in it. The cap is a CEILING, not a height — the
+       sheet is sized by its content and stops here — so raising it changes
+       nothing where the content already fits, and removes the scroll where it
+       did not. It still leaves a strip of map and scrim above, which is what
+       makes this a sheet rather than a full-screen panel. */
+    max-height: 92vh;
     border-radius: 20px 20px 0 0;
     /* The card owns its own gutters now (header / body / footer each pad
        themselves), so the sheet adds only the home-indicator inset. */
