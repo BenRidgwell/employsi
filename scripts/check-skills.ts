@@ -479,6 +479,57 @@ if (ACCOUNT && DB && TOKEN) {
     ["Customer Service Officer", "Customer Support", true],
     ["Barista - Coffee Bar", "Barista & Cafe", true],
     ["Bar Attendant", "Bar & Beverage", true],
+    // ── the 2026-09-12 third pass ────────────────────────────────────────────
+    // Three parent gaps fixed the same day, each asserted where it broke.
+    // "rehabilitation" was a bare Environmental term and 417 of its 429 titles
+    // were clinical.
+    ["Registered Nurse - Rehabilitation", "Environmental", false],
+    ["Rehabilitation and Return to Work Coordinator", "Environmental", false],
+    ["Closure & Rehabilitation Advisor", "Environmental", true],
+    ["Mine Rehabilitation Supervisor", "Environmental", true],
+    // "urban and regional plann" is the ANZSCO name and no employer writes it.
+    ["Senior Town Planner", "Architecture & Planning", true],
+    ["Statutory Planner", "Architecture & Planning", true],
+    // A skill named "& Facilities" that claimed no facilities manager.
+    ["Facilities Manager (Healthcare)", "Cleaning & Facilities", true],
+    ["Facilities Manager (Healthcare)", "Facilities Management", true],
+    // New specialities: each false case is a title the short term would take.
+    ["Machine Learning Engineer", "AI & Machine Learning", true],
+    ["Data Scientist", "Data Science", true],
+    ["SAP Finance Consultant", "ERP & Business Systems", true],
+    ["Service Desk Analyst", "IT Support & Service Desk", true],
+    ["Analytical Chemist", "Chemistry", true],
+    ["Chemical Engineer", "Chemistry", false],
+    ["Research Fellow - Oncology", "Research Science", true],
+    ["Product Owner - Payments", "Product Ownership", true],
+    ["Social Worker - Hospital", "Social Work", true],
+    ["Case Manager - Injury", "Case Management", true],
+    ["Youth Justice Officer", "Youth Work", false],
+    ["Youth Worker - Refuge", "Youth Work", true],
+    ["Visual Merchandiser", "Visual Merchandising", true],
+    ["DevOps Engineer", "DevOps Engineering", true],
+    ["Pharmacy Assistant", "Pharmacy Support", true],
+    ["School Principal", "School Principalship", true],
+    ["Principal Geotechnical Engineer", "School Principalship", false],
+    ["Policy Officer - Housing", "Policy Development", true],
+    ["Cyber Security Analyst", "Security Operations", true],
+    ["Aged Care Worker", "Aged Care", true],
+    // An aged-care RN is BOTH: a nurse by profession and aged-care demand by
+    // setting, so it carries Aged Care Nursing under Nursing and Aged Care
+    // under the care workforce. Both readings are true and both are wanted.
+    ["Registered Nurse - Aged Care", "Aged Care", true],
+    ["Registered Nurse - Aged Care", "Aged Care Nursing", true],
+    ["Radiographer", "Radiography", true],
+    // Allied Health owns "sonographer"; there is no Sonography speciality.
+    ["Sonographer", "Allied Health", true],
+    ["WHS Advisor", "Safety Advisory", true],
+    // "site supervisor" is NOT a Construction Management term — 96 archived
+    // titles use it and all of them already map elsewhere, so it was left
+    // alone. The speciality runs on the forms the parent does claim.
+    ["Foreman - Civil Works", "Site Management", true],
+    ["Dental Assistant", "Dental Assisting", true],
+    ["Teacher Aide - Special Needs", "Teacher Aide", true],
+    ["Environmental Advisor", "Environmental Approvals", true],
     ["Outsystems Architect", "Architecture & Planning", false],
     ["Outsystems Architect", "Software Engineering", true],
     ["OutSystems Developer", "Software Engineering", true],

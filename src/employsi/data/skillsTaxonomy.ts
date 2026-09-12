@@ -249,10 +249,80 @@ const RAW_SKILLS: SkillDef[] = [
       "occupational and environmental health",
     ],
   },
+
+  // ── HSE / Safety · specialities ──────────────────────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 535. DELIBERATELY ONE: Safety Management is 30 titles, under the
+  // floor — this market advertises advisers, not managers.
+  //
+  {
+    skill: "Safety Advisory",
+    cat: "Safety",
+    parent: "HSE / Safety",
+    // 160 titles.
+    terms: [
+      "safety advisor",
+      "safety adviser",
+      "hse advisor",
+      "whs advisor",
+      "safety officer",
+      "safety coordinator",
+    ],
+  },
   {
     skill: "Environmental",
     cat: "Safety",
-    terms: ["environmental", "environment advisor", "rehabilitation", "tailings"],
+    terms: [
+      "environmental",
+      "environment advisor",
+      "tailings",
+      // "rehabilitation" WAS A BARE TERM HERE and it was wrong almost every
+      // time. Measured 2026-09-12: 429 archived titles carried Environmental
+      // through it and only about 12 were mine or land rehabilitation. The
+      // other 417 were CLINICAL — "Registered Nurse - Rehabilitation",
+      // "Rehabilitation and Return to Work Coordinator", spinal and paediatric
+      // rehab therapists — and 185 of those had Environmental and no other
+      // skill at all, so the archive was reporting hospital rehab wards as
+      // environmental demand.
+      //
+      // The qualified forms below are what mining actually advertises. The
+      // genuine ones mostly say "environmental" too and were never at risk;
+      // these exist for the ones that do not, like "Closure & Rehabilitation
+      // Advisor" — norm() rewrites "&" as " and " before matching, so the term
+      // is written the way the haystack reads.
+      "mine rehabilitation",
+      "land rehabilitation",
+      "site rehabilitation",
+      "rehabilitation and closure",
+      "closure and rehabilitation",
+      "environmental rehabilitation",
+    ],
+  },
+
+  // ── Environmental · specialities ─────────────────────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 309 — down from 735 the same day, when bare "rehabilitation" was
+  // taken off this skill and 417 clinical rehab titles stopped being counted as
+  // environmental demand.
+  //
+  // DELIBERATELY ONE. Rehabilitation & Closure, the obvious candidate, is 4
+  // titles once the clinical ones are gone: mine rehabilitation is a real job
+  // and this archive barely advertises it by that name.
+  {
+    skill: "Environmental Approvals",
+    cat: "Safety",
+    parent: "Environmental",
+    // 55 titles, none outside the parent.
+    terms: [
+      "environmental approval",
+      "environmental advisor",
+      "environmental adviser",
+      "environmental officer",
+      "environmental consultant",
+      "environmental scientist",
+    ],
   },
   {
     skill: "Risk & Compliance",
@@ -361,10 +431,65 @@ const RAW_SKILLS: SkillDef[] = [
       "business and systems",
     ],
   },
+
+  // ── Data Analytics · specialities ────────────────────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 962. Thin — 6% — and deliberately so: Data Quality & Governance
+  // is 9 titles, and the rest of this parent advertises as plain "Data Analyst"
+  // with nothing further named.
+  //
+  {
+    skill: "Business Intelligence",
+    cat: "Digital",
+    parent: "Data Analytics",
+    // 59 titles. Building the reporting layer rather than reading it.
+    terms: [
+      "business intelligence",
+      "bi developer",
+      "bi analyst",
+      "bi consultant",
+      "tableau",
+      "qlik",
+      "reporting analyst",
+    ],
+  },
   {
     skill: "Data Science & Machine Learning",
     cat: "Digital",
     terms: ["data scien", "machine learning", "ml engineer", "ai "],
+  },
+
+  // ── Data Science & Machine Learning · specialities ───────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 1,652. These two name 573, 35%. Quantitative Analysis was mined
+  // and is 2 titles inside the parent — the quants advertise as analysts and
+  // never say data science.
+  {
+    skill: "AI & Machine Learning",
+    cat: "Digital",
+    parent: "Data Science & Machine Learning",
+    // 311 titles. The engineering half — building and serving models.
+    terms: [
+      "machine learning",
+      "ml engineer",
+      "ai engineer",
+      "deep learning",
+      "mlops",
+      "computer vision",
+      "nlp",
+      "llm",
+      "generative ai",
+    ],
+  },
+  {
+    skill: "Data Science",
+    cat: "Digital",
+    parent: "Data Science & Machine Learning",
+    // 262 titles, and none outside the parent: this is the parent's own term
+    // naming its own slice.
+    terms: ["data scientist", "data science"],
   },
   {
     // Distinct from Data Analytics (who reads the data) and Data Science (who
@@ -455,6 +580,31 @@ const RAW_SKILLS: SkillDef[] = [
       "systems analyst",
     ],
   },
+
+  // ── Business Analysis · specialities ─────────────────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 1,210. These two name 285, 24%. Process Improvement is 19 titles
+  // inside the parent.
+  //
+  {
+    skill: "Product Ownership",
+    cat: "Corporate",
+    parent: "Business Analysis",
+    // 174 titles. Kept here rather than under Product Management, where the same
+    // terms reach 3 titles: the archive's product owners advertise as analysts
+    // and sit in delivery teams, not in product organisations.
+    terms: ["product owner", "scrum master", "agile"],
+  },
+  {
+    skill: "Systems & Technical BA",
+    cat: "Corporate",
+    parent: "Business Analysis",
+    // 60 titles. "systems analyst" is NOT here, though it would add 51 more:
+    // Data Analytics already claims that exact term, and the structural check
+    // in scripts/check-skills.ts refused the build until it came out.
+    terms: ["technical business analyst", "it business analyst", "business systems analyst"],
+  },
   {
     skill: "Software Engineering",
     cat: "Digital",
@@ -537,6 +687,34 @@ const RAW_SKILLS: SkillDef[] = [
     cat: "Digital",
     terms: ["cloud", "aws", "azure", "devops", "kubernetes"],
   },
+
+  // ── Cloud & DevOps · specialities ────────────────────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 1,019. These three name 417, 41%.
+  //
+  {
+    skill: "DevOps Engineering",
+    cat: "Digital",
+    parent: "Cloud & DevOps",
+    // 256 titles.
+    terms: ["devops", "dev ops", "ci/cd", "kubernetes", "terraform"],
+  },
+  {
+    skill: "Cloud Engineering",
+    cat: "Digital",
+    parent: "Cloud & DevOps",
+    // 112 titles, none outside the parent.
+    terms: ["cloud engineer", "cloud consultant", "cloud specialist", "cloud infrastructure"],
+  },
+  {
+    skill: "Site Reliability & Platform",
+    cat: "Digital",
+    parent: "Cloud & DevOps",
+    // 49 titles. The gate holds back 204, nearly all of them "platform" used of
+    // a business platform rather than an engineering one.
+    terms: ["site reliability", "sre", "platform engineer"],
+  },
   {
     skill: "Cybersecurity",
     cat: "Digital",
@@ -557,16 +735,59 @@ const RAW_SKILLS: SkillDef[] = [
       "ict security",
     ],
   },
+
+  // ── Cybersecurity · specialities ─────────────────────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 795. DELIBERATELY ONE: Security Governance & Risk (18),
+  // Penetration Testing (6) and Identity & Access (7) are all far under the
+  // floor. Australian employers advertise "Cyber Security Analyst" and leave the
+  // discipline unnamed.
+  {
+    skill: "Security Operations",
+    cat: "Digital",
+    parent: "Cybersecurity",
+    // 69 titles. Watching and responding, as against designing.
+    terms: ["security operations", "soc analyst", "security analyst", "incident response"],
+  },
   {
     skill: "Automation & Robotics",
     cat: "Digital",
     terms: ["automation", "autonomous", "robotics", "remote operations"],
+  },
+
+  // ── Automation & Robotics · specialities ─────────────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 697. These two name 244, 35%. Control Systems is 30 titles inside
+  // the parent — PLC and SCADA work advertises under Instrumentation & Control,
+  // which is its own skill.
+  {
+    skill: "Process Automation",
+    cat: "Digital",
+    parent: "Automation & Robotics",
+    // 155 titles.
+    terms: ["automation engineer", "rpa", "automation specialist", "automation technician"],
+  },
+  {
+    skill: "Robotics",
+    cat: "Digital",
+    parent: "Automation & Robotics",
+    // 89 titles.
+    terms: ["robotics", "robot"],
   },
   {
     skill: "IT & Systems",
     cat: "Digital",
     terms: [
       "it support",
+      // 133 archived titles say "service desk" or "help desk" and 107 of them
+      // mapped to NO SKILL AT ALL — "it support" above never reached the words
+      // the function is actually advertised under. Found by a gate case for the
+      // IT Support speciality failing on "Service Desk Analyst".
+      "service desk",
+      "help desk",
+      "helpdesk",
       "systems administrator",
       // The singular, and the two other administrator roles that are IT and not
       // office administration. Found by re-mapping the archive against this
@@ -589,6 +810,53 @@ const RAW_SKILLS: SkillDef[] = [
       "ict support and test",
       "telecommunications engineering",
     ],
+  },
+
+  // ── IT & Systems · specialities ──────────────────────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 1,603. These four name 1,105, 69% — the highest coverage in the
+  // taxonomy, because this skill is a collection of named trades rather than
+  // one job.
+  //
+  {
+    skill: "ERP & Business Systems",
+    cat: "Digital",
+    parent: "IT & Systems",
+    // 792 titles, half the parent. Checked before shipping, because a two-letter
+    // term invites trouble: of 677 archived titles containing "sap", 5 are not
+    // the product ("SAPM Administration Lead", a pharmacist at SAPC), and the
+    // parent already carried the term regardless.
+    terms: ["sap", "erp", "dynamics 365", "workday", "servicenow"],
+  },
+  {
+    skill: "IT Support & Service Desk",
+    cat: "Digital",
+    parent: "IT & Systems",
+    // 114 titles. The desk people ring.
+    terms: [
+      "it support",
+      "service desk",
+      "help desk",
+      "helpdesk",
+      "desktop support",
+      "ict support",
+      "technical support",
+    ],
+  },
+  {
+    skill: "Network Engineering",
+    cat: "Digital",
+    parent: "IT & Systems",
+    // 113 titles, and only 11 outside the parent.
+    terms: ["network engineer", "network administrator", "network specialist", "computer network"],
+  },
+  {
+    skill: "Systems Administration",
+    cat: "Digital",
+    parent: "IT & Systems",
+    // 86 titles.
+    terms: ["systems administrator", "system administrator", "sysadmin"],
   },
 
   // ── Corporate & commercial ─────────────────────────────────────────────
@@ -1280,6 +1548,39 @@ const RAW_SKILLS: SkillDef[] = [
       "senior program",
     ],
   },
+
+  // ── Policy & Programs · specialities ─────────────────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 812. These two name 612, 75%. Grants & Funding is 4 titles.
+  //
+  {
+    skill: "Program Delivery",
+    cat: "Public Sector",
+    parent: "Policy & Programs",
+    // 426 titles.
+    terms: [
+      "program officer",
+      "program coordinator",
+      "program manager",
+      "programme manager",
+      "program adviser",
+    ],
+  },
+  {
+    skill: "Policy Development",
+    cat: "Public Sector",
+    parent: "Policy & Programs",
+    // 186 titles, and only 9 outside the parent.
+    terms: [
+      "policy officer",
+      "policy adviser",
+      "policy advisor",
+      "policy analyst",
+      "senior policy",
+      "policy manager",
+    ],
+  },
   {
     skill: "Community & Native Title",
     cat: "Corporate",
@@ -1785,7 +2086,56 @@ const RAW_SKILLS: SkillDef[] = [
     terms: ["dietit", "dietic", "nutritionist"],
   },
   { skill: "Dental", cat: "Health", terms: ["dental", "dentist", "orthodont"] },
+
+  // ── Dental · specialities ────────────────────────────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 477. These two name 296, 62%. Dental Hygiene & Therapy is 29
+  // titles, under the floor.
+  //
+  {
+    skill: "Dental Assisting",
+    cat: "Health",
+    parent: "Dental",
+    // 189 titles, and none outside the parent.
+    terms: ["dental assistant", "dental nurse", "dental receptionist"],
+  },
+  {
+    skill: "Dental Practice",
+    cat: "Health",
+    parent: "Dental",
+    // 107 titles — the dentists themselves.
+    terms: ["dentist", "dental practitioner"],
+  },
   { skill: "Pharmacy", cat: "Health", terms: ["pharmacist", "pharmacy"] },
+
+  // ── Pharmacy · specialities ──────────────────────────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 948. These three name 558, 59%.
+  //
+  {
+    skill: "Pharmacy Support",
+    cat: "Health",
+    parent: "Pharmacy",
+    // 360 titles. The assistants and technicians, who are a different labour
+    // market from the registered pharmacists.
+    terms: ["pharmacy assistant", "pharmacy technician", "dispensary"],
+  },
+  {
+    skill: "Community Pharmacy",
+    cat: "Health",
+    parent: "Pharmacy",
+    // 158 titles, none outside the parent.
+    terms: ["community pharmac", "retail pharmac", "pharmacy manager", "pharmacist in charge"],
+  },
+  {
+    skill: "Hospital Pharmacy",
+    cat: "Health",
+    parent: "Pharmacy",
+    // 40 titles, exactly at the floor and kept for it.
+    terms: ["hospital pharmac", "clinical pharmac", "ward pharmac"],
+  },
   {
     skill: "Medical Imaging & Pathology",
     cat: "Health",
@@ -1800,6 +2150,33 @@ const RAW_SKILLS: SkillDef[] = [
       // 66 unmapped rows, all Sonic/pathology collectors.
       "phlebotom",
     ],
+  },
+
+  // ── Medical Imaging & Pathology · specialities ───────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 596. These two name 281, 47%. Nuclear Medicine is 4 titles.
+  //
+  // SONOGRAPHY WAS MINED AND REFUSED. It looked like 115 titles, but every one
+  // of them came from the word "sonographer", which Allied Health already
+  // claims — the structural check in scripts/check-skills.ts refused the build
+  // over it. On "ultrasound" alone the speciality is 15 titles, under the
+  // floor, so the sonographers stay where the taxonomy already had them rather
+  // than being reported twice.
+  //
+  {
+    skill: "Radiography",
+    cat: "Health",
+    parent: "Medical Imaging & Pathology",
+    // 204 titles.
+    terms: ["radiographer", "radiography", "medical imaging technologist"],
+  },
+  {
+    skill: "Pathology Collection",
+    cat: "Health",
+    parent: "Medical Imaging & Pathology",
+    // 77 titles.
+    terms: ["pathology collect", "phlebotom"],
   },
   {
     skill: "Aged & Disability Care",
@@ -1817,6 +2194,35 @@ const RAW_SKILLS: SkillDef[] = [
       "special care worker",
       "indigenous health",
     ],
+  },
+
+  // ── Aged & Disability Care · specialities ────────────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 712. These three name 474, 67%.
+  //
+  {
+    skill: "Aged Care",
+    cat: "Care",
+    parent: "Aged & Disability Care",
+    // 341 titles. Distinct from Nursing's Aged Care Nursing speciality, which is
+    // the registered nurses; this is the care workforce around them.
+    terms: ["aged care", "residential care", "home care"],
+  },
+  {
+    skill: "Disability Support",
+    cat: "Care",
+    parent: "Aged & Disability Care",
+    // 74 titles. The gate holds back 345 — "support worker" is every kind of
+    // support — which is exactly what it is for.
+    terms: ["disability support", "disability services", "support worker", "ndis"],
+  },
+  {
+    skill: "Personal Care",
+    cat: "Care",
+    parent: "Aged & Disability Care",
+    // 59 titles.
+    terms: ["personal care assistant", "personal care worker", "carer"],
   },
   {
     skill: "Mental Health & Counselling",
@@ -1892,6 +2298,56 @@ const RAW_SKILLS: SkillDef[] = [
     ],
   },
 
+  // ── Social & Community Services · specialities ───────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 1,126. Housing & Homelessness is 22 titles and was rejected.
+  //
+  {
+    skill: "Social Work",
+    cat: "Community",
+    parent: "Social & Community Services",
+    // 659 titles. THIS REVERSES AN EARLIER DECISION. A Social Work child was
+    // considered on 2026-09-10 and refused on the grounds that the parent already
+    // owns the term. That reasoning would equally have refused Governance under
+    // Risk & Compliance, which shipped — and the test this file has settled on is
+    // proportion, not provenance: a child is a synonym when it reaches most of its
+    // parent, as chef and cook do at 78%. This is 58%, and the distinction it
+    // draws is real. A social worker is a degree-qualified, registered
+    // profession; a community services worker is not, and they are not
+    // interchangeable in a hiring market.
+    terms: ["social worker", "social work"],
+  },
+  {
+    skill: "Case Management",
+    cat: "Community",
+    parent: "Social & Community Services",
+    // 314 titles, and only 49 outside the parent.
+    terms: ["case manager", "case worker", "caseworker", "case management"],
+  },
+  {
+    skill: "Family & Child Services",
+    cat: "Community",
+    parent: "Social & Community Services",
+    // 98 titles.
+    terms: [
+      "family support",
+      "child protection",
+      "child safety",
+      "family services",
+      "out of home care",
+    ],
+  },
+  {
+    skill: "Youth Work",
+    cat: "Community",
+    parent: "Social & Community Services",
+    // 79 titles. "youth justice" belongs to Corrections & Justice — a youth
+    // justice officer works in detention, not community services — and the
+    // structural check caught the overlap.
+    terms: ["youth worker", "youth support", "youth services"],
+  },
+
   // ── Education ──────────────────────────────────────────────────────────
   {
     skill: "Teaching & Education",
@@ -1949,8 +2405,16 @@ const RAW_SKILLS: SkillDef[] = [
     skill: "Higher Education",
     cat: "Education",
     parent: "Teaching & Education",
-    // 343 titles, 7.8%.
-    terms: ["lecturer", "associate professor", "academic ", "postdoctoral", "research fellow"],
+    // 433 titles.
+    //
+    // "postdoctoral" and "research fellow" USED TO BE HERE and were dead weight:
+    // this child can only fire once Teaching & Education claims the title, and
+    // a bare "Research Fellow (Multi-Sensor Fusion)" says nothing about
+    // teaching, so the two terms never reached a title that "lecturer" or
+    // "academic" did not already. Measured 2026-09-12: 433 titles with them and
+    // 433 without. They now sit on Science & Laboratory, whose parent DOES
+    // claim those titles, which took 255 unmapped research ads off the floor.
+    terms: ["lecturer", "associate professor", "academic "],
   },
   {
     skill: "Special Education",
@@ -1985,6 +2449,28 @@ const RAW_SKILLS: SkillDef[] = [
       "education leader",
     ],
   },
+
+  // ── Education Leadership · specialities ──────────────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 846. These two name 537, 63%.
+  //
+  {
+    skill: "School Principalship",
+    cat: "Education",
+    parent: "Education Leadership",
+    // 436 titles. "principal" is a GATED term — outside education it is a seniority
+    // grade, and the gate in GATED_TERMS is what makes it safe to use here. The
+    // 1,481 titles it holds back are the reason.
+    terms: ["principal"],
+  },
+  {
+    skill: "Head of Department",
+    cat: "Education",
+    parent: "Education Leadership",
+    // 101 titles.
+    terms: ["head of department", "head of faculty", "curriculum leader", "head teacher"],
+  },
   {
     skill: "Childcare & Early Learning",
     cat: "Education",
@@ -2002,6 +2488,26 @@ const RAW_SKILLS: SkillDef[] = [
       "learning support",
       "student support",
       "school support",
+    ],
+  },
+
+  // ── Education Support · specialities ─────────────────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 445. DELIBERATELY ONE: this skill is already narrow, and the one
+  // speciality in it is large.
+  //
+  {
+    skill: "Teacher Aide",
+    cat: "Education",
+    parent: "Education Support",
+    // 253 titles, and only 7 outside the parent.
+    terms: [
+      "teacher aide",
+      "teachers aide",
+      "education assistant",
+      "learning support",
+      "integration aide",
     ],
   },
 
@@ -2097,6 +2603,22 @@ const RAW_SKILLS: SkillDef[] = [
       "building and surveying",
     ],
   },
+
+  // ── Construction Management · specialities ───────────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 526. DELIBERATELY ONE. A Construction Projects child was mined at
+  // 50 titles and refused on a different ground: its only workable terms
+  // ("project manager", "contracts administrator") are owned by Project
+  // Management and Commercial & Legal, and borrowing them would have reported
+  // the same ads under a third name.
+  {
+    skill: "Site Management",
+    cat: "Construction",
+    parent: "Construction Management",
+    // 178 titles. Running the site itself.
+    terms: ["site supervisor", "foreman", "leading hand"],
+  },
   {
     skill: "Carpentry & Joinery",
     cat: "Trades",
@@ -2143,7 +2665,20 @@ const RAW_SKILLS: SkillDef[] = [
   {
     skill: "Architecture & Planning",
     cat: "Built Environment",
-    terms: ["architect", "landscape architect", "urban and regional plann", "architectural"],
+    terms: [
+      "architect",
+      "landscape architect",
+      // "urban and regional plann" is the ANZSCO occupation name and NO
+      // employer writes it. Measured 2026-09-12: 14 archived titles say "Town
+      // Planner", "Senior Urban Planner" or "Statutory Planner" and every one
+      // of them mapped to no skill at all. Small, but the terms are unambiguous
+      // and the gap was total.
+      "urban and regional plann",
+      "urban plann",
+      "town plann",
+      "statutory plann",
+      "architectural",
+    ],
     // A technology architect is not a building architect. Measured 2026-09-12:
     // 268 distinct titles over 512 rows — 18% of everything this skill claimed —
     // were solution, enterprise, data and security architects, here purely
@@ -2371,6 +2906,25 @@ const RAW_SKILLS: SkillDef[] = [
     cat: "Sector",
     terms: ["retail manager", "store manager", "merchandis", "retail supervisor"],
   },
+
+  // ── Retail Operations · specialities ─────────────────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 1,025.
+  //
+  // DELIBERATELY ONE. Store Management reaches 798 titles, 78% of this parent,
+  // using its own core terms — that is a synonym for the skill, not a speciality
+  // within it, and it is the same threshold that refused Team Leadership under
+  // Leadership & Coordination and the kitchen under Hospitality. Loss Prevention
+  // is 0 inside the parent.
+  {
+    skill: "Visual Merchandising",
+    cat: "Sector",
+    parent: "Retail Operations",
+    // 160 titles, and ZERO outside the parent. A genuinely distinct trade: the
+    // people who build the displays are not the people who run the shop.
+    terms: ["visual merchandis", "merchandiser", "merchandising"],
+  },
   {
     skill: "Retail & Customer Service",
     cat: "Sales",
@@ -2482,6 +3036,17 @@ const RAW_SKILLS: SkillDef[] = [
     skill: "Science & Laboratory",
     cat: "Science",
     terms: [
+      // The university research grades: 343 archived titles, 255 of them
+      // mapping to nothing whatever. A judgement is being made here and it
+      // should be visible — a research fellow may work in law or the
+      // humanities, and this taxonomy has no general research skill, so they
+      // all land in the scientific one. The archive's are overwhelmingly
+      // scientific ("Multi-Sensor Fusion", "In Vivo Neural Tissue
+      // Engineering"), which is what makes it the better of two imperfect
+      // answers; the alternative was leaving 255 ads unmapped.
+      "research fellow",
+      "research associate",
+      "postdoctoral",
       "scientist",
       "chemist",
       "biolog",
@@ -2498,6 +3063,56 @@ const RAW_SKILLS: SkillDef[] = [
       "life scien",
       "food and wine",
       "science technician",
+    ],
+  },
+
+  // ── Science & Laboratory · specialities ──────────────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 1,361. These four name 642, 47%. Clinical Trials is 5 titles
+  // inside the parent and was rejected.
+  //
+  {
+    skill: "Chemistry",
+    cat: "Science",
+    parent: "Science & Laboratory",
+    // 226 titles, and exactly 1 outside the parent.
+    terms: ["chemist", "chemical analyst", "analytical chemist"],
+  },
+  {
+    skill: "Life Sciences",
+    cat: "Science",
+    parent: "Science & Laboratory",
+    // 194 titles. Stems, because these words are always compounded —
+    // "Microbiologist", "Biochemistry Technician", "Molecular Scientist".
+    terms: ["microbiolog", "biolog", "biochem", "molecular"],
+  },
+  {
+    skill: "Laboratory Operations",
+    cat: "Science",
+    parent: "Science & Laboratory",
+    // 161 titles. Running the bench rather than designing the study.
+    terms: [
+      "laboratory technician",
+      "lab technician",
+      "laboratory assistant",
+      "lab assistant",
+      "laboratory officer",
+    ],
+  },
+  {
+    skill: "Research Science",
+    cat: "Science",
+    parent: "Science & Laboratory",
+    // 372 titles, up from 61 the same day: the parent had no term for the
+    // university research grades at all, so this speciality was reaching only
+    // the ads that said "research scientist" outright.
+    terms: [
+      "research scientist",
+      "research fellow",
+      "research assistant",
+      "research associate",
+      "postdoctoral",
     ],
   },
   {
@@ -2592,6 +3207,43 @@ const RAW_SKILLS: SkillDef[] = [
 
       // Supermarket trolley crews: 281 unmapped rows.
       "trolley collect",
+
+      // THIS SKILL IS NAMED "& FACILITIES" AND DID NOT CLAIM A SINGLE FACILITIES
+      // MANAGER. Measured 2026-09-12: 169 archived titles, 110 of them mapping
+      // to no skill whatsoever and two landing in Commercial & Legal because
+      // "Commercial Facilities Manager" starts with the word commercial.
+      "facilities manager",
+      "facility manager",
+      "facilities management",
+      "facilities coordinator",
+      "facilities officer",
+      "facilities supervisor",
+    ],
+  },
+
+  // ── Cleaning & Facilities · specialities ─────────────────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 976 — a figure that only became right today, when this skill was
+  // finally taught to claim the facilities managers it is named after.
+  //
+  // Commercial Cleaning is NOT a speciality here: "cleaner" and "cleaning" are
+  // this skill's own core terms and reach 633 titles, so naming them would
+  // restate the parent.
+  {
+    skill: "Facilities Management",
+    cat: "Cleaning",
+    parent: "Cleaning & Facilities",
+    // 160 titles, and ZERO outside the parent. Running a building is not cleaning
+    // it, and until 2026-09-12 the archive had 110 of these mapping to no skill
+    // at all.
+    terms: [
+      "facilities manager",
+      "facility manager",
+      "facilities management",
+      "facilities coordinator",
+      "facilities officer",
+      "facilities supervisor",
     ],
   },
 
