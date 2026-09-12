@@ -403,6 +403,52 @@ if (ACCOUNT && DB && TOKEN) {
     // The except is a substring test and the term is prefix-anchored, so
     // "systems architect" disowns "OutSystems Architect" without any term of
     // that spelling claiming it. The product name closes the gap.
+    // ── the 2026-09-12 parents: Risk & Compliance, Project Management,
+    //    Sales & Business Dev ────────────────────────────────────────────────
+    // Every one of these children uses a short term that would be wrong on its
+    // own, so each pair is a false case the gate has to catch and a true case
+    // it must not.
+    // Clinical governance IS governance — the quality-and-safety oversight
+    // function health services run — so this is a true case, not a leak. 26 of
+    // the 593 governance titles are clinical and they belong here.
+    ["Clinical Governance Coordinator", "Governance", true],
+    ["Data Governance Manager", "Governance", true],
+    ["Regulation & Quality Talent Register", "Regulatory Compliance", false],
+    ["Regulatory Compliance Manager", "Regulatory Compliance", true],
+    ["Fraud Data Scientist", "Financial Crime & AML", false],
+    ["Financial Crime Compliance Manager", "Financial Crime & AML", true],
+    ["Operations Manager", "Operational Risk", false],
+    ["Senior Manager, Operational Risk", "Operational Risk", true],
+    ["Credit Controller", "Credit Risk", false],
+    ["Credit Risk Analyst", "Credit Risk", true],
+    ["Senior Scheduler - Project Services", "Planning & Scheduling", true],
+    // A production planner is not a project planner; this is why bare "planner"
+    // is not a term.
+    ["Production Planner", "Planning & Scheduling", false],
+    ["Project Engineer - Water/Wastewater", "Project Engineering", true],
+    ["Investment Portfolio Manager", "PMO", false],
+    ["PMO Analyst", "PMO", true],
+    ["Quantity Surveyor", "Project Controls", false],
+    ["Project Cost Controller", "Project Controls", true],
+    // Account management in sales, not in accounting or banking.
+    ["Accounts Payable Officer", "Account Management", false],
+    ["Key Account Manager - FMCG", "Account Management", true],
+    ["Business Development Manager", "Business Development", true],
+    ["Community Partnerships Officer", "Business Development", false],
+    // The plural trap: a term matches literally, so "contract manager" never
+    // sees "Contracts Manager". Both spellings are asserted.
+    ["Deputy Contracts Manager", "Contract Management", true],
+    ["Senior Procurement & Contract Manager", "Contract Management", true],
+    // Employment type, not a role. This is why the parent's term is plural.
+    ["6 Months Contract KYC Specialist", "Contract Management", false],
+    // Contract administration belongs to Commercial & Legal, not here.
+    ["Contract Administrator", "Contract Management", false],
+    ["Sales Engineer - Industrial", "Sales Engineering", true],
+    ["Engineering Manager", "Sales Engineering", false],
+    // After-sales is service. Asserted on the PARENT, since the except sits
+    // there and takes the whole skill with it.
+    ["After-Sales Engineer", "Sales & Business Dev", false],
+    ["Sales Engineer - Pumps", "Sales & Business Dev", true],
     ["Outsystems Architect", "Architecture & Planning", false],
     ["Outsystems Architect", "Software Engineering", true],
     ["OutSystems Developer", "Software Engineering", true],

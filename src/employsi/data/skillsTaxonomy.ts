@@ -266,6 +266,80 @@ const RAW_SKILLS: SkillDef[] = [
       "inspectors and regulatory",
     ],
   },
+
+  // ── Risk & Compliance · specialities ───────────────────────────────────
+  //
+  // Counts are distinct archived titles over the last 365 days, measured
+  // 2026-09-12 against a parent of 3,159. Together they name 979 of them, 31%.
+  // Measured through the matcher's own normalisation, which PRESERVES
+  // punctuation — an earlier harness stripped it and overstated every figure.
+  //
+  // Three candidates were mined and REJECTED rather than loosened, and it is
+  // worth recording which so the next pass does not re-propose them:
+  //   Privacy (18) and ESG & Sustainability (22) are both under the 40-title
+  //     floor, and "sustainability" belongs to Environmental in any case.
+  //   Internal Controls (41) clears the floor on a technicality and fails on
+  //     substance: the gate holds back its most obvious members ("Internal
+  //     Controls Manager", "Control Testing Analyst") because the PARENT does
+  //     not claim them, so the speciality would report on the residue and miss
+  //     the job it is named after. That is a parent-term gap, not a speciality.
+  {
+    skill: "Governance",
+    cat: "Safety",
+    parent: "Risk & Compliance",
+    // 593 titles, 19% of the parent and the largest speciality here. The term
+    // is the parent's own, so this names a slice rather than widening anything
+    // — the gate holds back nothing, because every title carrying the word
+    // already claimed the parent through it.
+    terms: ["governance"],
+  },
+  {
+    skill: "Regulatory Compliance",
+    cat: "Safety",
+    parent: "Risk & Compliance",
+    // 122 titles. NAMED FOR WHAT IT CATCHES, not for the discipline: the gate
+    // holds back 288 titles, and those include the genuine pharma/device
+    // "Regulatory Affairs" roles ("General Manager Regulatory Affairs",
+    // "Regulatory Affairs Executive") which never claim Risk & Compliance and
+    // so can never reach this. Calling it Regulatory Affairs would have
+    // promised a profession this only partly sees.
+    terms: ["regulatory", "regulation"],
+  },
+  {
+    skill: "Financial Crime & AML",
+    cat: "Safety",
+    parent: "Risk & Compliance",
+    // 93 titles. The gate does real work here — 308 held back, mostly analysts
+    // and investigators ("KYC/AML Analyst", "Fraud Data Scientist") whose
+    // titles never say risk or compliance.
+    terms: [
+      "financial crime",
+      "anti money laundering",
+      "aml",
+      "fraud",
+      "sanctions",
+      "kyc",
+      "know your customer",
+    ],
+  },
+  {
+    skill: "Operational Risk",
+    cat: "Safety",
+    parent: "Risk & Compliance",
+    // 86 titles, and the gate holds back none: every title with these phrases
+    // says "risk" and so claims the parent by construction.
+    terms: ["operational risk", "operations risk", "enterprise risk"],
+  },
+  {
+    skill: "Credit Risk",
+    cat: "Safety",
+    parent: "Risk & Compliance",
+    // 85 titles. Distinct from Banking & Lending's Credit Analysis speciality,
+    // which is the lender assessing one borrower; this is the second-line
+    // function measuring the book. A title can fairly carry both and several do
+    // ("Hedge Fund Credit Analyst | Equity Finance Credit Risk Management").
+    terms: ["credit risk", "credit portfolio"],
+  },
   {
     skill: "Quality Assurance",
     cat: "Safety",
@@ -505,6 +579,61 @@ const RAW_SKILLS: SkillDef[] = [
       "project support officer",
     ],
   },
+
+  // ── Project Management · specialities ──────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12 against a
+  // parent of 2,502. These four name 759, 30%.
+  //
+  // Change & Transformation (33) and Contract Administration (2) were mined and
+  // rejected under the floor. The second is instructive: "superintendent" reads
+  // as a mining grade in this archive, not a contract role, and 422 of its 424
+  // titles are held back by the gate as exactly that.
+  {
+    skill: "Project Engineering",
+    cat: "Corporate",
+    parent: "Project Management",
+    // 465 titles, 19% of the parent and the largest by a distance. The parent
+    // already carries "project engineer", so this names that slice; the gate
+    // holds back nothing.
+    terms: ["project engineer"],
+  },
+  {
+    skill: "Planning & Scheduling",
+    cat: "Corporate",
+    parent: "Project Management",
+    // 137 titles. Bare "planner" was tried and dropped: it adds 19 titles
+    // inside the parent and reaches 460 outside it — production, demand,
+    // supply-chain and logistics planners, who are a different job entirely.
+    // The gate would have held them back, but a term that is wrong 3 times out
+    // of 4 on its own is a term waiting to leak the moment the parent widens.
+    // KNOWN RESIDUE, recorded rather than over-fitted: 5 of the 136 are
+    // clinical rostering ("Theatre Scheduler", "Radiology Outpatient
+    // Scheduler"), which the PARENT already claims through its own "scheduler"
+    // term. Five titles is below any floor worth writing an except for, and the
+    // mismapping predates this speciality.
+    terms: ["scheduler", "scheduling", "primavera"],
+  },
+  {
+    skill: "Project Controls",
+    cat: "Corporate",
+    parent: "Project Management",
+    // 83 titles. "estimator" and "quantity survey" were tried and dropped for
+    // the same reason as "planner" — inside the parent they added 11 titles,
+    // outside it they reached 397 construction estimators and QSs, which is
+    // Construction Management's territory and not this one.
+    terms: ["project control", "cost control", "cost engineer"],
+  },
+  {
+    skill: "PMO",
+    cat: "Corporate",
+    parent: "Project Management",
+    // 74 titles, and only 8 held back by the gate — the cleanest term set here.
+    // "portfolio manage" was tried and dropped: it is an INVESTMENT term in
+    // this archive ("Associate Portfolio Manager, Global Credit", "Investment
+    // Portfolio Manager") and reached 113 titles outside the parent.
+    terms: ["pmo", "program management office", "programme management office"],
+  },
   {
     skill: "Finance & Accounting",
     cat: "Corporate",
@@ -637,6 +766,63 @@ const RAW_SKILLS: SkillDef[] = [
     skill: "Procurement & Supply",
     cat: "Corporate",
     terms: ["procurement", "supply chain", "contracts", "logistics", "supply, distribution"],
+  },
+
+  // ── Procurement & Supply · specialities ────────────────────────────────
+  //
+  // DELIBERATELY ONE, out of a parent of 1,617 titles. Three other candidates
+  // were mined on 2026-09-12 and none survived:
+  //   Sourcing & Category (26) and Inventory & Demand Planning (26) are under
+  //     the 40-title floor.
+  //   Buying & Purchasing looked like 105 until it was taken apart: 78 of those
+  //     are "Procurement Officer"/"Procurement Specialist", which is the
+  //     PARENT'S OWN WORD at a junior grade, not a speciality. The part that
+  //     actually names buying — "buyer", "purchasing" — is 28 titles on its own
+  //     and under the floor. A child called Buying & Purchasing would have
+  //     reported mostly generic procurement officers under a name that promised
+  //     something else.
+  //   Logistics (562) is the largest phrase in this parent and is NOT taken,
+  //     because Warehousing & Logistics already owns that market as a top-level
+  //     skill. Adding it here would report the same ads twice under two names.
+  {
+    skill: "Contract Management",
+    cat: "Corporate",
+    parent: "Procurement & Supply",
+    // 86 titles — and 22 of them if only the singular spellings are written,
+    // which is how this was first measured and nearly rejected. A term matches
+    // at a word start and then LITERALLY, so "contract manager" is not inside
+    // "Contracts Manager" and never sees it. Both spellings, every time.
+    //
+    // "contract administrat" IS NOT HERE, though it would add 22 more titles.
+    // Commercial & Legal already claims that exact term, and the structural
+    // check in scripts/check-skills.ts refused the build until it came out —
+    // correctly, because a contract administrator drafting and varying
+    // agreements is doing legal work, and naming the same ads twice is the
+    // thing the rest of this file is written to avoid.
+    //
+    // KNOWN PARENT GAP, recorded here because this is where someone will hit
+    // it: the gate holds back 88 titles, almost all of them the SINGULAR
+    // "Contract Manager" — the parent's term is "contracts", plural, so those
+    // titles never claim it and this speciality can never reach them. The
+    // singular forms are kept below anyway, so that widening the parent fixes
+    // this automatically. The parent is not widened here because bare
+    // "contract" is an EMPLOYMENT TYPE in this archive ("12 Month Contract",
+    // "6 Months Contract KYC Specialist") and would be catastrophic; the fix is
+    // a careful set of singular ROLE forms, which is its own piece of work.
+    terms: [
+      "contract manager",
+      "contracts manager",
+      "contract specialist",
+      "contracts specialist",
+      "contract officer",
+      "contracts officer",
+      "contract adviser",
+      "contracts adviser",
+      "contract advisor",
+      "contracts advisor",
+      "contract lead",
+      "contracts lead",
+    ],
   },
   {
     skill: "Human Resources",
@@ -904,7 +1090,64 @@ const RAW_SKILLS: SkillDef[] = [
       // match, and the next person to widen this term should know it is already
       // reaching a word other than "executive".
       "sales exec",
+      // 224 archived titles say "sales engineer" and 152 of them mapped to NO
+      // SKILL AT ALL before 2026-09-12: "technical sales" above never reached
+      // the far commoner spelling. Found by a gate case for the Sales
+      // Engineering speciality below failing on a bare "Sales Engineer" title,
+      // which is the gate doing precisely what it is for — a child cannot fire
+      // unless the parent claims the title first, so a hole in the parent shows
+      // up as a child that never matches.
+      "sales engineer",
     ],
+    // After-sales is SERVICE, not selling — "After-Sales Engineer", "After
+    // Sales Service Technician". 20 archived titles, and the term above sweeps
+    // them all in, because termMatches only requires the character before the
+    // term to not be a letter or digit, and a hyphen qualifies.
+    //
+    // BOTH SPELLINGS ARE NEEDED. An except is a plain substring test against a
+    // haystack that norm() leaves punctuated — it lowercases, rewrites "&" and
+    // collapses whitespace, and does nothing else — so "after sales" alone does
+    // not see "after-sales". This cost a gate-case failure to notice, and the
+    // same trap is one line up in the opposite direction: the TERM matches
+    // across the hyphen that the EXCEPT cannot read.
+    except: ["after sales", "after-sales"],
+  },
+
+  // ── Sales & Business Dev · specialities ────────────────────────────────
+  //
+  // Distinct titles over the last 365 days, measured 2026-09-12. This parent
+  // splits more cleanly than any other: its two halves are named in the skill's
+  // own title, and employers spell them out.
+  //
+  // Inside Sales (34) and Partnerships & Channel (34) were both mined and fall
+  // under the 40-title floor. "alliance" and "partnership" also reach 410
+  // titles outside the parent — community and government partnership roles —
+  // so that one was weak on both counts.
+  {
+    skill: "Account Management",
+    cat: "Corporate",
+    parent: "Sales & Business Dev",
+    // 1,141 titles, the largest speciality anywhere in the taxonomy. Holding
+    // an existing book of customers, as against opening new ones.
+    terms: ["account manager", "account executive", "account director", "key account"],
+  },
+  {
+    skill: "Business Development",
+    cat: "Corporate",
+    parent: "Sales & Business Dev",
+    // 922 titles — the other half of the same skill, and the reason this parent
+    // was worth splitting: "Sales & Business Dev" reported one number over two
+    // genuinely different jobs and two different hiring markets.
+    terms: ["business development", "new business"],
+  },
+  {
+    skill: "Sales Engineering",
+    cat: "Corporate",
+    parent: "Sales & Business Dev",
+    // 300 titles — 120 of them before the parent was taught "sales engineer",
+    // which is the measure of how large that hole was. Selling something that
+    // has to be explained.
+    terms: ["sales engineer", "technical sales", "pre sales", "presales", "solution sales"],
   },
   {
     skill: "General Management",
@@ -923,6 +1166,21 @@ const RAW_SKILLS: SkillDef[] = [
   {
     skill: "Leadership & Coordination",
     cat: "Corporate",
+    // NO SPECIALITIES, and this is a decision rather than an omission. At 9,629
+    // titles it is the largest skill in the taxonomy, but mining it on
+    // 2026-09-12 returned INDUSTRIES, not disciplines — school 284, clinical
+    // 276, nurse 193, hotel 118, food 122, marketing 161, engineering 119. That
+    // is the shape of a GRADE: this skill records that someone runs a team, and
+    // the subject they run it in is already named by one of the other 99
+    // skills. Splitting it would report the same ads a second time under a
+    // second name.
+    //
+    // The two candidates that were not industries both collide with skills that
+    // already exist: Executive Leadership (117) duplicates General Management,
+    // which owns "chief executive", "managing director" and "general manager"
+    // just above; and Team Leadership reaches 2,823 titles using this skill's
+    // OWN core terms, which makes it a synonym for its parent rather than a
+    // speciality within it.
     terms: [
       "team leader",
       "coordinator",
