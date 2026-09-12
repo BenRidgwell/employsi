@@ -372,7 +372,8 @@ body {
 .sttitle,
 .nbtitle,
 .fbhdtitle,
-.docktitle {
+.docktitle,
+.gthubtitle {
   flex: 1 1 auto;
   min-width: 0;
   font-size: 19px;
@@ -390,6 +391,7 @@ body {
 .sthead::after,
 .nbhd::after,
 .fbhd::after,
+.gthubhd::after,
 .helppanel .dockhd::after {
   content: "";
   position: absolute;
@@ -404,6 +406,7 @@ body {
 .sthead,
 .nbhd,
 .fbhd,
+.gthubhd,
 .helppanel .dockhd {
   position: relative;
 }
@@ -15685,33 +15688,38 @@ body {
   padding: 0;
 }
 .gthubhd {
+  /* 14, this card's own gutter. */
+  --panehd-inset: 14px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 14px 10px;
+  padding: 13px 14px;
 }
-.gthubhdtext {
+/* Title and scope on one baseline, as .fphdleft does it. */
+.gthubhdleft {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
 }
+.gthubcap {
+  padding: 10px 14px 0;
+}
+/* The scope beside the title, set like the filter card's .fpscope. */
 .gteyebrow {
   font-family: var(--font-label);
   font-size: 10px;
-  letter-spacing: 0.16em;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.gthubtitle {
-  font-size: 16px;
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.02em;
-  color: var(--text-primary);
-}
-.gthubsub {
-  font-size: 13px;
-  color: var(--text-secondary);
-}
+/* .gthubtitle is set with the rest of the family — see the grouped rule near
+   .fptitle. It was 16px here. */
 .gthublist {
   display: flex;
   flex-direction: column;
@@ -15884,32 +15892,6 @@ body {
   letter-spacing: -0.01em;
   color: var(--text-primary);
   white-space: nowrap;
-}
-.gtx {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  flex: 0 0 auto;
-  padding: 0;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-pill);
-  background: var(--surface-card);
-  color: var(--neutral-700);
-  cursor: pointer;
-  transition: background 150ms;
-}
-.gtx:hover {
-  background: var(--surface-hover);
-}
-.gtx svg {
-  stroke-width: 2.4;
-  stroke-linecap: round;
-}
-.gthubhd .gtx {
-  width: 28px;
-  height: 28px;
 }
 .gttitle {
   font-size: 17px;

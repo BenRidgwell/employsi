@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useAppStore } from "../state/store";
+import { IconClose } from "./ActionIcons";
 import { CITY_LABEL, GLOBAL_HUB_LABEL } from "../data/geo";
 import { REGION_LABEL } from "../data/mapboxWorldGeo";
 
@@ -423,12 +424,14 @@ export function GuidedTour({ layer, onClose }: { layer: TourLayer; onClose: () =
   const ctx: TourCtx = { scope, layer };
   // What the hub's eyebrow says it is helping with. "WORLD VIEW" would be wrong
   // on the domestic layer, which is a region rather than the globe.
+  // No "HELP ·" prefix: it sits beside a title reading "Need help?", the way
+  // the filter card's scope sits beside "Filter".
   const eyebrow =
     layer === "local"
-      ? `HELP · ${city.toUpperCase()} LOCAL VIEW`
+      ? `${city.toUpperCase()} LOCAL VIEW`
       : layer === "domestic"
-        ? `HELP · ${region.toUpperCase()} VIEW`
-        : "HELP · WORLD VIEW";
+        ? `${region.toUpperCase()} VIEW`
+        : "WORLD VIEW";
 
   const [tour, setTour] = useState<string | null>(null);
   const [step, setStep] = useState(0);
@@ -557,11 +560,11 @@ export function GuidedTour({ layer, onClose }: { layer: TourLayer; onClose: () =
               </span>
               <span className="gtleft">{stepsLeft}</span>
             </span>
-            <button type="button" className="gtx" onClick={stop} aria-label="End tour">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor">
-                <line x1="6" y1="6" x2="18" y2="18" />
-                <line x1="18" y1="6" x2="6" y2="18" />
-              </svg>
+            {/* The shared close, not a local copy of it. Its own X was two
+                inline <line>s, so it had nothing for .ai-quarter to turn and
+                sat dead on hover while every other card's rotated. */}
+            <button type="button" className="paneclose" onClick={stop} aria-label="End tour">
+              <IconClose />
             </button>
           </div>
           <div className="gttitle">{s.title}</div>
@@ -607,23 +610,22 @@ export function GuidedTour({ layer, onClose }: { layer: TourLayer; onClose: () =
   // ── Hub ──────────────────────────────────────────────────────────────────
   return (
     <div className="dockpanel gthub">
+      {/* Title, scope, close — the header every card that opens over the map
+          wears. See the grouped rule near .fptitle in global.css. */}
       <div className="gthubhd">
-        <div className="gthubhdtext">
-          <span className="gteyebrow">{eyebrow}</span>
+        <div className="gthubhdleft">
           <span className="gthubtitle">Need help?</span>
-          <span className="gthubsub">
-            {layer === "local"
-              ? "Guided walkthroughs for the city layer you are in."
-              : "Guided walkthroughs for what is on screen right now."}
-          </span>
+          <span className="gteyebrow">{eyebrow}</span>
         </div>
-        <button type="button" className="gtx" onClick={onClose} aria-label="Close">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor">
-            <line x1="6" y1="6" x2="18" y2="18" />
-            <line x1="18" y1="6" x2="6" y2="18" />
-          </svg>
+        <button type="button" className="paneclose" onClick={onClose} aria-label="Close">
+          <IconClose />
         </button>
       </div>
+      <p className="panecap gthubcap">
+        {layer === "local"
+          ? "Guided walkthroughs for the city layer you are in."
+          : "Guided walkthroughs for what is on screen right now."}
+      </p>
 
       <div className="gthublist">
         {Object.entries(tours).map(([key, t]) => (
