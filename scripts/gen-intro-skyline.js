@@ -18,8 +18,12 @@
  * writes the same bytes the page would have built. Change the generator and
  * re-run it; do not hand-edit the SVG.
  *
- * The body below is the design's buildSkyline(), reformatted by prettier and
- * otherwise untouched — verified by regenerating and comparing the SVG's hash.
+ * The body below is the design's buildSkyline(), reformatted by prettier, with
+ * ONE DELETION: the "haze" gradient and the rect that painted it over the
+ * bottom 45% of the drawing, ramping to 45% white at the ground line. It was
+ * all but invisible in the design, which anchors the image by its top and
+ * crops most of that band away; anchoring by the ground line (see .introsky in
+ * global.css) brought it into view as a white wash over the buildings.
  */
 
 import { writeFileSync } from "node:fs";
@@ -318,7 +322,7 @@ function buildSkyline() {
   };
   const pat = (id, w, h, rw, rh, o) =>
     `<pattern id="${id}" width="${w}" height="${h}" patternUnits="userSpaceOnUse"><rect x="${(w - rw) / 2}" y="${(h - rh) / 2}" width="${rw}" height="${rh}" fill="rgba(255,255,255,${o})"/></pattern>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${G}" width="${W}" height="${G}"><defs>${pat("wb", 12, 16, 5, 7, 0.35)}${pat("wm", 14, 18, 6, 8, 0.3)}${pat("wd", 12, 16, 5, 8, 0.16)}${pat("wg", 10, 12, 8, 9, 0.1)}<linearGradient id="lf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".24"/><stop offset="1" stop-color="#fff" stop-opacity=".08"/></linearGradient><linearGradient id="df" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity=".26"/></linearGradient>${litPat("l1")}${litPat("l2")}<linearGradient id="haze" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".45"/></linearGradient></defs>${out.join("")}<rect x="0" y="${G * 0.55}" width="${W}" height="${G * 0.45}" fill="url(#haze)"/></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${G}" width="${W}" height="${G}"><defs>${pat("wb", 12, 16, 5, 7, 0.35)}${pat("wm", 14, 18, 6, 8, 0.3)}${pat("wd", 12, 16, 5, 8, 0.16)}${pat("wg", 10, 12, 8, 9, 0.1)}<linearGradient id="lf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".24"/><stop offset="1" stop-color="#fff" stop-opacity=".08"/></linearGradient><linearGradient id="df" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity=".26"/></linearGradient>${litPat("l1")}${litPat("l2")}</defs>${out.join("")}</svg>`;
 }
 
 const out = "public/assets/intro-skyline.svg";
