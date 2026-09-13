@@ -67,6 +67,15 @@ on:
         description: 'Companies to walk (blank = the whole roster)'
         type: string
         default: ''
+      transport:
+        description: 'browser = real Chrome via SCRAPE_PROXY; oxylabs = the Web Scraper API (401 since 2026-08-28)'
+        type: choice
+        options: [browser, oxylabs]
+        default: browser
+      solve:
+        description: 'Reachability only — print reachable/blocked per company, write nothing to D1'
+        type: boolean
+        default: false
 
 concurrency:
   group: indeed-archive
@@ -91,11 +100,18 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install Playwright + Chromium
+      # REAL CHROME AND XVFB, not just chromium. The browser transport below
+      # needs all three fingerprint mitigations, and two of them are this step:
+      # BROWSER_FETCH_CHANNEL=chrome needs the `chrome` channel installed, and
+      # BROWSER_FETCH_HEADFUL=1 needs an X server to be headful under. This is
+      # the same install gulftalent-archive and naukri-archive run.
+      - name: Install Playwright, real Chrome and Xvfb
         run: |
           python -m pip install --upgrade pip
           pip install playwright
           python -m playwright install --with-deps chromium
+          python -m playwright install --with-deps chrome
+          sudo apt-get install -y xvfb
 
       - name: Scrape Indeed → D1 (browser via SCRAPE_PROXY)
         env:
@@ -118,27 +134,61 @@ jobs:
           # that was measured until a dispatch proves a better one.
           SCRAPE_PROXY_SESSION: ${{ inputs.proxy_session }}
           SCRAPE_PROXY_LIFETIME: ${{ inputs.proxy_lifetime }}
-          # NO FINGERPRINT SWITCHES HERE, DELIBERATELY. They were added on
-          # 2026-08-09 as "insurance" in the same commit that fixed the
-          # transport, and the first run walked 25 companies for zero listings.
-          # Two changes at once on the feed that matters most, which is the
-          # confound this repo keeps catching elsewhere.
+          # THE FINGERPRINT SWITCHES ARE BACK, AND THIS TIME ON THEIR OWN.
           #
-          # What probe-headless-ci measured for Indeed was chromium-headless-
-          # shell through this exit, parse_search_html, 16 rows. This is that
-          # configuration and nothing more. If the fingerprint turns out to help
-          # here it can be added on its own, measured on its own.
+          # They were here once, added 2026-08-09 as "insurance" in the same
+          # commit that changed the transport; the run walked 25 companies for
+          # zero listings and they were removed. That was the right call on the
+          # evidence available — two changes at once prove nothing about either.
+          # It is NOT evidence that they do not help, which is how their absence
+          # has read ever since.
+          #
+          # WHAT THE 2026-08-09 INDEED MATRIX ACTUALLY COVERED:
+          #
+          #   headless-shell, rotating exit     captcha
+          #   real Chrome + stealth, rotating   captcha
+          #   headless-shell, sticky exit       captcha
+          #
+          # Every cell is missing at least one of the two things that matter.
+          # Real Chrome was never paired with a sticky exit, and HEADFUL was
+          # never on at all — so "Indeed refuses the browser" rests on three
+          # configurations none of which is the one that works elsewhere.
+          #
+          # AND IT DEMONSTRABLY WORKS ELSEWHERE. GulfTalent and Naukri were
+          # refused from this same exit on this same day, 403 on Akamai, and
+          # both were recovered by exactly these three switches. Both run daily
+          # and both wrote rows on 2026-09-12. So this is not a hopeful setting:
+          # it is the configuration two hard boards needed, applied to the third.
+          BROWSER_FETCH_CHANNEL: chrome
+          BROWSER_FETCH_STEALTH: '1'
+          BROWSER_FETCH_HEADFUL: '1'
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         # The whole roster; up to 20 pages each (the walk stops early once a
         # company yields no new ads, so small employers cost little).
         run: |
-          if [ -z "$OXYLABS_USERNAME" ]; then
-            echo "OXYLABS_USERNAME is not set. Indeed's DataDome answers every"
-            echo "other transport measured so far with a captcha challenge, so"
-            echo "this would spend the whole run collecting them."
+          # EACH TRANSPORT IS GATED ON ITS OWN CREDENTIAL, not on Oxylabs' for
+          # both. The old gate exited when OXYLABS_USERNAME was unset even on a
+          # browser run, which made the working path unreachable the moment the
+          # dead one lost its credentials.
+          if [ "${{ inputs.transport }}" = "oxylabs" ]; then
+            if [ -z "$OXYLABS_USERNAME" ]; then
+              echo "OXYLABS_USERNAME is not set."
+              exit 1
+            fi
+            python scripts/indeed-to-d1.py --oxylabs --max-pages 20 --concurrency 8 \
+              ${{ inputs.limit != '' && format('--limit {0}', inputs.limit) || '' }}
+            exit $?
+          fi
+          if [ -z "$SCRAPE_PROXY" ]; then
+            echo "SCRAPE_PROXY is not set. Indeed refuses a datacentre address"
+            echo "regardless of browser, so the run would only collect challenges."
             exit 1
           fi
-          python scripts/indeed-to-d1.py --oxylabs --max-pages 20 --concurrency 8 \
+          # xvfb-run supplies the display BROWSER_FETCH_HEADFUL needs. Without
+          # it the launch falls back to headless and the run silently measures
+          # a configuration that was already refused three times.
+          xvfb-run -a python scripts/indeed-to-d1.py --max-pages 20 \
+            ${{ inputs.solve && '--solve' || '' }} \
             ${{ inputs.limit != '' && format('--limit {0}', inputs.limit) || '' }}
