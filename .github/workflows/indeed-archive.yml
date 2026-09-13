@@ -1,5 +1,43 @@
-# Indeed → D1 archive through the Oxylabs Web Scraper API. NO LONGER SCHEDULED —
-# dispatch-only since 2026-08-29; brightdata-archive.yml collects Indeed now.
+# Indeed → D1 archive. NO LONGER SCHEDULED, and as of 2026-09-13 there is no
+# transport that works: every one of the three has now been measured dead.
+#
+# THE STATE OF PLAY, 2026-09-13 — all three measured the same day:
+#
+#   oxylabs      401 on the credentials since 2026-08-28. Auth rejection, not
+#                quota (that is a 429). The ONLY transport ever proven against
+#                the whole roster, and the cheapest thing to revive.
+#   brightdata   the Indeed dataset accepts a trigger and never finishes. Seven
+#                snapshot ids now, including sd_mtzbhjwf11hjywb1gn (6 companies)
+#                and sd_mtzcfusak5f8j7bs9 (collect-by-URL). LinkedIn collected
+#                81 records in 85s on the same account and token minutes later,
+#                so this is the dataset, not the account.
+#   browser      DataDome challenges the FIRST request, let alone the walk.
+#
+# THE BROWSER MATRIX IS NOW COMPLETE, and the fingerprint is not the variable:
+#
+#   headless-shell, rotating exit          captcha   (2026-08-09)
+#   real Chrome + stealth, rotating        captcha   (2026-08-09)
+#   headless-shell, sticky exit            captcha   (2026-08-09)
+#   real Chrome + stealth + HEADFUL,
+#     sticky exit, global pool             captcha   (2026-09-13, 25 companies,
+#                                                     454,501 bytes, company #1)
+#   the same + SCRAPE_PROXY_COUNTRY=au     captcha   (2026-09-13, 12 companies,
+#                                                     468,330 bytes, company #1)
+#
+# The last two are the cells the earlier matrix left open, and they close it.
+# The exact three switches that recovered GulfTalent and Naukri from a 403 on
+# the same exit on the same day do nothing here — those boards are Akamai and
+# this is DataDome, and they are not the same wall.
+#
+# AND IT IS WORSE THAN A WALK BLOCK. On 2026-08-09 a single probe through this
+# provider parsed 16 rows; today the first request is challenged, on both a
+# global and an Australian exit. The address pool itself is flagged.
+#
+# SO INDEED NEEDS AN UNBLOCKER, NOT AN ADDRESS — a service that solves the
+# challenge — which is what Oxylabs sold it and what Bright Data's Web Unlocker
+# (a different product from the stalled Dataset API) also sells. Reviving the
+# Oxylabs credential is the shortest path back: `transport: oxylabs` below is
+# still wired to the code that was proven against the full roster.
 #
 # IT WAS MOVED OFF OXYLABS ON 2026-08-09 AND MOVED BACK THE SAME DAY. The
 # evidence for the move was one probe request: headless Chromium through the
