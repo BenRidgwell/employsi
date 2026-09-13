@@ -76,6 +76,10 @@ on:
         description: 'Reachability only — print reachable/blocked per company, write nothing to D1'
         type: boolean
         default: false
+      proxy_country:
+        description: 'IPRoyal exit country (au = an Australian address for an Australian board)'
+        type: string
+        default: 'au'
 
 concurrency:
   group: indeed-archive
@@ -134,6 +138,14 @@ jobs:
           # that was measured until a dispatch proves a better one.
           SCRAPE_PROXY_SESSION: ${{ inputs.proxy_session }}
           SCRAPE_PROXY_LIFETIME: ${{ inputs.proxy_lifetime }}
+          # AN AUSTRALIAN BOARD DESERVES AN AUSTRALIAN ADDRESS, and until
+          # 2026-09-13 this was never set for Indeed. IPRoyal's pool is global
+          # by default, so every measurement on record — August's three and the
+          # fingerprint walk — searched au.indeed.com from whatever country the
+          # exit happened to be in. The other boards using this proxy are less
+          # exposed to that: GulfTalent and Naukri are not geo-scoped the way a
+          # per-city Australian job search is.
+          SCRAPE_PROXY_COUNTRY: ${{ inputs.proxy_country }}
           # THE FINGERPRINT SWITCHES ARE BACK, AND THIS TIME ON THEIR OWN.
           #
           # They were here once, added 2026-08-09 as "insurance" in the same
