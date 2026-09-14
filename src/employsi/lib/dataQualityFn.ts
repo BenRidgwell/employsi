@@ -43,6 +43,37 @@ async function d1(): Promise<D1Like | null> {
 export { HISTORICAL_SOURCES };
 
 /**
+ * Sources with NO SCHEDULE, so silence carries no information and the freshness
+ * table has nothing to say about them. They are dropped from it entirely.
+ *
+ * This is not the same exemption as HISTORICAL_SOURCES above, which is why it
+ * is a separate set. A closed corpus has FINISHED — wayback's newest row is
+ * from 2018 because the hostnames were retired in 2018. These have not
+ * finished; they are simply only ever run BY HAND, so "47 days silent" means
+ * nobody has run one, not that anything is broken.
+ *
+ * theirstack is an on-demand paid backfill: scripts/theirstack-to-d1.py has no
+ * workflow and is never scheduled, so it can only ever appear stale.
+ *
+ * THE RULE ALREADY EXISTED, on the other health surface. scripts/scraper-
+ * health.py has carried `ON_DEMAND = {'theirstack', 'muse', 'wayback'}` for
+ * exactly this reason, and check_freshness() returns early for those before it
+ * computes an age at all. This panel only knew about wayback, so the CLI check
+ * and the admin console disagreed about the same feed — the CLI stayed green
+ * while the console showed a permanent red row.
+ *
+ * `muse` is in that set too and is deliberately NOT here: it is an Adzuna
+ * fallback that fires only when Adzuna returns nothing for a company, so it is
+ * a judgement call whether its silence is worth seeing, and that call has not
+ * been made. Add it here if the answer is no.
+ *
+ * A source is removed from a HEALTH view here, which is the move this repo is
+ * otherwise right to be suspicious of — so the test is whether a schedule could
+ * ever make the row go green. For these it could not.
+ */
+const ON_DEMAND_SOURCES = new Set(["theirstack"]);
+
+/**
  * What KIND of thing each source is, because "seek" and "portal-sf" are not the
  * same sort of feed and a row count from one does not mean what it means from
  * the other.
@@ -192,25 +223,30 @@ export const getDataQuality = createServerFn({ method: "GET" }).handler(
         )
         .all();
       const rosterName = new Map(COMPANIES.map((c) => [c.id, c.name]));
-      const feeds: FeedRow[] = (feedRes?.results ?? []).map((r) => {
-        const lastSeen = String(r.last_seen || "");
-        const source = String(r.source || "");
-        const companies = Number(r.companies) || 0;
-        // a_company is only meaningful when the source carries exactly one, and
-        // sourceKind is the only thing that reads it — MAX() over a single
-        // group value is just "that value".
-        const sole = companies === 1 ? (rosterName.get(String(r.a_company || "")) ?? null) : null;
-        return {
-          source,
-          lastSeen,
-          firstSeen: String(r.first_seen || ""),
-          live: Number(r.live) || 0,
-          total: Number(r.total) || 0,
-          staleDays: lastSeen ? daysSince(lastSeen, today) : 999,
-          historical: HISTORICAL_SOURCES.has(source),
-          kind: sourceKind(source, companies, sole),
-        };
-      });
+      const feeds: FeedRow[] = (feedRes?.results ?? [])
+        // Dropped before anything downstream counts them, so the silent tally,
+        // the "N of M sources" footer and the KPI all agree. Filtering in the
+        // component instead would leave M counting a row the table cannot show.
+        .filter((r) => !ON_DEMAND_SOURCES.has(String(r.source || "")))
+        .map((r) => {
+          const lastSeen = String(r.last_seen || "");
+          const source = String(r.source || "");
+          const companies = Number(r.companies) || 0;
+          // a_company is only meaningful when the source carries exactly one, and
+          // sourceKind is the only thing that reads it — MAX() over a single
+          // group value is just "that value".
+          const sole = companies === 1 ? (rosterName.get(String(r.a_company || "")) ?? null) : null;
+          return {
+            source,
+            lastSeen,
+            firstSeen: String(r.first_seen || ""),
+            live: Number(r.live) || 0,
+            total: Number(r.total) || 0,
+            staleDays: lastSeen ? daysSince(lastSeen, today) : 999,
+            historical: HISTORICAL_SOURCES.has(source),
+            kind: sourceKind(source, companies, sole),
+          };
+        });
 
       // 2. Titles that mapped to no skill at all. These are the taxonomy's
       //    blind spots: the role is archived and counted, but contributes
