@@ -119,8 +119,10 @@ export function IntroLoader({ ready }: { ready: boolean }) {
         <div className="introcaption">Explore the world of work.</div>
       </div>
 
-      {/* The skyline across the bottom third, panning slowly. Its top is masked
-          away rather than cut, so the buildings dissolve into the page. */}
+      {/* The skyline across the bottom of the veil, panning slowly. The band is
+          exactly as tall as the artwork wants to be at this width, so the whole
+          drawing shows and its top sits flush — no mask, and nothing cropped.
+          See --introsky-h in global.css. */}
       <div className="introband">
         <img className="introsky" src="/assets/intro-skyline.svg" alt="" draggable={false} />
       </div>
