@@ -904,6 +904,72 @@ cannot fix. LinkedIn is the third open case and needs neither — IPRoyal
 blocklists the domain outright, so scripts/brightdata-to-d1.py buys a
 purpose-built scraper instead of an exit.
 
+### Indeed came back a different way: the app API (2026-09-16)
+
+**The wall was never Indeed — it was `au.indeed.com`.** Every transport this
+repo had tried fetches a SEARCH PAGE from that host and parses it, and the
+matrix in `indeed-archive.yml` closes that surface completely: headless-shell
+and real Chrome, stealth on and off, rotating and sticky exits, global and
+Australian addresses, all challenged by DataDome on the first request.
+
+JobSpy (MIT, `speedyapply/JobSpy`, `pip install python-jobspy`) does not load
+that page. It POSTs a cursor-paged `jobSearch` query to
+`apis.indeed.com/graphql`, Indeed's own app API. Different host, different wall
+— and measured from a plain datacentre address with no proxy, no unblocker, no
+browser and no credential:
+
+| | |
+| --- | --- |
+| the full 395-company roster | **251s, 0 failures, 6,116 rows** |
+| Bright Data, for comparison | 0.50 min/company (~3h), billed per record |
+
+That is the whole reason it is worth a fourth transport after three were
+measured dead. It is `--jobspy` in `scripts/indeed-to-d1.py`, sharing that
+file's roster load, skills mapping, cross-source dedupe and D1 upsert.
+
+**IT IS DISPATCH-ONLY UNTIL A RUNNER HAS WALKED THE ROSTER.** The measurement
+above came from a sandbox, and the address is the untested half — which is
+precisely the gap that burned this feed on 2026-08-09, when it was moved off
+Oxylabs on one probe request that did not survive the 354-company walk. A
+single fast result is not a feed.
+
+**THE REAL WORK WAS ATTRIBUTION, NOT TRANSPORT.** `company:"X"` is a keyword
+match on the employer field, not a filter, and `indeed-to-d1.py` stamps
+`company_id` from the company being WALKED rather than from the row. Of the
+6,116 rows measured, **18.0% were advertised by a different employer** — and
+every one would have been filed on the roster company's card with a plausible
+number attached. `company:"Alto"` returns Palo Alto Networks.
+
+Neither obvious rule works, which is why `scripts/company_alias.py` exists:
+
+* **Exact matching is too strict.** `Reece Group` comes back as `Reece`, `PwC
+  Australia` as `PwC`, `Mater` as `Mater Group`, `Macmahon Holdings` as
+  `Macmahon` — 100, 100, 100 and 91 rows of the employer we asked for.
+* **Substring is too loose.** `Alto` is inside `Palo Alto Networks`, `Built`
+  inside `KOVA Built`, `AMP` inside `Culture Amp`.
+
+So: strip corporate suffixes, keep a curated table for the rest, and
+**default-deny** anything unrecognised. A dropped row costs coverage; a wrongly
+kept one corrupts a card, and only one of those is recoverable.
+
+**A zero is usually the query, not the employer.** 207 of 395 companies
+returned nothing on their roster name — `company:"Monadelphous Group"` 0 against
+`company:"Monadelphous"` 100, `"Iluka Resources"` 0 against `"Iluka"` 18. So a
+zero retries on the short name, which recovers **558 rows over 14 companies**
+including ANZ, Telstra, Qube and Monadelphous. Dropping the quotes is NOT that
+fallback and must not become it: unquoted `Pilbara Minerals` free-texts the
+description and returns Acciona and Cockburn Cement.
+
+Four roster names are withheld from that fallback (`FALLBACK_UNSAFE`). Stripping
+a trailing "energy" leaves `beach`, `boss`, `strike` and `origin`, and a real
+employer trades under each — Hugo Boss's BOSS would match `Boss Energy`
+exactly and pass the gate. None was observed colliding; the guard is against a
+trap that is reachable, not a repair.
+
+`scripts/test_company_alias.py` pins all of it — 113 measured pairs, 22
+impostors — and runs in `scraper-check.yml`. None of it would fail visibly in
+the app, which is the point of asserting it.
+
 ### What each of the five would actually need
 
 Two groups, and they are not the same problem.

@@ -1,5 +1,25 @@
-# Indeed → D1 archive. NO LONGER SCHEDULED, and as of 2026-09-13 there is no
-# transport that works: every one of the three has now been measured dead.
+# Indeed → D1 archive. NO LONGER SCHEDULED, and as of 2026-09-13 there was no
+# transport that worked: every one of the three had been measured dead.
+#
+# A FOURTH TRANSPORT ARRIVED 2026-09-16: `transport: jobspy`. It is the first
+# one here that does NOT fetch an au.indeed.com search page. JobSpy (MIT,
+# speedyapply/JobSpy) posts to apis.indeed.com/graphql — Indeed's app API — so
+# the DataDome wall documented at length below is never approached. Measured
+# from a plain datacentre address with no proxy, no unblocker and no browser:
+#
+#     the full 395-company roster   251s, 0 failures, 6,116 rows
+#
+# against Bright Data's measured 0.50 min/company (~3h) and per-record billing.
+#
+# IT IS DISPATCH-ONLY UNTIL A RUNNER HAS WALKED THE ROSTER. That measurement
+# was taken from a sandbox, and the address — not the parser — is the half this
+# repo has been burned on before: Indeed was moved off Oxylabs on 2026-08-09 on
+# the strength of one probe that did not survive the 354-company walk. Dispatch
+# it here, read the summary, and only then give it a schedule.
+#
+# Two things would end it, and both fail loudly rather than quietly: the app key
+# hardcoded in the package is rotated, or Indeed starts refusing runner
+# addresses on that endpoint. Either way the run exits non-zero on zero rows.
 #
 # THE STATE OF PLAY, 2026-09-13 — all three measured the same day:
 #
@@ -106,10 +126,10 @@ on:
         type: string
         default: ''
       transport:
-        description: 'browser = real Chrome via SCRAPE_PROXY; oxylabs = the Web Scraper API (401 since 2026-08-28)'
+        description: 'jobspy = apis.indeed.com GraphQL (the only one measured working); browser = real Chrome via SCRAPE_PROXY (DataDome); oxylabs = the Web Scraper API (401 since 2026-08-28)'
         type: choice
-        options: [browser, oxylabs]
-        default: browser
+        options: [jobspy, browser, oxylabs]
+        default: jobspy
       solve:
         description: 'Reachability only — print reachable/blocked per company, write nothing to D1'
         type: boolean
@@ -147,13 +167,28 @@ jobs:
       # BROWSER_FETCH_CHANNEL=chrome needs the `chrome` channel installed, and
       # BROWSER_FETCH_HEADFUL=1 needs an X server to be headful under. This is
       # the same install gulftalent-archive and naukri-archive run.
+      # SKIPPED FOR jobspy, which drives no browser at all. This install is
+      # minutes of Chrome, Chromium and Xvfb; asking for it on a transport that
+      # makes one HTTPS request per company would triple the run for nothing.
       - name: Install Playwright, real Chrome and Xvfb
+        if: inputs.transport != 'jobspy'
         run: |
           python -m pip install --upgrade pip
           pip install playwright
           python -m playwright install --with-deps chromium
           python -m playwright install --with-deps chrome
           sudo apt-get install -y xvfb
+
+      - name: Install JobSpy
+        if: inputs.transport == 'jobspy'
+        run: |
+          python -m pip install --upgrade pip
+          # UNPINNED DELIBERATELY. The app key and the GraphQL shape live in the
+          # package, so when Indeed changes either, a fixed version is the thing
+          # that breaks and a fresh one is the fix. The run's own zero-rows
+          # abort is what catches a bad release, not a pin.
+          pip install python-jobspy
+          python -c "import jobspy, importlib.metadata as m; print('python-jobspy', m.version('python-jobspy'))"
 
       - name: Scrape Indeed → D1 (browser via SCRAPE_PROXY)
         env:
@@ -222,6 +257,14 @@ jobs:
           # both. The old gate exited when OXYLABS_USERNAME was unset even on a
           # browser run, which made the working path unreachable the moment the
           # dead one lost its credentials.
+          # JobSpy needs no proxy and no credential, so it is gated on nothing
+          # but the D1 token — which is the point of it.
+          if [ "${{ inputs.transport }}" = "jobspy" ]; then
+            python scripts/indeed-to-d1.py --jobspy \
+              ${{ inputs.solve && '--solve' || '' }} \
+              ${{ inputs.limit != '' && format('--limit {0}', inputs.limit) || '' }}
+            exit $?
+          fi
           if [ "${{ inputs.transport }}" = "oxylabs" ]; then
             if [ -z "$OXYLABS_USERNAME" ]; then
               echo "OXYLABS_USERNAME is not set."

@@ -45,10 +45,20 @@ source|title|company|location key + upsert as src/employsi/lib/jobArchive.ts.
 
 Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID.
 Run:  python scripts/indeed-to-d1.py [--country au] [--only id1,id2] [--limit N]
-                                     [--max-pages N] [--oxylabs]
+                                     [--max-pages N] [--oxylabs] [--jobspy]
                                      [--nav [--headful] [--proxy URL]]
 
-Transports, all three parsing the same search HTML with parse_search_html:
+Transports. --jobspy is the odd one out and that is the point: it is the only
+one that does NOT parse au.indeed.com search HTML, which is the surface every
+other transport here has been refused at.
+
+  --jobspy   the JobSpy package against apis.indeed.com's GraphQL API. No
+             proxy, no browser, no credential. Measured 2026-09-16: the full
+             395-company roster in 251s with zero failures. DISPATCH-ONLY until
+             a GitHub runner has walked it — the measurement was taken from a
+             sandbox, and the address is the untested half.
+
+The other three all parse the same search HTML with parse_search_html:
   (default)  browser_fetch.nav_get through SCRAPE_PROXY, in real Chrome —
              a navigation per search page, which is what the probe measured.
              This is what CI runs.
@@ -117,6 +127,21 @@ PROXY = _opt('--proxy', None)
 # the command line, because it is the first thing you need to know when a run
 # comes back with zero rows.
 VIA_OXYLABS = '--oxylabs' in args
+# --jobspy: the JobSpy package (MIT, `pip install python-jobspy`), which does
+# NOT parse au.indeed.com search HTML at all — it posts to apis.indeed.com's
+# GraphQL endpoint, Indeed's own app API. That is why it is worth a fourth
+# transport after three were measured dead: DataDome and Cloudflare guard the
+# search HTML, and this never asks for it. See the block above jobspy_collect().
+VIA_JOBSPY = '--jobspy' in args
+# Per-company result ceiling. 100 is JobSpy's natural page size and was what the
+# 2026-09-16 roster measurement used; the walk stops at the cursor's end anyway,
+# so this only binds for the largest employers.
+JOBSPY_RESULTS = int(_opt('--results', 100))
+# --hours-old N: ask Indeed for postings newer than N hours. Left OFF by default
+# — the archive is append-only and dedupes on job_key, so a full pull refreshes
+# last_seen on still-live roles, which is what keeps "currently advertised"
+# honest. A narrow window would let a live ad age out while it is still up.
+HOURS_OLD = int(_opt('--hours-old', 0))
 # --nav drives a warmed browser through page.goto() per search page, with the
 # jittered delays below. It was the only browser path; it is now opt-in, because
 # it cannot finish this roster inside a hosted runner's ceiling.
@@ -226,6 +251,130 @@ def d1(sql: str, params: list):
             time.sleep(attempt + 1)
 
 
+# ── the JobSpy transport (apis.indeed.com GraphQL) ───────────────────────────
+# WHY A FOURTH TRANSPORT EXISTS, and why it is not a fourth flavour of the three
+# that failed. Every transport in this file's history — oxylabs, the browser,
+# --nav — fetches an au.indeed.com SEARCH PAGE and hands it to
+# parse_search_html. That host is what DataDome challenges, and the matrix in
+# .github/workflows/indeed-archive.yml closes it: real Chrome, headful, stealth,
+# sticky exit, Australian exit, all challenged on request one.
+#
+# JobSpy does not load that page. It POSTs to apis.indeed.com/graphql, Indeed's
+# app API, with a cursor-paged jobSearch query. Different host, different wall.
+#
+# MEASURED 2026-09-16 FROM A PLAIN DATACENTRE ADDRESS — no proxy, no unblocker,
+# no browser, no credential:
+#
+#   the full 395-company roster   251s, 0 failures, 6,116 rows
+#   BHP alone                     25 rows, dated within 2 days
+#
+# Compare Bright Data's measured 0.50 min/company (~3h for the roster) and its
+# per-record bill, which is what forced that sweep to fortnightly. This is
+# daily-affordable because it is free and four minutes long.
+#
+# THE ADDRESS IS THE OPEN QUESTION, NOT THE PARSER. That measurement was taken
+# from a sandbox, not from a GitHub runner, and this repo has been burned once
+# by exactly that gap: Indeed was moved off Oxylabs on a single probe that did
+# not survive the 354-company walk. Hence `transport: jobspy` is dispatch-only
+# until a runner has walked the roster. Do not schedule it on this comment.
+_JOBSPY_COUNTRY = {'au': 'Australia', 'nz': 'New Zealand', 'uk': 'UK',
+                   'gb': 'UK', 'us': 'USA', 'ca': 'Canada', 'sg': 'Singapore',
+                   'in': 'India', 'ph': 'Philippines', 'hk': 'Hong Kong'}
+
+
+def jobspy_collect(cid: str, name: str) -> list:
+    """Company-scoped Indeed pull, gated so only `name`'s own ads come back.
+
+    Two things here are not optional, and both are about attribution rather
+    than transport:
+
+    THE FALLBACK. `company:"X"` is a keyword match, so a roster name carrying a
+    corporate suffix can miss its own employer entirely. Measured 2026-09-16:
+    `company:"Monadelphous Group"` returned 0 and `company:"Monadelphous"` 100;
+    `"Iluka Resources"` 0 and `"Iluka"` 18; `"Woodside Energy"` 0. 207 of 395
+    companies returned nothing on the roster name, and that is substantially
+    this, not absence from Indeed. So a zero retries on the short name.
+
+    Dropping the quotes is NOT the fallback and must not become it: unquoted
+    `Pilbara Minerals` free-texts the description and returned Acciona and
+    Cockburn Cement.
+
+    THE GATE. Widening the query widens what comes back, so every row is
+    checked against company_alias.company_matches before it can be filed. 18.0%
+    of the measured 6,116 rows were a different employer, and upsert() stamps
+    company_id from the company being WALKED — so an ungated row becomes that
+    company's hiring on the card, with no visible sign it is wrong.
+    """
+    from jobspy import scrape_jobs
+    from company_alias import company_matches, fallback_safe, short_name
+
+    country = _JOBSPY_COUNTRY.get(COUNTRY)
+    if not country:
+        sys.exit(f'--jobspy has no country_indeed mapping for "{COUNTRY}". '
+                 f'Known: {", ".join(sorted(_JOBSPY_COUNTRY))}.')
+
+    def pull(term: str):
+        kw = dict(site_name=['indeed'], search_term=term, location=country,
+                  country_indeed=country, results_wanted=JOBSPY_RESULTS,
+                  description_format='markdown', verbose=0)
+        if HOURS_OLD:
+            kw['hours_old'] = HOURS_OLD
+        return scrape_jobs(**kw)
+
+    df = pull(f'company:"{name}"')
+    short = short_name(name)
+    # fallback_safe() withholds the retry from the four roster names whose short
+    # form is a generic word another employer trades under — see FALLBACK_UNSAFE.
+    if not len(df) and short != norm(name) and fallback_safe(name):
+        df = pull(f'company:"{short}"')
+
+    jobs, dropped = [], 0
+    for r in df.to_dict('records') if len(df) else []:
+        title = str(r.get('title') or '').strip()
+        board = str(r.get('company') or '').strip()
+        if not title:
+            continue
+        # DEFAULT-DENY. A name the gate has not seen is dropped rather than
+        # guessed at — a dropped row costs coverage, a wrongly kept one puts
+        # another employer's vacancies on this company's card.
+        if not company_matches(name, board):
+            dropped += 1
+            continue
+        posted = r.get('date_posted')
+        jobs.append({
+            'title': title,
+            'company': board,
+            'location': str(r.get('location') or '').strip(),
+            'salary': _jobspy_salary(r),
+            'url': str(r.get('job_url') or '').strip(),
+            'date': '' if posted is None or str(posted) == 'NaT' else str(posted)[:10],
+            'country': COUNTRY,
+        })
+    if dropped:
+        sys.stderr.write(f'  [{cid}] dropped {dropped} row(s) advertised by a '
+                         f'different employer\n')
+    return jobs
+
+
+def _jobspy_salary(r: dict) -> str:
+    """A salary string only when the board actually stated one.
+
+    Indeed leaves these null on most Australian ads, and an invented midpoint or
+    a formatted "None" would be a fabricated number on a card — the one thing
+    this codebase does not do. No amounts, no string.
+    """
+    lo, hi = r.get('min_amount'), r.get('max_amount')
+    def ok(v):
+        return v is not None and str(v) not in ('nan', 'NaT', '') and float(v) > 0
+    if not (ok(lo) or ok(hi)):
+        return ''
+    cur = str(r.get('currency') or '').strip()
+    per = str(r.get('interval') or '').strip()
+    amt = (f'{float(lo):,.0f} - {float(hi):,.0f}' if ok(lo) and ok(hi)
+           else f'{float(lo if ok(lo) else hi):,.0f}')
+    return ' '.join(x for x in (cur, amt, f'per {per}' if per else '') if x)
+
+
 def existing_titles(company_id: str) -> set:
     # Only OTHER sources — so an Indeed job that duplicates an Adzuna/SEEK/etc.
     # role is counted once, but Indeed's own previously-archived jobs re-upsert
@@ -306,7 +455,23 @@ def main() -> int:
         import threading
         geo = ind.GEO_FOR.get(COUNTRY)
         sel = companies[:LIMIT] if LIMIT < len(companies) else companies
-        if VIA_OXYLABS:
+        if VIA_JOBSPY:
+            try:
+                import jobspy  # noqa: F401
+            except ImportError:
+                sys.exit('--jobspy needs the JobSpy package: pip install python-jobspy')
+            # ONE WORKER, deliberately. The 2026-09-16 roster measurement was
+            # sequential and took 251s for 395 companies, so there is nothing to
+            # buy with concurrency — and a rate limit is the one failure mode
+            # that measurement did NOT exercise. Parallelising on the strength
+            # of a sequential result is the mistake this file already made once
+            # with a single probe request.
+            fetch_search = None
+            workers = 1
+            sys.stderr.write(f'  via JobSpy -> apis.indeed.com GraphQL '
+                             f'(country={COUNTRY}, sequential) — {len(sel)} companies, '
+                             f'no proxy, no browser.\n')
+        elif VIA_OXYLABS:
             if not os.environ.get('OXYLABS_USERNAME'):
                 sys.exit('--oxylabs needs OXYLABS_USERNAME / OXYLABS_PASSWORD.')
             import oxylabs_client as oxy
@@ -348,51 +513,54 @@ def main() -> int:
             if st['dead']:
                 return
             jobs, seen = [], set()
-            for pg in range(MAX_PAGES):
-                # NO RENDER. Indeed server-renders its result cards, so the
-                # headless browser Oxylabs runs for render='html' produces the
-                # same page for more work. Measured 2026-08-06 on the BHP
-                # search: rendered 1,132,577 bytes and unrendered 1,144,483,
-                # and parse_search_html returned the SAME 16 jobs from each,
-                # first row identical.
-                #
-                # That matters beyond the time saved, because it is the 613s.
-                # 613 is Oxylabs' own "faulted" code — its worker could not
-                # complete the fetch — and the render step is the most failure
-                # prone thing in that pipeline. Asking for a browser we do not
-                # need is asking for the failure we were getting. Measured the
-                # same day, unrendered: 6 of 6 companies returned 200 with
-                # 12-16 rows each, 35-82s apiece.
-                content = fetch_search(ind.search_url(base, name, '', pg * 10))
-                if not content:
-                    break
-                # SAY WHY THE FIRST EMPTY PAGE WAS EMPTY. A page that renders
-                # and parses to nothing is indistinguishable in this loop from a
-                # quiet employer, and the run-level DEAD_AFTER abort tells you
-                # only that it happened 25 times. One line naming the size and
-                # the challenge, once, is the difference between "Indeed refused
-                # the run" and knowing WHICH refusal.
-                if not jobs and pg == 0:
-                    with lock:
-                        first = not st['diagnosed']
-                        st['diagnosed'] = True
-                    if first and not ind.parse_search_html(content, base):
-                        why = next((lbl for pat, lbl in browser_fetch.BLOCK_MARKERS
-                                    if re.search(pat, content, re.I)), '')
-                        sys.stderr.write(
-                            f'  [{cid}] page 1 parsed 0 rows from {len(content)} bytes'
-                            + (f' [{why}]' if why else ' (no challenge marker — the '
-                               'markup may have changed)') + '\n')
-                new = 0
-                for j in ind.parse_search_html(content, base):
-                    k = (norm(j['title']), norm(j.get('location', '')))
-                    if k in seen:
-                        continue
-                    seen.add(k)
-                    jobs.append(j)
-                    new += 1
-                if new == 0:  # page repeated / empty → end of results
-                    break
+            if VIA_JOBSPY:
+                jobs = jobspy_collect(cid, name)
+            else:
+                for pg in range(MAX_PAGES):
+                    # NO RENDER. Indeed server-renders its result cards, so the
+                    # headless browser Oxylabs runs for render='html' produces the
+                    # same page for more work. Measured 2026-08-06 on the BHP
+                    # search: rendered 1,132,577 bytes and unrendered 1,144,483,
+                    # and parse_search_html returned the SAME 16 jobs from each,
+                    # first row identical.
+                    #
+                    # That matters beyond the time saved, because it is the 613s.
+                    # 613 is Oxylabs' own "faulted" code — its worker could not
+                    # complete the fetch — and the render step is the most failure
+                    # prone thing in that pipeline. Asking for a browser we do not
+                    # need is asking for the failure we were getting. Measured the
+                    # same day, unrendered: 6 of 6 companies returned 200 with
+                    # 12-16 rows each, 35-82s apiece.
+                    content = fetch_search(ind.search_url(base, name, '', pg * 10))
+                    if not content:
+                        break
+                    # SAY WHY THE FIRST EMPTY PAGE WAS EMPTY. A page that renders
+                    # and parses to nothing is indistinguishable in this loop from a
+                    # quiet employer, and the run-level DEAD_AFTER abort tells you
+                    # only that it happened 25 times. One line naming the size and
+                    # the challenge, once, is the difference between "Indeed refused
+                    # the run" and knowing WHICH refusal.
+                    if not jobs and pg == 0:
+                        with lock:
+                            first = not st['diagnosed']
+                            st['diagnosed'] = True
+                        if first and not ind.parse_search_html(content, base):
+                            why = next((lbl for pat, lbl in browser_fetch.BLOCK_MARKERS
+                                        if re.search(pat, content, re.I)), '')
+                            sys.stderr.write(
+                                f'  [{cid}] page 1 parsed 0 rows from {len(content)} bytes'
+                                + (f' [{why}]' if why else ' (no challenge marker — the '
+                                   'markup may have changed)') + '\n')
+                    new = 0
+                    for j in ind.parse_search_html(content, base):
+                        k = (norm(j['title']), norm(j.get('location', '')))
+                        if k in seen:
+                            continue
+                        seen.add(k)
+                        jobs.append(j)
+                        new += 1
+                    if new == 0:  # page repeated / empty → end of results
+                        break
             if SOLVE:
                 # ROWS, NOT A COMPLETED CALL. This printed "reachable ✓" for any
                 # company that finished the loop, so a run where every fetch
@@ -423,7 +591,9 @@ def main() -> int:
 
         with ThreadPoolExecutor(max_workers=workers) as ex:
             list(ex.map(lambda cn: work(*cn), sel))
-        exit_name = 'Oxylabs' if VIA_OXYLABS else f'the browser ({http_fetch.proxy_label()})'
+        exit_name = ('JobSpy (apis.indeed.com GraphQL)' if VIA_JOBSPY
+                     else 'Oxylabs' if VIA_OXYLABS
+                     else f'the browser ({http_fetch.proxy_label()})')
         if SOLVE:
             sys.stderr.write(f'\n{st["reach"]} of {st["done"]} companies returned listings '
                              f'via {exit_name} ({st["fetch"]} in total).\n')
@@ -434,7 +604,10 @@ def main() -> int:
             sys.stderr.write(
                 f'\nABORTED: {st["done"]} companies walked and not one listing '
                 f'fetched. Indeed is refusing the whole run, not returning empty '
-                f'boards. On --oxylabs check the 613s above (that is Oxylabs '
+                f'boards. On --jobspy that means the GraphQL API refused this '
+                f'address (the walk itself cannot 0 out — it has no wall to hit) '
+                f'or the hardcoded app key in the package has been rotated; '
+                f'on --oxylabs check the 613s above (that is Oxylabs '
                 f'failing to load the page); on the browser path check for a '
                 f'Cloudflare interstitial, which means the exit is burnt. '
                 f'Nothing written.\n')
