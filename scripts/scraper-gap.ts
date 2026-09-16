@@ -16,6 +16,20 @@
  * Both are read from the source rather than listed here, so a feed added
  * tomorrow drops out of this report on its own.
  *
+ * WHOLE-BOARD FEEDS ARE COVERAGE TOO, and leaving them out made the first run of
+ * this report wrong in the way that matters. Its top rows were Queensland
+ * Health, Victoria's government schools and SA Health — every one of them read
+ * completely, every day, by its state government board scraper. A government
+ * board is one employer FAMILY and complete for it (dataQualityFn.sourceKind
+ * says so), and uniroles.com.au is the same thing for the universities: "one
+ * walk covers all of them at once". Nobody should build a Queensland Health ATS
+ * integration, and a report whose headline says to is worse than none.
+ *
+ * So a company whose rows come from one of those boards is marked `gov` or
+ * `uni` in the `via` column, and `--gaps` drops it. It is marked rather than
+ * deleted because the two are different claims: covered by a board that reads
+ * the whole family, versus covered by nothing.
+ *
  * A SEEK advertiser id (seekAdvertisers.ts) is NOT counted as covered, and is
  * reported in its own column instead. It is company-specific — the SEEK pull
  * walks that employer's whole board by id — but it is one board rather than the
@@ -46,6 +60,7 @@
  * Needs CLOUDFLARE_API_TOKEN (D1 read) in the environment, never in the repo.
  *
  *   bun run scripts/scraper-gap.ts            # top 60
+ *   bun run scripts/scraper-gap.ts --gaps     # hide the whole-board-covered ones
  *   bun run scripts/scraper-gap.ts --all      # every employer with an ad
  *   bun run scripts/scraper-gap.ts --top 200
  *   bun run scripts/scraper-gap.ts --csv      # id,name,... to stdout
@@ -161,6 +176,22 @@ async function query(token: string): Promise<StatRow[]> {
   return body.result?.[0]?.results ?? [];
 }
 
+/**
+ * Feeds that read a whole employer FAMILY to completion, so a company they
+ * carry needs no integration of its own.
+ *
+ * Both tests come from what the feeds already are, not from a list of company
+ * ids: `*-gov` is dataQualityFn.sourceKind's own rule for a government board,
+ * and uniroles is the universities' shared board (see uniroles-archive.yml —
+ * one walk covers all of them). Anything else is a market, not a family.
+ */
+function wholeBoard(sources: string): "gov" | "uni" | "" {
+  const list = sources.split(",").filter(Boolean);
+  if (list.some((s) => s.endsWith("-gov"))) return "gov";
+  if (list.includes("uniroles")) return "uni";
+  return "";
+}
+
 async function main() {
   const token = process.env.CLOUDFLARE_API_TOKEN;
   if (!token) {
@@ -169,6 +200,7 @@ async function main() {
   }
   const args = process.argv.slice(2);
   const csv = args.includes("--csv");
+  const gapsOnly = args.includes("--gaps");
   const topArg = args.indexOf("--top");
   const limit = args.includes("--all")
     ? Infinity
@@ -186,10 +218,17 @@ async function main() {
   const stats = new Map<string, StatRow>();
   for (const r of await query(token)) stats.set(r.company_id, r);
 
-  const gap = COMPANIES.filter((c) => !portals.has(c.id)).map((c) => {
-    // The app reads a company's rows under its alias, so this must too, or an
-    // aliased company reads as zero and tops the "build a scraper" list.
+  // The ALIAS APPLIES TO BOTH SIDES, and the first run of this report proved
+  // why. It was applied only to the row lookup, so HSBC came top of the list at
+  // 3,809 ads — reading london-hsba's rows, which the london-hsba SiteDef had
+  // put there, under hongkong-00005, which matched no SiteDef. The report's
+  // single loudest recommendation was to build a feed that already existed and
+  // was working. An alias means the two ids are one company; a coverage test
+  // that ignores it splits that company in half.
+  const covered = (id: string) => portals.has(id) || portals.has(alias[id] ?? id);
+  const gap = COMPANIES.filter((c) => !covered(c.id)).map((c) => {
     const s = stats.get(alias[c.id] ?? c.id);
+    const sources = s?.sources ?? "";
     return {
       id: c.id,
       name: c.name,
@@ -202,11 +241,18 @@ async function main() {
       liveRows: s?.rows_live ?? 0,
       first: s?.first_seen ?? "",
       last: s?.last_seen ?? "",
-      sources: s?.sources ?? "",
+      sources,
+      // A portal-* row under a company with no SiteDef of its own is not a gap,
+      // it is a WIRING question — some portal is filing rows here. Surfaced
+      // rather than resolved: the roster check owns that chain.
+      via: wholeBoard(sources) || (/(^|,)portal-/.test(sources) ? "portal!" : ""),
     };
   });
   gap.sort((a, b) => b.ads - a.ads || b.live - a.live || a.name.localeCompare(b.name));
-  const withAds = gap.filter((r) => r.ads > 0);
+  const boardCovered = gap.filter((r) => r.via === "gov" || r.via === "uni").length;
+  const withAds = gap
+    .filter((r) => r.ads > 0)
+    .filter((r) => !(gapsOnly && (r.via === "gov" || r.via === "uni")));
 
   if (csv) {
     console.log(
@@ -238,21 +284,25 @@ async function main() {
       `(${SITES.length} careerSites feeds + ${drivers.size} scripts/ drivers)`,
   );
   console.log(
-    `${gap.length} without one · ${withAds.length} of those have at least one archived ad`,
+    `${gap.length} without one · ${gap.filter((r) => r.ads > 0).length} of those have at least ` +
+      `one archived ad · ${boardCovered} of those are read completely by a whole-employer-family ` +
+      `board (--gaps hides them)`,
   );
   console.log(
     "\nads  = distinct title+location (one vacancy on three boards counts once)\n" +
       "live = of those, still advertised (last_seen >= yesterday)\n" +
       "rows = raw archive rows, which double count across republishing feeds\n" +
-      "seek = we already pull this employer's whole SEEK board by advertiser id\n",
+      "seek = we already pull this employer's whole SEEK board by advertiser id\n" +
+      "via  = gov/uni: a board already reads this employer family to completion, so this is\n" +
+      "       not a gap. portal!: a portal-* feed files rows here with no SiteDef of its own\n",
   );
-  const head = `${"#".padStart(4)}  ${"ads".padStart(6)} ${"live".padStart(5)} ${"rows".padStart(7)}  ${"seek".padEnd(4)}  ${"id".padEnd(30)} ${"company".padEnd(40)} sources`;
+  const head = `${"#".padStart(4)}  ${"ads".padStart(6)} ${"live".padStart(5)} ${"rows".padStart(7)}  ${"seek".padEnd(4)} ${"via".padEnd(7)} ${"id".padEnd(30)} ${"company".padEnd(40)} sources`;
   console.log(head);
   console.log("-".repeat(head.length));
   withAds.slice(0, limit === Infinity ? withAds.length : limit).forEach((r, i) => {
     console.log(
       `${String(i + 1).padStart(4)}  ${String(r.ads).padStart(6)} ${String(r.live).padStart(5)} ` +
-        `${String(r.rows).padStart(7)}  ${r.seek.padEnd(4)}  ${r.id.padEnd(30)} ` +
+        `${String(r.rows).padStart(7)}  ${r.seek.padEnd(4)} ${r.via.padEnd(7)} ${r.id.padEnd(30)} ` +
         `${r.name.slice(0, 40).padEnd(40)} ${r.sources}`,
     );
   });
