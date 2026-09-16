@@ -111,13 +111,50 @@ interface Env {
 // forced Woolworths into three separate page windows — and 17 is the only size
 // with a production track record of completing.
 //
-// So 17 stays, and coverage comes from running it more often: 6 crons x 4 runs
-// a day x 17 = 408 refreshes a day against a 355-company roster, i.e. daily
-// again, restoring what the original comment claimed. See `crons` in
-// wrangler.jsonc for the six minutes and why none of them collides.
+// So 17 stays, and coverage comes from running it more often.
+//
+// THE ROSTER OUTGREW THAT ARITHMETIC, exactly as it outgrew the Bright Data
+// sweep's chunk list. This said "6 crons x 4 runs a day x 17 = 408 refreshes a
+// day against a 355-company roster, i.e. daily again". The roster is now 395 —
+// 204 listed + 150 private + 41 universities — so 408 is 1.033x a day and a
+// full pass takes 23.2 hours. Nothing failed and nothing could: the rotation
+// just lost its slack, and since a run cancelled by the waitUntil deadline
+// drops all 17 of its refreshes, a single cancellation puts coverage under 1.0x
+// and the drift starts compounding.
+//
+// Measured 2026-09-16 by replaying this file's own dispatch rules over `crons`:
+// SIX expressions reach processShard (0, 10, 20, 25, 35 and 40 past the hour,
+// each */6), which is 24 runs a day. A seventh, "42 */6 * * *", takes that to 28
+// runs x 17 = 476 refreshes a day, or 1.205x against 395 — back above the 1.15x
+// this had at 355, with room for the roster to keep growing.
+//
+// 42 was chosen rather than picked: it collides with no existing expression, is
+// not claimed by a gov prefix (5, 15, 30, 45, 50) or by PORTAL_TICKS/NEWS_TICKS,
+// and no other cron fires at :42 of hours 0, 6, 12 or 18 — so it adds a shard
+// run without landing on top of another job. See `crons` in wrangler.jsonc.
+//
+// IF THIS DRIFTS AGAIN, add a tick; do not raise SHARD. That is what 45 and 25
+// measured, and a bigger shard that gets cancelled collects less than a smaller
+// one that finishes.
 const SHARD = 17;
 const JOBS_PER_COMPANY = 60;
 const JOBS_PER_HUB = 50;
+// How deep to read one employer's Muse listing. It was 2, which silently
+// truncated the only employer this feed actually yields.
+//
+// The Muse's `company` filter is EXACT-NAME, and measured against the live API
+// on 2026-09-16 it recognises 3 of the 395 roster names: Computershare (92 ads,
+// page_count 5), Chevron (26) and Shell (21). Only Computershare has Australian
+// roles, and they are spread across all five pages — 5 on page 0, 2 on page 1,
+// then 3, 1 and 1 on pages 2-4. At a 2-page cap the last five were unreachable.
+//
+// FIVE, NOT UNBOUNDED, because each page is a fetch with an 8s abort inside a
+// waitUntil that has a history of being cancelled (see SHARD above). Five bounds
+// one company at ~40s worst case. It costs almost nothing in practice: the loop
+// already breaks on an empty result, so the 392 names The Muse does not know
+// still cost exactly one request each, and the change is +3 requests per full
+// pass across the whole roster.
+const MUSE_MAX_PAGES = 5;
 const CITIES = ["perth", "adelaide", "brisbane", "melbourne", "sydney"];
 
 interface StoredJob {
@@ -313,7 +350,7 @@ async function pullCompany(
 async function pullMuse(env: Env, company: string): Promise<StoredJob[]> {
   if (!env.THEMUSE_KEY) return [];
   const out: StoredJob[] = [];
-  for (let page = 0; page < 2; page++) {
+  for (let page = 0; page < MUSE_MAX_PAGES; page++) {
     const params = new URLSearchParams({ api_key: env.THEMUSE_KEY, company, page: String(page) });
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);

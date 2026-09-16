@@ -27,16 +27,34 @@
     // 04:20 / 04:25 / 04:35 / 04:55 UTC: the employer career-portal pull, a
     // quarter of the portals per tick (PORTAL_GROUPS in careerSites.ts). Those
     // minutes collide with none of the gov minute-prefix branches above.
-    // ":00", ":10", ":20", ":25", ":35" and ":40" every six hours: the AU
-    // company pull (processShard). All six fall through every branch above to
-    // the `else`, which is what runs the shard — none of 0/10/20/25/35/40 is a
+    // ":00", ":10", ":20", ":25", ":35", ":40" and ":42" every six hours: the
+    // AU company pull (processShard). All seven fall through every branch above
+    // to the `else`, which is what runs the shard — none of 0/10/20/25/35/40/42 is a
     // gov minute PREFIX (those are 5, 15, 30, 45, 50), and the portal/news
     // crons are matched by EXACT expression, so "25 */6 * * *" never collides
     // with "25 4 * * *".
-    // 6 ticks x 4 a day x SHARD 17 = 408 refreshes a day, covering the
-    // 355-company roster daily. Six small proven runs rather than one big one:
-    // 45 and 25 per run were both measured being cancelled by the waitUntil
-    // deadline, while 17 is the size already completing in production.
-    "crons": ["0 */6 * * *", "10 */6 * * *", "20 */6 * * *", "25 */6 * * *", "35 */6 * * *", "40 */6 * * *", "5 */6 * * *", "15 */6 * * *", "30 */6 * * *", "45 */6 * * *", "50 */6 * * *", "40 3 * * *", "50 3 * * *", "0 4 * * *", "10 4 * * *", "20 4 * * *", "25 4 * * *", "35 4 * * *", "55 4 * * *", "5 5 * * *", "15 5 * * *", "25 5 * * *", "35 5 * * *", "45 5 * * *", "55 5 * * *", "5 6 * * *", "15 6 * * *", "25 6 * * *", "35 6 * * *", "15 7 * * *", "25 7 * * *", "35 7 * * *", "45 7 * * *", "55 7 * * *", "45 6 * * *", "55 6 * * *", "5 7 * * *", "5 8 * * *", "15 8 * * *", "35 8 * * *", "45 8 * * *", "55 8 * * *", "5 9 * * *", "15 9 * * *", "25 9 * * *", "35 9 * * *", "45 9 * * *", "55 9 * * *", "5 10 * * *", "15 10 * * *", "25 10 * * *", "35 10 * * *", "45 10 * * *", "55 10 * * *", "5 11 * * *", "15 11 * * *", "25 11 * * *", "35 11 * * *", "45 11 * * *", "55 11 * * *", "5 12 * * *", "15 12 * * *", "25 12 * * *", "35 12 * * *", "45 12 * * *", "55 12 * * *"]
+    // SEVEN ticks x 4 a day x SHARD 17 = 476 refreshes a day against a
+    // 395-company roster: 1.205x, a full pass every 19.9 hours.
+    //
+    // It was six, and that was 408 against 355 — comfortably daily when it was
+    // written. The roster grew to 395 (204 listed + 150 private + 41
+    // universities) and 408 became 1.033x, a 23.2-hour pass with 13 refreshes
+    // of slack. Nothing reported it, because nothing failed: every company
+    // still got its turn, just later and later, and a single run cancelled by
+    // the waitUntil deadline drops all 17 of its refreshes and tips the day
+    // under 1.0x. That is how The Muse's feed came to look dead — its only
+    // matching employer simply had not come round.
+    //
+    // ":42" IS THE SEVENTH AND IT WAS CHOSEN, NOT PICKED. It matches no
+    // existing expression, is not a gov minute prefix (5, 15, 30, 45, 50), is
+    // in neither PORTAL_TICKS nor NEWS_TICKS, and no other cron fires at :42 of
+    // hours 0, 6, 12 or 18 — so it falls through to the shard branch without
+    // landing on top of another job.
+    //
+    // ADD A TICK, NEVER RAISE SHARD, when this drifts again: 45 and 25 per run
+    // were both measured being cancelled by the waitUntil deadline, while 17 is
+    // the size already completing in production. A bigger shard that gets
+    // cancelled collects less than a smaller one that finishes.
+    "crons": ["0 */6 * * *", "10 */6 * * *", "20 */6 * * *", "25 */6 * * *", "35 */6 * * *", "40 */6 * * *", "42 */6 * * *", "5 */6 * * *", "15 */6 * * *", "30 */6 * * *", "45 */6 * * *", "50 */6 * * *", "40 3 * * *", "50 3 * * *", "0 4 * * *", "10 4 * * *", "20 4 * * *", "25 4 * * *", "35 4 * * *", "55 4 * * *", "5 5 * * *", "15 5 * * *", "25 5 * * *", "35 5 * * *", "45 5 * * *", "55 5 * * *", "5 6 * * *", "15 6 * * *", "25 6 * * *", "35 6 * * *", "15 7 * * *", "25 7 * * *", "35 7 * * *", "45 7 * * *", "55 7 * * *", "45 6 * * *", "55 6 * * *", "5 7 * * *", "5 8 * * *", "15 8 * * *", "35 8 * * *", "45 8 * * *", "55 8 * * *", "5 9 * * *", "15 9 * * *", "25 9 * * *", "35 9 * * *", "45 9 * * *", "55 9 * * *", "5 10 * * *", "15 10 * * *", "25 10 * * *", "35 10 * * *", "45 10 * * *", "55 10 * * *", "5 11 * * *", "15 11 * * *", "25 11 * * *", "35 11 * * *", "45 11 * * *", "55 11 * * *", "5 12 * * *", "15 12 * * *", "25 12 * * *", "35 12 * * *", "45 12 * * *", "55 12 * * *"]
   }
 }
