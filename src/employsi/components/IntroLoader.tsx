@@ -42,11 +42,17 @@ import { useEffect, useRef, useState } from "react";
  * appears and leaves inside 300ms on a warm load reads as a glitch rather than
  * as a loading screen, and the sweep below it would not complete one pass.
  *
- * 1900ms is one full sweep (see em-sweep), so the bar always finishes a stroke
- * rather than stopping halfway across. Down from 3000, which was the previous
- * design's build-up plus its dwell and has nothing to measure here.
+ * 2900ms, raised from 1900 on request to hold the composition a second longer.
+ *
+ * THAT GIVES UP THE SWEEP ALIGNMENT, deliberately and worth stating. 1900 was
+ * one full pass of em-sweep, so the bar always finished a stroke before the
+ * veil left; 2900 lands roughly half way through the second pass, so the fill
+ * is mid-travel when the fade starts. It dissolves over the 460ms fade rather
+ * than snapping, so it reads as a dissolve rather than a cut — but the property
+ * is gone, and the only values that keep it are multiples of 1.9s. 3800 is the
+ * next one up if finishing the stroke matters more than the exact second.
  */
-const DWELL_MS = 1900;
+const DWELL_MS = 2900;
 const MAX_HOLD = 6000;
 
 export function IntroLoader({ ready }: { ready: boolean }) {
