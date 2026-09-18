@@ -279,6 +279,16 @@ jobs:
             # (the else branch below reads inputs.source), which is how the
             # vendor's fix gets tested before the schedule depends on it again.
             #
+            # AND AS OF 2026-09-18 IT SHOULD STAY OFF EVEN IF BRIGHT DATA FIXES
+            # THE DATASET. indeed-archive.yml now collects Indeed nightly at
+            # 20:00 UTC through JobSpy against apis.indeed.com's GraphQL API:
+            # the full 395-company roster in 3m16s, free, measured from a hosted
+            # runner. Both feeds write the same rows under the same job_key, so
+            # running them together adds no coverage and puts this sweep's
+            # per-record bill back for data that now costs nothing. Putting
+            # "indeed" back here is a decision to pay for a duplicate, not a
+            # recovery — check indeed-archive is actually failing first.
+            #
             # WHY, and it is stronger evidence than the earlier stalls. The
             # snapshot from the 2026-08-31 sweep, sd_mths10c46vu2a9aut, was
             # re-polled on 2026-09-05 with --snapshot: still `running`, 105

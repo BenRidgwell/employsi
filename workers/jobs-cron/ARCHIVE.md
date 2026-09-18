@@ -927,11 +927,38 @@ That is the whole reason it is worth a fourth transport after three were
 measured dead. It is `--jobspy` in `scripts/indeed-to-d1.py`, sharing that
 file's roster load, skills mapping, cross-source dedupe and D1 upsert.
 
-**IT IS DISPATCH-ONLY UNTIL A RUNNER HAS WALKED THE ROSTER.** The measurement
-above came from a sandbox, and the address is the untested half — which is
-precisely the gap that burned this feed on 2026-08-09, when it was moved off
-Oxylabs on one probe request that did not survive the 354-company walk. A
-single fast result is not a feed.
+**IT RUNS NIGHTLY AT 20:00 UTC from 2026-09-18**, the slot Indeed held before
+it went dark. The schedule was withheld until a hosted runner had walked the
+roster, because the measurement above came from a sandbox and the address is
+the half that burned this feed on 2026-08-09, when it was moved off Oxylabs on
+one probe request that did not survive the 354-company walk. Two runs settled
+it:
+
+| | |
+| --- | --- |
+| solve, 40 companies | 18s, 20 reachable, 749 listings |
+| write, 395 companies | 3m16s, 6,605 listings, **139 new rows**, 0 failures |
+
+No challenge, no 429, no failed company.
+
+**139 new rows out of 6,605 is not a disappointment, and it is worth knowing
+why.** `existing_titles` drops any title already archived for that company by
+another source, so what Indeed adds on top of SEEK, Adzuna and the portals is
+genuinely small — and that dedupe is title-only, not title+location, so it
+understates the overlap it removes. The daily cadence earns its place anyway:
+Indeed's OWN rows re-upsert every run and refresh `last_seen`, which is what
+keeps "currently advertised" true and lets a taken-down ad age out. A feed that
+runs occasionally makes its own rows look stale.
+
+**Indeed stays gated off in `brightdata-archive.yml`.** Both write the same rows
+under the same `job_key`, so running both adds no coverage and restores a
+per-record bill for data this now collects free.
+
+**A scheduled fire gets no `inputs`.** A `workflow_dispatch` default does not
+apply to a cron run, so every `inputs.transport` in that workflow carries an
+explicit `|| 'jobspy'` fallback. Without it the nightly run reads the transport
+as `''`, skips the JobSpy install, falls through to the browser path and
+collects DataDome challenges — green install steps, zero rows.
 
 **THE REAL WORK WAS ATTRIBUTION, NOT TRANSPORT.** `company:"X"` is a keyword
 match on the employer field, not a filter, and `indeed-to-d1.py` stamps

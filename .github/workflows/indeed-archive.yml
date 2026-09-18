@@ -11,11 +11,13 @@
 #
 # against Bright Data's measured 0.50 min/company (~3h) and per-record billing.
 #
-# IT IS DISPATCH-ONLY UNTIL A RUNNER HAS WALKED THE ROSTER. That measurement
-# was taken from a sandbox, and the address — not the parser — is the half this
-# repo has been burned on before: Indeed was moved off Oxylabs on 2026-08-09 on
-# the strength of one probe that did not survive the 354-company walk. Dispatch
-# it here, read the summary, and only then give it a schedule.
+# THE RUNNER HAS NOW WALKED THE ROSTER, which is what the sandbox number could
+# not establish on its own — the address, not the parser, is the half this repo
+# has been burned on (Indeed was moved off Oxylabs on 2026-08-09 on one probe
+# that did not survive the 354-company walk). Measured from a hosted runner
+# 2026-09-18: 40 companies solve in 18s, then the full 395 with writes in
+# 3m16s for 6,605 listings and 139 new rows, no challenge and no failure.
+# It is scheduled daily on that evidence; see the `schedule` block below.
 #
 # Two things would end it, and both fail loudly rather than quietly: the app key
 # hardcoded in the package is rotated, or Indeed starts refusing runner
@@ -94,7 +96,31 @@
 name: indeed-archive
 
 on:
-  # SCHEDULE REMOVED 2026-08-29 — INDEED IS COLLECTED BY brightdata-archive.yml
+  # SCHEDULE RESTORED 2026-09-18, ON `jobspy` AND ONLY ON IT. The slot is the
+  # one Indeed already owned before 2026-08-29, so it collides with nothing.
+  #
+  # Two full-roster runs from a hosted runner on 2026-09-18 are what earned it:
+  #
+  #   solve, 40 companies   18s, 20 reachable, 749 listings
+  #   write, 395 companies  3m16s, 6,605 listings, 139 new rows, 0 failures
+  #
+  # No challenge, no 429, no failed company — so the sandbox measurement in the
+  # header holds from a GitHub address, which was the one thing this needed
+  # before it could be trusted on a schedule.
+  #
+  # INDEED STAYS GATED OFF IN brightdata-archive.yml. Both feeds write the same
+  # rows through the same job_key, so running them together buys nothing and
+  # puts Bright Data's per-record bill back for data this now collects free.
+  #
+  # DAILY IS THE RIGHT CADENCE EVEN THOUGH ONLY 139 ROWS WERE NEW. Most Indeed
+  # titles are already archived by another source and `existing_titles` drops
+  # those, but Indeed's OWN rows re-upsert on every run and refresh last_seen —
+  # which is what keeps "currently advertised" true and lets a taken-down ad age
+  # out. A feed that runs occasionally makes its own rows look stale.
+  schedule:
+    - cron: '0 20 * * *'
+
+  # THE EARLIER REMOVAL, KEPT — INDEED WAS COLLECTED BY brightdata-archive.yml
   # NOW, which is what the note at the top of this file anticipated when it said
   # Bright Data "has an Indeed scraper on the same per-record API ... if that
   # bill is ever worth comparing". It was, and the comparison has been made.
@@ -171,7 +197,13 @@ jobs:
       # minutes of Chrome, Chromium and Xvfb; asking for it on a transport that
       # makes one HTTPS request per company would triple the run for nothing.
       - name: Install Playwright, real Chrome and Xvfb
-        if: inputs.transport != 'jobspy'
+        # `inputs` IS EMPTY ON A SCHEDULED RUN — a workflow_dispatch default
+        # does not apply to a cron fire. Without the fallback this reads as ''
+        # on every scheduled run, which is != 'jobspy', so the nightly job would
+        # install Chrome it never uses AND skip the JobSpy install below, then
+        # fall through to the browser transport and collect DataDome challenges.
+        # Every `inputs.transport` in this file carries the same fallback.
+        if: ${{ (inputs.transport || 'jobspy') != 'jobspy' }}
         run: |
           python -m pip install --upgrade pip
           pip install playwright
@@ -180,7 +212,7 @@ jobs:
           sudo apt-get install -y xvfb
 
       - name: Install JobSpy
-        if: inputs.transport == 'jobspy'
+        if: ${{ (inputs.transport || 'jobspy') == 'jobspy' }}
         run: |
           python -m pip install --upgrade pip
           # UNPINNED DELIBERATELY. The app key and the GraphQL shape live in the
@@ -190,7 +222,7 @@ jobs:
           pip install python-jobspy
           python -c "import jobspy, importlib.metadata as m; print('python-jobspy', m.version('python-jobspy'))"
 
-      - name: Scrape Indeed → D1 (browser via SCRAPE_PROXY)
+      - name: Scrape Indeed → D1
         env:
           OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
           OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
@@ -259,13 +291,14 @@ jobs:
           # dead one lost its credentials.
           # JobSpy needs no proxy and no credential, so it is gated on nothing
           # but the D1 token — which is the point of it.
-          if [ "${{ inputs.transport }}" = "jobspy" ]; then
+          TRANSPORT="${{ inputs.transport || 'jobspy' }}"
+          if [ "$TRANSPORT" = "jobspy" ]; then
             python scripts/indeed-to-d1.py --jobspy \
               ${{ inputs.solve && '--solve' || '' }} \
               ${{ inputs.limit != '' && format('--limit {0}', inputs.limit) || '' }}
             exit $?
           fi
-          if [ "${{ inputs.transport }}" = "oxylabs" ]; then
+          if [ "$TRANSPORT" = "oxylabs" ]; then
             if [ -z "$OXYLABS_USERNAME" ]; then
               echo "OXYLABS_USERNAME is not set."
               exit 1
