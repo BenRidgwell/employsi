@@ -1645,3 +1645,66 @@ a capital. So is Workday's "2 Locations" placeholder, which names nowhere at all
 
   `siteNumber=CX_2` is the board; `CX_1` exists on the same pod and returns 8.
   The tenant honours `limit=200`, which turns 552 requests into 69.
+
+
+## 2026-09-18 (third batch): Compass Group through Australian Unity
+
+The next nine on the scraper-gap report. Six run in the Worker, two as Actions,
+and one could not be found at all.
+
+### In the Worker (groups 54-55, ticks `35 13 * * *` and `45 13 * * *`)
+
+| Employer | platform | roles | hubbed |
+| --- | --- | --- | --- |
+| Bolton Clarke | workday | 222 | 216 |
+| Australian Unity | successfactors | 146 | 141 |
+| Spotlight | pageupclassic | 102 | 85 |
+| University of Sydney | workday | 87 | 84 |
+| RACV | successfactors | 76 | 32 |
+| Life Without Barriers | pageupclassic | 73 | 33 |
+
+**THREE BOARDS PUBLISH A SITE, NOT A CITY**, and each needed a different answer.
+The University of Sydney says "Camperdown Campus" (49 of 87 roles) — all Greater
+Sydney, so all hinted, taking it from 3 placed to 84. Spotlight says "VIC -
+Metro" and "SA - Regional": the metro halves resolve to their capital, the
+regional halves are deliberately left alone, because the board has explicitly
+said the role is NOT in the capital. RACV says "Royal Pines Resort", "Torquay
+Resort", "Cape Schanck Resort" — only the City Club is hinted, since those
+resorts really are on the Gold Coast, the Surf Coast and the Mornington
+Peninsula and none of them is a hub here.
+
+**TWO pageupclassic BOARDS MUST NOT SHARE A TICK.** Life Without Barriers
+measured 73 roles cold and 0 immediately after Spotlight had run, repeatably.
+That is the facet allowance fetchPageUpClassic already documents — extended, it
+turns out, to the plain listing: after a burst the same url returns 200 with the
+job-link anchors present and the `<tbody id="search-results-content">` wrapper
+GONE, so the parse finds nothing and nothing errors. Production is the cold case
+(one tick a day each, and Mater is in group 53), and an empty pull is never
+written, so a degraded night leaves yesterday's rows alone.
+
+### Off-Worker (`.github/workflows/global-portals.yml`)
+
+- **`scripts/aecom-to-d1.py`** — AECOM's SmartRecruiters board, `portal-sr`.
+  5,262 postings at the API's 100-a-page cap. A size call, like TCS and Marriott.
+- **`scripts/compass-to-d1.py`** — Compass Group AU's PageUp board, `portal-pu`.
+  **Not a size call — a bot quota.** The board serves a plain GET normally until
+  an address has spent a small allowance, then answers **HTTP 202** with a 2.4 KB
+  stub for everything: measured twelve for twelve with identical headers, no 429
+  and no Retry-After.
+
+  **202 is the dangerous status** because it is a 2xx, so every "did this
+  succeed?" test says yes and the stub parses to zero cards. `getText` now
+  retries a 202 instead of returning it as content, and `fetchPageUpSites` no
+  longer treats a single empty page as the end of a board that has stated its
+  own total — that combination had it collect 100 of Compass's 644 and call it
+  done. Qube, the other pageupsites board, is unaffected: 132 roles before and
+  after.
+
+  Note `london-cpg` is Compass Group plc, plotted on London, and this is its
+  Australian arm — a real feed and a partial view, not a wrong one.
+
+### Chemist Warehouse: no board found
+
+Its careers page answers a datacentre request with 403, and the Expr3ss tenant
+at chemistwarehouse.expr3ss.com redirects every path to "Lost and Found" — the
+tenant exists and has no live board. Left without a feed rather than guessed at.

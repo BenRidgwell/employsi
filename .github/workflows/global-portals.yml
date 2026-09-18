@@ -45,7 +45,10 @@ concurrency:
 jobs:
   archive:
     runs-on: ubuntu-latest
-    # Sixty, because Marriott made this the longest job in the repo. Estimated
+    # Sixty, because Marriott made this the longest job in the repo, and the
+    # 2026-09-18 batch added AECOM (53 requests) and Compass (33, paced at 1.5s
+    # because its allowance is what breaks first, so ~1 minute of deliberate
+    # waiting) alongside it. Estimated
     # from the measured parts: Marriott ~69 requests plus ~2,000 D1 statements
     # for 13,786 rows, TCS 237 requests for 1,828, Infosys 32 for 1,256 — call
     # it 25 minutes with the D1 writes dominating, and leave real headroom
@@ -92,6 +95,39 @@ jobs:
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         run: |
           python scripts/marriott-to-d1.py \
+            ${{ inputs.dry && '--dry' || '' }} \
+            --max-pages "${{ inputs.max_pages || 0 }}"
+
+      - name: Scrape AECOM SmartRecruiters → D1
+        # 5,262 postings at the API's 100-a-page cap — 53 requests. Here rather
+        # than in a Worker tick for the same reason as the others in this file:
+        # the walk is too deep for a tick shaped around short bursts.
+        if: always()
+        timeout-minutes: 30
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: |
+          python scripts/aecom-to-d1.py \
+            ${{ inputs.dry && '--dry' || '' }} \
+            --max-pages "${{ inputs.max_pages || 0 }}"
+
+      - name: Scrape Compass Group AU (PageUp) → D1
+        # NOT a size problem — a bot quota. This board serves a plain GET
+        # normally until an address has spent a small allowance, then answers
+        # HTTP 202 with a stub for everything. A Worker would burn that
+        # allowance on its first tick and every one after; a runner address gets
+        # a fresh one once a day. See the script header for why 202 is the
+        # dangerous status here.
+        if: always()
+        timeout-minutes: 30
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: |
+          python scripts/compass-to-d1.py \
             ${{ inputs.dry && '--dry' || '' }} \
             --max-pages "${{ inputs.max_pages || 0 }}"
 

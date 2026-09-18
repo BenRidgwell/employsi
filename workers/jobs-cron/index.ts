@@ -1242,6 +1242,9 @@ const PORTAL_TICKS: Record<string, number> = {
   // cron-shaped string in a COMMENT is picked up as if it were an entry.)
   "15 13 * * *": 52,
   "25 13 * * *": 53,
+  // Groups 54-55 — the 2026-09-18 second batch.
+  "35 13 * * *": 54,
+  "45 13 * * *": 55,
 };
 
 const NEWS_TICKS: Record<string, number> = {

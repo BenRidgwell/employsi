@@ -1770,6 +1770,123 @@ export const SITES: SiteDef[] = [
     homeHub: "perth",
   },
   {
+    // Measured 2026-09-18: 222 roles, 216 placed on a hub.
+    id: "priv-bolton-clarke",
+    name: "Bolton Clarke",
+    sector: "Hospitals & aged care",
+    platform: "workday",
+    endpoint: "https://boltonclarke.wd105.myworkdayjobs.com/wday/cxs/boltonclarke/Careers/jobs",
+    origin: "https://boltonclarke.wd105.myworkdayjobs.com/en-US/Careers",
+    homeHub: "brisbane",
+  },
+  {
+    // RACV PUBLISHES ITS PROPERTY, NOT A CITY. Measured 2026-09-18: 74 roles,
+    // and only 20 placed on a hub because the location cell reads "Royal Pines
+    // Resort", "Torquay Resort", "Cape Schanck Resort".
+    //
+    // Only the City Club is hinted, and that is deliberate. RACV's resorts are
+    // genuinely NOT in capitals — Royal Pines is the Gold Coast, Noosa is
+    // Noosa, Healesville is the Yarra Valley, Cape Schanck is the Mornington
+    // Peninsula — and none of those is a hub on this map. Hinting them to
+    // Melbourne would move real jobs a hundred kilometres to make a number look
+    // better.
+    id: "priv-racv",
+    name: "RACV",
+    sector: "Insurance",
+    platform: "successfactors",
+    endpoint: "https://careers.racv.com.au",
+    origin: "https://careers.racv.com.au",
+    hubHints: [["city club", "melbourne"]],
+    homeHub: "melbourne",
+  },
+  {
+    // SPOTLIGHT PUBLISHES A STATE AND A METRO/REGIONAL SPLIT — "VIC - Metro",
+    // "SA - Regional" — which is more than most boards give and still not a
+    // city. Measured 2026-09-18: 102 roles, 48 placed before these hints.
+    //
+    // The "- Metro" halves resolve to their capital, which is the rule
+    // HUB_MATCH already applies to bare state names. The "- Regional" halves
+    // are deliberately absent: "VIC - Regional" says explicitly that the role
+    // is NOT in Melbourne, and hinting it there would be inventing a location
+    // the board went out of its way to rule out.
+    id: "priv-spotlight",
+    name: "Spotlight",
+    sector: "Retail",
+    platform: "pageupclassic",
+    endpoint: "https://careers.spotlightcareers.com/en/listing/",
+    origin: "https://careers.spotlightcareers.com",
+    hubHints: [
+      ["vic - metro", "melbourne"],
+      ["nsw - metro", "sydney"],
+      ["qld - metro", "brisbane"],
+      ["sa - metro", "adelaide"],
+      ["wa - metro", "perth"],
+    ],
+    homeHub: "melbourne",
+  },
+  {
+    // CAMPUS NAMES, NOT SUBURBS. Measured 2026-09-18: 87 roles and only THREE
+    // placed on a hub, because the board says "Camperdown Campus" (49) and
+    // "Darlington Campus" (23) where every other board says Sydney. All of
+    // these are University of Sydney campuses inside Greater Sydney.
+    id: "uni-university-of-sydney",
+    name: "University of Sydney",
+    sector: "Higher education",
+    platform: "workday",
+    endpoint: "https://usyd.wd105.myworkdayjobs.com/wday/cxs/usyd/USYD_EXTERNAL_CAREER_SITE/jobs",
+    origin: "https://usyd.wd105.myworkdayjobs.com/en-US/USYD_EXTERNAL_CAREER_SITE",
+    hubHints: [
+      ["camperdown", "sydney"],
+      ["darlington", "sydney"],
+      ["westmead", "sydney"],
+      ["chippendale", "sydney"],
+      ["newtown", "sydney"],
+      ["brownlow hill", "sydney"], // the Camden farms, Greater Sydney
+      ["campus", "sydney"], // every remaining "<name> Campus" on this board
+    ],
+    homeHub: "sydney",
+  },
+  {
+    // Measured 2026-09-18: 73 roles. Its locations are SEEK-style regions
+    // ("Newcastle, Maitland & Hunter", "Coffs Harbour & North Coast"), most of
+    // which are regional NSW and QLD and belong to no hub — correctly left
+    // unplaced rather than hinted into a capital.
+    //
+    // THIS BOARD DEGRADES UNDER REPEATED REQUESTS, and it does it in the worst
+    // possible way: measured 2026-09-18, a cold address gets the full results
+    // table, and after a burst the SAME url returns 200 with the job-link
+    // anchors still present but the `<tbody id="search-results-content">`
+    // wrapper GONE. Nothing errors; the parse simply finds no rows.
+    //
+    // First run from a cold address: 73 roles. Every run during a burst of
+    // testing: 0, repeatably, while a single direct fetch in the same minute
+    // returned 146 anchors. It is the same allowance fetchPageUpClassic already
+    // documents for the faceted searches, applied to the listing as well.
+    //
+    // Which is survivable, because production is the cold case: one tick a day,
+    // and an empty pull is never written — so a degraded night leaves
+    // yesterday's rows alone rather than blanking the card. What it must not do
+    // is share a tick with another pageupclassic board, which is how a cold
+    // address stops being cold: Spotlight is in group 55 and Mater in 53.
+    id: "priv-life-without-barriers",
+    name: "Life Without Barriers",
+    sector: "Community services",
+    platform: "pageupclassic",
+    endpoint: "https://careers.lwb.org.au/en/listing/",
+    origin: "https://careers.lwb.org.au",
+    homeHub: "sydney",
+  },
+  {
+    // Measured 2026-09-18: 146 roles, 141 placed on a hub.
+    id: "priv-australian-unity",
+    name: "Australian Unity",
+    sector: "Insurance",
+    platform: "successfactors",
+    endpoint: "https://careers.australianunity.com.au",
+    origin: "https://careers.australianunity.com.au",
+    homeHub: "melbourne",
+  },
+  {
     // Measured 2026-09-18: 378 roles, the classic `<tr class="data-row">` theme
     // at 25 a page, and the board states its own total in the pagination label.
     // fetchPortal returned exactly 378, all of them placed on a hub.
@@ -3090,6 +3207,24 @@ export const PORTAL_GROUPS: string[][] = [
     "priv-linfox-au",
     "priv-linfox-nz",
   ],
+
+  // Groups 54-55: the six in-Worker feeds from the 2026-09-18 second batch.
+  // Measured that day: Bolton Clarke 222, Australian Unity 146, Spotlight 100,
+  // University of Sydney 87, RACV 76, Life Without Barriers 73.
+  //
+  // THE SPLIT IS FORCED BY THE PAGEUP FACET QUOTA, not by role count. That
+  // board type rations faceted searches by serving an EMPTY result set rather
+  // than a 429 (see fetchPageUpClassic), so two of them in one tick starve each
+  // other — measured, when Life Without Barriers returned 0 in a batch and 73
+  // on its own minutes later. Spotlight, Life Without Barriers and Mater are
+  // therefore in three different groups.
+  //
+  // Compass Group is NOT here. Its board answers a datacentre address with a
+  // 202 bot check once a small allowance is spent — twelve for twelve on the
+  // measurement — so it runs as a GitHub Action instead
+  // (scripts/compass-to-d1.py).
+  ["priv-bolton-clarke", "uni-university-of-sydney", "priv-racv", "priv-life-without-barriers"],
+  ["priv-australian-unity", "priv-spotlight"],
 ];
 
 const UA =
@@ -3490,6 +3625,23 @@ async function getText(url: string, init?: RequestInit): Promise<string | null> 
         ...init,
         headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml", ...init?.headers },
       });
+      // A 202 IS AN INTERSTITIAL, NOT A PAGE, and `res.ok` is true for it —
+      // which is the trap: returned as content it parses to zero rows, the walk
+      // stops, and the feed reports an employer with no vacancies.
+      //
+      // Found on Compass Group's PageUp board, and it turned out to be a QUOTA
+      // rather than a flake. Measured 2026-09-18: the first requests from a
+      // fresh address returned 374 KB and 20 job cards, and after a few dozen
+      // every single request returned the 2.4 KB stub — twelve for twelve, with
+      // identical headers. That is why Compass is not a Worker feed at all (see
+      // scripts/compass-to-d1.py); this retry is what stops a board that starts
+      // being challenged mid-walk from reading as an empty one.
+      //
+      // Nothing legitimate answers a GET for a job board with 202, so it is
+      // retried like a 429 and then given up on — an empty pull is never
+      // written, so a retry that also fails leaves yesterday's rows alone
+      // rather than blanking the card.
+      if (res.status === 202) continue;
       if (res.ok) return await res.text();
       if (res.status < 500 && res.status !== 429) return null;
     } catch {
@@ -5026,9 +5178,23 @@ async function fetchPageUpSites(site: SiteDef): Promise<PortalJob[]> {
   const seen = new Set<string>();
   const max = site.maxPages ?? DEFAULT_MAX_PAGES;
   let advertised = 0;
+  // Pages that came back unusable. A board that states a total tells us the
+  // walk is not finished, so one bad page should cost ONE PAGE and not the rest
+  // of the board — which is what breaking did. Measured 2026-09-18 on Compass
+  // Group: 644 advertised, 100 collected, because a single intermittent 202
+  // ended the walk on page 5 of 33 and nothing said so.
+  //
+  // Bounded rather than unbounded, because a stale advertised total must not
+  // turn into an endless walk: after this many unusable pages in a row the walk
+  // gives up and returns what it has.
+  const MISS_BUDGET = 5;
+  let misses = 0;
   for (let page = 1; page <= max; page++) {
     const html = await getText(`${site.endpoint}?page=${page}`);
-    if (!html) break;
+    if (!html) {
+      if (advertised && out.length < advertised && ++misses <= MISS_BUDGET) continue;
+      break;
+    }
     if (!advertised) {
       const t = html.match(/of\s*<b>\s*([\d,]+)\s*<\/b>\s*in total/i);
       if (t) advertised = Number(t[1].replace(/,/g, ""));
@@ -5037,7 +5203,10 @@ async function fetchPageUpSites(site: SiteDef): Promise<PortalJob[]> {
     // already in the list below; only <article> cards are the result set, so
     // splitting on <article> both parses the list and skips the duplicates.
     const cards = html.split(/<article\b/i).slice(1);
-    if (!cards.length) break;
+    if (!cards.length) {
+      if (advertised && out.length < advertised && ++misses <= MISS_BUDGET) continue;
+      break;
+    }
     let added = 0;
     for (const card of cards) {
       const a = card.match(
@@ -5062,8 +5231,14 @@ async function fetchPageUpSites(site: SiteDef): Promise<PortalJob[]> {
     }
     // Bounded by the board's own count rather than by a short page: a fetch
     // failure also returns zero rows, and stopping on that would be
-    // indistinguishable from reaching the end.
-    if (!added) break;
+    // indistinguishable from reaching the end. Where the board states a total,
+    // a page that adds nothing is treated as a miss and skipped rather than
+    // taken as the end of the list.
+    if (!added) {
+      if (advertised && out.length < advertised && ++misses <= MISS_BUDGET) continue;
+      break;
+    }
+    misses = 0;
     if (advertised && out.length >= advertised) break;
   }
   return out;
@@ -6315,9 +6490,23 @@ async function fetchTeamtailor(site: SiteDef): Promise<PortalJob[]> {
   const size = site.pageSize ?? 20;
   let advertised = 0;
   const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  // Pages that came back unusable. A board that states a total tells us the
+  // walk is not finished, so one bad page should cost ONE PAGE and not the rest
+  // of the board — which is what breaking did. Measured 2026-09-18 on Compass
+  // Group: 644 advertised, 100 collected, because a single intermittent 202
+  // ended the walk on page 5 of 33 and nothing said so.
+  //
+  // Bounded rather than unbounded, because a stale advertised total must not
+  // turn into an endless walk: after this many unusable pages in a row the walk
+  // gives up and returns what it has.
+  const MISS_BUDGET = 5;
+  let misses = 0;
   for (let page = 1; page <= max; page++) {
     const html = await getText(`${site.endpoint}?page=${page}`);
-    if (!html) break;
+    if (!html) {
+      if (advertised && out.length < advertised && ++misses <= MISS_BUDGET) continue;
+      break;
+    }
     if (!advertised) {
       advertised = Number(html.match(/([\d,]+)\s+jobs?\b/i)?.[1]?.replace(/,/g, "") ?? 0);
     }
