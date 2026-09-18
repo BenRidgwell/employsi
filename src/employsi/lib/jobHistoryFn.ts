@@ -12,6 +12,7 @@ import {
   parseStoredSkills,
 } from "../data/skillsTaxonomy";
 import { AREA_SOURCES, canonicalArea } from "../data/hiringAreas";
+import { coverageDay } from "./analystFn";
 import { annualAud, medianAnnual } from "./salaryParse";
 import { FX_AS_AT } from "../data/fxRates";
 import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
@@ -300,6 +301,10 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
     const SPARK_DAYS = 30;
     const SPARK_MIN_POINTS = 5; // below this the line says more about the
     // archive's age than about demand, so it is dropped entirely
+    // How far back the coverage guard below may step. The same 3 analystFn
+    // uses: far enough to clear a feed that has not cycled, near enough that a
+    // permanently dead feed cannot park the ticker a week in the past.
+    const MAX_STEP_BACK_DAYS = 3;
     const day = (offset: number) => {
       const d = new Date();
       d.setUTCDate(d.getUTCDate() - offset);
@@ -309,18 +314,30 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
     // computed from the same rows, so all three cost one query.
     const widest = Math.max(...TREND_WINDOWS.map((w) => w.days));
     const scanFrom = day(widest * 2);
-    // Per-window comparison boundaries, resolved once.
-    const bounds = TREND_WINDOWS.map((w) => ({
-      key: w.key,
-      recentStart: day(w.days),
-      priorStart: day(w.days * 2),
-      priorEnd: day(w.days),
-      now: {} as Record<string, number>,
-      prev: {} as Record<string, number>,
-    }));
-    // Oldest → newest, the days the sparkline covers.
-    const sparkDays: string[] = [];
-    for (let i = SPARK_DAYS - 1; i >= 0; i--) sparkDays.push(day(i));
+    // ONE SERIES, AND BOTH HALVES OF EVERY WINDOW ARE READ FROM IT.
+    //
+    // This used to measure the two halves DIFFERENTLY, which is the thing
+    // CLAUDE.md warns about in as many words: `now` counted listings whose
+    // last_seen fell inside the recent window, while `prev` counted listings
+    // LIVE AT ANY POINT in the prior window (first_seen <= end AND last_seen >=
+    // start). The span reconstruction always sweeps up more rows than a
+    // last_seen count, so prev exceeded now structurally — not because demand
+    // fell. Measured on production 2026-09-18, every skill in the 24h window and
+    // every skill in the 7d window came back negative, 16 of 16 in both, most of
+    // them pinned to the -16% clamp; the 30d window flipped the other way, 16 of
+    // 16 positive at +24%, because there the archive's own growth dominated.
+    // Sixteen unrelated skills never move in lockstep: that is the method
+    // showing through, not the market.
+    //
+    // So the day-by-day live count below is now the ONLY measure, and the delta
+    // is two points on it. The sparkline is drawn from the same array, so the
+    // line and the number finally describe the same thing.
+    const seriesDays: string[] = [];
+    for (let i = widest * 2; i >= 0; i--) seriesDays.push(day(i));
+    const seriesStartMs = Date.parse(seriesDays[0] + "T00:00:00Z");
+    const dayIdx = (d: string) =>
+      Math.round((Date.parse(d + "T00:00:00Z") - seriesStartMs) / 86400000);
+    const bounds = TREND_WINDOWS.map((w) => ({ key: w.key, days: w.days }));
     try {
       const res = await db
         .prepare(
@@ -340,6 +357,11 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
       // New listings per day, used below to find the day collection actually
       // began rather than the day the first stray row landed.
       const newPerDay: Record<string, number> = {};
+      // Per-feed row count and most recent write, for coverageDay below — the
+      // other end of the same problem: not when collection STARTED, but which
+      // day it has finished.
+      const feedMax: Record<string, { mx: string; n: number }> = {};
+      let latestSeen = "";
       // skill -> the annual AUD figures advertised for it RIGHT NOW, kept BOTH
       // pooled and split by market. `payFrom` is the same boundary the app uses
       // for "currently advertised", so the median describes ads a reader could
@@ -387,18 +409,23 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
             }
           }
         }
-        for (const b of bounds) {
-          if (ls >= b.recentStart) for (const s of skills) b.now[s] = (b.now[s] || 0) + 1;
-          if (fs <= b.priorEnd && ls >= b.priorStart)
-            for (const s of skills) b.prev[s] = (b.prev[s] || 0) + 1;
-        }
+        // WHICH FEEDS HAVE REPORTED, AND HOW RECENTLY. Counted after the
+        // visibility filter above, so coverage describes the rows that actually
+        // reach the figures rather than the whole table.
+        const srcName = String(r.source || "");
+        const f = (feedMax[srcName] ||= { mx: "", n: 0 });
+        f.n += 1;
+        if (ls > f.mx) f.mx = ls;
+        if (ls > latestSeen) latestSeen = ls;
         // A listing is live on day D when it was first seen on or before D and
-        // last seen on or after it.
-        for (let i = 0; i < sparkDays.length; i++) {
-          const d = sparkDays[i];
-          if (fs > d || ls < d) continue;
+        // last seen on or after it. Walked by index rather than by testing every
+        // day against every row: the series is twice as long as it used to be,
+        // and this makes it cheaper than the 30-day version it replaces.
+        const lo = Math.max(0, dayIdx(fs));
+        const hi = Math.min(seriesDays.length - 1, dayIdx(ls));
+        for (let i = lo; i <= hi; i++) {
           for (const sk of skills) {
-            const arr = (daily[sk] ||= new Array(sparkDays.length).fill(0));
+            const arr = (daily[sk] ||= new Array(seriesDays.length).fill(0));
             arr[i] += 1;
           }
         }
@@ -423,13 +450,42 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
         .sort();
       const coverageStart = collectingDays[0] ?? archiveStart;
 
-      // Trim the series to days the archive actually covers.
-      const firstCovered = sparkDays.findIndex((d) => d >= archiveStart);
-      const sparkFrom = firstCovered < 0 ? sparkDays.length : firstCovered;
+      // WHICH DAY IS THE LAST ONE WORTH MEASURING?
+      //
+      // The other end of the coverage problem, and the one that made every short
+      // window negative. TODAY IS ALWAYS PARTIAL — measured on production
+      // 2026-09-18, today held 20,176 ads from 35 sources against yesterday's
+      // 36,584 from 74, because most feeds had not run yet. Comparing that
+      // half-collected day against fully collected ones reports the missing
+      // feeds as falling demand, for every skill at once.
+      //
+      // Two guards, the same pair analystFn uses: step off today, which is never
+      // finished; then step back to coverageDay, the most recent day by which
+      // 95% of the rows' feeds have reported, because yesterday is often short
+      // too. Both are anchored to the data rather than the clock, so a stalled
+      // scraper degrades the figure instead of silently skewing it — and the
+      // step back is floored so one dead feed cannot drag the ticker into the
+      // distant past.
+      const yesterday = day(1);
+      let asOf = latestSeen && latestSeen < yesterday ? latestSeen : yesterday;
+      const cov = coverageDay(Object.values(feedMax));
+      if (cov && cov < asOf) {
+        const floor = day(1 + MAX_STEP_BACK_DAYS);
+        asOf = cov > floor ? cov : floor;
+      }
+      const iNow = dayIdx(asOf);
+
+      // The sparkline ends on the same day the delta does, so a partial today
+      // can no longer put a phantom cliff on the end of every line.
+      const firstCovered = seriesDays.findIndex((d) => d >= archiveStart);
+      const sparkFrom = Math.max(
+        Math.max(0, iNow - (SPARK_DAYS - 1)),
+        firstCovered < 0 ? seriesDays.length : firstCovered,
+      );
       const sparkFor = (name: string): number[] | undefined => {
         const arr = daily[name];
         if (!arr) return undefined;
-        const cut = arr.slice(sparkFrom);
+        const cut = arr.slice(sparkFrom, iNow + 1);
         if (cut.length < SPARK_MIN_POINTS) return undefined;
         // A dead-flat line is noise, not signal — leave it off.
         return cut.some((v) => v !== cut[0]) ? cut : undefined;
@@ -451,17 +507,19 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
         // A window whose prior half predates collection is left EMPTY. The
         // ticker says so rather than showing a figure nobody measured, and the
         // window starts reporting on its own once the archive is old enough.
-        if (b.priorStart < coverageStart) {
+        const iPrev = iNow - b.days;
+        if (iPrev < 0 || seriesDays[iPrev] < coverageStart) {
           out[b.key] = [];
           continue;
         }
-        const skills = new Set([...Object.keys(b.now), ...Object.keys(b.prev)]);
         type Row = { name: string; v: number; sig: number };
         const movers: Row[] = [];
-        for (const s of skills) {
+        for (const s of Object.keys(daily)) {
           if (!(s in SKILL_CATEGORY)) continue; // only canonical skills on the ticker
-          const now = b.now[s] || 0;
-          const prev = b.prev[s] || 0;
+          // BOTH SIDES OFF THE SAME SERIES: live vacancies demanding this skill
+          // on the reference day, against the same count `days` earlier.
+          const now = daily[s][iNow] || 0;
+          const prev = daily[s][iPrev] || 0;
           // Require a little volume so single-listing noise doesn't dominate.
           if (now + prev < 3) continue;
           const delta = now - prev;
@@ -477,23 +535,22 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
         // Before the slice, not after, so suppressing a speciality frees its
         // slot for a different skill instead of shortening the ticker.
         const picked = dropRedundantKin(movers, (m) => m.name).slice(0, 16);
-        // Fallback: if the archive is too young for real movers in this window,
-        // show the highest-demand skills right now as a mild positive so the
-        // ticker still reads live.
-        if (picked.length < 6) {
-          const top = dropRedundantKin(
-            Object.entries(b.now)
-              .filter(([s]) => s in SKILL_CATEGORY)
-              .sort((x, y) => y[1] - x[1]),
-            ([s]) => s,
-          ).slice(0, 16);
-          const seen = new Set(picked.map((p) => p.name));
-          for (const [name, cnt] of top) {
-            if (seen.has(name)) continue;
-            picked.push({ name, v: Math.min(18, 2 + Math.round(cnt / 3)), sig: cnt });
-            if (picked.length >= 12) break;
-          }
-        }
+        // THE PADDING FALLBACK IS GONE, and it has to be.
+        //
+        // When a window produced fewer than six movers this topped the ticker up
+        // with the highest-demand skills at an INVENTED percentage —
+        // `Math.min(18, 2 + Math.round(cnt / 3))`, a number derived from a
+        // headcount and displayed as a change over time. That is precisely what
+        // the seed list was deleted for (see the note in components/Ticker.tsx:
+        // "Every percentage in it was invented"), and it survived in the one
+        // place nobody looked because it only fires when the real data is thin.
+        //
+        // It also had to go for this fix to be checkable: padding fires exactly
+        // when the measurement is weakest, so it would mask the very windows the
+        // coverage guards above now decline to report.
+        //
+        // A window with too little to say renders the ticker's own empty state,
+        // which says so in words.
         out[b.key] = picked.map((p) => ({
           // A speciality only reaches here when its parent did not, so the
           // label says which skill it narrows — "Midwifery" alone reads like a
