@@ -218,6 +218,26 @@ interface SiteDef {
    * filtered total against the facet's own count.
    */
   appliedFacets?: Record<string, string[]>;
+  /**
+   * Which pipe-separated segment of Workday's `locationsText` is the location,
+   * 0-based, for a tenant that packs other fields into it.
+   *
+   * Almost every Workday board puts a location and nothing else there. The
+   * Salvation Army's does not — measured 2026-09-18, it serves
+   * `Permanent | Morwell, VIC, Australia | Salvos Stores`, i.e. employment type,
+   * location, business unit.
+   *
+   * THIS IS NOT COSMETIC. The archive's `job_key` is
+   * source|title|company|location, so leaving the employment type in the
+   * location means a role that changes from Casual to Permanent gets a NEW key
+   * and archives as a second, additional vacancy — an invented opening that
+   * nothing downstream could tell from a real one.
+   *
+   * Left unset the whole string is used, which is right for every other tenant.
+   * A segment index that does not exist falls back to the whole string rather
+   * than to "", because a messy location is recoverable and an empty one is not.
+   */
+  locationPart?: number;
   /** Hard ceiling on pages, so a paging bug can't run away with the budget. */
   maxPages?: number;
   /**
@@ -1783,6 +1803,9 @@ export const SITES: SiteDef[] = [
     platform: "workday",
     endpoint: "https://salvationarmy.wd3.myworkdayjobs.com/wday/cxs/salvationarmy/Salvos/jobs",
     origin: "https://salvationarmy.wd3.myworkdayjobs.com/en-US/Salvos",
+    // This tenant serves `Permanent | Morwell, VIC, Australia | Salvos Stores`
+    // in locationsText — see `locationPart`. Segment 1 is the location.
+    locationPart: 1,
     homeHub: "melbourne", // national office, Blackburn
   },
   {
@@ -3612,7 +3635,12 @@ async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
       const path = (p.externalPath || "").trim();
       if (!title || !path || seen.has(path)) continue;
       seen.add(path);
-      const loc = (p.locationsText || "").trim();
+      const whole = (p.locationsText || "").trim();
+      const parts = whole.split("|").map((x) => x.trim());
+      const loc =
+        site.locationPart !== undefined && parts[site.locationPart]
+          ? parts[site.locationPart]
+          : whole;
       out.push(
         job(site, title, loc, site.origin + path, workdayPosted(p.postedOn || ""), "Career portal"),
       );
