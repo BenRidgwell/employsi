@@ -27,6 +27,10 @@ on:
         description: 'How many rows to print (0 = every employer with an ad)'
         type: string
         default: '80'
+      gaps:
+        description: 'Hide employers a whole-employer-family board already reads (gov / uniroles)'
+        type: boolean
+        default: false
   push:
     paths:
       - 'scripts/scraper-gap.ts'
@@ -52,8 +56,14 @@ jobs:
           set -o pipefail
           TOP='${{ inputs.top }}'
           if [ "$TOP" = '0' ]; then ARGS=--all; else ARGS="--top ${TOP:-80}"; fi
+          if [ '${{ inputs.gaps }}' = 'true' ]; then ARGS="$ARGS --gaps"; fi
           bun run scripts/scraper-gap.ts $ARGS | tee gap.txt
-          bun run scripts/scraper-gap.ts --csv > scraper-gap.csv
+          # The CSV is always the FULL table, whatever the printed view was asked
+          # to hide: it carries covered_by_board, so a reader can filter it
+          # themselves, and a file that silently omits 435 employers because of a
+          # display flag is the kind of artefact someone later counts rows in.
+          bun run scripts/scraper-gap.ts --csv --all > scraper-gap.csv
+          bun run scripts/scraper-gap.ts --all --gaps > scraper-gap-gaps.txt
       - name: Publish the report to the run summary
         if: always()
         run: |
@@ -68,5 +78,7 @@ jobs:
         if: always()
         with:
           name: scraper-gap
-          path: scraper-gap.csv
+          path: |
+            scraper-gap.csv
+            scraper-gap-gaps.txt
           if-no-files-found: ignore

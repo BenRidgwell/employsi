@@ -256,7 +256,8 @@ async function main() {
 
   if (csv) {
     console.log(
-      "rank,id,name,ticker,group,ads,live,rows,seek_advertiser,first_seen,last_seen,sources",
+      "rank,id,name,ticker,group,ads,live,rows,seek_advertiser,covered_by_board," +
+        "first_seen,last_seen,sources",
     );
     withAds.forEach((r, i) =>
       console.log(
@@ -270,6 +271,7 @@ async function main() {
           r.live,
           r.rows,
           r.seek ? "yes" : "no",
+          r.via,
           r.first,
           r.last,
           `"${r.sources}"`,
