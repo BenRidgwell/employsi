@@ -149,6 +149,7 @@ type Platform =
   | "wprest"
   | "wploop"
   | "pageupclassic"
+  | "workpac"
   | "eightfoldpcs"
   | "radancy"
   | "adlogic"
@@ -201,6 +202,32 @@ interface SiteDef {
    * then to homeHub, so a hint list is additive and never removes a placement.
    */
   hubHints?: [needle: string, hub: string][];
+  /**
+   * Treat a location this board states but no needle recognises as the
+   * employer's home hub, the way a location that names the home country
+   * already is.
+   *
+   * ONLY FOR A SINGLE-REGION EMPLOYER WHOSE BOARD PRINTS BARE PLACE NAMES.
+   * UnitingCare Queensland is the case it was added for: measured 2026-09-18,
+   * 275 of its 322 roles resolved to no hub at all, because the board writes
+   * "Buderim", "Urraween", "Dicky Beach" and "Mount Warren Park" where every
+   * other board writes a state or a country. There are 103 such names in one
+   * pull with a long tail of one-row aged-care facilities, so a hubHints list
+   * would be both enormous and permanently out of date — and an unplaced row
+   * archives but never appears on the map, so the card would have been right
+   * and the globe 85% empty.
+   *
+   * It is a claim about the EMPLOYER, not a convenience: this flag says every
+   * site this board can name is in one state, which is true of UnitingCare
+   * Queensland by definition and false of most employers. Regional Queensland
+   * resolving to Brisbane is the rule HUB_MATCH already applies — "townsville",
+   * "gladstone" and "weipa" are all mapped to brisbane there.
+   *
+   * It cannot override a placement: it is reached only when no hint and no
+   * HUB_MATCH needle matched, so a needle that resolves a location elsewhere,
+   * or deliberately to null, still wins.
+   */
+  assumeHomeHub?: boolean;
   /**
    * Workday `appliedFacets`, for a tenant whose board is not only this company.
    *
@@ -265,6 +292,21 @@ interface SiteDef {
   /** Oracle Recruiting Cloud only: the tenant's careers site number, as it
    *  appears in the portal URL (`/sites/CX_2001/jobs`). Defaults to CX_1. */
   siteNumber?: string;
+  /**
+   * Oracle Recruiting Cloud only: the `selectedLocationsFacet` id to narrow a
+   * GLOBAL tenant to one country, read off the board's own `locationsFacet`.
+   *
+   * Needed because an unfiltered global tenant does not simply add rows the map
+   * ignores — it adds rows the map MISPLACES. `hubFor` returns null for a
+   * location no needle matches, and processPortals then falls back to the
+   * company's first roster city, so GHD's Vancouver and Montreal requisitions
+   * would have archived as Sydney ones. Filtering at the source is the only
+   * place that cannot be got wrong later.
+   *
+   * The id is per tenant and measured, never guessed: it is an internal
+   * geography key, not a country code.
+   */
+  oracleLocationFacet?: string;
   /**
    * Taleo only: the career section's portal number, read off the careers page
    * (`FacetedSearchSettings: { portalNo: '8115010150' }`). The REST job board
@@ -2930,6 +2972,135 @@ export const SITES: SiteDef[] = [
     // the page as JSON; see fetchCjd.
     homeHub: "perth",
   },
+  // ── The 2026-09-18 third batch: the next nine on the scraper-gap report ────
+  {
+    id: "priv-unitingcare-queensland",
+    name: "UnitingCare Queensland",
+    sector: "Healthcare & Social Assistance",
+    platform: "workday",
+    // Measured 2026-09-18: `total` 322, 20 a page. Plain Workday, no per-tenant
+    // quirk. The employer's OWN site is not usable as a starting point —
+    // unitingcareqld.com.au answers a datacentre address with a 429 — so this
+    // tenant was found from the outside and then verified against the API.
+    endpoint:
+      "https://unitingcareqld.wd105.myworkdayjobs.com/wday/cxs/unitingcareqld/UnitingCareCareers/jobs",
+    origin: "https://unitingcareqld.wd105.myworkdayjobs.com/UnitingCareCareers",
+    // The board prints BARE QUEENSLAND PLACE NAMES — "Buderim", "Urraween",
+    // "Yeppoon" — with no state and no country, so 275 of the 322 resolved to
+    // no hub before this flag. See assumeHomeHub for why the flag rather than a
+    // hint list, and why it is defensible for this employer in particular.
+    assumeHomeHub: true,
+    homeHub: "brisbane",
+  },
+  {
+    id: "priv-kpmg",
+    name: "KPMG",
+    sector: "Professional Services",
+    platform: "smartrecruiters",
+    // SmartRecruiters tenant `KPMGAustralia1`. THE TRAILING 1 IS THE WHOLE
+    // POINT: `KPMGAustralia` also exists, also answers 200, and is a SANDBOX —
+    // measured 2026-09-18 it returned 25 postings named "Grad Campaign Test
+    // Job", "Max Term Graduate Multiple Test" and "Diversity and Inclusion
+    // Manager (D&I UAT)". Nothing in the response says it is a test tenant;
+    // only reading the titles does. KPMGAustralia1 returned 110 real roles.
+    endpoint: "KPMGAustralia1",
+    origin: "https://careers.smartrecruiters.com/KPMGAustralia1",
+    homeHub: "sydney",
+  },
+  {
+    id: "melbourne-ifl",
+    name: "Insignia Financial",
+    sector: "Financial Services",
+    platform: "successfactors",
+    // Classic SuccessFactors theme, self-hosted skin over career10. Measured
+    // 2026-09-18: "Results 1 to 25 of 32", 25 `/job/` links on the first page.
+    // The SF company is `ioofservic` — the tenant kept IOOF's key through the
+    // rename — but nothing needs it: the fetcher reads the skin, not career10.
+    endpoint: "https://careers.insigniafinancial.com.au",
+    origin: "https://careers.insigniafinancial.com.au",
+    homeHub: "melbourne",
+  },
+  {
+    id: "priv-ghd",
+    name: "GHD",
+    sector: "Professional Services",
+    platform: "oracle",
+    // Oracle Recruiting Cloud on the EJOV pod, site CX_1. A GLOBAL tenant:
+    // measured 2026-09-18, 627 requisitions of which 246 are United States,
+    // 198 Canada and 68 Australia. The facet id below is Australia's, read off
+    // the board's own `locationsFacet` that day — see oracleLocationFacet for
+    // why the filter has to happen here rather than downstream.
+    endpoint: "https://ejov.fa.ca2.oraclecloud.com",
+    origin: "https://ejov.fa.ca2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX",
+    siteNumber: "CX_1",
+    oracleLocationFacet: "300000000294772",
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-deloitte-touche-tohmatsu",
+    name: "Deloitte Touche Tohmatsu",
+    sector: "Professional Services",
+    platform: "successfactors",
+    // Classic SuccessFactors at jobs.deloitte.com.au. Measured 2026-09-18:
+    // "Results 1 to 25 of 255". deloitte.com/au/en/careers/ is a marketing page
+    // that names no board at all, and careers.deloitte.com redirects to the US
+    // site — jobs.deloitte.com.au is the Australian firm's own.
+    endpoint: "https://jobs.deloitte.com.au",
+    origin: "https://jobs.deloitte.com.au",
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-calvary-health-care",
+    name: "Calvary Health Care",
+    sector: "Healthcare & Social Assistance",
+    platform: "pageupsites",
+    // PageUp's "Sites" theme on the employer's own domain (the assets come from
+    // calvary.careerpages.rec-marketing.dc2.pageuppeople.com). Measured
+    // 2026-09-18: 7 pages of 30, 193 roles, and NO stated total anywhere on the
+    // page — see the note in fetchPageUpSites on why the pagination has to
+    // stand in for one here.
+    endpoint: "https://careers.calvarycare.org.au/jobs/search",
+    origin: "https://careers.calvarycare.org.au",
+    homeHub: "canberra",
+  },
+  {
+    id: "priv-visy",
+    name: "Visy",
+    sector: "Industrial Manufacturing",
+    platform: "pageupsites",
+    // The same PageUp Sites theme as Calvary. Measured 2026-09-18: 4 pages of
+    // 30, 113 roles, no stated total. careers.visy.com/en/listing/ — the
+    // classic PageUp path — 302s to this one, so the board is not readable as a
+    // pageupclassic site even though the vendor is the same.
+    endpoint: "https://careers.visy.com/jobs/search",
+    origin: "https://careers.visy.com",
+    homeHub: "melbourne",
+  },
+  {
+    id: "melbourne-tah",
+    name: "Tabcorp",
+    sector: "Consumer Services",
+    platform: "pageupclassic",
+    // PageUp's hosted classic listing, instance 547. Measured 2026-09-18: the
+    // table theme (`<tbody id="search-results-content">`), 40 job links on the
+    // first page. tabcorp.com.au answers a datacentre address with a 403, so
+    // the board was reached directly rather than through the careers page.
+    endpoint: "https://careers.pageuppeople.com/547/eon/en/listing/",
+    origin: "https://careers.pageuppeople.com",
+    homeHub: "melbourne",
+  },
+  {
+    id: "priv-workpac",
+    name: "WorkPac",
+    sector: "Professional Services",
+    platform: "workpac",
+    // Not an ATS — see fetchWorkPac. Measured 2026-09-18: "Showing 1 - 20 of
+    // 403 jobs", 21 pages. The trailing slash matters: the fetcher appends
+    // `page/N/` to this.
+    endpoint: "https://www.workpac.com/jobs/find-a-job/",
+    origin: "https://www.workpac.com",
+    homeHub: "brisbane",
+  },
 ];
 
 /**
@@ -3225,6 +3396,30 @@ export const PORTAL_GROUPS: string[][] = [
   // (scripts/compass-to-d1.py).
   ["priv-bolton-clarke", "uni-university-of-sydney", "priv-racv", "priv-life-without-barriers"],
   ["priv-australian-unity", "priv-spotlight"],
+
+  // Groups 56-58: the nine in-Worker feeds from the 2026-09-18 third batch —
+  // the next nine employers on the scraper-gap report. Measured that day:
+  // WorkPac 403, UnitingCare Queensland 322, Deloitte 255, Calvary 193, Visy
+  // 113, KPMG 110, GHD 68 (Australia only, of 627), Insignia 32, Tabcorp 40+.
+  //
+  // THE SPLIT IS FORCED BY WHICH TWO FEEDS MUST NOT SHARE A TICK, not by role
+  // count. Two rules from the earlier batches, both of them measured:
+  //
+  //   - The SuccessFactors walk is SEQUENTIAL (each page's size is read off the
+  //     one before), so Deloitte's eleven pages and Insignia's two lead
+  //     different ticks rather than queueing behind one another.
+  //   - Calvary and Visy are the PageUp Sites theme, which is what Compass ran
+  //     when its host started answering a datacentre address with a 202 bot
+  //     check once a small allowance was spent. That allowance is per address
+  //     and the Worker's is shared, so the two are ten minutes apart rather
+  //     than back to back. Tabcorp is PageUp CLASSIC, whose separate facet
+  //     quota is the reason it is with neither of them.
+  //
+  // WorkPac is the deepest walk here at 21 pages and leads the first tick;
+  // UnitingCare's Workday is 17 requests and leads the second.
+  ["priv-workpac", "priv-kpmg", "melbourne-ifl"],
+  ["priv-unitingcare-queensland", "priv-visy", "priv-ghd"],
+  ["priv-deloitte-touche-tohmatsu", "priv-calvary-health-care", "melbourne-tah"],
 ];
 
 const UA =
@@ -3509,6 +3704,7 @@ export function hubFor(
   home: string | null,
   homeCountry: RegExp,
   hints?: [string, string][],
+  assumeHome = false,
 ): string | null {
   // A trailing comma is appended before matching so that the three needles that
   // END in one — " wa,", " nt,", " vic," — also fire when the abbreviation is
@@ -3556,7 +3752,7 @@ export function hubFor(
   // for every board whose cards omit a location — JobAdder and the WordPress
   // readers routinely do — and it is invisible, because an unplaced row still
   // archives, it just stops appearing on the map.
-  if (!raw || homeCountry.test(l)) return home;
+  if (!raw || homeCountry.test(l) || assumeHome) return home;
   return null;
 }
 
@@ -3603,7 +3799,13 @@ function job(site: SiteDef, title: string, loc: string, url: string, created: st
     cat,
     url,
     created,
-    city: hubFor(loc, site.homeHub, HOME_COUNTRY[site.homeHub ?? ""] ?? /$^/, site.hubHints),
+    city: hubFor(
+      loc,
+      site.homeHub,
+      HOME_COUNTRY[site.homeHub ?? ""] ?? /$^/,
+      site.hubHints,
+      site.assumeHomeHub,
+    ),
     skills: skillsForText(title, undefined, { sector: site.sector }),
   };
 }
@@ -3918,7 +4120,15 @@ async function fetchOracle(site: SiteDef): Promise<PortalJob[]> {
       // The site number is per tenant, not a constant: Westpac and Suncorp
       // both run CX_1, Computershare runs CX_2001. Sending the wrong one
       // returns an empty requisitionList rather than an error.
-      const finder = `findReqs;siteNumber=${site.siteNumber ?? "CX_1"},limit=${OR_PAGE},offset=${i * OR_PAGE},sortBy=POSTING_DATES_DESC`;
+      // The location facet, where one is set, goes INSIDE the finder next to
+      // the site number rather than on the query string — the service reads
+      // every search parameter out of the finder and silently ignores the rest,
+      // so a filter written as `&selectedLocationsFacet=` returns the whole
+      // global board and looks like it worked.
+      const loc = site.oracleLocationFacet
+        ? `,selectedLocationsFacet=${site.oracleLocationFacet}`
+        : "";
+      const finder = `findReqs;siteNumber=${site.siteNumber ?? "CX_1"}${loc},limit=${OR_PAGE},offset=${i * OR_PAGE},sortBy=POSTING_DATES_DESC`;
       const url =
         `${site.endpoint}/hcmRestApi/resources/latest/recruitingCEJobRequisitions` +
         `?onlyData=true&expand=requisitionList.secondaryLocations&finder=${encodeURIComponent(finder)}`;
@@ -5173,6 +5383,18 @@ async function fetchAurizon(site: SiteDef): Promise<PortalJob[]> {
  * is the clean field, so it is what gets stored, and the NZ city names were
  * added to HUB_MATCH instead.
  */
+/**
+ * Is a PageUp Sites walk unfinished, so a bad page should cost one page rather
+ * than the rest of the board? True only where the board itself says there is
+ * more — a stated total not yet reached, or a pagination that offers a later
+ * page. With neither, a short page is taken as the end of the list, which is
+ * what it almost always is.
+ */
+function stillWalking(got: number, advertised: number, page: number, lastPage: number): boolean {
+  if (advertised) return got < advertised;
+  return lastPage > 0 && page < lastPage;
+}
+
 async function fetchPageUpSites(site: SiteDef): Promise<PortalJob[]> {
   const out: PortalJob[] = [];
   const seen = new Set<string>();
@@ -5189,22 +5411,42 @@ async function fetchPageUpSites(site: SiteDef): Promise<PortalJob[]> {
   // gives up and returns what it has.
   const MISS_BUDGET = 5;
   let misses = 0;
+  // The last page the board's own pagination offers, for the tenants that do
+  // NOT print a total. Qube's theme says "Displaying 1 - 30 of 106 in total"
+  // and everything below keys off that; Calvary's and Visy's print no count
+  // anywhere on the page, so `advertised` stayed 0 and every protection above
+  // turned itself off — one failed page mid-walk would end the board silently,
+  // which is the exact bug that cost Compass 544 of its 644 roles.
+  //
+  // The pagination is a sound substitute. Measured 2026-09-18: Calvary offers
+  // pages 1-7 and page 7 holds 13 of the 193 roles; Visy offers 1-4 and page 4
+  // holds 23 of 113; on both boards the SAME last page is printed on every page
+  // in range, and one past it serves an empty result set with no pagination at
+  // all. So it is read once, from page 1, and only believed while it is
+  // growing the walk rather than bounding it.
+  let lastPage = 0;
   for (let page = 1; page <= max; page++) {
     const html = await getText(`${site.endpoint}?page=${page}`);
     if (!html) {
-      if (advertised && out.length < advertised && ++misses <= MISS_BUDGET) continue;
+      if (stillWalking(out.length, advertised, page, lastPage) && ++misses <= MISS_BUDGET) continue;
       break;
     }
     if (!advertised) {
       const t = html.match(/of\s*<b>\s*([\d,]+)\s*<\/b>\s*in total/i);
       if (t) advertised = Number(t[1].replace(/,/g, ""));
     }
+    if (!advertised && !lastPage) {
+      for (const m of html.matchAll(/[?&]page=(\d{1,4})\b/g)) {
+        const n = Number(m[1]);
+        if (n > lastPage) lastPage = n;
+      }
+    }
     // "Featured opportunities" above the results is a `div.job` strip of roles
     // already in the list below; only <article> cards are the result set, so
     // splitting on <article> both parses the list and skips the duplicates.
     const cards = html.split(/<article\b/i).slice(1);
     if (!cards.length) {
-      if (advertised && out.length < advertised && ++misses <= MISS_BUDGET) continue;
+      if (stillWalking(out.length, advertised, page, lastPage) && ++misses <= MISS_BUDGET) continue;
       break;
     }
     let added = 0;
@@ -5235,10 +5477,77 @@ async function fetchPageUpSites(site: SiteDef): Promise<PortalJob[]> {
     // a page that adds nothing is treated as a miss and skipped rather than
     // taken as the end of the list.
     if (!added) {
-      if (advertised && out.length < advertised && ++misses <= MISS_BUDGET) continue;
+      if (stillWalking(out.length, advertised, page, lastPage) && ++misses <= MISS_BUDGET) continue;
       break;
     }
     misses = 0;
+    if (advertised && out.length >= advertised) break;
+    if (!advertised && lastPage && page >= lastPage) break;
+  }
+  return out;
+}
+
+// ── WorkPac (its own WordPress site, not an ATS) ─────────────────────────────
+/**
+ * WorkPac is a labour-hire agency, so its vacancies are its product and there
+ * is no ATS behind them: the board is a WordPress archive on www.workpac.com
+ * that server-renders every card. myWorkPac — the Angular app the site links to
+ * — is the CANDIDATE portal, and its api-my.workpac.com service has no public
+ * job route at all (measured 2026-09-18: /v1/jobs, /v1/job/search,
+ * /v1/public/jobs and /v1/adverts all 404, and every job path in its bundle is
+ * scoped to a signed-in candidate). So the rendered archive is the feed.
+ *
+ * Paged as `/page/N/` on the path, NOT as a query parameter. Measured the same
+ * day: `?paged=2` works too, while `?page=2` and `?pg=2` are accepted and
+ * IGNORED — they return page 1 with a 200, which is the shape that reads as a
+ * board with 20 roles on it.
+ *
+ * The walk is bounded by the count the page states ("Showing 21 - 40 of 403
+ * jobs") rather than by a short page, for the usual reason: a failed fetch and
+ * the end of the list both arrive as zero cards.
+ */
+async function fetchWorkPac(site: SiteDef): Promise<PortalJob[]> {
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  let advertised = 0;
+  for (let page = 1; page <= max; page++) {
+    const html = await getText(page === 1 ? site.endpoint : `${site.endpoint}page/${page}/`);
+    if (!html) {
+      if (advertised && out.length < advertised) continue;
+      break;
+    }
+    if (!advertised) {
+      const t = html.match(/Showing\s+[\d,]+\s*-\s*[\d,]+\s+of\s+([\d,]+)\s+jobs/i);
+      if (t) advertised = Number(t[1].replace(/,/g, ""));
+    }
+    const cards = html.split(/<div class="card card-job-search/i).slice(1);
+    let added = 0;
+    for (const card of cards) {
+      const a = card.match(/href="(https:\/\/www\.workpac\.com\/job-listing\/[^"]+)"/i);
+      if (!a) continue;
+      const url = clean(a[1]);
+      if (seen.has(url)) continue;
+      // The title is in the card HEADING, not in the link — the anchor's text
+      // is the "View Job" button on every card, so reading the link text would
+      // archive 403 roles all called the same thing.
+      const h = card.match(/class="card__title"[^>]*>([\s\S]*?)<\/h3>/i);
+      const title = h ? clean(h[1]) : "";
+      if (!title) continue;
+      seen.add(url);
+      added++;
+      const cell = (name: string): string => {
+        const m = card.match(
+          new RegExp(`card__${name}"[\\s\\S]*?<span>([\\s\\S]*?)<\\/span>`, "i"),
+        );
+        return m ? clean(m[1]) : "";
+      };
+      out.push(job(site, title, cell("location"), url, "", cell("work") || "Career portal"));
+    }
+    if (!added) {
+      if (advertised && out.length < advertised) continue;
+      break;
+    }
     if (advertised && out.length >= advertised) break;
   }
   return out;
@@ -7834,6 +8143,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   wprest: fetchWpRest,
   wploop: fetchWpLoop,
   pageupclassic: fetchPageUpClassic,
+  workpac: fetchWorkPac,
   eightfoldpcs: fetchEightfoldPcs,
 };
 
@@ -7906,6 +8216,7 @@ const SOURCE_TAG: Record<Platform, string> = {
   // Same ATS as `pageupsites`, only the older theme — so the same source tag,
   // for the same reason sfrmkapi shares "sf".
   pageupclassic: "pu",
+  workpac: "workpac",
   // Same vendor as `eightfold`, different product and different API — but an
   // advertisement is an advertisement, so it dedupes against an ef row rather
   // than sitting beside one.
