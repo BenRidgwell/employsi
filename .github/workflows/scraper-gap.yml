@@ -1,0 +1,84 @@
+# Which roster employers advertise most, among those with no company-specific
+# scraper — the ranked shortlist for "which portal should we build next".
+#
+# WHY IT IS A WORKFLOW AND NOT A LOCAL SCRIPT. The report needs a D1 read, and
+# CLOUDFLARE_API_TOKEN lives only in the environment — which in practice means
+# it is here and not in the sandbox this repo is usually worked in. Running it
+# in Actions is how the question gets answered without the token being handled,
+# pasted or stored anywhere else.
+#
+# It is a REPORT, so it never fails the build on its own findings: a long list
+# of uncovered employers is the normal state of a roster of 1,500 companies
+# against portals that each have to be hand-measured. It fails only when the
+# query itself fails, which is the one outcome worth a red run.
+#
+# The push trigger is path-filtered to the report's own two files: this is not
+# a check that every commit needs, and an unfiltered report job would be noise
+# on every push forever. Use "Run workflow" to ask the question any time.
+#
+# Required repo secrets: CLOUDFLARE_API_TOKEN (D1 read)
+
+name: scraper-gap
+
+on:
+  workflow_dispatch:
+    inputs:
+      top:
+        description: 'How many rows to print (0 = every employer with an ad)'
+        type: string
+        default: '80'
+      gaps:
+        description: 'Hide employers a whole-employer-family board already reads (gov / uniroles)'
+        type: boolean
+        default: false
+  push:
+    paths:
+      - 'scripts/scraper-gap.ts'
+      - '.github/workflows/scraper-gap.yml'
+
+concurrency:
+  group: scraper-gap-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Rank uncovered roster employers by advertised volume
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -o pipefail
+          TOP='${{ inputs.top }}'
+          if [ "$TOP" = '0' ]; then ARGS=--all; else ARGS="--top ${TOP:-80}"; fi
+          if [ '${{ inputs.gaps }}' = 'true' ]; then ARGS="$ARGS --gaps"; fi
+          bun run scripts/scraper-gap.ts $ARGS | tee gap.txt
+          # The CSV is always the FULL table, whatever the printed view was asked
+          # to hide: it carries covered_by_board, so a reader can filter it
+          # themselves, and a file that silently omits 435 employers because of a
+          # display flag is the kind of artefact someone later counts rows in.
+          bun run scripts/scraper-gap.ts --csv --all > scraper-gap.csv
+          bun run scripts/scraper-gap.ts --all --gaps > scraper-gap-gaps.txt
+      - name: Publish the report to the run summary
+        if: always()
+        run: |
+          {
+            echo '## Roster employers with no company-specific scraper'
+            echo
+            echo '```'
+            cat gap.txt || echo 'the report did not run'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scraper-gap
+          path: |
+            scraper-gap.csv
+            scraper-gap-gaps.txt
+          if-no-files-found: ignore

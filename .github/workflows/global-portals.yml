@@ -1,0 +1,146 @@
+# TCS and Infosys → the D1 job archive, daily.
+#
+# WHY THESE TWO ARE NOT WORKER TICKS. Neither is blocked and neither needs a
+# browser — both answer a plain HTTP POST — so on the usual test they belong in
+# workers/jobs-cron/careerSites.ts. What rules them out is the size of the walk.
+# Measured 2026-09-18: TCS serves 2,366 roles ten to a page with no accepted
+# page-size parameter (237 requests), and Infosys' BrassRing serves 1,572 fifty
+# to a page but ships every requisition's full description with them, so those
+# 32 pages are ~16 MB of JSON. The jobs-cron Worker's budget is shaped around
+# short bursts, and a tick that exhausts it truncates SILENTLY — which on boards
+# this size would read as two employers who had quietly stopped hiring.
+#
+# The same reasoning put the 43-page uniroles walk in Actions. See the header of
+# each script for the API it reads and the traps in it.
+#
+# Both walks are bounded by the board's own advertised total and exit non-zero
+# when they collect materially less than it, so a partial run shows up red
+# rather than as a short day.
+#
+# Required repo secrets: CLOUDFLARE_API_TOKEN (D1 edit)
+# Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID
+
+name: global-portals
+
+on:
+  schedule:
+    # 17:10 UTC daily (~03:10 AEST). An empty slot in the nightly run: 17:20,
+    # 17:50 and the whole 18:00-18:50 range are taken by the feeds above it.
+    - cron: '10 17 * * *'
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: 'Walk and report only — write nothing to D1'
+        type: boolean
+        default: false
+      max_pages:
+        description: 'Stop after this many pages (0 = every page the total implies)'
+        type: string
+        default: '0'
+
+concurrency:
+  group: global-portals
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    # Sixty, because Marriott made this the longest job in the repo, and the
+    # 2026-09-18 batch added AECOM (53 requests) and Compass (33, paced at 1.5s
+    # because its allowance is what breaks first, so ~1 minute of deliberate
+    # waiting) alongside it. Estimated
+    # from the measured parts: Marriott ~69 requests plus ~2,000 D1 statements
+    # for 13,786 rows, TCS 237 requests for 1,828, Infosys 32 for 1,256 — call
+    # it 25 minutes with the D1 writes dominating, and leave real headroom
+    # rather than discovering the cap on a night the boards grow.
+    #
+    # Each step is separately capped at 30 so one slow board cannot eat the
+    # other two; the boards are unrelated and one being slow is no reason to
+    # skip archiving the rest.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # bun runs scripts/map-skills.ts and scripts/map-hubs.ts, so these roles
+      # carry exactly the skills and hub the same title would get from any
+      # other source.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Scrape TCS iBegin → D1
+        timeout-minutes: 30
+        id: tcs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: |
+          python scripts/tcs-to-d1.py \
+            ${{ inputs.dry && '--dry' || '' }} \
+            --max-pages "${{ inputs.max_pages || 0 }}"
+
+      - name: Scrape Marriott Oracle Recruiting → D1
+        # 13,786 requisitions at 200 a page — 69 requests. It is in this file
+        # rather than a Worker tick for the same reason as the two below it:
+        # the walk is far too deep for a tick shaped around short bursts, and a
+        # tick that runs out of budget truncates silently.
+        if: always()
+        timeout-minutes: 30
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: |
+          python scripts/marriott-to-d1.py \
+            ${{ inputs.dry && '--dry' || '' }} \
+            --max-pages "${{ inputs.max_pages || 0 }}"
+
+      - name: Scrape AECOM SmartRecruiters → D1
+        # 5,262 postings at the API's 100-a-page cap — 53 requests. Here rather
+        # than in a Worker tick for the same reason as the others in this file:
+        # the walk is too deep for a tick shaped around short bursts.
+        if: always()
+        timeout-minutes: 30
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: |
+          python scripts/aecom-to-d1.py \
+            ${{ inputs.dry && '--dry' || '' }} \
+            --max-pages "${{ inputs.max_pages || 0 }}"
+
+      - name: Scrape Compass Group AU (PageUp) → D1
+        # NOT a size problem — a bot quota. This board serves a plain GET
+        # normally until an address has spent a small allowance, then answers
+        # HTTP 202 with a stub for everything. A Worker would burn that
+        # allowance on its first tick and every one after; a runner address gets
+        # a fresh one once a day. See the script header for why 202 is the
+        # dangerous status here.
+        if: always()
+        timeout-minutes: 30
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: |
+          python scripts/compass-to-d1.py \
+            ${{ inputs.dry && '--dry' || '' }} \
+            --max-pages "${{ inputs.max_pages || 0 }}"
+
+      - name: Scrape Infosys BrassRing → D1
+        timeout-minutes: 30
+        # Runs even if TCS failed — they are unrelated boards, and one being
+        # blocked is no reason to skip archiving the other.
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: |
+          python scripts/infosys-to-d1.py \
+            ${{ inputs.dry && '--dry' || '' }} \
+            --max-pages "${{ inputs.max_pages || 0 }}"

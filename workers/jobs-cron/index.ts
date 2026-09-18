@@ -1228,6 +1228,28 @@ const PORTAL_TICKS: Record<string, number> = {
   "45 12 * * *": 49,
   // Group 50 — West Beach Parks and Drake.
   "55 12 * * *": 50,
+  // Group 51 — St Vincent's, EY and PwC. The 12 hour is full (5, 15, 25, 35,
+  // 45, 55 all taken), so this opens the 13 hour. ":5" is a gov minute PREFIX,
+  // which is safe only because PORTAL_TICKS is matched by EXACT expression
+  // before the gov branches — the same reason "5 5 * * *" and "5 12 * * *"
+  // above are safe. See the comment on scheduled().
+  "5 13 * * *": 51,
+  // Groups 52-53 — the 2026-09-18 batch. Same hour as 51, the next two free
+  // slots in it. Minutes 15 and 25 are gov minute PREFIXES, which is safe only
+  // because PORTAL_TICKS is matched by EXACT expression before the gov
+  // branches; see the comment on scheduled(). (Written without quote marks on
+  // purpose: check-portal-ticks.ts reads this table by regex, and a quoted
+  // cron-shaped string in a COMMENT is picked up as if it were an entry.)
+  "15 13 * * *": 52,
+  "25 13 * * *": 53,
+  // Groups 54-55 — the 2026-09-18 second batch.
+  "35 13 * * *": 54,
+  "45 13 * * *": 55,
+  // Groups 56-58 — the 2026-09-18 third batch. :55 is the last free minute in
+  // the 13 hour, so the other two open the 14 hour.
+  "55 13 * * *": 56,
+  "5 14 * * *": 57,
+  "15 14 * * *": 58,
 };
 
 const NEWS_TICKS: Record<string, number> = {

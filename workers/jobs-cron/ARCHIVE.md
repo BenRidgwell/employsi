@@ -904,6 +904,99 @@ cannot fix. LinkedIn is the third open case and needs neither — IPRoyal
 blocklists the domain outright, so scripts/brightdata-to-d1.py buys a
 purpose-built scraper instead of an exit.
 
+### Indeed came back a different way: the app API (2026-09-16)
+
+**The wall was never Indeed — it was `au.indeed.com`.** Every transport this
+repo had tried fetches a SEARCH PAGE from that host and parses it, and the
+matrix in `indeed-archive.yml` closes that surface completely: headless-shell
+and real Chrome, stealth on and off, rotating and sticky exits, global and
+Australian addresses, all challenged by DataDome on the first request.
+
+JobSpy (MIT, `speedyapply/JobSpy`, `pip install python-jobspy`) does not load
+that page. It POSTs a cursor-paged `jobSearch` query to
+`apis.indeed.com/graphql`, Indeed's own app API. Different host, different wall
+— and measured from a plain datacentre address with no proxy, no unblocker, no
+browser and no credential:
+
+| | |
+| --- | --- |
+| the full 395-company roster | **251s, 0 failures, 6,116 rows** |
+| Bright Data, for comparison | 0.50 min/company (~3h), billed per record |
+
+That is the whole reason it is worth a fourth transport after three were
+measured dead. It is `--jobspy` in `scripts/indeed-to-d1.py`, sharing that
+file's roster load, skills mapping, cross-source dedupe and D1 upsert.
+
+**IT RUNS NIGHTLY AT 20:00 UTC from 2026-09-18**, the slot Indeed held before
+it went dark. The schedule was withheld until a hosted runner had walked the
+roster, because the measurement above came from a sandbox and the address is
+the half that burned this feed on 2026-08-09, when it was moved off Oxylabs on
+one probe request that did not survive the 354-company walk. Two runs settled
+it:
+
+| | |
+| --- | --- |
+| solve, 40 companies | 18s, 20 reachable, 749 listings |
+| write, 395 companies | 3m16s, 6,605 listings, **139 new rows**, 0 failures |
+
+No challenge, no 429, no failed company.
+
+**139 new rows out of 6,605 is not a disappointment, and it is worth knowing
+why.** `existing_titles` drops any title already archived for that company by
+another source, so what Indeed adds on top of SEEK, Adzuna and the portals is
+genuinely small — and that dedupe is title-only, not title+location, so it
+understates the overlap it removes. The daily cadence earns its place anyway:
+Indeed's OWN rows re-upsert every run and refresh `last_seen`, which is what
+keeps "currently advertised" true and lets a taken-down ad age out. A feed that
+runs occasionally makes its own rows look stale.
+
+**Indeed stays gated off in `brightdata-archive.yml`.** Both write the same rows
+under the same `job_key`, so running both adds no coverage and restores a
+per-record bill for data this now collects free.
+
+**A scheduled fire gets no `inputs`.** A `workflow_dispatch` default does not
+apply to a cron run, so every `inputs.transport` in that workflow carries an
+explicit `|| 'jobspy'` fallback. Without it the nightly run reads the transport
+as `''`, skips the JobSpy install, falls through to the browser path and
+collects DataDome challenges — green install steps, zero rows.
+
+**THE REAL WORK WAS ATTRIBUTION, NOT TRANSPORT.** `company:"X"` is a keyword
+match on the employer field, not a filter, and `indeed-to-d1.py` stamps
+`company_id` from the company being WALKED rather than from the row. Of the
+6,116 rows measured, **18.0% were advertised by a different employer** — and
+every one would have been filed on the roster company's card with a plausible
+number attached. `company:"Alto"` returns Palo Alto Networks.
+
+Neither obvious rule works, which is why `scripts/company_alias.py` exists:
+
+* **Exact matching is too strict.** `Reece Group` comes back as `Reece`, `PwC
+  Australia` as `PwC`, `Mater` as `Mater Group`, `Macmahon Holdings` as
+  `Macmahon` — 100, 100, 100 and 91 rows of the employer we asked for.
+* **Substring is too loose.** `Alto` is inside `Palo Alto Networks`, `Built`
+  inside `KOVA Built`, `AMP` inside `Culture Amp`.
+
+So: strip corporate suffixes, keep a curated table for the rest, and
+**default-deny** anything unrecognised. A dropped row costs coverage; a wrongly
+kept one corrupts a card, and only one of those is recoverable.
+
+**A zero is usually the query, not the employer.** 207 of 395 companies
+returned nothing on their roster name — `company:"Monadelphous Group"` 0 against
+`company:"Monadelphous"` 100, `"Iluka Resources"` 0 against `"Iluka"` 18. So a
+zero retries on the short name, which recovers **558 rows over 14 companies**
+including ANZ, Telstra, Qube and Monadelphous. Dropping the quotes is NOT that
+fallback and must not become it: unquoted `Pilbara Minerals` free-texts the
+description and returns Acciona and Cockburn Cement.
+
+Four roster names are withheld from that fallback (`FALLBACK_UNSAFE`). Stripping
+a trailing "energy" leaves `beach`, `boss`, `strike` and `origin`, and a real
+employer trades under each — Hugo Boss's BOSS would match `Boss Energy`
+exactly and pass the gate. None was observed colliding; the guard is against a
+trap that is reachable, not a repair.
+
+`scripts/test_company_alias.py` pins all of it — 113 measured pairs, 22
+impostors — and runs in `scraper-check.yml`. None of it would fail visibly in
+the app, which is the point of asserting it.
+
 ### What each of the five would actually need
 
 Two groups, and they are not the same problem.
@@ -1386,3 +1479,232 @@ wrangler d1 execute employsi-jobs-archive --remote \
   --command "SELECT title, company, location, salary, first_seen, last_seen, seen_count \
              FROM jobs WHERE company_id='perth-bhp' ORDER BY last_seen DESC LIMIT 20"
 ```
+
+## 2026-09-18: the six employers the scraper-gap report put at the top
+
+`scripts/scraper-gap.ts` ranks roster companies with no feed of their own by the
+ads the archive already holds for them. Its top six were TCS, EY, Uniting,
+Infosys, PwC Australia and St Vincent's Health Australia — between them about
+5,900 ads held and 1,000 still advertised, every one of them reaching us only
+through a board or an aggregator. All six now have a direct feed.
+
+The split between the Worker and Actions was decided per board, and NOT by
+whether the site is reachable — five of the six answer a plain request from a
+datacentre. It was decided by the size of the walk and, for one, by a 403.
+
+### In the Worker (`careerSites.ts`, PORTAL_GROUPS group 51, tick `5 13 * * *`)
+
+| Employer | platform | roles | why it fits a tick |
+| --- | --- | --- | --- |
+| St Vincent's Health Australia | workday | 263 | 20 a page, 14 requests, no tenant quirk |
+| EY | successfactors | 246 | 25 a page, 10 sequential requests |
+| PwC Australia | phenom | ~105 | 10 a page island, 12 requests |
+
+Thirty-six requests for ~630 roles.
+
+**EY needed a filter, and that is a new SiteDef field.** careers.ey.com is EY
+GLOBAL: page one unfiltered is Mumbai, Canberra, Mumbai, Hong Kong, Lima, and
+`priv-ey` on this roster is EY's Australian firm. `searchParams` appends to the
+SuccessFactors SEARCH url — the one the fetcher builds — because a filter written
+into `endpoint` lands before `/search/` and is silently ignored. With
+`locationsearch=australia&locale=en_AU` the board reports 246, all Australian.
+No other tenant sets the field.
+
+**PwC will never match its own 118, and the SiteDef comment says why** so nobody
+"fixes" it later. 118 counts LISTINGS; a by-hand walk of all twelve pages
+collects 118 rows carrying 105 distinct ids, because thirteen roles — mostly the
+"EOI | …" ones — are listed under several categories. And the island reorders
+between requests: three consecutive walks returned 103, 108 and 112, each
+surfacing roles the others had missed. The archive absorbs it, since `job_key` is
+stable and the nights union.
+
+Also note PwC's `experiencedhires` path is load-bearing in the opposite
+direction: the bare `jobs-au.pwc.com/au/en/search-results` answers 200 with
+`totalHits` 0, so a walk of it returns nothing and reads exactly like an
+employer who is not hiring.
+
+### Off-Worker (`.github/workflows/global-portals.yml`), because of walk size
+
+- **`scripts/tcs-to-d1.py`** — TCS iBegin, `portal-ibegin`. 2,366 roles at a
+  fixed ten a page: 237 requests. `pageSize` is REJECTED, not ignored — sending
+  it returns an empty body — so the page size cannot be raised. The POST body is
+  `requestDataObj` lifted from the portal's own `JobSearchController.js`; a
+  trimmed version answers 500, so every null in it matters. `url` comes back
+  null on every role, so the link is built from the id against the AngularJS
+  route. This is TCS's non-India board: its controller redirects an Indian
+  visitor to a separate Next.js app.
+- **`scripts/infosys-to-d1.py`** — Infosys BrassRing, `portal-brassring`. 1,572
+  roles at 50 a page (asking for 200 returns 50), but each response is ~500 KB
+  because BrassRing ships every requisition's full description inside the search
+  result — ~16 MB of JSON for the walk.
+
+  **Page with `pageNumber`, never `startrow`.** `startrow` is what the older
+  BrassRing UI used and this endpoint still ACCEPTS it, answering 200 with a
+  full page of 50 while ignoring it completely: `startrow=0` and `startrow=50`
+  returned 19 of the same requisitions, and with an explicit `SortType` they
+  returned all 50 the same. A walk built on it collects one page repeatedly and
+  reports a plausible few hundred roles, none of them new. `pageNumber` is
+  one-based and its pages are disjoint (checked across pages 1-3: zero overlap).
+
+Both walks are bounded by the board's advertised total and exit non-zero when
+they collect materially less than it, rather than stopping early and calling it
+a day.
+
+### Off-Worker, rendered (`.github/workflows/browser-portals.yml`)
+
+- **`scripts/uniting-dayforce-to-d1.py`** — Uniting, `portal-dayforce`, the same
+  source as Whitehaven's NSW board and for the same reason. Re-measured on this
+  tenant: the served HTML is 494 KB carrying zero job links, and
+  `POST /api/geo/unitingaunsw/jobposting/search` answers a datacentre request
+  with a bare 403 even with a browser UA, Origin and Referer. A Cloudflare
+  Worker fares worse, not better, on a Cloudflare-to-Cloudflare fingerprint.
+
+  It renders through the local Playwright and clicks the Ant paginator, exactly
+  as the Whitehaven feed does. `--capture` is on permanently in the workflow and
+  uploads each rendered page as an artifact: the parser depends on Dayforce's
+  `test-id` markup, and a capture sitting beside a run that found no cards is
+  the difference between diagnosing it and re-measuring from scratch.
+
+### `scripts/portal_archive.py`
+
+The three new drivers share one module for the parts that were being copied —
+the D1 batching, the bun bridges to `map-skills.ts` / `map-hubs.ts`, the
+`job_key` that must mirror `jobArchive.ts`, and argument handling. It
+deliberately does NOT fetch anything: a portal driver's whole value is the
+measurement of one live site, and hiding that behind a generic fetcher is how a
+per-tenant quirk gets simplified away. The older drivers still carry their own
+copies and can move over one at a time.
+
+
+## 2026-09-18 (second batch): the next ten on the scraper-gap report
+
+Nine of the ten needed no new platform code — four Workday tenants, two
+SuccessFactors boards, three PageUp instances — which is the point of having
+reverse-engineered thirteen platforms. Two things did need work, and one of them
+was a bug the batch only found because a new board tripped over it.
+
+### In the Worker (groups 52-53, ticks `15 13 * * *` and `25 13 * * *`)
+
+| Employer | platform | roles | note |
+| --- | --- | --- | --- |
+| Goodstart Early Learning | successfactors | 377 | table theme, 25 a page |
+| Brisbane Catholic Education | successfactors | 196 | TILE theme, no server-rendered total |
+| Salvation Army Australia | workday | 169 | the org.au 403 is on the marketing site, not the ATS |
+| Mecca Brands | workday | 165 | store names, so it needs hubHints |
+| Mater | pageupclassic | 142 | the div theme — see below |
+| HammondCare | workday | 94 | many regional sites that belong to no hub |
+| Aurecon | workday | 77 | of 202; APAC board, filtered to Australia |
+| Linfox AU / NZ | pageupclassic | 70 + 5 | two instances, two countries |
+
+**PAGEUP HAS TWO THEMES AND WE ONLY PARSED ONE.** Mater's board is the same
+PageUp product as Harvey Norman's and Cleanaway's, rendered as `.JobItemWP`
+divs with a labelled `<span class="location">` rather than a table of `<td>`s.
+`fetchPageUpClassic` split on `<tbody id="search-results-content">`, so against
+Mater it returned ZERO roles and raised nothing — a live board with ~140
+vacancies reading as an employer who is not hiring. `fetchSuccessFactors` has
+split on its own two themes since it was written; PageUp now does the same.
+
+**AURECON IS THE SECOND EY.** Its Workday tenant is the APAC board: 202 roles,
+of which Philippines 39, Thailand 39, Vietnam 19, Singapore 11, Malaysia 7,
+Hong Kong 5, New Zealand 2, Indonesia 2 — and 77 in Australia, which is what
+`priv-aurecon` means on this roster. The new `appliedFacets` field on SiteDef
+carries Workday facet ids, which are per tenant and opaque; read them off the
+board's own `facets` array, and CHECK the filtered total against the facet's
+count, because a wrong id does not error — it returns everything.
+
+**LINFOX'S TWO BOARDS ARE TWO COUNTRIES.** Instance 449 is Australia (70) and
+941 is New Zealand (5, all Auckland). Both are titled "Careers - Linfox". Note
+for anyone reading the ranking: the archive holds 578 ads for Linfox and its own
+boards carry 75, so this feed buys precision rather than volume — Linfox really
+does advertise mostly on the job boards.
+
+`hubHints` took Mecca from 86 of 165 placed on a hub to 152. The regional towns
+are deliberately left unplaced — Dubbo, Scone, Mackay, Rockhampton and Gold
+Coast belong to no hub here, and a needle for them would file a regional role in
+a capital. So is Workday's "2 Locations" placeholder, which names nowhere at all.
+
+### Off-Worker
+
+- **`scripts/dayforce-to-d1.py`** — now a table of tenants rather than one
+  employer, covering Uniting and **EVT** (`sydney-evt`, hotels, cinemas and
+  Thredbo). The 403 on `POST /api/geo/<tenant>/jobposting/search` was re-measured
+  on the EVT tenant, so it is the platform refusing datacentre addresses and not
+  one customer's setting. Whitehaven's Dayforce script predates this and still
+  runs its own copy; it could move here unchanged.
+- **`scripts/marriott-to-d1.py`** — `washington-mar`, Oracle Recruiting,
+  **13,786 requisitions**, written as `portal-or` so it sits beside Westpac's and
+  Downer's rows rather than inventing a per-employer source.
+
+  **`expand` is load-bearing and its absence is SILENT.** Without
+  `expand=requisitionList.secondaryLocations,flexFieldsFacet.values` the request
+  still answers 200 and still reports the right `TotalJobsCount` — it just
+  returns `requisitionList` empty. Measured at limit 25, 100 and 200: 13,787
+  advertised, zero rows, no error. A walk written without it collects nothing
+  while looking healthy, so the driver treats an empty first page as a failure
+  and says which parameter to suspect.
+
+  `siteNumber=CX_2` is the board; `CX_1` exists on the same pod and returns 8.
+  The tenant honours `limit=200`, which turns 552 requests into 69.
+
+
+## 2026-09-18 (third batch): Compass Group through Australian Unity
+
+The next nine on the scraper-gap report. Six run in the Worker, two as Actions,
+and one could not be found at all.
+
+### In the Worker (groups 54-55, ticks `35 13 * * *` and `45 13 * * *`)
+
+| Employer | platform | roles | hubbed |
+| --- | --- | --- | --- |
+| Bolton Clarke | workday | 222 | 216 |
+| Australian Unity | successfactors | 146 | 141 |
+| Spotlight | pageupclassic | 102 | 85 |
+| University of Sydney | workday | 87 | 84 |
+| RACV | successfactors | 76 | 32 |
+| Life Without Barriers | pageupclassic | 73 | 33 |
+
+**THREE BOARDS PUBLISH A SITE, NOT A CITY**, and each needed a different answer.
+The University of Sydney says "Camperdown Campus" (49 of 87 roles) — all Greater
+Sydney, so all hinted, taking it from 3 placed to 84. Spotlight says "VIC -
+Metro" and "SA - Regional": the metro halves resolve to their capital, the
+regional halves are deliberately left alone, because the board has explicitly
+said the role is NOT in the capital. RACV says "Royal Pines Resort", "Torquay
+Resort", "Cape Schanck Resort" — only the City Club is hinted, since those
+resorts really are on the Gold Coast, the Surf Coast and the Mornington
+Peninsula and none of them is a hub here.
+
+**TWO pageupclassic BOARDS MUST NOT SHARE A TICK.** Life Without Barriers
+measured 73 roles cold and 0 immediately after Spotlight had run, repeatably.
+That is the facet allowance fetchPageUpClassic already documents — extended, it
+turns out, to the plain listing: after a burst the same url returns 200 with the
+job-link anchors present and the `<tbody id="search-results-content">` wrapper
+GONE, so the parse finds nothing and nothing errors. Production is the cold case
+(one tick a day each, and Mater is in group 53), and an empty pull is never
+written, so a degraded night leaves yesterday's rows alone.
+
+### Off-Worker (`.github/workflows/global-portals.yml`)
+
+- **`scripts/aecom-to-d1.py`** — AECOM's SmartRecruiters board, `portal-sr`.
+  5,262 postings at the API's 100-a-page cap. A size call, like TCS and Marriott.
+- **`scripts/compass-to-d1.py`** — Compass Group AU's PageUp board, `portal-pu`.
+  **Not a size call — a bot quota.** The board serves a plain GET normally until
+  an address has spent a small allowance, then answers **HTTP 202** with a 2.4 KB
+  stub for everything: measured twelve for twelve with identical headers, no 429
+  and no Retry-After.
+
+  **202 is the dangerous status** because it is a 2xx, so every "did this
+  succeed?" test says yes and the stub parses to zero cards. `getText` now
+  retries a 202 instead of returning it as content, and `fetchPageUpSites` no
+  longer treats a single empty page as the end of a board that has stated its
+  own total — that combination had it collect 100 of Compass's 644 and call it
+  done. Qube, the other pageupsites board, is unaffected: 132 roles before and
+  after.
+
+  Note `london-cpg` is Compass Group plc, plotted on London, and this is its
+  Australian arm — a real feed and a partial view, not a wrong one.
+
+### Chemist Warehouse: no board found
+
+Its careers page answers a datacentre request with 403, and the Expr3ss tenant
+at chemistwarehouse.expr3ss.com redirects every path to "Lost and Found" — the
+tenant exists and has no live board. Left without a feed rather than guessed at.
