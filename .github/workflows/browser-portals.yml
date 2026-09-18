@@ -57,6 +57,16 @@ concurrency:
   group: browser-portals
   cancel-in-progress: false
 
+# EVERY RENDER STEP IS BOUNDED, because one that hangs takes the rest with it.
+# Measured 2026-09-18: the Stockland step hung twice in four dispatched runs —
+# 37+ minutes against the 44s and 49s it takes when healthy — and both times it
+# ran the 45-minute job out without the three boards after it ever starting.
+# Nothing was wrong with those boards; they simply never got a turn.
+#
+# Ten minutes each is far above every healthy measurement here (49s, 19s, 10s,
+# and ~4 minutes for Uniting's eight-page walk). A step that exceeds it goes
+# red on its own and the next board still runs, which is the whole point: a
+# hung first step should cost one feed for one night, not all of them.
 jobs:
   archive:
     runs-on: ubuntu-latest
@@ -82,6 +92,7 @@ jobs:
           python -m playwright install --with-deps chromium
 
       - name: Scrape Stockland careers → D1 (rendered, local browser)
+        timeout-minutes: 10
         id: stockland
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -90,6 +101,7 @@ jobs:
         run: python scripts/stockland-to-d1.py
 
       - name: Scrape Auckland Airport careers → D1 (rendered, local browser)
+        timeout-minutes: 10
         # Runs even if Stockland failed — they are unrelated boards, and one
         # being blocked is no reason to skip archiving the other.
         if: always()
@@ -100,6 +112,7 @@ jobs:
         run: python scripts/aucklandairport-to-d1.py
 
       - name: Scrape TechnologyOne careers → D1 (rendered, local browser)
+        timeout-minutes: 10
         if: always()
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -107,7 +120,58 @@ jobs:
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         run: python scripts/technologyone-to-d1.py
 
+      - name: Scrape Uniting (Dayforce) careers → D1 (rendered, local browser)
+        # The same wall Whitehaven's Dayforce board hit, re-measured on this
+        # tenant 2026-09-18: the served HTML carries no vacancies, and the
+        # search API the portal calls after hydration answers a datacentre POST
+        # with a bare 403. A browser on an ordinary runner address is what gets
+        # it, so it belongs in this file rather than in the Worker.
+        #
+        # `--capture` writes each rendered page into the artifact below. It is
+        # on permanently, not just for the first run: Dayforce's markup is what
+        # this parser depends on, and a capture beside a run that found no cards
+        # is the difference between diagnosing it and re-measuring from scratch.
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        # BOUNDED, because a render step that runs long does not only fail
+        # itself — it starves everything after it and burns a 45-minute runner.
+        #
+        # Ten is generous for what this now does: ONE load of the board and one
+        # click per page after that. The version before it re-rendered the
+        # portal for every page and replayed the click chain to get back to
+        # where it already was — O(N^2) loads of a hydrated 700 KB app, which
+        # measured 3m47s for eight pages. The walk holds a single browser
+        # context open instead (browser_fetch.Session.act), so eight pages cost
+        # one load and seven clicks rather than eight loads and 28 clicks.
+        timeout-minutes: 10
+        run: python scripts/dayforce-to-d1.py --portal uniting --capture captures
+
+      - name: Scrape EVT (Dayforce) careers → D1 (rendered, local browser)
+        # The same tenant table, the same 403 on the search API — measured on
+        # this tenant too, so it is the platform and not one customer's setting.
+        # EVT is hotels (Rydges, QT, Atura), cinemas and Thredbo.
+        if: always()
+        timeout-minutes: 10
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/dayforce-to-d1.py --portal evt --capture captures
+
+      - name: Keep the rendered Dayforce pages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dayforce-captures
+          path: captures/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Scrape Edith Cowan University careers → D1 (rendered, local browser)
+        timeout-minutes: 10
         if: always()
         # NOT YET WORKING, and allowed to fail the step without failing the run.
         #

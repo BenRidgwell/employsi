@@ -461,24 +461,54 @@ class Session:
         self._page = None
         return False
 
+    def _apply(self, instructions: list[dict] | None) -> None:
+        """Run the instruction vocabulary render() accepts against the open page."""
+        for ins in (instructions or []):
+            kind = ins.get('type')
+            if kind == 'wait':
+                self._page.wait_for_timeout(float(ins.get('wait_time_s', 1)) * 1000)
+            elif kind == 'click':
+                _locator(self._page, ins.get('selector', {})).first.click(
+                    timeout=self._timeout_s * 1000)
+            else:
+                raise ValueError(f'browser_fetch: unsupported instruction {kind!r}')
+
     def html(self, url: str, instructions: list[dict] | None = None) -> str | None:
         """Navigate and return the rendered HTML, running the same instruction
         vocabulary render() accepts."""
         try:
             self._page.goto(url, wait_until='domcontentloaded',
                             timeout=self._timeout_s * 1000)
-            for ins in (instructions or []):
-                kind = ins.get('type')
-                if kind == 'wait':
-                    self._page.wait_for_timeout(float(ins.get('wait_time_s', 1)) * 1000)
-                elif kind == 'click':
-                    _locator(self._page, ins.get('selector', {})).first.click(
-                        timeout=self._timeout_s * 1000)
-                else:
-                    raise ValueError(f'browser_fetch: unsupported instruction {kind!r}')
+            self._apply(instructions)
             return self._page.content()
         except Exception as e:  # noqa: BLE001
             sys.stderr.write(f'  session render failed for {url[:70]}: {str(e)[:160]}\n')
+            return None
+
+    def act(self, instructions: list[dict] | None = None) -> str | None:
+        """Run instructions against the page ALREADY OPEN, and read it back.
+
+        The difference from html() is the whole point: it does not navigate. A
+        JS paginator with no URL parameter — Ant Design's is the one here — can
+        only be advanced by clicking, and clicking is only meaningful on the
+        page you are already on.
+
+        Without this, walking such a board means re-rendering it from scratch
+        for every page and clicking `next` N-1 times to get back to where you
+        were, which is O(N^2) loads of a hydrated app. Measured on Uniting's
+        Dayforce board (2026-09-18), that did not finish inside a 45-minute CI
+        job for eight pages. With it the walk is one load and N-1 clicks.
+
+        Returns None if an instruction fails — a click whose selector is absent,
+        typically — which the caller must treat as "did not advance" rather than
+        as an empty page. The two are not the same thing and the archive cannot
+        tell them apart afterwards.
+        """
+        try:
+            self._apply(instructions)
+            return self._page.content()
+        except Exception as e:  # noqa: BLE001
+            sys.stderr.write(f'  session act failed: {str(e)[:160]}\n')
             return None
 
     def text(self, url: str) -> str | None:
