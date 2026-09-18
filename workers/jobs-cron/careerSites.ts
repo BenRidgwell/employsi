@@ -3080,6 +3080,19 @@ const HUB_MATCH: [string, string | null][] = [
   ["shanghai", "shanghai"],
   ["shenzhen", "shenzhen"],
   ["ganzhou", "ganzhou"],
+  // India. Both are map hubs — the roster plots TCS on Mumbai and Infosys on
+  // Bengaluru — and both were missing a needle here, so every Indian location
+  // resolved to no hub at all. It surfaced when those two employers got direct
+  // feeds (2026-09-18): their boards are global, and without these their rows
+  // would have archived against the right company and appeared in no city.
+  //
+  // `bangalore` as well as `bengaluru` because job boards still use the old
+  // name constantly. None of the three is a substring of another place: checked
+  // against the archive, nothing contains "mumbai", "bengaluru" or "bangalore"
+  // that is not the Indian city.
+  ["mumbai", "mumbai"],
+  ["bengaluru", "bengaluru"],
+  ["bangalore", "bengaluru"],
   ["dubai", "dubai"],
   // Europe / Africa
   ["london", "london"],
