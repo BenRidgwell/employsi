@@ -14543,9 +14543,19 @@ body {
   z-index: 90;
   display: grid;
   place-items: center;
+  /* THE BAND'S HEIGHT IS DERIVED FROM THE ARTWORK, NOT CHOSEN.
+     The source is 2868x708, so at any width the drawing wants width x
+     708/2868 of height. Give the band exactly that and object-fit has nothing
+     to crop: the skyline sits flush with the band's top edge and no roofline
+     is sliced. Pick any other number and the difference is thrown away — the
+     old 34vh band around a 38vh image discarded 116px of drawing at 1440x860,
+     82px to the cover crop and another 34px to the band's own overflow, and
+     what showed above the cut was the veil's white. */
+  --introsky-w: max(115vw, 160vh);
+  --introsky-h: calc(var(--introsky-w) * 708 / 2868);
   /* Lifts the lockup off centre so it sits in the white ABOVE the skyline
-     rather than on it. The band below is the same 34vh. */
-  padding-bottom: 34vh;
+     rather than on it — the same height as the band, so the two never meet. */
+  padding-bottom: var(--introsky-h);
   box-sizing: border-box;
   overflow: hidden;
   background: #ffffff;
@@ -14615,30 +14625,39 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 34vh;
+  /* Exactly the artwork's own height at this width — see --introsky-h. A band
+     shorter than the image would clip the top off with overflow: hidden, which
+     is half of what the old 34vh did. */
+  height: var(--introsky-h);
   overflow: hidden;
   pointer-events: none;
   opacity: 0.62;
 }
 /*
- * ANCHORED TO THE GROUND LINE, NOT THE SKY.
+ * NOTHING IS CROPPED ANY MORE, which is the point of deriving the band's height
+ * from the artwork rather than picking one.
  *
- * The source is 2868x708 and the band is far wider than it is tall, so
- * object-fit: cover always has to throw some of the drawing away — measured at
- * 1440x860, 82px of 409, a fifth of it. WHICH fifth is object-position's
- * choice, and the design's `center top` gives up the bottom: the buildings lose
- * their bases and the city reads as sinking through the floor. `center bottom`
- * gives up the top instead, where there is sky and a few spire tips, and where
- * the band's mask is already fading everything out.
+ * The source is 2868x708. This used to be a 38vh image inside a 34vh band, and
+ * BOTH numbers threw drawing away: object-fit: cover discarded 82px of 409 at
+ * 1440x860 because the element was shorter than the image's aspect, and the
+ * band then clipped 34px more off the element with overflow: hidden. 116px of
+ * skyline gone, and the veil's white where it used to be — a hard horizontal
+ * line straight through the rooflines.
  *
- * `bottom: 0` for the same reason — the design's `-4vh` pushes another 34px of
- * the ground line below the fold on top of the crop.
+ * Height is now 100% of a band that is itself the artwork's natural height, so
+ * the aspect matches exactly and cover has nothing left to trim.
+ *
+ * object-fit and object-position STAY. They crop nothing while the aspects
+ * agree, and they are the thing that keeps the GROUND LINE on screen rather
+ * than the sky if the artwork is ever replaced with one of a different shape.
+ * `bottom: 0` for the same reason — the design's `-4vh` pushed 34px of the
+ * ground line below the fold.
  */
 .introsky {
   position: absolute;
   left: 0;
   bottom: 0;
-  width: max(115vw, 160vh);
+  width: var(--introsky-w);
   /* WITHOUT THIS THE PAN TEARS. The app's reset carries `img { max-width: 100% }`,
      which the design file has no equivalent of, and it clamps the width above
      back to the viewport's. The two numbers are a matched pair: the image is
@@ -14647,7 +14666,7 @@ body {
      the width to 100vw and the same 13% drags 13vw of white onto the right of
      the screen. */
   max-width: none;
-  height: 38vh;
+  height: 100%;
   object-fit: cover;
   object-position: center bottom;
   display: block;

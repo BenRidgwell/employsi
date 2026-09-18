@@ -42,11 +42,20 @@ import { useEffect, useRef, useState } from "react";
  * appears and leaves inside 300ms on a warm load reads as a glitch rather than
  * as a loading screen, and the sweep below it would not complete one pass.
  *
- * 1900ms is one full sweep (see em-sweep), so the bar always finishes a stroke
- * rather than stopping halfway across. Down from 3000, which was the previous
- * design's build-up plus its dwell and has nothing to measure here.
+ * 3800ms: TWO FULL PASSES of em-sweep, which is 1.9s each.
+ *
+ * THE VALUE IS A MULTIPLE OF THE SWEEP, NOT A ROUND NUMBER, and that is the
+ * whole point of it. The bar reaches the end of its travel exactly as the veil
+ * is released, so the stroke always finishes instead of being caught mid-way
+ * and dissolved by the fade. 1900 (one pass) had the same property; 2900 was a
+ * literal second more than that and broke it, landing about half way through
+ * the second pass.
+ *
+ * So the values that work here are 1900, 3800, 5700 — anything else gives up
+ * the alignment. If this needs to change again, move by a sweep, or change
+ * em-sweep's duration alongside it.
  */
-const DWELL_MS = 1900;
+const DWELL_MS = 3800;
 const MAX_HOLD = 6000;
 
 export function IntroLoader({ ready }: { ready: boolean }) {
@@ -119,8 +128,10 @@ export function IntroLoader({ ready }: { ready: boolean }) {
         <div className="introcaption">Explore the world of work.</div>
       </div>
 
-      {/* The skyline across the bottom third, panning slowly. Its top is masked
-          away rather than cut, so the buildings dissolve into the page. */}
+      {/* The skyline across the bottom of the veil, panning slowly. The band is
+          exactly as tall as the artwork wants to be at this width, so the whole
+          drawing shows and its top sits flush — no mask, and nothing cropped.
+          See --introsky-h in global.css. */}
       <div className="introband">
         <img className="introsky" src="/assets/intro-skyline.svg" alt="" draggable={false} />
       </div>

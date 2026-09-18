@@ -24,6 +24,8 @@ on:
       - 'scripts/*-to-d1.py'
       - 'scripts/test_jobs_extract.py'
       - 'scripts/test_rosters.py'
+      - 'scripts/company_alias.py'
+      - 'scripts/test_company_alias.py'
       # A reformat of these data files is what silently emptied the SEEK and
       # Zhaopin rosters, so a change to either has to re-run the parsers.
       - 'src/employsi/data/seekAdvertisers.ts'
@@ -71,6 +73,18 @@ jobs:
 
       - name: Roster parsers still read their data files
         run: python scripts/test_rosters.py
+
+      # A company-scoped board search returns the employer we asked for, a
+      # different employer with a similar name, and rows with no employer at
+      # all — and indeed-to-d1.py stamps company_id from the company being
+      # WALKED, not from the row. So a gate that is too loose files Palo Alto
+      # Networks' vacancies as Alto's hiring, and one that is too strict
+      # silently drops Reece, PwC, Mater and Macmahon (100, 100, 100 and 91 rows
+      # in the 2026-09-16 measurement). Neither shows up in the app: the card
+      # renders a plausible number either way. Same reason check-skill-trends.ts
+      # exists.
+      - name: Employer attribution gate holds its measured pairs
+        run: python scripts/test_company_alias.py
 
       # A company added to the roster appears on the map immediately, whether or
       # not any job board is searched for it — so without this, a new employer
