@@ -30,6 +30,26 @@ PAGING is an Ant Design paginator with no URL parameter, so it is clicked. The
 statement of how many pages there are; it prints no total anywhere else, so that
 count is what bounds the walk.
 
+CLICK `next`, NOT THE NUMBER — and this is the correction that matters, because
+the obvious version was written first and silently lost a quarter of the board.
+Whitehaven's feed clicks `.ant-pagination-item-N` directly, which is fine there:
+its paginator is short enough to render every number. Uniting's is not. Measured
+on the first CI run (2026-09-18), page 1 renders items [1, 2, 3, 4, 5, 8] — SIX
+AND SEVEN ARE BEHIND THE ELLIPSIS AND DO NOT EXIST IN THE DOM — so those two
+clicks could never land, and the walk collected pages 1-5 and 8: 140 roles of
+the board's 190. It reported that as a successful run.
+
+`.ant-pagination-next` is always present and always advances one page, so the
+walk steps to page N by clicking it N-1 times. That is O(N^2) clicks over the
+whole walk, which is cheap at eight pages and would not be at fifty; a board
+that deep needs a different approach, not a bigger timeout.
+
+AND THE LANDING IS VERIFIED. The paginator marks the current page
+`<li title="N" class="… ant-pagination-item-active">`, so the walk reads back
+where it actually is and refuses to file a page it did not reach. A click that
+silently fails otherwise re-parses the page it is already on, and the archive's
+dedup turns that into "fewer roles" rather than into an error.
+
 A RUN THAT FINDS NO CARDS EXITS NON-ZERO. An empty capture and a board with
 nothing on it look identical, and Uniting advertises constantly — the
 scraper-gap report had it at 988 ads held — so zero is a failure here, not a
@@ -70,6 +90,7 @@ CAPTURE = pa.opt(args, '--capture')
 # capture taken while that feed was built; the failure mode if it is not enough
 # is an empty card list, which main() turns into a red run rather than a zero.
 SETTLE_S = 8
+CLICK_SETTLE_S = 5
 
 CARD_RE = re.compile(
     r'test-id="job-posting-card"\s+job-posting-id="(\d+)"(.*?)(?=test-id="job-posting-card"|$)', re.S)
@@ -77,6 +98,7 @@ TITLE_RE = re.compile(r'test-id="job-title"[^>]*>(.*?)</h2>', re.S)
 LOC_RE = re.compile(r'test-id="job-location"[^>]*>(.*?)</div>', re.S)
 POSTED_RE = re.compile(r'test-id="job-posted-date-expiry"[^>]*>(.*?)</div>', re.S)
 PAGE_ITEM_RE = re.compile(r'class="ant-pagination-item ant-pagination-item-(\d+)')
+ACTIVE_RE = re.compile(r'<li title="(\d+)" class="[^"]*ant-pagination-item-active')
 
 MONTHS = {m: i + 1 for i, m in enumerate(
     ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august',
@@ -101,18 +123,25 @@ def posted_iso(text: str) -> str:
     return f'{m.group(3)}-{mon:02d}-{int(m.group(1)):02d}' if mon else ''
 
 
+def active_page(doc: str) -> int | None:
+    """Which page the rendered paginator says it is on."""
+    m = ACTIVE_RE.search(doc or '')
+    return int(m.group(1)) if m else None
+
+
 def render(page: int) -> str | None:
-    """Render the portal and click through to `page` (1-based)."""
+    """Render the portal and step to `page` (1-based) with `next` clicks.
+
+    See the header for why this cannot click the page number directly."""
     instructions: list[dict] = [{'type': 'wait', 'wait_time_s': SETTLE_S}]
-    if page > 1:
-        # Click the numbered page rather than "next" repeatedly: Ant renders the
-        # numbers as real anchors, and one click is one fewer render step to go
-        # wrong than N-1 chained ones.
+    for _ in range(page - 1):
         instructions.append({
             'type': 'click',
-            'selector': {'type': 'css', 'value': f'.ant-pagination-item-{page} a'},
+            'selector': {'type': 'css', 'value': '.ant-pagination-next'},
         })
-        instructions.append({'type': 'wait', 'wait_time_s': SETTLE_S})
+        # Shorter than the initial settle: this is an in-place re-render of the
+        # card list, not a page load with hydration behind it.
+        instructions.append({'type': 'wait', 'wait_time_s': CLICK_SETTLE_S})
     if VIA_OXYLABS:
         from oxylabs_client import fetch as oxy_fetch
         content, _ = oxy_fetch(PORTAL, geo='Australia', render=True,
@@ -164,12 +193,21 @@ def main() -> int:
         pages = min(pages, MAX_PAGES)
     print(f'Uniting Dayforce: page 1 has {len(jobs)} roles, paginator advertises {pages} pages')
 
+    missed = []
     for p in range(2, pages + 1):
         doc = render(p)
         capture(doc, p)
+        landed = active_page(doc)
         got, _ = parse_page(doc)
+        if landed != p:
+            # Never file a page we did not reach: its rows would be the previous
+            # page's, and the archive's dedup would hide that as a short day.
+            sys.stderr.write(f'  page {p}: paginator reports page {landed} — not filed\n')
+            missed.append(p)
+            continue
         if not got:
             sys.stderr.write(f'  page {p}: no cards\n')
+            missed.append(p)
             continue
         jobs += got
         print(f'  page {p}/{pages}: {len(jobs)} roles so far')
@@ -186,6 +224,12 @@ def main() -> int:
         home_hub=HOME_HUB, skills=not NO_SKILLS, dry=DRY)
     print(f'collected {len(jobs)} listings, {deduped} distinct, '
           f'{"would write" if DRY else "wrote"} {written if not DRY else deduped}')
+    if missed:
+        # Rows are written first — a partial board is better than none — but the
+        # run goes red, because "8 pages advertised, 6 collected" is exactly the
+        # shape of failure that otherwise passes for a quiet week.
+        sys.stderr.write(f'pages advertised but not collected: {missed}\n')
+        return 1
     return 0
 
 
