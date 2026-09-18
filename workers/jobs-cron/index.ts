@@ -1228,6 +1228,12 @@ const PORTAL_TICKS: Record<string, number> = {
   "45 12 * * *": 49,
   // Group 50 — West Beach Parks and Drake.
   "55 12 * * *": 50,
+  // Group 51 — St Vincent's, EY and PwC. The 12 hour is full (5, 15, 25, 35,
+  // 45, 55 all taken), so this opens the 13 hour. ":5" is a gov minute PREFIX,
+  // which is safe only because PORTAL_TICKS is matched by EXACT expression
+  // before the gov branches — the same reason "5 5 * * *" and "5 12 * * *"
+  // above are safe. See the comment on scheduled().
+  "5 13 * * *": 51,
 };
 
 const NEWS_TICKS: Record<string, number> = {

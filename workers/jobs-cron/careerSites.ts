@@ -203,6 +203,24 @@ interface SiteDef {
   hubHints?: [needle: string, hub: string][];
   /** Hard ceiling on pages, so a paging bug can't run away with the budget. */
   maxPages?: number;
+  /**
+   * Extra query string appended to a SuccessFactors search URL, without a
+   * leading `&`.
+   *
+   * ONLY FOR A BOARD THAT IS NOT THE COMPANY WE HOLD. Nearly every tenant here
+   * runs one board for one employer, and filtering it would only lose rows. EY
+   * is the exception the field exists for: careers.ey.com is EY GLOBAL, and an
+   * unfiltered walk of it archives Mumbai, Lima and Hong Kong roles under
+   * `priv-ey`, which on this roster is EY's Australian firm. Measured
+   * 2026-09-18: unfiltered page 1 is Mumbai / Canberra / Mumbai / Hong Kong /
+   * Lima; with `locationsearch=australia&locale=en_AU` it is 246 roles, every
+   * one of them Australian.
+   *
+   * It goes on the SEARCH url, not the endpoint, because the fetcher builds
+   * that url itself (`<endpoint>/search/?q=&startrow=N`) and a filter baked
+   * into `endpoint` would land before `/search/` and be ignored.
+   */
+  searchParams?: string;
   /** Rows a page, where the tenant fixes it at something other than the
    *  platform default. Avature tenants differ: Macquarie serves 9, Woolworths 6, and
    *  both ignore a larger jobRecordsPerPage — so it has to be per site. */
@@ -1715,6 +1733,74 @@ export const SITES: SiteDef[] = [
     homeHub: "perth",
   },
   {
+    // Measured 2026-09-18: 264 roles, `total` 264, 20 a page. A plain Workday
+    // tenant — no per-tenant quirk, which is why it is a four-line definition
+    // where the boards above it are not.
+    id: "priv-st-vincent-s-health-australia",
+    name: "St Vincent's Health Australia",
+    sector: "Hospitals & aged care",
+    platform: "workday",
+    endpoint: "https://svha.wd3.myworkdayjobs.com/wday/cxs/svha/SVHA_SVHA/jobs",
+    origin: "https://svha.wd3.myworkdayjobs.com/en-GB/SVHA_SVHA",
+    homeHub: "sydney",
+  },
+  {
+    // EY GLOBAL, NARROWED TO AUSTRALIA — see `searchParams` on SiteDef for why
+    // that filter is not optional here. Measured 2026-09-18: 246 Australian
+    // roles, the classic `<tr class="data-row">` SuccessFactors theme at 25 a
+    // page, and startrow paging works with the filter applied (page 2 is
+    // disjoint from page 1).
+    id: "priv-ey",
+    name: "EY",
+    sector: "Professional services",
+    platform: "successfactors",
+    endpoint: "https://careers.ey.com/ey",
+    searchParams: "locationsearch=australia&locale=en_AU",
+    origin: "https://careers.ey.com",
+    homeHub: "sydney",
+  },
+  {
+    // PwC Australia's Phenom tenant. Measured 2026-09-18: `totalHits` 118 on
+    // the island, 10 a page.
+    //
+    // THE `experiencedhires` PATH IS LOAD-BEARING. The bare
+    // jobs-au.pwc.com/au/en/search-results answers 200 with `totalHits` 0 —
+    // it is a live page serving an empty result set, so a walk of it returns
+    // nothing and looks exactly like an employer who is not hiring.
+    //
+    // Its /widgets API is closed on this tenant (measured: 200, `totalHits` 0,
+    // with the same payload that works for Coles), so the walk takes the
+    // island fallback. That is the fetcher's designed behaviour, not a
+    // degradation — it probes the widget first and falls back when it answers
+    // empty.
+    //
+    // EXPECT 100-112 ROLES, NOT 118, AND A DIFFERENT NUMBER EACH NIGHT. Two
+    // separate things make the board's own figure unreachable, and both were
+    // measured on 2026-09-18 rather than inferred:
+    //
+    //   1. 118 is LISTINGS, not requisitions. Walking all twelve pages by hand
+    //      collects 118 rows carrying 105 distinct ids — thirteen roles, mostly
+    //      the "EOI | …" ones, are listed under more than one category. 105 is
+    //      the honest count and the fetcher's id dedupe already produces it.
+    //   2. The island REORDERS BETWEEN REQUESTS. Three consecutive walks
+    //      returned 103, 108 and 112, and the extra roles in the later runs were
+    //      ones the earlier run never saw — so the pages are a moving window,
+    //      not a snapshot, and fetching them in parallel cannot be exact.
+    //
+    // This is left as it is rather than serialised, because the archive already
+    // handles it: job_key is stable, so each night's walk unions into the same
+    // rows and a role missed on one night lands on the next. What must not
+    // happen is someone reading 103 as a broken walk and "fixing" it against
+    // the 118.
+    id: "priv-pwc-australia",
+    name: "PwC Australia",
+    sector: "Professional services",
+    platform: "phenom",
+    endpoint: "https://jobs-au.pwc.com/experiencedhires/au/en/search-results",
+    origin: "https://jobs-au.pwc.com",
+    homeHub: "sydney",
+  },
+  {
     id: "sa-gov-west-beach-parks",
     name: "West Beach Parks",
     sector: "Government",
@@ -2762,9 +2848,24 @@ export const PORTAL_GROUPS: string[][] = [
   // Detmold (LiveHire, 12 roles in one call) and State Theatre (an
   // accordion, empty today). One request each.
   ["sa-gov-carclew-youth-arts-centre", "priv-detmold-group", "sa-gov-state-theatre-company-of-sa"],
-  // Group 50 — West Beach Parks (ELMO, 6 roles) and Drake (Expr3ss!, 39 in
-  // one response). Both single requests.
   ["sa-gov-west-beach-parks", "priv-drake-supermarkets"],
+  // Group 51 — the three in-Worker boards from the 2026-09-18 batch, all of
+  // them employers the scraper-gap report put near the top of the list.
+  // Measured that day: St Vincent's 264, EY 246 (Australia only), PwC 118.
+  //
+  // One tick between them. St Vincent's is Workday at 20 a page (14 requests),
+  // EY is SuccessFactors at 25 (10, sequential) and PwC's Phenom tenant has its
+  // widget API closed so it falls back to the ten-a-page island (12). Thirty-six
+  // requests for 628 roles sits well inside what the crowded ticks above
+  // already carry.
+  //
+  // The other three employers in that batch are not here and cannot be: TCS
+  // walks 237 pages, Infosys' BrassRing serves 500 KB a page for 32 pages, and
+  // Uniting's Dayforce API answers a datacentre POST with a bare 403. All three
+  // run as GitHub Actions — scripts/tcs-to-d1.py, scripts/infosys-to-d1.py and
+  // scripts/uniting-dayforce-to-d1.py — writing the same rows to the same
+  // archive.
+  ["priv-st-vincent-s-health-australia", "priv-ey", "priv-pwc-australia"],
 ];
 
 const UA =
@@ -3219,7 +3320,11 @@ async function fetchSuccessFactors(site: SiteDef): Promise<PortalJob[]> {
   const max = site.maxPages ?? DEFAULT_MAX_PAGES;
   for (let page = 0; page < max; page++) {
     const startrow = pageSize ? page * pageSize : 0;
-    const html = await getText(`${site.endpoint}/search/?q=&startrow=${startrow}`);
+    // `searchParams` is how a tenant that serves more than its own employer's
+    // roles is narrowed — see the field's note. Empty for every other site, so
+    // the url is unchanged for them.
+    const extra = site.searchParams ? `&${site.searchParams}` : "";
+    const html = await getText(`${site.endpoint}/search/?q=${extra}&startrow=${startrow}`);
     if (!html) break;
     // Table theme first; tile theme when the page carries no table rows.
     const table = html.split(/<tr class="data-row">/i).slice(1);
