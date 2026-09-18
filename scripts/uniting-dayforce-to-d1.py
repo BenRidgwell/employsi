@@ -40,15 +40,30 @@ clicks could never land, and the walk collected pages 1-5 and 8: 140 roles of
 the board's 190. It reported that as a successful run.
 
 `.ant-pagination-next` is always present and always advances one page, so the
-walk steps to page N by clicking it N-1 times. That is O(N^2) clicks over the
-whole walk, which is cheap at eight pages and would not be at fifty; a board
-that deep needs a different approach, not a bigger timeout.
+walk steps through the board one click at a time.
+
+ONE BROWSER CONTEXT, HELD OPEN — which is the difference between this finishing
+and not. The first fix rendered the portal afresh for each page and clicked
+`next` N-1 times to get back to where it already was: O(N^2) loads of a hydrated
+700 KB app, which did not finish inside a 45-minute CI job for eight pages. The
+walk now loads the board ONCE and clicks between reads, so it is one load and
+N-1 clicks however deep the board goes. That is what browser_fetch.Session.act
+exists for.
+
+`--oxylabs` cannot do this: the Web Scraper API takes an instruction list and
+hands back one document, with no session to hold. That path therefore keeps the
+per-page form and stays O(N^2) — acceptable for an escape hatch that is not the
+daily route, and stated here so nobody measures it and concludes the session
+walk is slow.
 
 AND THE LANDING IS VERIFIED. The paginator marks the current page
 `<li title="N" class="… ant-pagination-item-active">`, so the walk reads back
 where it actually is and refuses to file a page it did not reach. A click that
 silently fails otherwise re-parses the page it is already on, and the archive's
-dedup turns that into "fewer roles" rather than into an error.
+dedup turns that into "fewer roles" rather than into an error. In a session walk
+a failed click is worse than in a per-page one — every later page is off by one
+— so the walk STOPS at the first page it cannot confirm rather than carrying on
+and filing wrong pages under right numbers.
 
 A RUN THAT FINDS NO CARDS EXITS NON-ZERO. An empty capture and a board with
 nothing on it look identical, and Uniting advertises constantly — the
@@ -129,25 +144,27 @@ def active_page(doc: str) -> int | None:
     return int(m.group(1)) if m else None
 
 
-def render(page: int) -> str | None:
-    """Render the portal and step to `page` (1-based) with `next` clicks.
+# One click of the pager, then long enough for the card list to re-render in
+# place. Shorter than the initial settle: this is not a page load with hydration
+# behind it.
+NEXT_STEP: list[dict] = [
+    {'type': 'click', 'selector': {'type': 'css', 'value': '.ant-pagination-next'}},
+    {'type': 'wait', 'wait_time_s': CLICK_SETTLE_S},
+]
 
-    See the header for why this cannot click the page number directly."""
+
+def render_oxylabs(page: int) -> str | None:
+    """The escape hatch: one rendered document per page, O(N^2) over the walk.
+
+    See the header — the Web Scraper API has no session to hold, so reaching
+    page N means replaying the whole click chain from a fresh load."""
+    from oxylabs_client import fetch as oxy_fetch
     instructions: list[dict] = [{'type': 'wait', 'wait_time_s': SETTLE_S}]
     for _ in range(page - 1):
-        instructions.append({
-            'type': 'click',
-            'selector': {'type': 'css', 'value': '.ant-pagination-next'},
-        })
-        # Shorter than the initial settle: this is an in-place re-render of the
-        # card list, not a page load with hydration behind it.
-        instructions.append({'type': 'wait', 'wait_time_s': CLICK_SETTLE_S})
-    if VIA_OXYLABS:
-        from oxylabs_client import fetch as oxy_fetch
-        content, _ = oxy_fetch(PORTAL, geo='Australia', render=True,
-                               extra={'browser_instructions': instructions}, timeout=300)
-        return content
-    return browser_fetch.render(PORTAL, instructions)
+        instructions += NEXT_STEP
+    content, _ = oxy_fetch(PORTAL, geo='Australia', render=True,
+                           extra={'browser_instructions': instructions}, timeout=300)
+    return content
 
 
 def parse_page(doc: str) -> tuple[list[dict], int]:
@@ -182,35 +199,51 @@ def capture(doc: str, page: int) -> None:
     print(f'  captured {len(doc)} bytes -> {path}')
 
 
-def main() -> int:
-    if not DRY and not pa.token():
-        sys.exit('CLOUDFLARE_API_TOKEN is required (needs D1 edit). Use --dry-run to skip the write.')
+def walk(next_page) -> tuple[list[dict], list[int], int]:
+    """Read the board. `next_page(p)` returns page p's HTML, or None.
 
-    first = render(1)
+    Returns (rows, pages advertised but not collected, pages advertised).
+    """
+    first = next_page(1)
     capture(first, 1)
     jobs, pages = parse_page(first)
     if MAX_PAGES:
         pages = min(pages, MAX_PAGES)
     print(f'Uniting Dayforce: page 1 has {len(jobs)} roles, paginator advertises {pages} pages')
 
-    missed = []
+    missed: list[int] = []
     for p in range(2, pages + 1):
-        doc = render(p)
+        doc = next_page(p)
         capture(doc, p)
         landed = active_page(doc)
         got, _ = parse_page(doc)
-        if landed != p:
-            # Never file a page we did not reach: its rows would be the previous
-            # page's, and the archive's dedup would hide that as a short day.
-            sys.stderr.write(f'  page {p}: paginator reports page {landed} — not filed\n')
-            missed.append(p)
-            continue
-        if not got:
-            sys.stderr.write(f'  page {p}: no cards\n')
-            missed.append(p)
-            continue
+        if landed != p or not got:
+            why = (f'paginator reports page {landed}' if landed != p else 'no cards')
+            sys.stderr.write(f'  page {p}: {why} — not filed, stopping the walk\n')
+            # STOP, do not continue. In a session walk the pager's position is
+            # the walk's only state: once a click has failed we are on an
+            # unknown page, and every later read would file the wrong rows under
+            # the right page number. The remaining pages are reported as missed.
+            missed = list(range(p, pages + 1))
+            break
         jobs += got
         print(f'  page {p}/{pages}: {len(jobs)} roles so far')
+    return jobs, missed, pages
+
+
+def main() -> int:
+    if not DRY and not pa.token():
+        sys.exit('CLOUDFLARE_API_TOKEN is required (needs D1 edit). Use --dry-run to skip the write.')
+
+    if VIA_OXYLABS:
+        jobs, missed, pages = walk(render_oxylabs)
+    else:
+        # ONE context for the whole walk — see the header. `html()` loads the
+        # board; every page after that is a click on the page already open.
+        with browser_fetch.Session(timeout_s=90) as session:
+            jobs, missed, pages = walk(
+                lambda p: (session.html(PORTAL, [{'type': 'wait', 'wait_time_s': SETTLE_S}])
+                           if p == 1 else session.act(NEXT_STEP)))
 
     if not jobs:
         # See the header: Uniting advertises constantly, so an empty walk is a
@@ -222,7 +255,8 @@ def main() -> int:
     written, deduped = pa.archive(
         jobs, source=SOURCE, company_id=COMPANY_ID, company=COMPANY, sector=SECTOR,
         home_hub=HOME_HUB, skills=not NO_SKILLS, dry=DRY)
-    print(f'collected {len(jobs)} listings, {deduped} distinct, '
+    print(f'collected {len(jobs)} listings from {pages - len(missed)}/{pages} pages, '
+          f'{deduped} distinct, '
           f'{"would write" if DRY else "wrote"} {written if not DRY else deduped}')
     if missed:
         # Rows are written first — a partial board is better than none — but the
