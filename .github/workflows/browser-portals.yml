@@ -147,13 +147,25 @@ jobs:
         # context open instead (browser_fetch.Session.act), so eight pages cost
         # one load and seven clicks rather than eight loads and 28 clicks.
         timeout-minutes: 10
-        run: python scripts/uniting-dayforce-to-d1.py --capture captures
+        run: python scripts/dayforce-to-d1.py --portal uniting --capture captures
 
-      - name: Keep the rendered Uniting pages
+      - name: Scrape EVT (Dayforce) careers → D1 (rendered, local browser)
+        # The same tenant table, the same 403 on the search API — measured on
+        # this tenant too, so it is the platform and not one customer's setting.
+        # EVT is hotels (Rydges, QT, Atura), cinemas and Thredbo.
+        if: always()
+        timeout-minutes: 10
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/dayforce-to-d1.py --portal evt --capture captures
+
+      - name: Keep the rendered Dayforce pages
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: uniting-dayforce-capture
+          name: dayforce-captures
           path: captures/
           if-no-files-found: ignore
           retention-days: 7

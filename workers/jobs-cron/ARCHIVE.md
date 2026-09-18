@@ -1481,3 +1481,74 @@ deliberately does NOT fetch anything: a portal driver's whole value is the
 measurement of one live site, and hiding that behind a generic fetcher is how a
 per-tenant quirk gets simplified away. The older drivers still carry their own
 copies and can move over one at a time.
+
+
+## 2026-09-18 (second batch): the next ten on the scraper-gap report
+
+Nine of the ten needed no new platform code — four Workday tenants, two
+SuccessFactors boards, three PageUp instances — which is the point of having
+reverse-engineered thirteen platforms. Two things did need work, and one of them
+was a bug the batch only found because a new board tripped over it.
+
+### In the Worker (groups 52-53, ticks `15 13 * * *` and `25 13 * * *`)
+
+| Employer | platform | roles | note |
+| --- | --- | --- | --- |
+| Goodstart Early Learning | successfactors | 377 | table theme, 25 a page |
+| Brisbane Catholic Education | successfactors | 196 | TILE theme, no server-rendered total |
+| Salvation Army Australia | workday | 169 | the org.au 403 is on the marketing site, not the ATS |
+| Mecca Brands | workday | 165 | store names, so it needs hubHints |
+| Mater | pageupclassic | 142 | the div theme — see below |
+| HammondCare | workday | 94 | many regional sites that belong to no hub |
+| Aurecon | workday | 77 | of 202; APAC board, filtered to Australia |
+| Linfox AU / NZ | pageupclassic | 70 + 5 | two instances, two countries |
+
+**PAGEUP HAS TWO THEMES AND WE ONLY PARSED ONE.** Mater's board is the same
+PageUp product as Harvey Norman's and Cleanaway's, rendered as `.JobItemWP`
+divs with a labelled `<span class="location">` rather than a table of `<td>`s.
+`fetchPageUpClassic` split on `<tbody id="search-results-content">`, so against
+Mater it returned ZERO roles and raised nothing — a live board with ~140
+vacancies reading as an employer who is not hiring. `fetchSuccessFactors` has
+split on its own two themes since it was written; PageUp now does the same.
+
+**AURECON IS THE SECOND EY.** Its Workday tenant is the APAC board: 202 roles,
+of which Philippines 39, Thailand 39, Vietnam 19, Singapore 11, Malaysia 7,
+Hong Kong 5, New Zealand 2, Indonesia 2 — and 77 in Australia, which is what
+`priv-aurecon` means on this roster. The new `appliedFacets` field on SiteDef
+carries Workday facet ids, which are per tenant and opaque; read them off the
+board's own `facets` array, and CHECK the filtered total against the facet's
+count, because a wrong id does not error — it returns everything.
+
+**LINFOX'S TWO BOARDS ARE TWO COUNTRIES.** Instance 449 is Australia (70) and
+941 is New Zealand (5, all Auckland). Both are titled "Careers - Linfox". Note
+for anyone reading the ranking: the archive holds 578 ads for Linfox and its own
+boards carry 75, so this feed buys precision rather than volume — Linfox really
+does advertise mostly on the job boards.
+
+`hubHints` took Mecca from 86 of 165 placed on a hub to 152. The regional towns
+are deliberately left unplaced — Dubbo, Scone, Mackay, Rockhampton and Gold
+Coast belong to no hub here, and a needle for them would file a regional role in
+a capital. So is Workday's "2 Locations" placeholder, which names nowhere at all.
+
+### Off-Worker
+
+- **`scripts/dayforce-to-d1.py`** — now a table of tenants rather than one
+  employer, covering Uniting and **EVT** (`sydney-evt`, hotels, cinemas and
+  Thredbo). The 403 on `POST /api/geo/<tenant>/jobposting/search` was re-measured
+  on the EVT tenant, so it is the platform refusing datacentre addresses and not
+  one customer's setting. Whitehaven's Dayforce script predates this and still
+  runs its own copy; it could move here unchanged.
+- **`scripts/marriott-to-d1.py`** — `washington-mar`, Oracle Recruiting,
+  **13,786 requisitions**, written as `portal-or` so it sits beside Westpac's and
+  Downer's rows rather than inventing a per-employer source.
+
+  **`expand` is load-bearing and its absence is SILENT.** Without
+  `expand=requisitionList.secondaryLocations,flexFieldsFacet.values` the request
+  still answers 200 and still reports the right `TotalJobsCount` — it just
+  returns `requisitionList` empty. Measured at limit 25, 100 and 200: 13,787
+  advertised, zero rows, no error. A walk written without it collects nothing
+  while looking healthy, so the driver treats an empty first page as a failure
+  and says which parameter to suspect.
+
+  `siteNumber=CX_2` is the board; `CX_1` exists on the same pod and returns 8.
+  The tenant honours `limit=200`, which turns 552 requests into 69.

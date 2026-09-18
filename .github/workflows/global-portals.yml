@@ -45,7 +45,16 @@ concurrency:
 jobs:
   archive:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Sixty, because Marriott made this the longest job in the repo. Estimated
+    # from the measured parts: Marriott ~69 requests plus ~2,000 D1 statements
+    # for 13,786 rows, TCS 237 requests for 1,828, Infosys 32 for 1,256 — call
+    # it 25 minutes with the D1 writes dominating, and leave real headroom
+    # rather than discovering the cap on a night the boards grow.
+    #
+    # Each step is separately capped at 30 so one slow board cannot eat the
+    # other two; the boards are unrelated and one being slow is no reason to
+    # skip archiving the rest.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -59,6 +68,7 @@ jobs:
           bun-version: latest
 
       - name: Scrape TCS iBegin → D1
+        timeout-minutes: 30
         id: tcs
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -69,7 +79,24 @@ jobs:
             ${{ inputs.dry && '--dry' || '' }} \
             --max-pages "${{ inputs.max_pages || 0 }}"
 
+      - name: Scrape Marriott Oracle Recruiting → D1
+        # 13,786 requisitions at 200 a page — 69 requests. It is in this file
+        # rather than a Worker tick for the same reason as the two below it:
+        # the walk is far too deep for a tick shaped around short bursts, and a
+        # tick that runs out of budget truncates silently.
+        if: always()
+        timeout-minutes: 30
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: |
+          python scripts/marriott-to-d1.py \
+            ${{ inputs.dry && '--dry' || '' }} \
+            --max-pages "${{ inputs.max_pages || 0 }}"
+
       - name: Scrape Infosys BrassRing → D1
+        timeout-minutes: 30
         # Runs even if TCS failed — they are unrelated boards, and one being
         # blocked is no reason to skip archiving the other.
         if: always()

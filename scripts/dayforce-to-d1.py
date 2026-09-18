@@ -1,18 +1,30 @@
 #!/usr/bin/env python3
-"""Uniting's Dayforce candidate portal → the D1 job archive.
+"""Dayforce candidate portals → the D1 job archive.
+
+ONE DRIVER, A TABLE OF TENANTS. Dayforce serves every employer from the same
+app at jobs.dayforcehcm.com/<locale>/<tenant>/<site>, so the walk and the parser
+are identical and only the tenant and the roster company change. Uniting was
+written first and EVT arrived a day later; a second copy of a 200-line walk is
+how the two then drift apart, so the differences live in PORTALS below and
+nothing else is duplicated.
+
+(scripts/whitehaven-dayforce-to-d1.py is the same board type and predates this.
+It still runs its own copy and could move here unchanged; it is left alone
+rather than rewritten while it is working.)
 
 WHY THIS IS NOT IN workers/jobs-cron/careerSites.ts
-The same wall Whitehaven's Dayforce board hit, re-measured on this tenant
+The same wall Whitehaven's Dayforce board hit, re-measured on BOTH tenants
 2026-09-18. The portal is a client-rendered app whose served HTML carries no
-vacancies at all — 494 KB with zero job links — and the list it fetches after
-hydration comes from
+vacancies at all — 494 KB for Uniting and 472 KB for EVT, zero job cards in
+either — and the list it fetches after hydration comes from
 
-    POST https://jobs.dayforcehcm.com/api/geo/unitingaunsw/jobposting/search
+    POST https://jobs.dayforcehcm.com/api/geo/<tenant>/jobposting/search
 
 which answers a plain server request with a bare 403 "Forbidden", with a browser
-User-Agent and the portal's own Origin and Referer attached. That is Cloudflare
-bot management refusing a datacentre address, and a Cloudflare Worker fares
-WORSE rather than better on a Cloudflare-to-Cloudflare fingerprint.
+User-Agent and the portal's own Origin and Referer attached. Measured on both
+tenants, so it is the platform and not one customer's setting. That is
+Cloudflare bot management refusing a datacentre address, and a Cloudflare Worker
+fares WORSE rather than better on a Cloudflare-to-Cloudflare fingerprint.
 
 So the portal is RENDERED rather than called, exactly as
 scripts/whitehaven-dayforce-to-d1.py does it, through a local headless Chromium
@@ -71,14 +83,15 @@ a failed click is worse than in a per-page one — every later page is off by on
 and filing wrong pages under right numbers.
 
 A RUN THAT FINDS NO CARDS EXITS NON-ZERO. An empty capture and a board with
-nothing on it look identical, and Uniting advertises constantly — the
-scraper-gap report had it at 988 ads held — so zero is a failure here, not a
-quiet day.
+nothing on it look identical, and both these employers advertise constantly —
+the scraper-gap report had Uniting at 988 ads held and EVT at 826 — so zero is a
+failure here, not a quiet day.
 
 Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID,
      OXYLABS_USERNAME / OXYLABS_PASSWORD (only with --oxylabs)
-Run: python scripts/uniting-dayforce-to-d1.py [--dry-run] [--max-pages N]
-                                              [--capture DIR] [--oxylabs]
+Run: python scripts/dayforce-to-d1.py --portal uniting|evt
+                                      [--dry-run] [--max-pages N]
+                                      [--capture DIR] [--oxylabs]
 """
 from __future__ import annotations
 import html
@@ -92,13 +105,42 @@ import browser_fetch  # noqa: E402
 import portal_archive as pa  # noqa: E402
 
 SOURCE = 'portal-dayforce'
-COMPANY_ID = 'priv-uniting'
-COMPANY = 'Uniting'
-SECTOR = 'Aged & community care'
-HOME_HUB = 'sydney'
-PORTAL = 'https://jobs.dayforcehcm.com/en-AU/unitingaunsw/UNITINGCCS'
+
+# Tenant + roster company. `portal` is the candidate site, `tenant` only appears
+# in the search API this driver deliberately does not use (it 403s) and is kept
+# because it is what a future reader will check first.
+PORTALS = {
+    'uniting': {
+        'portal': 'https://jobs.dayforcehcm.com/en-AU/unitingaunsw/UNITINGCCS',
+        'tenant': 'unitingaunsw',
+        'company_id': 'priv-uniting',
+        'company': 'Uniting',
+        'sector': 'Aged & community care',
+        'home_hub': 'sydney',
+    },
+    'evt': {
+        'portal': 'https://jobs.dayforcehcm.com/en-AU/evtelevate/EVT',
+        'tenant': 'evtelevate',
+        'company_id': 'sydney-evt',
+        'company': 'EVT',
+        # Hotels (Rydges, QT, Atura), cinemas (Event, Moonlight) and Thredbo.
+        # The roster files EVT under Technology, Media & Telecom because of the
+        # cinema arm; the sector string here feeds the SKILLS matcher, so it
+        # names the work rather than the listing classification.
+        'sector': 'Hospitality & entertainment',
+        'home_hub': 'sydney',
+    },
+}
 
 args = sys.argv[1:]
+PORTAL_KEY = pa.opt(args, '--portal')
+if PORTAL_KEY not in PORTALS:
+    sys.exit(f'--portal must be one of: {", ".join(sorted(PORTALS))}')
+CFG = PORTALS[PORTAL_KEY]
+PORTAL = CFG['portal']
+COMPANY_ID, COMPANY = CFG['company_id'], CFG['company']
+SECTOR, HOME_HUB = CFG['sector'], CFG['home_hub']
+
 DRY = pa.flag(args, '--dry-run') or pa.flag(args, '--dry')
 NO_SKILLS = pa.flag(args, '--no-skills')
 VIA_OXYLABS = pa.flag(args, '--oxylabs')
@@ -198,7 +240,7 @@ def capture(doc: str, page: int) -> None:
     if not CAPTURE or not doc:
         return
     os.makedirs(CAPTURE, exist_ok=True)
-    path = os.path.join(CAPTURE, f'uniting-page{page}.html')
+    path = os.path.join(CAPTURE, f'{PORTAL_KEY}-page{page}.html')
     with open(path, 'w', encoding='utf-8') as fh:
         fh.write(doc)
     print(f'  captured {len(doc)} bytes -> {path}')
@@ -214,7 +256,7 @@ def walk(next_page) -> tuple[list[dict], list[int], int]:
     jobs, pages = parse_page(first)
     if MAX_PAGES:
         pages = min(pages, MAX_PAGES)
-    print(f'Uniting Dayforce: page 1 has {len(jobs)} roles, paginator advertises {pages} pages')
+    print(f'{COMPANY} Dayforce: page 1 has {len(jobs)} roles, paginator advertises {pages} pages')
 
     missed: list[int] = []
     for p in range(2, pages + 1):
@@ -251,9 +293,9 @@ def main() -> int:
                            if p == 1 else session.act(NEXT_STEP)))
 
     if not jobs:
-        # See the header: Uniting advertises constantly, so an empty walk is a
-        # broken render, not an empty board.
-        sys.stderr.write('Uniting: no job cards in the rendered portal — '
+        # See the header: both these employers advertise constantly, so an
+        # empty walk is a broken render, not an empty board.
+        sys.stderr.write(f'{COMPANY}: no job cards in the rendered portal — '
                          'selectors or render settled time need re-measuring\n')
         return 1
 
