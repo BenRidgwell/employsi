@@ -1234,6 +1234,14 @@ const PORTAL_TICKS: Record<string, number> = {
   // before the gov branches — the same reason "5 5 * * *" and "5 12 * * *"
   // above are safe. See the comment on scheduled().
   "5 13 * * *": 51,
+  // Groups 52-53 — the 2026-09-18 batch. Same hour as 51, the next two free
+  // slots in it. Minutes 15 and 25 are gov minute PREFIXES, which is safe only
+  // because PORTAL_TICKS is matched by EXACT expression before the gov
+  // branches; see the comment on scheduled(). (Written without quote marks on
+  // purpose: check-portal-ticks.ts reads this table by regex, and a quoted
+  // cron-shaped string in a COMMENT is picked up as if it were an entry.)
+  "15 13 * * *": 52,
+  "25 13 * * *": 53,
 };
 
 const NEWS_TICKS: Record<string, number> = {
