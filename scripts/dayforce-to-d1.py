@@ -130,6 +130,25 @@ PORTALS = {
         'sector': 'Hospitality & entertainment',
         'home_hub': 'sydney',
     },
+    'avant': {
+        # Avant publishes its board as .../CandidatePortal/en-AU/avant/SITE/
+        # CANDIDATEPORTAL; this is the same tenant on the jobs. host the other
+        # two use, verified 2026-09-18 by fetching it (453 KB of the same
+        # client-rendered shell Uniting and EVT serve, no job cards in it).
+        #
+        # The row count is NOT stated here because it could not be measured:
+        # /api/geo/avant/jobposting/search answers this sandbox with a bare 403,
+        # exactly as Uniting's and EVT's do, which is the whole reason all three
+        # are Actions. The first scheduled run is what will report it.
+        'portal': 'https://jobs.dayforcehcm.com/en-AU/avant/CANDIDATEPORTAL',
+        'tenant': 'avant',
+        'company_id': 'priv-avant-mutual',
+        'company': 'Avant Mutual',
+        # Medical indemnity insurance and the practices it runs, so the skills
+        # matcher is pointed at insurance rather than at health services.
+        'sector': 'Insurance',
+        'home_hub': 'sydney',
+    },
 }
 
 args = sys.argv[1:]

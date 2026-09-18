@@ -127,7 +127,41 @@ jobs:
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         run: |
-          python scripts/compass-to-d1.py \
+          python scripts/compass-to-d1.py --portal compass \
+            ${{ inputs.dry && '--dry' || '' }} \
+            --max-pages "${{ inputs.max_pages || 0 }}"
+
+      - name: Scrape Built (PageUp Sites) → D1
+        # Same driver, same 202 quota as Compass. Measured 2026-09-18: from a
+        # Worker-shaped fetch page 1 served 30 cards and a stated total of 41,
+        # and page 2 came back 202 with the 2.4 KB stub; from separate
+        # connections it walks 41 of 41.
+        if: always()
+        timeout-minutes: 30
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: |
+          python scripts/compass-to-d1.py --portal built \
+            ${{ inputs.dry && '--dry' || '' }} \
+            --max-pages "${{ inputs.max_pages || 0 }}"
+
+      - name: Scrape BMD Group (PageUp Sites) → D1
+        # NOT a 202 — an unstable cursor, which is the worse failure because
+        # every response looks like a valid page. The same three urls returned
+        # 30/30/26, 30/30/30, 26/26/26 and 30/30/30 depending only on how the
+        # requests were made. Walked here one connection per page, the shape
+        # that measured correct: 86 advertised, 82 distinct after the board's
+        # own duplicate listings.
+        if: always()
+        timeout-minutes: 30
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: |
+          python scripts/compass-to-d1.py --portal bmd \
             ${{ inputs.dry && '--dry' || '' }} \
             --max-pages "${{ inputs.max_pages || 0 }}"
 

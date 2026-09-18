@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Compass Group Australia's PageUp board → the D1 job archive.
+"""PageUp "Sites" boards that a Cloudflare Worker cannot read → the D1 job archive.
+
+Compass Group Australia, Built and BMD Group. See PORTALS for what each one does
+to a Worker; the header below is Compass, which is the case the file was written
+for and the clearest of the three.
 
 WHY THIS IS NOT IN workers/jobs-cron/careerSites.ts
 A bot quota, and the way it fails is the whole reason this file has a header.
@@ -36,7 +40,8 @@ cities, so this is a real feed and a partial view of a global employer rather
 than a wrong one. A UK or global board would be a second feed, not a replacement.
 
 Env: CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID
-Run: python scripts/compass-to-d1.py [--dry] [--max-pages N] [--no-skills]
+Run: python scripts/compass-to-d1.py --portal <compass|built|bmd>
+       [--dry] [--max-pages N] [--no-skills]
 """
 from __future__ import annotations
 import html as htmllib
@@ -54,18 +59,80 @@ import portal_archive as pa  # noqa: E402
 # `portal-pu`, matching SOURCE_TAG.pageupsites in careerSites.ts — beside Qube's
 # rows rather than a per-employer source.
 SOURCE = 'portal-pu'
-COMPANY_ID = 'london-cpg'
-COMPANY = 'Compass Group'
-SECTOR = 'Food & support services'
-HOME_HUB = 'sydney'   # the AU arm; London would misplace every unmatched role
-BOARD = 'https://careers.compass-group.com.au/jobs/search'
-PER_PAGE = 20         # the board's own page size
 PAUSE_S = 1.5         # unhurried on purpose: the allowance is what breaks first
+
+# THREE BOARDS, ONE DRIVER. They are all the PageUp "Sites" theme served by
+# Clinch (the `_clinch_session` cookie gives it away), and each one defeats a
+# Cloudflare Worker in its own way while reading perfectly from a runner:
+#
+#   compass  the 202 bot quota this file was written for.
+#   built    the same 202, measured 2026-09-18: page 1 served 179 KB with 30
+#            cards and a stated total of 41, page 2 came back 202 with the same
+#            2.4 KB stub. Fetched from separate processes minutes apart it is
+#            fine, so it is an allowance and not a block.
+#   bmd      NOT a 202 — an unstable cursor, which is worse because every
+#            response is a valid-looking page. Measured the same day, the same
+#            three urls four ways: separate curl processes returned 30/30/26
+#            (the 86 advertised); one process reusing a connection returned
+#            30/30/30 with page 3 identical to page 2; a second pass of that
+#            returned 26/26/26; and carrying `_clinch_session` across the walk
+#            pinned every page to the first 30. A Worker walk of it yields
+#            somewhere between 30 and 86 depending on how the requests happen to
+#            be made, which is a plausible number that counts nothing. Each page
+#            here is fetched on its own connection, which is the shape that
+#            measured correct.
+#
+# The other four Sites boards in this repo — Qube, Calvary, Visy and ANU — are
+# not here because they return their full advertised count from a Worker, which
+# is checked on every change rather than assumed.
+PORTALS = {
+    'compass': {
+        'board': 'https://careers.compass-group.com.au/jobs/search',
+        'company_id': 'london-cpg',
+        'company': 'Compass Group',
+        'sector': 'Food & support services',
+        # The AU arm; London would misplace every unmatched role.
+        'home_hub': 'sydney',
+        'per_page': 20,
+    },
+    'built': {
+        'board': 'https://careers.built.com.au/jobs/search',
+        'company_id': 'priv-built',
+        'company': 'Built',
+        'sector': 'Construction',
+        'home_hub': 'sydney',
+        'per_page': 30,
+    },
+    'bmd': {
+        # careers.pageuppeople.com/915/cw/en/listing/ — the CLASSIC PageUp path,
+        # and the one BMD's own site links — 302s here. Following it matters: a
+        # pageupclassic reader finds no `job-link` anchors on the Sites theme
+        # and returns zero without erroring.
+        'board': 'https://careers.bmdgroup.global/jobs/search',
+        'company_id': 'priv-bmd-group',
+        'company': 'BMD Group',
+        'sector': 'Construction',
+        'home_hub': 'brisbane',
+        'per_page': 30,
+    },
+}
 
 args = sys.argv[1:]
 DRY = pa.flag(args, '--dry')
 NO_SKILLS = pa.flag(args, '--no-skills')
 MAX_PAGES = int(pa.opt(args, '--max-pages', 0) or 0)
+# REQUIRED, with no default. A default would mean a mistyped --portal silently
+# archived Compass's roles a second time instead of failing.
+PORTAL_KEY = pa.opt(args, '--portal')
+if PORTAL_KEY not in PORTALS:
+    sys.exit(f'--portal must be one of: {", ".join(sorted(PORTALS))}')
+CFG = PORTALS[PORTAL_KEY]
+BOARD = CFG['board']
+COMPANY_ID = CFG['company_id']
+COMPANY = CFG['company']
+SECTOR = CFG['sector']
+HOME_HUB = CFG['home_hub']
+PER_PAGE = CFG['per_page']
 
 TOTAL_RE = re.compile(r'of\s*<b>\s*([\d,]+)\s*</b>\s*in total', re.I)
 TITLE_RE = re.compile(
@@ -147,7 +214,7 @@ def main() -> int:
     pages = -(-total // PER_PAGE)
     if MAX_PAGES:
         pages = min(pages, MAX_PAGES)
-    print(f'Compass Group AU: {total} roles advertised, {pages} pages of {PER_PAGE}')
+    print(f'{COMPANY}: {total} roles advertised, {pages} pages of {PER_PAGE}')
 
     jobs = rows_from(first)
     missed = []

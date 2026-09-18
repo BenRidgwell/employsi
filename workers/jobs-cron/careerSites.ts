@@ -3271,6 +3271,96 @@ export const SITES: SiteDef[] = [
     // North Sydney, where Wipro Australia is.
     homeHub: "sydney",
   },
+  // ── The 2026-09-18 fifth batch ────────────────────────────────────────────
+  //
+  // Three of the report's next nine run in the Worker. The other six do not,
+  // and each reason is recorded rather than guessed at.
+  //
+  // TWO MOVED TO scripts/compass-to-d1.py, which is now a three-tenant driver
+  // for the PageUp "Sites" boards a Worker cannot read — Built (202 bot quota,
+  // measured: page 1 served 30 cards, page 2 the 2.4 KB stub) and BMD Group
+  // (an unstable cursor that yields anywhere from 30 to 86 of its 86 depending
+  // on how the requests are made). Both walk correctly from a runner: 41 of 41
+  // and 82 distinct of 86.
+  //
+  // FOUR HAVE NO BOARD TO READ AT ALL:
+  //
+  //   SGH (Seven Group Holdings) — sghl.com.au is an investor-relations site
+  //     with no careers section at all: no /careers, and no "career", "join us"
+  //     or "work with us" anywhere in it. Its operating companies (WesTrac,
+  //     Coates, Boral, Beach Energy) each hire under their own name and board.
+  //     The holding company is what this roster id is, and it advertises
+  //     nothing of its own.
+  //   SGS — the job list on sgs.com/en-au is rendered client-side out of a
+  //     Coveo index (platform-eu.cloud.coveo.com), with no iframe and no job
+  //     rows in 160 KB of served HTML. Reading it needs a Coveo organisation id
+  //     and API key lifted from the bundle, and the index is global.
+  //   Lendlease — Workday at lendlease.wd3, and readable, but its postings
+  //     carry no `locationsText` at all: this tenant puts the location in
+  //     `bulletFields` instead, which fetchWorkday does not read. Left out
+  //     rather than half-wired, because an empty location falls back to the
+  //     home hub and the board is GLOBAL — measured 2026-09-18, 38 roles with
+  //     Kuala Lumpur among them, every one of which would have filed as Sydney.
+  //     It needs a bulletFields fallback plus a country filter, and the tenant
+  //     returned no facets to filter on.
+  //   AXA — iCIMS at jobs.axa.com, 957 opportunities, and no country filter
+  //     that worked: ?searchByCountry=Australia returns the same 957. There is
+  //     no iCIMS reader in this file, and AXA has had no Australian retail
+  //     business since 2011 — its archived rows come from jobstreet-ph and
+  //     simplyhired, not from Australian boards.
+  {
+    id: "priv-minterellison",
+    name: "MinterEllison",
+    sector: "Professional Services",
+    platform: "successfactors",
+    // Classic SuccessFactors. Measured 2026-09-18: "Results 1 to 53 of 53".
+    // minterellison.com answers a datacentre address with a 403, so the board
+    // was reached directly.
+    endpoint: "https://careers.minterellison.com",
+    origin: "https://careers.minterellison.com",
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-st-vincent-de-paul",
+    name: "St Vincent de Paul",
+    sector: "Healthcare & Social Assistance",
+    platform: "successfactors",
+    // Classic SuccessFactors. Measured 2026-09-18: "Results 1 to 40 of 40".
+    //
+    // THIS IS THE NSW STATE COUNCIL'S BOARD, NOT THE NATIONAL SOCIETY'S. The
+    // Society is federated — each state council hires separately — and
+    // careersnsw.vinnies.org.au is the only one of them reachable from here:
+    // careers.vinnies.org.au, careersqld, careersvic and careerswa all fail to
+    // connect through this sandbox's egress, which is not the same as not
+    // existing. So this feed is a PART of the employer's advertising, and the
+    // archive's 316 ads against these 40 is mostly the other councils rather
+    // than a truncated walk. Worth revisiting from an environment that can
+    // reach the other hostnames.
+    endpoint: "https://careersnsw.vinnies.org.au",
+    origin: "https://careersnsw.vinnies.org.au",
+    // Sydney, not the Box Hill VIC pin this roster id carries: every role on
+    // this particular board is a NSW one.
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-afl",
+    name: "AFL",
+    sector: "Consumer Services",
+    platform: "successfactors",
+    // SuccessFactors on `careers.afl` — a bare .afl TLD, which is why no
+    // careers.afl.com.au or jobs.afl.com.au resolves and why the board is only
+    // findable from the link on afl.com.au/careers. Measured 2026-09-18:
+    // "Results 1 to 22 of 22".
+    //
+    // It runs the UI5/React "NES" theme (bootstrap/3.4.8_NES), the same one
+    // Bendigo, Hancock and Wipro run — but UNLIKE those it server-renders its
+    // job rows, 22 `/job/` links in the served HTML. So it reads with
+    // fetchSuccessFactors and needs neither the RMK JSON service nor Wipro's
+    // sitemap. The theme is not the thing that decides; the rendered output is.
+    endpoint: "https://careers.afl",
+    origin: "https://careers.afl",
+    homeHub: "melbourne",
+  },
 ];
 
 /**
@@ -3610,6 +3700,22 @@ export const PORTAL_GROUPS: string[][] = [
   ],
   ["priv-chemist-warehouse", "paris-cap", "uni-australian-national-university"],
   ["adelaide-eld", "priv-team-global-express", "adelaide-abc"],
+
+  // Groups 62-64: the three in-Worker feeds from the 2026-09-18 fifth batch.
+  // Measured that day: MinterEllison 53, St Vincent de Paul (NSW) 40, AFL 22.
+  //
+  // ALL THREE ARE SUCCESSFACTORS, which is the most this file has taken at once
+  // and is exactly why they are in three different ticks rather than one: the
+  // SF walk is SEQUENTIAL, each page's size read off the one before, so packing
+  // them would queue three walks behind each other for no gain. Each tick here
+  // is one short walk.
+  //
+  // Avant Mutual is NOT here and cannot be: its Dayforce API answers a
+  // datacentre POST with a bare 403, the same wall Uniting, EVT and Whitehaven
+  // hit. It runs through scripts/dayforce-to-d1.py instead.
+  ["priv-minterellison"],
+  ["priv-st-vincent-de-paul"],
+  ["priv-afl"],
 ];
 
 const UA =
