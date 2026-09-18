@@ -20,7 +20,6 @@ State totals are attributed to that state's capital-city hub; the national
 figure is the true AUST total. Requires: pip install openpyxl
 """
 import json, re, sys
-import openpyxl
 
 sys.path.insert(0, __file__.rsplit('/', 1)[0])
 from skills_taxonomy import load_skills, matcher  # noqa: E402
@@ -148,6 +147,19 @@ def main(path):
             assert s in names, f'override references unknown skill: {s}'
 
     skills_for = matcher(TAX)
+
+    # Imported HERE, not at module scope, because this file is also read as a
+    # LIBRARY: scripts/check-occupation-overrides.py execs it to get at OVERRIDE
+    # and never opens a workbook. At module scope this line made that check
+    # depend on an Excel library it has no use for, and the check died on
+    # `ModuleNotFoundError: No module named 'openpyxl'` in CI — a guard that
+    # reported red without evaluating anything, which is the same shape as the
+    # react resolution failure that was hiding it two steps earlier.
+    #
+    # Regenerating still needs it, and says so: `pip install openpyxl`, as the
+    # module docstring has always stated. The failure simply moves to the one
+    # place that actually reads a spreadsheet.
+    import openpyxl
 
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     ws = wb[SHEET]
