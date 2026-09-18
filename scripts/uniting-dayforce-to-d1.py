@@ -42,13 +42,18 @@ the board's 190. It reported that as a successful run.
 `.ant-pagination-next` is always present and always advances one page, so the
 walk steps through the board one click at a time.
 
-ONE BROWSER CONTEXT, HELD OPEN — which is the difference between this finishing
-and not. The first fix rendered the portal afresh for each page and clicked
-`next` N-1 times to get back to where it already was: O(N^2) loads of a hydrated
-700 KB app, which did not finish inside a 45-minute CI job for eight pages. The
-walk now loads the board ONCE and clicks between reads, so it is one load and
-N-1 clicks however deep the board goes. That is what browser_fetch.Session.act
-exists for.
+ONE BROWSER CONTEXT, HELD OPEN. The first fix rendered the portal afresh for
+each page and clicked `next` N-1 times to get back to where it already was:
+O(N^2) loads of a hydrated 700 KB app. Measured 2026-09-18 it DID work — 8
+pages, 190 listings, 176 distinct, in 3m47s — so this is a scaling change and
+not a repair. Eight pages cost 8 loads and 28 clicks that way; they cost one
+load and 7 clicks this way, and the gap widens as the square of the page count.
+That is what browser_fetch.Session.act exists for.
+
+(An earlier version of this comment said the O(N^2) walk did not finish inside
+the CI job. That was wrong — read off a GitHub API response that was serving a
+stale in_progress status for a run that had already succeeded. The run is
+35297576486 and its log is the measurement above.)
 
 `--oxylabs` cannot do this: the Web Scraper API takes an instruction list and
 hands back one document, with no session to hold. That path therefore keeps the

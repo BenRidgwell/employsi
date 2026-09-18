@@ -127,12 +127,12 @@ jobs:
         # itself — it starves everything after it and burns a 45-minute runner.
         #
         # Ten is generous for what this now does: ONE load of the board and one
-        # click per page after that. The first version re-rendered the portal
-        # for every page and replayed the click chain to get back to where it
-        # already was, which is O(N^2) loads of a hydrated 700 KB app and did
-        # not finish inside the run at all. The walk holds a single browser
+        # click per page after that. The version before it re-rendered the
+        # portal for every page and replayed the click chain to get back to
+        # where it already was — O(N^2) loads of a hydrated 700 KB app, which
+        # measured 3m47s for eight pages. The walk holds a single browser
         # context open instead (browser_fetch.Session.act), so eight pages cost
-        # one load and seven clicks.
+        # one load and seven clicks rather than eight loads and 28 clicks.
         timeout-minutes: 10
         run: python scripts/uniting-dayforce-to-d1.py --capture captures
 
