@@ -123,6 +123,20 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        # BOUNDED, because this step can otherwise eat the whole job. The walk
+        # re-renders the portal once per page and clicks `next` up to N-1 times
+        # to get there, so its cost is O(N^2) in renders of a heavy hydrated
+        # app — measured on 2026-09-18 it did not finish inside the run, while
+        # the three boards above it took 49s, 19s and 10s. A step that runs long
+        # here does not just fail itself, it starves everything after it and
+        # burns a 45-minute runner.
+        #
+        # The real fix is to hold ONE browser context open and click between
+        # reads instead of re-navigating per page, which makes the walk O(N).
+        # Until that exists this cap is what keeps a slow night contained: the
+        # step goes red, the boards after it still run, and the captures from
+        # the partial walk are still uploaded.
+        timeout-minutes: 20
         run: python scripts/uniting-dayforce-to-d1.py --capture captures
 
       - name: Keep the rendered Uniting pages
