@@ -1,0 +1,99 @@
+# Deploy the SCRAPER worker (workers/jobs-cron) to Cloudflare, by hand.
+#
+# WHY A WORKFLOW AND NOT A TERMINAL. `npx wrangler deploy` needs
+# CLOUDFLARE_API_TOKEN, and that token lives only in the environment — which in
+# practice means it is here, as a repo secret, and not in the sandbox this repo
+# is usually worked in. Running the deploy here is how it happens without the
+# token being copied anywhere else.
+#
+# THIS DEPLOYS THE SCRAPER, NEVER THE APP. It passes
+# `--config workers/jobs-cron/wrangler.jsonc`, so it touches
+# `employsi-jobs-cron` and cannot reach `benridgwell-globe-gazer-hr`, the Worker
+# that carries employsi.com.au. A bare `wrangler deploy` WOULD reach it, which
+# is exactly why this file never runs one.
+#
+# NO PUSH TRIGGER, EVER. A deploy that happens because someone merged is a
+# deploy nobody decided to do. This is `workflow_dispatch` only, and its default
+# mode is `check`, so a stray click reports the current state rather than
+# shipping anything.
+#
+#   check    print `wrangler deployments list` and stop. This is also the
+#            cheapest way to confirm the token actually carries Workers
+#            Scripts:Edit, which is a DIFFERENT permission from the D1 edit the
+#            archive feeds use it for — the same secret may well have one and
+#            not the other.
+#   deploy   record the version being replaced, then deploy.
+#
+# The version id printed before the deploy is the only cheap way back:
+#   npx wrangler rollback <version-id> --config workers/jobs-cron/wrangler.jsonc
+#
+# VITE_MAPBOX_TOKEN is deliberately absent. It is a build-time inline for the
+# APP worker's vite build; this config declares `main: index.ts` with no build
+# step, so wrangler bundles the Worker directly and never needs it.
+#
+# Required repo secrets: CLOUDFLARE_API_TOKEN (Workers Scripts:Edit)
+
+name: deploy-jobs-cron
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'check = report the current deployment only; deploy = ship it'
+        type: choice
+        options: [check, deploy]
+        default: check
+
+concurrency:
+  group: deploy-jobs-cron
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: What is deployed now
+        id: current
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -o pipefail
+          npx --yes wrangler@4 deployments list \
+            --config workers/jobs-cron/wrangler.jsonc | tee before.txt
+
+      - name: Deploy
+        if: inputs.mode == 'deploy'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -o pipefail
+          npx --yes wrangler@4 deploy \
+            --config workers/jobs-cron/wrangler.jsonc | tee after.txt
+
+      - name: Report
+        if: always()
+        run: |
+          {
+            echo '## employsi-jobs-cron'
+            echo
+            echo "Mode: \`${{ inputs.mode }}\`"
+            echo
+            echo '### Before'
+            echo '```'
+            cat before.txt 2>/dev/null || echo 'deployments list did not run — check the token scope'
+            echo '```'
+            if [ -f after.txt ]; then
+              echo '### Deploy'
+              echo '```'
+              cat after.txt
+              echo '```'
+              echo
+              echo 'Rollback: `npx wrangler rollback <version-id> --config workers/jobs-cron/wrangler.jsonc`'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
