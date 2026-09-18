@@ -150,6 +150,8 @@ type Platform =
   | "wploop"
   | "pageupclassic"
   | "workpac"
+  | "capgemini"
+  | "wipro"
   | "eightfoldpcs"
   | "radancy"
   | "adlogic"
@@ -3101,6 +3103,174 @@ export const SITES: SiteDef[] = [
     origin: "https://www.workpac.com",
     homeHub: "brisbane",
   },
+  // ── The 2026-09-18 fourth batch: the next nine on the scraper-gap report ───
+  //
+  // "Next nine" skips the report's top two. Uniting and EVT rank 1 and 2 and
+  // are marked `portal!`, which means a portal-* feed already files rows under
+  // them — scripts/uniting-dayforce-to-d1.py and the EVT half of the same
+  // table. They have no SiteDef because their Dayforce API answers a datacentre
+  // POST with a bare 403, not because nothing reads them.
+  {
+    id: "priv-chemist-warehouse",
+    name: "Chemist Warehouse",
+    sector: "Retail",
+    platform: "successfactors",
+    // Classic SuccessFactors. Measured 2026-09-18: "Results 1 to 25 of 252".
+    // chemistwarehouse.com.au answers a datacentre address with a 403 and the
+    // .com.au careers subdomain does not resolve at all; careers.chemistwarehouse.com
+    // (no .au) is the board.
+    endpoint: "https://careers.chemistwarehouse.com",
+    origin: "https://careers.chemistwarehouse.com",
+    homeHub: "melbourne",
+  },
+  {
+    id: "paris-cap",
+    name: "Capgemini",
+    sector: "Professional Services",
+    platform: "capgemini",
+    // See fetchCapgemini. The country filter is part of the endpoint on
+    // purpose: one service serves every Capgemini country site, and this roster
+    // entry is the Australian firm. Measured 2026-09-18: 80 roles, 21
+    // Melbourne, 18 Sydney, 13 "Melbourne, Sydney", 7 Brisbane.
+    endpoint: "https://cg-jobstream-api.azurewebsites.net/api/job-search?country_code=au-en",
+    origin: "https://www.capgemini.com/au-en/careers/join-capgemini/job-search/",
+    // Melbourne rather than Paris: every row this feed writes is Australian,
+    // and homeHub is only ever the fallback for a location no needle matched.
+    homeHub: "melbourne",
+  },
+  {
+    id: "adelaide-eld",
+    name: "Elders",
+    sector: "Agriculture",
+    platform: "workday",
+    // Measured 2026-09-18: `total` 68. careers.elders.com.au is a redirect
+    // straight onto the Workday tenant, which is how it was found.
+    endpoint: "https://elderslimited.wd3.myworkdayjobs.com/wday/cxs/elderslimited/Elders/jobs",
+    origin: "https://elderslimited.wd3.myworkdayjobs.com/Elders",
+    homeHub: "adelaide",
+  },
+  {
+    id: "adelaide-abc",
+    name: "Adbri",
+    sector: "Industrial Manufacturing",
+    platform: "livehire",
+    // The LiveHire segment code, same shape as Wesfarmers. Measured
+    // 2026-09-18: 60 roles.
+    //
+    // THERE IS A SECOND SEGMENT AND IT IS NOT WIRED. `adbrimasonry` exists and
+    // authenticates — the token endpoint returns a valid bearer for it — and
+    // returns zero roles. That is a real zero (Adbri wound its masonry business
+    // down), not a broken segment, so it is recorded here rather than added as
+    // a feed that would spend a request a day to write nothing.
+    endpoint: "adbri",
+    origin: "https://www.livehire.com",
+    homeHub: "adelaide",
+  },
+  {
+    id: "priv-team-global-express",
+    name: "Team Global Express",
+    sector: "Transport & logistics",
+    platform: "workday",
+    // THE WORKDAY TENANT IS `agreenspace`, WHICH NAMES NEITHER THE COMPANY NOR
+    // ITS BOARD — it is the private-equity owner's slug, and the site is
+    // `Global_Express_Career_Site`. Neither is derivable; both were read off the
+    // link in teamglobalexp.com/careers/. Measured 2026-09-18: `total` 53.
+    //
+    // The board is AU + NZ (Auckland and Hastings roles are in it). Those place
+    // on their own hubs where HUB_MATCH names them and archive unplaced where
+    // it does not, which is the same treatment every trans-Tasman board here
+    // gets; it is not split into two feeds because it is one board.
+    endpoint:
+      "https://agreenspace.wd3.myworkdayjobs.com/wday/cxs/agreenspace/Global_Express_Career_Site/jobs",
+    origin: "https://agreenspace.wd3.myworkdayjobs.com/Global_Express_Career_Site",
+    homeHub: "melbourne",
+  },
+  {
+    id: "priv-anytime-fitness",
+    key: "priv-anytime-fitness-gyms",
+    name: "Anytime Fitness",
+    sector: "Consumer Services",
+    platform: "employmenthero",
+    // TWO ORGANISATIONS, ONE EMPLOYER. Anytime Fitness posts its gym roles
+    // under `anytime-australia-pty-ltd` and its head-office roles under
+    // `anytime-fitness-support-office`; both are Employment Hero career pages
+    // and neither carries the other's. Measured 2026-09-18: 39 and 1.
+    //
+    // The archive holds 339 ads against these 40, and the difference is real
+    // rather than missing: the rest are individual franchisees advertising on
+    // SEEK under their own gym's name. This feed is the company's own board,
+    // which is what the gap report is asking for.
+    endpoint:
+      "https://services.employmenthero.com/ats/api/v1/career_page/organisations/anytime-australia-pty-ltd/jobs",
+    origin: "https://employmenthero.com",
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-anytime-fitness",
+    key: "priv-anytime-fitness-office",
+    name: "Anytime Fitness",
+    sector: "Consumer Services",
+    platform: "employmenthero",
+    endpoint:
+      "https://services.employmenthero.com/ats/api/v1/career_page/organisations/anytime-fitness-support-office/jobs",
+    origin: "https://employmenthero.com",
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-tennis-australia",
+    name: "Tennis Australia",
+    sector: "Consumer Services",
+    platform: "workday",
+    // Measured 2026-09-18: `total` 15, all Melbourne. tennis.com.au answers a
+    // datacentre address with a 403, so the tenant was found from the outside
+    // and then verified against the API.
+    //
+    // Fifteen against 326 archived ads is not a truncated walk: Tennis
+    // Australia's volume is Australian Open event hiring, which is seasonal and
+    // is advertised through the boards rather than sitting on this one in
+    // September.
+    endpoint: "https://tennis.wd3.myworkdayjobs.com/wday/cxs/tennis/ta_careers/jobs",
+    origin: "https://tennis.wd3.myworkdayjobs.com/ta_careers",
+    homeHub: "melbourne",
+  },
+  {
+    id: "uni-australian-national-university",
+    name: "Australian National University",
+    sector: "Education",
+    platform: "pageupsites",
+    // PageUp's "Sites" theme, same as Calvary and Visy. Unlike those two this
+    // one DOES state its total — "of 56 in total" — so the walk is bounded by
+    // the count rather than by the pagination fallback.
+    //
+    // It is on the report despite --gaps, which means the uniroles.com.au
+    // aggregator does not read ANU to completion the way it does most of the
+    // sector.
+    //
+    // THIS BOARD STATES NO LOCATION ON ANY CARD — the theme is configured
+    // without the component, so there is no `job-component-list-location` in
+    // 192 KB of results and all 56 rows come back with an empty location. That
+    // is checked, not assumed: an empty location falls through to homeHub, and
+    // every one of these really is Acton, so Canberra is right here. It would
+    // not be right on a multi-site employer, which is why it is written down.
+    endpoint: "https://jobs.anu.edu.au/jobs/search",
+    origin: "https://jobs.anu.edu.au",
+    homeHub: "canberra",
+  },
+  {
+    id: "bengaluru-wipro",
+    name: "Wipro",
+    sector: "Professional Services",
+    platform: "wipro",
+    // See fetchWipro — the endpoint is the SITEMAP, because both of the ways
+    // this file reads SuccessFactors return nothing on this tenant while the
+    // sitemap lists 5,334 live jobs. Measured 2026-09-18: 21 of them Australian.
+    endpoint: "https://careers.wipro.com/sitemap.xml",
+    origin: "https://careers.wipro.com",
+    // Sydney rather than Bengaluru, and measured rather than assumed: this feed
+    // writes Australian rows only, and the AU slugs carry postcode 2060 —
+    // North Sydney, where Wipro Australia is.
+    homeHub: "sydney",
+  },
 ];
 
 /**
@@ -3420,6 +3590,26 @@ export const PORTAL_GROUPS: string[][] = [
   ["priv-workpac", "priv-kpmg", "melbourne-ifl"],
   ["priv-unitingcare-queensland", "priv-visy", "priv-ghd"],
   ["priv-deloitte-touche-tohmatsu", "priv-calvary-health-care", "melbourne-tah"],
+
+  // Groups 59-61: the ten feeds (nine employers) from the 2026-09-18 fourth
+  // batch. Measured that day: Chemist Warehouse 252, Capgemini 80 (Australia
+  // only), Elders 68, ANU 56, Adbri 60, Team Global Express 53, Anytime Fitness
+  // 39 + 1, Wipro 21 (Australia only, of 5,334), Tennis Australia 15.
+  //
+  // Wipro leads its own tick and it is the REQUEST COUNT, not the row count,
+  // that puts it there: it reads 21 job pages on top of the sitemap, so the
+  // smallest board in the batch is the second most expensive thing in it.
+  // Chemist Warehouse is the other one held apart — SuccessFactors pages
+  // SEQUENTIALLY, because each page's size is read off the one before, so its
+  // eleven pages are eleven round trips in series.
+  [
+    "bengaluru-wipro",
+    "priv-tennis-australia",
+    "priv-anytime-fitness-gyms",
+    "priv-anytime-fitness-office",
+  ],
+  ["priv-chemist-warehouse", "paris-cap", "uni-australian-national-university"],
+  ["adelaide-eld", "priv-team-global-express", "adelaide-abc"],
 ];
 
 const UA =
@@ -5549,6 +5739,158 @@ async function fetchWorkPac(site: SiteDef): Promise<PortalJob[]> {
       break;
     }
     if (advertised && out.length >= advertised) break;
+  }
+  return out;
+}
+
+// ── Capgemini "jobstream" (its own service, not an ATS) ──────────────────────
+interface CapgeminiJob {
+  id?: string;
+  title?: string;
+  location?: string;
+  apply_job_url?: string;
+  indexed_at?: string;
+  professional_communities?: string;
+  contract_type?: string;
+}
+
+/**
+ * Capgemini's careers page is WordPress, and the job list is a React block
+ * (`cg-jobs`) calling a service the page names in its own markup:
+ * `var cg_jobs_jobstream_url = "https://cg-jobstream-api.azurewebsites.net/api"`,
+ * and the bundle appends `/job-search`. Nothing here is guessed — both halves
+ * were read out of the page and its script.
+ *
+ * `endpoint` IS THE FULL SEARCH URL INCLUDING `country_code`, the way Worley's
+ * PCS endpoint carries its tenant domain. The filter is not optional: this is
+ * one global service behind every Capgemini country site, and `paris-cap` on
+ * this roster is the Australian firm. Measured 2026-09-18: `country_code=au-en`
+ * returns `total` 80, every row `en-au`.
+ *
+ * Bounded by the service's own `total` rather than by a short page — a failed
+ * request and the end of the list both arrive as zero rows.
+ */
+async function fetchCapgemini(site: SiteDef): Promise<PortalJob[]> {
+  const size = site.pageSize ?? 100;
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  let total = 0;
+  for (let page = 1; page <= max; page++) {
+    const json = await getJson<{ data?: CapgeminiJob[]; total?: number }>(
+      `${site.endpoint}&size=${size}&page=${page}`,
+    );
+    const rows = json?.data ?? [];
+    if (!rows.length) break;
+    if (!total) total = Number(json?.total ?? 0);
+    let added = 0;
+    for (const r of rows) {
+      const title = clean(r.title ?? "");
+      const id = clean(r.id ?? "") || title;
+      if (!title || seen.has(id)) continue;
+      seen.add(id);
+      added++;
+      // `location` is a comma-joined list on the roles open in several cities
+      // ("Brisbane, Canberra, Sydney, Melbourne, Adelaide"). It is kept whole:
+      // hubFor takes the first needle that matches, and truncating to one city
+      // would be choosing which of five the role is in.
+      out.push(
+        job(
+          site,
+          title,
+          clean(r.location ?? ""),
+          clean(r.apply_job_url ?? "") || site.origin,
+          isoDay(r.indexed_at ?? ""),
+          [clean(r.professional_communities ?? ""), clean(r.contract_type ?? "")]
+            .filter(Boolean)
+            .join(" — ") || "Career portal",
+        ),
+      );
+    }
+    if (!added) break;
+    if (total && out.length >= total) break;
+  }
+  return out;
+}
+
+// ── Wipro (SuccessFactors NES, read through its sitemap) ─────────────────────
+/**
+ * Wipro runs the SuccessFactors UI5/React "NES" theme, and BOTH of the ways
+ * this file already reads SuccessFactors come back empty on it. Measured
+ * 2026-09-18: /search/ serves 123 KB with zero `/job/` links, /viewalljobs/ the
+ * same, and the RMK JSON service that unlocks Bendigo and Hancock answers
+ * `{"totalJobs":0}` on this tenant for every location value tried. That is not
+ * an employer with no vacancies — the sitemap lists 5,334 live jobs.
+ *
+ * So the sitemap IS the listing. It is one request, it is the tenant's own
+ * published index, and the slug carries the country: every job URL ends
+ * `-<CC>[-postcode]/<id>/`. Australia is `AUS`, and 21 of the 5,334 match.
+ *
+ * The 21 job PAGES are then fetched for their fields rather than the slug being
+ * parsed, because the slug is lossy — "Melbourne-Sr_-Manager-L1-AUS" is
+ * "Sr. Manager L1" with the period replaced and the city glued on, and a title
+ * containing a hyphen could not be recovered from it at all. The pages carry a
+ * labelled field table (`Job Title:`, `City:`, `State/Province:`,
+ * `Posting Start Date:`) that says it exactly.
+ */
+const WIPRO_AU = /-AUS(-\d+)?\/\d+\/?$/;
+
+function wiproField(html: string, label: string): string {
+  const m = html.match(
+    new RegExp(
+      `joblayouttoken-label"[^>]*>\\s*${label}:\\s*</span>\\s*<span[^>]*>([\\s\\S]*?)</span>`,
+      "i",
+    ),
+  );
+  return m ? clean(m[1]) : "";
+}
+
+async function fetchWipro(site: SiteDef): Promise<PortalJob[]> {
+  const xml = await getText(site.endpoint);
+  if (!xml) return [];
+  const urls = [
+    ...new Set([...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => clean(m[1]))),
+  ].filter((u) => WIPRO_AU.test(u));
+  const out: PortalJob[] = [];
+  for (let i = 0; i < urls.length; i += PAGE_CONCURRENCY) {
+    const window = urls.slice(i, i + PAGE_CONCURRENCY);
+    const pages = await Promise.all(window.map((u) => getText(u)));
+    window.forEach((url, n) => {
+      const html = pages[n];
+      // A page that failed to fetch is SKIPPED, not archived off the slug: an
+      // empty location falls back to the employer's home hub, which would file
+      // a Perth role in Sydney and read as real data.
+      if (!html) return;
+      const title = wiproField(html, "Job Title");
+      if (!title) return;
+      const loc = [wiproField(html, "City"), wiproField(html, "State/Province")]
+        .filter(Boolean)
+        .join(", ");
+      // "Melbourne, Melbourne" — this tenant repeats the city in its own field.
+      const parts = [
+        ...new Set(
+          loc
+            .split(",")
+            .map((p) => p.trim())
+            .filter(Boolean),
+        ),
+      ];
+      out.push(
+        job(
+          site,
+          title,
+          // Australia is appended because the page never states a country and
+          // the fields alone ("Sydney, New South Wales") would leave a role
+          // unplaced on any board whose needle is the country name.
+          [...parts, "Australia"].join(", "),
+          url,
+          // M/D/YY, which Date.parse reads correctly as US ordering — the same
+          // ordering the tenant's en_US locale writes it in.
+          isoDay(wiproField(html, "Posting Start Date")),
+          "Career portal",
+        ),
+      );
+    });
   }
   return out;
 }
@@ -8144,6 +8486,8 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   wploop: fetchWpLoop,
   pageupclassic: fetchPageUpClassic,
   workpac: fetchWorkPac,
+  capgemini: fetchCapgemini,
+  wipro: fetchWipro,
   eightfoldpcs: fetchEightfoldPcs,
 };
 
@@ -8217,6 +8561,8 @@ const SOURCE_TAG: Record<Platform, string> = {
   // for the same reason sfrmkapi shares "sf".
   pageupclassic: "pu",
   workpac: "workpac",
+  capgemini: "cap",
+  wipro: "wipro",
   // Same vendor as `eightfold`, different product and different API — but an
   // advertisement is an advertisement, so it dedupes against an ef row rather
   // than sitting beside one.
