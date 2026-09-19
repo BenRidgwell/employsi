@@ -86,9 +86,11 @@ jobs:
             echo '(a different address may work) · `dns` the hostname does not exist,'
             echo 'so no address will reach it and the name was a guess.'
             echo
-            echo 'A hit in served HTML can become a careerSites.ts feed. A hit found'
-            echo 'ONLY AFTER RENDERING cannot — those fetchers get served HTML and no'
-            echo 'browser, so it needs a GitHub Action using browser_fetch instead.'
+              echo 'A hit in served HTML can become a careerSites.ts feed. A hit found'
+            echo 'ONLY AFTER RENDERING means that PAGE needs a browser -- not that the'
+            echo 'BOARD does. Try the platform API for the tenant, and the listing path,'
+            echo 'before reaching for a browser_fetch Action: Griffith and Village'
+            echo 'Roadshow both read as rendered-only and are in-Worker feeds.'
             echo
             echo '```'
             cat discover.txt 2>/dev/null || echo 'the probe did not run'

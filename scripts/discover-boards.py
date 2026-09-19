@@ -38,13 +38,27 @@ and they are different problems:
   address, and Playwright passes several that urllib does not. Griffith's
   careers page 403s even a runner, so the address is not the whole story there.
 
-WHERE IT FINDS SOMETHING, THE REPORT SAYS "rendered" — and that is the
-actionable half. A board only present after hydration CANNOT be an in-Worker
-feed however tidy its markup: careerSites.ts fetchers get served HTML and no
-browser, so a rendered-only hit means a GitHub Action using browser_fetch, the
-way scripts/dayforce-to-d1.py and the Stockland and Whitehaven feeds already do.
-Reporting the two as one thing would send the next reader to write a fetcher
-that always returns zero.
+WHERE IT FINDS SOMETHING, THE REPORT SAYS "rendered", because a PAGE that only
+carries its marker after hydration cannot be parsed by a careerSites.ts fetcher
+— those get served HTML and no browser.
+
+BUT "THE PAGE NEEDS A BROWSER" IS NOT "THE BOARD NEEDS A BROWSER", and reading
+it that way costs feeds. The actionable output of a hit is the TENANT, and a
+tenant's own API is usually plain JSON that answers anything:
+
+  Griffith's SmartRecruiters marker was visible only in a rendered page — the
+  university 403s a datacentre address on every path — and yet
+  api.smartrecruiters.com/v1/companies/GriffithUniversity/postings answered the
+  dev sandbox on the first call. It is an ordinary in-Worker feed.
+
+  Village Roadshow was reported rendered-only twice. The pages the sweep reached
+  were the client-rendered job DETAIL pages; the LISTING at /jobs/search is
+  server-rendered and answers a plain GET with all 30 cards. The sweep had
+  simply never asked for it.
+
+So a rendered-only hit means: try the platform's API and its listing path before
+reaching for browser_fetch. An Action (the way scripts/dayforce-to-d1.py and the
+Stockland and Whitehaven feeds work) is the answer only once those have failed.
 
 Off by default. It needs playwright and a Chromium download, and most sites
 answer the plain sweep perfectly well.
@@ -553,8 +567,11 @@ def main() -> int:
             for u, h in r['found'].items():
                 print(f'    {mark(u)}\n      -> {", ".join(h)}')
         if r.get('found_rendered'):
-            print('  FOUND ONLY AFTER RENDERING — needs a GitHub Action using')
-            print('  browser_fetch, NOT a careerSites.ts fetcher (those get served HTML):')
+            print('  FOUND ONLY AFTER RENDERING — this PAGE needs a browser, which does')
+            print('  not mean the BOARD does. Try the platform API for the tenant below,')
+            print('  and the listing path (/jobs/search, /en/listing/), before reaching')
+            print('  for a browser_fetch Action: both Griffith and Village Roadshow read')
+            print('  this way here and are in-Worker feeds in careerSites.ts.')
             for u, h in r['found_rendered'].items():
                 print(f'    {mark(u)}\n      -> {", ".join(h)}')
         if not r['found'] and not r.get('found_rendered'):
