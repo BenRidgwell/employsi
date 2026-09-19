@@ -129,6 +129,16 @@ FINGERPRINTS: list[tuple[str, str]] = [
 # a rendered attempt was even made.
 render_on = False
 
+# How far the corridor goes. LINK_FANOUT caps the links taken off any ONE page,
+# LINK_BUDGET the whole sweep for one employer, and RENDER_BUDGET how many of
+# those may be rendered — a render is seconds where a fetch is milliseconds, so
+# it is the one worth rationing. All three are deliberately small: this is a
+# discovery sweep, not a crawl, and a careers page that does not link its own
+# board within a couple of hops is telling you something.
+LINK_FANOUT = 8
+LINK_BUDGET = 14
+RENDER_BUDGET = 6
+
 CAREERS_LINK = re.compile(
     r'href=["\']([^"\']*(?:career|job|vacanc|work-with-us|join-us|employment)[^"\']*)["\']',
     re.I)
@@ -166,6 +176,16 @@ def fetch(url: str, timeout: int = 20) -> dict:
 
 
 
+# Set once a render fails in a way that looks like the environment rather than
+# the page. A sweep may render up to RENDER_BUDGET + one per candidate, and a
+# broken browser fails every one of them: measured locally, the first failure was
+# "Executable doesn't exist" and the SECOND became "Playwright Sync API inside
+# the asyncio loop" — the first failure had left the driver unusable. Fourteen
+# cascading errors bury the real one and make the report unreadable, so the first
+# is reported and the rest are skipped.
+_render_broken = ''
+
+
 def rendered_html(url: str, settle_s: int = 8) -> tuple[str | None, str]:
     """Render one page with the local headless Chromium.
 
@@ -184,14 +204,25 @@ def rendered_html(url: str, settle_s: int = 8) -> tuple[str | None, str]:
     (CLAUDE.md records the same limit for visual checks). A runner has no proxy.
     That is why the error text is surfaced verbatim instead of being summarised.
     """
+    global _render_broken
+    if _render_broken:
+        return None, f'skipped, the browser is not usable here ({_render_broken})'
     try:
         import browser_fetch  # noqa: PLC0415 - optional, see above
     except ImportError as e:
+        _render_broken = 'playwright not installed'
         return None, f'playwright not installed ({e})'
     try:
         html = browser_fetch.render(url, [{'type': 'wait', 'wait_time_s': settle_s}])
     except Exception as e:  # noqa: BLE001 - a render failure never aborts the sweep
-        return None, f'{type(e).__name__}: {str(e)[:110]}'
+        msg = f'{type(e).__name__}: {str(e)[:110]}'
+        # A launch or driver failure is about this machine, not this page, and
+        # every later render will hit it too. A timeout or navigation error is
+        # about the page, so it does NOT disable the rest.
+        if any(k in str(e) for k in ("BrowserType.launch", "Executable doesn't exist",
+                                     'asyncio loop', 'playwright install')):
+            _render_broken = msg
+        return None, msg
     if not html:
         # browser_fetch prints its own diagnosis and returns None.
         return None, 'render returned nothing (see the message above)'
@@ -228,6 +259,20 @@ def candidates(domain: str) -> list[str]:
 
 
 def sweep(domain: str, render: bool = False) -> dict:
+    """Probe one employer's conventional careers urls, then its own links.
+
+    THE LINK-FOLLOWING USED TO BE SKIPPED WHENEVER --render WAS ON. It sat in an
+    `elif` chained after the render branch, so the two were mutually exclusive
+    and switching on the browser silently switched off the step most likely to
+    find the board. Measured on the same target: the plain sweep of
+    salesforce.com followed 8 careers links, the rendered sweep followed none.
+    That is why the rendered runs kept coming back "reachable, no marker" —
+    they were reaching the front door and never trying the corridor.
+
+    The two are now independent, and the render is a FALLBACK on each page
+    rather than an alternative to exploring: every page that answers gets its
+    links harvested, and a page that yields nothing gets one render.
+    """
     tried: list[dict] = []
     found: dict[str, list[str]] = {}
     # Kept apart from `found` all the way to the report: a board that is only
@@ -235,13 +280,50 @@ def sweep(domain: str, render: bool = False) -> dict:
     # send the next reader to write a fetcher that always returns zero.
     found_rendered: dict[str, list[str]] = {}
     followed: list[str] = []
+    queue: list[str] = []
+
+    def harvest(html: str, base: str) -> None:
+        """Queue the careers/jobs links on one page, however it was obtained.
+
+        Also called on RENDERED html, which is the point of the rewrite: a
+        careers page a browser can reach but urllib cannot — three of the six
+        swept so far, Griffith, Tesla and Village Roadshow — has its links
+        visible only after the render, and before this they were never read.
+        """
+        for href in list(dict.fromkeys(CAREERS_LINK.findall(html)))[:LINK_FANOUT]:
+            nxt = urllib.parse.urljoin(base, href)
+            if nxt.startswith('http') and nxt not in followed and nxt not in queue:
+                queue.append(nxt)
+
     for url in candidates(domain):
         res = fetch(url)
         row = {k: v for k, v in res.items() if k != 'body'}
+        if res['outcome'] == 'ok':
+            hits = fingerprint(res['body'])
+            row['platforms'] = hits
+            if hits:
+                found[res.get('final', url)] = hits
+            else:
+                harvest(res['body'], res.get('final', url))
+                if render:
+                    # Served HTML carried no marker. The board may be a widget
+                    # that only exists after hydration — the common shape on a
+                    # marketing careers page.
+                    html, err = rendered_html(res.get('final', url))
+                    if err:
+                        row['rendered'] = f'could not render — {err}'
+                    else:
+                        rhits = fingerprint(html or '')
+                        row['rendered'] = 'rendered' if rhits else 'rendered, no marker'
+                        if rhits:
+                            row['rendered_platforms'] = rhits
+                            found_rendered[res.get('final', url)] = rhits
+                        else:
+                            harvest(html or '', res.get('final', url))
         # A 403 can be a header or TLS-fingerprint check rather than an address
-        # one, and a real browser passes several that urllib does not. Worth one
-        # render before calling a host unreachable.
-        if render and res['outcome'] == 'blocked':
+        # one, and a real browser passes several that urllib does not — measured
+        # on Griffith, Tesla and Village Roadshow, all three reachable rendered.
+        elif render and res['outcome'] == 'blocked':
             html, err = rendered_html(url)
             if err:
                 row['rendered'] = f'could not render — {err}'
@@ -251,38 +333,32 @@ def sweep(domain: str, render: bool = False) -> dict:
                 row['rendered_platforms'] = hits
                 if hits:
                     found_rendered[url] = hits
-        if res['outcome'] == 'ok':
-            hits = fingerprint(res['body'])
-            row['platforms'] = hits
-            if hits:
-                found[res.get('final', url)] = hits
-            elif render:
-                # Served HTML carried no marker. The board may be a widget that
-                # only exists after hydration — the common shape on a marketing
-                # careers page.
-                html, err = rendered_html(res.get('final', url))
-                if err:
-                    row['rendered'] = f'could not render — {err}'
                 else:
-                    rhits = fingerprint(html or '')
-                    row['rendered'] = 'rendered, no marker' if not rhits else 'rendered'
-                    if rhits:
-                        row['rendered_platforms'] = rhits
-                        found_rendered[res.get('final', url)] = rhits
-            # Follow the employer's own careers links — the board is often on a
-            # host nothing predicts, and this is the step that finds it.
-            elif url.rstrip('/').endswith(bare_root(domain)) or '/careers' in url:
-                for href in list(dict.fromkeys(CAREERS_LINK.findall(res['body'])))[:8]:
-                    nxt = urllib.parse.urljoin(res.get('final', url), href)
-                    if nxt in followed or not nxt.startswith('http'):
-                        continue
-                    followed.append(nxt)
-                    sub = fetch(nxt)
-                    if sub['outcome'] == 'ok':
-                        h = fingerprint(sub['body'])
-                        if h:
-                            found[sub.get('final', nxt)] = h
+                    harvest(html or '', url)
         tried.append(row)
+
+    # THE CORRIDOR. Bounded, because a careers page links to a dozen others and
+    # an unbounded walk of a large corporate site is not a discovery sweep.
+    renders_left = RENDER_BUDGET
+    while queue and len(followed) < LINK_BUDGET:
+        nxt = queue.pop(0)
+        followed.append(nxt)
+        sub = fetch(nxt)
+        if sub['outcome'] == 'ok':
+            h = fingerprint(sub['body'])
+            if h:
+                found[sub.get('final', nxt)] = h
+                continue
+        # Plain fetch found nothing here. One render, while the budget lasts —
+        # this is the path that was missing entirely, and the one Griffith needs.
+        if render and renders_left > 0 and sub['outcome'] in ('ok', 'blocked'):
+            renders_left -= 1
+            html, err = rendered_html(nxt)
+            if not err:
+                rh = fingerprint(html or '')
+                if rh:
+                    found_rendered[nxt] = rh
+
     return {'domain': domain, 'tried': tried, 'found': found,
             'found_rendered': found_rendered, 'followed': followed}
 
