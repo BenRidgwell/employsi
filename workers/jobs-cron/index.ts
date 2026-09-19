@@ -1263,6 +1263,8 @@ const PORTAL_TICKS: Record<string, number> = {
   // Groups 65-66 — the 2026-09-19 sixth batch.
   "25 15 * * *": 65,
   "35 15 * * *": 66,
+  // Group 67 — the 2026-09-19 seventh batch.
+  "45 15 * * *": 67,
 };
 
 const NEWS_TICKS: Record<string, number> = {
