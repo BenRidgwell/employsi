@@ -3455,6 +3455,62 @@ export const SITES: SiteDef[] = [
     homeHub: "adelaide",
   },
   {
+    id: "priv-hcf",
+    name: "HCF",
+    sector: "Insurance",
+    platform: "workday",
+    // FOUND BY scripts/discover-boards.py ON A RUNNER, and this one could not
+    // have been found here at all: hcf.com.au/careers answers a datacentre
+    // address 403 and serves a runner 200, while careers.hcf.com.au and
+    // jobs.hcf.com.au have no DNS record. Measured 2026-09-19: `total` 31.
+    //
+    // THE POD IS wd105 AND THE TENANT IS THE OBVIOUS ONE. Guessing found
+    // neither: seven invented tenant slugs were tested against the API and all
+    // returned nothing, because the tenant really is `hcf` — on a pod nothing
+    // had tried. It is in the sweep's output because the pattern reads the
+    // hostname, which is the half that cannot be guessed.
+    endpoint: "https://hcf.wd105.myworkdayjobs.com/wday/cxs/hcf/HCF_External_Career_Site/jobs",
+    origin: "https://hcf.wd105.myworkdayjobs.com/HCF_External_Career_Site",
+    // RETAIL BRANCHES NAMED BY SHOPPING CENTRE, so 17 of the 31 resolved to no
+    // hub: "Macquarie Centre", "Tea Tree", "Marion", "Castle Hill". A national
+    // insurer, so assumeHomeHub is wrong — Tea Tree and Marion are Adelaide
+    // centres and Maroochydore is Queensland.
+    //
+    // EVERY HINT BELOW IS THE BOARD'S OWN ANSWER, not geography from memory.
+    // The tenant publishes a locationRegionStateProvince facet, and querying it
+    // once per state returns which location names belong to each:
+    //
+    //   New South Wales 26  Albury, Bondi, Castle Hill, Hybrid,
+    //                       Macquarie Centre, Parramatta, Sydney CBD, Wollongong
+    //   Queensland       2  Brisbane, Maroochydore
+    //   South Australia  2  Marion, Tea Tree
+    //   Victoria         1  Melbourne
+    //
+    // Each name then resolves to its state's capital, which is the rule
+    // HUB_MATCH already applies to a bare state or a regional town.
+    //
+    // "Hybrid" IS IN THAT LIST AND IS NOT A PLACE. It is a work arrangement, and
+    // it is hinted only because the board files those requisitions under New
+    // South Wales itself — the state comes from the facet, not from an
+    // assumption that head office absorbs anything unlabelled.
+    //
+    // Brookvale appeared in one pull and not in the facet query minutes later,
+    // so it is deliberately absent: a name this mapping cannot evidence stays
+    // unplaced rather than being guessed from the others.
+    hubHints: [
+      ["macquarie centre", "sydney"],
+      ["castle hill", "sydney"],
+      ["parramatta", "sydney"],
+      ["bondi", "sydney"],
+      ["albury", "sydney"],
+      ["hybrid", "sydney"],
+      ["maroochydore", "brisbane"],
+      ["tea tree", "adelaide"],
+      ["marion", "adelaide"],
+    ],
+    homeHub: "sydney",
+  },
+  {
     id: "priv-kennards-hire",
     name: "Kennards Hire",
     sector: "Industrial Manufacturing",
@@ -3882,7 +3938,7 @@ export const PORTAL_GROUPS: string[][] = [
   // feed found by scripts/discover-boards.py rather than by hand, and it is 46
   // roles over three Workday pages.
   ["paris-el"],
-  ["priv-kennards-hire", "shell", "uni-flinders-university"],
+  ["priv-kennards-hire", "shell", "uni-flinders-university", "priv-hcf"],
 ];
 
 const UA =
