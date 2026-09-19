@@ -1255,6 +1255,11 @@ const PORTAL_TICKS: Record<string, number> = {
   "25 14 * * *": 59,
   "35 14 * * *": 60,
   "45 14 * * *": 61,
+  // Groups 62-64 — the 2026-09-18 fifth batch. :55 is the last free minute in
+  // the 14 hour, so the other two open the 15 hour.
+  "55 14 * * *": 62,
+  "5 15 * * *": 63,
+  "15 15 * * *": 64,
 };
 
 const NEWS_TICKS: Record<string, number> = {
