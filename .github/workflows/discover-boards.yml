@@ -1,0 +1,89 @@
+# Which ATS does an employer's careers site run? REPORT ONLY, by hand.
+#
+# WHY A WORKFLOW AND NOT A LOCAL SCRIPT. Two walls stop this working from the
+# dev sandbox, and only one of them is about the address:
+#
+#   A 403 FROM A DATACENTRE ADDRESS. Corporate sites behind Akamai, Imperva or
+#   Cloudflare refuse the sandbox's range while serving a runner normally.
+#   Measured 2026-09-19: se.com, hcf.com.au and minterellison.com all answered
+#   the sandbox 403 on their careers paths. A runner is a different address.
+#
+#   A HOSTNAME THAT DOES NOT EXIST. jobs.griffith.edu.au, careers.hcf.com.au and
+#   uow.nga.net.au have no DNS record at all — that is a guessed subdomain, not a
+#   block, and no runner fixes it. The script reports those as `dns` so the two
+#   never get confused again; several batches of this project lost time to
+#   reading one as the other.
+#
+# It is a REPORT. No D1 writes, no repo edits, no secrets needed — which is why
+# it has no `env:` block and can be run by anyone with Actions access.
+#
+# The output names the `platform:` string from workers/jobs-cron/careerSites.ts,
+# so a hit is directly actionable: it says which reader to point at the board.
+# Two answers are as useful as a platform name and are reported plainly rather
+# than dressed up — "reachable, no ATS marker" (a marketing page with the board
+# behind a JS widget) and a platform this repo has NO reader for (iCIMS, NGA,
+# Coveo), which is a build decision rather than a wiring one.
+#
+# Feed it the domains from the scraper-gap report's uncovered rows.
+
+name: discover-boards
+
+on:
+  workflow_dispatch:
+    inputs:
+      domains:
+        description: 'Comma-separated employer domains, e.g. se.com,hcf.com.au'
+        type: string
+        required: false
+      urls:
+        description: 'Comma-separated full URLs to probe as well (optional)'
+        type: string
+        required: false
+
+concurrency:
+  group: discover-boards
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Probe the careers sites
+        id: probe
+        run: |
+          set -o pipefail
+          python scripts/discover-boards.py \
+            --domains "${{ inputs.domains }}" \
+            --urls "${{ inputs.urls }}" \
+            --json discover-boards.json | tee discover.txt
+
+      - name: Publish the findings to the run summary
+        if: always()
+        run: |
+          {
+            echo '## Which ATS each careers site runs'
+            echo
+            echo 'Outcomes: `ok` served this runner · `blocked` a live host refused it'
+            echo '(a different address may work) · `dns` the hostname does not exist,'
+            echo 'so no address will reach it and the name was a guess.'
+            echo
+            echo '```'
+            cat discover.txt 2>/dev/null || echo 'the probe did not run'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: discover-boards
+          path: |
+            discover-boards.json
+            discover.txt
+          if-no-files-found: ignore
+          retention-days: 14
