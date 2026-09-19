@@ -3580,8 +3580,11 @@ export const SITES: SiteDef[] = [
   //     it returns the same `totalHits` 1893 as /global/en/, as does
   //     ?location=Australia. Cosmetic, the way AXA's searchByCountry was.
   //   Harris Farm, Village Roadshow, Tesla — reachable, no ATS marker in the
-  //     served HTML. The sweep's own advice is --render for these, which has not
-  //     been run on them yet.
+  //     served HTML. RESOLVED SINCE, and not by --render: Village Roadshow is
+  //     the PageUp feed in the eighth batch below, found once the sweep seeded
+  //     /jobs and ranked its links. Tesla was swept again with a browser and
+  //     yields no careers link at all, so its board is built entirely in JS;
+  //     Harris Farm's /careers still 404s.
   {
     id: "priv-epworth-healthcare",
     name: "Epworth HealthCare",
@@ -3626,6 +3629,96 @@ export const SITES: SiteDef[] = [
     origin: "https://hcyt.fa.ap1.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX",
     siteNumber: "CX",
     homeHub: "adelaide",
+  },
+  // ── The 2026-09-19 eighth batch — found by the RANKED discovery sweep ───────
+  //
+  // All three were swept twice and missed both times, for the same reason: the
+  // corridor followed the first "careers" links on the page, and at a
+  // university those are the STUDENT careers service. Ranking the links and
+  // seeding /jobs and /about/jobs found two of these three directly. The
+  // measurements below are from the live boards, not from the sweep.
+  {
+    id: "uni-griffith-university",
+    name: "Griffith University",
+    sector: "Education",
+    platform: "smartrecruiters",
+    // SmartRecruiters tenant `GriffithUniversity`, read off www.griffith.edu.au
+    // /jobs. Every hostname worth guessing — jobs.griffith, careers.griffith —
+    // has no DNS record, and the university 403s a datacentre address on every
+    // path, so the marker was only visible in a RENDERED page. The API is not:
+    // it answered this sandbox on the first call, which is why this is an
+    // ordinary in-Worker feed and not a browser_fetch Action.
+    //
+    // Measured 2026-09-19: 45 postings. Nathan 24, Southport 12, Meadowbrook 2,
+    // Warwick 1, South Brisbane 1, and four that name two campuses at once.
+    // 42 carry region "QLD" and 2 "Queensland", so HUB_MATCH places them on
+    // Brisbane without a hint.
+    endpoint: "GriffithUniversity",
+    origin: "https://careers.smartrecruiters.com/GriffithUniversity",
+    // ONE OF THE 45 IS IN BEIJING — Griffith runs a representative office there.
+    // It resolves to the Beijing hub on HUB_MATCH's own needle, NOT to this home
+    // hub: measured through fetchPortal, 44 brisbane and 1 beijing, so nothing
+    // here counts an overseas role as an Australian one.
+    //
+    // This fallback is therefore reached by nothing in today's pull. It is the
+    // right value anyway — Nathan is the main campus — for a future role that
+    // names no place.
+    homeHub: "brisbane",
+  },
+  {
+    id: "uni-university-of-wollongong",
+    name: "University of Wollongong",
+    sector: "Education",
+    platform: "oracle",
+    // Oracle Recruiting Cloud pod `ejgl`, site CX_1. Found in SERVED HTML at
+    // www.uow.edu.au/about/jobs/information-for-casual-staff/ — a page nothing
+    // would guess, reached because /about/jobs is now one of the seeded paths.
+    // careers.uow.edu.au and jobs.uow.edu.au both have no DNS record, and
+    // uow.nga.net.au — guessed in an earlier batch — never existed either.
+    //
+    // Measured 2026-09-19: TotalJobsCount 30. Wollongong 29, Shoalhaven 1, so
+    // "wollongong" and " nsw" place all 30 on Sydney with no hint needed.
+    endpoint: "https://ejgl.fa.ap1.oraclecloud.com",
+    origin: "https://ejgl.fa.ap1.oraclecloud.com/hcmUI/CandidateExperience/en/sites/UOW/jobs",
+    // CX_1, not the `UOW` in the origin path. The site NAME in the candidate-
+    // experience url and the siteNumber the REST finder wants are different
+    // things, and passing the name returns nothing.
+    siteNumber: "CX_1",
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-village-roadshow",
+    name: "Village Roadshow",
+    sector: "Technology, Media & Telecom",
+    platform: "pageupsites",
+    // PageUp's "Sites" theme, same as Qube's. THE SWEEP CALLED THIS RENDERED-
+    // ONLY AND IT IS NOT: the sweep reached the job DETAIL pages, which are
+    // client-rendered, and never tried /jobs/search. The listing is
+    // server-rendered and answered this sandbox plainly — 30 <article> cards
+    // and the `search-results-content` marker in a plain GET.
+    //
+    // Measured 2026-09-19: page 1 carries 30 cards, page 2 carries 8, page 3
+    // carries none — 38 roles. This board prints no total ("Displaying " with
+    // nothing after it), so fetchPageUpSites falls back to the pagination's
+    // last page, which is 2; see the lastPage note there.
+    //
+    // NO POSTED DATE ON ANY ROW, and that is this tenant rather than the theme:
+    // Qube on the same fetcher dates all 128 of its roles, while every one of
+    // these 38 comes back blank because the cards print "Closing on:" and no
+    // opened date. Harmless — `posted` stores as empty and the upsert backfills
+    // it if the board ever starts printing one, and the analyst windows read
+    // first_seen, which the archive sets itself. Worth knowing before anyone
+    // reads the blank column as a parser fault.
+    endpoint: "https://careers.villageroadshow.com.au/jobs/search",
+    origin: "https://careers.villageroadshow.com.au",
+    // Two pages today. 6 leaves room to triple before the bound bites.
+    maxPages: 6,
+    // Measured through fetchPortal: 33 "Gold Coast, QLD" to brisbane — the theme
+    // parks — and 5 Victorian, which the board writes as "VIC - Metro, VIC" and
+    // "VIC - Regional, VIC", to melbourne. 38 of 38 placed, every one on the
+    // state suffix, so this fallback is reached by nothing in today's pull. It
+    // is the registered office (South Yarra) for a role that names no state.
+    homeHub: "melbourne",
   },
 ];
 
@@ -4010,6 +4103,10 @@ export const PORTAL_GROUPS: string[][] = [
   // Workday is two pages and People First's Oracle one. Nothing here pages deep
   // enough to need holding apart.
   ["priv-epworth-healthcare", "sydney-ppt", "priv-people-first-bank"],
+  // Group 68 — the 2026-09-19 eighth batch. One tick for all three: Griffith's
+  // SmartRecruiters board is a single call, UOW's Oracle one, and Village
+  // Roadshow's PageUp walk is two pages. 45 + 30 + 38 roles between them.
+  ["uni-griffith-university", "uni-university-of-wollongong", "priv-village-roadshow"],
 ];
 
 const UA =
