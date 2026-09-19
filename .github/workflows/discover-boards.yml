@@ -39,6 +39,10 @@ on:
         description: 'Comma-separated full URLs to probe as well (optional)'
         type: string
         required: false
+      render:
+        description: 'Retry with a real browser where the served HTML carries no board, and where a 403 may be a header check rather than an address one'
+        type: boolean
+        default: false
 
 concurrency:
   group: discover-boards
@@ -54,6 +58,14 @@ jobs:
         with:
           python-version: '3.12'
 
+      # Only when asked. A Chromium download is ~2 minutes and most sites answer
+      # the plain sweep perfectly well; see the --render notes in the script.
+      - name: Install a browser
+        if: inputs.render
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
       - name: Probe the careers sites
         id: probe
         run: |
@@ -61,6 +73,7 @@ jobs:
           python scripts/discover-boards.py \
             --domains "${{ inputs.domains }}" \
             --urls "${{ inputs.urls }}" \
+            ${{ inputs.render && '--render' || '' }} \
             --json discover-boards.json | tee discover.txt
 
       - name: Publish the findings to the run summary
@@ -72,6 +85,10 @@ jobs:
             echo 'Outcomes: `ok` served this runner · `blocked` a live host refused it'
             echo '(a different address may work) · `dns` the hostname does not exist,'
             echo 'so no address will reach it and the name was a guess.'
+            echo
+            echo 'A hit in served HTML can become a careerSites.ts feed. A hit found'
+            echo 'ONLY AFTER RENDERING cannot — those fetchers get served HTML and no'
+            echo 'browser, so it needs a GitHub Action using browser_fetch instead.'
             echo
             echo '```'
             cat discover.txt 2>/dev/null || echo 'the probe did not run'
