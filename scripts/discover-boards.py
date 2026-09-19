@@ -60,7 +60,14 @@ FINGERPRINTS: list[tuple[str, str]] = [
     (r'job-search-results-card-title', 'pageupsites'),
     (r'<(?:tbody|div) id="search-results-content"', 'pageupclassic'),
     (r'[a-z0-9-]+\.pageuppeople\.com', 'pageup (theme unknown — check for the card class)'),
-    (r'myworkdayjobs\.com/(?:wday/cxs/)?([A-Za-z0-9_-]+)', 'workday'),
+    # TENANT, POD AND SITE, because a Workday url carries the tenant in the
+    # HOSTNAME and the site in the path, and the endpoint needs both:
+    # https://<tenant>.<pod>.myworkdayjobs.com/wday/cxs/<tenant>/<site>/jobs.
+    # An earlier version captured only the path segment, which reported
+    # "workday [HCF_External_Career_Site]" and left the tenant — the half that
+    # cannot be guessed — out of the answer.
+    (r'([a-z0-9-]+)\.(wd\d+)\.myworkdayjobs\.com/(?:[a-z]{2}-[A-Z]{2}/)?(?:wday/cxs/[^/]+/)?([A-Za-z0-9_-]+)',
+     'workday'),
     (r'smartrecruiters\.com/([A-Za-z0-9_-]+)', 'smartrecruiters'),
     (r'bootstrap/[0-9._]+_NES', 'successfactors (NES theme — check it renders rows)'),
     (r'successfactors', 'successfactors'),
@@ -127,10 +134,11 @@ def fingerprint(body: str) -> list[str]:
         m = re.search(pat, body, re.I)
         if not m:
             continue
-        tenant = ''
-        if m.groups():
-            tenant = next((g for g in m.groups() if g), '')
-        label = f'{platform} [{tenant}]' if tenant else platform
+        # ALL the non-empty groups, joined — not just the first. A Workday match
+        # is (tenant, pod, site) and any one of the three on its own is not
+        # enough to build an endpoint from.
+        parts = [g for g in (m.groups() or ()) if g]
+        label = f'{platform} [{"/".join(parts)}]' if parts else platform
         if label not in hits:
             hits.append(label)
     return hits
