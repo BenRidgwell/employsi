@@ -3427,6 +3427,34 @@ export const SITES: SiteDef[] = [
   //     from naukri. Neither careers page named a board, and an unfiltered
   //     Indian feed is a different job from the AU-facing ones here.
   {
+    id: "uni-flinders-university",
+    name: "Flinders University",
+    sector: "Education",
+    platform: "workday",
+    // FOUND BY scripts/discover-boards.py ON A RUNNER, and it could not have
+    // been found from here: every hostname a person would try — jobs.flinders,
+    // careers.flinders — has no DNS record, and the board is linked from
+    // /employment rather than /careers. The sweep followed the university's own
+    // careers links to it. Measured 2026-09-19: `total` 46.
+    endpoint: "https://flinders.wd3.myworkdayjobs.com/wday/cxs/flinders/flinders_employment/jobs",
+    origin: "https://flinders.wd3.myworkdayjobs.com/flinders_employment",
+    // THE LOCATION CELL IS THREE FIELDS IN ONE: "Bedford Park / Kaurna Country
+    // |   Academic Level C   |   Closes 11 Oct 2026". Taken whole, 43 of the 46
+    // resolved to no hub. Part 0 is the place.
+    locationPart: 0,
+    // Then the place is a bare suburb, as UnitingCare Queensland's is. Every one
+    // of the 11 distinct values in a full pull is South Australian — Bedford
+    // Park 32, Tonsley 3, Flinders Medical Centre 1, Mount Gambier 2, Renmark 1,
+    // and six "N Locations" multi-site placeholders — so the home-hub fallback
+    // is a true statement about this employer rather than a convenience.
+    //
+    // It does not swallow a real interstate role: Flinders runs a Northern
+    // Territory medical program, and a Darwin posting matches the "darwin"
+    // needle in HUB_MATCH before this fallback is ever reached.
+    assumeHomeHub: true,
+    homeHub: "adelaide",
+  },
+  {
     id: "priv-kennards-hire",
     name: "Kennards Hire",
     sector: "Industrial Manufacturing",
@@ -3847,10 +3875,14 @@ export const PORTAL_GROUPS: string[][] = [
   //
   // EssilorLuxottica leads its own tick. It is a SEQUENTIAL SuccessFactors walk
   // over 12 pages — each page's size read off the one before — and the deepest
-  // SF walk in the file after Goodstart. The other two are one call each and
+  // SF walk in the file after Goodstart. The others are a few calls each and
   // share the second.
+  //
+  // Flinders University joined that second tick after the fact: it is the first
+  // feed found by scripts/discover-boards.py rather than by hand, and it is 46
+  // roles over three Workday pages.
   ["paris-el"],
-  ["priv-kennards-hire", "shell"],
+  ["priv-kennards-hire", "shell", "uni-flinders-university"],
 ];
 
 const UA =
