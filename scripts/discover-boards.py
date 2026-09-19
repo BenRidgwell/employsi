@@ -59,6 +59,7 @@ Run: python scripts/discover-boards.py --domains se.com,hcf.com.au [--json out.j
      python scripts/discover-boards.py --urls https://careers.example.com/ --render
 """
 from __future__ import annotations
+import html as htmlmod
 import json
 import os
 import re
@@ -129,19 +130,107 @@ FINGERPRINTS: list[tuple[str, str]] = [
 # a rendered attempt was even made.
 render_on = False
 
-# How far the corridor goes. LINK_FANOUT caps the links taken off any ONE page,
-# LINK_BUDGET the whole sweep for one employer, and RENDER_BUDGET how many of
-# those may be rendered — a render is seconds where a fetch is milliseconds, so
-# it is the one worth rationing. All three are deliberately small: this is a
-# discovery sweep, not a crawl, and a careers page that does not link its own
-# board within a couple of hops is telling you something.
-LINK_FANOUT = 8
+# How far the corridor goes. QUEUE_CAP bounds how many candidate links may be
+# waiting at once, LINK_BUDGET how many the sweep actually follows for one
+# employer, and the two render budgets how
+# many pages may be rendered — a render is seconds where a fetch is
+# milliseconds, so it is the one worth rationing. They are SEPARATE on purpose:
+# an employer whose every page 403s (Griffith) would otherwise spend the whole
+# allowance on its seeds and reach the corridor with nothing left, which is the
+# half of the sweep that actually finds boards.
+# QUEUE_CAP replaced a `[:8]` slice over each page's links. That slice was the
+# bug: it kept the first eight IN DOCUMENT ORDER, which on a university careers
+# page is the student-services nav. The queue is ranked now, so it has to be
+# allowed to hold the whole page's links for the ranking to have anything to
+# choose between.
+QUEUE_CAP = 32
 LINK_BUDGET = 14
+SEED_RENDER_BUDGET = 4
 RENDER_BUDGET = 6
 
 CAREERS_LINK = re.compile(
-    r'href=["\']([^"\']*(?:career|job|vacanc|work-with-us|join-us|employment)[^"\']*)["\']',
+    r'href=["\']([^"\']*(?:career|job|vacanc|work-with-us|work-for-us|join-us'
+    r'|employment|opportunit|positions)[^"\']*)["\']',
     re.I)
+
+# LINKS WORTH FOLLOWING, BEST FIRST — and the ones never worth following.
+#
+# MEASURED 2026-09-19, and the reason this ranking exists. On griffith.edu.au
+# and uow.edu.au the first eight "careers" links in document order were all the
+# STUDENT careers service — career planning, career readiness, applying for
+# jobs, find-a-job, CareerHub — and the staff vacancy board was never reached
+# on either. At a university "careers" overwhelmingly means the service FOR
+# students, not the employer's own vacancies, which live at /jobs, /employment
+# or /about/jobs. UOW additionally spent three of its eight slots on a favicon
+# and two stylesheets, because their paths contained "career".
+#
+# So the corridor no longer follows links in the order a page happens to list
+# them. It follows the best first, and skips what cannot be a board at all.
+LINK_SKIP = re.compile(r"""
+      \.(?:css|js|mjs|ico|png|jpe?g|gif|svg|webp|woff2?|ttf|eot|pdf|zip|xml)(?:[?#]|$)
+    # /student matches "students-graduates" too, which a `students?(?:[/?#]|$)`
+    # anchor did not — that is the exact path Griffith's whole corridor went
+    # down. "graduate" alone stays out of this list and is merely demoted: on a
+    # corporate site /careers/graduate-program is a real recruitment page.
+    | /students?[-_/]? | /alumni | /undergraduate | /postgraduate
+    | /(?:study|news|events?)(?:[/?#]|$)
+    # The separator is [-+_ ]* because UOW writes it "careers+expos" in a path.
+    | careers?[-+_ ]*(?:planning|readiness|development|advice|guide|universe|fair|expo|hub)
+    | careerhub
+    | /(?:login|signin|register|apply-now)(?:[/?#]|$)
+""", re.I | re.X)
+
+# Lower rank is followed first. The bands: an actual list of vacancies; a page
+# whose path is the employer's own jobs section; a graduate or early-careers
+# page, which is a real recruitment page but rarely the main board; anything
+# else that merely contains "career".
+LINK_PRIORITY = [
+    (re.compile(r'vacanc|current-opportunit|job-search|search-jobs|job-openings'
+                r'|all-jobs|job-listings|opportunities', re.I), 0),
+    (re.compile(r'/jobs?(?:[/?#]|$)|/employment|/work-with-us|/work-for-us'
+                r'|/join-us|/positions|/about/jobs|careers/jobs', re.I), 1),
+    (re.compile(r'graduate|early-career|intern|apprentice|trainee', re.I), 3),
+]
+
+
+# How far a rank is pushed back for being on somebody else's domain. Enough to
+# put every off-site link behind every on-site one, without flattening the
+# ranking within each group.
+OFF_SITE_PENALTY = 4
+
+
+def same_site(url: str, home: str) -> bool:
+    """Is this url on the employer's own registered domain?"""
+    host = (urllib.parse.urlparse(url).hostname or '').lower()
+    home = home.lower()
+    return host == home or host.endswith('.' + home)
+
+
+def link_rank(url: str, home: str | None = None) -> int | None:
+    """How promising a link is, or None for one that cannot be a vacancy board.
+
+    OFF-DOMAIN LINKS ARE FOLLOWED BUT DEMOTED, never dropped: the board is
+    routinely on a host nothing predicts — BMD's is careers.bmdgroup.global,
+    the AFL's is a bare `.afl` TLD — so a same-domain-only corridor would miss
+    exactly the cases the corridor exists for. Demoting them spends the budget
+    on the employer's own site first, which is where the board usually is.
+
+    Measured 2026-09-19: sweeping flinders.edu.au followed links to kpmg.com and
+    reported KPMG's SmartRecruiters tenant under Flinders, because a university
+    careers page lists its graduate-employer partners. See the report, which
+    marks a hit found on somebody else's page rather than letting it read as
+    this employer's board.
+    """
+    if LINK_SKIP.search(url):
+        return None
+    rank = 2
+    for pat, r in LINK_PRIORITY:
+        if pat.search(url):
+            rank = r
+            break
+    if home and not same_site(url, home):
+        rank += OFF_SITE_PENALTY
+    return rank
 
 
 def fetch(url: str, timeout: int = 20) -> dict:
@@ -245,6 +334,14 @@ def fingerprint(body: str) -> list[str]:
 
 
 def candidates(domain: str) -> list[str]:
+    """The paths to try before reading the site's own links.
+
+    /careers ALONE IS NOT ENOUGH, and on a university it is actively the wrong
+    place: griffith.edu.au and uow.edu.au both put the student careers service
+    at /careers and their staff vacancies somewhere else entirely. UOW's is
+    /about/jobs. Seeding the jobs-side paths costs a DNS lookup each when they
+    do not exist and finds the board directly when they do.
+    """
     d = domain.strip().lstrip('.')
     if d.startswith('http'):
         return [d]
@@ -254,6 +351,10 @@ def candidates(domain: str) -> list[str]:
         f'https://jobs.{bare}/',
         f'https://www.{bare}/careers',
         f'https://www.{bare}/careers/',
+        f'https://www.{bare}/jobs',
+        f'https://www.{bare}/employment',
+        f'https://www.{bare}/about/jobs',
+        f'https://www.{bare}/work-with-us',
         f'https://www.{bare}/',
     ]
 
@@ -280,22 +381,49 @@ def sweep(domain: str, render: bool = False) -> dict:
     # send the next reader to write a fetcher that always returns zero.
     found_rendered: dict[str, list[str]] = {}
     followed: list[str] = []
-    queue: list[str] = []
+    seen: set[str] = set()
+    # The employer's own REGISTERED domain — not the first candidate's hostname,
+    # which is `careers.<domain>` and made a Flinders sweep label flinders.edu.au
+    # itself as somebody else's site.
+    if domain.strip().startswith('http'):
+        home = (urllib.parse.urlparse(domain.strip()).hostname or '').lower()
+        home = home[4:] if home.startswith('www.') else home
+    else:
+        home = bare_root(domain).lower()
+    queue: list[tuple[int, int, str]] = []
+    order = 0
 
     def harvest(html: str, base: str) -> None:
         """Queue the careers/jobs links on one page, however it was obtained.
 
-        Also called on RENDERED html, which is the point of the rewrite: a
-        careers page a browser can reach but urllib cannot — three of the six
-        swept so far, Griffith, Tesla and Village Roadshow — has its links
-        visible only after the render, and before this they were never read.
-        """
-        for href in list(dict.fromkeys(CAREERS_LINK.findall(html)))[:LINK_FANOUT]:
-            nxt = urllib.parse.urljoin(base, href)
-            if nxt.startswith('http') and nxt not in followed and nxt not in queue:
-                queue.append(nxt)
+        Also called on RENDERED html, which is the point of the rewrite before
+        this one: a careers page a browser can reach but urllib cannot —
+        Griffith, Tesla and Village Roadshow — has its links visible only after
+        the render, and before that they were never read.
 
+        Links are RANKED rather than taken in document order; see LINK_PRIORITY
+        for the measurement that forced it.
+        """
+        nonlocal order
+        for href in dict.fromkeys(CAREERS_LINK.findall(html)):
+            # Unescaped because hrefs carry entities: salesforce.com's careers
+            # link was followed as `...?cid=X&amp;utm_source=...`, with the
+            # `&amp;` intact, which is a different URL from the one on the page.
+            nxt = urllib.parse.urljoin(base, htmlmod.unescape(href)).split('#')[0]
+            if not nxt.startswith('http') or nxt in seen:
+                continue
+            rank = link_rank(nxt, home)
+            if rank is None:
+                continue
+            seen.add(nxt)
+            order += 1
+            queue.append((rank, order, nxt))
+            if len(queue) >= QUEUE_CAP:
+                break
+
+    seed_renders = SEED_RENDER_BUDGET
     for url in candidates(domain):
+        seen.add(url)
         res = fetch(url)
         row = {k: v for k, v in res.items() if k != 'body'}
         if res['outcome'] == 'ok':
@@ -305,10 +433,11 @@ def sweep(domain: str, render: bool = False) -> dict:
                 found[res.get('final', url)] = hits
             else:
                 harvest(res['body'], res.get('final', url))
-                if render:
+                if render and seed_renders > 0:
                     # Served HTML carried no marker. The board may be a widget
                     # that only exists after hydration — the common shape on a
                     # marketing careers page.
+                    seed_renders -= 1
                     html, err = rendered_html(res.get('final', url))
                     if err:
                         row['rendered'] = f'could not render — {err}'
@@ -323,7 +452,8 @@ def sweep(domain: str, render: bool = False) -> dict:
         # A 403 can be a header or TLS-fingerprint check rather than an address
         # one, and a real browser passes several that urllib does not — measured
         # on Griffith, Tesla and Village Roadshow, all three reachable rendered.
-        elif render and res['outcome'] == 'blocked':
+        elif render and res['outcome'] == 'blocked' and seed_renders > 0:
+            seed_renders -= 1
             html, err = rendered_html(url)
             if err:
                 row['rendered'] = f'could not render — {err}'
@@ -339,9 +469,15 @@ def sweep(domain: str, render: bool = False) -> dict:
 
     # THE CORRIDOR. Bounded, because a careers page links to a dozen others and
     # an unbounded walk of a large corporate site is not a discovery sweep.
+    #
+    # BEST-FIRST, not first-come: the queue is re-sorted each time round because
+    # a page followed at rank 2 can surface a rank-0 vacancy list that then has
+    # to jump ahead of everything already waiting. Sorting on (rank, order)
+    # keeps it stable, so equal-ranked links still go in the order they appeared.
     renders_left = RENDER_BUDGET
     while queue and len(followed) < LINK_BUDGET:
-        nxt = queue.pop(0)
+        queue.sort()
+        _, _, nxt = queue.pop(0)
         followed.append(nxt)
         sub = fetch(nxt)
         if sub['outcome'] == 'ok':
@@ -349,6 +485,7 @@ def sweep(domain: str, render: bool = False) -> dict:
             if h:
                 found[sub.get('final', nxt)] = h
                 continue
+            harvest(sub['body'], sub.get('final', nxt))
         # Plain fetch found nothing here. One render, while the budget lasts —
         # this is the path that was missing entirely, and the one Griffith needs.
         if render and renders_left > 0 and sub['outcome'] in ('ok', 'blocked'):
@@ -358,8 +495,10 @@ def sweep(domain: str, render: bool = False) -> dict:
                 rh = fingerprint(html or '')
                 if rh:
                     found_rendered[nxt] = rh
+                else:
+                    harvest(html or '', nxt)
 
-    return {'domain': domain, 'tried': tried, 'found': found,
+    return {'domain': domain, 'home': home, 'tried': tried, 'found': found,
             'found_rendered': found_rendered, 'followed': followed}
 
 
@@ -395,15 +534,29 @@ def main() -> int:
                   + (f'\n      platforms: {plats}' if plats else '')
                   + (f'\n      {row["rendered"]}' if row.get('rendered') else '')
                   + (f'\n      rendered platforms: {rplats}' if rplats else ''))
+        # A MARKER IS ONLY THIS EMPLOYER'S IF IT WAS ON THIS EMPLOYER'S PAGE.
+        # The url here is the page the marker was read from, not the ATS host
+        # named inside it, so the test is exact: flinders.edu.au/jobs carrying a
+        # Workday tenant is Flinders', and kpmg.com/au/en/careers carrying a
+        # SmartRecruiters tenant is KPMG's however it was reached. Measured
+        # 2026-09-19 — a Flinders sweep reported KPMG, because the university
+        # lists its graduate-employer partners. Unlabelled, that is a SiteDef
+        # filing one employer's vacancies under another.
+        def mark(u: str) -> str:
+            if same_site(u, r['home']):
+                return u
+            host = urllib.parse.urlparse(u).hostname or '?'
+            return f'{u}\n      [OFF-SITE — read from {host}, not {r["home"]}; confirm whose board it is]'
+
         if r['found']:
             print('  FOUND in served HTML — can be an in-Worker feed:')
             for u, h in r['found'].items():
-                print(f'    {u}\n      -> {", ".join(h)}')
+                print(f'    {mark(u)}\n      -> {", ".join(h)}')
         if r.get('found_rendered'):
             print('  FOUND ONLY AFTER RENDERING — needs a GitHub Action using')
             print('  browser_fetch, NOT a careerSites.ts fetcher (those get served HTML):')
             for u, h in r['found_rendered'].items():
-                print(f'    {u}\n      -> {", ".join(h)}')
+                print(f'    {mark(u)}\n      -> {", ".join(h)}')
         if not r['found'] and not r.get('found_rendered'):
             # A render that COULD NOT RUN is not a finding about the employer, and
             # saying so is the point: otherwise a missing Chromium reads as an
@@ -417,6 +570,14 @@ def main() -> int:
                 print('  no ATS marker on any page reached'
                       + (f' ({len(r["followed"])} careers links followed)' if r['followed'] else '')
                       + (' (rendered too)' if render_on else ' — try --render'))
+                # WHERE THE CORRIDOR WENT, not just how far. A bare count made
+                # the 2026-09-19 sweep unreadable: Griffith and UOW both said
+                # "no marker, 10 links followed" and only the JSON artifact
+                # showed that every one of those links was the student careers
+                # service. A negative result has to carry the evidence for
+                # whether it looked in the right place.
+                for u in r['followed'][:LINK_BUDGET]:
+                    print(f'      followed {u}')
 
     dest = opt('--json')
     if dest:
