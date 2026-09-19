@@ -3283,7 +3283,12 @@ export const SITES: SiteDef[] = [
   // on how the requests are made). Both walk correctly from a runner: 41 of 41
   // and 82 distinct of 86.
   //
-  // FOUR HAVE NO BOARD TO READ AT ALL:
+  // Lendlease was in this list and is now a feed: its tenant needed the
+  // bulletFields fallback added to fetchWorkday, and the country facet the
+  // first look did not go deep enough to find (it is nested one level down,
+  // under locationMainGroup).
+  //
+  // THREE HAVE NO BOARD TO READ AT ALL:
   //
   //   SGH (Seven Group Holdings) — sghl.com.au is an investor-relations site
   //     with no careers section at all: no /careers, and no "career", "join us"
@@ -3295,14 +3300,6 @@ export const SITES: SiteDef[] = [
   //     Coveo index (platform-eu.cloud.coveo.com), with no iframe and no job
   //     rows in 160 KB of served HTML. Reading it needs a Coveo organisation id
   //     and API key lifted from the bundle, and the index is global.
-  //   Lendlease — Workday at lendlease.wd3, and readable, but its postings
-  //     carry no `locationsText` at all: this tenant puts the location in
-  //     `bulletFields` instead, which fetchWorkday does not read. Left out
-  //     rather than half-wired, because an empty location falls back to the
-  //     home hub and the board is GLOBAL — measured 2026-09-18, 38 roles with
-  //     Kuala Lumpur among them, every one of which would have filed as Sydney.
-  //     It needs a bulletFields fallback plus a country filter, and the tenant
-  //     returned no facets to filter on.
   //   AXA — iCIMS at jobs.axa.com, 957 opportunities, and no country filter
   //     that worked: ?searchByCountry=Australia returns the same 957. There is
   //     no iCIMS reader in this file, and AXA has had no Australian retail
@@ -3318,6 +3315,29 @@ export const SITES: SiteDef[] = [
     // was reached directly.
     endpoint: "https://careers.minterellison.com",
     origin: "https://careers.minterellison.com",
+    homeHub: "sydney",
+  },
+  {
+    id: "sydney-llc",
+    name: "Lendlease",
+    sector: "Construction",
+    platform: "workday",
+    // A GLOBAL tenant, and the filter is not optional: measured 2026-09-19, 35
+    // requisitions of which Australia 21, Singapore 10 and Malaysia 4. This
+    // board is also the reason fetchWorkday now falls back to bulletFields —
+    // see WorkdayPosting. Without BOTH, every Kuala Lumpur and Singapore role
+    // archived with an empty location and fell through to the home hub, which
+    // is to say it archived as Sydney.
+    //
+    // The country facet is nested under `locationMainGroup` rather than sitting
+    // at the top level with the others, which is why a first read of the facet
+    // list found none to filter on. Australia's id here is the same
+    // d903bb3f… Aurecon's AU filter uses — measured on both, so the Workday
+    // country ids look to be global constants rather than per tenant. It is
+    // still read off the board rather than assumed.
+    endpoint: "https://lendlease.wd3.myworkdayjobs.com/wday/cxs/lendlease/LendleaseCareers/jobs",
+    origin: "https://lendlease.wd3.myworkdayjobs.com/LendleaseCareers",
+    appliedFacets: { locationCountry: ["d903bb3fedad45039383f6de334ad4db"] },
     homeHub: "sydney",
   },
   {
@@ -3701,8 +3721,12 @@ export const PORTAL_GROUPS: string[][] = [
   ["priv-chemist-warehouse", "paris-cap", "uni-australian-national-university"],
   ["adelaide-eld", "priv-team-global-express", "adelaide-abc"],
 
-  // Groups 62-64: the three in-Worker feeds from the 2026-09-18 fifth batch.
-  // Measured that day: MinterEllison 53, St Vincent de Paul (NSW) 40, AFL 22.
+  // Groups 62-64: the four in-Worker feeds from the 2026-09-18 fifth batch.
+  // Measured 2026-09-18: MinterEllison 53, St Vincent de Paul (NSW) 40, AFL 22;
+  // Lendlease 21 (Australia only, of 35) the day after.
+  //
+  // Lendlease shares a tick with St Vincent de Paul rather than leading one:
+  // it is a single filtered Workday call, so it adds one round trip.
   //
   // ALL THREE ARE SUCCESSFACTORS, which is the most this file has taken at once
   // and is exactly why they are in three different ticks rather than one: the
@@ -3714,7 +3738,7 @@ export const PORTAL_GROUPS: string[][] = [
   // datacentre POST with a bare 403, the same wall Uniting, EVT and Whitehaven
   // hit. It runs through scripts/dayforce-to-d1.py instead.
   ["priv-minterellison"],
-  ["priv-st-vincent-de-paul"],
+  ["priv-st-vincent-de-paul", "sydney-llc"],
   ["priv-afl"],
 ];
 
@@ -4261,6 +4285,19 @@ interface WorkdayPosting {
   locationsText?: string;
   externalPath?: string;
   postedOn?: string;
+  /**
+   * The card's display cells, and on SOME TENANTS the only place the location
+   * is. Lendlease's is one: measured 2026-09-19, every posting returns
+   * `locationsText: null` and carries
+   *
+   *     bulletFields: ["Brisbane, Queensland, Australia", "REQ-7065662"]
+   *
+   * so a reader that only knows locationsText gets "" for all of them. That is
+   * not a visible failure — an empty location falls through to the employer's
+   * home hub — so a GLOBAL board reads as though every role were at head
+   * office. Kuala Lumpur and Singapore roles would have filed as Sydney.
+   */
+  bulletFields?: string[];
 }
 
 async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
@@ -4285,7 +4322,12 @@ async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
       const path = (p.externalPath || "").trim();
       if (!title || !path || seen.has(path)) continue;
       seen.add(path);
-      const whole = (p.locationsText || "").trim();
+      // bulletFields[0] is the fallback, not the first choice: where a tenant
+      // sets locationsText that is the field built for this, and the bullets are
+      // whatever the card happens to show. Only [0] is read — [1] is the
+      // requisition id on every tenant seen so far, and joining the cells would
+      // put a req number inside the location string the hub matcher reads.
+      const whole = ((p.locationsText || p.bulletFields?.[0]) ?? "").trim();
       const parts = whole.split("|").map((x) => x.trim());
       const loc =
         site.locationPart !== undefined && parts[site.locationPart]
