@@ -74,8 +74,18 @@ sys.path.insert(0, HERE)
 UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36')
 
-# Marker -> the `platform` string in careerSites.ts. Ordered most specific
-# first: a Workday tenant url also contains "myworkdayjobs", and the PageUp
+# Marker -> the `platform` string in careerSites.ts.
+#
+# EVERY HOST-BEARING PATTERN CAPTURES ITS TENANT, and that is not cosmetic. The
+# first sweep reported HCF as `workday [HCF_External_Career_Site]` — the site
+# without the hostname — and the tenant turned out to be the half that could not
+# be guessed: seven invented slugs all failed against the API while the answer
+# was the obvious name on a pod nobody had tried. The second sweep repeated the
+# mistake one platform over, reporting People First Bank as a bare `oracle` with
+# no pod and no site number. A fingerprint that names a platform but not the
+# tenant is half an answer, and the missing half is always the hard one.
+#
+# Ordered most specific first: a Workday tenant url also contains "myworkdayjobs", and the PageUp
 # "Sites" theme is recognised by its own card class rather than by the vendor
 # name, because the classic theme shares the vendor and needs a different
 # reader.
@@ -94,9 +104,9 @@ FINGERPRINTS: list[tuple[str, str]] = [
     (r'smartrecruiters\.com/([A-Za-z0-9_-]+)', 'smartrecruiters'),
     (r'bootstrap/[0-9._]+_NES', 'successfactors (NES theme — check it renders rows)'),
     (r'successfactors', 'successfactors'),
-    (r'[a-z0-9-]+\.fa\.[a-z0-9]+\.oraclecloud\.com', 'oracle'),
-    (r'dayforcehcm', 'dayforce (expect a 403 on the search API)'),
-    (r'\.csod\.com', 'cornerstone'),
+    (r'([a-z0-9-]+\.fa\.[a-z0-9]+\.oraclecloud\.com)(?:/hcmUI/CandidateExperience/[a-z-]+/sites/([A-Za-z0-9_]+))?', 'oracle'),
+    (r'dayforcehcm\.com/(?:CandidatePortal/)?(?:[a-z]{2}-[A-Z]{2}/)?([A-Za-z0-9_-]+)', 'dayforce (expect a 403 on the search API)'),
+    (r'([a-z0-9-]+)\.csod\.com', 'cornerstone'),
     (r'services\.employmenthero\.com|employmenthero\.com/jobs', 'employmenthero'),
     (r'sjobs\.brassring\.com|brassring', 'brassring'),
     (r'phenom|widgets/jobs', 'phenom'),
@@ -104,8 +114,8 @@ FINGERPRINTS: list[tuple[str, str]] = [
     (r'boards(?:-api)?\.greenhouse\.io/[a-z]+/([a-z0-9-]+)', 'greenhouse'),
     (r'jobs\.lever\.co/([a-z0-9-]+)', 'lever'),
     (r'icims\.com|iCIMS', 'icims (NO READER IN careerSites.ts — would need one)'),
-    (r'taleo\.net', 'taleo'),
-    (r'avature\.net', 'avature'),
+    (r'([a-z0-9-]+)\.taleo\.net', 'taleo'),
+    (r'([a-z0-9-]+)\.avature\.net', 'avature'),
     (r'eightfold\.ai|api/apply/v2/jobs', 'eightfold'),
     (r'expr3ss', 'expr3ss'),
     (r'jobadder', 'jobadder'),

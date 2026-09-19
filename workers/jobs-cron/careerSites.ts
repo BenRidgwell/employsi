@@ -3565,6 +3565,68 @@ export const SITES: SiteDef[] = [
     // place and so resolves to no hub rather than to this one.
     homeHub: "perth",
   },
+  // ── The 2026-09-19 seventh batch — the first found BY THE DISCOVERY SWEEP ───
+  //
+  // Not hand-probed. scripts/discover-boards.py was pointed at eight domains
+  // from the gap report and returned five hits; three of them are feeds here.
+  // Measured 2026-09-19: Epworth 56, Perpetual 26, People First Bank 16.
+  //
+  // THE OTHER FIVE OF THE EIGHT, and why none of them is a SiteDef:
+  //   Johnson & Johnson — Workday jj/wd5/JJ, 1,929 requisitions and NO
+  //     locationCountry facet, so there is nothing to filter a global board on.
+  //     Exactly Salesforce's problem.
+  //   BAE Systems — Phenom over BrassRing (partnerid 25771, siteid 5403). Its
+  //     /australia/en/ path looks like a country scope and is not one: measured,
+  //     it returns the same `totalHits` 1893 as /global/en/, as does
+  //     ?location=Australia. Cosmetic, the way AXA's searchByCountry was.
+  //   Harris Farm, Village Roadshow, Tesla — reachable, no ATS marker in the
+  //     served HTML. The sweep's own advice is --render for these, which has not
+  //     been run on them yet.
+  {
+    id: "priv-epworth-healthcare",
+    name: "Epworth HealthCare",
+    sector: "Hospitals",
+    platform: "smartrecruiters",
+    // SmartRecruiters tenant `Epworth`, found on epworth.org.au/careers/*.
+    // Measured 2026-09-19: 56 postings, all Melbourne — East Melbourne, Box Hill,
+    // Richmond and Geelong, which is Epworth's whole footprint.
+    endpoint: "Epworth",
+    origin: "https://careers.smartrecruiters.com/Epworth",
+    homeHub: "melbourne",
+  },
+  {
+    id: "sydney-ppt",
+    name: "Perpetual",
+    sector: "Financial Services",
+    platform: "workday",
+    // Workday perpetual/wd3, site `external`. Measured 2026-09-19: `total` 26,
+    // of which 24 place — one is Philadelphia, which is correct rather than a
+    // fault: Perpetual runs a US corporate-trust business and that role really is
+    // there. It is NOT filtered to Australia for that reason; the board is small
+    // enough that the foreign rows are worth having and place on their own hubs.
+    endpoint: "https://perpetual.wd3.myworkdayjobs.com/wday/cxs/perpetual/external/jobs",
+    origin: "https://perpetual.wd3.myworkdayjobs.com/external",
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-people-first-bank",
+    name: "People First Bank",
+    sector: "Financial Services",
+    platform: "oracle",
+    // Oracle Recruiting Cloud on the HCYT pod, site `CX` — and BOTH halves came
+    // from the sweep rather than from guessing. Its first pass reported a bare
+    // `oracle` with no host at all, which is why the fingerprint table now
+    // captures a tenant for every host-bearing platform; the second reported
+    // `oracle [hcyt.fa.ap1.oraclecloud.com/CX]`, which is the endpoint.
+    //
+    // Measured 2026-09-19: 16 roles, every one placed — Adelaide 11, Brisbane 5,
+    // which is the People's Choice and Heritage branch network this merger came
+    // from.
+    endpoint: "https://hcyt.fa.ap1.oraclecloud.com",
+    origin: "https://hcyt.fa.ap1.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX",
+    siteNumber: "CX",
+    homeHub: "adelaide",
+  },
 ];
 
 /**
@@ -3939,6 +4001,15 @@ export const PORTAL_GROUPS: string[][] = [
   // roles over three Workday pages.
   ["paris-el"],
   ["priv-kennards-hire", "shell", "uni-flinders-university", "priv-hcf"],
+
+  // Group 67: the three feeds from the 2026-09-19 seventh batch, and the first
+  // batch discovered by scripts/discover-boards.py rather than by hand.
+  // Measured that day: Epworth 56, Perpetual 26, People First Bank 16.
+  //
+  // One tick between them: a SmartRecruiters board is a single call, Perpetual's
+  // Workday is two pages and People First's Oracle one. Nothing here pages deep
+  // enough to need holding apart.
+  ["priv-epworth-healthcare", "sydney-ppt", "priv-people-first-bank"],
 ];
 
 const UA =
