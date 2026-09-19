@@ -231,6 +231,30 @@ interface SiteDef {
    */
   assumeHomeHub?: boolean;
   /**
+   * SuccessFactors only: recover the STATE from the job's own url when the
+   * location cell omits it.
+   *
+   * EssilorLuxottica is the case it was added for, and it is the board's data
+   * rather than an inference. Measured 2026-09-19 over its 349 Australian
+   * postings: the location cell reads "Chadstone, AU", "Morley, AU",
+   * "Mascot, AU" — 155 distinct bare suburbs with no state, spread across every
+   * state, so 260 of 325 rows resolved to no hub and `assumeHomeHub` would be
+   * plainly wrong (Chadstone is Melbourne, Morley is Perth, Mascot is Sydney).
+   *
+   * The SLUG carries what the cell drops:
+   *
+   *   Retail-Associate-EyeQ-St-Ives,-NSW/1395292233/
+   *   Perth-Associate-Dispenser-I-OPSM-I-Part-Time-I-Perth-Hay-Street,-WA/…
+   *   Devonport-Associate-Dispenser-I-OPSM-I-FT-I-TAS-I-Devonport/…
+   *
+   * 261 of the 349 carry a state token that way, distributed NSW 99, VIC 59,
+   * WA 43, SA 23, ACT 8, QLD 6, TAS 5, NT 1 — checked against the suburb in
+   * each slug rather than assumed, and every sample agreed. The other 88 name
+   * a bare suburb in the slug too and stay unplaced, which is the honest
+   * outcome: nothing here guesses which city a suburb is in.
+   */
+  stateFromJobUrl?: boolean;
+  /**
    * Workday `appliedFacets`, for a tenant whose board is not only this company.
    *
    * The same problem `searchParams` solves for SuccessFactors. Aurecon's board
@@ -3381,6 +3405,82 @@ export const SITES: SiteDef[] = [
     origin: "https://careers.afl",
     homeHub: "melbourne",
   },
+  // ── The 2026-09-19 sixth batch ────────────────────────────────────────────
+  //
+  // Three of the report's next nine. THE OTHER SIX ARE NOT HERE, and the split
+  // is mostly about what a global board can honestly be asked for:
+  //
+  //   Salesforce — Workday at salesforce.wd12/External_Career_Site, 1,482
+  //     requisitions and NO locationCountry facet in the response, so there is
+  //     nothing to filter on. Most of its `locationsText` is Workday's
+  //     "2 Locations" placeholder rather than a place. Unfiltered it would file
+  //     over a thousand foreign roles under one roster id.
+  //   Schneider Electric, HCF, Griffith University, University of Melbourne,
+  //     Wollongong, Flinders — their boards could not be reached from here at
+  //     all: careers.se.com and hcf.com.au answer a datacentre address with 403,
+  //     and jobs.griffith.edu.au, griffith.nga.net.au, uow.nga.net.au and
+  //     unimelb.edu.au do not connect through this sandbox's egress. THAT IS NOT
+  //     EVIDENCE THEY HAVE NO BOARD — the universities almost certainly run
+  //     PageUp or NGA — so they are left for an environment that can see them
+  //     rather than guessed at from the outside.
+  //   HDFC Bank and Larsen & Toubro — Indian employers whose archived rows come
+  //     from naukri. Neither careers page named a board, and an unfiltered
+  //     Indian feed is a different job from the AU-facing ones here.
+  {
+    id: "priv-kennards-hire",
+    name: "Kennards Hire",
+    sector: "Industrial Manufacturing",
+    platform: "cornerstone",
+    // Same Cornerstone shape as Mirvac and Super Retail: the shell carries the
+    // bearer token and the API returns the board in one call. kennards.com.au
+    // /careers redirects to /work-with-us, which is where the csod host is
+    // named. Measured 2026-09-19: 66 roles, every one placed on a hub.
+    endpoint: "https://kennardshire.csod.com/ux/ats/careersite/1/home?c=kennardshire",
+    origin: "https://kennardshire.csod.com",
+    homeHub: "sydney",
+  },
+  {
+    id: "paris-el",
+    name: "EssilorLuxottica",
+    sector: "Retail",
+    platform: "successfactors",
+    // OPSM and Sunglass Hut, which is what makes this a real Australian feed
+    // rather than a slice of a French one. A GLOBAL board — 4,664 requisitions
+    // unfiltered — so `locationsearch=australia` is doing the same work EY's
+    // does. Measured 2026-09-19: 325 roles with it, 349 distinct job paths
+    // across the walk.
+    //
+    // stateFromJobUrl is the load-bearing part and the comment on it explains
+    // why: the location cell is a bare suburb ("Chadstone, AU") and the state
+    // only exists in the slug. Without it 260 of 325 archived unplaced.
+    endpoint: "https://careers.essilorluxottica.com",
+    searchParams: "locationsearch=australia",
+    stateFromJobUrl: true,
+    origin: "https://careers.essilorluxottica.com",
+    homeHub: "sydney",
+  },
+  {
+    id: "shell",
+    name: "Shell",
+    sector: "Oil & Gas",
+    platform: "workday",
+    // THREE ROLES, AND THAT IS THE BOARD RATHER THAN A TRUNCATED WALK. Measured
+    // 2026-09-19: 147 requisitions worldwide across 18 countries, of which
+    // Australia 3. The roster's 266 archived ads are SEEK and the aggregators
+    // picking up Shell's Australian advertising elsewhere; this is what its own
+    // global board carries for Australia today, and a real 3 is worth having.
+    //
+    // Australia's facet id is the same d903bb3f… as Aurecon's and Lendlease's —
+    // a third tenant agreeing, so these are Workday-wide constants. Still read
+    // off this board rather than copied.
+    endpoint: "https://shell.wd3.myworkdayjobs.com/wday/cxs/shell/ShellCareers/jobs",
+    origin: "https://shell.wd3.myworkdayjobs.com/ShellCareers",
+    appliedFacets: { locationCountry: ["d903bb3fedad45039383f6de334ad4db"] },
+    // Perth: Shell's Australian upstream business is there. Two of the three
+    // rows say "2 Locations", Workday's multi-site placeholder, which names no
+    // place and so resolves to no hub rather than to this one.
+    homeHub: "perth",
+  },
 ];
 
 /**
@@ -3740,6 +3840,17 @@ export const PORTAL_GROUPS: string[][] = [
   ["priv-minterellison"],
   ["priv-st-vincent-de-paul", "sydney-llc"],
   ["priv-afl"],
+
+  // Groups 65-66: the three feeds from the 2026-09-19 sixth batch. Measured
+  // that day: EssilorLuxottica 325 (Australia only, of 4,664), Kennards Hire
+  // 66, Shell 3 (Australia only, of 147).
+  //
+  // EssilorLuxottica leads its own tick. It is a SEQUENTIAL SuccessFactors walk
+  // over 12 pages — each page's size read off the one before — and the deepest
+  // SF walk in the file after Goodstart. The other two are one call each and
+  // share the second.
+  ["paris-el"],
+  ["priv-kennards-hire", "shell"],
 ];
 
 const UA =
@@ -4220,6 +4331,27 @@ async function getJson<T>(url: string, init?: RequestInit): Promise<T | null> {
   }
 }
 
+/**
+ * An Australian state token in a SuccessFactors job slug — see stateFromJobUrl.
+ *
+ * Bounded on BOTH sides so the two-letter states cannot fire inside a word:
+ * without it "SA" matches "SALES" and "NT" matches "CONSULTANT", and a wrong
+ * state is worse than no state because it plots a real role in the wrong city.
+ * The states are matched case-sensitively in upper case, which is how the slug
+ * writes them and which "Was"/"Sant" style words are not.
+ */
+const SF_URL_STATE = /(?:^|[-,\s])(NSW|VIC|QLD|WA|SA|TAS|NT|ACT)(?:[-,\s/]|$)/;
+
+function stateFromJobUrl(href: string): string {
+  let path = href;
+  try {
+    path = decodeURIComponent(href);
+  } catch {
+    // A malformed escape is not a reason to drop the row; match on the raw form.
+  }
+  return SF_URL_STATE.exec(path)?.[1] ?? "";
+}
+
 // ── SAP SuccessFactors ───────────────────────────────────────────────────────
 async function fetchSuccessFactors(site: SiteDef): Promise<PortalJob[]> {
   const out: PortalJob[] = [];
@@ -4260,7 +4392,13 @@ async function fetchSuccessFactors(site: SiteDef): Promise<PortalJob[]> {
       const dateM =
         row.match(/<span class="jobDate[^"]*">([\s\S]*?)<\/span>/i) ??
         row.match(/id="job-\d+-desktop-section-date-value"[^>]*>([\s\S]*?)<\/div>/i);
-      const loc = locM ? clean(locM[1]) : "";
+      const cell = locM ? clean(locM[1]) : "";
+      // Appended, never substituted: the cell is what the employer published and
+      // the slug only fills in the state it left out. Skipped when the cell
+      // already names that state, so "Perth Hay Street, WA" does not become
+      // "…, WA, WA".
+      const st = site.stateFromJobUrl ? stateFromJobUrl(href) : "";
+      const loc = st && !new RegExp(`\\b${st}\\b`).test(cell) ? `${cell}, ${st}` : cell;
       out.push(
         job(
           site,
