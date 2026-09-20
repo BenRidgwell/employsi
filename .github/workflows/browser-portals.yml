@@ -179,6 +179,21 @@ jobs:
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         run: python scripts/dayforce-to-d1.py --portal avant --capture captures
 
+      - name: Scrape CMV Group (Dayforce) careers → D1 (rendered, local browser)
+        # Fourth tenant on the same table. Same 403 on /api/geo/cmv/jobposting/
+        # search, measured 2026-09-20, which is now four unrelated customers.
+        #
+        # No expected row count, as with Avant: the API refuses this sandbox, so
+        # this run is the first thing that can state one. An empty pull is never
+        # written, so a zero costs a look and nothing else.
+        if: always()
+        timeout-minutes: 10
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/dayforce-to-d1.py --portal cmv --capture captures
+
       - name: Keep the rendered Dayforce pages
         if: always()
         uses: actions/upload-artifact@v4

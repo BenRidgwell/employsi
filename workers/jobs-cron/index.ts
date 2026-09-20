@@ -1272,6 +1272,8 @@ const PORTAL_TICKS: Record<string, number> = {
   // open the 16 hour, which had nothing in it.
   "5 16 * * *": 69,
   "15 16 * * *": 70,
+  // Group 71 — the 2026-09-20 tenth batch. Next free minute in the 16 hour.
+  "25 16 * * *": 71,
 };
 
 const NEWS_TICKS: Record<string, number> = {
