@@ -342,7 +342,55 @@ def resolves(host: str) -> tuple[bool, str]:
     return False, box.get('gai', 'lookup failed')
 
 
+# A WALL-CLOCK CEILING ON ONE PROBE, and the third attempt at this same symptom.
+#
+# urlopen's `timeout` is PER SOCKET OPERATION, not for the call: a server that
+# sends one byte every 19 seconds never trips it, so the 1.5 MB read cap below is
+# reached at a rate that makes it unreachable. A resolver that never answers was
+# the first cause, and DNS_TIMEOUT_S fixed only that one.
+#
+# So the ceiling is now around the WHOLE probe instead of around each layer of
+# it. One deadline covers the lookup, the connect, the redirect chain and the
+# read together, which is the only version of this that cannot be defeated by
+# moving the hang somewhere else.
+HARD_FETCH_S = 30
+
+
+def _bounded(fn, seconds: float, on_timeout):
+    """Run fn on a daemon thread and give up on it after `seconds`.
+
+    Daemon so that a thread still stuck in a syscall cannot keep the process
+    alive at exit. Nothing tries to cancel it — a Python thread blocked in a
+    socket call cannot be interrupted, so it is abandoned and the sweep moves on.
+    """
+    box: dict = {}
+
+    def go() -> None:
+        try:
+            box['v'] = fn()
+        except BaseException as e:  # noqa: BLE001 — re-raised below, unchanged
+            box['e'] = e
+
+    t = threading.Thread(target=go, daemon=True)
+    t.start()
+    t.join(seconds)
+    if t.is_alive():
+        return on_timeout()
+    if 'e' in box:
+        raise box['e']
+    return box['v']
+
+
 def fetch(url: str, timeout: int = 20) -> dict:
+    """One GET, bounded in wall-clock time whatever the far end does."""
+    return _bounded(
+        lambda: _fetch(url, timeout),
+        HARD_FETCH_S,
+        lambda: {'url': url, 'outcome': 'error',
+                 'detail': f'no answer within {HARD_FETCH_S}s (hung, not refused)'})
+
+
+def _fetch(url: str, timeout: int = 20) -> dict:
     """One GET, with the outcome CLASSIFIED rather than collapsed to a failure.
 
     The four outcomes are deliberately distinct: `dns` means the hostname does
