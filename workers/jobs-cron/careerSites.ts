@@ -3720,6 +3720,172 @@ export const SITES: SiteDef[] = [
     // is the registered office (South Yarra) for a role that names no state.
     homeHub: "melbourne",
   },
+  // ── The 2026-09-20 ninth batch — the Australian universities ────────────────
+  //
+  // Eight university domains swept, seven hit, six built here. All eight had
+  // been invisible to the two earlier sweeps for one reason: /careers at a
+  // university is the STUDENT careers service. Ranking the links and seeding
+  // /jobs found these in one pass.
+  //
+  // NOT BUILT, and why:
+  //   Charles Sturt (187 archived ads) — PageUp confirmed, but only in a
+  //     RENDERED www.csu.edu.au/jobs/our-vacancies, and the PageUp fingerprints
+  //     carry no host to capture, so the sweep proves the platform without
+  //     naming the board. careers.csu.edu.au and jobs.csu.edu.au do not resolve
+  //     from here and www.csu.edu.au 403s, so there is nothing to measure
+  //     against. A guessed endpoint is exactly what this file does not do.
+  //   Newcastle (184) — 14 links followed, including its own
+  //     /our-uni/jobs/job-vacancies, and no marker on any of them rendered or
+  //     served. Its board is built in JS from something unfingerprinted.
+  {
+    id: "uni-university-of-melbourne",
+    name: "University of Melbourne",
+    sector: "Education",
+    platform: "workday",
+    // Workday unimelb/wd105/UoM_External_Career, read off a RENDERED
+    // www.unimelb.edu.au/jobs — the page needs a browser, the API does not, and
+    // it answered this sandbox directly. Measured 2026-09-20: `total` 42.
+    endpoint: "https://unimelb.wd105.myworkdayjobs.com/wday/cxs/unimelb/UoM_External_Career/jobs",
+    origin: "https://unimelb.wd105.myworkdayjobs.com/UoM_External_Career",
+    // THE CAMPUS NAME WITH NO STATE ON IT. Measured 2026-09-20: Parkville 26 of
+    // the 42 and Dookie 1, both bare, so before these hints 41 of 42 resolved to
+    // no hub at all. Parkville is the main campus; Dookie is the agricultural
+    // campus near Shepparton, and Melbourne is the nearest plotted hub to it.
+    // Scoped rather than global, because neither name is unambiguous nationally.
+    hubHints: [
+      ["parkville", "melbourne"],
+      ["dookie", "melbourne"],
+    ],
+    // Left to resolve to NOTHING, deliberately: "2 Locations" (1) is Workday's
+    // multi-site placeholder and "Clinical Sites (Metro & Regional)" (1) names
+    // no single place. Both are honest non-answers rather than head-office
+    // guesses, the same reading as Shell's "2 Locations".
+    //
+    // Two more postings carry no location at all — the two whose cards show only
+    // a requisition number, see REQ_ID in fetchWorkday — and those DO fall here.
+    // Parkville is where this university is, so that is a true statement.
+    homeHub: "melbourne",
+  },
+  {
+    id: "uni-rmit-university",
+    name: "RMIT University",
+    sector: "Education",
+    platform: "workday",
+    // Workday rmit/wd3/RMIT_Careers, in SERVED html on www.rmit.edu.au/careers.
+    //
+    // MOST OF THIS BOARD IS NOT AUSTRALIAN. Measured 2026-09-20 unfiltered: 45
+    // postings, of which Ho Chi Minh City 26 and Hanoi 5 — RMIT Vietnam is a
+    // real campus with real vacancies. Neither city is a HUB_MATCH needle, so an
+    // unfiltered feed would drop all 31 onto this home hub and invent 31
+    // Melbourne roles.
+    //
+    // The Country facet fixes it at the source. Measured: 45 -> 13, every one
+    // "Melbourne". 13 is the honest Australian figure.
+    endpoint: "https://rmit.wd3.myworkdayjobs.com/wday/cxs/rmit/RMIT_Careers/jobs",
+    origin: "https://rmit.wd3.myworkdayjobs.com/RMIT_Careers",
+    // THE PARAMETER IS `Country`, NOT `locationCountry`. Both exist across
+    // Workday tenants and only the one the board advertises works; read off this
+    // board's own facet list rather than copied from the other sites here.
+    // Australia's id is the same d903bb3f… as Aurecon, Lendlease and Shell — a
+    // fourth tenant agreeing, so it is a Workday-wide constant.
+    appliedFacets: { Country: ["d903bb3fedad45039383f6de334ad4db"] },
+    homeHub: "melbourne",
+  },
+  {
+    id: "uni-deakin-university",
+    name: "Deakin University",
+    sector: "Education",
+    platform: "pageupclassic",
+    // PageUp classic at careers.deakin.edu.au, in SERVED html — 0 <article>
+    // cards and the `search-results-content` marker, which is the classic
+    // table/div theme rather than the Sites one.
+    endpoint: "https://careers.deakin.edu.au/en/listing/",
+    origin: "https://careers.deakin.edu.au",
+    // Measured 2026-09-20: 16 roles, and that is the WHOLE board rather than a
+    // truncated walk — the served page carries 16 distinct /job/ links and no
+    // pagination at all. Locations are campus names with the city attached
+    // ("Melbourne - Burwood", "Geelong - City", "Geelong - Waurn Ponds"), so
+    // HUB_MATCH reads them without a hint.
+    //
+    // 2 of the 16 say only "Flexible" and resolve to no hub. That is the right
+    // answer: the university is stating the role has no campus, so putting it at
+    // head office would be inventing a place it declined to name.
+    //
+    // No posted date on any row, as on Village Roadshow's PageUp board; the
+    // classic theme prints a "Closes" date and not an opened one.
+    homeHub: "melbourne",
+  },
+  {
+    id: "uni-university-of-tasmania",
+    name: "University of Tasmania",
+    sector: "Education",
+    platform: "pageupclassic",
+    // PageUp classic at careers.utas.edu.au, in SERVED html, same theme as
+    // Deakin's.
+    endpoint: "https://careers.utas.edu.au/en/listing/",
+    origin: "https://careers.utas.edu.au",
+    // Measured 2026-09-20: 23 roles over 2 pages — page 1 carries 20, page 2
+    // carries 3, page 3 is empty, so the walk reaches the end.
+    //
+    // BURNIE WITHOUT ITS STATE. HUB_MATCH carries "burnie, tas" and this board
+    // prints a bare "Burnie", so 2 roles resolved to nothing. Safe to scope
+    // here: for this employer Burnie is the Cradle Coast campus and nowhere
+    // else. Hobart and Launceston already resolve globally.
+    hubHints: [["burnie", "hobart"]],
+    // One role reads "Melbourne" and places there, which is correct rather than
+    // a leak — UTAS advertises a maritime-engineering post-doc in Melbourne, and
+    // a stated location beats the employer's home state.
+    homeHub: "hobart",
+  },
+  {
+    id: "uni-university-of-the-sunshine-coast",
+    name: "University of the Sunshine Coast",
+    sector: "Education",
+    platform: "pageupsites",
+    // PageUp's Sites theme at careers.usc.edu.au, in SERVED html: 30 <article>
+    // cards on page 1 and "of 44 in total" printed, so the walk is bounded by
+    // the board's own count the way Qube's is.
+    endpoint: "https://careers.usc.edu.au/jobs/search",
+    origin: "https://careers.usc.edu.au",
+    maxPages: 6,
+    // EVERY LOCATION ON THIS BOARD IS A CAMPUS NAME, and none of them is a place
+    // HUB_MATCH knows. Measured 2026-09-20: 44 roles, 0 of them placed before
+    // these hints — "UniSC Sunshine Coast" 22, "UniSC Caboolture" 14, "UniSC
+    // Moreton Bay" 3, "Health Hub Morayfield" 2, "UniSC SouthBank" 1, "Sunshine
+    // Coast Health Institute" 1, "UniSC Thompson Institute" 1.
+    //
+    // All of them sit on the Sunshine Coast, in Moreton Bay or in Brisbane
+    // itself, and there is no Sunshine Coast hub, so Brisbane is the nearest
+    // plotted one for all — the same nearest-hub reading as the maroochydore
+    // hint elsewhere in this file. The "unisc" needle covers every campus
+    // prefix, including ones this pull did not happen to show.
+    hubHints: [
+      ["unisc", "brisbane"],
+      ["sunshine coast", "brisbane"],
+      ["morayfield", "brisbane"],
+    ],
+    // Reached by nothing measured, since the hints place all 44.
+    homeHub: "brisbane",
+  },
+  {
+    id: "uni-western-sydney-university",
+    name: "Western Sydney University",
+    sector: "Education",
+    platform: "smartrecruiters",
+    // SmartRecruiters tenant `WesternSydneyUniversity`, in SERVED html on
+    // careers.westernsydney.edu.au. Measured 2026-09-20: 27 postings, all
+    // country `au` — Parramatta 13, Campbelltown 6, Richmond 4, Bankstown 2,
+    // Penrith 2. Every one carries "New South Wales" in full, which HUB_MATCH
+    // already reads, so all 27 place on Sydney with no hint.
+    //
+    // The sweep also reported a `smartrecruiters [web-sso]` hit on
+    // www.westernsydney.edu.au/employment. That is not a second tenant: the
+    // fingerprint caught a login path. `WesternSydneyUniversity` is the one that
+    // answers the API.
+    endpoint: "WesternSydneyUniversity",
+    origin: "https://careers.westernsydney.edu.au",
+    homeHub: "sydney",
+  },
 ];
 
 /**
@@ -4107,6 +4273,12 @@ export const PORTAL_GROUPS: string[][] = [
   // SmartRecruiters board is a single call, UOW's Oracle one, and Village
   // Roadshow's PageUp walk is two pages. 45 + 30 + 38 roles between them.
   ["uni-griffith-university", "uni-university-of-wollongong", "priv-village-roadshow"],
+  // Groups 69-70 — the 2026-09-20 ninth batch, the Australian universities.
+  // Split by how each is fetched rather than evenly: 69 is API-driven and cheap
+  // (two Workday walks of 3 pages and 1, plus one SmartRecruiters call), 70 is
+  // three PageUp boards walked as HTML. 165 roles between the six.
+  ["uni-university-of-melbourne", "uni-rmit-university", "uni-western-sydney-university"],
+  ["uni-deakin-university", "uni-university-of-tasmania", "uni-university-of-the-sunshine-coast"],
 ];
 
 const UA =
@@ -4694,6 +4866,13 @@ interface WorkdayPosting {
   bulletFields?: string[];
 }
 
+// A requisition id, not a place: "JR-016427", "REQ-7065662", "JR50352". Letters
+// then digits with nothing else — no comma, no space, no second word — which no
+// real location string looks like. Lendlease's genuine fallback value,
+// "Brisbane, Queensland, Australia", does not match, and that is the case this
+// must not break.
+const REQ_ID = /^[A-Za-z]{1,6}[-_]?\d{3,}$/;
+
 async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
   const out: PortalJob[] = [];
   const seen = new Set<string>();
@@ -4718,10 +4897,18 @@ async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
       seen.add(path);
       // bulletFields[0] is the fallback, not the first choice: where a tenant
       // sets locationsText that is the field built for this, and the bullets are
-      // whatever the card happens to show. Only [0] is read — [1] is the
-      // requisition id on every tenant seen so far, and joining the cells would
-      // put a req number inside the location string the hub matcher reads.
-      const whole = ((p.locationsText || p.bulletFields?.[0]) ?? "").trim();
+      // whatever the card happens to show.
+      //
+      // AND IT IS CHECKED, because [0] is not always a place. The comment here
+      // used to say the requisition id was always [1]; the University of
+      // Melbourne disproves it. Measured 2026-09-20: 2 of its 42 postings carry
+      // locationsText "" and bulletFields ["JR-016427"] — the card shows the
+      // requisition and nothing else — so the fallback stored "JR-016427" as the
+      // location. A req number reaching the hub matcher is worse than an empty
+      // string: empty falls to the home hub, which is at least a claim about the
+      // employer, while "JR-016427" is a place that does not exist.
+      const bullet = (p.bulletFields?.[0] ?? "").trim();
+      const whole = (p.locationsText || (REQ_ID.test(bullet) ? "" : bullet) || "").trim();
       const parts = whole.split("|").map((x) => x.trim());
       const loc =
         site.locationPart !== undefined && parts[site.locationPart]
