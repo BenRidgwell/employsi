@@ -32,6 +32,24 @@
 import { NEWS_SKILL_FIXTURES } from "./newsSkillFixtures";
 import { newsSkillTags } from "../src/employsi/lib/newsSkills";
 import { SKILL_CATEGORY, SKILL_PARENT } from "../src/employsi/data/skillsTaxonomy";
+import { COMPANIES } from "../src/employsi/data/companies";
+
+// The fixture stores the feed's slug; the tagger wants the roster name, because
+// it strips the company's own name from the haystack before reading it. Doing
+// the lookup here rather than storing the name keeps the fixture honest about
+// what the pipeline actually has in hand at tag time.
+const NAME_BY_SLUG = new Map<string, string>();
+for (const c of COMPANIES as { name: string }[]) {
+  NAME_BY_SLUG.set(
+    c.name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-"),
+    c.name,
+  );
+}
+const tagsFor = (f: { co: string; title: string }) =>
+  newsSkillTags(f.title, NAME_BY_SLUG.get(f.co));
 
 let failures = 0;
 function check(label: string, ok: boolean, detail?: string) {
@@ -90,7 +108,7 @@ const falsePositives: { title: string; tag: string; note?: string }[] = [];
 const misses: { title: string; tag: string }[] = [];
 
 for (const f of NEWS_SKILL_FIXTURES) {
-  const got = newsSkillTags(f.title);
+  const got = tagsFor(f);
   for (const g of got) {
     if (f.expect.includes(g)) correct++;
     else if (f.ok.includes(g)) tolerated++;
@@ -106,7 +124,7 @@ for (const f of NEWS_SKILL_FIXTURES) {
 const predicted = correct + tolerated + falsePositives.length;
 const precision = predicted ? correct / (correct + falsePositives.length) : 1;
 const recall = correct + missed ? correct / (correct + missed) : 1;
-const taggedArticles = NEWS_SKILL_FIXTURES.filter((f) => newsSkillTags(f.title).length).length;
+const taggedArticles = NEWS_SKILL_FIXTURES.filter((f) => tagsFor(f).length).length;
 
 console.log(`\nscored over ${NEWS_SKILL_FIXTURES.length} real headlines:`);
 console.log(
@@ -135,21 +153,87 @@ if (misses.length) {
   if (misses.length > 12) console.log(`  ... and ${misses.length - 12} more`);
 }
 
+// ── one assertion per suppression rule ──────────────────────────────────────
+//
+// The aggregate above can stay green while a rule is quietly deleted, because
+// one tag in twenty barely moves a percentage. These name the headline each
+// rule was written for, so removing the rule fails LOUDLY and says which one.
+console.log("\nsuppression rules, each on the headline that motivated it:");
+function noTag(fragment: string, banned: string) {
+  const f = NEWS_SKILL_FIXTURES.find((x) => x.title.includes(fragment));
+  if (!f) {
+    check(`fixture still contains "${fragment.slice(0, 40)}"`, false, "headline gone from corpus");
+    return;
+  }
+  const got = tagsFor(f);
+  check(
+    `${banned.padEnd(31)} suppressed on "${fragment.slice(0, 38)}"`,
+    !got.includes(banned),
+    `got [${got.join(", ")}]`,
+  );
+}
+noTag("data centre pipeline", "Pipeline Engineering");
+noTag("Developer seeks to raise height", "Software Engineering");
+noTag("Commercial Real Estate Product Suite", "Commercial & Legal");
+noTag("Key to Aussie Logistics Returns", "Procurement & Supply");
+noTag("Sales Climb Amid AI Optimism", "Data Science & Machine Learning");
+noTag("Major Exhibition", "Journalism & Media");
+noTag("CEFC finance accelerates", "Finance & Accounting");
+noTag("A Risky Investment", "Risk & Compliance");
+noTag("risk on for investors", "Risk & Compliance");
+noTag("Metrics Credit stake", "Banking & Lending");
+noTag("Logistics Giant US Investors", "Procurement & Supply");
+noTag("outperforms the Real Estate sector", "Real Estate & Property");
+noTag("new contracts boom", "Procurement & Supply");
+
+// And the other direction: the suppressor must not swallow the work stories.
+// A market-copy rule that matched everything would score 100% precision on an
+// empty prediction set, which is the failure this pair of checks exists to
+// separate from actually being right.
+console.log("\nthe suppressor must not swallow real coverage:");
+function keepsTag(fragment: string, wanted: string) {
+  const f = NEWS_SKILL_FIXTURES.find((x) => x.title.includes(fragment));
+  if (!f) {
+    check(`fixture still contains "${fragment.slice(0, 40)}"`, false, "headline gone from corpus");
+    return;
+  }
+  const got = tagsFor(f);
+  check(
+    `${wanted.padEnd(31)} kept on "${fragment.slice(0, 38)}"`,
+    got.includes(wanted),
+    `got [${got.join(", ")}]`,
+  );
+}
+keepsTag("drill hundreds of new wells", "Drilling & Wells");
+keepsTag("kicks off third underground mine", "Underground Mining");
+keepsTag("Shell SAP blueprint", "IT & Systems");
+keepsTag("taps AI to overhaul", "Data Science & Machine Learning");
+keepsTag("Nexus program is transforming teacher education", "Teaching & Education");
+
 // ── the ratchet ─────────────────────────────────────────────────────────────
 //
-// Set from the BASELINE measured on 2026-09-20 with the plain title matcher:
-// precision 41.7%, recall 24.4%, coverage 12.5%. Both floors sit a few points
-// under that, so the suite catches a regression without failing on noise.
+// MEASURED ON 2026-09-20, same corpus, both ends:
 //
-// WORTH RECORDING THAT THE BASELINE IS WORSE THAN IT LOOKS BY EYE. Skimming the
-// 32 matched headlines suggested roughly two thirds were fine; scoring them per
-// tag against written-down labels says 41.7%. The difference is that reading a
-// match list invites you to accept a tag because you can construct a reading
-// for it, which is the whole reason the labels exist.
+//   plain title matcher      precision  41.7%   recall 24.4%   coverage 12.5%
+//   + suppression layer      precision 100.0%   recall 24.4%   coverage  7.0%
 //
-// The plan's ship bar for the suppression layer is precision >= 85%. Raise
-// MIN_PRECISION to match when that lands; do not lower it to pass a run.
-const MIN_PRECISION = 0.38;
+// Recall did not move, which is the result worth having: the layer removed 14
+// false positives and cost NOT ONE required tag. Coverage fell because the
+// articles it stopped tagging were share-price copy that should never have
+// carried a tag.
+//
+// THE FLOOR IS 85%, NOT THE 100% MEASURED. One hundred percent on the only
+// corpus in hand is a statement about the corpus as much as the code — every
+// rule here was written against these headlines, so the fixture cannot be
+// evidence that the rules generalise. Leaving headroom means a new batch of
+// real headlines can cost a few points without a red build, which is what
+// should happen; a drop past 85% means the layer stopped working.
+//
+// WORTH RECORDING THAT THE BASELINE WAS WORSE THAN IT LOOKED BY EYE. Skimming
+// the 32 matched headlines suggested roughly two thirds were fine; scoring them
+// per tag against written-down labels said 41.7%. Reading a match list invites
+// you to accept a tag because you can construct a reading for it.
+const MIN_PRECISION = 0.85;
 const MIN_RECALL = 0.21;
 
 console.log("\nthresholds:");
