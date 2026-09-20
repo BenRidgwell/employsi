@@ -3974,6 +3974,74 @@ export const SITES: SiteDef[] = [
     maxPages: 6,
     homeHub: "brisbane",
   },
+  // ── The 2026-09-20 eleventh batch — the two the board-url report unblocked ───
+  //
+  // Both had been swept and reported as "platform known, board unknown", which is
+  // not enough to write a SiteDef. The candidate-url reporting added to
+  // scripts/discover-boards.py the same day named the endpoints, and both were
+  // then measured against the live board like any other value here.
+  {
+    id: "uni-charles-sturt-university",
+    name: "Charles Sturt University",
+    sector: "Education",
+    platform: "pageupclassic",
+    // THE HOSTNAME IS `external-jobs`, WHICH IS WHY THREE SWEEPS MISSED IT.
+    // careers.csu.edu.au and jobs.csu.edu.au have no DNS record, every
+    // www.csu.edu.au path 403s a datacentre address, and the board was only ever
+    // named inside a rendered page. The sweep's candidate report pulled
+    // external-jobs.csu.edu.au/cw/en/listing/ and the PageUp instance 924 out of
+    // that page.
+    //
+    // The pageuppeople form is used rather than the university's own vanity host,
+    // matching the Cleanaway SiteDef's careers.pageuppeople.com/621/cw/en/listing/
+    // — measured 2026-09-20, both serve the same 19 jobs and 53 KB, and this one
+    // avoids the vanity host's http/https ambiguity.
+    endpoint: "https://careers.pageuppeople.com/924/cw/en/listing/",
+    origin: "https://careers.pageuppeople.com",
+    // EVERY CAMPUS IS REGIONAL AND NONE IS A PLOTTED HUB. Measured 2026-09-20,
+    // the whole board: Wagga Wagga 7, Albury-Wodonga 4, Bathurst 2 (plus 3 rows
+    // naming several campuses at once), Orange 1, Port Macquarie 1. Without hints
+    // 18 of the 19 resolved to nothing.
+    //
+    // Each campus is sent to the hub genuinely nearest it rather than all to
+    // Sydney: Wagga Wagga is ~240 km from Canberra against ~450 km from Sydney,
+    // and Albury-Wodonga is ~300 km from Melbourne against ~340 km from Canberra.
+    // Canberra already resolves on HUB_MATCH.
+    //
+    // NEEDLE ORDER DECIDES A MULTI-CAMPUS ROW, because the first needle that
+    // appears anywhere in the string wins — not the first campus named in it. So
+    // "wagga wagga" leads: it is the largest campus and appears in two of the
+    // three multi-campus rows, which makes it the right dominant answer for them.
+    hubHints: [
+      ["wagga wagga", "canberra"],
+      ["albury-wodonga", "melbourne"],
+      ["bathurst", "sydney"],
+      ["orange", "sydney"],
+      ["port macquarie", "sydney"],
+      ["dubbo", "sydney"],
+    ],
+    // universityTargets.ts files this employer under Sydney, so a campus this
+    // board has not shown yet lands there.
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-great-southern-bank",
+    name: "Great Southern Bank",
+    sector: "Financial Services",
+    platform: "cornerstone",
+    // Cornerstone tenant `gsb`, named by the sweep on a RENDERED
+    // /about/careers/search-for-a-job — every path on this domain 403s a
+    // datacentre address, including on a runner, so the plain sweep found nothing
+    // at all here.
+    //
+    // careersite 1 of 4: measured 2026-09-20, sites 1 and 2 both serve a shell
+    // with a bearer token and the API host, while 3 and 4 return a 2,398-byte
+    // shell with neither — so the site number is read rather than assumed, and
+    // the two live ones were compared before this was chosen.
+    endpoint: "https://gsb.csod.com/ux/ats/careersite/1/home?c=gsb",
+    origin: "https://gsb.csod.com",
+    homeHub: "brisbane",
+  },
 ];
 
 /**
@@ -4372,6 +4440,9 @@ export const PORTAL_GROUPS: string[][] = [
   // fourth hit of that sweep, is not here — it is a Dayforce board and runs
   // through scripts/dayforce-to-d1.py in browser-portals.yml.
   ["sydney-bga", "priv-clayton-utz", "brisbane-vgn"],
+  // Group 72 — the 2026-09-20 eleventh batch. Both are single-page boards, 19
+  // roles each.
+  ["uni-charles-sturt-university", "priv-great-southern-bank"],
 ];
 
 const UA =
@@ -8431,7 +8502,19 @@ async function fetchPageUpClassic(site: SiteDef): Promise<PortalJob[]> {
     // on the rows whose closing date was blank and a DATE on the rest, and
     // nothing errors when it happens. -1 means the header named no location, in
     // which case the last cell is the best remaining guess.
-    const heads = (html.split(/<thead[^>]*>/i)[1] ?? "")
+    //
+    // AND THE HEADER IS READ WITH SCRIPTS STRIPPED FIRST. Charles Sturt's page
+    // carries JavaScript that BUILDS a table, so the literal strings "<thead>"
+    // and "<th>" appear inside a <script> well before the real header. Taking the
+    // first <thead> in the raw html therefore picked up the script's fragments as
+    // columns, the index came out shifted, and locCol landed on `Closes` —
+    // measured 2026-09-20, all 19 of its roles stored a location of
+    // "1 Oct 2026 11:00 PM". A date in the location column is the same class of
+    // silent wrong answer this header lookup was written to stop, one step
+    // further back. No tenant puts its header inside a script, so stripping them
+    // cannot cost a column anywhere else.
+    const noScripts = html.replace(/<script\b[\s\S]*?<\/script>/gi, "");
+    const heads = (noScripts.split(/<thead[^>]*>/i)[1] ?? "")
       .split(/<\/thead>/i)[0]
       .split(/<th[^>]*>/i)
       .slice(1)
