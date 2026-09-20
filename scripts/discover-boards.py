@@ -107,7 +107,7 @@ UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
 FINGERPRINTS: list[tuple[str, str]] = [
     (r'job-search-results-card-title', 'pageupsites'),
     (r'<(?:tbody|div) id="search-results-content"', 'pageupclassic'),
-    (r'[a-z0-9-]+\.pageuppeople\.com', 'pageup (theme unknown — check for the card class)'),
+    (r'([a-z0-9-]+\.pageuppeople\.com(?:/\d+/[a-z]+)?)', 'pageup (theme unknown — check for the card class)'),
     # TENANT, POD AND SITE, because a Workday url carries the tenant in the
     # HOSTNAME and the site in the path, and the endpoint needs both:
     # https://<tenant>.<pod>.myworkdayjobs.com/wday/cxs/<tenant>/<site>/jobs.
@@ -331,6 +331,91 @@ def rendered_html(url: str, settle_s: int = 8) -> tuple[str | None, str]:
         return None, 'render returned nothing (see the message above)'
     return html, ''
 
+# WHERE A FINGERPRINT NAMES A PLATFORM BUT NO HOST, the sweep has proved what the
+# board runs on and not where it is — which is not enough to write a SiteDef.
+#
+# Measured 2026-09-20: Charles Sturt reported `pageupclassic` off a RENDERED
+# www.csu.edu.au/jobs/our-vacancies and had to be left out of that batch, because
+# the PageUp fingerprints match a CSS id and a card class and neither carries a
+# hostname. careers.csu.edu.au does not resolve and the endpoint could not be
+# guessed, so 187 archived ads stayed uncovered over a missing string that was
+# sitting in the page all along.
+#
+# So a hostless hit now goes looking. These are the listing paths the readers in
+# careerSites.ts actually take — /en/listing/ for PageUp classic, /jobs/search
+# for the Sites theme — plus the hosted careers.pageuppeople.com form.
+BOARD_URL = re.compile(
+    r"""https?://[A-Za-z0-9.-]+(?:/[A-Za-z0-9._~%+-]+)*?
+        /(?:en/listing|listing|jobs/search|jobs/searchresults|job-search|search-results)
+        /?(?:\?[^"'\s<>]*)?""",
+    re.I | re.X)
+
+# Any host that IS the ATS, whatever path it was linked with. Kept separate
+# because a bare tenant root carries no board path to match on.
+BOARD_HOST = re.compile(
+    r"""https?://[A-Za-z0-9.-]*
+        (?:pageuppeople\.com|myworkdayjobs\.com|smartrecruiters\.com|csod\.com
+          |dayforcehcm\.com|oraclecloud\.com|icims\.com|taleo\.net|avature\.net
+          |livehire\.com|expr3ss\.com|nga\.net\.au)
+        (?:/[^"'\s<>]*)?""",
+    re.I | re.X)
+
+
+# Hosts that serve a site's assets, not its board. A listing PATH on one of these
+# is a stylesheet: measured on a CSU-shaped page, static.csu.edu.au/assets/en/
+# listing/main.css matched BOARD_URL, and truncating it at the path meant the
+# `.css` LINK_SKIP would have caught was no longer on the end of the string.
+# The label can be anywhere in the leading name, not only at the start:
+# careers-static.pageuppeople.com is Deakin's, and an anchored pattern read it as
+# a tenant called "careers".
+ASSET_HOST = re.compile(r'(?:^|[.-])(?:static|assets?|cdn|img|images|media|fonts)[.-]', re.I)
+
+# Paths on an ATS host that are not the list of jobs — an application form, a job
+# alert subscription, the vendor's own marketing. Still reported, just last,
+# because a PageUp instance id ("949/cw") is often only visible in one of them
+# and that id is the part nobody can guess.
+NOT_A_LISTING = re.compile(r'/apply/|applicationform|/subscribe|powered-by|/login', re.I)
+
+
+def board_urls(html: str, base: str, limit: int = 6) -> list[str]:
+    """Candidate board urls on a page, for a hit that named no host.
+
+    RANKED, because the first match in a page is routinely the wrong one: on a
+    CSU-shaped page an unrelated employer's Workday link appeared above the
+    university's own /en/listing/. A url whose path IS a listing path comes
+    first, then any ATS host, then the rest.
+
+    Reported rather than acted on: this says "the board is probably one of
+    these", and the endpoint still gets measured against the live board before it
+    becomes a SiteDef, as every other value in careerSites.ts was.
+    """
+    LISTING_END = re.compile(
+        r'/(?:en/listing|listing|jobs/search|jobs/searchresults|job-search|search-results)/?$',
+        re.I)
+    seen: set[str] = set()
+    ranked: list[tuple[int, int, str]] = []
+    order = 0
+    for pat in (BOARD_URL, BOARD_HOST):
+        for m in pat.findall(html):
+            raw = m if isinstance(m, str) else m[0]
+            u = urllib.parse.urljoin(base, htmlmod.unescape(raw))
+            if u in seen:
+                continue
+            host = (urllib.parse.urlparse(u).hostname or '')
+            # The skip is tested on the RAW match, before the path truncation
+            # that hid the asset extension.
+            if ASSET_HOST.match(host) or LINK_SKIP.search(raw):
+                continue
+            seen.add(u)
+            order += 1
+            rank = 0 if LISTING_END.search(urllib.parse.urlparse(u).path) else 1
+            if NOT_A_LISTING.search(u):
+                rank = 2
+            ranked.append((rank, order, u))
+    ranked.sort()
+    return [u for _, _, u in ranked[:limit]]
+
+
 def fingerprint(body: str) -> list[str]:
     hits: list[str] = []
     for pat, platform in FINGERPRINTS:
@@ -435,6 +520,30 @@ def sweep(domain: str, render: bool = False) -> dict:
             if len(queue) >= QUEUE_CAP:
                 break
 
+    # A hostless hit is recorded WITH the board candidates from the same page.
+    # Done here rather than at each of the five places a hit can be found, so one
+    # of them cannot quietly skip it.
+    boards: dict[str, list[str]] = {}
+
+    def note(where: dict, page: str, hits: list[str], html: str) -> None:
+        hits = [h for h in hits if h]
+        if not hits:
+            return
+        where[page] = hits
+        # A CAPTURED ASSET HOST IS NOT A TENANT. Deakin's board matches the
+        # pageuppeople pattern on careers-static.pageuppeople.com, which looks
+        # like a host in the label and cannot be fetched as a board — so it
+        # counts as hostless here. Without this, a page whose ONLY hit was that
+        # pattern would suppress the candidate search that exists for it.
+        def hostless(h: str) -> bool:
+            inner = h[h.index('[') + 1:].strip('[] ') if '[' in h else ''
+            return not inner or bool(ASSET_HOST.search(inner))
+
+        if any(hostless(h) for h in hits):
+            cands = board_urls(html, page)
+            if cands:
+                boards[page] = cands
+
     seed_renders = SEED_RENDER_BUDGET
     for url in candidates(domain):
         seen.add(url)
@@ -444,7 +553,7 @@ def sweep(domain: str, render: bool = False) -> dict:
             hits = fingerprint(res['body'])
             row['platforms'] = hits
             if hits:
-                found[res.get('final', url)] = hits
+                note(found, res.get('final', url), hits, res['body'])
             else:
                 harvest(res['body'], res.get('final', url))
                 if render and seed_renders > 0:
@@ -460,7 +569,7 @@ def sweep(domain: str, render: bool = False) -> dict:
                         row['rendered'] = 'rendered' if rhits else 'rendered, no marker'
                         if rhits:
                             row['rendered_platforms'] = rhits
-                            found_rendered[res.get('final', url)] = rhits
+                            note(found_rendered, res.get('final', url), rhits, html or '')
                         else:
                             harvest(html or '', res.get('final', url))
         # A 403 can be a header or TLS-fingerprint check rather than an address
@@ -476,7 +585,7 @@ def sweep(domain: str, render: bool = False) -> dict:
                 row['rendered'] = 'reachable with a browser'
                 row['rendered_platforms'] = hits
                 if hits:
-                    found_rendered[url] = hits
+                    note(found_rendered, url, hits, html or '')
                 else:
                     harvest(html or '', url)
         tried.append(row)
@@ -497,7 +606,7 @@ def sweep(domain: str, render: bool = False) -> dict:
         if sub['outcome'] == 'ok':
             h = fingerprint(sub['body'])
             if h:
-                found[sub.get('final', nxt)] = h
+                note(found, sub.get('final', nxt), h, sub['body'])
                 continue
             harvest(sub['body'], sub.get('final', nxt))
         # Plain fetch found nothing here. One render, while the budget lasts —
@@ -508,11 +617,12 @@ def sweep(domain: str, render: bool = False) -> dict:
             if not err:
                 rh = fingerprint(html or '')
                 if rh:
-                    found_rendered[nxt] = rh
+                    note(found_rendered, nxt, rh, html or '')
                 else:
                     harvest(html or '', nxt)
 
     return {'domain': domain, 'home': home, 'tried': tried, 'found': found,
+            'boards': boards,
             'found_rendered': found_rendered, 'followed': followed}
 
 
@@ -566,6 +676,17 @@ def main() -> int:
             print('  FOUND in served HTML — can be an in-Worker feed:')
             for u, h in r['found'].items():
                 print(f'    {mark(u)}\n      -> {", ".join(h)}')
+        if r.get('boards'):
+            # THE MISSING HALF OF A HOSTLESS HIT. A platform name without an
+            # endpoint cannot become a SiteDef; these are the board urls found on
+            # the same page. Candidates, not answers — measure one against the
+            # live board before writing it down, as every other value in
+            # careerSites.ts was.
+            print('  BOARD URL CANDIDATES (a hit above named a platform but no host):')
+            for page, cands in r['boards'].items():
+                print(f'    on {page}')
+                for c in cands:
+                    print(f'      -> {c}')
         if r.get('found_rendered'):
             print('  FOUND ONLY AFTER RENDERING — this PAGE needs a browser, which does')
             print('  not mean the BOARD does. Try the platform API for the tenant below,')
