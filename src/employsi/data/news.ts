@@ -6,6 +6,13 @@ export interface NewsItem {
   cat: string;
   title: string;
   comments: number;
+  /**
+   * Broad skills this story is about, inferred on the Worker — see
+   * lib/newsSkills.ts. Absent on most articles, and absent on every CURATED
+   * item: those were written before tagging existed and carry no inference, so
+   * the panel must render a row with no chips as the normal case.
+   */
+  skills?: string[];
   // Optional real article link + image. When `url` is a genuine publisher
   // article, the news panel scrapes that page's og:image on the Worker for a
   // real thumbnail (see lib/articleImageFn.ts); when absent the card links to a
@@ -662,6 +669,7 @@ export function liveToCompanyNews(
     published: string;
     image?: string;
     kind?: "news" | "post";
+    skills?: string[];
   }[],
 ): CompanyNews | null {
   if (!items.length) return null;
@@ -677,6 +685,9 @@ export function liveToCompanyNews(
     publisher: a.publisher,
     publishedIso: a.published,
     kind: a.kind ?? "news",
+    // A company POST is the company talking about itself; tagging it with a
+    // skill would read as our inference about someone else's announcement.
+    skills: a.kind === "post" ? undefined : a.skills,
   });
   return {
     hero: toItem(items[0], "Trending"),

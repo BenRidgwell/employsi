@@ -6,6 +6,7 @@ import { useCompanyPosts } from "../../hooks/useCompanyPosts";
 import type { ArticleMeta } from "../../lib/articleImageFn";
 import { isBlockedArticle } from "../../data/newsBlocklist";
 import { CardLoader } from "./CardLoader";
+import { useAppStore } from "../../state/store";
 
 // "[company] in the news", the second column of `Employsi Company Card
 // public.html` — a 196px hero with the article photo behind a gradient, a
@@ -77,6 +78,41 @@ function kickerOf(item: NewsItem, meta?: ArticleMeta): { code: string; tint: str
     code: (letters.slice(0, 3) || "NEW").toUpperCase(),
     tint: KICKER_TINTS[h % KICKER_TINTS.length],
   };
+}
+
+/**
+ * The skills a story is about, as chips under it.
+ *
+ * OUTSIDE THE ARTICLE ANCHOR, DELIBERATELY. Each row is one big <a>, and a
+ * <button> inside an <a> is invalid markup whose click follows the link — so
+ * the chips sit as a sibling under the anchor, inside a wrapper that keeps the
+ * two together as one flex child of the scroller.
+ *
+ * Clicking one filters the map to that skill, which is the whole point of
+ * tagging a story: a market app tags an index so you can go and look at it.
+ *
+ * MOST ARTICLES HAVE NO TAGS and render nothing here. That is the normal case,
+ * not an empty state — a story about a CEO appointment is about no skill, and
+ * the panel is built so a row with no chips looks finished rather than short.
+ */
+function SkillTags({ skills, hero }: { skills?: string[]; hero?: boolean }) {
+  const toggleSkillQuery = useAppStore((s) => s.toggleSkillQuery);
+  if (!skills?.length) return null;
+  return (
+    <div className={`nwtags${hero ? " nwtagshero" : ""}`}>
+      {skills.map((sk) => (
+        <button
+          key={sk}
+          type="button"
+          className="nwtag"
+          onClick={() => toggleSkillQuery(sk)}
+          title={`Show ${sk} demand on the map`}
+        >
+          {sk}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function articleUrl(item: NewsItem, name: string): string {
@@ -362,48 +398,48 @@ export function NewsPanel({
           </div>
         ) : (
           <>
-            <a
-              className="nwhero"
-              href={articleUrl(news.hero, name)}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <Thumb img={heroImg} seed={news.hero.title} className="nwheroimg" />
-              <span className="nwheroshade" />
-              <span className="nwherochip">{news.hero.cat}</span>
-              <span className="nwherobody">
-                <span className="nwherotitle">{news.hero.title}</span>
-                <span className="nwherometa">{metaBits(news.hero, heroMeta)}</span>
-              </span>
-            </a>
+            <div className="nwitem">
+              <a
+                className="nwhero"
+                href={articleUrl(news.hero, name)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Thumb img={heroImg} seed={news.hero.title} className="nwheroimg" />
+                <span className="nwheroshade" />
+                <span className="nwherochip">{news.hero.cat}</span>
+                <span className="nwherobody">
+                  <span className="nwherotitle">{news.hero.title}</span>
+                  <span className="nwherometa">{metaBits(news.hero, heroMeta)}</span>
+                </span>
+              </a>
+              <SkillTags skills={news.hero.skills} hero />
+            </div>
 
             {items.map((a, i) => {
               const m = a.url ? meta[a.url] : undefined;
               const img = imageOf(a, m);
               const k = kickerOf(a, m);
               return (
-                <a
-                  className="nwrow"
-                  key={i}
-                  href={articleUrl(a, name)}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {img ? (
-                    <Thumb img={img} seed={a.title} className="nwrowimg" />
-                  ) : (
-                    <span className="nwrowimg nwrowkicker" style={{ background: k.tint }}>
-                      {k.code}
+                <div className="nwitem" key={i}>
+                  <a className="nwrow" href={articleUrl(a, name)} target="_blank" rel="noreferrer">
+                    {img ? (
+                      <Thumb img={img} seed={a.title} className="nwrowimg" />
+                    ) : (
+                      <span className="nwrowimg nwrowkicker" style={{ background: k.tint }}>
+                        {k.code}
+                      </span>
+                    )}
+                    <span className="nwrowbody">
+                      <span className="nwrowtitle">{a.title}</span>
+                      <span className="nwrowmeta">
+                        {a.kind === "post" && <PostTag />}
+                        {metaBits(a, m)}
+                      </span>
                     </span>
-                  )}
-                  <span className="nwrowbody">
-                    <span className="nwrowtitle">{a.title}</span>
-                    <span className="nwrowmeta">
-                      {a.kind === "post" && <PostTag />}
-                      {metaBits(a, m)}
-                    </span>
-                  </span>
-                </a>
+                  </a>
+                  <SkillTags skills={a.skills} />
+                </div>
               );
             })}
           </>

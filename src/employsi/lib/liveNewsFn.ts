@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { officialFeedFor, type OfficialFeed } from "../data/officialNewsFeeds";
 import { scrapeNewsroom } from "./newsroomScrape";
 import { newsQueryFor } from "../data/newsQueries";
+import { newsSkillTags } from "./newsSkills";
 import type { JsonRecord } from "./json";
 import { str } from "./json";
 import { isBlockedArticle } from "../data/newsBlocklist";
@@ -29,6 +30,14 @@ export interface LiveNewsItem {
   publisher: string;
   published: string; // ISO
   image?: string; // article image when the provider supplies one (Bing / GDELT / outlet feeds)
+  /**
+   * Broad skills this story is about, or absent when it is about none — which
+   * is most of them. Inferred here on the Worker rather than in the browser:
+   * the taxonomy is a 569KB chunk the news panel has no other reason to load,
+   * and computing it beside the fetch means the answer is cached with the feed
+   * instead of recomputed on every render. See lib/newsSkills.ts.
+   */
+  skills?: string[];
 }
 
 const cache = new Map<string, { at: number; items: LiveNewsItem[] }>();
@@ -470,6 +479,15 @@ export const getLiveNews = createServerFn({ method: "GET" })
     // and the cron reads the same function, so re-quoting here would have the
     // app and the nightly store searching two different things for one company.
     const search = newsQueryFor(query);
+    // Tag on the way OUT, at each exit, so every provider path is tagged the
+    // same way and the cache stores the finished item. `query` is the roster
+    // name, which newsSkillTags strips from the headline before reading it —
+    // a company's own name is not evidence about what a story is about.
+    const tagged = (items: LiveNewsItem[]): LiveNewsItem[] =>
+      items.map((i) => {
+        const skills = newsSkillTags(i.title, query);
+        return skills.length ? { ...i, skills } : i;
+      });
     const key = `${query}::${limit}`;
     const hit = cache.get(key);
     if (hit && Date.now() - hit.at < TTL) return { items: hit.items };
@@ -493,8 +511,9 @@ export const getLiveNews = createServerFn({ method: "GET" })
       try {
         const own = await fromOfficialFeed(official, limit, ctrl.signal);
         if (own.length) {
-          cache.set(key, { at: Date.now(), items: own });
-          return { items: own };
+          const out = tagged(own);
+          cache.set(key, { at: Date.now(), items: out });
+          return { items: out };
         }
         // An empty or unreachable feed falls through to the normal path rather
         // than showing an empty card.
@@ -507,8 +526,9 @@ export const getLiveNews = createServerFn({ method: "GET" })
 
     const stored = await fromStore(query, limit);
     if (stored) {
-      cache.set(key, { at: Date.now(), items: stored });
-      return { items: stored };
+      const out = tagged(stored);
+      cache.set(key, { at: Date.now(), items: out });
+      return { items: out };
     }
 
     const controller = new AbortController();
@@ -568,7 +588,7 @@ export const getLiveNews = createServerFn({ method: "GET" })
       // here, so a blocked publisher cannot get in through whichever source
       // happened to answer — and the drop happens before the cache, so a
       // blocklist change can't be defeated by a warm entry.
-      items = items.filter((i) => !isBlockedArticle(i.url, i.publisher));
+      items = tagged(items.filter((i) => !isBlockedArticle(i.url, i.publisher)));
       if (items.length) cache.set(key, { at: Date.now(), items });
       return { items };
     } catch {
