@@ -138,6 +138,22 @@ FINGERPRINTS: list[tuple[str, str]] = [
     (r'elmotalent', 'elmo'),
     (r'\.nga\.net\.au', 'nga (NO READER — common on Australian universities)'),
     (r'cloud\.coveo\.com', 'coveo index (client-rendered; needs an org id + key)'),
+    # NOT AN ATS AT ALL, which is why a sweep of one reports "no marker" however
+    # well it walks. Notre Dame's vacancies are documents in a Funnelback search
+    # collection: its board is /about-us/jobs-at-unda/employment-opportunities and
+    # every link off it carries `collection=und~sp-jobs&profile=jobs` with
+    # Funnelback's `f.<Facet>|<key>=` filter syntax. Measured 2026-09-20 after the
+    # render budget split let that corridor be read at all.
+    #
+    # Worth naming because it is ACTIONABLE in a way "no marker" is not: a
+    # Funnelback collection answers /s/search.json?collection=<c>&profile=<p> with
+    # structured results, so the endpoint to try is named by the capture.
+    # Either order, because the real link puts profile= BEFORE collection= and a
+    # lookahead written the other way round silently matched nothing.
+    (r'[?&]collection=([A-Za-z0-9_~%.-]+)[^"\']*profile='
+     r'|profile=[^"\']*[?&]collection=([A-Za-z0-9_~%.-]+)'
+     r'|funnelback',
+     'funnelback search collection (NOT an ATS — try /s/search.json)'),
 ]
 
 # Set from --render in main(); read by the report so "no marker" can say whether
