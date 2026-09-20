@@ -79,6 +79,7 @@ import os
 import re
 import socket
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -293,6 +294,54 @@ def link_rank(url: str, home: str | None = None) -> int | None:
     return rank
 
 
+# HOW LONG A NAME LOOKUP MAY TAKE, and why it needs its own limit.
+#
+# socket.getaddrinfo TAKES NO TIMEOUT. A resolver that accepts the query and
+# never answers blocks it for as long as the system resolver allows, and
+# EMPLOYER_BUDGET_S cannot help because that is only checked BETWEEN calls.
+#
+# Measured 2026-09-20: a 7-domain sweep was killed at the 20-minute job timeout
+# having written a ZERO-BYTE report — the first employer's first seed never came
+# back, so not one employer block was ever printed. The time budget and
+# PYTHONUNBUFFERED added earlier that day were both powerless against it, which
+# is the point: a per-iteration budget bounds a loop, not a single call.
+DNS_TIMEOUT_S = 6
+
+# Belt and braces for any socket operation that does not get the explicit
+# timeout below — a bare connect or read inherits this instead of blocking.
+socket.setdefaulttimeout(25)
+
+
+def resolves(host: str) -> tuple[bool, str]:
+    """Does this hostname resolve, answered within DNS_TIMEOUT_S either way.
+
+    The lookup runs on a DAEMON thread so that a resolver which never answers
+    cannot hold the sweep, and cannot stop the process exiting either. A lookup
+    that times out is reported as its own thing rather than as "does not exist":
+    those are the two outcomes this file most insists on keeping apart, and
+    "the resolver did not answer" is a third that must not be folded into either.
+    """
+    box: dict[str, str] = {}
+
+    def go() -> None:
+        try:
+            socket.getaddrinfo(host, 443)
+            box['ok'] = ''
+        except socket.gaierror as e:
+            box['gai'] = e.strerror or str(e)
+        except Exception as e:  # noqa: BLE001 — any resolver error is the same answer here
+            box['gai'] = str(e)
+
+    t = threading.Thread(target=go, daemon=True)
+    t.start()
+    t.join(DNS_TIMEOUT_S)
+    if t.is_alive():
+        return False, f'the resolver did not answer in {DNS_TIMEOUT_S}s'
+    if 'ok' in box:
+        return True, ''
+    return False, box.get('gai', 'lookup failed')
+
+
 def fetch(url: str, timeout: int = 20) -> dict:
     """One GET, with the outcome CLASSIFIED rather than collapsed to a failure.
 
@@ -303,10 +352,9 @@ def fetch(url: str, timeout: int = 20) -> dict:
     exists to stop.
     """
     host = urllib.parse.urlparse(url).hostname or ''
-    try:
-        socket.getaddrinfo(host, 443)
-    except socket.gaierror as e:
-        return {'url': url, 'outcome': 'dns', 'detail': f'{host}: {e.strerror or e}'}
+    ok, why = resolves(host)
+    if not ok:
+        return {'url': url, 'outcome': 'dns', 'detail': f'{host}: {why}'}
     req = urllib.request.Request(url, headers={
         'User-Agent': UA,
         'Accept': 'text/html,application/xhtml+xml',
