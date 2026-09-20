@@ -68,6 +68,14 @@ jobs:
 
       - name: Probe the careers sites
         id: probe
+        env:
+          # SO A KILLED RUN STILL REPORTS WHAT IT FOUND. The script prints each
+          # employer as it finishes, but piping to `tee` makes Python
+          # block-buffer stdout — measured 2026-09-20, a sweep killed at the
+          # 20-minute timeout uploaded a 140-byte artifact having actually probed
+          # most of its domains. Everything it had learned was still in the
+          # buffer.
+          PYTHONUNBUFFERED: '1'
         run: |
           set -o pipefail
           python scripts/discover-boards.py \

@@ -79,6 +79,7 @@ import os
 import re
 import socket
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -194,6 +195,18 @@ RENDER_BUDGET = 6
 # minutes of rendering per employer, so a six-domain sweep stays inside the
 # workflow's 20-minute timeout.
 BLOCKED_RENDER_BUDGET = 10
+# SECONDS PER EMPLOYER, and it exists because a sweep ran off the end of the
+# workflow. Measured 2026-09-20: 14 domains plain hit the 20-minute job timeout
+# and were killed, because a seed that RESOLVES BUT NEVER ANSWERS costs the full
+# 20s fetch timeout and there are nine seeds per employer before the corridor
+# starts. An earlier 16-domain sweep finished in 4 minutes only because most of
+# its seeds failed DNS instantly, which costs nothing.
+#
+# 14 x 70s is about 16 minutes, inside the timeout with room for the report. A
+# sweep that runs out says so per employer rather than reporting a tidy miss —
+# see `cut_short` in the report, because a truncated sweep that reads as a
+# complete negative is how an employer gets written off unexamined.
+EMPLOYER_BUDGET_S = 70
 
 CAREERS_LINK = re.compile(
     r'href=["\']([^"\']*(?:career|job|vacanc|work-with-us|work-for-us|join-us'
@@ -523,6 +536,8 @@ def sweep(domain: str, render: bool = False) -> dict:
     # the same overstates what the sweep looked at.
     read: list[str] = []
     seen: set[str] = set()
+    started = time.monotonic()
+    cut_short = 0.0
     # The employer's own REGISTERED domain — not the first candidate's hostname,
     # which is `careers.<domain>` and made a Flinders sweep label flinders.edu.au
     # itself as somebody else's site.
@@ -588,6 +603,9 @@ def sweep(domain: str, render: bool = False) -> dict:
 
     seed_renders = SEED_RENDER_BUDGET
     for url in candidates(domain):
+        if time.monotonic() - started > EMPLOYER_BUDGET_S:
+            cut_short = time.monotonic() - started
+            break
         seen.add(url)
         res = fetch(url)
         row = {k: v for k, v in res.items() if k != 'body'}
@@ -642,6 +660,9 @@ def sweep(domain: str, render: bool = False) -> dict:
     spare_renders = RENDER_BUDGET
     blocked_renders = BLOCKED_RENDER_BUDGET
     while queue and len(followed) < LINK_BUDGET:
+        if time.monotonic() - started > EMPLOYER_BUDGET_S:
+            cut_short = time.monotonic() - started
+            break
         queue.sort()
         _, _, nxt = queue.pop(0)
         followed.append(nxt)
@@ -678,7 +699,7 @@ def sweep(domain: str, render: bool = False) -> dict:
                     harvest(html or '', nxt)
 
     return {'domain': domain, 'home': home, 'tried': tried, 'found': found,
-            'boards': boards, 'read': read,
+            'boards': boards, 'read': read, 'cut_short': cut_short,
             'found_rendered': found_rendered, 'followed': followed}
 
 
@@ -728,6 +749,12 @@ def main() -> int:
             host = urllib.parse.urlparse(u).hostname or '?'
             return f'{u}\n      [OFF-SITE — read from {host}, not {r["home"]}; confirm whose board it is]'
 
+        if r.get('cut_short'):
+            # NOT A CLEAN MISS. Anything below is what this employer had produced
+            # when the clock ran out, so a "no marker" under this line means
+            # "nothing found YET" and must not be recorded as a negative.
+            print(f'  ** CUT SHORT after {r["cut_short"]:.0f}s (EMPLOYER_BUDGET_S) — '
+                  'this sweep is INCOMPLETE; re-run this domain on its own **')
         if r['found']:
             print('  FOUND in served HTML — can be an in-Worker feed:')
             for u, h in r['found'].items():
