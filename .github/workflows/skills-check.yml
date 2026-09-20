@@ -26,6 +26,9 @@ on:
       - 'scripts/check-analyst-followups.ts'
       - 'scripts/check-analyst-scope.ts'
       - 'scripts/check-skill-trends.ts'
+      - 'scripts/check-news-skills.ts'
+      - 'scripts/newsSkillFixtures.ts'
+      - 'src/employsi/lib/newsSkills.ts'
       - 'src/employsi/lib/analystFn.ts'
       - 'src/employsi/lib/analystScope.ts'
       - 'src/employsi/lib/analystTurn.ts'
@@ -48,6 +51,9 @@ on:
       - 'scripts/check-analyst-followups.ts'
       - 'scripts/check-analyst-scope.ts'
       - 'scripts/check-skill-trends.ts'
+      - 'scripts/check-news-skills.ts'
+      - 'scripts/newsSkillFixtures.ts'
+      - 'src/employsi/lib/newsSkills.ts'
       - 'src/employsi/lib/analystFn.ts'
       - 'src/employsi/lib/analystScope.ts'
       - 'src/employsi/lib/analystTurn.ts'
@@ -91,6 +97,13 @@ jobs:
       # what forgets it.
       - name: Assert every analyst scope excludes the closed corpora
         run: bun run scripts/check-analyst-scope.ts
+
+      # News skill tags are an INFERENCE shown next to measured things, so the
+      # only way a wrong one surfaces is by being read. A labelled corpus of 256
+      # real headlines scores precision and recall on every change; the floors
+      # are a ratchet meant to be raised, never lowered to go green.
+      - name: Assert news skill tagging has not regressed
+        run: bun run scripts/check-news-skills.ts
 
       # The company card's per-skill and per-area reconstruction. Everything it
       # can get wrong is invisible on the rendered chart — an off-by-one at a
