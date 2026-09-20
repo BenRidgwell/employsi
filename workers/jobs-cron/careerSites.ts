@@ -3886,6 +3886,94 @@ export const SITES: SiteDef[] = [
     origin: "https://careers.westernsydney.edu.au",
     homeHub: "sydney",
   },
+  // ── The 2026-09-20 tenth batch — Australian corporates ──────────────────────
+  //
+  // Sixteen domains swept plain (no browser), eight hit. Three are in-Worker
+  // feeds here; CMV is a Dayforce board and runs through
+  // scripts/dayforce-to-d1.py, as every Dayforce board in this project must.
+  //
+  // THE OTHER FOUR HITS, and why none of them is a feed:
+  //   Alto — the expr3ss fingerprint matched TEXT INSIDE AN HTML COMMENT. The
+  //     page reads "No Current Positions Available" and links to
+  //     seek.com.au/companies/alto-group-435432, and altogroup.expr3ss.com 302s.
+  //     There is no board to read. It does not matter: priv-alto is already
+  //     pulled in full through SEEK advertiser 45962034.
+  //   Herbert Smith Freehills — Phenom at careers.hsfkramer.com, 120 requisitions
+  //     worldwide and no working country filter: ?location=Australia returns
+  //     totalHits 0, ?country=Australia returns the same 120 as unfiltered, and
+  //     /australia/en/ 303s away. Cosmetic, exactly as BAE's was.
+  //   Loan Market — the phenom fingerprint hit its HOMEPAGE, which is a weak
+  //     signal from a loose pattern, and the page 403s this sandbox so it could
+  //     not be checked. Not built on a fingerprint nobody has verified.
+  //   Great Southern Bank — every path 403s even a runner. Needs a --render
+  //     sweep, which has not been run on it.
+  //
+  // THE EIGHT MISSES: Harris Farm, DroneShield, Sydney Tools, ARB, Data#3, SEEK,
+  // Vault Minerals and Melbourne Airport. SEEK, Vault Minerals and Data#3 each
+  // had 10-14 links followed with no marker on any of them.
+  {
+    id: "sydney-bga",
+    name: "Bega Cheese",
+    sector: "Food & Beverage",
+    platform: "workday",
+    // Workday begacheese/wd3/Bega_Careers, in SERVED html — found on
+    // begagroup.com.au, which is a DIFFERENT registered domain from the
+    // begacheese.com.au the sweep was given, so the corridor crossed to it and
+    // the report flagged it off-site for confirmation. Confirmed: the tenant is
+    // literally `begacheese`.
+    //
+    // Measured 2026-09-20: `total` 41.
+    endpoint: "https://begacheese.wd3.myworkdayjobs.com/wday/cxs/begacheese/Bega_Careers/jobs",
+    origin: "https://begacheese.wd3.myworkdayjobs.com/Bega_Careers",
+    // THE STATE IS IN BRACKETS, WHICH IS NOT WHAT HUB_MATCH READS. This board
+    // writes "Docklands (VIC)", "Tatura (VIC)", "Bentley (WA)", "Crestmead
+    // (QLD)" — the global needles are " vic", " qld" and so on with a LEADING
+    // SPACE, and "(VIC)" has a bracket there instead. Every bracketed state is
+    // hinted rather than the needles being loosened, because a global change to
+    // punctuation handling would alter placement for all 231 feeds.
+    hubHints: [
+      ["(vic)", "melbourne"],
+      ["(nsw)", "sydney"],
+      ["(qld)", "brisbane"],
+      ["(wa)", "perth"],
+      ["(sa)", "adelaide"],
+      ["(tas)", "hobart"],
+      // A bare "Bega" is the Bega Valley in southern NSW, where the co-operative
+      // started and the creamery still is. Sydney is the nearest plotted hub.
+      // Scoped here because for any other employer "Bega" is a cheese.
+      ["bega", "sydney"],
+    ],
+    homeHub: "melbourne",
+  },
+  {
+    id: "priv-clayton-utz",
+    name: "Clayton Utz",
+    sector: "Legal",
+    platform: "workday",
+    // Workday claytonutz/wd3/Claytonutz1, in SERVED html on
+    // www.claytonutz.com/careers. Measured 2026-09-20: `total` 35 — Sydney 15,
+    // Perth 6, Melbourne 5, Brisbane 4, Canberra 3, all bare city names that
+    // HUB_MATCH reads without a hint.
+    endpoint: "https://claytonutz.wd3.myworkdayjobs.com/wday/cxs/claytonutz/Claytonutz1/jobs",
+    origin: "https://claytonutz.wd3.myworkdayjobs.com/Claytonutz1",
+    // The remaining 2 are "2 Locations" and "6 Locations", Workday's multi-site
+    // placeholders, and resolve to no hub rather than to this one.
+    homeHub: "sydney",
+  },
+  {
+    id: "brisbane-vgn",
+    name: "Virgin Australia Holdings",
+    sector: "Transport & Logistics",
+    platform: "pageupsites",
+    // PageUp's Sites theme at careers.virginaustralia.com, in SERVED html.
+    // Measured 2026-09-20: "of 60 in total", 30 cards on page 1 and 30 on
+    // page 2, page 3 empty — so the walk is bounded by the board's own count.
+    endpoint: "https://careers.virginaustralia.com/jobs/search",
+    origin: "https://careers.virginaustralia.com",
+    // 60 at 30 a page is 2; 6 leaves room to triple.
+    maxPages: 6,
+    homeHub: "brisbane",
+  },
 ];
 
 /**
@@ -4279,6 +4367,11 @@ export const PORTAL_GROUPS: string[][] = [
   // three PageUp boards walked as HTML. 165 roles between the six.
   ["uni-university-of-melbourne", "uni-rmit-university", "uni-western-sydney-university"],
   ["uni-deakin-university", "uni-university-of-tasmania", "uni-university-of-the-sunshine-coast"],
+  // Group 71 — the 2026-09-20 tenth batch. One tick: two Workday walks of 3
+  // pages and 2, and one PageUp walk of 2. 136 roles between them. CMV, the
+  // fourth hit of that sweep, is not here — it is a Dayforce board and runs
+  // through scripts/dayforce-to-d1.py in browser-portals.yml.
+  ["sydney-bga", "priv-clayton-utz", "brisbane-vgn"],
 ];
 
 const UA =
