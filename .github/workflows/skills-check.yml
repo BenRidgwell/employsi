@@ -72,6 +72,37 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+
+      # WITHOUT THIS, THREE OF THE FIVE CHECKS BELOW NEVER RUN. They do not fail
+      # an assertion — they fail to START, and a job that dies before evaluating
+      # anything is indistinguishable from one that caught a real regression.
+      #
+      # Measured 2026-09-18, reproducing a clean checkout locally: `bun run
+      # scripts/check-analyst-followups.ts` with no node_modules dies with
+      #
+      #   error: Cannot find package 'react' from
+      #     '~/.bun/install/cache/@tanstack/react-start@1.168.56/dist/esm/useServerFn.js'
+      #
+      # because check-analyst-followups, check-analyst-scope and check-skill-trends
+      # import analystScope / analystFn / jobHistoryFn, every one of which pulls in
+      # createServerFn — and bun's auto-install resolves the direct dependency
+      # without resolving react underneath it. check-skills and
+      # check-salary-baseline survived only because they import from data/, which
+      # is plain data with no framework behind it.
+      #
+      # This workflow ran red on main for SIX DAYS on exactly that — nine
+      # consecutive runs from 2026-09-12 — while reading as though the analyst
+      # guards were being enforced. They are the checks the repo has precisely
+      # because what they cover fails invisibly, so a red X that is really "did
+      # not run" is the worst shape this could take.
+      #
+      # bun rather than npm: the repo carries bun.lock and bunfig.toml (whose
+      # minimumReleaseAge supply-chain guard applies to an install here too), and
+      # every step below is already a bun one. Measured at 3.2s for 436 packages,
+      # so nothing is bought by caching it separately.
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
       - name: Assert no duplicate skills, and no skill name stranded in the archive
         # The D1 credentials are optional: without them the taxonomy checks
         # still run and the archive check reports itself as skipped, so a fork

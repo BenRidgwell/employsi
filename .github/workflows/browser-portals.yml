@@ -161,6 +161,39 @@ jobs:
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         run: python scripts/dayforce-to-d1.py --portal evt --capture captures
 
+      - name: Scrape Avant Mutual (Dayforce) careers → D1 (rendered, local browser)
+        # Third tenant on the same table and the same 403 on the search API —
+        # measured 2026-09-18 on avant as well, so that wall is now confirmed on
+        # three unrelated customers and is the platform, not a setting.
+        #
+        # No expected row count is given here on purpose: it could not be
+        # measured from a sandbox the API refuses, and this run is the first
+        # thing that can say. If it comes back zero, that is the board or the
+        # render to check — an empty pull is never written, so it costs nothing
+        # but a look.
+        if: always()
+        timeout-minutes: 10
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/dayforce-to-d1.py --portal avant --capture captures
+
+      - name: Scrape CMV Group (Dayforce) careers → D1 (rendered, local browser)
+        # Fourth tenant on the same table. Same 403 on /api/geo/cmv/jobposting/
+        # search, measured 2026-09-20, which is now four unrelated customers.
+        #
+        # No expected row count, as with Avant: the API refuses this sandbox, so
+        # this run is the first thing that can state one. An empty pull is never
+        # written, so a zero costs a look and nothing else.
+        if: always()
+        timeout-minutes: 10
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/dayforce-to-d1.py --portal cmv --capture captures
+
       - name: Keep the rendered Dayforce pages
         if: always()
         uses: actions/upload-artifact@v4

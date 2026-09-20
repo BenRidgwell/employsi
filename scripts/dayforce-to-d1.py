@@ -130,6 +130,55 @@ PORTALS = {
         'sector': 'Hospitality & entertainment',
         'home_hub': 'sydney',
     },
+    'avant': {
+        # Avant publishes its board as .../CandidatePortal/en-AU/avant/SITE/
+        # CANDIDATEPORTAL; this is the same tenant on the jobs. host the other
+        # two use, verified 2026-09-18 by fetching it (453 KB of the same
+        # client-rendered shell Uniting and EVT serve, no job cards in it).
+        #
+        # The row count is NOT stated here because it could not be measured:
+        # /api/geo/avant/jobposting/search answers this sandbox with a bare 403,
+        # exactly as Uniting's and EVT's do, which is the whole reason all three
+        # are Actions. The first scheduled run is what will report it.
+        'portal': 'https://jobs.dayforcehcm.com/en-AU/avant/CANDIDATEPORTAL',
+        'tenant': 'avant',
+        'company_id': 'priv-avant-mutual',
+        'company': 'Avant Mutual',
+        # Medical indemnity insurance and the practices it runs, so the skills
+        # matcher is pointed at insurance rather than at health services.
+        'sector': 'Insurance',
+        'home_hub': 'sydney',
+    },
+    'cmv': {
+        # FOUND BY scripts/discover-boards.py, and the site name is the only part
+        # of this that was not guessable. It came out of a real job url on CMI
+        # Toyota's own site —
+        # jobs.dayforcehcm.com/en-AU/cmv/ClientCareerSitesCMIToy/jobs/7092 — which
+        # is why it is trusted.
+        #
+        # A 200 FROM THIS HOST PROVES NOTHING ABOUT A SITE NAME. Measured
+        # 2026-09-20: jobs.dayforcehcm.com/en-AU/cmv/<anything> answers 200 with
+        # the same client-rendered shell, including a bare `CMV` and an invented
+        # `ClientCareerSitesCMV`. So the other CMV brands (CMV Truck & Bus,
+        # Commercial Motor Vehicles) are NOT added on a guessed site name; only
+        # the one with evidence behind it is here. That means this feed carries
+        # CMI Toyota's vacancies filed under CMV Group, which is where they
+        # belong, and not necessarily the whole group's.
+        #
+        # The row count is not stated, for the same reason avant's is not:
+        # /api/geo/cmv/jobposting/search answers a bare 403 here as all three
+        # existing tenants do, so the first scheduled run is what can report it.
+        'portal': 'https://jobs.dayforcehcm.com/en-AU/cmv/ClientCareerSitesCMIToy',
+        'tenant': 'cmv',
+        'company_id': 'priv-cmv-group',
+        'company': 'CMV Group',
+        # Vehicle dealerships and truck sales, so the skills matcher is pointed
+        # at automotive retail rather than at manufacturing.
+        'sector': 'Automotive retail',
+        # CMV Group is South Australian and CMI Toyota's dealerships are Adelaide
+        # metro. A role that names no place belongs there.
+        'home_hub': 'adelaide',
+    },
 }
 
 args = sys.argv[1:]

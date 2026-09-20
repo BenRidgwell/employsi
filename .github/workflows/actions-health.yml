@@ -26,6 +26,19 @@ on:
   schedule:
     # 01:00 UTC daily — ~90 minutes after scraper-health (23:30 UTC), which is
     # the last job of the night, so every run has settled before this looks.
+    #
+    # IT DOES NOT ACTUALLY FIRE AT 01:00, and the gap is large enough to write
+    # down rather than leave someone to rediscover. Measured across the twelve
+    # scheduled runs 2026-09-07 to 2026-09-18, every one of them started between
+    # 05:19 and 05:42 UTC — 4.3 to 4.7 hours late, consistently, which is
+    # GitHub queuing scheduled work away from the top of the hour rather than
+    # anything here.
+    #
+    # It is left at 01:00 because the delay is harmless for what this job is
+    # for: the thing the timing had to clear was scraper-health at 23:30, and
+    # 05:30 clears it by more than 01:00 would. It stopped being able to open a
+    # reporting gap at all once the window below was anchored to the last
+    # successful run rather than to a fixed 24 hours.
     - cron: '0 1 * * *'
   workflow_dispatch: {}
 
@@ -72,22 +85,87 @@ jobs:
           # job-level permissions above.
           additional_permissions: |
             actions: read
+          # 40 WAS NOT A SAFETY LIMIT, IT WAS THE BINDING CONSTRAINT. Measured
+          # across the twelve scheduled runs 2026-09-07 to 2026-09-18: six died
+          # on `error_max_turns` at 41, and the six that finished used 23, 31,
+          # 31, 34, 39 and 40. Two of the successes came within a single turn of
+          # the cap. Whether this control worked on a given night was decided by
+          # how many failures there were to read, which is exactly backwards —
+          # the busiest nights are the ones a health check must not miss, and
+          # those are the nights it died on.
+          #
+          # The triage itself flagged this on 2026-09-05, 09-09 and 09-14
+          # ("needs a turn-budget fix that keeps getting flagged and not
+          # applied"). This applies it.
+          #
+          # 80 rather than 50 because of the catch-up window in the prompt: a
+          # run that follows a failed one now covers several days of failures in
+          # one pass, and that is precisely when turns are scarcest. A quiet
+          # night still stops when it is done — the cap costs nothing it does not
+          # use — so the asymmetry is all one way: a truncated run loses 100% of
+          # its value, and headroom on a night that does not need it loses
+          # nothing. At ~$1.30 for 40 turns the worst case is a few dollars,
+          # against a 30-minute job timeout that the longest run so far (6.1 min)
+          # does not approach.
+          #
+          # THESE LINES ARE A YAML COMMENT ABOVE THE KEY, NOT TEXT INSIDE IT.
+          # `claude_args` is a `|` block scalar, so a `#` line written inside it
+          # is part of the string handed to the action rather than a comment,
+          # and would be passed along as an argument.
           claude_args: |
-            --max-turns 40
+            --max-turns 80
             --allowedTools Bash,Read,Grep,Glob,WebFetch,Write
           prompt: |
-            Triage the last 24 hours of GitHub Actions failures in this repository
-            (BenRidgwell/employsi — the Employsi labour-market map) and record what you
-            find. This run is REPORT ONLY: you have read-only access to the repository and
-            must not commit, push, or open a pull request.
+            Triage GitHub Actions failures in this repository (BenRidgwell/employsi —
+            the Employsi labour-market map) since the last time this triage completed,
+            and record what you find. This run is REPORT ONLY: you have read-only access
+            to the repository and must not commit, push, or open a pull request.
 
-            ## 1. Find what failed
+            ## 1. Work out the window FIRST, then find what failed
 
-            List workflow runs from the LAST 24 HOURS only. The nightly scrapers land between
-            17:30 and 23:30 UTC, so anything older is yesterday's news and not in scope.
+            The window starts when the most recent SUCCESSFUL `actions-health` run
+            before this one STARTED, and ends now:
+
+                gh run list --workflow actions-health.yml --status success \
+                  --limit 1 --json databaseId,startedAt,updatedAt
+
+            Its start rather than its finish, deliberately. A run takes minutes to
+            work through the logs, and anything that failed while it was doing so is
+            already behind its own cursor. Overlapping by those few minutes re-reports
+            something at worst; anchoring to the finish drops it silently, which is the
+            failure this whole section exists to remove.
+
+            SINCE THE LAST SUCCESSFUL RUN, NOT THE LAST 24 HOURS. A fixed 24-hour window
+            is anchored to a run that might not have happened. When this workflow dies —
+            and it has, six nights in twelve between 2026-09-07 and 2026-09-18 — every
+            failure inside that window is never looked at again by anyone, because the
+            next run's 24 hours start after them. That is not hypothetical: `skills-check`
+            broke on 2026-09-12 and ran red for six days without appearing in a single
+            report, because the one triage whose window covered it died mid-run, and the
+            next one began its 24 hours after those failures had aged out.
+
+            If no successful run is found, or the last one was more than 7 DAYS ago, use 7
+            days. The floor is there so a long outage produces a bounded catch-up pass
+            rather than a walk through the entire run history.
+
+            SAY WHAT WINDOW YOU USED, always, in the issue and in the dated comment — the
+            start, the end, and how many runs you looked at. When it is wider than about
+            26 hours, say that this is a CATCH-UP pass and name the failed run that made
+            it one. A reader has to be able to tell "nothing failed last night" from
+            "nobody looked last night".
 
             Skip runs still in progress. For every run with conclusion `failure` or
             `cancelled`, read the failing job's logs before forming a view.
+
+            EVERY WORKFLOW COUNTS, NOT JUST THE NIGHTLY SCRAPERS. The scrapers are the
+            loudest failures here and the easiest to mistake for the whole job, but the
+            checks that run on push — `skills-check`, `scraper-check`, `portal-ticks-check`,
+            `roster-check` — are the ones guarding the data honesty this repo is built on,
+            and a check can fail without ever failing an assertion. `skills-check` spent
+            six days reporting red because three of its steps could not START: no
+            dependency install, so they died on a missing package before evaluating
+            anything. A red X that means "did not run" reads exactly like one that means
+            "caught something", and only the log tells them apart.
 
             INCLUDING THIS WORKFLOW. `actions-health` is a control, and a control that
             stops working is the most expensive thing here to miss — it fails silently by
@@ -136,8 +214,11 @@ jobs:
               recovered.
             - If it does not exist AND there is something to report, create it with that exact
               title and the label `actions-health`.
-            - If NOTHING failed in the last 24 hours: add a single dated comment saying so if
-              the issue is open, and close it. Do not create an issue just to say all is well.
+            - If NOTHING failed IN THE WINDOW: add a single dated comment saying so — naming
+              the window, as above — if the issue is open, and close it. Do not create an
+              issue just to say all is well. On a catch-up pass this is a stronger claim than
+              usual and is worth making explicitly: it says nothing failed across several
+              days, not merely that nobody looked.
 
             In the body, for each failure give: the workflow name, a link to the run, the
             category from section 2, the specific evidence from the log you based that on, and
@@ -157,7 +238,7 @@ jobs:
             report success:
 
               REPORTED <n>     you wrote <n> failures into the issue
-              CLEAN            no failures in the last 24 hours
+              CLEAN            no failures in the window
               BLOCKED <why>    you could not complete the triage — say what stopped you
 
             Use BLOCKED if anything prevented you from reading the runs or writing the

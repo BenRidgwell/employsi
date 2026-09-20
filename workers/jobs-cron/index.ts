@@ -1250,6 +1250,30 @@ const PORTAL_TICKS: Record<string, number> = {
   "55 13 * * *": 56,
   "5 14 * * *": 57,
   "15 14 * * *": 58,
+  // Groups 59-61 — the 2026-09-18 fourth batch. The next three free minutes in
+  // the 14 hour.
+  "25 14 * * *": 59,
+  "35 14 * * *": 60,
+  "45 14 * * *": 61,
+  // Groups 62-64 — the 2026-09-18 fifth batch. :55 is the last free minute in
+  // the 14 hour, so the other two open the 15 hour.
+  "55 14 * * *": 62,
+  "5 15 * * *": 63,
+  "15 15 * * *": 64,
+  // Groups 65-66 — the 2026-09-19 sixth batch.
+  "25 15 * * *": 65,
+  "35 15 * * *": 66,
+  // Group 67 — the 2026-09-19 seventh batch.
+  "45 15 * * *": 67,
+  // Group 68 — the 2026-09-19 eighth batch. :55 is the last free minute in the
+  // 15 hour.
+  "55 15 * * *": 68,
+  // Groups 69-70 — the 2026-09-20 ninth batch. The 15 hour is full, so these
+  // open the 16 hour, which had nothing in it.
+  "5 16 * * *": 69,
+  "15 16 * * *": 70,
+  // Group 71 — the 2026-09-20 tenth batch. Next free minute in the 16 hour.
+  "25 16 * * *": 71,
 };
 
 const NEWS_TICKS: Record<string, number> = {

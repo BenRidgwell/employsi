@@ -150,6 +150,8 @@ type Platform =
   | "wploop"
   | "pageupclassic"
   | "workpac"
+  | "capgemini"
+  | "wipro"
   | "eightfoldpcs"
   | "radancy"
   | "adlogic"
@@ -228,6 +230,30 @@ interface SiteDef {
    * or deliberately to null, still wins.
    */
   assumeHomeHub?: boolean;
+  /**
+   * SuccessFactors only: recover the STATE from the job's own url when the
+   * location cell omits it.
+   *
+   * EssilorLuxottica is the case it was added for, and it is the board's data
+   * rather than an inference. Measured 2026-09-19 over its 349 Australian
+   * postings: the location cell reads "Chadstone, AU", "Morley, AU",
+   * "Mascot, AU" — 155 distinct bare suburbs with no state, spread across every
+   * state, so 260 of 325 rows resolved to no hub and `assumeHomeHub` would be
+   * plainly wrong (Chadstone is Melbourne, Morley is Perth, Mascot is Sydney).
+   *
+   * The SLUG carries what the cell drops:
+   *
+   *   Retail-Associate-EyeQ-St-Ives,-NSW/1395292233/
+   *   Perth-Associate-Dispenser-I-OPSM-I-Part-Time-I-Perth-Hay-Street,-WA/…
+   *   Devonport-Associate-Dispenser-I-OPSM-I-FT-I-TAS-I-Devonport/…
+   *
+   * 261 of the 349 carry a state token that way, distributed NSW 99, VIC 59,
+   * WA 43, SA 23, ACT 8, QLD 6, TAS 5, NT 1 — checked against the suburb in
+   * each slug rather than assumed, and every sample agreed. The other 88 name
+   * a bare suburb in the slug too and stay unplaced, which is the honest
+   * outcome: nothing here guesses which city a suburb is in.
+   */
+  stateFromJobUrl?: boolean;
   /**
    * Workday `appliedFacets`, for a tenant whose board is not only this company.
    *
@@ -3101,6 +3127,853 @@ export const SITES: SiteDef[] = [
     origin: "https://www.workpac.com",
     homeHub: "brisbane",
   },
+  // ── The 2026-09-18 fourth batch: the next nine on the scraper-gap report ───
+  //
+  // "Next nine" skips the report's top two. Uniting and EVT rank 1 and 2 and
+  // are marked `portal!`, which means a portal-* feed already files rows under
+  // them — scripts/uniting-dayforce-to-d1.py and the EVT half of the same
+  // table. They have no SiteDef because their Dayforce API answers a datacentre
+  // POST with a bare 403, not because nothing reads them.
+  {
+    id: "priv-chemist-warehouse",
+    name: "Chemist Warehouse",
+    sector: "Retail",
+    platform: "successfactors",
+    // Classic SuccessFactors. Measured 2026-09-18: "Results 1 to 25 of 252".
+    // chemistwarehouse.com.au answers a datacentre address with a 403 and the
+    // .com.au careers subdomain does not resolve at all; careers.chemistwarehouse.com
+    // (no .au) is the board.
+    endpoint: "https://careers.chemistwarehouse.com",
+    origin: "https://careers.chemistwarehouse.com",
+    homeHub: "melbourne",
+  },
+  {
+    id: "paris-cap",
+    name: "Capgemini",
+    sector: "Professional Services",
+    platform: "capgemini",
+    // See fetchCapgemini. The country filter is part of the endpoint on
+    // purpose: one service serves every Capgemini country site, and this roster
+    // entry is the Australian firm. Measured 2026-09-18: 80 roles, 21
+    // Melbourne, 18 Sydney, 13 "Melbourne, Sydney", 7 Brisbane.
+    endpoint: "https://cg-jobstream-api.azurewebsites.net/api/job-search?country_code=au-en",
+    origin: "https://www.capgemini.com/au-en/careers/join-capgemini/job-search/",
+    // Melbourne rather than Paris: every row this feed writes is Australian,
+    // and homeHub is only ever the fallback for a location no needle matched.
+    homeHub: "melbourne",
+  },
+  {
+    id: "adelaide-eld",
+    name: "Elders",
+    sector: "Agriculture",
+    platform: "workday",
+    // Measured 2026-09-18: `total` 68. careers.elders.com.au is a redirect
+    // straight onto the Workday tenant, which is how it was found.
+    endpoint: "https://elderslimited.wd3.myworkdayjobs.com/wday/cxs/elderslimited/Elders/jobs",
+    origin: "https://elderslimited.wd3.myworkdayjobs.com/Elders",
+    homeHub: "adelaide",
+  },
+  {
+    id: "adelaide-abc",
+    name: "Adbri",
+    sector: "Industrial Manufacturing",
+    platform: "livehire",
+    // The LiveHire segment code, same shape as Wesfarmers. Measured
+    // 2026-09-18: 60 roles.
+    //
+    // THERE IS A SECOND SEGMENT AND IT IS NOT WIRED. `adbrimasonry` exists and
+    // authenticates — the token endpoint returns a valid bearer for it — and
+    // returns zero roles. That is a real zero (Adbri wound its masonry business
+    // down), not a broken segment, so it is recorded here rather than added as
+    // a feed that would spend a request a day to write nothing.
+    endpoint: "adbri",
+    origin: "https://www.livehire.com",
+    homeHub: "adelaide",
+  },
+  {
+    id: "priv-team-global-express",
+    name: "Team Global Express",
+    sector: "Transport & logistics",
+    platform: "workday",
+    // THE WORKDAY TENANT IS `agreenspace`, WHICH NAMES NEITHER THE COMPANY NOR
+    // ITS BOARD — it is the private-equity owner's slug, and the site is
+    // `Global_Express_Career_Site`. Neither is derivable; both were read off the
+    // link in teamglobalexp.com/careers/. Measured 2026-09-18: `total` 53.
+    //
+    // The board is AU + NZ (Auckland and Hastings roles are in it). Those place
+    // on their own hubs where HUB_MATCH names them and archive unplaced where
+    // it does not, which is the same treatment every trans-Tasman board here
+    // gets; it is not split into two feeds because it is one board.
+    endpoint:
+      "https://agreenspace.wd3.myworkdayjobs.com/wday/cxs/agreenspace/Global_Express_Career_Site/jobs",
+    origin: "https://agreenspace.wd3.myworkdayjobs.com/Global_Express_Career_Site",
+    homeHub: "melbourne",
+  },
+  {
+    id: "priv-anytime-fitness",
+    key: "priv-anytime-fitness-gyms",
+    name: "Anytime Fitness",
+    sector: "Consumer Services",
+    platform: "employmenthero",
+    // TWO ORGANISATIONS, ONE EMPLOYER. Anytime Fitness posts its gym roles
+    // under `anytime-australia-pty-ltd` and its head-office roles under
+    // `anytime-fitness-support-office`; both are Employment Hero career pages
+    // and neither carries the other's. Measured 2026-09-18: 39 and 1.
+    //
+    // The archive holds 339 ads against these 40, and the difference is real
+    // rather than missing: the rest are individual franchisees advertising on
+    // SEEK under their own gym's name. This feed is the company's own board,
+    // which is what the gap report is asking for.
+    endpoint:
+      "https://services.employmenthero.com/ats/api/v1/career_page/organisations/anytime-australia-pty-ltd/jobs",
+    origin: "https://employmenthero.com",
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-anytime-fitness",
+    key: "priv-anytime-fitness-office",
+    name: "Anytime Fitness",
+    sector: "Consumer Services",
+    platform: "employmenthero",
+    endpoint:
+      "https://services.employmenthero.com/ats/api/v1/career_page/organisations/anytime-fitness-support-office/jobs",
+    origin: "https://employmenthero.com",
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-tennis-australia",
+    name: "Tennis Australia",
+    sector: "Consumer Services",
+    platform: "workday",
+    // Measured 2026-09-18: `total` 15, all Melbourne. tennis.com.au answers a
+    // datacentre address with a 403, so the tenant was found from the outside
+    // and then verified against the API.
+    //
+    // Fifteen against 326 archived ads is not a truncated walk: Tennis
+    // Australia's volume is Australian Open event hiring, which is seasonal and
+    // is advertised through the boards rather than sitting on this one in
+    // September.
+    endpoint: "https://tennis.wd3.myworkdayjobs.com/wday/cxs/tennis/ta_careers/jobs",
+    origin: "https://tennis.wd3.myworkdayjobs.com/ta_careers",
+    homeHub: "melbourne",
+  },
+  {
+    id: "uni-australian-national-university",
+    name: "Australian National University",
+    sector: "Education",
+    platform: "pageupsites",
+    // PageUp's "Sites" theme, same as Calvary and Visy. Unlike those two this
+    // one DOES state its total — "of 56 in total" — so the walk is bounded by
+    // the count rather than by the pagination fallback.
+    //
+    // It is on the report despite --gaps, which means the uniroles.com.au
+    // aggregator does not read ANU to completion the way it does most of the
+    // sector.
+    //
+    // THIS BOARD STATES NO LOCATION ON ANY CARD — the theme is configured
+    // without the component, so there is no `job-component-list-location` in
+    // 192 KB of results and all 56 rows come back with an empty location. That
+    // is checked, not assumed: an empty location falls through to homeHub, and
+    // every one of these really is Acton, so Canberra is right here. It would
+    // not be right on a multi-site employer, which is why it is written down.
+    endpoint: "https://jobs.anu.edu.au/jobs/search",
+    origin: "https://jobs.anu.edu.au",
+    homeHub: "canberra",
+  },
+  {
+    id: "bengaluru-wipro",
+    name: "Wipro",
+    sector: "Professional Services",
+    platform: "wipro",
+    // See fetchWipro — the endpoint is the SITEMAP, because both of the ways
+    // this file reads SuccessFactors return nothing on this tenant while the
+    // sitemap lists 5,334 live jobs. Measured 2026-09-18: 21 of them Australian.
+    endpoint: "https://careers.wipro.com/sitemap.xml",
+    origin: "https://careers.wipro.com",
+    // Sydney rather than Bengaluru, and measured rather than assumed: this feed
+    // writes Australian rows only, and the AU slugs carry postcode 2060 —
+    // North Sydney, where Wipro Australia is.
+    homeHub: "sydney",
+  },
+  // ── The 2026-09-18 fifth batch ────────────────────────────────────────────
+  //
+  // Three of the report's next nine run in the Worker. The other six do not,
+  // and each reason is recorded rather than guessed at.
+  //
+  // TWO MOVED TO scripts/compass-to-d1.py, which is now a three-tenant driver
+  // for the PageUp "Sites" boards a Worker cannot read — Built (202 bot quota,
+  // measured: page 1 served 30 cards, page 2 the 2.4 KB stub) and BMD Group
+  // (an unstable cursor that yields anywhere from 30 to 86 of its 86 depending
+  // on how the requests are made). Both walk correctly from a runner: 41 of 41
+  // and 82 distinct of 86.
+  //
+  // Lendlease was in this list and is now a feed: its tenant needed the
+  // bulletFields fallback added to fetchWorkday, and the country facet the
+  // first look did not go deep enough to find (it is nested one level down,
+  // under locationMainGroup).
+  //
+  // THREE HAVE NO BOARD TO READ AT ALL:
+  //
+  //   SGH (Seven Group Holdings) — sghl.com.au is an investor-relations site
+  //     with no careers section at all: no /careers, and no "career", "join us"
+  //     or "work with us" anywhere in it. Its operating companies (WesTrac,
+  //     Coates, Boral, Beach Energy) each hire under their own name and board.
+  //     The holding company is what this roster id is, and it advertises
+  //     nothing of its own.
+  //   SGS — the job list on sgs.com/en-au is rendered client-side out of a
+  //     Coveo index (platform-eu.cloud.coveo.com), with no iframe and no job
+  //     rows in 160 KB of served HTML. Reading it needs a Coveo organisation id
+  //     and API key lifted from the bundle, and the index is global.
+  //   AXA — iCIMS at jobs.axa.com, 957 opportunities, and no country filter
+  //     that worked: ?searchByCountry=Australia returns the same 957. There is
+  //     no iCIMS reader in this file, and AXA has had no Australian retail
+  //     business since 2011 — its archived rows come from jobstreet-ph and
+  //     simplyhired, not from Australian boards.
+  {
+    id: "priv-minterellison",
+    name: "MinterEllison",
+    sector: "Professional Services",
+    platform: "successfactors",
+    // Classic SuccessFactors. Measured 2026-09-18: "Results 1 to 53 of 53".
+    // minterellison.com answers a datacentre address with a 403, so the board
+    // was reached directly.
+    endpoint: "https://careers.minterellison.com",
+    origin: "https://careers.minterellison.com",
+    homeHub: "sydney",
+  },
+  {
+    id: "sydney-llc",
+    name: "Lendlease",
+    sector: "Construction",
+    platform: "workday",
+    // A GLOBAL tenant, and the filter is not optional: measured 2026-09-19, 35
+    // requisitions of which Australia 21, Singapore 10 and Malaysia 4. This
+    // board is also the reason fetchWorkday now falls back to bulletFields —
+    // see WorkdayPosting. Without BOTH, every Kuala Lumpur and Singapore role
+    // archived with an empty location and fell through to the home hub, which
+    // is to say it archived as Sydney.
+    //
+    // The country facet is nested under `locationMainGroup` rather than sitting
+    // at the top level with the others, which is why a first read of the facet
+    // list found none to filter on. Australia's id here is the same
+    // d903bb3f… Aurecon's AU filter uses — measured on both, so the Workday
+    // country ids look to be global constants rather than per tenant. It is
+    // still read off the board rather than assumed.
+    endpoint: "https://lendlease.wd3.myworkdayjobs.com/wday/cxs/lendlease/LendleaseCareers/jobs",
+    origin: "https://lendlease.wd3.myworkdayjobs.com/LendleaseCareers",
+    appliedFacets: { locationCountry: ["d903bb3fedad45039383f6de334ad4db"] },
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-st-vincent-de-paul",
+    name: "St Vincent de Paul",
+    sector: "Healthcare & Social Assistance",
+    platform: "successfactors",
+    // Classic SuccessFactors. Measured 2026-09-18: "Results 1 to 40 of 40".
+    //
+    // THIS IS THE NSW STATE COUNCIL'S BOARD, NOT THE NATIONAL SOCIETY'S. The
+    // Society is federated — each state council hires separately — and
+    // careersnsw.vinnies.org.au is the only one of them reachable from here:
+    // careers.vinnies.org.au, careersqld, careersvic and careerswa all fail to
+    // connect through this sandbox's egress, which is not the same as not
+    // existing. So this feed is a PART of the employer's advertising, and the
+    // archive's 316 ads against these 40 is mostly the other councils rather
+    // than a truncated walk. Worth revisiting from an environment that can
+    // reach the other hostnames.
+    endpoint: "https://careersnsw.vinnies.org.au",
+    origin: "https://careersnsw.vinnies.org.au",
+    // Sydney, not the Box Hill VIC pin this roster id carries: every role on
+    // this particular board is a NSW one.
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-afl",
+    name: "AFL",
+    sector: "Consumer Services",
+    platform: "successfactors",
+    // SuccessFactors on `careers.afl` — a bare .afl TLD, which is why no
+    // careers.afl.com.au or jobs.afl.com.au resolves and why the board is only
+    // findable from the link on afl.com.au/careers. Measured 2026-09-18:
+    // "Results 1 to 22 of 22".
+    //
+    // It runs the UI5/React "NES" theme (bootstrap/3.4.8_NES), the same one
+    // Bendigo, Hancock and Wipro run — but UNLIKE those it server-renders its
+    // job rows, 22 `/job/` links in the served HTML. So it reads with
+    // fetchSuccessFactors and needs neither the RMK JSON service nor Wipro's
+    // sitemap. The theme is not the thing that decides; the rendered output is.
+    endpoint: "https://careers.afl",
+    origin: "https://careers.afl",
+    homeHub: "melbourne",
+  },
+  // ── The 2026-09-19 sixth batch ────────────────────────────────────────────
+  //
+  // Three of the report's next nine. THE OTHER SIX ARE NOT HERE, and the split
+  // is mostly about what a global board can honestly be asked for:
+  //
+  //   Salesforce — Workday at salesforce.wd12/External_Career_Site, 1,482
+  //     requisitions and NO locationCountry facet in the response, so there is
+  //     nothing to filter on. Most of its `locationsText` is Workday's
+  //     "2 Locations" placeholder rather than a place. Unfiltered it would file
+  //     over a thousand foreign roles under one roster id.
+  //   Schneider Electric, HCF, Griffith University, University of Melbourne,
+  //     Wollongong, Flinders — their boards could not be reached from here at
+  //     all: careers.se.com and hcf.com.au answer a datacentre address with 403,
+  //     and jobs.griffith.edu.au, griffith.nga.net.au, uow.nga.net.au and
+  //     unimelb.edu.au do not connect through this sandbox's egress. THAT IS NOT
+  //     EVIDENCE THEY HAVE NO BOARD — the universities almost certainly run
+  //     PageUp or NGA — so they are left for an environment that can see them
+  //     rather than guessed at from the outside.
+  //   HDFC Bank and Larsen & Toubro — Indian employers whose archived rows come
+  //     from naukri. Neither careers page named a board, and an unfiltered
+  //     Indian feed is a different job from the AU-facing ones here.
+  {
+    id: "uni-flinders-university",
+    name: "Flinders University",
+    sector: "Education",
+    platform: "workday",
+    // FOUND BY scripts/discover-boards.py ON A RUNNER, and it could not have
+    // been found from here: every hostname a person would try — jobs.flinders,
+    // careers.flinders — has no DNS record, and the board is linked from
+    // /employment rather than /careers. The sweep followed the university's own
+    // careers links to it. Measured 2026-09-19: `total` 46.
+    endpoint: "https://flinders.wd3.myworkdayjobs.com/wday/cxs/flinders/flinders_employment/jobs",
+    origin: "https://flinders.wd3.myworkdayjobs.com/flinders_employment",
+    // THE LOCATION CELL IS THREE FIELDS IN ONE: "Bedford Park / Kaurna Country
+    // |   Academic Level C   |   Closes 11 Oct 2026". Taken whole, 43 of the 46
+    // resolved to no hub. Part 0 is the place.
+    locationPart: 0,
+    // Then the place is a bare suburb, as UnitingCare Queensland's is. Every one
+    // of the 11 distinct values in a full pull is South Australian — Bedford
+    // Park 32, Tonsley 3, Flinders Medical Centre 1, Mount Gambier 2, Renmark 1,
+    // and six "N Locations" multi-site placeholders — so the home-hub fallback
+    // is a true statement about this employer rather than a convenience.
+    //
+    // It does not swallow a real interstate role: Flinders runs a Northern
+    // Territory medical program, and a Darwin posting matches the "darwin"
+    // needle in HUB_MATCH before this fallback is ever reached.
+    assumeHomeHub: true,
+    homeHub: "adelaide",
+  },
+  {
+    id: "priv-hcf",
+    name: "HCF",
+    sector: "Insurance",
+    platform: "workday",
+    // FOUND BY scripts/discover-boards.py ON A RUNNER, and this one could not
+    // have been found here at all: hcf.com.au/careers answers a datacentre
+    // address 403 and serves a runner 200, while careers.hcf.com.au and
+    // jobs.hcf.com.au have no DNS record. Measured 2026-09-19: `total` 31.
+    //
+    // THE POD IS wd105 AND THE TENANT IS THE OBVIOUS ONE. Guessing found
+    // neither: seven invented tenant slugs were tested against the API and all
+    // returned nothing, because the tenant really is `hcf` — on a pod nothing
+    // had tried. It is in the sweep's output because the pattern reads the
+    // hostname, which is the half that cannot be guessed.
+    endpoint: "https://hcf.wd105.myworkdayjobs.com/wday/cxs/hcf/HCF_External_Career_Site/jobs",
+    origin: "https://hcf.wd105.myworkdayjobs.com/HCF_External_Career_Site",
+    // RETAIL BRANCHES NAMED BY SHOPPING CENTRE, so 17 of the 31 resolved to no
+    // hub: "Macquarie Centre", "Tea Tree", "Marion", "Castle Hill". A national
+    // insurer, so assumeHomeHub is wrong — Tea Tree and Marion are Adelaide
+    // centres and Maroochydore is Queensland.
+    //
+    // EVERY HINT BELOW IS THE BOARD'S OWN ANSWER, not geography from memory.
+    // The tenant publishes a locationRegionStateProvince facet, and querying it
+    // once per state returns which location names belong to each:
+    //
+    //   New South Wales 26  Albury, Bondi, Castle Hill, Hybrid,
+    //                       Macquarie Centre, Parramatta, Sydney CBD, Wollongong
+    //   Queensland       2  Brisbane, Maroochydore
+    //   South Australia  2  Marion, Tea Tree
+    //   Victoria         1  Melbourne
+    //
+    // Each name then resolves to its state's capital, which is the rule
+    // HUB_MATCH already applies to a bare state or a regional town.
+    //
+    // "Hybrid" IS IN THAT LIST AND IS NOT A PLACE. It is a work arrangement, and
+    // it is hinted only because the board files those requisitions under New
+    // South Wales itself — the state comes from the facet, not from an
+    // assumption that head office absorbs anything unlabelled.
+    //
+    // Brookvale appeared in one pull and not in the facet query minutes later,
+    // so it is deliberately absent: a name this mapping cannot evidence stays
+    // unplaced rather than being guessed from the others.
+    hubHints: [
+      ["macquarie centre", "sydney"],
+      ["castle hill", "sydney"],
+      ["parramatta", "sydney"],
+      ["bondi", "sydney"],
+      ["albury", "sydney"],
+      ["hybrid", "sydney"],
+      ["maroochydore", "brisbane"],
+      ["tea tree", "adelaide"],
+      ["marion", "adelaide"],
+    ],
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-kennards-hire",
+    name: "Kennards Hire",
+    sector: "Industrial Manufacturing",
+    platform: "cornerstone",
+    // Same Cornerstone shape as Mirvac and Super Retail: the shell carries the
+    // bearer token and the API returns the board in one call. kennards.com.au
+    // /careers redirects to /work-with-us, which is where the csod host is
+    // named. Measured 2026-09-19: 66 roles, every one placed on a hub.
+    endpoint: "https://kennardshire.csod.com/ux/ats/careersite/1/home?c=kennardshire",
+    origin: "https://kennardshire.csod.com",
+    homeHub: "sydney",
+  },
+  {
+    id: "paris-el",
+    name: "EssilorLuxottica",
+    sector: "Retail",
+    platform: "successfactors",
+    // OPSM and Sunglass Hut, which is what makes this a real Australian feed
+    // rather than a slice of a French one. A GLOBAL board — 4,664 requisitions
+    // unfiltered — so `locationsearch=australia` is doing the same work EY's
+    // does. Measured 2026-09-19: 325 roles with it, 349 distinct job paths
+    // across the walk.
+    //
+    // stateFromJobUrl is the load-bearing part and the comment on it explains
+    // why: the location cell is a bare suburb ("Chadstone, AU") and the state
+    // only exists in the slug. Without it 260 of 325 archived unplaced.
+    endpoint: "https://careers.essilorluxottica.com",
+    searchParams: "locationsearch=australia",
+    stateFromJobUrl: true,
+    origin: "https://careers.essilorluxottica.com",
+    homeHub: "sydney",
+  },
+  {
+    id: "shell",
+    name: "Shell",
+    sector: "Oil & Gas",
+    platform: "workday",
+    // THREE ROLES, AND THAT IS THE BOARD RATHER THAN A TRUNCATED WALK. Measured
+    // 2026-09-19: 147 requisitions worldwide across 18 countries, of which
+    // Australia 3. The roster's 266 archived ads are SEEK and the aggregators
+    // picking up Shell's Australian advertising elsewhere; this is what its own
+    // global board carries for Australia today, and a real 3 is worth having.
+    //
+    // Australia's facet id is the same d903bb3f… as Aurecon's and Lendlease's —
+    // a third tenant agreeing, so these are Workday-wide constants. Still read
+    // off this board rather than copied.
+    endpoint: "https://shell.wd3.myworkdayjobs.com/wday/cxs/shell/ShellCareers/jobs",
+    origin: "https://shell.wd3.myworkdayjobs.com/ShellCareers",
+    appliedFacets: { locationCountry: ["d903bb3fedad45039383f6de334ad4db"] },
+    // Perth: Shell's Australian upstream business is there. Two of the three
+    // rows say "2 Locations", Workday's multi-site placeholder, which names no
+    // place and so resolves to no hub rather than to this one.
+    homeHub: "perth",
+  },
+  // ── The 2026-09-19 seventh batch — the first found BY THE DISCOVERY SWEEP ───
+  //
+  // Not hand-probed. scripts/discover-boards.py was pointed at eight domains
+  // from the gap report and returned five hits; three of them are feeds here.
+  // Measured 2026-09-19: Epworth 56, Perpetual 26, People First Bank 16.
+  //
+  // THE OTHER FIVE OF THE EIGHT, and why none of them is a SiteDef:
+  //   Johnson & Johnson — Workday jj/wd5/JJ, 1,929 requisitions and NO
+  //     locationCountry facet, so there is nothing to filter a global board on.
+  //     Exactly Salesforce's problem.
+  //   BAE Systems — Phenom over BrassRing (partnerid 25771, siteid 5403). Its
+  //     /australia/en/ path looks like a country scope and is not one: measured,
+  //     it returns the same `totalHits` 1893 as /global/en/, as does
+  //     ?location=Australia. Cosmetic, the way AXA's searchByCountry was.
+  //   Harris Farm, Village Roadshow, Tesla — reachable, no ATS marker in the
+  //     served HTML. RESOLVED SINCE, and not by --render: Village Roadshow is
+  //     the PageUp feed in the eighth batch below, found once the sweep seeded
+  //     /jobs and ranked its links. Tesla was swept again with a browser and
+  //     yields no careers link at all, so its board is built entirely in JS;
+  //     Harris Farm's /careers still 404s.
+  {
+    id: "priv-epworth-healthcare",
+    name: "Epworth HealthCare",
+    sector: "Hospitals",
+    platform: "smartrecruiters",
+    // SmartRecruiters tenant `Epworth`, found on epworth.org.au/careers/*.
+    // Measured 2026-09-19: 56 postings, all Melbourne — East Melbourne, Box Hill,
+    // Richmond and Geelong, which is Epworth's whole footprint.
+    endpoint: "Epworth",
+    origin: "https://careers.smartrecruiters.com/Epworth",
+    homeHub: "melbourne",
+  },
+  {
+    id: "sydney-ppt",
+    name: "Perpetual",
+    sector: "Financial Services",
+    platform: "workday",
+    // Workday perpetual/wd3, site `external`. Measured 2026-09-19: `total` 26,
+    // of which 24 place — one is Philadelphia, which is correct rather than a
+    // fault: Perpetual runs a US corporate-trust business and that role really is
+    // there. It is NOT filtered to Australia for that reason; the board is small
+    // enough that the foreign rows are worth having and place on their own hubs.
+    endpoint: "https://perpetual.wd3.myworkdayjobs.com/wday/cxs/perpetual/external/jobs",
+    origin: "https://perpetual.wd3.myworkdayjobs.com/external",
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-people-first-bank",
+    name: "People First Bank",
+    sector: "Financial Services",
+    platform: "oracle",
+    // Oracle Recruiting Cloud on the HCYT pod, site `CX` — and BOTH halves came
+    // from the sweep rather than from guessing. Its first pass reported a bare
+    // `oracle` with no host at all, which is why the fingerprint table now
+    // captures a tenant for every host-bearing platform; the second reported
+    // `oracle [hcyt.fa.ap1.oraclecloud.com/CX]`, which is the endpoint.
+    //
+    // Measured 2026-09-19: 16 roles, every one placed — Adelaide 11, Brisbane 5,
+    // which is the People's Choice and Heritage branch network this merger came
+    // from.
+    endpoint: "https://hcyt.fa.ap1.oraclecloud.com",
+    origin: "https://hcyt.fa.ap1.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX",
+    siteNumber: "CX",
+    homeHub: "adelaide",
+  },
+  // ── The 2026-09-19 eighth batch — found by the RANKED discovery sweep ───────
+  //
+  // All three were swept twice and missed both times, for the same reason: the
+  // corridor followed the first "careers" links on the page, and at a
+  // university those are the STUDENT careers service. Ranking the links and
+  // seeding /jobs and /about/jobs found two of these three directly. The
+  // measurements below are from the live boards, not from the sweep.
+  {
+    id: "uni-griffith-university",
+    name: "Griffith University",
+    sector: "Education",
+    platform: "smartrecruiters",
+    // SmartRecruiters tenant `GriffithUniversity`, read off www.griffith.edu.au
+    // /jobs. Every hostname worth guessing — jobs.griffith, careers.griffith —
+    // has no DNS record, and the university 403s a datacentre address on every
+    // path, so the marker was only visible in a RENDERED page. The API is not:
+    // it answered this sandbox on the first call, which is why this is an
+    // ordinary in-Worker feed and not a browser_fetch Action.
+    //
+    // Measured 2026-09-19: 45 postings. Nathan 24, Southport 12, Meadowbrook 2,
+    // Warwick 1, South Brisbane 1, and four that name two campuses at once.
+    // 42 carry region "QLD" and 2 "Queensland", so HUB_MATCH places them on
+    // Brisbane without a hint.
+    endpoint: "GriffithUniversity",
+    origin: "https://careers.smartrecruiters.com/GriffithUniversity",
+    // ONE OF THE 45 IS IN BEIJING — Griffith runs a representative office there.
+    // It resolves to the Beijing hub on HUB_MATCH's own needle, NOT to this home
+    // hub: measured through fetchPortal, 44 brisbane and 1 beijing, so nothing
+    // here counts an overseas role as an Australian one.
+    //
+    // This fallback is therefore reached by nothing in today's pull. It is the
+    // right value anyway — Nathan is the main campus — for a future role that
+    // names no place.
+    homeHub: "brisbane",
+  },
+  {
+    id: "uni-university-of-wollongong",
+    name: "University of Wollongong",
+    sector: "Education",
+    platform: "oracle",
+    // Oracle Recruiting Cloud pod `ejgl`, site CX_1. Found in SERVED HTML at
+    // www.uow.edu.au/about/jobs/information-for-casual-staff/ — a page nothing
+    // would guess, reached because /about/jobs is now one of the seeded paths.
+    // careers.uow.edu.au and jobs.uow.edu.au both have no DNS record, and
+    // uow.nga.net.au — guessed in an earlier batch — never existed either.
+    //
+    // Measured 2026-09-19: TotalJobsCount 30. Wollongong 29, Shoalhaven 1, so
+    // "wollongong" and " nsw" place all 30 on Sydney with no hint needed.
+    endpoint: "https://ejgl.fa.ap1.oraclecloud.com",
+    origin: "https://ejgl.fa.ap1.oraclecloud.com/hcmUI/CandidateExperience/en/sites/UOW/jobs",
+    // CX_1, not the `UOW` in the origin path. The site NAME in the candidate-
+    // experience url and the siteNumber the REST finder wants are different
+    // things, and passing the name returns nothing.
+    siteNumber: "CX_1",
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-village-roadshow",
+    name: "Village Roadshow",
+    sector: "Technology, Media & Telecom",
+    platform: "pageupsites",
+    // PageUp's "Sites" theme, same as Qube's. THE SWEEP CALLED THIS RENDERED-
+    // ONLY AND IT IS NOT: the sweep reached the job DETAIL pages, which are
+    // client-rendered, and never tried /jobs/search. The listing is
+    // server-rendered and answered this sandbox plainly — 30 <article> cards
+    // and the `search-results-content` marker in a plain GET.
+    //
+    // Measured 2026-09-19: page 1 carries 30 cards, page 2 carries 8, page 3
+    // carries none — 38 roles. This board prints no total ("Displaying " with
+    // nothing after it), so fetchPageUpSites falls back to the pagination's
+    // last page, which is 2; see the lastPage note there.
+    //
+    // NO POSTED DATE ON ANY ROW, and that is this tenant rather than the theme:
+    // Qube on the same fetcher dates all 128 of its roles, while every one of
+    // these 38 comes back blank because the cards print "Closing on:" and no
+    // opened date. Harmless — `posted` stores as empty and the upsert backfills
+    // it if the board ever starts printing one, and the analyst windows read
+    // first_seen, which the archive sets itself. Worth knowing before anyone
+    // reads the blank column as a parser fault.
+    endpoint: "https://careers.villageroadshow.com.au/jobs/search",
+    origin: "https://careers.villageroadshow.com.au",
+    // Two pages today. 6 leaves room to triple before the bound bites.
+    maxPages: 6,
+    // Measured through fetchPortal: 33 "Gold Coast, QLD" to brisbane — the theme
+    // parks — and 5 Victorian, which the board writes as "VIC - Metro, VIC" and
+    // "VIC - Regional, VIC", to melbourne. 38 of 38 placed, every one on the
+    // state suffix, so this fallback is reached by nothing in today's pull. It
+    // is the registered office (South Yarra) for a role that names no state.
+    homeHub: "melbourne",
+  },
+  // ── The 2026-09-20 ninth batch — the Australian universities ────────────────
+  //
+  // Eight university domains swept, seven hit, six built here. All eight had
+  // been invisible to the two earlier sweeps for one reason: /careers at a
+  // university is the STUDENT careers service. Ranking the links and seeding
+  // /jobs found these in one pass.
+  //
+  // NOT BUILT, and why:
+  //   Charles Sturt (187 archived ads) — PageUp confirmed, but only in a
+  //     RENDERED www.csu.edu.au/jobs/our-vacancies, and the PageUp fingerprints
+  //     carry no host to capture, so the sweep proves the platform without
+  //     naming the board. careers.csu.edu.au and jobs.csu.edu.au do not resolve
+  //     from here and www.csu.edu.au 403s, so there is nothing to measure
+  //     against. A guessed endpoint is exactly what this file does not do.
+  //   Newcastle (184) — 14 links followed, including its own
+  //     /our-uni/jobs/job-vacancies, and no marker on any of them rendered or
+  //     served. Its board is built in JS from something unfingerprinted.
+  {
+    id: "uni-university-of-melbourne",
+    name: "University of Melbourne",
+    sector: "Education",
+    platform: "workday",
+    // Workday unimelb/wd105/UoM_External_Career, read off a RENDERED
+    // www.unimelb.edu.au/jobs — the page needs a browser, the API does not, and
+    // it answered this sandbox directly. Measured 2026-09-20: `total` 42.
+    endpoint: "https://unimelb.wd105.myworkdayjobs.com/wday/cxs/unimelb/UoM_External_Career/jobs",
+    origin: "https://unimelb.wd105.myworkdayjobs.com/UoM_External_Career",
+    // THE CAMPUS NAME WITH NO STATE ON IT. Measured 2026-09-20: Parkville 26 of
+    // the 42 and Dookie 1, both bare, so before these hints 41 of 42 resolved to
+    // no hub at all. Parkville is the main campus; Dookie is the agricultural
+    // campus near Shepparton, and Melbourne is the nearest plotted hub to it.
+    // Scoped rather than global, because neither name is unambiguous nationally.
+    hubHints: [
+      ["parkville", "melbourne"],
+      ["dookie", "melbourne"],
+    ],
+    // Left to resolve to NOTHING, deliberately: "2 Locations" (1) is Workday's
+    // multi-site placeholder and "Clinical Sites (Metro & Regional)" (1) names
+    // no single place. Both are honest non-answers rather than head-office
+    // guesses, the same reading as Shell's "2 Locations".
+    //
+    // Two more postings carry no location at all — the two whose cards show only
+    // a requisition number, see REQ_ID in fetchWorkday — and those DO fall here.
+    // Parkville is where this university is, so that is a true statement.
+    homeHub: "melbourne",
+  },
+  {
+    id: "uni-rmit-university",
+    name: "RMIT University",
+    sector: "Education",
+    platform: "workday",
+    // Workday rmit/wd3/RMIT_Careers, in SERVED html on www.rmit.edu.au/careers.
+    //
+    // MOST OF THIS BOARD IS NOT AUSTRALIAN. Measured 2026-09-20 unfiltered: 45
+    // postings, of which Ho Chi Minh City 26 and Hanoi 5 — RMIT Vietnam is a
+    // real campus with real vacancies. Neither city is a HUB_MATCH needle, so an
+    // unfiltered feed would drop all 31 onto this home hub and invent 31
+    // Melbourne roles.
+    //
+    // The Country facet fixes it at the source. Measured: 45 -> 13, every one
+    // "Melbourne". 13 is the honest Australian figure.
+    endpoint: "https://rmit.wd3.myworkdayjobs.com/wday/cxs/rmit/RMIT_Careers/jobs",
+    origin: "https://rmit.wd3.myworkdayjobs.com/RMIT_Careers",
+    // THE PARAMETER IS `Country`, NOT `locationCountry`. Both exist across
+    // Workday tenants and only the one the board advertises works; read off this
+    // board's own facet list rather than copied from the other sites here.
+    // Australia's id is the same d903bb3f… as Aurecon, Lendlease and Shell — a
+    // fourth tenant agreeing, so it is a Workday-wide constant.
+    appliedFacets: { Country: ["d903bb3fedad45039383f6de334ad4db"] },
+    homeHub: "melbourne",
+  },
+  {
+    id: "uni-deakin-university",
+    name: "Deakin University",
+    sector: "Education",
+    platform: "pageupclassic",
+    // PageUp classic at careers.deakin.edu.au, in SERVED html — 0 <article>
+    // cards and the `search-results-content` marker, which is the classic
+    // table/div theme rather than the Sites one.
+    endpoint: "https://careers.deakin.edu.au/en/listing/",
+    origin: "https://careers.deakin.edu.au",
+    // Measured 2026-09-20: 16 roles, and that is the WHOLE board rather than a
+    // truncated walk — the served page carries 16 distinct /job/ links and no
+    // pagination at all. Locations are campus names with the city attached
+    // ("Melbourne - Burwood", "Geelong - City", "Geelong - Waurn Ponds"), so
+    // HUB_MATCH reads them without a hint.
+    //
+    // 2 of the 16 say only "Flexible" and resolve to no hub. That is the right
+    // answer: the university is stating the role has no campus, so putting it at
+    // head office would be inventing a place it declined to name.
+    //
+    // No posted date on any row, as on Village Roadshow's PageUp board; the
+    // classic theme prints a "Closes" date and not an opened one.
+    homeHub: "melbourne",
+  },
+  {
+    id: "uni-university-of-tasmania",
+    name: "University of Tasmania",
+    sector: "Education",
+    platform: "pageupclassic",
+    // PageUp classic at careers.utas.edu.au, in SERVED html, same theme as
+    // Deakin's.
+    endpoint: "https://careers.utas.edu.au/en/listing/",
+    origin: "https://careers.utas.edu.au",
+    // Measured 2026-09-20: 23 roles over 2 pages — page 1 carries 20, page 2
+    // carries 3, page 3 is empty, so the walk reaches the end.
+    //
+    // BURNIE WITHOUT ITS STATE. HUB_MATCH carries "burnie, tas" and this board
+    // prints a bare "Burnie", so 2 roles resolved to nothing. Safe to scope
+    // here: for this employer Burnie is the Cradle Coast campus and nowhere
+    // else. Hobart and Launceston already resolve globally.
+    hubHints: [["burnie", "hobart"]],
+    // One role reads "Melbourne" and places there, which is correct rather than
+    // a leak — UTAS advertises a maritime-engineering post-doc in Melbourne, and
+    // a stated location beats the employer's home state.
+    homeHub: "hobart",
+  },
+  {
+    id: "uni-university-of-the-sunshine-coast",
+    name: "University of the Sunshine Coast",
+    sector: "Education",
+    platform: "pageupsites",
+    // PageUp's Sites theme at careers.usc.edu.au, in SERVED html: 30 <article>
+    // cards on page 1 and "of 44 in total" printed, so the walk is bounded by
+    // the board's own count the way Qube's is.
+    endpoint: "https://careers.usc.edu.au/jobs/search",
+    origin: "https://careers.usc.edu.au",
+    maxPages: 6,
+    // EVERY LOCATION ON THIS BOARD IS A CAMPUS NAME, and none of them is a place
+    // HUB_MATCH knows. Measured 2026-09-20: 44 roles, 0 of them placed before
+    // these hints — "UniSC Sunshine Coast" 22, "UniSC Caboolture" 14, "UniSC
+    // Moreton Bay" 3, "Health Hub Morayfield" 2, "UniSC SouthBank" 1, "Sunshine
+    // Coast Health Institute" 1, "UniSC Thompson Institute" 1.
+    //
+    // All of them sit on the Sunshine Coast, in Moreton Bay or in Brisbane
+    // itself, and there is no Sunshine Coast hub, so Brisbane is the nearest
+    // plotted one for all — the same nearest-hub reading as the maroochydore
+    // hint elsewhere in this file. The "unisc" needle covers every campus
+    // prefix, including ones this pull did not happen to show.
+    hubHints: [
+      ["unisc", "brisbane"],
+      ["sunshine coast", "brisbane"],
+      ["morayfield", "brisbane"],
+    ],
+    // Reached by nothing measured, since the hints place all 44.
+    homeHub: "brisbane",
+  },
+  {
+    id: "uni-western-sydney-university",
+    name: "Western Sydney University",
+    sector: "Education",
+    platform: "smartrecruiters",
+    // SmartRecruiters tenant `WesternSydneyUniversity`, in SERVED html on
+    // careers.westernsydney.edu.au. Measured 2026-09-20: 27 postings, all
+    // country `au` — Parramatta 13, Campbelltown 6, Richmond 4, Bankstown 2,
+    // Penrith 2. Every one carries "New South Wales" in full, which HUB_MATCH
+    // already reads, so all 27 place on Sydney with no hint.
+    //
+    // The sweep also reported a `smartrecruiters [web-sso]` hit on
+    // www.westernsydney.edu.au/employment. That is not a second tenant: the
+    // fingerprint caught a login path. `WesternSydneyUniversity` is the one that
+    // answers the API.
+    endpoint: "WesternSydneyUniversity",
+    origin: "https://careers.westernsydney.edu.au",
+    homeHub: "sydney",
+  },
+  // ── The 2026-09-20 tenth batch — Australian corporates ──────────────────────
+  //
+  // Sixteen domains swept plain (no browser), eight hit. Three are in-Worker
+  // feeds here; CMV is a Dayforce board and runs through
+  // scripts/dayforce-to-d1.py, as every Dayforce board in this project must.
+  //
+  // THE OTHER FOUR HITS, and why none of them is a feed:
+  //   Alto — the expr3ss fingerprint matched TEXT INSIDE AN HTML COMMENT. The
+  //     page reads "No Current Positions Available" and links to
+  //     seek.com.au/companies/alto-group-435432, and altogroup.expr3ss.com 302s.
+  //     There is no board to read. It does not matter: priv-alto is already
+  //     pulled in full through SEEK advertiser 45962034.
+  //   Herbert Smith Freehills — Phenom at careers.hsfkramer.com, 120 requisitions
+  //     worldwide and no working country filter: ?location=Australia returns
+  //     totalHits 0, ?country=Australia returns the same 120 as unfiltered, and
+  //     /australia/en/ 303s away. Cosmetic, exactly as BAE's was.
+  //   Loan Market — the phenom fingerprint hit its HOMEPAGE, which is a weak
+  //     signal from a loose pattern, and the page 403s this sandbox so it could
+  //     not be checked. Not built on a fingerprint nobody has verified.
+  //   Great Southern Bank — every path 403s even a runner. Needs a --render
+  //     sweep, which has not been run on it.
+  //
+  // THE EIGHT MISSES: Harris Farm, DroneShield, Sydney Tools, ARB, Data#3, SEEK,
+  // Vault Minerals and Melbourne Airport. SEEK, Vault Minerals and Data#3 each
+  // had 10-14 links followed with no marker on any of them.
+  {
+    id: "sydney-bga",
+    name: "Bega Cheese",
+    sector: "Food & Beverage",
+    platform: "workday",
+    // Workday begacheese/wd3/Bega_Careers, in SERVED html — found on
+    // begagroup.com.au, which is a DIFFERENT registered domain from the
+    // begacheese.com.au the sweep was given, so the corridor crossed to it and
+    // the report flagged it off-site for confirmation. Confirmed: the tenant is
+    // literally `begacheese`.
+    //
+    // Measured 2026-09-20: `total` 41.
+    endpoint: "https://begacheese.wd3.myworkdayjobs.com/wday/cxs/begacheese/Bega_Careers/jobs",
+    origin: "https://begacheese.wd3.myworkdayjobs.com/Bega_Careers",
+    // THE STATE IS IN BRACKETS, WHICH IS NOT WHAT HUB_MATCH READS. This board
+    // writes "Docklands (VIC)", "Tatura (VIC)", "Bentley (WA)", "Crestmead
+    // (QLD)" — the global needles are " vic", " qld" and so on with a LEADING
+    // SPACE, and "(VIC)" has a bracket there instead. Every bracketed state is
+    // hinted rather than the needles being loosened, because a global change to
+    // punctuation handling would alter placement for all 231 feeds.
+    hubHints: [
+      ["(vic)", "melbourne"],
+      ["(nsw)", "sydney"],
+      ["(qld)", "brisbane"],
+      ["(wa)", "perth"],
+      ["(sa)", "adelaide"],
+      ["(tas)", "hobart"],
+      // A bare "Bega" is the Bega Valley in southern NSW, where the co-operative
+      // started and the creamery still is. Sydney is the nearest plotted hub.
+      // Scoped here because for any other employer "Bega" is a cheese.
+      ["bega", "sydney"],
+    ],
+    homeHub: "melbourne",
+  },
+  {
+    id: "priv-clayton-utz",
+    name: "Clayton Utz",
+    sector: "Legal",
+    platform: "workday",
+    // Workday claytonutz/wd3/Claytonutz1, in SERVED html on
+    // www.claytonutz.com/careers. Measured 2026-09-20: `total` 35 — Sydney 15,
+    // Perth 6, Melbourne 5, Brisbane 4, Canberra 3, all bare city names that
+    // HUB_MATCH reads without a hint.
+    endpoint: "https://claytonutz.wd3.myworkdayjobs.com/wday/cxs/claytonutz/Claytonutz1/jobs",
+    origin: "https://claytonutz.wd3.myworkdayjobs.com/Claytonutz1",
+    // The remaining 2 are "2 Locations" and "6 Locations", Workday's multi-site
+    // placeholders, and resolve to no hub rather than to this one.
+    homeHub: "sydney",
+  },
+  {
+    id: "brisbane-vgn",
+    name: "Virgin Australia Holdings",
+    sector: "Transport & Logistics",
+    platform: "pageupsites",
+    // PageUp's Sites theme at careers.virginaustralia.com, in SERVED html.
+    // Measured 2026-09-20: "of 60 in total", 30 cards on page 1 and 30 on
+    // page 2, page 3 empty — so the walk is bounded by the board's own count.
+    endpoint: "https://careers.virginaustralia.com/jobs/search",
+    origin: "https://careers.virginaustralia.com",
+    // 60 at 30 a page is 2; 6 leaves room to triple.
+    maxPages: 6,
+    homeHub: "brisbane",
+  },
 ];
 
 /**
@@ -3420,6 +4293,85 @@ export const PORTAL_GROUPS: string[][] = [
   ["priv-workpac", "priv-kpmg", "melbourne-ifl"],
   ["priv-unitingcare-queensland", "priv-visy", "priv-ghd"],
   ["priv-deloitte-touche-tohmatsu", "priv-calvary-health-care", "melbourne-tah"],
+
+  // Groups 59-61: the ten feeds (nine employers) from the 2026-09-18 fourth
+  // batch. Measured that day: Chemist Warehouse 252, Capgemini 80 (Australia
+  // only), Elders 68, ANU 56, Adbri 60, Team Global Express 53, Anytime Fitness
+  // 39 + 1, Wipro 21 (Australia only, of 5,334), Tennis Australia 15.
+  //
+  // Wipro leads its own tick and it is the REQUEST COUNT, not the row count,
+  // that puts it there: it reads 21 job pages on top of the sitemap, so the
+  // smallest board in the batch is the second most expensive thing in it.
+  // Chemist Warehouse is the other one held apart — SuccessFactors pages
+  // SEQUENTIALLY, because each page's size is read off the one before, so its
+  // eleven pages are eleven round trips in series.
+  [
+    "bengaluru-wipro",
+    "priv-tennis-australia",
+    "priv-anytime-fitness-gyms",
+    "priv-anytime-fitness-office",
+  ],
+  ["priv-chemist-warehouse", "paris-cap", "uni-australian-national-university"],
+  ["adelaide-eld", "priv-team-global-express", "adelaide-abc"],
+
+  // Groups 62-64: the four in-Worker feeds from the 2026-09-18 fifth batch.
+  // Measured 2026-09-18: MinterEllison 53, St Vincent de Paul (NSW) 40, AFL 22;
+  // Lendlease 21 (Australia only, of 35) the day after.
+  //
+  // Lendlease shares a tick with St Vincent de Paul rather than leading one:
+  // it is a single filtered Workday call, so it adds one round trip.
+  //
+  // ALL THREE ARE SUCCESSFACTORS, which is the most this file has taken at once
+  // and is exactly why they are in three different ticks rather than one: the
+  // SF walk is SEQUENTIAL, each page's size read off the one before, so packing
+  // them would queue three walks behind each other for no gain. Each tick here
+  // is one short walk.
+  //
+  // Avant Mutual is NOT here and cannot be: its Dayforce API answers a
+  // datacentre POST with a bare 403, the same wall Uniting, EVT and Whitehaven
+  // hit. It runs through scripts/dayforce-to-d1.py instead.
+  ["priv-minterellison"],
+  ["priv-st-vincent-de-paul", "sydney-llc"],
+  ["priv-afl"],
+
+  // Groups 65-66: the three feeds from the 2026-09-19 sixth batch. Measured
+  // that day: EssilorLuxottica 325 (Australia only, of 4,664), Kennards Hire
+  // 66, Shell 3 (Australia only, of 147).
+  //
+  // EssilorLuxottica leads its own tick. It is a SEQUENTIAL SuccessFactors walk
+  // over 12 pages — each page's size read off the one before — and the deepest
+  // SF walk in the file after Goodstart. The others are a few calls each and
+  // share the second.
+  //
+  // Flinders University joined that second tick after the fact: it is the first
+  // feed found by scripts/discover-boards.py rather than by hand, and it is 46
+  // roles over three Workday pages.
+  ["paris-el"],
+  ["priv-kennards-hire", "shell", "uni-flinders-university", "priv-hcf"],
+
+  // Group 67: the three feeds from the 2026-09-19 seventh batch, and the first
+  // batch discovered by scripts/discover-boards.py rather than by hand.
+  // Measured that day: Epworth 56, Perpetual 26, People First Bank 16.
+  //
+  // One tick between them: a SmartRecruiters board is a single call, Perpetual's
+  // Workday is two pages and People First's Oracle one. Nothing here pages deep
+  // enough to need holding apart.
+  ["priv-epworth-healthcare", "sydney-ppt", "priv-people-first-bank"],
+  // Group 68 — the 2026-09-19 eighth batch. One tick for all three: Griffith's
+  // SmartRecruiters board is a single call, UOW's Oracle one, and Village
+  // Roadshow's PageUp walk is two pages. 45 + 30 + 38 roles between them.
+  ["uni-griffith-university", "uni-university-of-wollongong", "priv-village-roadshow"],
+  // Groups 69-70 — the 2026-09-20 ninth batch, the Australian universities.
+  // Split by how each is fetched rather than evenly: 69 is API-driven and cheap
+  // (two Workday walks of 3 pages and 1, plus one SmartRecruiters call), 70 is
+  // three PageUp boards walked as HTML. 165 roles between the six.
+  ["uni-university-of-melbourne", "uni-rmit-university", "uni-western-sydney-university"],
+  ["uni-deakin-university", "uni-university-of-tasmania", "uni-university-of-the-sunshine-coast"],
+  // Group 71 — the 2026-09-20 tenth batch. One tick: two Workday walks of 3
+  // pages and 2, and one PageUp walk of 2. 136 roles between them. CMV, the
+  // fourth hit of that sweep, is not here — it is a Dayforce board and runs
+  // through scripts/dayforce-to-d1.py in browser-portals.yml.
+  ["sydney-bga", "priv-clayton-utz", "brisbane-vgn"],
 ];
 
 const UA =
@@ -3900,6 +4852,27 @@ async function getJson<T>(url: string, init?: RequestInit): Promise<T | null> {
   }
 }
 
+/**
+ * An Australian state token in a SuccessFactors job slug — see stateFromJobUrl.
+ *
+ * Bounded on BOTH sides so the two-letter states cannot fire inside a word:
+ * without it "SA" matches "SALES" and "NT" matches "CONSULTANT", and a wrong
+ * state is worse than no state because it plots a real role in the wrong city.
+ * The states are matched case-sensitively in upper case, which is how the slug
+ * writes them and which "Was"/"Sant" style words are not.
+ */
+const SF_URL_STATE = /(?:^|[-,\s])(NSW|VIC|QLD|WA|SA|TAS|NT|ACT)(?:[-,\s/]|$)/;
+
+function stateFromJobUrl(href: string): string {
+  let path = href;
+  try {
+    path = decodeURIComponent(href);
+  } catch {
+    // A malformed escape is not a reason to drop the row; match on the raw form.
+  }
+  return SF_URL_STATE.exec(path)?.[1] ?? "";
+}
+
 // ── SAP SuccessFactors ───────────────────────────────────────────────────────
 async function fetchSuccessFactors(site: SiteDef): Promise<PortalJob[]> {
   const out: PortalJob[] = [];
@@ -3940,7 +4913,13 @@ async function fetchSuccessFactors(site: SiteDef): Promise<PortalJob[]> {
       const dateM =
         row.match(/<span class="jobDate[^"]*">([\s\S]*?)<\/span>/i) ??
         row.match(/id="job-\d+-desktop-section-date-value"[^>]*>([\s\S]*?)<\/div>/i);
-      const loc = locM ? clean(locM[1]) : "";
+      const cell = locM ? clean(locM[1]) : "";
+      // Appended, never substituted: the cell is what the employer published and
+      // the slug only fills in the state it left out. Skipped when the cell
+      // already names that state, so "Perth Hay Street, WA" does not become
+      // "…, WA, WA".
+      const st = site.stateFromJobUrl ? stateFromJobUrl(href) : "";
+      const loc = st && !new RegExp(`\\b${st}\\b`).test(cell) ? `${cell}, ${st}` : cell;
       out.push(
         job(
           site,
@@ -3965,7 +4944,27 @@ interface WorkdayPosting {
   locationsText?: string;
   externalPath?: string;
   postedOn?: string;
+  /**
+   * The card's display cells, and on SOME TENANTS the only place the location
+   * is. Lendlease's is one: measured 2026-09-19, every posting returns
+   * `locationsText: null` and carries
+   *
+   *     bulletFields: ["Brisbane, Queensland, Australia", "REQ-7065662"]
+   *
+   * so a reader that only knows locationsText gets "" for all of them. That is
+   * not a visible failure — an empty location falls through to the employer's
+   * home hub — so a GLOBAL board reads as though every role were at head
+   * office. Kuala Lumpur and Singapore roles would have filed as Sydney.
+   */
+  bulletFields?: string[];
 }
+
+// A requisition id, not a place: "JR-016427", "REQ-7065662", "JR50352". Letters
+// then digits with nothing else — no comma, no space, no second word — which no
+// real location string looks like. Lendlease's genuine fallback value,
+// "Brisbane, Queensland, Australia", does not match, and that is the case this
+// must not break.
+const REQ_ID = /^[A-Za-z]{1,6}[-_]?\d{3,}$/;
 
 async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
   const out: PortalJob[] = [];
@@ -3989,7 +4988,20 @@ async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
       const path = (p.externalPath || "").trim();
       if (!title || !path || seen.has(path)) continue;
       seen.add(path);
-      const whole = (p.locationsText || "").trim();
+      // bulletFields[0] is the fallback, not the first choice: where a tenant
+      // sets locationsText that is the field built for this, and the bullets are
+      // whatever the card happens to show.
+      //
+      // AND IT IS CHECKED, because [0] is not always a place. The comment here
+      // used to say the requisition id was always [1]; the University of
+      // Melbourne disproves it. Measured 2026-09-20: 2 of its 42 postings carry
+      // locationsText "" and bulletFields ["JR-016427"] — the card shows the
+      // requisition and nothing else — so the fallback stored "JR-016427" as the
+      // location. A req number reaching the hub matcher is worse than an empty
+      // string: empty falls to the home hub, which is at least a claim about the
+      // employer, while "JR-016427" is a place that does not exist.
+      const bullet = (p.bulletFields?.[0] ?? "").trim();
+      const whole = (p.locationsText || (REQ_ID.test(bullet) ? "" : bullet) || "").trim();
       const parts = whole.split("|").map((x) => x.trim());
       const loc =
         site.locationPart !== undefined && parts[site.locationPart]
@@ -5549,6 +6561,158 @@ async function fetchWorkPac(site: SiteDef): Promise<PortalJob[]> {
       break;
     }
     if (advertised && out.length >= advertised) break;
+  }
+  return out;
+}
+
+// ── Capgemini "jobstream" (its own service, not an ATS) ──────────────────────
+interface CapgeminiJob {
+  id?: string;
+  title?: string;
+  location?: string;
+  apply_job_url?: string;
+  indexed_at?: string;
+  professional_communities?: string;
+  contract_type?: string;
+}
+
+/**
+ * Capgemini's careers page is WordPress, and the job list is a React block
+ * (`cg-jobs`) calling a service the page names in its own markup:
+ * `var cg_jobs_jobstream_url = "https://cg-jobstream-api.azurewebsites.net/api"`,
+ * and the bundle appends `/job-search`. Nothing here is guessed — both halves
+ * were read out of the page and its script.
+ *
+ * `endpoint` IS THE FULL SEARCH URL INCLUDING `country_code`, the way Worley's
+ * PCS endpoint carries its tenant domain. The filter is not optional: this is
+ * one global service behind every Capgemini country site, and `paris-cap` on
+ * this roster is the Australian firm. Measured 2026-09-18: `country_code=au-en`
+ * returns `total` 80, every row `en-au`.
+ *
+ * Bounded by the service's own `total` rather than by a short page — a failed
+ * request and the end of the list both arrive as zero rows.
+ */
+async function fetchCapgemini(site: SiteDef): Promise<PortalJob[]> {
+  const size = site.pageSize ?? 100;
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  let total = 0;
+  for (let page = 1; page <= max; page++) {
+    const json = await getJson<{ data?: CapgeminiJob[]; total?: number }>(
+      `${site.endpoint}&size=${size}&page=${page}`,
+    );
+    const rows = json?.data ?? [];
+    if (!rows.length) break;
+    if (!total) total = Number(json?.total ?? 0);
+    let added = 0;
+    for (const r of rows) {
+      const title = clean(r.title ?? "");
+      const id = clean(r.id ?? "") || title;
+      if (!title || seen.has(id)) continue;
+      seen.add(id);
+      added++;
+      // `location` is a comma-joined list on the roles open in several cities
+      // ("Brisbane, Canberra, Sydney, Melbourne, Adelaide"). It is kept whole:
+      // hubFor takes the first needle that matches, and truncating to one city
+      // would be choosing which of five the role is in.
+      out.push(
+        job(
+          site,
+          title,
+          clean(r.location ?? ""),
+          clean(r.apply_job_url ?? "") || site.origin,
+          isoDay(r.indexed_at ?? ""),
+          [clean(r.professional_communities ?? ""), clean(r.contract_type ?? "")]
+            .filter(Boolean)
+            .join(" — ") || "Career portal",
+        ),
+      );
+    }
+    if (!added) break;
+    if (total && out.length >= total) break;
+  }
+  return out;
+}
+
+// ── Wipro (SuccessFactors NES, read through its sitemap) ─────────────────────
+/**
+ * Wipro runs the SuccessFactors UI5/React "NES" theme, and BOTH of the ways
+ * this file already reads SuccessFactors come back empty on it. Measured
+ * 2026-09-18: /search/ serves 123 KB with zero `/job/` links, /viewalljobs/ the
+ * same, and the RMK JSON service that unlocks Bendigo and Hancock answers
+ * `{"totalJobs":0}` on this tenant for every location value tried. That is not
+ * an employer with no vacancies — the sitemap lists 5,334 live jobs.
+ *
+ * So the sitemap IS the listing. It is one request, it is the tenant's own
+ * published index, and the slug carries the country: every job URL ends
+ * `-<CC>[-postcode]/<id>/`. Australia is `AUS`, and 21 of the 5,334 match.
+ *
+ * The 21 job PAGES are then fetched for their fields rather than the slug being
+ * parsed, because the slug is lossy — "Melbourne-Sr_-Manager-L1-AUS" is
+ * "Sr. Manager L1" with the period replaced and the city glued on, and a title
+ * containing a hyphen could not be recovered from it at all. The pages carry a
+ * labelled field table (`Job Title:`, `City:`, `State/Province:`,
+ * `Posting Start Date:`) that says it exactly.
+ */
+const WIPRO_AU = /-AUS(-\d+)?\/\d+\/?$/;
+
+function wiproField(html: string, label: string): string {
+  const m = html.match(
+    new RegExp(
+      `joblayouttoken-label"[^>]*>\\s*${label}:\\s*</span>\\s*<span[^>]*>([\\s\\S]*?)</span>`,
+      "i",
+    ),
+  );
+  return m ? clean(m[1]) : "";
+}
+
+async function fetchWipro(site: SiteDef): Promise<PortalJob[]> {
+  const xml = await getText(site.endpoint);
+  if (!xml) return [];
+  const urls = [
+    ...new Set([...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => clean(m[1]))),
+  ].filter((u) => WIPRO_AU.test(u));
+  const out: PortalJob[] = [];
+  for (let i = 0; i < urls.length; i += PAGE_CONCURRENCY) {
+    const window = urls.slice(i, i + PAGE_CONCURRENCY);
+    const pages = await Promise.all(window.map((u) => getText(u)));
+    window.forEach((url, n) => {
+      const html = pages[n];
+      // A page that failed to fetch is SKIPPED, not archived off the slug: an
+      // empty location falls back to the employer's home hub, which would file
+      // a Perth role in Sydney and read as real data.
+      if (!html) return;
+      const title = wiproField(html, "Job Title");
+      if (!title) return;
+      const loc = [wiproField(html, "City"), wiproField(html, "State/Province")]
+        .filter(Boolean)
+        .join(", ");
+      // "Melbourne, Melbourne" — this tenant repeats the city in its own field.
+      const parts = [
+        ...new Set(
+          loc
+            .split(",")
+            .map((p) => p.trim())
+            .filter(Boolean),
+        ),
+      ];
+      out.push(
+        job(
+          site,
+          title,
+          // Australia is appended because the page never states a country and
+          // the fields alone ("Sydney, New South Wales") would leave a role
+          // unplaced on any board whose needle is the country name.
+          [...parts, "Australia"].join(", "),
+          url,
+          // M/D/YY, which Date.parse reads correctly as US ordering — the same
+          // ordering the tenant's en_US locale writes it in.
+          isoDay(wiproField(html, "Posting Start Date")),
+          "Career portal",
+        ),
+      );
+    });
   }
   return out;
 }
@@ -8144,6 +9308,8 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   wploop: fetchWpLoop,
   pageupclassic: fetchPageUpClassic,
   workpac: fetchWorkPac,
+  capgemini: fetchCapgemini,
+  wipro: fetchWipro,
   eightfoldpcs: fetchEightfoldPcs,
 };
 
@@ -8217,6 +9383,8 @@ const SOURCE_TAG: Record<Platform, string> = {
   // for the same reason sfrmkapi shares "sf".
   pageupclassic: "pu",
   workpac: "workpac",
+  capgemini: "cap",
+  wipro: "wipro",
   // Same vendor as `eightfold`, different product and different API — but an
   // advertisement is an advertisement, so it dedupes against an ef row rather
   // than sitting beside one.
