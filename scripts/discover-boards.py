@@ -161,6 +161,23 @@ QUEUE_CAP = 32
 LINK_BUDGET = 14
 SEED_RENDER_BUDGET = 4
 RENDER_BUDGET = 6
+# A RENDER IS NOT ALWAYS A BONUS. The budget above covers a page urllib READ
+# fine, where the render only asks whether a board appears after hydration —
+# losing that costs a maybe. A page that answered 403 is different: rendering it
+# is the only way to read it at all, and losing that costs the page.
+#
+# Both used to draw on the one budget of 6, which starves exactly the employers
+# that need it most. Newcastle 403s every path, so all 14 of its followed links
+# were blocked: 6 were rendered and read, and the other 8 were fetched, refused
+# and never looked at — while the report said "14 careers links followed", which
+# reads as 14 pages examined. Griffith, Charles Sturt, Great Southern Bank,
+# Tesla and Village Roadshow are all the same shape.
+#
+# So blocked pages get their own allowance, sized to be the binding constraint
+# rarely. At roughly 6s a render, 4 seeds + 6 spare + 10 blocked is about two
+# minutes of rendering per employer, so a six-domain sweep stays inside the
+# workflow's 20-minute timeout.
+BLOCKED_RENDER_BUDGET = 10
 
 CAREERS_LINK = re.compile(
     r'href=["\']([^"\']*(?:career|job|vacanc|work-with-us|work-for-us|join-us'
@@ -356,7 +373,12 @@ BOARD_HOST = re.compile(
     r"""https?://[A-Za-z0-9.-]*
         (?:pageuppeople\.com|myworkdayjobs\.com|smartrecruiters\.com|csod\.com
           |dayforcehcm\.com|oraclecloud\.com|icims\.com|taleo\.net|avature\.net
-          |livehire\.com|expr3ss\.com|nga\.net\.au)
+          |livehire\.com|expr3ss\.com|nga\.net\.au
+          # Added after SEEK Limited fingerprinted `jobadder` with no host and
+          # the candidate search came back empty, because none of the hosts above
+          # matched and its pages carry no listing path either.
+          |jobadder\.com|greenhouse\.io|lever\.co|workable\.com
+          |eightfold\.ai|snaphire\.com|elmotalent\.com\.au|ashbyhq\.com)
         (?:/[^"'\s<>]*)?""",
     re.I | re.X)
 
@@ -480,6 +502,10 @@ def sweep(domain: str, render: bool = False) -> dict:
     # send the next reader to write a fetcher that always returns zero.
     found_rendered: dict[str, list[str]] = {}
     followed: list[str] = []
+    # Followed is not read. A link whose plain fetch was refused and whose render
+    # never happened was WALKED PAST, not examined, and a report that counts it
+    # the same overstates what the sweep looked at.
+    read: list[str] = []
     seen: set[str] = set()
     # The employer's own REGISTERED domain — not the first candidate's hostname,
     # which is `careers.<domain>` and made a Flinders sweep label flinders.edu.au
@@ -597,24 +623,38 @@ def sweep(domain: str, render: bool = False) -> dict:
     # a page followed at rank 2 can surface a rank-0 vacancy list that then has
     # to jump ahead of everything already waiting. Sorting on (rank, order)
     # keeps it stable, so equal-ranked links still go in the order they appeared.
-    renders_left = RENDER_BUDGET
+    spare_renders = RENDER_BUDGET
+    blocked_renders = BLOCKED_RENDER_BUDGET
     while queue and len(followed) < LINK_BUDGET:
         queue.sort()
         _, _, nxt = queue.pop(0)
         followed.append(nxt)
         sub = fetch(nxt)
+        blocked = sub['outcome'] == 'blocked'
         if sub['outcome'] == 'ok':
+            read.append(nxt)
             h = fingerprint(sub['body'])
             if h:
                 note(found, sub.get('final', nxt), h, sub['body'])
                 continue
             harvest(sub['body'], sub.get('final', nxt))
-        # Plain fetch found nothing here. One render, while the budget lasts —
-        # this is the path that was missing entirely, and the one Griffith needs.
-        if render and renders_left > 0 and sub['outcome'] in ('ok', 'blocked'):
-            renders_left -= 1
+        # A blocked page draws on its own allowance, because rendering it is the
+        # only way to read it; an `ok` page draws on the small spare one, because
+        # its links have already been harvested above and only a hydrated board
+        # is still missing. See BLOCKED_RENDER_BUDGET.
+        if render and (blocked or sub['outcome'] == 'ok'):
+            if blocked:
+                if blocked_renders <= 0:
+                    continue
+                blocked_renders -= 1
+            else:
+                if spare_renders <= 0:
+                    continue
+                spare_renders -= 1
             html, err = rendered_html(nxt)
             if not err:
+                if nxt not in read:
+                    read.append(nxt)
                 rh = fingerprint(html or '')
                 if rh:
                     note(found_rendered, nxt, rh, html or '')
@@ -622,7 +662,7 @@ def sweep(domain: str, render: bool = False) -> dict:
                     harvest(html or '', nxt)
 
     return {'domain': domain, 'home': home, 'tried': tried, 'found': found,
-            'boards': boards,
+            'boards': boards, 'read': read,
             'found_rendered': found_rendered, 'followed': followed}
 
 
@@ -705,8 +745,11 @@ def main() -> int:
                 print(f'  INCONCLUSIVE — {len(broke)} page(s) could not be rendered; '
                       'this says nothing about whether a board exists')
             else:
-                print('  no ATS marker on any page reached'
-                      + (f' ({len(r["followed"])} careers links followed)' if r['followed'] else '')
+                nread, nfollowed = len(r.get('read') or []), len(r['followed'])
+                walked = (f' ({nfollowed} careers links followed, {nread} actually read)'
+                          if nread != nfollowed else
+                          f' ({nfollowed} careers links followed and read)') if nfollowed else ''
+                print('  no ATS marker on any page reached' + walked
                       + (' (rendered too)' if render_on else ' — try --render'))
                 # WHERE THE CORRIDOR WENT, not just how far. A bare count made
                 # the 2026-09-19 sweep unreadable: Griffith and UOW both said
@@ -714,8 +757,16 @@ def main() -> int:
                 # showed that every one of those links was the student careers
                 # service. A negative result has to carry the evidence for
                 # whether it looked in the right place.
+                #
+                # AND A LINK FOLLOWED IS NOT A LINK READ. One whose plain fetch
+                # was refused and whose render never happened was walked past, and
+                # counting it as examined is how "no board here" gets claimed for
+                # a page nobody opened. Marked per line so the distinction
+                # survives being pasted into a report.
                 for u in r['followed'][:LINK_BUDGET]:
-                    print(f'      followed {u}')
+                    print(f'      followed {u}'
+                          + ('' if u in (r.get('read') or []) else
+                             '   [NOT READ — refused, and not rendered]'))
 
     dest = opt('--json')
     if dest:
