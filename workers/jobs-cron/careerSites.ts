@@ -4042,6 +4042,122 @@ export const SITES: SiteDef[] = [
     origin: "https://gsb.csod.com",
     homeHub: "brisbane",
   },
+  // ── The 2026-09-20 twelfth batch ────────────────────────────────────────────
+  //
+  // Eleven domains swept — six universities plus the three Fitness and Lifestyle
+  // brands and two re-sweeps. Four feeds here.
+  //
+  // NOT BUILT, and each reason is a measurement rather than a guess:
+  //   Australian Catholic University (81 ads) — careers.acu.edu.au/en/listing/
+  //     fingerprints pageupclassic and SERVES NO ROWS: 140 KB carrying the
+  //     `search-results-content` shell, 0 job-link classes and 0 job hrefs, and
+  //     no "no results" text either. Run through fetchPageUpClassic it returns 0.
+  //     Wiring it would add a feed that reads as an employer with no vacancies
+  //     forever — the Mater failure — so it needs a browser_fetch Action instead.
+  //     PageUp instance 456, from the candidate report, for whoever writes it.
+  //   Swinburne (74) — swinjobs.nga.net.au. NGA.NET has NO READER here, and it is
+  //     the one platform measured to answer headless Chromium with the same bot
+  //     check it gives curl (see the ECU step in browser-portals.yml), so an
+  //     Action would not fix it either.
+  //   Notre Dame (100) — every path 403s and this sweep was plain. Needs --render
+  //     before anything can be said about it.
+  //   UTS (85) and Bond (74) — 14 of 14 followed links READ, no marker on any.
+  //     Trustworthy negatives rather than starved ones, which is new: the render
+  //     budget split landed the same day.
+  {
+    id: "priv-fitness-and-lifestyle",
+    key: "flg-corporate",
+    name: "Fitness and Lifestyle",
+    sector: "Fitness & leisure",
+    platform: "workday",
+    // ONE WORKDAY TENANT, THREE SITES, ONE ROSTER COMPANY — the Brambles and
+    // Transurban pattern. `flg` on pod wd105 publishes FLG (head office), GLHC
+    // (Goodlife Health Clubs) and FF (Fitness First) as separate career sites,
+    // and all three are this employer. Each needs its own SiteDef because the
+    // site is part of the endpoint; they share `id` so they land on one card.
+    //
+    // Found by sweeping the BRAND domains, not the group's: goodlifehealthclubs
+    // .com.au and fitnessfirst.com.au each named their own site in served html.
+    // Sweeping only fitnessandlifestylegroup.com would have found FLG's 6
+    // corporate roles and missed the other 56.
+    //
+    // Measured 2026-09-20: total 6 — West End Brisbane 4, Sydney CBD 1, Wantirna
+    // Melbourne 1.
+    endpoint: "https://flg.wd105.myworkdayjobs.com/wday/cxs/flg/FLG/jobs",
+    origin: "https://flg.wd105.myworkdayjobs.com/FLG",
+    homeHub: "brisbane",
+  },
+  {
+    id: "priv-fitness-and-lifestyle",
+    key: "flg-goodlife",
+    name: "Fitness and Lifestyle",
+    sector: "Fitness & leisure",
+    platform: "workday",
+    // Goodlife Health Clubs. Measured 2026-09-20: total 41 across 18 distinct
+    // locations, every one "City, Region" — "Melbourne, CBD & Inner Suburbs",
+    // "Brisbane, Northern Suburbs", "Perth, Northern Suburbs" — so the capital
+    // is always in the string and HUB_MATCH reads them without a hint.
+    endpoint: "https://flg.wd105.myworkdayjobs.com/wday/cxs/flg/GLHC/jobs",
+    origin: "https://flg.wd105.myworkdayjobs.com/GLHC",
+    // THE ONE CITY ON THIS BOARD WITH NO STATE AFTER IT. "Gold Coast, Western
+    // Suburbs" and "Gold Coast, Southern Suburbs" carry a region but no state, so
+    // nothing in HUB_MATCH fires — measured, 2 roles sat unplaced. There is no
+    // Gold Coast hub; Brisbane is the nearest plotted one. Scoped rather than
+    // global because a global "gold coast" needle would move rows on every other
+    // feed in this file.
+    hubHints: [["gold coast", "brisbane"]],
+    homeHub: "brisbane",
+  },
+  {
+    id: "priv-fitness-and-lifestyle",
+    key: "flg-fitnessfirst",
+    name: "Fitness and Lifestyle",
+    sector: "Fitness & leisure",
+    platform: "workday",
+    // Fitness First. Measured 2026-09-20: total 15, same "City, Region" shape —
+    // Sydney 7 across three suburb groups, Melbourne 3, and 2 rows reading
+    // "2 Locations", Workday's multi-site placeholder, which resolve to no hub.
+    endpoint: "https://flg.wd105.myworkdayjobs.com/wday/cxs/flg/FF/jobs",
+    origin: "https://flg.wd105.myworkdayjobs.com/FF",
+    // One row names the CLUB instead of the place: "FF Macquarie", the Macquarie
+    // Centre club at North Ryde in northern Sydney. The needle is the full club
+    // name rather than a bare "macquarie", which would also match Port Macquarie
+    // on the mid-north coast.
+    hubHints: [["ff macquarie", "sydney"]],
+    // Head office is Brisbane, but every Fitness First club measured is in Sydney
+    // or Melbourne and resolves on its own city name, so this is not reached.
+    homeHub: "brisbane",
+  },
+  {
+    id: "uni-torrens-university-australia",
+    name: "Torrens University Australia",
+    sector: "Education",
+    platform: "workday",
+    // THE TENANT IS `strayer`, NOT ANYTHING TORRENS-SHAPED: Torrens is owned by
+    // Strategic Education, and its board is a site on that parent's Workday. No
+    // amount of guessing at torrens.* would have found it; the sweep read it off
+    // www.torrens.edu.au/about/career-opportunities.
+    //
+    // The site is already scoped to this region — ANZ_TUA_External1 — so no
+    // country facet is needed. Measured 2026-09-20: total 8.
+    endpoint: "https://strayer.wd1.myworkdayjobs.com/wday/cxs/strayer/ANZ_TUA_External1/jobs",
+    origin: "https://strayer.wd1.myworkdayjobs.com/ANZ_TUA_External1",
+    // The board prefixes the campus: "Campus Surry Hills", "Campus Wakefield".
+    hubHints: [
+      ["surry hills", "sydney"],
+      // Wakefield Street, Adelaide.
+      ["wakefield", "adelaide"],
+    ],
+    // "CAMPUS FLINDERS" IS DELIBERATELY NOT HINTED. Torrens has a Flinders Street
+    // campus in Adelaide AND one in Melbourne, and its own region facet says
+    // South Australia 6 and Victoria 5 — so the name does not identify a city
+    // here. One role resolves to no hub rather than to a coin toss, which is the
+    // same reading as Qube's bare "Hamilton".
+    //
+    // The 4 rows reading "4 Locations" are Workday's multi-site placeholder and
+    // also resolve to nothing.
+    homeHub: "sydney",
+  },
 ];
 
 /**
@@ -4443,6 +4559,9 @@ export const PORTAL_GROUPS: string[][] = [
   // Group 72 — the 2026-09-20 eleventh batch. Both are single-page boards, 19
   // roles each.
   ["uni-charles-sturt-university", "priv-great-southern-bank"],
+  // Group 73 — the 2026-09-20 twelfth batch. One tick: three small Workday walks
+  // on one tenant (6, 41 and 15 roles) plus Torrens' 8. 70 roles.
+  ["flg-corporate", "flg-goodlife", "flg-fitnessfirst", "uni-torrens-university-australia"],
 ];
 
 const UA =
@@ -8519,7 +8638,16 @@ async function fetchPageUpClassic(site: SiteDef): Promise<PortalJob[]> {
       .split(/<th[^>]*>/i)
       .slice(1)
       .map((h) => clean(h).toLowerCase());
-    const locCol = heads.findIndex((h) => h.startsWith("location"));
+    // CONTAINS, NOT STARTS WITH. Australian Catholic University heads its column
+    // "Campus Location", which a startsWith test misses — locCol came back -1,
+    // the positional fallback took the last cell, and that cell is `Closes`. The
+    // same date-as-a-location this lookup exists to prevent, reached by a
+    // different route. An exact-ish match is still preferred first, so a tenant
+    // with both a "Location" and some other *location* column keeps the plain one.
+    const locCol =
+      heads.findIndex((h) => h.startsWith("location")) >= 0
+        ? heads.findIndex((h) => h.startsWith("location"))
+        : heads.findIndex((h) => h.includes("location"));
     let onPage = 0;
     for (const row of isDivTheme
       ? body.split(/<div class="JobItemWP">/i).slice(1)
