@@ -281,12 +281,18 @@ The settings that make it work:
 | Deploy command | `npm run deploy:preview` |
 | Build variable | `VITE_MAPBOX_TOKEN` — see below |
 
+The `npx` in `deploy:preview` is load-bearing: **wrangler is not a dependency of
+this repo** and there is no `node_modules/.bin/wrangler`, so a bare `wrangler …`
+inside an npm script dies with `wrangler: not found` in CI even though it works in
+a shell where it has been npx'd before. Every wrangler invocation here goes through
+`npx`.
+
 `VITE_MAPBOX_TOKEN` must be a **build** variable, not a Worker secret: it is
 inlined by vite and a secret is not visible to the build. `vite.config.ts` throws
 without it, so the second CI failure after fixing the first is this one.
 
 **The deploy command points at the PREVIEW Worker on purpose.** `deploy:preview` in
-`package.json` is `wrangler deploy --name employsi-preview`, so a push publishes to
+`package.json` is `npx wrangler deploy --name employsi-preview`, so a push publishes to
 https://employsi-preview.employsi.workers.dev and never to employsi.com.au. It is a
 named script rather than a raw flag so the target is reviewable in the repo instead
 of living only in a dashboard text box — **if that field is ever reset to a bare
