@@ -4164,14 +4164,9 @@ export const SITES: SiteDef[] = [
   //   Teys Australia (108 ads) — teysgroupau.currentjobs.co. A platform with no
   //     reader in this file; now at least NAMED by the sweep rather than
   //     reported as "no ATS marker".
-  //   Patterson Cheney (72) — elmo at pattersoncheney.elmotalent.com.au/careers/
-  //     workwithus/jobs, handed over by the sweep's candidate report. NOT wired,
-  //     because fetchElmo returns 10 rows against the board's own count of 23
-  //     and says so itself ("10 rows vs 23 advertised — board paging?"). Wiring
-  //     it would file under half this employer's roles and the card would
-  //     under-report with nothing visibly wrong. The paging gap is in the SHARED
-  //     fetcher — Steadfast's 8 roles fit on one page, so this is the first
-  //     board to expose it — and belongs fixed there before a feed depends on it.
+  //   Patterson Cheney — WIRED NOW, see below. It was held back one batch
+  //     because fetchElmo took page one and stopped, and the paging gap was in
+  //     the SHARED fetcher rather than in this board.
   //   Kennards (95) — the sweep found cornerstone [kennardshire] on
   //     kennards.com.au, and that is KENNARDS HIRE. The roster row is Kennards
   //     Self Storage, a different company. The domain was a guess and it landed
@@ -4227,6 +4222,39 @@ export const SITES: SiteDef[] = [
     // so HUB_MATCH reads every Australian row without a hint. One role is in
     // Selangor, Malaysia and one names no place at all.
     homeHub: "sydney",
+  },
+  {
+    id: "priv-patterson-cheney",
+    name: "Patterson Cheney",
+    sector: "Automotive retail",
+    platform: "elmo",
+    // ELMO, found by the sweep's candidate report — www.pattersoncheney.com.au
+    // /careers-keysborough/ names the board and nothing else does.
+    //
+    // THE SECOND ELMO FEED, AND THE ONE THAT EXPOSED THE PAGING. Measured
+    // 2026-09-21: 18 roles over two pages, 10 then 8, page 3 empty. Before
+    // fetchElmo learned to walk, this returned the 10 on page one — which is why
+    // it was found in the twelfth batch and only built in the thirteenth.
+    endpoint: "https://pattersoncheney.elmotalent.com.au/careers/workwithus/jobs",
+    origin: "https://pattersoncheney.elmotalent.com.au",
+    // EVERY LOCATION IS A DEALERSHIP, NOT A PLACE: "Westar Derrimut",
+    // "Mercedes-Benz Waverley", "Patterson Cheney Isuzu Trucks Pakenham",
+    // "Patterson Cheney Distribution Centre". None is a HUB_MATCH needle.
+    //
+    // A PLAIN homeHub DOES NOT CATCH THESE, which was measured rather than
+    // assumed: hubFor falls back to the home hub only for an EMPTY location or
+    // one naming the home country, so all 18 of these resolved to no hub — and
+    // an unplaced row archives but never appears on the map. The first cut of
+    // this SiteDef claimed the fallback would place them and it placed none.
+    //
+    // assumeHomeHub is the flag for exactly this shape, and the claim it makes
+    // is true here: Patterson Cheney trades only in Victoria, and every site
+    // named — Derrimut, Campbellfield, Waverley, Pakenham, Berwick, Brighton,
+    // Keysborough — is Greater Melbourne. A hubHints list would need extending
+    // every time a dealership opens or is renamed, which is how a hint list goes
+    // quietly out of date.
+    assumeHomeHub: true,
+    homeHub: "melbourne",
   },
 ];
 
@@ -4633,7 +4661,7 @@ export const PORTAL_GROUPS: string[][] = [
   // on one tenant (6, 41 and 15 roles) plus Torrens' 8. 70 roles.
   ["flg-corporate", "flg-goodlife", "flg-fitnessfirst", "uni-torrens-university-australia"],
   // Group 74 — the 2026-09-21 thirteenth batch. A JobAdder board is one call.
-  ["priv-nhp-electrical-engineering-products", "sydney-rdx"],
+  ["priv-nhp-electrical-engineering-products", "sydney-rdx", "priv-patterson-cheney"],
 ];
 
 const UA =
@@ -8449,77 +8477,140 @@ async function fetchJohnHughes(site: SiteDef): Promise<PortalJob[]> {
  * than silently truncating.
  */
 async function fetchElmo(site: SiteDef): Promise<PortalJob[]> {
-  const html = await getText(site.endpoint);
-  if (!html) return [];
   const out: PortalJob[] = [];
   const seen = new Set<string>();
-  for (const item of html.split(/<li class="list-group-item"/i).slice(1)) {
-    const a = item.match(
-      /<a[^>]*class="[^"]*redirect_elmo_link[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i,
-    );
-    if (!a) continue;
-    const href = clean(a[1]);
-    const title = clean(a[2]);
-    if (!title || seen.has(href)) continue;
-    seen.add(href);
-    // The location sits in the div that follows the map-marker glyph; the
-    // pencil glyph below it carries the employment type. The capture has to be
-    // generous because ELMO indents its template heavily — the value is one
-    // short line inside ~250 characters of whitespace, and a tighter bound
-    // matched nothing at all.
-    const glyph = (name: string): string => {
-      const m = item.match(
-        new RegExp(`glyphicon-${name}[\\s\\S]{0,240}?<div[^>]*>([^<]{2,400})<\\/div>`, "i"),
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+
+  /** The rows on one page that have not been collected yet. */
+  const rowsFrom = (html: string): PortalJob[] => {
+    const rows: PortalJob[] = [];
+    for (const item of html.split(/<li class="list-group-item"/i).slice(1)) {
+      const a = item.match(
+        /<a[^>]*class="[^"]*redirect_elmo_link[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i,
       );
-      return m ? clean(m[1]) : "";
-    };
-    const loc = glyph("map-marker");
-    const type = glyph("pencil");
-    out.push(
-      job(
-        site,
-        title,
-        loc,
-        href.startsWith("http") ? href : site.origin + href,
-        today(),
-        type || "Career portal",
-      ),
-    );
+      if (!a) continue;
+      const href = clean(a[1]);
+      const title = clean(a[2]);
+      if (!title || seen.has(href)) continue;
+      seen.add(href);
+      // The location sits in the div that follows the map-marker glyph; the
+      // pencil glyph below it carries the employment type. The capture has to be
+      // generous because ELMO indents its template heavily — the value is one
+      // short line inside ~250 characters of whitespace, and a tighter bound
+      // matched nothing at all.
+      const glyph = (name: string): string => {
+        const m = item.match(
+          new RegExp(`glyphicon-${name}[\\s\\S]{0,240}?<div[^>]*>([^<]{2,400})<\\/div>`, "i"),
+        );
+        return m ? clean(m[1]) : "";
+      };
+      rows.push(
+        job(
+          site,
+          title,
+          glyph("map-marker"),
+          href.startsWith("http") ? href : site.origin + href,
+          today(),
+          glyph("pencil") || "Career portal",
+        ),
+      );
+    }
+    return rows;
+  };
+
+  // THIS BOARD PAGES, AND THIS READER USED TO TAKE PAGE ONE AND STOP. It noticed
+  // — it compared its haul against the filter counts and logged "N rows vs M
+  // advertised — board paging?" — and then returned the short answer anyway.
+  // Measured 2026-09-21 on Patterson Cheney: 10 rows against 18 advertised,
+  // because page 1 holds 10 and page 2 holds 8.
+  //
+  // Steadfast, the only ELMO feed until now, has 8 roles and no page links at
+  // all, so it fit on one page and the gap stayed invisible. That is why a
+  // warning was not enough: nothing was wrong with the feed that existed.
+  //
+  // The pager only ever links its NEIGHBOURS — page 1 offers "2", page 2 offers
+  // "1" — so there is no last-page number to read and the walk has to find the
+  // end itself.
+  let advertised = 0;
+  // A FAILED FETCH IS NOT THE END OF THE LIST. getText returns nothing for a
+  // 500, a timeout and a genuinely empty page alike, and treating the first of
+  // those as the end is what silently truncated Compass Group to 100 of 644.
+  // So a miss RETRIES THE SAME PAGE rather than moving past it, and only gives
+  // up after this many in a row.
+  const MISS_BUDGET = 3;
+  let misses = 0;
+  for (let page = 1; page <= max;) {
+    const sep = site.endpoint.includes("?") ? "&" : "?";
+    const html = await getText(page === 1 ? site.endpoint : `${site.endpoint}${sep}page=${page}`);
+    if (!html) {
+      if (++misses <= MISS_BUDGET) continue;
+      break;
+    }
+    misses = 0;
+    if (page === 1) advertised = elmoAdvertised(html);
+    const rows = rowsFrom(html);
+    // NO NEW ROWS ENDS THE WALK, and it covers two cases with one test: a page
+    // past the end, which parses to nothing, and a board that ignores ?page=
+    // and keeps serving page one, whose rows are all already in `seen`. The
+    // second would otherwise loop to maxPages collecting nothing.
+    if (!rows.length) break;
+    out.push(...rows);
+    page++;
   }
-  // The cross-check is per FILTER, not across all of them. The page carries
-  // several <select>s — job category, location, work type — and each one's
-  // counts sum to the board's total independently, so adding every option on
-  // the page triples it (measured on Steadfast: 8 roles, 24 across the three).
-  // The largest single filter's sum is the board's own claim about its size.
-  const advertised = Math.max(
-    0,
-    ...html
-      .split(/<select\b/i)
-      .slice(1)
-      .map((sel) =>
-        [...sel.split(/<\/select>/i)[0].matchAll(/\((\d+)\)\s*<\/option>/g)]
-          .map((m) => Number(m[1]))
-          .reduce((a, b) => a + b, 0),
-      ),
-  );
+
   if (advertised && out.length < advertised) {
-    console.log(`elmo ${site.id}: ${out.length} rows vs ${advertised} advertised — board paging?`);
+    console.log(
+      `elmo ${site.id}: ${out.length} rows vs ${advertised} advertised — walk incomplete`,
+    );
   }
   return out;
 }
 
-// ── Attrax (Endeavour Group) ─────────────────────────────────────────────────
-/**
- * Endeavour's careers site is SmartRecruiters-backed but served through Attrax,
- * which renders the results server-side as `attrax-vacancy-tile` cards. The
- * SmartRecruiters API is NOT usable here: the public postings endpoint answers
- * for a company code, and Endeavour's board is not exposed under one (every
- * plausible code returns totalFound 0), so the rendered page is the only feed.
+/** The board's own claim about its size, from its filter counts.
  *
- * Each card repeats its href three times (title, location, apply), so rows are
- * grouped by `data-jobid` rather than counted by anchor — the same mistake the
- * NSW parser made.
+ *  THE FILTERS DO NOT ALL AGREE, and taking the largest was wrong. Measured
+ *  2026-09-21 on Patterson Cheney, whose board holds 18 roles:
+ *
+ *      searchForm[jobLocations]  sums to 18
+ *      searchForm[type]          sums to 18
+ *      searchForm[category]      sums to 23
+ *
+ *  A role can sit in several categories, so that filter counts some of them
+ *  twice; a filter whose attribute some roles lack would undercount the same
+ *  way. Either direction is possible, so neither the max nor the min is the
+ *  board's claim — the number the filters AGREE on is.
+ *
+ *  So this takes the mode, and falls back to the smallest non-zero sum when
+ *  they all disagree, since an undercount produces a quieter warning than an
+ *  overcount produces a permanent false alarm. Against the old max, Patterson
+ *  Cheney reported "18 rows vs 23 advertised — walk incomplete" on a walk that
+ *  was complete, which is a warning that trains its reader to ignore it.
  */
+function elmoAdvertised(html: string): number {
+  const sums = html
+    .split(/<select\b/i)
+    .slice(1)
+    .map((sel) =>
+      [...sel.split(/<\/select>/i)[0].matchAll(/\((\d+)\)\s*<\/option>/g)]
+        .map((m) => Number(m[1]))
+        .reduce((a, b) => a + b, 0),
+    )
+    .filter((n) => n > 0);
+  if (!sums.length) return 0;
+  const tally = new Map<number, number>();
+  for (const n of sums) tally.set(n, (tally.get(n) ?? 0) + 1);
+  let best = 0;
+  let bestSeen = 0;
+  for (const [value, count] of tally) {
+    // A tie goes to the SMALLER value, for the same reason the fallback does.
+    if (count > bestSeen || (count === bestSeen && value < best)) {
+      best = value;
+      bestSeen = count;
+    }
+  }
+  return bestSeen > 1 ? best : Math.min(...sums);
+}
+
 async function fetchAttrax(site: SiteDef): Promise<PortalJob[]> {
   const out: PortalJob[] = [];
   const seen = new Set<string>();
