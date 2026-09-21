@@ -4158,6 +4158,33 @@ export const SITES: SiteDef[] = [
     // also resolve to nothing.
     homeHub: "sydney",
   },
+  // ── The 2026-09-21 thirteenth batch ─────────────────────────────────────────
+  {
+    id: "priv-nhp-electrical-engineering-products",
+    name: "NHP Electrical Engineering Products",
+    sector: "Industrial Manufacturing",
+    platform: "jobadder",
+    // THE ENDPOINT IS THE WIDGET KEY, as BGC's is, and the key is the one part
+    // of a JobAdder board nobody can guess. It appears once, in the page that
+    // embeds apps.jobadder.com/widgets/v1/jobs.min.js:
+    //
+    //     var _jaJobsSettings = { key: "AU1_xgyjr4ee4zqe3exqsgayeza2pm", ...
+    //
+    // and that page is /company/careers/current-opportunities — not /careers,
+    // which 404s, nor any of the three other paths worth guessing. The discovery
+    // sweep found it; scripts/discover-boards.py now captures the key, having
+    // been taught that the key name is UNQUOTED and its value's quotes are
+    // backslash-escaped.
+    //
+    // Measured 2026-09-21: 9 roles. The board spells its states out —
+    // "Victoria, Australia", "Queensland, Australia" — which HUB_MATCH reads
+    // without a hint.
+    endpoint: "AU1_xgyjr4ee4zqe3exqsgayeza2pm",
+    origin: "https://www.nhp.com.au/company/careers/current-opportunities",
+    // One of the nine names no place at all and falls here. NHP's head office is
+    // Richmond in Melbourne, so that is a true statement about the employer.
+    homeHub: "melbourne",
+  },
 ];
 
 /**
@@ -4562,6 +4589,8 @@ export const PORTAL_GROUPS: string[][] = [
   // Group 73 — the 2026-09-20 twelfth batch. One tick: three small Workday walks
   // on one tenant (6, 41 and 15 roles) plus Torrens' 8. 70 roles.
   ["flg-corporate", "flg-goodlife", "flg-fitnessfirst", "uni-torrens-university-australia"],
+  // Group 74 — the 2026-09-21 thirteenth batch. A JobAdder board is one call.
+  ["priv-nhp-electrical-engineering-products"],
 ];
 
 const UA =

@@ -135,7 +135,23 @@ FINGERPRINTS: list[tuple[str, str]] = [
     (r'([a-z0-9-]+)\.avature\.net', 'avature'),
     (r'eightfold\.ai|api/apply/v2/jobs', 'eightfold'),
     (r'expr3ss', 'expr3ss'),
+    # THE JOBADDER WIDGET KEY, which is the only part of a JobAdder board that
+    # cannot be guessed: the employer's page hands `_jaJobsSettings.key` to
+    # apps.jobadder.com/widgets/v1/jobs.min.js, and that key IS the endpoint in
+    # careerSites.ts (see the BGC SiteDef). Listed before the bare marker so a
+    # page carrying the key reports it; both may match, which is useful rather
+    # than noisy.
+    # The key name is UNQUOTED and the quotes around the VALUE are often
+    # backslash-escaped, because the block arrives inside JSON-encoded html.
+    # Measured on NHP: `key: \"AU1_xgyjr4ee4zqe3exqsgayeza2pm\"`. A pattern that
+    # required ["']key["'] matched nothing on the one page that had it.
+    (r'_jaJobsSettings[\s\S]{0,400}?\\?["\']?key\\?["\']?\s*:\s*\\?["\']([A-Za-z0-9_-]{16,})',
+     'jobadder (widget key — this is the careerSites.ts endpoint)'),
     (r'jobadder', 'jobadder'),
+    # Teys Australia's board, and nothing here recognised it. Measured
+    # 2026-09-20: the corridor walked teysgroupau.currentjobs.co job pages and
+    # reported no marker, because this platform was not in the table at all.
+    (r'([a-z0-9-]+)\.currentjobs\.co', 'currentjobs.co (NO READER — would need one)'),
     (r'workable\.com', 'workable'),
     (r'elmotalent', 'elmo'),
     (r'\.nga\.net\.au', 'nga (NO READER — common on Australian universities)'),
@@ -239,6 +255,13 @@ LINK_SKIP = re.compile(r"""
     | careers?[-+_ ]*(?:planning|readiness|development|advice|guide|universe|fair|expo|hub)
     | careerhub
     | /(?:login|signin|register|apply-now)(?:[/?#]|$)
+    # SHARE LINKS. Measured 2026-09-20 on Teys: the corridor followed
+    # linkedin.com/shareArticle and twitter.com/home?status=... because each one
+    # carries the JOB URL inside its query string, so "job" is in the href. They
+    # can never be a board, they are off-site so they are followed last, and each
+    # one still costs a fetch out of LINK_BUDGET.
+    | /shareArticle | /sharer | [?&]status=Check\+?out | /intent/tweet
+    | (?:twitter|x)\.com/home | facebook\.com/share
 """, re.I | re.X)
 
 # Lower rank is followed first. The bands: an actual list of vacancies; a page
@@ -502,7 +525,7 @@ BOARD_HOST = re.compile(
           # Added after SEEK Limited fingerprinted `jobadder` with no host and
           # the candidate search came back empty, because none of the hosts above
           # matched and its pages carry no listing path either.
-          |jobadder\.com|greenhouse\.io|lever\.co|workable\.com
+          |jobadder\.com|currentjobs\.co|greenhouse\.io|lever\.co|workable\.com
           |eightfold\.ai|snaphire\.com|elmotalent\.com\.au|ashbyhq\.com)
         (?:/[^"'\s<>]*)?""",
     re.I | re.X)
