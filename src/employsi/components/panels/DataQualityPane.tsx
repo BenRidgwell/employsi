@@ -1,17 +1,38 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getDataQuality } from "../../lib/dataQualityFn";
+import {
+  getDataQuality,
+  type FeedRow,
+  type IngestBucket,
+  type MatchRate,
+} from "../../lib/dataQualityFn";
+import { CRAWL_FAMILIES, nextForFamily, untilLabel } from "../../lib/crawlSchedule";
 import { CardLoader } from "./CardLoader";
 import { getEngagement, type Cohort } from "../../lib/engagementFn";
 import { useAppStore } from "../../state/store";
 
 /**
- * The admin console, built from `Admin_Panel.html`.
+ * The admin console, built from `Admin_Panel.html` and restyled to
+ * `Control_Room.html` on 2026-09-21.
+ *
+ * WHAT THE SECOND DESIGN CHANGED. It is a centred overlay up to 1400px rather
+ * than a 940px pane docked beside the rail, because the data tab now carries
+ * seven cards and two of them are charts that are unreadable at pane width. It
+ * also drops the sortable freshness TABLE for a list of rows filtered to
+ * Silent / All — five sort columns replaced by the one question the card is
+ * for. Three cards are new: ingest volume, skill match rate, scheduled crawls.
+ *
+ * EVERY FIGURE ON THOSE THREE IS QUERIED, NOT TAKEN FROM THE MOCKUP. The design
+ * ships plausible numbers — 75,757 live, 92.1% matched, 919,552 mapped — and
+ * none of them is in this code. Ingest volume and match rate are aggregates
+ * added to dataQualityFn; the crawl times are computed from the Worker's real
+ * cron expressions. A design's placeholder figure rendered as live data is the
+ * exact failure this codebase keeps writing checks against.
  *
  * Two tabs. DATA QUALITY is the archive's own health — feed freshness, unmapped
- * titles, attribution suspects — and existed before this design; it is restyled
- * to the design's cards here, not rewritten. USER ENGAGEMENT is new: leading
- * indicators, retention by signup cohort, lagging outcomes and time in app.
+ * titles, attribution suspects — and existed before either design. USER
+ * ENGAGEMENT is leading indicators, retention by signup cohort, lagging
+ * outcomes and time in app.
  *
  * Those four sections were the reason this went in two passes. Nothing in the
  * app recorded a search, a card opened or how long anyone stayed, so there was
@@ -41,131 +62,181 @@ import { useAppStore } from "../../state/store";
 /** A feed silent this long is a problem rather than a slow day. */
 const STALE_DAYS = 2;
 
-type SortKey = "source" | "kind" | "live" | "total" | "lastSeen";
 type Tab = "data" | "engagement";
 
 /**
- * Which way a column runs on its FIRST click.
- *
- * Not uniform, because the useful end differs by column. A count is being
- * scanned for the feed that has almost stopped writing, so it opens smallest
- * first; a date is being scanned for what ran most recently, so it opens
- * newest first. Clicking again reverses either.
+ * The design's KPI tile. `bad` marks a figure that is the bad direction; `of`
+ * is the quieter denominator in "9 / 90".
  */
-const FIRST_DIR: Record<SortKey, "asc" | "desc"> = {
-  source: "asc",
-  // Sorting by type is how you read the table by family — every government
-  // board together, every career portal together — so it opens A-Z.
-  kind: "asc",
-  live: "asc",
-  total: "asc",
-  lastSeen: "desc",
-};
-
-function SortHead({
-  col,
-  label,
-  numeric,
-  sort,
-  onSort,
-}: {
-  col: SortKey;
-  label: string;
-  numeric?: boolean;
-  sort: { key: SortKey; dir: "asc" | "desc" };
-  onSort: (k: SortKey) => void;
-}) {
-  const active = sort.key === col;
-  return (
-    <th
-      className={numeric ? "dqnum" : undefined}
-      // Announces the sort to a screen reader rather than leaving the arrow as
-      // the only signal, which is invisible to one.
-      aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
-    >
-      <button
-        type="button"
-        className={`dqsort${active ? " on" : ""}`}
-        onClick={() => onSort(col)}
-        title={`Sort by ${label.toLowerCase()}`}
-      >
-        {label}
-        <span className="dqarrow" aria-hidden>
-          {active ? (sort.dir === "asc" ? "↑" : "↓") : "↕"}
-        </span>
-      </button>
-    </th>
-  );
-}
-
-function FeedRowView({
-  source,
-  kind,
-  lastSeen,
-  firstSeen,
-  live,
-  total,
-  staleDays,
-  historical,
-}: {
-  source: string;
-  kind: string;
-  lastSeen: string;
-  firstSeen: string;
-  live: number;
-  total: number;
-  staleDays: number;
-  historical: boolean;
-}) {
-  // A closed corpus cannot be stale — see HISTORICAL_SOURCES. Flagging one
-  // would put a red row on the panel permanently, and a warning that never
-  // clears trains you to ignore the ones that matter.
-  const stale = !historical && staleDays >= STALE_DAYS;
-  return (
-    <tr className={stale ? "dqstale" : undefined}>
-      <td className="dqsrc">{source}</td>
-      <td className="dqkind" title={kind}>
-        {kind}
-      </td>
-      <td className="dqnum">{live.toLocaleString()}</td>
-      <td className="dqnum dqmuted">{total.toLocaleString()}</td>
-      <td className="dqwhen">
-        {lastSeen || "never"}
-        {stale && (
-          <span className="dqflag" title="No write in the last two days">
-            {staleDays >= 999 ? "no data" : `${staleDays}d silent`}
-          </span>
-        )}
-        {historical && (
-          <span
-            className="dqhist"
-            title="A finished backfill, not a live feed — it is not expected to write again"
-          >
-            historical {firstSeen.slice(0, 4)}–{lastSeen.slice(0, 4)}
-          </span>
-        )}
-      </td>
-    </tr>
-  );
-}
-
-/** The design's KPI tile. `tone` marks a figure that is the bad direction. */
 function Kpi({
   label,
   value,
+  of,
   note,
   bad,
 }: {
   label: string;
   value: string;
+  of?: string;
   note: string;
   bad?: boolean;
 }) {
   return (
     <div className="dqkpi">
       <span className="dqkpilbl">{label}</span>
-      <span className={`dqkpival${bad ? " bad" : ""}`}>{value}</span>
+      <span className={`dqkpival${bad ? " bad" : ""}`}>
+        {value}
+        {of ? <span className="dqkpiof"> / {of}</span> : null}
+      </span>
       <span className="dqkpinote">{note}</span>
+    </div>
+  );
+}
+
+/**
+ * Ingest volume: rows that FIRST appeared in each month, split into still
+ * advertised and since taken down.
+ *
+ * Heights are a share of the tallest month rather than an absolute scale, and
+ * the axis is labelled from the same maximum, so the two cannot disagree. The
+ * series arrives already clamped to the span the live feeds cover — see
+ * dataQualityFn — because an unclamped version of this chart draws the archive
+ * filling out and reads as a hiring surge.
+ */
+function IngestChart({ buckets }: { buckets: IngestBucket[] }) {
+  const max = Math.max(1, ...buckets.map((b) => b.live + b.archived));
+  // Round the axis top to something a person can read off.
+  const step = Math.max(1, Math.ceil(max / 4));
+  const top = step * 4;
+  const tick = (n: number) => (n >= 1000 ? `${Math.round(n / 100) / 10}k` : String(n));
+  return (
+    <div className="dqchart">
+      <div className="dqchartax" aria-hidden>
+        <span>{tick(top)}</span>
+        <span>{tick(top * 0.75)}</span>
+        <span>{tick(top * 0.5)}</span>
+        <span>{tick(top * 0.25)}</span>
+        <span>0</span>
+      </div>
+      <div
+        className="dqchartplot"
+        style={{ gridTemplateColumns: `repeat(${Math.max(1, buckets.length)}, minmax(0, 1fr))` }}
+      >
+        {buckets.map((b) => {
+          const solo = b.live === 0 || b.archived === 0;
+          return (
+            <div key={b.month} className={`dqbarcol${solo ? " solo" : ""}`}>
+              <div
+                className="dqbararch"
+                style={{ height: `${(b.archived / top) * 100}%` }}
+                title={`${b.archived.toLocaleString()} archived`}
+              />
+              <div
+                className="dqbarlive"
+                style={{ height: `${(b.live / top) * 100}%` }}
+                title={`${b.live.toLocaleString()} still advertised`}
+              />
+              <div className="dqbarlbl">{b.label}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Skill match rate, as the design's half-gauge. */
+function MatchGauge({ match }: { match: MatchRate }) {
+  // 251.3 is the arc's length; the offset is the unfilled remainder.
+  const LEN = 251.3;
+  const offset = LEN * (1 - Math.min(1, Math.max(0, match.pct / 100)));
+  const dp = match.prevPct === null ? null : match.pct - match.prevPct;
+  return (
+    <>
+      <div className="dqgauge">
+        <svg viewBox="0 0 200 120" role="img" aria-label={`${match.pct.toFixed(1)} percent mapped`}>
+          <path
+            d="M20,110 A80,80 0 0 1 180,110"
+            fill="none"
+            stroke="var(--neutral-200)"
+            strokeWidth="14"
+            strokeLinecap="round"
+          />
+          <path
+            d="M20,110 A80,80 0 0 1 180,110"
+            fill="none"
+            stroke="var(--neutral-900)"
+            strokeWidth="14"
+            strokeLinecap="round"
+            strokeDasharray={LEN}
+            strokeDashoffset={offset}
+          />
+          <text
+            x="100"
+            y="98"
+            textAnchor="middle"
+            fontFamily="Inter, sans-serif"
+            fontSize="34"
+            fontWeight="600"
+            fill="var(--text-primary)"
+            letterSpacing="-1"
+          >
+            {match.pct.toFixed(1)}%
+          </text>
+        </svg>
+      </div>
+      <div className="dqgaugenote">
+        {/* No comparison is drawn until a full prior window exists, rather than
+            showing a swing measured off nothing. */}
+        {dp === null
+          ? "No prior 30-day window to compare against yet."
+          : `${dp >= 0 ? "Up" : "Down"} ${Math.abs(dp).toFixed(1)} pts vs the 30 days before.`}
+      </div>
+      <div className="dqsplit">
+        <div className="dqsplitcell">
+          <span className="dqsplitlbl">Mapped</span>
+          <span className="dqsplitval">{match.mapped.toLocaleString()}</span>
+        </div>
+        <div className="dqsplitcell">
+          <span className="dqsplitlbl">Unmapped</span>
+          <span className="dqsplitval">{match.unmapped.toLocaleString()}</span>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** The design's feed row. Replaces the sortable table. */
+function FeedCard({ f }: { f: FeedRow }) {
+  const stale = !f.historical && f.staleDays >= STALE_DAYS;
+  return (
+    <div className={`dqfeed${stale ? " silent" : ""}`}>
+      <div className="dqfeedicon" aria-hidden>
+        {f.source.slice(0, 2).toUpperCase()}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div className="dqfeedname">
+          <span className="dqfeedsrc">{f.source}</span>
+          <span className="dqfeedkind">{f.kind}</span>
+        </div>
+        <div className="dqfeedmeta">
+          <span>{f.total.toLocaleString()} archived</span>
+          <span>{f.live.toLocaleString()} live</span>
+          <span>last write {f.lastSeen || "never"}</span>
+        </div>
+      </div>
+      {f.historical ? (
+        <span
+          className="dqfeedpill hist"
+          title="A finished backfill, not a live feed — it is not expected to write again"
+        >
+          historical {f.firstSeen.slice(0, 4)}–{f.lastSeen.slice(0, 4)}
+        </span>
+      ) : (
+        <span className={`dqfeedpill${stale ? " bad" : ""}`}>
+          {f.staleDays >= 999 ? "no data" : stale ? `${f.staleDays}d silent` : "current"}
+        </span>
+      )}
     </div>
   );
 }
@@ -230,21 +301,15 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
   const isAdmin = useAppStore((s) => s.role) === "admin";
   const [tab, setTab] = useState<Tab>("data");
   const [days, setDays] = useState<1 | 7 | 30>(30);
-  // Source A-Z to start: the table is also a checklist of every feed, and a
-  // stable alphabetical order is what makes "is X still there" answerable at a
-  // glance. Stale rows are flagged in colour regardless of sort, so the
-  // actionable ones do not depend on ordering to be found.
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
-    key: "source",
-    dir: "asc",
-  });
-  const onSort = (k: SortKey) =>
-    setSort((cur) =>
-      cur.key === k
-        ? { key: k, dir: cur.dir === "asc" ? "desc" : "asc" }
-        : { key: k, dir: FIRST_DIR[k] },
-    );
-
+  /**
+   * Feed freshness opens on SILENT, not on the full list.
+   *
+   * The card answers one question — has anything stopped writing — and with
+   * forty-odd sources the full list buries the two that matter. "All" is one
+   * click away and is what the list was before the redesign.
+   */
+  const [feedView, setFeedView] = useState<"silent" | "all">("silent");
+  const [feedsOpen, setFeedsOpen] = useState(false);
   // isFetching, not isPending: React Query keeps the archive read for ten
   // minutes, so a second open in the same session has data already and must NOT
   // flash a loader over content that is right there. The loader is for the
@@ -274,29 +339,13 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
     enabled: isAdmin && tab === "engagement",
   });
 
-  const feeds = useMemo(() => {
-    const rows = [...(data?.feeds ?? [])];
-    const mul = sort.dir === "asc" ? 1 : -1;
-    rows.sort((a, b) => {
-      if (sort.key === "source") return mul * a.source.localeCompare(b.source);
-      // Type is a string, and the numeric branch below would subtract two of
-      // them into NaN — which Array.sort treats as "equal" and silently leaves
-      // the order untouched, so the column would look sorted and not be.
-      // Ties fall back to source so the families read alphabetically inside.
-      if (sort.key === "kind") {
-        return mul * a.kind.localeCompare(b.kind) || a.source.localeCompare(b.source);
-      }
-      if (sort.key === "lastSeen") {
-        // ISO dates compare correctly as strings. A feed that has never
-        // written sorts as the oldest possible, which is what it is.
-        return mul * (a.lastSeen || "").localeCompare(b.lastSeen || "");
-      }
-      const d = a[sort.key] - b[sort.key];
-      // Ties keep a predictable order rather than shuffling between renders.
-      return d !== 0 ? mul * d : a.source.localeCompare(b.source);
-    });
-    return rows;
-  }, [data?.feeds, sort]);
+  /**
+   * The freshness rows, unordered here on purpose: `visibleFeeds` below applies
+   * the only order this card wants — silent first, longest-silent first. The
+   * sortable table this replaced let you re-order by five columns, which the
+   * design drops in favour of a Silent / All filter.
+   */
+  const feeds = useMemo(() => [...(data?.feeds ?? [])], [data?.feeds]);
 
   // Silent feeds, counted off the SAME rows the table flags, so the chip and
   // the flags can never disagree — including the historical exemption.
@@ -310,6 +359,35 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
 
   const liveTotal = useMemo(() => (data?.feeds ?? []).reduce((a, f) => a + f.live, 0), [data]);
 
+  /** What the chosen view covers, silent-first so the actionable rows lead. */
+  const visibleFeeds = useMemo(() => {
+    const rows = feeds.filter((f) =>
+      feedView === "all" ? true : !f.historical && f.staleDays >= STALE_DAYS,
+    );
+    return [...rows].sort((a, b) => {
+      const as = !a.historical && a.staleDays >= STALE_DAYS ? 0 : 1;
+      const bs = !b.historical && b.staleDays >= STALE_DAYS ? 0 : 1;
+      return as - bs || b.staleDays - a.staleDays || a.source.localeCompare(b.source);
+    });
+  }, [feeds, feedView]);
+  /** Collapsed to the design's short list until asked for the rest. */
+  const FEED_PREVIEW = 6;
+  const shownFeeds = feedsOpen ? visibleFeeds : visibleFeeds.slice(0, FEED_PREVIEW);
+  const hiddenFeeds = visibleFeeds.length - shownFeeds.length;
+
+  /**
+   * Next firing per crawl family. Recomputed on each open rather than ticking:
+   * the card is read, not watched, and a timer re-rendering the whole console
+   * every minute to move one label is not worth the renders.
+   */
+  const crawls = useMemo(() => {
+    const now = new Date();
+    return CRAWL_FAMILIES.map((f) => {
+      const at = nextForFamily(f, now);
+      return { f, at, until: at ? untilLabel(at, now) : null };
+    });
+  }, []);
+
   // Nothing to draw yet on this tab: the white loader covers the wait rather
   // than showing an empty card that reads as an empty archive.
   const firstLoad = tab === "data" ? !data && isFetching : !eng && engFetching;
@@ -322,7 +400,7 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
       {/* Same shell as the analyst card: a transparent scrim that closes on
           click, then a positioned card above it. Without the scrim + z-index
           this rendered underneath the map and the rail. */}
-      <div className="panescrim" onClick={onClose} />
+      <div className="panescrim dqscrim" onClick={onClose} />
       <div className="dqpane" role="dialog" aria-label="Admin console">
         {firstLoad && <CardLoader />}
         <div className="dqhd">
@@ -392,18 +470,19 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
                 />
                 <Kpi
                   label="Silent feeds"
-                  value={`${silentCount} / ${liveFeeds}`}
+                  value={String(silentCount)}
+                  of={String(liveFeeds)}
                   note={
                     silentCount
-                      ? "A silent feed reads as a quiet market."
+                      ? `Silent ${STALE_DAYS} days or more.`
                       : "Every source wrote in the last two days."
                   }
                   bad={silentCount > 0}
                 />
                 <Kpi
-                  label="Unmapped 30d"
+                  label="Unmapped · 30d"
                   value={data.unmappedTotal.toLocaleString()}
-                  note="Roles that matched no skill."
+                  note={`${(100 - data.match.pct).toFixed(1)}% matched no skill`}
                 />
                 <Kpi
                   label="Attribution suspects"
@@ -412,35 +491,99 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
                 />
               </div>
 
+              <div className="dqpair dqpairwide">
+                <section className="dqcard">
+                  <div className="dqcardhd">
+                    <span className="dqcardtitle">Ingest volume</span>
+                    <div className="dqlegend">
+                      <span>
+                        <span className="dqdot live" aria-hidden /> Live
+                      </span>
+                      <span>
+                        <span className="dqdot arch" aria-hidden /> Archived
+                      </span>
+                    </div>
+                  </div>
+                  {data.ingest.length ? (
+                    <>
+                      <IngestChart buckets={data.ingest} />
+                      {/* Said on the card, not in a comment: the series starts
+                          where it does because of feed coverage, and a reader
+                          who assumes it starts at the archive's beginning will
+                          read the first bar as a collapse in hiring. */}
+                      <p className="dqcardfoot">
+                        By the month a role first appeared. Starts{" "}
+                        {data.ingestFrom ? data.ingestFrom.slice(0, 7) : "at the archive's start"},
+                        the first month every currently-writing feed covers — earlier months are
+                        short because the archive was still filling out, not because hiring was.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="dqmsg">Not enough coverage yet to draw a monthly series.</p>
+                  )}
+                </section>
+
+                <section className="dqcard">
+                  <div className="dqcardhd">
+                    <span className="dqcardtitle">Skill match rate</span>
+                    <span className="dqeyebrow">Last 30 days</span>
+                  </div>
+                  <MatchGauge match={data.match} />
+                </section>
+              </div>
+
               <section className="dqcard">
                 <div className="dqcardhd">
                   <div className="dqcardtext">
-                    <span className="dqcardtitle">Feed freshness</span>
+                    <div className="dqfeedname">
+                      <span className="dqcardtitle">Feed freshness</span>
+                      {silentCount > 0 && <span className="dqflagchip">{silentCount} silent</span>}
+                    </div>
                     <span className="dqcardsub">
                       A feed that stops writing looks identical to a quiet market. Anything silent
                       for {STALE_DAYS} days or more is flagged.
                     </span>
                   </div>
-                  {silentCount > 0 && <span className="dqflagchip">{silentCount} silent</span>}
-                </div>
-                <table className="dqtable">
-                  <thead>
-                    <tr>
-                      <SortHead col="source" label="Source" sort={sort} onSort={onSort} />
-                      <SortHead col="kind" label="Type" sort={sort} onSort={onSort} />
-                      <SortHead col="live" label="Live" numeric sort={sort} onSort={onSort} />
-                      <SortHead col="total" label="Archived" numeric sort={sort} onSort={onSort} />
-                      <SortHead col="lastSeen" label="Last write" sort={sort} onSort={onSort} />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {feeds.map((f) => (
-                      <FeedRowView key={f.source} {...f} />
+                  <div className="dqviews" role="group" aria-label="Which feeds to show">
+                    {(
+                      [
+                        { key: "silent", label: "Silent" },
+                        { key: "all", label: "All" },
+                      ] as const
+                    ).map((v) => (
+                      <button
+                        key={v.key}
+                        type="button"
+                        className={`dqview${feedView === v.key ? " on" : ""}`}
+                        aria-pressed={feedView === v.key}
+                        onClick={() => setFeedView(v.key)}
+                      >
+                        {v.label}
+                      </button>
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+                </div>
+                {shownFeeds.length ? (
+                  <div className="dqfeeds">
+                    {shownFeeds.map((f) => (
+                      <FeedCard key={f.source} f={f} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="dqmsg">
+                    {feedView === "silent"
+                      ? "Every source wrote in the last two days."
+                      : "No sources in the archive."}
+                  </p>
+                )}
+                {hiddenFeeds > 0 && (
+                  <button type="button" className="dqmore" onClick={() => setFeedsOpen(true)}>
+                    Show {hiddenFeeds} more {hiddenFeeds === 1 ? "source" : "sources"}
+                  </button>
+                )}
                 <p className="dqcardfoot">
-                  Showing {feeds.length} of {data.feeds.length} sources.
+                  Showing {shownFeeds.length} of {visibleFeeds.length}{" "}
+                  {feedView === "silent" ? "silent" : ""} sources.
                 </p>
               </section>
 
@@ -503,6 +646,36 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
                   )}
                 </section>
               </div>
+
+              <section className="dqcard">
+                <div className="dqcardtext">
+                  <span className="dqcardtitle">Scheduled crawls</span>
+                  <span className="dqcardsub">
+                    When each family next fires, in UTC. A feed silent since before its last run has
+                    stopped; one silent since after it simply has not run yet.
+                  </span>
+                </div>
+                <div className="dqcrawls">
+                  {crawls.map(({ f, at, until }) => (
+                    <div key={f.id} className="dqcrawl">
+                      <div className="dqcrawlicon" aria-hidden>
+                        {f.crons.length}×
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="dqcrawltitle">{f.title}</div>
+                        <div className="dqcrawlwhen">{f.covers}</div>
+                      </div>
+                      {/* Suppressed rather than guessed when the expression is
+                          one nextRun refuses to read — see crawlSchedule.ts. */}
+                      <span className="dqcrawlnext">
+                        {at
+                          ? `${at.toISOString().slice(11, 16)} UTC · ${until}`
+                          : "schedule unread"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
 
               <p className="dqfoot">Read from the live archive · {data.generated}</p>
             </div>

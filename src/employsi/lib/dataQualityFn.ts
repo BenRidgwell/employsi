@@ -170,6 +170,34 @@ export interface AttributionRow {
   reason: string;
 }
 
+/** One month of the ingest chart: rows that FIRST appeared in that month. */
+export interface IngestBucket {
+  /** YYYY-MM. */
+  month: string;
+  /** Short label for the axis, e.g. "Jul". */
+  label: string;
+  /** Of the rows first seen that month, how many are still advertised. */
+  live: number;
+  /** The rest — seen once, since taken down. */
+  archived: number;
+}
+
+/**
+ * How much of the archive the taxonomy can read.
+ *
+ * `prevPct` is the SAME measurement over the preceding window, never a
+ * different one — comparing an exact-day count against a reconstruction is
+ * mostly measuring the difference between the two methods, which is this
+ * codebase's most-repeated trap.
+ */
+export interface MatchRate {
+  mapped: number;
+  unmapped: number;
+  pct: number;
+  /** Null until the archive is old enough to hold a full prior window. */
+  prevPct: number | null;
+}
+
 export interface DataQuality {
   ok: boolean;
   /** Set when the caller may not see this, or the archive is unreachable. */
@@ -179,6 +207,15 @@ export interface DataQuality {
   unmappedTotal: number;
   unmapped: UnmappedRow[];
   attribution: AttributionRow[];
+  ingest: IngestBucket[];
+  match: MatchRate;
+  /**
+   * Oldest month the ingest chart can honestly start at: a month is only
+   * comparable once the feeds carrying it had arrived. See the note in the
+   * handler — without it the chart draws the archive filling out and reads as
+   * a hiring surge.
+   */
+  ingestFrom: string;
 }
 
 const EMPTY: DataQuality = {
@@ -188,6 +225,9 @@ const EMPTY: DataQuality = {
   unmappedTotal: 0,
   unmapped: [],
   attribution: [],
+  ingest: [],
+  match: { mapped: 0, unmapped: 0, pct: 0, prevPct: null },
+  ingestFrom: "",
 };
 
 function daysSince(day: string, today: string): number {
@@ -329,6 +369,102 @@ export const getDataQuality = createServerFn({ method: "GET" }).handler(
       }
       attribution.sort((a, b) => b.n - a.n);
 
+      // 4. Ingest volume by month, split into rows still advertised and rows
+      //    since taken down. Keyed on first_seen, so each row is counted in the
+      //    month it ARRIVED and appears exactly once across the chart.
+      //
+      //    THE START IS CLAMPED, and that is the whole difficulty. A month is
+      //    only comparable once the feeds covering it had arrived, and the
+      //    archive's earliest months hold a handful of sources rather than a
+      //    quiet market. Drawn unclamped this chart shows the ARCHIVE filling
+      //    out and reads as a hiring surge — the failure this codebase has
+      //    measured more often than any other. So the series starts at the
+      //    first month that the currently-writing feeds actually span, taken as
+      //    the newest of their first_seen days: before that point at least one
+      //    live feed contributes nothing and the total is short for a reason
+      //    that has nothing to do with the market. Closed historical corpora
+      //    are excluded from that calculation — they have finished, so their
+      //    first_seen says nothing about present coverage.
+      const liveStarts = feeds
+        .filter((f) => !f.historical && f.firstSeen && f.live > 0)
+        .map((f) => f.firstSeen)
+        .sort();
+      const coverFrom = liveStarts.length ? liveStarts[liveStarts.length - 1] : "";
+      const ingestRes = await db
+        .prepare(
+          `SELECT substr(first_seen,1,7) AS ym,
+                  COUNT(*) AS total,
+                  SUM(CASE WHEN last_seen >= date('now','-1 day') THEN 1 ELSE 0 END) AS live
+             FROM jobs
+            WHERE first_seen >= date('now','-6 month')
+            GROUP BY ym
+            ORDER BY ym`,
+        )
+        .all();
+      const MON = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+      const ingest: IngestBucket[] = (ingestRes?.results ?? [])
+        .map((r) => {
+          const month = String(r.ym || "");
+          const total = Number(r.total) || 0;
+          const live = Number(r.live) || 0;
+          const mi = Number(month.slice(5, 7)) - 1;
+          return {
+            month,
+            label: MON[mi] ?? month,
+            live,
+            archived: Math.max(0, total - live),
+          };
+        })
+        // Only the months every currently-writing feed could contribute to.
+        .filter((b) => !coverFrom || b.month >= coverFrom.slice(0, 7));
+
+      // 5. Skill match rate over the same 30-day window the unmapped list uses,
+      //    and the same measurement again over the 30 days before it. Both
+      //    halves are counted the identical way; the only difference is which
+      //    days they cover.
+      const matchRow = await db
+        .prepare(
+          `SELECT SUM(CASE WHEN skills IS NULL OR skills = '[]' THEN 0 ELSE 1 END) AS mapped,
+                  SUM(CASE WHEN skills IS NULL OR skills = '[]' THEN 1 ELSE 0 END) AS unmapped
+             FROM jobs
+            WHERE last_seen >= date('now','-30 day')`,
+        )
+        .first();
+      const prevRow = await db
+        .prepare(
+          `SELECT SUM(CASE WHEN skills IS NULL OR skills = '[]' THEN 0 ELSE 1 END) AS mapped,
+                  SUM(CASE WHEN skills IS NULL OR skills = '[]' THEN 1 ELSE 0 END) AS unmapped
+             FROM jobs
+            WHERE last_seen >= date('now','-60 day') AND last_seen < date('now','-30 day')`,
+        )
+        .first();
+      const pctOf = (m: number, u: number) => (m + u > 0 ? (100 * m) / (m + u) : 0);
+      const mMapped = Number(matchRow?.mapped) || 0;
+      const mUnmapped = Number(matchRow?.unmapped) || 0;
+      const pMapped = Number(prevRow?.mapped) || 0;
+      const pUnmapped = Number(prevRow?.unmapped) || 0;
+      const match: MatchRate = {
+        mapped: mMapped,
+        unmapped: mUnmapped,
+        pct: pctOf(mMapped, mUnmapped),
+        // Suppressed rather than shown as a swing off nothing when the prior
+        // window is empty, which it is for any feed younger than 60 days.
+        prevPct: pMapped + pUnmapped > 0 ? pctOf(pMapped, pUnmapped) : null,
+      };
+
       return {
         ok: true,
         generated: today,
@@ -336,6 +472,9 @@ export const getDataQuality = createServerFn({ method: "GET" }).handler(
         unmappedTotal,
         unmapped,
         attribution: attribution.slice(0, 40),
+        ingest,
+        match,
+        ingestFrom: coverFrom,
       };
     } catch {
       return { ...EMPTY, error: "Couldn't read the archive." };

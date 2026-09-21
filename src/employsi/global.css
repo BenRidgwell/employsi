@@ -1987,22 +1987,33 @@ body {
    into the 520px this pane used to be. Below ~980px it drops to one column
    rather than scrolling sideways (see the media query at the end of this
    block). */
+/* ── Control room ───────────────────────────────────────────────────────────
+   Restyled to `Control_Room.html` on 2026-09-21. The console was a 940px pane
+   docked beside the rail like the analyst and trending cards; the design makes
+   it a CENTRED OVERLAY up to 1400px, because the data-quality tab now carries
+   seven cards and two of them are charts that are unreadable at pane width.
+
+   That is why .dqscrim exists rather than reusing .panescrim: the shared scrim
+   is transparent and click-to-close, and three panes depend on it staying that
+   way. This one paints the design's neutral-300 backdrop over the map. */
+.dqscrim {
+  background: var(--neutral-300);
+}
 .dqpane {
   position: fixed;
-  left: var(--pane-left);
-  top: var(--pane-top);
+  inset: 0;
+  margin: auto;
   box-sizing: border-box;
-  width: 940px;
-  max-width: calc(100vw - var(--pane-left) - 24px);
-  height: min(760px, var(--pane-max-h));
+  width: calc(100vw - 48px);
+  max-width: 1400px;
+  height: calc(100vh - 48px);
+  max-height: 900px;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--border-default);
-  border-radius: 20px;
-  background: var(--surface-card);
-  box-shadow:
-    0 1px 2px rgba(28, 28, 30, 0.06),
-    0 24px 48px -28px rgba(28, 28, 30, 0.5);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  background: var(--surface-page);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
   animation: emppop 200ms cubic-bezier(0.32, 0.72, 0, 1) both;
   z-index: 49;
@@ -2011,10 +2022,11 @@ body {
 .dqhd {
   flex: 0 0 auto;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--line, #ededf0);
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 .dqhdtext {
   display: flex;
@@ -2024,15 +2036,17 @@ body {
 }
 .dqeyebrow {
   font-family: var(--font-label);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--slate, #8e8e93);
+  color: var(--text-tertiary);
 }
 .dqhdtitle {
-  font-size: 15px;
+  margin-top: 6px;
+  font-size: 26px;
   font-weight: 600;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
 }
 .dqhdctl {
   margin-left: auto;
@@ -2047,30 +2061,32 @@ body {
 .dqrange {
   display: inline-flex;
   padding: 3px;
-  gap: 3px;
-  border: 1px solid #e5e5ea;
-  border-radius: 9px;
-  background: #f4f4f5;
+  gap: 2px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface-sunken);
 }
 .dqrangebtn {
-  height: 26px;
-  padding: 0 11px;
+  height: 32px;
+  padding: 0 14px;
   border: 0;
-  border-radius: 7px;
+  border-radius: 8px;
   background: transparent;
-  color: #8e8e93;
-  font-family: var(--font-label);
-  font-size: 11px;
-  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
   cursor: pointer;
   transition:
     background 120ms ease,
     color 120ms ease;
 }
 .dqrangebtn.on {
-  background: #ffffff;
-  color: #1c1c1e;
-  box-shadow: 0 1px 2px rgba(28, 28, 30, 0.1);
+  background: var(--surface-page);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
 }
 .dqtabs {
   flex: 0 0 auto;
@@ -2081,47 +2097,51 @@ body {
   border-bottom: 1px solid #ededf0;
 }
 .dqtab {
-  padding: 0 0 12px;
+  height: 52px;
+  padding: 0;
+  margin-bottom: -1px;
   border: 0;
   background: none;
   cursor: pointer;
   font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: -0.008em;
-  color: #8e8e93;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-tertiary);
+  border-bottom: 2px solid transparent;
   transition: color 120ms ease;
 }
 .dqtab.on {
-  color: #1c1c1e;
-  box-shadow: inset 0 -2px 0 0 #1c1c1e;
+  color: var(--text-primary);
+  font-weight: 600;
+  border-bottom-color: var(--neutral-900);
 }
 .dqx {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--line, #ededf0);
-  border-radius: 50%;
-  background: #fff;
-  font-size: 17px;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: var(--surface-page);
+  font-size: 18px;
   line-height: 1;
-  color: var(--slate, #6c6c72);
+  color: var(--text-secondary);
   cursor: pointer;
 }
 .dqx:hover {
-  background: #f4f4f5;
+  background: var(--surface-hover);
 }
 .dqbody {
   flex: 1 1 auto;
   overflow-y: auto;
-  padding: 20px;
+  padding: 24px 28px 28px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  background: #fbfbfc;
+  gap: 20px;
+  background: var(--surface-page);
 }
 /* A scroller must never compress what it scrolls.
    This is not belt-and-braces: .dqbody is a flex COLUMN of a fixed height, so
@@ -2141,92 +2161,111 @@ body {
 /* ── KPI row ─────────────────────────────────────────────────────────────── */
 .dqkpis {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+  gap: 16px;
 }
 .dqkpi {
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  padding: 15px 16px;
-  border: 1px solid #ededf0;
+  gap: 0;
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--border-subtle);
   border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(28, 28, 30, 0.04);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-sm);
 }
 .dqkpilbl {
   font-family: var(--font-label);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #8e8e93;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .dqkpival {
   font-family: var(--font-label);
-  font-size: 26px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  color: #1c1c1e;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-top: 10px;
+  color: var(--text-primary);
 }
 .dqkpival.bad {
-  color: #a3392f;
+  color: var(--status-danger-fg);
+}
+/* The denominator in "9 / 90" — same line, quieter, so the numerator is the
+   figure the eye lands on. */
+.dqkpiof {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-tertiary);
 }
 .dqkpinote {
-  font-size: 12.5px;
-  color: #8e8e93;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 8px;
   text-wrap: pretty;
 }
 /* ── Card ────────────────────────────────────────────────────────────────── */
 .dqcard {
   display: flex;
   flex-direction: column;
-  border: 1px solid #ededf0;
+  min-width: 0;
+  padding: 22px 24px;
+  border: 1px solid var(--border-subtle);
   border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(28, 28, 30, 0.04);
-  overflow: hidden;
+  background: var(--surface-card);
+  box-shadow: var(--shadow-sm);
 }
 .dqcardhd {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  padding: 16px 18px 12px;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 0;
 }
 .dqcardtext {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 6px;
   min-width: 0;
 }
 .dqcardtitle {
-  font-size: 16px;
+  font-size: 19px;
   font-weight: 600;
-  letter-spacing: -0.015em;
-  color: #1c1c1e;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
 }
 .dqcardsub {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.45;
-  color: #8e8e93;
+  color: var(--text-tertiary);
   text-wrap: pretty;
 }
 .dqcardfoot {
-  margin: 0;
-  padding: 11px 18px;
-  border-top: 1px solid #f4f4f5;
-  font-size: 12.5px;
-  color: #8e8e93;
+  margin: 14px 0 0;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 14px;
+  color: var(--text-tertiary);
 }
-/* Two cards side by side, as the design lays them out. */
+/* Two cards side by side. auto-fit rather than fixed fractions, so the pair
+   stacks on its own at narrow widths instead of each half going unreadable —
+   the console is now a centred overlay and meets far more viewport widths than
+   it did docked at a fixed 940px. */
 .dqpair {
   display: grid;
-  grid-template-columns: 1fr 1.25fr;
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 20px;
   align-items: start;
 }
 .dqpairwide {
-  grid-template-columns: 1.35fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
 }
 .dqstack {
   display: flex;
@@ -2647,6 +2686,325 @@ body {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--slate, #8e8e93);
+}
+
+/* ══ Control room: cards added by the 2026-09-21 redesign ═══════════════════
+   Ingest volume, skill match rate, the feed-freshness row list that replaced
+   the sortable table, and scheduled crawls. Metrics are the design's own. */
+
+/* ── Ingest volume ───────────────────────────────────────────────────────── */
+.dqchart {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 20px;
+}
+.dqchartax {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 260px;
+  padding-bottom: 22px;
+  font-family: var(--font-label);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-align: right;
+}
+/* The gridline band is painted as a repeating gradient rather than as four
+   absolutely-positioned rules, so it cannot drift out of step with the axis
+   labels when the card is resized: both are laid out against the same
+   260px − 22px plot height. */
+.dqchartplot {
+  display: grid;
+  gap: 18px;
+  align-items: end;
+  height: 260px;
+  padding-bottom: 22px;
+  box-sizing: border-box;
+  position: relative;
+  border-bottom: 1px solid var(--border-subtle);
+  background: repeating-linear-gradient(
+      to top,
+      transparent 0,
+      transparent calc(25% - 1px),
+      var(--border-subtle) calc(25% - 1px),
+      var(--border-subtle) 25%
+    )
+    0 0 / 100% calc(100% - 22px) no-repeat;
+}
+.dqbarcol {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.dqbararch {
+  background: var(--neutral-300);
+  border-radius: 8px 8px 0 0;
+}
+.dqbarlive {
+  background: var(--neutral-900);
+  border-radius: 0 0 8px 8px;
+}
+/* A month with rows in only one of the two states still needs rounded ends on
+   the single segment it draws, or it reads as a bar clipped by the axis. */
+.dqbarcol.solo .dqbararch,
+.dqbarcol.solo .dqbarlive {
+  border-radius: 8px;
+}
+.dqbarlbl {
+  position: absolute;
+  bottom: -22px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--font-label);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.dqlegend {
+  display: flex;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.dqlegend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dqdot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+.dqdot.live {
+  background: var(--neutral-900);
+}
+.dqdot.arch {
+  background: var(--neutral-300);
+}
+
+/* ── Skill match rate ────────────────────────────────────────────────────── */
+.dqgauge {
+  display: grid;
+  place-items: center;
+  margin-top: 18px;
+}
+.dqgauge svg {
+  width: min(100%, 240px);
+  display: block;
+}
+.dqgaugenote {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-tertiary);
+  margin-top: 6px;
+}
+.dqsplit {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 18px;
+}
+.dqsplitcell {
+  background: var(--surface-subtle);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.dqsplitlbl {
+  display: block;
+  font-family: var(--font-label);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.dqsplitval {
+  display: block;
+  font-family: var(--font-label);
+  font-size: 18px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* ── Feed freshness rows ─────────────────────────────────────────────────── */
+.dqfeeds {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+}
+.dqfeed {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  transition: box-shadow 0.15s;
+}
+.dqfeed:hover {
+  box-shadow: var(--shadow-md);
+}
+/* A silent feed is the one thing this card exists to surface, so it is tinted
+   rather than merely badged — the badge alone is lost in a list of forty. */
+.dqfeed.silent {
+  border-color: var(--status-danger-bg);
+  background: var(--status-danger-bg);
+}
+.dqfeedicon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--surface-sunken);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-label);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.dqfeedname {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.dqfeedsrc {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.dqfeedkind {
+  font-size: 13.5px;
+  color: var(--text-tertiary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dqfeedmeta {
+  display: flex;
+  gap: 16px;
+  margin-top: 5px;
+  font-family: var(--font-label);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  flex-wrap: wrap;
+}
+.dqfeedpill {
+  white-space: nowrap;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-family: var(--font-label);
+  font-size: 12.5px;
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+}
+.dqfeedpill.bad {
+  background: var(--status-danger-bg);
+  color: var(--status-danger-fg);
+}
+.dqfeedpill.hist {
+  background: var(--surface-sunken);
+  color: var(--text-tertiary);
+}
+.dqmore {
+  width: 100%;
+  height: 42px;
+  margin-top: 14px;
+  border-radius: 10px;
+  border: 0;
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.dqmore:hover {
+  background: var(--surface-hover);
+}
+/* Silent / All */
+.dqviews {
+  display: flex;
+  gap: 6px;
+}
+.dqview {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--border-default);
+  background: var(--surface-page);
+  color: var(--text-secondary);
+}
+.dqview.on {
+  font-weight: 600;
+  border-color: var(--neutral-900);
+  background: var(--neutral-900);
+  color: var(--text-inverse);
+}
+
+/* ── Scheduled crawls ────────────────────────────────────────────────────── */
+.dqcrawls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 18px;
+}
+.dqcrawl {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--surface-subtle);
+}
+.dqcrawlicon {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--surface-page);
+  border: 1px solid var(--border-subtle);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-label);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.dqcrawltitle {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dqcrawlwhen {
+  font-family: var(--font-label);
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+.dqcrawlnext {
+  white-space: nowrap;
+  font-family: var(--font-label);
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: var(--surface-page);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: 7px 14px;
 }
 /* ── Feedback moderation (admin only) ──────────────────────────────────────
    Deliberately quiet: it sits inside every row, so styled like the row's own

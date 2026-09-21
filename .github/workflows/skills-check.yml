@@ -27,6 +27,9 @@ on:
       - 'scripts/check-analyst-scope.ts'
       - 'scripts/check-skill-trends.ts'
       - 'scripts/check-news-skills.ts'
+      - 'scripts/check-crawl-schedule.ts'
+      - 'src/employsi/lib/crawlSchedule.ts'
+      - 'workers/jobs-cron/wrangler.jsonc'
       - 'scripts/newsSkillFixtures.ts'
       - 'src/employsi/lib/newsSkills.ts'
       - 'src/employsi/lib/analystFn.ts'
@@ -52,6 +55,9 @@ on:
       - 'scripts/check-analyst-scope.ts'
       - 'scripts/check-skill-trends.ts'
       - 'scripts/check-news-skills.ts'
+      - 'scripts/check-crawl-schedule.ts'
+      - 'src/employsi/lib/crawlSchedule.ts'
+      - 'workers/jobs-cron/wrangler.jsonc'
       - 'scripts/newsSkillFixtures.ts'
       - 'src/employsi/lib/newsSkills.ts'
       - 'src/employsi/lib/analystFn.ts'
@@ -142,6 +148,14 @@ jobs:
       # joined mid-window drawing its own arrival as growth.
       - name: Assert the card's skill and area trends reconstruct correctly
         run: bun run scripts/check-skill-trends.ts
+
+      # The admin console restates the Worker's cron schedule so it can say when
+      # a feed next runs. Two copies of a schedule drift, and this one drifts
+      # silently into a card that names a time nothing will fire at — which is
+      # the wrong answer to the only question the card exists for: is this feed
+      # dead, or has it simply not run yet.
+      - name: Assert the console's crawl schedule matches the Worker's
+        run: bun run scripts/check-crawl-schedule.ts
 
       # The historical baseline is eight ATO vintages folded into one file, and
       # every way it can be wrong still renders a clean line and a tidy dollar
