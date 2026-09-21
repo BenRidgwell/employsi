@@ -174,9 +174,45 @@ function stripName(text: string, companyName?: string): string {
 /**
  * Tags for one article.
  *
- * `text` is the headline today; when og:description is carried through it
- * should be APPENDED here rather than matched separately, because the matcher
- * wants one haystack and a term spanning the join is not a term.
+ * `text` IS THE HEADLINE, AND SHOULD STAY THE HEADLINE.
+ *
+ * An earlier note here said og:description should be appended once it was
+ * carried through, on the reasoning that three to five times the text would lift
+ * a 24% recall. That was tested on 2026-09-21 and it is wrong, so the note is
+ * replaced by the measurement rather than deleted:
+ *
+ *   descriptions fetched for 100 of the 256 fixture articles (44% of those
+ *   still reachable; most publishers refuse the scrape)
+ *
+ *                          precision   recall
+ *     title only              100.0%    24.4%
+ *     title + description      63.2%    29.3%
+ *
+ * Thirty-seven points of precision to buy five of recall, and the five is two
+ * tags on two BIG4 marketing stories.
+ *
+ * THE REASON IS STRUCTURAL, NOT A TUNING PROBLEM, which is why no blocklist
+ * rescues it. A description is where a story puts its attributed quotes and its
+ * about-the-company boilerplate, and both are written in JOB TITLES:
+ *
+ *   "Telstra group MD leaving this week"
+ *     -> "Andrea Grant, group managing director, human resources"
+ *        the DEPARTING PERSON'S title, tagged Human Resources
+ *   "Bullish lithium signals among recent price weakness"
+ *     -> "David Franklin, head of funds management at Argonaut"
+ *        the QUOTED PERSON'S title, tagged Leadership & Coordination
+ *   "Aussie Hansen Technologies acquires Canadian vendor"
+ *     -> "billing, data management and customer care solutions provider"
+ *        BOILERPLATE about the company, tagged off what it sells
+ *
+ * A title matcher is built to fire on exactly that text, so the richer the
+ * description the worse it reads. Boilerplate is the sharpest version: it
+ * describes what a company DOES, so every article for that company inherits the
+ * same tags regardless of what happened.
+ *
+ * Recall stays low and that is the accepted trade — a missing tag costs a reader
+ * nothing, a wrong one is a claim about the company. Lifting it needs a method
+ * that knows what a story is ABOUT rather than which words it contains.
  *
  * `companyName` is the roster name of the company whose card this is. Optional
  * so the function stays testable on bare text, but pass it wherever it is
