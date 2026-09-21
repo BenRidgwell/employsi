@@ -4610,6 +4610,133 @@ export const SITES: SiteDef[] = [
     hubHints: [["regional victoria", "melbourne"]],
     homeHub: "melbourne",
   },
+  // ── The 2026-09-21 sixteenth batch ──────────────────────────────────────────
+  //
+  // Eleven domains swept plain, three hit, two built here.
+  //
+  // THE DOMAINS ARE WHERE THIS BATCH EARNED ITS KEEP, and the lesson is not the
+  // one the fifteenth batch drew. That batch found privateLogos.ts right and the
+  // generated resolvedDomains.ts wrong (Midfield, Swift Holdings, San Remo) and
+  // could have been read as "trust the spreadsheet". Checked this time, the two
+  // maps disagree in BOTH directions:
+  //
+  //   Stowe Australia   privateLogos says stowe.com.au       — does not resolve
+  //                     resolvedDomains says stoweaustralia.com.au — 200, "Stowe
+  //                     Australia". The GENERATED map is the right one here.
+  //   Talent Intl       resolvedDomains says talentidl.com   — dead, TLS error
+  //                     talentinternational.com — 200, and the company's own site
+  //
+  // So neither map is authoritative and there is no map that is. The only step
+  // that settles it is fetching the domain and reading who answers, which costs
+  // one request and is now how every domain in these batches is picked. (That is
+  // also what kept talentidl.com from being swept again: a dead host that hangs
+  // on TLS is the likeliest explanation for the runner stalls the Stowe/ARA/
+  // Talent sweep logged, which had been recorded as "unexplained".)
+  //
+  // FOUND BUT NOT BUILT:
+  //   Sigma Healthcare (56 ads) — SuccessFactors company `sigmacompaP`, named on
+  //     sigmahealthcare.com.au/working-at-sigma. Client-rendered, like Merivale:
+  //     the classic career10 portal returns 188 KB with 0 jobTitle nodes, 0
+  //     /job/ hrefs and 0 jobLocation cells, and neither career_ns=
+  //     job_listing_summary nor the performancemanager10 host changes that.
+  //     careers.sigmahealthcare.com.au does not resolve, so there is no branded
+  //     host to read instead. Not urgent either way: Sigma is already pulled in
+  //     full through SEEK advertiser 3724.
+  //
+  // THE EIGHT MISSES, all swept plain with every followed link read: MPC Kinetic,
+  // Winning Appliances, Tasmea, Meriton, Orora (2 links), IMDEX (8), San Remo (9)
+  // — trustworthy negatives. APCO Service Stations is the exception and is NOT a
+  // negative: every path on it answered 403, including the root, so nothing was
+  // read at all and it needs a --render sweep before anything can be said.
+  //
+  // THE --render BACKLOG WAS ALSO RUN, on the four universities that earlier
+  // batches had left needing one. It is reported here rather than in a batch of
+  // its own because it built nothing:
+  //
+  //   UNE (74 ads) and Notre Dame (103) BOTH RUN FUNNELBACK, and that is the
+  //     most useful thing this sweep found. Neither is an ATS at all — the
+  //     vacancies are documents in a search collection, which is why every plain
+  //     sweep of them reported "no marker" however well it walked. Notre Dame's
+  //     collection is named: `und~sp-jobs`. UNE's is not yet.
+  //
+  //     ONE READER WOULD COVER BOTH, at 177 archived ads between them, and it is
+  //     the obvious next build. What is NOT yet measured is the response: both
+  //     /s/search.json endpoints answer this sandbox 403 behind a Cloudflare
+  //     challenge, so the row shape, the totalMatching count and whether a
+  //     location field exists all have to be read on a runner first. No endpoint
+  //     goes into this file before that, which is why there is no SiteDef here.
+  //
+  //   CDU (136) and Federation (54) — both CUT SHORT by EMPLOYER_BUDGET_S, at
+  //     72s and 86s. The report says so itself rather than presenting a partial
+  //     walk as a finished one, and the instruction it prints is the right one:
+  //     re-run each on its own. Nothing can be concluded about either yet.
+  //
+  // The three corporates still owed a --render sweep (Stowe, ARA, Talent
+  // International) were NOT run here. They are the ones whose earlier sweep
+  // stalled the runner, and the domain check above is the likely reason: it was
+  // pointed at talentidl.com, which is dead and hangs on TLS.
+  {
+    id: "sydney-eos",
+    name: "Electro Optic Systems Holdings",
+    sector: "Defence",
+    platform: "workday",
+    // Workday eosaus/wd105/EOS_External_Career_Site, in SERVED html on
+    // eos-aus.com/work-with-us. The domain could not be checked from the dev
+    // sandbox — eos-aus.com answers it with a "One moment, please..." JS
+    // interstitial, the same bot check AKD's site serves — but it answered the
+    // runner normally, which is the whole reason the sweep runs there.
+    //
+    // Measured 2026-09-21: 37 roles.
+    endpoint:
+      "https://eosaus.wd105.myworkdayjobs.com/wday/cxs/eosaus/EOS_External_Career_Site/jobs",
+    origin: "https://eosaus.wd105.myworkdayjobs.com/EOS_External_Career_Site",
+    // THE TWO AUSTRALIAN LOCATIONS ARE BARE CANBERRA SUBURBS and neither is a
+    // HUB_MATCH needle, so 35 of the 37 resolved to no hub before these hints.
+    // Symonston (21) is where EOS is headquartered and Hume (14) is its other
+    // ACT facility; both are in the ACT, a few kilometres apart. Scoped rather
+    // than global, because "Hume" is also a Victorian highway, a NSW electorate
+    // and a Melbourne council.
+    //
+    // "Wellington" (2) IS NOT A MISTAKE AND IS DELIBERATELY LEFT ALONE. It
+    // resolves to wellington, New Zealand, which looks exactly like the trap
+    // that filed uniroles' Wellington "Victoria University" under the Melbourne
+    // one — so it was checked rather than assumed. Both rows are Kiwistar
+    // Optics, EOS's New Zealand subsidiary in Lower Hutt: "Senior Optical
+    // Technician - Kiwistar" names it outright. The default reading is correct
+    // here and a hint would break it.
+    hubHints: [
+      ["symonston", "canberra"],
+      ["hume", "canberra"],
+    ],
+    homeHub: "canberra",
+  },
+  {
+    id: "priv-teachers-health-fund",
+    name: "Teachers Health Fund",
+    sector: "Insurance",
+    platform: "jobadder",
+    // THE ENDPOINT IS THE WIDGET KEY, as NHP's and BGC's are. This one was
+    // reported by the sweep rather than dug out by hand, which is the
+    // discover-boards.py change made for NHP paying for itself: the key name is
+    // unquoted in the page and its value's quotes are backslash-escaped, and
+    // until the script was taught that, a JobAdder board could only ever be
+    // reported as "jobadder" with nothing usable attached.
+    //
+    // The page carrying it is /about-us/careers/current-opportunities/ — not
+    // /careers, which the sweep found nothing on.
+    //
+    // Measured 2026-09-21: 15 roles, all 15 placed.
+    endpoint: "AU6_rjwyqr2knlrejhrecbb6znynry",
+    origin: "https://www.teachershealth.com.au/about-us/careers/current-opportunities/",
+    // "Sydney Office" (8), "Melbourne" (1) and "Adelaide" (1) read without a
+    // hint. "Wollongong" (2) is a HUB_MATCH needle that already resolves to
+    // sydney, which is the nearest plotted hub to it.
+    //
+    // The 3 rows that name NO location at all fall to the home hub through
+    // hubFor's empty-location path, which needs no flag. Sydney is right for
+    // them: Teachers Health is a NSW fund with its head office in Surry Hills.
+    homeHub: "sydney",
+  },
 ];
 
 /**
@@ -5038,6 +5165,9 @@ export const PORTAL_GROUPS: string[][] = [
   // without anyone editing this file, and a tick it does not share is the
   // cheapest way to keep that from being another feed's problem.
   ["priv-metricon-homes"],
+  // Group 79 — the 2026-09-21 sixteenth batch. One tick: EOS is two Workday
+  // pages and a JobAdder board is a single call. 52 roles between them.
+  ["sydney-eos", "priv-teachers-health-fund"],
 ];
 
 const UA =
