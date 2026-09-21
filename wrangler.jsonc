@@ -10,5 +10,16 @@
   // Historical job archive (append-only). Shared with the jobs-cron worker.
   "d1_databases": [
     { "binding": "JOBS_ARCHIVE", "database_name": "employsi-jobs-archive", "database_id": "1c5f3ffb-b9d7-4233-b28b-0f1f8d193fe1" }
-  ]
+  ],
+  // The scraper, for the admin console's "Run now". A SERVICE BINDING rather
+  // than a fetch to its workers.dev hostname, because that does not work:
+  // both Workers sit on the employsi.workers.dev zone, and a Worker fetching
+  // another Worker on its own zone is refused at the edge with
+  //
+  //   404, Cloudflare error code 1042
+  //
+  // which looks like a wrong URL and is not. Measured 2026-09-21 from the
+  // preview Worker. A service binding is also faster and stays inside
+  // Cloudflare's network, so no request leaves the edge.
+  "services": [{ "binding": "JOBS_CRON", "service": "employsi-jobs-cron" }]
 }

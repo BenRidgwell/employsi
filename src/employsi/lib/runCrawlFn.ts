@@ -34,11 +34,26 @@ import { CRAWL_FAMILIES } from "./crawlSchedule";
 interface CronEnv {
   /** Shared with the scraper Worker, which compares it to its own CRON_TOKEN. */
   CRON_TOKEN?: string;
-  /** Override for the scraper's origin; defaults to its workers.dev hostname. */
+  /**
+   * SERVICE BINDING to the scraper, and the only path that works in production.
+   *
+   * Fetching its public hostname instead is refused at the edge: both Workers
+   * are on employsi.workers.dev, and a Worker calling another Worker on its own
+   * zone returns 404 with Cloudflare error 1042. Measured 2026-09-21 — the
+   * first press of Run now failed exactly that way, and it reads as a wrong
+   * URL, which is the wrong thing to go looking for.
+   */
+  JOBS_CRON?: { fetch: (req: Request) => Promise<Response> };
+  /** Escape hatch for local dev, where no binding exists. */
   JOBS_CRON_URL?: string;
 }
 
-const DEFAULT_ORIGIN = "https://employsi-jobs-cron.employsi.workers.dev";
+/**
+ * Host for the request line only. With a service binding the hostname is never
+ * resolved — the binding decides which Worker receives it — so this just has to
+ * be a valid URL.
+ */
+const BINDING_ORIGIN = "https://jobs-cron.internal";
 
 async function cronEnv(): Promise<CronEnv> {
   try {
@@ -77,6 +92,16 @@ export const crawlTriggerAvailable = createServerFn({ method: "GET" }).handler(
         reason: "CRON_TOKEN is not set on this deployment, so crawls cannot be fired from here.",
       };
     }
+    // Reported separately from the token, because they fail for different
+    // reasons and the fix differs: a missing secret is `wrangler secret put`, a
+    // missing binding is a redeploy carrying the services block.
+    if (!env.JOBS_CRON && !env.JOBS_CRON_URL) {
+      return {
+        ok: false,
+        reason:
+          "No JOBS_CRON service binding on this deployment — redeploy so the binding is attached.",
+      };
+    }
     return { ok: true };
   },
 );
@@ -102,13 +127,21 @@ export const runCrawl = createServerFn({ method: "POST" })
 
     const env = await cronEnv();
     if (!env.CRON_TOKEN) return fail("CRON_TOKEN is not set on this deployment.");
-    const origin = (env.JOBS_CRON_URL || DEFAULT_ORIGIN).replace(/\/+$/, "");
+    // The binding when there is one, a plain fetch only for local dev where
+    // there is not. Never the public hostname from a deployed Worker — see
+    // CronEnv.JOBS_CRON.
+    const viaBinding = !!env.JOBS_CRON;
+    if (!viaBinding && !env.JOBS_CRON_URL) {
+      return fail("No JOBS_CRON service binding on this deployment.");
+    }
+    const origin = viaBinding ? BINDING_ORIGIN : env.JOBS_CRON_URL!.replace(/\/+$/, "");
 
     const steps: CrawlRunResult["steps"] = [];
     for (const path of family.endpoints) {
       const url = `${origin}${path}?token=${encodeURIComponent(env.CRON_TOKEN)}`;
       try {
-        const res = await fetch(url, { method: "GET" });
+        const req = new Request(url, { method: "GET" });
+        const res = viaBinding ? await env.JOBS_CRON!.fetch(req) : await fetch(req);
         const text = await res.text();
         let detail = text.slice(0, 300);
         try {
