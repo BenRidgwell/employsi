@@ -146,6 +146,22 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID_VAR: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           acct="${CLOUDFLARE_ACCOUNT_ID_SECRET:-$CLOUDFLARE_ACCOUNT_ID_VAR}"
+          # TRIMMED AND SHAPE-CHECKED. A Cloudflare account id is 32 hex
+          # characters, and a stray space or newline in the stored value does not
+          # fail loudly — it produces /accounts/<junk>/workers/... and the API
+          # answers "Could not route ... perhaps your object identifier is
+          # invalid? [code: 7003]", which reads like the WORKER being wrong
+          # rather than the account. Measured 2026-09-21: that error arrived for
+          # benridgwell-globe-gazer-hr, which certainly exists and certainly has
+          # versions, so "the worker has no history" was the wrong conclusion and
+          # the account id became the first thing worth ruling out.
+          acct="$(printf '%s' "$acct" | tr -d '[:space:]')"
+          if [ -n "$acct" ] && ! printf '%s' "$acct" | grep -qiE '^[0-9a-f]{32}$'; then
+            echo "::error::CLOUDFLARE_ACCOUNT_ID is not 32 hex characters (length ${#acct})."
+            echo "The value itself is not printed. Copy it from the Cloudflare" >&2
+            echo "dashboard URL: dash.cloudflare.com/<account-id>/..." >&2
+            exit 1
+          fi
           if [ -z "$acct" ]; then
             echo "::error::CLOUDFLARE_ACCOUNT_ID is not set (secret or variable)"
             echo "Without it wrangler calls /memberships to choose an account, and" >&2
@@ -159,17 +175,65 @@ jobs:
 
       # Recorded BEFORE the deploy, because it is the only cheap way back.
       #
-      # `|| true` IS GONE FROM THE CAPTURE. It was there so a listing failure
-      # could not block a deploy, and what it actually did was hide the auth
-      # error above and leave two files of error text for the verify step to
-      # compare — which it then did, happily, and called it a check.
+      # THE TWO LISTINGS ARE NOT EQUALLY IMPORTANT, and the first cut of this
+      # step treated them as if they were — then failed the whole deploy because
+      # the PREVIEW had nothing to list. Measured 2026-09-21:
+      #
+      #     ✘ [ERROR] /accounts/…/workers/scripts/employsi-preview/versions
+      #       Could not route … perhaps your object identifier is invalid?
+      #       [code: 7003]
+      #
+      # which on a script path means that Worker has no versions to return.
+      # CLAUDE.md records the same thing from the other side: attaching the
+      # build connection bumped employsi-preview's modified_on with no version
+      # behind it. A Worker with no history has no rollback point — that is a
+      # fact to print, not a reason to refuse to deploy to it.
+      #
+      # PRODUCTION'S LISTING IS DIFFERENT AND IS FATAL. It is the baseline the
+      # post-deploy check compares against, and a check with no baseline is the
+      # `|| true` mistake again wearing a different hat: it cannot tell "nothing
+      # changed" from "nothing was looked at".
       - name: What is live now
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          set -o pipefail
-          npx wrangler versions list --name employsi-preview 2>&1 | tee before-preview.txt
-          npx wrangler versions list --name benridgwell-globe-gazer-hr 2>&1 | tee before-prod.txt
+          # TWO LISTING COMMANDS, BECAUSE ONE OF THEM DOES NOT WORK HERE AND IT
+          # IS NOT YET KNOWN WHY. Measured 2026-09-21: `versions list --name X`
+          # returned 7003 for BOTH Workers, including production, which has a
+          # known version history (CLAUDE.md records 2ac6eba8 replacing
+          # 52e5abaa). Meanwhile deploy-jobs-cron.yml has used
+          # `deployments list --config <file>` successfully all along. The
+          # difference tracks `--name` against `--config`, the same split that
+          # broke the deploy before the account id was set.
+          #
+          # So this tries versions, then deployments, and uses whichever answers
+          # with version ids — and says which one worked, so the next person has
+          # the measurement rather than this comment's speculation.
+          listing() {
+            local worker="$1" out="$2"
+            if npx wrangler versions list --name "$worker" > "$out" 2>&1; then
+              echo "versions"; return 0
+            fi
+            if npx wrangler deployments list --name "$worker" > "$out" 2>&1; then
+              echo "deployments"; return 0
+            fi
+            return 1
+          }
+          if via=$(listing employsi-preview before-preview.txt); then
+            echo "employsi-preview, before (via $via list):"; tail -12 before-preview.txt
+          else
+            echo "::notice::employsi-preview has no listable versions yet — no rollback point for it."
+            echo "That is expected for a Worker that has never been deployed to."
+            tail -6 before-preview.txt
+          fi
+          if ! via_prod=$(listing benridgwell-globe-gazer-hr before-prod.txt); then
+            echo "::error::Could not list PRODUCTION's versions, so there is no baseline to prove"
+            echo "::error::this deploy left it alone. Refusing to deploy without one."
+            tail -20 before-prod.txt
+            exit 1
+          fi
+          echo "production baseline recorded (via $via_prod list)"
+          echo "LISTING_CMD=$via_prod" >> "$GITHUB_ENV"
 
       - name: Build and deploy to employsi-preview
         env:
@@ -206,8 +270,10 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           set -o pipefail
-          npx wrangler versions list --name employsi-preview 2>&1 | tee after-preview.txt
-          npx wrangler versions list --name benridgwell-globe-gazer-hr 2>&1 | tee after-prod.txt
+          # The SAME command that produced the baseline, or the comparison is
+          # measuring the difference between two tools rather than a deploy.
+          npx wrangler "$LISTING_CMD" list --name employsi-preview 2>&1 | tee after-preview.txt
+          npx wrangler "$LISTING_CMD" list --name benridgwell-globe-gazer-hr 2>&1 | tee after-prod.txt
 
           # COMPARE VERSION IDS, NOT THE WHOLE OUTPUT. The first cut diffed the
           # raw text and cried PRODUCTION CHANGED on a run that deployed nothing
@@ -217,7 +283,11 @@ jobs:
           # and, worse, it "passed" the production half for the wrong reason
           # whenever both files happened to be identical error text.
           ids() { grep -oiE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' "$1" | sort -u; }
-          for f in before-preview.txt after-preview.txt before-prod.txt after-prod.txt; do
+          # before-preview.txt is ALLOWED to be empty — a Worker deployed to for
+          # the first time has no prior version. The other three are not: an
+          # empty one means the listing failed, and comparing two failures is
+          # not a check.
+          for f in after-preview.txt before-prod.txt after-prod.txt; do
             if [ -z "$(ids $f)" ]; then
               echo "::error::$f contains no version ids — the listing failed, so nothing here was verified"
               sed -n '1,25p' "$f"
@@ -236,7 +306,11 @@ jobs:
             echo "::error::employsi-preview gained no new version — the deploy went somewhere else, or did not happen"
             exit 1
           fi
-          echo "employsi-preview has a new version"
+          if [ -z "$(ids before-preview.txt)" ]; then
+            echo "employsi-preview has its FIRST version — nothing to roll back to before this"
+          else
+            echo "employsi-preview has a new version"
+          fi
 
       # THE APP IS AT /app; / is the waitlist on every host. Reading the title is
       # how you tell them apart — see CLAUDE.md.
