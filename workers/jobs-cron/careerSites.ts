@@ -121,6 +121,7 @@ type Platform =
   | "taleo"
   | "aurizon"
   | "bond"
+  | "metricon"
   | "pageupsites"
   | "cornerstone"
   | "snaphire"
@@ -4360,18 +4361,15 @@ export const SITES: SiteDef[] = [
   //     browser-driven reader does not have to find it again: the SuccessFactors
   //     company is `hemmestrad` (Hemmes Trading — Merivale is the Hemmes group),
   //     from career10.successfactors.com/career?company=hemmestrad.
-  //   Metricon (134 ads) — jobs.metricon.com.au is a bespoke Telerik RadGrid on
-  //     ASP.NET, fully served, with per-region listing pages at
-  //     Default.aspx?Loc={MEL,QLD,VIC,NSW,SA} — and the region is the ONLY
-  //     geography on the board, since the grid's columns are Title, Description,
-  //     Employment Type, Business Unit, Department and Closing Date with no
-  //     location among them. Measured 2026-09-21: MEL 4, QLD 8, VIC 1, NSW 3,
-  //     SA 1 = 17. Held back on a question rather than a technical wall: every
-  //     page carries <meta name="robots" content="noindex">, and the host serves
-  //     no robots.txt at all (404), so that meta is the site's only stated
-  //     preference. It is an INDEXING directive and not an access control — this
-  //     is not the NGA.NET case — but it is the first board here where the
-  //     question arises, and setting that precedent quietly is worse than asking.
+  //   Metricon (134 ads) — WIRED NOW, see below; it was held back for one pass
+  //     rather than for a technical reason. The board is a bespoke Telerik
+  //     RadGrid on ASP.NET, fully served, and every page of it carries
+  //     <meta name="robots" content="noindex"> while the host serves no
+  //     robots.txt at all (404) — so that meta is the site's only stated
+  //     preference. It is an INDEXING directive and not an access control, which
+  //     is what separates it from the NGA.NET case, but it was the first board
+  //     here to raise the question at all and answering it quietly seemed worse
+  //     than asking. Asked, and answered on 2026-09-21: read it.
   //   Autoleague / Swift Holdings (105 ads) — autoleague.com.au/careers carries
   //     exactly one outbound careers link and it is
   //     seek.com.au/Autoleague-jobs/at-this-company. There is no board of its own
@@ -4578,6 +4576,39 @@ export const SITES: SiteDef[] = [
     endpoint: "https://bond.edu.au/jobs",
     origin: "https://bond.edu.au",
     homeHub: "brisbane",
+  },
+  {
+    id: "priv-metricon-homes",
+    name: "Metricon Homes",
+    sector: "Construction",
+    platform: "metricon",
+    // Named in the fifteenth batch above as found-but-not-built, pending a
+    // decision on the board's robots noindex; that decision was taken on
+    // 2026-09-21 and it was to read it. See fetchMetricon for what noindex does
+    // and does not say, and for why this is not the NGA.NET case.
+    //
+    // No tenant and no ids — the board is Metricon's own ASP.NET site, so the
+    // endpoint is the host and the reader finds the regions itself.
+    endpoint: "https://jobs.metricon.com.au",
+    origin: "https://jobs.metricon.com.au",
+    // Measured 2026-09-21: 17 roles over the five regions — Melbourne 4,
+    // Queensland 8, Regional Victoria 1, Sydney NSW 3, South Australia 1.
+    //
+    // FOUR OF THE FIVE REGION NAMES PLACE WITH NO HINT: "Melbourne",
+    // "Queensland", "Sydney, NSW" and "South Australia" are all read by
+    // HUB_MATCH as they stand.
+    //
+    // "Regional Victoria" is the fifth, and the hint below is a deliberate
+    // reading rather than a lookup. The label says explicitly that the role is
+    // NOT in Melbourne, and Melbourne is nonetheless where it goes, for two
+    // reasons: it is the only plotted Victorian hub, and every other regional
+    // Victorian row already in the archive lands there anyway — a role written
+    // "Bendigo, VIC" by any of the other 251 feeds resolves to melbourne through
+    // the global " vic," needle. Sending this one to null instead would be the
+    // inconsistency, not the accuracy. Scoped here because "regional victoria"
+    // is a phrase this board uses and not a place name generally.
+    hubHints: [["regional victoria", "melbourne"]],
+    homeHub: "melbourne",
   },
 ];
 
@@ -5000,6 +5031,13 @@ export const PORTAL_GROUPS: string[][] = [
   // requests than 76's 108, which is the point of the split.
   ["priv-employers-mutual", "priv-racq", "priv-midfield", "uni-bond-university"],
   ["priv-ausgrid", "priv-pharmacare", "priv-akd"],
+  // Group 78 — Metricon, added 2026-09-21 once the noindex question above was
+  // settled. Alone on its tick, but not because it is deep: it is six requests
+  // for 17 roles. It is the only feed in the file that discovers its own sub-
+  // listings, so a region appearing or disappearing changes the request count
+  // without anyone editing this file, and a tick it does not share is the
+  // cheapest way to keep that from being another feed's problem.
+  ["priv-metricon-homes"],
 ];
 
 const UA =
@@ -7146,6 +7184,131 @@ async function fetchAurizon(site: SiteDef): Promise<PortalJob[]> {
     const cat = descs[0] ?? "";
     const loc = descs[1] ?? "";
     out.push(job(site, title, loc, `${site.origin}${a[1]}`, "", cat));
+  }
+  return out;
+}
+
+// ── Metricon's own board ─────────────────────────────────────────────────────
+/**
+ * jobs.metricon.com.au — a bespoke ASP.NET board built on a Telerik RadGrid, not
+ * an ATS this file has a reader for. Fully served: the rows are in the HTML.
+ *
+ * THE BOARD IS SPLIT BY REGION AND THAT IS THE ONLY GEOGRAPHY ON IT. The grid's
+ * columns, read off its own <thead>, are Title, Description, Employment Type,
+ * Business Unit, Department and Closing Date — there is no location column, and
+ * no job detail page carries one either. What names the place is which listing
+ * you are on: Default.aspx?Loc=MEL, QLD, VIC, NSW, SA, each with its own <h1>.
+ *
+ * So the location is taken from that <h1> ("Melbourne Vacancies" -> "Melbourne"),
+ * which is the board's own words for where these roles are. Measured 2026-09-21,
+ * all five: Melbourne, Queensland, Regional Victoria, "Sydney, NSW" and South
+ * Australia. Four of the five resolve to a hub with no hint at all; only
+ * "Regional Victoria" needs one, and the SiteDef says why.
+ *
+ * THE REGIONS ARE READ OFF THE NAV RATHER THAN LISTED HERE. A hard-coded list of
+ * five would keep working, silently, on the day Metricon opens a sixth — the
+ * board would advertise roles this feed never asked for and the card would be
+ * quietly short. The nav is `<a class="level1" href="Default.aspx?Loc=XXX">` and
+ * appears on every page, so it costs nothing to follow.
+ *
+ * PAGING IS BOUNDED BY WHAT THE GRID DECLARES, not by guessing from a short
+ * page. Telerik ships its own state in the page:
+ *
+ *     "PageSize":10,"PageCount":1,"CurrentPageIndex":0
+ *
+ * and this reader reads PageCount. Measured 2026-09-21: every region says 1 —
+ * MEL 4 roles, QLD 8, VIC 1, NSW 3, SA 1, 17 in total, all inside one page of
+ * ten. A later page would need an ASP.NET __doPostBack carrying __VIEWSTATE,
+ * which this reader deliberately does not do; so rather than truncate in silence
+ * — the failure this codebase has been bitten by twice — a region that grows
+ * past one page LOGS that it was cut short and by how many pages. A loud short
+ * read is recoverable; a quiet one is not.
+ *
+ * ON robots: this host serves no robots.txt (404), and every page carries
+ * <meta name="robots" content="noindex">. That is an indexing directive rather
+ * than an access control — the board answers any client normally, which is not
+ * the NGA.NET case — and reading it was a decision taken deliberately on
+ * 2026-09-21 rather than by default. It is written down here because it is the
+ * first board in this file where the question came up.
+ */
+const METRICON_ROW =
+  /id="[^"]*hlinkTitle"[^>]*href="(JobDetails\.aspx\?JobNumber=[^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+
+/** The region's own name for itself, off the listing's heading. */
+function metriconRegion(html: string): string {
+  // The FIRST <h1> is the site banner ("… Metricon Career Opportunities") and
+  // carries the logo image; the region heading is the one after it. Matched by
+  // the "Vacancies" suffix rather than by index, so a template that adds or
+  // drops a banner does not silently shift this onto the wrong heading.
+  for (const m of html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/gi)) {
+    const text = clean(m[1]);
+    if (/\bVacancies\s*$/i.test(text)) return text.replace(/\s*Vacancies\s*$/i, "").trim();
+  }
+  return "";
+}
+
+async function fetchMetricon(site: SiteDef): Promise<PortalJob[]> {
+  const first = await getText(`${site.endpoint}/Default.aspx`);
+  if (!first) return [];
+  // Deduplicated and ORDERED, so the walk is stable run to run: a Set built from
+  // the nav preserves document order, which is the order the board lists them.
+  const regions = [
+    ...new Set([...first.matchAll(/href="Default\.aspx\?Loc=([A-Za-z0-9]+)"/gi)].map((m) => m[1])),
+  ];
+  // No nav at all means the page shape changed. Reading the default listing
+  // alone would look like a working feed serving one region, so it is treated as
+  // a failure of the walk instead.
+  if (!regions.length) {
+    console.log(`[metricon] ${site.name}: no region nav on Default.aspx`);
+    return [];
+  }
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const loc of regions) {
+    const html = await getText(`${site.endpoint}/Default.aspx?Loc=${encodeURIComponent(loc)}`);
+    if (!html) {
+      // A dropped request here costs one region, and says so. It is NOT the end
+      // of the walk: the regions are independent listings, so the others are
+      // still worth reading.
+      console.log(`[metricon] ${site.name}: region ${loc} did not answer`);
+      continue;
+    }
+    const region = metriconRegion(html);
+    const pages = Number(html.match(/"PageCount":(\d+)/)?.[1] ?? 1);
+    if (pages > 1) {
+      console.log(
+        `[metricon] ${site.name}: region ${loc} declares ${pages} pages and this reader ` +
+          `reads one — ${pages - 1} page(s) of roles are NOT being collected`,
+      );
+    }
+    for (const m of html.matchAll(METRICON_ROW)) {
+      // The grid writes its hrefs with the ampersand escaped —
+      // JobNumber=Job-9011&amp;Ref=MEL — so the stored link would carry the
+      // entity verbatim and 404 the Ref. clean() is the file's own unescaper and
+      // is safe on a url here: the value has no tags and no whitespace in it.
+      const href = clean(m[1]);
+      const ref = href.match(/JobNumber=([^&"]+)/)?.[1] ?? "";
+      const title = clean(m[2]);
+      // Deduped on the requisition number ACROSS regions, not within one: a role
+      // advertised in two states appears on both listings with the same
+      // JobNumber and a different Ref, and it is one vacancy.
+      if (!title || !ref || seen.has(ref)) continue;
+      seen.add(ref);
+      out.push(
+        job(
+          site,
+          title,
+          region,
+          `${site.origin}/${href}`,
+          // The board prints a CLOSING date and no opening one, as Deakin's and
+          // Bond's do. Left empty rather than stored as `posted`, which would
+          // date every role to the day it comes down; the archive's own
+          // first_seen carries the timing.
+          "",
+          "Career portal",
+        ),
+      );
+    }
   }
   return out;
 }
@@ -10215,6 +10378,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   taleo: fetchTaleo,
   aurizon: fetchAurizon,
   bond: fetchBond,
+  metricon: fetchMetricon,
   pageupsites: fetchPageUpSites,
   cornerstone: fetchCornerstone,
   snaphire: fetchSnapHire,

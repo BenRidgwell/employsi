@@ -408,6 +408,29 @@ step is inside it, so the pipeline needs one dashboard field rather than two and
 cannot be half-configured. There is no `deploy:prod` script; production deploys
 stay typed out by hand, and that is the point.
 
+**`Workers Builds: employsi` IS RED ON EVERY FEATURE BRANCH AND GREEN ON EVERY
+`main` COMMIT.** It is a required-looking check on every PR, it fails there, and
+it is not the PR's fault. Measured 2026-09-21 across fourteen commits: every
+branch head red, every `main` commit green, with no exception since the pipeline
+settled at `73d43b4`.
+
+The proof is a pair of commits rather than a pattern. `b2f84eb` (branch, RED) and
+`490f512` (its merge on `main`, GREEN) resolve to the **same tree**,
+`14ab9555…` — byte-identical content, opposite outcomes. Whatever the build
+dislikes, it cannot be in the tree, so it cannot be in any diff.
+
+```bash
+git rev-parse b2f84eb^{tree} 490f512^{tree}   # identical
+```
+
+So do not go looking for it in the source, do not "fix" it with another push, and
+do not hold a PR on it. Read the checks that DO read the diff — `roster wiring`
+and `portal scheduling` — and merge. The cause is dashboard-side (a non-default
+branch produces a preview build, and the preview configuration or the deploy
+command does not hold for one), which is invisible from here and unverifiable
+without Cloudflare API credentials; that last part is why this says what was
+measured and stops there.
+
 Deploys, when actually asked for:
 
 ```bash
