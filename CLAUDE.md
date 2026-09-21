@@ -425,11 +425,57 @@ git rev-parse b2f84eb^{tree} 490f512^{tree}   # identical
 
 So do not go looking for it in the source, do not "fix" it with another push, and
 do not hold a PR on it. Read the checks that DO read the diff — `roster wiring`
-and `portal scheduling` — and merge. The cause is dashboard-side (a non-default
-branch produces a preview build, and the preview configuration or the deploy
-command does not hold for one), which is invisible from here and unverifiable
-without Cloudflare API credentials; that last part is why this says what was
-measured and stops there.
+and `portal scheduling` — and merge. The cause was recorded here as
+dashboard-side and unverifiable without Cloudflare API credentials; it has since
+been read straight off a build log, and the next paragraph has it.
+
+**AND HERE IS WHY THE BRANCH BUILDS FAIL** — measured 2026-09-21, and it turns
+what was an unexplained pattern above into a settled one. A branch build's log
+says:
+
+    Executing user deploy command: npx wrangler deploy
+
+That is the BARE command, not the configured `npm run deploy:preview`, and no
+build command runs before it. So `.output/` and the `.wrangler/deploy/config.json`
+redirect never exist, wrangler falls back to the root `wrangler.jsonc` — which
+carries only `name` + bindings — and dies with
+
+    ✘ [ERROR] Missing entry-point to Worker script or to assets directory
+
+every single time. **The configured Build fields apply to the production branch
+and a branch build runs defaults instead.** Two builds a minute apart on
+2026-09-21 show it from both sides:
+
+| commit | branch | build | deploy command | result |
+| --- | --- | --- | --- | --- |
+| `3224175` | `main` | `47318a7f` | `npm run deploy:preview` | 12:38:18 SUCCESS |
+| `aa84412` | feature | `8d9a777d` | `npx wrangler deploy` | 12:39:36 FAILURE |
+
+**SO A BRANCH BUILD'S LOG IS NOT EVIDENCE THAT THE SETTINGS CHANGED.** It reads
+exactly like the field has been reset — this file briefly claimed precisely that,
+from this log, and was wrong. Before concluding anything about the dashboard
+fields from a red build, check which BRANCH it was for.
+
+**AND IT IS STILL WORTH KNOWING, because the failure is one setting away from
+being dangerous.** A bare `npx wrangler deploy` that DID find a build would
+resolve to a config named `benridgwell-globe-gazer-hr`. The error message even
+suggests the change that would get it there — adding `main`/`assets` to
+`wrangler.jsonc` — and adding a build command would do it too. Both are refused
+above, and this is the second reason why. Whether the connection would still
+override that target is an inference from one measurement, on the one question
+this file has already been wrong about once and kept the wrong version on
+purpose. Not a thing to bet the live site on.
+
+Nothing in the repo needs changing, and neither do the dashboard fields on
+`employsi`: `package.json` still carries `deploy:preview` as
+`npm run build && npx wrangler deploy --name employsi-preview`, and `main`'s own
+builds succeed.
+
+**NONE OF THIS AFFECTS THE PREVIEW.** `.github/workflows/deploy-preview.yml` is
+a separate pipeline on GitHub Actions, where `--name` is honoured, and it
+deployed employsi-preview successfully at 12:37 the same day (version
+`1e83de7c`), verified afterwards: `/app` served the app's title, production's
+version ids were byte-identical before and after.
 
 Deploys, when actually asked for:
 
