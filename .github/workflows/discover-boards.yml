@@ -47,6 +47,10 @@ on:
         description: 'Also keep the RAW body of every page read, in the artifact. For measuring a response the dev sandbox cannot reach — a board that is not an ATS has a shape that has to be read before a parser is written'
         type: boolean
         default: false
+      budget:
+        description: 'Seconds per employer before the sweep cuts that one short. Blank scales it from the number of domains (1 domain -> 600s, 14 -> 70s), which is what makes re-running a cut-short domain on its own actually help'
+        type: string
+        required: false
 
 concurrency:
   group: discover-boards
@@ -87,6 +91,7 @@ jobs:
             --urls "${{ inputs.urls }}" \
             ${{ inputs.render && '--render' || '' }} \
             ${{ inputs.dump && '--dump bodies' || '' }} \
+            ${{ inputs.budget && format('--budget {0}', inputs.budget) || '' }} \
             --json discover-boards.json | tee discover.txt
 
       - name: Publish the findings to the run summary
