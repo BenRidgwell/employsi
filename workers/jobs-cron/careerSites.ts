@@ -4158,6 +4158,76 @@ export const SITES: SiteDef[] = [
     // also resolve to nothing.
     homeHub: "sydney",
   },
+  // ── The 2026-09-21 thirteenth batch ─────────────────────────────────────────
+  //
+  // FOUND BUT NOT BUILT, each for a measured reason:
+  //   Teys Australia (108 ads) — teysgroupau.currentjobs.co. A platform with no
+  //     reader in this file; now at least NAMED by the sweep rather than
+  //     reported as "no ATS marker".
+  //   Patterson Cheney (72) — elmo at pattersoncheney.elmotalent.com.au/careers/
+  //     workwithus/jobs, handed over by the sweep's candidate report. NOT wired,
+  //     because fetchElmo returns 10 rows against the board's own count of 23
+  //     and says so itself ("10 rows vs 23 advertised — board paging?"). Wiring
+  //     it would file under half this employer's roles and the card would
+  //     under-report with nothing visibly wrong. The paging gap is in the SHARED
+  //     fetcher — Steadfast's 8 roles fit on one page, so this is the first
+  //     board to expose it — and belongs fixed there before a feed depends on it.
+  //   Kennards (95) — the sweep found cornerstone [kennardshire] on
+  //     kennards.com.au, and that is KENNARDS HIRE. The roster row is Kennards
+  //     Self Storage, a different company. The domain was a guess and it landed
+  //     on the wrong business; filing one employer's vacancies under another is
+  //     the exact mistake the off-site labelling exists to catch, so nothing is
+  //     wired until the right domain is known.
+  //   GMHBA (86), Thomas Foods (86), RAA (79), SunPork (77) — swept, no marker,
+  //     every followed link read. Trustworthy negatives.
+  {
+    id: "priv-nhp-electrical-engineering-products",
+    name: "NHP Electrical Engineering Products",
+    sector: "Industrial Manufacturing",
+    platform: "jobadder",
+    // THE ENDPOINT IS THE WIDGET KEY, as BGC's is, and the key is the one part
+    // of a JobAdder board nobody can guess. It appears once, in the page that
+    // embeds apps.jobadder.com/widgets/v1/jobs.min.js:
+    //
+    //     var _jaJobsSettings = { key: "AU1_xgyjr4ee4zqe3exqsgayeza2pm", ...
+    //
+    // and that page is /company/careers/current-opportunities — not /careers,
+    // which 404s, nor any of the three other paths worth guessing. The discovery
+    // sweep found it; scripts/discover-boards.py now captures the key, having
+    // been taught that the key name is UNQUOTED and its value's quotes are
+    // backslash-escaped.
+    //
+    // Measured 2026-09-21: 9 roles. The board spells its states out —
+    // "Victoria, Australia", "Queensland, Australia" — which HUB_MATCH reads
+    // without a hint.
+    endpoint: "AU1_xgyjr4ee4zqe3exqsgayeza2pm",
+    origin: "https://www.nhp.com.au/company/careers/current-opportunities",
+    // One of the nine names no place at all and falls here. NHP's head office is
+    // Richmond in Melbourne, so that is a true statement about the employer.
+    homeHub: "melbourne",
+  },
+  {
+    id: "sydney-rdx",
+    name: "Redox",
+    sector: "Chemicals",
+    platform: "workable",
+    // Workable tenant `redox`, handed over by the sweep's candidate report —
+    // redox.com/careers/ links every role to redox.workable.com/jobs/<id>, and
+    // the tenant is the only part a reader needs.
+    //
+    // CONFIRMED AS THE AUSTRALIAN CHEMICAL DISTRIBUTOR, not the American health-
+    // tech company of the same name: measured 2026-09-21, 24 roles at Minto and
+    // Wetherill Park in Sydney, Laverton North in Melbourne, Richlands in
+    // Brisbane and Bibra Lake in Perth, which is Redox's warehouse footprint.
+    // Worth stating because a same-name mix-up is the failure this batch caught
+    // on Kennards.
+    endpoint: "redox",
+    origin: "https://redox.workable.com",
+    // The board writes the state in full — "Minto, New South Wales, Australia" —
+    // so HUB_MATCH reads every Australian row without a hint. One role is in
+    // Selangor, Malaysia and one names no place at all.
+    homeHub: "sydney",
+  },
 ];
 
 /**
@@ -4562,6 +4632,8 @@ export const PORTAL_GROUPS: string[][] = [
   // Group 73 — the 2026-09-20 twelfth batch. One tick: three small Workday walks
   // on one tenant (6, 41 and 15 roles) plus Torrens' 8. 70 roles.
   ["flg-corporate", "flg-goodlife", "flg-fitnessfirst", "uni-torrens-university-australia"],
+  // Group 74 — the 2026-09-21 thirteenth batch. A JobAdder board is one call.
+  ["priv-nhp-electrical-engineering-products", "sydney-rdx"],
 ];
 
 const UA =

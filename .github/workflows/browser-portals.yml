@@ -194,6 +194,31 @@ jobs:
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         run: python scripts/dayforce-to-d1.py --portal cmv --capture captures
 
+      - name: Scrape Australian Catholic University (PageUp) careers → D1 (rendered)
+        # PageUp's CLASSIC theme, and the rows are client-side. Measured
+        # 2026-09-20: careers.acu.edu.au/en/listing/ answers a plain GET with 200
+        # and 140 KB carrying the search-results-content shell, 0 job-link
+        # anchors, 0 /job/ hrefs and no "no results" text. Through
+        # fetchPageUpClassic it returns 0 — a live board reading as an employer
+        # with no vacancies, which is why it is here and not in careerSites.ts.
+        #
+        # ALLOWED TO FAIL THE STEP WITHOUT FAILING THE RUN, like the ECU step
+        # below: the parser is verified against three classic boards that do
+        # serve their rows (Deakin 16, UTAS 20 on page 1, Charles Sturt 19 — the
+        # same counts the TypeScript reader gets), but nobody has yet seen ACU's
+        # HYDRATED markup, because the authoring sandbox has no usable Chromium.
+        # This run is the first thing that can say. The script exits non-zero on
+        # an empty parse and says in as many words that it is not a claim about
+        # whether ACU is hiring.
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: python scripts/acu-to-d1.py --capture captures
+
       - name: Keep the rendered Dayforce pages
         if: always()
         uses: actions/upload-artifact@v4
