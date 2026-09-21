@@ -431,6 +431,58 @@ command does not hold for one), which is invisible from here and unverifiable
 without Cloudflare API credentials; that last part is why this says what was
 measured and stops there.
 
+**AND ON 2026-09-21 AT 12:39 `main` WENT RED TOO, FOR A DIFFERENT AND MUCH MORE
+SERIOUS REASON.** The build log shows:
+
+    Executing user deploy command: npx wrangler deploy
+
+**That is the BARE command this section spends its length warning about, not
+`npm run deploy:preview`.** The field has reverted, or never saved. So the
+branch-red/`main`-green rule above describes the commits it was measured on and
+is NOT a standing property of the pipeline — check the deploy command in the log
+before trusting either half of it.
+
+It failed harmlessly, and only by luck of ordering:
+
+    ✘ [ERROR] Missing entry-point to Worker script or to assets directory
+
+No build step ran, so `.output/` and the `.wrangler/deploy/config.json` redirect
+do not exist, wrangler fell back to the root `wrangler.jsonc`, and that file
+carries only `name` + bindings. It is the same failure recorded earlier in this
+section, recurring.
+
+**THE TWO OBVIOUS FIXES ARE BOTH THE TRAP.** The error message itself suggests
+the first one:
+
+- Adding `main`/`assets` to `wrangler.jsonc` — already refused above.
+- Adding a build command so `.output/` exists — which makes the bare
+  `npx wrangler deploy` *work*, against a resolved config whose name is
+  `benridgwell-globe-gazer-hr`. **That is production.**
+
+Whether it would actually land there is NOT settled. The measurement earlier in
+this section says Workers Builds overrides the target with the CONNECTED Worker
+(`employsi`) and ignores the deploy command's own `--name`; if that also
+overrides the config's `name`, a bare deploy lands on `employsi` rather than on
+employsi.com.au. That is an inference from one measurement, on the one question
+where this file has already been wrong once and kept the wrong version on
+purpose. Do not bet the live site on it.
+
+**THE FIX IS TO RESTORE THE DEPLOY COMMAND**, to `npm run deploy:preview`, on
+**`employsi` -> Settings -> Build** — the CONNECTED Worker. Not on
+`employsi-preview`, whose Build page is real, saves happily, and does nothing;
+that mistake is what cost an evening above, and a field that has silently
+reverted is exactly what editing the wrong page looks like.
+
+Nothing in the repo needs changing: `package.json` still carries
+`deploy:preview` as `npm run build && npx wrangler deploy --name employsi-preview`,
+verified 2026-09-21 after this failure.
+
+**THIS DOES NOT AFFECT THE PREVIEW.** `.github/workflows/deploy-preview.yml` is
+a separate pipeline on GitHub Actions, where `--name` is honoured, and it
+deployed employsi-preview successfully at 12:37 the same day (version
+`1e83de7c`), verified afterwards: `/app` served the app's title, production's
+version ids were byte-identical before and after.
+
 Deploys, when actually asked for:
 
 ```bash
