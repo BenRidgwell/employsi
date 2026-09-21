@@ -79,7 +79,7 @@ Workers on the account, verified 2026-08-12:
 | `benridgwell-globe-gazer-hr-mobile` | Mobile build |
 | `benridgwell-globe-gazer-hr-mapbox-trial` | Trial, last touched 2026-07-15 |
 | `employsi-jobs-cron` | The scraper. Separate config, separate deploy |
-| `employsi` | Another deployment of this same app, last built 2026-08-06. Purpose unrecorded — do not deploy over it without asking |
+| `employsi` | **The Workers Builds CI target since 2026-09-21** — every push to `main` lands here. Was an unrecorded deployment last built 2026-08-06 (version `966ce664`); the first CI build replaced it with `c8adc711`. Still do not deploy over it by hand without asking |
 
 `--name` cannot capture the custom domain, because neither `wrangler.jsonc` nor the
 generated `.output/server/wrangler.json` declares `routes` or `custom_domain` — the
@@ -255,8 +255,14 @@ the build sits on the one you would not guess:
 | | |
 | --- | --- |
 | Build settings + build log | **`employsi`** — the connected Worker |
-| Where the deploy lands | **`employsi-preview`** — because the script passes `--name` |
+| Where the deploy lands | **`employsi`** too — the connection overrides `--name`, see below |
+| NOT where it lands | `employsi-preview`, despite the `--name` in the deploy script |
 | Never touched by CI | `benridgwell-globe-gazer-hr` — production |
+
+So **CI currently publishes to `employsi`**, and that is the arrangement as of
+2026-09-21 — deliberately left alone rather than half-moved at the end of a long
+night. `employsi-preview` remains the target for MANUAL preview deploys, where
+`--name` works normally because there is no connection to override it.
 
 **This cost an evening.** Every build field was edited on `employsi-preview` ->
 Settings -> Build, which is a real page with real fields that saves happily and
@@ -368,17 +374,19 @@ PRODUCTION; that combination cannot be reached when one script does both.
 If the build-command field is ever set to `npm run build` as well, nothing breaks
 — vite just runs twice and the build takes a minute longer. Leave it empty.
 
-**Verify the first build landed where you think**, because a green build says
-nothing about which Worker it wrote. Both of these must be true:
+**Verify where a build landed, because a green build says nothing about which
+Worker it wrote** — that is exactly how the `--name` assumption survived so long.
+Check the connected Worker gained a version and that production did not:
 
 ```bash
-npx wrangler deployments list --name employsi-preview | head   # a NEW version, from the build
-npx wrangler deployments list | head                           # production UNCHANGED
+npx wrangler versions list --name employsi | head   # a NEW version, from the build
+npx wrangler versions list | head                   # production UNCHANGED
 ```
 
-`last_deployed_from` also flips to `github-actions`/`builds` on whichever Worker
-the build actually published — production's should stay `wrangler`, because every
-prod deploy here is a deliberate one typed by hand.
+Read **versions**, not the script's `modified_on`. Attaching the build connection
+bumped `employsi-preview`'s `modified_on` to 05:03:24 on 2026-09-21 with no
+version and no deployment behind it, which reads exactly like a successful build.
+A version id cannot be produced by a settings change.
 
 The `npx` in `deploy:preview` is load-bearing: **wrangler is not a dependency of
 this repo** and there is no `node_modules/.bin/wrangler`, so a bare `wrangler …`
@@ -390,13 +398,15 @@ a shell where it has been npx'd before. Every wrangler invocation here goes thro
 inlined by vite and a secret is not visible to the build. `vite.config.ts` throws
 without it, so the second CI failure after fixing the first is this one.
 
-**The deploy command points at the PREVIEW Worker on purpose.** `deploy:preview` in
-`package.json` is `npx wrangler deploy --name employsi-preview`, so a push publishes to
-https://employsi-preview.employsi.workers.dev and never to employsi.com.au. It is a
-named script rather than a raw flag so the target is reviewable in the repo instead
-of living only in a dashboard text box — **if that field is ever reset to a bare
-`npx wrangler deploy`, every push publishes production.** Prod deploys stay manual
-and deliberate; there is no `deploy:prod` script, and that is the point.
+**`deploy:preview` IS NAMED FOR WHAT IT DOES LOCALLY, NOT IN CI.** Run from a
+shell it deploys to `employsi-preview`, as the name says. Run by Workers Builds
+it deploys to the connected Worker — today `employsi` — because the connection
+overrides the flag. Same script, two targets, decided by where it runs.
+
+What the script still buys, now that `--name` is known not to steer CI: the build
+step is inside it, so the pipeline needs one dashboard field rather than two and
+cannot be half-configured. There is no `deploy:prod` script; production deploys
+stay typed out by hand, and that is the point.
 
 Deploys, when actually asked for:
 
