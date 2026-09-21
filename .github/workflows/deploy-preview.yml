@@ -317,7 +317,11 @@ jobs:
       - name: Check the app answers
         run: |
           url=https://employsi-preview.employsi.workers.dev/app
-          code=$(curl -s -o page.html -w '%{http_code}' --max-time 30 "$url" || echo 000)
+          # --compressed IS REQUIRED. Without it curl stores the gzip bytes, grep
+          # calls page.html a binary file, the title comes back empty and this
+          # step warns "/app did not return the app title" on a perfectly good
+          # deploy. Measured 2026-09-21 on the first successful run.
+          code=$(curl -s --compressed -o page.html -w '%{http_code}' --max-time 30 "$url" || echo 000)
           title=$(grep -o '<title>[^<]*' page.html | head -1 | sed 's/<title>//')
           echo "$code  $title"
           [ "$code" = "200" ] || { echo "::error::$url answered $code"; exit 1; }
