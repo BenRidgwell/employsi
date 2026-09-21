@@ -61,23 +61,61 @@ jobs:
       # DO NOT SATISFY IT WITH A PLACEHOLDER. The build succeeds, the deploy
       # succeeds, and the map then fails to render for every visitor — a green
       # pipeline over a broken page. Checked explicitly here so the failure names
-      # the missing secret instead of surfacing as a vite stack trace.
+      # what is missing instead of surfacing as a vite stack trace.
+      #
+      # A SECRET **OR** A VARIABLE IS ACCEPTED, and that is not laziness. A
+      # Mapbox PUBLIC token (pk.…) is inlined into the client bundle and served
+      # to every visitor, so it is not secret in any useful sense and
+      # `Settings -> Secrets and variables -> Actions -> Variables` is a
+      # perfectly reasonable home for it. The first run of this workflow failed
+      # here with CLOUDFLARE_API_TOKEN present and this one empty, which is
+      # exactly what a value living in the other tab looks like.
       - name: Check the tokens are present
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          VITE_MAPBOX_TOKEN: ${{ secrets.VITE_MAPBOX_TOKEN }}
+          MAPBOX_FROM_SECRET: ${{ secrets.VITE_MAPBOX_TOKEN }}
+          MAPBOX_FROM_VAR: ${{ vars.VITE_MAPBOX_TOKEN }}
         run: |
+          token="${MAPBOX_FROM_SECRET:-$MAPBOX_FROM_VAR}"
+          if [ -n "$MAPBOX_FROM_SECRET" ]; then src="repository secret"
+          elif [ -n "$MAPBOX_FROM_VAR" ]; then src="repository variable"
+          else src="nowhere"; fi
+          echo "VITE_MAPBOX_TOKEN source: $src"
+          # Never echo the value; only its shape, which is what tells a real
+          # Mapbox public token from a placeholder someone pasted to get a build.
+          case "$token" in
+            pk.*) echo "  shape: looks like a Mapbox public token" ;;
+            '')   ;;
+            *)    echo "::warning::VITE_MAPBOX_TOKEN does not start with 'pk.' — if that is a placeholder, the map will not render for any visitor" ;;
+          esac
           missing=
           [ -n "$CLOUDFLARE_API_TOKEN" ] || missing="$missing CLOUDFLARE_API_TOKEN"
-          [ -n "$VITE_MAPBOX_TOKEN" ]    || missing="$missing VITE_MAPBOX_TOKEN"
+          [ -n "$token" ]                || missing="$missing VITE_MAPBOX_TOKEN"
           if [ -n "$missing" ]; then
-            echo "::error::Missing repository secret(s):$missing"
-            echo "VITE_MAPBOX_TOKEN is a BUILD variable. It may be set in the" >&2
-            echo "Cloudflare dashboard for Workers Builds and still not exist as a" >&2
-            echo "GitHub secret — they are separate stores. Add it under" >&2
-            echo "Settings -> Secrets and variables -> Actions." >&2
+            echo "::error::Missing:$missing (checked both Actions secrets and Actions variables)"
+            echo "Where to look, in the order these actually go missing:" >&2
+            echo "  1. Settings -> Secrets and variables -> Actions -> Secrets" >&2
+            echo "  2. the same page's Variables tab (fine for a pk. token)" >&2
+            echo "  3. an ENVIRONMENT secret — those need 'environment:' on this job," >&2
+            echo "     which it deliberately does not set" >&2
+            echo "  4. an ORG secret not shared with this repository" >&2
+            echo "  5. the Cloudflare dashboard's Workers Builds build variables —" >&2
+            echo "     a DIFFERENT store, and the one CLAUDE.md documents. A value" >&2
+            echo "     there is invisible to GitHub Actions." >&2
             exit 1
           fi
+
+      # Carried forward for the build step, whichever store it came from.
+      - name: Put the map token in the environment
+        env:
+          MAPBOX_FROM_SECRET: ${{ secrets.VITE_MAPBOX_TOKEN }}
+          MAPBOX_FROM_VAR: ${{ vars.VITE_MAPBOX_TOKEN }}
+        run: |
+          token="${MAPBOX_FROM_SECRET:-$MAPBOX_FROM_VAR}"
+          # Masked explicitly: a value that arrived as a VARIABLE is not masked
+          # in the log by default, and the build prints its config.
+          echo "::add-mask::$token"
+          echo "VITE_MAPBOX_TOKEN=$token" >> "$GITHUB_ENV"
 
       - run: npm ci
 
@@ -93,7 +131,8 @@ jobs:
       - name: Build and deploy to employsi-preview
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          VITE_MAPBOX_TOKEN: ${{ secrets.VITE_MAPBOX_TOKEN }}
+        # VITE_MAPBOX_TOKEN comes from GITHUB_ENV, set above from whichever store
+        # holds it.
         run: npm run deploy:preview 2>&1 | tee deploy.txt
 
       # THE REAL TOKEN HAS TO BE IN THE BUNDLE. A build made with a dummy value
