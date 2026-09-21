@@ -7,6 +7,7 @@ import {
   type MatchRate,
 } from "../../lib/dataQualityFn";
 import { CRAWL_FAMILIES, nextForFamily, untilLabel } from "../../lib/crawlSchedule";
+import { crawlTriggerAvailable, runCrawl } from "../../lib/runCrawlFn";
 import { CardLoader } from "./CardLoader";
 import { getEngagement, type Cohort } from "../../lib/engagementFn";
 import { useAppStore } from "../../state/store";
@@ -15,12 +16,15 @@ import { useAppStore } from "../../state/store";
  * The admin console, built from `Admin_Panel.html` and restyled to
  * `Control_Room.html` on 2026-09-21.
  *
- * WHAT THE SECOND DESIGN CHANGED. It is a centred overlay up to 1400px rather
- * than a 940px pane docked beside the rail, because the data tab now carries
- * seven cards and two of them are charts that are unreadable at pane width. It
- * also drops the sortable freshness TABLE for a list of rows filtered to
- * Silent / All — five sort columns replaced by the one question the card is
- * for. Three cards are new: ingest volume, skill match rate, scheduled crawls.
+ * WHAT THE SECOND DESIGN CHANGED. It drops the sortable freshness TABLE for a
+ * list of rows filtered to Silent / All — five sort columns replaced by the one
+ * question the card is for. Three cards are new: ingest volume, skill match
+ * rate, and scheduled crawls with a Run now trigger.
+ *
+ * The design's own SHELL is deliberately not used: it draws a centred overlay
+ * up to 1400px, and this is a 940px pane sized to match What's trending, so the
+ * three cards opening from the same rail are one surface rather than three. See
+ * the .dqpane comment in global.css.
  *
  * EVERY FIGURE ON THOSE THREE IS QUERIED, NOT TAKEN FROM THE MOCKUP. The design
  * ships plausible numbers — 75,757 live, 92.1% matched, 919,552 mapped — and
@@ -315,7 +319,12 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
   // flash a loader over content that is right there. The loader is for the
   // FIRST open, where there is nothing to show yet — same rule as What's
   // trending, and the same reason the two use one component.
-  const { data, isPending, isFetching } = useQuery({
+  const {
+    data,
+    isPending,
+    isFetching,
+    refetch: refetchQuality,
+  } = useQuery({
     queryKey: ["dataQuality"],
     queryFn: () => getDataQuality(),
     // The archive moves once a day; re-reading it on every open would scan the
@@ -387,6 +396,71 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
       return { f, at, until: at ? untilLabel(at, now) : null };
     });
   }, []);
+
+  /**
+   * Whether this deployment can fire a crawl at all. Secrets are per-Worker, so
+   * the answer differs between production and preview and cannot be assumed.
+   */
+  const { data: trigger } = useQuery({
+    queryKey: ["crawlTrigger"],
+    queryFn: () => crawlTriggerAvailable(),
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+    enabled: isAdmin && tab === "data",
+  });
+
+  const [runs, setRuns] = useState<
+    Record<string, { state: "running" | "done" | "error"; text: string }>
+  >({});
+
+  /**
+   * Fire one family, after confirming.
+   *
+   * THE CONFIRM IS NOT DECORATION. This is the only control in the console that
+   * writes, it writes to the production archive from whichever deployment is
+   * serving the page, and the rest of this card is a read-only schedule — so
+   * the button sits among things that do nothing. Naming the family and the
+   * consequence makes an accidental press hard rather than one click away.
+   */
+  const fireCrawl = async (id: string, title: string) => {
+    const f = CRAWL_FAMILIES.find((x) => x.id === id);
+    const n = f?.endpoints.length ?? 1;
+    const ok = window.confirm(
+      `Run "${title}" now?\n\n` +
+        `This fires ${n === 1 ? "one scrape" : `${n} scrapes`} immediately and writes the ` +
+        `results to the LIVE archive — the same D1 the public site reads. It is safe to ` +
+        `repeat (rows upsert on job_key) but it spends upstream API quota.`,
+    );
+    if (!ok) return;
+
+    setRuns((r) => ({ ...r, [id]: { state: "running", text: "" } }));
+    try {
+      const res = await runCrawl({ data: { family: id } });
+      const parts = res.steps.map(
+        (s) =>
+          `${s.path.replace("/run", "") || "shard"} ${s.ok ? "✓" : `✗ ${s.status}`} ${s.detail}`,
+      );
+      const secs = (res.ms / 1000).toFixed(1);
+      setRuns((r) => ({
+        ...r,
+        [id]: {
+          state: res.ok ? "done" : "error",
+          // The failure reason is shown, not swallowed into "failed" — a 403
+          // means the token is wrong, a timeout means the scrape is slow, and
+          // those need different responses.
+          text: res.error ? res.error : `${parts.join(" · ")} — ${secs}s`,
+        },
+      }));
+      // The archive has changed, so the figures above are now stale. Refetching
+      // is the point of having run it.
+      if (res.ok) void refetchQuality();
+    } catch (e) {
+      setRuns((r) => ({
+        ...r,
+        [id]: { state: "error", text: (e as Error)?.message || "Run failed." },
+      }));
+    }
+  };
 
   // Nothing to draw yet on this tab: the white loader covers the wait rather
   // than showing an empty card that reads as an empty archive.
@@ -652,29 +726,60 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
                   <span className="dqcardtitle">Scheduled crawls</span>
                   <span className="dqcardsub">
                     When each family next fires, in UTC. A feed silent since before its last run has
-                    stopped; one silent since after it simply has not run yet.
+                    stopped; one silent since after it simply has not run yet — running it early is
+                    how you tell those apart without waiting for the tick.{" "}
+                    <strong>Run now writes to the live archive</strong>, from this deployment and
+                    every other, because the D1 binding is shared.
                   </span>
                 </div>
                 <div className="dqcrawls">
-                  {crawls.map(({ f, at, until }) => (
-                    <div key={f.id} className="dqcrawl">
-                      <div className="dqcrawlicon" aria-hidden>
-                        {f.crons.length}×
+                  {crawls.map(({ f, at, until }) => {
+                    const r = runs[f.id];
+                    return (
+                      <div key={f.id} className="dqcrawl">
+                        <div className="dqcrawlicon" aria-hidden>
+                          {f.crons.length}×
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div className="dqcrawltitle">{f.title}</div>
+                          <div className="dqcrawlwhen">{f.covers}</div>
+                          {/* The outcome replaces nothing — it is added below
+                              the line, so the schedule stays readable while a
+                              run is in flight and after it finishes. */}
+                          {r && (
+                            <div className={`dqrunout${r.state === "error" ? " bad" : ""}`}>
+                              {r.state === "running"
+                                ? `Running ${f.endpoints.length > 1 ? `${f.endpoints.length} scrapes` : "…"}`
+                                : r.text}
+                            </div>
+                          )}
+                        </div>
+                        <div className="dqcrawlact">
+                          <span className="dqcrawlnext">
+                            {/* Suppressed rather than guessed when the
+                                expression is one nextRun refuses to read. */}
+                            {at
+                              ? `${at.toISOString().slice(11, 16)} UTC · ${until}`
+                              : "schedule unread"}
+                          </span>
+                          {trigger?.ok ? (
+                            <button
+                              type="button"
+                              className="dqrun"
+                              disabled={r?.state === "running"}
+                              onClick={() => fireCrawl(f.id, f.title)}
+                            >
+                              {r?.state === "running" ? "Running…" : "Run now"}
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
-                      <div style={{ minWidth: 0 }}>
-                        <div className="dqcrawltitle">{f.title}</div>
-                        <div className="dqcrawlwhen">{f.covers}</div>
-                      </div>
-                      {/* Suppressed rather than guessed when the expression is
-                          one nextRun refuses to read — see crawlSchedule.ts. */}
-                      <span className="dqcrawlnext">
-                        {at
-                          ? `${at.toISOString().slice(11, 16)} UTC · ${until}`
-                          : "schedule unread"}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+                {/* Not a dead button: when the token is missing the card says
+                    why instead of offering one that always fails. */}
+                {trigger && !trigger.ok && <p className="dqcardfoot">{trigger.reason}</p>}
               </section>
 
               <p className="dqfoot">Read from the live archive · {data.generated}</p>

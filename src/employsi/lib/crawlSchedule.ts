@@ -24,6 +24,15 @@ export interface CrawlFamily {
   crons: string[];
   /** One line on what it covers, shown under the title. */
   covers: string;
+  /**
+   * The scraper Worker paths a manual "Run now" fires, in order.
+   *
+   * One family can be several endpoints: the government boards are five
+   * separate scrapes because each needs its own subrequest budget, so running
+   * that family by hand is five calls and can partly succeed. The runner
+   * reports which ones did rather than collapsing them to one yes/no.
+   */
+  endpoints: string[];
 }
 
 export const CRAWL_FAMILIES: CrawlFamily[] = [
@@ -42,24 +51,30 @@ export const CRAWL_FAMILIES: CrawlFamily[] = [
       "42 */6 * * *",
     ],
     covers: "Adzuna, The Muse and Jooble, a shard of the roster per run",
+    endpoints: ["/run"],
   },
   {
     id: "gov",
     title: "Government boards",
     crons: ["5 */6 * * *", "15 */6 * * *", "30 */6 * * *", "45 */6 * * *", "50 */6 * * *"],
     covers: "NT, VIC, WA, QLD and TAS job boards, one per invocation",
+    endpoints: ["/run-ntgov", "/run-vicgov", "/run-wagov", "/run-qldgov", "/run-tasgov"],
   },
   {
     id: "portals",
     title: "Career portals",
     crons: ["20 4 * * *", "25 4 * * *", "35 4 * * *", "55 4 * * *"],
     covers: "Employer ATS feeds, a quarter of the portals per tick",
+    // No ?group=, so a manual run walks every portal rather than one nightly
+    // slice — the point of running by hand is to prove a feed is alive.
+    endpoints: ["/run-portals"],
   },
   {
     id: "news",
     title: "Company news",
     crons: ["40 3 * * *", "50 3 * * *", "0 4 * * *", "10 4 * * *"],
     covers: "A quarter of the roster's news each run, nightly",
+    endpoints: ["/run-news"],
   },
 ];
 

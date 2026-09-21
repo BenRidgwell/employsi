@@ -3010,6 +3010,55 @@ body {
   border-radius: 999px;
   padding: 7px 14px;
 }
+.dqcrawlact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+/* The one control in this console that WRITES. Ink-filled, per the greyscale
+   brand's primary action — the surrounding card is read-only, so the button
+   that is not must not look like the pills beside it. */
+.dqrun {
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid var(--action-primary);
+  background: var(--action-primary);
+  color: var(--action-primary-text);
+  transition:
+    transform 0.12s,
+    background 0.12s;
+}
+.dqrun:hover:not(:disabled) {
+  background: var(--action-primary-hover);
+}
+.dqrun:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.dqrun:disabled {
+  cursor: default;
+  border-color: var(--border-default);
+  background: var(--surface-sunken);
+  color: var(--text-tertiary);
+}
+/* The outcome line. Wraps rather than truncating: a failure reason is the
+   whole value of running one by hand, and a 403 elided to "requ…" is useless. */
+.dqrunout {
+  margin-top: 6px;
+  font-family: var(--font-label);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.dqrunout.bad {
+  color: var(--status-danger-fg);
+}
 /* ── Feedback moderation (admin only) ──────────────────────────────────────
    Deliberately quiet: it sits inside every row, so styled like the row's own
    metadata rather than as a toolbar. The remove button only takes on danger
