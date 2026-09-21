@@ -110,19 +110,51 @@ reachable at `benridgwell-globe-gazer-hr.employsi.workers.dev/app` and nowhere
 else — checking `employsi.com.au` returns 200 proves the waitlist is up, not
 that the app deployed.
 
-**Production does not track `main`.** The live site was built from
-`claude/waitlist-page-updates-053rss`, which carries the D1-backed landing stats
-(`src/employsi/lib/landingStatsFn.ts`), the domain routing in `src/server.ts` and the
-un-clipped hero graphic. A deploy from a branch missing those silently reverts them:
-the ticker falls back to hardcoded placeholders and the hero clips. This happened on
-2026-08-10 and was recovered with `wrangler rollback`. **Check before deploying
-anything** — the test is whether your branch contains that one, not what it is named:
+**Production was built from `claude/waitlist-page-updates-053rss`**, which carries the
+D1-backed landing stats (`src/employsi/lib/landingStatsFn.ts`), the domain routing in
+`src/server.ts` and the un-clipped hero graphic. A deploy from a tree missing those
+silently reverts them: the ticker falls back to hardcoded placeholders and the hero
+clips. That happened on 2026-08-10 and was recovered with `wrangler rollback`.
+
+**THAT BRANCH SHARES NO HISTORY WITH `main`** — different root commits, no merge base.
+Measured 2026-09-21. Two consequences, and the second one bit:
+
+- **Do not try to merge it.** `git merge` refuses outright, and
+  `--allow-unrelated-histories` would drag 771 commits of a disjoint tree across the
+  99 files that differ — on most of which `main` is NEWER (it carries the Inter
+  webfont swap the branch predates). The merge would revert `main`, not protect prod.
+- **The old ancestry check was broken**, and it read as a real blocker rather than as
+  a broken test. It was
+
+      git merge-base --is-ancestor origin/claude/waitlist-page-updates-053rss HEAD
+
+  which on disjoint histories can NEVER pass, so it printed "WOULD REVERT PRODUCTION"
+  no matter what `main` contained — including when `main` contained every one of the
+  files it was protecting, byte for byte.
+
+**Check the CONTENT, not the ancestry.** Measured 2026-09-21: all three
+production-critical files are identical on `main`, as is every file touched by the
+five commits the ancestry check flagged as missing. The only file absent from `main`
+is `src/employsi/data/privateCompanyFacts.ts`, which nothing in `main` imports.
 
 ```bash
 git fetch origin claude/waitlist-page-updates-053rss
-git merge-base --is-ancestor origin/claude/waitlist-page-updates-053rss HEAD \
-  && echo safe || echo "WOULD REVERT PRODUCTION"
+for f in src/employsi/lib/landingStatsFn.ts src/server.ts src/routes/index.tsx \
+         public/waitlist-preview.html; do
+  a=$(git rev-parse HEAD:$f 2>/dev/null)
+  b=$(git rev-parse origin/claude/waitlist-page-updates-053rss:$f 2>/dev/null)
+  [ -n "$a" ] && [ "$a" = "$b" ] && echo "same  $f" || echo "DIFFERS/MISSING  $f"
+done
 ```
+
+A `DIFFERS` is not automatically a revert — `main` may simply be ahead, as it is on the
+font — so read the diff before deciding. What must never happen is deploying a tree
+where those files are OLDER than production's.
+
+`main` was deployed to production on 2026-09-21 (version `2ac6eba8`, replacing
+`52e5abaa`) and verified after: apex 200 serving the waitlist, `/app` still 302ing off
+the apex, the app's own title on workers.dev, and the landing ticker rendering real
+figures (37,185 / 1,121) rather than placeholders.
 
 To let someone LOOK at a change, either deploy to the preview Worker or upload a
 version to production without shifting traffic — the second prints its own URL:
