@@ -4875,6 +4875,55 @@ export const SITES: SiteDef[] = [
     // empty-location path, which needs no flag.
     homeHub: "melbourne",
   },
+  // ── The 2026-09-21 eighteenth sweep — Stowe, ARA, Talent International ──────
+  //
+  // The three corporates that had been owed a --render sweep since the tenth
+  // batch. No feeds; all three answers are below, and the sweep itself needed
+  // two fixes before it could produce any of them.
+  //
+  //   Stowe Australia (120 ads) — FOUND, and NOT BUILT pending a decision. Its
+  //     careers page embeds an Expr3ss! widget rather than linking a hosted
+  //     board:
+  //
+  //       <div id='expr3ss-jobs-widget'></div>
+  //       Expr3ss.Widget = {"config":{"token":"b86…0112", …,
+  //                                   "divisions":"t9-gE9s~"}}
+  //       <script src='https://developers.expr3ss.com/Files/js/widget.min.js'>
+  //
+  //     and widget.min.js resolves its data source by rewriting its own src to
+  //     `api/index.jsonp`. That API answers with the whole board — but only to a
+  //     request that carries a Referer from Stowe's page. Measured 2026-09-21,
+  //     the same URL both ways:
+  //
+  //       no Referer   {"status":401,"message":"Unable to authorise the widget
+  //                     hosting page.","referer":null}
+  //       with Referer {"job":[{"id":"10","title":"JOB ENQUIRIES", …
+  //
+  //     So reading it means sending a Referer this project did not come from —
+  //     claiming to be Stowe's careers page to an endpoint whose own error says
+  //     it authorises by hosting page. That is an access control, not an
+  //     indexing preference, which puts it with NGA.NET and Funnelback rather
+  //     than with Metricon's noindex. Not built, and the token is recorded here
+  //     so the decision can be taken once rather than rediscovered.
+  //
+  //     THE OTHER ROUTE IS LEGITIMATE AND JUST NEEDS A NAME. fetchExpr3ss
+  //     already reads a HOSTED board at <tenant>.expr3ss.com/home?… — that is a
+  //     public page, and Drake Supermarkets is fed from one. Stowe's tenant
+  //     hostname is not printed anywhere on its site; guessing one is how
+  //     Kennards Hire's board nearly got filed under Kennards Self Storage.
+  //
+  //   ARA (116 ads) — INCONCLUSIVE, and deliberately not recorded as a miss.
+  //     Its three reachable pages carry no marker in served HTML and all three
+  //     renders returned nothing, so nothing was read after hydration. The
+  //     report says INCONCLUSIVE rather than "no board", which is the whole
+  //     point of that distinction: a render that could not run is a fact about
+  //     the browser, not about the employer.
+  //
+  //   Talent International (110 ads) — every path answers 403, including the
+  //     root, and every render of those pages returned nothing too. Nothing was
+  //     read at all. Also worth knowing: the domain in resolvedDomains.ts,
+  //     talentidl.com, is DEAD and hangs on TLS; talentinternational.com is the
+  //     company's own site and is what was swept.
 ];
 
 /**
