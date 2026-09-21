@@ -8,7 +8,7 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
-    "deploy:preview": "npx wrangler deploy --name employsi-preview",
+    "deploy:preview": "npm run build && npx wrangler deploy --name employsi-preview",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

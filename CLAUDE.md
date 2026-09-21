@@ -264,7 +264,7 @@ on `employsi-preview` while employsi.com.au changed underneath you. The
 the target. The attachment limits the blast radius of the *connection*; the flag
 limits the blast radius of the *deploy*.
 
-**Its build command must be `npm run build`, and the failure when it isn't looks
+**A build step must run before the deploy, and the failure when it doesn't looks
 like a config error in this repo.** Measured 2026-09-21: the pipeline ran
 `bun install --frozen-lockfile` and then went straight to `npx wrangler deploy`,
 which failed with
@@ -290,9 +290,24 @@ Settings -> Build**:
 
 | Field | Value |
 | --- | --- |
-| Build command | `npm run build` |
+| Build command | **leave EMPTY** |
 | Deploy command | `npm run deploy:preview` |
 | Build variable | `VITE_MAPBOX_TOKEN` — see below |
+
+**`deploy:preview` BUILDS ITS OWN OUTPUT** — it is `npm run build && npx wrangler
+deploy --name employsi-preview`, one script, so the pipeline needs exactly one
+field set and cannot be half-configured. That is deliberate. The build-command
+field was measured failing to take effect twice on 2026-09-21 — the first CI run
+and a manual retry both went straight from `bun install` to the deploy command
+and died on the same missing entry point. Whatever the reason, a repo that only
+needs one field set cannot lose to it.
+
+It also closes the dangerous half-state. With the build and deploy commands in
+separate fields, "build set + deploy still a bare `npx wrangler deploy`" publishes
+PRODUCTION; that combination cannot be reached when one script does both.
+
+If the build-command field is ever set to `npm run build` as well, nothing breaks
+— vite just runs twice and the build takes a minute longer. Leave it empty.
 
 **Verify the first build landed where you think**, because a green build says
 nothing about which Worker it wrote. Both of these must be true:
