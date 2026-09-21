@@ -248,10 +248,25 @@ There is a **Workers Builds** pipeline connected to this repo, configured entire
 dashboard-side (Workers & Pages -> the Worker -> Settings -> Build). Nothing in the
 source tree references it, which is why it is easy to forget it exists at all.
 
-It is connected to the **`employsi-preview`** Worker, so its build rows appear
-under that Worker's Deployments tab and production has no build trigger at all.
-It was connected to production until 2026-09-21; moving it means a misconfigured
-build field can no longer be the thing that publishes the live site.
+**THE CONNECTION LIVES ON THE WORKER NAMED `employsi`, WHICH IS NOT THE WORKER IT
+DEPLOYS TO.** Confirmed 2026-09-21. Three similarly-named Workers are in play and
+the build sits on the one you would not guess:
+
+| | |
+| --- | --- |
+| Build settings + build log | **`employsi`** — the connected Worker |
+| Where the deploy lands | **`employsi-preview`** — because the script passes `--name` |
+| Never touched by CI | `benridgwell-globe-gazer-hr` — production |
+
+**This cost an evening.** Every build field was edited on `employsi-preview` ->
+Settings -> Build, which is a real page with real fields that saves happily and
+has nothing to do with the running pipeline. The builds kept going out with the
+old values, which read as settings silently failing to persist — a much more
+alarming problem than the real one. **If a build field appears not to stick,
+check which Worker's settings page you are on before anything else.**
+
+It was connected to production until 2026-09-21. Moving it off means a
+misconfigured build field can no longer be the thing that publishes the live site.
 
 **BUT THE ATTACHMENT IS NOT WHAT MAKES IT SAFE, AND IT IS TEMPTING TO THINK IT
 IS.** Wrangler publishes to the `name` in the resolved config — `.output/server/
@@ -263,6 +278,23 @@ on `employsi-preview` while employsi.com.au changed underneath you. The
 `--name employsi-preview` in `deploy:preview` is still the only thing choosing
 the target. The attachment limits the blast radius of the *connection*; the flag
 limits the blast radius of the *deploy*.
+
+**THE DASHBOARD WILL ASK YOU TO BREAK THIS. DISMISS IT.** Because the repo's
+`name` and the connected Worker disagree, Workers Builds shows a banner offering
+to "keep settings consistent" — and on Wrangler v3.109.0+ to open a PR doing it:
+
+    // wrangler.jsonc
+    "name": "employsi",
+
+Taking it would point every bare `npx wrangler deploy` in this repo at the
+`employsi` Worker. The documented production deploy would then succeed, print
+green, and leave employsi.com.au untouched, while writing over the `employsi`
+Worker that this file says not to deploy over without asking. The mismatch the
+banner wants to remove is the thing keeping CI off the live site. Close it with
+the ✕, and reject the PR if one is opened.
+
+It also does not fix a failing build: the `Missing entry-point` error is a
+missing build step, and renaming a Worker does not create `.output/`.
 
 **A build step must run before the deploy, and the failure when it doesn't looks
 like a config error in this repo.** Measured 2026-09-21: the pipeline ran
@@ -285,8 +317,8 @@ back to the root config, and the error is a correct description of the file it w
 left with. It works locally purely because a previous `npm run build` left
 `.output/` behind. **The error is about a missing BUILD, not a missing key.**
 
-The settings that make it work, under **Workers & Pages -> `employsi-preview` ->
-Settings -> Build**:
+The settings that make it work, under **Workers & Pages -> `employsi` ->
+Settings -> Build** — the connected Worker, not the one being deployed to:
 
 | Field | Value |
 | --- | --- |
