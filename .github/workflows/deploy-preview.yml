@@ -119,21 +119,74 @@ jobs:
 
       - run: npm ci
 
+      # WRANGLER NEEDS AN ACCOUNT WHEN `--name` IS USED. Measured 2026-09-21 on
+      # the first working run of this file: every wrangler call died with
+      #
+      #     ✘ [ERROR] A request to the Cloudflare API (/memberships) failed.
+      #       Authentication error [code: 10000]
+      #
+      # because neither wrangler.jsonc nor the nitro-generated config carries an
+      # `account_id`, so wrangler tried to LIST the token's accounts to pick one
+      # and this token cannot read /memberships. Setting CLOUDFLARE_ACCOUNT_ID
+      # skips that lookup entirely.
+      #
+      # An account id is an identifier, not a credential — it is in every
+      # dashboard URL — but it is still read from the environment here rather
+      # than written into the repo, which is this project's rule for anything
+      # account-shaped. Secret or variable, either is fine.
+      #
+      # NOT YET EXPLAINED, and said plainly rather than guessed at:
+      # deploy-jobs-cron.yml deploys with the SAME token and no account id and
+      # has never hit this. The difference is `--config <file>` there against
+      # `--name` here; why that changes account resolution has not been measured,
+      # so this fixes the failure without claiming to understand it.
+      - name: Resolve the Cloudflare account id
+        env:
+          CLOUDFLARE_ACCOUNT_ID_SECRET: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID_VAR: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          acct="${CLOUDFLARE_ACCOUNT_ID_SECRET:-$CLOUDFLARE_ACCOUNT_ID_VAR}"
+          if [ -z "$acct" ]; then
+            echo "::error::CLOUDFLARE_ACCOUNT_ID is not set (secret or variable)"
+            echo "Without it wrangler calls /memberships to choose an account, and" >&2
+            echo "this token cannot read that endpoint. The id is printed in this" >&2
+            echo "workflow's own earlier logs, in the account table wrangler shows" >&2
+            echo "on failure, and in every dash.cloudflare.com URL." >&2
+            exit 1
+          fi
+          echo "::add-mask::$acct"
+          echo "CLOUDFLARE_ACCOUNT_ID=$acct" >> "$GITHUB_ENV"
+
       # Recorded BEFORE the deploy, because it is the only cheap way back.
+      #
+      # `|| true` IS GONE FROM THE CAPTURE. It was there so a listing failure
+      # could not block a deploy, and what it actually did was hide the auth
+      # error above and leave two files of error text for the verify step to
+      # compare — which it then did, happily, and called it a check.
       - name: What is live now
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          npx wrangler deployments list --name employsi-preview > before-preview.txt 2>&1 || true
-          npx wrangler deployments list                         > before-prod.txt    2>&1 || true
-          tail -20 before-preview.txt
+          set -o pipefail
+          npx wrangler versions list --name employsi-preview 2>&1 | tee before-preview.txt
+          npx wrangler versions list --name benridgwell-globe-gazer-hr 2>&1 | tee before-prod.txt
 
       - name: Build and deploy to employsi-preview
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        # VITE_MAPBOX_TOKEN comes from GITHUB_ENV, set above from whichever store
-        # holds it.
-        run: npm run deploy:preview 2>&1 | tee deploy.txt
+        # VITE_MAPBOX_TOKEN and CLOUDFLARE_ACCOUNT_ID come from GITHUB_ENV, set
+        # above from whichever store holds them.
+        #
+        # `set -o pipefail` IS LOAD-BEARING AND WAS MISSING. A pipeline's exit
+        # status is its LAST command's, so `deploy | tee` reports tee's success
+        # however badly wrangler failed. Measured 2026-09-21: the deploy died on
+        # the /memberships auth error, uploaded nothing, and this step was
+        # marked green — the run only failed later, by luck, in the verify step.
+        # A deploy that fails silently is the exact failure this file's comments
+        # spend their length warning about.
+        run: |
+          set -o pipefail
+          npm run deploy:preview 2>&1 | tee deploy.txt
 
       # THE REAL TOKEN HAS TO BE IN THE BUNDLE. A build made with a dummy value
       # deploys happily and breaks the map for everyone, so this asserts the
@@ -152,18 +205,35 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          npx wrangler deployments list --name employsi-preview > after-preview.txt 2>&1 || true
-          npx wrangler deployments list                         > after-prod.txt    2>&1 || true
-          if diff -q before-prod.txt after-prod.txt >/dev/null; then
-            echo "production UNCHANGED"
+          set -o pipefail
+          npx wrangler versions list --name employsi-preview 2>&1 | tee after-preview.txt
+          npx wrangler versions list --name benridgwell-globe-gazer-hr 2>&1 | tee after-prod.txt
+
+          # COMPARE VERSION IDS, NOT THE WHOLE OUTPUT. The first cut diffed the
+          # raw text and cried PRODUCTION CHANGED on a run that deployed nothing
+          # at all: wrangler prints its own log-file path, which carries a
+          # timestamp, plus an "update available" banner. Two calls seconds apart
+          # can never be byte-equal, so that check could only ever false-alarm —
+          # and, worse, it "passed" the production half for the wrong reason
+          # whenever both files happened to be identical error text.
+          ids() { grep -oiE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' "$1" | sort -u; }
+          for f in before-preview.txt after-preview.txt before-prod.txt after-prod.txt; do
+            if [ -z "$(ids $f)" ]; then
+              echo "::error::$f contains no version ids — the listing failed, so nothing here was verified"
+              sed -n '1,25p' "$f"
+              exit 1
+            fi
+          done
+          if [ "$(ids before-prod.txt)" = "$(ids after-prod.txt)" ]; then
+            echo "production UNCHANGED — same version ids before and after"
           else
             echo "::error::PRODUCTION CHANGED. This workflow must never touch it — check that"
             echo "::error::package.json deploy:preview still carries --name employsi-preview."
-            diff before-prod.txt after-prod.txt || true
+            diff <(ids before-prod.txt) <(ids after-prod.txt) || true
             exit 1
           fi
-          if diff -q before-preview.txt after-preview.txt >/dev/null; then
-            echo "::error::employsi-preview did NOT move — the deploy went somewhere else"
+          if [ "$(ids before-preview.txt)" = "$(ids after-preview.txt)" ]; then
+            echo "::error::employsi-preview gained no new version — the deploy went somewhere else, or did not happen"
             exit 1
           fi
           echo "employsi-preview has a new version"
