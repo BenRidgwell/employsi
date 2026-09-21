@@ -79,6 +79,8 @@ import os
 import re
 import socket
 import sys
+import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -133,11 +135,43 @@ FINGERPRINTS: list[tuple[str, str]] = [
     (r'([a-z0-9-]+)\.avature\.net', 'avature'),
     (r'eightfold\.ai|api/apply/v2/jobs', 'eightfold'),
     (r'expr3ss', 'expr3ss'),
+    # THE JOBADDER WIDGET KEY, which is the only part of a JobAdder board that
+    # cannot be guessed: the employer's page hands `_jaJobsSettings.key` to
+    # apps.jobadder.com/widgets/v1/jobs.min.js, and that key IS the endpoint in
+    # careerSites.ts (see the BGC SiteDef). Listed before the bare marker so a
+    # page carrying the key reports it; both may match, which is useful rather
+    # than noisy.
+    # The key name is UNQUOTED and the quotes around the VALUE are often
+    # backslash-escaped, because the block arrives inside JSON-encoded html.
+    # Measured on NHP: `key: \"AU1_xgyjr4ee4zqe3exqsgayeza2pm\"`. A pattern that
+    # required ["']key["'] matched nothing on the one page that had it.
+    (r'_jaJobsSettings[\s\S]{0,400}?\\?["\']?key\\?["\']?\s*:\s*\\?["\']([A-Za-z0-9_-]{16,})',
+     'jobadder (widget key — this is the careerSites.ts endpoint)'),
     (r'jobadder', 'jobadder'),
+    # Teys Australia's board, and nothing here recognised it. Measured
+    # 2026-09-20: the corridor walked teysgroupau.currentjobs.co job pages and
+    # reported no marker, because this platform was not in the table at all.
+    (r'([a-z0-9-]+)\.currentjobs\.co', 'currentjobs.co (NO READER — would need one)'),
     (r'workable\.com', 'workable'),
     (r'elmotalent', 'elmo'),
     (r'\.nga\.net\.au', 'nga (NO READER — common on Australian universities)'),
     (r'cloud\.coveo\.com', 'coveo index (client-rendered; needs an org id + key)'),
+    # NOT AN ATS AT ALL, which is why a sweep of one reports "no marker" however
+    # well it walks. Notre Dame's vacancies are documents in a Funnelback search
+    # collection: its board is /about-us/jobs-at-unda/employment-opportunities and
+    # every link off it carries `collection=und~sp-jobs&profile=jobs` with
+    # Funnelback's `f.<Facet>|<key>=` filter syntax. Measured 2026-09-20 after the
+    # render budget split let that corridor be read at all.
+    #
+    # Worth naming because it is ACTIONABLE in a way "no marker" is not: a
+    # Funnelback collection answers /s/search.json?collection=<c>&profile=<p> with
+    # structured results, so the endpoint to try is named by the capture.
+    # Either order, because the real link puts profile= BEFORE collection= and a
+    # lookahead written the other way round silently matched nothing.
+    (r'[?&]collection=([A-Za-z0-9_~%.-]+)[^"\']*profile='
+     r'|profile=[^"\']*[?&]collection=([A-Za-z0-9_~%.-]+)'
+     r'|funnelback',
+     'funnelback search collection (NOT an ATS — try /s/search.json)'),
 ]
 
 # Set from --render in main(); read by the report so "no marker" can say whether
@@ -178,6 +212,18 @@ RENDER_BUDGET = 6
 # minutes of rendering per employer, so a six-domain sweep stays inside the
 # workflow's 20-minute timeout.
 BLOCKED_RENDER_BUDGET = 10
+# SECONDS PER EMPLOYER, and it exists because a sweep ran off the end of the
+# workflow. Measured 2026-09-20: 14 domains plain hit the 20-minute job timeout
+# and were killed, because a seed that RESOLVES BUT NEVER ANSWERS costs the full
+# 20s fetch timeout and there are nine seeds per employer before the corridor
+# starts. An earlier 16-domain sweep finished in 4 minutes only because most of
+# its seeds failed DNS instantly, which costs nothing.
+#
+# 14 x 70s is about 16 minutes, inside the timeout with room for the report. A
+# sweep that runs out says so per employer rather than reporting a tidy miss —
+# see `cut_short` in the report, because a truncated sweep that reads as a
+# complete negative is how an employer gets written off unexamined.
+EMPLOYER_BUDGET_S = 70
 
 CAREERS_LINK = re.compile(
     r'href=["\']([^"\']*(?:career|job|vacanc|work-with-us|work-for-us|join-us'
@@ -209,6 +255,13 @@ LINK_SKIP = re.compile(r"""
     | careers?[-+_ ]*(?:planning|readiness|development|advice|guide|universe|fair|expo|hub)
     | careerhub
     | /(?:login|signin|register|apply-now)(?:[/?#]|$)
+    # SHARE LINKS. Measured 2026-09-20 on Teys: the corridor followed
+    # linkedin.com/shareArticle and twitter.com/home?status=... because each one
+    # carries the JOB URL inside its query string, so "job" is in the href. They
+    # can never be a board, they are off-site so they are followed last, and each
+    # one still costs a fetch out of LINK_BUDGET.
+    | /shareArticle | /sharer | [?&]status=Check\+?out | /intent/tweet
+    | (?:twitter|x)\.com/home | facebook\.com/share
 """, re.I | re.X)
 
 # Lower rank is followed first. The bands: an actual list of vacancies; a page
@@ -264,7 +317,103 @@ def link_rank(url: str, home: str | None = None) -> int | None:
     return rank
 
 
+# HOW LONG A NAME LOOKUP MAY TAKE, and why it needs its own limit.
+#
+# socket.getaddrinfo TAKES NO TIMEOUT. A resolver that accepts the query and
+# never answers blocks it for as long as the system resolver allows, and
+# EMPLOYER_BUDGET_S cannot help because that is only checked BETWEEN calls.
+#
+# Measured 2026-09-20: a 7-domain sweep was killed at the 20-minute job timeout
+# having written a ZERO-BYTE report — the first employer's first seed never came
+# back, so not one employer block was ever printed. The time budget and
+# PYTHONUNBUFFERED added earlier that day were both powerless against it, which
+# is the point: a per-iteration budget bounds a loop, not a single call.
+DNS_TIMEOUT_S = 6
+
+# Belt and braces for any socket operation that does not get the explicit
+# timeout below — a bare connect or read inherits this instead of blocking.
+socket.setdefaulttimeout(25)
+
+
+def resolves(host: str) -> tuple[bool, str]:
+    """Does this hostname resolve, answered within DNS_TIMEOUT_S either way.
+
+    The lookup runs on a DAEMON thread so that a resolver which never answers
+    cannot hold the sweep, and cannot stop the process exiting either. A lookup
+    that times out is reported as its own thing rather than as "does not exist":
+    those are the two outcomes this file most insists on keeping apart, and
+    "the resolver did not answer" is a third that must not be folded into either.
+    """
+    box: dict[str, str] = {}
+
+    def go() -> None:
+        try:
+            socket.getaddrinfo(host, 443)
+            box['ok'] = ''
+        except socket.gaierror as e:
+            box['gai'] = e.strerror or str(e)
+        except Exception as e:  # noqa: BLE001 — any resolver error is the same answer here
+            box['gai'] = str(e)
+
+    t = threading.Thread(target=go, daemon=True)
+    t.start()
+    t.join(DNS_TIMEOUT_S)
+    if t.is_alive():
+        return False, f'the resolver did not answer in {DNS_TIMEOUT_S}s'
+    if 'ok' in box:
+        return True, ''
+    return False, box.get('gai', 'lookup failed')
+
+
+# A WALL-CLOCK CEILING ON ONE PROBE, and the third attempt at this same symptom.
+#
+# urlopen's `timeout` is PER SOCKET OPERATION, not for the call: a server that
+# sends one byte every 19 seconds never trips it, so the 1.5 MB read cap below is
+# reached at a rate that makes it unreachable. A resolver that never answers was
+# the first cause, and DNS_TIMEOUT_S fixed only that one.
+#
+# So the ceiling is now around the WHOLE probe instead of around each layer of
+# it. One deadline covers the lookup, the connect, the redirect chain and the
+# read together, which is the only version of this that cannot be defeated by
+# moving the hang somewhere else.
+HARD_FETCH_S = 30
+
+
+def _bounded(fn, seconds: float, on_timeout):
+    """Run fn on a daemon thread and give up on it after `seconds`.
+
+    Daemon so that a thread still stuck in a syscall cannot keep the process
+    alive at exit. Nothing tries to cancel it — a Python thread blocked in a
+    socket call cannot be interrupted, so it is abandoned and the sweep moves on.
+    """
+    box: dict = {}
+
+    def go() -> None:
+        try:
+            box['v'] = fn()
+        except BaseException as e:  # noqa: BLE001 — re-raised below, unchanged
+            box['e'] = e
+
+    t = threading.Thread(target=go, daemon=True)
+    t.start()
+    t.join(seconds)
+    if t.is_alive():
+        return on_timeout()
+    if 'e' in box:
+        raise box['e']
+    return box['v']
+
+
 def fetch(url: str, timeout: int = 20) -> dict:
+    """One GET, bounded in wall-clock time whatever the far end does."""
+    return _bounded(
+        lambda: _fetch(url, timeout),
+        HARD_FETCH_S,
+        lambda: {'url': url, 'outcome': 'error',
+                 'detail': f'no answer within {HARD_FETCH_S}s (hung, not refused)'})
+
+
+def _fetch(url: str, timeout: int = 20) -> dict:
     """One GET, with the outcome CLASSIFIED rather than collapsed to a failure.
 
     The four outcomes are deliberately distinct: `dns` means the hostname does
@@ -274,10 +423,9 @@ def fetch(url: str, timeout: int = 20) -> dict:
     exists to stop.
     """
     host = urllib.parse.urlparse(url).hostname or ''
-    try:
-        socket.getaddrinfo(host, 443)
-    except socket.gaierror as e:
-        return {'url': url, 'outcome': 'dns', 'detail': f'{host}: {e.strerror or e}'}
+    ok, why = resolves(host)
+    if not ok:
+        return {'url': url, 'outcome': 'dns', 'detail': f'{host}: {why}'}
     req = urllib.request.Request(url, headers={
         'User-Agent': UA,
         'Accept': 'text/html,application/xhtml+xml',
@@ -377,7 +525,7 @@ BOARD_HOST = re.compile(
           # Added after SEEK Limited fingerprinted `jobadder` with no host and
           # the candidate search came back empty, because none of the hosts above
           # matched and its pages carry no listing path either.
-          |jobadder\.com|greenhouse\.io|lever\.co|workable\.com
+          |jobadder\.com|currentjobs\.co|greenhouse\.io|lever\.co|workable\.com
           |eightfold\.ai|snaphire\.com|elmotalent\.com\.au|ashbyhq\.com)
         (?:/[^"'\s<>]*)?""",
     re.I | re.X)
@@ -507,6 +655,8 @@ def sweep(domain: str, render: bool = False) -> dict:
     # the same overstates what the sweep looked at.
     read: list[str] = []
     seen: set[str] = set()
+    started = time.monotonic()
+    cut_short = 0.0
     # The employer's own REGISTERED domain — not the first candidate's hostname,
     # which is `careers.<domain>` and made a Flinders sweep label flinders.edu.au
     # itself as somebody else's site.
@@ -572,6 +722,9 @@ def sweep(domain: str, render: bool = False) -> dict:
 
     seed_renders = SEED_RENDER_BUDGET
     for url in candidates(domain):
+        if time.monotonic() - started > EMPLOYER_BUDGET_S:
+            cut_short = time.monotonic() - started
+            break
         seen.add(url)
         res = fetch(url)
         row = {k: v for k, v in res.items() if k != 'body'}
@@ -626,6 +779,9 @@ def sweep(domain: str, render: bool = False) -> dict:
     spare_renders = RENDER_BUDGET
     blocked_renders = BLOCKED_RENDER_BUDGET
     while queue and len(followed) < LINK_BUDGET:
+        if time.monotonic() - started > EMPLOYER_BUDGET_S:
+            cut_short = time.monotonic() - started
+            break
         queue.sort()
         _, _, nxt = queue.pop(0)
         followed.append(nxt)
@@ -662,7 +818,7 @@ def sweep(domain: str, render: bool = False) -> dict:
                     harvest(html or '', nxt)
 
     return {'domain': domain, 'home': home, 'tried': tried, 'found': found,
-            'boards': boards, 'read': read,
+            'boards': boards, 'read': read, 'cut_short': cut_short,
             'found_rendered': found_rendered, 'followed': followed}
 
 
@@ -712,6 +868,12 @@ def main() -> int:
             host = urllib.parse.urlparse(u).hostname or '?'
             return f'{u}\n      [OFF-SITE — read from {host}, not {r["home"]}; confirm whose board it is]'
 
+        if r.get('cut_short'):
+            # NOT A CLEAN MISS. Anything below is what this employer had produced
+            # when the clock ran out, so a "no marker" under this line means
+            # "nothing found YET" and must not be recorded as a negative.
+            print(f'  ** CUT SHORT after {r["cut_short"]:.0f}s (EMPLOYER_BUDGET_S) — '
+                  'this sweep is INCOMPLETE; re-run this domain on its own **')
         if r['found']:
             print('  FOUND in served HTML — can be an in-Worker feed:')
             for u, h in r['found'].items():
