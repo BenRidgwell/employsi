@@ -5107,10 +5107,30 @@ const PAGE_CONCURRENCY = 6;
  * The walk stops at the first page that comes back empty or short, which for a
  * stable offset pager means every later page is empty too.
  */
+/**
+ * A parallel page walk that can tell a FAILED page from the END of the list.
+ *
+ * It could not before, and CLAUDE.md names the consequence: "a fetch failure
+ * also returns zero rows, so it is indistinguishable from the end of a list —
+ * this has caused silent truncation twice". A short page ends the walk, and a
+ * page that failed is a short page, so one dropped request discarded everything
+ * after it without a word.
+ *
+ * THE CONTRACT IS NOW THREE-VALUED. The callback returns rows for a page it
+ * read, an empty array for a page that genuinely holds nothing, and NULL for a
+ * page it could not read at all. Only the second ends the walk.
+ *
+ * A null is retried once, serially — getText already retries a thrown fetch and
+ * a 5xx, so a null that survives both is a page this run is not going to get. In
+ * that case the walk stops, because SKIPPING a page would quietly drop the roles
+ * on it, and it SAYS SO: a truncated walk that reports nothing is the failure
+ * this whole file is organised against.
+ */
 async function pagedParallel<T>(
-  page: (i: number) => Promise<T[]>,
+  page: (i: number) => Promise<T[] | null>,
   pageSize: number,
   maxPages: number,
+  label = "",
 ): Promise<T[]> {
   const out: T[] = [];
   for (let start = 0; start < maxPages; start += PAGE_CONCURRENCY) {
@@ -5118,7 +5138,18 @@ async function pagedParallel<T>(
     for (let i = start; i < Math.min(start + PAGE_CONCURRENCY, maxPages); i++) idx.push(i);
     const windows = await Promise.all(idx.map(page));
     let done = false;
-    for (const rows of windows) {
+    for (let k = 0; k < windows.length; k++) {
+      let rows = windows[k];
+      if (rows === null) {
+        rows = await page(idx[k]);
+        if (rows === null) {
+          console.log(
+            `pagedParallel${label ? ` ${label}` : ""}: page ${idx[k] + 1} could not be read — ` +
+              `walk stopped at ${out.length} rows, which is NOT the end of the board`,
+          );
+          return out;
+        }
+      }
       out.push(...rows);
       if (rows.length < pageSize) {
         done = true;
@@ -5385,7 +5416,8 @@ async function fetchEightfold(site: SiteDef): Promise<PortalJob[]> {
       const json = await getJson<{ positions?: EightfoldPos[] }>(
         `${site.endpoint}&start=${i * EF_PAGE}&num=${EF_PAGE}`,
       );
-      return json?.positions ?? [];
+      // null, not [] — see the pagedParallel contract.
+      return json ? (json.positions ?? []) : null;
     },
     EF_PAGE,
     max,
@@ -5432,7 +5464,8 @@ async function fetchSymphony(site: SiteDef): Promise<PortalJob[]> {
         `${site.endpoint}&limit=${SY_PAGE}&offset=${i * SY_PAGE}`,
         { headers: { Referer: site.origin + "/" } },
       );
-      return json?.searchResults ?? [];
+      // null, not [] — see the pagedParallel contract.
+      return json ? (json.searchResults ?? []) : null;
     },
     SY_PAGE,
     max,
@@ -5493,7 +5526,13 @@ async function fetchOracle(site: SiteDef): Promise<PortalJob[]> {
         `${site.endpoint}/hcmRestApi/resources/latest/recruitingCEJobRequisitions` +
         `?onlyData=true&expand=requisitionList.secondaryLocations&finder=${encodeURIComponent(finder)}`;
       const json = await getJson<{ items?: { requisitionList?: OracleReq[] }[] }>(url);
-      return json?.items?.[0]?.requisitionList ?? [];
+      // null, not [] — a page that could not be READ is not an empty page. The
+      // distinction matters here in particular: this service ALSO answers an
+      // empty requisitionList for a wrong siteNumber, so "no rows" already has
+      // one innocent explanation and must not silently acquire a second.
+      // See the pagedParallel contract.
+      if (!json) return null;
+      return json.items?.[0]?.requisitionList ?? [];
     },
     OR_PAGE,
     max,
@@ -5542,7 +5581,14 @@ async function fetchLiveHire(site: SiteDef): Promise<PortalJob[]> {
   const seen = new Set<string>();
   const size = 50;
   const max = site.maxPages ?? DEFAULT_MAX_PAGES;
-  for (let page = 1; page <= max; page++) {
+  // THIS BOARD SAYS WHETHER THERE IS MORE, and the walk used to throw that away
+  // on a failed request: getJson answers null for a timeout, a 403 and a 500
+  // alike, `?? []` turned that into an empty page, and an empty page ended the
+  // walk. `hasMoreResults` is the board's own answer to "am I done", so a page
+  // that never arrived must not be allowed to answer it instead.
+  const MISS_BUDGET = 3;
+  let misses = 0;
+  for (let page = 1; page <= max;) {
     const json = await getJson<{ jobs?: LiveHireJob[]; hasMoreResults?: boolean }>(
       `${site.origin}/careers-api/search/${segment}/${page}/${size}`,
       {
@@ -5551,7 +5597,14 @@ async function fetchLiveHire(site: SiteDef): Promise<PortalJob[]> {
         body: JSON.stringify({ multiSegment: true }),
       },
     );
-    const jobs = json?.jobs ?? [];
+    // NO RESPONSE IS NOT AN EMPTY BOARD. Retry the SAME page rather than
+    // stepping past it; skipping one drops its roles with nothing to show.
+    if (!json) {
+      if (++misses <= MISS_BUDGET) continue;
+      break;
+    }
+    misses = 0;
+    const jobs = json.jobs ?? [];
     if (!jobs.length) break;
     for (const j of jobs) {
       const title = (j.roleName || "").trim();
@@ -5575,7 +5628,8 @@ async function fetchLiveHire(site: SiteDef): Promise<PortalJob[]> {
         ),
       );
     }
-    if (!json?.hasMoreResults) break;
+    page++;
+    if (!json.hasMoreResults) break;
   }
   return out;
 }
@@ -6003,7 +6057,9 @@ async function fetchPhenom(site: SiteDef): Promise<PortalJob[]> {
     if (pages > 1) {
       rows.push(
         ...(await pagedParallel<PhenomJob>(
-          async (i) => (await phenomWidget(site, (i + 1) * PH_PAGE, PH_PAGE)) ?? [],
+          // phenomWidget already answers null for a page it could not read,
+          // and that null now reaches pagedParallel instead of becoming [].
+          async (i) => await phenomWidget(site, (i + 1) * PH_PAGE, PH_PAGE),
           PH_PAGE,
           pages - 1,
         )),
@@ -6022,7 +6078,9 @@ async function fetchPhenom(site: SiteDef): Promise<PortalJob[]> {
         ...(await pagedParallel<PhenomJob>(
           async (i) => {
             const html = await getText(`${site.endpoint}?keywords=&from=${(i + 1) * size}&s=1`);
-            const isl = html ? phenomIsland(html) : null;
+            // null, not [] — see the pagedParallel contract.
+            if (!html) return null;
+            const isl = phenomIsland(html);
             const e = (isl?.eagerLoadRefineSearch ?? {}) as { data?: { jobs?: PhenomJob[] } };
             return e.data?.jobs ?? [];
           },
@@ -6149,7 +6207,8 @@ async function fetchCsl(site: SiteDef): Promise<PortalJob[]> {
   const rows = await pagedParallel<RegExpMatchArray>(
     async (i) => {
       const html = await getText(`${site.endpoint}?page=${i + 1}`);
-      if (!html) return [];
+      // null, not [] — see the pagedParallel contract.
+      if (!html) return null;
       return [
         ...html.matchAll(
           /<a class="block hover:bg-gray-50 group" href="([^"]+)">([\s\S]*?)<\/a>/gi,
@@ -6240,7 +6299,10 @@ async function fetchScentre(site: SiteDef): Promise<PortalJob[]> {
   const cards = await pagedParallel<string>(
     async (i) => {
       const html = await getText(`${site.endpoint}?page=${i + 1}&query=`);
-      return html ? html.split(/class="col-12 job-search-results-card-col"/i).slice(1) : [];
+      // null, not [] — a page that could not be READ is not an empty page.
+      // See the pagedParallel contract.
+      if (!html) return null;
+      return html.split(/class="col-12 job-search-results-card-col"/i).slice(1);
     },
     SCG_PAGE,
     site.maxPages ?? 20,
@@ -6334,9 +6396,23 @@ async function fetchCareerCentre(site: SiteDef): Promise<PortalJob[]> {
       .filter(Boolean)
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(" ");
-  for (let page = 1; page <= max; page++) {
+  // A FAILED FETCH IS NOT AN EMPTY BOARD. `if (!html) break` ended this walk on
+  // a timeout or a 403 exactly as on an exhausted list, so one dropped page
+  // discarded every page after it without a word. getText already retries a
+  // thrown fetch and a 5xx once; this retries the SAME page beyond that, because
+  // stepping past a page drops its roles silently.
+  const MISS_BUDGET = 3;
+  let misses = 0;
+  for (let page = 1; page <= max;) {
     const html = await getText(page === 1 ? site.endpoint : `${site.endpoint}?page=${page}`);
-    if (!html) break;
+    if (!html) {
+      if (++misses <= MISS_BUDGET) continue;
+      break;
+    }
+    misses = 0;
+    // Advanced HERE, not in the for-header: a miss above `continue`s to retry
+    // the SAME page, which a header increment would have skipped past.
+    page++;
     const links = [...html.matchAll(/href="(\/job\/([^/"]+)\/([^/"]+)\/(\d+))"/gi)];
     if (!links.length) break;
     let fresh = 0;
@@ -6421,9 +6497,23 @@ async function fetchPlsCareers(site: SiteDef): Promise<PortalJob[]> {
   const out: PortalJob[] = [];
   const seen = new Set<string>();
   const max = site.maxPages ?? 20;
-  for (let page = 1; page <= max; page++) {
+  // A FAILED FETCH IS NOT AN EMPTY BOARD. `if (!html) break` ended this walk on
+  // a timeout or a 403 exactly as on an exhausted list, so one dropped page
+  // discarded every page after it without a word. getText already retries a
+  // thrown fetch and a 5xx once; this retries the SAME page beyond that, because
+  // stepping past a page drops its roles silently.
+  const MISS_BUDGET = 3;
+  let misses = 0;
+  for (let page = 1; page <= max;) {
     const html = await getText(`${site.endpoint}?page=${page}&query=`);
-    if (!html) break;
+    if (!html) {
+      if (++misses <= MISS_BUDGET) continue;
+      break;
+    }
+    misses = 0;
+    // Advanced HERE, not in the for-header: a miss above `continue`s to retry
+    // the SAME page, which a header increment would have skipped past.
+    page++;
     const cards = html.split(/class="card job-search-results-card"/i).slice(1);
     if (!cards.length) break;
     let fresh = 0;
@@ -8433,9 +8523,23 @@ async function fetchClinch(site: SiteDef): Promise<PortalJob[]> {
   const out: PortalJob[] = [];
   const seen = new Set<string>();
   const max = site.maxPages ?? DEFAULT_MAX_PAGES;
-  for (let page = 1; page <= max; page++) {
+  // A FAILED FETCH IS NOT AN EMPTY BOARD. `if (!html) break` ended this walk on
+  // a timeout or a 403 exactly as on an exhausted list, so one dropped page
+  // discarded every page after it without a word. getText already retries a
+  // thrown fetch and a 5xx once; this retries the SAME page beyond that, because
+  // stepping past a page drops its roles silently.
+  const MISS_BUDGET = 3;
+  let misses = 0;
+  for (let page = 1; page <= max;) {
     const html = await getText(`${site.endpoint}?page=${page}`);
-    if (!html) break;
+    if (!html) {
+      if (++misses <= MISS_BUDGET) continue;
+      break;
+    }
+    misses = 0;
+    // Advanced HERE, not in the for-header: a miss above `continue`s to retry
+    // the SAME page, which a header increment would have skipped past.
+    page++;
     const rows = html.split(/<tr role="link"/i).slice(1);
     const cards = rows.length ? [] : html.split(/job-search-results-card-col/i).slice(1);
     if (!rows.length && !cards.length) break;
@@ -8674,9 +8778,23 @@ async function fetchAttrax(site: SiteDef): Promise<PortalJob[]> {
   const seen = new Set<string>();
   const max = site.maxPages ?? DEFAULT_MAX_PAGES;
   const size = site.pageSize ?? 48;
-  for (let page = 1; page <= max; page++) {
+  // A FAILED FETCH IS NOT AN EMPTY BOARD. `if (!html) break` ended this walk on
+  // a timeout or a 403 exactly as on an exhausted list, so one dropped page
+  // discarded every page after it without a word. getText already retries a
+  // thrown fetch and a 5xx once; this retries the SAME page beyond that, because
+  // stepping past a page drops its roles silently.
+  const MISS_BUDGET = 3;
+  let misses = 0;
+  for (let page = 1; page <= max;) {
     const html = await getText(`${site.endpoint}?page=${page}&size=${size}`);
-    if (!html) break;
+    if (!html) {
+      if (++misses <= MISS_BUDGET) continue;
+      break;
+    }
+    misses = 0;
+    // Advanced HERE, not in the for-header: a miss above `continue`s to retry
+    // the SAME page, which a header increment would have skipped past.
+    page++;
     const tiles = html.split(/<div[^>]*class="[^"]*attrax-vacancy-tile[^"]*"[^>]*data-jobid="/i);
     let added = 0;
     for (const tile of tiles.slice(1)) {
