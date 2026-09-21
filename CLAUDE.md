@@ -242,6 +242,57 @@ it was created, so promoting one does not change the build; confirm that anyway
 by comparing the served asset hash, since a surprise code change here would be
 silent.
 
+### Cloudflare Workers Builds — the CI deploy, and why it kept failing
+
+There is a **Workers Builds** pipeline connected to this repo, configured entirely
+dashboard-side (Workers & Pages -> the Worker -> Settings -> Build). Nothing in the
+source tree references it, which is why it is easy to forget it exists at all.
+
+It is attached to the **production** Worker `benridgwell-globe-gazer-hr`, so its
+build rows appear under production's Deployments tab. Its deploy command is what
+decides where it actually publishes — the attachment does not.
+
+**Its build command must be `npm run build`, and the failure when it isn't looks
+like a config error in this repo.** Measured 2026-09-21: the pipeline ran
+`bun install --frozen-lockfile` and then went straight to `npx wrangler deploy`,
+which failed with
+
+    ✘ [ERROR] Missing entry-point to Worker script or to assets directory
+
+and suggested adding `main` or `assets` to `wrangler.jsonc`. **Do not add them.**
+The root `wrangler.jsonc` deliberately carries only `name` + bindings; `main` and
+`assets` live in the nitro-generated `.output/server/wrangler.json`, which a bare
+`wrangler deploy` finds only through the redirect the build also writes:
+
+```
+.wrangler/deploy/config.json -> {"configPath":"../../.output/server/wrangler.json"}
+```
+
+Both paths are gitignored, so with no build step neither exists, wrangler falls
+back to the root config, and the error is a correct description of the file it was
+left with. It works locally purely because a previous `npm run build` left
+`.output/` behind. **The error is about a missing BUILD, not a missing key.**
+
+The settings that make it work:
+
+| Field | Value |
+| --- | --- |
+| Build command | `npm run build` |
+| Deploy command | `npm run deploy:preview` |
+| Build variable | `VITE_MAPBOX_TOKEN` — see below |
+
+`VITE_MAPBOX_TOKEN` must be a **build** variable, not a Worker secret: it is
+inlined by vite and a secret is not visible to the build. `vite.config.ts` throws
+without it, so the second CI failure after fixing the first is this one.
+
+**The deploy command points at the PREVIEW Worker on purpose.** `deploy:preview` in
+`package.json` is `wrangler deploy --name employsi-preview`, so a push publishes to
+https://employsi-preview.employsi.workers.dev and never to employsi.com.au. It is a
+named script rather than a raw flag so the target is reviewable in the repo instead
+of living only in a dashboard text box — **if that field is ever reset to a bare
+`npx wrangler deploy`, every push publishes production.** Prod deploys stay manual
+and deliberate; there is no `deploy:prod` script, and that is the point.
+
 Deploys, when actually asked for:
 
 ```bash
