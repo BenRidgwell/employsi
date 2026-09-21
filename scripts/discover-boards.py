@@ -153,7 +153,14 @@ FINGERPRINTS: list[tuple[str, str]] = [
     # reported no marker, because this platform was not in the table at all.
     (r'([a-z0-9-]+)\.currentjobs\.co', 'currentjobs.co (NO READER — would need one)'),
     (r'workable\.com', 'workable'),
-    (r'elmotalent', 'elmo'),
+    # THE TENANT, where the subdomain is next to the marker. AKD's sweep
+    # reported a bare `elmo` on www.akd.com.au and nothing else — no host in the
+    # hit and no candidate url either, because the string is not inside an
+    # absolute URL on that page — so the board had to be found by trying slugs
+    # afterwards, which is the guessing this report exists to avoid. The
+    # subdomain group is optional so a marker with nothing in front of it still
+    # reports `elmo` rather than dropping out of the table.
+    (r'(?:([a-z0-9-]+)\.)?elmotalent', 'elmo'),
     (r'\.nga\.net\.au', 'nga (NO READER — common on Australian universities)'),
     (r'cloud\.coveo\.com', 'coveo index (client-rendered; needs an org id + key)'),
     # NOT AN ATS AT ALL, which is why a sweep of one reports "no marker" however
@@ -517,8 +524,13 @@ BOARD_URL = re.compile(
 
 # Any host that IS the ATS, whatever path it was linked with. Kept separate
 # because a bare tenant root carries no board path to match on.
+# The scheme is OPTIONAL because a protocol-relative src ("//tenant.host/…") is
+# an ordinary way to embed a board's widget, and requiring `https:` meant those
+# pages named a platform with no host to go with it — which sends the next reader
+# guessing at tenant slugs. urljoin resolves a `//host/path` against the page's
+# own scheme, so the candidate comes out absolute either way.
 BOARD_HOST = re.compile(
-    r"""https?://[A-Za-z0-9.-]*
+    r"""(?:https?:)?//[A-Za-z0-9.-]*
         (?:pageuppeople\.com|myworkdayjobs\.com|smartrecruiters\.com|csod\.com
           |dayforcehcm\.com|oraclecloud\.com|icims\.com|taleo\.net|avature\.net
           |livehire\.com|expr3ss\.com|nga\.net\.au
