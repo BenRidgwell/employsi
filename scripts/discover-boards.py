@@ -118,6 +118,20 @@ FINGERPRINTS: list[tuple[str, str]] = [
     # cannot be guessed — out of the answer.
     (r'([a-z0-9-]+)\.(wd\d+)\.myworkdayjobs\.com/(?:[a-z]{2}-[A-Z]{2}/)?(?:wday/cxs/[^/]+/)?([A-Za-z0-9_-]+)',
      'workday'),
+    # WORKDAY'S OTHER HOST, and one word is the whole difference. An externally
+    # hosted Workday career site lives on myworkdaySITE.com rather than
+    # myworkdayJOBS.com, and its parts sit in a DIFFERENT ORDER: the pod is the
+    # subdomain and the tenant is a path segment after `recruiting/`.
+    #
+    #   https://wd105.myworkdaysite.com/en-US/recruiting/federation/Federation_Careers
+    #                ^pod                                  ^tenant  ^site
+    #
+    # Federation University read as "no marker" through four sweeps because of
+    # that, while its board sat in the followed-links list in plain sight. The
+    # endpoint is built pod-first:
+    #   https://<pod>.myworkdaysite.com/wday/cxs/<tenant>/<site>/jobs
+    (r'(wd\d+)\.myworkdaysite\.com/(?:[a-z]{2}-[A-Z]{2}/)?recruiting/([a-z0-9-]+)/([A-Za-z0-9_-]+)',
+     'workday [pod/tenant/site — NOTE: myworkdaysite order]'),
     (r'smartrecruiters\.com/([A-Za-z0-9_-]+)', 'smartrecruiters'),
     (r'bootstrap/[0-9._]+_NES', 'successfactors (NES theme — check it renders rows)'),
     (r'successfactors', 'successfactors'),
@@ -131,6 +145,13 @@ FINGERPRINTS: list[tuple[str, str]] = [
     (r'boards(?:-api)?\.greenhouse\.io/[a-z]+/([a-z0-9-]+)', 'greenhouse'),
     (r'jobs\.lever\.co/([a-z0-9-]+)', 'lever'),
     (r'icims\.com|iCIMS', 'icims (NO READER IN careerSites.ts — would need one)'),
+    # TechnologyOne CiAnywhere, an ERP whose recruitment module some Australian
+    # universities run. Measured 2026-09-21: CDU's "CDU job opportunities" link
+    # redirects to cdu.t1cloud.com and lands on a LOG ON page, so there is no
+    # public listing to read there — but the platform was not in this table at
+    # all, which is why four sweeps of CDU reported "no ATS marker" rather than
+    # naming what they had found.
+    (r'([a-z0-9-]+)\.t1cloud\.com', 'technologyone CiAnywhere (NO READER; CDU\'s lands on a logon)'),
     (r'([a-z0-9-]+)\.taleo\.net', 'taleo'),
     (r'([a-z0-9-]+)\.avature\.net', 'avature'),
     (r'eightfold\.ai|api/apply/v2/jobs', 'eightfold'),

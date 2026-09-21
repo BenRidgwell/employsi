@@ -4792,6 +4792,77 @@ export const SITES: SiteDef[] = [
     // them: Teachers Health is a NSW fund with its head office in Surry Hills.
     homeHub: "sydney",
   },
+  // ── The 2026-09-21 seventeenth batch — the two cut-short universities ───────
+  //
+  // CDU and Federation were both CUT SHORT in the four-domain render sweep, at
+  // 72s and 86s. Re-running them one at a time answered both — but only after
+  // the budget was fixed, because EMPLOYER_BUDGET_S was a flat 70s whatever the
+  // target count, so "re-run this domain on its own" bought nothing at all. It
+  // now scales with the number of domains swept: one domain gets 600s.
+  //
+  // BOTH HAD BEEN READ AS "NO ATS MARKER" FOUR TIMES, and neither answer was
+  // that. Both were fingerprint gaps, and both are now closed in
+  // scripts/discover-boards.py:
+  //
+  //   Federation — a Workday board all along, on myworkdaySITE.com rather than
+  //     myworkdayJOBS.com. One word, and the parts sit in a different order too
+  //     (pod is the subdomain, tenant is a path segment). Its board was sitting
+  //     in the followed-links list of every one of those sweeps in plain sight.
+  //     Wired below.
+  //
+  //   Charles Darwin (136 ads) — NOT BUILT, and now for a named reason rather
+  //     than a shrug. Its careers page links "CDU job opportunities" to
+  //     /study/redirect/career-opportunities, which redirects to
+  //     cdu.t1cloud.com — TechnologyOne CiAnywhere — and lands on a LOG ON page
+  //     (measured 2026-09-21). There is no public listing behind it to read.
+  //     The corridor never followed that link because it ranked outside
+  //     LINK_BUDGET, and the platform was not in the fingerprint table, so four
+  //     sweeps reported "no marker" instead of naming what they had reached.
+  //     Both halves are fixed; the board still needs a login, so there is no
+  //     SiteDef. CDU is not invisible meanwhile — it reaches the archive through
+  //     Adzuna and SimplyHired.
+  //
+  //     Its other careers links go to gtnt.jobreadygateway.com.au, which is the
+  //     GTNT Group's apprenticeship board and a DIFFERENT organisation. Filing
+  //     those under CDU would be the Kennards mistake.
+  {
+    id: "uni-federation-university-australia",
+    name: "Federation University Australia",
+    sector: "Education",
+    platform: "workday",
+    // Workday on the myworkdaysite host: pod wd105, tenant `federation`, site
+    // `Federation_Careers`. The endpoint is built pod-first, which is the part
+    // that differs from every other Workday feed in this file:
+    //   https://<pod>.myworkdaysite.com/wday/cxs/<tenant>/<site>/jobs
+    //
+    // Measured 2026-09-21: `total` 5, and that is the whole board.
+    endpoint: "https://wd105.myworkdaysite.com/wday/cxs/federation/Federation_Careers/jobs",
+    origin: "https://wd105.myworkdaysite.com/en-US/recruiting/federation/Federation_Careers",
+    // THE CAMPUS NAMES ARE NOT HUB_MATCH NEEDLES, and neither is "Victoria" on
+    // its own — measured, not assumed: "Ballarat, Victoria" resolved to no hub
+    // before these hints, because the global needle is " vic," with the
+    // abbreviation rather than the spelt-out state.
+    //
+    // Every name hinted here is a VICTORIAN campus, and Melbourne is the
+    // nearest plotted hub to each: Ballarat and its Mt Helen campus are ~100 km
+    // north-west, Berwick is in Greater Melbourne, Churchill is the Gippsland
+    // campus and Horsham the Wimmera one. Federation also teaches in Brisbane
+    // and Adelaide, and those are DELIBERATELY not hinted — they are city names
+    // HUB_MATCH already reads correctly, and hinting them would be the way to
+    // get a Queensland role filed in Victoria.
+    hubHints: [
+      ["ballarat", "melbourne"],
+      ["mt helen", "melbourne"],
+      ["berwick", "melbourne"],
+      ["churchill", "melbourne"],
+      ["horsham", "melbourne"],
+    ],
+    // "2 Locations" is Workday's multi-site placeholder and resolves to nothing
+    // rather than to this hub. The one row whose locationsText is null — an
+    // open expression of interest — falls to the home hub through hubFor's
+    // empty-location path, which needs no flag.
+    homeHub: "melbourne",
+  },
 ];
 
 /**
@@ -5223,6 +5294,8 @@ export const PORTAL_GROUPS: string[][] = [
   // Group 79 — the 2026-09-21 sixteenth batch. One tick: EOS is two Workday
   // pages and a JobAdder board is a single call. 52 roles between them.
   ["sydney-eos", "priv-teachers-health-fund"],
+  // Group 80 — the 2026-09-21 seventeenth batch. One Workday call, 5 roles.
+  ["uni-federation-university-australia"],
 ];
 
 const UA =
