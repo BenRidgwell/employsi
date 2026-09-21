@@ -159,17 +159,42 @@ jobs:
 
       # Recorded BEFORE the deploy, because it is the only cheap way back.
       #
-      # `|| true` IS GONE FROM THE CAPTURE. It was there so a listing failure
-      # could not block a deploy, and what it actually did was hide the auth
-      # error above and leave two files of error text for the verify step to
-      # compare — which it then did, happily, and called it a check.
+      # THE TWO LISTINGS ARE NOT EQUALLY IMPORTANT, and the first cut of this
+      # step treated them as if they were — then failed the whole deploy because
+      # the PREVIEW had nothing to list. Measured 2026-09-21:
+      #
+      #     ✘ [ERROR] /accounts/…/workers/scripts/employsi-preview/versions
+      #       Could not route … perhaps your object identifier is invalid?
+      #       [code: 7003]
+      #
+      # which on a script path means that Worker has no versions to return.
+      # CLAUDE.md records the same thing from the other side: attaching the
+      # build connection bumped employsi-preview's modified_on with no version
+      # behind it. A Worker with no history has no rollback point — that is a
+      # fact to print, not a reason to refuse to deploy to it.
+      #
+      # PRODUCTION'S LISTING IS DIFFERENT AND IS FATAL. It is the baseline the
+      # post-deploy check compares against, and a check with no baseline is the
+      # `|| true` mistake again wearing a different hat: it cannot tell "nothing
+      # changed" from "nothing was looked at".
       - name: What is live now
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          set -o pipefail
-          npx wrangler versions list --name employsi-preview 2>&1 | tee before-preview.txt
-          npx wrangler versions list --name benridgwell-globe-gazer-hr 2>&1 | tee before-prod.txt
+          if npx wrangler versions list --name employsi-preview > before-preview.txt 2>&1; then
+            echo "employsi-preview, before:"; tail -12 before-preview.txt
+          else
+            echo "::notice::employsi-preview has no listable versions yet — no rollback point for it."
+            echo "That is expected for a Worker that has never been deployed to."
+            tail -6 before-preview.txt
+          fi
+          if ! npx wrangler versions list --name benridgwell-globe-gazer-hr > before-prod.txt 2>&1; then
+            echo "::error::Could not list PRODUCTION's versions, so there is no baseline to prove"
+            echo "::error::this deploy left it alone. Refusing to deploy without one."
+            tail -20 before-prod.txt
+            exit 1
+          fi
+          echo "production baseline recorded"
 
       - name: Build and deploy to employsi-preview
         env:
@@ -217,7 +242,11 @@ jobs:
           # and, worse, it "passed" the production half for the wrong reason
           # whenever both files happened to be identical error text.
           ids() { grep -oiE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' "$1" | sort -u; }
-          for f in before-preview.txt after-preview.txt before-prod.txt after-prod.txt; do
+          # before-preview.txt is ALLOWED to be empty — a Worker deployed to for
+          # the first time has no prior version. The other three are not: an
+          # empty one means the listing failed, and comparing two failures is
+          # not a check.
+          for f in after-preview.txt before-prod.txt after-prod.txt; do
             if [ -z "$(ids $f)" ]; then
               echo "::error::$f contains no version ids — the listing failed, so nothing here was verified"
               sed -n '1,25p' "$f"
@@ -236,7 +265,11 @@ jobs:
             echo "::error::employsi-preview gained no new version — the deploy went somewhere else, or did not happen"
             exit 1
           fi
-          echo "employsi-preview has a new version"
+          if [ -z "$(ids before-preview.txt)" ]; then
+            echo "employsi-preview has its FIRST version — nothing to roll back to before this"
+          else
+            echo "employsi-preview has a new version"
+          fi
 
       # THE APP IS AT /app; / is the waitlist on every host. Reading the title is
       # how you tell them apart — see CLAUDE.md.
