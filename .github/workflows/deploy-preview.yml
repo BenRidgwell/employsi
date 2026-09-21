@@ -1,0 +1,177 @@
+# Deploy the APP worker to https://employsi-preview.employsi.workers.dev — the
+# thing you send someone to look at.
+#
+# WHY THIS EXISTS. Until now there was no automated path to the preview Worker
+# at all. `npm run deploy:preview` is in package.json, but nothing in .github/
+# ran it, so refreshing the preview meant a shell with two tokens in it. The
+# dashboard-side Workers Builds pipeline does NOT do this job: it publishes to
+# the Worker the repo is CONNECTED to — today `employsi` — and it ignores the
+# `--name` in the deploy command entirely (measured 2026-09-21; see CLAUDE.md).
+#
+# IN A GITHUB ACTION `--name` DOES STEER THE DEPLOY. That is the difference
+# between this file and Workers Builds, and it is the whole safety story here:
+# wrangler run from an ordinary shell publishes to the name on the command line,
+# and only Cloudflare's own build pipeline overrides it. So this workflow can
+# target the preview Worker and Workers Builds cannot.
+#
+# **`npx wrangler deploy` WITHOUT `--name` IS PRODUCTION — employsi.com.au.**
+# The `--name employsi-preview` lives in `deploy:preview` in package.json rather
+# than being written here, so the target is reviewable in the repo. If that
+# script is ever edited to drop the flag, THIS WORKFLOW PUBLISHES THE LIVE SITE.
+# The verify step below exists to catch exactly that, after the fact.
+#
+# MANUAL ONLY, deliberately. There is no `on: push`. An app deploy that happens
+# because someone merged a branch is the blast radius this repo keeps closing.
+#
+# THE APP IS AT /app. `/` is the waitlist on every host, so the link to send is
+#   https://employsi-preview.employsi.workers.dev/app
+# and a reviewer sent to `/` sees the waitlist and nothing you built.
+#
+# It shares the PRODUCTION D1 and KV, on purpose — the point of the preview is
+# real data. Reads are free; anything that writes needs thinking about first.
+
+name: deploy-preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'What is being previewed (goes in the run summary)'
+        type: string
+        required: false
+
+concurrency:
+  group: deploy-preview
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # VITE_MAPBOX_TOKEN IS A BUILD-TIME INLINE, not a Worker secret: vite bakes
+      # it into the bundle, and a Worker secret is not visible to the build.
+      # vite.config.ts throws without it, which is the guard working.
+      #
+      # DO NOT SATISFY IT WITH A PLACEHOLDER. The build succeeds, the deploy
+      # succeeds, and the map then fails to render for every visitor — a green
+      # pipeline over a broken page. Checked explicitly here so the failure names
+      # the missing secret instead of surfacing as a vite stack trace.
+      - name: Check the tokens are present
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          VITE_MAPBOX_TOKEN: ${{ secrets.VITE_MAPBOX_TOKEN }}
+        run: |
+          missing=
+          [ -n "$CLOUDFLARE_API_TOKEN" ] || missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -n "$VITE_MAPBOX_TOKEN" ]    || missing="$missing VITE_MAPBOX_TOKEN"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing"
+            echo "VITE_MAPBOX_TOKEN is a BUILD variable. It may be set in the" >&2
+            echo "Cloudflare dashboard for Workers Builds and still not exist as a" >&2
+            echo "GitHub secret — they are separate stores. Add it under" >&2
+            echo "Settings -> Secrets and variables -> Actions." >&2
+            exit 1
+          fi
+
+      - run: npm ci
+
+      # Recorded BEFORE the deploy, because it is the only cheap way back.
+      - name: What is live now
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          npx wrangler deployments list --name employsi-preview > before-preview.txt 2>&1 || true
+          npx wrangler deployments list                         > before-prod.txt    2>&1 || true
+          tail -20 before-preview.txt
+
+      - name: Build and deploy to employsi-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          VITE_MAPBOX_TOKEN: ${{ secrets.VITE_MAPBOX_TOKEN }}
+        run: npm run deploy:preview 2>&1 | tee deploy.txt
+
+      # THE REAL TOKEN HAS TO BE IN THE BUNDLE. A build made with a dummy value
+      # deploys happily and breaks the map for everyone, so this asserts the
+      # shape of a real Mapbox public token is present in the built assets.
+      - name: The map token is actually in the bundle
+        run: |
+          if ! grep -rlq "pk\.eyJ" .output/public/; then
+            echo "::error::No Mapbox public token (pk.eyJ...) in .output/public — the map will not render"
+            exit 1
+          fi
+          echo "map token present in the built assets"
+
+      # A GREEN DEPLOY SAYS NOTHING ABOUT WHICH WORKER IT WROTE. Both of these
+      # must hold: the preview moved, and production did not.
+      - name: Verify it landed on the preview and not on production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          npx wrangler deployments list --name employsi-preview > after-preview.txt 2>&1 || true
+          npx wrangler deployments list                         > after-prod.txt    2>&1 || true
+          if diff -q before-prod.txt after-prod.txt >/dev/null; then
+            echo "production UNCHANGED"
+          else
+            echo "::error::PRODUCTION CHANGED. This workflow must never touch it — check that"
+            echo "::error::package.json deploy:preview still carries --name employsi-preview."
+            diff before-prod.txt after-prod.txt || true
+            exit 1
+          fi
+          if diff -q before-preview.txt after-preview.txt >/dev/null; then
+            echo "::error::employsi-preview did NOT move — the deploy went somewhere else"
+            exit 1
+          fi
+          echo "employsi-preview has a new version"
+
+      # THE APP IS AT /app; / is the waitlist on every host. Reading the title is
+      # how you tell them apart — see CLAUDE.md.
+      - name: Check the app answers
+        run: |
+          url=https://employsi-preview.employsi.workers.dev/app
+          code=$(curl -s -o page.html -w '%{http_code}' --max-time 30 "$url" || echo 000)
+          title=$(grep -o '<title>[^<]*' page.html | head -1 | sed 's/<title>//')
+          echo "$code  $title"
+          [ "$code" = "200" ] || { echo "::error::$url answered $code"; exit 1; }
+          case "$title" in
+            *"labour-market globe"*) echo "serving the APP" ;;
+            *) echo "::warning::/app did not return the app title — got: $title" ;;
+          esac
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo '## employsi-preview'
+            echo
+            echo "Reason: ${{ inputs.reason || '(none given)' }}"
+            echo
+            echo '**https://employsi-preview.employsi.workers.dev/app**'
+            echo
+            echo 'The app is at `/app`. A link to `/` shows the waitlist.'
+            echo
+            echo '### Deploy'
+            echo '```'
+            tail -25 deploy.txt 2>/dev/null || echo 'the deploy did not run'
+            echo '```'
+            echo
+            echo 'Rollback: `npx wrangler rollback <version-id> --name employsi-preview --message "why"`'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deploy-preview
+          path: |
+            deploy.txt
+            before-preview.txt
+            after-preview.txt
+            before-prod.txt
+            after-prod.txt
+          if-no-files-found: ignore
+          retention-days: 14

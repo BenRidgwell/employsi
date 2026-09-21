@@ -461,6 +461,13 @@ def keep(url: str, body: str) -> None:
     Deliberately NOT stored on the row in discover-boards.json: a sweep of
     sixteen employers reads a hundred-odd pages and the JSON is meant to stay
     readable. Files on disk go in the artifact instead, one per url.
+
+    RENDERED BODIES ARE DUMPED TOO, prefixed `rendered__`, and they are the ones
+    that matter most often. Measured 2026-09-21: nd.edu.au and une.edu.au answer
+    403 to a plain client from the dev sandbox AND from a GitHub runner, and
+    serve a real browser normally — so the check is on the CLIENT, not the
+    address, and the only copy of those pages anyone here can obtain is the
+    rendered one.
     """
     if not dump_dir:
         return
@@ -779,6 +786,7 @@ def sweep(domain: str, render: bool = False) -> dict:
                     if err:
                         row['rendered'] = f'could not render — {err}'
                     else:
+                        keep('rendered__' + res.get('final', url), html or '')
                         rhits = fingerprint(html or '')
                         row['rendered'] = 'rendered' if rhits else 'rendered, no marker'
                         if rhits:
@@ -795,6 +803,7 @@ def sweep(domain: str, render: bool = False) -> dict:
             if err:
                 row['rendered'] = f'could not render — {err}'
             else:
+                keep('rendered__' + url, html or '')
                 hits = fingerprint(html or '')
                 row['rendered'] = 'reachable with a browser'
                 row['rendered_platforms'] = hits
@@ -845,6 +854,7 @@ def sweep(domain: str, render: bool = False) -> dict:
                 spare_renders -= 1
             html, err = rendered_html(nxt)
             if not err:
+                keep('rendered__' + nxt, html or '')
                 if nxt not in read:
                     read.append(nxt)
                 rh = fingerprint(html or '')
