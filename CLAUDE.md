@@ -425,59 +425,53 @@ git rev-parse b2f84eb^{tree} 490f512^{tree}   # identical
 
 So do not go looking for it in the source, do not "fix" it with another push, and
 do not hold a PR on it. Read the checks that DO read the diff — `roster wiring`
-and `portal scheduling` — and merge. The cause is dashboard-side (a non-default
-branch produces a preview build, and the preview configuration or the deploy
-command does not hold for one), which is invisible from here and unverifiable
-without Cloudflare API credentials; that last part is why this says what was
-measured and stops there.
+and `portal scheduling` — and merge. The cause was recorded here as
+dashboard-side and unverifiable without Cloudflare API credentials; it has since
+been read straight off a build log, and the next paragraph has it.
 
-**AND ON 2026-09-21 AT 12:39 `main` WENT RED TOO, FOR A DIFFERENT AND MUCH MORE
-SERIOUS REASON.** The build log shows:
+**AND HERE IS WHY THE BRANCH BUILDS FAIL** — measured 2026-09-21, and it turns
+what was an unexplained pattern above into a settled one. A branch build's log
+says:
 
     Executing user deploy command: npx wrangler deploy
 
-**That is the BARE command this section spends its length warning about, not
-`npm run deploy:preview`.** The field has reverted, or never saved. So the
-branch-red/`main`-green rule above describes the commits it was measured on and
-is NOT a standing property of the pipeline — check the deploy command in the log
-before trusting either half of it.
-
-It failed harmlessly, and only by luck of ordering:
+That is the BARE command, not the configured `npm run deploy:preview`, and no
+build command runs before it. So `.output/` and the `.wrangler/deploy/config.json`
+redirect never exist, wrangler falls back to the root `wrangler.jsonc` — which
+carries only `name` + bindings — and dies with
 
     ✘ [ERROR] Missing entry-point to Worker script or to assets directory
 
-No build step ran, so `.output/` and the `.wrangler/deploy/config.json` redirect
-do not exist, wrangler fell back to the root `wrangler.jsonc`, and that file
-carries only `name` + bindings. It is the same failure recorded earlier in this
-section, recurring.
+every single time. **The configured Build fields apply to the production branch
+and a branch build runs defaults instead.** Two builds a minute apart on
+2026-09-21 show it from both sides:
 
-**THE TWO OBVIOUS FIXES ARE BOTH THE TRAP.** The error message itself suggests
-the first one:
+| commit | branch | build | deploy command | result |
+| --- | --- | --- | --- | --- |
+| `3224175` | `main` | `47318a7f` | `npm run deploy:preview` | 12:38:18 SUCCESS |
+| `aa84412` | feature | `8d9a777d` | `npx wrangler deploy` | 12:39:36 FAILURE |
 
-- Adding `main`/`assets` to `wrangler.jsonc` — already refused above.
-- Adding a build command so `.output/` exists — which makes the bare
-  `npx wrangler deploy` *work*, against a resolved config whose name is
-  `benridgwell-globe-gazer-hr`. **That is production.**
+**SO A BRANCH BUILD'S LOG IS NOT EVIDENCE THAT THE SETTINGS CHANGED.** It reads
+exactly like the field has been reset — this file briefly claimed precisely that,
+from this log, and was wrong. Before concluding anything about the dashboard
+fields from a red build, check which BRANCH it was for.
 
-Whether it would actually land there is NOT settled. The measurement earlier in
-this section says Workers Builds overrides the target with the CONNECTED Worker
-(`employsi`) and ignores the deploy command's own `--name`; if that also
-overrides the config's `name`, a bare deploy lands on `employsi` rather than on
-employsi.com.au. That is an inference from one measurement, on the one question
-where this file has already been wrong once and kept the wrong version on
-purpose. Do not bet the live site on it.
+**AND IT IS STILL WORTH KNOWING, because the failure is one setting away from
+being dangerous.** A bare `npx wrangler deploy` that DID find a build would
+resolve to a config named `benridgwell-globe-gazer-hr`. The error message even
+suggests the change that would get it there — adding `main`/`assets` to
+`wrangler.jsonc` — and adding a build command would do it too. Both are refused
+above, and this is the second reason why. Whether the connection would still
+override that target is an inference from one measurement, on the one question
+this file has already been wrong about once and kept the wrong version on
+purpose. Not a thing to bet the live site on.
 
-**THE FIX IS TO RESTORE THE DEPLOY COMMAND**, to `npm run deploy:preview`, on
-**`employsi` -> Settings -> Build** — the CONNECTED Worker. Not on
-`employsi-preview`, whose Build page is real, saves happily, and does nothing;
-that mistake is what cost an evening above, and a field that has silently
-reverted is exactly what editing the wrong page looks like.
+Nothing in the repo needs changing, and neither do the dashboard fields on
+`employsi`: `package.json` still carries `deploy:preview` as
+`npm run build && npx wrangler deploy --name employsi-preview`, and `main`'s own
+builds succeed.
 
-Nothing in the repo needs changing: `package.json` still carries
-`deploy:preview` as `npm run build && npx wrangler deploy --name employsi-preview`,
-verified 2026-09-21 after this failure.
-
-**THIS DOES NOT AFFECT THE PREVIEW.** `.github/workflows/deploy-preview.yml` is
+**NONE OF THIS AFFECTS THE PREVIEW.** `.github/workflows/deploy-preview.yml` is
 a separate pipeline on GitHub Actions, where `--name` is honoured, and it
 deployed employsi-preview successfully at 12:37 the same day (version
 `1e83de7c`), verified afterwards: `/app` served the app's title, production's
