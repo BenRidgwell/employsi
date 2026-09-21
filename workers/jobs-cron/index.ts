@@ -1289,6 +1289,8 @@ const PORTAL_TICKS: Record<string, number> = {
   "25 17 * * *": 77,
   // Group 78 — Metricon. Next free minute in the 17 hour.
   "35 17 * * *": 78,
+  // Group 79 — the 2026-09-21 sixteenth batch.
+  "45 17 * * *": 79,
 };
 
 const NEWS_TICKS: Record<string, number> = {
