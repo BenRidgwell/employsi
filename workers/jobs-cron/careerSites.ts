@@ -4256,6 +4256,41 @@ export const SITES: SiteDef[] = [
     assumeHomeHub: true,
     homeHub: "melbourne",
   },
+  // ── The 2026-09-21 fourteenth batch ─────────────────────────────────────────
+  //
+  // Four more universities swept. One feed, and three that are not:
+  //   Southern Cross (54 ads) and UniSQ (48) — scu.nga.net.au and usq.nga.net.au.
+  //     NGA.NET, which has no reader here and is the one platform measured to
+  //     answer headless Chromium with the same bot check it gives curl (see the
+  //     ECU step in browser-portals.yml), so an Action would not reach it either.
+  //     That is now four universities on NGA — Swinburne and ECU are the others
+  //     — which makes a reader for it the single highest-value ATS still missing
+  //     from this file rather than a one-off.
+  //   Federation University (54) — no marker, 3 links followed and read. Needs a
+  //     --render sweep before anything can be said.
+  {
+    id: "uni-victoria-university",
+    name: "Victoria University",
+    sector: "Education",
+    platform: "oracle",
+    // Oracle Recruiting Cloud pod `fa-ercy-saasfaprod1`, site CX_2001 — the
+    // number its own careers page names. Measured 2026-09-21: CX_2001 and CX_1
+    // return the SAME 5 requisitions on this tenant, so the site number is not
+    // load-bearing here; the named one is used because a tenant that later
+    // splits its sites will split them under the number it publishes.
+    //
+    // TotalJobsCount 5 — Footscray 3, Sunshine 2, both Melbourne campuses. A
+    // small board, and a real one.
+    endpoint: "https://fa-ercy-saasfaprod1.fa.ocs.oraclecloud.com",
+    origin:
+      "https://fa-ercy-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001",
+    siteNumber: "CX_2001",
+    // Neither Footscray nor Sunshine is a HUB_MATCH needle, but both rows end
+    // ", Australia" — which hubFor reads as the home country and resolves to the
+    // home hub. So these place without a hint, by the same route a bare country
+    // always has. Melbourne is where this university is.
+    homeHub: "melbourne",
+  },
 ];
 
 /**
@@ -4662,6 +4697,8 @@ export const PORTAL_GROUPS: string[][] = [
   ["flg-corporate", "flg-goodlife", "flg-fitnessfirst", "uni-torrens-university-australia"],
   // Group 74 — the 2026-09-21 thirteenth batch. A JobAdder board is one call.
   ["priv-nhp-electrical-engineering-products", "sydney-rdx", "priv-patterson-cheney"],
+  // Group 75 — the 2026-09-21 fourteenth batch. One Oracle call, 5 roles.
+  ["uni-victoria-university"],
 ];
 
 const UA =
