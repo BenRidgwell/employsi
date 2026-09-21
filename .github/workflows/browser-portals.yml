@@ -20,6 +20,14 @@
 #   unset to rule out the authoring sandbox's own proxy — same result, so the
 #   405 is NGA.NET's bot check rather than the network in front of it.
 #
+#   NAMED 2026-09-21: that doorman is AWS WAF's CAPTCHA action. The response
+#   carries `x-amzn-waf-action: captcha` from awselb/2.0 and loads the challenge
+#   from *.awswaf.com, on all four tenants and on every path including
+#   /robots.txt. So the ECU step below cannot be fixed by a better browser or a
+#   different address — getting past it means defeating a CAPTCHA the operator
+#   turned on deliberately, which this project does not do. See the NGA.NET note
+#   in careerSites.ts for the full measurement and the legitimate routes.
+#
 #   That challenge is at the HTTP layer, not the address. A REAL BROWSER on the
 #   same datacentre address clears it: measured twice from a hosted runner
 #   (probe-headless-ci, 2026-08-08) at 56 tiles and 37 rows both times. So both
