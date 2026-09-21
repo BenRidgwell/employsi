@@ -451,6 +451,35 @@ def _fetch(url: str, timeout: int = 20) -> dict:
 
 
 
+# Where --dump writes raw bodies, or '' for the normal report-only run.
+dump_dir = ''
+
+
+def keep(url: str, body: str) -> None:
+    """Write one raw response to the dump directory, if --dump asked for it.
+
+    Deliberately NOT stored on the row in discover-boards.json: a sweep of
+    sixteen employers reads a hundred-odd pages and the JSON is meant to stay
+    readable. Files on disk go in the artifact instead, one per url.
+
+    RENDERED BODIES ARE DUMPED TOO, prefixed `rendered__`, and they are the ones
+    that matter most often. Measured 2026-09-21: nd.edu.au and une.edu.au answer
+    403 to a plain client from the dev sandbox AND from a GitHub runner, and
+    serve a real browser normally — so the check is on the CLIENT, not the
+    address, and the only copy of those pages anyone here can obtain is the
+    rendered one.
+    """
+    if not dump_dir:
+        return
+    try:
+        os.makedirs(dump_dir, exist_ok=True)
+        name = re.sub(r'[^A-Za-z0-9._-]+', '_', url)[:120] or 'page'
+        with open(os.path.join(dump_dir, name), 'w', encoding='utf-8') as fh:
+            fh.write(body)
+    except OSError as e:  # noqa: BLE001 - a dump never aborts the sweep
+        sys.stderr.write(f'  could not dump {url}: {e}\n')
+
+
 # Set once a render fails in a way that looks like the environment rather than
 # the page. A sweep may render up to RENDER_BUDGET + one per candidate, and a
 # broken browser fails every one of them: measured locally, the first failure was
@@ -741,6 +770,7 @@ def sweep(domain: str, render: bool = False) -> dict:
         res = fetch(url)
         row = {k: v for k, v in res.items() if k != 'body'}
         if res['outcome'] == 'ok':
+            keep(url, res['body'])
             hits = fingerprint(res['body'])
             row['platforms'] = hits
             if hits:
@@ -756,6 +786,7 @@ def sweep(domain: str, render: bool = False) -> dict:
                     if err:
                         row['rendered'] = f'could not render — {err}'
                     else:
+                        keep('rendered__' + res.get('final', url), html or '')
                         rhits = fingerprint(html or '')
                         row['rendered'] = 'rendered' if rhits else 'rendered, no marker'
                         if rhits:
@@ -772,6 +803,7 @@ def sweep(domain: str, render: bool = False) -> dict:
             if err:
                 row['rendered'] = f'could not render — {err}'
             else:
+                keep('rendered__' + url, html or '')
                 hits = fingerprint(html or '')
                 row['rendered'] = 'reachable with a browser'
                 row['rendered_platforms'] = hits
@@ -800,6 +832,7 @@ def sweep(domain: str, render: bool = False) -> dict:
         sub = fetch(nxt)
         blocked = sub['outcome'] == 'blocked'
         if sub['outcome'] == 'ok':
+            keep(nxt, sub['body'])
             read.append(nxt)
             h = fingerprint(sub['body'])
             if h:
@@ -821,6 +854,7 @@ def sweep(domain: str, render: bool = False) -> dict:
                 spare_renders -= 1
             html, err = rendered_html(nxt)
             if not err:
+                keep('rendered__' + nxt, html or '')
                 if nxt not in read:
                     read.append(nxt)
                 rh = fingerprint(html or '')
@@ -850,6 +884,22 @@ def main() -> int:
     domains = [d for d in opt('--domains').split(',') if d.strip()]
     urls = [u for u in opt('--urls').split(',') if u.strip()]
     targets = domains + urls
+    # --dump DIR: keep the RAW body of every page this run reads.
+    #
+    # WHY A REPORT GREW A DUMP. This sweep answers "which ATS", and for a
+    # fingerprinted platform that is enough to write a SiteDef from. For a board
+    # that is NOT an ATS it is not: UNE's and Notre Dame's vacancies are
+    # documents in a Funnelback collection, and the next question is the SHAPE of
+    # the response — the row fields, the total, whether a location exists at all.
+    # None of that can be guessed, and this repo does not write a parser against
+    # a response nobody has read.
+    #
+    # The dev sandbox cannot read them: every one of those hosts answers it 403
+    # behind a Cloudflare challenge, and the runner they answer normally had no
+    # way to hand a body back. So the bodies go in the artifact, and the
+    # measurement happens against a real response like every other one here.
+    global dump_dir
+    dump_dir = opt('--dump')
     if not targets:
         return print(__doc__.strip().splitlines()[-2].strip()) or 2
 

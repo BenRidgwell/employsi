@@ -4258,6 +4258,62 @@ export const SITES: SiteDef[] = [
     assumeHomeHub: true,
     homeHub: "melbourne",
   },
+  // ── FUNNELBACK — WHY THERE IS NO READER, AND WHY THERE WILL NOT BE ──────────
+  //
+  // UNE (74 archived ads) and Notre Dame (103) both keep their vacancies in a
+  // Funnelback search collection rather than in an ATS. That looks like one
+  // reader covering two employers and 177 ads, which is why it was measured
+  // properly on 2026-09-21 before anything was written. It is not one, and this
+  // note exists so nobody spends a day rediscovering that.
+  //
+  // WHAT WAS MEASURED, in order:
+  //
+  //   1. A PLAIN CLIENT IS REFUSED EVERYWHERE. www.nd.edu.au, search.nd.edu.au,
+  //      www.une.edu.au and une-search.funnelback.squiz.cloud all answer 403 with
+  //      Cloudflare's "Just a moment..." interstitial — from the dev sandbox AND
+  //      from a GitHub runner. So it is a check on the CLIENT, not on the
+  //      address, and moving to a runner (the fix for SEEK, Indeed and the rest)
+  //      does nothing here.
+  //
+  //   2. A REAL BROWSER GETS THROUGH. Rendered on a runner, UNE's
+  //      /about-une/working-at-une/current-vacancies came back whole (161 KB) and
+  //      named its search host: une-search.funnelback.squiz.cloud. So a
+  //      browser-driven scripts/*-to-d1.py feed WOULD work, the way ACU's does.
+  //
+  //   3. AND THAT IS WHERE IT STOPS, because of what those hosts' robots.txt say.
+  //      Fetched 2026-09-21 (through the render path, since a plain fetch cannot
+  //      read them either):
+  //
+  //        une-search.funnelback.squiz.cloud/robots.txt
+  //            User-agent: *
+  //            Disallow: /search/
+  //            Disallow: /s/
+  //
+  //        www.nd.edu.au/robots.txt
+  //            Disallow: /funnelback
+  //            Disallow: /search
+  //
+  //      `/s/` IS THE FUNNELBACK API. /s/search.json is the exact endpoint a
+  //      reader would call, and the search host disallows it by name. Notre
+  //      Dame's own file disallows /funnelback and /search outright.
+  //
+  // So this is not the Metricon question. Metricon's pages carried a robots
+  // NOINDEX — a directive about search results — and its host served no
+  // robots.txt at all; reading it was a judgement call, and it was made. Here
+  // there is an explicit Disallow on the precise path, from both operators, on
+  // top of a bot challenge that only a browser passes. Building the reader would
+  // mean driving a browser past a bot check in order to call an endpoint the
+  // site's own robots.txt names and refuses. That is the NGA.NET decision again
+  // with a different mechanism, and the answer is the same.
+  //
+  // THE LEGITIMATE ROUTES, for whoever wants these two covered:
+  //   - Ask. Both are universities with HR departments, and a feed or an API key
+  //     costs them far less than anyone can spend scraping it.
+  //   - They are NOT invisible meanwhile. UNE reaches the archive through Adzuna
+  //     and SimplyHired, Notre Dame through Adzuna and LinkedIn, so what is
+  //     missing is a company-specific feed rather than the employer.
+  //   - uniroles.com.au does not carry either; that whole board was walked on
+  //     2026-09-21 (44 pages, 410 rows, 21 employers) and neither appears.
   // ── NGA.NET — WHY THERE IS NO READER, AND WHY THERE WILL NOT BE ──────────────
   //
   // Four rostered universities run NGA.NET: Southern Cross (scu), UniSQ (usq),
@@ -4659,12 +4715,11 @@ export const SITES: SiteDef[] = [
   //     sweep of them reported "no marker" however well it walked. Notre Dame's
   //     collection is named: `und~sp-jobs`. UNE's is not yet.
   //
-  //     ONE READER WOULD COVER BOTH, at 177 archived ads between them, and it is
-  //     the obvious next build. What is NOT yet measured is the response: both
-  //     /s/search.json endpoints answer this sandbox 403 behind a Cloudflare
-  //     challenge, so the row shape, the totalMatching count and whether a
-  //     location field exists all have to be read on a runner first. No endpoint
-  //     goes into this file before that, which is why there is no SiteDef here.
+  //     IT LOOKED LIKE ONE READER COVERING BOTH, at 177 archived ads. It was
+  //     measured on 2026-09-21 and it is not — see the standing FUNNELBACK note
+  //     below. Short version: the only route to the rows is /s/ on the Funnelback
+  //     host, and that host's robots.txt disallows /s/ by name, while Notre
+  //     Dame's disallows /funnelback and /search. There will be no reader.
   //
   //   CDU (136) and Federation (54) — both CUT SHORT by EMPLOYER_BUDGET_S, at
   //     72s and 86s. The report says so itself rather than presenting a partial
