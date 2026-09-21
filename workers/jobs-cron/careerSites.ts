@@ -4256,16 +4256,58 @@ export const SITES: SiteDef[] = [
     assumeHomeHub: true,
     homeHub: "melbourne",
   },
+  // ── NGA.NET — WHY THERE IS NO READER, AND WHY THERE WILL NOT BE ──────────────
+  //
+  // Four rostered universities run NGA.NET: Southern Cross (scu), UniSQ (usq),
+  // Swinburne (swinjobs) and Edith Cowan (ecu). That is the largest single block
+  // of uncovered employers left on the gap report, so it looks like the obvious
+  // next reader to write. It is not one, and this note exists so nobody spends a
+  // day rediscovering that.
+  //
+  // WHAT IT ACTUALLY IS. Measured 2026-09-21 against all four tenants: every one
+  // answers HTTP 405 with an identical 2,117-byte "Human Verification" page and
+  // the header
+  //
+  //     x-amzn-waf-action: captcha
+  //
+  // served by awselb/2.0, which loads challenge.js and captcha.js from
+  // *.awswaf.com. It is AWS WAF's CAPTCHA action — not a user-agent filter, not a
+  // rate limit, and not the datacentre-address problem that several other feeds
+  // here work around by moving to a runner. The earlier note that NGA "answers
+  // headless Chromium with the same bot check it gives curl" was right about the
+  // symptom; this is the cause.
+  //
+  // IT COVERS THE WHOLE HOST. /cp/index.cfm, /rss, /feed, /api/jobs, /sitemap.xml
+  // and even /robots.txt all return the same 405 captcha page. There is no path
+  // left open for automated clients, and a site that will not serve its own
+  // robots.txt without a CAPTCHA has stated its position on crawlers clearly
+  // enough.
+  //
+  // SO A READER MEANS DEFEATING A CAPTCHA — by spoofing a browser fingerprint past
+  // WAF's headless detection, or by paying a solving service for tokens. Both are
+  // circumventing an access control the operator deliberately switched on, which
+  // is not a thing this project does for job ads. The wall here is a decision by
+  // the site owner, not an engineering problem, and it is the one kind of blocker
+  // that more cleverness must not be pointed at.
+  //
+  // THE LEGITIMATE ROUTES, for whoever wants these four covered:
+  //   - Ask. NGA.NET is a vendor and these are its customers; an employer can turn
+  //     on a feed, or grant access, far more cheaply than anyone can scrape it.
+  //   - uniroles.com.au does NOT carry them. Checked 2026-09-21 by walking the
+  //     whole board with this repo's own parser: 44 pages, 410 rows, 21 employers,
+  //     and not one of the four. (Its only "Victoria University" is the Wellington
+  //     one, which is a different institution from the Melbourne VU fed above —
+  //     a name match would have filed 16 New Zealand roles under it.)
+  //   - They are not invisible meanwhile: all four already reach the archive
+  //     through Adzuna, LinkedIn and SimplyHired, so the gap is a company-specific
+  //     feed rather than the employer.
+  //
   // ── The 2026-09-21 fourteenth batch ─────────────────────────────────────────
   //
   // Four more universities swept. One feed, and three that are not:
   //   Southern Cross (54 ads) and UniSQ (48) — scu.nga.net.au and usq.nga.net.au.
-  //     NGA.NET, which has no reader here and is the one platform measured to
-  //     answer headless Chromium with the same bot check it gives curl (see the
-  //     ECU step in browser-portals.yml), so an Action would not reach it either.
-  //     That is now four universities on NGA — Swinburne and ECU are the others
-  //     — which makes a reader for it the single highest-value ATS still missing
-  //     from this file rather than a one-off.
+  //     NGA.NET, which has no reader here. See NGA.NET below: there will not be
+  //     one, and the reason is not a technical wall.
   //   Federation University (54) — no marker, 3 links followed and read. Needs a
   //     --render sweep before anything can be said.
   {
