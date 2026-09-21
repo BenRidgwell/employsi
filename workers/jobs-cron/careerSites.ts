@@ -4728,8 +4728,20 @@ export const SITES: SiteDef[] = [
   //
   // The three corporates still owed a --render sweep (Stowe, ARA, Talent
   // International) were NOT run here. They are the ones whose earlier sweep
-  // stalled the runner, and the domain check above is the likely reason: it was
-  // pointed at talentidl.com, which is dead and hangs on TLS.
+  // stalled the runner, and the dead talentidl.com was guessed at as the reason.
+  //
+  // THAT GUESS WAS WRONG, and it is left here with its correction rather than
+  // tidied away. Swept 2026-09-21 with live domains for all three: the run hung
+  // on the FIRST one, stoweaustralia.com.au, and was killed by the 20-minute job
+  // timeout. talentidl.com was not in that run at all.
+  //
+  // The real cause was in the sweep, not the hosts: scripts/discover-boards.py
+  // bounded a plain fetch with HARD_FETCH_S and bounded nothing around a RENDER.
+  // browser_fetch.render passes a timeout to page.goto, which covers the
+  // navigation and not the browser launch, and EMPLOYER_BUDGET_S is only checked
+  // BETWEEN calls — so one render that never returned sailed past every budget
+  // in the file. HARD_RENDER_S now wraps the whole render, as HARD_FETCH_S wraps
+  // the whole probe.
   {
     id: "sydney-eos",
     name: "Electro Optic Systems Holdings",

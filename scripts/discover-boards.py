@@ -432,6 +432,17 @@ def resolves(host: str) -> tuple[bool, str]:
 # moving the hang somewhere else.
 HARD_FETCH_S = 30
 
+# The same ceiling for a RENDER, which is slower by nature — a launch, a
+# navigation and a settle wait — so it gets more room than a plain fetch. It is
+# still far below EMPLOYER_BUDGET_S's smallest value, so a budget can actually
+# be enforced between renders rather than being sailed past by one that never
+# returns.
+HARD_RENDER_S = 120
+
+# A sentinel, because a render legitimately returns None and `or` would hide the
+# difference between "timed out" and "rendered nothing".
+_RENDER_TIMED_OUT = object()
+
 
 def _bounded(fn, seconds: float, on_timeout):
     """Run fn on a daemon thread and give up on it after `seconds`.
@@ -564,7 +575,27 @@ def rendered_html(url: str, settle_s: int = 8) -> tuple[str | None, str]:
         _render_broken = 'playwright not installed'
         return None, f'playwright not installed ({e})'
     try:
-        html = browser_fetch.render(url, [{'type': 'wait', 'wait_time_s': settle_s}])
+        # A WALL-CLOCK CEILING AROUND THE WHOLE RENDER, for the same reason
+        # HARD_FETCH_S exists around the whole probe. browser_fetch.render already
+        # passes timeout_s to page.goto, but that covers the NAVIGATION only —
+        # not the browser LAUNCH, and not the teardown. Neither had any ceiling,
+        # and EMPLOYER_BUDGET_S cannot help because it is checked between calls.
+        #
+        # Measured 2026-09-21: a three-domain render sweep hung on the FIRST
+        # domain and was killed by the 20-minute job timeout. The artifact holds
+        # exactly one body — stoweaustralia.com.au/careers, fetched plain — and
+        # nothing after it, so the hang was in the render that followed. The
+        # whole run bought one page.
+        #
+        # This also disproves what was written down a batch earlier: the stalls
+        # on these hosts were blamed on talentidl.com being dead and hanging on
+        # TLS. That domain was not in this run at all.
+        html = _bounded(
+            lambda: browser_fetch.render(url, [{'type': 'wait', 'wait_time_s': settle_s}]),
+            HARD_RENDER_S,
+            lambda: _RENDER_TIMED_OUT)
+        if html is _RENDER_TIMED_OUT:
+            return None, f'no answer within {HARD_RENDER_S}s (hung, not refused)'
     except Exception as e:  # noqa: BLE001 - a render failure never aborts the sweep
         msg = f'{type(e).__name__}: {str(e)[:110]}'
         # A launch or driver failure is about this machine, not this page, and
