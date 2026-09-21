@@ -1988,26 +1988,30 @@ body {
    rather than scrolling sideways (see the media query at the end of this
    block). */
 /* ── Control room ───────────────────────────────────────────────────────────
-   Restyled to `Control_Room.html` on 2026-09-21. The console was a 940px pane
-   docked beside the rail like the analyst and trending cards; the design makes
-   it a CENTRED OVERLAY up to 1400px, because the data-quality tab now carries
-   seven cards and two of them are charts that are unreadable at pane width.
+   Restyled to `Control_Room.html` on 2026-09-21: the design's card metrics,
+   type scale and tokens throughout.
 
-   That is why .dqscrim exists rather than reusing .panescrim: the shared scrim
-   is transparent and click-to-close, and three panes depend on it staying that
-   way. This one paints the design's neutral-300 backdrop over the map. */
-.dqscrim {
-  background: var(--neutral-300);
-}
+   THE SHELL IS DELIBERATELY NOT THE DESIGN'S. `Control_Room.html` draws a
+   centred overlay up to 1400px on a tinted backdrop, and this was built that
+   way first. It is a docked pane instead, sized to match What's trending
+   exactly — same left, same top, same 940px, same min(780px, --pane-max-h) —
+   because the three tool cards opening from the same rail at three different
+   sizes reads as three unrelated surfaces rather than one app. Keep these
+   four values in step with .trendpane; the design governs what is INSIDE the
+   card, not the frame it opens in.
+
+   The knock-on is that every grid in here is auto-fit with a min width rather
+   than a fixed column count, so the seven data-quality cards reflow into ~884px
+   of usable width instead of assuming the design's 1400. */
 .dqpane {
   position: fixed;
-  inset: 0;
-  margin: auto;
+  left: var(--pane-left);
+  top: var(--pane-top);
+  bottom: auto;
   box-sizing: border-box;
-  width: calc(100vw - 48px);
-  max-width: 1400px;
-  height: calc(100vh - 48px);
-  max-height: 900px;
+  width: 940px;
+  max-width: calc(100vw - var(--pane-left) - 24px);
+  height: min(780px, var(--pane-max-h));
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border-subtle);

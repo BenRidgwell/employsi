@@ -400,7 +400,7 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
       {/* Same shell as the analyst card: a transparent scrim that closes on
           click, then a positioned card above it. Without the scrim + z-index
           this rendered underneath the map and the rail. */}
-      <div className="panescrim dqscrim" onClick={onClose} />
+      <div className="panescrim" onClick={onClose} />
       <div className="dqpane" role="dialog" aria-label="Admin console">
         {firstLoad && <CardLoader />}
         <div className="dqhd">
