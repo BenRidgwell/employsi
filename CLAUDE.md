@@ -279,6 +279,33 @@ on `employsi-preview` while employsi.com.au changed underneath you. The
 the target. The attachment limits the blast radius of the *connection*; the flag
 limits the blast radius of the *deploy*.
 
+**EVERYTHING IN THE PARAGRAPH ABOVE IS WRONG. THE CONNECTED WORKER WINS.**
+It is kept because it is the conclusion anyone reasoning from how wrangler
+behaves in a shell will reach, and it needs contradicting with the measurement
+rather than quietly deleting. Workers Builds overrides the deploy target with
+the Worker the build is attached to, whatever the deploy command asks for.
+Measured 2026-09-21 on the first green build:
+
+| | |
+| --- | --- |
+| Deploy command | `npm run deploy:preview` -> `… npx wrangler deploy --name employsi-preview` |
+| `wrangler.jsonc` name | `benridgwell-globe-gazer-hr`, unchanged on `main` |
+| Connected Worker | `employsi` |
+| **Where it landed** | **`employsi`** — version `c8adc711`, replacing `966ce664` of 2026-08-06 |
+
+`employsi-preview` did not move. Production did not move. The flag was ignored.
+
+So in Workers Builds **the connection IS the target**, and three things follow:
+
+- The blast radius is set by which Worker the repo is connected to and by
+  nothing else. No deploy command can widen it, and no `--name` can redirect it.
+- Production is unreachable from CI while the connection is not on
+  `benridgwell-globe-gazer-hr`. That is a stronger guarantee than the one this
+  file used to claim — but it comes from the connection, not from the repo, so
+  it cannot be verified by reading the source tree.
+- **To change where CI deploys, move the connection.** Reconnect the repo on the
+  Worker you want written. Editing `--name` does nothing at all.
+
 **THE DASHBOARD WILL ASK YOU TO BREAK THIS. DISMISS IT.** Because the repo's
 `name` and the connected Worker disagree, Workers Builds shows a banner offering
 to "keep settings consistent" — and on Wrangler v3.109.0+ to open a PR doing it:
