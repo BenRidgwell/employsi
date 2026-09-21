@@ -248,9 +248,21 @@ There is a **Workers Builds** pipeline connected to this repo, configured entire
 dashboard-side (Workers & Pages -> the Worker -> Settings -> Build). Nothing in the
 source tree references it, which is why it is easy to forget it exists at all.
 
-It is attached to the **production** Worker `benridgwell-globe-gazer-hr`, so its
-build rows appear under production's Deployments tab. Its deploy command is what
-decides where it actually publishes — the attachment does not.
+It is connected to the **`employsi-preview`** Worker, so its build rows appear
+under that Worker's Deployments tab and production has no build trigger at all.
+It was connected to production until 2026-09-21; moving it means a misconfigured
+build field can no longer be the thing that publishes the live site.
+
+**BUT THE ATTACHMENT IS NOT WHAT MAKES IT SAFE, AND IT IS TEMPTING TO THINK IT
+IS.** Wrangler publishes to the `name` in the resolved config — `.output/server/
+wrangler.json`, which inherits `benridgwell-globe-gazer-hr` from the root
+`wrangler.jsonc` — no matter which Worker the build is attached to. A bare
+`npx wrangler deploy` in that deploy field would publish PRODUCTION from a build
+that lives under the preview Worker, and the dashboard would show a green build
+on `employsi-preview` while employsi.com.au changed underneath you. The
+`--name employsi-preview` in `deploy:preview` is still the only thing choosing
+the target. The attachment limits the blast radius of the *connection*; the flag
+limits the blast radius of the *deploy*.
 
 **Its build command must be `npm run build`, and the failure when it isn't looks
 like a config error in this repo.** Measured 2026-09-21: the pipeline ran
@@ -273,13 +285,26 @@ back to the root config, and the error is a correct description of the file it w
 left with. It works locally purely because a previous `npm run build` left
 `.output/` behind. **The error is about a missing BUILD, not a missing key.**
 
-The settings that make it work:
+The settings that make it work, under **Workers & Pages -> `employsi-preview` ->
+Settings -> Build**:
 
 | Field | Value |
 | --- | --- |
 | Build command | `npm run build` |
 | Deploy command | `npm run deploy:preview` |
 | Build variable | `VITE_MAPBOX_TOKEN` — see below |
+
+**Verify the first build landed where you think**, because a green build says
+nothing about which Worker it wrote. Both of these must be true:
+
+```bash
+npx wrangler deployments list --name employsi-preview | head   # a NEW version, from the build
+npx wrangler deployments list | head                           # production UNCHANGED
+```
+
+`last_deployed_from` also flips to `github-actions`/`builds` on whichever Worker
+the build actually published — production's should stay `wrangler`, because every
+prod deploy here is a deliberate one typed by hand.
 
 The `npx` in `deploy:preview` is load-bearing: **wrangler is not a dependency of
 this repo** and there is no `node_modules/.bin/wrangler`, so a bare `wrangler …`
