@@ -5172,20 +5172,47 @@ async function fetchSuccessFactors(site: SiteDef): Promise<PortalJob[]> {
   // roles and guessing high ends the walk after one page.
   let pageSize = 0;
   const max = site.maxPages ?? DEFAULT_MAX_PAGES;
-  for (let page = 0; page < max; page++) {
+  // THIS BOARD PUBLISHES NO TOTAL, BUT ITS PAGER IS A LOWER BOUND. Measured
+  // 2026-09-21 on BHP: no "N results" string anywhere, and the page links
+  // startrow=0,25,50,75,100 — so at least 101 roles exist. That is the same
+  // substitute fetchPageUpSites uses for the tenants that print no count, and
+  // it is only ever believed while it GROWS the walk, never to bound it.
+  //
+  // What it protects is `if (!html) break`, which ended the walk on a FAILED
+  // REQUEST exactly as on an exhausted list — getText returns nothing for a
+  // timeout, a 403 and an empty page alike. One dropped request mid-walk
+  // truncated the board silently, across the 37 feeds this fetcher serves, and
+  // a short answer is invisible on a board that never says how long it is.
+  let lastPage = 0;
+  const MISS_BUDGET = 3;
+  let misses = 0;
+  for (let page = 0; page < max;) {
     const startrow = pageSize ? page * pageSize : 0;
     // `searchParams` is how a tenant that serves more than its own employer's
     // roles is narrowed — see the field's note. Empty for every other site, so
     // the url is unchanged for them.
     const extra = site.searchParams ? `&${site.searchParams}` : "";
     const html = await getText(`${site.endpoint}/search/?q=${extra}&startrow=${startrow}`);
-    if (!html) break;
+    // NO PAGE IS NOT AN EMPTY BOARD. While the pager says there is more to come,
+    // retry the SAME page rather than moving past it; skipping one is how rows
+    // go missing with nothing to show for it.
+    if (!html) {
+      if (stillWalking(out.length, 0, page + 1, lastPage) && ++misses <= MISS_BUDGET) continue;
+      break;
+    }
+    misses = 0;
     // Table theme first; tile theme when the page carries no table rows.
     const table = html.split(/<tr class="data-row">/i).slice(1);
     const tiles = table.length ? [] : html.split(/<div class="job-tile-cell">/i).slice(1);
     const rows = table.length ? table : tiles;
     if (!rows.length) break;
     if (!pageSize) pageSize = rows.length;
+    // Read once, off the first page, in pages rather than rows.
+    if (!lastPage && pageSize) {
+      for (const m of html.matchAll(/startrow=(\d+)/gi)) {
+        lastPage = Math.max(lastPage, Math.floor(Number(m[1]) / pageSize) + 1);
+      }
+    }
     let added = 0;
     for (const raw of rows) {
       const row = table.length ? raw.split(/<\/tr>/i)[0] : raw;
@@ -5224,6 +5251,7 @@ async function fetchSuccessFactors(site: SiteDef): Promise<PortalJob[]> {
     }
     // A short page is the last page.
     if (added === 0 || rows.length < pageSize) break;
+    page++;
   }
   return out;
 }
@@ -5260,8 +5288,23 @@ async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
   const out: PortalJob[] = [];
   const seen = new Set<string>();
   const max = site.maxPages ?? DEFAULT_MAX_PAGES;
-  for (let page = 0; page < max; page++) {
-    const json = await getJson<{ jobPostings?: WorkdayPosting[] }>(site.endpoint, {
+  // THE BOARD STATES ITS SIZE AND THIS READER USED TO IGNORE IT. Every Workday
+  // response carries `total`, and the walk ended on `!postings.length` — which a
+  // FAILED REQUEST produces just as an exhausted list does, because getJson
+  // returns null for a timeout, a 403 and a 500 alike and `?? []` flattens the
+  // difference away. One dropped request mid-walk therefore truncated the board
+  // silently, across the 60 feeds this fetcher serves.
+  //
+  // That is the Compass Group failure — 644 advertised, 100 collected, a single
+  // intermittent 202 ending the walk on page 5 of 33 — which fetchPageUpSites
+  // already guards against and this one did not.
+  let advertised = 0;
+  // Bounded, so a board that refuses every request cannot spin: after this many
+  // consecutive misses the walk gives up and returns what it has.
+  const MISS_BUDGET = 3;
+  let misses = 0;
+  for (let page = 0; page < max;) {
+    const json = await getJson<{ total?: number; jobPostings?: WorkdayPosting[] }>(site.endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -5271,8 +5314,18 @@ async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
         searchText: "",
       }),
     });
-    const postings = json?.jobPostings ?? [];
+    // NO RESPONSE IS NOT AN EMPTY BOARD. Retry the SAME page rather than moving
+    // past it — skipping a page is how rows go missing without a trace.
+    if (!json) {
+      if (++misses <= MISS_BUDGET) continue;
+      break;
+    }
+    misses = 0;
+    if (!advertised && typeof json.total === "number") advertised = json.total;
+    const postings = json.jobPostings ?? [];
+    // An empty page from a response that ARRIVED is the real end of the list.
     if (!postings.length) break;
+    page++;
     for (const p of postings) {
       const title = (p.title || "").trim();
       const path = (p.externalPath || "").trim();
@@ -5302,6 +5355,11 @@ async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
       );
     }
     if (postings.length < WD_PAGE) break;
+  }
+  if (advertised && out.length < advertised) {
+    console.log(
+      `workday ${site.id}: ${out.length} rows vs ${advertised} advertised — walk incomplete`,
+    );
   }
   return out;
 }
