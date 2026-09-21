@@ -232,6 +232,32 @@ BLOCKED_RENDER_BUDGET = 10
 # complete negative is how an employer gets written off unexamined.
 EMPLOYER_BUDGET_S = 70
 
+# THE BUDGET IS A SHARE OF THE JOB'S WALL CLOCK, NOT A PROPERTY OF AN EMPLOYER,
+# and until 2026-09-21 it did not behave like one. 14 x 70s is what fits the
+# 20-minute timeout — but a sweep of ONE domain also gave that domain 70s, so
+# the report's own advice when it cuts short ("re-run this domain on its own")
+# bought nothing at all. Measured that day: CDU and Federation were cut short at
+# 72s and 86s in a four-domain render sweep, and a re-run of either alone would
+# have stopped in the same place.
+#
+# So the per-employer budget now scales with how many domains are actually being
+# swept, and --budget overrides it outright. The cap stops one domain eating the
+# whole job and leaving no time to write the report.
+EMPLOYER_BUDGET_TOTAL_S = 14 * EMPLOYER_BUDGET_S
+EMPLOYER_BUDGET_MAX_S = 600
+
+# Set per run from the target count; see budget_for().
+employer_budget_s = EMPLOYER_BUDGET_S
+
+
+def budget_for(n_targets: int, override: str = '') -> int:
+    if override.strip():
+        return max(1, int(override))
+    if n_targets < 1:
+        return EMPLOYER_BUDGET_S
+    share = EMPLOYER_BUDGET_TOTAL_S // n_targets
+    return max(EMPLOYER_BUDGET_S, min(EMPLOYER_BUDGET_MAX_S, share))
+
 CAREERS_LINK = re.compile(
     r'href=["\']([^"\']*(?:career|job|vacanc|work-with-us|work-for-us|join-us'
     r'|employment|opportunit|positions)[^"\']*)["\']',
@@ -763,7 +789,7 @@ def sweep(domain: str, render: bool = False) -> dict:
 
     seed_renders = SEED_RENDER_BUDGET
     for url in candidates(domain):
-        if time.monotonic() - started > EMPLOYER_BUDGET_S:
+        if time.monotonic() - started > employer_budget_s:
             cut_short = time.monotonic() - started
             break
         seen.add(url)
@@ -823,7 +849,7 @@ def sweep(domain: str, render: bool = False) -> dict:
     spare_renders = RENDER_BUDGET
     blocked_renders = BLOCKED_RENDER_BUDGET
     while queue and len(followed) < LINK_BUDGET:
-        if time.monotonic() - started > EMPLOYER_BUDGET_S:
+        if time.monotonic() - started > employer_budget_s:
             cut_short = time.monotonic() - started
             break
         queue.sort()
@@ -903,6 +929,10 @@ def main() -> int:
     if not targets:
         return print(__doc__.strip().splitlines()[-2].strip()) or 2
 
+    global employer_budget_s
+    employer_budget_s = budget_for(len(targets), opt('--budget'))
+    print(f'{len(targets)} target(s), {employer_budget_s}s budget each')
+
     out = []
     for t in targets:
         r = sweep(t, render=render_on)
@@ -934,8 +964,9 @@ def main() -> int:
             # NOT A CLEAN MISS. Anything below is what this employer had produced
             # when the clock ran out, so a "no marker" under this line means
             # "nothing found YET" and must not be recorded as a negative.
-            print(f'  ** CUT SHORT after {r["cut_short"]:.0f}s (EMPLOYER_BUDGET_S) — '
-                  'this sweep is INCOMPLETE; re-run this domain on its own **')
+            print(f'  ** CUT SHORT after {r["cut_short"]:.0f}s (budget {employer_budget_s}s) — '
+                  'this sweep is INCOMPLETE. Re-run with FEWER domains, which raises '
+                  'the per-employer budget, or pass --budget <seconds> **')
         if r['found']:
             print('  FOUND in served HTML — can be an in-Worker feed:')
             for u, h in r['found'].items():
