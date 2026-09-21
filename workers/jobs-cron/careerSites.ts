@@ -120,6 +120,7 @@ type Platform =
   | "ampol"
   | "taleo"
   | "aurizon"
+  | "bond"
   | "pageupsites"
   | "cornerstone"
   | "snaphire"
@@ -4333,6 +4334,251 @@ export const SITES: SiteDef[] = [
     // always has. Melbourne is where this university is.
     homeHub: "melbourne",
   },
+  // ── The 2026-09-21 fifteenth batch ──────────────────────────────────────────
+  //
+  // Sixteen domains swept plain, six fingerprinted. Seven feeds are built here —
+  // the six hits minus Merivale, plus two the sweep did NOT fingerprint and a
+  // follow-up found anyway (Midfield, Bond).
+  //
+  // The domains came from src/employsi/data/privateLogos.ts, whose map is a
+  // supplied spreadsheet column rather than a heuristic, and TWO of them would
+  // have been wrong had they come from the generated resolvedDomains.ts instead:
+  // it has Midfield as midfielduae.com (a UAE company; the roster row is the
+  // Warrnambool abattoir) and Swift Holdings as swiftinvestments.com (it trades
+  // as Autoleague). That is the San Remo/Kennards failure again, and the lesson
+  // is the same one: a domain is a measurement, not a guess.
+  //
+  // FOUND BUT NOT BUILT:
+  //   Merivale (149 ads) — SuccessFactors, and the sweep's own "NES theme —
+  //     check it renders rows" warning was right to be a warning. Measured
+  //     2026-09-21: careers.merivale.com renders NOTHING server-side. /search/,
+  //     /viewalljobs/, /rss and the classic career10 portal all return the shell
+  //     — 0 `jobTitle`, 0 `/job/` hrefs, 0 RSS items across 98 KB — because the
+  //     list arrives through the `xweb/rmk-jobs-search` widget into an empty
+  //     <div id="jobSearch_j_id1">. Reading it needs a browser, as ACU's PageUp
+  //     does. The value nobody can guess is recorded here so a future
+  //     browser-driven reader does not have to find it again: the SuccessFactors
+  //     company is `hemmestrad` (Hemmes Trading — Merivale is the Hemmes group),
+  //     from career10.successfactors.com/career?company=hemmestrad.
+  //   Metricon (134 ads) — jobs.metricon.com.au is a bespoke Telerik RadGrid on
+  //     ASP.NET, fully served, with per-region listing pages at
+  //     Default.aspx?Loc={MEL,QLD,VIC,NSW,SA} — and the region is the ONLY
+  //     geography on the board, since the grid's columns are Title, Description,
+  //     Employment Type, Business Unit, Department and Closing Date with no
+  //     location among them. Measured 2026-09-21: MEL 4, QLD 8, VIC 1, NSW 3,
+  //     SA 1 = 17. Held back on a question rather than a technical wall: every
+  //     page carries <meta name="robots" content="noindex">, and the host serves
+  //     no robots.txt at all (404), so that meta is the site's only stated
+  //     preference. It is an INDEXING directive and not an access control — this
+  //     is not the NGA.NET case — but it is the first board here where the
+  //     question arises, and setting that precedent quietly is worse than asking.
+  //   Autoleague / Swift Holdings (105 ads) — autoleague.com.au/careers carries
+  //     exactly one outbound careers link and it is
+  //     seek.com.au/Autoleague-jobs/at-this-company. There is no board of its own
+  //     to read. The useful move is a SEEK advertiser id, which this row does not
+  //     yet have, rather than a portal that does not exist.
+  //   Charles Darwin (136 ads) — 14 links followed, 11 read, no marker. Its
+  //     careers pages lead to gtnt.jobreadygateway.com.au, which is the GTNT
+  //     Group's apprenticeship board and a DIFFERENT organisation; filing those
+  //     under CDU would be the Kennards mistake. jobs.cdu.edu.au answers 200 and
+  //     is where a --render sweep should start.
+  //   UTS (85) — the corridor walked the student careers service again, all 14
+  //     links under /for-students/. careers.uts.edu.au answers 426 (Upgrade
+  //     Required) to a plain client, which is a protocol refusal rather than a
+  //     block, and is the thing to look at next.
+  //   UNE (74) — every path 403s, including the root. Needs --render.
+  //   Defence Health (152), Canberra Airport (109), Richard Crookes (135) —
+  //     swept, no marker, every followed link read. Trustworthy negatives, and
+  //     Richard Crookes' own /current-vacancies/ was among the pages read.
+  {
+    id: "priv-employers-mutual",
+    name: "Employers Mutual",
+    sector: "Insurance",
+    platform: "workday",
+    // Workday eml/wd105/EML, in SERVED html on www.eml.com.au — the tenant is
+    // the trading name (EML), not the roster name, which is why no amount of
+    // guessing at employersmutual.* would have reached it.
+    //
+    // Measured 2026-09-21: `total` 50, of which 41 place. Locations are
+    // "Melbourne, Victoria", "Adelaide, South Australia", "Sydney, New South
+    // Wales" — the shape HUB_MATCH reads without a hint.
+    //
+    // The 9 that do not place are ALL Workday's multi-site placeholders — "2
+    // Locations" (6), "4 Locations" (2), "3 Locations" (1) — and they resolve to
+    // nothing rather than to this hub, which is the same reading Clayton Utz's
+    // and Melbourne's get. A placeholder names no place, so filling it with the
+    // head office would be inventing one.
+    endpoint: "https://eml.wd105.myworkdayjobs.com/wday/cxs/eml/EML/jobs",
+    origin: "https://eml.wd105.myworkdayjobs.com/EML",
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-racq",
+    name: "RACQ",
+    sector: "Insurance",
+    platform: "taleo",
+    // Taleo tenant `racq`, career section RACQ_External. The portal number is
+    // read off that section's own FacetedSearchSettings (`portal=10100010479`),
+    // as Sonic's was — it is the one value a Taleo feed cannot be built without
+    // and the one nobody can guess.
+    endpoint: "https://racq.taleo.net",
+    origin: "https://racq.taleo.net",
+    portalNo: "10100010479",
+    // Measured 2026-09-21: 14 collected of 18 advertised. That gap is this
+    // platform's documented behaviour rather than a short walk — the board's own
+    // total exceeds what it serves anonymously, exactly as Sonic HealthPlus's
+    // 22/18 does. fetchTaleo logs it and archives the 14; the 4 are not invented.
+    homeHub: "brisbane",
+    // EVERY LOCATION IS A QUEENSLAND SUBURB and none is a HUB_MATCH needle, so
+    // before these hints 12 of the 14 resolved to no hub and never reached the
+    // map. Measured: Eight Mile Plains 6, Capalaba 3, Eagle Farm 2,
+    // "Maroochydore Autoglass" 1; only "Brisbane Region" (2) placed on its own.
+    //
+    // Scoped rather than global because these are suburb names that mean other
+    // things elsewhere, and because the claim each makes is only true for this
+    // employer: RACQ trades solely in Queensland. Eight Mile Plains (its head
+    // office), Capalaba and Eagle Farm are all Greater Brisbane. Maroochydore is
+    // the Sunshine Coast, ~100 km north — Brisbane is the nearest plotted hub to
+    // it, the same reading Bega gets toward Sydney.
+    hubHints: [
+      ["eight mile plains", "brisbane"],
+      ["capalaba", "brisbane"],
+      ["eagle farm", "brisbane"],
+      ["maroochydore", "brisbane"],
+    ],
+  },
+  {
+    id: "priv-ausgrid",
+    name: "Ausgrid",
+    sector: "Utilities",
+    platform: "successfactors",
+    // The branded SuccessFactors host, found by the sweep on jobs.ausgrid.com.au
+    // — www.ausgrid.com.au/about-us/about-ausgrid/careers fingerprints too, but
+    // only links here.
+    endpoint: "https://jobs.ausgrid.com.au",
+    origin: "https://jobs.ausgrid.com.au",
+    // THE BOARD WRITES "AU" AND NOTHING ELSE, for every role. Measured
+    // 2026-09-21 against the board's own search page rather than only through
+    // the reader: 16 of 16 jobLocation cells read exactly "AU", and the pager
+    // says 16. So this is the board's own data and not a dropped cell — the
+    // failure it would otherwise look like — and there is no city to store.
+    //
+    // A BARE "AU" IS NOT THE HOME COUNTRY as far as hubFor is concerned, which
+    // was measured rather than assumed after the first cut of this SiteDef
+    // claimed the opposite. HOME_COUNTRY.sydney is /australia/ and "AU" does not
+    // match it, so all 16 resolved to no hub — and an unplaced row archives but
+    // never appears on the map, the same silent half-failure Patterson Cheney's
+    // dealership names produced.
+    //
+    // Widening HOME_COUNTRY to accept a bare "AU" would change placement for all
+    // 251 feeds over one board's abbreviation, so the scoped flag is used
+    // instead. The claim assumeHomeHub makes is true here: Ausgrid is the
+    // distribution network for Sydney, the Central Coast and the Hunter, it
+    // operates nowhere else, and its head office is in Sydney — which is also
+    // the nearest plotted hub to every other part of that patch.
+    assumeHomeHub: true,
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-pharmacare",
+    name: "PharmaCare",
+    sector: "Healthcare & Medical",
+    platform: "elmo",
+    // ELMO tenant `pharmacare`, named by the sweep's BOARD URL CANDIDATES report
+    // rather than by the fingerprint — the page says "elmo" with no host
+    // attached, and the candidate list carried
+    // pharmacare.elmotalent.com.au/careers/careers/jobs?layout=iframe.
+    //
+    // Measured 2026-09-21: 12 roles over two pages.
+    endpoint: "https://pharmacare.elmotalent.com.au/careers/careers/jobs",
+    origin: "https://pharmacare.elmotalent.com.au",
+    // "Warriewood, NSW" (8), "Prestons, NSW" (1) and "Melbourne, VIC" (1) place
+    // on the state needles. The 2 reading a bare "Alexandria" do not, and that
+    // name is also a city in Egypt and one in Virginia — so the hint is scoped
+    // here, where PharmaCare is a Warriewood company and Alexandria is the inner
+    // Sydney suburb 30 km south of it.
+    hubHints: [["alexandria", "sydney"]],
+    homeHub: "sydney",
+  },
+  {
+    id: "priv-akd",
+    name: "AKD",
+    sector: "Forestry",
+    platform: "elmo",
+    // THE SWEEP NAMED THE PLATFORM AND NOT THE TENANT: `elmo` matched on
+    // www.akd.com.au with no host captured, because the string is not inside an
+    // absolute URL on that page. scripts/discover-boards.py now captures the
+    // subdomain where one is adjacent, so the next board of this shape names
+    // itself.
+    //
+    // THE TENANT WAS CONFIRMED, NOT ASSUMED. akd.elmotalent.com.au exists, but a
+    // bare slug matching a company name is exactly how Kennards Hire's board
+    // nearly got filed under Kennards Self Storage, and this board's own title is
+    // the generic "HR Hub - Administration". What identifies it is the content:
+    // its location facets are Colac (8), Caboolture (9), Oberon (11), Tumut (2)
+    // and National (2) — AKD's mill towns and nobody else's — its ads open "AKD
+    // is seeking…", and its logo is served from /files/akd/. The two other
+    // plausible slugs (akdsoftwoods, akdgroup) 302 to the vendor's own site.
+    //
+    // Measured 2026-09-21: 32 roles, which is exactly the facet sum 8+9+11+2+2 —
+    // the whole board, over four pages.
+    endpoint: "https://akd.elmotalent.com.au/careers/careers/jobs",
+    origin: "https://akd.elmotalent.com.au",
+    // NOT ONE OF THESE IS A HUB_MATCH NEEDLE, so all 32 resolved to no hub before
+    // the hints. Every one is a mill town rather than a city, and each hint names
+    // the nearest plotted hub: Colac is 150 km south-west of Melbourne;
+    // Caboolture is in Greater Brisbane; Oberon is 180 km west of Sydney and
+    // closer to it than to Canberra; Tumut is in the Riverina, 130 km from
+    // Canberra against 380 km from Sydney, so it goes to Canberra.
+    //
+    // "National" (2) is deliberately NOT hinted, and deliberately not caught by a
+    // home-hub fallback either: it names no place, and a row that says so should
+    // resolve to nothing rather than to the head office. That is why there is no
+    // assumeHomeHub here.
+    hubHints: [
+      ["colac", "melbourne"],
+      ["caboolture", "brisbane"],
+      ["oberon", "sydney"],
+      ["tumut", "canberra"],
+    ],
+    homeHub: "melbourne",
+  },
+  {
+    id: "priv-midfield",
+    name: "Midfield",
+    sector: "Food & Beverage",
+    platform: "ukgready",
+    // THE SWEEP FOUND THIS AS A LINK, NOT AS A FINGERPRINT: midfield.com.au's
+    // careers page links out to the UKG Ready board, and the link arrives wrapped
+    // in a urldefense.com redirect, which is why no pattern matched it. The three
+    // ids inside it are what the reader needs — company 6189953 in the path,
+    // ein_id 17596160 and career_portal_id 638977 — in the same shape Craig
+    // Mostyn's takes.
+    //
+    // THE DOMAIN IS THE POINT HERE. resolvedDomains.ts has "midfield" as
+    // midfielduae.com, a UAE company; this roster row is the Warrnambool meat
+    // processor. The rows confirm which one was read: measured 2026-09-21, 24
+    // roles, 23 at "Warrnambool, VIC, Australia" and 1 at "Woolsthorpe, VIC,
+    // Australia" — Midfield's own plants, both placing on the " vic" needle with
+    // no hint.
+    endpoint:
+      "https://secure.workforceready.com.au/ta/rest/ui/recruitment/companies/%7C6189953/job-requisitions?ein_id=17596160&lang=en-AU&career_portal_id=638977&sort=-post_date",
+    origin:
+      "https://secure.workforceready.com.au/ta/6189953.careers?CareersSearch=&ein_id=17596160&career_portal_id=638977&lang=en-AU",
+    homeHub: "melbourne",
+  },
+  {
+    id: "uni-bond-university",
+    name: "Bond University",
+    sector: "Education",
+    platform: "bond",
+    // Not an ATS at all — see fetchBond for the markup, and for why the location
+    // is stored empty. Measured 2026-09-21: 20 roles in one response, all 20
+    // placed on the home hub.
+    endpoint: "https://bond.edu.au/jobs",
+    origin: "https://bond.edu.au",
+    homeHub: "brisbane",
+  },
 ];
 
 /**
@@ -4741,6 +4987,19 @@ export const PORTAL_GROUPS: string[][] = [
   ["priv-nhp-electrical-engineering-products", "sydney-rdx", "priv-patterson-cheney"],
   // Group 75 — the 2026-09-21 fourteenth batch. One Oracle call, 5 roles.
   ["uni-victoria-university"],
+  // Groups 76-77 — the 2026-09-21 fifteenth batch. 168 roles across seven feeds,
+  // split by how each is fetched rather than evenly.
+  //
+  // 76 is the cheap half: EML's Workday is 3 pages of 20, RACQ's Taleo 1 REST
+  // page, Midfield's UKG Ready a single call and Bond's whole board one
+  // response. 108 roles for six requests between them.
+  //
+  // 77 holds the three that walk. Ausgrid's SuccessFactors walk is SEQUENTIAL —
+  // each page's size is read off the one before — and the two ELMO boards page
+  // ten at a time, so AKD alone is four round trips. 60 roles for rather more
+  // requests than 76's 108, which is the point of the split.
+  ["priv-employers-mutual", "priv-racq", "priv-midfield", "uni-bond-university"],
+  ["priv-ausgrid", "priv-pharmacare", "priv-akd"],
 ];
 
 const UA =
@@ -6887,6 +7146,54 @@ async function fetchAurizon(site: SiteDef): Promise<PortalJob[]> {
     const cat = descs[0] ?? "";
     const loc = descs[1] ?? "";
     out.push(job(site, title, loc, `${site.origin}${a[1]}`, "", cat));
+  }
+  return out;
+}
+
+// ── Bond University's own board ──────────────────────────────────────────────
+/**
+ * bond.edu.au/jobs — not an ATS, a Drupal page, and it serves the WHOLE board in
+ * one response. Measured 2026-09-21: 338 KB, 20 roles, no pagination control, no
+ * load-more and no client-side list, so this deliberately does not page.
+ *
+ * The rows are grouped under headings ("Academic", "Professional") and each is:
+ *
+ *   <div class="job-listing …">
+ *     <h3 class="uk-h4"><a href="/jobs/11154/…-occupational-therapy…">Title </a></h3>
+ *     <p class="uk-text-italic">Part-time 0.6 FTE, Fixed term for 2 years</p>
+ *     <p> (closes 25th October 2026)</p>
+ *
+ * THERE IS NO LOCATION FIELD ANYWHERE ON THE BOARD, and that is the board being
+ * accurate rather than a parser missing a cell: Bond is a single-campus
+ * university at Robina on the Gold Coast, and every role is there. So the
+ * location is stored EMPTY rather than filled with a campus name the board never
+ * printed, and hubFor's empty-location fallback places it on the home hub. That
+ * hub is brisbane, the nearest plotted one — the same reading Ventia's board
+ * already gets from its scoped ["gold coast", "brisbane"] hint.
+ *
+ * THE DATE IN THE THIRD <p> IS A CLOSING DATE, not an opening one, as Deakin's
+ * and Village Roadshow's are. Left empty rather than stored as `posted`, which
+ * would date every role to when it comes DOWN; the archive's own first_seen
+ * carries the timing.
+ *
+ * Checked before writing this: bond.edu.au/robots.txt is the stock Drupal file
+ * and disallows /core/, /profiles/, /admin/, /search/ and the user paths. /jobs
+ * is not among them, and the board pages carry no robots meta.
+ */
+async function fetchBond(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const item of html.split(/class="job-listing/i).slice(1)) {
+    const a = item.match(/<h3[^>]*>\s*<a[^>]*href="(\/jobs\/(\d+)\/[^"]*)"[^>]*>([\s\S]*?)<\/a>/i);
+    if (!a) continue;
+    const [, href, ref, rawTitle] = a;
+    if (seen.has(ref)) continue;
+    const title = clean(rawTitle);
+    if (!title) continue;
+    seen.add(ref);
+    out.push(job(site, title, "", `${site.origin}${href}`, "", "Career portal"));
   }
   return out;
 }
@@ -9907,6 +10214,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   ampol: fetchAmpol,
   taleo: fetchTaleo,
   aurizon: fetchAurizon,
+  bond: fetchBond,
   pageupsites: fetchPageUpSites,
   cornerstone: fetchCornerstone,
   snaphire: fetchSnapHire,
