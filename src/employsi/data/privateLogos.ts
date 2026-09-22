@@ -618,6 +618,41 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   //   ganzhou-000831   China Rare Earth. The ticker is a Shenzhen listing that
   //     has been renamed and restructured; nothing tried resolved to it.
   // Both still show the parking mark. They are the last two known instances.
+  // ── Dubai, Tokyo, Beijing, Hong Kong, 2026-09-22: the domains ────────────
+  // THESE FOUR CITIES FAIL DIFFERENTLY FROM EVERYWHERE ELSE, and the difference
+  // decides the fix. In Australia and New Zealand a blank badge almost always
+  // meant a wrong domain. Here it usually does not: of 152 companies on the
+  // favicon service, 75 draw nothing, and when their titles were read, 35 named
+  // the company outright and most of the rest were bot-walls on domains that
+  // are plainly right — mitsui.com, tel.com, cnooc.com, hkex.com.hk. The
+  // favicon service simply does not index much of the Gulf or East Asia.
+  //
+  // So correcting domains buys very little in these cities; committed logo
+  // files are the fix, and are handled separately. Only three domains were
+  // actually WRONG, all three caught by the title naming a different company:
+  //
+  //   didi.com    -> "Digital Image Design Incorporated"
+  //   multiply.com-> "System1", an ad-tech acquisition platform
+  //   toyotamotor.com -> a JS shell that renders only "Loading..."
+  //
+  // Each replacement was confirmed by title and then by opening the favicon:
+  // DiDi's orange mark, Toyota's red T, and 2.0 for Multiply.
+  "beijing-didi": "didiglobal.com",
+  // Multiply Group has rebranded to 2PointZero, so multiply.ae now carries that
+  // name — 33 mentions of "2PointZero" on the page against 1 of "Multiply", and
+  // the favicon is a 2.0 monogram. It is still Multiply Group's own domain and
+  // still enormously better than multiply.com, which belongs to somebody else
+  // entirely, but the badge will read 2.0 rather than Multiply. Recorded with
+  // that stated rather than quietly.
+  "dubai-multiply": "multiply.ae",
+  // global.toyota is the corporate site (title: トヨタ自動車株式会社 公式企業サイト).
+  // toyota.com is the US sales site and toyotamotor.com renders nothing.
+  "tokyo-7203": "global.toyota",
+  // LEFT ALONE, and worth recording because it looks wrong: jd.com answers with
+  // 686 bytes titled "JoyGen" and no JD content at all, from here and from
+  // corporate.jd.com alike. jd.com IS JD.com's domain, so this is far more
+  // likely to be what this sandbox's egress is served than a roster error.
+  // Changing it on that evidence would be the wrong call.
   // ── the original Top-150 private set ──────────────────────────────────────
   "priv-abc-tissue": "abctissue.com.au",
   "priv-abn-group": "abngroup.com.au",
