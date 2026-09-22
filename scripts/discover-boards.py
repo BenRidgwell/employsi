@@ -106,17 +106,36 @@ UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
 # "Sites" theme is recognised by its own card class rather than by the vendor
 # name, because the classic theme shares the vendor and needs a different
 # reader.
+# EVERY HOST LABEL IS BOUNDED TO 63 CHARACTERS, which is not tidiness — it is
+# the fix for a sweep that hung for twenty minutes and produced one page.
+#
+# Measured 2026-09-21 on stoweaustralia.com.au/careers: the page is 523 KB and
+# carries an inline base64 source map, which is ONE UNBROKEN RUN OF 176,098
+# characters that `[a-z0-9-]` matches. A pattern shaped `([a-z0-9-]+)\.csod\.com`
+# then costs O(N^2) — the class swallows the whole run, fails to find the
+# literal, and retries from every position inside it. Nine patterns here had
+# that shape, so the sweep did it nine times over and never returned. The job
+# died on its 20-minute timeout twice, with the fetched body already on disk and
+# the fingerprint pass hung behind it.
+#
+# A DNS label cannot exceed 63 characters, so {1,63} loses nothing that could
+# ever have been a real tenant and turns the blow-up into O(63*N).
+#
+# THE GENERAL RULE, because this will recur: a greedy class in front of a
+# literal is the dangerous shape, and pages carry base64 blobs. A class that
+# TRAILS its literal (`livehire.com/careers/([a-z0-9-]+)`) is safe, but is
+# bounded here too so the whole table reads one way.
 FINGERPRINTS: list[tuple[str, str]] = [
     (r'job-search-results-card-title', 'pageupsites'),
     (r'<(?:tbody|div) id="search-results-content"', 'pageupclassic'),
-    (r'([a-z0-9-]+\.pageuppeople\.com(?:/\d+/[a-z]+)?)', 'pageup (theme unknown — check for the card class)'),
+    (r'([a-z0-9-]{1,63}\.pageuppeople\.com(?:/\d+/[a-z]+)?)', 'pageup (theme unknown — check for the card class)'),
     # TENANT, POD AND SITE, because a Workday url carries the tenant in the
     # HOSTNAME and the site in the path, and the endpoint needs both:
     # https://<tenant>.<pod>.myworkdayjobs.com/wday/cxs/<tenant>/<site>/jobs.
     # An earlier version captured only the path segment, which reported
     # "workday [HCF_External_Career_Site]" and left the tenant — the half that
     # cannot be guessed — out of the answer.
-    (r'([a-z0-9-]+)\.(wd\d+)\.myworkdayjobs\.com/(?:[a-z]{2}-[A-Z]{2}/)?(?:wday/cxs/[^/]+/)?([A-Za-z0-9_-]+)',
+    (r'([a-z0-9-]{1,63})\.(wd\d+)\.myworkdayjobs\.com/(?:[a-z]{2}-[A-Z]{2}/)?(?:wday/cxs/[^/]+/)?([A-Za-z0-9_-]+)',
      'workday'),
     # WORKDAY'S OTHER HOST, and one word is the whole difference. An externally
     # hosted Workday career site lives on myworkdaySITE.com rather than
@@ -135,13 +154,13 @@ FINGERPRINTS: list[tuple[str, str]] = [
     (r'smartrecruiters\.com/([A-Za-z0-9_-]+)', 'smartrecruiters'),
     (r'bootstrap/[0-9._]+_NES', 'successfactors (NES theme — check it renders rows)'),
     (r'successfactors', 'successfactors'),
-    (r'([a-z0-9-]+\.fa\.[a-z0-9]+\.oraclecloud\.com)(?:/hcmUI/CandidateExperience/[a-z-]+/sites/([A-Za-z0-9_]+))?', 'oracle'),
+    (r'([a-z0-9-]{1,63}\.fa\.[a-z0-9]{1,63}\.oraclecloud\.com)(?:/hcmUI/CandidateExperience/[a-z-]+/sites/([A-Za-z0-9_]+))?', 'oracle'),
     (r'dayforcehcm\.com/(?:CandidatePortal/)?(?:[a-z]{2}-[A-Z]{2}/)?([A-Za-z0-9_-]+)', 'dayforce (expect a 403 on the search API)'),
-    (r'([a-z0-9-]+)\.csod\.com', 'cornerstone'),
+    (r'([a-z0-9-]{1,63})\.csod\.com', 'cornerstone'),
     (r'services\.employmenthero\.com|employmenthero\.com/jobs', 'employmenthero'),
     (r'sjobs\.brassring\.com|brassring', 'brassring'),
     (r'phenom|widgets/jobs', 'phenom'),
-    (r'livehire\.com/careers/([a-z0-9-]+)', 'livehire'),
+    (r'livehire\.com/careers/([a-z0-9-]{1,63})', 'livehire'),
     (r'boards(?:-api)?\.greenhouse\.io/[a-z]+/([a-z0-9-]+)', 'greenhouse'),
     (r'jobs\.lever\.co/([a-z0-9-]+)', 'lever'),
     (r'icims\.com|iCIMS', 'icims (NO READER IN careerSites.ts — would need one)'),
@@ -151,9 +170,9 @@ FINGERPRINTS: list[tuple[str, str]] = [
     # public listing to read there — but the platform was not in this table at
     # all, which is why four sweeps of CDU reported "no ATS marker" rather than
     # naming what they had found.
-    (r'([a-z0-9-]+)\.t1cloud\.com', 'technologyone CiAnywhere (NO READER; CDU\'s lands on a logon)'),
-    (r'([a-z0-9-]+)\.taleo\.net', 'taleo'),
-    (r'([a-z0-9-]+)\.avature\.net', 'avature'),
+    (r'([a-z0-9-]{1,63})\.t1cloud\.com', 'technologyone CiAnywhere (NO READER; CDU\'s lands on a logon)'),
+    (r'([a-z0-9-]{1,63})\.taleo\.net', 'taleo'),
+    (r'([a-z0-9-]{1,63})\.avature\.net', 'avature'),
     (r'eightfold\.ai|api/apply/v2/jobs', 'eightfold'),
     (r'expr3ss', 'expr3ss'),
     # THE JOBADDER WIDGET KEY, which is the only part of a JobAdder board that
@@ -172,7 +191,7 @@ FINGERPRINTS: list[tuple[str, str]] = [
     # Teys Australia's board, and nothing here recognised it. Measured
     # 2026-09-20: the corridor walked teysgroupau.currentjobs.co job pages and
     # reported no marker, because this platform was not in the table at all.
-    (r'([a-z0-9-]+)\.currentjobs\.co', 'currentjobs.co (NO READER — would need one)'),
+    (r'([a-z0-9-]{1,63})\.currentjobs\.co', 'currentjobs.co (NO READER — would need one)'),
     (r'workable\.com', 'workable'),
     # THE TENANT, where the subdomain is next to the marker. AKD's sweep
     # reported a bare `elmo` on www.akd.com.au and nothing else — no host in the
@@ -181,7 +200,7 @@ FINGERPRINTS: list[tuple[str, str]] = [
     # afterwards, which is the guessing this report exists to avoid. The
     # subdomain group is optional so a marker with nothing in front of it still
     # reports `elmo` rather than dropping out of the table.
-    (r'(?:([a-z0-9-]+)\.)?elmotalent', 'elmo'),
+    (r'(?:([a-z0-9-]{1,63})\.)?elmotalent', 'elmo'),
     (r'\.nga\.net\.au', 'nga (NO READER — common on Australian universities)'),
     (r'cloud\.coveo\.com', 'coveo index (client-rendered; needs an org id + key)'),
     # NOT AN ATS AT ALL, which is why a sweep of one reports "no marker" however
@@ -432,6 +451,17 @@ def resolves(host: str) -> tuple[bool, str]:
 # moving the hang somewhere else.
 HARD_FETCH_S = 30
 
+# The same ceiling for a RENDER, which is slower by nature — a launch, a
+# navigation and a settle wait — so it gets more room than a plain fetch. It is
+# still far below EMPLOYER_BUDGET_S's smallest value, so a budget can actually
+# be enforced between renders rather than being sailed past by one that never
+# returns.
+HARD_RENDER_S = 120
+
+# A sentinel, because a render legitimately returns None and `or` would hide the
+# difference between "timed out" and "rendered nothing".
+_RENDER_TIMED_OUT = object()
+
 
 def _bounded(fn, seconds: float, on_timeout):
     """Run fn on a daemon thread and give up on it after `seconds`.
@@ -564,7 +594,27 @@ def rendered_html(url: str, settle_s: int = 8) -> tuple[str | None, str]:
         _render_broken = 'playwright not installed'
         return None, f'playwright not installed ({e})'
     try:
-        html = browser_fetch.render(url, [{'type': 'wait', 'wait_time_s': settle_s}])
+        # A WALL-CLOCK CEILING AROUND THE WHOLE RENDER, for the same reason
+        # HARD_FETCH_S exists around the whole probe. browser_fetch.render already
+        # passes timeout_s to page.goto, but that covers the NAVIGATION only —
+        # not the browser LAUNCH, and not the teardown. Neither had any ceiling,
+        # and EMPLOYER_BUDGET_S cannot help because it is checked between calls.
+        #
+        # Measured 2026-09-21: a three-domain render sweep hung on the FIRST
+        # domain and was killed by the 20-minute job timeout. The artifact holds
+        # exactly one body — stoweaustralia.com.au/careers, fetched plain — and
+        # nothing after it, so the hang was in the render that followed. The
+        # whole run bought one page.
+        #
+        # This also disproves what was written down a batch earlier: the stalls
+        # on these hosts were blamed on talentidl.com being dead and hanging on
+        # TLS. That domain was not in this run at all.
+        html = _bounded(
+            lambda: browser_fetch.render(url, [{'type': 'wait', 'wait_time_s': settle_s}]),
+            HARD_RENDER_S,
+            lambda: _RENDER_TIMED_OUT)
+        if html is _RENDER_TIMED_OUT:
+            return None, f'no answer within {HARD_RENDER_S}s (hung, not refused)'
     except Exception as e:  # noqa: BLE001 - a render failure never aborts the sweep
         msg = f'{type(e).__name__}: {str(e)[:110]}'
         # A launch or driver failure is about this machine, not this page, and
