@@ -468,6 +468,65 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   // hide the problem. Left for a human who knows what these two are:
   //   priv-ngp-group      ngp.com          -> National Guard Products' logo
   //   priv-smrm-holdings  smrmagazine.com  -> a magazine's logo
+  // ── Singapore, Manila, Kuala Lumpur, 2026-09-22 ──────────────────────────
+  // Manila (6) and KL (3) needed nothing but QBE: both rosters are Australian
+  // and British multinationals already plotted in other cities, so they were
+  // already resolving through whatever their home city resolves through.
+  //
+  // Singapore's 24 are a different story, and the sharpest case of this failure
+  // seen so far. A .com built from a Singapore company's full legal name is
+  // very often a domain somebody is actively SELLING, because the name is
+  // generic in English. Three of these were literally for-sale listings and one
+  // was parked:
+  //
+  //   unitedoverseasbank.com  "UnitedOverseasBank.com is for sale - Premium…"
+  //   singaporeexchange.com   "Singaporeexchange.com for sale | Spaceship.com"
+  //   venture.com             "Leasing premium domains to help startups"
+  //   citydevelopments.com    the parked favicon again, sha1 c20af3aed3de
+  //
+  // The rest were live businesses that simply are not the company:
+  //
+  //   uol.com    -> UOL, the Brazilian web portal, on UOL Group's card
+  //   sats.com   -> SATS, a Nordic gym chain, on SATS Ltd's card
+  //   wilmar.com -> HD Supply, a US industrial distributor
+  //
+  // Singapore-listed companies overwhelmingly sit on .com.sg or on a short
+  // trading name (stengg, sgx, cdl, yzjsgd), which is exactly what the full-name
+  // .com rule cannot produce.
+  "singapore-v03": "venture.com.sg",
+  "singapore-u11": "uobgroup.com",
+  "singapore-s68": "sgx.com",
+  "singapore-9ci": "capitaland.com",
+  "singapore-c38u": "cict.com.sg",
+  // CapitaLand Ascendas REIT has no live site of its own — clar.com.sg and
+  // ascendas-reit.com both fail to resolve — so it points at the group site
+  // that carries it, the same one CapitaLand Investment uses.
+  "singapore-a17u": "capitaland.com",
+  "singapore-c09": "cdl.com.sg",
+  "singapore-s58": "sats.com.sg",
+  "singapore-u14": "uol.com.sg",
+  "singapore-s63": "stengg.com",
+  "singapore-u96": "sembcorp.com",
+  "singapore-ov8": "shengsiong.com.sg",
+  "singapore-bs6": "yzjsgd.com",
+  "singapore-c07": "jcclgroup.com",
+  "sydney-qbe": "qbe.com",
+  // NOT FIXED, same rule as NGP and SMRM above: neither replacement could be
+  // verified from here, so neither is recorded as fact.
+  //   singapore-f34  Wilmar International, on wilmar.com = HD Supply's logo.
+  //     wilmar-international.com answers 200 but serves 231 KB that is almost
+  //     entirely a base64 font blob — no title, no og tags, and the string
+  //     "wilmar" appears zero times in it. Plausible, unverifiable. This is the
+  //     one badge in these three cities still showing another company's mark.
+  //   singapore-y92  Thai Beverage, on thaibeverage.com. thaibev.com and
+  //     thaibev.com.sg both refuse to answer at all. Costs nothing today:
+  //     thaibeverage.com already draws the blank globe, so this is a blank that
+  //     stays blank rather than a wrong logo left standing.
+  //
+  // Verified correct and left alone: singtel.com, dbs.com, ocbc.com,
+  // keppel.com, comfortdelgro.com, gentingsingapore.com, seatrium.com and
+  // singaporeairlines.com (which redirects to singaporeair.com and serves its
+  // favicon, so it already draws the right mark).
   // ── the original Top-150 private set ──────────────────────────────────────
   "priv-abc-tissue": "abctissue.com.au",
   "priv-abn-group": "abngroup.com.au",
