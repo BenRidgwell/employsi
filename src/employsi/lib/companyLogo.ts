@@ -2,6 +2,7 @@ import { LOCAL_LOGO } from "../data/localLogos";
 import { PRIVATE_LOGO_URL, PRIVATE_DOMAIN } from "../data/privateLogos";
 import { WA_GOV_LOGO_URL, WA_GOV_CREST, WA_GOV_CREST_ID_SET } from "../data/waGovLogos";
 import { LINKEDIN_LOGO } from "../data/linkedinLogos";
+import { stateGovCrest } from "../data/stateGovCrests";
 
 /**
  * The badge image for a company, in one place.
@@ -31,9 +32,16 @@ import { LINKEDIN_LOGO } from "../data/linkedinLogos";
  *      mark rather than whatever the site happens to put in <link rel=icon>.
  *      Behind everything above because those were each chosen for this company;
  *      this one is chosen by LinkedIn.
- *   4. the favicon service keyed on the organisation's REAL domain, where the
+ *   4. the whole-of-government crest for a Queensland, Victorian or NSW agency
+ *      (data/stateGovCrests.ts). Below LinkedIn because an agency that has a
+ *      distinct mark should show it; above the favicon because for the rest
+ *      the crest is the identity they actually present, and the alternative is
+ *      a guessed .com that is blank at best and another business's logo at
+ *      worst. WA's equivalent sits higher, at 2, because its list was supplied
+ *      per agency rather than inferred from a prefix.
+ *   5. the favicon service keyed on the organisation's REAL domain, where the
  *      roster's name-derived guess is known to be wrong.
- *   5. the favicon service on the roster domain — the original behaviour, and
+ *   6. the favicon service on the roster domain — the original behaviour, and
  *      still correct for everything we have nothing better for.
  *
  * Callers keep their own onError fallback to the ticker text: a logo file can
@@ -45,6 +53,8 @@ export function logoFor(id: string, domain: string, size = 128): string {
   if (direct) return direct;
   if (WA_GOV_CREST_ID_SET.has(id)) return WA_GOV_CREST;
   if (LINKEDIN_LOGO[id]) return LINKEDIN_LOGO[id];
+  const crest = stateGovCrest(id);
+  if (crest) return crest;
   const host = PRIVATE_DOMAIN[id] || domain;
   return `https://www.google.com/s2/favicons?domain=${host}&sz=${size}`;
 }

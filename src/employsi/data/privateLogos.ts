@@ -393,6 +393,81 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   // Lotto NZ and mylotto.co.nz is where it lives ("The Official Lotto NZ
   // website"). Nothing resolves for the registered name.
   "nz-new-zealand-lotteries-commission": "mylotto.co.nz",
+  // ── Brisbane / Melbourne / Sydney, the non-government half, 2026-09-22 ────
+  // The government half of those three cities is not here: 117 agencies were on
+  // a deriveDomain .com and they are now on their state's crest instead, which
+  // is the identity they actually present. See data/stateGovCrests.ts for why
+  // that is a better fix than 117 domain corrections.
+  //
+  // What is left is the listed and private companies, and the failure is the
+  // familiar one — an Australian company owns the .com.au, and deriveDomain
+  // guesses the .com, which usually belongs to an American company of a similar
+  // name. Every badge below was OPENED before being called wrong; a contact
+  // sheet of all 113 that were drawing something is how these were found:
+  //
+  //   car.com       -> Car.com, a US car-research site, on CAR Group's card
+  //   zip.com       -> Zip AI Procurement, on Zip Co's card
+  //   ngp.com       -> National Guard Products, on NGP Group's card
+  //   arb.com       -> an arboriculture site, on ARB Corporation's card
+  //   l1.com        -> "Legend", a gaming brand, on L1 Group's card
+  //   aub.com       -> a domain broker's own parking page, on AUB Group's
+  //   lottery.com   -> a US lottery site, on The Lottery Corporation's card
+  //   orora.com     -> Orora Design Technologies, unrelated to Orora Limited
+  //   smrmagazine   -> a magazine, on SMRM Holdings' card
+  //   regishealthcare.com -> the same parked favicon as NZ Police, sha1
+  //                          c20af3aed3de
+  //
+  // A NOTE ON HOW THAT LIST WAS BUILT, because the first pass got it wrong.
+  // The audit read each company's ROSTER domain, which is not what the badge
+  // uses — this map overrides it, and 14 of these companies were already
+  // corrected here long ago (CommBank, Westpac, Queensland Sugar, Pharmacare
+  // and the rest). Reading the roster field made them look broken when they
+  // were fine. Redone against logoFor()'s actual output: 23 of the 24 below
+  // really were resolving to the wrong domain, and the 24th, Team Global
+  // Express, already had teamglobalexp.com.au here and needed nothing. Audit
+  // the RESOLVED host, not the roster field.
+  //
+  // Each replacement was verified by title, favicon or both. FIVE of them are
+  // correct but have NO favicon yet, so those badges go from a wrong logo to
+  // blank rather than to the right logo: aub.com.au, evt.com.au, ororagroup.com,
+  // teamglobalexpress.com.au and generationdevelopmentgroup.com.au. That is the
+  // right direction and the same call as priv-perron-group above.
+  //
+  // Checked and left alone, because deriveDomain was RIGHT: dexus.com,
+  // atlasarteria.com, transurban.com, lendlease.com, mirvac.com, ansell.com,
+  // anz.com, shell.com and every .edu.au university. Australian companies with
+  // a global business do hold their .com.
+  "melbourne-car": "carsales.com.au",
+  "melbourne-l1g": "l1.com.au",
+  "sydney-aub": "aub.com.au",
+  "sydney-zip": "zip.co",
+  "sydney-sgh": "sgh.com.au",
+  "melbourne-arb": "arb.com.au",
+  "melbourne-reg": "regis.com.au",
+  "sydney-nhf": "nib.com.au",
+  "sydney-yal": "yancoal.com.au",
+  "sydney-ppt": "perpetual.com.au",
+  "melbourne-tlc": "thelotterycorporation.com",
+  "sydney-evt": "evt.com.au",
+  "melbourne-lov": "lovisa.com.au",
+  "melbourne-pme": "promedicus.com.au",
+  "melbourne-cwy": "cleanaway.com.au",
+  "brisbane-sul": "superretailgroup.com",
+  "sydney-eos": "eos-aus.com",
+  "sydney-edv": "endeavourgroup.com.au",
+  "melbourne-pmv": "premierinvestments.com.au",
+  "sydney-mts": "metcash.com.au",
+  "sydney-hvn": "harveynorman.com.au",
+  "melbourne-gdg": "generationdevelopmentgroup.com.au",
+  "melbourne-ora": "ororagroup.com",
+  // NOT FIXED, and deliberately left wrong rather than guessed at. NGP Group
+  // and SMRM Holdings are both private, both currently showing another
+  // company's mark, and neither ngpgroup.com.au nor smrm.com.au answers with
+  // anything that identifies them — so there is nothing to verify against. A
+  // guess here would replace a wrong badge with a differently wrong one and
+  // hide the problem. Left for a human who knows what these two are:
+  //   priv-ngp-group      ngp.com          -> National Guard Products' logo
+  //   priv-smrm-holdings  smrmagazine.com  -> a magazine's logo
   // ── the original Top-150 private set ──────────────────────────────────────
   "priv-abc-tissue": "abctissue.com.au",
   "priv-abn-group": "abngroup.com.au",
