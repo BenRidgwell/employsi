@@ -350,6 +350,49 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   //     returns a real 128px icon for it rather than the globe, so it is a live
   //     site and not parked. Consistent with being Infratil's, not proof.
   // These two are the only Wellington entries deriveDomain did not get wrong.
+  // ── Auckland, 2026-09-22, the same audit ─────────────────────────────────
+  // 14 of 18 wrong, so a better hit rate than Wellington's 29-of-31 — and the
+  // reason is worth knowing rather than putting down to luck. Auckland's roster
+  // is mostly NZX-listed exporters, and a listed exporter really does own the
+  // .com of its own name, so deriveDomain's rule happens to land. It landed on
+  // aucklandairport.com, mainfreight.com, fletcherbuilding.com and a2milk.com,
+  // each confirmed by opening the favicon: Auckland Airport's black A,
+  // Mainfreight's red-and-blue M, Fletcher's green chevron, a2's a-squared.
+  // None of those four is listed below, because nothing needs correcting.
+  //
+  // The rule fails on exactly the two shapes it failed on in Wellington: public
+  // agencies, which are .govt.nz, and any name the company does not trade
+  // under. fonterraoperative.com is the second kind at its most obvious — the
+  // "Co-operative" in the roster name was mangled rather than dropped.
+  //
+  // AND ONE DOMAIN I PROPOSED WAS ITSELF PARKED. nra.co.nz looked like the
+  // obvious home for Northern Regional Alliance and serves the SAME parked
+  // favicon as nzpolice.com — sha1 c20af3aed3de again. Caught by checking the
+  // hash rather than trusting a 200. The real one is nra.health.nz, which
+  // resolves to Health NZ: the alliance has been absorbed into Te Whatu Ora, so
+  // its badge will be Te Whatu Ora's mark. That is correct, not a mix-up.
+  "nz-fisher-and-paykel-healthcare": "fphcare.com",
+  "nz-spark-new-zealand": "spark.co.nz",
+  "nz-mercury-nz": "mercury.co.nz",
+  "nz-skycity-entertainment-group": "skycityentertainmentgroup.com",
+  "nz-fonterra-co-operative-group": "fonterra.com",
+  // The three Auckland districts and Wellington's all sit on the one national
+  // site; a district is a hub on the roster, not an employer with a domain.
+  "nz-health-new-zealand-te-whatu-ora-te-toka-tumai-auckland": "tewhatuora.govt.nz",
+  "nz-health-new-zealand-te-whatu-ora-counties-manukau": "tewhatuora.govt.nz",
+  "nz-health-new-zealand-te-whatu-ora-waitemat": "tewhatuora.govt.nz",
+  "nz-northern-regional-alliance-nra": "nra.health.nz",
+  "nz-electoral-commission": "elections.nz",
+  "nz-department-of-conservation": "doc.govt.nz",
+  // Correct, and the favicon service has nothing for it today, so this changes
+  // no pixel yet — recorded because the domain is the fact and the badge fixes
+  // itself the day the service indexes one. Same as sydney-wor above.
+  "nz-financial-markets-authority": "fma.govt.nz",
+  "nz-k-inga-ora-homes-and-communities": "kaingaora.govt.nz",
+  // The Crown entity is the New Zealand Lotteries Commission; it trades as
+  // Lotto NZ and mylotto.co.nz is where it lives ("The Official Lotto NZ
+  // website"). Nothing resolves for the registered name.
+  "nz-new-zealand-lotteries-commission": "mylotto.co.nz",
   // ── the original Top-150 private set ──────────────────────────────────────
   "priv-abc-tissue": "abctissue.com.au",
   "priv-abn-group": "abngroup.com.au",

@@ -40,14 +40,27 @@ export const LOCAL_LOGO: Record<string, string> = {
   "nt-gov-department-of-treasury-and-finance":
     "/logos/nt-gov-department-of-treasury-and-finance.jpeg",
   "nt-gov-nt-fire-and-emergency-services": "/logos/nt-gov-nt-fire-and-emergency-services.jpeg",
+  "nz-electoral-commission": "/logos/nz-electoral-commission.png",
+  "nz-fisher-and-paykel-healthcare": "/logos/nz-fisher-and-paykel-healthcare.png",
+  "nz-fonterra-co-operative-group": "/logos/nz-fonterra-co-operative-group.png",
   "nz-health-new-zealand-te-whatu-ora-capital-coast-hutt-valley":
     "/logos/nz-health-new-zealand-te-whatu-ora-capital-coast-hutt-valley.png",
+  "nz-health-new-zealand-te-whatu-ora-counties-manukau":
+    "/logos/nz-health-new-zealand-te-whatu-ora-counties-manukau.png",
+  "nz-health-new-zealand-te-whatu-ora-te-toka-tumai-auckland":
+    "/logos/nz-health-new-zealand-te-whatu-ora-te-toka-tumai-auckland.png",
+  "nz-health-new-zealand-te-whatu-ora-waitemat":
+    "/logos/nz-health-new-zealand-te-whatu-ora-waitemat.png",
+  "nz-mainfreight": "/logos/nz-mainfreight.png",
   "nz-maritime-new-zealand": "/logos/nz-maritime-new-zealand.png",
+  "nz-mercury-nz": "/logos/nz-mercury-nz.png",
   "nz-meridian-energy": "/logos/nz-meridian-energy.png",
   "nz-ministry-of-education": "/logos/nz-ministry-of-education.svg",
   "nz-nz-police": "/logos/nz-nz-police.png",
   "nz-public-service-commission-te-kawa-mataaho":
     "/logos/nz-public-service-commission-te-kawa-mataaho.svg",
+  "nz-skycity-entertainment-group": "/logos/nz-skycity-entertainment-group.png",
+  "nz-spark-new-zealand": "/logos/nz-spark-new-zealand.png",
   "nz-statistics-nz": "/logos/nz-statistics-nz.png",
   "nz-te-papa": "/logos/nz-te-papa.svg",
   "nz-te-puni-k-kiri-ministry-of-m-ori-development":
