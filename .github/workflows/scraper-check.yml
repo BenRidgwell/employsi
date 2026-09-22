@@ -23,6 +23,8 @@ on:
       - 'scripts/http_fetch.py'
       - 'scripts/*-to-d1.py'
       - 'scripts/test_jobs_extract.py'
+      - 'scripts/test_brightdata_download.py'
+      - 'scripts/brightdata-to-d1.py'
       - 'scripts/test_rosters.py'
       - 'scripts/company_alias.py'
       - 'scripts/test_company_alias.py'
@@ -73,6 +75,15 @@ jobs:
 
       - name: Roster parsers still read their data files
         run: python scripts/test_rosters.py
+
+      # A Bright Data snapshot reports `ready` before it is servable, and a
+      # download that gives up on the first empty answer throws away a
+      # collection that has already been paid for — then reports it as a
+      # collection failure, which sends the next person bisecting the roster
+      # for a company that is fine. Measured 2026-09-21: 10,117 records lost
+      # that way, recovered by hand the next day.
+      - name: Bright Data download retries an unserved snapshot
+        run: python scripts/test_brightdata_download.py
 
       # A company-scoped board search returns the employer we asked for, a
       # different employer with a similar name, and rows with no employer at

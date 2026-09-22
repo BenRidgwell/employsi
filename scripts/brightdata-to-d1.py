@@ -560,7 +560,14 @@ def trigger(companies: list[tuple[str, str]]) -> str:
     return sid
 
 
-def wait_ready(snapshot_id: str) -> None:
+def wait_ready(snapshot_id: str) -> dict:
+    """Block until the snapshot is ready, and RETURN the final progress body.
+
+    The body is returned rather than discarded because it carries the record
+    count Bright Data thinks it collected, and download() needs that to tell a
+    genuinely empty snapshot from one that is not servable yet. See
+    advertised_records().
+    """
     deadline = time.time() + TIMEOUT_MIN * 60
     last = ''
     while time.time() < deadline:
@@ -570,7 +577,7 @@ def wait_ready(snapshot_id: str) -> None:
             sys.stderr.write(f'  snapshot {snapshot_id}: {status}\n')
             last = status
         if status == 'ready':
-            return
+            return res if isinstance(res, dict) else {}
         if status == 'failed':
             sys.exit(f'Bright Data reports the collection FAILED: {str(res)[:300]}')
         time.sleep(POLL_S)
@@ -578,11 +585,77 @@ def wait_ready(snapshot_id: str) -> None:
              f'It may still finish — re-download it with --snapshot {snapshot_id}.')
 
 
-def download(snapshot_id: str) -> list[dict]:
-    res = bd('GET', f'/snapshot/{snapshot_id}', params='format=json')
-    if isinstance(res, dict):
-        res = res.get('data') or res.get('results') or []
-    return [r for r in res if isinstance(r, dict)]
+def advertised_records(progress: dict) -> int | None:
+    """How many records Bright Data says the snapshot holds, or None.
+
+    Looked up under several plausible names and its absence REPORTED as None
+    rather than guessed at zero — the same rule pick() follows for job fields,
+    and for the same reason: a fabricated zero here would turn "we could not
+    tell" into "there is nothing", which is the exact confusion this function
+    exists to remove.
+    """
+    for k in ('records', 'record_count', 'rows', 'total_records', 'total'):
+        v = (progress or {}).get(k)
+        if isinstance(v, bool):
+            continue
+        if isinstance(v, int):
+            return v
+        if isinstance(v, str) and v.isdigit():
+            return int(v)
+    return None
+
+
+# How hard to retry an empty download, and how long to wait between tries.
+# Sized against the one measured failure: on 2026-09-21 the snapshot reported
+# `ready` and answered empty 3 seconds later, then returned all 10,117 records
+# when re-downloaded by hand the next day. Nobody knows how long it actually
+# needed, so this covers about three minutes in widening steps.
+EMPTY_RETRY_WAITS = (5, 10, 20, 40, 60, 60)
+
+
+def download(snapshot_id: str, progress: dict | None = None) -> list[dict]:
+    """Fetch a ready snapshot, retrying while it answers empty.
+
+    WHY THIS RETRIES AT ALL. `ready` is not the same as servable. Measured
+    2026-09-21: a snapshot that had collected 10,117 records reported ready,
+    returned an empty list 3 seconds later, and the run exited 1 having written
+    nothing. The records were still there the next day and re-downloading with
+    --snapshot wrote 9,001 rows. A snapshot costs real money to collect, so
+    throwing one away over a few seconds of lag is the expensive failure.
+
+    bd() already retries TRANSPORT failures four times. It cannot help here,
+    because this is an HTTP 200 carrying an empty body — a successful request
+    for data that does not exist yet.
+
+    THE RETRY IS BOUNDED BY WHAT BRIGHT DATA CLAIMS IT HAS. If progress says
+    zero records, the snapshot really is empty and retrying only delays a
+    genuine failure, so it returns immediately. If progress says a positive
+    number, an empty answer is known to be wrong and worth waiting for. If
+    progress does not say — the case we cannot distinguish — it retries anyway,
+    because a wasted three minutes is cheaper than a wasted snapshot.
+    """
+    want = advertised_records(progress or {})
+    if want == 0:
+        sys.stderr.write('  progress reports 0 records collected; not retrying.\n')
+        return []
+    if want:
+        sys.stderr.write(f'  progress reports {want} records collected.\n')
+
+    for i, wait in enumerate((0,) + EMPTY_RETRY_WAITS):
+        if wait:
+            sys.stderr.write(
+                f'  empty response; snapshot may not be servable yet — '
+                f'retry {i}/{len(EMPTY_RETRY_WAITS)} in {wait}s\n')
+            time.sleep(wait)
+        res = bd('GET', f'/snapshot/{snapshot_id}', params='format=json')
+        if isinstance(res, dict):
+            res = res.get('data') or res.get('results') or []
+        rows = [r for r in res if isinstance(r, dict)]
+        if rows:
+            if i:
+                sys.stderr.write(f'  got {len(rows)} records on retry {i}.\n')
+            return rows
+    return []
 
 
 # ── record -> row ─────────────────────────────────────────────────────────────
@@ -718,8 +791,10 @@ def scrape_urls(urls: list[str]) -> list[dict]:
         sid = res.get('snapshot_id') or res.get('id')
         if sid:
             sys.stderr.write(f'  /scrape returned snapshot {sid}; polling it\n')
-            wait_ready(sid)
-            return download(sid)
+            # Same retry as the discovery path: this snapshot is just as able to
+            # report ready before it is servable, and a refresh that silently
+            # reads empty is worse — it looks like every URL has expired.
+            return download(sid, wait_ready(sid))
         # include_errors=true means a per-URL failure arrives as data, not as a
         # non-2xx. Report it rather than counting it as "no ads".
         if res.get('error') or res.get('errors'):
@@ -880,11 +955,28 @@ def main() -> int:
     if not snap:
         snap = trigger(companies)
         sys.stderr.write(f'  triggered snapshot {snap}\n')
-    wait_ready(snap)
-    records = download(snap)
+    progress = wait_ready(snap)
+    records = download(snap, progress)
     sys.stderr.write(f'  {len(records)} records returned.\n')
     if not records:
         first, last = companies[0][1], companies[-1][1]
+        claimed = advertised_records(progress)
+        # A DOWNLOAD FAILURE AND A COLLECTION FAILURE NEED OPPOSITE RESPONSES,
+        # and the progress count is what tells them apart. On 2026-09-21 this
+        # message named two collection causes for a snapshot that had collected
+        # 10,117 records perfectly well, and the roster was nearly bisected
+        # hunting a poisoning company that did not exist.
+        if claimed:
+            sys.exit(
+                f'DOWNLOAD FAILED, NOT COLLECTION. Bright Data says snapshot {snap} '
+                f'holds {claimed} records, and every download attempt came back '
+                f'empty. Nothing written.\n\n'
+                f'  The data is collected and already paid for — this is the fetch.\n'
+                f'  Re-read the SAME snapshot rather than collecting again:\n\n'
+                f'    python scripts/brightdata-to-d1.py --source {WHICH} '
+                f'--snapshot {snap}\n\n'
+                f'  Do NOT bisect the roster for a poisoning company: the count\n'
+                f'  above proves those companies returned ads.\n')
         sys.stderr.write(
             'No records at all — that is a collection failure, not a quiet job '
             'market. Nothing written.\n\n'
