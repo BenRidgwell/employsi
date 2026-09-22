@@ -3512,11 +3512,19 @@ body {
   text-transform: uppercase;
   white-space: nowrap;
 }
+/* The live dot. Green rather than white, so it reads as a status light rather
+   than as punctuation.
+
+   LIGHTENED, not --green-500 straight. The chip's ground is --surface-inverse
+   (near black) and the 500 stop is a mid green that sinks into it — the same
+   problem .ccflag .ccsw and .mkhero.up already hit on their dark grounds. The
+   mix ratio here is .mkhero.up's, so every lightened green in the app is the
+   same green. It resolves to #85b99c — 7.63:1 on the chip. */
 .tickerlbl i {
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: #fff;
+  background: color-mix(in oklab, var(--green-500) 62%, #ffffff);
   animation: tpulse 1.8s ease-in-out infinite;
 }
 /* The window the figures are measured over, as the chip's quieter second half. */
@@ -3525,6 +3533,22 @@ body {
   color: var(--neutral-400);
   white-space: nowrap;
 }
+/* Used by .tickerlbl i and nothing else.
+
+   The trough is 0.55, raised from the 0.35 it sat at while the dot was white.
+   Opacity dims the dot TOWARD THE GROUND IT IS ON, so the same number does not
+   buy the same visibility once the colour changes: white at 0.35 composites to
+   a legible grey over the ink chip, the green composites toward the chip's own
+   colour and the dot read as blinking out rather than pulsing.
+
+   Measured against #1c1c1e, the chip's --surface-inverse:
+
+     white  #ffffff at 0.35  ->  #6b6b6c   3.20:1   (what it used to be)
+     green  #85b99c at 0.35  ->  #4b6357   2.07:1   too dark
+     green  #85b99c at 0.55  ->  #567263   3.23:1   the value below
+
+   i.e. 0.55 is where the dimmed phase stops being less visible than it was
+   before the colour changed. The scale still carries most of the motion. */
 @keyframes tpulse {
   0%,
   100% {
@@ -3532,7 +3556,7 @@ body {
     transform: scale(1);
   }
   50% {
-    opacity: 0.35;
+    opacity: 0.55;
     transform: scale(0.72);
   }
 }
