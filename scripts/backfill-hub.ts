@@ -97,10 +97,23 @@
  *   singapore 53, darwin 49, london 43, hobart 27 — and 1,723 whose location
  *   is country-only ("Australia") were set NULL, which is what they are.
  *
- *   The source bug is fixed in the same change, but note the ordering: five
- *   more rows ("Wellington" 4, "Auckland" 1) appeared between the snapshot and
- *   the verification, written by the app Worker still running the old code. A
- *   repair before its deploy is a repair with the tap open.
+ *   THE "FIVE MORE ROWS" NOTE THAT STOOD HERE WAS WRONG, and the way it was
+ *   wrong is the useful part. It said five rows ("Wellington" 4, "Auckland" 1)
+ *   had appeared BETWEEN the snapshot and the verification, written by the app
+ *   Worker still running the old code, and offered that as proof the bug was
+ *   live. Their last_seen is 2026-07-26 and 2026-08-01. They had been sitting
+ *   there for two months.
+ *
+ *   They were missed because the survey that found the bad values printed the
+ *   top 60 hubs BY COUNT, and 4 and 1 fall off the end of that list. So the
+ *   --from list was built from four values when there were six, and the two
+ *   smallest were invisible to exactly the query meant to enumerate them. When
+ *   surveying for bad values, do not sort by frequency and cut: the rarest
+ *   value is the one most likely to be the anomaly you are looking for.
+ *
+ *   The bug WAS live, on separate and better evidence: the "Australia" rows
+ *   carried last_seen = 2026-09-22, the day of the repair. The five stragglers
+ *   were cleared in a second pass after the app Worker deploy.
  *
  * Usage:
  *   bun run scripts/backfill-hub.ts --in rows.json --hubs kualalumpur,manila \
