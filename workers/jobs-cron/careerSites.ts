@@ -5087,8 +5087,8 @@ export const SITES: SiteDef[] = [
   // rather than a gap. Uniting, EVT, Compass Group, BMD and Built are all in
   // that state — 4,159 ads between them — and none of them is here.
   //
-  // Twelve domains swept, two built. Both were already-supported platforms, so
-  // both are a SiteDef and nothing else.
+  // Twelve domains swept, three built — all on already-supported platforms, so
+  // each is a SiteDef and nothing else.
   //
   // FOUND AND NOT BUILT, each for a named reason:
   //   Schneider Electric (300 ads) — careers.se.com carries BOTH icims and a
@@ -5109,10 +5109,23 @@ export const SITES: SiteDef[] = [
   //     looking for a careers page finds pinboards about jobs instead. Nothing
   //     is wrong with the employer or the sweep; the heuristic simply cannot
   //     work on this domain and a rendered retry will not change that.
-  //   Cloudflare (275), Salesforce (264), Tesla (256), Larsen & Toubro (267),
-  //     HDFC Bank (337), AXA (366), SGH (320) — no marker in served HTML, or
-  //     cut short on budget, or 403 to the runner as well. Re-swept with
-  //     --render separately rather than guessed at.
+  //   AXA (366) and Schneider Electric (300) — BOTH ARE iCIMS, and between them
+  //     that is 666 ads behind one missing reader, which is the strongest case
+  //     this file has yet produced for writing one. AXA's is in SERVED HTML at
+  //     careers.axa.com/careers-home/ and jobs.axa.com/careers-home/, so the
+  //     only thing in the way is the reader itself, not a browser.
+  //   HDFC Bank (337) — the careers page names no ATS, but following its links
+  //     lands on hdfcbank.ripplehire.com/candidate/careers. RippleHire is an
+  //     Indian ATS with no reader here. Worth knowing the host is named: the
+  //     employer is not invisible, the platform is simply unread.
+  //   SGH (320) — sevengroup.com.au renders with no marker at all, and
+  //     careers./jobs. do not resolve. The roster domain sgh.com was wrong for
+  //     this employer; sevengroup.com.au is right and still has no board on it.
+  //   Salesforce (264), Tesla (256), Larsen & Toubro (267) — no marker even
+  //     after rendering. Tesla 403s the runner on every path and is reachable
+  //     only with a browser, which still finds nothing. L&T renders fine but
+  //     its one listing page, /corporate/careers/current-openings/, refuses
+  //     both plain and rendered.
   {
     id: "london-ba",
     name: "BAE Systems",
@@ -5154,6 +5167,33 @@ export const SITES: SiteDef[] = [
     endpoint: "https://careers.hsfkramer.com/global/en/search-results",
     origin: "https://careers.hsfkramer.com",
     homeHub: "sydney",
+  },
+  {
+    id: "sanfrancisco-net",
+    name: "Cloudflare",
+    sector: "Technology",
+    platform: "greenhouse",
+    // FOUND ONLY AFTER RENDERING, AND THE BOARD DID NOT NEED THE BROWSER. The
+    // careers page carries no marker in served HTML and names greenhouse once
+    // rendered — which is the case discover-boards.py tells you to treat as a
+    // page problem rather than a board one. The tenant is `cloudflare` and its
+    // board API answers a plain GET: 392 roles in 0.3s, no browser anywhere.
+    //
+    // THIS BOARD STATES A WORK ARRANGEMENT WHERE A LOCATION BELONGS, and it is
+    // the whole reason this entry carries a warning. Measured 2026-09-22: 392
+    // roles across ELEVEN distinct location strings, of which "Hybrid" is 298,
+    // "Distributed" 51 and "In-Office" 33. Exactly two name a place — one
+    // Tokyo, one Lisbon — so 390 of 392 resolve to no hub.
+    //
+    // That is the honest outcome and it is why homeHub is only a fallback that
+    // never fires here: hubFor returns null for "Hybrid" rather than reaching
+    // for the home city, so the rows archive, count toward Cloudflare's open
+    // roles and feed the skills series, and appear on no pin. DO NOT ADD
+    // assumeHomeHub TO THIS SITE to "fix" that — it would put 390 roles on San
+    // Francisco on the strength of a word that means the opposite of a place.
+    endpoint: "https://boards-api.greenhouse.io/v1/boards/cloudflare/jobs",
+    origin: "https://www.cloudflare.com/careers/jobs/",
+    homeHub: "sanfrancisco",
   },
 ];
 
@@ -5599,7 +5639,7 @@ export const PORTAL_GROUPS: string[][] = [
   // back in 3.9s and HSF's 124 in 2.1s, since phenom serves large pages rather
   // than the 9-25 a page that forced the splits above. Grouped on the measured
   // 6s, not on the 1,741 roles.
-  ["london-ba", "priv-herbert-smith-freehills"],
+  ["london-ba", "priv-herbert-smith-freehills", "sanfrancisco-net"],
 ];
 
 const UA =
