@@ -57,6 +57,32 @@
  *   wrangler again reported one more change than the deltas show (881), as in
  *   the run below; read the table, not the meta.
  *
+ * RUN LOG — 2026-09-22, the table-wide run, keyed on location.
+ *   Run after the namesake guards landed, and only after a dry run over all
+ *   12,975 unplaced locations came back with no known-wrong placement; the
+ *   run before the guards would have put 17 rows on the wrong continent.
+ *
+ *     hub NULL      80,095 -> 49,293   (-30,802)
+ *
+ *   30,802 rows over 16 hubs, 51 statements: brisbane 8,201, sydney 7,985,
+ *   perth 4,800, melbourne 4,464, adelaide 1,374, canberra 1,256, darwin 877,
+ *   hobart 833, bengaluru 611, mumbai 292, auckland 64, wellington 30,
+ *   johannesburg 9, chicago 3, beijing 2, washington 1. Nothing resolved
+ *   outside --hubs. 48,055 rows resolved to no hub and were left alone, plus
+ *   1,238 that carry no location at all.
+ *
+ *   WHAT IT DELIBERATELY DID NOT FIX. `AND hub IS NULL` means a row already
+ *   holding a WRONG hub keeps it, so the namesake guards corrected the unplaced
+ *   copies and not the placed ones: "Hamilton, Newcastle Area" still has one row
+ *   on Brisbane, "Hobart, Indiana" two on Hobart, and four Glenelg Area rows sit
+ *   on the junk hub "Australia". Repairing those is an OVERWRITE, a different
+ *   operation from filling a gap, and this script will not do it.
+ *
+ *   Related, and larger: 3,899 rows carry hub = "Australia", which is not a hub
+ *   id and matches nothing in the registries. They are as invisible as a NULL
+ *   but no `hub IS NULL` query finds them, so every backfill so far has skipped
+ *   them silently.
+ *
  * Usage:
  *   bun run scripts/backfill-hub.ts --in rows.json --hubs kualalumpur,manila \
  *     [--out backfill.sql] [--chunk 150]
@@ -91,26 +117,41 @@ if (!inFile || !allow.size) {
 const NEVER = /(?!)/;
 
 const raw = readFileSync(inFile, "utf8");
-const rows: { job_key: string; location: string }[] = JSON.parse(raw.slice(raw.indexOf("[")))[0]
-  .results;
+const rows: { job_key?: string; location: string; n?: number }[] = JSON.parse(
+  raw.slice(raw.indexOf("[")),
+)[0].results;
+
+// TWO WAYS TO NAME THE ROWS TO UPDATE, and which one is available decides.
+// Keying on job_key is exact but means reading every key out of D1 first, which
+// for a table-wide run is ~13 MB of primary keys moved in order to write a
+// column that depends on NONE of them. `hub` is a pure function of `location`,
+// so a query that has already grouped by location names the same rows in a
+// fraction of the payload: 12,976 locations for 80,095 rows. The mode is chosen
+// by what the input carries rather than by a flag, so the two cannot disagree.
+const byLocation = !rows.some((r) => r.job_key);
+const weight = (r: { n?: number }) => r.n ?? 1;
 
 const byHub = new Map<string, string[]>();
+const rowsFor = new Map<string, number>();
 const skipped = new Map<string, number>();
 let unresolved = 0;
+let total = 0;
 
 for (const r of rows) {
+  total += weight(r);
   const hub = hubFor(r.location ?? "", null, NEVER, undefined, false);
   if (!hub) {
-    unresolved++;
+    unresolved += weight(r);
     continue;
   }
   if (!allow.has(hub)) {
-    skipped.set(hub, (skipped.get(hub) ?? 0) + 1);
+    skipped.set(hub, (skipped.get(hub) ?? 0) + weight(r));
     continue;
   }
   const list = byHub.get(hub) ?? [];
-  list.push(r.job_key);
+  list.push(byLocation ? r.location : (r.job_key as string));
   byHub.set(hub, list);
+  rowsFor.set(hub, (rowsFor.get(hub) ?? 0) + weight(r));
 }
 
 const q = (s: string) => "'" + s.replace(/'/g, "''") + "'";
@@ -119,22 +160,35 @@ for (const [hub, keys] of [...byHub].sort()) {
   for (let i = 0; i < keys.length; i += chunk) {
     const slice = keys.slice(i, i + chunk);
     // AND hub IS NULL: fill a gap, never overwrite a placement.
+    const col = byLocation ? "location" : "job_key";
     sql.push(
-      `UPDATE jobs SET hub = ${q(hub)} WHERE hub IS NULL AND job_key IN (${slice.map(q).join(",")});`,
+      `UPDATE jobs SET hub = ${q(hub)} WHERE hub IS NULL AND ${col} IN (${slice.map(q).join(",")});`,
     );
   }
 }
 writeFileSync(outFile, sql.join("\n") + "\n");
 
-console.log("candidate rows read      " + rows.length);
-console.log("resolved to no hub       " + unresolved);
+console.log("keyed on               " + (byLocation ? "location" : "job_key"));
+console.log("input entries read     " + rows.length);
+console.log("rows they cover        " + total);
+console.log("resolve to no hub      " + unresolved);
 for (const [hub, n] of [...skipped].sort((a, b) => b[1] - a[1]))
   console.log("resolved but NOT in --hubs  " + hub.padEnd(14) + n);
 console.log("--- will write ---");
-let total = 0;
-for (const [hub, keys] of [...byHub].sort()) {
-  console.log("  " + hub.padEnd(14) + keys.length);
-  total += keys.length;
+let written = 0;
+for (const [hub, keys] of [...byHub].sort(
+  (a, b) => (rowsFor.get(b[0]) ?? 0) - (rowsFor.get(a[0]) ?? 0),
+)) {
+  console.log(
+    "  " +
+      hub.padEnd(14) +
+      String(rowsFor.get(hub) ?? 0).padStart(7) +
+      " rows over " +
+      keys.length +
+      " " +
+      (byLocation ? "locations" : "keys"),
+  );
+  written += rowsFor.get(hub) ?? 0;
 }
-console.log("total updates            " + total);
-console.log("statements               " + sql.length + "  -> " + outFile);
+console.log("total rows to write    " + written);
+console.log("statements             " + sql.length + "  -> " + outFile);
