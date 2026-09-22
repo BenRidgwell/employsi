@@ -309,7 +309,24 @@ jobs:
           if [ -z "$(ids before-preview.txt)" ]; then
             echo "employsi-preview has its FIRST version — nothing to roll back to before this"
           else
+            if [ -z "$(ids before-preview.txt)" ]; then
+            echo "employsi-preview has its FIRST version — nothing to roll back to before this"
+          else
             echo "employsi-preview has a new version"
+          fi
+
+          # VERSIONS ARE NOT DEPLOYMENTS, and confusing the two is a documented
+          # trap in this repo: `wrangler secret put` UPLOADS a version without
+          # deploying it, so `versions list` can show entries newer than the one
+          # actually serving traffic — which reads in the dashboard as the
+          # deploy having "gone a few versions back". The check above compares
+          # versions, because that is what proves a deploy happened; this
+          # records what is SERVING, which is what anyone looking at the Worker
+          # is actually asking about.
+          npx wrangler deployments list --name employsi-preview > deployed-preview.txt 2>&1 \
+            || echo '(deployments list failed — see the artifact)' >> deployed-preview.txt
+          echo "--- what is SERVING employsi-preview now:"
+          tail -20 deployed-preview.txt
           fi
 
       # THE APP IS AT /app; / is the waitlist on every host. Reading the title is
@@ -342,7 +359,24 @@ jobs:
             echo
             echo 'The app is at `/app`. A link to `/` shows the waitlist.'
             echo
-            echo '### Deploy'
+            echo '### Version deployed by this run'
+            echo '```'
+            grep -aE 'Current Version ID|Uploaded|Deployed ' deploy.txt 2>/dev/null \
+              || echo 'the deploy did not run'
+            echo '```'
+            echo
+            echo '### What is SERVING employsi-preview now'
+            echo
+            echo 'A Worker can hold versions NEWER than the one serving traffic —'
+            echo '`wrangler secret put` uploads one without deploying it. So a'
+            echo 'dashboard that looks "a few versions back" is usually this, not a'
+            echo 'deploy that went backwards. This is the active deployment:'
+            echo
+            echo '```'
+            tail -20 deployed-preview.txt 2>/dev/null || echo '(not recorded)'
+            echo '```'
+            echo
+            echo '### Full deploy output'
             echo '```'
             tail -25 deploy.txt 2>/dev/null || echo 'the deploy did not run'
             echo '```'
@@ -360,5 +394,6 @@ jobs:
             after-preview.txt
             before-prod.txt
             after-prod.txt
+            deployed-preview.txt
           if-no-files-found: ignore
           retention-days: 14

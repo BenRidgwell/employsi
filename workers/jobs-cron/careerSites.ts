@@ -4938,6 +4938,135 @@ export const SITES: SiteDef[] = [
   //     Also worth knowing: the domain in resolvedDomains.ts, talentidl.com, is
   //     DEAD and hangs on TLS; talentinternational.com is the company's own
   //     site and is what was swept.
+  // ── The 2026-09-22 nineteenth sweep — the Asian banks and insurers ──────────
+  //
+  // The Australian end of the gap report is largely worked through, so this
+  // batch is the top of what remains, which is GLOBAL. Twelve domains swept
+  // plain, nine fingerprinted, three built here — 3,223 roles between them, the
+  // largest single addition this file has had.
+  //
+  // WHY THE PLACEMENT LOOKS POOR AND IS NOT A BUG. These boards advertise across
+  // South-East Asia, and the app plots 52 hubs of which exactly one — Singapore
+  // — is in that region. There is no Manila, Bangkok, Kuala Lumpur, Jakarta,
+  // Ho Chi Minh, Taipei, Cebu or Phnom Penh hub, checked against HUB_MATCH
+  // rather than assumed. So a row reading "Bangkok (City Area)" resolves to
+  // nothing, and that is the correct answer: the alternative is a hint sending
+  // Kuala Lumpur to Singapore, which is inventing geography.
+  //
+  // Those rows still archive, still count toward the employer's open roles and
+  // still feed the skills series. What they do not do is appear as a pin, and
+  // they should not until the roster grows a hub for them. That is a roster
+  // question, not a feed one.
+  //
+  // FOUND AND NOT BUILT, each for a named reason:
+  //   Glencore (197 ads) — NGA.NET, at glencorejobs.nga.net.au. See the standing
+  //     NGA.NET note above: every tenant answers HTTP 405 behind an AWS WAF
+  //     CAPTCHA, and that decision does not change because the employer is a
+  //     miner rather than a university.
+  //   GSK (180) — phenom AND icims on the same site, with jobs.gsk.com/{us,gb}/
+  //     en/search-results as the candidate. iCIMS has no reader here; Phenom
+  //     does. Worth a look, but which of the two actually serves the listing has
+  //     not been measured, and this file does not build on a fingerprint nobody
+  //     has verified.
+  //   PepsiCo (179) — icims, plus `avature [sandboxpepsi]`. That Avature tenant
+  //     is literally a SANDBOX, so it is not the production board however
+  //     inviting the captured name looks. The `cornerstone [facebook]` hit on
+  //     the same page is a tracking pixel, not an ATS.
+  //   Thermo Fisher (200) — brassring and phenom, candidate
+  //     jobs.thermofisher.com/search-results. BrassRing has no reader here.
+  //   Toast (248) — pageupsites, candidate careers.toasttab.com/jobs/search.
+  //     The one of these most likely to become a feed, since that reader exists.
+  //   Twilio (183) — eightfold, but the candidate list caught only app.eightfold.ai
+  //     and a privacy-policy link, so the TENANT is still missing and that is
+  //     the half that cannot be guessed.
+  //
+  // THE THREE MISSES: Pinterest (250), Lyft (194) and Standard Chartered (189) —
+  // every followed link read, no marker. Trustworthy negatives, and all three
+  // are candidates for a --render pass.
+  {
+    id: "hongkong-01299",
+    name: "AIA Group",
+    sector: "Insurance",
+    platform: "workday",
+    // Workday aia/wd3/External, in SERVED html on aia.com.
+    endpoint: "https://aia.wd3.myworkdayjobs.com/wday/cxs/aia/External/jobs",
+    origin: "https://aia.wd3.myworkdayjobs.com/External",
+    // THE DEFAULT 40-PAGE CAP TRUNCATED THIS, and the reader said so rather
+    // than returning a tidy number: "800 rows vs 1007 advertised — walk
+    // incomplete". That is the truncation warning added to fetchWorkday earning
+    // its keep on the first board big enough to need it.
+    //
+    // Measured 2026-09-22 with the cap raised: 1,007 of 1,007 on the first run
+    // and 1,005 of 1,007 twenty minutes later. THE SMALL GAP IS THE BOARD
+    // MOVING, not the walk stopping — 51 pages take ~52s and a board this size
+    // opens and closes roles inside that window. It is left to log rather than
+    // silenced, because a warning that only fires when something is wrong is
+    // worth more than one that never fires at all.
+    maxPages: 70,
+    // THE COUNTRY IS AN ISO PREFIX ON THE SITE NAME: "SG-Tampines Agency
+    // Building", "CN-M Plaza", "MY-AIA Shared Services Malaysia". Only the
+    // Singapore one can be acted on, because Singapore is the single
+    // South-East Asian hub this app plots.
+    //
+    // "CN-" is deliberately NOT hinted even though Shanghai, Beijing and
+    // Shenzhen are all hubs: "CN-M Plaza" does not say which city, and picking
+    // one would be a coin toss dressed as data.
+    hubHints: [["sg-", "singapore"]],
+    // Hong Kong is where AIA is headquartered and listed. Rows naming no place
+    // fall here; rows naming a South-East Asian city this app has no hub for
+    // resolve to nothing, which is the point of the note above.
+    homeHub: "hongkong",
+  },
+  {
+    id: "singapore-o39",
+    name: "OCBC",
+    sector: "Financial Services",
+    platform: "workday",
+    // Workday ocbc/wd102/External. The same sweep also fingerprinted
+    // `taleo [ocbc]` on this site — an older career section still linked. The
+    // Workday one is used because it carries tenant, pod AND site, and because
+    // its `total` matches the board.
+    endpoint: "https://ocbc.wd102.myworkdayjobs.com/wday/cxs/ocbc/External/jobs",
+    origin: "https://ocbc.wd102.myworkdayjobs.com/External",
+    // 1,164 advertised, 1,164 collected. Also capped at 800 before maxPages.
+    maxPages: 70,
+    // 680 of the 1,164 place with no hint at all — this board writes plain
+    // "Singapore", "Hong Kong", "Shanghai". The remainder are Malaysian and
+    // Indonesian cities the app has no hub for.
+    homeHub: "singapore",
+  },
+  {
+    id: "singapore-u11",
+    name: "United Overseas Bank",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://uobgroup.wd3.myworkdayjobs.com/wday/cxs/uobgroup/UOBExternal/jobs",
+    origin: "https://uobgroup.wd3.myworkdayjobs.com/UOBExternal",
+    // 1,052 advertised, 1,052 collected.
+    maxPages: 70,
+    // THIS BOARD NAMES SINGAPORE'S PLANNING REGIONS, NOT SINGAPORE. Measured
+    // 2026-09-22: before these hints 766 of 800 sampled rows resolved to no hub,
+    // because the location reads "Central Region (City Area)" or "North-East
+    // Region (City Area)" — Singapore's own statistical regions — and nothing in
+    // HUB_MATCH is going to guess that.
+    //
+    // The hints are safe here BECAUSE THE BOARD IS EXPLICIT ELSEWHERE: every row
+    // outside Singapore names its country's city outright ("Bangkok (City
+    // Area)", "Kuala Lumpur (City Area)", "Jakarta Pusat (City Area)"), so a
+    // bare "<compass> Region" is Singapore by elimination rather than by
+    // assumption. Scoped to this feed, because "Central Region" means something
+    // different in almost every other country.
+    //
+    // It took placement from 34 to 380.
+    hubHints: [
+      ["central region", "singapore"],
+      ["north-east region", "singapore"],
+      ["north region", "singapore"],
+      ["east region", "singapore"],
+      ["west region", "singapore"],
+    ],
+    homeHub: "singapore",
+  },
 ];
 
 /**
@@ -5371,6 +5500,12 @@ export const PORTAL_GROUPS: string[][] = [
   ["sydney-eos", "priv-teachers-health-fund"],
   // Group 80 — the 2026-09-21 seventeenth batch. One Workday call, 5 roles.
   ["uni-federation-university-australia"],
+  // Groups 81-82 — the 2026-09-22 nineteenth sweep. The three deepest
+  // non-Woolworths walks in the file: 1,007 + 1,164 + 1,052 roles at 20 a
+  // page is ~160 requests. Split so no single tick carries all of it —
+  // measured 2026-09-22 at 55s for AIA alone and 75s for the two banks.
+  ["hongkong-01299"],
+  ["singapore-o39", "singapore-u11"],
 ];
 
 const UA =
