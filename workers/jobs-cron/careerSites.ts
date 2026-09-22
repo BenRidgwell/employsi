@@ -4945,12 +4945,24 @@ export const SITES: SiteDef[] = [
   // plain, nine fingerprinted, three built here — 3,223 roles between them, the
   // largest single addition this file has had.
   //
-  // WHY THE PLACEMENT LOOKS POOR AND IS NOT A BUG. These boards advertise across
-  // South-East Asia, and the app plots 52 hubs of which exactly one — Singapore
-  // — is in that region. There is no Manila, Bangkok, Kuala Lumpur, Jakarta,
-  // Ho Chi Minh, Taipei, Cebu or Phnom Penh hub, checked against HUB_MATCH
-  // rather than assumed. So a row reading "Bangkok (City Area)" resolves to
-  // nothing, and that is the correct answer: the alternative is a hint sending
+  // WHY THE PLACEMENT LOOKS POOR. These boards advertise across South-East
+  // Asia, and a row reading "Bangkok (City Area)" resolves to nothing.
+  //
+  // THE PARAGRAPH THAT STOOD HERE SAID THIS WAS "NOT A BUG" AND IT WAS HALF
+  // WRONG — kept as a correction rather than quietly deleted, because the way
+  // it got there is worth not repeating. It claimed there is "no Manila,
+  // Bangkok, Kuala Lumpur, Jakarta, Ho Chi Minh, Taipei, Cebu or Phnom Penh
+  // hub, checked against HUB_MATCH rather than assumed". The check was real
+  // but it was the wrong table: HUB_MATCH holds NEEDLES, not hubs. Manila and
+  // Kuala Lumpur were hubs the whole time — both in mapboxWorldGeo, mapboxGeo,
+  // geo, cityMarket and CITY_PLACEMENT, and both RELEASED markets in
+  // markets.ts ("ph", "my") — they simply had no needle. So for those two it
+  // WAS a bug, and a silent one: released markets whose rows could never reach
+  // the map. Needles added 2026-09-22, in the Asia-Pacific block below.
+  //
+  // The claim holds for the rest. Bangkok, Jakarta, Ho Chi Minh, Taipei, Cebu
+  // and Phnom Penh are in none of those tables, so for them the row resolving
+  // to nothing is still the correct answer: the alternative is a hint sending
   // Kuala Lumpur to Singapore, which is inventing geography.
   //
   // Those rows still archive, still count toward the employer's open roles and
@@ -5734,6 +5746,87 @@ const HUB_MATCH: [string, string | null][] = [
   ["bengaluru", "bengaluru"],
   ["bangalore", "bengaluru"],
   ["dubai", "dubai"],
+  // Placed at the END of this region deliberately, after Singapore, Hong
+  // Kong, Tokyo and the rest. Measured 2026-09-22 against the archive: ten
+  // rows carry both a needle below and a city named above it, all of them
+  // Flight Centre multi-city ads ("Tokyo, Japan, Kuala Lumpur, Malaysia",
+  // "Singapore, Kuala Lumpur, Malaysia"). Putting this block higher moved
+  // one of them off Tokyo onto Kuala Lumpur — a silent reclassification of
+  // an ad whose first-named city was Tokyo. Down here the block can only
+  // ADD placements, never change one: every row it catches is a row that
+  // resolved to nothing before it.
+  // South-East Asia. Kuala Lumpur and Manila were ALREADY map hubs and already
+  // RELEASED markets ("my" and "ph" in markets.ts), each carrying a camera, a
+  // country, a continent, a label and a measured CITY_PLACEMENT — and neither
+  // had a needle here, so every Malaysian and Philippine location resolved to
+  // no hub at all. Exactly the India case below, arrived at the same way.
+  //
+  // The rows are not hypothetical. cityMarket.ts already records that "BHP,
+  // HSBC and Macquarie all advertise KL and Manila roles on their own career
+  // portals, and those rows are already held", and the nineteenth sweep added
+  // AIA, OCBC and UOB, which advertise across the region. None of those
+  // employers has a homeCountry matching Malaysia or the Philippines and none
+  // sets assumeHomeHub, so hubFor fell through to `return null`: the rows
+  // archived against the right company, counted toward its open roles and fed
+  // the skills series, and appeared in no city. Measured 2026-09-22 by calling
+  // hubFor directly — all 21 KL/Manila location shapes returned no hub before
+  // these lines, and the Australian, NZ and Singapore controls were unchanged
+  // after them.
+  //
+  // CITY NAMES ONLY, NEVER THE COUNTRY. A "malaysia" needle would drag Penang
+  // and Johor Bahru onto Kuala Lumpur, 300+ km away, and "philippines" would
+  // drag Cebu and Davao onto Manila. All four stay unplaced, which is the right
+  // answer while the roster has no hub for them — the same reasoning the
+  // nineteenth-sweep note gives for refusing to hint Kuala Lumpur to Singapore.
+  // "selangor" is the one state-level entry and follows the Australian pattern
+  // (" nsw" -> sydney): Selangor encloses KL and these towns are its suburbs.
+  //
+  // "manila" does NOT match "Manilla, NSW" — the NSW town doubles the L, so it
+  // is not a substring; that row still resolves to Sydney on " nsw". Checked.
+  //
+  // "bgc" is deliberately absent although cityMarket.ts lists it: three letters
+  // matched with includes() is the kind of needle that fires inside an unrelated
+  // word, and every BGC address also carries "taguig".
+  //
+  // The first three of each group are cityMarket.ts's own vocabulary for these
+  // markets; the rest are the remainder of the Klang Valley and Metro Manila.
+  // ALL of them were checked against the archive on 2026-09-22, which is what
+  // the country names above are NOT allowed to be. 166 distinct locations match
+  // one of these needles. Every one is a real Malaysian or Philippine place —
+  // most of them omit the country entirely ("Santa Ana, Metro Manila" 725 rows,
+  // "Kuala Lumpur" 722, "Bukit Jalil, Kuala Lumpur" 111), which is precisely
+  // why a country needle would not have helped and a city one does. Exactly ten
+  // carry another country's name, and all ten are Flight Centre multi-city ads.
+  // Not one needle fires inside an unrelated word or a non-MY/PH place.
+  //
+  // WHAT THIS DOES NOT DO, AND IT IS THE LARGER HALF. archiveJobs' upsert never
+  // rewrites `hub` — ON CONFLICT(job_key) bumps last_seen and seen_count and
+  // backfills only empty columns — so a row already carrying hub NULL keeps it
+  // for as long as the ad is re-seen, however many times these needles match it
+  // afterwards. Measured the same day: 2,037 archived rows across 107 employers
+  // match a needle here and hold hub NULL, 896 of them currently advertised.
+  // This change places NEW rows. Those 2,037 need a backfill that recomputes
+  // hub through hubFor — not a SQL LIKE, because precedence matters and some of
+  // them are unplaced only because they predate a needle added later, such as
+  // the India block of 2026-09-18.
+  ["kuala lumpur", "kualalumpur"],
+  ["selangor", "kualalumpur"],
+  ["petaling", "kualalumpur"],
+  ["subang jaya", "kualalumpur"],
+  ["shah alam", "kualalumpur"],
+  ["cyberjaya", "kualalumpur"],
+  ["putrajaya", "kualalumpur"],
+  ["manila", "manila"],
+  ["makati", "manila"],
+  ["taguig", "manila"],
+  ["quezon city", "manila"],
+  ["mandaluyong", "manila"],
+  ["muntinlupa", "manila"],
+  ["alabang", "manila"],
+  ["para\u00f1aque", "manila"],
+  ["paranaque", "manila"],
+  ["pasig", "manila"],
+  ["pasay", "manila"],
   // Europe / Africa
   ["london", "london"],
   ["paris", "paris"],
