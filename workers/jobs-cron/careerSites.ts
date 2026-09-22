@@ -5573,6 +5573,58 @@ function isoFromEpoch(sec: number): string {
  * a German plasma-centre role on Melbourne. See hubFor.
  */
 const HUB_MATCH: [string, string | null][] = [
+  // ── NAMESAKE GUARDS, and they go FIRST because that is the only thing that
+  // makes them work ───────────────────────────────────────────────────────────
+  //
+  // Every entry here exists because a place name below it is ALSO a place
+  // somewhere else, and the other one wins on a plain substring. Found by
+  // running hubFor over every distinct location in the archive that resolves
+  // to no hub and reading what came back — 2026-09-22, 12,976 locations. Four
+  // of these were already WRONG IN THE TABLE, not merely waiting to be:
+  //
+  //   "Portland, Glenelg Area"       -> Portland, OREGON (it is Victoria)
+  //   "Sale, Wellington Area"        -> Wellington, NZ   (it is Victoria)
+  //   "Toronto, Lake Macquarie Area" -> Toronto, CANADA  (it is NSW)
+  //   "Hamilton, Newcastle Area"     -> Brisbane         (it is Newcastle NSW)
+  //   "Hobart, Indiana"              -> Hobart, TASMANIA (it is the US)
+  //   "San Jose City, Nueva Ecija"   -> San Jose, CALIF. (it is the Philippines)
+  //
+  // Three of them share a shape: "<Town>, <Region> Area", which is how one of
+  // the aggregators writes an Australian local-government area. The region
+  // name is doing the damage, so the guard matches the region, not the town.
+  //
+  // MATCH THE REGION, BUT ONLY WHERE THE REGION IS UNAMBIGUOUS. Checked one at
+  // a time against the archive:
+  //   - "glenelg area" is only ever Victoria. Bare "glenelg" is NOT usable:
+  //     it is also an Adelaide beach suburb ("Glenelg SA", "Glenelg, Holdfast
+  //     Bay") and a street in South Brisbane.
+  //   - "lake macquarie area" is only ever NSW. Newcastle has no hub, so it
+  //     resolves to Sydney like the rest of the Hunter.
+  //   - "wellington area" is NOT usable bare, and this is the sharpest of
+  //     them: "Wellington, Wellington Area" is the NZ capital and "Sale,
+  //     Wellington Area" is a Gippsland town 200 km east of Melbourne. Only
+  //     the pairing is safe, the same reasoning as "cambridge, hamilton"
+  //     further down. Same for "hamilton, newcastle area", since Hamilton is
+  //     a suburb of Newcastle AND of Brisbane, and Brisbane was winning.
+  //
+  // "nueva ecija" IS THE FIRST NEEDLE HERE TO RESOLVE TO null, which HUB_MATCH
+  // has always allowed in its type and nothing had used. It means "this is a
+  // real place and it is definitely NOT the hub you are about to match",
+  // rather than "unknown": San Jose City is 110 km from Manila, further than
+  // Muar is from Johor Bahru, so no hub is the honest answer and returning it
+  // here stops "san jose" claiming the row. It also skips the home-hub
+  // fallback, which is right — an employer's home city is not a better guess
+  // for a place we have deliberately declined to plot.
+  ["glenelg area", "melbourne"],
+  ["sale, wellington area", "melbourne"],
+  ["lake macquarie area", "sydney"],
+  ["hamilton, newcastle area", "sydney"],
+  // CSL's plasma-donor centre in Hobart, Indiana, which is in Lake County and
+  // inside the Chicago metropolitan area ~55 km from the Loop — the same kind
+  // of fold as Fishers onto Indianapolis further down.
+  ["hobart, indiana", "chicago"],
+  ["nueva ecija", null],
+
   // Australia — mine sites and states resolve to their capital.
   ["port hedland", "perth"],
   ["newman", "perth"],
