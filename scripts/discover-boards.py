@@ -77,6 +77,7 @@ import html as htmlmod
 import json
 import os
 import re
+import signal
 import socket
 import sys
 import threading
@@ -458,9 +459,43 @@ HARD_FETCH_S = 30
 # returns.
 HARD_RENDER_S = 120
 
-# A sentinel, because a render legitimately returns None and `or` would hide the
-# difference between "timed out" and "rendered nothing".
-_RENDER_TIMED_OUT = object()
+def _render_bounded(fn, seconds: float):
+    """A wall-clock ceiling that does NOT move the call to another thread.
+
+    _bounded() runs its work on a fresh daemon thread, which is right for a
+    socket and WRONG for a browser. Playwright's sync API is greenlet-based and
+    thread-affine: the first render ran on one daemon thread, that thread
+    exited, and every render after it died with
+
+        cannot switch to a different thread (which happens to have exited)
+
+    Measured 2026-09-21, and it was a regression this file introduced while
+    chasing a hang that turned out to be a catastrophic regex instead. Before
+    the thread wrapper, a sweep rendered 4 of 4 pages per employer; after it,
+    1 of 10 — every one after the first failed.
+
+    So the ceiling is enforced with an interval timer on the MAIN thread. The
+    call stays where Playwright expects it, and SIGALRM raises inside it. A
+    handler only runs between bytecodes, so a render wedged in a C call is not
+    interruptible this way — but that is no worse than having no ceiling at all,
+    which is what the alternative amounts to.
+    """
+    if not hasattr(signal, 'SIGALRM') or threading.current_thread() is not threading.main_thread():
+        # No interval timers off the main thread, and none on Windows. Run it
+        # unbounded rather than silently moving it somewhere it cannot work.
+        return fn()
+
+    def on_alarm(_signum, _frame):
+        raise TimeoutError(f'no answer within {seconds:g}s (hung, not refused)')
+
+    previous = signal.signal(signal.SIGALRM, on_alarm)
+    signal.setitimer(signal.ITIMER_REAL, seconds)
+    try:
+        return fn()
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+
 
 
 def _bounded(fn, seconds: float, on_timeout):
@@ -609,12 +644,9 @@ def rendered_html(url: str, settle_s: int = 8) -> tuple[str | None, str]:
         # This also disproves what was written down a batch earlier: the stalls
         # on these hosts were blamed on talentidl.com being dead and hanging on
         # TLS. That domain was not in this run at all.
-        html = _bounded(
+        html = _render_bounded(
             lambda: browser_fetch.render(url, [{'type': 'wait', 'wait_time_s': settle_s}]),
-            HARD_RENDER_S,
-            lambda: _RENDER_TIMED_OUT)
-        if html is _RENDER_TIMED_OUT:
-            return None, f'no answer within {HARD_RENDER_S}s (hung, not refused)'
+            HARD_RENDER_S)
     except Exception as e:  # noqa: BLE001 - a render failure never aborts the sweep
         msg = f'{type(e).__name__}: {str(e)[:110]}'
         # A launch or driver failure is about this machine, not this page, and

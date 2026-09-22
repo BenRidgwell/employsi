@@ -4912,18 +4912,32 @@ export const SITES: SiteDef[] = [
   //     hostname is not printed anywhere on its site; guessing one is how
   //     Kennards Hire's board nearly got filed under Kennards Self Storage.
   //
-  //   ARA (116 ads) — INCONCLUSIVE, and deliberately not recorded as a miss.
-  //     Its three reachable pages carry no marker in served HTML and all three
-  //     renders returned nothing, so nothing was read after hydration. The
-  //     report says INCONCLUSIVE rather than "no board", which is the whole
-  //     point of that distinction: a render that could not run is a fact about
-  //     the browser, not about the employer.
+  //   ARA (116 ads) — a TRUSTWORTHY NEGATIVE, on the re-sweep. 9 careers links
+  //     followed and every one read, rendered as well as fetched, and no ATS
+  //     marker on any of them.
   //
-  //   Talent International (110 ads) — every path answers 403, including the
-  //     root, and every render of those pages returned nothing too. Nothing was
-  //     read at all. Also worth knowing: the domain in resolvedDomains.ts,
-  //     talentidl.com, is DEAD and hangs on TLS; talentinternational.com is the
-  //     company's own site and is what was swept.
+  //     ITS FIRST ANSWER WAS INCONCLUSIVE, AND THAT WAS OUR FAULT. Every render
+  //     in that sweep returned nothing, because the render ceiling was running
+  //     each one on a fresh daemon thread and Playwright's sync API is
+  //     greenlet-based and thread-affine. The job log named it — "cannot switch
+  //     to a different thread (which happens to have exited)" — and the counts
+  //     were stark: 4 of 4 renders worked before that change, 1 of 10 after,
+  //     the one being the first render of the run. Fixed by moving the ceiling
+  //     to an interval timer on the main thread.
+  //
+  //     The report saying INCONCLUSIVE rather than "no board" is the only
+  //     reason that did not become a false negative on three employers. That
+  //     distinction earned its keep.
+  //
+  //   Talent International (110 ads) — its 403 IS A BROWSER CHECK, NOT AN
+  //     ADDRESS ONE, which is the distinction --render exists to draw. Every
+  //     path refuses a plain client including the root; four of those same
+  //     pages rendered fine on the same runner. No ATS marker on any of them,
+  //     so this is a real negative rather than "nothing was read".
+  //
+  //     Also worth knowing: the domain in resolvedDomains.ts, talentidl.com, is
+  //     DEAD and hangs on TLS; talentinternational.com is the company's own
+  //     site and is what was swept.
 ];
 
 /**
