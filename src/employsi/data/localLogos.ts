@@ -9,6 +9,11 @@
 export const LOCAL_LOGO: Record<string, string> = {
   "adelaide-axe": "/logos/adelaide-axe.jpeg",
   "adelaide-coe": "/logos/adelaide-coe.jpeg",
+  "beijing-601319": "/logos/beijing-601319.png",
+  "beijing-601728": "/logos/beijing-601728.png",
+  "dubai-amr": "/logos/dubai-amr.png",
+  "hongkong-00388": "/logos/hongkong-00388.png",
+  "hongkong-01299": "/logos/hongkong-01299.png",
   "nt-gov-attorney-general-s-department": "/logos/nt-gov-attorney-general-s-department.svg",
   "nt-gov-department-mining-and-energy": "/logos/nt-gov-department-mining-and-energy.jpeg",
   "nt-gov-department-of-agriculture-and-fisheries":
@@ -163,4 +168,9 @@ export const LOCAL_LOGO: Record<string, string> = {
   "tas-gov-homes-tasmania": "/logos/tas-gov-homes-tasmania.jpeg",
   "tas-gov-public-trustee": "/logos/tas-gov-public-trustee.jpg",
   "tas-gov-whole-of-government-programs": "/logos/tas-gov-whole-of-government-programs.svg",
+  "tokyo-6954": "/logos/tokyo-6954.png",
+  "tokyo-8002": "/logos/tokyo-8002.png",
+  "tokyo-8035": "/logos/tokyo-8035.svg",
+  "tokyo-8058": "/logos/tokyo-8058.png",
+  "tokyo-9983": "/logos/tokyo-9983.png",
 };
