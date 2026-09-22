@@ -288,9 +288,13 @@ def main() -> int:
             if not html:
                 why = note('no such page')
                 continue
-            actor, _posts = linkedin_slugs.parse_posts(html)
+            # page_actor(), not parse_posts(): LinkedIn stopped emitting the
+            # post actor label on company landing pages, so parse_posts() began
+            # returning '' for every real page and the gate below refused
+            # everything. See linkedin_slugs.page_actor.
+            actor, src = linkedin_slugs.page_actor(html)
             if not actor:
-                why = note('page served no actor name')
+                why = note('page served no name at all')
                 continue
             if not linkedin_slugs.attributed(c['id'], c['name'], actor):
                 why = note(f'/{slug} is "{actor[:34]}", not this company')

@@ -218,6 +218,63 @@ def attributed(company_id: str, company_name: str, actor: str) -> bool:
     return an in REBRANDS.get(company_id, ())
 
 
+def page_actor(html: str) -> tuple[str, str]:
+    """(company name this page belongs to, where it was found).
+
+    WHY THIS EXISTS SEPARATELY FROM parse_posts().
+    parse_posts() reads the actor out of `aria-label="View organization page
+    for X"`. LinkedIn stopped emitting that attribute on company landing pages,
+    and the failure was silent in the worst way: the page still fetches 200 and
+    still parses, the actor just comes back '', the attribution gate correctly
+    refuses a name it cannot confirm, and every company reports as unresolved.
+    Measured 2026-09-22 on /company/jb-hi-fi — 92 KB, HTTP 200, actor ''. So the
+    slug resolver could not confirm ANY company, while reporting the ordinary
+    "no such page" that a genuinely missing page gives.
+
+    The name is still on the page, in four places, so this reads them in order
+    of how hard they are to fake:
+
+      1. the post actor label, when it is there — unchanged behaviour
+      2. JSON-LD "@type":"Organization" -> "name"
+      3. <h1>
+      4. og:title / <title>, minus LinkedIn's own " | LinkedIn" suffix
+
+    It returns the SOURCE as well as the name so a caller can say which one
+    answered; when this breaks again the tier that stopped working is the thing
+    worth knowing.
+
+    parse_posts() is deliberately left alone — linkedin-posts-to-d1.py shares
+    it, and an actor derived from the page title is right for "whose page is
+    this" but wrong for "who posted this".
+    """
+    m = re.search(r'aria-label="View organization page for ([^"]+)"', html)
+    if m:
+        got = unescape_all(m.group(1)).strip()
+        if got:
+            return got, 'actor-label'
+    m = re.search(r'"@type"\s*:\s*"Organization".{0,400}?"name"\s*:\s*"([^"]{1,80})"', html, re.S)
+    if m:
+        got = unescape_all(m.group(1)).strip()
+        if got:
+            return got, 'json-ld'
+    m = re.search(r'<h1[^>]*>\s*([^<]{1,80})', html)
+    if m:
+        got = unescape_all(m.group(1)).strip()
+        if got:
+            return got, 'h1'
+    m = (re.search(r'property="og:title"\s+content="([^"]{1,90})', html)
+         or re.search(r'<title[^>]*>([^<]{1,90})', html))
+    if m:
+        got = unescape_all(m.group(1)).strip()
+        # "JB Hi-Fi | LinkedIn" -> "JB Hi-Fi". Only the suffix, and only when it
+        # is LinkedIn's own, so a company whose name contains "LinkedIn" (there
+        # are consultancies) is not truncated to nothing.
+        got = re.sub(r'\s*\|\s*LinkedIn\s*$', '', got).strip()
+        if got:
+            return got, 'title'
+    return '', 'none'
+
+
 def parse_posts(html: str) -> tuple[str, list[dict]]:
     """(actor name, posts) from a company landing page."""
     actor = ''
