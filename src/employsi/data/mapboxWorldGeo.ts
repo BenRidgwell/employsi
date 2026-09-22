@@ -155,6 +155,8 @@ export const CITY_COUNTRY: Record<string, string> = {
   // Asia
   singapore: "sg",
   kualalumpur: "my",
+  penang: "my",
+  johorbahru: "my",
   manila: "ph",
   mumbai: "in",
   bengaluru: "in",

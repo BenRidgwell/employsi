@@ -44,6 +44,19 @@
  *   Largest source in the set was jobstreet (936), then wayback (277) and the
  *   Oracle, eFinancial and SmartRecruiters portals.
  *
+ * RUN LOG — 2026-09-22, the Penang + Johor Bahru hubs.
+ *   Read 880 candidate rows; all 880 resolved into --hubs, none to no hub and
+ *   none outside the allowlist. Verified against the table:
+ *
+ *     hub NULL      80,960 -> 80,080   (-880)
+ *     penang             0 ->    582   (+582)
+ *     johorbahru         0 ->    298   (+298)
+ *
+ *   Leaving Penang with 240 currently-advertised roles and Johor Bahru 137,
+ *   which is exactly what the pre-registration count of each metro predicted.
+ *   wrangler again reported one more change than the deltas show (881), as in
+ *   the run below; read the table, not the meta.
+ *
  * Usage:
  *   bun run scripts/backfill-hub.ts --in rows.json --hubs kualalumpur,manila \
  *     [--out backfill.sql] [--chunk 150]

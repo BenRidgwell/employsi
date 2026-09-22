@@ -5827,6 +5827,44 @@ const HUB_MATCH: [string, string | null][] = [
   ["paranaque", "manila"],
   ["pasig", "manila"],
   ["pasay", "manila"],
+  // Penang and Johor Bahru, added 2026-09-22 with the hubs themselves. Both
+  // are in Malaysia, already a RELEASED market, so neither needed a release
+  // decision — only a registration and a measured arc (see rosters.ts).
+  //
+  // PENANG IS A STATE AND THE ARCHIVE WRITES IT THAT WAY: 215 rows say plain
+  // "Penang" where 23 name George Town. So the state name carries the hub and
+  // the towns mostly do not need their own needle — Batu Kawan, Bayan Lepas,
+  // Butterworth and Bukit Mertajam all name the state alongside themselves.
+  //
+  // "pulau pinang" IS needed even so, and would have been easy to miss: six
+  // rows use the Malay name with no "penang" anywhere in the string, among them
+  // "Bayan Lepas, Pulau Pinang, Malaysia". "perai" likewise, for the single
+  // "Perai, Malaysia".
+  //
+  // NEITHER "george town" NOR "georgetown" IS HERE, and the archive is why.
+  // "Bell Bay, George Town Area" is George Town TASMANIA, and the one-word
+  // spelling brings "Georgetown, Guyana" and "Georgetown, TX". Every genuine
+  // Penang row naming George Town also names Penang or Pulau Pinang, so
+  // dropping both spellings loses nothing and costs three wrong pins.
+  ["penang", "penang"],
+  ["pulau pinang", "penang"],
+  ["perai", "penang"],
+  // JOHOR BAHRU IS THE CITY, NOT THE STATE, which is the opposite call to
+  // Penang's and for the opposite reason: Johor state runs to Muar, 150 km up
+  // the coast and 58 archived rows of it, which is no more a Johor Bahru
+  // vacancy than Penang is a Kuala Lumpur one. So bare "johor" is NOT a needle
+  // — 71 rows say only that, and no hub is the honest answer for them — and
+  // the Iskandar-corridor towns are listed individually instead. Each of the
+  // five below appears in rows that never say "johor bahru": "MY JB Senai",
+  // "Kulai, 01, MY, 81000", "Gelang Patah, Johor".
+  ["johor bahru", "johorbahru"],
+  ["iskandar puteri", "johorbahru"],
+  ["gelang patah", "johorbahru"],
+  ["pasir gudang", "johorbahru"],
+  ["senai", "johorbahru"],
+  ["tebrau", "johorbahru"],
+  ["skudai", "johorbahru"],
+  ["kulai", "johorbahru"],
   // Europe / Africa
   ["london", "london"],
   ["paris", "paris"],
