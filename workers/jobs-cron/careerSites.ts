@@ -5724,6 +5724,37 @@ const HUB_MATCH: [string, string | null][] = [
   ["cambridge, hamilton", "auckland"],
   // Asia-Pacific
   ["singapore", "singapore"],
+  ["hong kong", "hongkong"],
+  ["hongkong", "hongkong"],
+  ["tokyo", "tokyo"],
+  ["seoul", "seoul"],
+  ["beijing", "beijing"],
+  ["shanghai", "shanghai"],
+  ["shenzhen", "shenzhen"],
+  ["ganzhou", "ganzhou"],
+  // India. Both are map hubs — the roster plots TCS on Mumbai and Infosys on
+  // Bengaluru — and both were missing a needle here, so every Indian location
+  // resolved to no hub at all. It surfaced when those two employers got direct
+  // feeds (2026-09-18): their boards are global, and without these their rows
+  // would have archived against the right company and appeared in no city.
+  //
+  // `bangalore` as well as `bengaluru` because job boards still use the old
+  // name constantly. None of the three is a substring of another place: checked
+  // against the archive, nothing contains "mumbai", "bengaluru" or "bangalore"
+  // that is not the Indian city.
+  ["mumbai", "mumbai"],
+  ["bengaluru", "bengaluru"],
+  ["bangalore", "bengaluru"],
+  ["dubai", "dubai"],
+  // Placed at the END of this region deliberately, after Singapore, Hong
+  // Kong, Tokyo and the rest. Measured 2026-09-22 against the archive: ten
+  // rows carry both a needle below and a city named above it, all of them
+  // Flight Centre multi-city ads ("Tokyo, Japan, Kuala Lumpur, Malaysia",
+  // "Singapore, Kuala Lumpur, Malaysia"). Putting this block higher moved
+  // one of them off Tokyo onto Kuala Lumpur — a silent reclassification of
+  // an ad whose first-named city was Tokyo. Down here the block can only
+  // ADD placements, never change one: every row it catches is a row that
+  // resolved to nothing before it.
   // South-East Asia. Kuala Lumpur and Manila were ALREADY map hubs and already
   // RELEASED markets ("my" and "ph" in markets.ts), each carrying a camera, a
   // country, a continent, a label and a measured CITY_PLACEMENT — and neither
@@ -5758,10 +5789,26 @@ const HUB_MATCH: [string, string | null][] = [
   // word, and every BGC address also carries "taguig".
   //
   // The first three of each group are cityMarket.ts's own vocabulary for these
-  // markets. The rest are the unambiguous remainder of the Klang Valley and
-  // Metro Manila. They could NOT be checked against the archive this session —
-  // no Cloudflare credentials in this environment — so they are here on the
-  // strength of being unique place names, not on a measurement.
+  // markets; the rest are the remainder of the Klang Valley and Metro Manila.
+  // ALL of them were checked against the archive on 2026-09-22, which is what
+  // the country names above are NOT allowed to be. 166 distinct locations match
+  // one of these needles. Every one is a real Malaysian or Philippine place —
+  // most of them omit the country entirely ("Santa Ana, Metro Manila" 725 rows,
+  // "Kuala Lumpur" 722, "Bukit Jalil, Kuala Lumpur" 111), which is precisely
+  // why a country needle would not have helped and a city one does. Exactly ten
+  // carry another country's name, and all ten are Flight Centre multi-city ads.
+  // Not one needle fires inside an unrelated word or a non-MY/PH place.
+  //
+  // WHAT THIS DOES NOT DO, AND IT IS THE LARGER HALF. archiveJobs' upsert never
+  // rewrites `hub` — ON CONFLICT(job_key) bumps last_seen and seen_count and
+  // backfills only empty columns — so a row already carrying hub NULL keeps it
+  // for as long as the ad is re-seen, however many times these needles match it
+  // afterwards. Measured the same day: 2,037 archived rows across 107 employers
+  // match a needle here and hold hub NULL, 896 of them currently advertised.
+  // This change places NEW rows. Those 2,037 need a backfill that recomputes
+  // hub through hubFor — not a SQL LIKE, because precedence matters and some of
+  // them are unplaced only because they predate a needle added later, such as
+  // the India block of 2026-09-18.
   ["kuala lumpur", "kualalumpur"],
   ["selangor", "kualalumpur"],
   ["petaling", "kualalumpur"],
@@ -5780,28 +5827,6 @@ const HUB_MATCH: [string, string | null][] = [
   ["paranaque", "manila"],
   ["pasig", "manila"],
   ["pasay", "manila"],
-  ["hong kong", "hongkong"],
-  ["hongkong", "hongkong"],
-  ["tokyo", "tokyo"],
-  ["seoul", "seoul"],
-  ["beijing", "beijing"],
-  ["shanghai", "shanghai"],
-  ["shenzhen", "shenzhen"],
-  ["ganzhou", "ganzhou"],
-  // India. Both are map hubs — the roster plots TCS on Mumbai and Infosys on
-  // Bengaluru — and both were missing a needle here, so every Indian location
-  // resolved to no hub at all. It surfaced when those two employers got direct
-  // feeds (2026-09-18): their boards are global, and without these their rows
-  // would have archived against the right company and appeared in no city.
-  //
-  // `bangalore` as well as `bengaluru` because job boards still use the old
-  // name constantly. None of the three is a substring of another place: checked
-  // against the archive, nothing contains "mumbai", "bengaluru" or "bangalore"
-  // that is not the Indian city.
-  ["mumbai", "mumbai"],
-  ["bengaluru", "bengaluru"],
-  ["bangalore", "bengaluru"],
-  ["dubai", "dubai"],
   // Europe / Africa
   ["london", "london"],
   ["paris", "paris"],
