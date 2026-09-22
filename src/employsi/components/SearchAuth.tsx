@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useAppStore } from "../state/store";
 import { isReleasedCompany } from "../lib/markets";
 import { Avatar } from "./Avatar";
-import { COMPANIES } from "../data/companies";
+import { COMPANIES, type Company } from "../data/companies";
 import { searchCityFor } from "../data/mapboxGeo";
+import { logoFor } from "../lib/companyLogo";
 import { SignInOptions } from "./SignInOptions";
 import { signOut as authSignOut } from "../lib/authClient";
 
@@ -28,6 +30,53 @@ import { signOut as authSignOut } from "../lib/authClient";
  * the button becomes the account's initials and the panel becomes what the user
  * then needs: what they follow, and a way out.
  */
+
+/** Two full rows of five in the 288px panel. Anything beyond is counted, not
+ *  hidden — see the comment at the call site. */
+const FOLLOW_LOGOS_SHOWN = 10;
+
+/**
+ * A followed company, as a round logo button.
+ *
+ * The badge URL is resolved by lib/companyLogo.ts, the same ladder the map pin
+ * and the company card use, so a company is recognisable in the same way
+ * wherever it appears rather than by whatever this panel could look up on its
+ * own.
+ *
+ * The onError fallback is not optional. A logo file verified months ago can
+ * stop resolving, and at this size a broken image is an empty circle with no
+ * name next to it any more — which is worse than the ticker, and much worse
+ * than the text row this replaced. Same reasoning as CompanyPanel's
+ * `CompanyLogo`; the difference is only that here the ticker is the ONLY
+ * remaining label, so it is the thing being clicked rather than a caption.
+ */
+function FollowedCompany({ company, onPick }: { company: Company; onPick: () => void }) {
+  const [failed, setFailed] = useState(false);
+  const short = company.pill || company.ticker;
+  return (
+    <button
+      type="button"
+      className="gsauthlogo"
+      onClick={onPick}
+      // The circle carries no visible name, so the accessible name has to come
+      // from here — `alt` on the image would disappear with it on failure.
+      aria-label={company.name}
+    >
+      {failed ? (
+        <span className="gsauthlogotxt">{short}</span>
+      ) : (
+        <img
+          className="gsauthlogoimg"
+          src={logoFor(company.id, company.domain, 128)}
+          alt=""
+          loading="lazy"
+          onError={() => setFailed(true)}
+        />
+      )}
+      <span className="gsauthlogotip">{company.name}</span>
+    </button>
+  );
+}
 
 export function SearchAuth() {
   const account = useAppStore((s) => s.account);
@@ -86,19 +135,37 @@ export function SearchAuth() {
                 {saved.length > 0 && (
                   <div className="gsauthsaved">
                     <span className="gsauthsavedlbl">Companies you follow</span>
-                    {saved.slice(0, 5).map((c) => (
-                      <button
-                        key={c.id}
-                        className="gsauthsavedrow"
-                        onClick={() => {
-                          zoomInCity(searchCityFor(c.id));
-                          select(c.id);
-                          closeAuth();
-                        }}
-                      >
-                        {c.name}
-                      </button>
-                    ))}
+                    {/* Round logos rather than a list of names: at this size a
+                        follow is recognised faster than it is read, and ten of
+                        them fit in the space three names took.
+
+                        The overflow is COUNTED, not dropped. The list this
+                        replaced sliced to five and said nothing about the rest,
+                        so someone following eight companies saw five and had no
+                        way to know. */}
+                    <div className="gsauthlogos">
+                      {saved.slice(0, FOLLOW_LOGOS_SHOWN).map((c) => (
+                        <FollowedCompany
+                          key={c.id}
+                          company={c}
+                          onPick={() => {
+                            zoomInCity(searchCityFor(c.id));
+                            select(c.id);
+                            closeAuth();
+                          }}
+                        />
+                      ))}
+                      {saved.length > FOLLOW_LOGOS_SHOWN && (
+                        <span
+                          className="gsauthlogo gsauthlogomore"
+                          title={`${saved.length - FOLLOW_LOGOS_SHOWN} more followed ${
+                            saved.length - FOLLOW_LOGOS_SHOWN === 1 ? "company" : "companies"
+                          }`}
+                        >
+                          +{saved.length - FOLLOW_LOGOS_SHOWN}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
                 {followedSkills.length > 0 && (
