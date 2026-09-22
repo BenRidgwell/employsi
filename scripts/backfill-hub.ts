@@ -83,6 +83,25 @@
  *   but no `hub IS NULL` query finds them, so every backfill so far has skipped
  *   them silently.
  *
+ * RUN LOG — 2026-09-22, repairing the hub values that were never hub ids.
+ *   openRolesFn.ts had been writing Adzuna's `where` FILTER into `hub`, so
+ *   4,082 rows sat on "Australia" (3,899), "Johannesburg" (80), "Singapore"
+ *   (53) and "London" (50). Invisible on the map like a NULL, but no
+ *   `hub IS NULL` run reaches them, so every earlier backfill skipped them.
+ *
+ *     hub IN (those four)   4,082 -> 0
+ *     hub NULL             49,371 -> 51,094   (+1,723)
+ *
+ *   2,359 rows resolved from their own location — perth 1,196, brisbane 302,
+ *   adelaide 236, sydney 202, melbourne 118, johannesburg 80, canberra 53,
+ *   singapore 53, darwin 49, london 43, hobart 27 — and 1,723 whose location
+ *   is country-only ("Australia") were set NULL, which is what they are.
+ *
+ *   The source bug is fixed in the same change, but note the ordering: five
+ *   more rows ("Wellington" 4, "Auckland" 1) appeared between the snapshot and
+ *   the verification, written by the app Worker still running the old code. A
+ *   repair before its deploy is a repair with the tap open.
+ *
  * Usage:
  *   bun run scripts/backfill-hub.ts --in rows.json --hubs kualalumpur,manila \
  *     [--out backfill.sql] [--chunk 150]
@@ -116,6 +135,28 @@ if (!inFile || !allow.size) {
 // only a HUB_MATCH needle can place a row.
 const NEVER = /(?!)/;
 
+// --from turns this from a FILL into a REPAIR, and the guard changes with it.
+//
+// Without it every statement carries `AND hub IS NULL`: the script fills gaps
+// and can never contradict a placement. That is the right default and most runs
+// want nothing else.
+//
+// But a column can hold a value that is wrong rather than missing. `hub` held
+// 4,082 rows on "Australia", "Johannesburg", "Singapore" and "London" — Adzuna
+// location FILTERS written where a hub id belongs, from a bug in
+// openRolesFn.ts. No `hub IS NULL` run can reach those, and they are invisible
+// on the map exactly as a NULL is.
+//
+// So --from names the values that may be overwritten, and the guard becomes
+// `hub IN (...)` over that list alone. It is the same safety property stated
+// differently: a run can only ever touch rows whose hub was named on the
+// command line, so a valid placement is still unreachable. It is never a bare
+// "overwrite anything", and there is no flag that makes it one.
+const from = arg("from")
+  .split(",")
+  .map((x) => x.trim())
+  .filter(Boolean);
+
 const raw = readFileSync(inFile, "utf8");
 const rows: { job_key?: string; location: string; n?: number }[] = JSON.parse(
   raw.slice(raw.indexOf("[")),
@@ -133,6 +174,8 @@ const weight = (r: { n?: number }) => r.n ?? 1;
 
 const byHub = new Map<string, string[]>();
 const rowsFor = new Map<string, number>();
+const clearKeys: string[] = [];
+let clearRows = 0;
 const skipped = new Map<string, number>();
 let unresolved = 0;
 let total = 0;
@@ -142,6 +185,14 @@ for (const r of rows) {
   const hub = hubFor(r.location ?? "", null, NEVER, undefined, false);
   if (!hub) {
     unresolved += weight(r);
+    // In repair mode an unresolvable location is not a no-op: the row is
+    // sitting on a value we know to be wrong, and NULL is the honest
+    // replacement for it — "we did not determine this", which is repairable,
+    // rather than a place it is not.
+    if (from.length) {
+      clearKeys.push(byLocation ? r.location : (r.job_key as string));
+      clearRows += weight(r);
+    }
     continue;
   }
   if (!allow.has(hub)) {
@@ -155,23 +206,35 @@ for (const r of rows) {
 }
 
 const q = (s: string) => "'" + s.replace(/'/g, "''") + "'";
+// Fill mode can only touch a NULL; repair mode can only touch a value named in
+// --from. Neither can reach a hub that is already right.
+const guard = from.length ? `hub IN (${from.map(q).join(",")})` : "hub IS NULL";
 const sql: string[] = [];
 for (const [hub, keys] of [...byHub].sort()) {
   for (let i = 0; i < keys.length; i += chunk) {
     const slice = keys.slice(i, i + chunk);
-    // AND hub IS NULL: fill a gap, never overwrite a placement.
     const col = byLocation ? "location" : "job_key";
     sql.push(
-      `UPDATE jobs SET hub = ${q(hub)} WHERE hub IS NULL AND ${col} IN (${slice.map(q).join(",")});`,
+      `UPDATE jobs SET hub = ${q(hub)} WHERE ${guard} AND ${col} IN (${slice.map(q).join(",")});`,
     );
   }
 }
+const col = byLocation ? "location" : "job_key";
+for (let i = 0; i < clearKeys.length; i += chunk) {
+  const slice = clearKeys.slice(i, i + chunk);
+  sql.push(`UPDATE jobs SET hub = NULL WHERE ${guard} AND ${col} IN (${slice.map(q).join(",")});`);
+}
 writeFileSync(outFile, sql.join("\n") + "\n");
 
+console.log(
+  "mode                   " + (from.length ? "REPAIR of " + from.join(", ") : "fill (hub IS NULL)"),
+);
 console.log("keyed on               " + (byLocation ? "location" : "job_key"));
 console.log("input entries read     " + rows.length);
 console.log("rows they cover        " + total);
-console.log("resolve to no hub      " + unresolved);
+console.log(
+  "resolve to no hub      " + unresolved + (from.length ? " -> will be set NULL" : " (left alone)"),
+);
 for (const [hub, n] of [...skipped].sort((a, b) => b[1] - a[1]))
   console.log("resolved but NOT in --hubs  " + hub.padEnd(14) + n);
 console.log("--- will write ---");
