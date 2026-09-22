@@ -40,6 +40,20 @@ export const LOCAL_LOGO: Record<string, string> = {
   "nt-gov-department-of-treasury-and-finance":
     "/logos/nt-gov-department-of-treasury-and-finance.jpeg",
   "nt-gov-nt-fire-and-emergency-services": "/logos/nt-gov-nt-fire-and-emergency-services.jpeg",
+  "nz-health-new-zealand-te-whatu-ora-capital-coast-hutt-valley":
+    "/logos/nz-health-new-zealand-te-whatu-ora-capital-coast-hutt-valley.png",
+  "nz-maritime-new-zealand": "/logos/nz-maritime-new-zealand.png",
+  "nz-meridian-energy": "/logos/nz-meridian-energy.png",
+  "nz-ministry-of-education": "/logos/nz-ministry-of-education.svg",
+  "nz-nz-police": "/logos/nz-nz-police.png",
+  "nz-public-service-commission-te-kawa-mataaho":
+    "/logos/nz-public-service-commission-te-kawa-mataaho.svg",
+  "nz-statistics-nz": "/logos/nz-statistics-nz.png",
+  "nz-te-papa": "/logos/nz-te-papa.svg",
+  "nz-te-puni-k-kiri-ministry-of-m-ori-development":
+    "/logos/nz-te-puni-k-kiri-ministry-of-m-ori-development.png",
+  "nz-the-treasury": "/logos/nz-the-treasury.svg",
+  "nz-victoria-university-of-wellington": "/logos/nz-victoria-university-of-wellington.svg",
   "perth-gov-arts-and-culture-trust": "/logos/perth-gov-arts-and-culture-trust.jpeg",
   "perth-gov-department-of-creative-industries-tourism-and-sport":
     "/logos/perth-gov-department-of-creative-industries-tourism-and-sport.png",

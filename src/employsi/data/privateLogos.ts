@@ -266,6 +266,84 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   // the day the service indexes one.
   "perth-gov-parliamentary-services-department": "parliament.wa.gov.au",
   "sydney-wor": "worley.com",
+  // ── every Wellington company, 2026-09-22 ─────────────────────────────────
+  // ALL 28 roster domains were wrong, not some of them. The NZ rosters have no
+  // domain field of their own, so nzCompanies.ts and nzGov.ts both build one
+  // with deriveDomain() — the company name, lowercased, punctuation dropped,
+  // plus ".com". That produces treasury.com for The Treasury, nzpolice.com for
+  // NZ Police, tepapa.com for Te Papa. New Zealand's public service lives on
+  // .govt.nz and its two listed energy companies on .co.nz, so a .com guess was
+  // never going to land; it is a rule that cannot be right for this country.
+  //
+  // What that looked like on the map, measured the same day:
+  //   * 25 of 28 drew the favicon service's generic 16px globe.
+  //   * 3 drew A PARKED DOMAIN'S LOGO — meridianenergy.com, contactenergy.com
+  //     and nzpolice.com are all registered, all parked, and all serve the
+  //     SAME favicon (sha1 c20af3aed3de, a turquoise heart-swirl). So NZ Police
+  //     was showing a stranger's brand mark. That is the Perron Group failure
+  //     again, and the reason it is worth fixing even where no logo file
+  //     exists: confidently wrong is worse than blank.
+  //
+  // Verification, and it is not uniform, so it is recorded per tier rather than
+  // claimed as the usual two checks for all of them:
+  //   * 16 verified the usual way — the site answers and its <title> is the
+  //     organisation (ACC's is unreadable from here but its favicon IS the ACC
+  //     logo, which is the same fact by another route).
+  //   * 12 sit behind a WAF that refuses this sandbox, so no <title> could be
+  //     read. For those the check was the favicon service: it returns a real
+  //     icon for each, not the generic globe, and the ones inspected are the
+  //     agency's own mark (Oranga Tamariki's koru spiral) or the standard
+  //     whole-of-government tile. A parked domain does not get either.
+  // Every one of the 28 returns an image from the favicon service except
+  // wgtn.ac.nz, which has a logo file instead so does not need one.
+  "nz-accident-compensation-corporation": "acc.co.nz",
+  "nz-civil-aviation-authority-of-nz": "aviation.govt.nz",
+  "nz-contact-energy": "contact.co.nz",
+  "nz-department-of-internal-affairs": "dia.govt.nz",
+  "nz-department-of-the-prime-minister-cabinet": "dpmc.govt.nz",
+  "nz-environmental-protection-authority": "epa.govt.nz",
+  "nz-government-communications-security-bureau": "gcsb.govt.nz",
+  // Te Whatu Ora's districts share one national site; the roster's per-district
+  // card is a hub, not a separate employer with a domain of its own.
+  "nz-health-new-zealand-te-whatu-ora-capital-coast-hutt-valley": "tewhatuora.govt.nz",
+  "nz-maritime-new-zealand": "maritimenz.govt.nz",
+  "nz-meridian-energy": "meridianenergy.co.nz",
+  "nz-ministry-of-business-innovation-and-employment": "mbie.govt.nz",
+  "nz-ministry-of-education": "education.govt.nz",
+  "nz-ministry-of-foreign-affairs-trade": "mfat.govt.nz",
+  "nz-natural-hazards-commission-toka-t-ake": "naturalhazards.govt.nz",
+  "nz-new-zealand-customs-service": "customs.govt.nz",
+  // Waka Kotahi. nzta.govt.nz is the live site; the newer nzta brand did not
+  // move the domain.
+  "nz-new-zealand-transport-agency": "nzta.govt.nz",
+  "nz-nz-police": "police.govt.nz",
+  "nz-nz-security-intelligence-service-nzsis": "nzsis.govt.nz",
+  "nz-oranga-tamariki-ministry-for-children": "orangatamariki.govt.nz",
+  "nz-public-service-commission-te-kawa-mataaho": "publicservice.govt.nz",
+  "nz-reserve-bank-of-new-zealand": "rbnz.govt.nz",
+  "nz-statistics-nz": "stats.govt.nz",
+  "nz-te-papa": "tepapa.govt.nz",
+  "nz-te-puni-k-kiri-ministry-of-m-ori-development": "tpk.govt.nz",
+  "nz-the-treasury": "treasury.govt.nz",
+  // The corporate entity is toddcorporation.com; it redirects to todd.co.nz,
+  // which is where the favicon lives. Either resolves — the registered name is
+  // recorded here because that is what the roster card is.
+  "nz-todd-corporation": "toddcorporation.com",
+  "nz-transpower-new-zealand-limited": "transpower.co.nz",
+  // Te Herenga Waka. wgtn.ac.nz, not victoria.ac.nz, since the 2019 rebrand.
+  "nz-victoria-university-of-wellington": "wgtn.ac.nz",
+  // Left alone deliberately, because the request that produced this block
+  // excluded them — but the three are not the same case and the difference is
+  // worth having written down:
+  //   * xero.com IS Xero's, confirmed by title. deriveDomain got it right.
+  //   * infratil.com answers with no readable title, and the favicon service
+  //     returns a real 128px icon for it rather than the globe, so it is a live
+  //     site and not parked. Consistent with being Infratil's, not proof.
+  //   * chorus.com IS NOT Chorus NZ. Chorus NZ is chorus.co.nz, confirmed by
+  //     title, and chorus.com serves a different company's mark — a white
+  //     figure on a blue gradient. So Chorus is a FOURTH card showing a
+  //     stranger's logo, alongside the three named above. When the exclusion no
+  //     longer applies: "nz-chorus": "chorus.co.nz".
   // ── the original Top-150 private set ──────────────────────────────────────
   "priv-abc-tissue": "abctissue.com.au",
   "priv-abn-group": "abngroup.com.au",
