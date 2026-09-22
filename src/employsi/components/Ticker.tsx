@@ -115,6 +115,12 @@ const EMPTY_ITEMS: TickerItem[] = [];
 // Enough placeholder rows to fill the pill at any width.
 const SKELETON = [72, 108, 88, 124, 96, 80, 116, 92];
 
+// Hover speed, as a multiple of normal. A quarter turns the 46s loop into an
+// effective 184s — slow enough to read a row that is already halfway past,
+// still clearly moving, so it reads as slow motion rather than as a stall. The
+// pause BUTTON is the control for actually stopping it.
+const SLOW_RATE = 0.25;
+
 export function Ticker({ hidden }: { hidden: boolean }) {
   // Real, market-wide skill-demand movers from the D1 job archive, for all three
   // windows at once (one scan serves them all). Refreshes once a day — the
@@ -133,6 +139,44 @@ export function Ticker({ hidden }: { hidden: boolean }) {
   const [winIdx, setWinIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const win = TREND_WINDOWS[winIdx];
+
+  /**
+   * Hover puts the marquee into slow motion, so a row can be read without
+   * chasing it, and releases back to full speed on the way out.
+   *
+   * WHY NOT JUST CHANGE animation-duration ON :hover. Because a CSS animation's
+   * progress is elapsed-time divided by duration, so stretching the duration
+   * from 46s to 184s recomputes the SAME elapsed time as a quarter of the way
+   * through — the strip jumps backwards the moment the pointer lands on it, and
+   * jumps forwards again when it leaves. updatePlaybackRate() exists precisely
+   * for this: the spec has it rebase the start time so current time is
+   * preserved, which is a speed change with no seek.
+   *
+   * It reaches the animation through getAnimations() rather than owning it,
+   * so the keyframes, duration and the pause button's animation-play-state all
+   * stay in CSS where the rest of the strip's motion lives.
+   */
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const rateRef = useRef(1);
+  const setRate = (rate: number) => {
+    rateRef.current = rate;
+    // Optional-called: getAnimations is absent in jsdom and in older Safari, and
+    // the strip should keep scrolling at full speed there rather than throw.
+    for (const anim of trackRef.current?.getAnimations?.() ?? []) {
+      if (anim.playbackRate === rate) continue;
+      // updatePlaybackRate is the seamless one. Assigning playbackRate directly
+      // is the fallback where it is missing: it seeks, but a small seek on
+      // hover beats no slow motion.
+      if (typeof anim.updatePlaybackRate === "function") anim.updatePlaybackRate(rate);
+      else anim.playbackRate = rate;
+    }
+  };
+  // The track is remounted whenever the window changes or loading resolves, and
+  // a fresh animation starts at rate 1. If the pointer is still inside, put it
+  // back to the rate the pointer is asking for.
+  useEffect(() => {
+    if (rateRef.current !== 1) setRate(rateRef.current);
+  });
 
   const rows = live?.[win.key];
   // Three distinct states, and conflating any two of them is what let invented
@@ -303,7 +347,11 @@ export function Ticker({ hidden }: { hidden: boolean }) {
           <span className="tlblwin">{win.label}</span>
         </div>
 
-        <div className="tickerwrap">
+        <div
+          className="tickerwrap"
+          onMouseEnter={() => setRate(SLOW_RATE)}
+          onMouseLeave={() => setRate(1)}
+        >
           {loading ? (
             <div className="tickertrack skeleton" aria-hidden>
               {[...SKELETON, ...SKELETON].map((w, i) => (
@@ -318,7 +366,7 @@ export function Ticker({ hidden }: { hidden: boolean }) {
               {win.label.replace("· Last ", "the last ").toLowerCase()}.
             </div>
           ) : (
-            <div className={`tickertrack${paused ? " paused" : ""}`}>
+            <div ref={trackRef} className={`tickertrack${paused ? " paused" : ""}`}>
               {items.map((t, i) => renderItem(t, "a" + i))}
               {items.map((t, i) => renderItem(t, "b" + i))}
             </div>

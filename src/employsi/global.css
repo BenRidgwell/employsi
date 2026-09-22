@@ -3606,9 +3606,21 @@ body {
   width: max-content;
   animation: tscroll 46s linear infinite;
 }
-/* Pause the marquee on hover so a row can actually be read — the design does
-   the same via style-hover on the track — and on demand via the pause button. */
-.tickerwrap:hover .tickertrack,
+/* THIS RULE USED TO CLAIM IT PAUSED THE MARQUEE ON HOVER AND DID NOTHING. It
+   read `.tickerwrap:hover .tickertrack, .tickertrack.skeleton { animation-play-
+   state: running }` — setting a running animation to running, which is a no-op,
+   under a comment saying it paused. Whatever it once did, hovering the strip had
+   no effect at all.
+
+   Hover now puts the marquee into SLOW MOTION instead, and that is done in
+   components/Ticker.tsx through the Web Animations API rather than here,
+   because CSS cannot change an animation's speed without also moving its
+   position — progress is elapsed/duration, so a longer duration re-reads the
+   same elapsed time as less of the way through and the strip jumps backwards.
+   `updatePlaybackRate()` is specified to rebase the start time instead.
+
+   What is left here is the skeleton, which needs to keep running while the
+   archive read is in flight. */
 /* Loading: name-shaped placeholders, no numbers. The strip used to show a
    hand-written seed here — see the note in components/Ticker.tsx for why that
    was two problems, not one. */
