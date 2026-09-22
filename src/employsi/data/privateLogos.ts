@@ -511,13 +511,24 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "singapore-bs6": "yzjsgd.com",
   "singapore-c07": "jcclgroup.com",
   "sydney-qbe": "qbe.com",
-  // NOT FIXED, same rule as NGP and SMRM above: neither replacement could be
-  // verified from here, so neither is recorded as fact.
-  //   singapore-f34  Wilmar International, on wilmar.com = HD Supply's logo.
-  //     wilmar-international.com answers 200 but serves 231 KB that is almost
-  //     entirely a base64 font blob — no title, no og tags, and the string
-  //     "wilmar" appears zero times in it. Plausible, unverifiable. This is the
-  //     one badge in these three cities still showing another company's mark.
+  // Confirmed by the repo owner, 2026-09-22, which is the only reason it is
+  // here: this was the one domain the usual checks could not settle either way.
+  // wilmar-international.com answers 200 but serves 231 KB that is almost
+  // entirely a single base64 font blob — no title, no og tags, no links, and
+  // the string "wilmar" nowhere in it — so it was left recorded as unverified
+  // rather than guessed at.
+  //
+  // IT CHANGES THE BADGE TO A BLANK, NOT TO WILMAR'S LOGO. The favicon service
+  // has no icon for this domain (generic globe), and the site serves an HTML
+  // 404 for favicon.ico, favicon.png, apple-touch-icon.png and favicon.svg
+  // alike, so there is nothing to fall back to and nothing to commit to
+  // public/logos/ either. It is still worth doing: wilmar.com is HD Supply, a
+  // US industrial distributor, so this trades another company's mark for an
+  // empty badge, which is the direction this whole map exists to move things.
+  // A logo file for singapore-f34 is the fix that would finish it.
+  "singapore-f34": "wilmar-international.com",
+  // NOT FIXED, same rule as NGP and SMRM above: the replacement could not be
+  // verified from here, so it is not recorded as fact.
   //   singapore-y92  Thai Beverage, on thaibeverage.com. thaibev.com and
   //     thaibev.com.sg both refuse to answer at all. Costs nothing today:
   //     thaibeverage.com already draws the blank globe, so this is a blank that
