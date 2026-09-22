@@ -589,8 +589,6 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/D560BAQFnww2tOGJ4uw/company-logo_200_200/B56ZUgHRw9HQAI-/0/1740000534155/whitehaven_coal_logo?e=2147483647&v=beta&t=rve7GNCBUZkngjH4t2gIaBc770CFn_9arREG55IQJjo",
   "sydney-wor":
     "https://media.licdn.com/dms/image/v2/D560BAQHfoyQ1BKjqmQ/company-logo_200_200/company-logo_200_200/0/1701033439470/worley_logo?e=2147483647&v=beta&t=bUCfhClAJMLFAazxfza2rgkztGWpBZRbo6jLvajIXT4",
-  "sydney-wow":
-    "https://media.licdn.com/dms/image/v2/D4E0BAQEF1LgAt5rSfw/company-logo_200_200/company-logo_200_200/0/1701241935947/woolworths_logo?e=2147483647&v=beta&t=Srmh8QMOp4OgHicX7IeR6GQ55oalQS1xNtKmON75lps",
   "tas-gov-department-of-justice":
     "https://media.licdn.com/dms/image/v2/D560BAQFsmt16QhK6fQ/company-logo_200_200/company-logo_200_200/0/1730764406801/justicetas_logo?e=2147483647&v=beta&t=OYXSQRf5AVC1DvrL92gN6pEQzlFd6mnyfLWJBMjAZQw",
   "tas-gov-department-of-police-fire-and-emergency-management":
