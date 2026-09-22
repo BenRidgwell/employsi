@@ -267,26 +267,29 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "perth-gov-parliamentary-services-department": "parliament.wa.gov.au",
   "sydney-wor": "worley.com",
   // ── every Wellington company, 2026-09-22 ─────────────────────────────────
-  // ALL 28 roster domains were wrong, not some of them. The NZ rosters have no
-  // domain field of their own, so nzCompanies.ts and nzGov.ts both build one
-  // with deriveDomain() — the company name, lowercased, punctuation dropped,
-  // plus ".com". That produces treasury.com for The Treasury, nzpolice.com for
-  // NZ Police, tepapa.com for Te Papa. New Zealand's public service lives on
-  // .govt.nz and its two listed energy companies on .co.nz, so a .com guess was
+  // 29 OF THE 31 roster domains were wrong. The NZ rosters have no domain field
+  // of their own, so nzCompanies.ts and nzGov.ts both build one with
+  // deriveDomain() — the company name, lowercased, punctuation dropped, plus
+  // ".com". That produces treasury.com for The Treasury, nzpolice.com for NZ
+  // Police, tepapa.com for Te Papa. New Zealand's public service lives on
+  // .govt.nz and its listed companies mostly on .co.nz, so a .com guess was
   // never going to land; it is a rule that cannot be right for this country.
+  // Only Xero and Infratil came out right, and by luck — see the note at the
+  // end of the block.
   //
   // What that looked like on the map, measured the same day:
-  //   * 25 of 28 drew the favicon service's generic 16px globe.
-  //   * 3 drew A PARKED DOMAIN'S LOGO — meridianenergy.com, contactenergy.com
-  //     and nzpolice.com are all registered, all parked, and all serve the
-  //     SAME favicon (sha1 c20af3aed3de, a turquoise heart-swirl). So NZ Police
-  //     was showing a stranger's brand mark. That is the Perron Group failure
-  //     again, and the reason it is worth fixing even where no logo file
-  //     exists: confidently wrong is worse than blank.
+  //   * 25 drew the favicon service's generic 16px globe.
+  //   * 4 drew ANOTHER COMPANY'S LOGO. meridianenergy.com, contactenergy.com
+  //     and nzpolice.com are all registered, all parked, and all serve the SAME
+  //     favicon (sha1 c20af3aed3de, a turquoise heart-swirl); chorus.com is a
+  //     different live company again. So NZ Police and Chorus were each showing
+  //     a stranger's brand mark. That is the Perron Group failure repeated, and
+  //     it is why this is worth doing even where no logo file exists:
+  //     confidently wrong is worse than blank.
   //
   // Verification, and it is not uniform, so it is recorded per tier rather than
   // claimed as the usual two checks for all of them:
-  //   * 16 verified the usual way — the site answers and its <title> is the
+  //   * 17 verified the usual way — the site answers and its <title> is the
   //     organisation (ACC's is unreadable from here but its favicon IS the ACC
   //     logo, which is the same fact by another route).
   //   * 12 sit behind a WAF that refuses this sandbox, so no <title> could be
@@ -294,8 +297,8 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   //     icon for each, not the generic globe, and the ones inspected are the
   //     agency's own mark (Oranga Tamariki's koru spiral) or the standard
   //     whole-of-government tile. A parked domain does not get either.
-  // Every one of the 28 returns an image from the favicon service except
-  // wgtn.ac.nz, which has a logo file instead so does not need one.
+  // Every one returns an image from the favicon service except wgtn.ac.nz,
+  // which has a logo file instead so does not need one.
   "nz-accident-compensation-corporation": "acc.co.nz",
   "nz-civil-aviation-authority-of-nz": "aviation.govt.nz",
   "nz-contact-energy": "contact.co.nz",
@@ -332,18 +335,21 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "nz-transpower-new-zealand-limited": "transpower.co.nz",
   // Te Herenga Waka. wgtn.ac.nz, not victoria.ac.nz, since the 2019 rebrand.
   "nz-victoria-university-of-wellington": "wgtn.ac.nz",
-  // Left alone deliberately, because the request that produced this block
-  // excluded them — but the three are not the same case and the difference is
-  // worth having written down:
+  // The FOURTH card that was showing a stranger's logo, added 2026-09-22 once
+  // the exclusion above no longer applied. chorus.com is not Chorus NZ — it
+  // serves a different company's mark, a white figure on a blue gradient.
+  // chorus.co.nz is, confirmed both ways: its <title> is "Chorus", and the
+  // favicon service returns a real 64px icon for it. That icon is a plain
+  // magenta-to-purple gradient disc with no mark in it, which is Chorus's own
+  // brand colour but will read as a coloured dot until a logo file exists —
+  // right company, no detail, rather than wrong company.
+  "nz-chorus": "chorus.co.nz",
+  // Left alone, and for once that is correct rather than pending:
   //   * xero.com IS Xero's, confirmed by title. deriveDomain got it right.
   //   * infratil.com answers with no readable title, and the favicon service
   //     returns a real 128px icon for it rather than the globe, so it is a live
   //     site and not parked. Consistent with being Infratil's, not proof.
-  //   * chorus.com IS NOT Chorus NZ. Chorus NZ is chorus.co.nz, confirmed by
-  //     title, and chorus.com serves a different company's mark — a white
-  //     figure on a blue gradient. So Chorus is a FOURTH card showing a
-  //     stranger's logo, alongside the three named above. When the exclusion no
-  //     longer applies: "nz-chorus": "chorus.co.nz".
+  // These two are the only Wellington entries deriveDomain did not get wrong.
   // ── the original Top-150 private set ──────────────────────────────────────
   "priv-abc-tissue": "abctissue.com.au",
   "priv-abn-group": "abngroup.com.au",
