@@ -5079,6 +5079,82 @@ export const SITES: SiteDef[] = [
     ],
     homeHub: "singapore",
   },
+  // ── The 2026-09-22 twentieth sweep — the global corporates ─────────────────
+  //
+  // The batch was the top of the gap report with the `portal!` rows skipped:
+  // that marker means a portal-* feed already files rows under the company
+  // with no SiteDef of its own, which scraper-gap.ts calls a wiring question
+  // rather than a gap. Uniting, EVT, Compass Group, BMD and Built are all in
+  // that state — 4,159 ads between them — and none of them is here.
+  //
+  // Twelve domains swept, two built. Both were already-supported platforms, so
+  // both are a SiteDef and nothing else.
+  //
+  // FOUND AND NOT BUILT, each for a named reason:
+  //   Schneider Electric (300 ads) — careers.se.com carries BOTH icims and a
+  //     taleo tenant `schneiderele`. The taleo link is a LOGIN url into
+  //     careersection 2, and that section answers "An Error Occurred in TEE"
+  //     to the faceted search REST call with the portalNo read off its own
+  //     FacetedSearchSettings (101430233) — it is the internal section, not
+  //     the public board. The public board is careers-se.icims.com, which
+  //     serves a 13 KB shell with an empty <title> and not one job link.
+  //     iCIMS still has no reader here; see the standing note on it.
+  //   SGS (329) — a COVEO index, client-rendered, and the only thing in the
+  //     served HTML is the widget. Coveo needs an org id and an API key that
+  //     the page fetches at runtime; that is a different shape from every
+  //     platform in this file and wants deciding on before it is written.
+  //   Pinterest (250) — the sweep followed fourteen "careers links" and every
+  //     one was a PINBOARD: pinterest.com/employment/weird-jobs/ and its
+  //     siblings. On a site where /<anything> is user content, a link crawler
+  //     looking for a careers page finds pinboards about jobs instead. Nothing
+  //     is wrong with the employer or the sweep; the heuristic simply cannot
+  //     work on this domain and a rendered retry will not change that.
+  //   Cloudflare (275), Salesforce (264), Tesla (256), Larsen & Toubro (267),
+  //     HDFC Bank (337), AXA (366), SGH (320) — no marker in served HTML, or
+  //     cut short on budget, or 403 to the runner as well. Re-swept with
+  //     --render separately rather than guessed at.
+  {
+    id: "london-ba",
+    name: "BAE Systems",
+    sector: "Industrial Manufacturing",
+    platform: "phenom",
+    // jobs.baesystems.com carries brassring AND phenom markers; phenom is the
+    // one serving the listing. Measured 2026-09-22: 1,617 roles in 3.9s, every
+    // one carrying a location, so hubFor places them and homeHub is only the
+    // fallback it should be.
+    //
+    // THE ARCHIVE HOLDS 239 ADS FOR THIS EMPLOYER AND THIS FEED RETURNS 1,617,
+    // which is not a contradiction and is worth saying plainly: what was held
+    // came from jobstreet and simplyhired, which index the Australian end, and
+    // the existing rows sit 133 on Adelaide (BAE Systems Australia, Osborne)
+    // against 26 on Sydney. The global board is mostly US. Expect this
+    // employer's series to step up on the day this lands — that is the feed
+    // arriving, not hiring, and foldSkillRows' feedStart is what keeps the
+    // change figure over it honest.
+    endpoint: "https://jobs.baesystems.com/global/en/search-results",
+    origin: "https://jobs.baesystems.com",
+    homeHub: "london",
+  },
+  {
+    id: "priv-herbert-smith-freehills",
+    name: "Herbert Smith Freehills",
+    sector: "Legal services",
+    platform: "phenom",
+    // THE BOARD IS NOT ON THE FIRM'S OWN DOMAIN. herbertsmithfreehills.com
+    // answers 403 to everything including a runner, and the board lives at
+    // careers.hsfkramer.com — the firm merged with Kramer Levin in 2025 and the
+    // careers site moved to the combined name. The discovery sweep flagged it
+    // OFF-SITE and asked for confirmation, which is what the roles are: the
+    // pull is 124 Herbert Smith Freehills vacancies, Paris and London and the
+    // Australian offices, measured 2026-09-22 in 2.1s.
+    //
+    // homeHub sydney is measured rather than assumed: the roster entry carries
+    // no city, and the archive files this employer 101 Sydney, 94 Melbourne,
+    // 44 Brisbane.
+    endpoint: "https://careers.hsfkramer.com/global/en/search-results",
+    origin: "https://careers.hsfkramer.com",
+    homeHub: "sydney",
+  },
 ];
 
 /**
@@ -5518,6 +5594,12 @@ export const PORTAL_GROUPS: string[][] = [
   // measured 2026-09-22 at 55s for AIA alone and 75s for the two banks.
   ["hongkong-01299"],
   ["singapore-o39", "singapore-u11"],
+  // Group 83 — the 2026-09-22 twentieth sweep. Both share one tick because the
+  // walk is cheap, which is not what the role count suggests: BAE's 1,617 come
+  // back in 3.9s and HSF's 124 in 2.1s, since phenom serves large pages rather
+  // than the 9-25 a page that forced the splits above. Grouped on the measured
+  // 6s, not on the 1,741 roles.
+  ["london-ba", "priv-herbert-smith-freehills"],
 ];
 
 const UA =
