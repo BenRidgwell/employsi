@@ -24,6 +24,8 @@ on:
       - 'scripts/*-to-d1.py'
       - 'scripts/test_jobs_extract.py'
       - 'scripts/test_brightdata_download.py'
+      - 'scripts/test_nsw_discovery.py'
+      - 'scripts/nsw-gov-to-d1.py'
       - 'scripts/brightdata-to-d1.py'
       - 'scripts/test_rosters.py'
       - 'scripts/company_alias.py'
@@ -84,6 +86,15 @@ jobs:
       # that way, recovered by hand the next day.
       - name: Bright Data download retries an unserved snapshot
         run: python scripts/test_brightdata_download.py
+
+      # NSW discovery has two failure modes needing opposite responses — a
+      # Cloudflare block (retry with a fresh session) and the credentials moving
+      # in the bundle (stop, no retry helps). Conflating them cost the feed two
+      # days on 2026-09-21: one blocked chunk fetch exited from inside the retry
+      # loop and reported the site as rebuilt. Neither outcome is visible in the
+      # rows, so the only thing distinguishing them is a message.
+      - name: NSW discovery tells a block apart from a contract change
+        run: python scripts/test_nsw_discovery.py
 
       # A company-scoped board search returns the employer we asked for, a
       # different employer with a similar name, and rows with no employer at

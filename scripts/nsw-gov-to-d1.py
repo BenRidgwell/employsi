@@ -365,15 +365,45 @@ def _discover_via_browser():
     for attempt in range(1, DISCOVERY_ATTEMPTS + 1):
         got = _discover_once()
         if got:
+            if attempt > 1:
+                sys.stderr.write(f'  cleared on attempt {attempt}\n')
             return got
         if attempt < DISCOVERY_ATTEMPTS:
             sys.stderr.write(f'  discovery attempt {attempt} did not clear the '
                              f'challenge — retrying with a fresh session\n')
             time.sleep(5 * attempt)
-    sys.exit(f'Could not clear {SEARCH_PAGE} in {DISCOVERY_ATTEMPTS} attempts.')
+    sys.exit(
+        f'Could not clear {SEARCH_PAGE} in {DISCOVERY_ATTEMPTS} attempts.\n'
+        f'  Every attempt was blocked or served a partial render; the lines above\n'
+        f'  say which. This is Cloudflare refusing the runner, not a change to the\n'
+        f'  site — the feed usually recovers on the next scheduled run, and\n'
+        f'  `--oxylabs` puts the residential proxy back for the one page fetch if\n'
+        f'  it does not.')
+
+
+# A HEALTHY JOBS PAGE CARRIES ~40 CHUNK REFERENCES. Measured 2026-08-08 from
+# hosted runners: 40 and 42, twice. A page that renders under a partly-applied
+# challenge is still big enough to pass the 60KB test below but carries only a
+# fraction of them, and the credential chunk is usually not among that fraction.
+# Measured 2026-09-21, the run that broke this feed: 10 chunks, one of which
+# answered 403 with Cloudflare's interstitial.
+#
+# 20 is a floor sized off those two measurements and nothing more. It has to sit
+# well under 40 so a normal rebuild that trims the bundle does not trip it, and
+# well over 10 so a degraded render does. If the site legitimately ships fewer
+# than 20 chunks one day, this turns a clean "contract change" message into four
+# pointless retries and a vaguer one — annoying, not wrong, and the log prints
+# the count either way.
+HEALTHY_CHUNKS = 20
 
 
 def _discover_once():
+    """Credentials, or None when the attempt is worth repeating.
+
+    RETURNING None MEANS "TRY AGAIN WITH A FRESH SESSION"; sys.exit means the
+    site changed and no number of retries will help. Getting that distinction
+    wrong is what cost this feed two days — see the block comment below.
+    """
     with browser_fetch.Session(locale='en-AU') as ses:
         page = ses.html(SEARCH_PAGE, SETTLE)
         if not page:
@@ -389,18 +419,46 @@ def _discover_once():
             jx.diagnose(page, 'jobs-page')
             sys.exit('No /_next/ chunks on a full-sized jobs page — the site was '
                      'rebuilt on a different stack.')
+        if len(chunks) < HEALTHY_CHUNKS:
+            sys.stderr.write(
+                f'  only {len(chunks)} chunk references on a {len(page)}B page '
+                f'(a cleared render carries ~40) — treating this as a partial '
+                f'render and retrying\n')
+            return None
         sys.stderr.write(f'  scanning {len(chunks)} JS chunks for the API credentials…\n')
+        read = blocked = 0
         for src in chunks:
             js = ses.text(SITE + src)
             if not js:
+                # ses.text() returns None for any non-2xx and prints the status,
+                # so this is where a 403 interstitial on a chunk lands.
+                blocked += 1
                 continue
+            read += 1
             base, tok = API_BASE_RE.search(js), JWT_RE.search(js)
             if base and tok:
                 sys.stderr.write(f'    found in {src.rsplit("/", 1)[-1]} -> {base.group(1)}\n')
                 return base.group(1), tok.group(1)
-    # Chunks were readable but carried no credentials: a real contract change,
-    # not a block, so retrying is pointless.
-    sys.exit(f'Could not find the search API credentials in any of {len(chunks)} chunks.')
+
+    # A BLOCKED CHUNK FETCH IS NOT A CONTRACT CHANGE, and this line used to treat
+    # every empty-handed scan as one. It exited the process from inside the
+    # retry loop, so the four fresh-session attempts above could never happen —
+    # the first partly-challenged render killed the whole night's archive and
+    # reported the site as rebuilt. Measured 2026-09-21: nsw-gov silent two days
+    # on exactly this, while every other gov feed stayed current.
+    #
+    # The session is a property of the context, so a blocked fetch is precisely
+    # the case a fresh session might fix. Only a scan where every chunk was
+    # READABLE and none held the credentials says anything about the site.
+    if blocked:
+        sys.stderr.write(
+            f'  {blocked} of {len(chunks)} chunk fetches were blocked '
+            f'({read} read) — that is the challenge, not a contract change\n')
+        return None
+    sys.exit(f'Could not find the search API credentials in any of {len(chunks)} '
+             f'chunks, all {read} of which were READ successfully. The credentials '
+             f'have moved or gone: check what the bundle now carries before '
+             f'changing the patterns.')
 
 
 def discover_api():
@@ -415,15 +473,29 @@ def discover_api():
         jx.diagnose(html, 'jobs-page')
         sys.exit('No /_next/ chunks on the jobs page — the site was rebuilt on a different stack.')
     sys.stderr.write(f'  scanning {len(chunks)} JS chunks for the API credentials…\n')
+    read = blocked = 0
     for src in chunks:
         js, _ = oxy.fetch(SITE + src, geo='Australia', render=False)
         if not js:
+            blocked += 1
             continue
+        read += 1
         base, tok = API_BASE_RE.search(js), JWT_RE.search(js)
         if base and tok:
             sys.stderr.write(f'    found in {src.rsplit("/", 1)[-1]} -> {base.group(1)}\n')
             return base.group(1), tok.group(1)
-    sys.exit(f'Could not find the search API credentials in any of {len(chunks)} chunks.')
+    # Same distinction the browser path draws, and for the same reason: a fetch
+    # that never returned says nothing about what the bundle contains. This path
+    # is single-shot, so it still exits either way — but it must exit saying
+    # which happened, or the next reader goes looking for a contract change that
+    # is really a proxy failure.
+    if blocked:
+        sys.exit(f'{blocked} of {len(chunks)} chunk fetches through Oxylabs returned '
+                 f'nothing ({read} read). That is the proxy or the block, not a '
+                 f'contract change — check the Oxylabs account before the patterns.')
+    sys.exit(f'Could not find the search API credentials in any of {len(chunks)} '
+             f'chunks, all {read} of which were READ successfully. The credentials '
+             f'have moved or gone.')
 
 
 def search_page(base, bearer, page, size):
