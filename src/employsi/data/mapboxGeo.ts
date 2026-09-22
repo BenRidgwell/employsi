@@ -99,7 +99,12 @@ export const CITY_VIEWS: Record<string, CityView> = {
   johannesburg: { center: [28.0473, -26.2041], zoom: 16.3, pitch: 60, bearing: -15 },
   london: { center: [-0.1276, 51.5072], zoom: 16.4, pitch: 60, bearing: -20 },
   paris: { center: [2.3522, 48.8566], zoom: 16.3, pitch: 60, bearing: -18 },
-  newyork: { center: [-74.006, 40.7128], zoom: 16.4, pitch: 60, bearing: -20 },
+  // Same fault as Hong Kong below, smaller: the placement anchor is
+  // [-73.9945, 40.7205] (the Financial District, moved to keep pins out of the
+  // Hudson and the East River) but the camera stayed on City Hall, 1.87 km from
+  // the median pin with the cluster spanning 1.28 km. Median pin, and 16.2
+  // rather than 16.4 to hold that span.
+  newyork: { center: [-73.9949, 40.72738], zoom: 15.8, pitch: 60, bearing: -20 },
   sanfrancisco: { center: [-122.4194, 37.7749], zoom: 16.4, pitch: 60, bearing: -18 },
   // Silicon Valley is not a CBD — its head offices run ~30 km from Palo Alto in
   // the north-west down to Los Gatos in the south, so a street-level frame over
@@ -111,9 +116,27 @@ export const CITY_VIEWS: Record<string, CityView> = {
   tokyo: { center: [139.6917, 35.6895], zoom: 16.4, pitch: 60, bearing: -14 },
   seoul: { center: [126.978, 37.5665], zoom: 16.4, pitch: 60, bearing: -16 },
   beijing: { center: [116.4074, 39.9042], zoom: 16.2, pitch: 60, bearing: -14 },
-  zurich: { center: [8.5417, 47.3769], zoom: 16.3, pitch: 60, bearing: -16 },
+  // rosters.ts moved Zurich's anchor to Enge/Bleicherweg to get 5 pins out of
+  // the Limmat, and recorded the measurement — but only the ANCHOR moved. The
+  // camera stayed on the Bahnhofbrücke, 1.60 km north of the median pin, so the
+  // fix that took the pins out of the river also took them off the screen.
+  zurich: { center: [8.53417, 47.36343], zoom: 16.0, pitch: 60, bearing: -16 },
   dubai: { center: [55.2708, 25.2048], zoom: 16.3, pitch: 60, bearing: -12 },
-  hongkong: { center: [114.1694, 22.3193], zoom: 16.4, pitch: 60, bearing: -16 },
+  // THE CAMERA MUST SIT WHERE CITY_PLACEMENT PUTS THE PINS, and for Hong Kong
+  // it did not. The pins fan around rosters.ts's anchor in Central,
+  // [114.1585, 22.282], capped at 700 m so the fan never reaches the
+  // waterfront — all 39 sit inside 0.66 x 1.13 km, 90% of them within 491 m of
+  // [114.15484, 22.28222]. The camera opened on [114.1694, 22.3193], which is
+  // Tsim Sha Tsui, 4.39 km away ACROSS VICTORIA HARBOUR, and at zoom 16.4 the
+  // viewport is under a kilometre — so the local layer opened on Kowloon with
+  // every company off-screen.
+  //
+  // Centre is the MEDIAN pin rather than the mean or the bbox centre: a handful
+  // of companies carry their head-office coordinates onto a city roster they
+  // are not headquartered in, and a mean is dragged kilometres by one of them.
+  // Zoom drops 16.4 -> 16.1 because the cluster spans 1.13 km north-south,
+  // wider than the ~0.5 km CBD the other 16.4s were chosen for.
+  hongkong: { center: [114.15484, 22.28222], zoom: 16.1, pitch: 60, bearing: -16 },
   // Nariman Point / Bandra-Kurla side of the Mumbai CBD.
   mumbai: { center: [72.8347, 18.9256], zoom: 16.2, pitch: 60, bearing: -15 },
   // MG Road / Cubbon Park, central Bengaluru.

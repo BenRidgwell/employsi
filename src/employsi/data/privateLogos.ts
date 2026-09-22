@@ -653,6 +653,31 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   // corporate.jd.com alike. jd.com IS JD.com's domain, so this is far more
   // likely to be what this sandbox's egress is served than a roster error.
   // Changing it on that evidence would be the wrong call.
+  // ── Hong Kong, the per-company pass, 2026-09-22 ──────────────────────────
+  // Most of Hong Kong's 36 were already on the right domain — alibaba.com,
+  // tencent.com, lenovo.com, xiaomi.com, mtr.com.hk, shkp.com, ckh.com.hk,
+  // bochk.com, hangseng.com and the rest are what these companies actually
+  // use, because a .com built from a short trading name usually IS the Hong
+  // Kong listing's domain. Four were not, and each replacement is confirmed by
+  // the page titling itself as the company:
+  //
+  //   hendersonlanddevelopment.com -> "Company Website | Henderson Land Group"
+  //   hanglungproperties.com       -> "Hang Lung Properties Limited"
+  //   geelyautomobile.com          -> "Geely Automobile Holdings Limited"
+  //   antasportsproducts.com       -> anta.com, whose favicon IS the ANTA
+  //                                   wordmark and swoosh, opened and checked
+  //                                   (the site itself serves no title)
+  "hongkong-00012": "hld.com",
+  "hongkong-00101": "hanglung.com",
+  "hongkong-00175": "geelyauto.com.hk",
+  "hongkong-02020": "anta.com",
+  // NOT CHANGED: China Overseas Land & Investment. coli.com.hk is the obvious
+  // candidate and the favicon service does return a real icon for it, but the
+  // site will not answer this sandbox at all, and the icon — a red square with
+  // a single glyph — names no company. That is weaker evidence than the tier
+  // used for the WAF-blocked Canberra agencies, where the icons were each
+  // recognisably the agency's own mark. Left on its guessed domain rather than
+  // recorded on a hunch.
   // ── the original Top-150 private set ──────────────────────────────────────
   "priv-abc-tissue": "abctissue.com.au",
   "priv-abn-group": "abngroup.com.au",
