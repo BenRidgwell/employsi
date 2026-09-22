@@ -46,8 +46,6 @@ export const CITY_COUNTRY: Record<string, string> = {
   hongkong: "hk",
   singapore: "sg",
   kualalumpur: "my",
-  penang: "my",
-  johorbahru: "my",
   manila: "ph",
   mumbai: "in",
   bengaluru: "in",

@@ -302,26 +302,27 @@ export const CITY_PLACEMENT: Record<string, CityPlacement> = {
   // Makati CBD. Manila Bay lies to the WEST, so the fan is kept off that
   // bearing and held close in — these are a handful of pins, not a roster.
   manila: { anchor: [121.0244, 14.5547], arc: [340, 200], maxKm: 3 },
-  // The first two arcs here were solved by scripts/measure-city-arc.py rather
-  // than by hand, which is also the first time the method described at the top
-  // of this block existed as code. Both are Malaysian waterfront cities and
-  // neither survives a full-circle fan.
+  // PENANG AND JOHOR BAHRU ARE NOT HUBS RIGHT NOW, and their measurements are
+  // kept here rather than deleted because re-adding them should not mean
+  // re-measuring them. Both were registered on 2026-09-22 and taken off the map
+  // the same day after the globe was looked at; the needles in careerSites.ts
+  // are deliberately still live, so their rows keep resolving and the cities can
+  // come back without a backfill.
   //
-  // George Town sits on the north-east shoulder of Penang Island, so the fan
-  // has to clear the north shore and the eastern channel. Measured: dry to
+  // Solved by scripts/measure-city-arc.py against real OSM water geometry:
+  //
+  //   penang:     { anchor: [100.3287, 5.4142], arc: [209, 112], maxKm: 1.0 }
+  //   johorbahru: { anchor: [103.762, 1.4645], arc: [172, 156], maxKm: 0.6 }
+  //
+  // George Town sits on the north-east shoulder of Penang Island: dry to
   // 1,000 m across a 263-degree wedge, 38,252 m2 per pin at a 60-company fan,
-  // and the excluded sector is the south-east, where the coast wraps back
-  // toward Jelutong.
-  penang: { anchor: [100.3287, 5.4142], arc: [209, 112], maxKm: 1.0 },
-  // Johor Bahru cost an anchor. OSM's own place=city node for it, at
-  // [103.7649, 1.4582], IS IN THE JOHOR STRAIT — the solver refused it, which
-  // is the whole reason it tests the anchor before the bearings. Jalan Wong Ah
-  // Fook, the city-centre spine ~700 m inland, opens the best wedge of the
-  // three candidates tried: 1,347,583 m2 against JB Sentral's 398,103 and City
-  // Square's 430,084, which is 22,460 m2 per pin at a 60-company fan, wider
-  // than Sydney's 7,579 or Perth's 10,246. The 16-degree exclusion points at
-  // the strait and maxKm holds the fan 70 m inside the measured dry limit.
-  johorbahru: { anchor: [103.762, 1.4645], arc: [172, 156], maxKm: 0.6 },
+  // the excluded sector being the south-east where the coast wraps back toward
+  // Jelutong. Johor Bahru cost an anchor — OSM's own place=city node for it, at
+  // [103.7649, 1.4582], IS IN THE JOHOR STRAIT, and the solver refused it.
+  // Jalan Wong Ah Fook, ~700 m inland, opened the best wedge of three
+  // candidates tried: 1,347,583 m2 against JB Sentral's 398,103 and City
+  // Square's 430,084, which is 22,460 m2 per pin, wider than Sydney's 7,579 or
+  // Perth's 10,246. Both validated at 0 of 60 pins in water.
   shanghai: { anchor: [121.475, 31.231] }, // People's Sq (inland Puxi); off the Huangpu
 };
 

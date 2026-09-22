@@ -137,23 +137,6 @@ export const CITY_MARKET: Record<string, CityMarket> = {
     where: "Manila",
     region: /philippines|manila|makati|taguig|bgc/i,
   },
-  // Penang is a STATE and the archive writes it that way — 215 rows say plain
-  // "Penang" against 23 naming George Town. The hub covers the conurbation,
-  // island and mainland: George Town, Bayan Lepas, Batu Kawan, Butterworth and
-  // Bukit Mertajam are all inside 25 km of the anchor and share one bridge.
-  penang: {
-    country: "my",
-    where: "Penang",
-    region: /penang|pulau pinang|george town|bayan lepas|butterworth/i,
-  },
-  // Johor Bahru is the CITY, not the state. Johor state reaches Muar, 150 km
-  // up the coast, which is no more a Johor Bahru vacancy than Penang is a
-  // Kuala Lumpur one.
-  johorbahru: {
-    country: "my",
-    where: "Johor Bahru",
-    region: /johor bahru|iskandar puteri|pasir gudang|gelang patah|senai/i,
-  },
   mumbai: { country: "in", where: "Mumbai", region: /india|mumbai|bombay|maharashtra/i },
   bengaluru: {
     country: "in",

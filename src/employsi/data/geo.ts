@@ -57,8 +57,6 @@ export const GLOBAL_HUB_LABEL: Record<string, string> = {
   houston: "Houston",
   singapore: "Singapore",
   kualalumpur: "Kuala Lumpur",
-  penang: "Penang",
-  johorbahru: "Johor Bahru",
   manila: "Manila",
   denver: "Denver",
   ganzhou: "Ganzhou",
@@ -122,8 +120,6 @@ export const CITY_CONTINENT: Record<string, string> = {
   wellington: "australia",
   singapore: "asia",
   kualalumpur: "asia",
-  penang: "asia",
-  johorbahru: "asia",
   manila: "asia",
   // India is its own domestic layer rather than part of the Asia one. Asia's
   // frame has to span Dubai to Tokyo, at which zoom Mumbai and Bengaluru are
