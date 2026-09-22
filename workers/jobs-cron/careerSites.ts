@@ -4912,12 +4912,17 @@ export const SITES: SiteDef[] = [
   //     hostname is not printed anywhere on its site; guessing one is how
   //     Kennards Hire's board nearly got filed under Kennards Self Storage.
   //
-  //   ARA (116 ads) — INCONCLUSIVE, and deliberately not recorded as a miss.
-  //     Its three reachable pages carry no marker in served HTML and all three
-  //     renders returned nothing, so nothing was read after hydration. The
-  //     report says INCONCLUSIVE rather than "no board", which is the whole
-  //     point of that distinction: a render that could not run is a fact about
-  //     the browser, not about the employer.
+  //   ARA (116 ads) — INCONCLUSIVE, and the reason is OURS rather than ARA's.
+  //     Its three reachable pages carry no marker in served HTML, and every
+  //     render returned nothing — because the sweep's own render ceiling was
+  //     running each render on a fresh daemon thread, which Playwright's
+  //     greenlet-based sync API cannot survive. The job log says it plainly:
+  //     "cannot switch to a different thread (which happens to have exited)".
+  //     Fixed since; ARA needs re-sweeping before anything is concluded.
+  //
+  //     The report saying INCONCLUSIVE rather than "no board" is the only
+  //     reason this did not become a false negative on three employers. That
+  //     distinction earned its keep here.
   //
   //   Talent International (110 ads) — every path answers 403, including the
   //     root, and every render of those pages returned nothing too. Nothing was
