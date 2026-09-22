@@ -68,11 +68,13 @@ function parseJob(j: JsonRecord, employerName: string): SeekJob | null {
   const title = stripHtml(String(j?.title || ""));
   if (!title) return null;
   const id = String(j?.id || "");
-  const cls = (Array.isArray(j?.classifications) && j.classifications[0]) || {};
-  const cat = stripHtml(String(cls?.classification?.description || ""));
-  const locs = (Array.isArray(j?.locations) && j.locations[0]) || {};
-  const loc = stripHtml(String(locs?.label || ""));
-  const co = stripHtml(String(j?.companyName || j?.advertiser?.description || employerName));
+  const cls = asRecords(j.classifications)[0] ?? {};
+  const cat = stripHtml(str(asRecord(cls.classification).description));
+  const locs = asRecords(j.locations)[0] ?? {};
+  const loc = stripHtml(str(locs.label));
+  const co = stripHtml(
+    str(j.companyName) || str(asRecord(j.advertiser).description) || employerName,
+  );
   return {
     t: title,
     loc,
@@ -109,7 +111,7 @@ async function fetchPage(
     });
     if (!res.ok) return null; // 403/429 = Cloudflare challenge → SEEK stays dark this run
     const j = await res.json();
-    return { jobs: Array.isArray(j?.data) ? j.data : [], total: Number(j?.totalCount) || 0 };
+    return { jobs: asRecords(asRecord(j).data), total: Number(asRecord(j).totalCount) || 0 };
   } catch {
     return null;
   } finally {

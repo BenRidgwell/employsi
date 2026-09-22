@@ -249,9 +249,9 @@ async function pullCompany(
         const j = await res.json();
         const results = asRecords(asRecord(j).results);
         for (const x of results) {
-          const title = stripHtml(x?.title || "");
+          const title = stripHtml(str(x.title));
           if (!title) continue;
-          const loc = x?.location?.display_name || "";
+          const loc = str(asRecord(x.location).display_name);
           const dedupe = (title + "|" + loc).toLowerCase();
           if (seen.has(dedupe)) continue; // Adzuna reposts the same role repeatedly
           seen.add(dedupe);
@@ -260,19 +260,20 @@ async function pullCompany(
           // display name is the only evidence of who actually placed the ad. An
           // unverifiable one is skipped rather than filed under this company —
           // see ./advertiser.ts for why this rejects rather than allowlists.
-          const advertiser = x?.company?.display_name || "";
+          const advertiser = str(asRecord(x.company).display_name);
           const verdict = checkAdvertiser(advertiser, target, AU_JOBS_TARGETS, phrase);
           if (!verdict.keep) {
             console.log(`adzuna ${target.id}: dropped — ${verdict.reason}`);
             continue;
           }
-          const area = Array.isArray(x?.location?.area) ? x.location.area.join(" ") : "";
+          const areaRaw = asRecord(x.location).area;
+          const area = Array.isArray(areaRaw) ? areaRaw.join(" ") : "";
           jobs.push({
             t: title,
             loc,
-            cat: x?.category?.label || "",
-            url: x?.redirect_url || "",
-            created: (x?.created || "").slice(0, 10),
+            cat: str(asRecord(x.category).label),
+            url: str(x.redirect_url),
+            created: str(x.created).slice(0, 10),
             city: matchCity(loc + " " + area) || matchCity(title),
             skills: skillsForText(title),
             src: "adzuna",
@@ -289,7 +290,7 @@ async function pullCompany(
         // of them is vanishingly rare. It would not be safe for phrases that
         // are variants of one name, which is why companyQueries.ts says to list
         // operating businesses rather than spellings.
-        count += Number(j?.count) || 0;
+        count += Number(asRecord(j).count) || 0;
       }
     } catch {
       /* Adzuna failed for this phrase — keep whatever the others returned */
@@ -364,7 +365,7 @@ async function pullMuse(env: Env, company: string): Promise<StoredJob[]> {
       const results = asRecords(asRecord(j).results);
       if (!results.length) break;
       for (const r of results) {
-        const title = stripHtml(r?.name || "");
+        const title = stripHtml(str(r.name));
         if (!title) continue;
         const locs: string[] = Array.isArray(r?.locations)
           ? asRecords(r.locations).map((l) => str(l.name))
@@ -376,16 +377,16 @@ async function pullMuse(env: Env, company: string): Promise<StoredJob[]> {
         out.push({
           t: title,
           loc: auLoc,
-          cat: (Array.isArray(r?.categories) && r.categories[0]?.name) || "",
-          url: (r?.refs && r.refs.landing_page) || "",
-          created: String(r?.publication_date || "").slice(0, 10),
+          cat: str(asRecords(r.categories)[0]?.name),
+          url: str(asRecord(r.refs).landing_page),
+          created: str(r.publication_date).slice(0, 10),
           city: matchCity(auLoc) || matchCity(title),
           skills: skillsForText(title),
           src: "muse",
-          co: (r?.company && r.company.name) || company,
+          co: str(asRecord(r.company).name) || company,
         });
       }
-      if (page + 1 >= Number(j?.page_count || 0)) break;
+      if (page + 1 >= Number(asRecord(j).page_count || 0)) break;
     } catch {
       break;
     } finally {
@@ -442,22 +443,22 @@ async function pullHub(env: Env, target: HubTarget): Promise<StoredJob[]> {
     const seen = new Set<string>();
     const jobs: StoredJob[] = [];
     for (const x of results) {
-      const title = stripHtml(x?.title || "");
+      const title = stripHtml(str(x.title));
       if (!title) continue;
-      const loc = x?.location?.display_name || "";
+      const loc = str(asRecord(x.location).display_name);
       const dedupe = (title + "|" + loc).toLowerCase();
       if (seen.has(dedupe)) continue;
       seen.add(dedupe);
       jobs.push({
         t: title,
         loc,
-        cat: x?.category?.label || "",
-        url: x?.redirect_url || "",
-        created: (x?.created || "").slice(0, 10),
+        cat: str(asRecord(x.category).label),
+        url: str(x.redirect_url),
+        created: str(x.created).slice(0, 10),
         city: target.hub,
         skills: skillsForText(title),
         src: "adzuna",
-        co: x?.company?.display_name || "",
+        co: str(asRecord(x.company).display_name),
         sal: adzunaSalary(x),
         salN: adzunaSalaryNum(x),
       });
@@ -501,23 +502,23 @@ async function pullJoobleHub(env: Env, target: JoobleHubTarget): Promise<StoredJ
     const seen = new Set<string>();
     const jobs: StoredJob[] = [];
     for (const x of results) {
-      const title = stripHtml(x?.title || "");
+      const title = stripHtml(str(x.title));
       if (!title) continue;
-      const loc = stripHtml(x?.location || "");
+      const loc = stripHtml(str(x.location));
       const dedupe = (title + "|" + loc).toLowerCase();
       if (seen.has(dedupe)) continue;
       seen.add(dedupe);
       jobs.push({
         t: title,
         loc,
-        cat: stripHtml(x?.type || ""), // Jooble's `type` (e.g. Full-time) — no category taxonomy
-        url: x?.link || "",
-        created: (x?.updated || "").slice(0, 10),
+        cat: stripHtml(str(x.type)), // Jooble's `type` (e.g. Full-time) — no category taxonomy
+        url: str(x.link),
+        created: str(x.updated).slice(0, 10),
         city: target.hub,
         skills: skillsForText(title),
         src: "jooble",
-        co: stripHtml(x?.company || ""),
-        sal: stripHtml(x?.salary || "") || undefined,
+        co: stripHtml(str(x.company)),
+        sal: stripHtml(str(x.salary)) || undefined,
       });
     }
     return jobs;
@@ -567,7 +568,13 @@ async function recomputeIndex(env: Env): Promise<SkillIndex> {
     } catch {
       continue;
     }
-    const jobs: StoredJob[] = Array.isArray(data?.jobs) ? data.jobs : [];
+    // Our OWN stored shape, read back from KV — pullCompany wrote it — so this
+    // cast asserts something this file controls, not a third party's schema.
+    // The Array.isArray guard is what makes it safe at runtime.
+    const storedJobs = asRecord(data).jobs;
+    const jobs: StoredJob[] = Array.isArray(storedJobs)
+      ? (storedJobs as unknown as StoredJob[])
+      : [];
     const meta = byId[t.id];
     for (const job of jobs) {
       totalJobs++;
@@ -602,7 +609,13 @@ async function recomputeIndex(env: Env): Promise<SkillIndex> {
     } catch {
       continue;
     }
-    const jobs: StoredJob[] = Array.isArray(data?.jobs) ? data.jobs : [];
+    // Our OWN stored shape, read back from KV — pullCompany wrote it — so this
+    // cast asserts something this file controls, not a third party's schema.
+    // The Array.isArray guard is what makes it safe at runtime.
+    const storedJobs = asRecord(data).jobs;
+    const jobs: StoredJob[] = Array.isArray(storedJobs)
+      ? (storedJobs as unknown as StoredJob[])
+      : [];
     for (const job of jobs) {
       totalJobs++;
       for (const sk of job.skills || []) {
@@ -723,7 +736,7 @@ function waJobToArchive(j: StoredWaJob, agencyId: string): ArchiveRow {
     category: j.cat,
     salary: j.salN ? `$${Math.round(j.salN / 1000)}k` : null,
     url: j.url,
-    posted: j.created || null,
+    posted: j.created || undefined,
     skills: j.skills,
   };
 }
@@ -851,7 +864,7 @@ function govJobToArchive(
     category: j.cat,
     salary: j.salN ? `$${Math.round(j.salN / 1000)}k` : null,
     url: j.url,
-    posted: j.created || null,
+    posted: j.created || undefined,
     skills,
   };
 }
@@ -1529,13 +1542,18 @@ export default {
       }
       try {
         const limit = Math.min(2000, Math.max(50, Number(url.searchParams.get("scan")) || 1000));
+        if (!env.JOBS_ARCHIVE) {
+          return Response.json({ ok: false, error: "no JOBS_ARCHIVE binding" }, { status: 503 });
+        }
         const res = await env.JOBS_ARCHIVE.prepare(
           `SELECT title, source FROM jobs
              WHERE skills IS NULL AND last_seen >= date('now', '-45 days')
              ORDER BY last_seen DESC LIMIT ?1`,
         )
           .bind(limit)
-          .all();
+          // Ask D1 for the row shape rather than casting its generic result:
+          // the SELECT names exactly these two columns.
+          .all<{ title: string; source: string }>();
         const rows: Array<{ title: string; source: string }> = res?.results ?? [];
         const heads: Record<string, { n: number; sources: Record<string, number> }> = {};
         for (const r of rows) {

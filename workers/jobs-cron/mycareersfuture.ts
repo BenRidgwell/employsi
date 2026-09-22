@@ -50,7 +50,7 @@ function annualSalary(sal: JsonRecord): number | undefined {
   if (!vals.length) return undefined;
   const monthly = vals.reduce((a, b) => a + b, 0) / vals.length;
   // Board salaries are monthly unless stated Annual/Hourly; treat monthly as ×12.
-  const type = String(sal?.type?.salaryType || "Monthly").toLowerCase();
+  const type = (str(asRecord(sal.type).salaryType) || "Monthly").toLowerCase();
   const factor = type.includes("annual") ? 1 : type.includes("hour") ? 2080 : 12;
   return Math.round(monthly * factor);
 }
@@ -59,9 +59,7 @@ function salaryText(sal: JsonRecord): string | undefined {
   const lo = Number(sal?.minimum);
   const hi = Number(sal?.maximum);
   if (!Number.isFinite(lo) || lo <= 0) return undefined;
-  const per = String(sal?.type?.salaryType || "Monthly")
-    .toLowerCase()
-    .includes("annual")
+  const per = (str(asRecord(sal.type).salaryType) || "Monthly").toLowerCase().includes("annual")
     ? "/yr"
     : "/mo";
   const fmt = (n: number) => "S$" + Math.round(n).toLocaleString("en-US");
@@ -70,10 +68,10 @@ function salaryText(sal: JsonRecord): string | undefined {
 
 function locationOf(address: JsonRecord): string {
   if (!address) return "Singapore";
-  const d = Array.isArray(address.districts) && address.districts[0];
+  const d = asRecords(address.districts)[0];
   if (address.building) return stripHtml(String(address.building));
-  if (d && d.location) return stripHtml(String(d.location));
-  if (d && d.region) return `${d.region}, Singapore`;
+  if (d && d.location) return stripHtml(str(d.location));
+  if (d && d.region) return `${str(d.region)}, Singapore`;
   return "Singapore";
 }
 
@@ -93,7 +91,7 @@ async function fetchPage(page: number, perPage: number): Promise<JsonRecord[] | 
     });
     if (!res.ok) return null;
     const j = await res.json();
-    return Array.isArray(j?.results) ? j.results : [];
+    return asRecords(asRecord(j).results);
   } catch {
     return null;
   } finally {
@@ -116,28 +114,28 @@ export async function fetchMcfJobs(today: string, pages = 3, perPage = 100): Pro
       const uuid = String(r?.uuid || "");
       if (uuid && seen.has(uuid)) continue;
       if (uuid) seen.add(uuid);
-      const meta = r?.metadata || {};
+      const meta = asRecord(r.metadata);
       const co = meta.isHideHiringEmployerName
-        ? stripHtml(String(r?.postedCompany?.name || ""))
-        : stripHtml(String(r?.hiringCompany?.name || r?.postedCompany?.name || ""));
+        ? stripHtml(str(asRecord(r.postedCompany).name))
+        : stripHtml(str(asRecord(r.hiringCompany).name) || str(asRecord(r.postedCompany).name));
       const skillNames = Array.isArray(r?.skills)
         ? asRecords(r.skills)
             .map((s) => str(s.skill))
             .join(" ")
         : "";
-      const cat = (Array.isArray(r?.categories) && r.categories[0]?.category) || "";
+      const cat = str(asRecords(r.categories)[0]?.category);
       jobs.push({
         t: title,
-        loc: locationOf(r?.address),
-        cat: stripHtml(String(cat)),
-        url: String(meta.jobDetailsUrl || ""),
-        created: String(meta.newPostingDate || "").slice(0, 10),
+        loc: locationOf(asRecord(r.address)),
+        cat: stripHtml(cat),
+        url: str(meta.jobDetailsUrl),
+        created: str(meta.newPostingDate).slice(0, 10),
         city: "singapore",
         skills: skillsForText(`${title} ${skillNames}`),
         src: "mycareersfuture",
         co,
-        sal: salaryText(r?.salary),
-        salN: annualSalary(r?.salary),
+        sal: salaryText(asRecord(r.salary)),
+        salN: annualSalary(asRecord(r.salary)),
       });
     }
   }
