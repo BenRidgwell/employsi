@@ -23,8 +23,6 @@ export const CITY_CODE: Record<string, string> = {
   // Asia / Middle East
   singapore: "SIN",
   kualalumpur: "KUL",
-  penang: "PEN",
-  johorbahru: "JHB",
   manila: "MNL",
   tokyo: "TYO",
   hongkong: "HKG",
