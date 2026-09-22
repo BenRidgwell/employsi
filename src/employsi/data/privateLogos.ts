@@ -538,6 +538,86 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   // keppel.com, comfortdelgro.com, gentingsingapore.com, seatrium.com and
   // singaporeairlines.com (which redirects to singaporeair.com and serves its
   // favicon, so it already draws the right mark).
+  // ── Canberra: the 24 Commonwealth agencies, 2026-09-22 ───────────────────
+  // DOMAINS, NOT A CREST, AND THAT IS A CHANGE OF PLAN. Queensland, Victoria
+  // and NSW got a shared crest because their agencies genuinely present one
+  // identity. The Commonwealth does not: only the DEPARTMENTS use the Coat of
+  // Arms lockup, while ABS, the ACCC, the NDIA, Fair Work, Austrade and the War
+  // Memorial each have a distinct mark of their own. A blanket crest would have
+  // been right for about half of them and wrong for the rest.
+  //
+  // Fixing the domain gets both for free, because each agency's own favicon IS
+  // the right answer for that agency — measured: all 24 resolve, 22 return a
+  // real icon, and every one of the 22 has a DIFFERENT hash, which is the proof
+  // that these are not all one crest. Opened and checked: the Coat of Arms for
+  // the departments, ABS's wordmark, the NDIS 'n', the ACCC triangle, the Fair
+  // Work Ombudsman lockup, the War Memorial's dome, Austrade's arms.
+  // asio.gov.au and fwc.gov.au are correct but have no favicon indexed, so
+  // those two go blank rather than right — the usual trade.
+  //
+  // AND deriveDomain() COLLIDES ACROSS GOVERNMENTS, which is how a Commonwealth
+  // department came to be pointed at a state one. It keys on the agency NAME,
+  // not the roster id, so every government that has a "Department of Education"
+  // resolves to the same domain — education.wa.gov.au, in that case, for the
+  // Commonwealth, Victorian, NSW and WA departments alike. Measured: 12 agency
+  // names are shared across governments, covering 30 roster companies, each set
+  // collapsed onto one domain. Most are now masked by a crest; these are not,
+  // which is why they surfaced here. A map keyed by id is the fix, and this is
+  // it.
+  "aps-attorney-general-s-department": "ag.gov.au",
+  "aps-department-of-agriculture-fisheries-and-forestry": "agriculture.gov.au",
+  "aps-department-of-defence": "defence.gov.au",
+  "aps-department-of-education": "education.gov.au",
+  "aps-department-of-finance": "finance.gov.au",
+  "aps-department-of-health-disability-and-ageing": "health.gov.au",
+  "aps-department-of-home-affairs": "homeaffairs.gov.au",
+  "aps-department-of-industry-science-and-resources": "industry.gov.au",
+  "aps-department-of-infrastructure-transport-regional-development-communications-and-the-arts":
+    "infrastructure.gov.au",
+  "aps-department-of-social-services": "dss.gov.au",
+  "aps-department-of-the-treasury": "treasury.gov.au",
+  "aps-australian-bureau-of-statistics": "abs.gov.au",
+  "aps-national-disability-insurance-agency": "ndis.gov.au",
+  "aps-australian-competition-and-consumer-commission": "accc.gov.au",
+  "aps-australian-security-intelligence-organisation": "asio.gov.au",
+  "aps-australian-digital-health-agency": "digitalhealth.gov.au",
+  "aps-australian-transaction-reports-and-analysis-centre": "austrac.gov.au",
+  "aps-australian-financial-security-authority": "afsa.gov.au",
+  "aps-australian-public-service-commission": "apsc.gov.au",
+  "aps-fair-work-commission": "fwc.gov.au",
+  "aps-fair-work-ombudsman": "fairwork.gov.au",
+  "aps-australian-war-memorial": "awm.gov.au",
+  "aps-australian-trade-and-investment-commission": "austrade.gov.au",
+  "aps-australian-pesticides-and-veterinary-medicines-authority": "apvma.gov.au",
+  // ── the parked-domain sweep, 2026-09-22 ──────────────────────────────────
+  // A sweep of all 1,549 companies found 16 still resolving to the domain-
+  // parking favicon (sha1 c20af3aed3de, the turquoise heart-swirl), scattered
+  // across cities this audit had not reached. Each was showing that parking
+  // service's mark rather than its own. 14 are fixed here; each replacement was
+  // confirmed by title, or by opening the badge where the site refuses this
+  // sandbox — Commercial Bank of Dubai's teal arch and Ping An's orange A were
+  // both settled that way.
+  "adelaide-tea": "tasmea.com.au",
+  "sa-gov-landscape-sa": "landscape.sa.gov.au",
+  "calgary-cnq": "cnrl.com",
+  "dubai-ajmanbank": "ajmanbank.ae",
+  "dubai-cbd": "cbd.ae",
+  "dubai-deyaar": "deyaar.ae",
+  "ganzhou-688567": "farasis.com",
+  "hongkong-02318": "pingan.cn",
+  "houston-gpi": "group1auto.com",
+  "mumbai-hindunilvr": "hul.co.in",
+  "newyork-vno": "vno.com",
+  "tokyo-8035": "tel.com",
+  "toronto-fnv": "franco-nevada.com",
+  "toronto-ifc": "intactfc.com",
+  // NOT FIXED, same rule as always — unverified is not recorded as fact:
+  //   shanghai-600519  Kweichow Moutai. moutaichina.com answers 200 but its
+  //     title is "入网口", a gateway page that names no company; moutai.com.cn
+  //     does not resolve.
+  //   ganzhou-000831   China Rare Earth. The ticker is a Shenzhen listing that
+  //     has been renamed and restructured; nothing tried resolved to it.
+  // Both still show the parking mark. They are the last two known instances.
   // ── the original Top-150 private set ──────────────────────────────────────
   "priv-abc-tissue": "abctissue.com.au",
   "priv-abn-group": "abngroup.com.au",
