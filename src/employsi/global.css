@@ -2768,6 +2768,28 @@ body {
   font-size: 11px;
   color: var(--text-tertiary);
 }
+.dqbaryr {
+  margin-left: 4px;
+  opacity: 0.7;
+}
+/* A MONTH THE FEEDS DID NOT FULLY COVER. Hatched rather than hidden: it is real
+   history, it is just short for collection reasons, and hiding it was the first
+   version of this chart — which collapsed a three-month archive to one bar.
+   The hatch reads as "incomplete" at a glance without changing the height,
+   which must stay honest because the axis is read off it. */
+.dqbarcol.partial .dqbararch,
+.dqbarcol.partial .dqbarlive {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.55) 0,
+    rgba(255, 255, 255, 0.55) 3px,
+    transparent 3px,
+    transparent 7px
+  );
+}
+.dqbarcol.partial .dqbarlbl {
+  font-style: italic;
+}
 .dqlegend {
   display: flex;
   gap: 14px;

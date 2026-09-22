@@ -102,10 +102,13 @@ function Kpi({
  * advertised and since taken down.
  *
  * Heights are a share of the tallest month rather than an absolute scale, and
- * the axis is labelled from the same maximum, so the two cannot disagree. The
- * series arrives already clamped to the span the live feeds cover — see
- * dataQualityFn — because an unclamped version of this chart draws the archive
- * filling out and reads as a hiring surge.
+ * the axis is labelled from the same maximum, so the two cannot disagree.
+ *
+ * THE WHOLE ARCHIVE IS DRAWN. Months the feeds did not yet cover arrive with
+ * `partial` set and are hatched rather than hidden, because hiding them was the
+ * first attempt and it collapsed a three-month archive to a single bar. The
+ * short months are real history; they are just short for collection reasons,
+ * and the card says which ones and why. See the note in dataQualityFn.
  */
 function IngestChart({ buckets }: { buckets: IngestBucket[] }) {
   const max = Math.max(1, ...buckets.map((b) => b.live + b.archived));
@@ -126,10 +129,16 @@ function IngestChart({ buckets }: { buckets: IngestBucket[] }) {
         className="dqchartplot"
         style={{ gridTemplateColumns: `repeat(${Math.max(1, buckets.length)}, minmax(0, 1fr))` }}
       >
-        {buckets.map((b) => {
+        {buckets.map((b, i) => {
           const solo = b.live === 0 || b.archived === 0;
+          const total = b.live + b.archived;
+          const why = b.partial ? " — partial: not all feeds had started" : "";
           return (
-            <div key={b.month} className={`dqbarcol${solo ? " solo" : ""}`}>
+            <div
+              key={b.month}
+              className={`dqbarcol${solo ? " solo" : ""}${b.partial ? " partial" : ""}`}
+              title={`${b.month}: ${total.toLocaleString()} rows${why}`}
+            >
               <div
                 className="dqbararch"
                 style={{ height: `${(b.archived / top) * 100}%` }}
@@ -140,7 +149,12 @@ function IngestChart({ buckets }: { buckets: IngestBucket[] }) {
                 style={{ height: `${(b.live / top) * 100}%` }}
                 title={`${b.live.toLocaleString()} still advertised`}
               />
-              <div className="dqbarlbl">{b.label}</div>
+              {/* The year rides on the first bucket and on any January, so a
+                  series crossing a new year does not show two bare "Jan"s. */}
+              <div className="dqbarlbl">
+                {b.label}
+                {i === 0 || b.label === "Jan" ? <span className="dqbaryr">{b.year}</span> : null}
+              </div>
             </div>
           );
         })}
@@ -325,8 +339,8 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
     isFetching,
     refetch: refetchQuality,
   } = useQuery({
-    queryKey: ["dataQuality"],
-    queryFn: () => getDataQuality(),
+    queryKey: ["dataQuality", days],
+    queryFn: () => getDataQuality({ data: { days } }),
     // The archive moves once a day; re-reading it on every open would scan the
     // whole table for nothing.
     staleTime: 10 * 60 * 1000,
@@ -468,6 +482,11 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
 
   const maxUnmapped = data?.unmapped?.[0]?.n ?? 1;
   const windowLabel = days === 1 ? "24 hours" : `${days} days`;
+  /** Month labels the chart hatches, named on the card so nobody has to guess. */
+  const partialMonths = useMemo(
+    () => (data?.ingest ?? []).filter((b) => b.partial).map((b) => `${b.label} ${b.year}`),
+    [data?.ingest],
+  );
 
   return (
     <>
@@ -536,6 +555,12 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
             <p className="dqmsg">{data?.error || "Couldn't read the archive."}</p>
           ) : (
             <div className="dqbody">
+              <p className="dqnote">
+                Unmapped titles, attribution suspects and the match rate cover the last{" "}
+                {windowLabel}. Feed freshness, ingest volume and scheduled crawls do not move with
+                that control and say so on their own cards — freshness is about silence, ingest is
+                the whole archive, and a crawl time is a clock.
+              </p>
               <div className="dqkpis">
                 <Kpi
                   label="Live vacancies"
@@ -554,7 +579,7 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
                   bad={silentCount > 0}
                 />
                 <Kpi
-                  label="Unmapped · 30d"
+                  label={`Unmapped · ${windowLabel}`}
                   value={data.unmappedTotal.toLocaleString()}
                   note={`${(100 - data.match.pct).toFixed(1)}% matched no skill`}
                 />
@@ -586,10 +611,20 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
                           who assumes it starts at the archive's beginning will
                           read the first bar as a collapse in hiring. */}
                       <p className="dqcardfoot">
-                        By the month a role first appeared. Starts{" "}
-                        {data.ingestFrom ? data.ingestFrom.slice(0, 7) : "at the archive's start"},
-                        the first month every currently-writing feed covers — earlier months are
-                        short because the archive was still filling out, not because hiring was.
+                        By the month a role first appeared — the whole archive, not the window
+                        above.{" "}
+                        {partialMonths.length ? (
+                          <>
+                            Hatched {partialMonths.length === 1 ? "bar is" : "bars are"}{" "}
+                            {partialMonths.join(", ")}: the feeds carrying 95% of the archive had
+                            not all started by then, so{" "}
+                            {partialMonths.length === 1 ? "it is" : "they are"} short because
+                            collection was still ramping up, not because hiring was. Full coverage
+                            from {data.ingestFrom || "the start"}.
+                          </>
+                        ) : (
+                          <>Every month shown has full feed coverage.</>
+                        )}
                       </p>
                     </>
                   ) : (
@@ -600,7 +635,7 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
                 <section className="dqcard">
                   <div className="dqcardhd">
                     <span className="dqcardtitle">Skill match rate</span>
-                    <span className="dqeyebrow">Last 30 days</span>
+                    <span className="dqeyebrow">Last {windowLabel}</span>
                   </div>
                   <MatchGauge match={data.match} />
                 </section>
@@ -615,7 +650,8 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
                     </div>
                     <span className="dqcardsub">
                       A feed that stops writing looks identical to a quiet market. Anything silent
-                      for {STALE_DAYS} days or more is flagged.
+                      for {STALE_DAYS} days or more is flagged. Independent of the window above:
+                      silence is measured from a feed's last write, not over a period.
                     </span>
                   </div>
                   <div className="dqviews" role="group" aria-label="Which feeds to show">
@@ -667,9 +703,10 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
                     <div className="dqcardtext">
                       <span className="dqcardtitle">Unmapped titles</span>
                       <span className="dqcardsub">
-                        {data.unmappedTotal.toLocaleString()} archived roles in the last 30 days
-                        matched no skill at all. They count as vacancies but contribute to no demand
-                        figure, so they are invisible exactly where they would matter.
+                        {data.unmappedTotal.toLocaleString()} archived roles in the last{" "}
+                        {windowLabel} matched no skill at all. They count as vacancies but
+                        contribute to no demand figure, so they are invisible exactly where they
+                        would matter.
                       </span>
                     </div>
                   </div>

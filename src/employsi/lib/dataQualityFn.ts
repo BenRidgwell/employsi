@@ -176,6 +176,14 @@ export interface IngestBucket {
   month: string;
   /** Short label for the axis, e.g. "Jul". */
   label: string;
+  /** YYYY, so a series crossing a new year can say which. */
+  year: string;
+  /**
+   * The feeds carrying 95% of the archive had not all started this month, so
+   * the bar is short for collection reasons rather than market ones. Drawn,
+   * but marked — see the note in the handler.
+   */
+  partial: boolean;
   /** Of the rows first seen that month, how many are still advertised. */
   live: number;
   /** The rest — seen once, since taken down. */
@@ -209,6 +217,8 @@ export interface DataQuality {
   attribution: AttributionRow[];
   ingest: IngestBucket[];
   match: MatchRate;
+  /** The window the figures below were actually computed over, in days. */
+  windowDays: number;
   /**
    * Oldest month the ingest chart can honestly start at: a month is only
    * comparable once the feeds carrying it had arrived. See the note in the
@@ -227,6 +237,7 @@ const EMPTY: DataQuality = {
   attribution: [],
   ingest: [],
   match: { mapped: 0, unmapped: 0, pct: 0, prevPct: null },
+  windowDays: 30,
   ingestFrom: "",
 };
 
@@ -237,12 +248,18 @@ function daysSince(day: string, today: string): number {
   return Math.max(0, Math.round((b - a) / 86400000));
 }
 
-export const getDataQuality = createServerFn({ method: "GET" }).handler(
-  async (): Promise<DataQuality> => {
+export const getDataQuality = createServerFn({ method: "GET" })
+  .validator((data: { days?: number }) => data)
+  .handler(async ({ data }): Promise<DataQuality> => {
     if ((await callerRole()) !== "admin") return { ...EMPTY, error: "Not permitted." };
     const db = await d1();
     if (!db) return { ...EMPTY, error: "The archive is unavailable right now." };
     const today = new Date().toISOString().slice(0, 10);
+    // The window the console's range control asked for. Clamped to values the
+    // control can actually produce rather than trusted, since it arrives from
+    // the caller: an unbounded number here would be interpolated into the SQL
+    // below.
+    const DAYS = [1, 7, 30].includes(Number(data?.days)) ? Number(data.days) : 30;
 
     try {
       // 1. Feed freshness. `live` uses the same "currently advertised" rule the
@@ -298,7 +315,7 @@ export const getDataQuality = createServerFn({ method: "GET" }).handler(
           `SELECT title, COUNT(*) AS n
              FROM jobs
             WHERE (skills IS NULL OR skills = '[]')
-              AND last_seen >= date('now','-30 day')
+              AND last_seen >= date('now','-${DAYS} day')
               AND title <> ''
             GROUP BY title
             ORDER BY n DESC
@@ -312,7 +329,8 @@ export const getDataQuality = createServerFn({ method: "GET" }).handler(
       const totalRes = await db
         .prepare(
           `SELECT COUNT(*) AS n FROM jobs
-            WHERE (skills IS NULL OR skills = '[]') AND last_seen >= date('now','-30 day')`,
+            WHERE (skills IS NULL OR skills = '[]')
+              AND last_seen >= date('now','-${DAYS} day')`,
         )
         .first();
       const unmappedTotal = Number(totalRes?.n) || 0;
@@ -327,7 +345,7 @@ export const getDataQuality = createServerFn({ method: "GET" }).handler(
           `SELECT source, company_id, company, COUNT(*) AS n
              FROM jobs
             WHERE company IS NOT NULL AND company <> '' AND company_id IS NOT NULL
-              AND last_seen >= date('now','-30 day')
+              AND last_seen >= date('now','-${DAYS} day')
             GROUP BY source, company_id, company`,
         )
         .all();
@@ -373,30 +391,52 @@ export const getDataQuality = createServerFn({ method: "GET" }).handler(
       //    since taken down. Keyed on first_seen, so each row is counted in the
       //    month it ARRIVED and appears exactly once across the chart.
       //
-      //    THE START IS CLAMPED, and that is the whole difficulty. A month is
-      //    only comparable once the feeds covering it had arrived, and the
-      //    archive's earliest months hold a handful of sources rather than a
-      //    quiet market. Drawn unclamped this chart shows the ARCHIVE filling
-      //    out and reads as a hiring surge — the failure this codebase has
-      //    measured more often than any other. So the series starts at the
-      //    first month that the currently-writing feeds actually span, taken as
-      //    the newest of their first_seen days: before that point at least one
-      //    live feed contributes nothing and the total is short for a reason
-      //    that has nothing to do with the market. Closed historical corpora
-      //    are excluded from that calculation — they have finished, so their
-      //    first_seen says nothing about present coverage.
-      const liveStarts = feeds
-        .filter((f) => !f.historical && f.firstSeen && f.live > 0)
-        .map((f) => f.firstSeen)
-        .sort();
-      const coverFrom = liveStarts.length ? liveStarts[liveStarts.length - 1] : "";
+      //    THE WHOLE ARCHIVE IS DRAWN AND THE SHORT MONTHS ARE MARKED, which
+      //    are different things — the first version of this chart confused them
+      //    and showed one bar.
+      //
+      //    The difficulty is real. A month is only comparable once the feeds
+      //    covering it had arrived, and the archive's earliest months hold a
+      //    handful of sources rather than a quiet market, so an unmarked series
+      //    draws the ARCHIVE filling out and reads as a hiring surge. But the
+      //    first fix — start where EVERY live feed had arrived — was worse, and
+      //    measurably so. Measured 2026-09-22: that rule returned 2026-09-21,
+      //    set by `portal-undefined`, a 33-row feed one day old, so a
+      //    three-month archive rendered as a single September bar. It is the
+      //    "a strict rule lets three ads collapse a series to nothing" trap
+      //    this codebase already names.
+      //
+      //    So coverage is weighed by SHARE, at the same 95% the analyst's
+      //    coverageDay uses: the day by which feeds carrying 95% of the rows
+      //    had all started. Measured the same day that is 2026-08-03 — and 90%
+      //    gives the same date, so it is not knife-edge — against a strict
+      //    2026-09-21. Earlier months are returned with `partial: true` and the
+      //    card says so, which is the point: the reader gets the whole history
+      //    AND is told which part of it is short for collection reasons.
+      //
+      //    Closed corpora are excluded outright. wayback's rows are dated
+      //    2003-2018, so bucketing them would put ~90 empty months either side
+      //    of the three real ones.
+      const COVERAGE_TARGET = 0.95;
+      const contributing = feeds.filter((f) => !f.historical && f.firstSeen && f.total > 0);
+      const totalRows = contributing.reduce((t, f) => t + f.total, 0);
+      let acc = 0;
+      let coverFrom = "";
+      for (const f of [...contributing].sort((a, b) => a.firstSeen.localeCompare(b.firstSeen))) {
+        acc += f.total;
+        if (acc >= totalRows * COVERAGE_TARGET) {
+          coverFrom = f.firstSeen;
+          break;
+        }
+      }
+      const histList = [...HISTORICAL_SOURCES].map((h) => `'${h}'`).join(",") || "''";
       const ingestRes = await db
         .prepare(
           `SELECT substr(first_seen,1,7) AS ym,
                   COUNT(*) AS total,
                   SUM(CASE WHEN last_seen >= date('now','-1 day') THEN 1 ELSE 0 END) AS live
              FROM jobs
-            WHERE first_seen >= date('now','-6 month')
+            WHERE first_seen <> '' AND source NOT IN (${histList})
             GROUP BY ym
             ORDER BY ym`,
         )
@@ -415,21 +455,20 @@ export const getDataQuality = createServerFn({ method: "GET" }).handler(
         "Nov",
         "Dec",
       ];
-      const ingest: IngestBucket[] = (ingestRes?.results ?? [])
-        .map((r) => {
-          const month = String(r.ym || "");
-          const total = Number(r.total) || 0;
-          const live = Number(r.live) || 0;
-          const mi = Number(month.slice(5, 7)) - 1;
-          return {
-            month,
-            label: MON[mi] ?? month,
-            live,
-            archived: Math.max(0, total - live),
-          };
-        })
-        // Only the months every currently-writing feed could contribute to.
-        .filter((b) => !coverFrom || b.month >= coverFrom.slice(0, 7));
+      const ingest: IngestBucket[] = (ingestRes?.results ?? []).map((r) => {
+        const month = String(r.ym || "");
+        const total = Number(r.total) || 0;
+        const live = Number(r.live) || 0;
+        const mi = Number(month.slice(5, 7)) - 1;
+        return {
+          month,
+          label: MON[mi] ?? month,
+          year: month.slice(0, 4),
+          live,
+          archived: Math.max(0, total - live),
+          partial: !!coverFrom && month < coverFrom.slice(0, 7),
+        };
+      });
 
       // 5. Skill match rate over the same 30-day window the unmapped list uses,
       //    and the same measurement again over the 30 days before it. Both
@@ -440,7 +479,7 @@ export const getDataQuality = createServerFn({ method: "GET" }).handler(
           `SELECT SUM(CASE WHEN skills IS NULL OR skills = '[]' THEN 0 ELSE 1 END) AS mapped,
                   SUM(CASE WHEN skills IS NULL OR skills = '[]' THEN 1 ELSE 0 END) AS unmapped
              FROM jobs
-            WHERE last_seen >= date('now','-30 day')`,
+            WHERE last_seen >= date('now','-${DAYS} day')`,
         )
         .first();
       const prevRow = await db
@@ -448,7 +487,8 @@ export const getDataQuality = createServerFn({ method: "GET" }).handler(
           `SELECT SUM(CASE WHEN skills IS NULL OR skills = '[]' THEN 0 ELSE 1 END) AS mapped,
                   SUM(CASE WHEN skills IS NULL OR skills = '[]' THEN 1 ELSE 0 END) AS unmapped
              FROM jobs
-            WHERE last_seen >= date('now','-60 day') AND last_seen < date('now','-30 day')`,
+            WHERE last_seen >= date('now','-${2 * DAYS} day')
+              AND last_seen <  date('now','-${DAYS} day')`,
         )
         .first();
       const pctOf = (m: number, u: number) => (m + u > 0 ? (100 * m) / (m + u) : 0);
@@ -475,9 +515,12 @@ export const getDataQuality = createServerFn({ method: "GET" }).handler(
         ingest,
         match,
         ingestFrom: coverFrom,
+        // Echoed back rather than assumed by the caller: the handler clamps
+        // what it was given, so the card must label its figures with the
+        // window that was actually used.
+        windowDays: DAYS,
       };
     } catch {
       return { ...EMPTY, error: "Couldn't read the archive." };
     }
-  },
-);
+  });
