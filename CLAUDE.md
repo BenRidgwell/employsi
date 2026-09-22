@@ -20,8 +20,31 @@ npm run dev                       # vite dev server
 npm run build                     # vite build -> .output/server (nitro cloudflare preset)
 npm run lint                      # eslint; must stay at 0 errors (8 react-refresh warnings are pre-existing)
 npx eslint <file> --fix           # prettier is enforced through eslint, so this is the formatter
-npx tsc --noEmit -p tsconfig.json # typecheck
+npm run typecheck                 # BOTH trees — see below; `:app` and `:workers` run one each
 ```
+
+**`npm run typecheck` means two compilers, and for a long time it meant one.** The root
+tsconfig includes only `src/**`, so nothing typechecked `workers/` at all: on 2026-09-22
+the app side was clean while the scraper Worker carried **54 errors**. One of them was
+live in production. `SOURCE_TAG` in `careerSites.ts` is `Record<Platform, string>`, two
+platforms were added without their tags, and tsc had the error ready (TS2739, naming both)
+— pointed at nothing. The rows went to D1 as `portal-undefined`.
+
+`workers/jobs-cron/tsconfig.json` is separate rather than folded into the root include
+because the two environments disagree about what globals exist — the app is a DOM program
+typed against `vite/client`, the Worker has `KVNamespace`, `D1Database`,
+`ScheduledController` and `ExecutionContext` ambient from `@cloudflare/workers-types` and
+no `document`. One `lib` cannot describe both. Same `strict: true` on both sides, because
+the side that writes to the archive is the side where a silent wrong value costs most.
+
+Most of those 54 were one bug shape: `JSON.parse` results read as `any`. `src/employsi/lib/
+json.ts` (`asRecord` / `asRecords` / `str` / `num`) is the fix — coerce at the boundary,
+then the field name is checked. `str()` trims, which is safe against `job_key` drift only
+because `normTitle` already trims; check that before extending the pattern somewhere new.
+
+`.github/workflows/workers-typecheck.yml` runs both. It is path-filtered, so do **not**
+make it a required status check (see the note in `portal-ticks-check.yml` for why a
+path-filtered required check leaves PRs pending forever).
 
 There is **no test runner**. What CI actually checks (`.github/workflows/skills-check.yml`,
 `scraper-check.yml`) is:

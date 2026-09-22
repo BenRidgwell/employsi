@@ -1,0 +1,45 @@
+{
+  // The scraper Worker's own typecheck.
+  //
+  // WHY IT IS SEPARATE. The root tsconfig includes only `src/**`, so until
+  // 2026-09-22 nothing typechecked `workers/` at all — `npm run typecheck`
+  // reported clean while this directory carried 54 errors. That is not a
+  // theoretical gap: SOURCE_TAG is declared `Record<Platform, string>`, two
+  // platforms were added without their tags, and the compiler had the error
+  // ready (TS2739, naming both) but was never pointed at the file. The rows went
+  // to production as `portal-undefined` and were found days later by a chart
+  // collapsing.
+  //
+  // It cannot simply be folded into the root include, because the two
+  // environments disagree about what globals exist. The app is a DOM program
+  // typed against vite/client; this is a Worker typed against Cloudflare's
+  // runtime, where `KVNamespace`, `D1Database`, `ScheduledController` and
+  // `ExecutionContext` are ambient and `document` is not. One `lib` cannot
+  // describe both.
+  //
+  // Run: npm run typecheck:workers  (and `npm run typecheck` does both)
+  "include": ["**/*.ts", "../../src/employsi/lib/json.ts"],
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    // The Workers runtime globals. Without these the four ambient Cloudflare
+    // types above read as undeclared names, which is most of what made this
+    // directory look unfixable.
+    "types": ["@cloudflare/workers-types"],
+    // Matches the root: the point of typechecking this at all is to catch what
+    // the app side already catches, and a laxer setting here would let the same
+    // class of bug through on the side that writes to the archive.
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": false,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}

@@ -1,0 +1,67 @@
+# Typecheck for the scraper Worker.
+#
+# WHAT THIS EXISTS TO CATCH. The root tsconfig includes only `src/**`, so until
+# 2026-09-22 `npm run typecheck` reported clean while `workers/` carried 54
+# errors that nothing had ever compiled. The cost was not hypothetical:
+# SOURCE_TAG in careerSites.ts is declared `Record<Platform, string>`, two
+# platforms (bond, metricon) were added on 2026-09-21 without their tags, and
+# tsc had the error ready — TS2739, naming both — but was never pointed at the
+# file. The scraper wrote `portal-undefined` into D1 for a day before a chart
+# collapsing gave it away.
+#
+# It is a SEPARATE tsconfig rather than a wider root include because the two
+# sides disagree about what globals exist: the app is a DOM program typed
+# against vite/client, this is a Worker where KVNamespace, D1Database,
+# ScheduledController and ExecutionContext are ambient and `document` is not.
+# One `lib` cannot describe both. See workers/jobs-cron/tsconfig.json.
+#
+# Path-filtered, and therefore NOT safe to make a required status check — a
+# required check that is path-filtered never reports on a PR touching none of
+# these paths, and the PR sits pending forever. portal-ticks-check.yml carries
+# the note on why it runs unfiltered instead.
+
+name: workers-typecheck
+
+on:
+  push:
+    paths:
+      - 'workers/**'
+      - 'src/employsi/lib/json.ts'
+      - 'src/employsi/data/skillsTaxonomy.ts'
+      - 'package.json'
+      - 'bun.lock'
+      - '.github/workflows/workers-typecheck.yml'
+  pull_request:
+    paths:
+      - 'workers/**'
+      - 'src/employsi/lib/json.ts'
+      - 'src/employsi/data/skillsTaxonomy.ts'
+      - 'package.json'
+      - 'bun.lock'
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    name: workers typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # tsc and @cloudflare/workers-types both come from devDependencies, so
+      # without this the step fails to START rather than failing an assertion —
+      # the shape skills-check.yml spent six red days in.
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck the scraper Worker
+        run: npm run typecheck:workers
+
+      # Cheap, and it catches the reverse mistake: json.ts and skillsTaxonomy.ts
+      # are imported by BOTH trees, so a change made to satisfy the Worker can
+      # break the app.
+      - name: Typecheck the app
+        run: npm run typecheck:app

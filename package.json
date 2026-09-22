@@ -10,6 +10,9 @@
     "preview": "vite preview",
     "deploy:preview": "npm run build && npx wrangler deploy --name employsi-preview",
     "lint": "eslint .",
+    "typecheck": "npm run typecheck:app && npm run typecheck:workers",
+    "typecheck:app": "tsc --noEmit -p tsconfig.json",
+    "typecheck:workers": "tsc --noEmit -p workers/jobs-cron/tsconfig.json",
     "format": "prettier --write ."
   },
   "dependencies": {
@@ -72,6 +75,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260920.1",
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "2.8.5",
     "@types/geojson": "^7946.0.16",
