@@ -279,19 +279,50 @@ export function fmtSalary(n: number | undefined | null): string | null {
 
 // An advertised job → a historical archive row, tagged with its source and the
 // company it was fetched for.
+// `hub` IS DELIBERATELY NULL HERE, AND IT USED TO BE `where`, WHICH IS A
+// DIFFERENT KIND OF STRING ENTIRELY.
+//
+// `where` is Adzuna's free-text location FILTER — "Australia", "London" — and
+// it was being written straight into the archive's `hub` column, which holds a
+// hub id: lowercase, and one of the 82 keys the map registries define. So every
+// row this path archived carried a hub that matches nothing and plots nowhere.
+// Measured 2026-09-22 before the fix: 4,082 rows across 78 employers on
+// "Australia" (3,899), "Johannesburg" (80), "Singapore" (53) and "London" (50),
+// still accruing that day. Worse than unplaced, because `hub IS NULL` does not
+// find them, so every backfill had skipped them in silence.
+//
+// The distinction is not a subtle one and the codebase already draws it:
+// data/globalHubTargets.ts carries `hub: "london"` and `where: "London"` as two
+// fields, the second commented "Adzuna `where` location filter". The Worker's
+// own toArchiveRows takes a real id, `{ hub: "singapore" }`. Only this path
+// conflated them.
+//
+// NULL rather than a guess. The market key would be wrong for the case that
+// dominates: the Australian market searches the whole country, so a Perth ad
+// and a Hobart ad come back from one query and neither is "the market's city".
+// The honest value for a location this function has not resolved is no value,
+// and an unplaced row is repairable by the location-keyed backfill, which is
+// exactly what a wrong one is not.
+//
+// The real fix is to resolve j.loc through hubFor, the matcher the Worker and
+// the scripts already share. It cannot be imported here yet: hubFor lives in
+// workers/jobs-cron/careerSites.ts, the dependency runs workers -> src and
+// never back, and pulling that file into the app bundle would drag 250-odd
+// SiteDefs with it. Moving HUB_MATCH and hubFor down into src/employsi/lib,
+// the way skillsTaxonomy is shared, would let both sides resolve a location
+// identically — the same argument that file makes for skills.
 function jobToArchive(
   j: AdvertisedJob,
   source: string,
   company: string,
   id: string | undefined,
-  where: string,
 ): ArchiveRow {
   return {
     source,
     title: j.t,
     company,
     companyId: id ?? null,
-    hub: where || null,
+    hub: null,
     location: j.loc,
     category: j.cat,
     salary: fmtSalary(j.salN),
@@ -683,8 +714,8 @@ export const getOpenRoles = createServerFn({ method: "GET" })
         // Archive every listing we just pulled to the historical D1 store,
         // tagged by its source. Best-effort + no-op until the DB is bound.
         const rows: ArchiveRow[] = [
-          ...(az ? az.jobs.map((j) => jobToArchive(j, "adzuna", company, data.id, where)) : []),
-          ...museJobs.map((j) => jobToArchive(j, "muse", company, data.id, where)),
+          ...(az ? az.jobs.map((j) => jobToArchive(j, "adzuna", company, data.id)) : []),
+          ...museJobs.map((j) => jobToArchive(j, "muse", company, data.id)),
         ];
         await archiveJobs(await getArchiveDb(), rows, today());
       }
