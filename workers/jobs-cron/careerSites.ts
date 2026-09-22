@@ -10887,7 +10887,7 @@ export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
 }
 
 /** Short source tag per platform, so an archive row says where it came from. */
-const SOURCE_TAG: Record<Platform, string> = {
+export const SOURCE_TAG: Record<Platform, string> = {
   successfactors: "sf",
   workday: "wd",
   eightfold: "ef",
@@ -10900,6 +10900,10 @@ const SOURCE_TAG: Record<Platform, string> = {
   phenom: "ph",
   csl: "csl",
   rea: "rea",
+  // Added 2026-09-21 with their sites, and MISSED HERE, which is how
+  // `portal-undefined` got into the archive — see the note above this map.
+  bond: "bond",
+  metricon: "metricon",
   scentre: "scg",
   smartrecruiters: "sr",
   careercentre: "cc",

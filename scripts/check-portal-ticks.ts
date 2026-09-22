@@ -28,7 +28,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { PORTAL_GROUPS, SITES } from "../workers/jobs-cron/careerSites";
+import { PORTAL_GROUPS, SITES, SOURCE_TAG } from "../workers/jobs-cron/careerSites";
 
 const ROOT = join(import.meta.dir, "..");
 let failed = false;
@@ -85,10 +85,41 @@ for (const [cron] of ticks) {
   seenCron.add(cron);
 }
 
+// 7. SITES <-> SOURCE_TAG.
+//
+// A FIFTH LIST THAT HAS TO MOVE WITH THE OTHER FOUR, and it failed differently
+// from them: a missing tick means rows never appear, while a missing tag means
+// rows appear under a source that does not exist. `source` is built as
+// `portal-${SOURCE_TAG[site.platform]}`, so an absent platform interpolates the
+// string "undefined" and the archive gains a feed called `portal-undefined`.
+//
+// Measured 2026-09-22: 33 rows, Bond University (20) and Metricon Homes (13),
+// whose platforms were added to SITES and to the Platform union on 2026-09-21
+// but not to SOURCE_TAG. They arrived with correct titles and company ids and a
+// nonsense source, so nothing looked broken — the admin console simply listed a
+// feed nobody had ever heard of, and it took a chart collapsing to find it.
+//
+// TypeScript DOES catch this: SOURCE_TAG is Record<Platform, string>, and the
+// compiler reports TS2739 "missing the following properties ... bond, metricon"
+// when pointed at the file. It is caught here as well because tsconfig.json
+// includes only src/, so the documented `npx tsc --noEmit -p tsconfig.json`
+// never reads workers/ at all. Fixing that properly means giving the worker its
+// own tsconfig with Cloudflare types — it has 55 unrelated errors without
+// them — which is worth doing and is not this change.
+for (const site of SITES) {
+  if (!SOURCE_TAG[site.platform]) {
+    fail(
+      `site "${site.key ?? site.id}" uses platform "${site.platform}", which has no SOURCE_TAG ` +
+        `entry — its rows would be archived as "portal-undefined"`,
+    );
+  }
+}
+
 if (failed) {
   console.error("\nportal scheduling is inconsistent — see above");
   process.exit(1);
 }
 console.log(
-  `ok  ${SITES.length} feeds, ${PORTAL_GROUPS.length} groups, ${ticks.length} ticks, all scheduled`,
+  `ok  ${SITES.length} feeds, ${PORTAL_GROUPS.length} groups, ${ticks.length} ticks, ` +
+    `${Object.keys(SOURCE_TAG).length} source tags, all scheduled and tagged`,
 );
