@@ -3515,16 +3515,29 @@ body {
 /* The live dot. Green rather than white, so it reads as a status light rather
    than as punctuation.
 
-   LIGHTENED, not --green-500 straight. The chip's ground is --surface-inverse
-   (near black) and the 500 stop is a mid green that sinks into it — the same
-   problem .ccflag .ccsw and .mkhero.up already hit on their dark grounds. The
-   mix ratio here is .mkhero.up's, so every lightened green in the app is the
-   same green. It resolves to #85b99c — 7.63:1 on the chip. */
+   NOT --green-500 straight, and not white-mixed either. The chip's ground is
+   --surface-inverse (near black) and the 500 stop is a mid green that sinks
+   into it — the same problem .ccflag .ccsw and .mkhero.up already hit on their
+   dark grounds. Mixing it toward white (.mkhero.up's fix, and what this was
+   first) lifts it clear but desaturates as it goes: #85b99c is lighter than
+   green-500 and duller, which is a pastel, not a status light.
+
+   So it is lifted in OKLCH instead — green-500's hue held exactly, lightness
+   taken from L 0.582 to 0.82 and chroma raised 1.3x with it, which is what
+   keeps the colour vivid while it gets brighter:
+
+     --green-500  #2f8f63   oklch(0.582 0.113 159.6)    4.32:1 on the chip
+     white-mixed  #85b99c                               7.63:1  pale
+     THIS         #5fe1a2   oklch(0.820 0.146 159.6)   10.35:1
+
+   Written as the resolved hex rather than an oklch() so it needs nothing of
+   the browser that the rest of the sheet doesn't already need; the recipe is
+   here so the next person moves L and C rather than guessing a new green. */
 .tickerlbl i {
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: color-mix(in oklab, var(--green-500) 62%, #ffffff);
+  background: #5fe1a2;
   animation: tpulse 1.8s ease-in-out infinite;
 }
 /* The window the figures are measured over, as the chip's quieter second half. */
@@ -3535,20 +3548,20 @@ body {
 }
 /* Used by .tickerlbl i and nothing else.
 
-   The trough is 0.55, raised from the 0.35 it sat at while the dot was white.
-   Opacity dims the dot TOWARD THE GROUND IT IS ON, so the same number does not
-   buy the same visibility once the colour changes: white at 0.35 composites to
-   a legible grey over the ink chip, the green composites toward the chip's own
-   colour and the dot read as blinking out rather than pulsing.
+   The trough belongs to the dot's COLOUR, not to the animation. Opacity dims a
+   thing toward the ground it sits on, so the same number buys different
+   visibility for different colours, and the depth of the pulse has to be
+   re-picked whenever the dot is recoloured. Measured against #1c1c1e, the
+   chip's --surface-inverse:
 
-   Measured against #1c1c1e, the chip's --surface-inverse:
+     white   #ffffff at 0.35  ->  #6b6b6c   3.20:1   the original, the baseline
+     pale    #85b99c at 0.35  ->  #4b6357   2.07:1   read as blinking OUT
+     bright  #5fe1a2 at 0.35  ->  #33614c   2.39:1   still too deep
+     bright  #5fe1a2 at 0.45  ->  #3a7559   3.13:1   the value below
 
-     white  #ffffff at 0.35  ->  #6b6b6c   3.20:1   (what it used to be)
-     green  #85b99c at 0.35  ->  #4b6357   2.07:1   too dark
-     green  #85b99c at 0.55  ->  #567263   3.23:1   the value below
-
-   i.e. 0.55 is where the dimmed phase stops being less visible than it was
-   before the colour changed. The scale still carries most of the motion. */
+   0.45 puts the dimmed phase level with the white dot's, so the pulse is no
+   less visible than it has ever been while being as deep as the brighter
+   colour allows. The scale carries the rest of the motion. */
 @keyframes tpulse {
   0%,
   100% {
@@ -3556,7 +3569,7 @@ body {
     transform: scale(1);
   }
   50% {
-    opacity: 0.55;
+    opacity: 0.45;
     transform: scale(0.72);
   }
 }
