@@ -347,13 +347,22 @@ jobs:
             *) echo "::warning::/app did not return the app title — got: $title" ;;
           esac
 
+      # `reason` GOES THROUGH env, NOT THROUGH ${{ }} IN THE SCRIPT BODY.
+      # A ${{ }} expression is pasted into the script TEXT before bash sees it,
+      # so whatever was typed into the dispatch form is executed as shell. This
+      # is not theoretical: the first run to carry a reason containing backticks
+      # died on `where: command not found`, because the backticks in the message
+      # ran as command substitution on the runner. An env var is expanded by
+      # bash after parsing, so the value can never become code.
       - name: Summary
         if: always()
+        env:
+          REASON: ${{ inputs.reason || '(none given)' }}
         run: |
           {
             echo '## employsi-preview'
             echo
-            echo "Reason: ${{ inputs.reason || '(none given)' }}"
+            echo "Reason: $REASON"
             echo
             echo '**https://employsi-preview.employsi.workers.dev/app**'
             echo
