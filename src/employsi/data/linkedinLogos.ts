@@ -23,6 +23,8 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/D560BAQE3Owans5b-4Q/company-logo_200_200/B56Z73Vz2TKEAE-/0/1782266151118/argo_investments_logo?e=2147483647&v=beta&t=ngNWTk4qvxyqgb-7az1EV1QdGxGf6DFbJK2TfIlMsy0",
   "adelaide-cda":
     "https://media.licdn.com/dms/image/v2/C560BAQFu-W4ACYHtwQ/company-logo_200_200/company-logo_200_200/0/1630596622518/codan_limited_logo?e=2147483647&v=beta&t=LD2sQ-6wJCkOvjk_mOobvNZQcz150eYSsw6fGJqJBoM",
+  "adelaide-tea":
+    "https://media.licdn.com/dms/image/v2/C560BAQElQFrsKOIQbA/company-logo_200_200/company-logo_200_200/0/1677646572384/tasmea_limited_logo?e=2147483647&v=beta&t=VpNsTOf08mAJaKkKilMG06UlmbDpBxEzunWKePREfoI",
   aow: "https://media.licdn.com/dms/image/v2/C560BAQF-bxuyTW4mKg/company-logo_200_200/company-logo_200_200/0/1630648363527/arrowenergy_logo?e=2147483647&v=beta&t=JSeMb-vV1QtZ4QRkUX7hzNM4yB8hEmbPPwgH1jTtfcs",
   "aps-australian-communications-and-media-authority":
     "https://media.licdn.com/dms/image/v2/D560BAQHl9wuw4vrFXw/company-logo_200_200/B56Z0ckHS9JsAI-/0/1774300722858/australian_communications_and_media_authority_logo?e=2147483647&v=beta&t=Bl4coKQrjHH_pplwYjzuGyE39TQUHHfIMIDCGDsmcLQ",
@@ -36,6 +38,8 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/D560BAQHhrCzae-ptKA/company-logo_200_200/company-logo_200_200/0/1729120424732/australian_institute_of_health_and_welfare_logo?e=2147483647&v=beta&t=h6zj8Y6Kcb0Ec7Q1E5PTjjltBm7RvadHkA3SR9QZuiw",
   "aps-australian-national-audit-office":
     "https://media.licdn.com/dms/image/v2/D560BAQFAPyyLgOqfjg/company-logo_200_200/company-logo_200_200/0/1667285068477/australian_national_audit_office_logo?e=2147483647&v=beta&t=8iwVtuWkzJJzIGDUjECU0Bg11hQFnvJCBQd68UeJE2w",
+  "aps-australian-security-intelligence-organisation":
+    "https://media.licdn.com/dms/image/v2/D560BAQHGa4CUHQRw8g/company-logo_200_200/company-logo_200_200/0/1719784080535/australian_security_intelligence_organisation_logo?e=2147483647&v=beta&t=laHUg8gHxT73rFqe1cPUZnSjn0X0mPyyV8Eh1ETh5qY",
   "aps-australian-signals-directorate":
     "https://media.licdn.com/dms/image/v2/D560BAQGB1fIY2VT4Ug/company-logo_200_200/company-logo_200_200/0/1734410114529/australian_signals_directorate_logo?e=2147483647&v=beta&t=Xkucjn6h1EkbX_ZLKNyDeu0Mg2xIq5pgN19tXXbk9g8",
   "aps-australian-space-agency":
@@ -77,8 +81,22 @@ export const LINKEDIN_LOGO: Record<string, string> = {
   "aps-services-australia":
     "https://media.licdn.com/dms/image/v2/C4D0BAQEWSje_1aMOmg/company-logo_200_200/company-logo_200_200/0/1639525081959/services_australia_logo?e=2147483647&v=beta&t=xwqv459BKhb1ipfAlZYBGKlJdtxm7VPYyn1QWlfJUs4",
   asb: "https://media.licdn.com/dms/image/v2/C560BAQFSQCCFh0A2cA/company-logo_200_200/company-logo_200_200/0/1631412397286/austal__logo?e=2147483647&v=beta&t=qMsoAq0IVCvmOnC343zJXycFwp921iPcM2Ne7O7nLYI",
+  "beijing-600050":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQEIsYcC71I2Zw/company-logo_200_200/company-logo_200_200/0/1631307261358?e=2147483647&v=beta&t=O_ayMwAdvwXl_g8LQ3FpHFNoQru_8arVZh6Iq1vAsnk",
+  "beijing-601288":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQFVnBw4t3pXIQ/company-logo_200_200/company-logo_200_200/0/1631330177736?e=2147483647&v=beta&t=mxWzn2T2304e2s0iv2uxtB3Ao3Wy0X84NpPe8lSEXJE",
+  "beijing-601988":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQESGRoshOPpWg/company-logo_200_200/company-logo_200_200/0/1631331457284?e=2147483647&v=beta&t=YEuJcogpREb-qxE8n-Ju9J-WXd-ob7qSAi4KlTk3nXA",
+  "beijing-bytedance":
+    "https://media.licdn.com/dms/image/v2/C560BAQGA-1ynUGnhlA/company-logo_200_200/company-logo_200_200/0/1630658803864/bytedance_logo?e=2147483647&v=beta&t=ht5PaIMJfoF4h_7jwkzAbJMHAZ7KSCOFVuBLCUkO0SY",
+  "bengaluru-bel":
+    "https://media.licdn.com/dms/image/v2/D560BAQEoT1DsKihRxQ/company-logo_200_200/company-logo_200_200/0/1725596070207/bharat_electronics_limited_logo?e=2147483647&v=beta&t=9vSEBtaazcfwKptJUcUmtTLI5R8QTXNMBGy71tWwcHA",
+  "bengaluru-biocon":
+    "https://media.licdn.com/dms/image/v2/D560BAQEfbyXQk7jS_A/company-logo_200_200/B56ZyZh5NpHsAI-/0/1772102325673/biocon_logo?e=2147483647&v=beta&t=L-pnTLck-cV5oSX130j8z-EtYyvA5vFATbKu94wEBoY",
   bhp: "https://media.licdn.com/dms/image/v2/C4D0BAQELDYAj2D7aWw/company-logo_200_200/company-logo_200_200/0/1631313788325?e=2147483647&v=beta&t=zf-HklhmR9C3l2dIXEAOWxDY3RC9c8l6vXYm4VOK2DU",
   bmn: "https://media.licdn.com/dms/image/v2/C560BAQFluhgS-3K_2w/company-logo_200_200/company-logo_200_200/0/1630655148832/bannerman_resources_limited_logo?e=2147483647&v=beta&t=d-TbCJs412BQy9wrf9XYx2jRWNtVwXneaHSFoL-LDlg",
+  "boston-adi":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQFIPofjzp1AXA/company-logo_200_200/company-logo_200_200/0/1639584615887/analog_devices_logo?e=2147483647&v=beta&t=qCvsKp0BsFh__rRoe74Hs5MFG8Dve-UvoCDF78X0wzw",
   "brisbane-alq":
     "https://media.licdn.com/dms/image/v2/D560BAQEvef0vRwt8aA/company-logo_200_200/company-logo_200_200/0/1719851393792/als_logo?e=2147483647&v=beta&t=b0TaPA0PTogCAClK28ztSfq25XwRC7hgQYB-i_HZmHc",
   "brisbane-ape":
@@ -101,31 +119,119 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/C560BAQG3iLEhQiSjAA/company-logo_200_200/company-logo_200_200/0/1630595961691/nextdc_logo?e=2147483647&v=beta&t=-2kmeRSGf3YQqTc-OIsvK_omyQvGNDmw-XV4xOKw44k",
   "brisbane-smr":
     "https://media.licdn.com/dms/image/v2/D560BAQFBsOx_S9MzAA/company-logo_200_200/B56Zr7qkkFHIAM-/0/1765158832881/stanmore_resources_limited_logo?e=2147483647&v=beta&t=jjm2GBUdr5zTTnYoLl51dGp7Uhe3tlLy0uAWoK-gNSg",
+  "brisbane-sul":
+    "https://media.licdn.com/dms/image/v2/D560BAQG7LMNuMp5v3Q/company-logo_200_200/B56Z.IdZ1_GcAE-/0/1784700837582/super_retail_group_logo?e=2147483647&v=beta&t=qoPFNi08wHqvY6FdyoxqcAouQyEYeYNkGRev_rVg_NA",
   "brisbane-sun":
     "https://media.licdn.com/dms/image/v2/D560BAQGGtxWynEwadw/company-logo_200_200/B56Z.nnQ.IHIAE-/0/1785223516719?e=2147483647&v=beta&t=bBQb7ttFy3KuzdfDN20jJH0-yCcTLRcXJzr385ITHfI",
   "brisbane-vgn":
     "https://media.licdn.com/dms/image/v2/D560BAQFgmY7Tl_5nYw/company-logo_200_200/B56ZkmTe4CHAAM-/0/1757284265978/virgin_australia_logo?e=2147483647&v=beta&t=wkTPdOnDrl2m_Vi7Io3bAfVcXaU9QT3UonDIHRFs2zI",
+  "calgary-cve":
+    "https://media.licdn.com/dms/image/v2/C560BAQF0LWhqSCovZg/company-logo_200_200/company-logo_200_200/0/1630638463303/cenovus_energy_logo?e=2147483647&v=beta&t=zqylI8axO0FTkuBcs_dCNzUS-09gqKQNI1VvY9DkEqI",
   ccv: "https://media.licdn.com/dms/image/v2/C4D0BAQFupwbRpkKbcQ/company-logo_200_200/company-logo_200_200/0/1630520133422/domaxis_be_logo?e=2147483647&v=beta&t=T4VcBECouHmHD7oihkOnwPBihSh9moGuuyv6UemkHT4",
+  "charlotte-tfc":
+    "https://media.licdn.com/dms/image/v2/C560BAQF4TzQO33psog/company-logo_200_200/company-logo_200_200/0/1656680740676/truistfinancialcorporation_logo?e=2147483647&v=beta&t=8QdwglepmiIFUT4toQmnW3n8R250pmWPXJ18RjBMEhY",
   chevron:
     "https://media.licdn.com/dms/image/v2/C560BAQFIzPIYfEdWdw/company-logo_200_200/company-logo_200_200/0/1630597725146/chevron_logo?e=2147483647&v=beta&t=vGrex5btdgvrkVlQ0gZH7gqOyUqFvY2EW5Ws4FsEN2U",
+  "chicago-exc":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQFZm45ZFS9UeQ/company-logo_200_200/company-logo_200_200/0/1643803400311/exelon_logo?e=2147483647&v=beta&t=8ivDuwr0BIo6IswnJjsK-O0b449LjrXrnLB3bm53jGM",
   cxo: "https://media.licdn.com/dms/image/v2/D560BAQHifkw7rOdW4Q/company-logo_200_200/company-logo_200_200/0/1699937708513/core_exploration_logo?e=2147483647&v=beta&t=1nB7MvIEmETVlLN7lpf_ydegz05J0KZsaUl7IIUqB1I",
+  "dallas-kmb":
+    "https://media.licdn.com/dms/image/v2/D4D0BAQGlS6eTfiyQMw/company-logo_200_200/company-logo_200_200/0/1711458004114/kimberly_clark_logo?e=2147483647&v=beta&t=LTxWZ0uSrM2YLqAVWX-1WKWDOrHaXlsC4t5Qfs6TYys",
+  "dallas-txn":
+    "https://media.licdn.com/dms/image/v2/D560BAQGaVtOjkyl-LQ/company-logo_200_200/B56ZoMY5iZHIAI-/0/1761144445476/texas_instruments_logo?e=2147483647&v=beta&t=pj4JAImES3F_nOvNubns4KFuVFJJZQd_v0DdjcGblFU",
   del: "https://media.licdn.com/dms/image/v2/D560BAQGUd9-XnqwP5Q/company-logo_200_200/B56ZgMK1eyHsAI-/0/1752550824301/delorean_corporation_logo?e=2147483647&v=beta&t=Zkx_fDD-BsYhzsf_cPmheYKP684j2qNxU38OjV3XEAY",
+  "denver-pltr":
+    "https://media.licdn.com/dms/image/v2/D560BAQEhxbYkqpRJDw/company-logo_200_200/B56Z_RcFJeHcAE-/0/1785925227309/palantir_technologies_logo?e=2147483647&v=beta&t=eIIcc9clpGVEsytxFG1hQvR_ER56R67S8fY9bS8sh48",
+  "dubai-adib":
+    "https://media.licdn.com/dms/image/v2/D4D0BAQF--00oQ0_KHA/company-logo_200_200/B4DZ11_2DOK8AM-/0/1775801164997?e=2147483647&v=beta&t=9U2sqP3c_VvhM8wWp17l8Ch-JEDVwQS7-PaOlnoktRI",
+  "dubai-adnocdist":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQFuuplDR9MmsQ/company-logo_200_200/B4EZ18zgcEH0AI-/0/1775915371427?e=2147483647&v=beta&t=wWGePGZn3YkXkyJuvcRZym59GwHWDq5UlSE9kB6MscY",
+  "dubai-adnocdrill":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQEC7H7KB5uYtA/company-logo_200_200/B4EZ2Lh5ORJsAM-/0/1776162412823/adnocdrilling_logo?e=2147483647&v=beta&t=yzsjPCa7XedfTnb8hYY70mItoNz4PQHIMrUKE4xAxsk",
+  "dubai-adnocgas":
+    "https://media.licdn.com/dms/image/v2/D4D0BAQHE8GDikmrluQ/company-logo_200_200/B4DZ2LUzdXHIAM-/0/1776158980923?e=2147483647&v=beta&t=wsfWIhbPNfxePCU3ip74tgBc_EVZoTphFcmM0Cw-ELU",
+  "dubai-adnocls":
+    "https://media.licdn.com/dms/image/v2/D4D0BAQEQr8zjDL14xQ/company-logo_200_200/B4DZ2vDHprHsAI-/0/1776758336625?e=2147483647&v=beta&t=epZ_9Th9ZQ6Kbcv0vBalLHhuUj8lrJ-T1nrWAtskNC4",
+  "dubai-adports":
+    "https://media.licdn.com/dms/image/v2/D4D0BAQE0yYMb1WEzmw/company-logo_200_200/B4DZ2LPwpNKIAI-/0/1776157661868/adportsgroup_logo?e=2147483647&v=beta&t=4_U4eYw09Y6FR3FZv8f77v5WMyy_LAlA8z4tewd9StI",
+  "dubai-ajmanbank":
+    "https://media.licdn.com/dms/image/v2/D4D0BAQEBi_oc9jMMQw/company-logo_200_200/B4DZ20CIn_JsAI-/0/1776841952230/ajman_bank_logo?e=2147483647&v=beta&t=8VMlwq8s_bWY277b8sl4Y70YzYL55nQxs5Vp0WZNlTM",
+  "dubai-dtc":
+    "https://media.licdn.com/dms/image/v2/D560BAQET3_tXBHJBpQ/company-logo_200_200/B56Z3zu.hrKkAM-/0/1777910673324/dubai_taxi_company_logo?e=2147483647&v=beta&t=LP4YWKggf-XfwD72yf3gu9E98VilChIWxgAfRDlCpZk",
+  "dubai-emaar":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQEsK0JQQjGfvA/company-logo_200_200/company-logo_200_200/0/1630481935014?e=2147483647&v=beta&t=GBgd_M9e_vNg06WWijo_GHE8Rh5Y4A0MOGJ9rN-MbjI",
+  "dubai-emaardev":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQGoNmhvfP__uA/company-logo_200_200/company-logo_200_200/0/1674644861444/emaardevelopment_logo?e=2147483647&v=beta&t=bRmOM4W6b0l3qz-5MyAH6-MJka-mkpANAu6OzP49CX8",
+  "dubai-fab":
+    "https://media.licdn.com/dms/image/v2/D4D0BAQGaAvqepFj8Hg/company-logo_200_200/B4DZ1zd_FPI4AI-/0/1775758734307/first_abu_dhabi_bank_logo?e=2147483647&v=beta&t=6LlWbSzceN1ckFLIHN52x65yHCYEQcgnhFidgZqh3wA",
+  "dubai-shuaa":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQEjpR_KFqbRaQ/company-logo_200_200/company-logo_200_200/0/1630590957060/shuaa_capital_logo?e=2147483647&v=beta&t=XvJOPe3FQIVotYP1eIpe7Arcnsp6dvZLGQ7nIrsoM1w",
   dyl: "https://media.licdn.com/dms/image/v2/C560BAQHufFjNZm-bPw/company-logo_200_200/company-logo_200_200/0/1630599847780/deep_yellow_limited_logo?e=2147483647&v=beta&t=cnrh111xy4eo1_ZY17OnxiETg64gmTlv1MCEm9ZLO5M",
   fmg: "https://media.licdn.com/dms/image/v2/D560BAQEHCNp6AXpewg/company-logo_200_200/company-logo_200_200/0/1695717090491/fortescue_logo?e=2147483647&v=beta&t=1zqx7OYYy2G5koBLWI3mVylVtSGPIYiE0RGRDAiQ7y0",
+  "ganzhou-600337":
+    "https://media.licdn.com/dms/image/v2/D4D0BAQG-82R5wZHb_A/company-logo_200_200/company-logo_200_200/0/1716299264952?e=2147483647&v=beta&t=0xdrO83cZNxp53sOZcF2vWp1joVjN6Tr3fl496zIG1w",
   gmd: "https://media.licdn.com/dms/image/v2/C4D0BAQGOVAjXZ-qBZg/company-logo_200_200/company-logo_200_200/0/1657160653081/genesisminerals_logo?e=2147483647&v=beta&t=TDhBxjhK5GGXMOiikJsol6ka_XtiGY8j_HJOO1Pnv90",
   gor: "https://media.licdn.com/dms/image/v2/C4E0BAQFK9XqyHEa8bw/company-logo_200_200/company-logo_200_200/0/1630603706983/gold_road_resources_logo?e=2147483647&v=beta&t=RFUOCwPRgynNfr53t2VWF0XPKYC9NGlvWfcOFRZIXEA",
+  "hongkong-00006":
+    "https://media.licdn.com/dms/image/v2/D560BAQHLfi8O7ZI7FQ/company-logo_200_200/company-logo_200_200/0/1685693849781/powerassets_logo?e=2147483647&v=beta&t=wPfVTU7dbeCm_O4FjeF9QAj4WonJcFAzqtJRHkbR7c4",
+  "hongkong-00762":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQEIsYcC71I2Zw/company-logo_200_200/company-logo_200_200/0/1631307261358?e=2147483647&v=beta&t=O_ayMwAdvwXl_g8LQ3FpHFNoQru_8arVZh6Iq1vAsnk",
+  "hongkong-01113":
+    "https://media.licdn.com/dms/image/v2/C560BAQGhIG7jUNj4cQ/company-logo_200_200/company-logo_200_200/0/1645035566222?e=2147483647&v=beta&t=Nsu7W_vgnN5uCNB7pT9PZ8ncc6PkHe0lPCYCMYaGtcw",
+  "hongkong-03988":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQESGRoshOPpWg/company-logo_200_200/company-logo_200_200/0/1631331457284?e=2147483647&v=beta&t=YEuJcogpREb-qxE8n-Ju9J-WXd-ob7qSAi4KlTk3nXA",
+  "houston-cop":
+    "https://media.licdn.com/dms/image/v2/D560BAQGivlgdr0_jyw/company-logo_200_200/company-logo_200_200/0/1680637648198/conocophillips_logo?e=2147483647&v=beta&t=I-qJ1_SPGiwxlyNxVCjbfn3DzWxnRTOUzTQVHAWa_Wc",
+  "houston-ctra":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQFwkRtrcW5kSA/company-logo_200_200/company-logo_200_200/0/1633094197350/cabot_oil__gas_logo?e=2147483647&v=beta&t=xcjgJ4w20LsRVC2DeRu9P3JZUQZoTd2-67SO8sjpdZk",
+  "houston-trgp":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQEKMuFKlBeUQg/company-logo_200_200/company-logo_200_200/0/1631374956125/targa_resources_logo?e=2147483647&v=beta&t=MFU9aBPCjPvBjjK5EspZCJfFMwXm9Yp1qRxNS1XnssQ",
   ilu: "https://media.licdn.com/dms/image/v2/C510BAQGqevd7zX96nw/company-logo_200_200/company-logo_200_200/0/1630602746495/iluka_resources_logo?e=2147483647&v=beta&t=Gd8DPcte1K0_gQfw9sQQVDDMcq0WU2dE61UDeuH0ymw",
+  "indianapolis-spg":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQHxQ4wCVGBrjQ/company-logo_200_200/company-logo_200_200/0/1630581469214/simon_property_group_logo?e=2147483647&v=beta&t=B2WcpI3r9d1eSIz78YAr1brA8uvzronZaq631HKf1rE",
   jms: "https://media.licdn.com/dms/image/v2/D560BAQFbDAznatuaTw/company-logo_200_200/company-logo_200_200/0/1731306323538/jupitermines_logo?e=2147483647&v=beta&t=NNm37dwSNktjSQB5t_ZRIP37zMumr_eCq15phWCRQe4",
+  "johannesburg-exx":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQH9cOlDg8FvKg/company-logo_200_200/company-logo_200_200/0/1665759333978/exxaro_resources_logo?e=2147483647&v=beta&t=o8rp84I7wkQcD0Yj2OyY3XpuRICtVIK9ezp7v0ZRSb8",
+  "johannesburg-fsr":
+    "https://media.licdn.com/dms/image/v2/D4D0BAQExLEOU-quSbw/company-logo_200_200/company-logo_200_200/0/1689087522609?e=2147483647&v=beta&t=t31Or_3mD8NQlQo3zDUurCEJvAAdnSBlSqLFsfZo3AI",
+  "johannesburg-mrp":
+    "https://media.licdn.com/dms/image/v2/D4D0BAQGiGcbu7I1Veg/company-logo_200_200/B4DZjpESieG8AI-/0/1756256873035/cpq_deck_logo?e=2147483647&v=beta&t=V46H64BoJqe5p0AhJs-FXv9XPshD4DC7HQdT1GxoJBc",
+  "johannesburg-ned":
+    "https://media.licdn.com/dms/image/v2/D4D0BAQEyOIFMkQWDWQ/company-logo_200_200/company-logo_200_200/0/1699019682639/nedbank_logo?e=2147483647&v=beta&t=Q-l2S5fhWQajU_f_bR4iE3SCCydZPLoHO8a2UIw5Ll8",
+  "johannesburg-rdf":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQGgWwcezZMScg/company-logo_200_200/company-logo_200_200/0/1652362499090/redefine_properties_limited_logo?e=2147483647&v=beta&t=DOD2mDng4dMPvBMv6uaTF32DX83J3UwzU6d_bZuIirs",
+  "johannesburg-sol":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQGyeljXUeahug/company-logo_200_200/company-logo_200_200/0/1631306403556?e=2147483647&v=beta&t=wkH3sC3kocX0M0LcqUBrmsA43dW1cH5rVaeEKs3mvxw",
+  "johannesburg-whl":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQEF1LgAt5rSfw/company-logo_200_200/company-logo_200_200/0/1701241935947/woolworths_logo?e=2147483647&v=beta&t=Srmh8QMOp4OgHicX7IeR6GQ55oalQS1xNtKmON75lps",
+  "london-bp":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQFJIiZN5WCYAA/company-logo_200_200/company-logo_200_200/0/1719826788213/bp_logo?e=2147483647&v=beta&t=IAw6banKfJc-NoyAnxJluCCNITBtb1VsxU1M_cqS9Uw",
+  "london-imb":
+    "https://media.licdn.com/dms/image/v2/C560BAQFFCSn1hEB75w/company-logo_200_200/company-logo_200_200/0/1679405671786?e=2147483647&v=beta&t=TGTSOvjkeIxeZqpEHbUh0gcGbhfYMEQF2AQBxcORTzs",
+  "london-lloy":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQGkhcpv2Zr_fg/company-logo_200_200/B4EZp3cgAqKYAI-/0/1762940551787/lloyds_banking_group_logo?e=2147483647&v=beta&t=OTDCtb1SqBo91ti7hqWsdJmHaYnuATnrpzS0BEQhiZM",
+  "london-sn":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQF-fX7JjAw1KA/company-logo_200_200/B4EZ8iTyN4HkAE-/0/1782987039823/smith_nephew_logo?e=2147483647&v=beta&t=tuDigtWfplGWmkdK3qpIRv3NFxVlzdnpw50n_HgaT98",
+  "london-stan":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQFBscD8bpyYjw/company-logo_200_200/B4EZgYqzHkGYAg-/0/1752760529791/standardchartered_logo?e=2147483647&v=beta&t=vI_y2XaNvCTqJwhG7AIM4ohqhyosBr59PdY-7JtfJ5Y",
   ltr: "https://media.licdn.com/dms/image/v2/C560BAQGpLRMr_gz1-Q/company-logo_200_200/company-logo_200_200/0/1649132718841/liontown_resources_limited_logo?e=2147483647&v=beta&t=Q9jKrg4QvdEgWTk7PCkKblyHkne1bpp8PWiexhYq5qI",
   mah: "https://media.licdn.com/dms/image/v2/D560BAQF6he3PVnOU-g/company-logo_200_200/company-logo_200_200/0/1684822925507/macmahon_logo?e=2147483647&v=beta&t=LsTQeOXHIEYrMJ-ztXOk114MZOXh6ctP7EyxEOZjRJ0",
+  "melbourne-4dx":
+    "https://media.licdn.com/dms/image/v2/C560BAQFLcvWnuHFiyg/company-logo_200_200/company-logo_200_200/0/1630657331469/4dx_logo?e=2147483647&v=beta&t=C8LPchg2A89BLITbIygMWU1TgxSGRfIvKGGyDx7VocQ",
   "melbourne-amc":
     "https://media.licdn.com/dms/image/v2/C4D0BAQF0sed-lbowMg/company-logo_200_200/company-logo_200_200/0/1630499181382/amcor_logo?e=2147483647&v=beta&t=hZfa7WVAcSnlFS_3Zr0q-X5jkNvhNuMNxrRZFC9E6Ro",
+  "melbourne-ann":
+    "https://media.licdn.com/dms/image/v2/C510BAQELQl_ZHE_QYA/company-logo_200_200/company-logo_200_200/0/1631332863754?e=2147483647&v=beta&t=DbDfjiQDS1ZOdbE5vxeWuPdWEeQ-y9OETA6gCUzh5as",
+  "melbourne-car":
+    "https://media.licdn.com/dms/image/v2/D560BAQFAS28aYFx3MQ/company-logo_200_200/company-logo_200_200/0/1698388126966/car_group_logo?e=2147483647&v=beta&t=Y5FY_FOPZLbuA4HBqnKwbN1Kh25HMV-K6Vr7QpIMjC8",
   "melbourne-col":
     "https://media.licdn.com/dms/image/v2/D560BAQEE1puAFu2smw/company-logo_200_200/company-logo_200_200/0/1688961657986/colesgroup_logo?e=2147483647&v=beta&t=Zp2ARZJGEaz6LcPUOfug0-q5PdCOlbwUANAxapBngZ4",
   "melbourne-cpu":
     "https://media.licdn.com/dms/image/v2/D4E0BAQGxLeQ98ONK5A/company-logo_200_200/B4EZU37fJ4GgAI-/0/1740400096277/computershare_logo?e=2147483647&v=beta&t=9w_bTPtLqGkpbk66RbUpLuZ3_ABIzsoudfAmgy7kpSk",
   "melbourne-csl":
     "https://media.licdn.com/dms/image/v2/D4E0BAQEZFaB6g9vwMg/company-logo_200_200/B4EZ8d5ycLK4AM-/0/1782913116133/csl_logo?e=2147483647&v=beta&t=2xR2MXlnC4mWJ6_8XtPdKV4i7h_ByRuSanodaVtSW0Q",
+  "melbourne-dnl":
+    "https://media.licdn.com/dms/image/v2/D560BAQEa0Atsvaz_Jw/company-logo_200_200/B56ZWhd.2JGoAM-/0/1742170746738/dyno_nobel_logo?e=2147483647&v=beta&t=137O2uRLrLj21ljsYyaPITF4wibq6Yddo9Kz9mVRTfA",
   "melbourne-hsn":
     "https://media.licdn.com/dms/image/v2/C560BAQEvL5jUvbvaIg/company-logo_200_200/company-logo_200_200/0/1656680346982/hansen_technologies_logo?e=2147483647&v=beta&t=xu2MLGlZz3iSId90MbjgNWVL9n8I-RDSo7oIvqFJj5U",
   "melbourne-ifl":
@@ -140,6 +246,8 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/C4E0BAQGxq63NRnPlEw/company-logo_200_200/company-logo_200_200/0/1642674993385/netwealth_logo?e=2147483647&v=beta&t=Ilm4KFcvI4houyMdVmcjsxb0Evk9B--jsT-pKEl4WfI",
   "melbourne-ori":
     "https://media.licdn.com/dms/image/v2/C4E0BAQEyR-MmWYkDcQ/company-logo_200_200/company-logo_200_200/0/1631312717785?e=2147483647&v=beta&t=ED7EUGUmEkOEa3zzZIBGMPsRqSMPu3yHNLMUNCb6KnY",
+  "melbourne-pme":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQFlBZF__Hce9g/company-logo_200_200/company-logo_200_200/0/1631354945022?e=2147483647&v=beta&t=EQL9X_yHXLXmE8w1_kbTAzos36t3tDbpPTT_flNfBY8",
   "melbourne-pxa":
     "https://media.licdn.com/dms/image/v2/C4D0BAQG0rr5cZLl06Q/company-logo_200_200/company-logo_200_200/0/1656651013945/pexa_logo?e=2147483647&v=beta&t=n5b1itLL7cAxgriPNsszRVzMYIbJZq1cnTjCPMu-lEw",
   "melbourne-rea":
@@ -150,6 +258,10 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/C510BAQHCLkewuvm15g/company-logo_200_200/company-logo_200_200/0/1631303610635?e=2147483647&v=beta&t=wbRWsY_S0OhK8XCW5lc4_ZkyINHSZ2z4sfp1FU1h14c",
   "melbourne-tah":
     "https://media.licdn.com/dms/image/v2/D560BAQGdr-PppHZ1mw/company-logo_200_200/B56ZoEdB__HkAM-/0/1761011311024/tabcorp_logo?e=2147483647&v=beta&t=zMOWlTZDAS8cjk122-xgLES1Y1iMdoWebrpdULa6k7M",
+  "melbourne-tcl":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQELYJ1Z0b4Rrw/company-logo_200_200/company-logo_200_200/0/1631303830154?e=2147483647&v=beta&t=QNesx85zMG3f3BGZkg_esufoMILFdA-TyU35Gq7FT5k",
+  "melbourne-tlc":
+    "https://media.licdn.com/dms/image/v2/D560BAQG4cgObbm97Lg/company-logo_200_200/B56Z8gAFjDKcAE-/0/1782948321676/the_lottery_corporation_logo?e=2147483647&v=beta&t=UPc7uNMDY1CN6Ku55EcOU7TABWhJR5T0f8mvm4Ayblw",
   "melbourne-tls":
     "https://media.licdn.com/dms/image/v2/D560BAQGNrMi-laFnUw/company-logo_200_200/company-logo_200_200/0/1684822727411/telstra_logo?e=2147483647&v=beta&t=l6120HmvQD9JWfSdV_4X7YsFM6CDVdWoIMwLaGTunDg",
   "melbourne-twe":
@@ -159,6 +271,16 @@ export const LINKEDIN_LOGO: Record<string, string> = {
   mgt: "https://media.licdn.com/dms/image/v2/C560BAQHMVh5O1MkBXA/company-logo_200_200/company-logo_200_200/0/1645251691033/magnetite_mines_limited_logo?e=2147483647&v=beta&t=DpPXPv37TLtE9nho3nxVbkAMTkUX_ca2IrpgopALr3A",
   min: "https://media.licdn.com/dms/image/v2/D4E0BAQE_yUw4ASAvJQ/company-logo_200_200/B4EZ5oKCQqG0AE-/0/1779863923127/mineral_resources_limited_logo?e=2147483647&v=beta&t=XZAn7twUFxQQlLIAcFpC_InUi3QEs_aNogcTyDq_XwY",
   mnd: "https://media.licdn.com/dms/image/v2/C560BAQF0L7BeDMNdqA/company-logo_200_200/company-logo_200_200/0/1630580091808/monadelphous_logo?e=2147483647&v=beta&t=Qo_S90SyrpzZYYOD7TdduJwIiasDXBfbqzrtWUbaY2c",
+  "montreal-atd":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQGHIP6Rsb8f0Q/company-logo_200_200/company-logo_200_200/0/1630617999805/alimentation_couche_tard_logo?e=2147483647&v=beta&t=GvOpYurF7Z97_sSzfJmpoJ93pelOwkmToaQ1Nmsi-lA",
+  "montreal-na":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQEMYX8A2St-og/company-logo_200_200/B4EZd4wP4iHcAM-/0/1750077603848/banquenationaleducanada_logo?e=2147483647&v=beta&t=LkyMcSEMhUZ6yJ0KTjuyWfUYVVEmaSyfE-t4kt8yjZY",
+  "mumbai-sbin":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQHKjQFwtVCmSg/company-logo_200_200/company-logo_200_200/0/1660627573367/state_bank_of_india_logo?e=2147483647&v=beta&t=u38MOz6mWpVUuGzsEAygNAMTBSUxuXC1qS8FfKSG7l8",
+  "mumbai-tcs":
+    "https://media.licdn.com/dms/image/v2/D4D0BAQGsGR9p4ikS5w/company-logo_200_200/company-logo_200_200/0/1708946550425/tata_consultancy_services_logo?e=2147483647&v=beta&t=5ToTCrFT_LhuaUBB1Q6vTWEdIV8m4j-2YADVE15KjAI",
+  "newyork-regn":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQFbKFTvmuUfWQ/company-logo_200_200/company-logo_200_200/0/1659625884545/regeneron_pharmaceuticals_logo?e=2147483647&v=beta&t=R71NuJZUDxnXj9hT-2UY8H5GYpXjr_hVWz9TrMt9F2Q",
   nst: "https://media.licdn.com/dms/image/v2/D560BAQGqYuX_NxfPvg/company-logo_200_200/company-logo_200_200/0/1734503369120/northern_star_resources_limited_logo?e=2147483647&v=beta&t=SgMSQOwXSe3sPtEiZjhd5U0LL-V3SkBHYzB0oXOhJ08",
   "nsw-gov-aboriginal-affairs-nsw":
     "https://media.licdn.com/dms/image/v2/D560BAQEDkEIpeJWPtg/company-logo_200_200/company-logo_200_200/0/1695966995120/aboriginal_affairs_logo?e=2147483647&v=beta&t=3DwxM4nzCJyob5PB2NMVNjinpWXNdBjd0eq8itO2O74",
@@ -251,6 +373,12 @@ export const LINKEDIN_LOGO: Record<string, string> = {
   "nt-gov-territory-generation":
     "https://media.licdn.com/dms/image/v2/C560BAQEns87eeUaOtg/company-logo_200_200/company-logo_200_200/0/1649228013515/territory_generation_logo?e=2147483647&v=beta&t=k0mJLFPuHqkXf0f5r5Eg2r6BS7bAOMb9oP7g_0_fnUI",
   nwh: "https://media.licdn.com/dms/image/v2/D560BAQGUPp18FC-S1A/company-logo_200_200/B56Zp7yBVZHkAI-/0/1763013302009/nrw_holdings_logo?e=2147483647&v=beta&t=opv2ltppGozCFjWKYE7zFXSrrOLW5e3lD6j7cnWAM1w",
+  "omaha-brkb":
+    "https://media.licdn.com/dms/image/v2/C560BAQE7HONAEYtw5w/company-logo_200_200/company-logo_200_200/0/1630584688600?e=2147483647&v=beta&t=332I8WICZUsYCcikurxfsp6IN5TcbrhxLe6hut8r16Y",
+  "paris-ml":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQE382c-vSCp5A/company-logo_200_200/B4EaCQNYX5JkAI-/0/1789125822220/michelin_logo?e=2147483647&v=beta&t=iKUp4PIDW9FSvsdWqa-O4vtY4veVXa4V91uJNiyxzCY",
+  "paris-vie":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQFc2fFZBJdPXw/company-logo_200_200/B4EZniGVnaIQAQ-/0/1760434936721/veolia_environnement_logo?e=2147483647&v=beta&t=dl-KGbb_5tomFkRXW3LvTTdv_6_eIaEwfGJc2Zt-AEA",
   pdn: "https://media.licdn.com/dms/image/v2/C560BAQHj99F7oLrY_g/company-logo_200_200/company-logo_200_200/0/1630665024580/paladin_energy_logo?e=2147483647&v=beta&t=p-jEVEhO64tm7n08F0VY1ST6F3v_y-0G90Ea4IG3w9w",
   "perth-aa":
     "https://media.licdn.com/dms/image/v2/D4E0BAQFluqrJSSanXA/company-logo_200_200/B4EZfF3IrQGcAM-/0/1751371254777/alcoa_logo?e=2147483647&v=beta&t=ShSVAMZJQJ5fMCk_NGtWD8TmcdBVqQ_DRSeFQ1fmLHY",
@@ -326,30 +454,50 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/C560BAQHCMLYhkWrfzg/company-logo_200_200/company-logo_200_200/0/1649148691263/resolute_mining_logo?e=2147483647&v=beta&t=1uc2ZLQsNFB2JTAGBZJ6OI2UwIIBioVgubqwoDH6jZk",
   "perth-vau":
     "https://media.licdn.com/dms/image/v2/D560BAQEcQKALqz4Ykg/company-logo_200_200/company-logo_200_200/0/1727755442166/red_5_limited_logo?e=2147483647&v=beta&t=Kb7SwjZ9KdDFFeFII-wm_ZfpvomqIwCSPldPwvUeiRk",
+  "philadelphia-cmcsa":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQHl_zqVDWevZg/company-logo_200_200/B4EZr_4t9tHgAM-/0/1765229650514/comcast_logo?e=2147483647&v=beta&t=-Z8yCGKGitoT4GrFTHXGhVDfuUNUBZMYZDUwlU3HmDc",
   "priv-abn-group":
     "https://media.licdn.com/dms/image/v2/D560BAQHN0saAakQIhA/company-logo_200_200/company-logo_200_200/0/1720075961817/abn_group_logo?e=2147483647&v=beta&t=drsIqBekyjFOzXofzbq1BZbTut5_PaW4gTaGQXHYfF4",
+  "priv-adco-constructions":
+    "https://media.licdn.com/dms/image/v2/D560BAQFBfv1iiI23vQ/company-logo_200_200/B56Z9YjooELAAE-/0/1783897164507/adco_constructions_logo?e=2147483647&v=beta&t=M3HETDlQ7xYr6S6o1SZ3D3BfMka9aOnAgGkzBGJ7nuw",
+  "priv-akd":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQE2gaTuwwEUCw/company-logo_200_200/company-logo_200_200/0/1638378255499/akd_logo?e=2147483647&v=beta&t=NCV6biE7MV2NHOo6q3EkcaBGLzJjchDshMtYCrKj6Yo",
   "priv-anytime-fitness":
     "https://media.licdn.com/dms/image/v2/C560BAQGns8ZPWsFMSw/company-logo_200_200/company-logo_200_200/0/1673479378826?e=2147483647&v=beta&t=8d6JCJ0yr4ofFy-wrWuvWcPJDyc6o0YpimEYlb_Mjsk",
   "priv-apco-service-stations":
     "https://media.licdn.com/dms/image/v2/C560BAQFFyOJg6WhkYg/company-logo_200_200/company-logo_200_200/0/1648437994749/apco_service_stations_pty_ltd__logo?e=2147483647&v=beta&t=xQctNM9r49_zZY-81UOlSmPKtlaL24qM7As6YJ8DfC8",
+  "priv-ara":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQGpj1OkouMtxg/company-logo_200_200/company-logo_200_200/0/1634976630334/aracampus_logo?e=2147483647&v=beta&t=NH7WZghEaLMp4R0aOx5hpmeubIas5l5LltzgAbUZgpg",
   "priv-aurecon":
     "https://media.licdn.com/dms/image/v2/D560BAQHvUDy6sPqLsw/company-logo_200_200/company-logo_200_200/0/1688338608906/aurecon_logo?e=2147483647&v=beta&t=3qti6YKVutsesrkoMg8bs6_Xpf6slTv-vatq_wdsznA",
   "priv-ausgrid":
     "https://media.licdn.com/dms/image/v2/D560BAQFMy56GevBoNA/company-logo_200_200/company-logo_200_200/0/1710114077712/ausgrid_logo?e=2147483647&v=beta&t=nQ2qR_oBByyv8aeNtyOXUOvXbDbU0dxbvu_ZNxt4H24",
+  "priv-australian-unity":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQEY3yApf4KfUg/company-logo_200_200/company-logo_200_200/0/1630505942427/australian_unity_logo?e=2147483647&v=beta&t=gnMsh1Y4cvVfc2E8GSEmcqt23PaxFoU85j_62Co1Dws",
   "priv-baiada-poultry":
     "https://media.licdn.com/dms/image/v2/C510BAQHlcREgtJoYQg/company-logo_200_200/company-logo_200_200/0/1631438485829/baiada_poultry_logo?e=2147483647&v=beta&t=LMJwHmd0ONptu-u-dzLX1bMdFYJmE5TIsUPWzqBaF9A",
+  "priv-bolton-clarke":
+    "https://media.licdn.com/dms/image/v2/D560BAQG0k0MEsObQ2w/company-logo_200_200/company-logo_200_200/0/1709512936525/bolton_clarke_logo?e=2147483647&v=beta&t=ynDwltdfabOlQSYFXGX79OSy0M8x4Flj8PThd_5GZ2s",
+  "priv-brisbane-catholic-education":
+    "https://media.licdn.com/dms/image/v2/C560BAQE7zvbs8Jy6pA/company-logo_200_200/company-logo_200_200/0/1630622002349/brisbane_catholic_education_logo?e=2147483647&v=beta&t=I3UqB6bl71hujm_zQjwa1cKLiOiHDf2BolsAp6OT36M",
   "priv-calvary-health-care":
     "https://media.licdn.com/dms/image/v2/C560BAQFCZ3tzpxwVLA/company-logo_200_200/company-logo_200_200/0/1676858307397/calvaryhealthcare_logo?e=2147483647&v=beta&t=8FUoc_ZHOU40bGLH1Eu2jzeoMvqJMFxGeC04HX-4WsA",
+  "priv-canberra-airport":
+    "https://media.licdn.com/dms/image/v2/C560BAQHhh8N6IiEXFg/company-logo_200_200/company-logo_200_200/0/1630639840236/canberra_airport_logo?e=2147483647&v=beta&t=P-no0uZDAhCb9HP0bWdP4XocWVbKYAk14Ibf1gFBR20",
   "priv-cbh-group":
     "https://media.licdn.com/dms/image/v2/C510BAQGADQyx7sxxEg/company-logo_200_200/company-logo_200_200/0/1631423552634/cbh_group_logo?e=2147483647&v=beta&t=ypegZHiCQhvxl750Jys98IY8skL1s0TiA6pxl26kcos",
   "priv-cjd-equipment":
     "https://media.licdn.com/dms/image/v2/C560BAQHnBGeKr4VbvA/company-logo_200_200/company-logo_200_200/0/1679020083538/cjdequipment_logo?e=2147483647&v=beta&t=rzP4fs2fxbeTvVyZGCaRg2Oy5Mr-7O4b-DjZNBwQmVw",
   "priv-clayton-utz":
     "https://media.licdn.com/dms/image/v2/D560BAQEWE6pUlzP7gA/company-logo_200_200/B56ZfOwql9GQAM-/0/1751520553738/clayton_utz_logo?e=2147483647&v=beta&t=dOOW45stbZaFFwifdidP_E6JyXOYBCf4NiN2akIf7B4",
+  "priv-cmv-group":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQHtQL_OJl97fw/company-logo_200_200/company-logo_200_200/0/1631355788670?e=2147483647&v=beta&t=gfIhh3cNACMlGPf4_6VCYSJDPcq9lGYeD7hhDRqTSJQ",
   "priv-consolidated-travel":
     "https://media.licdn.com/dms/image/v2/C560BAQFgiYir9q4K6Q/company-logo_200_200/company-logo_200_200/0/1634710392478?e=2147483647&v=beta&t=L3Ktcy0mlPJ1LKy7b58TuwT1b0n4dvLoabfHGybfU58",
   "priv-detmold-group":
     "https://media.licdn.com/dms/image/v2/C510BAQEvydKsyOxOew/company-logo_200_200/company-logo_200_200/0/1631372518818?e=2147483647&v=beta&t=09cHOPL7R9jnAKezmPdsREC8479wJpMfA82lbgQQO4o",
+  "priv-drake-supermarkets":
+    "https://media.licdn.com/dms/image/v2/C560BAQE1qzIGDCwlAw/company-logo_200_200/company-logo_200_200/0/1630612970542/drake_supermarkets_logo?e=2147483647&v=beta&t=i3pT4ptQjhpTqK1yoHpC1xnnrRDsfkpW4eKw_O-xSvI",
   "priv-fdc":
     "https://media.licdn.com/dms/image/v2/D4D0BAQH7vw_YApdf-g/company-logo_200_200/company-logo_200_200/0/1704344593810/fdc_limited_logo?e=2147483647&v=beta&t=iSy0TIJToUS0CotD6RxMszpJr0rFXP5mgrgp0Z7umDg",
   "priv-georgiou":
@@ -358,6 +506,10 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/C560BAQFjSC3BiyESeg/company-logo_200_200/company-logo_200_200/0/1630656148999/ghd_logo?e=2147483647&v=beta&t=GVgFZ6npdlkgSKVXiA9QuH4Qvf6pekgRU8GF0i6zpv8",
   "priv-gmhba":
     "https://media.licdn.com/dms/image/v2/C510BAQFyFmm5JxLZ_Q/company-logo_200_200/company-logo_200_200/0/1631360962806?e=2147483647&v=beta&t=mfy7w8jm4gTjdeNxD8MMo8kN0qiISi2iOYzD-KoGG3o",
+  "priv-goodstart-early-learning":
+    "https://media.licdn.com/dms/image/v2/C560BAQExm2K2wDuBDw/company-logo_200_200/company-logo_200_200/0/1630626867493/goodstart_early_learning_logo?e=2147483647&v=beta&t=A706oTg16p5xHw2cA-dM5qu3e-VBsqsvfgf0fvf6HjY",
+  "priv-great-southern-bank":
+    "https://media.licdn.com/dms/image/v2/C560BAQFMSXX13UiKrw/company-logo_200_200/company-logo_200_200/0/1655124609299/great_southern_bank_logo?e=2147483647&v=beta&t=XNvKefNPsPCitZu8Ceswt5e2Q5WSWiINQqtcYJus3j8",
   "priv-hammondcare":
     "https://media.licdn.com/dms/image/v2/C4D0BAQEjVMGIbb9qHg/company-logo_200_200/company-logo_200_200/0/1653026863327/hammondcare_logo?e=2147483647&v=beta&t=R6_mq8_S_oEiUpk1gxpU2LQjH6uSiPaV1LcI_DwYtUk",
   "priv-hancock-prospecting":
@@ -366,20 +518,40 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/C560BAQHFGNVTnItP0g/company-logo_200_200/company-logo_200_200/0/1631400728187/hansen_yuncken_logo?e=2147483647&v=beta&t=ckK7bCm1rZRJQH2XxC5Oza1gEiZUXfZhDhdPpOUGtsM",
   "priv-hbf":
     "https://media.licdn.com/dms/image/v2/D560BAQGlqaZx_VBiCQ/company-logo_200_200/company-logo_200_200/0/1695186068721/hbf_logo?e=2147483647&v=beta&t=JDXBT5pTrleZL6V7dGcjMx4VugC0ABMH6IZ4iksf0pU",
+  "priv-hcf":
+    "https://media.licdn.com/dms/image/v2/C560BAQESGmncp1hhDQ/company-logo_200_200/company-logo_200_200/0/1631353543457?e=2147483647&v=beta&t=ayUoyVxhcW3JEunoKzhadwHoM5OvhofBP382hsryILc",
   "priv-john-hughes-group":
     "https://media.licdn.com/dms/image/v2/C4D0BAQECAbDjqnKjeg/company-logo_200_200/company-logo_200_200/0/1631364664832/johnhughesgroup_logo?e=2147483647&v=beta&t=hKTM-0PWMJn0at4rqxDgTg1N1lFyEkXb5LljmarP1DI",
+  "priv-kennards-hire":
+    "https://media.licdn.com/dms/image/v2/C560BAQFhLDDVPBl0PA/company-logo_200_200/company-logo_200_200/0/1631323883081?e=2147483647&v=beta&t=i0J7EUDWYgAmkH2hJ8YCqaTN6eZlyCZMjoqJDhxMbgg",
+  "priv-kennards-self-storage":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQHAGlWVQJXJFA/company-logo_200_200/company-logo_200_200/0/1631350970909?e=2147483647&v=beta&t=8vd_0LMaewbkzeDl8eUUEv9cLYR4nwDzaN2eUMeMcpQ",
+  "priv-king-wood-mallesons":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQFo5Uo2OnhwTw/company-logo_200_200/company-logo_200_200/0/1686118595933/king_and_wood_mallesons_logo?e=2147483647&v=beta&t=sS3FxR_o_YflXl2Z7a3_LHFnH8mpiJNNXGx9CB34CxI",
+  "priv-kpmg":
+    "https://media.licdn.com/dms/image/v2/D560BAQFrqkKAlHCfyA/company-logo_200_200/company-logo_200_200/0/1688581212078/kpmg_logo?e=2147483647&v=beta&t=fC_zQK0gIE2OAufCAScwl6OJ5tX_Xi79Wry9XM2WsnM",
   "priv-life-without-barriers":
     "https://media.licdn.com/dms/image/v2/C560BAQHjpy5OKmd-2w/company-logo_200_200/company-logo_200_200/0/1678057681481/life_without_barriers_logo?e=2147483647&v=beta&t=7V3VTzsDmmubYRWYtjyUyU3dsDa0QaYNUYxvn5Pl9F8",
   "priv-linfox":
     "https://media.licdn.com/dms/image/v2/C4D0BAQEayDnGZaf-vw/company-logo_200_200/company-logo_200_200/0/1631303541528?e=2147483647&v=beta&t=SCmqav72ERqzNo70uURYdgb9pO0S4oQzBaGNla2b5CQ",
+  "priv-mecca-brands":
+    "https://media.licdn.com/dms/image/v2/D560BAQH5wOvPRmpKaA/company-logo_200_200/company-logo_200_200/0/1718938553102/mecca_brands_logo?e=2147483647&v=beta&t=UAWGzhya4-KvyiUZLkwSavm5iAa-bFb4CaQHLlICE54",
   "priv-melbourne-airport":
     "https://media.licdn.com/dms/image/v2/C510BAQFu_-MWONzxXw/company-logo_200_200/company-logo_200_200/0/1631424038709/melbourne_airport_logo?e=2147483647&v=beta&t=N3qL45OAUs2NO4hMBZ6cZi6PoA3LTm8HB_BK9d8qw_U",
+  "priv-meriton":
+    "https://media.licdn.com/dms/image/v2/D560BAQEHG8hWRHIA7Q/company-logo_200_200/B56ZwvQBGCHUAI-/0/1770319254327/meriton_logo?e=2147483647&v=beta&t=Eh2C3xwUR8CRIcxtTSJ0c9M9_D3l0JA-DkHCLhtk3b0",
+  "priv-merivale":
+    "https://media.licdn.com/dms/image/v2/C560BAQG25EvlKPSByg/company-logo_200_200/company-logo_200_200/0/1630648896804/merivale_logo?e=2147483647&v=beta&t=MKBeuwy0LwBMQyML6ejUDvynoC5yhclR98axz2XImag",
   "priv-metricon-homes":
     "https://media.licdn.com/dms/image/v2/D560BAQGAdnVHzlSauQ/company-logo_200_200/B56ZVogvniGUAM-/0/1741215169282/grihamliving_logo?e=2147483647&v=beta&t=ievW87g0kbCaSvc8IrMFspHMJfEwypubGnySdhk8LWo",
   "priv-mort-co":
     "https://media.licdn.com/dms/image/v2/D560BAQFww_zv4YSTjw/company-logo_200_200/company-logo_200_200/0/1684976405093/mortco_logo?e=2147483647&v=beta&t=Ze3_1eRM6FqJusEOF38Nyx1rcJTSQHeNrHTJ0ri7xLA",
   "priv-mpc-kinetic":
     "https://media.licdn.com/dms/image/v2/D560BAQEbKVH5sHcjnw/company-logo_200_200/company-logo_200_200/0/1727230428798/mpc_kinetic_logo?e=2147483647&v=beta&t=WFakStmQqso2aMApDgfE5erBjutNVW8546m8m0RslzY",
+  "priv-opal-aged-care":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQGmxepwmT5F7Q/company-logo_200_200/company-logo_200_200/0/1630477558024/opal_aged_care_logo?e=2147483647&v=beta&t=_p9dhiwaBfO3J9f3yfq0jbytGcoAHI0xWo-sRudZwEo",
+  "priv-pallion":
+    "https://media.licdn.com/dms/image/v2/C560BAQFXpwbyPWfjiA/company-logo_200_200/company-logo_200_200/0/1630642480801/pallion_logo?e=2147483647&v=beta&t=wg9oW8UD8XW1DgvsNhi2e7H04tjQ9d3TVLsxyJvqVgw",
   "priv-patterson-cheney":
     "https://media.licdn.com/dms/image/v2/C560BAQEN-AC1GdAP7A/company-logo_200_200/company-logo_200_200/0/1630607986246?e=2147483647&v=beta&t=TPCdx0uv_RCv-inuuUjjsfxtRFS2pNDx1YjNBRYeoM0",
   "priv-people-first-bank":
@@ -400,6 +572,10 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/C560BAQF-0jYLoHltdQ/company-logo_200_200/company-logo_200_200/0/1644464295556/racv_logo?e=2147483647&v=beta&t=DhETbfo7KBp2Ud_e4_1T2EABu2e9jSNOJvUeDi80VDM",
   "priv-refuelling-solutions":
     "https://media.licdn.com/dms/image/v2/D4D0BAQFhYueLdlXr9Q/company-logo_200_200/B4DZyeSImbJYAI-/0/1772182081067?e=2147483647&v=beta&t=4lgGbxzbp3ghddPxz6Wf5zBXGugRR8E8kLyv3YHeXu4",
+  "priv-richard-crookes-constructions":
+    "https://media.licdn.com/dms/image/v2/D560BAQGEI6UZV-kyiA/company-logo_200_200/B56ZXLC7R5GsAQ-/0/1742868297292/richard_crookes_constructions_logo?e=2147483647&v=beta&t=bSYRBImMDpjKbesEbkzQOcgsVu505-fLI2kisbziyTc",
+  "priv-san-remo":
+    "https://media.licdn.com/dms/image/v2/C560BAQFm-SlDBvUfJQ/company-logo_200_200/company-logo_200_200/0/1634881466597/san_remo_logo?e=2147483647&v=beta&t=tC0XljgZZJbX41XFbqyZIT2gWPvTAR_RHq8gVX9yU-E",
   "priv-sarah-group":
     "https://media.licdn.com/dms/image/v2/D560BAQFG9Alib8Fs2Q/company-logo_200_200/B56ZhYUG7QHQAM-/0/1753828323454/sarah_group_logo?e=2147483647&v=beta&t=aFCOgvywTQRNfK0DuREnl8LABkdpFb8QLhY92fo-OAc",
   "priv-spotlight":
@@ -412,16 +588,24 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/C4D0BAQHxpiEYegMXVA/company-logo_200_200/company-logo_200_200/0/1631304888340?e=2147483647&v=beta&t=HAno0E3cay0eMNxm62G8lxV8mHNcarN6n0MaQB3LEM8",
   "priv-sunpork-group":
     "https://media.licdn.com/dms/image/v2/C560BAQHn7v__QCOTTg/company-logo_200_200/company-logo_200_200/0/1661753177458/sunpork_group_logo?e=2147483647&v=beta&t=xZU7aIY6tV06sfu4feaK7YHQ5rkYAw4t3RHpbW5CS6k",
+  "priv-talent-international":
+    "https://media.licdn.com/dms/image/v2/D560BAQEmUkJ4adld3Q/company-logo_200_200/company-logo_200_200/0/1686266745827/talent_international_logo?e=2147483647&v=beta&t=l8DytF2l1CzIpqMZhTN9DabVZqgk30VTg9UhNdeKKB0",
   "priv-teachers-health-fund":
     "https://media.licdn.com/dms/image/v2/D560BAQGqE4xvcomPkQ/company-logo_200_200/B56Z444qQoGsAE-/0/1779070838014/teachers_health_fund_logo?e=2147483647&v=beta&t=hlXTPEOEmU7iI4mD1Njddq9CQppTZHCE_uPIMHEi2xM",
   "priv-team-global-express":
     "https://media.licdn.com/dms/image/v2/D560BAQHXfc5nxgBoZQ/company-logo_200_200/company-logo_200_200/0/1665816296366/teamglobalexpress_logo?e=2147483647&v=beta&t=sO0JqwQKdfLzNWqAJEoVzR9N3pQggt_wBELUEsW22tU",
   "priv-tennis-australia":
     "https://media.licdn.com/dms/image/v2/D560BAQFCd-hHUAHFww/company-logo_200_200/company-logo_200_200/0/1696548522714/tennis_australia_logo?e=2147483647&v=beta&t=f8JKmLE_sVHqinGrXcoMQUjbe3iykAOOfqkkamPgS0g",
+  "priv-thomas-foods-international":
+    "https://media.licdn.com/dms/image/v2/C560BAQGP0Sibo2SLvA/company-logo_200_200/company-logo_200_200/0/1630625482336/thomas_foods_international_logo?e=2147483647&v=beta&t=w_t21Adi_Y4gAUjxLwzRZrkvAsRa-u_PG8af04Ae82U",
+  "priv-turosi":
+    "https://media.licdn.com/dms/image/v2/C560BAQGEjtu7G1oLVw/company-logo_200_200/company-logo_200_200/0/1630632387740?e=2147483647&v=beta&t=n5eYUZbuVwD_4iE-SuzqI-gpz5ftYPFRy5K4LXQB1I0",
   "priv-united-petroleum":
     "https://media.licdn.com/dms/image/v2/C4E0BAQHsLlK6ReUBBA/company-logo_200_200/company-logo_200_200/0/1659752177017/grupohaina_logo?e=2147483647&v=beta&t=rwkmDj7TpSlz0KRzAFYmYEVwXFA9vA39RAjjH-A1-lo",
   "priv-unitingcare-queensland":
     "https://media.licdn.com/dms/image/v2/C4D0BAQHe8TRW5yjz_g/company-logo_200_200/company-logo_200_200/0/1630564455593/unitingcare_queensland_logo?e=2147483647&v=beta&t=F17DknEltVfzeInFkG8LxVtt4mGYAWl1CeJ-qaBrs4k",
+  "priv-village-roadshow":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQHnXj-MOoZ_HQ/company-logo_200_200/company-logo_200_200/0/1631326643662?e=2147483647&v=beta&t=ZuV-mBJPzFmH2efIc9lxmDT-_5797O11a2Q8m7YN6g8",
   "priv-walker-corporation":
     "https://media.licdn.com/dms/image/v2/D560BAQG0ze9a5mbLGQ/company-logo_200_200/B56Z2uvVikIkAI-/0/1776753138714/walker_corporation_logo?e=2147483647&v=beta&t=0nnhAuTQR8zfb-voO1TBrx81ZsHhmA2XOLb0kX4k2dA",
   "priv-winning-appliances":
@@ -523,7 +707,38 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/C560BAQEFUtR7xgsjjg/company-logo_200_200/company-logo_200_200/0/1631356280110?e=2147483647&v=beta&t=cOPLBIfh0NKJ-3G55gGSWWRKiG_KMj6nW5yS4SUGXWE",
   "sa-gov-west-beach-parks":
     "https://media.licdn.com/dms/image/v2/D560BAQFxs9TvqNQHvw/company-logo_200_200/B56ZxzqtBVJAAM-/0/1771467101151/west_beach_parks_logo?e=2147483647&v=beta&t=SJZWSfexJdItixQD7RX_UuKEnmVzeZWehXD1WYwGhZ8",
+  "sanfrancisco-dlb":
+    "https://media.licdn.com/dms/image/v2/C560BAQGymqFAuFFG6g/company-logo_200_200/company-logo_200_200/0/1630622084130?e=2147483647&v=beta&t=2jGDgvUFCPHCBKCpxKsEBZDvdTz2y-OJN9ycopTdbak",
+  "sanfrancisco-gild":
+    "https://media.licdn.com/dms/image/v2/D560BAQFkYu4gV-1t-Q/company-logo_200_200/B56Z80NkmYGUAE-/0/1783287401100/gilead_sciences_logo?e=2147483647&v=beta&t=FfujYsf6htJ5gOLfZa45bplZkdfcXDND7qM5CayIgkM",
+  "sanjose-cdns":
+    "https://media.licdn.com/dms/image/v2/C560BAQFORFBYBIoPHQ/company-logo_200_200/company-logo_200_200/0/1630668285973?e=2147483647&v=beta&t=3pb7Jf5cvhzxV0xo82b-HeCn94TsO1OD06dB5tAPUCc",
+  "sanjose-panw":
+    "https://media.licdn.com/dms/image/v2/C560BAQFZg72Sfni4SA/company-logo_200_200/company-logo_200_200/0/1657225156840/palo_alto_networks_logo?e=2147483647&v=beta&t=rOcvc5ZBsBTnvsvLMrNzzfsVstAYCdkjX3gbHYmSOog",
+  "sanjose-snps":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQEq7MVORIs3MA/company-logo_200_200/company-logo_200_200/0/1631306256041?e=2147483647&v=beta&t=tiHQAhOhJWkMt_ah58xl5WLipEd70wDKEtrJeq1DqJU",
+  "seoul-010130":
+    "https://media.licdn.com/dms/image/v2/D560BAQHd3sf8rVBxtw/company-logo_200_200/company-logo_200_200/0/1681884365829/koreazinc_logo?e=2147483647&v=beta&t=T9j0VXSxTdNxItMTmp1Xfz8QI_uc3xSZcBY5cpo0y6U",
+  "seoul-020560":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQFUCD9-rKRxIw/company-logo_200_200/company-logo_200_200/0/1631301765297?e=2147483647&v=beta&t=g9RLlgOOzcUAKVxld3AZps6r5CY13Mo0_1RluCNBSKk",
   sfr: "https://media.licdn.com/dms/image/v2/C560BAQHMmmMViEJ2DA/company-logo_200_200/company-logo_200_200/0/1630661454896/sandfire_resources_logo?e=2147483647&v=beta&t=KOtrbCBQwvKJOjDXvZ9DSgk6AVhOSPqBozF3zI8UWuI",
+  "shanghai-600036":
+    "https://media.licdn.com/dms/image/v2/C560BAQGZWgBaHSCbVg/company-logo_200_200/company-logo_200_200/0/1631300693474?e=2147483647&v=beta&t=zseA8sqL6OCZKhgkszRT3-pAlXy41SFu-_LwROvizqk",
+  "shanghai-601166":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQHFKDRtmTWtyw/company-logo_200_200/B4EZV4AXyyHgAM-/0/1741475119453/industrial_bank_logo?e=2147483647&v=beta&t=sinqTvPK4rlOfmiNl7icVgj5_00WeMaF-T5mlpBgK6g",
+  "shanghai-tcom":
+    "https://media.licdn.com/dms/image/v2/C560BAQGEVkhKVDRxcQ/company-logo_200_200/company-logo_200_200/0/1649236016007/trip_com_logo?e=2147483647&v=beta&t=_V_vPyKu3rmx2Zuyxu439JkEn9IEdO_sojg0STH_wUo",
+  shell:
+    "https://media.licdn.com/dms/image/v2/C4D0BAQGN30g7aSl4NA/company-logo_200_200/company-logo_200_200/0/1631303787196?e=2147483647&v=beta&t=MudeXPM4f8C8lBincNUrra9wwiSghXk0FYoTnPW834M",
+  "shenzhen-000063":
+    "https://media.licdn.com/dms/image/v2/D560BAQFNHJr97mur3A/company-logo_200_200/B56ZsmhPmQKEAM-/0/1765877808140/zte_logo?e=2147483647&v=beta&t=l6H-EikJkszuxn3Hf5NRJdQouYz58ub4ncAyOJ9arbU",
+  "shenzhen-002714":
+    "https://media.licdn.com/dms/image/v2/C560BAQHy07BHA5AuXQ/company-logo_200_200/company-logo_200_200/0/1630643098621/muyuan_foodstuff_co_ltd_logo?e=2147483647&v=beta&t=47yZ91pFW-d3gEmigyTCl9KJFqTomzjpk7E-GJuuGUA",
+  "singapore-f34":
+    "https://media.licdn.com/dms/image/v2/D560BAQH-UFP_vtIguw/company-logo_200_200/B56ZxtDvBVH8AI-/0/1771356221777/wilmar_logo?e=2147483647&v=beta&t=IbN8S0ISP80X2qtBrX09ewIZmi69pi5egdjyLr9ma64",
+  "singapore-v03":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQFnCeBNoj3L_Q/company-logo_200_200/company-logo_200_200/0/1631349657752?e=2147483647&v=beta&t=ODFi33nzZU3Lw0SZlUlajjWsdJjiGWsG3mDbOW-4y8s",
+  smr: "https://media.licdn.com/dms/image/v2/D560BAQFBsOx_S9MzAA/company-logo_200_200/B56Zr7qkkFHIAM-/0/1765158832881/stanmore_resources_limited_logo?e=2147483647&v=beta&t=jjm2GBUdr5zTTnYoLl51dGp7Uhe3tlLy0uAWoK-gNSg",
   sto: "https://media.licdn.com/dms/image/v2/C4D0BAQFT2rtioUKgAg/company-logo_200_200/company-logo_200_200/0/1631331100978?e=2147483647&v=beta&t=6s-LyB2kHZXHWfCssuVdzvqUSu8bWU7YpLlNm7cC_SQ",
   stx: "https://media.licdn.com/dms/image/v2/C560BAQFd3FD5TGHd0A/company-logo_200_200/company-logo_200_200/0/1630563933576/strike_energy_logo?e=2147483647&v=beta&t=cKpdKXKckV-LUvVWqnVaaiic3yHn9p06ODHht17ItUA",
   swm: "https://media.licdn.com/dms/image/v2/C560BAQEnCGbnY4RU_w/company-logo_200_200/company-logo_200_200/0/1630650164344/sevenwestmedia_logo?e=2147483647&v=beta&t=bWyBFOvdub4v-IOYVx75KOK0N-a2FiE2swuw7ABDizs",
@@ -549,6 +764,8 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/C4E0BAQFLXI2ti1h88g/company-logo_200_200/company-logo_200_200/0/1631308092500?e=2147483647&v=beta&t=2v4HJVhuFM1QU5eddBvulG7HRjJJL3PzS04kGkpuLno",
   "sydney-dro":
     "https://media.licdn.com/dms/image/v2/C4D0BAQE3f3zQmal_lA/company-logo_200_200/company-logo_200_200/0/1630559197152/droneshield_logo?e=2147483647&v=beta&t=4v2dtr8FaL2_GOIHJ7Vp7NZB7369lAMqxe-l2nvw7mY",
+  "sydney-evn":
+    "https://media.licdn.com/dms/image/v2/C560BAQGXXd9vI00nbw/company-logo_200_200/company-logo_200_200/0/1630604964534/evolution_mining_logo?e=2147483647&v=beta&t=_BU09DFaEbWfzSX1m1MEH_giWxIo-9IDLou5Rka-UE4",
   "sydney-evt":
     "https://media.licdn.com/dms/image/v2/C560BAQFybkiORl4Atw/company-logo_200_200/company-logo_200_200/0/1678144633300/evt_limited_logo?e=2147483647&v=beta&t=2SSdKotBNohfeZ4SycWfwkssKKntuFAWk26LIzjdjro",
   "sydney-gmg":
@@ -557,14 +774,28 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/D560BAQEyDBxQ7gXU9g/company-logo_200_200/company-logo_200_200/0/1691918059095/gpt_group_logo?e=2147483647&v=beta&t=TzmCQ3X-VHLfaNwvK6LHaaZTfFEGZyFZQZiUcrOJKdg",
   "sydney-gqg":
     "https://media.licdn.com/dms/image/v2/D560BAQGCMJPiwgAYqQ/company-logo_200_200/company-logo_200_200/0/1688562788666/gqgpartners_logo?e=2147483647&v=beta&t=mmeOGfUakToCdNv4U4J-ZwNA_m0_kv08y3CinlHeVyc",
+  "sydney-hvn":
+    "https://media.licdn.com/dms/image/v2/D560BAQGaLkC7HsxQtw/company-logo_200_200/B56aBFxvTJGsAE-/0/1787877062147/harvey_norman_logo?e=2147483647&v=beta&t=CDGhpLffz_pwKUT25i2bNmvTjdhcptp-6tezRiGPoDw",
   "sydney-jhx":
     "https://media.licdn.com/dms/image/v2/C4D0BAQEWSRQhpRuixg/company-logo_200_200/company-logo_200_200/0/1630485405014/james_hardie_building_products_logo?e=2147483647&v=beta&t=oybNKjAOTLzceM_gLk_Qkv9Z-D87kIYyiuz8AxS9UY4",
+  "sydney-llc":
+    "https://media.licdn.com/dms/image/v2/D560BAQHBiWRfDJJxGA/company-logo_200_200/B56ZyHIuOxG4AM-/0/1771793737011/lendlease_logo?e=2147483647&v=beta&t=nbm9697tFUHpif0Qgv5qxuyb0ya72SsVk0RiYxC427A",
+  "sydney-mff":
+    "https://media.licdn.com/dms/image/v2/D560BAQG6O8fMf6jvCw/company-logo_200_200/B56ZkYegKcHUAU-/0/1757052273730/mff_capital_investments_ltd_logo?e=2147483647&v=beta&t=ocswaCFzuCtnsUdNdysoZWyznzOsHdqGcnx_904c6t4",
+  "sydney-mgr":
+    "https://media.licdn.com/dms/image/v2/D560BAQGgb9ULynRMfw/company-logo_200_200/B56ZWI_43WHEAI-/0/1741760204760/mirvac_logo?e=2147483647&v=beta&t=AQHHOk6AbBT25jrXkEW_9BQ9ptXbRPROA6mOak8lcGU",
   "sydney-mqg":
     "https://media.licdn.com/dms/image/v2/C4D0BAQFWxaMqRxHNZQ/company-logo_200_200/company-logo_200_200/0/1630472263203/macquariegroup_logo?e=2147483647&v=beta&t=0Fi5wZjXRSevd8JcvmpRhIsZs5E81BX3s0eOji18VLU",
+  "sydney-mts":
+    "https://media.licdn.com/dms/image/v2/C560BAQGEY0vg2e7YpQ/company-logo_200_200/company-logo_200_200/0/1678054102562/metcash_logo?e=2147483647&v=beta&t=EQz3fRZrXiJDJ81NLuf1zxYqr_GL1rD-0z8pKvJUGV0",
+  "sydney-nic":
+    "https://media.licdn.com/dms/image/v2/D560BAQFDw-mqNcfXLA/company-logo_200_200/company-logo_200_200/0/1719255802975/nickel_industries_limited_logo?e=2147483647&v=beta&t=HJ-sBZWgjc53Q_-jjGPr62v4q8G4ke5v1S2Ik5L0ypg",
   "sydney-org":
     "https://media.licdn.com/dms/image/v2/D560BAQGgO-rIivb2Uw/company-logo_200_200/B56ZXCX2ZJHQAI-/0/1742722787356/origin_energy_logo?e=2147483647&v=beta&t=eBP-QXbVAodwAOAxWzLjz_DbVY75_MRB7Ul8cMytGUs",
   "sydney-pni":
     "https://media.licdn.com/dms/image/v2/C560BAQGXdxRodrihCw/company-logo_200_200/company-logo_200_200/0/1630650379243/pinnacle_investment_management_logo?e=2147483647&v=beta&t=B-Go5aW6N1ppVVmrtPaDPHZKJUv3S23pxNRiquP3j-4",
+  "sydney-ppt":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQFB2pr9f51waw/company-logo_200_200/company-logo_200_200/0/1658344650518/perpetual_logo?e=2147483647&v=beta&t=7lMFvojeTYZnu7x7WAKY0iswg5FZn9SozH8pLGrf7Ds",
   "sydney-qub":
     "https://media.licdn.com/dms/image/v2/D560BAQEeGLJnqgnlxQ/company-logo_200_200/B56ZvZfuJDJIAI-/0/1768880530422/qube_holdings_logo?e=2147483647&v=beta&t=hPLuSn__COM8ZnfdnSjMdplpFxQm6uQKOiYOicnXwmI",
   "sydney-rdx":
@@ -583,20 +814,40 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/C4D0BAQEaBh_nyCkdLA/company-logo_200_200/company-logo_200_200/0/1630550230283/sims_metal_logo?e=2147483647&v=beta&t=tuK1wno1neMqbBzk78KAUg0HS7MM3ljP_aKcW15RiaQ",
   "sydney-sgp":
     "https://media.licdn.com/dms/image/v2/D560BAQFGR4Cp2k2ggQ/company-logo_200_200/B56Zy1qkNHIsAI-/0/1772574361306/stockland_logo?e=2147483647&v=beta&t=E6Z31MSlszgVMEGdPaq4x4K-MZaPhfX4CWStUtCFzTE",
+  "sydney-shl":
+    "https://media.licdn.com/dms/image/v2/D560BAQFM2J3VbHaWTA/company-logo_200_200/B56ZXpBCoEGQAI-/0/1743371119766/sonic_healthcare_logo?e=2147483647&v=beta&t=hAAiFMGMwsS5zSX2w8ChPEf24jQhDLPLnFA7-N16uik",
   "sydney-tpg":
     "https://media.licdn.com/dms/image/v2/C4D0BAQEucXXVQs1vvQ/company-logo_200_200/company-logo_200_200/0/1656633077562/tpg_telecom_logo?e=2147483647&v=beta&t=7UXHAVVy-4-Ai963jJ0D_-zBu9ldyIBeJGceURwvQmw",
   "sydney-whc":
     "https://media.licdn.com/dms/image/v2/D560BAQFnww2tOGJ4uw/company-logo_200_200/B56ZUgHRw9HQAI-/0/1740000534155/whitehaven_coal_logo?e=2147483647&v=beta&t=rve7GNCBUZkngjH4t2gIaBc770CFn_9arREG55IQJjo",
   "sydney-wor":
     "https://media.licdn.com/dms/image/v2/D560BAQHfoyQ1BKjqmQ/company-logo_200_200/company-logo_200_200/0/1701033439470/worley_logo?e=2147483647&v=beta&t=bUCfhClAJMLFAazxfza2rgkztGWpBZRbo6jLvajIXT4",
+  "sydney-wtc":
+    "https://media.licdn.com/dms/image/v2/D560BAQGoSRhlz8ISqw/company-logo_200_200/B56ZY8HgCYGQAQ-/0/1744765322887/wisetech_global_logo?e=2147483647&v=beta&t=hUnFz6NFQl1hoFshoGTqytxyslgmTuVnFt7Gdt-tsb0",
   "tas-gov-department-of-justice":
     "https://media.licdn.com/dms/image/v2/D560BAQFsmt16QhK6fQ/company-logo_200_200/company-logo_200_200/0/1730764406801/justicetas_logo?e=2147483647&v=beta&t=OYXSQRf5AVC1DvrL92gN6pEQzlFd6mnyfLWJBMjAZQw",
   "tas-gov-department-of-police-fire-and-emergency-management":
     "https://media.licdn.com/dms/image/v2/C560BAQE-IzTjiaexlA/company-logo_200_200/company-logo_200_200/0/1661908887313/department_of_police_fire_and_emergency_management_logo?e=2147483647&v=beta&t=U1DHJksswj7joE37jU5BKFCIpo4CVn3QN8Ik7I0CqtU",
   "tas-gov-macquarie-point-development-corporation":
     "https://media.licdn.com/dms/image/v2/C4D0BAQHaWWNgjf6qaA/company-logo_200_200/company-logo_200_200/0/1630574847407/macquarie_point_development_corporation_logo?e=2147483647&v=beta&t=NrYAokBx9E89TpBH9FBMBm2FLuwm6aXqvgCb4DZGr7Q",
+  "tas-gov-port-arthur-historic-site-management-authority":
+    "https://media.licdn.com/dms/image/v2/D560BAQFFH-VZ9wyLdQ/company-logo_200_200/B56Z5ICEH5GsAI-/0/1779324961569/port_arthur_historic_site_management_authority_logo?e=2147483647&v=beta&t=HobPBe6yJbiiu8XgBD366roKxns31ByPYp6gqOzkUy4",
   "tas-gov-tourism-tasmania":
     "https://media.licdn.com/dms/image/v2/D560BAQFuwPktE8Fhxg/company-logo_200_200/B56Z6QMPSuI8AE-/0/1780535588235/tourism_tasmania_logo?e=2147483647&v=beta&t=C-fF7XXkbjYSbqMZlq49DcncxK9DC6wsXCtwm1fcaMA",
+  "tokyo-6902":
+    "https://media.licdn.com/dms/image/v2/C4E0BAQH-QTchnmXomQ/company-logo_200_200/company-logo_200_200/0/1631302240351?e=2147483647&v=beta&t=wHFq2_JpaUwR5QL51PZMsJLfFNLt9BWmwMEmWH20cwc",
+  "tokyo-7011":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQHJVdwOQbVMFA/company-logo_200_200/company-logo_200_200/0/1630567808842/mitsubishi_heavy_industries_logo?e=2147483647&v=beta&t=ou9guo68cFcBLii3WF-XBLBJDXk_oQDU6p9J_IncEt0",
+  "tokyo-8001":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQF8CHJ0shx4qw/company-logo_200_200/company-logo_200_200/0/1674249358164/itochu_corporation_logo?e=2147483647&v=beta&t=BVD9EiWp5id3S0gI80K5Duie8ULQn1ytQEJgDqb1tSE",
+  "tokyo-8053":
+    "https://media.licdn.com/dms/image/v2/C560BAQF4X5CI9jXQDg/company-logo_200_200/company-logo_200_200/0/1659588683750?e=2147483647&v=beta&t=ceEdH03B2BhR_MFC4rbrKNOOKNx_F_fLgvzFgwLYHaU",
+  "toronto-aem":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQGl8wriMA_xog/company-logo_200_200/company-logo_200_200/0/1631360480369/agnico_eagle_mines_logo?e=2147483647&v=beta&t=U4YsLGRU9aTiw3jqM-DLnd2uWjQCelAUNBrbMipDFmA",
+  "toronto-slf":
+    "https://media.licdn.com/dms/image/v2/D560BAQFNfELftqIO8g/company-logo_200_200/B56Z8aMyIaH4AE-/0/1782850986732/sun_life_financial_logo?e=2147483647&v=beta&t=4W8igjQ-ymDAS3SQsHIxioxq18clfoifqfjiLwvNWfo",
+  "vancouver-fm":
+    "https://media.licdn.com/dms/image/v2/C560BAQFtzmOsN9C-OA/company-logo_200_200/company-logo_200_200/0/1630597044627/first_quantum_minerals_ltd_logo?e=2147483647&v=beta&t=Z1z5QNl1wYl1ymVPCCv48_vUIBcggq84WR8K-bm6evQ",
   "vic-gov-ambulance-victoria":
     "https://media.licdn.com/dms/image/v2/D560BAQG1tplBLMxoFA/company-logo_200_200/B56ZttcIJvJoAM-/0/1767067649423?e=2147483647&v=beta&t=jBz6wrNrVxGMCJt34zqWfUTEN0cXIZUA5xpPs_cMiPM",
   "vic-gov-austin-health":
@@ -695,7 +946,13 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/D560BAQGYTGbv0UsGFw/company-logo_200_200/company-logo_200_200/0/1688079881893/western_health_logo?e=2147483647&v=beta&t=o6ye9khlDiS4IhAGhtJLJOog-yHhFbHhbmZ7G9nNWog",
   "vic-gov-workplace-injury-commission":
     "https://media.licdn.com/dms/image/v2/C560BAQFd06zXTW03kg/company-logo_200_200/company-logo_200_200/0/1661945350359/workplace_injury_commission_logo?e=2147483647&v=beta&t=v8cjHUrzcPjLct9zzeBziPP1yktpYVFJXDuwwzIRYPw",
+  "washington-dhr":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQG6GsNNREVi4w/company-logo_200_200/company-logo_200_200/0/1697022088582/danaher_logo?e=2147483647&v=beta&t=TzaGb21d76hTx8fG7DSNDfVmaiDije7j84wtdLQJPYg",
   wds: "https://media.licdn.com/dms/image/v2/D560BAQEJkyj3JlLtnw/company-logo_200_200/B56Z6GANeiJsAE-/0/1780364662896/woodside_energy_logo?e=2147483647&v=beta&t=uJTPPsXwtGmWXa1xCisUtsBKEUWzBBbayKjp8TriSFs",
   wes: "https://media.licdn.com/dms/image/v2/C560BAQEru3hAx9DZpA/company-logo_200_200/company-logo_200_200/0/1631322279957?e=2147483647&v=beta&t=EoJqcnHfVFr1WJoO95qVe0ce8Do8C7Ik7aYVFkT3-Oc",
   wgx: "https://media.licdn.com/dms/image/v2/D560BAQElQMtQHVVtKg/company-logo_200_200/company-logo_200_200/0/1708573073823?e=2147483647&v=beta&t=Wri93a1beBSUe_1WU4XO4FVUMyA7wjFn5KsMUYnOKIo",
+  "zurich-alln":
+    "https://media.licdn.com/dms/image/v2/D560BAQEKocV8-VnvWQ/company-logo_200_200/company-logo_200_200/0/1697469337068?e=2147483647&v=beta&t=09w3LkXy_sXL8soLxvGhKN446i161TqhIC6le20sY2k",
+  "zurich-zugn":
+    "https://media.licdn.com/dms/image/v2/C4D0BAQFShZp8t9CBhg/company-logo_200_200/company-logo_200_200/0/1631320968660?e=2147483647&v=beta&t=r-i_xM9NEv7b40nsyX9jH_wAZPGWlhxSPEWdlVQRgYw",
 };
