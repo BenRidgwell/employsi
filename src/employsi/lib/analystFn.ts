@@ -557,8 +557,21 @@ export const askAnalyst = createServerFn({ method: "POST" })
     // could put `then` AFTER the newest data whenever collection is behind.
     const then = minusDays(asOf, window);
     const canCompare = spanDays >= 2;
+    // NO COLLECTION-START DATE, HERE OR IN THE PROSE. This used to read
+    // "collected <since> to <latest>", and the answers used to explain a
+    // short window by saying the archive only started at <since>. Both told
+    // the reader when we began collecting, which is a fact about us rather
+    // than about the labour market, and reads as an apology for the data.
+    //
+    // Nothing is given up by dropping it. Reproducing a figure needs the
+    // scope, the window and the day measured — all still here or in the
+    // sentence above. And the discipline it was serving, never claiming a
+    // month-on-month move off a few days of data, is unaffected: the
+    // comparison is still refused outright when the span is too short, and
+    // the answer still says a short window is a short-run read. `since` is
+    // kept above because it bounds those windows; it is simply not quoted.
     const archiveNote =
-      `employsi vacancy archive · ${label} · collected ${since} to ${latest}` +
+      `employsi vacancy archive · ${label} · to ${latest}` +
       // The archive runs to `latest`, but the figures are measured to the last
       // finished day. Both facts, because a reader who checks will find rows
       // dated after the day the answer claims.
@@ -688,8 +701,8 @@ export const askAnalyst = createServerFn({ method: "POST" })
       const lead = top[0];
       const leadName = withParent(lead[0]);
       const changeNote = canCompare
-        ? ` Change is measured against ${then}, ${plural(window, "day")} back — the archive only starts at ${since}, so this is a short-run read, not month on month.`
-        : ` The archive is only ${plural(spanDays, "day")} deep here, so I can show what's in demand but not yet how it's moving.`;
+        ? ` Change is measured against ${then}, ${plural(window, "day")} back — a short-run read rather than month on month.`
+        : ` There isn't enough history for this scope yet to show which way that's moving, so this is the level rather than the trend.`;
       return {
         intent,
         text: `The most demanded skill in ${label} right now is ${leadName}, named in ${plural(lead[1], "live ad")}.${changeNote}`,
@@ -751,7 +764,7 @@ export const askAnalyst = createServerFn({ method: "POST" })
       if (all.length < MIN_DURATION_ADS) {
         return {
           intent,
-          text: `I can't give you a duration read for ${label} yet. It needs ads that have come down (so the run is complete) AND that carried their own posted date, and only ${plural(all.length, "ad")} here meet both — under the ${MIN_DURATION_ADS} I'd want before quoting a figure. Indeed and the state government boards publish no posted date at all, so a scope leaning on those stays thin until the archive deepens.`,
+          text: `I can't give you a duration read for ${label} yet. It needs ads that have come down (so the run is complete) AND that carried their own posted date, and only ${plural(all.length, "ad")} here meet both — under the ${MIN_DURATION_ADS} I'd want before quoting a figure. Indeed and the state government boards publish no posted date at all, so a scope leaning on those stays thin.`,
           source: archiveNote,
         };
       }
@@ -846,8 +859,8 @@ export const askAnalyst = createServerFn({ method: "POST" })
       }));
       const dirText =
         pct === null
-          ? `The archive is only ${plural(spanDays, "day")} deep for this scope, so I can tell you the level but not yet the direction.`
-          : `That's ${pct >= 0 ? "up" : "down"} ${Math.abs(pct).toFixed(1)}% on ${then}, ${plural(window, "day")} back — a short-run read, not month on month, because collection here starts at ${since}.`;
+          ? `There isn't enough history for this scope yet to give you a direction, so that's the level on its own.`
+          : `That's ${pct >= 0 ? "up" : "down"} ${Math.abs(pct).toFixed(1)}% on ${then}, ${plural(window, "day")} back — a short-run read rather than month on month.`;
       return {
         intent,
         text: `${label} had ${plural(live, "role")} live as at ${asOf}${steppedBack ? ", the most recent day the feeds had all reported" : ""}, with ${plural(fresh, "ad")} first seen in the ${plural(window, "day")} before that. ${dirText}`,

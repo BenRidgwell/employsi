@@ -295,7 +295,7 @@ export async function answerQuestion(
   if (intent === "history" && !covered) {
     return {
       intent: "history",
-      text: `${scope.label} has no published vacancy series in employsi — the long-run statistics we carry cover Australia, Canada, New Zealand, Singapore, the UK, the EU and the US. For anywhere else I'm limited to the live ad archive, which only goes back to when collection started. Ask me what's open right now instead, or switch the scope.`,
+      text: `${scope.label} has no published vacancy series in employsi — the long-run statistics we carry cover Australia, Canada, New Zealand, Singapore, the UK, the EU and the US. For anywhere else I'm limited to live ads, which can't answer a long-run question. Ask me what's open right now instead, or switch the scope.`,
       source: `National vacancy series · ${HISTORY_SPAN}`,
     };
   }
