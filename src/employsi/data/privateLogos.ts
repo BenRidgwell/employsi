@@ -33,16 +33,50 @@
  *
  * Every URL below returned a 200 with image content when it was added.
  * Verified 99 of 99 logo files in this map, the two replacements included.
+ *
+ * AND A 200 WITH IMAGE CONTENT IS NOT A VERIFICATION. That check is what this
+ * map was audited with, it passed 94 of 94, and on 2026-09-23 all 94 were
+ * fetched and LOOKED AT on a white badge instead. 36 were wrong, so the entries
+ * were deleted and each company now resolves through the ladder below them —
+ * LinkedIn for 19, the favicon service for 17. All 36 were re-fetched after:
+ * every one draws its own company's real mark, and none lands on the favicon
+ * service's generic globe.
+ *
+ * What a status code cannot see, in the four shapes they came in:
+ *
+ *  * ANOTHER COMPANY'S LOGO, served perfectly. Harris Farm was on Uber's logo
+ *    (a .svg sitting in a Shopify theme), BIG4 on Crusader Caravans, VGW on
+ *    Monopoly Match game art, People First Bank on an App Store download
+ *    badge, Teachers Health on a grid of its rewards partners' logos —
+ *    Woolworths, Apple, Bunnings. GMHBA, Meriton and Newcastle Greater Mutual
+ *    were all on an AWARD MEDAL the company had won, which is what a harvester
+ *    grabs when the prize badge is the first image on the page.
+ *  * INVISIBLE, because the file is white-on-transparent and the badge is
+ *    white: ARA's `ARA-Group-White-Logo.svg`, Clayton Utz's `logo_white.svg`.
+ *    The logos README warns about exactly this; it is the same trap that kept
+ *    several WA agencies out of waGovLogos.ts.
+ *  * NOT A LOGO AT ALL: a photograph. Canberra Airport was an apron with
+ *    Qantas jets on it, Kane a group of workers in hi-vis, Loan Market a stock
+ *    family, Mort & Co cattle, RAA a van, Winning Appliances a shopfront.
+ *  * A FRAGMENT OR A SUB-BRAND. AFL pointed into an SVG SPRITE with a
+ *    `#icn-afl-logo` fragment, which an <img> cannot address, so it drew
+ *    nothing. Deloitte was the green full stop with no wordmark, EY was
+ *    EY-Parthenon, Fitness and Lifestyle was Goodlife's "G.", RAC of WA was
+ *    its Horizons brand, Tennis Australia was the AO mark, NHP was partner
+ *    brand Terasaki.
+ *
+ * The lesson for the next pass: this map sits ABOVE LinkedIn and the favicon
+ * service, so a bad entry here is not a gap being filled — it is a better
+ * source being overridden. Prefer deleting one to repairing it, and never add
+ * one without opening the image.
  */
 
 // Roster id → the company's own logo file.
 export const PRIVATE_LOGO_URL: Record<string, string> = {
   "priv-abn-group":
     "https://www.abngroup.com.au/wp-content/themes/simplistik-child/assets/images/abn-group-logo-2024.png",
-  "priv-afl": "https://www.afl.com.au/resources/v5.51.25/i/svg-output/icons.svg#icn-afl-logo",
   "priv-akd": "https://www.akd.com.au/wp-content/themes/akd/images/logo.svg",
   "priv-alto": "https://www.altogroup.com.au/images/logo.png",
-  "priv-ara": "https://aragroup.com/wp-content/uploads/2022/02/ARA-Group-White-Logo.svg",
   "priv-ateco": "https://ateco.com.au/wp-content/uploads/2021/05/ateco-logo.png",
   "priv-aurecon":
     "https://www.aurecongroup.com/-/media/images/aurecon/logo/aurecon-desktop-logo.svg",
@@ -56,21 +90,16 @@ export const PRIVATE_LOGO_URL: Record<string, string> = {
     "https://www.australianunity.com.au/-/media/rebrandcorporate/logos/au-180years-logo.svg",
   "priv-avant-mutual": "https://avant.org.au/images/avant-logo.svg",
   "priv-bac-holdings": "https://www.bne.com.au/themes/custom/bne/images/bne-logo-new.svg",
-  "priv-big4-holiday-parks":
-    "https://assets.big4.com.au/media/sw1ih1p0/crusader_caravans_logo.png?height=80",
   "priv-bmd-group":
     "https://www.bmdgroup.global/api/asset/generated/w720-16_9/bmd-newlogos-bmd-constructions-16-9",
   "priv-bolton-clarke": "https://www.boltonclarke.com.au/globalassets/bolton-clarke-s2024.png",
   "priv-brisbane-catholic-education":
     "https://www.bne.catholic.edu.au/images/UserUploadedImages/11/BCE_logo_negativeA.svg",
-  "priv-canberra-airport": "https://www.datocms-assets.com/88007/1670467982-open_day-1024x731.jpeg",
   "priv-cbh-group":
     "https://cbhprd.azureedge.net/-/media/Project/CBH-Group/CBH-Group/CBH-Website/core-elements/logo-cbhg.svg?rev=b7733ec273174ea1b16acbbd61d0c105&hash=2DABFAB2F8AA4634AFEF91F3A333B090",
   "priv-cci": "https://www.ccinsurance.org.au/wp-content/uploads/2024/05/CCI-main-logo.png",
   "priv-choices-flooring":
     "https://www.choicesflooring.com.au/media/vzpg35ep/choices-flooring-logo-svg.svg",
-  "priv-cjd-equipment": "https://www.cjd.com.au/design-images/Logo-CJD.svg",
-  "priv-clayton-utz": "https://www.claytonutz.com/img/logo_white.svg",
   "priv-cmv-group":
     "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQh-2YFxE_NohK2wTLOiQLM0ZmQmKdV773qkXOf2AhfrT5to38FoVuzw1A&s=10",
   "priv-cnw-electrical":
@@ -86,64 +115,31 @@ export const PRIVATE_LOGO_URL: Record<string, string> = {
   "priv-creation-homes": "https://creationhomes.com.au/wp-content/uploads/2025/05/ch-logo-t.svg",
   "priv-defence-health":
     "https://www.defencehealth.com.au/getmedia/3b42c8ee-043f-4351-8aad-1579fd1de2e8/defence-health-logo.svg?ext=.svg&v=2057",
-  "priv-deloitte-touche-tohmatsu":
-    "https://www.deloitte.com/content/dam/assets-shared/logos/svg/a-d/deloitte.svg",
   "priv-detmold-group":
     "https://www.detmoldgroup.com/globalassets/detpak/logos/detmold-group-colour.svg",
-  "priv-drake-supermarkets":
-    "https://drakes.com.au/wp-content/themes/drakes/dist/images/drakes-logo-footer-reverse_483fb3f2.svg",
   "priv-employers-mutual":
     "https://www.eml.com.au/wp-content/uploads/2025/02/EML-Logo-Colour-RGB.svg",
   "priv-epworth-healthcare":
     "https://www.epworth.org.au/-/media/project/epworth/epworthweb/logos/logo-epworth.svg",
-  "priv-ey":
-    "https://www.ey.com/adobe/dynamicmedia/deliver/dm-aid--77ff1842-f343-4e18-9a15-15524ad301de/ey-parthenon-logo-135px-v2.png?preferwebp=true&quality=85",
-  "priv-fdc": "https://www.fdcbuilding.com.au/wp-content/themes/fdc/asset/images/fdc_logo_01.svg",
   "priv-firstmac": "https://www.firstmac.com.au/application/themes/fmc/assets/firstmac.svg",
-  "priv-fitness-and-lifestyle":
-    "https://cdn.prod.website-files.com/62b906070134352e8b2adb52/62eb18220b3b9d0ec13b8c54_Group%2038526.svg",
   "priv-ghd":
     "https://ghd-p-001.sitecorecontenthub.cloud/api/public/content/e25bc49fae164283b4e8b1f3f84ae635?v=c5d56e8b",
-  "priv-gmhba":
-    "https://www.gmhba.com.au/siteassets/images/canstar_2025_small_logo.png?width=110&height=118&mode=Stretch",
   "priv-hammondcare":
     "https://www.hammond.com.au/hubfs/HammondCare%20Master%20Folder/Logos/ham-c-logo.svg",
-  "priv-harris-farm":
-    "https://cdn.shopify.com/s/files/1/0206/9470/t/232/assets/Uber_Logo_Black_RGB.svg",
   "priv-hutchies-builders":
     "https://www.hutchinsonbuilders.com.au/uploads/HU-Brand-Logos-Sub-HutchiesDivisions-RGB-Civil-Colour.svg?1736211743",
   "priv-j-j-richards-sons": "https://jjrichards.com.au/wp-content/uploads/2016/12/logo.png",
-  "priv-john-hughes-group":
-    "https://res.cloudinary.com/total-dealer/image/upload/w_750,f_auto,q_60,c_limit/v1674082363/td_next/john-hughes/John-Hughes_White-Logo_yvsgrz.svg",
-  "priv-kane-constructions": "https://www.kane.com.au/assets/Kane_170808_180735.jpg",
   "priv-kennards-hire": "https://www.kennards.com.au/img/Kennards-Hire-logo.svg",
-  "priv-king-wood-mallesons":
-    "https://www.kingandwood.com/content/dam/kwm/icon/logo2026/KW_international_Logo_White+Colour_Navigation.svg",
   "priv-kpmg":
     "https://kpmg.com/content/experience-fragments/kpmgpublic/au/en/site/header/master/_jcr_content/root/header_v2/logo.coreimg.svg/1749689970934/logo.svg",
-  "priv-leader-computers": "https://leadersystems.com.au/wp-content/uploads/2021/03/UniFilogo.png",
   "priv-life-without-barriers":
     "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS97IgZhNI9Q2bt1WW55_n3eQk7xIRiUs2srdxSLBG_zNPno_MqXyRdzfI&s=10",
   "priv-linfox": "https://www.linfox.com/wp-content/themes/linfox/dist/images/logo.svg",
-  "priv-loan-market":
-    "https://www.loanmarket.com.au/wp-content/uploads/2023/07/Placeholder-Images-6.jpg",
   "priv-mater":
     "https://www.mater.org.au/getmedia/1817319e-1033-4ec7-9de7-db5b74ce1f1c/mater-group-logo.svg?ext=.svg",
-  "priv-mcnab-constructions":
-    "https://images.squarespace-cdn.com/content/v1/5e44ba6e510fd939663bf906/6159e80f-77a6-4374-95f3-1bc603c596c7/McNabGroup_30YearLogo_RGB.png?format=1500w",
   "priv-mecca-brands":
     "https://contenthub-delivery.mecca.com/api/public/content/mecca-logo-black-Qm5ntZFC40Ws3K6wEz6rMg.svg?v=dcd8bc57",
-  "priv-melbourne-airport":
-    "https://assets-au-01.kc-usercontent.com:443/be08d7b0-97a1-02f9-2be6-a0c139c3c337/2730febc-5fd7-4b16-bcff-04527cef23f5/Logo.png?w=500&h=40&fm=jpg&auto=format&fit=clip",
-  "priv-meriton":
-    "https://cms.meriton.com.au/wp-content/uploads/2025/09/Meriton-Individual-medal-10.svg",
   "priv-midfield": "https://midfield.com.au/wp-content/uploads/Midfield-logo-3-300x162.png",
-  "priv-mort-co": "https://mortco.com.au/share.jpg",
-  "priv-nepean-consolidated": "https://nepean.com/wp-content/uploads/2024/02/Nepean-logo.svg",
-  "priv-newcastle-greater-mutual-group":
-    "https://ngm.com.au/wp-content/uploads/2025/01/GIR-100-2024-Logo-700x350.png",
-  "priv-nhp-electrical-engineering-products":
-    "https://media.nhp.com.au/v1/media/edge/images/nhp1294a-nhpafc4-prod7479-0f47/media/Project/NHP/shared/Images/Partners-and-Brands/Terasaki-Full-Colour-Logo.svg?iar=0",
   "priv-norco-co-op": "https://www.norco.com.au/images/Norco-Logo-on-White_RGB.png",
   "priv-nrma-motoring-services":
     "https://www.mynrma.com.au/-/media/nrmaheadless/navigation/header/nrma-navy-logo.svg?iar=0&hash=7E875A7EA0418D031ACA4FB581978D61",
@@ -152,37 +148,20 @@ export const PRIVATE_LOGO_URL: Record<string, string> = {
   "priv-pallion": "https://pallion.com/wp-content/uploads/2024/07/pallion-logo.svg",
   "priv-patterson-cheney":
     "https://nextgen-images.cdn.dealersolutions.com.au/modular.multisite.dealer.solutions/wp-content/uploads/sites/3044/2024/03/19140735/PC-Primary-logo2.png?format=webp&width=351",
-  "priv-people-first-bank":
-    "https://www.peoplefirstbank.com.au/-/media/project/peoplefirst/pfbwebsite/medialibrary/brand-assets/logos/apple-store.svg?iar=0&rev=8cc67ad01de8415fa0e8b8347bfb6f53&hash=2D0FA589D9B9B70C7B579088DD53DAAA",
   "priv-perfection-fresh":
     "https://www.perfection.com.au/hubfs/raw_assets/public/perfection-fresh/images/Perfection-Fresh-Logo-Vertical-Read.png",
   "priv-peter-kittle-motor-company":
     "https://www.peterkittle.com.au/includes/_manufacturer/peter-kittle-shared/images/logo-print.png",
-  "priv-pwc-australia":
-    "https://www.pwc.com.au/etc.clientlibs/pwc/clientlibs/rebrand-clientlibs/components-colors/resources/images/slim-header-v2/Chevron.svg",
-  "priv-raa":
-    "https://cdn-raa.dataweavers.io/-/media/Project/RAA/Web/Images/Banner-brand/Homepage-desktop-trev.jpg?rev=9e0acb9952d24d838617c19ffed0a6ac&w=1920&hash=1DF0F10EE168C7C5036C16DCBB10B554",
-  "priv-rac-of-wa": "https://rac.com.au/-/media/images/rac-website/horizons/horizons-logo.svg",
   "priv-racq":
     "https://www.racq.com.au/-/media/project/racqgroup/racq/icons/racq-logo.svg?iar=0&rev=34159441153f4bccb20ac4ccb235af1f&hash=41341B521B48720D7C9F4E1CAB90FD83",
   "priv-refuelling-solutions":
     "https://irp.cdn-website.com/596aba7c/dms3rep/multi/RFS-logo-min-primary.svg",
-  "priv-richard-crookes-constructions":
-    "https://cdn-gugome.b-cdn.net/wp-content/themes/rcc/images/site-logo.svg",
-  "priv-ritchies-supa-iga":
-    "https://www.ritchies.com.au/application/themes/myfoodlink/images/ritchies-logo.svg",
   "priv-san-remo":
     "https://sanremo.com.au/content/themes/frame-custom/built/images/san-remo-logo.png?auto=format&w=500",
   "priv-st-vincent-de-paul":
     "https://www.vinnies.org.au/_next/image?url=https%3A%2F%2Fcms.vinnies.org.au%2Fmedia%2Fhzhfelhx%2Fvinnies-logo-1.png&w=1080&q=75",
   "priv-st-vincent-s-health-australia": "https://www.svha.org.au/imgs/svg/logos/logo-svha-new.svg",
   "priv-sunny-queen-farms": "https://www.sunnyqueen.com.au/app/themes/default/dist/images/logo.svg",
-  "priv-suttons-motors":
-    "https://s3-ap-southeast-2.amazonaws.com/prod-automait-public-website-content/images/logos/dealerships/suttons-white-h.svg",
-  "priv-teachers-health-fund":
-    "https://www.teachershealth.com.au/media/pqjcijqg/member_rewards_home_page_logos_962x674_v2-1.png?width=325&height=170&rnd=133869613879100000",
-  "priv-tennis-australia":
-    "https://www.tennis.com.au/content/experience-fragments/tennisaustralia/au/en/tennis-australia-site/header/header-with-search/_jcr_content/root/container_copy_copy/container/container/image.coreimg.svg/1757052521010/ao-brand-logo.svg",
   "priv-teys-australia":
     "https://us.teysgroup.com/wp-content/themes/trulysimpletheme/img/Teyslogo.svg",
   "priv-thomas-foods-international":
@@ -190,11 +169,8 @@ export const PRIVATE_LOGO_URL: Record<string, string> = {
   "priv-turosi": "https://turosi.com.au/wp-content/uploads/2018/10/logo1big.png",
   "priv-united-petroleum":
     "https://www.unitedpetroleum.com.au/app/uploads/2016/06/united-logo-300.png",
-  "priv-vgw-holdings":
-    "https://www.vgw.co/wp-content/uploads/elementor/thumbs/Monopoly-Match_Logo_Colour-rn4uzr3a3vx9k6x95n2gc04li220v37kgfkyl560ao.png",
   "priv-visy": "https://www.visy.com/sites/default/files/2023-03/logo.svg",
   "priv-walker-corporation": "https://www.walkercorp.com.au/images/walker-logo-white.svg",
-  "priv-winning-appliances": "http://www.winnings.com.au/assets/img/og-image-1200-630.jpg",
   "priv-winslow-constructors":
     "https://www.winslow.com.au/images/logos/Winslow-wordmark-yellow.svg",
 };
