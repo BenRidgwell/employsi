@@ -61,7 +61,6 @@ export const PRIVATE_LOGO_URL: Record<string, string> = {
   "priv-bmd-group":
     "https://www.bmdgroup.global/api/asset/generated/w720-16_9/bmd-newlogos-bmd-constructions-16-9",
   "priv-bolton-clarke": "https://www.boltonclarke.com.au/globalassets/bolton-clarke-s2024.png",
-  "priv-bowens-timber-hardware": "https://www.bowens.com.au/svg/Bowens_logo.svg",
   "priv-brisbane-catholic-education":
     "https://www.bne.catholic.edu.au/images/UserUploadedImages/11/BCE_logo_negativeA.svg",
   "priv-canberra-airport": "https://www.datocms-assets.com/88007/1670467982-open_day-1024x731.jpeg",
@@ -107,12 +106,10 @@ export const PRIVATE_LOGO_URL: Record<string, string> = {
     "https://ghd-p-001.sitecorecontenthub.cloud/api/public/content/e25bc49fae164283b4e8b1f3f84ae635?v=c5d56e8b",
   "priv-gmhba":
     "https://www.gmhba.com.au/siteassets/images/canstar_2025_small_logo.png?width=110&height=118&mode=Stretch",
-  "priv-goodstart-early-learning": "https://www.goodstart.org.au/images/goodstart-logo.svg",
   "priv-hammondcare":
     "https://www.hammond.com.au/hubfs/HammondCare%20Master%20Folder/Logos/ham-c-logo.svg",
   "priv-harris-farm":
     "https://cdn.shopify.com/s/files/1/0206/9470/t/232/assets/Uber_Logo_Black_RGB.svg",
-  "priv-hcf": "https://www.hcf.com.au/content/dam/hcf/images/placeholder/logo_hcf1.png",
   "priv-hutchies-builders":
     "https://www.hutchinsonbuilders.com.au/uploads/HU-Brand-Logos-Sub-HutchiesDivisions-RGB-Civil-Colour.svg?1736211743",
   "priv-j-j-richards-sons": "https://jjrichards.com.au/wp-content/uploads/2016/12/logo.png",
@@ -120,7 +117,6 @@ export const PRIVATE_LOGO_URL: Record<string, string> = {
     "https://res.cloudinary.com/total-dealer/image/upload/w_750,f_auto,q_60,c_limit/v1674082363/td_next/john-hughes/John-Hughes_White-Logo_yvsgrz.svg",
   "priv-kane-constructions": "https://www.kane.com.au/assets/Kane_170808_180735.jpg",
   "priv-kennards-hire": "https://www.kennards.com.au/img/Kennards-Hire-logo.svg",
-  "priv-kennards-self-storage": "https://www.kss.com.au/Content/Images/kennards_logo.svg",
   "priv-king-wood-mallesons":
     "https://www.kingandwood.com/content/dam/kwm/icon/logo2026/KW_international_Logo_White+Colour_Navigation.svg",
   "priv-kpmg":
@@ -537,7 +533,12 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   // a global business do hold their .com.
   "melbourne-car": "carsales.com.au",
   "melbourne-l1g": "l1.com.au",
-  "sydney-aub": "aub.com.au",
+  // aub.com.au is NOT AUB Group — it belongs to a restaurant, and its og:image
+  // is a logo reading "FLAVIO RESTAURANT". It served no favicon, so the badge
+  // was blank rather than wrong, which is the only reason this went unnoticed.
+  // Measured 2026-09-23: aubgroup.com.au titles "AUB Group" and draws AUB's
+  // blue roundel at 128px.
+  "sydney-aub": "aubgroup.com.au",
   "sydney-zip": "zip.co",
   "sydney-sgh": "sgh.com.au",
   "melbourne-arb": "arb.com.au",

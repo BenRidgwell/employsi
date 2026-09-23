@@ -124,8 +124,6 @@ export const WA_GOV_LOGO_URL: Record<string, string> = {
   "perth-gov-pilbara-ports-authority": "https://www.pilbaraports.com.au/images/logo.png", // Pilbara Ports Authority
   "perth-gov-venueswest":
     "https://www.venueswest.wa.gov.au/assets/corp/static/images/icons/logo-left.svg", // VenuesWest
-  "perth-gov-workcover-wa":
-    "https://www.workcover.wa.gov.au/wp-content/themes/workcover/images/logo-mobile.svg", // WorkCover WA
   // Three agencies moved out of WA_GOV_CREST_IDS below on 2026-08-05: each has a
   // named brand lockup on its wa.gov.au organisation page, so the crest was
   // hiding a real identity rather than reflecting one. All three were fetched

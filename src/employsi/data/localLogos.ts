@@ -10,6 +10,7 @@ export const LOCAL_LOGO: Record<string, string> = {
   "adelaide-axe": "/logos/adelaide-axe.jpeg",
   "adelaide-coe": "/logos/adelaide-coe.jpeg",
   "aps-bureau-of-meteorology": "/logos/aps-bureau-of-meteorology.png",
+  "aps-fair-work-commission": "/logos/aps-fair-work-commission.svg",
   "beijing-601319": "/logos/beijing-601319.png",
   "beijing-601728": "/logos/beijing-601728.png",
   "dubai-amr": "/logos/dubai-amr.png",
@@ -23,6 +24,7 @@ export const LOCAL_LOGO: Record<string, string> = {
   "hongkong-01299": "/logos/hongkong-01299.png",
   "hongkong-01810": "/logos/hongkong-01810.png",
   "hongkong-03690": "/logos/hongkong-03690.png",
+  "melbourne-ora": "/logos/melbourne-ora.jpg",
   "nt-gov-attorney-general-s-department": "/logos/nt-gov-attorney-general-s-department.svg",
   "nt-gov-department-mining-and-energy": "/logos/nt-gov-department-mining-and-energy.jpeg",
   "nt-gov-department-of-agriculture-and-fisheries":
@@ -108,6 +110,7 @@ export const LOCAL_LOGO: Record<string, string> = {
   "perth-gov-venueswest": "/logos/perth-gov-venueswest.png",
   "perth-gov-western-australia-police-force":
     "/logos/perth-gov-western-australia-police-force.webp",
+  "priv-bowens-timber-hardware": "/logos/priv-bowens-timber-hardware.png",
   "priv-cjd-equipment": "/logos/priv-cjd-equipment.jpg",
   "priv-drake-supermarkets": "/logos/priv-drake-supermarkets.png",
   "priv-leader-computers": "/logos/priv-leader-computers.png",
