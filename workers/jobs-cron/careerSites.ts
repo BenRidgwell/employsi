@@ -163,6 +163,7 @@ type Platform =
   | "workable"
   | "bamboohr"
   | "cjd"
+  | "jibe"
   | "delorean";
 
 interface SiteDef {
@@ -5109,11 +5110,16 @@ export const SITES: SiteDef[] = [
   //     looking for a careers page finds pinboards about jobs instead. Nothing
   //     is wrong with the employer or the sweep; the heuristic simply cannot
   //     work on this domain and a rendered retry will not change that.
-  //   AXA (366) and Schneider Electric (300) — BOTH ARE iCIMS, and between them
-  //     that is 666 ads behind one missing reader, which is the strongest case
-  //     this file has yet produced for writing one. AXA's is in SERVED HTML at
-  //     careers.axa.com/careers-home/ and jobs.axa.com/careers-home/, so the
-  //     only thing in the way is the reader itself, not a browser.
+  //   Schneider Electric (300) — iCIMS, and still not built. THE NOTE HERE USED
+  //     TO SAY AXA AND SCHNEIDER WERE BOTH iCIMS AND THAT ONE READER WOULD GET
+  //     BOTH, WHICH WAS WRONG, and the way it was wrong is worth keeping: both
+  //     sites fingerprint as iCIMS because both carry icims.com hosts, and they
+  //     do not run the same board. AXA's is Jibe on its own domain and now has
+  //     a reader; Schneider's really is a {tenant}.icims.com career section,
+  //     careers-se.icims.com, which serves a 13 KB shell with no job link.
+  //     The fingerprint named the vendor, not the thing to parse.
+  //     careers.se.com also 403s this sandbox while serving a runner, so
+  //     whatever is built for it has to be measured from a runner.
   //   HDFC Bank (337) — the careers page names no ATS, but following its links
   //     lands on hdfcbank.ripplehire.com/candidate/careers. RippleHire is an
   //     Indian ATS with no reader here. Worth knowing the host is named: the
@@ -5194,6 +5200,18 @@ export const SITES: SiteDef[] = [
     endpoint: "https://boards-api.greenhouse.io/v1/boards/cloudflare/jobs",
     origin: "https://www.cloudflare.com/careers/jobs/",
     homeHub: "sanfrancisco",
+  },
+  {
+    id: "paris-cs",
+    name: "AXA",
+    sector: "Insurance",
+    platform: "jibe",
+    // Reported by discover-boards.py as `icims (NO READER)`, and it is not
+    // iCIMS — see the note on fetchJibe. The board is Jibe, on AXA's own host.
+    // Measured 2026-09-22: totalCount 1,518, walked at 100 a page.
+    endpoint: "https://careers.axa.com/api/jobs",
+    origin: "https://careers.axa.com",
+    homeHub: "paris",
   },
 ];
 
@@ -5634,12 +5652,14 @@ export const PORTAL_GROUPS: string[][] = [
   // measured 2026-09-22 at 55s for AIA alone and 75s for the two banks.
   ["hongkong-01299"],
   ["singapore-o39", "singapore-u11"],
-  // Group 83 — the 2026-09-22 twentieth sweep. Both share one tick because the
-  // walk is cheap, which is not what the role count suggests: BAE's 1,617 come
-  // back in 3.9s and HSF's 124 in 2.1s, since phenom serves large pages rather
-  // than the 9-25 a page that forced the splits above. Grouped on the measured
-  // 6s, not on the 1,741 roles.
-  ["london-ba", "priv-herbert-smith-freehills", "sanfrancisco-net"],
+  // Group 83 — the 2026-09-22 twentieth sweep. Four feeds on one tick because
+  // the walk is cheap, which is not what the role count suggests: BAE's 1,617
+  // come back in 3.9s, HSF's 124 in 2.1s, Cloudflare's 392 in 0.3s and AXA's
+  // 1,472 in 4.5s. Phenom serves large pages, greenhouse is a single JSON call
+  // and Jibe walks 100 at a time in parallel windows, rather than the 9-25 a
+  // page that forced the splits above. Grouped on the measured 10.8s, not on
+  // the 3,605 roles.
+  ["london-ba", "priv-herbert-smith-freehills", "sanfrancisco-net", "paris-cs"],
 ];
 
 const UA =
@@ -6791,6 +6811,105 @@ interface GreenhouseJob {
   updated_at?: string;
   first_published?: string;
   id?: number;
+}
+
+interface JibeJob {
+  data?: {
+    title?: string;
+    city?: string;
+    country?: string;
+    req_id?: string | number;
+    slug?: string | number;
+    posted_date?: string;
+    apply_url?: string;
+    categories?: { name?: string }[];
+  };
+}
+
+/**
+ * Jibe — the platform iCIMS sells as "iCIMS Career Sites".
+ *
+ * IT FINGERPRINTS AS iCIMS AND IT IS NOT THE SAME THING TO READ, which is the
+ * single most useful fact here. discover-boards.py reports AXA's careers site
+ * as `icims (NO READER IN careerSites.ts)` because the page carries
+ * careers-en-axa.icims.com, move-en-axa.icims.com and www.icims.com — but the
+ * served HTML is a 603 KB shell with no job link in it, and the board is not
+ * iCIMS's at all. The scripts come from app.jibecdn.com, and Jibe answers a
+ * plain JSON GET on the SITE's own host: careers.axa.com/api/jobs.
+ *
+ * So classic iCIMS (a {tenant}.icims.com career section, an iframe, a session)
+ * still has no reader here. This is a different platform wearing its name.
+ *
+ * THE PAGING, measured against careers.axa.com on 2026-09-22:
+ *   - `limit=100` is the ceiling and it is a REFUSAL, not a clamp. limit=200,
+ *     250, 300 and 400 each return ZERO jobs rather than 100. That matters more
+ *     than it looks: pagedParallel reads a short page as the end of the board,
+ *     so a reader that asked for 200 would archive nothing and report success.
+ *   - `page` is 1-based and works. `offset` is accepted and SILENTLY IGNORED —
+ *     `limit=100&offset=100` returns the same first req_id as page 1.
+ *   - The walk ends honestly: at 1,518 jobs, page 16 returns 18 and page 17
+ *     returns 0.
+ *
+ * The walk is bounded by the advertised `totalCount` rather than by running
+ * until a short page, which is what careerSites.ts asks for wherever a total is
+ * on offer — a fetch failure and the end of a list look identical otherwise.
+ * getJson returns null on a failed fetch and this passes that through, so
+ * pagedParallel retries the page once and then stops LOUDLY instead of
+ * mistaking the gap for the end.
+ */
+async function fetchJibe(site: SiteDef): Promise<PortalJob[]> {
+  const pageSize = site.pageSize ?? 100;
+  const base = site.endpoint.includes("?") ? site.endpoint : site.endpoint + "?";
+  const url = (n: number) => `${base}${base.endsWith("?") ? "" : "&"}limit=${pageSize}&page=${n}`;
+
+  const first = await getJson<{ totalCount?: number; jobs?: JibeJob[] }>(url(1));
+  if (!first) return [];
+  const total = Number(first.totalCount ?? 0);
+  const maxPages = Math.min(site.maxPages ?? 60, total > 0 ? Math.ceil(total / pageSize) : 1);
+
+  const rowsOf = (j: JibeJob[] | undefined): PortalJob[] => {
+    const out: PortalJob[] = [];
+    for (const row of j ?? []) {
+      const d = row.data ?? {};
+      const title = (d.title || "").trim();
+      if (!title) continue;
+      // city is the place and country is the country; neither is ever a work
+      // arrangement on this platform, unlike the greenhouse board above it.
+      const loc = [String(d.city ?? "").trim(), String(d.country ?? "").trim()]
+        .filter(Boolean)
+        .join(", ");
+      out.push(
+        job(
+          site,
+          title,
+          loc,
+          d.apply_url || `${site.origin}/careers-home/jobs/${d.slug ?? d.req_id ?? ""}`,
+          isoDay(d.posted_date || ""),
+          d.categories?.[0]?.name || "Career portal",
+        ),
+      );
+    }
+    return out;
+  };
+
+  const pages = await pagedParallel<PortalJob>(
+    async (i) => {
+      if (i === 0) return rowsOf(first.jobs);
+      const j = await getJson<{ jobs?: JibeJob[] }>(url(i + 1));
+      return j ? rowsOf(j.jobs) : null;
+    },
+    pageSize,
+    maxPages,
+    site.key ?? site.id,
+  );
+
+  const seen = new Set<string>();
+  return pages.filter((j) => {
+    const k = `${j.t}|${j.loc}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 }
 
 async function fetchGreenhouse(site: SiteDef): Promise<PortalJob[]> {
@@ -11120,6 +11239,7 @@ async function fetchDelorean(site: SiteDef): Promise<PortalJob[]> {
 }
 
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
+  jibe: fetchJibe,
   workable: fetchWorkable,
   bamboohr: fetchBambooHr,
   cjd: fetchCjd,
@@ -11281,6 +11401,7 @@ export const SOURCE_TAG: Record<Platform, string> = {
   // as `aubgroup` and `zipco` already do for employers with no ATS.
   cjd: "cjd",
   delorean: "delorean",
+  jibe: "jibe",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */
