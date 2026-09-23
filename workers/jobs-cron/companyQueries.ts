@@ -26,6 +26,12 @@
  * add noise — it credits one employer with another's hiring.
  */
 export const EXTRA_QUERIES: Record<string, string[]> = {
+  // Elevra Lithium was Sayona Mining until the 2026 Piedmont merger. The feeds
+  // search the roster name, so on its own the rename stops them ever asking
+  // for the name most of this company's live ads were posted under. Searching
+  // both is the half that finds them; ACCEPT_ALIAS in scripts/company_alias.py
+  // is the half that lets them through attribution.
+  "brisbane-elv": ["Sayona Mining", "Sayona Lithium"],
   // Seven Group Holdings (ASX:SGH). Its four operating businesses, which are
   // where essentially all of its ~11,000 people work:
   //   Boral         — construction materials (acquired outright 2024)

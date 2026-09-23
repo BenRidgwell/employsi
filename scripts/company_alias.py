@@ -89,6 +89,15 @@ def short_name(s: str) -> str:
 # Divisions and franchise sites of a roster company ARE that company hiring, so
 # they are accepted. Tenants of its premises are not.
 ACCEPT_ALIAS: dict[str, set[str]] = {
+    # A RENAME, not a division, and the one case where adding a name without a
+    # board walk behind it is right. Sayona Mining merged with Piedmont Lithium
+    # in 2026 and became Elevra Lithium (ASX:SYA -> ASX:ELV; the OTC line is
+    # still SYAXF). Job boards carry months of ads under the old name and every
+    # one of them is this company hiring, so without this the rename would
+    # quietly halve its vacancy count — the feeds would search the new name,
+    # the gate would reject the old one, and the card would show a fall that
+    # never happened.
+    'elevra lithium': {'sayona mining', 'sayona', 'sayona lithium'},
     # Divisions trading under their own name.
     'wesfarmers': {'wesfarmers health',
                    'wesfarmers chemicals energy fertilisers'},

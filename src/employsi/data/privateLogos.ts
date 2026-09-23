@@ -418,8 +418,13 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   // "Discover your weather | The Bureau of Meteorology" — but the favicon
   // service has no icon for it, so this badge stays blank on a correct domain.
   "aps-bureau-of-meteorology": "bom.gov.au",
+  // Sayona Mining became Elevra Lithium in the 2026 Piedmont merger, so this
+  // is a renamed company rather than a corrected guess — see cityRosters.ts.
+  // elevra.com is the site the company's own LinkedIn page lists, and its
+  // favicon is Elevra's orange "e". elevralithium.com resolves but serves a
+  // 114-byte shell with no icon.
+  "brisbane-elv": "elevra.com",
   // STILL UNRESOLVED after this pass, and left rather than guessed:
-  //   brisbane-sya            Sayona Mining — sayonamining.com.au does not answer
   //   priv-competitive-foods  already on competitivefoods.com.au; no icon indexed
   //   priv-ati-global         atiglobal.com.au does not answer
   //   priv-cogi               on cogiver.com, which names nobody. This is the

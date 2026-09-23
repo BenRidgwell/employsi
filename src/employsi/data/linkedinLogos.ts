@@ -113,6 +113,8 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/C560BAQGKYDNe0m76vw/company-logo_200_200/company-logo_200_200/0/1630638239137/dbct_management_pty_ltd_logo?e=2147483647&v=beta&t=29Mz3xD4TDrw4eAgJadEgjYYWU6gwc1Kw47Sphv6hFA",
   "brisbane-dtl":
     "https://media.licdn.com/dms/image/v2/D560BAQGWvA10NpYbMg/company-logo_200_200/B56ZuLROqqJMAI-/0/1767568108620/data3_logo?e=2147483647&v=beta&t=BAvBOumXdwa_hO-_92oCgQYueeWi6kdbQBOxbRyj4nQ",
+  "brisbane-elv":
+    "https://media.licdn.com/dms/image/v2/D4E0BAQFCCVO57R1c7A/company-logo_200_200/B4EZmDRqBaIwAI-/0/1758844068514/sayona_mining_limited_logo?e=2147483647&v=beta&t=Ldljbc2Q_vofJyus_dT8LJ5CXr_wbRRzjlps__NJf7c",
   "brisbane-mp1":
     "https://media.licdn.com/dms/image/v2/D4E0BAQEjssYzrMlrNA/company-logo_200_200/B4EZ2x4AtrJUAI-/0/1776805743825/megaport_logo?e=2147483647&v=beta&t=Wm2-FIxt2TarQc9T2n6QMzpOG9JYOiEJdP89_k_j5j8",
   "brisbane-nxt":

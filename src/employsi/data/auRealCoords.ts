@@ -85,10 +85,10 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "brisbane-ctd": [153.028595, -27.46742], // Level 24, 307 Queen Street, Brisbane QLD 4000
   "brisbane-dbi": [153.030524, -27.470296], // Level 15, One Eagle, 1 Eagle Street, Brisbane QLD 4000
   "brisbane-dtl": [152.995711, -27.483162], // 555 Coronation Drive, Toowong QLD 4066
+  "brisbane-elv": [153.029841, -27.469195], // Level 28, 10 Eagle Street, Brisbane QLD 4000
   "brisbane-nsr": [153.030409, -27.468234], // Level 23, 71 Eagle Street, Brisbane QLD 4000
   "brisbane-smr": [153.029651, -27.468519], // Level 32, 12 Creek Street, Brisbane QLD 4000
   "brisbane-sul": [152.984644, -27.286832], // 751 Gympie Road, Lawnton QLD 4501
-  "brisbane-sya": [153.029841, -27.469195], // Level 28, 10 Eagle Street, Brisbane QLD 4000
   "brisbane-tne": [153.038124, -27.4525], // 540 Wickham Street, Fortitude Valley QLD 4006
   "brisbane-vgn": [153.016263, -27.470922], // 275 Grey Street, South Brisbane QLD 4101
   "brisbane:bhp": [138.598754, -34.926787], // 171 Collins Street, Melbourne VIC 3000

@@ -1292,8 +1292,8 @@ export const AU_JOBS_TARGETS: JobsTarget[] = [
     cities: ["brisbane"],
   },
   {
-    id: "brisbane-sya",
-    name: "Sayona Mining",
+    id: "brisbane-elv",
+    name: "Elevra Lithium",
     sector: "Energy & Natural Resources",
     group: "Energy & Natural Resources",
     cities: ["brisbane"],

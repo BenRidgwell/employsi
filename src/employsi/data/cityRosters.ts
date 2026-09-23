@@ -206,7 +206,14 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["ALQ", "ALS Limited", IND],
       ["SMR", "Stanmore Resources", ENR],
       ["CRN", "Coronado Global Resources", ENR],
-      ["SYA", "Sayona Mining", ENR],
+      // Renamed 2026: Sayona Mining merged with Piedmont Lithium and became
+      // Elevra Lithium Limited, ASX:SYA -> ASX:ELV. Confirmed from the
+      // company's own LinkedIn page, which titles itself "Elevra Lithium" and
+      // describes "Elevra Lithium Limited ... (ASX:ELV; NASDAQ:ELVR;
+      // OTCQB:SYAXF)" — the OTC ticker still carrying the Sayona lineage.
+      // Still Brisbane: the page is registered in Qld and the Eagle Street
+      // address is unchanged.
+      ["ELV", "Elevra Lithium", ENR],
       ["DTL", "Data#3", TMT],
       ["AQZ", "Alliance Aviation Services", CON],
       ["APE", "Eagers Automotive", CON],
