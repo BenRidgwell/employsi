@@ -5,6 +5,7 @@ import { LIVE_FEEDS_ONLY_SQL, type D1Like, type SqlValue } from "./jobArchive";
 import { COMPANY_ID_ALIAS, type RolePoint } from "./openRolesFn";
 import {
   ALL_SKILLS,
+  SKILL_ALIAS,
   SKILL_CATEGORY,
   SKILL_PARENT,
   dropRedundantKin,
@@ -1327,14 +1328,205 @@ export const getCompanySkillTrends = createServerFn({ method: "GET" })
     }
   });
 
+/**
+ * A skill's own demand history, reconstructed from the archive rather than
+ * from a statistical agency.
+ *
+ * WHY THIS EXISTS: the skill card's trend line comes from the agencies' 243-
+ * month vacancy series, which is published for the 100 BROAD skills and for
+ * none of the 122 specialities. So a speciality card had no line at all —
+ * `change` and `spark` were null by construction — while the broad skill
+ * beside it had twenty years of one. This is the other honest source: the
+ * listings employsi has collected itself, folded the same way the company
+ * card's sparklines are.
+ *
+ * IT IS NOT THE SAME MEASUREMENT AS THE BROAD CARD'S LINE, and the card says
+ * so rather than letting one box imply otherwise. The agency line is monthly,
+ * national and runs to 2006; this is daily, is only as wide as our feeds, and
+ * starts when they arrived. Never put the two in one series.
+ */
+export interface SkillArchiveTrend {
+  /** The days `series` is indexed against, oldest → newest. Trimmed to the days
+   *  the archive covered AND the feeds carrying this skill had arrived, so it
+   *  is routinely shorter than the window asked for. Empty when there is
+   *  nothing honest to draw. */
+  days: string[];
+  /** Currently-advertised roles demanding this skill, folded to one per
+   *  employer+title. Null when the archive holds none. */
+  now: number | null;
+  /** Live count on each of `days`. Null when the covered window is too short to
+   *  draw, or the line is dead flat — the same guards the company card uses. */
+  series: number[] | null;
+  /** Change across the covered window, or null when too few ads to claim one.
+   *  See SKILL_MIN_VOLUME: three ads moving is not a market moving. */
+  pct: number | null;
+  /** Where those live roles are, highest first. Hub keys, not coordinates. */
+  hubs: { hub: string; n: number }[];
+  /** Live roles the archive could not place. The collected-vs-placed
+   *  shortfall, reported rather than quietly dropped. */
+  hubless: number;
+}
+
+export const NO_ARCHIVE_TREND: SkillArchiveTrend = {
+  days: [],
+  now: null,
+  series: null,
+  pct: null,
+  hubs: [],
+  hubless: 0,
+};
+
+/**
+ * Every archived name that reads as this skill today.
+ *
+ * The query matches on the stored text, but `parseStoredSkills` maps archived
+ * names forward through SKILL_ALIAS before anything counts them — so a row
+ * written under a since-renamed name is one the fold would happily use and the
+ * query would never fetch. One alias exists today and it is a broad skill, so
+ * this changes no current result; it is here because the next rename is the
+ * one that would silently shorten a series.
+ */
+function archivedNamesFor(skill: string): string[] {
+  const names = new Set<string>([skill]);
+  for (const [was, now] of Object.entries(SKILL_ALIAS)) if (now === skill) names.add(was);
+  return [...names];
+}
+
+/**
+ * One skill's demand across the whole archive, for the search card.
+ *
+ * Deliberately NOT scoped to a company: the question is "how is demand for
+ * this skill moving", and the answer has to span every employer the archive
+ * covers. That is also what makes the role key matter — see
+ * roleKeyByCompanyTitle.
+ */
+export const getSkillTrend = createServerFn({ method: "GET" })
+  .validator((data: { skill: string; days?: number }) => data)
+  .handler(async ({ data }): Promise<SkillArchiveTrend> => {
+    const skill = (data.skill || "").trim();
+    // Only a name the taxonomy knows. The query below builds a LIKE pattern
+    // from this string, so it is checked against the taxonomy rather than
+    // escaped — an allowlist of 222 exact names cannot carry a wildcard.
+    if (!skill || !(skill in SKILL_CATEGORY)) return NO_ARCHIVE_TREND;
+    const spanDays = skillWindowDays(data.days);
+    const db = await getArchiveDb();
+    if (!db) return NO_ARCHIVE_TREND;
+    try {
+      // Ends YESTERDAY, not today — today is always mid-collection and drawing
+      // it puts a cliff at the right-hand end of every line. Same window the
+      // company card builds, for the same reason.
+      const window: string[] = [];
+      for (let i = spanDays; i >= 1; i--) window.push(isoDaysAgo(i));
+      const scanFrom = window[0];
+      const liveFrom = isoDaysAgo(1);
+
+      const names = archivedNamesFor(skill);
+      // The quotes on BOTH sides are what makes this exact rather than a
+      // prefix: the column is a JSON array, so `%"Audit"%` cannot match
+      // "Internal Audit" — the opening quote is in the way. Without them a
+      // speciality would absorb every skill whose name contains it.
+      const likes = names.map((_, i) => `skills LIKE ?${i + 2}`).join(" OR ");
+      const res = await db
+        .prepare(
+          `SELECT title, skills, category, first_seen, last_seen, salary, hub, source, company_id
+             FROM jobs
+            WHERE (${likes})
+              AND last_seen >= ?1
+              AND ${LIVE_FEEDS_ONLY_SQL}`,
+        )
+        .bind(scanFrom, ...names.map((n) => `%"${n}"%`))
+        .all();
+      let rows = (res?.results ?? []) as SkillRow[];
+      if (!rows.length) return NO_ARCHIVE_TREND;
+
+      // The release gate, per row and before folding, exactly as
+      // foldSkillRanks applies it. A skill is searchable in every market — it
+      // is not a place — but its FIGURES are only ever over the markets this
+      // caller can see, which is what the search pane already promises.
+      const seesAll = (await callerRole()) === "admin";
+      if (!seesAll)
+        rows = rows.filter((r) =>
+          isReleasedRow(r.hub as string | null, r.company_id as string | null),
+        );
+      if (!rows.length) return NO_ARCHIVE_TREND;
+
+      const coverage = await archiveCoverageStart(db);
+      const firstCovered = coverage ? window.findIndex((d) => d >= coverage) : 0;
+      const from = firstCovered < 0 ? window.length : firstCovered;
+
+      // roleKeyByCompanyTitle, NOT the default: this fold spans employers.
+      const folded = foldSkillRows(rows, window, liveFrom, from, roleKeyByCompanyTitle);
+      const row = folded.skills.find((s) => s.skill === skill);
+      if (!row) return NO_ARCHIVE_TREND;
+      return {
+        days: folded.days,
+        now: row.now,
+        series: row.spark ?? null,
+        pct: row.pct,
+        hubs: row.hubs,
+        hubless: row.hubless,
+      };
+    } catch {
+      return NO_ARCHIVE_TREND;
+    }
+  });
+
 /** The archive columns the fold below reads. Structurally a SqlRow, so query
  *  results pass straight through and a test can hand-build one. */
 export type SkillRow = Partial<
   Record<
-    "title" | "skills" | "category" | "first_seen" | "last_seen" | "salary" | "hub" | "source",
+    | "title"
+    | "skills"
+    | "category"
+    | "first_seen"
+    | "last_seen"
+    | "salary"
+    | "hub"
+    | "source"
+    | "company_id",
     SqlValue
   >
 >;
+
+/**
+ * Which rows the fold treats as ONE advertised role.
+ *
+ * Returning null means "this row is its own role" — the fold then gives it a
+ * key nothing else can collide with. That is the right answer for a row the
+ * key cannot identify, because merging two rows that might be different
+ * vacancies is a worse error than counting one twice.
+ */
+export type RoleKeyFn = (r: SkillRow) => string | null;
+
+/**
+ * The default, and the only one that was ever right for a COMPANY card.
+ *
+ * Within one employer, the same normalised title is the same job carried by
+ * several feeds — that is the whole measurement behind normRoleTitle.
+ */
+export const roleKeyByTitle: RoleKeyFn = (r) => normRoleTitle(String(r.title || "")) || null;
+
+/**
+ * The key for a fold that spans EMPLOYERS, and the reason this parameter
+ * exists at all.
+ *
+ * `roleKeyByTitle` is only safe inside one company. Run archive-wide it merges
+ * strangers: measured on the live archive 2026-09-23, the 307 rows live that
+ * day carrying Talent Acquisition held 234 distinct titles, so folding on
+ * title alone would have collapsed 73 rows belonging to DIFFERENT employers
+ * into roles they have nothing to do with — every "Talent Acquisition
+ * Partner" in the country reported as one vacancy.
+ *
+ * So a role is the employer plus the normalised title, and a row with no
+ * `company_id` is its own role. Same rule, and the same reasoning, as
+ * foldSkillRanks: an unattributed ad is as likely to be a second hospital as
+ * a second feed on the first one.
+ */
+export const roleKeyByCompanyTitle: RoleKeyFn = (r) => {
+  const cid = String(r.company_id || "").trim();
+  const t = normRoleTitle(String(r.title || ""));
+  return cid && t ? `${cid}|${t}` : null;
+};
 
 /**
  * The key two archive rows share when they are the SAME advertised role.
@@ -1405,6 +1597,7 @@ export function foldSkillRows(
   window: string[],
   liveFrom: string,
   from: number,
+  roleKey: RoleKeyFn = roleKeyByTitle,
 ): CompanySkillTrends {
   const now: Record<string, number> = {};
   const daily: Record<string, number[]> = {};
@@ -1488,17 +1681,16 @@ export function foldSkillRows(
       sourceRows[src] = (sourceRows[src] || 0) + 1;
       if (area && (!areaSourceStart[src] || fs < areaSourceStart[src])) areaSourceStart[src] = fs;
 
-      // A row with no title is malformed — title is part of job_key, so the
-      // archive cannot hold one in practice — and it gets a key of its own
-      // rather than being folded in with every other untitled row. Erring
-      // towards counting twice beats merging two unrelated vacancies.
+      // A row the key function cannot identify — no title, or archive-wide, no
+      // company_id — gets a key of its own rather than being folded in with
+      // every other such row. Erring towards counting twice beats merging two
+      // unrelated vacancies.
       //
       // The LEADING SPACE keeps that key out of the titles' namespace:
       // normRoleTitle trims, so no real title can ever normalise to something
       // starting with one, and a vacancy actually called "Untitled row 3"
       // cannot collide with the sentinel.
-      const t = normRoleTitle(String(r.title || ""));
-      const key = t || ` untitled row ${untitled++}`;
+      const key = roleKey(r) || ` untitled row ${untitled++}`;
       let g = roles.get(key);
       if (!g) {
         g = {
