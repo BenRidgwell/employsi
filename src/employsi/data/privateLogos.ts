@@ -372,6 +372,62 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   // is now blank on the right domain, and fixes itself the day the service
   // indexes one. Same call as sydney-wor and fma.govt.nz above.
   "sydney-sol": "soulpatts.com.au",
+  // ── and the rest of them, 2026-09-23 ─────────────────────────────────────
+  // The remaining name-derived .coms from the same sweep. Nineteen of these
+  // twenty draw a real mark on the corrected domain; each was confirmed by the
+  // site's <title> where it answers, and by opening the favicon where it
+  // bot-walls this sandbox.
+  //
+  // WOOLWORTHS GROUP IS HERE FOR THE SECOND TIME AND IT IS WORTH SAYING WHY.
+  // Earlier in this audit its badge was Woolworths SOUTH AFRICA's black-and-
+  // white W, taken from a LinkedIn slug that belonged to the South African
+  // retailer. That was removed. woolworthsgroup.com.au is the Australian
+  // group's own site and its favicon is the blue corporate swirl — a third
+  // mark again, distinct from both the South African W and the green
+  // supermarket logo. Opened and checked rather than assumed, precisely
+  // because this is the one that has already been wrong once.
+  "adelaide-abc": "adbri.com.au",
+  // All four SA landscape boards are regions of one statutory body and share
+  // its site, the way the TAFE WA colleges share theirs. Same badge, correctly.
+  "sa-gov-alinytjara-wilurara-landscape-board": "landscape.sa.gov.au",
+  "sa-gov-limestone-coast-landscape-board": "landscape.sa.gov.au",
+  "sa-gov-murraylands-and-riverland-landscape-board": "landscape.sa.gov.au",
+  "sa-gov-northern-and-yorke-landscape-board": "landscape.sa.gov.au",
+  // fctgl.com, not flightcentre.com.au: the roster entry is the listed GROUP
+  // (FLT), and its favicon is the "Flight Centre Travel Group" lockup rather
+  // than the consumer travel brand.
+  "brisbane-flt": "fctgl.com",
+  "brisbane-nsr": "nationalstorage.com.au",
+  // The NT force shares a site with Fire and Emergency Services, so the badge
+  // is the combined NTPFES crest set.
+  "nt-gov-nt-police-force": "pfes.nt.gov.au",
+  "melbourne-afi": "afi.com.au",
+  "aps-australian-institute-of-family-studies": "aifs.gov.au",
+  "aps-australian-radiation-protection-and-nuclear-safety-agency": "arpansa.gov.au",
+  "melbourne-ben": "bendigobank.com.au",
+  "melbourne-jbh": "jbhifi.com.au",
+  "melbourne-lsf": "l1.com.au",
+  "melbourne-vcx": "vicinity.com.au",
+  "sydney-wow": "woolworthsgroup.com.au",
+  // Abacus Storage King trades as Storage King; abacusstorageking.com.au does
+  // not resolve, storageking.com.au does and draws the blue crown.
+  "sydney-ask": "storageking.com.au",
+  "sydney-hdn": "home-co.com.au",
+  "sydney-mxt": "metrics.com.au",
+  // The twentieth. bom.gov.au is unambiguously right — it titles itself
+  // "Discover your weather | The Bureau of Meteorology" — but the favicon
+  // service has no icon for it, so this badge stays blank on a correct domain.
+  "aps-bureau-of-meteorology": "bom.gov.au",
+  // STILL UNRESOLVED after this pass, and left rather than guessed:
+  //   brisbane-sya            Sayona Mining — sayonamining.com.au does not answer
+  //   priv-competitive-foods  already on competitivefoods.com.au; no icon indexed
+  //   priv-ati-global         atiglobal.com.au does not answer
+  //   priv-cogi               on cogiver.com, which names nobody. This is the
+  //                           same COGI whose LinkedIn slug turned out to be an
+  //                           Italian company, so it has now resisted both routes.
+  //   priv-northwestern-roads no candidate found
+  // Plus five already on the right domain with no favicon indexed: fma.govt.nz,
+  // fwc.gov.au, generationdevelopmentgroup.com.au, ororagroup.com, aub.com.au.
   // The FOURTH card that was showing a stranger's logo, added 2026-09-22 once
   // the exclusion above no longer applied. chorus.com is not Chorus NZ — it
   // serves a different company's mark, a white figure on a blue gradient.
