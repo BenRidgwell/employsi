@@ -335,6 +335,43 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "nz-transpower-new-zealand-limited": "transpower.co.nz",
   // Te Herenga Waka. wgtn.ac.nz, not victoria.ac.nz, since the 2019 rebrand.
   "nz-victoria-university-of-wellington": "wgtn.ac.nz",
+  // ── the last blank AU badges, 2026-09-23 ─────────────────────────────────
+  // A sweep of all 908 Australian and New Zealand companies found 44 still
+  // drawing the favicon service's generic globe — and 35 of those were not a
+  // missing logo at all, just a name-derived .com that belongs to nobody:
+  // reservebankaustralia.com, australiansecuritiesinvestmentscommission.com,
+  // charterhallretailreit.com. These fourteen are the ones whose real domain
+  // was found and confirmed, each by the site's own <title> or by opening the
+  // favicon and recognising the mark — IAG's purple wordmark, Ventia's green V,
+  // Centuria's white C, Light & Wonder's "L&W", the RBA's crest.
+  //
+  // APRA, ASIC AND THE RESERVE BANK ARE COMMONWEALTH AGENCIES AND WERE MISSED
+  // BY THE CANBERRA PASS, because that pass was scoped by CITY and these three
+  // are plotted in Sydney. Anything scoped to a city will keep missing the
+  // aps-* entries that sit elsewhere; the prefix is the honest scope.
+  "aps-australian-prudential-regulation-authority": "apra.gov.au",
+  "aps-australian-securities-and-investments-commission": "asic.gov.au",
+  "aps-reserve-bank-of-australia": "rba.gov.au",
+  "sydney-iag": "iag.com.au",
+  "sydney-all": "aristocrat.com",
+  "sydney-sdf": "steadfast.com.au",
+  "sydney-vnt": "ventia.com",
+  "sydney-lnw": "lnw.com",
+  "sydney-cip": "centuria.com.au",
+  // The two Charter Hall REITs and the two WAM funds are separately listed
+  // vehicles managed by one house, and each pair shares its manager's site and
+  // so its badge. Correct rather than a collision, the same case as China
+  // Unicom appearing on both the Hong Kong and Shanghai rosters.
+  "sydney-clw": "charterhall.com.au",
+  "sydney-cqr": "charterhall.com.au",
+  "sydney-wam": "wilsonassetmanagement.com.au",
+  "sydney-wle": "wilsonassetmanagement.com.au",
+  // CHANGES NO PIXEL TODAY, and is recorded anyway. soulpatts.com does not
+  // resolve at all; soulpatts.com.au does and titles itself "Soul Patts". The
+  // favicon service has no icon for it yet, so the badge stays blank — but it
+  // is now blank on the right domain, and fixes itself the day the service
+  // indexes one. Same call as sydney-wor and fma.govt.nz above.
+  "sydney-sol": "soulpatts.com.au",
   // The FOURTH card that was showing a stranger's logo, added 2026-09-22 once
   // the exclusion above no longer applied. chorus.com is not Chorus NZ — it
   // serves a different company's mark, a white figure on a blue gradient.
