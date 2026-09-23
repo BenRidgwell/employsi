@@ -1,4 +1,4 @@
-import { ALL_SKILLS } from "../data/skillsTaxonomy";
+import { ALL_SKILLS, SKILL_PARENT } from "../data/skillsTaxonomy";
 import { CITY_COMPANIES } from "../data/mapboxGeo";
 import { CITY_CONTINENT } from "../data/geo";
 import { REGION_HUBS } from "../data/mapboxWorldGeo";
@@ -132,15 +132,43 @@ export function demandLevel(
     return { label: "Loose labour", tone: "lo" };
   }
   if (global) {
+    // Same reasoning as the speciality branch below: a speciality is compared
+    // with specialities. In the global view both tiers are in the index, so
+    // the population is filtered to the tier of the skill being asked about.
+    const spec = !!SKILL_PARENT[skill];
     const totals = idx
-      ? Object.values(idx.skills)
-          .map((s) => s.total)
-          .filter((x) => x > 0)
+      ? Object.entries(idx.skills)
+          .filter(([k, a]) => !!SKILL_PARENT[k] === spec && a.total > 0)
+          .map(([, a]) => a.total)
           .sort((a, b) => a - b)
       : [];
     v = idx?.skills[skill]?.total ?? 0;
     lo = qtile(totals, 0.34);
     hi = qtile(totals, 0.67);
+  } else if (SKILL_PARENT[skill]) {
+    // A SPECIALITY HAS NO AGENCY SERIES, AND `?? 0` WOULD CALL THAT LOW DEMAND.
+    // IVI_SKILL_NATIONAL is published for the 100 broad skills; every one of
+    // the 122 specialities is undefined in it. Falling through to the branch
+    // below gave v = 0, which is under every threshold, so Talent Acquisition
+    // and Midwifery both read "Low demand" — not because demand is low but
+    // because nobody published it. That was harmless only while specialities
+    // could not be opened; it becomes a confident wrong number the moment they
+    // can be, which is why it is fixed in the same change that opens them.
+    //
+    // So a speciality is banded against the OTHER SPECIALITIES in our own
+    // index, not against the broad skills. Comparing a slice to the whole it
+    // is cut from would understate every one of them: Talent Acquisition is a
+    // fraction of Human Resources by construction.
+    const specTotals = idx
+      ? Object.entries(idx.skills)
+          .filter(([k, a]) => SKILL_PARENT[k] && a.total > 0)
+          .map(([, a]) => a.total)
+          .sort((a, b) => a - b)
+      : [];
+    if (!specTotals.length) return { label: "Not yet counted", tone: "lo" };
+    v = idx?.skills[skill]?.total ?? 0;
+    lo = qtile(specTotals, 0.34);
+    hi = qtile(specTotals, 0.67);
   } else {
     v = IVI_SKILL_NATIONAL[skill] ?? 0;
     lo = IVI_LO;
@@ -171,14 +199,26 @@ export function demandPercentile(
     if (v === undefined || !RATE_SORTED.length) return 0;
     return Math.round((RATE_SORTED.filter((x) => x < v).length / RATE_SORTED.length) * 100);
   }
-  const values = global
-    ? idx
-      ? Object.values(idx.skills)
-          .map((s) => s.total)
-          .filter((x) => x > 0)
-      : []
-    : Object.values(IVI_SKILL_NATIONAL).filter((v) => v > 0);
-  const v = global ? (idx?.skills[skill]?.total ?? 0) : (IVI_SKILL_NATIONAL[skill] ?? 0);
+  // THE POPULATION HAS TO BE THE ONE THE SKILL BELONGS TO, or the marker and
+  // the band beside it disagree. demandLevel bands a speciality against the
+  // other specialities; a percentile taken over the whole taxonomy would put
+  // the same skill at a different place on the same scale — the card reading
+  // "High demand" with the marker two thirds along, from two populations.
+  //
+  // It also understates every speciality by construction: a slice cannot rank
+  // against the whole it was cut from. And a speciality has no entry in
+  // IVI_SKILL_NATIONAL at all, so the domestic branch would return 0 for all
+  // 122 of them, which is the same `?? 0` reads-as-low trap demandLevel had.
+  const spec = !!SKILL_PARENT[skill];
+  const fromIndex = (): number[] =>
+    idx
+      ? Object.entries(idx.skills)
+          .filter(([k, a]) => !!SKILL_PARENT[k] === spec && a.total > 0)
+          .map(([, a]) => a.total)
+      : [];
+  const values =
+    global || spec ? fromIndex() : Object.values(IVI_SKILL_NATIONAL).filter((v) => v > 0);
+  const v = global || spec ? (idx?.skills[skill]?.total ?? 0) : (IVI_SKILL_NATIONAL[skill] ?? 0);
   if (!values.length || v <= 0) return 0;
   const below = values.filter((x) => x < v).length;
   return Math.round((below / values.length) * 100);
