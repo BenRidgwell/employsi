@@ -718,7 +718,10 @@ export function GlobalSearch() {
 
           {card.related.length > 0 && (
             <div className="gsrelated">
-              <span className="gsrelatedlbl">Related</span>
+              {/* "Specialities" / "Related" / "Part of" — three different
+                  relationships that used to share one heading. See
+                  card.relatedLabel. */}
+              <span className="gsrelatedlbl">{card.relatedLabel}</span>
               {card.related.map((r) => (
                 <button
                   key={r}

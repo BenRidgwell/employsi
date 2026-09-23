@@ -1,4 +1,4 @@
-import { ALL_SKILLS, SKILL_CATEGORY, SKILL_PARENT } from "../data/skillsTaxonomy";
+import { ALL_SKILLS, SKILL_CATEGORY, SKILL_CHILDREN, SKILL_PARENT } from "../data/skillsTaxonomy";
 import { IVI_MONTHS } from "../data/iviSkillDemand";
 import { LABOUR_EVENTS, type LabourEvent } from "../data/labourEvents";
 import { demandLevel, demandPercentile, type DemandTone } from "./skillHeat";
@@ -54,6 +54,15 @@ export interface SkillCard {
   atPresent: boolean;
   sources: string[];
   related: string[];
+  /**
+   * What the chip row is offering, because the chips cannot say it themselves.
+   *
+   * "Specialities" are PARTS of the skill on the card; "Related" are
+   * ALTERNATIVES to it; "Part of" is the one chip that goes back up. Those are
+   * three different relationships and they used to share one heading, which
+   * was survivable only while a speciality could not appear here at all.
+   */
+  relatedLabel: string;
   /**
    * The span the card's figures cover, when it is NOT the scrubbable agency
    * timeline — i.e. a speciality, whose numbers come from our own archive.
@@ -210,22 +219,67 @@ function sparkPaths(
   return { line, area };
 }
 
-/** Related skills: the rest of this skill's taxonomy category, strongest first.
+/** How many chips the row carries. Four is what the design draws and what the
+ *  card's width takes without the row running to three lines. */
+const RELATED_N = 4;
+
+/**
+ * The rest of this skill's taxonomy category, strongest first — the fallback
+ * when a skill has no specialities of its own.
  *
- *  BROAD SKILLS ONLY. SKILL_CATEGORY covers specialities too — it has to, since
- *  parseStoredSkills uses it as the membership test for an archived name — so
- *  reading it directly put a skill's OWN specialities in its related list:
- *  Nursing suggested Midwifery and Aged Care Nursing as things to look at next,
- *  which are not alternatives to nursing but parts of it. Worse, none of them
- *  have a demand series to open (the heat index is built from the statistical
- *  agencies, which publish for the 100 broad skills), so every such suggestion
- *  led to an empty card. */
-function relatedSkills(skill: string): string[] {
+ * SKILL_CATEGORY covers specialities too (parseStoredSkills uses it as the
+ * membership test for an archived name), so this filters to ALL_SKILLS. A
+ * skill's own children do not belong in a row of ALTERNATIVES; they are parts
+ * of it, and they now have a row of their own — see specialitiesOf.
+ */
+function categorySiblings(skill: string): string[] {
   const cat = SKILL_CATEGORY[skill];
   if (!cat) return [];
   return ALL_SKILLS.filter((s) => s !== skill && SKILL_CATEGORY[s] === cat)
     .sort((a, b) => demandPercentile(b, true, null) - demandPercentile(a, true, null))
-    .slice(0, 4);
+    .slice(0, RELATED_N);
+}
+
+/**
+ * A broad skill's own specialities, busiest first.
+ *
+ * THIS USED TO BE FORBIDDEN, AND THE COMMENT SAYING SO IS WORTH KEEPING. It
+ * read: "reading SKILL_CATEGORY directly put a skill's OWN specialities in its
+ * related list — Nursing suggested Midwifery and Aged Care Nursing as things to
+ * look at next, which are not alternatives to nursing but parts of it. Worse,
+ * none of them have a demand series to open, so every such suggestion led to an
+ * empty card."
+ *
+ * Both halves were right at the time. Only the second has stopped being true:
+ * a speciality now opens a card with a count, a line and a heat map, all from
+ * the archive. The first half never stopped being true, and it is the reason
+ * this is a SEPARATE row with its own label rather than more chips in
+ * "Related" — a reader has to be able to tell "part of this" from "instead of
+ * this", and an unlabelled chip cannot say which it is.
+ *
+ * ORDERED BY THE INDEX, NOT THE ARCHIVE FOLD. Ranking all of a parent's
+ * children by the fold would be one D1 scan each — eleven for Nursing — to
+ * decide the order of four chips. The index is one KV read already in hand,
+ * and ordering is a ranking rather than a figure the card prints, the same
+ * argument that keeps the demand band on the index. The counts themselves are
+ * never shown here.
+ *
+ * A speciality the index has never seen is DROPPED rather than ranked last: it
+ * would open a card that says nothing has been collected yet, which is a dead
+ * end offered as a suggestion. All 122 carry live rows today (measured
+ * 2026-09-23), so this drops nothing now and stays correct if one goes quiet.
+ * If it were to empty the row completely the caller falls back to the siblings.
+ */
+function specialitiesOf(skill: string, idx: SkillIndex | null): string[] {
+  const kids = SKILL_CHILDREN[skill] ?? [];
+  if (!kids.length) return [];
+  const seen = (s: string) => idx?.skills[s]?.total ?? 0;
+  // Before the index lands nothing is known about any of them, so the taxonomy
+  // order stands rather than an arbitrary one produced by sorting all-zeroes.
+  const ranked = idx
+    ? kids.filter((s) => seen(s) > 0).sort((a, b) => seen(b) - seen(a) || a.localeCompare(b))
+    : [...kids];
+  return ranked.slice(0, RELATED_N);
 }
 
 /** A short, unambiguous day label — "3 Aug" — for the archive span line. */
@@ -340,6 +394,8 @@ function buildSpecialityCard(
     atPresent: true,
     sources: now === null ? [] : ["employsi collected listings"],
     related: parent ? [parent] : [],
+    // The one chip here is the way back UP, not a sideways suggestion.
+    relatedLabel: "Part of",
     spanLabel,
     basis: "archive",
   };
@@ -360,6 +416,7 @@ export function buildSkillCard(
     );
   const mi = Math.max(0, Math.min(TIMELINE_SPAN, Math.round(monthIndex)));
   const atPresent = mi === TIMELINE_SPAN;
+  const specialities = specialitiesOf(skill, idx);
   const history = skillHistory(skill, []);
   const at = demandAt(skill, mi);
 
@@ -412,7 +469,25 @@ export function buildSkillCard(
     summaryTail,
     atPresent,
     sources: history?.sources ?? [],
-    related: relatedSkills(skill),
+    // A skill's OWN specialities lead, where it has any the archive has seen:
+    // from a parent card the useful next click is almost always down into the
+    // work rather than sideways to a neighbour. Category siblings remain the
+    // answer for the 59 broad skills with no children, under the heading they
+    // always had.
+    //
+    // The row can still come out EMPTY, and did before this change too: four
+    // skills — Real Estate & Property, Architecture & Planning, Manufacturing
+    // & Production, Agriculture & Farming — are the sole member of their
+    // category AND have no specialities, so there is genuinely nothing to
+    // offer. The renderer drops the row rather than printing a heading over
+    // nothing. Suppressing beats inventing a neighbour.
+    //
+    // A parent with FEWER specialities than the cap shows just those — Retail
+    // Operations offers one chip. Topping the row up with siblings would put
+    // "part of this" and "instead of this" under one heading, which is the
+    // confusion the label split exists to prevent.
+    related: specialities.length ? specialities : categorySiblings(skill),
+    relatedLabel: specialities.length ? "Specialities" : "Related",
     // The broad card keeps the scrubbable 243-month axis, so it labels itself
     // from TIMELINE_LABEL and needs no span line of its own.
     spanLabel: null,
