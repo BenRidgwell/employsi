@@ -3,6 +3,7 @@ import { IVI_MONTHS } from "../data/iviSkillDemand";
 import { LABOUR_EVENTS, type LabourEvent } from "../data/labourEvents";
 import { demandLevel, demandPercentile, type DemandTone } from "./skillHeat";
 import type { SkillIndex } from "./skillsFn";
+import type { SkillArchiveTrend } from "./jobHistoryFn";
 import { demandAt, skillHistory, vacanciesAt } from "./marketHistory";
 
 /**
@@ -53,6 +54,21 @@ export interface SkillCard {
   atPresent: boolean;
   sources: string[];
   related: string[];
+  /**
+   * The span the card's figures cover, when it is NOT the scrubbable agency
+   * timeline — i.e. a speciality, whose numbers come from our own archive.
+   *
+   * Null on a broad skill, which has the 243-month axis and a handle to drag
+   * along it. A speciality gets the label and no handle, because there is
+   * nothing honest to scrub: its series is the ~50 days we have collected, and
+   * a control that moved a 20-year timeline while the card underneath it did
+   * not change would be a control that silently does nothing.
+   */
+  spanLabel: string | null;
+  /** What produced the figures: "agency" for the published vacancy series,
+   *  "archive" for our own collected listings. The card labels itself from
+   *  this rather than the reader having to infer it from the shape. */
+  basis: "agency" | "archive";
 }
 
 // The design's 240×64 box: the line lives between y=8 and y=54, and the fill
@@ -212,53 +228,120 @@ function relatedSkills(skill: string): string[] {
     .slice(0, 4);
 }
 
+/** A short, unambiguous day label — "3 Aug" — for the archive span line. */
+function dayLabel(iso: string): string {
+  const [, m, d] = iso.split("-");
+  return `${Number(d)} ${MONTH_SHORT[Number(m) - 1] ?? m}`;
+}
+
 /**
  * A SPECIALITY IS ANSWERED FROM OUR OWN COLLECTION, AND SAYS SO.
  *
  * The broad-skill card below is built from the statistical agencies' vacancy
  * series. No agency publishes one for a speciality, so this card is built from
- * the live index instead — the same rows the archive holds, aggregated by
- * recomputeIndex, which counts every skill name on a job without caring which
- * tier it is.
+ * the archive instead — the listings employsi has collected, folded into
+ * vacancies by getSkillTrend and reconstructed day by day.
  *
  * The two are NOT blended, and the copy names which one is speaking. A count
  * of what we collected and a national series an agency published are different
  * measurements, and a card that averaged them or silently swapped between them
  * would be the kind of number this codebase keeps having to take back out.
  *
- * There is no trend line for the same reason there is no series: the index is
- * a snapshot of what is advertised now, not a history. `change` and `spark`
- * are null rather than computed from something that is not a time series.
+ * WHAT CHANGED, AND WHY IT IS NOW A LINE RATHER THAN A BLANK. This card used to
+ * return `change: null, spark: null` and explain in the copy that there was no
+ * trend line because there was no series. That was true of the AGENCY data and
+ * false of ours: the archive has held first_seen/last_seen per row since the
+ * day it was written, and the company card has drawn per-skill sparklines off
+ * exactly those columns all along. The speciality was blank because nothing
+ * had asked the archive, not because the archive could not answer.
+ *
+ * TWO NUMBERS ON THIS CARD COME FROM DIFFERENT PLACES, deliberately:
+ *
+ *  • `openRoles` and the line are BOTH the archive fold, so the figure and the
+ *    right-hand end of the line are the same measurement. They have to be:
+ *    the index counts ROWS and the fold counts VACANCIES, and one role carried
+ *    by four feeds is four of the first and one of the second.
+ *  • The band and the marker are still the live index, because they answer a
+ *    different question — where this speciality RANKS among the other 121 —
+ *    and the index is the only source that holds all of them at once (one KV
+ *    read, against 122 archive scans). A rank and a count can differ in method
+ *    without either being wrong; two counts cannot.
+ *
+ * Until the archive query lands, `openRoles` is null and the cell reads "—",
+ * the same way the median-salary cell already waits for its own query. Showing
+ * the index's row count first and then swapping it for the fold's vacancy
+ * count would visibly move the number by ~20% for no reason the reader could
+ * see.
  */
-function buildSpecialityCard(skill: string, mi: number, idx: SkillIndex | null): SkillCard {
+function buildSpecialityCard(
+  skill: string,
+  mi: number,
+  idx: SkillIndex | null,
+  trend: SkillArchiveTrend | null,
+): SkillCard {
   const parent = SKILL_PARENT[skill];
-  const total = idx?.skills[skill]?.total ?? null;
   const badge = demandLevel(skill, true, idx, "volume");
-  const roles = total === null ? "" : `${total.toLocaleString("en-US")} advertised roles`;
+  const now = trend?.now ?? null;
+  const days = trend?.days ?? [];
+  const series = trend?.series ?? null;
+  const change = trend?.pct ?? null;
+
+  // The same 240×64 box the broad card draws into, over the whole covered
+  // window — there is no handle here, so there is no partial slice to take.
+  const spark = series ? sparkPaths(series, 0, series.length - 1) : null;
+
+  const up = change !== null && change >= 0.35;
+  const down = change !== null && change <= -0.35;
+  const roles = now === null ? "" : `${now.toLocaleString("en-US")} advertised roles`;
+  // The span ACTUALLY DRAWN, never the one requested — the fold trims to the
+  // days collection ran and the feeds carrying this skill had arrived, so it
+  // is routinely shorter than the window asked for.
+  const spanLabel = days.length
+    ? `Collected · ${dayLabel(days[0])} – ${dayLabel(days[days.length - 1])}`
+    : null;
+
+  let summaryLead: string;
+  let summaryPct = "";
+  let summaryTail = "";
+  if (now === null) {
+    summaryLead = `${skill} is a speciality within ${parent}. Nothing carrying it has been collected yet, so there is no figure to show.`;
+  } else if (change === null) {
+    // Either too few days covered to measure a move, or too few ads to claim
+    // one. Both are real answers; neither is a number.
+    summaryLead = `${roles} carry ${skill}, a speciality within ${parent}.`;
+    summaryTail = days.length
+      ? ` Counted from the listings employsi collects — no statistical agency publishes a series at this level. Too few days collected so far to measure a move.`
+      : ` Counted from the listings employsi collects — no statistical agency publishes a series at this level.`;
+  } else {
+    summaryLead = up
+      ? "Collected roles are up "
+      : down
+        ? "Collected roles are down "
+        : "Collected roles are flat, ";
+    summaryPct = `${up ? "+" : down ? "−" : "±"}${Math.abs(change).toFixed(1)}%`;
+    summaryTail = ` over the ${days.length} days collected — ${roles} carrying ${skill}, a speciality within ${parent}. Counted from employsi's own listings, not an agency series.`;
+  }
+
   return {
     skill,
     icon: CATEGORY_ICON[SKILL_CATEGORY[parent] ?? SKILL_CATEGORY[skill] ?? ""] ?? "code",
     levelLabel: badge.label,
     tone: badge.tone,
     percentile: demandPercentile(skill, true, idx, "volume"),
-    openRoles: total,
+    openRoles: now,
     month: IVI_MONTHS[mi],
     monthLabel: monthLabel(IVI_MONTHS[mi]),
-    change: null,
-    spark: null,
-    sparkArea: null,
-    summaryLead:
-      total === null
-        ? `${skill} is a speciality within ${parent}. Nothing carrying it has been collected yet, so there is no figure to show.`
-        : `${roles} carry ${skill}, a speciality within ${parent}. `,
-    summaryPct: "",
-    summaryTail:
-      total === null
-        ? ""
-        : `Counted from the listings employsi collects, not from an agency series — no statistical agency publishes one at this level, which is also why there is no trend line.`,
+    change,
+    spark: spark?.line ?? null,
+    sparkArea: spark?.area ?? null,
+    summaryLead,
+    summaryPct,
+    summaryTail,
     atPresent: true,
-    sources: total === null ? [] : ["employsi collected listings"],
+    sources: now === null ? [] : ["employsi collected listings"],
     related: parent ? [parent] : [],
+    spanLabel,
+    basis: "archive",
   };
 }
 
@@ -266,12 +349,14 @@ export function buildSkillCard(
   skill: string,
   monthIndex: number,
   idx: SkillIndex | null = null,
+  trend: SkillArchiveTrend | null = null,
 ): SkillCard {
   if (SKILL_PARENT[skill])
     return buildSpecialityCard(
       skill,
       Math.max(0, Math.min(TIMELINE_SPAN, Math.round(monthIndex))),
       idx,
+      trend,
     );
   const mi = Math.max(0, Math.min(TIMELINE_SPAN, Math.round(monthIndex)));
   const atPresent = mi === TIMELINE_SPAN;
@@ -328,5 +413,9 @@ export function buildSkillCard(
     atPresent,
     sources: history?.sources ?? [],
     related: relatedSkills(skill),
+    // The broad card keeps the scrubbable 243-month axis, so it labels itself
+    // from TIMELINE_LABEL and needs no span line of its own.
+    spanLabel: null,
+    basis: "agency",
   };
 }
