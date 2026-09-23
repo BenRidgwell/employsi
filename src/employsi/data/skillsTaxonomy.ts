@@ -3828,27 +3828,35 @@ export function dropRedundantKin<T>(rows: T[], nameOf: (row: T) => string): T[] 
 }
 
 /**
- * Name matches for a search box: broad skills, plus specialities routed to the
- * broad skill they narrow.
+ * Name matches for a search box: broad skills and specialities alike.
  *
- * WHY A SPECIALITY DOES NOT GET ITS OWN RESULT. The skill card and the map heat
- * are built from the statistical agencies' vacancy series, which are published
- * for the 100 broad skills and for nothing else — `seriesFor("Midwifery")` is
- * null, and so is every other speciality's. A result that opened an empty card
- * and painted no heat would be worse than no result at all.
+ * SPECIALITIES USED TO BE ROUTED TO THEIR PARENT AND NOT OPENABLE, and the
+ * reasoning is kept because it was right for as long as it held. It ran: the
+ * skill card and the map heat are built from the statistical agencies' vacancy
+ * series, those series are published for the 100 broad skills and for nothing
+ * else, `seriesFor("Midwifery")` is null, and so a speciality's own result
+ * would open an empty card and paint no heat — worse than no result at all.
+ * Typing "midwifery" therefore found Nursing, with `via` naming what got you
+ * there.
  *
- * So the 122 specialities are searchable as ROUTES: typing "midwifery" finds
- * Nursing, and `via` names the speciality that got you there so the jump is not
- * mysterious. The user reaches the data that exists, under the name they know.
+ * What changed is not the agencies. It is that the archive now answers the
+ * question itself: skillsForText writes specialities onto every row it matches
+ * (pass two), recomputeIndex aggregates every name on a job without caring
+ * which tier it is, and the live index consequently carries Talent Acquisition
+ * and Midwifery beside Human Resources and Nursing. Measured on the archive:
+ * 1,564 rows for Talent Acquisition, 1,003 for Midwifery, 336 for Employee
+ * Relations. A speciality card is no longer empty; it is answered from a
+ * different source, which the card says out loud rather than blending.
  *
- * Deduped on the skill actually opened, and a direct hit on the broad skill
- * always wins — typing "nursing" must not be answered by way of Aged Care
- * Nursing.
+ * So a speciality is a result in its own right and `parent` names what it
+ * narrows, for the context line. Deduped on the skill actually opened, and a
+ * speciality and its parent may BOTH appear when both match the query, which
+ * is now a true statement about two different things rather than a duplicate.
  */
-export function searchSkillMatches(query: string): { skill: string; via?: string }[] {
+export function searchSkillMatches(query: string): { skill: string; parent?: string }[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  const out: { skill: string; via?: string }[] = [];
+  const out: { skill: string; parent?: string }[] = [];
   const seen = new Set<string>();
   for (const s of ALL_SKILLS) {
     if (!s.toLowerCase().includes(q)) continue;
@@ -3856,9 +3864,9 @@ export function searchSkillMatches(query: string): { skill: string; via?: string
     out.push({ skill: s });
   }
   for (const [child, parent] of Object.entries(SKILL_PARENT)) {
-    if (!child.toLowerCase().includes(q) || seen.has(parent)) continue;
-    seen.add(parent);
-    out.push({ skill: parent, via: child });
+    if (!child.toLowerCase().includes(q) || seen.has(child)) continue;
+    seen.add(child);
+    out.push({ skill: child, parent });
   }
   return out;
 }

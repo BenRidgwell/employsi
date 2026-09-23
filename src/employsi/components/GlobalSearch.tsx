@@ -161,11 +161,11 @@ export function GlobalSearch() {
       .map(([id, label]) => ({ kind: "city" as const, id, label }));
     // Direct name matches first, then skills inferred from the description via
     // the O*NET ontology ("workforce planning" → Human Resources), deduped.
-    // Specialities resolve to the broad skill they narrow rather than getting
-    // results of their own — see searchSkillMatches.
+    // Specialities are results in their own right — see searchSkillMatches for
+    // what changed and why it is now honest to open one.
     const matches = searchSkillMatches(q);
     const direct = matches.map((m) => m.skill);
-    const viaOf = new Map(matches.filter((m) => m.via).map((m) => [m.skill, m.via!]));
+    const parentOf = new Map(matches.filter((m) => m.parent).map((m) => [m.skill, m.parent!]));
     // Gated on the flag rather than relying on describeSkills' own empty
     // return, so the memo genuinely depends on it — the dependency is a
     // re-run trigger for when the ontology chunk lands, not decoration.
@@ -174,24 +174,15 @@ export function GlobalSearch() {
       : [];
     const skills: Result[] = [...direct, ...described].slice(0, 7).map((sk) => {
       const badge = demandLevel(sk, globalOut, skillIndex, demandMode);
-      const via = viaOf.get(sk);
+      const parent = parentOf.get(sk);
       return {
         kind: "skill" as const,
-        // ID IS ALWAYS THE BROAD SKILL, LABEL IS NOT. A speciality routes to
-        // the skill it narrows (searchSkillMatches explains why: the agency
-        // vacancy series exist for the 100 broad skills and for nothing else,
-        // so a speciality's own card would be empty). The thing that OPENS is
-        // therefore the parent, and r.id is what every handler below acts on.
+        // The speciality IS the result now: it is what opens, and the badge
+        // beside it is its own, banded against the other specialities rather
+        // than against the broad skills it is a slice of (see demandLevel).
         id: sk,
-        // But the thing the reader TYPED is the speciality, and answering
-        // "talent acquisition" with a row headed "Human Resources" reads as
-        // the search having ignored them. So the speciality is the headline
-        // and the parent is the context under it — the same routing, said in
-        // the order the reader is thinking in.
-        label: via ?? sk,
-        // The demand badge always describes the skill being opened, which is
-        // why it sits next to the parent's name rather than the speciality's.
-        sub: via ? `${badge.label} · within ${sk}` : badge.label,
+        label: sk,
+        sub: parent ? `${badge.label} · within ${parent}` : badge.label,
         tone: badge.tone,
       };
     });
@@ -208,9 +199,12 @@ export function GlobalSearch() {
   // card stands down while a company card or the compare view is open, and
   // comes back when they close.
   const cardBlocked = !!selectedId || compareOpen;
+  // skillIndex is passed because a SPECIALITY's card is built from it — the
+  // agencies publish no series at that level, so the live index is where its
+  // figure comes from. A broad skill ignores the argument entirely.
   const card = useMemo(
-    () => (cardSkill && !cardBlocked ? buildSkillCard(cardSkill, heatMonth) : null),
-    [cardSkill, cardBlocked, heatMonth],
+    () => (cardSkill && !cardBlocked ? buildSkillCard(cardSkill, heatMonth, skillIndex) : null),
+    [cardSkill, cardBlocked, heatMonth, skillIndex],
   );
   // The national rate for the skill on the card, AT THE SCRUBBED MONTH — not the
   // latest — so the figure beside the toggle always describes the same month the
