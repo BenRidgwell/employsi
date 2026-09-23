@@ -557,7 +557,13 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "melbourne-pmv": "premierinvestments.com.au",
   "sydney-mts": "metcash.com.au",
   "sydney-hvn": "harveynorman.com.au",
-  "melbourne-gdg": "generationdevelopmentgroup.com.au",
+  // The full name spelled out is NOT their domain — the company writes itself
+  // short. generationdevelopmentgroup.com.au resets the connection; measured
+  // 2026-09-23, gendevelopmentgroup.com.au titles "Home - Generation
+  // Development Group" and carries a 192px gold mark.
+  "melbourne-gdg": "gendevelopmentgroup.com.au",
+  // A local file now; see localLogos. Kept because the domain is still right
+  // for anything else reading it.
   "melbourne-ora": "ororagroup.com",
   // NOT FIXED, and deliberately left wrong rather than guessed at. NGP Group
   // and SMRM Holdings are both private, both currently showing another
@@ -567,6 +573,24 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   // hide the problem. Left for a human who knows what these two are:
   //   priv-ngp-group      ngp.com          -> National Guard Products' logo
   //   priv-smrm-holdings  smrmagazine.com  -> a magazine's logo
+  //
+  // TWO MORE THAT STAY BLANK, 2026-09-23 — blank, not wrong, and that is the
+  // better of the two failures. Everything was tried on both: their own
+  // domain, the favicon service (which answers 404 + its generic globe when
+  // it holds nothing, so a blank badge is what a visitor sees), and LinkedIn.
+  //
+  //   priv-competitive-foods  competitivefoods.com.au is the right domain —
+  //     Competitive Foods Australia, Jack Cowin's group, the Hungry Jack's
+  //     parent. No favicon is indexed for it and the site does not answer
+  //     from here. linkedin.com/company/competitive-foods-pty-ltd exists but
+  //     is a 2-10 person entity with no logo uploaded, not the $2.3bn group.
+  //     Hungry Jack's mark was NOT substituted: the brand is a subsidiary,
+  //     and the card names the parent.
+  //   priv-ati-global  ATI Global Ltd, Christian Beck's legal-software group
+  //     (LEAP, InfoTrack, Smokeball). atiglobal.com serves a certificate for
+  //     a different host, and atiglobal.com.au, ati.global and atiglobal.co.uk
+  //     have nothing indexed. The group has no public site to take a mark
+  //     from; it is private and pre-IPO.
   // ── Singapore, Manila, Kuala Lumpur, 2026-09-22 ──────────────────────────
   // Manila (6) and KL (3) needed nothing but QBE: both rosters are Australian
   // and British multinationals already plotted in other cities, so they were
@@ -795,6 +819,15 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "priv-bowens-timber-hardware": "bowens.com.au",
   "priv-brisbane-catholic-education": "bne.catholic.edu.au",
   "priv-cci": "ccinsurance.org.au",
+  // COGI Pty Ltd trades as the COTTON ON GROUP — the roster carries the
+  // registered name because the AFR/IBISWorld top-500 list does. cogiver.com
+  // was a guess off that name and answers nothing; linkedin.com/company/cogi
+  // is an unrelated Italian firm, COGI srl, which is why it sits in
+  // NOT_THIS_COMPANY in scripts/linkedin_slugs.py. The card will now draw
+  // Cotton On's mark under the name "COGI"; renaming the record is the real
+  // fix and is not attempted here, because the id is derived from the name
+  // and is a D1 company_id.
+  "priv-cogi": "cottonongroup.com.au",
   "priv-cjd-equipment": "cjd.com.au",
   "priv-cnw-electrical": "cnw.com.au",
   "priv-competitive-foods": "competitivefoods.com.au",

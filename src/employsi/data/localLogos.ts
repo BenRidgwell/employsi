@@ -114,6 +114,7 @@ export const LOCAL_LOGO: Record<string, string> = {
   "priv-cjd-equipment": "/logos/priv-cjd-equipment.jpg",
   "priv-drake-supermarkets": "/logos/priv-drake-supermarkets.png",
   "priv-leader-computers": "/logos/priv-leader-computers.png",
+  "priv-northwestern-roads": "/logos/priv-northwestern-roads.jpg",
   "priv-people-first-bank": "/logos/priv-people-first-bank.png",
   "priv-vgw-holdings": "/logos/priv-vgw-holdings.jpeg",
   "sa-gov-adelaide-festival-centre-trust": "/logos/sa-gov-adelaide-festival-centre-trust.jpeg",
