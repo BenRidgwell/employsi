@@ -161,11 +161,11 @@ export function GlobalSearch() {
       .map(([id, label]) => ({ kind: "city" as const, id, label }));
     // Direct name matches first, then skills inferred from the description via
     // the O*NET ontology ("workforce planning" → Human Resources), deduped.
-    // Specialities resolve to the broad skill they narrow rather than getting
-    // results of their own — see searchSkillMatches.
+    // Specialities are results in their own right — see searchSkillMatches for
+    // what changed and why it is now honest to open one.
     const matches = searchSkillMatches(q);
     const direct = matches.map((m) => m.skill);
-    const viaOf = new Map(matches.filter((m) => m.via).map((m) => [m.skill, m.via!]));
+    const parentOf = new Map(matches.filter((m) => m.parent).map((m) => [m.skill, m.parent!]));
     // Gated on the flag rather than relying on describeSkills' own empty
     // return, so the memo genuinely depends on it — the dependency is a
     // re-run trigger for when the ontology chunk lands, not decoration.
@@ -174,14 +174,15 @@ export function GlobalSearch() {
       : [];
     const skills: Result[] = [...direct, ...described].slice(0, 7).map((sk) => {
       const badge = demandLevel(sk, globalOut, skillIndex, demandMode);
-      const via = viaOf.get(sk);
+      const parent = parentOf.get(sk);
       return {
         kind: "skill" as const,
+        // The speciality IS the result now: it is what opens, and the badge
+        // beside it is its own, banded against the other specialities rather
+        // than against the broad skills it is a slice of (see demandLevel).
         id: sk,
         label: sk,
-        // The demand badge still describes the skill being opened; the
-        // speciality that matched is appended so the jump is explicable.
-        sub: via ? `${badge.label} · via ${via}` : badge.label,
+        sub: parent ? `${badge.label} · within ${parent}` : badge.label,
         tone: badge.tone,
       };
     });
@@ -198,9 +199,12 @@ export function GlobalSearch() {
   // card stands down while a company card or the compare view is open, and
   // comes back when they close.
   const cardBlocked = !!selectedId || compareOpen;
+  // skillIndex is passed because a SPECIALITY's card is built from it — the
+  // agencies publish no series at that level, so the live index is where its
+  // figure comes from. A broad skill ignores the argument entirely.
   const card = useMemo(
-    () => (cardSkill && !cardBlocked ? buildSkillCard(cardSkill, heatMonth) : null),
-    [cardSkill, cardBlocked, heatMonth],
+    () => (cardSkill && !cardBlocked ? buildSkillCard(cardSkill, heatMonth, skillIndex) : null),
+    [cardSkill, cardBlocked, heatMonth, skillIndex],
   );
   // The national rate for the skill on the card, AT THE SCRUBBED MONTH — not the
   // latest — so the figure beside the toggle always describes the same month the

@@ -1,7 +1,8 @@
-import { ALL_SKILLS, SKILL_CATEGORY } from "../data/skillsTaxonomy";
+import { ALL_SKILLS, SKILL_CATEGORY, SKILL_PARENT } from "../data/skillsTaxonomy";
 import { IVI_MONTHS } from "../data/iviSkillDemand";
 import { LABOUR_EVENTS, type LabourEvent } from "../data/labourEvents";
-import { demandPercentile, type DemandTone } from "./skillHeat";
+import { demandLevel, demandPercentile, type DemandTone } from "./skillHeat";
+import type { SkillIndex } from "./skillsFn";
 import { demandAt, skillHistory, vacanciesAt } from "./marketHistory";
 
 /**
@@ -211,7 +212,67 @@ function relatedSkills(skill: string): string[] {
     .slice(0, 4);
 }
 
-export function buildSkillCard(skill: string, monthIndex: number): SkillCard {
+/**
+ * A SPECIALITY IS ANSWERED FROM OUR OWN COLLECTION, AND SAYS SO.
+ *
+ * The broad-skill card below is built from the statistical agencies' vacancy
+ * series. No agency publishes one for a speciality, so this card is built from
+ * the live index instead — the same rows the archive holds, aggregated by
+ * recomputeIndex, which counts every skill name on a job without caring which
+ * tier it is.
+ *
+ * The two are NOT blended, and the copy names which one is speaking. A count
+ * of what we collected and a national series an agency published are different
+ * measurements, and a card that averaged them or silently swapped between them
+ * would be the kind of number this codebase keeps having to take back out.
+ *
+ * There is no trend line for the same reason there is no series: the index is
+ * a snapshot of what is advertised now, not a history. `change` and `spark`
+ * are null rather than computed from something that is not a time series.
+ */
+function buildSpecialityCard(skill: string, mi: number, idx: SkillIndex | null): SkillCard {
+  const parent = SKILL_PARENT[skill];
+  const total = idx?.skills[skill]?.total ?? null;
+  const badge = demandLevel(skill, true, idx, "volume");
+  const roles = total === null ? "" : `${total.toLocaleString("en-US")} advertised roles`;
+  return {
+    skill,
+    icon: CATEGORY_ICON[SKILL_CATEGORY[parent] ?? SKILL_CATEGORY[skill] ?? ""] ?? "code",
+    levelLabel: badge.label,
+    tone: badge.tone,
+    percentile: demandPercentile(skill, true, idx, "volume"),
+    openRoles: total,
+    month: IVI_MONTHS[mi],
+    monthLabel: monthLabel(IVI_MONTHS[mi]),
+    change: null,
+    spark: null,
+    sparkArea: null,
+    summaryLead:
+      total === null
+        ? `${skill} is a speciality within ${parent}. Nothing carrying it has been collected yet, so there is no figure to show.`
+        : `${roles} carry ${skill}, a speciality within ${parent}. `,
+    summaryPct: "",
+    summaryTail:
+      total === null
+        ? ""
+        : `Counted from the listings employsi collects, not from an agency series — no statistical agency publishes one at this level, which is also why there is no trend line.`,
+    atPresent: true,
+    sources: total === null ? [] : ["employsi collected listings"],
+    related: parent ? [parent] : [],
+  };
+}
+
+export function buildSkillCard(
+  skill: string,
+  monthIndex: number,
+  idx: SkillIndex | null = null,
+): SkillCard {
+  if (SKILL_PARENT[skill])
+    return buildSpecialityCard(
+      skill,
+      Math.max(0, Math.min(TIMELINE_SPAN, Math.round(monthIndex))),
+      idx,
+    );
   const mi = Math.max(0, Math.min(TIMELINE_SPAN, Math.round(monthIndex)));
   const atPresent = mi === TIMELINE_SPAN;
   const history = skillHistory(skill, []);

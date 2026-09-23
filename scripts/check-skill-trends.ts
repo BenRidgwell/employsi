@@ -1582,26 +1582,46 @@ console.log("\nspecialities in the flat lists:");
 
 console.log("\nsearching for a speciality:");
 {
-  // A speciality has no vacancy series of its own — the statistical agencies
-  // publish for the broad skills — so it must never be offered as a result
-  // that opens an empty card.
+  // THESE THREE CHECKS USED TO ASSERT THE OPPOSITE, and they were right to
+  // until the archive could answer for a speciality. They read: a speciality
+  // resolves to the skill it narrows; every result is a broad skill, never a
+  // speciality; a direct hit is not answered by way of one of its own
+  // specialities. The reason was that no statistical agency publishes a
+  // vacancy series below the 100 broad skills, so a speciality result would
+  // have opened an empty card.
+  //
+  // It is now answered from our own collection instead — skillsForText writes
+  // specialities onto the rows it matches, recomputeIndex aggregates them, and
+  // buildSkillCard builds a speciality card from that index while saying so.
+  // So the assertions invert, and what they guard is the new promise: that a
+  // speciality is a result in its own right and still names what it narrows.
   const child = "Midwifery";
   const m = searchSkillMatches(child);
   check(
-    "a speciality resolves to the skill it narrows",
-    m.length === 1 && m[0].skill === SKILL_PARENT[child] && m[0].via === child,
+    "a speciality is a result in its own right",
+    m.length === 1 && m[0].skill === child && m[0].parent === SKILL_PARENT[child],
     JSON.stringify(m),
   );
   check(
-    "every result is a broad skill, never a speciality",
+    "every result is a broad skill or a speciality that names its parent",
     ["nurs", "care", "data", "eng", "a"].every((q) =>
-      searchSkillMatches(q).every((r) => ALL_SKILLS.includes(r.skill)),
+      searchSkillMatches(q).every(
+        (r) =>
+          (ALL_SKILLS.includes(r.skill) && !r.parent) ||
+          (SKILL_PARENT[r.skill] !== undefined && r.parent === SKILL_PARENT[r.skill]),
+      ),
     ),
   );
   check(
-    "a direct hit is not answered by way of one of its own specialities",
-    eq(searchSkillMatches("nursing"), [{ skill: "Nursing" }]),
-    JSON.stringify(searchSkillMatches("nursing")),
+    // Ordering is the whole of the answer here: typing the broad skill must
+    // still put the broad skill first, or "nursing" buries Nursing under its
+    // own eight specialities.
+    "a direct hit on a broad skill ranks before its specialities",
+    searchSkillMatches("nursing")[0]?.skill === "Nursing" &&
+      searchSkillMatches("nursing")
+        .slice(1)
+        .every((r) => r.parent === "Nursing"),
+    JSON.stringify(searchSkillMatches("nursing").map((r) => r.skill)),
   );
   check(
     "no skill is offered twice",
