@@ -163,6 +163,7 @@ type Platform =
   | "workable"
   | "bamboohr"
   | "cjd"
+  | "jibe"
   | "delorean";
 
 interface SiteDef {
@@ -5079,6 +5080,139 @@ export const SITES: SiteDef[] = [
     ],
     homeHub: "singapore",
   },
+  // ── The 2026-09-22 twentieth sweep — the global corporates ─────────────────
+  //
+  // The batch was the top of the gap report with the `portal!` rows skipped:
+  // that marker means a portal-* feed already files rows under the company
+  // with no SiteDef of its own, which scraper-gap.ts calls a wiring question
+  // rather than a gap. Uniting, EVT, Compass Group, BMD and Built are all in
+  // that state — 4,159 ads between them — and none of them is here.
+  //
+  // Twelve domains swept, three built — all on already-supported platforms, so
+  // each is a SiteDef and nothing else.
+  //
+  // FOUND AND NOT BUILT, each for a named reason:
+  //   Schneider Electric (300 ads) — careers.se.com carries BOTH icims and a
+  //     taleo tenant `schneiderele`. The taleo link is a LOGIN url into
+  //     careersection 2, and that section answers "An Error Occurred in TEE"
+  //     to the faceted search REST call with the portalNo read off its own
+  //     FacetedSearchSettings (101430233) — it is the internal section, not
+  //     the public board. The public board is careers-se.icims.com, which
+  //     serves a 13 KB shell with an empty <title> and not one job link.
+  //     iCIMS still has no reader here; see the standing note on it.
+  //   SGS (329) — a COVEO index, client-rendered, and the only thing in the
+  //     served HTML is the widget. Coveo needs an org id and an API key that
+  //     the page fetches at runtime; that is a different shape from every
+  //     platform in this file and wants deciding on before it is written.
+  //   Pinterest (250) — the sweep followed fourteen "careers links" and every
+  //     one was a PINBOARD: pinterest.com/employment/weird-jobs/ and its
+  //     siblings. On a site where /<anything> is user content, a link crawler
+  //     looking for a careers page finds pinboards about jobs instead. Nothing
+  //     is wrong with the employer or the sweep; the heuristic simply cannot
+  //     work on this domain and a rendered retry will not change that.
+  //   Schneider Electric (300) — iCIMS, and still not built. THE NOTE HERE USED
+  //     TO SAY AXA AND SCHNEIDER WERE BOTH iCIMS AND THAT ONE READER WOULD GET
+  //     BOTH, WHICH WAS WRONG, and the way it was wrong is worth keeping: both
+  //     sites fingerprint as iCIMS because both carry icims.com hosts, and they
+  //     do not run the same board. AXA's is Jibe on its own domain and now has
+  //     a reader; Schneider's really is a {tenant}.icims.com career section,
+  //     careers-se.icims.com, which serves a 13 KB shell with no job link.
+  //     The fingerprint named the vendor, not the thing to parse.
+  //     careers.se.com also 403s this sandbox while serving a runner, so
+  //     whatever is built for it has to be measured from a runner.
+  //   HDFC Bank (337) — the careers page names no ATS, but following its links
+  //     lands on hdfcbank.ripplehire.com/candidate/careers. RippleHire is an
+  //     Indian ATS with no reader here. Worth knowing the host is named: the
+  //     employer is not invisible, the platform is simply unread.
+  //   SGH (320) — sevengroup.com.au renders with no marker at all, and
+  //     careers./jobs. do not resolve. The roster domain sgh.com was wrong for
+  //     this employer; sevengroup.com.au is right and still has no board on it.
+  //   Salesforce (264), Tesla (256), Larsen & Toubro (267) — no marker even
+  //     after rendering. Tesla 403s the runner on every path and is reachable
+  //     only with a browser, which still finds nothing. L&T renders fine but
+  //     its one listing page, /corporate/careers/current-openings/, refuses
+  //     both plain and rendered.
+  {
+    id: "london-ba",
+    name: "BAE Systems",
+    sector: "Industrial Manufacturing",
+    platform: "phenom",
+    // jobs.baesystems.com carries brassring AND phenom markers; phenom is the
+    // one serving the listing. Measured 2026-09-22: 1,617 roles in 3.9s, every
+    // one carrying a location, so hubFor places them and homeHub is only the
+    // fallback it should be.
+    //
+    // THE ARCHIVE HOLDS 239 ADS FOR THIS EMPLOYER AND THIS FEED RETURNS 1,617,
+    // which is not a contradiction and is worth saying plainly: what was held
+    // came from jobstreet and simplyhired, which index the Australian end, and
+    // the existing rows sit 133 on Adelaide (BAE Systems Australia, Osborne)
+    // against 26 on Sydney. The global board is mostly US. Expect this
+    // employer's series to step up on the day this lands — that is the feed
+    // arriving, not hiring, and foldSkillRows' feedStart is what keeps the
+    // change figure over it honest.
+    endpoint: "https://jobs.baesystems.com/global/en/search-results",
+    origin: "https://jobs.baesystems.com",
+    homeHub: "london",
+  },
+  {
+    id: "priv-herbert-smith-freehills",
+    name: "Herbert Smith Freehills",
+    sector: "Legal services",
+    platform: "phenom",
+    // THE BOARD IS NOT ON THE FIRM'S OWN DOMAIN. herbertsmithfreehills.com
+    // answers 403 to everything including a runner, and the board lives at
+    // careers.hsfkramer.com — the firm merged with Kramer Levin in 2025 and the
+    // careers site moved to the combined name. The discovery sweep flagged it
+    // OFF-SITE and asked for confirmation, which is what the roles are: the
+    // pull is 124 Herbert Smith Freehills vacancies, Paris and London and the
+    // Australian offices, measured 2026-09-22 in 2.1s.
+    //
+    // homeHub sydney is measured rather than assumed: the roster entry carries
+    // no city, and the archive files this employer 101 Sydney, 94 Melbourne,
+    // 44 Brisbane.
+    endpoint: "https://careers.hsfkramer.com/global/en/search-results",
+    origin: "https://careers.hsfkramer.com",
+    homeHub: "sydney",
+  },
+  {
+    id: "sanfrancisco-net",
+    name: "Cloudflare",
+    sector: "Technology",
+    platform: "greenhouse",
+    // FOUND ONLY AFTER RENDERING, AND THE BOARD DID NOT NEED THE BROWSER. The
+    // careers page carries no marker in served HTML and names greenhouse once
+    // rendered — which is the case discover-boards.py tells you to treat as a
+    // page problem rather than a board one. The tenant is `cloudflare` and its
+    // board API answers a plain GET: 392 roles in 0.3s, no browser anywhere.
+    //
+    // THIS BOARD STATES A WORK ARRANGEMENT WHERE A LOCATION BELONGS, and it is
+    // the whole reason this entry carries a warning. Measured 2026-09-22: 392
+    // roles across ELEVEN distinct location strings, of which "Hybrid" is 298,
+    // "Distributed" 51 and "In-Office" 33. Exactly two name a place — one
+    // Tokyo, one Lisbon — so 390 of 392 resolve to no hub.
+    //
+    // That is the honest outcome and it is why homeHub is only a fallback that
+    // never fires here: hubFor returns null for "Hybrid" rather than reaching
+    // for the home city, so the rows archive, count toward Cloudflare's open
+    // roles and feed the skills series, and appear on no pin. DO NOT ADD
+    // assumeHomeHub TO THIS SITE to "fix" that — it would put 390 roles on San
+    // Francisco on the strength of a word that means the opposite of a place.
+    endpoint: "https://boards-api.greenhouse.io/v1/boards/cloudflare/jobs",
+    origin: "https://www.cloudflare.com/careers/jobs/",
+    homeHub: "sanfrancisco",
+  },
+  {
+    id: "paris-cs",
+    name: "AXA",
+    sector: "Insurance",
+    platform: "jibe",
+    // Reported by discover-boards.py as `icims (NO READER)`, and it is not
+    // iCIMS — see the note on fetchJibe. The board is Jibe, on AXA's own host.
+    // Measured 2026-09-22: totalCount 1,518, walked at 100 a page.
+    endpoint: "https://careers.axa.com/api/jobs",
+    origin: "https://careers.axa.com",
+    homeHub: "paris",
+  },
 ];
 
 /**
@@ -5518,6 +5652,14 @@ export const PORTAL_GROUPS: string[][] = [
   // measured 2026-09-22 at 55s for AIA alone and 75s for the two banks.
   ["hongkong-01299"],
   ["singapore-o39", "singapore-u11"],
+  // Group 83 — the 2026-09-22 twentieth sweep. Four feeds on one tick because
+  // the walk is cheap, which is not what the role count suggests: BAE's 1,617
+  // come back in 3.9s, HSF's 124 in 2.1s, Cloudflare's 392 in 0.3s and AXA's
+  // 1,472 in 4.5s. Phenom serves large pages, greenhouse is a single JSON call
+  // and Jibe walks 100 at a time in parallel windows, rather than the 9-25 a
+  // page that forced the splits above. Grouped on the measured 10.8s, not on
+  // the 3,605 roles.
+  ["london-ba", "priv-herbert-smith-freehills", "sanfrancisco-net", "paris-cs"],
 ];
 
 const UA =
@@ -6669,6 +6811,105 @@ interface GreenhouseJob {
   updated_at?: string;
   first_published?: string;
   id?: number;
+}
+
+interface JibeJob {
+  data?: {
+    title?: string;
+    city?: string;
+    country?: string;
+    req_id?: string | number;
+    slug?: string | number;
+    posted_date?: string;
+    apply_url?: string;
+    categories?: { name?: string }[];
+  };
+}
+
+/**
+ * Jibe — the platform iCIMS sells as "iCIMS Career Sites".
+ *
+ * IT FINGERPRINTS AS iCIMS AND IT IS NOT THE SAME THING TO READ, which is the
+ * single most useful fact here. discover-boards.py reports AXA's careers site
+ * as `icims (NO READER IN careerSites.ts)` because the page carries
+ * careers-en-axa.icims.com, move-en-axa.icims.com and www.icims.com — but the
+ * served HTML is a 603 KB shell with no job link in it, and the board is not
+ * iCIMS's at all. The scripts come from app.jibecdn.com, and Jibe answers a
+ * plain JSON GET on the SITE's own host: careers.axa.com/api/jobs.
+ *
+ * So classic iCIMS (a {tenant}.icims.com career section, an iframe, a session)
+ * still has no reader here. This is a different platform wearing its name.
+ *
+ * THE PAGING, measured against careers.axa.com on 2026-09-22:
+ *   - `limit=100` is the ceiling and it is a REFUSAL, not a clamp. limit=200,
+ *     250, 300 and 400 each return ZERO jobs rather than 100. That matters more
+ *     than it looks: pagedParallel reads a short page as the end of the board,
+ *     so a reader that asked for 200 would archive nothing and report success.
+ *   - `page` is 1-based and works. `offset` is accepted and SILENTLY IGNORED —
+ *     `limit=100&offset=100` returns the same first req_id as page 1.
+ *   - The walk ends honestly: at 1,518 jobs, page 16 returns 18 and page 17
+ *     returns 0.
+ *
+ * The walk is bounded by the advertised `totalCount` rather than by running
+ * until a short page, which is what careerSites.ts asks for wherever a total is
+ * on offer — a fetch failure and the end of a list look identical otherwise.
+ * getJson returns null on a failed fetch and this passes that through, so
+ * pagedParallel retries the page once and then stops LOUDLY instead of
+ * mistaking the gap for the end.
+ */
+async function fetchJibe(site: SiteDef): Promise<PortalJob[]> {
+  const pageSize = site.pageSize ?? 100;
+  const base = site.endpoint.includes("?") ? site.endpoint : site.endpoint + "?";
+  const url = (n: number) => `${base}${base.endsWith("?") ? "" : "&"}limit=${pageSize}&page=${n}`;
+
+  const first = await getJson<{ totalCount?: number; jobs?: JibeJob[] }>(url(1));
+  if (!first) return [];
+  const total = Number(first.totalCount ?? 0);
+  const maxPages = Math.min(site.maxPages ?? 60, total > 0 ? Math.ceil(total / pageSize) : 1);
+
+  const rowsOf = (j: JibeJob[] | undefined): PortalJob[] => {
+    const out: PortalJob[] = [];
+    for (const row of j ?? []) {
+      const d = row.data ?? {};
+      const title = (d.title || "").trim();
+      if (!title) continue;
+      // city is the place and country is the country; neither is ever a work
+      // arrangement on this platform, unlike the greenhouse board above it.
+      const loc = [String(d.city ?? "").trim(), String(d.country ?? "").trim()]
+        .filter(Boolean)
+        .join(", ");
+      out.push(
+        job(
+          site,
+          title,
+          loc,
+          d.apply_url || `${site.origin}/careers-home/jobs/${d.slug ?? d.req_id ?? ""}`,
+          isoDay(d.posted_date || ""),
+          d.categories?.[0]?.name || "Career portal",
+        ),
+      );
+    }
+    return out;
+  };
+
+  const pages = await pagedParallel<PortalJob>(
+    async (i) => {
+      if (i === 0) return rowsOf(first.jobs);
+      const j = await getJson<{ jobs?: JibeJob[] }>(url(i + 1));
+      return j ? rowsOf(j.jobs) : null;
+    },
+    pageSize,
+    maxPages,
+    site.key ?? site.id,
+  );
+
+  const seen = new Set<string>();
+  return pages.filter((j) => {
+    const k = `${j.t}|${j.loc}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 }
 
 async function fetchGreenhouse(site: SiteDef): Promise<PortalJob[]> {
@@ -10998,6 +11239,7 @@ async function fetchDelorean(site: SiteDef): Promise<PortalJob[]> {
 }
 
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
+  jibe: fetchJibe,
   workable: fetchWorkable,
   bamboohr: fetchBambooHr,
   cjd: fetchCjd,
@@ -11159,6 +11401,7 @@ export const SOURCE_TAG: Record<Platform, string> = {
   // as `aubgroup` and `zipco` already do for employers with no ATS.
   cjd: "cjd",
   delorean: "delorean",
+  jibe: "jibe",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */

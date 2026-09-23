@@ -1310,6 +1310,8 @@ const PORTAL_TICKS: Record<string, number> = {
   // these open the 18 hour.
   "5 18 * * *": 81,
   "15 18 * * *": 82,
+  // Group 83 — the 2026-09-22 twentieth sweep.
+  "25 18 * * *": 83,
 };
 
 const NEWS_TICKS: Record<string, number> = {

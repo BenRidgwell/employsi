@@ -164,6 +164,14 @@ FINGERPRINTS: list[tuple[str, str]] = [
     (r'livehire\.com/careers/([a-z0-9-]{1,63})', 'livehire'),
     (r'boards(?:-api)?\.greenhouse\.io/[a-z]+/([a-z0-9-]+)', 'greenhouse'),
     (r'jobs\.lever\.co/([a-z0-9-]+)', 'lever'),
+    # JIBE BEFORE iCIMS, and the order is the whole point. iCIMS sells Jibe as
+    # "iCIMS Career Sites", so a Jibe site carries icims.com hosts and matches
+    # the iCIMS pattern below — which is how AXA was reported for a week as
+    # `icims (NO READER)` when its board was a plain JSON GET on its own host.
+    # The two are not the same thing to parse: Jibe answers {site}/api/jobs,
+    # while classic iCIMS is a {tenant}.icims.com career section behind an
+    # iframe and a session. Match the script host, which only Jibe serves.
+    (r'jibecdn\.com|app\.jibecdn', 'jibe [try {site}/api/jobs?limit=100&page=1]'),
     (r'icims\.com|iCIMS', 'icims (NO READER IN careerSites.ts — would need one)'),
     # TechnologyOne CiAnywhere, an ERP whose recruitment module some Australian
     # universities run. Measured 2026-09-21: CDU's "CDU job opportunities" link
