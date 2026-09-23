@@ -1,4 +1,10 @@
-import { askAnalyst, type AnalystAnswer, type AnalystBar, type AnalystScope } from "./analystFn";
+import {
+  askAnalyst,
+  MONTH_NAMES,
+  type AnalystAnswer,
+  type AnalystBar,
+  type AnalystScope,
+} from "./analystFn";
 import { detectIntent, detectSkillMatch, type AnalystIntent } from "./analystIntent";
 import { wantsAreas as wantsAreasIn } from "./analystTurn";
 import {
@@ -34,21 +40,7 @@ const fmtNum = (n: number) => Math.round(n).toLocaleString("en-US");
 
 function monthName(iso: string): string {
   const [y, m] = iso.split("-");
-  const names = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-  return `${names[Number(m) - 1] ?? m} ${y}`;
+  return `${MONTH_NAMES[Number(m) - 1] ?? m} ${y}`;
 }
 
 /**

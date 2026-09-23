@@ -334,6 +334,39 @@ const dayStr = (offset: number) => {
   return d.toISOString().slice(0, 10);
 };
 
+export const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+/**
+ * A day as a reader writes it — "23 September 2026", never "2026-09-23".
+ *
+ * Every date that reaches the prose or the source line goes through this. The
+ * ISO form is what the archive stores and what all the window arithmetic below
+ * runs on (`minusDays`, `daysBetween`, the `asOf < since` comparisons), so it
+ * stays on the inside; it simply never gets quoted. Anything that isn't a
+ * plain YYYY-MM-DD is handed back unchanged rather than guessed at — `since`
+ * and `latest` are empty on an empty scope.
+ */
+export function fmtDay(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return iso;
+  const name = MONTH_NAMES[Number(m[2]) - 1];
+  if (!name) return iso;
+  return `${Number(m[3])} ${name} ${m[1]}`;
+}
+
 /** `n` days before an ISO day, so a window can be anchored to a day in the data
  *  rather than to the clock. */
 const minusDays = (iso: string, n: number) => {
@@ -571,12 +604,12 @@ export const askAnalyst = createServerFn({ method: "POST" })
     // the answer still says a short window is a short-run read. `since` is
     // kept above because it bounds those windows; it is simply not quoted.
     const archiveNote =
-      `employsi vacancy archive · ${label} · to ${latest}` +
+      `employsi vacancy archive · ${label} · to ${fmtDay(latest)}` +
       // The archive runs to `latest`, but the figures are measured to the last
       // finished day. Both facts, because a reader who checks will find rows
       // dated after the day the answer claims.
       (steppedBack
-        ? ` · measured as at ${asOf}, the most recent day every feed had reported`
+        ? ` · measured as at ${fmtDay(asOf)}, the most recent day every feed had reported`
         : "") +
       // Say how the sector was resolved, so the figure can be reproduced and so
       // it is clear this counts employers, not every ad in the market.
@@ -592,7 +625,7 @@ export const askAnalyst = createServerFn({ method: "POST" })
     if (!live) {
       return {
         intent,
-        text: `Nothing was live for ${label} as at ${asOf}, so any figure I gave you would be about a market that isn't there. Try a wider scope.`,
+        text: `Nothing was live for ${label} as at ${fmtDay(asOf)}, so any figure I gave you would be about a market that isn't there. Try a wider scope.`,
         source: archiveNote,
       };
     }
@@ -701,7 +734,7 @@ export const askAnalyst = createServerFn({ method: "POST" })
       const lead = top[0];
       const leadName = withParent(lead[0]);
       const changeNote = canCompare
-        ? ` Change is measured against ${then}, ${plural(window, "day")} back — a short-run read rather than month on month.`
+        ? ` Change is measured against ${fmtDay(then)}, ${plural(window, "day")} back — a short-run read rather than month on month.`
         : ` There isn't enough history for this scope yet to show which way that's moving, so this is the level rather than the trend.`;
       return {
         intent,
@@ -860,10 +893,10 @@ export const askAnalyst = createServerFn({ method: "POST" })
       const dirText =
         pct === null
           ? `There isn't enough history for this scope yet to give you a direction, so that's the level on its own.`
-          : `That's ${pct >= 0 ? "up" : "down"} ${Math.abs(pct).toFixed(1)}% on ${then}, ${plural(window, "day")} back — a short-run read rather than month on month.`;
+          : `That's ${pct >= 0 ? "up" : "down"} ${Math.abs(pct).toFixed(1)}% on ${fmtDay(then)}, ${plural(window, "day")} back — a short-run read rather than month on month.`;
       return {
         intent,
-        text: `${label} had ${plural(live, "role")} live as at ${asOf}${steppedBack ? ", the most recent day the feeds had all reported" : ""}, with ${plural(fresh, "ad")} first seen in the ${plural(window, "day")} before that. ${dirText}`,
+        text: `${label} had ${plural(live, "role")} live as at ${fmtDay(asOf)}${steppedBack ? ", the most recent day the feeds had all reported" : ""}, with ${plural(fresh, "ad")} first seen in the ${plural(window, "day")} before that. ${dirText}`,
         stats: [
           {
             k: "Live roles",
