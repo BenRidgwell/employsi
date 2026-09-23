@@ -12,6 +12,7 @@
  * Run: bun run scripts/check-skill-trends.ts
  */
 import {
+  alternateBySign,
   foldSkillRows,
   foldSkillMarket,
   foldSkillRanks,
@@ -1626,6 +1627,51 @@ console.log("\nwhat a skill card offers next:");
   check(
     "and never suggests a speciality of any other skill",
     ALL_SKILLS.every((s) => related(s).every((r) => !(r in SKILL_PARENT))),
+  );
+}
+
+{
+  // ── the ticker's riser/faller interleave ────────────────────────────────
+  // Order only, and invisible when it breaks: the marquee still shows sixteen
+  // correct rows, it just shows them in a block of red and then a block of
+  // green, which reads as "everything is falling" for several seconds. The
+  // sort above it CLAIMED to interleave from the day the ticker was written
+  // and never did, which is exactly how long a wrong order can survive
+  // unasserted.
+  const v = (n: number) => ({ v: n });
+  const signs = (xs: { v: number }[]) => xs.map((x) => (x.v > 0 ? "+" : "-")).join("");
+  const longestRun = (s: string) => Math.max(0, ...(s.match(/(.)\1*/g) ?? []).map((r) => r.length));
+
+  const grouped = [-9, -8, -7, -6, 5, 4, 3, 2].map(v);
+  check(
+    "a block of fallers then risers comes back alternating",
+    longestRun(signs(alternateBySign(grouped, (t) => t.v))) === 1,
+  );
+  check(
+    "and leads with the side the ranking led with",
+    signs(alternateBySign(grouped, (t) => t.v))[0] === "-",
+  );
+  check(
+    "a ranking led by a riser still leads with one",
+    signs(alternateBySign([9, 8, -7, -6].map(v), (t) => t.v))[0] === "+",
+  );
+
+  // SELECTION MUST SURVIVE THE REORDER. Dropping or duplicating a row here
+  // would change what the ticker reports, not just its order — and the whole
+  // point of interleaving after the cut is that it cannot.
+  const lopsided = [9, 8, 7, 6, 5, 4, -3, -2].map(v);
+  const out = alternateBySign(lopsided, (t) => t.v);
+  check(
+    "no row is added or lost when the sides are uneven",
+    out.length === lopsided.length && lopsided.every((x) => out.includes(x)),
+  );
+  check(
+    "the short side is spread through the front, not appended",
+    signs(out).slice(0, 4) === "+-+-",
+  );
+  check(
+    "an all-one-sign ranking is returned untouched",
+    signs(alternateBySign([9, 8, 7].map(v), (t) => t.v)) === "+++",
   );
 }
 

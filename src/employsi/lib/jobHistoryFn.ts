@@ -274,6 +274,42 @@ export const TREND_WINDOWS: { key: TrendWindow; days: number; label: string; sho
 ];
 export type LiveSkillTrends = Record<TrendWindow, LiveSkillTrend[]>;
 
+/**
+ * Re-order a ranked list so risers and fallers alternate.
+ *
+ * WHY THE TICKER NEEDED THIS. The movers are ranked by how big the change is,
+ * and a day's biggest changes are not evenly signed — when a batch of feeds
+ * lands or a hiring season turns, the whole top of the list leans one way. The
+ * marquee then shows a run of red followed by a run of green, which reads as
+ * "everything is falling" for several seconds at a time even though the mix is
+ * balanced. The comment at the sort had claimed this interleaving existed since
+ * the ticker was written; it did not.
+ *
+ * SELECTION IS NOT TOUCHED, ONLY ORDER. This runs after the cut, so which
+ * skills appear is still purely the biggest movers — alternating before the cut
+ * would let a small riser displace a larger faller just to balance the signs,
+ * which would be choosing what to report by how it looks.
+ *
+ * It leads with whichever side holds the single biggest mover, so the strongest
+ * signal is still first, and when one side runs out the remainder tails on
+ * rather than being dropped. A list that is all one sign comes back unchanged.
+ */
+export function alternateBySign<T>(items: T[], valueOf: (t: T) => number): T[] {
+  const up = items.filter((t) => valueOf(t) > 0);
+  const down = items.filter((t) => valueOf(t) <= 0);
+  if (!up.length || !down.length) return items;
+  // Whichever side the overall list already leads with keeps the first slot.
+  const leadUp = items.length > 0 && valueOf(items[0]) > 0;
+  const a = leadUp ? up : down;
+  const b = leadUp ? down : up;
+  const out: T[] = [];
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if (i < a.length) out.push(a[i]);
+    if (i < b.length) out.push(b[i]);
+  }
+  return out;
+}
+
 // Market-wide daily skill-demand trends for the app's "Live trends" ticker.
 // Reads every recently-active listing in the D1 archive (all sources — Adzuna,
 // Muse, Jooble, SEEK, Indeed, Zhaopin, and the WA/SA/VIC/QLD/APS government
@@ -530,11 +566,16 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
           pct = Math.max(-16, Math.min(24, pct)); // match the ticker's visual band
           movers.push({ name: s, v: Math.round(pct * 10) / 10, sig: Math.abs(delta) });
         }
-        // Biggest absolute movers first; interleave so the ticker mixes up + down.
+        // Biggest absolute movers first — this decides WHICH skills are
+        // reported, and nothing about how they look may influence it.
         movers.sort((a, b2) => b2.sig - a.sig || Math.abs(b2.v) - Math.abs(a.v));
         // Before the slice, not after, so suppressing a speciality frees its
         // slot for a different skill instead of shortening the ticker.
-        const picked = dropRedundantKin(movers, (m) => m.name).slice(0, 16);
+        const ranked = dropRedundantKin(movers, (m) => m.name).slice(0, 16);
+        // Then, and only then, alternate the signs so the marquee does not run
+        // a block of red followed by a block of green. Order only; the sixteen
+        // are already chosen. See alternateBySign.
+        const picked = alternateBySign(ranked, (m) => m.v);
         // THE PADDING FALLBACK IS GONE, and it has to be.
         //
         // When a window produced fewer than six movers this topped the ticker up
