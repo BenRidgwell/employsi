@@ -177,11 +177,21 @@ export function GlobalSearch() {
       const via = viaOf.get(sk);
       return {
         kind: "skill" as const,
+        // ID IS ALWAYS THE BROAD SKILL, LABEL IS NOT. A speciality routes to
+        // the skill it narrows (searchSkillMatches explains why: the agency
+        // vacancy series exist for the 100 broad skills and for nothing else,
+        // so a speciality's own card would be empty). The thing that OPENS is
+        // therefore the parent, and r.id is what every handler below acts on.
         id: sk,
-        label: sk,
-        // The demand badge still describes the skill being opened; the
-        // speciality that matched is appended so the jump is explicable.
-        sub: via ? `${badge.label} · via ${via}` : badge.label,
+        // But the thing the reader TYPED is the speciality, and answering
+        // "talent acquisition" with a row headed "Human Resources" reads as
+        // the search having ignored them. So the speciality is the headline
+        // and the parent is the context under it — the same routing, said in
+        // the order the reader is thinking in.
+        label: via ?? sk,
+        // The demand badge always describes the skill being opened, which is
+        // why it sits next to the parent's name rather than the speciality's.
+        sub: via ? `${badge.label} · within ${sk}` : badge.label,
         tone: badge.tone,
       };
     });
