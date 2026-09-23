@@ -206,12 +206,63 @@ REBRANDS: dict[str, tuple[str, ...]] = {
 }
 
 
+# Pairings that PASS the containment test and are still the wrong company.
+#
+# WHY THIS HAS TO EXIST SEPARATELY FROM DELETING THE ROW. attributed() matches
+# by containment, so a short company name is satisfied by any longer name that
+# contains it. Deleting the resulting company_slugs row fixes the data and
+# nothing else: the next resolver run walks the same candidates, gets the same
+# page, and stores it again. Measured 2026-09-23 — priv-cogi was deleted after
+# /cogi was found to be COGI srl of Italy, and the very next run re-saved it.
+#
+# Every entry here was read before being added: the page's own country and
+# follower count, not just its name.
+#
+# It is a list rather than a rule because no rule fits. Requiring an exact name
+# match would drop the many correct pages that use a shorter trading name —
+# Cadence for Cadence Design Systems, Veolia for Veolia Environnement, Truist
+# for Truist Financial — and a length ratio would have to be tuned against
+# exactly these cases. The same argument REBRANDS makes in the other direction.
+NOT_THIS_COMPANY: dict[str, tuple[str, ...]] = {
+    # COGI srl, Trentino, Italy — an Italian construction firm. The roster's
+    # COGI is Australian. This one has now also resisted the domain route:
+    # cogiver.com names nobody either.
+    'priv-cogi': ('cogi srl',),
+    # WH Group AB, Sweden, a Visma software partner. The roster's WH Group is
+    # the Hong Kong pork producer.
+    'hongkong-00288': ('wh group ab',),
+    # HERO HONDA MOTORS LTD, Haryana, India — the dissolved Hero/Honda joint
+    # venture, not Honda Motor Co of Japan.
+    'tokyo-7267': ('hero honda motors ltd',),
+    # An Indian firm of 186 followers, IN/Maharashtra. Constellation Software
+    # Inc is the Toronto-listed one.
+    'toronto-csu': ('constellation software and consulting pvt ltd',),
+    # "BID", country IT, Business Innovation & Development, 712 followers — not
+    # Bid Corporation, the South African food-service group.
+    'johannesburg-bid': ('bid',),
+    # Named exactly right and still wrong: 374 followers, "Beauty, cosmetic &
+    # personal care". Air Products and Chemicals Inc is an industrial gas
+    # company with hundreds of thousands.
+    'philadelphia-apd': ('air products and chemicals',),
+    # /woolworths is Woolworths HOLDINGS of South Africa (ZA, Western Cape,
+    # 946k followers). It is correctly stored against johannesburg-whl; this
+    # stops it being re-attached to the Australian group, which is what put a
+    # South African logo on that card once already.
+    'sydney-wow': ('woolworths',),
+}
+
+
 def attributed(company_id: str, company_name: str, actor: str) -> bool:
     """Does this page belong to this company?
 
-    Containment on normalised names, plus the confirmed renames above."""
+    Containment on normalised names, plus the confirmed renames above, minus
+    the confirmed impostors in NOT_THIS_COMPANY."""
     an, cn = norm(actor), norm(company_name)
     if not an or not cn:
+        return False
+    # Checked before the containment test, not after: these are exactly the
+    # pages that would otherwise pass it.
+    if an in tuple(norm(x) for x in NOT_THIS_COMPANY.get(company_id, ())):
         return False
     if an in cn or cn in an:
         return True

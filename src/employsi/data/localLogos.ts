@@ -9,6 +9,7 @@
 export const LOCAL_LOGO: Record<string, string> = {
   "adelaide-axe": "/logos/adelaide-axe.jpeg",
   "adelaide-coe": "/logos/adelaide-coe.jpeg",
+  "aps-bureau-of-meteorology": "/logos/aps-bureau-of-meteorology.png",
   "beijing-601319": "/logos/beijing-601319.png",
   "beijing-601728": "/logos/beijing-601728.png",
   "dubai-amr": "/logos/dubai-amr.png",
@@ -166,6 +167,7 @@ export const LOCAL_LOGO: Record<string, string> = {
   "sa-gov-tafe-sa": "/logos/sa-gov-tafe-sa.jpeg",
   "sa-gov-teachers-registration-board": "/logos/sa-gov-teachers-registration-board.jpeg",
   "sydney-agl": "/logos/sydney-agl.png",
+  "sydney-sol": "/logos/sydney-sol.png",
   "tas-gov-department-for-education-children-and-young-people":
     "/logos/tas-gov-department-for-education-children-and-young-people.png",
   "tas-gov-department-of-health": "/logos/tas-gov-department-of-health.webp",
