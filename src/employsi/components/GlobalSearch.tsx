@@ -3,7 +3,7 @@ import { isReleasedCompany, isReleasedPlace } from "../lib/markets";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../state/store";
 import { GLOBAL_HUB_LABEL } from "../data/geo";
-import { searchSkillMatches } from "../data/skillsTaxonomy";
+import { SKILL_PARENT, searchSkillMatches } from "../data/skillsTaxonomy";
 import {
   popularSkills as popularSkillsForLayer,
   demandLevel,
@@ -25,6 +25,7 @@ import {
 } from "../lib/skillCard";
 import { LABOUR_EVENTS } from "../data/labourEvents";
 import { getSkillPay, formatPay } from "../lib/analystFn";
+import { getSkillTrend } from "../lib/jobHistoryFn";
 import { COMPANIES } from "../data/companies";
 import { searchCityFor } from "../data/mapboxGeo";
 import { SearchAuth } from "./SearchAuth";
@@ -199,12 +200,34 @@ export function GlobalSearch() {
   // card stands down while a company card or the compare view is open, and
   // comes back when they close.
   const cardBlocked = !!selectedId || compareOpen;
-  // skillIndex is passed because a SPECIALITY's card is built from it — the
-  // agencies publish no series at that level, so the live index is where its
-  // figure comes from. A broad skill ignores the argument entirely.
+  // A SPECIALITY's trend line, from our own archive. Its own query, like the
+  // salary one below, so the card renders immediately and the line fills in
+  // when it lands.
+  //
+  // Only fired for a speciality: a broad skill already has the agencies'
+  // 243-month series and would be paying for a D1 scan it will not draw. The
+  // parent of the speciality on screen is one click away in Related, so the
+  // two cards genuinely are different queries rather than one being a subset.
+  const cardIsSpeciality = !!cardSkill && !!SKILL_PARENT[cardSkill];
+  const { data: archiveTrend } = useQuery({
+    queryKey: ["skillTrend", cardSkill],
+    queryFn: () => getSkillTrend({ data: { skill: cardSkill as string, days: 60 } }),
+    enabled: !!cardSkill && cardIsSpeciality && !cardBlocked,
+    staleTime: 6 * 60 * 60 * 1000,
+    retry: false,
+  });
+
+  // skillIndex is passed because a SPECIALITY's card is banded from it — the
+  // agencies publish no series at that level, so the live index is what ranks
+  // it against the other specialities. `archiveTrend` is where its COUNT and
+  // its line come from; see buildSpecialityCard for why those two are one
+  // source and the band is another. A broad skill ignores both arguments.
   const card = useMemo(
-    () => (cardSkill && !cardBlocked ? buildSkillCard(cardSkill, heatMonth, skillIndex) : null),
-    [cardSkill, cardBlocked, heatMonth, skillIndex],
+    () =>
+      cardSkill && !cardBlocked
+        ? buildSkillCard(cardSkill, heatMonth, skillIndex, archiveTrend ?? null)
+        : null,
+    [cardSkill, cardBlocked, heatMonth, skillIndex, archiveTrend],
   );
   // The national rate for the skill on the card, AT THE SCRUBBED MONTH — not the
   // latest — so the figure beside the toggle always describes the same month the
@@ -623,52 +646,75 @@ export function GlobalSearch() {
           )}
 
           {/* Timeline. Scrubs the same month index the heat map colours by, so
-              the card and the map are always showing the same month. */}
-          <div className="gstimeline">
-            <div className="gstimehd">
-              <span className="gstimelbl">{TIMELINE_LABEL}</span>
-              <span className="gstimemonth">{card.monthLabel}</span>
-            </div>
-            <div className="gstimetrackwrap">
-              <div className="gstimetrack">
-                <div className="gstimefill" style={{ width: `${monthPct}%` }} />
-                {LABOUR_EVENTS.map((e) => {
-                  const pos = eventPosition(e);
-                  if (pos === null) return null;
-                  return (
-                    <span
-                      key={e.title}
-                      className={`gstimetick${eventIndex(e) <= heatMonth ? " past" : ""}`}
-                      style={{ left: `${pos * 100}%` }}
-                      title={`${monthLabel(card.month)}`}
-                    />
-                  );
-                })}
-                <span className="gstimeknob" style={{ left: `${monthPct}%` }} />
-              </div>
-              <input
-                type="range"
-                className="gstimerange"
-                min={0}
-                max={TIMELINE_SPAN}
-                step={1}
-                value={heatMonth}
-                onChange={(e) => setHeatMonth(Number(e.target.value))}
-                aria-label="Timeline month"
-              />
-            </div>
-            {event && (
-              <div className="gsevent">
-                <span className="gseventdate">
-                  {monthLabel(`${event.year}-${String(event.month + 1).padStart(2, "0")}`)}
+              the card and the map are always showing the same month.
+
+              A SPECIALITY GETS THE SPAN LINE AND NO HANDLE. Its figures come
+              from our own archive — some fifty days — not from the agencies'
+              243-month series, so there is nothing for a 20-year handle to
+              move: dragging it would relabel the header while every number
+              below it stayed put. Same reasoning as the Vacancies/Per-1,000
+              toggle a few lines up, which is hidden on a skill it cannot
+              answer rather than offered and inert.
+
+              The header keeps the same class and the same shape — label on the
+              left, span on the right — so the two cards read as one design
+              with one row swapped, rather than two layouts. */}
+          {card.spanLabel !== null ? (
+            <div className="gstimeline gsspan">
+              <div className="gstimehd">
+                <span className="gstimelbl">{card.spanLabel}</span>
+                <span className="gstimemonth">
+                  {card.openRoles === null ? "collecting…" : "our listings"}
                 </span>
-                <div className="gseventbody">
-                  <span className="gseventtitle">{event.title}</span>
-                  <span className="gseventnote">{event.note}</span>
-                </div>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="gstimeline">
+              <div className="gstimehd">
+                <span className="gstimelbl">{TIMELINE_LABEL}</span>
+                <span className="gstimemonth">{card.monthLabel}</span>
+              </div>
+              <div className="gstimetrackwrap">
+                <div className="gstimetrack">
+                  <div className="gstimefill" style={{ width: `${monthPct}%` }} />
+                  {LABOUR_EVENTS.map((e) => {
+                    const pos = eventPosition(e);
+                    if (pos === null) return null;
+                    return (
+                      <span
+                        key={e.title}
+                        className={`gstimetick${eventIndex(e) <= heatMonth ? " past" : ""}`}
+                        style={{ left: `${pos * 100}%` }}
+                        title={`${monthLabel(card.month)}`}
+                      />
+                    );
+                  })}
+                  <span className="gstimeknob" style={{ left: `${monthPct}%` }} />
+                </div>
+                <input
+                  type="range"
+                  className="gstimerange"
+                  min={0}
+                  max={TIMELINE_SPAN}
+                  step={1}
+                  value={heatMonth}
+                  onChange={(e) => setHeatMonth(Number(e.target.value))}
+                  aria-label="Timeline month"
+                />
+              </div>
+              {event && (
+                <div className="gsevent">
+                  <span className="gseventdate">
+                    {monthLabel(`${event.year}-${String(event.month + 1).padStart(2, "0")}`)}
+                  </span>
+                  <div className="gseventbody">
+                    <span className="gseventtitle">{event.title}</span>
+                    <span className="gseventnote">{event.note}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {card.related.length > 0 && (
             <div className="gsrelated">

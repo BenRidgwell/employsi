@@ -7628,11 +7628,28 @@ body {
   padding-top: 20px;
   border-top: 1px solid var(--border-subtle);
 }
+/* A speciality's card has no scrubber — its figures come from ~50 days of our
+   own archive, not the agencies' 243-month series, so there is nothing to drag
+   (see the comment on card.spanLabel). It keeps the same top rule and the same
+   header row so the two cards sit on the same grid; only the track is gone,
+   which is why the gap collapses. */
+.gsspan {
+  gap: 0;
+}
 .gstimehd {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
+}
+/* The right-hand cell on a span line names the SOURCE rather than a month, so
+   it carries the tertiary weight the label has rather than the month's
+   primary — it is a caption, not a value. */
+.gsspan .gstimemonth {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
 }
 .gstimelbl {
   font-family: var(--font-label);

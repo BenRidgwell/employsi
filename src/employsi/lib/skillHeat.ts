@@ -1,4 +1,4 @@
-import { ALL_SKILLS, SKILL_PARENT } from "../data/skillsTaxonomy";
+import { ALL_SKILLS, ALL_SKILLS_AND_CHILDREN, SKILL_PARENT } from "../data/skillsTaxonomy";
 import { CITY_COMPANIES } from "../data/mapboxGeo";
 import { CITY_CONTINENT } from "../data/geo";
 import { REGION_HUBS } from "../data/mapboxWorldGeo";
@@ -288,13 +288,30 @@ export function iviCityChangeAt(
   return out;
 }
 
-// The canonical skill a search query resolves to (exact, case-insensitive), or
-// null if the query isn't a tracked skill. When non-null the maps switch from
-// the salary/growth metric to real demand for that skill.
+/**
+ * The canonical skill a search query resolves to (exact, case-insensitive), or
+ * null if the query isn't a tracked skill. When non-null the maps switch from
+ * the salary/growth metric to real demand for that skill.
+ *
+ * SPECIALITIES RESOLVE HERE TOO, and until they did the map simply did not
+ * react to one. The list was ALL_SKILLS — the 100 broad skills — so searching
+ * "Talent Acquisition" opened a card and left the globe coloured by salary,
+ * which reads as the search having failed rather than as a tier the map does
+ * not cover. Every consumer of this function is already tier-agnostic:
+ * demandByCity and demandByCompany read the live index, and recomputeIndex
+ * aggregates byCity/byCompany for every skill name on a job without caring
+ * which tier it is (see workers/jobs-cron/index.ts).
+ *
+ * What does NOT follow is the agency overlay. seriesFor() returns null for a
+ * speciality — no statistical agency publishes one at this level — so
+ * iviCityDemandAt and iviCityChangeAt contribute nothing and the map is
+ * coloured by our own collection alone. That is the honest answer rather than
+ * a degraded one, and it is why the card names its source.
+ */
 export function activeSkill(query: string): string | null {
   const q = (query || "").trim().toLowerCase();
   if (!q) return null;
-  return ALL_SKILLS.find((s) => s.toLowerCase() === q) || null;
+  return ALL_SKILLS_AND_CHILDREN.find((s) => s.toLowerCase() === q) || null;
 }
 
 // Real demand counts for a skill, keyed by company id / city. Empty object when

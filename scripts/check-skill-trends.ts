@@ -16,6 +16,7 @@ import {
   foldSkillRows,
   foldSkillMarket,
   foldSkillRanks,
+  roleKeyByCompanyTitle,
   type SkillRow,
   type MarketRow,
   type RankRow,
@@ -29,6 +30,8 @@ import {
   searchSkillMatches,
   withParent,
 } from "../src/employsi/data/skillsTaxonomy";
+import { buildSkillCard, TIMELINE_SPAN } from "../src/employsi/lib/skillCard";
+import { activeSkill } from "../src/employsi/lib/skillHeat";
 
 let failures = 0;
 function check(name: string, cond: boolean, detail?: string) {
@@ -1693,6 +1696,159 @@ console.log("\nwhat a skill card offers next:");
     "an all-one-sign ranking is returned untouched",
     signs(alternateBySign([9, 8, 7].map(v), (t) => t.v)) === "+++",
   );
+}
+
+// ── a speciality's own trend line ───────────────────────────────────────────
+//
+// A speciality has no agency series, so its card's line and its count come
+// from the archive instead (getSkillTrend -> foldSkillRows, keyed archive-wide
+// by roleKeyByCompanyTitle). Everything below is invisible on the rendered
+// card: a line drawn from the wrong fold still looks like a line, and a count
+// merged across employers still looks like a number.
+{
+  // THE REASON THE ARCHIVE-WIDE KEY EXISTS. Two employers advertising the same
+  // title are two vacancies. The per-company default folds them into one,
+  // which is right inside one company and catastrophic across the archive:
+  // measured on the live archive 2026-09-23, the 307 rows carrying Talent
+  // Acquisition held 234 distinct titles, so title-only folding would have
+  // merged 73 rows belonging to different employers.
+  const rows = [
+    row(["Talent Acquisition"], DAYS[0], DAYS[9], { title: "Talent Partner", company_id: "bhp" }),
+    row(["Talent Acquisition"], DAYS[0], DAYS[9], { title: "Talent Partner", company_id: "nab" }),
+  ];
+  const wide = foldSkillRows(rows, DAYS, LIVE_FROM, 0, roleKeyByCompanyTitle);
+  const naive = foldSkillRows(rows, DAYS, LIVE_FROM, 0);
+  check(
+    "the archive-wide key keeps two employers' identical titles apart",
+    find(wide, "Talent Acquisition")!.now === 2,
+    `got ${find(wide, "Talent Acquisition")!.now}`,
+  );
+  check(
+    "...and the per-company default still folds them, as a company card needs",
+    find(naive, "Talent Acquisition")!.now === 1,
+    `got ${find(naive, "Talent Acquisition")!.now}`,
+  );
+}
+{
+  // Within ONE employer the archive-wide key must still fold the feeds — that
+  // is the whole measurement behind normRoleTitle, and losing it would put the
+  // 18% row duplication straight back into the count.
+  const rows = [
+    row(["Talent Acquisition"], DAYS[0], DAYS[9], {
+      title: "Talent Partner",
+      company_id: "bhp",
+      source: "adzuna",
+    }),
+    row(["Talent Acquisition"], DAYS[0], DAYS[9], {
+      title: "talent  partner!",
+      company_id: "bhp",
+      source: "seek",
+    }),
+  ];
+  const out = foldSkillRows(rows, DAYS, LIVE_FROM, 0, roleKeyByCompanyTitle);
+  check(
+    "...while two feeds on ONE employer's role still fold to one vacancy",
+    find(out, "Talent Acquisition")!.now === 1,
+  );
+}
+{
+  // An unattributed row is its own vacancy. The archive's hub samples carry no
+  // company_id, and two identically-titled ones are as likely to be two
+  // hospitals as one hospital on two boards — so counting twice beats merging
+  // strangers. Same rule foldSkillRanks already applies.
+  const rows = [
+    row(["Midwifery"], DAYS[0], DAYS[9], { title: "Registered Midwife" }),
+    row(["Midwifery"], DAYS[0], DAYS[9], { title: "Registered Midwife" }),
+  ];
+  const out = foldSkillRows(rows, DAYS, LIVE_FROM, 0, roleKeyByCompanyTitle);
+  check(
+    "two rows with no company_id stay two vacancies, not one",
+    find(out, "Midwifery")!.now === 2,
+    `got ${find(out, "Midwifery")!.now}`,
+  );
+}
+{
+  // The card's figure and the right-hand end of its line must be ONE
+  // measurement. buildSpecialityCard takes `now` and the series from the same
+  // fold precisely so they cannot drift; the index total it used to show is a
+  // count of ROWS and would sit ~20% above the line it was printed against.
+  const trend = {
+    days: DAYS.slice(0, 4),
+    now: 42,
+    series: [39, 40, 41, 42],
+    pct: 7.7,
+    hubs: [{ hub: "perth", n: 42 }],
+    hubless: 0,
+  };
+  const card = buildSkillCard("Talent Acquisition", TIMELINE_SPAN, null, trend);
+  check(
+    "the speciality card's open-roles figure is the fold's, not the index's",
+    card.openRoles === 42,
+  );
+  check("...and it draws a line from the same fold", !!card.spark && !!card.sparkArea);
+  check("...and reports the change the fold measured", card.change === 7.7);
+  check(
+    "...and names the span it DREW, not the one requested",
+    card.spanLabel === "Collected · 1 Aug – 4 Aug",
+    String(card.spanLabel),
+  );
+  check("...and marks itself as archive-sourced", card.basis === "archive");
+}
+{
+  // BEFORE THE QUERY LANDS THERE IS NO NUMBER. Falling back to the live index
+  // here is what the fold was brought in to stop: the card would print a row
+  // count, then swap it for a vacancy count when the trend arrived, and the
+  // figure would visibly move for no reason a reader could see.
+  //
+  // THE INDEX IS POPULATED IN THIS FIXTURE, deliberately. Passing null made
+  // the case pass against a card that DID fall back — there was simply nothing
+  // to fall back to — so it asserted nothing. Checked by reinstating the
+  // fallback and watching this fail.
+  const idx = {
+    updated: "2026-09-23",
+    totalJobs: 1,
+    skills: {
+      "Talent Acquisition": { total: 307, byCompany: {}, bySector: {}, byCity: { perth: 307 } },
+    },
+  };
+  const card = buildSkillCard("Talent Acquisition", TIMELINE_SPAN, idx, null);
+  check("...and does not fall back to the index's row count", card.openRoles !== 307);
+  check("a speciality with no archive answer shows no count", card.openRoles === null);
+  check("...and no line", card.spark === null && card.sparkArea === null);
+  check("...and no span label", card.spanLabel === null);
+  check(
+    "...and says so rather than showing a zero",
+    card.summaryLead.includes("no figure to show"),
+    card.summaryLead,
+  );
+}
+{
+  // A BROAD SKILL IS UNTOUCHED BY ANY OF THIS. It keeps the agencies' series,
+  // the scrubbable 243-month axis and no span line — the trend argument is
+  // ignored outright rather than blended in.
+  const card = buildSkillCard("Human Resources", TIMELINE_SPAN, null, {
+    days: DAYS,
+    now: 999999,
+    series: [1, 2, 3],
+    pct: 500,
+    hubs: [],
+    hubless: 0,
+  });
+  check("a broad skill ignores the archive trend entirely", card.openRoles !== 999999);
+  check("...and keeps the scrubbable timeline", card.spanLabel === null);
+  check("...and is still agency-sourced", card.basis === "agency");
+}
+{
+  // The map has to be able to colour by a speciality, or the search opens a
+  // card and leaves the globe on salary — which reads as the search failing.
+  // This was ALL_SKILLS (broad only) until specialities got their own card.
+  check(
+    "a speciality resolves as the map's active skill",
+    activeSkill("talent acquisition") === "Talent Acquisition",
+  );
+  check("...case-insensitively, like a broad skill", activeSkill("MIDWIFERY") === "Midwifery");
+  check("...and a broad skill still does", activeSkill("nursing") === "Nursing");
+  check("...while a non-skill still resolves to nothing", activeSkill("BHP") === null);
 }
 
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");
