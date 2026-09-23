@@ -1863,12 +1863,22 @@ console.log("\nwhat a skill card offers next:");
     updated: "2026-09-23",
     totalJobs: 0,
     skills: Object.fromEntries(
+      // ALL ELEVEN of Nursing's specialities, descending. The first version
+      // stocked five, which cannot reach a cap of six — so the cap assertion
+      // passed on the list simply being short. Every child is present here, so
+      // the slice is the only thing that can hold the row to six.
       [
         ["Midwifery", 382],
         ["Perioperative Nursing", 150],
         ["Critical Care Nursing", 120],
         ["Emergency Nursing", 90],
+        ["Surgical Nursing", 75],
+        ["Paediatric Nursing", 60],
+        ["Oncology & Palliative Nursing", 55],
+        ["Nurse Practitioner", 50],
         ["Aged Care Nursing", 40],
+        ["Nurse Education", 30],
+        ["Renal Nursing", 20],
       ].map(([s, n]) => [s, { total: n, byCompany: {}, bySector: {}, byCity: {} }]),
     ),
   };
@@ -1888,7 +1898,11 @@ console.log("\nwhat a skill card offers next:");
     card.relatedLabel === "Specialities",
     card.relatedLabel,
   );
-  check("...and capped, so eleven children do not become eleven chips", card.related.length === 4);
+  check(
+    "...and capped, so eleven children do not become eleven chips",
+    card.related.length === 6,
+    `${card.related.length} chips`,
+  );
 }
 {
   // THE HALF OF THE OLD RULE THAT STILL HOLDS. A speciality the index has never

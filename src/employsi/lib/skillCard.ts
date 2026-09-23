@@ -219,9 +219,21 @@ function sparkPaths(
   return { line, area };
 }
 
-/** How many chips the row carries. Four is what the design draws and what the
- *  card's width takes without the row running to three lines. */
-const RELATED_N = 4;
+/**
+ * How many chips the row carries.
+ *
+ * Six, matching the search list's own cap, so the two surfaces offer a skill's
+ * specialities at the same depth — typing "nursing" and opening Nursing should
+ * not disagree about how many of its specialities are worth naming. The design
+ * draws four; four was kept while this row held category neighbours, where a
+ * fifth and sixth alternative add little. A parent's own specialities are the
+ * drill-down, and Nursing has eleven, so four hid most of them behind nothing.
+ *
+ * It applies to the sibling row too. Keeping one cap means the row is the same
+ * length whichever kind of chip it holds, which is the point of the two rows
+ * reading as one design.
+ */
+const RELATED_N = 6;
 
 /**
  * The rest of this skill's taxonomy category, strongest first — the fallback
