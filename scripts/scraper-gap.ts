@@ -107,22 +107,45 @@ function companyIdAlias(root: string): Record<string, string> {
 }
 
 /**
- * Company ids owned by a hand-written per-company driver in scripts/.
+ * Company ids owned by a hand-written driver in scripts/.
  *
  * Read out of the source, not listed, for the same reason the SiteDef ids are:
  * a list here would be one more thing to update when a portal is added, and the
  * cost of forgetting is a report that tells you to build a scraper that exists.
- * The `^COMPANY_ID = '…'` form is the convention every one of them follows
- * (nab, sandfire, stockland, technologyone, dyno, ecu, whitehaven, Auckland
- * Airport); a driver that covers MANY companies reads its ids from the roster
- * and so has no such constant, which is exactly the distinction wanted here.
+ *
+ * TWO FORMS, AND READING ONLY THE FIRST PUT SEVEN COVERED EMPLOYERS AT THE TOP
+ * OF THIS REPORT. The note here used to say that `^COMPANY_ID = '…'` was the
+ * convention every driver follows, and that "a driver that covers MANY
+ * companies reads its ids from the roster and so has no such constant, which is
+ * exactly the distinction wanted here". That is true of the whole-family
+ * drivers it was written for, and there is a third kind it did not account for:
+ * a driver covering a FIXED, NAMED handful of employers, choosing one per run
+ * from a CFG dict.
+ *
+ *   dayforce-to-d1.py  COMPANY_ID, COMPANY = CFG['company_id'], CFG['company']
+ *   compass-to-d1.py   COMPANY_ID = CFG['company_id']
+ *
+ * Neither line carries a quoted id, so neither matched, so all seven employers
+ * they cover — Uniting, EVT, Avant Mutual, CMV Group, Compass Group, Built and
+ * BMD Group — read as gaps. Between them that was 4,762 ads, and the top five
+ * rows of the report: the loudest recommendation it made was to build five
+ * scrapers that run nightly and were writing rows that same day. Exactly the
+ * failure the alias note above describes, from a different direction.
+ *
+ * So the ids are taken from the constant AND from every `'company_id': '…'`
+ * literal in the file. A driver that genuinely reads its ids from the roster
+ * still has neither, so the distinction the original note wanted is intact.
  */
 function scriptPortalIds(dir: string): Map<string, string> {
   const out = new Map<string, string>();
   for (const f of readdirSync(dir)) {
     if (!f.endsWith(".py")) continue;
-    const m = /^COMPANY_ID = ['"]([^'"]+)['"]/m.exec(readFileSync(join(dir, f), "utf8"));
-    if (m) out.set(m[1], f);
+    const src = readFileSync(join(dir, f), "utf8");
+    const one = /^COMPANY_ID = ['"]([^'"]+)['"]/m.exec(src);
+    if (one) out.set(one[1], f);
+    for (const m of src.matchAll(/['"]company_id['"]\s*:\s*['"]([^'"]+)['"]/g)) {
+      if (!out.has(m[1])) out.set(m[1], f);
+    }
   }
   return out;
 }
