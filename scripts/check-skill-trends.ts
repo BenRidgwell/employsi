@@ -26,6 +26,7 @@ import {
   ALL_SKILLS,
   SKILL_CATEGORY,
   SKILL_PARENT,
+  SKILL_CHILDREN,
   dropRedundantKin,
   searchSkillMatches,
   withParent,
@@ -1849,6 +1850,110 @@ console.log("\nwhat a skill card offers next:");
   check("...case-insensitively, like a broad skill", activeSkill("MIDWIFERY") === "Midwifery");
   check("...and a broad skill still does", activeSkill("nursing") === "Nursing");
   check("...while a non-skill still resolves to nothing", activeSkill("BHP") === null);
+}
+
+// ── the chip row: specialities, siblings, or the way back up ────────────────
+//
+// Three different relationships share one row, and only the heading tells them
+// apart. A chip that says "Midwifery" cannot say whether it is part of the
+// skill on the card or an alternative to it — which is exactly why specialities
+// were kept out of this row until they had cards of their own.
+{
+  const idx = {
+    updated: "2026-09-23",
+    totalJobs: 0,
+    skills: Object.fromEntries(
+      // ALL ELEVEN of Nursing's specialities, descending. The first version
+      // stocked five, which cannot reach a cap of six — so the cap assertion
+      // passed on the list simply being short. Every child is present here, so
+      // the slice is the only thing that can hold the row to six.
+      [
+        ["Midwifery", 382],
+        ["Perioperative Nursing", 150],
+        ["Critical Care Nursing", 120],
+        ["Emergency Nursing", 90],
+        ["Surgical Nursing", 75],
+        ["Paediatric Nursing", 60],
+        ["Oncology & Palliative Nursing", 55],
+        ["Nurse Practitioner", 50],
+        ["Aged Care Nursing", 40],
+        ["Nurse Education", 30],
+        ["Renal Nursing", 20],
+      ].map(([s, n]) => [s, { total: n, byCompany: {}, bySector: {}, byCity: {} }]),
+    ),
+  };
+  const card = buildSkillCard("Nursing", TIMELINE_SPAN, idx as never);
+  check(
+    "a parent offers its own specialities, not its category neighbours",
+    card.related.every((s) => SKILL_PARENT[s] === "Nursing"),
+    card.related.join(", "),
+  );
+  check(
+    "...busiest first, from the index",
+    card.related[0] === "Midwifery" && card.related[1] === "Perioperative Nursing",
+    card.related.join(", "),
+  );
+  check(
+    "...under a heading that says they are PARTS of it",
+    card.relatedLabel === "Specialities",
+    card.relatedLabel,
+  );
+  check(
+    "...and capped, so eleven children do not become eleven chips",
+    card.related.length === 6,
+    `${card.related.length} chips`,
+  );
+}
+{
+  // THE HALF OF THE OLD RULE THAT STILL HOLDS. A speciality the index has never
+  // seen opens a card that says nothing has been collected, so it is dropped
+  // rather than ranked last — a dead end is not a suggestion. With the index
+  // loaded and every child unseen, the row falls back to the siblings rather
+  // than going empty.
+  const idx = { updated: "2026-09-23", totalJobs: 0, skills: {} };
+  const card = buildSkillCard("Nursing", TIMELINE_SPAN, idx as never);
+  check(
+    "a parent whose specialities are all unseen falls back to siblings",
+    card.related.length > 0 && card.related.every((s) => !SKILL_PARENT[s]),
+    card.related.join(", "),
+  );
+  check("...under the heading those have always had", card.relatedLabel === "Related");
+}
+{
+  // 59 of the 100 broad skills have no children at all. They must keep exactly
+  // the row they had, or this change quietly empties more than half the cards.
+  //
+  // THE FIXTURE ASSERTS ITS OWN PREMISE. The first version of this case used
+  // Data Analytics, which has a speciality (Business Intelligence) — so it was
+  // testing the branch above under the wrong name and failed immediately. The
+  // guard below turns that into a clear message rather than a confusing one if
+  // Mining Engineering ever gains a child.
+  check(
+    "the childless-skill fixture is actually childless",
+    (SKILL_CHILDREN["Mining Engineering"] ?? []).length === 0,
+  );
+  const card = buildSkillCard("Mining Engineering", TIMELINE_SPAN, null);
+  check(
+    "a broad skill with no specialities keeps its category siblings",
+    card.related.length > 0 && card.related.every((s) => !SKILL_PARENT[s]),
+    card.related.join(", "),
+  );
+  check("...still labelled Related", card.relatedLabel === "Related");
+}
+{
+  // The one chip on a speciality card goes back UP. Labelling it "Related"
+  // would offer the whole it is a slice of as an alternative to itself.
+  const card = buildSkillCard("Midwifery", TIMELINE_SPAN, null);
+  check("a speciality points at its parent", eq(card.related, ["Nursing"]));
+  check("...labelled as the thing it is part of", card.relatedLabel === "Part of");
+}
+{
+  // A PARENT MUST NEVER OFFER ITSELF, and a speciality must never appear in a
+  // sibling row. Both are one-line slips that read as plausible chips.
+  for (const s of ["Nursing", "Human Resources", "Software Engineering", "Data Analytics"]) {
+    const card = buildSkillCard(s, TIMELINE_SPAN, null);
+    check(`${s}: never suggests itself`, !card.related.includes(s));
+  }
 }
 
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");
