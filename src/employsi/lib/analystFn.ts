@@ -612,11 +612,11 @@ export const askAnalyst = createServerFn({ method: "POST" })
     const archiveNote =
       `employsi vacancy archive · ${label} · to ${fmtDay(latest)}` +
       // The archive runs to `latest`, but the figures are measured to the last
-      // finished day. Both facts, because a reader who checks will find rows
-      // dated after the day the answer claims.
-      (steppedBack
-        ? ` · measured as at ${fmtDay(asOf)}, the most recent day every feed had reported`
-        : "") +
+      // finished day. BOTH DAYS STAY, because a reader who checks will find
+      // rows dated after the day the answer claims and needs to see which day
+      // was counted. What went is the clause explaining why they differ — the
+      // two dates side by side already say it.
+      (steppedBack ? ` · measured as at ${fmtDay(asOf)}` : "") +
       // Say how the sector was resolved, so the figure can be reproduced and so
       // it is clear this counts employers, not every ad in the market.
       (sectorOn ? ` · ${plural(companyIds?.length ?? 0, "employer")} matched` : "");
