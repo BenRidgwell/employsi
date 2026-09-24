@@ -20,6 +20,7 @@ import { NZ_GOV_IDS, NZ_GOV_HUB } from "./nzGov";
 import { PERTH_REAL_COORDS } from "./perthRealCoords";
 import { AU_REAL_COORDS } from "./auRealCoords";
 import { SAN_JOSE_REAL_COORDS } from "./sanJoseRealCoords";
+import { ASIA_REAL_COORDS } from "./asiaRealCoords";
 import { SECONDARY_OFFICES, HQ_OVERRIDE } from "./secondaryOffices";
 import { CITY_CONTINENT } from "./geo";
 
@@ -261,6 +262,9 @@ const REAL_COORDS: Record<string, [number, number]> = {
   ...PERTH_REAL_COORDS,
   ...AU_REAL_COORDS,
   ...SAN_JOSE_REAL_COORDS,
+  // Singapore and Hong Kong head offices, from each company's own contact
+  // page. Twelve of those two cities' 64 — the rest keep their fan.
+  ...ASIA_REAL_COORDS,
 };
 
 const _realSeen = new Map<string, number>();
