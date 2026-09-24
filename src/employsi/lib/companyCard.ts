@@ -38,6 +38,7 @@ import type { ShareSeries } from "./shareSeriesFn";
 import { COMPANY_HEADCOUNT } from "../data/companyHeadcount";
 import { GOV_HEADCOUNT } from "../data/perthGovWorkforce";
 import { GOV_HEADCOUNT_AU } from "../data/govWorkforceAu";
+import { WGEA_HEADCOUNT } from "../data/wgeaWorkforceAu";
 
 /** Which badge the tile draws. Three fixed stats, so three fixed glyphs. */
 export type StatIcon = "roles" | "skill" | "headcount";
@@ -105,21 +106,33 @@ export function headcountFor(
 /**
  * The filed headcount for a company id, from whichever source has one.
  *
- * THREE SOURCES, ONE LOOKUP, and the merge lives here because it was written
+ * FOUR SOURCES, ONE LOOKUP, and the merge lives here because it was written
  * out by hand at three call sites and the copies drift — the `span` default
  * disagreed between the card and its own checker within an hour of being
- * added. A fourth jurisdiction should change this function and nothing else.
+ * added. A fifth source should change this function and nothing else.
  *
  *   COMPANY_HEADCOUNT   listed companies, from annual reports
  *   GOV_HEADCOUNT       WA agencies, from the PSC bulletins (predates the
  *                       generator, and carries no span — see headcountFor)
- *   GOV_HEADCOUNT_AU    APS and Victorian agencies, from their open data
+ *   GOV_HEADCOUNT_AU    APS, NSW, VIC, QLD and SA agencies, from their open data
+ *   WGEA_HEADCOUNT      universities, from the WGEA public data file
  *
- * Order matters only in that the keyspaces do not overlap: a WA agency id
- * cannot collide with a ticker-derived id or an `aps-`/`vic-gov-` one.
+ * ORDER IS LOAD-BEARING FOR WGEA, unlike the first three. Those three have
+ * disjoint keyspaces — a WA agency id cannot collide with a ticker-derived id
+ * or an `aps-`/`vic-gov-` one — so their order is arbitrary. WGEA is
+ * different: it covers every non-public-sector employer with 100+ Australian
+ * staff, which is thousands of employers this roster also holds under other
+ * ids, and its figure is AUSTRALIAN EMPLOYEES ONLY. An annual report's
+ * headcount is global. For a multinational the two differ by most of the
+ * company, so WGEA goes LAST and can only fill an employer that has no figure
+ * at all — it must never displace a global figure with a domestic one. Today
+ * only `uni-` ids are written, so no collision exists yet; the ordering is
+ * what keeps that safe when the file is widened.
  */
 export function filedHeadcount(id: string): CardHeadcount | null {
-  return headcountFor(COMPANY_HEADCOUNT[id] ?? GOV_HEADCOUNT[id] ?? GOV_HEADCOUNT_AU[id]);
+  return headcountFor(
+    COMPANY_HEADCOUNT[id] ?? GOV_HEADCOUNT[id] ?? GOV_HEADCOUNT_AU[id] ?? WGEA_HEADCOUNT[id],
+  );
 }
 
 export interface CardChartLine {

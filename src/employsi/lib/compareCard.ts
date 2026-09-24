@@ -26,6 +26,7 @@
  */
 
 import { COMPANIES, type Company } from "../data/companies";
+import { filedHeadcount } from "./companyCard";
 import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
 import { cityForCompany } from "../data/mapboxGeo";
 import type { SkillIndex } from "./skillsFn";
@@ -187,17 +188,48 @@ const METRICS: MetricDef[] = [
   //
   // `of` has always been typed `number | null` and the loop below already drops
   // a metric either side cannot answer; these two just never used it.
+  //
+  // THE FILED FIGURE IS PREFERRED OVER `Company.headcount`, and that is what
+  // lets an agency or a university be compared at all. Their Company records
+  // carry 0 by construction, so the `> 0` gate above excluded every one of
+  // them — including, once the workforce generators landed, hundreds that DO
+  // have a real filed figure. `filedHeadcount` is the same single merge point
+  // the company card reads, so the two cannot disagree about what an employer's
+  // headcount is.
+  //
+  // FTE IS NOT COMPARED AGAINST A HEAD COUNT. Queensland and NSW publish only
+  // full-time equivalents, which are systematically lower than a head count
+  // because a part-timer is a fraction of one. Ranking an FTE beside a head
+  // count would report the measurement difference as the smaller employer, so
+  // an `fte` row answers neither metric and is dropped by the same
+  // `number | null` path. That holds for the growth metric too: a percentage
+  // change in FTE and a percentage change in heads come apart exactly when an
+  // employer shifts between full- and part-time, which is the movement the
+  // number would be read as explaining.
+  //
+  // A SPAN THAT IS NOT A YEAR ANSWERS NO YoY. The metric is labelled YoY, and
+  // some sources' two readings are further apart (Qantas's are three years);
+  // `span === 1` is the test, so a multi-year change is dropped rather than
+  // ranked against annual ones.
   {
     key: "headcount",
     name: "Headcount",
-    of: (c) => (c.headcount > 0 ? c.headcount : null),
+    of: (c) => {
+      const hc = filedHeadcount(c.id);
+      if (hc) return hc.unit === "headcount" ? hc.now : null;
+      return c.headcount > 0 ? c.headcount : null;
+    },
     fmt: (v) => (v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1) + "k" : String(Math.round(v))),
     higherIsBetter: true,
   },
   {
     key: "growth",
     name: "Headcount growth · YoY",
-    of: (c) => (c.headcount > 0 ? c.growth : null),
+    of: (c) => {
+      const hc = filedHeadcount(c.id);
+      if (hc) return hc.unit === "headcount" && hc.span === 1 ? hc.yoy : null;
+      return c.headcount > 0 ? c.growth : null;
+    },
     fmt: (v) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1) + "%",
     higherIsBetter: true,
     signed: true,
