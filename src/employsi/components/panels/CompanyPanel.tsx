@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../../state/store";
 import { buildPanel } from "../../lib/panel";
-import { buildCompanyCard, TREND_UP, TREND_DOWN } from "../../lib/companyCard";
+import { buildCompanyCard, headcountFor, TREND_UP, TREND_DOWN } from "../../lib/companyCard";
 import type { StatIcon } from "../../lib/companyCard";
 import { smoothPath } from "../../lib/chart";
 import type { RolePoint } from "../../lib/openRolesFn";
@@ -817,7 +817,7 @@ export function CompanyPanel() {
     return buildCompanyCard({
       company,
       openRoles: liveRoles ? liveRoles.count : null,
-      headcount: hcRec ? { now: hcRec.now, yoy: hcRec.yoy, asof: hcRec.asof } : null,
+      headcount: headcountFor(hcRec),
       vacancies: vacancySeries,
       share: liveShare ?? null,
       revPerEmp,

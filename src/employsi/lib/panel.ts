@@ -113,18 +113,40 @@ export function buildPanel(
     const metroDelta = live ? live.metroDelta : c.metroDelta;
     // Headcount growth: real YoY from the company's annual report where we have
     // it (static, not a live feed), else the illustrative figure.
+    // hc.yoy is null when the source's two readings are not a year apart (see
+    // companyCard's headcount input). Falling through to the illustrative
+    // figure there would replace "we cannot say" with an invented number, so
+    // the panel drops the stat instead — headcountReal already gates it.
     const growth = hc ? hc.yoy : live ? live.growth : c.growth;
-    const gPos = growth >= 0;
-    const gStr = (gPos ? "+" : "") + growth.toFixed(1) + "%";
+    const gPos = (growth ?? 0) >= 0;
+    // The label has to match what the number IS. `span` is not always a year
+    // (Qantas's two readings are three apart), and a change with no span
+    // behind it is not reported at all rather than dressed as a year's.
+    const gLabel = !hc
+      ? "Headcount YoY"
+      : hc.span === 1
+        ? "Headcount YoY"
+        : `Headcount · ${hc.span}yr`;
     bigStats = [
       { value: openRoles, label: "Open roles", sub: "hiring now", subCls: "" },
       { value: salary, label: "Median salary", sub: metroDelta, subCls: "" },
-      {
-        value: gStr,
-        label: "Headcount YoY",
-        sub: hc ? `${hc.now.toLocaleString("en-US")} · ${hc.asof}` : gPos ? "growing" : "shrinking",
-        subCls: gPos ? "" : "neg",
-      },
+      growth === null
+        ? {
+            value: "—",
+            label: "Headcount change",
+            sub: hc ? `${hc.now.toLocaleString("en-US")} · ${hc.asof}` : "not reported",
+            subCls: "",
+          }
+        : {
+            value: (gPos ? "+" : "") + growth.toFixed(1) + "%",
+            label: gLabel,
+            sub: hc
+              ? `${hc.now.toLocaleString("en-US")} · ${hc.asof}`
+              : gPos
+                ? "growing"
+                : "shrinking",
+            subCls: gPos ? "" : "neg",
+          },
     ];
     subStats = [{ value: topRole, label: "Biggest hiring area" }];
   }
