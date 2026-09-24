@@ -290,6 +290,31 @@ for (const [id, list] of Object.entries(SEEK_TRADING_NAMES)) {
   for (const [id, h] of Object.entries(GOV_HEADCOUNT_AU))
     if (!(h.now > 0) || !(h.prev > 0))
       err("gov headcount not positive", id, `now ${h.now}, prev ${h.prev}`);
+
+  // A PUBLIC-SECTOR AGENCY DOES NOT GROW OR SHRINK BY 200% IN A YEAR, and a
+  // figure that says it did is a parse fault wearing a number.
+  //
+  // This is the assertion that would have caught the Queensland sheet. "5.
+  // Agency" holds a second table — FTE by gender, with Woman/Man/Non-binary
+  // columns instead of a year per column — and reading its rows against the
+  // first table's offsets reported Queensland Health at 837 -> 91,258, a
+  // 10,803% rise, and Education at +59,629%. Thirteen of twenty-eight rows
+  // were nonsense and every one of them would have rendered as a confident
+  // percentage on a card.
+  //
+  // The ceiling is deliberately loose. Real moves this large exist — the
+  // Australian Electoral Commission halves between federal elections — and the
+  // point is not to police the data but to catch a column that slipped. A
+  // genuine agency that doubles gets an entry in the generator's ALIAS notes
+  // and a line here; nothing else should ever need one.
+  const ABSURD_PCT = 200;
+  for (const [id, h] of Object.entries(GOV_HEADCOUNT_AU))
+    if (h.yoy !== null && Math.abs(h.yoy) > ABSURD_PCT)
+      err(
+        "gov headcount moved absurdly",
+        id,
+        `${h.prev} -> ${h.now} is ${h.yoy}% over ${h.span}y — a parse fault reads like this`,
+      );
 }
 
 // The same 0 reaches the COMPARE card by a different path, so it is asserted

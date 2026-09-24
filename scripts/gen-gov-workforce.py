@@ -349,13 +349,29 @@ def load_qld():
     if len(cols) < 2:
         return {}, None, 'headcount'
     (i_prev, d_prev), (i_now, d_now) = cols[-2], cols[-1]
+    # THE SHEET HOLDS MORE THAN ONE TABLE and the read has to stop at the end
+    # of the first. Row 80 starts "Number of FTE by Gender and Agency", whose
+    # columns are Woman/Man/Non-binary per year rather than a year per column,
+    # and reading its rows against this header's offsets is what reported
+    # Queensland Health at 837 -> 91,258 FTE, a 10,803% rise. Every agency in
+    # both tables was overwritten by its gender row.
+    #
+    # Anchored on the sheet's own terminator rather than on blank lines: the
+    # first table contains single blank rows (between the budget agencies, the
+    # other entities and the Norfolk Island row) and "Whole of sector total" is
+    # the line that actually ends it.
     out = {}
     for row in ws.iter_rows(min_row=2, values_only=True):
         name = row[0]
         if not name or not str(name).strip():
             continue
         name = str(name).strip()
-        if name.lower().startswith(('total', 'whole of', 'source', 'note')):
+        if name.lower().startswith('whole of sector'):
+            break
+        # Sub-totals are not agencies and would match nothing, but they are
+        # skipped explicitly so a roster entry could never collide with one.
+        if name.lower().startswith(('sector sub-total', 'total', 'source', 'note',
+                                    'agencies shaded')):
             continue
         try:
             now, prev = float(row[i_now]), float(row[i_prev])
@@ -367,7 +383,9 @@ def load_qld():
         # rather than reported as infinite growth.
         if now <= 0 or prev <= 0:
             continue
-        out[name] = (round(now), round(prev))
+        # First mention wins. The Norfolk Island Taskforce is listed twice with
+        # identical figures; a later table would otherwise overwrite a real row.
+        out.setdefault(name, (round(now), round(prev)))
     asof = f'Mar {d_now.year}'
     if (d_now.year - d_prev.year) != 1:
         print(f'  Queensland: readings are {d_now.year - d_prev.year} years apart', file=sys.stderr)
