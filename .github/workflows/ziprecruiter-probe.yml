@@ -28,7 +28,10 @@ jobs:
           SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
           SCRAPE_PROXY_COUNTRY: us
           OUT_DIR: zr-probe
-        run: python scripts/probe-ziprecruiter.py
+        # xvfb-run for profile C (headful Chrome); A and B ignore the display.
+        run: |
+          sudo apt-get install -y -q xvfb >/dev/null
+          xvfb-run -a python scripts/probe-ziprecruiter.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -57,7 +57,15 @@ PROFILES = {
     'A-headless-shell': dict(channel=None, stealth=False),
     # The strongest profile this repo has: real Chrome + stealth patches.
     'B-chrome-stealth': dict(channel='chrome', stealth=True),
+    # Round 2: the same, HEADFUL under Xvfb — removes headlessness as a tell.
+    'C-chrome-headful': dict(channel='chrome', stealth=True, headful=True),
 }
+
+# ROUND 1 (run 35967763233): /jobs-search answered 403 with a Cloudflare
+# MANAGED challenge ("Just a moment...", cType 'managed') in both A and B after
+# a 5s wait, while the home page loaded 200 in both. Round 2 waits up to 30s
+# for the challenge to clear itself, and tries other ways in.
+CHALLENGE_WAIT_S = 30
 
 
 def summarise(html: str) -> dict:
@@ -90,7 +98,7 @@ def run_profile(name: str, cfg: dict, proxy: dict | None) -> dict:
     from playwright.sync_api import sync_playwright
     rep: dict = {'profile': name}
     with sync_playwright() as pw:
-        launch: dict = {'headless': True}
+        launch: dict = {'headless': not cfg.get('headful')}
         if cfg['channel']:
             launch['channel'] = cfg['channel']
         elif browser_fetch.EXECUTABLE:
@@ -123,23 +131,59 @@ def run_profile(name: str, cfg: dict, proxy: dict | None) -> dict:
                 pass
         page.on('response', on_response)
 
-        navs = []
-        for label, url in [('home', SITE + '/')] + [
-                (f'search-{q}', f'{SITE}/jobs-search?' + urllib.parse.urlencode({'search': q, 'location': ''}))
-                for q in QUERIES] + [
-                ('search-Walmart-p2', f'{SITE}/jobs-search?' + urllib.parse.urlencode({'search': 'Walmart', 'location': '', 'page': 2}))]:
+        def settle(label):
+            """Wait for a managed challenge to clear itself, up to the limit."""
+            waited = 0
+            while waited < CHALLENGE_WAIT_S:
+                page.wait_for_timeout(2000)
+                waited += 2
+                try:
+                    if 'just a moment' not in (page.title() or '').lower():
+                        break
+                except Exception:  # noqa: BLE001 — mid-navigation
+                    pass
+            return waited
+
+        def nav(label, url):
             t0 = time.time()
+            status = None
             try:
                 resp = page.goto(url, timeout=60000, wait_until='domcontentloaded')
-                page.wait_for_timeout(8000 if label == 'home' else 5000)
-                html = page.content()
                 status = resp.status if resp else None
+                waited = settle(label)
+                html = page.content()
             except Exception as e:  # noqa: BLE001
-                html, status = '', f'error {type(e).__name__}: {str(e)[:80]}'
+                html, status, waited = '', f'error {type(e).__name__}: {str(e)[:80]}', 0
+            record(label, html, status, t0, waited)
+
+        def record(label, html, status, t0, waited):
             fn = f'{name}-{label}.html'
             open(os.path.join(OUT, fn), 'w').write(html)
             navs.append({'label': label, 'status': status, 'secs': round(time.time() - t0, 1),
-                         'final_url': page.url[:120], 'file': fn, **summarise(html)})
+                         'waited': waited, 'final_url': page.url[:120], 'file': fn,
+                         **summarise(html)})
+
+        navs = []
+        nav('home', SITE + '/')
+        # A person's route in: type into the home page's search box and submit.
+        t0 = time.time()
+        try:
+            box = page.locator('input[role="combobox"]').first
+            box.click(timeout=10000)
+            box.type('Chevron', delay=80)
+            box.press('Enter')
+            page.wait_for_load_state('domcontentloaded', timeout=60000)
+            waited = settle('form')
+            record('form-Chevron', page.content(), 'form', t0, waited)
+        except Exception as e:  # noqa: BLE001
+            record('form-Chevron', '', f'error {type(e).__name__}: {str(e)[:80]}', t0, 0)
+        for label, url in [
+                ('search-Chevron', f'{SITE}/jobs-search?' + urllib.parse.urlencode({'search': 'Chevron', 'location': ''})),
+                ('search-Walmart-p2', f'{SITE}/jobs-search?' + urllib.parse.urlencode({'search': 'Walmart', 'location': '', 'page': 2})),
+                ('browse', f'{SITE}/browse'),
+                ('Jobs-Chevron', f'{SITE}/Jobs/Chevron'),
+                ('co-Chevron', f'{SITE}/co/Chevron/Jobs')]:
+            nav(label, url)
         rep['navigations'] = navs
 
         # raw_get's model: fetch() from inside the cleared page.
@@ -190,7 +234,8 @@ def main() -> int:
             continue
         print(f'  egress: {r["egress"]}')
         for n in r['navigations']:
-            print(f'  {n["label"]:22} status={n["status"]} {n["secs"]}s bytes={n["bytes"]} '
+            print(f'  {n["label"]:22} status={n["status"]} {n["secs"]}s waited={n["waited"]}s -> {n["final_url"][:70]}\n'
+                  f'  {"":22} bytes={n["bytes"]} '
                   f'cf={n["cloudflare"]} captcha={n["captcha"]} cards={n["job_card"]} '
                   f'next={n["next_data"]} ld={n["ld_json"]} title="{n["title"]}"')
             for s in n['big_scripts'][:4]:
