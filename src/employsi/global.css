@@ -325,7 +325,16 @@ body {
   left: var(--pane-left);
   top: var(--pane-top);
   box-sizing: border-box;
-  width: 470px;
+  /* 470px until 2026-09-24. Widened for the thread: answers run to a paragraph
+     and the "why?"/"tell me more" replies to two, and the follow-up row now
+     carries intent chips as well as places, so it was wrapping to three lines
+     at the old width. The chart SVGs are viewBox + width:100%, so they take the
+     extra room on their own.
+     The ceiling is the viewport, not taste: --pane-left resolves to 112px
+     (20 gutter + 22 inset + 56 rail + 14 gap), so this plus the 24px right
+     margin needs 656px, and the mobile sheet below takes over at 680px. Going
+     much past this would leave a band of widths with no layout that fits. */
+  width: 520px;
   max-width: calc(100vw - var(--pane-left) - 24px);
   height: min(620px, var(--pane-max-h));
   display: flex;
