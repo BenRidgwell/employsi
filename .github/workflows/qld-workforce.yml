@@ -46,6 +46,7 @@ on:
     paths:
       - 'scripts/qld-workforce-probe.py'
       - 'scripts/gen-gov-workforce.py'
+      - 'scripts/gov-source-probe.py'
       - '.github/workflows/qld-workforce.yml'
 
 concurrency:
@@ -105,3 +106,13 @@ jobs:
         if: always()
         continue-on-error: true
         run: python scripts/qld-workforce-probe.py
+
+      # Reconnaissance for the jurisdictions that are not wired yet. They
+      # answer 403 to the authoring sandbox on every candidate host, so
+      # nothing about them — whether the data exists, what shape it is in,
+      # whether the 403 is a datacentre block — can be established from there.
+      # Never fails the job: it reports, it does not gate.
+      - name: Probe unwired jurisdictions (SA, NT, TAS)
+        if: always()
+        continue-on-error: true
+        run: python scripts/gov-source-probe.py
