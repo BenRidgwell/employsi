@@ -33,25 +33,23 @@ UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
 # reports, NT's portal has no workforce data at all, and Tasmania has no
 # reachable open-data portal).
 TARGETS = [
-    # NEW SOUTH WALES. The largest jurisdiction still unwired — 78 agencies,
-    # 2,561 live ads — and 13 Local Health Districts carry 1,667 of them, so
-    # the health side is where its value is rather than the central workforce
-    # profile.
+    # UNIVERSITIES. 41 institutions carrying 2,605 live ads, and the largest
+    # remaining route with a real source behind it.
     #
-    # Its pages answer 200 to a plain request and render nothing useful.
-    # psc.nsw.gov.au returns 200 for EVERY path tried, including invented
-    # ones: a single-page app serving a catch-all shell, whose links are drawn
-    # by JavaScript. A plain fetch sees an empty document and reports "no
-    # workforce data" for a page that has plenty, which is a false negative
-    # rather than an answer.
-    ('NSW PSC workforce profile',
-     'https://www.psc.nsw.gov.au/reports---data/workforce-profile'),
-    ('NSW PSC reports',
-     'https://www.nsw.gov.au/departments-and-agencies/premiers-department/'
-     'office-of-public-service-commissioner/reports'),
-    ('NSW Health workforce', 'https://www.health.nsw.gov.au/workforce/Pages/default.aspx'),
-    ('NSW Health annual reports',
-     'https://www.health.nsw.gov.au/annualreport/Pages/default.aspx'),
+    # NOT 41 annual reports. The Department of Education runs the Higher
+    # Education Statistics Collection and publishes staff numbers and FTE for
+    # every provider in one place — data.gov.au's "Higher Education Staff
+    # Data" is a pointer at it. One source beats forty-one PDFs, and it is
+    # also the only way the figures are defined the same way across them.
+    #
+    # education.gov.au times out from the authoring sandbox, hence the runner.
+    ('Uni staff data', 'https://www.education.gov.au/higher-education-statistics/staff-data'),
+    ('Uni staff publications',
+     'https://www.education.gov.au/higher-education-statistics/higher-education-statistics-publications'),
+    ('Uni resources', 'https://www.education.gov.au/higher-education-statistics/resources'),
+    # TEQSA registers every provider and publishes an annual statistics
+    # workbook; worth knowing whether it carries staff as well as students.
+    ('TEQSA statistics', 'https://www.teqsa.gov.au/guides-resources/higher-education-data'),
 ]
 
 
