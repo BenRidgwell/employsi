@@ -1,0 +1,202 @@
+{
+ "aow": {
+  "ids": [
+   214340
+  ],
+  "slug": "arrow-energy",
+  "page": "Arrow Energy",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "asb": {
+  "ids": [
+   73056
+  ],
+  "slug": "austal",
+  "page": "Austal",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "beach": {
+  "ids": [
+   16303785
+  ],
+  "slug": "beach-energy-limited",
+  "page": "BEACH ENERGY LIMITED",
+  "country": "",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "bhp": {
+  "ids": [
+   4509
+  ],
+  "slug": "bhp",
+  "page": "BHP",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "bmn": {
+  "ids": [
+   6455052
+  ],
+  "slug": "bannerman-energy-limited",
+  "page": "Bannerman Energy Ltd",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "ccv": {
+  "ids": [
+   48609
+  ],
+  "slug": "cash-converters",
+  "page": "Cash Converters",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "cxo": {
+  "ids": [
+   8434093
+  ],
+  "slug": "core-lithium",
+  "page": "Core Lithium",
+  "country": "AU",
+  "cards": 1,
+  "confirmed": "2026-09-24"
+ },
+ "dyl": {
+  "ids": [
+   1859099
+  ],
+  "slug": "deep-yellow-limited",
+  "page": "Deep Yellow Limited",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "fmg": {
+  "ids": [
+   811057
+  ],
+  "slug": "fortescue",
+  "page": "Fortescue",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "gmd": {
+  "ids": [
+   18927791
+  ],
+  "slug": "genesisminerals",
+  "page": "Genesis Minerals Limited",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "gor": {
+  "ids": [
+   3761530
+  ],
+  "slug": "gold-road-resources",
+  "page": "Gold Road Resources",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "hgo": {
+  "ids": [
+   25700924
+  ],
+  "slug": "kantra",
+  "page": "KANTRA",
+  "country": "",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "ilu": {
+  "ids": [
+   42693
+  ],
+  "slug": "iluka-resources",
+  "page": "Iluka Resources",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "jms": {
+  "ids": [
+   7619736
+  ],
+  "slug": "jupitermines",
+  "page": "Jupiter Mines",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "ltr": {
+  "ids": [
+   7665303
+  ],
+  "slug": "liontown",
+  "page": "Liontown",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "mah": {
+  "ids": [
+   83768
+  ],
+  "slug": "macmahon",
+  "page": "Macmahon",
+  "country": "AU",
+  "cards": 4,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-nab": {
+  "ids": [
+   2357
+  ],
+  "slug": "national-australia-bank",
+  "page": "NAB",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-bxb": {
+  "ids": [
+   5086
+  ],
+  "slug": "brambles",
+  "page": "Brambles",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-wow": {
+  "ids": [
+   295257
+  ],
+  "slug": "woolworths-group",
+  "page": "Woolworths Group",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "wds": {
+  "ids": [
+   11552
+  ],
+  "slug": "woodside-energy",
+  "page": "Woodside Energy",
+  "country": "AU",
+  "cards": 1,
+  "confirmed": "2026-09-24"
+ }
+}
