@@ -98,6 +98,12 @@ ACCEPT_ALIAS: dict[str, set[str]] = {
     # the gate would reject the old one, and the card would show a fall that
     # never happened.
     'elevra lithium': {'sayona mining', 'sayona', 'sayona lithium'},
+    # NOT a rename of the business — only of our label for it. The roster
+    # carried the registered entity, COGI Pty Ltd, until 2026-09-24; the shops
+    # have always said Cotton On. So there are no old-name ads to rescue here,
+    # unlike Elevra above. What this does is let an ad posted under the
+    # trading name through to the record now named for the group.
+    'cotton on group': {'cotton on'},
     # Divisions trading under their own name.
     'wesfarmers': {'wesfarmers health',
                    'wesfarmers chemicals energy fertilisers'},

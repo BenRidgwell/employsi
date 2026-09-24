@@ -44,7 +44,13 @@ const RAW: Raw[] = [
   ["Competitive Foods", "sydney", 2341855, 15.09],
   ["BMD Group", "brisbane", 2312113, 32.41],
   ["KPMG", "sydney", 2200000, -13.83],
-  ["COGI", "melbourne", 2196919, -1.23],
+  // The source list names the registered entity, COGI Pty Ltd, which trades as
+  // the Cotton On Group and is known by nothing else. Carried as "COGI" until
+  // 2026-09-24, which made the record unsearchable and unrecognisable: the card
+  // read COGI, the pill read COGI, and the only thing on screen that said
+  // Cotton On was the logo. The revenue and the Geelong head office below are
+  // the same company either way.
+  ["Cotton On Group", "melbourne", 2196919, -1.23],
   ["Suttons Motors", "sydney", 2177668, 12.11],
   ["St John of God Health Care", "perth", 2157492, 5.18],
   ["HBF", "perth", 2122375, 3.95],
@@ -468,6 +474,9 @@ const SHEET_SECTOR: [name: string, sec: Sec, sub: string][] = [
   ["Teys Australia", RESOURCES, "Meat processing"],
   ["Thomas Foods International", RESOURCES, "Meat processing"],
   ["Spotlight", CONSUMER, "Specialty retail"],
+  // Not in the sheet under this name — it was listed as COGI, which the keyword
+  // read could not place and dropped into the diversified consumer fallback.
+  ["Cotton On Group", CONSUMER, "Apparel retail"],
   ["Team Global Express", INDUSTRIAL, "Logistics & freight"],
   ["GHD", CONSTRUCTION, "Engineering consultancy"],
   ["Ateco", CONSUMER, "Automotive distribution"],

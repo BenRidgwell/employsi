@@ -399,9 +399,8 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   // STILL UNRESOLVED after this pass, and left rather than guessed:
   //   priv-competitive-foods  already on competitivefoods.com.au; no icon indexed
   //   priv-ati-global         atiglobal.com.au does not answer
-  //   priv-cogi               on cogiver.com, which names nobody. This is the
-  //                           same COGI whose LinkedIn slug turned out to be an
-  //                           Italian company, so it has now resisted both routes.
+  //   priv-cogi               RESOLVED 2026-09-23. It is the Cotton On Group;
+  //                           see priv-cotton-on-group below.
   //   priv-northwestern-roads no candidate found
   // Plus five already on the right domain with no favicon indexed: fma.govt.nz,
   // fwc.gov.au, generationdevelopmentgroup.com.au, ororagroup.com, aub.com.au.
@@ -795,15 +794,13 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "priv-bowens-timber-hardware": "bowens.com.au",
   "priv-brisbane-catholic-education": "bne.catholic.edu.au",
   "priv-cci": "ccinsurance.org.au",
-  // COGI Pty Ltd trades as the COTTON ON GROUP — the roster carries the
-  // registered name because the AFR/IBISWorld top-500 list does. cogiver.com
-  // was a guess off that name and answers nothing; linkedin.com/company/cogi
-  // is an unrelated Italian firm, COGI srl, which is why it sits in
-  // NOT_THIS_COMPANY in scripts/linkedin_slugs.py. The card will now draw
-  // Cotton On's mark under the name "COGI"; renaming the record is the real
-  // fix and is not attempted here, because the id is derived from the name
-  // and is a D1 company_id.
-  "priv-cogi": "cottonongroup.com.au",
+  // COGI Pty Ltd trades as the COTTON ON GROUP, and since 2026-09-24 the
+  // roster says so — the id moved with the name, priv-cogi -> this one,
+  // because a private roster id is "priv-" + slug(name). cogiver.com was a
+  // guess off the registered name and answers nothing; linkedin.com/company/
+  // cogi is an unrelated Italian firm, COGI srl, still guarded in
+  // NOT_THIS_COMPANY in scripts/linkedin_slugs.py.
+  "priv-cotton-on-group": "cottonongroup.com.au",
   "priv-cjd-equipment": "cjd.com.au",
   "priv-cnw-electrical": "cnw.com.au",
   "priv-competitive-foods": "competitivefoods.com.au",

@@ -225,9 +225,11 @@ REBRANDS: dict[str, tuple[str, ...]] = {
 # exactly these cases. The same argument REBRANDS makes in the other direction.
 NOT_THIS_COMPANY: dict[str, tuple[str, ...]] = {
     # COGI srl, Trentino, Italy — an Italian construction firm. The roster's
-    # COGI is Australian. This one has now also resisted the domain route:
-    # cogiver.com names nobody either.
-    'priv-cogi': ('cogi srl',),
+    # COGI was the Cotton On Group, renamed to that on 2026-09-24, which took
+    # the id with it. Kept under the new id: the guard costs nothing, and the
+    # registered name is still what any list of Australian private companies
+    # will call this employer next time one is imported.
+    'priv-cotton-on-group': ('cogi srl',),
     # WH Group AB, Sweden, a Visma software partner. The roster's WH Group is
     # the Hong Kong pork producer.
     'hongkong-00288': ('wh group ab',),

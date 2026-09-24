@@ -32,6 +32,13 @@ export const EXTRA_QUERIES: Record<string, string[]> = {
   // both is the half that finds them; ACCEPT_ALIAS in scripts/company_alias.py
   // is the half that lets them through attribution.
   "brisbane-elv": ["Sayona Mining", "Sayona Lithium"],
+  // The Cotton On Group, which this roster called COGI Pty Ltd — its
+  // registered name — until 2026-09-24. The feeds search the roster name, so
+  // for as long as that was COGI they were asking job boards for a string no
+  // ad has ever carried, which is why the archive holds no rows for it at all.
+  // "Cotton On" is the name the group's own ads are posted under; ACCEPT_ALIAS
+  // in scripts/company_alias.py is the half that lets them through attribution.
+  "priv-cotton-on-group": ["Cotton On"],
   // Seven Group Holdings (ASX:SGH). Its four operating businesses, which are
   // where essentially all of its ~11,000 people work:
   //   Boral         — construction materials (acquired outright 2024)

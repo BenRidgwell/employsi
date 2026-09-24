@@ -265,7 +265,7 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "priv-clayton-utz": [151.210556, -33.864838], // Level 15, 1 Bligh Street, Sydney NSW 2000
   "priv-cmv-group": [138.591808, -34.942113], // 48 Greenhill Road, Wayville SA 5034
   "priv-cnw-electrical": [153.098669, -27.459144], // 16 Miller Street, Murarrie QLD 4172
-  "priv-cogi": [144.345295, -38.1125], // 14 Shepherd Court, North Geelong VIC 3215
+  "priv-cotton-on-group": [144.345295, -38.1125], // 14 Shepherd Court, North Geelong VIC 3215
   "priv-colcap": [150.91967, -33.922984], // Level 12, 77 Castlereagh Street, Sydney NSW 2000
   "priv-consolidated-travel": [144.965828, -37.813294], // Level 7, 246 Bourke Street, Melbourne VIC 3000
   "priv-craig-mostyn": [115.745154, -32.053357], // 1/6 Short Street, Fremantle WA 6160
