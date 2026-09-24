@@ -11,11 +11,53 @@ holds no data.**
 | Server read | `src/employsi/lib/flowsFn.ts` | Built; returns null until tables exist and hold an import |
 | Card section | `components/panels/TalentFlow.tsx`, Hiring tab | Built; renders nothing without data. Not seen rendered |
 | Map arcs | — | Not started |
-| A source of counts | — | **None.** See below |
+| Source: LinkedIn sample | `scripts/collect-talent-flows.py` + `scripts/talent_flows.py` | Built; tested end to end against a **fake** MCP server only. The parser has never seen a real LinkedIn page |
 
-Nothing here produces flows. It loads and shows counts from whatever writes the
-canonical format below. The LinkedIn-profile collector that was started for
-that (`stickerdaniel/linkedin-mcp-server`) is not part of this build.
+### The LinkedIn-sample source
+
+`collect-talent-flows.py` runs **on your machine**, driving
+[`stickerdaniel/linkedin-mcp-server`](https://github.com/stickerdaniel/linkedin-mcp-server)
+(pinned to 4.24.4) in your own signed-in LinkedIn session. For each seed
+company it lists some current employees, reads each one's experience page, turns
+the dated history into employer-to-employer moves, and keeps only those moves,
+under a salted hash of the profile name, in `~/.employsi/talent-flows.sqlite`.
+The page text, the name, the profile url and the job titles are dropped as soon
+as the profile is parsed. `--export` writes this document's canonical files and
+`flows-to-d1.py` loads them. Only counts ever leave the machine.
+
+What it will and won't do:
+
+- **It stops on the first sign of push-back.** A rate-limit section error, a
+  checkpoint, a sign-in wall, or three failures in a row ends the run (exit 3).
+  Nothing is retried. It uses no proxy and no second account, and it doesn't
+  randomise its timing. By default it reads 40 profiles a run, 60s apart. That
+  is a courtesy pace, not a measured safe limit.
+- **Calibrate before collecting.** `--inspect <username>` prints one real
+  profile's raw text beside what the parser made of it, and stores nothing. The
+  parser rules come from LinkedIn's documented layout, not a captured page.
+  `--stats` warns once more than 20% of profiles parse to nothing.
+- **What the numbers mean.** They are moves among sampled profiles, not
+  workforce totals (`count_kind = sampled`). The sample is whoever LinkedIn
+  lists first on each company's People tab. A "lost to" flow is only seen when
+  the destination is also a seed. The window ends 3 months before collection
+  because profiles are updated late. That lag is an assumption, not a
+  measurement. At ~40 profiles a run, most pairs stay under the 10-move minimum
+  for a long time, and the card will say so rather than show them.
+- **Risks the code can't remove.** LinkedIn's User Agreement prohibits
+  automated access, and a restricted account is the usual result. The people
+  read have not been asked, and the Privacy Act applies to collecting their
+  information even briefly. Hashing and discarding reduce what is held. They
+  don't settle that question.
+
+```bash
+pip install "mcp>=1.28,<3"
+uvx mcp-server-linkedin@4.24.4 --login                 # sign in once, by hand
+python scripts/collect-talent-flows.py --inspect <a-username>
+python scripts/collect-talent-flows.py --seed bhp=bhp --seed wds=woodside-energy
+python scripts/collect-talent-flows.py --stats
+python scripts/collect-talent-flows.py --export out/
+python scripts/flows-to-d1.py out/                     # dry run; --write to load
+```
 
 Changes from the first draft, found while building:
 

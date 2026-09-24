@@ -30,6 +30,9 @@ on:
       - 'scripts/test_rosters.py'
       - 'scripts/company_alias.py'
       - 'scripts/test_company_alias.py'
+      - 'scripts/talent_flows.py'
+      - 'scripts/test_talent_flows.py'
+      - 'scripts/collect-talent-flows.py'
       # A reformat of these data files is what silently emptied the SEEK and
       # Zhaopin rosters, so a change to either has to re-run the parsers.
       - 'src/employsi/data/seekAdvertisers.ts'
@@ -46,6 +49,8 @@ on:
       - 'scripts/oxylabs_client.py'
       - 'scripts/http_fetch.py'
       - 'scripts/*-to-d1.py'
+      - 'scripts/talent_flows.py'
+      - 'scripts/collect-talent-flows.py'
       - 'src/employsi/data/seekAdvertisers.ts'
       - 'src/employsi/data/chinaJobsTargets.ts'
       - 'src/employsi/data/canberraGov.ts'
@@ -114,6 +119,14 @@ jobs:
       # hiring. Fails on any rostered company with no keyword-feed target.
       - name: Every rostered company reaches the keyword feeds
         run: python scripts/check-feed-coverage.py
+
+      # The talent-flow parser reads free text off a page nobody here can see
+      # from CI, so what it can pin is the RULES: a group header is the line
+      # before a duration-only summary, a board seat ending is not a move, two
+      # employers starting together is not guessed between. A regression in
+      # any of them still produces a clean-looking flow count.
+      - name: Talent-flow parser keeps its move rules
+        run: python scripts/test_talent_flows.py
 
       - name: Byte-compile the scrapers
         run: python -m compileall -q scripts/*.py
