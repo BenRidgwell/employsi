@@ -90,13 +90,25 @@ def main():
     print(f'sheets   : {len(wb.sheetnames)}')
     for n in wb.sheetnames:
         print(f'  - {n}')
+    # "5. Agency" IN FULL, and the rest only as far as their headers.
+    #
+    # Reading the first fourteen rows of it was not enough and cost a bad
+    # parse: the sheet holds MORE THAN ONE TABLE, and a loop over every row
+    # picked up the second one's rows against the first one's column offsets.
+    # Queensland Health came out as 837 -> 91,258, an 10,803% rise, because
+    # `prev` was read from a column that means something else. The whole sheet
+    # is printed so the tables and their own headers can be seen.
     for n in wb.sheetnames:
         ws = wb[n]
-        print(f'\n===== {n} =====')
-        for i, row in enumerate(ws.iter_rows(min_row=1, max_row=14, values_only=True)):
+        full = n.strip().lower().startswith('5.')
+        print(f'\n===== {n} ====={" (FULL)" if full else ""}')
+        for i, row in enumerate(ws.iter_rows(min_row=1, max_row=None if full else 14,
+                                             values_only=True)):
             cells = ['' if c is None else str(c).strip() for c in (row or ())[:10]]
             if any(cells):
-                print(f'  {i+1:3d} | ' + ' | '.join(c[:30] for c in cells))
+                print(f'  {i+1:3d} | ' + ' | '.join(c[:34] for c in cells))
+            elif full:
+                print(f'  {i+1:3d} | (blank)')
     return 0
 
 
