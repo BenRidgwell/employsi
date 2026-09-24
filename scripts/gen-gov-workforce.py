@@ -392,6 +392,76 @@ def load_qld():
     return out, asof, 'fte'
 
 
+# ── South Australia ─────────────────────────────────────────────────────────
+def load_sa():
+    """OCPSE Workforce Information Report — per-agency FTE and HEADCOUNT.
+
+    PDF ONLY. Every edition from 2012 to 2025 is a PDF and there is no
+    spreadsheet at any of them, so this is the one source here that is read out
+    of a document rather than a data file. South Australia's CKAN portal was
+    checked first and carries agency-by-agency self reports, not a consolidated
+    table.
+
+    READ FROM THE TEXT LAYER, NOT FROM extract_tables(). The tables come back
+    with agency names cut off mid-word — "Department for Correctional Servic",
+    "Barossa Hills Fleurieu Local Healt" — and a truncated name cannot be
+    matched exactly, which is the only thing keeping a figure on the right
+    agency. The text layer carries them in full:
+
+        Department for Correctional Services 1,959 2,057 2,024 2,132
+
+    Four trailing numbers, in the order the section header gives them: FTE and
+    headcount for the earlier June, then FTE and headcount for the later one.
+    HEADCOUNT is taken, so South Australia counts people like everywhere else
+    and unlike Queensland.
+
+    The four-number shape is also what bounds the read. The report breaks a
+    dozen other things down by agency — graduates and trainees carry five
+    numbers, separations two — so they cannot match, and the running header is
+    checked as well so a stray line cannot wander in.
+    """
+    import pdfplumber
+
+    page = fetch('https://publicsector.sa.gov.au/about/Resources-and-Publications/'
+                 'Workforce-Information')
+    links = re.findall(r'href="([^"]*?(\d{4})-Workforce-Information-Report\.pdf)"', page)
+    if not links:
+        return {}, None, 'headcount'
+    url, year = max(links, key=lambda x: x[1])
+    if url.startswith('/'):
+        url = 'https://publicsector.sa.gov.au' + url
+    raw = fetch(url, binary=True)
+    if raw[:4] != b'%PDF':
+        print('  South Australia: not a PDF', file=sys.stderr)
+        return {}, None, 'headcount'
+
+    # "Name  a  b  c  d", where each of the four is a number or an em/hyphen
+    # dash. A dash means the agency did not exist in that period — Housing and
+    # Urban Development reads "- - 323 338" — and those are skipped rather than
+    # read as zero.
+    ROW = re.compile(r'^(.{4,80}?)\s+([\d,]+|[-–])\s+([\d,]+|[-–])\s+([\d,]+|[-–])\s+([\d,]+|[-–])$')
+    SECTION = 'FULL-TIME EQUIVALENT AND TOTAL WORKFORCE HEADCOUNT'
+    out = {}
+    with pdfplumber.open(io.BytesIO(raw)) as pdf:
+        for pg in pdf.pages:
+            txt = pg.extract_text() or ''
+            if SECTION not in txt:
+                continue
+            for line in txt.splitlines():
+                m = ROW.match(line.strip())
+                if not m:
+                    continue
+                name = m.group(1).strip()
+                if name.upper() != name.lower() and name.isupper():
+                    continue                      # a header row, not an agency
+                prev_hc, now_hc = m.group(3), m.group(5)
+                if not prev_hc[0].isdigit() or not now_hc[0].isdigit():
+                    continue                      # did not exist in one period
+                out.setdefault(name, (int(now_hc.replace(',', '')),
+                                      int(prev_hc.replace(',', ''))))
+    return out, f'Jun {year}', 'headcount'
+
+
 # key -> (label, loader, span in years). The loader returns (rows, asof, unit);
 # `unit` is "headcount" everywhere but Queensland, which publishes only FTE.
 SOURCES = {
@@ -400,6 +470,9 @@ SOURCES = {
     # Runs only where a browser is available — see the loader and
     # .github/workflows/qld-workforce.yml.
     'qld': ('Queensland', load_qld, 1),
+    # PDF, so it needs pdfplumber. Reachable from a developer machine and from
+    # the runner alike — the authoring sandbox's 403 is its own network.
+    'sa': ('South Australia', load_sa, 1),
 }
 
 
