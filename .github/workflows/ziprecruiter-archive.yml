@@ -60,6 +60,12 @@ on:
     # Late morning on the US east coast; the board's own traffic is irrelevant
     # to an API walk this size.
     - cron: '0 16 * * *'
+  # TEMPORARY — the first measurement, taken before this file is on main (a
+  # workflow cannot be dispatched until it is). A push to this branch runs a
+  # DRY run: 25 North American companies, no D1 writes. Remove before merge.
+  push:
+    branches: [claude/zealous-planck-7f1fge]
+    paths: ['.github/workflows/ziprecruiter-archive.yml', 'scripts/ziprecruiter-to-d1.py']
   workflow_dispatch:
     inputs:
       limit:
@@ -111,6 +117,13 @@ jobs:
       - name: JobSpy internals still match what the script calls
         run: python scripts/test_ziprecruiter.py
 
+      # TEMPORARY, with the push trigger: does the runner's OWN address get
+      # through? If it does, the residential exit is not needed at all.
+      - name: Measure — runner address, no proxy (dry, 5 companies)
+        if: github.event_name == 'push'
+        continue-on-error: true
+        run: python scripts/ziprecruiter-to-d1.py --direct --dry-run --na-only --limit 5
+
       - name: Scrape ZipRecruiter → D1 (JobSpy via SCRAPE_PROXY)
         env:
           SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
@@ -132,4 +145,5 @@ jobs:
           [ -n "$LIMIT" ] && ARGS="$ARGS --limit $LIMIT"
           [ "$NA_ONLY" = "true" ] && ARGS="$ARGS --na-only"
           [ "$DRY_RUN" = "true" ] && ARGS="$ARGS --dry-run"
+          [ "${{ github.event_name }}" = "push" ] && ARGS="--dry-run --na-only --limit 25"
           python scripts/ziprecruiter-to-d1.py $ARGS
