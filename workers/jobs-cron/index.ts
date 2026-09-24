@@ -1312,6 +1312,10 @@ const PORTAL_TICKS: Record<string, number> = {
   "15 18 * * *": 82,
   // Group 83 — the 2026-09-22 twentieth sweep.
   "25 18 * * *": 83,
+  // Groups 84-86 — Alphabet (Google), three page windows of one board.
+  "35 18 * * *": 84,
+  "45 18 * * *": 85,
+  "55 18 * * *": 86,
 };
 
 const NEWS_TICKS: Record<string, number> = {
