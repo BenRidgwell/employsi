@@ -36,29 +36,28 @@ def main():
     import pdfplumber
     with pdfplumber.open(io.BytesIO(raw)) as pdf:
         print(f'pages   : {len(pdf.pages)}')
-        hits = []
+        # The ONE question: is there a per-agency table whose columns are a
+        # head count or an FTE, as opposed to graduates, separations, leave or
+        # any of the other things this report breaks down by agency?
+        WANTED_COL = re.compile(r'\b(fte|headcount|head count|employees|persons|number)\b', re.I)
         for i, page in enumerate(pdf.pages):
-            txt = page.extract_text() or ''
-            named = [w for w in WANT if w.lower() in txt.lower()]
-            tables = page.extract_tables() or []
-            if named or tables:
-                hits.append((i + 1, named, len(tables)))
-        print(f'pages naming a roster agency or holding a table: {len(hits)}')
-        for pno, named, ntab in hits[:25]:
-            print(f'  p{pno:<4} tables={ntab:<3} names={named}')
-
-        # The most promising page in full, so the table's real shape is visible.
-        best = max(hits, key=lambda h: (len(h[1]), h[2]), default=None)
-        if best:
-            pno = best[0]
-            print(f'\n===== page {pno} tables =====')
-            for t in pdf.pages[pno - 1].extract_tables() or []:
-                for row in t[:30]:
+            for t in page.extract_tables() or []:
+                if len(t) < 6:
+                    continue
+                head = ' | '.join('' if c is None else re.sub(r'\s+', ' ', str(c)).strip()
+                                  for c in (t[0] or [])[:10])
+                if 'agency' not in head.lower():
+                    continue
+                if not WANTED_COL.search(head):
+                    print(f'  p{i+1:<4} SKIP  {head[:90]}')
+                    continue
+                print(f'\n===== p{i+1} CANDIDATE =====')
+                print(f'  head: {head[:120]}')
+                for row in t[1:9]:
                     cells = ['' if c is None else re.sub(r'\s+', ' ', str(c)).strip()
-                             for c in row[:8]]
+                             for c in row[:10]]
                     if any(cells):
-                        print('  | ' + ' | '.join(c[:30] for c in cells))
-                print('  ---')
+                        print('   | ' + ' | '.join(c[:26] for c in cells))
     return 0
 
 
