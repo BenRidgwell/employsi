@@ -29,6 +29,11 @@
 # the same "forbidden cf-waf" body, from Colab and locally), open, no reply,
 # no fix. Hence no schedule below.
 #
+# A BROWSER DOES NOT GET IN EITHER. ziprecruiter-probe.yml measured three
+# browser profiles (up to headful real Chrome) through the same exit: the home
+# page loads, every listing page and every search method tried on the site's
+# web API holds on a Cloudflare managed challenge. See probe-ziprecruiter.py.
+#
 # TO RE-TEST after a JobSpy release or a transport change: dispatch with
 # `limit: 25`, `na_only: true`, `dry_run: true` — seconds of proxy traffic, no
 # D1 writes. Read three things off the log before restoring the schedule:
