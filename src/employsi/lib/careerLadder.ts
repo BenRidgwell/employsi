@@ -30,12 +30,16 @@
  * to speak for itself.
  *
  * TUNING. The rules were written from typical Australian titles, then tuned
- * once against 90 days of the archive (2026-09-24: 80.6% → 88% of rows naming
- * a family placed, and ~2,000 rows moved off a wrong rung). `scripts/
- * gen-career-pathways.ts --audit` lists, per family, the titles that matched a
- * family but got no rung — that list is the worklist — and flags any rung that
- * pays less than the one below it. Every fixture in scripts/check-career-
- * ladder.ts is a promise that must survive a tuning pass.
+ * once against 90 days of the archive (2026-09-24). That pass was about
+ * CORRECTNESS, not coverage: 6,769 rows changed placement (onto the right
+ * rung, off a wrong ladder, or newly placed), while the placed share barely
+ * moved (80.6% → 80.1% of rows whose words name a family). The audit's own figure reads higher
+ * (88%) only because familyHint stopped counting deliberate exclusions as
+ * failures — compare runs on one definition. `scripts/gen-career-pathways.ts
+ * --audit` lists, per family, the titles a family claims but could not rung —
+ * the worklist — and flags any rung paying less than the one below it. Every
+ * fixture in scripts/check-career-ladder.ts is a promise that must survive a
+ * tuning pass.
  */
 
 export type Rung = 1 | 2 | 3 | 4 | 5 | 6;
