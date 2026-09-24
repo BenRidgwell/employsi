@@ -35,6 +35,9 @@ import { smoothPath } from "./chart";
 import { logoFor } from "./companyLogo";
 import type { RolePoint } from "./openRolesFn";
 import type { ShareSeries } from "./shareSeriesFn";
+import { COMPANY_HEADCOUNT } from "../data/companyHeadcount";
+import { GOV_HEADCOUNT } from "../data/perthGovWorkforce";
+import { GOV_HEADCOUNT_AU } from "../data/govWorkforceAu";
 
 /** Which badge the tile draws. Three fixed stats, so three fixed glyphs. */
 export type StatIcon = "roles" | "skill" | "headcount";
@@ -84,6 +87,26 @@ export function headcountFor(
   rec: { now: number; yoy: number | null; asof: string; span?: number } | null | undefined,
 ): CardHeadcount | null {
   return rec ? { now: rec.now, yoy: rec.yoy, asof: rec.asof, span: rec.span ?? 1 } : null;
+}
+
+/**
+ * The filed headcount for a company id, from whichever source has one.
+ *
+ * THREE SOURCES, ONE LOOKUP, and the merge lives here because it was written
+ * out by hand at three call sites and the copies drift — the `span` default
+ * disagreed between the card and its own checker within an hour of being
+ * added. A fourth jurisdiction should change this function and nothing else.
+ *
+ *   COMPANY_HEADCOUNT   listed companies, from annual reports
+ *   GOV_HEADCOUNT       WA agencies, from the PSC bulletins (predates the
+ *                       generator, and carries no span — see headcountFor)
+ *   GOV_HEADCOUNT_AU    APS and Victorian agencies, from their open data
+ *
+ * Order matters only in that the keyspaces do not overlap: a WA agency id
+ * cannot collide with a ticker-derived id or an `aps-`/`vic-gov-` one.
+ */
+export function filedHeadcount(id: string): CardHeadcount | null {
+  return headcountFor(COMPANY_HEADCOUNT[id] ?? GOV_HEADCOUNT[id] ?? GOV_HEADCOUNT_AU[id]);
 }
 
 export interface CardChartLine {

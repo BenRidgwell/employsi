@@ -30,8 +30,8 @@ import { SEEK_ADVERTISERS } from "../src/employsi/data/seekAdvertisers";
 import { SEEK_TRADING_NAMES } from "../src/employsi/data/seekTradingNames";
 import { SITES as CAREER_SITES } from "../workers/jobs-cron/careerSites";
 import { COMPANY_HEADCOUNT } from "../src/employsi/data/companyHeadcount";
-import { GOV_HEADCOUNT } from "../src/employsi/data/perthGovWorkforce";
-import { buildCompanyCard, headcountFor } from "../src/employsi/lib/companyCard";
+import { GOV_HEADCOUNT_AU } from "../src/employsi/data/govWorkforceAu";
+import { buildCompanyCard, filedHeadcount } from "../src/employsi/lib/companyCard";
 import { buildCompareCard } from "../src/employsi/lib/compareCard";
 
 /**
@@ -197,13 +197,14 @@ for (const [id, list] of Object.entries(SEEK_TRADING_NAMES)) {
 // runs the real card, because the bug was in the renderer and not in the data —
 // every one of those 483 records was exactly what its builder intended.
 {
-  const filed = (id: string) => !!COMPANY_HEADCOUNT[id] || !!GOV_HEADCOUNT[id];
+  const filed = (id: string) => !!filedHeadcount(id);
   const bad: string[] = [];
   for (const c of COMPANIES) {
-    // headcountFor, not an inline literal — the span default for GOV_HEADCOUNT
-    // is stated in one place and this checker has to read the same one the card
-    // does, or it checks a card nobody renders.
-    const hc = headcountFor(COMPANY_HEADCOUNT[c.id] ?? GOV_HEADCOUNT[c.id]);
+    // filedHeadcount, not an inline merge — the sources and the span default
+    // are resolved in one place and this checker has to read the same one the
+    // card does, or it checks a card nobody renders. The inline version
+    // already disagreed with the card once, over exactly that default.
+    const hc = filedHeadcount(c.id);
     const card = buildCompanyCard({
       company: c,
       openRoles: null,
@@ -255,16 +256,51 @@ for (const [id, list] of Object.entries(SEEK_TRADING_NAMES)) {
   }
 }
 
+// ── gov workforce: a figure must belong to exactly one agency ───────────────
+//
+// The jurisdictions publish a row per employing BODY, and the roster does not
+// always agree with them about where the boundaries are. Victoria reports
+// "Court Services Victoria" once; the roster carries the County, Magistrates'
+// and Children's Courts separately. It reports Victoria Police as two rows,
+// sworn and public-service. Matching approximately would have written one
+// agency's staff onto three cards, or half an agency's onto one — so the
+// generator matches exactly and drops anything ambiguous, and this is the
+// assertion that the dropping actually happened.
+//
+// Checked by VALUE, because that is the shape of the damage: two agencies in
+// one jurisdiction reporting the identical headcount and prior year is either
+// a real coincidence or one row copied across two bodies, and it is worth a
+// look either way.
+{
+  const seen = new Map<string, string[]>();
+  for (const [id, h] of Object.entries(GOV_HEADCOUNT_AU)) {
+    const juris = id.startsWith("aps-") ? "aps" : id.split("-gov-")[0];
+    const key = `${juris}|${h.now}|${h.prev}`;
+    seen.set(key, [...(seen.get(key) ?? []), id]);
+  }
+  for (const [key, ids] of seen) {
+    if (ids.length > 1)
+      err(
+        "one gov figure on several agencies",
+        `${ids.length} agencies`,
+        `${ids.join(", ")} all report ${key.split("|")[1]} — one source row matched more than one body?`,
+      );
+  }
+  // An agency the source does not report is absent, never zero.
+  for (const [id, h] of Object.entries(GOV_HEADCOUNT_AU))
+    if (!(h.now > 0) || !(h.prev > 0))
+      err("gov headcount not positive", id, `now ${h.now}, prev ${h.prev}`);
+}
+
 // The same 0 reaches the COMPARE card by a different path, so it is asserted
 // separately rather than assumed to follow. `MetricDef.of` returns
 // `number | null` and buildCompareCard drops any metric either side cannot
 // answer; the headcount and growth metrics simply never returned null.
 {
   const unknown = COMPANIES.find(
-    (c) =>
-      !c.illustrative && !COMPANY_HEADCOUNT[c.id] && !GOV_HEADCOUNT[c.id] && !(c.headcount > 0),
+    (c) => !c.illustrative && !filedHeadcount(c.id) && !(c.headcount > 0),
   );
-  const known = COMPANIES.find((c) => !!COMPANY_HEADCOUNT[c.id]);
+  const known = COMPANIES.find((c) => !!filedHeadcount(c.id));
   if (unknown && known) {
     const cmp = buildCompareCard({
       a: unknown,
