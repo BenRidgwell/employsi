@@ -1,0 +1,107 @@
+# Queensland public-sector workforce data, fetched from a GitHub runner.
+#
+# WHY THIS EXISTS AT ALL. Every other jurisdiction's workforce data is pulled
+# by scripts/gen-gov-workforce.py from a developer machine. Queensland cannot
+# be: the current State of the Sector workbooks are on www.data.qld.gov.au,
+# which answers `x-amzn-waf-action: challenge` and returns a JavaScript
+# interstitial instead of the file. The CKAN datastore only serves as far as
+# March 2023, and the older profiles on forgov.qld.gov.au download fine — so it
+# is that one host rather than the jurisdiction.
+#
+# This is the same reasoning behind the SEEK and Indeed workflows: a source
+# that refuses one network is fetched from another. See workers/jobs-cron/
+# ARCHIVE.md for the general case.
+#
+# MEASURED 2026-09-24: a plain runner gets the SAME challenge the sandbox does,
+# 2,027 bytes of `window.awsWafCoo…`, so this was never an IP block and moving
+# the fetch alone achieved nothing. The challenge has to be executed, so the
+# job drives a real browser — the same answer browser-portals.yml reached for
+# NGA.NET's heavier `captcha` action.
+#
+# WHAT IT DOES: runs scripts/gen-gov-workforce.py with a browser available, so
+# Queensland loads alongside APS and Victoria, then prints the generated data
+# file to the job log and uploads it as an artifact.
+#
+# VICTORIA IS NOT FETCHED HERE and that is not an oversight: vpsc.vic.gov.au
+# answers HTTP 403 to this runner, through a browser as well as plainly. The
+# generator merges, so running Queensland alone keeps Victoria's rows and says
+# so in the file's header.
+#
+# IT DOES NOT COMMIT. No workflow in this repo pushes to a branch and this is
+# not the one to start with — the repo syncs to Lovable and its history is not
+# something a scheduled job should touch. The generated file is picked up from
+# the artifact and committed by a person.
+#
+# QUEENSLAND PUBLISHES FTE, NOT HEADCOUNT. Every agency figure in the workbook
+# is a full-time equivalent; the single head count in all seventeen sheets is a
+# tenure distribution with no agency breakdown. The rows are marked `fte` and
+# the card labels those tiles "Workforce FTE" rather than putting two different
+# measurements under one word.
+
+name: qld-workforce
+
+on:
+  workflow_dispatch: {}
+  push:
+    paths:
+      - 'scripts/qld-workforce-probe.py'
+      - 'scripts/gen-gov-workforce.py'
+      - '.github/workflows/qld-workforce.yml'
+
+concurrency:
+  group: qld-workforce
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    name: qld workforce
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      # Playwright, because the doorman is an AWS WAF JavaScript challenge
+      # rather than an IP block — a plain runner gets the same interstitial the
+      # authoring sandbox does. Same approach as browser-portals.yml.
+      - name: Install Playwright + openpyxl
+        run: |
+          python -m pip install --upgrade pip
+          pip install --quiet playwright openpyxl
+          python -m playwright install --with-deps chromium
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # --only qld, because the jurisdictions need OPPOSITE environments and
+      # no machine can fetch them all. Measured 2026-09-24: Queensland needs a
+      # browser and runs only here; Victoria answers HTTP 403 to a datacentre
+      # IP — through a browser too, 13 KB of HTML — and runs only from a
+      # developer machine. The generator merges rather than rewrites, so this
+      # refreshes Queensland and leaves the others exactly as they were, and
+      # the file's header records which is which.
+      - name: Generate Queensland workforce data
+        run: python scripts/gen-gov-workforce.py --only qld
+
+      - name: Show the generated file
+        run: |
+          echo "--- src/employsi/data/govWorkforceAu.ts ---"
+          cat src/employsi/data/govWorkforceAu.ts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: govWorkforceAu
+          path: src/employsi/data/govWorkforceAu.ts
+          retention-days: 14
+
+      # The probe stays runnable by hand: it reports the workbook's structure,
+      # which is what a parser has to be rewritten against when the State of
+      # the Sector format next changes.
+      - name: Probe (structure only, never fails the job)
+        if: always()
+        continue-on-error: true
+        run: python scripts/qld-workforce-probe.py
