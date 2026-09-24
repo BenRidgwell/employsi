@@ -1791,3 +1791,45 @@ the row's state is that hub's; anything else archives with a null hub.
 not in `salaryParse.ts`'s `COUNTRY_BY_SOURCE`; the string is written as
 `USD 85,000 - 110,000 per year` for `MARKERS` to read, the currency inferred
 from the ad's country only when the API omits it.
+
+---
+
+# Alphabet (Google) — its own careers board, added 2026-09-24
+
+`sanjose-googl`, in the Worker (`careerSites.ts`, platform `googlecareers`,
+source `portal-googl`, groups 84-86 on `35/45/55 18 * * *`). Every Alphabet brand
+advertises on the one board — Google, YouTube, DeepMind, Waymo, Verily, Wing,
+GFiber — and all are the roster company.
+
+**How the board is read.** No API: google.com/about/careers/applications/jobs/results
+server-renders each page's roles into the `ds:1` AF_initDataCallback payload,
+`[jobs, null, total, pageSize]`, 20 a page, `?page=` 1-based. Measured
+2026-09-24 from a plain address: 3,298 roles over 165 pages. The page is
+1.26 MB and the payload is its last script, so three page windows run on three
+ticks (the Woolworths pattern), each ~7s from the sandbox.
+
+**The trap: two index snapshots.** Consecutive requests report a total of 3,298
+*or* 3,178, and pages from the two do not line up — roles repeat across page
+boundaries and others fall between them. The first version of the reader
+collected 840, 1,668 and 3,298 roles on three runs against an unchanged board.
+Every page is now held to one snapshot, identified by its total, and a window
+pins to the largest total its first page shows over three reads so the three
+windows agree. Three runs after the fix: 3,298 of 3,298, all unique, windows
+1,200 / 1,200 / 898.
+
+**Placement is by metro, per `GOOGLE_HUB_HINTS`.** Google's biggest sites are
+not hub names — Sunnyvale (561 job-locations), Mountain View (516), San Bruno
+(90) — and HUB_MATCH filed Kirkland, Redmond and Bellevue, WA on **Perth**
+through the `" wa,"` needle. The hints map each measured site to its hub by US
+Census metro (the county rule `cityRosters.ts` states for San Jose), and name
+`null` for "Atlanta, TX" and "Washington, USA" (the state). `hubHints` gained
+that `null` for this. One row per role, placed on its first listed site that
+lands on a hub. Result: 2,469 of 3,298 roles placed (75%) — San Jose 910,
+Singapore 195, New York 190, Bengaluru 174, San Francisco 141, London 111,
+Seattle 108 — and 829 unplaced in metros with no hub (Dublin, Tel Aviv,
+Hyderabad, Boulder, Warsaw ...), which is correct rather than a gap.
+
+**Not yet measured from a Worker.** Every number above is from a plain
+datacentre address, not from Cloudflare's egress. An empty pull is never
+written, so a refusal leaves the card as it was; check D1 for `portal-googl`
+rows after the first 18:35 UTC tick.
