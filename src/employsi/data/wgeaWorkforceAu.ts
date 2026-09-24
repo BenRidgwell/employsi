@@ -20,8 +20,8 @@
 // Source: WGEA 2024-25 public data file, as at Jun 2025, with
 //         2023-24 as the prior year. Both per-employer; the 2022-23
 //         file is excluded because it reports submission GROUPS.
-// Filed: 223 of 859 Australian roster companies
-//        (207 matched on the group name, 16 on the employer name).
+// Filed: 231 of 859 Australian roster companies
+//        (214 matched on the group name, 17 on the employer name).
 //
 // A company the register does not report is ABSENT, never zero — the card
 // shows an em dash and says no figure was collected.
@@ -33,6 +33,7 @@
 //   adelaide-tea
 //   brisbane-ape
 //   brisbane-boq
+//   brisbane-crn
 //   brisbane-dmp
 //   brisbane-dtl
 //   brisbane-sul
@@ -42,23 +43,28 @@
 //   jellinbah
 //   ltr
 //   mah
+//   melbourne-ann
 //   melbourne-anz
 //   melbourne-col
 //   melbourne-dnl
 //   melbourne-gdg
 //   melbourne-ifl
 //   melbourne-jbh
+//   melbourne-pmv
 //   melbourne-tls
 //   mmi
 //   nt-gov-batchelor-institute-of-indigenous-tertiary-education
 //   nwh
 //   perth-prn
 //   perth-vau
+//   pls
+//   priv-bing-lee-electrics
 //   priv-cmv-group
 //   priv-deloitte-touche-tohmatsu
 //   priv-drake-supermarkets
 //   priv-hancock-prospecting
 //   priv-mater
+//   priv-mcnab-constructions
 //   priv-minterellison
 //   priv-perth-airport
 //   priv-racv
@@ -79,6 +85,7 @@
 //   sydney-evn
 //   sydney-evt
 //   sydney-org
+//   sydney-ppt
 //   sydney-qub
 //   sydney-sdf
 //   sydney-shl
@@ -89,6 +96,7 @@
 //   uni-southern-cross-university
 //   uni-swinburne-university-of-technology
 //   uni-university-of-new-england
+//   uni-university-of-technology-sydney
 //   uni-university-of-wollongong
 import type { Headcount } from "./companyHeadcount";
 export const WGEA_HEADCOUNT: Record<string, Headcount> = {
@@ -104,6 +112,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "brisbane-ape": { now: 8246, prev: 8246, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Eagers Automotive Limited
   "brisbane-aqz": { now: 1161, prev: 1367, yoy: -15.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Alliance Aviation Services Limited
   "brisbane-boq": { now: 3844, prev: 3844, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Bank Of Queensland Limited
+  "brisbane-crn": { now: 505, prev: 505, yoy: null, asof: "Jun 2024", span: 0, unit: "headcount" },  // group: Coronado Global Resources Inc.
   "brisbane-ctd": { now: 870, prev: 958, yoy: -9.2, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Corporate Travel Management Limited
   "brisbane-dmp": { now: 1594, prev: 1594, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Domino's Pizza Enterprises Limited
   "brisbane-dtl": { now: 1339, prev: 1339, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Data#3 Limited.
@@ -123,6 +132,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "mah": { now: 4122, prev: 4122, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Macmahon Holdings Limited
   "melbourne-4dx": { now: 88, prev: 115, yoy: -23.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: 4DMEDICAL LIMITED
   "melbourne-amc": { now: 805, prev: 760, yoy: 5.9, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Amcor Pty Ltd
+  "melbourne-ann": { now: 65, prev: 65, yoy: null, asof: "Jun 2024", span: 0, unit: "headcount" },  // group: Ansell Limited
   "melbourne-anz": { now: 21699, prev: 21699, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: ANZ GROUP HOLDINGS LIMITED
   "melbourne-arb": { now: 1173, prev: 1634, yoy: -28.2, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: ARB Corporation Limited
   "melbourne-ben": { now: 5529, prev: 5396, yoy: 2.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Bendigo And Adelaide Bank Limited
@@ -138,6 +148,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "melbourne-nab": { now: 29519, prev: 29873, yoy: -1.2, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: National Australia Bank Limited
   "melbourne-ora": { now: 887, prev: 873, yoy: 1.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Orora Limited
   "melbourne-ori": { now: 2986, prev: 2910, yoy: 2.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Orica Limited
+  "melbourne-pmv": { now: 8011, prev: 8011, yoy: null, asof: "Jun 2024", span: 0, unit: "headcount" },  // group: Premier Investments Limited
   "melbourne-rea": { now: 1821, prev: 1705, yoy: 6.8, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Rea Group Ltd
   "melbourne-reg": { now: 11938, prev: 10161, yoy: 17.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Regis Healthcare Limited
   "melbourne-sek": { now: 1596, prev: 1732, yoy: -7.9, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Seek Limited
@@ -156,6 +167,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "perth-obm": { now: 229, prev: 207, yoy: 10.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Ora Banda Mining Ltd
   "perth-prn": { now: 4298, prev: 4298, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Perenti Limited
   "perth-vau": { now: 684, prev: 684, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Vault Minerals Limited
+  "pls": { now: 907, prev: 907, yoy: null, asof: "Jun 2024", span: 0, unit: "headcount" },  // group: Pilbara Minerals Limited
   "priv-abn-group": { now: 1980, prev: 1971, yoy: 0.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: The Trustee for ABN Service Trust
   "priv-adco-constructions": { now: 610, prev: 693, yoy: -12.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Adco Constructions Pty Ltd
   "priv-aurecon": { now: 3966, prev: 4333, yoy: -8.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Aurecon Australasia Pty Ltd
@@ -163,6 +175,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "priv-australian-unity": { now: 7616, prev: 7641, yoy: -0.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Australian Unity Limited
   "priv-avant-mutual": { now: 1008, prev: 914, yoy: 10.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Avant Mutual Group Limited
   "priv-baiada-poultry": { now: 944, prev: 960, yoy: -1.7, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Baiada Poultry Pty Limited
+  "priv-bing-lee-electrics": { now: 695, prev: 695, yoy: null, asof: "Jun 2024", span: 0, unit: "headcount" },  // group: Bing Lee Electrics Pty Ltd
   "priv-bmd-group": { now: 2224, prev: 2224, yoy: 0.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: B.M.D. Holdings Pty. Limited
   "priv-built": { now: 81, prev: 100, yoy: -19.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Built Pty Limited
   "priv-clayton-utz": { now: 1502, prev: 1500, yoy: 0.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Clayton Utz
@@ -194,6 +207,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "priv-leader-computers": { now: 296, prev: 330, yoy: -10.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: LEADER COMPUTERS PTY LTD
   "priv-life-without-barriers": { now: 7810, prev: 8101, yoy: -3.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Life Without Barriers
   "priv-mater": { now: 10411, prev: 10411, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Mater Misericordiae Ltd
+  "priv-mcnab-constructions": { now: 211, prev: 211, yoy: null, asof: "Jun 2024", span: 0, unit: "headcount" },  // employer: Mcnab Constructions Pty Ltd
   "priv-mecca-brands": { now: 6540, prev: 6772, yoy: -3.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Mecca Brands Pty Ltd
   "priv-melbourne-airport": { now: 496, prev: 442, yoy: 12.2, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Australia Pacific Airports Corporation Limited
   "priv-minterellison": { now: 2283, prev: 2283, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: MinterEllison
@@ -256,6 +270,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "sydney-mgr": { now: 1647, prev: 1735, yoy: -5.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Mirvac Limited
   "sydney-mqg": { now: 9376, prev: 9954, yoy: -5.8, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Macquarie Group Limited
   "sydney-org": { now: 5540, prev: 5540, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Origin Energy Limited
+  "sydney-ppt": { now: 1459, prev: 1459, yoy: null, asof: "Jun 2024", span: 0, unit: "headcount" },  // group: Perpetual Limited
   "sydney-qan": { now: 25017, prev: 23247, yoy: 7.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Qantas Airways Limited
   "sydney-qub": { now: 7759, prev: 7759, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Qube Holdings Limited
   "sydney-rdx": { now: 389, prev: 360, yoy: 8.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Redox Limited
@@ -307,6 +322,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "uni-university-of-southern-queensland": { now: 3015, prev: 2569, yoy: 17.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: University Of Southern Queensland
   "uni-university-of-sydney": { now: 18198, prev: 17663, yoy: 3.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: University Of Sydney
   "uni-university-of-tasmania": { now: 5689, prev: 6402, yoy: -11.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: University Of Tasmania
+  "uni-university-of-technology-sydney": { now: 5727, prev: 5727, yoy: null, asof: "Jun 2024", span: 0, unit: "headcount" },  // group: University Of Technology Sydney
   "uni-university-of-the-sunshine-coast": { now: 2856, prev: 2385, yoy: 19.7, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: University Of The Sunshine Coast
   "uni-university-of-western-australia": { now: 7157, prev: 6597, yoy: 8.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: University Of Western Australia
   "uni-university-of-wollongong": { now: 5723, prev: 5723, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: The University Of Wollongong

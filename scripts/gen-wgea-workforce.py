@@ -286,7 +286,7 @@ def main():
               f"{sum(by_emp.values()):,} employees")
         loaded.append((year, asof, index(by_grp), index(by_emp), by_emp, by_grp, members))
 
-    rows, ambiguous, missing, fallbacks, changed = {}, [], [], [], []
+    rows, ambiguous, missing, fallbacks, changed, lapsed = {}, [], [], [], [], []
 
     for c in companies:
         if c["name"] in REFUSED:
@@ -310,8 +310,33 @@ def main():
                 break
             name, scope = cand[0][0], sc
             break
+        # A COMPANY THAT STOPPED REPORTING STILL HAS ITS LAST READING. Deciding
+        # the scope on the newest file is right, but looking ONLY there drops an
+        # employer that is absent from it — which is not "no figure", it is a
+        # figure with an older date. University of Technology Sydney reported in
+        # 2023-24 and not in 2024-25, and an earlier version of this loop lost it
+        # silently: it had been filed the day before, and nothing failed when it
+        # stopped being. So fall back to the prior file for the scope as well,
+        # and date the row to that year with no change attached.
+        stale = False
+        if name is None:
+            for sc, idx in (("group", loaded[1][2]), ("employer", loaded[1][3])):
+                cand = idx.get(want)
+                if not cand or len(cand) > 1:
+                    continue
+                name, scope, stale = cand[0][0], sc, True
+                break
         if name is None:
             missing.append(c)
+            continue
+        if stale:
+            n = (loaded[1][5] if scope == "group" else loaded[1][4]).get(name, 0)
+            if n <= 0:
+                missing.append(c)
+                continue
+            lapsed.append((c["id"], name))
+            rows[c["id"]] = {"now": n, "prev": n, "yoy": None, "asof": loaded[1][1],
+                             "span": 0, "src": name, "scope": scope}
             continue
 
         def read(entry, nm, sc):
@@ -378,6 +403,11 @@ def main():
         for name, year, scope, cands in ambiguous[:20]:
             print(f"  {name} [{year}/{scope}] -> {cands[:3]}")
 
+    if lapsed:
+        print(f"\nNOT IN THE NEWEST FILE ({len(lapsed)}) — reported last year and not "
+              "this one; the prior reading is used, dated to its own year:")
+        for cid, nm in lapsed:
+            print(f"  {cid}  ({nm[:52]})")
     if fallbacks:
         print(f"\nNEWEST READING INCOMPLETE ({len(fallbacks)}) — an employer that reported "
               "last year is absent from the whole newest file, so the group total is a "
