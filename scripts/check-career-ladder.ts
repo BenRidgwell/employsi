@@ -142,9 +142,76 @@ const FIXTURES: [string, Want][] = [
   ["Head of Engineering", ["software", "generalist", 5]],
   ["CTO", ["software", "generalist", 6]],
   // Software traps.
-  ["Software Sales Executive", null],
+  ["Software Sales Executive", ["sales", "generalist", 2]], // leaves software, lands here
   ["Front End Loader Operator", null],
-  ["Business Development Manager", null],
+  ["Business Development Manager", ["sales", "generalist", 3]],
+
+  // Retail — the store ladder.
+  ["Retail Assistant", ["retail", "generalist", 1]],
+  ["Sales Assistant - Casual", ["retail", "generalist", 1]],
+  ["Store Team Member", ["retail", "generalist", 1]],
+  ["Checkout Operator", ["retail", "generalist", 1]],
+  ["Night Fill Team Member", ["retail", "generalist", 1]],
+  ["Retail Sales Consultant", ["retail", "generalist", 1]],
+  ["Key Holder", ["retail", "generalist", 2]],
+  ["Senior Sales Assistant", ["retail", "generalist", 2]],
+  ["Store Supervisor", ["retail", "generalist", 2]],
+  ["Assistant Store Manager", ["retail", "generalist", 3]],
+  ["Retail Assistant Manager", ["retail", "generalist", 3]], // not "retail assistant"
+  ["2IC - Retail", ["retail", "generalist", 3]],
+  ["Department Manager - Supermarket", ["retail", "generalist", 3]],
+  ["Trainee Store Manager", ["retail", "generalist", 3]],
+  ["Store Manager", ["retail", "generalist", 4]],
+  ["Retail Store Manager", ["retail", "generalist", 4]],
+  ["Area Manager - Retail", ["retail", "generalist", 5]],
+  ["State Retail Manager", ["retail", "generalist", 5]],
+  ["Head of Retail", ["retail", "generalist", 5]],
+  ["Visual Merchandiser", ["retail", "visual-merchandising", 2]],
+  ["Senior Visual Merchandiser", ["retail", "visual-merchandising", 3]],
+  ["Visual Merchandising Manager", ["retail", "visual-merchandising", 4]],
+  // Retail traps.
+  ["Storeperson", null], // warehousing
+  ["Stores Officer - Mine Site", null],
+  ["Retail Pharmacist", null],
+  ["Shopfitter", null],
+  ["Butcher - Supermarket", null],
+  ["Retail Buyer", null], // head-office buying: not yet a ladder
+  ["Store Development Manager", null], // property, not the store ladder
+  ["Retail Banking Manager", null],
+  ["Retail HR Business Partner", ["hr", "generalist", 3]], // HR is tried first
+
+  // Sales — new business and account management.
+  ["Sales Development Representative", ["sales", "generalist", 1]],
+  ["BDR", ["sales", "generalist", 1]],
+  ["Sales Coordinator", ["sales", "generalist", 1]],
+  ["Graduate Sales Executive", ["sales", "generalist", 1]],
+  ["Graduate Account Manager", ["sales", "account-management", 1]],
+  ["Account Executive", ["sales", "generalist", 2]],
+  ["Sales Representative", ["sales", "generalist", 2]],
+  ["Territory Manager", ["sales", "generalist", 2]], // a rep, not a manager
+  ["Business Development Executive", ["sales", "generalist", 2]],
+  ["Account Manager", ["sales", "account-management", 2]], // IC, not a manager
+  ["BDM - Construction", ["sales", "generalist", 3]],
+  ["Senior Account Executive", ["sales", "generalist", 3]],
+  ["Key Account Manager", ["sales", "account-management", 3]],
+  ["National Account Manager", ["sales", "account-management", 3]],
+  ["Senior Account Manager", ["sales", "account-management", 3]],
+  ["Sales Team Leader", ["sales", "generalist", 3]],
+  ["Assistant Sales Manager", ["sales", "generalist", 3]],
+  ["Sales Manager", ["sales", "generalist", 4]],
+  ["Area Sales Manager", ["sales", "generalist", 4]],
+  ["Account Director", ["sales", "account-management", 4]],
+  ["National Sales Manager", ["sales", "generalist", 5]],
+  ["Head of Sales", ["sales", "generalist", 5]],
+  ["Sales Director", ["sales", "generalist", 5]],
+  ["Chief Revenue Officer", ["sales", "generalist", 6]],
+  ["Safety Equipment Sales Representative", ["sales", "generalist", 2]], // before HSE
+  // Sales traps.
+  ["Presales Consultant", null],
+  ["Sales Engineer", null],
+  ["Sales Operations Analyst", null],
+  ["Point of Sale Technician", null],
+  ["Accounts Receivable Officer - Sales Ledger", ["finance", "generalist", 1]],
 
   // HSE.
   ["WHS Coordinator", ["hse", "generalist", 1]],

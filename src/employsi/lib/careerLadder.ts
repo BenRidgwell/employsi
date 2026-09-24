@@ -220,7 +220,7 @@ export const FAMILIES: FamilyDef[] = [
       /\bfinanc(?:e|ial)\b|\baccountant\b|\baccounting\b|\baccounts (?:payable|receivable)\b|\bbookkeeper\b|\b(?:financial|finance|group) controller\b|\bcomptroller\b|\btreasury\b|\bfp and a\b|\bcfo\b|\bchief financial officer\b|\btax\b/,
     // Advice, lending and insurance are other ladders that use the word.
     exclude:
-      /\bfinancial (?:planner|adviser|advisor|counsellor)\b|\bfinance broker\b|\bmortgage\b|\bloan\b|\blending\b|\binsurance\b|\bfinance (?:sales|consultant)\b|\bsales\b|\bcollections?\b|\bcustomer service\b/,
+      /\bfinancial (?:planner|adviser|advisor|counsellor)\b|\bfinance broker\b|\bmortgage\b|\bloan\b|\blending\b|\binsurance\b|\bfinance (?:sales|consultant)\b|\bsales\b(?! ledger)|\bcollections?\b|\bcustomer service\b/,
     tracks: [
       {
         id: "fpa",
@@ -317,6 +317,99 @@ export const FAMILIES: FamilyDef[] = [
     ],
   },
   {
+    id: "retail",
+    label: "Retail (store operations)",
+    // The store ladder: assistant → key holder → 2IC → store manager → area /
+    // state manager. "Sales Assistant" is here rather than in sales because in
+    // Australian ads it is overwhelmingly a shop-floor role.
+    match:
+      /\bretail\b|\bstore\b|\bstores\b|\bshop\b|\bboutique\b|\bsupermarket\b|\bsales assistant\b|\bcheckout\b|\bcashier\b|\bnight ?fill\b|\bkey ?holder\b|\bvisual merchandis\w*|\bmerchandiser\b/,
+    // A storeperson and a mining "Stores Officer" are warehousing; the trades
+    // and professions that work in or for shops are their own ladders; head
+    // office buying and planning is a different ladder not yet modelled.
+    exclude:
+      /\bstore ?(?:person|man|men)\b|\bstore (?:development|design|planning)\b|\bstores (?:officer|coordinator|clerk|supervisor|person)\b|\bwarehouse\b|\bdistribution cent|\bcold store\b|\bretail (?:bank|banking|lending|energy|credit)\b|\bpharmac|\bbutcher\b|\bbaker\b|\bbarista\b|\bchef\b|\bcook\b|\bshop ?fitter\b|\bmachine shop\b|\bshop floor\b|\bworkshop\b|\belectrician\b|\bmechanic\b|\btechnician\b|\bdriver\b|\bforklift\b|\bsecurity\b|\bcleaner\b|\bloss prevention\b|\boptometrist\b|\bhairdresser\b|\bsoftware\b|\bdeveloper\b|\bengineer\b|\banalyst\b|\bplanner\b|\bbuyer\b|\ballocator\b/,
+    tracks: [
+      { id: "visual-merchandising", label: "Visual merchandising", match: /\bvisual merchandis/ },
+    ],
+    // The generic rubric is right for "Store Manager" (4), "Retail Director"
+    // (5) and "Assistant Manager" (3); these rules correct the rest. Retail
+    // compresses: area, state and national managers all share rung 5, and the
+    // node's titles show which.
+    rungs: [
+      [
+        /\b(?:area|district|regional|state|national|multi ?site|cluster) (?:retail |store |operations |sales )?manager\b/,
+        5,
+      ],
+      [
+        /\b(?:trainee|graduate) (?:store |retail )?manager\b|\bmanager in training\b|\bassistant (?:store |retail |shop |boutique )?manager\b|\bdeputy (?:store|retail|shop|boutique) manager\b|\b2ic\b|\bsecond in charge\b|\bdepartment manager\b|\bduty manager\b|\bcustomer service manager\b|\bsenior visual merchandiser\b/,
+        3,
+      ],
+      // A store supervisor or team leader is a key holder, not a senior
+      // professional — the generic rubric would say 3.
+      [
+        /\bkey ?holder\b|\bsupervisor\b|\bteam leader\b|\bsenior (?:sales|retail|store|shop) (?:assistant|consultant|associate)\b|\bvisual merchandiser\b|\bvisual merchandising (?:coordinator|specialist)\b/,
+        2,
+      ],
+      [
+        /\b(?:sales|retail|store|shop) (?:assistant|consultant|associate)\b|\bteam member\b|\bcrew member\b|\bcashier\b|\bcheckout\b|\bnight ?fill\b|\bmerchandiser\b|\bcustomer service assistant\b/,
+        1,
+      ],
+    ],
+  },
+  {
+    id: "sales",
+    label: "Sales & business development",
+    // B2B and field sales: SDR → account executive → BDM / key account manager
+    // → sales manager → head of sales → CRO. Nearly every rung is called
+    // "manager", so the generic rubric is off and every rung is enumerated.
+    match:
+      /\bsales\b|\baccount (?:manager|executive|director|management)\b|\bkey account\b|\bnational account\b|\bstrategic account\b|\bbusiness development\b|\bbdm\b|\bbdr\b|\bsdr\b|\bbde\b|\bterritory manager\b|\bchief revenue officer\b|\bchief commercial officer\b/,
+    // Technical presales and sales operations are other ladders; agency
+    // recruitment is excluded from HR and from here alike.
+    exclude:
+      /\bpre ?sales\b|\bsales engineer\b|\bsolutions? engineer\b|\bsales tax\b|\bpoint of sale\b|\bsales ledger\b|\bsales (?:analyst|operations|ops|planner|planning|enablement)\b|\brecruitment\b|\baccounts? (?:payable|receivable)\b/,
+    tracks: [
+      {
+        id: "account-management",
+        label: "Account management",
+        match:
+          /\baccount manager\b|\bkey account\b|\baccount director\b|\bnational account\b|\bstrategic account\b|\baccount management\b/,
+      },
+    ],
+    generic: false,
+    rungs: [
+      [
+        /\bchief (?:revenue|sales|commercial) officer\b|\bexecutive general manager\b|\bgroup executive\b|\bsvp\b|\bsenior vice president\b/,
+        6,
+      ],
+      [
+        /\bhead of (?:sales|business development|partnerships|account management|revenue)\b|\bsales director\b|\bdirector of (?:sales|business development)\b|\bbusiness development director\b|\bnational sales manager\b|\bgeneral manager\b|\bvp\b|\bvice president\b/,
+        5,
+      ],
+      [/\bassistant sales manager\b/, 3],
+      // A sales manager leads reps. An ACCOUNT manager does not, and is below.
+      [
+        /\baccount director\b|\b(?:state|regional|area) sales manager\b|\bsales manager\b|\bsales and marketing manager\b/,
+        4,
+      ],
+      // Entry markers after the manager rungs, so "Graduate Account Manager"
+      // is 1 and a (rare) "Junior Sales Manager" is not.
+      [
+        /\bgraduate\b|\btrainee\b|\bjunior\b|\bcadet\b|\bintern\b|\bsdr\b|\bbdr\b|\b(?:sales|business) development representative\b|\bsales (?:support|administrator|admin|coordinator)\b|\btelesales\b/,
+        1,
+      ],
+      [
+        /\bkey account\b|\bnational account manager\b|\bstrategic account\b|\bsenior account (?:manager|executive)\b|\benterprise account executive\b|\bbusiness development manager\b|\bbdm\b|\bsenior business development\b|\bsales (?:team )?(?:leader|lead)\b|\bsenior sales (?:executive|representative|consultant)\b/,
+        3,
+      ],
+      [
+        /\baccount (?:manager|executive)\b|\bbusiness development (?:executive|consultant|officer|associate)\b|\bbde\b|\bsales (?:executive|representative|rep|consultant|specialist|agent|advis[oe]r|associate|person|professional)\b|\bterritory manager\b|\binside sales\b|\bfield sales\b|\bnew business\b/,
+        2,
+      ],
+    ],
+  },
+  {
     id: "hse",
     label: "Health, safety & environment",
     match:
@@ -372,7 +465,10 @@ function placeClean(t: string): Omit<Placement, "canonical"> | null {
  * rung cannot be read. Families are tried in declaration order and the first
  * that matches without excluding decides — so a title is never on two ladders
  * at once, and the ORDER of FAMILIES is part of the rules: nursing and project
- * come before software so "Software Project Manager" is a project role.
+ * come before software so "Software Project Manager" is a project role;
+ * retail comes before sales so "Retail Sales Assistant" is a store role; and
+ * both come before HSE, whose generic rubric cannot read "Sales Representative"
+ * and would leave "Safety Equipment Sales Representative" unplaced.
  */
 export function placeTitle(title: string): Placement | null {
   const placed = placeClean(cleanTitle(title));
