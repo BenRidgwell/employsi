@@ -92,8 +92,10 @@ const CURRENCY_BY_COUNTRY: Record<string, string> = {
  * This is worth having rather than dropping those rows: 465 of the 891
  * hub-less salaried rows are sa-gov, which is South Australia by definition,
  * and another 182 are the single-country JobStreet sites. A board that spans
- * markets (Adzuna, LinkedIn, Indeed, SEEK) is deliberately absent — for those a
- * missing hub really does mean the country is unknown.
+ * markets (Adzuna, LinkedIn, Indeed, SEEK, ZipRecruiter) is deliberately absent —
+ * for those a missing hub really does mean the country is unknown. ZipRecruiter
+ * spans the US and Canada, so its scraper writes the currency into the salary
+ * string itself ("USD 85,000 - 110,000 per year") for MARKERS to read.
  */
 const COUNTRY_BY_SOURCE: Record<string, string> = {
   "wa-gov": "au",

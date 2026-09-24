@@ -1,0 +1,5 @@
+# PINNED, not a floor. ziprecruiter-to-d1.py calls JobSpy internals
+# (_find_jobs_in_page, _get_descr, the session's get) that carry no stability
+# promise. Bump deliberately, and only once scripts/test_ziprecruiter.py passes
+# against the new version. Read by ziprecruiter-archive.yml and scraper-check.yml.
+python-jobspy==1.1.82

@@ -1708,3 +1708,63 @@ written, so a degraded night leaves yesterday's rows alone.
 Its careers page answers a datacentre request with 403, and the Expr3ss tenant
 at chemistwarehouse.expr3ss.com redirects every path to "Lost and Found" — the
 tenant exists and has no live board. Left without a feed rather than guessed at.
+
+---
+
+# ZipRecruiter — US and Canada (`scripts/ziprecruiter-to-d1.py`), added 2026-09-24
+
+The first feed aimed at the **North American** end of the roster: the 246
+companies plotted on a US or Canadian hub. ZipRecruiter only serves those two
+countries, so every row it writes is a US or Canadian vacancy. Walked once per
+employer across the full roster (`roster.ts --with-cities`, 1,036 employers),
+through **JobSpy** — the package that recovered Indeed — which calls
+api.ziprecruiter.com, the iOS app's API, rather than parsing search HTML.
+Daily from [`ziprecruiter-archive.yml`](../../.github/workflows/ziprecruiter-archive.yml)
+at 16:00 UTC, `source = ziprecruiter`.
+
+**Why not in the Worker, and why not even from a plain runner.** Unlike
+Indeed's app API, ZipRecruiter's refuses a datacentre address on every host.
+Measured 2026-09-24 from the sandbox (IAD egress), python-jobspy 1.1.82:
+
+| request | client | answer |
+|---|---|---|
+| `api…/jobs-app/jobs` | JobSpy's TLS client | 403 `forbidden aa` |
+| `api…/jobs-app/jobs` | plain requests | 403 `forbidden cf-waf` |
+| `www…/jobs-search` | plain requests | 403, Cloudflare "Just a moment…" |
+
+So it goes through `SCRAPE_PROXY` with a US exit. **That path has not been
+measured yet** — the first run is the measurement, and the workflow header says
+what to read off it (refusal codes, and whether rows span the country or one
+metro, since JobSpy sends no location).
+
+**Three JobSpy behaviours are overridden**, which is why the version is pinned
+(`scripts/ziprecruiter-requirements.txt`) and `scripts/test_ziprecruiter.py`
+drives its internals with a fixture in `scraper-check`:
+
+- it fetches every job's HTML page for a description the archive never stores —
+  20 extra requests per result page against the challenged host. Disabled.
+- it pages to `results_wanted` whatever the pages hold. The walk here stops at
+  the first page that adds nothing past the gate.
+- it turns a 403 or 429 into an empty page. The session's GET is wrapped so a
+  refusal is counted as a failure, never as an employer with no ads.
+
+**Two attribution gates.** North American companies use
+`company_alias.company_matches` (Indeed's rule). Everyone else is held to the
+exact roster name, and a single-word one is never filed at all: on a US board
+the short form of an Australian brand is usually somebody else — `Redox` is a
+Madison health-tech firm, `SGH` is Simpson Gumpertz & Heger. Rows only the loose
+rule would accept are reported at the end of the run for confirmation into
+`CONFIRMED_NA`, which ships empty because nothing in it has been observed yet.
+An employer on two rosters (Chevron: `chevron` on Perth, `houston-cvx` on
+Houston) is filed under its North American line.
+
+**Hubs are gated on state.** `hubFor` matches place names and North America
+reuses ours — Perth ON, Sydney NS, Melbourne FL and London ON all resolve to
+the Australian or British hub, and Vancouver WA and Bellevue WA to **perth**
+through the `" wa,"` needle. A hub is kept only when it is a US/Canadian hub and
+the row's state is that hub's; anything else archives with a null hub.
+
+**Salaries carry their currency.** ZipRecruiter spans two currencies, so it is
+not in `salaryParse.ts`'s `COUNTRY_BY_SOURCE`; the string is written as
+`USD 85,000 - 110,000 per year` for `MARKERS` to read, the currency inferred
+from the ad's country only when the API omits it.
