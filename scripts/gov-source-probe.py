@@ -33,17 +33,34 @@ UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
 # reports, NT's portal has no workforce data at all, and Tasmania has no
 # reachable open-data portal).
 TARGETS = [
-    # Is education.gov.au reachable AT ALL, or were the paths wrong? The
-    # staff-data path answered ERR_HTTP2_PROTOCOL_ERROR to a browser and timed
-    # out to urllib, from the runner; 403 over HTTP/2 and nothing over
-    # HTTP/1.1 from the sandbox. Those are two different failures and they do
-    # not agree, so the root is worth one request before concluding anything.
-    ('Uni root', 'https://www.education.gov.au/'),
-    ('Uni stats root', 'https://www.education.gov.au/higher-education-statistics'),
-    # The domain data.gov.au's own resource still points at. It predates the
-    # education.gov.au move and may resolve differently.
-    ('Uni old domain', 'https://www.dese.gov.au/higher-education-statistics/staff-data'),
-    ('TEQSA root', 'https://www.teqsa.gov.au/'),
+    # ── Northern Territory and Tasmania ────────────────────────────────────
+    # BOTH WERE RECORDED AS UNREACHABLE AND NEITHER IS. Measured from the
+    # sandbox 2026-09-24, both answer HTTP 403 with `cf-mitigated: challenge`,
+    # `server: cloudflare` and a 5.5 KB "Just a moment..." body. That is a
+    # Cloudflare JavaScript challenge — the same KIND of doorman as
+    # Queensland's AWS WAF, not an IP block and not a dead domain. The notes
+    # this file used to carry ("the NT refuses a browser as well as a plain
+    # request", "Tasmania's State Service domain no longer resolves") are both
+    # wrong: dpac.tas.gov.au resolves and answers, it just refuses a script.
+    #
+    # So the question is no longer "is it reachable" but "does a real browser
+    # clear it", which only a runner can answer.
+    ('NT OCPE root', 'https://ocpe.nt.gov.au/'),
+    ('NT gov root', 'https://nt.gov.au/'),
+    # The NT publishes an annual workforce profile through the Office of the
+    # Commissioner for Public Employment; the path is a guess and the root is
+    # what settles it, so the root goes first. data.nt.gov.au is NOT here: it
+    # is reachable (200) and was searched from the sandbox — three hits for
+    # "workforce", none of them staffing.
+    ('NT workforce page', 'https://ocpe.nt.gov.au/nt-public-sector/workforce-data'),
+
+    ('TAS DPAC root', 'https://www.dpac.tas.gov.au/'),
+    ('TAS State Service', 'https://www.dpac.tas.gov.au/divisions/state-service-management-office'),
+    # Tasmanian Treasury answers 200 to a plain request, unlike every other
+    # tas.gov.au host tried, and the Budget Papers carry agency FTE. Worth
+    # knowing whether the data is reachable there even if DPAC stays shut.
+    ('TAS Treasury', 'https://www.treasury.tas.gov.au/'),
+    ('TAS Budget', 'https://www.treasury.tas.gov.au/budget-and-financial-management/budget'),
 ]
 
 
@@ -93,6 +110,24 @@ def main():
                     r = page.goto(url, wait_until='domcontentloaded', timeout=60_000)
                     page.wait_for_timeout(2000)
                     html = page.content()
+                    # A CLOUDFLARE CHALLENGE NEEDS LONGER THAN A PAGE LOAD.
+                    # "Just a moment..." is the interstitial, not the site;
+                    # reading content() at two seconds captures the doorman and
+                    # reports a reachable host as having no links on it. Give
+                    # it up to thirty seconds to hand over, and say which it
+                    # was rather than leaving a 5 KB body looking like a site.
+                    waited = 0
+                    while 'Just a moment' in html and waited < 30_000:
+                        page.wait_for_timeout(3000)
+                        waited += 3000
+                        html = page.content()
+                    if 'Just a moment' in html:
+                        print(f'  browser : STILL CHALLENGED after {waited / 1000:.0f}s '
+                              f'({len(html)} bytes) — a browser alone does not clear this')
+                        page.close()
+                        continue
+                    if waited:
+                        print(f'  browser : cleared a Cloudflare challenge in {waited / 1000:.0f}s')
                     print(f'  browser : {r.status if r else "?"} ({len(html)} bytes)')
                     page.close()
                 except Exception as e:                            # noqa: BLE001
