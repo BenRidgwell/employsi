@@ -150,6 +150,15 @@ export const WA_GOV_LOGO_URL: Record<string, string> = {
 /**
  * Agencies that use the shared Government of Western Australia crest.
  * Kept as a list because the URL is the same for all of them.
+ *
+ * THIS FILE IS THE WHITE LOCKUP — 154 paths, every one `fill="#fff"`, on a
+ * transparent ground. The badge is white, so anything that actually reaches
+ * this URL renders as an empty square. Measured 2026-09-24: of the thirteen
+ * ids below, twelve never get here (they carry a file in public/logos/, which
+ * outranks this), and the one that did was blank on the map. So the list is
+ * not a fallback that works — it is a list of ids that must each be overridden
+ * somewhere above, and the crest is only holding a place. Before adding an id
+ * here, check it renders; the coloured lockup is a different file.
  */
 export const WA_GOV_CREST = "https://www.wa.gov.au/themes/custom/wagov/images/logo_full.svg";
 
@@ -165,7 +174,10 @@ export const WA_GOV_CREST_IDS: string[] = [
   "perth-gov-department-of-local-government-industry-regulation-and-safety", // Department of Local Government, Industry Regulation and Safety
   "perth-gov-department-of-planning-lands-and-heritage", // Department of Planning, Lands and Heritage
   "perth-gov-department-of-the-premier-and-cabinet", // Department of the Premier and Cabinet
-  "perth-gov-department-of-training-and-workforce-development", // Department of Training and Workforce Development
+  // Department of Training and Workforce Development was here and was the one
+  // id that actually resolved to the crest, so it drew nothing. Removed
+  // 2026-09-24; it now falls through to its LinkedIn logo, the crest and the
+  // department's name in white on an orange tile, which is legible.
   "perth-gov-department-of-treasury-and-finance", // Department of Treasury and Finance
   "perth-gov-metropolitan-cemeteries-board", // Metropolitan Cemeteries Board
   "perth-gov-public-sector-commission", // Public Sector Commission
