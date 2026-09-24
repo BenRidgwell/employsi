@@ -917,15 +917,31 @@ def load_nt():
     with pdfplumber.open(_io.BytesIO(blob)) as pdf:
         for pg in pdf.pages:
             rows.update(_nt_rows(pg))
-        if not rows:
-            # A PARSE FAILURE SHOULD TEACH THE FORMAT, not just stop. This
-            # document can only be fetched from a runner, so a bare "parsed no
-            # rows" costs a whole round trip to learn what it actually looks
-            # like — and the format has already changed twice in this archive.
-            for pg in pdf.pages[:2]:
-                for line in (pg.extract_text() or '').split('\n')[:14]:
-                    print(f'    NT raw | {line[:104]}', file=sys.stderr)
-            raise RuntimeError(f'NT: parsed no agency rows from {newest}')
+        # A THIN RESULT IS A FAILURE TOO, and the first version only reported
+        # an empty one. Three rows came back from a table of about twenty-five
+        # and nothing said so: the run looked like a success and filed three
+        # agencies. The Territory has more departments than that, so anything
+        # under fifteen is treated as a broken parse rather than a small
+        # government.
+        if len(rows) < 15:
+            print(f'  NT: only {len(rows)} rows parsed — dumping geometry',
+                  file=sys.stderr)
+            pg = pdf.pages[0]
+            ws = pg.extract_words(keep_blank_chars=False)
+            byline = {}
+            for w in ws:
+                byline.setdefault(round(w['top'] / 3), []).append(w)
+            shown = 0
+            for _, lw in sorted(byline.items()):
+                lw.sort(key=lambda w: w['x0'])
+                if not any(re.fullmatch(r'[\d,]+', w['text']) for w in lw):
+                    continue
+                gaps = [f"{w['text']}@{w['x0']:.0f}" for w in lw[:14]]
+                print(f'    NT words | {" ".join(gaps)}', file=sys.stderr)
+                shown += 1
+                if shown >= 8:
+                    break
+            raise RuntimeError(f'NT: parsed {len(rows)} agency rows from {newest}')
     asof = f'{list(MONTH)[month - 1][:3].title()} {year}' if month else str(year)
     return rows, asof, 'fte'
 
