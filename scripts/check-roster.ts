@@ -29,6 +29,10 @@ import { CITY_COMPANIES } from "../src/employsi/data/mapboxGeo";
 import { SEEK_ADVERTISERS } from "../src/employsi/data/seekAdvertisers";
 import { SEEK_TRADING_NAMES } from "../src/employsi/data/seekTradingNames";
 import { SITES as CAREER_SITES } from "../workers/jobs-cron/careerSites";
+import { COMPANY_HEADCOUNT } from "../src/employsi/data/companyHeadcount";
+import { GOV_HEADCOUNT } from "../src/employsi/data/perthGovWorkforce";
+import { buildCompanyCard } from "../src/employsi/lib/companyCard";
+import { buildCompareCard } from "../src/employsi/lib/compareCard";
 
 /**
  * Companies whose dedicated feed is a GitHub Action rather than a Worker
@@ -171,6 +175,91 @@ for (const [id, list] of Object.entries(SEEK_TRADING_NAMES)) {
 // in CI on every change to the three files involved. Two checkers over one
 // invariant is worse than one: they drift, disagree, and each becomes a reason
 // to ignore the other. This file owns the roster side; that one owns scheduling.
+
+// ── 6. No company card prints a workforce figure it does not have ───────────
+// The card has three honest states for headcount and one dishonest one, and
+// the dishonest one is invisible: a figure of 0 renders as "0", which reads as
+// a measurement rather than a gap.
+//
+// `Company.headcount` is 0 where it means UNKNOWN. buildGovAgency and its
+// SA / VIC / QLD / APS counterparts set it deliberately — their own comments
+// say "the card shows no fabricated workforce numbers for it" — and the
+// university and health records do the same. That intent lives in five data
+// files and was enforced in none: buildCompanyCard keyed its suppression on
+// `illustrative` alone, so 483 records with a real 0 took the branch that
+// prints the number. Queensland Health, SA Health and 41 universities showed
+// "Headcount 0 · not disclosed · estimated". buildCompareCard had the same
+// hole and laid "0" and "+0.0%" beside a real employer's real figures.
+//
+// So the invariant is asserted over EVERY company rather than trusted to the
+// builders: a record that is not illustrative and not covered by a filed
+// source must carry a positive headcount, or be one the card suppresses. This
+// runs the real card, because the bug was in the renderer and not in the data —
+// every one of those 483 records was exactly what its builder intended.
+{
+  const filed = (id: string) => !!COMPANY_HEADCOUNT[id] || !!GOV_HEADCOUNT[id];
+  const bad: string[] = [];
+  for (const c of COMPANIES) {
+    const hc = COMPANY_HEADCOUNT[c.id] ?? GOV_HEADCOUNT[c.id] ?? null;
+    const card = buildCompanyCard({
+      company: c,
+      openRoles: null,
+      headcount: hc ? { now: hc.now, yoy: hc.yoy, asof: hc.asof } : null,
+      vacancies: [],
+      skillCounts: {},
+      roleCounts: {},
+    });
+    const tile = card.stats.find((s) => s.icon === "headcount");
+    if (!tile) {
+      err("headcount tile missing", c.id, c.name);
+      continue;
+    }
+    // The only figures a card may print are a filed one or a curated positive
+    // one. Anything else has to be the em dash.
+    const printsFigure = tile.value !== "—";
+    if (printsFigure && !filed(c.id) && !(c.headcount > 0)) bad.push(`${c.id} (${tile.value})`);
+    // A YoY delta is only ever honest beside a filed figure — it is the one
+    // number on this tile that needs two reporting years behind it.
+    if (tile.delta && !filed(c.id)) err("headcount YoY unfiled", c.id, c.name);
+  }
+  if (bad.length)
+    err(
+      "headcount printed as 0",
+      `${bad.length} companies`,
+      `${bad.slice(0, 6).join(", ")}${bad.length > 6 ? ", …" : ""} — a headcount of 0 means unknown; the card must show "—"`,
+    );
+}
+
+// The same 0 reaches the COMPARE card by a different path, so it is asserted
+// separately rather than assumed to follow. `MetricDef.of` returns
+// `number | null` and buildCompareCard drops any metric either side cannot
+// answer; the headcount and growth metrics simply never returned null.
+{
+  const unknown = COMPANIES.find(
+    (c) =>
+      !c.illustrative && !COMPANY_HEADCOUNT[c.id] && !GOV_HEADCOUNT[c.id] && !(c.headcount > 0),
+  );
+  const known = COMPANIES.find((c) => !!COMPANY_HEADCOUNT[c.id]);
+  if (unknown && known) {
+    const cmp = buildCompareCard({
+      a: unknown,
+      b: known,
+      pop: COMPANIES.slice(0, 200),
+      aTrend: [],
+      bTrend: [],
+      aJobs: [],
+      bJobs: [],
+    });
+    for (const name of ["Headcount", "Headcount growth · YoY"]) {
+      if (cmp.metrics.some((m) => m.name === name))
+        err(
+          "compare shows unknown headcount",
+          unknown.id,
+          `"${name}" is compared against ${known.id} although ${unknown.id} has no headcount`,
+        );
+    }
+  }
+}
 
 // ── report ──────────────────────────────────────────────────────────────────
 const errors = findings.filter((f) => f.level === "error");

@@ -323,7 +323,7 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
       sub: `${hc.now.toLocaleString("en-AU")} · ${hc.asof}`,
       icon: "headcount",
     });
-  } else if (!c.illustrative) {
+  } else if (!c.illustrative && c.headcount > 0) {
     // No filed headcount, but a curated one someone entered. Show it, and
     // DON'T attach a YoY, which would have nothing behind it.
     stats.push({
@@ -336,13 +336,24 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
       icon: "headcount",
     });
   } else {
-    // A roster company with no filed headcount. Its `c.headcount` is
-    // hash01(ticker + name) — Deterra Royalties came out at 9,883 against a
-    // real staff count in the tens — so it is not shown.
     stats.push({
       value: "—",
       label: "Headcount",
-      sub: "not filed",
+      // WHY it is absent differs, and one line cannot honestly cover both.
+      //
+      //  • A roster company's `c.headcount` is hash01(ticker + name) — Deterra
+      //    Royalties came out at 9,883 against a real staff count in the tens —
+      //    so it is not shown. "not filed" is the shorthand this card has
+      //    always used for it.
+      //  • A `headcount` of 0 means UNKNOWN, not zero. The government and
+      //    university builders set it deliberately — see buildGovAgency in
+      //    perthGov.ts, whose own comment says "the card shows no fabricated
+      //    workforce numbers for it" — and this branch is what makes that
+      //    true. It says "collected" rather than "filed" or "published"
+      //    because it must also be honest about the 41 universities in this
+      //    state, which DO publish staff figures; we simply have not wired a
+      //    source for them.
+      sub: c.illustrative ? "not filed" : "no workforce figure collected",
       icon: "headcount",
     });
   }
