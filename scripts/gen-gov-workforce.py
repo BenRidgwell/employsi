@@ -144,6 +144,16 @@ ALIAS = {
         'Flinders and Upper North Local Health Network',
         'SA Ambulance Service',
     ],
+
+    # ── Northern Territory ─────────────────────────────────────────────────
+    # The roster uses the short form the ads use; OCPE writes the full name.
+    # Qualified by jurisdiction out of the same caution that "Electoral
+    # Commission" taught — "NT Police Force" is unique today and need not stay
+    # so.
+    'nt:NT Police Force': 'Northern Territory Police Force',
+    'nt:NT Fire and Emergency Services': 'Northern Territory Fire & Emergency Services',
+    # Batchelor Institute of Indigenous Tertiary Education is NOT aliased: it
+    # is a tertiary institution and is in no row of the staffing table.
 }
 
 
