@@ -140,6 +140,18 @@ export interface CardChart {
   secondValues: number[] | null;
   vacPts: [number, number][];
   secondPts: [number, number][] | null;
+  /**
+   * Index of the first day the second series actually has a value for. 0 when
+   * it covers the whole window, which is the normal case.
+   *
+   * It exists because the alternative is drawing a line where there is no
+   * data. The share fetch asks for six months against a chart of at most 90
+   * days, so this is only non-zero for a company that listed inside the
+   * window — but when it happens, a flat segment carried back from the first
+   * close is indistinguishable from a price that genuinely did not move, and
+   * that is the invented-figure failure this codebase exists to avoid.
+   */
+  secondFrom: number;
 }
 
 export interface CardFact {
@@ -433,6 +445,7 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
     let second: CardChartLine | null = null;
     let secondValues: number[] | null = null;
     let secondPts: [number, number][] | null = null;
+    let from = 0;
     // The second line is only drawn when it sits on the SAME days as the
     // vacancy series. A quarterly share series or a single revenue ratio would
     // both look like a second line on this axis while measuring another window.
@@ -443,11 +456,16 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
       const aligned: number[] = [];
       let carry = 0;
       let matched = 0;
+      // The first day a real close lands on. Days before it are padded so the
+      // array stays index-aligned with the vacancy series, but they are NOT
+      // drawn — see secondFrom.
+      let firstReal = -1;
       for (const p of vac) {
         const v = byDate.get(p.d);
         if (typeof v === "number") {
           carry = v;
           matched++;
+          if (firstReal < 0) firstReal = aligned.length;
         }
         // A weekend or holiday has no close; the previous close IS the price on
         // that day, so carrying it forward is correct here (unlike inventing a
@@ -455,12 +473,17 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
         aligned.push(carry || daily[0]);
       }
       if (matched >= 2) {
+        from = Math.max(0, firstReal);
         secondValues = aligned;
         secondPts = plot(aligned);
-        const chg2 = pctChange(aligned);
+        // Change is measured over the DRAWN span, not the padded one. Reading
+        // it from index 0 would compare the real latest price against a value
+        // carried backwards, which is a percentage between a fact and a
+        // placeholder.
+        const chg2 = pctChange(aligned.slice(from));
         second = {
           label: "Share price",
-          path: smoothPath(secondPts),
+          path: smoothPath(from > 0 ? secondPts.slice(from) : secondPts),
           latest: `${input.share?.currency === "AUD" ? "A$" : "$"}${aligned[aligned.length - 1].toFixed(2)}`,
           delta: signed(chg2),
           up: chg2 >= 0,
@@ -482,6 +505,7 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
       days: vac.map((p) => p.d),
       vacValues: vals,
       secondValues,
+      secondFrom: from,
       vacPts: pts,
       secondPts,
     };

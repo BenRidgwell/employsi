@@ -131,7 +131,16 @@ async function toAudRate(cur: string): Promise<number> {
 // the card simply draws one line.
 async function fetchDaily(sym: string): Promise<{ closes: number[]; dates: string[] }> {
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1mo&interval=1d`;
+    // SIX MONTHS, NOT ONE, and the difference was visible on every card.
+    // The vacancy series this is overlaid on runs up to 90 days (DAYS in
+    // getVacancyTrend), and range=1mo returns about 24 trading days —
+    // measured 2026-09-24 on CBA.AX: 24 points starting 2026-08-24 against a
+    // chart that began 2026-07-21. The card filled the missing five weeks with
+    // the earliest close it had, so the line was dead flat from the left edge
+    // until the real data started, and read as a share price that did not move
+    // for a month. Nothing is stored between visits — this is fetched live on
+    // every card open — so the range asked for IS the history the chart has.
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=6mo&interval=1d`;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 6000);
     const res = await fetch(url, {

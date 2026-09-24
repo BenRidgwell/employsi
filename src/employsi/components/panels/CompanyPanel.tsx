@@ -1107,15 +1107,19 @@ export function CompanyPanel() {
 
                         {chartIdx != null && card.chart.days[chartIdx] && (
                           <>
-                            {card.chart.secondPts?.[chartIdx] && (
-                              <span
-                                className="ccdot alt"
-                                style={{
-                                  left: `${(card.chart.secondPts[chartIdx][0] / 400) * 100}%`,
-                                  top: `${(card.chart.secondPts[chartIdx][1] / 150) * 100}%`,
-                                }}
-                              />
-                            )}
+                            {/* Only where the second series actually has a
+                                value — before secondFrom the array is padded to
+                                stay index-aligned and nothing is drawn. */}
+                            {chartIdx >= card.chart.secondFrom &&
+                              card.chart.secondPts?.[chartIdx] && (
+                                <span
+                                  className="ccdot alt"
+                                  style={{
+                                    left: `${(card.chart.secondPts[chartIdx][0] / 400) * 100}%`,
+                                    top: `${(card.chart.secondPts[chartIdx][1] / 150) * 100}%`,
+                                  }}
+                                />
+                              )}
                             {card.chart.vacPts[chartIdx] && (
                               <span
                                 className={`ccdot ${card.chart.vacancies.up ? "up" : "down"}`}
@@ -1154,13 +1158,15 @@ export function CompanyPanel() {
                                 <b>{card.chart.vacValues[chartIdx]?.toLocaleString("en-AU")}</b>
                                 <span>Vacancies</span>
                               </div>
-                              {card.chart.secondValues && card.chart.second && (
-                                <div className="wttiprow">
-                                  <i className="ccsw alt" />
-                                  <b>{card.chart.secondValues[chartIdx]?.toFixed(2)}</b>
-                                  <span>{card.chart.second.label}</span>
-                                </div>
-                              )}
+                              {card.chart.secondValues &&
+                                card.chart.second &&
+                                chartIdx >= card.chart.secondFrom && (
+                                  <div className="wttiprow">
+                                    <i className="ccsw alt" />
+                                    <b>{card.chart.secondValues[chartIdx]?.toFixed(2)}</b>
+                                    <span>{card.chart.second.label}</span>
+                                  </div>
+                                )}
                             </ChartTooltip>
                           </>
                         )}
