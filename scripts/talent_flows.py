@@ -8,6 +8,7 @@ makes it testable (scripts/test_talent_flows.py) and importable by both the
 collector and the loader.
 
   parse_experience(text, refs)   positions out of the /details/experience/ page
+  positions_from_pdl(record)     positions out of a People Data Labs person record
   moves_from(positions)          the employer changes those positions imply
   person_key(username, salt)     a salted hash; the only per-person id kept
   company_ref(slug, name)        the vendor-style ref the canonical format uses
@@ -148,11 +149,11 @@ def norm(s: str) -> str:
 
 def company_ref(slug: str | None, name: str) -> str:
     """`li:<slug>` when the profile linked the employer's page, else
-    `li-name:<normalised name>`. Only the first can be matched to the roster
+    `name:<normalised name>`. Only the first can be matched to the roster
     without judgement; the second is kept so off-roster volume is countable."""
     if slug:
         return f'li:{slug.lower()}'
-    return f'li-name:{norm(name)}'
+    return f'name:{norm(name)}'
 
 
 _SLUG = re.compile(r'/company/([^/?#]+)')
@@ -265,6 +266,62 @@ def parse_experience(text: str, refs=None) -> ParseResult:
         result.positions.append(Position(
             company=company, slug=slug, title=title, start=start, end=end,
             employment=emp))
+    return result
+
+
+# ── People Data Labs ───────────────────────────────────────────────────────
+#
+# PDL returns work history already structured, so there is no layout to parse:
+# `experience` is a list of {company: {name, id, linkedin_url, ...},
+# start_date, end_date, title: {name, ...}, is_primary}. Documented at
+# docs.peopledatalabs.com/docs/fields (read 2026-09-24):
+#   - dates are YYYY-MM-DD, YYYY-MM or YYYY — "the most specific value we have"
+#   - end_date is null while the person still works there
+#   - company.linkedin_url looks like "linkedin.com/company/<slug>"
+# Mapped onto the same Position the LinkedIn parser produces, so the move
+# rules below apply identically to both sources.
+
+_PDL_DATE = re.compile(r'^(?P<year>\d{4})(?:-(?P<month>\d{2}))?(?:-\d{2})?$')
+
+
+def pdl_month(s) -> Month | None:
+    m = _PDL_DATE.match(str(s or '').strip())
+    if not m:
+        return None
+    month = int(m.group('month')) if m.group('month') else None
+    if month is not None and not 1 <= month <= 12:
+        return None
+    return Month(int(m.group('year')), month)
+
+
+def positions_from_pdl(record: dict) -> ParseResult:
+    """Positions from one PDL person record. An entry with no company name or
+    no readable start date is dropped and counted, as the LinkedIn parser
+    does; an end date that is present but unreadable drops the entry too,
+    because reading it as "still there" would invent a current job."""
+    result = ParseResult()
+    for e in record.get('experience') or []:
+        if not isinstance(e, dict):
+            continue
+        co = e.get('company') or {}
+        name = str(co.get('name') or '').strip()
+        if not name:
+            result.dropped['no_employer'] += 1
+            continue
+        start = pdl_month(e.get('start_date'))
+        if start is None:
+            result.dropped['no_start_date'] += 1
+            continue
+        end_raw = e.get('end_date')
+        end = pdl_month(end_raw) if end_raw else None
+        if end_raw and end is None:
+            result.dropped['unreadable_date'] += 1
+            continue
+        m = _SLUG.search('/' + str(co.get('linkedin_url') or ''))
+        title = str((e.get('title') or {}).get('name') or '')
+        result.positions.append(Position(
+            company=name, slug=m.group(1) if m else None, title=title,
+            start=start, end=end))
     return result
 
 

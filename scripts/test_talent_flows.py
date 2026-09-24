@@ -22,7 +22,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from talent_flows import (  # noqa: E402
     Month, aggregate, clean_lines, company_links, moves_from, parse_experience,
-    person_key,
+    pdl_month, person_key, positions_from_pdl,
 )
 
 failures = 0
@@ -150,7 +150,7 @@ def test_single():
     check('single: Rio Tinto -> BHP dated to the start month',
           ('li:riotinto', 'li:bhp', '2023-03') in pairs, pairs)
     check('single: unlinked employer moves carry a name ref',
-          ('li-name:acme exploration pty ltd', 'li:riotinto', '2020-02') in pairs, pairs)
+          ('name:acme exploration pty ltd', 'li:riotinto', '2020-02') in pairs, pairs)
     check('single: exactly two moves', len(m) == 2, pairs)
 
 
@@ -247,9 +247,66 @@ def test_person_key():
         check('person key: empty salt refused', True)
 
 
+# People Data Labs records, in the shape of PDL's documented example record
+# (docs.peopledatalabs.com/docs/example-record, read 2026-09-24) trimmed to
+# the fields pdl-talent-flows.py asks for with data_include. Synthetic people.
+def _pdl_exp(name, slug, start, end, title='Engineer'):
+    return {'company': {'name': name, 'id': f'pdl-{name[:3]}',
+                        'linkedin_url': f'linkedin.com/company/{slug}' if slug else None},
+            'start_date': start, 'end_date': end, 'title': {'name': title}}
+
+
+def test_pdl_dates():
+    check('pdl dates: day precision reads as a month', pdl_month('2018-10-31') == Month(2018, 10))
+    check('pdl dates: month precision', pdl_month('2015-03') == Month(2015, 3))
+    check('pdl dates: year only keeps no month', pdl_month('2016') == Month(2016, None))
+    check('pdl dates: garbage and nonsense months refused',
+          pdl_month('soon') is None and pdl_month('2020-13') is None and pdl_month(None) is None)
+
+
+def test_pdl_positions():
+    rec = {'id': 'x', 'experience': [
+        # PDL sorts the primary (current) job first, then most recent first.
+        _pdl_exp('BHP', 'bhp', '2023-03-01', None, 'Senior Geologist'),
+        _pdl_exp('Rio Tinto', 'riotinto', '2020-02', '2023-02'),
+        _pdl_exp('Acme Drilling', None, '2018-01', '2019-12'),
+        {'company': {'name': ''}, 'start_date': '2017-01'},
+        _pdl_exp('No Start Pty', None, None, '2017-06'),
+        _pdl_exp('Bad End Pty', None, '2016-01', 'someday'),
+    ]}
+    r = positions_from_pdl(rec)
+    got = [(p.company, p.slug, p.start.iso(), p.end.iso() if p.end else None) for p in r.positions]
+    check('pdl: three usable positions', len(got) == 3, got)
+    check('pdl: slug read from the scheme-less linkedin url', got[0][:2] == ('BHP', 'bhp'), got[0])
+    check('pdl: null end date is a current job', got[0][3] is None, got[0])
+    check('pdl: no linkedin url keeps the name, no slug', got[2][:2] == ('Acme Drilling', None), got[2])
+    check('pdl: refusals counted by reason',
+          r.dropped == {'no_employer': 1, 'no_start_date': 1, 'unreadable_date': 1}, dict(r.dropped))
+    m = [(x.from_ref, x.to_ref, x.month) for x in moves_from(r.positions).moves]
+    check('pdl: moves use the same rules and refs as LinkedIn',
+          m == [('name:acme drilling', 'li:riotinto', '2020-02'),
+                ('li:riotinto', 'li:bhp', '2023-03')], m)
+
+
+def test_pdl_side_role():
+    rec = {'id': 'y', 'experience': [
+        _pdl_exp('BHP', 'bhp', '2015-01', None, 'General Manager'),
+        _pdl_exp('Rio Tinto', 'riotinto', '2019-01', '2021-06', 'Non-Executive Director'),
+        _pdl_exp('Woodside Energy', 'woodside-energy', '2021-08', None, 'Board Member'),
+    ]}
+    m = moves_from(positions_from_pdl(rec).positions).moves
+    check('pdl: board seats are not moves', m == [], m)
+
+
+def test_pdl_empty():
+    r = positions_from_pdl({'id': 'z', 'experience': None})
+    check('pdl: no experience is no positions, not an error', r.positions == [] and not r.dropped)
+
+
 for t in [test_links, test_clean, test_single, test_grouped, test_side_role,
           test_unknown_employer, test_year_only, test_ambiguous, test_boomerang,
-          test_aggregate, test_person_key]:
+          test_aggregate, test_person_key, test_pdl_dates, test_pdl_positions,
+          test_pdl_side_role, test_pdl_empty]:
     t()
 
 if failures:

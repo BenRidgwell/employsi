@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS flow_sample (
 -- Vendor company -> app company. Separate so a matching fix is one row, not
 -- a reload. company_id NULL = confirmed NOT on the roster.
 CREATE TABLE IF NOT EXISTS flow_company_map (
-  ref        TEXT PRIMARY KEY,     -- revelio:<rcid> | lti:<name> | li:<slug> | li-name:<name>
+  ref        TEXT PRIMARY KEY,     -- revelio:<rcid> | lti:<name> | li:<slug> | name:<name>
   company_id TEXT,
   method     TEXT NOT NULL,        -- linkedin-slug | exact-name | manual
   checked_at TEXT NOT NULL

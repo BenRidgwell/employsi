@@ -11,9 +11,58 @@ holds no data.**
 | Server read | `src/employsi/lib/flowsFn.ts` | Built; returns null until tables exist and hold an import |
 | Card section | `components/panels/TalentFlow.tsx`, Hiring tab | Built; renders nothing without data. Not seen rendered |
 | Map arcs | — | Not started |
-| Source: LinkedIn sample | `scripts/collect-talent-flows.py` + `scripts/talent_flows.py` | Built; tested end to end against a **fake** MCP server only. The parser has never seen a real LinkedIn page |
+| **Source: People Data Labs** (chosen) | `scripts/pdl-talent-flows.py` + `talent_flows.positions_from_pdl` | Built; tested end to end against a **fake** PDL API only. Not yet run with a real key |
+| Source: LinkedIn sample (parked) | `scripts/collect-talent-flows.py` + `scripts/talent_flows.py` | Built; tested against a fake MCP server only. Parked: it needs a personal LinkedIn account |
 
-### The LinkedIn-sample source
+### The People Data Labs source
+
+`pdl-talent-flows.py` is a plain REST client of PDL's
+[Person Search API](https://docs.peopledatalabs.com/docs/reference-person-search-api).
+No LinkedIn account is involved. For each seed company it asks for people
+whose work history includes that company's LinkedIn page:
+
+```sql
+SELECT * FROM person
+ WHERE experience.company.linkedin_url = 'linkedin.com/company/<slug>'
+   AND location_country = 'australia'
+```
+
+That matches **current and former** employees, so a seed's "lost to" side is
+observed directly. The LinkedIn route could only see it when the destination
+was also a seed.
+
+Facts it depends on, from PDL's docs (read 2026-09-24):
+
+- **One credit per record returned.** `--max-records` (default 100) caps a run,
+  and each request asks for no more than the budget has left. `--estimate`
+  reads PDL's match `total` per seed for one credit each.
+- **10 requests a minute** by default. Requests are paced 6.5s apart. One 429
+  waits 60s. A second 429, or a 401/402/403, stops the run (exit 3).
+- **`size` is at most 100**, and pagination is by `scroll_token`. The token is
+  kept per seed, so the next run resumes where the last stopped.
+- **Dates** come as `YYYY-MM-DD`, `YYYY-MM` or `YYYY`. A bare year never becomes
+  a move month.
+- **`data_include`** limits each record to its id and the experience fields
+  (employer name, id and LinkedIn url; start and end; title). No name, email,
+  phone, location or profile url is requested, so none arrives. The title
+  is used to drop side roles and then discarded. The local store keeps a
+  salted hash of PDL's record id and the moves.
+
+What the numbers mean: PDL sorts matches by profile completeness, so a budget
+under `total` takes the most complete profiles first. The export marks rows
+`sampled` and carries the per-seed sample size plus PDL's `total` per seed. A
+person reached through two seeds is counted once, under the first seed.
+
+```bash
+export PDL_API_KEY=...
+python scripts/pdl-talent-flows.py --seed bhp=bhp --estimate     # 1 credit
+python scripts/pdl-talent-flows.py --seed bhp=bhp --max-records 100
+python scripts/pdl-talent-flows.py --stats
+python scripts/pdl-talent-flows.py --export out/
+python scripts/flows-to-d1.py out/                               # dry run; --write to load
+```
+
+### The LinkedIn-sample source (parked)
 
 `collect-talent-flows.py` runs **on your machine**, driving
 [`stickerdaniel/linkedin-mcp-server`](https://github.com/stickerdaniel/linkedin-mcp-server)
