@@ -22,6 +22,11 @@
 # Queensland loads alongside APS and Victoria, then prints the generated data
 # file to the job log and uploads it as an artifact.
 #
+# SOUTH AUSTRALIA IS HERE TOO. Its Workforce Information Report is a PDF and
+# nothing else — every edition from 2012 to 2025 — so it needs pdfplumber,
+# whose cryptography binding panics in the authoring sandbox. Reachable from
+# both networks otherwise; it is the sandbox that cannot read it.
+#
 # VICTORIA IS NOT FETCHED HERE and that is not an oversight: vpsc.vic.gov.au
 # answers HTTP 403 to this runner, through a browser as well as plainly. The
 # generator merges, so running Queensland alone keeps Victoria's rows and says
@@ -38,7 +43,7 @@
 # the card labels those tiles "Workforce FTE" rather than putting two different
 # measurements under one word.
 
-name: qld-workforce
+name: gov-workforce
 
 on:
   workflow_dispatch: {}
@@ -51,12 +56,12 @@ on:
       - '.github/workflows/qld-workforce.yml'
 
 concurrency:
-  group: qld-workforce
+  group: gov-workforce
   cancel-in-progress: true
 
 jobs:
   generate:
-    name: qld workforce
+    name: gov workforce
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -79,15 +84,15 @@ jobs:
         with:
           bun-version: latest
 
-      # --only qld, because the jurisdictions need OPPOSITE environments and
+      # --only qld,sa, because the jurisdictions need OPPOSITE environments and
       # no machine can fetch them all. Measured 2026-09-24: Queensland needs a
       # browser and runs only here; Victoria answers HTTP 403 to a datacentre
       # IP — through a browser too, 13 KB of HTML — and runs only from a
       # developer machine. The generator merges rather than rewrites, so this
       # refreshes Queensland and leaves the others exactly as they were, and
       # the file's header records which is which.
-      - name: Generate Queensland workforce data
-        run: python scripts/gen-gov-workforce.py --only qld
+      - name: Generate Queensland + South Australia workforce data
+        run: python scripts/gen-gov-workforce.py --only qld,sa
 
       - name: Show the generated file
         run: |
