@@ -42,11 +42,14 @@ import { AnalystChartView } from "./AnalystChart";
  *  • Its 750ms "thinking" delay is a prop; here the pause is however long the
  *    query actually takes.
  *
- * The prompt row follows the design's later revision: four topics, each opening
- * a menu of three questions above the row, with the thread blurred back while
- * the menu is open. Every one of the twelve was put through detectIntent before
- * being listed — all classify to a real intent, so no menu entry can lead to "I
- * didn't understand that". See PROMPT_TOPICS in lib/analystIntent.ts.
+ * The prompt row follows the design's later revision: topics, each opening a
+ * menu of questions above the row, with the thread blurred back while the menu
+ * is open. Two topics as of 2026-09-24 — Skills, carrying six questions since
+ * the hiring topic merged into it, and Pay with three. Every one of the nine
+ * was put through detectIntent before being listed — all classify to a real
+ * intent, so no menu entry can lead to "I didn't understand that". See
+ * PROMPT_TOPICS in lib/analystIntent.ts; the count lives there, not here, and
+ * this comment has been stale about it before.
  */
 
 interface Msg {

@@ -206,22 +206,37 @@ export function detectSkill(question: string): string | null {
 // two are published in all 56 covered areas, so neither prompt can land on a
 // scope that has no series for it.
 /**
- * The prompt row's three topics, each opening a menu of three questions.
+ * The prompt row's two topics, each opening a menu of questions.
  *
  * From the design, which groups the questions rather than laying them flat.
  * Every question here was run through detectIntent before being listed — all
  * nine classify to a real intent, none to "unknown", so no menu entry can lead
  * to "I didn't understand that". Adding one means checking the same thing.
  *
- * A fourth topic, "Competition", was removed on request 2026-08-06, and so was
- * the intent behind it — the router no longer classifies or answers those
- * questions at all, and they now fall to "unknown" like anything else outside
- * what the archive holds.
+ * TWO TOPICS REMOVED, AND THE TWO REMOVALS ARE NOT THE SAME KIND OF THING.
+ * Confusing them would delete answers the router still gives.
+ *
+ *   "Competition" went on 2026-08-06 and took its intent with it. The router
+ *   no longer classifies or answers those questions at all; they fall to
+ *   "unknown" like anything else outside what the archive holds.
+ *
+ *   "Hiring trend" went on 2026-09-24 and took NOTHING with it. Its three
+ *   questions moved into Skills, still classify to the same intents, and are
+ *   still answered — the change is where they are listed, not what happens
+ *   when they are asked. Typing "how is hiring trending?" works exactly as it
+ *   did. So do not strip trend intents from RULES on the strength of the
+ *   topic row having lost that word.
+ *
+ * Skills leads with the three skill questions so the menu reads as its label,
+ * with the three demand questions under them.
  */
 export const PROMPT_TOPICS: { label: string; questions: string[] }[] = [
   {
-    label: "Hiring trend",
+    label: "Skills",
     questions: [
+      "Which skills are rising fastest?",
+      "Which skills are most in demand?",
+      "Which skills take longest to fill?",
       "How is hiring trending?",
       "How has demand changed since 2019?",
       "Which categories are growing fastest over five years?",
@@ -233,14 +248,6 @@ export const PROMPT_TOPICS: { label: string; questions: string[] }[] = [
       "What do these roles pay?",
       "How does pay compare against the wider market?",
       "Which roles pay the biggest premium?",
-    ],
-  },
-  {
-    label: "Top skills",
-    questions: [
-      "Which skills are rising fastest?",
-      "Which skills are most in demand?",
-      "Which skills take longest to fill?",
     ],
   },
 ];

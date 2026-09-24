@@ -827,6 +827,13 @@ body {
   z-index: 5;
   display: flex;
   flex-direction: column;
+  /* Skills carries six questions since the hiring topic merged into it, so the
+     menu can now be twice the height it was designed at — ~234px. It grows
+     UPWARD from the prompt row, so on a short viewport it would run off the
+     top with the first questions unreachable. 340px clears six comfortably;
+     the vh term is what catches a phone in landscape. */
+  max-height: min(62vh, 340px);
+  overflow-y: auto;
   padding: 6px;
   border: 1px solid var(--border-subtle);
   border-radius: 14px;
