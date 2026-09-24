@@ -776,13 +776,41 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "hongkong-00101": "hanglung.com",
   "hongkong-00175": "geelyauto.com.hk",
   "hongkong-02020": "anta.com",
-  // NOT CHANGED: China Overseas Land & Investment. coli.com.hk is the obvious
-  // candidate and the favicon service does return a real icon for it, but the
-  // site will not answer this sandbox at all, and the icon — a red square with
-  // a single glyph — names no company. That is weaker evidence than the tier
-  // used for the WAF-blocked Canberra agencies, where the icons were each
-  // recognisably the agency's own mark. Left on its guessed domain rather than
-  // recorded on a hunch.
+  // ── 2026-09-24, the rest of the Hong Kong and Singapore badges ───────────
+  // China Overseas Land & Investment was left on its guessed domain by the
+  // pass above, which could not tell whether coli.com.hk was the company: the
+  // site refuses this sandbox, and its icon is a red square holding one glyph
+  // that names nobody. It is them — 0688.HK, and the site's own pages title
+  // themselves "China Overseas Land & Investment Ltd." So the earlier refusal
+  // was right on the evidence it had and wrong on the fact, which is the trade
+  // this file keeps choosing: a blank badge over a guessed one.
+  "hongkong-00688": "coli.com.hk",
+  // CLP Holdings trades as CLP Group; clp.com is somebody else's.
+  "hongkong-00002": "clpgroup.com",
+  //
+  // SEVEN MORE IN THIS REGION NEEDED A FILE, NOT A DOMAIN, because Google's
+  // favicon service holds nothing for any of their real domains — a gap that
+  // is much wider here than in Australia, and the reason this region looked
+  // finished when it was not. Each icon was fetched from the company's own
+  // host and opened before it was saved; see public/logos/.
+  //
+  //   hongkong-00012  Henderson Land     hld.com
+  //   hongkong-00941  China Mobile       chinamobileltd.com — only /en/global/
+  //                                      home.php answers; the bare host does not
+  //   hongkong-00883  CNOOC              cnoocltd.com
+  //   hongkong-00288  WH Group           wh-group.com, which serves a meta
+  //                                      refresh to c/index.php and so looks
+  //                                      like a 56-byte empty page
+  //   hongkong-00003  Towngas            towngas.com — the HOME PAGE refuses
+  //                                      this sandbox but /favicon.ico answers
+  //   hongkong-01929  Chow Tai Fook      ctfjewellerygroup.com
+  //   singapore-g13   Genting Singapore  gentingsingapore.com, behind Cloudflare
+  //   singapore-y92   Thai Beverage      via sustainability.thaibev.com
+  //
+  // Towngas at 16px and Genting at 32px are the whole of what those two
+  // publish. They upscale badly and are kept anyway: a blurry correct mark
+  // beats the alternative, which for both of these was a shared 16px icon off
+  // a parked domain — Towngas and Chow Tai Fook were drawing the SAME image.
   // ── the original Top-150 private set ──────────────────────────────────────
   "priv-abc-tissue": "abctissue.com.au",
   "priv-abn-group": "abngroup.com.au",
