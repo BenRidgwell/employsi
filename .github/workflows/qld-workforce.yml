@@ -47,6 +47,7 @@ on:
       - 'scripts/qld-workforce-probe.py'
       - 'scripts/gen-gov-workforce.py'
       - 'scripts/gov-source-probe.py'
+      - 'scripts/sa-workforce-probe.py'
       - '.github/workflows/qld-workforce.yml'
 
 concurrency:
@@ -71,7 +72,7 @@ jobs:
       - name: Install Playwright + openpyxl
         run: |
           python -m pip install --upgrade pip
-          pip install --quiet playwright openpyxl
+          pip install --quiet playwright openpyxl pdfplumber
           python -m playwright install --with-deps chromium
 
       - uses: oven-sh/setup-bun@v2
@@ -116,3 +117,12 @@ jobs:
         if: always()
         continue-on-error: true
         run: python scripts/gov-source-probe.py
+
+      # South Australia publishes its Workforce Information Report as a PDF and
+      # nothing else — every year from 2012 to 2025. PDF table extraction is
+      # brittle and annual, so this establishes whether the per-agency table is
+      # even in there before anything is built on it.
+      - name: Probe the SA Workforce Information Report
+        if: always()
+        continue-on-error: true
+        run: python scripts/sa-workforce-probe.py
