@@ -92,10 +92,26 @@ export const RETAIL_EMPLOYERS: ReadonlySet<string> = new Set([
   ...Object.keys(CURATED_RETAILERS),
 ]);
 
+/**
+ * Employers whose bare "Engineering Manager" / "Director of Engineering" is a
+ * SOFTWARE role. Measured 2026-09-24 over 90 days: those titles came from REA,
+ * CBA, Macquarie, Zip and Xero (software), and from Marriott (hotel plant and
+ * maintenance), Worley, AECOM and BAE Systems (civil, process, defence). Tech
+ * and financial-services employers are the software side; their engineers
+ * build software. A bank that also runs physical plant is rare enough to wear.
+ */
+const SOFTWARE_SECTOR = /^(?:technology, media & telecom|financial services)$|software|fintech/i;
+export const SOFTWARE_EMPLOYERS: ReadonlySet<string> = new Set(
+  COMPANIES.filter((c) => SOFTWARE_SECTOR.test(c.sector)).map((c) => c.id),
+);
+
 const NONE: ReadonlySet<string> = new Set();
-const RETAIL: ReadonlySet<string> = new Set(["retail"]);
 
 /** The ladder families this employer is known to run, for placeTitle's ctx. */
 export function employerFamilies(companyId: string | null | undefined): ReadonlySet<string> {
-  return companyId && RETAIL_EMPLOYERS.has(companyId) ? RETAIL : NONE;
+  if (!companyId) return NONE;
+  const out = new Set<string>();
+  if (RETAIL_EMPLOYERS.has(companyId)) out.add("retail");
+  if (SOFTWARE_EMPLOYERS.has(companyId)) out.add("software");
+  return out.size ? out : NONE;
 }

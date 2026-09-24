@@ -194,6 +194,12 @@ let placedRows = 0;
 /** Rows placed only because of who advertised them — family → rows. */
 const viaEmployer = new Map<string, number>();
 let hintedRows = 0;
+/** Per family: rows placed, and rows naming it that got no rung — the audit's
+ *  placement share. A row counts toward the family that PLACED it, else the
+ *  one its words name, so no row is counted twice. */
+const placedBy = new Map<string, number>();
+const missedBy = new Map<string, number>();
+const bump = (m: Map<string, number>, k: string) => m.set(k, (m.get(k) ?? 0) + 1);
 
 for (const r of rows) {
   const p = placeTitle(r.title, { employerFamilies: employerFamilies(r.company_id) });
@@ -201,6 +207,7 @@ for (const r of rows) {
     const hint = familyHint(r.title);
     if (hint) {
       hintedRows++;
+      bump(missedBy, hint);
       const m = unplaced.get(hint) ?? new Map<string, number>();
       const t = r.title.trim();
       m.set(t, (m.get(t) ?? 0) + 1);
@@ -210,6 +217,7 @@ for (const r of rows) {
   }
   placedRows++;
   hintedRows++;
+  bump(placedBy, p.family);
   if (p.via === "employer") viaEmployer.set(p.family, (viaEmployer.get(p.family) ?? 0) + 1);
   const employer = r.company_id || norm(r.company);
   const key = employer ? `${employer}|${p.canonical}|${r.hub ?? ""}` : `anon|${r.rid}`; // cannot be merged with anything honestly
@@ -414,8 +422,11 @@ console.log(
 for (const f of FAMILIES) {
   const ns = nodes.filter((n) => n.family === f.id);
   const hinted = viaEmployer.get(f.id);
+  const got = placedBy.get(f.id) ?? 0;
+  const missed = missedBy.get(f.id) ?? 0;
   console.log(
-    `\n${f.label}` +
+    `\n${f.label}  — ${got.toLocaleString()} rows placed, ${missed.toLocaleString()} unplaced ` +
+      `(${((got / Math.max(got + missed, 1)) * 100).toFixed(1)}% placed)` +
       (hinted
         ? `  (${hinted.toLocaleString()} rows placed by the employer hint, not the title)`
         : ""),
@@ -434,6 +445,26 @@ for (const f of FAMILIES) {
     );
   }
   if (AUDIT) {
+    // Pay should rise up a track. A fall is either a real market quirk or a
+    // rung rule putting cheaper roles above dearer ones — worth a look, not
+    // proof. Per country, only between published medians.
+    for (const track of new Set(ns.map((n) => n.track))) {
+      const up = ns.filter((n) => n.track === track).sort((a, b) => a.rung - b.rung);
+      for (const cc of new Set(up.flatMap((n) => Object.keys(n.pay)))) {
+        let prev: PathwayNode | null = null;
+        for (const n of up) {
+          const m = n.pay[cc]?.median;
+          if (m == null) continue;
+          const pm = prev?.pay[cc]?.median;
+          if (prev && pm != null && m < pm)
+            console.log(
+              `  ! pay falls on ${track}: ${cc.toUpperCase()} rung ${prev.rung} $${Math.round(pm / 1000)}k → ` +
+                `rung ${n.rung} $${Math.round(m / 1000)}k`,
+            );
+          prev = n;
+        }
+      }
+    }
     const miss = topN(unplaced.get(f.id) ?? new Map<string, number>(), 25);
     if (miss.length) {
       console.log(`  — unplaced titles naming this family (commonest first):`);

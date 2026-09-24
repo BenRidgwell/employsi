@@ -80,6 +80,28 @@ const FIXTURES: [string, Want][] = [
   ["Barista $32/hr", null], // "hr" in pay text is not human resources
   ["Casual Cleaner - 24 hr roster", null],
   ["People Leader - Customer Service", null], // a line manager, not HR
+  // HR, from the 2026-09-24 audit. Ad boilerplate in the title named a track.
+  ["HR Assistant (Entry Level, Training Provided)", ["hr", "generalist", 1]], // not L&D
+  ["HR Specialist - Training Provided, Up to 4k", ["hr", "generalist", 2]],
+  ["Project Manager - Pharma West - Attractive Remuneration", ["project", "generalist", 3]],
+  ["Construction Manager - Pharma West - Attractive Remuneration", null], // was HR reward 4
+  // Workplace-relations LAWYERS practise employment law; they are not on the ER ladder.
+  ["Senior Associate - Workplace Relations, Employment & Safety", null],
+  ["Workplace Relations Lawyer", null],
+  ["Solicitor, Employment & Industrial Relations", null],
+  ["Senior Legal Counsel - Employee Relations", null],
+  ["Internship - Chief of Staff to the Chief HR Officer", null], // was rung 6
+  ["Head, Employee Relations", ["hr", "employee-relations", 5]],
+  ["HR Driver", null], // heavy rigid licence
+  ["HR Truck Drivers - Casual", null],
+  // A project or product manager whose PRODUCT is HR is on the project ladder.
+  ["Senior Project Manager - HRIS", ["project", "generalist", 4]],
+  ["Principal Product Manager - Talent Acquisition Applications", null],
+  // Bank titles: VP is a grade, the noun is the job.
+  ["HR Business Partner - Vice President", ["hr", "generalist", 3]],
+  ["Vice President, Human Resources", ["hr", "generalist", 5]],
+  // A title spanning several rungs is on none of them.
+  ["Manager / Senior Manager Employee Relations", null],
 
   // Finance.
   ["Accounts Payable Officer", ["finance", "generalist", 1]],
@@ -101,6 +123,26 @@ const FIXTURES: [string, Want][] = [
   ["Mortgage Broker - Finance", null],
   ["Traffic Controller", null],
   ["Credit Controller", null],
+  // Finance, from the 2026-09-24 audit. "CFO Advisory" is a Big-4 practice, not a CFO.
+  ["Analyst - CFO Advisory - Perth", ["finance", "generalist", 2]], // was rung 6
+  ["Finance Advisory Manager - CFO Advisory", ["finance", "generalist", 4]],
+  ["Senior Consultant - EY Finance - CFO Advisory", ["finance", "generalist", 3]],
+  ["Manager, Finance Business Partner - CFO Technology & Innovation", ["finance", "fpa", 4]],
+  ["Accounts Payable Manager", ["finance", "generalist", 4]], // was rung 1
+  ["Accounts Payable Supervisor", ["finance", "generalist", 3]],
+  ["Senior Manager - Trust Treasury and Accounts Payable", ["finance", "treasury", 4]],
+  ["Accounts Receivable Specialist - Commercial Real Estate", ["finance", "generalist", 1]],
+  ["Assistant Vice President, Stress Testing - Global Treasury", ["finance", "treasury", 4]],
+  // Advice, bank sales and financial-crime compliance use the word; not accounting.
+  ["Personal Financial Consultant", null],
+  ["Bancassurance Financial Executive", null],
+  ["Financial Aid Specialist", null],
+  ["Senior Financial Crime Compliance Specialist", null],
+  ["Director of Employee and Community Engagement - Banking and Financial Services", null],
+  // Multi-rung expressions of interest.
+  ["Senior Manager or Director - Treasury and Risk", null],
+  ["EOI - Private Tax Specialists (Senior Associate, Manager, Senior Manager, Director)", null],
+  ["Tax Manager to Director $100k", null],
 
   // Nursing — grade is in the noun.
   ["Assistant in Nursing", ["nursing", "generalist", 1]],
@@ -120,6 +162,19 @@ const FIXTURES: [string, Want][] = [
   // Nursing traps.
   ["Cook - Nursing Home", null],
   ["Veterinary Nurse", null],
+  // Nursing, from the 2026-09-24 audit.
+  ["Registered Nurses - Anaesthetics", ["nursing", "generalist", 2]], // plural
+  ["Licensed Practical Nurse", ["nursing", "generalist", 1]], // the US enrolled nurse
+  ["Registered Practical Nurse", ["nursing", "generalist", 1]], // Canada's
+  ["Nurse Clinical Specialist", ["nursing", "generalist", 3]],
+  ["Senior Staff Nurse", ["nursing", "generalist", 3]],
+  ["Associate Nursing Unit Manager", ["nursing", "generalist", 4]],
+  ["Assistant Nursing Director", ["nursing", "generalist", 4]],
+  ["Associate Director of Nursing", ["nursing", "generalist", 4]],
+  ["Executive Support Officer - Director of Nursing", null],
+  ["Registered Nurse or Enrolled Nurse", null], // two rungs
+  ["Associate Professor - Nursing", null], // academia
+  ["Lecturer in Nursing", null],
 
   // Project management — a PM runs a project, not a team.
   ["Project Coordinator", ["project", "generalist", 1]],
@@ -134,6 +189,25 @@ const FIXTURES: [string, Want][] = [
   ["Project Engineer", null],
   ["Disability Support Worker - NDIS Program", null],
   ["Portfolio Manager - Investment", null],
+  // Project, from the 2026-09-24 audit. Project controls is a ladder of its own.
+  ["Project Scheduler", ["project", "controls", 2]],
+  ["Project Controller", ["project", "controls", 2]],
+  ["Senior Project Planner", ["project", "controls", 3]],
+  ["Project Controls Lead", ["project", "controls", 3]],
+  ["Principal Project Planner", ["project", "controls", 4]],
+  ["Project Controls Manager", ["project", "controls", 4]], // was rung 2
+  ["Senior Manager Project Controls", ["project", "controls", 4]],
+  ["Junior Project Manager", ["project", "generalist", 2]],
+  ["Associate Project Manager", ["project", "generalist", 2]],
+  ["Principal Project Officer", ["project", "generalist", 3]],
+  ["Assistant Project Manager / Project Manager", null],
+  ["Expression of Interest - Project Manager / Senior Project Manager", null],
+  ["Internal Medicine Residency Program Director", null],
+  ["2026 Vacation Program - Operations Melbourne", null], // a student scheme
+  ["2027 BlueScope Cadetship Program", null],
+  ["Project Management Officer", ["project", "generalist", 2]],
+  ["PMO Lead", ["project", "generalist", 3]],
+  ["Senior Manager, Project Management", ["project", "generalist", 4]],
 
   // Software engineering.
   ["Graduate Software Engineer", ["software", "generalist", 1]],
@@ -144,13 +218,24 @@ const FIXTURES: [string, Want][] = [
   ["Tech Lead", null], // no family word — would need a "tech" family match
   ["Lead Software Engineer", ["software", "generalist", 3]],
   ["Staff Software Engineer", ["software", "generalist", 4]],
-  ["Engineering Manager", ["software", "generalist", 4]],
-  ["Head of Engineering", ["software", "generalist", 5]],
+  // A bare "Engineering Manager" is software at REA and building maintenance at
+  // Marriott — only the employer can say which (see the EMPLOYER fixtures).
+  ["Engineering Manager", null],
+  ["Head of Engineering", null],
+  ["Software Engineering Manager", ["software", "generalist", 4]],
+  ["Head of Software Engineering", ["software", "generalist", 5]],
   ["CTO", ["software", "generalist", 6]],
   // Software traps.
   ["Software Sales Executive", ["sales", "generalist", 2]], // leaves software, lands here
   ["Front End Loader Operator", null],
   ["Business Development Manager", ["sales", "generalist", 3]],
+  // Software, from the 2026-09-24 audit.
+  ["Staff Platform Engineer", ["software", "generalist", 4]],
+  ["Costco Perth Airport Front End Cashier Assistant", ["retail", "generalist", 1]],
+  ["Software Asset Management Coordinator", null],
+  ["Executive Business Partner, Office of the CEO and CTO", null],
+  ["Field CTO", null],
+  ["Deputy Chief Technology Officer", ["software", "generalist", 5]],
 
   // Retail — the store ladder.
   ["Retail Assistant", ["retail", "generalist", 1]],
@@ -185,6 +270,24 @@ const FIXTURES: [string, Want][] = [
   ["Store Development Manager", null], // property, not the store ladder
   ["Retail Banking Manager", null],
   ["Retail HR Business Partner", ["hr", "generalist", 3]], // HR is tried first
+  // Retail, from the 2026-09-24 audit.
+  ["Nightfill Manager", ["retail", "generalist", 3]], // was rung 1
+  ["Assistant Nightfill Manager", ["retail", "generalist", 3]],
+  ["Retail Salesperson", ["retail", "generalist", 1]],
+  ["Retail Sales Associates", ["retail", "generalist", 1]],
+  ["Retail Department Leader", ["retail", "generalist", 3]],
+  // "Retail" as the INDUSTRY of a head-office role is not the store ladder.
+  ["Performance Media Specialist - Retail Media", null],
+  ["Retail Marketing Manager", null],
+  ["Retail Implementation Specialist", null],
+  ["Regional Manager - Retail Lease Admin", null],
+  ["Stores and Supply Officer", null],
+  ["Retail Design Manager", null],
+  ["Store Account Manager", null],
+  // Supermarket department managers — in store, beside "Department Manager".
+  ["Store Support Manager - Coles Supermarkets - Dubbo Southlakes", ["retail", "generalist", 3]],
+  ["Fresh Produce Manager - Coles Supermarket Coburg North", ["retail", "generalist", 3]],
+  ["Health and Safety Business Partner - Safer Retail", ["hse", "generalist", 3]],
 
   // Sales — new business and account management.
   ["Sales Development Representative", ["sales", "generalist", 1]],
@@ -211,6 +314,28 @@ const FIXTURES: [string, Want][] = [
   ["Head of Sales", ["sales", "generalist", 5]],
   ["Sales Director", ["sales", "generalist", 5]],
   ["Chief Revenue Officer", ["sales", "generalist", 6]],
+  // Sales, from the 2026-09-24 audit.
+  ["Assistant Director of Sales", ["sales", "generalist", 4]], // was rung 5
+  ["Associate Director of Sales", ["sales", "generalist", 4]],
+  ["Key Account Support", ["sales", "account-management", 1]], // was rung 3
+  ["Key Account Coordinator", ["sales", "account-management", 1]],
+  ["Senior Named Account Executive", ["sales", "generalist", 3]],
+  ["Senior Client Account Manager", ["sales", "account-management", 3]],
+  ["Senior Ready Mix Sales Representative", ["sales", "generalist", 3]],
+  ["Sales Lead Generator", ["sales", "generalist", 1]], // not a sales lead
+  ["SVP Energy & Materials Sales Manager", ["sales", "generalist", 4]], // bank grade
+  ["Senior Vice President, Sales", ["sales", "generalist", 6]],
+  ["SALES SUPERVISOR", ["sales", "generalist", 3]],
+  ["Sales & Marketing Executive", ["sales", "generalist", 2]],
+  ["Manager, Business Development", ["sales", "generalist", 3]],
+  ["Business Development Specialist", ["sales", "generalist", 2]],
+  ["Business Development Coordinator", ["sales", "generalist", 1]],
+  ["Lead - Business Development", ["sales", "generalist", 3]],
+  ["Manager Sales and Distribution", ["sales", "generalist", 4]],
+  ["AVP Sales and Distribution", ["sales", "generalist", 4]],
+  ["Director, Business Development", ["sales", "generalist", 5]],
+  ["Sales Officer", ["sales", "generalist", 2]],
+  ["Account Management Team Leader", ["sales", "account-management", 3]],
   ["Safety Equipment Sales Representative", ["sales", "generalist", 2]], // before HSE
   // Sales traps.
   ["Presales Consultant", null],
@@ -230,6 +355,14 @@ const FIXTURES: [string, Want][] = [
   // HSE traps.
   ["Food Safety Officer", null],
   ["Health and Safety Representative", null],
+  // HSE, from the 2026-09-24 audit.
+  [
+    "Work Health and Safety Advisor APS Level 5 - Chief Operating Officer",
+    ["hse", "generalist", 2],
+  ],
+  ["FIFO Health and Safety Advisors", ["hse", "generalist", 2]],
+  ["Safety Trainer", ["hse", "generalist", 2]],
+  ["Fire Safety Engineering Intern", null],
 ];
 
 let failures = 0;
@@ -250,6 +383,7 @@ for (const [title, want] of FIXTURES) {
 const COLES = "melbourne-col";
 const QANTAS = COMPANIES.find((c) => c.name === "Qantas Airways")?.id ?? "";
 const WESFARMERS = "wes";
+const MARRIOTT = "washington-mar";
 const EMPLOYER: [title: string, companyId: string, want: Want][] = [
   ["Team Member", COLES, ["retail", "generalist", 1]],
   ["Customer Service Manager", COLES, ["retail", "generalist", 3]],
@@ -271,6 +405,21 @@ const EMPLOYER: [title: string, companyId: string, want: Want][] = [
   ["Team Leader - Distribution Centre", COLES, null],
   ["Production Team Member", WESFARMERS, null], // WesCEF, not Bunnings
   ["Sales Consultant", "priv-suttons-motors", ["sales", "generalist", 2]], // car sales
+  // From the 2026-09-24 audit: a retailer's DC and café roles are not store rungs.
+  ["DC Team Member", COLES, null],
+  ["Seasonal Casual DC Team Member", COLES, null],
+  ["Dispatch Team Member", COLES, null],
+  ["Cafe Team Member", COLES, null],
+  ["Dry Goods Manager", COLES, ["retail", "generalist", 3]],
+  ["Dry Goods Manager", "", null],
+  // Bare "Engineering Manager": the employer's sector says which engineering.
+  ["Engineering Manager", "melbourne-rea", ["software", "generalist", 4]],
+  ["Engineering Manager", "sydney-cba", ["software", "generalist", 4]],
+  ["Director of Engineering", "nz-xero", ["software", "generalist", 5]],
+  ["Director of Engineering", MARRIOTT, null], // hotel plant and maintenance
+  ["Assistant Director of Engineering", MARRIOTT, null],
+  ["Substation Engineering Manager", "losangeles-acm", null],
+  ["Project Engineering Manager", "sydney-wor", null],
 ];
 for (const [title, id, want] of EMPLOYER) {
   const got = placeTitle(title, { employerFamilies: employerFamilies(id) });

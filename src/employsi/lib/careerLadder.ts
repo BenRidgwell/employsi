@@ -29,11 +29,13 @@
  * node a rung produces lists its commonest real titles so the band never has
  * to speak for itself.
  *
- * TUNING. The rules were written from typical Australian titles, not measured
- * against the archive. `scripts/gen-career-pathways.ts --audit` lists, per
- * family, the titles that matched a family but got no rung — that list is the
- * worklist. Every fixture in scripts/check-career-ladder.ts is a promise that
- * must survive a tuning pass.
+ * TUNING. The rules were written from typical Australian titles, then tuned
+ * once against 90 days of the archive (2026-09-24: 80.6% → 88% of rows naming
+ * a family placed, and ~2,000 rows moved off a wrong rung). `scripts/
+ * gen-career-pathways.ts --audit` lists, per family, the titles that matched a
+ * family but got no rung — that list is the worklist — and flags any rung that
+ * pays less than the one below it. Every fixture in scripts/check-career-
+ * ladder.ts is a promise that must survive a tuning pass.
  */
 
 export type Rung = 1 | 2 | 3 | 4 | 5 | 6;
@@ -114,7 +116,36 @@ export interface Placement {
  * Director" names the HR Director and an executive; it is on neither ladder.
  */
 const SUPPORT_TO =
-  /\b(assistant|pa|ea|support|coordinator|advisor|adviser)\s+to\b|\bexecutive assistant\b|\bpersonal assistant\b/;
+  /\b(assistant|pa|ea|support|coordinator|advisor|adviser)\s+to\b|\bexecutive assistant\b|\bpersonal assistant\b|\bexecutive (?:support officer|business partner)\b|\bchief of staff\b/;
+
+/**
+ * Titles that span several rungs — "Senior Manager or Director", "Tax Manager
+ * to Director", the Big-4 EOI listing "Senior Associate, Manager, Senior
+ * Manager, Director". Placing one on its top rung inflates that rung's pay and
+ * its bottom rung understates it; it is on no single rung, so it is unplaced.
+ * "Registered or Enrolled Nurse" is the nursing form of the same thing.
+ */
+const MULTI_LEVEL =
+  /\b(?:manager|director|consultant|analyst|associate|advis[oe]r|officer|executive|specialist)\s+(?:or|to)\s+(?:(?:senior|associate|assistant)\s+)?(?:manager|director|consultant|analyst|associate|advis[oe]r|officer|specialist)\b|\bmanager (?:(?:senior|assistant|associate) (?:(?:project|program|programme) )?|(?:project|program|programme) )manager\b|\bsenior manager director\b|\bregistered(?: nurse)? (?:and |or )+enrolled\b|\benrolled(?: nurse)? (?:and |or )+registered\b/;
+
+/**
+ * Words that name a rung BELOW the executive. A C-suite word or a bank grade
+ * alongside one of these is the reporting line or the grade, not the job:
+ * "Analyst - CFO Advisory" is an analyst in EY's CFO Advisory practice, "SVP
+ * Energy & Materials Sales Manager" is a Citi sales manager, "WHS Advisor APS 5
+ * - Chief Operating Officer" names the division. Measured 2026-09-24: 60-odd
+ * such rows sat on finance's rung 6. The noun decides instead.
+ */
+const SUBORDINATE =
+  /\b(?:manager|director|head|lead|leader|supervisor|specialist|associate|analyst|engineer|developer|advis[oe]r|consultant|partner|coordinator|assistant|administrator|broker|auditor|architect|intern)\b/;
+/** `re`, but only in a title with no subordinate noun — see SUBORDINATE. */
+function execOnly(re: RegExp): RegExp {
+  return new RegExp(`^(?!.*${SUBORDINATE.source})(?=.*(?:${re.source}))`);
+}
+
+/** A deputy or assistant to a director / head, or a bank's assistant VP. */
+const DEPUTY =
+  /\b(?:assistant|associate|deputy)\s+(?:director|head|general manager)\b|\bavp\b|\b(?:assistant|associate) vice president\b/;
 
 /**
  * Pay and hours text that would otherwise read as a function. "$38/hr",
@@ -138,8 +169,24 @@ export function cleanTitle(title: string): string {
     .replace(/\bp\s*and\s*c\b/g, "people and culture")
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
+    .replace(PLURAL_ROLE, "$1")
+    .replace(/\bmidwives\b/g, "midwife")
+    .replace(AD_BOILERPLATE, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
+
+/** "Registered Nurses", "HSE Advisors": one rule per noun, not two. */
+const PLURAL_ROLE =
+  /\b(nurse|advis[oe]r|officer|manager|coordinator|engineer|developer|consultant|assistant|accountant|recruiter|specialist|analyst|representative|executive|associate|driver|member|planner|salesperson)s\b/g;
+
+/**
+ * Recruiting copy that lands in the title and names a track it is not.
+ * Measured 2026-09-24: "HR Assistant (Training Provided)" sat on the L&D track,
+ * and "Construction Manager - Attractive Remuneration" on HR's reward track.
+ */
+const AD_BOILERPLATE =
+  /\b(?:(?:full|on the job|hands on) )?training (?:provided|given)\b|\b(?:hands on|on the job) training\b|\b(?:attractive|competitive|excellent|generous|great) (?:remuneration|salary|package|pay)(?: package)?\b/g;
 
 /**
  * The generic seniority rubric, in precedence order. First match wins, so the
@@ -149,18 +196,21 @@ export function cleanTitle(title: string): string {
 const GENERIC_RUNGS: [RegExp, Rung][] = [
   // Executive. "Chief … Officer" and the C-suite acronyms; a bare "chief"
   // (Chief Engineer, Chief Steward) is a senior practitioner, not the board.
-  [/\bchief\b(?:\s+\w+){1,4}\s+officer\b|\bc(?:e|f|o|t|i|p|hr|d|is|m)o\b/, 6],
   [
-    /\bexecutive general manager\b|\begm\b|\bgroup executive\b|\bsenior vice president\b|\bsvp\b/,
+    execOnly(
+      /\bchief\b(?:\s+\w+){1,4}\s+officer\b|\bc(?:e|f|o|t|i|p|hr|d|is|m)o\b|\bsenior vice president\b|\bsvp\b/,
+    ),
     6,
   ],
+  [/\bexecutive general manager\b|\begm\b|\bgroup executive\b/, 6],
 
   // Deputies and associates of a director sit a band below the director.
-  [/\b(?:assistant|associate|deputy)\s+(?:director|head|general manager)\b/, 4],
+  [DEPUTY, 4],
   [
-    /\bhead of\b|\bdirector\b|\bgeneral manager\b|\bgm\b|\bvice president\b|\bvp\b|\bexecutive manager\b/,
+    /\bhead of\b|^head\b(?! office)|\bdirector\b|\bgeneral manager\b|\bgm\b|\bexecutive manager\b/,
     5,
   ],
+  [execOnly(/\bvice president\b|\bvp\b/), 5],
 
   [/\bassistant manager\b|\b2ic\b/, 3],
   [/\bsenior manager\b|\bmanager\b|\bprincipal\b/, 4],
@@ -179,7 +229,7 @@ const GENERIC_RUNGS: [RegExp, Rung][] = [
   [/\bsenior\b|\blead\b|\bteam leader\b|\bsupervisor\b|\bbusiness partner\b/, 3],
 
   [
-    /\bofficer\b|\badvis[oe]r\b|\bconsultant\b|\bgeneralist\b|\banalyst\b|\bspecialist\b|\bpractitioner\b|\bengineer\b|\bdeveloper\b|\baccountant\b|\bexecutive\b|\brecruiter\b|\bpartner\b/,
+    /\bofficer\b|\badvis[oe]r\b|\bconsultant\b|\bgeneralist\b|\banalyst\b|\bspecialist\b|\bpractitioner\b|\bengineer\b|\bdeveloper\b|\baccountant\b|\bexecutive\b|\brecruiter\b|\bpartner\b|\btrainer\b/,
     2,
   ],
   [/\bassistant\b|\badministrator\b|\badmin\b|\bcoordinator\b|\bclerk\b|\bsupport\b/, 1],
@@ -194,7 +244,13 @@ export const FAMILIES: FamilyDef[] = [
     // Payroll reports into HR at some employers and finance at others, and its
     // ladder (officer → payroll manager) does not lead to CPO. Kept out until it
     // is a family of its own. Recruitment AGENCY consultants are a sales ladder.
-    exclude: /\bpayroll\b|\brecruitment consultant\b/,
+    //
+    // Workplace-relations LAWYERS practise employment law — "Senior Associate,
+    // Workplace Relations, Employment & Safety" is a law-firm title. An "HR
+    // Driver" holds a heavy-rigid licence. A project or product manager whose
+    // product is an HR system is on the project ladder, tried later.
+    exclude:
+      /\bpayroll\b|\brecruitment consultant\b|\blawyer\b|\bsolicitor\b|\bcounsel\b|\blegal\b|\bparalegal\b|\bemployment and safety\b|\bassociate employment and\b|\bdriver\b|\btruck\b|\bforklift\b|\b(?:product|project|program|programme) manager\b|\bproduct owner\b/,
     tracks: [
       {
         id: "talent-acquisition",
@@ -235,25 +291,29 @@ export const FAMILIES: FamilyDef[] = [
     id: "finance",
     label: "Finance & accounting",
     match:
-      /\bfinanc(?:e|ial)\b|\baccountant\b|\baccounting\b|\baccounts (?:payable|receivable)\b|\bbookkeeper\b|\b(?:financial|finance|group) controller\b|\bcomptroller\b|\btreasury\b|\bfp and a\b|\bcfo\b|\bchief financial officer\b|\btax\b/,
-    // Advice, lending and insurance are other ladders that use the word.
+      /\bfinance\b|\bfinancial\b(?! services)|\baccountant\b|\baccounting\b|\baccounts (?:payable|receivable)\b|\bbookkeeper\b|\b(?:financial|finance|group) controller\b|\bcomptroller\b|\btreasury\b|\bfp and a\b|\bcfo\b|\bchief financial officer\b|\btax\b/,
+    // Advice, lending and insurance are other ladders that use the word; so
+    // are bank sales ("Bancassurance Financial Executive") and financial-crime
+    // compliance. "Financial Services" is an industry, dropped from `match`.
     exclude:
-      /\bfinancial (?:planner|adviser|advisor|counsellor)\b|\bfinance broker\b|\bmortgage\b|\bloan\b|\blending\b|\binsurance\b|\bfinance (?:sales|consultant)\b|\bsales\b(?! ledger)|\bcollections?\b|\bcustomer service\b/,
+      /\bfinancial (?:planner|adviser|advisor|counsell?or|consultant|coach|aid|crime)\b|\bbancassurance\b|\bfinance broker\b|\bmortgage\b|\bloan\b|\blending\b|\binsurance\b|\bfinance (?:sales|consultant)\b|\bsales\b(?! ledger)|\bcollections?\b|\bcustomer service\b/,
     tracks: [
       {
         id: "fpa",
         label: "FP&A & commercial",
         match:
-          /\bfp and a\b|\bfinancial planning and analysis\b|\bcommercial\b|\bfinance business partner\b|\bfinancial analyst\b/,
+          /\bfp and a\b|\bfinancial planning and analysis\b|\bcommercial\b(?! (?:real estate|property|lending|banking|bank|insurance))|\bfinance business partner\b|\bfinancial analyst\b/,
       },
       { id: "tax", label: "Tax", match: /\btax\b/ },
       { id: "treasury", label: "Treasury", match: /\btreasury\b/ },
     ],
     rungs: [
-      [/\bchief financial officer\b|\bcfo\b/, 6],
-      // Transactional roles are the entry rung whatever noun they carry.
+      [execOnly(/\bchief financial officer\b|\bcfo\b/), 6],
+      // Transactional roles are the entry rung whatever noun they carry —
+      // unless they also name a rung above it: "Accounts Payable Manager" was
+      // on rung 1 until 2026-09-24. Those fall to the generic rubric.
       [
-        /\baccounts (?:payable|receivable)\b|\bbookkeeper\b|\baccounts officer\b|\bassistant accountant\b|\baccounts assistant\b|\bfinance assistant\b/,
+        /^(?!.*\b(?:manager|supervisor|team leader|lead|director|head|controller)\b).*(?:\baccounts (?:payable|receivable)\b|\bbookkeeper\b|\baccounts officer\b|\bassistant accountant\b|\baccounts assistant\b|\bfinance assistant\b)/,
         1,
       ],
       // A Financial Controller heads finance at a mid-size employer and sits
@@ -268,26 +328,32 @@ export const FAMILIES: FamilyDef[] = [
     match: /\bnurse\b|\bnurses\b|\bnursing\b|\bmidwife\b|\bmidwifery\b|\bmidwives\b/,
     // Nursing HOMES advertise cooks, cleaners and carers under the word.
     exclude:
-      /\bnursing home\b.*\b(?:cook|cleaner|chef|maintenance|driver|administration|receptionist)\b|\bveterinary nurse\b|\bdental nurse\b/,
+      /\bnursing home\b.*\b(?:cook|cleaner|chef|maintenance|driver|administration|receptionist)\b|\bveterinary nurse\b|\bdental nurse\b|\bprofessor\b|\blecturer\b|\bacademic\b|\btutor\b|\bschool of nursing\b|\btrainer\b|\bteacher\b|\b(?:physical|occupational) therap|\btherapy assistant\b|\btechnician\b|\btechnical officer\b|\badministration officer\b/,
     tracks: [{ id: "midwifery", label: "Midwifery", match: /\bmidwi/ }],
     generic: false,
     // Nursing titles carry their grade in the noun, not a seniority word, so
     // the family rules do nearly all the work here.
     rungs: [
-      [/\bchief nursing\b|\bexecutive director of nursing\b|\bexecutive director nursing\b/, 6],
-      [/\b(?:assistant|deputy) director of (?:nursing|midwifery)\b|\badon\b/, 4],
+      [/\bexecutive director (?:of )?nursing\b/, 6],
+      [execOnly(/\bchief nursing\b/), 6],
+      [
+        /\b(?:assistant|associate|deputy) (?:director of (?:nursing|midwifery)|nursing director)\b|\badon\b/,
+        4,
+      ],
       [/\bdirector of nursing\b|\bnursing director\b|\bdirector of midwifery\b|\bdon\b/, 5],
       [
-        /\bnurse unit manager\b|\bmidwifery unit manager\b|\bnum\b|\bnurse manager\b|\bclinical nurse consultant\b|\bnurse practitioner\b|\bclinical midwife consultant\b/,
+        /\b(?:nurse|nursing) unit manager\b|\bmidwifery unit manager\b|\bnum\b|\bnurse manager\b|\bclinical nurse consultant\b|\bnurse practitioner\b|\bclinical midwife consultant\b/,
         4,
       ],
       [
-        /\bclinical nurse\b|\bclinical midwife\b|\bnurse educator\b|\bclinical nurse specialist\b|\bclinical nurse educator\b|\bsenior (?:registered )?nurse\b/,
+        /\bclinical nurse\b|\bclinical midwife\b|\bnurse educator\b|\bclinical nurse specialist\b|\bclinical nurse educator\b|\bclinical specialist\b|\bsenior (?:registered |staff )?nurse\b/,
         3,
       ],
       // Before the bare `nurse` below, which would otherwise claim "Enrolled Nurse".
       [
-        /\bassistant in nursing\b|\bnursing assistant\b|\bain\b|\benrolled nurse\b|\bstudent nurse\b/,
+        // The US licensed and Canadian registered PRACTICAL nurse are the
+        // enrolled-nurse grade, not the registered one.
+        /\bassistant in nursing\b|\bnursing assistant\b|\bain\b|\benrolled nurse\b|\bstudent nurse\b|\b(?:licensed|registered) practical nurse\b|\blpn\b|\brpn\b/,
         1,
       ],
       [
@@ -303,19 +369,53 @@ export const FAMILIES: FamilyDef[] = [
     // Project ENGINEERS and accountants are on their own discipline's ladder;
     // a portfolio manager at a fund manages money, not projects.
     exclude:
-      /\bproject (?:engineer|accountant|architect|surveyor|geologist|lawyer|scientist)\b|\bprogram(?:me)?\s+(?:developer|engineer)\b|\binvestment\b|\bfund\b|\bgraduate program\b|\bgraduate programme\b|\bnutrition\b|\bsocial worker\b/,
+      /\bproject (?:engineer|accountant|architect|surveyor|geologist|lawyer|scientist)\b|\bprogram(?:me)?\s+(?:developer|engineer)\b|\binvestment\b|\bfund\b|\bgraduate program\b|\bgraduate programme\b|\bnutrition\b|\bsocial worker\b|\bresidency\b|\bfellowship\b|\bgeologist\b|\bteacher\b|\b(?:vacation|cadetship|cadet|internship|intern|undergraduate|traineeship|graduate|summer|winter|early careers?|accelerator|apprenticeship|school based) (?:\w+ )?program(?:me)?\b/,
+    // Planning, scheduling and cost control: officer → senior → lead → manager,
+    // its own ladder beside the PM one. Until 2026-09-24 "Project Controls
+    // Manager" sat on rung 2 with the project officers.
+    tracks: [
+      {
+        id: "controls",
+        label: "Project controls",
+        match:
+          /\bproject controls?\b|\b(?:project|program|programme) (?:planner|scheduler|controller|cost controller|planning)\b|\bcost controller\b/,
+      },
+    ],
     generic: false,
     rungs: [
+      [
+        /\bhead of project controls\b|\bproject controls director\b|\bdirector (?:of )?project controls\b/,
+        5,
+      ],
+      [
+        /\bmanager project controls?\b|\bproject controls? manager\b|\bprincipal (?:project |program |programme )?(?:planner|scheduler|cost controller|controls?)\b|\bplanning manager\b/,
+        4,
+      ],
+      [
+        /\bsenior (?:project |program |programme )?(?:planner|scheduler|controller|cost controller|controls?|control specialist)\b|\bproject controls? lead\b|\blead (?:project )?(?:planner|scheduler)\b/,
+        3,
+      ],
+      [
+        /\b(?:project|program|programme) (?:planner|scheduler|controller|cost controller)\b|\bproject controls? (?:officer|analyst|specialist|engineer|coordinator)\b|\bproject control specialist\b|\bcost controller\b/,
+        2,
+      ],
       [
         /\bhead of (?:pmo|projects|delivery)\b|\bproject director\b|\bprogram(?:me)? director\b|\bportfolio (?:manager|director)\b|\bpmo manager\b/,
         5,
       ],
-      [/\bsenior project manager\b|\bprogram(?:me)? manager\b/, 4],
+      [
+        /\bsenior project manager\b|\bprogram(?:me)? manager\b|\bsenior manager project management\b/,
+        4,
+      ],
       // A project manager runs a project, not a team — the senior-practitioner
       // band, not the generic "manager".
-      [/\bassistant project manager\b/, 2],
-      [/\bproject manager\b|\bproject lead\b|\bproject leader\b/, 3],
-      [/\b(?:project|program|programme|pmo) (?:officer|analyst|scheduler|controls)\b/, 2],
+      [/\b(?:assistant|associate|junior) project manager\b/, 2],
+      [/\bprincipal (?:project|program|programme) officer\b/, 3],
+      [/\bproject manager\b|\bproject lead\b|\bproject leader\b|\bpmo lead\b/, 3],
+      [
+        /\b(?:project|program|programme|pmo) (?:officer|analyst|scheduler|controls)\b|\bproject management officer\b/,
+        2,
+      ],
       [/\b(?:project|program|programme|pmo) (?:administrator|support|coordinator|assistant)\b/, 1],
     ],
   },
@@ -323,14 +423,24 @@ export const FAMILIES: FamilyDef[] = [
     id: "software",
     label: "Software engineering",
     match:
-      /\bsoftware\b|\bdeveloper\b|\bprogrammer\b|\bfull ?stack\b|\bfront ?end\b|\bback ?end\b|\bdevops\b|\bsite reliability\b|\bsre\b|\bengineering manager\b|\bhead of engineering\b|\bdirector of engineering\b|\bcto\b|\bchief technology officer\b|\bplatform engineer\b/,
+      /\bsoftware\b|\bdeveloper\b|\bprogrammer\b|\bfull ?stack\b|\bfront ?end\b|\bback ?end\b|\bdevops\b|\bsite reliability\b|\bsre\b|\b(?:platform|product|web|mobile|cloud) engineering\b|\bcto\b|\bchief technology officer\b|\bplatform engineer\b/,
+    // A Costco "Front End Cashier" works the checkouts; software asset
+    // management is licensing; a "Field CTO" is presales.
     exclude:
-      /\bsales\b|\baccount (?:manager|executive)\b|\bbusiness development\b|\bsupport\b|\btrainer\b|\bproperty developer\b|\bbusiness developer\b|\bland developer\b|\bloader\b|\boperator\b/,
+      /\bsales\b|\baccount (?:manager|executive)\b|\bbusiness development\b|\bsupport\b|\btrainer\b|\bproperty developer\b|\bbusiness developer\b|\bland developer\b|\bloader\b|\boperator\b|\bcashier\b|\bcheckout\b|\bsoftware (?:asset|licen\w*|administrator)\b|\b(?:field|account) cto\b|\b(?:substation|electrical|mechanical|civil|structural|maintenance|facilities|plant|process|manufacturing|production|hvac|building|mining|rail|traffic|water|asset|project|program|field|customer|systems|design) engineering\b|\bresidences\b/,
+    // A bare "Engineering Manager" or "Director of Engineering" names no
+    // discipline. Measured 2026-09-24: at Marriott it is the hotel's plant and
+    // maintenance, at Worley and AECOM civil and process engineering, at REA,
+    // CBA and Xero software. Only the employer says which (ladderEmployers.ts).
+    employerMatch:
+      /\bengineering manager\b|\bhead of engineering\b|\bdirector of engineering\b|\b(?:vp|vice president)(?: of)? engineering\b|\bengineering director\b/,
     rungs: [
-      [/\bchief technology officer\b|\bcto\b/, 6],
+      [DEPUTY, 4],
+      [/\b(?:deputy|assistant|associate) (?:cto|chief technology officer)\b/, 5],
+      [execOnly(/\bchief technology officer\b|\bcto\b/), 6],
       [/\bhead of engineering\b|\bdirector of engineering\b|\bvp engineering\b/, 5],
       // The senior IC track: paid and scoped like a manager, manages no one.
-      [/\bstaff (?:software )?engineer\b|\bprincipal\b|\barchitect\b|\bengineering manager\b/, 4],
+      [/\bstaff (?:\w+ ){0,2}engineer\b|\bprincipal\b|\barchitect\b|\bengineering manager\b/, 4],
       [/\btech(?:nical)? lead\b|\blead (?:developer|engineer|software engineer)\b/, 3],
     ],
   },
@@ -346,37 +456,53 @@ export const FAMILIES: FamilyDef[] = [
     // and professions that work in or for shops are their own ladders; head
     // office buying and planning is a different ladder not yet modelled.
     exclude:
-      /\bstore ?(?:person|man|men)\b|\bstore (?:development|design|planning)\b|\bstores (?:officer|coordinator|clerk|supervisor|person)\b|\bwarehouse\b|\bdistribution cent|\bcold store\b|\bretail (?:bank|banking|lending|energy|credit)\b|\bpharmac|\bbutcher\b|\bbaker\b|\bbarista\b|\bchef\b|\bcook\b|\bshop ?fitter\b|\bmachine shop\b|\bshop floor\b|\bworkshop\b|\belectrician\b|\bmechanic\b|\btechnician\b|\bdriver\b|\bforklift\b|\bsecurity\b|\bcleaner\b|\bloss prevention\b|\boptometrist\b|\bhairdresser\b|\bsoftware\b|\bdeveloper\b|\bengineer\b|\banalyst\b|\bplanner\b|\bbuyer\b|\ballocator\b|\bproduction\b|\bmanufacturing\b|\b(?:plant|process|machine) operator\b|\blaborator/,
+      /\bstore ?(?:person|man|men)\b|\bstore (?:development|design|planning)\b|\bstores (?:officer|coordinator|clerk|supervisor|person)\b|\bwarehouse\b|\bdistribution cent|\bcold store\b|\bretail (?:bank|banking|lending|energy|credit)\b|\bpharmac|\bbutcher\b|\bbaker\b|\bbarista\b|\bchef\b|\bcook\b|\bshop ?fitter\b|\bmachine shop\b|\bshop floor\b|\bworkshop\b|\belectrician\b|\bmechanic\b|\btechnician\b|\bdriver\b|\bforklift\b|\bsecurity\b|\bcleaner\b|\bloss prevention\b|\boptometrist\b|\bhairdresser\b|\bsoftware\b|\bdeveloper\b|\bengineer\b|\banalyst\b|\bplanner\b|\bbuyer\b|\ballocator\b|\bproduction\b|\bmanufacturing\b|\b(?:plant|process|machine) operator\b|\blaborator|\bdc\b|\bdispatch\b|\bcafe\b|\bstocktake\b|\bstores and\b|\bsupply officer\b|\blease\b|\bleasing\b|\bproperty\b|\bcommercial\b|\bmedia\b|\bmarketing\b|\bsafety\b|\bwhs\b|\bhse\b/,
     // Only for employers in ladderEmployers.ts's retail set: store roles
     // advertised without a retail word. Deliberately absent — "Duty Manager"
     // (Endeavour's pubs, airports, cinemas) and a bare "Supervisor" or "Team
     // Leader" (distribution centres, Wesfarmers' chemical plants).
     employerMatch:
-      /\bteam member\b|\bcrew member\b|\bcustomer service (?:assistant|advis[oe]r|team member|supervisor|manager)\b|\bcustomer (?:assistant|advis[oe]r)\b|\bdepartment manager\b|\bassistant manager\b|\b2ic\b|\bsecond in charge\b|\bconsole operator\b|\bsales (?:consultant|associate|advis[oe]r)\b|\bservice (?:team member|assistant)\b/,
+      /\bteam member\b|\bcrew member\b|\bcustomer service (?:assistant|advis[oe]r|team member|supervisor|manager)\b|\bcustomer (?:assistant|advis[oe]r)\b|\bdepartment manager\b|\bassistant manager\b|\b2ic\b|\bsecond in charge\b|\bconsole operator\b|\bsales (?:consultant|associate|advis[oe]r)\b|\bservice (?:team member|assistant)\b|\b(?:fresh produce|produce|dry goods|grocery|deli|bakery|seafood|dairy|frozen|fresh food) manager\b/,
     tracks: [
       { id: "visual-merchandising", label: "Visual merchandising", match: /\bvisual merchandis/ },
     ],
-    // The generic rubric is right for "Store Manager" (4), "Retail Director"
-    // (5) and "Assistant Manager" (3); these rules correct the rest. Retail
-    // compresses: area, state and national managers all share rung 5, and the
-    // node's titles show which.
+    // The DCs, cafés and stocktakes above are a retailer's other workforces;
+    // "retail" in a head-office title ("Retail Media", "Retail Marketing
+    // Manager", "Retail Lease Admin") is the INDUSTRY, not the store ladder.
+    //
+    // No generic rubric: it read those head-office titles as store rungs —
+    // "Performance Media Specialist - Retail Media" was a rung-2 store role.
+    // Every rung is enumerated. Retail compresses: area, state and national
+    // managers all share rung 5, and the node's titles show which.
+    generic: false,
     rungs: [
+      [
+        /\bhead of (?:retail|stores?|store operations)\b|\b(?:retail|store operations|stores) director\b|\bdirector (?:of )?(?:national )?(?:retail|stores|store operations)\b|\bgeneral manager (?:retail|stores|store operations)\b/,
+        5,
+      ],
       [
         /\b(?:area|district|regional|state|national|multi ?site|cluster) (?:retail |store |operations |sales )?manager\b/,
         5,
       ],
       [
-        /\b(?:trainee|graduate) (?:store |retail )?manager\b|\bmanager in training\b|\bassistant (?:store |retail |shop |boutique )?manager\b|\bdeputy (?:store|retail|shop|boutique) manager\b|\b2ic\b|\bsecond in charge\b|\bdepartment manager\b|\bduty manager\b|\bcustomer service manager\b|\bsenior visual merchandiser\b/,
+        /\b(?:trainee|graduate) (?:store |retail )?manager\b|\bmanager in training\b|\bassistant (?:store |retail |shop |boutique )?manager\b|\bdeputy (?:store|retail|shop|boutique) manager\b|\b2ic\b|\bsecond in charge\b|\bdepartment manager\b|\bduty manager\b|\bcustomer service manager\b|\bsenior visual merchandiser\b|\bnight ?fill manager\b|\bassistant (?:\w+ ){1,3}manager\b|\bdepartment lead(?:er)?\b|\bstore support manager\b|\b(?:fresh produce|produce|dry goods|grocery|deli|bakery|seafood|dairy|frozen|fresh food) manager\b/,
         3,
       ],
+      // Until 2026-09-24 "Nightfill Manager" (430 rows with its assistants) was
+      // rung 1: the rung-1 rule below matched `nightfill` first.
+      [
+        /\b(?:store|retail|shop|boutique|flagship|outlet|retail store|retail sales|retail operations|store operations|store business|thrift shop)\s+manager\b|\bvisual merchandising manager\b/,
+        4,
+      ],
+      [/\bvisual merchandis\w* director\b|\bdirector (?:of )?visual merchandis/, 5],
       // A store supervisor or team leader is a key holder, not a senior
       // professional — the generic rubric would say 3.
       [
-        /\bkey ?holder\b|\bsupervisor\b|\bteam leader\b|\bsenior (?:sales|retail|store|shop) (?:assistant|consultant|associate)\b|\bvisual merchandiser\b|\bvisual merchandising (?:coordinator|specialist)\b/,
+        /\bkey ?holder\b|\bsupervisor\b|\bteam leader\b|\bsenior (?:sales|retail|store|shop) (?:assistant|consultant|associate)\b|\bvisual merchandiser\b|\bvisual merchandising (?:coordinator|specialist)\b|\bretail sales (?:specialist|executive)\b|\bretail executive\b/,
         2,
       ],
       [
-        /\b(?:sales|retail|store|shop) (?:assistant|consultant|associate|advis[oe]r)\b|\bteam member\b|\bcrew member\b|\bcashier\b|\bcheckout\b|\bnight ?fill\b|\bmerchandiser\b|\bcustomer (?:service )?(?:assistant|advis[oe]r)\b|\bconsole operator\b|\bservice assistant\b/,
+        /\b(?:sales|retail|store|shop) (?:assistant|consultant|associate|advis[oe]r)\b|\bteam member\b|\bcrew member\b|\bcashier\b|\bcheckout\b|\bnight ?fill\b|\bmerchandiser\b|\bcustomer (?:service )?(?:assistant|advis[oe]r)\b|\bconsole operator\b|\bservice assistant\b|\bsalesperson\b/,
         1,
       ],
     ],
@@ -404,31 +530,44 @@ export const FAMILIES: FamilyDef[] = [
     generic: false,
     rungs: [
       [
-        /\bchief (?:revenue|sales|commercial) officer\b|\bexecutive general manager\b|\bgroup executive\b|\bsvp\b|\bsenior vice president\b/,
+        execOnly(
+          /\bchief (?:revenue|sales|commercial) officer\b|\bsvp\b|\bsenior vice president\b/,
+        ),
         6,
       ],
+      [/\bexecutive general manager\b|\bgroup executive\b/, 6],
+      // Before the director rule: "Assistant Director of Sales" (23 roles) was
+      // on rung 5 until 2026-09-24.
+      [DEPUTY, 4],
       [
-        /\bhead of (?:sales|business development|partnerships|account management|revenue)\b|\bsales director\b|\bdirector of (?:sales|business development)\b|\bbusiness development director\b|\bnational sales manager\b|\bgeneral manager\b|\bvp\b|\bvice president\b/,
+        /\bhead of (?:sales|business development|partnerships|account management|revenue)\b|\bsales director\b|\bdirector (?:of )?(?:sales|business development)\b|\bbusiness development director\b|\bnational sales manager\b|\bgeneral manager\b/,
         5,
       ],
-      [/\bassistant sales manager\b/, 3],
+      [execOnly(/\bvp\b|\bvice president\b/), 5],
+      [/\bassistant (?:\w+ ){0,2}manager\b/, 3],
       // A sales manager leads reps. An ACCOUNT manager does not, and is below.
       [
-        /\baccount director\b|\b(?:state|regional|area) sales manager\b|\bsales manager\b|\bsales and marketing manager\b/,
+        /\baccount director\b|\b(?:state|regional|area) sales manager\b|\bsales manager\b|\bsales and marketing manager\b|\bmanager sales\b/,
         4,
       ],
       // Entry markers after the manager rungs, so "Graduate Account Manager"
       // is 1 and a (rare) "Junior Sales Manager" is not.
       [
-        /\bgraduate\b|\btrainee\b|\bjunior\b|\bcadet\b|\bintern\b|\bsdr\b|\bbdr\b|\b(?:sales|business) development representative\b|\bsales (?:support|administrator|admin|coordinator)\b|\btelesales\b/,
+        /\bgraduate\b|\btrainee\b|\bjunior\b|\bcadet\b|\bintern\b|\bsdr\b|\bbdr\b|\b(?:sales|business) development rep(?:resentative)?\b|\b(?:sales|key account|account|business development) (?:support|administrator|admin|coordinator|assistant)\b|\btelesales\b|\blead generat/,
         1,
       ],
       [
-        /\bkey account\b|\bnational account manager\b|\bstrategic account\b|\bsenior account (?:manager|executive)\b|\benterprise account executive\b|\bbusiness development manager\b|\bbdm\b|\bsenior business development\b|\bsales (?:team )?(?:leader|lead)\b|\bsenior sales (?:executive|representative|consultant)\b/,
+        /\bkey account\b|\bnational account manager\b|\bstrategic account\b|\bsenior account (?:manager|executive)\b|\benterprise account executive\b|\bbusiness development manager\b|\bbdm\b|\bsenior business development\b|\bsales (?:team )?(?:leader|lead)\b|\baccount management team leader\b|\bsales supervisor\b|\bmanager business development\b|\bbusiness development (?:lead|partner)\b|\blead business development\b/,
+        3,
+      ],
+      // "Senior Named Account Executive", "Senior Ready Mix Sales
+      // Representative": the qualifier sits between "senior" and the noun.
+      [
+        /\bsenior (?:\w+ ){0,2}account (?:manager|executive)\b|\bsenior (?:\w+ ){0,3}sales (?:executive|representative|rep|consultant)\b/,
         3,
       ],
       [
-        /\baccount (?:manager|executive)\b|\bbusiness development (?:executive|consultant|officer|associate)\b|\bbde\b|\bsales (?:executive|representative|rep|consultant|specialist|agent|advis[oe]r|associate|person|professional)\b|\bterritory manager\b|\binside sales\b|\bfield sales\b|\bnew business\b/,
+        /\baccount (?:manager|executive)\b|\bbusiness development (?:executive|consultant|officer|associate|specialist)\b|\bsales and marketing (?:executive|consultant|representative)\b|\baccount management specialist\b|\bbde\b|\bsales (?:executive|representative|rep|consultant|specialist|agent|advis[oe]r|associate|person|professional|officer)\b|\bterritory manager\b|\binside sales\b|\bfield sales\b|\bnew business\b/,
         2,
       ],
     ],
@@ -441,7 +580,7 @@ export const FAMILIES: FamilyDef[] = [
     // Other people's "safety", and the elected health-and-safety rep, which is
     // a duty an employee holds, not a job.
     exclude:
-      /\bfood safety\b|\bpatient safety\b|\bchild safety\b|\bcyber\b|\bsafety (?:glass|boots)\b|\bhsr\b|\bsafety rep(?:resentative)?\b|\bproduct safety\b|\bdrug safety\b|\bpharmacovigilance\b/,
+      /\bfood safety\b|\bpatient safety\b|\bchild safety\b|\bcyber\b|\bsafety (?:glass|boots)\b|\bhsr\b|\bsafety rep(?:resentative)?\b|\bproduct safety\b|\bdrug safety\b|\bpharmacovigilance\b|\bfire safety engineer|\blawyer\b|\bsolicitor\b|\bcounsel\b|\bemployment and safety\b/,
     rungs: [[/\bsafety superintendent\b|\bhse superintendent\b/, 4]],
   },
 ];
@@ -472,7 +611,7 @@ function canonicalOf(raw: string, placed: Placed, ctx: PlaceContext | undefined)
 type Placed = Omit<Placement, "canonical">;
 
 function placeClean(t: string, ctx: PlaceContext | undefined): Placed | null {
-  if (!t || SUPPORT_TO.test(t)) return null;
+  if (!t || SUPPORT_TO.test(t) || MULTI_LEVEL.test(t)) return null;
   for (const f of FAMILIES) {
     const byTitle = f.match.test(t);
     const byEmployer =
@@ -512,11 +651,15 @@ export function placeTitle(title: string, ctx?: PlaceContext): Placement | null 
   return { ...placed, canonical: canonicalOf(title, placed, ctx) };
 }
 
-/** Which family a title's function words belong to, ignoring rung and
- *  exclusions — the audit uses it to find titles a family failed to place. */
+/** Which family CLAIMS a title whose rung could not be read — the audit's
+ *  worklist of titles a family failed to place. Titles left out on purpose
+ *  (an exclusion, someone else's support role, a multi-rung title) are not
+ *  failures and are not counted: until 2026-09-24 they were, and "HR Driver"
+ *  and "Project Engineer" topped the lists every run. */
 export function familyHint(title: string): string | null {
   const t = cleanTitle(title);
-  return FAMILIES.find((f) => f.match.test(t))?.id ?? null;
+  if (!t || SUPPORT_TO.test(t) || MULTI_LEVEL.test(t)) return null;
+  return FAMILIES.find((f) => f.match.test(t) && !f.exclude?.test(t))?.id ?? null;
 }
 
 // ---- The generated dataset's shape (src/employsi/data/careerPathways.ts) ----
