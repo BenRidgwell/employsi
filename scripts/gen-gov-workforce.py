@@ -805,39 +805,56 @@ NT_INDEX = 'https://ocpe.nt.gov.au/workforce-planning/staffing-numbers'
 NT_WARM = 'https://ocpe.nt.gov.au/'
 
 
-def _nt_rows(text):
-    """Agency -> (newest quarter, same quarter a year earlier) from one page.
+def _nt_rows(page):
+    """Agency -> (newest quarter, same quarter a year earlier), from one page.
 
-    THE THOUSANDS SEPARATOR IS A SPACE, not a comma: the table reads
-    "Attorney-General & Justice (+ Corrections) 1 512 1 495 1 476 1 449 1 473".
-    Splitting on whitespace turns one agency's five quarters into ten numbers,
-    so the digits are re-joined before anything is read. A parser that missed
-    this would report Attorney-General at 1 rather than 1,512 and would look
-    like a small agency rather than a broken parse.
+    COLUMNS, NOT A REGEX OVER THE LINE, and the first attempt shows why. The
+    table reads
 
-    ".." means no change and "-" a negative in the change columns; neither is a
-    staffing figure and both sit AFTER the five quarters, so only the first
-    five numbers on a line are taken.
+        Aboriginal Areas Protection Authority ^ 29 29 27 25 25 .. - 2 - 2 .. - 4
+        Attorney-General & Justice (+ Corrections) 1 512 1 495 1 476 1 449 ...
+
+    so a line does not end in digits — five change columns follow, holding
+    ".." for no change and a detached "-" for a negative. A pattern anchored to
+    the end of the line matches nothing at all, which is what the first version
+    did.
+
+    THE THOUSANDS SEPARATOR IS A SPACE, and that cannot be undone by looking at
+    the text. "1 512" is one number and "619 620" is two, and no rule over
+    digits alone separates them: both are a short group followed by a group of
+    three. The x-position does separate them, because the two halves of "1 512"
+    sit inside one column and 619 and 620 sit in different ones. So the words
+    are clustered by where they are on the page rather than by what they look
+    like.
     """
+    words = page.extract_words(keep_blank_chars=False, use_text_flow=False)
+    lines = {}
+    for w in words:
+        lines.setdefault(round(w['top'] / 3), []).append(w)
     out = {}
-    for line in text.split('\n'):
-        line = line.rstrip()
-        # Name first, then the figures. The name may hold & ( ) + , - and a
-        # footnote caret, so it is whatever precedes the first standalone digit.
-        m = re.match(r'^\s*([A-Za-z][^0-9]*?)\s*\^?\s+((?:\d[\d ]*)+)$', line)
-        if not m:
+    for _, ws in sorted(lines.items()):
+        ws.sort(key=lambda w: w['x0'])
+        name_parts, cols, cur, last_x1 = [], [], [], None
+        for w in ws:
+            t = w['text']
+            if not re.fullmatch(r'[\d,]+', t):
+                if not cols and not cur:
+                    name_parts.append(t)
+                continue
+            # A gap wider than a few points ends the column; digits closer than
+            # that are the two halves of one number.
+            if cur and last_x1 is not None and w['x0'] - last_x1 > 4:
+                cols.append(''.join(cur))
+                cur = []
+            cur.append(t.replace(',', ''))
+            last_x1 = w['x1']
+        if cur:
+            cols.append(''.join(cur))
+        name = ' '.join(name_parts).strip(' ^*.')
+        vals = [int(c) for c in cols if c.isdigit()]
+        if len(name) < 4 or len(vals) < 5:
             continue
-        name = m.group(1).strip(' ^*')
-        # Re-join space-separated thousands: "1 512 1 495" -> ["1512", "1495"].
-        nums = re.findall(r'\d(?:[\d ]*\d)?', m.group(2))
-        vals = []
-        for n in nums:
-            n = n.replace(' ', '')
-            if n.isdigit():
-                vals.append(int(n))
-        if len(vals) < 5 or not name or len(name) < 4:
-            continue
-        now, prev = vals[4], vals[0]     # Jun qtr this year, Jun qtr last year
+        now, prev = vals[4], vals[0]      # Jun qtr this year, Jun qtr last year
         if now > 0 and prev > 0:
             out[name] = (now, prev)
     return out
@@ -899,9 +916,16 @@ def load_nt():
     rows = {}
     with pdfplumber.open(_io.BytesIO(blob)) as pdf:
         for pg in pdf.pages:
-            rows.update(_nt_rows(pg.extract_text() or ''))
-    if not rows:
-        raise RuntimeError(f'NT: parsed no agency rows from {newest}')
+            rows.update(_nt_rows(pg))
+        if not rows:
+            # A PARSE FAILURE SHOULD TEACH THE FORMAT, not just stop. This
+            # document can only be fetched from a runner, so a bare "parsed no
+            # rows" costs a whole round trip to learn what it actually looks
+            # like — and the format has already changed twice in this archive.
+            for pg in pdf.pages[:2]:
+                for line in (pg.extract_text() or '').split('\n')[:14]:
+                    print(f'    NT raw | {line[:104]}', file=sys.stderr)
+            raise RuntimeError(f'NT: parsed no agency rows from {newest}')
     asof = f'{list(MONTH)[month - 1][:3].title()} {year}' if month else str(year)
     return rows, asof, 'fte'
 
