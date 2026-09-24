@@ -39,6 +39,8 @@ on:
       - 'src/employsi/lib/jobHistoryFn.ts'
       - 'src/employsi/data/companies.ts'
       - 'src/employsi/data/hiringAreas.ts'
+      - 'src/employsi/lib/careerLadder.ts'
+      - 'scripts/check-career-ladder.ts'
       - '.github/workflows/skills-check.yml'
   pull_request:
     paths:
@@ -67,6 +69,8 @@ on:
       - 'src/employsi/lib/jobHistoryFn.ts'
       - 'src/employsi/data/companies.ts'
       - 'src/employsi/data/hiringAreas.ts'
+      - 'src/employsi/lib/careerLadder.ts'
+      - 'scripts/check-career-ladder.ts'
   workflow_dispatch: {}
 
 jobs:
@@ -162,6 +166,14 @@ jobs:
       # figure: a skill priced off one tiny occupation, a year read from the
       # average column instead of the median, a baseline stranded under a skill
       # name the taxonomy no longer has.
+      # Career pathways place every title on a ladder with first-match-wins
+      # regexes, so a rule added for one title can re-place thousands of others
+      # and every pathway still renders six plausible rungs. The fixtures are the
+      # only place that is visible, including the traps ("Barista $32/hr" is not
+      # human resources; a Project Manager is not a people manager).
+      - name: Assert career-ladder titles place on the right rung
+        run: bun run scripts/check-career-ladder.ts
+
       - name: Assert the salary baseline's invariants
         run: bun run scripts/check-salary-baseline.ts
 
