@@ -4,8 +4,8 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   APS (federal): 101 agencies published, as at Dec 2025
-//   Victoria: 261 agencies published, as at Jun 2024
+//   APS (federal): 101 agencies published as at Dec 2025 — refreshed 2026-09-24
+//   Victoria: 261 agencies published as at Jun 2024 — refreshed 2026-09-24
 //
 // An agency the source does not report is ABSENT, never zero — the card shows
 // an em dash and says no figure was collected. See the generator for which

@@ -179,6 +179,32 @@ def norm(s):
     return re.sub(r'[^a-z0-9]', '', s)
 
 
+
+def read_existing():
+    """The rows and the per-jurisdiction provenance already in the output file.
+
+    A run that cannot reach a source keeps what is there rather than deleting
+    it, so the file has to be read before it is written. Parsed with a regex
+    rather than imported, because it is TypeScript and this is Python, and a
+    shape it does not recognise is treated as no previous file at all — the
+    worst case is a rewrite, which is what used to happen every time.
+    """
+    try:
+        txt = open(OUT).read()
+    except FileNotFoundError:
+        return {}, {}
+    rows = {}
+    for m in re.finditer(r'^  "([^"]+)": \{ ([^}]*) \},', txt, re.M):
+        body = {}
+        for k, v in re.findall(r'(\w+): ("(?:[^"]*)"|-?[\d.]+)', m.group(2)):
+            body[k] = v.strip('"') if v.startswith('"') else float(v)
+        rows[m.group(1)] = body
+    meta = {}
+    for m in re.finditer(r'^//   ([^:]+): (.+?)(?: — (?:refreshed|KEPT).*)?$', txt, re.M):
+        meta[m.group(1)] = m.group(2)
+    return rows, meta
+
+
 # ── APS ─────────────────────────────────────────────────────────────────────
 def load_aps():
     """Table 2: agency by employment category, two Decembers in one sheet.
@@ -362,12 +388,12 @@ SOURCES = {
 def main():
     only = None
     if '--only' in sys.argv:
-        only = sys.argv[sys.argv.index('--only') + 1]
+        only = {k.strip() for k in sys.argv[sys.argv.index('--only') + 1].split(',') if k.strip()}
 
     # The roster, read straight out of the app so the ids cannot drift.
     data, meta, failed = {}, [], []
     for key, (label, load, span) in SOURCES.items():
-        if only and key != only:
+        if only and key not in only:
             continue
         try:
             rows, asof, unit = load()
@@ -417,23 +443,32 @@ console.log(JSON.stringify(COMPANIES.filter(c => c.sector === "Government")
             rec['unit'] = unit
         out[a['id']] = rec
 
-    # A SOURCE THAT FAILED MUST NOT BE WRITTEN OUT AS AN EMPTY ONE. This file
-    # is rewritten wholesale, so a browser that would not start, or a portal
-    # having a bad morning, silently deletes that jurisdiction's agencies and
-    # every one of their cards goes back to "no workforce figure collected"
-    # with nothing to say why. gen-headcount.py has the same shape and the same
-    # hazard; there it was caught by diffing before and after, which is a
-    # habit rather than a guarantee. Here the generator simply refuses.
+    # NO SOURCE CAN BE FETCHED FROM EVERY ENVIRONMENT, so the file is MERGED
+    # rather than rewritten. Measured 2026-09-24, and the two are opposites:
     #
-    # --only is the deliberate exception: asking for one jurisdiction is asking
-    # for a partial file. --allow-partial is the other, for when a source is
-    # known to be down and the rest is worth refreshing anyway.
-    if failed and not only and '--allow-partial' not in sys.argv:
-        print(f'REFUSING TO WRITE: {", ".join(failed)} loaded nothing. '
-              f'Re-run when the source is reachable, or pass --allow-partial '
-              f'to drop {"it" if len(failed) == 1 else "them"} on purpose.',
-              file=sys.stderr)
-        return 1
+    #   Queensland needs a browser and only runs on the GitHub runner, because
+    #   the authoring sandbox has no Chromium that reaches the internet.
+    #   Victoria answers HTTP 403 to a datacentre IP — through a browser too,
+    #   13 KB of HTML — and only runs from a developer machine.
+    #
+    # A wholesale rewrite therefore cannot ever hold both: whichever machine
+    # ran last would delete the other's jurisdictions, and every one of those
+    # cards would go back to "no workforce figure collected" with nothing to
+    # say why. So a run updates the jurisdictions it actually loaded and keeps
+    # the rest exactly as they were.
+    #
+    # KEEPING ROWS IS ONLY HONEST IF STALENESS IS VISIBLE, so the header
+    # records when each jurisdiction was last refreshed, and rows that were
+    # kept rather than re-fetched say so.
+    prev_rows, prev_meta = read_existing()
+    for cid, rec in prev_rows.items():
+        pre = 'aps' if cid.startswith('aps-') else cid.split('-gov-')[0]
+        if pre not in data:          # not attempted this run — keep it
+            out.setdefault(cid, rec)
+    kept = [(lbl, m) for lbl, m in prev_meta.items() if lbl not in {x[0] for x in meta}]
+    if failed:
+        print(f'  not refreshed this run: {", ".join(failed)} '
+              f'(previous rows kept)', file=sys.stderr)
 
     L = ['// GENERATED — do not edit by hand. Run scripts/gen-gov-workforce.py.',
          '// Real public-sector headcount by agency, for the jurisdictions that publish',
@@ -441,9 +476,12 @@ console.log(JSON.stringify(COMPANIES.filter(c => c.sector === "Government")
          '// and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.',
          '//',
          '// Sources, as at the run that produced this file:']
+    today = __import__('datetime').date.today().isoformat()
     for label, asof, n, unit in meta:
         what = 'agencies published' if unit == 'headcount' else 'agencies published, as FTE not headcount,'
-        L.append(f'//   {label}: {n} {what} as at {asof}')
+        L.append(f'//   {label}: {n} {what} as at {asof} — refreshed {today}')
+    for label, line in kept:
+        L.append(f'//   {label}: {line} — KEPT, not refreshed this run')
     L += ['//',
           '// An agency the source does not report is ABSENT, never zero — the card shows',
           '// an em dash and says no figure was collected. See the generator for which',
@@ -452,9 +490,9 @@ console.log(JSON.stringify(COMPANIES.filter(c => c.sector === "Government")
           'export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {']
     for cid in sorted(out):
         v = out[cid]
-        unit = f", unit: {json.dumps(v['unit'])}" if 'unit' in v else ''
-        L.append(f"  {json.dumps(cid)}: {{ now: {v['now']}, prev: {v['prev']}, "
-                 f"yoy: {v['yoy']}, asof: {json.dumps(v['asof'])}, span: {v['span']}{unit} }},")
+        unit = f", unit: {json.dumps(v['unit'])}" if v.get('unit') else ''
+        L.append(f"  {json.dumps(cid)}: {{ now: {int(v['now'])}, prev: {int(v['prev'])}, "
+                 f"yoy: {v['yoy']}, asof: {json.dumps(v['asof'])}, span: {int(v['span'])}{unit} }},")
     L += ['};', '']
     open(OUT, 'w').write('\n'.join(L))
     print(f'wrote {OUT} with {len(out)} agencies ({skipped} roster agencies unmatched)')

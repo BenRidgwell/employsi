@@ -22,6 +22,11 @@
 # Queensland loads alongside APS and Victoria, then prints the generated data
 # file to the job log and uploads it as an artifact.
 #
+# VICTORIA IS NOT FETCHED HERE and that is not an oversight: vpsc.vic.gov.au
+# answers HTTP 403 to this runner, through a browser as well as plainly. The
+# generator merges, so running Queensland alone keeps Victoria's rows and says
+# so in the file's header.
+#
 # IT DOES NOT COMMIT. No workflow in this repo pushes to a branch and this is
 # not the one to start with — the repo syncs to Lovable and its history is not
 # something a scheduled job should touch. The generated file is picked up from
@@ -72,11 +77,15 @@ jobs:
         with:
           bun-version: latest
 
-      # The generator refuses to write when a source loads nothing, so a
-      # challenge that is not cleared fails the job rather than quietly
-      # publishing a file with Queensland missing.
-      - name: Generate gov workforce data
-        run: python scripts/gen-gov-workforce.py
+      # --only qld, because the jurisdictions need OPPOSITE environments and
+      # no machine can fetch them all. Measured 2026-09-24: Queensland needs a
+      # browser and runs only here; Victoria answers HTTP 403 to a datacentre
+      # IP — through a browser too, 13 KB of HTML — and runs only from a
+      # developer machine. The generator merges rather than rewrites, so this
+      # refreshes Queensland and leaves the others exactly as they were, and
+      # the file's header records which is which.
+      - name: Generate Queensland workforce data
+        run: python scripts/gen-gov-workforce.py --only qld
 
       - name: Show the generated file
         run: |
