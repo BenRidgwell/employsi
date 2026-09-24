@@ -432,11 +432,17 @@ async def collect(bd: BrightData, conn: sqlite3.Connection, seeds: list[tuple[st
 def stats(conn: sqlite3.Connection) -> int:
     rows = conn.execute('SELECT status, COUNT(*) n FROM people GROUP BY status').fetchall()
     print('people:', {r['status']: r['n'] for r in rows})
-    dropped, skipped = Counter(), Counter()
-    for r in conn.execute("SELECT dropped, skipped FROM people WHERE status = 'ok'"):
-        dropped.update(json.loads(r['dropped'] or '{}'))
+    # Refusals over EVERY profile: counting only the 'ok' ones hid why the
+    # empty ones were empty, which is what the warning below asks about.
+    dropped, dropped_empty, skipped = Counter(), Counter(), Counter()
+    for r in conn.execute('SELECT status, dropped, skipped FROM people'):
+        d = json.loads(r['dropped'] or '{}')
+        dropped.update(d)
+        if r['status'] == 'empty':
+            dropped_empty.update(d)
         skipped.update(json.loads(r['skipped'] or '{}'))
     print(f'experience entries refused: {dict(dropped)}')
+    print(f'  of which in profiles that gave nothing: {dict(dropped_empty)}')
     print(f'moves not counted: {dict(skipped)}')
     total = conn.execute('SELECT COUNT(*) FROM moves').fetchone()[0]
     undated = conn.execute('SELECT COUNT(*) FROM moves WHERE month IS NULL').fetchone()[0]

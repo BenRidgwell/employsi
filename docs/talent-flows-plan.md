@@ -72,6 +72,17 @@ Facts it depends on (read 2026-09-24):
   the per-profile cost as roughly 3x the plan's assumption. Ten profiles in
   one sort order is a small sample; `--stats` after the first real run is
   the better measure.
+- **First collection, 2026-09-24: `--seed bhp=bhp --max-requests 5`.**
+  50 profiles (of 21,360), 27 gave nothing: 25 had an undated entry as
+  above, 13 entries in 5 profiles had no company name (`no_employer`; shape
+  not yet seen, and `--inspect` only reaches the first 10 in sort order),
+  and 2 had no experience at all. The 23 that parsed gave 32 moves across
+  31 employer pairs, at most 2 moves per pair. 15 moves were into BHP and 1
+  out of it, as expected when seeding by current employer. Moves run from
+  2005 to 2025, and only 4 fall in the default 24-month export window. So
+  one seed gives almost nothing inside the window: a pair needs 10 moves
+  there to be shown, and at this rate that means thousands of profiles per
+  seed, not hundreds.
 - **The MCP server writes to the Bright Data account.** On first start
   `@brightdata/mcp@2.11.3` created two zones, `mcp_unlocker` and
   `mcp_browser`, on the account the token belongs to ("Required zone … not
