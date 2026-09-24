@@ -12,6 +12,7 @@ import { ALL_SKILLS, SKILL_PARENT } from "../data/skillsTaxonomy";
 
 export type AnalystIntent =
   | "history" // long-run official statistics
+  | "payBySkill" // which skills pay most, and by how much over the local median
   | "pay"
   | "duration" // how long ads stay up, by skill
   | "skills"
@@ -41,6 +42,53 @@ const RULES: { intent: AnalystIntent; match: string[] }[] = [
       "pre-covid",
       "before covid",
       "recover",
+    ],
+  },
+  // ABOVE `pay`, and that order is the whole point. "Which skills pay the most?"
+  // matches "pay" too, and used to be answered with ONE median for the whole
+  // location — a real figure that is not what was asked, which is the shape of
+  // wrongness this file exists to prevent. The phrases here are all ones that
+  // name a COMPARISON BETWEEN skills; a question about the level ("what do
+  // these roles pay?") carries none of them and still falls through to `pay`.
+  {
+    intent: "payBySkill",
+    match: [
+      "which skills pay",
+      "what skills pay",
+      "which skill pays",
+      "which roles pay",
+      "what roles pay the most",
+      "highest paying",
+      "highest-paying",
+      "best paying",
+      "best-paying",
+      "top paying",
+      "top-paying",
+      "pay the most",
+      "pays the most",
+      "pay the best",
+      "pays the best",
+      "pays best",
+      "pay best",
+      "paying best",
+      "paid best",
+      "pays most",
+      "pay most",
+      "earn the most",
+      "earns the most",
+      "biggest premium",
+      "pay premium",
+      "salary premium",
+      "pay by skill",
+      "pay per skill",
+      "salary by skill",
+      "which pays more",
+      "what pays more",
+      "what pays the most",
+      "best paid",
+      "highest paid",
+      "worst paid",
+      "lowest paying",
     ],
   },
   { intent: "pay", match: ["salary", "salaries", "pay", "paid", "compensation", "wage", "$"] },
@@ -206,22 +254,37 @@ export function detectSkill(question: string): string | null {
 // two are published in all 56 covered areas, so neither prompt can land on a
 // scope that has no series for it.
 /**
- * The prompt row's three topics, each opening a menu of three questions.
+ * The prompt row's two topics, each opening a menu of questions.
  *
  * From the design, which groups the questions rather than laying them flat.
  * Every question here was run through detectIntent before being listed — all
  * nine classify to a real intent, none to "unknown", so no menu entry can lead
  * to "I didn't understand that". Adding one means checking the same thing.
  *
- * A fourth topic, "Competition", was removed on request 2026-08-06, and so was
- * the intent behind it — the router no longer classifies or answers those
- * questions at all, and they now fall to "unknown" like anything else outside
- * what the archive holds.
+ * TWO TOPICS REMOVED, AND THE TWO REMOVALS ARE NOT THE SAME KIND OF THING.
+ * Confusing them would delete answers the router still gives.
+ *
+ *   "Competition" went on 2026-08-06 and took its intent with it. The router
+ *   no longer classifies or answers those questions at all; they fall to
+ *   "unknown" like anything else outside what the archive holds.
+ *
+ *   "Hiring trend" went on 2026-09-24 and took NOTHING with it. Its three
+ *   questions moved into Skills, still classify to the same intents, and are
+ *   still answered — the change is where they are listed, not what happens
+ *   when they are asked. Typing "how is hiring trending?" works exactly as it
+ *   did. So do not strip trend intents from RULES on the strength of the
+ *   topic row having lost that word.
+ *
+ * Skills leads with the three skill questions so the menu reads as its label,
+ * with the three demand questions under them.
  */
 export const PROMPT_TOPICS: { label: string; questions: string[] }[] = [
   {
-    label: "Hiring trend",
+    label: "Skills",
     questions: [
+      "Which skills are rising fastest?",
+      "Which skills are most in demand?",
+      "Which skills take longest to fill?",
       "How is hiring trending?",
       "How has demand changed since 2019?",
       "Which categories are growing fastest over five years?",
@@ -232,15 +295,7 @@ export const PROMPT_TOPICS: { label: string; questions: string[] }[] = [
     questions: [
       "What do these roles pay?",
       "How does pay compare against the wider market?",
-      "Which roles pay the biggest premium?",
-    ],
-  },
-  {
-    label: "Top skills",
-    questions: [
-      "Which skills are rising fastest?",
-      "Which skills are most in demand?",
-      "Which skills take longest to fill?",
+      "Which skills pay the most?",
     ],
   },
 ];
@@ -250,6 +305,75 @@ export const PROMPT_TOPICS: { label: string; questions: string[] }[] = [
  * questions this router is known to answer — it is what new topic entries are
  * checked against, and it has no UI reading it.
  */
+/**
+ * One canonical question per intent, for offering an intent as a follow-up.
+ *
+ * Worded so detectIntent classifies each back to the intent it is filed under —
+ * asserted in scripts/check-analyst-followups.ts, because a chip labelled "And
+ * pay?" that routes to volume is the same class of bug as a scope chip that
+ * lands somewhere else: a real answer to a question the user did not ask.
+ *
+ * None of them names a skill or a place. A follow-up inherits the scope it is
+ * asked in, and a question carrying its own intent deliberately starts fresh on
+ * skill (see resolveTurn), so a chip that named one would narrow the analysis
+ * without the user choosing to.
+ */
+/** Every intent that names a real measurement — i.e. all of them but "unknown". */
+export type DataIntent = Exclude<AnalystIntent, "unknown">;
+
+export const INTENT_QUESTION: Record<DataIntent, string> = {
+  volume: "How is hiring trending?",
+  skills: "Which skills are most in demand?",
+  pay: "What do these roles pay?",
+  payBySkill: "Which skills pay the most?",
+  duration: "Which skills take longest to fill?",
+  history: "How has demand changed since 2019?",
+};
+
+/** What the chip reads for each — shorter than the question it asks. */
+export const INTENT_LABEL: Record<DataIntent, string> = {
+  volume: "Hiring trend",
+  skills: "Top skills",
+  pay: "Pay",
+  payBySkill: "Best paid",
+  duration: "Time to fill",
+  history: "Since 2019",
+};
+
+/**
+ * Every intent a sentence asks for, in order, for the multi-part case.
+ *
+ * "How is nursing trending and what does it pay?" classified to `pay` alone and
+ * answered only that, dropping the trend half with no mention — measured
+ * 2026-09-24. The archive can answer both, but not in one shape: the two are
+ * different queries with different windows and different source lines, and
+ * welding them into one answer would produce a paragraph whose halves are
+ * measured differently. So the sentence is answered as detectIntent reads it
+ * whole — which is the tuned verdict, and not always the first clause — and the
+ * other intent is OFFERED. That keeps one answer to one method while making it
+ * obvious the rest of the sentence was heard.
+ *
+ * The split is on the conjunctions people actually write between two questions.
+ * A clause with no intent of its own contributes nothing, so "nursing and
+ * midwifery demand" stays a single volume question rather than becoming two.
+ */
+export function detectIntents(question: string): DataIntent[] {
+  const parts = question.split(/\s+and\s+|\s*[,;]\s*|\s+&\s+/i).filter((p) => p.trim());
+  const out: DataIntent[] = [];
+  for (const p of parts) {
+    const i = detectIntent(p);
+    if (i !== "unknown" && !out.includes(i)) out.push(i);
+  }
+  // A single clause can still be read two ways by the rules; the whole sentence
+  // is what detectIntent is tuned on, so its verdict leads.
+  const whole = detectIntent(question);
+  if (whole !== "unknown") {
+    const rest = out.filter((i) => i !== whole);
+    return [whole, ...rest];
+  }
+  return out;
+}
+
 export const SUGGESTED_PROMPTS = [
   "How is hiring trending?",
   "What do these roles pay?",

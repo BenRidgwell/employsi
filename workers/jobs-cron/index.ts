@@ -1312,6 +1312,10 @@ const PORTAL_TICKS: Record<string, number> = {
   "15 18 * * *": 82,
   // Group 83 — the 2026-09-22 twentieth sweep.
   "25 18 * * *": 83,
+  // Groups 84-86 — Alphabet (Google), three page windows of one board.
+  "35 18 * * *": 84,
+  "45 18 * * *": 85,
+  "55 18 * * *": 86,
 };
 
 const NEWS_TICKS: Record<string, number> = {
@@ -1328,7 +1332,7 @@ const NEWS_TICKS: Record<string, number> = {
 // `scripts/gen-career-pathways.ts`, so its --audit describes what lands here.
 //
 // 23:52 UTC, AFTER THE DAY HAS LANDED: the GitHub Actions feeds (SEEK, Indeed,
-// Jora…) run until 23:30 and the portal ticks until 18:25. Exact-matched
+// Jora…) run until 23:30 and the portal ticks until 18:55. Exact-matched
 // before the gov minute prefixes like every other named tick, and "52 " is not
 // one of those prefixes anyway. If PORTAL_TICKS ever grows into the 23 hour,
 // move this rather than share the minute.

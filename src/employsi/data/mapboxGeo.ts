@@ -60,6 +60,15 @@ export const CITY_VIEWS: Record<string, CityView> = {
   // actually fall (median 103.8479,1.2811, all inside 103.8449..103.8503 /
   // 1.2764..1.2865), which opened the local view on empty ground with the
   // roster off to one side.
+  //
+  // PULLING BACK TO FRAME EVERY PIN WAS TRIED ON 2026-09-24 AND REVERTED.
+  // The real head offices are not all in the CBD — Venture Corporation builds
+  // electronics at Ang Mo Kio, 10.7 km north — so a frame containing the
+  // whole roster needs zoom 11.8 on the bbox centre [103.8261, 1.321]. It
+  // fits, and it costs the thing the local layer exists for: at 11.8 no
+  // extruded building is legible and Singapore is a metro map. Two outlying
+  // pins are not worth that, so the view stays on the CBD and those two open
+  // off screen.
   singapore: { center: [103.8479, 1.2811], zoom: 16.4, pitch: 60, bearing: -12 },
   // KLCC — the corporate core, around the Petronas Towers and Jalan Ampang.
   kualalumpur: { center: [101.7115, 3.1578], zoom: 16.0, pitch: 60, bearing: -15 },
@@ -144,6 +153,12 @@ export const CITY_VIEWS: Record<string, CityView> = {
   // were and the old centre framed ground they had left. This is their median
   // again: [114.15942, 22.28418], across 114.15419..114.16370 by
   // 22.28157..22.28668.
+  //
+  // Pulled back and reverted the same day, as Singapore was: Link REIT's head
+  // office at Kwun Tong is across the harbour, so framing the whole roster
+  // needs zoom 13.3 centred at [114.18384, 22.29821] — a point in Victoria
+  // Harbour, which is the honest centre of a roster on both shores and not a
+  // view anyone wants to arrive at. Central it is, with Link REIT off screen.
   hongkong: { center: [114.15942, 22.28418], zoom: 16.1, pitch: 60, bearing: -16 },
   // Nariman Point / Bandra-Kurla side of the Mumbai CBD.
   mumbai: { center: [72.8347, 18.9256], zoom: 16.2, pitch: 60, bearing: -15 },

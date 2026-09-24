@@ -31,6 +31,8 @@ import { SEEK_TRADING_NAMES } from "../src/employsi/data/seekTradingNames";
 import { SITES as CAREER_SITES } from "../workers/jobs-cron/careerSites";
 import { COMPANY_HEADCOUNT } from "../src/employsi/data/companyHeadcount";
 import { GOV_HEADCOUNT_AU } from "../src/employsi/data/govWorkforceAu";
+import { WGEA_HEADCOUNT } from "../src/employsi/data/wgeaWorkforceAu";
+
 import { buildCompanyCard, filedHeadcount } from "../src/employsi/lib/companyCard";
 import { buildCompareCard } from "../src/employsi/lib/compareCard";
 
@@ -345,6 +347,127 @@ for (const [id, list] of Object.entries(SEEK_TRADING_NAMES)) {
         );
     }
   }
+}
+
+// ── WGEA headcount ──────────────────────────────────────────────────────────
+// data/wgeaWorkforceAu.ts is generated from the WGEA register and every failure
+// below renders as a confident figure on a card rather than as an absence,
+// which is the only reason any of it is asserted mechanically.
+{
+  const wgea = Object.entries(WGEA_HEADCOUNT);
+
+  // A KEY THAT IS NOT A ROSTER COMPANY FILES A FIGURE ONTO NOTHING. The keys
+  // are the roster's own ids, printed by scripts/dump-roster.ts and read back
+  // by the generator, so a drift here means the dump and the roster disagree.
+  // Nothing downstream notices: `filedHeadcount` returns undefined for an id no
+  // company has and the card falls back to "no workforce figure collected", so
+  // the company looks unsourced while the row looks filed.
+  for (const [id] of wgea)
+    if (!rosterIds.has(id)) err("wgea key is not a company", id, "no roster company has this id");
+
+  // A company the register does not report is absent, never zero.
+  for (const [id, h] of wgea)
+    if (!(h.now > 0)) err("wgea headcount not positive", id, `now ${h.now}`);
+
+  // WGEA COUNTS HEADS, and the tile's label is chosen from `unit`. An `fte` row
+  // here would put a full-time-equivalent under the word "Headcount".
+  for (const [id, h] of wgea)
+    if (h.unit !== "headcount")
+      err("wgea unit is not headcount", id, `unit ${String(h.unit)} — WGEA reports heads`);
+
+  // A SPAN OF 0 AND A CHANGE ARE CONTRADICTORY. `span: 0` is how the generator
+  // records that there is no comparable prior reading — the company appears in
+  // only one file, or its corporate group gained or lost a member so the two
+  // totals cover different employers, or the newest reading was a fragment and
+  // the prior year was used instead. The card reads `yoy === null` to print an
+  // em dash and `span` to label the period, so the two have to agree.
+  for (const [id, h] of wgea) {
+    if (h.span === 0 && h.yoy !== null)
+      err("wgea change with no span", id, `yoy ${h.yoy} over span 0 — no comparable prior reading`);
+    if (h.span > 0 && h.yoy === null)
+      err("wgea span with no change", id, `span ${h.span} but yoy null`);
+  }
+
+  // A COMPANY DOES NOT TRIPLE IN A YEAR. Same ceiling and reasoning as the gov
+  // check above: this does not police the data, it catches a sum that picked up
+  // rows belonging to something else. The nearest real risk is a subsidiary —
+  // 'RMIT ONLINE PTY LTD' and 'RMIT TRAINING PTY LTD' sit beside 'Royal
+  // Melbourne Institute Of Technology' in the same file — so a rule that ever
+  // started matching on substrings would land here.
+  const ABSURD_PCT_WGEA = 200;
+  for (const [id, h] of wgea)
+    if (h.yoy !== null && Math.abs(h.yoy) > ABSURD_PCT_WGEA)
+      err(
+        "wgea headcount moved absurdly",
+        id,
+        `${h.prev} -> ${h.now} is ${h.yoy}% over ${h.span}y — a subsidiary in the sum reads like this`,
+      );
+
+  // Below that ceiling, a large move is usually real and occasionally is not,
+  // and the difference cannot be settled mechanically — Whitehaven's +124% is
+  // the Daunia and Blackwater mines it bought from BHP, while Lovisa's +117%
+  // has one employer on both sides and no acquisition behind it. So these are
+  // listed rather than failed, and are the rows to look at first after a
+  // refresh.
+  const EYEBALL_PCT = 50;
+  for (const [id, h] of wgea)
+    if (h.yoy !== null && Math.abs(h.yoy) > EYEBALL_PCT && Math.abs(h.yoy) <= ABSURD_PCT_WGEA)
+      warn(
+        "wgea moved a lot",
+        id,
+        `${h.prev} -> ${h.now} is ${h.yoy}% — real, or a group that changed shape?`,
+      );
+
+  // ONE REGISTER ENTRY ON SEVERAL COMPANIES is either an ALIAS pointing two
+  // roster names at one employer — which would file the same number twice and
+  // read as two companies that happen to be identical — or a company the
+  // roster holds twice. Measured 2026-09-24 it is the second: `smr` and
+  // `brisbane-smr` are both Stanmore Resources, so both correctly carry
+  // STANMORE RESOURCES LIMITED's 782. That is a roster duplicate rather than a
+  // matching fault, so this warns instead of failing; a NEW pair appearing
+  // after an ALIAS edit is the case to look at.
+  const byFigure = new Map<string, string[]>();
+  for (const [id, h] of wgea) {
+    const k = `${h.now}|${h.prev}|${h.asof}`;
+    byFigure.set(k, [...(byFigure.get(k) ?? []), id]);
+  }
+  for (const [k, ids] of byFigure)
+    if (ids.length > 1)
+      warn(
+        "one wgea figure on several companies",
+        ids.join(", "),
+        `all report ${k.split("|")[0]} — the same employer twice on the roster, or one ALIAS matching twice?`,
+      );
+
+  // WGEA MUST NOT DISPLACE AN ANNUAL REPORT. This guards the ORDER in
+  // filedHeadcount and it is the one failure here with no visible symptom.
+  // WGEA counts AUSTRALIAN employees only; an annual report counts the group
+  // worldwide. For a multinational the two differ by most of the company — Rio
+  // Tinto is 26,419 here against roughly 60,000 filed — so a lookup preferring
+  // WGEA would quietly reissue it as its Australian headcount: a real number,
+  // from a real filing, describing a different organisation. The generator
+  // emits rows for companies that already have an annual report precisely so
+  // this has real overlapping keys to test rather than passing vacuously.
+  let overlaps = 0;
+  for (const [id, h] of wgea) {
+    const own = COMPANY_HEADCOUNT[id] ?? GOV_HEADCOUNT_AU[id];
+    if (!own) continue;
+    overlaps++;
+    const got = filedHeadcount(id);
+    if (got && got.now !== own.now)
+      err(
+        "wgea displaced a filed figure",
+        id,
+        `filedHeadcount returns ${got.now} but the annual-report/gov source says ${own.now} — ` +
+          `WGEA (${h.now}, Australia only) must be merged last`,
+      );
+  }
+  if (overlaps < 20)
+    warn(
+      "wgea overlap too small to test",
+      `${overlaps} keys`,
+      "the merge-order assertion needs companies present in both sources to mean anything",
+    );
 }
 
 // ── report ──────────────────────────────────────────────────────────────────
