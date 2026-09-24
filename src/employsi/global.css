@@ -12385,13 +12385,20 @@ body {
 .ccsubd.down {
   color: var(--status-danger-fg);
 }
-/* Swatch for the second series, coloured to match how that line is actually
-   drawn — a swatch that doesn't look like its line is worse than no swatch. */
+/* Swatch for the second series, drawn to match how that line is actually
+   drawn — a swatch that doesn't look like its line is worse than no swatch,
+   which is why this is DOTTED rather than solid: the share price is a dotted
+   stroke (see .ccline2), so a solid dash here would describe a line that is
+   not on the chart. Dots rather than a dash pattern because at 12px a dashed
+   swatch reads as two short bars and loses the distinction entirely. */
 .cclegline.alt {
-  width: 12px;
+  width: 14px;
   height: 2px;
-  border-radius: var(--radius-pill);
-  background: var(--neutral-900);
+  border-radius: 0;
+  background: none;
+  background-image: radial-gradient(circle closest-side, var(--neutral-900) 99%, transparent);
+  background-size: 4px 2px;
+  background-repeat: repeat-x;
 }
 /* Tooltip swatches. Deliberately NOT the shared .wtsw: that pair is coloured
    for the workforce and financial charts (ink primary, green second) and this
@@ -12426,6 +12433,15 @@ body {
    roles swapped — here the fill, not the stroke, marks the primary series. */
 .ccline2 {
   stroke: var(--neutral-900);
+  /* DOTTED, so the two series are told apart by more than colour. The vacancy
+     line carries the up/down hue and is the subject; the share price is
+     context drawn over it, and a reader glancing at a small card should not
+     have to work out which solid line is which. Dash values are in SCREEN
+     pixels, not user units, because vector-effect: non-scaling-stroke on the
+     path applies the pattern after the viewBox's non-uniform scale — without
+     that the same numbers would stretch horizontally and read as a dashed
+     line at wide widths and a solid one at narrow. */
+  stroke-dasharray: 1 4;
 }
 .ccscrubline {
   stroke: var(--neutral-400);
