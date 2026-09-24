@@ -8,6 +8,8 @@
 //   South Australia: 98 agencies published as at Jun 2025 — refreshed 2026-09-24
 //   New South Wales: 33 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-24
 //   New Zealand: 103 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-24
+//   Northern Territory: 28 agencies published, as FTE not headcount, as at Jun 2026 — refreshed 2026-09-24
+//   Tasmania: 14 agencies published as at Dec 2023 — refreshed 2026-09-24
 //   APS (federal): 101 agencies published as at Dec 2025 — KEPT, not refreshed this run
 //   Victoria: 261 agencies published as at Jun 2024 — KEPT, not refreshed this run
 //
@@ -75,6 +77,28 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-south-western-sydney-local-health-district": { now: 15233, prev: 15145, yoy: 0.6, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-sydney-local-health-district": { now: 11017, prev: 10883, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-western-sydney-local-health-district": { now: 11794, prev: 12266, yoy: -3.8, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nt-gov-attorney-general-s-department": { now: 594, prev: 603, yoy: -1.5, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-department-mining-and-energy": { now: 175, prev: 169, yoy: 3.6, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-department-of-agriculture-and-fisheries": { now: 307, prev: 300, yoy: 2.3, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-department-of-children-and-families": { now: 593, prev: 561, yoy: 5.7, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-department-of-corporate-and-digital-development": { now: 1196, prev: 1245, yoy: -3.9, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-department-of-corrections": { now: 1533, prev: 1359, yoy: 12.8, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-department-of-education-and-training": { now: 5063, prev: 4882, yoy: 3.7, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-department-of-health": { now: 7758, prev: 7611, yoy: 1.9, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-department-of-housing-local-government-and-community-development": { now: 567, prev: 528, yoy: 7.4, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-department-of-lands-planning-and-environment": { now: 440, prev: 448, yoy: -1.8, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-department-of-legislative-assembly": { now: 106, prev: 100, yoy: 6.0, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-department-of-logistics-and-infrastructure": { now: 728, prev: 758, yoy: -4.0, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-department-of-people-sport-and-culture": { now: 150, prev: 143, yoy: 4.9, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-department-of-the-chief-minister-and-cabinet": { now: 297, prev: 297, yoy: 0.0, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-department-of-tourism-and-hospitality": { now: 438, prev: 429, yoy: 2.1, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-department-of-trade-business-and-asian-relations": { now: 229, prev: 233, yoy: -1.7, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-department-of-treasury-and-finance": { now: 119, prev: 109, yoy: 9.2, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-land-development-corporation": { now: 12, prev: 13, yoy: -7.7, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-nt-fire-and-emergency-services": { now: 381, prev: 375, yoy: 1.6, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-nt-police-force": { now: 2269, prev: 2181, yoy: 4.0, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-power-and-water-corporation": { now: 854, prev: 906, yoy: -5.7, asof: "Jun 2026", span: 1, unit: "fte" },
+  "nt-gov-territory-generation": { now: 196, prev: 191, yoy: 2.6, asof: "Jun 2026", span: 1, unit: "fte" },
   "nz-accident-compensation-corporation": { now: 4536, prev: 4291, yoy: 5.7, asof: "Jun 2025", span: 1, unit: "fte" },
   "nz-civil-aviation-authority-of-nz": { now: 1817, prev: 1802, yoy: 0.8, asof: "Jun 2025", span: 1, unit: "fte" },
   "nz-department-of-conservation": { now: 2648, prev: 2533, yoy: 4.5, asof: "Jun 2025", span: 1, unit: "fte" },
@@ -178,6 +202,13 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "sa-gov-study-adelaide": { now: 18, prev: 19, yoy: -5.3, asof: "Jun 2025", span: 1 },
   "sa-gov-teachers-registration-board": { now: 43, prev: 33, yoy: 30.3, asof: "Jun 2025", span: 1 },
   "sa-gov-west-beach-parks": { now: 185, prev: 172, yoy: 7.6, asof: "Jun 2025", span: 1 },
+  "tas-gov-department-of-health": { now: 15179, prev: 14224, yoy: 6.7, asof: "Dec 2023", span: 1 },
+  "tas-gov-department-of-justice": { now: 1722, prev: 1598, yoy: 7.8, asof: "Dec 2023", span: 1 },
+  "tas-gov-department-of-police-fire-and-emergency-management": { now: 1091, prev: 1082, yoy: 0.8, asof: "Dec 2023", span: 1 },
+  "tas-gov-department-of-premier-and-cabinet": { now: 627, prev: 470, yoy: 33.4, asof: "Dec 2023", span: 1 },
+  "tas-gov-macquarie-point-development-corporation": { now: 11, prev: 13, yoy: -15.4, asof: "Dec 2023", span: 1 },
+  "tas-gov-port-arthur-historic-site-management-authority": { now: 146, prev: 131, yoy: 11.5, asof: "Dec 2023", span: 1 },
+  "tas-gov-tourism-tasmania": { now: 72, prev: 70, yoy: 2.9, asof: "Dec 2023", span: 1 },
   "vic-gov-albury-wodonga-health": { now: 2830, prev: 2658, yoy: 6.5, asof: "Jun 2024", span: 1 },
   "vic-gov-alexandra-district-health": { now: 101, prev: 106, yoy: -4.7, asof: "Jun 2024", span: 1 },
   "vic-gov-ambulance-victoria": { now: 7056, prev: 7030, yoy: 0.4, asof: "Jun 2024", span: 1 },
