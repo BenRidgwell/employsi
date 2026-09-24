@@ -1,0 +1,60 @@
+# Queensland public-sector workforce data, fetched from a GitHub runner.
+#
+# WHY THIS EXISTS AT ALL. Every other jurisdiction's workforce data is pulled
+# by scripts/gen-gov-workforce.py from a developer machine. Queensland cannot
+# be: the current State of the Sector workbooks are on www.data.qld.gov.au,
+# which answers `x-amzn-waf-action: challenge` and returns a JavaScript
+# interstitial instead of the file. The CKAN datastore only serves as far as
+# March 2023, and the older profiles on forgov.qld.gov.au download fine — so it
+# is that one host rather than the jurisdiction.
+#
+# This is the same reasoning behind the SEEK and Indeed workflows: a source
+# that refuses one network is fetched from another. See workers/jobs-cron/
+# ARCHIVE.md for the general case.
+#
+# WHAT IT DOES TODAY: reconnaissance only. It reports whether the runner gets
+# the file or the same challenge, and prints the workbook's structure to the
+# job log. The parser is deliberately NOT written yet — the current product is
+# the "State of the sector report" workbook, which is a different shape from
+# the "biannual workforce profile" the datastore holds, and writing a parser
+# against a file nobody has opened is a guess.
+#
+# Once the log shows the real structure, load_qld() goes into
+# scripts/gen-gov-workforce.py and this workflow runs that instead, uploading
+# the generated data as an artifact. It does NOT commit: no workflow in this
+# repo pushes to the branch, and this one will not be the first — the repo
+# syncs to Lovable and its history is not something a cron should touch.
+
+name: qld-workforce
+
+on:
+  workflow_dispatch: {}
+  push:
+    paths:
+      - 'scripts/qld-workforce-probe.py'
+      - '.github/workflows/qld-workforce.yml'
+
+concurrency:
+  group: qld-workforce
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    name: qld workforce probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install openpyxl
+        run: pip install --quiet openpyxl
+
+      # Exits non-zero when the runner is challenged too, which is the one
+      # answer that changes what happens next — so it shows as a red X rather
+      # than a green run with a quiet note in the log.
+      - name: Probe the Queensland workbook
+        run: python scripts/qld-workforce-probe.py
