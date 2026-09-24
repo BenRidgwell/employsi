@@ -4,8 +4,9 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   APS (federal): 101 agencies published as at Dec 2025 — refreshed 2026-09-24
-//   Victoria: 261 agencies published as at Jun 2024 — refreshed 2026-09-24
+//   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — refreshed 2026-09-24
+//   APS (federal): 101 agencies published as at Dec 2025 — KEPT, not refreshed this run
+//   Victoria: 261 agencies published as at Jun 2024 — KEPT, not refreshed this run
 //
 // An agency the source does not report is ABSENT, never zero — the card shows
 // an em dash and says no figure was collected. See the generator for which
@@ -57,6 +58,33 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "aps-national-library-of-australia": { now: 453, prev: 459, yoy: -1.3, asof: "Dec 2025", span: 1 },
   "aps-safe-work-australia": { now: 123, prev: 109, yoy: 12.8, asof: "Dec 2025", span: 1 },
   "aps-services-australia": { now: 34026, prev: 35038, yoy: -2.9, asof: "Dec 2025", span: 1 },
+  "qld-gov-department-of-customer-services-open-data-and-small-and-family-business": { now: 3258, prev: 2004, yoy: 62.6, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-department-of-women-aboriginal-and-torres-strait-islander-partnerships-and-multiculturalism": { now: 346, prev: 389, yoy: -11.1, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-economic-development-queensland": { now: 181, prev: 172, yoy: 5.2, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-education": { now: 79353, prev: 77340, yoy: 2.6, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-environment-tourism-science-and-innovation": { now: 3048, prev: 3042, yoy: 0.2, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-families-seniors-disability-services-and-child-safety": { now: 5774, prev: 5510, yoy: 4.8, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-housing-and-public-works": { now: 4443, prev: 4104, yoy: 8.3, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-justice": { now: 4629, prev: 4532, yoy: 2.1, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-local-government-water-and-volunteers": { now: 824, prev: 949, yoy: -13.2, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-natural-resources-and-mines-manufacturing-and-regional-and-rural-development": { now: 1468, prev: 1514, yoy: -3.0, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-office-of-the-health-ombudsman": { now: 163, prev: 154, yoy: 5.8, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-office-of-the-queensland-integrity-commissioner": { now: 16, prev: 16, yoy: 0.0, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-primary-industries": { now: 2614, prev: 2462, yoy: 6.2, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-queensland-corrective-services": { now: 8614, prev: 8104, yoy: 6.3, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-queensland-family-and-child-commission": { now: 84, prev: 67, yoy: 25.4, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-queensland-fire-department": { now: 4243, prev: 4151, yoy: 2.2, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-queensland-health": { now: 119625, prev: 114757, yoy: 4.2, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-queensland-police-service": { now: 19132, prev: 18584, yoy: 2.9, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-queensland-treasury": { now: 1877, prev: 1853, yoy: 1.3, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-resources-safety-and-health-queensland": { now: 387, prev: 360, yoy: 7.5, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-sport-racing-and-olympic-and-paralympic-games": { now: 370, prev: 439, yoy: -15.7, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-state-development-infrastructure-and-planning": { now: 1903, prev: 1805, yoy: 5.4, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-tafe-queensland": { now: 4220, prev: 4363, yoy: -3.3, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-trade-and-investment-queensland": { now: 168, prev: 168, yoy: 0.0, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-trade-employment-and-training": { now: 526, prev: 537, yoy: -2.0, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-transport-and-main-roads": { now: 6573, prev: 8102, yoy: -18.9, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-youth-justice-and-victim-support": { now: 2514, prev: 2379, yoy: 5.7, asof: "Mar 2026", span: 1, unit: "fte" },
   "vic-gov-albury-wodonga-health": { now: 2830, prev: 2658, yoy: 6.5, asof: "Jun 2024", span: 1 },
   "vic-gov-alexandra-district-health": { now: 101, prev: 106, yoy: -4.7, asof: "Jun 2024", span: 1 },
   "vic-gov-ambulance-victoria": { now: 7056, prev: 7030, yoy: 0.4, asof: "Jun 2024", span: 1 },
