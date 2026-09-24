@@ -177,7 +177,7 @@ def close_browser():
         _BROWSER['ctx'], _BROWSER['stop'] = None, None
 
 
-def fetch(url, binary=False, via_browser=False, warm=None, expect=None):
+def fetch(url, binary=False, via_browser=False, warm=None, expect=None, render=False):
     """GET, falling back to a real browser when the host refuses a plain one.
 
     TWO HOSTS HERE NEED IT, FOR DIFFERENT REASONS, and both were measured on a
@@ -215,6 +215,32 @@ def fetch(url, binary=False, via_browser=False, warm=None, expect=None):
             print(f'  (HTTP {e.code}, retrying through a browser: {url[:70]})', file=sys.stderr)
 
     ctx = _browser_ctx()
+    if render:
+        # RENDER, DO NOT REQUEST. Some pages build their list of documents in
+        # JavaScript after load, so the raw response is a shell and a regex
+        # over it finds nothing — which reads as a page with no links rather
+        # than a page not yet drawn. ocpe.nt.gov.au's staffing-numbers page is
+        # one: the probe saw fifty PDFs on it through page.content() while
+        # fetch() saw none through ctx.request.
+        page = ctx.new_page()
+        try:
+            if warm:
+                page.goto(warm, wait_until='domcontentloaded', timeout=90_000)
+                w = 0
+                while 'Just a moment' in page.content() and w < 30_000:
+                    page.wait_for_timeout(3000)
+                    w += 3000
+            page.goto(url, wait_until='domcontentloaded', timeout=120_000)
+            w = 0
+            while 'Just a moment' in page.content() and w < 30_000:
+                page.wait_for_timeout(3000)
+                w += 3000
+            page.wait_for_timeout(2000)
+            html = page.content()
+            print(f'  (rendered {len(html):,} bytes from {url[:60]})', file=sys.stderr)
+            return html
+        finally:
+            page.close()
     if warm:
         page = ctx.new_page()
         page.goto(warm, wait_until='domcontentloaded', timeout=90_000)
@@ -843,8 +869,9 @@ def load_nt():
     import io as _io
     import pdfplumber
 
-    page = fetch(NT_INDEX, via_browser=True, warm=NT_WARM)
-    pdfs = re.findall(r'href="([^"]*staffing[^"]*\.pdf|[^"]*quarter[^"]*\.pdf)"', page, re.I)
+    page = fetch(NT_INDEX, via_browser=True, warm=NT_WARM, render=True)
+    pdfs = re.findall(r'href="([^"]+\.pdf)"', page, re.I)
+    pdfs = [u for u in pdfs if re.search(r'staffing|quarter|fte', u, re.I)]
     pdfs = [u if u.startswith('http') else 'https://ocpe.nt.gov.au' + u for u in pdfs]
     if not pdfs:
         raise RuntimeError('NT: no quarterly staffing PDFs linked on ' + NT_INDEX)
