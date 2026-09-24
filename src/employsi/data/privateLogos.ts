@@ -1002,6 +1002,17 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   //   dead company: a delisted employer is otherwise invisible to this
   //   codebase, since it simply stops appearing in the feeds, which looks
   //   exactly like one that stopped advertising.
+  // ── found by scripts/check-company-live.ts on its first run, 2026-09-24 ──
+  // Occidental Petroleum's card was drawing a RED "SALE" TAG. occidentalpetroleum
+  // .com redirects to a domain broker, and the favicon service returned the
+  // broker's icon — a badge no collision check could catch, because no other
+  // company happened to share it. oxy.com draws the real OXY roundel.
+  "houston-oxy": "oxy.com",
+  // Same shape, caught the same way: healthsupportservices.com is a listing on
+  // Spaceship.com. The badge was unaffected (this agency resolves through its
+  // LinkedIn logo) but the domain was wrong, and the next person to remove a
+  // LinkedIn entry would have inherited a for-sale page.
+  "perth-gov-health-support-services": "hss.health.wa.gov.au",
   // ── the original Top-150 private set ──────────────────────────────────────
   "priv-abc-tissue": "abctissue.com.au",
   "priv-abn-group": "abngroup.com.au",

@@ -64,6 +64,27 @@ The three `check-*.ts` beyond the taxonomy one all guard the same class of bug: 
 aggregate that still renders a plausible number after the reasoning behind it breaks.
 None of them would fail visibly in the app — that is the point of asserting them.
 
+**`scripts/check-company-live.ts` is deliberately NOT in that list, and must not be
+added to it.** It asks whether each roster company still EXISTS — every other check
+here verifies that a company is *wired* correctly, none can tell whether it is still a
+company. Marathon Oil sat on the Houston roster for two years after ConocoPhillips
+bought it, because a dead employer just stops appearing in the feeds, which looks
+exactly like one that stopped advertising. It is network-bound by nature: it reads a
+few hundred third-party sites, so its result depends on their WAFs and this machine's
+exit IP. It exits 0 on findings, reports a blocked host as inconclusive rather than as
+a failure, and is meant to be run by hand or on a schedule that files a report.
+
+```bash
+bun run scripts/check-company-live.ts --country au          # or --city, --ids, --limit
+bun run scripts/check-company-live.ts --city houston --logos  # + the badge-collision pass
+```
+
+It reports four things worth acting on: a domain that redirects to a **different**
+registrable domain (what an acquisition looks like from outside), a page that names
+**another** roster company, a domain that is **for sale** — the failure that put a red
+"SALE" tag on Occidental Petroleum's card and a broker's logo on eighteen others — and
+a 404/410. Everything else is `blocked` or `unsure` and is not a fix list.
+
 To exercise a scraper without deploying, call it directly through `tsx` — the fetchers are
 plain exported functions:
 
