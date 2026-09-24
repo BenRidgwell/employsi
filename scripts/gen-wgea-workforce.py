@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
-"""Real workforce headcount for Australian universities, from the WGEA dataset.
+"""Real workforce headcount from the WGEA register, for the Australian roster.
 
-WHY WGEA AND NOT THE OBVIOUS SOURCE. The obvious source is the Department of
-Education's Higher Education Statistics Collection, which publishes staff
-numbers and FTE for every provider in one place. It is unreachable. Measured
-2026-09-24 from both networks this repo can use:
+Under the Workplace Gender Equality Act 2012 every non-public-sector employer
+with 100 or more Australian staff reports annually. The public data file is
+hosted on data.gov.au, covers 9,689 employers, and is the only single source
+this repo has found that reaches employers with no annual report at all — the
+accounting firms, the aged-care and childcare groups, the private hospitals.
+
+It started as a universities-only generator, because the Department of
+Education's Higher Education Statistics Collection is unreachable. Measured
+2026-09-24, from both networks available here:
 
     https://www.education.gov.au/                    plain: TimeoutError
                                                      browser: ERR_HTTP2_PROTOCOL_ERROR
@@ -13,66 +18,99 @@ numbers and FTE for every provider in one place. It is unreachable. Measured
                                                      browser: ERR_NAME_NOT_RESOLVED
     https://www.teqsa.gov.au/                        browser: ERR_HTTP2_PROTOCOL_ERROR
 
-The ROOTS fail, not just the paths, so this is not a wrong URL — and
-data.gov.au carries no mirror (`package_search` for the department's staff
-data returns count 0). The remaining single-source option was 41 separate
-annual reports, each counting staff by its own definition.
+The ROOTS fail, not just the paths, and data.gov.au carries no mirror
+(`package_search` for the department's staff data returns count 0).
 
-WGEA is one file, one definition, and covers them all: under the Workplace
-Gender Equality Act 2012 every non-public-sector employer with 100+ staff
-reports annually, and the public data file is hosted ON data.gov.au, which is
-reachable. Universities report as non-public-sector bodies, so all but one are
-in it.
+═══ AUSTRALIAN COMPANIES ONLY ═══════════════════════════════════════════════
 
-WHAT THE FIGURE COUNTS, AND THE TWO WAYS IT DIFFERS FROM AN ANNUAL REPORT.
+`au` comes from scripts/dump-roster.ts: the company is plotted in an
+Australian city. New Zealand and overseas companies are NOT matched, and that
+is a correctness rule rather than an optimisation. WGEA is an Australian
+register: Fletcher Building and Xero are not in it, but their Australian
+subsidiaries can be, and attributing a subsidiary's staff to the parent is
+wrong in the way that is hardest to see — a real number, from a real filing,
+describing a different company.
 
-  1. It is a HEAD COUNT INCLUDING CASUALS, not FTE. University annual reports
-     usually lead with FTE, which is far lower — a university with a large
-     casual teaching pool can be half again bigger by head. Sydney is 18,198
-     here. Rows are marked `unit: "headcount"` so the card labels the tile
-     "Headcount" rather than putting two measurements under one word.
+═══ THE UNIT OF ANALYSIS IS CHOSEN PER COMPANY, NOT FIXED ═══════════════════
 
-  2. It is AUSTRALIAN EMPLOYEES ONLY. WGEA is a domestic reporting obligation,
-     so an employer's offshore staff are absent. For a university that is
-     nearly the whole organisation; for a multinational it would not be, which
-     is why WGEA is merged LAST in companyCard's filedHeadcount() — it fills
-     an employer with no figure and never displaces an annual report's global
-     one.
+This is the whole difficulty of the file and it cost a rewrite. The register
+has two name columns: `employer_name` (the reporting legal entity) and
+`corporate_group_name` (the group it reports under). 1,640 groups hold more
+than one employer.
+
+Reading `employer_name` alone — which is what the universities-only version of
+this generator did — is catastrophic for a group:
+
+    St Vincent's Health Australia Ltd   employer      563
+                                        group      23,491   (6 employers)
+    Evolution Mining Limited            employer      220
+                                        group       2,529   (8 employers)
+
+563 for an organisation of twenty-three thousand is not a rounding error; it
+is the head-office entity presented as the hospital network. But reading the
+GROUP always is wrong in the other direction:
+
+    Torrens University Australia Ltd    employer    1,019
+                                        group       1,846   under group
+                                                    "Sei Australia Education"
+
+whose other member is Think: Education Services — a sister brand under a
+common owner, not part of Torrens.
+
+So the rule is: **match the roster name against the group index first and the
+employer index second, and take the total of whichever it matched.** The
+group total is used exactly when the roster names the group. St Vincent's,
+Evolution and RACV name their groups and get the group; Torrens names an
+employer inside someone else's group and gets the employer.
+
+THIS CHANGED 13 OF THE 40 UNIVERSITIES already filed by the earlier version.
+Macquarie gains MQ Health and U@MQ (6,465 -> 8,227), UNSW gains UNSW Global,
+RMIT gains RMIT Training and RMIT Online, Monash gains Monash College. Those
+are the university's own group and belong in its figure. The alternative —
+universities on employer scope and companies on group scope — would put two
+different measurements on one axis of the compare card, which is the error
+CLAUDE.md names as the most productive bug in this codebase.
+
+═══ WHAT THE FIGURE COUNTS ══════════════════════════════════════════════════
+
+  1. A HEAD COUNT INCLUDING CASUALS, not FTE. A university or a hospital
+     annual report usually leads with FTE, which is far lower. Rows are
+     marked `unit: "headcount"` so the card labels the tile from the
+     measurement rather than putting two different things under one word.
+
+  2. AUSTRALIAN EMPLOYEES ONLY, because the obligation is domestic. For a
+     university or a local health service that is the whole organisation; for
+     a multinational it is not. So WGEA is merged LAST in companyCard's
+     filedHeadcount(): it fills an employer that has no figure and can never
+     displace an annual report's global one. check-roster asserts that
+     directly, and the assertion is now exercised rather than vacuous,
+     because this file deliberately emits rows for companies that DO have an
+     annual-report figure — see below.
+
+EVERY MATCH IS EMITTED, including companies already covered by
+COMPANY_HEADCOUNT. They are never read, since the merge prefers the annual
+report, and emitting them is what turns "WGEA is merged last" from a comment
+into something check-roster can test on real overlapping keys.
 
 SUMMING IS SAFE BECAUSE THERE IS NO TOTAL ROW. Each row is one cell of
 manager_category x occupation x employment_status x employment_type x gender,
-and `manager_category` takes only 'Manager' and 'Non-manager' — there is no
-'All' or 'Total' member to double-count. Verified 2026-09-24 across all
-211,659 rows of the 2025 file.
+and `manager_category` takes only 'Manager' and 'Non-manager'. Verified
+2026-09-24 across all 211,659 rows of the 2025 file.
 
-ONLY THE 2025 AND 2024 FILES ARE USED, and the 2023 one is deliberately left
-out even though it would extend the series. It has a different schema AND a
-different unit of analysis: `primary_employer_name` with a
-`submission_group_size`, i.e. the SUBMISSION GROUP, which can bundle several
-ABNs, where 2025/2024 carry one row per `employer_name`. Comparing a group
-total against a single-employer total measures the difference between the two
-methods and reports it as hiring. See CLAUDE.md: never compare two readings
-measured different ways.
+ONLY THE 2024-25 AND 2023-24 FILES ARE USED. The 2022-23 file would extend
+the series and is deliberately excluded: it reports submission GROUPS
+(`primary_employer_name`, `submission_group_size`) where the newer two report
+employers, and comparing a group total against a single-employer total
+measures the difference between the two methods and renders it as hiring.
 
-A UNIVERSITY MISSING FROM THE NEWEST FILE STILL GETS ITS FIGURE, with `span`
-0 and `yoy` null, so the card prints the head count and an em dash for the
-change rather than dropping the employer. Measured 2026-09-24: University of
-Technology Sydney reported in 2023-24 and not in 2024-25, and it is the only
-one. This reuses the mechanism gen-headcount.py added for Qantas's three-year
-gap rather than inventing a second one.
+MATCHING IS EXACT ON A NORMALISED NAME, NEVER FUZZY, and every ALIAS below
+was read off the register rather than guessed. RMIT is the standing example
+of why: 'RMIT ONLINE PTY LTD' (204) and 'RMIT TRAINING PTY LTD' (241) sit
+beside 'Royal Melbourne Institute Of Technology' (9,588) in the same file, so
+any substring rule that found the university would find them too.
 
-MATCHING IS EXACT ON A NORMALISED NAME, never fuzzy. Two aliases are needed
-and both were read off the data, not guessed:
-
-    RMIT University  -> Royal Melbourne Institute Of Technology
-    CQUniversity     -> Central Queensland University
-
-RMIT is the one that shows why fuzzy matching is refused here: 'RMIT ONLINE
-PTY LTD' (204 staff) and 'RMIT TRAINING PTY LTD' (241) are separate
-subsidiaries in the same file, and any substring rule that found the
-university would also find them.
-
-Run:  python scripts/gen-wgea-workforce.py
+Run:  bun run scripts/dump-roster.ts > /tmp/roster.json   (done automatically)
+      python scripts/gen-wgea-workforce.py
 """
 
 import collections
@@ -81,21 +119,21 @@ import io
 import json
 import os
 import re
+import subprocess
 import sys
 import urllib.request
 import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ROSTER = os.path.join(ROOT, "src/employsi/data/universityTargets.ts")
 OUT = os.path.join(ROOT, "src/employsi/data/wgeaWorkforceAu.ts")
 CACHE = os.environ.get("WGEA_CACHE") or os.path.join(ROOT, ".wgea-cache")
 
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/122 Safari/537.36"
 BASE = "https://data.gov.au/data/dataset/4d35cd80-2538-4705-82f3-d0d18e823d98/resource"
 
-# The two per-employer public data files, newest first. Resource ids read from
-# `package_show` on 2026-09-24; if WGEA publishes a new year, add it at the top
-# and the generator picks it up as `now` with no other change.
+# Newest first. Resource ids read from `package_show` on 2026-09-24; when WGEA
+# publishes a new year, add it at the top and it becomes `now` with no other
+# change.
 FILES = [
     ("2024-25", "Jun 2025",
      f"{BASE}/380faa66-1126-4020-8b89-496821290624/download/wgea_public_dataset_2025.zip"),
@@ -103,12 +141,65 @@ FILES = [
      f"{BASE}/f12cc138-44a8-45fc-9ba7-97ee5dadd683/download/wgea_public_dataset_2024.zip"),
 ]
 
-# Roster name -> the employer_name WGEA files it under. Both measured against
-# the 2025 file; see the module docstring for why this is a table and not a
-# similarity score.
+# Roster name -> the name WGEA files it under. Each was found by searching the
+# register for the company and reading the result, and each resolves to ONE
+# entity. Where the register's name is a group, the group total is used; where
+# it is an employer, the employer total is.
 ALIAS = {
+    # Professional services file through a service trust, never the brand.
+    "EY": "The Trustee For Ernst & Young Services Trust",
+    "PwC Australia": "The Trustee For The Pricewaterhousecoopers Services Trust",
+    "KPMG": "The Trustee For KPMG Australian Service Trust",
+    # Trading name vs legal entity.
+    "Epworth HealthCare": "Epworth Foundation",
+    "Melbourne Airport": "Australia Pacific Airports Corporation",
+    "Great Southern Bank": "Credit Union Australia Ltd",   # the bank's former name
+    "People First Bank": "Heritage and People's Choice Limited",  # the brand of the merged mutual
+    "HCF": "The Hospitals Contribution Fund Of Australia Ltd",
+    "HBF": "HBF Health Limited",
+    "RACV": "Royal Automobile Club Of Victoria (Racv) Limited",
+    "BMD Group": "B.M.D. Holdings Pty. Limited",
+    "CMV Group": "Commercial Motor Vehicles Pty Ltd",
+    "ABN Group": "The Trustee for ABN Service Trust",
+    "Spotlight": "The Trustee For Spotlight Stores Trading Trust",
+    "Visy": "Visy Industries Australia Pty Ltd",
+    "Aurecon": "Aurecon Australasia Pty Ltd",
+    "Harris Farm": "Harris Farm Markets Pty Ltd",
+    "Avant Mutual": "Avant Mutual Group Limited",
+    "Ausgrid": "Ausgrid Management Pty Ltd",
+    "Georgiou": "Georgiou Group Pty Ltd",
+    "Mater": "Mater Misericordiae Ltd",
+    "Fitness and Lifestyle": "Fitness And Lifestyle Group Bidco Pty Ltd",
+    # The roster row sits in Sydney and Uniting reports by state body; this is
+    # the NSW/ACT one. The other Uniting entities are separate employers and
+    # are not summed in.
+    "Uniting": "Uniting (NSW.ACT)",
+    # Universities whose legal name is not their trading name.
     "RMIT University": "Royal Melbourne Institute Of Technology",
     "CQUniversity": "Central Queensland University",
+}
+
+# Companies deliberately NOT matched, with the measurement that decided it.
+# These are here so the next person does not re-derive them, and so the count
+# of "no source" rows is a statement rather than a gap in the alias table.
+REFUSED = {
+    "Chemist Warehouse": "no entity in the register under any recognisable name",
+    "Tennis Australia": "not in the register",
+    "Anytime Fitness": "not in the register — franchised, no corporate employer found",
+    "Bolton Clarke": "not in the register; the only near name is an SA nursing "
+                     "service inside the Silver Chain group",
+    "Linfox": "only 'Linfox Armaguard' (1,696), a separate cash-logistics "
+              "business; the Fox Group total of 2,309 is nowhere near Linfox "
+              "Logistics and would understate it by an order of magnitude",
+    "Brisbane Catholic Education": "the only match is the whole Archdiocese of "
+                                   "Brisbane (14,853), which is parishes and "
+                                   "curia as well as schools",
+    "Salvation Army Australia": "federated — several state property and social-work "
+                                "trusts, no single entity for the organisation",
+    "Calvary Health Care": "federated — separate state entities, no single group",
+    "St Vincent de Paul": "federated — separate state societies",
+    "PharmaCare": "ambiguous between 'Aspen Pharmacare Australia' and "
+                  "'Pharm-A-Care Laboratories', two unrelated companies",
 }
 
 
@@ -116,10 +207,10 @@ def norm(s):
     """Lowercase, drop corporate suffixes and a leading 'The', squash punctuation.
 
     'The University Of Queensland' and 'University of Queensland' have to land
-    on one key — WGEA files several universities with the leading article and
-    the roster never does. Parentheses are NOT stripped: gen-gov-workforce.py
-    learned that the hard way when removing them collapsed two distinct
-    Victorian Education rows into one.
+    on one key — the register writes several universities with the leading
+    article and the roster never does. Parentheses are KEPT: gen-gov-workforce
+    learned that stripping them collapsed two distinct Victorian Education rows
+    into one.
     """
     s = s.lower().replace("&", " and ")
     s = re.sub(r"\b(pty|ltd|limited|inc|incorporated|the)\b", " ", s)
@@ -127,24 +218,15 @@ def norm(s):
     return " ".join(s.split())
 
 
-def slug(name):
-    """Mirror of universityTargets.ts's `slug`, so ids cannot drift."""
-    return re.sub(r"^-|-$", "", re.sub(r"[^a-z0-9]+", "-", name.lower()))
-
-
 def roster():
-    """The [name, city, domain] triples from universityTargets.ts's RAW array.
-
-    Read out of the TS rather than duplicated here so a university added to the
-    roster is picked up by the next run. Bounded to the RAW array: an earlier
-    pass over the whole file also matched bracketed literals in the comments
-    and the UNI_ROLES list, and reported 'Academic & Research' and 'of' as
-    universities that WGEA had never heard of.
-    """
-    src = open(ROSTER, encoding="utf-8").read()
-    start = src.index("const RAW")
-    body = src[start:src.index("\n];", start)]
-    return re.findall(r'\["([^"]+)",\s*"([^"]+)",\s*"([^"]+)"\]', body)
+    """The roster, from the TypeScript that defines it. See dump-roster.ts."""
+    out = subprocess.run(
+        ["bun", "run", os.path.join(ROOT, "scripts/dump-roster.ts")],
+        capture_output=True, text=True, cwd=ROOT,
+    )
+    if out.returncode != 0:
+        sys.exit(f"ERROR: dump-roster.ts failed:\n{out.stderr}")
+    return json.loads(out.stdout)
 
 
 def fetch(url):
@@ -160,141 +242,205 @@ def fetch(url):
 
 
 def totals(path):
-    """employer_name -> total head count, summed over every cell.
-
-    Also returns the relevance flag per employer, so main() can assert that
-    every university it files is a 'relevant employer' under the Act rather
-    than a partial voluntary submission.
-    """
+    """Sum the register two ways: by employer, and by corporate group."""
     z = zipfile.ZipFile(path)
-    # The 2024 archive nests its members under a directory and the 2025 one
-    # does not, so match on the member name rather than an index.
+    # The 2024 archive nests its members in a directory and the 2025 one does
+    # not, so match on the member name rather than an index.
     member = [n for n in z.namelist() if "workforce_composition" in n][0]
-    tot = collections.Counter()
-    rel = {}
-    years = set()
+    by_emp, by_grp, years = collections.Counter(), collections.Counter(), set()
+    members = collections.defaultdict(set)
     with z.open(member) as raw:
         for row in csv.DictReader(io.TextIOWrapper(raw, encoding="utf-8-sig", errors="replace")):
-            name = row["employer_name"]
             try:
-                tot[name] += int(row["n_employees"] or 0)
+                n = int(row["n_employees"] or 0)
             except ValueError:
                 continue
-            rel[name] = row.get("is_relevant_employer")
+            by_emp[row["employer_name"]] += n
+            by_grp[row["corporate_group_name"]] += n
+            members[row["corporate_group_name"]].add(row["employer_name"])
             years.add(row["reporting_year"])
-    return tot, rel, years
+    return by_emp, by_grp, members, years
 
 
-def index(tot):
-    """normalised name -> [(employer_name, total)], so collisions are visible."""
+def index(counter):
+    """normalised name -> [(name, total)], so a collision stays visible."""
     idx = collections.defaultdict(list)
-    for name, n in tot.items():
+    for name, n in counter.items():
         idx[norm(name)].append((name, n))
     return idx
 
 
 def main():
     print("reading roster …")
-    unis = roster()
-    print(f"  {len(unis)} universities on the roster")
+    companies = [c for c in roster() if c["au"]]
+    print(f"  {len(companies)} Australian companies "
+          f"(New Zealand and overseas are not matched — see the header)")
 
     loaded = []
     for year, asof, url in FILES:
-        tot, rel, years = totals(fetch(url))
+        by_emp, by_grp, members, years = totals(fetch(url))
         if years != {year}:
             sys.exit(f"ERROR: {url} reports {sorted(years)}, expected {year!r} — "
                      "the resource ids in FILES have moved")
-        print(f"  {year}: {len(tot):,} employers, {sum(tot.values()):,} employees")
-        loaded.append((year, asof, tot, rel, index(tot)))
+        print(f"  {year}: {len(by_emp):,} employers in {len(by_grp):,} groups, "
+              f"{sum(by_emp.values()):,} employees")
+        loaded.append((year, asof, index(by_grp), index(by_emp), by_emp, by_grp, members))
 
-    rows = {}
-    missing, ambiguous, notrelevant = [], [], []
+    rows, ambiguous, missing, fallbacks, changed = {}, [], [], [], []
 
-    for name, _city, _domain in unis:
-        want = norm(ALIAS.get(name, name))
-        # Newest file first: the first year this employer appears in is `now`,
-        # the next one is `prev`.
-        found = []
-        for year, asof, tot, rel, idx in loaded:
+    for c in companies:
+        if c["name"] in REFUSED:
+            continue
+        want = norm(ALIAS.get(c["name"], c["name"]))
+
+        # THE SCOPE IS DECIDED ONCE, ON THE NEWEST FILE, AND THEN HELD. Letting
+        # each year pick its own index is how UnitingCare Queensland came out at
+        # +2454%: the group in 2024-25 (16,119) against an employer of the same
+        # name in 2023-24 (631). That is not a comparison, it is the difference
+        # between two ways of measuring, which is the failure CLAUDE.md warns
+        # about in the archive and is no different here.
+        newest = loaded[0]
+        scope = name = None
+        for sc, idx in (("group", newest[2]), ("employer", newest[3])):
             cand = idx.get(want)
             if not cand:
                 continue
             if len(cand) > 1:
-                ambiguous.append((name, year, [c[0] for c in cand]))
-                continue
-            emp, n = cand[0]
-            if n <= 0:
-                continue
-            found.append((year, asof, emp, n, rel.get(emp)))
-
-        if not found:
-            missing.append(name)
+                ambiguous.append((c["name"], FILES[0][0], sc, [x[0] for x in cand]))
+                break
+            name, scope = cand[0][0], sc
+            break
+        if name is None:
+            missing.append(c)
             continue
 
-        year, asof, emp, now, flag = found[0]
-        if flag != "TRUE":
-            notrelevant.append((name, flag))
+        def read(entry, nm, sc):
+            _y, _a, gidx, eidx, by_emp, by_grp, _m = entry
+            return (by_grp if sc == "group" else by_emp).get(nm, 0)
 
-        prev = found[1][3] if len(found) > 1 else None
-        # `span` is the years between the two readings, 0 when there is only
-        # one. FILES is consecutive years, so two entries are always 1 apart.
-        span = 1 if prev is not None else 0
+        now = read(newest, name, scope)
+        prev = read(loaded[1], name, scope) or None
+
+        # IS THE NEWEST READING COMPLETE? A group whose biggest employer simply
+        # did not report this year still produces a total, and it looks like a
+        # company that shrank. Telstra: 'Telstra Limited' (21,755 of 26,557) is
+        # absent from the whole 2024-25 file, leaving the group at 2,409 — a
+        # plausible number and 9% of the company.
+        #
+        # A member that LEFT the group is different from one that did not
+        # report, and the register can tell them apart: a divested employer is
+        # still in the file under another group, a non-reporter is not in the
+        # file at all. Only the second makes the total a fragment.
+        incomplete = 0
+        if scope == "group":
+            gone = loaded[1][6].get(name, set()) - newest[6].get(name, set())
+            absent = [e for e in gone if e not in newest[4]]
+            incomplete = sum(loaded[1][4][e] for e in absent)
+
+        # `now < prev` matters as much as the missing share. A group can lose a
+        # non-reporting member and still be bigger than last year, and four were:
+        # Genesis Minerals reads 560 against 321, Tasmea 1,789 against 431, AGL
+        # 4,448 against 4,233, Eagers 8,246 against 7,110. Falling back there
+        # would throw away the larger, newer and more complete figure in the
+        # name of completeness. Only a total that DROPPED is a fragment.
+        if prev and incomplete > 0.2 * prev and now < prev:
+            # Fall back to the last reading that was whole, and say so by
+            # dating it to that year with no change attached.
+            fallbacks.append((c["id"], name, now, prev, round(incomplete / prev * 100)))
+            rows[c["id"]] = {"now": prev, "prev": prev, "yoy": None,
+                             "asof": loaded[1][1], "span": 0, "src": name,
+                             "scope": scope}
+            continue
+
+        if now <= 0:
+            missing.append(c)
+            continue
+
+        # A YEAR-ON-YEAR NEEDS THE SAME EMPLOYERS ON BOTH SIDES. When a group
+        # gains or loses a member the two totals cover different companies, and
+        # the difference is mostly the membership change rather than hiring. The
+        # head count is still reported; the change is not.
+        same_members = True
+        if scope == "group":
+            same_members = newest[6].get(name, set()) == loaded[1][6].get(name, set())
+        if prev and not same_members:
+            changed.append((c["id"], name,
+                            len(newest[6].get(name, set())), len(loaded[1][6].get(name, set()))))
+            prev = None
+
+        span = 1 if prev else 0
         yoy = round((now - prev) / prev * 100, 1) if prev else None
-        rows[f"uni-{slug(name)}"] = {
-            "now": now,
-            "prev": prev if prev is not None else now,
-            "yoy": yoy,
-            "asof": asof,
-            "span": span,
-            "emp": emp,
-        }
+        rows[c["id"]] = {"now": now, "prev": prev if prev else now, "yoy": yoy,
+                         "asof": newest[1], "span": span, "src": name, "scope": scope}
 
     if ambiguous:
-        print("\nAMBIGUOUS — one roster name, several WGEA employers. Not filed:")
-        for name, year, cands in ambiguous:
-            print(f"  {name} [{year}] -> {cands}")
-    if notrelevant:
-        print("\nNOT A 'RELEVANT EMPLOYER' under the Act — filed, but the "
-              "submission may be partial:")
-        for name, flag in notrelevant:
-            print(f"  {name}: is_relevant_employer={flag}")
-    if missing:
-        print(f"\nABSENT from WGEA ({len(missing)}) — no row written, the card "
-              "shows an em dash:")
-        for name in missing:
-            print(f"  {name}")
+        print(f"\nAMBIGUOUS — one roster name, several register entries. Not filed ({len(ambiguous)}):")
+        for name, year, scope, cands in ambiguous[:20]:
+            print(f"  {name} [{year}/{scope}] -> {cands[:3]}")
+
+    if fallbacks:
+        print(f"\nNEWEST READING INCOMPLETE ({len(fallbacks)}) — an employer that reported "
+              "last year is absent from the whole newest file, so the group total is a "
+              "fragment. Fell back to the prior year:")
+        for cid, nm, bad, good, pct in fallbacks:
+            print(f"  {cid}: newest {bad:,} vs prior {good:,} ({pct}% of the group did not report) -> used prior")
+    if changed:
+        print(f"\nGROUP MEMBERSHIP CHANGED ({len(changed)}) — head count reported, "
+              "year-on-year suppressed:")
+        for cid, nm, a, b in changed[:12]:
+            print(f"  {cid}: {b} employers -> {a}  ({nm[:44]})")
+
+    by_scope = collections.Counter(v["scope"] for v in rows.values())
+    nospan = sorted(k for k, v in rows.items() if v["span"] == 0)
+    moved = sorted(((abs(v["yoy"]), k, v) for k, v in rows.items() if v["yoy"] is not None),
+                   reverse=True)[:8]
+
+    print(f"\nmatched {len(rows)} of {len(companies)} "
+          f"({by_scope['group']} on the group name, {by_scope['employer']} on the employer name)")
+    print(f"  no match {len(missing)} · refused by name {len(REFUSED)} · "
+          f"no prior year {len(nospan)}")
+    print("\n  largest year-on-year moves, for eyeballing:")
+    for _, k, v in moved:
+        print(f"    {v['yoy']:>+8.1f}%  {v['prev']:>7,} -> {v['now']:>7,}  {k}  ({v['src'][:40]})")
 
     newest_year, newest_asof = FILES[0][0], FILES[0][1]
-    nospan = [k for k, v in rows.items() if v["span"] == 0]
-
     out = [
         "// GENERATED — do not edit by hand. Run scripts/gen-wgea-workforce.py.",
-        "// Real workforce headcount for Australian universities, from the WGEA",
-        "// public data file on data.gov.au (Workplace Gender Equality Act 2012:",
-        "// every non-public-sector employer with 100+ staff reports annually).",
+        "// Real workforce headcount from the WGEA register (Workplace Gender",
+        "// Equality Act 2012: every non-public-sector employer with 100+ Australian",
+        "// staff reports annually), via the public data file on data.gov.au.",
         "//",
-        "// TWO THINGS THIS FIGURE IS NOT, both of which the generator's header",
-        "// explains at length:",
-        "//   - it is a HEAD COUNT INCLUDING CASUALS, not the FTE a university",
-        "//     annual report usually leads with, which is much lower;",
+        "// TWO THINGS THIS FIGURE IS NOT, both explained at length in the generator:",
+        "//   - it is a HEAD COUNT INCLUDING CASUALS, not the FTE an annual report",
+        "//     usually leads with, which is much lower;",
         "//   - it is AUSTRALIAN EMPLOYEES ONLY, so it is merged LAST in",
         "//     filedHeadcount() and never displaces a global annual-report figure.",
+        "//     Rows are emitted even for companies that already have one; those are",
+        "//     never read, and exist so check-roster can test the merge order.",
+        "//",
+        "// `scope` in the trailing comment is which of the register's two name",
+        "// columns the roster name matched — the group total is used when the",
+        "// roster names the group, the employer total when it names an employer",
+        "// inside someone else's group. Reading either one alone is wrong: see the",
+        "// St Vincent's (563 vs 23,491) and Torrens (1,846 vs 1,019) cases.",
         "//",
         f"// Source: WGEA {newest_year} public data file, as at {newest_asof}, with",
         f"//         {FILES[1][0]} as the prior year. Both per-employer; the 2022-23",
         "//         file is excluded because it reports submission GROUPS.",
-        f"// Filed: {len(rows)} of {len(unis)} universities on the roster.",
+        f"// Filed: {len(rows)} of {len(companies)} Australian roster companies",
+        f"//        ({by_scope['group']} matched on the group name, "
+        f"{by_scope['employer']} on the employer name).",
         "//",
-        "// A university WGEA does not report is ABSENT, never zero — the card",
+        "// A company the register does not report is ABSENT, never zero — the card",
         "// shows an em dash and says no figure was collected.",
     ]
     if nospan:
         out += [
             "//",
-            "// `span: 0` and `yoy: null` mean the university appears in only one of",
-            "// the two files, so there is no prior reading to compare — the card",
-            "// prints the head count and an em dash for the change:",
-        ] + [f"//   {k}" for k in sorted(nospan)]
+            "// `span: 0` and `yoy: null` mean the company appears in only one of the",
+            "// two files, so there is no prior reading to compare — the card prints",
+            "// the head count and an em dash for the change:",
+        ] + [f"//   {k}" for k in nospan]
     out += [
         'import type { Headcount } from "./companyHeadcount";',
         "export const WGEA_HEADCOUNT: Record<string, Headcount> = {",
@@ -305,16 +451,13 @@ def main():
         out.append(
             f'  "{key}": {{ now: {v["now"]}, prev: {v["prev"]}, yoy: {yoy}, '
             f'asof: "{v["asof"]}", span: {v["span"]}, unit: "headcount" }},'
-            f'  // {v["emp"]}'
+            f'  // {v["scope"]}: {v["src"]}'
         )
     out.append("};")
 
     with open(OUT, "w", encoding="utf-8") as f:
         f.write("\n".join(out) + "\n")
-
     print(f"\nwrote {OUT}")
-    print(f"  {len(rows)} universities filed, {len(missing)} absent, "
-          f"{len(nospan)} without a prior year")
     if not rows:
         sys.exit("ERROR: nothing matched — refusing to write an empty file")
 
