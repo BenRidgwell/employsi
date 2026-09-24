@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../../state/store";
 import { buildPanel } from "../../lib/panel";
-import { buildCompanyCard, headcountFor, TREND_UP, TREND_DOWN } from "../../lib/companyCard";
+import { buildCompanyCard, filedHeadcount, TREND_UP, TREND_DOWN } from "../../lib/companyCard";
 import type { StatIcon } from "../../lib/companyCard";
 import { smoothPath } from "../../lib/chart";
 import type { RolePoint } from "../../lib/openRolesFn";
@@ -813,11 +813,10 @@ export function CompanyPanel() {
 
   const card = useMemo(() => {
     if (!company) return null;
-    const hcRec = COMPANY_HEADCOUNT[company.id] ?? GOV_HEADCOUNT[company.id];
     return buildCompanyCard({
       company,
       openRoles: liveRoles ? liveRoles.count : null,
-      headcount: headcountFor(hcRec),
+      headcount: filedHeadcount(company.id),
       vacancies: vacancySeries,
       share: liveShare ?? null,
       revPerEmp,
