@@ -1,71 +1,87 @@
 #!/usr/bin/env python3
-"""Reconnaissance for the Queensland workforce data, run on a GitHub runner.
+"""Fetch the Queensland workforce workbook past its WAF, and report its shape.
 
-WHY A RUNNER. The current State of the Sector workbooks live on
-www.data.qld.gov.au, which answers `x-amzn-waf-action: challenge` and returns a
-JavaScript interstitial instead of the file. The sandbox this repo is developed
-in cannot execute that challenge, so the file has never been seen. Everything
-the CKAN datastore will serve stops at March 2023, and the older profiles on
-forgov.qld.gov.au download fine — so it is that one host, not the jurisdiction.
+WHY A BROWSER, not just a runner. www.data.qld.gov.au answers a plain request
+for the file with `x-amzn-waf-action: challenge` and 2,027 bytes of
+`window.awsWafCoo…` — an AWS WAF JavaScript challenge. Measured from the
+authoring sandbox AND from a GitHub runner on 2026-09-24: both get the same
+interstitial, so this was never an IP block and moving the fetch to a runner
+alone does nothing. The challenge has to be executed.
 
-WHAT THIS DOES, AND WHY IT IS NOT THE PARSER. It answers two questions that
-have to be answered before a parser can honestly be written:
+That is the same doorman browser-portals.yml already documents on NGA.NET,
+where it is the heavier `captcha` action; this is the lighter `challenge`,
+which a real browser clears on its own with no human step. So: load the dataset
+page, let the challenge run and set its cookie, then pull the file from inside
+the same browser context.
 
-  1. Does a GitHub runner get the file, or the same challenge?
-  2. What is actually in it? The current product is the "State of the sector
-     report" workbook, which is not the "biannual workforce profile" the
-     datastore holds — a parser written against the old shape would be a guess.
+WHAT THIS PRINTS. The workbook's structure, to the job log. The parser is
+deliberately not written yet — the current product is the "State of the sector
+report" workbook, which is a different shape from the "biannual workforce
+profile" the CKAN datastore holds, and writing a parser against a file nobody
+has opened is a guess. Once the log shows the real thing, load_qld() goes into
+scripts/gen-gov-workforce.py.
 
-So it prints the structure to the job log and stops. The parser goes into
-scripts/gen-gov-workforce.py once there is a measurement to write it against.
-
-    python3 scripts/qld-workforce-probe.py
+    python3 scripts/qld-workforce-probe.py        # needs playwright + chromium
 """
-import io, json, re, sys, urllib.error, urllib.request
+import io, json, re, sys, urllib.request
 
 API = 'https://data.qld.gov.au/api/3/action'
 DATASET = 'queensland-public-service-workforce-quarterly-profile'
+PAGE = f'https://www.data.qld.gov.au/dataset/{DATASET}'
 UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36')
-HEADERS = {
-    'User-Agent': UA,
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Accept-Language': 'en-AU,en;q=0.9',
-    'Referer': f'https://www.data.qld.gov.au/dataset/{DATASET}',
-}
 
 
-def fetch(url, binary=False):
-    req = urllib.request.Request(url, headers=HEADERS)
-    with urllib.request.urlopen(req, timeout=120) as r:
-        return r.read() if binary else r.read().decode('utf-8', 'replace')
+def newest_resource():
+    """The newest State of the Sector workbook. The CKAN API itself is NOT
+    behind the WAF — only the file downloads are — so this stays plain urllib."""
+    req = urllib.request.Request(f'{API}/package_show?id={DATASET}',
+                                 headers={'User-Agent': UA})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        pkg = json.load(r)['result']
+    cands = [x for x in pkg['resources']
+             if 'state of the sector' in x['name'].lower()
+             and (x.get('format') or '').lower() in ('xlsx', 'xls')]
+    if not cands:
+        return None
+    cands.sort(key=lambda x: (re.search(r'(20\d\d)', x['name']) or ['', '0'])[1],
+               reverse=True)
+    return cands[0]
 
 
 def main():
-    pkg = json.loads(fetch(f'{API}/package_show?id={DATASET}'))['result']
-    # Newest "State of the sector" workbook — that is the current product.
-    cands = [r for r in pkg['resources']
-             if 'state of the sector' in r['name'].lower()
-             and (r.get('format') or '').lower() in ('xlsx', 'xls')]
-    cands.sort(key=lambda r: re.search(r'(20\d\d)', r['name']).group(1)
-               if re.search(r'(20\d\d)', r['name']) else '', reverse=True)
-    if not cands:
+    res = newest_resource()
+    if not res:
         print('NO state-of-the-sector workbook in the dataset', file=sys.stderr)
         return 1
-    res = cands[0]
     print(f'resource : {res["name"]}')
     print(f'url      : {res["url"]}')
 
-    try:
-        raw = fetch(res['url'], binary=True)
-    except urllib.error.HTTPError as e:
-        print(f'FETCH FAILED: HTTP {e.code} — the runner is challenged too')
-        return 1
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as p:
+        browser = p.chromium.launch(args=['--no-sandbox'])
+        ctx = browser.new_context(user_agent=UA, locale='en-AU')
+        page = ctx.new_page()
+        page.goto(PAGE, wait_until='domcontentloaded', timeout=90_000)
+        # The challenge runs after load and then reloads the document itself.
+        # Two and a half seconds is what probe-headless-ci settles for on the
+        # same doorman.
+        page.wait_for_timeout(2500)
+        names = {c['name'] for c in ctx.cookies()}
+        got_token = any('waf' in n.lower() for n in names)
+        print(f'cookies  : {sorted(names)}')
+        print(f'waf token: {got_token}')
 
-    print(f'bytes    : {len(raw)}')
+        # Inside the browser context, so the cookie and the TLS fingerprint are
+        # the ones the challenge was issued to.
+        r = ctx.request.get(res['url'], timeout=120_000)
+        raw = r.body()
+        print(f'status   : {r.status}')
+        print(f'bytes    : {len(raw)}')
+        browser.close()
+
     if raw[:2] != b'PK':
-        # A WAF interstitial is HTML, and small.
-        print('NOT A WORKBOOK — first 300 bytes follow. The runner was challenged.')
+        print('STILL NOT A WORKBOOK — first 300 bytes follow.')
         print(raw[:300].decode('utf-8', 'replace'))
         return 1
 
@@ -74,16 +90,13 @@ def main():
     print(f'sheets   : {len(wb.sheetnames)}')
     for n in wb.sheetnames:
         print(f'  - {n}')
-
-    # For each sheet, print the first rows that carry text, so the agency table
-    # can be identified by eye rather than by a rule written in advance.
     for n in wb.sheetnames:
         ws = wb[n]
         print(f'\n===== {n} =====')
-        for i, row in enumerate(ws.iter_rows(min_row=1, max_row=12, values_only=True)):
+        for i, row in enumerate(ws.iter_rows(min_row=1, max_row=14, values_only=True)):
             cells = ['' if c is None else str(c).strip() for c in (row or ())[:10]]
             if any(cells):
-                print(f'  {i+1:3d} | ' + ' | '.join(c[:28] for c in cells))
+                print(f'  {i+1:3d} | ' + ' | '.join(c[:30] for c in cells))
     return 0
 
 
