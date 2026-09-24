@@ -115,19 +115,23 @@ export function headcountFor(
  *   GOV_HEADCOUNT       WA agencies, from the PSC bulletins (predates the
  *                       generator, and carries no span — see headcountFor)
  *   GOV_HEADCOUNT_AU    APS, NSW, VIC, QLD and SA agencies, from their open data
- *   WGEA_HEADCOUNT      universities, from the WGEA public data file
+ *   WGEA_HEADCOUNT      any Australian employer with 100+ staff, from the
+ *                       WGEA register
  *
  * ORDER IS LOAD-BEARING FOR WGEA, unlike the first three. Those three have
  * disjoint keyspaces — a WA agency id cannot collide with a ticker-derived id
- * or an `aps-`/`vic-gov-` one — so their order is arbitrary. WGEA is
- * different: it covers every non-public-sector employer with 100+ Australian
- * staff, which is thousands of employers this roster also holds under other
- * ids, and its figure is AUSTRALIAN EMPLOYEES ONLY. An annual report's
- * headcount is global. For a multinational the two differ by most of the
- * company, so WGEA goes LAST and can only fill an employer that has no figure
- * at all — it must never displace a global figure with a domestic one. Today
- * only `uni-` ids are written, so no collision exists yet; the ordering is
- * what keeps that safe when the file is widened.
+ * or an `aps-`/`vic-gov-` one — so their order is arbitrary. WGEA overlaps all
+ * of them on purpose: it covers every non-public-sector employer with 100+
+ * AUSTRALIAN staff, and 85 of its keys are companies COMPANY_HEADCOUNT already
+ * has.
+ *
+ * Those two figures are not the same measurement. An annual report counts the
+ * group worldwide; WGEA counts the Australian workforce, and for a
+ * multinational the difference is most of the company — Rio Tinto is 26,419 in
+ * the register against roughly 60,000 filed. So WGEA goes LAST and can only
+ * fill an employer with no figure at all; it must never replace a global
+ * number with a domestic one. The overlapping keys are deliberate, so that
+ * check-roster's assertion on this ordering has something real to test.
  */
 export function filedHeadcount(id: string): CardHeadcount | null {
   return headcountFor(
