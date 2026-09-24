@@ -39,12 +39,13 @@ run; set a spend cap in Bright Data's control panel too, so nothing beyond the
 free tier can be billed. An error that looks like quota, auth or payment
 stops the run (exit 3).
 
-THE FILTER FIELD NAMES ARE NOT YET CONFIRMED
-They come from Bright Data's published schema and sample record
-(`current_company_company_id`, `country_code`), not from the live dataset's
-metadata. Run `--fields` first: it calls `list_dataset_fields` and prints what
-is actually filterable. If an experience-level company field is listed, that
-is how FORMER employees could be reached too (see --filter-field).
+THE FILTERS (measured live 2026-09-24)
+`list_dataset_fields` lists `current_company_company_id` and `country_code`,
+and bhp + AU returned 21,360 hits. There is no way to FORMER employees:
+`experience` is listed only as an array, and `--filter-field
+experience.company_id` is refused ("unsupported filters"). Of 10 real BHP
+profiles, 7 had one experience entry with no start date and parsed to
+nothing; `--inspect --n 10` prints what refused entries hold.
 
 WHAT THE NUMBERS MEAN
 A sample of profiles Bright Data holds for current employees of each seed, in
@@ -60,16 +61,19 @@ SETUP (once)
 USAGE
     python scripts/brightdata-talent-flows.py --fields                # 1 request
     python scripts/brightdata-talent-flows.py --inspect bhp           # 1 request, stores nothing
+    python scripts/brightdata-talent-flows.py --inspect bhp --n 10    # still 1 request, 10 profiles
     python scripts/brightdata-talent-flows.py --seed bhp=bhp --max-requests 5
     python scripts/brightdata-talent-flows.py --stats
     python scripts/brightdata-talent-flows.py --export out/
     python scripts/flows-to-d1.py out/                                # dry run
 
 Options:
+    --n N                 profiles --inspect asks for (1-10, same one request)
     --seed ID=SLUG        app company id = LinkedIn company slug (repeatable)
     --seed-from-d1        seeds from D1 company_slugs (needs CLOUDFLARE_API_TOKEN)
     --country CODE        country_code filter (default AU; "any" to drop)
-    --filter-field NAME   field matched against the slug (default current_company_company_id)
+    --filter-field NAME   field matched against the slug (default current_company_company_id;
+                          experience.company_id is refused by Bright Data)
     --max-requests N      MCP calls this run may make (default 50)
     --per-seed N          profiles per seed within the run (default: no cap)
     --pause S             seconds between calls (default 2)
@@ -284,17 +288,29 @@ async def fields(bd: BrightData) -> int:
     return 0
 
 
-async def inspect(bd: BrightData, slug: str) -> int:
-    res = await bd.search(slug, 1, None)
+def _parse_report(p: dict, seed: str) -> tuple[object, object, str]:
+    """Parsed positions, moves, and whether the latest position is at `seed`
+    (read from the work history, so it also shows a filter that matched a
+    former employee)."""
+    parsed = positions_from_brightdata(p)
+    mv = moves_from(parsed.positions)
+    ongoing = [x for x in parsed.positions if not x.end and not x.side_role]
+    here = 'yes' if any(x.key == f'li:{seed.lower()}' for x in ongoing) else 'no'
+    return parsed, mv, here
+
+
+async def inspect(bd: BrightData, slug: str, n: int) -> int:
+    res = await bd.search(slug, min(max(n, 1), PAGE), None)
     hits = res.get('hits') or []
-    print(f'total_hits for {slug}: {res.get("total_hits")}')
+    print(f'filter: {json.dumps(filter_for(slug))}')
+    print(f'total_hits for {slug}: {res.get("total_hits")}   returned: {len(hits)}')
     if not hits:
         print('No profile matched. Check the slug and run --fields.')
         return 0
     p = profile_of(hits[0])
-    print('── experience entries (nothing else from the profile is shown) ' + '─' * 10)
+    print('── profile 1: experience entries (nothing else from the profile is shown) ' + '─' * 3)
     print(json.dumps(p.get('experience'), indent=1, ensure_ascii=False))
-    parsed = positions_from_brightdata(p)
+    parsed, mv, _ = _parse_report(p, slug)
     print('── positions parsed ' + '─' * 53)
     for x in parsed.positions:
         end = (x.end.iso() or x.end.year) if x.end else 'Present'
@@ -302,12 +318,47 @@ async def inspect(bd: BrightData, slug: str) -> int:
               f'{"  (side role)" if x.side_role else ""}')
     if parsed.dropped:
         print(f'  refused: {dict(parsed.dropped)}')
-    mv = moves_from(parsed.positions)
     print('── moves ' + '─' * 64)
     for m in mv.moves:
         print(f'  {m.month or "year only"}  {m.from_name} → {m.to_name}')
     if mv.skipped:
         print(f'  not counted: {dict(mv.skipped)}')
+    if len(hits) > 1:
+        # One line per profile: counts and the employer-to-employer moves only.
+        # No titles, no dates beyond the move month, no raw entries.
+        print('── every returned profile, summarised ' + '─' * 35)
+        tot_pos = tot_mv = empty = 0
+        refused, skipped = Counter(), Counter()
+        for i, h in enumerate(hits, 1):
+            p = profile_of(h)
+            parsed, mv, here = _parse_report(p, slug)
+            n_exp = len(p.get('experience') or []) if isinstance(p.get('experience'), list) else 0
+            tot_pos += len(parsed.positions)
+            tot_mv += len(mv.moves)
+            empty += not parsed.positions
+            refused.update(parsed.dropped)
+            skipped.update(mv.skipped)
+            print(f'  #{i:<2} entries={n_exp:<2} positions={len(parsed.positions):<2} '
+                  f'moves={len(mv.moves):<2} current-at-{slug}={here}'
+                  f'{"  refused=" + str(dict(parsed.dropped)) if parsed.dropped else ""}'
+                  f'{"  not-counted=" + str(dict(mv.skipped)) if mv.skipped else ""}')
+            for m in mv.moves:
+                print(f'        {m.month or "year only"}  {m.from_name} → {m.to_name}')
+            if parsed.dropped:
+                # What a refused entry looked like: its field names and dates,
+                # so a new shape can be told from missing data. Titles, urls
+                # and descriptions are not printed.
+                for e in p.get('experience') or []:
+                    if isinstance(e, dict):
+                        print(f'        entry fields={sorted(e)} start_date={e.get("start_date")!r} '
+                              f'end_date={e.get("end_date")!r} company_id={e.get("company_id")!r}'
+                              f'{" positions=" + str(len(e["positions"])) if isinstance(e.get("positions"), list) else ""}')
+        print(f'  total: {len(hits)} profiles, {tot_pos} positions, {tot_mv} moves, '
+              f'{empty} parsed to nothing')
+        if refused:
+            print(f'  refused, all profiles: {dict(refused)}')
+        if skipped:
+            print(f'  not counted, all profiles: {dict(skipped)}')
     print('\nNothing was stored.')
     return 0
 
@@ -483,7 +534,7 @@ def main() -> int:
     if '--fields' in args:
         return asyncio.run(with_server(fields))
     if '--inspect' in args:
-        return asyncio.run(with_server(lambda bd: inspect(bd, _opt('--inspect'))))
+        return asyncio.run(with_server(lambda bd: inspect(bd, _opt('--inspect'), int(_opt('--n', 1)))))
     conn = db()
     if '--stats' in args:
         return stats(conn)

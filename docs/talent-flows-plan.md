@@ -11,7 +11,7 @@ holds no data.**
 | Server read | `src/employsi/lib/flowsFn.ts` | Built; returns null until tables exist and hold an import |
 | Card section | `components/panels/TalentFlow.tsx`, Hiring tab | Built; renders nothing without data. Not seen rendered |
 | Map arcs | — | Not started |
-| **Source: Bright Data** (chosen) | `scripts/brightdata-talent-flows.py` + `talent_flows.positions_from_brightdata` | Built; tested end to end against a **fake** Bright Data MCP server only. Filter field names not yet confirmed against the live dataset |
+| **Source: Bright Data** (chosen) | `scripts/brightdata-talent-flows.py` + `talent_flows.positions_from_brightdata` | Built; tested end to end against a **fake** Bright Data MCP server. Filters confirmed live 2026-09-24. **7 of 10 real profiles parse to nothing** — see below |
 | Source: LinkedIn sample (parked) | `scripts/collect-talent-flows.py` + `scripts/talent_flows.py` | Built; tested against a fake MCP server only. Parked: it needs a personal LinkedIn account |
 
 ### The Bright Data source
@@ -46,12 +46,29 @@ Facts it depends on (read 2026-09-24):
   real server passes Bright Data's message through, but an MCP server can
   mask it, and a quota error read as transient would be retried on a metered
   API. The `search_after` cursor is saved per seed, so the next run resumes.
-- **The filter field names are unconfirmed.** `current_company_company_id` and
-  `country_code` come from the published schema and sample, not the live
-  dataset's metadata. `--fields` runs `list_dataset_fields` and says whether
-  each is filterable. If an experience-level company field is listed, it can
-  reach **former** employees (`--filter-field`). Until then a seed's "lost to"
-  side only shows when the destination is also seeded.
+- **The filters work, measured live 2026-09-24.** `list_dataset_fields`
+  lists both `current_company_company_id` and `country_code` (text), and a
+  `search_dataset` on `bhp` + `AU` returned `total_hits: 21360`.
+- **Former employees cannot be reached.** The only experience fields
+  listed are the arrays `experience` and `volunteer_experience`; no
+  sub-field is advertised. Filtering on `experience.company_id` was tried
+  once and refused: `HTTP 500: unsupported filters: experience.company_id`.
+  So a seed's "lost to" side only shows when the destination is also seeded.
+- **Most profiles have no start date.** `--inspect bhp --n 10` (one
+  request, 10 profiles): 7 profiles had a single `experience` entry that
+  `positions_from_brightdata` refused as `no_start_date`, so they parsed to
+  nothing. The other 3 parsed into 10 positions and 5 moves, and their entries matched
+  the published sample's shape. What the refused entries hold instead is
+  **not yet seen**: the next `--inspect --n 10` prints each refused entry's
+  field names and dates. Until it is, expect ~70% of profiles to parse
+  empty, far past the 20% at which `--stats` warns. If those profiles
+  genuinely carry no dates, they can't give a dated move and the collection
+  cost per usable profile is roughly 3x the plan's assumption.
+- **The MCP server writes to the Bright Data account.** On first start
+  `@brightdata/mcp@2.11.3` created two zones, `mcp_unlocker` and
+  `mcp_browser`, on the account the token belongs to ("Required zone … not
+  found, creating it"). Later starts reuse them. This script uses neither
+  (it calls only `search_dataset` / `list_dataset_fields`), but they exist.
 
 What is kept: the MCP tool has no field selection, so each hit arrives
 complete, with name, profile url and photo. The script reads `id` and
@@ -64,6 +81,7 @@ pip install "mcp>=1.28,<3"                       # plus Node 18+ for npx
 export BRIGHTDATA_API_TOKEN=...
 python scripts/brightdata-talent-flows.py --fields             # 1 request
 python scripts/brightdata-talent-flows.py --inspect bhp        # 1 request, stores nothing
+python scripts/brightdata-talent-flows.py --inspect bhp --n 10 # still 1 request, 10 profiles summarised
 python scripts/brightdata-talent-flows.py --seed bhp=bhp --max-requests 5
 python scripts/brightdata-talent-flows.py --stats
 python scripts/brightdata-talent-flows.py --export out/
