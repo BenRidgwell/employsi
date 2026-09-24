@@ -31,7 +31,7 @@ import { SEEK_TRADING_NAMES } from "../src/employsi/data/seekTradingNames";
 import { SITES as CAREER_SITES } from "../workers/jobs-cron/careerSites";
 import { COMPANY_HEADCOUNT } from "../src/employsi/data/companyHeadcount";
 import { GOV_HEADCOUNT } from "../src/employsi/data/perthGovWorkforce";
-import { buildCompanyCard } from "../src/employsi/lib/companyCard";
+import { buildCompanyCard, headcountFor } from "../src/employsi/lib/companyCard";
 import { buildCompareCard } from "../src/employsi/lib/compareCard";
 
 /**
@@ -200,11 +200,14 @@ for (const [id, list] of Object.entries(SEEK_TRADING_NAMES)) {
   const filed = (id: string) => !!COMPANY_HEADCOUNT[id] || !!GOV_HEADCOUNT[id];
   const bad: string[] = [];
   for (const c of COMPANIES) {
-    const hc = COMPANY_HEADCOUNT[c.id] ?? GOV_HEADCOUNT[c.id] ?? null;
+    // headcountFor, not an inline literal — the span default for GOV_HEADCOUNT
+    // is stated in one place and this checker has to read the same one the card
+    // does, or it checks a card nobody renders.
+    const hc = headcountFor(COMPANY_HEADCOUNT[c.id] ?? GOV_HEADCOUNT[c.id]);
     const card = buildCompanyCard({
       company: c,
       openRoles: null,
-      headcount: hc ? { now: hc.now, yoy: hc.yoy, asof: hc.asof } : null,
+      headcount: hc,
       vacancies: [],
       skillCounts: {},
       roleCounts: {},
@@ -218,9 +221,19 @@ for (const [id, list] of Object.entries(SEEK_TRADING_NAMES)) {
     // one. Anything else has to be the em dash.
     const printsFigure = tile.value !== "—";
     if (printsFigure && !filed(c.id) && !(c.headcount > 0)) bad.push(`${c.id} (${tile.value})`);
-    // A YoY delta is only ever honest beside a filed figure — it is the one
+    // A change is only ever honest beside a filed figure — it is the one
     // number on this tile that needs two reporting years behind it.
     if (tile.delta && !filed(c.id)) err("headcount YoY unfiled", c.id, c.name);
+    // AND THE NOTE BESIDE IT MUST NAME THE REAL SPAN. The aggregator skips
+    // years for some companies, so its two newest rows are not always a year
+    // apart: Qantas runs Jun 2026, Jun 2023, and reported +60.0% "YoY" for a
+    // three-year change. Measured 2026-09-24, 11 of 137 were not a year apart,
+    // the worst Capricorn Metals at +1,325% over seven.
+    if (tile.delta && hc) {
+      const want = hc.span === 1 ? "YoY" : `over ${hc.span} years`;
+      if (tile.deltaNote !== want)
+        err("headcount span mislabelled", c.id, `says "${tile.deltaNote}", span is ${hc.span}`);
+    }
   }
   if (bad.length)
     err(
@@ -228,6 +241,18 @@ for (const [id, list] of Object.entries(SEEK_TRADING_NAMES)) {
       `${bad.length} companies`,
       `${bad.slice(0, 6).join(", ")}${bad.length > 6 ? ", …" : ""} — a headcount of 0 means unknown; the card must show "—"`,
     );
+}
+
+// A change with no span behind it is not a change anyone can read, so it is
+// not printed at all. `yoy` is null exactly where the generator could not
+// establish the gap between the two readings.
+{
+  for (const [id, h] of Object.entries(COMPANY_HEADCOUNT)) {
+    if (h.yoy !== null && !(h.span >= 1))
+      err("headcount change without a span", id, `yoy ${h.yoy} over span ${h.span}`);
+    if (h.yoy === null && h.span >= 1)
+      err("headcount span without a change", id, `span ${h.span} but yoy null`);
+  }
 }
 
 // The same 0 reaches the COMPARE card by a different path, so it is asserted

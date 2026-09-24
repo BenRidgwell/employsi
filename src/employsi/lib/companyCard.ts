@@ -59,6 +59,33 @@ export interface CardStat {
   sub?: string | null;
 }
 
+/** The card's headcount input, from either source that supplies one. */
+export interface CardHeadcount {
+  now: number;
+  yoy: number | null;
+  asof: string;
+  span: number;
+}
+
+/**
+ * Normalise a headcount record into the card's input, in ONE place.
+ *
+ * Two files supply one: COMPANY_HEADCOUNT, which carries its own measured
+ * `span` because the aggregator skips years, and GOV_HEADCOUNT, which has no
+ * span field — the WA PSC bulletins report consecutive annual averages by
+ * construction, so it is always a year.
+ *
+ * That "always a year" is a real assumption and it belongs in one place. It was
+ * briefly written inline at the two call sites, and they immediately disagreed:
+ * the card said one year, the checker read `undefined` and rendered "over
+ * undefined years". A default this load-bearing gets stated once.
+ */
+export function headcountFor(
+  rec: { now: number; yoy: number | null; asof: string; span?: number } | null | undefined,
+): CardHeadcount | null {
+  return rec ? { now: rec.now, yoy: rec.yoy, asof: rec.asof, span: rec.span ?? 1 } : null;
+}
+
 export interface CardChartLine {
   label: string;
   /** SVG path over the shared 400×150 viewBox. */
@@ -229,8 +256,18 @@ export interface CardInputs {
   company: Company;
   /** Live open-role count, where a feed has one. */
   openRoles?: number | null;
-  /** Reported headcount + YoY from the annual report, where we have it. */
-  headcount?: { now: number; yoy: number; asof: string } | null;
+  /**
+   * Reported headcount and its change from the annual report, where we have it.
+   *
+   * `span` is the YEARS BETWEEN the two readings and is NOT always 1. The
+   * aggregator skips years for some companies — Qantas's table runs Jun 2026,
+   * Jun 2023, Jun 2022 — so the two newest rows can be three years apart, and
+   * calling their difference year-on-year reported +60.0%. Measured
+   * 2026-09-24: 11 of 137 companies were not a year apart, the worst of them
+   * Capricorn Metals at +1,325% over seven years. `yoy` is null where the span
+   * could not be established at all.
+   */
+  headcount?: CardHeadcount | null;
   /** Daily live-vacancy series from the D1 archive. */
   vacancies: RolePoint[];
   /** Quarterly + daily share price, public companies only. */
@@ -317,9 +354,12 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
     stats.push({
       value: hc.now >= 1000 ? `${(hc.now / 1000).toFixed(hc.now >= 10000 ? 0 : 1)}k` : `${hc.now}`,
       label: "Headcount",
-      delta: signed(hc.yoy),
-      deltaUp: hc.yoy >= 0,
-      deltaNote: "YoY",
+      // No change at all when the span is unknown, and the REAL span named when
+      // it is not a year — "over 7 years" beside +1,325% is a fact; "YoY"
+      // beside it is not.
+      delta: hc.yoy === null ? null : signed(hc.yoy),
+      deltaUp: (hc.yoy ?? 0) >= 0,
+      deltaNote: hc.yoy === null ? null : hc.span === 1 ? "YoY" : `over ${hc.span} years`,
       sub: `${hc.now.toLocaleString("en-AU")} · ${hc.asof}`,
       icon: "headcount",
     });

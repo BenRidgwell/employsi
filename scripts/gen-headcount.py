@@ -17,20 +17,75 @@ OUT = f'{ROOT}/src/employsi/data/companyHeadcount.ts'
 UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/122 Safari/537.36'
 MIN_YEAR = 2024
 
-# company id -> ASX ticker (Arrow Energy + Jellinbah are private; BHP's employee
-# vs total-workforce definition is ambiguous on the aggregator, so it's omitted).
+# company id -> ASX ticker, read by main() below.
+#
+# THIS MAP IS THE WHOLE REASON COVERAGE WAS SHORT. The fetch and the parse have
+# always worked; they were only ever pointed at 45 companies, so 180 listed
+# AU/NZ employers on the map had no filed headcount and their cards showed a
+# curated number with no YoY, or nothing at all.
+#
+# Every id added on 2026-09-24 was VERIFIED FIRST against this file's own fetch
+# and parse rather than assumed: 204 listed AU/NZ companies were probed, 114
+# returned a figure dated MIN_YEAR or later, and only those 114 are here. The
+# other 90 are deliberately absent and listed at the bottom of this comment, so
+# the next person does not re-probe them one at a time.
+#
+# NOT ADDED, and why (measured 2026-09-24):
+#   * 8 carried a figure older than MIN_YEAR, so the guard below would drop them
+#     anyway and the entry would read as a mistake rather than a decision:
+#     Lovisa (Jul 2023, and the largest of them by live ads), Bega Cheese,
+#     Elders, Lendlease (2018), NextDC (2021), Nib, and two smaller.
+#   * 82 are not carried at all — a 404 at the aggregator. That includes EVT,
+#     ResMed, Evolution Mining, Adbri and Eagers Automotive.
+#   * ALL 14 NZX COMPANIES 404. Xero, Spark, Fletcher Building, Auckland
+#     Airport, Mainfreight and the rest. stockanalysis.com carries no NZ
+#     listings at /quote/nzx/; /quote/nzse/ and /quote/nz/ also 404, and the
+#     lowercase and /stocks/ forms redirect back to a 404. New Zealand needs a
+#     different source, not another ticker.
+#
+# Arrow Energy and Jellinbah are private. BHP's employee vs total-workforce
+# definition is ambiguous on the aggregator, so its figure comes from the table
+# rather than the summary sentence (see parse_table).
 ASX = {
+    'adelaide-age': 'AGE', 'adelaide-c79': 'C79', 'adelaide-coe': 'COE', 'adelaide-tea': 'TEA',
     'alk': 'ALK', 'asb': 'ASB', 'beach': 'BPT', 'bhp': 'BHP', 'bmn': 'BMN', 'boe': 'BOE',
-    'ccv': 'CCV',
-    'cmm': 'CMM', 'cvn': 'CVN', 'cxo': 'CXO', 'del': 'DEL', 'dyl': 'DYL',
-    'fmg': 'FMG', 'gmd': 'GMD', 'gor': 'GOR', 'hgo': 'HGO', 'igo': 'IGO', 'ilu': 'ILU',
-    'jms': 'JMS', 'ltr': 'LTR', 'mah': 'MAH', 'mgt': 'MGT', 'min': 'MIN', 'mmi': 'MMI',
-    'mnd': 'MND', 'nhc': 'NHC', 'nst': 'NST', 'nwh': 'NWH', 'pdn': 'PDN', 'pls': 'PLS',
-    'pru': 'PRU', 'rio': 'RIO', 'rms': 'RMS', 'rrl': 'RRL', 's32': 'S32', 'sfr': 'SFR',
-    'sgq': 'SGQ', 'smr': 'SMR', 'sto': 'STO', 'stx': 'STX', 'sw1': 'SW1', 'swm': 'SWM',
-    'wds': 'WDS', 'wes': 'WES', 'wgx': 'WGX',
+    'brisbane-alq': 'ALQ', 'brisbane-aqz': 'AQZ', 'brisbane-azj': 'AZJ', 'brisbane-boq': 'BOQ',
+    'brisbane-crn': 'CRN', 'brisbane-ctd': 'CTD', 'brisbane-dtl': 'DTL', 'brisbane-elv': 'ELV',
+    'brisbane-flt': 'FLT', 'brisbane-mp1': 'MP1', 'brisbane-nsr': 'NSR', 'brisbane-sul': 'SUL',
+    'brisbane-sun': 'SUN', 'brisbane-tne': 'TNE', 'brisbane-vgn': 'VGN', 'ccv': 'CCV',
+    'cmm': 'CMM', 'cvn': 'CVN', 'cxo': 'CXO', 'del': 'DEL', 'dyl': 'DYL', 'fmg': 'FMG',
+    'gmd': 'GMD', 'gor': 'GOR', 'hgo': 'HGO', 'igo': 'IGO', 'ilu': 'ILU', 'jms': 'JMS',
+    'ltr': 'LTR', 'mah': 'MAH', 'melbourne-4dx': '4DX', 'melbourne-ann': 'ANN',
+    'melbourne-anz': 'ANZ', 'melbourne-ben': 'BEN', 'melbourne-car': 'CAR',
+    'melbourne-col': 'COL', 'melbourne-cpu': 'CPU', 'melbourne-csl': 'CSL',
+    'melbourne-cwy': 'CWY', 'melbourne-dnl': 'DNL', 'melbourne-hsn': 'HSN',
+    'melbourne-jbh': 'JBH', 'melbourne-mpl': 'MPL', 'melbourne-msb': 'MSB',
+    'melbourne-nab': 'NAB', 'melbourne-nwl': 'NWL', 'melbourne-ora': 'ORA',
+    'melbourne-ori': 'ORI', 'melbourne-pme': 'PME', 'melbourne-pxa': 'PXA',
+    'melbourne-rea': 'REA', 'melbourne-reg': 'REG', 'melbourne-reh': 'REH',
+    'melbourne-sek': 'SEK', 'melbourne-tcl': 'TCL', 'melbourne-tlc': 'TLC',
+    'melbourne-tls': 'TLS', 'melbourne-tlx': 'TLX', 'melbourne-twe': 'TWE',
+    'melbourne-vcx': 'VCX', 'melbourne-vea': 'VEA', 'mgt': 'MGT', 'min': 'MIN', 'mmi': 'MMI',
+    'mnd': 'MND', 'nhc': 'NHC', 'nst': 'NST', 'nwh': 'NWH', 'pdn': 'PDN', 'perth-drr': 'DRR',
+    'perth-emr': 'EMR', 'perth-ggp': 'GGP', 'perth-imd': 'IMD', 'perth-lyc': 'LYC',
+    'perth-prn': 'PRN', 'pls': 'PLS', 'pru': 'PRU', 'rio': 'RIO', 'rms': 'RMS', 'rrl': 'RRL',
+    's32': 'S32', 'sfr': 'SFR', 'sgq': 'SGQ', 'smr': 'SMR', 'sto': 'STO', 'stx': 'STX',
+    'sw1': 'SW1', 'swm': 'SWM', 'sydney-ald': 'ALD', 'sydney-all': 'ALL', 'sydney-amp': 'AMP',
+    'sydney-apa': 'APA', 'sydney-asx': 'ASX', 'sydney-aub': 'AUB', 'sydney-brg': 'BRG',
+    'sydney-bsl': 'BSL', 'sydney-bxb': 'BXB', 'sydney-cba': 'CBA', 'sydney-cgf': 'CGF',
+    'sydney-coh': 'COH', 'sydney-dow': 'DOW', 'sydney-dro': 'DRO', 'sydney-dxs': 'DXS',
+    'sydney-edv': 'EDV', 'sydney-eos': 'EOS', 'sydney-gmg': 'GMG', 'sydney-gqg': 'GQG',
+    'sydney-gyg': 'GYG', 'sydney-hub': 'HUB', 'sydney-hvn': 'HVN', 'sydney-iag': 'IAG',
+    'sydney-jhx': 'JHX', 'sydney-lnw': 'LNW', 'sydney-mff': 'MFF', 'sydney-mfg': 'MFG',
+    'sydney-mgr': 'MGR', 'sydney-mqg': 'MQG', 'sydney-mts': 'MTS', 'sydney-org': 'ORG',
+    'sydney-ppt': 'PPT', 'sydney-qan': 'QAN', 'sydney-qbe': 'QBE', 'sydney-qub': 'QUB',
+    'sydney-rdx': 'RDX', 'sydney-rhc': 'RHC', 'sydney-rwc': 'RWC', 'sydney-scg': 'SCG',
+    'sydney-sgh': 'SGH', 'sydney-sgm': 'SGM', 'sydney-shl': 'SHL', 'sydney-sol': 'SOL',
+    'sydney-tpg': 'TPG', 'sydney-vnt': 'VNT', 'sydney-wbc': 'WBC', 'sydney-whc': 'WHC',
+    'sydney-wor': 'WOR', 'sydney-wow': 'WOW', 'sydney-wtc': 'WTC', 'sydney-yal': 'YAL',
+    'sydney-zip': 'ZIP', 'wds': 'WDS', 'wes': 'WES', 'wgx': 'WGX',
 }
-US = {'chevron': 'CVX', 'shell': 'SHEL', 'rio': 'RIO'}  # dual-listed / global majors
+US = {'chevron': 'CVX', 'perth-aa': 'AA', 'rio': 'RIO', 'shell': 'SHEL'}  # dual-listed / global majors (Alcoa is NYSE-only, Perth ops)
 
 SENT = re.compile(
     r'had ([\d,]+) employees as of ([A-Za-z0-9, ]+?)\. The number of employees '
@@ -66,8 +121,13 @@ def parse_table(h):
     if len(rows) < 2:
         return None
     rows.sort(key=lambda r: r[0], reverse=True)
-    (yr, asof, cur), (_, _, prev) = rows[0], rows[1]
-    return {'now': cur, 'prev': prev, 'asof': asof, 'yr': yr}
+    (yr, asof, cur), (pyr, _, prev) = rows[0], rows[1]
+    # THE TWO NEWEST ROWS ARE NOT NECESSARILY CONSECUTIVE YEARS, and calling
+    # their difference "YoY" is how Qantas came out at +60.0%. Its table runs
+    # Jun 2026, Jun 2023, Jun 2022 — the aggregator simply has no 2024 or 2025
+    # row — so 20,000 -> 32,000 is a THREE-year change. Measured 2026-09-24.
+    # The span travels with the figure so the card can name it.
+    return {'now': cur, 'prev': prev, 'asof': asof, 'yr': yr, 'span': yr - pyr}
 
 
 def parse(h):
@@ -83,7 +143,13 @@ def parse(h):
         prev = cur + delta if m.group(3).lower() == 'decreased' else cur - delta
     else:
         prev = cur
-    return {'now': cur, 'prev': prev, 'asof': asof, 'yr': yr}
+    # The SENTENCE never says over what period it changed, so the span is read
+    # off the table on the same page — the only place the two dates appear. A
+    # page with no readable table leaves span 0, which main() treats as unknown
+    # and reports as a plain count with no change at all.
+    t = parse_table(h)
+    span = t['span'] if t and t.get('span') else 0
+    return {'now': cur, 'prev': prev, 'asof': asof, 'yr': yr, 'span': span}
 
 
 def short(asof):
@@ -116,13 +182,32 @@ def main():
         "// from each company's annual report (via stockanalysis.com, which refreshes",
         '// once per year after each filing). Static by design — there is no live HRIS/',
         '// LinkedIn feed — with the year-on-year growth % computed from now vs prev.',
-        'export interface Headcount { now: number; prev: number; yoy: number; asof: string; }',
+        '//',
+        '// `span` is the YEARS BETWEEN the two readings, and it is not always 1.',
+        '// The aggregator skips years for some companies — Qantas runs Jun 2026,',
+        '// Jun 2023, Jun 2022 — so its two newest rows are three years apart and',
+        "// calling their difference year-on-year reported +60.0%. `yoy` is null",
+        '// where the span could not be established at all; where it is known the',
+        '// card names it rather than assuming a year.',
+        'export interface Headcount {',
+        '  now: number;',
+        '  prev: number;',
+        '  /** Change from `prev` to `now`, over `span` years. Null when unknown. */',
+        '  yoy: number | null;',
+        '  asof: string;',
+        '  /** Years between the two readings. 0 when the source did not say. */',
+        '  span: number;',
+        '}',
         'export const COMPANY_HEADCOUNT: Record<string, Headcount> = {',
     ]
     for cid in sorted(data):
         v = data[cid]
-        yoy = round((v['now'] - v['prev']) / v['prev'] * 100, 1) if v['prev'] else 0.0
-        L.append(f"  {cid!r}: {{ now: {v['now']}, prev: {v['prev']}, yoy: {yoy}, asof: {short(v['asof'])!r} }},")
+        span = v.get('span') or 0
+        yoy = (round((v['now'] - v['prev']) / v['prev'] * 100, 1)
+               if v['prev'] and span else None)
+        yoy_s = 'null' if yoy is None else str(yoy)
+        L.append(f"  {cid!r}: {{ now: {v['now']}, prev: {v['prev']}, yoy: {yoy_s}, "
+                 f"asof: {short(v['asof'])!r}, span: {span} }},")
     L.append('};')
     L.append('')
     open(OUT, 'w').write('\n'.join(L))
