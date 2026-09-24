@@ -292,16 +292,42 @@ export const CITY_PLACEMENT: Record<string, CityPlacement> = {
   // 23,370 m² per pin against 6,494 from the old centre.
   zurich: { anchor: [8.534, 47.366], arc: [94, 264] },
   // Asia / other
-  // Central, with Victoria Harbour to the north. [70,290] was measured at one
-  // pin in the harbour; the dry wedge is the southern half, and the radius
-  // needs capping at 700 m before the fan reaches the waterfront.
-  hongkong: { anchor: [114.1585, 22.282], arc: [208, 340], maxKm: 0.7 },
+  // Central. THE ARC POINTS THROUGH NORTH, which looks wrong next to the
+  // harbour and is the only bearing that works.
+  //
+  // [208,340] swept south-west, away from the water — and straight up the
+  // hill. Mid-Levels begins a few hundred metres behind Queen's Road Central
+  // and is residential terraces, so at 0.7 km that arc put 11 of 39 companies
+  // on a slope: measured 2026-09-24 by reverse-geocoding every pin, 19 Central
+  // / 8 Sheung Wan / 11 Mid-Levels. Every Mid-Levels pin fell between bearing
+  // 208 and 260. Narrowing the same arc only traded the hill for Sheung Wan
+  // (21 of 39 there, Central down to 15), which is the obvious fix and the
+  // worse one.
+  //
+  // North of the anchor is not the harbour: it is the RECLAMATION — IFC,
+  // Exchange Square, the piers — and Admiralty sits east. That is the flat
+  // office core, and it is where these companies are. Sweeping [300,100] at
+  // 0.55 km measures 36 Central / 2 Admiralty / 1 Sheung Wan, none on water.
+  // The cap is what keeps it dry: the shoreline is at about 22.2895 and the
+  // fan's northernmost reach is 22.287.
+  hongkong: { anchor: [114.1585, 22.282], arc: [300, 100], maxKm: 0.55 },
   singapore: { anchor: [103.8505, 1.281], arc: [190, 350] }, // Raffles Place; avoid Marina (E)
   // KLCC. Kuala Lumpur is inland with no coast to avoid, so the fan is free.
   kualalumpur: { anchor: [101.7115, 3.1578] },
-  // Makati CBD. Manila Bay lies to the WEST, so the fan is kept off that
-  // bearing and held close in — these are a handful of pins, not a roster.
-  manila: { anchor: [121.0244, 14.5547], arc: [340, 200], maxKm: 3 },
+  // Makati CBD, anchored ON the Ayala Avenue office spine rather than at the
+  // district's geometric centre.
+  //
+  // maxKm was 3, which for six pins is 2.9 km² of ground each and reached
+  // clean out of Makati: measured 2026-09-24, one pin in Salcedo Village and
+  // the rest in Mandaluyong, Taguig, and the gated residential villages of
+  // Forbes Park and Dasmariñas. Manila Bay is 5 km west and was never the
+  // hazard here; the sprawl was.
+  //
+  // [190,300] at 0.7 km measures 2 Salcedo Village, 2 Ayala Center, 1 Legazpi
+  // Village, 1 Urdaneta — five of six in Makati's office blocks. Urdaneta is
+  // residential and is the one that remains; a tighter fan traded it for San
+  // Lorenzo, which is also residential, so it is kept rather than chased.
+  manila: { anchor: [121.0264, 14.5565], arc: [190, 300], maxKm: 0.7 },
   // PENANG AND JOHOR BAHRU ARE NOT HUBS RIGHT NOW, and their measurements are
   // kept here rather than deleted because re-adding them should not mean
   // re-measuring them. Both were registered on 2026-09-22 and taken off the map

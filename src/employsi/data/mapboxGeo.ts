@@ -64,7 +64,12 @@ export const CITY_VIEWS: Record<string, CityView> = {
   kualalumpur: { center: [101.7115, 3.1578], zoom: 16.0, pitch: 60, bearing: -15 },
   // Makati, not the City of Manila: the offices these companies run are in the
   // Makati/BGC business districts, ~6km inland from Manila Bay.
-  manila: { center: [121.0244, 14.5547], zoom: 15.8, pitch: 60, bearing: -10 },
+  //
+  // Zoom 15.8 was set for a fan of radius 3 km. That fan is now 0.7 km and the
+  // six pins sit inside 121.02143..121.02607 by 14.55084..14.55766 — 500 m by
+  // 760 m — so the view closed to 16.3 and moved onto their median. At 15.8
+  // the roster occupied a fifth of the frame.
+  manila: { center: [121.02358, 14.55433], zoom: 16.3, pitch: 60, bearing: -10 },
   ganzhou: { center: [114.9333, 25.83], zoom: 16.1, pitch: 60, bearing: -14 },
   toronto: { center: [-79.3832, 43.6532], zoom: 16.4, pitch: 60, bearing: -18 },
   houston: { center: [-95.3698, 29.7604], zoom: 16.3, pitch: 60, bearing: -14 },
@@ -131,7 +136,14 @@ export const CITY_VIEWS: Record<string, CityView> = {
   // are not headquartered in, and a mean is dragged kilometres by one of them.
   // Zoom drops 16.4 -> 16.1 because the cluster spans 1.13 km north-south,
   // wider than the ~0.5 km CBD the other 16.4s were chosen for.
-  hongkong: { center: [114.15484, 22.28222], zoom: 16.1, pitch: 60, bearing: -16 },
+  //
+  // RE-CENTRED 2026-09-24 when the fan itself moved. CITY_PLACEMENT's arc used
+  // to sweep south-west into Mid-Levels and now sweeps through north over the
+  // Central reclamation, so the pins are some 500 m north-east of where they
+  // were and the old centre framed ground they had left. This is their median
+  // again: [114.15942, 22.28418], across 114.15419..114.16370 by
+  // 22.28157..22.28668.
+  hongkong: { center: [114.15942, 22.28418], zoom: 16.1, pitch: 60, bearing: -16 },
   // Nariman Point / Bandra-Kurla side of the Mumbai CBD.
   mumbai: { center: [72.8347, 18.9256], zoom: 16.2, pitch: 60, bearing: -15 },
   // MG Road / Cubbon Park, central Bengaluru.
