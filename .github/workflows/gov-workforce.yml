@@ -53,7 +53,7 @@ on:
       - 'scripts/gen-gov-workforce.py'
       - 'scripts/gov-source-probe.py'
       - 'scripts/sa-workforce-probe.py'
-      - '.github/workflows/qld-workforce.yml'
+      - '.github/workflows/gov-workforce.yml'
 
 concurrency:
   group: gov-workforce
@@ -84,15 +84,15 @@ jobs:
         with:
           bun-version: latest
 
-      # --only qld,sa, because the jurisdictions need OPPOSITE environments and
+      # --only qld,sa,nsw, because the jurisdictions need OPPOSITE environments and
       # no machine can fetch them all. Measured 2026-09-24: Queensland needs a
       # browser and runs only here; Victoria answers HTTP 403 to a datacentre
       # IP — through a browser too, 13 KB of HTML — and runs only from a
       # developer machine. The generator merges rather than rewrites, so this
       # refreshes Queensland and leaves the others exactly as they were, and
       # the file's header records which is which.
-      - name: Generate Queensland + South Australia workforce data
-        run: python scripts/gen-gov-workforce.py --only qld,sa
+      - name: Generate QLD + SA + NSW workforce data
+        run: python scripts/gen-gov-workforce.py --only qld,sa,nsw
 
       - name: Show the generated file
         run: |
@@ -131,3 +131,16 @@ jobs:
         if: always()
         continue-on-error: true
         run: python scripts/sa-workforce-probe.py
+
+      # New South Wales publishes no downloadable workforce profile any more —
+      # the PSC page carries none even rendered. Its Local Health Districts
+      # carry two thirds of the jurisdiction's live ads, and a health annual
+      # report's appendix is where staff numbers by organisation usually sit.
+      - name: Probe the NSW Health annual report appendix
+        if: always()
+        continue-on-error: true
+        run: |
+          python scripts/sa-workforce-probe.py \
+            https://www.health.nsw.gov.au/annualreport/Publications/2025/appendix.pdf
+          python scripts/sa-workforce-probe.py \
+            https://www.health.nsw.gov.au/annualreport/Publications/2025/appendix.pdf

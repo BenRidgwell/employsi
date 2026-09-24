@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Does South Australia's Workforce Information Report carry per-agency figures?
+"""Does a PDF report carry per-agency workforce figures?
+
+    python3 scripts/sa-workforce-probe.py [url] [firstPage-lastPage]
+
+Written for South Australia and generalised when New South Wales turned out to
+need the same question asked. Prints the pages that name several of the bodies
+we care about AND carry numbers, so a table can be told from prose.
 
 The only remaining question about SA. Its Office of the Commissioner for Public
 Sector Employment publishes the report annually and — measured 2026-09-24 —
@@ -16,12 +22,19 @@ import io, re, sys, urllib.request
 
 URL = ('https://publicsector.sa.gov.au/__data/assets/pdf_file/0020/1205462/'
        '2025-Workforce-Information-Report.pdf')
+if len(sys.argv) > 1:
+    URL = sys.argv[1]
 UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36')
 # Agencies from our own roster, to test whether the report names them at all.
 WANT = ['SA Health', 'Department for Education', 'Department for Infrastructure',
         'South Australia Police', 'Department of Human Services',
-        'Department for Child Protection', 'Department for Environment']
+        'Department for Child Protection', 'Department for Environment',
+        # NSW Local Health Districts, which carry 1,667 of New South Wales'
+        # 2,561 live ads — two thirds of the jurisdiction's value.
+        'Nepean Blue Mountains', 'Hunter New England', 'South Eastern Sydney',
+        'Northern Sydney', 'South Western Sydney', 'Western Sydney',
+        'Illawarra Shoalhaven', 'Mid North Coast']
 
 
 def main():
@@ -34,28 +47,37 @@ def main():
         return 1
 
     import pdfplumber
+    pages = None
+    if len(sys.argv) > 2:
+        a, b = sys.argv[2].split('-')
+        pages = range(int(a) - 1, int(b))
     with pdfplumber.open(io.BytesIO(raw)) as pdf:
         print(f'pages   : {len(pdf.pages)}')
-        # PAGES 9-14 IN FULL. The per-agency table is on 10-13 and its columns
-        # are "AGENCY NAME | JUNE 2024 | JUNE 2025" — dates, with the metric
-        # named in the section heading above rather than in the header row,
-        # which is why a filter looking for "FTE" or "headcount" in the header
-        # skipped straight past the one table worth having. Page 9 carries that
-        # heading, so it is printed too.
-        for i in range(8, 14):
-            if i >= len(pdf.pages):
-                break
-            page = pdf.pages[i]
-            print(f'\n===== page {i+1} text =====')
-            for line in (page.extract_text() or '').splitlines()[:14]:
-                print(f'  {line[:110]}')
-            for t in page.extract_tables() or []:
-                print(f'  --- table, {len(t)} rows ---')
-                for row in t[:10]:
-                    cells = ['' if c is None else re.sub(r'\s+', ' ', str(c)).strip()
-                             for c in row[:8]]
-                    if any(cells):
-                        print('   | ' + ' | '.join(c[:34] for c in cells))
+        if pages is not None:
+            # A RANGE, IN FULL. The NSW Health appendix carries a staffing
+            # table per organisation — Medical, Nursing, Allied health, four
+            # years to June 2025 — but a table is only usable if the body it
+            # belongs to can be read off the page. That heading is what this
+            # prints.
+            for i in pages:
+                if i >= len(pdf.pages):
+                    break
+                print(f'\n===== page {i+1} =====')
+                for line in (pdf.pages[i].extract_text() or '').splitlines()[:30]:
+                    print(f'  {line[:116]}')
+            return 0
+        NUMS = re.compile(r'(?:\b[\d,]{3,}\b.*){2,}')
+        for i, page in enumerate(pdf.pages):
+            txt = page.extract_text() or ''
+            named = [w for w in WANT if w.lower() in txt.lower()]
+            if len(named) < 2:
+                continue
+            lines = [l for l in txt.splitlines() if NUMS.search(l)]
+            if not lines:
+                continue
+            print(f'\n===== page {i+1} — names {named[:4]} =====')
+            for l in lines[:14]:
+                print(f'  {l[:118]}')
     return 0
 
 
