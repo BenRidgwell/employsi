@@ -721,6 +721,187 @@ def load_nz():
 
 
 
+# ── Northern Territory ──────────────────────────────────────────────────────
+NT_INDEX = 'https://ocpe.nt.gov.au/workforce-planning/staffing-numbers'
+NT_WARM = 'https://ocpe.nt.gov.au/'
+
+
+def _nt_rows(text):
+    """Agency -> (newest quarter, same quarter a year earlier) from one page.
+
+    THE THOUSANDS SEPARATOR IS A SPACE, not a comma: the table reads
+    "Attorney-General & Justice (+ Corrections) 1 512 1 495 1 476 1 449 1 473".
+    Splitting on whitespace turns one agency's five quarters into ten numbers,
+    so the digits are re-joined before anything is read. A parser that missed
+    this would report Attorney-General at 1 rather than 1,512 and would look
+    like a small agency rather than a broken parse.
+
+    ".." means no change and "-" a negative in the change columns; neither is a
+    staffing figure and both sit AFTER the five quarters, so only the first
+    five numbers on a line are taken.
+    """
+    out = {}
+    for line in text.split('\n'):
+        line = line.rstrip()
+        # Name first, then the figures. The name may hold & ( ) + , - and a
+        # footnote caret, so it is whatever precedes the first standalone digit.
+        m = re.match(r'^\s*([A-Za-z][^0-9]*?)\s*\^?\s+((?:\d[\d ]*)+)$', line)
+        if not m:
+            continue
+        name = m.group(1).strip(' ^*')
+        # Re-join space-separated thousands: "1 512 1 495" -> ["1512", "1495"].
+        nums = re.findall(r'\d(?:[\d ]*\d)?', m.group(2))
+        vals = []
+        for n in nums:
+            n = n.replace(' ', '')
+            if n.isdigit():
+                vals.append(int(n))
+        if len(vals) < 5 or not name or len(name) < 4:
+            continue
+        now, prev = vals[4], vals[0]     # Jun qtr this year, Jun qtr last year
+        if now > 0 and prev > 0:
+            out[name] = (now, prev)
+    return out
+
+
+def load_nt():
+    """NT Office of the Commissioner for Public Employment — quarterly FTE.
+
+    THE NT WAS RECORDED AS HAVING NO SOURCE. It has published quarterly
+    staffing numbers since 2013, at /workforce-planning/staffing-numbers.
+
+    Finding it took six rounds and the lesson is worth more than the data:
+    ocpe.nt.gov.au answers a plain request with a Cloudflare challenge, and
+    round one had a real browser sit on it for thirty seconds without clearing,
+    which read as a host that could not be entered. It can — the challenge is
+    intermittent, and warming the origin once per browser context clears it.
+    Then every deep path I invented 404'd, five of them, until the host was
+    simply asked for its own sitemap: 520 URLs, and the answer was in it. ASK
+    FOR THE SITEMAP FIRST.
+
+    ONE DOCUMENT HOLDS THE WHOLE COMPARISON, which is unusually kind. Each
+    quarterly PDF carries five quarters — June, September, December, March,
+    June — so the first and last columns are the same quarter a year apart and
+    no second fetch is needed. That also removes the risk the WGEA generator
+    hit, where two documents could be built on different bases.
+
+    IT IS FTE: the page says "Measured as Full Time Equivalent" in its header.
+    """
+    import io as _io
+    import pdfplumber
+
+    page = fetch(NT_INDEX, via_browser=True, warm=NT_WARM)
+    pdfs = re.findall(r'href="([^"]*staffing[^"]*\.pdf|[^"]*quarter[^"]*\.pdf)"', page, re.I)
+    pdfs = [u if u.startswith('http') else 'https://ocpe.nt.gov.au' + u for u in pdfs]
+    if not pdfs:
+        raise RuntimeError('NT: no quarterly staffing PDFs linked on ' + NT_INDEX)
+
+    # NEWEST BY THE DATE IN THE FILENAME, never by the URL. The files live
+    # under /__data/assets/pdf_file/<dir>/<id>/ and those numbers do not sort
+    # chronologically; the probe read a 2018 edition while reporting it had
+    # taken the newest, for exactly this reason.
+    MONTH = {m: i for i, m in enumerate(
+        ['january', 'february', 'march', 'april', 'may', 'june', 'july',
+         'august', 'september', 'october', 'november', 'december'], 1)}
+
+    def when(u):
+        name = u.rsplit('/', 1)[-1].lower()
+        y = re.search(r'(20\d\d)', name)
+        mth = next((v for k, v in MONTH.items() if k in name), 0)
+        return (int(y.group(1)) if y else 0, mth)
+
+    newest = max(pdfs, key=when)
+    year, month = when(newest)
+    if year < 2024:
+        raise RuntimeError(f'NT: newest staffing PDF looks stale ({newest})')
+
+    blob = fetch(newest, binary=True, via_browser=True, warm=NT_WARM)
+    rows = {}
+    with pdfplumber.open(_io.BytesIO(blob)) as pdf:
+        for pg in pdf.pages:
+            rows.update(_nt_rows(pg.extract_text() or ''))
+    if not rows:
+        raise RuntimeError(f'NT: parsed no agency rows from {newest}')
+    asof = f'{list(MONTH)[month - 1][:3].title()} {year}' if month else str(year)
+    return rows, asof, 'fte'
+
+
+# ── Tasmania ────────────────────────────────────────────────────────────────
+TAS_SEARCH = 'https://www.dpac.tas.gov.au/search?query=workforce+report'
+TAS_WARM = 'https://www.dpac.tas.gov.au/'
+
+
+def load_tas():
+    """Tasmanian State Service Workforce Report — paid headcount by agency.
+
+    TASMANIA WAS RECORDED AS "the State Service domain no longer resolves".
+    dpac.tas.gov.au resolves, answers a warmed browser with 200, and publishes
+    this report twice a year. The claim was wrong in all three parts.
+
+    The agency table is "Employees by Agency and Employment Category", headed
+    "Paid Headcount as at 30 June <year>", with columns Fixed-term, Permanent,
+    Part 6 and Total. It is a HEAD COUNT, unlike the NT's FTE, and is marked so.
+
+    TWO EDITIONS ARE FETCHED, because one holds a single date. The reports are
+    numbered within a year — No. 1 is the December half, No. 2 the June half —
+    so a June-to-June comparison is this year's No. 2 against last year's. A
+    December edition is never compared with a June one: that is six months, and
+    the whole point of `span` is that a change is only reported over the period
+    it was actually measured.
+    """
+    import io as _io
+    import pdfplumber
+
+    page = fetch(TAS_SEARCH, via_browser=True, warm=TAS_WARM)
+    found = re.findall(r'href="([^"]*State-Service-Workforce-Report[^"]*\.pdf)"', page, re.I)
+    found = [u if u.startswith('http') else 'https://www.dpac.tas.gov.au' + u for u in found]
+    editions = {}
+    for u in dict.fromkeys(found):
+        m = re.search(r'Number-(\d+)-(\d{4})', u, re.I)
+        if m:
+            editions[(int(m.group(2)), int(m.group(1)))] = u
+    june = sorted((k for k in editions if k[1] == 2), reverse=True)
+    if len(june) < 2:
+        raise RuntimeError(f'TAS: need two June editions (No. 2), found {sorted(editions)}')
+
+    def agencies(url):
+        blob = fetch(url, binary=True, via_browser=True, warm=TAS_WARM)
+        out = {}
+        with pdfplumber.open(_io.BytesIO(blob)) as pdf:
+            for pg in pdf.pages:
+                txt = pg.extract_text() or ''
+                if 'Employees by Agency' not in txt:
+                    continue
+                for line in txt.split('\n'):
+                    # "<name> <fixed> <permanent> <part6> <total>" — the TOTAL
+                    # is the last number, and the three before it sum to it.
+                    # Checking that sum is what tells a real row from a line of
+                    # prose that happens to end in numbers.
+                    m = re.match(r'^\s*([A-Za-z][^0-9]{4,}?)\s+'
+                                 r'([\d,]+)\s+([\d,]+)\s+([\d,]+)\s+([\d,]+)\s*$', line)
+                    if not m:
+                        continue
+                    name = m.group(1).strip()
+                    n = [int(x.replace(',', '')) for x in m.groups()[1:]]
+                    if sum(n[:3]) != n[3] or n[3] <= 0:
+                        continue
+                    out[name] = n[3]
+        return out
+
+    now_rows = agencies(editions[june[0]])
+    prev_rows = agencies(editions[june[1]])
+    if not now_rows:
+        raise RuntimeError(f'TAS: parsed no agency rows from {editions[june[0]]}')
+    span = june[0][0] - june[1][0]
+    if span != 1:
+        raise RuntimeError(f'TAS: editions are {span} years apart, not one '
+                           f'({june[0]} vs {june[1]})')
+    rows = {k: (v, prev_rows[k]) for k, v in now_rows.items()
+            if prev_rows.get(k, 0) > 0}
+    return rows, f'Jun {june[0][0]}', 'headcount'
+
+
+
 # key -> (label, loader, span in years). The loader returns (rows, asof, unit);
 # `unit` is "headcount" everywhere but Queensland, which publishes only FTE.
 SOURCES = {
@@ -736,6 +917,11 @@ SOURCES = {
     'nsw': ('New South Wales', load_nsw, 1),
     # Plain CSV, no browser needed. FTE, and June-to-June — see the loader.
     'nz': ('New Zealand', load_nz, 1),
+    # Both sit behind a Cloudflare challenge that a WARMED browser clears, so
+    # both run only where Playwright does. See the loaders for how each was
+    # found, which took six rounds and is the more useful half of the story.
+    'nt': ('Northern Territory', load_nt, 1),
+    'tas': ('Tasmania', load_tas, 1),
 }
 
 
