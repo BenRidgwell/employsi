@@ -22,6 +22,11 @@
 # Queensland loads alongside APS and Victoria, then prints the generated data
 # file to the job log and uploads it as an artifact.
 #
+# SOUTH AUSTRALIA IS HERE TOO. Its Workforce Information Report is a PDF and
+# nothing else — every edition from 2012 to 2025 — so it needs pdfplumber,
+# whose cryptography binding panics in the authoring sandbox. Reachable from
+# both networks otherwise; it is the sandbox that cannot read it.
+#
 # VICTORIA IS NOT FETCHED HERE and that is not an oversight: vpsc.vic.gov.au
 # answers HTTP 403 to this runner, through a browser as well as plainly. The
 # generator merges, so running Queensland alone keeps Victoria's rows and says
@@ -38,7 +43,7 @@
 # the card labels those tiles "Workforce FTE" rather than putting two different
 # measurements under one word.
 
-name: qld-workforce
+name: gov-workforce
 
 on:
   workflow_dispatch: {}
@@ -46,15 +51,17 @@ on:
     paths:
       - 'scripts/qld-workforce-probe.py'
       - 'scripts/gen-gov-workforce.py'
+      - 'scripts/gov-source-probe.py'
+      - 'scripts/sa-workforce-probe.py'
       - '.github/workflows/qld-workforce.yml'
 
 concurrency:
-  group: qld-workforce
+  group: gov-workforce
   cancel-in-progress: true
 
 jobs:
   generate:
-    name: qld workforce
+    name: gov workforce
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -70,22 +77,22 @@ jobs:
       - name: Install Playwright + openpyxl
         run: |
           python -m pip install --upgrade pip
-          pip install --quiet playwright openpyxl
+          pip install --quiet playwright openpyxl pdfplumber
           python -m playwright install --with-deps chromium
 
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      # --only qld, because the jurisdictions need OPPOSITE environments and
+      # --only qld,sa, because the jurisdictions need OPPOSITE environments and
       # no machine can fetch them all. Measured 2026-09-24: Queensland needs a
       # browser and runs only here; Victoria answers HTTP 403 to a datacentre
       # IP — through a browser too, 13 KB of HTML — and runs only from a
       # developer machine. The generator merges rather than rewrites, so this
       # refreshes Queensland and leaves the others exactly as they were, and
       # the file's header records which is which.
-      - name: Generate Queensland workforce data
-        run: python scripts/gen-gov-workforce.py --only qld
+      - name: Generate Queensland + South Australia workforce data
+        run: python scripts/gen-gov-workforce.py --only qld,sa
 
       - name: Show the generated file
         run: |
@@ -105,3 +112,22 @@ jobs:
         if: always()
         continue-on-error: true
         run: python scripts/qld-workforce-probe.py
+
+      # Reconnaissance for the jurisdictions that are not wired yet. They
+      # answer 403 to the authoring sandbox on every candidate host, so
+      # nothing about them — whether the data exists, what shape it is in,
+      # whether the 403 is a datacentre block — can be established from there.
+      # Never fails the job: it reports, it does not gate.
+      - name: Probe unwired jurisdictions (SA, NT, TAS)
+        if: always()
+        continue-on-error: true
+        run: python scripts/gov-source-probe.py
+
+      # South Australia publishes its Workforce Information Report as a PDF and
+      # nothing else — every year from 2012 to 2025. PDF table extraction is
+      # brittle and annual, so this establishes whether the per-agency table is
+      # even in there before anything is built on it.
+      - name: Probe the SA Workforce Information Report
+        if: always()
+        continue-on-error: true
+        run: python scripts/sa-workforce-probe.py
