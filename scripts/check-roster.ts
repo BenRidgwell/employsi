@@ -31,6 +31,8 @@ import { SEEK_TRADING_NAMES } from "../src/employsi/data/seekTradingNames";
 import { SITES as CAREER_SITES } from "../workers/jobs-cron/careerSites";
 import { COMPANY_HEADCOUNT } from "../src/employsi/data/companyHeadcount";
 import { GOV_HEADCOUNT_AU } from "../src/employsi/data/govWorkforceAu";
+import { WGEA_HEADCOUNT } from "../src/employsi/data/wgeaWorkforceAu";
+import { UNIVERSITY_IDS } from "../src/employsi/data/universityTargets";
 import { buildCompanyCard, filedHeadcount } from "../src/employsi/lib/companyCard";
 import { buildCompareCard } from "../src/employsi/lib/compareCard";
 
@@ -345,6 +347,117 @@ for (const [id, list] of Object.entries(SEEK_TRADING_NAMES)) {
         );
     }
   }
+}
+
+// ── WGEA university headcount ───────────────────────────────────────────────
+// data/wgeaWorkforceAu.ts is generated from the WGEA public data file and every
+// failure below renders as a confident figure on a card rather than as an
+// absence, which is the only reason any of it is asserted mechanically.
+{
+  // A KEY THAT IS NOT A UNIVERSITY ID FILES A FIGURE ONTO NOTHING. The keys are
+  // built by slugging the roster name in Python, mirroring universityTargets'
+  // own `slug`; the two are separate implementations of one rule, so they can
+  // drift. Nothing downstream notices — `filedHeadcount` returns undefined for
+  // an id no company has, and the card falls back to "no workforce figure
+  // collected". The university looks unsourced and the row looks filed.
+  const uniIds = new Set(UNIVERSITY_IDS);
+  for (const id of Object.keys(WGEA_HEADCOUNT))
+    if (!uniIds.has(id))
+      err(
+        "wgea key is not a university",
+        id,
+        "no university has this id — the Python slug and universityTargets' slug disagree",
+      );
+
+  // An employer WGEA does not report is absent, never zero.
+  for (const [id, h] of Object.entries(WGEA_HEADCOUNT))
+    if (!(h.now > 0)) err("wgea headcount not positive", id, `now ${h.now}`);
+
+  // WGEA COUNTS HEADS, and the tile's label is chosen from `unit`. An `fte`
+  // row here would put a full-time-equivalent under the word "Headcount".
+  for (const [id, h] of Object.entries(WGEA_HEADCOUNT))
+    if (h.unit !== "headcount")
+      err("wgea unit is not headcount", id, `unit ${String(h.unit)} — WGEA reports heads`);
+
+  // ONE EMPLOYER'S FIGURE ON SEVERAL UNIVERSITIES means the alias table
+  // matched the wrong tenant. The generator matches on an exact normalised
+  // name, so a collision cannot happen by similarity — but an ALIAS entry
+  // pointing two roster names at one WGEA employer would file the same number
+  // twice and read as two universities that happen to be the same size.
+  const byFigure = new Map<string, string[]>();
+  for (const [id, h] of Object.entries(WGEA_HEADCOUNT)) {
+    const k = `${h.now}|${h.prev}|${h.asof}`;
+    byFigure.set(k, [...(byFigure.get(k) ?? []), id]);
+  }
+  for (const [k, ids] of byFigure)
+    if (ids.length > 1)
+      err(
+        "one wgea figure on several universities",
+        `${ids.length} universities`,
+        `${ids.join(", ")} all report ${k.split("|")[0]} — one ALIAS entry matching twice?`,
+      );
+
+  // A SPAN OF 0 AND A CHANGE ARE CONTRADICTORY. `span: 0` is how the generator
+  // records "this university appears in only one of the two files, so there is
+  // no prior reading" — UTS, which reported in 2023-24 and not 2024-25. The
+  // card reads `yoy === null` to print an em dash and `span` to label the
+  // period, and those two have to agree: a span-0 row carrying a yoy would
+  // report a change measured against a year that was never read.
+  for (const [id, h] of Object.entries(WGEA_HEADCOUNT)) {
+    if (h.span === 0 && h.yoy !== null)
+      err("wgea change with no span", id, `yoy ${h.yoy} over span 0 — no prior reading exists`);
+    if (h.span > 0 && h.yoy === null)
+      err("wgea span with no change", id, `span ${h.span} but yoy null`);
+  }
+
+  // A UNIVERSITY DOES NOT DOUBLE IN A YEAR. Same ceiling and same reasoning as
+  // the gov check above: this does not police the data, it catches a sum that
+  // picked up rows belonging to something else. The nearest real risk is a
+  // subsidiary — 'RMIT ONLINE PTY LTD' and 'RMIT TRAINING PTY LTD' sit beside
+  // 'Royal Melbourne Institute Of Technology' in the same file — so a rule that
+  // ever started matching on substrings would land here.
+  const ABSURD_UNI_PCT = 200;
+  for (const [id, h] of Object.entries(WGEA_HEADCOUNT))
+    if (h.yoy !== null && Math.abs(h.yoy) > ABSURD_UNI_PCT)
+      err(
+        "wgea headcount moved absurdly",
+        id,
+        `${h.prev} -> ${h.now} is ${h.yoy}% over ${h.span}y — a subsidiary in the sum reads like this`,
+      );
+
+  // WGEA MUST NOT DISPLACE AN ANNUAL REPORT. This is the assertion that guards
+  // the ORDER in filedHeadcount, and it is the one failure here with no visible
+  // symptom at all. WGEA covers every non-public-sector employer with 100+
+  // AUSTRALIAN staff and counts only those; an annual report counts the group
+  // worldwide. For a multinational the two differ by most of the company, so a
+  // lookup that preferred WGEA would quietly reissue BHP as its Australian
+  // headcount — a real number, from a real filing, describing a different
+  // organisation. Today only `uni-` ids are written and the keyspaces do not
+  // overlap, so this passes trivially; it exists so that widening the generator
+  // beyond universities cannot silently reorder the merge.
+  for (const id of Object.keys(WGEA_HEADCOUNT)) {
+    const filed = filedHeadcount(id);
+    const own = COMPANY_HEADCOUNT[id] ?? GOV_HEADCOUNT_AU[id];
+    if (own && filed && filed.now !== own.now)
+      err(
+        "wgea displaced a filed figure",
+        id,
+        `filedHeadcount returns ${filed.now} but the annual-report/gov source says ${own.now} — ` +
+          "WGEA is Australia-only and must be merged last",
+      );
+  }
+
+  // The roster is the thing being covered, so a drop in coverage is worth
+  // seeing even though it is not an error: WGEA reporting is annual and an
+  // employer can stop appearing, as UTS did.
+  const covered = UNIVERSITY_IDS.filter((id) => !!WGEA_HEADCOUNT[id]).length;
+  if (covered < UNIVERSITY_IDS.length - 1)
+    warn(
+      "wgea university coverage",
+      `${covered}/${UNIVERSITY_IDS.length}`,
+      "more than one university has no WGEA figure — expected only Nan Tien Institute, " +
+        "which is under the Act's 100-employee threshold",
+    );
 }
 
 // ── report ──────────────────────────────────────────────────────────────────

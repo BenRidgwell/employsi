@@ -54,3 +54,6 @@ skills-backfill-backup-*.jsonl
 skills-except-backup-*.jsonl
 it-architect-remap-backup-*.jsonl
 remap-*-backup-*.jsonl
+
+# WGEA public data files (~140MB of zips), cached by scripts/gen-wgea-workforce.py
+.wgea-cache/
