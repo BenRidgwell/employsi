@@ -100,13 +100,14 @@ const YAHOO_SUFFIX: Record<string, string> = {
  * A roster id is built from the ticker, so re-tickering a company moves its id
  * and orphans every archive row filed under the old one. Where that trade is
  * not worth making, the ticker stays and the lookup is corrected here instead.
+ *
+ * Empty on purpose. Valterra Platinum lived here for a few hours on
+ * 2026-09-24, until its 21 archive rows were migrated from johannesburg-ams
+ * to johannesburg-val and the ticker could simply be corrected. Prefer that:
+ * an override makes the CHART right while leaving the card showing a ticker
+ * that no longer trades, which is a second wrong thing to explain later.
  */
-const YAHOO_SYMBOL_OVERRIDE: Record<string, string> = {
-  // Anglo American Platinum -> Valterra Platinum, 2025. AMS.JO 404s; VAL.JO
-  // returns Valterra Platinum Limited in ZAc. johannesburg-ams holds 21
-  // archive rows, so the id is worth more than the ticker being current.
-  "AMS::JSE": "VAL.JO",
-};
+const YAHOO_SYMBOL_OVERRIDE: Record<string, string> = {};
 
 export function yahooSymbol(ticker: string, exchange?: string): string {
   const ex = exchange || "ASX";

@@ -108,6 +108,10 @@ ACCEPT_ALIAS: dict[str, set[str]] = {
     # (ASX:HGO -> ASX:KAN). Months of ads sit under the old name and every one
     # is this company hiring, so without this the rename halves its count.
     'kantra copper': {'hillgrove resources', 'hillgrove'},
+    # A RENAME, 2025: Anglo American Platinum demerged and became Valterra
+    # Platinum (JSE:AMS -> JSE:VAL). Every archive row for this employer was
+    # posted under the old name and every one is this company hiring.
+    'valterra platinum': {'anglo american platinum', 'amplats'},
     # Divisions trading under their own name.
     'wesfarmers': {'wesfarmers health',
                    'wesfarmers chemicals energy fertilisers'},

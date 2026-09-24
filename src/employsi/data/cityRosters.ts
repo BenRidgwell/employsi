@@ -704,15 +704,13 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["FSR", "FirstRand", FIN],
       ["SBK", "Standard Bank Group", FIN],
       ["GFI", "Gold Fields", ENR],
-      // Renamed from Anglo American Platinum after the 2025 demerger. THE
-      // TICKER STAYS AMS DELIBERATELY: a roster id is rosterId(city, ticker),
-      // so changing it to VAL would move this company to johannesburg-val and
-      // orphan the 21 archive rows filed under johannesburg-ams — invisible,
-      // because nothing renders a company_id with no company. The name is what
-      // the card shows, and it is now right; the share fetch reaches the new
-      // listing through YAHOO_SYMBOL_OVERRIDE in shareSeriesFn.ts, since
-      // AMS.JO 404s and VAL.JO returns Valterra Platinum Limited in ZAc.
-      ["AMS", "Valterra Platinum", ENR],
+      // Anglo American Platinum after the 2025 demerger. Ticker and id both
+      // moved with the name on 2026-09-24 — a roster id is rosterId(city,
+      // ticker), so johannesburg-ams became johannesburg-val, and the 21
+      // archive rows filed under the old id were migrated with a single
+      // UPDATE rather than left orphaned. Its ads are still posted under the
+      // OLD name, which is why EXTRA_QUERIES and ACCEPT_ALIAS carry it.
+      ["VAL", "Valterra Platinum", ENR],
       ["ABG", "Absa Group", FIN],
       ["NED", "Nedbank Group", FIN],
       ["ANG", "AngloGold Ashanti", ENR],
