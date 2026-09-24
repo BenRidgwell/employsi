@@ -1,0 +1,37 @@
+# TEMPORARY — one-off measurement for the ZipRecruiter browser transport.
+# Runs on a push to this branch only (a workflow cannot be dispatched until it
+# is on main). Reads pages; writes nothing to D1. DELETE BEFORE MERGE.
+name: ziprecruiter-probe
+
+on:
+  push:
+    branches: [claude/zealous-planck-7f1fge]
+    paths: ['.github/workflows/ziprecruiter-probe.yml', 'scripts/probe-ziprecruiter.py']
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install Playwright + Chromium + Chrome
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install --with-deps chromium
+          python -m playwright install --with-deps chrome
+      - name: Probe ZipRecruiter through SCRAPE_PROXY (US exit)
+        env:
+          SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
+          SCRAPE_PROXY_COUNTRY: us
+          OUT_DIR: zr-probe
+        run: python scripts/probe-ziprecruiter.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zr-probe
+          path: zr-probe/
+          retention-days: 3
