@@ -143,4 +143,4 @@ jobs:
           python scripts/sa-workforce-probe.py \
             https://www.health.nsw.gov.au/annualreport/Publications/2025/appendix.pdf
           python scripts/sa-workforce-probe.py \
-            https://www.health.nsw.gov.au/annualreport/Publications/2025/organisations.pdf
+            https://www.health.nsw.gov.au/annualreport/Publications/2025/appendix.pdf 20-28

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Does a PDF report carry per-agency workforce figures?
 
-    python3 scripts/sa-workforce-probe.py [url]
+    python3 scripts/sa-workforce-probe.py [url] [firstPage-lastPage]
 
 Written for South Australia and generalised when New South Wales turned out to
 need the same question asked. Prints the pages that name several of the bodies
@@ -47,10 +47,25 @@ def main():
         return 1
 
     import pdfplumber
+    pages = None
+    if len(sys.argv) > 2:
+        a, b = sys.argv[2].split('-')
+        pages = range(int(a) - 1, int(b))
     with pdfplumber.open(io.BytesIO(raw)) as pdf:
         print(f'pages   : {len(pdf.pages)}')
-        # Pages naming one of the bodies we care about AND carrying numbers.
-        # A page that merely mentions an agency in prose is not a table.
+        if pages is not None:
+            # A RANGE, IN FULL. The NSW Health appendix carries a staffing
+            # table per organisation — Medical, Nursing, Allied health, four
+            # years to June 2025 — but a table is only usable if the body it
+            # belongs to can be read off the page. That heading is what this
+            # prints.
+            for i in pages:
+                if i >= len(pdf.pages):
+                    break
+                print(f'\n===== page {i+1} =====')
+                for line in (pdf.pages[i].extract_text() or '').splitlines()[:30]:
+                    print(f'  {line[:116]}')
+            return 0
         NUMS = re.compile(r'(?:\b[\d,]{3,}\b.*){2,}')
         for i, page in enumerate(pdf.pages):
             txt = page.extract_text() or ''
