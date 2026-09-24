@@ -581,10 +581,25 @@ ON CONFLICT(job_key) DO UPDATE SET last_seen = ?, seen_count = seen_count + 1
 ```
 
 So the archive is append-only and self-deduping; "currently advertised" is
-`last_seen >= date('now','-1 day')`, and taken-down ads age out on their own. A role on two
-boards collapses to one row. **Two rows that differ only because a parser bug dropped the
-location are two different keys** — a parser fix can therefore double-count until the stale
-variants age out.
+`last_seen >= date('now','-1 day')`, and taken-down ads age out on their own.
+
+**IT DEDUPES ACROSS RUNS, NOT ACROSS BOARDS, and this file said the opposite until
+2026-09-24.** `source` is the FIRST field of the key, so the same role on SEEK and on
+Adzuna is two keys and two rows, and every count over the table is a `COUNT(*)` over
+rows. `jobKey` in `jobArchive.ts` says what it does in one line — "a stable key so the
+same ad from the same source dedupes across runs" — and the sentence here claiming a
+role on two boards collapses to one row was simply wrong. It had been copied into the
+analyst's own "why?" explanation before it was caught, which is what a wrong line in
+this file costs: a user-facing claim about method that has the method backwards.
+
+So a volume figure OVER-COUNTS a role advertised on several boards, by however many
+boards carry it. That is a real limit of every count the product shows, it is stated in
+`LIMITS` in `analystChat.ts` where a user can reach it, and it is why comparisons
+between two places are sounder than a raw level — the over-count is roughly consistent
+between them.
+
+**Two rows that differ only because a parser bug dropped the location are two different
+keys** — a parser fix can therefore double-count until the stale variants age out.
 
 Three source families feed it:
 

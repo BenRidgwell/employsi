@@ -35,7 +35,7 @@ import {
   PROMPT_TOPICS,
   SUGGESTED_PROMPTS,
 } from "../src/employsi/lib/analystIntent";
-import { detectChat } from "../src/employsi/lib/analystChat";
+import { chatReply, detectChat } from "../src/employsi/lib/analystChat";
 import { answerQuestion } from "../src/employsi/lib/analystAnswer";
 
 let failures = 0;
@@ -477,8 +477,11 @@ console.log("\nconversation is recognised as conversation:");
     ["why?", "method"],
     ["how do you know that?", "method"],
     ["where does that come from?", "method"],
-    ["tell me more", "method"],
-    ["is that good?", "method"],
+    ["tell me more", "more"],
+    ["what else?", "more"],
+    ["is that good?", "more"],
+    ["what's the catch?", "more"],
+    ["caveats", "more"],
   ];
   for (const [q, want] of CHAT) {
     const got = detectChat(q);
@@ -487,6 +490,43 @@ console.log("\nconversation is recognised as conversation:");
   }
   if (failures === before)
     console.log(`  ok    ${CHAT.length} conversational turns held out of the router`);
+}
+
+// ── 9b. "why?" and "tell me more" must not be the same answer ───────────────
+// They are two different questions. "why?" is how the figure was built;
+// "tell me more" is how far to trust it. Answering both with one paragraph
+// makes the second turn a dead end, which is what it was until 2026-09-24.
+// Every LIMITS entry is also asserted to hand off somewhere — a caveat that
+// stops without a next question leaves the user holding a doubt and no move.
+console.log('\n"why?" and "tell me more" say different things:');
+{
+  const before = failures;
+  const answer = { text: "", source: "employsi vacancy archive · Perth" } as never;
+  for (const intent of Object.keys(INTENT_QUESTION) as (keyof typeof INTENT_QUESTION)[]) {
+    const why = chatReply("method", { answer, intent });
+    const more = chatReply("more", { answer, intent });
+    if (why === more) fail(`${intent}: "why?" and "tell me more" return the same text`);
+    if (!more || more.length < 80) fail(`${intent}: "tell me more" has nothing to say`);
+    // Not "ends with ?" — several of these close on the reason the suggestion
+    // helps, which reads better than a bare question. What must be there is the
+    // handoff itself, in the second half of the text so it is a way out rather
+    // than an aside.
+    const at = more.indexOf("Ask me");
+    if (at < 0) fail(`${intent}: "tell me more" never says what to ask next`);
+    else if (at < more.length * 0.4) {
+      fail(`${intent}: the next question is buried at ${Math.round((at / more.length) * 100)}% in`);
+    }
+  }
+  // With nothing on screen both still answer, and still differ.
+  if (chatReply("method", null) === chatReply("more", null)) {
+    fail("with no answer on screen the two replies are identical");
+  }
+  if (failures === before) {
+    console.log(
+      `  ok    ${Object.keys(INTENT_QUESTION).length} intents give distinct method and limits`,
+    );
+    console.log("  ok    ...every limit ends with a question the router answers");
+  }
 }
 
 // ── 10. A sentence that names nothing must NOT re-answer ────────────────────
