@@ -92,7 +92,13 @@ export function headcountFor(
     | undefined,
 ): CardHeadcount | null {
   return rec
-    ? { now: rec.now, yoy: rec.yoy, asof: rec.asof, span: rec.span ?? 1, unit: rec.unit ?? "headcount" }
+    ? {
+        now: rec.now,
+        yoy: rec.yoy,
+        asof: rec.asof,
+        span: rec.span ?? 1,
+        unit: rec.unit ?? "headcount",
+      }
     : null;
 }
 
