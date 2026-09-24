@@ -18,17 +18,20 @@
 # job drives a real browser — the same answer browser-portals.yml reached for
 # NGA.NET's heavier `captcha` action.
 #
-# WHAT IT DOES TODAY: reconnaissance only. It prints the workbook's structure
-# to the job log. The parser is deliberately NOT written yet — the current product is
-# the "State of the sector report" workbook, which is a different shape from
-# the "biannual workforce profile" the datastore holds, and writing a parser
-# against a file nobody has opened is a guess.
+# WHAT IT DOES: runs scripts/gen-gov-workforce.py with a browser available, so
+# Queensland loads alongside APS and Victoria, then prints the generated data
+# file to the job log and uploads it as an artifact.
 #
-# Once the log shows the real structure, load_qld() goes into
-# scripts/gen-gov-workforce.py and this workflow runs that instead, uploading
-# the generated data as an artifact. It does NOT commit: no workflow in this
-# repo pushes to the branch, and this one will not be the first — the repo
-# syncs to Lovable and its history is not something a cron should touch.
+# IT DOES NOT COMMIT. No workflow in this repo pushes to a branch and this is
+# not the one to start with — the repo syncs to Lovable and its history is not
+# something a scheduled job should touch. The generated file is picked up from
+# the artifact and committed by a person.
+#
+# QUEENSLAND PUBLISHES FTE, NOT HEADCOUNT. Every agency figure in the workbook
+# is a full-time equivalent; the single head count in all seventeen sheets is a
+# tenure distribution with no agency breakdown. The rows are marked `fte` and
+# the card labels those tiles "Workforce FTE" rather than putting two different
+# measurements under one word.
 
 name: qld-workforce
 
@@ -37,6 +40,7 @@ on:
   push:
     paths:
       - 'scripts/qld-workforce-probe.py'
+      - 'scripts/gen-gov-workforce.py'
       - '.github/workflows/qld-workforce.yml'
 
 concurrency:
@@ -44,8 +48,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  probe:
-    name: qld workforce probe
+  generate:
+    name: qld workforce
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -64,8 +68,31 @@ jobs:
           pip install --quiet playwright openpyxl
           python -m playwright install --with-deps chromium
 
-      # Exits non-zero when the runner is challenged too, which is the one
-      # answer that changes what happens next — so it shows as a red X rather
-      # than a green run with a quiet note in the log.
-      - name: Probe the Queensland workbook
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # The generator refuses to write when a source loads nothing, so a
+      # challenge that is not cleared fails the job rather than quietly
+      # publishing a file with Queensland missing.
+      - name: Generate gov workforce data
+        run: python scripts/gen-gov-workforce.py
+
+      - name: Show the generated file
+        run: |
+          echo "--- src/employsi/data/govWorkforceAu.ts ---"
+          cat src/employsi/data/govWorkforceAu.ts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: govWorkforceAu
+          path: src/employsi/data/govWorkforceAu.ts
+          retention-days: 14
+
+      # The probe stays runnable by hand: it reports the workbook's structure,
+      # which is what a parser has to be rewritten against when the State of
+      # the Sector format next changes.
+      - name: Probe (structure only, never fails the job)
+        if: always()
+        continue-on-error: true
         run: python scripts/qld-workforce-probe.py
