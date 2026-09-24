@@ -1,12 +1,20 @@
-# TEMPORARY — one-off measurement for the ZipRecruiter browser transport.
-# Runs on a push to this branch only (a workflow cannot be dispatched until it
-# is on main). Reads pages; writes nothing to D1. DELETE BEFORE MERGE.
+# ZipRecruiter reachability probe — a measurement, not a feed. Reads pages
+# through SCRAPE_PROXY (US exit), writes nothing to D1, uploads every body it
+# saw. scripts/probe-ziprecruiter.py records the three rounds run 2026-09-24
+# and what each found; re-dispatch it before trying ZipRecruiter again.
+#
+#   mode=pages  three browser profiles against the listing pages (rounds 1-2)
+#   mode=api    the site's own web API, from inside the cleared home page (round 3)
 name: ziprecruiter-probe
 
 on:
-  push:
-    branches: [claude/zealous-planck-7f1fge]
-    paths: ['.github/workflows/ziprecruiter-probe.yml', 'scripts/probe-ziprecruiter.py']
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'pages = browser profiles vs listing pages; api = the web API'
+        type: choice
+        options: [pages, api]
+        default: pages
 
 jobs:
   probe:
@@ -28,8 +36,8 @@ jobs:
           SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
           SCRAPE_PROXY_COUNTRY: us
           OUT_DIR: zr-probe
-          PROBE_MODE: api
-        # xvfb-run for profile C (headful Chrome); A and B ignore the display.
+          PROBE_MODE: ${{ inputs.mode }}
+        # xvfb-run for the headful Chrome profile; the others ignore the display.
         run: |
           sudo apt-get install -y -q xvfb >/dev/null
           xvfb-run -a python scripts/probe-ziprecruiter.py

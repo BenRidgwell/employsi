@@ -1747,6 +1747,19 @@ address; not established. Upstream has the same report open with no fix
 (speedyapply/JobSpy#302, since 2025-09-06). The schedule is off; the workflow
 header says how to re-test and what to read off a run that gets through.
 
+**A browser through the same exit does not get in either** — three rounds of
+[`scripts/probe-ziprecruiter.py`](../../scripts/probe-ziprecruiter.py) the same
+day, all on confirmed residential addresses. The home page loads (200), but every
+listing path — `/jobs-search`, `/browse`, `/Jobs/<name>`, `/co/<name>/Jobs` —
+answers 403 with a Cloudflare **managed** challenge that did not clear in 30s for
+stock headless Chromium, real Chrome with the stealth patches, or that same
+Chrome **headful** under Xvfb. The site's own web API
+(`/api/web.job_search.proto.v1.API/…`) serves the home page's location
+autocomplete, but every search-shaped method tried came back as the same
+challenge. SimplyHired's recipe — clear the challenge once, then read — has no
+page to clear it on here. What is left untried is a challenge-solving service,
+not another browser configuration.
+
 **Three JobSpy behaviours are overridden**, which is why the version is pinned
 (`scripts/ziprecruiter-requirements.txt`) and `scripts/test_ziprecruiter.py`
 drives its internals with a fixture in `scraper-check`:

@@ -21,7 +21,32 @@ assumed about it: this records, per browser profile,
 Every body is saved under $OUT_DIR for the parser to be written against real
 bytes. Exit 0 always: a block is a result, not a failure of the probe.
 
-Run: SCRAPE_PROXY=... SCRAPE_PROXY_COUNTRY=us python scripts/probe-ziprecruiter.py
+RESULTS, 2026-09-24, all through IPRoyal US residential exits (confirmed:
+runner 52.176.x, browsers 172.59.x / 184.98.x / 76.113.x / 173.52.x / 67.253.x):
+
+  round 1 (run 35967763233)  home page 200 in both profiles. /jobs-search 403,
+                             Cloudflare MANAGED challenge (cType 'managed'), after
+                             5s; in-page fetch() the same.
+  round 2 (run 35968150046)  3 profiles — stock headless Chromium, real Chrome +
+                             stealth, and that HEADFUL under Xvfb. Every listing
+                             path (/jobs-search, /browse, /Jobs/Chevron,
+                             /co/Chevron/Jobs) held on the challenge for the full
+                             30s in all three. Only the home page loads.
+  round 3 (run 35969307701)  the home page's own call to
+                             /api/web.job_search.proto.v1.API/AutocompleteLocation
+                             is a 200 with JSON. No method names could be read
+                             out of the 10 bundles, and every guessed search
+                             method (SearchJobs, JobSearch, Search, GetJobs,
+                             ListJobs) came back as the challenge page, not as an
+                             RPC error — so the WAF appears to cover the API
+                             too, apart from a short allowlist. Not proven: the
+                             method names were guesses.
+
+Conclusion: a browser through the residential exit does not reach ZipRecruiter
+job data. What remains untried would be a challenge-SOLVING service (an
+unblocker), not another browser configuration.
+
+Run: SCRAPE_PROXY=... SCRAPE_PROXY_COUNTRY=us [PROBE_MODE=api] python scripts/probe-ziprecruiter.py
 """
 from __future__ import annotations
 import json
