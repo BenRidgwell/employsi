@@ -33,34 +33,30 @@ UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
 # reports, NT's portal has no workforce data at all, and Tasmania has no
 # reachable open-data portal).
 TARGETS = [
-    # ── Northern Territory and Tasmania ────────────────────────────────────
-    # BOTH WERE RECORDED AS UNREACHABLE AND NEITHER IS. Measured from the
-    # sandbox 2026-09-24, both answer HTTP 403 with `cf-mitigated: challenge`,
-    # `server: cloudflare` and a 5.5 KB "Just a moment..." body. That is a
-    # Cloudflare JavaScript challenge — the same KIND of doorman as
-    # Queensland's AWS WAF, not an IP block and not a dead domain. The notes
-    # this file used to carry ("the NT refuses a browser as well as a plain
-    # request", "Tasmania's State Service domain no longer resolves") are both
-    # wrong: dpac.tas.gov.au resolves and answers, it just refuses a script.
+    # ── Round two: ask the sites where their own workforce pages are ───────
+    # Round one settled the doorman and killed two false claims. Measured on a
+    # runner 2026-09-24:
     #
-    # So the question is no longer "is it reachable" but "does a real browser
-    # clear it", which only a runner can answer.
-    ('NT OCPE root', 'https://ocpe.nt.gov.au/'),
-    ('NT gov root', 'https://nt.gov.au/'),
-    # The NT publishes an annual workforce profile through the Office of the
-    # Commissioner for Public Employment; the path is a guess and the root is
-    # what settles it, so the root goes first. data.nt.gov.au is NOT here: it
-    # is reachable (200) and was searched from the sandbox — three hits for
-    # "workforce", none of them staffing.
-    ('NT workforce page', 'https://ocpe.nt.gov.au/nt-public-sector/workforce-data'),
-
-    ('TAS DPAC root', 'https://www.dpac.tas.gov.au/'),
-    ('TAS State Service', 'https://www.dpac.tas.gov.au/divisions/state-service-management-office'),
-    # Tasmanian Treasury answers 200 to a plain request, unlike every other
-    # tas.gov.au host tried, and the Budget Papers carry agency FTE. Worth
-    # knowing whether the data is reachable there even if DPAC stays shut.
-    ('TAS Treasury', 'https://www.treasury.tas.gov.au/'),
-    ('TAS Budget', 'https://www.treasury.tas.gov.au/budget-and-financial-management/budget'),
+    #   ocpe.nt.gov.au     STILL CHALLENGED after 30s — a browser does NOT
+    #                      clear this one. It is the only host in this repo
+    #                      that a real Chromium cannot get into.
+    #   nt.gov.au          browser 200. Clears.
+    #   dpac.tas.gov.au    browser 200. Clears. It has not "stopped resolving".
+    #   treasury.tas.gov.au  plain 200, no browser needed.
+    #
+    # What round one did NOT settle is where the workforce report lives, because
+    # every deep path was a guess and all three 404'd. Guessing again is the
+    # mistake the universities round already paid for, so this round asks each
+    # site for its own map instead. A sitemap is a plain list of every URL the
+    # site admits to having; grepping it for "workforce" is the difference
+    # between knowing and guessing.
+    ('NT sitemap', 'https://nt.gov.au/sitemap.xml'),
+    ('TAS DPAC sitemap', 'https://www.dpac.tas.gov.au/sitemap.xml'),
+    ('TAS gov sitemap', 'https://www.tas.gov.au/sitemap.xml'),
+    # The State Service Commissioner publishes Tasmania's workforce report and
+    # has its own site, which has never been tried.
+    ('TAS Service Commissioner', 'https://www.statred.tas.gov.au/'),
+    ('TAS SSC', 'https://www.stateservice.tas.gov.au/'),
 ]
 
 
@@ -133,6 +129,22 @@ def main():
                 except Exception as e:                            # noqa: BLE001
                     print(f'  browser : FAILED {type(e).__name__}: {str(e).splitlines()[0][:90]}')
                     continue
+            # A SITEMAP IS XML, not a page of anchors, so `links` finds
+            # nothing in one however good it is. Match <loc> entries too, and
+            # report the count so an empty result is distinguishable from a
+            # sitemap that simply has no workforce page in it.
+            locs = re.findall(r'<loc>\s*([^<\s]+)\s*</loc>', html, re.I)
+            if locs:
+                hits = [u for u in locs if re.search(
+                    r'workforce|state[-_ ]of[-_ ]the[-_ ](service|sector)|employment|'
+                    r'staffing|profile|commissioner', u, re.I)]
+                print(f'  sitemap : {len(locs)} urls, {len(hits)} look relevant')
+                for u in dict.fromkeys(hits)[:25] if False else list(dict.fromkeys(hits))[:25]:
+                    print(f'  url     : {u[:120]}')
+                if not hits:
+                    for u in locs[:12]:
+                        print(f'  sample  : {u[:120]}')
+                continue
             found = links(html)
             if not found:
                 print('  links   : none that look like workforce data')
