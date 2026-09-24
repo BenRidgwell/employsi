@@ -901,6 +901,104 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "beijing-601857": "petrochina.com",
   "beijing-601628": "chinalife.com.cn",
   "montreal-cnr": "cn.ca",
+  // ── 2026-09-24: the last of the world ────────────────────────────────────
+  //
+  // The remaining 67 blanks, and they are almost entirely ONE rule failing on
+  // the biggest names on the planet. deriveDomain() strips punctuation and
+  // spaces and appends .com, and these companies are known by an initialism,
+  // a founder's surname or a word that is not their legal name:
+  //
+  //   Meta Platforms        metaplatforms.com  -> meta.com
+  //   Uber Technologies     ubertechnologies   -> uber.com
+  //   Cisco Systems         ciscosystems       -> cisco.com
+  //   Eli Lilly             elililly           -> lilly.com
+  //   Estee Lauder          estelaudercompanies-> elcompanies.com
+  //   Dassault Systemes     dassaultsystmes    -> 3ds.com
+  //   Block                 block.com          -> block.xyz
+  //
+  // And the accent-stripping is its own tell: loral.com for L'Oréal,
+  // herms.com for Hermès, socitgnrale.com for Société Générale,
+  // compagniefinancirerichemont.com for Richemont, khnenagel.com for Kühne +
+  // Nagel. Every one of those is a dropped é or ü, and each produced a domain
+  // that cannot exist — a class of failure the anglosphere rosters never hit.
+  "atlanta-ups": "ups.com",
+  "bengaluru-hal": "hal-india.co.in",
+  "boston-tjx": "tjx.com",
+  "chicago-abt": "abbott.com",
+  "chicago-adm": "adm.com",
+  "chicago-cna": "cna.com",
+  "chicago-gww": "grainger.com",
+  "chicago-itw": "itw.com",
+  "houston-epd": "enterpriseproducts.com",
+  "houston-lng": "cheniere.com",
+  "indianapolis-lly": "lilly.com",
+  "johannesburg-bid": "bidcorpgroup.com",
+  "johannesburg-har": "harmony.co.za",
+  "johannesburg-kio": "angloamericankumba.com",
+  "johannesburg-mnp": "mondigroup.com",
+  "london-aht": "ashtead-group.com",
+  "london-anto": "antofagasta.co.uk",
+  "london-bats": "bat.com",
+  "london-lgen": "legalandgeneral.com",
+  "minneapolis-unh": "unitedhealthgroup.com",
+  "mumbai-reliance": "ril.com",
+  "newyork-el": "elcompanies.com",
+  "newyork-trv": "travelers.com",
+  "newyork-vz": "verizon.com",
+  "paris-cdi": "dior.com",
+  "paris-dsy": "3ds.com",
+  "paris-gle": "societegenerale.com",
+  "paris-or": "loreal.com",
+  "paris-rms": "hermes.com",
+  "philadelphia-apd": "airproducts.com",
+  "sanfrancisco-meta": "meta.com",
+  "sanfrancisco-uber": "uber.com",
+  "sanfrancisco-xyz": "block.xyz",
+  "sanjose-csco": "cisco.com",
+  "seattle-tmus": "t-mobile.com",
+  "seoul-011200": "hmm21.com",
+  "seoul-015760": "kepco.co.kr",
+  "seoul-024110": "ibk.co.kr",
+  "tokyo-4063": "shinetsu.co.jp",
+  "tokyo-4502": "takeda.com",
+  "tokyo-4519": "chugai-pharm.co.jp",
+  "tokyo-6723": "renesas.com",
+  "tokyo-7267": "global.honda",
+  "tokyo-8031": "mitsui.com",
+  "tokyo-9432": "group.ntt",
+  "washington-cof": "capitalone.com",
+  "zurich-cfr": "richemont.com",
+  "zurich-knin": "kuehne-nagel.com",
+  "zurich-pspn": "psp.info",
+  // TAQA's own site is taqaglobal.com; taqa.com and taqa.ae hold nothing the
+  // favicon service or this sandbox can read, so its mark is a file taken
+  // from its LinkedIn page. Same for Shougang, whose shougang.com.cn does not
+  // answer at all and whose shougang.com is a parked domain.
+  "dubai-taqa": "taqaglobal.com",
+  // SIXTEEN STAY BLANK, and each was tried three ways: the company's own host,
+  // the favicon service, and LinkedIn. They divide cleanly:
+  //
+  //   ELEVEN CHINESE ISSUERS whose sites do not answer this sandbox at all,
+  //   or answer and serve no icon: Sinotrans, CSCEC, China Yangtze Power,
+  //   Huaneng, Anhui Conch, Wuliangye, China Rare Earth, and the four Ganzhou
+  //   rare-earth and cobalt names. Several have no LinkedIn page either.
+  //   Huaneng's hpi.com.cn favicon IS reachable and is a SHAREPOINT DEFAULT
+  //   TILE, which is worse than nothing — a blue "S" that names no company —
+  //   so it is deliberately not used.
+  //
+  //   THREE GULF UTILITIES behind Cloudflare: DEWA, Empower and Dubai
+  //   Refreshment. DEWA's LinkedIn image is a photograph of a building with
+  //   the logo printed small in one corner, which reads as a building at
+  //   badge size, so it is refused on the same grounds as the photographs
+  //   removed from PRIVATE_LOGO_URL.
+  //
+  //   TWO AMERICAN ODDITIES. Marathon Oil's domain now redirects to
+  //   ConocoPhillips, which bought it in 2024 — the mark it draws is
+  //   ConocoPhillips'. Taking it would put the acquirer's logo on the
+  //   acquired company's card, and the roster carrying a company that no
+  //   longer trades is the real bug, not the badge. Telephone and Data
+  //   Systems serves an 822-byte favicon that renders as nothing and has no
+  //   logo on its LinkedIn page.
   // ── the original Top-150 private set ──────────────────────────────────────
   "priv-abc-tissue": "abctissue.com.au",
   "priv-abn-group": "abngroup.com.au",
