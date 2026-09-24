@@ -33,28 +33,34 @@ UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
 # reports, NT's portal has no workforce data at all, and Tasmania has no
 # reachable open-data portal).
 TARGETS = [
-    # ── Round three: warm the origin, THEN ask ─────────────────────────────
-    # Round two asked three sitemaps and all three came back STILL CHALLENGED
-    # after thirty seconds, which looked like a harder doorman than round one
-    # found. It is not: it is a flaw in how round two asked.
+    # ── Round four: Tasmania is found; read it before parsing it ───────────
+    # Round three worked. Warming the origin turned three STILL CHALLENGED
+    # results into 200s, and dpac.tas.gov.au's own search handed over the
+    # reports this jurisdiction was said not to publish:
     #
-    # A Cloudflare challenge is cleared once per browser context and pays out
-    # a cookie. Round one visited nt.gov.au and dpac.tas.gov.au as ROOTS and
-    # both cleared to 200. Round two went straight at /sitemap.xml with no
-    # cookie, so every request was a first request and every one was
-    # challenged again. The generator's own fetch() has carried a `warm`
-    # parameter for this since Queensland; the probe did not.
+    #   /__data/assets/pdf_file/0023/509306/State-Service-Workforce-Report-Number-2-2024.pdf
+    #   /__data/assets/pdf_file/0019/509311/State-Service-Workforce-Report-Number-1-2023.pdf
+    #   /__data/assets/pdf_file/0025/509317/State-Service-Workforce-Report-Number-1-2022.pdf
     #
-    # So each entry now names the origin to warm before the page is asked for.
-    # Where they are the same URL, nothing is lost but a second request.
-    ('NT sitemap', 'https://nt.gov.au/sitemap.xml', 'https://nt.gov.au/'),
-    ('NT search: workforce', 'https://nt.gov.au/search?query=workforce+profile', 'https://nt.gov.au/'),
-    ('TAS DPAC sitemap', 'https://www.dpac.tas.gov.au/sitemap.xml', 'https://www.dpac.tas.gov.au/'),
-    ('TAS DPAC search', 'https://www.dpac.tas.gov.au/search?query=state+service+workforce',
+    # This round asks for the NEWEST edition rather than assuming 2024 is it,
+    # and dumps the pages so a parser is written against the document instead
+    # of against a guess. That is the rule Queensland taught: a parser written
+    # from a preview nobody opened was wrong in twelve of twenty-eight rows.
+    ('TAS workforce reports', 'https://www.dpac.tas.gov.au/search?query=workforce+report',
      'https://www.dpac.tas.gov.au/'),
-    # statred.tas.gov.au and stateservice.tas.gov.au were tried in round two
-    # and BOTH are ERR_NAME_NOT_RESOLVED — they do not exist. Guessed
-    # hostnames, and that is what a guess looks like when it is wrong.
+    ('TAS state of the service', 'https://www.dpac.tas.gov.au/search?query=state+of+the+service',
+     'https://www.dpac.tas.gov.au/'),
+
+    # NORTHERN TERRITORY IS THE ONE THAT DOES NOT YIELD. ocpe.nt.gov.au, which
+    # publishes the workforce profile, is STILL CHALLENGED after thirty seconds
+    # in a real browser — the only host in this repo of which that is true, and
+    # warming does not apply because it is the origin. nt.gov.au clears but its
+    # sitemap.xml is a one-URL stub and its search is a Funnelback redirect
+    # with nothing behind it. Two more shapes before concluding.
+    ('NT search via funnelback', 'https://nt.gov.au/search?query=public+sector+workforce+profile',
+     'https://nt.gov.au/'),
+    ('NT OCPE, warmed via itself', 'https://ocpe.nt.gov.au/publications',
+     'https://ocpe.nt.gov.au/'),
 ]
 
 
@@ -80,6 +86,50 @@ def links(html):
                      t, re.I):
             out.append(f'{t[:52]}  ->  {m.group(1)[:90]}')
     return out
+
+
+def dump_pdf(ctx, url, warm):
+    """Download a PDF through a warmed browser and print what a parser will see.
+
+    The reports are behind the same Cloudflare challenge as the pages, so
+    urllib cannot have them; a browser request inside a cleared context can.
+    """
+    try:
+        import pdfplumber
+    except ImportError:
+        print('  pdf     : pdfplumber not installed here')
+        return
+    page = ctx.new_page()
+    try:
+        page.goto(warm, wait_until='domcontentloaded', timeout=60_000)
+        w = 0
+        while 'Just a moment' in page.content() and w < 30_000:
+            page.wait_for_timeout(3000)
+            w += 3000
+        r = page.request.get(url, timeout=120_000)
+        body = r.body()
+        print(f'  pdf     : HTTP {r.status}, {len(body):,} bytes')
+        if r.status != 200 or not body.startswith(b'%PDF'):
+            print(f'  pdf     : not a PDF ({body[:40]!r})')
+            return
+        import io as _io
+        with pdfplumber.open(_io.BytesIO(body)) as pdf:
+            print(f'  pdf     : {len(pdf.pages)} pages')
+            for n, pg in enumerate(pdf.pages, 1):
+                txt = pg.extract_text() or ''
+                if not re.search(r'\bagency|\bdepartment|FTE|head ?count', txt, re.I):
+                    continue
+                if not re.search(r'\d{3,}', txt):
+                    continue
+                print(f'\n  ===== page {n} =====')
+                for line in txt.split('\n')[:16]:
+                    print(f'    {line[:110]}')
+                if n > 40:
+                    break
+    except Exception as e:                                        # noqa: BLE001
+        print(f'  pdf     : FAILED {type(e).__name__}: {str(e).splitlines()[0][:90]}')
+    finally:
+        page.close()
 
 
 def main():
@@ -160,8 +210,17 @@ def main():
             found = links(html)
             if not found:
                 print('  links   : none that look like workforce data')
+            pdfs = []
             for l in dict.fromkeys(found):
                 print(f'  link    : {l[:130]}')
+                m = re.match(r'(https?://\S+\.pdf)', l, re.I)
+                if m and re.search(r'workforce|state.of.the.service', m.group(1), re.I):
+                    pdfs.append(m.group(1))
+            # Newest edition first: these are named "...Number-2-2024.pdf", so
+            # the year sorts them and the report number breaks a tie.
+            for u in sorted(set(pdfs), reverse=True)[:1]:
+                print(f'  reading : {u[:120]}')
+                dump_pdf(ctx, u, warm)
         browser.close()
     return 0
 
