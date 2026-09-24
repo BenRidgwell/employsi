@@ -176,17 +176,28 @@ const METRICS: MetricDef[] = [
     fmt: (v) => "$" + Math.round(v / 1000) + "k",
     higherIsBetter: true,
   },
+  // A HEADCOUNT OF 0 MEANS UNKNOWN, NOT ZERO, and returning it as a number put
+  // that straight on the card: Queensland Health compared at "Headcount 0" and
+  // "Headcount growth +0.0%", two measurements of nothing, laid out beside a
+  // real employer's real figures. The gov and university builders set both
+  // fields to 0 together when no workforce source is loaded (buildGovAgency,
+  // perthGov.ts), so `headcount > 0` is the one test that gates both — a
+  // company whose headcount really is flat still has staff, so it keeps its
+  // 0.0% and is not caught here.
+  //
+  // `of` has always been typed `number | null` and the loop below already drops
+  // a metric either side cannot answer; these two just never used it.
   {
     key: "headcount",
     name: "Headcount",
-    of: (c) => c.headcount,
+    of: (c) => (c.headcount > 0 ? c.headcount : null),
     fmt: (v) => (v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1) + "k" : String(Math.round(v))),
     higherIsBetter: true,
   },
   {
     key: "growth",
     name: "Headcount growth · YoY",
-    of: (c) => c.growth,
+    of: (c) => (c.headcount > 0 ? c.growth : null),
     fmt: (v) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1) + "%",
     higherIsBetter: true,
     signed: true,
