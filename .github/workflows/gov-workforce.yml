@@ -131,3 +131,16 @@ jobs:
         if: always()
         continue-on-error: true
         run: python scripts/sa-workforce-probe.py
+
+      # New South Wales publishes no downloadable workforce profile any more —
+      # the PSC page carries none even rendered. Its Local Health Districts
+      # carry two thirds of the jurisdiction's live ads, and a health annual
+      # report's appendix is where staff numbers by organisation usually sit.
+      - name: Probe the NSW Health annual report appendix
+        if: always()
+        continue-on-error: true
+        run: |
+          python scripts/sa-workforce-probe.py \
+            https://www.health.nsw.gov.au/annualreport/Publications/2025/appendix.pdf
+          python scripts/sa-workforce-probe.py \
+            https://www.health.nsw.gov.au/annualreport/Publications/2025/organisations.pdf
