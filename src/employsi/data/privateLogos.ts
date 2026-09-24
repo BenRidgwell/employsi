@@ -811,6 +811,48 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   // publish. They upscale badly and are kept anyway: a blurry correct mark
   // beats the alternative, which for both of these was a shared 16px icon off
   // a parked domain — Towngas and Chow Tai Fook were drawing the SAME image.
+  // ── 2026-09-24: eighteen cards that were showing a DOMAIN PARKING ICON ───
+  //
+  // Not blanks. Each of these drew a real, sharp, confident image that was the
+  // logo of a domain marketplace, and they were found only because unrelated
+  // companies were sharing one. Six sat on the same black-and-orange icon,
+  // four on a green ".com" for-sale sign, three on Sedo's blue S, two on the
+  // turquoise swirl already recorded above, two on a blue asterisk.
+  //
+  // This is deriveDomain() meeting the rest of the world: a .com built from a
+  // full legal name is FOR SALE precisely because the name is valuable, so the
+  // failure is concentrated exactly on the largest companies. Japanese and
+  // Korean issuers are on .co.jp and .co.kr, mainland Chinese on .com.cn, and
+  // several of these trade under an abbreviation nobody would guess from the
+  // name: MUFG is mufg.jp, SMFG is smfg.co.jp, Seven & i is 7andi.com, Union
+  // Properties is up.ae, CITIC Securities is citics.com.
+  //
+  // The one that proves the shape: GS Holdings of Korea was on gs.com, which
+  // is GOLDMAN SACHS — a real company's real favicon on another company's
+  // card, sharing its image with the Goldman Sachs record two rosters away.
+  "tokyo-6981": "murata.com",
+  "tokyo-8316": "smfg.co.jp",
+  "tokyo-8306": "mufg.jp",
+  "tokyo-6367": "daikin.com",
+  "tokyo-8411": "mizuhogroup.com",
+  "tokyo-3382": "7andi.com",
+  "seoul-078930": "gs.co.kr",
+  "shanghai-600887": "yili.com",
+  "shanghai-600030": "citics.com",
+  "shanghai-600519": "moutaichina.com",
+  "toronto-rcib": "rogers.com",
+  "newyork-ed": "coned.com",
+  "atlanta-so": "southerncompany.com",
+  "dubai-upp": "up.ae",
+  "dubai-ihc": "ihcuae.com",
+  "johannesburg-apn": "aspenpharma.com",
+  // These two get the right domain and NO badge, which is the trade this file
+  // keeps making. Both sites are real and neither publishes an icon the
+  // favicon service holds or that this sandbox can reach: Wuliangye's own
+  // /icon/favicon.ico 404s, and cmreltd.com does not answer at all. A blank
+  // badge is the honest end state; the parked icon they had was not.
+  "shenzhen-000858": "wuliangye.com.cn",
+  "ganzhou-000831": "cmreltd.com",
   // ── the original Top-150 private set ──────────────────────────────────────
   "priv-abc-tissue": "abctissue.com.au",
   "priv-abn-group": "abngroup.com.au",
