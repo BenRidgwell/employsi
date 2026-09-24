@@ -276,15 +276,20 @@ const STOPWORDS = new Set([
 
 /** Lowercase, strip accents and punctuation, drop corporate furniture. */
 function tokens(name: string): string[] {
-  return name
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .split(" ")
-    .filter((t) => t.length > 2 && !STOPWORDS.has(t));
+  return (
+    name
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/&/g, " and ")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .split(" ")
+      // Two characters, not three: "EY", "VF", "IP", "3M" and "BP" are company
+      // names in full, and dropping them made every two-letter company read as a
+      // page that never says who it is. STOPWORDS carries the noise instead.
+      .filter((t) => t.length >= 2 && !STOPWORDS.has(t))
+  );
 }
 
 /**

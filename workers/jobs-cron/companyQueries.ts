@@ -32,6 +32,10 @@ export const EXTRA_QUERIES: Record<string, string[]> = {
   // both is the half that finds them; ACCEPT_ALIAS in scripts/company_alias.py
   // is the half that lets them through attribution.
   "brisbane-elv": ["Sayona Mining", "Sayona Lithium"],
+  // Kantra Copper was Hillgrove Resources until 2026-08-17. Same half-and-half
+  // as Elevra above: the feeds search the roster name, so the old name has to
+  // be asked for explicitly, and ACCEPT_ALIAS lets the answers through.
+  hgo: ["Hillgrove Resources"],
   // The Cotton On Group, which this roster called COGI Pty Ltd — its
   // registered name — until 2026-09-24. The feeds search the roster name, so
   // for as long as that was COGI they were asking job boards for a string no

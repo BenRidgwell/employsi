@@ -49,6 +49,8 @@ export const SEEK_ADVERTISERS: Record<string, SeekAdvertiser> = {
   cxo: { advertiserId: "63560130", name: "Core Lithium Ltd" },
   fmg: { advertiserId: "61981911", name: "Fortescue" },
   gmd: { advertiserId: "62725348", name: "Genesis Minerals" },
+  // The advertiser id is the stable key; SEEK still carries the old trading
+  // name on it, so it is left as SEEK spells it rather than as we now do.
   hgo: { advertiserId: "24532507", name: "Hillgrove Resources Limited" },
   igo: { advertiserId: "26835922", name: "IGO Limited" },
   ilu: { advertiserId: "19753886", name: "Iluka Resources Limited" },

@@ -1013,6 +1013,55 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   // LinkedIn logo) but the domain was wrong, and the next person to remove a
   // LinkedIn entry would have inherited a for-sale page.
   "perth-gov-health-support-services": "hss.health.wa.gov.au",
+  // ── the first full sweep by scripts/check-company-live.ts, 2026-09-24 ────
+  //
+  // 1,548 companies, and these are the 21 whose own domain no longer
+  // describes them. Nine were drawing the wrong picture; twelve had a wrong
+  // domain and a right badge, because they resolve through a LinkedIn logo or
+  // a state crest that sits above the favicon service in the ladder. All 21
+  // are corrected, because the domain is data in its own right — the next
+  // person to remove a LinkedIn entry would otherwise inherit a for-sale page.
+  //
+  // NINE WERE ON SCREEN, and the sweep is worth its runtime for these alone:
+  //
+  //   VF Corporation      vf.com is VANITY FAIR, the magazine
+  //   Prophecy Intl       prophecy.com.au is a MUSICIAN, "Prophecy by Ren"
+  //   Power Corp Canada   powercanada.com redirects to hydroponicplans.com
+  //   Toast               toast.com redirects to nhncloud.com
+  //   DB Insurance        dbinsurance.com redirects to acrisure.com
+  //   Hillgrove Resources RENAMED to Kantra Copper on 2026-08-17; the record
+  //                       in companies.ts now says so, so it needs no override
+  //   Presight AI         presightai.com is a for-sale listing
+  //   Telkom SA           telkomsa.com is a for-sale listing
+  //   Dept for Education  departmentforeducation.com is a for-sale listing
+  //
+  // The pattern in the Australian government rows is worth naming: a federal
+  // or state agency's full name spelled as a .com is a DESIRABLE domain —
+  // geoscienceaustralia.com, ipaustralia.com, safeworkaustralia.com,
+  // comcare.com, countryfireauthority.com, staterevenueoffice.com and
+  // hunterwater.com were all registered by somebody else, most of them now
+  // parked or for sale. The agency is always on .gov.au, which deriveDomain()
+  // cannot produce.
+  "denver-vfc": "vfc.com",
+  "boston-tost": "toasttab.com",
+  "montreal-pow": "powercorporation.com",
+  "adelaide-pro": "prophecyinternational.com",
+  "seoul-005830": "idbins.com",
+  "dubai-presight": "presight.ai",
+  "johannesburg-tkg": "telkom.co.za",
+  "sydney-dow": "downergroup.com",
+  "melbourne-mpl": "medibank.com.au",
+  "melbourne-tah": "tabcorp.com.au",
+  "aps-comcare": "comcare.gov.au",
+  "aps-geoscience-australia": "ga.gov.au",
+  "aps-ip-australia": "ipaustralia.gov.au",
+  "aps-safe-work-australia": "safeworkaustralia.gov.au",
+  "nsw-gov-hunter-water": "hunterwater.com.au",
+  "perth-gov-main-roads-wa": "mainroads.wa.gov.au",
+  "sa-gov-department-for-education": "education.sa.gov.au",
+  "sa-gov-education-standards-board": "esb.sa.gov.au",
+  "vic-gov-country-fire-authority": "cfa.vic.gov.au",
+  "vic-gov-state-revenue-office": "sro.vic.gov.au",
   // ── the original Top-150 private set ──────────────────────────────────────
   "priv-abc-tissue": "abctissue.com.au",
   "priv-abn-group": "abngroup.com.au",

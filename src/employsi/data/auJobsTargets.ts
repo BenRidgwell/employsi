@@ -131,7 +131,7 @@ export const AU_JOBS_TARGETS: JobsTarget[] = [
   },
   {
     id: "hgo",
-    name: "Hillgrove Resources",
+    name: "Kantra Copper",
     sector: "Copper & Base Metals",
     group: "Energy & Natural Resources",
     cities: ["adelaide"],

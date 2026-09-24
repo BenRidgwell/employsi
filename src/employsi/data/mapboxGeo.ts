@@ -215,7 +215,7 @@ export const CITY_COMPANIES: Record<string, CityCompany[]> = {
     { id: "sto", coords: [138.6042, -34.92655] }, // Santos — 60 Flinders St
     { id: "beach", coords: [138.6178, -34.9354] }, // Beach Energy — 25 Conyngham St, Glenside
     { id: "mgt", coords: [138.5987, -34.9215] }, // Magnetite Mines
-    { id: "hgo", coords: [138.6001, -34.9301] }, // Hillgrove Resources
+    { id: "hgo", coords: [138.6001, -34.9301] }, // Kantra Copper (was Hillgrove)
   ],
   brisbane: [
     { id: "bhp", coords: [153.0295, -27.467] }, // 480 Queen St
