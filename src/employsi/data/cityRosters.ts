@@ -791,7 +791,20 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["LYB", "LyondellBasell", IND],
       ["PWR", "Quanta Services", INF],
       ["OXY", "Occidental Petroleum", ENR],
-      ["MRO", "Marathon Oil", ENR],
+      // Marathon Oil (NYSE:MRO) was removed on 2026-09-24. ConocoPhillips
+      // acquired it outright in November 2024 and MRO was delisted; the
+      // company does not exist to hire anyone. Its people are counted under
+      // COP below, which is already on this roster and carries the archive
+      // rows. Nothing referenced houston-mro — no jobs, follows, posts,
+      // views or coordinates — which is consistent with a card that had
+      // nothing behind it for two years.
+      //
+      // Found by its BADGE, not its data: marathonoil.com now redirects to
+      // conocophillips.com, so the logo audit fetched ConocoPhillips' mark
+      // for it. A dead company is invisible to this codebase otherwise —
+      // the roster is a static list, and an employer that stops existing
+      // simply stops appearing in the feeds, which looks exactly like an
+      // employer that stopped advertising.
       ["PSX", "Phillips 66", ENR],
       ["TRGP", "Targa Resources", ENR],
       ["CTRA", "Coterra Energy", ENR],

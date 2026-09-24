@@ -992,13 +992,16 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   //   badge size, so it is refused on the same grounds as the photographs
   //   removed from PRIVATE_LOGO_URL.
   //
-  //   TWO AMERICAN ODDITIES. Marathon Oil's domain now redirects to
-  //   ConocoPhillips, which bought it in 2024 — the mark it draws is
-  //   ConocoPhillips'. Taking it would put the acquirer's logo on the
-  //   acquired company's card, and the roster carrying a company that no
-  //   longer trades is the real bug, not the badge. Telephone and Data
-  //   Systems serves an 822-byte favicon that renders as nothing and has no
-  //   logo on its LinkedIn page.
+  //   ONE AMERICAN ODDITY. Telephone and Data Systems serves an 822-byte
+  //   favicon that renders as nothing and has no logo on its LinkedIn page.
+  //
+  //   Marathon Oil was the second, and it is gone: its domain redirected to
+  //   ConocoPhillips, which bought it in 2024, so the audit was fetching the
+  //   acquirer's mark for it. The roster entry has been removed — see
+  //   cityRosters.ts. Worth keeping here because the LOGO is what exposed a
+  //   dead company: a delisted employer is otherwise invisible to this
+  //   codebase, since it simply stops appearing in the feeds, which looks
+  //   exactly like one that stopped advertising.
   // ── the original Top-150 private set ──────────────────────────────────────
   "priv-abc-tissue": "abctissue.com.au",
   "priv-abn-group": "abngroup.com.au",
