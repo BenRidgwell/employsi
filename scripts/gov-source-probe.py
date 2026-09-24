@@ -33,17 +33,29 @@ UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
 # reports, NT's portal has no workforce data at all, and Tasmania has no
 # reachable open-data portal).
 TARGETS = [
-    ('SA  OCPSE workforce information',
-     'https://publicsector.sa.gov.au/about/our-work/workforce-information/'),
-    ('SA  OCPSE root', 'https://publicsector.sa.gov.au/'),
-    ('SA  data portal search', 'https://data.sa.gov.au/data/dataset?q=workforce'),
-    ('NT  OCPE root', 'https://ocpe.nt.gov.au/'),
-    ('NT  OCPE state of the service',
-     'https://ocpe.nt.gov.au/reports-and-publications/state-of-the-service-report'),
-    ('TAS State Service root', 'https://www.stateservice.tas.gov.au/'),
-    ('TAS DPAC state service reports',
-     'https://www.dpac.tas.gov.au/divisions/ssmo/state_service_annual_report'),
+    # SOUTH AUSTRALIA. publicsector.sa.gov.au answers 200 to a plain request
+    # from a runner (measured 2026-09-24) and 403 to the authoring sandbox, so
+    # it is that network rather than the host. These are the two pages its nav
+    # points at for per-agency figures.
+    ('SA  Workforce Information',
+     'https://publicsector.sa.gov.au/about/Resources-and-Publications/Workforce-Information'),
+    ('SA  State of the Sector',
+     'https://publicsector.sa.gov.au/about/Resources-and-Publications/State-of-the-Sector'),
+
+    # NORTHERN TERRITORY. ocpe.nt.gov.au answers 403 to a plain request AND to
+    # a browser, so the doorman is not a bot check. These are the other places
+    # the State of the Service report is published.
+    ('NT  OCPE publications', 'https://ocpe.nt.gov.au/publications'),
+    ('NT  nt.gov.au search', 'https://nt.gov.au/search?q=state+of+the+service+report'),
+    ('NT  Treasury/DCM open data', 'https://data.nt.gov.au/dataset?q=public+sector'),
+
+    # TASMANIA. stateservice.tas.gov.au does not resolve — the domain is gone.
+    # dpac.tas.gov.au answers 403 to both. These are the survivors.
+    ('TAS DPAC root', 'https://www.dpac.tas.gov.au'),
+    ('TAS SSMO', 'https://www.dpac.tas.gov.au/divisions/state-service-management-office'),
+    ('TAS Treasury workforce', 'https://www.treasury.tas.gov.au/publications'),
 ]
+
 
 
 def plain(url):
@@ -59,7 +71,7 @@ def plain(url):
 
 def links(html):
     out = []
-    for m in re.finditer(r'href="([^"]+\.(?:xlsx|xls|csv))(?:\?[^"]*)?"', html, re.I):
+    for m in re.finditer(r'href="([^"]+\.(?:xlsx|xls|csv|pdf))(?:\?[^"]*)?"', html, re.I):
         out.append(m.group(1))
     for m in re.finditer(r'<a[^>]+href="([^"]+)"[^>]*>(.{0,120}?)</a>', html, re.S | re.I):
         t = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', m.group(2))).strip()
