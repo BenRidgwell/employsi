@@ -68,6 +68,8 @@ export interface CardHeadcount {
   yoy: number | null;
   asof: string;
   span: number;
+  /** What the figure counts — see the tile's label below. */
+  unit: "headcount" | "fte";
 }
 
 /**
@@ -84,9 +86,20 @@ export interface CardHeadcount {
  * undefined years". A default this load-bearing gets stated once.
  */
 export function headcountFor(
-  rec: { now: number; yoy: number | null; asof: string; span?: number } | null | undefined,
+  rec:
+    | { now: number; yoy: number | null; asof: string; span?: number; unit?: "headcount" | "fte" }
+    | null
+    | undefined,
 ): CardHeadcount | null {
-  return rec ? { now: rec.now, yoy: rec.yoy, asof: rec.asof, span: rec.span ?? 1 } : null;
+  return rec
+    ? {
+        now: rec.now,
+        yoy: rec.yoy,
+        asof: rec.asof,
+        span: rec.span ?? 1,
+        unit: rec.unit ?? "headcount",
+      }
+    : null;
 }
 
 /**
@@ -376,7 +389,14 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
   if (hc) {
     stats.push({
       value: hc.now >= 1000 ? `${(hc.now / 1000).toFixed(hc.now >= 10000 ? 0 : 1)}k` : `${hc.now}`,
-      label: "Headcount",
+      // FTE IS NOT A HEAD COUNT, and this tile is the only place that says so.
+      // Queensland publishes full-time equivalents at agency level and nothing
+      // else — its whole State of the Sector workbook carries one headcount
+      // figure, a tenure distribution, and no per-agency one. A part-timer is a
+      // fraction of an FTE and a whole person, so labelling 79,353 FTE as
+      // "Headcount" beside Victoria's actual 90,091 people would put two
+      // different measurements under one word.
+      label: hc.unit === "fte" ? "Workforce FTE" : "Headcount",
       // No change at all when the span is unknown, and the REAL span named when
       // it is not a year — "over 7 years" beside +1,325% is a fact; "YoY"
       // beside it is not.

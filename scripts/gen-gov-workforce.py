@@ -42,7 +42,7 @@ the card renders an em dash for it.
 
 ALIAS is the escape hatch, and every entry is a judgement someone can check.
 """
-import csv, io, json, re, sys, urllib.request
+import csv, io, json, re, sys, urllib.error, urllib.request
 
 ROOT = __file__.rsplit('/scripts/', 1)[0]
 OUT = f'{ROOT}/src/employsi/data/govWorkforceAu.ts'
@@ -69,10 +69,87 @@ ALIAS = {
 }
 
 
-def fetch(url, binary=False):
-    req = urllib.request.Request(url, headers={'User-Agent': UA})
-    with urllib.request.urlopen(req, timeout=90) as r:
-        b = r.read()
+# A browser, opened once and shared, for the hosts that refuse a plain request.
+# None until something needs it, so a run that touches only the open portals
+# never starts Chromium.
+_BROWSER = {'ctx': None, 'stop': None}
+
+
+def _browser_ctx():
+    from playwright.sync_api import sync_playwright
+    if _BROWSER['ctx'] is None:
+        pw = sync_playwright().start()
+        _BROWSER['stop'] = pw.stop
+        try:
+            b = pw.chromium.launch(args=['--no-sandbox'])
+            _BROWSER['ctx'] = b.new_context(user_agent=UA, locale='en-AU')
+        except Exception:
+            # Leaving a half-started Playwright behind turns the next
+            # jurisdiction's failure into "Sync API inside the asyncio loop",
+            # which describes this function rather than the source that failed
+            # — and that is the message someone would go and debug.
+            close_browser()
+            raise
+    return _BROWSER['ctx']
+
+
+def close_browser():
+    if _BROWSER['stop']:
+        _BROWSER['stop']()
+        _BROWSER['ctx'], _BROWSER['stop'] = None, None
+
+
+def fetch(url, binary=False, via_browser=False, warm=None, expect=None):
+    """GET, falling back to a real browser when the host refuses a plain one.
+
+    TWO HOSTS HERE NEED IT, FOR DIFFERENT REASONS, and both were measured on a
+    GitHub runner 2026-09-24:
+
+      * www.data.qld.gov.au answers `x-amzn-waf-action: challenge` and returns
+        a JavaScript interstitial. Not readable without executing it, from any
+        network — the authoring sandbox and a runner get the same page.
+      * vpsc.vic.gov.au answers HTTP 403 to a datacentre IP. It is perfectly
+        readable from a developer machine and refuses the runner outright, so
+        the generator worked locally and failed in CI on the same commit.
+
+    browser-portals.yml documents exactly this split on job boards: reachable
+    but not readable, versus readable but not reachable. One fallback covers
+    both, because in each case the fix is to be a browser.
+
+    `warm` is a page to load first, for a host that issues a cookie before it
+    will serve the file. `expect="zip"` says the bytes must be a real workbook,
+    which is how a WAF interstitial is caught — it answers 200 with HTML, so
+    status alone does not reveal it. It is NOT inferred from `binary`: the
+    Victorian 2023 release is a genuine CSV fetched as bytes, and inferring
+    made the generator retry it through a browser it did not need.
+    """
+    if not via_browser:
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': UA})
+            with urllib.request.urlopen(req, timeout=90) as r:
+                b = r.read()
+            if not (expect == 'zip' and b[:2] != b'PK'):
+                return b if binary else b.decode('utf-8-sig', 'replace')
+            print(f'  (not a workbook, retrying through a browser: {url[:70]})', file=sys.stderr)
+        except urllib.error.HTTPError as e:
+            if e.code not in (401, 403, 405, 429, 503):
+                raise
+            print(f'  (HTTP {e.code}, retrying through a browser: {url[:70]})', file=sys.stderr)
+
+    ctx = _browser_ctx()
+    if warm:
+        page = ctx.new_page()
+        page.goto(warm, wait_until='domcontentloaded', timeout=90_000)
+        page.wait_for_timeout(2500)   # a challenge runs after load
+        page.close()
+    r = ctx.request.get(url, timeout=120_000)
+    b = r.body()
+    # Say what came back. A browser retry that still fails is otherwise an
+    # empty result several frames away from its cause — Victoria returned zero
+    # rows with no error at all, and the log said only "nothing loaded".
+    if r.status != 200 or (expect == 'zip' and b[:2] != b'PK'):
+        print(f'  (browser got HTTP {r.status}, {len(b)} bytes, starts {b[:24]!r})',
+              file=sys.stderr)
     return b if binary else b.decode('utf-8-sig', 'replace')
 
 
@@ -102,6 +179,32 @@ def norm(s):
     return re.sub(r'[^a-z0-9]', '', s)
 
 
+
+def read_existing():
+    """The rows and the per-jurisdiction provenance already in the output file.
+
+    A run that cannot reach a source keeps what is there rather than deleting
+    it, so the file has to be read before it is written. Parsed with a regex
+    rather than imported, because it is TypeScript and this is Python, and a
+    shape it does not recognise is treated as no previous file at all — the
+    worst case is a rewrite, which is what used to happen every time.
+    """
+    try:
+        txt = open(OUT).read()
+    except FileNotFoundError:
+        return {}, {}
+    rows = {}
+    for m in re.finditer(r'^  "([^"]+)": \{ ([^}]*) \},', txt, re.M):
+        body = {}
+        for k, v in re.findall(r'(\w+): ("(?:[^"]*)"|-?[\d.]+)', m.group(2)):
+            body[k] = v.strip('"') if v.startswith('"') else float(v)
+        rows[m.group(1)] = body
+    meta = {}
+    for m in re.finditer(r'^//   ([^:]+): (.+?)(?: — (?:refreshed|KEPT).*)?$', txt, re.M):
+        meta[m.group(1)] = m.group(2)
+    return rows, meta
+
+
 # ── APS ─────────────────────────────────────────────────────────────────────
 def load_aps():
     """Table 2: agency by employment category, two Decembers in one sheet.
@@ -125,9 +228,10 @@ def load_aps():
                     best = (key, m.group(1), r['url'])
                 break
     if not best:
-        return {}, None
+        return {}, None, 'headcount'
     _, asof, url = best
-    wb = openpyxl.load_workbook(io.BytesIO(fetch(url, True)), read_only=True, data_only=True)
+    wb = openpyxl.load_workbook(io.BytesIO(fetch(url, True, expect='zip')), read_only=True,
+                                data_only=True)
     ws = wb['Table 2']
     hdr = [c for c in next(ws.iter_rows(min_row=4, max_row=4, values_only=True))]
     y_prev, y_now = str(hdr[5]).strip(), str(hdr[6]).strip()
@@ -144,7 +248,7 @@ def load_aps():
         except (TypeError, ValueError):
             continue
         out[name.lstrip('- ').strip()] = (now, prev)
-    return out, f'Dec {y_now}' if 'December' in asof else f'{asof.split()[-1]}'
+    return out, (f'Dec {y_now}' if 'December' in asof else asof.split()[-1]), 'headcount'
 
 
 # ── Victoria ────────────────────────────────────────────────────────────────
@@ -164,11 +268,13 @@ def load_vic():
                 years[int(m.group(1))] = r['url']
                 break
     if len(years) < 2:
-        return {}, None
+        return {}, None, 'headcount'
     now_y, prev_y = sorted(years, reverse=True)[:2]
 
     def read(url):
-        raw = fetch(url, True)
+        # Warmed at the site root: if the 403 is a bot check rather than an IP
+        # block, the cookie it wants is set by visiting a page first.
+        raw = fetch(url, True, warm='https://vpsc.vic.gov.au/')
         rows = {}
         if raw[:2] == b'PK':
             wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
@@ -188,36 +294,141 @@ def load_vic():
         return rows
 
     a, b = read(years[now_y]), read(years[prev_y])
-    return {k: (a[k], b[k]) for k in a if k in b}, f'Jun {now_y}'
+    if not a or not b:
+        print(f'  Victoria: parsed {len(a)} rows for {now_y}, {len(b)} for {prev_y}',
+              file=sys.stderr)
+    return {k: (a[k], b[k]) for k in a if k in b}, f'Jun {now_y}', 'headcount'
 
 
+# ── Queensland ──────────────────────────────────────────────────────────────
+def load_qld():
+    """State of the Sector workbook, sheet "5. Agency" — Total FTE by agency.
+
+    TWO THINGS ABOUT THIS SOURCE ARE DIFFERENT FROM EVERY OTHER ONE HERE.
+
+    It needs a browser. www.data.qld.gov.au answers a plain request for the
+    file with `x-amzn-waf-action: challenge` and 2,027 bytes of
+    `window.awsWafCoo…`. Measured 2026-09-24 from the authoring sandbox AND
+    from a GitHub runner: both get the same interstitial, so it was never an IP
+    block and moving the fetch alone changes nothing. A real browser clears it
+    with no human step — see .github/workflows/qld-workforce.yml, which is the
+    only way this loader runs.
+
+    It reports FTE, NOT HEADCOUNT. Every agency-level figure in the workbook is
+    a full-time equivalent; the one head count in all seventeen sheets is a
+    tenure distribution with no agency breakdown. FTE is systematically lower
+    than a head count, so the rows are marked `fte` and the card labels the
+    tile "Workforce FTE" rather than putting two measurements under one word.
+    """
+    import openpyxl
+
+    api = 'https://data.qld.gov.au/api/3/action'
+    dataset = 'queensland-public-service-workforce-quarterly-profile'
+    pkg = json.loads(fetch(f'{api}/package_show?id={dataset}'))['result']
+    cands = [x for x in pkg['resources']
+             if 'state of the sector' in x['name'].lower()
+             and (x.get('format') or '').lower() in ('xlsx', 'xls')]
+    if not cands:
+        return {}, None, 'headcount'
+    cands.sort(key=lambda x: (re.search(r'(20\d\d)', x['name']) or ['', '0'])[1], reverse=True)
+    url = cands[0]['url']
+
+    # The dataset page is loaded first: the challenge runs there and leaves the
+    # aws-waf-token the file download is checked against.
+    raw = fetch(url, binary=True, via_browser=True, expect='zip',
+                warm=f'https://www.data.qld.gov.au/dataset/{dataset}')
+    if raw[:2] != b'PK':
+        print('  Queensland: still challenged — no workbook', file=sys.stderr)
+        return {}, None, 'headcount'
+
+    wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+    ws = wb['5. Agency']
+    head = next(ws.iter_rows(min_row=1, max_row=1, values_only=True))
+    # Column headers are real dates (2022-03-01 … 2026-03-01), newest last.
+    cols = [(i, c) for i, c in enumerate(head) if hasattr(c, 'year')]
+    if len(cols) < 2:
+        return {}, None, 'headcount'
+    (i_prev, d_prev), (i_now, d_now) = cols[-2], cols[-1]
+    # THE SHEET HOLDS MORE THAN ONE TABLE and the read has to stop at the end
+    # of the first. Row 80 starts "Number of FTE by Gender and Agency", whose
+    # columns are Woman/Man/Non-binary per year rather than a year per column,
+    # and reading its rows against this header's offsets is what reported
+    # Queensland Health at 837 -> 91,258 FTE, a 10,803% rise. Every agency in
+    # both tables was overwritten by its gender row.
+    #
+    # Anchored on the sheet's own terminator rather than on blank lines: the
+    # first table contains single blank rows (between the budget agencies, the
+    # other entities and the Norfolk Island row) and "Whole of sector total" is
+    # the line that actually ends it.
+    out = {}
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        name = row[0]
+        if not name or not str(name).strip():
+            continue
+        name = str(name).strip()
+        if name.lower().startswith('whole of sector'):
+            break
+        # Sub-totals are not agencies and would match nothing, but they are
+        # skipped explicitly so a roster entry could never collide with one.
+        if name.lower().startswith(('sector sub-total', 'total', 'source', 'note',
+                                    'agencies shaded')):
+            continue
+        try:
+            now, prev = float(row[i_now]), float(row[i_prev])
+        except (TypeError, ValueError, IndexError):
+            continue
+        # A machinery-of-government change shows as 0 in the years before the
+        # agency existed — seven of the fourteen departments read 0 until 2025.
+        # That is not a workforce that grew from nothing, so it is skipped
+        # rather than reported as infinite growth.
+        if now <= 0 or prev <= 0:
+            continue
+        # First mention wins. The Norfolk Island Taskforce is listed twice with
+        # identical figures; a later table would otherwise overwrite a real row.
+        out.setdefault(name, (round(now), round(prev)))
+    asof = f'Mar {d_now.year}'
+    if (d_now.year - d_prev.year) != 1:
+        print(f'  Queensland: readings are {d_now.year - d_prev.year} years apart', file=sys.stderr)
+    return out, asof, 'fte'
+
+
+# key -> (label, loader, span in years). The loader returns (rows, asof, unit);
+# `unit` is "headcount" everywhere but Queensland, which publishes only FTE.
 SOURCES = {
     'aps': ('APS (federal)', load_aps, 1),
     'vic': ('Victoria', load_vic, 1),
+    # Runs only where a browser is available — see the loader and
+    # .github/workflows/qld-workforce.yml.
+    'qld': ('Queensland', load_qld, 1),
 }
 
 
 def main():
     only = None
     if '--only' in sys.argv:
-        only = sys.argv[sys.argv.index('--only') + 1]
+        only = {k.strip() for k in sys.argv[sys.argv.index('--only') + 1].split(',') if k.strip()}
 
     # The roster, read straight out of the app so the ids cannot drift.
-    src = open(f'{ROOT}/src/employsi/data/companies.ts').read()
-    data, meta = {}, []
+    data, meta, failed = {}, [], []
     for key, (label, load, span) in SOURCES.items():
-        if only and key != only:
+        if only and key not in only:
             continue
-        rows, asof = load()
+        try:
+            rows, asof, unit = load()
+        except Exception as e:                                    # noqa: BLE001
+            rows, asof, unit = {}, None, 'headcount'
+            print(f'  {label}: FAILED — {type(e).__name__}: {str(e).splitlines()[0][:120]}',
+                  file=sys.stderr)
         if not rows:
+            failed.append(label)
             print(f'  {label}: nothing loaded', file=sys.stderr)
             continue
         by_norm = {}
         for name, v in rows.items():
             by_norm.setdefault(norm(name), []).append((name, v))
-        meta.append((label, asof, len(rows)))
-        print(f'  {label}: {len(rows)} source rows, as at {asof}', file=sys.stderr)
-        data[key] = (by_norm, asof, span)
+        meta.append((label, asof, len(rows), unit))
+        print(f'  {label}: {len(rows)} source rows, as at {asof} ({unit})', file=sys.stderr)
+        data[key] = (by_norm, asof, span, unit)
 
     # Match against the roster's government agencies.
     import subprocess
@@ -233,7 +444,7 @@ console.log(JSON.stringify(COMPANIES.filter(c => c.sector === "Government")
         pre = 'aps' if a['id'].startswith('aps-') else a['id'].split('-gov-')[0]
         if pre not in data:
             continue
-        by_norm, asof, span = data[pre]
+        by_norm, asof, span, unit = data[pre]
         want = norm(ALIAS.get(a['name'], a['name']))
         hit = by_norm.get(want)
         if not hit or len(hit) != 1:
@@ -243,9 +454,39 @@ console.log(JSON.stringify(COMPANIES.filter(c => c.sector === "Government")
         if now <= 0 or prev <= 0:
             skipped += 1
             continue
-        out[a['id']] = {'now': now, 'prev': prev,
-                        'yoy': round((now - prev) / prev * 100, 1),
-                        'asof': asof, 'span': span}
+        rec = {'now': now, 'prev': prev,
+               'yoy': round((now - prev) / prev * 100, 1),
+               'asof': asof, 'span': span}
+        if unit != 'headcount':
+            rec['unit'] = unit
+        out[a['id']] = rec
+
+    # NO SOURCE CAN BE FETCHED FROM EVERY ENVIRONMENT, so the file is MERGED
+    # rather than rewritten. Measured 2026-09-24, and the two are opposites:
+    #
+    #   Queensland needs a browser and only runs on the GitHub runner, because
+    #   the authoring sandbox has no Chromium that reaches the internet.
+    #   Victoria answers HTTP 403 to a datacentre IP — through a browser too,
+    #   13 KB of HTML — and only runs from a developer machine.
+    #
+    # A wholesale rewrite therefore cannot ever hold both: whichever machine
+    # ran last would delete the other's jurisdictions, and every one of those
+    # cards would go back to "no workforce figure collected" with nothing to
+    # say why. So a run updates the jurisdictions it actually loaded and keeps
+    # the rest exactly as they were.
+    #
+    # KEEPING ROWS IS ONLY HONEST IF STALENESS IS VISIBLE, so the header
+    # records when each jurisdiction was last refreshed, and rows that were
+    # kept rather than re-fetched say so.
+    prev_rows, prev_meta = read_existing()
+    for cid, rec in prev_rows.items():
+        pre = 'aps' if cid.startswith('aps-') else cid.split('-gov-')[0]
+        if pre not in data:          # not attempted this run — keep it
+            out.setdefault(cid, rec)
+    kept = [(lbl, m) for lbl, m in prev_meta.items() if lbl not in {x[0] for x in meta}]
+    if failed:
+        print(f'  not refreshed this run: {", ".join(failed)} '
+              f'(previous rows kept)', file=sys.stderr)
 
     L = ['// GENERATED — do not edit by hand. Run scripts/gen-gov-workforce.py.',
          '// Real public-sector headcount by agency, for the jurisdictions that publish',
@@ -253,8 +494,12 @@ console.log(JSON.stringify(COMPANIES.filter(c => c.sector === "Government")
          '// and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.',
          '//',
          '// Sources, as at the run that produced this file:']
-    for label, asof, n in meta:
-        L.append(f'//   {label}: {n} agencies published, as at {asof}')
+    today = __import__('datetime').date.today().isoformat()
+    for label, asof, n, unit in meta:
+        what = 'agencies published' if unit == 'headcount' else 'agencies published, as FTE not headcount,'
+        L.append(f'//   {label}: {n} {what} as at {asof} — refreshed {today}')
+    for label, line in kept:
+        L.append(f'//   {label}: {line} — KEPT, not refreshed this run')
     L += ['//',
           '// An agency the source does not report is ABSENT, never zero — the card shows',
           '// an em dash and says no figure was collected. See the generator for which',
@@ -263,12 +508,17 @@ console.log(JSON.stringify(COMPANIES.filter(c => c.sector === "Government")
           'export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {']
     for cid in sorted(out):
         v = out[cid]
-        L.append(f"  {json.dumps(cid)}: {{ now: {v['now']}, prev: {v['prev']}, "
-                 f"yoy: {v['yoy']}, asof: {json.dumps(v['asof'])}, span: {v['span']} }},")
+        unit = f", unit: {json.dumps(v['unit'])}" if v.get('unit') else ''
+        L.append(f"  {json.dumps(cid)}: {{ now: {int(v['now'])}, prev: {int(v['prev'])}, "
+                 f"yoy: {v['yoy']}, asof: {json.dumps(v['asof'])}, span: {int(v['span'])}{unit} }},")
     L += ['};', '']
     open(OUT, 'w').write('\n'.join(L))
     print(f'wrote {OUT} with {len(out)} agencies ({skipped} roster agencies unmatched)')
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        sys.exit(main() or 0)
+    finally:
+        close_browser()
