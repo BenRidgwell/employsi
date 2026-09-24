@@ -33,30 +33,28 @@ UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
 # reports, NT's portal has no workforce data at all, and Tasmania has no
 # reachable open-data portal).
 TARGETS = [
-    # ── Round two: ask the sites where their own workforce pages are ───────
-    # Round one settled the doorman and killed two false claims. Measured on a
-    # runner 2026-09-24:
+    # ── Round three: warm the origin, THEN ask ─────────────────────────────
+    # Round two asked three sitemaps and all three came back STILL CHALLENGED
+    # after thirty seconds, which looked like a harder doorman than round one
+    # found. It is not: it is a flaw in how round two asked.
     #
-    #   ocpe.nt.gov.au     STILL CHALLENGED after 30s — a browser does NOT
-    #                      clear this one. It is the only host in this repo
-    #                      that a real Chromium cannot get into.
-    #   nt.gov.au          browser 200. Clears.
-    #   dpac.tas.gov.au    browser 200. Clears. It has not "stopped resolving".
-    #   treasury.tas.gov.au  plain 200, no browser needed.
+    # A Cloudflare challenge is cleared once per browser context and pays out
+    # a cookie. Round one visited nt.gov.au and dpac.tas.gov.au as ROOTS and
+    # both cleared to 200. Round two went straight at /sitemap.xml with no
+    # cookie, so every request was a first request and every one was
+    # challenged again. The generator's own fetch() has carried a `warm`
+    # parameter for this since Queensland; the probe did not.
     #
-    # What round one did NOT settle is where the workforce report lives, because
-    # every deep path was a guess and all three 404'd. Guessing again is the
-    # mistake the universities round already paid for, so this round asks each
-    # site for its own map instead. A sitemap is a plain list of every URL the
-    # site admits to having; grepping it for "workforce" is the difference
-    # between knowing and guessing.
-    ('NT sitemap', 'https://nt.gov.au/sitemap.xml'),
-    ('TAS DPAC sitemap', 'https://www.dpac.tas.gov.au/sitemap.xml'),
-    ('TAS gov sitemap', 'https://www.tas.gov.au/sitemap.xml'),
-    # The State Service Commissioner publishes Tasmania's workforce report and
-    # has its own site, which has never been tried.
-    ('TAS Service Commissioner', 'https://www.statred.tas.gov.au/'),
-    ('TAS SSC', 'https://www.stateservice.tas.gov.au/'),
+    # So each entry now names the origin to warm before the page is asked for.
+    # Where they are the same URL, nothing is lost but a second request.
+    ('NT sitemap', 'https://nt.gov.au/sitemap.xml', 'https://nt.gov.au/'),
+    ('NT search: workforce', 'https://nt.gov.au/search?query=workforce+profile', 'https://nt.gov.au/'),
+    ('TAS DPAC sitemap', 'https://www.dpac.tas.gov.au/sitemap.xml', 'https://www.dpac.tas.gov.au/'),
+    ('TAS DPAC search', 'https://www.dpac.tas.gov.au/search?query=state+service+workforce',
+     'https://www.dpac.tas.gov.au/'),
+    # statred.tas.gov.au and stateservice.tas.gov.au were tried in round two
+    # and BOTH are ERR_NAME_NOT_RESOLVED — they do not exist. Guessed
+    # hostnames, and that is what a guess looks like when it is wrong.
 ]
 
 
@@ -89,7 +87,8 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(args=['--no-sandbox'])
         ctx = browser.new_context(user_agent=UA, locale='en-AU')
-        for label, url in TARGETS:
+        warmed = set()
+        for label, url, warm in TARGETS:
             print(f'\n===== {label} =====')
             print(f'  {url}')
             code, body = plain(url)
@@ -103,6 +102,19 @@ def main():
             if True:
                 try:
                     page = ctx.new_page()
+                    # WARM THE ORIGIN FIRST, once per context. The clearance
+                    # cookie is what makes the second request cheap; without it
+                    # every path is a cold first request and is challenged on
+                    # its own.
+                    if warm and warm not in warmed:
+                        page.goto(warm, wait_until='domcontentloaded', timeout=60_000)
+                        w = 0
+                        while 'Just a moment' in page.content() and w < 30_000:
+                            page.wait_for_timeout(3000)
+                            w += 3000
+                        warmed.add(warm)
+                        print(f'  warm    : {warm[:60]} '
+                              f'({"cleared in %ds" % (w / 1000) if w else "no challenge"})')
                     r = page.goto(url, wait_until='domcontentloaded', timeout=60_000)
                     page.wait_for_timeout(2000)
                     html = page.content()
