@@ -42,7 +42,7 @@ the card renders an em dash for it.
 
 ALIAS is the escape hatch, and every entry is a judgement someone can check.
 """
-import csv, io, json, re, sys, urllib.request
+import csv, io, json, re, sys, urllib.error, urllib.request
 
 ROOT = __file__.rsplit('/scripts/', 1)[0]
 OUT = f'{ROOT}/src/employsi/data/govWorkforceAu.ts'
@@ -69,10 +69,81 @@ ALIAS = {
 }
 
 
-def fetch(url, binary=False):
-    req = urllib.request.Request(url, headers={'User-Agent': UA})
-    with urllib.request.urlopen(req, timeout=90) as r:
-        b = r.read()
+# A browser, opened once and shared, for the hosts that refuse a plain request.
+# None until something needs it, so a run that touches only the open portals
+# never starts Chromium.
+_BROWSER = {'ctx': None, 'stop': None}
+
+
+def _browser_ctx():
+    from playwright.sync_api import sync_playwright
+    if _BROWSER['ctx'] is None:
+        pw = sync_playwright().start()
+        _BROWSER['stop'] = pw.stop
+        try:
+            b = pw.chromium.launch(args=['--no-sandbox'])
+            _BROWSER['ctx'] = b.new_context(user_agent=UA, locale='en-AU')
+        except Exception:
+            # Leaving a half-started Playwright behind turns the next
+            # jurisdiction's failure into "Sync API inside the asyncio loop",
+            # which describes this function rather than the source that failed
+            # — and that is the message someone would go and debug.
+            close_browser()
+            raise
+    return _BROWSER['ctx']
+
+
+def close_browser():
+    if _BROWSER['stop']:
+        _BROWSER['stop']()
+        _BROWSER['ctx'], _BROWSER['stop'] = None, None
+
+
+def fetch(url, binary=False, via_browser=False, warm=None, expect=None):
+    """GET, falling back to a real browser when the host refuses a plain one.
+
+    TWO HOSTS HERE NEED IT, FOR DIFFERENT REASONS, and both were measured on a
+    GitHub runner 2026-09-24:
+
+      * www.data.qld.gov.au answers `x-amzn-waf-action: challenge` and returns
+        a JavaScript interstitial. Not readable without executing it, from any
+        network — the authoring sandbox and a runner get the same page.
+      * vpsc.vic.gov.au answers HTTP 403 to a datacentre IP. It is perfectly
+        readable from a developer machine and refuses the runner outright, so
+        the generator worked locally and failed in CI on the same commit.
+
+    browser-portals.yml documents exactly this split on job boards: reachable
+    but not readable, versus readable but not reachable. One fallback covers
+    both, because in each case the fix is to be a browser.
+
+    `warm` is a page to load first, for a host that issues a cookie before it
+    will serve the file. `expect="zip"` says the bytes must be a real workbook,
+    which is how a WAF interstitial is caught — it answers 200 with HTML, so
+    status alone does not reveal it. It is NOT inferred from `binary`: the
+    Victorian 2023 release is a genuine CSV fetched as bytes, and inferring
+    made the generator retry it through a browser it did not need.
+    """
+    if not via_browser:
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': UA})
+            with urllib.request.urlopen(req, timeout=90) as r:
+                b = r.read()
+            if not (expect == 'zip' and b[:2] != b'PK'):
+                return b if binary else b.decode('utf-8-sig', 'replace')
+            print(f'  (not a workbook, retrying through a browser: {url[:70]})', file=sys.stderr)
+        except urllib.error.HTTPError as e:
+            if e.code not in (401, 403, 405, 429, 503):
+                raise
+            print(f'  (HTTP {e.code}, retrying through a browser: {url[:70]})', file=sys.stderr)
+
+    ctx = _browser_ctx()
+    if warm:
+        page = ctx.new_page()
+        page.goto(warm, wait_until='domcontentloaded', timeout=90_000)
+        page.wait_for_timeout(2500)   # a challenge runs after load
+        page.close()
+    r = ctx.request.get(url, timeout=120_000)
+    b = r.body()
     return b if binary else b.decode('utf-8-sig', 'replace')
 
 
@@ -127,7 +198,8 @@ def load_aps():
     if not best:
         return {}, None, 'headcount'
     _, asof, url = best
-    wb = openpyxl.load_workbook(io.BytesIO(fetch(url, True)), read_only=True, data_only=True)
+    wb = openpyxl.load_workbook(io.BytesIO(fetch(url, True, expect='zip')), read_only=True,
+                                data_only=True)
     ws = wb['Table 2']
     hdr = [c for c in next(ws.iter_rows(min_row=4, max_row=4, values_only=True))]
     y_prev, y_now = str(hdr[5]).strip(), str(hdr[6]).strip()
@@ -211,7 +283,6 @@ def load_qld():
     than a head count, so the rows are marked `fte` and the card labels the
     tile "Workforce FTE" rather than putting two measurements under one word.
     """
-    from playwright.sync_api import sync_playwright
     import openpyxl
 
     api = 'https://data.qld.gov.au/api/3/action'
@@ -225,15 +296,10 @@ def load_qld():
     cands.sort(key=lambda x: (re.search(r'(20\d\d)', x['name']) or ['', '0'])[1], reverse=True)
     url = cands[0]['url']
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(args=['--no-sandbox'])
-        ctx = browser.new_context(user_agent=UA, locale='en-AU')
-        page = ctx.new_page()
-        page.goto(f'https://www.data.qld.gov.au/dataset/{dataset}',
-                  wait_until='domcontentloaded', timeout=90_000)
-        page.wait_for_timeout(2500)   # the challenge runs after load
-        raw = ctx.request.get(url, timeout=120_000).body()
-        browser.close()
+    # The dataset page is loaded first: the challenge runs there and leaves the
+    # aws-waf-token the file download is checked against.
+    raw = fetch(url, binary=True, via_browser=True, expect='zip',
+                warm=f'https://www.data.qld.gov.au/dataset/{dataset}')
     if raw[:2] != b'PK':
         print('  Queensland: still challenged — no workbook', file=sys.stderr)
         return {}, None, 'headcount'
@@ -385,4 +451,7 @@ console.log(JSON.stringify(COMPANIES.filter(c => c.sector === "Government")
 
 
 if __name__ == '__main__':
-    sys.exit(main() or 0)
+    try:
+        sys.exit(main() or 0)
+    finally:
+        close_browser()
