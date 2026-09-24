@@ -8,7 +8,7 @@ makes it testable (scripts/test_talent_flows.py) and importable by both the
 collector and the loader.
 
   parse_experience(text, refs)   positions out of the /details/experience/ page
-  positions_from_pdl(record)     positions out of a People Data Labs person record
+  positions_from_brightdata(p)   positions out of a Bright Data LinkedIn profile record
   moves_from(positions)          the employer changes those positions imply
   person_key(username, salt)     a salted hash; the only per-person id kept
   company_ref(slug, name)        the vendor-style ref the canonical format uses
@@ -269,58 +269,73 @@ def parse_experience(text: str, refs=None) -> ParseResult:
     return result
 
 
-# ── People Data Labs ───────────────────────────────────────────────────────
+# ── Bright Data ────────────────────────────────────────────────────────────
 #
-# PDL returns work history already structured, so there is no layout to parse:
-# `experience` is a list of {company: {name, id, linkedin_url, ...},
-# start_date, end_date, title: {name, ...}, is_primary}. Documented at
-# docs.peopledatalabs.com/docs/fields (read 2026-09-24):
-#   - dates are YYYY-MM-DD, YYYY-MM or YYYY — "the most specific value we have"
-#   - end_date is null while the person still works there
-#   - company.linkedin_url looks like "linkedin.com/company/<slug>"
-# Mapped onto the same Position the LinkedIn parser produces, so the move
-# rules below apply identically to both sources.
-
-_PDL_DATE = re.compile(r'^(?P<year>\d{4})(?:-(?P<month>\d{2}))?(?:-\d{2})?$')
-
-
-def pdl_month(s) -> Month | None:
-    m = _PDL_DATE.match(str(s or '').strip())
-    if not m:
-        return None
-    month = int(m.group('month')) if m.group('month') else None
-    if month is not None and not 1 <= month <= 12:
-        return None
-    return Month(int(m.group('year')), month)
+# Bright Data's LinkedIn people-profiles dataset (gd_l1viktl72bvl7bjuj0,
+# reached through @brightdata/mcp's search_dataset) returns work history
+# already structured, so there is no layout to parse. Measured on Bright
+# Data's own sample output (brightdata/linkedin-scraper-python,
+# examples/sample_output.json, read 2026-09-24), each `experience` entry is
+#
+#   {"title": "Chairman and CEO", "company": "Microsoft",
+#    "company_id": "microsoft",                       <- the LinkedIn slug
+#    "url": "https://www.linkedin.com/company/microsoft",
+#    "start_date": "Feb 2014", "end_date": "Present", "location": ...}
+#
+# Dates were "Mon YYYY" or "YYYY" there, and "Present" for a current role.
+# One entry in that sample pointed at /school/ ("Member Board Of Trustees",
+# University of Chicago): a school is not an employer move, so it is dropped.
+# That sample is ONE profile, so any other shape is refused and counted, not
+# guessed, and `--inspect` in the collector exists to see more before trusting
+# a run. Entries carrying a `positions` list (several roles at one employer)
+# are read defensively; that shape has not been seen in a real record.
 
 
-def positions_from_pdl(record: dict) -> ParseResult:
-    """Positions from one PDL person record. An entry with no company name or
-    no readable start date is dropped and counted, as the LinkedIn parser
-    does; an end date that is present but unreadable drops the entry too,
-    because reading it as "still there" would invent a current job."""
+def _bd_month(s) -> Month | None:
+    return parse_month(re.sub(r'\s+', ' ', str(s or '').strip()))
+
+
+def positions_from_brightdata(profile: dict) -> ParseResult:
+    """Positions from one Bright Data LinkedIn profile record."""
     result = ParseResult()
-    for e in record.get('experience') or []:
+    entries = []
+    for e in profile.get('experience') or []:
         if not isinstance(e, dict):
             continue
-        co = e.get('company') or {}
-        name = str(co.get('name') or '').strip()
+        subs = e.get('positions')
+        if isinstance(subs, list) and subs:
+            for sub in subs:
+                if isinstance(sub, dict):
+                    entries.append({**e, **sub, 'positions': None})
+        else:
+            entries.append(e)
+    for e in entries:
+        url = str(e.get('url') or '')
+        if '/school/' in url:
+            result.dropped['school'] += 1
+            continue
+        name = str(e.get('company') or '').strip()
         if not name:
             result.dropped['no_employer'] += 1
             continue
-        start = pdl_month(e.get('start_date'))
+        start = _bd_month(e.get('start_date'))
         if start is None:
             result.dropped['no_start_date'] += 1
             continue
-        end_raw = e.get('end_date')
-        end = pdl_month(end_raw) if end_raw else None
-        if end_raw and end is None:
-            result.dropped['unreadable_date'] += 1
-            continue
-        m = _SLUG.search('/' + str(co.get('linkedin_url') or ''))
-        title = str((e.get('title') or {}).get('name') or '')
+        end_raw = str(e.get('end_date') or '').strip()
+        if end_raw.lower() == 'present':
+            end = None
+        else:
+            end = _bd_month(end_raw)
+            if end is None:
+                # Blank or unreadable is not "still there": reading it that
+                # way would invent a current job.
+                result.dropped['unreadable_end_date'] += 1
+                continue
+        m = _SLUG.search(url)
+        slug = str(e.get('company_id') or '').strip() or (m.group(1) if m else None)
         result.positions.append(Position(
-            company=name, slug=m.group(1) if m else None, title=title,
+            company=name, slug=slug, title=str(e.get('title') or ''),
             start=start, end=end))
     return result
 

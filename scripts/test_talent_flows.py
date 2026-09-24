@@ -22,7 +22,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from talent_flows import (  # noqa: E402
     Month, aggregate, clean_lines, company_links, moves_from, parse_experience,
-    pdl_month, person_key, positions_from_pdl,
+    person_key, positions_from_brightdata,
 )
 
 failures = 0
@@ -247,66 +247,100 @@ def test_person_key():
         check('person key: empty salt refused', True)
 
 
-# People Data Labs records, in the shape of PDL's documented example record
-# (docs.peopledatalabs.com/docs/example-record, read 2026-09-24) trimmed to
-# the fields pdl-talent-flows.py asks for with data_include. Synthetic people.
-def _pdl_exp(name, slug, start, end, title='Engineer'):
-    return {'company': {'name': name, 'id': f'pdl-{name[:3]}',
-                        'linkedin_url': f'linkedin.com/company/{slug}' if slug else None},
-            'start_date': start, 'end_date': end, 'title': {'name': title}}
+# Bright Data LinkedIn profile records. BD_SAMPLE is the `experience` of the
+# one real profile in Bright Data's published sample output
+# (brightdata/linkedin-scraper-python, examples/sample_output.json, read
+# 2026-09-24) — a public figure's public roles, copied verbatim. The other
+# records are synthetic, in the same shape.
+BD_SAMPLE = [
+    {"title": "Chairman and CEO", "location": "Greater Seattle Area", "description_html": None,
+     "start_date": "Feb 2014", "end_date": "Present", "company": "Microsoft",
+     "company_id": "microsoft", "url": "https://www.linkedin.com/company/microsoft",
+     "company_logo_url": None},
+    {"title": "Member Board Of Trustees", "description_html": None, "start_date": "2018",
+     "end_date": "Present", "company": "University of Chicago",
+     "url": "https://www.linkedin.com/school/uchicago/", "company_logo_url": None},
+    {"title": "Board Member", "description_html": None, "start_date": "2017", "end_date": "2024",
+     "company": "Starbucks", "company_id": "starbucks",
+     "url": "https://www.linkedin.com/company/starbucks", "company_logo_url": None},
+    {"title": "Chairman", "description_html": None, "start_date": "2021", "end_date": "2023",
+     "company": "The Business Council U.S.", "company_id": "the-business-council-us",
+     "url": "https://www.linkedin.com/company/the-business-council-us", "company_logo_url": None},
+    {"title": "Board Member", "description_html": None, "start_date": "2016", "end_date": "2022",
+     "company": "Fred Hutch", "company_id": "fredhutch",
+     "url": "https://www.linkedin.com/company/fredhutch", "company_logo_url": None},
+]
 
 
-def test_pdl_dates():
-    check('pdl dates: day precision reads as a month', pdl_month('2018-10-31') == Month(2018, 10))
-    check('pdl dates: month precision', pdl_month('2015-03') == Month(2015, 3))
-    check('pdl dates: year only keeps no month', pdl_month('2016') == Month(2016, None))
-    check('pdl dates: garbage and nonsense months refused',
-          pdl_month('soon') is None and pdl_month('2020-13') is None and pdl_month(None) is None)
+def _bd(company, slug, start, end, title='Engineer'):
+    e = {'title': title, 'company': company, 'start_date': start, 'end_date': end,
+         'url': f'https://www.linkedin.com/company/{slug}' if slug else None}
+    if slug:
+        e['company_id'] = slug
+    return e
 
 
-def test_pdl_positions():
-    rec = {'id': 'x', 'experience': [
-        # PDL sorts the primary (current) job first, then most recent first.
-        _pdl_exp('BHP', 'bhp', '2023-03-01', None, 'Senior Geologist'),
-        _pdl_exp('Rio Tinto', 'riotinto', '2020-02', '2023-02'),
-        _pdl_exp('Acme Drilling', None, '2018-01', '2019-12'),
-        {'company': {'name': ''}, 'start_date': '2017-01'},
-        _pdl_exp('No Start Pty', None, None, '2017-06'),
-        _pdl_exp('Bad End Pty', None, '2016-01', 'someday'),
-    ]}
-    r = positions_from_pdl(rec)
-    got = [(p.company, p.slug, p.start.iso(), p.end.iso() if p.end else None) for p in r.positions]
-    check('pdl: three usable positions', len(got) == 3, got)
-    check('pdl: slug read from the scheme-less linkedin url', got[0][:2] == ('BHP', 'bhp'), got[0])
-    check('pdl: null end date is a current job', got[0][3] is None, got[0])
-    check('pdl: no linkedin url keeps the name, no slug', got[2][:2] == ('Acme Drilling', None), got[2])
-    check('pdl: refusals counted by reason',
-          r.dropped == {'no_employer': 1, 'no_start_date': 1, 'unreadable_date': 1}, dict(r.dropped))
+def test_bd_sample():
+    r = positions_from_brightdata({'experience': BD_SAMPLE})
+    got = [(p.company, p.slug, p.start, p.end) for p in r.positions]
+    check('bd sample: the school entry is dropped and counted', r.dropped['school'] == 1, dict(r.dropped))
+    check('bd sample: four employer entries kept', len(got) == 4, got)
+    check('bd sample: "Feb 2014" to Present',
+          got[0] == ('Microsoft', 'microsoft', Month(2014, 2), None), got[0])
+    check('bd sample: bare years stay bare', got[1][2:] == (Month(2017, None), Month(2024, None)), got[1])
+    m = moves_from(r.positions)
+    check('bd sample: board seats and chair roles produce no move', m.moves == [], m.moves)
+
+
+def test_bd_moves():
+    r = positions_from_brightdata({'experience': [
+        _bd('BHP', 'bhp', 'Mar 2023', 'Present', 'Senior Geologist'),
+        _bd('Rio Tinto', 'riotinto', 'Feb 2020', 'Feb 2023'),
+        _bd('Acme Drilling', None, 'Jan 2018', 'Dec 2019'),
+    ]})
     m = [(x.from_ref, x.to_ref, x.month) for x in moves_from(r.positions).moves]
-    check('pdl: moves use the same rules and refs as LinkedIn',
+    check('bd: moves use the same rules and refs as the other sources',
           m == [('name:acme drilling', 'li:riotinto', '2020-02'),
                 ('li:riotinto', 'li:bhp', '2023-03')], m)
 
 
-def test_pdl_side_role():
-    rec = {'id': 'y', 'experience': [
-        _pdl_exp('BHP', 'bhp', '2015-01', None, 'General Manager'),
-        _pdl_exp('Rio Tinto', 'riotinto', '2019-01', '2021-06', 'Non-Executive Director'),
-        _pdl_exp('Woodside Energy', 'woodside-energy', '2021-08', None, 'Board Member'),
-    ]}
-    m = moves_from(positions_from_pdl(rec).positions).moves
-    check('pdl: board seats are not moves', m == [], m)
+def test_bd_refusals():
+    r = positions_from_brightdata({'experience': [
+        _bd('', 'x', 'Jan 2020', 'Present'),
+        _bd('No Start', 'ns', None, 'Present'),
+        _bd('Blank End', 'be', 'Jan 2019', ''),
+        _bd('Odd End', 'oe', 'Jan 2019', 'sometime'),
+        'not a dict',
+    ]})
+    check('bd: nothing usable, nothing guessed', r.positions == [], r.positions)
+    check('bd: every refusal counted by reason',
+          r.dropped == {'no_employer': 1, 'no_start_date': 1, 'unreadable_end_date': 2},
+          dict(r.dropped))
 
 
-def test_pdl_empty():
-    r = positions_from_pdl({'id': 'z', 'experience': None})
-    check('pdl: no experience is no positions, not an error', r.positions == [] and not r.dropped)
+def test_bd_grouped():
+    r = positions_from_brightdata({'experience': [
+        {'company': 'Woodside Energy', 'company_id': 'woodside-energy',
+         'url': 'https://www.linkedin.com/company/woodside-energy',
+         'positions': [
+             {'title': 'Lead Engineer', 'start_date': 'Jan 2021', 'end_date': 'Present'},
+             {'title': 'Engineer', 'start_date': 'Jan 2018', 'end_date': 'Dec 2020'}]},
+        _bd('BHP', 'bhp', 'Mar 2014', 'Nov 2017'),
+    ]})
+    m = [(x.from_ref, x.to_ref, x.month) for x in moves_from(r.positions).moves]
+    check('bd grouped: roles inherit the employer; a promotion is not a move',
+          len(r.positions) == 3 and m == [('li:bhp', 'li:woodside-energy', '2018-01')], (r.positions, m))
+
+
+def test_bd_empty():
+    r = positions_from_brightdata({'experience': None})
+    check('bd: no experience is no positions, not an error', r.positions == [] and not r.dropped)
 
 
 for t in [test_links, test_clean, test_single, test_grouped, test_side_role,
           test_unknown_employer, test_year_only, test_ambiguous, test_boomerang,
-          test_aggregate, test_person_key, test_pdl_dates, test_pdl_positions,
-          test_pdl_side_role, test_pdl_empty]:
+          test_aggregate, test_person_key, test_bd_sample, test_bd_moves,
+          test_bd_refusals, test_bd_grouped, test_bd_empty]:
     t()
 
 if failures:

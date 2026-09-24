@@ -11,55 +11,63 @@ holds no data.**
 | Server read | `src/employsi/lib/flowsFn.ts` | Built; returns null until tables exist and hold an import |
 | Card section | `components/panels/TalentFlow.tsx`, Hiring tab | Built; renders nothing without data. Not seen rendered |
 | Map arcs | — | Not started |
-| **Source: People Data Labs** (chosen) | `scripts/pdl-talent-flows.py` + `talent_flows.positions_from_pdl` | Built; tested end to end against a **fake** PDL API only. Not yet run with a real key |
+| **Source: Bright Data** (chosen) | `scripts/brightdata-talent-flows.py` + `talent_flows.positions_from_brightdata` | Built; tested end to end against a **fake** Bright Data MCP server only. Filter field names not yet confirmed against the live dataset |
 | Source: LinkedIn sample (parked) | `scripts/collect-talent-flows.py` + `scripts/talent_flows.py` | Built; tested against a fake MCP server only. Parked: it needs a personal LinkedIn account |
 
-### The People Data Labs source
+### The Bright Data source
 
-`pdl-talent-flows.py` is a plain REST client of PDL's
-[Person Search API](https://docs.peopledatalabs.com/docs/reference-person-search-api).
-No LinkedIn account is involved. For each seed company it asks for people
-whose work history includes that company's LinkedIn page:
+`brightdata-talent-flows.py` drives Bright Data's official MCP server
+([`@brightdata/mcp`](https://github.com/brightdata/brightdata-mcp), pinned to
+2.11.3, `GROUPS=social`) over stdio. It calls one tool, `search_dataset`,
+against Bright Data's stored LinkedIn people-profiles dataset
+(`gd_l1viktl72bvl7bjuj0`):
 
-```sql
-SELECT * FROM person
- WHERE experience.company.linkedin_url = 'linkedin.com/company/<slug>'
-   AND location_country = 'australia'
+```json
+{"operator": "and", "filters": [
+  {"name": "current_company_company_id", "operator": "=", "value": "<slug>"},
+  {"name": "country_code", "operator": "=", "value": "AU"}]}
 ```
 
-That matches **current and former** employees, so a seed's "lost to" side is
-observed directly. The LinkedIn route could only see it when the destination
-was also a seed.
+Each hit is a whole stored profile with its work history, so finding people
+and reading their histories is one step. No LinkedIn account is involved.
 
-Facts it depends on, from PDL's docs (read 2026-09-24):
+Facts it depends on (read 2026-09-24):
 
-- **One credit per record returned.** `--max-records` (default 100) caps a run,
-  and each request asks for no more than the budget has left. `--estimate`
-  reads PDL's match `total` per seed for one credit each.
-- **10 requests a minute** by default. Requests are paced 6.5s apart. One 429
-  waits 60s. A second 429, or a 401/402/403, stops the run (exit 3).
-- **`size` is at most 100**, and pagination is by `scroll_token`. The token is
-  kept per seed, so the next run resumes where the last stopped.
-- **Dates** come as `YYYY-MM-DD`, `YYYY-MM` or `YYYY`. A bare year never becomes
-  a move month.
-- **`data_include`** limits each record to its id and the experience fields
-  (employer name, id and LinkedIn url; start and end; title). No name, email,
-  phone, location or profile url is requested, so none arrives. The title
-  is used to drop side roles and then discarded. The local store keeps a
-  salted hash of PDL's record id and the moves.
+- **Record shape.** Measured on Bright Data's published sample record: each
+  `experience` entry has `company`, `company_id` (the LinkedIn slug, so it
+  lines up with the `li:` refs and `company_slugs`), `url`, `title`, and
+  `start_date`/`end_date` as `"Feb 2014"`, `"2018"` or `"Present"`. An entry
+  whose url is `/school/` is dropped. That sample is **one** profile, so any
+  other shape is refused and counted, not guessed.
+- **Cost.** The free tier is 5,000 requests a month. One `search_dataset` call
+  is one request and returns at most 10 profiles. `--max-requests` (default
+  50) caps a run. Set a spend cap in Bright Data's control panel as well.
+- **Errors.** Any tool error stops the run (exit 3), with no retry. The
+  real server passes Bright Data's message through, but an MCP server can
+  mask it, and a quota error read as transient would be retried on a metered
+  API. The `search_after` cursor is saved per seed, so the next run resumes.
+- **The filter field names are unconfirmed.** `current_company_company_id` and
+  `country_code` come from the published schema and sample, not the live
+  dataset's metadata. `--fields` runs `list_dataset_fields` and says whether
+  each is filterable. If an experience-level company field is listed, it can
+  reach **former** employees (`--filter-field`). Until then a seed's "lost to"
+  side only shows when the destination is also seeded.
 
-What the numbers mean: PDL sorts matches by profile completeness, so a budget
-under `total` takes the most complete profiles first. The export marks rows
-`sampled` and carries the per-seed sample size plus PDL's `total` per seed. A
-person reached through two seeds is counted once, under the first seed.
+What is kept: the MCP tool has no field selection, so each hit arrives
+complete, with name, profile url and photo. The script reads `id` and
+`experience` only, then drops the hit. It stores a salted hash of the id and
+the moves in `~/.employsi/brightdata-talent-flows.sqlite`. `--inspect` prints
+only the work-history entries. Only counts leave the machine.
 
 ```bash
-export PDL_API_KEY=...
-python scripts/pdl-talent-flows.py --seed bhp=bhp --estimate     # 1 credit
-python scripts/pdl-talent-flows.py --seed bhp=bhp --max-records 100
-python scripts/pdl-talent-flows.py --stats
-python scripts/pdl-talent-flows.py --export out/
-python scripts/flows-to-d1.py out/                               # dry run; --write to load
+pip install "mcp>=1.28,<3"                       # plus Node 18+ for npx
+export BRIGHTDATA_API_TOKEN=...
+python scripts/brightdata-talent-flows.py --fields             # 1 request
+python scripts/brightdata-talent-flows.py --inspect bhp        # 1 request, stores nothing
+python scripts/brightdata-talent-flows.py --seed bhp=bhp --max-requests 5
+python scripts/brightdata-talent-flows.py --stats
+python scripts/brightdata-talent-flows.py --export out/
+python scripts/flows-to-d1.py out/                             # dry run; --write to load
 ```
 
 ### The LinkedIn-sample source (parked)
