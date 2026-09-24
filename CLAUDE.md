@@ -557,6 +557,15 @@ than a real scheduled invocation's**. A run that logs `waitUntil() tasks did not
 within the allowed time and have been cancelled` writes nothing at all — always confirm the
 rows landed in D1 rather than trusting `Ran scheduled event`.
 
+**A scheduled handler gets 15 minutes only for work it AWAITS.** Work handed to
+`ctx.waitUntil` gets 30 s after the handler returns (Workers limits page, read
+2026-09-24), and every scraper branch returns straight away with its work in
+`waitUntil` — so each has 30 s, not 15 min. That fits the shard's measured
+history ("waitUntil() tasks did not complete" at 25 and 45 per run, SHARD = 17
+the size that finishes). The career-pathways tick (`52 23 * * *`) is the one
+branch that awaits, because its 90-day read took 28 s from a local run. It also
+has `/run-careerpaths?token=…&dry=1`, which builds and reports without writing.
+
 To stop the dev server, match on `wrangler[ ]dev`. Plain `pkill -f "wrangler dev"` matches
 the killing shell's own command line and takes out your Bash session (exit 144).
 

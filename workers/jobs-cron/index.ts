@@ -1321,6 +1321,86 @@ const NEWS_TICKS: Record<string, number> = {
   "10 4 * * *": 3,
 };
 
+// ---- career pathways -------------------------------------------------------
+//
+// The ladder dataset (src/employsi/lib/careerPathwaysBuild.ts) over the last
+// 90 days of the archive, written to KV once a night. Same build as
+// `scripts/gen-career-pathways.ts`, so its --audit describes what lands here.
+//
+// 23:52 UTC, AFTER THE DAY HAS LANDED: the GitHub Actions feeds (SEEK, Indeed,
+// Jora…) run until 23:30 and the portal ticks until 18:25. Exact-matched
+// before the gov minute prefixes like every other named tick, and "52 " is not
+// one of those prefixes anyway. If PORTAL_TICKS ever grows into the 23 hour,
+// move this rather than share the minute.
+const CAREER_PATHWAYS_CRON = "52 23 * * *";
+
+/**
+ * A rebuild with fewer than this share of the previous night's rungs is not
+ * written. A D1 read that fails part-way returns fewer pages, not an error, and
+ * a ladder with half its rungs missing looks like a real, quiet labour market.
+ * Same rule as an empty portal pull: yesterday's rows stay rather than blank.
+ */
+const CAREER_PATHWAYS_MIN_KEEP = 0.5;
+
+/**
+ * MEASURED 2026-09-24, full 90-day window: 348k rows over 72 D1 queries (1.6 s
+ * of D1 time, 35 ms worst page), ~12 s CPU and ~50 MB peak heap in a local run,
+ * an 85 KB KV value. Rows are folded page by page — only the ~35k merged roles
+ * are kept — which is what keeps it inside 128 MB; do not collect the rows.
+ */
+async function processCareerPathways(
+  env: Env,
+  opts: { write?: boolean } = {},
+): Promise<Record<string, unknown>> {
+  const db = env.JOBS_ARCHIVE;
+  if (!db) return { skipped: "no JOBS_ARCHIVE binding" };
+  // Imported here, not at the top: the build pulls in the company roster (for
+  // the employer hint), ~90 ms of module evaluation measured 2026-09-24. A
+  // dynamic import is bundled as a lazy initialiser, so the ~100 other ticks a
+  // day never pay it — only this one does.
+  const { CAREER_PATHWAYS_KV_KEY, buildPathwaysFromArchive } =
+    await import("../../src/employsi/lib/careerPathwaysBuild");
+  const t0 = Date.now();
+  let slowestPageMs = 0;
+  const { pathways, rows } = await buildPathwaysFromArchive(
+    async <T>(sql: string, params: (string | number)[]) =>
+      (
+        await db
+          .prepare(sql)
+          .bind(...params)
+          .all<T>()
+      ).results,
+    { onPage: ({ ms }) => (slowestPageMs = Math.max(slowestPageMs, ms)) },
+  );
+  const json = JSON.stringify(pathways);
+  const prev = await env.OPEN_ROLES_HISTORY.get<{ nodes?: unknown[] }>(
+    CAREER_PATHWAYS_KV_KEY,
+    "json",
+  );
+  const prevNodes = prev?.nodes?.length ?? 0;
+  const collapsed =
+    pathways.nodes.length === 0 || pathways.nodes.length < prevNodes * CAREER_PATHWAYS_MIN_KEEP;
+  const write = (opts.write ?? true) && !collapsed;
+  if (write) await env.OPEN_ROLES_HISTORY.put(CAREER_PATHWAYS_KV_KEY, json);
+  const out = {
+    window: pathways.window,
+    rows,
+    nodes: pathways.nodes.length,
+    edges: pathways.edges.length,
+    prevNodes,
+    bytes: json.length,
+    // Date.now() only advances on I/O inside a Worker, so this is D1 + KV
+    // time, not CPU. A CPU overrun shows as an exceeded-CPU error instead.
+    ioMs: Date.now() - t0,
+    slowestPageMs,
+    written: write,
+  };
+  if (collapsed)
+    console.error(`careerpaths: NOT written, ${pathways.nodes.length} rungs vs ${prevNodes}`, out);
+  else console.log("careerpaths:", out);
+  return out;
+}
+
 export default {
   // Scheduled: the WA-gov scrape runs on its own cron minute (:30) so it gets a
   // clean subrequest budget for ~40 page fetches; every other tick advances the
@@ -1332,7 +1412,15 @@ export default {
     // run the TAS-gov scrape instead. An exact match is the more specific rule
     // and has to win. (The portal minutes 20/25/35 were picked to miss every
     // gov prefix — 5, 15, 30, 45, 50 — for the same reason.)
-    if (event.cron && PORTAL_TICKS[event.cron] !== undefined) {
+    if (event.cron === CAREER_PATHWAYS_CRON) {
+      // AWAITED, NOT waitUntil — the one branch that must be. Work handed to
+      // waitUntil gets 30 s after the handler returns; an awaited scheduled
+      // handler gets the cron's full 15 minutes. A local run of this read took
+      // 28 s of wall clock: one slow night from being cancelled, and a
+      // cancelled run writes nothing. (The shard's "waitUntil() tasks did not
+      // complete" cancellations above are that 30 s.)
+      await processCareerPathways(env);
+    } else if (event.cron && PORTAL_TICKS[event.cron] !== undefined) {
       ctx.waitUntil(
         processPortals(
           env,
@@ -1385,6 +1473,24 @@ export default {
             error: (e as Error)?.message || String(e),
             stack: (e as Error)?.stack || "",
           },
+          { status: 500 },
+        );
+      }
+    }
+    // Build the career pathways on demand. ?dry=1 builds and reports without
+    // writing KV — the way to check the read still fits before trusting it.
+    if (url.pathname === "/run-careerpaths") {
+      if (url.searchParams.get("token") !== env.CRON_TOKEN) {
+        return new Response("forbidden", { status: 403 });
+      }
+      try {
+        const out = await processCareerPathways(env, {
+          write: url.searchParams.get("dry") !== "1",
+        });
+        return Response.json({ ok: true, ...out });
+      } catch (e) {
+        return Response.json(
+          { ok: false, error: (e as Error)?.message || String(e) },
           { status: 500 },
         );
       }
