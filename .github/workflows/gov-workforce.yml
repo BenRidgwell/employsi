@@ -92,7 +92,7 @@ jobs:
       # refreshes Queensland and leaves the others exactly as they were, and
       # the file's header records which is which.
       - name: Generate QLD + SA + NSW workforce data
-        run: python scripts/gen-gov-workforce.py --only qld,sa
+        run: python scripts/gen-gov-workforce.py --only qld,sa,nsw
 
       - name: Show the generated file
         run: |
