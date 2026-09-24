@@ -104,6 +104,12 @@ export const PRIVATE_LOGO_URL: Record<string, string> = {
     "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQh-2YFxE_NohK2wTLOiQLM0ZmQmKdV773qkXOf2AhfrT5to38FoVuzw1A&s=10",
   "priv-cnw-electrical":
     "https://shop.cnw.com.au/_ui/responsive/common/images/logos/svg/cnw-desktop.svg",
+  // HUNGRY JACK'S, on the card of its parent Competitive Foods Australia.
+  // Chosen over a blank badge on 2026-09-24; see the note in PRIVATE_DOMAIN
+  // below for why the two names differ and what that costs. This is the
+  // group's own logo file, hot-linked, so it carries the usual risk that a
+  // site rebuild moves it — the same way goodstart, kennards and hcf broke.
+  "priv-competitive-foods": "https://www.hungryjacks.com.au/App_Themes/HJ/assets/images/HJLogo.svg",
   "priv-colcap":
     "https://www.colcap.com.au/wp-content/uploads/2025/10/ColCap-Financial_logo_new_blue-Financial.png",
   // Was pointing at revslider's `dummy.png` — a slider PLACEHOLDER that the
@@ -549,23 +555,24 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   //   priv-ngp-group      ngp.com          -> National Guard Products' logo
   //   priv-smrm-holdings  smrmagazine.com  -> a magazine's logo
   //
-  // TWO MORE THAT STAY BLANK, 2026-09-23 — blank, not wrong, and that is the
-  // better of the two failures. Everything was tried on both: their own
-  // domain, the favicon service (which answers 404 + its generic globe when
-  // it holds nothing, so a blank badge is what a visitor sees), and LinkedIn.
+  // THE LAST TWO AU BLANKS, both closed 2026-09-24 on the owner's call.
   //
-  //   priv-competitive-foods  competitivefoods.com.au is the right domain —
-  //     Competitive Foods Australia, Jack Cowin's group, the Hungry Jack's
-  //     parent. No favicon is indexed for it and the site does not answer
-  //     from here. linkedin.com/company/competitive-foods-pty-ltd exists but
-  //     is a 2-10 person entity with no logo uploaded, not the $2.3bn group.
-  //     Hungry Jack's mark was NOT substituted: the brand is a subsidiary,
-  //     and the card names the parent.
-  //   priv-ati-global  ATI Global Ltd, Christian Beck's legal-software group
-  //     (LEAP, InfoTrack, Smokeball). atiglobal.com serves a certificate for
-  //     a different host, and atiglobal.com.au, ati.global and atiglobal.co.uk
-  //     have nothing indexed. The group has no public site to take a mark
-  //     from; it is private and pre-IPO.
+  //   priv-ati-global  The domain was never findable by guessing, because the
+  //     hyphen is load-bearing: ati-global.com, supplied by the owner, titles
+  //     "A Global LegalTech Leader | Learn About ATI" and draws a 128px mark.
+  //     atiglobal.com — the spelling every rule here would produce — serves a
+  //     certificate for a different host entirely. Recorded because it is the
+  //     one shape deriveDomain() cannot reach even in principle: it strips
+  //     punctuation, so a name whose domain KEEPS a separator is unreachable.
+  //   priv-competitive-foods  Now on HUNGRY JACK'S mark, at the owner's
+  //     instruction, and that is a deliberate exception rather than a find.
+  //     Hungry Jack's is a wholly-owned subsidiary; the card names the parent,
+  //     Competitive Foods Australia, so the badge and the name do not match,
+  //     and a reader who knows the group will read it as the brand rather than
+  //     the employer. The trade was made with that understood: the parent has
+  //     no mark of its own anywhere — no favicon, no site that answers, and a
+  //     LinkedIn page belonging to a 2-10 person entity — and the group is the
+  //     Hungry Jack's business in all but name.
   // ── Singapore, Manila, Kuala Lumpur, 2026-09-22 ──────────────────────────
   // Manila (6) and KL (3) needed nothing but QBE: both rosters are Australian
   // and British multinationals already plotted in other cities, so they were
@@ -804,6 +811,8 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "priv-cjd-equipment": "cjd.com.au",
   "priv-cnw-electrical": "cnw.com.au",
   "priv-competitive-foods": "competitivefoods.com.au",
+  // The hyphen is the whole point — atiglobal.com is somebody else's host.
+  "priv-ati-global": "ati-global.com",
   "priv-deloitte-touche-tohmatsu": "deloitte.com",
   "priv-drake-supermarkets": "drakes.com.au",
   "priv-employers-mutual": "eml.com.au",
