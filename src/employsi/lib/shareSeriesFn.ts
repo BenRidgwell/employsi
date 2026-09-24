@@ -67,16 +67,58 @@ const YAHOO_SUFFIX: Record<string, string> = {
   DFM: ".AE",
   SSE: ".SS",
   SZSE: ".SZ",
+  // Added 2026-09-24, both verified against the live API: SPK.NZ returns Spark
+  // New Zealand in NZD, RELIANCE.NS returns Reliance Industries in INR.
+  NZX: ".NZ",
+  NSE: ".NS",
 };
+
+/**
+ * AN EXCHANGE WITH NO SUFFIX MUST NOT FALL BACK TO THE BARE TICKER, and until
+ * 2026-09-24 it did — `return suf ? ticker + suf : ticker`. Yahoo resolves a
+ * bare ticker against the US market, so a two or three letter code from
+ * anywhere else lands on whatever American instrument happens to own it, with
+ * a 200 and a real-looking line. Measured across the roster:
+ *
+ *   Fisher & Paykel Healthcare  FPH -> Five Point Holdings, LLC (NYSE)
+ *   Auckland International Airport AIA -> iShares Asia 50 ETF
+ *   Mercury NZ                  MCY -> Mercury General Corporation (NYSE)
+ *   Fonterra Co-operative Group FCG -> First Trust Natural Gas ETF
+ *   DJI (private, exchange "Private") -> resolved to a US listing
+ *
+ * Four New Zealand companies were charting an American company's or an ETF's
+ * price, in USD, on a card that says NZX. The suffixes above fix those; the
+ * empty string below is what stops the next one. ADX (Abu Dhabi, 20 companies)
+ * has no Yahoo coverage at all — .AD and .AE both 404 and its search endpoint
+ * returns nothing for the names — so those cards now draw NO share line, which
+ * is the honest answer.
+ */
+/**
+ * Companies whose LISTING moved but whose roster ticker cannot, keyed
+ * `TICKER::EXCHANGE`.
+ *
+ * A roster id is built from the ticker, so re-tickering a company moves its id
+ * and orphans every archive row filed under the old one. Where that trade is
+ * not worth making, the ticker stays and the lookup is corrected here instead.
+ */
+const YAHOO_SYMBOL_OVERRIDE: Record<string, string> = {
+  // Anglo American Platinum -> Valterra Platinum, 2025. AMS.JO 404s; VAL.JO
+  // returns Valterra Platinum Limited in ZAc. johannesburg-ams holds 21
+  // archive rows, so the id is worth more than the ticker being current.
+  "AMS::JSE": "VAL.JO",
+};
+
 export function yahooSymbol(ticker: string, exchange?: string): string {
   const ex = exchange || "ASX";
+  const override = YAHOO_SYMBOL_OVERRIDE[`${ticker}::${ex}`];
+  if (override) return override;
   if (ex === "NYSE" || ex === "NASDAQ") return ticker;
   // Hong Kong: strip non-digits and any leading zeros, then pad back to Yahoo's
   // canonical 4-digit code (e.g. "00700" -> "0700.HK", "09988" -> "9988.HK").
   if (ex === "HKEX")
     return `${(ticker.replace(/\D/g, "").replace(/^0+/, "") || "0").padStart(4, "0")}.HK`;
   const suf = YAHOO_SUFFIX[ex];
-  return suf ? `${ticker}${suf}` : ticker;
+  return suf ? `${ticker}${suf}` : "";
 }
 
 // Cache per ticker for an hour — a quarterly chart doesn't need sub-hourly
@@ -184,6 +226,10 @@ export const getShareSeries = createServerFn({ method: "GET" })
     if (hit && Date.now() - hit.at < TTL) return hit.data;
     try {
       const sym = yahooSymbol(ticker, data.exchange);
+      // No symbol means no Yahoo coverage for that exchange — see yahooSymbol.
+      // Returning empty draws no line, which beats charting a US instrument
+      // that happens to share the ticker.
+      if (!sym) return EMPTY;
       const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=2y&interval=3mo`;
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 6000);

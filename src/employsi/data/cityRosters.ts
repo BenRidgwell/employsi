@@ -237,6 +237,14 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["EXPD", "Expeditors International", IND],
       ["WY", "Weyerhaeuser", ENR, "NYSE"],
       ["ALK", "Alaska Air Group", CON, "NYSE"],
+      // NORDSTROM IS NO LONGER LISTED. The family and El Puerto de Liverpool
+      // took it private in May 2025 and JWN was delisted from the NYSE, so
+      // Yahoo 404s and the card draws no share line — which is the correct
+      // outcome, reached by accident rather than by the data saying so. It is
+      // still a company and still hires, so unlike Marathon Oil it stays on
+      // the roster; what is stale is the exchange and ticker shown beside its
+      // name. RosterEntry has no private flag, and adding one is a bigger
+      // change than this line deserves.
       ["JWN", "Nordstrom", CON, "NYSE"],
       ["Z", "Zillow Group", TMT],
       ["TMUS", "T-Mobile US", TMT],
@@ -429,7 +437,10 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["XYZ", "Block", TMT, "NYSE"],
       ["AFRM", "Affirm", TMT],
       ["CART", "Instacart", TMT],
-      ["GPS", "Gap Inc.", CON, "NYSE"],
+      // GPS was retired when the company rebranded to Gap Inc. in 2022; the
+      // ticker is GAP. Under the old one Yahoo 404s and the card drew no
+      // share line at all.
+      ["GAP", "Gap Inc.", CON, "NYSE"],
       ["LYFT", "Lyft", TMT],
       ["ASAN", "Asana", TMT, "NYSE"],
       ["PINS", "Pinterest", TMT, "NYSE"],
@@ -693,7 +704,15 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["FSR", "FirstRand", FIN],
       ["SBK", "Standard Bank Group", FIN],
       ["GFI", "Gold Fields", ENR],
-      ["AMS", "Anglo American Platinum", ENR],
+      // Renamed from Anglo American Platinum after the 2025 demerger. THE
+      // TICKER STAYS AMS DELIBERATELY: a roster id is rosterId(city, ticker),
+      // so changing it to VAL would move this company to johannesburg-val and
+      // orphan the 21 archive rows filed under johannesburg-ams — invisible,
+      // because nothing renders a company_id with no company. The name is what
+      // the card shows, and it is now right; the share fetch reaches the new
+      // listing through YAHOO_SYMBOL_OVERRIDE in shareSeriesFn.ts, since
+      // AMS.JO 404s and VAL.JO returns Valterra Platinum Limited in ZAc.
+      ["AMS", "Valterra Platinum", ENR],
       ["ABG", "Absa Group", FIN],
       ["NED", "Nedbank Group", FIN],
       ["ANG", "AngloGold Ashanti", ENR],
