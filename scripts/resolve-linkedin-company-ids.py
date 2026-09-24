@@ -67,6 +67,9 @@ norm = linkedin_slugs.norm
 # has been READ and confirmed to be them. Default-deny: add an id here only
 # after looking at the page, as NOT_THIS_COMPANY's entries were.
 FOREIGN_PAGE_OK: set[str] = set()
+# A page registered elsewhere is accepted without being listed above only when
+# its id returns at least this many Australian ads, all of them this company's.
+FOREIGN_MIN_ADS = 5
 PAGE = 'https://www.linkedin.com/company/{slug}/'
 UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/124.0 Safari/537.36')
@@ -246,10 +249,16 @@ def main() -> int:
             # Woodside Energy's brand IS Woodside — and both would have filed
             # another company's hiring on the card. A blank country is let
             # through to the search check below, which is the stronger test.
+            #
+            # BUT A FOREIGN PARENT PAGE CAN BE RIGHT. The full run rejected
+            # /rio-tinto (GB), /chevron (US), /shell (GB) and /amcor (CH) on this
+            # rule, and each is the employer's one global page. So a foreign
+            # page is not refused here; it is held to a harder search check
+            # below — FOREIGN_MIN_ADS Australian ads, every one of them this
+            # company's. "ARB" of Romania and "AGL Energy" of Poland have no
+            # Australian ads to show, which is the difference.
             country = (re.search(r'"addressCountry"\s*:\s*"([^"]*)"', html) or [None, ''])[1]
-            if country and country != 'AU' and c['id'] not in FOREIGN_PAGE_OK:
-                why = f'/{slug} is "{actor[:30]}", registered in {country}'
-                continue
+            foreign = bool(country) and country != 'AU' and c['id'] not in FOREIGN_PAGE_OK
             lid, bad = page_id(html)
             if lid is None:
                 why = f'/{slug} {bad}'
@@ -268,6 +277,10 @@ def main() -> int:
                 why = (f'/{slug} = {lid}, but its search returns '
                        f'{sorted(set(ads) - set(ours))[:3]}')
                 continue
+            if foreign and (len(ads) < FOREIGN_MIN_ADS or len(ours) < len(ads)):
+                why = (f'/{slug} is "{actor[:30]}", registered in {country}, with '
+                       f'{len(ours)}/{len(ads)} matching Australian ads')
+                continue
             # NO COUNTRY AND NO ADS IS NOTHING CONFIRMED. The first full run
             # took /beach-energy-limited, "BEACH ENERGY LIMITED" in capitals, no
             # addressCountry, zero cards: the shape of a page LinkedIn generated
@@ -280,6 +293,13 @@ def main() -> int:
                    'cards': len(ads), 'confirmed': today}
             break
         if not got:
+            # A --retry that no longer confirms an id REMOVES it. Merging would
+            # keep an id that today's gates refuse, which is how an entry saved
+            # before a rule existed would outlive the rule.
+            if c['id'] in data and why != 'fetch failed or authwalled':
+                del data[c['id']]
+                save(data)
+                why += ' — REMOVED from the file'
             misses.append(f'{c["id"]}: {why}')
             sys.stderr.write(why + '\n')
             continue
