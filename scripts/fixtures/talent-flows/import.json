@@ -1,0 +1,11 @@
+{
+  "source": "synthetic",
+  "product": "SYNTHETIC FIXTURE - invented numbers, never load into D1",
+  "delivered": "2026-01-15",
+  "method": "company-to-company, any gap",
+  "scope": "all pairs",
+  "base_company_ref": null,
+  "top_n": null,
+  "filters": {},
+  "notes": "Exercises the loader's validation and matching. Every figure is made up."
+}

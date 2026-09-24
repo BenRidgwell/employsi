@@ -30,6 +30,8 @@ import { ChartTooltip } from "./ChartTooltip";
 import { IconClose } from "../ActionIcons";
 import { sectorIcon } from "../../data/sectorIcons";
 import { SkillDemand } from "./SkillDemand";
+import { TalentFlow } from "./TalentFlow";
+import { useTalentFlows } from "../../hooks/useTalentFlows";
 
 type CardTab = "Overview" | "Skills" | "Hiring";
 
@@ -773,6 +775,11 @@ export function CompanyPanel() {
     if (selectedId) setTab("Overview");
   }, [selectedId]);
 
+  // Company-to-company moves (D1, loaded by scripts/flows-to-d1.py). Only
+  // fetched once the Hiring tab is open; null until a delivery names this
+  // company, and the tab then shows no flow section at all.
+  const talentFlows = useTalentFlows(panel?.companyId, open && tab === "Hiring");
+
   // Skill → live-ad count, and role area → live-ad count, from the same job
   // sample the old chips and bars were built from.
   const skillCounts = useMemo(() => {
@@ -1314,6 +1321,7 @@ export function CompanyPanel() {
                   ) : (
                     <div className="dataempty">No live job ads</div>
                   )}
+                  <TalentFlow flows={talentFlows} />
                 </div>
               )}
             </div>

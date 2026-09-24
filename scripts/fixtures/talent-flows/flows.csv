@@ -1,0 +1,6 @@
+from_ref,from_name,to_ref,to_name,period_start,period_end,moves,count_kind
+synthetic:1,BHP,synthetic:2,Woodside Energy,2025-01-01,2025-12-31,42,observed
+synthetic:2,Woodside Energy,synthetic:1,BHP,2025-01-01,2025-12-31,17,observed
+synthetic:1,BHP,synthetic:3,Fortescue,2025-01-01,2025-12-31,9,observed
+synthetic:4,Rio Tinto,synthetic:1,BHP,2025-01-01,2025-12-31,23,observed
+synthetic:1,BHP,synthetic:5,Acme Drilling Services,2025-01-01,2025-12-31,31,observed

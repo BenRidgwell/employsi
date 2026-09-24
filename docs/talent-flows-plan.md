@@ -1,9 +1,36 @@
-# Talent flows — planned format (DRAFT, nothing built)
+# Talent flows — format and build
 
-**Status: proposal for review.** No table, script, endpoint or map layer exists yet.
-Everything below is meant to be argued with before any of it is written. The
-open questions at the end are the ones that change the design; the rest is a
-default that can be changed cheaply.
+**Status (2026-09-24): the source-independent half is built, not deployed, and
+holds no data.**
+
+| Piece | File | State |
+| --- | --- | --- |
+| D1 tables | `workers/jobs-cron/migrations/0002_talent_flows.sql` | Written, **not applied** |
+| Loader | `scripts/flows-to-d1.py` | Built; dry run by default; tested offline on the synthetic fixture only |
+| Display rules | `src/employsi/lib/flows.ts` | Built; asserted by `scripts/check-flows.ts` in `skills-check.yml` |
+| Server read | `src/employsi/lib/flowsFn.ts` | Built; returns null until tables exist and hold an import |
+| Card section | `components/panels/TalentFlow.tsx`, Hiring tab | Built; renders nothing without data. Not seen rendered |
+| Map arcs | — | Not started |
+| A source of counts | — | **None.** See below |
+
+Nothing here produces flows. It loads and shows counts from whatever writes the
+canonical format below. The LinkedIn-profile collector that was started for
+that (`stickerdaniel/linkedin-mcp-server`) is not part of this build.
+
+Changes from the first draft, found while building:
+
+- `flows` carries `from_name`/`to_name`, so off-roster companies can be listed
+  without a lookup, and a new `flow_sample` table holds per-company sample sizes
+  for a sampled source (`count_kind = sampled`, `scope = sampled profiles`).
+- Two vendor ids that resolve to one roster company are **merged before the
+  minimum is applied**. The minimum applies to the company, not to however the
+  vendor split it.
+- Name matching refuses a name that belongs to more than one roster company.
+  "Rio Tinto" is both `rio` and `london-rio`, so it goes to the unmatched
+  report instead of being picked.
+
+The rest of this document is the original plan. The open questions at the end
+are still open.
 
 ## What the feature is
 

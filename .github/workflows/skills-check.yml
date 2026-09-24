@@ -39,6 +39,8 @@ on:
       - 'src/employsi/lib/jobHistoryFn.ts'
       - 'src/employsi/data/companies.ts'
       - 'src/employsi/data/hiringAreas.ts'
+      - 'src/employsi/lib/flows.ts'
+      - 'scripts/check-flows.ts'
       - '.github/workflows/skills-check.yml'
   pull_request:
     paths:
@@ -67,6 +69,8 @@ on:
       - 'src/employsi/lib/jobHistoryFn.ts'
       - 'src/employsi/data/companies.ts'
       - 'src/employsi/data/hiringAreas.ts'
+      - 'src/employsi/lib/flows.ts'
+      - 'scripts/check-flows.ts'
   workflow_dispatch: {}
 
 jobs:
@@ -164,6 +168,13 @@ jobs:
       # name the taxonomy no longer has.
       - name: Assert the salary baseline's invariants
         run: bun run scripts/check-salary-baseline.ts
+
+      # Talent flows are counts from outside sources, and every way the card
+      # can misstate them still renders a clean list of companies: a flow of
+      # three people itemised, an estimate summed into measured moves, a period
+      # label naming the window asked for instead of the one summed.
+      - name: Assert the talent-flow card's display rules
+        run: bun run scripts/check-flows.ts
 
       - uses: actions/setup-python@v6
         with:
