@@ -84,14 +84,14 @@ jobs:
         with:
           bun-version: latest
 
-      # --only qld,sa, because the jurisdictions need OPPOSITE environments and
+      # --only qld,sa,nsw, because the jurisdictions need OPPOSITE environments and
       # no machine can fetch them all. Measured 2026-09-24: Queensland needs a
       # browser and runs only here; Victoria answers HTTP 403 to a datacentre
       # IP — through a browser too, 13 KB of HTML — and runs only from a
       # developer machine. The generator merges rather than rewrites, so this
       # refreshes Queensland and leaves the others exactly as they were, and
       # the file's header records which is which.
-      - name: Generate Queensland + South Australia workforce data
+      - name: Generate QLD + SA + NSW workforce data
         run: python scripts/gen-gov-workforce.py --only qld,sa
 
       - name: Show the generated file
@@ -143,4 +143,4 @@ jobs:
           python scripts/sa-workforce-probe.py \
             https://www.health.nsw.gov.au/annualreport/Publications/2025/appendix.pdf
           python scripts/sa-workforce-probe.py \
-            https://www.health.nsw.gov.au/annualreport/Publications/2025/appendix.pdf 17-21
+            https://www.health.nsw.gov.au/annualreport/Publications/2025/appendix.pdf
