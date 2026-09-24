@@ -563,6 +563,19 @@ def load_nsw():
 
     — four consecutive Junes, so the last two are a year apart.
 
+    FIVE ROWS COME OUT NAMED AFTER A PAGE, not an organisation: "NSW Health
+    Annual Report 2024-25 Page 372" and four like it, carrying real figures
+    (12,965, 7,509, 7,336, 6,042, 322). The appendix repeats a running header
+    on some pages and the name-capture takes it when the organisation heading
+    sits above the page break. It costs nothing today — every one of them is a
+    Local Health District the roster does not carry, so the rows go unmatched
+    and unused, and the twelve health organisations the roster DOES carry all
+    parse correctly. It is written down because the failure is silent in the
+    wrong direction: add one of those districts to the roster and it would
+    quietly never match, looking like a source that does not report it rather
+    than a name this parser dropped. The two-sided unmatched report in main()
+    is what makes these visible at all.
+
     IT IS FTE, NOT HEADCOUNT, and the data says so rather than the document:
     small organisations report "Medical 0.6 0.6 0.6 0.6" and "Nursing 1.0 0.3
     1.0 1.0". You cannot have 0.6 of a person. Marked `fte` accordingly, so
