@@ -15,6 +15,23 @@
 #
 # Exits non-zero (red X) if LinkedIn starts returning nothing. Use "Run workflow"
 # to verify before relying on the schedule.
+#
+# A SECOND TRANSPORT ARRIVED 2026-09-24: `transport: jobspy`, the default for a
+# dispatch. The same guest endpoint, fetched by the JobSpy package straight from
+# the runner — no Oxylabs, no Bright Data, no per-record bill. It is here to
+# answer ONE question before LinkedIn comes off brightdata-archive.yml: does a
+# GitHub runner's address get the roster, or the authwall/429 the sandbox met
+# after ~30 companies? The measurements and what they do not settle are in the
+# block above jobspy_collect() in scripts/linkedin-to-d1.py.
+#
+# `solve` DEFAULTS TO TRUE, so a dispatch writes nothing unless it is unticked.
+# A solve run with the D1 token also measures job_key continuity against the
+# LinkedIn rows Bright Data wrote: a title that matches under a DIFFERENT key
+# would be counted twice after a switch, and that is worth knowing first.
+#
+# No schedule. Earn one the way indeed-archive.yml did — a full-roster solve and
+# a full-roster write from a hosted runner, both clean — and take LinkedIn off
+# brightdata-archive.yml in the same change, since both write `source=linkedin`.
 
 name: linkedin-archive
 
@@ -41,7 +58,25 @@ on:
   # fact that LinkedIn was collecting perfectly well on another workflow — the
   # 2026-08-17 rows in D1 came from Bright Data, and were read as Oxylabs
   # survivors.
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      transport:
+        description: 'jobspy = the guest API straight from the runner; oxylabs = the Web Scraper API (401 since 2026-08-28)'
+        type: choice
+        options: [jobspy, oxylabs]
+        default: jobspy
+      solve:
+        description: 'Collect and report only — write nothing to D1'
+        type: boolean
+        default: true
+      limit:
+        description: 'Companies to walk (blank = the whole roster)'
+        type: string
+        default: ''
+      concurrency:
+        description: 'Parallel companies for jobspy (5 was measured; lower it if the run reports blocks)'
+        type: string
+        default: '5'
 
 concurrency:
   group: linkedin-archive
@@ -50,7 +85,11 @@ concurrency:
 jobs:
   archive:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    # JobSpy's walk is ~45s a company, mostly its own sleep between pages: the
+    # roster at 5 workers is about an hour, plus short-name retries. 300 leaves
+    # room for a lower concurrency without being cancelled mid-walk, which would
+    # report nothing about the companies it never reached.
+    timeout-minutes: 300
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -59,13 +98,33 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - name: Scrape LinkedIn → D1 (Oxylabs)
+      - name: Install JobSpy
+        if: ${{ (inputs.transport || 'jobspy') == 'jobspy' }}
+        run: |
+          python -m pip install --upgrade pip
+          # Unpinned for the same reason as indeed-archive.yml: when LinkedIn
+          # changes its markup the package is the fix. The zero-rows and
+          # blocked-share exits catch a bad release.
+          pip install python-jobspy
+          python -c "import jobspy, importlib.metadata as m; print('python-jobspy', m.version('python-jobspy'))"
+      - name: Scrape LinkedIn → D1
         env:
           OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
           OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
-        # All ~205 roster companies; up to 10 guest-API pages (25 cards) each —
-        # the driver stops early once a company yields no new ads.
-        run: python scripts/linkedin-to-d1.py --location Australia --max-pages 10 --concurrency 8
+        run: |
+          TRANSPORT="${{ inputs.transport || 'jobspy' }}"
+          if [ "$TRANSPORT" = "jobspy" ]; then
+            python scripts/linkedin-to-d1.py --jobspy --location Australia \
+              --concurrency "${{ inputs.concurrency || '5' }}" \
+              ${{ inputs.solve && '--solve' || '' }} \
+              ${{ inputs.limit != '' && format('--limit {0}', inputs.limit) || '' }}
+            exit $?
+          fi
+          # The whole roster; up to 10 guest-API pages (25 cards) each — the
+          # driver stops early once a company yields no new ads.
+          python scripts/linkedin-to-d1.py --location Australia --max-pages 10 --concurrency 8 \
+            ${{ inputs.solve && '--solve' || '' }} \
+            ${{ inputs.limit != '' && format('--limit {0}', inputs.limit) || '' }}
