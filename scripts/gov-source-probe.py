@@ -33,34 +33,17 @@ UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
 # reports, NT's portal has no workforce data at all, and Tasmania has no
 # reachable open-data portal).
 TARGETS = [
-    # ── Round four: Tasmania is found; read it before parsing it ───────────
-    # Round three worked. Warming the origin turned three STILL CHALLENGED
-    # results into 200s, and dpac.tas.gov.au's own search handed over the
-    # reports this jurisdiction was said not to publish:
-    #
-    #   /__data/assets/pdf_file/0023/509306/State-Service-Workforce-Report-Number-2-2024.pdf
-    #   /__data/assets/pdf_file/0019/509311/State-Service-Workforce-Report-Number-1-2023.pdf
-    #   /__data/assets/pdf_file/0025/509317/State-Service-Workforce-Report-Number-1-2022.pdf
-    #
-    # This round asks for the NEWEST edition rather than assuming 2024 is it,
-    # and dumps the pages so a parser is written against the document instead
-    # of against a guess. That is the rule Queensland taught: a parser written
-    # from a preview nobody opened was wrong in twelve of twenty-eight rows.
+    # ── Round five ─────────────────────────────────────────────────────────
+    # Round four found Tasmania's reports and then read the wrong one through
+    # the wrong channel; both faults were in this script and both are fixed
+    # above. It also learned something about the Northern Territory: warming
+    # ocpe.nt.gov.au reported "no challenge" that run, where round one sat
+    # challenged for thirty seconds. The doorman is intermittent rather than
+    # absolute, so the host is worth asking for its own map.
     ('TAS workforce reports', 'https://www.dpac.tas.gov.au/search?query=workforce+report',
      'https://www.dpac.tas.gov.au/'),
-    ('TAS state of the service', 'https://www.dpac.tas.gov.au/search?query=state+of+the+service',
-     'https://www.dpac.tas.gov.au/'),
-
-    # NORTHERN TERRITORY IS THE ONE THAT DOES NOT YIELD. ocpe.nt.gov.au, which
-    # publishes the workforce profile, is STILL CHALLENGED after thirty seconds
-    # in a real browser — the only host in this repo of which that is true, and
-    # warming does not apply because it is the origin. nt.gov.au clears but its
-    # sitemap.xml is a one-URL stub and its search is a Funnelback redirect
-    # with nothing behind it. Two more shapes before concluding.
-    ('NT search via funnelback', 'https://nt.gov.au/search?query=public+sector+workforce+profile',
-     'https://nt.gov.au/'),
-    ('NT OCPE, warmed via itself', 'https://ocpe.nt.gov.au/publications',
-     'https://ocpe.nt.gov.au/'),
+    ('NT OCPE sitemap', 'https://ocpe.nt.gov.au/sitemap.xml', 'https://ocpe.nt.gov.au/'),
+    ('NT OCPE root links', 'https://ocpe.nt.gov.au/', 'https://ocpe.nt.gov.au/'),
 ]
 
 
@@ -106,10 +89,16 @@ def dump_pdf(ctx, url, warm):
         while 'Just a moment' in page.content() and w < 30_000:
             page.wait_for_timeout(3000)
             w += 3000
-        r = page.request.get(url, timeout=120_000)
-        body = r.body()
-        print(f'  pdf     : HTTP {r.status}, {len(body):,} bytes')
-        if r.status != 200 or not body.startswith(b'%PDF'):
+        # NAVIGATE TO THE PDF; do not ask for it through the API request
+        # context. page.request shares the cookie jar but not the browser's
+        # TLS and header fingerprint, so Cloudflare challenged it again and
+        # returned 6 KB of "Just a moment" where a PDF was expected — inside a
+        # context that had just cleared. The navigation carries the whole
+        # fingerprint and is what the clearance was issued for.
+        resp = page.goto(url, wait_until='domcontentloaded', timeout=120_000)
+        body = resp.body() if resp else b''
+        print(f'  pdf     : HTTP {resp.status if resp else "?"}, {len(body):,} bytes')
+        if not body.startswith(b'%PDF'):
             print(f'  pdf     : not a PDF ({body[:40]!r})')
             return
         import io as _io
@@ -216,9 +205,15 @@ def main():
                 m = re.match(r'(https?://\S+\.pdf)', l, re.I)
                 if m and re.search(r'workforce|state.of.the.service', m.group(1), re.I):
                     pdfs.append(m.group(1))
-            # Newest edition first: these are named "...Number-2-2024.pdf", so
-            # the year sorts them and the report number breaks a tie.
-            for u in sorted(set(pdfs), reverse=True)[:1]:
+            # NEWEST EDITION BY THE YEAR IN THE FILENAME, not by the URL.
+            # Sorting the URLs read the 2022 report: they are served from
+            # /__data/assets/pdf_file/<dir>/<id>/, and 0025/509317 (2022) sorts
+            # above 0023/509306 (2024) because the directory number leads.
+            # The year is in the name and nowhere else that matters.
+            def edition(u):
+                m = re.search(r'Number-(\d+)-(\d{4})', u, re.I)
+                return (int(m.group(2)), int(m.group(1))) if m else (0, 0)
+            for u in sorted(set(pdfs), key=edition, reverse=True)[:1]:
                 print(f'  reading : {u[:120]}')
                 dump_pdf(ctx, u, warm)
         browser.close()
