@@ -33,25 +33,17 @@ UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
 # reports, NT's portal has no workforce data at all, and Tasmania has no
 # reachable open-data portal).
 TARGETS = [
-    # NEW SOUTH WALES. The largest jurisdiction still unwired — 78 agencies,
-    # 2,561 live ads — and 13 Local Health Districts carry 1,667 of them, so
-    # the health side is where its value is rather than the central workforce
-    # profile.
-    #
-    # Its pages answer 200 to a plain request and render nothing useful.
-    # psc.nsw.gov.au returns 200 for EVERY path tried, including invented
-    # ones: a single-page app serving a catch-all shell, whose links are drawn
-    # by JavaScript. A plain fetch sees an empty document and reports "no
-    # workforce data" for a page that has plenty, which is a false negative
-    # rather than an answer.
-    ('NSW PSC workforce profile',
-     'https://www.psc.nsw.gov.au/reports---data/workforce-profile'),
-    ('NSW PSC reports',
-     'https://www.nsw.gov.au/departments-and-agencies/premiers-department/'
-     'office-of-public-service-commissioner/reports'),
-    ('NSW Health workforce', 'https://www.health.nsw.gov.au/workforce/Pages/default.aspx'),
-    ('NSW Health annual reports',
-     'https://www.health.nsw.gov.au/annualreport/Pages/default.aspx'),
+    # Is education.gov.au reachable AT ALL, or were the paths wrong? The
+    # staff-data path answered ERR_HTTP2_PROTOCOL_ERROR to a browser and timed
+    # out to urllib, from the runner; 403 over HTTP/2 and nothing over
+    # HTTP/1.1 from the sandbox. Those are two different failures and they do
+    # not agree, so the root is worth one request before concluding anything.
+    ('Uni root', 'https://www.education.gov.au/'),
+    ('Uni stats root', 'https://www.education.gov.au/higher-education-statistics'),
+    # The domain data.gov.au's own resource still points at. It predates the
+    # education.gov.au move and may resolve differently.
+    ('Uni old domain', 'https://www.dese.gov.au/higher-education-statistics/staff-data'),
+    ('TEQSA root', 'https://www.teqsa.gov.au/'),
 ]
 
 
