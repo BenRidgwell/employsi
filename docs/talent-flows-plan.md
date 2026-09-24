@@ -54,16 +54,24 @@ Facts it depends on (read 2026-09-24):
   sub-field is advertised. Filtering on `experience.company_id` was tried
   once and refused: `HTTP 500: unsupported filters: experience.company_id`.
   So a seed's "lost to" side only shows when the destination is also seeded.
-- **Most profiles have no start date.** `--inspect bhp --n 10` (one
+- **Most profiles have no dates at all.** `--inspect bhp --n 10` (one
   request, 10 profiles): 7 profiles had a single `experience` entry that
   `positions_from_brightdata` refused as `no_start_date`, so they parsed to
-  nothing. The other 3 parsed into 10 positions and 5 moves, and their entries matched
-  the published sample's shape. What the refused entries hold instead is
-  **not yet seen**: the next `--inspect --n 10` prints each refused entry's
-  field names and dates. Until it is, expect ~70% of profiles to parse
-  empty, far past the 20% at which `--stats` warns. If those profiles
-  genuinely carry no dates, they can't give a dated move and the collection
-  cost per usable profile is roughly 3x the plan's assumption.
+  nothing. The other 3 parsed into 10 positions and 5 moves, and their
+  entries matched the published sample's shape. A second run (the default
+  sort returns the same 10) printed the refused entries' fields: they carry
+  `company`, `company_id`, `company_logo_url`, `description_html`, `title`,
+  `url` and **no `start_date` or `end_date` key**, and no `location`. So the
+  data is missing and the parser is right to refuse them: no date is hiding
+  under another name. One such entry also appeared inside a dated history,
+  as an undated duplicate of an employer the same profile lists with dates,
+  and was dropped harmlessly. A name-only entry (no `url`, no `company_id`)
+  parses, and is matched by name.
+  On this sample ~30% of profiles are usable, far past the 20% empty rate
+  at which `--stats` warns, so expect that warning on every run and read
+  the per-profile cost as roughly 3x the plan's assumption. Ten profiles in
+  one sort order is a small sample; `--stats` after the first real run is
+  the better measure.
 - **The MCP server writes to the Bright Data account.** On first start
   `@brightdata/mcp@2.11.3` created two zones, `mcp_unlocker` and
   `mcp_browser`, on the account the token belongs to ("Required zone … not
