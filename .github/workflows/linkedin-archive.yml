@@ -16,13 +16,17 @@
 # Exits non-zero (red X) if LinkedIn starts returning nothing. Use "Run workflow"
 # to verify before relying on the schedule.
 #
-# A SECOND TRANSPORT ARRIVED 2026-09-24: `transport: jobspy`, the default for a
-# dispatch. The same guest endpoint, fetched by the JobSpy package straight from
-# the runner — no Oxylabs, no Bright Data, no per-record bill. It is here to
-# answer ONE question before LinkedIn comes off brightdata-archive.yml: does a
-# GitHub runner's address get the roster, or the authwall/429 the sandbox met
-# after ~30 companies? The measurements and what they do not settle are in the
-# block above jobspy_collect() in scripts/linkedin-to-d1.py.
+# A SECOND TRANSPORT ARRIVED 2026-09-24: `transport: direct`, the default for a
+# dispatch. The same guest endpoint, fetched straight from the runner — no
+# Oxylabs, no Bright Data, no per-record bill — and searched BY COMPANY ID
+# (scripts/linkedin_company_ids.json) where one has been resolved. It is here
+# to earn LinkedIn's way off brightdata-archive.yml.
+#
+# THE RUNNER'S ADDRESS IS ALREADY ANSWERED. Run #37 (2026-09-24, through the
+# JobSpy package) walked all 395 companies in 75.5 min with no 429 and no
+# authwall. JobSpy was then dropped: its LinkedIn pager skips pages (BHP: 40
+# cards of 91) and it blanks locations it cannot split. The block above
+# guest_get() in scripts/linkedin-to-d1.py has the measurements.
 #
 # `solve` DEFAULTS TO TRUE, so a dispatch writes nothing unless it is unticked.
 # A solve run with the D1 token also measures job_key continuity against the
@@ -61,10 +65,10 @@ on:
   workflow_dispatch:
     inputs:
       transport:
-        description: 'jobspy = the guest API straight from the runner; oxylabs = the Web Scraper API (401 since 2026-08-28)'
+        description: 'direct = the guest API straight from the runner, by company id; oxylabs = the Web Scraper API (401 since 2026-08-28)'
         type: choice
-        options: [jobspy, oxylabs]
-        default: jobspy
+        options: [direct, oxylabs]
+        default: direct
       solve:
         description: 'Collect and report only — write nothing to D1'
         type: boolean
@@ -74,7 +78,7 @@ on:
         type: string
         default: ''
       concurrency:
-        description: 'Parallel companies for jobspy (5 was measured; lower it if the run reports blocks)'
+        description: 'Parallel companies for direct (5 was measured; lower it if the run reports blocks)'
         type: string
         default: '5'
 
@@ -85,10 +89,11 @@ concurrency:
 jobs:
   archive:
     runs-on: ubuntu-latest
-    # JobSpy's walk is ~45s a company, mostly its own sleep between pages: the
-    # roster at 5 workers is about an hour, plus short-name retries. 300 leaves
-    # room for a lower concurrency without being cancelled mid-walk, which would
-    # report nothing about the companies it never reached.
+    # Run #37 took 75.5 min for the roster at 5 workers, most of it the 3-6s
+    # pause between pages. An id search walks every page an employer has — NAB
+    # is 18 — so budget more than that. 300 leaves room for a lower concurrency
+    # without being cancelled mid-walk, which would report nothing about the
+    # companies it never reached.
     timeout-minutes: 300
     steps:
       - uses: actions/checkout@v5
@@ -98,15 +103,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - name: Install JobSpy
-        if: ${{ (inputs.transport || 'jobspy') == 'jobspy' }}
-        run: |
-          python -m pip install --upgrade pip
-          # Unpinned for the same reason as indeed-archive.yml: when LinkedIn
-          # changes its markup the package is the fix. The zero-rows and
-          # blocked-share exits catch a bad release.
-          pip install python-jobspy
-          python -c "import jobspy, importlib.metadata as m; print('python-jobspy', m.version('python-jobspy'))"
       - name: Scrape LinkedIn → D1
         env:
           OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
@@ -115,9 +111,9 @@ jobs:
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         run: |
-          TRANSPORT="${{ inputs.transport || 'jobspy' }}"
-          if [ "$TRANSPORT" = "jobspy" ]; then
-            python scripts/linkedin-to-d1.py --jobspy --location Australia \
+          TRANSPORT="${{ inputs.transport || 'direct' }}"
+          if [ "$TRANSPORT" = "direct" ]; then
+            python scripts/linkedin-to-d1.py --direct --location Australia \
               --concurrency "${{ inputs.concurrency || '5' }}" \
               ${{ inputs.solve && '--solve' || '' }} \
               ${{ inputs.limit != '' && format('--limit {0}', inputs.limit) || '' }}
