@@ -1,5 +1,12 @@
 import type { AnalystIntent } from "./analystIntent";
-import { detectIntent, detectSkillMatch } from "./analystIntent";
+import {
+  detectIntent,
+  detectIntents,
+  detectSkillMatch,
+  INTENT_LABEL,
+  INTENT_QUESTION,
+  type DataIntent,
+} from "./analystIntent";
 import { detectScope, type ResolvedScope } from "./analystScope";
 
 /**
@@ -53,6 +60,28 @@ export interface TurnResult {
   inherited: ("intent" | "skill" | "scope")[];
   /** True when the sentence carried its own intent, i.e. started a new thread. */
   isNewQuestion: boolean;
+  /**
+   * What kind of turn this is, and the reason the third one exists.
+   *
+   * A patch has to patch SOMETHING. The original rule was "no intent means
+   * follow-up", which made every unrecognised sentence inherit the whole
+   * previous query and re-run it: "tell me more", "which of those is biggest?",
+   * "is that good?" and "ok" all silently re-answered the last question with
+   * real figures about something nobody had asked again. Measured 2026-09-24.
+   *
+   * So a follow-up now has to NAME a dimension — a place, a skill, or an area
+   * split. A sentence that names nothing and carries no intent is "empty": it
+   * was not understood, and the honest response is to say so rather than to
+   * serve the previous answer twice. Greetings and "why?" never get this far;
+   * analystChat.ts holds them out before this runs.
+   */
+  kind: "question" | "pivot" | "empty";
+  /**
+   * A second intent the sentence also asked for, answered by offering it rather
+   * than by welding two differently-measured halves into one paragraph. See
+   * detectIntents.
+   */
+  alsoAsked: DataIntent | null;
 }
 
 /**
@@ -76,10 +105,23 @@ export function resolveTurn(
   const explicitScope = detectScope(question, localCity);
   const isNewQuestion = explicitIntent !== "unknown";
   const inherited: TurnResult["inherited"] = [];
+  const splitsByArea = wantsAreas(question);
+
+  // A patch with nothing to patch is not a follow-up — see TurnResult.kind.
+  // Asked with no previous turn it is simply an unrecognised question, which
+  // reaches the same place: the fallback, rather than a fabricated subject.
+  const namesSomething = !!explicitScope || !!explicitSkill || splitsByArea;
+  const kind: TurnResult["kind"] = isNewQuestion
+    ? "question"
+    : prev && namesSomething
+      ? "pivot"
+      : "empty";
 
   // Intent: a sentence without one keeps the question it is following up on.
+  // Only a pivot does — an empty turn inherits nothing, because the answer it
+  // would produce is one nobody asked for.
   let intent = explicitIntent;
-  if (!isNewQuestion && prev) {
+  if (kind === "pivot" && prev) {
     intent = prev.intent;
     inherited.push("intent");
   }
@@ -87,7 +129,7 @@ export function resolveTurn(
   // Skill: inherited only by a pivot, for the reason in the header.
   let skill = explicitSkill;
   let skillVia = explicitMatch?.via ?? null;
-  if (!explicitSkill && !isNewQuestion && prev?.skill) {
+  if (!explicitSkill && kind === "pivot" && prev?.skill) {
     skill = prev.skill;
     skillVia = prev.skillVia;
     inherited.push("skill");
@@ -100,9 +142,14 @@ export function resolveTurn(
   let scope = explicitScope;
   if (!scope) {
     scope = prev?.scope ?? fallbackScope;
-    if (prev) inherited.push("scope");
+    // An empty turn produces no answer, so it carried nothing INTO one. The
+    // field still has to hold a scope to satisfy the type, and the caller
+    // discards the whole query, but recording it as inherited would have this
+    // turn claim a provenance it never used.
+    if (prev && kind !== "empty") inherited.push("scope");
   }
 
+  const asked = detectIntents(question);
   return {
     query: {
       intent,
@@ -113,10 +160,12 @@ export function resolveTurn(
       // never inherited: "across cities" then "what about pay?" is a question
       // about pay in the current scope, not a per-city pay breakdown nobody
       // asked for.
-      wantsAreas: wantsAreas(question),
+      wantsAreas: splitsByArea,
     },
     inherited,
     isNewQuestion,
+    kind,
+    alsoAsked: asked.find((i) => i !== intent) ?? null,
   };
 }
 
@@ -147,8 +196,46 @@ export function followUpsFor(
   current: AnalystQuery,
   alternatives: ResolvedScope[],
   localCity?: string,
+  /**
+   * A second intent the sentence asked for. Offered FIRST when present, because
+   * it is the half of their own question that has not been answered yet — every
+   * other chip here is a suggestion, and that one is a debt.
+   */
+  alsoAsked?: DataIntent | null,
 ): FollowUp[] {
   const out: FollowUp[] = [];
+
+  /**
+   * Ask the same subject a different way. These are what makes the pane feel
+   * like a conversation rather than a search box — the scope chips move the
+   * question sideways, and these move it to the next thing you would want to
+   * know about the place you are already looking at.
+   *
+   * Round-tripped through detectIntent exactly as the scope chips are round-
+   * tripped through detectScope: a chip that says "Pay" and routes to volume is
+   * the same bug as a chip that says "Australia" and lands on the region.
+   */
+  const intents: DataIntent[] = [];
+  if (alsoAsked && alsoAsked !== current.intent) intents.push(alsoAsked);
+  // A short ladder rather than all four: the interesting next question after a
+  // count is what they pay, after pay which skills, and so on. Offering every
+  // intent every time turns the row into a menu and buries the scope pivots.
+  const NEXT: Record<AnalystIntent, DataIntent[]> = {
+    volume: ["pay", "skills"],
+    skills: ["pay", "duration"],
+    pay: ["skills", "volume"],
+    duration: ["skills", "pay"],
+    history: ["volume", "skills"],
+    unknown: [],
+  };
+  for (const i of NEXT[current.intent] ?? []) {
+    if (i !== current.intent && !intents.includes(i)) intents.push(i);
+  }
+  for (const i of intents.slice(0, 2)) {
+    const question = INTENT_QUESTION[i];
+    if (detectIntent(question) !== i) continue;
+    out.push({ label: INTENT_LABEL[i], question });
+  }
 
   for (const alt of alternatives) {
     if (alt.kind === current.scope.kind && alt.id === current.scope.id) continue;
@@ -167,7 +254,7 @@ export function followUpsFor(
     });
   }
 
-  return out.slice(0, 4);
+  return out.slice(0, 5);
 }
 
 /**

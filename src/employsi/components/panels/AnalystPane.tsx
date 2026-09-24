@@ -14,6 +14,8 @@ import {
   scopeForRegion,
   WORLD_SCOPE,
 } from "../../lib/analystScope";
+import { chatReply, detectChat } from "../../lib/analystChat";
+import { INTENT_LABEL, type DataIntent } from "../../lib/analystIntent";
 import { describeQuery, followUpsFor, resolveTurn, type AnalystQuery } from "../../lib/analystTurn";
 import { ALL_SECTORS, companyIdsForSector, sectorsInScope } from "../../lib/analystSector";
 import { IconClose } from "../ActionIcons";
@@ -59,6 +61,13 @@ interface Msg {
   answer?: AnalystAnswer;
   /** "Nursing · Sydney" — set only when this turn inherited something. */
   context?: string;
+  /**
+   * A line about the CONVERSATION rather than the data — currently only "you
+   * also asked about pay". Kept out of `text` so the answer's own sentence
+   * stays purely what the rows said, which is what the export and the chart
+   * title read.
+   */
+  note?: string;
 }
 
 const OPENER =
@@ -145,6 +154,12 @@ export function AnalystPane() {
    * read on its own — the behaviour before follow-ups existed.
    */
   const [carried, setCarried] = useState<AnalystQuery | null>(null);
+  /**
+   * The half of a two-part question that this answer did not cover, so the chip
+   * row can offer it. Cleared on every turn — it belongs to one sentence, and a
+   * stale one would offer a debt that has already been paid.
+   */
+  const [alsoAsked, setAlsoAsked] = useState<DataIntent | null>(null);
 
   // A scope reached by asking still needs a chip, or the row would show one
   // place highlighted while the answer came from another.
@@ -159,6 +174,7 @@ export function AnalystPane() {
   useEffect(() => {
     setActiveScope(null);
     setCarried(null);
+    setAlsoAsked(null);
   }, [selectedId, localCity, domesticRegion]);
 
   // Sector narrowing, within whatever scope is selected. Only sectors that
@@ -229,13 +245,14 @@ export function AnalystPane() {
    * question has been asked — there is nothing to follow up on before that.
    */
   const followUps = useMemo(
-    () => (carried ? followUpsFor(carried, chips, localCity) : []),
-    [carried, chips, localCity],
+    () => (carried ? followUpsFor(carried, chips, localCity, alsoAsked) : []),
+    [carried, chips, localCity, alsoAsked],
   );
 
   const startOver = () => {
     setThread([{ id: nextId.current++, role: "analyst", text: OPENER }]);
     setCarried(null);
+    setAlsoAsked(null);
     setActiveScope(null);
     setOpenTopic(null);
   };
@@ -245,15 +262,65 @@ export function AnalystPane() {
     if (!question || thinking) return;
     setThread((t) => [...t, { id: nextId.current++, role: "user", text: question }]);
     setDraft("");
-    setThinking(true);
+
+    /**
+     * Conversation before questions.
+     *
+     * "hi", "thanks", "why?" are turns in the thread, not queries, and they are
+     * answered from what is already on screen without touching the archive or
+     * the carried analysis. Held out here rather than inside resolveTurn
+     * because they must not participate in the follow-up mechanism at all —
+     * see the header of analystChat.ts for what happened when they did.
+     */
+    const chat = detectChat(question);
+    if (chat) {
+      const lastAnswer = [...thread].reverse().find((m) => m.answer)?.answer;
+      setThread((t) => [
+        ...t,
+        {
+          id: nextId.current++,
+          role: "analyst",
+          text: chatReply(chat, { answer: lastAnswer, intent: carried?.intent }),
+        },
+      ]);
+      return;
+    }
+
     // Merge this sentence with the conversation BEFORE querying: a follow-up
     // carries no intent of its own, so asking the archive about the raw text
     // would answer the fallback instead of the question being followed up on.
+    // Resolved before the thinking state is set, because a turn that resolves
+    // to nothing never queries and should not flash a spinner.
     const turn = resolveTurn(question, carried, scope, localCity);
+
+    /**
+     * A sentence that named nothing and asked nothing is not a follow-up.
+     *
+     * Before this, it inherited the whole previous query and re-ran it, so
+     * "tell me more" or "which of those is biggest?" produced a full answer —
+     * real figures, right sources, about a question the user had already had
+     * answered. Saying what was not understood costs a turn; answering the
+     * wrong question costs trust in every other number on the screen.
+     */
+    if (turn.kind === "empty") {
+      setThread((t) => [
+        ...t,
+        {
+          id: nextId.current++,
+          role: "analyst",
+          text: carried
+            ? "I didn't catch a question in that. I can move what we're looking at — name a place, a company or a skill — or ask something new: how hiring is trending, what the ads pay, which skills are most in demand, or how long they stay up."
+            : "I didn't catch a question in that. Ask me how many roles are open somewhere, which way demand is moving, what the ads disclose about pay, or which skills employers are asking for.",
+        },
+      ]);
+      return;
+    }
+    setThinking(true);
     // A question that named a place moves the chip too. Leaving the chip behind
     // would show one place while the numbers came from another.
     if (!sameScope(turn.query.scope, scope)) setActiveScope(turn.query.scope);
     setCarried(turn.query);
+    setAlsoAsked(turn.alsoAsked);
     try {
       const answer = await answerQuestion(
         question,
@@ -282,6 +349,12 @@ export function AnalystPane() {
           // scope is noise, but an answer that quietly changed subject has to
           // say what it is about. See TurnResult.inherited.
           context: turn.inherited.length ? describeQuery(turn.query) : undefined,
+          // A two-part question gets one answer, so the answer says which part
+          // it is. Without this the other half is silently dropped, which is
+          // how it behaved until 2026-09-24.
+          note: turn.alsoAsked
+            ? `You also asked about ${INTENT_LABEL[turn.alsoAsked].toLowerCase()} — that's a different measurement, so it's a separate answer. The chip below asks it.`
+            : undefined,
         },
       ]);
     } catch {
@@ -388,6 +461,7 @@ export function AnalystPane() {
                       principle is there to prevent. */}
                   {m.context && <span className="ancontext">{m.context}</span>}
                   <span className="antext">{m.text}</span>
+                  {m.note && <span className="annote">{m.note}</span>}
 
                   {/* The chart sits directly under the sentence that states the
                       finding and above the figures, which is the design's own

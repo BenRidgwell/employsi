@@ -669,6 +669,20 @@ body {
   font-size: 14px;
   line-height: 1.5;
   letter-spacing: -0.004em;
+  /* "why?" answers in two paragraphs — the method, then the window and row
+     count that answer was measured over. Every data answer is a single
+     paragraph and is unaffected. */
+  white-space: pre-line;
+}
+/* A line about the conversation rather than the data: "you also asked about
+   pay". Set back from the answer so it cannot be mistaken for part of the
+   finding, which is why it is a separate field on the message rather than
+   appended to the text. */
+.annote {
+  margin-top: -2px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-tertiary);
 }
 @keyframes anrise {
   from {

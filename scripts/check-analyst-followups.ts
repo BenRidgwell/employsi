@@ -27,7 +27,15 @@ import {
   resolveTurn,
   type AnalystQuery,
 } from "../src/employsi/lib/analystTurn";
-import { detectSkillMatch } from "../src/employsi/lib/analystIntent";
+import {
+  detectIntent,
+  detectSkillMatch,
+  INTENT_LABEL,
+  INTENT_QUESTION,
+  PROMPT_TOPICS,
+  SUGGESTED_PROMPTS,
+} from "../src/employsi/lib/analystIntent";
+import { detectChat } from "../src/employsi/lib/analystChat";
 import { answerQuestion } from "../src/employsi/lib/analystAnswer";
 
 let failures = 0;
@@ -226,10 +234,29 @@ console.log("\nsuggested follow-ups resolve to what they claim:");
   const base = resolveTurn("Which skills are most in demand?", null, alternatives[0], "perth");
   const ups = followUpsFor(base.query, alternatives, "perth");
   if (!ups.length) fail("no follow-ups offered at all");
+  // Three kinds of chip now share this row and they make different promises, so
+  // each is checked against its own. An intent chip is the one that had to be
+  // added here rather than waved through: it must NOT move the scope, or "Pay"
+  // would quietly answer about somewhere else while reading like a filter.
+  const INTENT_LABELS = new Set(Object.values(INTENT_LABEL));
   for (const f of ups) {
     // Ask the chip's own question and check it lands where the chip said.
     const turn = resolveTurn(f.question, base.query, alternatives[0], "perth");
-    if (turn.query.scope.label !== f.label && f.label !== "Across cities") {
+    if (INTENT_LABELS.has(f.label)) {
+      const want = Object.entries(INTENT_LABEL).find(([, l]) => l === f.label)?.[0];
+      if (turn.query.intent !== want) {
+        fail(
+          `chip ${JSON.stringify(f.label)} asks ${JSON.stringify(f.question)} -> intent ${turn.query.intent}, expected ${want}`,
+        );
+      } else if (turn.query.scope.label !== base.query.scope.label) {
+        fail(`chip ${JSON.stringify(f.label)} moved the scope to ${turn.query.scope.label}`);
+      } else
+        console.log(
+          `  ok    ${f.label.padEnd(14)} -> intent ${turn.query.intent}, still ${turn.query.scope.label}`,
+        );
+    } else if (f.label === "Across cities") {
+      console.log(`  ok    ${f.label.padEnd(14)} -> area split`);
+    } else if (turn.query.scope.label !== f.label) {
       fail(
         `chip ${JSON.stringify(f.label)} asks ${JSON.stringify(f.question)} -> ${turn.query.scope.label}`,
       );
@@ -400,6 +427,144 @@ console.log("\nthe area split is offered only when there is a subject to split:"
     console.log("  ok    both skill rankings drop a speciality whose parent is listed");
     console.log("  ok    ...and label any speciality that survives");
   }
+}
+
+// ── 9. The chat layer must not eat real questions ───────────────────────────
+// detectChat runs BEFORE the router, so anything it claims never reaches the
+// archive at all. That makes a false positive silent and total: the question
+// is not answered wrongly, it is not answered. Every question the product
+// itself offers is asserted to fall through.
+console.log("\nthe chat layer leaves real questions alone:");
+{
+  const before = failures;
+  const REAL = [
+    ...SUGGESTED_PROMPTS,
+    ...PROMPT_TOPICS.flatMap((t) => t.questions),
+    ...Object.values(INTENT_QUESTION),
+    // The shapes most likely to collide with the anchored patterns: short, and
+    // carrying a chat word inside a real word ("hi" in "hiring", "ta" in
+    // "data", "source" as a question about one).
+    "hiring?",
+    "what is hiring like",
+    "data?",
+    "pay",
+    "skills",
+    "nursing",
+    "what about Sydney?",
+    "and pay?",
+  ];
+  for (const q of REAL) {
+    const got = detectChat(q);
+    if (got) fail(`detectChat swallowed ${JSON.stringify(q)} as ${got}`);
+  }
+  if (failures === before)
+    console.log(`  ok    ${REAL.length} real questions fall through to the router`);
+}
+
+console.log("\nconversation is recognised as conversation:");
+{
+  const before = failures;
+  const CHAT: [string, string][] = [
+    ["hi", "greeting"],
+    ["Hello", "greeting"],
+    ["good morning", "greeting"],
+    ["thanks", "thanks"],
+    ["thank you", "thanks"],
+    ["ok", "thanks"],
+    ["what can you do?", "capabilities"],
+    ["who are you", "capabilities"],
+    ["help", "capabilities"],
+    ["why?", "method"],
+    ["how do you know that?", "method"],
+    ["where does that come from?", "method"],
+    ["tell me more", "method"],
+    ["is that good?", "method"],
+  ];
+  for (const [q, want] of CHAT) {
+    const got = detectChat(q);
+    if (got !== want)
+      fail(`detectChat(${JSON.stringify(q)}) -> ${got ?? "null"}, expected ${want}`);
+  }
+  if (failures === before)
+    console.log(`  ok    ${CHAT.length} conversational turns held out of the router`);
+}
+
+// ── 10. A sentence that names nothing must NOT re-answer ────────────────────
+// THE BUG THIS EXISTS FOR, measured 2026-09-24: "no intent means follow-up"
+// made every unrecognised sentence inherit the whole previous query and re-run
+// it. Real figures, right sources, answering a question nobody asked again.
+console.log("\nunrecognised sentences do not re-run the last query:");
+{
+  const before = failures;
+  const first = resolveTurn("How is hiring trending?", null, PERTH, "perth");
+  const EMPTY = [
+    "tell me more",
+    "which of those is biggest?",
+    "show me that as a chart",
+    "hmm",
+    "the mining sector",
+  ];
+  for (const q of EMPTY) {
+    const turn = resolveTurn(q, first.query, PERTH, "perth");
+    if (turn.kind !== "empty") {
+      fail(`${JSON.stringify(q)} -> kind ${turn.kind} (${turn.query.intent}), expected empty`);
+    }
+    if (turn.inherited.length) {
+      fail(
+        `${JSON.stringify(q)} inherited ${turn.inherited.join(",")} — an empty turn inherits nothing`,
+      );
+    }
+  }
+  // ...while a sentence that names something is still a pivot.
+  for (const q of ["and Sydney?", "and for Nursing?", "across cities"]) {
+    const turn = resolveTurn(q, first.query, PERTH, "perth");
+    if (turn.kind !== "pivot") fail(`${JSON.stringify(q)} -> kind ${turn.kind}, expected pivot`);
+  }
+  if (failures === before)
+    console.log("  ok    empty turns inherit nothing; naming a dimension still pivots");
+}
+
+// ── 11. Intent chips route to the intent they advertise ─────────────────────
+// Same standard as the scope chips in section 8: a chip reading "Pay" that
+// routes to volume produces a real answer to a question nobody asked.
+console.log("\nintent follow-ups route to their own intent:");
+{
+  const before = failures;
+  for (const [intent, question] of Object.entries(INTENT_QUESTION)) {
+    const got = detectIntent(question);
+    if (got !== intent) fail(`${JSON.stringify(question)} -> ${got}, filed under ${intent}`);
+    if (detectScope(question, "perth"))
+      fail(
+        `${JSON.stringify(question)} names a place; a chip must inherit the scope it is asked in`,
+      );
+    if (detectSkillMatch(question))
+      fail(`${JSON.stringify(question)} names a skill; a chip must not narrow the analysis`);
+    if (!INTENT_LABEL[intent as keyof typeof INTENT_LABEL]) fail(`${intent} has no chip label`);
+  }
+  if (failures === before)
+    console.log(
+      `  ok    ${Object.keys(INTENT_QUESTION).length} intent chips round-trip, name no place and no skill`,
+    );
+}
+
+// ── 12. A two-part question answers one half and offers the other ───────────
+console.log("\ntwo-part questions offer the half they did not answer:");
+{
+  const before = failures;
+  const turn = resolveTurn("How is nursing trending and what does it pay?", null, PERTH, "perth");
+  if (!turn.alsoAsked) fail("a two-part question reported no second intent");
+  if (turn.alsoAsked === turn.query.intent) fail("the second intent repeats the answered one");
+  const chips = followUpsFor(turn.query, [], "perth", turn.alsoAsked);
+  if (!chips.some((c) => turn.alsoAsked && c.question === INTENT_QUESTION[turn.alsoAsked])) {
+    fail(
+      `the unanswered half was not offered: ${chips.map((c) => c.label).join(", ") || "no chips"}`,
+    );
+  }
+  // A single-intent question must not invent a second one.
+  const single = resolveTurn("Which skills are most in demand?", null, PERTH, "perth");
+  if (single.alsoAsked) fail(`a single question reported alsoAsked=${single.alsoAsked}`);
+  if (failures === before)
+    console.log("  ok    the unanswered half is offered, and single questions report none");
 }
 
 console.log(failures ? `\n${failures} failure(s).` : "\nAll analyst follow-up checks passed.");

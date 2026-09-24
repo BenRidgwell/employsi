@@ -257,6 +257,73 @@ export const PROMPT_TOPICS: { label: string; questions: string[] }[] = [
  * questions this router is known to answer — it is what new topic entries are
  * checked against, and it has no UI reading it.
  */
+/**
+ * One canonical question per intent, for offering an intent as a follow-up.
+ *
+ * Worded so detectIntent classifies each back to the intent it is filed under —
+ * asserted in scripts/check-analyst-followups.ts, because a chip labelled "And
+ * pay?" that routes to volume is the same class of bug as a scope chip that
+ * lands somewhere else: a real answer to a question the user did not ask.
+ *
+ * None of them names a skill or a place. A follow-up inherits the scope it is
+ * asked in, and a question carrying its own intent deliberately starts fresh on
+ * skill (see resolveTurn), so a chip that named one would narrow the analysis
+ * without the user choosing to.
+ */
+/** Every intent that names a real measurement — i.e. all of them but "unknown". */
+export type DataIntent = Exclude<AnalystIntent, "unknown">;
+
+export const INTENT_QUESTION: Record<DataIntent, string> = {
+  volume: "How is hiring trending?",
+  skills: "Which skills are most in demand?",
+  pay: "What do these roles pay?",
+  duration: "Which skills take longest to fill?",
+  history: "How has demand changed since 2019?",
+};
+
+/** What the chip reads for each — shorter than the question it asks. */
+export const INTENT_LABEL: Record<DataIntent, string> = {
+  volume: "Hiring trend",
+  skills: "Top skills",
+  pay: "Pay",
+  duration: "Time to fill",
+  history: "Since 2019",
+};
+
+/**
+ * Every intent a sentence asks for, in order, for the multi-part case.
+ *
+ * "How is nursing trending and what does it pay?" classified to `pay` alone and
+ * answered only that, dropping the trend half with no mention — measured
+ * 2026-09-24. The archive can answer both, but not in one shape: the two are
+ * different queries with different windows and different source lines, and
+ * welding them into one answer would produce a paragraph whose halves are
+ * measured differently. So the sentence is answered as detectIntent reads it
+ * whole — which is the tuned verdict, and not always the first clause — and the
+ * other intent is OFFERED. That keeps one answer to one method while making it
+ * obvious the rest of the sentence was heard.
+ *
+ * The split is on the conjunctions people actually write between two questions.
+ * A clause with no intent of its own contributes nothing, so "nursing and
+ * midwifery demand" stays a single volume question rather than becoming two.
+ */
+export function detectIntents(question: string): DataIntent[] {
+  const parts = question.split(/\s+and\s+|\s*[,;]\s*|\s+&\s+/i).filter((p) => p.trim());
+  const out: DataIntent[] = [];
+  for (const p of parts) {
+    const i = detectIntent(p);
+    if (i !== "unknown" && !out.includes(i)) out.push(i);
+  }
+  // A single clause can still be read two ways by the rules; the whole sentence
+  // is what detectIntent is tuned on, so its verdict leads.
+  const whole = detectIntent(question);
+  if (whole !== "unknown") {
+    const rest = out.filter((i) => i !== whole);
+    return [whole, ...rest];
+  }
+  return out;
+}
+
 export const SUGGESTED_PROMPTS = [
   "How is hiring trending?",
   "What do these roles pay?",
