@@ -53,7 +53,7 @@ on:
       - 'scripts/gen-gov-workforce.py'
       - 'scripts/gov-source-probe.py'
       - 'scripts/sa-workforce-probe.py'
-      - '.github/workflows/qld-workforce.yml'
+      - '.github/workflows/gov-workforce.yml'
 
 concurrency:
   group: gov-workforce
