@@ -462,7 +462,6 @@ const ARCHIVE_SOURCE_LABEL: Record<string, string> = {
   "tas-gov": "TAS Government",
   "nsw-gov": "NSW Government",
   "nz-gov": "NZ Government",
-  ziprecruiter: "ZipRecruiter",
 };
 
 // One issuer, two roster lines. HSBC Holdings plc is listed on both the LSE and

@@ -30,8 +30,6 @@ on:
       - 'scripts/test_rosters.py'
       - 'scripts/company_alias.py'
       - 'scripts/test_company_alias.py'
-      - 'scripts/test_ziprecruiter.py'
-      - 'scripts/ziprecruiter-requirements.txt'
       # A reformat of these data files is what silently emptied the SEEK and
       # Zhaopin rosters, so a change to either has to re-run the parsers.
       - 'src/employsi/data/seekAdvertisers.ts'
@@ -48,8 +46,6 @@ on:
       - 'scripts/oxylabs_client.py'
       - 'scripts/http_fetch.py'
       - 'scripts/*-to-d1.py'
-      - 'scripts/test_ziprecruiter.py'
-      - 'scripts/ziprecruiter-requirements.txt'
       - 'src/employsi/data/seekAdvertisers.ts'
       - 'src/employsi/data/chinaJobsTargets.ts'
       - 'src/employsi/data/canberraGov.ts'
@@ -111,13 +107,6 @@ jobs:
       # exists.
       - name: Employer attribution gate holds its measured pairs
         run: python scripts/test_company_alias.py
-
-      # Pinned JobSpy, because this test drives its internals — see the
-      # requirements file. The feed tests above need no package; this one does.
-      - name: ZipRecruiter attribution, hub gate and JobSpy contract
-        run: |
-          pip install -q -r scripts/ziprecruiter-requirements.txt
-          python scripts/test_ziprecruiter.py
 
       # A company added to the roster appears on the map immediately, whether or
       # not any job board is searched for it — so without this, a new employer

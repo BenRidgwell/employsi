@@ -1711,86 +1711,16 @@ tenant exists and has no live board. Left without a feed rather than guessed at.
 
 ---
 
-# ZipRecruiter — US and Canada (`scripts/ziprecruiter-to-d1.py`), added 2026-09-24
+# ZipRecruiter — tried 2026-09-24, not built
 
-The first feed aimed at the **North American** end of the roster: the 246
-companies plotted on a US or Canadian hub. ZipRecruiter only serves those two
-countries, so every row it writes is a US or Canadian vacancy. Walked once per
-employer across the full roster (`roster.ts --with-cities`, 1,036 employers),
-through **JobSpy** — the package that recovered Indeed — which calls
-api.ziprecruiter.com, the iOS app's API, rather than parsing search HTML.
-[`ziprecruiter-archive.yml`](../../.github/workflows/ziprecruiter-archive.yml),
-`source = ziprecruiter`. **DISPATCH-ONLY — it has never archived a row**; see
-below.
-
-**Why not in the Worker, and why not even from a plain runner.** Unlike
-Indeed's app API, ZipRecruiter's refuses a datacentre address on every host.
-Measured 2026-09-24 from the sandbox (IAD egress), python-jobspy 1.1.82:
-
-| request | client | answer |
-|---|---|---|
-| `api…/jobs-app/jobs` | JobSpy's TLS client | 403 `forbidden aa` |
-| `api…/jobs-app/jobs` | plain requests | 403 `forbidden cf-waf` |
-| `www…/jobs-search` | plain requests | 403, Cloudflare "Just a moment…" |
-
-So it was pointed at `SCRAPE_PROXY` with a US exit — **and that is refused
-too.** Measured from a GitHub runner the same day (run 35967097119, dry):
-
-| address | result |
-|---|---|
-| the runner's own, no proxy | 5 of 5 refused, 403 `forbidden cf-waf` |
-| IPRoyal residential, US exit | 15 of 15 refused, 403 `forbidden aa` |
-
-The code changes with the address and the refusal does not, so what is refused
-is plausibly the request — JobSpy's hardcoded iOS-app identity — not only the
-address; not established. Upstream has the same report open with no fix
-(speedyapply/JobSpy#302, since 2025-09-06). The schedule is off; the workflow
-header says how to re-test and what to read off a run that gets through.
-
-**A browser through the same exit does not get in either** — three rounds of
-[`scripts/probe-ziprecruiter.py`](../../scripts/probe-ziprecruiter.py) the same
-day, all on confirmed residential addresses. The home page loads (200), but every
-listing path — `/jobs-search`, `/browse`, `/Jobs/<name>`, `/co/<name>/Jobs` —
-answers 403 with a Cloudflare **managed** challenge that did not clear in 30s for
-stock headless Chromium, real Chrome with the stealth patches, or that same
-Chrome **headful** under Xvfb. The site's own web API
-(`/api/web.job_search.proto.v1.API/…`) serves the home page's location
-autocomplete, but every search-shaped method tried came back as the same
-challenge. SimplyHired's recipe — clear the challenge once, then read — has no
-page to clear it on here. What is left untried is a challenge-solving service,
-not another browser configuration.
-
-**Three JobSpy behaviours are overridden**, which is why the version is pinned
-(`scripts/ziprecruiter-requirements.txt`) and `scripts/test_ziprecruiter.py`
-drives its internals with a fixture in `scraper-check`:
-
-- it fetches every job's HTML page for a description the archive never stores —
-  20 extra requests per result page against the challenged host. Disabled.
-- it pages to `results_wanted` whatever the pages hold. The walk here stops at
-  the first page that adds nothing past the gate.
-- it turns a 403 or 429 into an empty page. The session's GET is wrapped so a
-  refusal is counted as a failure, never as an employer with no ads.
-
-**Two attribution gates.** North American companies use
-`company_alias.company_matches` (Indeed's rule). Everyone else is held to the
-exact roster name, and a single-word one is never filed at all: on a US board
-the short form of an Australian brand is usually somebody else — `Redox` is a
-Madison health-tech firm, `SGH` is Simpson Gumpertz & Heger. Rows only the loose
-rule would accept are reported at the end of the run for confirmation into
-`CONFIRMED_NA`, which ships empty because nothing in it has been observed yet.
-An employer on two rosters (Chevron: `chevron` on Perth, `houston-cvx` on
-Houston) is filed under its North American line.
-
-**Hubs are gated on state.** `hubFor` matches place names and North America
-reuses ours — Perth ON, Sydney NS, Melbourne FL and London ON all resolve to
-the Australian or British hub, and Vancouver WA and Bellevue WA to **perth**
-through the `" wa,"` needle. A hub is kept only when it is a US/Canadian hub and
-the row's state is that hub's; anything else archives with a null hub.
-
-**Salaries carry their currency.** ZipRecruiter spans two currencies, so it is
-not in `salaryParse.ts`'s `COUNTRY_BY_SOURCE`; the string is written as
-`USD 85,000 - 110,000 per year` for `MARKERS` to read, the currency inferred
-from the ad's country only when the API omits it.
+Measured from a GitHub runner, and nothing got in, so no feed exists. JobSpy's
+app API: 403 from the runner (`forbidden cf-waf`) and through the IPRoyal US
+residential exit (`forbidden aa`), matching the open speedyapply/JobSpy#302. The
+website through the same exit: the home page loads, but every listing path, and
+every search method tried on its web API, holds on a Cloudflare managed
+challenge, headful real Chrome included. What was left untried is a
+challenge-solving service. The code was removed; the history is on branch
+`claude/zealous-planck-7f1fge`.
 
 ---
 
