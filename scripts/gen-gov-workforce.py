@@ -219,9 +219,62 @@ def fetch(url, binary=False, via_browser=False, warm=None, expect=None):
         page = ctx.new_page()
         page.goto(warm, wait_until='domcontentloaded', timeout=90_000)
         page.wait_for_timeout(2500)   # a challenge runs after load
+        # A CLOUDFLARE CHALLENGE NEEDS FAR LONGER THAN 2.5 SECONDS. Queensland's
+        # AWS WAF hands over almost at once, so this wait was sized for it and
+        # was never tested against a slower doorman. ocpe.nt.gov.au and
+        # dpac.tas.gov.au take up to thirty, and warming that returns early
+        # collects no cookie at all — which looks exactly like a host that
+        # refuses browsers.
+        w = 0
+        while 'Just a moment' in page.content() and w < 30_000:
+            page.wait_for_timeout(3000)
+            w += 3000
+        if w:
+            print(f'  (cleared a challenge on {warm[:50]} in {w // 1000}s)', file=sys.stderr)
         page.close()
     r = ctx.request.get(url, timeout=120_000)
     b = r.body()
+
+    # A CHALLENGED RESPONSE MEANS THE WRONG CHANNEL, NOT A CLOSED DOOR.
+    # ctx.request shares the cookie jar but not the browser's TLS and header
+    # fingerprint, so Cloudflare re-challenges it inside a context that has
+    # just cleared — 6 KB of "Just a moment" where a PDF was expected. A real
+    # navigation carries the fingerprint the clearance was issued for. The
+    # request path stays first because it is cheaper and is what Queensland
+    # has always used; this is the fallback.
+    if r.status != 200 or b[:200].find(b'Just a moment') >= 0:
+        page = ctx.new_page()
+        try:
+            if binary:
+                # Chromium DOWNLOADS a PDF rather than rendering it, and the
+                # navigation aborts as it starts. That reads as a failure and
+                # is a success into a file.
+                with page.expect_download(timeout=120_000) as dl:
+                    try:
+                        page.goto(url, wait_until='domcontentloaded', timeout=20_000)
+                    except Exception:                             # noqa: BLE001
+                        pass
+                path = dl.value.path()
+                if path:
+                    b = open(path, 'rb').read()
+                    print(f'  (downloaded {len(b):,} bytes through a navigation)', file=sys.stderr)
+                    return b
+            else:
+                resp = page.goto(url, wait_until='domcontentloaded', timeout=120_000)
+                w = 0
+                while 'Just a moment' in page.content() and w < 30_000:
+                    page.wait_for_timeout(3000)
+                    w += 3000
+                html = page.content()
+                if 'Just a moment' not in html:
+                    print(f'  (navigated instead of requested: {len(html):,} bytes)',
+                          file=sys.stderr)
+                    return html
+                b = resp.body() if resp else b
+        except Exception as e:                                    # noqa: BLE001
+            print(f'  (navigation fallback failed: {type(e).__name__})', file=sys.stderr)
+        finally:
+            page.close()
     # Say what came back. A browser retry that still fails is otherwise an
     # empty result several frames away from its cause — Victoria returned zero
     # rows with no error at all, and the log said only "nothing loaded".
@@ -828,6 +881,7 @@ def load_nt():
 
 # ── Tasmania ────────────────────────────────────────────────────────────────
 TAS_SEARCH = 'https://www.dpac.tas.gov.au/search?query=workforce+report'
+TAS_SITEMAP = 'https://www.dpac.tas.gov.au/sitemap.xml'
 TAS_WARM = 'https://www.dpac.tas.gov.au/'
 
 
@@ -852,17 +906,38 @@ def load_tas():
     import io as _io
     import pdfplumber
 
-    page = fetch(TAS_SEARCH, via_browser=True, warm=TAS_WARM)
-    found = re.findall(r'href="([^"]*State-Service-Workforce-Report[^"]*\.pdf)"', page, re.I)
-    found = [u if u.startswith('http') else 'https://www.dpac.tas.gov.au' + u for u in found]
+    # THE SITEMAP, NOT THE SEARCH PAGE. The search returned four reports and
+    # only one of them was a June edition, so no year-on-year could be built
+    # from it — not because Tasmania publishes one, but because a search page
+    # shows what it feels like showing. The sitemap is the site's own list and
+    # carries every edition it still serves.
+    found = []
+    for src, kind in ((TAS_SITEMAP, 'sitemap'), (TAS_SEARCH, 'search')):
+        page = fetch(src, via_browser=True, warm=TAS_WARM)
+        hits = re.findall(r'(?:href="|<loc>\s*)([^"<\s]*State-Service-Workforce-Report[^"<\s]*\.pdf)',
+                          page, re.I)
+        found += [u if u.startswith('http') else 'https://www.dpac.tas.gov.au' + u for u in hits]
+        if len(found) >= 4:
+            break
     editions = {}
     for u in dict.fromkeys(found):
         m = re.search(r'Number-(\d+)-(\d{4})', u, re.I)
         if m:
             editions[(int(m.group(2)), int(m.group(1)))] = u
-    june = sorted((k for k in editions if k[1] == 2), reverse=True)
-    if len(june) < 2:
-        raise RuntimeError(f'TAS: need two June editions (No. 2), found {sorted(editions)}')
+
+    # PAIR LIKE WITH LIKE. No. 1 is the December half and No. 2 the June half,
+    # so a pair must share a report number and be one year apart. Comparing a
+    # December edition with a June one is six months wearing a year's label,
+    # which is the whole reason `span` exists.
+    pair = None
+    for (yr, no) in sorted(editions, reverse=True):
+        if (yr - 1, no) in editions:
+            pair = ((yr, no), (yr - 1, no))
+            break
+    if not pair:
+        raise RuntimeError(f'TAS: no two editions of the same number a year apart, '
+                           f'found {sorted(editions)}')
+    june = [pair[0], pair[1]]
 
     def agencies(url):
         blob = fetch(url, binary=True, via_browser=True, warm=TAS_WARM)
@@ -898,7 +973,8 @@ def load_tas():
                            f'({june[0]} vs {june[1]})')
     rows = {k: (v, prev_rows[k]) for k, v in now_rows.items()
             if prev_rows.get(k, 0) > 0}
-    return rows, f'Jun {june[0][0]}', 'headcount'
+    month = 'Jun' if june[0][1] == 2 else 'Dec'
+    return rows, f'{month} {june[0][0]}', 'headcount'
 
 
 
