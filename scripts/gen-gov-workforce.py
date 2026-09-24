@@ -462,6 +462,89 @@ def load_sa():
     return out, f'Jun {year}', 'headcount'
 
 
+# ── New South Wales ─────────────────────────────────────────────────────────
+def load_nsw():
+    """NSW Health annual report appendix — staffing by health organisation.
+
+    NEW SOUTH WALES PUBLISHES NO PER-AGENCY WORKFORCE PROFILE ANY MORE. The
+    Public Service Commission's workforce-profile page carries no data even
+    rendered in a browser (its links are drawn by JavaScript, so a plain fetch
+    sees an empty shell and reports a false negative); its reports page carries
+    only annual reports. data.nsw.gov.au holds the PSC's gender and diversity
+    extract for 2006-2015 and nothing else per agency.
+
+    What IS published is the health side, which is where the value was anyway:
+    13 Local Health Districts carry 1,667 of New South Wales' 2,561 live ads.
+    The NSW Health annual report's appendix gives each organisation a table —
+
+        Hunter New England Local Health District
+        Treasury group June 2022 June 2023 June 2024 June 2025
+        Medical 1,662 1,710 1,803 1,896
+        ...
+        Total 12,884 13,407 13,752 14,117
+
+    — four consecutive Junes, so the last two are a year apart.
+
+    IT IS FTE, NOT HEADCOUNT, and the data says so rather than the document:
+    small organisations report "Medical 0.6 0.6 0.6 0.6" and "Nursing 1.0 0.3
+    1.0 1.0". You cannot have 0.6 of a person. Marked `fte` accordingly, so
+    these tiles read "Workforce FTE" like Queensland's and are never added to
+    or compared with a head count.
+
+    The FIRST pages a search finds are activity statistics — admitted
+    episodes, occupancy, emergency presentations — which name the same
+    districts and carry bigger numbers. Those are not staffing, and taking
+    them for it would put a district's patient count on its card.
+    """
+    import pdfplumber
+
+    year = __import__('datetime').date.today().year
+    raw = None
+    for y in (year, year - 1):
+        url = f'https://www.health.nsw.gov.au/annualreport/Publications/{y}/appendix.pdf'
+        try:
+            b = fetch(url, binary=True)
+        except Exception:                                         # noqa: BLE001
+            continue
+        if b[:4] == b'%PDF':
+            raw = b
+            break
+    if raw is None:
+        print('  New South Wales: no appendix PDF', file=sys.stderr)
+        return {}, None, 'headcount'
+
+    HEADER = re.compile(r'^Treasury group((?:\s+\w+\s+20\d\d)+)\s*$')
+    TOTAL = re.compile(r'^Total\s+((?:[\d,.]+\s+){2,})?([\d,.]+)\s+([\d,.]+)\s*$')
+    out, asof = {}, None
+    with pdfplumber.open(io.BytesIO(raw)) as pdf:
+        pending = None            # the heading seen just before a Treasury row
+        prev_line = ''
+        for page in pdf.pages:
+            for line in (page.extract_text() or '').splitlines():
+                line = line.strip()
+                m = HEADER.match(line)
+                if m:
+                    years = re.findall(r'(\w+)\s+(20\d\d)', m.group(1))
+                    if len(years) >= 2 and prev_line and len(prev_line) > 8:
+                        pending = prev_line
+                        asof = f'{years[-1][0][:3]} {years[-1][1]}'
+                    prev_line = line
+                    continue
+                t = TOTAL.match(line)
+                if t and pending:
+                    try:
+                        now = float(t.group(3).replace(',', ''))
+                        prev = float(t.group(2).replace(',', ''))
+                    except ValueError:
+                        pending, prev_line = None, line
+                        continue
+                    if now > 0 and prev > 0:
+                        out.setdefault(pending, (round(now), round(prev)))
+                    pending = None
+                prev_line = line
+    return out, asof, 'fte'
+
+
 # key -> (label, loader, span in years). The loader returns (rows, asof, unit);
 # `unit` is "headcount" everywhere but Queensland, which publishes only FTE.
 SOURCES = {
@@ -473,6 +556,8 @@ SOURCES = {
     # PDF, so it needs pdfplumber. Reachable from a developer machine and from
     # the runner alike — the authoring sandbox's 403 is its own network.
     'sa': ('South Australia', load_sa, 1),
+    # PDF too, and FTE like Queensland — see the loader.
+    'nsw': ('New South Wales', load_nsw, 1),
 }
 
 

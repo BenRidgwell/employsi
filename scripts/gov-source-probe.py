@@ -33,27 +33,25 @@ UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
 # reports, NT's portal has no workforce data at all, and Tasmania has no
 # reachable open-data portal).
 TARGETS = [
-    # SOUTH AUSTRALIA. publicsector.sa.gov.au answers 200 to a plain request
-    # from a runner (measured 2026-09-24) and 403 to the authoring sandbox, so
-    # it is that network rather than the host. These are the two pages its nav
-    # points at for per-agency figures.
-    ('SA  Workforce Information',
-     'https://publicsector.sa.gov.au/about/Resources-and-Publications/Workforce-Information'),
-    ('SA  State of the Sector',
-     'https://publicsector.sa.gov.au/about/Resources-and-Publications/State-of-the-Sector'),
-
-    # NORTHERN TERRITORY. ocpe.nt.gov.au answers 403 to a plain request AND to
-    # a browser, so the doorman is not a bot check. These are the other places
-    # the State of the Service report is published.
-    ('NT  OCPE publications', 'https://ocpe.nt.gov.au/publications'),
-    ('NT  nt.gov.au search', 'https://nt.gov.au/search?q=state+of+the+service+report'),
-    ('NT  Treasury/DCM open data', 'https://data.nt.gov.au/dataset?q=public+sector'),
-
-    # TASMANIA. stateservice.tas.gov.au does not resolve — the domain is gone.
-    # dpac.tas.gov.au answers 403 to both. These are the survivors.
-    ('TAS DPAC root', 'https://www.dpac.tas.gov.au'),
-    ('TAS SSMO', 'https://www.dpac.tas.gov.au/divisions/state-service-management-office'),
-    ('TAS Treasury workforce', 'https://www.treasury.tas.gov.au/publications'),
+    # NEW SOUTH WALES. The largest jurisdiction still unwired — 78 agencies,
+    # 2,561 live ads — and 13 Local Health Districts carry 1,667 of them, so
+    # the health side is where its value is rather than the central workforce
+    # profile.
+    #
+    # Its pages answer 200 to a plain request and render nothing useful.
+    # psc.nsw.gov.au returns 200 for EVERY path tried, including invented
+    # ones: a single-page app serving a catch-all shell, whose links are drawn
+    # by JavaScript. A plain fetch sees an empty document and reports "no
+    # workforce data" for a page that has plenty, which is a false negative
+    # rather than an answer.
+    ('NSW PSC workforce profile',
+     'https://www.psc.nsw.gov.au/reports---data/workforce-profile'),
+    ('NSW PSC reports',
+     'https://www.nsw.gov.au/departments-and-agencies/premiers-department/'
+     'office-of-public-service-commissioner/reports'),
+    ('NSW Health workforce', 'https://www.health.nsw.gov.au/workforce/Pages/default.aspx'),
+    ('NSW Health annual reports',
+     'https://www.health.nsw.gov.au/annualreport/Pages/default.aspx'),
 ]
 
 
@@ -90,9 +88,14 @@ def main():
             print(f'\n===== {label} =====')
             print(f'  {url}')
             code, body = plain(url)
-            print(f'  plain   : {code}{f" ({len(body)} bytes)" if body else ""}')
-            html = body.decode('utf-8', 'replace') if body else ''
-            if not html:
+            plain_html = body.decode('utf-8', 'replace') if body else ''
+            print(f'  plain   : {code}'
+                  f'{f" ({len(body)} bytes, {len(links(plain_html))} links)" if body else ""}')
+            # ALWAYS render, even on a 200. A single-page app answers 200 with
+            # a shell and draws its links afterwards, so a plain fetch that
+            # "worked" can still report nothing for a page full of reports.
+            html = ''
+            if True:
                 try:
                     page = ctx.new_page()
                     r = page.goto(url, wait_until='domcontentloaded', timeout=60_000)
