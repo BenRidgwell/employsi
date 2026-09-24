@@ -33,17 +33,24 @@ UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
 # reports, NT's portal has no workforce data at all, and Tasmania has no
 # reachable open-data portal).
 TARGETS = [
-    # ── Round five ─────────────────────────────────────────────────────────
-    # Round four found Tasmania's reports and then read the wrong one through
-    # the wrong channel; both faults were in this script and both are fixed
-    # above. It also learned something about the Northern Territory: warming
-    # ocpe.nt.gov.au reported "no challenge" that run, where round one sat
-    # challenged for thirty seconds. The doorman is intermittent rather than
-    # absolute, so the host is worth asking for its own map.
+    # ── Round six ──────────────────────────────────────────────────────────
+    # THE NORTHERN TERRITORY PUBLISHES STAFFING NUMBERS, at a path no amount of
+    # guessing would have reached. Round five asked ocpe.nt.gov.au for its own
+    # sitemap — 520 URLs, 200 OK, after the same host sat challenged for thirty
+    # seconds in round one — and two of them settle the jurisdiction:
+    #
+    #   /workforce-planning/staffing-numbers
+    #   /workforce-planning/state-of-service-report
+    #
+    # Every path tried before this was invented by me and all of them 404'd.
+    # The sitemap is the source of truth about a site's own shape and should
+    # have been the first request, not the fifth.
+    ('NT staffing numbers', 'https://ocpe.nt.gov.au/workforce-planning/staffing-numbers',
+     'https://ocpe.nt.gov.au/'),
+    ('NT state of the service', 'https://ocpe.nt.gov.au/workforce-planning/state-of-service-report',
+     'https://ocpe.nt.gov.au/'),
     ('TAS workforce reports', 'https://www.dpac.tas.gov.au/search?query=workforce+report',
      'https://www.dpac.tas.gov.au/'),
-    ('NT OCPE sitemap', 'https://ocpe.nt.gov.au/sitemap.xml', 'https://ocpe.nt.gov.au/'),
-    ('NT OCPE root links', 'https://ocpe.nt.gov.au/', 'https://ocpe.nt.gov.au/'),
 ]
 
 
@@ -95,9 +102,18 @@ def dump_pdf(ctx, url, warm):
         # returned 6 KB of "Just a moment" where a PDF was expected — inside a
         # context that had just cleared. The navigation carries the whole
         # fingerprint and is what the clearance was issued for.
-        resp = page.goto(url, wait_until='domcontentloaded', timeout=120_000)
-        body = resp.body() if resp else b''
-        print(f'  pdf     : HTTP {resp.status if resp else "?"}, {len(body):,} bytes')
+        # CHROMIUM DOWNLOADS A PDF, IT DOES NOT RENDER ONE. page.goto raised
+        # "Download is starting" and the navigation never resolved, which
+        # reads as the fetch failing when it is actually succeeding into a
+        # file. Catch the download and read it off disk.
+        with page.expect_download(timeout=120_000) as dl:
+            try:
+                page.goto(url, wait_until='domcontentloaded', timeout=15_000)
+            except Exception:                                     # noqa: BLE001
+                pass                       # the navigation aborts into a download
+        path = dl.value.path()
+        body = open(path, 'rb').read() if path else b''
+        print(f'  pdf     : {len(body):,} bytes downloaded')
         if not body.startswith(b'%PDF'):
             print(f'  pdf     : not a PDF ({body[:40]!r})')
             return
@@ -203,7 +219,8 @@ def main():
             for l in dict.fromkeys(found):
                 print(f'  link    : {l[:130]}')
                 m = re.match(r'(https?://\S+\.pdf)', l, re.I)
-                if m and re.search(r'workforce|state.of.the.service', m.group(1), re.I):
+                if m and re.search(r'workforce|state.of.the.service|staffing|profile',
+                                   m.group(1), re.I):
                     pdfs.append(m.group(1))
             # NEWEST EDITION BY THE YEAR IN THE FILENAME, not by the URL.
             # Sorting the URLs read the 2022 report: they are served from
