@@ -4,10 +4,10 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — refreshed 2026-09-24
-//   South Australia: 98 agencies published as at Jun 2025 — refreshed 2026-09-24
-//   New South Wales: 33 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-24
-//   APS (federal): 101 agencies published as at Dec 2025 — KEPT, not refreshed this run
+//   APS (federal): 101 agencies published as at Dec 2025 — refreshed 2026-09-24
+//   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — KEPT, not refreshed this run
+//   South Australia: 98 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   New South Wales: 33 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
 //   Victoria: 261 agencies published as at Jun 2024 — KEPT, not refreshed this run
 //
 // An agency the source does not report is ABSENT, never zero — the card shows

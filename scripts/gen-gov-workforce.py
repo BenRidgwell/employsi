@@ -42,7 +42,7 @@ the card renders an em dash for it.
 
 ALIAS is the escape hatch, and every entry is a judgement someone can check.
 """
-import csv, io, json, re, sys, urllib.error, urllib.request
+import collections, csv, io, json, re, sys, urllib.error, urllib.request
 
 ROOT = __file__.rsplit('/scripts/', 1)[0]
 OUT = f'{ROOT}/src/employsi/data/govWorkforceAu.ts'
@@ -50,6 +50,25 @@ UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/122 Safari/537.3
 
 # roster company name -> the name the SOURCE uses. Only where the two plainly
 # describe one body; anything needing a leap is left out and stays absent.
+# THE APS SIDE IS EXHAUSTED AT 45 OF 56, and the eleven that are missing are
+# not a matching problem — they are not in the source at all, under any name.
+# Measured 2026-09-24 against all 101 published agencies:
+#
+#     Australian Federal Police        Reserve Bank of Australia
+#     ASIO                             APRA
+#     Australian Signals Directorate   ASIC
+#     CSIRO                            Australian Sports Commission
+#     Geoscience Australia             IP Australia
+#     Australian Space Agency
+#
+# The APS Employment Database covers APS Act employment. Most of these employ
+# under their own legislation (the AFP Act, the Science Agency Act, the Reserve
+# Bank Act) and several are corporate Commonwealth entities outside it
+# entirely; the Space Agency is a branch of a department rather than an agency
+# of its own. No alias can reach them, so they need their own annual reports or
+# nothing. This is written down because "it must be in there under another
+# name" is the natural next thought and it costs an afternoon.
+
 ALIAS = {
     # APS: the roster keeps the department's formal name, the APSC sheet the
     # portfolio's.
@@ -598,6 +617,16 @@ console.log(JSON.stringify(COMPANIES.filter(c => c.sector === "Government")
         cwd=ROOT, capture_output=True, text=True, check=True).stdout)
 
     out, skipped = {}, 0
+    # BOTH SIDES OF A FAILED MATCH ARE REPORTED, because only one of them was
+    # visible and it is the less useful one. The run said "N roster agencies
+    # unmatched" and stopped there, so nothing ever showed that Victoria
+    # publishes 261 agencies while 53 are filed — 208 source rows parsed,
+    # carried through the whole run and silently dropped, against 38 Victorian
+    # cards reading "no workforce figure collected". The two lists are the
+    # working material for an ALIAS entry: one names what the card wants, the
+    # other names what the source actually called it.
+    unmatched_roster = collections.defaultdict(list)
+    consumed = collections.defaultdict(set)
     for a in agencies:
         pre = 'aps' if a['id'].startswith('aps-') else a['id'].split('-gov-')[0]
         if pre not in data:
@@ -606,12 +635,15 @@ console.log(JSON.stringify(COMPANIES.filter(c => c.sector === "Government")
         want = norm(ALIAS.get(a['name'], a['name']))
         hit = by_norm.get(want)
         if not hit or len(hit) != 1:
+            unmatched_roster[pre].append((a['name'], 'ambiguous' if hit else 'no source row'))
             skipped += 1
             continue
         now, prev = hit[0][1]
         if now <= 0 or prev <= 0:
+            unmatched_roster[pre].append((a['name'], f'not positive ({now}/{prev})'))
             skipped += 1
             continue
+        consumed[pre].add(want)
         rec = {'now': now, 'prev': prev,
                'yoy': round((now - prev) / prev * 100, 1),
                'asof': asof, 'span': span}
@@ -671,6 +703,27 @@ console.log(JSON.stringify(COMPANIES.filter(c => c.sector === "Government")
                  f"yoy: {v['yoy']}, asof: {json.dumps(v['asof'])}, span: {int(v['span'])}{unit} }},")
     L += ['};', '']
     open(OUT, 'w').write('\n'.join(L))
+    # The two lists, newest jurisdictions first. Kept on stderr with the rest of
+    # the run's diagnostics so a CI log carries them.
+    for pre in sorted(unmatched_roster):
+        rows = unmatched_roster[pre]
+        print(f'\n  {pre}: {len(rows)} roster agencies WITHOUT a figure:', file=sys.stderr)
+        for name, why in sorted(rows):
+            print(f'      {name[:62]:64s} {why}', file=sys.stderr)
+    for pre in sorted(data):
+        by_norm = data[pre][0]
+        spare = [(k, v[0][0], v[0][1][0]) for k, v in by_norm.items()
+                 if k not in consumed[pre] and len(v) == 1]
+        if not spare:
+            continue
+        spare.sort(key=lambda x: -x[2])
+        print(f'\n  {pre}: {len(spare)} SOURCE rows matched to nothing '
+              f'(largest first — these are what an ALIAS points at):', file=sys.stderr)
+        for _k, orig, n in spare[:40]:
+            print(f'      {n:>8,}  {orig[:62]}', file=sys.stderr)
+        if len(spare) > 40:
+            print(f'      … and {len(spare) - 40} more', file=sys.stderr)
+
     print(f'wrote {OUT} with {len(out)} agencies ({skipped} roster agencies unmatched)')
     return 0
 
