@@ -81,6 +81,20 @@ export interface FamilyDef {
    * head of HR / CPO roles above are generalist. Asserted, like the rung order.
    */
   convergeAt?: Rung;
+  /**
+   * Titles this family claims ONLY when the employer is known to run this
+   * ladder (PlaceContext.employerFamilies). "Team Member" names no function;
+   * at Coles it is a store role, at a mine site it is not. Kept narrow on
+   * purpose — the employer hint vouches for the ladder, not for every title
+   * the employer advertises, so a Coles "Category Manager" stays unplaced.
+   */
+  employerMatch?: RegExp;
+}
+
+/** What is known about the advertiser, beyond the title. */
+export interface PlaceContext {
+  /** Families whose ladder this employer runs — see ladderEmployers.ts. */
+  employerFamilies?: ReadonlySet<string>;
 }
 
 export interface Placement {
@@ -89,6 +103,10 @@ export interface Placement {
   rung: Rung;
   /** The title with noise (pay, brackets, location tails) removed. */
   canonical: string;
+  /** "employer" when the family was chosen by the employer hint rather than by
+   *  the title's own words — reported by the audit so the hint's effect is
+   *  measured, never folded in silently. */
+  via: "title" | "employer";
 }
 
 /**
@@ -328,7 +346,13 @@ export const FAMILIES: FamilyDef[] = [
     // and professions that work in or for shops are their own ladders; head
     // office buying and planning is a different ladder not yet modelled.
     exclude:
-      /\bstore ?(?:person|man|men)\b|\bstore (?:development|design|planning)\b|\bstores (?:officer|coordinator|clerk|supervisor|person)\b|\bwarehouse\b|\bdistribution cent|\bcold store\b|\bretail (?:bank|banking|lending|energy|credit)\b|\bpharmac|\bbutcher\b|\bbaker\b|\bbarista\b|\bchef\b|\bcook\b|\bshop ?fitter\b|\bmachine shop\b|\bshop floor\b|\bworkshop\b|\belectrician\b|\bmechanic\b|\btechnician\b|\bdriver\b|\bforklift\b|\bsecurity\b|\bcleaner\b|\bloss prevention\b|\boptometrist\b|\bhairdresser\b|\bsoftware\b|\bdeveloper\b|\bengineer\b|\banalyst\b|\bplanner\b|\bbuyer\b|\ballocator\b/,
+      /\bstore ?(?:person|man|men)\b|\bstore (?:development|design|planning)\b|\bstores (?:officer|coordinator|clerk|supervisor|person)\b|\bwarehouse\b|\bdistribution cent|\bcold store\b|\bretail (?:bank|banking|lending|energy|credit)\b|\bpharmac|\bbutcher\b|\bbaker\b|\bbarista\b|\bchef\b|\bcook\b|\bshop ?fitter\b|\bmachine shop\b|\bshop floor\b|\bworkshop\b|\belectrician\b|\bmechanic\b|\btechnician\b|\bdriver\b|\bforklift\b|\bsecurity\b|\bcleaner\b|\bloss prevention\b|\boptometrist\b|\bhairdresser\b|\bsoftware\b|\bdeveloper\b|\bengineer\b|\banalyst\b|\bplanner\b|\bbuyer\b|\ballocator\b|\bproduction\b|\bmanufacturing\b|\b(?:plant|process|machine) operator\b|\blaborator/,
+    // Only for employers in ladderEmployers.ts's retail set: store roles
+    // advertised without a retail word. Deliberately absent — "Duty Manager"
+    // (Endeavour's pubs, airports, cinemas) and a bare "Supervisor" or "Team
+    // Leader" (distribution centres, Wesfarmers' chemical plants).
+    employerMatch:
+      /\bteam member\b|\bcrew member\b|\bcustomer service (?:assistant|advis[oe]r|team member|supervisor|manager)\b|\bcustomer (?:assistant|advis[oe]r)\b|\bdepartment manager\b|\bassistant manager\b|\b2ic\b|\bsecond in charge\b|\bconsole operator\b|\bsales (?:consultant|associate|advis[oe]r)\b|\bservice (?:team member|assistant)\b/,
     tracks: [
       { id: "visual-merchandising", label: "Visual merchandising", match: /\bvisual merchandis/ },
     ],
@@ -352,7 +376,7 @@ export const FAMILIES: FamilyDef[] = [
         2,
       ],
       [
-        /\b(?:sales|retail|store|shop) (?:assistant|consultant|associate)\b|\bteam member\b|\bcrew member\b|\bcashier\b|\bcheckout\b|\bnight ?fill\b|\bmerchandiser\b|\bcustomer service assistant\b/,
+        /\b(?:sales|retail|store|shop) (?:assistant|consultant|associate|advis[oe]r)\b|\bteam member\b|\bcrew member\b|\bcashier\b|\bcheckout\b|\bnight ?fill\b|\bmerchandiser\b|\bcustomer (?:service )?(?:assistant|advis[oe]r)\b|\bconsole operator\b|\bservice assistant\b/,
         1,
       ],
     ],
@@ -433,29 +457,37 @@ function rungFrom(rules: [RegExp, Rung][], t: string): Rung | null {
  * head alone still places identically — "HR Advisor - Perth" loses its city,
  * "Manager - Human Resources" keeps its function.
  */
-function canonicalOf(raw: string, placed: Omit<Placement, "canonical">): string {
+function canonicalOf(raw: string, placed: Placed, ctx: PlaceContext | undefined): string {
   const noParens = raw.replace(/\([^)]*\)|\[[^\]]*\]/g, " ");
   const head = noParens.split(/\s[-|–—:]\s|,\s/)[0] ?? noParens;
   for (const candidate of [head, noParens]) {
     const c = cleanTitle(candidate);
-    const p = placeClean(c);
+    const p = placeClean(c, ctx);
     if (p && p.family === placed.family && p.track === placed.track && p.rung === placed.rung)
       return c;
   }
   return cleanTitle(raw);
 }
 
-function placeClean(t: string): Omit<Placement, "canonical"> | null {
+type Placed = Omit<Placement, "canonical">;
+
+function placeClean(t: string, ctx: PlaceContext | undefined): Placed | null {
   if (!t || SUPPORT_TO.test(t)) return null;
   for (const f of FAMILIES) {
+    const byTitle = f.match.test(t);
+    const byEmployer =
+      !byTitle &&
+      !!f.employerMatch &&
+      !!ctx?.employerFamilies?.has(f.id) &&
+      f.employerMatch.test(t);
     // An exclusion means "not THIS ladder", not "no ladder": a Project
     // Accountant leaves the project family and is placed by finance.
-    if (!f.match.test(t) || f.exclude?.test(t)) continue;
+    if (!(byTitle || byEmployer) || f.exclude?.test(t)) continue;
     const rung =
       rungFrom(f.rungs ?? [], t) ?? (f.generic === false ? null : rungFrom(GENERIC_RUNGS, t));
     if (!rung) return null;
     const track = f.tracks?.find((tr) => tr.match.test(t))?.id ?? "generalist";
-    return { family: f.id, track, rung };
+    return { family: f.id, track, rung, via: byTitle ? "title" : "employer" };
   }
   return null;
 }
@@ -469,11 +501,15 @@ function placeClean(t: string): Omit<Placement, "canonical"> | null {
  * retail comes before sales so "Retail Sales Assistant" is a store role; and
  * both come before HSE, whose generic rubric cannot read "Sales Representative"
  * and would leave "Safety Equipment Sales Representative" unplaced.
+ *
+ * `ctx` adds what the employer says. It can only ADD a family for a title whose
+ * own words name none — a title that names a function is placed by it,
+ * whoever advertises it — so an unknown employer places exactly as before.
  */
-export function placeTitle(title: string): Placement | null {
-  const placed = placeClean(cleanTitle(title));
+export function placeTitle(title: string, ctx?: PlaceContext): Placement | null {
+  const placed = placeClean(cleanTitle(title), ctx);
   if (!placed) return null;
-  return { ...placed, canonical: canonicalOf(title, placed) };
+  return { ...placed, canonical: canonicalOf(title, placed, ctx) };
 }
 
 /** Which family a title's function words belong to, ignoring rung and

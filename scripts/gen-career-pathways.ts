@@ -40,6 +40,11 @@
  * track edge "gains" its own track's name by construction. It is published because it is what the rows hold, but a real skills gap needs
  * description text, which is a scraper change, not a change here.
  *
+ * THE EMPLOYER HINT (src/employsi/lib/ladderEmployers.ts) places store roles
+ * whose title names no function — a Coles "Team Member" — using the row's
+ * company_id. The report prints how many rows each family gained that way, so
+ * a node that is mostly hint-placed is visible as such.
+ *
  * THE WINDOW is the last --days days of the archive, ending at the newest
  * last_seen among the live feeds rather than at today — the span actually read,
  * never the one requested (CLAUDE.md). Closed corpora (Wayback) are excluded:
@@ -68,6 +73,7 @@ import {
   type Rung,
 } from "../src/employsi/lib/careerLadder";
 import { LIVE_FEEDS_ONLY_SQL } from "../src/employsi/lib/jobArchive";
+import { employerFamilies } from "../src/employsi/lib/ladderEmployers";
 import { annualAud, medianAnnual } from "../src/employsi/lib/salaryParse";
 import { parseStoredSkills } from "../src/employsi/data/skillsTaxonomy";
 import { CITY_COUNTRY } from "../src/employsi/data/mapboxWorldGeo";
@@ -185,10 +191,12 @@ interface Role {
 const roles = new Map<string, Role>();
 const unplaced = new Map<string, Map<string, number>>(); // family → title → rows
 let placedRows = 0;
+/** Rows placed only because of who advertised them — family → rows. */
+const viaEmployer = new Map<string, number>();
 let hintedRows = 0;
 
 for (const r of rows) {
-  const p = placeTitle(r.title);
+  const p = placeTitle(r.title, { employerFamilies: employerFamilies(r.company_id) });
   if (!p) {
     const hint = familyHint(r.title);
     if (hint) {
@@ -202,6 +210,7 @@ for (const r of rows) {
   }
   placedRows++;
   hintedRows++;
+  if (p.via === "employer") viaEmployer.set(p.family, (viaEmployer.get(p.family) ?? 0) + 1);
   const employer = r.company_id || norm(r.company);
   const key = employer ? `${employer}|${p.canonical}|${r.hub ?? ""}` : `anon|${r.rid}`; // cannot be merged with anything honestly
   const node = `${p.family}|${p.track}|${p.rung}`;
@@ -404,7 +413,13 @@ console.log(
 );
 for (const f of FAMILIES) {
   const ns = nodes.filter((n) => n.family === f.id);
-  console.log(`\n${f.label}`);
+  const hinted = viaEmployer.get(f.id);
+  console.log(
+    `\n${f.label}` +
+      (hinted
+        ? `  (${hinted.toLocaleString()} rows placed by the employer hint, not the title)`
+        : ""),
+  );
   for (const n of ns) {
     const au = n.pay.au?.median
       ? ` · AU median $${Math.round(n.pay.au.median / 1000)}k (n=${n.pay.au.n})`

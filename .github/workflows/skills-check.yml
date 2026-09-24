@@ -40,6 +40,7 @@ on:
       - 'src/employsi/data/companies.ts'
       - 'src/employsi/data/hiringAreas.ts'
       - 'src/employsi/lib/careerLadder.ts'
+      - 'src/employsi/lib/ladderEmployers.ts'
       - 'scripts/check-career-ladder.ts'
       - '.github/workflows/skills-check.yml'
   pull_request:
@@ -70,6 +71,7 @@ on:
       - 'src/employsi/data/companies.ts'
       - 'src/employsi/data/hiringAreas.ts'
       - 'src/employsi/lib/careerLadder.ts'
+      - 'src/employsi/lib/ladderEmployers.ts'
       - 'scripts/check-career-ladder.ts'
   workflow_dispatch: {}
 

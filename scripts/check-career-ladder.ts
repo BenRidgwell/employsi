@@ -22,6 +22,12 @@
  * Run: bun run scripts/check-career-ladder.ts
  */
 import { placeTitle, type Rung } from "../src/employsi/lib/careerLadder";
+import { COMPANIES } from "../src/employsi/data/companies";
+import {
+  CURATED_RETAILERS,
+  RETAIL_EMPLOYERS,
+  employerFamilies,
+} from "../src/employsi/lib/ladderEmployers";
 
 type Want = [family: string, track: string, rung: Rung] | null;
 
@@ -238,6 +244,72 @@ for (const [title, want] of FIXTURES) {
   }
 }
 
+// THE EMPLOYER HINT. Same titles, placed with and without the advertiser.
+// The hint may only ADD a family to a title whose words name none: a title that
+// names its own function places identically whoever posts it.
+const COLES = "melbourne-col";
+const QANTAS = COMPANIES.find((c) => c.name === "Qantas Airways")?.id ?? "";
+const WESFARMERS = "wes";
+const EMPLOYER: [title: string, companyId: string, want: Want][] = [
+  ["Team Member", COLES, ["retail", "generalist", 1]],
+  ["Customer Service Manager", COLES, ["retail", "generalist", 3]],
+  ["Customer Service Supervisor", COLES, ["retail", "generalist", 2]],
+  ["Department Manager - Fresh", COLES, ["retail", "generalist", 3]],
+  ["Assistant Manager", "melbourne-jbh", ["retail", "generalist", 3]],
+  ["Sales Consultant", "sydney-hvn", ["retail", "generalist", 1]], // not B2B sales
+  ["Console Operator", "priv-united-petroleum", ["retail", "generalist", 1]],
+  ["Team Member", WESFARMERS, ["retail", "generalist", 1]],
+  // The same titles with no hint, or from a non-retailer, are as before.
+  ["Team Member", "", null],
+  ["Sales Consultant", "", ["sales", "generalist", 2]],
+  ["Customer Service Manager", QANTAS, null], // "Consumer & Retail", not a shop
+  // The hint vouches for the ladder, not for everything the employer posts.
+  ["Category Manager", COLES, null],
+  ["Finance Manager", COLES, ["finance", "generalist", 4]],
+  ["HR Business Partner", COLES, ["hr", "generalist", 3]],
+  ["Duty Manager", "sydney-edv", null], // Endeavour's pubs
+  ["Team Leader - Distribution Centre", COLES, null],
+  ["Production Team Member", WESFARMERS, null], // WesCEF, not Bunnings
+  ["Sales Consultant", "priv-suttons-motors", ["sales", "generalist", 2]], // car sales
+];
+for (const [title, id, want] of EMPLOYER) {
+  const got = placeTitle(title, { employerFamilies: employerFamilies(id) });
+  const gotT = got ? [got.family, got.track, got.rung] : null;
+  if (JSON.stringify(gotT) !== JSON.stringify(want)) {
+    failures++;
+    console.error(
+      `✗ ${JSON.stringify(title)} at ${id || "(no employer)"}\n    want ${JSON.stringify(want)}\n    got  ${JSON.stringify(gotT)}`,
+    );
+  }
+}
+if (!QANTAS) {
+  failures++;
+  console.error("✗ Qantas Airways is no longer in the roster — pick another non-store fixture.");
+}
+
+// A curated id that stops resolving drops a retailer without a sound.
+const ids = new Set(COMPANIES.map((c) => c.id));
+for (const [id, name] of Object.entries(CURATED_RETAILERS)) {
+  if (!ids.has(id)) {
+    failures++;
+    console.error(`✗ curated retailer ${id} (${name}) is not a roster company id`);
+  }
+}
+// And the mixed sector must never be let in wholesale: it holds airlines,
+// brewers and tobacco. If this fires, someone widened RETAIL_SECTOR.
+for (const c of COMPANIES) {
+  if (
+    c.sector === "Consumer & Retail" &&
+    RETAIL_EMPLOYERS.has(c.id) &&
+    !(c.id in CURATED_RETAILERS)
+  ) {
+    failures++;
+    console.error(
+      `✗ ${c.name} entered the retail set through the mixed "Consumer & Retail" sector`,
+    );
+  }
+}
+
 // The canonical title strips location/contract tails but keeps the function.
 const CANONICAL: [string, string][] = [
   ["HR Advisor - Perth", "hr advisor"],
@@ -258,4 +330,7 @@ if (failures) {
   console.error(`\n${failures} career-ladder fixture(s) failed.`);
   process.exit(1);
 }
-console.log(`✓ ${FIXTURES.length + CANONICAL.length} career-ladder fixtures place correctly.`);
+console.log(
+  `✓ ${FIXTURES.length + EMPLOYER.length + CANONICAL.length} career-ladder fixtures place correctly; ` +
+    `${RETAIL_EMPLOYERS.size} retail employers resolve.`,
+);
