@@ -4,7 +4,8 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   APS (federal): 101 agencies published as at Dec 2025 — refreshed 2026-09-24
+//   New Zealand: 103 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-24
+//   APS (federal): 101 agencies published as at Dec 2025 — KEPT, not refreshed this run
 //   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — KEPT, not refreshed this run
 //   South Australia: 98 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   New South Wales: 33 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
@@ -74,6 +75,32 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-south-western-sydney-local-health-district": { now: 15233, prev: 15145, yoy: 0.6, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-sydney-local-health-district": { now: 11017, prev: 10883, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-western-sydney-local-health-district": { now: 11794, prev: 12266, yoy: -3.8, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-accident-compensation-corporation": { now: 4536, prev: 4291, yoy: 5.7, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-civil-aviation-authority-of-nz": { now: 1817, prev: 1802, yoy: 0.8, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-department-of-conservation": { now: 2648, prev: 2533, yoy: 4.5, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-department-of-internal-affairs": { now: 2630, prev: 2703, yoy: -2.7, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-department-of-the-prime-minister-cabinet": { now: 182, prev: 236, yoy: -22.9, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-electoral-commission": { now: 194, prev: 152, yoy: 27.6, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-environmental-protection-authority": { now: 217, prev: 227, yoy: -4.4, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-financial-markets-authority": { now: 317, prev: 340, yoy: -6.8, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-government-communications-security-bureau": { now: 589, prev: 597, yoy: -1.3, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-k-inga-ora-homes-and-communities": { now: 2609, prev: 3398, yoy: -23.2, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-maritime-new-zealand": { now: 388, prev: 380, yoy: 2.1, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-ministry-of-business-innovation-and-employment": { now: 5806, prev: 6196, yoy: -6.3, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-ministry-of-education": { now: 3835, prev: 4387, yoy: -12.6, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-ministry-of-foreign-affairs-trade": { now: 1177, prev: 1182, yoy: -0.4, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-natural-hazards-commission-toka-t-ake": { now: 380, prev: 354, yoy: 7.3, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-new-zealand-customs-service": { now: 1388, prev: 1320, yoy: 5.2, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-new-zealand-lotteries-commission": { now: 250, prev: 228, yoy: 9.6, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-new-zealand-transport-agency": { now: 2812, prev: 2787, yoy: 0.9, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-nz-police": { now: 15904, prev: 15548, yoy: 2.3, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-nz-security-intelligence-service-nzsis": { now: 396, prev: 449, yoy: -11.8, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-oranga-tamariki-ministry-for-children": { now: 4586, prev: 4893, yoy: -6.3, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-public-service-commission-te-kawa-mataaho": { now: 194, prev: 175, yoy: 10.9, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-statistics-nz": { now: 1264, prev: 1296, yoy: -2.5, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-te-papa": { now: 401, prev: 390, yoy: 2.8, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-te-puni-k-kiri-ministry-of-m-ori-development": { now: 423, prev: 416, yoy: 1.7, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-the-treasury": { now: 586, prev: 600, yoy: -2.3, asof: "Jun 2025", span: 1, unit: "fte" },
   "qld-gov-department-of-customer-services-open-data-and-small-and-family-business": { now: 3258, prev: 2004, yoy: 62.6, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-department-of-women-aboriginal-and-torres-strait-islander-partnerships-and-multiculturalism": { now: 346, prev: 389, yoy: -11.1, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-economic-development-queensland": { now: 181, prev: 172, yoy: 5.2, asof: "Mar 2026", span: 1, unit: "fte" },

@@ -85,6 +85,65 @@ ALIAS = {
     # department's own 4,931 public servants. Both rows are real and they are
     # different workforces; this maps the schools card to the schools one.
     "Government schools": "Department of Education (teaching service and school support employees)",
+    # ── New Zealand ────────────────────────────────────────────────────────
+    # Te Kawa Mataaho writes the legal name; the roster writes what the job ads
+    # say. Each was read off the two CSVs, not guessed.
+    'Accident Compensation Corporation': 'ACC',
+    'Civil Aviation Authority of NZ': 'Civil Aviation Authority of New Zealand',
+    'NZ Police': 'New Zealand Police',
+    'NZ Security Intelligence Service (NZSIS)': 'New Zealand Security Intelligence Service',
+    'New Zealand Lotteries Commission': 'Lotto NZ',
+    'New Zealand Transport Agency': 'NZ Transport Agency Waka Kotahi',
+    'Public Service Commission Te Kawa Mataaho': 'Public Service Commission',
+    'Statistics NZ': 'Statistics New Zealand',
+    'Te Papa': 'Museum of New Zealand Te Papa Tongarewa',
+    'Te Puni Kōkiri - Ministry of Māori Development': 'Ministry of Māori Development-Te Puni Kōkiri',
+    # NOT aliased, because they are not in either file under any name, measured
+    # 2026-09-24: the Reserve Bank of New Zealand (autonomous, outside the
+    # Public Service), Transpower (a state-owned enterprise) and Victoria
+    # University of Wellington (a tertiary institution). They need their own
+    # annual reports or nothing.
+
+    # ── Queensland ─────────────────────────────────────────────────────────
+    # The roster carries the short name the ads use; the State of the Sector
+    # workbook carries the formal one. Qualified by jurisdiction because four
+    # of these names are generic enough to exist elsewhere — "Electoral
+    # Commission" is also a New Zealand roster company, and it matches its own
+    # source row without help.
+    'qld:Legal Aid': 'Legal Aid Queensland',
+    'qld:Public Trust Office': 'Public Trustee',
+    'qld:Art Gallery': 'Queensland Art Gallery',
+    'qld:State Library': 'State Library of Queensland',
+    'qld:Electoral Commission': 'Electoral Commission Queensland',
+    'qld:Inspector General Emergency Management':
+        'Office of the Inspector-General of Emergency Management',
+
+    # ── South Australia ────────────────────────────────────────────────────
+    # SA HEALTH IS NOT AN EMPLOYER IN THE SOURCE, it is the brand over twelve
+    # of them. The Workforce Information Report names the department, ten Local
+    # Health Networks and the ambulance service separately and never writes "SA
+    # Health", so the card for 666 live ads showed an em dash while fifty
+    # thousand people sat in the same table under other names.
+    #
+    # Every member is listed rather than matched on a pattern, because the
+    # table also contains SECTOR TOTALS — "General Government Sector" is
+    # 116,540 and "Public Non-Financial Corporations Sector" 4,750 — and any
+    # rule loose enough to gather the health networks could gather one of
+    # those. A total is not an agency, and nothing here may ever sum one.
+    'sa:SA Health': [
+        'Department for Health and Wellbeing',
+        'Central Adelaide Local Health Network',
+        'Southern Adelaide Local Health Network',
+        'Northern Adelaide Local Health Network',
+        'Womens and Childrens Health Network',
+        'Barossa Hills Fleurieu Local Health Network',
+        'Yorke and Northern Local Health Network',
+        'Riverland Mallee Coorong Local Health Network',
+        'Limestone Coast Local Health Network',
+        'Eyre and Far North Local Health Network',
+        'Flinders and Upper North Local Health Network',
+        'SA Ambulance Service',
+    ],
 }
 
 
@@ -564,6 +623,91 @@ def load_nsw():
     return out, asof, 'fte'
 
 
+# ── New Zealand ─────────────────────────────────────────────────────────────
+NZ_BASE = 'https://www.publicservice.govt.nz/assets'
+NZ_FILES = (
+    # Public Service departments, and the Crown entities beside them. Two files
+    # because Te Kawa Mataaho publishes them as two, with the same columns.
+    f'{NZ_BASE}/Departmental-FTE-changes-v2.csv',
+    f'{NZ_BASE}/Crown-entity-FTE-changes-v3.csv',
+)
+
+
+def load_nz():
+    """Te Kawa Mataaho Public Service Commission — FTE by agency.
+
+    NEW ZEALAND WAS RECORDED HERE AS HAVING NO SOURCE AND THAT WAS WRONG. The
+    earlier probe called publicservice.govt.nz unreachable; measured 2026-09-24
+    it answers 200 to a plain request, and the two CSVs below download without
+    a browser. What IS bot-protected is catalogue.data.govt.nz, whose CKAN API
+    returns an Imperva interstitial ("Pardon Our Interruption") instead of
+    JSON — so the open-data portal is the blocked route and the agency's own
+    site is not. Going through the portal first is what produced the false
+    negative.
+
+    The files are linked from
+    /data/workforce-data/public-sector-composition/workforce-size, and that
+    path is worth keeping: the obvious guesses (/research-and-data,
+    /resources/workforce-data) 404, and the real one is only in the site's own
+    navigation.
+
+    IT IS FTE, NOT HEADCOUNT, and the data says so rather than the heading:
+    the Cancer Control Agency reports 57.4 and the year change as -1.4305. So
+    the rows are marked `fte`, the card labels those tiles "Workforce FTE", and
+    they are never added to or compared with a head count — the same treatment
+    Queensland and NSW Health already get.
+
+    THE NEWEST COLUMN IS NOT USED, deliberately. Each file carries FTE at 30
+    June 2024, 30 June 2025 and 31 March 2026. March 2026 is the freshest
+    figure and is nine months from June 2025, not a year; reporting that
+    difference as a year-on-year would be measuring the gap between two
+    different points in the cycle. June to June is a year, so the pair is June
+    2025 against June 2024 and `asof` says June 2025.
+
+    Health New Zealand's districts are NOT in either file — they are Crown
+    entities of a kind these files do not enumerate, and they carry a third of
+    New Zealand's live ads. That is a separate source and is not solved here.
+    """
+    import csv as _csv
+    rows, asof = {}, None
+    for url in NZ_FILES:
+        raw = fetch(url).lstrip('\ufeff')
+        rdr = _csv.DictReader(io.StringIO(raw))
+        cols = rdr.fieldnames or []
+
+        # Find the two June columns by their year rather than by position, so a
+        # new edition that adds a quarter shifts nothing silently. If either is
+        # missing the loader fails loudly instead of filing a wrong pair.
+        def june(year):
+            for c in cols:
+                if re.search(rf'30\s*June\s*{year}', c or '', re.I):
+                    return c
+            return None
+        name_col = cols[0] if cols else None
+        c_now, c_prev = june(2025), june(2024)
+        if not (name_col and c_now and c_prev):
+            raise RuntimeError(f'NZ: expected June 2025 and June 2024 columns, got {cols}')
+        asof = 'Jun 2025'
+
+        for r in rdr:
+            name = (r.get(name_col) or '').strip()
+            if not name or name.lower().startswith(('total', 'note', 'source')):
+                continue
+            try:
+                now = float(str(r[c_now]).replace(',', '').strip())
+                prev = float(str(r[c_prev]).replace(',', '').strip())
+            except (TypeError, ValueError):
+                continue
+            if now <= 0 or prev <= 0:
+                continue
+            # An agency in both files would be double-filed; measured
+            # 2026-09-24 there is no overlap, and first-wins keeps it that way
+            # rather than letting the second silently replace the first.
+            rows.setdefault(name, (int(round(now)), int(round(prev))))
+    return rows, asof, 'fte'
+
+
+
 # key -> (label, loader, span in years). The loader returns (rows, asof, unit);
 # `unit` is "headcount" everywhere but Queensland, which publishes only FTE.
 SOURCES = {
@@ -577,6 +721,8 @@ SOURCES = {
     'sa': ('South Australia', load_sa, 1),
     # PDF too, and FTE like Queensland — see the loader.
     'nsw': ('New South Wales', load_nsw, 1),
+    # Plain CSV, no browser needed. FTE, and June-to-June — see the loader.
+    'nz': ('New Zealand', load_nz, 1),
 }
 
 
@@ -627,23 +773,70 @@ console.log(JSON.stringify(COMPANIES.filter(c => c.sector === "Government")
     # other names what the source actually called it.
     unmatched_roster = collections.defaultdict(list)
     consumed = collections.defaultdict(set)
+    summed = []
     for a in agencies:
-        pre = 'aps' if a['id'].startswith('aps-') else a['id'].split('-gov-')[0]
+        # `aps-` and `nz-` have no `-gov-` segment, so the split would return
+        # the whole id and match no jurisdiction.
+        if a['id'].startswith('aps-'):
+            pre = 'aps'
+        elif a['id'].startswith('nz-'):
+            pre = 'nz'
+        else:
+            pre = a['id'].split('-gov-')[0]
         if pre not in data:
             continue
         by_norm, asof, span, unit = data[pre]
-        want = norm(ALIAS.get(a['name'], a['name']))
-        hit = by_norm.get(want)
-        if not hit or len(hit) != 1:
-            unmatched_roster[pre].append((a['name'], 'ambiguous' if hit else 'no source row'))
-            skipped += 1
-            continue
-        now, prev = hit[0][1]
+        # AN ALIAS KEY MAY BE QUALIFIED BY JURISDICTION, and one has to be.
+        # The table was keyed by roster name alone, and roster names repeat:
+        # "Electoral Commission" is both `qld-gov-electoral-commission` and
+        # `nz-electoral-commission`. Queensland's needs an alias (the source
+        # calls it "Electoral Commission Queensland") and New Zealand's matches
+        # on its own name, so a bare-name entry would fix one by breaking the
+        # other — silently, since both would still produce a figure. `qld:Name`
+        # wins over `Name`, so a qualified entry is reachable and a bare one
+        # stays the default.
+        spec = ALIAS.get(f"{pre}:{a['name']}", ALIAS.get(a['name'], a['name']))
+
+        # A VALUE MAY BE A LIST, WHICH IS SUMMED. Some roster entries are a
+        # portfolio the source reports in pieces: "SA Health" is the public
+        # brand for the Department for Health and Wellbeing, ten Local Health
+        # Networks and the ambulance service, and no row is called SA Health.
+        # Summing is only honest when the SAME members are present in BOTH
+        # years — otherwise the change is the membership, not hiring, which is
+        # the trap the WGEA generator hit with corporate groups. A member
+        # missing from either year fails the whole entry rather than quietly
+        # summing what is left.
+        if isinstance(spec, (list, tuple)):
+            parts, bad = [], []
+            for member in spec:
+                h = by_norm.get(norm(member))
+                if not h or len(h) != 1:
+                    bad.append(member)
+                else:
+                    parts.append(h[0][1])
+            if bad:
+                unmatched_roster[pre].append(
+                    (a['name'], f'summed entry missing {len(bad)} of {len(spec)}: {bad[:3]}'))
+                skipped += 1
+                continue
+            now = sum(x[0] for x in parts)
+            prev = sum(x[1] for x in parts)
+            for member in spec:
+                consumed[pre].add(norm(member))
+            summed.append((a['id'], len(parts), now))
+        else:
+            want = norm(spec)
+            hit = by_norm.get(want)
+            if not hit or len(hit) != 1:
+                unmatched_roster[pre].append((a['name'], 'ambiguous' if hit else 'no source row'))
+                skipped += 1
+                continue
+            now, prev = hit[0][1]
+            consumed[pre].add(want)
         if now <= 0 or prev <= 0:
             unmatched_roster[pre].append((a['name'], f'not positive ({now}/{prev})'))
             skipped += 1
             continue
-        consumed[pre].add(want)
         rec = {'now': now, 'prev': prev,
                'yoy': round((now - prev) / prev * 100, 1),
                'asof': asof, 'span': span}
@@ -703,6 +896,11 @@ console.log(JSON.stringify(COMPANIES.filter(c => c.sector === "Government")
                  f"yoy: {v['yoy']}, asof: {json.dumps(v['asof'])}, span: {int(v['span'])}{unit} }},")
     L += ['};', '']
     open(OUT, 'w').write('\n'.join(L))
+    if summed:
+        print(f'\n  summed from several source rows ({len(summed)}):', file=sys.stderr)
+        for cid, n, total in summed:
+            print(f'      {cid:44s} {n} rows -> {total:,}', file=sys.stderr)
+
     # The two lists, newest jurisdictions first. Kept on stderr with the rest of
     # the run's diagnostics so a CI log carries them.
     for pre in sorted(unmatched_roster):
