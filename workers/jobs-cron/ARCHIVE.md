@@ -1719,8 +1719,9 @@ countries, so every row it writes is a US or Canadian vacancy. Walked once per
 employer across the full roster (`roster.ts --with-cities`, 1,036 employers),
 through **JobSpy** — the package that recovered Indeed — which calls
 api.ziprecruiter.com, the iOS app's API, rather than parsing search HTML.
-Daily from [`ziprecruiter-archive.yml`](../../.github/workflows/ziprecruiter-archive.yml)
-at 16:00 UTC, `source = ziprecruiter`.
+[`ziprecruiter-archive.yml`](../../.github/workflows/ziprecruiter-archive.yml),
+`source = ziprecruiter`. **DISPATCH-ONLY — it has never archived a row**; see
+below.
 
 **Why not in the Worker, and why not even from a plain runner.** Unlike
 Indeed's app API, ZipRecruiter's refuses a datacentre address on every host.
@@ -1732,10 +1733,19 @@ Measured 2026-09-24 from the sandbox (IAD egress), python-jobspy 1.1.82:
 | `api…/jobs-app/jobs` | plain requests | 403 `forbidden cf-waf` |
 | `www…/jobs-search` | plain requests | 403, Cloudflare "Just a moment…" |
 
-So it goes through `SCRAPE_PROXY` with a US exit. **That path has not been
-measured yet** — the first run is the measurement, and the workflow header says
-what to read off it (refusal codes, and whether rows span the country or one
-metro, since JobSpy sends no location).
+So it was pointed at `SCRAPE_PROXY` with a US exit — **and that is refused
+too.** Measured from a GitHub runner the same day (run 35967097119, dry):
+
+| address | result |
+|---|---|
+| the runner's own, no proxy | 5 of 5 refused, 403 `forbidden cf-waf` |
+| IPRoyal residential, US exit | 15 of 15 refused, 403 `forbidden aa` |
+
+The code changes with the address and the refusal does not, so what is refused
+is plausibly the request — JobSpy's hardcoded iOS-app identity — not only the
+address; not established. Upstream has the same report open with no fix
+(speedyapply/JobSpy#302, since 2025-09-06). The schedule is off; the workflow
+header says how to re-test and what to read off a run that gets through.
 
 **Three JobSpy behaviours are overridden**, which is why the version is pinned
 (`scripts/ziprecruiter-requirements.txt`) and `scripts/test_ziprecruiter.py`

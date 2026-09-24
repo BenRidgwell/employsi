@@ -11,16 +11,27 @@
 #     api /jobs-app/jobs    403 "forbidden cf-waf"
 #     www /jobs-search      403 "Just a moment..."  Cloudflare challenge
 #
-# So this goes through SCRAPE_PROXY with a US exit (SCRAPE_PROXY_COUNTRY=us —
-# ZipRecruiter serves only the US and Canada). A GitHub runner's address is a
-# datacentre address too, so there is no reason to expect it to fare better
-# than the sandbox did; that is an expectation, not a measurement.
+# So it was pointed at SCRAPE_PROXY with a US exit (SCRAPE_PROXY_COUNTRY=us —
+# ZipRecruiter serves only the US and Canada).
 #
-# THE RESIDENTIAL PATH IS UNMEASURED. Nothing from this repo has reached
-# ZipRecruiter through the exit yet, so the FIRST RUN IS THE MEASUREMENT. The
-# cheap way to take it is a dispatch with `limit: 25`, `na_only: true`,
-# `dry_run: true` — seconds of proxy traffic, no D1 writes. Read three things off
-# the log before trusting the schedule:
+# MEASURED FROM A GITHUB RUNNER, 2026-09-24 (run 35967097119, dry, JobSpy 1.1.82)
+# — AND THE RESIDENTIAL EXIT DOES NOT GET IN EITHER:
+#
+#     runner address, no proxy         5 of 5 refused    403 "forbidden cf-waf"
+#     SCRAPE_PROXY, US exit (IPRoyal)  15 of 15 refused  403 "forbidden aa"
+#                                      (two session resets, then stopped)
+#
+# The error code changes with the address and the refusal does not, so what is
+# refused through the residential exit is plausibly the request itself —
+# JobSpy's hardcoded iOS-app identity — rather than the address. That cause is
+# NOT established. Upstream reports the same breakage: speedyapply/JobSpy#302
+# ("ZipRecruiter scraping not working ... 403 forbidden", opened 2025-09-06,
+# the same "forbidden cf-waf" body, from Colab and locally), open, no reply,
+# no fix. Hence no schedule below.
+#
+# TO RE-TEST after a JobSpy release or a transport change: dispatch with
+# `limit: 25`, `na_only: true`, `dry_run: true` — seconds of proxy traffic, no
+# D1 writes. Read three things off the log before restoring the schedule:
 #
 #   1. whether companies come back `kept` or `REFUSED (HTTP 403 ...)` — the
 #      refusal line carries the WAF's own error code;
@@ -34,8 +45,8 @@
 #      page that adds nothing past the gate, which assumes the board ranks an
 #      employer's own ads ahead of ads that merely mention it — unmeasured.
 #
-# If the scheduled run goes red on refusals, pull the schedule rather than
-# leave it crying wolf — indeed-archive.yml records why.
+# If a restored schedule goes red on refusals, pull it again rather than leave
+# it crying wolf — indeed-archive.yml records why.
 #
 # JobSpy is PINNED. The script calls three of its internals (_find_jobs_in_page,
 # _get_descr, the session's get) to stop it fetching every job's HTML page and
@@ -55,17 +66,11 @@
 name: ziprecruiter-archive
 
 on:
-  schedule:
-    # 16:00 UTC — a free slot, and done well before scraper-health (23:30).
-    # Late morning on the US east coast; the board's own traffic is irrelevant
-    # to an API walk this size.
-    - cron: '0 16 * * *'
-  # TEMPORARY — the first measurement, taken before this file is on main (a
-  # workflow cannot be dispatched until it is). A push to this branch runs a
-  # DRY run: 25 North American companies, no D1 writes. Remove before merge.
-  push:
-    branches: [claude/zealous-planck-7f1fge]
-    paths: ['.github/workflows/ziprecruiter-archive.yml', 'scripts/ziprecruiter-to-d1.py']
+  # NOT SCHEDULED — measured refused through BOTH addresses on 2026-09-24 (see
+  # the header). A schedule would only add a red run a night. Restore
+  #     schedule:
+  #       - cron: '0 16 * * *'   # free slot, well before scraper-health (23:30)
+  # once a dispatch with `dry_run: true` keeps rows.
   workflow_dispatch:
     inputs:
       limit:
@@ -117,13 +122,6 @@ jobs:
       - name: JobSpy internals still match what the script calls
         run: python scripts/test_ziprecruiter.py
 
-      # TEMPORARY, with the push trigger: does the runner's OWN address get
-      # through? If it does, the residential exit is not needed at all.
-      - name: Measure — runner address, no proxy (dry, 5 companies)
-        if: github.event_name == 'push'
-        continue-on-error: true
-        run: python scripts/ziprecruiter-to-d1.py --direct --dry-run --na-only --limit 5
-
       - name: Scrape ZipRecruiter → D1 (JobSpy via SCRAPE_PROXY)
         env:
           SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
@@ -145,5 +143,4 @@ jobs:
           [ -n "$LIMIT" ] && ARGS="$ARGS --limit $LIMIT"
           [ "$NA_ONLY" = "true" ] && ARGS="$ARGS --na-only"
           [ "$DRY_RUN" = "true" ] && ARGS="$ARGS --dry-run"
-          [ "${{ github.event_name }}" = "push" ] && ARGS="--dry-run --na-only --limit 25"
           python scripts/ziprecruiter-to-d1.py $ARGS

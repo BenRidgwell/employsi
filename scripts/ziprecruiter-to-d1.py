@@ -29,9 +29,17 @@ Indeed's app API served that same kind of address happily; ZipRecruiter's WAF
 refuses it on every host, before looking at the request. So this runs from a
 GitHub Action through SCRAPE_PROXY (IPRoyal residential) with a US exit, and
 refuses to start without one unless --direct says the machine running it is
-itself residential. THAT PATH IS NOT YET MEASURED — no request from this repo
-has reached ZipRecruiter through the residential exit. The first run through
-it is the measurement; see ziprecruiter-archive.yml.
+itself residential.
+
+AND THAT DOES NOT GET IN EITHER. Measured from a GitHub runner, 2026-09-24
+(run 35967097119, dry): the runner's own address 5 of 5 refused with
+"forbidden cf-waf", the IPRoyal US exit 15 of 15 refused with "forbidden aa".
+The code changes with the address; the refusal does not — so the request
+itself (JobSpy's hardcoded iOS-app identity) is the likelier target, though
+that is not established. speedyapply/JobSpy#302 reports the same 403, open
+since 2025-09-06 with no fix. The workflow is therefore dispatch-only; this
+file is kept whole so a JobSpy fix, or another transport, is a re-test
+rather than a rewrite.
 
 WHAT IS DELIBERATELY NOT USED FROM JobSpy
   - `_get_descr`. For every job the API returns, JobSpy fetches the job's HTML
