@@ -28,6 +28,7 @@ jobs:
           SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
           SCRAPE_PROXY_COUNTRY: us
           OUT_DIR: zr-probe
+          PROBE_MODE: api
         # xvfb-run for profile C (headful Chrome); A and B ignore the display.
         run: |
           sudo apt-get install -y -q xvfb >/dev/null

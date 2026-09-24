@@ -204,7 +204,102 @@ def run_profile(name: str, cfg: dict, proxy: dict | None) -> dict:
     return rep
 
 
+# ROUND 3. Round 2 (run 35968150046): every listing path stayed on the managed
+# challenge for 30s in all three profiles, headful Chrome included. But the home
+# page's own JS called /api/web.job_search.proto.v1.API/AutocompleteLocation and
+# got a 200 with JSON — a Connect-style RPC service the challenge does not cover.
+# This mode maps that service from the site's own bundles and tries its
+# search-shaped methods from inside the cleared home page.
+API_JS = r"""async () => {
+  const srcs = [...document.querySelectorAll('script[src]')].map(s => s.src)
+      .filter(u => u.includes('ziprecruiter.com'));
+  const methods = new Set(), ctx = {};
+  for (const u of srcs) {
+    let t = '';
+    try { t = await (await fetch(u)).text(); } catch (e) { continue; }
+    for (const m of t.matchAll(/([a-z_.]+\.proto\.v\d+\.[A-Za-z]+)\/?["']?\s*[,:]?\s*["']?([A-Z][A-Za-z]+)?/g)) {
+      methods.add(m[1] + (m[2] ? '/' + m[2] : ''));
+    }
+    for (const m of t.matchAll(/(?:name|method|methodName)\s*:\s*["']([A-Z][A-Za-z]*(?:Search|Job|Jobs|Listing)[A-Za-z]*)["']/g)) {
+      methods.add('name:' + m[1]);
+      const i = m.index;
+      ctx[m[1]] = (ctx[m[1]] || []).concat([t.slice(Math.max(0, i - 300), i + 500)]).slice(0, 2);
+    }
+  }
+  return {srcs: srcs.length, methods: [...methods].sort(), ctx};
+}"""
+
+CALL_JS = r"""async ([path, body]) => {
+  try {
+    const r = await fetch(path, {method: 'POST', credentials: 'include',
+      headers: {'content-type': 'application/json', 'connect-protocol-version': '1'},
+      body: JSON.stringify(body)});
+    return {status: r.status, ct: r.headers.get('content-type'), body: await r.text()};
+  } catch (e) { return {status: null, body: '', error: String(e)}; }
+}"""
+
+
+def api_probe(proxy) -> dict:
+    from playwright.sync_api import sync_playwright
+    rep: dict = {}
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=True, channel='chrome',
+                                     args=browser_fetch.STEALTH_ARGS,
+                                     **({'proxy': proxy} if proxy else {}))
+        ctx = browser.new_context(user_agent=UA_US, locale='en-US', timezone_id='America/Chicago',
+                                  viewport={'width': 1440, 'height': 900})
+        ctx.add_init_script(browser_fetch.STEALTH_JS.replace("'en-AU', ", ''))
+        page = ctx.new_page()
+        rep['egress'] = egress(page)
+        seen = []
+        page.on('request', lambda r: seen.append({'url': r.url[:160], 'method': r.method,
+                                                   'post': (r.post_data or '')[:400]})
+                if '/api/' in r.url else None)
+        resp = page.goto(SITE + '/', timeout=60000, wait_until='domcontentloaded')
+        page.wait_for_timeout(6000)
+        rep['home_status'] = resp.status if resp else None
+        rep['api_requests_seen'] = seen[:20]
+        m = page.evaluate(API_JS)
+        rep['bundles'] = m['srcs']
+        rep['methods'] = m['methods']
+        rep['method_context'] = m['ctx']
+        open(os.path.join(OUT, 'api-methods.json'), 'w').write(json.dumps(m, indent=1))
+        base = '/api/web.job_search.proto.v1.API/'
+        names = sorted({x.split('/')[-1].replace('name:', '') for x in m['methods']
+                        if re.search(r'Search|Job', x.split('/')[-1])})
+        names = [n for n in names if n != 'AutocompleteLocation'][:12] or [
+            'SearchJobs', 'JobSearch', 'Search', 'GetJobs', 'ListJobs']
+        calls = []
+        for n in names:
+            for body in ({}, {'search': 'Chevron', 'location': ''},
+                         {'query': 'Chevron', 'location': ''}):
+                r = page.evaluate(CALL_JS, [base + n, body])
+                fn = f'api-{n}-{len(calls):02d}.txt'
+                open(os.path.join(OUT, fn), 'w').write(r.get('body') or '')
+                calls.append({'method': n, 'body': body, 'status': r.get('status'),
+                              'ct': r.get('ct'), 'head': ' '.join((r.get('body') or '')[:300].split()),
+                              'error': r.get('error')})
+        rep['calls'] = calls
+        browser.close()
+    return rep
+
+
 def main() -> int:
+    if os.environ.get('PROBE_MODE') == 'api':
+        proxy = browser_fetch.proxy_from_env()
+        rep = api_probe(proxy)
+        open(os.path.join(OUT, 'report-api.json'), 'w').write(json.dumps(rep, indent=1))
+        print(f'egress {rep["egress"]}  home {rep["home_status"]}  bundles {rep["bundles"]}')
+        print('api requests the page made:')
+        for r in rep['api_requests_seen']:
+            print(f'  {r["method"]} {r["url"]}  post={r["post"][:200]}')
+        print(f'methods found ({len(rep["methods"])}):')
+        for x in rep['methods'][:80]:
+            print('  ', x)
+        print('calls:')
+        for c in rep['calls']:
+            print(f'  {c["method"]:28} {json.dumps(c["body"]):45} -> {c["status"]} {c["ct"]} :: {c["head"][:200]} {c.get("error") or ""}')
+        return 0
     proxy = browser_fetch.proxy_from_env()
     print(f'proxy: {proxy["server"] if proxy else "NONE — direct"}')
     reports = []
