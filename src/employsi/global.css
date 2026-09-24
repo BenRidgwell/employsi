@@ -15273,21 +15273,6 @@ body {
   background: currentColor;
   animation: em-sweep 1.9s cubic-bezier(0.65, 0.05, 0.36, 1) infinite;
 }
-.introcaption {
-  font-family: Inter, system-ui, sans-serif;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.3em;
-  /* Lowercase, on request. The transform rather than editing the string in
-     IntroLoader.tsx, so the markup keeps the sentence as it is written
-     everywhere else and this stays a presentation choice. */
-  text-transform: lowercase;
-  text-align: center;
-  opacity: 0.5;
-  /* Pulls the caption back up under the bar: the stage's 30px gap is set for
-     the space above the bar, and the caption wants less. */
-  margin-top: -12px;
-}
 .introband {
   position: absolute;
   left: 0;
@@ -15368,9 +15353,6 @@ body {
   }
   .introstage {
     gap: 22px;
-  }
-  .introcaption {
-    letter-spacing: 0.22em;
   }
 }
 /* Both loops stopped. The composition still stands; it just holds still, with
