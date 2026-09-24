@@ -806,27 +806,35 @@ NT_WARM = 'https://ocpe.nt.gov.au/'
 
 
 def _nt_rows(page):
-    """Agency -> (newest quarter, same quarter a year earlier), from one page.
+    """Agency -> (newest quarter, the same quarter a year earlier), one page.
 
-    COLUMNS, NOT A REGEX OVER THE LINE, and the first attempt shows why. The
-    table reads
+    THE CURRENT LAYOUT IS NOT THE ONE THE ARCHIVE SHOWS. A 2018 edition of this
+    report carries five quarterly columns — June, September, December, March,
+    June — and reading one of those is what the first two versions of this
+    function were written against. The June 2026 edition carries THREE value
+    columns and two change columns, measured off the page:
 
-        Aboriginal Areas Protection Authority ^ 29 29 27 25 25 .. - 2 - 2 .. - 4
-        Attorney-General & Justice (+ Corrections) 1 512 1 495 1 476 1 449 ...
+        2025@299   2025@349   2026@389   change@491
+        Attorney General's Department  603@302  591@345  594@394   3@455  -9@502
 
-    so a line does not end in digits — five change columns follow, holding
-    ".." for no change and a detached "-" for a negative. A pattern anchored to
-    the end of the line matches nothing at all, which is what the first version
-    did.
+    So the columns are found by x-position against a measured boundary rather
+    than by counting: every figure sits left of about x=430 and every change
+    sits right of it. The first value column and the last are a year apart —
+    June 2025 and June 2026 — which is what makes a year-on-year possible from
+    one document, and is the only property of the old layout that survived.
 
-    THE THOUSANDS SEPARATOR IS A SPACE, and that cannot be undone by looking at
-    the text. "1 512" is one number and "619 620" is two, and no rule over
-    digits alone separates them: both are a short group followed by a group of
-    three. The x-position does separate them, because the two halves of "1 512"
-    sit inside one column and 619 and 620 sit in different ones. So the words
-    are clustered by where they are on the page rather than by what they look
-    like.
+    THE THOUSANDS SEPARATOR IS A SPACE and cannot be undone by looking at the
+    text: "1 512" is one number and "619 620" is two, and both are a short
+    group followed by a group of three. Position separates them, because the
+    halves of "1 512" sit inside one column. Words closer than four points are
+    the same number.
+
+    A LINE WITHOUT A NAME IS NOT A ROW. Several numeric lines carry no agency
+    at all — sub-totals and wrapped continuations — and taking them produced
+    three rows out of twenty-five, each attached to whatever name happened to
+    lead. A row needs its own name.
     """
+    CHANGE_COL_X = 430        # measured: values <= 430, change columns beyond
     words = page.extract_words(keep_blank_chars=False, use_text_flow=False)
     lines = {}
     for w in words:
@@ -836,14 +844,14 @@ def _nt_rows(page):
         ws.sort(key=lambda w: w['x0'])
         name_parts, cols, cur, last_x1 = [], [], [], None
         for w in ws:
-            t = w['text']
+            t, x = w['text'], w['x0']
             if not re.fullmatch(r'[\d,]+', t):
-                if not cols and not cur:
+                if not cols and not cur and x < CHANGE_COL_X:
                     name_parts.append(t)
                 continue
-            # A gap wider than a few points ends the column; digits closer than
-            # that are the two halves of one number.
-            if cur and last_x1 is not None and w['x0'] - last_x1 > 4:
+            if x >= CHANGE_COL_X:          # a change column, not a figure
+                continue
+            if cur and last_x1 is not None and x - last_x1 > 4:
                 cols.append(''.join(cur))
                 cur = []
             cur.append(t.replace(',', ''))
@@ -852,9 +860,10 @@ def _nt_rows(page):
             cols.append(''.join(cur))
         name = ' '.join(name_parts).strip(' ^*.')
         vals = [int(c) for c in cols if c.isdigit()]
-        if len(name) < 4 or len(vals) < 5:
+        # A name of one short word is a header fragment, not a department.
+        if len(name) < 6 or len(vals) < 2 or not re.search(r'[A-Za-z]{3}', name):
             continue
-        now, prev = vals[4], vals[0]      # Jun qtr this year, Jun qtr last year
+        now, prev = vals[-1], vals[0]
         if now > 0 and prev > 0:
             out[name] = (now, prev)
     return out
