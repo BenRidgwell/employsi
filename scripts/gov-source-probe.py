@@ -33,23 +33,17 @@ UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
 # reports, NT's portal has no workforce data at all, and Tasmania has no
 # reachable open-data portal).
 TARGETS = [
-    # UNIVERSITIES. 41 institutions carrying 2,605 live ads, and the largest
-    # remaining route with a real source behind it.
-    #
-    # NOT 41 annual reports. The Department of Education runs the Higher
-    # Education Statistics Collection and publishes staff numbers and FTE for
-    # every provider in one place — data.gov.au's "Higher Education Staff
-    # Data" is a pointer at it. One source beats forty-one PDFs, and it is
-    # also the only way the figures are defined the same way across them.
-    #
-    # education.gov.au times out from the authoring sandbox, hence the runner.
-    ('Uni staff data', 'https://www.education.gov.au/higher-education-statistics/staff-data'),
-    ('Uni staff publications',
-     'https://www.education.gov.au/higher-education-statistics/higher-education-statistics-publications'),
-    ('Uni resources', 'https://www.education.gov.au/higher-education-statistics/resources'),
-    # TEQSA registers every provider and publishes an annual statistics
-    # workbook; worth knowing whether it carries staff as well as students.
-    ('TEQSA statistics', 'https://www.teqsa.gov.au/guides-resources/higher-education-data'),
+    # Is education.gov.au reachable AT ALL, or were the paths wrong? The
+    # staff-data path answered ERR_HTTP2_PROTOCOL_ERROR to a browser and timed
+    # out to urllib, from the runner; 403 over HTTP/2 and nothing over
+    # HTTP/1.1 from the sandbox. Those are two different failures and they do
+    # not agree, so the root is worth one request before concluding anything.
+    ('Uni root', 'https://www.education.gov.au/'),
+    ('Uni stats root', 'https://www.education.gov.au/higher-education-statistics'),
+    # The domain data.gov.au's own resource still points at. It predates the
+    # education.gov.au move and may resolve differently.
+    ('Uni old domain', 'https://www.dese.gov.au/higher-education-statistics/staff-data'),
+    ('TEQSA root', 'https://www.teqsa.gov.au/'),
 ]
 
 
