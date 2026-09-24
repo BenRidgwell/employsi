@@ -408,23 +408,43 @@ console.log("\nthe area split is offered only when there is a subject to split:"
   // was tried and caught the salary-by-currency one too, which has nothing to
   // do with the taxonomy; naming the two maps keeps the guard honest about
   // what it covers.
+  // EVERY occurrence, not the first. This used indexOf, and when the pay-by-skill
+  // ranking was added on 2026-09-24 it introduced a second `Object.entries(
+  // bySkill)` EARLIER in the file than the one this was written for — so the
+  // guard silently moved to the new site and stopped checking the old one. A
+  // guard that quietly changes what it guards is worse than one that fails.
   const SKILL_MAPS = ["Object.entries(now)", "Object.entries(bySkill)"];
+  let ranked = 0;
   for (const needle of SKILL_MAPS) {
-    const at = src.indexOf(needle);
+    let at = src.indexOf(needle);
     if (at < 0) {
       fail(`analystFn no longer contains ${needle} — this guard needs rewriting`);
       continue;
     }
-    // The dedupe wraps the ranking, so it sits just before the map is read.
-    if (!src.slice(Math.max(0, at - 220), at).includes("dropRedundantKin(")) {
-      fail(`the ranking over ${needle} does not drop specialities`);
+    while (at >= 0) {
+      // Sites that only COUNT are not rankings and have nothing to dedupe; a
+      // ranking is one that sorts by the value it is about to present.
+      const site = src.slice(at, at + 600);
+      const isRanking = site.includes(".sort(") && !site.includes("[0];");
+      if (isRanking) {
+        ranked++;
+        // The dedupe wraps the ranking, so it sits just before the map is read.
+        if (!src.slice(Math.max(0, at - 420), at).includes("dropRedundantKin(")) {
+          const line = src.slice(0, at).split("\n").length;
+          fail(`the ranking over ${needle} at analystFn.ts:${line} does not drop specialities`);
+        }
+      }
+      at = src.indexOf(needle, at + 1);
     }
+  }
+  if (ranked < 3) {
+    fail(`expected at least 3 skill rankings in analystFn, found ${ranked}`);
   }
   if (!src.includes("withParent(")) {
     fail("analystFn no longer labels a speciality with the skill it narrows");
   }
   if (failures === before) {
-    console.log("  ok    both skill rankings drop a speciality whose parent is listed");
+    console.log(`  ok    all ${ranked} skill rankings drop a speciality whose parent is listed`);
     console.log("  ok    ...and label any speciality that survives");
   }
 }
@@ -526,6 +546,54 @@ console.log('\n"why?" and "tell me more" say different things:');
       `  ok    ${Object.keys(INTENT_QUESTION).length} intents give distinct method and limits`,
     );
     console.log("  ok    ...every limit ends with a question the router answers");
+  }
+}
+
+// ── 9c. A pay question must land on the pay shape it asked for ──────────────
+// THE BUG: "which skills pay the most?" matched the `pay` rule and was answered
+// with ONE median for the whole location. Correct arithmetic, wrong question,
+// and indistinguishable from a right answer on screen. The rule ordering that
+// fixes it is the only thing keeping the two apart, so both sides are asserted.
+console.log("\npay questions split between the level and the ranking:");
+{
+  const before = failures;
+  const RANKING = [
+    "Which skills pay the most?",
+    "which skill pays the most",
+    "what pays the most",
+    "what pays best in perth",
+    "highest paying skills",
+    "best paid skills here",
+    "Which roles pay the biggest premium?",
+    "which skills pay the most in mining",
+    "lowest paying skills",
+  ];
+  for (const q of RANKING) {
+    const got = detectIntent(q);
+    if (got !== "payBySkill") fail(`${JSON.stringify(q)} -> ${got}, expected payBySkill`);
+  }
+  // ...and the questions about the LEVEL must not be dragged into the ranking.
+  const LEVEL = [
+    "What do these roles pay?",
+    "How does pay compare against the wider market?",
+    "what is the median salary",
+    "what does nursing pay",
+    "average wage here",
+  ];
+  for (const q of LEVEL) {
+    const got = detectIntent(q);
+    if (got !== "pay") fail(`${JSON.stringify(q)} -> ${got}, expected pay`);
+  }
+  // Neither may steal a question that is not about pay at all.
+  for (const q of ["Which skills are most in demand?", "Which skills take longest to fill?"]) {
+    const got = detectIntent(q);
+    if (got === "pay" || got === "payBySkill") fail(`${JSON.stringify(q)} -> ${got}`);
+  }
+  if (failures === before) {
+    console.log(`  ok    ${RANKING.length} ranking questions -> payBySkill`);
+    console.log(
+      `  ok    ${LEVEL.length} level questions -> pay, and neither steals a demand question`,
+    );
   }
 }
 

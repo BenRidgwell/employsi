@@ -12,6 +12,7 @@ import { ALL_SKILLS, SKILL_PARENT } from "../data/skillsTaxonomy";
 
 export type AnalystIntent =
   | "history" // long-run official statistics
+  | "payBySkill" // which skills pay most, and by how much over the local median
   | "pay"
   | "duration" // how long ads stay up, by skill
   | "skills"
@@ -41,6 +42,53 @@ const RULES: { intent: AnalystIntent; match: string[] }[] = [
       "pre-covid",
       "before covid",
       "recover",
+    ],
+  },
+  // ABOVE `pay`, and that order is the whole point. "Which skills pay the most?"
+  // matches "pay" too, and used to be answered with ONE median for the whole
+  // location — a real figure that is not what was asked, which is the shape of
+  // wrongness this file exists to prevent. The phrases here are all ones that
+  // name a COMPARISON BETWEEN skills; a question about the level ("what do
+  // these roles pay?") carries none of them and still falls through to `pay`.
+  {
+    intent: "payBySkill",
+    match: [
+      "which skills pay",
+      "what skills pay",
+      "which skill pays",
+      "which roles pay",
+      "what roles pay the most",
+      "highest paying",
+      "highest-paying",
+      "best paying",
+      "best-paying",
+      "top paying",
+      "top-paying",
+      "pay the most",
+      "pays the most",
+      "pay the best",
+      "pays the best",
+      "pays best",
+      "pay best",
+      "paying best",
+      "paid best",
+      "pays most",
+      "pay most",
+      "earn the most",
+      "earns the most",
+      "biggest premium",
+      "pay premium",
+      "salary premium",
+      "pay by skill",
+      "pay per skill",
+      "salary by skill",
+      "which pays more",
+      "what pays more",
+      "what pays the most",
+      "best paid",
+      "highest paid",
+      "worst paid",
+      "lowest paying",
     ],
   },
   { intent: "pay", match: ["salary", "salaries", "pay", "paid", "compensation", "wage", "$"] },
@@ -247,7 +295,7 @@ export const PROMPT_TOPICS: { label: string; questions: string[] }[] = [
     questions: [
       "What do these roles pay?",
       "How does pay compare against the wider market?",
-      "Which roles pay the biggest premium?",
+      "Which skills pay the most?",
     ],
   },
 ];
@@ -277,6 +325,7 @@ export const INTENT_QUESTION: Record<DataIntent, string> = {
   volume: "How is hiring trending?",
   skills: "Which skills are most in demand?",
   pay: "What do these roles pay?",
+  payBySkill: "Which skills pay the most?",
   duration: "Which skills take longest to fill?",
   history: "How has demand changed since 2019?",
 };
@@ -286,6 +335,7 @@ export const INTENT_LABEL: Record<DataIntent, string> = {
   volume: "Hiring trend",
   skills: "Top skills",
   pay: "Pay",
+  payBySkill: "Best paid",
   duration: "Time to fill",
   history: "Since 2019",
 };

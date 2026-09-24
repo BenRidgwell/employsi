@@ -222,9 +222,13 @@ export function followUpsFor(
   // intent every time turns the row into a menu and buries the scope pivots.
   const NEXT: Record<AnalystIntent, DataIntent[]> = {
     volume: ["pay", "skills"],
-    skills: ["pay", "duration"],
-    pay: ["skills", "volume"],
-    duration: ["skills", "pay"],
+    // After a demand ranking the question is which of those skills pays, which
+    // is the per-skill split rather than the scope median.
+    skills: ["payBySkill", "duration"],
+    // And after the scope median, which skills carry the premium over it.
+    pay: ["payBySkill", "skills"],
+    payBySkill: ["pay", "skills"],
+    duration: ["skills", "payBySkill"],
     history: ["volume", "skills"],
     unknown: [],
   };
