@@ -715,14 +715,14 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "newyork-vno": "vno.com",
   "tokyo-8035": "tel.com",
   "toronto-fnv": "franco-nevada.com",
-  "toronto-ifc": "intactfc.com",
-  // NOT FIXED, same rule as always — unverified is not recorded as fact:
-  //   shanghai-600519  Kweichow Moutai. moutaichina.com answers 200 but its
-  //     title is "入网口", a gateway page that names no company; moutai.com.cn
-  //     does not resolve.
-  //   ganzhou-000831   China Rare Earth. The ticker is a Shenzhen listing that
-  //     has been renamed and restructured; nothing tried resolved to it.
-  // Both still show the parking mark. They are the last two known instances.
+  // BOTH OF THESE ARE NOW FIXED, 2026-09-24, and the note is kept because the
+  // refusal was correct at the time. Moutai's own /mtjt/imageDir/siteIcon.ico
+  // does serve its mark — the gateway page that names nobody sits in front of
+  // a real site. China Rare Earth was renamed from China Minmetals Rare Earth
+  // in October 2022, which is exactly why nothing resolved to it; the company
+  // is at cmreltd.com, recorded above as the right domain with no badge,
+  // because that host does not answer at all. Neither shows the parking mark
+  // any more.
   // ── Dubai, Tokyo, Beijing, Hong Kong, 2026-09-22: the domains ────────────
   // THESE FOUR CITIES FAIL DIFFERENTLY FROM EVERYWHERE ELSE, and the difference
   // decides the fix. In Australia and New Zealand a blank badge almost always
@@ -853,6 +853,54 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   // badge is the honest end state; the parked icon they had was not.
   "shenzhen-000858": "wuliangye.com.cn",
   "ganzhou-000831": "cmreltd.com",
+  // ── 2026-09-24: China, the UAE and Canada ────────────────────────────────
+  //
+  // 50 blank badges across the three, and they are blank for three different
+  // reasons that look identical on screen.
+  //
+  // CANADA and the UAE are the familiar failure: the domain was built from
+  // the full legal name and the company trades under an abbreviation. Every
+  // Canadian bank, the railways, Barrick and Suncor are one short word;
+  // Emirates Telecommunications is e& and lives at eand.com, which no rule
+  // over the name could reach.
+  "toronto-ry": "rbc.com",
+  "toronto-bmo": "bmo.com",
+  "toronto-cm": "cibc.com",
+  "toronto-td": "td.com",
+  "toronto-csu": "csisoftware.com",
+  "toronto-abx": "barrick.com",
+  "toronto-ifc": "intact.ca",
+  "calgary-su": "suncor.com",
+  "calgary-cp": "cpkcr.com",
+  "vancouver-lulu": "lululemon.com",
+  "dubai-du": "du.ae",
+  "dubai-dfm": "dfm.ae",
+  "dubai-dib": "dib.ae",
+  "dubai-salik": "salik.ae",
+  "dubai-tabreed": "tabreed.ae",
+  "dubai-gulfnav": "gulfnav.com",
+  "dubai-emiratesnbd": "emiratesnbd.com",
+  "dubai-eand": "eand.com",
+  "dubai-adcb": "adcb.com",
+  "dubai-emsteel": "emsteelgroup.com",
+  // CHINA is a different failure and the more interesting one. Several of
+  // these were ALREADY on the right domain — saicmotor.com, jd.com, psbc.com,
+  // petrochina.com.cn — and still drew nothing, because the favicon service's
+  // coverage of Chinese hosts is thin. A blank here never meant the data was
+  // wrong, which is why it survived: the usual fix does not apply.
+  "shanghai-601012": "longi.com",
+  "shanghai-603288": "haitian-food.com",
+  "shanghai-600276": "hengrui.com",
+  "shanghai-600809": "fenjiu.com.cn",
+  "shenzhen-300750": "catl.com",
+  "shenzhen-002415": "hikvision.com",
+  "shenzhen-000651": "gree.com",
+  "shenzhen-300760": "mindray.com",
+  "shenzhen-300059": "eastmoney.com",
+  "shenzhen-000001": "bank.pingan.com",
+  "beijing-601857": "petrochina.com",
+  "beijing-601628": "chinalife.com.cn",
+  "montreal-cnr": "cn.ca",
   // ── the original Top-150 private set ──────────────────────────────────────
   "priv-abc-tissue": "abctissue.com.au",
   "priv-abn-group": "abngroup.com.au",
