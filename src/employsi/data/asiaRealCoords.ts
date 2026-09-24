@@ -33,6 +33,36 @@
  * The city cameras still frame the business district, so those pins start off
  * screen. A bounding box that rejected them would be rejecting correct data.
  *
+ * THE OTHER 34 HONG KONG COMPANIES WERE CHASED AND GIVEN UP ON, 2026-09-24,
+ * and the reason is not effort. Every one was identified on Wikidata by its
+ * HKEX TICKER — which is what its roster id already is, so P414/P249 pins the
+ * entity without a name search ever happening — and 34 of 34 matched. What
+ * came back:
+ *
+ *   15 HAVE NO HONG KONG HEAD OFFICE AT ALL. HSBC Holdings and Swire Pacific
+ *      are headquartered in London, Tencent in Shenzhen (registered in the
+ *      Caymans), Alibaba and Geely in Hangzhou, Bank of China, China Mobile,
+ *      China Unicom, China Life, Meituan, Xiaomi and Lenovo in Beijing, Sands
+ *      China in Macau, Anta in Jinjiang. Their Hong Kong presence is a
+ *      LISTING and a regional office, and this roster is a listings roster.
+ *      Pinning them at their real head office would move them off the map.
+ *   14 RESOLVE TO THE CITY CENTROID, 114.15861/22.27833 — the point Wikidata
+ *      uses for "Hong Kong" itself. Recording that would stack fourteen pins
+ *      on one spot, which is worse than the fan it replaced.
+ *    4 NAME A BUILDING, and the coordinates miss it. Cheung Kong Center's
+ *      lands on the Cheung Kong Park car park; AIA Central's lands on CCB
+ *      TOWER, a different company's building next door. That is the
+ *      near-miss geocode-au.py warns about, arriving through a chain that
+ *      looked airtight.
+ *
+ * Wikipedia infoboxes were tried too, through the same ticker-verified chain:
+ * they carry "Hong Kong" or a district, never a street.
+ *
+ * WHAT WOULD ACTUALLY WORK is HKEX's own Company Information Sheet, which
+ * every listed issuer files and which states the registered office and the
+ * principal place of business in Hong Kong. hkexnews.hk answers; finding the
+ * document endpoint is the remaining work.
+ *
  * CapitaLand Ascendas REIT is deliberately NOT here. Its published address is
  * its MANAGER's office, the same 168 Robinson Road as CapitaLand Investment,
  * and a REIT has no staff of its own; it keeps its fan position.
