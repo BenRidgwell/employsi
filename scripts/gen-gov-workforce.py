@@ -144,6 +144,12 @@ def fetch(url, binary=False, via_browser=False, warm=None, expect=None):
         page.close()
     r = ctx.request.get(url, timeout=120_000)
     b = r.body()
+    # Say what came back. A browser retry that still fails is otherwise an
+    # empty result several frames away from its cause — Victoria returned zero
+    # rows with no error at all, and the log said only "nothing loaded".
+    if r.status != 200 or (expect == 'zip' and b[:2] != b'PK'):
+        print(f'  (browser got HTTP {r.status}, {len(b)} bytes, starts {b[:24]!r})',
+              file=sys.stderr)
     return b if binary else b.decode('utf-8-sig', 'replace')
 
 
@@ -240,7 +246,9 @@ def load_vic():
     now_y, prev_y = sorted(years, reverse=True)[:2]
 
     def read(url):
-        raw = fetch(url, True)
+        # Warmed at the site root: if the 403 is a bot check rather than an IP
+        # block, the cookie it wants is set by visiting a page first.
+        raw = fetch(url, True, warm='https://vpsc.vic.gov.au/')
         rows = {}
         if raw[:2] == b'PK':
             wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
@@ -260,6 +268,9 @@ def load_vic():
         return rows
 
     a, b = read(years[now_y]), read(years[prev_y])
+    if not a or not b:
+        print(f'  Victoria: parsed {len(a)} rows for {now_y}, {len(b)} for {prev_y}',
+              file=sys.stderr)
     return {k: (a[k], b[k]) for k in a if k in b}, f'Jun {now_y}', 'headcount'
 
 
