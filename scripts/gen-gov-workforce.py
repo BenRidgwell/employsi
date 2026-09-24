@@ -836,11 +836,22 @@ def _nt_rows(page):
     """
     CHANGE_COL_X = 430        # measured: values <= 430, change columns beyond
     words = page.extract_words(keep_blank_chars=False, use_text_flow=False)
-    lines = {}
-    for w in words:
-        lines.setdefault(round(w['top'] / 3), []).append(w)
+
+    # CLUSTER A ROW BY PROXIMITY, NOT BY A BUCKET. Rounding `top` into fixed
+    # bins splits a row whenever it straddles a boundary, and a name sitting a
+    # point above its own figures lands in the bin above them. That is what
+    # produced numeric lines with no agency on them: the figures were orphaned
+    # from the name they belong to, and both halves were then discarded. The
+    # dump made it visible — "37@307 37@350 34@400" with no name, directly
+    # above a line that was nothing but a name.
+    rows_by_top = []
+    for w in sorted(words, key=lambda w: w['top']):
+        if rows_by_top and abs(w['top'] - rows_by_top[-1][0]) <= 4:
+            rows_by_top[-1][1].append(w)
+        else:
+            rows_by_top.append((w['top'], [w]))
     out = {}
-    for _, ws in sorted(lines.items()):
+    for _, ws in rows_by_top:
         ws.sort(key=lambda w: w['x0'])
         name_parts, cols, cur, last_x1 = [], [], [], None
         for w in ws:
