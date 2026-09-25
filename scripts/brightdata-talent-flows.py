@@ -83,6 +83,9 @@ Options:
     --state PATH          local SQLite (default ~/.employsi/brightdata-talent-flows.sqlite)
     --window-months N     export window length (default 24)
     --lag-months N        months before today the window ends (default 3)
+    --sync-d1             push new profiles' counts + keys and the cursors to D1 (0003)
+    --pull-d1             fetch the cursors and counted keys from D1 before a run here
+    --from-d1             with --export: export everything synced, from any machine
     --purge               delete local state and salt
 """
 from __future__ import annotations
@@ -90,6 +93,7 @@ from __future__ import annotations
 import asyncio
 import csv
 import datetime as dt
+import hashlib
 import json
 import os
 import secrets
@@ -97,6 +101,7 @@ import shlex
 import sqlite3
 import sys
 import time
+import urllib.error
 import urllib.request
 from collections import Counter
 
@@ -145,7 +150,7 @@ CREATE TABLE IF NOT EXISTS people (
   person_key TEXT PRIMARY KEY,     -- HMAC of the profile id; nothing else about the person
   seed_ref   TEXT NOT NULL,
   fetched    TEXT NOT NULL,
-  status     TEXT NOT NULL,        -- ok | empty
+  status     TEXT NOT NULL,        -- ok | empty | remote (counted on another machine; key only)
   positions  INTEGER NOT NULL DEFAULT 0,
   dropped    TEXT,
   skipped    TEXT
@@ -171,12 +176,27 @@ def db() -> sqlite3.Connection:
     conn = sqlite3.connect(STATE)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    if 'synced' not in {r['name'] for r in conn.execute('PRAGMA table_info(people)')}:
+        conn.execute('ALTER TABLE people ADD COLUMN synced INTEGER NOT NULL DEFAULT 0')
     return conn
 
 
 def salt() -> bytes:
+    """The HMAC key behind every person_key. BRIGHTDATA_FLOWS_SALT (hex) wins
+    over the local file, so keys stay the same on a new machine; without it,
+    profiles already in D1 would get new keys and be counted twice. It is
+    never written to D1."""
+    env = os.environ.get('BRIGHTDATA_FLOWS_SALT', '').strip()
+    have_file = os.path.exists(SALT_FILE)
+    if env:
+        if have_file:
+            with open(SALT_FILE) as f:
+                if f.read().strip() != env:
+                    sys.exit(f'BRIGHTDATA_FLOWS_SALT differs from {SALT_FILE}: the keys already '
+                             'stored would not match new ones. Keep one salt.')
+        return bytes.fromhex(env)
     os.makedirs(os.path.dirname(SALT_FILE), exist_ok=True)
-    if not os.path.exists(SALT_FILE):
+    if not have_file:
         fd = os.open(SALT_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, 'w') as f:
             f.write(secrets.token_hex(32))
@@ -481,15 +501,30 @@ def export(conn: sqlite3.Connection, out_dir: str) -> int:
     today = dt.date.today()
     end = month_add(today.strftime('%Y-%m'), -LAG_MONTHS)
     start = month_add(end, -(WINDOW_MONTHS - 1))
-    moves = [dict(r) for r in conn.execute(
-        "SELECT m.* FROM moves m JOIN people p USING (person_key) WHERE p.status = 'ok'")]
+    if '--from-d1' in args:
+        # Everything synced, from any machine. Run --sync-d1 first so this
+        # machine's own profiles are in it.
+        moves = [m for r in d1('SELECT from_ref, from_name, to_ref, to_name, month, '
+                               'SUM(moves) n FROM flow_collect_moves WHERE source = ? '
+                               'AND month BETWEEN ? AND ? GROUP BY 1,2,3,4,5',
+                               [SOURCE, start, end])
+                 for m in [dict(r)] * int(r['n'])]
+        sample = {r['seed_ref']: int(r['n']) for r in d1(
+            'SELECT seed_ref, SUM(profiles_ok) n FROM flow_collect_batch WHERE source = ? '
+            'GROUP BY seed_ref', [SOURCE])}
+        seed_rows = d1('SELECT seed_ref, company_id, total FROM flow_collect_seed WHERE source = ?',
+                       [SOURCE])
+    else:
+        moves = [dict(r) for r in conn.execute(
+            "SELECT m.* FROM moves m JOIN people p USING (person_key) WHERE p.status = 'ok'")]
+        sample = {r['seed_ref']: r['n'] for r in conn.execute(
+            "SELECT seed_ref, COUNT(*) n FROM people WHERE status = 'ok' GROUP BY seed_ref")}
+        seed_rows = [dict(r) for r in conn.execute('SELECT * FROM seeds')]
     rows = aggregate(moves, start, end)
-    sample = {r['seed_ref']: r['n'] for r in conn.execute(
-        "SELECT seed_ref, COUNT(*) n FROM people WHERE status = 'ok' GROUP BY seed_ref")}
     if not sample:
         sys.exit('Nothing collected yet.')
-    seeds = {r['seed_ref']: r['company_id'] for r in conn.execute('SELECT * FROM seeds')}
-    totals = {r['seed_ref']: r['total'] for r in conn.execute('SELECT * FROM seeds')}
+    seeds = {r['seed_ref']: r['company_id'] for r in seed_rows}
+    totals = {r['seed_ref']: r['total'] for r in seed_rows}
     os.makedirs(out_dir, exist_ok=True)
     cols = ['from_ref', 'from_name', 'to_ref', 'to_name', 'period_start', 'period_end',
             'moves', 'count_kind']
@@ -524,6 +559,145 @@ def export(conn: sqlite3.Connection, out_dir: str) -> int:
     return 0
 
 
+# ── D1: collection state (workers/jobs-cron/migrations/0003) ────────────────
+
+SOURCE = 'brightdata'
+MIN_BATCH = 20  # fewer new profiles than this wait: a batch of one IS a person's history
+D1_API = ('https://api.cloudflare.com/client/v4/accounts/'
+          f'{os.environ.get("CF_ACCOUNT_ID") or "080a66721e2d85950d9d7dc939e08b76"}/d1/database/'
+          f'{os.environ.get("D1_DATABASE_ID") or "1c5f3ffb-b9d7-4233-b28b-0f1f8d193fe1"}/query')
+
+
+def d1(sql: str, params: list | None = None) -> list[dict]:
+    token = os.environ.get('CLOUDFLARE_API_TOKEN', '')
+    if not token:
+        sys.exit('D1 needs CLOUDFLARE_API_TOKEN.')
+    body = json.dumps({'sql': sql, 'params': params or []}).encode()
+    req = urllib.request.Request(D1_API, data=body, headers={
+        'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'})
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                j = json.loads(r.read().decode())
+            if j.get('success'):
+                return j['result'][0].get('results') or []
+            raise RuntimeError(str(j.get('errors'))[:300])
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode('utf-8', 'replace')[:300]
+            if attempt == 3:
+                sys.exit(f'D1 {e.code}: {detail}')
+        except (urllib.error.URLError, TimeoutError):
+            if attempt == 3:
+                raise
+        time.sleep(attempt + 1)
+    return []
+
+
+def _chunks(rows: list, width: int):
+    per = max(1, 100 // width)  # D1 caps a statement at 100 bound params
+    for i in range(0, len(rows), per):
+        yield rows[i:i + per]
+
+
+def sync_d1(conn: sqlite3.Connection) -> int:
+    """Push profiles counted here but not yet in D1, as one batch.
+
+    Order matters for a sync that dies half way: counts first, keys next,
+    the local 'synced' mark last. Every insert is OR IGNORE under a batch_id
+    derived from the batch's own keys, so re-running the same sync rewrites
+    nothing, and a key is only ever marked seen alongside its counts."""
+    now = dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    for r in conn.execute('SELECT * FROM seeds'):
+        d1('INSERT INTO flow_collect_seed (seed_ref, source, company_id, slug, total, '
+           'search_after, exhausted, updated_at) VALUES (?,?,?,?,?,?,?,?) '
+           'ON CONFLICT(seed_ref) DO UPDATE SET total = excluded.total, '
+           'search_after = excluded.search_after, exhausted = excluded.exhausted, '
+           'updated_at = excluded.updated_at',
+           [r['seed_ref'], SOURCE, r['company_id'], r['slug'], r['total'], r['search_after'],
+            r['exhausted'], now])
+    people = [dict(r) for r in conn.execute(
+        "SELECT * FROM people WHERE synced = 0 AND status IN ('ok', 'empty') ORDER BY person_key")]
+    if not people:
+        print('seed cursors synced; no new profiles to sync.')
+        return 0
+    if len(people) < MIN_BATCH:
+        print(f'seed cursors synced; {len(people)} new profiles wait here until there are '
+              f'{MIN_BATCH} (a smaller batch would be close to one person\'s history).')
+        return 0
+    keys = [p['person_key'] for p in people]
+    batch = hashlib.sha256('\n'.join(keys).encode()).hexdigest()[:16]
+
+    per_seed: dict[str, dict] = {}
+    for p in people:
+        b = per_seed.setdefault(p['seed_ref'], {'ok': 0, 'empty': 0, 'refused': Counter(),
+                                                'skipped': Counter(), 'year_only': 0})
+        b['ok' if p['status'] == 'ok' else 'empty'] += 1
+        b['refused'].update(json.loads(p['dropped'] or '{}'))
+        b['skipped'].update(json.loads(p['skipped'] or '{}'))
+    counts: Counter = Counter()
+    marks = ','.join('?' * len(keys))
+    for m in conn.execute(f'SELECT m.*, p.seed_ref FROM moves m JOIN people p USING (person_key) '
+                          f'WHERE p.person_key IN ({marks})', keys):
+        if not m['month']:
+            per_seed[m['seed_ref']]['year_only'] += 1
+            continue
+        counts[(m['from_ref'], m['from_name'], m['to_ref'], m['to_name'], m['month'])] += 1
+
+    rows = [(batch, SOURCE, *k, n) for k, n in counts.items()]
+    for chunk in _chunks(rows, 8):
+        d1('INSERT OR IGNORE INTO flow_collect_moves (batch_id, source, from_ref, from_name, '
+           'to_ref, to_name, month, moves) VALUES ' + ','.join(['(?,?,?,?,?,?,?,?)'] * len(chunk)),
+           [v for r in chunk for v in r])
+    for seed_ref, b in per_seed.items():
+        d1('INSERT OR IGNORE INTO flow_collect_batch (batch_id, seed_ref, source, profiles_ok, '
+           'profiles_empty, refused, not_counted, year_only, synced_at) VALUES (?,?,?,?,?,?,?,?,?)',
+           [batch, seed_ref, SOURCE, b['ok'], b['empty'], json.dumps(dict(b['refused'])),
+            json.dumps(dict(b['skipped'])), b['year_only'], now])
+    for chunk in _chunks(keys, 1):
+        d1('INSERT OR IGNORE INTO flow_collect_seen (person_key) VALUES '
+           + ','.join(['(?)'] * len(chunk)), chunk)
+    conn.executemany('UPDATE people SET synced = 1 WHERE person_key = ?', [(k,) for k in keys])
+    conn.commit()
+    print(f'synced batch {batch}: {len(keys)} profiles, {len(rows)} month-pair rows '
+          f'({sum(counts.values())} moves), {len(per_seed)} seed(s).')
+    return 0
+
+
+def pull_d1(conn: sqlite3.Connection) -> int:
+    """Bring the seed cursors and the counted keys to this machine, so a run
+    here resumes where the last one stopped and skips everyone already counted."""
+    salt()  # refuse early on a salt mismatch
+    waiting = conn.execute("SELECT COUNT(*) FROM people WHERE synced = 0 "
+                           "AND status IN ('ok', 'empty')").fetchone()[0]
+    if waiting >= MIN_BATCH:
+        # A sync that died half way leaves some of these keys in D1; pulling
+        # them would split the batch and the rest would be counted twice.
+        sys.exit(f'{waiting} profiles here are not synced yet. Run --sync-d1 first.')
+    for r in d1('SELECT * FROM flow_collect_seed WHERE source = ?', [SOURCE]):
+        conn.execute('INSERT INTO seeds (seed_ref, company_id, slug, total, search_after, exhausted) '
+                     'VALUES (?,?,?,?,?,?) ON CONFLICT(seed_ref) DO UPDATE SET total = excluded.total, '
+                     'search_after = excluded.search_after, exhausted = excluded.exhausted',
+                     [r['seed_ref'], r['company_id'], r['slug'], r['total'], r['search_after'],
+                      r['exhausted']])
+    got, after = 0, ''
+    while True:
+        page = d1('SELECT person_key FROM flow_collect_seen WHERE person_key > ? '
+                  'ORDER BY person_key LIMIT 5000', [after])
+        if not page:
+            break
+        # Already here and unsynced (fewer than MIN_BATCH): D1 has them, so
+        # they must not be pushed again.
+        conn.executemany("INSERT INTO people (person_key, seed_ref, fetched, status, "
+                         "positions, synced) VALUES (?, '', '', 'remote', 0, 1) "
+                         "ON CONFLICT(person_key) DO UPDATE SET synced = 1",
+                         [(r['person_key'],) for r in page])
+        got += len(page)
+        after = page[-1]['person_key']
+    conn.commit()
+    print(f'pulled {got} counted keys and the seed cursors from D1.')
+    return 0
+
+
 def seeds_from_d1() -> list[tuple[str, str]]:
     token = os.environ.get('CLOUDFLARE_API_TOKEN', '')
     if not token:
@@ -553,6 +727,10 @@ def main() -> int:
     if '--inspect' in args:
         return asyncio.run(with_server(lambda bd: inspect(bd, _opt('--inspect'), int(_opt('--n', 1)))))
     conn = db()
+    if '--sync-d1' in args:
+        return sync_d1(conn)
+    if '--pull-d1' in args:
+        return pull_d1(conn)
     if '--stats' in args:
         return stats(conn)
     if '--export' in args:

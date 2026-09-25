@@ -12,6 +12,7 @@ holds no data.**
 | Card section | `components/panels/TalentFlow.tsx`, Hiring tab | Built; renders nothing without data. Not seen rendered |
 | Map arcs | — | Not started |
 | **Source: Bright Data** (chosen) | `scripts/brightdata-talent-flows.py` + `talent_flows.positions_from_brightdata` | Built; tested end to end against a **fake** Bright Data MCP server. Filters confirmed live 2026-09-24. **7 of 10 real profiles parse to nothing** — see below |
+| Collection state | `workers/jobs-cron/migrations/0003_talent_flows_collect.sql` | **Applied to production D1 2026-09-25.** Holds 1,600 BHP profiles (769 usable). Counts by month plus a bare list of hashed ids; no person's name, url, title or history |
 | Source: LinkedIn sample (parked) | `scripts/collect-talent-flows.py` + `scripts/talent_flows.py` | Built; tested against a fake MCP server only. Parked: it needs a personal LinkedIn account |
 
 ### The Bright Data source
@@ -103,6 +104,32 @@ Facts it depends on (read 2026-09-24):
   skipped by key: the 50 from the day before came back in the same order
   and were skipped, so a restart costs only the requests spent re-reading.
   Read a large seed in one run where possible.
+- **Rate limit.** On 2026-09-25 Bright Data accepted 164 `search_dataset`
+  requests between 00:41 and 00:55 UTC, then answered `HTTP 429: Too Many
+  Requests`. The pace was the same throughout (~24 a minute), so the cap
+  is a count per window, not a burst limit. The window is not documented;
+  the MCP server's own `RATE_LIMIT` is unset, so the 429 is Bright Data's.
+- **Collection state lives in D1** (`0003`), so a collection outlives the
+  machine it ran on. `--sync-d1` pushes what this machine has counted,
+  `--pull-d1` brings the cursors and counted keys to a new machine, and
+  `--export --from-d1` exports everything synced. D1 holds:
+  - move counts per company pair per month, summed per sync batch;
+  - per-batch profile counts and refusal reasons;
+  - the seed cursors;
+  - `flow_collect_seen`: the HMAC key of each profile counted, **alone**.
+    No batch, seed or date is stored with it, so a key cannot be joined to
+    the moves it contributed.
+
+  No name, profile url, photo, title or per-person history is stored
+  anywhere, locally or in D1. The HMAC salt is kept out of D1, in
+  `BRIGHTDATA_FLOWS_SALT`; without it a key cannot be recomputed from a
+  profile id, and with a different one every profile would count again.
+  A sync needs 20 new profiles (`MIN_BATCH`), because a batch of one would
+  be one person's history. Every insert is `OR IGNORE` under a batch id
+  derived from the batch's keys, so a sync that dies half way can be
+  re-run. Tested offline on a copy of the real state (forced re-sync wrote
+  nothing twice; the D1 export was byte-identical to the local one), then
+  run live: 1,600 keys, 1,232 month-pair rows, and the D1 export matched.
 - **The MCP server writes to the Bright Data account.** On first start
   `@brightdata/mcp@2.11.3` created two zones, `mcp_unlocker` and
   `mcp_browser`, on the account the token belongs to ("Required zone … not
@@ -123,7 +150,9 @@ python scripts/brightdata-talent-flows.py --inspect bhp        # 1 request, stor
 python scripts/brightdata-talent-flows.py --inspect bhp --n 10 # still 1 request, 10 profiles summarised
 python scripts/brightdata-talent-flows.py --seed bhp=bhp --max-requests 5
 python scripts/brightdata-talent-flows.py --stats
-python scripts/brightdata-talent-flows.py --export out/
+python scripts/brightdata-talent-flows.py --sync-d1                    # counts + keys to D1
+python scripts/brightdata-talent-flows.py --pull-d1                    # on a new machine, before collecting
+python scripts/brightdata-talent-flows.py --export out/ --from-d1
 python scripts/flows-to-d1.py out/                             # dry run; --write to load
 ```
 
