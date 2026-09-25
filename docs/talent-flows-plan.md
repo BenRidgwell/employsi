@@ -1,8 +1,9 @@
 # Talent flows — format and build
 
-**Status (2026-09-25): built, not deployed. Production D1 holds one live import**
-(`brightdata|2026-09-25|d1b30763ccbe`: BHP, 5,697 usable profiles, 1,448
-pairs, 1,848 moves over 2021-07..2026-06; it superseded `…619251994dd2`). Nothing shows it yet: the reader
+**Status (2026-09-25): built; on the preview Worker, not production. Production D1
+holds one live import** (`brightdata|2026-09-25|f81c88d04168`: BHP, 9,605 usable
+profiles, 2,420 pairs, 3,282 moves over 2021-07..2026-06; it superseded
+`…d1b30763ccbe`, which superseded `…619251994dd2`). Nothing shows it yet: the reader
 (`flowsFn.ts`, `TalentFlow.tsx`) is on this branch only, not on `main`, and
 `deploy-preview.yml` is manual. The rows go live on whichever Worker is next
 deployed from a tree that has the reader, preview included (it shares
@@ -17,7 +18,7 @@ production D1).
 | Card section | `components/panels/TalentFlow.tsx`, Hiring tab | Built; renders nothing without data. Not seen rendered |
 | Map arcs | — | Not started |
 | **Source: Bright Data** (chosen) | `scripts/brightdata-talent-flows.py` + `talent_flows.positions_from_brightdata` | Built; tested end to end against a **fake** Bright Data MCP server. Filters confirmed live 2026-09-24. **7 of 10 real profiles parse to nothing** — see below |
-| Collection state | `workers/jobs-cron/migrations/0003_talent_flows_collect.sql` | **Applied to production D1 2026-09-25.** Holds 9,490 BHP profiles (5,697 usable) after the fourth collection. Counts by month plus a bare list of hashed ids; no person's name, url, title or history |
+| Collection state | `workers/jobs-cron/migrations/0003_talent_flows_collect.sql` | **Applied to production D1 2026-09-25.** Holds 15,490 BHP profiles (9,605 usable) after the fifth collection. Counts by month plus a bare list of hashed ids; no person's name, url, title or history |
 | Source: LinkedIn sample (parked) | `scripts/collect-talent-flows.py` + `scripts/talent_flows.py` | Built; tested against a fake MCP server only. Parked: it needs a personal LinkedIn account |
 
 ### The Bright Data source
@@ -177,6 +178,30 @@ Facts it depends on (read 2026-09-24):
     into `flows` at load time, so they take effect on the next load. A dry
     run of the loaded export then matched 117 companies (from 110) and 360
     moves with both ends on the roster (from 312).
+- **Fifth collection, 2026-09-25 04:55:50–05:18:29 UTC: 600 requests,
+  6,000 profiles**, no repeats (`total_hits` now 21,359; the saved cursor
+  held across that change). D1 holds 15,490 of 21,359 (73%), 9,605 usable.
+  60-month export: 3,282 moves over 2,420 pairs; 1,869 into BHP from 1,064
+  employers, 837 with 1. **18 pairs reach 10**, 17 into BHP: Rio Tinto 93,
+  Fortescue 31, Programmed 26, Monadelphous 21, Downer 20, Thiess 19, Anglo
+  American 16, Mineral Resources 16, Mader Group 15, Linkforce 12, Macmahon
+  12, Aurizon 11, WesTrac 11, Glencore 10, South32 10, Water Corporation 10,
+  WorkPac 10; and BHP → Rio Tinto 15 (people who left and came back).
+  Excluded: OZ Minerals 99, Freelance 19, Self-employed 16, Independent
+  Consultant 1, empty names 2. Loaded as `…f81c88d04168`; D1 totals checked,
+  the three roster additions carry their ids, and the ten new exact-name
+  matches were checked by hand.
+  Two things this run found and did not fix:
+  - **BHP's own pages count as sources of BHP hires**: 39 moves, e.g. "BHP
+    Billiton Nickel West Pty Ltd" (8, a LinkedIn page of its own), BHP
+    Mitsubishi Alliance, Olympic Dam, and `name:bhp`, which exact-name maps
+    to `bhp` and so makes a BHP → BHP row. They are transfers inside one
+    employer. None reaches 10, so none is displayed, but they swell the
+    totals. The fix has the same shape as `ACQUISITIONS`: a list of refs
+    that are the same employer, and `aggregate()` dropping a move whose two
+    ends resolve to one.
+  - Junk names still getting through, 1–2 moves each: "Various Companies"
+    (two LinkedIn pages), "personal", "Dance Training Sabbatical".
 - **The rate limit is not a fixed count per window.** 00:41–00:55 UTC: 164
   accepted, then 429. 02:02:14–02:25:38 UTC: 557 accepted (at the same ~24 a
   minute), then 429 on the 558th. So the cap had reset within 67 minutes of
@@ -188,8 +213,10 @@ Facts it depends on (read 2026-09-24):
   longer rolling span, including requests from before 00:41 that were not
   timed, fits but is not shown. What is measured: resuming about 70 minutes
   after a 429 has worked both times it was tried. Resume no sooner than that,
-  and never retry one. Requests used this month: ~1,064 of the 5,000 free
-  (270 before today, then 1 + 557 + 233 in this session). The full seed needs ~1,190 more.
+  and never retry one. 04:55:50–05:18:29 UTC, after a 71-minute gap: 600
+  accepted, 429 on the 601st. So far: 164, 557, 233, 600. Requests used this
+  month: ~1,664 of the 5,000 free (270 before today, then 1 + 557 + 233 + 600
+  in this session). The full seed needs ~590 more, which fits one window.
 - **Collection state lives in D1** (`0003`), so a collection outlives the
   machine it ran on. `--sync-d1` pushes what this machine has counted,
   `--pull-d1` brings the cursors and counted keys to a new machine, and
