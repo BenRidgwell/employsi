@@ -146,6 +146,44 @@ FILES = [
 # entity. Where the register's name is a group, the group total is used; where
 # it is an employer, the employer total is.
 ALIAS = {
+    # ── ASX entities whose roster name is the BRAND, not the listed company ──
+    # A whole class the earlier passes missed, because norm() strips pty/ltd but
+    # NOT "corporation", "holdings" or "management" — so "Stockland" never
+    # reached "Stockland Corporation Ltd" and eight listed employers read as
+    # absent from a register that held every one of them.
+    #
+    # NORM() IS DELIBERATELY NOT WIDENED TO STRIP THOSE WORDS. It would make
+    # "Walker Corporation" collide with "Walker Group Holdings Pty Limited",
+    # which is a different family's business, and that is the same failure as
+    # "AFL" matching AFL Sports Ready. Each of these was read instead: the
+    # group's MEMBER employers were listed and checked to be that company's own
+    # subsidiaries, which is what a group name alone does not tell you.
+    "Stockland": "Stockland Corporation Ltd",                 # 1 member, Stockland Development
+    "Tabcorp": "Tabcorp Holdings Limited",                    # Tabcorp Assets, Sky Channel, TAB Ltd
+    "Lendlease": "Lendlease Corporation Limited",             # 7 Lendlease entities
+    "Nib": "Nib Holdings Ltd",                                # NIB Health Funds, nib Thrive, Honeysuckle
+    "GPT Group": "GPT Management Holdings Limited",           # the corporate half of the GPT staple
+    "Pinnacle Investment Management": "Pinnacle Investment Management Group Limited",
+    "Abacus Storage King": "Abacus Storage Operations Limited",  # via Storage King Management
+    # ── Private employers no earlier pass had searched ──────────────────────
+    # The private route's fifteen largest were each read and refused, correctly,
+    # and these two were never in that set. Both are substantial.
+    #
+    # NRMA's group is its full legal name and holds the motoring club plus the
+    # businesses it has bought: Australian Tourist Park Management (its holiday
+    # parks, 773), NRMA Tasmania, Kingmill, CPC Services. The roster card is the
+    # club group, so the group total is the right unit.
+    "NRMA Motoring & Services": "National Roads And Motorists' Association Limited",
+    # Ritchies Stores Pty Ltd is the company behind the Supa IGA stores, and is
+    # its own single-member group — so there is no aggregation to get wrong.
+    "Ritchies Supa IGA": "Ritchies Stores Proprietary Limited",
+    # NEPEAN's group holds Nepean Conveyors, Longwall, Power, Engineering &
+    # Innovation, Building & Infrastructure, plus PROK Conveyor Components and
+    # Weldlok — all NEPEAN businesses, which is what settles the identity where
+    # the group name ("No1") says nothing. Both files read 1,255 exactly, so the
+    # YoY is a true 0.0% rather than a missing reading.
+    "Nepean Consolidated": "Nepean No1 Pty Ltd",
+    "Sunny Queen Farms": "Sunny Queen Australia Pty Ltd",     # 1 member, Sunny Queen Pty Ltd
     # Professional services file through a service trust, never the brand.
     "EY": "The Trustee For Ernst & Young Services Trust",
     "PwC Australia": "The Trustee For The Pricewaterhousecoopers Services Trust",
@@ -256,6 +294,42 @@ ALIAS = {
 # These are here so the next person does not re-derive them, and so the count
 # of "no source" rows is a statement rather than a gap in the alias table.
 REFUSED = {
+    # ── Near names that would each have filed a REAL figure for the WRONG
+    # company. Recorded rather than left out, because the next pass over this
+    # register will surface all of them again, and a token score would take
+    # every one. This is the "AFL Sports Ready" list.
+    "Kennards Self Storage": "the register has Kennards Hire (2,078), a SEPARATE "
+                             "business of the same family — self storage and "
+                             "equipment hire are different companies. Self "
+                             "storage is not in the register",
+    "Peter Kittle Motor Company": "the near name is Peter Warren Automotive "
+                                  "(699), an unrelated dealer group",
+    "Walker Corporation": "the near name is Walker Group Holdings (291), a "
+                          "different family's business, not Lang Walker's "
+                          "property company",
+    "Dalrymple Bay Infrastructure": "the register has Dalrymple Bay Coal "
+                                    "Terminal Pty Ltd (483), which is the "
+                                    "terminal OPERATOR; DBI holds the lease and "
+                                    "employs almost nobody. Filing 483 would "
+                                    "attribute the operator's workforce to the "
+                                    "listed lessor",
+    "Australian Rare Earths": "'rare earths' matches only Lynas Rare Earths "
+                              "(295), a different and much larger company",
+    "Region Group": "'region' matches only unrelated bodies with the word in "
+                    "their name — Interchange Loddon Mallee Region, Capital "
+                    "Region Community Services. Not in the register",
+    "Australian Rugby League Commission": "the register has National Rugby "
+                                          "League Limited (1,044). The "
+                                          "Commission is the NRL's parent and "
+                                          "the roster names the Commission, not "
+                                          "the League, so the group total is "
+                                          "not this card's figure",
+    "Opal Aged Care": "'opal' matches only Opal Packaging and Opal Commercial "
+                      "Services, a packaging company. The aged-care group is "
+                      "not in the register under Opal HealthCare, Opal Aged or "
+                      "Opal Specialist either",
+    "Bowens Timber & Hardware": "the near name is the National Timber & "
+                                "Hardware Association (96), an industry body",
     # Not in the register under any name, searched by trading name AND by the
     # legal name the company is known to use. Several are large enough that the
     # Act should reach them, so absence here is a fact about the register rather
