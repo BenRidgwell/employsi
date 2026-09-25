@@ -2277,6 +2277,38 @@ export interface PathwayNode {
   skills: [string, number][];
   /** Pay by country — never pooled, since the markets are not one market. */
   pay: Record<string, PayFigure>;
+  /** The rung in each country holding MIN_NODE_ROLES roles there: what the
+   *  career card draws for one market. */
+  markets: Record<string, PathwayMarket>;
+}
+
+/**
+ * One rung in one country. Everything the card shows beyond the ladder itself
+ * comes from here, and each field is a count over rows — see
+ * PathwayBuilder.market for how both ends of the series are bounded.
+ */
+export interface PathwayMarket {
+  /** Distinct roles advertised in the window, in this country. */
+  roles: number;
+  /** Of those, still advertised at the end of the window. */
+  live: number;
+  employers: number;
+  /** Roles advertised on each day from `from` to `to` inclusive — covered
+   *  days only, so usually shorter than the window. Null below
+   *  SERIES_MIN_DAYS covered days. */
+  series: { from: string; to: string; counts: number[] } | null;
+  /** Mean of the series' newer half against its older half, in percent, over
+   *  `days` — the span actually measured, which the card must print, never
+   *  "30 days". Null when the series is null or the older half is too thin. */
+  trend: { pct: number; days: number } | null;
+  /** Median days an ad stayed up, over `n` ads that came down inside the
+   *  covered span. NOT days to fill — the archive cannot see why an ad came
+   *  down. Null below 8 ads. */
+  daysAdvertised: { median: number | null; n: number };
+  /** Live roles by city (hub id), commonest first. */
+  hubs: [string, number][];
+  /** Live roles carrying each of the node's listed skills. */
+  skillLive: Record<string, number>;
 }
 
 export interface PathwayEdge {

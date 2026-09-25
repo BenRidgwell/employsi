@@ -7,6 +7,7 @@ import {
   withParent,
 } from "../data/skillsTaxonomy";
 import { detectIntent, type AnalystIntent } from "./analystIntent";
+import { coverageDay, FEED_LOOKBACK_DAYS, MAX_STEP_BACK_DAYS } from "./feedCoverage";
 import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
 
 /**
@@ -391,61 +392,8 @@ const minusDays = (iso: string, n: number) => {
  */
 const LIVE_ON_DAY = "first_seen <= ? AND last_seen >= ?";
 
-/** How far back a feed can have last written and still count toward coverage.
- *  Past this it is dead or dormant, and a dead feed must not be able to veto
- *  every recent day for everyone else. */
-const FEED_LOOKBACK_DAYS = 21;
-/** Share of the scope's rows that must be evidenced before a day is usable. */
-const COVERAGE_TARGET = 0.95;
-/**
- * How far coverage is allowed to drag the reference day back.
- *
- * A floor, because the two failure modes are not symmetric. Reporting a short
- * day as a real fall is a wrong answer; reporting a complete day from a while
- * ago is a true answer about the wrong moment — worse the further back it
- * goes, and past a few days it stops being an answer about now at all.
- *
- * It is a real risk, not a hypothetical: BHP clears the 95% target by 882 rows
- * against 876.85 needed. Had its dormant vendor feed carried a little more,
- * coverage would have pointed at 2026-07-29 and the answer would have been a
- * fortnight stale without saying anything was wrong. Past this floor the
- * shortfall is accepted, and the date the note already prints is what lets a
- * reader see which day they are being told about.
- */
-const MAX_STEP_BACK_DAYS = 3;
-
-/**
- * The most recent day the scope's feeds have actually confirmed.
- *
- * LIVE_ON_DAY can only see an ad as live on day D if some feed pulled it on or
- * after D. Feeds run on their own crons, so the last day or two is always
- * short: whatever has not cycled yet is missing, and the count climbs as the
- * day's runs land. Measured on production 2026-08-12, BHP's live-on-day curve
- * sat between 360 and 452 for a fortnight, then read 235 for the 11th and 92
- * for the 12th — no vacancies closed, two feeds simply had not run.
- *
- * Stepping back one fixed day does not fix it (the 11th is short too), and
- * requiring EVERY feed to have pulled is worse: one weekly feed with six rows
- * would permanently pin the whole world scope five days back. So the rule is
- * by weight — walk the feeds newest-pull first and take the day at which the
- * ones counted reach COVERAGE_TARGET of the scope's rows. Measured the same
- * day, that picks the 10th for BHP (452 live, and the short 11th correctly
- * rejected) and the 11th for Perth and for worldwide, both of which were
- * stable there. A slow feed carrying under 5% is outvoted rather than
- * obeyed — the cost is that its ads are missing from the last day or two,
- * which is why the target is 95% and not lower.
- */
-export function coverageDay(feeds: Array<{ mx: string; n: number }>): string {
-  const total = feeds.reduce((t, f) => t + f.n, 0);
-  if (!total) return "";
-  const need = total * COVERAGE_TARGET;
-  let acc = 0;
-  for (const f of [...feeds].sort((a, b) => (a.mx < b.mx ? 1 : a.mx > b.mx ? -1 : 0))) {
-    acc += f.n;
-    if (acc >= need) return f.mx;
-  }
-  return "";
-}
+// Re-exported: check-analyst-scope.ts asserts it from here.
+export { coverageDay };
 
 const daysBetween = (a: string, b: string) => {
   const ta = Date.parse(a + "T00:00:00Z");

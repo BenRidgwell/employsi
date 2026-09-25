@@ -20,6 +20,7 @@ import {
   placeTitle,
   type CareerPathways,
   type PathwayEdge,
+  type PathwayMarket,
   type PathwayNode,
   type PayFigure,
   type Rung,
@@ -29,6 +30,7 @@ import { employerFamilies } from "./ladderEmployers";
 import { annualAud, medianAnnual } from "./salaryParse";
 import { ALL_SKILLS, parseStoredSkills } from "../data/skillsTaxonomy";
 import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
+import { coverageDay, coveredFrom, FEED_LOOKBACK_DAYS, MAX_STEP_BACK_DAYS } from "./feedCoverage";
 
 /** A rung with fewer distinct roles than this is not published. Below it, the
  *  titles, skill shares and employer count describe a handful of ads. */
@@ -39,6 +41,15 @@ const MIN_SKILL_ROLES = 3;
 const MIN_SKILL_SHARE = 0.05;
 /** A skill is "to gain" when the destination asks for it this much more often. */
 const GAIN_THRESHOLD = 0.1;
+
+/** A market's daily series is published only over at least this many covered
+ *  days. Fewer, and the line is the archive's age rather than demand; 14 also
+ *  gives each half of the trend a full weekly posting cycle (see `trend`). */
+export const SERIES_MIN_DAYS = 14;
+/** A duration median, like a pay median, needs this many closed ads. */
+const MIN_DURATION_ROLES = 8;
+/** Cities listed per market — the hotspot map's pins and bars. */
+const MAX_HUBS = 10;
 
 /** The default window, in days, ending at the archive's newest live row. */
 export const PATHWAY_DAYS = 90;
@@ -57,6 +68,7 @@ export interface PathwayRow {
   source: string | null;
   salary: string | null;
   skills: string | null;
+  first_seen: string | null;
   last_seen: string;
 }
 
@@ -64,10 +76,16 @@ export interface PathwayRow {
 export const PATHWAY_END_SQL = `SELECT MAX(last_seen) AS end FROM jobs WHERE ${LIVE_FEEDS_ONLY_SQL}`;
 
 /** One keyset page: ?1 = last rowid read, ?2 = window start. */
-export const PATHWAY_PAGE_SQL = `SELECT rowid AS rid, title, company, company_id, hub, source, salary, skills, last_seen
+export const PATHWAY_PAGE_SQL = `SELECT rowid AS rid, title, company, company_id, hub, source, salary, skills, first_seen, last_seen
    FROM jobs
   WHERE rowid > ?1 AND last_seen >= ?2 AND ${LIVE_FEEDS_ONLY_SQL}
   ORDER BY rowid LIMIT ${PATHWAY_PAGE}`;
+
+/** ISO day ⇄ whole days since the epoch — spans are kept as numbers because
+ *  there is one per row per role, and the Worker's memory is the limit. */
+const dayNum = (iso: string): number =>
+  Math.floor(Date.parse(`${iso.slice(0, 10)}T00:00:00Z`) / 864e5);
+const dayIso = (n: number): string => new Date(n * 864e5).toISOString().slice(0, 10);
 
 export const addDays = (iso: string, n: number): string => {
   const d = new Date(`${iso}T00:00:00Z`);
@@ -113,8 +131,28 @@ interface Role {
   employer: string;
   country: string | null;
   live: boolean;
-  skills: Set<string>;
+  hub: string | null;
+  /** Interned names, deduplicated on add — an array, not a Set: a Set per
+   *  role cost more than the skills in it at ~100k roles. */
+  skills: string[];
   pay: number | null;
+  /** Earliest first_seen / latest last_seen across the role's rows, as day numbers. */
+  first: number;
+  last: number;
+  /** Every row's [first_seen, last_seen], flat. Kept apart rather than
+   *  flattened to first/last: a role one board dropped and another re-listed
+   *  weeks later was not open in between — the same rule as the company
+   *  card's vacancy chart (RoleGroup.spans in jobHistoryFn). */
+  spans: number[];
+}
+
+/** One feed's footprint in one node × country: its earliest first_seen and
+ *  latest last_seen (day numbers) and its RAW row count — the inputs to the
+ *  feed-coverage rules, which weigh feeds by rows, not by merged roles. */
+interface FeedFoot {
+  start: number;
+  mx: number;
+  n: number;
 }
 
 /** What the --audit report prints. Collected only when asked for. */
@@ -154,6 +192,28 @@ const topN = <K>(m: Map<K, number>, n: number): [K, number][] =>
 
 export class PathwayBuilder {
   private roles = new Map<string, Role>();
+  /** "family|track|rung|country" → source → footprint. */
+  private feeds = new Map<string, Map<string, FeedFoot>>();
+  /**
+   * One copy of every repeated string. Each row arrives with fresh copies of
+   * its employer, city and skill names, and placeTitle builds a fresh
+   * canonical title per call; kept per role, those copies were most of the
+   * builder's memory — 112 MB peak over 359k rows (measured 2026-09-25)
+   * against the Worker's 128 MB.
+   */
+  private strings = new Map<string, string>();
+  private ids = new Map<string, number>();
+  private id = (x: string): number => {
+    let n = this.ids.get(x);
+    if (n === undefined) this.ids.set(x, (n = this.ids.size));
+    return n;
+  };
+  private intern = (x: string): string => {
+    const hit = this.strings.get(x);
+    if (hit !== undefined) return hit;
+    this.strings.set(x, x);
+    return x;
+  };
   private a: PathwayAudit = {
     rows: 0,
     placedRows: 0,
@@ -210,26 +270,188 @@ export class PathwayBuilder {
     if (p.via === "employer") bump(a.viaEmployer, p.family);
     const employer = r.company_id || norm(r.company);
     // A row with no employer cannot be merged with anything honestly.
-    const key = employer ? `${employer}|${p.canonical}|${r.hub ?? ""}` : `anon|${r.rid}`;
+    // Keyed by the interned strings' ids, not the strings: one key per role,
+    // and "melbourne-col|registered nurse|melbourne" is 40 bytes where
+    // "812|3301|4" is 10.
+    const key = employer
+      ? `${this.id(employer)}|${this.id(p.canonical)}|${this.id(r.hub ?? "")}`
+      : `anon|${r.rid}`;
     const live = r.last_seen >= this.liveFrom;
     const pay = annualAud({ salary: r.salary, hub: r.hub, source: r.source });
-    const skills = parseStoredSkills(r.skills);
+    const skills = parseStoredSkills(r.skills).map(this.intern);
+    const node = this.intern(`${p.family}|${p.track}|${p.rung}`);
+    const country = (r.hub && CITY_COUNTRY[r.hub]) || null;
+    const last = dayNum(r.last_seen);
+    // A row without first_seen is a row the archive wrote before it kept one;
+    // its last sighting is the only day it is known to have been open.
+    const first = r.first_seen ? Math.min(dayNum(r.first_seen), last) : last;
+
+    // Feed footprints are measured on RAW rows, before the merge — they are a
+    // fact about the feed, not about roles. See foldSkillRows' sourceStart.
+    if (country) {
+      const fk = `${node}|${country}`;
+      let fm = this.feeds.get(fk);
+      if (!fm) this.feeds.set(fk, (fm = new Map()));
+      const src = r.source || "";
+      const f = fm.get(src);
+      if (!f) fm.set(src, { start: first, mx: last, n: 1 });
+      else {
+        f.n++;
+        if (first < f.start) f.start = first;
+        if (last > f.mx) f.mx = last;
+      }
+    }
+
     const prev = this.roles.get(key);
     if (prev) {
       prev.live ||= live;
-      for (const s of skills) prev.skills.add(s);
+      for (const s of skills) if (!prev.skills.includes(s)) prev.skills.push(s);
       prev.pay ??= pay;
+      if (first < prev.first) prev.first = first;
+      if (last > prev.last) prev.last = last;
+      prev.spans.push(first, last);
     } else {
       this.roles.set(key, {
-        node: `${p.family}|${p.track}|${p.rung}`,
-        canonical: p.canonical,
-        employer,
-        country: (r.hub && CITY_COUNTRY[r.hub]) || null,
+        node,
+        canonical: this.intern(p.canonical),
+        employer: this.intern(employer),
+        country,
+        hub: r.hub === null ? null : this.intern(r.hub),
         live,
-        skills: new Set(skills),
+        skills: [...new Set(skills)],
         pay,
+        first,
+        last,
+        spans: [first, last],
       });
     }
+  }
+
+  /**
+   * One rung in one country: the figures the career card draws. Every series
+   * here is bounded at BOTH ends by the feed-coverage rules, because a series
+   * over this archive that is not is the most productive bug in the codebase
+   * (see CLAUDE.md, "A window over the archive is only as wide as the feeds
+   * covering it"):
+   *
+   *   start — coveredFrom over this rung's own feeds in this country, so a
+   *           board that began carrying these roles mid-window does not draw
+   *           its arrival as hiring;
+   *   end   — the day before the archive's newest, stepped back by
+   *           coverageDay (at most MAX_STEP_BACK_DAYS) where the feeds
+   *           carrying these roles have not reported it yet.
+   *
+   * Each day is counted the same way — a role is advertised on D when one of
+   * its rows spans D — so the trend compares like with like.
+   */
+  private market(
+    roles: Role[],
+    feeds: Map<string, FeedFoot> | undefined,
+    listed: [string, number][],
+    window: { from: string; to: string },
+  ): PathwayMarket {
+    const fromN = dayNum(window.from);
+    const endN = dayNum(window.to);
+
+    const starts: Record<string, string> = {};
+    const rowsBy: Record<string, number> = {};
+    const alive: { mx: string; n: number }[] = [];
+    for (const [src, f] of feeds ?? []) {
+      starts[src] = dayIso(f.start);
+      rowsBy[src] = f.n;
+      if (f.mx >= endN - FEED_LOOKBACK_DAYS) alive.push({ mx: dayIso(f.mx), n: f.n });
+    }
+    const covered = coveredFrom(starts, rowsBy);
+    const start = Math.max(fromN, covered ? dayNum(covered) : fromN);
+    let to = endN - 1;
+    const cov = coverageDay(alive);
+    if (cov && dayNum(cov) < to) to = Math.max(dayNum(cov), to - MAX_STEP_BACK_DAYS);
+
+    let series: PathwayMarket["series"] = null;
+    let trend: PathwayMarket["trend"] = null;
+    const len = to - start + 1;
+    if (len >= SERIES_MIN_DAYS) {
+      const diff = new Array<number>(len + 1).fill(0);
+      for (const r of roles) {
+        // Merge the role's own spans first, so two boards carrying it on the
+        // same day count it once.
+        const sp: [number, number][] = [];
+        for (let i = 0; i < r.spans.length; i += 2) sp.push([r.spans[i], r.spans[i + 1]]);
+        sp.sort((x, y) => x[0] - y[0]);
+        let [a, b] = sp[0];
+        const flush = () => {
+          const lo = Math.max(a, start);
+          const hi = Math.min(b, to);
+          if (lo <= hi) {
+            diff[lo - start]++;
+            diff[hi - start + 1]--;
+          }
+        };
+        for (const [x, y] of sp.slice(1)) {
+          if (x <= b + 1) b = Math.max(b, y);
+          else {
+            flush();
+            [a, b] = [x, y];
+          }
+        }
+        flush();
+      }
+      const counts: number[] = [];
+      for (let i = 0, run = 0; i < len; i++) counts.push((run += diff[i]));
+      series = { from: dayIso(start), to: dayIso(to), counts };
+
+      // Mean of the newer half against the older half — halfWindowChange's
+      // construction, so one heavy posting day cannot swing it — and only
+      // when the older half averages a publishable rung's worth of roles.
+      const half = Math.floor(len / 2);
+      const mean = (xs: number[]) => xs.reduce((t, v) => t + v, 0) / xs.length;
+      const before = mean(counts.slice(0, half));
+      const after = mean(counts.slice(len - half));
+      if (before >= MIN_NODE_ROLES)
+        trend = { pct: Math.round(((after - before) / before) * 100), days: len };
+    }
+
+    // How long an ad stayed up, over the roles that came down inside the
+    // covered span. Opened before `start`, and the opening day may be a feed's
+    // arrival rather than the ad's; still up, and the length is not known yet.
+    // So this undercounts long ads — it is "days advertised", never "days to
+    // fill": nothing in the archive says an ad came down because it was filled.
+    const durations: number[] = [];
+    for (const r of roles) {
+      if (r.live || r.first < start || r.last > to) continue;
+      durations.push(r.last - r.first + 1);
+    }
+    durations.sort((x, y) => x - y);
+    const mid = durations.length >> 1;
+    const median =
+      durations.length < MIN_DURATION_ROLES
+        ? null
+        : durations.length % 2
+          ? durations[mid]
+          : Math.round((durations[mid - 1] + durations[mid]) / 2);
+
+    const hubs = new Map<string, number>();
+    const skillLive: Record<string, number> = {};
+    const employers = new Set<string>();
+    let live = 0;
+    for (const r of roles) {
+      if (r.employer) employers.add(r.employer);
+      if (!r.live) continue;
+      live++;
+      if (r.hub) bump(hubs, r.hub);
+      for (const [s] of listed) if (r.skills.includes(s)) skillLive[s] = (skillLive[s] ?? 0) + 1;
+    }
+
+    return {
+      roles: roles.length,
+      live,
+      employers: employers.size,
+      series,
+      trend,
+      daysAdvertised: { median, n: durations.length },
+      hubs: topN(hubs, MAX_HUBS),
+      skillLive,
+    };
   }
 
   finish(window: { from: string; to: string }): {
@@ -269,7 +491,7 @@ export class PathwayBuilder {
       for (const r of list) {
         bump(titles, r.canonical);
         if (r.live && r.country) byCountry[r.country] = (byCountry[r.country] ?? 0) + 1;
-        if (r.skills.size) skillBase++;
+        if (r.skills.length) skillBase++;
         for (const s of r.skills) bump(skillCount, s);
         if (r.pay != null && r.country) {
           const v = payByCountry.get(r.country) ?? [];
@@ -286,6 +508,25 @@ export class PathwayBuilder {
       for (const [c, v] of payByCountry) pay[c] = { median: medianAnnual(v), n: v.length };
       payOf.set(key, pay);
 
+      const listed = [...shares.entries()]
+        .filter(([, v]) => v.n >= MIN_SKILL_ROLES && v.share >= MIN_SKILL_SHARE)
+        .sort((a, b) => b[1].share - a[1].share)
+        .slice(0, 12)
+        .map(([s, v]) => [s, Math.round(v.share * 100) / 100] as [string, number]);
+
+      const byMarket = new Map<string, Role[]>();
+      for (const r of list) {
+        if (!r.country) continue;
+        const m = byMarket.get(r.country) ?? [];
+        m.push(r);
+        byMarket.set(r.country, m);
+      }
+      const markets: Record<string, PathwayMarket> = {};
+      for (const [c, roles] of byMarket) {
+        if (roles.length < MIN_NODE_ROLES) continue;
+        markets[c] = this.market(roles, this.feeds.get(`${key}|${c}`), listed, window);
+      }
+
       nodes.push({
         family,
         track,
@@ -296,12 +537,9 @@ export class PathwayBuilder {
         byCountry,
         titles: topN(titles, 8),
         skillBase,
-        skills: [...shares.entries()]
-          .filter(([, v]) => v.n >= MIN_SKILL_ROLES && v.share >= MIN_SKILL_SHARE)
-          .sort((a, b) => b[1].share - a[1].share)
-          .slice(0, 12)
-          .map(([s, v]) => [s, Math.round(v.share * 100) / 100] as [string, number]),
+        skills: listed,
         pay,
+        markets,
       });
     }
     const FAMILY_ORDER = FAMILIES.map((f) => f.id);

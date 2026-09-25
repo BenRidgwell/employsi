@@ -54,6 +54,8 @@ bun run scripts/check-skills.ts            # skill taxonomy invariants
 bun run scripts/check-analyst-followups.ts # a follow-up resolves to the scope it names
 bun run scripts/check-analyst-scope.ts     # every analyst scope excludes the closed corpora
 bun run scripts/check-skill-trends.ts      # the card's per-skill/per-area reconstruction
+bun run scripts/check-career-ladder.ts     # every title lands on the right rung
+bun run scripts/check-career-card.ts       # the career card's series, trend and model
 python scripts/test_skills_taxonomy.py
 python scripts/test_jobs_extract.py
 python scripts/test_rosters.py             # roster parsers still read their data files
