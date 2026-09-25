@@ -4095,6 +4095,39 @@ body {
 .tickerpill.tkgone {
   transform: translateX(-50%) scale(0.92);
 }
+/* ── Off on the supply side ────────────────────────────────────────────────
+   The ticker reads what EMPLOYERS are advertising, so it has no place on the
+   supply side and leaves when the Supply/Demand switch does.
+
+   It goes DOWNWARD, which is the one thing this could get wrong: the strip is
+   `bottom: 32px` of the map frame, so down is off its own edge and the gesture
+   reads as the strip stowing itself. Up would carry it across the map it sits
+   over and look like it had been thrown.
+
+   Written after .tkgone and with the same specificity, so it wins the transform
+   when a COLLAPSED ticker is switched away from — the pill then stows rather
+   than merely shrinking in place. And it keeps tkgone's delayed `visibility`,
+   without which an invisible full-width strip goes on swallowing clicks over
+   the map. */
+.ticker.tkoff,
+.tickerpill.tkoff {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  /* 220ms, the same as the collapse — and the same as the BASE .ticker rule,
+     which is what runs on the way back in. Two different durations there would
+     make leaving and returning feel like two different gestures. */
+  transition:
+    opacity 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    visibility 0s linear 220ms;
+}
+.ticker.tkoff {
+  transform: translateY(16px) scale(0.985);
+}
+.tickerpill.tkoff {
+  transform: translateX(-50%) translateY(16px) scale(0.92);
+}
 .tickerpause svg.paused line:first-of-type {
   transform: translateX(1.5px);
 }

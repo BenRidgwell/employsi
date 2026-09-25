@@ -136,6 +136,18 @@ export function Ticker({ hidden }: { hidden: boolean }) {
 
   const collapsed = useAppStore((st) => st.tickerCollapsed);
   const toggleCollapsed = useAppStore((st) => st.toggleTickerCollapsed);
+  /**
+   * Gone on the supply side, strip and pill alike — this is a reading of what
+   * EMPLOYERS are advertising, which is the demand side by definition.
+   *
+   * It leaves on its own rather than through `collapsed`, and the two must not
+   * be confused: collapsing is the reader tucking it away, and it leaves the
+   * pill behind precisely so they can bring it back. There is nothing to bring
+   * back here, so the pill goes too, and `tickerCollapsed` is left exactly as
+   * the reader set it — switch to supply and back and the ticker returns open
+   * or tucked away, whichever it was.
+   */
+  const offSide = useAppStore((st) => st.marketMode) === "supply";
   const [winIdx, setWinIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const win = TREND_WINDOWS[winIdx];
@@ -296,9 +308,9 @@ export function Ticker({ hidden }: { hidden: boolean }) {
   // rendered, so the guided tour still has something to point at either way.
   const pill = (
     <div
-      className={`tickerpill ${hidden ? "zoomhide" : ""}${collapsed ? "" : " tkgone"}`}
+      className={`tickerpill ${hidden ? "zoomhide" : ""}${collapsed ? "" : " tkgone"}${offSide ? " tkoff" : ""}`}
       data-tour={collapsed ? "ticker" : undefined}
-      inert={!collapsed || undefined}
+      inert={!collapsed || offSide || undefined}
     >
       <button type="button" onClick={toggleCollapsed} aria-expanded={false}>
         <svg
@@ -337,9 +349,9 @@ export function Ticker({ hidden }: { hidden: boolean }) {
     <>
       {pill}
       <div
-        className={`ticker ${hidden ? "zoomhide" : ""}${collapsed ? " tkgone" : ""}`}
+        className={`ticker ${hidden ? "zoomhide" : ""}${collapsed ? " tkgone" : ""}${offSide ? " tkoff" : ""}`}
         data-tour={collapsed ? undefined : "ticker"}
-        inert={collapsed || undefined}
+        inert={collapsed || offSide || undefined}
       >
         <div className="tickerlbl">
           <i />
