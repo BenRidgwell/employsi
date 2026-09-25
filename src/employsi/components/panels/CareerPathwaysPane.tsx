@@ -413,13 +413,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
             <IconClose />
           </button>
         </div>
-        <CareerSearch
-          skills={data.skills}
-          popular={data.popular}
-          selected={sk}
-          onPick={pickSkill}
-          onClear={clearSkill}
-        />
+        <CareerSearch skills={data.skills} selected={sk} onPick={pickSkill} onClear={clearSkill} />
       </div>
 
       <div style={{ padding: "20px 24px 0" }}>
@@ -1292,8 +1286,9 @@ function CareerCard({ onClose }: { onClose: () => void }) {
  * design's pill (GlobalSearch): the same pill, lens-and-handle icon, clear ×
  * and Search button; the same dropdown of skills as you type, each with its
  * demand badge (demandLevel — "HIGH", "LOW · WITHIN RISK & COMPLIANCE") and a
- * Follow button; the same chips on an empty focused field, which stay up with
- * the picked skill selected. One search behaviour in the product, not two.
+ * Follow button. One search behaviour in the product, not two. No chips under
+ * it: the design's row of popular skills was removed once the dropdown could
+ * do the finding.
  *
  * What differs is only what a result can open. The suggestions are the
  * central bar's own matches — searchSkillMatches by name, then describeSkills
@@ -1304,13 +1299,11 @@ function CareerCard({ onClose }: { onClose: () => void }) {
  */
 function CareerSearch({
   skills,
-  popular,
   selected,
   onPick,
   onClear,
 }: {
   skills: string[];
-  popular: string[];
   selected: string | null;
   onPick: (skill: string) => void;
   onClear: () => void;
@@ -1376,7 +1369,6 @@ function CareerSearch({
 
   const skillActive = !!selected && q === selected.toLowerCase();
   const showSuggest = focused && !!q && !skillActive && !missed;
-  const showChips = (focused && !q) || skillActive;
 
   return (
     <div className="cpsearchwrap">
@@ -1489,24 +1481,6 @@ function CareerSearch({
       {missed && (
         <div className="gsnomatch">
           No career pathway for that yet. Try a nearby skill, or describe the work differently.
-        </div>
-      )}
-
-      {showChips && (
-        <div className="gsearchchips">
-          {(selected && !popular.includes(selected) ? [selected, ...popular] : popular).map(
-            (sk) => (
-              <button
-                key={sk}
-                className={`gschip${sk === selected ? " on" : ""}`}
-                aria-pressed={sk === selected}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => (sk === selected ? clear() : pick(sk))}
-              >
-                {sk}
-              </button>
-            ),
-          )}
         </div>
       )}
     </div>

@@ -6,7 +6,6 @@ import type { CareerPathways } from "./careerLadder";
 import {
   careerCard,
   familyForSkill,
-  popularSkills,
   searchSkills,
   skillDemand,
   type CareerCardModel,
@@ -63,9 +62,7 @@ async function pathways(): Promise<{ p: CareerPathways; source: "kv" | "bundled"
 
 export interface CareerCardResponse {
   model: CareerCardModel | null;
-  /** The market's most-advertised skills — the chips before anything is typed. */
-  popular: string[];
-  /** Every skill on any rung in the market, A–Z — the chips filter this as you type. */
+  /** Every skill on any rung in the market, A–Z — what the search may offer. */
   skills: string[];
   source: "kv" | "bundled";
   generated: string;
@@ -87,7 +84,6 @@ export const getCareerCard = createServerFn({ method: "GET" })
       "hr";
     return {
       model: careerCard(p, family, CAREER_COUNTRY, skill),
-      popular: popularSkills(p, CAREER_COUNTRY),
       skills: [...skillDemand(p, CAREER_COUNTRY).keys()].sort(),
       source,
       generated: p.generated,

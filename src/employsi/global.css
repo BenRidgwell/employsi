@@ -17463,8 +17463,7 @@ body {
 }
 /* The card's search is the central bar's (see CareerSearch). Its dropdown and
    no-match note float over the map below, as they float over the globe from
-   the header; its chips sit in the card's flow instead of hanging under the
-   bar, because in a card there is no empty map beneath them to hang over. */
+   the header. */
 .cpsearchwrap {
   position: relative;
   z-index: 6;
@@ -17472,9 +17471,4 @@ body {
 .cpsearchwrap .gsearchresults,
 .cpsearchwrap .gsnomatch {
   margin-top: 8px;
-}
-.cpsearchwrap .gsearchchips {
-  position: static;
-  margin-top: 12px;
-  justify-content: flex-start;
 }
