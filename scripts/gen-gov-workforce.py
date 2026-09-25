@@ -497,7 +497,55 @@ def ckan_resource(api, dataset, match):
 # wrong.
 #
 # Keyed like ALIAS, `jurisdiction:Roster Name`.
+# A reason that applies to a WHOLE jurisdiction, used when no specific entry
+# above covers the card.
+#
+# WHY NOT 57 IDENTICAL ENTRIES. New South Wales' remaining cards are almost all
+# refused for the same structural fact — the source wired for NSW is a HEALTH
+# annual report, so a non-health agency cannot be in it at any spelling — and
+# writing that out once per card would be 57 copies of one sentence, which is
+# how a table stops being read. Queensland's twenty-two are the opposite: each
+# has its own reason (inside a named department, a statutory authority, an
+# officer of the Parliament), so each is written out.
+NOT_IN_SOURCE_JURISDICTION = {
+    'nsw': "the source wired for NSW is the NSW HEALTH annual report appendix, "
+           "which reports health organisations only — so a non-health agency "
+           "cannot appear in it under any spelling. NSW's own Workforce Profile "
+           "is reachable and current, but its finest grain is PORTFOLIO or "
+           "SERVICE (Communities and Justice 55,041, Education 120,111), and a "
+           "portfolio is a group of agencies that hold their own cards here. "
+           "The one service row that IS a single agency, the NSW Police Force, "
+           "is merged; the rest need their own annual reports",
+}
+
 NOT_IN_SOURCE = {
+    # ── New South Wales: what the PORTFOLIO grain costs ────────────────────
+    # The jurisdiction-level reason below covers the rest. These six say
+    # something sharper, because for them a real figure EXISTS and is being
+    # declined rather than missing.
+    'nsw:NSW Health':
+        'the NSW Health Service is reported at 140,998 FTE, and it is declined: '
+        'the Local Health Districts inside it hold their own cards here, twelve '
+        'of them already filed, so putting the service total on this card would '
+        'count the same people twice',
+    'nsw:Department of Communities and Justice':
+        'the Communities and Justice PORTFOLIO is 55,041 FTE, which is not this '
+        'department — Corrective Services, Youth Justice and Legal Aid are '
+        'inside it and are separate cards here',
+    'nsw:Corrective Services NSW':
+        'inside the Communities and Justice portfolio (55,041); no row reports '
+        'it on its own',
+    'nsw:Youth Justice NSW':
+        'inside the Communities and Justice portfolio (55,041); no row reports '
+        'it on its own',
+    'nsw:Legal Aid NSW':
+        'inside the Communities and Justice portfolio (55,041); no row reports '
+        'it on its own',
+    'nsw:Department of Education':
+        'the Education portfolio is 120,111 FTE and the Teaching Service alone '
+        'is 71,491 — neither is this department, whose own staff are inside the '
+        'Public Service figure with every other department',
+
     # ── Queensland: the source covers DEPARTMENTS, and little else ─────────
     #
     # Queensland is the opposite shape to Victoria and the contrast is the
@@ -951,6 +999,67 @@ def load_sa():
 
 
 # ── New South Wales ─────────────────────────────────────────────────────────
+def _nsw_police_fte():
+    """(now, prev, year) FTE for the NSW Police Force, from the Workforce Profile.
+
+    Returns None rather than raising: this is one card, and it must never take
+    down the twelve health organisations the appendix supplies.
+
+    The report is linked from the Premier's Department page — the same one
+    load_nsw's docstring records finding through nsw.gov.au's sitemap index, and
+    it answers a plain request with a browser User-Agent. The service table is
+    "name  prev  now  change  pct", so the CHANGE COLUMN RECONCILES the other
+    two, and that is asserted: a column order that flips would otherwise report
+    a fall as a rise with both numbers still real.
+    """
+    import pdfplumber
+    page = 'https://www.nsw.gov.au/departments-and-agencies/premiers-department/reports-and-data/workforce-profile-reports'
+    try:
+        html = fetch(page).decode('utf-8', 'replace') if isinstance(fetch(page), bytes) else fetch(page)
+    except Exception as e:                                        # noqa: BLE001
+        print(f'  New South Wales: profile page unreachable ({type(e).__name__})', file=sys.stderr)
+        return None
+    m = re.findall(r'href="([^"]*?(\d{4})-workforce-profile-report\.pdf)"', html, re.I)
+    if not m:
+        print('  New South Wales: no workforce-profile PDF linked', file=sys.stderr)
+        return None
+    url, year = max(m, key=lambda x: int(x[1]))
+    if url.startswith('/'):
+        url = 'https://www.nsw.gov.au' + url
+    try:
+        raw = fetch(url, binary=True)
+        import io as _io
+        with pdfplumber.open(_io.BytesIO(raw)) as pdf:
+            for pg in pdf.pages[:20]:
+                for line in (pg.extract_text() or '').split('\n'):
+                    mm = re.match(r'^NSW Police Force\s+([\d,]+)\s+([\d,]+)\s+'
+                                  r'([\u2212+-]?[\d,]+)\s', line.strip())
+                    if not mm:
+                        continue
+                    prev = int(mm.group(1).replace(',', ''))
+                    now = int(mm.group(2).replace(',', ''))
+                    chg = int(mm.group(3).replace(',', '').replace('\u2212', '-').replace('+', ''))
+                    # TOLERANCE OF ONE, AND IT IS NEEDED. Measured 2026-09-25:
+                    # the row reads 20,106 -> 19,513 with a change of −592,
+                    # while the difference of those two is 593. Each column is
+                    # rounded from a fractional FTE on its own, so the published
+                    # change is not obliged to equal the difference of the
+                    # published values, and an exact test rejects a perfectly
+                    # good row. The guard still does its job: were the columns
+                    # transposed, now − prev would be +593 against a stated
+                    # −592, out by 1,185.
+                    if abs((now - prev) - chg) > 1:
+                        print(f'  New South Wales: police row does not reconcile '
+                              f'({prev} -> {now} against {chg}) — not merged', file=sys.stderr)
+                        return None
+                    return now, prev, int(year)
+    except Exception as e:                                        # noqa: BLE001
+        print(f'  New South Wales: profile PDF unreadable ({type(e).__name__})', file=sys.stderr)
+        return None
+    print('  New South Wales: no NSW Police Force row in the profile', file=sys.stderr)
+    return None
+
+
 def load_nsw():
     """NSW Health annual report appendix — staffing by health organisation.
 
@@ -1139,6 +1248,37 @@ def load_nsw():
     # unmatched, and the organisation it belonged to then takes whatever the
     # HEADCOUNT section offers, which is how an 18% overstatement sat on South
     # Western Sydney's card reading "Workforce FTE".
+    # ── ONE ROW FROM A SECOND NSW DOCUMENT ─────────────────────────────────
+    #
+    # The health appendix cannot hold a non-health agency, so 63 of NSW's 64
+    # blank cards are refusals (see NOT_IN_SOURCE). Exactly one is not, and it
+    # is worth the extra fetch.
+    #
+    # The Workforce Profile's service table gives, in one row, both years:
+    #
+    #     NSW Police Force  20,106  19,513  −592  −2.9
+    #
+    # WHY THIS ONE AND NOTHING ELSE IN THAT TABLE. Every other row is either an
+    # aggregate over agencies — Public Service 84,780, other Crown services
+    # 51,838, the sector totals — or a service whose members hold their own
+    # roster cards, which is the double count declined for NSW Health's
+    # 140,998. The NSW Police Force is a single organisation, the roster has one
+    # card for it, and nothing else on the roster sits inside it: the Law
+    # Enforcement Conduct Commission is independent oversight, not part of the
+    # force. So the service row IS the agency here.
+    #
+    # Same unit and same date as the appendix — FTE at 30 June — which is what
+    # lets it join those rows rather than needing a source of its own. Both are
+    # asserted below rather than assumed.
+    police = _nsw_police_fte()
+    if police:
+        now_p, prev_p, yr = police
+        if asof and asof.endswith(str(yr)):
+            out.setdefault('NSW Police Force', (now_p, prev_p))
+        else:
+            print(f'  New South Wales: profile is {yr}, appendix is {asof} — '
+                  f'NSW Police Force not merged', file=sys.stderr)
+
     stray = [k for k in out if RUNNING.search(k)]
     if stray:
         raise RuntimeError(f'NSW: {len(stray)} tables named after a page, not an '
@@ -1802,7 +1942,14 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
                 # same name gets researched again every pass and reaches the
                 # same answer; with it the list separates what is still worth
                 # looking for from what has already been settled.
+                # A JURISDICTION-WIDE REASON IS PRINTED ONCE, not once per
+                # card. The first version of this put the whole paragraph
+                # against all 57 New South Wales cards, which is 57 copies of
+                # one sentence — precisely the unreadable list the reasons were
+                # added to replace.
                 why = NOT_IN_SOURCE.get(f"{pre}:{a['name']}")
+                if not why and pre in NOT_IN_SOURCE_JURISDICTION:
+                    why = '(see the note under this list)'
                 unmatched_roster[pre].append(
                     (a['name'], why or ('ambiguous' if hit else 'no source row')))
                 skipped += 1
@@ -1884,6 +2031,9 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
         print(f'\n  {pre}: {len(rows)} roster agencies WITHOUT a figure:', file=sys.stderr)
         for name, why in sorted(rows):
             print(f'      {name[:62]:64s} {why}', file=sys.stderr)
+        note = NOT_IN_SOURCE_JURISDICTION.get(pre)
+        if note and any(w == '(see the note under this list)' for _n, w in rows):
+            print(f'\n      NOTE for {pre}: {note}', file=sys.stderr)
     for pre in sorted(data):
         by_norm = data[pre][0]
         spare = [(k, v[0][0], v[0][1][0]) for k, v in by_norm.items()
