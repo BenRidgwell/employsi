@@ -23,6 +23,14 @@ import {
   type CompanySkillTrends,
 } from "../src/employsi/lib/jobHistoryFn";
 import { FRAME_ASPECT, frameFor } from "../src/employsi/lib/hotspotFrame";
+import { LABOUR_EVENTS } from "../src/employsi/data/labourEvents";
+import { IVI_MONTHS } from "../src/employsi/data/iviSkillDemand";
+import {
+  TIMELINE_LABEL,
+  TIMELINE_SPAN,
+  eventIndex,
+  monthLabel,
+} from "../src/employsi/lib/skillCard";
 import {
   ALL_SKILLS,
   SKILL_CATEGORY,
@@ -2016,6 +2024,38 @@ console.log("\nthe hotspot frame keeps its aspect, whatever it has to frame:");
     );
     check(`${name}: encloses every hub`, outside.length === 0, `${outside.length} outside`);
   }
+}
+
+// ── the skill card's timeline ───────────────────────────────────────────────
+// THE BUG: "Present day" was a typed date. It was right when it was written and
+// the vacancy series then gained two months, so the header read "MAR 2006 – JUL
+// 2026", the handle sat on Jul 2026, and the panel under it was badged MAY
+// 2026. Nothing errored; the label had been left behind by its own data.
+console.log("\nthe timeline's present-day event sits on the series' last month:");
+{
+  const last = IVI_MONTHS[IVI_MONTHS.length - 1];
+  const present = LABOUR_EVENTS.find((e) => e.title === "Present day");
+  check("the present-day event exists", !!present, "not found in LABOUR_EVENTS");
+  if (present) {
+    const iso = `${present.year}-${String(present.month + 1).padStart(2, "0")}`;
+    check(`present day is ${last}`, iso === last, `event says ${iso}`);
+    // It must also be ON the axis and at its end, which is what makes the
+    // handle and the badge agree rather than merely reading alike.
+    check(
+      "...and lands on the last tick of the timeline",
+      eventIndex(present) === TIMELINE_SPAN,
+      `index ${eventIndex(present)} of ${TIMELINE_SPAN}`,
+    );
+    check(
+      "...and the header's end month is the same month",
+      TIMELINE_LABEL.endsWith(monthLabel(last)),
+      TIMELINE_LABEL,
+    );
+  }
+  // Every other event is a historical fact and must stay on the axis, or its
+  // tick silently disappears from the track.
+  const off = LABOUR_EVENTS.filter((e) => eventIndex(e) < 0).map((e) => e.title);
+  check("every event falls inside the series", off.length === 0, off.join(", "));
 }
 
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");
