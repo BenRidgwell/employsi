@@ -9,7 +9,7 @@
 //   New South Wales: 28 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-25
 //   New Zealand: 103 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-25
 //   Northern Territory: 28 agencies published, as FTE not headcount, as at Jun 2026 — refreshed 2026-09-25
-//   Tasmania: 13 agencies published as at Dec 2023 — refreshed 2026-09-25
+//   Tasmania: 17 agencies published as at Jun 2024 — refreshed 2026-09-25
 //   Western Australia: 57 agencies published as at 2025-26 — refreshed 2026-09-25
 //   APS (federal): 101 agencies published as at Dec 2025 — KEPT, not refreshed this run
 //   Victoria: 261 agencies published as at Jun 2024 — KEPT, not refreshed this run
@@ -281,13 +281,17 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "sa-gov-study-adelaide": { now: 18, prev: 19, yoy: -5.3, asof: "Jun 2025", span: 1 },
   "sa-gov-teachers-registration-board": { now: 43, prev: 33, yoy: 30.3, asof: "Jun 2025", span: 1 },
   "sa-gov-west-beach-parks": { now: 185, prev: 172, yoy: 7.6, asof: "Jun 2025", span: 1 },
-  "tas-gov-department-of-health": { now: 15179, prev: 14224, yoy: 6.7, asof: "Dec 2023", span: 1 },
-  "tas-gov-department-of-justice": { now: 1722, prev: 1598, yoy: 7.8, asof: "Dec 2023", span: 1 },
-  "tas-gov-department-of-police-fire-and-emergency-management": { now: 1091, prev: 1082, yoy: 0.8, asof: "Dec 2023", span: 1 },
-  "tas-gov-department-of-premier-and-cabinet": { now: 627, prev: 470, yoy: 33.4, asof: "Dec 2023", span: 1 },
-  "tas-gov-macquarie-point-development-corporation": { now: 11, prev: 13, yoy: -15.4, asof: "Dec 2023", span: 1 },
-  "tas-gov-port-arthur-historic-site-management-authority": { now: 146, prev: 131, yoy: 11.5, asof: "Dec 2023", span: 1 },
-  "tas-gov-tourism-tasmania": { now: 72, prev: 70, yoy: 2.9, asof: "Dec 2023", span: 1 },
+  "tas-gov-department-for-education-children-and-young-people": { now: 13271, yoy: null, asof: "Jun 2024", span: 1 },
+  "tas-gov-department-of-health": { now: 16358, yoy: null, asof: "Jun 2024", span: 1 },
+  "tas-gov-department-of-justice": { now: 1780, yoy: null, asof: "Jun 2024", span: 1 },
+  "tas-gov-department-of-natural-resources-and-environment-tasmania": { now: 1573, yoy: null, asof: "Jun 2024", span: 1 },
+  "tas-gov-department-of-police-fire-and-emergency-management": { now: 1203, yoy: null, asof: "Jun 2024", span: 1 },
+  "tas-gov-department-of-premier-and-cabinet": { now: 662, yoy: null, asof: "Jun 2024", span: 1 },
+  "tas-gov-homes-tasmania": { now: 188, yoy: null, asof: "Jun 2024", span: 1 },
+  "tas-gov-macquarie-point-development-corporation": { now: 15, yoy: null, asof: "Jun 2024", span: 1 },
+  "tas-gov-port-arthur-historic-site-management-authority": { now: 142, yoy: null, asof: "Jun 2024", span: 1 },
+  "tas-gov-public-trustee": { now: 77, yoy: null, asof: "Jun 2024", span: 1 },
+  "tas-gov-tourism-tasmania": { now: 78, yoy: null, asof: "Jun 2024", span: 1 },
   "vic-gov-albury-wodonga-health": { now: 2830, prev: 2658, yoy: 6.5, asof: "Jun 2024", span: 1 },
   "vic-gov-alexandra-district-health": { now: 101, prev: 106, yoy: -4.7, asof: "Jun 2024", span: 1 },
   "vic-gov-ambulance-victoria": { now: 7056, prev: 7030, yoy: 0.4, asof: "Jun 2024", span: 1 },

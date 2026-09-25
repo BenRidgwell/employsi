@@ -532,16 +532,22 @@ def ckan_resource(api, dataset, match):
 # has its own reason (inside a named department, a statutory authority, an
 # officer of the Parliament), so each is written out.
 NOT_IN_SOURCE_JURISDICTION = {
-    'tas': "NOT a refusal, and not the source's doing: this parser is "
-           'INCOMPLETE. Measured 2026-09-25, it returns thirteen agencies '
-           "summing to 20,418 against the report's own Total row of 32,473 — "
-           '63%. Twelve thousand Tasmanian public servants are in agencies it '
-           'never reaches, and these six cards are blank because of that rather '
-           'than because Tasmania does not publish them. The rows it DOES '
-           'return each reconcile across their four columns, so what is filed '
-           'is right; what is missing is missing here, not there. Fixing it '
-           'needs the PDF, which answers a connection reset to the authoring '
-           'sandbox and only opens on the runner',
+    # THIS NOTE USED TO SAY THE PARSER WAS INCOMPLETE, AND IT WAS. It read
+    # thirteen agencies summing to 20,418 against the report's own Total of
+    # 32,473 — 63% — and six cards were blank for that reason rather than
+    # because Tasmania withholds them. Fixed 2026-09-25: the table is read
+    # with extract_tables() instead of a line regex, the newest edition is
+    # used instead of the newest one with a year-earlier partner, and a
+    # renamed agency keeps its row. All three reachable editions now parse to
+    # 100% of their own stated Total, and four of those six cards filled.
+    # The 0.95 self-check that caught it stays exactly where it is.
+    'tas': 'the State Service Workforce Report covers AGENCIES of the '
+           'Tasmanian State Service, and these two are not one. The report '
+           "parses to 100% of its own stated Total — every agency it names is "
+           'filed — so an absence here is the report not naming the body, not '
+           'a parse losing it. Building Tasmania and Whole of Government '
+           'Programs are neither departments nor listed authorities in it '
+           'under any spelling',
     'nsw': "the source wired for NSW is the NSW HEALTH annual report appendix, "
            "which reports health organisations only — so a non-health agency "
            "cannot appear in it under any spelling. NSW's own Workforce Profile "
