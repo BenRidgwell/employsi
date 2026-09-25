@@ -60,7 +60,14 @@
 name: gov-workforce
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      dump_source:
+        description: >-
+          Comma-separated jurisdictions whose FULL source row list to print
+          (e.g. "qld"). Empty prints only the unmatched rows, as usual.
+        type: string
+        default: ''
   push:
     paths:
       - 'scripts/qld-workforce-probe.py'
@@ -69,8 +76,18 @@ on:
       - 'scripts/sa-workforce-probe.py'
       - '.github/workflows/gov-workforce.yml'
 
+# PER-BRANCH, NOT PER-REPO. The group was a bare "gov-workforce", so a push
+# on ANY branch cancelled a run on any other — and with cancel-in-progress that
+# is silent: the run just ends, mid-fetch, reporting nothing. Measured
+# 2026-09-25, three diagnostic runs on this branch died that way to pushes on
+# an unrelated one, which reads as a flaky workflow rather than as another
+# branch taking the lock.
+#
+# Superseding a run with a NEWER PUSH TO THE SAME BRANCH is the useful half and
+# is kept. Two branches fetching the same sources at once is the cost, and it
+# is a smaller one than a diagnosis that silently never finishes.
 concurrency:
-  group: gov-workforce
+  group: gov-workforce-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -98,6 +115,18 @@ jobs:
         with:
           bun-version: latest
 
+      # WESTERN AUSTRALIA READS FINE FROM HERE — measured 2026-09-25, run
+      # 36135839061: 339 agencies written against 285 without it, which is its
+      # 54 rows. That was worth checking rather than assuming, because Victoria
+      # also reads fine from a developer machine and answers HTTP 403 to this
+      # runner, which is why it is excluded below. wa.gov.au does not.
+      #
+      # It is in this list because a loader nothing schedules is how Western
+      # Australia got a year stale in the first place: its figures were hand
+      # entered, there was no script, and a 2025-26 bulletin sat unread on the
+      # source's own page for months. Leaving `perth` out would rebuild exactly
+      # that.
+      #
       # --only qld,sa,nsw,nz, because the jurisdictions need OPPOSITE
       # environments and no machine can fetch them all. Measured 2026-09-24:
       # Queensland needs a browser and runs only here; Victoria answers HTTP
@@ -123,10 +152,13 @@ jobs:
       # can still be flushing when the step ends, and a diagnosis that is
       # sometimes empty is worse than no diagnosis at all. pipefail keeps the
       # generator's exit status.
-      - name: Generate QLD + SA + NSW + NZ + NT + TAS workforce data
+      - name: Generate QLD + SA + NSW + NZ + NT + TAS + WA workforce data
+        env:
+          DUMP: ${{ inputs.dump_source }}
         run: |
           set -o pipefail
-          python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas \
+          python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas,perth \
+            ${DUMP:+--dump-source "$DUMP"} \
             2>&1 | tee /tmp/gov-diagnosis.txt
 
       - name: Show the generated file
@@ -194,6 +226,7 @@ jobs:
         if: always()
         run: |
           echo "=== unmatched roster agencies, and unmatched source rows ==="
+          sed -n '/ALL [0-9]* source rows/,$p' /tmp/gov-diagnosis.txt || true
           sed -n '/roster agencies WITHOUT/,$p' /tmp/gov-diagnosis.txt || true
           {
             echo '## gov-workforce diagnosis'
