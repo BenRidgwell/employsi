@@ -22,7 +22,7 @@ had opened was wrong in twelve of twenty-eight rows.
 
     python3 scripts/gov-source-probe.py
 """
-import re, sys, urllib.error, urllib.request
+import os, re, sys, urllib.error, urllib.request
 
 UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36')
@@ -33,24 +33,27 @@ UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
 # reports, NT's portal has no workforce data at all, and Tasmania has no
 # reachable open-data portal).
 TARGETS = [
-    # ── Round six ──────────────────────────────────────────────────────────
-    # THE NORTHERN TERRITORY PUBLISHES STAFFING NUMBERS, at a path no amount of
-    # guessing would have reached. Round five asked ocpe.nt.gov.au for its own
-    # sitemap — 520 URLs, 200 OK, after the same host sat challenged for thirty
-    # seconds in round one — and two of them settle the jurisdiction:
+    # ── Round seven: NEW ZEALAND HEALTH ────────────────────────────────────
+    # Four Health NZ districts and the Northern Regional Alliance are 334 of
+    # the 657 live ads still in the NZ gap, and the Public Service Commission
+    # source that closed 26 NZ agencies cannot hold them: Health New Zealand is
+    # a Crown entity and its DISTRICTS are operational units inside it, not
+    # public-service departments, so they appear in no PSC workforce row under
+    # any name.
     #
-    #   /workforce-planning/staffing-numbers
-    #   /workforce-planning/state-of-service-report
-    #
-    # Every path tried before this was invented by me and all of them 404'd.
-    # The sitemap is the source of truth about a site's own shape and should
-    # have been the first request, not the fifth.
-    ('NT staffing numbers', 'https://ocpe.nt.gov.au/workforce-planning/staffing-numbers',
-     'https://ocpe.nt.gov.au/'),
-    ('NT state of the service', 'https://ocpe.nt.gov.au/workforce-planning/state-of-service-report',
-     'https://ocpe.nt.gov.au/'),
-    ('TAS workforce reports', 'https://www.dpac.tas.gov.au/search?query=workforce+report',
-     'https://www.dpac.tas.gov.au/'),
+    # tewhatuora.govt.nz now 301s to healthnz.govt.nz, and healthnz.govt.nz
+    # answers a plain curl with a CloudFront "Request blocked" 403 — an AWS WAF
+    # fingerprint refusal, NOT an unreachable host. That is the same shape the
+    # NT and Tasmania turned out to be, where a warmed browser cleared it, so
+    # the sitemap is asked for through the browser and warmed first.
+    ('HealthNZ sitemap', 'https://www.healthnz.govt.nz/sitemap.xml',
+     'https://www.healthnz.govt.nz/'),
+    ('HealthNZ publications', 'https://www.healthnz.govt.nz/publications/',
+     'https://www.healthnz.govt.nz/'),
+    # The old domain's own sitemap, in case the redirect is only on the apex and
+    # the content tree still answers.
+    ('TeWhatuOra sitemap', 'https://www.tewhatuora.govt.nz/sitemap.xml',
+     'https://www.tewhatuora.govt.nz/'),
 ]
 
 
@@ -140,7 +143,19 @@ def dump_pdf(ctx, url, warm):
 def main():
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
-        browser = p.chromium.launch(args=['--no-sandbox'])
+        # PIN THE BROWSER PATH. The sandbox ships Chromium under
+        # /opt/pw-browsers (PLAYWRIGHT_BROWSERS_PATH), but the pip playwright
+        # here expects a NEWER build number than the image carries and dies with
+        # "Executable doesn't exist ... chromium_headless_shell-1243", telling
+        # you to run `playwright install`. Do not: the environment pins
+        # PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD and the browser is already present.
+        # Point at the one on disk instead.
+        exe = next((c for c in (
+            '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+            '/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell',
+        ) if os.path.exists(c)), None)
+        browser = p.chromium.launch(args=['--no-sandbox'],
+                                    **({'executable_path': exe} if exe else {}))
         ctx = browser.new_context(user_agent=UA, locale='en-AU')
         warmed = set()
         for label, url, warm in TARGETS:
