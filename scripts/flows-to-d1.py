@@ -113,8 +113,15 @@ def load(delivery: str) -> tuple[dict, list[dict], str]:
         header = json.load(f)
     with open(fp, 'rb') as f:
         raw = f.read()
-    digest = hashlib.sha256(raw).hexdigest()[:12]
     rows = list(csv.DictReader(raw.decode('utf-8-sig').splitlines()))
+    # skill_flows.csv is optional (0004). When present it is part of the
+    # delivery, so it is part of the digest: a changed skill file is a new
+    # import, not "already loaded".
+    sp = os.path.join(delivery, 'skill_flows.csv')
+    skill_raw = open(sp, 'rb').read() if os.path.exists(sp) else b''
+    digest = hashlib.sha256(raw + skill_raw).hexdigest()[:12] if skill_raw \
+        else hashlib.sha256(raw).hexdigest()[:12]
+    skill_rows = list(csv.DictReader(skill_raw.decode('utf-8-sig').splitlines())) if skill_raw else []
 
     errs: list[str] = []
     for k in ('source', 'delivered', 'method', 'scope'):
@@ -168,12 +175,43 @@ def load(delivery: str) -> tuple[dict, list[dict], str]:
     if header.get('scope') == 'sampled profiles' and any(
             r.get('count_kind') != 'sampled' for r in rows):
         errs.append('a sampled source must mark every row count_kind=sampled')
+
+    if skill_rows:
+        cols = list(skill_rows[0].keys())
+        want = COLUMNS + ['skill']
+        if sorted(cols) != sorted(want):
+            errs.append(f'skill_flows.csv: columns must be exactly {want}, got {cols}')
+        pairs = {(r.get('from_ref'), r.get('to_ref'), r.get('period_start')) for r in rows}
+        seen = set()
+        for n, r in enumerate(skill_rows, start=2):
+            where = f'skill_flows.csv line {n}'
+            if not (r.get('skill') or '').strip():
+                errs.append(f'{where}: skill is empty')
+            for c in ('from_ref', 'to_ref'):
+                if not REF.match(r.get(c) or ''):
+                    errs.append(f'{where}: {c} {r.get(c)!r} is not vendor:id')
+            try:
+                if float(r.get('moves') or 'x') < 0:
+                    raise ValueError
+            except ValueError:
+                errs.append(f'{where}: moves must be a number >= 0')
+            if r.get('count_kind') not in COUNT_KINDS:
+                errs.append(f'{where}: count_kind must be one of {sorted(COUNT_KINDS)}')
+            # A skill row is a slice of a company row; one with no company
+            # row behind it means the two files were exported differently.
+            if (r.get('from_ref'), r.get('to_ref'), r.get('period_start')) not in pairs:
+                errs.append(f'{where}: no company row for this pair and period in flows.csv')
+            k = (r.get('from_ref'), r.get('to_ref'), r.get('period_start'), r.get('skill'),
+                 r.get('count_kind'))
+            if k in seen:
+                errs.append(f'{where}: duplicate of an earlier row')
+            seen.add(k)
     if errs:
         print('\n'.join(errs[:40]))
         if len(errs) > 40:
             print(f'... and {len(errs) - 40} more')
         sys.exit(1)
-    return header, rows, digest
+    return header, rows, digest, skill_rows
 
 
 # ── matching ────────────────────────────────────────────────────────────────
@@ -230,7 +268,7 @@ def main() -> int:
     if not OFFLINE and not TOKEN:
         sys.exit('CLOUDFLARE_API_TOKEN is required (or pass --offline for a dry run '
                  'that skips the D1 lookups).')
-    header, rows, digest = load(POSITIONAL[0])
+    header, rows, digest, skill_rows = load(POSITIONAL[0])
     import_id = f'{header["source"]}|{header["delivered"]}|{digest}'
 
     refs: dict[str, str] = {}
@@ -240,6 +278,9 @@ def main() -> int:
         refs.setdefault(r['to_ref'], r['to_name'])
         volume[r['from_ref']] += float(r['moves'])
         volume[r['to_ref']] += float(r['moves'])
+    for r in skill_rows:
+        refs.setdefault(r['from_ref'], r['from_name'])
+        refs.setdefault(r['to_ref'], r['to_name'])
     for ref in (header.get('sample') or {}):
         refs.setdefault(ref, ref.split(':', 1)[-1])
     ids, how = resolve(refs, header)
@@ -254,6 +295,10 @@ def main() -> int:
     print(f'matched  {sum(1 for v in ids.values() if v)} of {len(ids)} companies; '
           f'{both:g} of {total:g} moves have both ends on the roster')
     print(f'by       {dict(Counter(how.values()))}')
+    if skill_rows:
+        print(f'skills   {len(skill_rows)} rows over {len({r["skill"] for r in skill_rows})} skills, '
+              f'{sum(float(r["moves"]) for r in skill_rows):g} skill moves, from '
+              f'{sum((header.get("skills") or {}).get("sample", {}).values())} profiles with skills')
     unmatched = sorted((r for r in refs if not ids[r]), key=lambda r: -volume[r])
     if unmatched:
         print('\nunmatched, biggest first (map one with a flow_company_map row, method=manual):')
@@ -284,6 +329,19 @@ def main() -> int:
                float(r['moves']), r['count_kind'])])
     for ref, n in (header.get('sample') or {}).items():
         d1('INSERT INTO flow_sample (import_id, ref, company_id, profiles) VALUES (?,?,?,?)',
+           [import_id, ref, ids.get(ref), int(n)])
+    per_s = 8  # 12 bound params a row
+    for i in range(0, len(skill_rows), per_s):
+        chunk = skill_rows[i:i + per_s]
+        d1('INSERT INTO flow_skills (import_id, from_ref, from_name, to_ref, to_name, from_id, '
+           'to_id, period_start, period_end, skill, moves, count_kind) VALUES '
+           + ','.join(['(?,?,?,?,?,?,?,?,?,?,?,?)'] * len(chunk)),
+           [v for r in chunk for v in (
+               import_id, r['from_ref'], r['from_name'], r['to_ref'], r['to_name'],
+               ids.get(r['from_ref']), ids.get(r['to_ref']), r['period_start'], r['period_end'],
+               r['skill'], float(r['moves']), r['count_kind'])])
+    for ref, n in ((header.get('skills') or {}).get('sample') or {}).items():
+        d1('INSERT INTO flow_skill_sample (import_id, ref, company_id, profiles) VALUES (?,?,?,?)',
            [import_id, ref, ids.get(ref), int(n)])
     for ref, method in how.items():
         if method in ('linkedin-slug', 'exact-name', 'seed') and ids.get(ref):

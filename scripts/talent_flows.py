@@ -353,6 +353,7 @@ class Spell:
     name: str
     start: Month
     end: Month | None
+    title: str = ''         # the job the person joined in; used for skills, never stored
 
 
 @dataclass(frozen=True)
@@ -362,6 +363,9 @@ class Move:
     to_ref: str
     to_name: str
     month: str | None       # YYYY-MM the new job started; None = year-only dates
+    # The title of the job moved INTO. Read once, by skills_of(), and never
+    # stored: the collector keeps the skills it implies and drops the text.
+    to_title: str = ''
 
 
 @dataclass
@@ -394,7 +398,7 @@ def spells_from(positions: list[Position]) -> list[Spell]:
                 if _end_index(p.end) > _end_index(cur.end):
                     cur.end = p.end
                 continue
-            cur = Spell(key, p.company, p.start, p.end)
+            cur = Spell(key, p.company, p.start, p.end, p.title or '')
             spells.append(cur)
     spells.sort(key=lambda s: _start_index(s.start))
     return spells
@@ -438,8 +442,55 @@ def moves_from(positions: list[Position]) -> MoveResult:
             continue
         t = next(t for t in cands if _start_index(t.start) == first)
         month = None if (s.end.month is None or t.start.month is None) else t.start.iso()
-        out.moves.append(Move(s.key, s.name, t.key, t.name, month))
+        out.moves.append(Move(s.key, s.name, t.key, t.name, month, t.title))
     return out
+
+
+# ── skills ──────────────────────────────────────────────────────────────────
+#
+# A move's skills are the skills of the job it went INTO, matched from that
+# job's title by the app's own matcher: skillsForText in
+# src/employsi/data/skillsTaxonomy.ts, run through scripts/skills-for-titles.ts
+# as one long-lived bun process. Not the Python port in skills_taxonomy.py:
+# that one reads only top-level skills with no industry gates, and measured
+# 2026-09-25 it disagreed with the app on "Workforce Planning Lead" (the app
+# adds the child skill Workforce Planning) and "Truck Driver" (Truck Driving).
+# CLAUDE.md asks for one matcher wherever a role enters.
+#
+# A title can match several skills, so skill counts do not sum to the move
+# count. A title that matches none gives no skill row, and the move still
+# counts at company level. The title goes to the local bun process and is
+# not stored: only the skill names come back from this function.
+
+_skill_proc = None
+_skill_memo: dict[str, list[str]] = {}
+
+
+def _skills_for_title(title: str) -> list[str]:
+    global _skill_proc
+    import json
+    import os
+    import subprocess
+    if title in _skill_memo:
+        return _skill_memo[title]
+    if _skill_proc is None or _skill_proc.poll() is not None:
+        here = os.path.dirname(os.path.abspath(__file__))
+        _skill_proc = subprocess.Popen(
+            ['bun', 'run', os.path.join(here, 'skills-for-titles.ts')],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1,
+            cwd=os.path.dirname(here))
+    _skill_proc.stdin.write(json.dumps(title) + '\n')
+    _skill_proc.stdin.flush()
+    line = _skill_proc.stdout.readline()
+    if not line:
+        raise RuntimeError('scripts/skills-for-titles.ts stopped answering')
+    _skill_memo[title] = json.loads(line)
+    return _skill_memo[title]
+
+
+def skills_of(move) -> list[str]:
+    title = (move['to_title'] if isinstance(move, dict) else move.to_title) or ''
+    return _skills_for_title(title) if title.strip() else []
 
 
 # ── identity and aggregation ───────────────────────────────────────────────

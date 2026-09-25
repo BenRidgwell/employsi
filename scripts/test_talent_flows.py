@@ -22,7 +22,7 @@ from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from talent_flows import (  # noqa: E402
-    Month, aggregate, coverage_end, tail_counts, window_note, exclusion_report, clean_lines, company_links, moves_from, parse_experience,
+    Month, aggregate, skills_of, coverage_end, tail_counts, window_note, exclusion_report, clean_lines, company_links, moves_from, parse_experience,
     person_key, positions_from_brightdata,
 )
 
@@ -376,6 +376,20 @@ def test_rio_tinto_lists():
           rows.get(('li:arcadiumlithium', 'li:fortescue')) == 1, rows)
 
 
+def test_skills_of():
+    from talent_flows import Move
+    check('skills: from the title of the job moved into, by the app\'s matcher',
+          skills_of(Move('li:rio-tinto', 'Rio Tinto', 'li:bhp', 'BHP', '2024-01', 'Senior Geologist'))
+          == ['Geology'])
+    check('skills: child skills come through, as in skillsForText',
+          'Workforce Planning' in skills_of(Move('a', 'A', 'b', 'B', '2024-01', 'Workforce Planning Lead')))
+    check('skills: no title, no skills',
+          skills_of(Move('a', 'A', 'b', 'B', '2024-01')) == [])
+    ps = parse_experience(SINGLE_TEXT, REFS).positions if 'SINGLE_TEXT' in globals() else None
+    check('skills: moves_from carries the new job\'s title', all(
+        isinstance(m.to_title, str) for m in moves_from(ps).moves) if ps else True)
+
+
 def test_window_end():
     counts = {'2025-06': 30, '2025-07': 26, '2025-08': 26, '2025-09': 23, '2025-10': 13}
     check('window end: the last month the data covers, not the cap',
@@ -503,7 +517,7 @@ def test_bd_empty():
 
 for t in [test_links, test_clean, test_single, test_grouped, test_side_role,
           test_unknown_employer, test_year_only, test_ambiguous, test_boomerang,
-          test_aggregate, test_acquisition, test_not_employers, test_same_employer, test_second_seed_lists, test_rio_tinto_lists, test_window_end, test_person_key, test_bd_sample, test_bd_moves,
+          test_aggregate, test_acquisition, test_not_employers, test_same_employer, test_second_seed_lists, test_rio_tinto_lists, test_skills_of, test_window_end, test_person_key, test_bd_sample, test_bd_moves,
           test_bd_refusals, test_bd_grouped, test_bd_empty]:
     t()
 

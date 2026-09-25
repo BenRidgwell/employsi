@@ -15,6 +15,7 @@
  */
 import {
   FLOW_MIN_MOVES,
+  buildFlowView,
   hasVisibleFlows,
   summariseCompanyFlows,
   type CountKind,
@@ -189,6 +190,72 @@ function row(
     "identity: two vendor refs for one roster company merge before the floor",
     f.gainedFrom.some((s) => s.companyId === "rio" && s.moves === 12) && f.suppressed.pairs === 0,
     f,
+  );
+}
+
+// ── the talent-flow view (design "Talent Flows 3D") ─────────────────────────
+{
+  const S: FlowImport = { ...IMP, source: "sampled", scope: "sampled profiles" };
+  const r = (from: string | null, to: string | null, moves: number, ref?: string) =>
+    row(from, to, moves, { kind: "sampled", fromRef: ref, toRef: undefined });
+  const rows = [
+    r("rio", "bhp", 40),
+    r("fmg", "bhp", 12),
+    r("mnd", "bhp", 11), // on the map, not sampled
+    r("mnd", "bhp", 3, "synthetic:mnd-2"), // a second ref for the same company
+    r(null, "bhp", 30, "synthetic:thiess"), // off the map
+    r("s32", "bhp", 4), // under the floor
+    r("bhp", "rio", 25),
+    r("bhp", "fmg", 6), // sampled destination, under the floor
+    r("bhp", "mnd", 50), // non-sampled destination: not measured
+  ];
+  const sampled = new Set(["bhp", "rio", "fmg"]);
+  const v = buildFlowView("bhp", S, rows, sampled, 9696)!;
+  const peer = (id: string) => v.peers.find((p) => p.companyId === id);
+  check(
+    "view: a company whose staff were not sampled cannot be the focus",
+    buildFlowView("mnd", S, rows, sampled, null) === null,
+  );
+  check(
+    "view: inflow is itemised from on-map companies at or over the floor",
+    peer("rio")?.in === 40 && peer("fmg")?.in === 12 && peer("mnd")?.in === 14,
+    v.peers,
+  );
+  check(
+    "view: under the floor or off the map goes to other, whole",
+    !peer("s32") && v.other.in.moves === 34 && v.other.in.companies === 2,
+    v.other,
+  );
+  check(
+    "view: outflow is only measured to sampled companies",
+    peer("rio")?.out === 25 && peer("mnd")?.out === null && v.totals.out === 31,
+    v,
+  );
+  check(
+    "view: a sampled destination under the floor is not printed",
+    peer("fmg")?.out === null && v.other.out.moves === 6,
+    v,
+  );
+  check(
+    "view: totals include what other holds",
+    v.totals.in === 100 && v.peers.reduce((a, p) => a + p.in, 0) + v.other.in.moves === v.totals.in,
+    v.totals,
+  );
+  check(
+    "view: the caption says sampled moves, the period and the rules",
+    /Moves among 9,696 sampled/.test(v.caption) &&
+      /Jan 2025 – Dec 2025/.test(v.caption) &&
+      /fewer than 10 moves/.test(v.caption),
+    v.caption,
+  );
+  check("view: biggest peer first", v.peers[0]?.companyId === "rio", v.peers);
+  const sv = buildFlowView("bhp", S, rows.slice(0, 2), sampled, 5000, "Geology")!;
+  check(
+    "view: a skill view says which skill and its own sample",
+    sv.skill === "Geology" &&
+      /into roles matching Geology/.test(sv.caption) &&
+      sv.sampleProfiles === 5000,
+    sv,
   );
 }
 

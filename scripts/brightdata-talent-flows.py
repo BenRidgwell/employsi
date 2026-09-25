@@ -76,6 +76,8 @@ Options:
                           experience.company_id is refused by Bright Data)
     --max-requests N      MCP calls this run may make (default 50)
     --per-seed N          profiles per seed within the run (default: no cap)
+    --skills              re-read a seed on its own cursor to record skills for profiles
+                          counted before skills were kept (new profiles are counted in full)
     --restart             drop the seeds' saved cursors and read from the top
                           (needed after a dataset refresh; see collect())
     --pause S             seconds between calls (default 2)
@@ -104,12 +106,12 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from collections import Counter
+from collections import Counter, defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from talent_flows import (  # noqa: E402
     MAX_GAP_MONTHS, aggregate, coverage_end, exclusion_report, moves_from, person_key,
-    positions_from_brightdata, tail_counts, window_note)
+    positions_from_brightdata, skills_of, tail_counts, window_note)
 
 args = sys.argv[1:]
 
@@ -166,6 +168,26 @@ CREATE TABLE IF NOT EXISTS moves (
   month      TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_moves_person ON moves (person_key);
+-- Skills of the job each move went into (talent_flows.skills_of), one row per
+-- skill. No title: the matcher's answer is kept, the text is not.
+CREATE TABLE IF NOT EXISTS skill_moves (
+  person_key TEXT NOT NULL,
+  from_ref   TEXT NOT NULL,
+  from_name  TEXT NOT NULL,
+  to_ref     TEXT NOT NULL,
+  to_name    TEXT NOT NULL,
+  month      TEXT NOT NULL,
+  skill      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_skill_moves_person ON skill_moves (person_key);
+-- Profiles whose skills are recorded. Separate from `people` because the
+-- skills pass re-reads profiles counted before skills were kept.
+CREATE TABLE IF NOT EXISTS skill_people (
+  person_key TEXT PRIMARY KEY,
+  seed_ref   TEXT NOT NULL,
+  status     TEXT NOT NULL,        -- ok | empty | remote
+  synced     INTEGER NOT NULL DEFAULT 0
+);
 """
 
 
@@ -387,12 +409,33 @@ async def inspect(bd: BrightData, slug: str, n: int) -> int:
     return 0
 
 
+def _record_skills(conn: sqlite3.Connection, pk: str, seed_ref: str, parsed, mv) -> None:
+    """The skill rows for one profile's dated moves, and its mark in
+    skill_people. Titles are read by skills_of() and not kept."""
+    conn.executemany('INSERT INTO skill_moves VALUES (?,?,?,?,?,?,?)', [
+        (pk, m.from_ref, m.from_name, m.to_ref, m.to_name, m.month, sk)
+        for m in mv.moves if m.month for sk in skills_of(m)])
+    conn.execute('INSERT OR IGNORE INTO skill_people (person_key, seed_ref, status) VALUES (?,?,?)',
+                 (pk, seed_ref, 'ok' if parsed.positions else 'empty'))
+
+
+# --skills: the pass that re-reads a seed to record skills for profiles counted
+# before skills were kept. It walks its own cursor ('skills:' + seed_ref), so
+# the main cursor is left where it was; a profile not yet counted at all is
+# counted in full on the way, so the pass also finishes an unfinished seed.
+SKILLS_PASS = '--skills' in args
+
+
+def _cursor_ref(slug: str) -> str:
+    return ('skills:' if SKILLS_PASS else '') + f'li:{slug.lower()}'
+
+
 async def collect(bd: BrightData, conn: sqlite3.Connection, seeds: list[tuple[str, str]]) -> int:
     key_salt = salt()
     today = dt.date.today().isoformat()
     for cid, slug in seeds:
         conn.execute('INSERT OR IGNORE INTO seeds (seed_ref, company_id, slug) VALUES (?,?,?)',
-                     (f'li:{slug.lower()}', cid, slug))
+                     (_cursor_ref(slug), cid, slug))
         if '--restart' in args:
             # A saved cursor does not survive a dataset refresh: measured
             # 2026-09-25, a cursor saved the day before failed twice with
@@ -401,14 +444,15 @@ async def collect(bd: BrightData, conn: sqlite3.Connection, seeds: list[tuple[st
             # from the top; people already counted are skipped by key, so
             # the cost is the requests spent re-reading them.
             conn.execute('UPDATE seeds SET search_after = NULL, exhausted = 0 WHERE seed_ref = ?',
-                         (f'li:{slug.lower()}',))
+                         (_cursor_ref(slug),))
     conn.commit()
 
-    got, new_people, repeats = 0, 0, 0
+    got, new_people, repeats, skill_only = 0, 0, 0, 0
     try:
         for cid, slug in seeds:
             seed_ref = f'li:{slug.lower()}'
-            row = conn.execute('SELECT * FROM seeds WHERE seed_ref = ?', (seed_ref,)).fetchone()
+            cursor_ref = _cursor_ref(slug)
+            row = conn.execute('SELECT * FROM seeds WHERE seed_ref = ?', (cursor_ref,)).fetchone()
             if row['exhausted']:
                 print(f'  {slug}: already read to the end of Bright Data\'s matches')
                 continue
@@ -425,7 +469,7 @@ async def collect(bd: BrightData, conn: sqlite3.Connection, seeds: list[tuple[st
                 conn.execute('UPDATE seeds SET total = ?, search_after = ?, exhausted = ? '
                              'WHERE seed_ref = ?',
                              (res.get('total_hits'), json.dumps(cursor) if cursor is not None else None,
-                              int(done), seed_ref))
+                              int(done), cursor_ref))
                 for hit in hits:
                     p = profile_of(hit)
                     pid = str(p.get('id') or p.get('linkedin_id') or '').strip()
@@ -433,13 +477,22 @@ async def collect(bd: BrightData, conn: sqlite3.Connection, seeds: list[tuple[st
                         continue
                     pk = person_key(f'bd:{pid}', key_salt)
                     if conn.execute('SELECT 1 FROM people WHERE person_key = ?', (pk,)).fetchone():
-                        repeats += 1
+                        if SKILLS_PASS and not conn.execute(
+                                'SELECT 1 FROM skill_people WHERE person_key = ?', (pk,)).fetchone():
+                            parsed = positions_from_brightdata(p)
+                            mv = moves_from(parsed.positions)
+                            del p, pid
+                            _record_skills(conn, pk, seed_ref, parsed, mv)
+                            skill_only += 1
+                        else:
+                            repeats += 1
                         continue
                     parsed = positions_from_brightdata(p)
                     mv = moves_from(parsed.positions)
                     # Everything personal goes before anything is written.
                     del p, pid
                     new_people += 1
+                    _record_skills(conn, pk, seed_ref, parsed, mv)
                     conn.executemany('INSERT INTO moves VALUES (?,?,?,?,?,?)', [
                         (pk, m.from_ref, m.from_name, m.to_ref, m.to_name, m.month)
                         for m in mv.moves])
@@ -461,7 +514,7 @@ async def collect(bd: BrightData, conn: sqlite3.Connection, seeds: list[tuple[st
         print(f'\nSTOPPED: {e}\nNothing further was requested.')
         return 3 if 'max-requests' not in str(e) else 0
     print(f'\n{bd.calls} requests; {got} profiles returned; {new_people} new people, '
-          f'{repeats} already counted.')
+          f'{skill_only} given skills, {repeats} already counted.')
     return 0
 
 
@@ -542,9 +595,12 @@ def export(conn: sqlite3.Connection, out_dir: str) -> int:
     rows = aggregate(moves, start, end, excluded)
     if not sample:
         sys.exit('Nothing collected yet.')
+    # The skills pass keeps its own cursors ('skills:li:…'); they are not seeds.
+    seed_rows = [r for r in seed_rows if not str(r['seed_ref']).startswith('skills:')]
     seeds = {r['seed_ref']: r['company_id'] for r in seed_rows}
     totals = {r['seed_ref']: r['total'] for r in seed_rows}
     os.makedirs(out_dir, exist_ok=True)
+    skill_rows, skill_sample = _export_skills(conn, out_dir, start, end)
     cols = ['from_ref', 'from_name', 'to_ref', 'to_name', 'period_start', 'period_end',
             'moves', 'count_kind']
     with open(os.path.join(out_dir, 'flows.csv'), 'w', newline='') as f:
@@ -570,6 +626,13 @@ def export(conn: sqlite3.Connection, out_dir: str) -> int:
                     'excluded': exclusion_report(excluded)},
         'sample': sample,
         'seeds': seeds,
+        # skill_flows.csv: the same window and the same exclusions, per skill.
+        # A move's skills are those of the job it went INTO (skillsForText on
+        # its title). A move can carry several skills or none, so skill rows
+        # do not sum to the company rows. They rest on skill_sample, which
+        # falls short of `sample` until the skills pass has re-read a seed.
+        'skills': {'basis': 'skills of the job moved into, by skillsForText',
+                   'sample': skill_sample, 'rows': len(skill_rows)},
         'notes': ('Counts of moves among sampled profiles, not workforce totals. Profiles are '
                   'current employees of each seed, so a flow out of a seed is only seen when '
                   f'the destination is also seeded. ' + window_note(end, cap)
@@ -589,6 +652,44 @@ def export(conn: sqlite3.Connection, out_dir: str) -> int:
         verb = 'counted under its employer' if why == 'merged' else f'excluded, {why}'
         print(f'  {verb}: {a} {"/" if why in ("not_employer", "merged") else "->"} {b}: {n}')
     return 0
+
+
+def _export_skills(conn: sqlite3.Connection, out_dir: str, start: str, end: str):
+    """skill_flows.csv: company-pair rows per skill, through aggregate() so
+    every exclusion the company rows get applies here too."""
+    if '--from-d1' in args:
+        try:
+            raw = d1('SELECT from_ref, from_name, to_ref, to_name, month, skill, SUM(moves) n '
+                     'FROM flow_collect_skill_moves WHERE source = ? AND month BETWEEN ? AND ? '
+                     'GROUP BY 1,2,3,4,5,6', [SOURCE, start, end])
+            skill_sample = {r['seed_ref']: int(r['n']) for r in d1(
+                'SELECT seed_ref, SUM(profiles_ok) n FROM flow_collect_skill_batch '
+                'WHERE source = ? GROUP BY seed_ref', [SOURCE])}
+        except RuntimeError:
+            raw, skill_sample = [], {}   # 0004 not applied: no skills yet
+        by_skill: dict[str, list] = defaultdict(list)
+        for r in raw:
+            by_skill[r['skill']].extend([dict(r)] * int(r['n']))
+    else:
+        by_skill = defaultdict(list)
+        for r in conn.execute("SELECT s.* FROM skill_moves s JOIN skill_people p USING (person_key) "
+                              "WHERE p.status = 'ok'"):
+            by_skill[r['skill']].append(dict(r))
+        skill_sample = {r['seed_ref']: r['n'] for r in conn.execute(
+            "SELECT seed_ref, COUNT(*) n FROM skill_people WHERE status = 'ok' GROUP BY seed_ref")}
+    rows = []
+    for skill in sorted(by_skill):
+        for r in aggregate(by_skill[skill], start, end):
+            rows.append({**r, 'skill': skill})
+    cols = ['from_ref', 'from_name', 'to_ref', 'to_name', 'period_start', 'period_end',
+            'skill', 'moves', 'count_kind']
+    with open(os.path.join(out_dir, 'skill_flows.csv'), 'w', newline='') as f:
+        w = csv.DictWriter(f, fieldnames=cols)
+        w.writeheader()
+        w.writerows(rows)
+    print(f'{len(rows)} skill rows over {len(by_skill)} skills, '
+          f'from {sum(skill_sample.values())} profiles with skills')
+    return rows, skill_sample
 
 
 # ── D1: collection state (workers/jobs-cron/migrations/0003) ────────────────
@@ -632,6 +733,59 @@ def _chunks(rows: list, width: int):
 
 
 def sync_d1(conn: sqlite3.Connection) -> int:
+    """Both halves: the profiles' move counts, then their skill counts."""
+    rc = _sync_people(conn)
+    return rc or _sync_skills(conn)
+
+
+def _sync_skills(conn: sqlite3.Connection) -> int:
+    """Skill counts (0004) for profiles whose skills were recorded here but
+    not yet synced, as one batch, with the same rules as the move counts:
+    MIN_BATCH, a batch id derived from the batch's keys, OR IGNORE, counts
+    before keys before the local mark."""
+    now = dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    people = [dict(r) for r in conn.execute(
+        "SELECT * FROM skill_people WHERE synced = 0 AND status IN ('ok', 'empty') "
+        "ORDER BY person_key")]
+    if not people:
+        print('no new skill profiles to sync.')
+        return 0
+    if len(people) < MIN_BATCH:
+        print(f'{len(people)} skill profiles wait here until there are {MIN_BATCH}.')
+        return 0
+    keys = [p['person_key'] for p in people]
+    batch = 'sk' + hashlib.sha256('\n'.join(keys).encode()).hexdigest()[:14]
+    per_seed: Counter = Counter()
+    per_seed_ok: Counter = Counter()
+    for p in people:
+        per_seed[p['seed_ref']] += 1
+        per_seed_ok[p['seed_ref']] += p['status'] == 'ok'
+    counts: Counter = Counter()
+    marks = ','.join('?' * len(keys))
+    for m in conn.execute(f'SELECT * FROM skill_moves WHERE person_key IN ({marks})', keys):
+        counts[(m['from_ref'], m['from_name'], m['to_ref'], m['to_name'], m['month'],
+                m['skill'])] += 1
+    rows = [(batch, SOURCE, *k, n) for k, n in counts.items()]
+    for chunk in _chunks(rows, 9):
+        d1('INSERT OR IGNORE INTO flow_collect_skill_moves (batch_id, source, from_ref, '
+           'from_name, to_ref, to_name, month, skill, moves) VALUES '
+           + ','.join(['(?,?,?,?,?,?,?,?,?)'] * len(chunk)), [v for r in chunk for v in r])
+    for seed_ref, n in per_seed.items():
+        d1('INSERT OR IGNORE INTO flow_collect_skill_batch (batch_id, seed_ref, source, '
+           'profiles_ok, profiles_empty, synced_at) VALUES (?,?,?,?,?,?)',
+           [batch, seed_ref, SOURCE, per_seed_ok[seed_ref], n - per_seed_ok[seed_ref], now])
+    for chunk in _chunks(keys, 1):
+        d1('INSERT OR IGNORE INTO flow_collect_skill_seen (person_key) VALUES '
+           + ','.join(['(?)'] * len(chunk)), chunk)
+    conn.executemany('UPDATE skill_people SET synced = 1 WHERE person_key = ?',
+                     [(k,) for k in keys])
+    conn.commit()
+    print(f'synced skill batch {batch}: {len(keys)} profiles, {len(rows)} month-pair-skill rows '
+          f'({sum(counts.values())} skill moves).')
+    return 0
+
+
+def _sync_people(conn: sqlite3.Connection) -> int:
     """Push profiles counted here but not yet in D1, as one batch.
 
     Order matters for a sync that dies half way: counts first, keys next,
@@ -705,6 +859,10 @@ def pull_d1(conn: sqlite3.Connection) -> int:
         # A sync that died half way leaves some of these keys in D1; pulling
         # them would split the batch and the rest would be counted twice.
         sys.exit(f'{waiting} profiles here are not synced yet. Run --sync-d1 first.')
+    waiting = conn.execute("SELECT COUNT(*) FROM skill_people WHERE synced = 0 "
+                           "AND status IN ('ok', 'empty')").fetchone()[0]
+    if waiting >= MIN_BATCH:
+        sys.exit(f'{waiting} skill profiles here are not synced yet. Run --sync-d1 first.')
     for r in d1('SELECT * FROM flow_collect_seed WHERE source = ?', [SOURCE]):
         conn.execute('INSERT INTO seeds (seed_ref, company_id, slug, total, search_after, exhausted) '
                      'VALUES (?,?,?,?,?,?) ON CONFLICT(seed_ref) DO UPDATE SET total = excluded.total, '
@@ -725,8 +883,23 @@ def pull_d1(conn: sqlite3.Connection) -> int:
                          [(r['person_key'],) for r in page])
         got += len(page)
         after = page[-1]['person_key']
+    skill_got, after = 0, ''
+    while True:
+        try:
+            page = d1('SELECT person_key FROM flow_collect_skill_seen WHERE person_key > ? '
+                      'ORDER BY person_key LIMIT 5000', [after])
+        except RuntimeError:
+            break  # 0004 not applied yet: no skills anywhere
+        if not page:
+            break
+        conn.executemany("INSERT INTO skill_people (person_key, seed_ref, status, synced) "
+                         "VALUES (?, '', 'remote', 1) "
+                         "ON CONFLICT(person_key) DO UPDATE SET synced = 1",
+                         [(r['person_key'],) for r in page])
+        skill_got += len(page)
+        after = page[-1]['person_key']
     conn.commit()
-    print(f'pulled {got} counted keys and the seed cursors from D1.')
+    print(f'pulled {got} counted keys, {skill_got} skill keys and the seed cursors from D1.')
     return 0
 
 
