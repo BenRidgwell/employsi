@@ -131,6 +131,54 @@ ALIAS = {
     # 116,540 and "Public Non-Financial Corporations Sector" 4,750 — and any
     # rule loose enough to gather the health networks could gather one of
     # those. A total is not an agency, and nothing here may ever sum one.
+    # ── South Australia ────────────────────────────────────────────────
+    # ONE SYSTEMATIC MISMATCH, NOT EIGHTEEN SEPARATE ONES: the roster writes
+    # "SA" and the Workforce Information Report spells out "South Australian".
+    # That is the whole of it for these, which is why they are grouped rather
+    # than scattered through the table alphabetically.
+    #
+    # These were read off the RUNNER's own spare-row list, because South
+    # Australia cannot be loaded from the authoring sandbox — its report is a
+    # PDF behind a host that refuses this network, so the strings below are the
+    # source's own output rather than anything guessed here. They are verified
+    # by the next gov-workforce run: any one that is wrong reappears in that
+    # list instead of matching, and the roster card stays blank rather than
+    # taking a wrong figure.
+    #
+    # The four SECTOR TOTALS in that list — General Government Sector at
+    # 116,540, Public Non-Financial Corporations, Public Financial
+    # Corporations, Non-Budget Entity — are aggregates and must never be
+    # matched to an agency. They stay unconsumed on purpose; the run printing
+    # them is the check working, not a gap.
+    'sa:SA Metropolitan Fire Service': 'South Australian Metropolitan Fire Service',
+    'sa:SA Housing Trust': 'South Australian Housing Trust',
+    'sa:SA Country Fire Service': 'South Australian Country Fire Service',
+    'sa:SA Tourism Commission': 'South Australian Tourism Commission',
+    'sa:Lifetime Support Authority of SA': 'Lifetime Support Authority of South Australia',
+    'sa:SACE Board of SA': 'SACE Board of South Australia',
+    'sa:SA Fire and Emergency Services Commission':
+        'South Australian Fire and Emergency Services Commission',
+    # "Services" plural in the source, singular on the card.
+    'sa:SA State Emergency Service': 'South Australian State Emergency Services',
+    'sa:Essential Services Commission of SA': 'Essential Services Commission of South Australia',
+    'sa:State Theatre Company of SA': 'State Theatre Company of South Australia',
+    'sa:Electoral Commission of SA': 'Electoral Commission of South Australia',
+    # "South Australia", not "South Australian", in this one row.
+    'sa:SA Arid Lands Landscape Board': 'South Australia Arid Lands Landscape Board',
+    'sa:SA Motor Sport Board': 'South Australian Motor Sport Board',
+    'sa:Carclew Youth Arts Centre': 'Carclew Youth Arts Centre Incorporated',
+    'sa:SA Film Corporation': 'South Australian Film Corporation',
+    'sa:State Opera SA': 'State Opera of South Australia',
+    'sa:Office of the SA Productivity Commission':
+        'Office of the South Australian Productivity Commission',
+    # THE ONE HERE THAT IS NOT JUST AN ABBREVIATION. The card names the
+    # Commissioner — the office-holder — and the source row is "Commission".
+    # In South Australia that is one body under two spellings, and there is no
+    # second candidate anywhere in the file, so this is a rename rather than
+    # the near-name trap. Worth the note because it is the only one of the
+    # eighteen a reader could not confirm from the two strings alone.
+    'sa:Legal Profession Conduct Commissioner': 'Legal Profession Conduct Commission',
+
     # ── Victoria ───────────────────────────────────────────────────────
     # THE VICTORIAN SOURCE HAD 208 SPARE ROWS AGAINST 38 UNFILLED CARDS, which
     # is not a jurisdiction missing a source — it is a jurisdiction whose rows
