@@ -200,6 +200,26 @@ Facts it depends on (read 2026-09-24):
     row is gone. Reloaded as `…28373d8b91d8` (2,395 pairs, 3,246 moves).
   - Junk names still getting through, 1–2 moves each: "Various Companies"
     (two LinkedIn pages), "personal", "Dance Training Sabbatical".
+- **Sixth collection, 2026-09-25 06:31–06:34 UTC: 15 requests, 150
+  profiles, then `HTTP 500: ETIMEDOUT`** on the 16th, after 60 s. Not a 429
+  and not the stale-cursor `Response Error`; the 15 that did answer came
+  at ~7 a minute against the usual ~24, so Bright Data was slow at the
+  time. Synced: D1 holds 15,640 of 21,359. Not reloaded for 150 profiles.
+- **How far back the histories go, and where they stop** (measured
+  2026-09-25 over the 14,040 profiles held on this machine, 18,646 moves
+  dated to a month, 607 to a year only). The earliest move is 1968-06, the
+  median 2016-03; 90% are from 2007 on and 75% from 2011 on. 16.4% fall in
+  the 60-month window, 2.9% in 24 months.
+  **The latest move is 2025-10, and the months before it thin out.** Moves a
+  month run ~50–60 through 2023, ~40 in 2024, ~25 by mid-2025, 13 in
+  2025-10, then nothing. That is the dataset's collection date plus people
+  updating profiles late, not a hiring slump. So the export window, which
+  ends at today minus `LAG_MONTHS` (3), is **ending past the data**: 2026-06
+  was drawn with its last eight months empty and 2025 under-counted. The
+  3-month lag was recorded as an assumption, and this measurement shows it
+  is wrong for this source. The window should end at the last month the
+  data covers (the `coverageDay` rule from CLAUDE.md applied to months),
+  and report the span actually drawn. Not yet changed.
 - **The rate limit is not a fixed count per window.** 00:41–00:55 UTC: 164
   accepted, then 429. 02:02:14–02:25:38 UTC: 557 accepted (at the same ~24 a
   minute), then 429 on the 558th. So the cap had reset within 67 minutes of
@@ -214,7 +234,8 @@ Facts it depends on (read 2026-09-24):
   and never retry one. 04:55:50–05:18:29 UTC, after a 71-minute gap: 600
   accepted, 429 on the 601st. So far: 164, 557, 233, 600. Requests used this
   month: ~1,664 of the 5,000 free (270 before today, then 1 + 557 + 233 + 600
-  in this session). The full seed needs ~590 more, which fits one window.
+  in this session), plus 15 more at 06:31 before a timeout. The full
+  seed needs ~575 more.
 - **Collection state lives in D1** (`0003`), so a collection outlives the
   machine it ran on. `--sync-d1` pushes what this machine has counted,
   `--pull-d1` brings the cursors and counted keys to a new machine, and
