@@ -545,6 +545,20 @@ only cheap way back.
 Do **not** pass `--noproxy '*'` to Cloudflare API calls in this sandbox; it breaks
 them.
 
+**`pdfplumber` works in this sandbox after `pip install cffi`, and the failure
+without it is badly misleading.** The import dies with a pyo3
+`PanicException: Python API call failed` several frames above the real cause,
+`ModuleNotFoundError: No module named '_cffi_backend'` — so it reads as a broken
+Rust binding rather than one absent pure-Python package. `pypdf` fails the same
+way for the same reason. Measured 2026-09-25: one `pip install cffi` and both
+open a 64-page PDF.
+
+This is worth knowing because it was taken as a property of the environment, and
+`.github/workflows/gov-workforce.yml` still says South Australia runs there
+partly because of it. A scheduled refresh does belong on a runner — but a parser
+should be written against a document you can open, and Queensland's first
+version was wrong in twelve rows of twenty-eight for want of that.
+
 ### Firing a cron by hand
 
 ```bash
