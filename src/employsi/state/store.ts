@@ -128,7 +128,7 @@ export interface AppState {
    * than each fetching its own copy.
    */
   flowsOpen: boolean;
-  flowFocus: string;
+  flowFocus: string | null; // null = the card's home screen: nothing picked yet
   flowMode: "in" | "out" | "net";
   flowSkill: string | null;
   flowHover: string | null;
@@ -509,7 +509,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   careerOpen: false,
   dataQualityOpen: false,
   flowsOpen: false,
-  flowFocus: "bhp",
+  flowFocus: null,
   flowMode: "in",
   flowSkill: null,
   flowHover: null,
@@ -958,21 +958,23 @@ export const useAppStore = create<AppState>((set, get) => ({
   closeTrending: () => set({ trendingOpen: false }),
   toggleAnalyst: () => set((s) => solo("analystOpen", !s.analystOpen)),
   // The flow view draws on the LOCAL map and takes the right-hand side, so
-  // opening it closes the company card and drops into the focus's city.
-  // The focus is the company last looked at when the source sampled it
-  // (flowView.sampledCompanies, once known), else BHP.
+  // opening it closes the company card and drops into a city. It opens on its
+  // home screen (flowFocus null) — the user picks a building on the map. The
+  // city is the one already open if a sampled company is pinned there, else
+  // the first sampled company's (Perth, today).
   toggleFlows: () => {
     const s = get();
     if (s.flowsOpen) return set({ flowsOpen: false, flowHover: null });
-    const sampled = s.flowView?.sampledCompanies ?? ["bhp", "fmg", "rio"];
-    const cand = s.selectedId || s.lastId;
-    const focus = cand && sampled.includes(cand) ? cand : s.flowFocus;
-    const city = cityForCompany(focus, s.localCity);
+    const sampled = s.flowSampled ?? ["bhp", "fmg", "rio"];
+    const here = (CITY_COMPANIES[s.localCity] ?? []).some((c) => sampled.includes(c.id));
+    const city = here ? s.localCity : cityForCompany(sampled[0], s.localCity);
     set({
       ...solo("flowsOpen", true),
       selectedId: null,
       compareOpen: false,
-      flowFocus: focus,
+      flowFocus: null,
+      flowSkill: null,
+      flowHover: null,
       flowsReturn: {
         zoomedOut: s.zoomedOut,
         globalOut: s.globalOut,
@@ -984,7 +986,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   closeFlows: () => set({ flowsOpen: false, flowHover: null }),
   setFlowFocus: (id) => {
     const s = get();
-    if (id === s.flowFocus) return;
+    if (!id || id === s.flowFocus) return;
     const sampled = s.flowView?.sampledCompanies ?? s.flowSampled;
     if (sampled && !sampled.includes(id)) return;
     set({ flowFocus: id, flowHover: null });

@@ -1192,7 +1192,6 @@ export function PerthMapbox() {
   const flowHover = useAppStore((s) => s.flowHover);
   const reduceMotion = useAppStore((s) => s.reduceMotion);
   const cometRaf = useRef(0);
-  const lastFramedRef = useRef<string>("");
 
   useEffect(() => {
     const map = mapRef.current;
@@ -1213,10 +1212,6 @@ export function PerthMapbox() {
       if (!active) {
         clearFlowArcs(map);
         clearMarkers();
-        // Only closing (or leaving the city) re-arms the first-open framing.
-        // A view that is briefly absent — a new company loading, an empty
-        // window — must not, or the camera would jump on the next draw.
-        if (!flowsOpen || zoomedOut) lastFramedRef.current = "";
         return;
       }
       const v = flowView!;
@@ -1264,33 +1259,9 @@ export function PerthMapbox() {
         badge.style.background = row.color;
       });
 
-      // Frame the focus and its drawn peers ONCE, when the view first draws
-      // after opening. Switching company, mode, skill or window afterwards
-      // leaves the camera wherever the user has put it.
-      if (focusAt && !lastFramedRef.current) {
-        lastFramedRef.current = "framed";
-        const pts = [focusAt, ...arcs.map((a) => (a.from === focusAt ? a.to : a.from))];
-        const lng = pts.map((p) => p[0]);
-        const lat = pts.map((p) => p[1]);
-        const bounds: [[number, number], [number, number]] = [
-          [Math.min(...lng), Math.min(...lat)],
-          [Math.max(...lng), Math.max(...lat)],
-        ];
-        const w = map.getContainer().clientWidth;
-        const cam = map.cameraForBounds(bounds, {
-          padding: { top: 140, bottom: 90, left: 120, right: Math.min(520, Math.round(w * 0.45)) },
-          pitch: map.getPitch(),
-          bearing: map.getBearing(),
-        });
-        if (cam) {
-          map.easeTo({
-            center: cam.center,
-            zoom: Math.max(13.2, Math.min(16.2, (cam.zoom ?? 15) - 0.2)),
-            pitch: Math.max(map.getPitch(), 55),
-            duration: prefersReducedMotion() ? 0 : 900,
-          });
-        }
-      }
+      // No camera move here. The card opens on its home screen in the city
+      // (toggleFlows), and from then on picking a company, a mode, a skill or
+      // a month leaves the camera wherever the user has put it.
 
       // The travelling lights and the hub's pulse. Off for reduced motion.
       if (arcs.length && !reduceMotion && !prefersReducedMotion()) {

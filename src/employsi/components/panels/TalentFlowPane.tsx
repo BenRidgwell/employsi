@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../../state/store";
 import { COMPANIES, type Company } from "../../data/companies";
@@ -8,6 +8,7 @@ import { FLOW_BANDS, flowRows } from "../../lib/flowRows";
 import { CardLoader } from "./CardLoader";
 import { IconClose } from "../ActionIcons";
 import { logoFor } from "../../lib/companyLogo";
+import { cityLabel } from "../../data/mapboxWorldGeo";
 
 /**
  * The talent-flow card: the right-hand panel of the "Talent Flows 3D" design,
@@ -121,9 +122,171 @@ function RowLogo({ id, code, name }: { id: string | null; code: string; name: st
   );
 }
 
+/**
+ * The card's home screen, before a building is picked: the
+ * Talent_Flows_Placeholder_Card.html design, element for element, in the
+ * card's own box (.tfcard) rather than the design's free-standing 380px
+ * panel, so opening the card and picking a company never changes its size.
+ * The one addition is the close button every rail card carries. The three
+ * rows explain the modes; the mode buttons beside the card appear once there
+ * is a company for them to switch.
+ */
+function TalentFlowHome({ city, onClose }: { city: string; onClose: () => void }) {
+  const modes: [string, string, ReactNode][] = [
+    [
+      "Inflow",
+      "Which companies they hire from",
+      <>
+        <path d="M17 7 7 17" />
+        <path d="M16 17H7V8" />
+      </>,
+    ],
+    [
+      "Outflow",
+      "Where their people go next",
+      <>
+        <path d="M7 17 17 7" />
+        <path d="M8 7h9v9" />
+      </>,
+    ],
+    [
+      "Net",
+      "Whether they\u2019re gaining or losing talent",
+      <>
+        <path d="M7 4v16" />
+        <path d="m3 8 4-4 4 4" />
+        <path d="M17 20V4" />
+        <path d="m13 16 4 4 4-4" />
+      </>,
+    ],
+  ];
+  return (
+    <aside className="tfcard" aria-label="Talent flows">
+      <div
+        style={{
+          flex: "none",
+          padding: "24px 20px 20px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 18,
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <span style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+              <span
+                style={{
+                  font: "600 20px/1.25 'Mona Sans',system-ui,sans-serif",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                Talent flows
+              </span>
+              <span
+                style={{
+                  font: "400 11px/1 'Inter',system-ui,sans-serif",
+                  letterSpacing: ".14em",
+                  color: "var(--text-tertiary,#8e8e93)",
+                }}
+              >
+                {city.toUpperCase()}
+              </span>
+            </span>
+            <button type="button" className="paneclose" onClick={onClose} aria-label="Close">
+              <IconClose />
+            </button>
+          </div>
+          <span
+            style={{
+              font: "400 14px/1.5 'Inter',system-ui,sans-serif",
+              color: "var(--text-secondary,#636366)",
+              textWrap: "pretty",
+            }}
+          >
+            Select a building on the map to see where its people come from and where they go.
+          </span>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+            padding: 16,
+            borderRadius: 14,
+            background: "#fafafa",
+            border: "1px solid var(--border-subtle,#e5e5ea)",
+          }}
+        >
+          {modes.map(([title, note, icon]) => (
+            <span
+              key={title}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "28px minmax(0,1fr)",
+                gap: 10,
+                alignItems: "center",
+              }}
+            >
+              <span
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 999,
+                  background: "#1c1c1e",
+                  border: "1px solid #1c1c1e",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                }}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  {icon}
+                </svg>
+              </span>
+              <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ font: "600 13px/1.2 'Mona Sans',system-ui,sans-serif" }}>
+                  {title}
+                </span>
+                <span
+                  style={{
+                    font: "400 12.5px/1.4 'Inter',system-ui,sans-serif",
+                    color: "#8e8e93",
+                  }}
+                >
+                  {note}
+                </span>
+              </span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 export function TalentFlowPane() {
   const open = useAppStore((s) => s.flowsOpen);
-  const focus = useAppStore((s) => s.flowFocus);
+  // Null until the user picks a building: the card shows its home screen.
+  const picked = useAppStore((s) => s.flowFocus);
+  const focus = picked ?? "";
+  const localCity = useAppStore((s) => s.localCity);
   const mode = useAppStore((s) => s.flowMode);
   const skill = useAppStore((s) => s.flowSkill);
   const hover = useAppStore((s) => s.flowHover);
@@ -142,14 +305,14 @@ export function TalentFlowPane() {
   const { data: monthly, isFetching: monthsFetching } = useQuery({
     queryKey: ["talentFlowMonths", focus, skill],
     queryFn: () => getTalentFlowMonths({ data: { id: focus, skill } }),
-    enabled: open,
+    enabled: open && !!picked,
     staleTime: 10 * 60 * 1000,
   });
   // An import without monthly rows: the whole period only, as before.
   const { data: wholeView, isFetching: wholeFetching } = useQuery({
     queryKey: ["talentFlowView", focus, skill],
     queryFn: () => getTalentFlowView({ data: { id: focus, skill } }),
-    enabled: open && monthly === null,
+    enabled: open && !!picked && monthly === null,
     staleTime: 10 * 60 * 1000,
   });
   const isFetching = monthsFetching || wholeFetching;
@@ -165,7 +328,7 @@ export function TalentFlowPane() {
   const { data: skills } = useQuery({
     queryKey: ["talentFlowSkills", focus],
     queryFn: () => getTalentFlowSkills({ data: { id: focus } }),
-    enabled: open,
+    enabled: open && !!picked,
     staleTime: 10 * 60 * 1000,
   });
 
@@ -189,6 +352,7 @@ export function TalentFlowPane() {
   const rows = useMemo(() => (view ? flowRows(view, mode) : []), [view, mode]);
 
   if (!open) return null;
+  if (!picked) return <TalentFlowHome city={cityLabel(localCity)} onClose={close} />;
 
   const name = view?.focus.name
     ? (COMPANY_BY_ID[focus]?.name ?? view.focus.name)
