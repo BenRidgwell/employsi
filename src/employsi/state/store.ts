@@ -136,6 +136,9 @@ export interface AppState {
   // The companies the last view said were sampled: kept while a view is
   // briefly absent (a company loading, an empty timeline window).
   flowSampled: string[] | null;
+  // Where the map was when Talent flows opened it (it drops into the focus's
+  // city), so leaving for demand can put the user back on that layer.
+  flowsReturn: { zoomedOut: boolean; globalOut: boolean; domesticRegion: string } | null;
   /**
    * The unreleased place an end user just clicked, or null.
    *
@@ -512,6 +515,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   flowHover: null,
   flowView: null,
   flowSampled: null,
+  flowsReturn: null,
   comingSoon: null,
   feedbackOpen: false,
   helpTourOpen: false,
@@ -917,8 +921,39 @@ export const useAppStore = create<AppState>((set, get) => ({
    * nothing to close it but its own X, anchored to a button that is no longer
    * there. Closing both on the way through costs nothing when they are already
    * shut.
+   *
+   * Going to DEMAND also closes the supply pair's cards, Career pathways and
+   * Talent flows, for the same reason — and puts the map back where Talent
+   * flows found it. That card drops into a city to draw on the local layer;
+   * without the way back, the user would land in demand still zoomed into a
+   * city, where the demand ticker does not show, instead of on the view they
+   * left.
    */
-  setMarketMode: (m) => set({ marketMode: m, trendingOpen: false, analystOpen: false }),
+  setMarketMode: (m) => {
+    const s = get();
+    const back = m === "demand" && s.flowsOpen ? s.flowsReturn : null;
+    set({
+      marketMode: m,
+      trendingOpen: false,
+      analystOpen: false,
+      ...(m === "demand"
+        ? { careerOpen: false, flowsOpen: false, flowHover: null, flowsReturn: null }
+        : {}),
+    });
+    if (back?.zoomedOut) {
+      // Also stop a zoom-in still in flight (zoomInCity's timer), or it would
+      // land in the city just after this puts the map back.
+      clearTimeout(zoomTimer);
+      markLayerChange();
+      set({
+        zoomingIn: false,
+        zoomedOut: true,
+        globalOut: back.globalOut,
+        domesticRegion: back.domesticRegion,
+        interacted: true,
+      });
+    }
+  },
   toggleTrending: () => set((s) => solo("trendingOpen", !s.trendingOpen)),
   closeTrending: () => set({ trendingOpen: false }),
   toggleAnalyst: () => set((s) => solo("analystOpen", !s.analystOpen)),
@@ -933,7 +968,17 @@ export const useAppStore = create<AppState>((set, get) => ({
     const cand = s.selectedId || s.lastId;
     const focus = cand && sampled.includes(cand) ? cand : s.flowFocus;
     const city = cityForCompany(focus, s.localCity);
-    set({ ...solo("flowsOpen", true), selectedId: null, compareOpen: false, flowFocus: focus });
+    set({
+      ...solo("flowsOpen", true),
+      selectedId: null,
+      compareOpen: false,
+      flowFocus: focus,
+      flowsReturn: {
+        zoomedOut: s.zoomedOut,
+        globalOut: s.globalOut,
+        domesticRegion: s.domesticRegion,
+      },
+    });
     if (s.zoomedOut || s.localCity !== city) get().zoomInCity(city);
   },
   closeFlows: () => set({ flowsOpen: false, flowHover: null }),
