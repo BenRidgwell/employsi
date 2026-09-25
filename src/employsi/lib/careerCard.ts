@@ -211,23 +211,59 @@ function describe(n: PathwayNode, m: PathwayMarket, country: string, days: numbe
 }
 
 /**
+ * The specialist lane a searched skill opens: the family's non-core track with
+ * the most live roles asking for it in this market. Null when no specialism
+ * asks for it — or when the core path itself lists it: every HR specialism
+ * also carries "Human Resources", and opening Talent Acquisition for that
+ * search would be picking one of six by volume, not by the skill.
+ */
+export function laneForSkill(
+  p: CareerPathways,
+  family: string,
+  country: string,
+  skill: string,
+  core: string,
+): string | null {
+  const inFamily = p.nodes.filter((n) => n.family === family);
+  if (inFamily.some((n) => n.track === core && n.skills.some(([s]) => s === skill))) return null;
+  const by = new Map<string, number>();
+  for (const n of inFamily) {
+    if (n.track === core) continue;
+    const v = n.markets[country]?.skillLive[skill];
+    if (v) by.set(n.track, (by.get(n.track) ?? 0) + v);
+  }
+  let best: string | null = null;
+  for (const [t, v] of by) if (!best || v > (by.get(best) ?? 0)) best = t;
+  return best;
+}
+
+/**
  * One family's ladder in one market, in the shape the card renders. Null when
  * the market has no published rung in the family.
+ *
+ * TWO LANES AT MOST: the core path, plus the one specialism that best matches
+ * the searched skill (laneForSkill). HR has seven tracks, and the card's map is
+ * 300px tall — every lane at once put most of them off-screen until dragged.
+ * With no skill searched, or one no specialism asks for, only the core shows.
  */
 export function careerCard(
   p: CareerPathways,
   family: string,
   country: string,
+  skill?: string | null,
 ): CareerCardModel | null {
   const fam = p.families.find((f) => f.id === family);
   if (!fam) return null;
-  const here = p.nodes.filter((n) => n.family === family && n.markets[country]);
-  if (!here.length) return null;
+  const all = p.nodes.filter((n) => n.family === family && n.markets[country]);
+  if (!all.length) return null;
 
-  // Lanes in the family's own track order, core first; a track with no rung
-  // in this market gets no lane. If the generalist ladder has none, the first
-  // track that does is the core.
-  const order = fam.tracks.map((t) => t.id).filter((t) => here.some((n) => n.track === t));
+  // The core is the generalist ladder; if it has no rung in this market, the
+  // first track (in the family's own order) that does.
+  const tracks = fam.tracks.map((t) => t.id).filter((t) => all.some((n) => n.track === t));
+  const core = tracks[0];
+  const lateral = skill ? laneForSkill(p, family, country, skill, core) : null;
+  const order = lateral ? [core, lateral] : [core];
+  const here = all.filter((n) => order.includes(n.track));
   const rowOf = new Map(order.map((t, i) => [t, i]));
 
   const days = Math.round((Date.parse(p.window.to) - Date.parse(p.window.from)) / 864e5) + 1;

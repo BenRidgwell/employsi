@@ -296,6 +296,46 @@ for (const f of P.families) {
 check("the adapter produced maps", maps > 50, maps);
 
 const hr = careerCard(P, "hr", "au");
+check("with no skill searched, only the core lane shows", hr?.lanes.length === 1, hr?.lanes);
+// Two lanes at most, and the second is the specialism with the most live
+// roles asking for the skill.
+for (const f of P.families)
+  for (const s of searchSkills(P, "au", "", 40)) {
+    const m = careerCard(P, f.id, "au", s);
+    if (!m) continue;
+    check(`${f.id} + ${s}: at most two lanes`, m.lanes.length <= 2, m.lanes);
+    if (m.lanes.length === 2) {
+      const lane = m.nodes.find((n) => n.row === 1)!.track;
+      const live = (t: string) =>
+        P.nodes
+          .filter((n) => n.family === f.id && n.track === t)
+          .reduce((a, n) => a + (n.markets.au?.skillLive[s] ?? 0), 0);
+      const core = m.nodes.find((n) => n.row === 0)!.track;
+      const rivals = P.families
+        .find((x) => x.id === f.id)!
+        .tracks.filter((t) => t.id !== core && t.id !== lane);
+      check(
+        `${f.id} + ${s}: the lane shown asks for the skill most`,
+        live(lane) > 0 && rivals.every((t) => live(t.id) <= live(lane)),
+        lane,
+      );
+      check(
+        `${f.id} + ${s}: a specialism opens only for a skill the core does not list`,
+        !P.nodes.some(
+          (n) => n.family === f.id && n.track === core && n.skills.some(([x]) => x === s),
+        ),
+        s,
+      );
+    }
+  }
+const ta = careerCard(P, "hr", "au", "Talent Acquisition");
+check(
+  "searching Talent Acquisition opens that lane beside the core",
+  ta?.lanes.length === 2 && ta.nodes.some((n) => n.track === "talent-acquisition"),
+  ta?.lanes,
+);
+const hrOnly = careerCard(P, "hr", "au", "Human Resources");
+check("a skill the core lists opens no specialism", hrOnly?.lanes.length === 1, hrOnly?.lanes);
 check(
   "HR in Australia has a core lane",
   hr?.lanes[0]?.text.startsWith("CORE PATH") === true,
