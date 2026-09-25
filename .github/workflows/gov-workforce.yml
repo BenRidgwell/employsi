@@ -161,11 +161,6 @@ jobs:
             ${DUMP:+--dump-source "$DUMP"} \
             2>&1 | tee /tmp/gov-diagnosis.txt
 
-      - name: Show the generated file
-        run: |
-          echo "--- src/employsi/data/govWorkforceAu.ts ---"
-          cat src/employsi/data/govWorkforceAu.ts
-
       - uses: actions/upload-artifact@v4
         with:
           name: govWorkforceAu
@@ -235,3 +230,22 @@ jobs:
             sed -n '/roster agencies WITHOUT/,$p' /tmp/gov-diagnosis.txt || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # THE GENERATED FILE IS PRINTED LAST, AND THAT IS THE ONLY WAY TO GET IT.
+      # This job does not commit — the repo syncs to Lovable and its history is
+      # not something a scheduled job should touch — so the file leaves here as
+      # an upload-artifact, which a PERSON can download and nothing else can.
+      # South Australia and Victoria both answer HTTP 403 to the authoring
+      # sandbox, so their rows cannot be regenerated there and were stranded in
+      # an artifact nobody had fetched: eighteen SA agencies sat verified and
+      # unlanded for a day for exactly that reason.
+      #
+      # Printed at the END rather than in the middle, because everything after
+      # it — three probes and a 59-page PDF dump — buried it about two thousand
+      # lines deep, which is past what a log tail reaches.
+      - name: Show the generated file (last, so a log tail reaches it)
+        if: always()
+        run: |
+          echo "--- BEGIN src/employsi/data/govWorkforceAu.ts ---"
+          cat src/employsi/data/govWorkforceAu.ts
+          echo "--- END src/employsi/data/govWorkforceAu.ts ---"
