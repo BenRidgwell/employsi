@@ -14,6 +14,7 @@ import { getCareerCard, searchCareerSkills } from "../../lib/careerPathwaysFn";
 import type { CardNode, CareerCardModel } from "../../lib/careerCard";
 import { CAREER_LAND_PATH, projectHotspot } from "../../data/careerLand";
 import { IconClose } from "../ActionIcons";
+import { CardLoader } from "./CardLoader";
 
 /**
  * The Career Pathway Card, built from `Career_Pathway_Card.html` (2026-09-25).
@@ -239,6 +240,11 @@ function CareerCard({ onClose }: { onClose: () => void }) {
           <button type="button" className="paneclose" onClick={onClose} aria-label="Close">
             <IconClose />
           </button>
+        </div>
+        {/* The app's shared loading frame, as the trends pane and company
+            card use it — a bare title read as a card that had failed. */}
+        <div style={{ position: "relative", height: 420 }}>
+          <CardLoader />
         </div>
       </div>
     );
