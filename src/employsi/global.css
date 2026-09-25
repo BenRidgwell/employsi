@@ -1531,6 +1531,12 @@ body {
   align-items: center;
   gap: var(--space-6);
   padding: 0 28px;
+  /* What the Supply/Demand switch costs the row: its 214px plus the dock's 4px
+     gap. Zero until the header is wide enough to show the switch at all; the
+     min-width query below turns both on together, because they are two halves
+     of one thing. Declared here because BOTH sides of the header need it — see
+     the note on .apphead .brand. */
+  --sdsw-slot: 0px;
 }
 .mapframe {
   position: absolute;
@@ -4098,8 +4104,26 @@ body {
 /* `display: contents` promotes .brand and .controls to be flex children of
    .apphead, but DOM order would then read brand → controls → search. Order
    puts the search back in the middle cell where the design has it. */
+/* KEEPING THE CENTRED SEARCH BAR WHERE IT WAS.
+   .gsearch is centred by `margin: 0 auto`, which splits the flex line's LEFTOVER
+   space — so its position is a function of what is on either side of it, not of
+   the header's midpoint. Adding 218px of switch to .controls took 218px out of
+   that leftover, both auto margins lost 109px, and the search bar slid 109px
+   left. Nothing about the bar changed; it was measured from a row that had.
+
+   So the same 218px is given back on the brand's side. The leftover then
+   shrinks symmetrically, the two auto margins stay equal to each other, and the
+   bar's left edge lands exactly where it did before the switch existed — at
+   every width, including the widths where the leftover runs out and the bar
+   starts shrinking instead of sliding.
+
+   It is NOT centred on the header, and was not before: at 1440 the right
+   cluster is far wider than the wordmark, so the midpoint of the gap between
+   them sits left of the page's. Restoring the original position is the ask;
+   centring it on the page would be a different change. */
 .apphead .brand {
   order: 1;
+  margin-right: var(--sdsw-slot);
 }
 .apphead .gsearch {
   order: 2;
@@ -7903,19 +7927,29 @@ body {
    is a literal that a theme change would leave behind.
 
    It sits at the far left of the header cluster, before the bell, which makes
-   it the widest thing in that row at 214px. The dock has room at desktop
-   widths and it is hidden below the breakpoint, where the header is already
-   down to the essentials. */
+   it the widest thing in that row at 214px.
+
+   HIDDEN BELOW 1440px, and that number is measured rather than chosen. The
+   centred search bar is held at its original position by --sdsw-slot (see
+   .apphead .brand), but position is all that can be held: once the flex line's
+   leftover space runs out, the switch is paid for in the BAR'S WIDTH. Measured
+   against the real stylesheet, the bar keeps its full 560px at 1536 and above,
+   gives up 29px at 1440, 103px at 1366 and 189px at 1280. Five percent is a
+   fair price for the control; a third of the search bar is not. So below 1440
+   the switch is not shown and the header is exactly what it was. */
 .sdsw {
   position: relative;
-  display: flex;
+  display: none;
   /* It is 214px and no other width. Without this it is a block-level flex
      container, so anywhere it is NOT a flex item it stretches to the row and
-     the thumb's 104px translate no longer lands under the second label. */
+     the thumb's 104px translate no longer lands under the second label.
+
+     THAT 214 IS LOAD-BEARING OUTSIDE THIS RULE: it is half of `--sdsw-slot`
+     on .apphead, which is what keeps the centred search bar where it was.
+     Changing the segment width means changing that too. */
   flex: 0 0 auto;
   width: fit-content;
   padding: 3px;
-  margin-right: 4px;
   border-radius: var(--radius-pill);
   background: var(--surface-sunken);
   outline: none;
@@ -7976,6 +8010,18 @@ body {
   .sdswbtn,
   .sdswbtn svg {
     transition: none;
+  }
+}
+/* The switch and the space it is paid for out of, turned on together. Two
+   declarations in one query so neither can exist without the other: the slot
+   without the switch pushes the search bar right by 109px, and the switch
+   without the slot pulls it left by the same — the bug this compensates for. */
+@media (min-width: 1440px) {
+  .sdsw {
+    display: flex;
+  }
+  .apphead {
+    --sdsw-slot: 218px;
   }
 }
 .dockslot {
@@ -11591,11 +11637,6 @@ body {
   /* Keep the help dock mounted (its Help / Settings / Feedback panels render
      inside it) but drop its buttons — the More sheet opens those panels now. */
   .helpdock .dockbtn {
-    display: none;
-  }
-  /* 214px of switch does not fit a phone header beside the brand and the
-     account control, and this is the width the design specifies. */
-  .sdsw {
     display: none;
   }
   /* Help / Settings / Feedback panels become bottom sheets on mobile so they
