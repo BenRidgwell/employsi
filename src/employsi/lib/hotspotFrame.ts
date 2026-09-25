@@ -78,3 +78,64 @@ export function frameFor(spots: Spot[]): { x: number; y: number; w: number; h: n
   minY = h <= WORLD_H ? Math.max(0, Math.min(minY, WORLD_H - h)) : (WORLD_H - h) / 2;
   return { x: minX, y: minY, w, h };
 }
+
+export interface Frame {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Each press of + or −. */
+export const ZOOM_STEP = 2;
+/**
+ * The narrowest span a zoom will show, in viewBox units — roughly a metro area.
+ * The cap is expressed as a SPAN rather than as a multiple because the frames
+ * differ by an order of magnitude: CSL's is most of the world and BHP's Mining
+ * is one country, so a fixed "up to 8×" would be far too little on one and would
+ * zoom past the coastline into a flat blue field on the other.
+ */
+export const FRAME_FLOOR = 12;
+/** Never more than this, whatever the arithmetic says — a guard for a frame so
+ *  wide that the floor above would allow an absurd multiple. */
+export const ZOOM_CAP = 16;
+
+/** The most this frame may be zoomed. 1 when it is already at the floor. */
+export function maxZoomFor(base: Frame): number {
+  return Math.max(1, Math.min(ZOOM_CAP, base.w / FRAME_FLOOR));
+}
+
+export function centreOf(f: Frame): { x: number; y: number } {
+  return { x: f.x + f.w / 2, y: f.y + f.h / 2 };
+}
+
+/**
+ * The frame actually drawn: the base frame, zoomed by `zoom` about `centre`.
+ *
+ * TWO INVARIANTS, AND BOTH ARE LOAD-BEARING RATHER THAN TIDY.
+ *
+ * It divides both sides by the same zoom, so the ASPECT IS EXACTLY THE BASE'S.
+ * The map draws its heat in SVG against the viewBox and its dots in HTML against
+ * the container; those two agree only while the frame's aspect matches the
+ * container's, and an aspect that drifted once already slid every dot off its
+ * own blob (see the note in frameFor). A zoom that changed the shape of the
+ * frame would reintroduce that bug interactively, on a map that looked right
+ * when it opened.
+ *
+ * And the result is CONTAINED IN THE BASE FRAME: panning stops where the
+ * default view stops. That is a deliberate limit rather than an omission — the
+ * base frame is padded around the hubs, so its edge is already past the last
+ * one, and letting a pan continue past it only offers featureless ocean with no
+ * way back except the reset.
+ */
+export function zoomFrame(base: Frame, zoom: number, centre: { x: number; y: number }): Frame {
+  const z = Math.max(1, Math.min(maxZoomFor(base), zoom));
+  const w = base.w / z;
+  const h = base.h / z;
+  return {
+    x: Math.max(base.x, Math.min(centre.x - w / 2, base.x + base.w - w)),
+    y: Math.max(base.y, Math.min(centre.y - h / 2, base.y + base.h - h)),
+    w,
+    h,
+  };
+}

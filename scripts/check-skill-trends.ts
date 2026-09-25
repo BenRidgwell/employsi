@@ -22,7 +22,14 @@ import {
   type RankRow,
   type CompanySkillTrends,
 } from "../src/employsi/lib/jobHistoryFn";
-import { FRAME_ASPECT, frameFor } from "../src/employsi/lib/hotspotFrame";
+import {
+  centreOf,
+  FRAME_ASPECT,
+  FRAME_FLOOR,
+  frameFor,
+  maxZoomFor,
+  zoomFrame,
+} from "../src/employsi/lib/hotspotFrame";
 import { LABOUR_EVENTS } from "../src/employsi/data/labourEvents";
 import { monthsBetween } from "../src/employsi/lib/jobHistoryFn";
 import { demandByCompanyAt } from "../src/employsi/lib/skillHeat";
@@ -2025,6 +2032,67 @@ console.log("\nthe hotspot frame keeps its aspect, whatever it has to frame:");
       (sp) => sp.x < f.x || sp.x > f.x + f.w || sp.y < f.y || sp.y > f.y + f.h,
     );
     check(`${name}: encloses every hub`, outside.length === 0, `${outside.length} outside`);
+
+    // THE SAME BUG, NOW REACHABLE BY HAND. The map zooms, so the frame the SVG
+    // is drawn with is no longer the one this function returned — it is
+    // zoomFrame's, recomputed on every press of +, every dot click and every
+    // pixel of a drag. If any of those can produce a box of a different shape,
+    // the dots come off the heat exactly as they did in September, except that
+    // the map looks right when it opens and only breaks once touched.
+    //
+    // And the pan has to stay inside the base frame: that is what makes the
+    // reset button a complete way back, and what stops a drag wandering into an
+    // ocean with no hub in sight.
+    const cMax = maxZoomFor(f);
+    const skew: string[] = [];
+    const escaped: string[] = [];
+    for (const z of [1, 1.5, 2, 4, 9, cMax, cMax * 4]) {
+      // Every corner and then some, so the clamp is exercised on both axes at
+      // once rather than only where a centred zoom would land.
+      for (const [cx, cy] of [
+        [f.x + f.w / 2, f.y + f.h / 2],
+        [f.x, f.y],
+        [f.x + f.w, f.y + f.h],
+        [f.x - f.w, f.y + f.h * 2],
+        [spots[0].x, spots[0].y],
+      ]) {
+        const v = zoomFrame(f, z, { x: cx, y: cy });
+        const at = `${z.toFixed(1)}× @${cx.toFixed(0)},${cy.toFixed(0)}`;
+        if (Math.abs(v.w / v.h - FRAME_ASPECT) >= 1e-9)
+          skew.push(`${at} -> ${(v.w / v.h).toFixed(4)}`);
+        if (
+          v.x < f.x - 1e-9 ||
+          v.y < f.y - 1e-9 ||
+          v.x + v.w > f.x + f.w + 1e-9 ||
+          v.y + v.h > f.y + f.h + 1e-9
+        )
+          escaped.push(`${at} -> ${[v.x, v.y, v.w, v.h].map((n) => n.toFixed(1)).join(" ")}`);
+      }
+    }
+    // One line per case rather than per probe: 35 zoom/centre pairs per framing
+    // is a useful net and an unreadable report.
+    check(`${name}: every zoom keeps the box's aspect`, skew.length === 0, skew.join("; "));
+    check(`${name}: every zoom stays inside the frame`, escaped.length === 0, escaped.join("; "));
+    // Zoom 1 is the frame itself, so a map nobody has touched is drawn exactly
+    // as it was before the zoom existed.
+    const at1 = zoomFrame(f, 1, centreOf(f));
+    check(
+      `${name}: zoom 1 is the untouched frame`,
+      ["x", "y", "w", "h"].every(
+        (p) =>
+          Math.abs(
+            (at1 as never as Record<string, number>)[p] - (f as never as Record<string, number>)[p],
+          ) < 1e-9,
+      ),
+    );
+    // Never past the floor: a zoom that kept going would leave a flat blue
+    // field, the coastline off-screen and the dot with nothing to sit against.
+    const tight = zoomFrame(f, 1e6, centreOf(f));
+    check(
+      `${name}: never zooms past the floor`,
+      tight.w >= FRAME_FLOOR - 1e-9,
+      `${tight.w.toFixed(2)} < ${FRAME_FLOOR}`,
+    );
   }
 }
 

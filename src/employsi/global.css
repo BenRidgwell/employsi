@@ -13040,6 +13040,60 @@ body {
   letter-spacing: 0.06em;
   opacity: 0.75;
 }
+/* Zoomed, the map is draggable — but only with a mouse or a pen. `touch-action`
+   is deliberately NOT set: this sits 300px into a card that scrolls, and taking
+   the touch gesture would leave a finger on the map unable to scroll past it. */
+.hspmapz {
+  cursor: grab;
+}
+.hspmapz:active {
+  cursor: grabbing;
+}
+.hspzoom {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.hspzoom button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.hspzoom button:hover:not(:disabled) {
+  background: var(--neutral-0);
+}
+.hspzoom button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.hspzoom button svg {
+  width: 14px;
+  height: 14px;
+}
+.hspzoom .hspreset {
+  width: auto;
+  height: 20px;
+  padding: 0 7px;
+  font-family: var(--font-label);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
 .hspkey {
   position: absolute;
   left: 10px;
@@ -13081,11 +13135,26 @@ body {
   gap: 6px;
   margin-top: 10px;
 }
+/* A button that reads as a row: it zooms the map to its hub, and the only sign
+   of that is the pointer and the hover tint — a ranked list that looked like a
+   toolbar would be louder than the map it serves. */
 .hsprow {
   display: grid;
   grid-template-columns: 80px minmax(0, 1fr) 44px;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  margin: -3px 0;
+  padding: 3px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.hsprow:hover {
+  background: var(--neutral-100);
 }
 .hsprowname {
   font-size: 12px;
