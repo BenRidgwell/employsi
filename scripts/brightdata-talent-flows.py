@@ -76,6 +76,8 @@ Options:
                           experience.company_id is refused by Bright Data)
     --max-requests N      MCP calls this run may make (default 50)
     --per-seed N          profiles per seed within the run (default: no cap)
+    --restart             drop the seeds' saved cursors and read from the top
+                          (needed after a dataset refresh; see collect())
     --pause S             seconds between calls (default 2)
     --server-cmd CMD      MCP server command (default "npx -y @brightdata/mcp@2.11.3")
     --state PATH          local SQLite (default ~/.employsi/brightdata-talent-flows.sqlite)
@@ -369,6 +371,15 @@ async def collect(bd: BrightData, conn: sqlite3.Connection, seeds: list[tuple[st
     for cid, slug in seeds:
         conn.execute('INSERT OR IGNORE INTO seeds (seed_ref, company_id, slug) VALUES (?,?,?)',
                      (f'li:{slug.lower()}', cid, slug))
+        if '--restart' in args:
+            # A saved cursor does not survive a dataset refresh: measured
+            # 2026-09-25, a cursor saved the day before failed twice with
+            # "HTTP 500: Response Error" while a fresh search worked and
+            # total_hits had moved (21,360 -> 21,358). Restarting re-reads
+            # from the top; people already counted are skipped by key, so
+            # the cost is the requests spent re-reading them.
+            conn.execute('UPDATE seeds SET search_after = NULL, exhausted = 0 WHERE seed_ref = ?',
+                         (f'li:{slug.lower()}',))
     conn.commit()
 
     got, new_people, repeats = 0, 0, 0

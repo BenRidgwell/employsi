@@ -83,6 +83,26 @@ Facts it depends on (read 2026-09-24):
   one seed gives almost nothing inside the window: a pair needs 10 moves
   there to be shown, and at this rate that means thousands of profiles per
   seed, not hundreds.
+- **Second collection, 2026-09-25: 100 requests, 970 BHP profiles.**
+  473 usable (49%; refusals: 585 `no_start_date`, 182 `no_employer`,
+  33 `school`). 788 moves in all; exported with `--window-months 60`
+  (2021-07 to 2026-06): 262 moves over 234 pairs, 153 of them into BHP
+  from 126 employers. **No pair reaches the 10-move minimum.** Rio Tinto →
+  BHP has 8, then Bunnings 5, OZ Minerals 4, Thiess 4, Mader Group 3,
+  Monadelphous 3; 114 of the 126 sources have 1. That is 970 of 21,358
+  profiles (4.5%). Scaling linearly to the full seed (~2,100 requests),
+  about the top 20 sources would clear 10 over 60 months. That is an
+  extrapolation from a sample in Bright Data's default order, not a
+  measurement. The other 109 moves are earlier moves between non-seed
+  employers in the same histories.
+- **A saved cursor does not survive a dataset refresh.** On 2026-09-25
+  the cursor saved the day before failed twice (`HTTP 500: Response
+  Error`, once after 30 s, once in 207 ms) while a fresh search worked,
+  and `total_hits` had moved from 21,360 to 21,358. `--restart` drops a
+  seed's cursor and reads from the top. Profiles already counted are
+  skipped by key: the 50 from the day before came back in the same order
+  and were skipped, so a restart costs only the requests spent re-reading.
+  Read a large seed in one run where possible.
 - **The MCP server writes to the Bright Data account.** On first start
   `@brightdata/mcp@2.11.3` created two zones, `mcp_unlocker` and
   `mcp_browser`, on the account the token belongs to ("Required zone … not
