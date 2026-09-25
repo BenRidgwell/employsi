@@ -548,12 +548,24 @@ NOT_IN_SOURCE_JURISDICTION = {
            'a parse losing it. Building Tasmania and Whole of Government '
            'Programs are neither departments nor listed authorities in it '
            'under any spelling',
+    # RE-PROBED 2026-09-25, AND HALF OF THIS NOTE WAS OUT OF DATE. An earlier
+    # version said NSW "publishes no downloadable workforce profile any more".
+    # It does: psc.nsw.gov.au has moved into nsw.gov.au and the page
+    # /departments-and-agencies/premiers-department/reports-and-data/
+    # workforce-profile-reports carries a PDF *and* an .xlsx for every year to
+    # 2025, all reachable from the authoring sandbox with no browser needed:
+    #   .../sites/default/files/noindex/2026-01/2025-additional-workforce-profile-data.xlsx
+    # Thirty-four sheets, and NOT ONE of them is by agency. The grain claim
+    # below is the half that survived, and it is the half that decides whether
+    # this closes: Table 2.3 is the finest there is.
     'nsw': "the source wired for NSW is the NSW HEALTH annual report appendix, "
            "which reports health organisations only — so a non-health agency "
            "cannot appear in it under any spelling. NSW's own Workforce Profile "
-           "is reachable and current, but its finest grain is PORTFOLIO or "
-           "SERVICE (Communities and Justice 55,041, Education 120,111), and a "
-           "portfolio is a group of agencies that hold their own cards here. "
+           "IS reachable and current — the 2025 workbook downloads from "
+           "nsw.gov.au without a browser, re-checked 2026-09-25 — but its finest "
+           "grain over 34 sheets is PORTFOLIO or SERVICE (Communities and "
+           "Justice 55,041, Education 120,111, Transport 29,420), and a "
+           "portfolio holds many agencies that each have their own card here. "
            "The one service row that IS a single agency, the NSW Police Force, "
            "is merged; the rest need their own annual reports",
 }
