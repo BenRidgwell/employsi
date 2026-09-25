@@ -12938,35 +12938,18 @@ body {
   box-shadow: 0 1px 2px rgba(28, 28, 30, 0.3);
   cursor: pointer;
 }
-.hsppin {
+/* A 9px dot is a 9px hover target, and with the code badges gone hovering is
+   the only way to find out which city a dot is. The hit area is widened to 26px
+   — the size the badges were — without changing anything visible. */
+.hspdot::after {
+  content: "";
   position: absolute;
-  transform: translate(-50%, -100%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-bottom: 4px;
-  cursor: pointer;
-}
-.hsppinbadge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  top: 50%;
+  left: 50%;
   width: 26px;
   height: 26px;
+  transform: translate(-50%, -50%);
   border-radius: 999px;
-  background: var(--neutral-0);
-  font-family: var(--font-label);
-  font-size: 8.5px;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: 0.02em;
-  color: var(--text-primary);
-}
-.hsppinstem {
-  width: 1.5px;
-  height: 7px;
-  background: var(--neutral-0);
-  box-shadow: 0 1px 1px rgba(28, 28, 30, 0.2);
 }
 .hsptip {
   position: absolute;

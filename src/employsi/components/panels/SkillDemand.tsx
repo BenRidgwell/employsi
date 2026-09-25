@@ -19,14 +19,6 @@ import type { CompanySkillDemand, CompanySkillTrends, SkillRanks } from "../../l
 // window gets a count and no percentage, a map with nothing placeable is not
 // offered, and the map always states how much of the picture it is showing.
 
-/**
- * How far apart two code badges must sit, as a fraction of the frame's
- * diagonal, before both are drawn. A badge is 26px wide in a box around 470px
- * across, so 0.055 is a little over its own width — enough that two badges
- * never touch, and small enough that two genuinely separate cities keep both.
- */
-const BADGE_CLEARANCE = 0.055;
-
 /** Top skills offered by the picker. Beyond three the control stops being a
  *  glance and starts being a list; the rest are rows below. */
 const TOP_N = 3;
@@ -37,78 +29,6 @@ const ROWS_SHOWN = 8;
 
 const HUB_COORD: Record<string, [number, number]> = { ...HUB_LNGLAT, ...AU_CITY_LNGLAT };
 const hubLabel = (hub: string) => CITY_LABEL[hub] || GLOBAL_HUB_LABEL[hub] || hub;
-
-/**
- * Three-letter codes for the map's pin badges.
- *
- * IATA city codes rather than the first three letters of the name, because
- * truncation is wrong exactly where it matters: "Kuala Lumpur" is KUL and not
- * KUA, and San Francisco and San Diego both truncate to SAN. The design this
- * is built from uses this register (SYD, MEL, ADL), so the badges read as
- * travel codes rather than as abbreviations.
- */
-const HUB_CODE: Record<string, string> = {
-  sydney: "SYD",
-  melbourne: "MEL",
-  brisbane: "BNE",
-  perth: "PER",
-  adelaide: "ADL",
-  canberra: "CBR",
-  darwin: "DRW",
-  hobart: "HBA",
-  auckland: "AKL",
-  wellington: "WLG",
-  singapore: "SIN",
-  kualalumpur: "KUL",
-  manila: "MNL",
-  hongkong: "HKG",
-  tokyo: "TYO",
-  seoul: "SEL",
-  beijing: "BJS",
-  shanghai: "SHA",
-  shenzhen: "SZX",
-  ganzhou: "KOW",
-  mumbai: "BOM",
-  bengaluru: "BLR",
-  dubai: "DXB",
-  london: "LON",
-  paris: "PAR",
-  zurich: "ZRH",
-  johannesburg: "JNB",
-  newyork: "NYC",
-  sanfrancisco: "SFO",
-  sanjose: "SJC",
-  losangeles: "LAX",
-  sandiego: "SAN",
-  seattle: "SEA",
-  portland: "PDX",
-  denver: "DEN",
-  houston: "HOU",
-  dallas: "DFW",
-  austin: "AUS",
-  chicago: "CHI",
-  atlanta: "ATL",
-  charlotte: "CLT",
-  boston: "BOS",
-  philadelphia: "PHL",
-  washington: "WAS",
-  minneapolis: "MSP",
-  cincinnati: "CVG",
-  indianapolis: "IND",
-  omaha: "OMA",
-  bentonville: "XNA",
-  toronto: "YYZ",
-  montreal: "YUL",
-  vancouver: "YVR",
-  calgary: "YYC",
-  ottawa: "YOW",
-};
-const hubCode = (hub: string) =>
-  HUB_CODE[hub] ??
-  hubLabel(hub)
-    .replace(/[^A-Za-z]/g, "")
-    .slice(0, 3)
-    .toUpperCase();
 
 /**
  * How hot a hub is, from 0 to 1, driving its colour, its blob and its opacity.
@@ -636,9 +556,15 @@ function HotSpots({
           </g>
         </svg>
 
-        {/* Dots and badges are HTML, as they were before: text under a moving
-            viewBox would scale with the zoom, so a tightly framed map would
-            render its labels several times the size of a wide one. */}
+        {/* The dots are HTML, not SVG: anything under a moving viewBox scales
+            with the zoom, so a tightly framed map would draw them several times
+            the size of a wide one.
+            THE DESIGN'S CODE BADGES ARE GONE, removed on request. They were
+            drawn for the busiest four, and four is arbitrary in a way that
+            shows: CSL's Melbourne carried one and its Hobart did not, which
+            reads as a distinction the data is not making. A hub is now named by
+            hovering it, and the three busiest are named again in the list
+            below — so nothing is lost except the implication. */}
         {spots.map((sp) => {
           const t = heatOf(sp.n, max);
           return (
@@ -650,38 +576,6 @@ function HotSpots({
             />
           );
         })}
-        {/* Badges for the busiest four, minus any that would sit on top of a
-            badge already placed. CSL hires in eight hubs, six of them in the
-            United States, and on a world frame CHI and HOU landed on each
-            other — two unreadable codes where one readable one and a dot would
-            have been better. The dot is never dropped, only the badge. */}
-        {spots
-          .slice(0, 4)
-          .filter((sp, n, kept) =>
-            kept
-              .slice(0, n)
-              .every(
-                (o) => Math.hypot((sp.x - o.x) / frame.w, (sp.y - o.y) / frame.h) > BADGE_CLEARANCE,
-              ),
-          )
-          .map((sp) => (
-            <span
-              key={sp.hub}
-              className="hsppin"
-              style={posOf(sp)}
-              onMouseEnter={() => setHub(sp.hub)}
-            >
-              <span
-                className="hsppinbadge"
-                style={{
-                  boxShadow: `0 1px 3px rgba(28,28,30,.22), 0 0 0 ${hub === sp.hub ? 2 : 0}px var(--neutral-900)`,
-                }}
-              >
-                {hubCode(sp.hub)}
-              </span>
-              <span className="hsppinstem" />
-            </span>
-          ))}
         {hovered && (
           /* The design centres the card on the dot and stops there, which
              clips it against the card's edge on a hub near the frame's left or
