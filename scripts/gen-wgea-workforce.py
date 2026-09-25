@@ -177,29 +177,120 @@ ALIAS = {
     # Universities whose legal name is not their trading name.
     "RMIT University": "Royal Melbourne Institute Of Technology",
     "CQUniversity": "Central Queensland University",
+
+    # ── The private route, second pass ─────────────────────────────────────
+    # The first pass matched on the roster name and left 81 companies carrying
+    # 2,935 live ads. Nearly half of them ARE in the register, under a legal
+    # name that shares no word with the trading name — and three were written
+    # off in the first pass on conclusions that were simply wrong.
+    #
+    # THE THREE CORRECTIONS, because each was recorded here as a refusal:
+    #
+    #   Bolton Clarke      "not in the register". It is: RSL Care RDNS Limited,
+    #                      19,867 people. Bolton Clarke is the trading name of
+    #                      the merged RSL Care and Royal District Nursing
+    #                      Service. It was the largest single item left in the
+    #                      private route and the refusal was the reason.
+    #   Salvation Army     "federated, no single entity". One group holds every
+    #                      state's Social Work entity and totals 9,870.
+    #   Calvary Health Care  "federated, separate state entities". Its parent is
+    #                      Little Company of Mary Health Care, 17,810 — which
+    #                      is Calvary's actual size.
+    #
+    # Two were wrong the other way in the first pass's CANDIDATES, and both
+    # would have filed a real figure for another company: "AFL" token-matched
+    # AFL Sports Ready (392, a training organisation) when the Australian
+    # Football League's own group is 3,958, and "Alto" matched Palo Alto
+    # Networks when Alto is the Altomonte family's dealership group. A name
+    # that is mostly an initialism attracts a plausible stranger, which is why
+    # nothing here is taken from a similarity score.
+    'Bolton Clarke': 'Rsl Care Rdns Limited',
+    'Calvary Health Care': 'Little Company Of Mary Health Care Limited',
+    'Salvation Army Australia': 'The Trustee For The Salvation Army (Victoria) Property Trust',
+    'AFL': 'Australian Football League',
+    'Merivale': 'Hemmes Group Pty Limited',
+    'Alto': 'Altomonte Holdings Pty Ltd',
+    # Initialisms that spell something: CBH is Co-operative Bulk Handling, AKD
+    # is Associated Kiln Driers, RAA and RACQ and RACWA are the motoring clubs.
+    'CBH Group': 'Co-Operative Bulk Handling Limited',
+    'AKD': 'Associated Kiln Driers Pty. Limited',
+    'RAA': 'Royal Automobile Association Of South Australia',
+    'RAC of WA': 'RACWA Holdings Pty Ltd',
+    'RACQ': 'Racq Operations Pty Ltd',
+    'Teachers Health Fund': 'Teachers Federation Health Ltd',
+    # Trading name vs the entity that employs.
+    'Employers Mutual': 'Employers Mutual Management Pty Ltd',
+    'Canberra Airport': 'Capital Airport Group Pty Limited',
+    'Suttons Motors': 'Suttons Investments Pty Limited',
+    'Talent International': 'Talent International Holdings Pty Ltd',
+    'Competitive Foods': 'Competitive Foods Australia Pty Ltd',
+    'Cotton On Group': 'The Trustee For Cotton On Clothing Trust',
+    'King & Wood Mallesons': 'V Ahuja & Others t/a King & Wood Mallesons',
+    'Metricon Homes': 'The Trustee For Metricon Homes Unit Trust',
+    'Meriton': 'Meriton Property Services Pty Limited',
+    'ARA': 'ARA Group Limited',
+    'Midfield': 'Midfield Meat International Pty. Ltd.',
+    'SunPork Group': 'Sunpork Pty Ltd',
+    'BGC': 'BGC (Australia) Pty Ltd',
+    'Craig Mostyn': 'Craig Mostyn & Co Pty Ltd',
+    'MPC Kinetic': 'Mpc Kinetic Holdings Limited',
+    'Norco Co-op': 'Norco Co-Operative Limited',
+    'Fdc': 'FDC Business Services Pty Ltd',
+    'Detmold Group': 'Detmold Packaging Pty. Ltd.',
+    'Loan Market': 'Loan Market Group Pty Ltd',
+    'San Remo': 'San Remo Macaroni Company Pty Ltd',
+    'United Petroleum': 'The Trustee For United Petroleum Unit Trust',
+    'Pallion': 'Pallion Hr Pty Ltd',
+    'Perfection Fresh': 'Perfection Fresh Australia Pty Ltd',
+    'Sarah Group': 'Sarah Constructions Pty Ltd',
+    # St Vincent de Paul IS genuinely federated, unlike the other two: four
+    # state societies, four separate groups, no common parent in the register.
+    # The roster row sits in Melbourne, so it reads the Victorian society and
+    # the other three are not summed into it — the same treatment Uniting got.
+    'St Vincent de Paul': 'St Vincent de Paul Society Victoria',
+    # The register carries a word the trading name does not.
+    'ABC Tissue': 'A B C Tissue Products Pty Ltd',
 }
 
 # Companies deliberately NOT matched, with the measurement that decided it.
 # These are here so the next person does not re-derive them, and so the count
 # of "no source" rows is a statement rather than a gap in the alias table.
 REFUSED = {
-    "Chemist Warehouse": "no entity in the register under any recognisable name",
-    "Tennis Australia": "not in the register",
-    "Anytime Fitness": "not in the register — franchised, no corporate employer found",
-    "Bolton Clarke": "not in the register; the only near name is an SA nursing "
-                     "service inside the Silver Chain group",
-    "Linfox": "only 'Linfox Armaguard' (1,696), a separate cash-logistics "
-              "business; the Fox Group total of 2,309 is nowhere near Linfox "
-              "Logistics and would understate it by an order of magnitude",
+    # Not in the register under any name, searched by trading name AND by the
+    # legal name the company is known to use. Several are large enough that the
+    # Act should reach them, so absence here is a fact about the register rather
+    # than a conclusion about the employer.
+    "Tennis Australia": "no entity in the register; 'tennis' matches nothing at all",
+    "Sydney Tools": "not in the register",
+    "CJD Equipment": "not in the register",
+    "QCoal": "not in the register",
+    "Apco Service Stations": "not in the register; the near names are Bapcor and "
+                             "Tapco, unrelated companies",
+    "John Hughes Group": "not in the register; the near names are Baker Hughes "
+                         "and Jensen Hughes, unrelated",
+    "CCI": "not in the register; 'cci' matches only Acciona entities",
+    "Ateco": "not in the register; 'ateco' matches only StateCover Mutual",
+    # Present, but not as this company.
+    "Chemist Warehouse": "the only candidate is 'CW Retail Services Trust' at 489, "
+                         "which cannot be the employer behind 318 live ads — the "
+                         "stores are separately owned franchises and the corporate "
+                         "entity is small. Filing 489 as Chemist Warehouse would be "
+                         "a real number for a fraction of the organisation",
+    "Linfox": "only 'Linfox Armaguard' (1,696), a separate cash-logistics business; "
+              "the Fox Group total of 2,309 is nowhere near Linfox Logistics and "
+              "would understate it by an order of magnitude",
     "Brisbane Catholic Education": "the only match is the whole Archdiocese of "
-                                   "Brisbane (14,853), which is parishes and "
-                                   "curia as well as schools",
-    "Salvation Army Australia": "federated — several state property and social-work "
-                                "trusts, no single entity for the organisation",
-    "Calvary Health Care": "federated — separate state entities, no single group",
-    "St Vincent de Paul": "federated — separate state societies",
+                                   "Brisbane (14,853), which is parishes and curia "
+                                   "as well as schools",
     "PharmaCare": "ambiguous between 'Aspen Pharmacare Australia' and "
                   "'Pharm-A-Care Laboratories', two unrelated companies",
+    "Peregrine": "its On The Run business was bought by Viva Energy in 2024, so "
+                 "'On The Run Pty Ltd' (5,451) now sits inside the Viva group and "
+                 "what remains of Peregrine is not separable from it",
+    "Manildra Group": "spans two groups, one of them named 'GOTW Pty Ltd', and "
+                      "nothing in the register confirms GOTW holds only Manildra "
+                      "entities — summing it could take in another company",
+    "Anytime Fitness": "not in the register — franchised, no corporate employer found",
 }
 
 
@@ -213,9 +304,21 @@ def norm(s):
     into one.
     """
     s = s.lower().replace("&", " and ")
-    s = re.sub(r"\b(pty|ltd|limited|inc|incorporated|the)\b", " ", s)
+    # "proprietary" is the long form of "pty" and the register uses both —
+    # "N.H.P. Electrical Engineering Products Proprietary Limited" against the
+    # roster's "NHP Electrical Engineering Products". Leaving it in is one word
+    # of difference and a whole employer missed.
+    s = re.sub(r"\b(pty|proprietary|ltd|limited|inc|incorporated|the)\b", " ", s)
     s = re.sub(r"[^a-z0-9()]+", " ", s)
-    return " ".join(s.split())
+    s = " ".join(s.split())
+    # AN INITIALISM IS ONE WORD HOWEVER IT IS PUNCTUATED. The register writes
+    # "N.H.P. Electrical Engineering Products" and "A B C Tissue Products"
+    # where the roster writes NHP and ABC Tissue, and stripping punctuation
+    # alone leaves "n h p" against "nhp" — still no match. Two employers worth
+    # 1,401 people were missed on that and nothing else. Runs of single letters
+    # are joined, so "a b c tissue" and "abc tissue" land on one key.
+    s = re.sub(r"\b(?:[a-z] )+[a-z]\b", lambda m: m.group(0).replace(" ", ""), s)
+    return s
 
 
 def roster():
