@@ -22,6 +22,7 @@ import {
   type RankRow,
   type CompanySkillTrends,
 } from "../src/employsi/lib/jobHistoryFn";
+import { REGION_HUBS, REGION_LABEL } from "../src/employsi/data/mapboxWorldGeo";
 import {
   centreOf,
   FRAME_ASPECT,
@@ -1994,6 +1995,34 @@ console.log("\nwhat a skill card offers next:");
 //
 // Nothing on screen says so unless you know what the dots are meant to line up
 // with, and it only happens for some spreads of hubs, so it is asserted here.
+// ── the ticker's scope ──────────────────────────────────────────────────────
+// The "Skills in demand" strip is worldwide on the globe and region-scoped on a
+// domestic view, and it NAMES the place it is describing. Two ways that can go
+// wrong without anything looking broken:
+//
+//   · a region with no hubs would scope to nothing and read as "no history
+//     here", which is a data claim rather than a missing entry;
+//   · a region with no LABEL would print its raw id — "northamerica" — as the
+//     place the figures describe.
+//
+// Both are one line of data away at all times, because the regions are declared
+// by deriving REGION_HUBS from CITY_CONTINENT and the labels are written out by
+// hand beside it.
+console.log("\nevery domestic region the ticker can scope to is nameable:");
+{
+  const regions = Object.keys(REGION_HUBS);
+  check("there are regions at all", regions.length > 0, `${regions.length}`);
+  for (const r of regions) {
+    check(`${r}: has hubs`, (REGION_HUBS[r]?.length ?? 0) > 0, `${REGION_HUBS[r]?.length ?? 0}`);
+    check(`${r}: has a display label`, !!REGION_LABEL[r], REGION_LABEL[r] ?? "(none)");
+  }
+  // And nothing is labelled that is not a region — a stale label is a place the
+  // strip can never name, which is the harmless half, but it is also how the
+  // two lists start drifting.
+  const stray = Object.keys(REGION_LABEL).filter((r) => !REGION_HUBS[r]);
+  check("no label without a region", stray.length === 0, stray.join(", "));
+}
+
 console.log("\nthe hotspot frame keeps its aspect, whatever it has to frame:");
 {
   const spot = (x: number, y: number) => ({ hub: `${x},${y}`, label: "", n: 1, x, y });

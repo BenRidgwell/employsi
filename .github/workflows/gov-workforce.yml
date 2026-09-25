@@ -74,6 +74,7 @@ on:
       - 'scripts/gen-gov-workforce.py'
       - 'scripts/gov-source-probe.py'
       - 'scripts/sa-workforce-probe.py'
+      - 'scripts/tas-workforce-probe.py'
       - '.github/workflows/gov-workforce.yml'
 
 # PER-BRANCH, NOT PER-REPO. The group was a bare "gov-workforce", so a push
@@ -161,11 +162,6 @@ jobs:
             ${DUMP:+--dump-source "$DUMP"} \
             2>&1 | tee /tmp/gov-diagnosis.txt
 
-      - name: Show the generated file
-        run: |
-          echo "--- src/employsi/data/govWorkforceAu.ts ---"
-          cat src/employsi/data/govWorkforceAu.ts
-
       - uses: actions/upload-artifact@v4
         with:
           name: govWorkforceAu
@@ -212,6 +208,23 @@ jobs:
           python scripts/sa-workforce-probe.py \
             https://www.health.nsw.gov.au/annualreport/Publications/2025/appendix.pdf
 
+      # Tasmania's parser reaches 63% of the report's own stated Total — 13
+      # agencies summing to 20,418 against 32,473 — so six roster cards are
+      # blank for want of a regex, not for want of a source. It cannot be
+      # fixed where it is written: the PDF answers a connection reset to the
+      # authoring sandbox and the host needs a warmed browser, so the one
+      # document the parser is wrong about is the one that will not open
+      # beside it.
+      #
+      # This prints the table's raw lines with the current regex's verdict on
+      # each, so the fix can be written against the document rather than
+      # guessed at. The log is the channel — the same one that finally got
+      # South Australia's rows out of here.
+      - name: Probe the Tasmanian agency table
+        if: always()
+        continue-on-error: true
+        run: python scripts/tas-workforce-probe.py
+
       # THE DIAGNOSIS IS REPRINTED LAST, AND THAT IS THE POINT. It is produced
       # by the FIRST step, and everything after it — the whole generated data
       # file, three probes and a 59-page PDF dump — buries it about two
@@ -235,3 +248,22 @@ jobs:
             sed -n '/roster agencies WITHOUT/,$p' /tmp/gov-diagnosis.txt || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # THE GENERATED FILE IS PRINTED LAST, AND THAT IS THE ONLY WAY TO GET IT.
+      # This job does not commit — the repo syncs to Lovable and its history is
+      # not something a scheduled job should touch — so the file leaves here as
+      # an upload-artifact, which a PERSON can download and nothing else can.
+      # South Australia and Victoria both answer HTTP 403 to the authoring
+      # sandbox, so their rows cannot be regenerated there and were stranded in
+      # an artifact nobody had fetched: eighteen SA agencies sat verified and
+      # unlanded for a day for exactly that reason.
+      #
+      # Printed at the END rather than in the middle, because everything after
+      # it — three probes and a 59-page PDF dump — buried it about two thousand
+      # lines deep, which is past what a log tail reaches.
+      - name: Show the generated file (last, so a log tail reaches it)
+        if: always()
+        run: |
+          echo "--- BEGIN src/employsi/data/govWorkforceAu.ts ---"
+          cat src/employsi/data/govWorkforceAu.ts
+          echo "--- END src/employsi/data/govWorkforceAu.ts ---"

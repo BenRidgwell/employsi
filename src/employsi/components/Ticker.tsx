@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { TickerItem } from "../data/companies";
 import { getLiveSkillTrends, TREND_WINDOWS } from "../lib/jobHistoryFn";
+import { REGION_LABEL } from "../data/mapboxWorldGeo";
 import { fmtPay, FX_AS_AT } from "../lib/salaryParse";
 import { useAppStore } from "../state/store";
 
@@ -126,9 +127,30 @@ export function Ticker({ hidden }: { hidden: boolean }) {
   // windows at once (one scan serves them all). Refreshes once a day — the
   // archive only changes on the daily cron — and falls back to the static seed
   // while loading or before the archive has enough history.
+  /**
+   * WHICH PLACE THE STRIP IS DESCRIBING.
+   *
+   * The ticker is on screen at two layers, and until now it answered the same
+   * worldwide question on both — zooming into Australia left a strip still
+   * ranking movers over Singapore and Toronto alongside Sydney. So the scope
+   * follows the layer: the globe is the world, a domestic view is its own
+   * region. The local layer never sees it (`hidden`), so there is no city case.
+   *
+   * `globalOut` and not `zoomedOut` is the deciding flag, and the pair is read
+   * exactly as ActionRail reads it, so the strip and the rail's layer indicator
+   * cannot disagree about which layer this is.
+   */
+  const globalOut = useAppStore((st) => st.globalOut);
+  const domesticRegion = useAppStore((st) => st.domesticRegion);
+  const region = globalOut ? "" : domesticRegion;
+  const placeLabel = region ? (REGION_LABEL[region] ?? region) : "Worldwide";
+
   const { data: live } = useQuery({
-    queryKey: ["liveSkillTrends"],
-    queryFn: () => getLiveSkillTrends(),
+    // KEYED ON THE REGION. Without it every region reads the first one's cached
+    // answer — the strip would change its heading and keep the old numbers,
+    // which is worse than not scoping it at all.
+    queryKey: ["liveSkillTrends", region],
+    queryFn: () => getLiveSkillTrends({ data: { region } }),
     staleTime: 6 * 60 * 60 * 1000,
     gcTime: 24 * 60 * 60 * 1000,
     retry: false,
@@ -353,9 +375,15 @@ export function Ticker({ hidden }: { hidden: boolean }) {
         data-tour={collapsed ? undefined : "ticker"}
         inert={collapsed || offSide || undefined}
       >
+        {/* The place is named, and that is not decoration. The figures are now
+            a different answer on the globe than on a domestic view, and a
+            reader who cannot see which one they are looking at is worse off
+            than with the old worldwide-everywhere strip — that at least never
+            changed underneath them. */}
         <div className="tickerlbl">
           <i />
           <span>Skills in demand</span>
+          <span className="tlblplace">{placeLabel}</span>
           <span className="tlblwin">{win.label}</span>
         </div>
 
@@ -374,7 +402,7 @@ export function Ticker({ hidden }: { hidden: boolean }) {
             </div>
           ) : noHistory ? (
             <div className="tickerempty">
-              Not enough archive history yet to measure change over{" "}
+              Not enough archive history in {placeLabel} yet to measure change over{" "}
               {win.label.replace("· Last ", "the last ").toLowerCase()}.
             </div>
           ) : (
