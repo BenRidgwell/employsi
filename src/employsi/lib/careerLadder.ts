@@ -95,6 +95,20 @@ export interface FamilyDef {
    * the employer advertises, so a Coles "Category Manager" stays unplaced.
    */
   employerMatch?: RegExp;
+  /**
+   * The parent skills (skillsTaxonomy.ts ALL_SKILLS) this ladder is the career
+   * path FOR. scripts/check-career-ladder.ts asserts every parent skill is
+   * claimed by a family or listed in NOT_A_LADDER with a reason, so a parent
+   * added to the taxonomy forces a decision instead of silently having no
+   * pathway — which is how 90 of 100 had none until 2026-09-25.
+   */
+  skills?: string[];
+  /**
+   * The support roles (see SUPPORT_TO) this family DOES place. Only the admin
+   * ladder sets it: an Executive Assistant is on the admin ladder, and never on
+   * the ladder of the executive supported.
+   */
+  supportRoles?: RegExp;
 }
 
 /** What is known about the advertiser, beyond the title. */
@@ -117,10 +131,23 @@ export interface Placement {
 
 /**
  * Titles that are someone ELSE's support role. "Executive Assistant to the HR
- * Director" names the HR Director and an executive; it is on neither ladder.
+ * Director" names the HR Director and an executive; it is on neither of THEIR
+ * ladders. It is on the admin ladder, the one family whose `supportRoles`
+ * accepts it — a chief of staff or an "advisor to" is on none.
  */
 const SUPPORT_TO =
   /\b(assistant|pa|ea|support|coordinator|advisor|adviser)\s+to\b|\bexecutive assistant\b|\bpersonal assistant\b|\bexecutive (?:support officer|business partner)\b|\bchief of staff\b/;
+
+/**
+ * Adverts that are not a job: paid market-research panels recruit "Heads of
+ * Logistics" for an hour's interview. Measured 2026-09-25 on the rung-5 list.
+ */
+const NOT_A_JOB =
+  /\bpaid (?:market research|research|survey|study|interview)\b|\bmarket research study\b|\bsign up and start earning\b|\bget paid daily\b/;
+
+/** The support roles the admin ladder places: assistants, not advisers. */
+const EA_PA =
+  /\bexecutive assistant\b|\bpersonal assistant\b|\b(?:assistant|pa|ea) to\b|\bexecutive (?:support officer|business partner)\b/;
 
 /**
  * Titles that span several rungs — "Senior Manager or Director", "Tax Manager
@@ -130,7 +157,7 @@ const SUPPORT_TO =
  * "Registered or Enrolled Nurse" is the nursing form of the same thing.
  */
 const MULTI_LEVEL =
-  /\b(?:manager|director|consultant|analyst|associate|advis[oe]r|officer|executive|specialist)\s+(?:or|to)\s+(?:(?:senior|associate|assistant)\s+)?(?:manager|director|consultant|analyst|associate|advis[oe]r|officer|specialist)\b|\bmanager (?:(?:senior|assistant|associate) (?:(?:project|program|programme) )?|(?:project|program|programme) )manager\b|\bsenior manager director\b|\bregistered(?: nurse)? (?:and |or )+enrolled\b|\benrolled(?: nurse)? (?:and |or )+registered\b/;
+  /\b(?:lecturer|professor)\s+(?:or\s+)?(?:associate |senior )?(?:lecturer|professor)\b|\b(?:manager|director|consultant|analyst|associate|advis[oe]r|officer|executive|specialist)\s+(?:or|to)\s+(?:(?:senior|associate|assistant)\s+)?(?:manager|director|consultant|analyst|associate|advis[oe]r|officer|specialist)\b|\bmanager (?:(?:senior|assistant|associate) (?:(?:project|program|programme) )?|(?:project|program|programme) )manager\b|\bsenior manager director\b|\bentry level to experienced\b|\blecturer (?:or )?senior lecturer\b|\bregistered(?: nurse)? (?:and |or )+enrolled\b|\benrolled(?: nurse)? (?:and |or )+registered\b/;
 
 /**
  * Words that name a rung BELOW the executive. A C-suite word or a bank grade
@@ -244,10 +271,11 @@ export const FAMILIES: FamilyDef[] = [
     id: "hr",
     label: "Human resources",
     match:
-      /\bhr\b|\bhuman resources?\b|\bpeople and culture\b|\bpeople and capability\b|\bpeople and performance\b|\bpeople (?:partner|advis[oe]r|officer|business partner|lead|director|operations)\b|\bhead of people\b|\bdirector of people\b|\bchief people officer\b|\bchief human resources officer\b|\bemployee relations\b|\bindustrial relations\b|\bworkplace relations\b|\btalent acquisition\b|\blearning and development\b|\borganisational development\b|\borganizational development\b|\bremuneration\b|\bhris\b|\brecruiter\b|\binternal recruit|\brecruitment (?:coordinator|advis[oe]r|officer|manager|partner|lead|specialist|business partner)\b/,
+      /\bhr\b|\bhuman resources?\b|\bpeople and culture\b|\bpeople and capability\b|\bpeople and performance\b|\bpeople (?:partner|advis[oe]r|officer|business partner|lead|director|operations)\b|\bhead of people\b|\bdirector of people\b|\bchief people officer\b|\bchief human resources officer\b|\bemployee relations\b|\bindustrial relations\b|\bworkplace relations\b|\btalent acquisition\b|\blearning and development\b|\borganisational development\b|\borganizational development\b|\bremuneration\b|\bhris\b|\brecruiter\b|\binternal recruit|\brecruitment (?:coordinator|advis[oe]r|officer|manager|partner|lead|specialist|business partner|administrator|assistant|and mobilisation)\b|\bworkforce (?:plann\w*|capability|planning and)\b|\btalent (?:advis[oe]r|specialist|sourcer)\b|\btraining and development\b|\blearning and talent\b/,
+    skills: ["Human Resources"],
     // Payroll reports into HR at some employers and finance at others, and its
-    // ladder (officer → payroll manager) does not lead to CPO. Kept out until it
-    // is a family of its own. Recruitment AGENCY consultants are a sales ladder.
+    // ladder (officer → payroll manager) does not lead to CPO: it is a family
+    // of its own. Recruitment AGENCY consultants are a sales ladder.
     //
     // Workplace-relations LAWYERS practise employment law — "Senior Associate,
     // Workplace Relations, Employment & Safety" is a law-firm title. An "HR
@@ -259,7 +287,8 @@ export const FAMILIES: FamilyDef[] = [
       {
         id: "talent-acquisition",
         label: "Talent acquisition",
-        match: /\btalent acquisition\b|\brecruit|\bsourc(?:er|ing)\b/,
+        match:
+          /\btalent acquisition\b|\brecruit|\bsourc(?:er|ing)\b|\btalent (?:advis[oe]r|specialist)\b/,
       },
       {
         id: "employee-relations",
@@ -282,18 +311,57 @@ export const FAMILIES: FamilyDef[] = [
         label: "HR systems & analytics",
         match: /\bhris\b|\bhr systems\b|\bpeople systems\b|\bpeople analytics\b|\bhr analytics\b/,
       },
+      {
+        // Measured 2026-09-25: "Workforce Planner", "Workforce Planning
+        // Officer", "Senior Manager Workforce Planning" — 60-odd ads a quarter
+        // carrying the HR skill and no rung.
+        id: "workforce",
+        label: "Workforce planning",
+        match: /\bworkforce (?:plann\w*|capability|planning and)\b/,
+      },
     ],
     rungs: [
       [/\bchief people officer\b|\bchief human resources officer\b/, 6],
       [/\bhead of people\b|\bdirector of people\b|\bpeople director\b/, 5],
       // "People Partner" is the HRBP role under a newer name.
       [/\bpeople (?:business )?partner\b/, 3],
+      // The generic rubric has no rung for a planner.
+      [/\bworkforce planner\b/, 2],
     ],
     convergeAt: 5,
   },
   {
+    id: "payroll",
+    label: "Payroll",
+    // administrator → officer / specialist → senior / team lead → payroll
+    // manager → national / head of payroll. Its own ladder: it reports into HR
+    // at some employers and finance at others, and leads to neither CPO nor
+    // CFO. Measured 2026-09-25: ~500 payroll ads a quarter, none placed.
+    match: /\bpayroll\b/,
+    skills: ["Bookkeeping & Payroll"],
+    // A payroll ACCOUNTANT is on the finance ladder, payroll tax is tax, and a
+    // project manager or analyst whose system is payroll is on theirs.
+    exclude:
+      /\baccountant\b|\bpayroll accounting\b|\bpayroll tax\b|\b(?:project|program|programme|product) manager\b|\bbusiness analyst\b|\bdeveloper\b|\bengineer\b|\barchitect\b|\bsales\b|\brecruit|\btransformation\b/,
+    generic: false,
+    // Every title here says "payroll", so the rung words need not sit next to
+    // it: "Payroll & Accounting Manager", "HR cum Finance Executive (Payroll)".
+    rungs: [
+      [/\bhead of payroll\b|\bdirector\b|\b(?:national|group|global) payroll manager\b/, 5],
+      [/\bassistant (?:\w+ )?manager\b/, 3],
+      [/\bmanager\b/, 4],
+      [/\bsenior\b|\blead(?:er)?\b|\bsupervisor\b|\bbusiness partner\b/, 3],
+      [
+        /\b(?:officer|specialist|analyst|consultant|advis[oe]r|executive|associate|generalist)s?\b/,
+        2,
+      ],
+      [/\b(?:administrator|admin|assistant|clerk|coordinator|support|trainee)\b/, 1],
+    ],
+  },
+  {
     id: "finance",
     label: "Finance & accounting",
+    skills: ["Finance & Accounting", "Bookkeeping & Payroll"],
     match:
       /\bfinance\b|\bfinancial\b(?! services)|\baccountant\b|\baccounting\b|\baccounts (?:payable|receivable)\b|\bbookkeeper\b|\b(?:financial|finance|group) controller\b|\bcomptroller\b|\btreasury\b|\bfp and a\b|\bcfo\b|\bchief financial officer\b|\btax\b/,
     // Advice, lending and insurance are other ladders that use the word; so
@@ -329,10 +397,11 @@ export const FAMILIES: FamilyDef[] = [
   {
     id: "nursing",
     label: "Nursing & midwifery",
+    skills: ["Nursing"],
     match: /\bnurse\b|\bnurses\b|\bnursing\b|\bmidwife\b|\bmidwifery\b|\bmidwives\b/,
     // Nursing HOMES advertise cooks, cleaners and carers under the word.
     exclude:
-      /\bnursing home\b.*\b(?:cook|cleaner|chef|maintenance|driver|administration|receptionist)\b|\bveterinary nurse\b|\bdental nurse\b|\bprofessor\b|\blecturer\b|\bacademic\b|\btutor\b|\bschool of nursing\b|\btrainer\b|\bteacher\b|\b(?:physical|occupational) therap|\btherapy assistant\b|\btechnician\b|\btechnical officer\b|\badministration officer\b/,
+      /\b(?:cook|cleaner|chef|kitchen\w*|maintenance|driver|receptionist)\b|\b(?:administration|administrative) officer\b|\bveterinary nurse\b|\bdental nurse\b|\bprofessor\b|\blecturer\b|\bacademic\b|\btutor\b|\bschool of nursing\b|\btrainer\b|\bteacher\b|\b(?:physical|occupational) therap|\btherapy assistant\b|\btechnician\b|\btechnical officer\b|\badministration officer\b/,
     tracks: [{ id: "midwifery", label: "Midwifery", match: /\bmidwi/ }],
     generic: false,
     // Nursing titles carry their grade in the noun, not a seniority word, so
@@ -369,6 +438,7 @@ export const FAMILIES: FamilyDef[] = [
   {
     id: "project",
     label: "Project & program management",
+    skills: ["Project Management"],
     match: /\bproject\b|\bprogram\b|\bprogramme\b|\bpmo\b/,
     // Project ENGINEERS and accountants are on their own discipline's ladder;
     // a portfolio manager at a fund manages money, not projects.
@@ -426,6 +496,7 @@ export const FAMILIES: FamilyDef[] = [
   {
     id: "software",
     label: "Software engineering",
+    skills: ["Software Engineering"],
     match:
       /\bsoftware\b|\bdeveloper\b|\bprogrammer\b|\bfull ?stack\b|\bfront ?end\b|\bback ?end\b|\bdevops\b|\bsite reliability\b|\bsre\b|\b(?:platform|product|web|mobile|cloud) engineering\b|\bcto\b|\bchief technology officer\b|\bplatform engineer\b/,
     // A Costco "Front End Cashier" works the checkouts; software asset
@@ -451,6 +522,7 @@ export const FAMILIES: FamilyDef[] = [
   {
     id: "retail",
     label: "Retail (store operations)",
+    skills: ["Retail & Customer Service", "Retail Operations"],
     // The store ladder: assistant → key holder → 2IC → store manager → area /
     // state manager. "Sales Assistant" is here rather than in sales because in
     // Australian ads it is overwhelmingly a shop-floor role.
@@ -514,6 +586,7 @@ export const FAMILIES: FamilyDef[] = [
   {
     id: "sales",
     label: "Sales & business development",
+    skills: ["Sales & Business Dev"],
     // B2B and field sales: SDR → account executive → BDM / key account manager
     // → sales manager → head of sales → CRO. Nearly every rung is called
     // "manager", so the generic rubric is off and every rung is enumerated.
@@ -579,6 +652,7 @@ export const FAMILIES: FamilyDef[] = [
   {
     id: "hse",
     label: "Health, safety & environment",
+    skills: ["HSE / Safety"],
     match:
       /\bhse\b|\bhsse\b|\bhseq\b|\bwhs\b|\bohs\b|\bhealth and safety\b|\bsafety\b|\bwork health\b|\boccupational health\b/,
     // Other people's "safety", and the elected health-and-safety rep, which is
@@ -587,6 +661,388 @@ export const FAMILIES: FamilyDef[] = [
       /\bfood safety\b|\bpatient safety\b|\bchild safety\b|\bcyber\b|\bsafety (?:glass|boots)\b|\bhsr\b|\bsafety rep(?:resentative)?\b|\bproduct safety\b|\bdrug safety\b|\bpharmacovigilance\b|\bfire safety engineer|\blawyer\b|\bsolicitor\b|\bcounsel\b|\bemployment and safety\b/,
     rungs: [[/\bsafety superintendent\b|\bhse superintendent\b/, 4]],
   },
+  {
+    id: "hospitality",
+    label: "Hospitality & food",
+    // Three ladders that share venues. The kitchen: kitchenhand → cook / chef de
+    // partie → sous → head chef → executive chef. Front of house: attendant →
+    // supervisor → assistant / duty manager → venue manager → F&B director.
+    // Bakers and butchers: apprentice → tradesperson → head baker.
+    //
+    // After retail: a supermarket's "Bakery Manager" is a store department
+    // rung, and retail excludes the trades themselves (baker, butcher, barista,
+    // chef, cook), which then land here.
+    match:
+      /\bchefs?\b|\bcooks?\b|\bkitchen ?hand\b|\bkitchen (?:assistant|porter|crew|staff|attendant|manager|supervisor)\b|\bcommis\b|\bsous\b|\bpastry\b|\bpatissier\b|\bbaker\b|\bbakery (?:assistant|manager)\b|\bbutcher\w*\b|\bbarista\b|\bbartender\b|\bbar (?:attendant|staff|manager|supervisor|back)\b|\bwait(?:er|ress|staff|ing staff)\b|\bfood and beverage\b|\bf and b\b|\brestaurant\b|\bcafe (?:team member|all ?rounder|manager|supervisor|assistant)\b|\bcatering (?:assistant|attendant|manager|supervisor|coordinator)\b|\bhospitality (?:assistant|attendant|all ?rounders?|supervisor|manager|team member|staff)\b|\bdishwasher\b/,
+    skills: ["Hospitality & Food Service", "Food Trades"],
+    // "Chef de projet" is French for project manager; cleaners and sales are
+    // their own ladders; a patisserie's sales assistant is retail.
+    exclude:
+      /\bbaker hughes\b|\bchef de projet\b|\bchef d equipe\b|\bcleaner\b|\bcleaning\b|\bhousekeep|\bsales\b|\bmarketing\b|\brecruit|\bnurse\b|\bdriver\b|\baccount(?:ant|s)?\b|\bengineer\b|\bdeveloper\b|\bcategory manager\b/,
+    tracks: [
+      {
+        id: "kitchen",
+        label: "Kitchen",
+        match:
+          /\bchefs?\b|\bcooks?\b|\bkitchen\w*\b|\bcommis\b|\bsous\b|\bpastry\b|\bpatissier\b|\bdishwasher\b/,
+      },
+      {
+        id: "food-trades",
+        label: "Bakers & butchers",
+        // A barista or cashier at a bakery café is front of house.
+        match: /^(?!.*\b(?:barista|cashier|cafe)\b).*(?:\bbaker\w*|\bbutcher\w*)/,
+      },
+    ],
+    generic: false,
+    rungs: [
+      // The kitchen, top down.
+      [
+        /\b(?:group |corporate )?executive chef\b|\bculinary director\b|\bdirector of culinary\b/,
+        5,
+      ],
+      [
+        /\bexecutive sous chef\b|\bhead chef\b|\bchef de cuisine\b|\bchef manager\b|\bkitchen manager\b|\bhead cook\b|\bchief cook\b/,
+        4,
+      ],
+      [
+        /\bsous chef\b|\bsenior (?:cook|chef)\b|\bsenior chef de partie\b|\bhead baker\b|\bsenior (?:baker|butcher)\b|\bkitchen supervisor\b/,
+        3,
+      ],
+      [
+        /\b(?:apprentice|trainee|junior) (?:chef|cook|baker|butcher|pastry cook)\b|\bcommis\b|\b(?:assistant|trainee) cook\b|\bkitchen ?hand\b|\bkitchen (?:assistant|porter|crew|attendant|staff)\b|\bdishwasher\b|\bbakery assistant\b(?! manager)|\bbutcher apprentice/,
+        1,
+      ],
+      [
+        /\bchef de partie\b|\bdemi chef\b|\bchefs?\b|\bcooks?\b|\bpastry (?:chef|cook)\b|\bbaker\b|\bbutcher\b/,
+        2,
+      ],
+      // Front of house, top down.
+      [
+        /\bdirector of (?:food and beverage|f and b)\b|\b(?:food and beverage|f and b) director\b|\bhead of (?:food and beverage|hospitality)\b|\b(?:area|group|regional) (?:venue|restaurant|hospitality) manager\b/,
+        5,
+      ],
+      [/\bassistant (?:\w+ ){0,3}manager\b|\bduty manager\b/, 3],
+      [
+        /\b(?:restaurant|venue|bar|cafe|catering|food and beverage|f and b|hospitality|banquets?|outlet)(?: \w+)? manager\b|\bmanager (?:restaurant|food and beverage|f and b)\b/,
+        4,
+      ],
+      [
+        /\bsupervisor\b|\bteam leader\b|\bcaptain\b|\b(?:food and beverage|f and b) executive\b|\bhead (?:bartender|waiter|barista)\b|\bchef de rang\b|\bsenior (?:barista|bartender|waiter)\b/,
+        2,
+      ],
+      [
+        /\bbarista\b|\bbartender\b|\bbar (?:attendant|staff|back)\b|\bwait(?:er|ress|staff|ing staff)\b|\b(?:food and beverage|f and b) (?:attendant|assistant|associate|server)\b|\bcafe (?:team member|all ?rounder|assistant)\b|\bcatering (?:assistant|attendant)\b|\bhospitality (?:assistant|attendant|all ?rounders?|team member|staff)\b|\b(?:food and beverage|f and b)(?: and event)? service expert\b|\brestaurant (?:server|service crew|crew)\b/,
+        1,
+      ],
+    ],
+  },
+  {
+    id: "education",
+    label: "Education",
+    // Four ladders. Schools: aide → teacher → leading teacher → head of
+    // department / assistant or deputy principal → principal. Early childhood
+    // (Australian): educator → early childhood teacher → room / educational
+    // leader → centre director. Education support: aide / SLSO → lead →
+    // manager. Academic: associate lecturer → lecturer → senior lecturer →
+    // associate professor → professor.
+    //
+    // "PRINCIPAL" IS THE TRAP. It tops a school's ladder and is a mid-senior
+    // grade everywhere else ("Principal Engineer", "Principal Analyst"), and
+    // the generic rubric reads it as the latter. So it counts here only
+    // qualified by a school word, and this family's rules never fall back to
+    // the generic rubric. "Principal Engineer HV Primary" is the measured case
+    // — "primary" is a substation, not a school.
+    match:
+      /\bteachers?\b|\bteaching\b|\beducators?\b|\beducarer\b|\blecturer\b|\bprofessor\b|\b(?:academic|university|sessional) tutor\b|\bteaching (?:fellow|associate)\b|\b(?:deputy|assistant|associate|vice) principal\b|\bprincipal (?:range|of the school)\b|\bprincipal\b.*\b(?:school|college|catholic|primary school|ps)\b|\bschool principal\b|^(?:acting )?principal$|\bhead of (?:school|department|curriculum|faculty)\b|\bhead teacher\b|\bdean\b|\bteacher aide\b|\beducation (?:assistant|support)\b|\blearning support (?:officer|assistant)\b|\bintegration aide\b|\bstudent support (?:officer|assistant)\b|\bearly childhood\b|\bchild ?care\b|\bkindergarten\b|\bpreschool\b|\broom leader\b|\beducational leader\b|\bcent(?:re|er) director\b|\bnanny\b|\blearning specialist\b/,
+    skills: [
+      "Teaching & Education",
+      "Education Leadership",
+      "Education Support",
+      "Childcare & Early Learning",
+    ],
+    // Clinical, health and community educators teach patients and clients,
+    // not classes; "principal" beside an engineering or analyst noun is a grade.
+    exclude:
+      /\bclinical (?:nurse )?educator\b|\bdiabetes educator\b|\bhealth educator\b|\bcounsell?or\b|\bpatient educator\b|\bdriving instructor\b|\bengineer|\barchitect\b|\banalyst\b|\bsubstation\b|\benablement\b|\bregulatory\b|\bpolicy\b|\bmarketing\b|\bsales\b|\bcleaner\b|\bcook\b|\bchef\b|\bpsychologist\b|\bspeech pathologist\b|\boccupational therapist\b|\bsocial worker\b|\bexecutive assistant\b/,
+    tracks: [
+      {
+        id: "early-childhood",
+        label: "Early childhood",
+        match:
+          /\beducators?\b|\beducarer\b|\bearly childhood\b|\bchild ?care\b|\bkindergarten\b|\bpreschool\b|\broom leader\b|\beducational leader\b|\bcent(?:re|er) director\b|\bnanny\b/,
+      },
+      {
+        id: "education-support",
+        label: "Education support",
+        match:
+          /\bteacher aide\b|\beducation (?:assistant|support)\b|\blearning support\b|\bintegration aide\b|\bstudent support\b/,
+      },
+      {
+        id: "academic",
+        label: "Academic",
+        match:
+          /\blecturer\b|\bprofessor\b|\bdean\b|\bschool of\b|\buniversity\b|\bfaculty\b|\b(?:academic|university|sessional) tutor\b|\bteaching (?:fellow|associate)\b/,
+      },
+    ],
+    generic: false,
+    rungs: [
+      // Academic.
+      [/\b(?:deputy |pro )?vice chancellor\b|\bprovost\b/, 6],
+      [
+        /\b(?<!associate |assistant )professor\b|\bdean\b|\bhead of (?:school|department) (?:school of|of)\b/,
+        5,
+      ],
+      [/\bassociate professor\b/, 4],
+      // A US assistant professor is the first tenure-track grade: the band of
+      // an Australian senior lecturer, not of a professor.
+      [/\bassistant professor\b/, 3],
+      [/\bsenior lecturer\b/, 3],
+      [/\bassociate lecturer\b|\btutor\b|\bteaching associate\b/, 1],
+      [/\blecturer\b|\bteaching fellow\b/, 2],
+      // Schools, top down.
+      // Deputies first: "Assistant Principal Range 1" also contains
+      // "principal range", the top rung's own words.
+      [
+        /\b(?:deputy|assistant|associate|vice) principal\b|\bhead of (?:department|curriculum|faculty|year)\b|\bhead teacher\b/,
+        4,
+      ],
+      [
+        /\bprincipal (?:range|of the school)\b|\bschool principal\b|^(?:acting )?principal\b|\bhead of school\b|\bexecutive principal\b/,
+        5,
+      ],
+      [
+        /\bleading teacher\b|\blead teacher\b|\bsenior teacher\b|\blearning specialist\b|\bhighly accomplished\b/,
+        3,
+      ],
+      [
+        /\b(?:graduate|student|pre service|trainee|beginning) teachers?\b|\bteacher (?:graduate|grad)\b/,
+        1,
+      ],
+      // Early childhood.
+      [
+        /\b(?:area|regional|state|operations) manager\b|\bhead of (?:early learning|early childhood)\b/,
+        5,
+      ],
+      [/\broom leader\b|\beducational leader\b|\bassistant centre director\b|\b2ic\b/, 3],
+      [/\bcent(?:re|er) (?:director|manager)\b|\bnominated supervisor\b/, 4],
+      [
+        /\bearly childhood teacher\b|\bsenior educator\b|\bdiploma (?:qualified )?educator\b|\beducator diploma\b|\bkindergarten teacher\b|\bpreschool teacher\b/,
+        2,
+      ],
+      [
+        /\beducators?\b|\beducarer\b|\bchild ?care worker\b|\bearly childhood (?:assistant|educator|worker)\b|\bnanny\b/,
+        1,
+      ],
+      // Education support.
+      [
+        /\bmanager (?:\w+ )?(?:education|student|learning) support\b|\b(?:education|student|learning) support manager\b/,
+        4,
+      ],
+      [
+        /\b(?:education|student|learning) support (?:\w+ )?(?:team )?lead(?:er)?\b|\beducation assistant lead\b/,
+        3,
+      ],
+      [
+        /\bteacher aide\b|\beducation (?:assistant|support)\b|\blearning support (?:officer|assistant)\b|\bintegration aide\b|\bstudent support (?:officer|assistant)\b/,
+        1,
+      ],
+      // A teacher.
+      [/\bteachers?\b/, 2],
+    ],
+  },
+  {
+    id: "logistics",
+    label: "Transport & warehousing",
+    // Warehouse: storeperson / pick packer → forklift / senior storeperson →
+    // team leader / supervisor → warehouse manager → head of logistics.
+    // Driving follows the LICENCE: van / MR → truck / HR / bus → HC / MC /
+    // US CDL-A → transport supervisor → transport manager.
+    //
+    // GIG PLATFORMS ARE LEFT OUT. Amazon Flex, Instacart, Uber, DoorDash and
+    // the "sign up and start earning" ads are ~1,000 a quarter and are not an
+    // employer's ladder: there is no rung to climb and no one to promote you.
+    match:
+      /\bdrivers?\b|\btruck\b|\bcourier\b|\bstore ?person\b|\bstore ?keeper\b|\bwarehouse\b|\bforklift\b|\bpick ?packer\b|\bpacker\b|\bdespatch\b|\bdispatch\b|\bfreight\b|\blogistics\b|\bdistribution cent|\bdc\b|\bstockhand\b|\bfleet\b|\btransport (?:manager|supervisor|coordinator|planner|operator|allocator)\b|\blocomotive\b/,
+    skills: ["Driving & Transport", "Warehousing & Logistics"],
+    exclude:
+      /\bamazon flex\b|\binstacart\b|\buber\b|\bdash(?:er|ers)\b|\bdoordash\b|\bgopuff\b|\bmenulog\b|\bdeliveroo\b|\bgig\b|\bearn\b|\bsign up\b|\bflexible hours\b|\binstant pay\b|\bcash out\b|\byour (?:own )?schedule\b|\bengineer\b|\bdeveloper\b|\bsoftware\b|\bsales\b|\baccount manager\b|\bmechanic\b|\bdriver (?:and|or) (?:sales|mechanic)\b|\bnurse\b|\bdevice driver\b|\bdriving instructor\b/,
+    tracks: [
+      {
+        id: "driving",
+        label: "Driving",
+        match: /\bdrivers?\b|\btruck\b|\bcourier\b|\btransport\b|\bfleet\b|\blocomotive\b/,
+      },
+    ],
+    generic: false,
+    rungs: [
+      [
+        /\bhead of (?:logistics|supply chain|distribution|transport|warehousing|fleet)\b|\b(?:logistics|distribution|transport|supply chain|warehouse) director\b|\bgeneral manager (?:logistics|distribution|transport|warehousing)\b|\bnational (?:logistics|transport|distribution|warehouse|fleet) manager\b/,
+        5,
+      ],
+      [/\bassistant (?:\w+ ){0,2}manager\b|\b2ic\b|\bsecond in charge\b/, 3],
+      [
+        /\b(?:warehouse|distribution cent\w*|dc|transport|fleet|logistics|depot|freight|despatch|dispatch|operations) manager\b|\bmanager (?:warehouse|logistics|transport|distribution)\b|\bsuperintendent\b/,
+        4,
+      ],
+      [
+        /\bsupervisor\b|\bteam leader\b|\bleading hand\b|\blead (?:warehouse|storeperson|driver)\b|\b(?:warehouse|logistics|transport) lead\b|\bhc driver\b|\bmc driver\b|\bheavy combination\b|\bmulti combination\b|\bb ?double\b|\broad train\b|\bcdl (?:class )?a\b|\bclass a (?:cdl )?(?:company )?driver\b|\bdriver (?:cdl )?class a\b|\botr (?:class a )?driver\b|\blocomotive driver\b|\btrain driver\b/,
+        3,
+      ],
+      [
+        /\bforklift (?:operator|driver)\b|\breach truck\b|\bsenior store ?person\b|\bwarehouse (?:officer|coordinator|operator|executive|technician)\b|\bfreight (?:coordinator|operator|controller)\b|\blogistics (?:coordinator|officer|analyst)\b|\btransport (?:coordinator|planner|allocator)\b|\bhr driver\b|\bheavy rigid\b|\btruck driver\b|\bbus driver\b|\bcoach driver\b|\btanker driver\b|\btipper driver\b|\bagitator\b|\bmixer driver\b|\bconcrete (?:truck )?driver\b|\b(?:side|rear|front) lift\b|\bclass (?:b|4|5) driver\b|\bclass b\b.*\bdriver\b|\bdriver\b.*\bclass b\b|\bcdl (?:class )?b\b|\blinehaul\b|\blorry driver\b|\blogistics (?:\w+ )?coordinator\b/,
+        2,
+      ],
+      [
+        /\bstore ?person\b|\bstore ?keeper\b|\bwarehouse (?:assistant|team member|associate|attendant|operative|worker|hand|labourer|store ?person)\b|\bpick ?packer\b|\bpacker\b|\bdespatch (?:officer|hand|assistant)\b|\bstockhand\b|\b(?:dc|dispatch|despatch) (?:team member|store ?person|operator)\b|\bdelivery driver\b|\bvan driver\b|\bcourier\b|\bmr driver\b|\blr driver\b|\bmedium rigid\b|\blight rigid\b|\bmulti drop\b|\btrolley collect|\byard hand\b|\btrainee (?:freight|warehouse)\b|^drivers?$/,
+        1,
+      ],
+    ],
+  },
+  {
+    id: "admin",
+    label: "Administration",
+    // assistant / receptionist / clerk → administration officer → senior
+    // officer / supervisor → office / administration / practice manager.
+    // Executive assistants are a track of their own: EA → senior EA.
+    //
+    // LAST, because it is everyone's support function: an "HR Administrator"
+    // or "Project Administrator" is placed by its function first.
+    match:
+      /\badministration\b|\badministrative\b|\badmin\b|\badministrator\b|\breceptionist\b|\breception\b|\bmedical screener\b|\bexecutive assistant\b|\bpersonal assistant\b|\b(?:pa|ea) to\b|\bexecutive (?:support officer|business partner)\b|\bsecretary\b|\bclerk\b|\boffice (?:manager|assistant|coordinator|administrator|junior)\b|\bbusiness support (?:officer|assistant|coordinator|manager)\b|\bdata entry\b|\bfront (?:office|desk)\b|\bpractice manager\b/,
+    skills: ["Administration & Office Support"],
+    supportRoles: EA_PA,
+    // Construction contract administration is a commercial ladder; systems
+    // administrators are IT; a company secretary is governance; law clerks are
+    // legal; a chief of staff is on none of these.
+    // A hotel's "Executive Assistant Manager" is its deputy GM, not an EA.
+    exclude:
+      /\bexecutive assistant manager\b|\bidentity governance\b|\bcyber\b|\bcontracts? administrat|\bcompany secretar|\bchief of staff\b|\b(?:system|systems|network|database|sharepoint|salesforce|servicenow|platform|cloud|m365|it|ict|lms|crm|erp|sap|citrix|vmware|linux|windows|oracle|workday|jira|atlassian|security) administrator\b|\blaw clerk\b|\bsales\b|\bnurse\b|\bdriver\b|\bpayroll\b|\baccounts? (?:payable|receivable)\b|\bhospitality assistant\b/,
+    tracks: [{ id: "executive-assistant", label: "Executive assistants", match: EA_PA }],
+    generic: false,
+    rungs: [
+      [
+        /\bhead of (?:administration|business support|office services)\b|\b(?:administration|business support) director\b|\bdirector of administration\b/,
+        5,
+      ],
+      [/\bassistant (?:\w+ ){0,2}manager\b/, 3],
+      [
+        /\b(?:administration|administrative|admin|office|practice|front office|business support|operations support|reception) manager\b|\bmanager (?:administration|business support|office services)\b/,
+        4,
+      ],
+      [
+        /\bsenior (?:executive|personal) assistant\b|\bexecutive assistant to the (?:ceo|chief executive|managing director|chair|board)\b|\b(?:administration|admin|office|reception|front office|business support) (?:supervisor|team leader|lead)\b|\bsenior (?:administration|administrative|admin|business support|office) officer\b/,
+        3,
+      ],
+      [
+        /\bexecutive assistant\b|\bexecutive business partner\b|\bpersonal assistant\b|\b(?:pa|ea) to\b|\bexecutive support officer\b|\b(?:administration|administrative|admin|office|business support|clinic administration|school administrative) officer\b|\bsenior (?:administration|administrative|admin|office) assistant\b|\bsecretary\b|\badmin(?:istration|istrative)? executive\b|\b(?:administration|reception) (?:\w+ )?officer\b/,
+        2,
+      ],
+      [
+        /\b(?:administration|administrative|admin|office|reception|clerical|business support) (?:assistant|clerk|support|trainee|junior|coordinator)\b|\breceptionist\b|\breception\b|\bmedical screener\b|^(?:office )?admin$|\bclerk\b|\badministrator\b|\bdata entry\b|\bfront (?:office|desk)\b/,
+        1,
+      ],
+    ],
+  },
+];
+
+/**
+ * Parent skills that get NO ladder of their own, and why. Every parent skill in
+ * skillsTaxonomy.ts must be claimed by a family's `skills`, listed here, or
+ * listed in PATHWAYS_PLANNED — scripts/check-career-ladder.ts fails otherwise.
+ * A reason is required: "not modelled" is what PLANNED is for.
+ */
+export const NOT_A_LADDER: Record<string, string> = {
+  // Cross-cutting: a skill every ladder's upper rungs ask for, not a job family.
+  "Leadership & Coordination": "asked for at the upper rungs of every ladder",
+  "General Management": "the top rung of many ladders, not a ladder of its own",
+  Operations: "a function name every ladder uses, not an occupation",
+  // Sectors: the industry a role is in. Its roles are placed by occupation.
+  Telecommunications: "a sector; its engineers, sales and technicians are placed by occupation",
+  "Shipbuilding & Marine": "a sector; its trades and engineers are placed by occupation",
+  Decarbonisation: "an energy-sector specialism; placed by occupation",
+  "Hydrogen & Renewables": "an energy-sector specialism; placed by occupation",
+  "LNG Operations": "an energy-sector specialism; placed by occupation",
+  "Subsea Engineering": "an energy-sector specialism; placed by occupation",
+};
+
+/**
+ * Parent skills whose ladder is not built YET. The coverage check accepts them
+ * so a wave can land on its own, and prints them, so the gap stays visible.
+ * Empty is the finished state.
+ */
+export const PATHWAYS_PLANNED: string[] = [
+  "Marketing & Comms",
+  "Risk & Compliance",
+  "Allied Health",
+  "Commercial & Legal",
+  "Procurement & Supply",
+  "Banking & Lending",
+  "IT & Systems",
+  "Science & Laboratory",
+  "Cleaning & Facilities",
+  "Mental Health & Counselling",
+  "Data Science & Machine Learning",
+  "Business Analysis",
+  "Architecture & Planning",
+  "Data Analytics",
+  "Cloud & DevOps",
+  "Community & Native Title",
+  "Social & Community Services",
+  "Civil Engineering",
+  "Electrical Engineering",
+  "Medical Practice",
+  "Automation & Robotics",
+  "Mechanical Engineering",
+  "Quality Assurance",
+  "Aged & Disability Care",
+  "Pharmacy",
+  "Cybersecurity",
+  "Construction Management",
+  "Policy & Programs",
+  "Environmental",
+  "Electrical Trade",
+  "Data Engineering",
+  "Medical Imaging & Pathology",
+  "Fixed Plant Maintenance",
+  "Product Management",
+  "Instrumentation & Control",
+  "Emergency & Public Safety",
+  "Surveying",
+  "Dental",
+  "Design",
+  "Geology",
+  "Welding & Fabrication",
+  "Plant & Equipment Operation",
+  "Process Engineering",
+  "Mechanical Fitting",
+  "Real Estate & Property",
+  "Manufacturing & Production",
+  "Library & Information",
+  "Plumbing",
+  "Heavy Diesel Maintenance",
+  "Pipeline Engineering",
+  "Automotive Trade",
+  "Mining Engineering",
+  "Insurance & Actuarial",
+  "Geotechnical",
+  "Corrections & Justice",
+  "Agriculture & Farming",
+  "Painting & Plastering",
+  "Personal Services & Beauty",
+  "Underground Mining",
+  "Rigging & Scaffolding",
+  "HVAC & Refrigeration",
+  "Journalism & Media",
+  "Creative & Performing Arts",
+  "Carpentry & Joinery",
+  "Metallurgy",
+  "Radiation Safety",
+  "Drilling & Wells",
+  "Drill & Blast",
+  "Sport & Recreation",
+  "Construction Labouring",
+  "Bricklaying & Concreting",
+  "Electronics & Telecoms Trade",
 ];
 
 function rungFrom(rules: [RegExp, Rung][], t: string): Rung | null {
@@ -615,8 +1071,10 @@ function canonicalOf(raw: string, placed: Placed, ctx: PlaceContext | undefined)
 type Placed = Omit<Placement, "canonical">;
 
 function placeClean(t: string, ctx: PlaceContext | undefined): Placed | null {
-  if (!t || SUPPORT_TO.test(t) || MULTI_LEVEL.test(t)) return null;
+  if (!t || MULTI_LEVEL.test(t) || NOT_A_JOB.test(t)) return null;
+  const support = SUPPORT_TO.test(t);
   for (const f of FAMILIES) {
+    if (support && !f.supportRoles?.test(t)) continue;
     const byTitle = f.match.test(t);
     const byEmployer =
       !byTitle &&
@@ -662,8 +1120,13 @@ export function placeTitle(title: string, ctx?: PlaceContext): Placement | null 
  *  and "Project Engineer" topped the lists every run. */
 export function familyHint(title: string): string | null {
   const t = cleanTitle(title);
-  if (!t || SUPPORT_TO.test(t) || MULTI_LEVEL.test(t)) return null;
-  return FAMILIES.find((f) => f.match.test(t) && !f.exclude?.test(t))?.id ?? null;
+  if (!t || MULTI_LEVEL.test(t) || NOT_A_JOB.test(t)) return null;
+  const support = SUPPORT_TO.test(t);
+  return (
+    FAMILIES.find(
+      (f) => (!support || !!f.supportRoles?.test(t)) && f.match.test(t) && !f.exclude?.test(t),
+    )?.id ?? null
+  );
 }
 
 // ---- The generated dataset's shape (src/employsi/data/careerPathways.ts) ----

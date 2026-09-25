@@ -21,7 +21,14 @@
  *
  * Run: bun run scripts/check-career-ladder.ts
  */
-import { placeTitle, type Rung } from "../src/employsi/lib/careerLadder";
+import {
+  FAMILIES,
+  NOT_A_LADDER,
+  PATHWAYS_PLANNED,
+  placeTitle,
+  type Rung,
+} from "../src/employsi/lib/careerLadder";
+import { ALL_SKILLS } from "../src/employsi/data/skillsTaxonomy";
 import { COMPANIES } from "../src/employsi/data/companies";
 import {
   CURATED_RETAILERS,
@@ -72,12 +79,15 @@ const FIXTURES: [string, Want][] = [
   ["HRIS Analyst", ["hr", "hr-systems", 2]],
 
   // HR traps.
-  ["Executive Assistant to the HR Director", null], // an EA, on no ladder here
-  ["PA to Chief People Officer", null],
-  ["Payroll Officer", null], // payroll is not (yet) a family
-  ["HR & Payroll Officer", null],
+  // An EA is on the ADMIN ladder — never the ladder of the executive supported.
+  // (These were null until the admin family existed, 2026-09-25.)
+  ["Executive Assistant to the HR Director", ["admin", "executive-assistant", 2]],
+  ["PA to Chief People Officer", ["admin", "executive-assistant", 2]],
+  // Payroll is its own family since 2026-09-25, not HR's.
+  ["Payroll Officer", ["payroll", "generalist", 2]],
+  ["HR & Payroll Officer", ["payroll", "generalist", 2]],
   ["Recruitment Consultant", null], // agency sales ladder
-  ["Barista $32/hr", null], // "hr" in pay text is not human resources
+  ["Barista $32/hr", ["hospitality", "generalist", 1]], // "hr" in pay text is not HR
   ["Casual Cleaner - 24 hr roster", null],
   ["People Leader - Customer Service", null], // a line manager, not HR
   // HR, from the 2026-09-24 audit. Ad boilerplate in the title named a track.
@@ -92,8 +102,9 @@ const FIXTURES: [string, Want][] = [
   ["Senior Legal Counsel - Employee Relations", null],
   ["Internship - Chief of Staff to the Chief HR Officer", null], // was rung 6
   ["Head, Employee Relations", ["hr", "employee-relations", 5]],
-  ["HR Driver", null], // heavy rigid licence
-  ["HR Truck Drivers - Casual", null],
+  // Heavy rigid licence: the driving ladder since 2026-09-25, never HR.
+  ["HR Driver", ["logistics", "driving", 2]],
+  ["HR Truck Drivers - Casual", ["logistics", "driving", 2]],
   // A project or product manager whose PRODUCT is HR is on the project ladder.
   ["Senior Project Manager - HRIS", ["project", "generalist", 4]],
   ["Principal Product Manager - Talent Acquisition Applications", null],
@@ -160,7 +171,7 @@ const FIXTURES: [string, Want][] = [
   ["Executive Director of Nursing", ["nursing", "generalist", 6]],
   ["Registered Midwife", ["nursing", "midwifery", 2]],
   // Nursing traps.
-  ["Cook - Nursing Home", null],
+  ["Cook - Nursing Home", ["hospitality", "kitchen", 2]], // a cook, not a nurse
   ["Veterinary Nurse", null],
   // Nursing, from the 2026-09-24 audit.
   ["Registered Nurses - Anaesthetics", ["nursing", "generalist", 2]], // plural
@@ -171,10 +182,11 @@ const FIXTURES: [string, Want][] = [
   ["Associate Nursing Unit Manager", ["nursing", "generalist", 4]],
   ["Assistant Nursing Director", ["nursing", "generalist", 4]],
   ["Associate Director of Nursing", ["nursing", "generalist", 4]],
-  ["Executive Support Officer - Director of Nursing", null],
+  ["Executive Support Officer - Director of Nursing", ["admin", "executive-assistant", 2]], // not nursing
   ["Registered Nurse or Enrolled Nurse", null], // two rungs
-  ["Associate Professor - Nursing", null], // academia
-  ["Lecturer in Nursing", null],
+  // Academia: the education family's academic track since 2026-09-25.
+  ["Associate Professor - Nursing", ["education", "academic", 4]],
+  ["Lecturer in Nursing", ["education", "academic", 2]],
 
   // Project management — a PM runs a project, not a team.
   ["Project Coordinator", ["project", "generalist", 1]],
@@ -233,7 +245,7 @@ const FIXTURES: [string, Want][] = [
   ["Staff Platform Engineer", ["software", "generalist", 4]],
   ["Costco Perth Airport Front End Cashier Assistant", ["retail", "generalist", 1]],
   ["Software Asset Management Coordinator", null],
-  ["Executive Business Partner, Office of the CEO and CTO", null],
+  ["Executive Business Partner, Office of the CEO and CTO", ["admin", "executive-assistant", 2]], // an EA
   ["Field CTO", null],
   ["Deputy Chief Technology Officer", ["software", "generalist", 5]],
 
@@ -261,11 +273,11 @@ const FIXTURES: [string, Want][] = [
   ["Senior Visual Merchandiser", ["retail", "visual-merchandising", 3]],
   ["Visual Merchandising Manager", ["retail", "visual-merchandising", 4]],
   // Retail traps.
-  ["Storeperson", null], // warehousing
+  ["Storeperson", ["logistics", "generalist", 1]], // warehousing, not retail
   ["Stores Officer - Mine Site", null],
   ["Retail Pharmacist", null],
   ["Shopfitter", null],
-  ["Butcher - Supermarket", null],
+  ["Butcher - Supermarket", ["hospitality", "food-trades", 2]], // a trade, not a store rung
   ["Retail Buyer", null], // head-office buying: not yet a ladder
   ["Store Development Manager", null], // property, not the store ladder
   ["Retail Banking Manager", null],
@@ -355,6 +367,205 @@ const FIXTURES: [string, Want][] = [
   // HSE traps.
   ["Food Safety Officer", null],
   ["Health and Safety Representative", null],
+
+  // ---- Wave 1 of the parent-skill coverage (2026-09-25) --------------------
+  // Real titles from the 90-day archive, read before the rules were written.
+
+  // Payroll: administrator → officer → senior → team lead → manager → head.
+  ["Payroll Administrator", ["payroll", "generalist", 1]],
+  ["Payroll Coordinator", ["payroll", "generalist", 1]],
+  ["Payroll Specialist", ["payroll", "generalist", 2]],
+  ["Payroll Analyst", ["payroll", "generalist", 2]],
+  ["Senior Payroll Officer - Brisbane", ["payroll", "generalist", 3]],
+  ["Senior Payroll Analyst", ["payroll", "generalist", 3]],
+  ["Payroll Team Leader", ["payroll", "generalist", 3]],
+  ["Payroll Manager", ["payroll", "generalist", 4]],
+  ["National Payroll Manager", ["payroll", "generalist", 5]],
+  ["Head of Payroll", ["payroll", "generalist", 5]],
+  // Payroll traps: the word, another ladder.
+  ["Payroll Accountant", ["finance", "generalist", 2]],
+  ["Payroll Tax Administrator", ["finance", "tax", 1]],
+  ["Payroll Project Manager", ["project", "generalist", 3]],
+  ["Senior Business Analyst - SAP Payroll - Sydney", null],
+
+  // HR gaps the audit found.
+  ["Workforce Planner", ["hr", "workforce", 2]],
+  ["Workforce Planning Officer", ["hr", "workforce", 2]],
+  ["Senior Manager Workforce Planning", ["hr", "workforce", 4]],
+  ["Recruitment Administrator", ["hr", "talent-acquisition", 1]],
+  ["Recruitment Assistant", ["hr", "talent-acquisition", 1]],
+  ["Talent Advisor", ["hr", "talent-acquisition", 2]],
+  ["Training and Development Manager", ["hr", "learning", 4]],
+  ["Recruitment & Mobilisation Coordinator", ["hr", "talent-acquisition", 1]],
+
+  // Hospitality — the kitchen: kitchenhand → cook → chef → sous → head → executive.
+  ["Kitchenhand", ["hospitality", "kitchen", 1]],
+  ["Kitchen Assistant", ["hospitality", "kitchen", 1]],
+  ["Commis Chef", ["hospitality", "kitchen", 1]],
+  ["Assistant Cook", ["hospitality", "kitchen", 1]],
+  ["Cook", ["hospitality", "kitchen", 2]],
+  ["Chef", ["hospitality", "kitchen", 2]],
+  ["Demi Chef de Partie", ["hospitality", "kitchen", 2]],
+  ["Chef de Partie", ["hospitality", "kitchen", 2]],
+  ["Senior Cook", ["hospitality", "kitchen", 3]],
+  ["Junior Sous Chef", ["hospitality", "kitchen", 3]],
+  ["Sous Chef", ["hospitality", "kitchen", 3]],
+  ["Head Chef", ["hospitality", "kitchen", 4]],
+  ["Chef de Cuisine", ["hospitality", "kitchen", 4]],
+  ["Executive Sous Chef", ["hospitality", "kitchen", 4]],
+  ["Executive Chef", ["hospitality", "kitchen", 5]],
+  // Front of house: attendant → supervisor → assistant manager → manager → director.
+  ["Food and Beverage Attendant", ["hospitality", "generalist", 1]],
+  ["Bartender", ["hospitality", "generalist", 1]],
+  ["Waiter / Waitress", ["hospitality", "generalist", 1]],
+  ["Cafe Team Member", ["hospitality", "generalist", 1]],
+  ["Restaurant Captain", ["hospitality", "generalist", 2]],
+  ["F&B Supervisor", ["hospitality", "generalist", 2]],
+  ["Head Bartender", ["hospitality", "generalist", 2]],
+  ["Assistant Restaurant Manager", ["hospitality", "generalist", 3]],
+  ["Food and Beverage Duty Manager", ["hospitality", "generalist", 3]],
+  ["Restaurant Manager", ["hospitality", "generalist", 4]],
+  ["Catering Manager", ["hospitality", "generalist", 4]],
+  ["Director of Food and Beverage", ["hospitality", "generalist", 5]],
+  // Bakers and butchers: a trade ladder of their own.
+  ["Apprentice Baker", ["hospitality", "food-trades", 1]],
+  ["Baker - Coles Supermarkets Maroochydore", ["hospitality", "food-trades", 2]],
+  ["Head Baker", ["hospitality", "food-trades", 3]],
+  // Hospitality traps.
+  ["Hospitality Assistant / Cleaner", null], // cleaning, not food service
+  ["Chef de Projet H/F", null], // French: a project manager
+  ["Catering Sales Manager", ["sales", "generalist", 4]], // sales is tried first
+  ["Bakery Assistant Manager", ["hospitality", "food-trades", 3]], // no employer: a bakery
+
+  // Education — schools: aide → teacher → leading teacher → HoD/deputy → principal.
+  ["Teacher Aide", ["education", "education-support", 1]],
+  ["School Learning Support Officer - Full Time Ongoing", ["education", "education-support", 1]],
+  ["Education Assistant (Special Needs)", ["education", "education-support", 1]],
+  ["Graduate Teacher", ["education", "generalist", 1]],
+  ["Teacher - Primary", ["education", "generalist", 2]],
+  ["Classroom Teacher - English", ["education", "generalist", 2]],
+  ["TAFE Teacher - Fitting and Machining", ["education", "generalist", 2]],
+  ["Leading Teacher Range 3", ["education", "generalist", 3]],
+  ["Learning Specialist", ["education", "generalist", 3]],
+  ["Head Teacher - PDHPE", ["education", "generalist", 4]],
+  ["Head of Department - Mathematics", ["education", "generalist", 4]],
+  ["Assistant Principal Range 1", ["education", "generalist", 4]],
+  ["Deputy Principal", ["education", "generalist", 4]],
+  ["Principal - St Joseph's School Nambour", ["education", "generalist", 5]],
+  ["Principal Range 4", ["education", "generalist", 5]],
+  // Early childhood: educator → ECT/senior → room/educational leader → centre director.
+  ["Educator", ["education", "early-childhood", 1]],
+  ["Casual Educator", ["education", "early-childhood", 1]],
+  ["Trainee Educator", ["education", "early-childhood", 1]],
+  ["Early Childhood Teacher", ["education", "early-childhood", 2]],
+  ["Senior Educator", ["education", "early-childhood", 2]],
+  ["Room Leader", ["education", "early-childhood", 3]],
+  ["Educational Leader", ["education", "early-childhood", 3]],
+  ["Assistant Centre Director", ["education", "early-childhood", 3]],
+  ["Centre Director - Early Learning", ["education", "early-childhood", 4]],
+  // Academic: associate lecturer → lecturer → senior → associate professor → professor.
+  ["Associate Lecturer - Psychology", ["education", "academic", 1]],
+  ["Lecturer", ["education", "academic", 2]],
+  ["Senior Lecturer in Medical Education", ["education", "academic", 3]],
+  ["Professor and Head of School, School of Social Sciences", ["education", "academic", 5]],
+  // Education traps. "Principal" is a school's top rung and everyone else's grade.
+  ["Principal Engineer HV Primary", null],
+  ["Principal HPC and Storage Architect", null],
+  ["Principal Analyst", null],
+  ["Clinical Educator", null], // clinical education: not a school ladder
+  ["Diabetes Educator", null],
+  ["Entry Level to Experienced Teacher (Queens)", null], // two rungs at once
+  ["Lecturer / Senior Lecturer - Psychology", null],
+
+  // Transport & warehousing. Warehouse: storeperson → forklift → supervisor → manager.
+  ["Storeperson", ["logistics", "generalist", 1]],
+  ["Warehouse Assistant", ["logistics", "generalist", 1]],
+  ["Pick Packer Team Member - Nerang", ["logistics", "generalist", 1]],
+  ["Forklift Operator", ["logistics", "generalist", 2]],
+  ["Senior Storeperson", ["logistics", "generalist", 2]],
+  ["Warehouse Team Leader", ["logistics", "generalist", 3]],
+  ["Warehouse Supervisor", ["logistics", "generalist", 3]],
+  ["Warehouse 2IC", ["logistics", "generalist", 3]],
+  ["Warehouse Manager", ["logistics", "generalist", 4]],
+  ["Superintendent Warehouse", ["logistics", "generalist", 4]],
+  ["Head of Logistics", ["logistics", "generalist", 5]],
+  // Driving: van / MR → HR / truck / bus → HC / MC / CDL-A.
+  ["Delivery Driver", ["logistics", "driving", 1]],
+  ["MR Driver", ["logistics", "driving", 1]],
+  ["Truck Driver", ["logistics", "driving", 2]],
+  ["Heavy Rigid Truck Driver", ["logistics", "driving", 2]],
+  ["Bus Driver", ["logistics", "driving", 2]],
+  ["HC Driver", ["logistics", "driving", 3]],
+  ["MC Driver", ["logistics", "driving", 3]],
+  ["CDL-A Company Driver", ["logistics", "driving", 3]],
+  ["Transport Supervisor", ["logistics", "driving", 3]],
+  ["Transport Manager", ["logistics", "driving", 4]],
+  // Transport traps: gig platforms are not an employer's ladder.
+  ["Amazon Flex Delivery Driver - Earn $14", null],
+  ["Instacart Shopper & Delivery Driver - Flexible Hours", null],
+  ["Delivery Driver - Sign Up and Start Earning", null],
+  ["Dashers - Sign Up and Start Earning", null],
+  ["DC Team Member", ["logistics", "generalist", 1]], // no employer: still a DC role
+
+  // Administration: assistant → officer → senior → office manager.
+  ["Receptionist", ["admin", "generalist", 1]],
+  ["Administration Assistant", ["admin", "generalist", 1]],
+  ["Ward Clerk", ["admin", "generalist", 1]],
+  ["Site Administrator", ["admin", "generalist", 1]],
+  ["Administration Officer", ["admin", "generalist", 2]],
+  ["Medical Secretary", ["admin", "generalist", 2]],
+  ["Senior Administration Officer", ["admin", "generalist", 3]],
+  ["Assistant Front Office Manager", ["admin", "generalist", 3]],
+  ["Office Manager", ["admin", "generalist", 4]],
+  ["Administration Manager", ["admin", "generalist", 4]],
+  ["Practice Manager", ["admin", "generalist", 4]],
+  // Executive assistants: their own track.
+  ["Executive Assistant", ["admin", "executive-assistant", 2]],
+  ["Personal Assistant", ["admin", "executive-assistant", 2]],
+  ["Senior Executive Assistant", ["admin", "executive-assistant", 3]],
+  // Admin traps.
+  ["Contracts Administrator", null], // construction contracts: a commercial ladder
+  ["SharePoint Administrator (NV1 clearance)", null], // IT
+  ["Company Secretary", null], // governance
+  ["HR Administrator", ["hr", "generalist", 1]], // the function wins
+  ["Project Administrator", ["project", "generalist", 1]],
+  ["Chief of Staff", null],
+  // Found by the whole-archive diff after the first wave-1 pass (2026-09-25).
+  ["Executive Assistant Manager - Hotel", null], // a hotel's deputy GM, not an EA
+  ["Senior Executive Assistant Manager", null],
+  ["Associate Lecturer / Lecturer in Nursing", null], // two grades
+  ["Senior Lecturer / Associate Professor in Law", null],
+  ["Assistant Professor of Economics", ["education", "academic", 3]], // US tenure track
+  ["Sessional Academic Tutor", ["education", "academic", 1]],
+  ["Instrumental Music Tutor", null], // private tuition, not a school ladder
+  ["Private Tutor", null],
+  ["$350 60min Paid Market Research Study for Head of Logistics", null], // not a job
+  ["Baker Hughes Malaysia Bootcamp 2026", null], // an oilfield company
+  ["Coffee Barista - Tiong Bahru Bakery", ["hospitality", "generalist", 1]],
+  // Wave 1 audit top-ups (2026-09-25).
+  ["Restaurant Delivery - Sign Up and Start Earning", null], // gig
+  ["Driver - Get Paid Daily", null],
+  ["F&B Service Expert", ["hospitality", "generalist", 1]],
+  ["Restaurant Server", ["hospitality", "generalist", 1]],
+  ["F&B Executive", ["hospitality", "generalist", 2]],
+  ["Food and Beverage Operations Manager", ["hospitality", "generalist", 4]],
+  ["Restaurant General Manager", ["hospitality", "generalist", 4]],
+  ["Driver Class A - $7K Sign On Bonus", ["logistics", "driving", 3]],
+  ["Shuttle Driver - Class B Required", ["logistics", "driving", 2]],
+  ["Lorry Driver", ["logistics", "driving", 2]],
+  ["Dispatch Team Member", ["logistics", "generalist", 1]],
+  ["Logistics Operations Coordinator", ["logistics", "generalist", 2]],
+  ["Medical Screener - Reception Technician (Customer Service)", ["admin", "generalist", 1]],
+  ["Administration Coordinator", ["admin", "generalist", 1]],
+  ["Office Coordinator", ["admin", "generalist", 1]],
+  ["Administrative Executive", ["admin", "generalist", 2]],
+  ["Cyber Technical Lead - Identity Governance & Administration", null],
+  ["Teaching Fellow - Business", ["education", "academic", 2]],
+  ["Teaching Associate, School of Computing", ["education", "academic", 1]],
+  ["Preschool Center Director", ["education", "early-childhood", 4]],
+  ["HR and Payroll Generalist", ["payroll", "generalist", 2]],
+  ["Payroll Business Partner", ["payroll", "generalist", 3]],
+  ["Director HR Systems & Payroll", ["payroll", "generalist", 5]],
   // HSE, from the 2026-09-24 audit.
   [
     "Work Health and Safety Advisor APS Level 5 - Chief Operating Officer",
@@ -402,14 +613,16 @@ const EMPLOYER: [title: string, companyId: string, want: Want][] = [
   ["Finance Manager", COLES, ["finance", "generalist", 4]],
   ["HR Business Partner", COLES, ["hr", "generalist", 3]],
   ["Duty Manager", "sydney-edv", null], // Endeavour's pubs
-  ["Team Leader - Distribution Centre", COLES, null],
+  ["Team Leader - Distribution Centre", COLES, ["logistics", "generalist", 3]], // not a store rung
   ["Production Team Member", WESFARMERS, null], // WesCEF, not Bunnings
   ["Sales Consultant", "priv-suttons-motors", ["sales", "generalist", 2]], // car sales
   // From the 2026-09-24 audit: a retailer's DC and café roles are not store rungs.
-  ["DC Team Member", COLES, null],
-  ["Seasonal Casual DC Team Member", COLES, null],
-  ["Dispatch Team Member", COLES, null],
-  ["Cafe Team Member", COLES, null],
+  // …and they land on their own ladders instead (since 2026-09-25).
+  ["DC Team Member", COLES, ["logistics", "generalist", 1]],
+  ["Seasonal Casual DC Team Member", COLES, ["logistics", "generalist", 1]],
+  ["Dispatch Team Member", COLES, ["logistics", "generalist", 1]],
+  ["Cafe Team Member", COLES, ["hospitality", "generalist", 1]],
+  ["Bakery Assistant Manager", COLES, ["retail", "generalist", 3]], // the store department
   ["Dry Goods Manager", COLES, ["retail", "generalist", 3]],
   ["Dry Goods Manager", "", null],
   // Bare "Engineering Manager": the employer's sector says which engineering.
@@ -474,6 +687,38 @@ for (const [title, want] of CANONICAL) {
     );
   }
 }
+
+// EVERY PARENT SKILL HAS A PATHWAY, OR A STATED REASON IT HAS NONE.
+// Until 2026-09-25 the ladders covered 10 of 100 parent skills and nothing said
+// so. A parent added to the taxonomy now fails here until someone decides.
+const parents = new Set(ALL_SKILLS);
+const claimed = new Map<string, string[]>();
+for (const f of FAMILIES)
+  for (const sk of f.skills ?? []) claimed.set(sk, [...(claimed.get(sk) ?? []), f.id]);
+for (const sk of [...claimed.keys(), ...Object.keys(NOT_A_LADDER), ...PATHWAYS_PLANNED]) {
+  if (!parents.has(sk)) {
+    failures++;
+    console.error(`✗ "${sk}" is not a parent skill in skillsTaxonomy.ts (renamed?)`);
+  }
+}
+for (const sk of parents) {
+  const n = [claimed.has(sk), sk in NOT_A_LADDER, PATHWAYS_PLANNED.includes(sk)].filter(
+    Boolean,
+  ).length;
+  if (n !== 1) {
+    failures++;
+    console.error(
+      n === 0
+        ? `✗ parent skill "${sk}" has no ladder, no plan and no reason — decide one`
+        : `✗ parent skill "${sk}" is in more than one of: a family, NOT_A_LADDER, PATHWAYS_PLANNED`,
+    );
+  }
+}
+if (PATHWAYS_PLANNED.length)
+  console.log(
+    `  ${claimed.size} parent skills have a ladder, ${Object.keys(NOT_A_LADDER).length} have none by design, ` +
+      `${PATHWAYS_PLANNED.length} are planned.`,
+  );
 
 if (failures) {
   console.error(`\n${failures} career-ladder fixture(s) failed.`);

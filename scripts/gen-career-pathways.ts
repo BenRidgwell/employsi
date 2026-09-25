@@ -66,7 +66,13 @@
  * static file.
  */
 import { writeFileSync } from "node:fs";
-import { FAMILIES, RUNG_LABEL, type PathwayNode } from "../src/employsi/lib/careerLadder";
+import {
+  FAMILIES,
+  NOT_A_LADDER,
+  PATHWAYS_PLANNED,
+  RUNG_LABEL,
+  type PathwayNode,
+} from "../src/employsi/lib/careerLadder";
 import {
   MIN_NODE_ROLES,
   PATHWAY_DAYS,
@@ -188,6 +194,26 @@ if (AUDIT && a.thin.length)
   console.log(`\nRungs below ${MIN_NODE_ROLES} roles, not published:\n  ${a.thin.join("\n  ")}`);
 
 if (AUDIT) {
+  // Coverage by PARENT SKILL: which family claims it, and what share of the
+  // rows carrying it landed on a ladder. Skill tags come partly from a board's
+  // own category, so a low share is not always a rule gap — read the titles.
+  const owner = new Map<string, string>();
+  for (const f of FAMILIES)
+    for (const sk of f.skills ?? [])
+      owner.set(sk, (owner.has(sk) ? owner.get(sk) + "+" : "") + f.id);
+  console.log("\nParent skills — rows carrying the skill, share placed on any ladder:");
+  for (const [sk, c] of [...a.bySkill].sort((x, y) => y[1].rows - x[1].rows)) {
+    const who =
+      owner.get(sk) ??
+      (sk in NOT_A_LADDER
+        ? "(not a ladder)"
+        : PATHWAYS_PLANNED.includes(sk)
+          ? "(planned)"
+          : "(UNDECIDED)");
+    console.log(
+      `  ${String(c.rows).padStart(6)}  ${String(Math.round((c.placed / c.rows) * 100)).padStart(3)}%  ${sk.padEnd(34)} ${who}`,
+    );
+  }
   console.log("\n--audit: nothing written.");
   process.exit(0);
 }

@@ -27,7 +27,7 @@ import {
 import { LIVE_FEEDS_ONLY_SQL } from "./jobArchive";
 import { employerFamilies } from "./ladderEmployers";
 import { annualAud, medianAnnual } from "./salaryParse";
-import { parseStoredSkills } from "../data/skillsTaxonomy";
+import { ALL_SKILLS, parseStoredSkills } from "../data/skillsTaxonomy";
 import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
 
 /** A rung with fewer distinct roles than this is not published. Below it, the
@@ -133,7 +133,13 @@ export interface PathwayAudit {
   unplaced: Map<string, Map<string, number>>;
   /** Rungs below MIN_NODE_ROLES, "family|track|rung (n)". */
   thin: string[];
+  /** Per PARENT skill: rows carrying it, and how many were placed on any
+   *  ladder. Audit only. The coverage question "does every parent skill have
+   *  a pathway" asked of the rows rather than of the rules. */
+  bySkill: Map<string, { rows: number; placed: number }>;
 }
+
+const PARENTS = new Set(ALL_SKILLS);
 
 const norm = (s: string | null | undefined) =>
   (s || "")
@@ -158,6 +164,7 @@ export class PathwayBuilder {
     viaEmployer: new Map(),
     unplaced: new Map(),
     thin: [],
+    bySkill: new Map(),
   };
 
   /**
@@ -175,6 +182,15 @@ export class PathwayBuilder {
     const a = this.a;
     a.rows++;
     const p = placeTitle(r.title, { employerFamilies: employerFamilies(r.company_id) });
+    if (this.keepUnplaced) {
+      for (const s of parseStoredSkills(r.skills)) {
+        if (!PARENTS.has(s)) continue;
+        const c = a.bySkill.get(s) ?? { rows: 0, placed: 0 };
+        c.rows++;
+        if (p) c.placed++;
+        a.bySkill.set(s, c);
+      }
+    }
     if (!p) {
       const hint = familyHint(r.title);
       if (hint) {
