@@ -17348,6 +17348,8 @@ body {
   --shadow-md: 0 2px 4px rgba(28, 28, 30, 0.05), 0 4px 12px rgba(28, 28, 30, 0.07);
   --shadow-lg: 0 4px 8px rgba(28, 28, 30, 0.05), 0 12px 32px rgba(28, 28, 30, 0.1);
 
+  /* The CardLoader overlay (.ccload, absolute inset 0) covers the card. */
+  position: relative;
   width: 100%;
   box-sizing: border-box;
   background: var(--surface-page, #fff);
@@ -17471,4 +17473,17 @@ body {
 .cpsearchwrap .gsearchresults,
 .cpsearchwrap .gsnomatch {
   margin-top: 8px;
+}
+/* Before the first model arrives there is nothing under the loader, so the
+   card holds roughly its loaded height rather than collapsing to its title and
+   growing when the data lands. */
+.cpcard.cploading {
+  min-height: min(760px, var(--pane-max-h));
+}
+/* The card is taller than its pane and scrolls inside it; centred over the
+   whole card, the loader's mark could sit below the visible area. It opens at
+   the top, so the overlay is kept to the pane's visible height. */
+.cpcard > .ccload {
+  bottom: auto;
+  height: min(100%, var(--pane-max-h));
 }

@@ -115,8 +115,27 @@ export function CareerPathwaysPane() {
   );
 }
 
+/**
+ * How long the opening loader holds at least, every time the card opens.
+ *
+ * The What's Trending pane's CardLoader, used the same way — laid over the
+ * whole card — but with a floor. The model is cached for 30 minutes, so after
+ * the first open the data is there instantly and the loader would flash for a
+ * frame or not appear at all, while the map underneath is still panning to the
+ * selected role. 1.2 s shows the mark's sweep and the first stage label, and
+ * covers that pan. A slow fetch keeps it up for as long as the fetch takes.
+ */
+const OPEN_LOADER_MS = 1200;
+
 function CareerCard({ onClose }: { onClose: () => void }) {
   const uid = useId().replace(/:/g, "");
+  // CareerCard mounts on every open (CareerPathwaysPane renders nothing while
+  // closed), so this runs once per opening.
+  const [holding, setHolding] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setHolding(false), OPEN_LOADER_MS);
+    return () => clearTimeout(t);
+  }, []);
   const [family, setFamily] = useState("hr");
   const [skill, setSkill] = useState<string | null>(null);
 
@@ -200,7 +219,8 @@ function CareerCard({ onClose }: { onClose: () => void }) {
 
   if (!data) {
     return (
-      <div className="cpcard">
+      <div className="cpcard cploading">
+        <CardLoader />
         <div style={{ padding: 24, display: "flex", justifyContent: "space-between" }}>
           <span style={{ font: `600 24px/1.2 ${MONA}`, letterSpacing: "-0.025em" }}>
             Career pathways
@@ -208,11 +228,6 @@ function CareerCard({ onClose }: { onClose: () => void }) {
           <button type="button" className="paneclose" onClick={onClose} aria-label="Close">
             <IconClose />
           </button>
-        </div>
-        {/* The app's shared loading frame, as the trends pane and company
-            card use it — a bare title read as a card that had failed. */}
-        <div style={{ position: "relative", height: 420 }}>
-          <CardLoader />
         </div>
       </div>
     );
@@ -404,6 +419,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="cpcard" tabIndex={0} onKeyDown={onKey}>
+      {holding && <CardLoader />}
       <div style={{ padding: "24px 24px 0", display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ font: `600 24px/1.2 ${MONA}`, letterSpacing: "-0.025em" }}>
