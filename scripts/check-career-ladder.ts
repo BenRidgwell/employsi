@@ -96,10 +96,11 @@ const FIXTURES: [string, Want][] = [
   ["Project Manager - Pharma West - Attractive Remuneration", ["project", "generalist", 3]],
   ["Construction Manager - Pharma West - Attractive Remuneration", null], // was HR reward 4
   // Workplace-relations LAWYERS practise employment law; they are not on the ER ladder.
-  ["Senior Associate - Workplace Relations, Employment & Safety", null],
-  ["Workplace Relations Lawyer", null],
-  ["Solicitor, Employment & Industrial Relations", null],
-  ["Senior Legal Counsel - Employee Relations", null],
+  // …they are on the LEGAL ladder, since 2026-09-25 — never HR's.
+  ["Senior Associate - Workplace Relations, Employment & Safety", ["legal", "generalist", 3]],
+  ["Workplace Relations Lawyer", ["legal", "generalist", 2]],
+  ["Solicitor, Employment & Industrial Relations", ["legal", "generalist", 2]],
+  ["Senior Legal Counsel - Employee Relations", ["legal", "in-house", 3]],
   ["Internship - Chief of Staff to the Chief HR Officer", null], // was rung 6
   ["Head, Employee Relations", ["hr", "employee-relations", 5]],
   // Heavy rigid licence: the driving ladder since 2026-09-25, never HR.
@@ -107,7 +108,7 @@ const FIXTURES: [string, Want][] = [
   ["HR Truck Drivers - Casual", ["logistics", "driving", 2]],
   // A project or product manager whose PRODUCT is HR is on the project ladder.
   ["Senior Project Manager - HRIS", ["project", "generalist", 4]],
-  ["Principal Product Manager - Talent Acquisition Applications", null],
+  ["Principal Product Manager - Talent Acquisition Applications", ["product", "product", 4]],
   // Bank titles: VP is a grade, the noun is the job.
   ["HR Business Partner - Vice President", ["hr", "generalist", 3]],
   ["Vice President, Human Resources", ["hr", "generalist", 5]],
@@ -130,8 +131,9 @@ const FIXTURES: [string, Want][] = [
   ["Tax Manager", ["finance", "tax", 4]],
   ["Project Accountant", ["finance", "generalist", 2]], // leaves project, lands here
   // Finance traps.
-  ["Financial Planner", null],
-  ["Mortgage Broker - Finance", null],
+  // Advice and lending are the BANKING ladder since 2026-09-25, not finance's.
+  ["Financial Planner", ["banking", "advice", 2]],
+  ["Mortgage Broker - Finance", ["banking", "lending", 2]],
   ["Traffic Controller", null],
   ["Credit Controller", null],
   // Finance, from the 2026-09-24 audit. "CFO Advisory" is a Big-4 practice, not a CFO.
@@ -148,8 +150,11 @@ const FIXTURES: [string, Want][] = [
   ["Personal Financial Consultant", null],
   ["Bancassurance Financial Executive", null],
   ["Financial Aid Specialist", null],
-  ["Senior Financial Crime Compliance Specialist", null],
-  ["Director of Employee and Community Engagement - Banking and Financial Services", null],
+  ["Senior Financial Crime Compliance Specialist", ["risk", "compliance", 3]],
+  [
+    "Director of Employee and Community Engagement - Banking and Financial Services",
+    ["community", "generalist", 5],
+  ],
   // Multi-rung expressions of interest.
   ["Senior Manager or Director - Treasury and Risk", null],
   ["EOI - Private Tax Specialists (Senior Associate, Manager, Senior Manager, Director)", null],
@@ -278,9 +283,9 @@ const FIXTURES: [string, Want][] = [
   ["Retail Pharmacist", null],
   ["Shopfitter", null],
   ["Butcher - Supermarket", ["hospitality", "food-trades", 2]], // a trade, not a store rung
-  ["Retail Buyer", null], // head-office buying: not yet a ladder
+  ["Retail Buyer", ["procurement", "buying", 2]], // head-office buying, not a store rung
   ["Store Development Manager", null], // property, not the store ladder
-  ["Retail Banking Manager", null],
+  ["Retail Banking Manager", ["banking", "generalist", 3]], // a bank, not a shop
   ["Retail HR Business Partner", ["hr", "generalist", 3]], // HR is tried first
   // Retail, from the 2026-09-24 audit.
   ["Nightfill Manager", ["retail", "generalist", 3]], // was rung 1
@@ -290,11 +295,11 @@ const FIXTURES: [string, Want][] = [
   ["Retail Department Leader", ["retail", "generalist", 3]],
   // "Retail" as the INDUSTRY of a head-office role is not the store ladder.
   ["Performance Media Specialist - Retail Media", null],
-  ["Retail Marketing Manager", null],
+  ["Retail Marketing Manager", ["marketing", "generalist", 4]],
   ["Retail Implementation Specialist", null],
   ["Regional Manager - Retail Lease Admin", null],
   ["Stores and Supply Officer", null],
-  ["Retail Design Manager", null],
+  ["Retail Design Manager", null], // store fit-out design: ambiguous, and not a store rung
   ["Store Account Manager", null],
   // Supermarket department managers — in store, beside "Department Manager".
   ["Store Support Manager - Coles Supermarkets - Dubbo Southlakes", ["retail", "generalist", 3]],
@@ -386,7 +391,7 @@ const FIXTURES: [string, Want][] = [
   ["Payroll Accountant", ["finance", "generalist", 2]],
   ["Payroll Tax Administrator", ["finance", "tax", 1]],
   ["Payroll Project Manager", ["project", "generalist", 3]],
-  ["Senior Business Analyst - SAP Payroll - Sydney", null],
+  ["Senior Business Analyst - SAP Payroll - Sydney", ["product", "generalist", 3]],
 
   // HR gaps the audit found.
   ["Workforce Planner", ["hr", "workforce", 2]],
@@ -470,7 +475,7 @@ const FIXTURES: [string, Want][] = [
   ["Professor and Head of School, School of Social Sciences", ["education", "academic", 5]],
   // Education traps. "Principal" is a school's top rung and everyone else's grade.
   ["Principal Engineer HV Primary", null],
-  ["Principal HPC and Storage Architect", null],
+  ["Principal HPC and Storage Architect", ["technology", "architecture", 4]], // not a school
   ["Principal Analyst", null],
   ["Clinical Educator", null], // clinical education: not a school ladder
   ["Diabetes Educator", null],
@@ -524,9 +529,9 @@ const FIXTURES: [string, Want][] = [
   ["Personal Assistant", ["admin", "executive-assistant", 2]],
   ["Senior Executive Assistant", ["admin", "executive-assistant", 3]],
   // Admin traps.
-  ["Contracts Administrator", null], // construction contracts: a commercial ladder
-  ["SharePoint Administrator (NV1 clearance)", null], // IT
-  ["Company Secretary", null], // governance
+  ["Contracts Administrator", ["commercial", "generalist", 2]], // not admin
+  ["SharePoint Administrator (NV1 clearance)", ["technology", "generalist", 2]], // not admin
+  ["Company Secretary", ["legal", "in-house", 4]], // governance, not admin
   ["HR Administrator", ["hr", "generalist", 1]], // the function wins
   ["Project Administrator", ["project", "generalist", 1]],
   ["Chief of Staff", null],
@@ -559,13 +564,270 @@ const FIXTURES: [string, Want][] = [
   ["Administration Coordinator", ["admin", "generalist", 1]],
   ["Office Coordinator", ["admin", "generalist", 1]],
   ["Administrative Executive", ["admin", "generalist", 2]],
-  ["Cyber Technical Lead - Identity Governance & Administration", null],
+  ["Cyber Technical Lead - Identity Governance & Administration", ["technology", "security", 3]],
   ["Teaching Fellow - Business", ["education", "academic", 2]],
   ["Teaching Associate, School of Computing", ["education", "academic", 1]],
   ["Preschool Center Director", ["education", "early-childhood", 4]],
   ["HR and Payroll Generalist", ["payroll", "generalist", 2]],
   ["Payroll Business Partner", ["payroll", "generalist", 3]],
   ["Director HR Systems & Payroll", ["payroll", "generalist", 5]],
+
+  // ---- Wave 2: corporate professions (2026-09-25) --------------------------
+  // Legal. Private practice: graduate → lawyer → senior associate → special
+  // counsel → partner. In-house: legal counsel → senior → principal → GC.
+  ["Paralegal", ["legal", "generalist", 1]],
+  ["Graduate Lawyer", ["legal", "generalist", 1]],
+  ["Lawyer (2-4 PQE) - Commercial Litigation", ["legal", "generalist", 2]],
+  ["Solicitor", ["legal", "generalist", 2]],
+  ["Senior Associate - Construction", ["legal", "generalist", 3]],
+  ["Special Counsel - Insurance", ["legal", "generalist", 4]],
+  ["Partner - Banking and Finance", ["legal", "generalist", 5]],
+  ["Legal Counsel", ["legal", "in-house", 2]],
+  ["Senior Legal Counsel - Technology, Data and IP", ["legal", "in-house", 3]],
+  ["Principal Legal Officer", ["legal", "in-house", 4]],
+  ["General Counsel", ["legal", "in-house", 5]],
+  ["Chief Legal Officer", ["legal", "in-house", 6]],
+  ["Legal Secretary", ["admin", "generalist", 2]], // support, on the admin ladder
+  ["Genetic Counsellor", null],
+
+  // Insurance: claims, underwriting, actuarial.
+  ["Claims Officer", ["insurance", "claims", 2]],
+  ["Senior Claims Consultant", ["insurance", "claims", 3]],
+  ["Claims Manager", ["insurance", "claims", 4]],
+  ["Underwriter", ["insurance", "underwriting", 2]],
+  ["Senior Underwriter", ["insurance", "underwriting", 3]],
+  ["Actuarial Intern", ["insurance", "actuarial", 1]],
+  ["Actuarial Analyst", ["insurance", "actuarial", 2]],
+  ["Senior Actuarial Analyst", ["insurance", "actuarial", 3]],
+  ["Actuarial Manager", ["insurance", "actuarial", 4]],
+  ["Head of Actuarial Services", ["insurance", "actuarial", 5]],
+  ["Insurance Agent - Colorado", null], // commission sales, not the insurance ladder
+  ["Finance and Insurance Consultant", null], // a car dealership's F&I desk
+  ["Insurance Planner", null],
+  ["Mandataire d'assurance F/H (Indépendant)", null], // French: an insurance agent
+
+  // Risk, compliance & audit.
+  ["Compliance Officer", ["risk", "compliance", 2]],
+  ["Risk Analyst", ["risk", "generalist", 2]],
+  ["Senior Risk Advisor", ["risk", "generalist", 3]],
+  ["Operational Risk Manager", ["risk", "generalist", 4]],
+  ["Internal Auditor", ["risk", "audit", 2]],
+  ["Assistant Manager - Audit and Assurance", ["risk", "audit", 3]],
+  ["Head of Internal Audit", ["risk", "audit", 5]],
+  ["Chief Risk Officer", ["risk", "generalist", 6]],
+  ["Credit Risk Manager", ["risk", "generalist", 4]], // risk is tried before banking
+
+  // Quality (QA/QC).
+  ["QC Inspector", ["quality", "generalist", 1]],
+  ["Quality Assurance Officer", ["quality", "generalist", 2]],
+  ["QA/QC Engineer", ["quality", "generalist", 2]],
+  ["QA QC Supervisor", ["quality", "generalist", 3]],
+  ["Quality Manager", ["quality", "generalist", 4]],
+  ["Head of Quality", ["quality", "generalist", 5]],
+  ["Senior Quality Assurance Engineer - Software", ["software", "generalist", 3]], // a tester
+
+  // Banking: branch → lending → relationship; advice; investment banking.
+  ["Bank Teller", ["banking", "generalist", 1]],
+  ["Banking Consultant", ["banking", "generalist", 2]],
+  ["Customer Banking Specialist", ["banking", "generalist", 2]],
+  ["Branch Manager - Retail Banking", ["banking", "generalist", 4]],
+  ["Lending Assessment Officer", ["banking", "lending", 2]],
+  ["Home Lending Executive", ["banking", "lending", 2]],
+  ["Branch Lending Manager", ["banking", "lending", 3]],
+  ["Business Banking Manager", ["banking", "relationship", 3]],
+  ["Relationship Manager - Premier Banking", ["banking", "relationship", 3]],
+  ["Senior Relationship Manager", ["banking", "relationship", 4]],
+  ["Paraplanner", ["banking", "advice", 1]],
+  ["Financial Adviser", ["banking", "advice", 2]],
+  ["Private Wealth Adviser", ["banking", "advice", 2]],
+  ["Analyst - Investment Banking", ["banking", "investment-banking", 2]],
+  ["Associate, Natural Resources Investment Banking", ["banking", "investment-banking", 3]],
+  ["Vice President, Infrastructure Investment Banking", ["banking", "investment-banking", 4]],
+  ["Member Experience Officer - Heritage Bank Gatton", ["banking", "generalist", 2]],
+  ["Credit Controller - Accounts", null], // collections, not lending
+
+  // Marketing & communications.
+  ["Marketing Assistant", ["marketing", "generalist", 1]],
+  ["Marketing Coordinator", ["marketing", "generalist", 1]],
+  ["Marketing Executive", ["marketing", "generalist", 2]],
+  ["Digital Marketing Specialist", ["marketing", "generalist", 2]],
+  ["Brand Manager", ["marketing", "generalist", 3]],
+  ["Senior Marketing Executive", ["marketing", "generalist", 3]],
+  ["Marketing Manager", ["marketing", "generalist", 4]],
+  ["Head of Marketing", ["marketing", "generalist", 5]],
+  ["Chief Marketing Officer", ["marketing", "generalist", 6]],
+  ["Communications Officer", ["marketing", "communications", 2]],
+  ["Senior Communications Advisor", ["marketing", "communications", 3]],
+  ["Public Relations Officer", ["marketing", "communications", 2]],
+  ["Brand Ambassador", null], // promotional staff
+  ["Communications Technician", null], // telecoms
+  ["Sales and Marketing Executive", ["sales", "generalist", 2]], // sales first
+
+  // Procurement, buying & supply chain.
+  ["Procurement Officer", ["procurement", "generalist", 2]],
+  ["Procurement Specialist", ["procurement", "generalist", 2]],
+  ["Senior Procurement Advisor", ["procurement", "generalist", 3]],
+  ["Procurement Category Manager", ["procurement", "generalist", 4]],
+  ["Procurement Manager", ["procurement", "generalist", 4]],
+  ["Chief Procurement Officer", ["procurement", "generalist", 6]],
+  ["Assistant Buyer", ["procurement", "buying", 1]],
+  ["Senior Buyer", ["procurement", "buying", 3]],
+  ["Supply Chain Analyst", ["procurement", "supply-chain", 2]],
+  ["Demand Planner", ["procurement", "supply-chain", 2]],
+  ["Supply Chain Manager", ["procurement", "supply-chain", 4]],
+  ["Media Buyer", null], // advertising
+
+  // Commercial & contracts (construction and infrastructure).
+  ["Senior Contract Administrator", ["commercial", "generalist", 3]],
+  ["Contracts Manager", ["commercial", "generalist", 4]],
+  ["Commercial Manager", ["commercial", "generalist", 4]],
+  ["Commercial Director", ["commercial", "generalist", 5]],
+  ["Cadet Quantity Surveyor", ["commercial", "quantity-surveying", 1]],
+  ["Quantity Surveyor", ["commercial", "quantity-surveying", 2]],
+  ["Senior Quantity Surveyor", ["commercial", "quantity-surveying", 3]],
+  ["Estimator", ["commercial", "quantity-surveying", 2]],
+  ["Commercial Electrician", null], // a trade (wave 4)
+  ["Commercial Finance Manager", ["finance", "fpa", 4]], // finance is tried first
+
+  // Policy.
+  ["Assistant Policy Officer", ["policy", "generalist", 1]],
+  ["Policy Officer", ["policy", "generalist", 2]],
+  ["Senior Policy Advisor", ["policy", "generalist", 3]],
+  ["Principal Policy Officer", ["policy", "generalist", 4]],
+  ["Director, Strategic Policy", ["policy", "generalist", 5]],
+  ["Senior Ministerial Liaison Officer", ["policy", "generalist", 3]],
+  ["Cabinet Maker Apprentice", null], // carpentry (wave 4)
+  ["Policy Administrator - Insurance", ["admin", "generalist", 1]], // not the policy ladder
+
+  // Business analysis & product.
+  ["Junior Business Analyst", ["product", "generalist", 1]],
+  ["Business Analyst", ["product", "generalist", 2]],
+  ["Senior Business Analyst", ["product", "generalist", 3]],
+  ["Lead Business Analyst", ["product", "generalist", 3]],
+  ["Associate Product Manager", ["product", "product", 2]],
+  ["Product Owner", ["product", "product", 3]],
+  ["Product Manager", ["product", "product", 3]], // runs a product, not a team
+  ["Senior Product Manager", ["product", "product", 4]],
+  ["Head of Product", ["product", "product", 5]],
+  ["Chief Product Officer", ["product", "product", 6]],
+  ["Product Manager - Retail Deposits", ["product", "product", 3]], // a bank, not a shop
+  ["Product Marketing Manager", ["marketing", "generalist", 4]], // marketing first
+
+  // Data & AI.
+  ["Graduate Data Engineer", ["data", "engineering", 1]],
+  ["Data Analyst", ["data", "generalist", 2]],
+  ["Senior Data Analyst", ["data", "generalist", 3]],
+  ["Analytics Manager", ["data", "generalist", 4]],
+  ["Associate Data Scientist", ["data", "science", 1]],
+  ["Data Scientist", ["data", "science", 2]],
+  ["Senior Data Scientist", ["data", "science", 3]],
+  ["Principal Data Scientist", ["data", "science", 4]],
+  ["Machine Learning Engineer", ["data", "science", 2]],
+  ["AI Engineer", ["data", "science", 2]],
+  ["Data Engineer", ["data", "engineering", 2]],
+  ["Staff Data Engineer", ["data", "engineering", 4]],
+  ["Data Architect", ["data", "engineering", 4]],
+  ["Head of Data & Analytics", ["data", "generalist", 5]],
+  ["Chief Data Officer", ["data", "generalist", 6]],
+  ["Data Entry Clerk", ["admin", "generalist", 1]], // not data science
+
+  // IT & infrastructure, with cyber security.
+  ["Service Desk Analyst", ["technology", "support", 1]],
+  ["IT Support Technician", ["technology", "support", 1]],
+  ["IT Support Engineer", ["technology", "support", 2]],
+  ["Systems Administrator", ["technology", "generalist", 2]],
+  ["Network Engineer", ["technology", "generalist", 2]],
+  ["Senior Network Engineer", ["technology", "generalist", 3]],
+  ["Cloud Engineer", ["technology", "generalist", 2]],
+  ["Database Administrator", ["technology", "generalist", 2]],
+  ["Solution Architect", ["technology", "architecture", 4]],
+  ["Enterprise Architect", ["technology", "architecture", 4]],
+  ["IT Manager", ["technology", "generalist", 4]],
+  ["Head of IT", ["technology", "generalist", 5]],
+  ["Chief Information Officer", ["technology", "generalist", 6]],
+  ["Cyber Security Analyst", ["technology", "security", 2]],
+  ["Senior Security Engineer", ["technology", "security", 3]],
+  ["Security Architect", ["technology", "security", 4]],
+  ["CISO", ["technology", "security", 6]],
+  ["SAP FICO Consultant", ["technology", "enterprise-apps", 2]],
+  ["DevOps Engineer", ["software", "generalist", 2]], // software is tried first
+  ["Landscape Architect", null], // a built-environment profession (wave 4)
+
+  // Property & real estate.
+  ["Assistant Property Manager", ["property", "generalist", 1]],
+  ["Property Manager", ["property", "generalist", 2]],
+  ["Senior Property Manager", ["property", "generalist", 3]],
+  ["Graduate Valuer", ["property", "valuation", 1]],
+  ["Valuer", ["property", "valuation", 2]],
+  ["Senior Valuer", ["property", "valuation", 3]],
+  ["Real Estate Agent", ["property", "agency", 2]],
+  ["Lawyer (2-4 PQE) - Real Estate", ["legal", "generalist", 2]], // legal first
+
+  // Community, stakeholder & heritage.
+  ["Community Relations Officer", ["community", "generalist", 2]],
+  ["Stakeholder Engagement Lead", ["community", "generalist", 3]],
+  ["Heritage Advisor", ["community", "heritage", 2]],
+  ["Senior Heritage Advisor", ["community", "heritage", 3]],
+  ["Manager Heritage and Native Title", ["community", "heritage", 4]],
+  ["Intern - Land Access & Native Title", ["community", "heritage", 1]],
+
+  // Library, records & information.
+  ["Library Technician", ["library", "generalist", 1]],
+  ["Library Officer", ["library", "generalist", 2]],
+  ["Librarian", ["library", "generalist", 2]],
+  ["Senior Librarian", ["library", "generalist", 3]],
+  ["Records Officer", ["library", "records", 2]],
+  ["Document Controller", ["library", "records", 2]],
+  ["Senior Archivist", ["library", "records", 3]],
+  ["Furniture Library and Removal Assistant", null],
+
+  // Design & creative.
+  ["Junior Graphic Designer", ["creative", "generalist", 1]],
+  ["Graphic Designer", ["creative", "generalist", 2]],
+  ["Senior Interior Designer", ["creative", "generalist", 3]],
+  ["Creative Director", ["creative", "generalist", 5]],
+  ["Journalist", ["creative", "media", 2]],
+  ["Senior Newsroom Journalist", ["creative", "media", 3]],
+  ["Technical Writer", ["creative", "media", 2]],
+  ["Photographer", ["creative", "performing", 2]],
+  ["Performing Artiste", ["creative", "performing", 2]],
+  ["Architectural Designer", null], // architecture (wave 4)
+  // Found by the whole-archive diff after wave 2 (2026-09-25).
+  ["Demi Chef - Rydges South Bank", ["hospitality", "kitchen", 2]], // a suburb, not a bank
+  ["Food and Beverage Supervisor FT - Rydges South Bank", ["hospitality", "generalist", 2]],
+  ["Hotel Front Desk Night Auditor", ["admin", "generalist", 1]], // front desk, not audit
+  ["Night Audit Clerk", ["admin", "generalist", 1]],
+  ["Lecturer (Education Focused) in Business Analytics", ["education", "academic", 2]],
+  ["Teaching Fellow - Cybersecurity", ["education", "academic", 2]],
+  ["Teacher - Students At Educational Risk", ["education", "generalist", 2]],
+  ["Leading Teacher Range 3 - Director Community Engagement Team", ["education", "generalist", 3]],
+  ["Process Worker - Medium Risk PM - Banksmeadow - Chef Fresh", null],
+  ["Senior Specialist Legal Editor (Banking & Finance)", ["creative", "media", 3]], // publishing, not banking
+  ["Tax Support Associate – Retail", ["finance", "tax", 1]],
+  ["Fixed Term Associate - HR Coordinator (Pre-Onboarding)", ["hr", "generalist", 1]],
+  ["CMO - Intensive Care Unit, Maitland Hospital", null], // a Career Medical Officer
+  ["Chief Marketing Officer (CMO)", ["marketing", "generalist", 6]],
+  ["Talent Partner - Corporate Services", ["hr", "talent-acquisition", 2]], // not a law partner
+  ["Customer Partner - Insurance", ["insurance", "generalist", 2]], // an insurer, not a law firm
+  ["Graduate Cost Manager", ["commercial", "quantity-surveying", 1]],
+  ["Senior Accountant - Life Insurance and Investments", ["finance", "generalist", 3]],
+  ["Insurance External Auditor - Senior Associate", ["risk", "audit", 3]],
+  ["Senior Product Manager - Insurance", ["product", "product", 4]],
+  ["CDL-A Dedicated Driver - Medical Insurance", ["logistics", "driving", 3]], // a benefit, not a job
+  ["Multi Property Director of Food and Beverage", ["hospitality", "generalist", 5]], // hotels
+  ["Multi Property Director of Rooms", null],
+  ["Senior Civil Designer", null], // engineering design (wave 4)
+  ["Principal Electrical Designer", null],
+  ["Design Manager", null], // mostly construction design management
+  ["Graphic Design Manager", ["creative", "generalist", 4]],
+  ["BIM Library Manager", null],
+  ["Senior to Principal Power Systems Engineer", null], // electrical engineering, not IT
+  ["Senior Water Infrastructure Engineer", null],
+  ["Senior ICT Officer", ["technology", "generalist", 3]],
+  ["SVP Data Scientist", ["data", "science", 2]], // a bank grade
+  ["Teacher of Supply Chain and Logistics", ["education", "generalist", 2]],
+  ["Teacher - Library - Canterbury Girls High School", ["education", "generalist", 2]],
+  ["Banking Operations Clerk", ["banking", "generalist", 1]],
   // HSE, from the 2026-09-24 audit.
   [
     "Work Health and Safety Advisor APS Level 5 - Chief Operating Officer",
@@ -609,7 +871,7 @@ const EMPLOYER: [title: string, companyId: string, want: Want][] = [
   ["Sales Consultant", "", ["sales", "generalist", 2]],
   ["Customer Service Manager", QANTAS, null], // "Consumer & Retail", not a shop
   // The hint vouches for the ladder, not for everything the employer posts.
-  ["Category Manager", COLES, null],
+  ["Category Manager", COLES, ["procurement", "buying", 4]], // buying, not a store rung
   ["Finance Manager", COLES, ["finance", "generalist", 4]],
   ["HR Business Partner", COLES, ["hr", "generalist", 3]],
   ["Duty Manager", "sydney-edv", null], // Endeavour's pubs

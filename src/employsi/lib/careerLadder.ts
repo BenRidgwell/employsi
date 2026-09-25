@@ -168,7 +168,7 @@ const MULTI_LEVEL =
  * such rows sat on finance's rung 6. The noun decides instead.
  */
 const SUBORDINATE =
-  /\b(?:manager|director|head|lead|leader|supervisor|specialist|associate|analyst|engineer|developer|advis[oe]r|consultant|partner|coordinator|assistant|administrator|broker|auditor|architect|intern)\b/;
+  /\b(?:manager|director|head|lead|leader|supervisor|specialist|associate|analyst|engineer|developer|scientist|advis[oe]r|consultant|partner|coordinator|assistant|administrator|broker|auditor|architect|intern)\b/;
 /** `re`, but only in a title with no subordinate noun — see SUBORDINATE. */
 function execOnly(re: RegExp): RegExp {
   return new RegExp(`^(?!.*${SUBORDINATE.source})(?=.*(?:${re.source}))`);
@@ -260,7 +260,7 @@ const GENERIC_RUNGS: [RegExp, Rung][] = [
   [/\bsenior\b|\blead\b|\bteam leader\b|\bsupervisor\b|\bbusiness partner\b/, 3],
 
   [
-    /\bofficer\b|\badvis[oe]r\b|\bconsultant\b|\bgeneralist\b|\banalyst\b|\bspecialist\b|\bpractitioner\b|\bengineer\b|\bdeveloper\b|\baccountant\b|\bexecutive\b|\brecruiter\b|\bpartner\b|\btrainer\b/,
+    /\bofficer\b|\badvis[oe]r\b|\bconsultant\b|\bgeneralist\b|\banalyst\b|\bspecialist\b|\bpractitioner\b|\bengineer\b|\bdeveloper\b|\baccountant\b|\bexecutive\b|\brecruiter\b|\bpartner\b|\btrainer\b|\bscientist\b|\bauditor\b/,
     2,
   ],
   [/\bassistant\b|\badministrator\b|\badmin\b|\bcoordinator\b|\bclerk\b|\bsupport\b/, 1],
@@ -271,7 +271,7 @@ export const FAMILIES: FamilyDef[] = [
     id: "hr",
     label: "Human resources",
     match:
-      /\bhr\b|\bhuman resources?\b|\bpeople and culture\b|\bpeople and capability\b|\bpeople and performance\b|\bpeople (?:partner|advis[oe]r|officer|business partner|lead|director|operations)\b|\bhead of people\b|\bdirector of people\b|\bchief people officer\b|\bchief human resources officer\b|\bemployee relations\b|\bindustrial relations\b|\bworkplace relations\b|\btalent acquisition\b|\blearning and development\b|\borganisational development\b|\borganizational development\b|\bremuneration\b|\bhris\b|\brecruiter\b|\binternal recruit|\brecruitment (?:coordinator|advis[oe]r|officer|manager|partner|lead|specialist|business partner|administrator|assistant|and mobilisation)\b|\bworkforce (?:plann\w*|capability|planning and)\b|\btalent (?:advis[oe]r|specialist|sourcer)\b|\btraining and development\b|\blearning and talent\b/,
+      /\bhr\b|\bhuman resources?\b|\bpeople and culture\b|\bpeople and capability\b|\bpeople and performance\b|\bpeople (?:partner|advis[oe]r|officer|business partner|lead|director|operations)\b|\bhead of people\b|\bdirector of people\b|\bchief people officer\b|\bchief human resources officer\b|\bemployee relations\b|\bindustrial relations\b|\bworkplace relations\b|\btalent acquisition\b|\blearning and development\b|\borganisational development\b|\borganizational development\b|\bremuneration\b|\bhris\b|\brecruiter\b|\binternal recruit|\brecruitment (?:coordinator|advis[oe]r|officer|manager|partner|lead|specialist|business partner|administrator|assistant|and mobilisation)\b|\bworkforce (?:plann\w*|capability|planning and)\b|\btalent (?:advis[oe]r|specialist|sourcer|partner)\b|\btraining and development\b|\blearning and talent\b/,
     skills: ["Human Resources"],
     // Payroll reports into HR at some employers and finance at others, and its
     // ladder (officer → payroll manager) does not lead to CPO: it is a family
@@ -288,7 +288,7 @@ export const FAMILIES: FamilyDef[] = [
         id: "talent-acquisition",
         label: "Talent acquisition",
         match:
-          /\btalent acquisition\b|\brecruit|\bsourc(?:er|ing)\b|\btalent (?:advis[oe]r|specialist)\b/,
+          /\btalent acquisition\b|\brecruit|\bsourc(?:er|ing)\b|\btalent (?:advis[oe]r|specialist|partner)\b/,
       },
       {
         id: "employee-relations",
@@ -368,7 +368,7 @@ export const FAMILIES: FamilyDef[] = [
     // are bank sales ("Bancassurance Financial Executive") and financial-crime
     // compliance. "Financial Services" is an industry, dropped from `match`.
     exclude:
-      /\bfinancial (?:planner|adviser|advisor|counsell?or|consultant|coach|aid|crime)\b|\bbancassurance\b|\bfinance broker\b|\bmortgage\b|\bloan\b|\blending\b|\binsurance\b|\bfinance (?:sales|consultant)\b|\bsales\b(?! ledger)|\bcollections?\b|\bcustomer service\b/,
+      /\bfinancial (?:planner|adviser|advisor|counsell?or|consultant|coach|aid|crime)\b|\bbancassurance\b|\bfinance broker\b|\bmortgage\b|\bloan\b|\blending\b|\binsurance (?:agent|broker|sales|consultant|advis[oe]r|specialist|planner)\b|\bfinance and insurance\b|\bfinance (?:sales|consultant)\b|\bsales\b(?! ledger)|\bcollections?\b|\bcustomer service\b|\blawyers?\b|\bsolicitors?\b|\bcounsel\b|\bparalegal\b|\bbanking and finance\b/,
     tracks: [
       {
         id: "fpa",
@@ -532,7 +532,7 @@ export const FAMILIES: FamilyDef[] = [
     // and professions that work in or for shops are their own ladders; head
     // office buying and planning is a different ladder not yet modelled.
     exclude:
-      /\bstore ?(?:person|man|men)\b|\bstore (?:development|design|planning)\b|\bstores (?:officer|coordinator|clerk|supervisor|person)\b|\bwarehouse\b|\bdistribution cent|\bcold store\b|\bretail (?:bank|banking|lending|energy|credit)\b|\bpharmac|\bbutcher\b|\bbaker\b|\bbarista\b|\bchef\b|\bcook\b|\bshop ?fitter\b|\bmachine shop\b|\bshop floor\b|\bworkshop\b|\belectrician\b|\bmechanic\b|\btechnician\b|\bdriver\b|\bforklift\b|\bsecurity\b|\bcleaner\b|\bloss prevention\b|\boptometrist\b|\bhairdresser\b|\bsoftware\b|\bdeveloper\b|\bengineer\b|\banalyst\b|\bplanner\b|\bbuyer\b|\ballocator\b|\bproduction\b|\bmanufacturing\b|\b(?:plant|process|machine) operator\b|\blaborator|\bdc\b|\bdispatch\b|\bcafe\b|\bstocktake\b|\bstores and\b|\bsupply officer\b|\blease\b|\bleasing\b|\bproperty\b|\bcommercial\b|\bmedia\b|\bmarketing\b|\bsafety\b|\bwhs\b|\bhse\b/,
+      /\bstore ?(?:person|man|men)\b|\bstore (?:development|design|planning)\b|\bstores (?:officer|coordinator|clerk|supervisor|person)\b|\bwarehouse\b|\bdistribution cent|\bcold store\b|\bretail (?:bank|banking|lending|energy|credit)\b|\bpharmac|\bbutcher\b|\bbaker\b|\bbarista\b|\bchef\b|\bcook\b|\bshop ?fitter\b|\bmachine shop\b|\bshop floor\b|\bworkshop\b|\belectrician\b|\bmechanic\b|\btechnician\b|\bdriver\b|\bforklift\b|\bsecurity\b|\bcleaner\b|\bloss prevention\b|\boptometrist\b|\bhairdresser\b|\bsoftware\b|\bdeveloper\b|\bengineer\b|\banalyst\b|\bplanner\b|\bbuyer\b|\ballocator\b|\bproduction\b|\bmanufacturing\b|\b(?:plant|process|machine) operator\b|\blaborator|\bdc\b|\bdispatch\b|\bcafe\b|\bstocktake\b|\bstores and\b|\bsupply officer\b|\blease\b|\bleasing\b|\bproperty\b|\bcommercial\b|\bmedia\b|\bmarketing\b|\bsafety\b|\bwhs\b|\bhse\b|\bdesign\b|\bproduct (?:manager|owner)\b|\bdeposits\b|\bbanking\b/,
     // Only for employers in ladderEmployers.ts's retail set: store roles
     // advertised without a retail word. Deliberately absent — "Duty Manager"
     // (Endeavour's pubs, airports, cinemas) and a bare "Supervisor" or "Team
@@ -662,6 +662,531 @@ export const FAMILIES: FamilyDef[] = [
     rungs: [[/\bsafety superintendent\b|\bhse superintendent\b/, 4]],
   },
   {
+    id: "legal",
+    label: "Legal",
+    // Private practice: paralegal / graduate → lawyer / solicitor → senior
+    // associate → special counsel → partner. In-house and government: legal
+    // counsel / legal officer → senior → principal → general counsel → CLO.
+    // Before risk and HR: a workplace-relations lawyer is a lawyer.
+    match:
+      /\blawyers?\b|\bsolicitors?\b|\bparalegal\b|\bbarrister\b|\blaw (?:clerk|graduate)\b|\blegal (?:counsel|officer|assistant|associate|practitioner|specialist|advis[oe]r|director|manager|clerk|intern|trainee|graduate)\b|\bcounsel\b|\bgeneral counsel\b|\bchief legal officer\b|\bhead of legal\b|\bcompany secretar\w*\b|\bspecial counsel\b|^(?:equity |salaried )?partner\b(?!.*\b(?:talent|customer|business|hr|people|delivery|channel|alliance)\b)|\bpartner\b.*\b(?:law|lawyers?|legal|litigation|disputes|banking and finance)\b|\bsenior associate\b.*\b(?:law|legal|litigation|disputes|workplace relations|employment|insurance|real estate|property|construction|corporate|commercial|banking|planning|environment|m and a)\b/,
+    skills: ["Commercial & Legal"],
+    // A legal SECRETARY is support (the admin ladder); genetic and financial
+    // counsellors are not counsel.
+    exclude:
+      /\blegal secretary\b|\bcounsell?or\b|\bsales\b|\baccount (?:manager|executive)\b|\bbusiness development\b|\bnurse\b|\brecruit/,
+    tracks: [
+      {
+        id: "in-house",
+        label: "In-house & government",
+        // Special counsel is a private-practice rank, between senior associate
+        // and partner — not in-house.
+        match:
+          /^(?!.*\bspecial counsel\b).*(?:\bcounsel\b|\blegal officer\b|\bchief legal officer\b|\bhead of legal\b|\bcompany secretar)/,
+      },
+    ],
+    generic: false,
+    rungs: [
+      [execOnly(/\bchief legal officer\b|\bclo\b/), 6],
+      [
+        /\bgeneral counsel\b|\bhead of legal\b|\blegal director\b|\bdirector (?:of )?legal\b|\b(?:equity |salaried )?partner\b/,
+        5,
+      ],
+      [
+        /\bspecial counsel\b|\bprincipal (?:lawyer|solicitor|legal officer|legal counsel|counsel)\b|\bexecutive counsel\b|\blead counsel\b|\bmanaging (?:lawyer|solicitor|principal)\b|\blegal manager\b|\bcompany secretary\b(?!.*\bassistant\b)/,
+        4,
+      ],
+      [
+        /\bsenior (?:associate|lawyer|solicitor|legal (?:counsel|officer)|corporate counsel|counsel)\b|\bassistant company secretary\b/,
+        3,
+      ],
+      [
+        /\bparalegal\b|\blegal assistant\b|\blaw clerk\b|\b(?:graduate|junior|trainee) (?:lawyer|solicitor)\b|\blaw graduate\b|\blegal (?:intern|trainee|graduate)\b/,
+        1,
+      ],
+      [
+        /\blawyers?\b|\bsolicitors?\b|\bbarrister\b|\bcounsel\b|\blegal officer\b|\bassociate\b|\blegal (?:specialist|advis[oe]r|practitioner)\b/,
+        2,
+      ],
+    ],
+  },
+  {
+    id: "insurance",
+    label: "Insurance",
+    // Claims: officer → senior → team leader → claims manager. Underwriting:
+    // underwriter → senior → underwriting manager. Actuarial: intern →
+    // analyst → senior / actuary → manager → head of actuarial.
+    //
+    // COMMISSION SALES IS LEFT OUT. US "Insurance Agent", Singapore's
+    // "Insurance Planner" and a car dealer's "Finance and Insurance
+    // Consultant" sell policies; they are not this ladder. Neither is the
+    // French "mandataire / agent d'assurance" — assurance is French for
+    // insurance, and those are agents too.
+    match:
+      /\binsurance\b|\bunderwrit\w*\b|\bclaims? (?:officer|consultant|assessor|specialist|manager|adjuster|handler|advis[oe]r|lead|team leader|analyst|representative|administrator)\b|\bloss adjuster\b|\bactuar\w*\b|\binsurance broker\b|\bbroking\b/,
+    skills: ["Insurance & Actuarial"],
+    exclude:
+      /\bdriver\b|\binsurance (?:agent|planner|sales)\b|\bfinance and insurance\b|\bagents?\b|\baudit\w*\b|\baccountant\b|\bproduct (?:manager|owner)\b|\bcapital raising\b|\bmandataire\b|\bsales\b|\bnurse\b|\blawyer\b|\bsolicitor\b|\bsoftware\b|\bdeveloper\b|\bpolicy (?:administrator|admin)\b/,
+    tracks: [
+      { id: "actuarial", label: "Actuarial", match: /\bactuar/ },
+      { id: "underwriting", label: "Underwriting", match: /\bunderwrit/ },
+      { id: "claims", label: "Claims", match: /\bclaims?\b|\bloss adjuster\b/ },
+    ],
+    rungs: [
+      [/\bhead of (?:actuarial|claims|underwriting)\b|\bappointed actuary\b|\bchief actuary\b/, 5],
+      [/\bactuarial (?:intern|graduate|trainee|student)\b/, 1],
+      [/\bsenior\b|\blead\b|\bteam leader\b|\bactuary\b/, 3],
+      [
+        /\bunderwriter\b|\bloss adjuster\b|\bclaims (?:officer|assessor|handler|representative)\b/,
+        2,
+      ],
+    ],
+  },
+  {
+    id: "risk",
+    label: "Risk, compliance & audit",
+    // officer / analyst → senior / adviser → risk or compliance manager →
+    // head of risk / internal audit → CRO. Before banking: a bank's credit
+    // risk and financial-crime compliance teams are on this ladder.
+    match:
+      /\brisk\b|\bcompliance\b|\baudit(?:or|ors)?\b|\bassurance\b|\bgovernance\b|\bfraud\b|\baml\b|\bfinancial crime\b|\bsanctions\b|\bkyc\b|\bregulatory (?:affairs|compliance|reporting|specialist|advis[oe]r|manager)\b|\bprivacy (?:officer|manager|advis[oe]r|specialist)\b|\bchief risk officer\b/,
+    skills: ["Risk & Compliance"],
+    // Quality assurance is its own ladder; cyber and data governance are IT's
+    // and data's; French "assurance" is insurance; clinical risk is nursing's.
+    exclude:
+      /\b(?:low|medium|high|educational|at) risk\b|\bnight audit\w*\b|\bfront desk\b|\bprocess worker\b|\bteachers?\b|\blecturer\b|\bteaching\b|\bquality\b|\bqa\b|\bcyber\b|\bsecurity\b|\bidentity governance\b|\bdata (?:governance|and ai governance)\b|\binformation governance\b|\bai governance\b|\bmandataire\b|\bagent\b|\bassurances?\b.*\bcollectives?\b|\bclinical\b|\bsafety\b|\bengineer\b|\bsales\b|\bnurse\b|\bsoftware\b|\bstore\b|\bbeautician\b/,
+    tracks: [
+      { id: "audit", label: "Audit & assurance", match: /\baudit|\bassurance\b/ },
+      {
+        id: "compliance",
+        label: "Compliance & financial crime",
+        match:
+          /\bcompliance\b|\bfinancial crime\b|\baml\b|\bkyc\b|\bsanctions\b|\bfraud\b|\bregulatory\b|\bprivacy\b/,
+      },
+    ],
+  },
+  {
+    id: "quality",
+    label: "Quality (QA / QC)",
+    // inspector / technician → QA officer / QA-QC engineer → supervisor /
+    // senior → quality manager → head of quality. Software QA is testing and
+    // stays with software, which is tried first.
+    match:
+      /\bquality (?:assurance|control|manager|management|engineer|officer|advis[oe]r|inspector|technician|coordinator|lead|specialist|analyst|systems|director)\b|\bqa ?qc\b|\bqc (?:inspector|technician|officer|supervisor|analyst|engineer|manager)\b|\bqa (?:officer|manager|advis[oe]r|inspector|technician|coordinator|lead|specialist)\b|\bhead of quality\b/,
+    skills: ["Quality Assurance"],
+    exclude:
+      /\bsoftware\b|\btest(?:er|ing)?\b|\bautomation\b|\bnurse\b|\bclinical\b|\bpatient\b|\bsales\b|\bdata quality\b|\bfood safety\b/,
+    rungs: [
+      [/\bhead of quality\b|\bquality director\b|\bdirector (?:of )?quality\b/, 5],
+      [/\binspector\b|\btechnician\b/, 1],
+    ],
+  },
+  {
+    id: "community",
+    label: "Community, stakeholder & heritage",
+    // officer / advisor → senior → lead / specialist → manager. Heritage and
+    // native title: field officer → heritage advisor → senior → manager.
+    // Before banking: "Heritage Bank" is a bank, and excluded here.
+    match:
+      /\bnative title\b|\bcultural heritage\b|\bheritage (?:advis[oe]r|specialist|officer|field|manager|lead|consultant|coordinator|compliance)\b|\b(?:lead|superintendent|senior advis[oe]r|specialist) (?:\w+ )?heritage\b|\bstakeholder (?:engagement|relations|manager|advis[oe]r|specialist|lead|officer)\b|\bcommunity (?:relations|engagement|liaison|and stakeholder)\b|\bindigenous (?:engagement|relations|affairs)\b|\bgovernment (?:relations|and stakeholder relations)\b|\bland access\b/,
+    skills: ["Community & Native Title"],
+    exclude:
+      /\bheritage bank\b|\bsales\b|\bnurse\b|\bengineer\b|\bcommunications\b|\bteach\w*\b|\blecturer\b/,
+    tracks: [
+      {
+        id: "heritage",
+        label: "Heritage & native title",
+        match: /\bheritage\b|\bnative title\b|\bland access\b/,
+      },
+    ],
+  },
+  {
+    id: "banking",
+    label: "Banking, lending & advice",
+    // Branch: teller → banking consultant → branch manager. Lending: lending
+    // officer → lending manager → senior lending manager. Relationship
+    // banking: relationship / business banking manager → senior RM → head.
+    // Advice: paraplanner → financial adviser → senior → practice principal.
+    // Investment banking runs on bank GRADES: analyst → associate → VP →
+    // director → managing director — VP here is the fourth rung, not an
+    // executive.
+    match:
+      /\bbanking\b|\bbanker\b|\bbank (?:teller|officer|manager|branch|consultant|specialist|analyst)\b|\bheritage bank\b|\blending\b|\blender\b|\bmortgage\b|\bloans?\b|\bcredit (?:analyst|officer|assessor|specialist|manager|assessment)\b|\bparaplanner\b|\bfinancial (?:planner|adviser|advisor)\b|\bwealth (?:adviser|advisor|manager|specialist|relationship manager|protection)\b|\bprivate wealth\b|\brelationship manager\b|\bteller\b/,
+    skills: ["Banking & Lending"],
+    // Collections and bank sales are other ladders; food and blood banks are
+    // not banks, and neither is "Rydges South Bank" — hence no bare "bank" in
+    // `match`. "Banking & Finance" is a law-firm practice area.
+    exclude:
+      /\bbanking and finance\b|\blegal\b|\beditor\b|\bcredit control\w*\b|\bcollections?\b|\bbancassurance\b|\bfinancial consultant\b|\bfood bank\b|\bblood bank\b|\bsperm bank\b|\bsoftware\b|\bdeveloper\b|\bengineer\b|\bdata\b|\bsales\b|\bnurse\b|\blawyer\b|\bsolicitor\b|\bmarketing\b|\bproduct (?:manager|owner)\b/,
+    tracks: [
+      { id: "investment-banking", label: "Investment banking", match: /\binvestment bank/ },
+      {
+        id: "advice",
+        label: "Financial advice",
+        match:
+          /\bparaplanner\b|\bfinancial (?:planner|adviser|advisor)\b|\bwealth (?:adviser|advisor)\b|\bprivate wealth adviser\b/,
+      },
+      {
+        id: "lending",
+        label: "Lending",
+        match: /\blending\b|\blender\b|\bmortgage\b|\bloans?\b|\bcredit\b/,
+      },
+      {
+        id: "relationship",
+        label: "Relationship banking",
+        match:
+          /\brelationship (?:manager|director)\b|\b(?:business|corporate|commercial|private|institutional|agribusiness) bank(?:ing|er)\b/,
+      },
+    ],
+    generic: false,
+    rungs: [
+      // Investment banking, by grade.
+      [/\binvestment bank\w*\b.*\bmanaging director\b|\bmanaging director\b.*\binvestment bank/, 6],
+      [/\binvestment bank\w*\b.*\bdirector\b|\bdirector\b.*\binvestment bank/, 5],
+      [
+        /\binvestment bank\w*\b.*\b(?:vice president|vp)\b|\b(?:vice president|vp)\b.*\binvestment bank/,
+        4,
+      ],
+      [/\binvestment bank\w*\b.*\bassociate\b|\bassociate\b.*\binvestment bank/, 3],
+      [
+        /\binvestment bank\w*\b.*\b(?:analyst|intern)\b|\b(?:analyst|intern)\b.*\binvestment bank/,
+        2,
+      ],
+      // Everyone else.
+      [/\bhead of\b|\bgeneral manager\b|\bdirector\b|\bpractice principal\b/, 5],
+      [
+        /\bsenior (?:\w+ ){0,2}(?:lending|banking|relationship) manager\b|\brelationship director\b|\bbranch manager\b|\bsenior (?:financial|wealth|private wealth) advis[oe]r\b/,
+        4,
+      ],
+      [
+        /\b(?:lending|banking|relationship|mortgage|credit|wealth) manager\b|\bsenior (?:credit|lending) (?:analyst|officer|specialist)\b|\bteam leader\b/,
+        3,
+      ],
+      [
+        /\bteller\b|\bparaplanner\b|\b(?:graduate|trainee|intern|junior)\b|\bcustomer service (?:officer|representative)\b|\bclerk\b/,
+        1,
+      ],
+      [
+        /\bbanking (?:consultant|specialist|advis[oe]r|officer|executive)\b|\b(?:customer|personal|transaction|premier) banking (?:specialist|advis[oe]r|consultant)\b|\bpersonal banker\b|\bmember experience officer\b|\blending (?:officer|specialist|executive|assessment officer|consultant)\b|\bhome lending\b|\bmortgage (?:broker|specialist|consultant|adviser|advisor|loan specialist)\b|\bcredit (?:analyst|officer|assessor|specialist)\b|\bfinancial (?:planner|adviser|advisor)\b|\b(?:private )?wealth (?:adviser|advisor|specialist)\b|\bwealth protection\b|\bspecialist\b|\bconsultant\b|\bofficer\b|\banalyst\b|\bexecutive\b/,
+        2,
+      ],
+    ],
+  },
+  {
+    id: "marketing",
+    label: "Marketing & communications",
+    // assistant / coordinator → executive / specialist → senior / brand manager
+    // → marketing manager → head of marketing → CMO. Communications and PR
+    // run the same bands. After sales: "Sales & Marketing Executive" is sales.
+    match:
+      /\bmarketing\b|\bbrand (?:manager|executive|coordinator|specialist|director|lead|strategist|marketing)\b|\bcommunications? (?:officer|advis[oe]r|coordinator|specialist|manager|lead|director|executive|partner|consultant|assistant|business partner)\b|\bhead of (?:communications|brand)\b|\bpublic relations\b|\bpr (?:executive|manager|coordinator|officer|consultant|specialist)\b|\bmedia relations\b|\bcontent (?:marketing|strategist|coordinator|manager|specialist|lead|producer|creator)\b|\bsocial media\b|\bcopy ?writer\b|\bseo\b|\bdigital marketing\b|\bcampaign (?:manager|coordinator|executive|specialist)\b|\bchief marketing officer\b|\binternal communications\b/,
+    skills: ["Marketing & Comms"],
+    // Brand ambassadors are promotional staff; communications TECHNICIANS and
+    // engineers are telecoms.
+    exclude:
+      /\bbrand ambassador\b|\bcommunications? (?:technician|engineer|network|systems|operator|centre)\b|\btelecommunications\b|\bradio\b|\bmedia buyer\b|\bnurse\b|\bdriver\b/,
+    tracks: [
+      {
+        id: "communications",
+        label: "Communications & PR",
+        match: /\bcommunications?\b|\bpublic relations\b|\bpr\b|\bmedia relations\b/,
+      },
+    ],
+    rungs: [
+      [/\bassistant brand manager\b/, 2],
+      [/\bsenior brand manager\b|\bbrand director\b/, 4],
+      // A brand manager in FMCG runs a brand, not a team.
+      [/\bbrand manager\b/, 3],
+    ],
+  },
+  {
+    id: "procurement",
+    label: "Procurement, buying & supply chain",
+    // officer / specialist → senior → category manager / procurement manager
+    // → head of procurement → CPO. Retail buying: assistant buyer → buyer →
+    // senior buyer → buying manager. Supply chain: analyst / planner →
+    // senior → supply chain manager → director.
+    match:
+      /\bprocurement\b|\bpurchasing\b|\bbuyers?\b|\bbuying\b|\bsourcing (?:analyst|specialist|manager|lead|officer)\b|\bcategory (?:manager|specialist|lead|analyst|executive)\b|\bsupply chain\b|\bvendor manage\w*\b|\bsupplier (?:manager|relationship|quality)\b|\bpurchase officer\b|\bexpeditor\b|\b(?:demand|supply|inventory|materials?|merchandise) planner\b|\binventory (?:analyst|controller|manager)\b|\bchief procurement officer\b/,
+    skills: ["Procurement & Supply"],
+    exclude:
+      /\bteach\w*\b|\blecturer\b|\bmedia buyer\b|\bsoftware asset\b|\bsales\b|\baccount manager\b|\blawyer\b|\bsolicitor\b|\bnurse\b|\bdriver\b|\bmarketing\b/,
+    tracks: [
+      {
+        id: "buying",
+        label: "Buying & category",
+        // A retailer's category manager buys a range; a procurement category
+        // manager buys the company's own spend.
+        match:
+          /\bbuyers?\b|\bbuying\b|\bmerchandise planner\b|(?<!procurement )\bcategory (?:manager|executive|analyst|specialist)\b/,
+      },
+      {
+        id: "supply-chain",
+        label: "Supply chain & planning",
+        match: /\bsupply chain\b|\bplanner\b|\binventory\b|\bexpeditor\b/,
+      },
+    ],
+    rungs: [
+      [/\bassistant buyer\b/, 1],
+      [/\bsenior buyer\b/, 3],
+      [/\bbuyer\b|\bplanner\b/, 2],
+    ],
+  },
+  {
+    id: "commercial",
+    label: "Commercial & contracts",
+    // Construction and infrastructure's commercial ladder. Contract
+    // administrator → senior CA → contracts / commercial manager → commercial
+    // director; quantity surveying: cadet → QS → senior QS → commercial
+    // manager, with estimators beside them. After finance and legal, so a
+    // "Commercial Finance Manager" and a commercial lawyer go there.
+    match:
+      /\bcontracts? (?:administrator|administration|manager|officer|specialist|advis[oe]r|lead|engineer|coordinator|analyst)\b|\bquantity surveyor\b|\bestimator\b|\bcost (?:manager|planner|estimator|engineer)\b|\bcommercial (?:manager|director|analyst|business partner|lead|advis[oe]r|specialist|officer|coordinator|executive)\b|\bhead of commercial\b/,
+    skills: [],
+    exclude:
+      /\bcommercial (?:cleaning|cleaner|electrician|kitchen|property|real estate|lending|banking|pilot|diver|driver|painter|plumber|litigation|lawyer)\b|\bsales\b|\baccount manager\b|\bnurse\b/,
+    tracks: [
+      {
+        id: "quantity-surveying",
+        label: "Quantity surveying & estimating",
+        match:
+          /\bquantity surveyor\b|\bestimator\b|\bcost (?:manager|planner|estimator|engineer)\b/,
+      },
+    ],
+    rungs: [
+      [
+        /\b(?:cadet|graduate|junior|trainee) (?:quantity surveyor|estimator|cost manager|cost planner|contracts? administrator|commercial analyst)\b/,
+        1,
+      ],
+      [
+        /\bsenior (?:contracts? administrator|quantity surveyor|estimator)\b|\bchief estimator\b/,
+        3,
+      ],
+      [/\bcontracts? administrator\b|\bquantity surveyor\b|\bestimator\b/, 2],
+    ],
+  },
+  {
+    id: "policy",
+    label: "Policy & government",
+    // assistant policy officer → policy officer / adviser / analyst → senior →
+    // principal → director. Ministerial and cabinet liaison sit alongside.
+    // "Cabinet" alone is mostly cabinet MAKERS — a carpentry trade.
+    match:
+      /\bpolicy (?:officer|advis[oe]r|analyst|manager|director|lead|specialist|consultant)\b|\b(?:strategic|public|social|economic|health|education|regulatory|budget) policy\b|\bdirector,? (?:\w+ )?policy\b|\bministerial\b|\bparliamentary\b|\bcabinet (?:liaison|officer|and parliamentary)\b|\blegislation officer\b/,
+    skills: ["Policy & Programs"],
+    exclude:
+      /\bcabinet (?:maker|installer|assembler|delivery|attendant|vision)\b|\binsurance\b|\bpolicy (?:admin\w*|servicing|processing)\b|\bsales\b|\bnurse\b|\bengineer\b/,
+    rungs: [[/\bassistant policy officer\b/, 1]],
+  },
+  {
+    id: "product",
+    label: "Business analysis & product",
+    // Business analysis: junior → BA → senior → lead / principal → BA
+    // manager. Product: associate product manager → product owner / product
+    // manager → senior → head of product → CPO. A product manager runs a
+    // product, not a team, so the generic "manager" rung is wrong for them.
+    match:
+      /\bbusiness (?:analyst|analysis|systems analyst|process analyst)\b|\bprocess (?:analyst|architect)\b|\bsystems analyst\b|\bproduct (?:manager|owner|lead|director|analyst|management)\b|\bhead of product\b|\bchief product officer\b|\bvp (?:of )?product\b/,
+    skills: ["Business Analysis", "Product Management"],
+    exclude:
+      /\bproduct marketing\b|\bsales\b|\bnurse\b|\bproduct (?:specialist|consultant|trainer|demonstrator|advis[oe]r)\b|\bmarketing\b/,
+    tracks: [{ id: "product", label: "Product management", match: /\bproduct\b/ }],
+    generic: false,
+    rungs: [
+      [execOnly(/\bchief product officer\b|\bcpo\b/), 6],
+      [
+        /\bhead of (?:product|business analysis)\b|\bdirector (?:of )?product\b|\bproduct director\b|\bvp (?:of )?product\b/,
+        5,
+      ],
+      [
+        /\b(?:senior|lead|principal|group|staff) (?:\w+ )?product (?:manager|owner)\b|\bprincipal business analyst\b|\bbusiness analyst manager\b|\bmanager business analysis\b|\bbusiness analysis manager\b/,
+        4,
+      ],
+      [/\b(?:associate|assistant|junior) product manager\b/, 2],
+      [
+        /\bsenior (?:\w+ ){0,2}(?:business|systems|process) analyst\b|\blead (?:\w+ )?business analyst\b|\bproduct (?:manager|owner|lead)\b|\bprocess architect\b/,
+        3,
+      ],
+      [
+        /\b(?:junior|graduate|trainee|intern) (?:\w+ )?(?:business|systems) analyst\b|\bbusiness analyst graduate\b/,
+        1,
+      ],
+      [
+        /\b(?:associate|assistant|junior) product manager\b|\bproduct analyst\b|\b(?:business|systems|process|business systems|technical business) analyst\b/,
+        2,
+      ],
+    ],
+  },
+  {
+    id: "data",
+    label: "Data & AI",
+    // analyst → senior → lead → analytics manager → head of data → CDO.
+    // Data science and ML/AI engineering, and data engineering, are tracks
+    // running the same bands; staff / principal is the senior IC rung.
+    match:
+      /\bdata (?:analyst|scientist|engineer|architect|analytics|science|engineering|governance|platform|visuali[sz]ation|modeller|steward|quality)\b|\banalytics\b|\bbusiness intelligence\b|\bbi (?:developer|analyst|specialist|lead|engineer)\b|\bpower bi\b|\bmachine learning\b|\bml (?:engineer|scientist|ops)\b|\bai (?:engineer|architect|specialist|lead|scientist|ml engineer|solutions|governance|enablement)\b|\bgen(?:erative)? ai\b|\bapplied ai\b|\binsights? (?:analyst|manager|lead)\b|\breporting analyst\b|\bquantitative analyst\b|\bstatistician\b|\bchief data officer\b|\bhead of (?:data|ai|analytics)\b/,
+    skills: ["Data Analytics", "Data Science & Machine Learning", "Data Engineering"],
+    exclude:
+      /\bdata entry\b|\bsales\b|\bnurse\b|\brecruit|\bmarketing\b|\bproduct (?:manager|owner)\b|\btrainer\b|\blecturer\b|\bprofessor\b|\bteach\w*\b/,
+    tracks: [
+      {
+        id: "science",
+        label: "Data science & AI",
+        match: /\bscientist\b|\bmachine learning\b|\bml\b|\bai\b|\bstatistic|\bquantitative\b/,
+      },
+      {
+        id: "engineering",
+        label: "Data engineering",
+        match: /\bdata (?:engineer|architect|platform|engineering|modeller)\b/,
+      },
+    ],
+    rungs: [
+      [/\bstaff (?:\w+ ){0,2}engineer\b|\bprincipal\b|\barchitect\b/, 4],
+      [/\b(?:associate|junior|graduate) data scientist\b/, 1],
+    ],
+  },
+  {
+    id: "technology",
+    label: "IT & infrastructure",
+    // Service desk → IT support engineer → systems / network / cloud engineer
+    // → senior → architect / IT manager → head of IT → CIO. Cyber security
+    // and enterprise applications (SAP, Salesforce, ServiceNow) are tracks.
+    // After software, which keeps developers, DevOps and SRE.
+    match:
+      /\bnetwork (?:engineer|administrator|analyst|architect|technician|specialist|manager|security)\b|\bsystems? (?:administrator|engineer|architect)\b|\bservice desk\b|\bhelp ?desk\b|\bit (?:support|manager|director|engineer|technician|officer|specialist|analyst|operations|infrastructure|security|service)\b|\bict (?:support|technician|officer|manager|specialist|engineer)\b|\bdesktop support\b|\beuc\b|\binfrastructure (?:engineer|architect|manager|lead|specialist|analyst)\b|\bcloud (?:engineer|architect|consultant|lead|specialist|operations|infrastructure|systems)\b|\bdatabase administrator\b|\bdba\b|\b(?:solutions?|enterprise|technical|domain|security|integration|cloud|application|servicenow|salesforce|hpc and storage) architect\b|\bcyber\w*\b|\binformation security\b|\bsecurity (?:engineer|analyst|architect|operations|specialist|consultant)\b|\bsoc analyst\b|\bincident responder\b|\bpenetration tester\b|\bidentity (?:and access|governance)\b|\biam\b|\bsap\b|\bservicenow\b|\bsalesforce (?:administrator|consultant|architect|analyst|developer)\b|\bdynamics 365\b|\berp\b|\b(?:sharepoint|m365|citrix|vmware|linux|windows|oracle) (?:administrator|engineer|consultant)\b|\bchief information (?:security )?officer\b|\bcio\b|\bciso\b|\bhead of (?:it|technology|cyber|information security|infrastructure)\b/,
+    skills: ["IT & Systems", "Cybersecurity", "Cloud & DevOps"],
+    exclude:
+      /\bsales\b|\baccount (?:manager|executive)\b|\brecruit|\bnurse\b|\bteacher\b|\bdata (?:engineer|scientist|analyst|architect)\b|\blandscape architect\b|\bbuilding\b|\bpresales\b|\bpayroll\b|\bpower systems?\b|\bwater\b|\bcivil\b|\bstructural\b|\bmechanical\b|\bsubstation\b|\bprotection\b|\brail\b|\blecturer\b|\bprofessor\b|\bteach\w*\b/,
+    tracks: [
+      {
+        id: "security",
+        label: "Cyber security",
+        match:
+          /\bcyber|\bsecurity\b|\biam\b|\bidentity\b|\bsoc\b|\bincident respon|\bpenetration\b|\bciso\b/,
+      },
+      { id: "architecture", label: "Architecture", match: /\barchitect\b/ },
+      {
+        id: "enterprise-apps",
+        label: "Enterprise applications",
+        match:
+          /\bsap\b|\bservicenow\b|\bsalesforce\b|\bdynamics 365\b|\berp\b|\boracle\b(?! (?:database|dba))/,
+      },
+      {
+        id: "support",
+        label: "Service desk & support",
+        match:
+          /\bservice desk\b|\bhelp ?desk\b|\bit support\b|\bict support\b|\bdesktop support\b|\beuc\b|\btechnician\b/,
+      },
+    ],
+    rungs: [
+      [/\barchitect\b/, 4],
+      [
+        /^(?!.*\bsenior\b).*(?:\bservice desk (?:analyst|officer|technician|agent)\b|\bhelp ?desk\b|\b(?:it|ict|euc|desktop) (?:support )?(?:technician|officer|analyst|specialist|agent)\b|\btechnician\b|\bit support$)/,
+        1,
+      ],
+      [
+        /\b(?:systems?|network|database|salesforce|servicenow|sharepoint|m365|citrix|vmware|linux|windows|oracle) administrator\b|\bdba\b/,
+        2,
+      ],
+    ],
+  },
+  {
+    id: "property",
+    label: "Property & real estate",
+    // Property management: assistant → property manager → senior → portfolio
+    // manager. Valuation: graduate → valuer → senior → director. Agency:
+    // sales agent → senior → principal. After legal and banking, so a real
+    // estate LAWYER or a bank's property RM goes there.
+    match:
+      /\bproperty (?:manager|management|officer|executive|administrator|analyst|consultant|valuer|coordinator|associate|director|portfolio)\b|\breal estate (?:agent|sales|manager|investment|associate|analyst|advisory|valuations?)\b|\bvaluers?\b|\bleasing (?:manager|executive|consultant|agent|administrator)\b|\bstrata (?:manager|community manager)\b|\bbody corporate manager\b/,
+    skills: ["Real Estate & Property"],
+    exclude:
+      /\bbusiness valuation\b|\bm and a\b|\bdeals\b|\bcorporate finance\b|\bsales engineer\b|\bnurse\b|\bfacilities\b|\b(?:multi|dual|bi|complex) ?property\b/,
+    tracks: [
+      { id: "valuation", label: "Valuation", match: /\bvalu/ },
+      { id: "agency", label: "Sales & leasing agency", match: /\bagent\b|\bsales\b|\bleasing\b/ },
+    ],
+    rungs: [
+      [
+        /\bassistant property manager\b|\bgraduate valuer\b|\bproperty (?:administrator|assistant)\b/,
+        1,
+      ],
+      [/\bsenior (?:\w+ )?(?:property manager|valuer)\b/, 3],
+      [
+        /\b(?:residential |commercial |regional )?property manager\b|\bvaluer\b|\breal estate (?:agent|sales)\b|\bleasing (?:executive|consultant|agent)\b|\bstrata (?:manager|community manager)\b/,
+        2,
+      ],
+    ],
+  },
+  {
+    id: "library",
+    label: "Library, records & information",
+    // library assistant / technician → library officer / librarian → senior
+    // → team leader → library manager. Records and document control run
+    // alongside: officer → senior → records manager.
+    match:
+      /\blibrar(?:y|ian)\b|\brecords? (?:officer|manager|management|coordinator|clerk|advis[oe]r|specialist)\b|\binformation management\b|\barchivists?\b|\bdocument control(?:ler)?\b/,
+    skills: ["Library & Information"],
+    exclude:
+      /\bteacher\b(?! librarian)|\bbim\b|\bfurniture\b|\bmedical records? (?:clerk)\b|\bsales\b|\bnurse\b|\bsoftware\b|\bdeveloper\b/,
+    tracks: [
+      {
+        id: "records",
+        label: "Records & document control",
+        match: /\brecords?\b|\binformation management\b|\barchivist\b|\bdocument control/,
+      },
+    ],
+    rungs: [
+      [/\blibrary (?:technician|assistant)\b/, 1],
+      [/\bsenior (?:\w+ )?(?:librarian|archivist)\b/, 3],
+      [/\blibrarian\b|\barchivist\b|\bdocument controller\b/, 2],
+    ],
+  },
+  {
+    id: "creative",
+    label: "Design, media & creative",
+    // junior → designer / writer / journalist / photographer → senior → lead /
+    // design manager → creative director. Performers are placed only as
+    // practitioners: an artiste's career is not a ladder of titles.
+    match:
+      /\b(?:graphic|interior|web|ux|ui|product|visual|fashion|motion|creative|digital|packaging|brand|instructional)? ?designer\b|\bgraphic artist\b|\bart director\b|\bcreative director\b|\bhead of design\b|\b(?:graphic|creative|brand|digital|ux|ui|product|visual|interior|fashion|packaging) design (?:manager|lead|director)\b|\bjournalist\b|\bwriter\b|\beditor\b|\bphotographer\b|\bvideographer\b|\banimator\b|\bperformers?\b|\bperforming artiste?\b|\bartiste\b|\bdancers?\b|\bsinger\b|\bactor\b|\bmusician\b|\bstage manager\b|\bartistic director\b|\bpresenter\b/,
+    skills: ["Design", "Journalism & Media", "Creative & Performing Arts"],
+    // Architectural designers and drafters are the built environment's; an
+    // instructional designer is L&D; a "frequent presenter" is an ED patient.
+    exclude:
+      /\b(?:civil|electrical|mechanical|structural|piping|hydraulic|instrumentation|process|pipeline|substation|rail|road|drainage|hvac|fire|building services|bim|cad|lighting|landscape) designer\b|\barchitectur\w*\b|\bdraft(?:er|sperson)\b|\bengineer\b|\bsoftware\b|\bdeveloper\b|\binstructional\b|\bsimulated patient\b|\bpatient\b|\bsales\b|\bnurse\b|\bteacher\b|\binstructor\b|\bcoordinator\b|\bproduct designer\b.*\bengineer/,
+    tracks: [
+      {
+        id: "media",
+        label: "Writing & media",
+        match: /\bjournalist\b|\bwriter\b|\beditor\b|\bproducer\b|\bpresenter\b/,
+      },
+      {
+        id: "performing",
+        label: "Performing arts & photography",
+        match:
+          /\bperform|\bartiste\b|\bdancer|\bsinger\b|\bactor\b|\bmusician\b|\bphotographer\b|\bvideographer\b|\bstage manager\b|\bartistic director\b/,
+      },
+    ],
+    generic: false,
+    rungs: [
+      [
+        /\bcreative director\b|\bartistic director\b|\bhead of (?:design|creative|content|editorial)\b|\beditor in chief\b|\bdesign director\b/,
+        5,
+      ],
+      [
+        /\bdesign (?:manager|lead)\b|\bart director\b|\bmanaging editor\b|\bprincipal (?:\w+ )?(?:designer|writer)\b|\bmanager\b/,
+        4,
+      ],
+      [/\bsenior\b|\blead\b/, 3],
+      [/\b(?:junior|graduate|trainee|intern|assistant)\b/, 1],
+      [
+        /\bdesigner\b|\bgraphic artist\b|\bwriter\b|\bjournalist\b|\beditor\b|\bphotographer\b|\bvideographer\b|\banimator\b|\bperformers?\b|\bperforming artiste?\b|\bartiste\b|\bdancers?\b|\bsinger\b|\bactor\b|\bmusician\b|\bstage manager\b|\bpresenter\b/,
+        2,
+      ],
+    ],
+  },
+  {
     id: "hospitality",
     label: "Hospitality & food",
     // Three ladders that share venues. The kitchen: kitchenhand → cook / chef de
@@ -678,7 +1203,7 @@ export const FAMILIES: FamilyDef[] = [
     // "Chef de projet" is French for project manager; cleaners and sales are
     // their own ladders; a patisserie's sales assistant is retail.
     exclude:
-      /\bbaker hughes\b|\bchef de projet\b|\bchef d equipe\b|\bcleaner\b|\bcleaning\b|\bhousekeep|\bsales\b|\bmarketing\b|\brecruit|\bnurse\b|\bdriver\b|\baccount(?:ant|s)?\b|\bengineer\b|\bdeveloper\b|\bcategory manager\b/,
+      /\bbaker hughes\b|\bchef fresh\b|\bprocess worker\b|\bchef de (?:projet|mission)\b|\bchef d equipe\b|\bcleaner\b|\bcleaning\b|\bhousekeep|\bsales\b|\bmarketing\b|\brecruit|\bnurse\b|\bdriver\b|\baccount(?:ant|s)?\b|\bengineer\b|\bdeveloper\b|\bcategory manager\b/,
     tracks: [
       {
         id: "kitchen",
@@ -971,59 +1496,39 @@ export const NOT_A_LADDER: Record<string, string> = {
  * Empty is the finished state.
  */
 export const PATHWAYS_PLANNED: string[] = [
-  "Marketing & Comms",
-  "Risk & Compliance",
   "Allied Health",
-  "Commercial & Legal",
-  "Procurement & Supply",
-  "Banking & Lending",
-  "IT & Systems",
   "Science & Laboratory",
   "Cleaning & Facilities",
   "Mental Health & Counselling",
-  "Data Science & Machine Learning",
-  "Business Analysis",
   "Architecture & Planning",
-  "Data Analytics",
-  "Cloud & DevOps",
-  "Community & Native Title",
   "Social & Community Services",
   "Civil Engineering",
   "Electrical Engineering",
   "Medical Practice",
   "Automation & Robotics",
   "Mechanical Engineering",
-  "Quality Assurance",
   "Aged & Disability Care",
   "Pharmacy",
-  "Cybersecurity",
   "Construction Management",
-  "Policy & Programs",
   "Environmental",
   "Electrical Trade",
-  "Data Engineering",
   "Medical Imaging & Pathology",
   "Fixed Plant Maintenance",
-  "Product Management",
   "Instrumentation & Control",
   "Emergency & Public Safety",
   "Surveying",
   "Dental",
-  "Design",
   "Geology",
   "Welding & Fabrication",
   "Plant & Equipment Operation",
   "Process Engineering",
   "Mechanical Fitting",
-  "Real Estate & Property",
   "Manufacturing & Production",
-  "Library & Information",
   "Plumbing",
   "Heavy Diesel Maintenance",
   "Pipeline Engineering",
   "Automotive Trade",
   "Mining Engineering",
-  "Insurance & Actuarial",
   "Geotechnical",
   "Corrections & Justice",
   "Agriculture & Farming",
@@ -1032,8 +1537,6 @@ export const PATHWAYS_PLANNED: string[] = [
   "Underground Mining",
   "Rigging & Scaffolding",
   "HVAC & Refrigeration",
-  "Journalism & Media",
-  "Creative & Performing Arts",
   "Carpentry & Joinery",
   "Metallurgy",
   "Radiation Safety",
