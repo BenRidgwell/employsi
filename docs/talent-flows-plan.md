@@ -433,6 +433,38 @@ Changes from the first draft, found while building:
 The rest of this document is the original plan. The open questions at the end
 are still open.
 
+## The design ("Talent Flows 3D") and the data it reads
+
+The proposed view (a bundled HTML mock-up, 2026-09-25) is a 3D map of one
+focus company with pins for the companies it trades people with, arcs
+coloured low/moderate/high, a panel listing them, Inflow / Outflow / Net
+modes, a skill search, and a timeline from Mar 2006 to Jul 2026 with dated
+event cards. Its numbers are generated inside the mock-up: `flowsFor()` seeds
+a random generator from the company and skill names, `scaleFlows()`
+multiplies by an editorial "boom/GFC" level times another hash, and building
+heights are fixed. What each element reads now:
+
+| Design element | Mock-up source | Real source | Status |
+| --- | --- | --- | --- |
+| Focus company | any of 10 fixed | a SAMPLED company only (BHP, Fortescue, Rio Tinto) | `buildFlowView` returns null otherwise: a non-seed's inflow is not measured |
+| Pins / peers | 10 fixed Perth companies | on-map (roster) companies with ≥ 10 moves in a direction | three of the ten (Chevron's `cvx`, Roy Hill, Dept. of Mines) are not roster ids; the real top sources differ |
+| Inflow per peer | random | `flows` / `flow_skills`, window totals | wired |
+| Outflow per peer | random | only to other SAMPLED companies | `out: null` for the rest: a move out shows only if the person now works at a seed |
+| Net | in − out | only where both are measured | the view leaves net to the UI, over peers with `out !== null` |
+| Big number, "people joined" | sum | `totals` + `caption`: moves among N sampled profiles | label changes: these are sampled moves, not people or workforce totals |
+| Low / moderate / high | thirds of max | the same, over real counts | wired |
+| Skill search | random per skill name | `flow_skills` (0004), skills of the job moved into by `skillsForText`; `getTalentFlowSkills` lists only skills with a peer at the floor | collecting (skills pass) |
+| Skill names | 8 mock names ("Workforce planning") | taxonomy names ("Human Resources", child "Workforce Planning") | the list comes from the data |
+| Timeline Mar 2006 – Jul 2026, scrubbable | events × hash | ONE measured window, `period` (2020-11 – 2025-10) | chosen 2026-09-25: the sample is today's employees, so earlier windows shrink by sampling alone (Rio Tinto inflow: 466 moves in the 5 years to 2008, 2,822 to 2025), and the data ends 2025-10, not Jul 2026 |
+| Event cards | editorial text + level multiplier | annotations only, no effect on numbers | the text is not from this data; claims such as "AI-adjacent and healthcare skills lead the index" need their own source or removal |
+| Building heights, filler blocks | fixed / random | none | decorative; must not be read as company size |
+| Pin coordinates | fixed lat/lng | the app's existing company coordinates (`COMPANY_COORDS`) | the view returns ids; the client places them |
+
+Server functions: `getTalentFlowView({id, skill?})` → `FlowView`,
+`getTalentFlowSkills({id})` → `FlowSkill[]` (src/employsi/lib/flowsFn.ts),
+rules asserted in `scripts/check-flows.ts`. The UI itself is not built; the
+mock-up's component is the reference for it.
+
 ## What the feature is
 
 Company-to-company movement of people, shown as counts, from a **licensed**
