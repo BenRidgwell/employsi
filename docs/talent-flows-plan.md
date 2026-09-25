@@ -12,7 +12,7 @@ holds no data.**
 | Card section | `components/panels/TalentFlow.tsx`, Hiring tab | Built; renders nothing without data. Not seen rendered |
 | Map arcs | — | Not started |
 | **Source: Bright Data** (chosen) | `scripts/brightdata-talent-flows.py` + `talent_flows.positions_from_brightdata` | Built; tested end to end against a **fake** Bright Data MCP server. Filters confirmed live 2026-09-24. **7 of 10 real profiles parse to nothing** — see below |
-| Collection state | `workers/jobs-cron/migrations/0003_talent_flows_collect.sql` | **Applied to production D1 2026-09-25.** Holds 1,600 BHP profiles (769 usable). Counts by month plus a bare list of hashed ids; no person's name, url, title or history |
+| Collection state | `workers/jobs-cron/migrations/0003_talent_flows_collect.sql` | **Applied to production D1 2026-09-25.** Holds 7,160 BHP profiles (4,169 usable) after the third collection. Counts by month plus a bare list of hashed ids; no person's name, url, title or history |
 | Source: LinkedIn sample (parked) | `scripts/collect-talent-flows.py` + `scripts/talent_flows.py` | Built; tested against a fake MCP server only. Parked: it needs a personal LinkedIn account |
 
 ### The Bright Data source
@@ -109,6 +109,38 @@ Facts it depends on (read 2026-09-24):
   Requests`. The pace was the same throughout (~24 a minute), so the cap
   is a count per window, not a burst limit. The window is not documented;
   the MCP server's own `RATE_LIMIT` is unset, so the 429 is Bright Data's.
+- **Third collection, 2026-09-25 02:02–02:25 UTC: 557 requests, 5,560
+  profiles**, resumed on a new machine from `--pull-d1` (1,600 keys + cursor).
+  The cursor, saved at ~00:55, was still good: no `--restart`, no repeats.
+  The first attempt crashed on its first profile: `--sync-d1` adds a
+  `synced` column to `people` by migration, and the collect path's
+  positional insert then supplied 7 values for 8 columns. One request was
+  spent and nothing written; the insert now names its columns.
+  Totals, all 7,160 BHP profiles (33.5% of 21,358): 4,169 usable (58%).
+  Exported with `--window-months 60` (2021-07 to 2026-06): 1,544 moves over
+  1,203 pairs; 890 into BHP from 568 employers, 457 of them with 1 move.
+  **Five pairs reach 10**, all into BHP: Rio Tinto 43, OZ Minerals 40,
+  Fortescue 13, Thiess 11, Programmed 10; then Monadelphous 9, Mader Group 8,
+  Anglo American 7, Mineral Resources 7. Linear scaling from the first 970
+  (about 20 sources over 10 at the full seed) still looks right.
+  Two things the display would get wrong as it stands:
+  - **OZ Minerals → BHP is mostly an acquisition, not hiring.** BHP completed
+    its takeover of OZ Minerals in May 2023; 23 of the ~37 locally counted
+    moves are dated 2023-05. Showing it as the second-largest source of hires
+    would be a plausible-looking figure that is false. It needs an
+    acquisition exclusion (pair + month range) before it is displayed.
+  - **"Freelance" is a source with 6 moves.** It is not an employer; the
+    parser takes it as one. A small deny-list of non-employers is needed.
+  The 62 moves out of BHP (45 pairs) are all boomerangs: everyone sampled is
+  a current BHP employee, so every exit seen is followed by a return.
+- **The rate limit is not a fixed count per window.** 00:41–00:55 UTC: 164
+  accepted, then 429. 02:02:14–02:25:38 UTC: 557 accepted (at the same ~24 a
+  minute), then 429 on the 558th. So the cap had reset within 67 minutes of
+  the first 429, and the second allowance was 3.4x the first. Consistent with
+  a rolling budget that counted requests made before 00:41 (not recorded),
+  but that is a guess. Resume no sooner than an hour after a 429, and never
+  retry one. Requests used this month: ~830 of the 5,000 free (270 before
+  today, then 1 + 557 here). The full seed needs ~1,420 more.
 - **Collection state lives in D1** (`0003`), so a collection outlives the
   machine it ran on. `--sync-d1` pushes what this machine has counted,
   `--pull-d1` brings the cursors and counted keys to a new machine, and
