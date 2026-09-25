@@ -163,7 +163,7 @@ jobs:
           DUMP: ${{ inputs.dump_source }}
         run: |
           set -o pipefail
-          python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas,perth,nsw-nesa,nsw-dcj,nsw-dcs,nsw-dcceew,nsw-dpird \
+          python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas,perth,nsw-nesa,nsw-dcj,nsw-dcs,nsw-dcceew,nsw-doe,nsw-dpird \
             ${DUMP:+--dump-source "$DUMP"} \
             2>&1 | tee /tmp/gov-diagnosis.txt
 

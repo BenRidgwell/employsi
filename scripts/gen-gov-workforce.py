@@ -2146,6 +2146,30 @@ NSW_AGENCY_REPORTS = {
         ncols=3, now_i=1, prev_i=0, sums=[(0,), (1,)],
         proof=r'19 June 2025',
         unit='headcount', asof='Jun 2025'),
+    # 23 live ads but by far the largest workforce here — this is the department
+    # that operates every NSW public school, so its own figure includes teachers.
+    #
+    # p26 PRINTS TWO FOUR-COLUMN TABLES SIDE BY SIDE: "Full-time equivalent
+    # staff, 2022 to 2025" totalling 107,979 and "Staff active headcount, 2022
+    # to 2025" totalling 136,841. Taking whichever pdfplumber returned first
+    # would file one as the other and nothing would notice. Only the FTE table
+    # reconciles — the head count deliberately does not, because somebody
+    # counted as both a teacher and support staff appears once in the total and
+    # twice above it — so requiring ALL FOUR columns to sum is what chooses it.
+    # extract_text() is no help at all here: the two tables interleave into
+    # "Total 228 2 162 224 1 156 Total 102,631 107,108 107,949 107,979".
+    'nsw-doe': dict(
+        label='NSW: Department of Education',
+        agency='Department of Education',
+        agency_id='nsw-gov-department-of-education',
+        url='https://education.nsw.gov.au/content/dam/main-education/en/home/'
+            'about-us/strategies-and-reports/annual-reports/DoE_Annual_Report_2024-25.pdf',
+        needle='Full-time equivalent staff',
+        total=r'^Total\b',
+        comp=r'^(?:Teachers|Educational support|Corporate and educational support)',
+        ncols=4, now_i=3, prev_i=2, sums=[(0,), (1,), (2,), (3,)], tol=1.5,
+        proof=r'as at 30 June each year',
+        unit='fte', asof='Jun 2025'),
     # 25 live ads. p62 "Table 27 Number of officers and employees by category
     # 2024-25", two columns.
     #
@@ -2180,6 +2204,46 @@ def _num(s):
     return float(s.replace(',', ''))
 
 
+def _reconciles(spec, total, comps):
+    """Why this parse does NOT add up, or None if it does.
+
+    Returns a reason rather than raising, because it is also the DISCRIMINATOR
+    between two tables on one page. The Department of Education prints "Full-time
+    equivalent staff, 2022 to 2025" and "Staff active headcount, 2022 to 2025"
+    side by side, both with a four-number Total row: 107,979 and 136,841. Taking
+    whichever pdfplumber happened to return first would file one of them for the
+    other with nothing to notice it. Only the FTE table's components sum to its
+    own total — the head count deliberately does not, since a person counted as
+    both a teacher and support staff appears once in the total and twice above it
+    — so "the table that proves itself" picks the right one on evidence.
+    """
+    # A TOLERANCE, AND ONE SPEC NEEDS MORE THAN THE DEFAULT. Measured
+    # 2026-09-25 on the Department of Education: three FTE components rounded to
+    # whole numbers against a total rounded the same way, and the 2023 column
+    # sums to 107,107 against a stated 107,108. One out. The other three columns
+    # are exact. This is the NSW Police row's lesson again — a published change
+    # of −592 beside a difference of 593 — so the tolerance is declared per spec
+    # and stays small enough that the WRONG table is still rejected: the head
+    # count beside it is out by 588, not by one.
+    tol = spec.get('tol', 0.6)
+    for cols in spec.get('sums', []):
+        if len(cols) == 1:                      # a column, summed down the rows
+            c = cols[0]
+            if not comps:
+                return f'no component rows to sum for column {c}'
+            got = sum(r[c] for r in comps)
+            if abs(got - total[c]) > tol:
+                return (f'column {c} components sum to {got:,.1f} against a stated '
+                        f'Total of {total[c]:,.1f}')
+        else:                                   # a row, summed across to its total
+            *parts, tot = cols
+            got = sum(total[i] for i in parts)
+            if abs(got - total[tot]) > tol:
+                return (f'{parts} sum to {got:,.1f} against {total[tot]:,.1f} in the '
+                        f'same row')
+    return None
+
+
 def _nsw_agency(spec):
     """One NSW agency annual report -> ({agency: (now, prev)}, asof, unit).
 
@@ -2193,7 +2257,7 @@ def _nsw_agency(spec):
     if blob[:4] != b'%PDF':
         raise RuntimeError(f"{spec['label']}: not a PDF — starts {blob[:40]!r}")
 
-    total, comps, proved = None, [], False
+    total, comps, proved, rejected = None, [], False, []
 
     def cells(row):
         """A compacted table row -> (label, [numbers]) if its cells are numeric."""
@@ -2232,9 +2296,14 @@ def _nsw_agency(spec):
                         t_row = nums
                     elif spec.get('comp') and re.match(spec['comp'], label):
                         c_rows.append(nums)
-                if t_row and (c_rows or not spec.get('comp')):
-                    total, comps = t_row, c_rows
-                    break
+                if not t_row or not (c_rows or not spec.get('comp')):
+                    continue
+                why = _reconciles(spec, t_row, c_rows)
+                if why:
+                    rejected.append(why)
+                    continue          # a table that does not add up is not the one
+                total, comps = t_row, c_rows
+                break
 
             # The fallback, for a table pdfplumber cannot see as one — Customer
             # Service's "FTE over time" has no ruling lines and comes back as
@@ -2262,31 +2331,17 @@ def _nsw_agency(spec):
                 break
 
     if not total or len(total) != spec['ncols']:
+        extra = f"; tables rejected for not adding up: {rejected}" if rejected else ''
         raise RuntimeError(f"{spec['label']}: no Total row of {spec['ncols']} numbers "
                            f"on a page containing {spec['needle']!r} — the report has "
-                           f"been restyled")
+                           f"been restyled{extra}")
+    why = _reconciles(spec, total, comps)
+    if why:
+        raise RuntimeError(f"{spec['label']}: {why}")
     if not proved:
         raise RuntimeError(f"{spec['label']}: the page no longer carries "
                            f"{spec['proof']!r}, so the column the figure is read "
                            f"from can no longer be shown to be {spec['asof']}")
-
-    # THE REPORT STATES ITS OWN TOTAL, SO THE PARSE CAN MARK ITS OWN WORK.
-    for cols in spec.get('sums', []):
-        if len(cols) == 1:                      # a column, summed down the rows
-            c = cols[0]
-            if comps:
-                got = sum(r[c] for r in comps)
-                if abs(got - total[c]) > 0.6:
-                    raise RuntimeError(
-                        f"{spec['label']}: column {c} components sum to {got:,.1f} "
-                        f"against a stated Total of {total[c]:,.1f}")
-        else:                                   # a row, summed across to its total
-            *parts, tot = cols
-            got = sum(total[i] for i in parts)
-            if abs(got - total[tot]) > 0.6:
-                raise RuntimeError(
-                    f"{spec['label']}: {parts} sum to {got:,.1f} against "
-                    f"{total[tot]:,.1f} in the same row")
 
     now = total[spec['now_i']]
     prev = None if spec['prev_i'] is None else total[spec['prev_i']]

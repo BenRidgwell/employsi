@@ -8,6 +8,7 @@
 //   NSW: Communities and Justice: 1 agencies published as at Jun 2024 — refreshed 2026-09-25
 //   NSW: Customer Service: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-25
 //   NSW: Climate Change, Energy, the Environment and Water: 1 agencies published as at Jun 2025 — refreshed 2026-09-25
+//   NSW: Department of Education: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-25
 //   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — refreshed 2026-09-25
 //   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — KEPT, not refreshed this run
@@ -76,6 +77,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-department-of-climate-change-energy-the-environment-and-water": { now: 6208, prev: 5737, yoy: 8.2, asof: "Jun 2025", span: 1 },
   "nsw-gov-department-of-communities-and-justice": { now: 25643, prev: 24082, yoy: 6.5, asof: "Jun 2024", span: 1 },
   "nsw-gov-department-of-customer-service": { now: 7651, prev: 7497, yoy: 2.1, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nsw-gov-department-of-education": { now: 107979, prev: 107949, yoy: 0.0, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-department-of-primary-industries-and-regional-development": { now: 3639, yoy: null, asof: "Jun 2025", span: 1 },
   "nsw-gov-ehealth-nsw": { now: 1674, prev: 2140, yoy: -21.8, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-health-infrastructure": { now: 163, prev: 174, yoy: -6.3, asof: "Jun 2025", span: 1, unit: "fte" },
