@@ -1710,91 +1710,149 @@ def load_tas():
     this report twice a year. The claim was wrong in all three parts.
 
     The agency table is "Employees by Agency and Employment Category", headed
-    "Paid Headcount as at 30 June <year>", with columns Fixed-term, Permanent,
-    Part 6 and Total. It is a HEAD COUNT, unlike the NT's FTE, and is marked so.
+    "Paid Headcount as at <date>", with columns Fixed-term, Permanent, Part 6
+    and Total. It is a HEAD COUNT, unlike the NT's FTE, and is marked so. The
+    page also carries an FTE table over the same agencies, which is why the
+    two are separated by whether their totals are integers.
 
-    TWO EDITIONS ARE FETCHED, because one holds a single date. The reports are
-    numbered within a year — No. 1 is the December half, No. 2 the June half —
-    so a June-to-June comparison is this year's No. 2 against last year's. A
-    December edition is never compared with a June one: that is six months, and
-    the whole point of `span` is that a change is only reported over the period
-    it was actually measured.
+    AN EDITION'S NUMBER IS NOT ITS DATE, and reading it as one was a live bug.
+    Reports are numbered within the year they are PUBLISHED: No. 2 of a year is
+    that year's June half, but No. 1 is the DECEMBER HALF OF THE YEAR BEFORE.
+    Measured 2026-09-25 across every reachable No. 1 — Number-1-2023 states
+    "as at 31 December 2022" and Number-1-2022 states "as at 30 December 2021"
+    — so deriving December-of-the-file's-year dated seven live cards a year
+    later than the reading they showed. The date is now read off the document's
+    own heading and nothing is derived from the file name.
+
+    TWO EDITIONS ARE FETCHED WHERE A PRIOR EXISTS, never across the halves: a
+    No. 1 against a No. 2 is six months wearing a year's label, and `span` only
+    means anything if a change is reported over the period it was measured. But
+    a missing prior is NOT a reason to fall back to an older pair that has one.
+    That rule alone had Tasmania filing December 2022 while a June 2024 edition
+    sat unread. `prev` is optional and `yoy` is None without it.
     """
     import io as _io
     import pdfplumber
 
-    # THE SITEMAP, NOT THE SEARCH PAGE. The search returned four reports and
-    # only one of them was a June edition, so no year-on-year could be built
-    # from it — not because Tasmania publishes one, but because a search page
-    # shows what it feels like showing. The sitemap is the site's own list and
-    # carries every edition it still serves.
+    # BOTH LISTS, NEITHER TRUSTED ALONE. This used to stop as soon as the
+    # sitemap had four hits, on the reasoning that the sitemap is the site's
+    # own list and the search page "shows what it feels like showing".
+    # Measured 2026-09-25 on the runner, the sitemap returned ZERO report
+    # links and the search page returned all four — so the preference was
+    # backwards that day, and an early break on either one is a coin toss.
+    # Merge them and let the edition list be as long as the site allows.
     found = []
-    for src, kind in ((TAS_SITEMAP, 'sitemap'), (TAS_SEARCH, 'search')):
-        page = fetch(src, via_browser=True, warm=TAS_WARM)
+    for src in (TAS_SITEMAP, TAS_SEARCH):
+        try:
+            page = fetch(src, via_browser=True, warm=TAS_WARM)
+        except Exception:
+            continue
         hits = re.findall(r'(?:href="|<loc>\s*)([^"<\s]*State-Service-Workforce-Report[^"<\s]*\.pdf)',
                           page, re.I)
         found += [u if u.startswith('http') else 'https://www.dpac.tas.gov.au' + u for u in hits]
-        if len(found) >= 4:
-            break
     editions = {}
     for u in dict.fromkeys(found):
         m = re.search(r'Number-(\d+)-(\d{4})', u, re.I)
         if m:
-            editions[(int(m.group(2)), int(m.group(1)))] = u
+            editions.setdefault((int(m.group(2)), int(m.group(1))), u)
+    if not editions:
+        raise RuntimeError('TAS: no State Service Workforce Report editions found '
+                           'on the sitemap or the search page')
 
-    # PAIR LIKE WITH LIKE. No. 1 is the December half and No. 2 the June half,
-    # so a pair must share a report number and be one year apart. Comparing a
-    # December edition with a June one is six months wearing a year's label,
-    # which is the whole reason `span` exists.
-    pair = None
-    for (yr, no) in sorted(editions, reverse=True):
-        if (yr - 1, no) in editions:
-            pair = ((yr, no), (yr - 1, no))
-            break
-    if not pair:
-        raise RuntimeError(f'TAS: no two editions of the same number a year apart, '
-                           f'found {sorted(editions)}')
-    june = [pair[0], pair[1]]
+    # THE NEWEST EDITION, WITH A PRIOR IF ONE EXISTS — not the newest edition
+    # that HAS a prior. That distinction was costing four years.
+    #
+    # Only four editions are reachable (Number 1 of 2021, 2022 and 2023, and
+    # Number 2 of 2024), and a pair must share a report number: No. 1 is the
+    # December half and No. 2 the June half, so pairing across them is six
+    # months wearing a year's label. Requiring a pair therefore rejected the
+    # June 2024 edition — the only No. 2 there is — and fell back to No. 1 of
+    # 2023, which carries DECEMBER 2022. Measured 2026-09-25: the cards were
+    # filing data three and a half years old in order to carry a YoY.
+    #
+    # A missing prior is not a reason to file older data. `prev` is optional
+    # and `yoy` is None where there is nothing to compare against — the same
+    # shape Western Australia's bulletin needed — so the newest edition is
+    # used either way and the comparison is simply absent when it cannot be
+    # made honestly.
+    now_key = sorted(editions, reverse=True)[0]
+    prev_key = (now_key[0] - 1, now_key[1])
+    if prev_key not in editions:
+        prev_key = None
+
+    MONTHS = {'january': 'Jan', 'february': 'Feb', 'march': 'Mar', 'april': 'Apr',
+              'may': 'May', 'june': 'Jun', 'july': 'Jul', 'august': 'Aug',
+              'september': 'Sep', 'october': 'Oct', 'november': 'Nov',
+              'december': 'Dec'}
 
     def agencies(url):
+        """-> ({agency: paid headcount}, 'Mon YYYY' the report states)."""
         blob = fetch(url, binary=True, via_browser=True, warm=TAS_WARM)
-        out = {}
+        out, asof = {}, None
         with pdfplumber.open(_io.BytesIO(blob)) as pdf:
             for pg in pdf.pages:
                 txt = pg.extract_text() or ''
                 if 'Employees by Agency' not in txt:
                     continue
-                for line in txt.split('\n'):
-                    # "<name> <fixed> <permanent> <part6> <total>" — the TOTAL
-                    # is the last number, and the three before it sum to it.
-                    # Checking that sum is what tells a real row from a line of
-                    # prose that happens to end in numbers.
-                    m = re.match(r'^\s*([A-Za-z][^0-9]{4,}?)\s+'
-                                 r'([\d,]+)\s+([\d,]+)\s+([\d,]+)\s+([\d,]+)\s*$', line)
-                    if not m:
-                        continue
-                    name = m.group(1).strip()
-                    n = [int(x.replace(',', '')) for x in m.groups()[1:]]
-                    if sum(n[:3]) != n[3] or n[3] <= 0:
-                        continue
-                    out[name] = n[3]
 
-        # THE REPORT STATES ITS OWN TOTAL, SO THE PARSE CAN CHECK ITSELF, and
-        # measured 2026-09-25 it does not add up: thirteen agencies summing to
-        # 20,418 against a Total row of 32,473. Twelve thousand people are in
-        # agencies this parser never sees — among them Education and Natural
-        # Resources and Environment, which is exactly why their cards are
-        # blank. It is not a source that omits them; it is a line-shape this
-        # regex does not match.
-        #
-        # WARN RATHER THAN RAISE, between half and all. Every row it DOES
-        # return is sound — each one's four columns reconcile — so failing
-        # would throw away fourteen good cards to protest six missing ones,
-        # and the missing ones are already blank either way. Below half it
-        # raises, because at that point the shape has moved rather than
-        # drifted. This is the Northern Territory's "under fifteen rows is a
-        # failure" lesson in the stronger form the Tasmanian report allows:
-        # the document says what the answer should sum to.
+                # THE DATE IS READ OFF THE DOCUMENT, NOT OFF THE FILE NAME,
+                # and that is a correction rather than a tidy-up. The old code
+                # derived it from the edition number — No. 2 meant June of the
+                # file's year, anything else meant December of it — and the
+                # second half of that is wrong. Measured 2026-09-25 across all
+                # three reachable No. 1 editions, each carries the PREVIOUS
+                # December: Number-1-2023 says "as at 31 December 2022" and
+                # Number-1-2022 says "as at 30 December 2021". So seven live
+                # Tasmanian cards were dated a year later than the reading they
+                # showed. A report published in a year is not a report about it.
+                m = re.search(r'Paid Headcount as at\s+\d{1,2}\s+([A-Za-z]+)\s+(\d{4})', txt)
+                if m and m.group(1).lower() in MONTHS:
+                    asof = f'{MONTHS[m.group(1).lower()]} {m.group(2)}'
+
+                # extract_tables(), NOT a regex over extract_text(). The line
+                # form loses exactly the rows that matter: a long agency name
+                # WRAPS, and the regex then reads "Department of Natural
+                # Resources and Environment" where the previous edition says
+                # "...and Environment Tasmania" — a different key, so the
+                # agency silently drops out of the year-on-year join. A cell
+                # of "-" (the Public Trustee's Part 6, Dec 2021) kills a row
+                # the same way. The table form keeps the wrapped name whole,
+                # as "...Environment\nTasmania", and is why this reads
+                # seventeen agencies where the regex read thirteen.
+                #
+                # PLURAL, because the page carries a head-count table AND an
+                # FTE table over the same agencies. They are told apart by
+                # their values — a head count is an integer, an FTE is not —
+                # rather than by position, since reading the wrong one would
+                # put one quantity under the other's label. That is the exact
+                # bug two NSW cards carried.
+                for tab in pg.extract_tables():
+                    rows = [[c for c in r if c not in (None, '')] for r in tab]
+                    body = [r for r in rows if len(r) == 5 and r[0] != 'Agency']
+                    if not body or any('.' in r[4] for r in body):
+                        continue                      # header-only, or the FTE table
+                    for r in body:
+                        name = ' '.join(r[0].split())
+                        nums = []
+                        for cell in r[1:]:
+                            cell = cell.strip()
+                            nums.append(0 if cell == '-' else
+                                        int(cell.replace(',', '')) if
+                                        re.fullmatch(r'[\d,]+', cell) else None)
+                        if None in nums or nums[3] <= 0:
+                            continue
+                        # The row states its own total, so it can check itself.
+                        if sum(nums[:3]) != nums[3]:
+                            continue
+                        out[name] = nums[3]
+
+        # THE REPORT STATES ITS OWN TOTAL, SO THE PARSE CAN CHECK ITSELF.
+        # Under 95% warns and under half raises: every row returned is sound —
+        # each one's four columns reconcile — so failing would throw away good
+        # cards to protest missing ones, which are blank either way. Below half
+        # the shape has moved rather than drifted. This is the Northern
+        # Territory's "under fifteen rows is a failure" lesson in the stronger
+        # form this report allows: the document says what it should sum to.
         total = out.pop('Total', None)
         if total:
             got = sum(out.values())
@@ -1806,20 +1864,35 @@ def load_tas():
                       f'against the report\'s own Total of {total:,} ({got / total:.0%}). '
                       f'{total - got:,} employees are in agencies this parse does not '
                       f'reach; their cards stay blank.', file=sys.stderr)
-        return out
+        if not asof:
+            raise RuntimeError(f'TAS: no "Paid Headcount as at <date>" heading in {url} '
+                               f'— the report has been restyled and the date it '
+                               f'carries can no longer be read off it')
+        return out, asof
 
-    now_rows = agencies(editions[june[0]])
-    prev_rows = agencies(editions[june[1]])
+    now_rows, asof = agencies(editions[now_key])
     if not now_rows:
-        raise RuntimeError(f'TAS: parsed no agency rows from {editions[june[0]]}')
-    span = june[0][0] - june[1][0]
-    if span != 1:
-        raise RuntimeError(f'TAS: editions are {span} years apart, not one '
-                           f'({june[0]} vs {june[1]})')
-    rows = {k: (v, prev_rows[k]) for k, v in now_rows.items()
-            if prev_rows.get(k, 0) > 0}
-    month = 'Jun' if june[0][1] == 2 else 'Dec'
-    return rows, f'{month} {june[0][0]}', 'headcount'
+        raise RuntimeError(f'TAS: parsed no agency rows from {editions[now_key]}')
+    prev_rows = {}
+    if prev_key:
+        prev_rows, prev_asof = agencies(editions[prev_key])
+        if prev_asof == asof:
+            raise RuntimeError(f'TAS: {now_key} and {prev_key} both state {asof} — '
+                               f'they are the same reading, not a year apart')
+
+    # A RENAME IS NOT A CHANGE, AND TASMANIA RENAMES. Between the December 2021
+    # and December 2022 reports, Education became "Department for Education,
+    # Children and Young People", Communities Tasmania disappeared, Homes
+    # Tasmania appeared and TasTAFE left the State Service. The old join
+    # required a prior reading under the SAME NAME and dropped everything else,
+    # so the largest agency after Health was filed as absent.
+    #
+    # Keep the row, and leave `prev` unset where no prior reading exists under
+    # that name. An invented comparison across a machinery-of-government change
+    # would be worse than no comparison: the WGEA parser refuses one for the
+    # same reason where a corporate group gains or loses a member.
+    rows = {k: (v, prev_rows.get(k) or None) for k, v in now_rows.items()}
+    return rows, asof, 'headcount'
 
 
 
