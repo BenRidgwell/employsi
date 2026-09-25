@@ -102,10 +102,61 @@ const hubCode = (hub: string) =>
     .toUpperCase();
 
 /**
- * The heat ramp, from the design: green below an eighth of the busiest hub,
- * then yellow, orange and red. Thresholds are on the share of the BUSIEST hub
- * rather than of the total, so a single-hub map reads as hot rather than as
- * the whole scale at once.
+ * How hot a hub is, from 0 to 1, driving its colour, its blob and its opacity.
+ *
+ * THE DESIGN USES SHARE OF THE BUSIEST HUB ALONE, and on this data that paints
+ * a single advertised role bright red. Measured over the live archive on
+ * 2026-09-25, across the 15,941 company·skill·hub spots this map actually
+ * plots: the MEDIAN spot is one ad, 78% of company·skill maps have a single
+ * hub, and 56% of those hold exactly one ad. So the design's rule would show
+ * the top of a LOW→HIGH ramp on roughly 44% of all maps, for one vacancy.
+ * That is not a rare edge, it is the common case.
+ *
+ * So a hub has to be big BOTH ways: `min` of its share of the busiest hub and
+ * of its own absolute volume. A lone hub can no longer carry the ramp on
+ * relative share, because with one hub that share is always 1 and says
+ * nothing; and a hub in a busy map still cools down if the whole map is thin.
+ *
+ * The absolute scale is the measured distribution, not a guess — the anchors
+ * are its own percentiles, so each colour means roughly the same rarity
+ * wherever it appears:
+ *
+ *     1 ad   0.00   green    the median spot
+ *     4      0.12   yellow   p75 is 3
+ *    10      0.33   orange   p95
+ *    30      0.66   red      p99 is 29
+ *   120      1.00            the top of the ramp; the busiest spot is 696
+ */
+const HEAT_ANCHORS: [number, number][] = [
+  [1, 0],
+  [4, 0.12],
+  [10, 0.33],
+  [30, 0.66],
+  [120, 1],
+];
+function absoluteHeat(n: number): number {
+  if (n <= 1) return 0;
+  const last = HEAT_ANCHORS[HEAT_ANCHORS.length - 1];
+  if (n >= last[0]) return 1;
+  for (let i = 1; i < HEAT_ANCHORS.length; i++) {
+    const [x0, y0] = HEAT_ANCHORS[i - 1];
+    const [x1, y1] = HEAT_ANCHORS[i];
+    if (n <= x1) {
+      // Interpolated in LOG space: the anchors are percentiles of a very
+      // skewed distribution, and a linear read between 30 and 120 would make
+      // every spot in that range look nearly identical.
+      const f = (Math.log(n) - Math.log(x0)) / (Math.log(x1) - Math.log(x0));
+      return y0 + f * (y1 - y0);
+    }
+  }
+  return 1;
+}
+/** A hub is only hot if it leads its map AND has the volume to mean it. */
+const heatOf = (n: number, max: number) => Math.min(n / max, absoluteHeat(n));
+
+/**
+ * The heat ramp, from the design: green below an eighth of the scale, then
+ * yellow, orange and red.
  */
 const heatColor = (t: number) =>
   t > 0.66
@@ -613,7 +664,7 @@ function HotSpots({
           <path className="hspland" d={WORLD_OUTLINE} strokeWidth={0.5 * k} />
           <g filter="url(#hspheatcolor)">
             {spots.map((sp, n) => {
-              const t = sp.n / max;
+              const t = heatOf(sp.n, max);
               const r = (12 + Math.sqrt(t) * 26) * k;
               return (
                 <circle
@@ -646,7 +697,7 @@ function HotSpots({
             viewBox would scale with the zoom, so a tightly framed map would
             render its labels several times the size of a wide one. */}
         {spots.map((sp) => {
-          const t = sp.n / max;
+          const t = heatOf(sp.n, max);
           return (
             <span
               key={sp.hub}
