@@ -374,7 +374,13 @@ export class PathwayBuilder {
       }
       for (const [track, rungs] of tracks) {
         rungs.sort((a, b) => a - b);
+        // Adjacent rungs only. A middle rung too thin to publish (under
+        // MIN_NODE_ROLES) used to leave its neighbours joined directly —
+        // Banking advice 2→4, Facilities 1→3 on the first full build — which
+        // is the same suppression-invented jump the convergeAt rule below
+        // refuses. A gap in the ladder stays a gap.
         for (let i = 0; i + 1 < rungs.length; i++) {
+          if (rungs[i + 1] !== rungs[i] + 1) continue;
           edges.push(edge(f.id, { track, rung: rungs[i] }, { track, rung: rungs[i + 1] }, "step"));
         }
       }
