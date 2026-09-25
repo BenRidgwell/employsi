@@ -144,6 +144,16 @@ ALIAS = {
         'Flinders and Upper North Local Health Network',
         'SA Ambulance Service',
     ],
+
+    # ── Northern Territory ─────────────────────────────────────────────────
+    # The roster uses the short form the ads use; OCPE writes the full name.
+    # Qualified by jurisdiction out of the same caution that "Electoral
+    # Commission" taught — "NT Police Force" is unique today and need not stay
+    # so.
+    'nt:NT Police Force': 'Northern Territory Police Force',
+    'nt:NT Fire and Emergency Services': 'Northern Territory Fire & Emergency Services',
+    # Batchelor Institute of Indigenous Tertiary Education is NOT aliased: it
+    # is a tertiary institution and is in no row of the staffing table.
 }
 
 
@@ -177,7 +187,7 @@ def close_browser():
         _BROWSER['ctx'], _BROWSER['stop'] = None, None
 
 
-def fetch(url, binary=False, via_browser=False, warm=None, expect=None):
+def fetch(url, binary=False, via_browser=False, warm=None, expect=None, render=False):
     """GET, falling back to a real browser when the host refuses a plain one.
 
     TWO HOSTS HERE NEED IT, FOR DIFFERENT REASONS, and both were measured on a
@@ -215,13 +225,92 @@ def fetch(url, binary=False, via_browser=False, warm=None, expect=None):
             print(f'  (HTTP {e.code}, retrying through a browser: {url[:70]})', file=sys.stderr)
 
     ctx = _browser_ctx()
+    if render:
+        # RENDER, DO NOT REQUEST. Some pages build their list of documents in
+        # JavaScript after load, so the raw response is a shell and a regex
+        # over it finds nothing — which reads as a page with no links rather
+        # than a page not yet drawn. ocpe.nt.gov.au's staffing-numbers page is
+        # one: the probe saw fifty PDFs on it through page.content() while
+        # fetch() saw none through ctx.request.
+        page = ctx.new_page()
+        try:
+            if warm:
+                page.goto(warm, wait_until='domcontentloaded', timeout=90_000)
+                w = 0
+                while 'Just a moment' in page.content() and w < 30_000:
+                    page.wait_for_timeout(3000)
+                    w += 3000
+            page.goto(url, wait_until='domcontentloaded', timeout=120_000)
+            w = 0
+            while 'Just a moment' in page.content() and w < 30_000:
+                page.wait_for_timeout(3000)
+                w += 3000
+            page.wait_for_timeout(2000)
+            html = page.content()
+            print(f'  (rendered {len(html):,} bytes from {url[:60]})', file=sys.stderr)
+            return html
+        finally:
+            page.close()
     if warm:
         page = ctx.new_page()
         page.goto(warm, wait_until='domcontentloaded', timeout=90_000)
         page.wait_for_timeout(2500)   # a challenge runs after load
+        # A CLOUDFLARE CHALLENGE NEEDS FAR LONGER THAN 2.5 SECONDS. Queensland's
+        # AWS WAF hands over almost at once, so this wait was sized for it and
+        # was never tested against a slower doorman. ocpe.nt.gov.au and
+        # dpac.tas.gov.au take up to thirty, and warming that returns early
+        # collects no cookie at all — which looks exactly like a host that
+        # refuses browsers.
+        w = 0
+        while 'Just a moment' in page.content() and w < 30_000:
+            page.wait_for_timeout(3000)
+            w += 3000
+        if w:
+            print(f'  (cleared a challenge on {warm[:50]} in {w // 1000}s)', file=sys.stderr)
         page.close()
     r = ctx.request.get(url, timeout=120_000)
     b = r.body()
+
+    # A CHALLENGED RESPONSE MEANS THE WRONG CHANNEL, NOT A CLOSED DOOR.
+    # ctx.request shares the cookie jar but not the browser's TLS and header
+    # fingerprint, so Cloudflare re-challenges it inside a context that has
+    # just cleared — 6 KB of "Just a moment" where a PDF was expected. A real
+    # navigation carries the fingerprint the clearance was issued for. The
+    # request path stays first because it is cheaper and is what Queensland
+    # has always used; this is the fallback.
+    if r.status != 200 or b[:200].find(b'Just a moment') >= 0:
+        page = ctx.new_page()
+        try:
+            if binary:
+                # Chromium DOWNLOADS a PDF rather than rendering it, and the
+                # navigation aborts as it starts. That reads as a failure and
+                # is a success into a file.
+                with page.expect_download(timeout=120_000) as dl:
+                    try:
+                        page.goto(url, wait_until='domcontentloaded', timeout=20_000)
+                    except Exception:                             # noqa: BLE001
+                        pass
+                path = dl.value.path()
+                if path:
+                    b = open(path, 'rb').read()
+                    print(f'  (downloaded {len(b):,} bytes through a navigation)', file=sys.stderr)
+                    return b
+            else:
+                resp = page.goto(url, wait_until='domcontentloaded', timeout=120_000)
+                w = 0
+                while 'Just a moment' in page.content() and w < 30_000:
+                    page.wait_for_timeout(3000)
+                    w += 3000
+                html = page.content()
+                if 'Just a moment' not in html:
+                    print(f'  (navigated instead of requested: {len(html):,} bytes)',
+                          file=sys.stderr)
+                    return html
+                b = resp.body() if resp else b
+        except Exception as e:                                    # noqa: BLE001
+            print(f'  (navigation fallback failed: {type(e).__name__})', file=sys.stderr)
+        finally:
+            page.close()
     # Say what came back. A browser retry that still fails is otherwise an
     # empty result several frames away from its cause — Victoria returned zero
     # rows with no error at all, and the log said only "nothing loaded".
@@ -721,6 +810,271 @@ def load_nz():
 
 
 
+# ── Northern Territory ──────────────────────────────────────────────────────
+NT_INDEX = 'https://ocpe.nt.gov.au/workforce-planning/staffing-numbers'
+NT_WARM = 'https://ocpe.nt.gov.au/'
+
+
+def _nt_rows(page):
+    """Agency -> (newest quarter, the same quarter a year earlier), one page.
+
+    THE CURRENT LAYOUT IS NOT THE ONE THE ARCHIVE SHOWS. A 2018 edition of this
+    report carries five quarterly columns — June, September, December, March,
+    June — and reading one of those is what the first two versions of this
+    function were written against. The June 2026 edition carries THREE value
+    columns and two change columns, measured off the page:
+
+        2025@299   2025@349   2026@389   change@491
+        Attorney General's Department  603@302  591@345  594@394   3@455  -9@502
+
+    So the columns are found by x-position against a measured boundary rather
+    than by counting: every figure sits left of about x=430 and every change
+    sits right of it. The first value column and the last are a year apart —
+    June 2025 and June 2026 — which is what makes a year-on-year possible from
+    one document, and is the only property of the old layout that survived.
+
+    THE THOUSANDS SEPARATOR IS A SPACE and cannot be undone by looking at the
+    text: "1 512" is one number and "619 620" is two, and both are a short
+    group followed by a group of three. Position separates them, because the
+    halves of "1 512" sit inside one column. Words closer than four points are
+    the same number.
+
+    A LINE WITHOUT A NAME IS NOT A ROW. Several numeric lines carry no agency
+    at all — sub-totals and wrapped continuations — and taking them produced
+    three rows out of twenty-five, each attached to whatever name happened to
+    lead. A row needs its own name.
+    """
+    CHANGE_COL_X = 430        # measured: values <= 430, change columns beyond
+    words = page.extract_words(keep_blank_chars=False, use_text_flow=False)
+
+    # CLUSTER A ROW BY PROXIMITY, NOT BY A BUCKET. Rounding `top` into fixed
+    # bins splits a row whenever it straddles a boundary, and a name sitting a
+    # point above its own figures lands in the bin above them. That is what
+    # produced numeric lines with no agency on them: the figures were orphaned
+    # from the name they belong to, and both halves were then discarded. The
+    # dump made it visible — "37@307 37@350 34@400" with no name, directly
+    # above a line that was nothing but a name.
+    rows_by_top = []
+    for w in sorted(words, key=lambda w: w['top']):
+        if rows_by_top and abs(w['top'] - rows_by_top[-1][0]) <= 4:
+            rows_by_top[-1][1].append(w)
+        else:
+            rows_by_top.append((w['top'], [w]))
+    out = {}
+    for _, ws in rows_by_top:
+        ws.sort(key=lambda w: w['x0'])
+        name_parts, cols, cur, last_x1 = [], [], [], None
+        for w in ws:
+            t, x = w['text'], w['x0']
+            if not re.fullmatch(r'[\d,]+', t):
+                if not cols and not cur and x < CHANGE_COL_X:
+                    name_parts.append(t)
+                continue
+            if x >= CHANGE_COL_X:          # a change column, not a figure
+                continue
+            if cur and last_x1 is not None and x - last_x1 > 4:
+                cols.append(''.join(cur))
+                cur = []
+            cur.append(t.replace(',', ''))
+            last_x1 = w['x1']
+        if cur:
+            cols.append(''.join(cur))
+        name = ' '.join(name_parts).strip(' ^*.')
+        vals = [int(c) for c in cols if c.isdigit()]
+        # A name of one short word is a header fragment, not a department.
+        if len(name) < 6 or len(vals) < 2 or not re.search(r'[A-Za-z]{3}', name):
+            continue
+        now, prev = vals[-1], vals[0]
+        if now > 0 and prev > 0:
+            out[name] = (now, prev)
+    return out
+
+
+def load_nt():
+    """NT Office of the Commissioner for Public Employment — quarterly FTE.
+
+    THE NT WAS RECORDED AS HAVING NO SOURCE. It has published quarterly
+    staffing numbers since 2013, at /workforce-planning/staffing-numbers.
+
+    Finding it took six rounds and the lesson is worth more than the data:
+    ocpe.nt.gov.au answers a plain request with a Cloudflare challenge, and
+    round one had a real browser sit on it for thirty seconds without clearing,
+    which read as a host that could not be entered. It can — the challenge is
+    intermittent, and warming the origin once per browser context clears it.
+    Then every deep path I invented 404'd, five of them, until the host was
+    simply asked for its own sitemap: 520 URLs, and the answer was in it. ASK
+    FOR THE SITEMAP FIRST.
+
+    ONE DOCUMENT HOLDS THE WHOLE COMPARISON, which is unusually kind. Each
+    quarterly PDF carries five quarters — June, September, December, March,
+    June — so the first and last columns are the same quarter a year apart and
+    no second fetch is needed. That also removes the risk the WGEA generator
+    hit, where two documents could be built on different bases.
+
+    IT IS FTE: the page says "Measured as Full Time Equivalent" in its header.
+    """
+    import io as _io
+    import pdfplumber
+
+    page = fetch(NT_INDEX, via_browser=True, warm=NT_WARM, render=True)
+    pdfs = re.findall(r'href="([^"]+\.pdf)"', page, re.I)
+    pdfs = [u for u in pdfs if re.search(r'staffing|quarter|fte', u, re.I)]
+    pdfs = [u if u.startswith('http') else 'https://ocpe.nt.gov.au' + u for u in pdfs]
+    if not pdfs:
+        raise RuntimeError('NT: no quarterly staffing PDFs linked on ' + NT_INDEX)
+
+    # NEWEST BY THE DATE IN THE FILENAME, never by the URL. The files live
+    # under /__data/assets/pdf_file/<dir>/<id>/ and those numbers do not sort
+    # chronologically; the probe read a 2018 edition while reporting it had
+    # taken the newest, for exactly this reason.
+    MONTH = {m: i for i, m in enumerate(
+        ['january', 'february', 'march', 'april', 'may', 'june', 'july',
+         'august', 'september', 'october', 'november', 'december'], 1)}
+
+    def when(u):
+        name = u.rsplit('/', 1)[-1].lower()
+        y = re.search(r'(20\d\d)', name)
+        mth = next((v for k, v in MONTH.items() if k in name), 0)
+        return (int(y.group(1)) if y else 0, mth)
+
+    newest = max(pdfs, key=when)
+    year, month = when(newest)
+    if year < 2024:
+        raise RuntimeError(f'NT: newest staffing PDF looks stale ({newest})')
+
+    blob = fetch(newest, binary=True, via_browser=True, warm=NT_WARM)
+    rows = {}
+    with pdfplumber.open(_io.BytesIO(blob)) as pdf:
+        for pg in pdf.pages:
+            rows.update(_nt_rows(pg))
+        # A THIN RESULT IS A FAILURE TOO, and the first version only reported
+        # an empty one. Three rows came back from a table of about twenty-five
+        # and nothing said so: the run looked like a success and filed three
+        # agencies. The Territory has more departments than that, so anything
+        # under fifteen is treated as a broken parse rather than a small
+        # government.
+        if len(rows) < 15:
+            print(f'  NT: only {len(rows)} rows parsed — dumping geometry',
+                  file=sys.stderr)
+            pg = pdf.pages[0]
+            ws = pg.extract_words(keep_blank_chars=False)
+            byline = {}
+            for w in ws:
+                byline.setdefault(round(w['top'] / 3), []).append(w)
+            shown = 0
+            for _, lw in sorted(byline.items()):
+                lw.sort(key=lambda w: w['x0'])
+                if not any(re.fullmatch(r'[\d,]+', w['text']) for w in lw):
+                    continue
+                gaps = [f"{w['text']}@{w['x0']:.0f}" for w in lw[:14]]
+                print(f'    NT words | {" ".join(gaps)}', file=sys.stderr)
+                shown += 1
+                if shown >= 8:
+                    break
+            raise RuntimeError(f'NT: parsed {len(rows)} agency rows from {newest}')
+    asof = f'{list(MONTH)[month - 1][:3].title()} {year}' if month else str(year)
+    return rows, asof, 'fte'
+
+
+# ── Tasmania ────────────────────────────────────────────────────────────────
+TAS_SEARCH = 'https://www.dpac.tas.gov.au/search?query=workforce+report'
+TAS_SITEMAP = 'https://www.dpac.tas.gov.au/sitemap.xml'
+TAS_WARM = 'https://www.dpac.tas.gov.au/'
+
+
+def load_tas():
+    """Tasmanian State Service Workforce Report — paid headcount by agency.
+
+    TASMANIA WAS RECORDED AS "the State Service domain no longer resolves".
+    dpac.tas.gov.au resolves, answers a warmed browser with 200, and publishes
+    this report twice a year. The claim was wrong in all three parts.
+
+    The agency table is "Employees by Agency and Employment Category", headed
+    "Paid Headcount as at 30 June <year>", with columns Fixed-term, Permanent,
+    Part 6 and Total. It is a HEAD COUNT, unlike the NT's FTE, and is marked so.
+
+    TWO EDITIONS ARE FETCHED, because one holds a single date. The reports are
+    numbered within a year — No. 1 is the December half, No. 2 the June half —
+    so a June-to-June comparison is this year's No. 2 against last year's. A
+    December edition is never compared with a June one: that is six months, and
+    the whole point of `span` is that a change is only reported over the period
+    it was actually measured.
+    """
+    import io as _io
+    import pdfplumber
+
+    # THE SITEMAP, NOT THE SEARCH PAGE. The search returned four reports and
+    # only one of them was a June edition, so no year-on-year could be built
+    # from it — not because Tasmania publishes one, but because a search page
+    # shows what it feels like showing. The sitemap is the site's own list and
+    # carries every edition it still serves.
+    found = []
+    for src, kind in ((TAS_SITEMAP, 'sitemap'), (TAS_SEARCH, 'search')):
+        page = fetch(src, via_browser=True, warm=TAS_WARM)
+        hits = re.findall(r'(?:href="|<loc>\s*)([^"<\s]*State-Service-Workforce-Report[^"<\s]*\.pdf)',
+                          page, re.I)
+        found += [u if u.startswith('http') else 'https://www.dpac.tas.gov.au' + u for u in hits]
+        if len(found) >= 4:
+            break
+    editions = {}
+    for u in dict.fromkeys(found):
+        m = re.search(r'Number-(\d+)-(\d{4})', u, re.I)
+        if m:
+            editions[(int(m.group(2)), int(m.group(1)))] = u
+
+    # PAIR LIKE WITH LIKE. No. 1 is the December half and No. 2 the June half,
+    # so a pair must share a report number and be one year apart. Comparing a
+    # December edition with a June one is six months wearing a year's label,
+    # which is the whole reason `span` exists.
+    pair = None
+    for (yr, no) in sorted(editions, reverse=True):
+        if (yr - 1, no) in editions:
+            pair = ((yr, no), (yr - 1, no))
+            break
+    if not pair:
+        raise RuntimeError(f'TAS: no two editions of the same number a year apart, '
+                           f'found {sorted(editions)}')
+    june = [pair[0], pair[1]]
+
+    def agencies(url):
+        blob = fetch(url, binary=True, via_browser=True, warm=TAS_WARM)
+        out = {}
+        with pdfplumber.open(_io.BytesIO(blob)) as pdf:
+            for pg in pdf.pages:
+                txt = pg.extract_text() or ''
+                if 'Employees by Agency' not in txt:
+                    continue
+                for line in txt.split('\n'):
+                    # "<name> <fixed> <permanent> <part6> <total>" — the TOTAL
+                    # is the last number, and the three before it sum to it.
+                    # Checking that sum is what tells a real row from a line of
+                    # prose that happens to end in numbers.
+                    m = re.match(r'^\s*([A-Za-z][^0-9]{4,}?)\s+'
+                                 r'([\d,]+)\s+([\d,]+)\s+([\d,]+)\s+([\d,]+)\s*$', line)
+                    if not m:
+                        continue
+                    name = m.group(1).strip()
+                    n = [int(x.replace(',', '')) for x in m.groups()[1:]]
+                    if sum(n[:3]) != n[3] or n[3] <= 0:
+                        continue
+                    out[name] = n[3]
+        return out
+
+    now_rows = agencies(editions[june[0]])
+    prev_rows = agencies(editions[june[1]])
+    if not now_rows:
+        raise RuntimeError(f'TAS: parsed no agency rows from {editions[june[0]]}')
+    span = june[0][0] - june[1][0]
+    if span != 1:
+        raise RuntimeError(f'TAS: editions are {span} years apart, not one '
+                           f'({june[0]} vs {june[1]})')
+    rows = {k: (v, prev_rows[k]) for k, v in now_rows.items()
+            if prev_rows.get(k, 0) > 0}
+    month = 'Jun' if june[0][1] == 2 else 'Dec'
+    return rows, f'{month} {june[0][0]}', 'headcount'
+
+
+
 # key -> (label, loader, span in years). The loader returns (rows, asof, unit);
 # `unit` is "headcount" everywhere but Queensland, which publishes only FTE.
 SOURCES = {
@@ -736,6 +1090,11 @@ SOURCES = {
     'nsw': ('New South Wales', load_nsw, 1),
     # Plain CSV, no browser needed. FTE, and June-to-June — see the loader.
     'nz': ('New Zealand', load_nz, 1),
+    # Both sit behind a Cloudflare challenge that a WARMED browser clears, so
+    # both run only where Playwright does. See the loaders for how each was
+    # found, which took six rounds and is the more useful half of the story.
+    'nt': ('Northern Territory', load_nt, 1),
+    'tas': ('Tasmania', load_tas, 1),
 }
 
 

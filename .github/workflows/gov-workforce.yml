@@ -98,8 +98,12 @@ jobs:
       # 2026-09-24; what is actually blocked is catalogue.data.govt.nz, whose
       # CKAN API answers with an Imperva interstitial, and the agency's own
       # site was never tried. See load_nz.
-      - name: Generate QLD + SA + NSW + NZ workforce data
-        run: python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz
+      # NT and TAS join here because both sit behind a Cloudflare challenge
+      # that only a WARMED browser clears — the origin is visited first, once
+      # per context, and the clearance cookie makes the rest cheap. Neither is
+      # reachable from a developer machine without that.
+      - name: Generate QLD + SA + NSW + NZ + NT + TAS workforce data
+        run: python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas
 
       - name: Show the generated file
         run: |
