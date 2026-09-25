@@ -74,6 +74,7 @@ on:
       - 'scripts/gen-gov-workforce.py'
       - 'scripts/gov-source-probe.py'
       - 'scripts/sa-workforce-probe.py'
+      - 'scripts/tas-workforce-probe.py'
       - '.github/workflows/gov-workforce.yml'
 
 # PER-BRANCH, NOT PER-REPO. The group was a bare "gov-workforce", so a push
@@ -206,6 +207,23 @@ jobs:
             https://www.health.nsw.gov.au/annualreport/Publications/2025/appendix.pdf
           python scripts/sa-workforce-probe.py \
             https://www.health.nsw.gov.au/annualreport/Publications/2025/appendix.pdf
+
+      # Tasmania's parser reaches 63% of the report's own stated Total — 13
+      # agencies summing to 20,418 against 32,473 — so six roster cards are
+      # blank for want of a regex, not for want of a source. It cannot be
+      # fixed where it is written: the PDF answers a connection reset to the
+      # authoring sandbox and the host needs a warmed browser, so the one
+      # document the parser is wrong about is the one that will not open
+      # beside it.
+      #
+      # This prints the table's raw lines with the current regex's verdict on
+      # each, so the fix can be written against the document rather than
+      # guessed at. The log is the channel — the same one that finally got
+      # South Australia's rows out of here.
+      - name: Probe the Tasmanian agency table
+        if: always()
+        continue-on-error: true
+        run: python scripts/tas-workforce-probe.py
 
       # THE DIAGNOSIS IS REPRINTED LAST, AND THAT IS THE POINT. It is produced
       # by the FIRST step, and everything after it — the whole generated data
