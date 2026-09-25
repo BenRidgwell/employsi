@@ -1,13 +1,12 @@
-import { useState } from "react";
+import { useAppStore } from "../state/store";
 
 /**
  * The Supply / Demand switch, ported from the Supply_Demand_Switch design.
  *
- * NOT WIRED UP, DELIBERATELY. It owns its own `mode` and nothing else reads it:
- * the thumb slides, the labels and icons cross-fade, and the app behind it does
- * not change. That is what was asked for, and it is worth saying in the file
- * rather than only in a commit message — a switch that moves and does nothing
- * looks exactly like a switch whose handler broke.
+ * IT DRIVES ONE THING: `marketMode` in the store, which today reaches only the
+ * top two buttons of the action rail. Everything else in the app is the demand
+ * reading of the market regardless of where this sits. See the note on
+ * `marketMode` for why that is deliberate rather than half-finished.
  *
  * WHAT WAS TAKEN FROM THE DESIGN, verbatim: the 104×30 track segments, the 3px
  * padding, the pill radius, the ink thumb, both 280ms cubic-bezier(.2,0,0,1)
@@ -23,8 +22,6 @@ import { useState } from "react";
  * both default to off in the design, and an unused variant of a control nobody
  * can act on yet is code with no way to be right or wrong.
  */
-
-type Mode = "supply" | "demand";
 
 /** One track segment. The thumb is the same width, and the translate that moves
  *  it is exactly this — see the CSS. */
@@ -83,7 +80,8 @@ function IconDemand() {
 }
 
 export function SupplyDemandSwitch() {
-  const [mode, setMode] = useState<Mode>("supply");
+  const mode = useAppStore((s) => s.marketMode);
+  const setMode = useAppStore((s) => s.setMarketMode);
 
   return (
     <div

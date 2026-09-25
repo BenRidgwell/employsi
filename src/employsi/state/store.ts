@@ -99,6 +99,20 @@ export interface AppState {
   compareOpen: boolean;
   compareA: string | null;
   compareB: string | null;
+  /**
+   * Which side of the market the app is being read from.
+   *
+   * "demand" is everything this product was until now — vacancies, employers,
+   * who is hiring — so it is the default, and the demand surfaces are simply
+   * what the components already did.
+   *
+   * TODAY IT REACHES EXACTLY ONE THING: the top two buttons of the action rail.
+   * Nothing else in the app reads it. That is deliberate rather than
+   * unfinished — the supply surfaces are being added one at a time, and a flag
+   * that silently changed several of them at once would be impossible to check
+   * against any of them.
+   */
+  marketMode: "supply" | "demand";
   trendingOpen: boolean;
   // "Ask an analyst": a scoped Q&A over the live vacancy archive.
   analystOpen: boolean;
@@ -211,6 +225,7 @@ export interface AppState {
   setCompareA: (id: string) => void;
   setCompareB: (id: string) => void;
 
+  setMarketMode: (m: "supply" | "demand") => void;
   toggleTrending: () => void;
   closeTrending: () => void;
   toggleAnalyst: () => void;
@@ -452,6 +467,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   compareOpen: false,
   compareA: null,
   compareB: null,
+  marketMode: "demand",
   trendingOpen: false,
   analystOpen: false,
   dataQualityOpen: false,
@@ -850,6 +866,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   setCompareA: (id) => set({ compareA: id }),
   setCompareB: (id) => set({ compareB: id }),
 
+  /**
+   * Switching side closes the two panes the rail's top pair opens.
+   *
+   * Those are the only buttons the mode changes, and in supply mode neither is
+   * on the rail — so an open "What's trending" would be left on screen with
+   * nothing to close it but its own X, anchored to a button that is no longer
+   * there. Closing both on the way through costs nothing when they are already
+   * shut.
+   */
+  setMarketMode: (m) => set({ marketMode: m, trendingOpen: false, analystOpen: false }),
   toggleTrending: () => set((s) => solo("trendingOpen", !s.trendingOpen)),
   closeTrending: () => set({ trendingOpen: false }),
   toggleAnalyst: () => set((s) => solo("analystOpen", !s.analystOpen)),
