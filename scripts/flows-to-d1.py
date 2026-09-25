@@ -104,7 +104,7 @@ def d1(sql: str, params: list | None = None) -> list[dict]:
 
 # ── validation ──────────────────────────────────────────────────────────────
 
-def load(delivery: str) -> tuple[dict, list[dict], str]:
+def load(delivery: str) -> tuple[dict, list[dict], str, list[dict], list[dict]]:
     hp, fp = os.path.join(delivery, 'import.json'), os.path.join(delivery, 'flows.csv')
     for p in (hp, fp):
         if not os.path.exists(p):
@@ -119,9 +119,13 @@ def load(delivery: str) -> tuple[dict, list[dict], str]:
     # import, not "already loaded".
     sp = os.path.join(delivery, 'skill_flows.csv')
     skill_raw = open(sp, 'rb').read() if os.path.exists(sp) else b''
-    digest = hashlib.sha256(raw + skill_raw).hexdigest()[:12] if skill_raw \
-        else hashlib.sha256(raw).hexdigest()[:12]
+    # flow_months.csv is optional too (0005), and in the digest on the same
+    # terms. Absent files add nothing, so an older delivery keeps its id.
+    mp = os.path.join(delivery, 'flow_months.csv')
+    month_raw = open(mp, 'rb').read() if os.path.exists(mp) else b''
+    digest = hashlib.sha256(raw + skill_raw + month_raw).hexdigest()[:12]
     skill_rows = list(csv.DictReader(skill_raw.decode('utf-8-sig').splitlines())) if skill_raw else []
+    month_rows = list(csv.DictReader(month_raw.decode('utf-8-sig').splitlines())) if month_raw else []
 
     errs: list[str] = []
     for k in ('source', 'delivered', 'method', 'scope'):
@@ -206,12 +210,50 @@ def load(delivery: str) -> tuple[dict, list[dict], str]:
             if k in seen:
                 errs.append(f'{where}: duplicate of an earlier row')
             seen.add(k)
+    if month_rows:
+        want = ['from_ref', 'from_name', 'to_ref', 'to_name', 'month', 'skill', 'moves',
+                'count_kind']
+        cols = list(month_rows[0].keys())
+        if sorted(cols) != sorted(want):
+            errs.append(f'flow_months.csv: columns must be exactly {want}, got {cols}')
+        seen = set()
+        summed: Counter = Counter()
+        for n, r in enumerate(month_rows, start=2):
+            where = f'flow_months.csv line {n}'
+            if not re.match(r'^\d{4}-\d{2}$', r.get('month') or ''):
+                errs.append(f'{where}: month must be YYYY-MM')
+            try:
+                if float(r.get('moves') or 'x') < 0:
+                    raise ValueError
+            except ValueError:
+                errs.append(f'{where}: moves must be a number >= 0')
+                continue
+            k = (r.get('from_ref'), r.get('to_ref'), r.get('month'), r.get('skill'),
+                 r.get('count_kind'))
+            if k in seen:
+                errs.append(f'{where}: duplicate of an earlier row')
+            seen.add(k)
+            summed[(r.get('from_ref'), r.get('to_ref'), r.get('skill') or '')] += float(r['moves'])
+        # The months ARE the whole-window rows, split. Anything else means the
+        # files were exported differently, and the timeline would disagree
+        # with the totals it is meant to break down.
+        whole: Counter = Counter()
+        for r in rows:
+            whole[(r.get('from_ref'), r.get('to_ref'), '')] += float(r.get('moves') or 0)
+        for r in skill_rows:
+            whole[(r.get('from_ref'), r.get('to_ref'), r.get('skill'))] += float(r.get('moves') or 0)
+        off = [k for k in set(whole) | set(summed) if abs(whole[k] - summed[k]) > 1e-9]
+        for k in sorted(off, key=str)[:10]:
+            errs.append(f'flow_months.csv: {k} months sum to {summed[k]:g}, '
+                        f'the whole-window row says {whole[k]:g}')
+        if len(off) > 10:
+            errs.append(f'flow_months.csv: ... and {len(off) - 10} more pairs that do not sum')
     if errs:
         print('\n'.join(errs[:40]))
         if len(errs) > 40:
             print(f'... and {len(errs) - 40} more')
         sys.exit(1)
-    return header, rows, digest, skill_rows
+    return header, rows, digest, skill_rows, month_rows
 
 
 # ── matching ────────────────────────────────────────────────────────────────
@@ -268,7 +310,7 @@ def main() -> int:
     if not OFFLINE and not TOKEN:
         sys.exit('CLOUDFLARE_API_TOKEN is required (or pass --offline for a dry run '
                  'that skips the D1 lookups).')
-    header, rows, digest, skill_rows = load(POSITIONAL[0])
+    header, rows, digest, skill_rows, month_rows = load(POSITIONAL[0])
     import_id = f'{header["source"]}|{header["delivered"]}|{digest}'
 
     refs: dict[str, str] = {}
@@ -299,6 +341,9 @@ def main() -> int:
         print(f'skills   {len(skill_rows)} rows over {len({r["skill"] for r in skill_rows})} skills, '
               f'{sum(float(r["moves"]) for r in skill_rows):g} skill moves, from '
               f'{sum((header.get("skills") or {}).get("sample", {}).values())} profiles with skills')
+    if month_rows:
+        ms = sorted({r['month'] for r in month_rows})
+        print(f'months   {len(month_rows)} rows, {ms[0]} to {ms[-1]} (sums match the whole-window rows)')
     unmatched = sorted((r for r in refs if not ids[r]), key=lambda r: -volume[r])
     if unmatched:
         print('\nunmatched, biggest first (map one with a flow_company_map row, method=manual):')
@@ -340,6 +385,16 @@ def main() -> int:
                import_id, r['from_ref'], r['from_name'], r['to_ref'], r['to_name'],
                ids.get(r['from_ref']), ids.get(r['to_ref']), r['period_start'], r['period_end'],
                r['skill'], float(r['moves']), r['count_kind'])])
+    per_m = 9  # 11 bound params a row
+    for i in range(0, len(month_rows), per_m):
+        chunk = month_rows[i:i + per_m]
+        d1('INSERT INTO flow_months (import_id, from_ref, from_name, to_ref, to_name, from_id, '
+           'to_id, month, skill, moves, count_kind) VALUES '
+           + ','.join(['(?,?,?,?,?,?,?,?,?,?,?)'] * len(chunk)),
+           [v for r in chunk for v in (
+               import_id, r['from_ref'], r['from_name'], r['to_ref'], r['to_name'],
+               ids.get(r['from_ref']), ids.get(r['to_ref']), r['month'], r['skill'] or '',
+               float(r['moves']), r['count_kind'])])
     for ref, n in ((header.get('skills') or {}).get('sample') or {}).items():
         d1('INSERT INTO flow_skill_sample (import_id, ref, company_id, profiles) VALUES (?,?,?,?)',
            [import_id, ref, ids.get(ref), int(n)])

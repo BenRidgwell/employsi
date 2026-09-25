@@ -342,3 +342,109 @@ export function buildFlowView(
     caption,
   };
 }
+
+// ── The timeline: one view per window (flow_months, migration 0005) ─────────
+//
+// The card's scrubber picks a window inside the delivery. Rather than a
+// server round trip per step, the card fetches the focus's moves by month
+// once (FlowMonthly, compact) and builds the view for any window here, with
+// buildFlowView — so a window's view obeys every rule the whole period's
+// does, and the whole period reproduces it exactly (check-flows asserts it).
+//
+// A narrower window is not a better-measured one: the sample is people at a
+// sampled company TODAY, so earlier months hold fewer of the moves that were
+// made (rule 11). WINDOW_CAVEAT says so wherever a window is shown.
+
+export const WINDOW_CAVEAT =
+  "Earlier months read lower for a reason that is not hiring: the sample is people at a " +
+  "sampled company today, so moves by anyone who has since left all of them are not seen.";
+
+export interface FlowMonthly {
+  imp: FlowImport;
+  skill: string | null;
+  countKind: CountKind;
+  focusName: string;
+  sampled: string[];
+  sampleProfiles: number | null;
+  months: string[]; // YYYY-MM, the delivery's whole window, ascending and contiguous
+  parties: { ref: string; name: string; id: string | null }[];
+  // [party index, month index, 0 = into the focus / 1 = out of it, moves]
+  cells: [number, number, 0 | 1, number][];
+}
+
+function monthEnd(ym: string): string {
+  const y = Number(ym.slice(0, 4));
+  const m = Number(ym.slice(5, 7));
+  const d = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return `${ym}-${String(d).padStart(2, "0")}`;
+}
+
+/** Months from `a` to `b` inclusive (YYYY-MM). */
+export function monthSpan(a: string, b: string): string[] {
+  const out: string[] = [];
+  let y = Number(a.slice(0, 4));
+  let m = Number(a.slice(5, 7));
+  const end = Number(b.slice(0, 4)) * 12 + Number(b.slice(5, 7));
+  while (y * 12 + m <= end) {
+    out.push(`${y}-${String(m).padStart(2, "0")}`);
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+  }
+  return out;
+}
+
+/**
+ * The view for the months `from`..`to` (YYYY-MM, inclusive). Null when the
+ * focus was not sampled or no move touching it falls in the window — the
+ * card then says the WINDOW is empty, not that the company has no data.
+ */
+export function viewForWindow(
+  m: FlowMonthly,
+  focusId: string,
+  from: string,
+  to: string,
+  minMoves: number = FLOW_MIN_MOVES,
+): FlowView | null {
+  const lo = m.months.indexOf(from);
+  const hi = m.months.indexOf(to);
+  if (lo < 0 || hi < lo) return null;
+  const sums = new Map<string, number>(); // `${party}|${dir}`
+  for (const [p, mi, dir, n] of m.cells) {
+    if (mi < lo || mi > hi) continue;
+    const k = `${p}|${dir}`;
+    sums.set(k, (sums.get(k) ?? 0) + n);
+  }
+  const focus = { ref: `focus:${focusId}`, name: m.focusName, id: focusId };
+  const period_start = `${from}-01`;
+  const period_end = monthEnd(to);
+  const rows: FlowRow[] = [];
+  for (const [k, n] of sums) {
+    const [pi, dir] = k.split("|").map(Number);
+    const p = m.parties[pi];
+    const [a, b] = dir === 0 ? [p, focus] : [focus, p];
+    rows.push({
+      from_ref: a.ref,
+      from_name: a.name,
+      to_ref: b.ref,
+      to_name: b.name,
+      from_id: a.id,
+      to_id: b.id,
+      period_start,
+      period_end,
+      moves: n,
+      count_kind: m.countKind,
+    });
+  }
+  return buildFlowView(
+    focusId,
+    m.imp,
+    rows,
+    new Set(m.sampled),
+    m.sampleProfiles,
+    m.skill,
+    minMoves,
+  );
+}

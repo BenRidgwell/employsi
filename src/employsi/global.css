@@ -17318,6 +17318,25 @@ body {
 .tfsearch:active {
   transform: scale(0.98);
 }
+/* The timeline's reset: back from a scrubbed window to the whole period. */
+.tfall {
+  all: unset;
+  cursor: pointer;
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--neutral-200, #e5e5ea);
+  font: 500 11px/1 "Inter", system-ui, sans-serif;
+  color: #1c1c1e;
+  vertical-align: 1px;
+}
+.tfall:hover {
+  background: #d8d8dd;
+}
+.tfall:focus-visible {
+  outline: 2px solid #1c1c1e;
+  outline-offset: 2px;
+}
 /* What the numbers are: sampled moves, the period, the grouping and the
    outflow rule. The design has no line for it; a count with no statement of
    what it counts is the thing this codebase refuses to print. */

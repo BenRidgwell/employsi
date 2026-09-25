@@ -20,7 +20,10 @@ import {
   summariseCompanyFlows,
   type CountKind,
   type FlowImport,
+  type FlowMonthly,
   type FlowRow,
+  monthSpan,
+  viewForWindow,
 } from "../src/employsi/lib/flows";
 
 let failures = 0;
@@ -256,6 +259,65 @@ function row(
       /into roles matching Geology/.test(sv.caption) &&
       sv.sampleProfiles === 5000,
     sv,
+  );
+
+  // ── the timeline: the same rows split by month ──────────────────────────
+  // Each row's moves go half to Feb and half to Sep 2025 (the odd one to Sep).
+  const months = monthSpan("2025-01", "2025-12");
+  const parties: FlowMonthly["parties"] = [];
+  const cells: FlowMonthly["cells"] = [];
+  for (const x of rows) {
+    const inbound = x.to_id === "bhp";
+    const ref = inbound ? x.from_ref : x.to_ref;
+    let pi = parties.findIndex((p) => p.ref === ref);
+    if (pi < 0) {
+      pi = parties.length;
+      parties.push({
+        ref,
+        name: inbound ? x.from_name : x.to_name,
+        id: inbound ? x.from_id : x.to_id,
+      });
+    }
+    const early = Math.floor(x.moves / 2);
+    if (early) cells.push([pi, months.indexOf("2025-02"), inbound ? 0 : 1, early]);
+    cells.push([pi, months.indexOf("2025-09"), inbound ? 0 : 1, x.moves - early]);
+  }
+  const M: FlowMonthly = {
+    imp: S,
+    skill: null,
+    countKind: "sampled",
+    focusName: "bhp",
+    sampled: [...sampled],
+    sampleProfiles: 9696,
+    months,
+    parties,
+    cells,
+  };
+  check(
+    "window: the whole period reproduces the whole-period view exactly",
+    JSON.stringify(viewForWindow(M, "bhp", "2025-01", "2025-12")) === JSON.stringify(v),
+    viewForWindow(M, "bhp", "2025-01", "2025-12"),
+  );
+  const h1 = viewForWindow(M, "bhp", "2025-01", "2025-06")!;
+  check(
+    "window: a window counts only its own months, under the same rules",
+    h1.totals.in === 49 &&
+      h1.peers.find((p) => p.companyId === "rio")?.in === 20 &&
+      !h1.peers.find((p) => p.companyId === "fmg"), // 6 in the window: under the floor
+    h1,
+  );
+  check(
+    "window: the caption names the window drawn, not the delivery's",
+    /Jan 2025 – Jun 2025/.test(h1.caption),
+    h1.caption,
+  );
+  check(
+    "window: a window with no moves is null, not an empty view",
+    viewForWindow(M, "bhp", "2025-03", "2025-08") === null,
+  );
+  check(
+    "window: a month outside the delivery is refused",
+    viewForWindow(M, "bhp", "2024-12", "2025-06") === null,
   );
 }
 

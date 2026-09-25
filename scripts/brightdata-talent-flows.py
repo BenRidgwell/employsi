@@ -110,7 +110,7 @@ from collections import Counter, defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from talent_flows import (  # noqa: E402
-    MAX_GAP_MONTHS, aggregate, coverage_end, exclusion_report, moves_from, person_key,
+    MAX_GAP_MONTHS, aggregate, aggregate_monthly, coverage_end, exclusion_report, moves_from, person_key,
     positions_from_brightdata, skills_of, tail_counts, window_note)
 
 args = sys.argv[1:]
@@ -600,13 +600,21 @@ def export(conn: sqlite3.Connection, out_dir: str) -> int:
     seeds = {r['seed_ref']: r['company_id'] for r in seed_rows}
     totals = {r['seed_ref']: r['total'] for r in seed_rows}
     os.makedirs(out_dir, exist_ok=True)
-    skill_rows, skill_sample = _export_skills(conn, out_dir, start, end)
+    skill_rows, skill_sample, skill_months = _export_skills(conn, out_dir, start, end)
     cols = ['from_ref', 'from_name', 'to_ref', 'to_name', 'period_start', 'period_end',
             'moves', 'count_kind']
     with open(os.path.join(out_dir, 'flows.csv'), 'w', newline='') as f:
         w = csv.DictWriter(f, fieldnames=cols)
         w.writeheader()
         w.writerows(rows)
+    # flow_months.csv: the same rows split by month (skill '' = all moves),
+    # for the card's timeline. Each pair's months sum to its row above.
+    month_rows = [{**r, 'skill': ''} for r in aggregate_monthly(moves, start, end)] + skill_months
+    with open(os.path.join(out_dir, 'flow_months.csv'), 'w', newline='') as f:
+        w = csv.DictWriter(f, fieldnames=['from_ref', 'from_name', 'to_ref', 'to_name', 'month',
+                                          'skill', 'moves', 'count_kind'])
+        w.writeheader()
+        w.writerows(month_rows)
     header = {
         'source': 'brightdata',
         'product': f'Bright Data LinkedIn people profiles ({DATASET}) via @brightdata/mcp search_dataset',
@@ -648,6 +656,7 @@ def export(conn: sqlite3.Connection, out_dir: str) -> int:
         json.dump(header, f, indent=2)
     print(f'{len(rows)} company pairs, {sum(r["moves"] for r in rows)} moves, '
           f'{start} to {end}, from {sum(sample.values())} profiles -> {out_dir}')
+    print(f'{len(month_rows)} monthly rows (flow_months.csv)')
     for (why, a, b), n in sorted(excluded.items()):
         verb = 'counted under its employer' if why == 'merged' else f'excluded, {why}'
         print(f'  {verb}: {a} {"/" if why in ("not_employer", "merged") else "->"} {b}: {n}')
@@ -677,10 +686,12 @@ def _export_skills(conn: sqlite3.Connection, out_dir: str, start: str, end: str)
             by_skill[r['skill']].append(dict(r))
         skill_sample = {r['seed_ref']: r['n'] for r in conn.execute(
             "SELECT seed_ref, COUNT(*) n FROM skill_people WHERE status = 'ok' GROUP BY seed_ref")}
-    rows = []
+    rows, months = [], []
     for skill in sorted(by_skill):
         for r in aggregate(by_skill[skill], start, end):
             rows.append({**r, 'skill': skill})
+        for r in aggregate_monthly(by_skill[skill], start, end):
+            months.append({**r, 'skill': skill})
     cols = ['from_ref', 'from_name', 'to_ref', 'to_name', 'period_start', 'period_end',
             'skill', 'moves', 'count_kind']
     with open(os.path.join(out_dir, 'skill_flows.csv'), 'w', newline='') as f:
@@ -689,7 +700,7 @@ def _export_skills(conn: sqlite3.Connection, out_dir: str, start: str, end: str)
         w.writerows(rows)
     print(f'{len(rows)} skill rows over {len(by_skill)} skills, '
           f'from {sum(skill_sample.values())} profiles with skills')
-    return rows, skill_sample
+    return rows, skill_sample, months
 
 
 # ── D1: collection state (workers/jobs-cron/migrations/0003) ────────────────

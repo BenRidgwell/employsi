@@ -22,7 +22,7 @@ from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from talent_flows import (  # noqa: E402
-    Month, aggregate, skills_of, coverage_end, tail_counts, window_note, exclusion_report, clean_lines, company_links, moves_from, parse_experience,
+    Month, aggregate, aggregate_monthly, skills_of, coverage_end, tail_counts, window_note, exclusion_report, clean_lines, company_links, moves_from, parse_experience,
     person_key, positions_from_brightdata,
 )
 
@@ -390,6 +390,35 @@ def test_skills_of():
         isinstance(m.to_title, str) for m in moves_from(ps).moves) if ps else True)
 
 
+def test_monthly():
+    def mv(f, t, month, fn=None):
+        return {'from_ref': f, 'from_name': fn or f, 'to_ref': t, 'to_name': t, 'month': month}
+    moves = [
+        mv('li:rio-tinto', 'li:bhp', '2022-01'),
+        mv('li:rio-tinto', 'li:bhp', '2022-01', 'Rio Tinto'),
+        mv('li:rio-tinto', 'li:bhp', '2023-07', 'Rio Tinto'),
+        mv('li:oz-minerals', 'li:bhp', '2023-05'),      # acquisition: excluded in both
+        {'from_ref': 'li:bhp', 'from_name': 'BHP', 'to_ref': 'name:freelance',
+         'to_name': 'Freelance', 'month': '2022-02'},  # not an employer
+        mv('li:fortescue', 'li:bhp', '2019-12'),        # outside the window
+        mv('li:bhp', 'li:fortescue', '2024-03'),
+    ]
+    whole = {(r['from_ref'], r['to_ref']): r for r in aggregate(moves, '2020-01', '2025-12')}
+    months = aggregate_monthly(moves, '2020-01', '2025-12')
+    summed = Counter()
+    for r in months:
+        summed[(r['from_ref'], r['to_ref'])] += r['moves']
+    check('monthly: every pair\'s months sum to its whole-window row',
+          summed == Counter({k: r['moves'] for k, r in whole.items()}), (summed, whole))
+    check('monthly: one row per pair and month',
+          [(r['from_ref'], r['month'], r['moves']) for r in months]
+          == [('li:bhp', '2024-03', 1), ('li:rio-tinto', '2022-01', 2), ('li:rio-tinto', '2023-07', 1)],
+          months)
+    check('monthly: a pair keeps the whole window\'s name in every month',
+          {r['from_name'] for r in months if r['from_ref'] == 'li:rio-tinto'}
+          == {whole[('li:rio-tinto', 'li:bhp')]['from_name']}, months)
+
+
 def test_window_end():
     counts = {'2025-06': 30, '2025-07': 26, '2025-08': 26, '2025-09': 23, '2025-10': 13}
     check('window end: the last month the data covers, not the cap',
@@ -517,7 +546,7 @@ def test_bd_empty():
 
 for t in [test_links, test_clean, test_single, test_grouped, test_side_role,
           test_unknown_employer, test_year_only, test_ambiguous, test_boomerang,
-          test_aggregate, test_acquisition, test_not_employers, test_same_employer, test_second_seed_lists, test_rio_tinto_lists, test_skills_of, test_window_end, test_person_key, test_bd_sample, test_bd_moves,
+          test_aggregate, test_acquisition, test_not_employers, test_same_employer, test_second_seed_lists, test_rio_tinto_lists, test_skills_of, test_monthly, test_window_end, test_person_key, test_bd_sample, test_bd_moves,
           test_bd_refusals, test_bd_grouped, test_bd_empty]:
     t()
 

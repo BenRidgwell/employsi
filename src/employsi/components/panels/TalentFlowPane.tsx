@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../../state/store";
 import { COMPANIES, type Company } from "../../data/companies";
-import { getTalentFlowSkills, getTalentFlowView } from "../../lib/flowsFn";
+import { getTalentFlowMonths, getTalentFlowSkills, getTalentFlowView } from "../../lib/flowsFn";
+import { WINDOW_CAVEAT, viewForWindow } from "../../lib/flows";
 import { FLOW_BANDS, flowRows } from "../../lib/flowRows";
 import { CardLoader } from "./CardLoader";
 
@@ -16,12 +17,14 @@ import { CardLoader } from "./CardLoader";
  *   heading       per mode, as designed
  *   skill search  real skills only (getTalentFlowSkills: skills with a peer
  *                 at the 10-move floor); a name with no match changes nothing
- *   timeline      the ONE measured window. The design scrubs Mar 2006 – Jul
- *                 2026 and scales numbers by event "levels"; the sample is
- *                 today's employees, so earlier windows shrink for that reason
- *                 alone (docs/talent-flows-plan.md, rule 11). The track shows
- *                 the window, the event card is an annotation, and neither
- *                 changes a number.
+ *   timeline      spans the delivery's measured period (not the design's
+ *                 2006–2026). Scrubbing picks the 12 months ending at the
+ *                 handle, and the card and the map are rebuilt from the moves
+ *                 in those months (flow_months, viewForWindow) — never scaled.
+ *                 Untouched, or after "All", it is the whole period. Earlier
+ *                 windows read lower because the sample is today's employees
+ *                 (rule 11), and the footnote says so whenever a window is
+ *                 shown. The event card is an annotation and changes nothing.
  *   big number    moves, not "people": sampled moves, and says so
  *   rows          on-map companies at or over the floor, plus one "Other
  *                 companies" row holding everything else, so shares add up
@@ -70,13 +73,40 @@ export function TalentFlowPane() {
   const setFocus = useAppStore((s) => s.setFlowFocus);
   const setFlowView = useAppStore((s) => s.setFlowView);
   const [q, setQ] = useState("");
+  // The scrubbed window's last month (YYYY-MM), or null for the whole period.
+  const [tlEnd, setTlEnd] = useState<string | null>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
 
-  const { data: view, isFetching } = useQuery({
-    queryKey: ["talentFlowView", focus, skill],
-    queryFn: () => getTalentFlowView({ data: { id: focus, skill } }),
+  // One fetch per focus and skill: every month of its moves. Each window is
+  // then built here, so the scrubber never waits on the network.
+  const { data: monthly, isFetching: monthsFetching } = useQuery({
+    queryKey: ["talentFlowMonths", focus, skill],
+    queryFn: () => getTalentFlowMonths({ data: { id: focus, skill } }),
     enabled: open,
     staleTime: 10 * 60 * 1000,
   });
+  // An import without monthly rows: the whole period only, as before.
+  const { data: wholeView, isFetching: wholeFetching } = useQuery({
+    queryKey: ["talentFlowView", focus, skill],
+    queryFn: () => getTalentFlowView({ data: { id: focus, skill } }),
+    enabled: open && monthly === null,
+    staleTime: 10 * 60 * 1000,
+  });
+  const isFetching = monthsFetching || wholeFetching;
+  const months = monthly?.months ?? [];
+  const TL = 12; // months in a scrubbed window
+  const endIdx = tlEnd ? months.indexOf(tlEnd) : -1;
+  const win =
+    monthly && months.length
+      ? endIdx >= 0
+        ? { from: months[Math.max(0, endIdx - (TL - 1))], to: months[endIdx] }
+        : { from: months[0], to: months[months.length - 1] }
+      : null;
+  const view = useMemo(
+    () => (monthly && win ? viewForWindow(monthly, focus, win.from, win.to) : (wholeView ?? null)),
+    [monthly, focus, win?.from, win?.to, wholeView], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const windowed = !!monthly && endIdx >= 0;
   const { data: skills } = useQuery({
     queryKey: ["talentFlowSkills", focus],
     queryFn: () => getTalentFlowSkills({ data: { id: focus } }),
@@ -89,7 +119,10 @@ export function TalentFlowPane() {
     if (open) setFlowView(view ?? null);
   }, [open, view, setFlowView]);
   useEffect(() => {
-    if (!open) setFlowView(null);
+    if (!open) {
+      setFlowView(null);
+      setTlEnd(null);
+    }
   }, [open, setFlowView]);
   // A new focus starts at company level: its skill list is its own.
   useEffect(() => {
@@ -97,6 +130,21 @@ export function TalentFlowPane() {
   }, [skill]);
 
   const firstLoad = open && !view && isFetching;
+  // Scrub: the handle lands on a month; the window is the 12 ending there, so
+  // the handle cannot go left of the 12th month and every window is a year.
+  const scrubTo = (idx: number) => {
+    if (!months.length) return;
+    const i = Math.min(months.length - 1, Math.max(Math.min(TL - 1, months.length - 1), idx));
+    setTlEnd(months[i]);
+  };
+  const scrubAt = (clientX: number) => {
+    const el = trackRef.current;
+    if (!el || months.length < 2) return;
+    const r = el.getBoundingClientRect();
+    scrubTo(
+      Math.round(Math.min(1, Math.max(0, (clientX - r.left) / r.width)) * (months.length - 1)),
+    );
+  };
 
   const rows = useMemo(() => (view ? flowRows(view, mode) : []), [view, mode]);
 
@@ -125,15 +173,23 @@ export function TalentFlowPane() {
     }
   };
 
-  // Timeline: the window the delivery was exported over.
-  const ps = view ? monthOf(view.period.start) : null;
-  const pe = view ? monthOf(view.period.end) : null;
-  const span = ps && pe ? pe.y * 12 + pe.m - (ps.y * 12 + ps.m) : 1;
+  // Timeline: the track spans the delivery; the fill is the window drawn.
+  const whole = months.length
+    ? { start: `${months[0]}-01`, end: `${months[months.length - 1]}-01` }
+    : view?.period;
+  const ps = whole ? monthOf(whole.start) : null;
+  const pe = whole ? monthOf(whole.end) : null;
+  const span = ps && pe ? Math.max(1, pe.y * 12 + pe.m - (ps.y * 12 + ps.m)) : 1;
   const inWindow =
     ps && pe
       ? EVENTS.filter(([y, m]) => y * 12 + m >= ps.y * 12 + ps.m && y * 12 + m <= pe.y * 12 + pe.m)
       : [];
-  const ev = inWindow[inWindow.length - 1];
+  const we = win ? monthOf(`${win.to}-01`) : pe;
+  const ws = win ? monthOf(`${win.from}-01`) : ps;
+  // The event card: the latest event at or before the window's end.
+  const ev = we ? inWindow.filter(([y, m]) => y * 12 + m <= we.y * 12 + we.m).pop() : undefined;
+  const pct = (p: { y: number; m: number } | null) =>
+    p && ps ? `${((p.y * 12 + p.m - (ps.y * 12 + ps.m)) / span) * 100}%` : "100%";
 
   const listed = rows.filter((r) => r.id !== null);
   const total = !view
@@ -398,10 +454,79 @@ export function TalentFlowPane() {
                   whiteSpace: "nowrap",
                 }}
               >
-                {pe ? label(pe.y, pe.m) : ""}
+                {windowed && ws && we ? (
+                  <>
+                    {`${label(ws.y, ws.m)} – ${label(we.y, we.m)}`}
+                    <button
+                      type="button"
+                      className="tfall"
+                      onClick={() => setTlEnd(null)}
+                      aria-label="Show the whole period"
+                    >
+                      All
+                    </button>
+                  </>
+                ) : pe ? (
+                  "Whole period"
+                ) : (
+                  ""
+                )}
               </span>
             </div>
-            <div style={{ position: "relative", height: 28 }} aria-hidden>
+            <div
+              ref={trackRef}
+              role="slider"
+              tabIndex={months.length ? 0 : -1}
+              aria-label="Timeline: the 12 months shown end here"
+              aria-valuemin={0}
+              aria-valuemax={Math.max(0, months.length - 1)}
+              aria-valuenow={endIdx >= 0 ? endIdx : Math.max(0, months.length - 1)}
+              aria-valuetext={
+                windowed && ws && we
+                  ? `${label(ws.y, ws.m)} to ${label(we.y, we.m)}`
+                  : "Whole period"
+              }
+              onPointerDown={(e) => {
+                e.currentTarget.setPointerCapture?.(e.pointerId);
+                scrubAt(e.clientX);
+              }}
+              onPointerMove={(e) => {
+                if (e.buttons) scrubAt(e.clientX);
+              }}
+              onKeyDown={(e) => {
+                const cur = endIdx >= 0 ? endIdx : months.length - 1;
+                const d =
+                  e.key === "ArrowRight"
+                    ? 1
+                    : e.key === "ArrowLeft"
+                      ? -1
+                      : e.key === "ArrowUp"
+                        ? 12
+                        : e.key === "ArrowDown"
+                          ? -12
+                          : 0;
+                if (d) {
+                  e.preventDefault();
+                  scrubTo(cur + d);
+                } else if (e.key === "Home") {
+                  e.preventDefault();
+                  scrubTo(0);
+                } else if (e.key === "End") {
+                  e.preventDefault();
+                  scrubTo(months.length - 1);
+                } else if (e.key === "Escape" && windowed) {
+                  e.preventDefault();
+                  setTlEnd(null);
+                }
+              }}
+              style={{
+                position: "relative",
+                height: 28,
+                cursor: months.length ? "pointer" : "default",
+                touchAction: "none",
+                outline: "none",
+              }}
+            >
               <span
                 style={{
                   position: "absolute",
@@ -417,13 +542,14 @@ export function TalentFlowPane() {
               <span
                 style={{
                   position: "absolute",
-                  left: 0,
                   top: "50%",
                   height: 7,
                   marginTop: -3.5,
                   borderRadius: 999,
                   background: "#1c1c1e",
-                  width: "100%",
+                  left: windowed ? pct(ws) : 0,
+                  width: windowed ? `calc(${pct(we)} - ${pct(ws)})` : "100%",
+                  transition: "left 120ms, width 120ms",
                 }}
               />
               {ps &&
@@ -444,7 +570,7 @@ export function TalentFlowPane() {
               <span
                 style={{
                   position: "absolute",
-                  left: "100%",
+                  left: windowed ? pct(we) : "100%",
                   top: "50%",
                   width: 18,
                   height: 18,
@@ -453,6 +579,8 @@ export function TalentFlowPane() {
                   borderRadius: 999,
                   background: "#fff",
                   border: "1.5px solid #1c1c1e",
+                  pointerEvents: "none",
+                  transition: "left 120ms",
                 }}
               />
             </div>
@@ -542,7 +670,13 @@ export function TalentFlowPane() {
             {view ? big : isFetching ? "" : "—"}
           </span>
           <span style={{ fontSize: 14, lineHeight: 1.35, color: "var(--text-secondary,#636366)" }}>
-            {view ? bigLabel : isFetching ? "" : `No talent-flow data for ${name} yet`}
+            {view
+              ? bigLabel
+              : isFetching
+                ? ""
+                : monthly && windowed
+                  ? "No measured moves in this window"
+                  : `No talent-flow data for ${name} yet`}
           </span>
         </div>
 
@@ -691,6 +825,7 @@ export function TalentFlowPane() {
           <p className="tfnote">
             {view.caption}
             {mode !== "in" ? " Net is inflow minus outflow, for those companies only." : ""}
+            {windowed ? ` ${WINDOW_CAVEAT}` : ""}
           </p>
         )}
       </aside>

@@ -26,7 +26,7 @@ import type { SkillCompanyMonths } from "../lib/jobHistoryFn";
 import { buildMarker, MARKER_FOOT } from "../lib/mapMarker";
 import {
   clearFlowArcs,
-  setCometProgress,
+  setFlowPhase,
   setFlowArcs,
   setFlowHover as paintFlowHover,
   type FlowArc,
@@ -1213,7 +1213,10 @@ export function PerthMapbox() {
       if (!active) {
         clearFlowArcs(map);
         clearMarkers();
-        lastFramedRef.current = "";
+        // Only closing (or leaving the city) re-arms the first-open framing.
+        // A view that is briefly absent — a new company loading, an empty
+        // window — must not, or the camera would jump on the next draw.
+        if (!flowsOpen || zoomedOut) lastFramedRef.current = "";
         return;
       }
       const v = flowView!;
@@ -1261,10 +1264,11 @@ export function PerthMapbox() {
         badge.style.background = row.color;
       });
 
-      // Frame the focus and its drawn peers once per focus/mode, left of the card.
-      const frameKey = `${v.focus.companyId}|${flowMode}|${v.skill ?? ""}`;
-      if (focusAt && lastFramedRef.current !== frameKey) {
-        lastFramedRef.current = frameKey;
+      // Frame the focus and its drawn peers ONCE, when the view first draws
+      // after opening. Switching company, mode, skill or window afterwards
+      // leaves the camera wherever the user has put it.
+      if (focusAt && !lastFramedRef.current) {
+        lastFramedRef.current = "framed";
         const pts = [focusAt, ...arcs.map((a) => (a.from === focusAt ? a.to : a.from))];
         const lng = pts.map((p) => p[0]);
         const lat = pts.map((p) => p[1]);
@@ -1290,18 +1294,19 @@ export function PerthMapbox() {
 
       // The travelling lights and the hub's pulse. Off for reduced motion.
       if (arcs.length && !reduceMotion && !prefersReducedMotion()) {
-        const t0 = performance.now();
+        // One continuous clock, so a redraw (a scrub, a mode switch) does
+        // not restart the pulse and the arrows mid-beat.
         let last = 0;
         const tick = (now: number) => {
           if (now - last > 33) {
             last = now;
-            setCometProgress(map, ((now - t0) / 2600) % 1);
+            setFlowPhase(map, (now % 2600) / 2600);
           }
           cometRaf.current = requestAnimationFrame(tick);
         };
         cometRaf.current = requestAnimationFrame(tick);
       } else {
-        setCometProgress(map, 0.5);
+        setFlowPhase(map, 0.5);
       }
     };
 

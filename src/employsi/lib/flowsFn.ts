@@ -5,8 +5,11 @@ import type { D1Like } from "./jobArchive";
 import {
   FLOW_MIN_MOVES,
   buildFlowView,
+  monthSpan,
   summariseCompanyFlows,
   type CompanyFlows,
+  type CountKind,
+  type FlowMonthly,
   type FlowImport,
   type FlowRow,
   type FlowView,
@@ -197,5 +200,111 @@ export const getTalentFlowSkills = createServerFn({ method: "GET" })
       );
     } catch {
       return [];
+    }
+  });
+
+// ── The timeline (flow_months, migration 0005) ───────────────────────────────
+//
+// getTalentFlowMonths hands the card one focus's moves by month, compact, so
+// its scrubber can rebuild the view for any window without a round trip per
+// step (viewForWindow in flows.ts). Null when the current import carries no
+// monthly rows — the card then shows the whole period only, as before.
+
+const MONTH_KIND_PREFERENCE: CountKind[] = ["weighted", "observed", "sampled"];
+
+export const getTalentFlowMonths = createServerFn({ method: "GET" })
+  .validator((data: { id: string; skill?: string | null }) => data)
+  .handler(async ({ data }): Promise<FlowMonthly | null> => {
+    const id = (data.id || "").trim();
+    const skill = (data.skill || "").trim() || null;
+    if (!id) return null;
+    if (!marketVisible(await callerRole(), id, true)) return null;
+    const db = await getArchiveDb();
+    if (!db) return null;
+    try {
+      const imp = await currentImport(db, id);
+      if (!imp) return null;
+      const span = await db
+        .prepare(
+          `SELECT MIN(period_start) AS a, MAX(period_end) AS b FROM flows WHERE import_id = ?1`,
+        )
+        .bind(imp.import_id)
+        .first<{ a: string | null; b: string | null }>();
+      if (!span?.a || !span.b) return null;
+      const rows =
+        (
+          await db
+            .prepare(
+              `SELECT from_ref, from_name, to_ref, to_name, from_id, to_id, month, moves, count_kind
+                 FROM flow_months
+                WHERE import_id = ?1 AND skill = ?3 AND (from_id = ?2 OR to_id = ?2)`,
+            )
+            .bind(imp.import_id, id, skill ?? "")
+            .all<{
+              from_ref: string;
+              from_name: string;
+              to_ref: string;
+              to_name: string;
+              from_id: string | null;
+              to_id: string | null;
+              month: string;
+              moves: number;
+              count_kind: CountKind;
+            }>()
+        )?.results ?? [];
+      if (!rows.length) return null;
+      const countKind = MONTH_KIND_PREFERENCE.find((k) => rows.some((r) => r.count_kind === k));
+      if (!countKind) return null;
+
+      const sampleTable = skill ? "flow_skill_sample" : "flow_sample";
+      const sampledRows =
+        (
+          await db
+            .prepare(
+              `SELECT company_id, SUM(profiles) AS n FROM ${sampleTable}
+                WHERE import_id = ?1 AND company_id IS NOT NULL GROUP BY company_id`,
+            )
+            .bind(imp.import_id)
+            .all<{ company_id: string; n: number }>()
+        )?.results ?? [];
+
+      const months = monthSpan(span.a.slice(0, 7), span.b.slice(0, 7));
+      const mIndex = new Map(months.map((m, i) => [m, i] as const));
+      const parties: FlowMonthly["parties"] = [];
+      const pIndex = new Map<string, number>();
+      const cells: FlowMonthly["cells"] = [];
+      let focusName = "";
+      for (const r of rows) {
+        if (r.count_kind !== countKind || r.from_id === r.to_id) continue;
+        const mi = mIndex.get(r.month);
+        if (mi === undefined) continue;
+        const inbound = r.to_id === id;
+        if (!focusName) focusName = inbound ? r.to_name : r.from_name;
+        const ref = inbound ? r.from_ref : r.to_ref;
+        let pi = pIndex.get(ref);
+        if (pi === undefined) {
+          pi = parties.length;
+          pIndex.set(ref, pi);
+          parties.push({
+            ref,
+            name: inbound ? r.from_name : r.to_name,
+            id: inbound ? r.from_id : r.to_id,
+          });
+        }
+        cells.push([pi, mi, inbound ? 0 : 1, r.moves]);
+      }
+      return {
+        imp,
+        skill,
+        countKind,
+        focusName,
+        sampled: sampledRows.map((r) => r.company_id),
+        sampleProfiles: sampledRows.find((r) => r.company_id === id)?.n ?? null,
+        months,
+        parties,
+        cells,
+      };
+    } catch {
+      return null; // 0005 not applied reads the same as no monthly rows
     }
   });

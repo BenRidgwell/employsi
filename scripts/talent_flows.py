@@ -723,6 +723,23 @@ def exclusion_report(excluded: Counter) -> dict:
     return out
 
 
+def aggregate_monthly(moves, start: str, end: str) -> list[dict]:
+    """aggregate()'s rows split by month: (from_ref, from_name, to_ref,
+    to_name, month, moves, count_kind). Names are the ones aggregate() picks
+    over the whole window, so a pair reads the same in both. For every pair
+    the months sum to its aggregate() row (test_talent_flows asserts it)."""
+    moves = list(moves)
+    whole = {(r['from_ref'], r['to_ref']): r for r in aggregate(moves, start, end)}
+    counts: Counter = Counter()
+    for f_ref, _fn, t_ref, _tn, month in _counted(moves, start, end):
+        counts[(f_ref, t_ref, month)] += 1
+    return [{
+        'from_ref': f, 'from_name': whole[(f, t)]['from_name'],
+        'to_ref': t, 'to_name': whole[(f, t)]['to_name'],
+        'month': m, 'moves': n, 'count_kind': 'sampled',
+    } for (f, t, m), n in sorted(counts.items())]
+
+
 def month_add(ym: str, n: int) -> str:
     y, m = map(int, ym.split('-'))
     i = y * 12 + m - 1 + n
@@ -769,17 +786,11 @@ def window_note(end: str, cap: str) -> str:
             'the months before the end may be thin (filters.moves_per_month_to_end).')
 
 
-def aggregate(moves, start: str, end: str, excluded: Counter | None = None) -> list[dict]:
-    """Canonical rows (from_ref, from_name, to_ref, to_name, period_start,
-    period_end, moves, count_kind) for moves whose month is inside
-    [start, end] (YYYY-MM, inclusive). Year-only moves are left out: they
-    cannot be placed inside a window. Moves that ACQUISITIONS marks as
-    transfers, moves to or from a NOT_EMPLOYERS name, and moves between two
-    pages of one SAME_EMPLOYER are left out too; an alias's other moves are
-    counted under its employer. Both are counted into `excluded` when it is
-    given, so the export can say so."""
-    counts: Counter = Counter()
-    names: dict[str, Counter] = defaultdict(Counter)
+def _counted(moves, start: str, end: str, excluded: Counter | None = None):
+    """The moves aggregate() counts, as (from_ref, from_name, to_ref, to_name,
+    month) with aliases already resolved to their employer. Every rule that
+    decides whether a move counts lives here, so the whole-window rows and
+    the monthly rows cannot disagree about which moves they hold."""
     for mv in moves:
         month = mv['month'] if isinstance(mv, dict) else mv.month
         if not month or not (start <= month <= end):
@@ -804,6 +815,21 @@ def aggregate(moves, start: str, end: str, excluded: Counter | None = None) -> l
             for end_, ref in (('from', f_ref), ('to', t_ref)):
                 if ref != get(f'{end_}_ref'):
                     excluded[('merged', get(f'{end_}_ref'), get(f'{end_}_name'))] += 1
+        yield f_ref, f_name, t_ref, t_name, month
+
+
+def aggregate(moves, start: str, end: str, excluded: Counter | None = None) -> list[dict]:
+    """Canonical rows (from_ref, from_name, to_ref, to_name, period_start,
+    period_end, moves, count_kind) for moves whose month is inside
+    [start, end] (YYYY-MM, inclusive). Year-only moves are left out: they
+    cannot be placed inside a window. Moves that ACQUISITIONS marks as
+    transfers, moves to or from a NOT_EMPLOYERS name, and moves between two
+    pages of one SAME_EMPLOYER are left out too; an alias's other moves are
+    counted under its employer. Both are counted into `excluded` when it is
+    given, so the export can say so."""
+    counts: Counter = Counter()
+    names: dict[str, Counter] = defaultdict(Counter)
+    for f_ref, f_name, t_ref, t_name, _month in _counted(moves, start, end, excluded):
         counts[(f_ref, t_ref)] += 1
         names[f_ref][f_name] += 1
         names[t_ref][t_name] += 1

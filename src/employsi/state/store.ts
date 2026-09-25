@@ -133,6 +133,9 @@ export interface AppState {
   flowSkill: string | null;
   flowHover: string | null;
   flowView: FlowView | null;
+  // The companies the last view said were sampled: kept while a view is
+  // briefly absent (a company loading, an empty timeline window).
+  flowSampled: string[] | null;
   /**
    * The unreleased place an end user just clicked, or null.
    *
@@ -508,6 +511,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   flowSkill: null,
   flowHover: null,
   flowView: null,
+  flowSampled: null,
   comingSoon: null,
   feedbackOpen: false,
   helpTourOpen: false,
@@ -936,14 +940,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   setFlowFocus: (id) => {
     const s = get();
     if (id === s.flowFocus) return;
-    const sampled = s.flowView?.sampledCompanies;
+    const sampled = s.flowView?.sampledCompanies ?? s.flowSampled;
     if (sampled && !sampled.includes(id)) return;
     set({ flowFocus: id, flowHover: null });
   },
   setFlowMode: (m) => set({ flowMode: m, flowHover: null }),
   setFlowSkill: (skill) => set({ flowSkill: skill, flowHover: null }),
   setFlowHover: (id) => set({ flowHover: id }),
-  setFlowView: (v) => set({ flowView: v }),
+  setFlowView: (v) =>
+    set(v ? { flowView: v, flowSampled: v.sampledCompanies } : { flowView: null }),
   closeAnalyst: () => set({ analystOpen: false }),
   toggleCareer: () => set((s) => solo("careerOpen", !s.careerOpen)),
   closeCareer: () => set({ careerOpen: false }),

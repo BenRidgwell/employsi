@@ -16,7 +16,8 @@ production D1).
 | Display rules | `src/employsi/lib/flows.ts` | Built; asserted by `scripts/check-flows.ts` in `skills-check.yml` |
 | Server read | `src/employsi/lib/flowsFn.ts` | Built; returns null until tables exist and hold an import |
 | Card section | `components/panels/TalentFlow.tsx`, Hiring tab | Built; renders nothing without data. Not seen rendered |
-| Map arcs | — | Not started |
+| Map view | `src/employsi/lib/talentFlowLayer.ts`, `PerthMapbox.tsx` | Built 2026-09-25: a flat radial diagram on the local layer (hub, spokes to on-map peers, rings), bold arrowheads in the band colours travelling source → destination in time with the hub's pulse. Camera frames once on open, never on a company switch |
+| Monthly rows | `workers/jobs-cron/migrations/0005_talent_flows_months.sql`, `flow_months.csv` | **Applied 2026-09-25.** The same rows split by month; the loader refuses a delivery whose months do not sum to its whole-window rows |
 | **Source: Bright Data** (chosen) | `scripts/brightdata-talent-flows.py` + `talent_flows.positions_from_brightdata` | Built; tested end to end against a **fake** Bright Data MCP server. Filters confirmed live 2026-09-24. **7 of 10 real profiles parse to nothing** — see below |
 | Collection state | `workers/jobs-cron/migrations/0003_talent_flows_collect.sql` | **Applied to production D1 2026-09-25.** Holds 15,640 BHP profiles (of 21,359), all 7,928 Fortescue and all 16,752 Rio Tinto. Counts by month plus a bare list of hashed ids; no person's name, url, title or history |
 | Source: LinkedIn sample (parked) | `scripts/collect-talent-flows.py` + `scripts/talent_flows.py` | Built; tested against a fake MCP server only. Parked: it needs a personal LinkedIn account |
@@ -455,7 +456,7 @@ heights are fixed. What each element reads now:
 | Low / moderate / high | thirds of max | the same, over real counts | wired |
 | Skill search | random per skill name | `flow_skills` (0004), skills of the job moved into by `skillsForText`; `getTalentFlowSkills` lists only skills with a peer at the floor | collecting (skills pass) |
 | Skill names | 8 mock names ("Workforce planning") | taxonomy names ("Human Resources", child "Workforce Planning") | the list comes from the data |
-| Timeline Mar 2006 – Jul 2026, scrubbable | events × hash | ONE measured window, `period` (2020-11 – 2025-10) | chosen 2026-09-25: the sample is today's employees, so earlier windows shrink by sampling alone (Rio Tinto inflow: 466 moves in the 5 years to 2008, 2,822 to 2025), and the data ends 2025-10, not Jul 2026 |
+| Timeline Mar 2006 – Jul 2026, scrubbable | events × hash | the delivery's measured period (2020-11 – 2025-10); scrubbing shows the **12 months ending at the handle**, rebuilt from `flow_months` by `viewForWindow` (same rules as the whole period; `check-flows` asserts the whole period reproduces it exactly). "All" returns to the whole period | revised 2026-09-25 at the user's request, from "one window only". The rule-11 caveat still holds — the sample is today's employees, so earlier windows read lower by sampling alone (Rio Tinto inflow: 466 moves in the 5 years to 2008, 2,822 to 2025) — and the footnote states it whenever a window is shown |
 | Event cards | editorial text + level multiplier | annotations only, no effect on numbers | the text is not from this data; claims such as "AI-adjacent and healthcare skills lead the index" need their own source or removal |
 | Building heights, filler blocks | fixed / random | none | decorative; must not be read as company size |
 | Pin coordinates | fixed lat/lng | the app's existing company coordinates (`COMPANY_COORDS`) | the view returns ids; the client places them |
