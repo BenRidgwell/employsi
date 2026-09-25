@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../../state/store";
 import { COMPANIES, type Company } from "../../data/companies";
@@ -17,14 +17,19 @@ import { CardLoader } from "./CardLoader";
  *   heading       per mode, as designed
  *   skill search  real skills only (getTalentFlowSkills: skills with a peer
  *                 at the 10-move floor); a name with no match changes nothing
- *   timeline      spans the delivery's measured period (not the design's
- *                 2006–2026). Scrubbing picks the 12 months ending at the
- *                 handle, and the card and the map are rebuilt from the moves
- *                 in those months (flow_months, viewForWindow) — never scaled.
- *                 Untouched, or after "All", it is the whole period. Earlier
- *                 windows read lower because the sample is today's employees
- *                 (rule 11), and the footnote says so whenever a window is
- *                 shown. The event card is an annotation and changes nothing.
+ *   timeline      behaves as the skill card's (GlobalSearch): one handle,
+ *                 starting at the latest month, a native range input over the
+ *                 track, the fill running from the start to the handle, the
+ *                 handle's month on the right, ticks darkening as it passes
+ *                 them and the event card following it. It spans the
+ *                 delivery's measured period (not the design's 2006–2026), and
+ *                 what the fill shows is what is counted: every move from the
+ *                 period's first month to the handle's, rebuilt from
+ *                 flow_months by viewForWindow — never scaled. At the latest
+ *                 month that is the whole period. Earlier months read lower
+ *                 because the sample is today's employees (rule 11); the
+ *                 footnote says so whenever the handle is not at the end. The
+ *                 event card is an annotation and changes nothing.
  *   big number    moves, not "people": sampled moves, and says so
  *   rows          on-map companies at or over the floor, plus one "Other
  *                 companies" row holding everything else, so shares add up
@@ -73,9 +78,8 @@ export function TalentFlowPane() {
   const setFocus = useAppStore((s) => s.setFlowFocus);
   const setFlowView = useAppStore((s) => s.setFlowView);
   const [q, setQ] = useState("");
-  // The scrubbed window's last month (YYYY-MM), or null for the whole period.
-  const [tlEnd, setTlEnd] = useState<string | null>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
+  // The handle's month index, or null for the latest (where it starts).
+  const [tlIdx, setTlIdx] = useState<number | null>(null);
 
   // One fetch per focus and skill: every month of its moves. Each window is
   // then built here, so the scrubber never waits on the network.
@@ -94,19 +98,14 @@ export function TalentFlowPane() {
   });
   const isFetching = monthsFetching || wholeFetching;
   const months = monthly?.months ?? [];
-  const TL = 12; // months in a scrubbed window
-  const endIdx = tlEnd ? months.indexOf(tlEnd) : -1;
-  const win =
-    monthly && months.length
-      ? endIdx >= 0
-        ? { from: months[Math.max(0, endIdx - (TL - 1))], to: months[endIdx] }
-        : { from: months[0], to: months[months.length - 1] }
-      : null;
+  const lastIdx = Math.max(0, months.length - 1);
+  const handle = tlIdx === null ? lastIdx : Math.min(tlIdx, lastIdx);
+  const win = monthly && months.length ? { from: months[0], to: months[handle] } : null;
   const view = useMemo(
     () => (monthly && win ? viewForWindow(monthly, focus, win.from, win.to) : (wholeView ?? null)),
     [monthly, focus, win?.from, win?.to, wholeView], // eslint-disable-line react-hooks/exhaustive-deps
   );
-  const windowed = !!monthly && endIdx >= 0;
+  const windowed = !!monthly && handle < lastIdx;
   const { data: skills } = useQuery({
     queryKey: ["talentFlowSkills", focus],
     queryFn: () => getTalentFlowSkills({ data: { id: focus } }),
@@ -121,7 +120,7 @@ export function TalentFlowPane() {
   useEffect(() => {
     if (!open) {
       setFlowView(null);
-      setTlEnd(null);
+      setTlIdx(null);
     }
   }, [open, setFlowView]);
   // A new focus starts at company level: its skill list is its own.
@@ -130,21 +129,6 @@ export function TalentFlowPane() {
   }, [skill]);
 
   const firstLoad = open && !view && isFetching;
-  // Scrub: the handle lands on a month; the window is the 12 ending there, so
-  // the handle cannot go left of the 12th month and every window is a year.
-  const scrubTo = (idx: number) => {
-    if (!months.length) return;
-    const i = Math.min(months.length - 1, Math.max(Math.min(TL - 1, months.length - 1), idx));
-    setTlEnd(months[i]);
-  };
-  const scrubAt = (clientX: number) => {
-    const el = trackRef.current;
-    if (!el || months.length < 2) return;
-    const r = el.getBoundingClientRect();
-    scrubTo(
-      Math.round(Math.min(1, Math.max(0, (clientX - r.left) / r.width)) * (months.length - 1)),
-    );
-  };
 
   const rows = useMemo(() => (view ? flowRows(view, mode) : []), [view, mode]);
 
@@ -185,8 +169,7 @@ export function TalentFlowPane() {
       ? EVENTS.filter(([y, m]) => y * 12 + m >= ps.y * 12 + ps.m && y * 12 + m <= pe.y * 12 + pe.m)
       : [];
   const we = win ? monthOf(`${win.to}-01`) : pe;
-  const ws = win ? monthOf(`${win.from}-01`) : ps;
-  // The event card: the latest event at or before the window's end.
+  // The event card: the latest event at or before the handle, as on the skill card.
   const ev = we ? inWindow.filter(([y, m]) => y * 12 + m <= we.y * 12 + we.m).pop() : undefined;
   const pct = (p: { y: number; m: number } | null) =>
     p && ps ? `${((p.y * 12 + p.m - (ps.y * 12 + ps.m)) / span) * 100}%` : "100%";
@@ -454,79 +437,13 @@ export function TalentFlowPane() {
                   whiteSpace: "nowrap",
                 }}
               >
-                {windowed && ws && we ? (
-                  <>
-                    {`${label(ws.y, ws.m)} – ${label(we.y, we.m)}`}
-                    <button
-                      type="button"
-                      className="tfall"
-                      onClick={() => setTlEnd(null)}
-                      aria-label="Show the whole period"
-                    >
-                      All
-                    </button>
-                  </>
-                ) : pe ? (
-                  "Whole period"
-                ) : (
-                  ""
-                )}
+                {we ? label(we.y, we.m) : ""}
               </span>
             </div>
-            <div
-              ref={trackRef}
-              role="slider"
-              tabIndex={months.length ? 0 : -1}
-              aria-label="Timeline: the 12 months shown end here"
-              aria-valuemin={0}
-              aria-valuemax={Math.max(0, months.length - 1)}
-              aria-valuenow={endIdx >= 0 ? endIdx : Math.max(0, months.length - 1)}
-              aria-valuetext={
-                windowed && ws && we
-                  ? `${label(ws.y, ws.m)} to ${label(we.y, we.m)}`
-                  : "Whole period"
-              }
-              onPointerDown={(e) => {
-                e.currentTarget.setPointerCapture?.(e.pointerId);
-                scrubAt(e.clientX);
-              }}
-              onPointerMove={(e) => {
-                if (e.buttons) scrubAt(e.clientX);
-              }}
-              onKeyDown={(e) => {
-                const cur = endIdx >= 0 ? endIdx : months.length - 1;
-                const d =
-                  e.key === "ArrowRight"
-                    ? 1
-                    : e.key === "ArrowLeft"
-                      ? -1
-                      : e.key === "ArrowUp"
-                        ? 12
-                        : e.key === "ArrowDown"
-                          ? -12
-                          : 0;
-                if (d) {
-                  e.preventDefault();
-                  scrubTo(cur + d);
-                } else if (e.key === "Home") {
-                  e.preventDefault();
-                  scrubTo(0);
-                } else if (e.key === "End") {
-                  e.preventDefault();
-                  scrubTo(months.length - 1);
-                } else if (e.key === "Escape" && windowed) {
-                  e.preventDefault();
-                  setTlEnd(null);
-                }
-              }}
-              style={{
-                position: "relative",
-                height: 28,
-                cursor: months.length ? "pointer" : "default",
-                touchAction: "none",
-                outline: "none",
-              }}
-            >
+            {/* The skill card's control: a native range input laid invisibly
+                over the drawn track (.gstimerange), so drag, click, touch and
+                the keyboard behave exactly as they do there. */}
+            <div className="tftrack" style={{ position: "relative", height: 28 }}>
               <span
                 style={{
                   position: "absolute",
@@ -542,35 +459,54 @@ export function TalentFlowPane() {
               <span
                 style={{
                   position: "absolute",
+                  left: 0,
                   top: "50%",
                   height: 7,
                   marginTop: -3.5,
                   borderRadius: 999,
                   background: "#1c1c1e",
-                  left: windowed ? pct(ws) : 0,
-                  width: windowed ? `calc(${pct(we)} - ${pct(ws)})` : "100%",
-                  transition: "left 120ms, width 120ms",
+                  width: pct(we),
                 }}
               />
               {ps &&
-                inWindow.map(([y, m]) => (
-                  <span
-                    key={`${y}-${m}`}
-                    style={{
-                      position: "absolute",
-                      left: `${((y * 12 + m - (ps.y * 12 + ps.m)) / span) * 100}%`,
-                      top: "50%",
-                      width: 1,
-                      height: 16,
-                      marginTop: -8,
-                      background: "#8e8e93",
-                    }}
-                  />
-                ))}
+                inWindow.map(([y, m]) => {
+                  const past = !!we && y * 12 + m <= we.y * 12 + we.m;
+                  return (
+                    <span
+                      key={`${y}-${m}`}
+                      style={{
+                        position: "absolute",
+                        left: `${((y * 12 + m - (ps.y * 12 + ps.m)) / span) * 100}%`,
+                        top: "50%",
+                        width: 1,
+                        height: 16,
+                        marginTop: -8,
+                        background: past ? "rgba(28,28,30,.55)" : "var(--border-strong,#c7c7cc)",
+                      }}
+                    />
+                  );
+                })}
+              {months.length > 1 && (
+                <input
+                  type="range"
+                  className="gstimerange"
+                  min={0}
+                  max={lastIdx}
+                  step={1}
+                  value={handle}
+                  onChange={(e) => {
+                    const i = Number(e.target.value);
+                    setTlIdx(i >= lastIdx ? null : i);
+                  }}
+                  aria-label="Timeline month"
+                  aria-valuetext={we ? label(we.y, we.m) : undefined}
+                />
+              )}
               <span
+                className="tfknob"
                 style={{
                   position: "absolute",
-                  left: windowed ? pct(we) : "100%",
+                  left: pct(we),
                   top: "50%",
                   width: 18,
                   height: 18,
@@ -580,7 +516,6 @@ export function TalentFlowPane() {
                   background: "#fff",
                   border: "1.5px solid #1c1c1e",
                   pointerEvents: "none",
-                  transition: "left 120ms",
                 }}
               />
             </div>

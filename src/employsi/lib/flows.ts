@@ -345,7 +345,8 @@ export function buildFlowView(
 
 // ── The timeline: one view per window (flow_months, migration 0005) ─────────
 //
-// The card's scrubber picks a window inside the delivery. Rather than a
+// The card's scrubber picks a window inside the delivery (today: from its
+// first month to the handle's, as the skill card's fill draws it). Rather than a
 // server round trip per step, the card fetches the focus's moves by month
 // once (FlowMonthly, compact) and builds the view for any window here, with
 // buildFlowView — so a window's view obeys every rule the whole period's
