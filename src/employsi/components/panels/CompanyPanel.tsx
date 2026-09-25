@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../../state/store";
 import { buildPanel } from "../../lib/panel";
 import { buildCompanyCard, filedHeadcount, TREND_UP, TREND_DOWN } from "../../lib/companyCard";
@@ -769,8 +769,36 @@ export function CompanyPanel() {
   // Hiring. Reset to Overview whenever the card opens on a new company.
   const [tab, setTab] = useState<CardTab>("Overview");
 
+  /**
+   * The tallest pane this company has shown, so switching tabs never resizes
+   * the card.
+   *
+   * WHY THIS IS NOT A FIXED HEIGHT IN CSS. The card is content-sized under a
+   * max-height, and Hiring is by far the shortest tab — an employer advertising
+   * in three areas fills a third of what Overview does, so the whole card
+   * collapsed on the tab change and sprang back on the way out. A literal
+   * height would fix that and introduce the opposite fault: on a tall monitor
+   * every card would be viewport-tall with a band of white under the content,
+   * and on a short one it would fight the max-height.
+   *
+   * So the floor is measured rather than declared. Each pane reports its own
+   * height, the largest one seen wins, and it only ever grows — the card is
+   * already clamped by .cc's max-height, so a floor past the viewport costs
+   * nothing and simply scrolls.
+   *
+   * The card always opens on Overview, which is the tall tab, so in practice
+   * the floor is set before any tab can be switched to. Skills growing it
+   * further is possible and fine; nothing shrinks.
+   */
+  const [paneFloor, setPaneFloor] = useState(0);
+  const paneRef = useRef<HTMLDivElement | null>(null);
+  const paneStyle = paneFloor ? { minHeight: paneFloor } : undefined;
+
   useEffect(() => {
     if (selectedId) setTab("Overview");
+    // A new company is a new card. Carrying the old one's floor over would
+    // hold a tall employer's height under a small one's content.
+    setPaneFloor(0);
   }, [selectedId]);
 
   // Skill → live-ad count, and role area → live-ad count, from the same job
@@ -786,6 +814,32 @@ export function CompanyPanel() {
     for (const h of liveHiring ?? []) out[h.title] = h.count;
     return out;
   }, [liveHiring]);
+
+  /**
+   * Measured in a layout effect so the floor lands in the same frame the pane
+   * is painted — from a passive effect the short tab renders at its own height
+   * for one frame, which is the flicker this exists to remove.
+   *
+   * A ResizeObserver rather than a dependency list, because the height moves
+   * for reasons a list cannot name: the skill trends and the news arrive after
+   * the card does, and the map inside Skills sizes itself from them. Watching
+   * the element catches all of it. It cannot loop — raising the floor raises
+   * the pane, the observer fires again with the height it just set, and
+   * `h > f` is false, so React bails on an unchanged state.
+   */
+  useLayoutEffect(() => {
+    const el = paneRef.current;
+    if (!el) return;
+    const read = () => {
+      const h = el.scrollHeight;
+      if (h) setPaneFloor((f) => (h > f ? h : f));
+    };
+    read();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [tab]);
 
   // The Overview tile's top skill. The archive is preferred so it names the
   // same skill the Skills tab leads with; the live job sample is the fallback
@@ -960,7 +1014,7 @@ export function CompanyPanel() {
 
             <div className="ccbody" ref={scrollRef}>
               {tab === "Overview" && (
-                <div className="ccpane">
+                <div className="ccpane" ref={paneRef} style={paneStyle}>
                   {/* Badge, then label, then figure — the reading order of the
                       reference design. The badge sits ABOVE rather than beside
                       it: the card is 440px wide with 18px gutters, so each of
@@ -1196,7 +1250,7 @@ export function CompanyPanel() {
               )}
 
               {tab === "Skills" && (
-                <div className="ccpane">
+                <div className="ccpane" ref={paneRef} style={paneStyle}>
                   {/* Archive-backed section: the top skill at size with its
                       market rank, where its live ads sit, and the rest as rows
                       with their own line. Falls back to the flat chips below
@@ -1265,7 +1319,7 @@ export function CompanyPanel() {
               )}
 
               {tab === "Hiring" && (
-                <div className="ccpane">
+                <div className="ccpane" ref={paneRef} style={paneStyle}>
                   <div className="ccsecth">
                     <span className="cceyebrow">Where they&rsquo;re hiring</span>
                     {/* When the rows carry arrows the heading has to describe
