@@ -133,9 +133,29 @@ export function headcountFor(
  * number with a domestic one. The overlapping keys are deliberate, so that
  * check-roster's assertion on this ordering has something real to test.
  */
+/**
+ * GOV_HEADCOUNT_AU NOW COMES BEFORE GOV_HEADCOUNT, and the order is the whole
+ * point. GOV_HEADCOUNT is perthGovWorkforce.ts: 47 Western Australian rows
+ * entered by hand from the 2021-22 to 2024-25 bulletins, under a header that
+ * says AUTO-GENERATED while no script in this repo produces it. GOV_HEADCOUNT_AU
+ * is written by scripts/gen-gov-workforce.py, which since 2026-09-25 reads the
+ * 2025-26 edition — a year newer, and the only one that names the departments
+ * Western Australia created in its 2025 restructure.
+ *
+ * Left in the old order, those 54 WA cards would keep the hand-entered figures
+ * for ever and the seven new departments would stay blank, because a value that
+ * is already present is never reached past. The two files hold the same
+ * jurisdiction, so whichever is consulted first decides WA's vintage, and the
+ * generated one is the one that can be refreshed.
+ *
+ * GOV_HEADCOUNT is kept as the fallback rather than deleted: it holds no id
+ * outside `perth-gov-` (checked), and any WA agency the bulletin stops
+ * reporting keeps its last known figure instead of going blank. WGEA stays
+ * last for the reason given above — it is Australia-only.
+ */
 export function filedHeadcount(id: string): CardHeadcount | null {
   return headcountFor(
-    COMPANY_HEADCOUNT[id] ?? GOV_HEADCOUNT[id] ?? GOV_HEADCOUNT_AU[id] ?? WGEA_HEADCOUNT[id],
+    COMPANY_HEADCOUNT[id] ?? GOV_HEADCOUNT_AU[id] ?? GOV_HEADCOUNT[id] ?? WGEA_HEADCOUNT[id],
   );
 }
 
