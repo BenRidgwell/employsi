@@ -1,12 +1,17 @@
 # Talent flows — format and build
 
-**Status (2026-09-24): the source-independent half is built, not deployed, and
-holds no data.**
+**Status (2026-09-25): built, not deployed. Production D1 holds one import**
+(`brightdata|2026-09-25|619251994dd2`: BHP, 4,169 usable profiles, 1,189
+pairs, 1,484 moves over 2021-07..2026-06). Nothing shows it yet: the reader
+(`flowsFn.ts`, `TalentFlow.tsx`) is on this branch only, not on `main`, and
+`deploy-preview.yml` is manual. The rows go live on whichever Worker is next
+deployed from a tree that has the reader, preview included (it shares
+production D1).
 
 | Piece | File | State |
 | --- | --- | --- |
-| D1 tables | `workers/jobs-cron/migrations/0002_talent_flows.sql` | Written, **not applied** |
-| Loader | `scripts/flows-to-d1.py` | Built; dry run by default; tested offline on the synthetic fixture only |
+| D1 tables | `workers/jobs-cron/migrations/0002_talent_flows.sql` | **Applied to production D1 2026-09-25** (`wrangler d1 execute --remote --file`) |
+| Loader | `scripts/flows-to-d1.py` | Built; dry run by default. **First real load 2026-09-25**: 103 of 1,064 companies matched (68 by LinkedIn slug, 34 exact name, 1 seed), 248 of 1,484 moves with both ends on the roster; D1 totals checked against the file. Unmatched include Thiess, Programmed, Mader Group, OZ Minerals: not on the roster, or needing a manual `flow_company_map` row |
 | Display rules | `src/employsi/lib/flows.ts` | Built; asserted by `scripts/check-flows.ts` in `skills-check.yml` |
 | Server read | `src/employsi/lib/flowsFn.ts` | Built; returns null until tables exist and hold an import |
 | Card section | `components/panels/TalentFlow.tsx`, Hiring tab | Built; renders nothing without data. Not seen rendered |
