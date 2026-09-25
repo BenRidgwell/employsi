@@ -30,7 +30,7 @@
  *     (skillLive). The design scaled the sparkline and hotspots to the skill's
  *     share; that would draw the rung's shape and call it the skill's. With a
  *     skill picked, the card's ad count follows it; the chart and hotspots stay
- *     the rung's, and `skillNote` says so.
+ *     the rung's.
  *   Branch-in edges ("LATERAL MOVE") — the design links the core lane to the
  *     lateral one. Nothing in the archive evidences that move, so a lateral
  *     lane here is a specialist track standing beside the core, joined to it
@@ -419,13 +419,4 @@ export function familyForSkill(
     if (v > b || (v === b && f === current)) best = f;
   }
   return best;
-}
-
-/** The note under the search box once a skill is picked. */
-export function skillNote(model: CareerCardModel, skill: string): string {
-  const k = model.nodes.filter((n) => n.skills.includes(skill)).length;
-  return (
-    `${k} role${k === 1 ? "" : "s"} on this map ask${k === 1 ? "s" : ""} for ${skill}. ` +
-    `Ad counts show the ads that name it; the chart and hotspots cover every ad for the role.`
-  );
 }

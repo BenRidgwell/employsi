@@ -15,6 +15,11 @@ import type { CardNode, CareerCardModel } from "../../lib/careerCard";
 import { CAREER_LAND_PATH, projectHotspot } from "../../data/careerLand";
 import { IconClose } from "../ActionIcons";
 import { CardLoader } from "./CardLoader";
+import { FollowGlyph } from "../GlobalSearch";
+import { SKILL_PARENT, searchSkillMatches } from "../../data/skillsTaxonomy";
+import { describeSkills } from "../../lib/describeSkills";
+import { demandLevel } from "../../lib/skillHeat";
+import { useOntologyReady } from "../../hooks/useOntologyReady";
 
 /**
  * The Career Pathway Card, built from `Career_Pathway_Card.html` (2026-09-25).
@@ -31,8 +36,10 @@ import { CardLoader } from "./CardLoader";
  *     sparkline is daily, scrubbed by date;
  *   • the map shows the core path, plus the ONE specialism a searched skill
  *     opens (laneForSkill) — never a "lateral move" the data cannot evidence;
- *   • with a skill picked only the ad count follows it; the chart and the
- *     hotspots stay the role's, and the note under the search says so.
+ *   • with a skill picked only the ad count follows it ("live ads with
+ *     skill"); the chart and the hotspots stay the role's;
+ *   • the search is the central search bar's, not the design's pill — see
+ *     CareerSearch.
  *
  * Two additions the design has no place for, both because it is a page and
  * this is a pane over the map: a close button, and the scrim behind it.
@@ -69,44 +76,6 @@ const dayLabel = (iso: string) =>
   new Date(`${iso}T00:00:00Z`)
     .toLocaleDateString("en-AU", { day: "numeric", month: "short", timeZone: "UTC" })
     .toUpperCase();
-
-/** The design's Tag (EmploysiDesignSystem), with its tokens. */
-function Tag({
-  children,
-  selected,
-  onClick,
-}: {
-  children: ReactNode;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <span
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onClick()}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "4px 10px",
-        borderRadius: "var(--radius-pill)",
-        background: selected ? "var(--action-primary)" : "var(--surface-card)",
-        color: selected ? "var(--action-primary-text)" : "var(--text-secondary)",
-        border: `1px solid ${selected ? "var(--action-primary)" : "var(--border-default)"}`,
-        fontFamily: "var(--font-sans)",
-        fontSize: 13,
-        fontWeight: 500,
-        lineHeight: 1.3,
-        whiteSpace: "nowrap",
-        cursor: "pointer",
-      }}
-    >
-      {children}
-    </span>
-  );
-}
 
 /** The design's smoothed sparkline: Catmull-Rom through every day's count. */
 function sparkPath(counts: number[]) {
@@ -150,7 +119,6 @@ function CareerCard({ onClose }: { onClose: () => void }) {
   const uid = useId().replace(/:/g, "");
   const [family, setFamily] = useState("hr");
   const [skill, setSkill] = useState<string | null>(null);
-  const [q, setQ] = useState("");
 
   const { data } = useQuery({
     // With a skill, the server picks the family (the one advertising it most),
@@ -272,28 +240,14 @@ function CareerCard({ onClose }: { onClose: () => void }) {
     if (k === skill) return clearSkill();
     setPop(false);
     setScrub(null);
-    setQ("");
     // The server resolves the family that advertises the skill most; the
     // model effect above then selects and centres.
     setSkill(k);
   };
   const clearSkill = () => {
     setSkill(null);
-    setQ("");
     setGoalId(null);
     setPop(false);
-  };
-  const qq = q.trim().toLowerCase();
-  let chipNames = qq
-    ? data.skills.filter((x) => x.toLowerCase().includes(qq)).slice(0, 10)
-    : data.popular.slice();
-  if (sk && !chipNames.includes(sk)) chipNames = [sk, ...chipNames];
-  const onSearch = async () => {
-    if (!qq) return;
-    if (chipNames[0] && chipNames[0] !== sk) return pickSkill(chipNames[0]);
-    // Nothing by name: read the words the way an ad's words are read.
-    const hits = await searchCareerSkills({ data: { q } });
-    if (hits[0]) pickSkill(hits[0]);
   };
 
   if (!model || !n) {
@@ -400,8 +354,6 @@ function CareerCard({ onClose }: { onClose: () => void }) {
   });
   const hv = hubs.find((h) => h.name === hub);
 
-  const skillCount = sk ? nodes.filter((o) => o.skills.includes(sk)).length : 0;
-
   const onKey = (e: React.KeyboardEvent) => {
     if ((e.target as HTMLElement).tagName === "INPUT") return;
     const o = nodes[sel];
@@ -461,71 +413,13 @@ function CareerCard({ onClose }: { onClose: () => void }) {
             <IconClose />
           </button>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              height: 48,
-              padding: "0 6px 0 16px",
-              boxSizing: "border-box",
-              borderRadius: 999,
-              border: "1px solid var(--border-subtle,#e5e5ea)",
-              background: "#fff",
-              boxShadow: "0 1px 2px rgba(28,28,30,.04), 0 6px 16px -6px rgba(28,28,30,.12)",
-            }}
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{ color: "var(--text-tertiary,#8e8e93)", flex: "none" }}
-            >
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.5-3.5" />
-            </svg>
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && void onSearch()}
-              placeholder="Search a skill by name, or describe it in your own words"
-              style={{
-                all: "unset",
-                flex: 1,
-                minWidth: 0,
-                textOverflow: "ellipsis",
-                font: `400 15px/1 ${MONA}`,
-                color: "var(--text-primary,#1c1c1e)",
-              }}
-            />
-            {sk && (
-              <button type="button" className="cpclear" onClick={clearSkill}>
-                Clear
-              </button>
-            )}
-            <button type="button" className="cpsearch" onClick={() => void onSearch()}>
-              Search
-            </button>
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {chipNames.map((label) => (
-              <Tag key={label} selected={label === sk} onClick={() => pickSkill(label)}>
-                {label}
-              </Tag>
-            ))}
-          </div>
-          {sk && (
-            <span style={{ fontSize: 13, lineHeight: 1.4, color: "var(--text-secondary,#636366)" }}>
-              {`${skillCount} role${skillCount === 1 ? "" : "s"} on this map ask${skillCount === 1 ? "s" : ""} for ${sk}. Ad counts show the ads that name it; the chart and hotspots cover every ad for the role.`}
-            </span>
-          )}
-        </div>
+        <CareerSearch
+          skills={data.skills}
+          popular={data.popular}
+          selected={sk}
+          onPick={pickSkill}
+          onClear={clearSkill}
+        />
       </div>
 
       <div style={{ padding: "20px 24px 0" }}>
@@ -1389,4 +1283,232 @@ function CareerCard({ onClose }: { onClose: () => void }) {
     }
     if (dragging) setDragging(false);
   }
+}
+
+// ── Search ───────────────────────────────────────────────────────────────────
+
+/**
+ * The card's skill search, built from the CENTRAL search bar rather than the
+ * design's pill (GlobalSearch): the same pill, lens-and-handle icon, clear ×
+ * and Search button; the same dropdown of skills as you type, each with its
+ * demand badge (demandLevel — "HIGH", "LOW · WITHIN RISK & COMPLIANCE") and a
+ * Follow button; the same chips on an empty focused field, which stay up with
+ * the picked skill selected. One search behaviour in the product, not two.
+ *
+ * What differs is only what a result can open. The suggestions are the
+ * central bar's own matches — searchSkillMatches by name, then describeSkills
+ * for "describe it in your own words" — kept to the skills that sit on some
+ * career map in this market, so nothing offered here opens an empty card.
+ * Enter with nothing matched asks the server (searchCareerSkills), which reads
+ * the words with the taxonomy matcher the ads were tagged with.
+ */
+function CareerSearch({
+  skills,
+  popular,
+  selected,
+  onPick,
+  onClear,
+}: {
+  skills: string[];
+  popular: string[];
+  selected: string | null;
+  onPick: (skill: string) => void;
+  onClear: () => void;
+}) {
+  const [text, setText] = useState(selected ?? "");
+  const [focused, setFocused] = useState(false);
+  const [active, setActive] = useState(0);
+  const [missed, setMissed] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const globalOut = useAppStore((s) => s.globalOut);
+  const skillIndex = useAppStore((s) => s.skillIndex);
+  const demandMode = useAppStore((s) => s.demandMode);
+  const followedSkills = useAppStore((s) => s.followedSkills);
+  const requestFollowSkill = useAppStore((s) => s.requestFollowSkill);
+  const ontologyReady = useOntologyReady();
+
+  // The field shows the picked skill, as the central bar does.
+  useEffect(() => setText(selected ?? ""), [selected]);
+  // Opened from the rail, the card is where the user is about to type.
+  useEffect(() => inputRef.current?.focus(), []);
+
+  const q = text.trim().toLowerCase();
+  const onMap = useMemo(() => new Set(skills), [skills]);
+  const results = useMemo(() => {
+    if (!q || (selected && q === selected.toLowerCase())) return [];
+    const matches = searchSkillMatches(q).filter((m) => onMap.has(m.skill));
+    const direct = matches.map((m) => m.skill);
+    const parentOf = new Map(matches.filter((m) => m.parent).map((m) => [m.skill, m.parent!]));
+    const described = ontologyReady
+      ? describeSkills(text).filter((sk) => onMap.has(sk) && !direct.includes(sk))
+      : [];
+    return [...direct, ...described].slice(0, 7).map((sk) => {
+      const badge = demandLevel(sk, globalOut, skillIndex, demandMode);
+      const parent = parentOf.get(sk) ?? SKILL_PARENT[sk];
+      return {
+        skill: sk,
+        sub: parent ? `${badge.label} · within ${parent}` : badge.label,
+        tone: badge.tone,
+      };
+    });
+  }, [q, text, selected, onMap, ontologyReady, globalOut, skillIndex, demandMode]);
+
+  const pick = (sk: string) => {
+    setMissed(false);
+    setActive(0);
+    onPick(sk);
+    inputRef.current?.blur();
+  };
+  const submit = async () => {
+    if (!q) return;
+    if (results[0]) return pick(results[Math.min(active, results.length - 1)].skill);
+    const hits = await searchCareerSkills({ data: { q: text } });
+    if (hits[0]) pick(hits[0]);
+    else setMissed(true);
+  };
+  const clear = () => {
+    setText("");
+    setMissed(false);
+    if (selected) onClear();
+    inputRef.current?.focus();
+  };
+
+  const skillActive = !!selected && q === selected.toLowerCase();
+  const showSuggest = focused && !!q && !skillActive && !missed;
+  const showChips = (focused && !q) || skillActive;
+
+  return (
+    <div className="cpsearchwrap">
+      <div className={`gsearchbar ${focused ? "on" : ""}`}>
+        <svg
+          className="gsicon"
+          viewBox="0 0 24 24"
+          width={19}
+          height={19}
+          fill="none"
+          stroke="currentColor"
+          aria-hidden
+        >
+          <circle className="gsiconlens" cx="11" cy="11" r="6.4" />
+          <line className="gsiconhandle" x1="15.8" y1="15.8" x2="20" y2="20" />
+        </svg>
+        <input
+          ref={inputRef}
+          className="gsearchinput"
+          placeholder="Search a skill by name, or describe it in your own words"
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            setActive(0);
+            setMissed(false);
+          }}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setTimeout(() => setFocused(false), 160)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              if (text) clear();
+              else inputRef.current?.blur();
+            } else if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setActive((i) => Math.min(i + 1, results.length - 1));
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setActive((i) => Math.max(i - 1, 0));
+            } else if (e.key === "Enter") {
+              e.preventDefault();
+              void submit();
+            }
+          }}
+        />
+        {text && (
+          <button
+            className="gsearchclear"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={clear}
+            aria-label="Clear search"
+          >
+            <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor">
+              <line x1="6" y1="6" x2="18" y2="18" />
+              <line x1="18" y1="6" x2="6" y2="18" />
+            </svg>
+          </button>
+        )}
+        <button
+          className="gsearchgo"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => void submit()}
+        >
+          Search
+        </button>
+      </div>
+
+      {showSuggest && (
+        <div className="gsearchresults">
+          {results.length > 0 ? (
+            results.map((r, i) => {
+              const followed = followedSkills.includes(r.skill);
+              return (
+                <div
+                  key={r.skill}
+                  className={`gsresult gsresult-skill ${i === active ? "on" : ""}`}
+                  onMouseEnter={() => setActive(i)}
+                >
+                  <button
+                    className="gsrmain"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => pick(r.skill)}
+                  >
+                    <span className="gsrlabel">{r.skill}</span>
+                    <span className={`gsrlevel dmd-${r.tone}`}>{r.sub.replace(" demand", "")}</span>
+                  </button>
+                  <button
+                    className={`gsrfollow ${followed ? "on" : ""}`}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      requestFollowSkill(r.skill);
+                    }}
+                  >
+                    <FollowGlyph on={followed} />
+                    {followed ? "Following" : "Follow"}
+                  </button>
+                </div>
+              );
+            })
+          ) : (
+            <div className="gsrempty">
+              No skill on a career map matches “{text.trim()}” — press Search to read it as a
+              description
+            </div>
+          )}
+        </div>
+      )}
+
+      {missed && (
+        <div className="gsnomatch">
+          No career pathway for that yet. Try a nearby skill, or describe the work differently.
+        </div>
+      )}
+
+      {showChips && (
+        <div className="gsearchchips">
+          {(selected && !popular.includes(selected) ? [selected, ...popular] : popular).map(
+            (sk) => (
+              <button
+                key={sk}
+                className={`gschip${sk === selected ? " on" : ""}`}
+                aria-pressed={sk === selected}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => (sk === selected ? clear() : pick(sk))}
+              >
+                {sk}
+              </button>
+            ),
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
