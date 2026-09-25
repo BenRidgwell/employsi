@@ -22,6 +22,14 @@ import { heatColor, rgbCss } from "../lib/color";
 import { logoFor } from "../lib/companyLogo";
 import { activeSkill, demandByCompany } from "../lib/skillHeat";
 import { buildMarker, MARKER_FOOT } from "../lib/mapMarker";
+import {
+  clearFlowArcs,
+  setCometProgress,
+  setFlowArcs,
+  setFlowHover as paintFlowHover,
+  type FlowArc,
+} from "../lib/talentFlowLayer";
+import { flowRows } from "../lib/flowRows";
 import type { SkillIndex } from "../lib/skillsFn";
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -580,10 +588,17 @@ export function PerthMapbox() {
           }
         });
         if (best && bestD <= PICK_RADIUS * PICK_RADIUS) {
+          // In the talent-flow view a pin refocuses the flows (a company the
+          // source did not sample is ignored there) instead of opening a card.
+          if (useAppStore.getState().flowsOpen) {
+            useAppStore.getState().setFlowFocus((best as Placed).company.id);
+            return;
+          }
           useAppStore.getState().select((best as Placed).company.id);
           lastSelectAt = Date.now();
           return;
         }
+        if (useAppStore.getState().flowsOpen) return;
         const selectedId = useAppStore.getState().selectedId;
         if (!selectedId) return;
         // Guard against a card opening then instantly closing. The select above
@@ -654,7 +669,19 @@ export function PerthMapbox() {
           el.appendChild(tip);
           el.addEventListener("click", (ev) => {
             ev.stopPropagation();
-            useAppStore.getState().select(c.id);
+            const st = useAppStore.getState();
+            if (st.flowsOpen) st.setFlowFocus(c.id);
+            else st.select(c.id);
+          });
+          el.addEventListener("mouseenter", () => {
+            const st = useAppStore.getState();
+            if (st.flowsOpen && st.flowView?.peers.some((pp) => pp.companyId === c.id)) {
+              st.setFlowHover(c.id);
+            }
+          });
+          el.addEventListener("mouseleave", () => {
+            const st = useAppStore.getState();
+            if (st.flowsOpen && st.flowHover === c.id) st.setFlowHover(null);
           });
           // anchor:'top' + the shape's foot offset puts the bottom of the stalk
           // on the geo point, leaving the caption hanging below it.
@@ -1102,6 +1129,140 @@ export function PerthMapbox() {
       duration: 640,
     });
   }, [selectedId]);
+
+  // ── Talent flows (rail ⇄) ───────────────────────────────────────────────
+  // Draws the flow view the card fetched (store.flowView) on this map: an arc
+  // from each peer's pin to the focus's pin (reversed for outflow), coloured
+  // as the card's rows, a count badge on each peer, the rest dimmed. Only
+  // companies pinned in THIS city can be drawn; the card still lists the rest.
+  const flowsOpen = useAppStore((s) => s.flowsOpen);
+  const flowView = useAppStore((s) => s.flowView);
+  const flowMode = useAppStore((s) => s.flowMode);
+  const flowHover = useAppStore((s) => s.flowHover);
+  const reduceMotion = useAppStore((s) => s.reduceMotion);
+  const cometRaf = useRef(0);
+  const lastFramedRef = useRef<string>("");
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const markers = () =>
+      Object.entries(markersRef.current).map(
+        ([id, m]) => [id, m.getElement() as HTMLElement] as const,
+      );
+    const clearMarkers = () =>
+      markers().forEach(([, el]) => {
+        el.classList.remove("tf-dim", "tf-focus", "tf-peer");
+        el.querySelector(".tfbadge")?.remove();
+      });
+
+    const run = () => {
+      cancelAnimationFrame(cometRaf.current);
+      const active = flowsOpen && !zoomedOut && !!flowView;
+      if (!active) {
+        clearFlowArcs(map);
+        clearMarkers();
+        lastFramedRef.current = "";
+        return;
+      }
+      const v = flowView!;
+      const pos = new Map(placedRef.current.map((p) => [p.company.id, p.coords] as const));
+      const focusAt = pos.get(v.focus.companyId);
+      const rows = flowRows(v, flowMode).filter((r) => r.id !== null);
+      const max = Math.max(1, ...rows.map((r) => Math.abs(r.n)));
+      const arcs: FlowArc[] = [];
+      if (focusAt) {
+        for (const r of rows) {
+          const at = pos.get(r.id!);
+          if (!at) continue; // pinned in another city: listed on the card only
+          const inbound = flowMode === "in" || (flowMode === "net" && r.n > 0);
+          arcs.push({
+            id: r.id!,
+            from: inbound ? at : focusAt,
+            to: inbound ? focusAt : at,
+            color: r.color,
+            t: Math.abs(r.n) / max,
+          });
+        }
+      }
+      setFlowArcs(map, arcs);
+      paintFlowHover(map, useAppStore.getState().flowHover);
+
+      // Pins: the focus lifted, peers badged with their count, the rest dimmed.
+      const byId = new Map(rows.map((r) => [r.id!, r] as const));
+      markers().forEach(([id, el]) => {
+        const isFocus = id === v.focus.companyId;
+        const row = byId.get(id);
+        el.classList.toggle("tf-focus", isFocus);
+        el.classList.toggle("tf-peer", !!row);
+        el.classList.toggle("tf-dim", !isFocus && !row);
+        let badge = el.querySelector(".tfbadge") as HTMLElement | null;
+        if (!row) {
+          badge?.remove();
+          return;
+        }
+        if (!badge) {
+          badge = document.createElement("span");
+          badge.className = "tfbadge";
+          (el.querySelector(".mkstage") ?? el).appendChild(badge);
+        }
+        badge.textContent = flowMode === "net" && row.n > 0 ? `+${row.n}` : String(row.n);
+        badge.style.background = row.color;
+      });
+
+      // Frame the focus and its drawn peers once per focus/mode, left of the card.
+      const frameKey = `${v.focus.companyId}|${flowMode}|${v.skill ?? ""}`;
+      if (focusAt && lastFramedRef.current !== frameKey) {
+        lastFramedRef.current = frameKey;
+        const pts = [focusAt, ...arcs.map((a) => (a.from === focusAt ? a.to : a.from))];
+        const lng = pts.map((p) => p[0]);
+        const lat = pts.map((p) => p[1]);
+        const bounds: [[number, number], [number, number]] = [
+          [Math.min(...lng), Math.min(...lat)],
+          [Math.max(...lng), Math.max(...lat)],
+        ];
+        const w = map.getContainer().clientWidth;
+        const cam = map.cameraForBounds(bounds, {
+          padding: { top: 140, bottom: 90, left: 120, right: Math.min(520, Math.round(w * 0.45)) },
+          pitch: map.getPitch(),
+          bearing: map.getBearing(),
+        });
+        if (cam) {
+          map.easeTo({
+            center: cam.center,
+            zoom: Math.max(13.2, Math.min(16.2, (cam.zoom ?? 15) - 0.2)),
+            pitch: Math.max(map.getPitch(), 55),
+            duration: prefersReducedMotion() ? 0 : 900,
+          });
+        }
+      }
+
+      // The travelling light, source to destination. Off for reduced motion.
+      if (arcs.length && !reduceMotion && !prefersReducedMotion()) {
+        const t0 = performance.now();
+        let last = 0;
+        const tick = (now: number) => {
+          if (now - last > 33) {
+            last = now;
+            setCometProgress(map, ((now - t0) / 2600) % 1);
+          }
+          cometRaf.current = requestAnimationFrame(tick);
+        };
+        cometRaf.current = requestAnimationFrame(tick);
+      } else {
+        setCometProgress(map, 0.5);
+      }
+    };
+
+    if (map.isStyleLoaded()) run();
+    else map.once("style.load", run);
+    return () => cancelAnimationFrame(cometRaf.current);
+  }, [flowsOpen, flowView, flowMode, zoomedOut, localCity, reduceMotion]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map && map.isStyleLoaded()) paintFlowHover(map, flowsOpen ? flowHover : null);
+  }, [flowHover, flowsOpen]);
 
   return <div className="mount" ref={containerRef} />;
 }

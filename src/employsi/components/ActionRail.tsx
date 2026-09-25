@@ -8,6 +8,7 @@ import {
   IconGlobal,
   IconLocal,
   IconTrending,
+  IconFlows,
 } from "./ActionIcons";
 
 /**
@@ -79,6 +80,8 @@ export function ActionRail() {
   const toggleTrending = useAppStore((s) => s.toggleTrending);
   const trendingOpen = useAppStore((s) => s.trendingOpen);
   const toggleAnalyst = useAppStore((s) => s.toggleAnalyst);
+  const toggleFlows = useAppStore((s) => s.toggleFlows);
+  const flowsOpen = useAppStore((s) => s.flowsOpen);
   const analystOpen = useAppStore((s) => s.analystOpen);
   const toggleDataQuality = useAppStore((s) => s.toggleDataQuality);
   const dataQualityOpen = useAppStore((s) => s.dataQualityOpen);
@@ -111,6 +114,8 @@ export function ActionRail() {
         on={trendingOpen}
         onClick={toggleTrending}
       />
+      {/* Second, where the "Talent Flows 3D" design puts it. */}
+      <RailButton icon={<IconFlows />} label="Talent flows" on={flowsOpen} onClick={toggleFlows} />
       <RailButton
         icon={<IconAnalyst />}
         label="Ask an analyst"

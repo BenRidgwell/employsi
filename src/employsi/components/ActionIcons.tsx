@@ -28,6 +28,20 @@ export function IconTrending() {
   );
 }
 
+/** Talent flows: the design's two opposed arrows (people moving both ways). */
+export function IconFlows() {
+  return (
+    <svg {...BOX} width={20} height={20} aria-hidden>
+      <g className="ai-lift">
+        <path d="m16 3 4 4-4 4" />
+        <path d="M20 7H4" />
+        <path d="m8 21-4-4 4-4" />
+        <path d="M4 17h16" />
+      </g>
+    </svg>
+  );
+}
+
 export function IconGlobal() {
   return (
     <svg {...BOX} width={20} height={20} aria-hidden>

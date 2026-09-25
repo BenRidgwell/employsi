@@ -14,6 +14,7 @@ import { HUB_LNGLAT } from "../data/mapboxWorldGeo";
 import type { HeatMetric } from "../lib/heat";
 import type { SkillIndex } from "../lib/skillsFn";
 import type { DemandMode } from "../lib/skillHeat";
+import type { FlowView } from "../lib/flows";
 import { IVI_MONTHS } from "../data/iviSkillDemand";
 
 export interface Account {
@@ -95,6 +96,18 @@ export interface AppState {
   analystOpen: boolean;
   /** Admin-only archive health pane. */
   dataQualityOpen: boolean;
+  /**
+   * The talent-flow view (rail ⇄): the design's right-hand card plus arcs on
+   * the local map. `flowView` is the server's FlowView for the focus (and
+   * skill), held here so the card and the map draw the SAME numbers rather
+   * than each fetching its own copy.
+   */
+  flowsOpen: boolean;
+  flowFocus: string;
+  flowMode: "in" | "out" | "net";
+  flowSkill: string | null;
+  flowHover: string | null;
+  flowView: FlowView | null;
   /**
    * The unreleased place an end user just clicked, or null.
    *
@@ -207,6 +220,15 @@ export interface AppState {
   closeAnalyst: () => void;
   toggleDataQuality: () => void;
   closeDataQuality: () => void;
+  toggleFlows: () => void;
+  closeFlows: () => void;
+  /** Refocus the flow view. Only a company the source sampled can be a focus
+   *  (see buildFlowView); anything else is ignored. */
+  setFlowFocus: (id: string) => void;
+  setFlowMode: (m: "in" | "out" | "net") => void;
+  setFlowSkill: (skill: string | null) => void;
+  setFlowHover: (id: string | null) => void;
+  setFlowView: (v: FlowView | null) => void;
   openComingSoon: (id: string, place: string) => void;
   closeComingSoon: () => void;
 
@@ -360,6 +382,7 @@ type PanelFlag =
   | "trendingOpen"
   | "analystOpen"
   | "dataQualityOpen"
+  | "flowsOpen"
   | "mobileMenuOpen"
   | "feedbackOpen"
   | "helpTourOpen"
@@ -375,6 +398,7 @@ const EXCLUSIVE_GROUPS: readonly (readonly PanelFlag[])[] = [
     "trendingOpen",
     "analystOpen",
     "dataQualityOpen",
+    "flowsOpen",
     "mobileMenuOpen",
   ],
   // The header cluster, top right.
@@ -444,6 +468,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   trendingOpen: false,
   analystOpen: false,
   dataQualityOpen: false,
+  flowsOpen: false,
+  flowFocus: "bhp",
+  flowMode: "in",
+  flowSkill: null,
+  flowHover: null,
+  flowView: null,
   comingSoon: null,
   feedbackOpen: false,
   helpTourOpen: false,
@@ -464,6 +494,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       trendingOpen: false,
       analystOpen: false,
       dataQualityOpen: false,
+      flowsOpen: false,
       feedbackOpen: false,
       helpTourOpen: false,
       mobileMenuOpen: false,
@@ -841,6 +872,32 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleTrending: () => set((s) => solo("trendingOpen", !s.trendingOpen)),
   closeTrending: () => set({ trendingOpen: false }),
   toggleAnalyst: () => set((s) => solo("analystOpen", !s.analystOpen)),
+  // The flow view draws on the LOCAL map and takes the right-hand side, so
+  // opening it closes the company card and drops into the focus's city.
+  // The focus is the company last looked at when the source sampled it
+  // (flowView.sampledCompanies, once known), else BHP.
+  toggleFlows: () => {
+    const s = get();
+    if (s.flowsOpen) return set({ flowsOpen: false, flowHover: null });
+    const sampled = s.flowView?.sampledCompanies ?? ["bhp", "fmg", "rio"];
+    const cand = s.selectedId || s.lastId;
+    const focus = cand && sampled.includes(cand) ? cand : s.flowFocus;
+    const city = cityForCompany(focus, s.localCity);
+    set({ ...solo("flowsOpen", true), selectedId: null, compareOpen: false, flowFocus: focus });
+    if (s.zoomedOut || s.localCity !== city) get().zoomInCity(city);
+  },
+  closeFlows: () => set({ flowsOpen: false, flowHover: null }),
+  setFlowFocus: (id) => {
+    const s = get();
+    if (id === s.flowFocus) return;
+    const sampled = s.flowView?.sampledCompanies;
+    if (sampled && !sampled.includes(id)) return;
+    set({ flowFocus: id, flowHover: null });
+  },
+  setFlowMode: (m) => set({ flowMode: m, flowHover: null }),
+  setFlowSkill: (skill) => set({ flowSkill: skill, flowHover: null }),
+  setFlowHover: (id) => set({ flowHover: id }),
+  setFlowView: (v) => set({ flowView: v }),
   closeAnalyst: () => set({ analystOpen: false }),
   toggleDataQuality: () => set((s) => solo("dataQualityOpen", !s.dataQualityOpen)),
   closeDataQuality: () => set({ dataQualityOpen: false }),
@@ -897,6 +954,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       "trendingOpen",
       "analystOpen",
       "dataQualityOpen",
+      "flowsOpen",
       "mobileMenuOpen",
       "feedbackOpen",
       "helpTourOpen",
