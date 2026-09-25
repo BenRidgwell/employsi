@@ -13,6 +13,7 @@ import { CITY_COMPANIES, cityForCompany } from "../data/mapboxGeo";
 import { HUB_LNGLAT } from "../data/mapboxWorldGeo";
 import type { HeatMetric } from "../lib/heat";
 import type { SkillIndex } from "../lib/skillsFn";
+import type { SkillCompanyMonths } from "../lib/jobHistoryFn";
 import type { DemandMode } from "../lib/skillHeat";
 import { IVI_MONTHS } from "../data/iviSkillDemand";
 
@@ -64,6 +65,14 @@ export interface AppState {
   // Live skill-demand index from the jobs pipeline (loaded from KV). Drives the
   // real skill-demand heat map when a skill is the active search.
   skillIndex: SkillIndex | null;
+  /**
+   * Per-month, per-company demand for the skill on the search card, so the
+   * LOCAL map's pins can follow the timeline instead of showing today's
+   * employers under every month. Null until the card asks for it, and null
+   * again when the card closes — a stale one would light the wrong skill's
+   * employers.
+   */
+  skillMonths: SkillCompanyMonths | null;
   // Index into IVI_MONTHS for the AU-domestic time slider (defaults to the
   // latest month). Lets the user scrub the skill heat map back to 2006.
   heatMonth: number;
@@ -170,6 +179,7 @@ export interface AppState {
   setSearchQuery: (q: string) => void;
   clearSearch: () => void;
   setSkillIndex: (idx: SkillIndex | null) => void;
+  setSkillMonths: (m: SkillCompanyMonths | null) => void;
   setHeatMonth: (i: number) => void;
   setDemandMode: (m: DemandMode) => void;
   toggleSector: (cat: string) => void;
@@ -424,6 +434,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   heatOpen: false,
   searchQuery: "",
   skillIndex: null,
+  skillMonths: null,
   heatMonth: Math.max(0, IVI_MONTHS.length - 1),
   demandMode: "volume",
   activeSectors: [],
@@ -673,6 +684,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSearchQuery: (q) => set({ searchQuery: q }),
   clearSearch: () => set({ searchQuery: "" }),
   setSkillIndex: (idx) => set({ skillIndex: idx }),
+  setSkillMonths: (m) => set({ skillMonths: m }),
   setHeatMonth: (i) =>
     set({ heatMonth: Math.max(0, Math.min(IVI_MONTHS.length - 1, Math.round(i))) }),
   setDemandMode: (m) => set({ demandMode: m }),

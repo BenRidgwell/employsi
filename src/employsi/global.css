@@ -7728,6 +7728,25 @@ body {
 .gstimetick.past {
   background: rgba(28, 28, 30, 0.55);
 }
+/* The span the archive can name employers over — one month today, growing by
+   one whenever both the agencies' series and the crawl gain a month. Sits ON
+   the track under the knob, with a minimum width so a single covered month is
+   still a mark rather than a zero-width nothing. */
+.gstimecov {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  min-width: 6px;
+  border-radius: 999px;
+  background: var(--status-success-dot);
+  opacity: 0.85;
+}
+.gstimecovnote {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-tertiary);
+}
 .gstimeknob {
   position: absolute;
   top: 50%;
@@ -7874,6 +7893,90 @@ body {
   align-items: center;
   gap: 4px;
   pointer-events: auto;
+}
+/* ── Supply / Demand switch ────────────────────────────────────────────────
+   Ported from the Supply_Demand_Switch design, 2026-09-25, and NOT YET WIRED
+   TO ANYTHING (see SupplyDemandSwitch.tsx). Every number below is the design's:
+   104×30 segments, 3px of padding around them, the pill radius, the ink thumb,
+   and 280ms cubic-bezier(.2,0,0,1) on both the thumb and the icon. The tokens
+   are this product's own — the design declares the same ones — so nothing here
+   is a literal that a theme change would leave behind.
+
+   It sits at the far left of the header cluster, before the bell, which makes
+   it the widest thing in that row at 214px. The dock has room at desktop
+   widths and it is hidden below the breakpoint, where the header is already
+   down to the essentials. */
+.sdsw {
+  position: relative;
+  display: flex;
+  /* It is 214px and no other width. Without this it is a block-level flex
+     container, so anywhere it is NOT a flex item it stretches to the row and
+     the thumb's 104px translate no longer lands under the second label. */
+  flex: 0 0 auto;
+  width: fit-content;
+  padding: 3px;
+  margin-right: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  outline: none;
+}
+.sdswthumb {
+  position: absolute;
+  z-index: 1;
+  top: 3px;
+  left: 3px;
+  width: 104px;
+  height: 30px;
+  border-radius: var(--radius-pill);
+  background: var(--neutral-900);
+  /* transform is set inline — it is the state, and the only state this control
+     has. 280ms is the design's, and the curve has no overshoot: the thumb
+     arrives under a label rather than past it. */
+  transition: transform 280ms cubic-bezier(0.2, 0, 0, 1);
+}
+.sdswbtn {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 104px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+/* The label on the thumb, which is ink, so it is the inverse rather than the
+   primary text colour. */
+.sdswbtn[aria-selected="true"] {
+  color: var(--text-inverse);
+}
+.sdswbtn svg {
+  width: 15px;
+  height: 15px;
+  opacity: 0.7;
+  transform: scale(0.9);
+  transition: transform 280ms cubic-bezier(0.2, 0, 0, 1);
+}
+.sdswbtn[aria-selected="true"] svg {
+  opacity: 1;
+  transform: scale(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sdswthumb,
+  .sdswbtn,
+  .sdswbtn svg {
+    transition: none;
+  }
 }
 .dockslot {
   position: relative;
@@ -11490,6 +11593,11 @@ body {
   .helpdock .dockbtn {
     display: none;
   }
+  /* 214px of switch does not fit a phone header beside the brand and the
+     account control, and this is the width the design specifies. */
+  .sdsw {
+    display: none;
+  }
   /* Help / Settings / Feedback panels become bottom sheets on mobile so they
      don't try to pop out of the (now button-less) dock's bottom-right corner.
      `top: auto` is required, not tidiness: these panels are anchored from the
@@ -12191,11 +12299,51 @@ body {
   box-shadow: 0 1px 2px rgba(28, 28, 30, 0.1);
 }
 
+/* Holds the body and the fade over it. Takes the flex role .ccbody had, so
+   the card's height behaviour is unchanged — .ccbody still flexes inside it,
+   which is what fills a short tab without making it scrollable. */
+.ccbodywrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .ccbody {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
   padding: 16px 18px 20px;
+}
+/* Soft white under the frozen header, once the body is off its top — so a card
+   scrolled halfway does not look like one at the top.
+
+   The blur is masked by the same ramp as the wash, so it fades out with it
+   rather than ending on a hard line 34px down. pointer-events:none because it
+   covers the first rows of content. */
+.ccfade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 34px;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms var(--ease-standard);
+  background: linear-gradient(
+    to bottom,
+    var(--surface-card) 0%,
+    color-mix(in srgb, var(--surface-card) 72%, transparent) 45%,
+    transparent 100%
+  );
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 35%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 35%, transparent 100%);
+}
+.ccfade.on {
+  opacity: 1;
 }
 @keyframes cc-rise {
   from {
@@ -12981,6 +13129,60 @@ body {
   letter-spacing: 0.06em;
   opacity: 0.75;
 }
+/* Zoomed, the map is draggable — but only with a mouse or a pen. `touch-action`
+   is deliberately NOT set: this sits 300px into a card that scrolls, and taking
+   the touch gesture would leave a finger on the map unable to scroll past it. */
+.hspmapz {
+  cursor: grab;
+}
+.hspmapz:active {
+  cursor: grabbing;
+}
+.hspzoom {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.hspzoom button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.hspzoom button:hover:not(:disabled) {
+  background: var(--neutral-0);
+}
+.hspzoom button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.hspzoom button svg {
+  width: 14px;
+  height: 14px;
+}
+.hspzoom .hspreset {
+  width: auto;
+  height: 20px;
+  padding: 0 7px;
+  font-family: var(--font-label);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
 .hspkey {
   position: absolute;
   left: 10px;
@@ -13022,11 +13224,26 @@ body {
   gap: 6px;
   margin-top: 10px;
 }
+/* A button that reads as a row: it zooms the map to its hub, and the only sign
+   of that is the pointer and the hover tint — a ranked list that looked like a
+   toolbar would be louder than the map it serves. */
 .hsprow {
   display: grid;
   grid-template-columns: 80px minmax(0, 1fr) 44px;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  margin: -3px 0;
+  padding: 3px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.hsprow:hover {
+  background: var(--neutral-100);
 }
 .hsprowname {
   font-size: 12px;
@@ -15486,8 +15703,14 @@ body {
    axis at all: the design carries the selection on the stem and the moving
    label and nothing else. An earlier pass kept a dashed mark for where the
    request outruns the archive; it was dropped on request. That fact is still
-   told, in `.cctlnote` under the control, which names the covered span and the
-   date it starts — so it is stated rather than drawn.
+   told, by the `.cceyebrow` ABOVE the control — "Timeline · 21 July – 24 Sept"
+   is built from the span actually drawn, so it is stated rather than drawn.
+
+   This used to credit `.cctlnote`, a caption under the control, which never
+   named a span or a date: it read "Daily live vacancies across the archive, so
+   you can see where this employer's history is worth asking about". The note
+   was removed on request 2026-09-25 and nothing factual went with it, because
+   the eyebrow had been carrying that load the whole time.
 
    The one element here the mockup does not have is `.cctlgap`, the wash over
    days the archive never collected. It predates this redraw and is inside the
@@ -15700,13 +15923,6 @@ body {
   transform: none;
   padding-left: 0;
 }
-.cctlnote {
-  margin: 8px 0 0;
-  font-size: 10.5px;
-  line-height: 1.45;
-  color: var(--text-tertiary);
-}
-
 /* ── What's Trending · market scope bar and coverage header ──────────────────
    The pane prices skills in one market, so the market and what could be priced
    inside it both sit above the numbers. A price with no market named is

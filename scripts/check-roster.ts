@@ -25,7 +25,8 @@
 // Run: bun run scripts/check-roster.ts        (exit 1 on any error)
 //      bun run scripts/check-roster.ts --json
 import { COMPANIES } from "../src/employsi/data/companies";
-import { CITY_COMPANIES } from "../src/employsi/data/mapboxGeo";
+import { CITY_COMPANIES, CITY_VIEWS, searchCityFor } from "../src/employsi/data/mapboxGeo";
+import { isReleasedCompany } from "../src/employsi/lib/markets";
 import { SEEK_ADVERTISERS } from "../src/employsi/data/seekAdvertisers";
 import { SEEK_TRADING_NAMES } from "../src/employsi/data/seekTradingNames";
 import { SITES as CAREER_SITES } from "../workers/jobs-cron/careerSites";
@@ -506,6 +507,33 @@ for (const [id, list] of Object.entries(SEEK_TRADING_NAMES)) {
         id,
         `unit is "${h.unit}" — the quarterly report counts employees, not FTE`,
       );
+  }
+}
+
+// ── search lands where the company actually is ──────────────────────────────
+//
+// Picking a company in the search bar calls searchCityFor(id) and then
+// select(id): the first chooses the local city to drop into, the second opens
+// the card and the map centres on that company's pin. If the city it chooses
+// does not PLACE the company, there is no pin to centre on — the user arrives
+// somewhere the thing they searched for is not, and the card opens over a map
+// that never highlights it.
+//
+// Measured 2026-09-25 while fixing exactly that failure from the other side:
+// 826 of 971 released companies sit more than 400 m from their city's camera
+// centre, so any company can be off screen on arrival and the centring is what
+// puts it on screen. This guards the data half — that there is something to
+// centre on at all.
+{
+  for (const c of COMPANIES) {
+    if (!isReleasedCompany(c.id)) continue;
+    const city = searchCityFor(c.id);
+    const placed = (CITY_COMPANIES[city] ?? []).some((x) => x.id === c.id);
+    if (!placed) {
+      err("search lands off-roster", c.id, `searchCityFor -> ${city}, which does not place it`);
+    } else if (!CITY_VIEWS[city]) {
+      err("search lands without a camera", c.id, `${city} has no CITY_VIEWS entry`);
+    }
   }
 }
 
