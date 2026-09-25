@@ -11,9 +11,9 @@
 //   NSW: Department of Education: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-25
 //   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — refreshed 2026-09-25
 //   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   New South Wales: 28 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
 //   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — KEPT, not refreshed this run
 //   South Australia: 98 agencies published as at Jun 2025 — KEPT, not refreshed this run
-//   New South Wales: 28 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
 //   New Zealand: 103 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
 //   Northern Territory: 28 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   Tasmania: 17 agencies published as at Jun 2024 — KEPT, not refreshed this run

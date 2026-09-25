@@ -589,6 +589,55 @@ NOT_IN_SOURCE_JURISDICTION = {
 }
 
 NOT_IN_SOURCE = {
+    # ── NSW: the rest of the top twelve, each tried 2026-09-25 ────────────────
+    # Six NSW agencies now come from their own annual report (NSW_AGENCY_REPORTS).
+    # These are the others among the twelve that carry 82% of the route's ads,
+    # and each of these reasons is a measurement rather than "no source row", so
+    # the next pass starts from what was already established.
+    'nsw:Transport for NSW':
+        'publishes no CURRENT annual report on its own site. Its '
+        'news-and-events/annual-reports page is an archive of pre-2012 RTA and '
+        'RailCorp documents, and its sitemap — 14,375 URLs, all eight pages of '
+        'it — holds no 2024-25 report under any name. Its people are also the '
+        'largest part of the Transport SERVICE row in the Workforce Profile '
+        '(29,420 FTE for the whole portfolio), which is not this card',
+    'nsw:TAFE NSW':
+        'no annual report reachable. tafensw.edu.au answers 404 at every '
+        'annual-report path and its sitemap of 1,357 URLs contains the word '
+        '"annual" zero times; the report is not on nsw.gov.au either',
+    'nsw:Fire and Rescue NSW':
+        'fire.nsw.gov.au REFUSES this network — 403 on the sitemap and a '
+        'connection reset on the site itself, which is the datacentre-IP '
+        'signature South Australia and Victoria also have. Nothing about the '
+        'report can be established from here, including whether it exists',
+    'nsw:Department of Planning, Housing and Infrastructure':
+        'no annual report on nsw.gov.au or planning.nsw.gov.au. The only '
+        '"annual-reports" page on either is the Valuer General\'s, a different '
+        'body, and planning.nsw.gov.au\'s own is for community consultative '
+        'committees',
+    "nsw:Premier's Department":
+        'its 2024-25 annual report downloads and was read: it carries no '
+        'workforce table under any heading the other six use. The only '
+        'full-time-equivalent figure in it is 262,900, which is the whole NSW '
+        'public sector, not the department',
+    'nsw:National Parks and Wildlife Service':
+        'INSIDE the Department of Climate Change, Energy, the Environment and '
+        'Water, whose 6,208 is filed. That report names its exclusions — '
+        'Biodiversity Conservation Trust, Dams Safety NSW, Taronga, Energy '
+        'Corporation of NSW, the EPA and Energy Security Corporation — and NPWS '
+        'is not among them, so its people are in the 6,208 rather than absent '
+        'from it. Filing it again would double count',
+    # And the three DCCEEW names its note DOES exclude, which is why they are
+    # separate cards with no figure rather than part of the 6,208.
+    'nsw:Taronga Conservation Society Australia':
+        "excluded by name from the DCCEEW annual report's workforce table, so "
+        'it needs its own report',
+    'nsw:NSW Environment Protection Authority':
+        "excluded by name from the DCCEEW annual report's workforce table, so "
+        'it needs its own report',
+    'nsw:Energy Corporation of NSW':
+        "excluded by name from the DCCEEW annual report's workforce table, so "
+        'it needs its own report',
     # ── Western Australia: outside the PSM Act bulletin ────────────────────
     # Nine WA cards are absent from every edition, and the reason is the one
     # perthGovWorkforce.ts already stated at the top of the file it replaces:
@@ -2200,6 +2249,46 @@ NSW_AGENCY_REPORTS = {
 NSW_AGENCY_ROUTE = {v['agency_id']: k for k, v in NSW_AGENCY_REPORTS.items()}
 
 
+def jurisdiction_of(cid):
+    """Which SOURCE KEY a roster company id gets its figure from.
+
+    ONE FUNCTION, CALLED TWICE, and it has to be. The matching loop and the
+    merge loop each used to derive this themselves, and the merge's version was
+    the simpler of the two: `cid.split('-gov-')[0]`. That was survivable until
+    six NSW agencies started coming from their own annual reports — their ids
+    are still `nsw-gov-…`, so the merge read them as belonging to `nsw` and a
+    run that refreshed the NSW Health appendix DELETED all six. Measured
+    2026-09-25: `--only nsw` wrote 343 agencies where the file had 349, and
+    nothing failed.
+
+    That is the exact failure the merge exists to prevent — one machine's run
+    deleting what another machine's run filed — so the derivation cannot live in
+    two places.
+    """
+    if cid in NSW_AGENCY_ROUTE:
+        # Its figure comes from the agency's OWN annual report. Routed here
+        # rather than to `nsw`, which is the NSW Health appendix and could never
+        # name a non-health agency.
+        return NSW_AGENCY_ROUTE[cid]
+    if cid.startswith('aps-'):
+        return 'aps'
+    # `aps-` and `nz-` have no `-gov-` segment, so the split would return the
+    # whole id and match no jurisdiction.
+    if cid.startswith(('nz-health-new-zealand', 'nz-northern-regional-alliance')):
+        # THE NORTHERN REGIONAL ALLIANCE IS DELIBERATELY SENT TO A SOURCE THAT
+        # CANNOT FILL IT, so the run says so in the right place. Since September
+        # 2024 the report folds NRA into a combined "National Payrolls" row with
+        # seven other agencies — its people are in the 4,614, not absent from it.
+        # Routed to `nz` instead it would come back unmatched against the Public
+        # Service Commission, which never covered it either, and would read as
+        # the wrong reason for the right answer. Health NZ's districts go to
+        # their own source, which is a head count where the PSC's is FTE.
+        return 'nzhealth'
+    if cid.startswith('nz-'):
+        return 'nz'
+    return cid.split('-gov-')[0]
+
+
 def _num(s):
     return float(s.replace(',', ''))
 
@@ -2481,30 +2570,7 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
     for a in agencies:
         # `aps-` and `nz-` have no `-gov-` segment, so the split would return
         # the whole id and match no jurisdiction.
-        if a['id'] in NSW_AGENCY_ROUTE:
-            # Its figure comes from the agency's OWN annual report — see
-            # NSW_AGENCY_REPORTS. Routed here rather than to `nsw`, which is the
-            # NSW Health appendix and could never name a non-health agency.
-            pre = NSW_AGENCY_ROUTE[a['id']]
-        elif a['id'].startswith('aps-'):
-            pre = 'aps'
-        elif a['id'].startswith(('nz-health-new-zealand', 'nz-northern-regional-alliance')):
-            # THE NORTHERN REGIONAL ALLIANCE IS DELIBERATELY SENT TO A SOURCE
-            # THAT CANNOT FILL IT, so the run says so in the right place. Since
-            # September 2024 the report folds NRA into a combined "National
-            # Payrolls" row with seven other agencies — its people are in the
-            # 4,614, not absent from it, and no row anywhere names NRA. Routed
-            # to `nz` instead it would come back unmatched against the Public
-            # Service Commission, which never covered it either and would read
-            # as the wrong reason for the right answer.
-            # Health NZ's districts go to their own source, which is a head
-            # count where the PSC's is FTE. Routing them to `nz` would look up
-            # names that are not in it and then label the miss as the PSC's.
-            pre = 'nzhealth'
-        elif a['id'].startswith('nz-'):
-            pre = 'nz'
-        else:
-            pre = a['id'].split('-gov-')[0]
+        pre = jurisdiction_of(a['id'])
         if pre not in data:
             continue
         by_norm, asof, span, unit = data[pre]
@@ -2607,9 +2673,36 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
     # kept rather than re-fetched say so.
     prev_rows, prev_meta = read_existing()
     for cid, rec in prev_rows.items():
-        pre = 'aps' if cid.startswith('aps-') else cid.split('-gov-')[0]
-        if pre not in data:          # not attempted this run — keep it
+        if jurisdiction_of(cid) not in data:   # not attempted this run — keep it
             out.setdefault(cid, rec)
+
+    # A CARD THAT LOSES A FIGURE IT ALREADY HAD GETS SAID OUT LOUD.
+    #
+    # THE OBVIOUS GUARD HERE DOES NOT WORK, and writing it first is how that was
+    # found. It compared each dropped row against jurisdiction_of(cid) to ask
+    # whether its source had been loaded — but that is the function the bug was
+    # IN, so the check inherited the blind spot and passed happily while six
+    # cards vanished. A guard derived from the thing it guards cannot catch it.
+    #
+    # This asks a question with no derivation in it instead: did a row that had
+    # a figure come out of this run without one? Measured 2026-09-25, `--only
+    # nsw` did exactly that to six NSW agencies — routed to the NSW Health
+    # appendix, correctly absent from it, dropped — and the run reported 343
+    # agencies with no hint that six cards had gone back to an em dash.
+    #
+    # It PRINTS rather than raises, because a source genuinely dropping an
+    # agency is legitimate and looks identical from here. The workflow reprints
+    # the diagnosis last, so this lands where it will be read.
+    lost = sorted(cid for cid in prev_rows if cid not in out)
+    if lost:
+        print(f'\n  LOST A FIGURE IT ALREADY HAD — {len(lost)} card(s). Either the '
+              f'source stopped reporting them, or they were looked up in the wrong '
+              f'source:', file=sys.stderr)
+        for cid in lost[:20]:
+            had = prev_rows[cid]
+            print(f'      {cid}  (was {int(had["now"]):,} as at {had.get("asof")})',
+                  file=sys.stderr)
+
     kept = [(lbl, m) for lbl, m in prev_meta.items() if lbl not in {x[0] for x in meta}]
     if failed:
         print(f'  not refreshed this run: {", ".join(failed)} '
