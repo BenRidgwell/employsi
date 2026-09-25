@@ -1187,6 +1187,13 @@ export const AU_JOBS_TARGETS: JobsTarget[] = [
     cities: ["perth"],
   },
   {
+    id: "perth-mad",
+    name: "Mader Group",
+    sector: "Energy & Natural Resources",
+    group: "Energy & Natural Resources",
+    cities: ["perth"],
+  },
+  {
     id: "perth-obm",
     name: "Ora Banda Mining",
     sector: "Energy & Natural Resources",

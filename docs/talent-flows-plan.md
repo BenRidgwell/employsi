@@ -154,6 +154,29 @@ Facts it depends on (read 2026-09-24):
   first load; D1 totals checked against the file. 110 of 1,254 companies
   matched (the two new exact-name matches, Chrysos and Vicinity Centres,
   checked by hand).
+- **Three sources added to the roster, 2026-09-25**, as the largest
+  unmatched sources of BHP hires: Programmed (16 moves), Thiess (12) and
+  Mader Group (8). None was on the map, nor was a parent company.
+  - Mader Group (ASX: MAD) is a Perth city-roster row, `perth-mad`,
+    illustrative like every city-roster company. `auJobsTargets.ts` got the
+    matching entry by hand, because `gen-asx200.py` no longer parses the
+    prettier-formatted file it once wrote.
+  - Thiess (`priv-thiess`, Brisbane) and Programmed (`priv-programmed`,
+    Melbourne) are private, in a new `OUTSIDE_TOP150` list in
+    `topPrivateCompanies.ts`: they are not in the AFR/IBISWorld workbook, so
+    no revenue is sourced and every figure is `illustrative`. Programmed's
+    head office is 727 Collins Street, Melbourne, per its own contact page;
+    the Burswood office a search finds first is a WA branch.
+  - Each head office came from the company's own page (Mader: its ASX change
+    of address, effective 30 June 2026). They were geocoded with
+    `geocode-au.py --only`, which left every other coordinate alone.
+  - Seven `flow_company_map` rows, `method=manual`: `li:thiess`,
+    `li:programmed`, `li:mader-group`, and four Programmed division pages
+    (`li:programmed-lng`, `li:programmedoffshore`, `name:programmed skilled
+    workforce`, `name:programmed professional`). Company ids are stamped
+    into `flows` at load time, so they take effect on the next load. A dry
+    run of the loaded export then matched 117 companies (from 110) and 360
+    moves with both ends on the roster (from 312).
 - **The rate limit is not a fixed count per window.** 00:41–00:55 UTC: 164
   accepted, then 429. 02:02:14–02:25:38 UTC: 557 accepted (at the same ~24 a
   minute), then 429 on the 558th. So the cap had reset within 67 minutes of

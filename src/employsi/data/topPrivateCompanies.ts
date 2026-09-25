@@ -1,6 +1,6 @@
 import type { Company, RoleBreakdown } from "./companies";
 import type { JobsTarget } from "./auJobsTargets";
-import { deriveDomain, nameAcronym } from "./rosters";
+import { buildRosterCompany, deriveDomain, nameAcronym } from "./rosters";
 
 // AFR / IBISWorld "Top 500 Private Companies" (Australia) — the top 150 by
 // revenue, plotted on their home-state capital and configured as private
@@ -672,7 +672,46 @@ function buildPrivate([name, city, revK, chg]: Raw): Company & { city: string } 
   };
 }
 
-const BUILT = RAW.map(buildPrivate);
+// ── Private companies from outside the Top 150 ──────────────────────────────
+// Added one at a time when something else needs them on the map, NOT taken
+// from the AFR/IBISWorld workbook: no revenue figure is sourced for them, so
+// they are built like the listed roster (buildRosterCompany) and every figure
+// is `illustrative`, which the card suppresses rather than prints. They share
+// this file's id scheme, pins and daily jobs targets with the Top 150.
+//
+// [name, home city (where the head office is), group bundle, sub-industry]
+const OUTSIDE_TOP150: [name: string, city: string, sec: Sec, sub: string][] = [
+  // Talent flows, 2026-09-25: 12 moves into BHP over 60 months. Owned by
+  // CIMIC and Elliott. Head office Level 5, 179 Grey Street, South Bank QLD
+  // 4101 (thiess.com/contact, read 2026-09-25).
+  ["Thiess", "brisbane", RESOURCES, "Mining services"],
+  // Talent flows, 2026-09-25: 16 moves into BHP over 60 months. Owned by
+  // PERSOL. Head office Level 32, Tower 2, 727 Collins Street, Melbourne VIC
+  // 3008 (programmed.com.au/contact, read 2026-09-25) — the Burswood office
+  // a search turns up first is a WA branch, not the head office.
+  ["Programmed", "melbourne", INDUSTRIAL, "Maintenance & workforce services"],
+];
+
+function buildOutsideTop150([name, city, sec, sub]: (typeof OUTSIDE_TOP150)[number]): Company & {
+  city: string;
+} {
+  const acr = nameAcronym(name) || name.slice(0, 4).toUpperCase();
+  const base = buildRosterCompany(city, "", [acr, name, sec.group]);
+  return {
+    ...base,
+    id: privateCompanyId(name),
+    ticker: acr,
+    pill: acr,
+    exchange: undefined,
+    private: true,
+    sector: sub,
+    group: sec.group,
+    skills: sec.skills,
+    city,
+  };
+}
+
+const BUILT = [...RAW.map(buildPrivate), ...OUTSIDE_TOP150.map(buildOutsideTop150)];
 
 export const TOP_PRIVATE_COMPANIES: Company[] = BUILT.map(({ city, ...c }) => {
   void city;

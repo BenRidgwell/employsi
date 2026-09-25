@@ -219,6 +219,7 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "nt-gov-territory-generation": [130.952322, -12.444744], // 3/631 Stuart Highway, Berrimah NT 0828
   "perth-cyl": [115.841673, -31.949762], // 3/50 Colin Street, West Perth WA 6005
   "perth-emr": [115.846328, -31.949709], // 1110 Hay Street, West Perth WA 6005
+  "perth-mad": [115.846322, -32.012896], // 1 Sleat Road, Applecross WA 6153
   "perth-pdi": [115.850448, -31.976711], // 4 Charles Street, South Perth WA 6151
   "perth:bhp": [138.598754, -34.926787], // 171 Collins Street, Melbourne VIC 3000
   "perth:rio": [144.969385, -37.813737], // Level 43, 120 Collins Street, Melbourne VIC 3000
@@ -265,9 +266,9 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "priv-clayton-utz": [151.210556, -33.864838], // Level 15, 1 Bligh Street, Sydney NSW 2000
   "priv-cmv-group": [138.591808, -34.942113], // 48 Greenhill Road, Wayville SA 5034
   "priv-cnw-electrical": [153.098669, -27.459144], // 16 Miller Street, Murarrie QLD 4172
-  "priv-cotton-on-group": [144.345295, -38.1125], // 14 Shepherd Court, North Geelong VIC 3215
   "priv-colcap": [150.91967, -33.922984], // Level 12, 77 Castlereagh Street, Sydney NSW 2000
   "priv-consolidated-travel": [144.965828, -37.813294], // Level 7, 246 Bourke Street, Melbourne VIC 3000
+  "priv-cotton-on-group": [144.345295, -38.1125], // 14 Shepherd Court, North Geelong VIC 3215
   "priv-craig-mostyn": [115.745154, -32.053357], // 1/6 Short Street, Fremantle WA 6160
   "priv-creation-homes": [144.977182, -37.843183], // 484 St Kilda Road, Melbourne VIC 3004
   "priv-defence-health": [144.970983, -37.832164], // 380 St Kilda Road, Melbourne VIC 3004
@@ -333,6 +334,7 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "priv-perth-airport": [115.955259, -31.933594], // 2 George Wiencke Drive, Perth Airport WA 6105
   "priv-peter-kittle-motor-company": [138.632797, -34.807769], // 1459 Main North Road, Para Hills West SA 5096
   "priv-pharmacare": [151.286675, -33.678262], // 18 Jubilee Avenue, Warriewood NSW 2102
+  "priv-programmed": [144.949793, -37.821366], // Level 32, Tower 2, 727 Collins Street, Melbourne VIC 3008
   "priv-pwc-australia": [151.20224, -33.863371], // One International Towers, Watermans Quay, Barangaroo NSW 2000
   "priv-qcoal": [153.029861, -27.468284], // 40 Creek Street, Brisbane QLD 4000
   "priv-queensland-sugar": [153.024322, -27.465516], // Level 14, 348 Edward Street, Brisbane QLD 4000
@@ -361,6 +363,7 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "priv-team-global-express": [144.976864, -37.840436], // Level 3, 417 St Kilda Road, Melbourne VIC 3004
   "priv-tennis-australia": [144.976205, -37.823071], // Olympic Boulevard, Melbourne VIC 3001
   "priv-teys-australia": [153.107545, -27.589703], // Building 3, Freeway Office Park, 2728 Logan Road, Eight Mile Plains QLD 4113
+  "priv-thiess": [153.021958, -27.479703], // Level 5, 179 Grey Street, South Bank QLD 4101
   "priv-thomas-foods-international": [138.623855, -34.930029], // Level 2, 162 Fullarton Road, Rose Park SA 5067
   "priv-turosi": [144.998029, -37.691032], // 5 Lipton Drive, Thomastown VIC 3074
   "priv-united-petroleum": [145.035412, -37.824503], // 600 Glenferrie Road, Hawthorn VIC 3122

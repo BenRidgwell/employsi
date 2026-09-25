@@ -29,6 +29,10 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["GGP", "Greatland Resources", ENR],
       ["IMD", "IMDEX", ENR],
       ["LYC", "Lynas Rare Earths", ENR],
+      // Added 2026-09-25 for talent flows: 8 moves into BHP over 60 months,
+      // the largest unmapped source that is a listed company. Grouped with
+      // Perenti, its closest listed peer (mining equipment maintenance).
+      ["MAD", "Mader Group", ENR],
       ["OBM", "Ora Banda Mining", ENR],
       ["PDI", "Predictive Discovery", ENR],
       ["PRN", "Perenti", ENR],

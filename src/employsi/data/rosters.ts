@@ -103,6 +103,10 @@ const KNOWN_DOMAINS: Record<string, string> = {
   "korea zinc": "koreazinc.co.kr",
   "korean air": "koreanair.com",
   "industrial bank of korea": "ibk.co.kr",
+  // Added for talent flows, 2026-09-25; each checked to resolve.
+  "mader group": "madergroup.com.au",
+  thiess: "thiess.com",
+  programmed: "programmed.com.au",
 };
 
 // Best-effort primary domain for a company, so the card logo (Google favicon
