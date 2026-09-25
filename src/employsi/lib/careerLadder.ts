@@ -156,6 +156,10 @@ const NOT_A_JOB =
 const DOMAIN_SUPPORT =
   /\badministrat\w*\b|\badmin\b|\breceptionist\b|\bfront desk\b|\bclerk\b|\bstore ?keeper\b|\bstore ?person\b|(?<!chemist )\bwarehouse\b|\bdrivers?\b|\bdelivery\b|\bpacker\b|\bbusiness support\b|\boffice (?:manager|reception|coordinator|assistant)\b|\breception\b/;
 const DOMAIN_FAMILIES: ReadonlySet<string> = new Set([
+  "facilities",
+  "architecture",
+  "trades",
+  "agriculture",
   "medical",
   "allied",
   "dental",
@@ -175,7 +179,7 @@ const EA_PA =
  * "Registered or Enrolled Nurse" is the nursing form of the same thing.
  */
 const MULTI_LEVEL =
-  /\b(?:senior )?staff specialist (?:or )?(?:senior )?staff specialist\b|\b(?:lecturer|professor)\s+(?:or\s+)?(?:associate |senior )?(?:lecturer|professor)\b|\b(?:manager|director|consultant|analyst|associate|advis[oe]r|officer|executive|specialist)\s+(?:or|to)\s+(?:(?:senior|associate|assistant)\s+)?(?:manager|director|consultant|analyst|associate|advis[oe]r|officer|specialist)\b|\bmanager (?:(?:senior|assistant|associate) (?:(?:project|program|programme) )?|(?:project|program|programme) )manager\b|\bsenior manager director\b|\bentry level to experienced\b|\blecturer (?:or )?senior lecturer\b|\bregistered(?: nurse)? (?:and |or )+enrolled\b|\benrolled(?: nurse)? (?:and |or )+registered\b/;
+  /\bengineer (?:or|to) (?:\w+ )?(?:director|manager|lead|principal)\b|\bsenior (?:or|to|and) principal\b|\bgraduate (?:or|to) (?:intermediate|senior)\b|\bintermediate (?:or|to|and) senior\b|\bsenior (?:or|and) intermediate\b|\b(?:senior )?staff specialist (?:or )?(?:senior )?staff specialist\b|\b(?:lecturer|professor)\s+(?:or\s+)?(?:associate |senior )?(?:lecturer|professor)\b|\b(?:manager|director|consultant|analyst|associate|advis[oe]r|officer|executive|specialist)\s+(?:or|to)\s+(?:(?:senior|associate|assistant)\s+)?(?:manager|director|consultant|analyst|associate|advis[oe]r|officer|specialist)\b|\bmanager (?:(?:senior|assistant|associate) (?:(?:project|program|programme) )?|(?:project|program|programme) )manager\b|\bsenior manager director\b|\bentry level to experienced\b|\blecturer (?:or )?senior lecturer\b|\bregistered(?: nurse)? (?:and |or )+enrolled\b|\benrolled(?: nurse)? (?:and |or )+registered\b/;
 
 /**
  * Words that name a rung BELOW the executive. A C-suite word or a bank grade
@@ -463,7 +467,7 @@ export const FAMILIES: FamilyDef[] = [
     // Project ENGINEERS and accountants are on their own discipline's ladder;
     // a portfolio manager at a fund manages money, not projects.
     exclude:
-      /\bproject (?:engineer|accountant|architect|surveyor|geologist|lawyer|scientist)\b|\bprogram(?:me)?\s+(?:developer|engineer)\b|\binvestment\b|\bfund\b|\bgraduate program\b|\bgraduate programme\b|\bnutrition\b|\bsocial worker\b|\bresidency\b|\bfellowship\b|\bgeologist\b|\bteacher\b|\b(?:vacation|cadetship|cadet|internship|intern|undergraduate|traineeship|graduate|summer|winter|early careers?|accelerator|apprenticeship|school based) (?:\w+ )?program(?:me)?\b/,
+      /\bproject engineer(?:s|ing (?:manager|lead|director))?\b|\bproject (?:accountant|architect|surveyor|geologist|lawyer|scientist)\b|\bprogram(?:me)?\s+(?:developer|engineer)\b|\binvestment\b|\bfund\b|\bgraduate program\b|\bgraduate programme\b|\bnutrition\b|\bsocial worker\b|\bresidency\b|\bfellowship\b|\bgeologist\b|\bteacher\b|\b(?:vacation|cadetship|cadet|internship|intern|undergraduate|traineeship|graduate|summer|winter|early careers?|accelerator|apprenticeship|school based) (?:\w+ )?program(?:me)?\b/,
     // Planning, scheduling and cost control: officer → senior → lead → manager,
     // its own ladder beside the PM one. Until 2026-09-24 "Project Controls
     // Manager" sat on rung 2 with the project officers.
@@ -518,11 +522,11 @@ export const FAMILIES: FamilyDef[] = [
     label: "Software engineering",
     skills: ["Software Engineering"],
     match:
-      /\bsoftware\b|\bdeveloper\b|\bprogrammer\b|\bfull ?stack\b|\bfront ?end\b|\bback ?end\b|\bdevops\b|\bsite reliability\b|\bsre\b|\b(?:platform|product|web|mobile|cloud) engineering\b|\bcto\b|\bchief technology officer\b|\bplatform engineer\b/,
+      /\bsoftware\b|\bdeveloper\b|\bprogrammer\b|\bfull ?stack\b|\bfront ?end\b|\bback ?end\b|\bdevops\b|\bsite reliability\b|\bsre\b|\b(?:platform|product|web|mobile|cloud) engineering\b|\bcto\b|\bchief technology officer\b|\bplatform engineer\b|\b(?:net|java|python|c|golang|ruby|php|javascript|typescript|react|node|scala|kotlin|swift|ios|android|murex|sql) (?:engineer|developer)\b|\b(?:test|qa) automation\b|\bautomation (?:test|qa)\w*\b|\bsoftware test\w*\b|\bqa (?:engineer|analyst|tester)\b|\btest analyst\b|\bapi automation tester\b/,
     // A Costco "Front End Cashier" works the checkouts; software asset
     // management is licensing; a "Field CTO" is presales.
     exclude:
-      /\bsales\b|\baccount (?:manager|executive)\b|\bbusiness development\b|\bsupport\b|\btrainer\b|\bproperty developer\b|\bbusiness developer\b|\bland developer\b|\bloader\b|\boperator\b|\bcashier\b|\bcheckout\b|\bsoftware (?:asset|licen\w*|administrator)\b|\b(?:field|account) cto\b|\b(?:substation|electrical|mechanical|civil|structural|maintenance|facilities|plant|process|manufacturing|production|hvac|building|mining|rail|traffic|water|asset|project|program|field|customer|systems|design) engineering\b|\bresidences\b/,
+      /\bproduct owner\b|\bsales\b|\baccount (?:manager|executive)\b|\bbusiness development\b|\bsupport\b|\btrainer\b|\bproperty developer\b|\bbusiness developer\b|\bland developer\b|\bloader\b|\boperator\b|\bcashier\b|\bcheckout\b|\bsoftware (?:asset|licen\w*|administrator)\b|\b(?:field|account) cto\b|\b(?:substation|electrical|mechanical|civil|structural|maintenance|facilities|plant|process|manufacturing|production|hvac|building|mining|rail|traffic|water|asset|project|program|field|customer|systems|design) engineering\b|\bresidences\b/,
     // A bare "Engineering Manager" or "Director of Engineering" names no
     // discipline. Measured 2026-09-24: at Marriott it is the hotel's plant and
     // maintenance, at Worley and AECOM civil and process engineering, at REA,
@@ -961,7 +965,7 @@ export const FAMILIES: FamilyDef[] = [
     // manager, with estimators beside them. After finance and legal, so a
     // "Commercial Finance Manager" and a commercial lawyer go there.
     match:
-      /\bcontracts? (?:administrator|administration|manager|officer|specialist|advis[oe]r|lead|engineer|coordinator|analyst)\b|\bquantity surveyor\b|\bestimator\b|\bcost (?:manager|planner|estimator|engineer)\b|\bcommercial (?:manager|director|analyst|business partner|lead|advis[oe]r|specialist|officer|coordinator|executive)\b|\bhead of commercial\b/,
+      /\bcontracts? (?:administrator|administration|manager|officer|specialist|advis[oe]r|lead|engineer|coordinator|analyst)\b|\bquantity surveyor\b|\bquantity surveying (?:manager|lead|director)\b|\bestimator\b|\bcost (?:manager|planner|estimator|engineer)\b|\bcommercial (?:manager|director|analyst|business partner|lead|advis[oe]r|specialist|officer|coordinator|executive)\b|\bhead of commercial\b/,
     skills: [],
     exclude:
       /\bcommercial (?:cleaning|cleaner|electrician|kitchen|property|real estate|lending|banking|pilot|diver|driver|painter|plumber|litigation|lawyer)\b|\bsales\b|\baccount manager\b|\bnurse\b/,
@@ -970,7 +974,7 @@ export const FAMILIES: FamilyDef[] = [
         id: "quantity-surveying",
         label: "Quantity surveying & estimating",
         match:
-          /\bquantity surveyor\b|\bestimator\b|\bcost (?:manager|planner|estimator|engineer)\b/,
+          /\bquantity survey\w*\b|\bestimator\b|\bcost (?:manager|planner|estimator|engineer)\b/,
       },
     ],
     rungs: [
@@ -1044,7 +1048,7 @@ export const FAMILIES: FamilyDef[] = [
     // Data science and ML/AI engineering, and data engineering, are tracks
     // running the same bands; staff / principal is the senior IC rung.
     match:
-      /\bdata (?:analyst|scientist|engineer|architect|analytics|science|engineering|governance|platform|visuali[sz]ation|modeller|steward|quality)\b|\banalytics\b|\bbusiness intelligence\b|\bbi (?:developer|analyst|specialist|lead|engineer)\b|\bpower bi\b|\bmachine learning\b|\bml (?:engineer|scientist|ops)\b|\bai (?:engineer|architect|specialist|lead|scientist|ml engineer|solutions|governance|enablement)\b|\bgen(?:erative)? ai\b|\bapplied ai\b|\binsights? (?:analyst|manager|lead)\b|\breporting analyst\b|\bquantitative analyst\b|\bstatistician\b|\bchief data officer\b|\bhead of (?:data|ai|analytics)\b/,
+      /\bdata (?:\w+ )?analyst\b|\bdata (?:scientist|engineer|architect|analytics|science|engineering|governance|platform|visuali[sz]ation|modeller|steward|quality)\b|\banalytics\b|\bbusiness intelligence\b|\bbi (?:developer|analyst|specialist|lead|engineer)\b|\bpower bi\b|\bmachine learning\b|\bml (?:engineer|scientist|ops)\b|\bai (?:engineer|architect|specialist|lead|scientist|ml engineer|solutions|governance|enablement)\b|\bgen(?:erative)? ai\b|\bapplied ai\b|\binsights? (?:analyst|manager|lead)\b|\breporting analyst\b|\bquantitative analyst\b|\bstatistician\b|\bchief data officer\b|\bhead of (?:data|ai|analytics)\b/,
     skills: ["Data Analytics", "Data Science & Machine Learning", "Data Engineering"],
     exclude:
       /\bdata entry\b|\bsales\b|\bnurse\b|\brecruit|\bmarketing\b|\bproduct (?:manager|owner)\b|\btrainer\b|\blecturer\b|\bprofessor\b|\bteach\w*\b/,
@@ -1480,6 +1484,370 @@ export const FAMILIES: FamilyDef[] = [
     ],
   },
   {
+    id: "engineering",
+    label: "Engineering",
+    // undergraduate / graduate → engineer → senior → lead → principal /
+    // engineering manager → technical or engineering director. Disciplines
+    // are tracks. Project and site engineers are here: project management
+    // excludes them on purpose.
+    //
+    // After software, data, IT, quality, HSE and commercial, which keep their
+    // own engineers (software, data, network, QA, safety, cost). A bare
+    // "Engineering Manager" names no discipline and stays unplaced unless the
+    // employer says software (see software's employerMatch).
+    match:
+      /\bengineers?\b|\b(?:civil|structural|electrical|mechanical|process|chemical|mining|mine|geotechnical|project|site|maintenance|reliability|asset|design|production|instrumentation|controls?|automation|pipelines?|subsea|piping|water|transport|rail|substation|hv|building services|hydraulic|fire|drilling|reservoir|petroleum|metallurgical|marine|aerospace|avionics|commissioning|facilities|plant|manufacturing|industrial) engineering (?:manager|director|lead|superintendent|technician|graduate|intern)\b|\btechnical director\b.*\bengineering\b|\bchief engineer\b|\bmetallurgists?\b/,
+    skills: [
+      "Civil Engineering",
+      "Electrical Engineering",
+      "Mechanical Engineering",
+      "Process Engineering",
+      "Mining Engineering",
+      "Pipeline Engineering",
+      "Geotechnical",
+      "Instrumentation & Control",
+      "Automation & Robotics",
+      "Metallurgy",
+    ],
+    // Presales and service engineers are other ladders; an aircraft
+    // maintenance engineer holds a trade licence; test automation is
+    // software testing.
+    exclude:
+      /\bsales\b|\bpre ?sales\b|\bsolutions? engineer\b|\bcustomer engineer\b|\bsupport engineer\b|\bfield service engineer\b|\bservice engineer\b|\bsoftware\b|\bdata\b|\bcloud\b|\bnetwork\b|\bsecurity\b|\bdevops\b|\bsite reliability\b|\bprompt\b|\bai\b|\bmachine learning\b|\bml\b|\btest (?:automation|analyst)\b|\bautomation test\b|\bqa\b|\bquality\b|\bsafety\b|\brecruit\w*\b|\bteach\w*\b|\blecturer\b|\bprofessor\b|\baircraft maintenance engineer\b|\blame\b|\bsound engineer\b|\baudio engineer\b|\bgame\b|\bfull ?stack\b|\bfront ?end\b|\bback ?end\b|\bplatform\b|\bnaval architect\b/,
+    tracks: [
+      {
+        id: "civil",
+        label: "Civil & structural",
+        match:
+          /\bcivil\b|\bstructural\b|\bgeotech\w*\b|\bwater\b|\bwastewater\b|\btransport\b|\btraffic\b|\broad\b|\brail\b|\bbridges?\b|\btunnel\w*\b|\bhydraulic\b|\bdams?\b|\bcoastal\b|\bpavements?\b|\bdrainage\b|\bsite engineer\b|\bresident engineer\b/,
+      },
+      {
+        id: "electrical",
+        label: "Electrical, instrumentation & controls",
+        match:
+          /\belectrical\b|\bhv\b|\bhigh voltage\b|\bpower\b|\bsubstation\b|\bprotection\b|\boverhead lines\b|\binstrumentation\b|\bcontrols?\b|\bautomation\b|\bscada\b|\bplc\b|\be and i\b|\bot\b/,
+      },
+      {
+        id: "mechanical",
+        label: "Mechanical & reliability",
+        match: /\bmechanical\b|\bhvac\b|\bpiping\b|\breliability\b|\bmaintenance\b|\brotating\b/,
+      },
+      {
+        id: "process",
+        label: "Process, chemical & metallurgy",
+        match: /\bprocess\b|\bchemical\b|\bmetallurg\w*\b|\btailings\b/,
+      },
+      {
+        id: "mining",
+        label: "Mining",
+        match: /\bmining\b|\bmine\b|\bdrill and blast\b|\bblasting\b|\bventilation\b/,
+      },
+    ],
+    generic: false,
+    rungs: [
+      // Deputies first: "Associate Director – Structural Engineer" also
+      // contains "director", the top rung's own word.
+      [DEPUTY, 4],
+      [/\b(?:assistant|deputy) chief engineer\b/, 4],
+      [
+        /\b(?:engineering|technical) director\b|\bhead of engineering\b|\bdirector (?:of )?engineering\b|\bchief engineer\b|\bgeneral manager\b|\bdirector\b/,
+        5,
+      ],
+      [/\bprincipal\b|\bengineering manager\b|\bmanager\b|\bsuperintendent\b|\bstaff\b/, 4],
+      [/\bsenior\b|\blead\b/, 3],
+      [
+        /\bgraduate\b|\bundergraduate\b|\bvacation\b|\bintern\w*\b|\bcadet\b|\bstudent\b|\bjunior\b|\btrainee\b|\bapprentice\b|\bentry level\b/,
+        1,
+      ],
+      [/\bengineers?\b|\bmetallurgists?\b|\bintermediate\b/, 2],
+    ],
+  },
+  {
+    id: "geoscience",
+    label: "Geoscience & surveying",
+    // geology technician → geologist → senior → principal / superintendent →
+    // chief geologist. Surveying: graduate → surveyor → senior → lead.
+    match:
+      /\bgeolog\w*\b|\bgeoscien\w*\b|\bgeophysic\w*\b|\bgeochem\w*\b|\bhydrogeolog\w*\b|\bsurveyors?\b|\bsurveying\b|\bmine survey\b/,
+    skills: ["Geology", "Surveying"],
+    // A quantity surveyor is commercial; a marine or building surveyor is an
+    // inspector; a survey interviewer asks questions.
+    exclude:
+      /\bquantity survey\w*\b|\bmarine surveyor\b|\bbuilding survey\w*\b|\bflag state\b|\binsurance\b|\bsurvey (?:interviewer|research|designer)\b|\bteach\w*\b|\blecturer\b|\bprofessor\b|\bsales\b/,
+    tracks: [{ id: "surveying", label: "Surveying", match: /\bsurvey/ }],
+    generic: false,
+    rungs: [
+      [
+        /\bchief geologist\b|\bhead of\b|\bdirector\b|\bgeneral manager\b|\bexploration manager\b/,
+        5,
+      ],
+      [/\bprincipal\b|\bsuperintendent\b|\bmanager\b/, 4],
+      [/\bsenior\b|\blead\b|\bspecialist\b/, 3],
+      [
+        /\btechnician\b|\bgraduate\b|\bvacation\b|\bstudent\b|\bintern\b|\bundergraduate\b|\bearly career\b|\bassistant\b/,
+        1,
+      ],
+      [
+        /\bgeologists?\b|\bgeoscientist\b|\bgeophysicist\b|\bgeochemist\b|\bhydrogeologist\b|\bsurveyors?\b/,
+        2,
+      ],
+    ],
+  },
+  {
+    id: "architecture",
+    label: "Architecture, planning & drafting",
+    // graduate → architect → senior / project architect → associate /
+    // principal → director. Town planning and drafting / design (drafters,
+    // BIM modellers, engineering designers) run the same bands.
+    match:
+      /\barchitects?\b|\barchitectur\w*\b|\b(?:town|urban|strategic|statutory|land use) planners?\b|\burban design\w*\b|\bdraft(?:er|sperson|sman|ing)\b|\bbim (?:modeller|manager|coordinator|technician|lead)\b|\bcad (?:drafter|operator|technician|designer)\b|\b(?:civil|electrical|mechanical|structural|piping|hydraulic|instrumentation|process|pipeline|substation|rail|road|drainage|hvac|fire|building services|lighting|offshore pipeline) designers?\b|\bdesign drafter\b/,
+    skills: ["Architecture & Planning"],
+    // Enterprise, solution and business architects are IT's; a naval
+    // architect designs ships.
+    exclude:
+      /\b(?:solutions?|enterprise|technical|domain|security|integration|cloud|data|application|technology|business|software|network|infrastructure|naval|salesforce|servicenow|hpc|process|information|platform)\s+architect\w*\b|\bpractice manager\b|\blegislative\b|\bproduct architect\b|\bstrategy and architecture\b|\bclient technology engineering architecture\b|\bteach\w*\b|\blecturer\b|\bprofessor\b|\bsales\b/,
+    tracks: [
+      { id: "planning", label: "Town planning", match: /\bplanners?\b|\burban design/ },
+      {
+        id: "drafting",
+        label: "Drafting & engineering design",
+        match: /\bdraft|\bbim\b|\bcad\b|(?<!architectural )\bdesigners?\b/,
+      },
+    ],
+    generic: false,
+    rungs: [
+      [/\bdirector\b|\bhead of\b|\bpractice (?:leader|director)\b/, 5],
+      [DEPUTY, 4],
+      [/\bprincipal\b|\bmanager\b|\bassociate\b(?!.*\b(?:graduate|junior)\b)/, 4],
+      [/\bsenior\b|\blead\b|\bproject architect\b/, 3],
+      [
+        /\bgraduate\b|\bstudent\b|\bassistant\b|\bjunior\b|\bcadet\b|\btrainee\b|\bvacation\b|\bintern\b|\bundergraduate\b/,
+        1,
+      ],
+      [
+        /\barchitects?\b|\bplanners?\b|\bdraft(?:er|sperson|sman)\b|\bdesigners?\b|\bmodeller\b|\btechnologist\b|\bcoordinator\b|\btechnician\b/,
+        2,
+      ],
+    ],
+  },
+  {
+    id: "construction",
+    label: "Construction & site management",
+    // leading hand / foreman → site supervisor → site manager / construction
+    // manager / design manager → construction director. A mine site's
+    // superintendents are operations', not this ladder.
+    match:
+      /\bconstruction (?:manager|supervisor|director|coordinator|forem[ae]n|superintendent)\b|\bsite (?:manager|supervisor|forem[ae]n|coordinator)\b|\b(?:general |build |carpenter )?forem[ae]n\b|\bforeperson\b|\bleading hand\b.*\b(?:construction|civil|building)\b|\bdesign manager\b|\bbuilding (?:supervisor|site manager)\b|\b(?:civil|piping|build) superintendent\b/,
+    skills: ["Construction Management"],
+    exclude:
+      /\b(?:graphic|creative|brand|digital|ux|ui|product|visual|interior|fashion|packaging|instructional|learning) design manager\b|\bsales\b|\bteach\w*\b|\bnurse\b|\bhospitality\b|\brestaurant\b|\bretail\b|\bcleaning\b|\bsoftware\b|\bcatering\b|\bwarehouse\b|\bgarage\b|\bfleet\b|\bdriver\b/,
+    generic: false,
+    rungs: [
+      [DEPUTY, 4],
+      [/\bdirector\b|\bhead of\b|\bgeneral manager\b/, 5],
+      [
+        /\bassistant (?:site|construction) manager\b|\bsupervisor\b|\bgeneral forem[ae]n\b|\bsite coordinator\b/,
+        3,
+      ],
+      [/\bmanager\b|\bsuperintendent\b/, 4],
+      [/\bleading hand\b|\bforem[ae]n\b|\bforeperson\b/, 2],
+      [/\btrainee\b|\bcadet\b|\bgraduate\b/, 1],
+    ],
+  },
+  {
+    id: "trades",
+    label: "Trades",
+    // apprentice / trades assistant → tradesperson → leading hand / senior /
+    // supervisor → superintendent → maintenance manager. Electrical,
+    // mechanical and fabrication trades are tracks; the building and
+    // construction trades are the generalist ladder.
+    //
+    // An apprentice CHEF or BAKER is on hospitality's ladder; a trade COUNTER
+    // is a shop.
+    match:
+      /\belectricians?\b|\blinesperson\b|\bline worker\b|\bcable jointer\b|\bfitters?\b|\bfitter and turner\b|\bmachinists?\b|\bturner\b|\bboilermakers?\b|\bwelders?\b|\bwelding (?:supervisor|inspector)\b|\bfabricators?\b|\bsheet ?metal\b|\bplumbers?\b|\bplumbing\b|\bgas ?fitter\b|\bdrainer\b|\brefrigeration (?:mechanic|technician|engineer|installer)\b|\b(?:hvac|refrigeration hvac) (?:technician|tech|mechanic)\b|\bair ?conditioning (?:technician|mechanic)\b|\bcarpenters?\b|\bjoiners?\b|\bcabinet ?makers?\b|\bshopfitters?\b|\bformworkers?\b|\bmechanics?\b|\bautomotive (?:technician|mechanic|electrician|apprentice|glazier)\b|\bdiesel (?:mechanic|fitter|technician)\b|\bhd (?:fitter|mechanic)\b|\bheavy (?:diesel|duty) (?:mechanic|fitter)\b|\briggers?\b|\bscaffolders?\b|\bdogman\b|\bpainters?\b|\bblasters?\b|\bplasterers?\b|\btilers?\b|\bglaziers?\b|\bbricklayers?\b|\bconcreters?\b|\bsteel ?fixer\b|\bstonemason\b|\blabou?rers?\b|\btraffic controllers?\b|\bcivil construction apprentice\b|\broad workers?\b|\btradesperson\b|\btrades? assistant\b|\bapprentice\w*\b|\bmaintainers?\b|\bmaintenance (?:technician|planner|officer|worker|person|carpenter|plumber|electrician|fitter)\b|\be and i (?:technician|fitter|supervisor)\b|\binstrument (?:technician|fitter)\b|\belectrical (?:and instrumentation )?technician\b|\bhv (?:technician|operator)\b|\bhigh voltage (?:technician|operator)\b|\bfield service (?:technician|engineer)\b|\bservice technician\b|\blubrication technician\b|\bhandy ?(?:person|man)\b|\bcnc (?:machinist|operator)\b|\baircraft maintenance engineer\b|\bavionics technician\b|\bjourneyman\b/,
+    skills: [
+      "Electrical Trade",
+      "Mechanical Fitting",
+      "Welding & Fabrication",
+      "Plumbing",
+      "HVAC & Refrigeration",
+      "Carpentry & Joinery",
+      "Automotive Trade",
+      "Heavy Diesel Maintenance",
+      "Rigging & Scaffolding",
+      "Painting & Plastering",
+      "Bricklaying & Concreting",
+      "Construction Labouring",
+      "Electronics & Telecoms Trade",
+      "Fixed Plant Maintenance",
+    ],
+    exclude:
+      /\bchef\b|\bcook\b|\bbaker\b|\bbutcher\b|\bpastry\b|\bhair\w*\b|\bbeauty\b|\bbarber\b|\bflorist\b|\bsales\b|\b(?:electrical|mechanical|civil|structural|process|mining|project|site|reliability) engineer\b|\bsoftware\b|\bdeveloper\b|\bteach\w*\b|\blecturer\b|\btrainer\b|\bestimator\b|\bdesigner\b|\bdrafter\b|\btrade counter\b|\bcounter assistant\b|\beducator\b|\bpoint of sale\b|\bnurse\b|\bdental\b|\bpharmac\w*\b|\bperformance\b|\bartist\b/,
+    tracks: [
+      {
+        id: "electrical",
+        label: "Electrical",
+        match:
+          /\belectric|\blinesperson\b|\bline worker\b|\bcable jointer\b|\bhv\b|\bhigh voltage\b|\be and i\b|\binstrument\w*\b/,
+      },
+      {
+        id: "mechanical",
+        label: "Mechanical & automotive",
+        match:
+          /\bfitter|\bmachinist|\bturner\b|\bmechanic|\bdiesel\b|\bhd\b|\brefrigeration\b|\bhvac\b|\bair ?conditioning\b|\bmaintainer|\blubrication\b|\bmaintenance planner\b|\bfield service\b|\bservice technician\b|\bcnc\b|\bautomotive\b|\baircraft\b|\bavionics\b/,
+      },
+      {
+        id: "fabrication",
+        label: "Welding & fabrication",
+        match: /\bboilermaker|\bwelder|\bwelding\b|\bfabricator|\bsheet ?metal\b|\bsteel ?fixer\b/,
+      },
+    ],
+    generic: false,
+    rungs: [
+      [/\bhead of\b|\bdirector\b|\bgeneral manager\b/, 5],
+      [/\bmanager\b|\bsuperintendent\b/, 4],
+      [
+        /\bsupervisor\b|\bforem[ae]n\b|\bforeperson\b|\bleading hand\b|\bteam lead(?:er)?\b|\bsenior\b|\blead\b|\bmaster\b|\bspecial class\b|\binspector\b/,
+        3,
+      ],
+      [
+        /\bapprentice\w*\b|\btrainee\w*\b|\btraineeship\b|\btrades? assistant\b|\bhelper\b|\blabou?rers?\b|\btraffic controllers?\b|\boffsider\b|\bschool based\b|\bpre ?apprentice\b|\bentry level\b|\bcivil construction apprentice\b/,
+        1,
+      ],
+      [/\w/, 2],
+    ],
+  },
+  {
+    id: "operations",
+    label: "Mining, plant & production operations",
+    // Mining: trainee / offsider → plant or mining operator / shotfirer /
+    // driller → senior / leading hand → shift boss / supervisor →
+    // superintendent → mine manager. Production: process worker → machine
+    // operator → leading hand / supervisor → production or plant manager.
+    // After engineering and geoscience; before logistics, which keeps the
+    // forklift and the delivery truck.
+    match:
+      /\b(?:excavator|dozer|loader|grader|dump truck|haul truck|water cart|roller|shovel|scraper|drill|jumbo|bogger|mobile plant|fixed plant|batch plant|power plant|crusher|process plant|plant|machine|production|process|control room|mining|underground|surface|bulldozer|backhoe|crane|reclaimer|stacker|shiploader|dragline|mill|kiln|tailings|track machine) operators?\b|\bmine ?workers?\b|\bunderground (?:miner|mining operators?)\b|\bminers?\b|\bnipper\b|\bshot ?firers?\b|\bblast (?:crew|hole|operators?)\b|\bblasting (?:technician|miner)\b|\bdrillers?\b|\bdriller'?s? offsider\b|\bdrill (?:offsider|assistant)\b|\bprocess workers?\b|\bproduction (?:workers?|supervisor|manager|superintendent|coordinator)\b|\bfactory (?:hand|worker|supervisor|manager)\b|\bmeat process\w*\b|\bplant manager\b|\bmine manager\b|\bunderground (?:mine )?manager\b|\bshift boss\b|\bmining (?:supervisor|superintendent|manager)\b|\b(?:maintenance|production|mining|underground|plant|processing) superintendent\b|\bsuperintendent (?:mining|production|maintenance|underground|plant|processing)\b|\bunderground mine superintendent\b|\bwellsite leader\b|\btoolpusher\b|\bdrilling (?:supervisor|superintendent|manager)\b/,
+    skills: [
+      "Plant & Equipment Operation",
+      "Underground Mining",
+      "Drill & Blast",
+      "Drilling & Wells",
+      "Manufacturing & Production",
+    ],
+    exclude:
+      /\bengineer\b|\bgeolog\w*\b|\bsurveyor\b|\bsoftware\b|\bconsole operator\b|\bcheckout\b|\bforklift\b|\btour operator\b|\bsales\b|\bteach\w*\b|\btrainer\b|\bdriver\b|\bchef\b|\bdata\b|\bmarketing\b|\bchef fresh\b/,
+    tracks: [
+      {
+        id: "mining",
+        label: "Mining & mobile plant",
+        match:
+          /\bexcavator\b|\bdozer\b|\bloader\b|\bgrader\b|\bdump truck\b|\bhaul truck\b|\bmine\b|\bmining\b|\bunderground\b|\bjumbo\b|\bbogger\b|\bshot ?fir|\bblast|\bdrill|\bminers?\b|\bnipper\b|\bcrusher\b|\bshift boss\b|\bdragline\b|\bshovel\b|\bwater cart\b|\bmobile plant\b|\bwellsite\b|\btoolpusher\b/,
+      },
+    ],
+    generic: false,
+    rungs: [
+      [/\bgeneral manager\b|\bhead of\b|\bdirector\b|\bmine manager\b/, 5],
+      [/\bsuperintendent\b|\bmanager\b/, 4],
+      [
+        /\bsupervisor\b|\bshift boss\b|\bleading hand\b|\bteam lead(?:er)?\b|\bsenior\b|\bforeman\b|\bcoordinator\b|\btoolpusher\b|\bwellsite leader\b/,
+        3,
+      ],
+      [
+        /\btrainee\b|\bentry level\b|\boffsider\b|\bassistant\b|\bnipper\b|\bfactory hand\b|\bprocess workers?\b|\bproduction workers?\b|\bmeat process\w*\b|\bno experience\b/,
+        1,
+      ],
+      [/\w/, 2],
+    ],
+  },
+  {
+    id: "facilities",
+    label: "Cleaning & facilities",
+    // cleaner / housekeeper / laundry → cleaner in charge / supervisor →
+    // executive housekeeper / cleaning manager. Facilities: coordinator /
+    // officer → facilities manager → head of facilities. 1,216 of the
+    // quarter's ads are one title, "Cleaning and Trolley Collection".
+    match:
+      /\bcleaners?\b|\bcleaning\b|\bhousekeep\w*\b|\blaundry\b|\bjanitor\w*\b|\bcustodians?\b|\bfacilit(?:y|ies) (?:manager|officer|coordinator|supervisor|technician|assistant|lead|administrator|maintenance|management)\b|\bhead of facilities\b|\bhotel services assistant\b|\bgroundsperson\b|\bgrounds ?keeper\b/,
+    skills: ["Cleaning & Facilities"],
+    exclude:
+      /\bdata cleaning\b|\bdry cleaning\b|\bcleaning (?:sales|chemicals?)\b|\bengineer\b|\bsales\b|\bsoftware\b|\bteach\w*\b|\bnurse\b|\bcare worker\b|\baged care facility manager\b/,
+    tracks: [
+      {
+        id: "facilities",
+        label: "Facilities management",
+        match:
+          /\bfacilit(?:y|ies) (?:manager|officer|coordinator|supervisor|technician|assistant|lead|administrator|maintenance|management)\b|\bhead of facilities\b|\bgrounds/,
+      },
+    ],
+    generic: false,
+    rungs: [
+      [DEPUTY, 4],
+      [/\bhead of\b|\bdirector\b|\bgeneral manager\b/, 5],
+      [
+        /\bassistant (?:\w+ )?manager\b|\bsupervisor\b|\bteam lead(?:er)?\b|\bcleaner in charge\b|\bleading hand\b|\bsenior\b/,
+        3,
+      ],
+      [/\bmanager\b|\bexecutive housekeeper\b/, 4],
+      [/\bfacilit(?:y|ies) (?:officer|coordinator|technician|administrator|lead)\b/, 2],
+      [
+        /\bcleaners?\b|\bcleaning\b|\bhousekeep\w*\b|\blaundry\b|\battendant\b|\bjanitor\w*\b|\bcustodians?\b|\bhotel services assistant\b|\bfacilities assistant\b|\bgroundsperson\b|\bgrounds ?keeper\b/,
+        1,
+      ],
+    ],
+  },
+  {
+    id: "agriculture",
+    label: "Agriculture, horticulture & animals",
+    // farm or station hand → stockperson / gardener / horticulturist /
+    // agronomist → senior / head gardener / overseer → farm manager →
+    // general manager.
+    match:
+      /\bfarm (?:hand|worker|manager|assistant|labourer|supervisor)\b|\bstation hand\b|\bstock ?(?:person|man)\b|\blivestock\b|\bdairy (?:farm\w*|hand)\b|\bagronomist\b|\bagricultur\w*\b|\bhorticultur\w*\b|\bgardeners?\b|\blandscap(?:er|ing)\b|\blandscape gardener\b|\bgreenkeeper\b|\barborist\b|\bnursery (?:hand|worker|assistant)\b|\baquaculture\b|\bviticultur\w*\b|\bvineyard\b|\bfruit picker\b/,
+    skills: ["Agriculture & Farming"],
+    exclude:
+      /\btransport\b|\beducation\b|\blecturer\b|\bprofessor\b|\bteach\w*\b|\bsales\b|\bclient partner\b|\bagents?\b|\bdata\b|\bscientist\b|\bengineer\b|\bpolicy\b|\bassessor\b|\bfinance\b|\bbank\w*\b|\binsurance\b|\bresearch\b|\banaesthetic\b/,
+    generic: false,
+    rungs: [
+      [/\bhead of\b|\bdirector\b|\bgeneral manager\b/, 5],
+      [/\bmanager\b/, 4],
+      [/\bsenior\b|\blead\b|\bhead gardener\b|\bleading hand\b|\bsupervisor\b|\boverseer\b/, 3],
+      [
+        /\bfarm (?:hand|worker|assistant|labourer)\b|\bstation hand\b|\blabourer\b|\bassistant\b|\battendant\b|\btrainee\b|\bapprentice\b|\bpicker\b|\bnursery hand\b/,
+        1,
+      ],
+      [/\w/, 2],
+    ],
+  },
+  {
+    id: "personal",
+    label: "Beauty, fitness & recreation",
+    // apprentice / junior → beautician / stylist / therapist / instructor →
+    // senior → salon or centre manager. Hairdressing's "Director Stylist" is
+    // a senior stylist GRADE, not a director.
+    match:
+      /\bbeaut(?:ician|y therapist|y consultant|y advisor|y specialist)\b|\bspa therapist\b|\bhair ?(?:stylist|dresser|salon)\w*\b|\bhairdress\w*\b|\bbarbers?\b|\bnail tech\w*\b|\ba?esthetician\b|\bbrow specialist\b|\bmake ?up artist\b|\breflexologist\b|\bsalon manager\b|\bfitness instructor\b|\bpersonal trainers?\b|\bsports? coach(?:es|ing)?\b|\bswim(?:ming)? (?:coach|instructor)\b|\bhead coach\b|\bgroup fitness\b|\bfootball (?:coach\w*|and soccer coach)\b/,
+    skills: ["Personal Services & Beauty", "Sport & Recreation"],
+    exclude: /\bsales\b|\bretail\b|\bteach\w*\b|\blecturer\b|\bnurse\b|\bdriving\b/,
+    tracks: [
+      {
+        id: "fitness",
+        label: "Fitness & sport",
+        match: /\bfitness\b|\btrainers?\b|\bcoach|\bswim|\bsport/,
+      },
+    ],
+    generic: false,
+    rungs: [
+      [/\bdirector (?:\w+ )?(?:hair ?)?stylist\b/, 3],
+      [/\bhead of\b|\bdirector\b|\bgeneral manager\b/, 5],
+      [/\bmanager\b/, 4],
+      [/\bsenior\b|\blead\b|\bsupervisor\b|\bhead coach\b|\bmaster\b/, 3],
+      [/\bapprentice\b|\bjunior\b|\btrainee\b|\bassistant\b|\bintern\w*\b/, 1],
+      [/\w/, 2],
+    ],
+  },
+  {
     id: "hospitality",
     label: "Hospitality & food",
     // Three ladders that share venues. The kitchen: kitchenhand → cook / chef de
@@ -1491,7 +1859,7 @@ export const FAMILIES: FamilyDef[] = [
     // rung, and retail excludes the trades themselves (baker, butcher, barista,
     // chef, cook), which then land here.
     match:
-      /\bchefs?\b|\bcooks?\b|\bkitchen ?hand\b|\bkitchen (?:assistant|porter|crew|staff|attendant|manager|supervisor)\b|\bcommis\b|\bsous\b|\bpastry\b|\bpatissier\b|\bbaker\b|\bbakery (?:assistant|manager)\b|\bbutcher\w*\b|\bbarista\b|\bbartender\b|\bbar (?:attendant|staff|manager|supervisor|back)\b|\bwait(?:er|ress|staff|ing staff)\b|\bfood and beverage\b|\bf and b\b|\brestaurant\b|\bcafe (?:team member|all ?rounder|manager|supervisor|assistant)\b|\bcatering (?:assistant|attendant|manager|supervisor|coordinator)\b|\bhospitality (?:assistant|attendant|all ?rounders?|supervisor|manager|team member|staff)\b|\bdishwasher\b/,
+      /\bchefs?\b|\bcooks?\b|\bkitchen ?hand\b|\bkitchen (?:assistant|porter|crew|staff|attendant|manager|supervisor)\b|\bcommis\b|\bsous\b|\bpastry\b|\bpatissier\b|\bbaker\b|\bbakery (?:assistant|manager)\b|\bbutcher\w*\b|\bbarista\b|\bbartender\b|\bbar (?:attendant|staff|manager|supervisor|back)\b|\bwait(?:er|ress|staff|ing staff)\b|\bfood and beverage\b|\bf and b\b|\brestaurant\b|\bcafe (?:team member|all ?rounder|manager|supervisor|assistant)\b|\bcatering (?:\w+ )?(?:assistant|attendant|manager|supervisor|coordinator)\b|\bhospitality (?:assistant|attendant|all ?rounders?|supervisor|manager|team member|staff)\b|\bdishwasher\b/,
     skills: ["Hospitality & Food Service", "Food Trades"],
     // "Chef de projet" is French for project manager; cleaners and sales are
     // their own ladders; a patisserie's sales assistant is retail.
@@ -1738,6 +2106,7 @@ export const FAMILIES: FamilyDef[] = [
     tracks: [{ id: "executive-assistant", label: "Executive assistants", match: EA_PA }],
     generic: false,
     rungs: [
+      [/\bapprentice\b|\btrainee\b/, 1],
       [
         /\bhead of (?:administration|business support|office services)\b|\b(?:administration|business support) director\b|\bdirector of administration\b/,
         5,
@@ -1788,45 +2157,7 @@ export const NOT_A_LADDER: Record<string, string> = {
  * so a wave can land on its own, and prints them, so the gap stays visible.
  * Empty is the finished state.
  */
-export const PATHWAYS_PLANNED: string[] = [
-  "Cleaning & Facilities",
-  "Architecture & Planning",
-  "Civil Engineering",
-  "Electrical Engineering",
-  "Automation & Robotics",
-  "Mechanical Engineering",
-  "Construction Management",
-  "Electrical Trade",
-  "Fixed Plant Maintenance",
-  "Instrumentation & Control",
-  "Surveying",
-  "Geology",
-  "Welding & Fabrication",
-  "Plant & Equipment Operation",
-  "Process Engineering",
-  "Mechanical Fitting",
-  "Manufacturing & Production",
-  "Plumbing",
-  "Heavy Diesel Maintenance",
-  "Pipeline Engineering",
-  "Automotive Trade",
-  "Mining Engineering",
-  "Geotechnical",
-  "Agriculture & Farming",
-  "Painting & Plastering",
-  "Personal Services & Beauty",
-  "Underground Mining",
-  "Rigging & Scaffolding",
-  "HVAC & Refrigeration",
-  "Carpentry & Joinery",
-  "Metallurgy",
-  "Drilling & Wells",
-  "Drill & Blast",
-  "Sport & Recreation",
-  "Construction Labouring",
-  "Bricklaying & Concreting",
-  "Electronics & Telecoms Trade",
-];
+export const PATHWAYS_PLANNED: string[] = [];
 
 function rungFrom(rules: [RegExp, Rung][], t: string): Rung | null {
   for (const [re, rung] of rules) if (re.test(t)) return rung;

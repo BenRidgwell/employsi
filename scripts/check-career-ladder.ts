@@ -88,13 +88,16 @@ const FIXTURES: [string, Want][] = [
   ["HR & Payroll Officer", ["payroll", "generalist", 2]],
   ["Recruitment Consultant", null], // agency sales ladder
   ["Barista $32/hr", ["hospitality", "generalist", 1]], // "hr" in pay text is not HR
-  ["Casual Cleaner - 24 hr roster", null],
+  ["Casual Cleaner - 24 hr roster", ["facilities", "generalist", 1]], // not HR
   ["People Leader - Customer Service", null], // a line manager, not HR
   // HR, from the 2026-09-24 audit. Ad boilerplate in the title named a track.
   ["HR Assistant (Entry Level, Training Provided)", ["hr", "generalist", 1]], // not L&D
   ["HR Specialist - Training Provided, Up to 4k", ["hr", "generalist", 2]],
   ["Project Manager - Pharma West - Attractive Remuneration", ["project", "generalist", 3]],
-  ["Construction Manager - Pharma West - Attractive Remuneration", null], // was HR reward 4
+  [
+    "Construction Manager - Pharma West - Attractive Remuneration",
+    ["construction", "generalist", 4],
+  ], // was HR reward 4
   // Workplace-relations LAWYERS practise employment law; they are not on the ER ladder.
   // …they are on the LEGAL ladder, since 2026-09-25 — never HR's.
   ["Senior Associate - Workplace Relations, Employment & Safety", ["legal", "generalist", 3]],
@@ -134,7 +137,7 @@ const FIXTURES: [string, Want][] = [
   // Advice and lending are the BANKING ladder since 2026-09-25, not finance's.
   ["Financial Planner", ["banking", "advice", 2]],
   ["Mortgage Broker - Finance", ["banking", "lending", 2]],
-  ["Traffic Controller", null],
+  ["Traffic Controller", ["trades", "generalist", 1]], // road works, not finance
   ["Credit Controller", null],
   // Finance, from the 2026-09-24 audit. "CFO Advisory" is a Big-4 practice, not a CFO.
   ["Analyst - CFO Advisory - Perth", ["finance", "generalist", 2]], // was rung 6
@@ -203,7 +206,7 @@ const FIXTURES: [string, Want][] = [
   ["Portfolio Manager - PMO", ["project", "generalist", 5]],
   ["Software Project Manager", ["project", "generalist", 3]],
   // Project traps.
-  ["Project Engineer", null],
+  ["Project Engineer", ["engineering", "generalist", 2]], // engineering, not project management
   ["Disability Support Worker - NDIS Program", null],
   ["Portfolio Manager - Investment", null],
   // Project, from the 2026-09-24 audit. Project controls is a ladder of its own.
@@ -244,7 +247,7 @@ const FIXTURES: [string, Want][] = [
   ["CTO", ["software", "generalist", 6]],
   // Software traps.
   ["Software Sales Executive", ["sales", "generalist", 2]], // leaves software, lands here
-  ["Front End Loader Operator", null],
+  ["Front End Loader Operator", ["operations", "mining", 2]], // plant, not software
   ["Business Development Manager", ["sales", "generalist", 3]],
   // Software, from the 2026-09-24 audit.
   ["Staff Platform Engineer", ["software", "generalist", 4]],
@@ -281,7 +284,7 @@ const FIXTURES: [string, Want][] = [
   ["Storeperson", ["logistics", "generalist", 1]], // warehousing, not retail
   ["Stores Officer - Mine Site", null],
   ["Retail Pharmacist", ["allied", "pharmacy", 2]], // a pharmacist, not a store rung
-  ["Shopfitter", null],
+  ["Shopfitter", ["trades", "generalist", 2]], // a trade, not a store rung
   ["Butcher - Supermarket", ["hospitality", "food-trades", 2]], // a trade, not a store rung
   ["Retail Buyer", ["procurement", "buying", 2]], // head-office buying, not a store rung
   ["Store Development Manager", null], // property, not the store ladder
@@ -437,7 +440,7 @@ const FIXTURES: [string, Want][] = [
   ["Baker - Coles Supermarkets Maroochydore", ["hospitality", "food-trades", 2]],
   ["Head Baker", ["hospitality", "food-trades", 3]],
   // Hospitality traps.
-  ["Hospitality Assistant / Cleaner", null], // cleaning, not food service
+  ["Hospitality Assistant / Cleaner", ["facilities", "generalist", 1]], // cleaning, not food
   ["Chef de Projet H/F", null], // French: a project manager
   ["Catering Sales Manager", ["sales", "generalist", 4]], // sales is tried first
   ["Bakery Assistant Manager", ["hospitality", "food-trades", 3]], // no employer: a bakery
@@ -474,7 +477,7 @@ const FIXTURES: [string, Want][] = [
   ["Senior Lecturer in Medical Education", ["education", "academic", 3]],
   ["Professor and Head of School, School of Social Sciences", ["education", "academic", 5]],
   // Education traps. "Principal" is a school's top rung and everyone else's grade.
-  ["Principal Engineer HV Primary", null],
+  ["Principal Engineer HV Primary", ["engineering", "electrical", 4]], // not a school
   ["Principal HPC and Storage Architect", ["technology", "architecture", 4]], // not a school
   ["Principal Analyst", null],
   ["Clinical Educator", null], // clinical education: not a school ladder
@@ -686,7 +689,7 @@ const FIXTURES: [string, Want][] = [
   ["Quantity Surveyor", ["commercial", "quantity-surveying", 2]],
   ["Senior Quantity Surveyor", ["commercial", "quantity-surveying", 3]],
   ["Estimator", ["commercial", "quantity-surveying", 2]],
-  ["Commercial Electrician", null], // a trade (wave 4)
+  ["Commercial Electrician", ["trades", "electrical", 2]], // a trade, not commercial
   ["Commercial Finance Manager", ["finance", "fpa", 4]], // finance is tried first
 
   // Policy.
@@ -696,7 +699,7 @@ const FIXTURES: [string, Want][] = [
   ["Principal Policy Officer", ["policy", "generalist", 4]],
   ["Director, Strategic Policy", ["policy", "generalist", 5]],
   ["Senior Ministerial Liaison Officer", ["policy", "generalist", 3]],
-  ["Cabinet Maker Apprentice", null], // carpentry (wave 4)
+  ["Cabinet Maker Apprentice", ["trades", "generalist", 1]], // carpentry, not cabinet
   ["Policy Administrator - Insurance", ["admin", "generalist", 1]], // not the policy ladder
 
   // Business analysis & product.
@@ -751,7 +754,7 @@ const FIXTURES: [string, Want][] = [
   ["CISO", ["technology", "security", 6]],
   ["SAP FICO Consultant", ["technology", "enterprise-apps", 2]],
   ["DevOps Engineer", ["software", "generalist", 2]], // software is tried first
-  ["Landscape Architect", null], // a built-environment profession (wave 4)
+  ["Landscape Architect", ["architecture", "generalist", 2]], // not IT
 
   // Property & real estate.
   ["Assistant Property Manager", ["property", "generalist", 1]],
@@ -791,7 +794,7 @@ const FIXTURES: [string, Want][] = [
   ["Technical Writer", ["creative", "media", 2]],
   ["Photographer", ["creative", "performing", 2]],
   ["Performing Artiste", ["creative", "performing", 2]],
-  ["Architectural Designer", null], // architecture (wave 4)
+  ["Architectural Designer", ["architecture", "generalist", 2]], // not creative
   // Found by the whole-archive diff after wave 2 (2026-09-25).
   ["Demi Chef - Rydges South Bank", ["hospitality", "kitchen", 2]], // a suburb, not a bank
   ["Food and Beverage Supervisor FT - Rydges South Bank", ["hospitality", "generalist", 2]],
@@ -816,13 +819,14 @@ const FIXTURES: [string, Want][] = [
   ["CDL-A Dedicated Driver - Medical Insurance", ["logistics", "driving", 3]], // a benefit, not a job
   ["Multi Property Director of Food and Beverage", ["hospitality", "generalist", 5]], // hotels
   ["Multi Property Director of Rooms", null],
-  ["Senior Civil Designer", null], // engineering design (wave 4)
-  ["Principal Electrical Designer", null],
-  ["Design Manager", null], // mostly construction design management
+  // Engineering design and drafting (since wave 4), not the creative ladder.
+  ["Senior Civil Designer", ["architecture", "drafting", 3]],
+  ["Principal Electrical Designer", ["architecture", "drafting", 4]],
+  ["Design Manager", ["construction", "generalist", 4]], // construction design management
   ["Graphic Design Manager", ["creative", "generalist", 4]],
   ["BIM Library Manager", null],
   ["Senior to Principal Power Systems Engineer", null], // electrical engineering, not IT
-  ["Senior Water Infrastructure Engineer", null],
+  ["Senior Water Infrastructure Engineer", ["engineering", "civil", 3]], // not IT
   ["Senior ICT Officer", ["technology", "generalist", 3]],
   ["SVP Data Scientist", ["data", "science", 2]], // a bank grade
   ["Teacher of Supply Chain and Logistics", ["education", "generalist", 2]],
@@ -890,7 +894,7 @@ const FIXTURES: [string, Want][] = [
   ["Senior Personal Carer", ["care", "generalist", 2]],
   ["Care Coordinator - Aged Care", ["care", "generalist", 3]],
   ["Residential Services Manager", ["care", "generalist", 4]],
-  ["Aged Care Facility Cleaner", null], // cleaning (wave 4)
+  ["Aged Care Facility Cleaner", ["facilities", "generalist", 1]], // not care
   ["Social Worker", ["care", "social-work", 2]],
   ["Case Manager", ["care", "social-work", 2]], // a caseload, not a team
   ["Youth Worker", ["care", "social-work", 2]],
@@ -938,7 +942,7 @@ const FIXTURES: [string, Want][] = [
   ["Environmental Scientist", ["science", "environmental", 2]],
   ["Senior Environmental Advisor", ["science", "environmental", 3]],
   ["Environmental Manager", ["science", "environmental", 4]],
-  ["Principal Geochemist", null], // geoscience (wave 4)
+  ["Principal Geochemist", ["geoscience", "generalist", 4]], // not the science lab
   ["Senior Data Scientist - Geotechnical", ["data", "science", 3]], // data first
   // Health-context support roles stay on their own ladders (found by the diff).
   ["Administration Officer - GP Plus", ["admin", "generalist", 2]], // not a GP
@@ -964,6 +968,166 @@ const FIXTURES: [string, Want][] = [
   ["Senior Data Security Manager", null],
   ["Red Team and Security Manager", null],
   ["Clinical Neuropsychologist", ["care", "mental-health", 2]],
+
+  // ---- Wave 4: engineering, trades, mining, construction and the rest -----
+  // Engineering: graduate → engineer → senior → principal → engineering
+  // manager → engineering director. Disciplines are tracks.
+  ["Graduate Civil Engineer", ["engineering", "civil", 1]],
+  ["Vacation Student Mining Engineer", ["engineering", "mining", 1]],
+  ["Civil Engineer", ["engineering", "civil", 2]],
+  ["Structural Engineer", ["engineering", "civil", 2]],
+  ["Geotechnical Engineer", ["engineering", "civil", 2]],
+  ["Site Engineer", ["engineering", "civil", 2]],
+  ["Senior Structural Engineer", ["engineering", "civil", 3]],
+  ["Principal Civil Engineer", ["engineering", "civil", 4]],
+  ["Electrical Engineer", ["engineering", "electrical", 2]],
+  ["Senior Instrumentation Engineer", ["engineering", "electrical", 3]],
+  ["Automation Engineer", ["engineering", "electrical", 2]],
+  ["Mechanical Engineer", ["engineering", "mechanical", 2]],
+  ["Reliability Engineer", ["engineering", "mechanical", 2]],
+  ["Process Engineer", ["engineering", "process", 2]],
+  ["Metallurgist", ["engineering", "process", 2]],
+  ["Senior Metallurgist", ["engineering", "process", 3]],
+  ["Mining Engineer", ["engineering", "mining", 2]],
+  ["Senior Project Engineer", ["engineering", "generalist", 3]],
+  ["Technical Director - Geotechnical Engineering", ["engineering", "civil", 5]],
+  ["Senior or Principal Mining Engineer", null], // two grades
+  ["Automation Test Engineer", ["software", "generalist", 2]], // software testing
+  ["Test Automation Consultant", ["software", "generalist", 2]],
+  ["Sales Engineer - Control Systems", null], // presales, not engineering
+  ["Aircraft Maintenance Engineer", ["trades", "mechanical", 2]], // a licensed trade
+
+  // Geoscience & surveying.
+  ["Geology Technician", ["geoscience", "generalist", 1]],
+  ["Exploration Geologist", ["geoscience", "generalist", 2]],
+  ["Senior Resource Geologist", ["geoscience", "generalist", 3]],
+  ["Principal Geologist", ["geoscience", "generalist", 4]],
+  ["Chief Geologist", ["geoscience", "generalist", 5]],
+  ["Graduate Surveyor", ["geoscience", "surveying", 1]],
+  ["Mine Surveyor", ["geoscience", "surveying", 2]],
+  ["Senior Mine Surveyor", ["geoscience", "surveying", 3]],
+  ["Quantity Surveyor - Tender", ["commercial", "quantity-surveying", 2]], // commercial first
+  ["Marine Surveyor", null],
+
+  // Architecture, planning & drafting.
+  ["Graduate Architect", ["architecture", "generalist", 1]],
+  ["Architect", ["architecture", "generalist", 2]],
+  ["Senior Architect", ["architecture", "generalist", 3]],
+  ["Principal Architect", ["architecture", "generalist", 4]],
+  ["Town Planner", ["architecture", "planning", 2]],
+  ["Principal Town Planner", ["architecture", "planning", 4]],
+  ["Drafter", ["architecture", "drafting", 2]],
+  ["BIM Modeller", ["architecture", "drafting", 2]],
+  ["Senior Business Architect", null], // enterprise architecture, not buildings
+  ["Senior Naval Architect", null],
+
+  // Construction & site management.
+  ["Construction Foreman", ["construction", "generalist", 2]],
+  ["Leading Hand - Civil Construction", ["construction", "generalist", 2]],
+  ["Site Supervisor", ["construction", "generalist", 3]],
+  ["Assistant Site Manager", ["construction", "generalist", 3]],
+  ["Site Manager", ["construction", "generalist", 4]],
+  ["Construction Manager", ["construction", "generalist", 4]],
+  ["Construction Director", ["construction", "generalist", 5]],
+
+  // Trades: apprentice → tradesperson → leading hand / supervisor → superintendent.
+  ["Apprentice Electrician", ["trades", "electrical", 1]],
+  ["Electrician", ["trades", "electrical", 2]],
+  ["HV Electrician", ["trades", "electrical", 2]],
+  ["E&I Technician", ["trades", "electrical", 2]],
+  ["Leading Hand Electrician", ["trades", "electrical", 3]],
+  ["Mechanical Fitter", ["trades", "mechanical", 2]],
+  ["HD Fitter", ["trades", "mechanical", 2]],
+  ["Heavy Diesel Mechanic", ["trades", "mechanical", 2]],
+  ["Automotive Technician", ["trades", "mechanical", 2]],
+  ["Refrigeration Mechanic", ["trades", "mechanical", 2]],
+  ["Maintenance Planner", ["trades", "mechanical", 2]],
+  ["Master Automotive Technician", ["trades", "mechanical", 3]],
+  ["Boilermaker", ["trades", "fabrication", 2]],
+  ["Welder", ["trades", "fabrication", 2]],
+  ["Welding Supervisor", ["trades", "fabrication", 3]],
+  ["Carpenter", ["trades", "generalist", 2]],
+  ["Plumber", ["trades", "generalist", 2]],
+  ["Painter Blaster", ["trades", "generalist", 2]],
+  ["Tiler", ["trades", "generalist", 2]],
+  ["Advanced Rigger", ["trades", "generalist", 2]],
+  ["Scaffolder", ["trades", "generalist", 2]],
+  ["Concreter", ["trades", "generalist", 2]],
+  ["Carpenter Helper", ["trades", "generalist", 1]],
+  ["Construction Labourer", ["trades", "generalist", 1]],
+  ["Civil Construction Apprentice - Broome", ["trades", "generalist", 1]],
+  ["Maintenance Superintendent", ["operations", "generalist", 4]], // a mine site's
+  ["Apprentice Chef", ["hospitality", "kitchen", 1]], // the kitchen, not the trades
+  ["Trade Counter Assistant - Plumbing", null], // a counter, not the trade
+  ["Point of Sale Technician", null],
+
+  // Mining, plant & production operations.
+  ["Dump Truck Operator", ["operations", "mining", 2]],
+  ["Excavator Operator", ["operations", "mining", 2]],
+  ["Jumbo Operator", ["operations", "mining", 2]],
+  ["Shotfirer", ["operations", "mining", 2]],
+  ["Senior Shotfirer", ["operations", "mining", 3]],
+  ["Driller's Offsider", ["operations", "mining", 1]],
+  ["Shift Boss - Underground Mining", ["operations", "mining", 3]],
+  ["Underground Mine Superintendent", ["operations", "mining", 4]],
+  ["Machine Operator", ["operations", "generalist", 2]],
+  ["Process Worker", ["operations", "generalist", 1]],
+  ["Meat Process Workers - Entry Level", ["operations", "generalist", 1]],
+  ["Production Supervisor", ["operations", "generalist", 3]],
+  ["Production Manager", ["operations", "generalist", 4]],
+  ["Plant Manager - Chemical Plant", ["operations", "generalist", 4]],
+  ["Forklift Operator - Yard", ["logistics", "generalist", 2]], // logistics, not plant
+
+  // Cleaning & facilities.
+  ["Cleaning and Trolley Collection", ["facilities", "generalist", 1]],
+  ["Cleaner", ["facilities", "generalist", 1]],
+  ["Housekeeper", ["facilities", "generalist", 1]],
+  ["Laundry Attendant", ["facilities", "generalist", 1]],
+  ["Cleaning Supervisor", ["facilities", "generalist", 3]],
+  ["Executive Housekeeper", ["facilities", "generalist", 4]],
+  ["Facilities Coordinator", ["facilities", "facilities", 2]],
+  ["Facilities Manager", ["facilities", "facilities", 4]],
+  ["Data Cleaning Analyst", ["data", "generalist", 2]],
+
+  // Agriculture & horticulture.
+  ["Farm Hand", ["agriculture", "generalist", 1]],
+  ["Station Hand", ["agriculture", "generalist", 1]],
+  ["Gardener", ["agriculture", "generalist", 2]],
+  ["Horticulturist", ["agriculture", "generalist", 2]],
+  ["Agronomist", ["agriculture", "generalist", 2]],
+  ["Head Gardener", ["agriculture", "generalist", 3]],
+  ["Farm Manager", ["agriculture", "generalist", 4]],
+  ["Lecturer in Agricultural Science", ["education", "academic", 2]], // education first
+
+  // Beauty, fitness & recreation.
+  ["Beautician", ["personal", "generalist", 2]],
+  ["Spa Therapist", ["personal", "generalist", 2]],
+  ["Hair Stylist", ["personal", "generalist", 2]],
+  ["Apprentice Hairdresser", ["personal", "generalist", 1]],
+  ["Director Hairstylist", ["personal", "generalist", 3]], // a stylist grade
+  ["Hair Salon Manager", ["personal", "generalist", 4]],
+  ["Fitness Instructor", ["personal", "fitness", 2]],
+  ["Personal Trainer", ["personal", "fitness", 2]],
+  ["Sports Coach - Casual", ["personal", "fitness", 2]],
+  ["National Assistant Head Coach - Para Swimming", ["personal", "fitness", 3]],
+  // Found by the whole-archive diff after wave 4 (2026-09-25).
+  ["Front Office .NET/C# Engineer", ["software", "generalist", 2]], // a trading desk's
+  ["MC Driver (Livestock)", ["logistics", "driving", 3]],
+  ["Local Delivery Driver - Plumbing Villawood", ["logistics", "driving", 1]],
+  ["Office Manager Apprentice", ["admin", "generalist", 1]],
+  ["Japanese Cuisine Sous Chef (6 days, Orchard)", ["hospitality", "kitchen", 3]], // a suburb
+  ["Catering Site Manager - School", ["hospitality", "generalist", 4]],
+  ["On-Site Manager - Warehouse", ["logistics", "generalist", 4]],
+  ["Practice Manager - Architecture", ["admin", "generalist", 4]],
+  ["Education Support Officer of Agriculture", ["education", "education-support", 1]],
+  ["Quantity Surveying Manager", ["commercial", "quantity-surveying", 4]], // not surveying
+  ["Associate Director - Structural Engineer", ["engineering", "civil", 4]],
+  ["Assistant Chief Engineer", ["engineering", "generalist", 4]],
+  ["Senior Mechanical Engineer or Technical Director", null], // two grades
+  ["Director Master Hair Stylist", ["personal", "generalist", 3]], // a stylist grade
+  ["Assistant Director of Housekeeping", ["facilities", "generalist", 4]],
+  ["Associate Director - Design Manager, Water Infrastructure", ["construction", "generalist", 4]],
+  ["EL2 Director Legislative Drafter", null],
   // HSE, from the 2026-09-24 audit.
   [
     "Work Health and Safety Advisor APS Level 5 - Chief Operating Officer",
@@ -1029,8 +1193,9 @@ const EMPLOYER: [title: string, companyId: string, want: Want][] = [
   ["Director of Engineering", "nz-xero", ["software", "generalist", 5]],
   ["Director of Engineering", MARRIOTT, null], // hotel plant and maintenance
   ["Assistant Director of Engineering", MARRIOTT, null],
-  ["Substation Engineering Manager", "losangeles-acm", null],
-  ["Project Engineering Manager", "sydney-wor", null],
+  // …and a discipline-named one is on the ENGINEERING ladder (since wave 4).
+  ["Substation Engineering Manager", "losangeles-acm", ["engineering", "electrical", 4]],
+  ["Project Engineering Manager", "sydney-wor", ["engineering", "generalist", 4]],
 ];
 for (const [title, id, want] of EMPLOYER) {
   const got = placeTitle(title, { employerFamilies: employerFamilies(id) });
@@ -1112,11 +1277,10 @@ for (const sk of parents) {
     );
   }
 }
-if (PATHWAYS_PLANNED.length)
-  console.log(
-    `  ${claimed.size} parent skills have a ladder, ${Object.keys(NOT_A_LADDER).length} have none by design, ` +
-      `${PATHWAYS_PLANNED.length} are planned.`,
-  );
+console.log(
+  `  ${claimed.size} parent skills have a ladder, ${Object.keys(NOT_A_LADDER).length} have none by design, ` +
+    `${PATHWAYS_PLANNED.length} are planned.`,
+);
 
 if (failures) {
   console.error(`\n${failures} career-ladder fixture(s) failed.`);
