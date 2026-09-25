@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { smoothPath } from "../../lib/chart";
 import { HUB_LNGLAT, AU_CITY_LNGLAT } from "../../data/mapboxWorldGeo";
 import { CITY_LABEL, GLOBAL_HUB_LABEL } from "../../data/geo";
-import { WORLD_OUTLINE, WORLD_W, WORLD_H, worldProject } from "../../data/worldOutline";
+import { WORLD_OUTLINE, worldProject } from "../../data/worldOutline";
+import { FRAME_ASPECT, frameFor, type Spot } from "../../lib/hotspotFrame";
 import { SKILL_PARENT } from "../../data/skillsTaxonomy";
 import type { CompanySkillDemand, CompanySkillTrends, SkillRanks } from "../../lib/jobHistoryFn";
 
@@ -17,6 +18,14 @@ import type { CompanySkillDemand, CompanySkillTrends, SkillRanks } from "../../l
 // figure the figure is absent rather than softened — a skill with too short a
 // window gets a count and no percentage, a map with nothing placeable is not
 // offered, and the map always states how much of the picture it is showing.
+
+/**
+ * How far apart two code badges must sit, as a fraction of the frame's
+ * diagonal, before both are drawn. A badge is 26px wide in a box around 470px
+ * across, so 0.055 is a little over its own width — enough that two badges
+ * never touch, and small enough that two genuinely separate cities keep both.
+ */
+const BADGE_CLEARANCE = 0.055;
 
 /** Top skills offered by the picker. Beyond three the control stops being a
  *  glance and starts being a list; the rest are rows below. */
@@ -431,72 +440,6 @@ function TopSkill({
 
 // ── hot spots ───────────────────────────────────────────────────────────────
 
-interface Spot {
-  hub: string;
-  label: string;
-  n: number;
-  x: number;
-  y: number;
-}
-
-/** Smallest span the frame will zoom to, in viewBox units. One hub has no
- *  extent of its own, and without a floor the frame collapses onto it and the
- *  coastline behind becomes an unreadable smear. ~40 units is a country. */
-const FRAME_MIN = 40;
-/** Breathing room around the spots, as a share of the framed span. Labels sit
- *  beside their dot and need somewhere to go. */
-const FRAME_PAD = 0.38;
-/** The frame's shape. Fixed so the card does not change height when the picker
- *  moves between a one-city skill and a worldwide one. */
-const FRAME_ASPECT = 1.5;
-
-/**
- * Frame the map on the data.
- *
- * The whole world is the wrong view for most employers: BHP's placeable ads sit
- * in four Australian cities and Manila, so a global projection spends nearly
- * all of its area on empty ocean. The path and the projection are unchanged —
- * only the viewBox moves, which costs nothing and keeps every coordinate
- * comparable with the app's other maps.
- */
-function frameFor(spots: Spot[]): { x: number; y: number; w: number; h: number } {
-  const xs = spots.map((s) => s.x);
-  const ys = spots.map((s) => s.y);
-  let minX = Math.min(...xs);
-  let maxX = Math.max(...xs);
-  let minY = Math.min(...ys);
-  let maxY = Math.max(...ys);
-  const padX = Math.max((maxX - minX) * FRAME_PAD, FRAME_MIN / 2);
-  const padY = Math.max((maxY - minY) * FRAME_PAD, FRAME_MIN / 2);
-  minX -= padX;
-  maxX += padX;
-  minY -= padY;
-  maxY += padY;
-  let w = maxX - minX;
-  let h = maxY - minY;
-  // Grow the short side rather than the long one, so framing never crops a hub.
-  if (w / h < FRAME_ASPECT) {
-    const want = h * FRAME_ASPECT;
-    minX -= (want - w) / 2;
-    w = want;
-  } else {
-    const want = w / FRAME_ASPECT;
-    minY -= (want - h) / 2;
-    h = want;
-  }
-  // Keep the frame on the map. Shift before clamping, so a frame that runs off
-  // an edge slides back in at full size instead of being squashed against it.
-  if (w > WORLD_W) {
-    minX = 0;
-    w = WORLD_W;
-  } else minX = Math.max(0, Math.min(minX, WORLD_W - w));
-  if (h > WORLD_H) {
-    minY = 0;
-    h = WORLD_H;
-  } else minY = Math.max(0, Math.min(minY, WORLD_H - h));
-  return { x: minX, y: minY, w, h };
-}
-
 function HotSpots({
   skills,
   liveAds,
@@ -707,26 +650,38 @@ function HotSpots({
             />
           );
         })}
-        {/* Badges for the busiest four only. Every hub keeps its dot; beyond
-            four the codes start overlapping each other on a tight frame. */}
-        {spots.slice(0, 4).map((sp) => (
-          <span
-            key={sp.hub}
-            className="hsppin"
-            style={posOf(sp)}
-            onMouseEnter={() => setHub(sp.hub)}
-          >
+        {/* Badges for the busiest four, minus any that would sit on top of a
+            badge already placed. CSL hires in eight hubs, six of them in the
+            United States, and on a world frame CHI and HOU landed on each
+            other — two unreadable codes where one readable one and a dot would
+            have been better. The dot is never dropped, only the badge. */}
+        {spots
+          .slice(0, 4)
+          .filter((sp, n, kept) =>
+            kept
+              .slice(0, n)
+              .every(
+                (o) => Math.hypot((sp.x - o.x) / frame.w, (sp.y - o.y) / frame.h) > BADGE_CLEARANCE,
+              ),
+          )
+          .map((sp) => (
             <span
-              className="hsppinbadge"
-              style={{
-                boxShadow: `0 1px 3px rgba(28,28,30,.22), 0 0 0 ${hub === sp.hub ? 2 : 0}px var(--neutral-900)`,
-              }}
+              key={sp.hub}
+              className="hsppin"
+              style={posOf(sp)}
+              onMouseEnter={() => setHub(sp.hub)}
             >
-              {hubCode(sp.hub)}
+              <span
+                className="hsppinbadge"
+                style={{
+                  boxShadow: `0 1px 3px rgba(28,28,30,.22), 0 0 0 ${hub === sp.hub ? 2 : 0}px var(--neutral-900)`,
+                }}
+              >
+                {hubCode(sp.hub)}
+              </span>
+              <span className="hsppinstem" />
             </span>
-            <span className="hsppinstem" />
-          </span>
-        ))}
+          ))}
         {hovered && (
           /* The design centres the card on the dot and stops there, which
              clips it against the card's edge on a hub near the frame's left or

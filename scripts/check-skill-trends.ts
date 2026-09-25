@@ -22,6 +22,7 @@ import {
   type RankRow,
   type CompanySkillTrends,
 } from "../src/employsi/lib/jobHistoryFn";
+import { FRAME_ASPECT, frameFor } from "../src/employsi/lib/hotspotFrame";
 import {
   ALL_SKILLS,
   SKILL_CATEGORY,
@@ -1962,6 +1963,58 @@ console.log("\nwhat a skill card offers next:");
   for (const s of ["Nursing", "Human Resources", "Software Engineering", "Data Analytics"]) {
     const card = buildSkillCard(s, TIMELINE_SPAN, null);
     check(`${s}: never suggests itself`, !card.related.includes(s));
+  }
+}
+
+// ── the hotspot map's frame ─────────────────────────────────────────────────
+// THE BUG THIS EXISTS FOR, shipped 2026-09-25 and reported from a CSL card.
+// The map draws its heat blobs in SVG, against the viewBox, and its dots in
+// HTML, against the container. Those two agree only while the frame's aspect
+// equals the container's — and the clamp that kept the frame on the world was
+// snapping w to WORLD_W and h to WORLD_H, which for anyone hiring on two
+// continents produced a 2.12 frame in a 1.50 box. The SVG letterboxed, and
+// every dot slid away from its own heat.
+//
+// Nothing on screen says so unless you know what the dots are meant to line up
+// with, and it only happens for some spreads of hubs, so it is asserted here.
+console.log("\nthe hotspot frame keeps its aspect, whatever it has to frame:");
+{
+  const spot = (x: number, y: number) => ({ hub: `${x},${y}`, label: "", n: 1, x, y });
+  const CASES: [string, { x: number; y: number }[]][] = [
+    ["one hub", [spot(120, 60)]],
+    ["two Australian cities", [spot(305, 118), spot(312, 121)]],
+    [
+      "CSL: six US hubs and Melbourne",
+      [
+        spot(75, 62),
+        spot(72, 66),
+        spot(82, 60),
+        spot(84, 58),
+        spot(92, 56),
+        spot(60, 50),
+        spot(311, 120),
+      ],
+    ],
+    ["opposite corners of the world", [spot(1, 1), spot(359, 169)]],
+    ["wider than the world", [spot(0, 84), spot(360, 86)]],
+    ["taller than the world", [spot(180, 0), spot(181, 170)]],
+    ["hard against the left edge", [spot(0, 0), spot(4, 4)]],
+    ["hard against the bottom right", [spot(356, 166), spot(360, 170)]],
+  ];
+  for (const [name, spots] of CASES) {
+    const f = frameFor(spots as never);
+    const aspect = f.w / f.h;
+    check(
+      `${name}: keeps the box's aspect`,
+      Math.abs(aspect - FRAME_ASPECT) < 1e-9,
+      `${aspect.toFixed(4)} vs ${FRAME_ASPECT}`,
+    );
+    // ...and every hub it was given has to be inside it, or the map is drawn
+    // without a city it claims to be showing.
+    const outside = spots.filter(
+      (sp) => sp.x < f.x || sp.x > f.x + f.w || sp.y < f.y || sp.y > f.y + f.h,
+    );
+    check(`${name}: encloses every hub`, outside.length === 0, `${outside.length} outside`);
   }
 }
 

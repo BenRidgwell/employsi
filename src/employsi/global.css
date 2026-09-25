@@ -12907,7 +12907,10 @@ body {
   margin-top: 8px;
   aspect-ratio: 3 / 2;
   border-radius: 12px;
-  background: var(--surface-subtle);
+  /* The sea, not the page. The SVG's own sea rect covers the viewBox, so this
+     only shows through at the rounded corners and on any sub-pixel edge — but
+     grey showing through there read as a gap in the map. */
+  background: oklch(0.9 0.045 225);
   overflow: hidden;
 }
 .hspmap svg {
