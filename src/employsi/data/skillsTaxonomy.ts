@@ -429,6 +429,30 @@ const RAW_SKILLS: SkillDef[] = [
       "sql",
       "systems analyst",
       "business and systems",
+      // BI VOCABULARY BELONGS ON THE PARENT, and its absence here was a hole
+      // rather than a judgement. Measured 2026-09-25: "business intelligence
+      // analyst", "business intelligence manager", "bi analyst", "director
+      // business intelligence" and "tableau admin" each mapped to NOTHING AT
+      // ALL — none of the terms above appears in any of them, so the reporting
+      // layer of the data function was invisible to the taxonomy. It also kept
+      // the Business Intelligence speciality below its evidence floor, because
+      // a child cannot match unless its parent has: 39 of 256 BI-shaped titles
+      // reached it, and the other 217 failed at this gate rather than at the
+      // child's own terms.
+      "business intelligence",
+      "bi analyst",
+      "bi developer",
+      "bi engineer",
+      "bi consultant",
+      "bi specialist",
+      "bi manager",
+      "bi lead",
+      "bi architect",
+      "bi reporting",
+      "tableau",
+      "qlik",
+      "looker",
+      "powerbi",
     ],
   },
 
@@ -443,14 +467,26 @@ const RAW_SKILLS: SkillDef[] = [
     skill: "Business Intelligence",
     cat: "Digital",
     parent: "Data Analytics",
-    // 59 titles. Building the reporting layer rather than reading it.
+    // 59 titles when minted; 39 by 2026-09-25, which read as employers wording
+    // the title differently and was really the parent gate — see the note on
+    // Data Analytics' terms. These add the role forms the archive actually
+    // carries, all of them naming BI as the JOB rather than as a tool someone
+    // else uses: a "Senior Finance Analyst | Power BI expert" is a finance
+    // analyst, so bare "power bi" stays on the parent and off this child.
     terms: [
       "business intelligence",
       "bi developer",
       "bi analyst",
       "bi consultant",
+      "bi engineer",
+      "bi specialist",
+      "bi manager",
+      "bi lead",
+      "bi architect",
+      "bi reporting",
       "tableau",
       "qlik",
+      "looker",
       "reporting analyst",
     ],
   },
@@ -1087,6 +1123,83 @@ const RAW_SKILLS: SkillDef[] = [
     parent: "Finance & Accounting",
     // 58 titles, 3.4%.
     terms: ["financial accountant", "financial reporting", "statutory report", "group accountant"],
+  },
+  // ── Strategy ────────────────────────────────────────────────────────────
+  //
+  // A BROAD SKILL, NOT A SPECIALITY UNDER FINANCE, and the measurement is why.
+  // Asked for as a Finance & Accounting child on 2026-09-25; measured over the
+  // 90 days to that date, 1,935 distinct titles / 2,684 rows contain "strateg",
+  // and only 4% of them match Finance & Accounting at all. A child cannot match
+  // unless its parent already has (see SkillDef.parent), so under Finance this
+  // would have claimed four titles of the 321 below — the "Finance Strategy and
+  // Transformation" consulting roles — and then failed the 40-title floor in
+  // check-skills.ts. Strategy is cross-functional in the ads themselves: the
+  // titles carrying it sit under Sales & Business Dev (63), Account Management
+  // (56), Marketing & Comms (41), Leadership & Coordination (33), Risk (18) and
+  // HR (15). None of those is its parent either.
+  //
+  // 321 titles / 524 rows claimed, and 63% of them mapped to NOTHING before
+  // this skill existed — half of all "strateg" titles map to nothing, which is
+  // what a missing skill looks like from the data side.
+  //
+  // THE TERMS NAME STRATEGY AS THE FUNCTION, never "strategic" as an adjective
+  // on another job. That distinction carries the precision here, because the
+  // biggest "strateg" titles in the archive are other people's work: "Strategic
+  // Account Manager" (15 rows) is sales, "Strategic Sourcing Specialist" (12)
+  // is procurement, "Strategic Partnerships" is business development. No
+  // `except` list is needed to hold them off — they simply never match a term
+  // below, which is the cheaper guard where it is available.
+  //
+  // Domain strategy titles are deliberately left to their domains: "Cyber
+  // Defence Strategy", "Regulatory Strategy" and "Executive Manager -
+  // Technology Strategy" are security, risk and IT roles that happen to be the
+  // strategic end of them, and they keep their own skill.
+  //
+  // "Digital Strategy Lead" lands here through "strategy lead", and ONLY here —
+  // checked rather than assumed, because the first version of this comment
+  // claimed it kept a digital skill as well and it does not: no digital skill
+  // has a term matching that title. The matcher is multi-label, so "Head of
+  // Strategy" really does come back as both Strategy and Leadership &
+  // Coordination, but that happens per title and is not a property of this
+  // skill.
+  {
+    skill: "Strategy",
+    cat: "Corporate",
+    terms: [
+      // Title shapes, with their measured distinct-title counts.
+      "strategy manager", // 58
+      "strategy lead", // 39
+      "strategy consultant", // 25
+      "strategic planning", // 25
+      "strategy & transformation", // 24
+      "strategy and transformation", // 16 — spelled out as often as ampersanded
+      "commercial strategy", // 21
+      "strategy analyst", // 18
+      "business strategy", // 18
+      "strategy & planning", // 17
+      "group strategy", // 15
+      "corporate strategy", // 14
+      "strategy and planning", // 12
+      "strategy officer", // 9
+      "strategy advisor", // 7
+      "strategy specialist", // 7
+      "strategy director", // 7
+      "head of strategy", // 6
+      "strategy associate", // 5
+      "strategy intern", // 5
+      "strategy planning", // 3
+      "strategy graduate", // 3
+      "director of strategy", // 2
+      "strategy consulting", // 2
+      "chief strategy", // 1
+      "general manager strategy", // 1
+      // Nothing in the archive today, kept as the other spelling of a term that
+      // does hit — "adviser" is the usual form in Australian public-sector
+      // titles, so this is a variant of a live term rather than a guess at one.
+      "strategy adviser",
+      // "gm strategy", "strategy team" and "strategy function" were tried and
+      // dropped: zero titles each, and none of them is a title shape.
+    ],
   },
   {
     skill: "Procurement & Supply",

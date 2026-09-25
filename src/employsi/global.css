@@ -65,6 +65,36 @@ body {
   background: var(--raised-surface);
   box-shadow: var(--raised-shadow);
 }
+/* The rail's first group, which the Supply/Demand switch swaps.
+   Both pairs occupy the SAME grid cell, so the wrapper is as tall as a pair and
+   the rail's height never moves through the transition — the divider below it
+   would otherwise jump while the two crossed over. */
+.railswap {
+  display: grid;
+}
+.railswapl {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  opacity: 0;
+  /* Out through the back rather than sideways: the rail is 52px wide and a
+     lateral move would read as the buttons leaving the control. */
+  transform: scale(0.94);
+  transition:
+    opacity 150ms ease,
+    transform 150ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.railswapl.on {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .railswapl {
+    transition-duration: 1ms;
+  }
+}
 /* Hairline between groups. The design separates groups with a rule rather than
    a wider gap, which is what makes the rail read as one control with sections. */
 .raildiv {
@@ -188,8 +218,11 @@ body {
 .ai-drop,
 .ai-arrowtip,
 .ai-slide-r,
+.ai-slide-l,
 .ai-slide-r5,
 .ai-slide-l5,
+.ai-lift-md,
+.ai-tipnudge,
 .ai-flat,
 .ai-narrow,
 .ai-shrink,
@@ -215,6 +248,21 @@ body {
 }
 .ai-slide-r {
   transform: translate(calc(var(--a, 0) * 1.5px), 0);
+}
+/* The mirror of it — the branch that joins the career-pathways spine from the
+   left as the other one leaves to the right. */
+.ai-slide-l {
+  transform: translate(calc(var(--a, 0) * -1.5px), 0);
+}
+/* Between .ai-lift-sm and .ai-lift: the talent-flows arc, which carries an
+   arrowhead and would overshoot its own columns at a full step. */
+.ai-lift-md {
+  transform: translate(0, calc(var(--a, 0) * -1.5px));
+}
+/* An arrowhead running on ahead of the curve it sits at the end of — out along
+   the tangent, so it reads as the head leading rather than the line growing. */
+.ai-tipnudge {
+  transform: translate(calc(var(--a, 0) * 0.8px), calc(var(--a, 0) * 0.4px));
 }
 .ai-slide-r5 {
   transform: translate(calc(var(--a, 0) * 5px), 0);
@@ -1531,6 +1579,12 @@ body {
   align-items: center;
   gap: var(--space-6);
   padding: 0 28px;
+  /* What the Supply/Demand switch costs the row: its 214px plus the dock's 4px
+     gap. Zero until the header is wide enough to show the switch at all; the
+     min-width query below turns both on together, because they are two halves
+     of one thing. Declared here because BOTH sides of the header need it — see
+     the note on .apphead .brand. */
+  --sdsw-slot: 0px;
 }
 .mapframe {
   position: absolute;
@@ -4041,6 +4095,39 @@ body {
 .tickerpill.tkgone {
   transform: translateX(-50%) scale(0.92);
 }
+/* ── Off on the supply side ────────────────────────────────────────────────
+   The ticker reads what EMPLOYERS are advertising, so it has no place on the
+   supply side and leaves when the Supply/Demand switch does.
+
+   It goes DOWNWARD, which is the one thing this could get wrong: the strip is
+   `bottom: 32px` of the map frame, so down is off its own edge and the gesture
+   reads as the strip stowing itself. Up would carry it across the map it sits
+   over and look like it had been thrown.
+
+   Written after .tkgone and with the same specificity, so it wins the transform
+   when a COLLAPSED ticker is switched away from — the pill then stows rather
+   than merely shrinking in place. And it keeps tkgone's delayed `visibility`,
+   without which an invisible full-width strip goes on swallowing clicks over
+   the map. */
+.ticker.tkoff,
+.tickerpill.tkoff {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  /* 220ms, the same as the collapse — and the same as the BASE .ticker rule,
+     which is what runs on the way back in. Two different durations there would
+     make leaving and returning feel like two different gestures. */
+  transition:
+    opacity 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    visibility 0s linear 220ms;
+}
+.ticker.tkoff {
+  transform: translateY(16px) scale(0.985);
+}
+.tickerpill.tkoff {
+  transform: translateX(-50%) translateY(16px) scale(0.92);
+}
 .tickerpause svg.paused line:first-of-type {
   transform: translateX(1.5px);
 }
@@ -4098,8 +4185,26 @@ body {
 /* `display: contents` promotes .brand and .controls to be flex children of
    .apphead, but DOM order would then read brand → controls → search. Order
    puts the search back in the middle cell where the design has it. */
+/* KEEPING THE CENTRED SEARCH BAR WHERE IT WAS.
+   .gsearch is centred by `margin: 0 auto`, which splits the flex line's LEFTOVER
+   space — so its position is a function of what is on either side of it, not of
+   the header's midpoint. Adding 218px of switch to .controls took 218px out of
+   that leftover, both auto margins lost 109px, and the search bar slid 109px
+   left. Nothing about the bar changed; it was measured from a row that had.
+
+   So the same 218px is given back on the brand's side. The leftover then
+   shrinks symmetrically, the two auto margins stay equal to each other, and the
+   bar's left edge lands exactly where it did before the switch existed — at
+   every width, including the widths where the leftover runs out and the bar
+   starts shrinking instead of sliding.
+
+   It is NOT centred on the header, and was not before: at 1440 the right
+   cluster is far wider than the wordmark, so the midpoint of the gap between
+   them sits left of the page's. Restoring the original position is the ask;
+   centring it on the page would be a different change. */
 .apphead .brand {
   order: 1;
+  margin-right: var(--sdsw-slot);
 }
 .apphead .gsearch {
   order: 2;
@@ -6692,7 +6797,10 @@ body {
   height: 34px;
   padding: 0 15px;
   border: 0;
-  border-radius: 11px;
+  /* A pill, matching the Supply/Demand thumb beside it in the header — and the
+     round account button it sits directly against, which an 11px rectangle was
+     the only square corner between. */
+  border-radius: var(--radius-pill);
   background: var(--action-primary);
   color: var(--action-primary-text);
   font-family: inherit;
@@ -7728,6 +7836,25 @@ body {
 .gstimetick.past {
   background: rgba(28, 28, 30, 0.55);
 }
+/* The span the archive can name employers over — one month today, growing by
+   one whenever both the agencies' series and the crawl gain a month. Sits ON
+   the track under the knob, with a minimum width so a single covered month is
+   still a mark rather than a zero-width nothing. */
+.gstimecov {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  min-width: 6px;
+  border-radius: 999px;
+  background: var(--status-success-dot);
+  opacity: 0.85;
+}
+.gstimecovnote {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-tertiary);
+}
 .gstimeknob {
   position: absolute;
   top: 50%;
@@ -7874,6 +8001,112 @@ body {
   align-items: center;
   gap: 4px;
   pointer-events: auto;
+}
+/* ── Supply / Demand switch ────────────────────────────────────────────────
+   Ported from the Supply_Demand_Switch design, 2026-09-25, and NOT YET WIRED
+   TO ANYTHING (see SupplyDemandSwitch.tsx). Every number below is the design's:
+   104×30 segments, 3px of padding around them, the pill radius, the ink thumb,
+   and 280ms cubic-bezier(.2,0,0,1) on both the thumb and the icon. The tokens
+   are this product's own — the design declares the same ones — so nothing here
+   is a literal that a theme change would leave behind.
+
+   It sits at the far left of the header cluster, before the bell, which makes
+   it the widest thing in that row at 214px.
+
+   HIDDEN BELOW 1440px, and that number is measured rather than chosen. The
+   centred search bar is held at its original position by --sdsw-slot (see
+   .apphead .brand), but position is all that can be held: once the flex line's
+   leftover space runs out, the switch is paid for in the BAR'S WIDTH. Measured
+   against the real stylesheet, the bar keeps its full 560px at 1536 and above,
+   gives up 29px at 1440, 103px at 1366 and 189px at 1280. Five percent is a
+   fair price for the control; a third of the search bar is not. So below 1440
+   the switch is not shown and the header is exactly what it was. */
+.sdsw {
+  position: relative;
+  display: none;
+  /* It is 214px and no other width. Without this it is a block-level flex
+     container, so anywhere it is NOT a flex item it stretches to the row and
+     the thumb's 104px translate no longer lands under the second label.
+
+     THAT 214 IS LOAD-BEARING OUTSIDE THIS RULE: it is half of `--sdsw-slot`
+     on .apphead, which is what keeps the centred search bar where it was.
+     Changing the segment width means changing that too. */
+  flex: 0 0 auto;
+  width: fit-content;
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  outline: none;
+}
+.sdswthumb {
+  position: absolute;
+  z-index: 1;
+  top: 3px;
+  left: 3px;
+  width: 104px;
+  height: 30px;
+  border-radius: var(--radius-pill);
+  background: var(--neutral-900);
+  /* transform is set inline — it is the state, and the only state this control
+     has. 280ms is the design's, and the curve has no overshoot: the thumb
+     arrives under a label rather than past it. */
+  transition: transform 280ms cubic-bezier(0.2, 0, 0, 1);
+}
+.sdswbtn {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 104px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+/* The label on the thumb, which is ink, so it is the inverse rather than the
+   primary text colour. */
+.sdswbtn[aria-selected="true"] {
+  color: var(--text-inverse);
+}
+.sdswbtn svg {
+  width: 15px;
+  height: 15px;
+  opacity: 0.7;
+  transform: scale(0.9);
+  transition: transform 280ms cubic-bezier(0.2, 0, 0, 1);
+}
+.sdswbtn[aria-selected="true"] svg {
+  opacity: 1;
+  transform: scale(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sdswthumb,
+  .sdswbtn,
+  .sdswbtn svg {
+    transition: none;
+  }
+}
+/* The switch and the space it is paid for out of, turned on together. Two
+   declarations in one query so neither can exist without the other: the slot
+   without the switch pushes the search bar right by 109px, and the switch
+   without the slot pulls it left by the same — the bug this compensates for. */
+@media (min-width: 1440px) {
+  .sdsw {
+    display: flex;
+  }
+  .apphead {
+    --sdsw-slot: 218px;
+  }
 }
 .dockslot {
   position: relative;
@@ -12191,11 +12424,51 @@ body {
   box-shadow: 0 1px 2px rgba(28, 28, 30, 0.1);
 }
 
+/* Holds the body and the fade over it. Takes the flex role .ccbody had, so
+   the card's height behaviour is unchanged — .ccbody still flexes inside it,
+   which is what fills a short tab without making it scrollable. */
+.ccbodywrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .ccbody {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
   padding: 16px 18px 20px;
+}
+/* Soft white under the frozen header, once the body is off its top — so a card
+   scrolled halfway does not look like one at the top.
+
+   The blur is masked by the same ramp as the wash, so it fades out with it
+   rather than ending on a hard line 34px down. pointer-events:none because it
+   covers the first rows of content. */
+.ccfade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 34px;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms var(--ease-standard);
+  background: linear-gradient(
+    to bottom,
+    var(--surface-card) 0%,
+    color-mix(in srgb, var(--surface-card) 72%, transparent) 45%,
+    transparent 100%
+  );
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 35%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 35%, transparent 100%);
+}
+.ccfade.on {
+  opacity: 1;
 }
 @keyframes cc-rise {
   from {
@@ -12896,13 +13169,21 @@ body {
 .hsp {
   margin-bottom: 14px;
 }
-/* The frame's aspect is set inline from FRAME_ASPECT so the SVG fills the box
-   exactly and the HTML overlays can be positioned in plain percentages. */
+/* ── Hiring Hotspots ───────────────────────────────────────────────────────
+   Ported from the Hiring Hotspots design, 2026-09-25. The aspect ratio, radii,
+   dot and badge sizes, the heat ramp and the legend are all the design's; the
+   colours are written as tokens where the design used a literal that matches
+   one, and left literal where it does not (the ocean and land are the only
+   colour in a monochrome product, and they are the design's own oklch values). */
 .hspmap {
   position: relative;
   margin-top: 8px;
-  border-radius: var(--radius-md);
-  background: var(--surface-subtle);
+  aspect-ratio: 3 / 2;
+  border-radius: 12px;
+  /* The sea, not the page. The SVG's own sea rect covers the viewBox, so this
+     only shows through at the rounded corners and on any sub-pixel edge — but
+     grey showing through there read as a gap in the map. */
+  background: oklch(0.9 0.045 225);
   overflow: hidden;
 }
 .hspmap svg {
@@ -12910,78 +13191,214 @@ body {
   width: 100%;
   height: 100%;
 }
+.hspsea {
+  fill: oklch(0.9 0.045 225);
+}
 .hspland {
-  fill: var(--surface-active);
+  fill: oklch(0.975 0.018 135);
+  stroke: oklch(0.86 0.04 180);
 }
-/* A marker is a point: everything inside it is centred on that point, so the
-   halo can grow without moving the dot. */
-.hspspot {
+/* A dot is a point: it is centred on its coordinate by its own negative
+   margin, so nothing around it can shift where it claims the ads are. */
+.hspdot {
   position: absolute;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-.hsphalo {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: var(--status-success-fg);
-  opacity: 0.22;
-  animation: hsppulse 2.6s var(--ease-standard) infinite;
-}
-.hspcore {
-  position: absolute;
-  top: 50%;
-  left: 50%;
   width: 9px;
   height: 9px;
   margin: -4.5px 0 0 -4.5px;
+  box-sizing: border-box;
   border: 2px solid var(--neutral-0);
-  border-radius: 50%;
-  background: var(--status-success-fg);
-  box-shadow: var(--shadow-xs);
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgba(28, 28, 30, 0.3);
+  cursor: pointer;
 }
-/* The halo breathes; the dot does not. A marker that moves reads as a position
-   that is uncertain, which is the opposite of what this is saying. */
-@keyframes hsppulse {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(0.82);
-    opacity: 0.28;
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(1.12);
-    opacity: 0.14;
-  }
-}
-.hsplabel {
+/* A 9px dot is a 9px hover target, and with the code badges gone hovering is
+   the only way to find out which city a dot is. The hit area is widened to 26px
+   — the size the badges were — without changing anything visible. */
+.hspdot::after {
+  content: "";
   position: absolute;
   top: 50%;
+  left: 50%;
+  width: 26px;
+  height: 26px;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+}
+.hsptip {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  /* transform is set inline, so a hub near an edge can flip instead of
+     clipping — see the note at the render site. */
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  transform: translateY(-50%);
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--neutral-900);
+  color: var(--neutral-0);
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
+}
+.hsptip b {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+.hsptip em {
+  font-family: var(--font-label);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+/* Zoomed, the map is draggable — but only with a mouse or a pen. `touch-action`
+   is deliberately NOT set: this sits 300px into a card that scrolls, and taking
+   the touch gesture would leave a finger on the map unable to scroll past it. */
+.hspmapz {
+  cursor: grab;
+}
+.hspmapz:active {
+  cursor: grabbing;
+}
+.hspzoom {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.hspzoom button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.hspzoom button:hover:not(:disabled) {
+  background: var(--neutral-0);
+}
+.hspzoom button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.hspzoom button svg {
+  width: 14px;
+  height: 14px;
+}
+.hspzoom .hspreset {
+  width: auto;
+  height: 20px;
+  padding: 0 7px;
+  font-family: var(--font-label);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+.hspkey {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+}
+.hspkey em {
+  font-family: var(--font-label);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+.hspkey i {
+  width: 56px;
+  height: 5px;
+  border-radius: 999px;
+  /* The same four stops the dots are coloured from, so the legend is the key
+     to the dots and not merely a gradient that resembles them. */
+  background: linear-gradient(
+    90deg,
+    rgb(56, 160, 110),
+    rgb(235, 190, 56),
+    rgb(242, 140, 46),
+    rgb(204, 56, 51)
+  );
+}
+.hsprank {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+/* A button that reads as a row: it zooms the map to its hub, and the only sign
+   of that is the pointer and the hover tint — a ranked list that looked like a
+   toolbar would be louder than the map it serves. */
+.hsprow {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: -3px 0;
+  padding: 3px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.hsprow:hover {
+  background: var(--neutral-100);
+}
+.hsprowname {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
-.hsplabel.left {
-  align-items: flex-end;
-  text-align: right;
+.hsprowbar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--neutral-200);
+  overflow: hidden;
 }
-.hsplabel b {
-  font-size: 12.5px;
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.01em;
-  color: var(--text-primary);
+.hsprowbar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--neutral-900);
 }
-.hsplabel em {
-  font-style: normal;
+.hsprowpct {
   font-family: var(--font-label);
-  font-size: 9.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
 }
 .hspfoot {
   display: flex;
@@ -13038,13 +13455,6 @@ body {
   text-transform: uppercase;
   color: var(--text-tertiary);
 }
-@media (prefers-reduced-motion: reduce) {
-  .hsphalo {
-    animation: none;
-    transform: translate(-50%, -50%);
-  }
-}
-
 /* the rest, one row each */
 .alsk {
   margin-top: 2px;
@@ -15418,8 +15828,14 @@ body {
    axis at all: the design carries the selection on the stem and the moving
    label and nothing else. An earlier pass kept a dashed mark for where the
    request outruns the archive; it was dropped on request. That fact is still
-   told, in `.cctlnote` under the control, which names the covered span and the
-   date it starts — so it is stated rather than drawn.
+   told, by the `.cceyebrow` ABOVE the control — "Timeline · 21 July – 24 Sept"
+   is built from the span actually drawn, so it is stated rather than drawn.
+
+   This used to credit `.cctlnote`, a caption under the control, which never
+   named a span or a date: it read "Daily live vacancies across the archive, so
+   you can see where this employer's history is worth asking about". The note
+   was removed on request 2026-09-25 and nothing factual went with it, because
+   the eyebrow had been carrying that load the whole time.
 
    The one element here the mockup does not have is `.cctlgap`, the wash over
    days the archive never collected. It predates this redraw and is inside the
@@ -15632,13 +16048,6 @@ body {
   transform: none;
   padding-left: 0;
 }
-.cctlnote {
-  margin: 8px 0 0;
-  font-size: 10.5px;
-  line-height: 1.45;
-  color: var(--text-tertiary);
-}
-
 /* ── What's Trending · market scope bar and coverage header ──────────────────
    The pane prices skills in one market, so the market and what could be priced
    inside it both sit above the numbers. A price with no market named is

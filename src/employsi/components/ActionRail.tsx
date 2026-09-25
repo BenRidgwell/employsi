@@ -7,6 +7,8 @@ import {
   IconFilter,
   IconGlobal,
   IconLocal,
+  IconPathways,
+  IconTalentFlows,
   IconTrending,
 } from "./ActionIcons";
 
@@ -38,7 +40,12 @@ function RailButton({
   icon: ReactNode;
   label: string;
   on?: boolean;
-  onClick: () => void;
+  /**
+   * Omitted for a button whose panel has not been built yet — the supply pair.
+   * It renders and animates like any other and answers a click with nothing,
+   * which is the honest state of it; a placeholder panel would claim more.
+   */
+  onClick?: () => void;
   /** "lg" = 38px standalone button, "sm" = 34px button inside the layer tray. */
   size?: "lg" | "sm";
 }) {
@@ -60,19 +67,6 @@ function RailButton({
   );
 }
 
-/** Two role cards joined by a step and a branch — the Career Pathway Card
- *  design's own thumbnail glyph, redrawn on the rail's 24px grid. */
-function IconCareer() {
-  return (
-    <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" aria-hidden>
-      <rect x="2.5" y="5" width="7" height="5" rx="1.4" strokeWidth="1.6" />
-      <rect x="14.5" y="5" width="7" height="5" rx="1.4" strokeWidth="1.6" />
-      <rect x="14.5" y="14" width="7" height="5" rx="1.4" strokeWidth="1.6" />
-      <path d="M9.5 7.5h5M6 10v6.5h8.5" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 /** A gauge: the panel is about whether the instruments can be trusted. */
 function IconDataQuality() {
   return (
@@ -85,6 +79,7 @@ function IconDataQuality() {
 }
 
 export function ActionRail() {
+  const mode = useAppStore((s) => s.marketMode);
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const globalOut = useAppStore((s) => s.globalOut);
   const selectedId = useAppStore((s) => s.selectedId);
@@ -120,24 +115,42 @@ export function ActionRail() {
 
   return (
     <div className="actionrail">
-      <RailButton
-        icon={<IconTrending />}
-        label="What's trending"
-        on={trendingOpen}
-        onClick={toggleTrending}
-      />
-      <RailButton
-        icon={<IconAnalyst />}
-        label="Ask an analyst"
-        on={analystOpen}
-        onClick={toggleAnalyst}
-      />
-      <RailButton
-        icon={<IconCareer />}
-        label="Career pathways"
-        on={careerOpen}
-        onClick={toggleCareer}
-      />
+      {/* THE ONE THING THE SUPPLY/DEMAND SWITCH CHANGES, so far.
+          The two pairs are BOTH MOUNTED, stacked in one grid cell, and
+          cross-fade: the outgoing pair has somewhere to fade to, which a
+          swap that unmounted one and mounted the other does not — that
+          version can only cut out and fade in, and at rail scale the cut is
+          the part you see. The inactive pair is `inert`, so it takes no
+          clicks, no focus and no screen reader, which is the whole of what
+          hiding it has to mean. */}
+      <div className="railswap">
+        <div className={`railswapl${mode === "demand" ? " on" : ""}`} inert={mode !== "demand"}>
+          <RailButton
+            icon={<IconTrending />}
+            label="What's trending"
+            on={trendingOpen}
+            onClick={toggleTrending}
+          />
+          <RailButton
+            icon={<IconAnalyst />}
+            label="Ask an analyst"
+            on={analystOpen}
+            onClick={toggleAnalyst}
+          />
+        </div>
+        {/* The supply pair, from `Action Rail supply.html`. Career pathways
+            opens its card (CareerPathwaysPane); Talent flows' panel is still
+            to come, so it carries no onClick yet — see RailButton. */}
+        <div className={`railswapl${mode === "supply" ? " on" : ""}`} inert={mode !== "supply"}>
+          <RailButton
+            icon={<IconPathways />}
+            label="Career pathways"
+            on={careerOpen}
+            onClick={toggleCareer}
+          />
+          <RailButton icon={<IconTalentFlows />} label="Talent flows" />
+        </div>
+      </div>
 
       {/* Admin only. The pane refuses a non-admin server-side regardless, so
           hiding the button is tidiness rather than the control — but an end

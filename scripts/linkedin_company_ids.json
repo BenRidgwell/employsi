@@ -1,0 +1,1862 @@
+{
+ "adelaide-age": {
+  "ids": [
+   7661315
+  ],
+  "slug": "alligator-energy",
+  "page": "Alligator Energy",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "adelaide-bgd": {
+  "ids": [
+   64917113
+  ],
+  "slug": "bartongold",
+  "page": "Barton Gold",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "adelaide-c79": {
+  "ids": [
+   17940487
+  ],
+  "slug": "chrysos-corporation",
+  "page": "Chrysos Corporation",
+  "country": "AU",
+  "cards": 2,
+  "confirmed": "2026-09-24"
+ },
+ "adelaide-cda": {
+  "ids": [
+   428017
+  ],
+  "slug": "codan-limited",
+  "page": "Codan Limited",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "adelaide-coe": {
+  "ids": [
+   1768143
+  ],
+  "slug": "cooperenergy",
+  "page": "Cooper Energy",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "adelaide-tea": {
+  "ids": [
+   89891554
+  ],
+  "slug": "tasmea-limited",
+  "page": "Tasmea Limited",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "aow": {
+  "ids": [
+   214340
+  ],
+  "slug": "arrow-energy",
+  "page": "Arrow Energy",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "asb": {
+  "ids": [
+   73056
+  ],
+  "slug": "austal",
+  "page": "Austal",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "bhp": {
+  "ids": [
+   4509
+  ],
+  "slug": "bhp",
+  "page": "BHP",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "bmn": {
+  "ids": [
+   6455052
+  ],
+  "slug": "bannerman-energy-limited",
+  "page": "Bannerman Energy Ltd",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "brisbane-ape": {
+  "ids": [
+   68578698
+  ],
+  "slug": "eagers-automotive-limited",
+  "page": "Eagers Automotive Limited",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "brisbane-azj": {
+  "ids": [
+   1073775
+  ],
+  "slug": "aurizon",
+  "page": "Aurizon",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "brisbane-boq": {
+  "ids": [
+   19851
+  ],
+  "slug": "bank-of-queensland",
+  "page": "Bank of Queensland",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "brisbane-crn": {
+  "ids": [
+   18885885
+  ],
+  "slug": "coronado-global-resources",
+  "page": "Coronado Global Resources Inc.",
+  "country": "AU",
+  "cards": 6,
+  "confirmed": "2026-09-24"
+ },
+ "brisbane-dbi": {
+  "ids": [
+   19208909
+  ],
+  "slug": "dalrymple-bay-infrastructure",
+  "page": "Dalrymple Bay Infrastructure",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "brisbane-dtl": {
+  "ids": [
+   9811
+  ],
+  "slug": "data3",
+  "page": "Data#3",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "brisbane-elv": {
+  "ids": [
+   14492535
+  ],
+  "slug": "elevra-lithium",
+  "page": "Elevra Lithium",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "brisbane-nxt": {
+  "ids": [
+   1011287
+  ],
+  "slug": "nextdc",
+  "page": "NEXTDC",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "brisbane-smr": {
+  "ids": [
+   8399104
+  ],
+  "slug": "stanmore-resources-limited",
+  "page": "Stanmore Resources Limited",
+  "country": "AU",
+  "cards": 6,
+  "confirmed": "2026-09-24"
+ },
+ "brisbane-sul": {
+  "ids": [
+   1589425
+  ],
+  "slug": "super-retail-group",
+  "page": "Super Retail Group",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "brisbane-sun": {
+  "ids": [
+   166197
+  ],
+  "slug": "suncorp",
+  "page": "Suncorp Group",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "brisbane-vgn": {
+  "ids": [
+   10400
+  ],
+  "slug": "virgin-australia",
+  "page": "Virgin Australia",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "ccv": {
+  "ids": [
+   48609
+  ],
+  "slug": "cash-converters",
+  "page": "Cash Converters",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "cxo": {
+  "ids": [
+   8434093
+  ],
+  "slug": "core-lithium",
+  "page": "Core Lithium",
+  "country": "AU",
+  "cards": 1,
+  "confirmed": "2026-09-24"
+ },
+ "dyl": {
+  "ids": [
+   1859099
+  ],
+  "slug": "deep-yellow-limited",
+  "page": "Deep Yellow Limited",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "fmg": {
+  "ids": [
+   811057
+  ],
+  "slug": "fortescue",
+  "page": "Fortescue",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "gmd": {
+  "ids": [
+   18927791
+  ],
+  "slug": "genesisminerals",
+  "page": "Genesis Minerals Limited",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "gor": {
+  "ids": [
+   3761530
+  ],
+  "slug": "gold-road-resources",
+  "page": "Gold Road Resources",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "hgo": {
+  "ids": [
+   7619680
+  ],
+  "slug": "kantra-copper",
+  "page": "Kantra Copper",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "ilu": {
+  "ids": [
+   42693
+  ],
+  "slug": "iluka-resources",
+  "page": "Iluka Resources",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "jms": {
+  "ids": [
+   7619736
+  ],
+  "slug": "jupitermines",
+  "page": "Jupiter Mines",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "ltr": {
+  "ids": [
+   7665303
+  ],
+  "slug": "liontown",
+  "page": "Liontown",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "mah": {
+  "ids": [
+   83768
+  ],
+  "slug": "macmahon",
+  "page": "Macmahon",
+  "country": "AU",
+  "cards": 4,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-4dx": {
+  "ids": [
+   3076134
+  ],
+  "slug": "4dmedical",
+  "page": "4DMedical",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-ann": {
+  "ids": [
+   9796
+  ],
+  "slug": "ansell",
+  "page": "Ansell",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-anz": {
+  "ids": [
+   2437
+  ],
+  "slug": "anz",
+  "page": "ANZ",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-car": {
+  "ids": [
+   91356852
+  ],
+  "slug": "car-group",
+  "page": "CAR Group",
+  "country": "AU",
+  "cards": 4,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-col": {
+  "ids": [
+   163144
+  ],
+  "slug": "colesgroup",
+  "page": "Coles Group",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-cpu": {
+  "ids": [
+   163185
+  ],
+  "slug": "computershare",
+  "page": "Computershare",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-csl": {
+  "ids": [
+   7384
+  ],
+  "slug": "csl",
+  "page": "CSL",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-cwy": {
+  "ids": [
+   31357
+  ],
+  "slug": "cleanaway",
+  "page": "Cleanaway",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-dnl": {
+  "ids": [
+   163535
+  ],
+  "slug": "dyno-nobel",
+  "page": "Dyno Nobel",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-hsn": {
+  "ids": [
+   14520
+  ],
+  "slug": "hansen-technologies",
+  "page": "Hansen Technologies",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-ifl": {
+  "ids": [
+   79089913
+  ],
+  "slug": "insignia-financial",
+  "page": "Insignia Financial",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-mpl": {
+  "ids": [
+   10854
+  ],
+  "slug": "medibank",
+  "page": "Medibank",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-msb": {
+  "ids": [
+   678282
+  ],
+  "slug": "mesoblast",
+  "page": "Mesoblast Limited",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-nab": {
+  "ids": [
+   2357
+  ],
+  "slug": "national-australia-bank",
+  "page": "NAB",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-ori": {
+  "ids": [
+   7345
+  ],
+  "slug": "orica",
+  "page": "Orica",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-pme": {
+  "ids": [
+   501509
+  ],
+  "slug": "pro-medicus-limited",
+  "page": "Pro Medicus Limited",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-pxa": {
+  "ids": [
+   1839652
+  ],
+  "slug": "pexa",
+  "page": "PEXA",
+  "country": "AU",
+  "cards": 4,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-rea": {
+  "ids": [
+   1508717
+  ],
+  "slug": "rea-group",
+  "page": "REA Group",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-sek": {
+  "ids": [
+   8985
+  ],
+  "slug": "seek",
+  "page": "SEEK",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-tah": {
+  "ids": [
+   8442
+  ],
+  "slug": "tabcorp",
+  "page": "Tabcorp",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-tcl": {
+  "ids": [
+   14488
+  ],
+  "slug": "transurban",
+  "page": "Transurban",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-tlc": {
+  "ids": [
+   77707058
+  ],
+  "slug": "the-lottery-corporation",
+  "page": "The Lottery Corporation",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-tls": {
+  "ids": [
+   1636
+  ],
+  "slug": "telstra",
+  "page": "Telstra",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "melbourne-twe": {
+  "ids": [
+   1140750
+  ],
+  "slug": "treasury-wine-estates",
+  "page": "Treasury Wine Estates",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "mgt": {
+  "ids": [
+   7656810
+  ],
+  "slug": "magnetite-mines",
+  "page": "Magnetite Mines",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "min": {
+  "ids": [
+   3214702
+  ],
+  "slug": "mineral-resources-limited",
+  "page": "Mineral Resources",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "mmi": {
+  "ids": [
+   6814299
+  ],
+  "slug": "metro-mining-limited",
+  "page": "Metro Mining Limited",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "mnd": {
+  "ids": [
+   59744
+  ],
+  "slug": "monadelphous",
+  "page": "Monadelphous",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "nst": {
+  "ids": [
+   4037950
+  ],
+  "slug": "northern-star-resources-limited",
+  "page": "Northern Star Resources Limited",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "nwh": {
+  "ids": [
+   18190075
+  ],
+  "slug": "nrw-holdings",
+  "page": "NRW Holdings",
+  "country": "AU",
+  "cards": 1,
+  "confirmed": "2026-09-24"
+ },
+ "pdn": {
+  "ids": [
+   19023265
+  ],
+  "slug": "paladin-energy",
+  "page": "Paladin Energy",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "perth-bgl": {
+  "ids": [
+   28131656
+  ],
+  "slug": "bellevuegold",
+  "page": "Bellevue Gold",
+  "country": "AU",
+  "cards": 1,
+  "confirmed": "2026-09-24"
+ },
+ "perth-drr": {
+  "ids": [
+   69139775
+  ],
+  "slug": "deterra-royalties",
+  "page": "Deterra Royalties",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "perth-imd": {
+  "ids": [
+   511438
+  ],
+  "slug": "imdex-limited",
+  "page": "IMDEX",
+  "country": "AU",
+  "cards": 6,
+  "confirmed": "2026-09-24"
+ },
+ "perth-pdi": {
+  "ids": [
+   19197856
+  ],
+  "slug": "predictivediscovery",
+  "page": "PDI Gold",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "perth-prn": {
+  "ids": [
+   23769752
+  ],
+  "slug": "perenti",
+  "page": "Perenti",
+  "country": "AU",
+  "cards": 1,
+  "confirmed": "2026-09-24"
+ },
+ "perth-rsg": {
+  "ids": [
+   864697
+  ],
+  "slug": "resolute-mining",
+  "page": "Resolute Mining Limited",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "perth-vau": {
+  "ids": [
+   7628928
+  ],
+  "slug": "vault-minerals-limited",
+  "page": "Vault Minerals",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-abn-group": {
+  "ids": [
+   1376183
+  ],
+  "slug": "abn-group",
+  "page": "ABN Group",
+  "country": "AU",
+  "cards": 7,
+  "confirmed": "2026-09-24"
+ },
+ "priv-adco-constructions": {
+  "ids": [
+   1069196
+  ],
+  "slug": "adco-constructions",
+  "page": "ADCO Constructions",
+  "country": "AU",
+  "cards": 1,
+  "confirmed": "2026-09-24"
+ },
+ "priv-apco-service-stations": {
+  "ids": [
+   6201619
+  ],
+  "slug": "apcoservicestations",
+  "page": "APCO Service Stations",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-aurecon": {
+  "ids": [
+   243549
+  ],
+  "slug": "aurecon",
+  "page": "Aurecon",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-ausgrid": {
+  "ids": [
+   9168
+  ],
+  "slug": "ausgrid",
+  "page": "Ausgrid",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-australian-consolidated-milk": {
+  "ids": [
+   7688560
+  ],
+  "slug": "australian-consolidated-milk",
+  "page": "Australian Consolidated Milk",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-australian-panels": {
+  "ids": [
+   67858637
+  ],
+  "slug": "australian-panels",
+  "page": "Australian Panels",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-australian-unity": {
+  "ids": [
+   17280
+  ],
+  "slug": "australian-unity",
+  "page": "Australian Unity",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-baiada-poultry": {
+  "ids": [
+   137790
+  ],
+  "slug": "baiada-poultry",
+  "page": "Baiada Poultry",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-bolton-clarke": {
+  "ids": [
+   18181136
+  ],
+  "slug": "bolton-clarke",
+  "page": "Bolton Clarke",
+  "country": "AU",
+  "cards": 6,
+  "confirmed": "2026-09-24"
+ },
+ "priv-brisbane-catholic-education": {
+  "ids": [
+   443169
+  ],
+  "slug": "brisbane-catholic-education",
+  "page": "Brisbane Catholic Education",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-calvary-health-care": {
+  "ids": [
+   1264937
+  ],
+  "slug": "calvaryhealthcare",
+  "page": "Calvary Health Care",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-canberra-airport": {
+  "ids": [
+   921435
+  ],
+  "slug": "canberra-airport",
+  "page": "Canberra Airport",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-cbh-group": {
+  "ids": [
+   162923
+  ],
+  "slug": "cbh",
+  "page": "CBH",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-cjd-equipment": {
+  "ids": [
+   2145097
+  ],
+  "slug": "cjdequipment",
+  "page": "CJD Equipment",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-clayton-utz": {
+  "ids": [
+   9744
+  ],
+  "slug": "clayton-utz",
+  "page": "Clayton Utz",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-cmv-group": {
+  "ids": [
+   1663060
+  ],
+  "slug": "cmv-group",
+  "page": "CMV Group",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-consolidated-travel": {
+  "ids": [
+   76268867
+  ],
+  "slug": "consolidatedtravel",
+  "page": "Consolidated Travel Group",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-cotton-on-group": {
+  "ids": [
+   660560
+  ],
+  "slug": "cotton-on-group",
+  "page": "Cotton On Group",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-creation-homes": {
+  "ids": [
+   6621967
+  ],
+  "slug": "creation-homes",
+  "page": "Creation Homes",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-detmold-group": {
+  "ids": [
+   2828354
+  ],
+  "slug": "detmold-group",
+  "page": "Detmold Group",
+  "country": "AU",
+  "cards": 6,
+  "confirmed": "2026-09-24"
+ },
+ "priv-drake-supermarkets": {
+  "ids": [
+   1553888
+  ],
+  "slug": "drake-supermarkets",
+  "page": "Drakes Supermarkets",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-georgiou": {
+  "ids": [
+   351338
+  ],
+  "slug": "georgiou",
+  "page": "Georgiou",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-ghd": {
+  "ids": [
+   10243
+  ],
+  "slug": "ghd",
+  "page": "GHD",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-gmhba": {
+  "ids": [
+   469687
+  ],
+  "slug": "gmhba",
+  "page": "GMHBA Limited",
+  "country": "AU",
+  "cards": 3,
+  "confirmed": "2026-09-24"
+ },
+ "priv-goodstart-early-learning": {
+  "ids": [
+   1785780
+  ],
+  "slug": "goodstart-early-learning",
+  "page": "Goodstart Early Learning",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-hammondcare": {
+  "ids": [
+   491569
+  ],
+  "slug": "hammondcare",
+  "page": "HammondCare",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-hansen-yuncken": {
+  "ids": [
+   144157
+  ],
+  "slug": "hansen-yuncken",
+  "page": "Hansen Yuncken",
+  "country": "AU",
+  "cards": 1,
+  "confirmed": "2026-09-24"
+ },
+ "priv-hcf": {
+  "ids": [
+   32022
+  ],
+  "slug": "hcf",
+  "page": "HCF Australia",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-john-hughes-group": {
+  "ids": [
+   1378347
+  ],
+  "slug": "johnhughesgroup",
+  "page": "John Hughes Group",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-kennards-hire": {
+  "ids": [
+   657418
+  ],
+  "slug": "kennardshire",
+  "page": "Kennards Hire",
+  "country": "AU",
+  "cards": 4,
+  "confirmed": "2026-09-24"
+ },
+ "priv-kennards-self-storage": {
+  "ids": [
+   695326
+  ],
+  "slug": "kennards-self-storage",
+  "page": "Kennards Self Storage",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-life-without-barriers": {
+  "ids": [
+   395530
+  ],
+  "slug": "life-without-barriers",
+  "page": "Life Without Barriers",
+  "country": "AU",
+  "cards": 4,
+  "confirmed": "2026-09-24"
+ },
+ "priv-linfox": {
+  "ids": [
+   13853
+  ],
+  "slug": "linfox",
+  "page": "Linfox",
+  "country": "OO",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-mecca-brands": {
+  "ids": [
+   1947639
+  ],
+  "slug": "mecca-brands",
+  "page": "MECCA Brands",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-melbourne-airport": {
+  "ids": [
+   64412
+  ],
+  "slug": "melbourne-airport",
+  "page": "Melbourne Airport",
+  "country": "AU",
+  "cards": 2,
+  "confirmed": "2026-09-24"
+ },
+ "priv-merivale": {
+  "ids": [
+   76047
+  ],
+  "slug": "merivale",
+  "page": "Merivale",
+  "country": "AU",
+  "cards": 1,
+  "confirmed": "2026-09-24"
+ },
+ "priv-mort-co": {
+  "ids": [
+   13671068
+  ],
+  "slug": "mortco",
+  "page": "Mort & Co",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-mpc-kinetic": {
+  "ids": [
+   33222907
+  ],
+  "slug": "mpc-kinetic",
+  "page": "MPC Kinetic",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-opal-aged-care": {
+  "ids": [
+   756801
+  ],
+  "slug": "opal-aged-care",
+  "page": "Opal Healthcare",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-pallion": {
+  "ids": [
+   2082679
+  ],
+  "slug": "pallion",
+  "page": "Pallion",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-people-first-bank": {
+  "ids": [
+   100554713
+  ],
+  "slug": "people-first-bank",
+  "page": "People First Bank",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-perth-airport": {
+  "ids": [
+   7577091
+  ],
+  "slug": "perth-airport",
+  "page": "Perth Airport",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-peter-kittle-motor-company": {
+  "ids": [
+   941838
+  ],
+  "slug": "peter-kittle-motor-company",
+  "page": "Peter Kittle Motor Company",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-pwc-australia": {
+  "ids": [
+   2627310
+  ],
+  "slug": "pwc-australia",
+  "page": "PwC Australia",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-raa": {
+  "ids": [
+   53056
+  ],
+  "slug": "raa",
+  "page": "RAA",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-racq": {
+  "ids": [
+   22341
+  ],
+  "slug": "racq",
+  "page": "RACQ",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-racv": {
+  "ids": [
+   13789
+  ],
+  "slug": "racv",
+  "page": "RACV",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-san-remo": {
+  "ids": [
+   1479509
+  ],
+  "slug": "san-remo",
+  "page": "San Remo",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-sarah-group": {
+  "ids": [
+   18774864
+  ],
+  "slug": "sarah-group",
+  "page": "Sarah Group",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-st-john-of-god-health-care": {
+  "ids": [
+   108401
+  ],
+  "slug": "st-john-of-god-health-care",
+  "page": "St John of God Health Care",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-st-vincent-de-paul": {
+  "ids": [
+   7674466
+  ],
+  "slug": "st-vincent-de-paul",
+  "page": "St Vincent De Paul",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-st-vincent-s-health-australia": {
+  "ids": [
+   962337
+  ],
+  "slug": "st-vincent-s-health-australia",
+  "page": "St Vincent's Health Australia",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-stowe-australia": {
+  "ids": [
+   123221
+  ],
+  "slug": "stoweaustralia",
+  "page": "Stowe Australia",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-sunpork-group": {
+  "ids": [
+   68114702
+  ],
+  "slug": "sunpork-group",
+  "page": "SunPork Group",
+  "country": "AU",
+  "cards": 2,
+  "confirmed": "2026-09-24"
+ },
+ "priv-sydney-tools": {
+  "ids": [
+   729518
+  ],
+  "slug": "sydney-tools",
+  "page": "Sydney Tools",
+  "country": "AU",
+  "cards": 1,
+  "confirmed": "2026-09-24"
+ },
+ "priv-talent-international": {
+  "ids": [
+   24989
+  ],
+  "slug": "talent-international",
+  "page": "Talent",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-teachers-health-fund": {
+  "ids": [
+   4804014
+  ],
+  "slug": "teachers-health-fund",
+  "page": "Teachers Health",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-team-global-express": {
+  "ids": [
+   74354090
+  ],
+  "slug": "teamglobalexpress",
+  "page": "Team Global Express",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-tennis-australia": {
+  "ids": [
+   60885
+  ],
+  "slug": "tennis-australia",
+  "page": "Tennis Australia",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-thomas-foods-international": {
+  "ids": [
+   7291530
+  ],
+  "slug": "thomas-foods-international",
+  "page": "Thomas Foods International",
+  "country": "AU",
+  "cards": 6,
+  "confirmed": "2026-09-24"
+ },
+ "priv-turosi": {
+  "ids": [
+   18916521
+  ],
+  "slug": "turosi",
+  "page": "Turosi",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-unitingcare-queensland": {
+  "ids": [
+   1575241
+  ],
+  "slug": "unitingcare-queensland",
+  "page": "UnitingCare Queensland",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-village-roadshow": {
+  "ids": [
+   27366
+  ],
+  "slug": "village-roadshow",
+  "page": "Village Roadshow",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "priv-walker-corporation": {
+  "ids": [
+   1287550
+  ],
+  "slug": "walker-corporation",
+  "page": "Walker Corporation",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "priv-winning-appliances": {
+  "ids": [
+   9901547
+  ],
+  "slug": "winning-appliances",
+  "page": "Winning Appliances",
+  "country": "AU",
+  "cards": 3,
+  "confirmed": "2026-09-24"
+ },
+ "priv-workpac": {
+  "ids": [
+   66480
+  ],
+  "slug": "workpac",
+  "page": "WorkPac",
+  "country": "AU",
+  "cards": 9,
+  "confirmed": "2026-09-24"
+ },
+ "pru": {
+  "ids": [
+   10662046
+  ],
+  "slug": "perseus-mining-limited",
+  "page": "Perseus Mining Limited",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "rio": {
+  "ids": [
+   5204
+  ],
+  "slug": "rio-tinto",
+  "page": "Rio Tinto",
+  "country": "GB",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "rms": {
+  "ids": [
+   9870257
+  ],
+  "slug": "ramelius-resources-limited",
+  "page": "Ramelius Resources Limited",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "rrl": {
+  "ids": [
+   1341859
+  ],
+  "slug": "regis-resources",
+  "page": "Regis Resources Ltd",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "s32": {
+  "ids": [
+   9365938
+  ],
+  "slug": "south32",
+  "page": "South32",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sfr": {
+  "ids": [
+   8648154
+  ],
+  "slug": "sandfire-resources",
+  "page": "Sandfire",
+  "country": "AU",
+  "cards": 5,
+  "confirmed": "2026-09-24"
+ },
+ "shell": {
+  "ids": [
+   1271
+  ],
+  "slug": "shell",
+  "page": "Shell",
+  "country": "GB",
+  "cards": 6,
+  "confirmed": "2026-09-24"
+ },
+ "smr": {
+  "ids": [
+   8399104
+  ],
+  "slug": "stanmore-resources-limited",
+  "page": "Stanmore Resources Limited",
+  "country": "AU",
+  "cards": 6,
+  "confirmed": "2026-09-24"
+ },
+ "stx": {
+  "ids": [
+   6470446
+  ],
+  "slug": "strike-energy",
+  "page": "Strike Energy",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "swm": {
+  "ids": [
+   3687389
+  ],
+  "slug": "sevenwestmedia",
+  "page": "Seven West Media",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-ald": {
+  "ids": [
+   42373409
+  ],
+  "slug": "ampol",
+  "page": "Ampol",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-amp": {
+  "ids": [
+   4007
+  ],
+  "slug": "amp",
+  "page": "AMP",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-apa": {
+  "ids": [
+   450591
+  ],
+  "slug": "apa-group",
+  "page": "APA Group",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-asx": {
+  "ids": [
+   162565
+  ],
+  "slug": "asx",
+  "page": "ASX",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-bga": {
+  "ids": [
+   1143000
+  ],
+  "slug": "bega-cheese-limited",
+  "page": "Bega Group",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-bxb": {
+  "ids": [
+   5086
+  ],
+  "slug": "brambles",
+  "page": "Brambles",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-cgf": {
+  "ids": [
+   12583
+  ],
+  "slug": "challenger-limited",
+  "page": "Challenger Limited",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-chc": {
+  "ids": [
+   993753
+  ],
+  "slug": "charter-hall",
+  "page": "Charter Hall",
+  "country": "AU",
+  "cards": 7,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-coh": {
+  "ids": [
+   9147
+  ],
+  "slug": "cochlear",
+  "page": "Cochlear",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-dow": {
+  "ids": [
+   63273
+  ],
+  "slug": "downer",
+  "page": "Downer",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-dro": {
+  "ids": [
+   7575557
+  ],
+  "slug": "droneshield",
+  "page": "DroneShield",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-evn": {
+  "ids": [
+   2986139
+  ],
+  "slug": "evolution-mining",
+  "page": "Evolution Mining",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-gmg": {
+  "ids": [
+   11166
+  ],
+  "slug": "goodman",
+  "page": "Goodman",
+  "country": "AU",
+  "cards": 9,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-gpt": {
+  "ids": [
+   303034
+  ],
+  "slug": "gpt-group",
+  "page": "The GPT Group",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-hvn": {
+  "ids": [
+   13697
+  ],
+  "slug": "harvey-norman",
+  "page": "Harvey Norman",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-llc": {
+  "ids": [
+   4853
+  ],
+  "slug": "lendlease",
+  "page": "Lendlease",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-mgr": {
+  "ids": [
+   165003
+  ],
+  "slug": "mirvac",
+  "page": "Mirvac",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-mqg": {
+  "ids": [
+   3537
+  ],
+  "slug": "macquariegroup",
+  "page": "Macquarie Group",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-mts": {
+  "ids": [
+   16606
+  ],
+  "slug": "metcash",
+  "page": "Metcash",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-nic": {
+  "ids": [
+   31448347
+  ],
+  "slug": "nickel-industries-limited",
+  "page": "Nickel Industries Limited",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-org": {
+  "ids": [
+   165342
+  ],
+  "slug": "origin-energy",
+  "page": "Origin Energy",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-pni": {
+  "ids": [
+   1573448
+  ],
+  "slug": "pinnacle-investment-management",
+  "page": "Pinnacle Investment Management Group",
+  "country": "AU",
+  "cards": 2,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-ppt": {
+  "ids": [
+   210387
+  ],
+  "slug": "perpetual-limited",
+  "page": "Perpetual Limited",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-qub": {
+  "ids": [
+   2703282
+  ],
+  "slug": "qube-holdings",
+  "page": "Qube",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-rdx": {
+  "ids": [
+   3350532
+  ],
+  "slug": "redox",
+  "page": "Redox Ltd",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-rgn": {
+  "ids": [
+   6432438
+  ],
+  "slug": "regiongroup",
+  "page": "Region Group",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-rhc": {
+  "ids": [
+   41224
+  ],
+  "slug": "ramsay-health-care",
+  "page": "Ramsay Health Care",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-sgm": {
+  "ids": [
+   5922473
+  ],
+  "slug": "sims-metal",
+  "page": "Sims Metal",
+  "country": "US",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-sgp": {
+  "ids": [
+   15429
+  ],
+  "slug": "stockland",
+  "page": "Stockland",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-shl": {
+  "ids": [
+   85835
+  ],
+  "slug": "sonic-healthcare",
+  "page": "Sonic Healthcare",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-tpg": {
+  "ids": [
+   69320870
+  ],
+  "slug": "tpg-telecom",
+  "page": "TPG Telecom",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-whc": {
+  "ids": [
+   1997208
+  ],
+  "slug": "whitehaven-coal",
+  "page": "Whitehaven Coal",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-wor": {
+  "ids": [
+   6677
+  ],
+  "slug": "worley",
+  "page": "Worley",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-wow": {
+  "ids": [
+   295257
+  ],
+  "slug": "woolworths-group",
+  "page": "Woolworths Group",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "sydney-wtc": {
+  "ids": [
+   13728
+  ],
+  "slug": "wisetech-global",
+  "page": "WiseTech Global",
+  "country": "AU",
+  "cards": 0,
+  "confirmed": "2026-09-24"
+ },
+ "wds": {
+  "ids": [
+   11552
+  ],
+  "slug": "woodside-energy",
+  "page": "Woodside Energy",
+  "country": "AU",
+  "cards": 1,
+  "confirmed": "2026-09-24"
+ },
+ "wes": {
+  "ids": [
+   38198
+  ],
+  "slug": "wesfarmers",
+  "page": "Wesfarmers",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ },
+ "wgx": {
+  "ids": [
+   13746592
+  ],
+  "slug": "westgold-resources",
+  "page": "Westgold Resources Limited",
+  "country": "AU",
+  "cards": 10,
+  "confirmed": "2026-09-24"
+ }
+}

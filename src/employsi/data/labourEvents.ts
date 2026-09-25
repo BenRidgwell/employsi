@@ -11,7 +11,31 @@
  * investment peak itself in 2012-13, so that one is corrected here.
  *
  * `month` is 0-indexed (0 = January), matching Date.getMonth().
+ *
+ * EVERY DATE HERE IS A FIXED HISTORICAL FACT EXCEPT THE LAST ONE, and that is
+ * why the last one is derived rather than typed. "Present day" was written as
+ * May 2026 and was right on the day it was written; the vacancy series then
+ * gained two months, so the timeline read "MAR 2006 – JUL 2026", the handle sat
+ * on Jul 2026, and the panel beneath it was badged MAY 2026. Nothing was broken
+ * — the label had simply been left behind by its own data, which is the one
+ * kind of staleness a hand-typed date cannot avoid.
+ *
+ * So it now takes the last month the series actually covers, and moves with it
+ * on every regeneration.
  */
+import { IVI_MONTHS } from "./iviSkillDemand";
+
+/**
+ * The last month of the vacancy series, as [year, 0-indexed month].
+ *
+ * Null when the series is empty or its last entry is not a YYYY-MM, in which
+ * case the present-day event is dropped rather than dated by a fallback — the
+ * whole point of this is that a wrong date here looks exactly like a right one.
+ */
+const PRESENT: [number, number] | null = (() => {
+  const m = /^(\d{4})-(\d{2})$/.exec(IVI_MONTHS[IVI_MONTHS.length - 1] ?? "");
+  return m ? [Number(m[1]), Number(m[2]) - 1] : null;
+})();
 
 export interface LabourEvent {
   year: number;
@@ -93,10 +117,14 @@ export const LABOUR_EVENTS: LabourEvent[] = [
     title: "AI capex boom",
     note: "Data-centre and platform build-out lifts demand for cloud, security and data engineering.",
   },
-  {
-    year: 2026,
-    month: 4,
-    title: "Present day",
-    note: "AI-adjacent and healthcare skills lead the index; generalist tech roles remain competitive.",
-  },
+  ...(PRESENT
+    ? [
+        {
+          year: PRESENT[0],
+          month: PRESENT[1],
+          title: "Present day",
+          note: "AI-adjacent and healthcare skills lead the index; generalist tech roles remain competitive.",
+        },
+      ]
+    : []),
 ];

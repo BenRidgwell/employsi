@@ -25,7 +25,8 @@
 // Run: bun run scripts/check-roster.ts        (exit 1 on any error)
 //      bun run scripts/check-roster.ts --json
 import { COMPANIES } from "../src/employsi/data/companies";
-import { CITY_COMPANIES } from "../src/employsi/data/mapboxGeo";
+import { CITY_COMPANIES, CITY_VIEWS, searchCityFor } from "../src/employsi/data/mapboxGeo";
+import { isReleasedCompany } from "../src/employsi/lib/markets";
 import { SEEK_ADVERTISERS } from "../src/employsi/data/seekAdvertisers";
 import { SEEK_TRADING_NAMES } from "../src/employsi/data/seekTradingNames";
 import { SITES as CAREER_SITES } from "../workers/jobs-cron/careerSites";
@@ -468,6 +469,72 @@ for (const [id, list] of Object.entries(SEEK_TRADING_NAMES)) {
       `${overlaps} keys`,
       "the merge-order assertion needs companies present in both sources to mean anything",
     );
+}
+
+// ── Health NZ districts are a HEAD COUNT, and must never be labelled FTE ─────
+//
+// They are filed from Health New Zealand's own quarterly report, which counts
+// distinct employees; New Zealand's OTHER government rows come from the Public
+// Service Commission and are FTE. The two live in the same generated file and
+// the same lookup, and the only thing keeping them apart is that the generator
+// registers them as separate sources with separate units.
+//
+// Fold `nzhealth` back into `nz` — an obvious-looking tidy-up, since both are
+// "New Zealand" — and 11,473 people are relabelled "Workforce FTE" on the card.
+// Nothing breaks, nothing looks wrong, and the number is then a different
+// quantity from the one its label claims. That is the failure this file exists
+// to catch, so it is asserted rather than left to the comment in the loader.
+{
+  const districts = Object.keys(GOV_HEADCOUNT_AU).filter((id) =>
+    id.startsWith("nz-health-new-zealand"),
+  );
+  if (districts.length === 0) {
+    warn(
+      "health nz districts absent",
+      "nz-health-new-zealand*",
+      "none filed — the loader, its alias keys or the roster query has moved",
+    );
+  }
+  for (const id of districts) {
+    const h = filedHeadcount(id);
+    if (!h) {
+      err("health nz district unreadable", id, "in the data but filedHeadcount returns null");
+      continue;
+    }
+    if (h.unit !== "headcount")
+      err(
+        "health nz district is not a head count",
+        id,
+        `unit is "${h.unit}" — the quarterly report counts employees, not FTE`,
+      );
+  }
+}
+
+// ── search lands where the company actually is ──────────────────────────────
+//
+// Picking a company in the search bar calls searchCityFor(id) and then
+// select(id): the first chooses the local city to drop into, the second opens
+// the card and the map centres on that company's pin. If the city it chooses
+// does not PLACE the company, there is no pin to centre on — the user arrives
+// somewhere the thing they searched for is not, and the card opens over a map
+// that never highlights it.
+//
+// Measured 2026-09-25 while fixing exactly that failure from the other side:
+// 826 of 971 released companies sit more than 400 m from their city's camera
+// centre, so any company can be off screen on arrival and the centring is what
+// puts it on screen. This guards the data half — that there is something to
+// centre on at all.
+{
+  for (const c of COMPANIES) {
+    if (!isReleasedCompany(c.id)) continue;
+    const city = searchCityFor(c.id);
+    const placed = (CITY_COMPANIES[city] ?? []).some((x) => x.id === c.id);
+    if (!placed) {
+      err("search lands off-roster", c.id, `searchCityFor -> ${city}, which does not place it`);
+    } else if (!CITY_VIEWS[city]) {
+      err("search lands without a camera", c.id, `${city} has no CITY_VIEWS entry`);
+    }
+  }
 }
 
 // ── report ──────────────────────────────────────────────────────────────────

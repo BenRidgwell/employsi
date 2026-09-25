@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../../state/store";
 import { buildPanel } from "../../lib/panel";
 import { buildCompanyCard, filedHeadcount, TREND_UP, TREND_DOWN } from "../../lib/companyCard";
@@ -399,11 +399,6 @@ function TimelineScrubber({
           </button>
         ))}
       </div>
-
-      <p className="cctlnote">
-        Daily live vacancies across the archive, so you can see where this employer&rsquo;s history
-        is worth asking about.
-      </p>
     </div>
   );
 }
@@ -498,6 +493,16 @@ export function CompanyPanel() {
   const [chartIdx, setChartIdx] = useState<number | null>(null);
   const plotRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  /**
+   * Whether the body has been scrolled off its top, for the fade under the
+   * frozen header.
+   *
+   * A boolean rather than the offset: the fade is either there or not, and
+   * storing the pixel value would re-render the whole card on every wheel
+   * tick. `> 2` rather than `> 0` because a trackpad leaves sub-pixel offsets
+   * behind that would flicker it.
+   */
+  const [scrolled, setScrolled] = useState(false);
 
   // Leaving the local city layer (zooming/scrolling out to the domestic or
   // global overview) fades the open company card away — clearing selectedId
@@ -518,6 +523,7 @@ export function CompanyPanel() {
     setChartIdx(null);
     setWindowDays(DEFAULT_SKILL_WINDOW);
     scrollRef.current?.scrollTo(0, 0);
+    setScrolled(false);
   }, [selectedId]);
 
   const open = !!selectedId;
@@ -769,8 +775,46 @@ export function CompanyPanel() {
   // Hiring. Reset to Overview whenever the card opens on a new company.
   const [tab, setTab] = useState<CardTab>("Overview");
 
+  /**
+   * The tallest pane this company has shown, so switching tabs never resizes
+   * the card.
+   *
+   * WHY THIS IS NOT A FIXED HEIGHT IN CSS. The card is content-sized under a
+   * max-height, and Hiring is by far the shortest tab — an employer advertising
+   * in three areas fills a third of what Overview does, so the whole card
+   * collapsed on the tab change and sprang back on the way out. A literal
+   * height would fix that and introduce the opposite fault: on a tall monitor
+   * every card would be viewport-tall with a band of white under the content,
+   * and on a short one it would fight the max-height.
+   *
+   * So the floor is measured rather than declared. Each pane reports its own
+   * height, the largest one seen wins, and it only ever grows — the card is
+   * already clamped by .cc's max-height, so a floor past the viewport costs
+   * nothing and simply scrolls.
+   *
+   * The card always opens on Overview, which is the tall tab, so in practice
+   * the floor is set before any tab can be switched to. Skills growing it
+   * further is possible and fine; nothing shrinks.
+   */
+  const [cardFloor, setCardFloor] = useState(0);
+  const paneRef = useRef<HTMLDivElement | null>(null);
+  const cardRef = useRef<HTMLElement | null>(null);
+  /**
+   * Capped in CSS rather than in JS. The floor is an observed card height, so
+   * it cannot exceed the max-height that produced it — but the viewport can
+   * shrink afterwards, and a min-height beats a max-height when the two
+   * disagree, which would leave the card taller than the window holding it.
+   * `min()` keeps the cap beside the rule that already states it.
+   */
+  const cardStyle = cardFloor
+    ? { minHeight: `min(${cardFloor}px, calc(100vh - var(--head-height) - 48px))` }
+    : undefined;
+
   useEffect(() => {
     if (selectedId) setTab("Overview");
+    // A new company is a new card. Carrying the old one's floor over would
+    // hold a tall employer's height under a small one's content.
+    setCardFloor(0);
   }, [selectedId]);
 
   // Skill → live-ad count, and role area → live-ad count, from the same job
@@ -786,6 +830,42 @@ export function CompanyPanel() {
     for (const h of liveHiring ?? []) out[h.title] = h.count;
     return out;
   }, [liveHiring]);
+
+  /**
+   * Measured in a layout effect so the floor lands in the same frame the pane
+   * is painted — from a passive effect the short tab renders at its own height
+   * for one frame, which is the flicker this exists to remove.
+   *
+   * A ResizeObserver rather than a dependency list, because the height moves
+   * for reasons a list cannot name: the skill trends and the news arrive after
+   * the card does, and the map inside Skills sizes itself from them. Watching
+   * the element catches all of it. It cannot loop — raising the floor raises
+   * the pane, the observer fires again with the height it just set, and
+   * `h > f` is false, so React bails on an unchanged state.
+   */
+  useLayoutEffect(() => {
+    const el = paneRef.current;
+    if (!el) return;
+    const read = () => {
+      // THE CARD'S height, not the pane's — the pane is watched only because
+      // it is what changes. Flooring the PANE was the first attempt and it
+      // made the short tab scroll: its content became as tall as Overview's,
+      // so the body had hundreds of pixels of nothing under three rows to
+      // scroll through. The card is the thing that must not resize; the
+      // content should stay its own length, and .ccbody's `flex: 1 1 auto`
+      // fills the difference with no scrollable void.
+      //
+      // An observed height cannot exceed the max-height that produced it, so
+      // the floor needs no clamping of its own.
+      const h = cardRef.current?.offsetHeight ?? 0;
+      if (h) setCardFloor((f) => (h > f ? h : f));
+    };
+    read();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [tab]);
 
   // The Overview tile's top skill. The archive is preferred so it names the
   // same skill the Skills tab leads with; the live job sample is the fallback
@@ -891,7 +971,7 @@ export function CompanyPanel() {
 
   return (
     <div className={`cardstage ${open ? "open" : ""}${newsCollapsed ? " newstucked" : ""}`}>
-      <aside className={`cc ${open ? "open" : ""}`}>
+      <aside className={`cc ${open ? "open" : ""}`} ref={cardRef} style={cardStyle}>
         {cardLoading && <CardLoader tone="light" />}
         {card && panel && (
           <>
@@ -958,317 +1038,341 @@ export function CompanyPanel() {
               ))}
             </div>
 
-            <div className="ccbody" ref={scrollRef}>
-              {tab === "Overview" && (
-                <div className="ccpane">
-                  {/* Badge, then label, then figure — the reading order of the
+            {/* Wrapped so the fade can sit OVER the body without scrolling
+                with it. Inside the scroller it would need position:sticky and
+                would start below the 16px padding; outside it, it is flush
+                against the tabs, which is the edge it is marking. */}
+            <div className="ccbodywrap">
+              {/* Soft white under the frozen header, once the body is off its
+                  top. Without it the card's header and its content share an
+                  edge with no depth at it, and a card scrolled halfway looks
+                  the same as one at the top. */}
+              <span className={`ccfade${scrolled ? " on" : ""}`} aria-hidden />
+              <div
+                className="ccbody"
+                ref={scrollRef}
+                onScroll={(e) => {
+                  const on = e.currentTarget.scrollTop > 2;
+                  // Set only on a change: onScroll fires continuously, and a
+                  // setState per event would re-render the card through the
+                  // whole gesture.
+                  setScrolled((was) => (was === on ? was : on));
+                }}
+              >
+                {tab === "Overview" && (
+                  <div className="ccpane" ref={paneRef}>
+                    {/* Badge, then label, then figure — the reading order of the
                       reference design. The badge sits ABOVE rather than beside
                       it: the card is 440px wide with 18px gutters, so each of
                       the three columns has ~132px, and a 64px disc alongside
                       the text needs roughly twice that. */}
-                  <div className="ccstats">
-                    {card.stats.map((s) => (
-                      <div className="ccstat" key={s.label}>
-                        {s.icon && <StatBadge icon={s.icon} />}
-                        <span className="ccstatl">{s.label}</span>
-                        <span className={`ccstatv${s.textValue ? " text" : ""}`}>{s.value}</span>
-                        {s.delta && (
-                          <span className={`ccstatd ${s.deltaUp ? "up" : "down"}`}>
-                            <svg
-                              viewBox="0 0 12 12"
-                              width={11}
-                              height={11}
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth={2}
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              aria-hidden
-                            >
-                              <line x1="6" y1="10" x2="6" y2="2" />
-                              <polyline points="2.5 5.5 6 2 9.5 5.5" />
-                            </svg>
-                            <b>{s.delta}</b>
-                            {s.deltaNote && <i>{s.deltaNote}</i>}
-                          </span>
-                        )}
-                        {s.sub && <span className="ccstatsub">{s.sub}</span>}
-                      </div>
-                    ))}
-                  </div>
+                    <div className="ccstats">
+                      {card.stats.map((s) => (
+                        <div className="ccstat" key={s.label}>
+                          {s.icon && <StatBadge icon={s.icon} />}
+                          <span className="ccstatl">{s.label}</span>
+                          <span className={`ccstatv${s.textValue ? " text" : ""}`}>{s.value}</span>
+                          {s.delta && (
+                            <span className={`ccstatd ${s.deltaUp ? "up" : "down"}`}>
+                              <svg
+                                viewBox="0 0 12 12"
+                                width={11}
+                                height={11}
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden
+                              >
+                                <line x1="6" y1="10" x2="6" y2="2" />
+                                <polyline points="2.5 5.5 6 2 9.5 5.5" />
+                              </svg>
+                              <b>{s.delta}</b>
+                              {s.deltaNote && <i>{s.deltaNote}</i>}
+                            </span>
+                          )}
+                          {s.sub && <span className="ccstatsub">{s.sub}</span>}
+                        </div>
+                      ))}
+                    </div>
 
-                  {card.chart ? (
-                    <div className="ccchart">
-                      {/* Headline block, left-aligned above the plot: eyebrow,
+                    {card.chart ? (
+                      <div className="ccchart">
+                        {/* Headline block, left-aligned above the plot: eyebrow,
                           the live vacancy count with its change pill inline,
                           then the second series as a quieter line beneath.
                           These used to float inside the plot as four absolutely
                           positioned boxes, which sat on top of the line itself
                           whenever a series ran near the top or bottom of the
                           band. */}
-                      <div className="ccreadout">
-                        <span className="cceyebrow">Vacancies · {card.chart.label}</span>
-                        <span className="ccreadv">
-                          {card.chart.vacancies.latest}
-                          <span className={`ccdelta ${card.chart.vacancies.up ? "up" : "down"}`}>
-                            {card.chart.vacancies.up ? "▲" : "▼"} {card.chart.vacancies.delta}
-                          </span>
-                        </span>
-                        {card.chart.second && (
-                          <span className="ccreadsub">
-                            <i className="cclegline alt" />
-                            {card.chart.second.latest}
-                            <em>{card.chart.second.label.toLowerCase()}</em>
-                            <span className={`ccsubd ${card.chart.second.up ? "up" : "down"}`}>
-                              {card.chart.second.up ? "▲" : "▼"} {card.chart.second.delta}
+                        <div className="ccreadout">
+                          <span className="cceyebrow">Vacancies · {card.chart.label}</span>
+                          <span className="ccreadv">
+                            {card.chart.vacancies.latest}
+                            <span className={`ccdelta ${card.chart.vacancies.up ? "up" : "down"}`}>
+                              {card.chart.vacancies.up ? "▲" : "▼"} {card.chart.vacancies.delta}
                             </span>
                           </span>
-                        )}
-                      </div>
+                          {card.chart.second && (
+                            <span className="ccreadsub">
+                              <i className="cclegline alt" />
+                              {card.chart.second.latest}
+                              <em>{card.chart.second.label.toLowerCase()}</em>
+                              <span className={`ccsubd ${card.chart.second.up ? "up" : "down"}`}>
+                                {card.chart.second.up ? "▲" : "▼"} {card.chart.second.delta}
+                              </span>
+                            </span>
+                          )}
+                        </div>
 
-                      <div
-                        className="ccplot"
-                        ref={plotRef}
-                        onMouseMove={(e) => {
-                          const n = card.chart?.days.length ?? 0;
-                          if (n < 2) return;
-                          const r = e.currentTarget.getBoundingClientRect();
-                          const f = (e.clientX - r.left) / r.width;
-                          setChartIdx(Math.max(0, Math.min(n - 1, Math.round(f * (n - 1)))));
-                        }}
-                        onMouseLeave={() => setChartIdx(null)}
-                      >
-                        <svg viewBox="0 0 400 150" preserveAspectRatio="none" fill="none">
-                          <defs>
-                            <linearGradient id="cc-fade" x1="0" y1="0" x2="0" y2="1">
-                              {/* The design leads with the fill, not the stroke:
+                        <div
+                          className="ccplot"
+                          ref={plotRef}
+                          onMouseMove={(e) => {
+                            const n = card.chart?.days.length ?? 0;
+                            if (n < 2) return;
+                            const r = e.currentTarget.getBoundingClientRect();
+                            const f = (e.clientX - r.left) / r.width;
+                            setChartIdx(Math.max(0, Math.min(n - 1, Math.round(f * (n - 1)))));
+                          }}
+                          onMouseLeave={() => setChartIdx(null)}
+                        >
+                          <svg viewBox="0 0 400 150" preserveAspectRatio="none" fill="none">
+                            <defs>
+                              <linearGradient id="cc-fade" x1="0" y1="0" x2="0" y2="1">
+                                {/* The design leads with the fill, not the stroke:
                                   saturated at the curve and washing out to
                                   nothing at the floor. */}
-                              <stop
-                                offset="0"
-                                stopColor={card.chart.vacancies.up ? TREND_UP : TREND_DOWN}
-                                stopOpacity=".42"
+                                <stop
+                                  offset="0"
+                                  stopColor={card.chart.vacancies.up ? TREND_UP : TREND_DOWN}
+                                  stopOpacity=".42"
+                                />
+                                <stop
+                                  offset=".5"
+                                  stopColor={card.chart.vacancies.up ? TREND_UP : TREND_DOWN}
+                                  stopOpacity=".14"
+                                />
+                                <stop
+                                  offset="1"
+                                  stopColor={card.chart.vacancies.up ? TREND_UP : TREND_DOWN}
+                                  stopOpacity="0"
+                                />
+                              </linearGradient>
+                            </defs>
+                            <path d={card.chart.area} fill="url(#cc-fade)" />
+                            {card.chart.second && (
+                              <path
+                                className="ccline2"
+                                d={card.chart.second.path}
+                                strokeWidth="1.8"
+                                strokeLinejoin="round"
+                                strokeLinecap="round"
+                                vectorEffect="non-scaling-stroke"
                               />
-                              <stop
-                                offset=".5"
-                                stopColor={card.chart.vacancies.up ? TREND_UP : TREND_DOWN}
-                                stopOpacity=".14"
-                              />
-                              <stop
-                                offset="1"
-                                stopColor={card.chart.vacancies.up ? TREND_UP : TREND_DOWN}
-                                stopOpacity="0"
-                              />
-                            </linearGradient>
-                          </defs>
-                          <path d={card.chart.area} fill="url(#cc-fade)" />
-                          {card.chart.second && (
+                            )}
                             <path
-                              className="ccline2"
-                              d={card.chart.second.path}
-                              strokeWidth="1.8"
+                              d={card.chart.vacancies.path}
+                              stroke={card.chart.vacancies.up ? TREND_UP : TREND_DOWN}
+                              strokeWidth="2.25"
                               strokeLinejoin="round"
                               strokeLinecap="round"
                               vectorEffect="non-scaling-stroke"
                             />
-                          )}
-                          <path
-                            d={card.chart.vacancies.path}
-                            stroke={card.chart.vacancies.up ? TREND_UP : TREND_DOWN}
-                            strokeWidth="2.25"
-                            strokeLinejoin="round"
-                            strokeLinecap="round"
-                            vectorEffect="non-scaling-stroke"
-                          />
-                          {chartIdx != null && card.chart.vacPts[chartIdx] && (
-                            <line
-                              className="cctlline"
-                              x1={card.chart.vacPts[chartIdx][0]}
-                              x2={card.chart.vacPts[chartIdx][0]}
-                              y1="6"
-                              y2="140"
-                              vectorEffect="non-scaling-stroke"
-                            />
-                          )}
-                        </svg>
+                            {chartIdx != null && card.chart.vacPts[chartIdx] && (
+                              <line
+                                className="cctlline"
+                                x1={card.chart.vacPts[chartIdx][0]}
+                                x2={card.chart.vacPts[chartIdx][0]}
+                                y1="6"
+                                y2="140"
+                                vectorEffect="non-scaling-stroke"
+                              />
+                            )}
+                          </svg>
 
-                        {/* Markers are HTML, not SVG: the plot stretches with
+                          {/* Markers are HTML, not SVG: the plot stretches with
                             preserveAspectRatio="none", which would squash an
                             SVG circle into an ellipse. */}
-                        {chartIdx == null && card.chart.vacPts.length > 0 && (
-                          <span
-                            className={`ccnow ${card.chart.vacancies.up ? "up" : "down"}`}
-                            style={{
-                              left: `${(card.chart.vacPts[card.chart.vacPts.length - 1][0] / 400) * 100}%`,
-                              top: `${(card.chart.vacPts[card.chart.vacPts.length - 1][1] / 150) * 100}%`,
-                            }}
-                          />
-                        )}
+                          {chartIdx == null && card.chart.vacPts.length > 0 && (
+                            <span
+                              className={`ccnow ${card.chart.vacancies.up ? "up" : "down"}`}
+                              style={{
+                                left: `${(card.chart.vacPts[card.chart.vacPts.length - 1][0] / 400) * 100}%`,
+                                top: `${(card.chart.vacPts[card.chart.vacPts.length - 1][1] / 150) * 100}%`,
+                              }}
+                            />
+                          )}
 
-                        {chartIdx != null && card.chart.days[chartIdx] && (
-                          <>
-                            {/* Only where the second series actually has a
+                          {chartIdx != null && card.chart.days[chartIdx] && (
+                            <>
+                              {/* Only where the second series actually has a
                                 value — before secondFrom the array is padded to
                                 stay index-aligned and nothing is drawn. */}
-                            {chartIdx >= card.chart.secondFrom &&
-                              card.chart.secondPts?.[chartIdx] && (
+                              {chartIdx >= card.chart.secondFrom &&
+                                card.chart.secondPts?.[chartIdx] && (
+                                  <span
+                                    className="ccdot alt"
+                                    style={{
+                                      left: `${(card.chart.secondPts[chartIdx][0] / 400) * 100}%`,
+                                      top: `${(card.chart.secondPts[chartIdx][1] / 150) * 100}%`,
+                                    }}
+                                  />
+                                )}
+                              {card.chart.vacPts[chartIdx] && (
                                 <span
-                                  className="ccdot alt"
+                                  className={`ccdot ${card.chart.vacancies.up ? "up" : "down"}`}
                                   style={{
-                                    left: `${(card.chart.secondPts[chartIdx][0] / 400) * 100}%`,
-                                    top: `${(card.chart.secondPts[chartIdx][1] / 150) * 100}%`,
+                                    left: `${(card.chart.vacPts[chartIdx][0] / 400) * 100}%`,
+                                    top: `${(card.chart.vacPts[chartIdx][1] / 150) * 100}%`,
                                   }}
                                 />
                               )}
-                            {card.chart.vacPts[chartIdx] && (
-                              <span
-                                className={`ccdot ${card.chart.vacancies.up ? "up" : "down"}`}
-                                style={{
-                                  left: `${(card.chart.vacPts[chartIdx][0] / 400) * 100}%`,
-                                  top: `${(card.chart.vacPts[chartIdx][1] / 150) * 100}%`,
-                                }}
-                              />
-                            )}
-                            {/* Anchored to whichever series is higher at this
+                              {/* Anchored to whichever series is higher at this
                                 day, so the flag's stem lands on a marker and
                                 the card never covers the other line. */}
-                            <ChartTooltip
-                              boxRef={plotRef}
-                              className="ccflag"
-                              leftPct={(card.chart.vacPts[chartIdx][0] / 400) * 100}
-                              topPct={
-                                (Math.min(
-                                  card.chart.vacPts[chartIdx][1],
-                                  card.chart.secondPts?.[chartIdx]?.[1] ?? Infinity,
-                                ) /
-                                  150) *
-                                100
-                              }
-                            >
-                              <div className="wttiplabel">{fmtDay(card.chart.days[chartIdx])}</div>
-                              {/* .ccsw, not the shared .wtsw: those swatches are
+                              <ChartTooltip
+                                boxRef={plotRef}
+                                className="ccflag"
+                                leftPct={(card.chart.vacPts[chartIdx][0] / 400) * 100}
+                                topPct={
+                                  (Math.min(
+                                    card.chart.vacPts[chartIdx][1],
+                                    card.chart.secondPts?.[chartIdx]?.[1] ?? Infinity,
+                                  ) /
+                                    150) *
+                                  100
+                                }
+                              >
+                                <div className="wttiplabel">
+                                  {fmtDay(card.chart.days[chartIdx])}
+                                </div>
+                                {/* .ccsw, not the shared .wtsw: those swatches are
                                   coloured for the workforce/financial charts
                                   (ink primary, green second) and this chart
                                   inverts that — its primary line carries the
                                   trend colour and its second line is ink, so
                                   .wtsw labelled each row with the other row's
                                   colour. */}
-                              <div className="wttiprow">
-                                <i className={`ccsw ${card.chart.vacancies.up ? "up" : "down"}`} />
-                                <b>{card.chart.vacValues[chartIdx]?.toLocaleString("en-AU")}</b>
-                                <span>Vacancies</span>
-                              </div>
-                              {card.chart.secondValues &&
-                                card.chart.second &&
-                                chartIdx >= card.chart.secondFrom && (
-                                  <div className="wttiprow">
-                                    <i className="ccsw alt" />
-                                    <b>{card.chart.secondValues[chartIdx]?.toFixed(2)}</b>
-                                    <span>{card.chart.second.label}</span>
-                                  </div>
-                                )}
-                            </ChartTooltip>
-                          </>
-                        )}
-                      </div>
+                                <div className="wttiprow">
+                                  <i
+                                    className={`ccsw ${card.chart.vacancies.up ? "up" : "down"}`}
+                                  />
+                                  <b>{card.chart.vacValues[chartIdx]?.toLocaleString("en-AU")}</b>
+                                  <span>Vacancies</span>
+                                </div>
+                                {card.chart.secondValues &&
+                                  card.chart.second &&
+                                  chartIdx >= card.chart.secondFrom && (
+                                    <div className="wttiprow">
+                                      <i className="ccsw alt" />
+                                      <b>{card.chart.secondValues[chartIdx]?.toFixed(2)}</b>
+                                      <span>{card.chart.second.label}</span>
+                                    </div>
+                                  )}
+                              </ChartTooltip>
+                            </>
+                          )}
+                        </div>
 
-                      <div className="ccaxis">
-                        {card.chart.axis.map((t, i) => (
-                          <span key={i}>{t}</span>
+                        <div className="ccaxis">
+                          {card.chart.axis.map((t, i) => (
+                            <span key={i}>{t}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      card.chartNote && <div className="dataempty">{card.chartNote}</div>
+                    )}
+
+                    {card.facts.length > 0 && (
+                      <div className="ccfacts">
+                        {card.facts.map((f) => (
+                          <div className="ccfact" key={f.k}>
+                            <span className="ccfactk">{f.k}</span>
+                            <span className="ccfactv">{f.v}</span>
+                          </div>
                         ))}
                       </div>
-                    </div>
-                  ) : (
-                    card.chartNote && <div className="dataempty">{card.chartNote}</div>
-                  )}
+                    )}
+                  </div>
+                )}
 
-                  {card.facts.length > 0 && (
-                    <div className="ccfacts">
-                      {card.facts.map((f) => (
-                        <div className="ccfact" key={f.k}>
-                          <span className="ccfactk">{f.k}</span>
-                          <span className="ccfactv">{f.v}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {tab === "Skills" && (
-                <div className="ccpane">
-                  {/* Archive-backed section: the top skill at size with its
+                {tab === "Skills" && (
+                  <div className="ccpane" ref={paneRef}>
+                    {/* Archive-backed section: the top skill at size with its
                       market rank, where its live ads sit, and the rest as rows
                       with their own line. Falls back to the flat chips below
                       when the archive holds nothing for this company yet — a
                       card opened on a company first queried today should still
                       show what it is advertising for. */}
-                  {skillTrends.skills.length > 0 && (
-                    <>
-                      {/* Safe to gate on the skill list: the live counts come
+                    {skillTrends.skills.length > 0 && (
+                      <>
+                        {/* Safe to gate on the skill list: the live counts come
                           from `last_seen >= yesterday` and do not depend on the
                           window at all, so no setting of the slider can empty
                           the section and strand the control with it. Only the
                           lines and the percentages change. */}
-                      <TimelineScrubber
-                        days={windowDays}
-                        covered={skillTrends.days.length}
-                        series={vacancySeries}
-                        loading={trendsLoading}
-                        onChange={setWindowDays}
-                      />
-                      <SkillDemand trends={skillTrends} ranks={skillRanks} />
-                    </>
-                  )}
-                  {skillTrends.skills.length === 0 && (
-                    <>
-                      <div className="ccsecth">
-                        <span className="cceyebrow">Skills in demand</span>
-                        <span className="ccsecthsub">
-                          {rolesChecking && !card.skills.length
-                            ? "checking live ads…"
-                            : `from ${card.stats[0].value} live ads`}
-                        </span>
-                      </div>
-                      {card.skills.length ? (
-                        <div className="ccchips">
-                          {card.skills.map((s) => (
-                            <span className="ccchip" key={s.name}>
-                              {s.name}
-                              <span className="ccchipn">{s.n}</span>
-                            </span>
-                          ))}
-                          {skillsOpen &&
-                            card.restSkills.map((s) => (
+                        <TimelineScrubber
+                          days={windowDays}
+                          covered={skillTrends.days.length}
+                          series={vacancySeries}
+                          loading={trendsLoading}
+                          onChange={setWindowDays}
+                        />
+                        <SkillDemand trends={skillTrends} ranks={skillRanks} />
+                      </>
+                    )}
+                    {skillTrends.skills.length === 0 && (
+                      <>
+                        <div className="ccsecth">
+                          <span className="cceyebrow">Skills in demand</span>
+                          <span className="ccsecthsub">
+                            {rolesChecking && !card.skills.length
+                              ? "checking live ads…"
+                              : `from ${card.stats[0].value} live ads`}
+                          </span>
+                        </div>
+                        {card.skills.length ? (
+                          <div className="ccchips">
+                            {card.skills.map((s) => (
                               <span className="ccchip" key={s.name}>
                                 {s.name}
                                 <span className="ccchipn">{s.n}</span>
                               </span>
                             ))}
-                          {card.moreSkills > 0 && (
-                            <button
-                              type="button"
-                              className="ccchip ccchipmore"
-                              aria-expanded={skillsOpen}
-                              onClick={() => setSkillsOpen((v) => !v)}
-                            >
-                              {skillsOpen ? "show fewer" : `+${card.moreSkills} more`}
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="dataempty">No live job ads</div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
+                            {skillsOpen &&
+                              card.restSkills.map((s) => (
+                                <span className="ccchip" key={s.name}>
+                                  {s.name}
+                                  <span className="ccchipn">{s.n}</span>
+                                </span>
+                              ))}
+                            {card.moreSkills > 0 && (
+                              <button
+                                type="button"
+                                className="ccchip ccchipmore"
+                                aria-expanded={skillsOpen}
+                                onClick={() => setSkillsOpen((v) => !v)}
+                              >
+                                {skillsOpen ? "show fewer" : `+${card.moreSkills} more`}
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="dataempty">No live job ads</div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
 
-              {tab === "Hiring" && (
-                <div className="ccpane">
-                  <div className="ccsecth">
-                    <span className="cceyebrow">Where they&rsquo;re hiring</span>
-                    {/* When the rows carry arrows the heading has to describe
+                {tab === "Hiring" && (
+                  <div className="ccpane" ref={paneRef}>
+                    <div className="ccsecth">
+                      <span className="cceyebrow">Where they&rsquo;re hiring</span>
+                      {/* When the rows carry arrows the heading has to describe
                         what the ARROWS measure, not the vacancy chart's window
                         and not the sparklines' either. card.hiringWindow is the
                         chart's span, while the change beside each bar compares
@@ -1277,50 +1381,51 @@ export function CompanyPanel() {
                         their coverage of an employer can start later than the
                         rest. Any two of those disagreeing under one heading is
                         worse than the heading being vague. */}
-                    <span className="ccsecthsub">
-                      {skillTrends.areas.length > 0 && skillTrends.areaDays > 1
-                        ? `${skillTrends.areaDays}-day change`
-                        : (card.hiringWindow ?? "share of live ads")}
-                    </span>
-                  </div>
-                  {hiringRows.length ? (
-                    <div className="cchiring">
-                      {hiringRows.slice(0, HIRING_ROWS).map((h) => (
-                        <div className="cchirerow" key={h.name}>
-                          <span className="cchirename">{h.name}</span>
-                          {/* Immediately left of the scale, so the change and
+                      <span className="ccsecthsub">
+                        {skillTrends.areas.length > 0 && skillTrends.areaDays > 1
+                          ? `${skillTrends.areaDays}-day change`
+                          : (card.hiringWindow ?? "share of live ads")}
+                      </span>
+                    </div>
+                    {hiringRows.length ? (
+                      <div className="cchiring">
+                        {hiringRows.slice(0, HIRING_ROWS).map((h) => (
+                          <div className="cchirerow" key={h.name}>
+                            <span className="cchirename">{h.name}</span>
+                            {/* Immediately left of the scale, so the change and
                               the bar it belongs to read as one thing. Holds its
                               slot when the archive cannot support a change, or
                               the bars would stop lining up. */}
-                          <AreaTrend pct={h.pct} />
-                          <span className="cchirebar">
-                            <span className="cchirefill" style={{ width: h.width }} />
-                          </span>
-                          <span className="cchiren">{h.n}</span>
-                        </div>
-                      ))}
-                      {/* What the bars cover, and what the list left out.
+                            <AreaTrend pct={h.pct} />
+                            <span className="cchirebar">
+                              <span className="cchirefill" style={{ width: h.width }} />
+                            </span>
+                            <span className="cchiren">{h.n}</span>
+                          </div>
+                        ))}
+                        {/* What the bars cover, and what the list left out.
                           Both matter here: only feeds with a real published
                           taxonomy contribute an area, so these bars describe a
                           fraction of the employer's live ads — without the
                           figure the tallest bar reads as the whole picture. */}
-                      {(hiringRows.length > HIRING_ROWS || classified.total > 0) && (
-                        <div className="cchiremore">
-                          {hiringRows.length > HIRING_ROWS &&
-                            `+${hiringRows.length - HIRING_ROWS} more area${
-                              hiringRows.length - HIRING_ROWS === 1 ? "" : "s"
-                            }`}
-                          {hiringRows.length > HIRING_ROWS && classified.total > 0 && " · "}
-                          {classified.total > 0 &&
-                            `${classified.n} of ${classified.total} ads classified`}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="dataempty">No live job ads</div>
-                  )}
-                </div>
-              )}
+                        {(hiringRows.length > HIRING_ROWS || classified.total > 0) && (
+                          <div className="cchiremore">
+                            {hiringRows.length > HIRING_ROWS &&
+                              `+${hiringRows.length - HIRING_ROWS} more area${
+                                hiringRows.length - HIRING_ROWS === 1 ? "" : "s"
+                              }`}
+                            {hiringRows.length > HIRING_ROWS && classified.total > 0 && " · "}
+                            {classified.total > 0 &&
+                              `${classified.n} of ${classified.total} ads classified`}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="dataempty">No live job ads</div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </>
         )}

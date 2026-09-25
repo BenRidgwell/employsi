@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAppStore } from "../state/store";
 import { FeedbackBoard } from "./FeedbackBoard";
 import { NotificationBell } from "./NotificationBell";
+import { SupplyDemandSwitch } from "./SupplyDemandSwitch";
 import { IconClose, IconFeedback, IconHelp, IconSettings } from "./ActionIcons";
 import { SettingsPanel } from "./SettingsPanel";
 import { GuidedTour } from "./GuidedTour";
@@ -258,6 +259,11 @@ export function HelpDock() {
           }}
         />
       )}
+
+      {/* Left of the bell, per the brief. IT IS NOT CONNECTED TO ANYTHING YET —
+          it holds its own mode and no other component reads it. See
+          SupplyDemandSwitch.tsx. */}
+      <SupplyDemandSwitch />
 
       {/* Far left of the header cluster, next to Feedback, per the brief. It is
           not a DockButton: it owns its own panel, badge and ring animation, and

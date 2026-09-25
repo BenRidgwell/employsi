@@ -2157,7 +2157,14 @@ export const NOT_A_LADDER: Record<string, string> = {
  * so a wave can land on its own, and prints them, so the gap stays visible.
  * Empty is the finished state.
  */
-export const PATHWAYS_PLANNED: string[] = [];
+export const PATHWAYS_PLANNED: string[] = [
+  // Added to the taxonomy on main (791e0dc) after the four waves; it arrived
+  // here in a merge. Its titles do form a ladder — strategy analyst / associate
+  // → strategy manager / lead → strategy director / head of strategy → chief
+  // strategy officer — and it needs the same audit-and-fixtures pass as every
+  // other family before its rules exist.
+  "Strategy",
+];
 
 function rungFrom(rules: [RegExp, Rung][], t: string): Rung | null {
   for (const [re, rung] of rules) if (re.test(t)) return rung;
