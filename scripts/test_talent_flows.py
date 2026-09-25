@@ -254,17 +254,50 @@ def test_acquisition():
     check('acquisition: moves before completion are hires',
           rows.get(('li:oz-minerals', 'li:bhp')) == 2, rows)
     check('acquisition: completion month and after are transfers, both ways',
-          excluded == Counter({('li:oz-minerals', 'li:bhp'): 2, ('li:bhp', 'li:oz-minerals'): 1}),
+          excluded == Counter({('acquisition', 'li:oz-minerals', 'li:bhp'): 2,
+                               ('acquisition', 'li:bhp', 'li:oz-minerals'): 1}),
           excluded)
     check('acquisition: other pairs are untouched',
           rows.get(('li:rio-tinto', 'li:bhp')) == 1 and rows.get(('li:oz-minerals', 'li:rio-tinto')) == 1,
           rows)
     check('acquisition: no excluded counter is fine',
           aggregate(moves, '2020-01', '2026-12') == aggregate(moves, '2020-01', '2026-12', Counter()))
-    rep = exclusion_report(excluded)
+    rep = exclusion_report(excluded)['acquisition_transfers']
     check('acquisition: the export names what it removed and why',
           rep[0]['moves'] == 2 and 'li:bhp acquired li:oz-minerals' in rep[0]['reason']
           and 'bhp.com' in rep[0]['evidence'], rep)
+
+
+def test_not_employers():
+    def mv(f, fn, t, tn):
+        return {'from_ref': f, 'from_name': fn, 'to_ref': t, 'to_name': tn, 'month': '2024-01'}
+    moves = [
+        mv('name:freelance', 'Freelance', 'li:bhp', 'BHP'),
+        mv('li:rio-tinto', 'Rio Tinto', 'name:freelance', 'Freelance'),
+        mv('name:self employed', 'Self-employed', 'li:bhp', 'BHP'),
+        mv('li:hd-independent-consultant', 'Independent Consultant', 'li:bhp', 'BHP'),
+        mv('name:', '-', 'li:bhp', 'BHP'),                     # "-" normalises to nothing
+        mv('li:freelance-copywriter-x', 'Freelance copywriter/online editor', 'li:bhp', 'BHP'),
+        mv('li:rio-tinto', 'Rio Tinto', 'li:bhp', 'BHP'),
+    ]
+    excluded = Counter()
+    rows = {(r['from_ref'], r['to_ref']): r['moves']
+            for r in aggregate(moves, '2024-01', '2024-01', excluded)}
+    check('not employers: neither end of a freelance spell is a flow',
+          ('name:freelance', 'li:bhp') not in rows and ('li:rio-tinto', 'name:freelance') not in rows,
+          rows)
+    check('not employers: nor X -> BHP invented across it',
+          rows.get(('li:rio-tinto', 'li:bhp')) == 1, rows)
+    check('not employers: matched by name whatever the ref',
+          ('li:hd-independent-consultant', 'li:bhp') not in rows, rows)
+    check('not employers: an empty ref never reaches the loader',
+          not any('name:' in (f, t) for f, t in rows), rows)
+    check('not employers: exact names only, a named freelance business stays',
+          rows.get(('li:freelance-copywriter-x', 'li:bhp')) == 1, rows)
+    rep = exclusion_report(excluded)['not_employers']
+    check('not employers: the export counts each one removed',
+          {r['name']: r['moves'] for r in rep} ==
+          {'Freelance': 2, 'Self-employed': 1, 'Independent Consultant': 1, '-': 1}, rep)
 
 
 def test_person_key():
@@ -371,7 +404,7 @@ def test_bd_empty():
 
 for t in [test_links, test_clean, test_single, test_grouped, test_side_role,
           test_unknown_employer, test_year_only, test_ambiguous, test_boomerang,
-          test_aggregate, test_acquisition, test_person_key, test_bd_sample, test_bd_moves,
+          test_aggregate, test_acquisition, test_not_employers, test_person_key, test_bd_sample, test_bd_moves,
           test_bd_refusals, test_bd_grouped, test_bd_empty]:
     t()
 

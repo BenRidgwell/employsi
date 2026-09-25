@@ -131,8 +131,11 @@ Facts it depends on (read 2026-09-24):
     below: all 40 in the 60-month window are after completion, so the pair
     leaves the export entirely (1,504 moves over 1,202 pairs remain; Rio
     Tinto 43, Fortescue 13, Thiess 11 and Programmed 10 still reach 10).
-  - **"Freelance" is a source with 6 moves.** It is not an employer; the
-    parser takes it as one. A small deny-list of non-employers is needed.
+  - **"Freelance" was a source with 6 moves**, "Self-employed" with 3, and
+    one employer named "-" became the ref `name:`, which made
+    `flows-to-d1.py` refuse the whole file. **Excluded since 2026-09-25**,
+    see rule 9 below: 20 moves over 14 pairs, leaving 1,484 moves over
+    1,189 pairs. The loader now reads the export as written.
   The 62 moves out of BHP (45 pairs) are all boomerangs: everyone sampled is
   a current BHP employee, so every exit seen is followed by a return.
 - **The rate limit is not a fixed count per window.** 00:41–00:55 UTC: 164
@@ -487,7 +490,7 @@ Each one is a bug shape this repo has hit before on the job archive.
    month on, open-ended because profiles are updated late (the OZ Minerals
    trickle ran to 2024-04). Earlier moves stay: they were hires. Both
    collectors' exports report what was dropped in
-   `filters.acquisition_transfers_excluded` and say so in `notes`. Each entry
+   `filters.excluded.acquisition_transfers` and say so in `notes`. Each entry
    needs a primary source for its date, and a measurement of the pair's
    months showing the spike, in the comment beside it.
    The raw counts in `flow_collect_moves` keep these moves, so a rule can be
@@ -497,6 +500,19 @@ Each one is a bug shape this repo has hit before on the job archive.
    month. A vendor delivery needs the vendor's own handling, or the pair
    withheld. Asserted in `scripts/test_talent_flows.py` (`test_acquisition`),
    not in `check-flows.ts`: it happens before anything reaches the app.
+9. **A way of working is not an employer.** "Freelance", "Self-employed",
+   "Independent Consultant" and a name that normalises to nothing are
+   `NOT_EMPLOYERS` in `scripts/talent_flows.py`, matched on the normalised
+   name whatever the ref (Independent Consultant arrived as a LinkedIn
+   page). `aggregate()` drops every move to or from one and reports them in
+   `filters.excluded.not_employers`. The spell still separates the jobs
+   either side of it: X -> Freelance -> BHP is two dropped moves, never an
+   invented X -> BHP. That is also why this is done in `aggregate()` and not
+   in the parser: the profiles already collected survive only as pair counts
+   in D1, and refusing the entry at parse time would treat new profiles
+   differently from them. Exact names only, so a named business such as
+   "Freelance copywriter/online editor" stays. Asserted in
+   `test_not_employers`.
 
 The check script runs against a small synthetic fixture checked into
 `scripts/fixtures/`, clearly labelled synthetic, and never loaded into D1.

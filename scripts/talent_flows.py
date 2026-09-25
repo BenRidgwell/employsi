@@ -13,7 +13,7 @@ collector and the loader.
   person_key(username, salt)     a salted hash; the only per-person id kept
   company_ref(slug, name)        the vendor-style ref the canonical format uses
   aggregate(moves, start, end)   canonical rows (docs/talent-flows-plan.md),
-                                 less acquisition transfers (ACQUISITIONS)
+                                 less acquisition transfers and non-employers
 
 WHERE THE INPUT COMES FROM
 stickerdaniel/linkedin-mcp-server's get_person_profile(sections="experience")
@@ -494,15 +494,40 @@ def acquisition_of(from_ref: str, to_ref: str, month: str | None) -> Acquisition
     return None
 
 
-def exclusion_report(excluded: Counter) -> list[dict]:
-    """What aggregate() left out as acquisition transfers, for import.json:
-    a reader of the export must be able to see a flow was removed, and why."""
-    out = []
-    for (f, t), n in sorted(excluded.items(), key=lambda kv: (-kv[1], kv[0])):
-        a = next(x for x in ACQUISITIONS if {f, t} == {x.acquired, x.acquirer})
-        out.append({'from_ref': f, 'to_ref': t, 'moves': n,
-                    'reason': f'{a.acquirer} acquired {a.acquired}; moves from {a.completed} on '
-                              'are transfers', 'evidence': a.evidence})
+# Names that are a way of working, not an employer. A move to or from one is
+# not a flow between companies, so neither end is counted; the spell still
+# separates the jobs either side of it, so X -> Freelance -> BHP is not
+# turned into X -> BHP. Compared after norm(), whatever the ref: "Independent
+# Consultant" arrives as a LinkedIn page (li:hd-independent-consultant).
+# Measured 2026-09-25 on the 60-month export of 7,160 BHP profiles:
+# Freelance 11 moves, Self-employed 7, Independent Consultant 1. The rest
+# are LinkedIn's own labels for the same thing. A name that normalises to
+# nothing ("-", 1 move) became the ref `name:`, which flows-to-d1.py
+# refuses, failing the whole file; it is dropped here too.
+NOT_EMPLOYERS = frozenset(norm(n) for n in (
+    'Freelance', 'Freelancer', 'Self-employed', 'Self employed',
+    'Independent Consultant', 'Independent Contractor', 'Career Break'))
+
+
+def not_employer(ref: str, name: str) -> bool:
+    return ref == 'name:' or not norm(name) or norm(name) in NOT_EMPLOYERS
+
+
+def exclusion_report(excluded: Counter) -> dict:
+    """What aggregate() left out, for import.json: a reader of the export
+    must be able to see a flow was removed, and why."""
+    out = {'acquisition_transfers': [], 'not_employers': []}
+    for key, n in sorted(excluded.items(), key=lambda kv: (-kv[1], kv[0])):
+        if key[0] == 'acquisition':
+            _, f, t = key
+            a = next(x for x in ACQUISITIONS if {f, t} == {x.acquired, x.acquirer})
+            out['acquisition_transfers'].append({
+                'from_ref': f, 'to_ref': t, 'moves': n,
+                'reason': f'{a.acquirer} acquired {a.acquired}; moves from {a.completed} on '
+                          'are transfers', 'evidence': a.evidence})
+        else:
+            _, ref, name = key
+            out['not_employers'].append({'ref': ref, 'name': name, 'moves': n})
     return out
 
 
@@ -511,8 +536,8 @@ def aggregate(moves, start: str, end: str, excluded: Counter | None = None) -> l
     period_end, moves, count_kind) for moves whose month is inside
     [start, end] (YYYY-MM, inclusive). Year-only moves are left out: they
     cannot be placed inside a window. Moves that ACQUISITIONS marks as
-    transfers are left out too, and counted into `excluded` by
-    (from_ref, to_ref) when it is given, so the export can say so."""
+    transfers, and moves to or from a NOT_EMPLOYERS name, are left out too,
+    and counted into `excluded` when it is given, so the export can say so."""
     counts: Counter = Counter()
     names: dict[str, Counter] = defaultdict(Counter)
     for mv in moves:
@@ -520,9 +545,16 @@ def aggregate(moves, start: str, end: str, excluded: Counter | None = None) -> l
         if not month or not (start <= month <= end):
             continue
         get = (lambda k: mv[k]) if isinstance(mv, dict) else (lambda k: getattr(mv, k))
-        if acquisition_of(get('from_ref'), get('to_ref'), month):
+        drop = None
+        for end_ in ('from', 'to'):
+            if not_employer(get(f'{end_}_ref'), get(f'{end_}_name')):
+                drop = ('not_employer', get(f'{end_}_ref'), get(f'{end_}_name'))
+                break
+        if drop is None and acquisition_of(get('from_ref'), get('to_ref'), month):
+            drop = ('acquisition', get('from_ref'), get('to_ref'))
+        if drop:
             if excluded is not None:
-                excluded[(get('from_ref'), get('to_ref'))] += 1
+                excluded[drop] += 1
             continue
         counts[(get('from_ref'), get('to_ref'))] += 1
         names[get('from_ref')][get('from_name')] += 1

@@ -548,7 +548,7 @@ def export(conn: sqlite3.Connection, out_dir: str) -> int:
         'top_n': None,
         'filters': {'country': COUNTRY, 'filter_field': FILTER_FIELD, 'window_months': WINDOW_MONTHS,
                     'lag_months': LAG_MONTHS, 'total_hits_per_seed': totals,
-                    'acquisition_transfers_excluded': exclusion_report(excluded)},
+                    'excluded': exclusion_report(excluded)},
         'sample': sample,
         'seeds': seeds,
         'notes': ('Counts of moves among sampled profiles, not workforce totals. Profiles are '
@@ -556,16 +556,17 @@ def export(conn: sqlite3.Connection, out_dir: str) -> int:
                   f'the destination is also seeded. The window ends {LAG_MONTHS} months before '
                   'collection because profiles are updated late; that lag is an assumption, '
                   'not a measurement.'
-                  + (f' {sum(excluded.values())} moves between an acquired company and its '
-                     'buyer after completion are excluded as transfers, not hires '
-                     '(filters.acquisition_transfers_excluded).' if excluded else '')),
+                  + (f' {sum(excluded.values())} moves are excluded: transfers between an '
+                     'acquired company and its buyer after completion, and moves to or from '
+                     'a way of working rather than an employer, such as Freelance '
+                     '(filters.excluded).' if excluded else '')),
     }
     with open(os.path.join(out_dir, 'import.json'), 'w') as f:
         json.dump(header, f, indent=2)
     print(f'{len(rows)} company pairs, {sum(r["moves"] for r in rows)} moves, '
           f'{start} to {end}, from {sum(sample.values())} profiles -> {out_dir}')
-    for (f_ref, t_ref), n in sorted(excluded.items()):
-        print(f'  excluded as acquisition transfers: {f_ref} -> {t_ref}: {n}')
+    for (why, a, b), n in sorted(excluded.items()):
+        print(f'  excluded, {why}: {a} {"->" if why == "acquisition" else "/"} {b}: {n}')
     return 0
 
 
