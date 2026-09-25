@@ -13,13 +13,21 @@ another source is dropped (no cross-source duplicates), and rows are upserted
 through the D1 HTTP API with the same source|title|company|location key + upsert
 as src/employsi/lib/jobArchive.ts.
 
-Env:  OXYLABS_USERNAME, OXYLABS_PASSWORD  (residential fetch)
+Transports:
+  (default)  Oxylabs Web Scraper API. 401 on the account since 2026-08-28.
+  --direct   the same guest endpoint fetched straight from whatever address
+             runs it — no proxy, no credential, no per-record bill — by
+             company id where scripts/linkedin_company_ids.json has one. See
+             the block above guest_get() for what was measured.
+
+Env:  OXYLABS_USERNAME, OXYLABS_PASSWORD  (residential fetch; not for --direct)
       CLOUDFLARE_API_TOKEN (D1 edit), CF_ACCOUNT_ID, D1_DATABASE_ID
 Run:  python scripts/linkedin-to-d1.py [--location Australia] [--only id1,id2]
                                        [--limit N] [--max-pages N] [--concurrency N]
+                                       [--direct [--id-cap N] [--keyword-cap N]] [--solve]
 """
 from __future__ import annotations
-import json, os, re, subprocess, sys, time, datetime
+import json, os, re, subprocess, sys, threading, time, datetime
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -30,6 +38,7 @@ try:
 except ImportError as e:
     sys.exit(f'Missing dependency ({e}).')
 
+import urllib.error  # noqa: E402
 import urllib.request  # noqa: E402
 
 # One advertiser test across every keyword-driven feed — see
@@ -53,7 +62,18 @@ LOCATION = _opt('--location', 'Australia')
 ONLY = set(_opt('--only', '').split(',')) if '--only' in args else None
 LIMIT = int(_opt('--limit', 10**9))
 MAX_PAGES = int(_opt('--max-pages', 10))     # guest API returns 25 cards/page
-CONCURRENCY = int(_opt('--concurrency', 8))  # keep ≤ your Oxylabs plan's limit
+VIA_DIRECT = '--direct' in args
+# Oxylabs: keep ≤ your plan's limit. Direct: 5 is the measured shape (run #37)
+# and is NOT a plan limit — every worker is another stream of requests from
+# the same address, which is what LinkedIn rate-limits.
+CONCURRENCY = int(_opt('--concurrency', 5 if VIA_DIRECT else 8))
+# Cards per company. An id search holds only that employer's ads, so its cap
+# is the endpoint's own (start < 1000). A keyword search is mostly OTHER
+# advertisers, so walking it deep buys noise at ~4s a page.
+DIRECT_ID_CAP = int(_opt('--id-cap', 1000))
+DIRECT_KEYWORD_CAP = int(_opt('--keyword-cap', 100))
+# Retry on the suffix-stripped name when the full name keeps fewer than this.
+RETRY_BELOW = int(_opt('--retry-below', 10))
 # Job pages opened per company to read the advertised pay the search fragment
 # omits. One fetch per NEW listing, so a quiet day costs almost nothing; the cap
 # stops a company that suddenly posts 200 roles from blowing the run's budget.
@@ -174,12 +194,297 @@ def enrich_salaries(jobs: list, oxy, geo: str) -> int:
     return priced
 
 
+# ── the direct transport (LinkedIn's guest jobs-search API, no proxy) ────────
+# WHY THIS REPLACES BRIGHT DATA. LinkedIn has been collected by
+# brightdata-archive.yml since 2026-08-29: per-record billing, so fortnightly.
+# This reads the same guest endpoint this file's Oxylabs path reads, directly
+# from whatever address runs it, and parses it with the same
+# parse_search_html().
+#
+# MEASURED FROM A HOSTED RUNNER 2026-09-24 (linkedin-archive run #37, through
+# JobSpy): all 395 companies answered in 75.5 min, no 429, no authwall. The
+# sandbox, by contrast, was throttled after ~30 companies in one session. So
+# the address question is answered for a runner, and the walk still treats a
+# refusal as a failure rather than as an employer with no jobs.
+#
+# WHY NOT JOBSPY, which is what that run used. Its LinkedIn pager advances
+# `start` by the running TOTAL of cards instead of the page size — 0, 10, 30,
+# 60 … — so it skips a page more each time. Measured 2026-09-24: f_C=4509
+# walked by hand in steps of 10 holds 91 BHP ads; JobSpy returned 40. Anything
+# past the second page was being undercounted, which is every large employer.
+# It also rebuilds the location from parts and blanks any it cannot split —
+# "Greater Melbourne Area" came back '' — which gives a different job_key from
+# the row Bright Data wrote for the same ad: 173 of the 2,890 matching titles
+# on run #37. parse_search_html() keeps the location as the card prints it.
+#
+# BY COMPANY ID WHERE WE HAVE ONE. `f_C=<id>` returns only that company page's
+# ads; scripts/linkedin_company_ids.json holds the ids, each confirmed by
+# scripts/resolve-linkedin-company-ids.py. The keyword search is the fallback
+# for companies not resolved yet, and it is what run #37 measured: 40,691 cards
+# thrown away as another advertiser against 4,088 kept.
+IDS_FILE = os.path.join(HERE, 'linkedin_company_ids.json')
+UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/124.0 Safari/537.36')
+GUEST_PAGE = 10          # cards per guest page when fetched directly (measured)
+GUEST_MAX_START = 1000   # the endpoint returns nothing past this
+
+
+def load_company_ids() -> dict:
+    try:
+        with open(IDS_FILE) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+
+class Blocked(Exception):
+    """LinkedIn or the network refused a page after retries."""
+
+
+def guest_get(params: dict) -> str:
+    """One guest search page. 429/999/5xx and network errors back off and
+    retry; still failing raises Blocked — never returns '' for a refusal,
+    because '' is how the walk recognises the real end of a list."""
+    from urllib.parse import urlencode
+    url = f'{li.GUEST_SEARCH}?{urlencode(params)}'
+    last = ''
+    for attempt in range(4):
+        try:
+            req = urllib.request.Request(url, headers={
+                'User-Agent': UA, 'Accept-Language': 'en-US,en;q=0.9'})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return r.read().decode('utf-8', 'replace')
+        except urllib.error.HTTPError as e:
+            last = f'HTTP {e.code}'
+        except Exception as e:  # noqa: BLE001
+            last = f'{type(e).__name__}: {e}'[:120]
+        time.sleep(10 * 2 ** attempt)
+    raise Blocked(last)
+
+
+def guest_walk(params: dict, cap: int) -> list:
+    """Every card for one search, paged in steps of what the page returned.
+
+    THE END OF A LIST IS A SHORT PAGE, and a refusal is not one. A page of
+    fewer than GUEST_PAGE cards ends the walk; an EMPTY page after a full one
+    is checked once more before it is believed, because careerSites.ts's
+    pagedParallel has twice truncated a portal by trusting a single empty.
+    Refusals raise Blocked out of guest_get and are never read as an end."""
+    import random
+    jobs, urls, start, empties = [], set(), 0, 0
+    while start < GUEST_MAX_START and len(jobs) < cap:
+        html = guest_get({**params, 'start': start})
+        n = len(set(re.findall(r'jobPosting:(\d+)', html)))
+        if n == 0:
+            empties += 1
+            if start == 0 or empties >= 2:
+                break
+            start += GUEST_PAGE
+            time.sleep(random.uniform(3, 6))
+            continue
+        empties = 0
+        for j in li.parse_search_html(html):
+            if j.get('url') and j['url'] in urls:
+                continue
+            urls.add(j.get('url'))
+            jobs.append(j)
+        if n < GUEST_PAGE:
+            break
+        start += n
+        time.sleep(random.uniform(3, 6))
+    return jobs[:cap]
+
+
+def direct_collect(cid: str, name: str, ids: dict) -> tuple[list, int, str, str]:
+    """(jobs, dropped, error, mode) for one company.
+
+    mode is 'id' or 'keyword'. error non-empty means the walk was cut short;
+    `jobs` then holds what arrived before it, which is real and still written."""
+    from company_alias import short_name, fallback_safe
+    entry = ids.get(cid)
+    page = (entry or {}).get('page', '')
+
+    def ours(board: str) -> bool:
+        # A blank advertiser is dropped even on an id search: upsert() would
+        # file it under the walked company on the strength of nothing.
+        if not board:
+            return False
+        if page and norm(board) == norm(page):
+            return True
+        return advertiser_matches(board, name) or bool(page and advertiser_matches(board, page))
+
+    def gate(cards):
+        kept = [j for j in cards if (j.get('title') or '').strip() and ours(j.get('company', ''))]
+        return kept, len(cards) - len(kept)
+
+    try:
+        if entry and entry.get('ids'):
+            cards = guest_walk({'location': LOCATION,
+                                'f_C': ','.join(str(i) for i in entry['ids'])}, DIRECT_ID_CAP)
+            jobs, dropped = gate(cards)
+            return jobs, dropped, '', 'id'
+        jobs, dropped = gate(guest_walk({'keywords': f'"{name}"', 'location': LOCATION},
+                                        DIRECT_KEYWORD_CAP))
+        # "Woodside Energy" quoted: 100 cards, 1 of them Woodside's (2026-09-24).
+        # Retry on the suffix-stripped name when the result is thin, with the
+        # Indeed walk's FALLBACK_UNSAFE exclusions. Merged by URL.
+        short = short_name(name)
+        if len(jobs) < RETRY_BELOW and short and short != norm(name) and fallback_safe(name):
+            more, more_dropped = gate(guest_walk({'keywords': f'"{short}"', 'location': LOCATION},
+                                                 DIRECT_KEYWORD_CAP))
+            have = {j.get('url') for j in jobs}
+            jobs += [j for j in more if j.get('url') not in have]
+            dropped += more_dropped
+        return jobs, dropped, '', 'keyword'
+    except Blocked as e:
+        return [], 0, str(e), 'id' if entry else 'keyword'
+
+
+def key_continuity(cid: str, jobs: list) -> tuple[int, int, list]:
+    """(same key, same title different key, examples) against the archive's
+    existing LinkedIn rows for this company.
+
+    Switching transport under the same `source` only refreshes history if the
+    new rows produce the SAME job_key as Bright Data's. A title that matches
+    while the key does not means the location or advertiser is formatted
+    differently — and every such role would be counted twice until the old row
+    ages out. This measures that before anything is written."""
+    r = d1("SELECT title, company, location FROM jobs WHERE company_id = ? "
+           "AND source = 'linkedin' AND last_seen >= date('now','-45 day')", [cid])
+    rows = r[0]['results'] if r else []
+    keys = {job_key('linkedin', x['title'] or '', x['company'] or cid,
+                    x['location'] or '') for x in rows}
+    by_title = {norm(x['title'] or ''): x for x in rows}
+    same = drift = 0
+    examples = []
+    for j in jobs:
+        if job_key('linkedin', j['title'], j.get('company') or cid,
+                   j.get('location') or '') in keys:
+            same += 1
+        elif norm(j['title']) in by_title:
+            drift += 1
+            old = by_title[norm(j['title'])]
+            if len(examples) < 2:
+                examples.append(f'{j.get("company")!r}/{j.get("location")!r} vs '
+                                f'archived {old["company"]!r}/{old["location"]!r}')
+    return same, drift, examples
+
+
+def main_direct() -> int:
+    from concurrent.futures import ThreadPoolExecutor
+
+    ids = load_company_ids()
+    companies = load_companies()
+    sel = companies[:LIMIT] if LIMIT < len(companies) else companies
+    with_id = sum(1 for cid, _ in sel if ids.get(cid, {}).get('ids'))
+    mode = 'SOLVE / reachability check — no D1 write' if SOLVE else 'LinkedIn -> D1'
+    sys.stderr.write(f'{mode}: {len(sel)} company(ies) via the guest API directly '
+                     f'(location="{LOCATION}", concurrency={CONCURRENCY}) — no proxy. '
+                     f'{with_id} searched by company id, {len(sel) - with_id} by keyword.\n')
+    if SOLVE and TOKEN:
+        sys.stderr.write('  CLOUDFLARE_API_TOKEN is set, so each company also reports '
+                         'job_key continuity with the archived LinkedIn rows (read-only).\n')
+    lock = threading.Lock()
+    st = {'fetch': 0, 'new': 0, 'empty': 0, 'done': 0, 'dropped': 0, 'blocked': 0,
+          'same': 0, 'drift': 0, 'id_jobs': 0, 'kw_jobs': 0, 'capped': 0}
+    blocked_log: list[str] = []
+    t0 = time.time()
+
+    def work(cid, name):
+        t = time.time()
+        jobs, dropped, err, how = direct_collect(cid, name, ids)
+        secs = time.time() - t
+        cont = ''
+        if SOLVE:
+            if TOKEN and jobs:
+                same, drift, ex = key_continuity(cid, jobs)
+                cont = f' · {same} same key, {drift} title-only' + (
+                    f' e.g. {ex[0]}' if ex else '')
+                with lock:
+                    st['same'] += same; st['drift'] += drift
+            written, fresh_n = 0, len(jobs)
+        elif jobs:
+            have = existing_titles(cid)
+            fresh = [j for j in jobs if norm(j['title']) not in have]
+            written = upsert(cid, fresh) if fresh else 0
+            fresh_n = len(fresh)
+        else:
+            written, fresh_n = 0, 0
+        cap = DIRECT_ID_CAP if how == 'id' else DIRECT_KEYWORD_CAP
+        with lock:
+            st['fetch'] += len(jobs); st['new'] += written; st['done'] += 1
+            st['dropped'] += dropped; st['empty'] += not jobs
+            st['id_jobs' if how == 'id' else 'kw_jobs'] += len(jobs)
+            st['capped'] += len(jobs) >= cap
+            if err:
+                st['blocked'] += 1
+                blocked_log.append(f'{cid}: {err}')
+        tail = ('' if SOLVE else
+                f' · {written:3} upserted ({len(jobs) - fresh_n} only on another board)')
+        flag = f' · BLOCKED: {err}' if err else ''
+        sys.stderr.write(f'  {cid:16} {how:7} {len(jobs):3} kept, {dropped:3} other advertisers'
+                         f'{tail}{cont} · {secs:.0f}s{flag}\n')
+
+    with ThreadPoolExecutor(max_workers=max(1, CONCURRENCY)) as ex:
+        list(ex.map(lambda cn: work(*cn), sel))
+
+    mins = (time.time() - t0) / 60
+    sys.stderr.write(f'\nDone (direct, {mins:.1f} min). {st["done"]} companies, '
+                     f'{st["fetch"]} listings kept ({st["id_jobs"]} by id, {st["kw_jobs"]} by '
+                     f'keyword), {st["dropped"]} dropped as another advertiser, {st["empty"]} '
+                     f'with 0 kept, {st["capped"]} at the per-company cap, {st["blocked"]} cut '
+                     f'short by LinkedIn or the network.\n')
+    if SOLVE:
+        sys.stderr.write('Nothing written (--solve).\n')
+        if TOKEN:
+            sys.stderr.write(
+                f'Key continuity vs archived LinkedIn rows: {st["same"]} same job_key, '
+                f'{st["drift"]} same title under a DIFFERENT key. The second number is '
+                f'what a switch would double-count until the old rows age out.\n')
+    else:
+        sys.stderr.write(f'{st["new"]} rows upserted.\n')
+    for line in blocked_log[:20]:
+        sys.stderr.write(f'  blocked  {line}\n')
+
+    # Same wipeout rule as the Oxylabs path below: not ONE listing across the
+    # roster is the transport, never the labour market.
+    if sel and not st['fetch']:
+        sys.stderr.write(f'\nFAILED: {len(sel)} companies walked and not one listing kept. '
+                         f'That is LinkedIn refusing this address (see the BLOCKED lines) '
+                         f'or parse_search_html() no longer matching the page.\n')
+        return 2
+    # A BLOCK IS NOT A QUIET EMPLOYER. One stray refusal in a 395-company walk
+    # is noise; a tenth of the roster cut short is LinkedIn throttling this
+    # address, and the run must say so rather than write a thin archive green.
+    if st['blocked'] * 10 >= len(sel):
+        sys.stderr.write(f'\nFAILED: {st["blocked"]} of {len(sel)} companies were cut short '
+                         f'by LinkedIn or the network. Lower --concurrency before trusting '
+                         f'a schedule to this.\n')
+        return 3
+    return 0
+
+
 def existing_titles(company_id: str) -> set:
-    # Only OTHER sources — so a LinkedIn job that duplicates an Adzuna/SEEK/Indeed
-    # role is counted once, but LinkedIn's own previously-archived jobs re-upsert
-    # and refresh their last_seen (keeping still-live roles "current").
-    r = d1("SELECT DISTINCT title FROM jobs WHERE company_id = ? AND source != 'linkedin'", [company_id])
-    return {norm(str(x.get('title') or '')) for x in (r[0]['results'] if r else [])}
+    """Titles to SKIP: held by another source and not already by LinkedIn.
+
+    A LinkedIn job that would only duplicate an Adzuna/SEEK/Indeed role is not
+    added, but every title LinkedIn already holds for this company re-upserts
+    and refreshes its last_seen, keeping still-live roles "current".
+
+    The second half is what the query used to miss. It read titles from other
+    sources only, so a title held by BOTH LinkedIn and, say, SEEK was skipped
+    too — and LinkedIn's own row for it was never refreshed. Measured on the
+    first direct write, 2026-09-25 (linkedin-archive run #39): 10,030 listings
+    kept, 9,402 skipped as "already archived elsewhere", 622 written, while the
+    solve the day before had found 6,846 of those listings already archived
+    under LinkedIn's own job_key. Those rows would have aged out of "currently
+    advertised" while LinkedIn was still carrying the ad."""
+    r = d1("SELECT DISTINCT title, source = 'linkedin' AS own FROM jobs WHERE company_id = ?",
+           [company_id])
+    rows = r[0]['results'] if r else []
+    other = {norm(str(x.get('title') or '')) for x in rows if not x.get('own')}
+    ours = {norm(str(x.get('title') or '')) for x in rows if x.get('own')}
+    return other - ours
 
 
 def upsert(company_id: str, jobs: list) -> int:
@@ -221,12 +526,13 @@ def upsert(company_id: str, jobs: list) -> int:
 
 
 def main() -> int:
+    if VIA_DIRECT:
+        return main_direct()
     if not os.environ.get('OXYLABS_USERNAME'):
         sys.exit('LinkedIn blocks datacenter IPs — set OXYLABS_USERNAME/OXYLABS_PASSWORD '
                  'to fetch via the Oxylabs Web Scraper API.')
     import oxylabs_client as oxy
     from concurrent.futures import ThreadPoolExecutor
-    import threading
 
     companies = load_companies()
     sel = companies[:LIMIT] if LIMIT < len(companies) else companies

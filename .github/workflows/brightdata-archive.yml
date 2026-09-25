@@ -129,19 +129,25 @@
 name: brightdata-archive
 
 on:
-  schedule:
-    # FORTNIGHTLY, and cron cannot say that. This fires every Monday 17:20 UTC
-    # and the job drops the odd ISO weeks, which gives a true 14-day gap rather
-    # than the 13-17 day drift of a `1,15 * *` day-of-month schedule. Simulated
-    # over a year from 2026-08-10: 25 runs, every gap 14 days except one.
-    #
-    # THAT EXCEPTION IS A 21-DAY GAP, not a short one. In a year with an ISO
-    # week 53 — 2026 is one — weeks 53 and 1 are both odd, so two skips land
-    # back to back across New Year. Harmless for a vacancy archive, but it is a
-    # three-week hole and not the fortnight the schedule otherwise keeps.
-    # A skipped week costs a few runner-seconds and is visible in the log.
-    # 10 min ahead of nsw-gov (17:30) and clear of every other feed's slot.
-    - cron: '20 17 * * 1'
+  # SCHEDULE REMOVED 2026-09-25. NOTHING HERE IS SWEPT ON A TIMER ANY MORE.
+  #
+  #   linkedin  linkedin-archive.yml collects it weekly in this same slot
+  #             (Monday 17:20 UTC), straight from the runner by LinkedIn
+  #             company id: 10,272 listings for the roster in 55 min on
+  #             2026-09-24, free, against ~10.6k a fortnight here billed per
+  #             record. Both write `source=linkedin` under the same job_key,
+  #             so running both would pay for a duplicate.
+  #   indeed    already off since 2026-09-05 (snapshots never terminate), and
+  #             indeed-archive.yml collects it daily through JobSpy.
+  #
+  # So the scheduled sweep would have had nothing to collect. Dispatch still
+  # works for either board — that is how a re-test costs a dispatch rather than
+  # a rewrite, and why the `schedule` branch of `plan` is left intact below.
+  # Putting a cron back here is a decision to pay for LinkedIn twice; check
+  # linkedin-archive is actually failing first.
+  #
+  # It was '20 17 * * 1' with odd ISO weeks dropped in `plan`, for a true
+  # fortnight.
   workflow_dispatch:
     inputs:
       list_datasets:
