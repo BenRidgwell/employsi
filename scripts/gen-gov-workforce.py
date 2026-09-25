@@ -498,6 +498,95 @@ def ckan_resource(api, dataset, match):
 #
 # Keyed like ALIAS, `jurisdiction:Roster Name`.
 NOT_IN_SOURCE = {
+    # ── Queensland: the source covers DEPARTMENTS, and little else ─────────
+    #
+    # Queensland is the opposite shape to Victoria and the contrast is the
+    # whole finding. Victoria had 208 spare source rows against 38 blank cards,
+    # so its answers were aliases. Queensland's State of the Sector data is 38
+    # rows against 22 blank cards, and reading all 38 (2026-09-25) settles it:
+    # they are the departments plus a short tail of agencies — Queensland
+    # Health 119,625, Education 79,353, Police 19,132, down through Legal Aid
+    # Queensland 816, the Art Gallery 301, the Museum 263, to the Integrity
+    # Commissioner at 16.
+    #
+    # WHAT IS ABSENT IS A CATEGORY, NOT A NAME. Not one independent statutory
+    # authority or officer of the Parliament appears in any of the 38 rows: no
+    # Audit Office, no Ombudsman, no Crime and Corruption Commission, no
+    # Stadiums Queensland, no QLeave. So "no row names it" here is not a
+    # spelling problem an alias could fix, and no amount of re-reading the list
+    # will produce one. Each entry below states that observation first, which
+    # is what was measured; where a parent is named as well, that is the
+    # inference and is marked as one.
+    #
+    # The five spare rows are spare because the ROSTER has no card for them —
+    # Premier and Cabinet, the Museum, Human Rights, the Public Sector
+    # Commission, the Norfolk Island Taskforce — so Queensland offers no alias
+    # in either direction.
+
+    # Inside a department, and the department is named in the source.
+    'qld:Teach Queensland':
+        "not an employer: it is the Department of Education's teacher "
+        'recruitment brand, and its people are inside that department\'s 79,353. '
+        'The largest single ad count in the whole gap, and there is no figure '
+        'to file for it',
+    'qld:Queensland Academy of Sport':
+        'no row names it; it is a unit inside the Department of Sport, Racing '
+        'and Olympic and Paralympic Games (370)',
+    'qld:Queensland Ambulance Service':
+        'no row names it. Its staff sit inside Queensland Health (119,625) — '
+        'that part is inference, since the source separates neither the '
+        'ambulance service nor any other clinical stream',
+
+    # Independent statutory authorities. None of the 38 rows is one of these,
+    # so the absence is the collection's scope rather than a naming mismatch.
+    'qld:Queensland Building and Construction Commission':
+        'no row names it, and no independent statutory authority appears in '
+        'any of the 38 rows',
+    'qld:Queensland Curriculum and Assessment Authority':
+        'no row names it; statutory authority, outside the collection',
+    'qld:Crime and Corruption Commission':
+        'no row names it; independent statutory body, outside the collection',
+    'qld:Cross River Rail Delivery Authority':
+        'no row names it; statutory authority, outside the collection',
+    'qld:Office of the Public Guardian':
+        'no row names it; independent statutory office, outside the collection',
+    'qld:QLeave':
+        'no row names it; the portable long service leave authority is a '
+        'statutory body, outside the collection',
+    'qld:Queensland Racing Integrity Commission':
+        'no row names it; statutory body, outside the collection',
+    'qld:Health and Wellbeing Queensland':
+        'no row names it; statutory body, outside the collection',
+    'qld:National Injury Insurance Agency Queensland':
+        'no row names it; statutory agency, outside the collection',
+    'qld:Queensland Mental Health Commission':
+        'no row names it; statutory body, outside the collection',
+    'qld:Queensland Rural and Industry Development Authority':
+        'no row names it; statutory authority, outside the collection',
+    'qld:Energy and Water Ombudsman Queensland':
+        'no row names it; statutory scheme, outside the collection',
+    'qld:Stadiums Queensland':
+        'no row names it; statutory authority, outside the collection',
+    'qld:Queensland Pharmacy Business Ownership Council':
+        'no row names it; statutory council, outside the collection',
+    'qld:Office of Industrial Relations':
+        'no row names it; an office inside a department rather than an agency '
+        'reported in its own right. Which department is not established here — '
+        'Queensland has moved it more than once — so no parent is named',
+
+    # Officers of the Parliament, which is not part of the public service.
+    'qld:Parliamentary Service':
+        'no row names it; the Parliamentary Service is not part of the public '
+        'service the collection covers',
+    'qld:Queensland Audit Office':
+        'no row names it; an officer of the Parliament, outside the collection',
+    'qld:Office of the Queensland Ombudsman':
+        'no row names it; an officer of the Parliament, outside the collection. '
+        "The source's 'Office of the Health Ombudsman' (163) is a DIFFERENT "
+        'body and must not be taken for it',
+    'qld:Information Commissioner':
+        'no row names it; an officer of the Parliament, outside the collection',
+
     # ── Victoria: inside a parent's row, and not separable ─────────────────
     # The source says so itself, in the parent row's own brackets.
     'vic:State Revenue Office':
@@ -1607,6 +1696,28 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
     (c.id.startsWith("nz-") && c.sector === "Healthcare"))
   .map(c => ({ id: c.id, name: c.name }))));'''],
         cwd=ROOT, capture_output=True, text=True, check=True).stdout)
+
+    # EVERY NOT_IN_SOURCE KEY MUST NAME A REAL ROSTER CARD, because a key that
+    # does not is silent: the lookup misses, the agency falls back to "no
+    # source row", and the reason someone measured and wrote down is simply
+    # never printed. The table then looks maintained while saying nothing — the
+    # same shape as a guard that cannot fire. A rename on the roster breaks
+    # these the same way, and this is what says so.
+    roster_keys = set()
+    for a in agencies:
+        if a['id'].startswith('aps-'):
+            roster_keys.add(f"aps:{a['name']}")
+        elif a['id'].startswith('nz-'):
+            roster_keys.add(f"nz:{a['name']}")
+            roster_keys.add(f"nzhealth:{a['name']}")
+        elif '-gov-' in a['id']:
+            roster_keys.add(f"{a['id'].split('-gov-')[0]}:{a['name']}")
+    stray_reasons = sorted(k for k in NOT_IN_SOURCE if k not in roster_keys)
+    if stray_reasons:
+        print(f'\n  NOT_IN_SOURCE: {len(stray_reasons)} entries name no roster card '
+              f'(renamed, or a typo — the reason will never print):', file=sys.stderr)
+        for k in stray_reasons:
+            print(f'      {k}', file=sys.stderr)
 
     out, skipped = {}, 0
     # BOTH SIDES OF A FAILED MATCH ARE REPORTED, because only one of them was
