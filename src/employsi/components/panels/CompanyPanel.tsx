@@ -785,15 +785,25 @@ export function CompanyPanel() {
    * the floor is set before any tab can be switched to. Skills growing it
    * further is possible and fine; nothing shrinks.
    */
-  const [paneFloor, setPaneFloor] = useState(0);
+  const [cardFloor, setCardFloor] = useState(0);
   const paneRef = useRef<HTMLDivElement | null>(null);
-  const paneStyle = paneFloor ? { minHeight: paneFloor } : undefined;
+  const cardRef = useRef<HTMLElement | null>(null);
+  /**
+   * Capped in CSS rather than in JS. The floor is an observed card height, so
+   * it cannot exceed the max-height that produced it — but the viewport can
+   * shrink afterwards, and a min-height beats a max-height when the two
+   * disagree, which would leave the card taller than the window holding it.
+   * `min()` keeps the cap beside the rule that already states it.
+   */
+  const cardStyle = cardFloor
+    ? { minHeight: `min(${cardFloor}px, calc(100vh - var(--head-height) - 48px))` }
+    : undefined;
 
   useEffect(() => {
     if (selectedId) setTab("Overview");
     // A new company is a new card. Carrying the old one's floor over would
     // hold a tall employer's height under a small one's content.
-    setPaneFloor(0);
+    setCardFloor(0);
   }, [selectedId]);
 
   // Skill → live-ad count, and role area → live-ad count, from the same job
@@ -826,8 +836,18 @@ export function CompanyPanel() {
     const el = paneRef.current;
     if (!el) return;
     const read = () => {
-      const h = el.scrollHeight;
-      if (h) setPaneFloor((f) => (h > f ? h : f));
+      // THE CARD'S height, not the pane's — the pane is watched only because
+      // it is what changes. Flooring the PANE was the first attempt and it
+      // made the short tab scroll: its content became as tall as Overview's,
+      // so the body had hundreds of pixels of nothing under three rows to
+      // scroll through. The card is the thing that must not resize; the
+      // content should stay its own length, and .ccbody's `flex: 1 1 auto`
+      // fills the difference with no scrollable void.
+      //
+      // An observed height cannot exceed the max-height that produced it, so
+      // the floor needs no clamping of its own.
+      const h = cardRef.current?.offsetHeight ?? 0;
+      if (h) setCardFloor((f) => (h > f ? h : f));
     };
     read();
     if (typeof ResizeObserver === "undefined") return;
@@ -940,7 +960,7 @@ export function CompanyPanel() {
 
   return (
     <div className={`cardstage ${open ? "open" : ""}${newsCollapsed ? " newstucked" : ""}`}>
-      <aside className={`cc ${open ? "open" : ""}`}>
+      <aside className={`cc ${open ? "open" : ""}`} ref={cardRef} style={cardStyle}>
         {cardLoading && <CardLoader tone="light" />}
         {card && panel && (
           <>
@@ -1009,7 +1029,7 @@ export function CompanyPanel() {
 
             <div className="ccbody" ref={scrollRef}>
               {tab === "Overview" && (
-                <div className="ccpane" ref={paneRef} style={paneStyle}>
+                <div className="ccpane" ref={paneRef}>
                   {/* Badge, then label, then figure — the reading order of the
                       reference design. The badge sits ABOVE rather than beside
                       it: the card is 440px wide with 18px gutters, so each of
@@ -1245,7 +1265,7 @@ export function CompanyPanel() {
               )}
 
               {tab === "Skills" && (
-                <div className="ccpane" ref={paneRef} style={paneStyle}>
+                <div className="ccpane" ref={paneRef}>
                   {/* Archive-backed section: the top skill at size with its
                       market rank, where its live ads sit, and the rest as rows
                       with their own line. Falls back to the flat chips below
@@ -1314,7 +1334,7 @@ export function CompanyPanel() {
               )}
 
               {tab === "Hiring" && (
-                <div className="ccpane" ref={paneRef} style={paneStyle}>
+                <div className="ccpane" ref={paneRef}>
                   <div className="ccsecth">
                     <span className="cceyebrow">Where they&rsquo;re hiring</span>
                     {/* When the rows carry arrows the heading has to describe
