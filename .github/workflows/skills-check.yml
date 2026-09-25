@@ -41,6 +41,14 @@ on:
       - 'src/employsi/data/hiringAreas.ts'
       - 'src/employsi/lib/flows.ts'
       - 'scripts/check-flows.ts'
+      - 'src/employsi/lib/careerLadder.ts'
+      - 'src/employsi/lib/ladderEmployers.ts'
+      - 'scripts/check-career-ladder.ts'
+      - 'scripts/check-career-card.ts'
+      - 'src/employsi/lib/careerCard.ts'
+      - 'src/employsi/lib/careerPathwaysBuild.ts'
+      - 'src/employsi/lib/feedCoverage.ts'
+      - 'src/employsi/data/careerPathways.ts'
       - '.github/workflows/skills-check.yml'
   pull_request:
     paths:
@@ -71,6 +79,14 @@ on:
       - 'src/employsi/data/hiringAreas.ts'
       - 'src/employsi/lib/flows.ts'
       - 'scripts/check-flows.ts'
+      - 'src/employsi/lib/careerLadder.ts'
+      - 'src/employsi/lib/ladderEmployers.ts'
+      - 'scripts/check-career-ladder.ts'
+      - 'scripts/check-career-card.ts'
+      - 'src/employsi/lib/careerCard.ts'
+      - 'src/employsi/lib/careerPathwaysBuild.ts'
+      - 'src/employsi/lib/feedCoverage.ts'
+      - 'src/employsi/data/careerPathways.ts'
   workflow_dispatch: {}
 
 jobs:
@@ -166,6 +182,21 @@ jobs:
       # figure: a skill priced off one tiny occupation, a year read from the
       # average column instead of the median, a baseline stranded under a skill
       # name the taxonomy no longer has.
+      # Career pathways place every title on a ladder with first-match-wins
+      # regexes, so a rule added for one title can re-place thousands of others
+      # and every pathway still renders six plausible rungs. The fixtures are the
+      # only place that is visible, including the traps ("Barista $32/hr" is not
+      # human resources; a Project Manager is not a people manager).
+      - name: Assert career-ladder titles place on the right rung
+        run: bun run scripts/check-career-ladder.ts
+
+      # The career card draws a daily demand line, its trend and days
+      # advertised over the archive — every one bounded at both ends by the
+      # feed-coverage rules, or it draws a feed's arrival as hiring. Asserted on
+      # synthetic rows whose answer is known, plus the adapter's invariants.
+      - name: Assert the career card's series and model
+        run: bun run scripts/check-career-card.ts
+
       - name: Assert the salary baseline's invariants
         run: bun run scripts/check-salary-baseline.ts
 

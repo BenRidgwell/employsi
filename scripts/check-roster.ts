@@ -290,9 +290,20 @@ for (const [id, list] of Object.entries(SEEK_TRADING_NAMES)) {
       );
   }
   // An agency the source does not report is absent, never zero.
-  for (const [id, h] of Object.entries(GOV_HEADCOUNT_AU))
-    if (!(h.now > 0) || !(h.prev > 0))
-      err("gov headcount not positive", id, `now ${h.now}, prev ${h.prev}`);
+  //
+  // A MISSING `prev` IS ALLOWED, AND ONLY ALONGSIDE A NULL `yoy`. Western
+  // Australia's 2025-26 bulletin names departments the 2024-25 one does not,
+  // because the state assembled them that year out of parts of others, so there
+  // is no comparator to state. Absent is how that is said. A prev of 0 would be
+  // a reading of nobody, and a missing prev WITH a yoy would mean a change was
+  // computed against something that is not there — both stay errors.
+  for (const [id, h] of Object.entries(GOV_HEADCOUNT_AU)) {
+    if (!(h.now > 0)) err("gov headcount not positive", id, `now ${h.now}`);
+    if (h.prev !== undefined && !(h.prev > 0))
+      err("gov headcount prev not positive", id, `prev ${h.prev}`);
+    if (h.prev === undefined && h.yoy !== null)
+      err("gov headcount yoy without a prev", id, `yoy ${h.yoy} against no prior reading`);
+  }
 
   // A PUBLIC-SECTOR AGENCY DOES NOT GROW OR SHRINK BY 200% IN A YEAR, and a
   // figure that says it did is a parse fault wearing a number.

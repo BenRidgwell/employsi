@@ -179,6 +179,30 @@ ALIAS = {
     # eighteen a reader could not confirm from the two strings alone.
     'sa:Legal Profession Conduct Commissioner': 'Legal Profession Conduct Commission',
 
+    # ── Western Australia ──────────────────────────────────────────────
+    # The bulletin prefixes every health service with the portfolio — "WA
+    # Health (South Metropolitan Health Service)" — and the roster carries the
+    # service on its own. Eight of the fourteen here are that one prefix.
+    #
+    # The rest are ordinary variants, and one is a typo ON THE ROSTER rather
+    # than in the source: the card reads "Ombudsman Western Australian". It is
+    # aliased rather than corrected, because renaming a roster card changes a
+    # company id and the archive keys ads to it; the alias is the cheap half.
+    'perth:Child and Adolescent Health Service': 'WA Health (Child and Adolescent Health Service)',  # 7,290
+    'perth:Department of Health': 'WA Health (Department of Health)',  # 1,598
+    'perth:East Metropolitan Health Service': 'WA Health (East Metropolitan Health Service)',  # 11,536
+    'perth:Health Support Services': 'WA Health (Health Support Services)',  # 2,984
+    'perth:North Metropolitan Health Service': 'WA Health (North Metropolitan Health Service)',  # 14,397
+    'perth:PathWest': 'WA Health (PathWest)',  # 2,612
+    'perth:South Metropolitan Health Service': 'WA Health (South Metropolitan Health Service)',  # 16,036
+    'perth:WA Country Health Service': 'WA Health (WA Country Health Service)',  # 12,644
+    'perth:Department of Fire & Emergency Services': 'Department of Fire and Emergency Services',  # 2,012
+    'perth:Legal Aid Western Australia': 'Legal Aid Commission of Western Australia',  # 582
+    'perth:Main Roads WA': 'Main Roads Western Australia',  # 1,981
+    'perth:Ombudsman Western Australian': 'Ombudsman Western Australia',  # 96
+    'perth:Western Australia Police Force': 'Western Australia Police',  # 3,223
+    'perth:WorkCover WA': 'WorkCover Western Australia',  # 151
+
     # ── Victoria ───────────────────────────────────────────────────────
     # THE VICTORIAN SOURCE HAD 208 SPARE ROWS AGAINST 38 UNFILLED CARDS, which
     # is not a jurisdiction missing a source — it is a jurisdiction whose rows
@@ -497,7 +521,185 @@ def ckan_resource(api, dataset, match):
 # wrong.
 #
 # Keyed like ALIAS, `jurisdiction:Roster Name`.
+# A reason that applies to a WHOLE jurisdiction, used when no specific entry
+# above covers the card.
+#
+# WHY NOT 57 IDENTICAL ENTRIES. New South Wales' remaining cards are almost all
+# refused for the same structural fact — the source wired for NSW is a HEALTH
+# annual report, so a non-health agency cannot be in it at any spelling — and
+# writing that out once per card would be 57 copies of one sentence, which is
+# how a table stops being read. Queensland's twenty-two are the opposite: each
+# has its own reason (inside a named department, a statutory authority, an
+# officer of the Parliament), so each is written out.
+NOT_IN_SOURCE_JURISDICTION = {
+    'tas': "NOT a refusal, and not the source's doing: this parser is "
+           'INCOMPLETE. Measured 2026-09-25, it returns thirteen agencies '
+           "summing to 20,418 against the report's own Total row of 32,473 — "
+           '63%. Twelve thousand Tasmanian public servants are in agencies it '
+           'never reaches, and these six cards are blank because of that rather '
+           'than because Tasmania does not publish them. The rows it DOES '
+           'return each reconcile across their four columns, so what is filed '
+           'is right; what is missing is missing here, not there. Fixing it '
+           'needs the PDF, which answers a connection reset to the authoring '
+           'sandbox and only opens on the runner',
+    'nsw': "the source wired for NSW is the NSW HEALTH annual report appendix, "
+           "which reports health organisations only — so a non-health agency "
+           "cannot appear in it under any spelling. NSW's own Workforce Profile "
+           "is reachable and current, but its finest grain is PORTFOLIO or "
+           "SERVICE (Communities and Justice 55,041, Education 120,111), and a "
+           "portfolio is a group of agencies that hold their own cards here. "
+           "The one service row that IS a single agency, the NSW Police Force, "
+           "is merged; the rest need their own annual reports",
+}
+
 NOT_IN_SOURCE = {
+    # ── Western Australia: outside the PSM Act bulletin ────────────────────
+    # Nine WA cards are absent from every edition, and the reason is the one
+    # perthGovWorkforce.ts already stated at the top of the file it replaces:
+    # the Public Sector Commission reports agencies under the Public Sector
+    # Management Act, and government trading enterprises, Parliament-funded
+    # bodies and statutory authorities outside it are not in the collection.
+    # Checked against the 2025-26 sheet's 57 rows rather than assumed.
+    'perth:Gold Corporation':
+        'a government trading enterprise (the Perth Mint); no row in any '
+        'edition of the bulletin',
+    'perth:Pilbara Ports Authority':
+        'a port authority, a GTE outside the PSM Act bulletin',
+    'perth:Rottnest Island Authority':
+        'a statutory authority outside the PSM Act bulletin',
+    'perth:Perth Zoo':
+        'the Zoological Parks Authority is outside the PSM Act bulletin',
+    'perth:Western Australian Museum':
+        'no row names it; the museum sits under the Arts and Culture Trust, '
+        'which is itself absent from the bulletin',
+    'perth:Arts and Culture Trust':
+        'a statutory authority outside the PSM Act bulletin',
+    'perth:Tourism Western Australia':
+        'a statutory authority outside the PSM Act bulletin',
+    'perth:Parliamentary Services Department':
+        'Parliament-funded, and the bulletin covers the public sector under the '
+        'PSM Act rather than the departments of Parliament',
+    'perth:State Solicitors Office':
+        'no row names it; its staff are inside the Department of Justice '
+        '(8,578), where the State Solicitor sits — that parent is inference, '
+        'since the bulletin separates no branch of any department',
+
+    # ── New South Wales: what the PORTFOLIO grain costs ────────────────────
+    # The jurisdiction-level reason below covers the rest. These six say
+    # something sharper, because for them a real figure EXISTS and is being
+    # declined rather than missing.
+    'nsw:NSW Health':
+        'the NSW Health Service is reported at 140,998 FTE, and it is declined: '
+        'the Local Health Districts inside it hold their own cards here, twelve '
+        'of them already filed, so putting the service total on this card would '
+        'count the same people twice',
+    'nsw:Department of Communities and Justice':
+        'the Communities and Justice PORTFOLIO is 55,041 FTE, which is not this '
+        'department — Corrective Services, Youth Justice and Legal Aid are '
+        'inside it and are separate cards here',
+    'nsw:Corrective Services NSW':
+        'inside the Communities and Justice portfolio (55,041); no row reports '
+        'it on its own',
+    'nsw:Youth Justice NSW':
+        'inside the Communities and Justice portfolio (55,041); no row reports '
+        'it on its own',
+    'nsw:Legal Aid NSW':
+        'inside the Communities and Justice portfolio (55,041); no row reports '
+        'it on its own',
+    'nsw:Department of Education':
+        'the Education portfolio is 120,111 FTE and the Teaching Service alone '
+        'is 71,491 — neither is this department, whose own staff are inside the '
+        'Public Service figure with every other department',
+
+    # ── Queensland: the source covers DEPARTMENTS, and little else ─────────
+    #
+    # Queensland is the opposite shape to Victoria and the contrast is the
+    # whole finding. Victoria had 208 spare source rows against 38 blank cards,
+    # so its answers were aliases. Queensland's State of the Sector data is 38
+    # rows against 22 blank cards, and reading all 38 (2026-09-25) settles it:
+    # they are the departments plus a short tail of agencies — Queensland
+    # Health 119,625, Education 79,353, Police 19,132, down through Legal Aid
+    # Queensland 816, the Art Gallery 301, the Museum 263, to the Integrity
+    # Commissioner at 16.
+    #
+    # WHAT IS ABSENT IS A CATEGORY, NOT A NAME. Not one independent statutory
+    # authority or officer of the Parliament appears in any of the 38 rows: no
+    # Audit Office, no Ombudsman, no Crime and Corruption Commission, no
+    # Stadiums Queensland, no QLeave. So "no row names it" here is not a
+    # spelling problem an alias could fix, and no amount of re-reading the list
+    # will produce one. Each entry below states that observation first, which
+    # is what was measured; where a parent is named as well, that is the
+    # inference and is marked as one.
+    #
+    # The five spare rows are spare because the ROSTER has no card for them —
+    # Premier and Cabinet, the Museum, Human Rights, the Public Sector
+    # Commission, the Norfolk Island Taskforce — so Queensland offers no alias
+    # in either direction.
+
+    # Inside a department, and the department is named in the source.
+    'qld:Teach Queensland':
+        "not an employer: it is the Department of Education's teacher "
+        'recruitment brand, and its people are inside that department\'s 79,353. '
+        'The largest single ad count in the whole gap, and there is no figure '
+        'to file for it',
+    'qld:Queensland Academy of Sport':
+        'no row names it; it is a unit inside the Department of Sport, Racing '
+        'and Olympic and Paralympic Games (370)',
+    'qld:Queensland Ambulance Service':
+        'no row names it. Its staff sit inside Queensland Health (119,625) — '
+        'that part is inference, since the source separates neither the '
+        'ambulance service nor any other clinical stream',
+
+    # Independent statutory authorities. None of the 38 rows is one of these,
+    # so the absence is the collection's scope rather than a naming mismatch.
+    'qld:Queensland Building and Construction Commission':
+        'no row names it, and no independent statutory authority appears in '
+        'any of the 38 rows',
+    'qld:Queensland Curriculum and Assessment Authority':
+        'no row names it; statutory authority, outside the collection',
+    'qld:Crime and Corruption Commission':
+        'no row names it; independent statutory body, outside the collection',
+    'qld:Cross River Rail Delivery Authority':
+        'no row names it; statutory authority, outside the collection',
+    'qld:Office of the Public Guardian':
+        'no row names it; independent statutory office, outside the collection',
+    'qld:QLeave':
+        'no row names it; the portable long service leave authority is a '
+        'statutory body, outside the collection',
+    'qld:Queensland Racing Integrity Commission':
+        'no row names it; statutory body, outside the collection',
+    'qld:Health and Wellbeing Queensland':
+        'no row names it; statutory body, outside the collection',
+    'qld:National Injury Insurance Agency Queensland':
+        'no row names it; statutory agency, outside the collection',
+    'qld:Queensland Mental Health Commission':
+        'no row names it; statutory body, outside the collection',
+    'qld:Queensland Rural and Industry Development Authority':
+        'no row names it; statutory authority, outside the collection',
+    'qld:Energy and Water Ombudsman Queensland':
+        'no row names it; statutory scheme, outside the collection',
+    'qld:Stadiums Queensland':
+        'no row names it; statutory authority, outside the collection',
+    'qld:Queensland Pharmacy Business Ownership Council':
+        'no row names it; statutory council, outside the collection',
+    'qld:Office of Industrial Relations':
+        'no row names it; an office inside a department rather than an agency '
+        'reported in its own right. Which department is not established here — '
+        'Queensland has moved it more than once — so no parent is named',
+
+    # Officers of the Parliament, which is not part of the public service.
+    'qld:Parliamentary Service':
+        'no row names it; the Parliamentary Service is not part of the public '
+        'service the collection covers',
+    'qld:Queensland Audit Office':
+        'no row names it; an officer of the Parliament, outside the collection',
+    'qld:Office of the Queensland Ombudsman':
+        'no row names it; an officer of the Parliament, outside the collection. '
+        "The source's 'Office of the Health Ombudsman' (163) is a DIFFERENT "
+        'body and must not be taken for it',
+    'qld:Information Commissioner':
+        'no row names it; an officer of the Parliament, outside the collection',
+
     # ── Victoria: inside a parent's row, and not separable ─────────────────
     # The source says so itself, in the parent row's own brackets.
     'vic:State Revenue Office':
@@ -862,6 +1064,154 @@ def load_sa():
 
 
 # ── New South Wales ─────────────────────────────────────────────────────────
+def _nsw_police_fte():
+    """(now, prev, year) FTE for the NSW Police Force, from the Workforce Profile.
+
+    Returns None rather than raising: this is one card, and it must never take
+    down the twelve health organisations the appendix supplies.
+
+    The report is linked from the Premier's Department page — the same one
+    load_nsw's docstring records finding through nsw.gov.au's sitemap index, and
+    it answers a plain request with a browser User-Agent. The service table is
+    "name  prev  now  change  pct", so the CHANGE COLUMN RECONCILES the other
+    two, and that is asserted: a column order that flips would otherwise report
+    a fall as a rise with both numbers still real.
+    """
+    import pdfplumber
+    page = 'https://www.nsw.gov.au/departments-and-agencies/premiers-department/reports-and-data/workforce-profile-reports'
+    try:
+        html = fetch(page).decode('utf-8', 'replace') if isinstance(fetch(page), bytes) else fetch(page)
+    except Exception as e:                                        # noqa: BLE001
+        print(f'  New South Wales: profile page unreachable ({type(e).__name__})', file=sys.stderr)
+        return None
+    m = re.findall(r'href="([^"]*?(\d{4})-workforce-profile-report\.pdf)"', html, re.I)
+    if not m:
+        print('  New South Wales: no workforce-profile PDF linked', file=sys.stderr)
+        return None
+    url, year = max(m, key=lambda x: int(x[1]))
+    if url.startswith('/'):
+        url = 'https://www.nsw.gov.au' + url
+    try:
+        raw = fetch(url, binary=True)
+        import io as _io
+        with pdfplumber.open(_io.BytesIO(raw)) as pdf:
+            for pg in pdf.pages[:20]:
+                for line in (pg.extract_text() or '').split('\n'):
+                    mm = re.match(r'^NSW Police Force\s+([\d,]+)\s+([\d,]+)\s+'
+                                  r'([\u2212+-]?[\d,]+)\s', line.strip())
+                    if not mm:
+                        continue
+                    prev = int(mm.group(1).replace(',', ''))
+                    now = int(mm.group(2).replace(',', ''))
+                    chg = int(mm.group(3).replace(',', '').replace('\u2212', '-').replace('+', ''))
+                    # TOLERANCE OF ONE, AND IT IS NEEDED. Measured 2026-09-25:
+                    # the row reads 20,106 -> 19,513 with a change of −592,
+                    # while the difference of those two is 593. Each column is
+                    # rounded from a fractional FTE on its own, so the published
+                    # change is not obliged to equal the difference of the
+                    # published values, and an exact test rejects a perfectly
+                    # good row. The guard still does its job: were the columns
+                    # transposed, now − prev would be +593 against a stated
+                    # −592, out by 1,185.
+                    if abs((now - prev) - chg) > 1:
+                        print(f'  New South Wales: police row does not reconcile '
+                              f'({prev} -> {now} against {chg}) — not merged', file=sys.stderr)
+                        return None
+                    return now, prev, int(year)
+    except Exception as e:                                        # noqa: BLE001
+        print(f'  New South Wales: profile PDF unreadable ({type(e).__name__})', file=sys.stderr)
+        return None
+    print('  New South Wales: no NSW Police Force row in the profile', file=sys.stderr)
+    return None
+
+
+def load_wa():
+    """WA Public Sector Commission "State of the Sector" bulletin — headcount.
+
+    WESTERN AUSTRALIA WAS THE ONLY JURISDICTION WITH NO LOADER. Its figures
+    lived in src/employsi/data/perthGovWorkforce.ts, whose header says
+    AUTO-GENERATED while no script in this repo produces it — 47 rows entered
+    by hand from the 2021-22 to 2024-25 bulletins. So WA could not be
+    refreshed, and was not: measured 2026-09-25, a 2025-26 edition had been on
+    the same page since September and the repo was a year behind it.
+
+    THAT STALENESS WAS READING AS A GAP. Sixteen WA cards were blank, and the
+    obvious conclusion — statutory bodies the bulletin does not cover — was
+    right about nine of them and wrong about seven. Western Australia
+    restructured its departments in 2025, and the 2025-26 bulletin names the
+    new ones: Transport and Major Infrastructure 2,145, Housing and Works
+    2,362, Local Government Industry Regulation and Safety 1,652, Creative
+    Industries Tourism and Sport 1,590, Mines Petroleum and Exploration 536,
+    Energy and Economic Diversification 520, and MyLeave 39. Nothing was
+    missing; the source had moved on and this had not.
+
+    EIGHT ROWS HAVE NO PRIOR YEAR AND MUST NOT BE GIVEN ONE. The 2024-25
+    edition reports the OLD structure — Energy Mines Industry Regulation and
+    Safety, Jobs Tourism Science and Innovation, Transport, Treasury, Finance,
+    Local Government Sport and Cultural Industries — and the 2025-26
+    workbook's "5 year comparison" sheet is whole-of-sector only (headcount
+    158,004 to 187,450, no agency breakdown). The new departments were
+    assembled from parts of the old, so no old row IS any one of them, and
+    summing predecessors would turn a machinery-of-government decision into a
+    headcount change. Those rows carry `prev = None` and a null `yoy`.
+
+    Department of Treasury and Finance is the clearest case for that rule: the
+    hand-made file had it at 1,587, which is about Treasury plus Finance added
+    together, while the 2025-26 bulletin reports the merged department at 815.
+    Whether that is a real fall or functions moving elsewhere is not something
+    this file can tell, so it states the figure and no change at all.
+
+    The bulletin is an .xlsx and the sheet is "Workforce": agency name in the
+    first column, headcount in the second, FTE in the third. HEADCOUNT is taken
+    — the file it supersedes is a head count, and the column is labelled as an
+    annual average of quarterly unique individuals.
+    """
+    import openpyxl
+
+    coll = ('https://www.wa.gov.au/government/document-collections/'
+            'state-of-the-wa-government-sector-workforce-statistical-bulletins')
+    html = fetch(coll)
+    if isinstance(html, bytes):
+        html = html.decode('utf-8', 'replace')
+    # sots_statistical_bulletin_2025-26_0.xlsx — the trailing _0 is Drupal's,
+    # so the year is matched rather than the whole filename.
+    found = {}
+    for href, yr in re.findall(
+            r'href="([^"]*sots_statistical_bulletin_(\d{4})-\d{2}[^"]*\.xlsx?)"', html, re.I):
+        found.setdefault(int(yr), href if href.startswith('http')
+                         else 'https://www.wa.gov.au' + href)
+    if len(found) < 2:
+        print(f'  Western Australia: {len(found)} bulletins linked, need two',
+              file=sys.stderr)
+        return {}, None, 'headcount'
+    now_y, prev_y = sorted(found, reverse=True)[:2]
+
+    def sheet(url):
+        raw = fetch(url, binary=True)
+        wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+        if 'Workforce' not in wb.sheetnames:
+            raise RuntimeError(f'{url}: no Workforce sheet')
+        rows = {}
+        for r in wb['Workforce'].iter_rows(values_only=True):
+            if not r or not r[0] or not isinstance(r[1], (int, float)):
+                continue
+            name = str(r[0]).strip()
+            # THE SECTOR TOTAL IS NOT AN AGENCY. 187,450 against the largest
+            # real row of 65,098 — the same aggregate trap as South Australia's
+            # General Government Sector.
+            if name == 'WA Public Sector':
+                continue
+            rows[name] = int(r[1])
+        # Under forty rows means the sheet moved, not that the sector shrank.
+        if len(rows) < 40:
+            raise RuntimeError(f'{url}: only {len(rows)} agency rows parsed')
+        return rows
+
+    now, prev = sheet(found[now_y]), sheet(found[prev_y])
+    return ({k: (v, prev.get(k)) for k, v in now.items()},
+            f'{now_y}-{str(now_y + 1)[2:]}', 'headcount')
+
+
 def load_nsw():
     """NSW Health annual report appendix — staffing by health organisation.
 
@@ -1050,6 +1400,37 @@ def load_nsw():
     # unmatched, and the organisation it belonged to then takes whatever the
     # HEADCOUNT section offers, which is how an 18% overstatement sat on South
     # Western Sydney's card reading "Workforce FTE".
+    # ── ONE ROW FROM A SECOND NSW DOCUMENT ─────────────────────────────────
+    #
+    # The health appendix cannot hold a non-health agency, so 63 of NSW's 64
+    # blank cards are refusals (see NOT_IN_SOURCE). Exactly one is not, and it
+    # is worth the extra fetch.
+    #
+    # The Workforce Profile's service table gives, in one row, both years:
+    #
+    #     NSW Police Force  20,106  19,513  −592  −2.9
+    #
+    # WHY THIS ONE AND NOTHING ELSE IN THAT TABLE. Every other row is either an
+    # aggregate over agencies — Public Service 84,780, other Crown services
+    # 51,838, the sector totals — or a service whose members hold their own
+    # roster cards, which is the double count declined for NSW Health's
+    # 140,998. The NSW Police Force is a single organisation, the roster has one
+    # card for it, and nothing else on the roster sits inside it: the Law
+    # Enforcement Conduct Commission is independent oversight, not part of the
+    # force. So the service row IS the agency here.
+    #
+    # Same unit and same date as the appendix — FTE at 30 June — which is what
+    # lets it join those rows rather than needing a source of its own. Both are
+    # asserted below rather than assumed.
+    police = _nsw_police_fte()
+    if police:
+        now_p, prev_p, yr = police
+        if asof and asof.endswith(str(yr)):
+            out.setdefault('NSW Police Force', (now_p, prev_p))
+        else:
+            print(f'  New South Wales: profile is {yr}, appendix is {asof} — '
+                  f'NSW Police Force not merged', file=sys.stderr)
+
     stray = [k for k in out if RUNNING.search(k)]
     if stray:
         raise RuntimeError(f'NSW: {len(stray)} tables named after a page, not an '
@@ -1397,6 +1778,34 @@ def load_tas():
                     if sum(n[:3]) != n[3] or n[3] <= 0:
                         continue
                     out[name] = n[3]
+
+        # THE REPORT STATES ITS OWN TOTAL, SO THE PARSE CAN CHECK ITSELF, and
+        # measured 2026-09-25 it does not add up: thirteen agencies summing to
+        # 20,418 against a Total row of 32,473. Twelve thousand people are in
+        # agencies this parser never sees — among them Education and Natural
+        # Resources and Environment, which is exactly why their cards are
+        # blank. It is not a source that omits them; it is a line-shape this
+        # regex does not match.
+        #
+        # WARN RATHER THAN RAISE, between half and all. Every row it DOES
+        # return is sound — each one's four columns reconcile — so failing
+        # would throw away fourteen good cards to protest six missing ones,
+        # and the missing ones are already blank either way. Below half it
+        # raises, because at that point the shape has moved rather than
+        # drifted. This is the Northern Territory's "under fifteen rows is a
+        # failure" lesson in the stronger form the Tasmanian report allows:
+        # the document says what the answer should sum to.
+        total = out.pop('Total', None)
+        if total:
+            got = sum(out.values())
+            if got < total * 0.5:
+                raise RuntimeError(f'TAS: parsed {got:,} of a stated {total:,} '
+                                   f'({got / total:.0%}) — the table shape has moved')
+            if got < total * 0.95:
+                print(f'  Tasmania: INCOMPLETE — {len(out)} agencies summing to {got:,} '
+                      f'against the report\'s own Total of {total:,} ({got / total:.0%}). '
+                      f'{total - got:,} employees are in agencies this parse does not '
+                      f'reach; their cards stay blank.', file=sys.stderr)
         return out
 
     now_rows = agencies(editions[june[0]])
@@ -1548,6 +1957,10 @@ SOURCES = {
     # the card and put them in the same tile as figures they cannot be added
     # to. Same reason Queensland and NSW health are kept apart.
     'nzhealth': ('New Zealand health', load_healthnz, 1),
+    # KEYED 'perth', NOT 'wa', because main() derives the jurisdiction from the
+    # roster id and Western Australia's agencies are `perth-gov-…`. The label is
+    # the state; the key has to match the ids.
+    'perth': ('Western Australia', load_wa, 1),
 }
 
 
@@ -1555,6 +1968,20 @@ def main():
     only = None
     if '--only' in sys.argv:
         only = {k.strip() for k in sys.argv[sys.argv.index('--only') + 1].split(',') if k.strip()}
+
+    # --dump-source qld[,sa,…] prints EVERY row a source parsed, not just the
+    # ones that matched nothing.
+    #
+    # WHY THAT IS A DIFFERENT LIST AND WHY IT IS NEEDED. The unmatched report
+    # answers "what could an alias point at", which is the right question when
+    # a jurisdiction has spare rows. Queensland has the opposite shape — 22
+    # blank cards against 5 spare rows — so every remaining answer is a
+    # refusal, and a refusal has to name what the body sits INSIDE. That name
+    # is in the rows that DID match, which nothing printed.
+    dump = set()
+    if '--dump-source' in sys.argv:
+        dump = {k.strip() for k in sys.argv[sys.argv.index('--dump-source') + 1].split(',')
+                if k.strip()}
 
     # The roster, read straight out of the app so the ids cannot drift.
     data, meta, failed = {}, [], []
@@ -1593,6 +2020,28 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
     (c.id.startsWith("nz-") && c.sector === "Healthcare"))
   .map(c => ({ id: c.id, name: c.name }))));'''],
         cwd=ROOT, capture_output=True, text=True, check=True).stdout)
+
+    # EVERY NOT_IN_SOURCE KEY MUST NAME A REAL ROSTER CARD, because a key that
+    # does not is silent: the lookup misses, the agency falls back to "no
+    # source row", and the reason someone measured and wrote down is simply
+    # never printed. The table then looks maintained while saying nothing — the
+    # same shape as a guard that cannot fire. A rename on the roster breaks
+    # these the same way, and this is what says so.
+    roster_keys = set()
+    for a in agencies:
+        if a['id'].startswith('aps-'):
+            roster_keys.add(f"aps:{a['name']}")
+        elif a['id'].startswith('nz-'):
+            roster_keys.add(f"nz:{a['name']}")
+            roster_keys.add(f"nzhealth:{a['name']}")
+        elif '-gov-' in a['id']:
+            roster_keys.add(f"{a['id'].split('-gov-')[0]}:{a['name']}")
+    stray_reasons = sorted(k for k in NOT_IN_SOURCE if k not in roster_keys)
+    if stray_reasons:
+        print(f'\n  NOT_IN_SOURCE: {len(stray_reasons)} entries name no roster card '
+              f'(renamed, or a typo — the reason will never print):', file=sys.stderr)
+        for k in stray_reasons:
+            print(f'      {k}', file=sys.stderr)
 
     out, skipped = {}, 0
     # BOTH SIDES OF A FAILED MATCH ARE REPORTED, because only one of them was
@@ -1677,19 +2126,35 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
                 # same name gets researched again every pass and reaches the
                 # same answer; with it the list separates what is still worth
                 # looking for from what has already been settled.
+                # A JURISDICTION-WIDE REASON IS PRINTED ONCE, not once per
+                # card. The first version of this put the whole paragraph
+                # against all 57 New South Wales cards, which is 57 copies of
+                # one sentence — precisely the unreadable list the reasons were
+                # added to replace.
                 why = NOT_IN_SOURCE.get(f"{pre}:{a['name']}")
+                if not why and pre in NOT_IN_SOURCE_JURISDICTION:
+                    why = '(see the note under this list)'
                 unmatched_roster[pre].append(
                     (a['name'], why or ('ambiguous' if hit else 'no source row')))
                 skipped += 1
                 continue
             now, prev = hit[0][1]
             consumed[pre].add(want)
-        if now <= 0 or prev <= 0:
+        # A ROW MAY HAVE NO PRIOR YEAR, AND THAT IS NOT THE SAME AS A BAD ONE.
+        # Western Australia restructured its departments in 2025: the 2025-26
+        # bulletin reports a Department of Transport and Major Infrastructure
+        # that the 2024-25 one has never heard of, because it was assembled
+        # from parts of two others. There IS no comparator, and inventing one —
+        # summing the predecessors, or reusing `now` — would manufacture a
+        # change out of a machinery-of-government decision. So `prev` may be
+        # None, `yoy` is then null, and the card shows the figure with no delta,
+        # which is the behaviour headcountFor already has for an unknown span.
+        if now <= 0 or (prev is not None and prev <= 0):
             unmatched_roster[pre].append((a['name'], f'not positive ({now}/{prev})'))
             skipped += 1
             continue
         rec = {'now': now, 'prev': prev,
-               'yoy': round((now - prev) / prev * 100, 1),
+               'yoy': None if prev is None else round((now - prev) / prev * 100, 1),
                'asof': asof, 'span': span}
         if unit != 'headcount':
             rec['unit'] = unit
@@ -1743,8 +2208,13 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
     for cid in sorted(out):
         v = out[cid]
         unit = f", unit: {json.dumps(v['unit'])}" if v.get('unit') else ''
-        L.append(f"  {json.dumps(cid)}: {{ now: {int(v['now'])}, prev: {int(v['prev'])}, "
-                 f"yoy: {v['yoy']}, asof: {json.dumps(v['asof'])}, span: {int(v['span'])}{unit} }},")
+        # prev is OMITTED rather than zeroed when there is no prior year. A 0
+        # would read as a real reading of nobody, and check-roster's
+        # "not positive" assertion would fire on a row that is perfectly good.
+        prev_part = '' if v['prev'] is None else f"prev: {int(v['prev'])}, "
+        yoy_part = 'null' if v['yoy'] is None else v['yoy']
+        L.append(f"  {json.dumps(cid)}: {{ now: {int(v['now'])}, {prev_part}"
+                 f"yoy: {yoy_part}, asof: {json.dumps(v['asof'])}, span: {int(v['span'])}{unit} }},")
     L += ['};', '']
     open(OUT, 'w').write('\n'.join(L))
     if summed:
@@ -1759,10 +2229,49 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
         print(f'\n  {pre}: {len(rows)} roster agencies WITHOUT a figure:', file=sys.stderr)
         for name, why in sorted(rows):
             print(f'      {name[:62]:64s} {why}', file=sys.stderr)
+        note = NOT_IN_SOURCE_JURISDICTION.get(pre)
+        if note and any(w == '(see the note under this list)' for _n, w in rows):
+            print(f'\n      NOTE for {pre}: {note}', file=sys.stderr)
     for pre in sorted(data):
         by_norm = data[pre][0]
         spare = [(k, v[0][0], v[0][1][0]) for k, v in by_norm.items()
                  if k not in consumed[pre] and len(v) == 1]
+
+        # THE FULL SOURCE LIST, WHERE THE ANSWER IS A REFUSAL RATHER THAN AN
+        # ALIAS — printed without being asked for, because the jurisdictions
+        # that need it are exactly the ones that cannot ask.
+        #
+        # The spare list answers "what could an ALIAS point at". That is the
+        # right question when a jurisdiction has rows to spare: Victoria had
+        # 208 of them against 38 blank cards, and reading that list closed 18.
+        # Queensland is the other shape — 22 blank cards against 5 spare rows —
+        # so its remaining answers are refusals, and a refusal has to name what
+        # the body sits INSIDE. That name is in the rows that DID match, which
+        # the spare list by definition excludes.
+        #
+        # More unmatched cards than spare rows is that shape, so it triggers
+        # the dump. `--dump-source` stays as an explicit override; this is what
+        # makes it reachable on a branch, since workflow_dispatch inputs are
+        # validated against the DEFAULT branch's copy of the workflow and a
+        # newly-added input is silently dropped until it is merged.
+        # TWO TRIGGERS, AND THE SECOND ONE IS WHY TASMANIA GETS ONE. More
+        # unmatched cards than spare rows is the refusal shape. But a
+        # jurisdiction can also have barely any spare rows in ABSOLUTE terms —
+        # Tasmania has 6 cards blank against 7 spare, which passes the first
+        # test and still leaves the spare list unable to answer anything,
+        # because seven rows is not where a missing department is hiding. When
+        # almost nothing is spare, the whole list is the only useful view.
+        if (pre in dump
+                or len(unmatched_roster.get(pre, [])) > len(spare)
+                or (unmatched_roster.get(pre) and len(spare) < 15)):
+            print(f'\n  {pre}: ALL {len(by_norm)} source rows, largest first '
+                  f'({len(unmatched_roster.get(pre, []))} cards unmatched vs '
+                  f'{len(spare)} spare rows):', file=sys.stderr)
+            allrows = sorted(((v[0][0], v[0][1][0]) for v in by_norm.values()),
+                             key=lambda x: -x[1])
+            for nm, n in allrows:
+                print(f'      {n:>8,}  {nm[:70]}', file=sys.stderr)
+
         if not spare:
             continue
         spare.sort(key=lambda x: -x[2])

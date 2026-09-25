@@ -13,7 +13,7 @@ import {
   parseStoredSkills,
 } from "../data/skillsTaxonomy";
 import { AREA_SOURCES, canonicalArea } from "../data/hiringAreas";
-import { coverageDay } from "./analystFn";
+import { coverageDay, coveredFrom } from "./feedCoverage";
 import { annualAud, medianAnnual } from "./salaryParse";
 import { FX_AS_AT } from "../data/fxRates";
 import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
@@ -1158,39 +1158,6 @@ const SKILL_MIN_VOLUME = 3;
  *  run of collecting days, short enough that back-dated rows cannot drag the
  *  median under the floor. Matches the ticker's widest scan. */
 const COVERAGE_HORIZON_DAYS = 60;
-
-/**
- * Share of an employer's rows whose feeds must have been running before a day
- * counts as covered for that employer. Same value, and the same argument, as
- * COVERAGE_TARGET in analystFn: below about this much the shortfall is inside
- * ordinary daily noise, above it the missing feed is visible as a trend.
- */
-const FEED_COVERAGE_TARGET = 0.95;
-
-/**
- * The day by which feeds carrying FEED_COVERAGE_TARGET of an employer's rows
- * had begun covering it, or "" when that cannot be established.
- *
- * Walk the feeds oldest-start first, accumulating their share; the day the
- * running total clears the target is the first day the picture is essentially
- * complete. Everything before it is missing whichever feeds had not arrived,
- * which is the archive assembling itself rather than a market moving.
- */
-function coveredFrom(starts: Record<string, string>, rows: Record<string, number>): string {
-  const feeds = Object.keys(starts);
-  if (!feeds.length) return "";
-  const total = feeds.reduce((t, s) => t + (rows[s] || 0), 0);
-  if (!total) return "";
-  const need = total * FEED_COVERAGE_TARGET;
-  let acc = 0;
-  for (const s of feeds.sort((a, b) =>
-    starts[a] < starts[b] ? -1 : starts[a] > starts[b] ? 1 : 0,
-  )) {
-    acc += rows[s] || 0;
-    if (acc >= need) return starts[s];
-  }
-  return "";
-}
 
 /**
  * Change between the two halves of a covered window, as a percentage.

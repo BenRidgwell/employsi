@@ -90,6 +90,8 @@ export function ActionRail() {
   const toggleFlows = useAppStore((s) => s.toggleFlows);
   const flowsOpen = useAppStore((s) => s.flowsOpen);
   const analystOpen = useAppStore((s) => s.analystOpen);
+  const toggleCareer = useAppStore((s) => s.toggleCareer);
+  const careerOpen = useAppStore((s) => s.careerOpen);
   const toggleDataQuality = useAppStore((s) => s.toggleDataQuality);
   const dataQualityOpen = useAppStore((s) => s.dataQualityOpen);
   const isAdmin = useAppStore((s) => s.role) === "admin";
@@ -138,10 +140,16 @@ export function ActionRail() {
             onClick={toggleAnalyst}
           />
         </div>
-        {/* The supply pair, from `Action Rail supply.html`. Their panels are
-            still to come, so neither carries an onClick yet — see RailButton. */}
+        {/* The supply pair, from `Action Rail supply.html`. Career pathways
+            opens its card (CareerPathwaysPane); Talent flows opens its card
+            (TalentFlowPane) and drops into the focus company's city. */}
         <div className={`railswapl${mode === "supply" ? " on" : ""}`} inert={mode !== "supply"}>
-          <RailButton icon={<IconPathways />} label="Career pathways" />
+          <RailButton
+            icon={<IconPathways />}
+            label="Career pathways"
+            on={careerOpen}
+            onClick={toggleCareer}
+          />
           <RailButton
             icon={<IconTalentFlows />}
             label="Talent flows"
