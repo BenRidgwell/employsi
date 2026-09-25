@@ -1848,6 +1848,50 @@ export const FAMILIES: FamilyDef[] = [
     ],
   },
   {
+    id: "strategy",
+    label: "Strategy",
+    // Corporate strategy: graduate / coordinator → analyst / associate → senior
+    // analyst / lead → manager → head of strategy / GM strategy → CSO. Strategy
+    // consulting (Strategy&, EY-Parthenon, Monitor Deloitte, the Big Four's
+    // strategy-and-transformation practices) grades by consultant and posts
+    // the grade after a pipe, so it has its own track.
+    //
+    // Late in the order on purpose: "strategy" is a word many functions put in
+    // a title, and the function wins — Commercial Strategy stays commercial,
+    // Finance Strategy & Transformation stays finance, Fraud Strategy stays
+    // risk. What this family takes is what those leave, measured 2026-09-25:
+    // 475 of 573 strategy-tagged rows in the window were on no ladder at all.
+    match: /\bstrateg(?:y|ic planning)\b/,
+    skills: ["Strategy"],
+    // Strategy as an adjective on another function's role. Each of these was a
+    // real title in the window, and none is on a strategy career ladder: a
+    // product strategy lead is a product manager, a fraud strategy analyst
+    // writes detection rules, an equity strategy manager runs money.
+    exclude:
+      /\b(?:product|digital|brand|marketing|media|content|social|creative|customer|engagement|communications?|fraud|scams?|credit|collections?|pricing|price|revenue|sales|workforce|people|hr|talent|data|site|network|sustainability|esg|climate|equity|trading|ui|ux|security|policy|clinical|learning|curriculum|procurement|sourcing|category|tax|treasury|legal)\b|\bplanner\b|\bchief of staff\b|\bexecutive support\b|\bsupport officer\b|\bassistant to\b|\b(?:quantitative|algorithmic|wealth|benefits|budget|rewards|compensation|bargaining|property|hospital|surgery)\b|\binvestment (?:associate|strategy)\b|\b(?:donor|gifts|fundraising|medical affairs|employment relations?(?:hip)?)\b|\boperations coordinator\b|\bdistrict manager\b|\badministration officer\b|\badmin\b/,
+    tracks: [
+      {
+        id: "consulting",
+        label: "Strategy consulting",
+        // "Strategy&" reads as "strategy and" once cleaned, so PwC's deals
+        // practice is found by "deals", as EY's by "transactions".
+        match:
+          /\bconsult(?:ant|ing|ancy)\b|\badvisory\b|\bparthenon\b|\bmonitor deloitte\b|\bdeals?\b|\btransactions?\b/,
+      },
+    ],
+    // Before the generic rubric: the consulting grades it does not know, and
+    // the grade after a pipe, which must beat the first job noun.
+    rungs: [
+      // An assistant VP is a band below director, as DEPUTY places "assistant
+      // vice president"; the abbreviated form fell through to rung 1.
+      [/\b(?:assistant|associate) vp\b/, 4],
+      [/\bmanaging consultant\b/, 4],
+      [/\bsenior (?:\w+ ){0,2}associate\b(?!\s+(?:director|vice president|partner))/, 3],
+      [/\bassociate\b(?!\s+(?:director|vice president|partner))/, 2],
+      [/\bcoordinator\b/, 1],
+    ],
+  },
+  {
     id: "hospitality",
     label: "Hospitality & food",
     // Three ladders that share venues. The kitchen: kitchenhand → cook / chef de
@@ -2157,14 +2201,7 @@ export const NOT_A_LADDER: Record<string, string> = {
  * so a wave can land on its own, and prints them, so the gap stays visible.
  * Empty is the finished state.
  */
-export const PATHWAYS_PLANNED: string[] = [
-  // Added to the taxonomy on main (791e0dc) after the four waves; it arrived
-  // here in a merge. Its titles do form a ladder — strategy analyst / associate
-  // → strategy manager / lead → strategy director / head of strategy → chief
-  // strategy officer — and it needs the same audit-and-fixtures pass as every
-  // other family before its rules exist.
-  "Strategy",
-];
+export const PATHWAYS_PLANNED: string[] = [];
 
 function rungFrom(rules: [RegExp, Rung][], t: string): Rung | null {
   for (const [re, rung] of rules) if (re.test(t)) return rung;

@@ -1136,6 +1136,94 @@ const FIXTURES: [string, Want][] = [
   ["FIFO Health and Safety Advisors", ["hse", "generalist", 2]],
   ["Safety Trainer", ["hse", "generalist", 2]],
   ["Fire Safety Engineering Intern", null],
+
+  // ---- Strategy (2026-09-25) ----------------------------------------------
+  // Added to the taxonomy on main after the four waves. Every title here is a
+  // real one from the 90-day window (573 rows, 333 distinct; 475 were on no
+  // ladder), written down BEFORE the family's rules existed.
+  //
+  // The corporate ladder: graduate / coordinator → analyst / associate →
+  // senior analyst / lead → manager → head / GM / director → CSO.
+  ["Strategy Graduate", ["strategy", "generalist", 1]],
+  ["Strategy & Transformation Coordinator", ["strategy", "generalist", 1]],
+  ["Strategy Analyst", ["strategy", "generalist", 2]],
+  ["Strategy Associate", ["strategy", "generalist", 2]],
+  ["Associate, Business Strategy", ["strategy", "generalist", 2]],
+  ["Strategic Planning & Investment Analyst", ["strategy", "generalist", 2]],
+  ["Strategy Advisor", ["strategy", "generalist", 2]],
+  ["Senior Strategy Analyst", ["strategy", "generalist", 3]],
+  ["Senior Strategy Associate", ["strategy", "generalist", 3]],
+  ["Strategy Lead", ["strategy", "generalist", 3]],
+  ["Strategy Manager", ["strategy", "generalist", 4]],
+  ["Senior Manager, Group Strategy", ["strategy", "generalist", 4]],
+  ["Strategy and Planning Manager", ["strategy", "generalist", 4]],
+  ["Associate Director – Innovation Strategy & Transformation", ["strategy", "generalist", 4]],
+  ["Head of Strategy", ["strategy", "generalist", 5]],
+  ["Head of Group Strategy - Corporate Planning", ["strategy", "generalist", 5]],
+  ["General Manager Strategy & Growth AU", ["strategy", "generalist", 5]],
+  ["Chief Strategy Officer", ["strategy", "generalist", 6]],
+  // Strategy consulting: the firms grade by consultant, not by analyst, and
+  // post the grade after a pipe ("Strategy Consultant | Manager | Strategy&").
+  // The GRADE decides the rung, not the first job noun.
+  ["Strategy Consultant", ["strategy", "consulting", 2]],
+  ["Corporate Strategy Consultant", ["strategy", "consulting", 2]],
+  ["Economics and Strategy Advisory Consultant", ["strategy", "consulting", 2]],
+  ["Senior Strategy Consultant", ["strategy", "consulting", 3]],
+  ["Junior Strategy Consultant | Senior Associate | Strategy&", ["strategy", "consulting", 3]],
+  [
+    "Senior Consultant - Technology Strategy and Transformation - Technology Consulting",
+    ["strategy", "consulting", 3],
+  ],
+  ["Strategy Consultant | Manager | Strategy&", ["strategy", "consulting", 4]],
+  ["Senior Strategy Consultant | Senior Manager | Strategy&", ["strategy", "consulting", 4]],
+  ["EY-Parthenon Strategy - Manager, Strategy Consultant", ["strategy", "consulting", 4]],
+  ["Strategy Manager | Monitor Deloitte", ["strategy", "consulting", 4]],
+  [
+    "Manager - Technology Strategy and Transformation - Technology Consulting",
+    ["strategy", "consulting", 4],
+  ],
+  ["Strategy & Transformation Managing Consultant", ["strategy", "consulting", 4]],
+  // Traps: "strategy" in a title that belongs to another ladder, or to none.
+  ["Head of Commercial Strategy", ["commercial", "generalist", 5]],
+  ["Fraud & Scams Strategy Analyst", ["risk", "compliance", 2]],
+  [
+    "Executive Support Officer, Strategy Planning and Infrastructure - Cairns",
+    ["admin", "executive-assistant", 2],
+  ],
+  ["Principal Planner Strategic Planning", null], // an urban planner
+  ["Chief of Staff to Chief Strategy Officer", null],
+  ["Quantitative Equity Strategy Manager - HSBC Global Asset Management", null],
+  ["Product Strategy Lead", null],
+  ["Digital Strategy Lead", null],
+  ["Senior Customer Engagement Strategy Manager", null],
+  ["Senior Manager, Workforce Strategy & Planning", null],
+  ["Executive Security Partner & Strategy Lead", null],
+  ["Manager/Senior Manager | Strategy & Transformation | Benefits Realisation Lead", null],
+  // From the first archive audit of the family (2026-09-25): each was placed
+  // on the strategy ladder and should not have been, or on the wrong rung.
+  ["Strategy& - Deals | Senior Associate", ["strategy", "consulting", 3]],
+  [
+    "Strategy and Transactions - Transaction Diligence - Senior - Hong Kong",
+    ["strategy", "consulting", 3],
+  ],
+  ["Assistant VP, Group Strategy & Transformation", ["strategy", "generalist", 4]],
+  ["Off-cycle Intern - Algorithmic Quantitative Strategy", null],
+  ["Research - Quantitative Strategy - Associate", null],
+  ["HSBC Life Wealth Strategy Advisor", null],
+  ["Benefits Specialist, Large Client Strategy", null],
+  ["Analyst, Budget Strategy", null],
+  ["Investment Associate - RCF Partnership Strategy", null],
+  ["Operations Coordinator (Indigenous Strategy)", null],
+  ["[West Hospital, Strategic Planning Exp] Senior AM/ Manager, Surgery - UP$6500 #HCY", null],
+  ["Manager, Total Rewards & Compensation Strategy (Logistics / East) [EL]", null],
+  ["Group Manager, IR Strategy & Bargaining", null],
+  ["District Manager Integrated Renal Strategy", null],
+  ["Asset Manager - Housing and Property Strategy", null],
+  ["Administration Officer (Grade 2), Strategy and Planning", ["admin", "generalist", 2]],
+  ["Director, Investment Strategy (HSBC Asset Management)", null],
+  ["Director, Principal Gifts & Major Donor Strategy", null],
+  ["Director, Scientific Strategy, Medical Affairs", null],
+  ["Director, Employment Relationship Strategy", null],
 ];
 
 let failures = 0;
