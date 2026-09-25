@@ -42,7 +42,8 @@ the card renders an em dash for it.
 
 ALIAS is the escape hatch, and every entry is a judgement someone can check.
 """
-import collections, csv, io, json, re, sys, urllib.error, urllib.request
+import collections
+import glob, csv, io, json, re, sys, urllib.error, urllib.request
 
 ROOT = __file__.rsplit('/scripts/', 1)[0]
 OUT = f'{ROOT}/src/employsi/data/govWorkforceAu.ts'
@@ -130,6 +131,66 @@ ALIAS = {
     # 116,540 and "Public Non-Financial Corporations Sector" 4,750 — and any
     # rule loose enough to gather the health networks could gather one of
     # those. A total is not an agency, and nothing here may ever sum one.
+    # ── Victoria ───────────────────────────────────────────────────────
+    # THE VICTORIAN SOURCE HAD 208 SPARE ROWS AGAINST 38 UNFILLED CARDS, which
+    # is not a jurisdiction missing a source — it is a jurisdiction whose rows
+    # are named differently from the roster's. VPSC publishes the EMPLOYING
+    # ENTITY: Bendigo Health files as Bendigo Health Care Group, WorkSafe as
+    # the Victorian WorkCover Authority (its legal name), VicScreen as Film
+    # Victoria (VicScreen is the trading name), the Ombudsman as the Office of
+    # the Ombudsman Victoria.
+    #
+    # The portal was checked for a newer or finer file before any of this was
+    # written, since that would have been the cheaper fix: VPSC Workforce Data
+    # runs 2022, 2023, 2024 and stops. Jun 2024 IS the newest whole-of-sector
+    # edition, so the loader was already reading the best available and the
+    # remaining gap was never going to close by fetching something else.
+    #
+    # A DEPARTMENT ROW CARRIES ITS OWN DISCLOSURE IN BRACKETS, and the brackets
+    # are part of the name — norm() keeps parentheses, so the roster's bare
+    # "Department of Premier and Cabinet" cannot reach a row that spells out
+    # what it includes. Those four are matched to the full string.
+    #
+    # THE (CEO) SPLIT IS A SOURCE CONVENTION, NOT A SECOND BODY. Several
+    # agencies file as "X (excluding CEO)" plus "X (CEO)" at 1. Taking only
+    # the first would report an agency one person short forever, so they are
+    # summed like SA Health, under the same guard requiring both members in
+    # both years. Victoria Police is the same shape at a different scale:
+    # sworn officers and public servants are two rows of one force.
+    'vic:Bendigo Health': 'Bendigo Health Care Group',  # 4,756
+    'vic:Latrobe Regional Health': 'Latrobe Regional Hospital',  # 2,675
+    'vic:Portable Long Service Authority': 'Portable Long Service Benefits Authority',  # 63
+    'vic:Royal Botanic Gardens Victoria': 'Royal Botanic Gardens Board',  # 246
+    'vic:Victorian Electoral Commission': 'Office of the Victorian Electoral Commissioner',  # 324
+    'vic:Victorian Ombudsman': 'Office of the Ombudsman Victoria',  # 92
+    'vic:WorkSafe': 'Victorian WorkCover Authority',  # 1,903
+    'vic:Parliament of Victoria': 'Departments of Parliament',  # 357
+    'vic:VicScreen': 'Film Victoria',  # 65
+    'vic:Victorian Legal Services Board and Commissioner': 'Office of the Legal Services Commissioner',  # 201
+    'vic:Department of Energy, Environment and Climate Action':
+        'Department of Energy, Environment and Climate Action (includes Sustainability Victoria excluding CEO, Solar Victoria and the Office of the Commissioner for Environmental Sustainability)',  # 6,226
+    'vic:Department of Justice and Community Safety':
+        'Department of Justice and Community Safety (includes non-executive and non-forensic employees from Victorian Institute of Forensic Medicine)',  # 9,852
+    'vic:Department of Premier and Cabinet':
+        'Department of Premier and Cabinet (includes Yoorrook Justice Commission)',  # 651
+    'vic:Department of Treasury and Finance':
+        'Department of Treasury and Finance (includes State Revenue Office and Commission for Better Regulation)',  # 1,612
+    'vic:Environment Protection Authority': [  # 752
+        'Environment Protection Authority (excluding CEO)',  # 751
+        'Environment Protection Authority (CEO)',  # 1
+    ],
+    'vic:Game Management Authority': [  # 30
+        'Game Management Authority (excluding CEO)',  # 29
+        'Game Management Authority (CEO)',  # 1
+    ],
+    'vic:Victorian Gambling and Casino Control Commission': [  # 198
+        'Victorian Gambling and Casino Control Commission (excluding CEO)',  # 197
+        'Victorian Gambling and Casino Control Commission (CEO)',  # 1
+    ],
+    'vic:Victoria Police': [  # 22,380
+        'Victoria Police (Sworn Police and Protective Services Officers)',  # 18,031
+        'Victoria Police (Public Service employees)',  # 4,349
+    ],
     # ── Health New Zealand districts ───────────────────────────────────
     # The roster carries the district's full Te Whatu Ora name; Table 1 of the
     # quarterly report carries the bare district. Qualified with `nzhealth:`
@@ -190,7 +251,34 @@ def _browser_ctx():
         pw = sync_playwright().start()
         _BROWSER['stop'] = pw.stop
         try:
-            b = pw.chromium.launch(args=['--no-sandbox'])
+            # PIN THE BROWSER PATH, because the pip playwright in the
+            # authoring sandbox expects a NEWER build number than the image
+            # carries and dies with "Executable doesn't exist ...
+            # chromium_headless_shell-1243", telling you to run
+            # `playwright install`. Do not: the environment sets
+            # PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD and the browser is already
+            # there. Until this was pinned, Queensland, South Australia, the
+            # NT and Tasmania all failed here with a message about a missing
+            # browser, which reads as four blocked jurisdictions rather than
+            # one wrong path.
+            #
+            # THIS DOES NOT MAKE THEM RUNNABLE IN THE SANDBOX, and it was
+            # briefly written up as if it did. With the path pinned the browser
+            # launches and the failure moves to the NEXT one:
+            # ERR_CERT_AUTHORITY_INVALID, because the sandbox reaches the
+            # network through a proxy whose CA Chromium does not trust. That is
+            # not worked around here — launching with certificate errors
+            # ignored would turn off verification for every page the scraper
+            # reads. These four stay runner-only, as gov-workforce.yml already
+            # has them; what changes is that the error now names the real
+            # blocker. On a runner the glob finds whatever playwright installed,
+            # and an empty glob falls through to the default launch.
+            exe = next(iter(sorted(glob.glob(
+                '/opt/pw-browsers/chromium-*/chrome-linux/chrome') + glob.glob(
+                '/opt/pw-browsers/chromium_headless_shell-*/chrome-linux/headless_shell'),
+                reverse=True)), None)
+            b = pw.chromium.launch(args=['--no-sandbox'],
+                                   **({'executable_path': exe} if exe else {}))
             _BROWSER['ctx'] = b.new_context(user_agent=UA, locale='en-AU')
         except Exception:
             # Leaving a half-started Playwright behind turns the next
@@ -348,6 +436,81 @@ def ckan_resource(api, dataset, match):
         if match.lower() in r['name'].lower():
             return r['url']
     return None
+
+
+# Roster agencies the source CANNOT fill, with the measured reason.
+#
+# WHY THIS EXISTS. The unmatched list is a worklist, and a worklist that never
+# shrinks stops being read. Every entry below was checked against the source
+# rows by hand and cannot be closed by an alias, so leaving them printed as
+# "no source row" invites the next pass to do the same search again and reach
+# the same answer. A refusal is a claim and gets the same evidence as a match —
+# the WGEA generator learned that when three of its refusals turned out to be
+# wrong.
+#
+# Keyed like ALIAS, `jurisdiction:Roster Name`.
+NOT_IN_SOURCE = {
+    # ── Victoria: inside a parent's row, and not separable ─────────────────
+    # The source says so itself, in the parent row's own brackets.
+    'vic:State Revenue Office':
+        "inside 'Department of Treasury and Finance (includes State Revenue "
+        "Office and Commission for Better Regulation)' — 1,612 covers both, and "
+        "filing it here too would be the same people on two cards",
+    'vic:Victorian Institute of Forensic Medicine':
+        "split in two and only half is reachable: 47 executive and forensic "
+        "employees have their own row, the rest are inside DJCS's 9,852 by that "
+        "row's own wording. 47 would understate it, 9,852 is the department",
+    'vic:Homes Victoria':
+        'inside the Department of Families, Fairness and Housing (7,172); no row '
+        'names Homes Victoria',
+    'vic:VicGrid': 'inside DEECA (6,226); no row names VicGrid',
+    'vic:Victorian School Building Authority':
+        'inside the Department of Education; no row names the VSBA. The near '
+        'name in the source, Victorian Building Authority (490), is the '
+        'building-practitioner regulator and a different body entirely',
+
+    # ── Victoria: one employer for many roster cards ───────────────────────
+    # COURT SERVICES VICTORIA EMPLOYS EVERY VICTORIAN COURT'S STAFF — 3,072
+    # plus 6 court CEOs — and no row separates the jurisdictions. The roster
+    # holds five courts as five cards, so filing 3,078 would put one number on
+    # five different cards. That is the double count already declined for NSW
+    # Health's portfolios.
+    'vic:Supreme Court': 'employed by Court Services Victoria (3,078); no row per court',
+    'vic:County Court': 'employed by Court Services Victoria (3,078); no row per court',
+    'vic:Magistrates Court': 'employed by Court Services Victoria (3,078); no row per court',
+    "vic:Children's Court": 'employed by Court Services Victoria (3,078); no row per court',
+    'vic:Victorian Civil and Administrative Tribunal (VCAT)':
+        'employed by Court Services Victoria (3,078); no row per jurisdiction',
+
+    # ── Victoria: did not exist when the file was measured ─────────────────
+    # The newest VPSC edition is Jun 2024 and these are 2024-25 creations, so
+    # their absence is a date, not a gap in coverage. They should appear of
+    # their own accord in the first edition that postdates them.
+    'vic:Social Services Regulator': 'created after Jun 2024, the newest VPSC edition',
+    'vic:Building and Plumbing Commission': 'created after Jun 2024 (from the VBA)',
+    'vic:Workplace Injury Commission': 'created after Jun 2024',
+    'vic:Triple Zero Victoria':
+        'created after Jun 2024; its predecessor ESTA has no row in the file either',
+    'vic:Victorian Infrastructure Delivery Authority':
+        'created after Jun 2024',
+    'vic:Victorian Infrastructure Delivery Authority | Health':
+        'created after Jun 2024',
+    'vic:Victorian Infrastructure Delivery Authority | Rail':
+        'created after Jun 2024',
+    'vic:Victorian Infrastructure Delivery Authority | Roads':
+        'created after Jun 2024',
+
+    # ── Victoria: a near name that is NOT this body ────────────────────────
+    'vic:Workforce Inspectorate Victoria':
+        "the source has 'Wage Inspectorate Victoria' (66) and nothing named "
+        'Workforce Inspectorate. Whether that is a rename is not established '
+        'here, and a score would have taken it — the AFL/AFL Sports Ready trap',
+    'vic:Royal Melbourne Hospital':
+        "the source's unit is 'Melbourne Health' (9,983), the health service "
+        'that operates the hospital AND NorthWestern Mental Health. The roster '
+        'card names the hospital, so this is the group-for-an-entity swap the '
+        'WGEA generator refuses: the group is used only when the roster names it',
+}
 
 
 def norm(s):
@@ -1394,7 +1557,13 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
             want = norm(spec)
             hit = by_norm.get(want)
             if not hit or len(hit) != 1:
-                unmatched_roster[pre].append((a['name'], 'ambiguous' if hit else 'no source row'))
+                # A RECORDED REASON BEATS "no source row". Without it the
+                # same name gets researched again every pass and reaches the
+                # same answer; with it the list separates what is still worth
+                # looking for from what has already been settled.
+                why = NOT_IN_SOURCE.get(f"{pre}:{a['name']}")
+                unmatched_roster[pre].append(
+                    (a['name'], why or ('ambiguous' if hit else 'no source row')))
                 skipped += 1
                 continue
             now, prev = hit[0][1]

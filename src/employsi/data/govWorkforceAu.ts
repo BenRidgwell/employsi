@@ -4,15 +4,15 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   New Zealand health: 21 agencies published as at 31 March 2026 — refreshed 2026-09-25
+//   APS (federal): 101 agencies published as at Dec 2025 — refreshed 2026-09-25
+//   Victoria: 261 agencies published as at Jun 2024 — KEPT, not refreshed this run
+//   New Zealand health: 21 agencies published as at 31 March 2026 — KEPT, not refreshed this run
 //   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — KEPT, not refreshed this run
 //   South Australia: 98 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   New South Wales: 33 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
 //   New Zealand: 103 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
 //   Northern Territory: 28 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   Tasmania: 14 agencies published as at Dec 2023 — KEPT, not refreshed this run
-//   APS (federal): 101 agencies published as at Dec 2025 — KEPT, not refreshed this run
-//   Victoria: 261 agencies published as at Jun 2024 — KEPT, not refreshed this run
 //
 // An agency the source does not report is ABSENT, never zero — the card shows
 // an em dash and says no figure was collected. See the generator for which
@@ -221,6 +221,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "vic-gov-bairnsdale-regional-health-service": { now: 894, prev: 879, yoy: 1.7, asof: "Jun 2024", span: 1 },
   "vic-gov-barwon-health": { now: 8044, prev: 7643, yoy: 5.2, asof: "Jun 2024", span: 1 },
   "vic-gov-benalla-health": { now: 315, prev: 296, yoy: 6.4, asof: "Jun 2024", span: 1 },
+  "vic-gov-bendigo-health": { now: 4756, prev: 4486, yoy: 6.0, asof: "Jun 2024", span: 1 },
   "vic-gov-cenitex": { now: 628, prev: 654, yoy: -4.0, asof: "Jun 2024", span: 1 },
   "vic-gov-central-gippsland-health": { now: 995, prev: 958, yoy: 3.9, asof: "Jun 2024", span: 1 },
   "vic-gov-central-highlands-rural-health": { now: 555, prev: 549, yoy: 1.1, asof: "Jun 2024", span: 1 },
@@ -228,20 +229,27 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "vic-gov-country-fire-authority": { now: 1046, prev: 1019, yoy: 2.6, asof: "Jun 2024", span: 1 },
   "vic-gov-court-services-victoria": { now: 3072, prev: 3068, yoy: 0.1, asof: "Jun 2024", span: 1 },
   "vic-gov-department-of-education": { now: 4931, prev: 4681, yoy: 5.3, asof: "Jun 2024", span: 1 },
+  "vic-gov-department-of-energy-environment-and-climate-action": { now: 6226, prev: 6098, yoy: 2.1, asof: "Jun 2024", span: 1 },
   "vic-gov-department-of-families-fairness-and-housing": { now: 7172, prev: 7084, yoy: 1.2, asof: "Jun 2024", span: 1 },
   "vic-gov-department-of-government-services": { now: 1629, prev: 1607, yoy: 1.4, asof: "Jun 2024", span: 1 },
   "vic-gov-department-of-health": { now: 2393, prev: 3309, yoy: -27.7, asof: "Jun 2024", span: 1 },
   "vic-gov-department-of-jobs-skills-industry-and-regions": { now: 1745, prev: 2032, yoy: -14.1, asof: "Jun 2024", span: 1 },
+  "vic-gov-department-of-justice-and-community-safety": { now: 9852, prev: 9729, yoy: 1.3, asof: "Jun 2024", span: 1 },
+  "vic-gov-department-of-premier-and-cabinet": { now: 651, prev: 589, yoy: 10.5, asof: "Jun 2024", span: 1 },
   "vic-gov-department-of-transport-and-planning": { now: 4761, prev: 4815, yoy: -1.1, asof: "Jun 2024", span: 1 },
+  "vic-gov-department-of-treasury-and-finance": { now: 1612, prev: 1333, yoy: 20.9, asof: "Jun 2024", span: 1 },
   "vic-gov-dhelkaya-health": { now: 753, prev: 731, yoy: 3.0, asof: "Jun 2024", span: 1 },
   "vic-gov-energy-safe-victoria": { now: 248, prev: 217, yoy: 14.3, asof: "Jun 2024", span: 1 },
+  "vic-gov-environment-protection-authority": { now: 752, prev: 747, yoy: 0.7, asof: "Jun 2024", span: 1 },
   "vic-gov-essential-services-commission": { now: 222, prev: 185, yoy: 20.0, asof: "Jun 2024", span: 1 },
+  "vic-gov-game-management-authority": { now: 30, prev: 34, yoy: -11.8, asof: "Jun 2024", span: 1 },
   "vic-gov-goulburn-valley-health": { now: 2654, prev: 2458, yoy: 8.0, asof: "Jun 2024", span: 1 },
   "vic-gov-government-schools": { now: 90091, prev: 85245, yoy: 5.7, asof: "Jun 2024", span: 1 },
   "vic-gov-grampians-wimmera-mallee-water-corporation": { now: 217, prev: 207, yoy: 4.8, asof: "Jun 2024", span: 1 },
   "vic-gov-heathcote-health": { now: 151, prev: 145, yoy: 4.1, asof: "Jun 2024", span: 1 },
   "vic-gov-independent-broad-based-anti-corruption-commission": { now: 279, prev: 273, yoy: 2.2, asof: "Jun 2024", span: 1 },
   "vic-gov-inglewood-and-districts-health-service": { now: 146, prev: 124, yoy: 17.7, asof: "Jun 2024", span: 1 },
+  "vic-gov-latrobe-regional-health": { now: 2675, prev: 2474, yoy: 8.1, asof: "Jun 2024", span: 1 },
   "vic-gov-moyne-health-services": { now: 220, prev: 198, yoy: 11.1, asof: "Jun 2024", span: 1 },
   "vic-gov-museums-victoria": { now: 706, prev: 708, yoy: -0.3, asof: "Jun 2024", span: 1 },
   "vic-gov-ncn-health": { now: 515, prev: 506, yoy: 1.8, asof: "Jun 2024", span: 1 },
@@ -250,8 +258,11 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "vic-gov-office-of-the-victorian-information-commissioner": { now: 48, prev: 57, yoy: -15.8, asof: "Jun 2024", span: 1 },
   "vic-gov-orbost-regional-health": { now: 183, prev: 175, yoy: 4.6, asof: "Jun 2024", span: 1 },
   "vic-gov-parks-victoria": { now: 1205, prev: 1418, yoy: -15.0, asof: "Jun 2024", span: 1 },
+  "vic-gov-parliament-of-victoria": { now: 357, prev: 329, yoy: 8.5, asof: "Jun 2024", span: 1 },
   "vic-gov-peninsula-health": { now: 6960, prev: 6612, yoy: 5.3, asof: "Jun 2024", span: 1 },
   "vic-gov-peter-maccallum-cancer-centre": { now: 3963, prev: 3496, yoy: 13.4, asof: "Jun 2024", span: 1 },
+  "vic-gov-portable-long-service-authority": { now: 63, prev: 52, yoy: 21.2, asof: "Jun 2024", span: 1 },
+  "vic-gov-royal-botanic-gardens-victoria": { now: 246, prev: 234, yoy: 5.1, asof: "Jun 2024", span: 1 },
   "vic-gov-royal-children-s-hospital": { now: 5759, prev: 5710, yoy: 0.9, asof: "Jun 2024", span: 1 },
   "vic-gov-safer-care-victoria": { now: 159, prev: 197, yoy: -19.3, asof: "Jun 2024", span: 1 },
   "vic-gov-shrine-of-remembrance-trust": { now: 43, prev: 41, yoy: 4.9, asof: "Jun 2024", span: 1 },
@@ -259,12 +270,19 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "vic-gov-state-library-of-victoria": { now: 370, prev: 350, yoy: 5.7, asof: "Jun 2024", span: 1 },
   "vic-gov-state-trustees-limited": { now: 607, prev: 556, yoy: 9.2, asof: "Jun 2024", span: 1 },
   "vic-gov-tallangatta-health-service": { now: 171, prev: 166, yoy: 3.0, asof: "Jun 2024", span: 1 },
+  "vic-gov-vicscreen": { now: 65, prev: 62, yoy: 4.8, asof: "Jun 2024", span: 1 },
   "vic-gov-victoria-legal-aid": { now: 1312, prev: 1110, yoy: 18.2, asof: "Jun 2024", span: 1 },
+  "vic-gov-victoria-police": { now: 22380, prev: 22021, yoy: 1.6, asof: "Jun 2024", span: 1 },
   "vic-gov-victoria-state-emergency-service": { now: 317, prev: 306, yoy: 3.6, asof: "Jun 2024", span: 1 },
+  "vic-gov-victorian-electoral-commission": { now: 324, prev: 224, yoy: 44.6, asof: "Jun 2024", span: 1 },
+  "vic-gov-victorian-gambling-and-casino-control-commission": { now: 198, prev: 157, yoy: 26.1, asof: "Jun 2024", span: 1 },
   "vic-gov-victorian-government-solicitor-s-office": { now: 363, prev: 350, yoy: 3.7, asof: "Jun 2024", span: 1 },
   "vic-gov-victorian-health-promotion-foundation": { now: 91, prev: 87, yoy: 4.6, asof: "Jun 2024", span: 1 },
   "vic-gov-victorian-institute-of-teaching": { now: 119, prev: 101, yoy: 17.8, asof: "Jun 2024", span: 1 },
+  "vic-gov-victorian-legal-services-board-and-commissioner": { now: 201, prev: 122, yoy: 64.8, asof: "Jun 2024", span: 1 },
   "vic-gov-victorian-managed-insurance-authority": { now: 247, prev: 258, yoy: -4.3, asof: "Jun 2024", span: 1 },
+  "vic-gov-victorian-ombudsman": { now: 92, prev: 118, yoy: -22.0, asof: "Jun 2024", span: 1 },
   "vic-gov-west-gippsland-healthcare-group": { now: 1344, prev: 1252, yoy: 7.3, asof: "Jun 2024", span: 1 },
   "vic-gov-western-health": { now: 11606, prev: 10196, yoy: 13.8, asof: "Jun 2024", span: 1 },
+  "vic-gov-worksafe": { now: 1903, prev: 1816, yoy: 4.8, asof: "Jun 2024", span: 1 },
 };
