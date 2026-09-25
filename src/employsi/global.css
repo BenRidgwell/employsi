@@ -6716,7 +6716,10 @@ body {
   height: 34px;
   padding: 0 15px;
   border: 0;
-  border-radius: 11px;
+  /* A pill, matching the Supply/Demand thumb beside it in the header — and the
+     round account button it sits directly against, which an 11px rectangle was
+     the only square corner between. */
+  border-radius: var(--radius-pill);
   background: var(--action-primary);
   color: var(--action-primary-text);
   font-family: inherit;
