@@ -130,6 +130,27 @@ ALIAS = {
     # 116,540 and "Public Non-Financial Corporations Sector" 4,750 — and any
     # rule loose enough to gather the health networks could gather one of
     # those. A total is not an agency, and nothing here may ever sum one.
+    # ── Health New Zealand districts ───────────────────────────────────
+    # The roster carries the district's full Te Whatu Ora name; Table 1 of the
+    # quarterly report carries the bare district. Qualified with `nzhealth:`
+    # because district names are ordinary words that recur — "Auckland" alone
+    # would be reachable from any jurisdiction added later.
+    'nzhealth:Health New Zealand - Te Whatu Ora Te Toka Tumai Auckland': 'Auckland',
+    'nzhealth:Health New Zealand - Te Whatu Ora Counties Manukau': 'Counties Manukau',
+    'nzhealth:Health New Zealand - Te Whatu Ora Waitemat\u0101': 'Waitemata',
+    # ONE ROSTER CARD, TWO SOURCE ROWS. Health NZ runs Capital & Coast and Hutt
+    # Valley as a single combined district and the roster names it that way;
+    # the workforce table still reports the two payrolls separately. Summed, as
+    # SA Health is, and the summing guard requires BOTH members present in BOTH
+    # years, so a rename cannot silently halve it.
+    #
+    # The pair is also the evidence that the sum is the right unit: separately
+    # the two read -9.5% and +4.6% over the year, which is staff moving between
+    # them inside one district; together they are +1.3%.
+    'nzhealth:Health New Zealand - Te Whatu Ora Capital, Coast & Hutt Valley': [
+        'Capital & Coast',
+        'Hutt Valley',
+    ],
     'sa:SA Health': [
         'Department for Health and Wellbeing',
         'Central Adelaide Local Health Network',
@@ -1116,6 +1137,114 @@ def load_tas():
 
 # key -> (label, loader, span in years). The loader returns (rows, asof, unit);
 # `unit` is "headcount" everywhere but Queensland, which publishes only FTE.
+def load_healthnz():
+    """Health New Zealand — employed headcount by District.
+
+    HEALTH NZ IS NOT IN THE PUBLIC SERVICE COMMISSION DATA, and could never
+    have been: it is a Crown entity, and its DISTRICTS are operational units
+    inside it rather than public-service departments, so no PSC workforce row
+    names one under any spelling. load_nz() closing 26 NZ agencies therefore
+    said nothing about these five, and reading their absence there as "no
+    source" would have been the same mistake this file has already made about
+    three whole jurisdictions.
+
+    THE SECOND HALF OF WHY THEY WERE NEVER FILED IS IN main(), NOT HERE. The
+    roster query asked for `sector === "Government"` and these five carry
+    sector "Healthcare", so the generator never considered them at all — no
+    unmatched-roster line, no spare source row, nothing. A source that is
+    never asked about looks exactly like a source that has no answer.
+
+    THE HOST MOVED AND THE OLD ONE LIES ABOUT IT. tewhatuora.govt.nz 301s to
+    healthnz.govt.nz on the apex, but its content tree answers 200 to ANY path
+    with the homepage — /robots.txt, /sitemap.xml and /sitemap.xml.gz all
+    return the same 676 KB of HTML. So a sitemap fetch there succeeds, parses
+    to zero <loc> entries, and reads as a site with no sitemap rather than as
+    the wrong host. healthnz.govt.nz/robots.txt is 706 bytes of text/plain and
+    names the real sitemap, which is an index of five children over 4,479 URLs.
+
+    A PLAIN curl IS REFUSED AND THAT IS ABOUT THE USER-AGENT, NOT A WAF. The
+    first request here came back as a CloudFront "Request blocked" 403 and was
+    briefly written down as an AWS WAF block of the same family as the NT's
+    Cloudflare challenge. It is not: the identical URL answers 200 to urllib
+    with a browser User-Agent, no cookie, no warming and no browser. Worth
+    keeping straight, because the remedy for the two is completely different
+    and the expensive one was nearly reached for first.
+
+    THE FIGURE IS THE `Employed` COLUMN OF TABLE 1, which is the report's own
+    headline: page 7 says "Total employees 92,356" and that is what Employed
+    sums to. The `Total` column adds 8,305 "Others" — staff on parental leave
+    and those with no employment-status code — whom the report itself excludes
+    from every other table. It is a HEAD COUNT of distinct employees, not FTE,
+    unlike New Zealand's PSC data and Queensland's, so it is marked as one.
+
+    THE PAIR IS Q3 AGAINST Q3, both snapshots at 31 March. The quarters are
+    the natural unit here and comparing Q3 to the previous Q4 would measure
+    nine months of a cycle as if it were a year — the same error load_nz()
+    avoids by refusing the March column and pairing June to June.
+
+    Both editions must carry National Payrolls: the report says its totals are
+    "not directly comparable to those in the previous District Quarterly
+    reports, as data from Non-District agencies has been incorporated since
+    September 2024". Q3 2024/25 is March 2025 and so is safely after that, but
+    the check is asserted rather than assumed, because an earlier edition
+    silently lacking the row would understate the prior year and print growth
+    that is really a change of scope.
+    """
+    import pdfplumber
+
+    ROW = re.compile(r"^([A-Za-z][A-Za-z&'\u2019 \-]*?)\s+([\d,]+)\s+([\d,]+)\s+([\d,]+)\s+([\d.]+)%$")
+
+    def quarterly(page_url):
+        """The newest Q3 PDF linked from one publications page."""
+        html = fetch(page_url)
+        pdfs = re.findall(r'href="([^"]+\.pdf)(?:\?[^"]*)?"', html, re.I)
+        q3 = [u for u in pdfs if re.search(r'q(uarter)?[-_ ]?(3|three)', u, re.I)]
+        if not q3:
+            raise RuntimeError(f'no quarter-three PDF linked from {page_url}')
+        return q3[0]
+
+    def table1(pdf_url):
+        """Table 1 rows as {district: employed}, chosen by row count.
+
+        THE PAGE IS FOUND BY WHICH ONE PARSES, not by its heading. Matching on
+        "Distribution of employment types" lands on the contents page, which
+        carries the heading and no data, and the first version of this did
+        exactly that and reported zero rows for both years.
+        """
+        import io as _io
+        body = fetch(pdf_url, binary=True)
+        best, page_no = {}, None
+        with pdfplumber.open(_io.BytesIO(body)) as pdf:
+            for pg in pdf.pages:
+                rows = {}
+                for line in (pg.extract_text() or '').split('\n'):
+                    m = ROW.match(line.strip())
+                    if m:
+                        rows[m.group(1).strip()] = int(m.group(2).replace(',', ''))
+                if len(rows) > len(best):
+                    best, page_no = rows, pg.page_number
+        # UNDER FIFTEEN ROWS IS A FAILURE, NOT A SMALL TABLE. There are 21
+        # districts plus a Total; the Northern Territory taught this the
+        # expensive way, parsing 3 rows of 25 and reporting it as a success.
+        if len(best) < 15:
+            raise RuntimeError(f'{pdf_url}: only {len(best)} rows parsed (page {page_no})')
+        if 'National Payrolls' not in best:
+            raise RuntimeError(f'{pdf_url}: no National Payrolls row — pre-Sept-2024 scope')
+        best.pop('Total', None)
+        return best
+
+    now = table1(quarterly(
+        'https://www.healthnz.govt.nz/publications/employed-workforce-quarterly-reports-2025-26'))
+    prev = table1(quarterly(
+        'https://www.healthnz.govt.nz/publications/employed-workforce-quarterly-reports-2024-25'))
+
+    rows = {}
+    for d, v in now.items():
+        if d in prev:
+            rows[d] = (v, prev[d])
+    return rows, '31 March 2026', 'headcount'
+
+
 SOURCES = {
     'aps': ('APS (federal)', load_aps, 1),
     'vic': ('Victoria', load_vic, 1),
@@ -1134,6 +1263,12 @@ SOURCES = {
     # found, which took six rounds and is the more useful half of the story.
     'nt': ('Northern Territory', load_nt, 1),
     'tas': ('Tasmania', load_tas, 1),
+    # A SEPARATE SOURCE FROM `nz` ON PURPOSE, not a few more rows on it. The
+    # PSC publishes FTE and Health NZ publishes a head count, and one `unit`
+    # is carried per source — merging them would label 11,473 people as FTE on
+    # the card and put them in the same tile as figures they cannot be added
+    # to. Same reason Queensland and NSW health are kept apart.
+    'nzhealth': ('New Zealand health', load_healthnz, 1),
 }
 
 
@@ -1169,7 +1304,14 @@ def main():
     agencies = json.loads(subprocess.run(
         ['bun', '-e', '''
 import { COMPANIES } from "./src/employsi/data/companies";
-console.log(JSON.stringify(COMPANIES.filter(c => c.sector === "Government")
+console.log(JSON.stringify(COMPANIES.filter(c =>
+    c.sector === "Government" ||
+    // HEALTH NZ'S FIVE CARRY sector "Healthcare", NOT "Government", and asking
+    // only for Government is why they were never even candidates: no match, no
+    // unmatched-roster line, no spare source row. They are Crown-entity
+    // districts, so they belong here whatever the sector field says. Scoped to
+    // `nz-` so it cannot pull in a private hospital.
+    (c.id.startsWith("nz-") && c.sector === "Healthcare"))
   .map(c => ({ id: c.id, name: c.name }))));'''],
         cwd=ROOT, capture_output=True, text=True, check=True).stdout)
 
@@ -1190,6 +1332,19 @@ console.log(JSON.stringify(COMPANIES.filter(c => c.sector === "Government")
         # the whole id and match no jurisdiction.
         if a['id'].startswith('aps-'):
             pre = 'aps'
+        elif a['id'].startswith(('nz-health-new-zealand', 'nz-northern-regional-alliance')):
+            # THE NORTHERN REGIONAL ALLIANCE IS DELIBERATELY SENT TO A SOURCE
+            # THAT CANNOT FILL IT, so the run says so in the right place. Since
+            # September 2024 the report folds NRA into a combined "National
+            # Payrolls" row with seven other agencies — its people are in the
+            # 4,614, not absent from it, and no row anywhere names NRA. Routed
+            # to `nz` instead it would come back unmatched against the Public
+            # Service Commission, which never covered it either and would read
+            # as the wrong reason for the right answer.
+            # Health NZ's districts go to their own source, which is a head
+            # count where the PSC's is FTE. Routing them to `nz` would look up
+            # names that are not in it and then label the miss as the PSC's.
+            pre = 'nzhealth'
         elif a['id'].startswith('nz-'):
             pre = 'nz'
         else:

@@ -470,6 +470,45 @@ for (const [id, list] of Object.entries(SEEK_TRADING_NAMES)) {
     );
 }
 
+// ── Health NZ districts are a HEAD COUNT, and must never be labelled FTE ─────
+//
+// They are filed from Health New Zealand's own quarterly report, which counts
+// distinct employees; New Zealand's OTHER government rows come from the Public
+// Service Commission and are FTE. The two live in the same generated file and
+// the same lookup, and the only thing keeping them apart is that the generator
+// registers them as separate sources with separate units.
+//
+// Fold `nzhealth` back into `nz` — an obvious-looking tidy-up, since both are
+// "New Zealand" — and 11,473 people are relabelled "Workforce FTE" on the card.
+// Nothing breaks, nothing looks wrong, and the number is then a different
+// quantity from the one its label claims. That is the failure this file exists
+// to catch, so it is asserted rather than left to the comment in the loader.
+{
+  const districts = Object.keys(GOV_HEADCOUNT_AU).filter((id) =>
+    id.startsWith("nz-health-new-zealand"),
+  );
+  if (districts.length === 0) {
+    warn(
+      "health nz districts absent",
+      "nz-health-new-zealand*",
+      "none filed — the loader, its alias keys or the roster query has moved",
+    );
+  }
+  for (const id of districts) {
+    const h = filedHeadcount(id);
+    if (!h) {
+      err("health nz district unreadable", id, "in the data but filedHeadcount returns null");
+      continue;
+    }
+    if (h.unit !== "headcount")
+      err(
+        "health nz district is not a head count",
+        id,
+        `unit is "${h.unit}" — the quarterly report counts employees, not FTE`,
+      );
+  }
+}
+
 // ── report ──────────────────────────────────────────────────────────────────
 const errors = findings.filter((f) => f.level === "error");
 const warns = findings.filter((f) => f.level === "warn");

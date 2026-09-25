@@ -4,12 +4,13 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — refreshed 2026-09-24
-//   South Australia: 98 agencies published as at Jun 2025 — refreshed 2026-09-24
-//   New South Wales: 33 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-24
-//   New Zealand: 103 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-24
-//   Northern Territory: 28 agencies published, as FTE not headcount, as at Jun 2026 — refreshed 2026-09-24
-//   Tasmania: 14 agencies published as at Dec 2023 — refreshed 2026-09-24
+//   New Zealand health: 21 agencies published as at 31 March 2026 — refreshed 2026-09-25
+//   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — KEPT, not refreshed this run
+//   South Australia: 98 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   New South Wales: 33 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   New Zealand: 103 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   Northern Territory: 28 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
+//   Tasmania: 14 agencies published as at Dec 2023 — KEPT, not refreshed this run
 //   APS (federal): 101 agencies published as at Dec 2025 — KEPT, not refreshed this run
 //   Victoria: 261 agencies published as at Jun 2024 — KEPT, not refreshed this run
 //
@@ -108,6 +109,10 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nz-environmental-protection-authority": { now: 217, prev: 227, yoy: -4.4, asof: "Jun 2025", span: 1, unit: "fte" },
   "nz-financial-markets-authority": { now: 317, prev: 340, yoy: -6.8, asof: "Jun 2025", span: 1, unit: "fte" },
   "nz-government-communications-security-bureau": { now: 589, prev: 597, yoy: -1.3, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nz-health-new-zealand-te-whatu-ora-capital-coast-hutt-valley": { now: 9251, prev: 9129, yoy: 1.3, asof: "31 March 2026", span: 1 },
+  "nz-health-new-zealand-te-whatu-ora-counties-manukau": { now: 8651, prev: 8693, yoy: -0.5, asof: "31 March 2026", span: 1 },
+  "nz-health-new-zealand-te-whatu-ora-te-toka-tumai-auckland": { now: 11473, prev: 11685, yoy: -1.8, asof: "31 March 2026", span: 1 },
+  "nz-health-new-zealand-te-whatu-ora-waitemat": { now: 8724, prev: 8468, yoy: 3.0, asof: "31 March 2026", span: 1 },
   "nz-k-inga-ora-homes-and-communities": { now: 2609, prev: 3398, yoy: -23.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nz-maritime-new-zealand": { now: 388, prev: 380, yoy: 2.1, asof: "Jun 2025", span: 1, unit: "fte" },
   "nz-ministry-of-business-innovation-and-employment": { now: 5806, prev: 6196, yoy: -6.3, asof: "Jun 2025", span: 1, unit: "fte" },
