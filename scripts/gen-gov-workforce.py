@@ -2056,7 +2056,16 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
         # makes it reachable on a branch, since workflow_dispatch inputs are
         # validated against the DEFAULT branch's copy of the workflow and a
         # newly-added input is silently dropped until it is merged.
-        if pre in dump or len(unmatched_roster.get(pre, [])) > len(spare):
+        # TWO TRIGGERS, AND THE SECOND ONE IS WHY TASMANIA GETS ONE. More
+        # unmatched cards than spare rows is the refusal shape. But a
+        # jurisdiction can also have barely any spare rows in ABSOLUTE terms —
+        # Tasmania has 6 cards blank against 7 spare, which passes the first
+        # test and still leaves the spare list unable to answer anything,
+        # because seven rows is not where a missing department is hiding. When
+        # almost nothing is spare, the whole list is the only useful view.
+        if (pre in dump
+                or len(unmatched_roster.get(pre, [])) > len(spare)
+                or (unmatched_roster.get(pre) and len(spare) < 15)):
             print(f'\n  {pre}: ALL {len(by_norm)} source rows, largest first '
                   f'({len(unmatched_roster.get(pre, []))} cards unmatched vs '
                   f'{len(spare)} spare rows):', file=sys.stderr)
