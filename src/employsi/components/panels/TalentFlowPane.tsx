@@ -4,6 +4,7 @@ import { useAppStore } from "../../state/store";
 import { COMPANIES, type Company } from "../../data/companies";
 import { getTalentFlowSkills, getTalentFlowView } from "../../lib/flowsFn";
 import { FLOW_BANDS, flowRows } from "../../lib/flowRows";
+import { CardLoader } from "./CardLoader";
 
 /**
  * The talent-flow card: the right-hand panel of the "Talent Flows 3D" design,
@@ -85,6 +86,8 @@ export function TalentFlowPane() {
   useEffect(() => {
     setQ(skill ?? "");
   }, [skill]);
+
+  const firstLoad = open && !view && isFetching;
 
   const rows = useMemo(() => (view ? flowRows(view, mode) : []), [view, mode]);
 
@@ -249,6 +252,10 @@ export function TalentFlowPane() {
       </div>
 
       <aside className="tfcard" aria-label="Talent flows">
+        {/* What's Trending's loader, used the same way: over the card while a
+            company's flows are first arriving, not on a refetch of data the
+            card is already showing. */}
+        {firstLoad && <CardLoader />}
         <div
           style={{
             flex: "none",
@@ -523,14 +530,10 @@ export function TalentFlowPane() {
                   : "var(--text-primary,#1c1c1e)",
             }}
           >
-            {view ? big : isFetching ? "…" : "—"}
+            {view ? big : isFetching ? "" : "—"}
           </span>
           <span style={{ fontSize: 14, lineHeight: 1.35, color: "var(--text-secondary,#636366)" }}>
-            {view
-              ? bigLabel
-              : isFetching
-                ? "Loading talent flows"
-                : `No talent-flow data for ${name} yet`}
+            {view ? bigLabel : isFetching ? "" : `No talent-flow data for ${name} yet`}
           </span>
         </div>
 
