@@ -16,7 +16,7 @@ import { AREA_SOURCES, canonicalArea } from "../data/hiringAreas";
 import { coverageDay } from "./analystFn";
 import { annualAud, medianAnnual } from "./salaryParse";
 import { FX_AS_AT } from "../data/fxRates";
-import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
+import { CITY_COUNTRY, REGION_HUBS } from "../data/mapboxWorldGeo";
 
 // Reads the historical job archive (Cloudflare D1) written by the jobs-cron
 // worker + the app's live fetch (see jobArchive.ts). Powers the "Vacancy
@@ -320,11 +320,38 @@ export function alternateBySign<T>(items: T[], valueOf: (t: T) => number): T[] {
 // that shifts a little each day as the archive accumulates. Returns [] until the
 // archive holds enough history to compute movers; the client falls back to a
 // static seed in that case so the ticker is never empty.
-export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
-  async (): Promise<LiveSkillTrends> => {
+export const getLiveSkillTrends = createServerFn({ method: "GET" })
+  /**
+   * The place being described, as one of the map's domestic regions — or
+   * nothing, which is the world.
+   *
+   * IT USED TO BE WORLDWIDE AT EVERY LAYER. The ticker is on screen at the
+   * global layer and at the domestic one, and until now it answered the same
+   * question on both: zooming into Australia left a strip that was still
+   * ranking movers over Singapore, Toronto and Sydney together. Nothing on the
+   * strip said so, which is the part that matters — a reader looking at
+   * Australia had no way to tell the figures were not Australia's. Measured on
+   * production 2026-09-25 over the last 60 days: 102,708 of the 180,000-odd
+   * placeable rows are in the australia region, so the worldwide figure was
+   * mostly-but-not-only Australian, which is exactly the kind of number that
+   * looks right and is not.
+   */
+  // OPTIONAL, so a caller with no place to name can keep calling it with no
+  // arguments — the waitlist page's ticker (src/components/Ticker.tsx) has no
+  // map behind it and is worldwide by nature.
+  .validator((data?: { region?: string }) => data ?? {})
+  .handler(async ({ data }): Promise<LiveSkillTrends> => {
     const empty: LiveSkillTrends = { "24h": [], "7d": [], "30d": [] };
     const db = await getArchiveDb();
     if (!db) return empty;
+    // An unknown region is NOT quietly treated as the world: that is the one
+    // failure this must not have, because the world's numbers under a region's
+    // name are wrong in a way nothing on screen would show. A region with no
+    // hubs returns nothing, and the strip says it has no history for it.
+    const region = (data?.region || "").trim();
+    const scopeHubs = region ? (REGION_HUBS[region] ?? []) : [];
+    if (region && !scopeHubs.length) return empty;
+    const hubSet = new Set(scopeHubs.map((h) => h.toLowerCase()));
     // The ticker is a market-wide roll-up, so it has to be rolled up over the
     // markets the reader can actually see — otherwise an end user reads a
     // headline demand figure carrying vacancies from countries the product has
@@ -423,6 +450,13 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
         if (!fs || !ls) continue;
         if (!seesAll && !isReleasedRow(r.hub as string | null, r.company_id as string | null))
           continue;
+        // THE REGION FILTER, AND WHAT IT NECESSARILY DROPS. A region is a set of
+        // hub cities, so a row with no hub cannot be in one — and 31,334 of the
+        // rows in a 60-day scan have no hub at all (measured 2026-09-25, 17% of
+        // them). They count worldwide, where "somewhere" is enough, and they
+        // cannot count here. That is the same collected-vs-placeable line the
+        // hotspot map draws, applied to the strip.
+        if (hubSet.size && !hubSet.has(String(r.hub || "").toLowerCase())) continue;
         if (fs < archiveStart) archiveStart = fs;
         newPerDay[fs] = (newPerDay[fs] || 0) + 1;
         if (ls >= payFrom) {
@@ -618,8 +652,7 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" }).handler(
     } catch {
       return empty;
     }
-  },
-);
+  });
 
 // One market-wide skill mover for the "What's Trending" pane.
 export interface MarketSkillMover {

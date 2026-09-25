@@ -3625,6 +3625,16 @@ body {
   animation: tpulse 1.8s ease-in-out infinite;
 }
 /* The window the figures are measured over, as the chip's quieter second half. */
+/* The place the figures describe. Brighter than the window beside it and
+   separated by a hairline, because it is the one part of this chip that changes
+   what the numbers MEAN rather than which slice of them is shown. */
+.tlblplace {
+  padding-left: 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
+  letter-spacing: 0.08em;
+  color: var(--neutral-200);
+  white-space: nowrap;
+}
 .tlblwin {
   letter-spacing: 0.08em;
   color: var(--neutral-400);
