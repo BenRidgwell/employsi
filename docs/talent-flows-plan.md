@@ -1,9 +1,9 @@
 # Talent flows — format and build
 
 **Status (2026-09-25): built; on the preview Worker, not production. Production D1
-holds one live import** (`brightdata|2026-09-25|f81c88d04168`: BHP, 9,605 usable
-profiles, 2,420 pairs, 3,282 moves over 2021-07..2026-06; it superseded
-`…d1b30763ccbe`, which superseded `…619251994dd2`). Nothing shows it yet: the reader
+holds one live import** (`brightdata|2026-09-25|28373d8b91d8`: BHP, 9,605 usable
+profiles, 2,395 pairs, 3,246 moves over 2021-07..2026-06, with the
+same-employer rule applied; each earlier load is marked superseded). Nothing shows it yet: the reader
 (`flowsFn.ts`, `TalentFlow.tsx`) is on this branch only, not on `main`, and
 `deploy-preview.yml` is manual. The rows go live on whichever Worker is next
 deployed from a tree that has the reader, preview included (it shares
@@ -192,14 +192,12 @@ Facts it depends on (read 2026-09-24):
   the three roster additions carry their ids, and the ten new exact-name
   matches were checked by hand.
   Two things this run found and did not fix:
-  - **BHP's own pages count as sources of BHP hires**: 39 moves, e.g. "BHP
-    Billiton Nickel West Pty Ltd" (8, a LinkedIn page of its own), BHP
-    Mitsubishi Alliance, Olympic Dam, and `name:bhp`, which exact-name maps
-    to `bhp` and so makes a BHP → BHP row. They are transfers inside one
-    employer. None reaches 10, so none is displayed, but they swell the
-    totals. The fix has the same shape as `ACQUISITIONS`: a list of refs
-    that are the same employer, and `aggregate()` dropping a move whose two
-    ends resolve to one.
+  - **BHP's own pages counted as sources of BHP hires**: e.g. "BHP
+    Billiton Nickel West Pty Ltd" (8), BHP Mitsubishi Alliance, Olympic Dam,
+    and `name:bhp`, which exact-name mapped to `bhp` and so made a BHP → BHP
+    row. **Fixed the same day, see rule 10**: 36 moves dropped as internal,
+    18 counted under BHP; moves into BHP 1,869 → 1,848, and the self-pair
+    row is gone. Reloaded as `…28373d8b91d8` (2,395 pairs, 3,246 moves).
   - Junk names still getting through, 1–2 moves each: "Various Companies"
     (two LinkedIn pages), "personal", "Dance Training Sabbatical".
 - **The rate limit is not a fixed count per window.** 00:41–00:55 UTC: 164
@@ -584,6 +582,23 @@ Each one is a bug shape this repo has hit before on the job archive.
    differently from them. Exact names only, so a named business such as
    "Freelance copywriter/online editor" stays. Asserted in
    `test_not_employers`.
+
+10. **A company's own pages are the company.** A profile that lists "BHP
+   Billiton Nickel West" and then "BHP" has not changed employer.
+   `SAME_EMPLOYER` in `scripts/talent_flows.py` maps an employer's ref to the
+   refs that are its own subsidiaries, operations and old names (22 for BHP,
+   each by exact ref). `aggregate()` counts each alias under the employer:
+   a move between two of its pages is dropped as internal, and a hire from
+   elsewhere into one of them is a hire into the employer. Agency labels
+   ("BHP (Contracting through Chandler Macleod)") are left alone, because the
+   employer of record was the agency. So is BHP Billiton Mitsui Coal, whose
+   2022 sale to Stanmore makes it BHP or not depending on the date. Both
+   are reported in `filters.excluded.same_employer` and
+   `.merged_into_employer`. Asserted in `test_same_employer`.
+   Still open: two different refs can resolve to ONE roster id through
+   `flow_company_map` (`li:pwc` and `li:pwc-australia` both map to
+   `priv-pwc-australia`, one move). That is the roster having one PwC, not
+   the flow being internal, and it is left as it is.
 
 The check script runs against a small synthetic fixture checked into
 `scripts/fixtures/`, clearly labelled synthetic, and never loaded into D1.

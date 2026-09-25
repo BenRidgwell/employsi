@@ -300,6 +300,38 @@ def test_not_employers():
           {'Freelance': 2, 'Self-employed': 1, 'Independent Consultant': 1, '-': 1}, rep)
 
 
+def test_same_employer():
+    def mv(f, fn, t, tn, month='2024-01'):
+        return {'from_ref': f, 'from_name': fn, 'to_ref': t, 'to_name': tn, 'month': month}
+    moves = [
+        mv('li:bhp-billiton-nickel-west-pty-ltd', 'BHP Billiton Nickel West Pty Ltd', 'li:bhp', 'BHP'),
+        mv('name:bhp', 'BHP', 'li:bhp', 'BHP'),                        # name-matched BHP -> BHP
+        mv('li:bhp', 'BHP', 'name:bhp olympic dam', 'BHP Olympic Dam'),  # the other way
+        mv('li:rio-tinto', 'Rio Tinto', 'name:bhp mitsubishi alliance', 'BHP Mitsubishi Alliance'),
+        mv('li:rio-tinto', 'Rio Tinto', 'li:bhp', 'BHP'),
+        mv('name:bhp contracting through chandler macleod', 'BHP (Contracting through Chandler Macleod)',
+           'li:bhp', 'BHP'),                                           # an agency label: a hire
+        mv('li:oz-minerals', 'OZ Minerals', 'name:oz minerals bhp', 'OZ Minerals/BHP', '2023-05'),
+    ]
+    excluded = Counter()
+    rows = {(r['from_ref'], r['to_ref']): r for r in aggregate(moves, '2020-01', '2026-12', excluded)}
+    check('same employer: a move between two of its own pages is not a move',
+          not any(f == t for f, t in rows) and
+          not any('nickel-west' in f or f == 'name:bhp' for f, _ in rows), rows)
+    check('same employer: a hire into a subsidiary is a hire into the employer',
+          rows[('li:rio-tinto', 'li:bhp')]['moves'] == 2 and
+          rows[('li:rio-tinto', 'li:bhp')]['to_name'] == 'BHP', rows)
+    check('same employer: an agency label is left as its own source',
+          ('name:bhp contracting through chandler macleod', 'li:bhp') in rows, rows)
+    check('same employer: an alias still meets the acquisition rule',
+          excluded[('acquisition', 'li:oz-minerals', 'li:bhp')] == 1, excluded)
+    rep = exclusion_report(excluded)
+    check('same employer: the export counts what it dropped and what it merged',
+          sum(r['moves'] for r in rep['same_employer']) == 3 and
+          {r['ref']: r['moves'] for r in rep['merged_into_employer']} ==
+          {'name:bhp mitsubishi alliance': 1}, rep)
+
+
 def test_person_key():
     a = person_key('Jane-Doe', b'salt')
     check('person key: case and url form do not matter',
@@ -404,7 +436,7 @@ def test_bd_empty():
 
 for t in [test_links, test_clean, test_single, test_grouped, test_side_role,
           test_unknown_employer, test_year_only, test_ambiguous, test_boomerang,
-          test_aggregate, test_acquisition, test_not_employers, test_person_key, test_bd_sample, test_bd_moves,
+          test_aggregate, test_acquisition, test_not_employers, test_same_employer, test_person_key, test_bd_sample, test_bd_moves,
           test_bd_refusals, test_bd_grouped, test_bd_empty]:
     t()
 

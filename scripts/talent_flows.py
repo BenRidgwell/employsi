@@ -13,7 +13,8 @@ collector and the loader.
   person_key(username, salt)     a salted hash; the only per-person id kept
   company_ref(slug, name)        the vendor-style ref the canonical format uses
   aggregate(moves, start, end)   canonical rows (docs/talent-flows-plan.md),
-                                 less acquisition transfers and non-employers
+                                 less acquisition transfers, non-employers and
+                                 moves inside one employer (SAME_EMPLOYER)
 
 WHERE THE INPUT COMES FROM
 stickerdaniel/linkedin-mcp-server's get_person_profile(sections="experience")
@@ -513,10 +514,57 @@ def not_employer(ref: str, name: str) -> bool:
     return ref == 'name:' or not norm(name) or norm(name) in NOT_EMPLOYERS
 
 
+# Pages that are the same employer as a roster company: its subsidiaries,
+# operations and old names. A profile that lists "BHP Billiton Nickel West"
+# then "BHP" has not changed employer, and counting it made BHP one of its own
+# sources of hires. aggregate() maps each alias to its employer's ref, so a
+# move between two of them is dropped as internal and a move from elsewhere
+# into one of them counts as a hire into the employer.
+#
+# Measured 2026-09-25 on the 60-month export of 15,490 BHP profiles: 29 refs
+# that look like BHP moved 70 moves, 39 of them into BHP. The 22 below are
+# BHP's own. Left out on purpose, and why:
+#   - agency labels ("BHP (Contracting through Chandler Macleod)", "BHP
+#     (Spencer Ogden)", "BMA - Workpac", "Michael Page Contractor for BHP",
+#     "BHP/Programmed"): the employer of record was the agency;
+#   - "BHP Billiton Mitsui Coal": sold to Stanmore in 2022, so whether it is
+#     BHP depends on the move's date, which a ref list cannot say;
+#   - "OS BHP", "BMA Systems Pty Ltd": not clear what they are.
+# Matching is by exact ref, like ACQUISITIONS: a new spelling needs a line.
+SAME_EMPLOYER: dict[str, tuple[str, frozenset[str]]] = {
+    'li:bhp': ('BHP', frozenset((
+        'name:bhp', 'name:bhp billiton', 'name:bhp biliton',
+        # Nickel West, wholly owned
+        'li:bhp-billiton-nickel-west-pty-ltd', 'name:bhp billiton nickel west pty ltd',
+        'name:bhp nickel west mt keith', 'name:bhp billiton mt keith operation',
+        'name:bhp nickel west refinery',
+        # BHP Mitsubishi Alliance: a 50:50 joint venture that BHP operates
+        'name:bhp billiton mitsubishi alliance pty limited', 'name:bhp mitsubishi alliance',
+        'name:bma bhp mitsubishi alliance', 'name:caval ridge bma',
+        # Western Australia Iron Ore and its sites
+        'name:bhp billiton western australian iron ore', 'name:bhp waio technology',
+        'name:bhp mining area c waio', 'name:bhp billiton newman operations',
+        'name:bhp south flank project',
+        # others
+        'name:bhp olympic dam', 'li:bhp-copper-inc',
+        'name:bhp operation services',   # BHP Operations Services, its own labour-hire arm
+        'name:oz minerals bhp',          # "OZ Minerals/BHP": after the 2023 acquisition
+    ))),
+}
+_ALIAS = {a: (canon, name) for canon, (name, aliases) in SAME_EMPLOYER.items() for a in aliases}
+
+
+def employer_of(ref: str, name: str) -> tuple[str, str]:
+    """The (ref, name) a move is counted under: the employer's own for an
+    alias in SAME_EMPLOYER, unchanged otherwise."""
+    return _ALIAS.get(ref, (ref, name))
+
+
 def exclusion_report(excluded: Counter) -> dict:
     """What aggregate() left out, for import.json: a reader of the export
     must be able to see a flow was removed, and why."""
-    out = {'acquisition_transfers': [], 'not_employers': []}
+    out = {'acquisition_transfers': [], 'not_employers': [], 'same_employer': [],
+           'merged_into_employer': []}
     for key, n in sorted(excluded.items(), key=lambda kv: (-kv[1], kv[0])):
         if key[0] == 'acquisition':
             _, f, t = key
@@ -525,6 +573,15 @@ def exclusion_report(excluded: Counter) -> dict:
                 'from_ref': f, 'to_ref': t, 'moves': n,
                 'reason': f'{a.acquirer} acquired {a.acquired}; moves from {a.completed} on '
                           'are transfers', 'evidence': a.evidence})
+        elif key[0] == 'same_employer':
+            _, f, t = key
+            out['same_employer'].append({'from_ref': f, 'to_ref': t, 'moves': n,
+                                         'employer': employer_of(f, '')[0]})
+        elif key[0] == 'merged':
+            # Not removed: counted under the employer instead of the alias.
+            _, ref, name = key
+            out['merged_into_employer'].append({'ref': ref, 'name': name, 'moves': n,
+                                                'employer': employer_of(ref, name)[0]})
         else:
             _, ref, name = key
             out['not_employers'].append({'ref': ref, 'name': name, 'moves': n})
@@ -536,8 +593,10 @@ def aggregate(moves, start: str, end: str, excluded: Counter | None = None) -> l
     period_end, moves, count_kind) for moves whose month is inside
     [start, end] (YYYY-MM, inclusive). Year-only moves are left out: they
     cannot be placed inside a window. Moves that ACQUISITIONS marks as
-    transfers, and moves to or from a NOT_EMPLOYERS name, are left out too,
-    and counted into `excluded` when it is given, so the export can say so."""
+    transfers, moves to or from a NOT_EMPLOYERS name, and moves between two
+    pages of one SAME_EMPLOYER are left out too; an alias's other moves are
+    counted under its employer. Both are counted into `excluded` when it is
+    given, so the export can say so."""
     counts: Counter = Counter()
     names: dict[str, Counter] = defaultdict(Counter)
     for mv in moves:
@@ -550,15 +609,23 @@ def aggregate(moves, start: str, end: str, excluded: Counter | None = None) -> l
             if not_employer(get(f'{end_}_ref'), get(f'{end_}_name')):
                 drop = ('not_employer', get(f'{end_}_ref'), get(f'{end_}_name'))
                 break
-        if drop is None and acquisition_of(get('from_ref'), get('to_ref'), month):
-            drop = ('acquisition', get('from_ref'), get('to_ref'))
+        f_ref, f_name = employer_of(get('from_ref'), get('from_name'))
+        t_ref, t_name = employer_of(get('to_ref'), get('to_name'))
+        if drop is None and f_ref == t_ref:
+            drop = ('same_employer', get('from_ref'), get('to_ref'))
+        if drop is None and acquisition_of(f_ref, t_ref, month):
+            drop = ('acquisition', f_ref, t_ref)
         if drop:
             if excluded is not None:
                 excluded[drop] += 1
             continue
-        counts[(get('from_ref'), get('to_ref'))] += 1
-        names[get('from_ref')][get('from_name')] += 1
-        names[get('to_ref')][get('to_name')] += 1
+        if excluded is not None:
+            for end_, ref in (('from', f_ref), ('to', t_ref)):
+                if ref != get(f'{end_}_ref'):
+                    excluded[('merged', get(f'{end_}_ref'), get(f'{end_}_name'))] += 1
+        counts[(f_ref, t_ref)] += 1
+        names[f_ref][f_name] += 1
+        names[t_ref][t_name] += 1
     first = f'{start}-01'
     y, m = map(int, end.split('-'))
     last_day = [31, 29 if (y % 4 == 0 and (y % 100 or y % 400 == 0)) else 28,

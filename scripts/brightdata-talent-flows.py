@@ -556,9 +556,12 @@ def export(conn: sqlite3.Connection, out_dir: str) -> int:
                   f'the destination is also seeded. The window ends {LAG_MONTHS} months before '
                   'collection because profiles are updated late; that lag is an assumption, '
                   'not a measurement.'
-                  + (f' {sum(excluded.values())} moves are excluded: transfers between an '
-                     'acquired company and its buyer after completion, and moves to or from '
-                     'a way of working rather than an employer, such as Freelance '
+                  + (f' {sum(n for k, n in excluded.items() if k[0] != "merged")} moves are '
+                     'excluded: transfers between an acquired company and its buyer after '
+                     'completion, moves inside one employer (between two of its own '
+                     'LinkedIn pages), and moves to or from a way of working rather than an '
+                     'employer, such as Freelance. Pages that are an employer\'s own '
+                     'subsidiary or site are counted under the employer '
                      '(filters.excluded).' if excluded else '')),
     }
     with open(os.path.join(out_dir, 'import.json'), 'w') as f:
@@ -566,7 +569,8 @@ def export(conn: sqlite3.Connection, out_dir: str) -> int:
     print(f'{len(rows)} company pairs, {sum(r["moves"] for r in rows)} moves, '
           f'{start} to {end}, from {sum(sample.values())} profiles -> {out_dir}')
     for (why, a, b), n in sorted(excluded.items()):
-        print(f'  excluded, {why}: {a} {"->" if why == "acquisition" else "/"} {b}: {n}')
+        verb = 'counted under its employer' if why == 'merged' else f'excluded, {why}'
+        print(f'  {verb}: {a} {"/" if why in ("not_employer", "merged") else "->"} {b}: {n}')
     return 0
 
 
