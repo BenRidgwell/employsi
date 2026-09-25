@@ -125,10 +125,12 @@ Facts it depends on (read 2026-09-24):
   (about 20 sources over 10 at the full seed) still looks right.
   Two things the display would get wrong as it stands:
   - **OZ Minerals → BHP is mostly an acquisition, not hiring.** BHP completed
-    its takeover of OZ Minerals in May 2023; 23 of the ~37 locally counted
-    moves are dated 2023-05. Showing it as the second-largest source of hires
-    would be a plausible-looking figure that is false. It needs an
-    acquisition exclusion (pair + month range) before it is displayed.
+    its takeover on 2 May 2023; 22 of the 34 locally counted moves from then
+    on are dated 2023-05, against about one every few months from 2015 to
+    2020 and none in 2023-01..04. **Excluded since 2026-09-25**, see rule 8
+    below: all 40 in the 60-month window are after completion, so the pair
+    leaves the export entirely (1,504 moves over 1,202 pairs remain; Rio
+    Tinto 43, Fortescue 13, Thiess 11 and Programmed 10 still reach 10).
   - **"Freelance" is a source with 6 moves.** It is not an employer; the
     parser takes it as one. A small deny-list of non-employers is needed.
   The 62 moves out of BHP (45 pairs) are all boomerangs: everyone sampled is
@@ -475,6 +477,26 @@ Each one is a bug shape this repo has hit before on the job archive.
    departures total and the sum of rows are never shown as if they should
    match.
 7. **Report the period drawn, never the one asked for.**
+8. **An acquisition is not a flow of talent.** When one company buys
+   another, everyone moves from the acquired name to the buyer's in the same
+   month without changing job, and a profile shows that as a move. Left in,
+   it is a large, plausible, false source of hires: OZ Minerals was BHP's
+   second-largest at 40 moves. `ACQUISITIONS` in `scripts/talent_flows.py`
+   lists (acquired, acquirer, completion month, evidence); `aggregate()`
+   drops moves between the two, in either direction, from the completion
+   month on, open-ended because profiles are updated late (the OZ Minerals
+   trickle ran to 2024-04). Earlier moves stay: they were hires. Both
+   collectors' exports report what was dropped in
+   `filters.acquisition_transfers_excluded` and say so in `notes`. Each entry
+   needs a primary source for its date, and a measurement of the pair's
+   months showing the spike, in the comment beside it.
+   The raw counts in `flow_collect_moves` keep these moves, so a rule can be
+   corrected without collecting again. What it cannot reach: a name-matched
+   ref (`name:oz minerals bhp`, 1 move) and vendor files that arrive already
+   aggregated over a window, where a transfer cannot be told from a hire by
+   month. A vendor delivery needs the vendor's own handling, or the pair
+   withheld. Asserted in `scripts/test_talent_flows.py` (`test_acquisition`),
+   not in `check-flows.ts`: it happens before anything reaches the app.
 
 The check script runs against a small synthetic fixture checked into
 `scripts/fixtures/`, clearly labelled synthetic, and never loaded into D1.

@@ -107,7 +107,7 @@ from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from talent_flows import (  # noqa: E402
-    MAX_GAP_MONTHS, aggregate, moves_from, person_key, positions_from_brightdata)
+    MAX_GAP_MONTHS, aggregate, exclusion_report, moves_from, person_key, positions_from_brightdata)
 
 args = sys.argv[1:]
 
@@ -523,7 +523,8 @@ def export(conn: sqlite3.Connection, out_dir: str) -> int:
         sample = {r['seed_ref']: r['n'] for r in conn.execute(
             "SELECT seed_ref, COUNT(*) n FROM people WHERE status = 'ok' GROUP BY seed_ref")}
         seed_rows = [dict(r) for r in conn.execute('SELECT * FROM seeds')]
-    rows = aggregate(moves, start, end)
+    excluded: Counter = Counter()
+    rows = aggregate(moves, start, end, excluded)
     if not sample:
         sys.exit('Nothing collected yet.')
     seeds = {r['seed_ref']: r['company_id'] for r in seed_rows}
@@ -546,19 +547,25 @@ def export(conn: sqlite3.Connection, out_dir: str) -> int:
         'base_company_ref': None,
         'top_n': None,
         'filters': {'country': COUNTRY, 'filter_field': FILTER_FIELD, 'window_months': WINDOW_MONTHS,
-                    'lag_months': LAG_MONTHS, 'total_hits_per_seed': totals},
+                    'lag_months': LAG_MONTHS, 'total_hits_per_seed': totals,
+                    'acquisition_transfers_excluded': exclusion_report(excluded)},
         'sample': sample,
         'seeds': seeds,
         'notes': ('Counts of moves among sampled profiles, not workforce totals. Profiles are '
                   'current employees of each seed, so a flow out of a seed is only seen when '
                   f'the destination is also seeded. The window ends {LAG_MONTHS} months before '
                   'collection because profiles are updated late; that lag is an assumption, '
-                  'not a measurement.'),
+                  'not a measurement.'
+                  + (f' {sum(excluded.values())} moves between an acquired company and its '
+                     'buyer after completion are excluded as transfers, not hires '
+                     '(filters.acquisition_transfers_excluded).' if excluded else '')),
     }
     with open(os.path.join(out_dir, 'import.json'), 'w') as f:
         json.dump(header, f, indent=2)
     print(f'{len(rows)} company pairs, {sum(r["moves"] for r in rows)} moves, '
           f'{start} to {end}, from {sum(sample.values())} profiles -> {out_dir}')
+    for (f_ref, t_ref), n in sorted(excluded.items()):
+        print(f'  excluded as acquisition transfers: {f_ref} -> {t_ref}: {n}')
     return 0
 
 

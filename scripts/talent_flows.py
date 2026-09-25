@@ -12,7 +12,8 @@ collector and the loader.
   moves_from(positions)          the employer changes those positions imply
   person_key(username, salt)     a salted hash; the only per-person id kept
   company_ref(slug, name)        the vendor-style ref the canonical format uses
-  aggregate(moves, start, end)   canonical rows (docs/talent-flows-plan.md)
+  aggregate(moves, start, end)   canonical rows (docs/talent-flows-plan.md),
+                                 less acquisition transfers (ACQUISITIONS)
 
 WHERE THE INPUT COMES FROM
 stickerdaniel/linkedin-mcp-server's get_person_profile(sections="experience")
@@ -451,11 +452,67 @@ def person_key(username: str, salt: bytes) -> str:
     return hmac.new(salt, u.encode(), hashlib.sha256).hexdigest()[:32]
 
 
-def aggregate(moves, start: str, end: str) -> list[dict]:
+@dataclass(frozen=True)
+class Acquisition:
+    acquired: str       # company ref of the business bought
+    acquirer: str       # company ref of the buyer
+    completed: str      # YYYY-MM the deal completed
+    evidence: str
+
+
+# A move between an acquired company and its buyer, dated at or after
+# completion, is a change of owner on the payslip, not a hire: the person
+# stayed where they were and the employer's name changed. Left in, it reads
+# as a large, false flow of talent.
+#
+# Measured 2026-09-25 on 7,160 BHP profiles: OZ Minerals -> BHP ran at about
+# one move every few months from 2015 to 2020, none in 2023-01..04, then 22
+# dated 2023-05 and 12 more by 2024-04, making it BHP's second-largest source
+# of hires (40 of 890 over 60 months). The later trickle is profiles updated
+# late, so the rule is open-ended rather than one month wide: after
+# completion there is no independent OZ Minerals to be hired from.
+#
+# Both directions are dropped (BHP -> OZ Minerals after completion is an
+# internal transfer too). Matching is by ref only: a name-matched variant
+# such as "OZ Minerals/BHP" is not caught, and would need its own entry.
+ACQUISITIONS = (
+    Acquisition('li:oz-minerals', 'li:bhp', '2023-05',
+                'BHP media release "Completion of OZ Minerals acquisition", 2 May 2023: '
+                'https://www.bhp.com/news/media-centre/releases/2023/05/completion-of-oz-minerals-acquisition'),
+)
+
+
+def acquisition_of(from_ref: str, to_ref: str, month: str | None) -> Acquisition | None:
+    """The acquisition that makes this move a transfer, or None. A move with
+    no month cannot be placed either side of completion, and aggregate()
+    already leaves it out."""
+    if not month:
+        return None
+    for a in ACQUISITIONS:
+        if {from_ref, to_ref} == {a.acquired, a.acquirer} and month >= a.completed:
+            return a
+    return None
+
+
+def exclusion_report(excluded: Counter) -> list[dict]:
+    """What aggregate() left out as acquisition transfers, for import.json:
+    a reader of the export must be able to see a flow was removed, and why."""
+    out = []
+    for (f, t), n in sorted(excluded.items(), key=lambda kv: (-kv[1], kv[0])):
+        a = next(x for x in ACQUISITIONS if {f, t} == {x.acquired, x.acquirer})
+        out.append({'from_ref': f, 'to_ref': t, 'moves': n,
+                    'reason': f'{a.acquirer} acquired {a.acquired}; moves from {a.completed} on '
+                              'are transfers', 'evidence': a.evidence})
+    return out
+
+
+def aggregate(moves, start: str, end: str, excluded: Counter | None = None) -> list[dict]:
     """Canonical rows (from_ref, from_name, to_ref, to_name, period_start,
     period_end, moves, count_kind) for moves whose month is inside
     [start, end] (YYYY-MM, inclusive). Year-only moves are left out: they
-    cannot be placed inside a window."""
+    cannot be placed inside a window. Moves that ACQUISITIONS marks as
+    transfers are left out too, and counted into `excluded` by
+    (from_ref, to_ref) when it is given, so the export can say so."""
     counts: Counter = Counter()
     names: dict[str, Counter] = defaultdict(Counter)
     for mv in moves:
@@ -463,6 +520,10 @@ def aggregate(moves, start: str, end: str) -> list[dict]:
         if not month or not (start <= month <= end):
             continue
         get = (lambda k: mv[k]) if isinstance(mv, dict) else (lambda k: getattr(mv, k))
+        if acquisition_of(get('from_ref'), get('to_ref'), month):
+            if excluded is not None:
+                excluded[(get('from_ref'), get('to_ref'))] += 1
+            continue
         counts[(get('from_ref'), get('to_ref'))] += 1
         names[get('from_ref')][get('from_name')] += 1
         names[get('to_ref')][get('to_name')] += 1

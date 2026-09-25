@@ -87,7 +87,7 @@ from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from talent_flows import (  # noqa: E402
-    MAX_GAP_MONTHS, aggregate, moves_from, parse_experience, person_key)
+    MAX_GAP_MONTHS, aggregate, exclusion_report, moves_from, parse_experience, person_key)
 
 args = sys.argv[1:]
 
@@ -421,7 +421,8 @@ def export(conn: sqlite3.Connection, out_dir: str) -> int:
     start = month_add(end, -(WINDOW_MONTHS - 1))
     moves = [dict(r) for r in conn.execute(
         "SELECT m.* FROM moves m JOIN people p USING (person_key) WHERE p.status = 'ok'")]
-    rows = aggregate(moves, start, end)
+    excluded: Counter = Counter()
+    rows = aggregate(moves, start, end, excluded)
     sample = {r['seed_ref']: r['n'] for r in conn.execute(
         "SELECT seed_ref, COUNT(*) n FROM people WHERE status = 'ok' GROUP BY seed_ref")}
     if not sample:
@@ -445,18 +446,24 @@ def export(conn: sqlite3.Connection, out_dir: str) -> int:
         'scope': 'sampled profiles',
         'base_company_ref': None,
         'top_n': None,
-        'filters': {'window_months': WINDOW_MONTHS, 'lag_months': LAG_MONTHS},
+        'filters': {'window_months': WINDOW_MONTHS, 'lag_months': LAG_MONTHS,
+                    'acquisition_transfers_excluded': exclusion_report(excluded)},
         'sample': sample,
         'seeds': seeds,
         'notes': ('Counts of moves among sampled profiles, not workforce totals. '
                   f'The window ends {LAG_MONTHS} months before collection because '
                   'profiles are updated late; that lag is an assumption, not a '
-                  'measurement.'),
+                  'measurement.'
+                  + (f' {sum(excluded.values())} moves between an acquired company and its '
+                     'buyer after completion are excluded as transfers, not hires '
+                     '(filters.acquisition_transfers_excluded).' if excluded else '')),
     }
     with open(os.path.join(out_dir, 'import.json'), 'w') as f:
         json.dump(header, f, indent=2)
     print(f'{len(rows)} company pairs, {sum(r["moves"] for r in rows)} moves, '
           f'{start} to {end}, from {sum(sample.values())} profiles -> {out_dir}')
+    for (f_ref, t_ref), n in sorted(excluded.items()):
+        print(f'  excluded as acquisition transfers: {f_ref} -> {t_ref}: {n}')
     return 0
 
 

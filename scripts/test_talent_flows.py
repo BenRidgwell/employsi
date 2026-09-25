@@ -18,10 +18,11 @@ Run: python scripts/test_talent_flows.py
 from __future__ import annotations
 import os
 import sys
+from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from talent_flows import (  # noqa: E402
-    Month, aggregate, clean_lines, company_links, moves_from, parse_experience,
+    Month, aggregate, exclusion_report, clean_lines, company_links, moves_from, parse_experience,
     person_key, positions_from_brightdata,
 )
 
@@ -235,6 +236,37 @@ def test_aggregate():
     check('aggregate: count kind is sampled', rows[0]['count_kind'] == 'sampled')
 
 
+def test_acquisition():
+    def mv(f, t, month):
+        return {'from_ref': f, 'from_name': f, 'to_ref': t, 'to_name': t, 'month': month}
+    moves = [
+        mv('li:oz-minerals', 'li:bhp', '2020-10'),   # before the deal: a real hire
+        mv('li:oz-minerals', 'li:bhp', '2023-04'),   # the month before completion
+        mv('li:oz-minerals', 'li:bhp', '2023-05'),   # completion month: a transfer
+        mv('li:oz-minerals', 'li:bhp', '2024-04'),   # a late profile update: still a transfer
+        mv('li:bhp', 'li:oz-minerals', '2023-06'),   # the other way after completion
+        mv('li:rio-tinto', 'li:bhp', '2023-05'),     # unrelated pair, same month
+        mv('li:oz-minerals', 'li:rio-tinto', '2023-05'),  # the acquired firm, another buyer
+    ]
+    excluded = Counter()
+    rows = {(r['from_ref'], r['to_ref']): r['moves']
+            for r in aggregate(moves, '2020-01', '2026-12', excluded)}
+    check('acquisition: moves before completion are hires',
+          rows.get(('li:oz-minerals', 'li:bhp')) == 2, rows)
+    check('acquisition: completion month and after are transfers, both ways',
+          excluded == Counter({('li:oz-minerals', 'li:bhp'): 2, ('li:bhp', 'li:oz-minerals'): 1}),
+          excluded)
+    check('acquisition: other pairs are untouched',
+          rows.get(('li:rio-tinto', 'li:bhp')) == 1 and rows.get(('li:oz-minerals', 'li:rio-tinto')) == 1,
+          rows)
+    check('acquisition: no excluded counter is fine',
+          aggregate(moves, '2020-01', '2026-12') == aggregate(moves, '2020-01', '2026-12', Counter()))
+    rep = exclusion_report(excluded)
+    check('acquisition: the export names what it removed and why',
+          rep[0]['moves'] == 2 and 'li:bhp acquired li:oz-minerals' in rep[0]['reason']
+          and 'bhp.com' in rep[0]['evidence'], rep)
+
+
 def test_person_key():
     a = person_key('Jane-Doe', b'salt')
     check('person key: case and url form do not matter',
@@ -339,7 +371,7 @@ def test_bd_empty():
 
 for t in [test_links, test_clean, test_single, test_grouped, test_side_role,
           test_unknown_employer, test_year_only, test_ambiguous, test_boomerang,
-          test_aggregate, test_person_key, test_bd_sample, test_bd_moves,
+          test_aggregate, test_acquisition, test_person_key, test_bd_sample, test_bd_moves,
           test_bd_refusals, test_bd_grouped, test_bd_empty]:
     t()
 
