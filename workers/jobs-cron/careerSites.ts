@@ -9223,6 +9223,27 @@ async function fetchRippling(site: SiteDef): Promise<PortalJob[]> {
 async function fetchAubGroup(site: SiteDef): Promise<PortalJob[]> {
   const html = await getText(site.endpoint);
   if (!html) return [];
+  // THIS IS THE FEED fetchStateTheatre NAMES as the reason it guards at all —
+  // "the ambiguity that made AUB Group's silent feed take a user report to
+  // notice" — and it had no guard of its own. Measured 2026-09-25: the archive
+  // holds 5 `portal-aubgroup` rows, last seen 2026-08-12, quiet for 44 days,
+  // and nothing anywhere says whether that is a company with no vacancies or a
+  // parse that stopped working.
+  //
+  // An empty pull is never written (see jobArchive), so a broken feed leaves
+  // yesterday's rows alone and looks exactly like an honest zero. The marker
+  // being absent is the one thing that separates them, so it is checked.
+  // MEASURED 2026-09-25 — AND THE FIRST VERSION OF THIS GUARD WAS WRONG. It
+  // announced "the layout moved" for a page that says, in its own words,
+  // "There are no current opportunities, please check back soon." That is the
+  // mirror of the bug it was added to catch: an alarm on an honest zero teaches
+  // people to ignore the alarm. So the page's own statement is checked first,
+  // and only its ABSENCE alongside a missing marker is a fault.
+  if (!/<div class="job">/i.test(html)) {
+    if (/no current opportunities/i.test(html)) return [];
+    console.log('aubgroup: no <div class="job"> and no "no current opportunities" — layout moved');
+    return [];
+  }
   const out: PortalJob[] = [];
   const seen = new Set<string>();
   for (const block of html.split(/<div class="job">/i).slice(1)) {
@@ -9454,30 +9475,77 @@ async function fetchStateTheatre(site: SiteDef): Promise<PortalJob[]> {
 async function fetchExpr3ss(site: SiteDef): Promise<PortalJob[]> {
   const html = await getText(site.endpoint);
   if (!html) return [];
+
+  // THE BOARD WAS REBUILT AND THE OLD PARSER WENT SILENT FOR A MONTH. Measured
+  // 2026-09-25: the classic single-quoted table is gone — zero
+  // `<tr class='jobSearchN'>`, zero `class='link jobdescription'`, zero
+  // `<span class='location'>` — and in its place are 242 cards:
+  //
+  //   <a href="…/jobDetailsModern?selectJob=2013&s=250&modern=1"
+  //      class="job-card__hit" aria-labelledby="job-card-title-2013"></a>
+  //   <div class="job-card__surface"><div class="job-card__body">
+  //     <h3 id="job-card-title-2013">Bakery Assistant Manager</h3>
+  //     <div class="job-card__tags">
+  //       <span class="tag">Full Time</span>
+  //       <span class="tag">Drakes North Lakes</span>
+  //       <span class="tag">Queensland - Brisbane</span>
+  //
+  // The archive shows what that cost: 49 rows, last seen 2026-08-27, and
+  // nothing said why, because an empty pull is never written and a dead parser
+  // therefore looks like a shop that stopped hiring.
+  //
+  // DEDUPE BY JOB ID, NEVER BY TITLE — the original note's rule, and the new
+  // markup makes it matter more, not less. 242 cards carry 242 distinct ids and
+  // only 72 distinct titles; "Casual Store Assistant" appears 69 times, once
+  // per store. Keying on the title would discard 170 real vacancies.
+  const cards = html.split(/<h3 id="job-card-title-(\d+)">/i);
+  if (cards.length < 2) {
+    console.log("expr3ss: no <h3 id='job-card-title-N'> cards — the board has been rebuilt again");
+    return [];
+  }
+
   const out: PortalJob[] = [];
   const seen = new Set<string>();
-  for (const row of html.split(/<tr class='jobSearch\d+'/i).slice(1)) {
-    const block = row.slice(0, row.indexOf("</tr>") + 1 || 4000);
-    const cell = block.match(/class='link jobdescription'[^>]*>([\s\S]*?)<\/div>/i);
-    if (!cell) continue;
-    const inner = cell[1];
-    const locM = inner.match(/<span class='location'>\[?([^\]<]*)\]?<\/span>/i);
-    const title = clean(inner.replace(/<span class='location'>[\s\S]*?<\/span>/i, ""));
-    // The id is the only thing that distinguishes two stores hiring the same
-    // role — see the note above.
-    const id = block.match(/selectJob=(\d+)/i)?.[1] ?? "";
-    const key = id || `${title}|${locM?.[1] ?? ""}`;
-    if (!title || seen.has(key)) continue;
-    seen.add(key);
-    const work = block.match(/<td class='jobWorkType[^']*'\s*>([\s\S]*?)<\/td>/i);
+  // split() with one capture group yields [before, id, chunk, id, chunk, …].
+  for (let i = 1; i < cards.length - 1; i += 2) {
+    const id = cards[i];
+    // CUT AT THE CARD'S OWN END, NOT AT A FIXED WIDTH. A 4,000-character window
+    // was tried first and silently lost the tags on the longest cards: each
+    // carries a full `job-card__description-full` block, and where that runs
+    // past the window the location and work type simply were not there. 242
+    // rows came back with 90 distinct locations instead of one per card, which
+    // looks like partial data rather than a windowing bug.
+    const end = cards[i + 1].indexOf("</article>");
+    const chunk = cards[i + 1].slice(0, end > 0 ? end : 20000);
+    // indexOf gives the position of "<" in "</h3>", so slicing TO it is the
+    // title and slicing to +1 leaves a stray "<" on the end of every one.
+    const h3End = chunk.indexOf("</h3>");
+    const title = clean(h3End > 0 ? chunk.slice(0, h3End) : "");
+    if (!title || seen.has(id)) continue;
+    seen.add(id);
+
+    // The three tags are work type, store, and "State - City". Reading them BY
+    // POSITION would be a guess; the geographic one is the only one carrying
+    // " - " and the work type is the only one naming an arrangement, so each is
+    // identified by what it says.
+    const tags = [...chunk.matchAll(/<span class="tag">([^<]+)<\/span>/gi)].map((m) => clean(m[1]));
+    const work = tags.find((t) =>
+      /full[- ]?time|part[- ]?time|casual|contract|fixed[- ]?term/i.test(t),
+    );
+    const geo = tags.find((t) => t.includes(" - "));
+    const store = tags.find((t) => t !== work && t !== geo);
+
     out.push(
       job(
         site,
         title,
-        locM ? clean(locM[1]) : "",
-        id ? `${site.origin}/jobDetails?selectJob=${id}` : site.endpoint,
+        // The store is the more useful location — "Drakes North Lakes" places a
+        // vacancy where the old <span class='location'>[Drakes Kingscote]</span>
+        // placed it, and the State - City tag is the fallback.
+        store ?? geo ?? "",
+        `${site.origin}/jobDetailsModern?selectJob=${id}`,
         today(),
-        clean(work?.[1] ?? "") || "Career portal",
+        work || "Career portal",
       ),
     );
   }
@@ -10902,6 +10970,15 @@ async function fetchAdLogic(site: SiteDef): Promise<PortalJob[]> {
 async function fetchWpJobManager(site: SiteDef): Promise<PortalJob[]> {
   const html = await getText(site.endpoint);
   if (!html) return [];
+  // Measured 2026-09-25: 7 rows, last seen 2026-08-31, quiet 25 days — and the
+  // quiet is honest. WP Job Manager renders `class="no_job_listings_found"`
+  // when a company has none, which is exactly what Bellevue Gold's board says,
+  // so the missing card marker is the expected consequence and not a fault.
+  if (!/<li data-longitude/i.test(html)) {
+    if (/no_job_listings_found/i.test(html)) return [];
+    console.log("wpjobmanager: no cards and no no_job_listings_found — the listing markup moved");
+    return [];
+  }
   const out: PortalJob[] = [];
   const seen = new Set<string>();
   const want = clean(site.expectCompany ?? site.name).toLowerCase();
@@ -11247,15 +11324,26 @@ interface CjdJob {
 async function fetchCjd(site: SiteDef): Promise<PortalJob[]> {
   const html = await getText(site.endpoint);
   if (!html) return [];
+  // THREE WAYS TO RETURN NOTHING, and each used to be silent: the data island
+  // moving, its JSON failing to parse, and its shape changing. All three then
+  // read as "CJD Equipment has no vacancies". Measured 2026-09-25: 12 rows,
+  // last seen 2026-08-18, quiet 38 days, cause unknown — which is the point.
   const island = html.match(/<script[^>]*id="careersListingData"[^>]*>([\s\S]*?)<\/script>/i)?.[1];
-  if (!island) return [];
+  if (!island) {
+    console.log('cjd: no <script id="careersListingData"> — the data island moved');
+    return [];
+  }
   let rows: CjdJob[] = [];
   try {
     rows = JSON.parse(island) as CjdJob[];
-  } catch {
+  } catch (e) {
+    console.log(`cjd: careersListingData is not JSON any more (${String(e).slice(0, 80)})`);
     return [];
   }
-  if (!Array.isArray(rows)) return [];
+  if (!Array.isArray(rows)) {
+    console.log(`cjd: careersListingData parsed to ${typeof rows}, not an array`);
+    return [];
+  }
   const out: PortalJob[] = [];
   const seen = new Set<string>();
   for (const j of rows) {

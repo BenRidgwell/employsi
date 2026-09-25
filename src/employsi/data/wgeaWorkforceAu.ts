@@ -20,8 +20,8 @@
 // Source: WGEA 2024-25 public data file, as at Jun 2025, with
 //         2023-24 as the prior year. Both per-employer; the 2022-23
 //         file is excluded because it reports submission GROUPS.
-// Filed: 231 of 859 Australian roster companies
-//        (214 matched on the group name, 17 on the employer name).
+// Filed: 270 of 859 Australian roster companies
+//        (249 matched on the group name, 21 on the employer name).
 //
 // A company the register does not report is ABSENT, never zero — the card
 // shows an em dash and says no figure was collected.
@@ -58,19 +58,30 @@
 //   perth-prn
 //   perth-vau
 //   pls
+//   priv-afl
+//   priv-alto
+//   priv-ara
 //   priv-bing-lee-electrics
+//   priv-bolton-clarke
 //   priv-cmv-group
 //   priv-deloitte-touche-tohmatsu
 //   priv-drake-supermarkets
 //   priv-hancock-prospecting
 //   priv-mater
 //   priv-mcnab-constructions
+//   priv-meriton
+//   priv-midfield
 //   priv-minterellison
 //   priv-perth-airport
+//   priv-raa
+//   priv-rac-of-wa
 //   priv-racv
+//   priv-san-remo
 //   priv-st-john-of-god-health-care
+//   priv-suttons-motors
 //   priv-swift-holdings-investments
 //   priv-teys-australia
+//   priv-united-petroleum
 //   priv-unitingcare-queensland
 //   priv-vgw-holdings
 //   priv-village-roadshow
@@ -168,23 +179,39 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "perth-prn": { now: 4298, prev: 4298, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Perenti Limited
   "perth-vau": { now: 684, prev: 684, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Vault Minerals Limited
   "pls": { now: 907, prev: 907, yoy: null, asof: "Jun 2024", span: 0, unit: "headcount" },  // group: Pilbara Minerals Limited
+  "priv-abc-tissue": { now: 742, prev: 709, yoy: 4.7, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: A B C Tissue Products Pty Ltd
   "priv-abn-group": { now: 1980, prev: 1971, yoy: 0.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: The Trustee for ABN Service Trust
   "priv-adco-constructions": { now: 610, prev: 693, yoy: -12.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Adco Constructions Pty Ltd
+  "priv-afl": { now: 3958, prev: 3958, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Australian Football League
+  "priv-akd": { now: 843, prev: 878, yoy: -4.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Associated Kiln Driers Pty. Limited
+  "priv-alto": { now: 528, prev: 528, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Altomonte Holdings Pty Ltd
+  "priv-ara": { now: 3344, prev: 3344, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: ARA Group Limited
   "priv-aurecon": { now: 3966, prev: 4333, yoy: -8.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Aurecon Australasia Pty Ltd
   "priv-ausgrid": { now: 3109, prev: 3014, yoy: 3.2, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Ausgrid Management Pty Ltd
   "priv-australian-unity": { now: 7616, prev: 7641, yoy: -0.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Australian Unity Limited
   "priv-avant-mutual": { now: 1008, prev: 914, yoy: 10.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Avant Mutual Group Limited
   "priv-baiada-poultry": { now: 944, prev: 960, yoy: -1.7, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Baiada Poultry Pty Limited
+  "priv-bgc": { now: 1458, prev: 1664, yoy: -12.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: BGC (Australia) Pty Ltd
   "priv-bing-lee-electrics": { now: 695, prev: 695, yoy: null, asof: "Jun 2024", span: 0, unit: "headcount" },  // group: Bing Lee Electrics Pty Ltd
   "priv-bmd-group": { now: 2224, prev: 2224, yoy: 0.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: B.M.D. Holdings Pty. Limited
+  "priv-bolton-clarke": { now: 19867, prev: 19867, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Rsl Care Rdns Limited
   "priv-built": { now: 81, prev: 100, yoy: -19.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Built Pty Limited
+  "priv-calvary-health-care": { now: 17810, prev: 17387, yoy: 2.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Little Company Of Mary Health Care Limited
+  "priv-canberra-airport": { now: 212, prev: 228, yoy: -7.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Capital Airport Group Pty Limited
+  "priv-cbh-group": { now: 1928, prev: 1893, yoy: 1.8, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Co-Operative Bulk Handling Limited
   "priv-clayton-utz": { now: 1502, prev: 1500, yoy: 0.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Clayton Utz
   "priv-cmv-group": { now: 2041, prev: 2041, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Commercial Motor Vehicles Pty Ltd
+  "priv-competitive-foods": { now: 25255, prev: 23491, yoy: 7.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Competitive Foods Australia Pty Ltd
+  "priv-cotton-on-group": { now: 10234, prev: 10100, yoy: 1.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: The Trustee For Cotton On Clothing Trust
+  "priv-craig-mostyn": { now: 1261, prev: 1095, yoy: 15.2, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Craig Mostyn & Co Pty Ltd
   "priv-defence-health": { now: 328, prev: 270, yoy: 21.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Defence Health Limited
   "priv-deloitte-touche-tohmatsu": { now: 10670, prev: 10670, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Deloitte Touche Tohmatsu
+  "priv-detmold-group": { now: 451, prev: 485, yoy: -7.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Detmold Packaging Pty. Ltd.
   "priv-drake-supermarkets": { now: 5809, prev: 5809, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Drake Supermarkets Pty Ltd
+  "priv-employers-mutual": { now: 3654, prev: 3603, yoy: 1.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Employers Mutual Management Pty Ltd
   "priv-epworth-healthcare": { now: 8063, prev: 8307, yoy: -2.9, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Epworth Foundation
   "priv-ey": { now: 8008, prev: 9000, yoy: -11.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: The Trustee For Ernst & Young Services Trust
+  "priv-fdc": { now: 743, prev: 709, yoy: 4.8, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: FDC Business Services Pty Ltd
   "priv-firstmac": { now: 187, prev: 162, yoy: 15.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Firstmac Limited
   "priv-fitness-and-lifestyle": { now: 4639, prev: 4755, yoy: -2.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Fitness And Lifestyle Group Bidco Pty Ltd
   "priv-georgiou": { now: 895, prev: 914, yoy: -2.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Georgiou Group Pty Ltd
@@ -203,32 +230,55 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "priv-j-j-richards-sons": { now: 3144, prev: 3051, yoy: 3.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: J.J. Richards & Sons Pty Ltd
   "priv-kane-constructions": { now: 510, prev: 472, yoy: 8.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Kane Constructions Pty Ltd
   "priv-kennards-hire": { now: 2078, prev: 1651, yoy: 25.9, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Kennards Hire Pty Limited
+  "priv-king-wood-mallesons": { now: 1880, prev: 1829, yoy: 2.8, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: V Ahuja & Others t/a King & Wood Mallesons
   "priv-kpmg": { now: 8785, prev: 9506, yoy: -7.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: The Trustee For KPMG Australian Service Trust
   "priv-leader-computers": { now: 296, prev: 330, yoy: -10.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: LEADER COMPUTERS PTY LTD
   "priv-life-without-barriers": { now: 7810, prev: 8101, yoy: -3.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Life Without Barriers
+  "priv-loan-market": { now: 388, prev: 391, yoy: -0.8, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Loan Market Group Pty Ltd
   "priv-mater": { now: 10411, prev: 10411, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Mater Misericordiae Ltd
   "priv-mcnab-constructions": { now: 211, prev: 211, yoy: null, asof: "Jun 2024", span: 0, unit: "headcount" },  // employer: Mcnab Constructions Pty Ltd
   "priv-mecca-brands": { now: 6540, prev: 6772, yoy: -3.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Mecca Brands Pty Ltd
   "priv-melbourne-airport": { now: 496, prev: 442, yoy: 12.2, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Australia Pacific Airports Corporation Limited
+  "priv-meriton": { now: 1700, prev: 1700, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Meriton Property Services Pty Limited
+  "priv-merivale": { now: 4359, prev: 4683, yoy: -6.9, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Hemmes Group Pty Limited
+  "priv-metricon-homes": { now: 1582, prev: 1612, yoy: -1.9, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: The Trustee For Metricon Homes Unit Trust
+  "priv-midfield": { now: 1695, prev: 1695, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Midfield Meat International Pty. Ltd.
   "priv-minterellison": { now: 2283, prev: 2283, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: MinterEllison
   "priv-mort-co": { now: 270, prev: 262, yoy: 3.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Mort & Co Ltd
+  "priv-mpc-kinetic": { now: 855, prev: 754, yoy: 13.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Mpc Kinetic Holdings Limited
   "priv-newcastle-greater-mutual-group": { now: 1840, prev: 1818, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Newcastle Greater Mutual Group Ltd
+  "priv-nhp-electrical-engineering-products": { now: 659, prev: 718, yoy: -8.2, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: N.H.P. Electrical Engineering Products Proprietary Limited
+  "priv-norco-co-op": { now: 776, prev: 792, yoy: -2.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Norco Co-Operative Limited
+  "priv-pallion": { now: 327, prev: 403, yoy: -18.9, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Pallion Hr Pty Ltd
   "priv-patterson-cheney": { now: 690, prev: 656, yoy: 5.2, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Patterson Cheney Pty. Ltd.
   "priv-people-first-bank": { now: 2056, prev: 2110, yoy: -2.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Heritage and People's Choice Limited
+  "priv-perfection-fresh": { now: 315, prev: 323, yoy: -2.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Perfection Fresh Australia Pty Ltd
   "priv-perth-airport": { now: 463, prev: 463, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // employer: Perth Airport Pty Ltd
   "priv-pwc-australia": { now: 6248, prev: 7020, yoy: -11.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: The Trustee For The Pricewaterhousecoopers Services Trust
   "priv-queensland-sugar": { now: 220, prev: 230, yoy: -4.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Queensland Sugar Limited
+  "priv-raa": { now: 1376, prev: 1376, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Royal Automobile Association Of South Australia Limited
+  "priv-rac-of-wa": { now: 2075, prev: 2075, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: RACWA Holdings Pty Ltd
+  "priv-racq": { now: 2743, prev: 2703, yoy: 1.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Racq Operations Pty Ltd
   "priv-racv": { now: 4105, prev: 4105, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Royal Automobile Club Of Victoria (Racv) Limited
   "priv-richard-crookes-constructions": { now: 652, prev: 720, yoy: -9.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Richard Crookes Constructions Pty. Limited
+  "priv-salvation-army-australia": { now: 9870, prev: 9555, yoy: 3.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: The Trustee For The Salvation Army (Victoria) Property Trust
+  "priv-san-remo": { now: 339, prev: 339, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: San Remo Macaroni Company Pty Ltd
+  "priv-sarah-group": { now: 194, prev: 207, yoy: -6.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Sarah Constructions Pty Ltd
   "priv-spotlight": { now: 6365, prev: 6301, yoy: 1.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: The Trustee For Spotlight Stores Trading Trust
   "priv-st-john-of-god-health-care": { now: 15564, prev: 15564, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: St John Of God Health Care Inc
+  "priv-st-vincent-de-paul": { now: 746, prev: 879, yoy: -15.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: St Vincent de Paul Society Victoria
   "priv-st-vincent-s-health-australia": { now: 23491, prev: 23178, yoy: 1.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: St Vincent's Health Australia Ltd
   "priv-stowe-australia": { now: 1658, prev: 1404, yoy: 18.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Stowe Australia Pty Limited
+  "priv-sunpork-group": { now: 1496, prev: 1327, yoy: 12.7, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Sunpork Pty Ltd
+  "priv-suttons-motors": { now: 1312, prev: 1312, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Suttons Investments Pty Limited
   "priv-swift-holdings-investments": { now: 1988, prev: 1988, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: SWIFT HOLDINGS INVESTMENTS PTY LTD
+  "priv-talent-international": { now: 298, prev: 282, yoy: 5.7, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Talent International Holdings Pty Ltd
+  "priv-teachers-health-fund": { now: 473, prev: 440, yoy: 7.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Teachers Federation Health Ltd
   "priv-team-global-express": { now: 6129, prev: 6450, yoy: -5.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Team Global Express Pty Ltd
   "priv-teys-australia": { now: 3450, prev: 3450, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Teys Australia Pty Ltd
   "priv-thomas-foods-international": { now: 124, prev: 99, yoy: 25.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Thomas Foods International Pty Limited
   "priv-turosi": { now: 1833, prev: 1958, yoy: -6.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Turosi Pty Ltd
+  "priv-united-petroleum": { now: 334, prev: 334, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: The Trustee For United Petroleum Unit Trust
   "priv-uniting": { now: 11710, prev: 10617, yoy: 10.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Uniting (NSW.ACT)
   "priv-unitingcare-queensland": { now: 16119, prev: 16119, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: UNITINGCARE QUEENSLAND LIMITED
   "priv-vgw-holdings": { now: 424, prev: 424, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: VGW Holdings Limited

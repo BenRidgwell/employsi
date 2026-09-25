@@ -20,7 +20,9 @@ import {
 } from "../data/mapboxGeo";
 import { heatColor, rgbCss } from "../lib/color";
 import { logoFor } from "../lib/companyLogo";
-import { activeSkill, demandByCompany } from "../lib/skillHeat";
+import { activeSkill, demandByCompanyAt } from "../lib/skillHeat";
+import { IVI_MONTHS } from "../data/iviSkillDemand";
+import type { SkillCompanyMonths } from "../lib/jobHistoryFn";
 import { buildMarker, MARKER_FOOT } from "../lib/mapMarker";
 import type { SkillIndex } from "../lib/skillsFn";
 
@@ -392,9 +394,16 @@ function filterStateOf(s: {
 function skillDemandOf(s: {
   searchQuery: string;
   skillIndex: SkillIndex | null;
+  skillMonths: SkillCompanyMonths | null;
+  heatMonth: number;
 }): Record<string, number> | null {
   const sk = activeSkill(s.searchQuery);
-  return sk ? demandByCompany(s.skillIndex, sk) : null;
+  // AT the scrubbed month, so the pins follow the timeline the card scrubs.
+  // Before the archive reaches, this is the live index unchanged — see
+  // demandByCompanyAt for why that is the fallback rather than an empty map.
+  return sk
+    ? demandByCompanyAt(s.skillIndex, s.skillMonths, sk, IVI_MONTHS[s.heatMonth] ?? "").demand
+    : null;
 }
 
 export function PerthMapbox() {
@@ -429,6 +438,8 @@ export function PerthMapbox() {
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const searchQuery = useAppStore((s) => s.searchQuery);
   const skillIndex = useAppStore((s) => s.skillIndex);
+  const skillMonths = useAppStore((s) => s.skillMonths);
+  const heatMonth = useAppStore((s) => s.heatMonth);
   const activeSectors = useAppStore((s) => s.activeSectors);
   const listingType = useAppStore((s) => s.listingType);
   const activeExchanges = useAppStore((s) => s.activeExchanges);
@@ -462,8 +473,10 @@ export function PerthMapbox() {
 
   const skillDemand = useMemo(() => {
     const sk = activeSkill(searchQuery);
-    return sk ? demandByCompany(skillIndex, sk) : null;
-  }, [searchQuery, skillIndex]);
+    return sk
+      ? demandByCompanyAt(skillIndex, skillMonths, sk, IVI_MONTHS[heatMonth] ?? "").demand
+      : null;
+  }, [searchQuery, skillIndex, skillMonths, heatMonth]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -1090,18 +1103,56 @@ export function PerthMapbox() {
       }
       return;
     }
-    const placed = placedRef.current.find((p) => p.company.id === selectedId);
-    if (!placed) return;
-    // Reserve the right of the screen for the company + news cards, so the
-    // selected building frames up on the left half.
-    const rightPad = Math.min(760, Math.round(map.getContainer().clientWidth * 0.6));
-    map.easeTo({
-      center: placed.coords,
-      zoom: Math.max(map.getZoom(), 17),
-      padding: { top: 0, bottom: 0, left: 0, right: rightPad },
-      duration: 640,
-    });
-  }, [selectedId]);
+    /**
+     * Centre on the selected company — but not until this city's pins exist
+     * and the entry ease has landed.
+     *
+     * THIS USED TO RUN ONCE, ON selectedId ALONE, AND WHETHER IT WORKED
+     * DEPENDED ON WHICH COMPANY YOU PICKED. Searching a company does two
+     * things in order: zoomInCity(), then select(). The effect fired on the
+     * select immediately, while `placedRef` still held the PREVIOUS city's
+     * placements — so `find` missed, the effect returned, and it never ran
+     * again because the city was not in its dependencies. Even when it did
+     * find the company, the city's own entry ease runs afterwards and eases to
+     * the CITY camera, overriding it.
+     *
+     * It looked like it worked for BHP because BHP's Perth pin is 83 m from
+     * that city's camera centre and its Melbourne pin 264 m — close enough to
+     * be on screen without any centring at all. Downer's Sydney pin is 778 m
+     * out and its Perth pin 1,063 m, which at zoom 16.5 is well off screen. So
+     * the card opened on a map showing no highlighted logo, and the difference
+     * between the two companies was never in the code that picks them.
+     */
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    // Bounded: the 680ms zoom hand-off plus a 900ms entry ease, with room to
+    // spare. A company that is simply not in this city never resolves, and
+    // this must give up rather than poll forever.
+    const deadline = Date.now() + 2600;
+    const centreOnSelected = () => {
+      if (cancelled) return;
+      const placed = placedRef.current.find((p) => p.company.id === selectedId);
+      // Not placed yet, or the camera is still flying in: wait and look again.
+      if (!placed || enteringRef.current) {
+        if (Date.now() < deadline) timer = setTimeout(centreOnSelected, 120);
+        return;
+      }
+      // Reserve the right of the screen for the company + news cards, so the
+      // selected building frames up on the left half.
+      const rightPad = Math.min(760, Math.round(map.getContainer().clientWidth * 0.6));
+      map.easeTo({
+        center: placed.coords,
+        zoom: Math.max(map.getZoom(), 17),
+        padding: { top: 0, bottom: 0, left: 0, right: rightPad },
+        duration: 640,
+      });
+    };
+    centreOnSelected();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [selectedId, localCity]);
 
   return <div className="mount" ref={containerRef} />;
 }
