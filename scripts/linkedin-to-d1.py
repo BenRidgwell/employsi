@@ -420,7 +420,7 @@ def main_direct() -> int:
                 st['blocked'] += 1
                 blocked_log.append(f'{cid}: {err}')
         tail = ('' if SOLVE else
-                f' · {written:3} new ({len(jobs) - fresh_n} already archived elsewhere)')
+                f' · {written:3} upserted ({len(jobs) - fresh_n} only on another board)')
         flag = f' · BLOCKED: {err}' if err else ''
         sys.stderr.write(f'  {cid:16} {how:7} {len(jobs):3} kept, {dropped:3} other advertisers'
                          f'{tail}{cont} · {secs:.0f}s{flag}\n')
@@ -465,11 +465,26 @@ def main_direct() -> int:
 
 
 def existing_titles(company_id: str) -> set:
-    # Only OTHER sources — so a LinkedIn job that duplicates an Adzuna/SEEK/Indeed
-    # role is counted once, but LinkedIn's own previously-archived jobs re-upsert
-    # and refresh their last_seen (keeping still-live roles "current").
-    r = d1("SELECT DISTINCT title FROM jobs WHERE company_id = ? AND source != 'linkedin'", [company_id])
-    return {norm(str(x.get('title') or '')) for x in (r[0]['results'] if r else [])}
+    """Titles to SKIP: held by another source and not already by LinkedIn.
+
+    A LinkedIn job that would only duplicate an Adzuna/SEEK/Indeed role is not
+    added, but every title LinkedIn already holds for this company re-upserts
+    and refreshes its last_seen, keeping still-live roles "current".
+
+    The second half is what the query used to miss. It read titles from other
+    sources only, so a title held by BOTH LinkedIn and, say, SEEK was skipped
+    too — and LinkedIn's own row for it was never refreshed. Measured on the
+    first direct write, 2026-09-25 (linkedin-archive run #39): 10,030 listings
+    kept, 9,402 skipped as "already archived elsewhere", 622 written, while the
+    solve the day before had found 6,846 of those listings already archived
+    under LinkedIn's own job_key. Those rows would have aged out of "currently
+    advertised" while LinkedIn was still carrying the ad."""
+    r = d1("SELECT DISTINCT title, source = 'linkedin' AS own FROM jobs WHERE company_id = ?",
+           [company_id])
+    rows = r[0]['results'] if r else []
+    other = {norm(str(x.get('title') or '')) for x in rows if not x.get('own')}
+    ours = {norm(str(x.get('title') or '')) for x in rows if x.get('own')}
+    return other - ours
 
 
 def upsert(company_id: str, jobs: list) -> int:
