@@ -31,6 +31,7 @@ export default tseslint.config(
       // every data refresh. Their shape is the generator's responsibility.
       "src/employsi/data/absOccupationSupply.ts",
       "src/employsi/data/auRealCoords.ts",
+      "src/employsi/data/careerLand.ts",
       "src/employsi/data/careerPathways.ts",
       "src/employsi/data/caVacancyDemand.ts",
       "src/employsi/data/companyHeadcount.ts",

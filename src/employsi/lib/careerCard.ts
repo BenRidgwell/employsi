@@ -46,7 +46,7 @@ import {
   type PathwayNode,
   type Rung,
 } from "./careerLadder";
-import { skillsForText } from "../data/skillsTaxonomy";
+import { SKILL_PARENT, skillsForText } from "../data/skillsTaxonomy";
 import { AU_CITY_LNGLAT, HUB_LNGLAT, cityLabel } from "../data/mapboxWorldGeo";
 
 // ── Display ──────────────────────────────────────────────────────────────────
@@ -382,11 +382,16 @@ export function searchSkills(p: CareerPathways, country: string, q: string, n = 
   const text = q.trim().toLowerCase();
   if (!text) return popularSkills(p, country, n);
   const demand = skillDemand(p, country);
-  const byName = [...demand.keys()].filter((s) => s.toLowerCase().includes(text));
-  const byWords = skillsForText(q).filter((s) => demand.has(s));
-  return [...new Set([...byName, ...byWords])]
-    .sort((a, b) => (demand.get(b) ?? 0) - (demand.get(a) ?? 0))
-    .slice(0, n);
+  const byDemand = (a: string, b: string) => (demand.get(b) ?? 0) - (demand.get(a) ?? 0);
+  const byName = [...demand.keys()].filter((s) => s.toLowerCase().includes(text)).sort(byDemand);
+  // From the words, the SPECIFIC skill first: "I recruit engineers" reads as
+  // Human Resources and Talent Acquisition, and the parent — always the
+  // busier — would open no specialism, answering a precise description with
+  // the broadest thing it matched.
+  const byWords = skillsForText(q)
+    .filter((s) => demand.has(s))
+    .sort((a, b) => Number(!!SKILL_PARENT[b]) - Number(!!SKILL_PARENT[a]) || byDemand(a, b));
+  return [...new Set([...byName, ...byWords])].slice(0, n);
 }
 
 /**

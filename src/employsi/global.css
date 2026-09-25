@@ -16869,3 +16869,226 @@ body {
     animation: none;
   }
 }
+
+/* ── Career pathways (Career_Pathway_Card.html) ────────────────────────────
+   The pane shell mirrors .analystpane — same anchor variables, radius, shadow
+   and z-index over the .panescrim — so every rail pane occupies the frame the
+   same way. Inside it, .cpcard is the design's card verbatim.
+
+   The design system's tokens are declared ON THE CARD, not :root. The app has
+   its own values for some of the same names (--border-default, --surface-card,
+   --neutral-*), and the card must look like its design without re-colouring
+   every other surface. Values are the design system's colour, typography and
+   effects sheets as bundled in the design file. */
+.cppane {
+  position: fixed;
+  left: var(--pane-left);
+  top: var(--pane-top);
+  box-sizing: border-box;
+  /* The design's max-width. */
+  width: 680px;
+  max-width: calc(100vw - var(--pane-left) - 24px);
+  max-height: var(--pane-max-h);
+  overflow-y: auto;
+  border-radius: 18px;
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 24px 48px -28px rgba(28, 28, 30, 0.5);
+  animation: emppop 200ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  z-index: 49;
+}
+.cpcard {
+  --neutral-0: #ffffff;
+  --neutral-50: #fafafa;
+  --neutral-100: #f4f4f5;
+  --neutral-150: #ededf0;
+  --neutral-200: #e5e5ea;
+  --neutral-300: #d1d1d6;
+  --neutral-400: #b4b4ba;
+  --neutral-500: #8e8e93;
+  --neutral-600: #6c6c72;
+  --neutral-700: #48484a;
+  --neutral-800: #2c2c2e;
+  --neutral-900: #1c1c1e;
+  --green-50: #e8f3ec;
+  --green-700: #1f6a48;
+  --red-50: #f7ebe9;
+  --red-700: #97332b;
+  --text-primary: var(--neutral-900);
+  --text-secondary: var(--neutral-600);
+  --text-tertiary: var(--neutral-500);
+  --surface-page: var(--neutral-0);
+  --surface-subtle: var(--neutral-50);
+  --surface-sunken: var(--neutral-100);
+  --surface-card: var(--neutral-0);
+  --border-subtle: var(--neutral-150);
+  --border-default: var(--neutral-200);
+  --border-strong: var(--neutral-300);
+  --action-primary: var(--neutral-900);
+  --action-primary-hover: var(--neutral-800);
+  --action-primary-text: var(--neutral-0);
+  --status-success-fg: var(--green-700);
+  --status-success-bg: var(--green-50);
+  --status-danger-fg: var(--red-700);
+  --status-danger-bg: var(--red-50);
+  --font-sans: "Mona Sans Variable", "Mona Sans", system-ui, -apple-system, sans-serif;
+  --radius-md: 10px;
+  --radius-pill: 999px;
+  --shadow-xs: 0 1px 2px rgba(28, 28, 30, 0.05);
+  --shadow-sm: 0 1px 2px rgba(28, 28, 30, 0.06), 0 1px 3px rgba(28, 28, 30, 0.05);
+  --shadow-md: 0 2px 4px rgba(28, 28, 30, 0.05), 0 4px 12px rgba(28, 28, 30, 0.07);
+  --shadow-lg: 0 4px 8px rgba(28, 28, 30, 0.05), 0 12px 32px rgba(28, 28, 30, 0.1);
+
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface-page, #fff);
+  border: 1px solid var(--border-subtle, #e5e5ea);
+  border-radius: 18px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  outline: none;
+  font-family: "Mona Sans Variable", "Mona Sans", system-ui, sans-serif;
+  color: var(--text-primary, #1c1c1e);
+}
+/* A role card on the map. Position, border, shadow and opacity are set inline
+   per node, as in the design. */
+.cpnode {
+  all: unset;
+  cursor: pointer;
+  position: absolute;
+  width: 168px;
+  height: 96px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  background: #fff;
+  border-radius: 12px;
+  transition:
+    box-shadow 200ms,
+    opacity 200ms;
+}
+.cpnode:hover {
+  box-shadow:
+    0 0 0 1px var(--border-strong, #aeaeb2),
+    var(--shadow-md) !important;
+}
+.cphover:hover {
+  background: var(--surface-subtle, #f4f4f5) !important;
+}
+.cpclear {
+  all: unset;
+  cursor: pointer;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font:
+    500 12px/28px "Mona Sans Variable",
+    "Mona Sans",
+    system-ui,
+    sans-serif;
+  color: var(--text-secondary, #636366);
+}
+.cpclear:hover {
+  background: var(--surface-subtle, #f4f4f5);
+}
+.cpsearch {
+  all: unset;
+  cursor: pointer;
+  flex: none;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: #1c1c1e;
+  color: #fff;
+  font:
+    500 14px/36px "Mona Sans Variable",
+    "Mona Sans",
+    system-ui,
+    sans-serif;
+  transition:
+    background 160ms,
+    transform 110ms;
+}
+.cpsearch:hover {
+  background: #2c2c2e;
+}
+.cpsearch:active {
+  transform: scale(0.98);
+}
+/* The design system's primary Button, md, at the design's 40px hint. */
+.cpgoal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 16px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  line-height: 1;
+  border-radius: var(--radius-md);
+  background: var(--action-primary);
+  color: var(--action-primary-text);
+  border: 1px solid var(--action-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 120ms cubic-bezier(0.2, 0.6, 0.2, 1);
+}
+.cpgoal:active {
+  transform: scale(0.98);
+}
+.cptick {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--status-success-fg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  animation: cpTickPop 280ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+.cptick path {
+  animation: cpTickDraw 320ms cubic-bezier(0.2, 0, 0, 1) 140ms both;
+}
+@keyframes cpTickPop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes cpTickDraw {
+  from {
+    stroke-dashoffset: 22;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (max-width: 680px) {
+  /* A near-full-height sheet, as the analyst becomes. */
+  .cppane {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: auto;
+    max-width: none;
+    max-height: 90vh;
+    border-radius: 20px 20px 0 0;
+    z-index: 47;
+  }
+  .cppane .cpcard {
+    border-radius: 20px 20px 0 0;
+  }
+}

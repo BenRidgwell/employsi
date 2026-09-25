@@ -16,6 +16,7 @@ import { ComparePanel } from "./components/panels/ComparePanel";
 import { WhatsTrendingPane } from "./components/panels/WhatsTrendingPane";
 import { DataQualityGate } from "./components/panels/DataQualityGate";
 import { AnalystPane } from "./components/panels/AnalystPane";
+import { CareerPathwaysPane } from "./components/panels/CareerPathwaysPane";
 import { ComingSoonPane } from "./components/panels/ComingSoonPane";
 import { IntroLoader } from "./components/IntroLoader";
 import { useAppStore } from "./state/store";
@@ -133,6 +134,7 @@ function App() {
       <ComparePanel />
       <WhatsTrendingPane />
       <AnalystPane />
+      <CareerPathwaysPane />
       <DataQualityGate />
       {/* Clicking an unreleased market. Rendered at the root, outside the map
           frame: it is a modal over the whole page, and inside `.mapcard` the

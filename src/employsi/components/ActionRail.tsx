@@ -60,6 +60,19 @@ function RailButton({
   );
 }
 
+/** Two role cards joined by a step and a branch — the Career Pathway Card
+ *  design's own thumbnail glyph, redrawn on the rail's 24px grid. */
+function IconCareer() {
+  return (
+    <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" aria-hidden>
+      <rect x="2.5" y="5" width="7" height="5" rx="1.4" strokeWidth="1.6" />
+      <rect x="14.5" y="5" width="7" height="5" rx="1.4" strokeWidth="1.6" />
+      <rect x="14.5" y="14" width="7" height="5" rx="1.4" strokeWidth="1.6" />
+      <path d="M9.5 7.5h5M6 10v6.5h8.5" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 /** A gauge: the panel is about whether the instruments can be trusted. */
 function IconDataQuality() {
   return (
@@ -80,6 +93,8 @@ export function ActionRail() {
   const trendingOpen = useAppStore((s) => s.trendingOpen);
   const toggleAnalyst = useAppStore((s) => s.toggleAnalyst);
   const analystOpen = useAppStore((s) => s.analystOpen);
+  const toggleCareer = useAppStore((s) => s.toggleCareer);
+  const careerOpen = useAppStore((s) => s.careerOpen);
   const toggleDataQuality = useAppStore((s) => s.toggleDataQuality);
   const dataQualityOpen = useAppStore((s) => s.dataQualityOpen);
   const isAdmin = useAppStore((s) => s.role) === "admin";
@@ -116,6 +131,12 @@ export function ActionRail() {
         label="Ask an analyst"
         on={analystOpen}
         onClick={toggleAnalyst}
+      />
+      <RailButton
+        icon={<IconCareer />}
+        label="Career pathways"
+        on={careerOpen}
+        onClick={toggleCareer}
       />
 
       {/* Admin only. The pane refuses a non-admin server-side regardless, so

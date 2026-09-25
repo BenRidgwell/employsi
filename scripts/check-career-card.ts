@@ -346,6 +346,11 @@ check(
   searchSkills(P, "au", "I run the pays and do the payroll").some((s) => /payroll/i.test(s)),
   searchSkills(P, "au", "I run the pays and do the payroll"),
 );
+check(
+  "a description finds the specific skill before its parent",
+  searchSkills(P, "au", "I recruit engineers")[0] === "Talent Acquisition",
+  searchSkills(P, "au", "I recruit engineers"),
+);
 const hrSkill = "Human Resources";
 check(
   "a skill opens the family that advertises it most",
