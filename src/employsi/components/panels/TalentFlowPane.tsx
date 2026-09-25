@@ -6,6 +6,7 @@ import { getTalentFlowMonths, getTalentFlowSkills, getTalentFlowView } from "../
 import { WINDOW_CAVEAT, viewForWindow } from "../../lib/flows";
 import { FLOW_BANDS, flowRows } from "../../lib/flowRows";
 import { CardLoader } from "./CardLoader";
+import { logoFor } from "../../lib/companyLogo";
 
 /**
  * The talent-flow card: the right-hand panel of the "Talent Flows 3D" design,
@@ -65,6 +66,59 @@ const LOAD_STAGES = [
   "Counting flows",
   "Almost there",
 ] as const;
+
+/**
+ * A row's badge: the company's logo, from the one place the app resolves
+ * logos (lib/companyLogo.ts), in the design's 28px ring. Falls back to the
+ * ticker — or the name's initials where there is none — if the image fails,
+ * as the company card's badge does: initials beat a broken image.
+ */
+function RowLogo({ id, code, name }: { id: string | null; code: string; name: string }) {
+  const [failed, setFailed] = useState(false);
+  const c = id ? COMPANY_BY_ID[id] : undefined;
+  const text =
+    code ||
+    name
+      .split(/\s+/)
+      .map((w) => w[0])
+      .join("")
+      .slice(0, 3)
+      .toUpperCase();
+  return (
+    <span
+      style={{
+        width: 28,
+        height: 28,
+        borderRadius: 999,
+        border: "1px solid var(--border-subtle,#e5e5ea)",
+        background: "#fff",
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        font: "700 8.5px/1 'Mona Sans Variable','Mona Sans',system-ui,sans-serif",
+      }}
+    >
+      {c && !failed ? (
+        <img
+          src={logoFor(c.id, c.domain, 64)}
+          alt={c.name}
+          loading="lazy"
+          onError={() => setFailed(true)}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            padding: 4,
+            boxSizing: "border-box",
+          }}
+        />
+      ) : (
+        text
+      )}
+    </span>
+  );
+}
 
 export function TalentFlowPane() {
   const open = useAppStore((s) => s.flowsOpen);
@@ -685,20 +739,7 @@ export function TalentFlowPane() {
                   transition: "background 150ms",
                 }}
               >
-                <span
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 999,
-                    border: "1px solid var(--border-subtle,#e5e5ea)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    font: "700 8.5px/1 'Mona Sans Variable','Mona Sans',system-ui,sans-serif",
-                  }}
-                >
-                  {r.code}
-                </span>
+                <RowLogo key={r.id ?? "other"} id={r.id} code={r.code} name={r.name} />
                 <span style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
                   <span
                     style={{
