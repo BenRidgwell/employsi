@@ -115,13 +115,17 @@ jobs:
         with:
           bun-version: latest
 
-      # WESTERN AUSTRALIA IS ON TRIAL IN THIS LIST. It reads fine from a
-      # developer machine, but so does Victoria, which answers HTTP 403 to a
-      # datacentre IP and is excluded below for exactly that reason. wa.gov.au
-      # has never been asked from a runner. If it refuses, `perth` comes back
-      # out and WA joins Victoria as a run-locally source — but a loader that
-      # nothing schedules is how WA got a year stale in the first place, so it
-      # is worth one run to find out.
+      # WESTERN AUSTRALIA READS FINE FROM HERE — measured 2026-09-25, run
+      # 36135839061: 339 agencies written against 285 without it, which is its
+      # 54 rows. That was worth checking rather than assuming, because Victoria
+      # also reads fine from a developer machine and answers HTTP 403 to this
+      # runner, which is why it is excluded below. wa.gov.au does not.
+      #
+      # It is in this list because a loader nothing schedules is how Western
+      # Australia got a year stale in the first place: its figures were hand
+      # entered, there was no script, and a 2025-26 bulletin sat unread on the
+      # source's own page for months. Leaving `perth` out would rebuild exactly
+      # that.
       #
       # --only qld,sa,nsw,nz, because the jurisdictions need OPPOSITE
       # environments and no machine can fetch them all. Measured 2026-09-24:
