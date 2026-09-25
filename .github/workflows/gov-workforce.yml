@@ -76,8 +76,18 @@ on:
       - 'scripts/sa-workforce-probe.py'
       - '.github/workflows/gov-workforce.yml'
 
+# PER-BRANCH, NOT PER-REPO. The group was a bare "gov-workforce", so a push
+# on ANY branch cancelled a run on any other — and with cancel-in-progress that
+# is silent: the run just ends, mid-fetch, reporting nothing. Measured
+# 2026-09-25, three diagnostic runs on this branch died that way to pushes on
+# an unrelated one, which reads as a flaky workflow rather than as another
+# branch taking the lock.
+#
+# Superseding a run with a NEWER PUSH TO THE SAME BRANCH is the useful half and
+# is kept. Two branches fetching the same sources at once is the cost, and it
+# is a smaller one than a diagnosis that silently never finishes.
 concurrency:
-  group: gov-workforce
+  group: gov-workforce-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
