@@ -1,8 +1,8 @@
 # Talent flows — format and build
 
-**Status (2026-09-25): built, not deployed. Production D1 holds one import**
-(`brightdata|2026-09-25|619251994dd2`: BHP, 4,169 usable profiles, 1,189
-pairs, 1,484 moves over 2021-07..2026-06). Nothing shows it yet: the reader
+**Status (2026-09-25): built, not deployed. Production D1 holds one live import**
+(`brightdata|2026-09-25|d1b30763ccbe`: BHP, 5,697 usable profiles, 1,448
+pairs, 1,848 moves over 2021-07..2026-06; it superseded `…619251994dd2`). Nothing shows it yet: the reader
 (`flowsFn.ts`, `TalentFlow.tsx`) is on this branch only, not on `main`, and
 `deploy-preview.yml` is manual. The rows go live on whichever Worker is next
 deployed from a tree that has the reader, preview included (it shares
@@ -17,7 +17,7 @@ production D1).
 | Card section | `components/panels/TalentFlow.tsx`, Hiring tab | Built; renders nothing without data. Not seen rendered |
 | Map arcs | — | Not started |
 | **Source: Bright Data** (chosen) | `scripts/brightdata-talent-flows.py` + `talent_flows.positions_from_brightdata` | Built; tested end to end against a **fake** Bright Data MCP server. Filters confirmed live 2026-09-24. **7 of 10 real profiles parse to nothing** — see below |
-| Collection state | `workers/jobs-cron/migrations/0003_talent_flows_collect.sql` | **Applied to production D1 2026-09-25.** Holds 7,160 BHP profiles (4,169 usable) after the third collection. Counts by month plus a bare list of hashed ids; no person's name, url, title or history |
+| Collection state | `workers/jobs-cron/migrations/0003_talent_flows_collect.sql` | **Applied to production D1 2026-09-25.** Holds 9,490 BHP profiles (5,697 usable) after the fourth collection. Counts by month plus a bare list of hashed ids; no person's name, url, title or history |
 | Source: LinkedIn sample (parked) | `scripts/collect-talent-flows.py` + `scripts/talent_flows.py` | Built; tested against a fake MCP server only. Parked: it needs a personal LinkedIn account |
 
 ### The Bright Data source
@@ -143,14 +143,30 @@ Facts it depends on (read 2026-09-24):
     1,189 pairs. The loader now reads the export as written.
   The 62 moves out of BHP (45 pairs) are all boomerangs: everyone sampled is
   a current BHP employee, so every exit seen is followed by a return.
+- **Fourth collection, 2026-09-25 03:36–03:44 UTC: 233 requests, 2,330
+  profiles**, no repeats. D1 now holds 9,490 of 21,358 (44%), 5,697 usable.
+  60-month export: 1,848 moves over 1,448 pairs; 1,057 into BHP from 682
+  employers, 545 of them with 1. **Seven pairs reach 10**, all into BHP:
+  Rio Tinto 54, Programmed 16, Fortescue 15, Thiess 12, Monadelphous 11,
+  Anglo American 10, Mineral Resources 10. Excluded: OZ Minerals → BHP 59
+  (acquisition), Freelance 14, Self-employed 11, Independent Consultant 1,
+  `name:` 1. Loaded as `brightdata|2026-09-25|d1b30763ccbe`, superseding the
+  first load; D1 totals checked against the file. 110 of 1,254 companies
+  matched (the two new exact-name matches, Chrysos and Vicinity Centres,
+  checked by hand).
 - **The rate limit is not a fixed count per window.** 00:41–00:55 UTC: 164
   accepted, then 429. 02:02:14–02:25:38 UTC: 557 accepted (at the same ~24 a
   minute), then 429 on the 558th. So the cap had reset within 67 minutes of
-  the first 429, and the second allowance was 3.4x the first. Consistent with
-  a rolling budget that counted requests made before 00:41 (not recorded),
-  but that is a guess. Resume no sooner than an hour after a 429, and never
-  retry one. Requests used this month: ~830 of the 5,000 free (270 before
-  today, then 1 + 557 here). The full seed needs ~1,420 more.
+  the first 429, and the second allowance was 3.4x the first. 03:36:05–03:44:50
+  UTC: 233 accepted, 429 on the 234th, again after a 70-minute gap. So three
+  allowances of 164, 557 and 233, the last two each after about 70 minutes, and
+  none of them a fixed number: neither a flat count per hour nor per rolling
+  hour fits (the hour before 03:44 held only these 233). A budget over a
+  longer rolling span, including requests from before 00:41 that were not
+  timed, fits but is not shown. What is measured: resuming about 70 minutes
+  after a 429 has worked both times it was tried. Resume no sooner than that,
+  and never retry one. Requests used this month: ~1,064 of the 5,000 free
+  (270 before today, then 1 + 557 + 233 in this session). The full seed needs ~1,190 more.
 - **Collection state lives in D1** (`0003`), so a collection outlives the
   machine it ran on. `--sync-d1` pushes what this machine has counted,
   `--pull-d1` brings the cursors and counted keys to a new machine, and
