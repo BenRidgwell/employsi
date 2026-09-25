@@ -33,35 +33,48 @@
 # LinkedIn rows Bright Data wrote: a title that matches under a DIFFERENT key
 # would be counted twice after a switch, and that is worth knowing first.
 #
-# No schedule. Earn one the way indeed-archive.yml did — a full-roster solve and
-# a full-roster write from a hosted runner, both clean — and take LinkedIn off
-# brightdata-archive.yml in the same change, since both write `source=linkedin`.
+# SCHEDULED WEEKLY FROM 2026-09-25, on the direct transport, and it replaces
+# brightdata-archive.yml's LinkedIn sweep (whose schedule is removed in the
+# same change: both write `source=linkedin`). Earned the way indeed-archive.yml
+# earned its schedule — a full-roster solve from a hosted runner, then a
+# full-roster write — see the `schedule` block below for the numbers.
 
 name: linkedin-archive
 
 on:
-  # SCHEDULE REMOVED 2026-08-29 — LinkedIn IS COLLECTED BY brightdata-archive.yml
-  # NOW. This workflow is kept for dispatch, not retired, because it is the only
-  # thing that exercises the Oxylabs transport and re-testing it should cost a
-  # dispatch rather than a rewrite.
+  # WEEKLY, MONDAY 17:20 UTC — the slot brightdata-archive.yml's LinkedIn
+  # sweep held, which is known to collide with nothing.
   #
-  # It was '30 21 * * *'. Leaving it on cost 7 red runs in the week to 2026-08-28
-  # and would have gone on costing one a day: every request answers
+  # What earned it, both from a hosted runner on 2026-09-24:
+  #
+  #   run #37  JobSpy, keyword    395 companies, 75.5 min, 0 blocked, 4,088 kept
+  #   run #38  direct, by id      395 companies, 55.1 min, 0 blocked, 10,272
+  #                               kept (7,603 from the 186 id searches, with
+  #                               zero other-advertiser cards among them);
+  #                               6,846 already in the archive under the SAME
+  #                               job_key Bright Data wrote
+  #
+  # Bright Data's fortnightly sweep was ~27 records a company, ~10.6k a sweep,
+  # billed per record. This is the same order of coverage for nothing.
+  #
+  # WEEKLY, NOT DAILY, BY CHOICE (2026-09-25). Daily would cost only runner
+  # minutes now, and it is what keeps "currently advertised" (last_seen within
+  # a day) true for LinkedIn's own rows. On a weekly cadence those rows read as
+  # current on the day of the run and stale for the other six, as they did
+  # under the fortnightly Bright Data sweep. Changing this line is the whole
+  # of moving to daily.
+  #
+  # THE EARLIER REMOVAL, KEPT: it was '30 21 * * *' on Oxylabs until 2026-08-29,
+  # when every request answered
   #
   #     oxylabs auth failed (401) — check OXYLABS_USERNAME/PASSWORD
   #
-  # which is the Oxylabs ACCOUNT being rejected, not a quota (that is a 429) and
-  # not a missing secret — the same credentials 401 when tested directly, and the
-  # runner shows both as set. The other ~24 scripts that import oxylabs_client
-  # share those credentials, so this is not the place to fix that; several of
-  # them are still writing daily, which is worth understanding before anyone
-  # assumes the account is uniformly dead.
-  #
-  # The real cost of leaving it was not the runner minutes. A feed that fails
-  # every day trains everyone to ignore its failures, and this one masked the
-  # fact that LinkedIn was collecting perfectly well on another workflow — the
-  # 2026-08-17 rows in D1 came from Bright Data, and were read as Oxylabs
-  # survivors.
+  # — the account rejected, not a quota. `transport: oxylabs` is still here for
+  # dispatch, so re-testing it costs a dispatch rather than a rewrite. A feed
+  # that fails every day trains everyone to ignore its failures; that one
+  # masked LinkedIn collecting fine on Bright Data.
+  schedule:
+    - cron: '20 17 * * 1'
   workflow_dispatch:
     inputs:
       transport:
@@ -111,6 +124,10 @@ jobs:
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         run: |
+          # `inputs` IS EMPTY ON A SCHEDULED RUN — a workflow_dispatch default
+          # does not apply to a cron fire — so every input here carries its
+          # fallback. A scheduled run is therefore direct, WRITING (solve is
+          # empty, not true), whole roster, concurrency 5.
           TRANSPORT="${{ inputs.transport || 'direct' }}"
           if [ "$TRANSPORT" = "direct" ]; then
             python scripts/linkedin-to-d1.py --direct --location Australia \
