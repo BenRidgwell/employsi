@@ -116,8 +116,18 @@ jobs:
       # that only a WARMED browser clears — the origin is visited first, once
       # per context, and the clearance cookie makes the rest cheap. Neither is
       # reachable from a developer machine without that.
+      # Output is captured as well as shown, because stderr carries the whole
+      # diagnosis — which roster agency matched nothing and which source rows
+      # matched nothing back — and the last step reprints it. See that step
+      # for why. `2>&1 | tee` rather than a process substitution: the latter
+      # can still be flushing when the step ends, and a diagnosis that is
+      # sometimes empty is worse than no diagnosis at all. pipefail keeps the
+      # generator's exit status.
       - name: Generate QLD + SA + NSW + NZ + NT + TAS workforce data
-        run: python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas
+        run: |
+          set -o pipefail
+          python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas \
+            2>&1 | tee /tmp/gov-diagnosis.txt
 
       - name: Show the generated file
         run: |
@@ -169,3 +179,26 @@ jobs:
             https://www.health.nsw.gov.au/annualreport/Publications/2025/appendix.pdf
           python scripts/sa-workforce-probe.py \
             https://www.health.nsw.gov.au/annualreport/Publications/2025/appendix.pdf
+
+      # THE DIAGNOSIS IS REPRINTED LAST, AND THAT IS THE POINT. It is produced
+      # by the FIRST step, and everything after it — the whole generated data
+      # file, three probes and a 59-page PDF dump — buries it about two
+      # thousand lines deep. The two lists it holds (roster agencies with no
+      # figure, and source rows that matched nothing) are the entire working
+      # material for an ALIAS entry: Victoria's gap closed from 38 cards to 20
+      # by reading exactly these two lists, with no new source involved.
+      #
+      # Printing it again at the end costs nothing and puts it where a log tail
+      # can reach it.
+      - name: Diagnosis (reprinted last so the log tail reaches it)
+        if: always()
+        run: |
+          echo "=== unmatched roster agencies, and unmatched source rows ==="
+          sed -n '/roster agencies WITHOUT/,$p' /tmp/gov-diagnosis.txt || true
+          {
+            echo '## gov-workforce diagnosis'
+            echo
+            echo '```'
+            sed -n '/roster agencies WITHOUT/,$p' /tmp/gov-diagnosis.txt || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
