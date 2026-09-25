@@ -15505,8 +15505,14 @@ body {
    axis at all: the design carries the selection on the stem and the moving
    label and nothing else. An earlier pass kept a dashed mark for where the
    request outruns the archive; it was dropped on request. That fact is still
-   told, in `.cctlnote` under the control, which names the covered span and the
-   date it starts — so it is stated rather than drawn.
+   told, by the `.cceyebrow` ABOVE the control — "Timeline · 21 July – 24 Sept"
+   is built from the span actually drawn, so it is stated rather than drawn.
+
+   This used to credit `.cctlnote`, a caption under the control, which never
+   named a span or a date: it read "Daily live vacancies across the archive, so
+   you can see where this employer's history is worth asking about". The note
+   was removed on request 2026-09-25 and nothing factual went with it, because
+   the eyebrow had been carrying that load the whole time.
 
    The one element here the mockup does not have is `.cctlgap`, the wash over
    days the archive never collected. It predates this redraw and is inside the
@@ -15719,13 +15725,6 @@ body {
   transform: none;
   padding-left: 0;
 }
-.cctlnote {
-  margin: 8px 0 0;
-  font-size: 10.5px;
-  line-height: 1.45;
-  color: var(--text-tertiary);
-}
-
 /* ── What's Trending · market scope bar and coverage header ──────────────────
    The pane prices skills in one market, so the market and what could be priced
    inside it both sit above the numbers. A price with no market named is

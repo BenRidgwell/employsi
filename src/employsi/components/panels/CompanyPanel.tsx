@@ -399,11 +399,6 @@ function TimelineScrubber({
           </button>
         ))}
       </div>
-
-      <p className="cctlnote">
-        Daily live vacancies across the archive, so you can see where this employer&rsquo;s history
-        is worth asking about.
-      </p>
     </div>
   );
 }
