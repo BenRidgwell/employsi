@@ -1588,11 +1588,6 @@ def main():
         by_norm = {}
         for name, v in rows.items():
             by_norm.setdefault(norm(name), []).append((name, v))
-        if key in dump:
-            print(f'\n  {key}: ALL {len(rows)} source rows, largest first:', file=sys.stderr)
-            for nm, v in sorted(rows.items(), key=lambda kv: -kv[1][0]):
-                print(f'      {v[0]:>8,}  {nm}', file=sys.stderr)
-            print(file=sys.stderr)
         meta.append((label, asof, len(rows), unit))
         print(f'  {label}: {len(rows)} source rows, as at {asof} ({unit})', file=sys.stderr)
         data[key] = (by_norm, asof, span, unit)
@@ -1782,6 +1777,33 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
         by_norm = data[pre][0]
         spare = [(k, v[0][0], v[0][1][0]) for k, v in by_norm.items()
                  if k not in consumed[pre] and len(v) == 1]
+
+        # THE FULL SOURCE LIST, WHERE THE ANSWER IS A REFUSAL RATHER THAN AN
+        # ALIAS — printed without being asked for, because the jurisdictions
+        # that need it are exactly the ones that cannot ask.
+        #
+        # The spare list answers "what could an ALIAS point at". That is the
+        # right question when a jurisdiction has rows to spare: Victoria had
+        # 208 of them against 38 blank cards, and reading that list closed 18.
+        # Queensland is the other shape — 22 blank cards against 5 spare rows —
+        # so its remaining answers are refusals, and a refusal has to name what
+        # the body sits INSIDE. That name is in the rows that DID match, which
+        # the spare list by definition excludes.
+        #
+        # More unmatched cards than spare rows is that shape, so it triggers
+        # the dump. `--dump-source` stays as an explicit override; this is what
+        # makes it reachable on a branch, since workflow_dispatch inputs are
+        # validated against the DEFAULT branch's copy of the workflow and a
+        # newly-added input is silently dropped until it is merged.
+        if pre in dump or len(unmatched_roster.get(pre, [])) > len(spare):
+            print(f'\n  {pre}: ALL {len(by_norm)} source rows, largest first '
+                  f'({len(unmatched_roster.get(pre, []))} cards unmatched vs '
+                  f'{len(spare)} spare rows):', file=sys.stderr)
+            allrows = sorted(((v[0][0], v[0][1][0]) for v in by_norm.values()),
+                             key=lambda x: -x[1])
+            for nm, n in allrows:
+                print(f'      {n:>8,}  {nm[:70]}', file=sys.stderr)
+
         if not spare:
             continue
         spare.sort(key=lambda x: -x[2])
