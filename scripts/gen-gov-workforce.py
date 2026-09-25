@@ -532,6 +532,16 @@ def ckan_resource(api, dataset, match):
 # has its own reason (inside a named department, a statutory authority, an
 # officer of the Parliament), so each is written out.
 NOT_IN_SOURCE_JURISDICTION = {
+    'tas': "NOT a refusal, and not the source's doing: this parser is "
+           'INCOMPLETE. Measured 2026-09-25, it returns thirteen agencies '
+           "summing to 20,418 against the report's own Total row of 32,473 — "
+           '63%. Twelve thousand Tasmanian public servants are in agencies it '
+           'never reaches, and these six cards are blank because of that rather '
+           'than because Tasmania does not publish them. The rows it DOES '
+           'return each reconcile across their four columns, so what is filed '
+           'is right; what is missing is missing here, not there. Fixing it '
+           'needs the PDF, which answers a connection reset to the authoring '
+           'sandbox and only opens on the runner',
     'nsw': "the source wired for NSW is the NSW HEALTH annual report appendix, "
            "which reports health organisations only — so a non-health agency "
            "cannot appear in it under any spelling. NSW's own Workforce Profile "
@@ -1768,6 +1778,34 @@ def load_tas():
                     if sum(n[:3]) != n[3] or n[3] <= 0:
                         continue
                     out[name] = n[3]
+
+        # THE REPORT STATES ITS OWN TOTAL, SO THE PARSE CAN CHECK ITSELF, and
+        # measured 2026-09-25 it does not add up: thirteen agencies summing to
+        # 20,418 against a Total row of 32,473. Twelve thousand people are in
+        # agencies this parser never sees — among them Education and Natural
+        # Resources and Environment, which is exactly why their cards are
+        # blank. It is not a source that omits them; it is a line-shape this
+        # regex does not match.
+        #
+        # WARN RATHER THAN RAISE, between half and all. Every row it DOES
+        # return is sound — each one's four columns reconcile — so failing
+        # would throw away fourteen good cards to protest six missing ones,
+        # and the missing ones are already blank either way. Below half it
+        # raises, because at that point the shape has moved rather than
+        # drifted. This is the Northern Territory's "under fifteen rows is a
+        # failure" lesson in the stronger form the Tasmanian report allows:
+        # the document says what the answer should sum to.
+        total = out.pop('Total', None)
+        if total:
+            got = sum(out.values())
+            if got < total * 0.5:
+                raise RuntimeError(f'TAS: parsed {got:,} of a stated {total:,} '
+                                   f'({got / total:.0%}) — the table shape has moved')
+            if got < total * 0.95:
+                print(f'  Tasmania: INCOMPLETE — {len(out)} agencies summing to {got:,} '
+                      f'against the report\'s own Total of {total:,} ({got / total:.0%}). '
+                      f'{total - got:,} employees are in agencies this parse does not '
+                      f'reach; their cards stay blank.', file=sys.stderr)
         return out
 
     now_rows = agencies(editions[june[0]])
