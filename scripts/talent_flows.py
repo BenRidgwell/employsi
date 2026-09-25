@@ -481,6 +481,18 @@ ACQUISITIONS = (
     Acquisition('li:oz-minerals', 'li:bhp', '2023-05',
                 'BHP media release "Completion of OZ Minerals acquisition", 2 May 2023: '
                 'https://www.bhp.com/news/media-centre/releases/2023/05/completion-of-oz-minerals-acquisition'),
+    # Rio Tinto completed its purchase of Arcadium Lithium on 6 March 2025.
+    # Allkem merged into Arcadium in January 2024, so an Allkem page after the
+    # deal is the same business under a name its staff never updated.
+    # Measured 2026-09-25 on 7,820 Rio Tinto profiles: one Arcadium -> Rio
+    # Tinto move, dated 2025-03. The Allkem -> Rio Tinto moves of 2019, 2022
+    # and 2023 were hires, and stay.
+    Acquisition('li:arcadiumlithium', 'li:rio-tinto', '2025-03',
+                'Rio Tinto 6-K "Rio Tinto completes acquisition of Arcadium Lithium", '
+                '6 March 2025: https://www.sec.gov/Archives/edgar/data/863064/'
+                '000162828025016021/ex04d06arcadiumcomplete.htm'),
+    Acquisition('li:allkemltd', 'li:rio-tinto', '2025-03',
+                'as Arcadium: Allkem and Livent merged as Arcadium Lithium in January 2024'),
 )
 
 
@@ -519,7 +531,11 @@ NOT_EMPLOYERS = frozenset(norm(n) for n in (
     'Freelance', 'Freelancer', 'Self-employed', 'Self employed',
     'Independent Consultant', 'Independent Contractor', 'Career Break',
     'Various', 'Various Companies', 'N/A', 'None', 'Independent', 'Travelling',
-    'Self', 'Private', 'n/a - currently unemployed', 'Consultant / Self-Employed'))
+    'Self', 'Private', 'n/a - currently unemployed', 'Consultant / Self-Employed',
+    # With the Rio Tinto seed: Sabbatical 4, Maternity Leave 4, On Maternity
+    # Leave 3, "Freelance (Self employed)" 3. "Travelers" and "Travel Money
+    # Oz" are companies, as is "Independent Market Operator".
+    'Sabbatical', 'Maternity Leave', 'On Maternity Leave', 'Freelance (Self employed)'))
 
 
 def not_employer(ref: str, name: str) -> bool:
@@ -539,8 +555,10 @@ def not_employer(ref: str, name: str) -> bool:
 #   - agency labels ("BHP (Contracting through Chandler Macleod)", "BHP
 #     (Spencer Ogden)", "BMA - Workpac", "Michael Page Contractor for BHP",
 #     "BHP/Programmed"): the employer of record was the agency;
-#   - "BHP Billiton Mitsui Coal": sold to Stanmore in 2022, so whether it is
-#     BHP depends on the move's date, which a ref list cannot say;
+#   - (was: "BHP Billiton Mitsui Coal", left out as sold to Stanmore in 2022.
+#     Added with the Rio Tinto seed: a label that carries the parent's name
+#     only existed while the parent ran it, so the move was inside BHP.
+#     After the sale the same mine is listed under Stanmore's name.)
 #   - "OS BHP", "BMA Systems Pty Ltd": not clear what they are.
 # Matching is by exact ref, like ACQUISITIONS: a new spelling needs a line.
 SAME_EMPLOYER: dict[str, tuple[str, frozenset[str]]] = {
@@ -560,6 +578,7 @@ SAME_EMPLOYER: dict[str, tuple[str, frozenset[str]]] = {
         # others
         'name:bhp olympic dam', 'li:bhp-copper-inc',
         'name:bhp operation services',   # BHP Operations Services, its own labour-hire arm
+        'li:bhp-billiton-mitsui-coal-pty.-ltd.',  # the BHP-era name, before the 2022 sale
         'name:oz minerals bhp',          # "OZ Minerals/BHP": after the 2023 acquisition
     ))),
     # Measured 2026-09-25 on the 60-month export of both seeds: 12 refs that
@@ -572,6 +591,35 @@ SAME_EMPLOYER: dict[str, tuple[str, frozenset[str]]] = {
         'name:fortescue metal group', 'name:fortescue metals', 'name:fmg',
         'li:fortescue-metals-group-ltd-cloud-break', 'name:fmg christmas creek',
         'name:fmg ironbridge project',   # Iron Bridge: a joint venture Fortescue operates
+    ))),
+    # Measured 2026-09-25 on 7,820 Rio Tinto profiles, all time: ~60 refs
+    # that look like Rio Tinto. These are its own: its names and business
+    # units, the old names of businesses it owns outright (Hamersley Iron,
+    # Argyle, Pacific Aluminium, Alcan's Australian operations after 2007),
+    # Robe River and Dampier Salt, which it runs. Labels carrying "Rio Tinto"
+    # for businesses since sold (Coal Australia, Kestrel) are in as well:
+    # such a label only existed while Rio Tinto ran them. Left out, as their
+    # own employers: Queensland Alumina, Tomago Aluminium and Boyne Smelters
+    # (joint ventures that employ their own staff), Energy Resources of
+    # Australia (listed separately, and the employer even when a profile
+    # writes "Rio Tinto Energy Resources of Australia"), Alcan before Rio
+    # Tinto bought it in 2007, and the WorkPac labels.
+    'li:rio-tinto': ('Rio Tinto', frozenset((
+        'name:rio tinto', 'name:riotinto', 'name:rtio',
+        'name:rio tinto iron ore', 'name:riotinto iron ore', 'name:rio tinto minerals',
+        'name:rio tinto exploration', 'li:rio-tinto-mining-and-exploration-limited',
+        'name:rio tinto procurement', 'name:rio tinto shared services', 'name:rio tinto copper',
+        'name:rio tinto iron and titanium', 'name:rio tinto diamonds',
+        'name:rio tinto aluminium', 'li:rio-tinto-aluminium',
+        'name:rio tinto alcan', 'name:rio tinto alcan yarwun', 'name:rio tinto yarwun',
+        'name:rio tinto alcan gove',
+        'name:hamersley iron', 'name:hamersley iron pty ltd', 'li:hamersley-iron-pty-ltd.',
+        'name:robe river iron', 'li:robe-river-limited',
+        'name:argyle diamonds', 'li:argyle-diamonds-limited', 'name:rio tinto argyle diamonds',
+        'name:argyle diamond mine',
+        'li:dampier-salt-limited',
+        'name:pacific aluminium', 'li:pacific-aluminium-pty-limited',
+        'name:rio tinto coal australia', 'name:rio tinto kestrel',
     ))),
 }
 _ALIAS = {a: (canon, name) for canon, (name, aliases) in SAME_EMPLOYER.items() for a in aliases}

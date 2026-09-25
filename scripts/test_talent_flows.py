@@ -354,6 +354,28 @@ def test_second_seed_lists():
           and rows.get(('li:independent-metallurgical-operations-imo-', 'li:fortescue')) == 1, rows)
 
 
+def test_rio_tinto_lists():
+    def mv(f, fn, t='li:rio-tinto', tn='Rio Tinto', month='2024-01'):
+        return {'from_ref': f, 'from_name': fn, 'to_ref': t, 'to_name': tn, 'month': month}
+    excluded = Counter()
+    rows = {(r['from_ref'], r['to_ref']): r['moves'] for r in aggregate([
+        mv('name:hamersley iron', 'Hamersley Iron'), mv('name:rio tinto coal australia', 'Rio Tinto Coal Australia'),
+        mv('li:queensland-alumina-ltd', 'Queensland Alumina Limited'),
+        mv('li:arcadiumlithium', 'Arcadium Lithium', month='2025-03'),
+        mv('li:allkemltd', 'Allkem Limited', month='2023-11'),
+        mv('li:arcadiumlithium', 'Arcadium Lithium', 'li:fortescue', 'Fortescue', month='2025-06'),
+    ], '2020-01', '2026-12', excluded)}
+    check('rio tinto: its own and old names are not a source of its hires',
+          not any(f in ('name:hamersley iron', 'name:rio tinto coal australia') for f, _ in rows), rows)
+    check('rio tinto: a joint venture that employs its own staff stays a source',
+          rows.get(('li:queensland-alumina-ltd', 'li:rio-tinto')) == 1, rows)
+    check('rio tinto: Arcadium after completion is a transfer, Allkem before it a hire',
+          ('li:arcadiumlithium', 'li:rio-tinto') not in rows and
+          rows.get(('li:allkemltd', 'li:rio-tinto')) == 1, rows)
+    check('rio tinto: the acquisition rule touches no other buyer',
+          rows.get(('li:arcadiumlithium', 'li:fortescue')) == 1, rows)
+
+
 def test_window_end():
     counts = {'2025-06': 30, '2025-07': 26, '2025-08': 26, '2025-09': 23, '2025-10': 13}
     check('window end: the last month the data covers, not the cap',
@@ -481,7 +503,7 @@ def test_bd_empty():
 
 for t in [test_links, test_clean, test_single, test_grouped, test_side_role,
           test_unknown_employer, test_year_only, test_ambiguous, test_boomerang,
-          test_aggregate, test_acquisition, test_not_employers, test_same_employer, test_second_seed_lists, test_window_end, test_person_key, test_bd_sample, test_bd_moves,
+          test_aggregate, test_acquisition, test_not_employers, test_same_employer, test_second_seed_lists, test_rio_tinto_lists, test_window_end, test_person_key, test_bd_sample, test_bd_moves,
           test_bd_refusals, test_bd_grouped, test_bd_empty]:
     t()
 

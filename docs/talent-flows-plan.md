@@ -1,9 +1,9 @@
 # Talent flows — format and build
 
 **Status (2026-09-25): built; on the preview Worker, not production. Production D1
-holds one live import** (`brightdata|2026-09-25|e4a23482ff8b`: two seeds, BHP
-9,696 and Fortescue 5,568 usable profiles, 5,775 pairs, 8,045 moves over
-2020-11..2025-10; each earlier load is marked superseded). Nothing shows it yet: the reader
+holds one live import** (`brightdata|2026-09-25|576a25ac2d39`: three seeds, BHP
+9,696, Fortescue 5,568 and Rio Tinto 4,759 usable profiles, 7,258 pairs,
+10,157 moves over 2020-11..2025-10; each earlier load is marked superseded). Nothing shows it yet: the reader
 (`flowsFn.ts`, `TalentFlow.tsx`) is on this branch only, not on `main`, and
 `deploy-preview.yml` is manual. The rows go live on whichever Worker is next
 deployed from a tree that has the reader, preview included (it shares
@@ -18,7 +18,7 @@ production D1).
 | Card section | `components/panels/TalentFlow.tsx`, Hiring tab | Built; renders nothing without data. Not seen rendered |
 | Map arcs | — | Not started |
 | **Source: Bright Data** (chosen) | `scripts/brightdata-talent-flows.py` + `talent_flows.positions_from_brightdata` | Built; tested end to end against a **fake** Bright Data MCP server. Filters confirmed live 2026-09-24. **7 of 10 real profiles parse to nothing** — see below |
-| Collection state | `workers/jobs-cron/migrations/0003_talent_flows_collect.sql` | **Applied to production D1 2026-09-25.** Holds 15,640 BHP profiles (of 21,359) and all 7,928 Fortescue profiles. Counts by month plus a bare list of hashed ids; no person's name, url, title or history |
+| Collection state | `workers/jobs-cron/migrations/0003_talent_flows_collect.sql` | **Applied to production D1 2026-09-25.** Holds 15,640 BHP profiles (of 21,359), all 7,928 Fortescue and 7,820 Rio Tinto (of 16,752). Counts by month plus a bare list of hashed ids; no person's name, url, title or history |
 | Source: LinkedIn sample (parked) | `scripts/collect-talent-flows.py` + `scripts/talent_flows.py` | Built; tested against a fake MCP server only. Parked: it needs a personal LinkedIn account |
 
 ### The Bright Data source
@@ -260,6 +260,34 @@ Facts it depends on (read 2026-09-24):
   16 new exact-name matches checked by hand. If `search_dataset` is billed
   per record (see Cost), this seed was ~7,930 records, ≤ ~$20 at the
   published rate.
+- **Rio Tinto, the third seed, 2026-09-25 08:07–08:37 UTC: `--seed
+  rio=rio-tinto`, 782 requests, 7,820 of 16,752 AU profiles**, then a 429.
+  4,759 usable (61%). Lessons applied before loading:
+  - **an acquisition inside the window**: Rio Tinto completed Arcadium
+    Lithium on 6 March 2025. One Arcadium → Rio Tinto move so far, dated
+    2025-03, now excluded; Allkem (merged into Arcadium in 2024) is covered
+    too, and its 2019–2023 moves to Rio Tinto stay as hires;
+  - its own pages, ~32 refs, into `SAME_EMPLOYER`. There are more than
+    for BHP or Fortescue because of its history: Hamersley Iron, Argyle,
+    Pacific Aluminium, Rio Tinto Alcan, Robe River, Dampier Salt, and
+    labels for since-sold coal businesses that carry its name. Joint
+    ventures that employ their own staff (Queensland Alumina, Tomago, Boyne
+    Smelters), ERA and pre-2007 Alcan stay separate employers;
+  - that reasoning moved "BHP Billiton Mitsui Coal" into BHP's list: a label
+    carrying the parent's name only existed while the parent ran it;
+  - four more "no employer" labels at 3 or more (Sabbatical, Maternity
+    Leave ×2, "Freelance (Self employed)").
+  Export of all three: 10,157 moves over 7,258 pairs, 58 at 10 or more;
+  the window still ends at 2025-10. Into Rio Tinto: 1,262 from 701
+  employers, 9 at 10+: BHP 127, Fortescue 39, WorkPac 37, Roy Hill 22,
+  Worley 20. Between the three: BHP → Fortescue 157, Rio Tinto → Fortescue
+  132, BHP → Rio Tinto 127, Rio Tinto → BHP 126, Fortescue → BHP 40,
+  Fortescue → Rio Tinto 39. **Do not read a direction off those yet**: the
+  seeds are collected to different depths (BHP 73%, Rio Tinto 47%,
+  Fortescue 100%), and a move shows only if the person is in a collected
+  seed. Loaded as `…576a25ac2d39`; totals checked; 7 new exact-name matches
+  checked by hand. Rate limit: 782 accepted, then 429, in a window that
+  began 16 minutes after Fortescue's 793, so ~1,575 in 76 minutes.
 - **The rate limit is not a fixed count per window.** 00:41–00:55 UTC: 164
   accepted, then 429. 02:02:14–02:25:38 UTC: 557 accepted (at the same ~24 a
   minute), then 429 on the 558th. So the cap had reset within 67 minutes of
