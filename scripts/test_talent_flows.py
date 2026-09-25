@@ -332,6 +332,28 @@ def test_same_employer():
           {'name:bhp mitsubishi alliance': 1}, rep)
 
 
+def test_second_seed_lists():
+    excluded = Counter()
+    def mv(f, fn, t='li:fortescue', tn='Fortescue'):
+        return {'from_ref': f, 'from_name': fn, 'to_ref': t, 'to_name': tn, 'month': '2024-01'}
+    rows = {(r['from_ref'], r['to_ref']): r['moves'] for r in aggregate([
+        mv('name:fmg', 'FMG'), mv('li:fortescue-metals-group-ltd-cloud-break', 'Fortescue Metals Group LTD, Cloud Break'),
+        mv('name:workpac fmg', 'WorkPac- FMG'),
+        mv('name:various', 'Various'), mv('name:n a', 'N/A'),
+        mv('li:independent-metallurgical-operations-imo-', 'Independent Metallurgical Operations (IMO)'),
+        mv('li:bhp', 'BHP', 'name:fortescue metals group', 'Fortescue Metals Group'),
+    ], '2024-01', '2024-01', excluded)}
+    check('fortescue: its own pages are not a source of its hires',
+          not any(f in ('name:fmg', 'li:fortescue-metals-group-ltd-cloud-break') for f, _ in rows), rows)
+    check('fortescue: an agency label stays a source',
+          rows.get(('name:workpac fmg', 'li:fortescue')) == 1, rows)
+    check('fortescue: a hire into one of its pages is a hire into it',
+          rows.get(('li:bhp', 'li:fortescue')) == 1, rows)
+    check('non-employers: the second seed\'s labels are dropped, a real firm is not',
+          ('name:various', 'li:fortescue') not in rows and ('name:n a', 'li:fortescue') not in rows
+          and rows.get(('li:independent-metallurgical-operations-imo-', 'li:fortescue')) == 1, rows)
+
+
 def test_window_end():
     counts = {'2025-06': 30, '2025-07': 26, '2025-08': 26, '2025-09': 23, '2025-10': 13}
     check('window end: the last month the data covers, not the cap',
@@ -459,7 +481,7 @@ def test_bd_empty():
 
 for t in [test_links, test_clean, test_single, test_grouped, test_side_role,
           test_unknown_employer, test_year_only, test_ambiguous, test_boomerang,
-          test_aggregate, test_acquisition, test_not_employers, test_same_employer, test_window_end, test_person_key, test_bd_sample, test_bd_moves,
+          test_aggregate, test_acquisition, test_not_employers, test_same_employer, test_second_seed_lists, test_window_end, test_person_key, test_bd_sample, test_bd_moves,
           test_bd_refusals, test_bd_grouped, test_bd_empty]:
     t()
 

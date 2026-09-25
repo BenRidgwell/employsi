@@ -506,9 +506,20 @@ def acquisition_of(from_ref: str, to_ref: str, month: str | None) -> Acquisition
 # are LinkedIn's own labels for the same thing. A name that normalises to
 # nothing ("-", 1 move) became the ref `name:`, which flows-to-d1.py
 # refuses, failing the whole file; it is dropped here too.
+#
+# Added 2026-09-25 when Fortescue's 7,928 profiles joined BHP's: every label
+# that meant "no employer" and moved 3 or more moves across both seeds, all
+# time. Various / Various Companies 30, N/A / none 26, Independent 5,
+# Travelling 4, Self 3, Private 3, "n/a - currently unemployed" 3,
+# "Consultant / Self-Employed" 3. Exact names only: "Independent Metallurgical
+# Operations (IMO)" is a company and stays. Left out at 2 each: "Various
+# (Temporary Assignments)", "Various Temporary Agencies", "Various Small
+# Business" (the first two are agency work, not no employer).
 NOT_EMPLOYERS = frozenset(norm(n) for n in (
     'Freelance', 'Freelancer', 'Self-employed', 'Self employed',
-    'Independent Consultant', 'Independent Contractor', 'Career Break'))
+    'Independent Consultant', 'Independent Contractor', 'Career Break',
+    'Various', 'Various Companies', 'N/A', 'None', 'Independent', 'Travelling',
+    'Self', 'Private', 'n/a - currently unemployed', 'Consultant / Self-Employed'))
 
 
 def not_employer(ref: str, name: str) -> bool:
@@ -522,7 +533,7 @@ def not_employer(ref: str, name: str) -> bool:
 # move between two of them is dropped as internal and a move from elsewhere
 # into one of them counts as a hire into the employer.
 #
-# Measured 2026-09-25 on the 60-month export of 15,490 BHP profiles: 29 refs
+# BHP, measured 2026-09-25 on the 60-month export of 15,490 BHP profiles: 29 refs
 # that look like BHP moved 70 moves, 39 of them into BHP. The 22 below are
 # BHP's own. Left out on purpose, and why:
 #   - agency labels ("BHP (Contracting through Chandler Macleod)", "BHP
@@ -550,6 +561,17 @@ SAME_EMPLOYER: dict[str, tuple[str, frozenset[str]]] = {
         'name:bhp olympic dam', 'li:bhp-copper-inc',
         'name:bhp operation services',   # BHP Operations Services, its own labour-hire arm
         'name:oz minerals bhp',          # "OZ Minerals/BHP": after the 2023 acquisition
+    ))),
+    # Measured 2026-09-25 on the 60-month export of both seeds: 12 refs that
+    # look like Fortescue, ~20 moves. These 8 are Fortescue's own. Left out
+    # as agency or contractor labels: "WorkPac- FMG", "Chandler Macleod FMG
+    # Cloudbreak", "FMG Civeo – Eliwana" (Civeo runs the camps),
+    # "Wirlu-Murra FMG" (a contracting company that works on FMG sites).
+    'li:fortescue': ('Fortescue', frozenset((
+        'name:fortescue metals group', 'name:fortescue metals group ltd',
+        'name:fortescue metal group', 'name:fortescue metals', 'name:fmg',
+        'li:fortescue-metals-group-ltd-cloud-break', 'name:fmg christmas creek',
+        'name:fmg ironbridge project',   # Iron Bridge: a joint venture Fortescue operates
     ))),
 }
 _ALIAS = {a: (canon, name) for canon, (name, aliases) in SAME_EMPLOYER.items() for a in aliases}

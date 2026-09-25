@@ -1,9 +1,9 @@
 # Talent flows — format and build
 
 **Status (2026-09-25): built; on the preview Worker, not production. Production D1
-holds one live import** (`brightdata|2026-09-25|1cb45fe529d3`: BHP, 9,696 usable
-profiles, 2,943 pairs, 3,946 moves over 2020-11..2025-10, the window ending
-where the data does; each earlier load is marked superseded). Nothing shows it yet: the reader
+holds one live import** (`brightdata|2026-09-25|e4a23482ff8b`: two seeds, BHP
+9,696 and Fortescue 5,568 usable profiles, 5,775 pairs, 8,045 moves over
+2020-11..2025-10; each earlier load is marked superseded). Nothing shows it yet: the reader
 (`flowsFn.ts`, `TalentFlow.tsx`) is on this branch only, not on `main`, and
 `deploy-preview.yml` is manual. The rows go live on whichever Worker is next
 deployed from a tree that has the reader, preview included (it shares
@@ -18,7 +18,7 @@ production D1).
 | Card section | `components/panels/TalentFlow.tsx`, Hiring tab | Built; renders nothing without data. Not seen rendered |
 | Map arcs | — | Not started |
 | **Source: Bright Data** (chosen) | `scripts/brightdata-talent-flows.py` + `talent_flows.positions_from_brightdata` | Built; tested end to end against a **fake** Bright Data MCP server. Filters confirmed live 2026-09-24. **7 of 10 real profiles parse to nothing** — see below |
-| Collection state | `workers/jobs-cron/migrations/0003_talent_flows_collect.sql` | **Applied to production D1 2026-09-25.** Holds 15,490 BHP profiles (9,605 usable) after the fifth collection. Counts by month plus a bare list of hashed ids; no person's name, url, title or history |
+| Collection state | `workers/jobs-cron/migrations/0003_talent_flows_collect.sql` | **Applied to production D1 2026-09-25.** Holds 15,640 BHP profiles (of 21,359) and all 7,928 Fortescue profiles. Counts by month plus a bare list of hashed ids; no person's name, url, title or history |
 | Source: LinkedIn sample (parked) | `scripts/collect-talent-flows.py` + `scripts/talent_flows.py` | Built; tested against a fake MCP server only. Parked: it needs a personal LinkedIn account |
 
 ### The Bright Data source
@@ -238,6 +238,28 @@ Facts it depends on (read 2026-09-24):
   taking the moves in it from 3,246 to 3,946 and the pairs reaching 10 from
   18 to 23. Loaded as `…1cb45fe529d3` (2,943 pairs, 9,696 usable profiles,
   including the 150 from 06:31).
+- **Fortescue, the second seed, 2026-09-25 07:21–07:51 UTC: `--seed
+  fmg=fortescue`, 793 requests, all 7,928 AU profiles** (`total_hits` 7,928),
+  no 429 and no repeats. That is the largest allowance yet: the window
+  opened ~2 h after the last 429 (05:18), with 16 requests spent at 06:31.
+  5,568 usable (70%, against BHP's 62%). Same method as BHP, with its
+  lessons applied before loading:
+  - its own pages (8 refs, ~20 moves: "Fortescue Metals Group", `name:fmg`,
+    Cloudbreak, Christmas Creek, Iron Bridge) added to `SAME_EMPLOYER`;
+    agency and contractor labels (WorkPac, Chandler Macleod, Civeo,
+    Wirlu-Murra) left as sources, as for BHP;
+  - no acquisition-shaped spike in any source's months;
+  - a second seed brought more "no employer" labels, added to
+    `NOT_EMPLOYERS` by exact name (see the comment there);
+  - the window still ends at 2025-10: the same Bright Data snapshot.
+  Export of both seeds: 8,045 moves over 5,775 pairs, 49 at 10 or more.
+  Into Fortescue: 2,069 from 975 employers, 24 at 10+: BHP 155, Rio Tinto
+  127, Mineral Resources 42, Roy Hill 25, South32 22, Brunel 21, Mader
+  Group 20. **The second seed opened BHP's "lost to" side**: BHP → Fortescue
+  155, Fortescue → BHP 39. Loaded as `…e4a23482ff8b`; totals checked, the
+  16 new exact-name matches checked by hand. If `search_dataset` is billed
+  per record (see Cost), this seed was ~7,930 records, ≤ ~$20 at the
+  published rate.
 - **The rate limit is not a fixed count per window.** 00:41–00:55 UTC: 164
   accepted, then 429. 02:02:14–02:25:38 UTC: 557 accepted (at the same ~24 a
   minute), then 429 on the 558th. So the cap had reset within 67 minutes of
