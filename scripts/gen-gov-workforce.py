@@ -42,6 +42,7 @@ the card renders an em dash for it.
 
 ALIAS is the escape hatch, and every entry is a judgement someone can check.
 """
+import functools
 import collections
 import glob, csv, io, json, re, sys, urllib.error, urllib.request
 
@@ -548,17 +549,95 @@ NOT_IN_SOURCE_JURISDICTION = {
            'a parse losing it. Building Tasmania and Whole of Government '
            'Programs are neither departments nor listed authorities in it '
            'under any spelling',
+    # RE-PROBED 2026-09-25 ACROSS FOUR SOURCES, AND HALF OF THIS NOTE WAS OUT
+    # OF DATE. An earlier version said NSW "publishes no downloadable workforce
+    # profile any more". It does. psc.nsw.gov.au has moved into nsw.gov.au and
+    # /departments-and-agencies/premiers-department/reports-and-data/
+    # workforce-profile-reports carries a PDF *and* an .xlsx for every year to
+    # 2025, all reachable from here with no browser needed. What none of them
+    # carries is an AGENCY. Measured, so that nobody spends another evening on
+    # it:
+    #
+    #   data.nsw.gov.au CKAN         200. The only PSC workforce dataset is
+    #                                "Gender and diversity Workforce Profile
+    #                                data", 2006–2015. Nothing current.
+    #   2025-additional-workforce-   200. 34 sheets. Every one by SERVICE or
+    #     profile-data.xlsx          PORTFOLIO. Table 2.3 is the finest grain
+    #                                there is.
+    #   2025-workforce-profile-      200, 64 pages. Agency names appear ONLY in
+    #     report.pdf                 prose — "Transport for NSW (−549 FTE)" —
+    #                                and those are senior-executive deltas, not
+    #                                workforce totals. Every table is portfolio.
+    #   budget.nsw.gov.au open data  200. Twelve workbooks: budgeted financial
+    #                                statements by SECTOR, plus performance and
+    #                                wellbeing indicators. No workforce at all.
+    #
+    # So the grain claim below is the half that survived, and it is the half
+    # that decides whether this closes. Sixty-three cards need sixty-three
+    # annual reports; twelve agencies carry 82% of the route's live ads, which
+    # is where that work should start if it is ever started.
     'nsw': "the source wired for NSW is the NSW HEALTH annual report appendix, "
            "which reports health organisations only — so a non-health agency "
            "cannot appear in it under any spelling. NSW's own Workforce Profile "
-           "is reachable and current, but its finest grain is PORTFOLIO or "
-           "SERVICE (Communities and Justice 55,041, Education 120,111), and a "
-           "portfolio is a group of agencies that hold their own cards here. "
+           "IS reachable and current — the 2025 workbook downloads from "
+           "nsw.gov.au without a browser, re-checked 2026-09-25 — but its finest "
+           "grain over 34 sheets is PORTFOLIO or SERVICE (Communities and "
+           "Justice 55,041, Education 120,111, Transport 29,420), and a "
+           "portfolio holds many agencies that each have their own card here. "
            "The one service row that IS a single agency, the NSW Police Force, "
            "is merged; the rest need their own annual reports",
 }
 
 NOT_IN_SOURCE = {
+    # ── NSW: the rest of the top twelve, each tried 2026-09-25 ────────────────
+    # Six NSW agencies now come from their own annual report (NSW_AGENCY_REPORTS).
+    # These are the others among the twelve that carry 82% of the route's ads,
+    # and each of these reasons is a measurement rather than "no source row", so
+    # the next pass starts from what was already established.
+    'nsw:Transport for NSW':
+        'publishes no CURRENT annual report on its own site. Its '
+        'news-and-events/annual-reports page is an archive of pre-2012 RTA and '
+        'RailCorp documents, and its sitemap — 14,375 URLs, all eight pages of '
+        'it — holds no 2024-25 report under any name. Its people are also the '
+        'largest part of the Transport SERVICE row in the Workforce Profile '
+        '(29,420 FTE for the whole portfolio), which is not this card',
+    'nsw:TAFE NSW':
+        'no annual report reachable. tafensw.edu.au answers 404 at every '
+        'annual-report path and its sitemap of 1,357 URLs contains the word '
+        '"annual" zero times; the report is not on nsw.gov.au either',
+    'nsw:Fire and Rescue NSW':
+        'fire.nsw.gov.au REFUSES this network — 403 on the sitemap and a '
+        'connection reset on the site itself, which is the datacentre-IP '
+        'signature South Australia and Victoria also have. Nothing about the '
+        'report can be established from here, including whether it exists',
+    'nsw:Department of Planning, Housing and Infrastructure':
+        'no annual report on nsw.gov.au or planning.nsw.gov.au. The only '
+        '"annual-reports" page on either is the Valuer General\'s, a different '
+        'body, and planning.nsw.gov.au\'s own is for community consultative '
+        'committees',
+    "nsw:Premier's Department":
+        'its 2024-25 annual report downloads and was read: it carries no '
+        'workforce table under any heading the other six use. The only '
+        'full-time-equivalent figure in it is 262,900, which is the whole NSW '
+        'public sector, not the department',
+    'nsw:National Parks and Wildlife Service':
+        'INSIDE the Department of Climate Change, Energy, the Environment and '
+        'Water, whose 6,208 is filed. That report names its exclusions — '
+        'Biodiversity Conservation Trust, Dams Safety NSW, Taronga, Energy '
+        'Corporation of NSW, the EPA and Energy Security Corporation — and NPWS '
+        'is not among them, so its people are in the 6,208 rather than absent '
+        'from it. Filing it again would double count',
+    # And the three DCCEEW names its note DOES exclude, which is why they are
+    # separate cards with no figure rather than part of the 6,208.
+    'nsw:Taronga Conservation Society Australia':
+        "excluded by name from the DCCEEW annual report's workforce table, so "
+        'it needs its own report',
+    'nsw:NSW Environment Protection Authority':
+        "excluded by name from the DCCEEW annual report's workforce table, so "
+        'it needs its own report',
+    'nsw:Energy Corporation of NSW':
+        "excluded by name from the DCCEEW annual report's workforce table, so "
+        'it needs its own report',
     # ── Western Australia: outside the PSM Act bulletin ────────────────────
     # Nine WA cards are absent from every edition, and the reason is the one
     # perthGovWorkforce.ts already stated at the top of the file it replaces:
@@ -803,8 +882,20 @@ def read_existing():
     rows = {}
     for m in re.finditer(r'^  "([^"]+)": \{ ([^}]*) \},', txt, re.M):
         body = {}
-        for k, v in re.findall(r'(\w+): ("(?:[^"]*)"|-?[\d.]+)', m.group(2)):
-            body[k] = v.strip('"') if v.startswith('"') else float(v)
+        # `null` HAS TO BE IN THIS ALTERNATION, and leaving it out was a real
+        # crash rather than a tidiness point. A row with no prior reading is
+        # written as `yoy: null` with `prev` omitted entirely — Tasmania's
+        # eleven rows are all like that since its own prior edition stopped
+        # being comparable. Parsing that back gave a dict with neither key, and
+        # the emitter's v['prev'] raised KeyError on the next run that MERGED
+        # Tasmania instead of loading it. Normalising both to None here is what
+        # makes a prev-less row round-trip.
+        for k, v in re.findall(r'(\w+): ("(?:[^"]*)"|null|-?[\d.]+)', m.group(2)):
+            body[k] = (None if v == 'null'
+                       else v.strip('"') if v.startswith('"')
+                       else float(v))
+        body.setdefault('prev', None)
+        body.setdefault('yoy', None)
         rows[m.group(1)] = body
     meta = {}
     for m in re.finditer(r'^//   ([^:]+): (.+?)(?: — (?:refreshed|KEPT).*)?$', txt, re.M):
@@ -2012,6 +2103,342 @@ def load_healthnz():
     return rows, '31 March 2026', 'headcount'
 
 
+# ── NSW agencies, one annual report at a time ────────────────────────────────
+#
+# WHY THIS IS NOT ONE LOADER. NSW's Workforce Profile stops at PORTFOLIO — the
+# note in NOT_IN_SOURCE_JURISDICTION records all four sources probed and what
+# each carries — so the only place a NSW agency's own number exists is its own
+# annual report. Sixty-three cards therefore need sixty-three documents, and
+# twelve agencies carry 82% of the route's live ads.
+#
+# EACH REPORT IS REGISTERED AS ITS OWN SOURCE, which is not a workaround but
+# the honest shape: a loader returns one `asof` and one `unit`, and these
+# agencies genuinely disagree about both. NESA and Customer Service publish
+# FTE; Climate Change, Communities and Justice and Primary Industries publish a
+# head count. DCJ's newest report is 2023-24 while the rest are 2024-25. Forcing
+# them into one loader would mean one date and one unit over five documents that
+# share neither, which is the NSW-Health mislabel waiting to happen again.
+#
+# NOTHING HERE IS A TYPED-IN FIGURE. Every run re-reads the document and every
+# spec carries the reconciliation that proves the parse: the component rows are
+# summed and must equal the Total row the report prints for itself, column by
+# column, and a date string must be found on the page or the load fails. A
+# report that gets restyled breaks loudly instead of going stale quietly.
+NSW_AGENCY_REPORTS = {
+    # 184 live ads, the largest single card in the NSW route.
+    # p55 "Table 5 Number of FTE officers and employees by gender": the Totals
+    # row is eight numbers, 2023-24 then 2024-25, each F/M/X/Total. The prose
+    # above it says "As at 30 June 2025, the overall number of staff was 733
+    # full-time equivalent (FTE) positions", which is the Total it reconciles to.
+    'nsw-nesa': dict(
+        label='NSW: Education Standards Authority',
+        agency='NSW Education Standards Authority',
+        agency_id='nsw-gov-nsw-education-standards-authority',
+        url='https://www.nsw.gov.au/sites/default/files/noindex/2025-11/'
+            'nesa-annual-report-2024-2025.pdf',
+        needle='Number of FTE officers and employees',
+        total=r'^Totals\b',
+        ncols=8, now_i=7, prev_i=3, sums=[(0, 1, 2, 3), (4, 5, 6, 7)],
+        proof=r'As at 30 June 2025',
+        unit='fte', asof='Jun 2025'),
+    # 128 live ads. p73 "Table 1: Number of DCJ employees by employment
+    # category by year", three years 2021-22 / 2022-23 / 2023-24. Its own prose:
+    # "As of 20 June 2024, the department had 25,643 ... staff". 2024-25 is not
+    # published yet, so this card is correctly a year behind the others.
+    'nsw-dcj': dict(
+        label='NSW: Communities and Justice',
+        agency='Department of Communities and Justice',
+        agency_id='nsw-gov-department-of-communities-and-justice',
+        url='https://www.dcj.nsw.gov.au/content/dam/dcj/dcj-website/documents/'
+            'resource-centre/annual-reports/dcj-2023-24-annual-report-volume-1.pdf',
+        needle='Number of DCJ employees by employment category',
+        total=r'^Total\b',
+        comp=r'^(?:Ongoing|Temporary|Senior Executives|Casual|Others)\b\d*',
+        ncols=3, now_i=2, prev_i=1,
+        proof=r'As of 20 June\s+2024',
+        unit='headcount', asof='Jun 2024'),
+    # 52 live ads. p71 "Division Full Time Equivalent (FTE) over time", four
+    # census columns whose dates the notes give as 23 Jun 2022, 22 Jun 2023,
+    # 20 Jun 2024 and 19 Jun 2025.
+    #
+    # NO COMPONENT SUM IS POSSIBLE HERE and that is a property of the table, not
+    # a shortcut: divisions come and go, so most rows carry two or three numbers
+    # against four columns and which years they land in cannot be read off the
+    # line. The header row is asserted instead, because the risk this check
+    # exists to catch is taking the wrong COLUMN, and a header that still reads
+    # "2022 2023 2024 2025" is what rules that out.
+    'nsw-dcs': dict(
+        label='NSW: Customer Service',
+        agency='Department of Customer Service',
+        agency_id='nsw-gov-department-of-customer-service',
+        url='https://www.nsw.gov.au/sites/default/files/noindex/2025-12/'
+            'department-of-customer-service-annual-report-2024-2025.pdf',
+        needle='Full Time Equivalent (FTE) over time',
+        total=r'^Total\d*',
+        ncols=4, now_i=3, prev_i=2,
+        proof=r'2022\s*1?\s*2023\s*1?\s*2024\s*1?\s*2025',
+        unit='fte', asof='Jun 2025'),
+    # 30 live ads. p83 "Table 7 Number of employees and officers in head count
+    # and full time equivalent (FTE)": head count 2023-24, head count 2024-25,
+    # FTE 2024-25. THE HEAD COUNT COLUMNS ARE TAKEN, not the FTE one — it is the
+    # only quantity the report gives for both years, so it is the only one a
+    # year-on-year can be built from without comparing two different measures.
+    'nsw-dcceew': dict(
+        label='NSW: Climate Change, Energy, the Environment and Water',
+        agency='Department of Climate Change, Energy, the Environment and Water',
+        agency_id='nsw-gov-department-of-climate-change-energy-the-environment-and-water',
+        url='https://www.nsw.gov.au/sites/default/files/noindex/2025-11/'
+            'dcceew-annual-report-2024-25-volume-1-250362.pdf',
+        needle='Number of employees and officers in head count',
+        total=r'^Total\b',
+        comp=r'^(?:Ongoing|Temporary|Casual|Executive)\*?\s',
+        ncols=3, now_i=1, prev_i=0, sums=[(0,), (1,)],
+        proof=r'19 June 2025',
+        unit='headcount', asof='Jun 2025'),
+    # 23 live ads but by far the largest workforce here — this is the department
+    # that operates every NSW public school, so its own figure includes teachers.
+    #
+    # p26 PRINTS TWO FOUR-COLUMN TABLES SIDE BY SIDE: "Full-time equivalent
+    # staff, 2022 to 2025" totalling 107,979 and "Staff active headcount, 2022
+    # to 2025" totalling 136,841. Taking whichever pdfplumber returned first
+    # would file one as the other and nothing would notice. Only the FTE table
+    # reconciles — the head count deliberately does not, because somebody
+    # counted as both a teacher and support staff appears once in the total and
+    # twice above it — so requiring ALL FOUR columns to sum is what chooses it.
+    # extract_text() is no help at all here: the two tables interleave into
+    # "Total 228 2 162 224 1 156 Total 102,631 107,108 107,949 107,979".
+    'nsw-doe': dict(
+        label='NSW: Department of Education',
+        agency='Department of Education',
+        agency_id='nsw-gov-department-of-education',
+        url='https://education.nsw.gov.au/content/dam/main-education/en/home/'
+            'about-us/strategies-and-reports/annual-reports/DoE_Annual_Report_2024-25.pdf',
+        needle='Full-time equivalent staff',
+        total=r'^Total\b',
+        comp=r'^(?:Teachers|Educational support|Corporate and educational support)',
+        ncols=4, now_i=3, prev_i=2, sums=[(0,), (1,), (2,), (3,)], tol=1.5,
+        proof=r'as at 30 June each year',
+        unit='fte', asof='Jun 2025'),
+    # 25 live ads. p62 "Table 27 Number of officers and employees by category
+    # 2024-25", two columns.
+    #
+    # NO PRIOR YEAR, DELIBERATELY. The 2024 column is DRNSW — the Department of
+    # Regional NSW — and the 2025 column is DPIRD, which absorbed Primary
+    # Industries. They are not the same department, so the change between them
+    # is a machinery-of-government event rather than hiring, and `prev` is left
+    # unset exactly as it is for Tasmania's renamed agencies.
+    'nsw-dpird': dict(
+        label='NSW: Primary Industries and Regional Development',
+        agency='Department of Primary Industries and Regional Development',
+        agency_id='nsw-gov-department-of-primary-industries-and-regional-development',
+        url='https://www.nsw.gov.au/sites/default/files/noindex/2025-11/'
+            'dpird-annual-report-2024-25.pdf',
+        needle='Number of officers and employees by',
+        total=r'^Total\b',
+        comp=r'^(?:Permanent|Temporary|Senior executive|Casual)[a-z\- ]*',
+        ncols=2, now_i=1, prev_i=None, sums=[(0,), (1,)],
+        proof=r'June\s*\n?\s*2025|DPIRD June 2025',
+        unit='headcount', asof='Jun 2025'),
+}
+
+
+# Roster id -> its own source key. THE SAME MOVE AS `nzhealth` BELOW and for the
+# same reason: these five have their own date and their own unit, so routing
+# them to `nsw` would look up names the NSW Health appendix never held and then
+# report the miss as the appendix's fault.
+NSW_AGENCY_ROUTE = {v['agency_id']: k for k, v in NSW_AGENCY_REPORTS.items()}
+
+
+def jurisdiction_of(cid):
+    """Which SOURCE KEY a roster company id gets its figure from.
+
+    ONE FUNCTION, CALLED TWICE, and it has to be. The matching loop and the
+    merge loop each used to derive this themselves, and the merge's version was
+    the simpler of the two: `cid.split('-gov-')[0]`. That was survivable until
+    six NSW agencies started coming from their own annual reports — their ids
+    are still `nsw-gov-…`, so the merge read them as belonging to `nsw` and a
+    run that refreshed the NSW Health appendix DELETED all six. Measured
+    2026-09-25: `--only nsw` wrote 343 agencies where the file had 349, and
+    nothing failed.
+
+    That is the exact failure the merge exists to prevent — one machine's run
+    deleting what another machine's run filed — so the derivation cannot live in
+    two places.
+    """
+    if cid in NSW_AGENCY_ROUTE:
+        # Its figure comes from the agency's OWN annual report. Routed here
+        # rather than to `nsw`, which is the NSW Health appendix and could never
+        # name a non-health agency.
+        return NSW_AGENCY_ROUTE[cid]
+    if cid.startswith('aps-'):
+        return 'aps'
+    # `aps-` and `nz-` have no `-gov-` segment, so the split would return the
+    # whole id and match no jurisdiction.
+    if cid.startswith(('nz-health-new-zealand', 'nz-northern-regional-alliance')):
+        # THE NORTHERN REGIONAL ALLIANCE IS DELIBERATELY SENT TO A SOURCE THAT
+        # CANNOT FILL IT, so the run says so in the right place. Since September
+        # 2024 the report folds NRA into a combined "National Payrolls" row with
+        # seven other agencies — its people are in the 4,614, not absent from it.
+        # Routed to `nz` instead it would come back unmatched against the Public
+        # Service Commission, which never covered it either, and would read as
+        # the wrong reason for the right answer. Health NZ's districts go to
+        # their own source, which is a head count where the PSC's is FTE.
+        return 'nzhealth'
+    if cid.startswith('nz-'):
+        return 'nz'
+    return cid.split('-gov-')[0]
+
+
+def _num(s):
+    return float(s.replace(',', ''))
+
+
+def _reconciles(spec, total, comps):
+    """Why this parse does NOT add up, or None if it does.
+
+    Returns a reason rather than raising, because it is also the DISCRIMINATOR
+    between two tables on one page. The Department of Education prints "Full-time
+    equivalent staff, 2022 to 2025" and "Staff active headcount, 2022 to 2025"
+    side by side, both with a four-number Total row: 107,979 and 136,841. Taking
+    whichever pdfplumber happened to return first would file one of them for the
+    other with nothing to notice it. Only the FTE table's components sum to its
+    own total — the head count deliberately does not, since a person counted as
+    both a teacher and support staff appears once in the total and twice above it
+    — so "the table that proves itself" picks the right one on evidence.
+    """
+    # A TOLERANCE, AND ONE SPEC NEEDS MORE THAN THE DEFAULT. Measured
+    # 2026-09-25 on the Department of Education: three FTE components rounded to
+    # whole numbers against a total rounded the same way, and the 2023 column
+    # sums to 107,107 against a stated 107,108. One out. The other three columns
+    # are exact. This is the NSW Police row's lesson again — a published change
+    # of −592 beside a difference of 593 — so the tolerance is declared per spec
+    # and stays small enough that the WRONG table is still rejected: the head
+    # count beside it is out by 588, not by one.
+    tol = spec.get('tol', 0.6)
+    for cols in spec.get('sums', []):
+        if len(cols) == 1:                      # a column, summed down the rows
+            c = cols[0]
+            if not comps:
+                return f'no component rows to sum for column {c}'
+            got = sum(r[c] for r in comps)
+            if abs(got - total[c]) > tol:
+                return (f'column {c} components sum to {got:,.1f} against a stated '
+                        f'Total of {total[c]:,.1f}')
+        else:                                   # a row, summed across to its total
+            *parts, tot = cols
+            got = sum(total[i] for i in parts)
+            if abs(got - total[tot]) > tol:
+                return (f'{parts} sum to {got:,.1f} against {total[tot]:,.1f} in the '
+                        f'same row')
+    return None
+
+
+def _nsw_agency(spec):
+    """One NSW agency annual report -> ({agency: (now, prev)}, asof, unit).
+
+    The spec's regexes were each measured against the live document and are
+    commented with the page they were read off. This re-reads it every run.
+    """
+    import io as _io
+    import pdfplumber
+
+    blob = fetch(spec['url'], binary=True)
+    if blob[:4] != b'%PDF':
+        raise RuntimeError(f"{spec['label']}: not a PDF — starts {blob[:40]!r}")
+
+    total, comps, proved, rejected = None, [], False, []
+
+    def cells(row):
+        """A compacted table row -> (label, [numbers]) if its cells are numeric."""
+        vals = [c for c in row if c not in (None, '')]
+        if not vals:
+            return None, []
+        label = ' '.join(str(vals[0]).split())
+        nums = []
+        for c in vals[1:]:
+            t = re.sub(r'[^\d.,]', '', str(c))
+            if re.fullmatch(r'\d[\d,]*(?:\.\d+)?', t):
+                nums.append(_num(t))
+        return label, nums
+
+    with pdfplumber.open(_io.BytesIO(blob)) as pdf:
+        for pg in pdf.pages:
+            txt = pg.extract_text() or ''
+            if spec['needle'] not in txt:
+                continue
+            if re.search(spec['proof'], txt):
+                proved = True
+
+            # TABLES FIRST, LINES ONLY IF THEY YIELD NOTHING. Two of these pages
+            # print two tables side by side, and extract_text() then interleaves
+            # them: DPIRD's "Senior executive part-time 9 6" comes out glued to
+            # the end of a footnote, and "Temporary part-time 93 87" appears
+            # TWICE, which would silently double a component. The table form
+            # keeps each table's own rows and is the same answer Tasmania needed.
+            for tab in pg.extract_tables():
+                t_row, c_rows = None, []
+                for row in tab:
+                    label, nums = cells(row)
+                    if len(nums) != spec['ncols']:
+                        continue
+                    if re.match(spec['total'], label):
+                        t_row = nums
+                    elif spec.get('comp') and re.match(spec['comp'], label):
+                        c_rows.append(nums)
+                if not t_row or not (c_rows or not spec.get('comp')):
+                    continue
+                why = _reconciles(spec, t_row, c_rows)
+                if why:
+                    rejected.append(why)
+                    continue          # a table that does not add up is not the one
+                total, comps = t_row, c_rows
+                break
+
+            # The fallback, for a table pdfplumber cannot see as one — Customer
+            # Service's "FTE over time" has no ruling lines and comes back as
+            # text only. Numbers are taken AFTER the row prefix, never over the
+            # whole line: its total reads "Total15 5,986.8 …" and counting the
+            # footnote 15 made a four-column row look like five.
+            if total is None:
+                for line in txt.split('\n'):
+                    for which in ('total', 'comp'):
+                        pat = spec.get(which)
+                        if not pat or (which == 'total' and total is not None):
+                            continue
+                        m = re.match(pat, line)
+                        if not m:
+                            continue
+                        nums = re.findall(r'\d[\d,]*(?:\.\d+)?', line[m.end():])
+                        if len(nums) != spec['ncols']:
+                            continue
+                        if which == 'total':
+                            total = [_num(x) for x in nums]
+                        else:
+                            comps.append([_num(x) for x in nums])
+                        break
+            if total:
+                break
+
+    if not total or len(total) != spec['ncols']:
+        extra = f"; tables rejected for not adding up: {rejected}" if rejected else ''
+        raise RuntimeError(f"{spec['label']}: no Total row of {spec['ncols']} numbers "
+                           f"on a page containing {spec['needle']!r} — the report has "
+                           f"been restyled{extra}")
+    why = _reconciles(spec, total, comps)
+    if why:
+        raise RuntimeError(f"{spec['label']}: {why}")
+    if not proved:
+        raise RuntimeError(f"{spec['label']}: the page no longer carries "
+                           f"{spec['proof']!r}, so the column the figure is read "
+                           f"from can no longer be shown to be {spec['asof']}")
+
+    now = total[spec['now_i']]
+    prev = None if spec['prev_i'] is None else total[spec['prev_i']]
+    if not now > 0:
+        raise RuntimeError(f"{spec['label']}: parsed a non-positive now ({now})")
+    return {spec['agency']: (now, prev)}, spec['asof'], spec['unit']
+
+
 SOURCES = {
     'aps': ('APS (federal)', load_aps, 1),
     'vic': ('Victoria', load_vic, 1),
@@ -2030,6 +2457,12 @@ SOURCES = {
     # found, which took six rounds and is the more useful half of the story.
     'nt': ('Northern Territory', load_nt, 1),
     'tas': ('Tasmania', load_tas, 1),
+    # ONE ENTRY PER NSW ANNUAL REPORT, built from NSW_AGENCY_REPORTS above.
+    # Each is its own source because each has its own date and its own unit —
+    # see the comment on that table. functools.partial rather than a closure in
+    # a loop, so every entry does not end up bound to the last spec.
+    **{k: (v['label'], functools.partial(_nsw_agency, v), 1)
+       for k, v in NSW_AGENCY_REPORTS.items()},
     # A SEPARATE SOURCE FROM `nz` ON PURPOSE, not a few more rows on it. The
     # PSC publishes FTE and Health NZ publishes a head count, and one `unit`
     # is carried per source — merging them would label 11,473 people as FTE on
@@ -2137,25 +2570,7 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
     for a in agencies:
         # `aps-` and `nz-` have no `-gov-` segment, so the split would return
         # the whole id and match no jurisdiction.
-        if a['id'].startswith('aps-'):
-            pre = 'aps'
-        elif a['id'].startswith(('nz-health-new-zealand', 'nz-northern-regional-alliance')):
-            # THE NORTHERN REGIONAL ALLIANCE IS DELIBERATELY SENT TO A SOURCE
-            # THAT CANNOT FILL IT, so the run says so in the right place. Since
-            # September 2024 the report folds NRA into a combined "National
-            # Payrolls" row with seven other agencies — its people are in the
-            # 4,614, not absent from it, and no row anywhere names NRA. Routed
-            # to `nz` instead it would come back unmatched against the Public
-            # Service Commission, which never covered it either and would read
-            # as the wrong reason for the right answer.
-            # Health NZ's districts go to their own source, which is a head
-            # count where the PSC's is FTE. Routing them to `nz` would look up
-            # names that are not in it and then label the miss as the PSC's.
-            pre = 'nzhealth'
-        elif a['id'].startswith('nz-'):
-            pre = 'nz'
-        else:
-            pre = a['id'].split('-gov-')[0]
+        pre = jurisdiction_of(a['id'])
         if pre not in data:
             continue
         by_norm, asof, span, unit = data[pre]
@@ -2258,9 +2673,36 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
     # kept rather than re-fetched say so.
     prev_rows, prev_meta = read_existing()
     for cid, rec in prev_rows.items():
-        pre = 'aps' if cid.startswith('aps-') else cid.split('-gov-')[0]
-        if pre not in data:          # not attempted this run — keep it
+        if jurisdiction_of(cid) not in data:   # not attempted this run — keep it
             out.setdefault(cid, rec)
+
+    # A CARD THAT LOSES A FIGURE IT ALREADY HAD GETS SAID OUT LOUD.
+    #
+    # THE OBVIOUS GUARD HERE DOES NOT WORK, and writing it first is how that was
+    # found. It compared each dropped row against jurisdiction_of(cid) to ask
+    # whether its source had been loaded — but that is the function the bug was
+    # IN, so the check inherited the blind spot and passed happily while six
+    # cards vanished. A guard derived from the thing it guards cannot catch it.
+    #
+    # This asks a question with no derivation in it instead: did a row that had
+    # a figure come out of this run without one? Measured 2026-09-25, `--only
+    # nsw` did exactly that to six NSW agencies — routed to the NSW Health
+    # appendix, correctly absent from it, dropped — and the run reported 343
+    # agencies with no hint that six cards had gone back to an em dash.
+    #
+    # It PRINTS rather than raises, because a source genuinely dropping an
+    # agency is legitimate and looks identical from here. The workflow reprints
+    # the diagnosis last, so this lands where it will be read.
+    lost = sorted(cid for cid in prev_rows if cid not in out)
+    if lost:
+        print(f'\n  LOST A FIGURE IT ALREADY HAD — {len(lost)} card(s). Either the '
+              f'source stopped reporting them, or they were looked up in the wrong '
+              f'source:', file=sys.stderr)
+        for cid in lost[:20]:
+            had = prev_rows[cid]
+            print(f'      {cid}  (was {int(had["now"]):,} as at {had.get("asof")})',
+                  file=sys.stderr)
+
     kept = [(lbl, m) for lbl, m in prev_meta.items() if lbl not in {x[0] for x in meta}]
     if failed:
         print(f'  not refreshed this run: {", ".join(failed)} '
@@ -2290,8 +2732,8 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
         # prev is OMITTED rather than zeroed when there is no prior year. A 0
         # would read as a real reading of nobody, and check-roster's
         # "not positive" assertion would fire on a row that is perfectly good.
-        prev_part = '' if v['prev'] is None else f"prev: {int(v['prev'])}, "
-        yoy_part = 'null' if v['yoy'] is None else v['yoy']
+        prev_part = '' if v.get('prev') is None else f"prev: {int(v['prev'])}, "
+        yoy_part = 'null' if v.get('yoy') is None else v['yoy']
         L.append(f"  {json.dumps(cid)}: {{ now: {int(v['now'])}, {prev_part}"
                  f"yoy: {yoy_part}, asof: {json.dumps(v['asof'])}, span: {int(v['span'])}{unit} }},")
     L += ['};', '']
