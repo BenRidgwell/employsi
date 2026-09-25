@@ -49,6 +49,20 @@ Facts it depends on (read 2026-09-24):
 - **Cost.** The free tier is 5,000 requests a month. One `search_dataset` call
   is one request and returns at most 10 profiles. `--max-requests` (default
   50) caps a run. Set a spend cap in Bright Data's control panel as well.
+  **WHETHER `search_dataset` IS INSIDE THAT FREE TIER IS UNVERIFIED, and the
+  code says it probably is not.** Read 2026-09-25 in `@brightdata/mcp`
+  2.11.3's `server.js`: the free tier's tools (`pro_mode_tools`) are
+  `search_engine`, `scrape_as_markdown`, their batch forms and `discover`,
+  and its 5,000-request message is tied to the `mcp_unlocker` zone.
+  `search_dataset` is not among them. It is enabled only through
+  `GROUPS=social`, and it calls `api.brightdata.com/datasets/search/<id>`,
+  the Dataset API, which Bright Data sells per record (published LinkedIn
+  dataset price $250 per 100K, i.e. $2.50 per 1,000). Records returned so
+  far: ~15,720 (about 14,050 on 2026-09-25 alone), so between $0 and roughly
+  $39 at that rate. Neither end is measured: the API token cannot read the
+  balance (`customer/balance` answers "Your API key lacks the required
+  permissions"). Check Bright Data's control panel under Billing before
+  collecting more; the scheduled finishing run was paused for it.
 - **Errors.** Any tool error stops the run (exit 3), with no retry. The
   real server passes Bright Data's message through, but an MCP server can
   mask it, and a quota error read as transient would be retried on a metered
