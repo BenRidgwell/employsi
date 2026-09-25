@@ -27,11 +27,34 @@ import type { JobsTarget } from "./auJobsTargets";
  *
  * NO HEADLINE FIGURES HERE, deliberately. This file is a jobs TARGET list: it
  * gets these employers searched, so their vacancy counts and skill demand are
- * real and come from rows in the archive. Headcount, salary and turnover for a
- * university are not things this repo has a source for, and the gov rosters
- * already show the right answer to that — adelaideGov.ts zeroes headcount and
- * the financials with "the card shows no fabricated workforce numbers". Adding
- * map cards is a separate step and should follow that, not a hash.
+ * real and come from rows in the archive. Salary and turnover for a university
+ * are not things this repo has a source for, and the gov rosters already show
+ * the right answer to that — adelaideGov.ts zeroes headcount and the
+ * financials with "the card shows no fabricated workforce numbers". Adding map
+ * cards is a separate step and should follow that, not a hash.
+ *
+ * HEADCOUNT IS NOW SOURCED, and `headcount: 0` below no longer decides what
+ * the card shows. data/wgeaWorkforceAu.ts carries a real head count and
+ * year-on-year change for 40 of the 41 universities here, from the WGEA
+ * register, and companyCard's filedHeadcount() prefers it over the zero. The
+ * zero stays as the seed because it is still what LocalBanner sums and what a
+ * card falls back to for the one university WGEA does not report (Nan Tien
+ * Institute, which is under the Act's 100-employee threshold).
+ *
+ * A university's figure is its CORPORATE GROUP, so it includes the university's
+ * own companies — MQ Health and U@MQ under Macquarie, UNSW Global, Monash
+ * College, RMIT Training and RMIT Online. That is deliberate and is the same
+ * rule every other employer is measured by; the generator explains why reading
+ * the single legal entity instead is wrong for a group. Torrens is the
+ * exception that proves it: its group belongs to Strategic Education and holds
+ * a sister brand, so Torrens is read as the employer, not the group.
+ *
+ * Two things to know before reading those figures as a university would
+ * report them: WGEA counts HEADS INCLUDING CASUALS where a university annual
+ * report usually leads with the much lower FTE, and it counts AUSTRALIAN
+ * employees only. See the generator, scripts/gen-wgea-workforce.py, which also
+ * records why the Department of Education's own statistics collection — the
+ * obvious source — could not be used.
  */
 
 const slug = (name: string): string =>

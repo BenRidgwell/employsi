@@ -1157,7 +1157,16 @@ const MK_ANCHOR = Array.from({ length: 3 }, () =>
   check("...with no price", r?.pay === null, `pay=${r?.pay}`);
   check("...and a NULL value, never zero", r?.value === null, `value=${r?.value}`);
   check("...but its demand still counts", r?.now === 7, `now=${r?.now}`);
-  check("coverage header counts priced of seen", m.priced < m.seen && m.taxonomy === 100);
+  // ALL_SKILLS.length rather than a literal. This read `=== 100` and broke the
+  // moment a skill was added (Strategy, 2026-09-25) — a check that fails for
+  // the taxonomy GROWING is a check nobody can trust, because the failure says
+  // nothing about the thing it names. What it means to assert is that the header
+  // reports the taxonomy's size, so it asks the taxonomy.
+  check(
+    "coverage header counts priced of seen",
+    m.priced < m.seen && m.taxonomy === ALL_SKILLS.length,
+    `taxonomy=${m.taxonomy}, ALL_SKILLS=${ALL_SKILLS.length}`,
+  );
 }
 {
   // The worldwide construction, built from the shape that actually caused the

@@ -79,6 +79,37 @@ function FollowGlyph({ on: _on }: { on: boolean }) {
   );
 }
 
+/**
+ * How well `text` answers the query, lower being better. Used to order search
+ * results before they are cut to six.
+ *
+ * The list being ranked is a SUBSTRING match, which is the right filter — a
+ * reader typing "westpac" should find "Westpac Banking Corporation" — but the
+ * wrong order. Without this, a short name loses to every longer one that
+ * happens to contain the same letters, and it loses silently: the result is
+ * not shown late, it is not shown at all. "EY" returned Harvey Norman, Worley,
+ * Weyerhaeuser, Keyence and Morgan Stanley, with EY 28th of 32 matches.
+ *
+ * The tiers are deliberately coarse. Anything finer (token counts, edit
+ * distance, frequency weighting) is a relevance model, and this is a list of
+ * 1,548 names where "the thing you typed, exactly" is nearly always the
+ * answer.
+ */
+function rankText(text: string, q: string): number {
+  const t = text.toLowerCase();
+  if (t === q) return 0; // typed it exactly
+  if (t.startsWith(q)) return 1; // "westp" -> Westpac
+  // A word inside the name starting with the query: "norman" -> Harvey Norman.
+  // Guarded on a word boundary so "ey" does not score here for "Worley".
+  if (new RegExp(`\\b${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(t)) return 2;
+  return 3; // somewhere in the middle of a word
+}
+
+/** A company matches on either its name or its ticker; take the better of the two. */
+function rankCompany(c: { name: string; ticker: string }, q: string): number {
+  return Math.min(rankText(c.name, q), c.ticker ? rankText(c.ticker, q) : 9);
+}
+
 export function GlobalSearch() {
   const globalOut = useAppStore((s) => s.globalOut);
   const demandMode = useAppStore((s) => s.demandMode);
@@ -152,12 +183,23 @@ export function GlobalSearch() {
         (c.name.toLowerCase().includes(q) || c.ticker.toLowerCase().includes(q)) &&
         (seesAllMarkets || isReleasedCompany(c.id)),
     )
+      // RANKED, because only six survive the slice and a substring match on a
+      // short name is buried by longer ones. Typing "EY" used to return
+      // Harvey Norman, Worley, Weyerhaeuser, Keyence, Morgan Stanley and East
+      // Money — EY itself was the 28th of 32 matches and never appeared, so
+      // the firm read as missing from the product entirely. Every two-letter
+      // company has the same problem (BP, GE, 3M), and it gets worse the
+      // shorter and better-known the name is.
+      .sort((a, b) => rankCompany(a, q) - rankCompany(b, q) || a.name.length - b.name.length)
       .slice(0, 6)
       .map((c) => ({ kind: "company" as const, id: c.id, label: c.name, sub: c.ticker }));
     const cities: Result[] = Object.entries(GLOBAL_HUB_LABEL)
       .filter(
         ([id, label]) => label.toLowerCase().includes(q) && (seesAllMarkets || isReleasedPlace(id)),
       )
+      // Same ordering rule as the companies above: "york" should offer York
+      // before New York only if York exists, and an exact name always first.
+      .sort(([, a], [, b]) => rankText(a, q) - rankText(b, q) || a.length - b.length)
       .slice(0, 6)
       .map(([id, label]) => ({ kind: "city" as const, id, label }));
     // Direct name matches first, then skills inferred from the description via

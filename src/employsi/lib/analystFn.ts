@@ -483,6 +483,18 @@ export interface AnalystRequest {
    * behaviour every caller had before follow-ups existed.
    */
   intent?: AnalystIntent;
+  /**
+   * The skill the turn resolved to, when it named one.
+   *
+   * SENT BECAUSE THE PAY ANSWER USED TO IGNORE IT. "What does nursing pay in
+   * Perth?" resolved the skill perfectly well on the client and then asked the
+   * archive for the median of EVERY disclosed ad in Perth, because the skill
+   * never crossed the wire — a real figure, correctly measured, about a
+   * question with one more word in it than was answered. Only the pay branches
+   * read it; the volume and skills branches take their skill narrowing from the
+   * history path in analystAnswer.ts instead.
+   */
+  skill?: string | null;
 }
 
 // POST rather than GET: a GET server fn serialises its payload into the URL,
@@ -493,7 +505,14 @@ export const askAnalyst = createServerFn({ method: "POST" })
   .validator((data: AnalystRequest) => data)
   .handler(async ({ data }): Promise<AnalystAnswer> => {
     const { question, scope, hubs, country, sector, companyIds } = data;
-    const intent = data.intent ?? detectIntent(question || "");
+    // Only trust a name the taxonomy still knows: an archive row can carry a
+    // skill that has since been renamed, and parseStoredSkills maps those
+    // forward, so a stale name here would filter to nothing and read as an
+    // empty market.
+    const askedSkill = data.skill && data.skill in SKILL_CATEGORY ? data.skill : null;
+    // Reassigned in one place: a payBySkill question that names a single skill
+    // is a pay question about that skill (see below).
+    let intent = data.intent ?? detectIntent(question || "");
     const db = await getArchiveDb();
     if (!db) {
       return {
@@ -636,19 +655,176 @@ export const askAnalyst = createServerFn({ method: "POST" })
       };
     }
 
-    if (intent === "pay") {
+    // ── Which skills pay the most, here ────────────────────────────────────
+    // ADDED 2026-09-24 BECAUSE THE QUESTION WAS BEING ANSWERED WITH THE WRONG
+    // FIGURE. "Which skills pay the most?" matched the `pay` rule and came back
+    // with ONE median for the whole location — a real number, correctly
+    // measured, and not remotely what was asked. That is the failure this
+    // codebase treats as worse than declining: the reader has no way to tell a
+    // misread question from a thin market, because both look like an answer.
+    //
+    // It reads the SAME disclosed sample the scope-level median comes from, so
+    // the premium each skill carries is like-for-like against it — same ads,
+    // same day, same currency. Comparing a per-skill median against a figure
+    // built any other way would mostly measure the difference between the two
+    // methods, which is the trap the conventions file names outright.
+    if (intent === "payBySkill") {
+      // "What pays the most for nurses?" names a skill AND asks for a ranking,
+      // which the ranking cannot honour — there is only one median for one
+      // skill. Hand it to the pay branch, which answers exactly that and says
+      // what the premium is against, rather than ranking a list of one.
+      if (askedSkill) intent = "pay";
+    }
+    if (intent === "payBySkill") {
       const rows = await db
         .prepare(
-          `SELECT salary, hub FROM jobs
+          `SELECT salary, skills FROM jobs
+             WHERE ${where} AND salary IS NOT NULL AND salary <> ''
+               AND skills IS NOT NULL AND ${LIVE_ON_DAY}`,
+        )
+        .bind(...binds, asOf, asOf)
+        .all();
+      const fallback = (country && COUNTRY_CURRENCY[country]) || "";
+      // One currency wins the scope, exactly as the scope-level median does.
+      // Ranking skills across currencies would rank exchange rates.
+      const byCurrency: Record<string, number> = {};
+      const parsed: { annual: number; currency: string; skills: string[] }[] = [];
+      for (const r of rows?.results ?? []) {
+        const p = parsePay(String(r.salary || ""), fallback);
+        if (!p || !p.currency) continue;
+        const skills = parseStoredSkills(r.skills).filter((x) => x in SKILL_CATEGORY);
+        if (!skills.length) continue;
+        byCurrency[p.currency] = (byCurrency[p.currency] || 0) + 1;
+        parsed.push({ annual: p.annual, currency: p.currency, skills });
+      }
+      const cur = Object.entries(byCurrency).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+      const usable = parsed.filter((p) => p.currency === cur);
+      const bySkill: Record<string, number[]> = {};
+      for (const p of usable) for (const sName of p.skills) (bySkill[sName] ||= []).push(p.annual);
+
+      // A median over a handful of ads is noise wearing a number's clothes. The
+      // scope-level answer wants 20 before it quotes one figure; a per-skill
+      // split cannot ask that of every row and still say anything, so the floor
+      // is 12 AND the count rides on every bar, so a thin one can be discounted
+      // by the reader rather than only by me.
+      const MIN_PER_SKILL = 12;
+      // A SPECIALITY IS NOT A PEER OF THE SKILL IT NARROWS — the same rule the
+      // demand ranking above follows, and check-analyst-followups.ts asserts
+      // that every ranking here applies it. Deduped BEFORE the floor check
+      // below, so "at least two rankable skills" means two that do not sit
+      // inside one another.
+      const eligible = dropRedundantKin(
+        Object.entries(bySkill)
+          .filter(([, v]) => v.length >= MIN_PER_SKILL)
+          .map(([name, v]) => {
+            const sorted = [...v].sort((a, b) => a - b);
+            return { name, med: quantile(sorted, 0.5), n: v.length };
+          })
+          // Median desc, then sample size. THE TIE-BREAK IS NOT COSMETIC:
+          // measured over Perth's 855 disclosed ads on 2026-09-24, 32 skills
+          // clear the floor and their medians land on round numbers — four
+          // shared $140,000 — because so many boards publish a BAND rather than
+          // a figure. Without a second key the "best paid skill" was whichever
+          // of the tied set happened to come out of the object first.
+          .sort((a, b) => b.med - a.med || b.n - a.n),
+        (e) => e.name,
+      );
+
+      if (eligible.length < 2) {
+        const best = Object.entries(bySkill).sort((a, b) => b[1].length - a[1].length)[0];
+        return {
+          intent,
+          text: `I can't rank pay by skill for ${label}. It needs at least ${MIN_PER_SKILL} live ads that BOTH state a salary and name a skill I can map, for at least two different skills, and ${
+            best
+              ? `the best-covered skill here has ${plural(best[1].length, "such ad")}`
+              : "no skill here has any"
+          }. Ranking on fewer would be ranking noise. Ask me the median for ${label} as a whole instead — that pools every disclosed ad and does clear the bar.`,
+          source: archiveNote,
+        };
+      }
+
+      const top = eligible.slice(0, 6);
+      const all = usable.map((p) => p.annual).sort((a, b) => a - b);
+      const market = quantile(all, 0.5);
+      const max = top[0].med;
+      const prem = (m: number) => Math.round(((m - market) / market) * 100);
+      const bars: AnalystBar[] = top.map((e) => {
+        const d = prem(e.med);
+        return {
+          name: withParent(e.name),
+          // Proportional from zero: a bar twice as long is twice the pay.
+          pct: Math.round((e.med / max) * 100),
+          v: `${money(e.med, cur)} · ${e.n} ads`,
+          down: d < 0,
+        };
+      });
+      const lead = top[0];
+      const leadPrem = prem(lead.med);
+      const tail = top[top.length - 1];
+      // Ties at the top are common for the reason in the sort comment, and
+      // crowning one of them would be inventing a winner. Say there are several.
+      const tied = top.filter((e) => e.med === lead.med);
+      const leadNames =
+        tied.length > 1
+          ? `${tied
+              .slice(0, 3)
+              .map((e) => withParent(e.name))
+              .join(", ")}${tied.length > 3 ? ` and ${tied.length - 3} more` : ""}`
+          : withParent(lead.name);
+      return {
+        intent,
+        text: `In ${label}, the best-paid ${tied.length > 1 ? `skills on advertised salaries are ${leadNames}, all at a median of` : `skill on advertised salaries is ${leadNames} at a median of`} ${money(lead.med, cur)}${
+          leadPrem > 0
+            ? `, ${leadPrem}% above the ${money(market, cur)} median across every disclosed ad here`
+            : ` — level with the ${money(market, cur)} market median`
+        }.${
+          tied.length > 1
+            ? ` They tie because most boards here publish a salary BAND rather than a figure, so medians land on round numbers.`
+            : ""
+        } ${withParent(tail.name)} is the lowest of the ${top.length} shown, at ${money(tail.med, cur)}${eligible.length > top.length ? `, out of ${eligible.length} skills with enough disclosed ads to rank` : ""}. Each figure is the median of ads NAMING that skill, so an ad naming two counts in both, and the premium is what the market advertises for the skill rather than what the skill itself is worth — seniority and industry ride along with it.`,
+        stats: [
+          {
+            k:
+              tied.length > 1
+                ? `Top ${tied.length} skills (${cur})`
+                : `${withParent(lead.name)} (${cur})`,
+            v: money(lead.med, cur),
+          },
+          { k: `${label} median`, v: money(market, cur) },
+          {
+            k: "Premium",
+            v: `${leadPrem > 0 ? "+" : ""}${leadPrem}%`,
+            down: leadPrem < 0,
+          },
+        ],
+        bars,
+        source: `Advertised salaries by skill · ${usable.length} live ads disclose pay and name a skill · at least ${MIN_PER_SKILL} per skill ranked · ${archiveNote}`,
+      };
+    }
+
+    if (intent === "pay") {
+      // `skills` comes back so a question that NAMED a skill can be answered
+      // about that skill. It is not filtered in SQL: the column is a JSON
+      // array and parseStoredSkills is what applies SKILL_ALIAS, so a LIKE here
+      // would miss every row written under a former name.
+      const rows = await db
+        .prepare(
+          `SELECT salary, skills FROM jobs
              WHERE ${where} AND salary IS NOT NULL AND salary <> '' AND ${LIVE_ON_DAY}`,
         )
         .bind(...binds, asOf, asOf)
         .all();
       const fallback = (country && COUNTRY_CURRENCY[country]) || "";
       const byCurrency: Record<string, number[]> = {};
+      // The same disclosed ads without the skill filter, so the answer can say
+      // what the skill's median is a premium ON. Same day, same currency, same
+      // rows minus the filter — the only comparison that means anything.
+      const scopeByCurrency: Record<string, number[]> = {};
       for (const r of rows?.results ?? []) {
         const p = parsePay(String(r.salary || ""), fallback);
         if (!p || !p.currency) continue;
+        (scopeByCurrency[p.currency] ||= []).push(p.annual);
+        if (askedSkill && !parseStoredSkills(r.skills).includes(askedSkill)) continue;
         (byCurrency[p.currency] ||= []).push(p.annual);
       }
       const ranked = Object.entries(byCurrency).sort((a, b) => b[1].length - a[1].length);
@@ -656,10 +832,16 @@ export const askAnalyst = createServerFn({ method: "POST" })
       const disclosed = Object.values(byCurrency).reduce((n, v) => n + v.length, 0);
       // Too thin a sample says more about which boards disclose pay than about
       // the market, so it is suppressed rather than shown with a caveat.
-      if (!cur || vals.length < 20) {
+      // A skill narrows the sample hard, so the floor comes down with it — but
+      // it does not vanish. 12 is the same floor the per-skill ranking uses, and
+      // the count is stated either way so a thin figure can be discounted.
+      const floor = askedSkill ? 12 : 20;
+      if (!cur || vals.length < floor) {
         return {
           intent,
-          text: `I can't give you a defensible pay figure for ${label}. Only ${plural(disclosed, "live ad")} there state a salary in a form I can compare, which is too few to quote a median from — most boards in this scope publish "competitive" instead of a number.`,
+          text: askedSkill
+            ? `I can't give you a defensible pay figure for ${askedSkill} in ${label}. Only ${plural(vals.length, "live ad")} there both name it and state a salary I can compare, under the ${floor} I'd want before quoting a median — ${plural(disclosed, "ad")} in ${label} disclose pay in total, so it is this skill's slice that is thin rather than the scope. Ask me the median for ${label} as a whole, or which skills pay the most here.`
+            : `I can't give you a defensible pay figure for ${label}. Only ${plural(disclosed, "live ad")} there state a salary in a form I can compare, which is too few to quote a median from — most boards in this scope publish "competitive" instead of a number.`,
           source: archiveNote,
         };
       }
@@ -669,9 +851,39 @@ export const askAnalyst = createServerFn({ method: "POST" })
       const p75 = quantile(sorted, 0.75);
       const share = Math.round((vals.length / live) * 100);
       const mixed = ranked.length > 1;
+      const curNote = mixed
+        ? ` Ads quoted in other currencies are excluded rather than converted.`
+        : "";
+      if (askedSkill) {
+        const scopeVals = (scopeByCurrency[cur] ?? []).sort((a, b) => a - b);
+        const scopeMed = scopeVals.length >= 20 ? quantile(scopeVals, 0.5) : null;
+        const prem = scopeMed ? Math.round(((median - scopeMed) / scopeMed) * 100) : null;
+        return {
+          intent,
+          text: `Median advertised pay for ${withParent(askedSkill)} in ${label} is ${money(median, cur)} a year, across the ${plural(vals.length, "live ad")} that name it and publish a figure. The middle half runs ${money(p25, cur)} to ${money(p75, cur)}.${
+            prem === null
+              ? ` There aren't enough disclosed ads in ${label} overall to say whether that is above or below the local market.`
+              : ` The median across every disclosed ad in ${label} is ${money(scopeMed!, cur)}, so ${askedSkill} advertises ${prem === 0 ? "level with" : `${Math.abs(prem)}% ${prem > 0 ? "above" : "below"}`} the local market.`
+          }${curNote}`,
+          stats: [
+            { k: `${withParent(askedSkill)} (${cur})`, v: money(median, cur) },
+            { k: `${label} median`, v: scopeMed ? money(scopeMed, cur) : "too thin" },
+            ...(prem === null
+              ? []
+              : [
+                  {
+                    k: "Premium",
+                    v: `${prem > 0 ? "+" : ""}${prem}%`,
+                    down: prem < 0,
+                  },
+                ]),
+          ],
+          source: `Advertised salaries on live ads naming ${askedSkill} · ${vals.length} of the ${scopeVals.length} that disclose pay in ${label} · ${archiveNote}`,
+        };
+      }
       return {
         intent,
-        text: `Median advertised pay in ${label} is ${money(median, cur)} a year, across the ${plural(vals.length, "live ad")} that actually publish a figure — ${share}% of what's open. The middle half of the market runs ${money(p25, cur)} to ${money(p75, cur)}.${mixed ? ` Ads quoted in other currencies are excluded rather than converted.` : ""}`,
+        text: `Median advertised pay in ${label} is ${money(median, cur)} a year, across the ${plural(vals.length, "live ad")} that actually publish a figure — ${share}% of what's open. The middle half of the market runs ${money(p25, cur)} to ${money(p75, cur)}.${curNote}`,
         stats: [
           { k: `Median (${cur})`, v: money(median, cur) },
           { k: "25th percentile", v: money(p25, cur) },

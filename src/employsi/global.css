@@ -325,7 +325,16 @@ body {
   left: var(--pane-left);
   top: var(--pane-top);
   box-sizing: border-box;
-  width: 470px;
+  /* 470px until 2026-09-24. Widened for the thread: answers run to a paragraph
+     and the "why?"/"tell me more" replies to two, and the follow-up row now
+     carries intent chips as well as places, so it was wrapping to three lines
+     at the old width. The chart SVGs are viewBox + width:100%, so they take the
+     extra room on their own.
+     The ceiling is the viewport, not taste: --pane-left resolves to 112px
+     (20 gutter + 22 inset + 56 rail + 14 gap), so this plus the 24px right
+     margin needs 656px, and the mobile sheet below takes over at 680px. Going
+     much past this would leave a band of widths with no layout that fits. */
+  width: 520px;
   max-width: calc(100vw - var(--pane-left) - 24px);
   height: min(620px, var(--pane-max-h));
   display: flex;
@@ -669,6 +678,20 @@ body {
   font-size: 14px;
   line-height: 1.5;
   letter-spacing: -0.004em;
+  /* "why?" answers in two paragraphs — the method, then the window and row
+     count that answer was measured over. Every data answer is a single
+     paragraph and is unaffected. */
+  white-space: pre-line;
+}
+/* A line about the conversation rather than the data: "you also asked about
+   pay". Set back from the answer so it cannot be mistaken for part of the
+   finding, which is why it is a separate field on the message rather than
+   appended to the text. */
+.annote {
+  margin-top: -2px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-tertiary);
 }
 @keyframes anrise {
   from {
@@ -827,6 +850,13 @@ body {
   z-index: 5;
   display: flex;
   flex-direction: column;
+  /* Skills carries six questions since the hiring topic merged into it, so the
+     menu can now be twice the height it was designed at — ~234px. It grows
+     UPWARD from the prompt row, so on a short viewport it would run off the
+     top with the first questions unreachable. 340px clears six comfortably;
+     the vh term is what catches a phone in landscape. */
+  max-height: min(62vh, 340px);
+  overflow-y: auto;
   padding: 6px;
   border: 1px solid var(--border-subtle);
   border-radius: 14px;
@@ -12385,13 +12415,20 @@ body {
 .ccsubd.down {
   color: var(--status-danger-fg);
 }
-/* Swatch for the second series, coloured to match how that line is actually
-   drawn — a swatch that doesn't look like its line is worse than no swatch. */
+/* Swatch for the second series, drawn to match how that line is actually
+   drawn — a swatch that doesn't look like its line is worse than no swatch,
+   which is why this is DOTTED rather than solid: the share price is a dotted
+   stroke (see .ccline2), so a solid dash here would describe a line that is
+   not on the chart. Dots rather than a dash pattern because at 12px a dashed
+   swatch reads as two short bars and loses the distinction entirely. */
 .cclegline.alt {
-  width: 12px;
+  width: 14px;
   height: 2px;
-  border-radius: var(--radius-pill);
-  background: var(--neutral-900);
+  border-radius: 0;
+  background: none;
+  background-image: radial-gradient(circle closest-side, var(--neutral-900) 99%, transparent);
+  background-size: 4px 2px;
+  background-repeat: repeat-x;
 }
 /* Tooltip swatches. Deliberately NOT the shared .wtsw: that pair is coloured
    for the workforce and financial charts (ink primary, green second) and this
@@ -12426,6 +12463,15 @@ body {
    roles swapped — here the fill, not the stroke, marks the primary series. */
 .ccline2 {
   stroke: var(--neutral-900);
+  /* DOTTED, so the two series are told apart by more than colour. The vacancy
+     line carries the up/down hue and is the subject; the share price is
+     context drawn over it, and a reader glancing at a small card should not
+     have to work out which solid line is which. Dash values are in SCREEN
+     pixels, not user units, because vector-effect: non-scaling-stroke on the
+     path applies the pattern after the viewBox's non-uniform scale — without
+     that the same numbers would stretch horizontally and read as a dashed
+     line at wide widths and a solid one at narrow. */
+  stroke-dasharray: 1 4;
 }
 .ccscrubline {
   stroke: var(--neutral-400);
@@ -15257,18 +15303,6 @@ body {
   background: currentColor;
   animation: em-sweep 1.9s cubic-bezier(0.65, 0.05, 0.36, 1) infinite;
 }
-.introcaption {
-  font-family: Inter, system-ui, sans-serif;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  text-align: center;
-  opacity: 0.5;
-  /* Pulls the caption back up under the bar: the stage's 30px gap is set for
-     the space above the bar, and the caption wants less. */
-  margin-top: -12px;
-}
 .introband {
   position: absolute;
   left: 0;
@@ -15349,9 +15383,6 @@ body {
   }
   .introstage {
     gap: 22px;
-  }
-  .introcaption {
-    letter-spacing: 0.22em;
   }
 }
 /* Both loops stopped. The composition still stands; it just holds still, with

@@ -35,6 +35,10 @@ import { smoothPath } from "./chart";
 import { logoFor } from "./companyLogo";
 import type { RolePoint } from "./openRolesFn";
 import type { ShareSeries } from "./shareSeriesFn";
+import { COMPANY_HEADCOUNT } from "../data/companyHeadcount";
+import { GOV_HEADCOUNT } from "../data/perthGovWorkforce";
+import { GOV_HEADCOUNT_AU } from "../data/govWorkforceAu";
+import { WGEA_HEADCOUNT } from "../data/wgeaWorkforceAu";
 
 /** Which badge the tile draws. Three fixed stats, so three fixed glyphs. */
 export type StatIcon = "roles" | "skill" | "headcount";
@@ -65,6 +69,8 @@ export interface CardHeadcount {
   yoy: number | null;
   asof: string;
   span: number;
+  /** What the figure counts — see the tile's label below. */
+  unit: "headcount" | "fte";
 }
 
 /**
@@ -81,9 +87,56 @@ export interface CardHeadcount {
  * undefined years". A default this load-bearing gets stated once.
  */
 export function headcountFor(
-  rec: { now: number; yoy: number | null; asof: string; span?: number } | null | undefined,
+  rec:
+    | { now: number; yoy: number | null; asof: string; span?: number; unit?: "headcount" | "fte" }
+    | null
+    | undefined,
 ): CardHeadcount | null {
-  return rec ? { now: rec.now, yoy: rec.yoy, asof: rec.asof, span: rec.span ?? 1 } : null;
+  return rec
+    ? {
+        now: rec.now,
+        yoy: rec.yoy,
+        asof: rec.asof,
+        span: rec.span ?? 1,
+        unit: rec.unit ?? "headcount",
+      }
+    : null;
+}
+
+/**
+ * The filed headcount for a company id, from whichever source has one.
+ *
+ * FOUR SOURCES, ONE LOOKUP, and the merge lives here because it was written
+ * out by hand at three call sites and the copies drift — the `span` default
+ * disagreed between the card and its own checker within an hour of being
+ * added. A fifth source should change this function and nothing else.
+ *
+ *   COMPANY_HEADCOUNT   listed companies, from annual reports
+ *   GOV_HEADCOUNT       WA agencies, from the PSC bulletins (predates the
+ *                       generator, and carries no span — see headcountFor)
+ *   GOV_HEADCOUNT_AU    APS, NSW, VIC, QLD and SA agencies, from their open data
+ *   WGEA_HEADCOUNT      any Australian employer with 100+ staff, from the
+ *                       WGEA register
+ *
+ * ORDER IS LOAD-BEARING FOR WGEA, unlike the first three. Those three have
+ * disjoint keyspaces — a WA agency id cannot collide with a ticker-derived id
+ * or an `aps-`/`vic-gov-` one — so their order is arbitrary. WGEA overlaps all
+ * of them on purpose: it covers every non-public-sector employer with 100+
+ * AUSTRALIAN staff, and 85 of its keys are companies COMPANY_HEADCOUNT already
+ * has.
+ *
+ * Those two figures are not the same measurement. An annual report counts the
+ * group worldwide; WGEA counts the Australian workforce, and for a
+ * multinational the difference is most of the company — Rio Tinto is 26,419 in
+ * the register against roughly 60,000 filed. So WGEA goes LAST and can only
+ * fill an employer with no figure at all; it must never replace a global
+ * number with a domestic one. The overlapping keys are deliberate, so that
+ * check-roster's assertion on this ordering has something real to test.
+ */
+export function filedHeadcount(id: string): CardHeadcount | null {
+  return headcountFor(
+    COMPANY_HEADCOUNT[id] ?? GOV_HEADCOUNT[id] ?? GOV_HEADCOUNT_AU[id] ?? WGEA_HEADCOUNT[id],
+  );
 }
 
 export interface CardChartLine {
@@ -117,6 +170,18 @@ export interface CardChart {
   secondValues: number[] | null;
   vacPts: [number, number][];
   secondPts: [number, number][] | null;
+  /**
+   * Index of the first day the second series actually has a value for. 0 when
+   * it covers the whole window, which is the normal case.
+   *
+   * It exists because the alternative is drawing a line where there is no
+   * data. The share fetch asks for six months against a chart of at most 90
+   * days, so this is only non-zero for a company that listed inside the
+   * window — but when it happens, a flat segment carried back from the first
+   * close is indistinguishable from a price that genuinely did not move, and
+   * that is the invented-figure failure this codebase exists to avoid.
+   */
+  secondFrom: number;
 }
 
 export interface CardFact {
@@ -353,7 +418,14 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
   if (hc) {
     stats.push({
       value: hc.now >= 1000 ? `${(hc.now / 1000).toFixed(hc.now >= 10000 ? 0 : 1)}k` : `${hc.now}`,
-      label: "Headcount",
+      // FTE IS NOT A HEAD COUNT, and this tile is the only place that says so.
+      // Queensland publishes full-time equivalents at agency level and nothing
+      // else — its whole State of the Sector workbook carries one headcount
+      // figure, a tenure distribution, and no per-agency one. A part-timer is a
+      // fraction of an FTE and a whole person, so labelling 79,353 FTE as
+      // "Headcount" beside Victoria's actual 90,091 people would put two
+      // different measurements under one word.
+      label: hc.unit === "fte" ? "Workforce FTE" : "Headcount",
       // No change at all when the span is unknown, and the REAL span named when
       // it is not a year — "over 7 years" beside +1,325% is a fact; "YoY"
       // beside it is not.
@@ -410,6 +482,7 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
     let second: CardChartLine | null = null;
     let secondValues: number[] | null = null;
     let secondPts: [number, number][] | null = null;
+    let from = 0;
     // The second line is only drawn when it sits on the SAME days as the
     // vacancy series. A quarterly share series or a single revenue ratio would
     // both look like a second line on this axis while measuring another window.
@@ -420,11 +493,16 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
       const aligned: number[] = [];
       let carry = 0;
       let matched = 0;
+      // The first day a real close lands on. Days before it are padded so the
+      // array stays index-aligned with the vacancy series, but they are NOT
+      // drawn — see secondFrom.
+      let firstReal = -1;
       for (const p of vac) {
         const v = byDate.get(p.d);
         if (typeof v === "number") {
           carry = v;
           matched++;
+          if (firstReal < 0) firstReal = aligned.length;
         }
         // A weekend or holiday has no close; the previous close IS the price on
         // that day, so carrying it forward is correct here (unlike inventing a
@@ -432,12 +510,17 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
         aligned.push(carry || daily[0]);
       }
       if (matched >= 2) {
+        from = Math.max(0, firstReal);
         secondValues = aligned;
         secondPts = plot(aligned);
-        const chg2 = pctChange(aligned);
+        // Change is measured over the DRAWN span, not the padded one. Reading
+        // it from index 0 would compare the real latest price against a value
+        // carried backwards, which is a percentage between a fact and a
+        // placeholder.
+        const chg2 = pctChange(aligned.slice(from));
         second = {
           label: "Share price",
-          path: smoothPath(secondPts),
+          path: smoothPath(from > 0 ? secondPts.slice(from) : secondPts),
           latest: `${input.share?.currency === "AUD" ? "A$" : "$"}${aligned[aligned.length - 1].toFixed(2)}`,
           delta: signed(chg2),
           up: chg2 >= 0,
@@ -459,6 +542,7 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
       days: vac.map((p) => p.d),
       vacValues: vals,
       secondValues,
+      secondFrom: from,
       vacPts: pts,
       secondPts,
     };

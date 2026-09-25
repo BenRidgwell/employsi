@@ -1,0 +1,13 @@
+city,company_id,name,address,street_check,source
+singapore,singapore-o39,"OCBC","65 Chulia Street, Singapore 049513","Chulia",company website
+singapore,singapore-9ci,"CapitaLand Investment","168 Robinson Road, Singapore 068912","Robinson",company website
+singapore,singapore-bn4,"Keppel Ltd.","1 HarbourFront Avenue, Singapore 098632","HarbourFront",company website
+singapore,singapore-u14,"UOL Group","101 Thomson Road, Singapore 307591","Thomson",company website
+singapore,singapore-c09,"City Developments Limited","9 Raffles Place, Singapore 048619","Raffles",company website
+singapore,singapore-c07,"Jardine Cycle & Carriage","239 Alexandra Road, Singapore 159930","Alexandra",company website
+singapore,singapore-c52,"ComfortDelGro","1 Pasir Panjang Road, Singapore 118479","Pasir Panjang",company website
+singapore,singapore-v03,"Venture Corporation","5006 Ang Mo Kio Avenue 5, Singapore 569873","Ang Mo Kio",company website
+hongkong,hongkong-00823,"Link REIT","77 Hoi Bun Road, Kwun Tong, Kowloon, Hong Kong","Hoi Bun",company website
+hongkong,hongkong-00012,"Henderson Land Development","8 Finance Street, Central, Hong Kong","Finance",company website
+hongkong,hongkong-00016,"Sun Hung Kai Properties","30 Harbour Road, Wan Chai, Hong Kong","Harbour",company website
+hongkong,hongkong-00011,"Hang Seng Bank","83 Des Voeux Road Central, Hong Kong","Des Voeux",company website

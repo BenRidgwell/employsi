@@ -121,11 +121,15 @@ export function IntroLoader({ ready }: { ready: boolean }) {
         {/* An indeterminate sweep, not a progress bar: nothing here knows how
             far along the boot is, and a bar that filled would be claiming it
             did. */}
+        {/* The caption that sat here — "explore the world of work." — was
+            removed on 2026-09-24. The stage is a centred column, so dropping
+            its last child made the column shorter at the bottom and the mark
+            and bar settle 15.5px LOWER on their own; that shift is the layout
+            re-centring, not a value anyone chose, which is why there is no
+            offset to find elsewhere. */}
         <div className="introbar">
           <span className="introbarfill" />
         </div>
-
-        <div className="introcaption">Explore the world of work.</div>
       </div>
 
       {/* The skyline across the bottom of the veil, panning slowly. The band is

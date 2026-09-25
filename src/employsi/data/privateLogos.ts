@@ -901,6 +901,167 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "beijing-601857": "petrochina.com",
   "beijing-601628": "chinalife.com.cn",
   "montreal-cnr": "cn.ca",
+  // ── 2026-09-24: the last of the world ────────────────────────────────────
+  //
+  // The remaining 67 blanks, and they are almost entirely ONE rule failing on
+  // the biggest names on the planet. deriveDomain() strips punctuation and
+  // spaces and appends .com, and these companies are known by an initialism,
+  // a founder's surname or a word that is not their legal name:
+  //
+  //   Meta Platforms        metaplatforms.com  -> meta.com
+  //   Uber Technologies     ubertechnologies   -> uber.com
+  //   Cisco Systems         ciscosystems       -> cisco.com
+  //   Eli Lilly             elililly           -> lilly.com
+  //   Estee Lauder          estelaudercompanies-> elcompanies.com
+  //   Dassault Systemes     dassaultsystmes    -> 3ds.com
+  //   Block                 block.com          -> block.xyz
+  //
+  // And the accent-stripping is its own tell: loral.com for L'Oréal,
+  // herms.com for Hermès, socitgnrale.com for Société Générale,
+  // compagniefinancirerichemont.com for Richemont, khnenagel.com for Kühne +
+  // Nagel. Every one of those is a dropped é or ü, and each produced a domain
+  // that cannot exist — a class of failure the anglosphere rosters never hit.
+  "atlanta-ups": "ups.com",
+  "bengaluru-hal": "hal-india.co.in",
+  "boston-tjx": "tjx.com",
+  "chicago-abt": "abbott.com",
+  "chicago-adm": "adm.com",
+  "chicago-cna": "cna.com",
+  "chicago-gww": "grainger.com",
+  "chicago-itw": "itw.com",
+  "houston-epd": "enterpriseproducts.com",
+  "houston-lng": "cheniere.com",
+  "indianapolis-lly": "lilly.com",
+  "johannesburg-bid": "bidcorpgroup.com",
+  "johannesburg-har": "harmony.co.za",
+  "johannesburg-kio": "angloamericankumba.com",
+  "johannesburg-mnp": "mondigroup.com",
+  "london-aht": "ashtead-group.com",
+  "london-anto": "antofagasta.co.uk",
+  "london-bats": "bat.com",
+  "london-lgen": "legalandgeneral.com",
+  "minneapolis-unh": "unitedhealthgroup.com",
+  "mumbai-reliance": "ril.com",
+  "newyork-el": "elcompanies.com",
+  "newyork-trv": "travelers.com",
+  "newyork-vz": "verizon.com",
+  "paris-cdi": "dior.com",
+  "paris-dsy": "3ds.com",
+  "paris-gle": "societegenerale.com",
+  "paris-or": "loreal.com",
+  "paris-rms": "hermes.com",
+  "philadelphia-apd": "airproducts.com",
+  "sanfrancisco-meta": "meta.com",
+  "sanfrancisco-uber": "uber.com",
+  "sanfrancisco-xyz": "block.xyz",
+  "sanjose-csco": "cisco.com",
+  "seattle-tmus": "t-mobile.com",
+  "seoul-011200": "hmm21.com",
+  "seoul-015760": "kepco.co.kr",
+  "seoul-024110": "ibk.co.kr",
+  "tokyo-4063": "shinetsu.co.jp",
+  "tokyo-4502": "takeda.com",
+  "tokyo-4519": "chugai-pharm.co.jp",
+  "tokyo-6723": "renesas.com",
+  "tokyo-7267": "global.honda",
+  "tokyo-8031": "mitsui.com",
+  "tokyo-9432": "group.ntt",
+  "washington-cof": "capitalone.com",
+  "zurich-cfr": "richemont.com",
+  "zurich-knin": "kuehne-nagel.com",
+  "zurich-pspn": "psp.info",
+  // TAQA's own site is taqaglobal.com; taqa.com and taqa.ae hold nothing the
+  // favicon service or this sandbox can read, so its mark is a file taken
+  // from its LinkedIn page. Same for Shougang, whose shougang.com.cn does not
+  // answer at all and whose shougang.com is a parked domain.
+  "dubai-taqa": "taqaglobal.com",
+  // SIXTEEN STAY BLANK, and each was tried three ways: the company's own host,
+  // the favicon service, and LinkedIn. They divide cleanly:
+  //
+  //   ELEVEN CHINESE ISSUERS whose sites do not answer this sandbox at all,
+  //   or answer and serve no icon: Sinotrans, CSCEC, China Yangtze Power,
+  //   Huaneng, Anhui Conch, Wuliangye, China Rare Earth, and the four Ganzhou
+  //   rare-earth and cobalt names. Several have no LinkedIn page either.
+  //   Huaneng's hpi.com.cn favicon IS reachable and is a SHAREPOINT DEFAULT
+  //   TILE, which is worse than nothing — a blue "S" that names no company —
+  //   so it is deliberately not used.
+  //
+  //   THREE GULF UTILITIES behind Cloudflare: DEWA, Empower and Dubai
+  //   Refreshment. DEWA's LinkedIn image is a photograph of a building with
+  //   the logo printed small in one corner, which reads as a building at
+  //   badge size, so it is refused on the same grounds as the photographs
+  //   removed from PRIVATE_LOGO_URL.
+  //
+  //   ONE AMERICAN ODDITY. Telephone and Data Systems serves an 822-byte
+  //   favicon that renders as nothing and has no logo on its LinkedIn page.
+  //
+  //   Marathon Oil was the second, and it is gone: its domain redirected to
+  //   ConocoPhillips, which bought it in 2024, so the audit was fetching the
+  //   acquirer's mark for it. The roster entry has been removed — see
+  //   cityRosters.ts. Worth keeping here because the LOGO is what exposed a
+  //   dead company: a delisted employer is otherwise invisible to this
+  //   codebase, since it simply stops appearing in the feeds, which looks
+  //   exactly like one that stopped advertising.
+  // ── found by scripts/check-company-live.ts on its first run, 2026-09-24 ──
+  // Occidental Petroleum's card was drawing a RED "SALE" TAG. occidentalpetroleum
+  // .com redirects to a domain broker, and the favicon service returned the
+  // broker's icon — a badge no collision check could catch, because no other
+  // company happened to share it. oxy.com draws the real OXY roundel.
+  "houston-oxy": "oxy.com",
+  // Same shape, caught the same way: healthsupportservices.com is a listing on
+  // Spaceship.com. The badge was unaffected (this agency resolves through its
+  // LinkedIn logo) but the domain was wrong, and the next person to remove a
+  // LinkedIn entry would have inherited a for-sale page.
+  "perth-gov-health-support-services": "hss.health.wa.gov.au",
+  // ── the first full sweep by scripts/check-company-live.ts, 2026-09-24 ────
+  //
+  // 1,548 companies, and these are the 21 whose own domain no longer
+  // describes them. Nine were drawing the wrong picture; twelve had a wrong
+  // domain and a right badge, because they resolve through a LinkedIn logo or
+  // a state crest that sits above the favicon service in the ladder. All 21
+  // are corrected, because the domain is data in its own right — the next
+  // person to remove a LinkedIn entry would otherwise inherit a for-sale page.
+  //
+  // NINE WERE ON SCREEN, and the sweep is worth its runtime for these alone:
+  //
+  //   VF Corporation      vf.com is VANITY FAIR, the magazine
+  //   Prophecy Intl       prophecy.com.au is a MUSICIAN, "Prophecy by Ren"
+  //   Power Corp Canada   powercanada.com redirects to hydroponicplans.com
+  //   Toast               toast.com redirects to nhncloud.com
+  //   DB Insurance        dbinsurance.com redirects to acrisure.com
+  //   Hillgrove Resources RENAMED to Kantra Copper on 2026-08-17; the record
+  //                       in companies.ts now says so, so it needs no override
+  //   Presight AI         presightai.com is a for-sale listing
+  //   Telkom SA           telkomsa.com is a for-sale listing
+  //   Dept for Education  departmentforeducation.com is a for-sale listing
+  //
+  // The pattern in the Australian government rows is worth naming: a federal
+  // or state agency's full name spelled as a .com is a DESIRABLE domain —
+  // geoscienceaustralia.com, ipaustralia.com, safeworkaustralia.com,
+  // comcare.com, countryfireauthority.com, staterevenueoffice.com and
+  // hunterwater.com were all registered by somebody else, most of them now
+  // parked or for sale. The agency is always on .gov.au, which deriveDomain()
+  // cannot produce.
+  "denver-vfc": "vfc.com",
+  "boston-tost": "toasttab.com",
+  "montreal-pow": "powercorporation.com",
+  "adelaide-pro": "prophecyinternational.com",
+  "seoul-005830": "idbins.com",
+  "dubai-presight": "presight.ai",
+  "johannesburg-tkg": "telkom.co.za",
+  "sydney-dow": "downergroup.com",
+  "melbourne-mpl": "medibank.com.au",
+  "melbourne-tah": "tabcorp.com.au",
+  "aps-comcare": "comcare.gov.au",
+  "aps-geoscience-australia": "ga.gov.au",
+  "aps-ip-australia": "ipaustralia.gov.au",
+  "aps-safe-work-australia": "safeworkaustralia.gov.au",
+  "nsw-gov-hunter-water": "hunterwater.com.au",
+  "perth-gov-main-roads-wa": "mainroads.wa.gov.au",
+  "sa-gov-department-for-education": "education.sa.gov.au",
+  "sa-gov-education-standards-board": "esb.sa.gov.au",
+  "vic-gov-country-fire-authority": "cfa.vic.gov.au",
+  "vic-gov-state-revenue-office": "sro.vic.gov.au",
   // ── the original Top-150 private set ──────────────────────────────────────
   "priv-abc-tissue": "abctissue.com.au",
   "priv-abn-group": "abngroup.com.au",

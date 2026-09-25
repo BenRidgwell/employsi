@@ -104,6 +104,14 @@ ACCEPT_ALIAS: dict[str, set[str]] = {
     # unlike Elevra above. What this does is let an ad posted under the
     # trading name through to the record now named for the group.
     'cotton on group': {'cotton on'},
+    # A RENAME, 2026-08-17: Hillgrove Resources became Kantra Copper
+    # (ASX:HGO -> ASX:KAN). Months of ads sit under the old name and every one
+    # is this company hiring, so without this the rename halves its count.
+    'kantra copper': {'hillgrove resources', 'hillgrove'},
+    # A RENAME, 2025: Anglo American Platinum demerged and became Valterra
+    # Platinum (JSE:AMS -> JSE:VAL). Every archive row for this employer was
+    # posted under the old name and every one is this company hiring.
+    'valterra platinum': {'anglo american platinum', 'amplats'},
     # Divisions trading under their own name.
     'wesfarmers': {'wesfarmers health',
                    'wesfarmers chemicals energy fertilisers'},

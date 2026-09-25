@@ -18,6 +18,14 @@ export interface Headcount {
   asof: string;
   /** Years between the two readings. 0 when the source did not say. */
   span: number;
+  /**
+   * What the figure COUNTS. Listed companies and most public-sector
+   * bulletins report people; Queensland publishes only full-time
+   * equivalents at agency level, and FTE is systematically lower than a
+   * head count because a part-timer is a fraction of one. The card
+   * labels the tile from this rather than calling both "Headcount".
+   */
+  unit?: "headcount" | "fte";
 }
 export const COMPANY_HEADCOUNT: Record<string, Headcount> = {
   'adelaide-age': { now: 41, prev: 32, yoy: 28.1, asof: 'Jun 2024', span: 1 },

@@ -127,6 +127,11 @@ export const getCompanyStats = createServerFn({ method: "GET" })
     if (hit && Date.now() - hit.at < TTL) return hit.data;
     try {
       const sym = yahooSymbol(ticker, data.exchange);
+      // Same guard as shareSeriesFn: an unmapped exchange yields "", and a
+      // bare ticker would resolve against the US market — wrong company,
+      // wrong currency, and here it would be real headcount and revenue
+      // figures attributed to the wrong business.
+      if (!sym) return EMPTY;
       let json = await queryYahoo(sym);
       // One retry if the crumb had just gone stale.
       if (!json) json = await queryYahoo(sym);

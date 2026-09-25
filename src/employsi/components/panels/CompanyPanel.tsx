@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../../state/store";
 import { buildPanel } from "../../lib/panel";
-import { buildCompanyCard, headcountFor, TREND_UP, TREND_DOWN } from "../../lib/companyCard";
+import { buildCompanyCard, filedHeadcount, TREND_UP, TREND_DOWN } from "../../lib/companyCard";
 import type { StatIcon } from "../../lib/companyCard";
 import { smoothPath } from "../../lib/chart";
 import type { RolePoint } from "../../lib/openRolesFn";
@@ -820,11 +820,10 @@ export function CompanyPanel() {
 
   const card = useMemo(() => {
     if (!company) return null;
-    const hcRec = COMPANY_HEADCOUNT[company.id] ?? GOV_HEADCOUNT[company.id];
     return buildCompanyCard({
       company,
       openRoles: liveRoles ? liveRoles.count : null,
-      headcount: headcountFor(hcRec),
+      headcount: filedHeadcount(company.id),
       vacancies: vacancySeries,
       share: liveShare ?? null,
       revPerEmp,
@@ -1115,15 +1114,19 @@ export function CompanyPanel() {
 
                         {chartIdx != null && card.chart.days[chartIdx] && (
                           <>
-                            {card.chart.secondPts?.[chartIdx] && (
-                              <span
-                                className="ccdot alt"
-                                style={{
-                                  left: `${(card.chart.secondPts[chartIdx][0] / 400) * 100}%`,
-                                  top: `${(card.chart.secondPts[chartIdx][1] / 150) * 100}%`,
-                                }}
-                              />
-                            )}
+                            {/* Only where the second series actually has a
+                                value — before secondFrom the array is padded to
+                                stay index-aligned and nothing is drawn. */}
+                            {chartIdx >= card.chart.secondFrom &&
+                              card.chart.secondPts?.[chartIdx] && (
+                                <span
+                                  className="ccdot alt"
+                                  style={{
+                                    left: `${(card.chart.secondPts[chartIdx][0] / 400) * 100}%`,
+                                    top: `${(card.chart.secondPts[chartIdx][1] / 150) * 100}%`,
+                                  }}
+                                />
+                              )}
                             {card.chart.vacPts[chartIdx] && (
                               <span
                                 className={`ccdot ${card.chart.vacancies.up ? "up" : "down"}`}
@@ -1162,13 +1165,15 @@ export function CompanyPanel() {
                                 <b>{card.chart.vacValues[chartIdx]?.toLocaleString("en-AU")}</b>
                                 <span>Vacancies</span>
                               </div>
-                              {card.chart.secondValues && card.chart.second && (
-                                <div className="wttiprow">
-                                  <i className="ccsw alt" />
-                                  <b>{card.chart.secondValues[chartIdx]?.toFixed(2)}</b>
-                                  <span>{card.chart.second.label}</span>
-                                </div>
-                              )}
+                              {card.chart.secondValues &&
+                                card.chart.second &&
+                                chartIdx >= card.chart.secondFrom && (
+                                  <div className="wttiprow">
+                                    <i className="ccsw alt" />
+                                    <b>{card.chart.secondValues[chartIdx]?.toFixed(2)}</b>
+                                    <span>{card.chart.second.label}</span>
+                                  </div>
+                                )}
                             </ChartTooltip>
                           </>
                         )}

@@ -20,6 +20,7 @@ import { NZ_GOV_IDS, NZ_GOV_HUB } from "./nzGov";
 import { PERTH_REAL_COORDS } from "./perthRealCoords";
 import { AU_REAL_COORDS } from "./auRealCoords";
 import { SAN_JOSE_REAL_COORDS } from "./sanJoseRealCoords";
+import { ASIA_REAL_COORDS } from "./asiaRealCoords";
 import { SECONDARY_OFFICES, HQ_OVERRIDE } from "./secondaryOffices";
 import { CITY_CONTINENT } from "./geo";
 
@@ -59,12 +60,26 @@ export const CITY_VIEWS: Record<string, CityView> = {
   // actually fall (median 103.8479,1.2811, all inside 103.8449..103.8503 /
   // 1.2764..1.2865), which opened the local view on empty ground with the
   // roster off to one side.
+  //
+  // PULLING BACK TO FRAME EVERY PIN WAS TRIED ON 2026-09-24 AND REVERTED.
+  // The real head offices are not all in the CBD — Venture Corporation builds
+  // electronics at Ang Mo Kio, 10.7 km north — so a frame containing the
+  // whole roster needs zoom 11.8 on the bbox centre [103.8261, 1.321]. It
+  // fits, and it costs the thing the local layer exists for: at 11.8 no
+  // extruded building is legible and Singapore is a metro map. Two outlying
+  // pins are not worth that, so the view stays on the CBD and those two open
+  // off screen.
   singapore: { center: [103.8479, 1.2811], zoom: 16.4, pitch: 60, bearing: -12 },
   // KLCC — the corporate core, around the Petronas Towers and Jalan Ampang.
   kualalumpur: { center: [101.7115, 3.1578], zoom: 16.0, pitch: 60, bearing: -15 },
   // Makati, not the City of Manila: the offices these companies run are in the
   // Makati/BGC business districts, ~6km inland from Manila Bay.
-  manila: { center: [121.0244, 14.5547], zoom: 15.8, pitch: 60, bearing: -10 },
+  //
+  // Zoom 15.8 was set for a fan of radius 3 km. That fan is now 0.7 km and the
+  // six pins sit inside 121.02143..121.02607 by 14.55084..14.55766 — 500 m by
+  // 760 m — so the view closed to 16.3 and moved onto their median. At 15.8
+  // the roster occupied a fifth of the frame.
+  manila: { center: [121.02358, 14.55433], zoom: 16.3, pitch: 60, bearing: -10 },
   ganzhou: { center: [114.9333, 25.83], zoom: 16.1, pitch: 60, bearing: -14 },
   toronto: { center: [-79.3832, 43.6532], zoom: 16.4, pitch: 60, bearing: -18 },
   houston: { center: [-95.3698, 29.7604], zoom: 16.3, pitch: 60, bearing: -14 },
@@ -131,7 +146,20 @@ export const CITY_VIEWS: Record<string, CityView> = {
   // are not headquartered in, and a mean is dragged kilometres by one of them.
   // Zoom drops 16.4 -> 16.1 because the cluster spans 1.13 km north-south,
   // wider than the ~0.5 km CBD the other 16.4s were chosen for.
-  hongkong: { center: [114.15484, 22.28222], zoom: 16.1, pitch: 60, bearing: -16 },
+  //
+  // RE-CENTRED 2026-09-24 when the fan itself moved. CITY_PLACEMENT's arc used
+  // to sweep south-west into Mid-Levels and now sweeps through north over the
+  // Central reclamation, so the pins are some 500 m north-east of where they
+  // were and the old centre framed ground they had left. This is their median
+  // again: [114.15942, 22.28418], across 114.15419..114.16370 by
+  // 22.28157..22.28668.
+  //
+  // Pulled back and reverted the same day, as Singapore was: Link REIT's head
+  // office at Kwun Tong is across the harbour, so framing the whole roster
+  // needs zoom 13.3 centred at [114.18384, 22.29821] — a point in Victoria
+  // Harbour, which is the honest centre of a roster on both shores and not a
+  // view anyone wants to arrive at. Central it is, with Link REIT off screen.
+  hongkong: { center: [114.15942, 22.28418], zoom: 16.1, pitch: 60, bearing: -16 },
   // Nariman Point / Bandra-Kurla side of the Mumbai CBD.
   mumbai: { center: [72.8347, 18.9256], zoom: 16.2, pitch: 60, bearing: -15 },
   // MG Road / Cubbon Park, central Bengaluru.
@@ -215,7 +243,7 @@ export const CITY_COMPANIES: Record<string, CityCompany[]> = {
     { id: "sto", coords: [138.6042, -34.92655] }, // Santos — 60 Flinders St
     { id: "beach", coords: [138.6178, -34.9354] }, // Beach Energy — 25 Conyngham St, Glenside
     { id: "mgt", coords: [138.5987, -34.9215] }, // Magnetite Mines
-    { id: "hgo", coords: [138.6001, -34.9301] }, // Hillgrove Resources
+    { id: "hgo", coords: [138.6001, -34.9301] }, // Kantra Copper (was Hillgrove)
   ],
   brisbane: [
     { id: "bhp", coords: [153.0295, -27.467] }, // 480 Queen St
@@ -249,6 +277,9 @@ const REAL_COORDS: Record<string, [number, number]> = {
   ...PERTH_REAL_COORDS,
   ...AU_REAL_COORDS,
   ...SAN_JOSE_REAL_COORDS,
+  // Singapore and Hong Kong head offices, from each company's own contact
+  // page. Twelve of those two cities' 64 — the rest keep their fan.
+  ...ASIA_REAL_COORDS,
 };
 
 const _realSeen = new Map<string, number>();

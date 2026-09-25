@@ -241,6 +241,14 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["EXPD", "Expeditors International", IND],
       ["WY", "Weyerhaeuser", ENR, "NYSE"],
       ["ALK", "Alaska Air Group", CON, "NYSE"],
+      // NORDSTROM IS NO LONGER LISTED. The family and El Puerto de Liverpool
+      // took it private in May 2025 and JWN was delisted from the NYSE, so
+      // Yahoo 404s and the card draws no share line — which is the correct
+      // outcome, reached by accident rather than by the data saying so. It is
+      // still a company and still hires, so unlike Marathon Oil it stays on
+      // the roster; what is stale is the exchange and ticker shown beside its
+      // name. RosterEntry has no private flag, and adding one is a bigger
+      // change than this line deserves.
       ["JWN", "Nordstrom", CON, "NYSE"],
       ["Z", "Zillow Group", TMT],
       ["TMUS", "T-Mobile US", TMT],
@@ -433,7 +441,10 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["XYZ", "Block", TMT, "NYSE"],
       ["AFRM", "Affirm", TMT],
       ["CART", "Instacart", TMT],
-      ["GPS", "Gap Inc.", CON, "NYSE"],
+      // GPS was retired when the company rebranded to Gap Inc. in 2022; the
+      // ticker is GAP. Under the old one Yahoo 404s and the card drew no
+      // share line at all.
+      ["GAP", "Gap Inc.", CON, "NYSE"],
       ["LYFT", "Lyft", TMT],
       ["ASAN", "Asana", TMT, "NYSE"],
       ["PINS", "Pinterest", TMT, "NYSE"],
@@ -697,7 +708,13 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["FSR", "FirstRand", FIN],
       ["SBK", "Standard Bank Group", FIN],
       ["GFI", "Gold Fields", ENR],
-      ["AMS", "Anglo American Platinum", ENR],
+      // Anglo American Platinum after the 2025 demerger. Ticker and id both
+      // moved with the name on 2026-09-24 — a roster id is rosterId(city,
+      // ticker), so johannesburg-ams became johannesburg-val, and the 21
+      // archive rows filed under the old id were migrated with a single
+      // UPDATE rather than left orphaned. Its ads are still posted under the
+      // OLD name, which is why EXTRA_QUERIES and ACCEPT_ALIAS carry it.
+      ["VAL", "Valterra Platinum", ENR],
       ["ABG", "Absa Group", FIN],
       ["NED", "Nedbank Group", FIN],
       ["ANG", "AngloGold Ashanti", ENR],
@@ -795,7 +812,20 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["LYB", "LyondellBasell", IND],
       ["PWR", "Quanta Services", INF],
       ["OXY", "Occidental Petroleum", ENR],
-      ["MRO", "Marathon Oil", ENR],
+      // Marathon Oil (NYSE:MRO) was removed on 2026-09-24. ConocoPhillips
+      // acquired it outright in November 2024 and MRO was delisted; the
+      // company does not exist to hire anyone. Its people are counted under
+      // COP below, which is already on this roster and carries the archive
+      // rows. Nothing referenced houston-mro — no jobs, follows, posts,
+      // views or coordinates — which is consistent with a card that had
+      // nothing behind it for two years.
+      //
+      // Found by its BADGE, not its data: marathonoil.com now redirects to
+      // conocophillips.com, so the logo audit fetched ConocoPhillips' mark
+      // for it. A dead company is invisible to this codebase otherwise —
+      // the roster is a static list, and an employer that stops existing
+      // simply stops appearing in the feeds, which looks exactly like an
+      // employer that stopped advertising.
       ["PSX", "Phillips 66", ENR],
       ["TRGP", "Targa Resources", ENR],
       ["CTRA", "Coterra Energy", ENR],

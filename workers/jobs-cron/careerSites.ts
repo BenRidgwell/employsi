@@ -164,7 +164,8 @@ type Platform =
   | "bamboohr"
   | "cjd"
   | "jibe"
-  | "delorean";
+  | "delorean"
+  | "googlecareers";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -205,8 +206,14 @@ interface SiteDef {
    *
    * A location that matches nothing here still falls through to HUB_MATCH and
    * then to homeHub, so a hint list is additive and never removes a placement.
+   *
+   * A hint may name NULL — "this place is on no hub" — for the case where a
+   * global needle would otherwise claim it wrongly. Added for Google, whose
+   * board writes "Atlanta, TX, USA" (HUB_MATCH: atlanta) and "Washington, USA"
+   * for the STATE (HUB_MATCH: washington, i.e. DC). Unlike the rest of this
+   * list, a null hint does remove a placement, and only for this site.
    */
-  hubHints?: [needle: string, hub: string][];
+  hubHints?: [needle: string, hub: string | null][];
   /**
    * Treat a location this board states but no needle recognises as the
    * employer's home hub, the way a location that names the home country
@@ -393,6 +400,59 @@ interface SiteDef {
    */
   expectCompany?: string;
 }
+
+// Google's own board places by METRO, not by city name — the county rule
+// cityRosters.ts states for this hub ("Placement is decided by COUNTY, not by
+// how the address reads"), applied with the US Census CBSA delineations.
+//
+// Every needle is a location string MEASURED on the board 2026-09-24 (full
+// walk, 3,298 roles, 272 distinct locations), with its job-location count.
+// Without them HUB_MATCH resolved 3,147 job-locations to no hub — Sunnyvale
+// (561) and Mountain View (516) are Google's two largest sites — and filed
+// Kirkland (181), Redmond (19) and Bellevue (19), WA on PERTH through the
+// " wa," needle that means Western Australia.
+//
+// Deliberately left unplaced, because they are their own metros: Boulder,
+// Santa Cruz, Goleta, Pittsburgh, Raleigh-Durham, Waterloo ON, and every
+// non-hub country (Dublin, Tel Aviv, Hyderabad, Warsaw, Munich ...).
+const GOOGLE_HUB_HINTS: [string, string | null][] = [
+  // Santa Clara County = the San Jose MSA.
+  ["mountain view, ca", "sanjose"], // 516
+  ["sunnyvale, ca", "sanjose"], // 561
+  ["palo alto, ca", "sanjose"], // 29
+  ["san josé, ca", "sanjose"], // 1 — the accent defeats HUB_MATCH's "san jose"
+  // San Mateo and Alameda counties = the San Francisco MSA.
+  ["san bruno, ca", "sanfrancisco"], // 90 — YouTube
+  ["redwood city, ca", "sanfrancisco"], // 18
+  ["fremont, ca", "sanfrancisco"], // 18
+  ["alameda, ca", "sanfrancisco"], // 1
+  // King County = the Seattle MSA. These MUST precede HUB_MATCH's " wa,".
+  ["kirkland, wa", "seattle"], // 181
+  ["redmond, wa", "seattle"], // 19
+  ["bellevue, wa", "seattle"], // 19
+  ["cambridge, ma", "boston"], // 62
+  // Fairfax and Loudoun counties = the Washington MSA.
+  ["reston, va", "washington"], // 82
+  ["sterling, va", "washington"], // 9
+  ["leesburg, va", "washington"], // 5
+  ["district of columbia", "washington"], // 1
+  ["irvine, ca", "losangeles"], // 36 — Orange County, in the LA MSA
+  // Dallas and Ellis counties = the Dallas-Fort Worth MSA.
+  ["addison, tx", "dallas"], // 31
+  ["midlothian, tx", "dallas"], // 9
+  ["red oak, tx", "dallas"], // 4
+  ["wilmer, tx", "dallas"], // 3
+  ["lancaster, tx", "dallas"], // 3 — not "Lancaster, OH", also on this board
+  ["pflugerville, tx", "austin"], // 2
+  ["thornton, co", "denver"], // 29
+  ["council bluffs, ia", "omaha"], // 19 — Pottawattamie County, Omaha MSA
+  ["papillion, ne", "omaha"], // 6
+  ["lithia springs, ga", "atlanta"], // 2
+  ["austell, ga", "atlanta"], // 1
+  // NOT the hub HUB_MATCH would pick.
+  [" atlanta, tx", null], // 1 — a town in Cass County, Texas
+  [" washington, usa", null], // 3 — the STATE; DC is "Washington D.C., DC, USA"
+];
 
 export const SITES: SiteDef[] = [
   {
@@ -5213,6 +5273,28 @@ export const SITES: SiteDef[] = [
     origin: "https://careers.axa.com",
     homeHub: "paris",
   },
+  // ── Alphabet (Google) — its own careers board, all brands ─────────────────
+  // Google, YouTube, DeepMind, Waymo, Verily, Wing and GFiber all advertise
+  // here and all are Alphabet, the roster company. Measured 2026-09-24: 3,298
+  // roles over 165 pages of a fixed 20, walked in 19s from a plain address with
+  // every id unique — the pager is stable. Each page is ~1.26 MB, so the board
+  // is split into three windows on three ticks, the Woolworths pattern, rather
+  // than asking one invocation to pull ~200 MB. The last window is sized to
+  // absorb growth to 4,000 roles and says so in the log if the board outgrows
+  // it. See fetchGoogleCareers.
+  ...(["a", "b", "c"] as const).map((w, i) => ({
+    id: "sanjose-googl",
+    key: `sanjose-googl-${w}`,
+    name: "Alphabet (Google)",
+    sector: "Technology, Media and Telecommunications",
+    platform: "googlecareers" as const,
+    endpoint: "https://www.google.com/about/careers/applications/jobs/results",
+    origin: "https://www.google.com/about/careers/applications/",
+    homeHub: "sanjose",
+    pageFrom: i * 60,
+    maxPages: w === "c" ? 80 : 60,
+    hubHints: GOOGLE_HUB_HINTS,
+  })),
 ];
 
 /**
@@ -5660,6 +5742,13 @@ export const PORTAL_GROUPS: string[][] = [
   // page that forced the splits above. Grouped on the measured 10.8s, not on
   // the 3,605 roles.
   ["london-ba", "priv-herbert-smith-freehills", "sanfrancisco-net", "paris-cs"],
+  // Groups 84-86 — Alphabet (Google), its own board in three page windows.
+  // 165 pages of ~1.26 MB each: one tick per window, alone, for the reason
+  // Woolworths has three — the waitUntil budget binds before the subrequest
+  // count does, and a cancelled walk writes nothing.
+  ["sanjose-googl-a"],
+  ["sanjose-googl-b"],
+  ["sanjose-googl-c"],
 ];
 
 const UA =
@@ -6114,7 +6203,7 @@ export function hubFor(
   loc: string,
   home: string | null,
   homeCountry: RegExp,
-  hints?: [string, string][],
+  hints?: [string, string | null][],
   assumeHome = false,
 ): string | null {
   // A trailing comma is appended before matching so that the three needles that
@@ -11238,8 +11327,147 @@ async function fetchDelorean(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── Google Careers (Alphabet's own board) ─────────────────────────────────────
+// A server-rendered results page — no API. The jobs arrive as the `ds:1`
+// AF_initDataCallback payload, a JSON array measured 2026-09-24 as
+//
+//     [jobs, null, total, pageSize]      e.g. [[...20 jobs], null, 3298, 20]
+//
+// with each job a positional array:
+//
+//     [0] id   [1] title   [7] brand ("Google", "YouTube", "DeepMind" ...)
+//     [9] locations — [[display, [..], city, null, state, country], ...]
+//     [12] [epochSeconds, nanos] — CREATED. Spread 2019-10 .. today across the
+//          board; [13] and [14] are last-updated, and are all within days.
+//
+// `page` is 1-based; page 166 of 165 returns the payload with no jobs, which is
+// the genuine end. `page_size` is accepted and ignored (still 20). The old JSON
+// API at careers.google.com/api/v3/search 404s. `ds:1` is the LAST script on a
+// 1.26 MB page, so there is no reading less of it.
+const GOOGLE_PAGE = 20;
+
+type GoogleJob = [string, string, ...unknown[]];
+
+/** The `ds:1` payload, or null when the page carries none (not the end: a
+ *  block or a changed page, which the walk must not read as "no more jobs"). */
+function googleCareersPayload(html: string): unknown[] | null {
+  const k = html.indexOf("key: 'ds:1'");
+  const d = k < 0 ? -1 : html.indexOf("data:", k);
+  const end = d < 0 ? -1 : html.indexOf(", sideChannel:", d);
+  if (end < 0) return null;
+  try {
+    const v: unknown = JSON.parse(html.slice(d + 5, end));
+    return Array.isArray(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+// THE BOARD IS SERVED FROM MORE THAN ONE INDEX SNAPSHOT, and a walk that
+// ignores this silently loses a third to three quarters of it. Measured
+// 2026-09-24: consecutive requests reported a total of 3,298 OR 3,178, and
+// pages drawn from the two do not line up — 40 pages fetched six at a time held
+// 750 unique roles of 800, with runs of 10-16 repeated across a page boundary.
+// The first version of this reader dropped the repeats, which made the page
+// "short", which pagedParallel correctly reads as the end: three runs collected
+// 840, 1,668 and 3,298 roles from an unchanged board.
+//
+// The total identifies the snapshot, so every page is held to ONE: a page whose
+// total differs is re-requested. Measured the same day, two full walks pinned
+// this way returned 3,298 of 3,298, all unique, in 6 and 0 retries. A window
+// pins to the LARGEST total its first page shows over three reads, a rule every
+// window applies identically, so the three windows — run ten minutes apart —
+// agree on which snapshot they are walking.
+const GOOGLE_PIN_READS = 3;
+const GOOGLE_PAGE_RETRIES = 4;
+
+async function fetchGoogleCareers(site: SiteDef): Promise<PortalJob[]> {
+  const from = site.pageFrom ?? 0;
+  const max = site.maxPages ?? 60;
+  const home = HOME_COUNTRY[site.homeHub ?? ""] ?? /$^/;
+
+  const read = async (n: number): Promise<unknown[] | null> => {
+    const html = await getText(`${site.endpoint}?page=${n}`);
+    return html ? googleCareersPayload(html) : null;
+  };
+
+  const rows = (data: unknown[]): PortalJob[] => {
+    const out: PortalJob[] = [];
+    for (const raw of (Array.isArray(data[0]) ? data[0] : []) as GoogleJob[]) {
+      const id = String(raw?.[0] ?? "");
+      const title = String(raw?.[1] ?? "").trim();
+      if (!id || !title) continue;
+      // ONE ROW PER ROLE, as Workday's "2 Locations" requisitions are: 30% of
+      // Google's roles list several sites (up to 12), and a row per site would
+      // count one vacancy several times. It is placed on the FIRST listed site
+      // that lands on a hub, else recorded at the first listed site unplaced —
+      // so a role offered in "Dublin; London" still reaches the London pin.
+      const locs = (Array.isArray(raw[9]) ? raw[9] : [])
+        .map((l) => (Array.isArray(l) ? String(l[0] ?? "") : ""))
+        .filter(Boolean);
+      const loc =
+        locs.find((l) => hubFor(l, site.homeHub, home, site.hubHints) !== null) ?? locs[0] ?? "";
+      const ts = Array.isArray(raw[12]) ? Number(raw[12][0]) : NaN;
+      // Seconds, not milliseconds — checked by magnitude, since a wrong unit
+      // would date every role to 1970 or to the year 57000 and still archive.
+      const created =
+        ts > 1e9 && ts < 1e10 ? new Date(ts * 1000).toISOString().slice(0, 10) : today();
+      out.push(
+        job(site, title, loc, `${site.endpoint}/${id}`, created, String(raw[7] ?? "Google")),
+      );
+    }
+    return out;
+  };
+
+  // Pin the snapshot on this window's first page.
+  let first: unknown[] | null = null;
+  for (let k = 0; k < GOOGLE_PIN_READS; k++) {
+    const d = await read(from + 1);
+    if (d && typeof d[2] === "number" && (!first || d[2] > (first[2] as number))) first = d;
+  }
+  if (!first) return [];
+  const target = first[2] as number;
+
+  // Three-valued, for pagedParallel: rows, [] at the real end, null when the
+  // page could not be read from the pinned snapshot.
+  const page = async (i: number): Promise<PortalJob[] | null> => {
+    for (let k = 0; k < GOOGLE_PAGE_RETRIES; k++) {
+      const d = await read(from + i + 1);
+      if (d && d[2] === target) return rows(d);
+    }
+    return null;
+  };
+
+  // Bounded by the board's own total rather than by a short page — CLAUDE.md's
+  // rule, and the reason a later window knows where the board ends.
+  const pages = Math.ceil(target / GOOGLE_PAGE);
+  const last = Math.min(pages, from + max);
+  if (pages > from + max && site.key?.endsWith("-c")) {
+    console.log(
+      `google careers: board is ${pages} pages but the last window stops at ` +
+        `${from + max} — ${target - (from + max) * GOOGLE_PAGE} roles unread. Widen it.`,
+    );
+  }
+  const out = rows(first);
+  if (last - from > 1) {
+    out.push(
+      ...(await pagedParallel(
+        (i) => page(i + 1),
+        GOOGLE_PAGE,
+        last - from - 1,
+        site.key ?? site.id,
+      )),
+    );
+  }
+  // De-duplicated AFTER the walk, never inside a page: a page that lost a row
+  // to de-duplication would be short, and a short page ends the walk.
+  const seen = new Set<string>();
+  return out.filter((j) => !seen.has(j.url) && (seen.add(j.url), true));
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   jibe: fetchJibe,
+  googlecareers: fetchGoogleCareers,
   workable: fetchWorkable,
   bamboohr: fetchBambooHr,
   cjd: fetchCjd,
@@ -11402,6 +11630,9 @@ export const SOURCE_TAG: Record<Platform, string> = {
   cjd: "cjd",
   delorean: "delorean",
   jibe: "jibe",
+  // Alphabet's own board, not a vendor platform — named for the page, as
+  // `delorean` and `cjd` are.
+  googlecareers: "googl",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */

@@ -294,5 +294,11 @@ export async function answerQuestion(
 
   // Everything else is a question about the live market: what is open, who is
   // advertising, what the ads say. That is the archive's job.
-  return askAnalyst({ data: { question, scope, hubs, country, sector, companyIds, intent } });
+  // `skill` goes with it so a pay question that named one is answered about it.
+  // The history path above consumes the skill itself and returns before here, so
+  // this only ever reaches the archive branches, where the pay ones read it and
+  // the rest ignore it.
+  return askAnalyst({
+    data: { question, scope, hubs, country, sector, companyIds, intent, skill },
+  });
 }

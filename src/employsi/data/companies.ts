@@ -541,9 +541,13 @@ export const COMPANIES: Company[] = [
   },
   {
     id: "hgo",
-    ticker: "HGO",
-    name: "Hillgrove Resources",
-    domain: "hillgroveresources.com.au",
+    // Renamed from Hillgrove Resources on 2026-08-17, ASX:HGO -> ASX:KAN, with
+    // a 15-to-1 consolidation. The id stays "hgo" deliberately: it is written
+    // by hand here rather than derived from the ticker, 27 archive rows are
+    // keyed on it, and changing it would buy nothing but a migration.
+    ticker: "KAN",
+    name: "Kantra Copper",
+    domain: "kantra.com",
     sector: "Copper & Base Metals",
     headcount: 260,
     growth: 11.0,
