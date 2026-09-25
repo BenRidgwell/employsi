@@ -116,6 +116,8 @@ export interface AppState {
   trendingOpen: boolean;
   // "Ask an analyst": a scoped Q&A over the live vacancy archive.
   analystOpen: boolean;
+  /** The Career Pathway Card: ladders built from the ad archive. */
+  careerOpen: boolean;
   /** Admin-only archive health pane. */
   dataQualityOpen: boolean;
   /**
@@ -230,6 +232,8 @@ export interface AppState {
   closeTrending: () => void;
   toggleAnalyst: () => void;
   closeAnalyst: () => void;
+  toggleCareer: () => void;
+  closeCareer: () => void;
   toggleDataQuality: () => void;
   closeDataQuality: () => void;
   openComingSoon: (id: string, place: string) => void;
@@ -384,6 +388,7 @@ type PanelFlag =
   | "heatOpen"
   | "trendingOpen"
   | "analystOpen"
+  | "careerOpen"
   | "dataQualityOpen"
   | "mobileMenuOpen"
   | "feedbackOpen"
@@ -399,6 +404,7 @@ const EXCLUSIVE_GROUPS: readonly (readonly PanelFlag[])[] = [
     "heatOpen",
     "trendingOpen",
     "analystOpen",
+    "careerOpen",
     "dataQualityOpen",
     "mobileMenuOpen",
   ],
@@ -470,6 +476,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   marketMode: "demand",
   trendingOpen: false,
   analystOpen: false,
+  careerOpen: false,
   dataQualityOpen: false,
   comingSoon: null,
   feedbackOpen: false,
@@ -490,6 +497,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       heatOpen: false,
       trendingOpen: false,
       analystOpen: false,
+      careerOpen: false,
       dataQualityOpen: false,
       feedbackOpen: false,
       helpTourOpen: false,
@@ -880,6 +888,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   closeTrending: () => set({ trendingOpen: false }),
   toggleAnalyst: () => set((s) => solo("analystOpen", !s.analystOpen)),
   closeAnalyst: () => set({ analystOpen: false }),
+  toggleCareer: () => set((s) => solo("careerOpen", !s.careerOpen)),
+  closeCareer: () => set({ careerOpen: false }),
   toggleDataQuality: () => set((s) => solo("dataQualityOpen", !s.dataQualityOpen)),
   closeDataQuality: () => set({ dataQualityOpen: false }),
 
@@ -934,6 +944,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       "heatOpen",
       "trendingOpen",
       "analystOpen",
+      "careerOpen",
       "dataQualityOpen",
       "mobileMenuOpen",
       "feedbackOpen",

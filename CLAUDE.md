@@ -54,6 +54,8 @@ bun run scripts/check-skills.ts            # skill taxonomy invariants
 bun run scripts/check-analyst-followups.ts # a follow-up resolves to the scope it names
 bun run scripts/check-analyst-scope.ts     # every analyst scope excludes the closed corpora
 bun run scripts/check-skill-trends.ts      # the card's per-skill/per-area reconstruction
+bun run scripts/check-career-ladder.ts     # every title lands on the right rung
+bun run scripts/check-career-card.ts       # the career card's series, trend and model
 python scripts/test_skills_taxonomy.py
 python scripts/test_jobs_extract.py
 python scripts/test_rosters.py             # roster parsers still read their data files
@@ -570,6 +572,15 @@ curl --noproxy 127.0.0.1 "http://127.0.0.1:8801/__scheduled?cron=20+4+*+*+*"
 than a real scheduled invocation's**. A run that logs `waitUntil() tasks did not complete
 within the allowed time and have been cancelled` writes nothing at all — always confirm the
 rows landed in D1 rather than trusting `Ran scheduled event`.
+
+**A scheduled handler gets 15 minutes only for work it AWAITS.** Work handed to
+`ctx.waitUntil` gets 30 s after the handler returns (Workers limits page, read
+2026-09-24), and every scraper branch returns straight away with its work in
+`waitUntil` — so each has 30 s, not 15 min. That fits the shard's measured
+history ("waitUntil() tasks did not complete" at 25 and 45 per run, SHARD = 17
+the size that finishes). The career-pathways tick (`52 23 * * *`) is the one
+branch that awaits, because its 90-day read took 28 s from a local run. It also
+has `/run-careerpaths?token=…&dry=1`, which builds and reports without writing.
 
 To stop the dev server, match on `wrangler[ ]dev`. Plain `pkill -f "wrangler dev"` matches
 the killing shell's own command line and takes out your Bash session (exit 144).

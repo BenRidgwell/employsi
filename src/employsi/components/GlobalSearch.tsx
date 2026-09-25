@@ -63,7 +63,7 @@ type Result =
   | { kind: "city"; id: string; label: string }
   | { kind: "skill"; id: string; label: string; sub: string; tone: DemandTone };
 
-function FollowGlyph({ on: _on }: { on: boolean }) {
+export function FollowGlyph({ on: _on }: { on: boolean }) {
   // Both glyphs are stacked and cross-faded by CSS off the button's own `.on`
   // class, per the design, so the control doesn't resize as it flips.
   return (
