@@ -441,7 +441,10 @@ async def collect(bd: BrightData, conn: sqlite3.Connection, seeds: list[tuple[st
                     conn.executemany('INSERT INTO moves VALUES (?,?,?,?,?,?)', [
                         (pk, m.from_ref, m.from_name, m.to_ref, m.to_name, m.month)
                         for m in mv.moves])
-                    conn.execute('INSERT INTO people VALUES (?,?,?,?,?,?,?)', (
+                    # Named columns: `synced` is added by migration on an
+                    # older file, and a positional insert broke on it.
+                    conn.execute('INSERT INTO people (person_key, seed_ref, fetched, status, '
+                                 'positions, dropped, skipped) VALUES (?,?,?,?,?,?,?)', (
                         pk, seed_ref, today, 'ok' if parsed.positions else 'empty',
                         len(parsed.positions), json.dumps(dict(parsed.dropped)),
                         json.dumps(dict(mv.skipped))))
