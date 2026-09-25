@@ -1236,7 +1236,7 @@ export function PerthMapbox() {
           });
         }
       }
-      setFlowArcs(map, arcs);
+      setFlowArcs(map, arcs, focusAt ?? null);
       paintFlowHover(map, useAppStore.getState().flowHover);
 
       // Pins: the focus lifted, peers badged with their count, the rest dimmed.
@@ -1288,7 +1288,7 @@ export function PerthMapbox() {
         }
       }
 
-      // The travelling light, source to destination. Off for reduced motion.
+      // The travelling lights and the hub's pulse. Off for reduced motion.
       if (arcs.length && !reduceMotion && !prefersReducedMotion()) {
         const t0 = performance.now();
         let last = 0;

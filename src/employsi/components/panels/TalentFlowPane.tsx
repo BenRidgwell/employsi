@@ -49,6 +49,15 @@ const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct
 const monthOf = (iso: string) => ({ y: Number(iso.slice(0, 4)), m: Number(iso.slice(5, 7)) });
 const label = (y: number, m: number) => `${MON[m - 1]} ${y}`;
 
+// What this card's fetch is actually doing: reading the collected career
+// moves, resolving the employers in them to map companies, then totting up.
+const LOAD_STAGES = [
+  "Reading career moves",
+  "Matching employers to the map",
+  "Counting flows",
+  "Almost there",
+] as const;
+
 export function TalentFlowPane() {
   const open = useAppStore((s) => s.flowsOpen);
   const focus = useAppStore((s) => s.flowFocus);
@@ -255,7 +264,7 @@ export function TalentFlowPane() {
         {/* What's Trending's loader, used the same way: over the card while a
             company's flows are first arriving, not on a refetch of data the
             card is already showing. */}
-        {firstLoad && <CardLoader />}
+        {firstLoad && <CardLoader stages={LOAD_STAGES} />}
         <div
           style={{
             flex: "none",

@@ -12,6 +12,9 @@ import { useEffect, useState } from "react";
  * It is deliberately describing what the app is DOING, not claiming a
  * percentage — there is no meaningful denominator across four independent
  * fetches, and a fake progress bar would be the dishonest version of this.
+ *
+ * A card whose fetch is not about vacancies passes its own `stages`, so the
+ * captions still say what is actually happening (Talent flows does).
  */
 
 const STAGES = [
@@ -21,12 +24,18 @@ const STAGES = [
   "Almost there",
 ];
 
-export function CardLoader({ tone = "light" }: { tone?: "light" | "dark" }) {
+export function CardLoader({
+  tone = "light",
+  stages = STAGES,
+}: {
+  tone?: "light" | "dark";
+  stages?: readonly string[];
+}) {
   const [i, setI] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setI((n) => (n + 1) % STAGES.length), 1900);
+    const t = setInterval(() => setI((n) => (n + 1) % stages.length), 1900);
     return () => clearInterval(t);
-  }, []);
+  }, [stages.length]);
 
   return (
     <div className={`ccload ccload-${tone}`} aria-live="polite" aria-busy="true">
@@ -36,7 +45,7 @@ export function CardLoader({ tone = "light" }: { tone?: "light" | "dark" }) {
         <rect className="ccloadbar b2" x="24" y="52.5" width="55" height="15" rx="7.5" />
         <rect className="ccloadbar b3" x="24" y="81" width="72" height="15" rx="7.5" />
       </svg>
-      <span className="ccloadstage">{STAGES[i]}</span>
+      <span className="ccloadstage">{stages[i % stages.length]}</span>
     </div>
   );
 }
