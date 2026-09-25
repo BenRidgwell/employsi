@@ -620,6 +620,19 @@ SAME_EMPLOYER: dict[str, tuple[str, frozenset[str]]] = {
         'li:dampier-salt-limited',
         'name:pacific aluminium', 'li:pacific-aluminium-pty-limited',
         'name:rio tinto coal australia', 'name:rio tinto kestrel',
+        # Added when the seed completed (16,752 profiles), same rules: its own
+        # sites and units, a second spelling of Robe River and Dampier Salt,
+        # and Comalco, Rio Tinto Aluminium's name until 2006. Still left out:
+        # "Kestrel Coal Resources" (the name after the sale), the DT
+        # Workforce and WorkPac labels (agencies), Oyu Tolgoi (a joint
+        # venture with its own staff), Argyle Engineering and Alcan
+        # Engineering (other companies).
+        'name:rio tinto marandoo', 'name:rio tinto iron ore brockman 4',
+        'name:rio tinto bell bay aluminium', 'name:rio tinto pacific aluminium',
+        'name:rio tinto technology innovation', 'name:rio tinto is t',
+        'name:rio tinto growth innovation',
+        'name:robe river iron associates', 'name:dampier salt limited',
+        'name:comalco', 'name:comalco aluminium ltd',
     ))),
 }
 _ALIAS = {a: (canon, name) for canon, (name, aliases) in SAME_EMPLOYER.items() for a in aliases}

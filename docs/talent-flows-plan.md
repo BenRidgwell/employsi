@@ -1,9 +1,9 @@
 # Talent flows — format and build
 
 **Status (2026-09-25): built; on the preview Worker, not production. Production D1
-holds one live import** (`brightdata|2026-09-25|576a25ac2d39`: three seeds, BHP
-9,696, Fortescue 5,568 and Rio Tinto 4,759 usable profiles, 7,258 pairs,
-10,157 moves over 2020-11..2025-10; each earlier load is marked superseded). Nothing shows it yet: the reader
+holds one live import** (`brightdata|2026-09-25|df3ee94e51ce`: three seeds, BHP
+9,696, Fortescue 5,568 and Rio Tinto 10,393 usable profiles, 9,251 pairs,
+13,224 moves over 2020-11..2025-10; each earlier load is marked superseded). Nothing shows it yet: the reader
 (`flowsFn.ts`, `TalentFlow.tsx`) is on this branch only, not on `main`, and
 `deploy-preview.yml` is manual. The rows go live on whichever Worker is next
 deployed from a tree that has the reader, preview included (it shares
@@ -18,7 +18,7 @@ production D1).
 | Card section | `components/panels/TalentFlow.tsx`, Hiring tab | Built; renders nothing without data. Not seen rendered |
 | Map arcs | — | Not started |
 | **Source: Bright Data** (chosen) | `scripts/brightdata-talent-flows.py` + `talent_flows.positions_from_brightdata` | Built; tested end to end against a **fake** Bright Data MCP server. Filters confirmed live 2026-09-24. **7 of 10 real profiles parse to nothing** — see below |
-| Collection state | `workers/jobs-cron/migrations/0003_talent_flows_collect.sql` | **Applied to production D1 2026-09-25.** Holds 15,640 BHP profiles (of 21,359), all 7,928 Fortescue and 7,820 Rio Tinto (of 16,752). Counts by month plus a bare list of hashed ids; no person's name, url, title or history |
+| Collection state | `workers/jobs-cron/migrations/0003_talent_flows_collect.sql` | **Applied to production D1 2026-09-25.** Holds 15,640 BHP profiles (of 21,359), all 7,928 Fortescue and all 16,752 Rio Tinto. Counts by month plus a bare list of hashed ids; no person's name, url, title or history |
 | Source: LinkedIn sample (parked) | `scripts/collect-talent-flows.py` + `scripts/talent_flows.py` | Built; tested against a fake MCP server only. Parked: it needs a personal LinkedIn account |
 
 ### The Bright Data source
@@ -288,6 +288,27 @@ Facts it depends on (read 2026-09-24):
   seed. Loaded as `…576a25ac2d39`; totals checked; 7 new exact-name matches
   checked by hand. Rate limit: 782 accepted, then 429, in a window that
   began 16 minutes after Fortescue's 793, so ~1,575 in 76 minutes.
+- **Rio Tinto completed, 2026-09-25 09:51–10:25 UTC: 894 requests, the
+  remaining 8,932 profiles, no 429** (16,752 of 16,752; 10,393 usable,
+  62%). Eleven more of its own pages added to `SAME_EMPLOYER` under the
+  rules already written (sites, units, Comalco); the new look-alikes that
+  those rules leave out are listed in the comment there. The Arcadium rule
+  now catches 2 moves. No acquisition-shaped spike (no source above 2 in a
+  month since 2019). Export: 13,224 moves over 9,251 pairs, 87 at 10+,
+  window still ending 2025-10. Into Rio Tinto: 2,827 from 1,359 employers,
+  33 at 10+: BHP 238, WorkPac 90, Fortescue 84, Worley 36, Monadelphous 36,
+  Roy Hill 33, Sodexo 22. Between the three (Rio Tinto and Fortescue
+  complete, BHP 73%): BHP → Rio Tinto 238, Rio Tinto → BHP 139; BHP →
+  Fortescue 167, Fortescue → BHP 45; Rio Tinto → Fortescue 138, Fortescue
+  → Rio Tinto 84. Loaded as `…df3ee94e51ce`; totals checked.
+  **One wrong match fixed by hand**: `li:target`, LinkedIn's US Target
+  page, exact-name matched the roster's Target Corporation
+  (`minneapolis-tgt`), but the profiles linking it are Australians at
+  Target Australia (Bunnings → Target → a Canning Vale dentist), a
+  Wesfarmers business that is not on the roster. Now a `manual` row with no
+  company, and the live import's one in-window row cleared. Exact-name
+  matching cannot tell a global brand from its Australian namesake; the
+  hand check after each load is what caught it.
 - **The rate limit is not a fixed count per window.** 00:41–00:55 UTC: 164
   accepted, then 429. 02:02:14–02:25:38 UTC: 557 accepted (at the same ~24 a
   minute), then 429 on the 558th. So the cap had reset within 67 minutes of
