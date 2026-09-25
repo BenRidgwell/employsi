@@ -29,6 +29,93 @@ const ROWS_SHOWN = 8;
 const HUB_COORD: Record<string, [number, number]> = { ...HUB_LNGLAT, ...AU_CITY_LNGLAT };
 const hubLabel = (hub: string) => CITY_LABEL[hub] || GLOBAL_HUB_LABEL[hub] || hub;
 
+/**
+ * Three-letter codes for the map's pin badges.
+ *
+ * IATA city codes rather than the first three letters of the name, because
+ * truncation is wrong exactly where it matters: "Kuala Lumpur" is KUL and not
+ * KUA, and San Francisco and San Diego both truncate to SAN. The design this
+ * is built from uses this register (SYD, MEL, ADL), so the badges read as
+ * travel codes rather than as abbreviations.
+ */
+const HUB_CODE: Record<string, string> = {
+  sydney: "SYD",
+  melbourne: "MEL",
+  brisbane: "BNE",
+  perth: "PER",
+  adelaide: "ADL",
+  canberra: "CBR",
+  darwin: "DRW",
+  hobart: "HBA",
+  auckland: "AKL",
+  wellington: "WLG",
+  singapore: "SIN",
+  kualalumpur: "KUL",
+  manila: "MNL",
+  hongkong: "HKG",
+  tokyo: "TYO",
+  seoul: "SEL",
+  beijing: "BJS",
+  shanghai: "SHA",
+  shenzhen: "SZX",
+  ganzhou: "KOW",
+  mumbai: "BOM",
+  bengaluru: "BLR",
+  dubai: "DXB",
+  london: "LON",
+  paris: "PAR",
+  zurich: "ZRH",
+  johannesburg: "JNB",
+  newyork: "NYC",
+  sanfrancisco: "SFO",
+  sanjose: "SJC",
+  losangeles: "LAX",
+  sandiego: "SAN",
+  seattle: "SEA",
+  portland: "PDX",
+  denver: "DEN",
+  houston: "HOU",
+  dallas: "DFW",
+  austin: "AUS",
+  chicago: "CHI",
+  atlanta: "ATL",
+  charlotte: "CLT",
+  boston: "BOS",
+  philadelphia: "PHL",
+  washington: "WAS",
+  minneapolis: "MSP",
+  cincinnati: "CVG",
+  indianapolis: "IND",
+  omaha: "OMA",
+  bentonville: "XNA",
+  toronto: "YYZ",
+  montreal: "YUL",
+  vancouver: "YVR",
+  calgary: "YYC",
+  ottawa: "YOW",
+};
+const hubCode = (hub: string) =>
+  HUB_CODE[hub] ??
+  hubLabel(hub)
+    .replace(/[^A-Za-z]/g, "")
+    .slice(0, 3)
+    .toUpperCase();
+
+/**
+ * The heat ramp, from the design: green below an eighth of the busiest hub,
+ * then yellow, orange and red. Thresholds are on the share of the BUSIEST hub
+ * rather than of the total, so a single-hub map reads as hot rather than as
+ * the whole scale at once.
+ */
+const heatColor = (t: number) =>
+  t > 0.66
+    ? "rgb(204,56,51)"
+    : t > 0.33
+      ? "rgb(242,140,46)"
+      : t > 0.12
+        ? "rgb(235,190,56)"
+        : "rgb(56,160,110)";
+
 const pctText = (pct: number) => {
   const abs = Math.abs(pct);
   return (
@@ -370,6 +457,7 @@ function HotSpots({
 }) {
   const [i, setI] = useState(0);
   const [open, setOpen] = useState(false);
+  const [hub, setHub] = useState<string | null>(null);
   const pickRef = useRef<HTMLDivElement | null>(null);
 
   // Only skills with somewhere to plot. A skill whose ads all carry a country
@@ -419,6 +507,21 @@ function HotSpots({
   const { skill, spots } = entry;
   const placed = spots.reduce((t, s) => t + s.n, 0);
   const max = Math.max(...spots.map((s) => s.n));
+  const hovered = spots.find((sp) => sp.hub === hub) ?? null;
+  // The blobs breathe via SMIL <animate>, which is how the design does it and
+  // which CSS prefers-reduced-motion cannot switch off — the old halo was a CSS
+  // animation and had a media query for exactly this. So the preference is read
+  // here and the <animate> element is simply not rendered. Read on each render
+  // rather than cached: this is cheap, and a setting changed mid-session should
+  // take effect the next time the card opens.
+  const stillness =
+    typeof window !== "undefined" &&
+    !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  // The design's radii and stroke are drawn against a 300-wide viewBox. This
+  // one's viewBox is the frame, which is whatever the hubs needed, so every
+  // size taken from the design is multiplied by this to arrive at the same
+  // apparent size on screen.
+  const k = frame.w / 300;
   // Percentages are relative to the FRAME, not the world, so the overlays track
   // the zoom. The container is given the frame's aspect so `meet` fills it
   // exactly and there is no letterbox to correct for.
@@ -469,36 +572,161 @@ function HotSpots({
         )}
       </div>
 
-      <div className="hspmap" style={{ aspectRatio: `${FRAME_ASPECT}` }}>
+      {/* The map, from the Hiring Hotspots design. The visual layer is the
+          design's verbatim — ocean and land fills, the radial heat blobs under
+          a colour-matrix filter, the white-ringed dots, the code badges, the
+          hover card and the LOW/HIGH legend. What is NOT taken from it is the
+          framing: the design hardcodes an Australia/New Zealand mercator, and
+          this section has to frame whatever hubs the employer actually has,
+          which can be Houston or Singapore. So the existing frame is kept and
+          the design's sizes are scaled into it — see `k` below. */}
+      <div className="hspmap">
         <svg viewBox={`${frame.x} ${frame.y} ${frame.w} ${frame.h}`} aria-hidden>
-          <path className="hspland" d={WORLD_OUTLINE} />
+          <defs>
+            <radialGradient id="hspheatdot">
+              <stop offset="0" stopColor="#000" stopOpacity="1" />
+              <stop offset="0.45" stopColor="#000" stopOpacity="0.55" />
+              <stop offset="1" stopColor="#000" stopOpacity="0" />
+            </radialGradient>
+            {/* Flattens each blob to its alpha, then reads that alpha through
+                the ramp — so one grey gradient becomes green→yellow→orange→red
+                and overlapping hubs compound into a hotter colour rather than
+                a darker one. */}
+            <filter
+              id="hspheatcolor"
+              x="-20%"
+              y="-20%"
+              width="140%"
+              height="140%"
+              colorInterpolationFilters="sRGB"
+            >
+              <feColorMatrix type="matrix" values="0 0 0 1 0  0 0 0 1 0  0 0 0 1 0  0 0 0 1 0" />
+              <feComponentTransfer>
+                <feFuncR type="table" tableValues="0.20 0.30 0.62 0.98 0.95 0.80" />
+                <feFuncG type="table" tableValues="0.70 0.75 0.82 0.78 0.45 0.22" />
+                <feFuncB type="table" tableValues="0.50 0.45 0.35 0.22 0.18 0.20" />
+                <feFuncA type="table" tableValues="0 0.42 0.58 0.68 0.76 0.82" />
+              </feComponentTransfer>
+            </filter>
+          </defs>
+          <rect x={frame.x} y={frame.y} width={frame.w} height={frame.h} className="hspsea" />
+          <path className="hspland" d={WORLD_OUTLINE} strokeWidth={0.5 * k} />
+          <g filter="url(#hspheatcolor)">
+            {spots.map((sp, n) => {
+              const t = sp.n / max;
+              const r = (12 + Math.sqrt(t) * 26) * k;
+              return (
+                <circle
+                  key={sp.hub}
+                  cx={sp.x}
+                  cy={sp.y}
+                  r={r}
+                  fill="url(#hspheatdot)"
+                  opacity={(0.35 + 0.65 * Math.sqrt(t)).toFixed(2)}
+                >
+                  {!stillness && (
+                    <animate
+                      attributeName="r"
+                      values={`${(r * 0.92).toFixed(2)};${(r * 1.12).toFixed(2)};${(r * 0.92).toFixed(2)}`}
+                      dur={`${(3.4 - 1.2 * t).toFixed(2)}s`}
+                      begin={`${(n * 0.3).toFixed(2)}s`}
+                      repeatCount="indefinite"
+                      calcMode="spline"
+                      keyTimes="0;0.5;1"
+                      keySplines="0.4 0 0.2 1;0.4 0 0.2 1"
+                    />
+                  )}
+                </circle>
+              );
+            })}
+          </g>
         </svg>
-        {/* Markers and labels are HTML: text placed in SVG under a moving
-            viewBox scales with the zoom, so a tightly framed map would render
-            its labels at several times the size of a wide one. */}
+
+        {/* Dots and badges are HTML, as they were before: text under a moving
+            viewBox would scale with the zoom, so a tightly framed map would
+            render its labels several times the size of a wide one. */}
         {spots.map((sp) => {
-          // AREA tracks the count. Scaling the radius would exaggerate a busy
-          // hub by its square.
-          const size = 22 + Math.sqrt(sp.n / max) * 22;
-          // Labels sit right of the dot, and flip to the left in the right-hand
-          // third where they would otherwise run off the card.
-          const right = (sp.x - frame.x) / frame.w > 0.62;
+          const t = sp.n / max;
           return (
-            <span key={sp.hub} className="hspspot" style={posOf(sp)}>
-              <span className="hsphalo" style={{ width: size, height: size }} />
-              <span className="hspcore" />
-              <span
-                className={`hsplabel ${right ? "left" : ""}`}
-                style={{ [right ? "right" : "left"]: size / 2 + 8 }}
-              >
-                <b>{sp.label}</b>
-                <em>
-                  {sp.n} {sp.n === 1 ? "ad" : "ads"}
-                </em>
-              </span>
-            </span>
+            <span
+              key={sp.hub}
+              className="hspdot"
+              style={{ ...posOf(sp), background: heatColor(t), opacity: t < 0.08 ? 0.55 : 1 }}
+              onMouseEnter={() => setHub(sp.hub)}
+            />
           );
         })}
+        {/* Badges for the busiest four only. Every hub keeps its dot; beyond
+            four the codes start overlapping each other on a tight frame. */}
+        {spots.slice(0, 4).map((sp) => (
+          <span
+            key={sp.hub}
+            className="hsppin"
+            style={posOf(sp)}
+            onMouseEnter={() => setHub(sp.hub)}
+          >
+            <span
+              className="hsppinbadge"
+              style={{
+                boxShadow: `0 1px 3px rgba(28,28,30,.22), 0 0 0 ${hub === sp.hub ? 2 : 0}px var(--neutral-900)`,
+              }}
+            >
+              {hubCode(sp.hub)}
+            </span>
+            <span className="hsppinstem" />
+          </span>
+        ))}
+        {hovered && (
+          /* The design centres the card on the dot and stops there, which
+             clips it against the card's edge on a hub near the frame's left or
+             right. Rendered locally at three framings to check: London at 0.82
+             across ran off. So the centring holds through the middle and gives
+             way at the edges — the same flip the labels this replaced used. */
+          <span
+            className="hsptip"
+            style={{
+              ...posOf(hovered),
+              transform: (() => {
+                const f = (hovered.x - frame.x) / frame.w;
+                if (f > 0.78) return "translate(-100%, 10px)";
+                if (f < 0.22) return "translate(0, 10px)";
+                return "translate(-50%, 10px)";
+              })(),
+            }}
+          >
+            <b>{hovered.label}</b>
+            <em>
+              {hovered.n.toLocaleString("en-US")} {hovered.n === 1 ? "AD" : "ADS"} ·{" "}
+              {Math.round((hovered.n / placed) * 100)}%
+            </em>
+          </span>
+        )}
+        <span className="hspkey">
+          <em>LOW</em>
+          <i />
+          <em>HIGH</em>
+        </span>
+      </div>
+
+      {/* The design's ranked hubs. Three, because past that it stops being a
+          reading of where the work is and becomes the same list the rows below
+          already give. The percentage is of the ads ON THE MAP, which is what
+          the coverage bar underneath then puts in proportion. */}
+      <div className="hsprank">
+        {spots.slice(0, 3).map((sp) => (
+          <div
+            key={sp.hub}
+            className="hsprow"
+            onMouseEnter={() => setHub(sp.hub)}
+            onMouseLeave={() => setHub(null)}
+          >
+            <span className="hsprowname">{sp.label}</span>
+            <span className="hsprowbar">
+              <span style={{ width: `${Math.round((sp.n / max) * 100)}%` }} />
+            </span>
+            <span className="hsprowpct">{Math.round((sp.n / placed) * 100)}%</span>
+          </div>
+        ))}
       </div>
 
       <div className="hspfoot">
@@ -506,8 +734,10 @@ function HotSpots({
           <b>{placed}</b> {placed === 1 ? "ad" : "ads"} <i>/</i> <b>{spots.length}</b>{" "}
           {spots.length === 1 ? "hub" : "hubs"}
         </span>
-        {/* Most archived ads record a country, or nothing. The bar is the point:
-            without it the cluster reads as the whole employer. */}
+        {/* KEPT, though the design has no equivalent. Most archived ads record a
+            country, or nothing. Without this bar the cluster reads as the whole
+            employer, and the design's ranked percentages — which are shares of
+            what is ON the map — would read as shares of everything. */}
         {liveAds > 0 && (
           <span className="hspcov">
             <span className="hspbar">

@@ -12896,12 +12896,17 @@ body {
 .hsp {
   margin-bottom: 14px;
 }
-/* The frame's aspect is set inline from FRAME_ASPECT so the SVG fills the box
-   exactly and the HTML overlays can be positioned in plain percentages. */
+/* ── Hiring Hotspots ───────────────────────────────────────────────────────
+   Ported from the Hiring Hotspots design, 2026-09-25. The aspect ratio, radii,
+   dot and badge sizes, the heat ramp and the legend are all the design's; the
+   colours are written as tokens where the design used a literal that matches
+   one, and left literal where it does not (the ocean and land are the only
+   colour in a monochrome product, and they are the design's own oklch values). */
 .hspmap {
   position: relative;
   margin-top: 8px;
-  border-radius: var(--radius-md);
+  aspect-ratio: 3 / 2;
+  border-radius: 12px;
   background: var(--surface-subtle);
   overflow: hidden;
 }
@@ -12910,78 +12915,162 @@ body {
   width: 100%;
   height: 100%;
 }
+.hspsea {
+  fill: oklch(0.9 0.045 225);
+}
 .hspland {
-  fill: var(--surface-active);
+  fill: oklch(0.975 0.018 135);
+  stroke: oklch(0.86 0.04 180);
 }
-/* A marker is a point: everything inside it is centred on that point, so the
-   halo can grow without moving the dot. */
-.hspspot {
+/* A dot is a point: it is centred on its coordinate by its own negative
+   margin, so nothing around it can shift where it claims the ads are. */
+.hspdot {
   position: absolute;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-.hsphalo {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: var(--status-success-fg);
-  opacity: 0.22;
-  animation: hsppulse 2.6s var(--ease-standard) infinite;
-}
-.hspcore {
-  position: absolute;
-  top: 50%;
-  left: 50%;
   width: 9px;
   height: 9px;
   margin: -4.5px 0 0 -4.5px;
+  box-sizing: border-box;
   border: 2px solid var(--neutral-0);
-  border-radius: 50%;
-  background: var(--status-success-fg);
-  box-shadow: var(--shadow-xs);
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgba(28, 28, 30, 0.3);
+  cursor: pointer;
 }
-/* The halo breathes; the dot does not. A marker that moves reads as a position
-   that is uncertain, which is the opposite of what this is saying. */
-@keyframes hsppulse {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(0.82);
-    opacity: 0.28;
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(1.12);
-    opacity: 0.14;
-  }
-}
-.hsplabel {
+.hsppin {
   position: absolute;
-  top: 50%;
+  transform: translate(-50%, -100%);
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  transform: translateY(-50%);
-  white-space: nowrap;
+  align-items: center;
+  padding-bottom: 4px;
+  cursor: pointer;
 }
-.hsplabel.left {
-  align-items: flex-end;
-  text-align: right;
-}
-.hsplabel b {
-  font-size: 12.5px;
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.01em;
+.hsppinbadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--neutral-0);
+  font-family: var(--font-label);
+  font-size: 8.5px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
   color: var(--text-primary);
 }
-.hsplabel em {
-  font-style: normal;
+.hsppinstem {
+  width: 1.5px;
+  height: 7px;
+  background: var(--neutral-0);
+  box-shadow: 0 1px 1px rgba(28, 28, 30, 0.2);
+}
+.hsptip {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  /* transform is set inline, so a hub near an edge can flip instead of
+     clipping — see the note at the render site. */
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--neutral-900);
+  color: var(--neutral-0);
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
+}
+.hsptip b {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+.hsptip em {
   font-family: var(--font-label);
-  font-size: 9.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+.hspkey {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+}
+.hspkey em {
+  font-family: var(--font-label);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+.hspkey i {
+  width: 56px;
+  height: 5px;
+  border-radius: 999px;
+  /* The same four stops the dots are coloured from, so the legend is the key
+     to the dots and not merely a gradient that resembles them. */
+  background: linear-gradient(
+    90deg,
+    rgb(56, 160, 110),
+    rgb(235, 190, 56),
+    rgb(242, 140, 46),
+    rgb(204, 56, 51)
+  );
+}
+.hsprank {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+.hsprow {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+}
+.hsprowname {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hsprowbar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--neutral-200);
+  overflow: hidden;
+}
+.hsprowbar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--neutral-900);
+}
+.hsprowpct {
+  font-family: var(--font-label);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
 }
 .hspfoot {
   display: flex;
@@ -13038,13 +13127,6 @@ body {
   text-transform: uppercase;
   color: var(--text-tertiary);
 }
-@media (prefers-reduced-motion: reduce) {
-  .hsphalo {
-    animation: none;
-    transform: translate(-50%, -50%);
-  }
-}
-
 /* the rest, one row each */
 .alsk {
   margin-top: 2px;
