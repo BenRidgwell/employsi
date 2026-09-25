@@ -429,6 +429,30 @@ const RAW_SKILLS: SkillDef[] = [
       "sql",
       "systems analyst",
       "business and systems",
+      // BI VOCABULARY BELONGS ON THE PARENT, and its absence here was a hole
+      // rather than a judgement. Measured 2026-09-25: "business intelligence
+      // analyst", "business intelligence manager", "bi analyst", "director
+      // business intelligence" and "tableau admin" each mapped to NOTHING AT
+      // ALL — none of the terms above appears in any of them, so the reporting
+      // layer of the data function was invisible to the taxonomy. It also kept
+      // the Business Intelligence speciality below its evidence floor, because
+      // a child cannot match unless its parent has: 39 of 256 BI-shaped titles
+      // reached it, and the other 217 failed at this gate rather than at the
+      // child's own terms.
+      "business intelligence",
+      "bi analyst",
+      "bi developer",
+      "bi engineer",
+      "bi consultant",
+      "bi specialist",
+      "bi manager",
+      "bi lead",
+      "bi architect",
+      "bi reporting",
+      "tableau",
+      "qlik",
+      "looker",
+      "powerbi",
     ],
   },
 
@@ -443,14 +467,26 @@ const RAW_SKILLS: SkillDef[] = [
     skill: "Business Intelligence",
     cat: "Digital",
     parent: "Data Analytics",
-    // 59 titles. Building the reporting layer rather than reading it.
+    // 59 titles when minted; 39 by 2026-09-25, which read as employers wording
+    // the title differently and was really the parent gate — see the note on
+    // Data Analytics' terms. These add the role forms the archive actually
+    // carries, all of them naming BI as the JOB rather than as a tool someone
+    // else uses: a "Senior Finance Analyst | Power BI expert" is a finance
+    // analyst, so bare "power bi" stays on the parent and off this child.
     terms: [
       "business intelligence",
       "bi developer",
       "bi analyst",
       "bi consultant",
+      "bi engineer",
+      "bi specialist",
+      "bi manager",
+      "bi lead",
+      "bi architect",
+      "bi reporting",
       "tableau",
       "qlik",
+      "looker",
       "reporting analyst",
     ],
   },

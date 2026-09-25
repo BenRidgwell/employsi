@@ -642,6 +642,30 @@ Worker, the scripts and the app, so a role maps identically wherever it enters. 
 skills with `parseStoredSkills` — it applies `SKILL_ALIAS` and drops names no longer in the
 taxonomy, which is why legacy values in old archive rows don't need a migration.
 
+**A RENAME needs no migration; a NEW SKILL OR A NEW TERM does.** Each row freezes its
+skills as JSON at scrape time, so widening the taxonomy reaches new rows only — the
+skill exists, matches nothing already stored, and reads as a market nobody is hiring in
+until the archive refills. `scripts/remap-skills.py --like '%term%'` recomputes
+`skillsForText` over the row's own title and writes that; it invents nothing, and a row
+whose skills do not change is not written. Measured 2026-09-25: adding Strategy and
+widening Business Intelligence needed 660 and 163 rows remapped respectively, and
+without it both skills would have ranked near zero while being correctly defined.
+
+**A CHILD CANNOT MATCH UNLESS ITS PARENT ALREADY HAS**, and the failure mode is a
+speciality quietly starving. Business Intelligence fell from 59 titles to 39 not because
+employers changed their wording but because `Data Analytics` — its parent — had no BI
+vocabulary at all, so "business intelligence analyst" matched NOTHING in the whole
+taxonomy and 217 of 256 BI-shaped titles failed at the gate rather than at the child's
+own terms. When a speciality drifts under the floor, check the parent's terms before
+rewriting the child's.
+
+**The archive-backed sections of `check-skills.ts` need D1 credentials** —
+`CLOUDFLARE_ACCOUNT_ID`, `JOBS_ARCHIVE_DB_ID`, `CLOUDFLARE_API_TOKEN` — and skip with a
+`·` line without them. `skills-check.yml` passes all three from secrets, but its step
+completed in under a second through 2026-09-24, which is far too fast for those queries:
+the evidence floor and the stale-`Principal` check were not running in CI, and two real
+drifts sat unreported until they were run by hand. A `·` in that output is not a pass.
+
 ### Map layers
 
 `src/employsi/state/store.ts` (zustand) owns the layer state; `WorldMapbox.tsx` handles
